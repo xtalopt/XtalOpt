@@ -1,0 +1,14 @@
+#/bin/bash
+#PBS -q [NAME OF QUEUE]
+#PBS -l nodes=[#nodes]:ppn=[procs. per node]
+#PBS -o %rempath%/../%gen%x%id%-%incar%.out
+#PBS -N %user1%-%gen%x%id%-%incar%
+#PBS -j oe
+#PBS -m e
+##PBS -W umask=022
+
+###Include this for xtalopt scripts!###
+export PBS_O_WORKDIR=%rempath%
+echo $PBS_O_WORKDIR
+
+[run local optimizer, setup mpi, etc.]
