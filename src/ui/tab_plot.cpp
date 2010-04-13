@@ -590,7 +590,7 @@ namespace Avogadro {
       // index:
       s.append(QString::number(i) + ": ");
       // generation and xtal ID:
-      s.append(QString::number(xtal->getGeneration()) + "x" + QString::number(xtal->getXtalNumber()));
+      s.append(xtal->getIDString());
       // disposition
       switch (xtal->getStatus()) {
       case Xtal::Optimized:
@@ -651,7 +651,7 @@ namespace Avogadro {
     QReadLocker plotLocker (m_plot_mutex);
     xtal->lock()->lockForRead();
     uint gen = xtal->getGeneration();
-    uint id  = xtal->getXtalNumber();
+    uint id  = xtal->getIDNumber();
     xtal->lock()->unlock();
     int ind;
     Xtal *txtal;
@@ -659,7 +659,7 @@ namespace Avogadro {
       txtal = m_opt->getStructures()->at(i);
       txtal->lock()->lockForRead();
       uint tgen = txtal->getGeneration();
-      uint tid = txtal->getXtalNumber();
+      uint tid = txtal->getIDNumber();
       txtal->lock()->unlock();
       if ( tgen == gen &&
            tid == id ) {

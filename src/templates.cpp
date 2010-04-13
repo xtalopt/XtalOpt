@@ -211,7 +211,7 @@ namespace Avogadro {
       else if (line == "filename")      rep += xtal->fileName();
       else if (line == "rempath")       rep += xtal->getRempath();
       else if (line == "gen")           rep += QString::number(xtal->getGeneration());
-      else if (line == "id")            rep += QString::number(xtal->getXtalNumber());
+      else if (line == "id")            rep += QString::number(xtal->getIDNumber());
       else if (line == "incar")         rep += QString::number(xtal->getCurrentOptStep());
       else if (line == "optStep")         rep += QString::number(xtal->getCurrentOptStep());
       else if (line == "POSCAR") {

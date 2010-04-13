@@ -1,8 +1,7 @@
 /**********************************************************************
-  XtalOptMolecule - Wrapper for Avogadro's molecule class to ease work
-                    with crystals.
+  Xtal - Wrapper for Structure to ease work with crystals.
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -17,7 +16,6 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "xtalopt.h"
 #include "xtal.h"
 
 #include <avogadro/primitive.h>
@@ -43,30 +41,28 @@ using namespace Eigen;
 namespace Avogadro {
 
   Xtal::Xtal(QObject *parent) :
-    Molecule(parent), m_generation(0), m_id(0), m_jobID(0),
-    m_spgNumber(231), m_PV(0), m_optStart(QDateTime()), m_optEnd(QDateTime()),
-    m_opt(0), m_index(-1)
+    Structure(parent)
   {
-    m_hasEnergy = m_hasEnthalpy = false;
-    m_currentOptStep = 1;
-    setStatus(Empty);
-    resetFailCount();
-    initializeCell();
+    ctor(parent);
   }
 
   Xtal::Xtal(double A, double B, double C,
              double Alpha, double Beta, double Gamma,
              QObject *parent) :
-    Molecule(parent), m_generation(0), m_id(0), m_jobID(0),
-    m_spgNumber(231), m_PV(0), m_optStart(QDateTime()), m_optEnd(QDateTime()),
-    m_opt(0), m_index(-1)
+  Structure(parent)
   {
-    setStatus(Empty);
-    resetFailCount();
-    m_hasEnergy = m_hasEnthalpy = false;
-    m_currentOptStep = 1;
-    initializeCell();
+    ctor(parent);
     setCellInfo(A, B, C, Alpha, Beta, Gamma);
+  }
+
+  // Actual constructor:
+  void Xtal::ctor(QObject *parent)
+  {
+    m_spgNumber = 231;
+    this->setOBUnitCell(new OpenBabel::OBUnitCell);
+    // Openbabel seems to be fond of making unfounded assumptions that
+    // break things. This fixes one of them.
+    this->cell()->SetSpaceGroup(0);
   }
 
   Xtal::~Xtal() {
@@ -273,26 +269,14 @@ namespace Avogadro {
     return true;
   }
 
-  void Xtal::initializeCell() {
-
-    OpenBabel::OBUnitCell *c = this->OBUnitCell();
-
-    if (!c) { // No cell in molecule; make new one.
-      this->setOBUnitCell(new OpenBabel::OBUnitCell);
-    }
-
-    // Openbabel seems to be fond of making unfounded assumptions that
-    // break things. This fixes one of them.
-    this->cell()->SetSpaceGroup(0);
-  }
-
   OpenBabel::OBUnitCell* Xtal::cell() const
   {
     return OBUnitCell();
   }
 
 
-  bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxAttempts) {
+  bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, double maxAttempts) {
+    Q_UNUSED(maxIAD);
     // Random number generator
     OpenBabel::OBRandom rand (true);    // "true" uses system random numbers.
                                         // OB's alogrithm resulted in sheets of atoms sloped through the cell.
@@ -334,20 +318,6 @@ namespace Avogadro {
     atm->setPos(pos);
     atm->setAtomicNumber(static_cast<int>(atomicNumber));
     return true;
-  }
-
-  void Xtal::setOBEnergy(const QString &ff) {
-    OBForceField* pFF = OBForceField::FindForceField(ff.toStdString().c_str());
-    if (!pFF) return;
-    OpenBabel::OBMol obmol = OBMol();
-    if (!pFF->Setup(obmol)) {
-      qWarning() << "Xtal::setOBEnergy: could not setup force field " << ff << ".";
-      return;
-    }
-    std::vector<double> E;
-    E.push_back(pFF->Energy());
-    setEnergies(E);
-    m_hasEnergy = true;
   }
 
   bool Xtal::getShortestInteratomicDistance(double & shortest) const {
@@ -560,36 +530,6 @@ namespace Avogadro {
     return true;
   }
 
-  QList<QString> Xtal::getSymbols() const {
-    QList<QString> list;
-    OpenBabel::OBMol obmol = OBMol();
-    FOR_ATOMS_OF_MOL(atom,obmol) {
-      QString symbol            = QString(OpenBabel::etab.GetSymbol(atom->GetAtomicNum()));
-      if (!list.contains(symbol)) {
-        list.append(symbol);
-      }
-    }
-    qSort(list);
-    return list;
-  }
-
-  QList<uint> Xtal::getNumberOfAtomsAlpha() const {
-    QList<uint> list;
-    QList<QString> symbols = getSymbols();
-    for (int i = 0; i < symbols.size(); i++)
-      list.append(0);
-    OpenBabel::OBMol obmol = OBMol();
-    int ind, tmp;
-    FOR_ATOMS_OF_MOL(atom,obmol) {
-      QString symbol            = QString(OpenBabel::etab.GetSymbol(atom->GetAtomicNum()));
-      ind = symbols.indexOf(symbol);
-      tmp = list.at(ind);
-      tmp++;
-      list.replace(ind, tmp);
-    }
-    return list;
-  }
-
   QList<Vector3d> Xtal::getAtomCoordsFrac() const {
     QList<Vector3d> list;
     QList<QString> symbols = getSymbols();
@@ -636,51 +576,6 @@ namespace Avogadro {
     return fracCoords;
   }
 
-  void Xtal::rotateX() {
-    Eigen::Matrix3d rot;
-    rot <<
-      1, 0, 0,
-      0, 0,-1,
-      0, 1, 0;
-    rotate(rot);
-  }
-
-  void Xtal::rotateY() {
-    Eigen::Matrix3d rot;
-    rot <<
-      0, 0, 1,
-      0, 1, 0,
-      -1,0, 0;
-    rotate(rot);
-  }
-
-  void Xtal::rotateZ() {
-    Eigen::Matrix3d rot;
-    rot <<
-      0,-1, 0,
-      1, 0, 0,
-      0, 0, 1;
-    rotate(rot);
-  }
-
-  void Xtal::rotate(const Eigen::Matrix3d &rot) {
-    OpenBabel::matrix3x3 obrot;
-    for (int row = 0; row < 3; row++)
-      for (int col = 0; col < 3; col++)
-        obrot.Set(row,col,rot(row,col));
-
-    // Rotate cell
-    OpenBabel::OBUnitCell newcell;
-    OpenBabel::matrix3x3 newmat = cell()->GetCellMatrix() * obrot;
-    setCellInfo(newmat.GetRow(0), newmat.GetRow(1), newmat.GetRow(2));
-
-    // Rotate and store atom positions
-    QList<Atom*> atomList       = atoms();
-    for (int i = 0; i < atomList.size(); i++) {
-      atomList.at(i)->setPos( rot * (*atomList.at(i)->pos()) );
-    }
-  }
-
   void Xtal::wrapAtomsToCell() {
     //qDebug() << "Xtal::wrapAtomsToCell() called";
     // Store position of atoms in fractional units
@@ -704,84 +599,12 @@ namespace Avogadro {
     }
   }
 
-  QString Xtal::getOptElapsed() const {
-    int secs;
-    if (m_optStart.toString() == "") return "0:00:00";
-    if (m_optEnd.toString() == "")
-      secs = m_optStart.secsTo(QDateTime::currentDateTime());
-    else
-      secs = m_optStart.secsTo(m_optEnd);
-    int hours   = static_cast<int>(secs/3600);
-    int mins    = static_cast<int>( (secs - hours * 3600) / 60);
-    secs        = secs % 60;
-    QString ret;
-    ret.sprintf("%d:%02d:%02d", hours, mins, secs);
-    return ret;
+  void Xtal::save(QTextStream &out) {
+    Structure::save(out);
   }
 
-  void Xtal::saveXtal(QTextStream &out) {
-    out << "Generation: " << getGeneration() << endl
-        << "ID#: " << getXtalNumber() << endl
-        << "Index: " << getIndex() << endl
-        << "Enthalpy Rank: " << getRank() << endl
-        << "Job ID: " << getJobID() << endl
-        << "Current OptStep: " << getCurrentOptStep() << endl
-        << "Ancestry: " << getParents() << endl
-        << "Remote Path: " << getRempath() << endl
-        << "Status: " << getStatus() << endl
-        << "failCount: " << getFailCount() << endl
-        << "Start Time: " << getOptTimerStart().toString() << endl
-        << "End Time: " << getOptTimerEnd().toString() << endl;
-  }
-
-  void Xtal::loadXtal(QTextStream &in) {
-    QString line, str;
-    QStringList strl;
-    setStatus(InProcess); // Override later if status is available
-    while (!in.atEnd()) {
-      line = in.readLine();
-      strl = line.split(QRegExp(" "));
-      //qDebug() << strl;
-
-      if (line.contains("Generation:") && strl.size() > 1)
-        setGeneration( (strl.at(1)).toUInt() );
-      if (line.contains("ID#:") && strl.size() > 1)
-        setXtalNumber( (strl.at(1)).toUInt() );
-      if (line.contains("Index:") && strl.size() > 1)
-        setIndex( (strl.at(1)).toUInt() );
-      if (line.contains("Enthalpy Rank:") && strl.size() > 2)
-        setRank( (strl.at(2)).toUInt() );
-      if (line.contains("Job ID:") && strl.size() > 2)
-        setJobID( (strl.at(2)).toUInt() );
-      if (line.contains("Current INCAR:") && strl.size() > 2)
-        setCurrentOptStep( (strl.at(2)).toUInt() );
-      if (line.contains("Current OptStep:") && strl.size() > 2)
-        setCurrentOptStep( (strl.at(2)).toUInt() );
-      if (line.contains("Ancestry:") && strl.size() > 1) {
-        strl.removeFirst();
-        setParents( strl.join(" ") );
-      }
-      if (line.contains("Remote Path:") && strl.size() > 2) {
-        strl.removeFirst(); strl.removeFirst();
-        setRempath( strl.join(" ") );
-      }
-      if (line.contains("Start Time:") && strl.size() > 2) {
-        strl.removeFirst(); strl.removeFirst();
-        str = strl.join(" ");
-        setOptTimerStart(QDateTime::fromString(str));
-      }
-      if (line.contains("Status:") && strl.size() > 1) {
-        setStatus( Xtal::State((strl.at(1)).toInt() ));
-      }
-      if (line.contains("failCount:") && strl.size() > 1) {
-        setFailCount((strl.at(1)).toUInt());
-      }
-      if (line.contains("End Time:") && strl.size() > 2) {
-        strl.removeFirst(); strl.removeFirst();
-        str = strl.join(" ");
-        setOptTimerEnd(QDateTime::fromString(str));
-      }
-    }
+  void Xtal::load(QTextStream &in) {
+    Structure::load(in);
   }
 
   QHash<QString, double> Xtal::getFingerprint() {

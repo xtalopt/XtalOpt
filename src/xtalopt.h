@@ -163,7 +163,7 @@ namespace Avogadro {
     void deleteAllStructures();
     void clearStructures();
     void appendStructures(QList<Xtal*> *xtals) {for (int i=0; i < xtals->size(); i++) appendStructure(xtals->at(i));};
-    void appendStructure(Xtal* xtal) {m_xtals->append(xtal), xtal->setOpt(this); emit newStructureAdded();};
+    void appendStructure(Xtal* xtal) {m_xtals->append(xtal); emit newStructureAdded();};
     void emitNewInfoUpdate() {emit newInfoUpdate();};
     void emitXtalReadyToStart() {emit xtalReadyToStart();};
     void emitSessionStarted() {emit sessionStarted();};

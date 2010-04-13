@@ -199,7 +199,7 @@ namespace Avogadro {
         return;
       }
       xtal->setGeneration(1);
-      xtal->setXtalNumber(i+1);
+      xtal->setIDNumber(i+1);
       xtal->setParents(tr("Seeded: %1", "1 is a filename").arg(filename));
       dialog->updateProgressLabel(tr("%1 structures generated (%2 kept, %3 rejected)...").arg(i + failed).arg(i).arg(failed));
       debug(tr("Loaded seed: %1", "1 is a filename").arg(filename));
@@ -341,7 +341,7 @@ namespace Avogadro {
 
     // Set up geneology info
     xtal->setGeneration(generation);
-    xtal->setXtalNumber(id);
+    xtal->setIDNumber(id);
     xtal->setParents("Randomly generated");
     xtal->setStatus(Xtal::WaitingForOptimization);
 
@@ -509,8 +509,8 @@ namespace Avogadro {
           xtal2->lock()->lockForRead();
           uint gen1 = xtal1->getGeneration();
           uint gen2 = xtal2->getGeneration();
-          uint id1 = xtal1->getXtalNumber();
-          uint id2 = xtal2->getXtalNumber();
+          uint id1 = xtal1->getIDNumber();
+          uint id2 = xtal2->getIDNumber();
           xtal1->lock()->unlock();
           xtal2->lock()->unlock();
 
@@ -528,8 +528,8 @@ namespace Avogadro {
             txtal = inxtals->at(j);
             txtal->lock()->lockForRead();
             if (txtal->getGeneration() == gen &&
-                txtal->getXtalNumber() >= id) {
-              id = txtal->getXtalNumber() + 1;
+                txtal->getIDNumber() >= id) {
+              id = txtal->getIDNumber() + 1;
             }
             txtal->lock()->unlock();
           }
@@ -539,14 +539,14 @@ namespace Avogadro {
             txtal = pendList.at(j);
             txtal->lock()->lockForRead();
             if (txtal->getGeneration() == gen &&
-                txtal->getXtalNumber() >= id) {
-              id = txtal->getXtalNumber() + 1;
+                txtal->getIDNumber() >= id) {
+              id = txtal->getIDNumber() + 1;
             }
             txtal->lock()->unlock();
           }
           startPendingTracker->unlock();
           m_rwLock->unlock();
-          xtal->setXtalNumber(id);
+          xtal->setIDNumber(id);
           xtal->setParents(QString("Crossover: %1x%2 (%3%) + %4x%5 (%6%)")
                            .arg(gen1)
                            .arg(id1)
@@ -581,7 +581,7 @@ namespace Avogadro {
           // Lock parent and extract info
           xtal1->lock()->lockForRead();
           uint gen1 = xtal1->getGeneration();
-          uint id1 = xtal1->getXtalNumber();
+          uint id1 = xtal1->getIDNumber();
           xtal1->lock()->unlock();
 
           // Determine generation number
@@ -597,8 +597,8 @@ namespace Avogadro {
             txtal = inxtals->at(j);
             txtal->lock()->lockForRead();
             if (txtal->getGeneration() == xtal->getGeneration() &&
-                txtal->getXtalNumber() >= id) {
-              id = txtal->getXtalNumber() + 1;
+                txtal->getIDNumber() >= id) {
+              id = txtal->getIDNumber() + 1;
             }
             txtal->lock()->unlock();
           }
@@ -608,14 +608,14 @@ namespace Avogadro {
             txtal = pendList.at(j);
             txtal->lock()->lockForRead();
             if (txtal->getGeneration() == xtal->getGeneration() &&
-                txtal->getXtalNumber() >= id) {
-              id = txtal->getXtalNumber() + 1;
+                txtal->getIDNumber() >= id) {
+              id = txtal->getIDNumber() + 1;
             }
             txtal->lock()->unlock();
           }
           startPendingTracker->unlock();
           m_rwLock->unlock();
-          xtal->setXtalNumber(id);
+          xtal->setIDNumber(id);
           xtal->setParents(QString("Stripple: %1x%2 stdev=%3 amp=%4 waves=%5,%6")
                            .arg(gen1)
                            .arg(id1)
@@ -640,7 +640,7 @@ namespace Avogadro {
           // Lock parent and extract info
           xtal1->lock()->lockForRead();
           uint gen1 = xtal1->getGeneration();
-          uint id1 = xtal1->getXtalNumber();
+          uint id1 = xtal1->getIDNumber();
           xtal1->lock()->unlock();
 
           // Determine generation number
@@ -657,8 +657,8 @@ namespace Avogadro {
             txtal = inxtals->at(j);
             txtal->lock()->lockForRead();
             if (txtal->getGeneration() == xtal->getGeneration() &&
-                txtal->getXtalNumber() >= id) {
-              id = txtal->getXtalNumber() + 1;
+                txtal->getIDNumber() >= id) {
+              id = txtal->getIDNumber() + 1;
             }
             txtal->lock()->unlock();
           }
@@ -668,14 +668,14 @@ namespace Avogadro {
             txtal = pendList.at(j);
             txtal->lock()->lockForRead();
             if (txtal->getGeneration() == gen &&
-                txtal->getXtalNumber() >= id) {
-              id = txtal->getXtalNumber() + 1;
+                txtal->getIDNumber() >= id) {
+              id = txtal->getIDNumber() + 1;
             }
             txtal->lock()->unlock();
           }
           startPendingTracker->unlock();
           m_rwLock->unlock();
-          xtal->setXtalNumber(id);
+          xtal->setIDNumber(id);
           xtal->setParents(QString("Permustrain: %1x%2 stdev=%3 exch=%4")
                            .arg(gen1)
                            .arg(id1)
@@ -777,13 +777,13 @@ namespace Avogadro {
         xtals->at(ind1)->lock()->lockForRead();
         xtals->at(ind2)->lock()->lockForRead();
         cxtal->setGeneration(generationNumber);
-        cxtal->setXtalNumber(idSeed++);
+        cxtal->setIDNumber(idSeed++);
         cxtal->setParents(QString("Crossover: %1x%2 (%3%) + %4x%5 (%6%)")
                           .arg(xtals->at(ind1)->getGeneration())
-                          .arg(xtals->at(ind1)->getXtalNumber())
+                          .arg(xtals->at(ind1)->getIDNumber())
                           .arg(percent1, 0, 'f', 0)
                           .arg(xtals->at(ind2)->getGeneration())
-                          .arg(xtals->at(ind2)->getXtalNumber())
+                          .arg(xtals->at(ind2)->getIDNumber())
                           .arg(100.0 - percent1, 0, 'f', 0)
                           );
         cxtal->lock()->unlock();
@@ -816,10 +816,10 @@ namespace Avogadro {
       cxtal->lock()->lockForWrite();
       xtals->at(ind)->lock()->lockForRead();
       cxtal->setGeneration(generationNumber);
-      cxtal->setXtalNumber(idSeed++);
+      cxtal->setIDNumber(idSeed++);
       cxtal->setParents(QString("Stripple:: %1x%2 stdev=%3 amp=%4 waves=%5,%6")
                         .arg(xtals->at(ind)->getGeneration())
-                        .arg(xtals->at(ind)->getXtalNumber())
+                        .arg(xtals->at(ind)->getIDNumber())
                         .arg(stdev, 0, 'f', 5)
                         .arg(amplitude, 0, 'f', 5)
                         .arg(mut_per1)
@@ -846,10 +846,10 @@ namespace Avogadro {
       cxtal->lock()->lockForWrite();
       xtals->at(ind)->lock()->lockForRead();
       cxtal->setGeneration(generationNumber);
-      cxtal->setXtalNumber(idSeed++);
+      cxtal->setIDNumber(idSeed++);
       cxtal->setParents(QString("Permustrain:: %1x%2 stdev=%3 exch=%4")
                         .arg(xtals->at(ind)->getGeneration())
-                        .arg(xtals->at(ind)->getXtalNumber())
+                        .arg(xtals->at(ind)->getIDNumber())
                         .arg(stdev, 0, 'f', 5)
                         .arg(perm_ex)
                         );
@@ -1146,7 +1146,7 @@ namespace Avogadro {
       }
       xout.setDevice(&xfile);
       // out << xfile.fileName() << endl;
-      xtal->saveXtal(xout);
+      xtal->save(xout);
       xtal->lock()->unlock();
       xfile.close();
     }
@@ -1189,7 +1189,7 @@ namespace Avogadro {
       xtal->lock()->lockForRead();
       out << i << "\t"
           << xtal->getGeneration() << "\t"
-          << xtal->getXtalNumber() << "\t"
+          << xtal->getIDNumber() << "\t"
           << xtal->getEnthalpy() << "\t\t"
           << xtal->getSpaceGroupNumber() << ": " << xtal->getSpaceGroupSymbol() << "\t\t";
       // Status:
@@ -1713,7 +1713,7 @@ namespace Avogadro {
           xtal->addAtom();
       }
       xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
-      xtal->loadXtal(xin);
+      xtal->load(xin);
 
       // Disable remote checking for now -- just load in local cache.
       bool usingRemote = using_remote;
@@ -1876,16 +1876,16 @@ namespace Avogadro {
         for (int i = 0; i < getStructures()->size(); i++) {
           xtal = getStructures()->at(i);
           xtal->lock()->lockForRead();
-          if (xtal->getGeneration() == 1 && xtal->getXtalNumber() >= id)
-            id = xtal->getXtalNumber() + 1;
+          if (xtal->getGeneration() == 1 && xtal->getIDNumber() >= id)
+            id = xtal->getIDNumber() + 1;
           xtal->lock()->unlock();
         }
         QList<Xtal*> pendList = startPendingTracker->list();
         for (int i = 0; i < pendList.size(); i++) {
           xtal = pendList.at(i);
           xtal->lock()->lockForRead();
-          if (xtal->getGeneration() == 1 && xtal->getXtalNumber() >= id)
-            id = xtal->getXtalNumber() + 1;
+          if (xtal->getGeneration() == 1 && xtal->getIDNumber() >= id)
+            id = xtal->getIDNumber() + 1;
           xtal->lock()->unlock();
         }
         startPendingTracker->unlock();
@@ -2000,7 +2000,7 @@ namespace Avogadro {
     // Get info
     QString id, gen_s;
     QWriteLocker locker (xtal->lock());
-    id.sprintf("%05d",xtal->getXtalNumber());
+    id.sprintf("%05d",xtal->getIDNumber());
     gen_s.sprintf("%05d",xtal->getGeneration());
     xtal->setFileName(filePath + "/" + fileBase + gen_s + "x" + id + "/");
     xtal->setRempath(rempath + "/" + fileBase + gen_s + "x" + id + "/");
@@ -2129,7 +2129,7 @@ namespace Avogadro {
 
       int ind = getStructures()->indexOf(xtal);
       QReadLocker xtalLocker (xtal->lock());
-      //qDebug() << tr("Checking xtal %1x%2").arg(xtal->getGeneration()).arg(xtal->getXtalNumber());
+      //qDebug() << tr("Checking xtal %1x%2").arg(xtal->getGeneration()).arg(xtal->getIDNumber());
 
       // Check failure count
       if (xtal->getFailCount() > failLimit) {
@@ -2366,7 +2366,7 @@ namespace Avogadro {
           xtal_i->setStatus(Xtal::Duplicate);
           xtal_i->setDuplicateString(QString("%1x%2")
                                      .arg(xtal_j->getGeneration())
-                                     .arg(xtal_j->getXtalNumber()));
+                                     .arg(xtal_j->getIDNumber()));
           xtal_i->lock()->unlock();
           xtal_j->lock()->unlock();
           break; // If xtals->at(i) is now a duplicate, don't bother comparing it anymore
@@ -2377,7 +2377,7 @@ namespace Avogadro {
           xtal_j->setStatus(Xtal::Duplicate);
           xtal_j->setDuplicateString(QString("%1x%2")
                                      .arg(xtal_i->getGeneration())
-                                     .arg(xtal_i->getXtalNumber()));
+                                     .arg(xtal_i->getIDNumber()));
           xtal_j->lock()->unlock();
           xtal_i->lock()->unlock();
         }

@@ -193,7 +193,7 @@ namespace Avogadro {
       xtal->lock()->lockForRead();
       out << i << "\t"
           << xtal->getGeneration() << "\t"
-          << xtal->getXtalNumber() << "\t"
+          << xtal->getIDNumber() << "\t"
           << xtal->getEnthalpy() << "\t\t"
           << xtal->getSpaceGroupNumber() << ": " << xtal->getSpaceGroupSymbol() << "\t\t";
       // Status:

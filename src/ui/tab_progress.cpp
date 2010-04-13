@@ -264,7 +264,7 @@ namespace Avogadro {
     ui.table_list->item(i, TimeElapsed)->setText(time);
 
     ui.table_list->item(i, Gen)->setText(QString::number(xtal->getGeneration()));
-    ui.table_list->item(i, Mol)->setText(QString::number(xtal->getXtalNumber()));
+    ui.table_list->item(i, Mol)->setText(QString::number(xtal->getIDNumber()));
     ui.table_list->item(i, Ancestry)->setText(xtal->getParents());
 
     if (xtal->getJobID())
@@ -393,7 +393,7 @@ namespace Avogadro {
     //qDebug() << "TabProgress::highlightMolecule( " << xtal << " ) called.";
     xtal->lock()->lockForRead();
     int gen = xtal->getGeneration();
-    int id  = xtal->getXtalNumber();
+    int id  = xtal->getIDNumber();
     xtal->lock()->unlock();
     for (int row = 0; row < ui.table_list->rowCount(); row++) {
       if (ui.table_list->item(row, Gen)->text().toInt() == gen &&
@@ -489,7 +489,7 @@ namespace Avogadro {
     // Get info from xtal
     m_context_xtal->lock()->lockForRead();
     int gen = m_context_xtal->getGeneration();
-    int id = m_context_xtal->getXtalNumber();
+    int id = m_context_xtal->getIDNumber();
     int optstep = m_context_xtal->getCurrentOptStep();
     m_context_xtal->lock()->unlock();
 

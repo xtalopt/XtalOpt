@@ -306,7 +306,7 @@ namespace Avogadro {
     // Even if the job has errored in the queue, leave it as "running" and wait for it to leave the queue
     // then check the OUTCAR. The optimization may have finished OK.
     else if (status == "E") {
-      qWarning() << "Structure " << xtal->getGeneration() << "x" << xtal->getXtalNumber()
+      qWarning() << "Structure " << xtal->getIDString()
                  << " has errored in the queue, but may have optimized successfully.\n"
                  << "Marking job as 'Running' until it's gone from the queue...";
       return Optimizer::Running;

@@ -44,6 +44,7 @@ set (xtalopt_SRCS
 	src/spglib/spglib.c
 	src/spglib/symmetry.c
 	src/spglib/symmetry_kpoint.c
+    	src/structure.cpp
     	src/xtal.cpp
 	src/extension.cpp
 	src/templates.cpp
