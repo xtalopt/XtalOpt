@@ -24,7 +24,7 @@
 #include <QStringList>
 
 namespace Avogadro {
-  class Xtal;
+  class Structure;
   class XtalOpt;
 
   class Optimizer : public QObject
@@ -35,30 +35,30 @@ namespace Avogadro {
 
     enum JobState { Unknown = -1, Success, Error, Queued, Running, CommunicationError, Started, Pending};
 
-    static bool writeInputFiles(Xtal *xtal, XtalOpt *p);
+    static bool writeInputFiles(Structure *s, XtalOpt *p);
 
-    static bool startOptimization(Xtal *xtal, XtalOpt *p);
+    static bool startOptimization(Structure *s, XtalOpt *p);
 
     static bool getQueueList(XtalOpt *p, QStringList & queueData);
 
-    static bool deleteJob(Xtal* xtal, XtalOpt *p);
+    static bool deleteJob(Structure *s, XtalOpt *p);
 
-    static JobState getStatus(Xtal* xtal, XtalOpt *p);
+    static JobState getStatus(Structure *s, XtalOpt *p);
 
     /*
      * Checks the queueData list for the jobname (extracted from xtal->fileName + "/job.pbs")
      * and sets exists to true if the job name is found. Return value is the job ID.
      */
-    static int checkIfJobNameExists(Xtal* xtal, XtalOpt *p, const QStringList & queueData, bool & exists);
+    static int checkIfJobNameExists(Structure *s, XtalOpt *p, const QStringList & queueData, bool & exists);
 
     // Updates an existing xtal
-    static bool updateXtal(Xtal* xtal, XtalOpt *p);
+    static bool update(Structure *s, XtalOpt *p);
 
     // Populates a new xtal
-    static bool loadXtal(Xtal* xtal, XtalOpt *p);
+    static bool load(Structure *s, XtalOpt *p);
 
     // Handles reading of files for both of the above functions
-    static bool readXtal(Xtal* xtal, XtalOpt *p, const QString & filename);
+    static bool read(Structure *s, XtalOpt *p, const QString & filename);
 
     static int totalOptSteps(XtalOpt *p);
 

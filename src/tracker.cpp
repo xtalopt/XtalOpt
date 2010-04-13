@@ -1,0 +1,115 @@
+/**********************************************************************
+  XtalOpt - Holds all data for genetic optimization
+
+  Copyright (C) 2009 by David C. Lonie
+
+  This file is part of the Avogadro molecular editor project.
+  For more information, see <http://avogadro.openmolecules.net/>
+
+  This program is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation version 2 of the License.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+ ***********************************************************************/
+
+#include "tracker.h"
+#include "structure.h"
+
+#include <QList>
+#include <QDebug>
+#include <QReadWriteLock>
+
+using namespace std;
+using namespace OpenBabel;
+using namespace Eigen;
+
+namespace Avogadro {
+
+  bool Tracker::append(QList<Structure*> s) {
+    bool ret = true;
+    for (int i = 0; i < s.size(); i++) {
+      if (!append(s.at(i))) 
+        ret = false;
+    }
+    return ret;
+  }
+
+  bool Tracker::append(Structure* s) {
+    lockForWrite();
+    return appendAndUnlock(s);
+  }
+
+  bool Tracker::appendAndUnlock(Structure* s) {
+    if (m_list.contains(s)) {
+      unlock();
+      return false;
+    }
+    m_list.append(s);
+    emit newStructureAdded(s);
+    emit structureCountChanged(m_list.size());
+    unlock();
+    return true;
+  }
+
+  bool Tracker::popFirst(Structure *&s) {
+    lockForWrite();
+    if (m_list.isEmpty()) {
+      unlock();
+      return false;
+    }
+    s = m_list.takeFirst();
+    emit structureCountChanged(m_list.size());
+    unlock();
+    return true;
+  }
+
+  bool Tracker::remove(Structure *s) {
+    lockForWrite();
+    if (m_list.removeAll(s)) { // returns number of entries removed
+      emit structureCountChanged(m_list.size());
+      unlock();
+      return true;
+    }
+    unlock();
+    return false;
+  }
+
+  bool Tracker::contains(Structure* s) {
+    lockForRead(); 
+    bool b = m_list.contains(s);
+    unlock(); 
+    return b;
+  }
+
+  int Tracker::size() {
+    return m_list.size();
+  }
+
+  void Tracker::reset() {
+    lockForWrite();
+    m_list.clear();
+    emit structureCountChanged(m_list.size());
+    unlock();
+  }
+
+  void Tracker::deleteAllStructures() {
+    lockForWrite();
+    Structure *s = 0;
+    for (int i = 0; i < m_list.size(); i++) {
+      s = m_list.at(i);
+      s->lock()->lockForWrite();
+      s->deleteLater();
+      s->lock()->unlock();
+    }
+    m_list.clear();
+    emit structureCountChanged(m_list.size());
+    unlock();
+  }
+
+} // end namespace Avogadro
+
+#include "tracker.moc"

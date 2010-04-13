@@ -1,7 +1,7 @@
 /**********************************************************************
   Structure - Generic wrapper for Avogadro's molecule class
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -92,6 +92,8 @@ namespace Avogadro {
     void setEnthalpy(double enthalpy) {m_hasEnthalpy = true; m_enthalpy = enthalpy;};
     void setPV(double pv) {m_PV = pv;};
     void setEnergy(double e) {m_hasEnergy = true; std::vector<double> E; E.push_back(e); setEnergies(E);};
+    void resetEnthalpy() {m_enthalpy=0; m_PV=0; m_hasEnthalpy=false;};
+    void resetEnergy() {std::vector<double> E; E.push_back(0); setEnergies(E); m_hasEnergy=false;};
     void setOBEnergy(const QString &ff = QString("UFF"));
     void setRank(uint rank) {m_rank = rank;};
     void setJobID(uint id) {m_jobID = id;};

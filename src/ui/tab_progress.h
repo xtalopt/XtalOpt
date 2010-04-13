@@ -22,6 +22,8 @@
 
 #include "ui_tab_progress.h"
 
+#include "../tracker.h"
+
 class QTimer;
 class QMutex;
 
@@ -51,6 +53,7 @@ namespace Avogadro {
     void updateGUI();
     void disconnectGUI();
     void addNewEntry();
+    void newInfoUpdate(Structure *);
     void updateInfo();
     void updateAllInfo();
     void updateProgressTable();
@@ -88,6 +91,8 @@ namespace Avogadro {
     QMutex *m_update_mutex, *m_update_all_mutex;
     Xtal *m_context_xtal;
     bool rowTracking;
+
+    Tracker m_infoUpdateTracker;
 
     void restartJobProgress_(int incar);
     void killXtalProgress_();

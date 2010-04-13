@@ -91,11 +91,11 @@ namespace Avogadro {
             this, SLOT(lockClearAndSelectPoint(PlotPoint*)));
     connect(m_opt, SIGNAL(newInfoUpdate()),
             this, SLOT(populateXtalList()));
-    connect(m_opt, SIGNAL(newStructureAdded()),
+    connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
             this, SLOT(populateXtalList()));
     connect(m_opt, SIGNAL(newInfoUpdate()),
             this, SLOT(updatePlot()));
-    connect(m_opt, SIGNAL(newStructureAdded()),
+    connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
             this, SLOT(updatePlot()));
   }
 
@@ -197,14 +197,14 @@ namespace Avogadro {
     updateGUI();
     if (!m_opt) return;
 
-    if (!m_opt->rwLock()->tryLockForRead()) {
+    if (!m_opt->tracker()->rwLock()->tryLockForRead()) {
       qDebug() << "Not updating plot while mutex is locked...";
       return;
     }
 
     // Make sure we have structures!
-    if (m_opt->getStructures()->size() == 0) {
-      m_opt->rwLock()->unlock();
+    if (m_opt->tracker()->size() == 0) {
+      m_opt->tracker()->unlock();
       return;
     }
 
@@ -225,7 +225,7 @@ namespace Avogadro {
 
     ui.plot_plot->blockSignals(false);
 
-    m_opt->rwLock()->unlock();
+    m_opt->tracker()->unlock();
     m_plot_mutex->unlock();
   }
 
@@ -252,9 +252,9 @@ namespace Avogadro {
     PlotAxes xAxis		= PlotAxes(ui.combo_xAxis->currentIndex());
     PlotAxes yAxis              = PlotAxes(ui.combo_yAxis->currentIndex());
 
-    for (int i = 0; i < m_opt->getStructures()->size(); i++) {
+    for (int i = 0; i < m_opt->tracker()->size(); i++) {
       x = y = 0;
-      xtal = m_opt->getStructures()->at(i);
+      xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(i));
       QReadLocker xtalLocker (xtal->lock());
       // Don't plot removed structures or those who have not completed their first INCAR.
       if ((xtal->getStatus() != Xtal::Optimized && !showIncompletes)) {
@@ -526,10 +526,10 @@ namespace Avogadro {
 
     // Determine xtal
     int ind = ui.combo_distHistXtal->currentIndex();
-    if (ind < 0 || ind > m_opt->getStructures()->size() - 1) {
+    if (ind < 0 || ind > m_opt->tracker()->size() - 1) {
       ind = 0;
     }
-    Xtal* xtal = m_opt->getStructures()->at(ind);
+    Xtal* xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(ind));
 
     // Determine selected atoms, if any
     QList<Primitive*> selected = m_dialog->getGLWidget()->selectedPrimitives().subList(Primitive::AtomType);
@@ -580,11 +580,11 @@ namespace Avogadro {
     int ind = ui.combo_distHistXtal->currentIndex();
     ui.combo_distHistXtal->blockSignals(true);
     ui.combo_distHistXtal->clear();
-    QList<Xtal*> * xtals = m_opt->getStructures();
+    QList<Structure*> *structures = m_opt->tracker()->list();
     Xtal *xtal;
     QString s;
-    for (int i = 0; i < xtals->size(); i++) {
-      xtal = xtals->at(i);
+    for (int i = 0; i < structures->size(); i++) {
+      xtal = qobject_cast<Xtal*>(structures->at(i));
       xtal->lock()->lockForRead();
       s.clear();
       // index:
@@ -634,13 +634,13 @@ namespace Avogadro {
 
   void TabPlot::selectMoleculeFromIndex(int index) {
     //qDebug() << "TabPlot::selectMoleculeFromIndex( " << index << " ) called";
-    if (index < 0 || index > m_opt->getStructures()->size() - 1) {
+    if (index < 0 || index > m_opt->tracker()->size() - 1) {
       index = 0;
     }
-    if (m_opt->getStructures()->size() == 0) {
+    if (m_opt->tracker()->size() == 0) {
       return;
     }
-    emit moleculeChanged(m_opt->getStructures()->at(index));
+    emit moleculeChanged(qobject_cast<Xtal*>(m_opt->tracker()->at(index)));
   }
 
   void TabPlot::highlightXtal(Xtal* xtal) {
@@ -655,8 +655,8 @@ namespace Avogadro {
     xtal->lock()->unlock();
     int ind;
     Xtal *txtal;
-    for (int i = 0; i < m_opt->getStructures()->size(); i++) {
-      txtal = m_opt->getStructures()->at(i);
+    for (int i = 0; i < m_opt->tracker()->size(); i++) {
+      txtal = qobject_cast<Xtal*>(m_opt->tracker()->at(i));
       txtal->lock()->lockForRead();
       uint tgen = txtal->getGeneration();
       uint tid = txtal->getIDNumber();

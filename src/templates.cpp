@@ -73,17 +73,16 @@ namespace Avogadro {
     QMessageBox::information(NULL, "Template Help", str);
   }
 
-  QString XtalOptTemplate::interpretTemplate(const QString & str, Xtal* xtal, XtalOpt *p) {
-    //qDebug() << "XtalOptTemplate::interpretTemplate( " << "<string omitted>" << ", " << xtal << " ) called";
-
+  QString XtalOptTemplate::interpretTemplate(const QString & str, Structure* structure, XtalOpt *p) {
     QStringList list = str.split("%");
     QString line;
     QString rep;
+    Xtal *xtal = qobject_cast<Xtal*>(structure);
     for (int line_ind = 0; line_ind < list.size(); line_ind++) {
       rep = "";
       line = list.at(line_ind);
       if (line == "coords") {
-        OpenBabel::OBMol obmol = xtal->OBMol();
+        OpenBabel::OBMol obmol = structure->OBMol();
         FOR_ATOMS_OF_MOL(atom, obmol) {
           rep += static_cast<QString>(OpenBabel::etab.GetSymbol(atom->GetAtomicNum())) + " ";
           rep += QString::number(atom->GetX()) + " ";
@@ -92,7 +91,7 @@ namespace Avogadro {
         }
       }
       if (line == "coordsId") {
-        OpenBabel::OBMol obmol = xtal->OBMol();
+        OpenBabel::OBMol obmol = structure->OBMol();
         FOR_ATOMS_OF_MOL(atom, obmol) {
           rep += static_cast<QString>(OpenBabel::etab.GetSymbol(atom->GetAtomicNum())) + " ";
           rep += QString::number(atom->GetAtomicNum()) + " ";
@@ -206,14 +205,14 @@ namespace Avogadro {
       else if (line == "betaDeg")       rep += QString::number(xtal->getBeta());
       else if (line == "gammaDeg")      rep += QString::number(xtal->getGamma());
       else if (line == "volume")        rep += QString::number(xtal->getVolume());
-      else if (line == "numAtoms")	rep += QString::number(xtal->numAtoms());
-      else if (line == "numSpecies")	rep += QString::number(xtal->getSymbols().size());
-      else if (line == "filename")      rep += xtal->fileName();
-      else if (line == "rempath")       rep += xtal->getRempath();
-      else if (line == "gen")           rep += QString::number(xtal->getGeneration());
-      else if (line == "id")            rep += QString::number(xtal->getIDNumber());
-      else if (line == "incar")         rep += QString::number(xtal->getCurrentOptStep());
-      else if (line == "optStep")         rep += QString::number(xtal->getCurrentOptStep());
+      else if (line == "numAtoms")	rep += QString::number(structure->numAtoms());
+      else if (line == "numSpecies")	rep += QString::number(structure->getSymbols().size());
+      else if (line == "filename")      rep += structure->fileName();
+      else if (line == "rempath")       rep += structure->getRempath();
+      else if (line == "gen")           rep += QString::number(structure->getGeneration());
+      else if (line == "id")            rep += QString::number(structure->getIDNumber());
+      else if (line == "incar")         rep += QString::number(structure->getCurrentOptStep());
+      else if (line == "optStep")         rep += QString::number(structure->getCurrentOptStep());
       else if (line == "POSCAR") {
         // Comment line -- set to filename
         rep += xtal->fileName();

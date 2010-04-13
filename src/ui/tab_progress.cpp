@@ -68,10 +68,10 @@ namespace Avogadro {
             m_dialog, SIGNAL(moleculeChanged(Xtal*)));
     connect(m_dialog, SIGNAL(moleculeChanged(Xtal*)),
             this, SLOT(highlightXtal(Xtal*)));
-    connect(this, SIGNAL(deleteJob(int)),
-            m_opt, SLOT(deleteJob(int)));
     connect(this, SIGNAL(refresh()),
-            m_opt, SLOT(checkRunningJobs()));
+            m_opt->queue(), SLOT(checkRunning()));
+    connect(this, SIGNAL(refresh()),
+            m_opt->queue(), SLOT(checkPopulation()));
     connect(m_opt, SIGNAL(updateAllInfo()),
             this, SLOT(updateAllInfo()));
 
@@ -86,10 +86,10 @@ namespace Avogadro {
             this, SLOT(updateProgressTable()));
     connect(ui.table_list, SIGNAL(currentCellChanged(int,int,int,int)),
             this, SLOT(selectMoleculeFromProgress(int,int,int,int)));
-    connect(m_opt, SIGNAL(newStructureAdded()),
+    connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
             this, SLOT(addNewEntry()));
-    connect(m_opt, SIGNAL(newInfoUpdate()),
-            this, SLOT(updateInfo()));
+    connect(m_opt->queue(), SIGNAL(structureUpdated(Structure*)),
+            this, SLOT(newInfoUpdate(Structure *)));
     connect(this, SIGNAL(infoUpdate()),
             this, SLOT(updateInfo()));
     connect(ui.table_list, SIGNAL(customContextMenuRequested(QPoint)),
@@ -159,12 +159,12 @@ namespace Avogadro {
       return;
     }
 
-    if (m_opt->getStructures()->size() == 0) {
+    if (m_opt->tracker()->size() == 0) {
       m_update_mutex->unlock();
       return;
     }
 
-    QtConcurrent::run(m_opt, &Avogadro::XtalOpt::checkPopulation);
+    QtConcurrent::run(m_opt->queue(), &Avogadro::QueueManager::checkPopulation);
 
     emit refresh();
     m_update_mutex->unlock();
@@ -178,7 +178,7 @@ namespace Avogadro {
 
     // The new entry will be at the end of the table, so determine the index:
     int index = ui.table_list->rowCount();
-    Xtal *xtal = m_opt->getStructureAt(index);
+    Xtal *xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
     //qDebug() << "TabProgress::addNewEntry() at index " << index;
 
     // Turn off signals
@@ -195,7 +195,7 @@ namespace Avogadro {
       ui.table_list->setItem(index, i, new QTableWidgetItem());
     }
 
-    m_opt->progressInfoUpdateTracker->addXtal(xtal);
+    m_infoUpdateTracker.append(xtal);
     locker.unlock();
     emit infoUpdate();
 
@@ -211,18 +211,23 @@ namespace Avogadro {
       qDebug() << "Killing extra TabProgress::updateAllInfo() call";
       return;
     }
-    QList<Xtal*> *xtals = m_opt->getStructures();
+    QList<Structure*> *structures = m_opt->tracker()->list();
     for (int i = 0; i < ui.table_list->rowCount(); i++) {
-      m_opt->progressInfoUpdateTracker->addXtal(xtals->at(i));
+      m_infoUpdateTracker.append(structures->at(i));
       emit infoUpdate();
     }
     m_update_all_mutex->unlock();
   }
 
+  void TabProgress::newInfoUpdate(Structure *s) {
+    m_infoUpdateTracker.append(s);
+    emit infoUpdate();
+  }
+
   void TabProgress::updateInfo() {
     //qDebug() << "TabProgress::updateInfo( ) called";
 
-    if (m_opt->progressInfoUpdateTracker->count() == 0) {
+    if (m_infoUpdateTracker.size() == 0) {
       return;
     }
 
@@ -237,16 +242,17 @@ namespace Avogadro {
     QMutexLocker locker (m_mutex);
 
     // Prep variables
-    Xtal *xtal;
-    if (!m_opt->progressInfoUpdateTracker->popFirst(xtal))
+    Structure *structure;
+    if (!m_infoUpdateTracker.popFirst(structure))
       return;
+    int i = m_opt->tracker()->list()->indexOf(structure);
 
-    int i = m_opt->getStructures()->indexOf(xtal);
+    Xtal *xtal = qobject_cast<Xtal*>(structure);
 
     if (i < 0 || i > ui.table_list->rowCount() - 1) {
       qDebug() << "TabProgress::updateInfo: Trying to update an index that doesn't exist (" << i << ") Waiting...";
+      m_infoUpdateTracker.append(xtal);
       QTimer::singleShot(100, this, SLOT(updateInfo()));
-      m_opt->progressInfoUpdateTracker->addXtal(xtal);
       return;
     }
 
@@ -255,7 +261,7 @@ namespace Avogadro {
     QBrush brush (Qt::white);
 
     // Get queue data
-    m_opt->updateQueue();
+    m_opt->queue()->updateQueue();
 
     QReadLocker xtalLocker (xtal->lock());
 
@@ -385,8 +391,8 @@ namespace Avogadro {
       qDebug() << "TabProgress::selectMoleculeFromProgress: Not updating widget while session is starting";
       return;
     }
-    if ( row == -1 || (!m_opt->getStructures())) return;
-    emit moleculeChanged(m_opt->getStructures()->at(row));
+    if ( row == -1 ) return;
+    emit moleculeChanged(qobject_cast<Xtal*>(m_opt->tracker()->at(row)));
   }
 
   void TabProgress::highlightXtal(Xtal* xtal) {
@@ -434,7 +440,7 @@ namespace Avogadro {
     qDebug() << "Context menu at row " << index;
 
     // Set m_context_xtal after locking to avoid threading issues.
-    Xtal* xtal = m_opt->getStructures()->at(index);
+    Xtal* xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
 
     xtal->lock()->lockForRead();
 
@@ -523,8 +529,7 @@ namespace Avogadro {
     }
 
     m_context_xtal->setStatus(Xtal::Restart);
-    m_opt->runningTracker->addXtal(m_context_xtal);
-    m_opt->updateInfo(m_context_xtal);
+    newInfoUpdate(m_context_xtal);
 
     // Clear context xtal pointer
     locker.unlock();
@@ -552,7 +557,7 @@ namespace Avogadro {
 
     // Clear context xtal pointer
     locker.unlock();
-    m_opt->updateInfo(m_context_xtal);
+    newInfoUpdate(m_context_xtal);
     m_context_xtal = 0;
   }
 
@@ -577,8 +582,7 @@ namespace Avogadro {
       m_context_xtal->setStatus(Xtal::Optimized);
 
     // Clear context xtal pointer
-    m_opt->runningTracker->addXtal(m_context_xtal);
-    m_opt->updateInfo(m_context_xtal);
+    newInfoUpdate(m_context_xtal);
     locker.unlock();
     m_context_xtal = 0;
   }
@@ -596,7 +600,7 @@ namespace Avogadro {
     m_context_xtal->resetFailCount();
 
     // Clear context xtal pointer
-    m_opt->updateInfo(m_context_xtal);
+    newInfoUpdate(m_context_xtal);
     locker.unlock();
     m_context_xtal = 0;
 
@@ -612,51 +616,15 @@ namespace Avogadro {
     //qDebug() << "TabProgress::randomizeStructureProgress_() called";
     if (!m_context_xtal) return;
 
-    // Stop job if running
-    QWriteLocker locker (m_context_xtal->lock());
-
     // End job if currently running
     if (m_context_xtal->getJobID()) {
-      locker.unlock();
       Optimizer::deleteJob(m_context_xtal, m_opt);
-      locker.relock();
     }
 
-    // Generate/Check new xtal
-    Xtal *xtal = 0;
-    while (!m_opt->checkXtal(xtal))
-      xtal = m_opt->generateRandomXtal(0, 0);
-
-
-    // Copy info over
-    QWriteLocker locker2 (xtal->lock());
-    m_context_xtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
-    m_context_xtal->setEnergy(0);
-    m_context_xtal->setEnthalpy(0);
-    m_context_xtal->setPV(0);
-    m_context_xtal->setCurrentOptStep(1);
-    m_context_xtal->setParents(tr("Randomly generated (manual)"));
-
-    Atom *atom1, *atom2;
-    for (uint i = 0; i < xtal->numAtoms(); i++) {
-      atom1 = m_context_xtal->atom(i);
-      atom2 = xtal->atom(i);
-      atom1->setPos(atom2->pos());
-      atom1->setAtomicNumber(atom2->atomicNumber());
-    }
-    m_context_xtal->findSpaceGroup();
-    m_context_xtal->resetFailCount();
-
-
-    // Delete random xtal
-    xtal->deleteLater();
-
-    // Clear context xtal pointer
-    locker.unlock();
+    m_opt->replaceWithRandom(m_context_xtal, "manual");
 
     // Restart job:
-    m_opt->updateInfo(m_context_xtal);
-    m_opt->runningTracker->addXtal(m_context_xtal);
+    newInfoUpdate(m_context_xtal);
     restartJobProgress_(1);
   }
 

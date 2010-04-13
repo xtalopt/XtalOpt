@@ -29,7 +29,7 @@ namespace Avogadro {
   {
   public:
     XtalOptTemplate() {};
-    static QString interpretTemplate(const QString & str, Xtal* xtal, XtalOpt *p);
+    static QString interpretTemplate(const QString & str, Structure* structure, XtalOpt *p);
     static void showHelp();
 
     /////////////////////

@@ -92,7 +92,7 @@ namespace Avogadro {
             this, SLOT(saveSession()));
     connect(ui.push_resume, SIGNAL(clicked()),
             this, SLOT(resumeSession()));
-    connect(m_opt, SIGNAL(newStructureAdded()),
+    connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
             this, SLOT(saveSession()));
     connect(m_opt, SIGNAL(newInfoUpdate()),
             this, SLOT(saveSession()));
@@ -100,6 +100,8 @@ namespace Avogadro {
             this, SLOT(updateGUI()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(lockGUI()));
+    connect(m_opt->queue(), SIGNAL(newStatusOverview(int,int,int)),
+            this, SLOT(updateStatus(int,int,int)));
     connect(this, SIGNAL(sig_updateStatus(int,int,int)),
             this, SLOT(updateStatus_(int,int,int)));
 
@@ -129,10 +131,10 @@ namespace Avogadro {
   XtalOptDialog::~XtalOptDialog()
   {
     //qDebug() << "XtalOptDialog::~XtalOptDialog() called";
-    m_opt->rwLock()->lockForRead();
+    m_opt->tracker()->lockForRead();
     writeSettings();
     saveSession();
-    m_opt->rwLock()->unlock();
+    m_opt->tracker()->unlock();
     delete m_opt;
   }
 
@@ -204,7 +206,7 @@ namespace Avogadro {
     }
     m_opt->emitStartingSession();
     startProgressUpdate(tr("Loading structures..."), 0, 0);
-    m_opt->deleteAllStructures();
+    m_opt->tracker()->deleteAllStructures();
     m_opt->load(filename);
     // Refresh dialog and settings
     writeSettings();

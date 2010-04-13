@@ -18,6 +18,8 @@
 
 #include "xtalopttest.h"
 
+#include "../xtalopt.h"
+
 #include <QDebug>
 #include <QInputDialog>
 #include <QProgressDialog>
@@ -91,9 +93,9 @@ namespace Avogadro {
     m_opt->startOptimization();
     emit status();
     m_message = "Looping...";
-    while (m_opt->getStructures()->size() < m_numberStructures) {
-      m_opt->checkPopulation();
-      m_opt->checkRunningJobs();
+    while (m_opt->tracker()->size() < m_numberStructures) {
+      m_opt->queue()->checkPopulation();
+      m_opt->queue()->checkRunning();
       m_currentStructure = getCurrentStructure();
       outputStatus(m_message,
                    m_currentRun - m_startRun + 1,
@@ -106,9 +108,9 @@ namespace Avogadro {
     }
     m_message = "Waiting to finish...";
     while (!isFinished()) {
-      qDebug() << "XtalOptTest::generateRun: waiting for finished... " << m_opt->getStructures()->size() << " " << m_currentStructure << " " << m_numberStructures;
-      m_opt->checkPopulation();
-      m_opt->checkRunningJobs();
+      qDebug() << "XtalOptTest::generateRun: waiting for finished... " << m_opt->tracker()->size() << " " << m_currentStructure << " " << m_numberStructures;
+      m_opt->queue()->checkPopulation();
+      m_opt->queue()->checkRunning();
       m_currentStructure = getCurrentStructure();
       outputStatus(m_message,
                    m_currentRun - m_startRun + 1,
@@ -123,11 +125,11 @@ namespace Avogadro {
 
   bool XtalOptTest::isFinished() {
     int done = 0;
-    QList<Xtal*>* xtals = m_opt->getStructures();
+    m_opt->tracker()->lockForRead();
+    QList<Structure*> *structures = m_opt->tracker()->list();
     Xtal* xtal = 0;
-    m_opt->rwLock()->lockForRead();
-    for (int i = 0; i < xtals->size(); i++) {
-      xtal = xtals->at(i);
+    for (int i = 0; i < structures->size(); i++) {
+      xtal = qobject_cast<Xtal*>(structures->at(i));
       xtal->lock()->lockForRead();
       Xtal::State state = xtal->getStatus();
       xtal->lock()->unlock();
@@ -137,7 +139,7 @@ namespace Avogadro {
           state == Xtal::Removed)
         done++;
     }
-    m_opt->rwLock()->unlock();
+    m_opt->tracker()->unlock();
     qDebug() << "XtalOptTest::isFinished: " << done;
     if (done >= m_numberStructures) return true;
     else return false;
@@ -145,11 +147,11 @@ namespace Avogadro {
 
   int XtalOptTest::getCurrentStructure() {
     int n = 0;
-    QList<Xtal*>* xtals = m_opt->getStructures();
+    m_opt->tracker()->lockForRead();
+    QList<Structure*> *structures = m_opt->tracker()->list();
     Xtal* xtal = 0;
-    m_opt->rwLock()->lockForRead();
-    for (int i = 0; i < xtals->size(); i++) {
-      xtal = xtals->at(i);
+    for (int i = 0; i < structures->size(); i++) {
+      xtal = qobject_cast<Xtal*>(structures->at(i));
       xtal->lock()->lockForRead();
       Xtal::State state = xtal->getStatus();
       xtal->lock()->unlock();
@@ -162,7 +164,7 @@ namespace Avogadro {
           state == Xtal::Removed)
         n++;
     }
-    m_opt->rwLock()->unlock();
+    m_opt->tracker()->unlock();
     return n;
   }
 
@@ -181,14 +183,14 @@ namespace Avogadro {
     }
     QTextStream out;
     out.setDevice(&file);
-    m_opt->rwLock()->lockForRead();
-    QList<Xtal*> *xtals = m_opt->getStructures();
+    m_opt->tracker()->lockForRead();
+    QList<Structure*> *structures = m_opt->tracker()->list();
     Xtal *xtal;
 
     // Print the data to the file:
     out << "Index\tGen\tID\tEnthalpy\tSpaceGroup\tStatus\tParentage\n";
-    for (int i = 0; i < xtals->size(); i++) {
-      xtal = xtals->at(i);
+    for (int i = 0; i < structures->size(); i++) {
+      xtal = qobject_cast<Xtal*>(structures->at(i));
       if (!xtal) continue; // In case there was a problem copying.
       xtal->lock()->lockForRead();
       out << i << "\t"
@@ -226,7 +228,7 @@ namespace Avogadro {
       xtal->lock()->unlock();
       out << endl;
     }
-    m_opt->rwLock()->unlock();
+    m_opt->tracker()->unlock();
   }
 
   void XtalOptTest::updateMessage(const QString & text) {

@@ -23,23 +23,23 @@
 #include "optimizers/gulp.h"
 #include "optimizers/pwscf.h"
 
+#include "structure.h"
 #include "xtalopt.h"
-#include "xtal.h"
 
 #include <QObject>
 
 namespace Avogadro {
 
-  bool Optimizer::writeInputFiles(Xtal* xtal, XtalOpt *p) {
+  bool Optimizer::writeInputFiles(Structure *s, XtalOpt *p) {
     switch (p->optType) {
     case XtalOpt::OptType_VASP:
-      return XtalOptVASP::writeInputFiles(xtal, p);
+      return XtalOptVASP::writeInputFiles(s, p);
       break;
     case XtalOpt::OptType_GULP:
-      return XtalOptGULP::writeInputFiles(xtal, p);
+      return XtalOptGULP::writeInputFiles(s, p);
       break;
     case XtalOpt::OptType_PWscf:
-      return XtalOptPWscf::writeInputFiles(xtal, p);
+      return XtalOptPWscf::writeInputFiles(s, p);
       break;
     default: //Shouldn't happen...
       p->warning(tr("Optimizer::writeInputFiles: Invalid OptType: %1").arg(p->optType));
@@ -48,16 +48,16 @@ namespace Avogadro {
     }
   }
 
-  bool Optimizer::startOptimization(Xtal* xtal, XtalOpt *p) {
+  bool Optimizer::startOptimization(Structure *s, XtalOpt *p) {
     switch (p->optType) {
     case XtalOpt::OptType_VASP:
-      return XtalOptVASP::startOptimization(xtal, p);
+      return XtalOptVASP::startOptimization(s, p);
       break;
     case XtalOpt::OptType_GULP:
-      return XtalOptGULP::startOptimization(xtal, p);
+      return XtalOptGULP::startOptimization(s, p);
       break;
     case XtalOpt::OptType_PWscf:
-      return XtalOptPWscf::startOptimization(xtal, p);
+      return XtalOptPWscf::startOptimization(s, p);
       break;
     default: //Shouldn't happen...
       p->warning(tr("Optimizer::startOptimization: Invalid OptType: %1").arg(p->optType));
@@ -66,17 +66,17 @@ namespace Avogadro {
     }
   }
 
-  Optimizer::JobState Optimizer::getStatus(Xtal* xtal,
+  Optimizer::JobState Optimizer::getStatus(Structure *s,
                                            XtalOpt *p) {
     switch (p->optType) {
     case XtalOpt::OptType_VASP:
-      return XtalOptVASP::getStatus(xtal, p);
+      return XtalOptVASP::getStatus(s, p);
       break;
     case XtalOpt::OptType_GULP:
-      return XtalOptGULP::getStatus(xtal, p);
+      return XtalOptGULP::getStatus(s, p);
       break;
     case XtalOpt::OptType_PWscf:
-      return XtalOptPWscf::getStatus(xtal, p);
+      return XtalOptPWscf::getStatus(s, p);
       break;
     default: //Shouldn't happen...
       p->warning(tr("Optimizer::getStatus: Invalid OptType: %1").arg(p->optType));
@@ -85,16 +85,16 @@ namespace Avogadro {
     }
   }
 
-  bool Optimizer::deleteJob(Xtal *xtal, XtalOpt *p) {
+  bool Optimizer::deleteJob(Structure *s, XtalOpt *p) {
     switch (p->optType) {
     case XtalOpt::OptType_VASP:
-      return XtalOptVASP::deleteJob(xtal, p);
+      return XtalOptVASP::deleteJob(s, p);
       break;
     case XtalOpt::OptType_GULP:
-      return XtalOptGULP::deleteJob(xtal, p);
+      return XtalOptGULP::deleteJob(s, p);
       break;
     case XtalOpt::OptType_PWscf:
-      return XtalOptPWscf::deleteJob(xtal, p);
+      return XtalOptPWscf::deleteJob(s, p);
       break;
     default: //Shouldn't happen...
       p->warning(tr("Optimizer::deleteJob: Invalid OptType: %1").arg(p->optType));
@@ -122,16 +122,16 @@ namespace Avogadro {
     }
   }
 
-  int Optimizer::checkIfJobNameExists(Xtal* xtal, XtalOpt *p, const QStringList & queueData, bool & exists) {
+  int Optimizer::checkIfJobNameExists(Structure *s, XtalOpt *p, const QStringList & queueData, bool & exists) {
     switch (p->optType) {
     case XtalOpt::OptType_VASP:
-      return XtalOptVASP::checkIfJobNameExists(xtal, queueData, exists);
+      return XtalOptVASP::checkIfJobNameExists(s, queueData, exists);
       break;
     case XtalOpt::OptType_GULP:
-      return XtalOptGULP::checkIfJobNameExists(xtal, queueData, exists);
+      return XtalOptGULP::checkIfJobNameExists(s, queueData, exists);
       break;
     case XtalOpt::OptType_PWscf:
-      return XtalOptPWscf::checkIfJobNameExists(xtal, queueData, exists);
+      return XtalOptPWscf::checkIfJobNameExists(s, queueData, exists);
       break;
     default: //Shouldn't happen...
       p->warning(tr("Optimizer::checkIfJobNameExists: Invalid OptType: %1").arg(p->optType));
@@ -140,17 +140,17 @@ namespace Avogadro {
     }
   }
 
-  bool Optimizer::updateXtal(Xtal* xtal,
+  bool Optimizer::update(Structure *s,
                              XtalOpt *p) {
     switch (p->optType) {
     case XtalOpt::OptType_VASP:
-      return XtalOptVASP::updateXtal(xtal, p);
+      return XtalOptVASP::update(s, p);
       break;
     case XtalOpt::OptType_GULP:
-      return XtalOptGULP::updateXtal(xtal, p);
+      return XtalOptGULP::update(s, p);
       break;
     case XtalOpt::OptType_PWscf:
-      return XtalOptPWscf::updateXtal(xtal, p);
+      return XtalOptPWscf::update(s, p);
       break;
     default: //Shouldn't happen...
       p->warning(tr("Optimizer::updateXtal: Invalid OptType: %1").arg(p->optType));
@@ -159,17 +159,17 @@ namespace Avogadro {
     }
   }
 
-  bool Optimizer::loadXtal(Xtal* xtal,
+  bool Optimizer::load(Structure *s,
                            XtalOpt *p) {
     switch (p->optType) {
     case XtalOpt::OptType_VASP:
-      return XtalOptVASP::loadXtal(xtal, p);
+      return XtalOptVASP::load(s, p);
       break;
     case XtalOpt::OptType_GULP:
-      return XtalOptGULP::loadXtal(xtal, p);
+      return XtalOptGULP::load(s, p);
       break;
     case XtalOpt::OptType_PWscf:
-      return XtalOptPWscf::loadXtal(xtal, p);
+      return XtalOptPWscf::load(s, p);
       break;
     default: //Shouldn't happen...
       p->warning(tr("Optimizer::loadXtal: Invalid OptType: %1").arg(p->optType));
@@ -178,18 +178,18 @@ namespace Avogadro {
     }
   }
 
-  bool Optimizer::readXtal(Xtal* xtal,
+  bool Optimizer::read(Structure *s,
                            XtalOpt *p,
-                           const QString & s) {
+                           const QString & str) {
     switch (p->optType) {
     case XtalOpt::OptType_VASP:
-      return XtalOptVASP::readXtal(xtal, p, s);
+      return XtalOptVASP::read(s, p, str);
       break;
     case XtalOpt::OptType_GULP:
-      return XtalOptGULP::readXtal(xtal, p, s);
+      return XtalOptGULP::read(s, p, str);
       break;
     case XtalOpt::OptType_PWscf:
-      return XtalOptPWscf::readXtal(xtal, p, s);
+      return XtalOptPWscf::read(s, p, str);
       break;
     default: //Shouldn't happen...
       p->warning(tr("Optimizer::readXtal: Invalid OptType: %1").arg(p->optType));

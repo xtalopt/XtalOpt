@@ -36,10 +36,10 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  bool XtalOptVASP::writeInputFiles(Xtal* xtal, XtalOpt *p) {
+  bool XtalOptVASP::writeInputFiles(Structure *structure, XtalOpt *p) {
     // lock xtal
-    QWriteLocker wlocker (xtal->lock());
-    int optStep = xtal->getCurrentOptStep();
+    QWriteLocker wlocker (structure->lock());
+    int optStep = structure->getCurrentOptStep();
     if (optStep < 1 || optStep > p->VASP_INCAR_list.size()) {
       p->warning(tr("Error: Requested OptStep (%1) out of range (1-%2)")
                  .arg(optStep)
@@ -48,33 +48,33 @@ namespace Avogadro {
     }
 
     // Stop any running jobs associated with this xtal
-    if (xtal->getJobID() != 0) {
+    if (structure->getJobID() != 0) {
       wlocker.unlock();
-      deleteJob(xtal,p);
+      deleteJob(structure,p);
       wlocker.relock();
     }
 
     // Create local files
-    QDir dir (xtal->fileName());
+    QDir dir (structure->fileName());
     if (!dir.exists()) {
-      if (!dir.mkpath(xtal->fileName())) {
-        p->warning(tr("Cannot write input files to specified path: %1 (path creation failure)", "1 is a file path.").arg(xtal->fileName()));
+      if (!dir.mkpath(structure->fileName())) {
+        p->warning(tr("Cannot write input files to specified path: %1 (path creation failure)", "1 is a file path.").arg(structure->fileName()));
         return false;
       }
     }
 
-    QFile in (xtal->fileName() + "/INCAR");
-    QFile pos (xtal->fileName() + "/POSCAR");
-    QFile pot (xtal->fileName() + "/POTCAR");
-    QFile kp (xtal->fileName() + "/KPOINTS");
-    QFile ls (xtal->fileName() + "/job.pbs");
+    QFile in (structure->fileName() + "/INCAR");
+    QFile pos (structure->fileName() + "/POSCAR");
+    QFile pot (structure->fileName() + "/POTCAR");
+    QFile kp (structure->fileName() + "/KPOINTS");
+    QFile ls (structure->fileName() + "/job.pbs");
 
     if (!in.open( QIODevice::WriteOnly | QIODevice::Text) ||
         !pos.open(QIODevice::WriteOnly | QIODevice::Text) ||
         !pot.open(QIODevice::WriteOnly | QIODevice::Text) ||
         !kp.open( QIODevice::WriteOnly | QIODevice::Text) ||
         !ls.open( QIODevice::WriteOnly | QIODevice::Text) ) {
-      p->warning(tr("Cannot write input files to specified path: %1 (file writing failure)", "1 is a file path").arg(xtal->fileName()));
+      p->warning(tr("Cannot write input files to specified path: %1 (file writing failure)", "1 is a file path").arg(structure->fileName()));
       return false;
     }
 
@@ -86,11 +86,11 @@ namespace Avogadro {
 
     int optStepInd = optStep - 1;
 
-    incar  << XtalOptTemplate::interpretTemplate( p->VASP_INCAR_list.at(optStepInd), xtal, p );
-    poscar << XtalOptTemplate::interpretTemplate( XtalOptTemplate::input_VASP_POSCAR(), xtal, p );
+    incar  << XtalOptTemplate::interpretTemplate( p->VASP_INCAR_list.at(optStepInd), structure, p );
+    poscar << XtalOptTemplate::interpretTemplate( XtalOptTemplate::input_VASP_POSCAR(), structure, p );
     potcar << p->VASP_POTCAR_list.at(optStepInd);
-    kpoints<< XtalOptTemplate::interpretTemplate( p->VASP_KPOINTS_list.at(optStepInd), xtal, p );
-    launcher<< XtalOptTemplate::interpretTemplate( p->VASP_qScript_list.at(optStepInd), xtal, p );
+    kpoints<< XtalOptTemplate::interpretTemplate( p->VASP_KPOINTS_list.at(optStepInd), structure, p );
+    launcher<< XtalOptTemplate::interpretTemplate( p->VASP_qScript_list.at(optStepInd), structure, p );
 
     in.close();
     pos.close();
@@ -100,19 +100,19 @@ namespace Avogadro {
 
     // Switch to read lock
     wlocker.unlock();
-    QReadLocker rlocker (xtal->lock());
+    QReadLocker rlocker (structure->lock());
 
     // Remote writing
     // Use a QProcess to scp the directory over, but first delete existing rempath
     // e.g.,
     // ssh -q <user>@<host> sh -c 'mkdir -p <rempath>|cat'
     // ssh -q <user>@<host> sh -c 'rm -rf <rempath>/*|cat'
-    // scp -q <xtal->fileName()>/<FILE> <user>@<host>:<rempath>/..
+    // scp -q <structure->fileName()>/<FILE> <user>@<host>:<rempath>/..
     // ssh -q <user>@<host> <queueInsertProgram> <scriptname>
     QString command;
 
     // mkdir
-    command = "ssh -q " + p->username + "@" + p->host + " sh -c \'mkdir -p " + xtal->getRempath() + "|cat\'";
+    command = "ssh -q " + p->username + "@" + p->host + " sh -c \'mkdir -p " + structure->getRempath() + "|cat\'";
     p->debug(command);
     if (QProcess::execute(command) != 0) {
       p->warning(tr("Error executing %1").arg(command));
@@ -122,7 +122,7 @@ namespace Avogadro {
     // rm -rf
     // the cat is neccessary on teragrid to get around the 'rm: No match' error when calling
     // * on an empty directory. Even though -f is supposed to ignore non-existant files...
-    command = "ssh -q " + p->username + "@" + p->host + " sh -c \'rm -rf " + xtal->getRempath() + "/*|cat\'";
+    command = "ssh -q " + p->username + "@" + p->host + " sh -c \'rm -rf " + structure->getRempath() + "/*|cat\'";
     p->debug(command);
     if (QProcess::execute(command) != 0) {
       p->warning(tr("Error executing %1").arg(command));
@@ -130,7 +130,7 @@ namespace Avogadro {
     }
 
     // scp
-    command = "scp -qr " + xtal->fileName() + " " + p->username + "@" + p->host + ":" + xtal->getRempath() + "/..";
+    command = "scp -qr " + structure->fileName() + " " + p->username + "@" + p->host + ":" + structure->getRempath() + "/..";
     p->debug(command);
     if (QProcess::execute(command) != 0) {
       p->warning(tr("Error executing %1").arg(command));
@@ -138,31 +138,31 @@ namespace Avogadro {
     }
 
     // scp
-    command = "scp -q " + xtal->fileName() + "/INCAR " + p->username + "@" + p->host + ":" + xtal->getRempath() + "/INCAR";
+    command = "scp -q " + structure->fileName() + "/INCAR " + p->username + "@" + p->host + ":" + structure->getRempath() + "/INCAR";
     qDebug() << command;
     if (QProcess::execute(command) != 0) {
       qWarning() << tr("Error executing %1").arg(command);
       return false;
     }
-    command = "scp -q " + xtal->fileName() + "/job.pbs " + p->username + "@" + p->host + ":" + xtal->getRempath() + "/job.pbs";
+    command = "scp -q " + structure->fileName() + "/job.pbs " + p->username + "@" + p->host + ":" + structure->getRempath() + "/job.pbs";
     qDebug() << command;
     if (QProcess::execute(command) != 0) {
       qWarning() << tr("Error executing %1").arg(command);
       return false;
     }
-    command = "scp -q " + xtal->fileName() + "/POTCAR " + p->username + "@" + p->host + ":" + xtal->getRempath() + "/POTCAR";
+    command = "scp -q " + structure->fileName() + "/POTCAR " + p->username + "@" + p->host + ":" + structure->getRempath() + "/POTCAR";
     qDebug() << command;
     if (QProcess::execute(command) != 0) {
       qWarning() << tr("Error executing %1").arg(command);
       return false;
     }
-    command = "scp -q " + xtal->fileName() + "/KPOINTS " + p->username + "@" + p->host + ":" + xtal->getRempath() + "/KPOINTS";
+    command = "scp -q " + structure->fileName() + "/KPOINTS " + p->username + "@" + p->host + ":" + structure->getRempath() + "/KPOINTS";
     qDebug() << command;
     if (QProcess::execute(command) != 0) {
       qWarning() << tr("Error executing %1").arg(command);
       return false;
     }
-    command = "scp -q " + xtal->fileName() + "/POSCAR " + p->username + "@" + p->host + ":" + xtal->getRempath() + "/POSCAR";
+    command = "scp -q " + structure->fileName() + "/POSCAR " + p->username + "@" + p->host + ":" + structure->getRempath() + "/POSCAR";
     qDebug() << command;
     if (QProcess::execute(command) != 0) {
       qWarning() << tr("Error executing %1").arg(command);
@@ -171,14 +171,14 @@ namespace Avogadro {
 
     rlocker.unlock();
     wlocker.relock();
-    xtal->setStatus(Xtal::WaitingForOptimization);
+    structure->setStatus(Xtal::WaitingForOptimization);
     return true;
   }
 
-  bool XtalOptVASP::startOptimization(Xtal* xtal, XtalOpt *p) {
+  bool XtalOptVASP::startOptimization(Structure *structure, XtalOpt *p) {
     // ssh
     QProcess proc;
-    QString command = "ssh -q " + p->username + "@" + p->host + " " + p->launchCommand + " " + xtal->getRempath() + "/job.pbs";
+    QString command = "ssh -q " + p->username + "@" + p->host + " " + p->launchCommand + " " + structure->getRempath() + "/job.pbs";
     qDebug() << command;
     proc.start(command);
     proc.waitForFinished(-1);
@@ -195,11 +195,10 @@ namespace Avogadro {
     uint jobID = (QString(proc.readLine()).split(".")[0]).toUInt();
 
     // lock for writing and update xtal
-    QWriteLocker wlocker (xtal->lock());
-    xtal->setJobID(jobID);
-    xtal->startOptTimer();
-    xtal->setStatus(Xtal::Submitted);
-    p->updateInfo(xtal);
+    QWriteLocker wlocker (structure->lock());
+    structure->setJobID(jobID);
+    structure->startOptTimer();
+    structure->setStatus(Xtal::Submitted);
     return true;
   }
 
@@ -243,16 +242,16 @@ namespace Avogadro {
     return true;
   }
 
-  bool XtalOptVASP::copyRemoteToLocalCache(Xtal *xtal,
+  bool XtalOptVASP::copyRemoteToLocalCache(Structure *structure,
                                            XtalOpt *p) {
 
     // lock xtal
-    QReadLocker locker (xtal->lock());
+    QReadLocker locker (structure->lock());
 
     if (!p->using_remote) return false;
     QString command;
 
-    command = "scp -r " + p->username + "@" + p->host + ":" + xtal->getRempath() + " " + xtal->fileName() + "/..";
+    command = "scp -r " + p->username + "@" + p->host + ":" + structure->getRempath() + " " + structure->fileName() + "/..";
     qDebug() << command;
     if (QProcess::execute(command) != 0) {
       qWarning() << tr("Error executing %1").arg(command);
@@ -262,18 +261,18 @@ namespace Avogadro {
     return true;
   }
 
-  Optimizer::JobState XtalOptVASP::getStatus(Xtal* xtal,
-                                              XtalOpt *p) {
+  Optimizer::JobState XtalOptVASP::getStatus(Structure *structure,
+                                             XtalOpt *p) {
     // lock xtal
-    QWriteLocker locker (xtal->lock());
-    QStringList queueData (p->queueData);
+    QWriteLocker locker (structure->lock());
+    QStringList queueData (p->queue()->getRemoteQueueData());
     QProcess proc;
     QString command;
-    uint jobID = xtal->getJobID();
+    uint jobID = structure->getJobID();
 
     // If jobID = 0, return an error.
     if (!jobID) {
-      xtal->setStatus(Xtal::Error);
+      structure->setStatus(Xtal::Error);
       return Optimizer::Error;
     }
 
@@ -286,7 +285,7 @@ namespace Avogadro {
     }
 
     // Checks if xtal is submitted:
-    if (xtal->getStatus() == Xtal::Submitted) {
+    if (structure->getStatus() == Xtal::Submitted) {
       if (status.isEmpty()) {
         return Optimizer::Pending;
       }
@@ -297,8 +296,8 @@ namespace Avogadro {
 
 
     if (status == "R") {
-      if (xtal->getOptElapsed() == "0:00:00")
-        xtal->startOptTimer();
+      if (structure->getOptElapsed() == "0:00:00")
+        structure->startOptTimer();
       return Optimizer::Running;
     }
     else if (status == "Q")
@@ -306,7 +305,7 @@ namespace Avogadro {
     // Even if the job has errored in the queue, leave it as "running" and wait for it to leave the queue
     // then check the OUTCAR. The optimization may have finished OK.
     else if (status == "E") {
-      qWarning() << "Structure " << xtal->getIDString()
+      qWarning() << "Structure " << structure->getIDString()
                  << " has errored in the queue, but may have optimized successfully.\n"
                  << "Marking job as 'Running' until it's gone from the queue...";
       return Optimizer::Running;
@@ -315,8 +314,8 @@ namespace Avogadro {
     else { // Entry is missing from queue! Is there an OUTCAR?
       QStringList OUTCAR;
       bool OUTCARExists;
-      QString rempath = xtal->getRempath();
-      QString fileName = xtal->fileName();
+      QString rempath = structure->getRempath();
+      QString fileName = structure->fileName();
       // unlock xtal while transferring data...
       locker.unlock();
       if (!rempath.isEmpty()) // Get the last 100 lines of a remote OUTCAR -- the line we need should be in there...
@@ -331,24 +330,24 @@ namespace Avogadro {
       if (OUTCARExists) {
         for (int i = 0; i < OUTCAR.size(); i++) {
           if (OUTCAR.at(i).contains("General timing and accounting informations for this job:")) {
-            xtal->resetFailCount();
+            structure->resetFailCount();
             return Optimizer::Success;
           }
         }
         // Otherwise, it's an error!
         qDebug() << "OUTCAR exists, but not finished!";
-        xtal->setStatus(Xtal::Error);
+        structure->setStatus(Xtal::Error);
         return Optimizer::Error;
       }
     }
     // Not in queue and no OUTCAR? Interesting...
-    xtal->setStatus(Xtal::Error);
+    structure->setStatus(Xtal::Error);
     return Optimizer::Unknown;
   }
 
-  bool XtalOptVASP::deleteJob(Xtal *xtal, XtalOpt *p) {
+  bool XtalOptVASP::deleteJob(Structure *structure, XtalOpt *p) {
     // lock xtal
-    QWriteLocker locker (xtal->lock());
+    QWriteLocker locker (structure->lock());
 
     QProcess proc;
     QString command;
@@ -356,9 +355,9 @@ namespace Avogadro {
     // If remote...
     if (p->using_remote) {
       // ssh -q <user>@<host> <queueDelete> <jobID>
-      command = "ssh -q " + p->username + "@" + p->host + " " + p->queueDelete + " " + QString::number(xtal->getJobID());
+      command = "ssh -q " + p->username + "@" + p->host + " " + p->queueDelete + " " + QString::number(structure->getJobID());
     } else {
-      command = p->queueCheck + " " + QString::number(xtal->getJobID());
+      command = p->queueCheck + " " + QString::number(structure->getJobID());
     }
 
     // Execute
@@ -369,13 +368,12 @@ namespace Avogadro {
       qWarning() << tr("Error executing %1").arg(command)
                  << ":\n\t" << proc.readAllStandardError();
       // Most likely job is already gone from queue. Set jobID to 0.
-      xtal->setJobID(0);
+      structure->setJobID(0);
       return false;
     }
 
-    xtal->setJobID(0);
-    xtal->stopOptTimer();
-    p->updateInfo(xtal);
+    structure->setJobID(0);
+    structure->stopOptTimer();
     return true;
   }
 
@@ -418,10 +416,10 @@ namespace Avogadro {
     return true;
   }
 
-  int XtalOptVASP::checkIfJobNameExists(Xtal* xtal, const QStringList & queueData, bool & exists) {
-    xtal->lock()->lockForRead();
-    QFile jobScript (xtal->fileName() + "/job.pbs");
-    xtal->lock()->unlock();
+  int XtalOptVASP::checkIfJobNameExists(Structure *structure, const QStringList & queueData, bool & exists) {
+    structure->lock()->lockForRead();
+    QFile jobScript (structure->fileName() + "/job.pbs");
+    structure->lock()->unlock();
     QString line, jobName;
     QStringList strl;
     exists = false;
@@ -454,65 +452,65 @@ namespace Avogadro {
   }
 
   // Convenience functions
-  bool XtalOptVASP::updateXtal(Xtal* xtal,
-                               XtalOpt *p) {
+  bool XtalOptVASP::update(Structure *structure,
+                           XtalOpt *p) {
     // lock xtal
-    QWriteLocker locker (xtal->lock());
+    QWriteLocker locker (structure->lock());
 
     // Update Xtal status
-    xtal->setStatus(Xtal::Updating);
-    xtal->stopOptTimer();
+    structure->setStatus(Xtal::Updating);
+    structure->stopOptTimer();
 
     // Copy remote files over
 
     if (p->using_remote) {
       locker.unlock();
-      bool ok = copyRemoteToLocalCache(xtal, p);
+      bool ok = copyRemoteToLocalCache(structure, p);
       locker.relock();
       if (!ok) {
         qWarning() << QString("Error copying remote files to local dir\n\tremote: %1 on %2@%3\n\tlocal: %4")
-          .arg(xtal->getRempath())
+          .arg(structure->getRempath())
           .arg(p->username)
           .arg(p->host)
-          .arg(xtal->fileName());
-        xtal->setStatus(Xtal::Error);
+          .arg(structure->fileName());
+        structure->setStatus(Xtal::Error);
         return false;
       }
     }
 
 
-    if (!readXtal(xtal, p, xtal->fileName() + "/CONTCAR")) {
-      if (!readXtal(xtal, p, xtal->fileName() + "/POSCAR")) {
-        p->warning(tr("Error loading xtal at %1").arg(xtal->fileName()));
+    if (!read(structure, p, structure->fileName() + "/CONTCAR")) {
+      if (!read(structure, p, structure->fileName() + "/POSCAR")) {
+        p->warning(tr("Error loading xtal at %1").arg(structure->fileName()));
         return false;
       }
     }
 
-    xtal->setJobID(0);
-    xtal->setStatus(Xtal::StepOptimized);
+    structure->setJobID(0);
+    structure->setStatus(Xtal::StepOptimized);
     locker.unlock();
-    p->updateInfo(xtal);
     return true;
   }
 
-  bool XtalOptVASP::loadXtal(Xtal* xtal,
-                               XtalOpt *p) {
+  bool XtalOptVASP::load(Structure *structure,
+                         XtalOpt *p) {
 
-    QWriteLocker locker (xtal->lock());
+    QWriteLocker locker (structure->lock());
 
-    if (!readXtal(xtal, p, xtal->fileName() + "/CONTCAR")) {
-      if (!readXtal(xtal, p, xtal->fileName() + "/POSCAR")) {
-        p->warning(tr("Error loading xtal at %1").arg(xtal->fileName()));
+    if (!read(structure, p, structure->fileName() + "/CONTCAR")) {
+      if (!read(structure, p, structure->fileName() + "/POSCAR")) {
+        p->warning(tr("Error loading xtal at %1").arg(structure->fileName()));
         return false;
       }
     }
-    p->updateInfo(xtal);
     return true;
   }
 
-  bool XtalOptVASP::readXtal(Xtal* xtal,
-                               XtalOpt *p,
-                               const QString & filename) {
+  bool XtalOptVASP::read(Structure *structure,
+                         XtalOpt *p,
+                         const QString & filename) {
+    // Recast structure as xtal -- we'll need to access cell data later.
+    Xtal *xtal = qobject_cast<Xtal*>(structure);
     // Test filename
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -525,16 +523,15 @@ namespace Avogadro {
     // Read in OBMol
     //
     // OpenBabel::OBConversion;:ReadFile calls a singleton error class
-    // that is not thread safe. Stupid. Hence stupidOpenBabelMutex is
-    // necessary.
-    p->stupidOpenBabelMutex->lock();
+    // that is not thread safe. Hence sOBMutex is necessary.
+    p->sOBMutex->lock();
     OBConversion conv;
     OBFormat* inFormat = conv.FormatFromExt(QString(QFile::encodeName(filename.trimmed())).toAscii());
 
     if ( !inFormat || !conv.SetInFormat( inFormat ) ) {
       qWarning() << "Error setting format for file " << filename;
       xtal->setStatus(Xtal::Error);
-      p->stupidOpenBabelMutex->unlock();
+      p->sOBMutex->unlock();
       return false;
     }
 
@@ -542,7 +539,7 @@ namespace Avogadro {
 
     qDebug() << "Converting file " << QString(QFile::encodeName(filename));
     conv.ReadFile( &obmol, QString(QFile::encodeName(filename)).toStdString());
-    p->stupidOpenBabelMutex->unlock();
+    p->sOBMutex->unlock();
 
     // Copy settings from obmol -> xtal.
     // cell

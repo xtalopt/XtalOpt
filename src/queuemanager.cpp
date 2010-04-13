@@ -1,0 +1,569 @@
+/**********************************************************************
+  QueueManager - Generic queue manager to track running structures
+
+  Copyright (C) 2010 by David C. Lonie
+
+  This file is part of the Avogadro molecular editor project.
+  For more information, see <http://avogadro.openmolecules.net/>
+
+  This program is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation version 2 of the License.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+ ***********************************************************************/
+
+#include "queuemanager.h"
+
+#include "xtalopt.h" // Change this into opt and xtalopt
+#include "structure.h"
+#include "optimizers.h"
+
+#include <QDebug>
+#include <QtConcurrentRun>
+
+using namespace std;
+using namespace OpenBabel;
+using namespace Eigen;
+
+namespace Avogadro {
+
+  QueueManager::QueueManager(XtalOpt *opt, Tracker *tracker) :
+    QObject(opt),
+    m_opt(opt),
+    m_tracker(tracker)
+  {
+    m_checkPopulationPending = false;
+    m_checkRunningPending = false;
+
+    m_requestedStructures = 0;
+
+    reset();
+
+    // tracker connections
+    connect(m_tracker, SIGNAL(structureCountChanged(int)),
+            this, SLOT(checkPopulation()));
+
+    // opt connections
+    connect(this, SIGNAL(needNewStructure()),
+            m_opt, SLOT(generateNewStructure()));
+    connect(m_opt, SIGNAL(sessionStarted()),
+            this, SLOT(resetRequestCount()));
+
+    // internal connections
+    connect(this, SIGNAL(structureStarted(Structure *)),
+            this, SIGNAL(structureUpdated(Structure *)));
+    connect(this, SIGNAL(structureSubmitted(Structure *)),
+            this, SIGNAL(structureUpdated(Structure *)));
+    connect(this, SIGNAL(structureKilled(Structure *)),
+            this, SIGNAL(structureUpdated(Structure *)));
+  }
+
+  void QueueManager::reset() {
+    m_runningTracker.reset();
+    m_submissionPendingTracker.reset();
+    m_startPendingTracker.reset();
+    m_jobStartTracker.reset();
+    m_nextOptStepTracker.reset();
+    m_errorPendingTracker.reset();
+    m_updatePendingTracker.reset();
+    m_killPendingTracker.reset();
+  }
+
+  void QueueManager::checkPopulation() {
+    if (m_opt->isStarting ||
+        m_checkPopulationPending) {
+      return;
+    }
+
+    m_checkPopulationPending = true;
+    QtConcurrent::run(this, &QueueManager::checkPopulation_);
+  }    
+
+  void QueueManager::checkPopulation_() {
+    // Count jobs
+    uint running = 0;
+    uint optimized = 0;
+    uint submitted = 0;
+    m_tracker->lockForRead();
+    QList<Structure*> *structures = m_tracker->list();
+    m_startPendingTracker.lockForRead();
+    running += m_startPendingTracker.list()->size();
+    // Check to see that the number of running jobs is >= that specified:
+    Structure *structure = 0;
+    Structure::State state;
+    int fail=0;
+    for (int i = 0; i < structures->size(); i++) {
+      structure = structures->at(i);
+      structure->lock()->lockForRead();
+      state = structure->getStatus();
+      if (structure->getFailCount() != 0) fail++;
+      structure->lock()->unlock();
+      if ( state == Structure::Submitted ||
+           state == Structure::InProcess ){
+        submitted++;
+        running++;
+        m_submissionPendingTracker.remove(structure);
+        m_runningTracker.append(structure);
+      }
+      else if ( state != Structure::Optimized &&
+                state != Structure::Duplicate &&
+                state != Structure::WaitingForOptimization &&
+                state != Structure::Killed &&
+                state != Structure::Removed ) {
+        running++;
+        m_submissionPendingTracker.remove(structure);
+        m_runningTracker.append(structure);
+      }
+      else if ( state == Structure::Optimized ) {
+        optimized++;
+      }
+      else if ( state == Structure::WaitingForOptimization ) {
+        running++;
+        m_submissionPendingTracker.append(structure);
+        m_runningTracker.remove(structure);
+      }
+      else {
+        m_submissionPendingTracker.remove(structure);
+        m_runningTracker.remove(structure);
+      }
+    }
+    m_startPendingTracker.unlock();
+    m_tracker->unlock();
+    emit newStatusOverview(optimized, running, fail);
+
+    // Submit any jobs if needed
+    m_jobStartTracker.lockForRead();
+    int pending = m_jobStartTracker.list()->size();
+    while (pending != 0 &&
+           (
+            !m_opt->limitRunningJobs ||
+            submitted < m_opt->runningJobLimit
+            )
+           ) {
+      startJob();
+      submitted++;
+      pending--;
+    }
+    m_jobStartTracker.unlock();
+
+    // Generate requests
+    while (running + m_requestedStructures < m_opt->genTotal) {
+      emit needNewStructure();
+      m_requestedStructures++;
+    }
+
+    m_checkPopulationPending = false;
+  }
+
+  void QueueManager::checkRunning() {
+    if (m_opt->isStarting ||
+        m_checkRunningPending) {
+      return;
+    }
+
+    m_checkRunningPending = true;
+
+    QtConcurrent::run(this, &QueueManager::checkRunning_);
+  }
+
+  void QueueManager::checkRunning_() {
+    if (m_runningTracker.size() == 0) {
+      m_checkRunningPending = false;
+      return;
+    }
+
+    // Get list of running and submitted structures
+    QList<Structure*> structures = getAllSubmittedStructures();
+
+    // prep variables
+    Structure *structure = 0;
+
+    // Get queue data
+    updateQueue();
+
+    for (int i = 0; i < structures.size(); i++) {
+      structure = structures.at(i);
+
+      QReadLocker structureLocker (structure->lock());
+
+      // Check status
+      switch (structure->getStatus()) {
+      case Structure::InProcess: {
+        structureLocker.unlock();
+        Optimizer::JobState state = Optimizer::getStatus(structure, m_opt);
+        structureLocker.relock();
+        switch (state) {
+        case Optimizer::Running:
+        case Optimizer::Queued:
+        case Optimizer::CommunicationError:
+        case Optimizer::Unknown:
+        case Optimizer::Pending:
+        case Optimizer::Started:
+          break;
+        case Optimizer::Success:
+          prepareStructureForNextOptStep(structure);
+          break;
+        case Optimizer::Error:
+          m_opt->warning(tr("Structure %1 has failed to perform local optimization (JobID = %2)")
+                         .arg(structure->getIDString())
+                         .arg(structure->getJobID()));
+          handleStructureError(structure);
+          break;
+        }
+        break;
+      }
+      case Structure::Submitted: {
+        structureLocker.unlock();
+        Optimizer::JobState substate = Optimizer::getStatus(structure, m_opt);
+        structureLocker.relock();
+        switch (substate) {
+        case Optimizer::Running:
+        case Optimizer::Queued:
+        case Optimizer::Error:
+        case Optimizer::Success:
+        case Optimizer::Started:
+          structure->setStatus(Structure::InProcess);
+          break;
+        case Optimizer::CommunicationError:
+        case Optimizer::Unknown:
+        case Optimizer::Pending:
+        default:
+          break;
+        }
+        break;
+      }
+      case Structure::Killed:
+      case Structure::Removed:
+      case Structure::Duplicate:
+      case Structure::Optimized:
+        stopJob(structure);
+        m_runningTracker.remove(structure);
+        break;
+      case Structure::StepOptimized:
+        prepareStructureForNextOptStep(structure);
+        break;
+      case Structure::Error:
+        handleStructureError(structure);
+        break;
+      case Structure::Restart:
+        prepareStructureForSubmission(structure);
+        break;
+      case Structure::WaitingForOptimization:
+      case Structure::Updating:
+      case Structure::Empty:
+        break;
+      }
+
+      emit structureUpdated(structure);
+    }
+
+    m_checkRunningPending = false;
+  }
+
+  void QueueManager::updateQueue(int time) {
+    if (m_opt->isStarting) {
+      return;
+    }
+
+    int elapsed = m_queueTimeStamp.secsTo(QDateTime::currentDateTime());
+    if (elapsed < 0 || time < elapsed) {
+      if (!Optimizer::getQueueList(m_opt, m_queueData)) {
+        m_opt->warning("Cannot fetch queue -- check stderr");
+      }
+      m_queueTimeStamp = QDateTime::currentDateTime();
+    }
+    else {
+    }
+  }
+
+  void QueueManager::prepareStructureForNextOptStep(Structure *s) {
+    m_nextOptStepTracker.append(s);
+    QtConcurrent::run(this, &QueueManager::prepareStructureForNextOptStep_);
+  }
+
+  void QueueManager::prepareStructureForNextOptStep_() {
+    m_nextOptStepTracker.lockForWrite();
+    QList<Structure*> *nextOptStepList = m_nextOptStepTracker.list();
+    if (nextOptStepList->size() == 0) {
+      m_nextOptStepTracker.unlock();
+      return;
+    }
+    Structure *structure = nextOptStepList->takeFirst();
+    QWriteLocker locker (structure->lock());
+
+    // update optstep and relaunch if necessary
+    if (structure->getCurrentOptStep() < (uint)Optimizer::totalOptSteps(m_opt)) {
+      structure->setCurrentOptStep(structure->getCurrentOptStep() + 1);
+
+      // Update input files
+      locker.unlock();
+      Optimizer::writeInputFiles(structure, m_opt);
+      m_runningTracker.remove(structure);
+      prepareStructureForSubmission(structure);
+    }
+    // Otherwise, it's done
+    else {
+      structure->setStatus(Structure::Optimized);
+      m_runningTracker.remove(structure);
+    }
+    m_nextOptStepTracker.unlock();
+    emit structureUpdated(structure);
+  }
+
+  void QueueManager::handleStructureError(Structure *s) {
+    if (m_errorPendingTracker.append(s))
+      QtConcurrent::run(this, &QueueManager::handleStructureError_);
+  }
+
+  void QueueManager::handleStructureError_() {
+    m_errorPendingTracker.lockForWrite();
+    if (m_errorPendingTracker.list()->size() == 0) {
+      m_errorPendingTracker.unlock();
+      return;
+    }
+    bool exists = false;
+    int jobID;
+    Structure *structure = m_errorPendingTracker.list()->takeFirst();
+    structure->addFailure();
+
+    // Check if the  job is running under a  different JobID (Stranger
+    // things have happened!)
+    jobID = Optimizer::checkIfJobNameExists(structure, m_opt, m_queueData, exists);
+    QWriteLocker locker (structure->lock());
+    if (exists) { // Mark the job as running and update the jobID
+      m_opt->warning(tr("QueueManager::handleStructureError_: Reclaiming jobID %1 for structure %2")
+              .arg(QString::number(jobID))
+              .arg(structure->getIDString()));
+      structure->setStatus(Structure::InProcess);
+      structure->setJobID(jobID);
+    }
+    else {
+      // Check failure count
+      if (structure->getFailCount() >= m_opt->failLimit) {
+        switch (XtalOpt::FailActions(m_opt->failAction)) {
+        case XtalOpt::FA_DoNothing:
+        default:
+          // resubmit job
+          m_runningTracker.remove(structure);
+          prepareStructureForSubmission(structure);
+          break;
+        case XtalOpt::FA_KillIt:
+          killStructure(structure);
+          break;
+        case XtalOpt::FA_Randomize:
+          locker.unlock();
+          m_opt->replaceWithRandom(structure, tr("excessive failures"));
+          locker.relock();
+          emit structureUpdated(structure);
+          prepareStructureForSubmission(structure);
+          break;
+        }
+      }
+      else {
+        // resubmit job
+        locker.unlock();
+        Optimizer::writeInputFiles(structure, m_opt);
+        m_runningTracker.remove(structure);
+        prepareStructureForSubmission(structure);
+      }
+    }
+    m_errorPendingTracker.unlock();
+  }
+
+  void QueueManager::updateStructure(Structure *s) {
+    m_updatePendingTracker.append(s);
+    QtConcurrent::run(this, &QueueManager::updateStructure_);
+  }
+
+  void QueueManager::updateStructure_() {
+    Structure *structure = 0;
+    if (m_updatePendingTracker.popFirst(structure))
+      return;
+    Optimizer::update(structure, m_opt);
+  }
+
+  void QueueManager::prepareStructureForSubmission(Structure *s, int optStep) {
+    m_submissionPendingTracker.append(s);
+    s->setStatus(Structure::WaitingForOptimization);
+    if (optStep != 0)
+      s->setCurrentOptStep(optStep);
+    QtConcurrent::run(this, &QueueManager::prepareStructureForSubmission_);
+  }
+
+  void QueueManager::prepareStructureForSubmission_() {
+    m_submissionPendingTracker.lockForWrite();
+    if (m_submissionPendingTracker.size() == 0) {
+      m_submissionPendingTracker.unlock();
+      return;
+    }
+
+    Structure *structure = m_submissionPendingTracker.list()->takeFirst();
+    Optimizer::writeInputFiles(structure, m_opt);
+
+    m_jobStartTracker.append(structure);
+    m_runningTracker.append(structure);
+    m_submissionPendingTracker.unlock();
+  }
+
+  void QueueManager::startJob() {
+    QtConcurrent::run(this, &QueueManager::startJob_);
+  }
+
+  void QueueManager::startJob_() {
+    Structure *structure;
+    if (!m_jobStartTracker.popFirst(structure))
+      return;
+
+    structure->setStatus(Structure::Submitted);
+    emit structureSubmitted(structure);
+
+    // Make sure no mutexes are locked here -- this can take a while...
+    if (!Optimizer::startOptimization(structure, m_opt)) {
+      m_opt->warning(tr("QueueManager::submitStructure_: Job did not run successfully for structure %1-%2.")
+              .arg(structure->getIDString())
+              .arg(structure->getCurrentOptStep()));
+      structure->lock()->lockForWrite();
+      structure->setStatus(Structure::Error);
+      structure->lock()->unlock();
+      return;
+    }
+  }
+
+  void QueueManager::killStructure(Structure *s) {
+    m_killPendingTracker.append(s);
+    stopJob(s);
+    QtConcurrent::run(this, &QueueManager::killStructure_);
+  }
+
+  void QueueManager::killStructure_() {
+    Structure *structure = 0;
+    if (!m_killPendingTracker.popFirst(structure)) {
+      return;
+    }
+
+    structure->setStatus(Structure::Killed);
+    emit structureKilled(structure);
+  }
+
+  void QueueManager::stopJob(Structure *s) {
+    QtConcurrent::run(&Optimizer::deleteJob,
+                      s,
+                      m_opt);
+  }
+
+  QList<Structure*> QueueManager::getAllRunningStructures() {
+    m_runningTracker.lockForRead();
+    QList<Structure*> list(*m_runningTracker.list());
+    m_runningTracker.unlock();
+    return list;
+  }
+
+  QList<Structure*> QueueManager::getAllOptimizedStructures() {
+    QList<Structure*> list;
+    m_tracker->lockForRead();
+    Structure *s;
+    for (int i = 0; i < m_tracker->list()->size(); i++) {
+      s = m_tracker->list()->at(i);
+      s->lock()->lockForRead();
+      if (s->getStatus() == Structure::Optimized)
+        list.append(s);
+      s->lock()->unlock();
+    }
+    m_tracker->unlock();
+    return list;
+  }
+
+  QList<Structure*> QueueManager::getAllDuplicateStructures() {
+    QList<Structure*> list;
+    m_tracker->lockForRead();
+    Structure *s;
+    for (int i = 0; i < m_tracker->list()->size(); i++) {
+      s = m_tracker->list()->at(i);
+      s->lock()->lockForRead();
+      if (s->getStatus() == Structure::Duplicate)
+        list.append(s);
+      s->lock()->unlock();
+    }
+    m_tracker->unlock();
+    return list;
+  }
+
+  QList<Structure*> QueueManager::getAllPendingStructures() {
+    m_startPendingTracker.lockForRead();
+    QList<Structure*> list(*m_startPendingTracker.list());
+    m_startPendingTracker.unlock();
+    return list;
+  }
+
+  QList<Structure*> QueueManager::getAllStructures() {
+    m_tracker->lockForRead();
+    m_startPendingTracker.lockForRead();
+    QList<Structure*> list (*m_tracker->list());
+    list.append(*m_startPendingTracker.list());
+    m_startPendingTracker.unlock();
+    m_tracker->unlock();
+    return list;
+  }
+
+  QList<Structure*> QueueManager::getAllSubmittedStructures() {
+    m_tracker->lockForRead();
+    m_submissionPendingTracker.lockForRead();
+    m_jobStartTracker.lockForRead();
+    QList<Structure*> list (*m_tracker->list());
+    list.append(*m_submissionPendingTracker.list());
+    list.append(*m_jobStartTracker.list());
+    m_submissionPendingTracker.unlock();
+    m_jobStartTracker.unlock();
+    m_tracker->unlock();
+    return list;
+  }
+
+
+  QList<Structure*> QueueManager::lockForNaming() {
+    m_tracker->lockForRead();
+    m_startPendingTracker.lockForRead();
+    QList<Structure*> list (*m_tracker->list());
+    list.append(*m_startPendingTracker.list());
+    return list;
+  }    
+ 
+  void QueueManager::unlockForNaming(Structure *s) {
+    if (!s || m_startPendingTracker.list()->contains(s)) {
+      m_opt->error(tr("QueueManager::unlockForNaming: Attempt to add structure %1 twice?")
+                   .arg(s->getIDNumber()));
+      m_startPendingTracker.unlock();
+      m_tracker->unlock();
+      return;
+    }
+    m_requestedStructures--;
+    m_startPendingTracker.list()->append(s);
+    addNewStructure();
+    m_startPendingTracker.unlock();
+    m_tracker->unlock();
+  }
+
+  void QueueManager::addNewStructure()
+  {
+    QtConcurrent::run(this, &QueueManager::addNewStructure_);
+  }
+
+  void QueueManager::addNewStructure_()
+  {
+    m_tracker->lockForWrite();
+    Structure *structure = 0;
+    if (!m_startPendingTracker.popFirst(structure)) {
+      m_tracker->unlock();
+      return;
+    }
+    m_tracker->appendAndUnlock(structure);
+    emit structureStarted(structure);
+    prepareStructureForSubmission(structure);
+  }
+
+} // end namespace Avogadro
+
+#include "queuemanager.moc"

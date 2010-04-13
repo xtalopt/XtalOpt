@@ -48,7 +48,9 @@ set (xtalopt_SRCS
     	src/xtal.cpp
 	src/extension.cpp
 	src/templates.cpp
+	src/tracker.cpp
 	src/xtalopt.cpp
+	src/queuemanager.cpp
 	src/genetic.cpp
 	src/optimizers.cpp
 	src/optimizers/vasp.cpp
