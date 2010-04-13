@@ -184,6 +184,9 @@ namespace Avogadro {
     uint progCount = 0;
     QString filename;
     Xtal *xtal = 0;
+    // Use new xtal count in case "addXtal" falls behind so that we
+    // don't duplicate structures when switching from seeds -> random.
+    uint newXtalCount=0;
 
     // Load seeds...
     for (int i = 0; i < seedList.size(); i++) {
@@ -201,10 +204,11 @@ namespace Avogadro {
       dialog->updateProgressLabel(tr("%1 structures generated (%2 kept, %3 rejected)...").arg(i + failed).arg(i).arg(failed));
       debug(tr("Loaded seed: %1", "1 is a filename").arg(filename));
       addXtal(xtal);
+      newXtalCount++;
     }
 
     // Generation loop...
-    for (uint i = getStructures()->size(); i < numInitial; i++) {
+    for (uint i = newXtalCount; i < numInitial; i++) {
       // Update progress bar
       dialog->updateProgressMaximum( (i == 0)
                                         ? 0
@@ -223,6 +227,7 @@ namespace Avogadro {
       else {
         xtal->findSpaceGroup();
         addXtal(xtal);
+        newXtalCount++;
       }
     }
 
