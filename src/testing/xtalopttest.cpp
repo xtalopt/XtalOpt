@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOptTest - Automagically generate a ton of data from multiple runs
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -34,7 +34,7 @@ using namespace Eigen;
 namespace Avogadro {
 
   XtalOptTest::XtalOptTest(XtalOpt *p, QObject *parent) :
-    QObject(parent), m_opt(p), m_dialog(p->dialog)
+    QObject(parent), m_opt(p), m_dialog(p->dialog())
   {}
 
   XtalOptTest::~XtalOptTest() {
@@ -175,8 +175,7 @@ namespace Avogadro {
   void XtalOptTest::writeDataFile(int run) {
     qDebug() << "Run " << run << " Finished!!" << endl;
     QFile file;
-    file.setFileName(m_opt->filePath + "/" +
-                     m_opt->fileBase + "run" +
+    file.setFileName(m_opt->filePath + "/run" +
                      QString::number(run) + "-results.txt");
     if (!file.open(QIODevice::WriteOnly)) {
       m_opt->error("XtalOptTest::writeDataFile(): Error opening file "+file.fileName()+" for writing...");

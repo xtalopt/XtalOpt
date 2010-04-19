@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -16,6 +16,7 @@
 
 #include "tab_plot.h"
 
+#include "../macros.h"
 #include "dialog.h"
 
 #include <avogadro/glwidget.h>
@@ -45,10 +46,10 @@ namespace Avogadro {
     updatePlot();
 
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(m_dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
     connect(m_dialog, SIGNAL(tabsUpdateGUI()),
             this, SLOT(updateGUI()));
     connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
@@ -106,28 +107,31 @@ namespace Avogadro {
     // m_plotObject is deleted by the PlotWidget
   }
 
-  void TabPlot::writeSettings() {
-    //qDebug() << "TabPlot::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-    settings.setValue("xtalopt/dialog/plot/x_label", ui.combo_xAxis->currentIndex());
-    settings.setValue("xtalopt/dialog/plot/y_label", ui.combo_yAxis->currentIndex());
-    settings.setValue("xtalopt/dialog/plot/showDuplicates", ui.cb_showDuplicates->isChecked());
-    settings.setValue("xtalopt/dialog/plot/showIncompletes", ui.cb_showIncompletes->isChecked());
-    settings.setValue("xtalopt/dialog/plot/labelPoints", ui.cb_labelPoints->isChecked());
-    settings.setValue("xtalopt/dialog/plot/labelType", ui.combo_labelType->currentIndex());
-    settings.setValue("xtalopt/dialog/plot/plotType", ui.combo_plotType->currentIndex());
+  void TabPlot::writeSettings(const QString &filename) {
+    SETTINGS(filename);
+
+    settings->beginGroup("xtalopt/plot/");
+    settings->setValue("x_label", ui.combo_xAxis->currentIndex());
+    settings->setValue("y_label", ui.combo_yAxis->currentIndex());
+    settings->setValue("showDuplicates", ui.cb_showDuplicates->isChecked());
+    settings->setValue("showIncompletes", ui.cb_showIncompletes->isChecked());
+    settings->setValue("labelPoints", ui.cb_labelPoints->isChecked());
+    settings->setValue("labelType", ui.combo_labelType->currentIndex());
+    settings->setValue("plotType", ui.combo_plotType->currentIndex());
+    settings->endGroup();
   }
 
-  void TabPlot::readSettings() {
-    //qDebug() << "TabPlot::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-    ui.combo_xAxis->setCurrentIndex( settings.value("xtalopt/dialog/plot/x", Structure_T).toInt());
-    ui.combo_yAxis->setCurrentIndex( settings.value("xtalopt/dialog/plot/y", Enthalpy_T).toInt());
-    ui.cb_showDuplicates->setChecked( settings.value("xtalopt/dialog/plot/showDuplicates", false).toBool());
-    ui.cb_showIncompletes->setChecked( settings.value("xtalopt/dialog/plot/showIncompletes", false).toBool());
-    ui.cb_labelPoints->setChecked( settings.value("xtalopt/dialog/plot/labelPoints", false).toBool());
-    ui.combo_labelType->setCurrentIndex( settings.value("xtalopt/dialog/plot/labelType", Symbol_L).toInt());
-    ui.combo_plotType->setCurrentIndex( settings.value("xtalopt/dialog/plot/plotType", Trend_PT).toInt());
+  void TabPlot::readSettings(const QString &filename) {
+    SETTINGS(filename);
+    settings->beginGroup("xtalopt/plot/");
+    ui.combo_xAxis->setCurrentIndex( settings->value("x_label", Structure_T).toInt());
+    ui.combo_yAxis->setCurrentIndex( settings->value("y_label", Enthalpy_T).toInt());
+    ui.cb_showDuplicates->setChecked( settings->value("showDuplicates", false).toBool());
+    ui.cb_showIncompletes->setChecked( settings->value("showIncompletes", false).toBool());
+    ui.cb_labelPoints->setChecked( settings->value("labelPoints", false).toBool());
+    ui.combo_labelType->setCurrentIndex( settings->value("labelType", Symbol_L).toInt());
+    ui.combo_plotType->setCurrentIndex( settings->value("plotType", Trend_PT).toInt());
+    settings->endGroup();
   }
 
   void TabPlot::updateGUI() {
@@ -198,7 +202,6 @@ namespace Avogadro {
     if (!m_opt) return;
 
     if (!m_opt->tracker()->rwLock()->tryLockForRead()) {
-      qDebug() << "Not updating plot while mutex is locked...";
       return;
     }
 

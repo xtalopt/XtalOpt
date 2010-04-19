@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOptTest - Automagically generate a ton of data from multiple runs
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>

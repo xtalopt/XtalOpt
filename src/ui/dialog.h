@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -55,8 +55,6 @@ namespace Avogadro {
     virtual ~XtalOptDialog();
 
     void setMolecule(Molecule *molecule);
-    void writeSettings();
-    void readSettings();
     GLWidget* getGLWidget();
 
   public slots:
@@ -65,6 +63,8 @@ namespace Avogadro {
     // used to lock bits of the GUI that shouldn't be change when a
     // session starts. This will also pass the call on to all tabs.
     void lockGUI();
+    void writeSettings(const QString &filename = "");
+    void readSettings(const QString &filename = "");
     void saveSession();
     void log(const QString &str) {emit newLog(str);};
     void updateStatus(int opt, int run, int fail);
@@ -96,8 +96,8 @@ namespace Avogadro {
     void tabsDisconnectGUI();
     void tabsLockGUI();
     void moleculeChanged(Xtal*);
-    void tabsWriteSettings();
-    void tabsReadSettings();
+    void tabsWriteSettings(const QString &filename);
+    void tabsReadSettings(const QString &filename);
     void tabsUpdateGUI();
     void newLog(const QString &str);
     void xtalReadyToSubmit();

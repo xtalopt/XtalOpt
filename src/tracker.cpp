@@ -1,7 +1,7 @@
 /**********************************************************************
-  XtalOpt - Holds all data for genetic optimization
+  Tracker - A thread safe duplicate checking structure FIFO
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -28,6 +28,16 @@ using namespace OpenBabel;
 using namespace Eigen;
 
 namespace Avogadro {
+
+  Tracker::Tracker(QObject *parent) :
+    QObject(parent)
+  {
+  }
+
+  Tracker::~Tracker()
+  {
+    lockForWrite();
+  }
 
   bool Tracker::append(QList<Structure*> s) {
     bool ret = true;
@@ -103,7 +113,6 @@ namespace Avogadro {
       s = m_list.at(i);
       s->lock()->lockForWrite();
       s->deleteLater();
-      s->lock()->unlock();
     }
     m_list.clear();
     emit structureCountChanged(m_list.size());

@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -15,6 +15,7 @@
  ***********************************************************************/
 
 #include "tab_log.h"
+#include "../macros.h"
 
 #include "dialog.h"
 
@@ -35,10 +36,10 @@ namespace Avogadro {
     m_dialog = parent;
 
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(m_dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
     connect(m_dialog, SIGNAL(tabsUpdateGUI()),
             this, SLOT(updateGUI()));
     connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
@@ -56,16 +57,12 @@ namespace Avogadro {
     //qDebug() << "TabSys::~TabSys() called";
   }
 
-  void TabLog::writeSettings() {
-    //qDebug() << "TabLog::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-    // Nothing to do!
+  void TabLog::writeSettings(const QString &) {
+
   }
 
-  void TabLog::readSettings() {
-    //qDebug() << "TabLog::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-    // Nothing to do!
+  void TabLog::readSettings(const QString &) {
+
   }
 
   void TabLog::updateGUI() {

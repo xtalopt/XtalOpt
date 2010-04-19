@@ -21,7 +21,7 @@
      </property>
      <layout class="QGridLayout" name="gridLayout_6">
       <item row="1" column="1" colspan="2">
-       <widget class="QLineEdit" name="edit_launch">
+       <widget class="QLineEdit" name="edit_qsub">
         <property name="toolTip">
          <string>Command used to submit jobs to the PBS queue. Usually qsub.</string>
         </property>
@@ -39,17 +39,17 @@
          <string>Queue submit program:</string>
         </property>
         <property name="buddy">
-         <cstring>edit_launch</cstring>
+         <cstring>edit_qsub</cstring>
         </property>
        </widget>
       </item>
-      <item row="4" column="0" colspan="5">
+      <item row="3" column="0" colspan="5">
        <widget class="QGroupBox" name="cb_remote">
         <property name="title">
-         <string>Use &amp;remote server to run calculations</string>
+         <string>&amp;Remote server settings</string>
         </property>
         <property name="checkable">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
         <property name="checked">
          <bool>false</bool>
@@ -98,7 +98,7 @@
        </widget>
       </item>
       <item row="1" column="4">
-       <widget class="QLineEdit" name="edit_check">
+       <widget class="QLineEdit" name="edit_qstat">
         <property name="toolTip">
          <string>Command used to check the PBS queue. Use qstat.</string>
         </property>
@@ -139,12 +139,12 @@
          <string>Queue checking program:</string>
         </property>
         <property name="buddy">
-         <cstring>edit_check</cstring>
+         <cstring>edit_qstat</cstring>
         </property>
        </widget>
       </item>
       <item row="0" column="4">
-       <widget class="QLineEdit" name="edit_base">
+       <widget class="QLineEdit" name="edit_description">
         <property name="toolTip">
          <string>Base name of individual structure files.
 
@@ -152,12 +152,12 @@ Final name will be:
 [base name][generation number]x[id number]</string>
         </property>
         <property name="text">
-         <string>opt-</string>
+         <string/>
         </property>
        </widget>
       </item>
       <item row="0" column="3">
-       <widget class="QLabel" name="label_base">
+       <widget class="QLabel" name="label_description">
         <property name="toolTip">
          <string>Base name of individual structure files.
 
@@ -165,10 +165,10 @@ Final name will be:
 [base name][generation number]x[id number]</string>
         </property>
         <property name="text">
-         <string>Base Name:</string>
+         <string>Optimization description:</string>
         </property>
         <property name="buddy">
-         <cstring>edit_base</cstring>
+         <cstring>edit_description</cstring>
         </property>
        </widget>
       </item>
@@ -195,7 +195,7 @@ Final name will be:
         </property>
        </widget>
       </item>
-      <item row="5" column="0">
+      <item row="4" column="0">
        <spacer name="verticalSpacer">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
@@ -208,19 +208,6 @@ Final name will be:
         </property>
        </spacer>
       </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_gulp">
-        <property name="text">
-         <string>Path to &amp;GULP:</string>
-        </property>
-        <property name="buddy">
-         <cstring>edit_gulp</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1" colspan="4">
-       <widget class="QLineEdit" name="edit_gulp"/>
-      </item>
      </layout>
     </widget>
    </item>
@@ -228,11 +215,10 @@ Final name will be:
  </widget>
  <tabstops>
   <tabstop>edit_path</tabstop>
-  <tabstop>edit_base</tabstop>
-  <tabstop>edit_launch</tabstop>
-  <tabstop>edit_check</tabstop>
+  <tabstop>edit_description</tabstop>
+  <tabstop>edit_qsub</tabstop>
+  <tabstop>edit_qstat</tabstop>
   <tabstop>edit_qdel</tabstop>
-  <tabstop>edit_gulp</tabstop>
   <tabstop>cb_remote</tabstop>
   <tabstop>edit_host</tabstop>
   <tabstop>edit_username</tabstop>

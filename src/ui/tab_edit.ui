@@ -17,7 +17,7 @@
    <item row="2" column="0" colspan="4">
     <widget class="QListWidget" name="list_opt"/>
    </item>
-   <item row="0" column="4" rowspan="9">
+   <item row="0" column="4" rowspan="14">
     <widget class="QTextEdit" name="edit_edit"/>
    </item>
    <item row="1" column="0">
@@ -30,28 +30,7 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="0" colspan="2">
-    <widget class="QPushButton" name="push_add">
-     <property name="text">
-      <string>Add..</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="2">
-    <widget class="QPushButton" name="push_remove">
-     <property name="text">
-      <string>Remove...</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="3">
-    <widget class="QPushButton" name="push_help">
-     <property name="text">
-      <string>&amp;Help</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="2" colspan="2">
+   <item row="1" column="1" colspan="3">
     <widget class="QComboBox" name="combo_template">
      <item>
       <property name="text">
@@ -75,47 +54,47 @@
      </item>
     </widget>
    </item>
-   <item row="5" column="0">
+   <item row="10" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
       <string>user1:</string>
      </property>
     </widget>
    </item>
-   <item row="6" column="0">
+   <item row="11" column="0">
     <widget class="QLabel" name="label_2">
      <property name="text">
       <string>user2:</string>
      </property>
     </widget>
    </item>
-   <item row="7" column="0">
+   <item row="12" column="0">
     <widget class="QLabel" name="label_3">
      <property name="text">
       <string>user3:</string>
      </property>
     </widget>
    </item>
-   <item row="8" column="0">
+   <item row="13" column="0">
     <widget class="QLabel" name="label_4">
      <property name="text">
       <string>user4:</string>
      </property>
     </widget>
    </item>
-   <item row="5" column="1" colspan="3">
+   <item row="10" column="1" colspan="3">
     <widget class="QLineEdit" name="edit_user1"/>
    </item>
-   <item row="6" column="1" colspan="3">
+   <item row="11" column="1" colspan="3">
     <widget class="QLineEdit" name="edit_user2"/>
    </item>
-   <item row="7" column="1" colspan="3">
+   <item row="12" column="1" colspan="3">
     <widget class="QLineEdit" name="edit_user3"/>
    </item>
-   <item row="8" column="1" colspan="3">
+   <item row="13" column="1" colspan="3">
     <widget class="QLineEdit" name="edit_user4"/>
    </item>
-   <item row="0" column="6" rowspan="9">
+   <item row="0" column="6" rowspan="14">
     <widget class="QListWidget" name="list_POTCARs"/>
    </item>
    <item row="0" column="0">
@@ -128,7 +107,7 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="2" colspan="2">
+   <item row="0" column="1" colspan="3">
     <widget class="QComboBox" name="combo_optType">
      <item>
       <property name="text">
@@ -147,15 +126,55 @@
      </item>
     </widget>
    </item>
+   <item row="3" column="0" rowspan="2" colspan="4">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="push_add">
+       <property name="text">
+        <string>Add..</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="push_remove">
+       <property name="text">
+        <string>Remove...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="push_help">
+       <property name="text">
+        <string>&amp;Help</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="8" column="0" rowspan="2" colspan="4">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QPushButton" name="push_saveScheme">
+       <property name="text">
+        <string>&amp;Save Opt Scheme</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="push_loadScheme">
+       <property name="text">
+        <string>&amp;Load Opt Scheme</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
   </layout>
  </widget>
  <tabstops>
   <tabstop>combo_optType</tabstop>
   <tabstop>combo_template</tabstop>
   <tabstop>list_opt</tabstop>
-  <tabstop>push_add</tabstop>
-  <tabstop>push_remove</tabstop>
-  <tabstop>push_help</tabstop>
   <tabstop>edit_user1</tabstop>
   <tabstop>edit_user2</tabstop>
   <tabstop>edit_user3</tabstop>

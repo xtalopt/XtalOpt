@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -17,7 +17,8 @@
 #include "tab_progress.h"
 
 #include "dialog.h"
-#include "../optimizers.h"
+#include "../optimizer.h"
+#include "../macros.h"
 
 #include <QMenu>
 #include <QTimer>
@@ -52,10 +53,10 @@ namespace Avogadro {
     rowTracking = true;
 
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(m_dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
     connect(m_dialog, SIGNAL(tabsUpdateGUI()),
             this, SLOT(updateGUI()));
     connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
@@ -111,16 +112,18 @@ namespace Avogadro {
     delete m_timer;
   }
 
-  void TabProgress::writeSettings() {
-    //qDebug() << "TabProgress::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-    // Nothing to do!
+  void TabProgress::writeSettings(const QString &filename) {
+    SETTINGS(filename);
+    settings->beginGroup("xtalopt/progress");
+    settings->setValue("refreshTime", ui.spin_period->value());
+    settings->endGroup();      
   }
 
-  void TabProgress::readSettings() {
-    //qDebug() << "TabProgress::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-    // Nothing to do!
+  void TabProgress::readSettings(const QString &filename) {
+    SETTINGS(filename);
+    settings->beginGroup("xtalopt/progress");
+    ui.spin_period->setValue(settings->value("refreshTime", 1).toInt());
+    settings->endGroup();      
   }
 
   void TabProgress::updateGUI() {
@@ -257,7 +260,7 @@ namespace Avogadro {
     }
 
     QString time;
-    uint totalOptSteps = Optimizer::totalOptSteps(m_opt);
+    uint totalOptSteps = m_opt->optimizer()->getNumberOfOptSteps();
     QBrush brush (Qt::white);
 
     // Get queue data
@@ -287,7 +290,7 @@ namespace Avogadro {
     switch (xtal->getStatus()) {
     case Xtal::InProcess: {
       xtalLocker.unlock();
-      Optimizer::JobState state = Optimizer::getStatus(xtal, m_opt);
+      Optimizer::JobState state = m_opt->optimizer()->getStatus(xtal);
       xtalLocker.relock();
       switch (state) {
       case Optimizer::Running:
@@ -508,7 +511,7 @@ namespace Avogadro {
                                        "Select optimization step to restart from:",
                                        optstep,
                                        1,
-                                       Optimizer::totalOptSteps(m_opt),
+                                       m_opt->optimizer()->getNumberOfOptSteps(),
                                        1,
                                        &ok);
     if (!ok) return;
@@ -524,7 +527,7 @@ namespace Avogadro {
     if ( m_context_xtal->getStatus() == Xtal::InProcess ||
          m_context_xtal->getStatus() == Xtal::Submitted ) {
       locker.unlock();
-      Optimizer::deleteJob(m_context_xtal, m_opt);
+      m_opt->optimizer()->deleteJob(m_context_xtal);
       locker.relock();
     }
 
@@ -549,7 +552,7 @@ namespace Avogadro {
     // End job if currently running
     if ( m_context_xtal->getStatus() != Xtal::Optimized ) {
       locker.unlock();
-      Optimizer::deleteJob(m_context_xtal, m_opt);
+      m_opt->optimizer()->deleteJob(m_context_xtal);
       locker.relock();
       m_context_xtal->setStatus(Xtal::Killed);
     }
@@ -618,7 +621,7 @@ namespace Avogadro {
 
     // End job if currently running
     if (m_context_xtal->getJobID()) {
-      Optimizer::deleteJob(m_context_xtal, m_opt);
+      m_opt->optimizer()->deleteJob(m_context_xtal);
     }
 
     m_opt->replaceWithRandom(m_context_xtal, "manual");

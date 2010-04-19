@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -15,6 +15,7 @@
  ***********************************************************************/
 
 #include "tab_opt.h"
+#include "../macros.h"
 
 #include "dialog.h"
 
@@ -38,10 +39,10 @@ namespace Avogadro {
     m_dialog = parent;
 
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(m_dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
     connect(m_dialog, SIGNAL(tabsUpdateGUI()),
             this, SLOT(updateGUI()));
     connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
@@ -51,7 +52,7 @@ namespace Avogadro {
 
     // Optimization connections
     // Initial generation
-    connect(ui.spin_numStructures, SIGNAL(valueChanged(int)),
+    connect(ui.spin_numInitial, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
     // Seeds
     connect(ui.push_addSeed, SIGNAL(clicked()),
@@ -64,7 +65,7 @@ namespace Avogadro {
     // Search params
     connect(ui.spin_popSize, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
-    connect(ui.spin_genTotal, SIGNAL(valueChanged(int)),
+    connect(ui.spin_contStructs, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.cb_limitRunningJobs, SIGNAL(stateChanged(int)),
             this, SLOT(updateOptimizationInfo()));
@@ -83,29 +84,29 @@ namespace Avogadro {
     connect(ui.push_dup_reset, SIGNAL(clicked()),
             m_opt, SLOT(resetDuplicates()));
 
-    // Heredity
-    connect(ui.spin_p_her, SIGNAL(valueChanged(int)),
+    // Crossover
+    connect(ui.spin_p_cross, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
-    connect(ui.spin_her_minimumContribution, SIGNAL(valueChanged(int)),
-            this, SLOT(updateOptimizationInfo()));
-
-    // Mutation
-    connect(ui.spin_p_mut, SIGNAL(valueChanged(int)),
-            this, SLOT(updateOptimizationInfo()));
-    connect(ui.spin_mut_strainStdev_min, SIGNAL(valueChanged(double)),
-            this, SLOT(updateOptimizationInfo()));
-    connect(ui.spin_mut_strainStdev_max, SIGNAL(valueChanged(double)),
-            this, SLOT(updateOptimizationInfo()));
-    connect(ui.spin_mut_amp_min, SIGNAL(valueChanged(double)),
-            this, SLOT(updateOptimizationInfo()));
-    connect(ui.spin_mut_amp_max, SIGNAL(valueChanged(double)),
-            this, SLOT(updateOptimizationInfo()));
-    connect(ui.spin_mut_per1, SIGNAL(valueChanged(int)),
-            this, SLOT(updateOptimizationInfo()));
-    connect(ui.spin_mut_per2, SIGNAL(valueChanged(int)),
+    connect(ui.spin_cross_minimumContribution, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
 
-    // Permutation
+    // Stripple
+    connect(ui.spin_p_strip, SIGNAL(valueChanged(int)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_strip_strainStdev_min, SIGNAL(valueChanged(double)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_strip_strainStdev_max, SIGNAL(valueChanged(double)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_strip_amp_min, SIGNAL(valueChanged(double)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_strip_amp_max, SIGNAL(valueChanged(double)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_strip_per1, SIGNAL(valueChanged(int)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_strip_per2, SIGNAL(valueChanged(int)),
+            this, SLOT(updateOptimizationInfo()));
+
+    // Permustrain
     connect(ui.spin_p_perm, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.spin_perm_strainStdev_max, SIGNAL(valueChanged(double)),
@@ -119,91 +120,99 @@ namespace Avogadro {
     //qDebug() << "TabOpt::~TabOpt() called";
   }
 
-  void TabOpt::writeSettings() {
-    //qDebug() << "TabOpt::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabOpt::writeSettings(const QString &filename) {
+    SETTINGS(filename);
+
+    settings->beginGroup("xtalopt/opt/");
 
     // Initial generation
-    settings.setValue("xtalopt/dialog/opt/numStructs",		m_opt->numInitial);
+    settings->setValue("opt/numInitial",	m_opt->numInitial);
 
     // Search parameters
-    settings.setValue("xtalopt/dialog/opt/popSize",		m_opt->popSize);
-    settings.setValue("xtalopt/dialog/opt/genTotal",		m_opt->genTotal);
-    settings.setValue("xtalopt/dialog/opt/limitRunningJobs",    m_opt->limitRunningJobs);
-    settings.setValue("xtalopt/dialog/opt/runningJobLimit",     m_opt->runningJobLimit);
-    settings.setValue("xtalopt/dialog/opt/failLimit",		m_opt->failLimit);
-    settings.setValue("xtalopt/dialog/opt/failAction",		m_opt->failAction);
+    settings->setValue("opt/popSize",		m_opt->popSize);
+    settings->setValue("opt/contStructs",	m_opt->contStructs);
+    settings->setValue("opt/limitRunningJobs",  m_opt->limitRunningJobs);
+    settings->setValue("opt/runningJobLimit",   m_opt->runningJobLimit);
+    settings->setValue("opt/failLimit",		m_opt->failLimit);
+    settings->setValue("opt/failAction",	m_opt->failAction);
 
     // Duplicates
-    settings.setValue("xtalopt/dialog/tol/enthalpy",		m_opt->tol_enthalpy);
-    settings.setValue("xtalopt/dialog/tol/volume",		m_opt->tol_volume);
+    settings->setValue("tol/enthalpy",		m_opt->tol_enthalpy);
+    settings->setValue("tol/volume",		m_opt->tol_volume);
 
-    // Heredity
-    settings.setValue("xtalopt/dialog/opt/p_her",		m_opt->p_her);
-    settings.setValue("xtalopt/dialog/opt/her_minimumContribution",m_opt->her_minimumContribution);
+    // Crossover
+    settings->setValue("opt/p_cross",		m_opt->p_cross);
+    settings->setValue("opt/cross_minimumContribution",m_opt->cross_minimumContribution);
 
-    // Mutation
-    settings.setValue("xtalopt/dialog/opt/p_mut",		m_opt->p_mut);
-    settings.setValue("xtalopt/dialog/opt/mut_strainStdev_min",	m_opt->mut_strainStdev_min);
-    settings.setValue("xtalopt/dialog/opt/mut_strainStdev_max",	m_opt->mut_strainStdev_max);
-    settings.setValue("xtalopt/dialog/opt/mut_amp_min",		m_opt->mut_amp_min);
-    settings.setValue("xtalopt/dialog/opt/mut_amp_max",		m_opt->mut_amp_max);
-    settings.setValue("xtalopt/dialog/opt/mut_per1",		m_opt->mut_per1);
-    settings.setValue("xtalopt/dialog/opt/mut_per2",		m_opt->mut_per2);
+    // Stripple
+    settings->setValue("opt/p_strip",		m_opt->p_strip);
+    settings->setValue("opt/strip_strainStdev_min",	m_opt->strip_strainStdev_min);
+    settings->setValue("opt/strip_strainStdev_max",	m_opt->strip_strainStdev_max);
+    settings->setValue("opt/strip_amp_min",	m_opt->strip_amp_min);
+    settings->setValue("opt/strip_amp_max",	m_opt->strip_amp_max);
+    settings->setValue("opt/strip_per1",	m_opt->strip_per1);
+    settings->setValue("opt/strip_per2",	m_opt->strip_per2);
 
-    // Permutation
-    settings.setValue("xtalopt/dialog/opt/p_perm",		m_opt->p_perm);
-    settings.setValue("xtalopt/dialog/opt/perm_strainStdev_max",m_opt->perm_strainStdev_max);
-    settings.setValue("xtalopt/dialog/opt/perm_ex",		m_opt->perm_ex);
+    // Permustrain
+    settings->setValue("opt/p_perm",		m_opt->p_perm);
+    settings->setValue("opt/perm_strainStdev_max",m_opt->perm_strainStdev_max);
+    settings->setValue("opt/perm_ex",		m_opt->perm_ex);
+
+    settings->endGroup();
   }
 
-  void TabOpt::readSettings() {
-    //qDebug() << "TabOpt::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabOpt::readSettings(const QString &filename) {
+    SETTINGS(filename);
+
+    settings->beginGroup("xtalopt/opt/");
+
 
     // Initial generation
-    ui.spin_numStructures->setValue(	settings.value("xtalopt/dialog/opt/numStructs",		20).toInt()     );
+    ui.spin_numInitial->setValue(	settings->value("opt/numInitial",	20).toInt()     );
 
     // Search parameters
-    ui.spin_popSize->setValue(		settings.value("xtalopt/dialog/opt/popSize",		60).toUInt()    );
-    ui.spin_genTotal->setValue(		settings.value("xtalopt/dialog/opt/genTotal",		10).toUInt()    );
-    ui.cb_limitRunningJobs->setChecked(	settings.value("xtalopt/dialog/opt/limitRunningJobs"	,false).toBool());
-    ui.spin_runningJobLimit->setValue(	settings.value("xtalopt/dialog/opt/runningJobLimit",	1).toUInt()    );
-    ui.spin_failLimit->setValue(	settings.value("xtalopt/dialog/opt/failLimit",		5).toUInt()    );
-    ui.combo_failAction->setCurrentIndex(settings.value("xtalopt/dialog/opt/failAction",	0).toUInt()    );
+    ui.spin_popSize->setValue(		settings->value("opt/popSize",		20).toUInt()    );
+    ui.spin_contStructs->setValue(	settings->value("opt/contStructs",	10).toUInt()    );
+    ui.cb_limitRunningJobs->setChecked(	settings->value("opt/limitRunningJobs"	,false).toBool());
+    ui.spin_runningJobLimit->setValue(	settings->value("opt/runningJobLimit",	1).toUInt()    );
+    ui.spin_failLimit->setValue(	settings->value("opt/failLimit",	2).toUInt()    );
+    ui.combo_failAction->setCurrentIndex(settings->value("opt/failAction",	XtalOpt::FA_Randomize).toUInt()    );
 
     // Duplicates
-    ui.spin_tol_enthalpy->setValue(	settings.value("xtalopt/dialog/tol/enthalpy",		1e-3).toDouble());
-    ui.spin_tol_volume->setValue(       settings.value("xtalopt/dialog/tol/volume",		1e-3).toDouble());
+    ui.spin_tol_enthalpy->setValue(	settings->value("tol/enthalpy",		1e-2).toDouble());
+    ui.spin_tol_volume->setValue(       settings->value("tol/volume",		1e-2).toDouble());
 
-    // Heredity
-    ui.spin_p_her->setValue(		settings.value("xtalopt/dialog/opt/p_her",		50).toUInt()    );
-    ui.spin_her_minimumContribution->setValue(settings.value("xtalopt/dialog/opt/her_minimumContribution",20).toUInt());
+    // Crossover
+    ui.spin_p_cross->setValue(		settings->value("opt/p_cross",		15).toUInt()    );
+    ui.spin_cross_minimumContribution->setValue(settings->value("opt/cross_minimumContribution",25).toUInt());
 
-    // Mutation
-    ui.spin_p_mut->setValue(		settings.value("xtalopt/dialog/opt/p_mut",		15).toUInt()    );
-    ui.spin_mut_strainStdev_min->setValue( settings.value("xtalopt/dialog/opt/mut_strainStdev_min", 0.2).toDouble());
-    ui.spin_mut_strainStdev_max->setValue( settings.value("xtalopt/dialog/opt/mut_strainStdev_max", 1.0).toDouble());
-    ui.spin_mut_amp_min->setValue(	settings.value("xtalopt/dialog/opt/mut_amp_min",	0.2).toDouble() );
-    ui.spin_mut_amp_max->setValue(	settings.value("xtalopt/dialog/opt/mut_amp_max",	1.0).toDouble() );
-    ui.spin_mut_per1->setValue(		settings.value("xtalopt/dialog/opt/mut_per1",		1).toUInt()     );
-    ui.spin_mut_per2->setValue(		settings.value("xtalopt/dialog/opt/mut_per2",		1).toUInt()     );
+    // Stripple
+    ui.spin_p_strip->setValue(		settings->value("opt/p_strip",		50).toUInt()    );
+    ui.spin_strip_strainStdev_min->setValue( settings->value("opt/strip_strainStdev_min", 0.5).toDouble());
+    ui.spin_strip_strainStdev_max->setValue( settings->value("opt/strip_strainStdev_max", 0.5).toDouble());
+    ui.spin_strip_amp_min->setValue(	settings->value("opt/strip_amp_min",	0.5).toDouble() );
+    ui.spin_strip_amp_max->setValue(	settings->value("opt/strip_amp_max",	1.0).toDouble() );
+    ui.spin_strip_per1->setValue(		settings->value("opt/strip_per1",		1).toUInt()     );
+    ui.spin_strip_per2->setValue(		settings->value("opt/strip_per2",		1).toUInt()     );
 
-    // Permutation
-    ui.spin_p_perm->setValue(		settings.value("xtalopt/dialog/opt/p_perm",		15).toUInt()     );
-    ui.spin_perm_strainStdev_max->setValue(settings.value("xtalopt/dialog/opt/perm_strainStdev_max",0.5).toDouble());
-    ui.spin_perm_ex->setValue(		settings.value("xtalopt/dialog/opt/perm_ex",			2).toUInt()     );
+    // Permustrain
+    ui.spin_p_perm->setValue(		settings->value("opt/p_perm",		35).toUInt()     );
+    ui.spin_perm_strainStdev_max->setValue(settings->value("opt/perm_strainStdev_max",0.5).toDouble());
+    ui.spin_perm_ex->setValue(		settings->value("opt/perm_ex",		4).toUInt()     );
+
+    settings->endGroup();
+
     updateOptimizationInfo();
   }
 
   void TabOpt::updateGUI() {
     //qDebug() << "TabOpt::updateGUI() called";
     // Initial generation
-    ui.spin_numStructures->setValue(	m_opt->numInitial);
+    ui.spin_numInitial->setValue(	m_opt->numInitial);
 
     // Search parameters
     ui.spin_popSize->setValue(		m_opt->popSize);
-    ui.spin_genTotal->setValue(		m_opt->genTotal);
+    ui.spin_contStructs->setValue(	m_opt->contStructs);
     ui.cb_limitRunningJobs->setChecked(	m_opt->limitRunningJobs);
     ui.spin_runningJobLimit->setValue(	m_opt->runningJobLimit);
     ui.spin_failLimit->setValue(	m_opt->failLimit);
@@ -213,20 +222,20 @@ namespace Avogadro {
     ui.spin_tol_enthalpy->setValue(	m_opt->tol_enthalpy);
     ui.spin_tol_volume->setValue(       m_opt->tol_volume);
 
-    // Heredity
-    ui.spin_p_her->setValue(		m_opt->p_her);
-    ui.spin_her_minimumContribution->setValue(m_opt->her_minimumContribution);
+    // Crossover
+    ui.spin_p_cross->setValue(		m_opt->p_cross);
+    ui.spin_cross_minimumContribution->setValue(m_opt->cross_minimumContribution);
 
-    // Mutation
-    ui.spin_p_mut->setValue(		m_opt->p_mut);
-    ui.spin_mut_strainStdev_min->setValue( m_opt->mut_strainStdev_min);
-    ui.spin_mut_strainStdev_max->setValue( m_opt->mut_strainStdev_max);
-    ui.spin_mut_amp_min->setValue(	m_opt->mut_amp_min);
-    ui.spin_mut_amp_max->setValue(	m_opt->mut_amp_max);
-    ui.spin_mut_per1->setValue(		m_opt->mut_per1);
-    ui.spin_mut_per2->setValue(		m_opt->mut_per2);
+    // Stripple
+    ui.spin_p_strip->setValue(		m_opt->p_strip);
+    ui.spin_strip_strainStdev_min->setValue( m_opt->strip_strainStdev_min);
+    ui.spin_strip_strainStdev_max->setValue( m_opt->strip_strainStdev_max);
+    ui.spin_strip_amp_min->setValue(	m_opt->strip_amp_min);
+    ui.spin_strip_amp_max->setValue(	m_opt->strip_amp_max);
+    ui.spin_strip_per1->setValue(		m_opt->strip_per1);
+    ui.spin_strip_per2->setValue(		m_opt->strip_per2);
 
-    // Permutation
+    // Permustrain
     ui.spin_p_perm->setValue(	m_opt->p_perm);
     ui.spin_perm_strainStdev_max->setValue( m_opt->perm_strainStdev_max);
     ui.spin_perm_ex->setValue(	m_opt->perm_ex);
@@ -239,7 +248,7 @@ namespace Avogadro {
 
   void TabOpt::lockGUI() {
     //qDebug() << "TabPlot::lockGUI() called";
-    ui.spin_numStructures->setDisabled(true);
+    ui.spin_numInitial->setDisabled(true);
     ui.list_seeds->setDisabled(true);
     ui.push_addSeed->setDisabled(true);
     ui.push_addSeed->setDisabled(true);
@@ -248,21 +257,21 @@ namespace Avogadro {
 
   void TabOpt::updateOptimizationInfo() {
     //qDebug() << "TabOpt::updateOptimizationInfo( ) called";
-    m_opt->p_her                = ui.spin_p_her->value();
-    m_opt->p_mut		= ui.spin_p_mut->value();
-    m_opt->p_perm		= 100 - (m_opt->p_her + m_opt->p_mut);
+    m_opt->p_cross                = ui.spin_p_cross->value();
+    m_opt->p_strip		= ui.spin_p_strip->value();
+    m_opt->p_perm		= 100 - (m_opt->p_cross + m_opt->p_strip);
     ui.spin_p_perm->blockSignals(true);
     ui.spin_p_perm->setValue(m_opt->p_perm);
     ui.spin_p_perm->blockSignals(false);
 
     // Initial generation
-    m_opt->numInitial           = ui.spin_numStructures->value();
+    m_opt->numInitial           = ui.spin_numInitial->value();
     if (int(m_opt->numInitial) < ui.list_seeds->count())
-      ui.spin_numStructures->setValue(ui.list_seeds->count());
+      ui.spin_numInitial->setValue(ui.list_seeds->count());
 
     // Search parameters
     m_opt->popSize              = ui.spin_popSize->value();
-    m_opt->genTotal             = ui.spin_genTotal->value();
+    m_opt->contStructs          = ui.spin_contStructs->value();
     m_opt->runningJobLimit	= ui.spin_runningJobLimit->value();
     m_opt->limitRunningJobs	= ui.cb_limitRunningJobs->isChecked();
     m_opt->failLimit		= ui.spin_failLimit->value();
@@ -272,18 +281,18 @@ namespace Avogadro {
     m_opt->tol_enthalpy         = ui.spin_tol_enthalpy->value();
     m_opt->tol_volume           = ui.spin_tol_volume->value();
 
-    // Heredity
-    m_opt->her_minimumContribution=ui.spin_her_minimumContribution->value();
+    // Crossover
+    m_opt->cross_minimumContribution=ui.spin_cross_minimumContribution->value();
 
-    // Mutation
-    m_opt->mut_strainStdev_min  = ui.spin_mut_strainStdev_min->value();
-    m_opt->mut_strainStdev_max  = ui.spin_mut_strainStdev_max->value();
-    m_opt->mut_amp_min          = ui.spin_mut_amp_min->value();
-    m_opt->mut_amp_max          = ui.spin_mut_amp_max->value();
-    m_opt->mut_per1             = ui.spin_mut_per1->value();
-    m_opt->mut_per2             = ui.spin_mut_per2->value();
+    // Stripple
+    m_opt->strip_strainStdev_min  = ui.spin_strip_strainStdev_min->value();
+    m_opt->strip_strainStdev_max  = ui.spin_strip_strainStdev_max->value();
+    m_opt->strip_amp_min          = ui.spin_strip_amp_min->value();
+    m_opt->strip_amp_max          = ui.spin_strip_amp_max->value();
+    m_opt->strip_per1             = ui.spin_strip_per1->value();
+    m_opt->strip_per2             = ui.spin_strip_per2->value();
 
-    // Permutation
+    // Permustrain
     m_opt->perm_strainStdev_max	= ui.spin_perm_strainStdev_max->value();
     m_opt->perm_ex              = ui.spin_perm_ex->value();
   }

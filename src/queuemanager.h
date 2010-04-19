@@ -21,7 +21,7 @@
 
 #include "structure.h"
 #include "tracker.h"
-#include "optimizers.h"
+#include "optimizer.h"
 
 #include <QDebug>
 #include <QReadWriteLock>
@@ -37,7 +37,7 @@ namespace Avogadro {
 
   public:
     explicit QueueManager(XtalOpt *opt, Tracker *tracker);
-    virtual ~QueueManager() {};
+    virtual ~QueueManager();
 
 
   signals:
@@ -52,7 +52,7 @@ namespace Avogadro {
     void reset();
     void checkPopulation();
     void checkRunning();
-    void updateQueue(int time = 15);
+    void updateQueue(int time = 10);
     void prepareStructureForNextOptStep(Structure *s);
     void handleStructureError(Structure *s);
     void updateStructure(Structure *s);
@@ -93,6 +93,8 @@ namespace Avogadro {
     XtalOpt *m_opt; // TODO change this
 
     Tracker *m_tracker;
+
+    QList<Tracker*> trackerList;
     Tracker m_runningTracker;
     Tracker m_submissionPendingTracker;
     Tracker m_startPendingTracker;

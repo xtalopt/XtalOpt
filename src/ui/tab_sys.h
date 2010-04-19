@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -40,8 +40,8 @@ namespace Avogadro {
     // used to lock bits of the GUI that shouldn't be change when a
     // session starts. This will also pass the call on to all tabs.
     void lockGUI();
-    void readSettings();
-    void writeSettings();
+    void readSettings(const QString &filename = "");
+    void writeSettings(const QString &filename = "");
     void updateGUI();
     void disconnectGUI();
     void updateSystemInfo();

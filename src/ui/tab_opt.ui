@@ -44,12 +44,12 @@ Default: 20
          <string>Initial structures:</string>
         </property>
         <property name="buddy">
-         <cstring>spin_numStructures</cstring>
+         <cstring>spin_numInitial</cstring>
         </property>
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QSpinBox" name="spin_numStructures">
+       <widget class="QSpinBox" name="spin_numInitial">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
           <horstretch>0</horstretch>
@@ -183,12 +183,12 @@ Default: 10</string>
          <string>Continuous structures:</string>
         </property>
         <property name="buddy">
-         <cstring>spin_genTotal</cstring>
+         <cstring>spin_contStructs</cstring>
         </property>
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QSpinBox" name="spin_genTotal">
+       <widget class="QSpinBox" name="spin_contStructs">
         <property name="toolTip">
          <string>Number of structures to be kept &quot;in progress&quot; during after the initial generation.
 
@@ -422,12 +422,12 @@ Default: 85</string>
          <string>Percent new crossover:</string>
         </property>
         <property name="buddy">
-         <cstring>spin_p_her</cstring>
+         <cstring>spin_p_cross</cstring>
         </property>
        </widget>
       </item>
       <item row="2" column="1">
-       <widget class="QSpinBox" name="spin_p_her">
+       <widget class="QSpinBox" name="spin_p_cross">
         <property name="toolTip">
          <string>Percentage of new structures to be created from the crossover operator.
 
@@ -450,12 +450,12 @@ Default: 15</string>
          <string>Minimum contribution:</string>
         </property>
         <property name="buddy">
-         <cstring>spin_her_minimumContribution</cstring>
+         <cstring>spin_cross_minimumContribution</cstring>
         </property>
        </widget>
       </item>
       <item row="3" column="1">
-       <widget class="QSpinBox" name="spin_her_minimumContribution">
+       <widget class="QSpinBox" name="spin_cross_minimumContribution">
         <property name="toolTip">
          <string>This is the smallest contribution a parent may make to the offspring during crossover.
 
@@ -500,7 +500,7 @@ Default: 25%</string>
          <string>Percent new stripple:</string>
         </property>
         <property name="buddy">
-         <cstring>spin_p_mut</cstring>
+         <cstring>spin_p_strip</cstring>
         </property>
        </widget>
       </item>
@@ -515,12 +515,12 @@ Default: 0.07</string>
          <string>Strain stdev range:</string>
         </property>
         <property name="buddy">
-         <cstring>spin_mut_strainStdev_min</cstring>
+         <cstring>spin_strip_strainStdev_min</cstring>
         </property>
        </widget>
       </item>
       <item row="0" column="1" colspan="2">
-       <widget class="QSpinBox" name="spin_p_mut">
+       <widget class="QSpinBox" name="spin_p_strip">
         <property name="toolTip">
          <string>Percentage of offspring structures that are generated from the stripple operator.
 
@@ -538,7 +538,7 @@ Default: 50%</string>
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QDoubleSpinBox" name="spin_mut_strainStdev_min">
+       <widget class="QDoubleSpinBox" name="spin_strip_strainStdev_min">
         <property name="toolTip">
          <string>Minimum standard deviation for the random elements in the strain matrix.
 
@@ -566,12 +566,12 @@ Default: 0.5</string>
          <string>Amplitude range:</string>
         </property>
         <property name="buddy">
-         <cstring>spin_mut_amp_min</cstring>
+         <cstring>spin_strip_amp_min</cstring>
         </property>
        </widget>
       </item>
       <item row="2" column="1">
-       <widget class="QDoubleSpinBox" name="spin_mut_amp_min">
+       <widget class="QDoubleSpinBox" name="spin_strip_amp_min">
         <property name="toolTip">
          <string>Minimum ripple amplitude.
 
@@ -599,12 +599,12 @@ Default: 0.5</string>
          <string>Waves in axis 2:</string>
         </property>
         <property name="buddy">
-         <cstring>spin_mut_per2</cstring>
+         <cstring>spin_strip_per2</cstring>
         </property>
        </widget>
       </item>
       <item row="3" column="1" colspan="2">
-       <widget class="QSpinBox" name="spin_mut_per1">
+       <widget class="QSpinBox" name="spin_strip_per1">
         <property name="toolTip">
          <string>Number of waves in one non-displaced direction for the ripple operator. You probably don't want to change this unless using an enormous unit cell.
 
@@ -616,7 +616,7 @@ Default: 1</string>
        </widget>
       </item>
       <item row="4" column="1" colspan="2">
-       <widget class="QSpinBox" name="spin_mut_per2">
+       <widget class="QSpinBox" name="spin_strip_per2">
         <property name="toolTip">
          <string>Number of waves in the other non-displaced direction for the ripple operator. You probably don't want to change this unless using an enormous unit cell.
 
@@ -633,7 +633,7 @@ Default: 1</string>
          <string>Waves in axis 1:</string>
         </property>
         <property name="buddy">
-         <cstring>spin_mut_per1</cstring>
+         <cstring>spin_strip_per1</cstring>
         </property>
        </widget>
       </item>
@@ -651,7 +651,7 @@ Default: 1</string>
        </spacer>
       </item>
       <item row="1" column="2">
-       <widget class="QDoubleSpinBox" name="spin_mut_strainStdev_max">
+       <widget class="QDoubleSpinBox" name="spin_strip_strainStdev_max">
         <property name="toolTip">
          <string>Maximum standard deviation for the random elements in the strain matrix.
 
@@ -674,7 +674,7 @@ Default: 0.5</string>
        </widget>
       </item>
       <item row="2" column="2">
-       <widget class="QDoubleSpinBox" name="spin_mut_amp_max">
+       <widget class="QDoubleSpinBox" name="spin_strip_amp_max">
         <property name="toolTip">
          <string>Maximum ripple amplitude.
 
@@ -818,25 +818,25 @@ Default: 0.5</string>
   </layout>
  </widget>
  <tabstops>
-  <tabstop>spin_numStructures</tabstop>
+  <tabstop>spin_numInitial</tabstop>
   <tabstop>list_seeds</tabstop>
   <tabstop>push_addSeed</tabstop>
   <tabstop>push_removeSeed</tabstop>
   <tabstop>spin_popSize</tabstop>
-  <tabstop>spin_genTotal</tabstop>
+  <tabstop>spin_contStructs</tabstop>
   <tabstop>cb_limitRunningJobs</tabstop>
   <tabstop>spin_tol_enthalpy</tabstop>
   <tabstop>spin_tol_volume</tabstop>
   <tabstop>push_dup_reset</tabstop>
-  <tabstop>spin_p_her</tabstop>
-  <tabstop>spin_her_minimumContribution</tabstop>
-  <tabstop>spin_p_mut</tabstop>
-  <tabstop>spin_mut_strainStdev_min</tabstop>
-  <tabstop>spin_mut_strainStdev_max</tabstop>
-  <tabstop>spin_mut_amp_min</tabstop>
-  <tabstop>spin_mut_amp_max</tabstop>
-  <tabstop>spin_mut_per1</tabstop>
-  <tabstop>spin_mut_per2</tabstop>
+  <tabstop>spin_p_cross</tabstop>
+  <tabstop>spin_cross_minimumContribution</tabstop>
+  <tabstop>spin_p_strip</tabstop>
+  <tabstop>spin_strip_strainStdev_min</tabstop>
+  <tabstop>spin_strip_strainStdev_max</tabstop>
+  <tabstop>spin_strip_amp_min</tabstop>
+  <tabstop>spin_strip_amp_max</tabstop>
+  <tabstop>spin_strip_per1</tabstop>
+  <tabstop>spin_strip_per2</tabstop>
   <tabstop>spin_p_perm</tabstop>
   <tabstop>spin_perm_strainStdev_max</tabstop>
   <tabstop>spin_perm_ex</tabstop>

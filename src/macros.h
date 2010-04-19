@@ -1,7 +1,7 @@
 /**********************************************************************
-  VASPOptimizer - Tools to interface with VASP
+  Macros - Some helpful definitions to simplify code
 
-  Copyright (C) 2009-2010 by David C. Lonie
+  Copyright (C) 2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -16,30 +16,11 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#ifndef VASPOPTIMIZER_H
-#define VASPOPTIMIZER_H
+#ifndef XTALOPTMACROS_H
+#define XTALOPTMACROS_H
 
-#include "../optimizer.h"
+#include <QSettings>
 
-#include <QObject>
-
-namespace Avogadro {
-  class Structure;
-  class XtalOpt;
-
-  class VASPOptimizer : public Optimizer
-  {
-    Q_OBJECT
-
-   public:
-    VASPOptimizer(XtalOpt *parent);
-    bool writeInputFiles(Structure *structure);
-    void readSettings(const QString &filename = "");
-    void writeTemplatesToSettings(const QString &filename = "");
-
-    void buildPOTCARs();
-  };
-
-} // end namespace Avogadro
+#define SETTINGS(f) QSettings *settings, pQS, rQS (f, QSettings::IniFormat); settings = (QString(f).isEmpty()) ? &pQS : &rQS;
 
 #endif

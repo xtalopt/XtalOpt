@@ -20,7 +20,7 @@
 
 #include "xtalopt.h" // Change this into opt and xtalopt
 #include "structure.h"
-#include "optimizers.h"
+#include "optimizer.h"
 
 #include <QDebug>
 #include <QtConcurrentRun>
@@ -40,6 +40,15 @@ namespace Avogadro {
     m_checkRunningPending = false;
 
     m_requestedStructures = 0;
+
+    trackerList.append(&m_runningTracker);
+    trackerList.append(&m_submissionPendingTracker);
+    trackerList.append(&m_startPendingTracker);
+    trackerList.append(&m_jobStartTracker);
+    trackerList.append(&m_nextOptStepTracker);
+    trackerList.append(&m_errorPendingTracker);
+    trackerList.append(&m_updatePendingTracker);
+    trackerList.append(&m_killPendingTracker);
 
     reset();
 
@@ -62,15 +71,20 @@ namespace Avogadro {
             this, SIGNAL(structureUpdated(Structure *)));
   }
 
+  QueueManager::~QueueManager()
+  {
+    while (m_checkPopulationPending) {};
+    m_checkPopulationPending = true;
+    while (m_checkRunningPending) {};
+    m_checkRunningPending = true;
+
+    reset();
+  }
+
   void QueueManager::reset() {
-    m_runningTracker.reset();
-    m_submissionPendingTracker.reset();
-    m_startPendingTracker.reset();
-    m_jobStartTracker.reset();
-    m_nextOptStepTracker.reset();
-    m_errorPendingTracker.reset();
-    m_updatePendingTracker.reset();
-    m_killPendingTracker.reset();
+    for (int i = 0; i < trackerList.size(); i++) {
+      trackerList.at(i)->reset();
+    }
   }
 
   void QueueManager::checkPopulation() {
@@ -102,32 +116,30 @@ namespace Avogadro {
       state = structure->getStatus();
       if (structure->getFailCount() != 0) fail++;
       structure->lock()->unlock();
+      // Count submitted structures
       if ( state == Structure::Submitted ||
            state == Structure::InProcess ){
+        m_runningTracker.append(structure);
         submitted++;
+      }
+      // Count running jobs and update trackers
+      if ( state != Structure::Optimized &&
+           state != Structure::Duplicate &&
+           state != Structure::WaitingForOptimization &&
+           state != Structure::Killed &&
+           state != Structure::Removed ) {
         running++;
-        m_submissionPendingTracker.remove(structure);
         m_runningTracker.append(structure);
       }
-      else if ( state != Structure::Optimized &&
-                state != Structure::Duplicate &&
-                state != Structure::WaitingForOptimization &&
-                state != Structure::Killed &&
-                state != Structure::Removed ) {
+      else if ( state == Structure::WaitingForOptimization ) {
         running++;
-        m_submissionPendingTracker.remove(structure);
         m_runningTracker.append(structure);
       }
       else if ( state == Structure::Optimized ) {
         optimized++;
-      }
-      else if ( state == Structure::WaitingForOptimization ) {
-        running++;
-        m_submissionPendingTracker.append(structure);
         m_runningTracker.remove(structure);
       }
       else {
-        m_submissionPendingTracker.remove(structure);
         m_runningTracker.remove(structure);
       }
     }
@@ -151,7 +163,7 @@ namespace Avogadro {
     m_jobStartTracker.unlock();
 
     // Generate requests
-    while (running + m_requestedStructures < m_opt->genTotal) {
+    while (running + m_requestedStructures < m_opt->contStructs) {
       emit needNewStructure();
       m_requestedStructures++;
     }
@@ -176,8 +188,16 @@ namespace Avogadro {
       return;
     }
 
-    // Get list of running and submitted structures
-    QList<Structure*> structures = getAllSubmittedStructures();
+    // Get list of running structures
+    QList<Structure*> structures = getAllRunningStructures();
+    Structure *s;
+    // Remove duplicates
+    for (int i = 0; i < structures.size(); i++) {
+      s = structures.at(i);
+      for (int j = i+1; j < structures.size(); j++) {
+        if (s == structures.at(j)) structures.removeAt(j);
+      }
+    }
 
     // prep variables
     Structure *structure = 0;
@@ -194,7 +214,7 @@ namespace Avogadro {
       switch (structure->getStatus()) {
       case Structure::InProcess: {
         structureLocker.unlock();
-        Optimizer::JobState state = Optimizer::getStatus(structure, m_opt);
+        Optimizer::JobState state = m_opt->optimizer()->getStatus(structure);
         structureLocker.relock();
         switch (state) {
         case Optimizer::Running:
@@ -205,7 +225,7 @@ namespace Avogadro {
         case Optimizer::Started:
           break;
         case Optimizer::Success:
-          prepareStructureForNextOptStep(structure);
+          updateStructure(structure);
           break;
         case Optimizer::Error:
           m_opt->warning(tr("Structure %1 has failed to perform local optimization (JobID = %2)")
@@ -218,7 +238,7 @@ namespace Avogadro {
       }
       case Structure::Submitted: {
         structureLocker.unlock();
-        Optimizer::JobState substate = Optimizer::getStatus(structure, m_opt);
+        Optimizer::JobState substate = m_opt->optimizer()->getStatus(structure);
         structureLocker.relock();
         switch (substate) {
         case Optimizer::Running:
@@ -271,7 +291,7 @@ namespace Avogadro {
 
     int elapsed = m_queueTimeStamp.secsTo(QDateTime::currentDateTime());
     if (elapsed < 0 || time < elapsed) {
-      if (!Optimizer::getQueueList(m_opt, m_queueData)) {
+      if (!m_opt->optimizer()->getQueueList(m_queueData)) {
         m_opt->warning("Cannot fetch queue -- check stderr");
       }
       m_queueTimeStamp = QDateTime::currentDateTime();
@@ -294,15 +314,16 @@ namespace Avogadro {
     }
     Structure *structure = nextOptStepList->takeFirst();
     QWriteLocker locker (structure->lock());
+    structure->stopOptTimer();
 
     // update optstep and relaunch if necessary
-    if (structure->getCurrentOptStep() < (uint)Optimizer::totalOptSteps(m_opt)) {
+    if (structure->getCurrentOptStep() < (uint)m_opt->optimizer()->getNumberOfOptSteps()) {
       structure->setCurrentOptStep(structure->getCurrentOptStep() + 1);
 
       // Update input files
       locker.unlock();
-      Optimizer::writeInputFiles(structure, m_opt);
-      m_runningTracker.remove(structure);
+      m_runningTracker.append(structure);
+      structure->setStatus(Structure::WaitingForOptimization);
       prepareStructureForSubmission(structure);
     }
     // Otherwise, it's done
@@ -328,12 +349,13 @@ namespace Avogadro {
     bool exists = false;
     int jobID;
     Structure *structure = m_errorPendingTracker.list()->takeFirst();
-    structure->addFailure();
 
     // Check if the  job is running under a  different JobID (Stranger
     // things have happened!)
-    jobID = Optimizer::checkIfJobNameExists(structure, m_opt, m_queueData, exists);
+    jobID = m_opt->optimizer()->checkIfJobNameExists(structure, m_queueData, exists);
     QWriteLocker locker (structure->lock());
+    structure->addFailure();
+    structure->stopOptTimer();
     if (exists) { // Mark the job as running and update the jobID
       m_opt->warning(tr("QueueManager::handleStructureError_: Reclaiming jobID %1 for structure %2")
               .arg(QString::number(jobID))
@@ -348,26 +370,24 @@ namespace Avogadro {
         case XtalOpt::FA_DoNothing:
         default:
           // resubmit job
-          m_runningTracker.remove(structure);
           prepareStructureForSubmission(structure);
           break;
         case XtalOpt::FA_KillIt:
           killStructure(structure);
           break;
         case XtalOpt::FA_Randomize:
+          structure->setStatus(Structure::Updating);
           locker.unlock();
+          m_errorPendingTracker.unlock();
           m_opt->replaceWithRandom(structure, tr("excessive failures"));
-          locker.relock();
           emit structureUpdated(structure);
           prepareStructureForSubmission(structure);
-          break;
+          return; // Return so as not to unlock the error tracker again
         }
       }
       else {
         // resubmit job
         locker.unlock();
-        Optimizer::writeInputFiles(structure, m_opt);
-        m_runningTracker.remove(structure);
         prepareStructureForSubmission(structure);
       }
     }
@@ -381,9 +401,12 @@ namespace Avogadro {
 
   void QueueManager::updateStructure_() {
     Structure *structure = 0;
-    if (m_updatePendingTracker.popFirst(structure))
+    if (!m_updatePendingTracker.popFirst(structure))
       return;
-    Optimizer::update(structure, m_opt);
+    structure->stopOptTimer();
+    m_opt->optimizer()->update(structure);
+    structure->setStatus(Structure::StepOptimized);
+    prepareStructureForNextOptStep(structure);
   }
 
   void QueueManager::prepareStructureForSubmission(Structure *s, int optStep) {
@@ -402,7 +425,7 @@ namespace Avogadro {
     }
 
     Structure *structure = m_submissionPendingTracker.list()->takeFirst();
-    Optimizer::writeInputFiles(structure, m_opt);
+    m_opt->optimizer()->writeInputFiles(structure);
 
     m_jobStartTracker.append(structure);
     m_runningTracker.append(structure);
@@ -422,13 +445,14 @@ namespace Avogadro {
     emit structureSubmitted(structure);
 
     // Make sure no mutexes are locked here -- this can take a while...
-    if (!Optimizer::startOptimization(structure, m_opt)) {
+    if (!m_opt->optimizer()->startOptimization(structure)) {
       m_opt->warning(tr("QueueManager::submitStructure_: Job did not run successfully for structure %1-%2.")
               .arg(structure->getIDString())
               .arg(structure->getCurrentOptStep()));
       structure->lock()->lockForWrite();
       structure->setStatus(Structure::Error);
       structure->lock()->unlock();
+      updateQueue(-1);
       return;
     }
   }
@@ -444,15 +468,16 @@ namespace Avogadro {
     if (!m_killPendingTracker.popFirst(structure)) {
       return;
     }
-
+    QWriteLocker locker (structure->lock());
+    structure->stopOptTimer();
     structure->setStatus(Structure::Killed);
     emit structureKilled(structure);
   }
 
   void QueueManager::stopJob(Structure *s) {
-    QtConcurrent::run(&Optimizer::deleteJob,
-                      s,
-                      m_opt);
+    QtConcurrent::run(m_opt->optimizer(),
+                      &Optimizer::deleteJob,
+                      s);
   }
 
   QList<Structure*> QueueManager::getAllRunningStructures() {

@@ -1,7 +1,7 @@
 /**********************************************************************
-  Tracker - Contains a list of structures
+  Tracker - A thread safe duplicate checking structure FIFO
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -34,8 +34,8 @@ namespace Avogadro {
     QReadWriteLock m_mutex;
     QList<Structure*> m_list;
   public:
-    Tracker() {};
-    virtual ~Tracker() {}; // Does nothing. Delete structures elsewhere.
+    Tracker(QObject *parent = 0);
+    virtual ~Tracker();
 
     void lockForRead() {m_mutex.lockForRead();};
     void lockForWrite() {m_mutex.lockForWrite();};

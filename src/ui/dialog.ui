@@ -29,7 +29,7 @@
       </sizepolicy>
      </property>
      <property name="text">
-      <string>&amp;Close</string>
+      <string>&amp;Hide</string>
      </property>
     </widget>
    </item>

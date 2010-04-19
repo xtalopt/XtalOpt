@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -51,6 +51,7 @@ namespace Avogadro {
       << "%cellVector1Bohr% -- First cell vector in Bohr\n"
       << "%cellVector2Bohr% -- Second cell vector in Bohr\n"
       << "%cellVector3Bohr% -- Third cell vector in Bohr\n"
+      << "%description% -- Optimization description\n"
       << "%a% -- Lattice parameter A\n"
       << "%b% -- Lattice parameter B\n"
       << "%c% -- Lattice parameter C\n"
@@ -67,7 +68,7 @@ namespace Avogadro {
       << "%rempath% -- path to xtal's remote directory\n"
       << "%gen% -- xtal generation number\n"
       << "%id% -- xtal id number\n"
-      << "%incar% -- index of current INCAR\n\n"
+      << "%optStep% -- current optimization step\n\n"
       << "%POSCAR% -- VASP poscar generator\n";
 
     QMessageBox::information(NULL, "Template Help", str);
@@ -175,27 +176,11 @@ namespace Avogadro {
           rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
         }
       }
-      switch (p->optType) {
-      case XtalOpt::OptType_VASP:
-        if (line == "user1")    rep += p->VASPUser1;
-        if (line == "user2")    rep += p->VASPUser2;
-        if (line == "user3")    rep += p->VASPUser3;
-        if (line == "user4")    rep += p->VASPUser4;
-        break;
-      case XtalOpt::OptType_GULP:
-        if (line == "user1")    rep += p->GULPUser1;
-        if (line == "user2")    rep += p->GULPUser2;
-        if (line == "user3")    rep += p->GULPUser3;
-        if (line == "user4")    rep += p->GULPUser4;
-        break;
-      case XtalOpt::OptType_PWscf:
-        if (line == "user1")    rep += p->PWscfUser1;
-        if (line == "user2")    rep += p->PWscfUser2;
-        if (line == "user3")    rep += p->PWscfUser3;
-        if (line == "user4")    rep += p->PWscfUser4;
-        break;
-      }
-      if (line == "a")             rep += QString::number(xtal->getA());
+      if (line == "user1")    		rep += p->optimizer()->getUser1();
+      if (line == "user2")    		rep += p->optimizer()->getUser2();
+      if (line == "user3")    		rep += p->optimizer()->getUser3();
+      if (line == "user4")    		rep += p->optimizer()->getUser4();
+      if (line == "a")			rep += QString::number(xtal->getA());
       else if (line == "b")             rep += QString::number(xtal->getB());
       else if (line == "c")             rep += QString::number(xtal->getC());
       else if (line == "alphaRad")	rep += QString::number(xtal->getAlpha() * DEG_TO_RAD);
@@ -207,12 +192,13 @@ namespace Avogadro {
       else if (line == "volume")        rep += QString::number(xtal->getVolume());
       else if (line == "numAtoms")	rep += QString::number(structure->numAtoms());
       else if (line == "numSpecies")	rep += QString::number(structure->getSymbols().size());
+      else if (line == "description")	rep += p->description;
       else if (line == "filename")      rep += structure->fileName();
       else if (line == "rempath")       rep += structure->getRempath();
       else if (line == "gen")           rep += QString::number(structure->getGeneration());
       else if (line == "id")            rep += QString::number(structure->getIDNumber());
       else if (line == "incar")         rep += QString::number(structure->getCurrentOptStep());
-      else if (line == "optStep")         rep += QString::number(structure->getCurrentOptStep());
+      else if (line == "optStep")       rep += QString::number(structure->getCurrentOptStep());
       else if (line == "POSCAR") {
         // Comment line -- set to filename
         rep += xtal->fileName();
@@ -287,6 +273,7 @@ namespace Avogadro {
         << "betaDeg: %betaDeg% -- Lattice parameter Beta in deg\n"
         << "gammaDeg: %gammaDeg% -- Lattice parameter Gamma in deg\n"
         << "volume: %volume% -- Unit cell volume\n"
+        << "description: %description% -- description\n"
         << "numAtoms: %numAtoms% -- Number of atoms in unit cell\n"
         << "numSpecies: %numSpecies% -- Number of unique atomic species in unit cell\n"
         << "filename: %filename% -- Name of output file\n\n"
@@ -337,86 +324,5 @@ namespace Avogadro {
         << "ISMEAR = -5      # -5 = tetraedon, 1..N = Methfessel\n"
         << "ENCUT = 500      # cutoff energy\n";
     return ret;
-  }
-
-  void XtalOptTemplate::input_VASP_POTCAR(XtalOpt *p, int optIndex) {
-    //qDebug() << "XtalOptTemplate::input_VASP_POTCAR( " << p << " ) called";
-
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-    QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
-
-    // Generate list of symbols
-    QList<QString> symbols;
-    QList<uint> atomicNums = p->comp->keys();
-    qSort(atomicNums);
-    p->VASP_POTCAR_comp = atomicNums;
-    for (int i = 0; i < atomicNums.size(); i++)
-      symbols.append(OpenBabel::etab.GetSymbol(atomicNums.at(i)));
-    qSort(symbols);
-    QStringList files;
-    QString filename;
-    for (int i = 0; i < symbols.size(); i++) {
-      QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
-      QFileDialog dialog (NULL, QString("Select pot file for atom %1").arg(symbols.at(i)), path);
-      dialog.selectFile(path + "/" + symbols.at(i));
-      dialog.setFileMode(QFileDialog::ExistingFile);
-      if (dialog.exec()) {
-        files = dialog.selectedFiles();
-        if (files.size() != 1) { // Ask again!
-          i--;
-          continue;
-        }
-        filename = files.first();
-        settings.setValue("xtalopt/templates/potcarPath", dialog.directory().absolutePath());
-      }
-      else { return;} // User cancel file selection. POTCAR will be pretty much blank.
-      (p->VASP_POTCAR_info[optIndex]).insert(symbols.at(i), filename);
-    }
-  }
-
-  void XtalOptTemplate::buildVASP_POTCAR(XtalOpt *p) {
-    //qDebug() << "XtalOptTemplate::buildVASP_POTCAR( " << p << " ) called";
-    double enmax = 0, radius = 0;
-    p->VASP_POTCAR_list.clear();
-    for (int optIndex = 0; optIndex < p->VASP_POTCAR_info.size(); optIndex++) {
-      QFile file;
-      double tmp_enmax, tmp_radius;
-      QString line, str, POTCAR ("");
-      QStringList tmp_sl;
-      QTextStream out (&POTCAR), in;
-      QList<QString> symbols = p->VASP_POTCAR_info.at(optIndex).keys();
-      qSort(symbols);
-      // Make a loop over the alphabetically sorted symbols:
-      for (int i = 0; i < symbols.size(); i++) {
-        file.setFileName(p->VASP_POTCAR_info.at(optIndex)[symbols.at(i)]);
-        file.open(QIODevice::ReadOnly);
-        in.setDevice(&file);
-        while (!in.atEnd()) {
-          line = in.readLine();
-          out << line + "\n";
-          if (line.contains("ENMAX")) {
-            tmp_sl = line.split(QRegExp("\\s+"), QString::SkipEmptyParts);
-            str = tmp_sl.at(2);
-            str.remove(QString(";"));
-            tmp_enmax = str.toFloat();
-            if (tmp_enmax > enmax) enmax = tmp_enmax;
-          }
-          if (line.contains("RCORE")) {
-            tmp_sl = line.split(QRegExp("\\s+"), QString::SkipEmptyParts);
-            tmp_radius = tmp_sl.at(2).toFloat();
-            if (tmp_radius > radius) radius = tmp_radius;
-          }
-        }
-        file.close();
-      }
-      p->VASP_POTCAR_list.append(POTCAR);
-    }
-
-    // Set suggested enmax, interatomic distance, etc
-    // p->suggestedENMAX = enmax;
-    // p->suggestedInteratomicDistance = radius;
-    //     QMessageBox::information(NULL, "Suggested values...",
-    //                              QString("Largest ENMAX: %1\nLargest radius: %2")
-    //                              .arg(enmax).arg(radius));
   }
 }

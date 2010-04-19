@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -42,12 +42,6 @@ namespace Avogadro {
     static QString input_VASP_KPOINTS();
     static QString input_VASP_INCAR();
 
-    //////////////////////
-    // Input Generators //
-    //////////////////////
-
-    static void input_VASP_POTCAR(XtalOpt *p, int optIndex);
-    static void buildVASP_POTCAR(XtalOpt *p);
   };
 }
 

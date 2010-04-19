@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOptGenetic - Tools neccessary for genetic structure optimization
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -448,9 +448,9 @@ namespace Avogadro {
     // If not, print a warning and return input xtal:
     if (xtal->getSymbols().size() <= 1) {
       qWarning()
-        << "WARNING: ************************************************************************" << endl
-        << "WARNING: * Cannot perform permutation with fewer than 2 atomic species present. *" << endl
-        << "WARNING: ************************************************************************";
+        << "WARNING: *********************************************************************" << endl
+        << "WARNING: * Cannot perform exchange with fewer than 2 atomic species present. *" << endl
+        << "WARNING: *********************************************************************";
       return;
     }
 

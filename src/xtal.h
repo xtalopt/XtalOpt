@@ -1,7 +1,7 @@
 /**********************************************************************
   Xtal - Wrapper for Structure to ease work with crystals.
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>

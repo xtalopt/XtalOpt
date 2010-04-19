@@ -116,7 +116,7 @@ namespace Avogadro {
     QList<QString> list;
     OpenBabel::OBMol obmol = OBMol();
     FOR_ATOMS_OF_MOL(atom,obmol) {
-      QString symbol            = QString(OpenBabel::etab.GetSymbol(atom->GetAtomicNum()));
+      QString symbol = QString(OpenBabel::etab.GetSymbol(atom->GetAtomicNum()));
       if (!list.contains(symbol)) {
         list.append(symbol);
       }

@@ -1,0 +1,7 @@
+[xtalopt]
+edit\optType=1
+optimizer\GULP\xtal.gin_list=opti conj conp\nswitch_minimiser bfgs gnorm 0.5\ncell\n  %a% %b% %c% %alphaDeg% %betaDeg% %gammaDeg%\nfrac\n%coordsFrac%\nspecies\nTi 2.196\nO -1.098\nbuck\nTi Ti 31120.1 0.1540 5.25  15\nO  O  11782.7 0.2340 30.22 15\nTi O  16957.5 0.1940 12.59 15\nlennard 12 6\nTi Ti 1 0 15\nO  O  1 0 15\nTi O  1 0 15\n
+optimizer\GULP\user1=
+optimizer\GULP\user2=
+optimizer\GULP\user3=
+optimizer\GULP\user4=

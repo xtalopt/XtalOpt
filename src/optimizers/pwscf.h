@@ -1,7 +1,7 @@
 /**********************************************************************
-  XtalOptPWscf - Tools to interface with PWscf remotely
+  PWscfOptimizer - Tools to interface with PWscf
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -16,65 +16,23 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#ifndef XTALOPTPWSCF_H
-#define XTALOPTPWSCF_H
+#ifndef PWSCFOPTIMIZER_H
+#define PWSCFOPTIMIZER_H
 
-#include "../optimizers.h"
+#include "../optimizer.h"
 
 #include <QObject>
 
 namespace Avogadro {
-  class Structure;
   class XtalOpt;
 
-  class XtalOptPWscf : public QObject
+  class PWscfOptimizer : public Optimizer
   {
     Q_OBJECT
 
    public:
+    PWscfOptimizer(XtalOpt *parent);
 
-    static bool writeInputFiles(Structure *structure, XtalOpt *p);
-
-    static bool startOptimization(Structure *structure, XtalOpt *p);
-
-    static bool getOutputFile(const QString & path,
-                              const QString & filename,
-                              QStringList & data,
-                              const QString & host = "",
-                              const QString & username = "");
-
-    static bool copyRemoteToLocalCache(Structure *structure, XtalOpt *p);
-
-    static bool getQueueList(XtalOpt *p, QStringList & queueData);
-
-    static bool deleteJob(Structure *structure, XtalOpt *p);
-
-    static Optimizer::JobState getStatus(Structure *structure, XtalOpt *p);
-
-    /*
-     * Checks the queueData list for the jobname (extracted from xtal->fileName + "/job.pbs")
-     * and sets exists to true if the job name is found. Return value is the job ID.
-     */
-    static int checkIfJobNameExists(Structure *structure, const QStringList & queueData, bool & exists);
-
-    // Updates an existing xtal
-    static bool update(Structure *structure, XtalOpt *p);
-
-    // Populates a new xtal
-    static bool load(Structure *structure, XtalOpt *p);
-
-    // Handles reading of files for both of the above functions
-    static bool read(Structure *structure, XtalOpt *p, const QString & filename);
-
-    static int totalOptSteps(XtalOpt *p);
-
-   signals:
-
-   public slots:
-
-   private slots:
-
-   private:
   };
 
 } // end namespace Avogadro

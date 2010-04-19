@@ -14,7 +14,7 @@ More information on dependencies in Section 4
 2. Basic Installation
 =====================
 These instructions give a very basic overview of how to configure, compile and
-install Avogadro on most systems.  If you are using unique install locations
+install XtalOpt on most systems.  If you are using unique install locations
 and/or libraries are not automatically detected please consult the 'Advanced'
 section.
 
@@ -60,7 +60,8 @@ installation locations.
 
    -DEIGEN2_INCLUDE_DIR : specify the Eigen include directory
 
-For more information please consult the CMake documentation.
+For more information please consult the CMake documentation or the
+Avogadro wiki.
 
 
 4. Dependencies
@@ -101,10 +102,10 @@ versions.
 
   Avogadro is the main application that XtalOpt extends. A development
   version is also *required*, and we recommend using the git
-  repository at http://github.com/dlonie/avogadro,
-  although the official "cryos" repository at
-  http://github.com/cryos/avogadro should work as
-  well. Complete installation instructions for Avogadro are found at
+  repository at http://github.com/dlonie/avogadro, although the
+  official "cryos" repository at http://github.com/cryos/avogadro
+  should work as well. Complete installation instructions for Avogadro
+  are found at
   http://avogadro.openmolecules.net/wiki/Compiling_on_Linux_and_Mac_OS_X.
 
 4.6) Local optimizers
@@ -114,7 +115,7 @@ versions.
 
   -- GULP,   https://www.ivec.org/gulp/
   -- VASP,   http://cms.mpi.univie.ac.at/vasp/vasp/vasp.html
-  -- pwSCF,  http://www.quantum-espresso.org/
+  -- PWscf,  http://www.quantum-espresso.org/
 
   Information on obtaining/installing each can be found on their
   respective websites.

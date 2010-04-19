@@ -1,7 +1,7 @@
 /**********************************************************************
-  XtalOptGULP - Tools to interface with GULP
+  GULPOptimizer - Tools to interface with GULP
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -16,10 +16,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#ifndef XTALOPTGULP_H
-#define XTALOPTGULP_H
+#ifndef GULPOPTIMIZER_H
+#define GULPOPTIMIZER_H
 
-#include "../optimizers.h"
+#include "../optimizer.h"
 
 #include <QObject>
 
@@ -27,46 +27,20 @@ namespace Avogadro {
   class Structure;
   class XtalOpt;
 
-  class XtalOptGULP : public QObject
+  class GULPOptimizer : public Optimizer
   {
     Q_OBJECT
 
    public:
+    GULPOptimizer(XtalOpt *parent);
 
-    static bool writeInputFiles(Structure *structure, XtalOpt *p);
-
-    static bool startOptimization(Structure *structure, XtalOpt *p);
-
-    static bool getQueueList(XtalOpt *p, QStringList & queueData);
-
-    static bool deleteJob(Structure *structure, XtalOpt *p);
-
-    static Optimizer::JobState getStatus(Structure *structure, XtalOpt *p);
-
-    /*
-     * Checks the queueData list for the jobname (extracted from xtal->fileName + "/job.pbs")
-     * and sets exists to true if the job name is found. Return value is the job ID.
-     */
-    static int checkIfJobNameExists(Structure *structure, const QStringList & queueData, bool & exists);
-
-    // Updates an existing xtal
-    static bool update(Structure *structure, XtalOpt *p);
-
-    // Populates a new xtal
-    static bool load(Structure *structure, XtalOpt *p);
-
-    // Handles reading of files for both of the above functions
-    static bool read(Structure *structure, XtalOpt *p, const QString & filename);
-
-    static int totalOptSteps(XtalOpt *p);
-
-   signals:
-
-   public slots:
-
-   private slots:
-
-   private:
+    bool writeInputFiles(Structure *structure);
+    bool startOptimization(Structure *structure);
+    bool getQueueList(QStringList & queueData);
+    Optimizer::JobState getStatus(Structure *structure);
+    bool copyRemoteToLocalCache(Structure *structure);
+    int checkIfJobNameExists(Structure *, const QStringList &, bool &b) {
+      b=false;return 0;};
   };
 
 } // end namespace Avogadro

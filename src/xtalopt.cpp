@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Holds all data for genetic optimization
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -19,10 +19,14 @@
 #include "xtalopt.h"
 
 #include "xtal.h"
-#include "optimizers.h"
+#include "optimizer.h"
+#include "optimizers/vasp.h"
+#include "optimizers/gulp.h"
+#include "optimizers/pwscf.h"
 #include "ui/dialog.h"
 #include "queuemanager.h"
 #include "templates.h"
+#include "macros.h"
 #include "genetic.h"
 #include "bt.h"
 
@@ -47,14 +51,14 @@ namespace Avogadro {
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
     QObject(parent)
   {
-    m_tracker   = new Tracker;
+    m_tracker   = new Tracker (this);
     m_queue     = new QueueManager(this, m_tracker);
-    comp = new QHash<uint, uint>; // <atomic #, quantity>
+    m_optimizer = 0; // This will be set when the GUI is initialized
     sOBMutex = new QMutex;
     stateFileMutex = new QMutex;
     backTraceMutex = new QMutex;
     xtalInitMutex = new QMutex;
-    dialog = parent;
+    m_dialog = parent;
 
     savePending = false;
 
@@ -75,8 +79,10 @@ namespace Avogadro {
   }
 
   XtalOpt::~XtalOpt() {
-    // will NOT delete structures by default!
-    m_tracker->reset();
+    // Wait for save to finish
+    while (savePending) {};
+    savePending = true;
+    delete m_queue;
     delete m_tracker;
   }
 
@@ -98,26 +104,29 @@ namespace Avogadro {
     }
 
     // Do we have a composition?
-    if (comp->isEmpty()) {
+    if (comp.isEmpty()) {
       error("Cannot create structures. Composition is not set.");
       return;
     }
 
     // VASP checks:
-    if (optType == XtalOpt::OptType_VASP) {
+    if (m_optimizer->getIDString() == "VASP") {
       // Is the POTCAR generated? If not, warn user in log and launch generator.
       // Every POTCAR will be identical in this case!
-      QList<uint> atomicNums = comp->keys();
+      QList<uint> oldcomp, atomicNums = comp.keys();
+      QList<QVariant> oldcomp_ = m_optimizer->getData("Composition").toList();
+      for (int i = 0; i < oldcomp_.size(); i++)
+        oldcomp.append(oldcomp_.at(i).toUInt());
       qSort(atomicNums);
-      if (VASP_POTCAR_info.isEmpty() || // No info at all!
-          VASP_POTCAR_comp != atomicNums // Composition has changed!
+      if (m_optimizer->getData("POTCAR info").toList().isEmpty() || // No info at all!
+          oldcomp != atomicNums // Composition has changed!
           ) {
         error("Using VASP and POTCAR is empty. Please select the pseudopotentials before continuing.");
         return;
       }
 
       // Build up the latest and greatest POTCAR compilation
-      XtalOptTemplate::buildVASP_POTCAR(this);
+      qobject_cast<VASPOptimizer*>(m_optimizer)->buildPOTCARs();
     }
 
     // prepare pointers
@@ -128,7 +137,7 @@ namespace Avogadro {
     ///////////////////////////////////////////////
 
     // Set up progress bar
-    dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
+    m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
 
     // Initalize loop variables
     int failed = 0;
@@ -144,7 +153,7 @@ namespace Avogadro {
       filename = seedList.at(i);
       Xtal *xtal = new Xtal;
       xtal->setFileName(filename);
-      if ( !Optimizer::read(xtal, this, filename) || (xtal == 0) ) {
+      if ( !m_optimizer->read(xtal, filename) || (xtal == 0) ) {
         m_tracker->deleteAllStructures();
         error(tr("Error loading seed %1").arg(filename));
         return;
@@ -152,19 +161,19 @@ namespace Avogadro {
       QString parents =tr("Seeded: %1", "1 is a filename").arg(filename);
       initializeAndAddXtal(xtal, 1, parents);
       debug(tr("XtalOpt::StartOptimization: Loaded seed: %1", "1 is a filename").arg(filename));
-      dialog->updateProgressLabel(tr("%1 structures generated (%2 kept, %3 rejected)...").arg(i + failed).arg(i).arg(failed));
+      m_dialog->updateProgressLabel(tr("%1 structures generated (%2 kept, %3 rejected)...").arg(i + failed).arg(i).arg(failed));
       newXtalCount++;
     }
 
     // Generation loop...
     for (uint i = newXtalCount; i < numInitial; i++) {
       // Update progress bar
-      dialog->updateProgressMaximum( (i == 0)
+      m_dialog->updateProgressMaximum( (i == 0)
                                         ? 0
                                         : int(progCount / static_cast<double>(i)) * numInitial );
-      dialog->updateProgressValue(progCount);
+      m_dialog->updateProgressValue(progCount);
       progCount++;
-      dialog->updateProgressLabel(tr("%1 structures generated (%2 kept, %3 rejected)...").arg(i + failed).arg(i).arg(failed));
+      m_dialog->updateProgressLabel(tr("%1 structures generated (%2 kept, %3 rejected)...").arg(i + failed).arg(i).arg(failed));
 
       // Generate/Check xtal
       xtal = generateRandomXtal(1, i+1);
@@ -180,9 +189,9 @@ namespace Avogadro {
       }
     }
 
-    dialog->stopProgressUpdate();
+    m_dialog->stopProgressUpdate();
 
-    dialog->saveSession();
+    m_dialog->saveSession();
     emit sessionStarted();
   }
 
@@ -304,12 +313,12 @@ namespace Avogadro {
       xtal->setVolume(vol_fixed);
 
     // Populate crystal
-    QList<uint> atomicNums = comp->keys();
+    QList<uint> atomicNums = comp.keys();
     uint atomicNum;
     uint q;
     for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
       atomicNum = atomicNums.at(num_idx);
-      q = comp->value(atomicNum);
+      q = comp.value(atomicNum);
       double IAD = (using_shortestInteratomicDistance)
                 ? shortestInteratomicDistance
                 : -1.0;
@@ -425,21 +434,21 @@ namespace Avogadro {
     xtal->setIDNumber(id);
     xtal->setGeneration(generation);
     xtal->setParents(parents);
-    QString id_s, gen_s, locpath, rempath;
+    QString id_s, gen_s, locpath_s, rempath_s;
     id_s.sprintf("%05d",xtal->getIDNumber());
     gen_s.sprintf("%05d",xtal->getGeneration());
-    locpath = filePath + "/" + fileBase + gen_s + "x" + id_s + "/";
-    rempath = rempath + "/" + fileBase + gen_s + "x" + id_s + "/";
-    QDir dir (locpath);
+    locpath_s = filePath + "/" + gen_s + "x" + id_s + "/";
+    rempath_s = rempath + "/" + gen_s + "x" + id_s + "/";
+    QDir dir (locpath_s);
     if (!dir.exists()) {
-      if (!dir.mkpath(locpath)) {
+      if (!dir.mkpath(locpath_s)) {
         error(tr("XtalOpt::initializeAndAddXtal: Cannot write to path: %1 (path creation failure)",
                  "1 is a file path.")
-              .arg(locpath));
+              .arg(locpath_s));
       }
     }
-    xtal->setFileName(locpath);
-    xtal->setRempath(rempath);
+    xtal->setFileName(locpath_s);
+    xtal->setRempath(rempath_s);
     xtal->setCurrentOptStep(1);
     xtal->findSpaceGroup();
     m_queue->unlockForNaming(xtal);
@@ -498,15 +507,15 @@ namespace Avogadro {
         xtal = 0;
       }
 
-      // Decide mutation type:
+      // Decide operator:
       r = rand.NextFloat();
       Operators op;
-      if (r < p_her/100.0)
-        op = Crossover;
-      else if (r < (p_her + p_mut)/100.0)
-        op = Stripple;
+      if (r < p_cross/100.0)
+        op = OP_Crossover;
+      else if (r < (p_cross + p_strip)/100.0)
+        op = OP_Stripple;
       else
-        op = Permustrain;
+        op = OP_Permustrain;
 
       // Try 1000 times to get a good structure from the selected
       // operation. If not possible, send a warning to the log and
@@ -521,7 +530,7 @@ namespace Avogadro {
 
         // Operation specific set up:
         switch (op) {
-        case Crossover: {
+        case OP_Crossover: {
           int ind1, ind2;
           Xtal *xtal1=0, *xtal2=0;
           // Select structures
@@ -538,7 +547,7 @@ namespace Avogadro {
 
           // Perform operation
           double percent1;
-          xtal = XtalOptGenetic::crossover(xtal1, xtal2, her_minimumContribution, percent1);
+          xtal = XtalOptGenetic::crossover(xtal1, xtal2, cross_minimumContribution, percent1);
 
           // Lock parents and get info from them
           xtal1->lock()->lockForRead();
@@ -563,7 +572,7 @@ namespace Avogadro {
             .arg(100.0 - percent1, 0, 'f', 0);
           continue;
         }
-        case Stripple: {
+        case OP_Stripple: {
           // Pick a parent
           int ind;
           for (ind = 0; ind < probs.size(); ind++)
@@ -573,12 +582,12 @@ namespace Avogadro {
           // Perform stripple
           double amplitude=0, stdev=0;
           xtal = XtalOptGenetic::stripple(xtal1,
-                                          mut_strainStdev_min,
-                                          mut_strainStdev_max,
-                                          mut_amp_min,
-                                          mut_amp_max,
-                                          mut_per1,
-                                          mut_per2,
+                                          strip_strainStdev_min,
+                                          strip_strainStdev_max,
+                                          strip_amp_min,
+                                          strip_amp_max,
+                                          strip_per1,
+                                          strip_per2,
                                           stdev,
                                           amplitude);
 
@@ -595,11 +604,11 @@ namespace Avogadro {
             .arg(id1)
             .arg(stdev, 0, 'f', 5)
             .arg(amplitude, 0, 'f', 5)
-            .arg(mut_per1)
-            .arg(mut_per2);
+            .arg(strip_per1)
+            .arg(strip_per2);
           continue;
         }
-        case Permustrain: {
+        case OP_Permustrain: {
           int ind;
           for (ind = 0; ind < probs.size(); ind++)
             if (rand.NextFloat() < probs.at(ind)) break;
@@ -630,9 +639,9 @@ namespace Avogadro {
       if (attemptCount >= 1000) {
         QString opStr;
         switch (op) {
-        case Crossover:                 opStr = "crossover"; break;
-        case Stripple:                  opStr = "stripple"; break;
-        case Permustrain:               opStr = "permustrain"; break;
+        case OP_Crossover:                 opStr = "crossover"; break;
+        case OP_Stripple:                  opStr = "stripple"; break;
+        case OP_Permustrain:               opStr = "permustrain"; break;
         default:                        opStr = "(unknown)"; break;
         }
         warning(tr("Unable to perform operation %1 after 1000 tries. Reselecting operator...").arg(opStr));
@@ -759,10 +768,69 @@ namespace Avogadro {
       savePending = false;
       return false;
     }
+    QReadLocker trackerLocker (m_tracker->rwLock());
     QMutexLocker locker (stateFileMutex);
-    // Back up xtalopt.state
-    QFile file (filePath + "/" + fileBase + "xtalopt.state");
-    QFile oldfile (filePath + "/" + fileBase + "xtalopt.state.old");
+    QString filename = filePath + "/xtalopt.state";
+
+    QFile file (filename);
+    QFile oldfile (filename + ".old");
+    QFile tmpfile (filename + ".tmp");
+    // Move xtalopt.state -> xtalopt.state.old
+    if (oldfile.open(QIODevice::ReadOnly))
+      oldfile.remove();
+    if (file.open(QIODevice::ReadOnly))
+      file.copy(oldfile.fileName());
+    if (file.open(QIODevice::ReadOnly))
+      file.remove();
+
+    // Actually save data
+    m_dialog->writeSettings(tmpfile.fileName());
+    SETTINGS(tmpfile.fileName());
+    settings->sync();
+
+    // Move xtalopt.state.tmp to xtalopt.state
+    if (tmpfile.open(QIODevice::ReadOnly))
+      tmpfile.copy(file.fileName());
+    if (tmpfile.open(QIODevice::ReadOnly))
+      tmpfile.remove();
+
+    oldfile.close();
+    tmpfile.close();
+    file.close();
+
+    // Loop over xtals and save them
+    QFile xfile;
+    QList<Structure*>* structures = m_tracker->list();
+
+    Xtal* xtal;
+    QTextStream xout;
+    for (int i = 0; i < structures->size(); i++) {
+      xtal = qobject_cast<Xtal*>(structures->at(i));
+      xtal->lock()->lockForRead();
+      // Set index here -- this is the only time these are written, so
+      // this is ok under a read lock because of the savePending logic
+      xtal->setIndex(i);
+      xfile.setFileName(xtal->fileName() + "/xtal.state");
+      if (!xfile.open(QIODevice::WriteOnly)) {
+        error(tr("XtalOpt::save(): Error opening file %1 for writing (Structure %2)...")
+              .arg(xfile.fileName())
+              .arg(xtal->getIDString()));
+        xtal->lock()->unlock();
+        savePending = false;
+        return false;
+      }
+      xout.setDevice(&xfile);
+      xtal->save(xout);
+      xtal->lock()->unlock();
+      xfile.close();
+    }
+
+    /////////////////////////
+    // Print results files //
+    /////////////////////////
+
+    file.setFileName(filePath + "/results.txt");
+    oldfile.setFileName(filePath + "/results_old.txt");
     if (oldfile.open(QIODevice::ReadOnly))
       oldfile.remove();
     if (file.open(QIODevice::ReadOnly))
@@ -774,181 +842,6 @@ namespace Avogadro {
       return false;
     }
     QTextStream out (&file);
-    // Store values
-    out << "optType: " << optType << endl
-        << "numInitial: " << numInitial << endl
-        << "popSize: " << popSize << endl
-        << "genTotal: " << genTotal << endl
-        << "p_her: " << p_her << endl
-        << "p_mut: " << p_mut << endl
-        << "p_perm: " << p_perm << endl
-        << "her_minimumContribution: " << her_minimumContribution << endl
-        << "perm_ex: " << perm_ex << endl
-        << "perm_strainStdev_max: " << perm_strainStdev_max << endl
-        << "mut_strainStdev_min: " << mut_strainStdev_min << endl
-        << "mut_strainStdev_max: " << mut_strainStdev_max << endl
-        << "mut_amp_min: " << mut_amp_min << endl
-        << "mut_amp_max: " << mut_amp_max << endl
-        << "mut_per1: " << mut_per1 << endl
-        << "mut_per2: " << mut_per2 << endl
-        << "A_min: " << a_min << endl
-        << "B_min: " << b_min << endl
-        << "C_min: " << c_min << endl
-        << "alpha_min: " << alpha_min << endl
-        << "beta_min: " << beta_min << endl
-        << "gamma_min: " << gamma_min << endl
-        << "A_max: " << a_max << endl
-        << "B_max: " << b_max << endl
-        << "C_max: " << c_max << endl
-        << "alpha_max: " << alpha_max << endl
-        << "beta_max: " << beta_max << endl
-        << "gamma_max: " << gamma_max << endl
-        << "vol_min: " << vol_min << endl
-        << "vol_max: " << vol_max << endl
-        << "vol_fixed: " << vol_fixed << endl
-        << "shortestInteratomicDistance: " << shortestInteratomicDistance << endl
-        << "tol_enthalpy: " << tol_enthalpy << endl
-        << "tol_volume: " << tol_volume << endl
-        << "using_fixed_volume: " << using_fixed_volume << endl
-        << "using_shortestInteratomicDistance: " << using_shortestInteratomicDistance << endl
-        << "using_remote: " << using_remote << endl
-        << "limitRunningJobs: " << limitRunningJobs << endl
-        << "runningJobLimit: " << runningJobLimit << endl
-        << "failLimit: " << failLimit << endl
-        << "failAction: " << failAction << endl
-        << "launchCommand: " << launchCommand << endl
-        << "queueCheck: " << queueCheck << endl
-        << "queueDelete: " << queueDelete << endl
-        << "host: " << host << endl
-        << "username: " << username << endl
-        << "rempath: " << rempath << endl
-        << "VASPUser1: " << VASPUser1 << endl
-        << "VASPUser2: " << VASPUser2 << endl
-        << "VASPUser3: " << VASPUser3 << endl
-        << "VASPUser4: " << VASPUser4 << endl
-        << "GULPUser1: " << GULPUser1 << endl
-        << "GULPUser2: " << GULPUser2 << endl
-        << "GULPUser3: " << GULPUser3 << endl
-        << "GULPUser4: " << GULPUser4 << endl
-        << "PWscfUser1: " << PWscfUser1 << endl
-        << "PWscfUser2: " << PWscfUser2 << endl
-        << "PWscfUser3: " << PWscfUser3 << endl
-        << "PWscfUser4: " << PWscfUser4 << endl
-      //
-      // VASP File lists
-      //
-        << "### Begin VASP_INCAR_list ###" << endl;
-    for (int i = 0; i < VASP_INCAR_list.size(); i++)
-      out << "### NEXT INCAR:" << endl
-          << VASP_INCAR_list.at(i) << endl;
-    out << "### End VASP_INCAR_list ###" << endl
-        << "### Begin VASP_qScript_list ###" << endl;
-    for (int i = 0; i < VASP_qScript_list.size(); i++)
-      out << "### NEXT VASP_qScript:" << endl
-          << VASP_qScript_list.at(i) << endl;
-    out << "### End VASP_qScript_list ###" << endl
-        << "### Begin VASP_KPOINTS_list ###" << endl;
-    for (int i = 0; i < VASP_KPOINTS_list.size(); i++)
-      out << "### NEXT KPOINTS:" << endl
-          << VASP_KPOINTS_list.at(i) << endl;
-    out << "### End VASP_KPOINTS_list ###" << endl
-        << "### Begin VASP_POTCAR_info ###" << endl;
-    for (int i = 0; i < VASP_POTCAR_info.size(); i++) {
-      out << "### NEXT POTCAR_info:" << endl;
-      QStringList symbols = VASP_POTCAR_info.at(i).keys();
-      qSort(symbols);
-      for (int j = 0; j < symbols.size(); j++) {
-        out << symbols.at(j) << " " << VASP_POTCAR_info.at(i)[symbols.at(j)] << endl;
-      }
-    }
-    out << "### End VASP_POTCAR_info ###" << endl
-      // VASP_POTCAR_list will be regenerated on load up.
-
-      //
-      // GULP file lists
-      //
-        << "### Begin GULP_gin_list ###" << endl;
-    for (int i = 0; i < GULP_gin_list.size(); i++)
-      out << "### NEXT GULP_gin:" << endl
-          << GULP_gin_list.at(i) << endl;
-    out << "### End GULP_gin_list ###" << endl;
-
-    //
-    // PWscf file lists
-    //
-    out << "### Begin PWscf_in_list ###" << endl;
-    for (int i = 0; i < PWscf_in_list.size(); i++)
-      out << "### NEXT in:" << endl
-          << PWscf_in_list.at(i) << endl;
-    out << "### End PWscf_in_list ###" << endl
-        << "### Begin PWscf_qScript_list ###" << endl;
-    for (int i = 0; i < PWscf_qScript_list.size(); i++)
-      out << "### NEXT PWscf_qScript:" << endl
-          << PWscf_qScript_list.at(i) << endl;
-    out << "### End PWscf_qScript_list ###" << endl;
-
-    // Save composition:
-    out << "Composition:";
-    QList<uint> keys = comp->keys();
-    for (int i = 0; i < keys.size(); i++)
-      out << " " << QString::number(keys.at(i)) << " " << QString::number(comp->value(keys.at(i)));
-    out << endl;
-
-    // VASP_POTCAR_comp
-    out << "VASP_POTCAR_comp:";
-    for (int i = 0; i < VASP_POTCAR_comp.size(); i++)
-      out << " " << QString::number(VASP_POTCAR_comp.at(i));
-    out << endl;
-
-    // Loop over xtals and save them
-    QFile xfile;
-    m_tracker->lockForRead();
-    QList<Structure*>* structures = m_tracker->list();
-    // out << "numXtals: " << xtals->size() << endl;
-    Xtal* xtal;
-    QTextStream xout;
-    // out << "### Begin Xtals ###" << endl;
-    for (int i = 0; i < structures->size(); i++) {
-      xtal = qobject_cast<Xtal*>(structures->at(i));
-      xtal->lock()->lockForRead();
-      xfile.setFileName(xtal->fileName() + "/xtal.state");
-      if (!xfile.open(QIODevice::WriteOnly)) {
-        error(tr("XtalOpt::save(): Error opening file %1 for writing (Structure %2)...")
-              .arg(xfile.fileName())
-              .arg(xtal->getIDString()));
-        xtal->lock()->unlock();
-        savePending = false;
-        return false;
-      }
-      xout.setDevice(&xfile);
-      // out << xfile.fileName() << endl;
-      xtal->save(xout);
-      xtal->lock()->unlock();
-      xfile.close();
-    }
-    // out << "### End Xtals ###" << endl;
-
-    out.flush();
-    file.close();
-    oldfile.close();
-
-    /////////////////////////
-    // Print results files //
-    /////////////////////////
-
-    file.setFileName(filePath + "/" + fileBase + "results.txt");
-    oldfile.setFileName(filePath + "/" + fileBase + "results_old.txt");
-    if (oldfile.open(QIODevice::ReadOnly))
-      oldfile.remove();
-    if (file.open(QIODevice::ReadOnly))
-      file.copy(oldfile.fileName());
-    file.close();
-    if (!file.open(QIODevice::WriteOnly)) {
-      error("XtalOpt::save(): Error opening file "+file.fileName()+" for writing...");
-      savePending = false;
-      return false;
-    }
-    out.setDevice(&file);
 
     QList<Xtal*> sortedXtals;
 
@@ -995,7 +888,6 @@ namespace Avogadro {
       xtal->lock()->unlock();
       out << endl;
     }
-    m_tracker->unlock();
     savePending = false;
     return true;
   }
@@ -1024,352 +916,28 @@ namespace Avogadro {
       }
     }
 
-    // Set filePath, figure out and set fileBase:
-    filePath = dataPath;
-    fileBase = filename;
-    fileBase.remove(filePath);
-    fileBase.remove("xtalopt.state");
+    // Set filePath:
+    QString newFilePath = dataPath;
+    QString newFileBase = filename;
+    newFileBase.remove(newFilePath);
+    newFileBase.remove("xtalopt.state.old");
+    newFileBase.remove("xtalopt.state.tmp");
+    newFileBase.remove("xtalopt.state");
 
-    // Set up stream for reading
-    QTextStream in (&file);
-    QString line, str;
-    QStringList strl;
-    while (!in.atEnd()) {
-      line = in.readLine();
-      strl = line.split(QRegExp("\\s+"));
+    m_dialog->readSettings(filename);
 
-      if (line.contains("optType:") && strl.size() > 1)
-        optType = XtalOpt::OptTypes(strl.at(1).toInt());
-      if (line.contains("numInitial:") && strl.size() > 1)
-        numInitial = strl.at(1).toUInt();
-      if (line.contains("popSize:") && strl.size() > 1)
-        popSize = strl.at(1).toUInt();
-      if (line.contains("genTotal:") && strl.size() > 1)
-        genTotal = strl.at(1).toUInt();
-      if (line.contains("p_her:") && strl.size() > 1)
-        p_her = strl.at(1).toUInt();
-      if (line.contains("p_mut:") && strl.size() > 1)
-        p_mut = strl.at(1).toUInt();
-      if (line.contains("p_perm:") && strl.size() > 1)
-        p_perm = strl.at(1).toUInt();
-      if (line.contains("her_minimumContribution:") && strl.size() > 1)
-        her_minimumContribution = strl.at(1).toUInt();
-      if (line.contains("perm_ex:") && strl.size() > 1)
-        perm_ex = strl.at(1).toUInt();
-      if (line.contains("perm_strainStdev_max:") && strl.size() > 1)
-        perm_strainStdev_max = strl.at(1).toDouble();
-      if (line.contains("mut_strainStdev_min:") && strl.size() > 1)
-        mut_strainStdev_min = strl.at(1).toDouble();
-      if (line.contains("mut_strainStdev_max:") && strl.size() > 1)
-        mut_strainStdev_max = strl.at(1).toDouble();
-      if (line.contains("mut_amp_min:") && strl.size() > 1)
-        mut_amp_min = strl.at(1).toDouble();
-      if (line.contains("mut_amp_max:") && strl.size() > 1)
-        mut_amp_max = strl.at(1).toDouble();
-      if (line.contains("mut_per1:") && strl.size() > 1)
-        mut_per1 = strl.at(1).toUInt();
-      if (line.contains("mut_per2:") && strl.size() > 1)
-        mut_per2 = strl.at(1).toUInt();
-      if (line.contains("A_min:") && strl.size() > 1)
-        a_min = strl.at(1).toDouble();
-      if (line.contains("B_min:") && strl.size() > 1)
-        b_min = strl.at(1).toDouble();
-      if (line.contains("C_min:") && strl.size() > 1)
-        c_min = strl.at(1).toDouble();
-      if (line.contains("alpha_min:") && strl.size() > 1)
-        alpha_min = strl.at(1).toDouble();
-      if (line.contains("beta_min:") && strl.size() > 1)
-        beta_min = strl.at(1).toDouble();
-      if (line.contains("gamma_min:") && strl.size() > 1)
-        gamma_min = strl.at(1).toDouble();
-      if (line.contains("A_max:") && strl.size() > 1)
-        a_max = strl.at(1).toDouble();
-      if (line.contains("B_max:") && strl.size() > 1)
-        b_max = strl.at(1).toDouble();
-      if (line.contains("C_max:") && strl.size() > 1)
-        c_max = strl.at(1).toDouble();
-      if (line.contains("alpha_max:") && strl.size() > 1)
-        alpha_max = strl.at(1).toDouble();
-      if (line.contains("beta_max:") && strl.size() > 1)
-        beta_max = strl.at(1).toDouble();
-      if (line.contains("gamma_max:") && strl.size() > 1)
-        gamma_max = strl.at(1).toDouble();
-      if (line.contains("vol_min:") && strl.size() > 1)
-        vol_min = strl.at(1).toDouble();
-      if (line.contains("vol_max:") && strl.size() > 1)
-        vol_max = strl.at(1).toDouble();
-      if (line.contains("vol_fixed:") && strl.size() > 1)
-        vol_fixed = strl.at(1).toDouble();
-      if (line.contains("tol_enthalpy:") && strl.size() > 1)
-        tol_enthalpy = strl.at(1).toDouble();
-      if (line.contains("tol_volume:") && strl.size() > 1)
-        tol_volume = strl.at(1).toDouble();
-      if (line.contains("using_fixed_volume:") && strl.size() > 1)
-        using_fixed_volume = strl.at(1).toInt();
-      if (line.contains("using_shortestInteratomicDistance:") && strl.size() > 1)
-        using_shortestInteratomicDistance = strl.at(1).toInt();
-      if (line.contains("using_remote:") && strl.size() > 1)
-        using_remote = strl.at(1).toInt();
-      if (line.contains("limitRunningJobs:") && strl.size() > 1)
-        limitRunningJobs = strl.at(1).toInt();
-      if (line.contains("runningJobLimit:") && strl.size() > 1)
-        runningJobLimit = strl.at(1).toInt();
-      if (line.contains("failLimit:") && strl.size() > 1)
-        failLimit = strl.at(1).toUInt();
-      if (line.contains("failAction:") && strl.size() > 1)
-        failAction = strl.at(1).toUInt();
-      // These get determined auto-magically now.
-      // if (line.contains("filePath:") && strl.size() > 1) {
-      //   strl.removeFirst();
-      //   filePath = strl.join(" ");
-      // }
-      // if (line.contains("fileBase:") && strl.size() > 1) {
-      //   strl.removeFirst();
-      //   fileBase = strl.join(" ");
-      // }
-      if (line.contains("launchCommand:") && strl.size() > 1) {
-        strl.removeFirst();
-        launchCommand = strl.join(" ");
-      }
-      if (line.contains("queueCheck:") && strl.size() > 1) {
-        strl.removeFirst();
-        queueCheck = strl.join(" ");
-      }
-      if (line.contains("queueDelete:") && strl.size() > 1) {
-        strl.removeFirst();
-        queueDelete = strl.join(" ");
-      }
-      if (line.contains("host:") && strl.size() > 1) {
-        strl.removeFirst();
-        host = strl.join(" ");
-      }
-      if (line.contains("username:") && strl.size() > 1) {
-        strl.removeFirst();
-        username = strl.join(" ");
-      }
-      if (line.contains("rempath:") && strl.size() > 1) {
-        strl.removeFirst();
-        rempath = strl.join(" ");
-      }
-      if (line.contains("VASPUser1:") && strl.size() > 1) {
-        strl.removeFirst();
-        VASPUser1 = strl.join(" ");
-      }
-      if (line.contains("VASPUser2:") && strl.size() > 1) {
-        strl.removeFirst();
-        VASPUser2 = strl.join(" ");
-      }
-      if (line.contains("VASPUser3:") && strl.size() > 1) {
-        strl.removeFirst();
-        VASPUser3 = strl.join(" ");
-      }
-      if (line.contains("VASPUser4:") && strl.size() > 1) {
-        strl.removeFirst();
-        VASPUser4 = strl.join(" ");
-      }
-      if (line.contains("GULPUser1:") && strl.size() > 1) {
-        strl.removeFirst();
-        GULPUser1 = strl.join(" ");
-      }
-      if (line.contains("GULPUser2:") && strl.size() > 1) {
-        strl.removeFirst();
-        GULPUser2 = strl.join(" ");
-      }
-      if (line.contains("GULPUser3:") && strl.size() > 1) {
-        strl.removeFirst();
-        GULPUser3 = strl.join(" ");
-      }
-      if (line.contains("GULPUser4:") && strl.size() > 1) {
-        strl.removeFirst();
-        GULPUser4 = strl.join(" ");
-      }
-      if (line.contains("PWscfUser1:") && strl.size() > 1) {
-        strl.removeFirst();
-        PWscfUser1 = strl.join(" ");
-      }
-      if (line.contains("PWscfUser2:") && strl.size() > 1) {
-        strl.removeFirst();
-        PWscfUser2 = strl.join(" ");
-      }
-      if (line.contains("PWscfUser3:") && strl.size() > 1) {
-        strl.removeFirst();
-        PWscfUser3 = strl.join(" ");
-      }
-      if (line.contains("PWscfUser4:") && strl.size() > 1) {
-        strl.removeFirst();
-        PWscfUser4 = strl.join(" ");
-      }
-      if (line.contains("### Begin VASP_INCAR_list ###")) {
-        // Find start of first INCAR:
-        while (!line.contains("### NEXT INCAR:") && !line.contains("### End VASP_INCAR_list ###")) {
-          line = in.readLine();
-        }
-        uint i = 0;
-        VASP_INCAR_list.clear();
-        while (!in.atEnd() && !line.contains("### End VASP_INCAR_list ###")) {
-          line = in.readLine(); // Get rid of the ### NEXT INCAR line
-          VASP_INCAR_list.append("");
-          QTextStream s (&(VASP_INCAR_list[i]));
-          while (!in.atEnd() && !line.contains("### NEXT INCAR:") && !line.contains("### End VASP_INCAR_list ###")) {
-            s << line;
-            line = in.readLine();
-            if (!in.atEnd() && !line.contains("### NEXT INCAR:") &&  !line.contains("### End VASP_INCAR_list ###"))
-              s << endl;
-          }
-          i++;
-        }
-      }
-      if (line.contains("### Begin queueScript_list ###") || line.contains("### Begin VASP_qScript_list ###")) {
-        // Find start of first queueScript:
-        while (!line.contains("### NEXT queueScript:") && !line.contains("### NEXT VASP_qScript:") &&
-               !line.contains("### End queueScript_list ###") && !line.contains("### End VASP_qScript_list ###")) {
-          line = in.readLine();
-        }
-        uint i = 0;
-        VASP_qScript_list.clear();
-        while (!in.atEnd() && !line.contains("### End queueScript_list ###") && !line.contains("### End VASP_qScript_list ###")) {
-          line = in.readLine(); // Get rid of the ### NEXT INCAR line
-          VASP_qScript_list.append("");
-          QTextStream s (&(VASP_qScript_list[i]));
-          while (!in.atEnd() && !line.contains("### NEXT queueScript:") && !line.contains("### End queueScript_list ###") &&
-                 !line.contains("### NEXT VASP_qScript:") && !line.contains("### End VASP_qScript_list ###")) {
-            s << line;
-            line = in.readLine();
-            if (!in.atEnd() && !line.contains("### NEXT queueScript:") &&  !line.contains("### End queueScript_list ###") &&
-                 !line.contains("### NEXT VASP_qScript:") && !line.contains("### End VASP_qScript_list ###"))
-              s << endl;
-          }
-          i++;
-        }
-      }
-      if (line.contains("### Begin VASP_KPOINTS_list ###")) {
-        // Find start of first KPOINTS:
-        while (!line.contains("### NEXT KPOINTS:") && !line.contains("### End VASP_KPOINTS_list ###")) {
-          line = in.readLine();
-        }
-        uint i = 0;
-        VASP_KPOINTS_list.clear();
-        while (!in.atEnd() && !line.contains("### End VASP_KPOINTS_list ###")) {
-          line = in.readLine(); // Get rid of the ### NEXT INCAR line
-          VASP_KPOINTS_list.append("");
-          QTextStream s (&(VASP_KPOINTS_list[i]));
-          while (!in.atEnd() && !line.contains("### NEXT KPOINTS:") && !line.contains("### End VASP_KPOINTS_list ###")) {
-            s << line;
-            line = in.readLine();
-            if (!in.atEnd() && !line.contains("### NEXT KPOINTS:") &&  !line.contains("### End VASP_KPOINTS_list ###"))
-              s << endl;
-          }
-          i++;
-        }
-      }
-      if (line.contains("### Begin VASP_POTCAR_info ###")) {
-        // Find start of first POTCAR:
-        while (!line.contains("### NEXT POTCAR_info:") && !line.contains("### End VASP_POTCAR_info ###")) {
-          line = in.readLine();
-        }
-        uint i = 0;
-        VASP_POTCAR_info.clear();
-        while (!in.atEnd() && !line.contains("### End VASP_POTCAR_info ###")) {
-          line = in.readLine(); // Get rid of the ### NEXT POTCAR line
-          QHash<QString, QString> hash;
-          VASP_POTCAR_info.append(hash);
-          while (!in.atEnd() && !line.contains("### NEXT POTCAR_info:") && !line.contains("### End VASP_POTCAR_info ###")) {
-            strl = line.split(QRegExp("\\s+"));
-            if (strl.size() >= 2)
-              (VASP_POTCAR_info[i]).insert(strl.at(0), strl.at(1));
-            line = in.readLine();
-          }
-          i++;
-        }
-        XtalOptTemplate::buildVASP_POTCAR(this);
-      }
-      if (line.contains("### Begin GULP_gin_list ###")) {
-        // Find start of first GULP_gin:
-        while (!line.contains("### NEXT GULP_gin:") && !line.contains("### End GULP_gin_list ###")) {
-          line = in.readLine();
-        }
-        uint i = 0;
-        GULP_gin_list.clear();
-        while (!in.atEnd() && !line.contains("### End GULP_gin_list ###")) {
-          line = in.readLine(); // Get rid of the ### NEXT GULP_gin line
-          GULP_gin_list.append("");
-          QTextStream s (&(GULP_gin_list[i]));
-          while (!in.atEnd() && !line.contains("### NEXT GULP_gin:") && !line.contains("### End GULP_gin_list ###")) {
-            s << line;
-            line = in.readLine();
-            if (!in.atEnd() && !line.contains("### NEXT GULP_gin:") &&  !line.contains("### End GULP_gin_list ###"))
-              s << endl;
-          }
-          i++;
-        }
-      }
-      // PWscf
-      if (line.contains("### Begin PWscf_in_list ###")) {
-        // Find start of first PWscf in:
-        while (!line.contains("### NEXT in:") && !line.contains("### End PWscf_in_list ###")) {
-          line = in.readLine();
-        }
-        uint i = 0;
-        PWscf_in_list.clear();
-        while (!in.atEnd() && !line.contains("### End PWscf_in_list ###")) {
-          line = in.readLine(); // Get rid of the "### NEXT in" line
-          PWscf_in_list.append("");
-          QTextStream s (&(PWscf_in_list[i]));
-          while (!in.atEnd() && !line.contains("### NEXT in:") && !line.contains("### End PWscf_in_list ###")) {
-            s << line;
-            line = in.readLine();
-            if (!in.atEnd() && !line.contains("### NEXT in:") &&  !line.contains("### End PWscf_in_list ###"))
-              s << endl;
-          }
-          i++;
-        }
-      }
-      if (line.contains("### Begin PWscf_qScript_list ###")) {
-        // Find start of first qScript:
-        while (!line.contains("### NEXT PWscf_qScript:") && !line.contains("### End PWscf_qScript_list ###")) {
-          line = in.readLine();
-        }
-        uint i = 0;
-        PWscf_qScript_list.clear();
-        while (!in.atEnd() && !line.contains("### End PWscf_qScript_list ###")) {
-          line = in.readLine(); // Get rid of the ### NEXT qScript line
-          PWscf_qScript_list.append("");
-          QTextStream s (&(PWscf_qScript_list[i]));
-          while (!in.atEnd() &&
-                 !line.contains("### NEXT PWscf_qScript:") &&
-                 !line.contains("### End PWscf_qScript_list ###")) {
-            s << line;
-            line = in.readLine();
-            if (!in.atEnd() &&
-                !line.contains("### NEXT PWscf_qScript:") &&
-                !line.contains("### End PWscf_qScript_list ###"))
-              s << endl;
-          }
-          i++;
-        }
-      }
+    SETTINGS(filename);
 
-      // Composition
-      if (line.contains("Composition:") && strl.size() > 1 ) {
-        if (comp) delete comp;
-        comp = new QHash<uint,uint>;
-        for (int i = 1; i <= strl.size() - 2; i += 2)
-          comp->insert(strl.at(i).toUInt(), strl.at(i+1).toUInt());
-      }
-
-      // VASP_POTCAR_comp
-      if (line.contains("VASP_POTCAR_comp:") && strl.size() > 1 ) {
-        VASP_POTCAR_comp.clear();
-        for (int i = 1; i < strl.size(); i++)
-          VASP_POTCAR_comp.append(strl.at(i).toUInt());
-      }
-    }
+    // Set optimizer
+    setOptimizer(OptTypes(settings->value("xtalopt/edit/optType").toInt()));
+    qDebug() << "Resuming XtalOpt session in '" << filename 
+             << "' (" << m_optimizer->getIDString() << ")";
 
     // Xtals
     // Initialize progress bar:
-    dialog->updateProgressMaximum(xtalDirs.size());
+    m_dialog->updateProgressMaximum(xtalDirs.size());
     Xtal* xtal;
-    QList<uint> keys = comp->keys();
+    QList<uint> keys = comp.keys();
     QList<Structure*> loadedStructures;
     QFile xfile;
     QTextStream xin;
@@ -1377,8 +945,8 @@ namespace Avogadro {
     int numDirs = xtalDirs.size();
     for (int i = 0; i < numDirs; i++) {
       count++;
-      dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...").arg(count).arg(numDirs));
-      dialog->updateProgressValue(count-1);
+      m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...").arg(count).arg(numDirs));
+      m_dialog->updateProgressValue(count-1);
 
       xfile.setFileName(dataPath + "/" + xtalDirs.at(i) + "/xtal.state");
       if (!xfile.open(QIODevice::ReadOnly)) {
@@ -1391,30 +959,24 @@ namespace Avogadro {
       QWriteLocker locker (xtal->lock());
       // Add empty atoms to xtal, updateXtal will populate it
       for (int j = 0; j < keys.size(); j++) {
-        for (uint k = 0; k < comp->value(keys.at(j)); k++)
+        for (uint k = 0; k < comp.value(keys.at(j)); k++)
           xtal->addAtom();
       }
       xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
       xtal->load(xin);
 
-      // Disable remote checking for now -- just load in local cache.
-      bool usingRemote = using_remote;
-      using_remote = false;
       // Store current state -- updateXtal will overwrite it.
       Xtal::State state = xtal->getStatus();
       QDateTime endtime = xtal->getOptTimerEnd();
 
       locker.unlock();
 
-      if (!Optimizer::load(xtal, this)) {
-        error("Error, no (or not appropriate) xtal data in "+xfile.fileName() + ".\n\n" +
-              "This could be a result of resuming a structure that has not yet done any" +
-              "local optimizations. If so, safely ignore this message.");
+      if (!m_optimizer->load(xtal)) {
+        error(tr("Error, no (or not appropriate for %1) xtal data in %2.\n\nThis could be a result of resuming a structure that has not yet done any local optimizations. If so, safely ignore this message.")
+              .arg(m_optimizer->getIDString())
+              .arg(xtal->fileName()));
         continue;
       }
-
-      // Reenable remote checking if needed
-      using_remote = usingRemote;
 
       // Reset state
       locker.relock();
@@ -1424,11 +986,17 @@ namespace Avogadro {
       loadedStructures.append(qobject_cast<Structure*>(xtal));
     }
 
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressValue(0);
+    m_dialog->updateProgressMaximum(loadedStructures.size());
+    m_dialog->updateProgressLabel("Sorting and checking structures...");
+
     // Sort Xtals by index values
     int curpos = 0;
     //dialog->stopProgressUpdate();
     //dialog->startProgressUpdate("Sorting xtals...", 0, loadedStructures.size()-1);
     for (int i = 0; i < loadedStructures.size(); i++) {
+      m_dialog->updateProgressValue(i);
       for (int j = 0; j < loadedStructures.size(); j++) {
         //dialog->updateProgressValue(curpos);
         if (loadedStructures.at(j)->getIndex() == i) {
@@ -1438,12 +1006,33 @@ namespace Avogadro {
       }
     }
 
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressValue(0);
+    m_dialog->updateProgressMaximum(loadedStructures.size());
+    m_dialog->updateProgressLabel("Updating  structure indices...");
+
     // Reassign indices (shouldn't always be necessary, but just in case...)
     for (int i = 0; i < loadedStructures.size(); i++) {
+      m_dialog->updateProgressValue(i);
       loadedStructures.at(i)->setIndex(i);
     }
 
-    m_tracker->append(loadedStructures);
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressValue(0);
+    m_dialog->updateProgressMaximum(loadedStructures.size());
+    m_dialog->updateProgressLabel("Preparing GUI and tracker...");
+
+    // Reset the local file path information in case the files have moved
+    filePath = newFilePath;
+
+    
+    for (int i = 0; i < loadedStructures.size(); i++) {
+      m_dialog->updateProgressValue(i);
+      m_tracker->append(loadedStructures.at(i));
+    }
+
+    m_dialog->updateProgressLabel("Done!");
+
     return true;
   }
 
@@ -1502,7 +1091,7 @@ namespace Avogadro {
       if ( states.at(i) != Xtal::Optimized ) continue;
       fp_i = fps.at(i);
       for (int j = i+1; j < fps.size(); j++) {
-      if (states.at(j) != Xtal::Optimized ) continue;
+        if (states.at(j) != Xtal::Optimized ) continue;
         fp_j = fps.at(j);
         // If xtals do not have the same spacegroup number, break
         if (fp_i.value("spacegroup") != fp_j.value("spacegroup")) {
@@ -1553,18 +1142,18 @@ namespace Avogadro {
 
   void XtalOpt::warning(const QString & s) {
     qWarning() << "Warning: " << s;
-    dialog->log("Warning: " + s);
+    m_dialog->log("Warning: " + s);
   }
 
   void XtalOpt::debug(const QString & s) {
     qDebug() << "Debug: " << s;
-    dialog->log("Debug: " + s);
+    m_dialog->log("Debug: " + s);
   }
 
   void XtalOpt::error(const QString & s) {
     qWarning() << "Error: " << s;
-    dialog->log("Error: " + s);
-    dialog->errorBox(s);
+    m_dialog->log("Error: " + s);
+    m_dialog->errorBox(s);
   }
 
   void XtalOpt::printBackTrace() {
@@ -1574,6 +1163,52 @@ namespace Avogadro {
     for (int i = 0; i < l.size();i++)
       qDebug() << l.at(i);
   }
+
+  void XtalOpt::setOptimizer(Optimizer *o) {
+    Optimizer *old = m_optimizer;
+    if (m_optimizer) {
+      // Save settings explicitly. This is called in the destructer, but
+      // we may need some settings in the new optimizer.
+      old->writeSettings();
+      old->deleteLater();
+    }
+    m_optimizer = o;
+    emit optimizerChanged(o);
+  }
+
+  void XtalOpt::setOptimizer(const QString &IDString)
+  {
+    if (IDString.toLower() == "vasp")
+      setOptimizer(new VASPOptimizer (this));
+    else if (IDString.toLower() == "gulp")
+      setOptimizer(new GULPOptimizer (this));
+    else if (IDString.toLower() == "pwscf")
+      setOptimizer(new PWscfOptimizer (this));
+    else
+      error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
+            .arg(IDString));
+  }
+        
+
+  void XtalOpt::setOptimizer(OptTypes opttype)
+  {
+    switch (opttype) {
+    case OT_VASP:
+      setOptimizer(new VASPOptimizer (this));
+      break;
+    case OT_GULP:
+      setOptimizer(new GULPOptimizer (this));
+      break;
+    case OT_PWscf:
+      setOptimizer(new PWscfOptimizer (this));
+      break;
+    default:
+      error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
+            .arg(QString::number((int)opttype)));
+      break;
+    }
+  }
+  
 
 } // end namespace Avogadro
 

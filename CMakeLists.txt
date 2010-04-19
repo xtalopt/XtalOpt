@@ -52,7 +52,7 @@ set (xtalopt_SRCS
 	src/xtalopt.cpp
 	src/queuemanager.cpp
 	src/genetic.cpp
-	src/optimizers.cpp
+	src/optimizer.cpp
 	src/optimizers/vasp.cpp
 	src/optimizers/gulp.cpp
 	src/optimizers/pwscf.cpp

@@ -1,7 +1,7 @@
 /**********************************************************************
-  XtalOptGULP - Tools to interface with GULP
+  GULPOptimizer - Tools to interface with GULP
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -18,7 +18,6 @@
 
 #include "gulp.h"
 #include "../templates.h"
-#include "../xtal.h"
 
 #include <QProcess>
 #include <QDir>
@@ -34,16 +33,41 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  bool XtalOptGULP::writeInputFiles(Structure *structure, XtalOpt *p) {
-    //qDebug() << "XtalOptGULP::writeInputFiles()";
+  GULPOptimizer::GULPOptimizer(XtalOpt *parent) :
+    Optimizer(parent)
+  {
+    // Set allowed data structure keys, if any, e.g.
+    // None here!
 
-    // lock structure
-    QWriteLocker wlocker (structure->lock());
+    // Set allowed filenames, e.g.
+    m_templates.insert("xtal.gin",QStringList(""));
+
+    // Setup for completion values
+    m_completionFilename = "xtal.got";
+    m_completionString   = "Not used!";
+
+    // Set output filenames to try to read data from, e.g.
+    m_outputFilenames.append(m_completionFilename);
+
+    // Set the name of the optimizer to be returned by getIDString()
+    m_idString = "GULP";
+
+    readSettings();
+  }
+
+  bool GULPOptimizer::writeInputFiles(Structure *structure) {
+    // Stop any running jobs associated with this xtal
+    deleteJob(structure);
+
+    // Lock
+    QReadLocker locker (structure->lock());
+
+    // Check optstep info
     int optStep = structure->getCurrentOptStep();
-    if (optStep < 1 || optStep > totalOptSteps(p)) {
-      p->warning(tr("Error: Requested OptStep (%1) out of range (1-%2)")
-                 .arg(optStep)
-                 .arg(totalOptSteps(p)));
+    if (optStep < 1 || optStep > getNumberOfOptSteps()) {
+      m_opt->error(tr("Error: Requested OptStep (%1) out of range (1-%2)")
+                   .arg(optStep)
+                   .arg(getNumberOfOptSteps()));
       return false;
     }
 
@@ -51,43 +75,38 @@ namespace Avogadro {
     QDir dir (structure->fileName());
     if (!dir.exists()) {
       if (!dir.mkpath(structure->fileName())) {
-        p->warning(tr("Cannot write input files to specified path: %1 (path creation failure)", "1 is a file path.").arg(structure->fileName()));
+        m_opt->warning(tr("Cannot write input files to specified path: %1 (path creation failure)", "1 is a file path.").arg(structure->fileName()));
         return false;
       }
     }
-
-    QFile gin (structure->fileName() + "/xtal.gin");
+    // Write all explicit templates
+    if (!writeTemplates(structure)) return false;
+    // job.sh is always the same
+    int optStepInd = optStep - 1;
     QFile ls (structure->fileName() + "/xtal.sh");
-
-    if (!gin.open( QIODevice::WriteOnly | QIODevice::Text) ||
-        !ls.open( QIODevice::WriteOnly | QIODevice::Text)) {
-      p->warning(tr("Cannot write input files to specified path: %1 (file writing failure)", "1 is a file path").arg(structure->fileName()));
+    if (!ls.open( QIODevice::WriteOnly | QIODevice::Text)) {
+      m_opt->warning(tr("Cannot write input files to specified path: %1 (file writing failure)", "1 is a file path").arg(structure->fileName()));
       return false;
     }
-
-    QTextStream gin_s (&gin);
     QTextStream ls_s (&ls);
-
-    int optStepInd = optStep - 1;
-
-    gin_s	<< XtalOptTemplate::interpretTemplate( p->GULP_gin_list.at(optStepInd), structure, p );
     ls_s	<< "#!/bin/bash\n"
                 << "cd " << structure->fileName() << endl
                 << "gulp < xtal.gin > xtal.got" << endl
                 << "exit 0" << endl;
-    gin.close();
     ls.close();
 
-    structure->setJobID(0);
-    structure->setStatus(Xtal::WaitingForOptimization);
+    // No copying to server -- GULP is local only for now.
+
+    // Update info
+    locker.unlock();
+    structure->lock()->lockForWrite();
+    structure->setStatus(Structure::WaitingForOptimization);
+    structure->lock()->unlock();
     return true;
   }
 
-  bool XtalOptGULP::startOptimization(Structure *structure, XtalOpt *p) {
-    //qDebug() << "XtalOptGULP::startOptimization()";
-
+  bool GULPOptimizer::startOptimization(Structure *structure) {
     QString command = "bash " + structure->fileName() + "/xtal.sh";
-    //p->debug(command);
 
     structure->setStatus(Xtal::InProcess);
     structure->startOptTimer();
@@ -100,7 +119,7 @@ namespace Avogadro {
     structure->stopOptTimer();
 
     if (exitStatus != 0) {
-      p->warning(tr("XtalOptGULP::startOptimization: Error running command:\n\t%1").arg(command));
+      m_opt->warning(tr("XtalOptGULP::startOptimization: Error running command:\n\t%1").arg(command));
       structure->setStatus(Xtal::Error);
       return false;
     }
@@ -108,7 +127,7 @@ namespace Avogadro {
     // Was the run sucessful?
     QFile file (structure->fileName() + "/xtal.got");
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      p->warning(tr("XtalOptGULP::getStatus: Error opening file: %1").arg(file.fileName()));
+      m_opt->warning(tr("XtalOptGULP::getStatus: Error opening file: %1").arg(file.fileName()));
       structure->setStatus(Xtal::Error);
       return false;
     }
@@ -118,7 +137,7 @@ namespace Avogadro {
       if (line.contains("**** Optimisation achieved ****")) {
         structure->resetFailCount();
         wlocker.unlock();
-        return update(structure,p);
+        return update(structure);
       }
       if (line.contains("**** unless gradient norm is small (less than 0.1)             ****")) {
         for (int i = 0; i < 4; i++) line = file.readLine();
@@ -127,7 +146,7 @@ namespace Avogadro {
         if (gnorm <= 0.1) {
           structure->resetFailCount();
           wlocker.unlock();
-          return update(structure,p);
+          return update(structure);
         }
         else break;
       }
@@ -136,156 +155,26 @@ namespace Avogadro {
     return false;
   }
 
-  bool XtalOptGULP::deleteJob(Structure *structure, XtalOpt *p) {
-    //qDebug() << "XtalOptGULP::deleteJob()";
-    Q_UNUSED(p);
-    structure->lock()->lockForWrite();
-    structure->setJobID(0);
-    structure->lock()->unlock();
-    return true;
-  }
-
-  Optimizer::JobState XtalOptGULP::getStatus(Structure *structure,
-                                              XtalOpt *p) {
-    //qDebug() << "XtalOptGULP::getStatus()";
-    Q_UNUSED(p);
+  Optimizer::JobState GULPOptimizer::getStatus(Structure *structure)
+  {
     QReadLocker rlocker (structure->lock());
     if (structure->getStatus() == Xtal::InProcess) {
       return Optimizer::Running;
     }
-    else
+    else {
       return Optimizer::Unknown;
+    }
   }
 
-  bool XtalOptGULP::getQueueList(XtalOpt *p,
-                                 QStringList & queueData) {
-    //qDebug() << "XtalOptGULP::getQueueList()";
-    Q_UNUSED(p);
+  bool GULPOptimizer::getQueueList(QStringList & queueData) {
     Q_UNUSED(queueData);
-    // Not really used here!
     return true;
   }
 
-  int XtalOptGULP::checkIfJobNameExists(Structure *structure, const QStringList & queueData, bool & exists) {
-    //qDebug() << "XtalOptGULP::checkIfJobNameExists()";
-    Q_UNUSED(structure);
-    Q_UNUSED(queueData);
-    // Again -- does nothing!
-    exists = false;
-    return 0;
-  }
-
-  // Convenience functions
-  bool XtalOptGULP::update(Structure *structure,
-                               XtalOpt *p) {
-    //qDebug() << "XtalOptGULP::updateXtal()";
-
-    // lock xtal
-    QWriteLocker locker (structure->lock());
-
-    // Update Xtal status
-    structure->setStatus(Xtal::Updating);
-    structure->stopOptTimer();
-
-    QString fullFilename = structure->fileName() + "/xtal.got";
-
-    if (!read(structure, p, fullFilename)) {
-      p->warning(tr("XtalOptGULP::updateXtal: Error updating xtal from %1").arg(fullFilename));
-      return false;
-    }
-
-    structure->setStatus(Xtal::StepOptimized);
+  bool GULPOptimizer::copyRemoteToLocalCache(Structure *structure)
+  {
     return true;
   }
-
-  bool XtalOptGULP::load(Structure *structure,
-                             XtalOpt *p) {
-    //qDebug() << "XtalOptGULP::loadXtal()";
-    QWriteLocker locker (structure->lock());
-
-    if (!read(structure, p, structure->fileName() + "/xtal.got")) {
-      p->warning(tr("XtalOptGULP::loadXtal: Error loading xtal from %1").arg(structure->fileName()));
-      return false;
-    }
-
-    return true;
-  }
-
-  bool XtalOptGULP::read(Structure *structure,
-                               XtalOpt *p,
-                               const QString & filename) {
-    // Recast structure as xtal
-    Xtal *xtal = qobject_cast<Xtal*>(structure);
-
-    // Test filename
-    QFile file (filename);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      qWarning() << "Cannot open file: " << file.fileName();
-      xtal->setStatus(Xtal::Error);
-      return false;
-    }
-    file.close();
-
-    // Read in OBMol
-    //
-    // OpenBabel::OBConversion;:ReadFile calls a singleton error class
-    // that is not thread safe. Hence sOBMutex is necessary.
-    p->sOBMutex->lock();
-    OBConversion conv;
-    OBFormat* inFormat = conv.FormatFromExt(QString(QFile::encodeName(filename.trimmed())).toAscii());
-
-    if ( !inFormat || !conv.SetInFormat( inFormat ) ) {
-      qWarning() << "Error setting format for file " << filename;
-      xtal->setStatus(Xtal::Error);
-      p->sOBMutex->unlock();
-      return false;
-    }
-
-    OBMol obmol;
-
-
-    conv.ReadFile( &obmol, QString(QFile::encodeName(filename)).toStdString());
-    p->sOBMutex->unlock();
-
-    // Copy settings from obmol -> xtal.
-    // cell
-    OBUnitCell *cell = static_cast<OBUnitCell*>(obmol.GetData(OBGenericDataType::UnitCell));
-
-    if (cell == NULL) {
-      p->warning(tr("Error: No unit cell in %1? Weird...").arg(filename));
-      xtal->setStatus(Xtal::Error);
-      return false;
-    }
-
-    xtal->setCellInfo(cell->GetCellMatrix());
-
-    // atoms
-    QList<Atom*> atoms = xtal->atoms();
-    uint i = 0;
-
-    FOR_ATOMS_OF_MOL(atm, obmol) {
-      atoms.at(i)->setPos(Vector3d(atm->x(), atm->y(), atm->z()));
-      atoms.at(i)->setAtomicNumber(atm->GetAtomicNum());
-      i++;
-    }
-
-    // energy/enthalpy
-    if (obmol.HasData("Enthalpy (eV)"))
-      xtal->setEnthalpy(QString(obmol.GetData("Enthalpy (eV)")->GetValue().c_str()).toFloat());
-    if (obmol.HasData("Enthalpy PV term (eV)"))
-      xtal->setPV(QString(obmol.GetData("Enthalpy PV term (eV)")->GetValue().c_str()).toFloat());
-    xtal->setEnergy(obmol.GetEnergy());
-    // Modify as needed!
-
-    xtal->wrapAtomsToCell();
-    xtal->findSpaceGroup();
-    return true;
-  }
-
-  int XtalOptGULP::totalOptSteps(XtalOpt *p) {
-    return p->GULP_gin_list.size();
-  }
-
 } // end namespace Avogadro
 
 #include "gulp.moc"

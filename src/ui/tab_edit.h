@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -37,9 +37,18 @@ namespace Avogadro {
     explicit TabEdit( XtalOptDialog *parent, XtalOpt *p );
     virtual ~TabEdit();
 
-    enum VASP_Templates		{VT_queueScript = 0, VT_INCAR, VT_POTCAR, VT_KPOINTS};
-    enum GULP_Templates		{GT_gin = 0};
-    enum PWscf_Templates	{PWscfT_queueScript = 0, PWscfT_in};
+    enum VASP_Templates {
+      VT_queueScript = 0,
+      VT_INCAR, VT_POTCAR,
+      VT_KPOINTS
+    };
+    enum GULP_Templates	{
+      GT_gin = 0
+    };
+    enum PWscf_Templates {
+      PWscfT_queueScript = 0,
+      PWscfT_in
+    };
 
     QWidget *getTabWidget() {return m_tab_widget;};
 
@@ -47,8 +56,8 @@ namespace Avogadro {
     // used to lock bits of the GUI that shouldn't be change when a
     // session starts. This will also pass the call on to all tabs.
     void lockGUI();
-    void readSettings();
-    void writeSettings();
+    void readSettings(const QString &filename = "");
+    void writeSettings(const QString &filename = "");
     void updateGUI();
     void disconnectGUI();
     void generateVASP_POTCAR_info();
@@ -61,9 +70,11 @@ namespace Avogadro {
     void appendOptStep();
     void removeCurrentOptStep();
     void optStepChanged();
+    void saveScheme();
+    void loadScheme();
 
   signals:
-    void optTypeChanged();
+    void optimizerChanged(Optimizer*);
 
   private slots:
     void updateUserValues();

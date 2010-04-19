@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -16,7 +16,7 @@
 
 #include "dialog.h"
 
-#include "../optimizers.h"
+#include "../optimizer.h"
 #include "../testing/xtalopttest.h"
 
 #include "tab_init.h"
@@ -167,7 +167,7 @@ namespace Avogadro {
     m_molecule = molecule;
 
     // Populate m_comp with molecule if empty
-    if (!m_opt->comp) {
+    if (!m_opt->comp.isEmpty()) {
       QHash<uint, uint> comp;
       uint atomicNum;
       QList<Atom *> atoms = m_molecule->atoms();
@@ -178,15 +178,13 @@ namespace Avogadro {
         if (!comp.contains(atomicNum)) comp[atomicNum] = 0;
         comp[atomicNum]++;
       }
-      if (m_opt->comp) delete m_opt->comp;
-      m_opt->comp = new QHash<uint, uint> ( comp );
+      m_opt->comp = comp;
       emit m_tab_init->updateComposition();
     }
   }
 
   void XtalOptDialog::saveSession() {
     if (m_opt->savePending) {
-      //qDebug() << "Ignoring excessive call to XtalOptDialog::saveSession";
       return;
     }
     m_opt->savePending = true;
@@ -197,7 +195,7 @@ namespace Avogadro {
     QMutexLocker locker (m_opt->stateFileMutex);
     QString filename;
     QFileDialog dialog (NULL, QString("Select .state file to resume"), m_opt->filePath, "*.state;;*.*");
-    dialog.selectFile(m_opt->filePath + "/" + m_opt->fileBase + "xtalopt.state");
+    dialog.selectFile(m_opt->filePath + "/xtalopt.state");
     dialog.setFileMode(QFileDialog::ExistingFile);
     if (dialog.exec())
       filename = dialog.selectedFiles().first();
@@ -226,23 +224,19 @@ namespace Avogadro {
     }
   }
 
-  void XtalOptDialog::writeSettings() {
-    //qDebug() << "XtalOptDialog::writeSettings() called";
-    //QSettings settings; // Already set up in avogadro/src/main.cpp
-    emit tabsWriteSettings();
+  void XtalOptDialog::writeSettings(const QString &filename)
+  {
+    emit tabsWriteSettings(filename);
   }
 
-  void XtalOptDialog::readSettings() {
-    //qDebug() << "XtalOptDialog::readSettings() called";
-    //QSettings settings; // Already set up in avogadro/src/main.cpp
-    emit tabsReadSettings();
+  void XtalOptDialog::readSettings(const QString &filename)
+  {
+    emit tabsReadSettings(filename);
   }
 
   void XtalOptDialog::updateGUI() {
-    //qDebug() << "XtalOptDialog::updateGUI() called";
-    // Update window title
     setWindowTitle(QString("XtalOpt - %1 @ %2")
-                   .arg(m_opt->fileBase)
+                   .arg(m_opt->description)
                    .arg(m_opt->host)
                    );
     emit tabsUpdateGUI();

@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -16,6 +16,7 @@
 
 #include "tab_sys.h"
 
+#include "../macros.h"
 #include "dialog.h"
 
 #include <QSettings>
@@ -35,10 +36,10 @@ namespace Avogadro {
     m_dialog = parent;
 
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(m_dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
     connect(m_dialog, SIGNAL(tabsUpdateGUI()),
             this, SLOT(updateGUI()));
     connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
@@ -53,17 +54,15 @@ namespace Avogadro {
     // System Settings connections
     connect(ui.edit_path, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
-    connect(ui.edit_base, SIGNAL(editingFinished()),
+    connect(ui.edit_description, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
-    connect(ui.edit_launch, SIGNAL(editingFinished()),
+    connect(ui.edit_qsub, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
-    connect(ui.edit_check, SIGNAL(editingFinished()),
+    connect(ui.edit_qstat, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_qdel, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
     connect(ui.cb_remote, SIGNAL(toggled(bool)),
-            this, SLOT(updateSystemInfo()));
-    connect(ui.edit_gulp, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_host, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
@@ -78,90 +77,81 @@ namespace Avogadro {
     //qDebug() << "TabSys::~TabSys() called";
   }
 
-  void TabSys::writeSettings() {
-    //qDebug() << "TabSys::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-
-    settings.setValue("xtalopt/dialog/sys/file/path",		m_opt->filePath);
-    settings.setValue("xtalopt/dialog/sys/file/base",		m_opt->fileBase);
-    settings.setValue("xtalopt/dialog/sys/queue/launch",	m_opt->launchCommand);
-    settings.setValue("xtalopt/dialog/sys/queue/check",		m_opt->queueCheck);
-    settings.setValue("xtalopt/dialog/sys/queue/qdel",		m_opt->queueDelete);
-    settings.setValue("xtalopt/dialog/sys/path/gulp",		m_opt->gulpPath);
-    settings.setValue("xtalopt/dialog/sys/remote/host",		m_opt->host);
-    settings.setValue("xtalopt/dialog/sys/remote/username",	m_opt->username);
-    settings.setValue("xtalopt/dialog/sys/remote/rempath",	m_opt->rempath);
-    settings.setValue("xtalopt/dialog/using/remote",            m_opt->using_remote);
+  void TabSys::writeSettings(const QString &filename) {
+    SETTINGS(filename);
+    settings->beginGroup("xtalopt/sys/");
+    settings->setValue("file/path",		m_opt->filePath);
+    settings->setValue("description",		m_opt->description);
+    settings->setValue("queue/qsub",		m_opt->qsub);
+    settings->setValue("queue/qstat",		m_opt->qstat);
+    settings->setValue("queue/qdel",		m_opt->qdel);
+    settings->setValue("remote/host",		m_opt->host);
+    settings->setValue("remote/username",	m_opt->username);
+    settings->setValue("remote/rempath",	m_opt->rempath);
+    settings->endGroup();
   }
 
-  void TabSys::readSettings() {
-    //qDebug() << "TabSys::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabSys::readSettings(const QString &filename) {
+    SETTINGS(filename);
+    settings->beginGroup("xtalopt/sys/");
+    ui.edit_path->setText(	settings->value("file/path",		"/tmp").toString());
+    ui.edit_description->setText(settings->value("description",		"").toString());
+    ui.edit_qsub->setText(	settings->value("queue/qsub",		"qsub").toString());
+    ui.edit_qstat->setText(	settings->value("queue/qstat",		"qstat").toString());
+    ui.edit_qdel->setText(	settings->value("queue/qdel",		"qdel").toString());
+    ui.edit_host->setText(	settings->value("remote/host",		"").toString());
+    ui.edit_username->setText(	settings->value("remote/username",	"").toString());
+    ui.edit_rempath->setText(	settings->value("remote/rempath",	"").toString());
+    ui.cb_remote->setChecked(	settings->value("remote",		false).toBool());
+    settings->endGroup();
 
-    ui.edit_path->setText(	settings.value("xtalopt/dialog/sys/file/path",		"/tmp").toString());
-    ui.edit_base->setText(	settings.value("xtalopt/dialog/sys/file/base",		"/opt-").toString());
-    ui.edit_launch->setText(	settings.value("xtalopt/dialog/sys/queue/launch",	"qsub").toString());
-    ui.edit_check->setText(	settings.value("xtalopt/dialog/sys/queue/check",	"qstat").toString());
-    ui.edit_qdel->setText(	settings.value("xtalopt/dialog/sys/queue/qdel",		"qdel").toString());
-    ui.edit_gulp->setText(	settings.value("xtalopt/dialog/sys/path/gulp",		"").toString());
-    ui.edit_host->setText(	settings.value("xtalopt/dialog/sys/remote/host",	"").toString());
-    ui.edit_username->setText(	settings.value("xtalopt/dialog/sys/remote/username",	"").toString());
-    ui.edit_rempath->setText(	settings.value("xtalopt/dialog/sys/remote/rempath",	"").toString());
-    ui.cb_remote->setChecked(	settings.value("xtalopt/dialog/using/remote",		false).toBool());
     updateSystemInfo();
   }
 
   void TabSys::updateGUI() {
     //qDebug() << "TabSys::updateGUI() called";
     ui.edit_path->setText(	m_opt->filePath);
-    ui.edit_base->setText(	m_opt->fileBase);
-    ui.edit_launch->setText(	m_opt->launchCommand);
-    ui.edit_check->setText(	m_opt->queueCheck);
-    ui.edit_qdel->setText(	m_opt->queueDelete);
-    ui.edit_gulp->setText(	m_opt->gulpPath);
+    ui.edit_description->setText(m_opt->description);
+    ui.edit_qsub->setText(	m_opt->qsub);
+    ui.edit_qstat->setText(	m_opt->qstat);
+    ui.edit_qdel->setText(	m_opt->qdel);
     ui.edit_host->setText(	m_opt->host);
     ui.edit_username->setText(	m_opt->username);
     ui.edit_rempath->setText(	m_opt->rempath);
-    ui.cb_remote->setChecked(	m_opt->using_remote);
 
     // Hide optType specific settings
-    switch (m_opt->optType) {
-    case XtalOpt::OptType_VASP:
-    case XtalOpt::OptType_PWscf:
+    if (m_opt->optimizer()->getIDString() == "VASP" ||
+        m_opt->optimizer()->getIDString() == "PWscf" ) {
       ui.edit_path->setVisible(true);
-      ui.edit_base->setVisible(true);
-      ui.edit_launch->setVisible(true);
-      ui.edit_check->setVisible(true);
+      ui.edit_description->setVisible(true);
+      ui.edit_qsub->setVisible(true);
+      ui.edit_qstat->setVisible(true);
       ui.edit_qdel->setVisible(true);
-      ui.edit_gulp->setVisible(false);
       ui.cb_remote->setVisible(true);
       ui.label_path->setVisible(true);
-      ui.label_base->setVisible(true);
+      ui.label_description->setVisible(true);
       ui.label_launch->setVisible(true);
       ui.label_check->setVisible(true);
       ui.label_qdel->setVisible(true);
-      ui.label_gulp->setVisible(false);
-      break;
-    case XtalOpt::OptType_GULP:
+    }
+    else if ( m_opt->optimizer()->getIDString() == "GULP" ) {
       ui.edit_path->setVisible(true);
-      ui.edit_base->setVisible(true);
-      ui.edit_launch->setVisible(false);
-      ui.edit_check->setVisible(false);
+      ui.edit_description->setVisible(true);
+      ui.edit_qsub->setVisible(false);
+      ui.edit_qstat->setVisible(false);
       ui.edit_qdel->setVisible(false);
-      ui.edit_gulp->setVisible(true);
       ui.cb_remote->setVisible(false);
       ui.label_path->setVisible(true);
-      ui.label_base->setVisible(true);
+      ui.label_description->setVisible(true);
       ui.label_launch->setVisible(false);
       ui.label_check->setVisible(false);
       ui.label_qdel->setVisible(false);
-      ui.label_gulp->setVisible(true);
-      break;
-    default:
-      qWarning() << "TabSys::updateGUI: Selected OptType out of range? " << m_opt->optType;
-      break;
+    }
+    else {
+      qWarning() << "TabSys::updateGUI: Selected OptType unknown? " << m_opt->optimizer()->getIDString();
     }
   }
+
   void TabSys::disconnectGUI() {
     //qDebug() << "TabSys::disconnectGUI() called";
     // Nothing I want to disconnect here!
@@ -170,11 +160,10 @@ namespace Avogadro {
   void TabSys::lockGUI() {
     //qDebug() << "TabSys::lockGUI() called";
     ui.edit_path->setDisabled(true);
-    ui.edit_base->setDisabled(true);
-    ui.edit_launch->setDisabled(true);
-    ui.edit_check->setDisabled(true);
+    ui.edit_description->setDisabled(true);
+    ui.edit_qsub->setDisabled(true);
+    ui.edit_qstat->setDisabled(true);
     ui.edit_qdel->setDisabled(true);
-    ui.edit_gulp->setDisabled(true);
     ui.cb_remote->setDisabled(true);
     ui.edit_host->setDisabled(true);
     ui.edit_username->setDisabled(true);
@@ -184,15 +173,13 @@ namespace Avogadro {
   void TabSys::updateSystemInfo() {
     //qDebug() << "TabSys::updateSystemInfo() called";
     m_opt->filePath	= ui.edit_path->text();
-    m_opt->fileBase	= ui.edit_base->text();
-    m_opt->launchCommand	= ui.edit_launch->text();
-    m_opt->queueCheck	= ui.edit_check->text();
-    m_opt->queueDelete	= ui.edit_qdel->text();
-    m_opt->using_remote	= ui.cb_remote->isChecked();
-    m_opt->gulpPath	= ui.edit_gulp->text();
+    m_opt->description	= ui.edit_description->text();
+    m_opt->qsub		= ui.edit_qsub->text();
+    m_opt->qstat	= ui.edit_qstat->text();
+    m_opt->qdel		= ui.edit_qdel->text();
     m_opt->host		= ui.edit_host->text();
     m_opt->username	= ui.edit_username->text();
-    m_opt->rempath		= ui.edit_rempath->text();
+    m_opt->rempath	= ui.edit_rempath->text();
     emit dataChanged();
   }
 
