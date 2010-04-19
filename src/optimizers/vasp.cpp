@@ -352,6 +352,9 @@ namespace Avogadro {
     QProcess proc;
     QString command;
 
+    if (structure->getJobID() == 0) // jobid has not been set
+      return true;
+
     // If remote...
     if (p->using_remote) {
       // ssh -q <user>@<host> <queueDelete> <jobID>
