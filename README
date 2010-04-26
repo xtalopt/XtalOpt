@@ -40,7 +40,7 @@ Local optimizer interfaces:
   -- src/optimizers/pwscf.*
   -- src/optimizers/gulp.*
   -- src/optimizers/vasp.*
-  -- src/optimizers.*
+  -- src/optimizer.*
 
 Event loop for testing/benchmarking purposes
   -- src/testing/xtalopttest.*
@@ -53,6 +53,12 @@ Genetic operator implementation:
 
 Evolutionary algoritm "engine":
   -- src/xtalopt.*
+
+Queuing and job control:
+  -- src/queuemanager.*
+
+Structure management:
+  -- src/tracker.*
 
 Spacegroup identification:
   -- src/spglib/debug.*
@@ -67,7 +73,8 @@ Spacegroup identification:
   -- src/spglib/spacegroup_data.*
   -- src/spglib/spacegroup.*
   -- src/spglib/bravais.*
-  -- src/spglib/ma.*func.h
+  -- src/spglib/mathfunc.h
 
 Crystal object data structure:
+  -- src/structure.*
   -- src/xtal.*
