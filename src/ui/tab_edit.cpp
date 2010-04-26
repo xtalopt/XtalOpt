@@ -104,7 +104,7 @@ namespace Avogadro {
 
   void TabEdit::readSettings(const QString &filename) {
     SETTINGS(filename);
-    qDebug() << "TabEdit::readSettings: " << filename;
+
     settings->beginGroup("xtalopt/edit");
     ui.combo_optType->setCurrentIndex( settings->value("optType", 0).toInt());
     settings->endGroup();
