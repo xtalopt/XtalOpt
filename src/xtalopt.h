@@ -77,6 +77,7 @@ namespace Avogadro {
 
     uint numInitial;                    // Number of initial structures
     uint runningJobLimit;		// Number of concurrent jobs allowed.
+    bool testingMode;
     uint test_nRunsStart;		// Starting run number
     uint test_nRunsEnd;			// Ending run number
     uint test_nStructs;			// Number of structures per run when testing
@@ -113,7 +114,7 @@ namespace Avogadro {
 
     uint failLimit, failAction;
 
-    bool using_fixed_volume, using_shortestInteratomicDistance, limitRunningJobs, isStarting, testingMode;
+    bool using_fixed_volume, using_shortestInteratomicDistance, limitRunningJobs, isStarting;
     QString filePath, description, qsub, qstat, qdel, host, username, rempath;
     QHash<uint, uint> comp;
     QStringList seedList;

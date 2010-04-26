@@ -44,6 +44,7 @@ namespace Avogadro {
 
   void XtalOptTest::start() {
     m_dialog->disconnectGUI();
+    m_dialog->lockGUI();
 
     // Prompt user for number of runs and structures
     gatherData();
@@ -108,7 +109,6 @@ namespace Avogadro {
     }
     m_message = "Waiting to finish...";
     while (!isFinished()) {
-      qDebug() << "XtalOptTest::generateRun: waiting for finished... " << m_opt->tracker()->size() << " " << m_currentStructure << " " << m_numberStructures;
       m_opt->queue()->checkPopulation();
       m_opt->queue()->checkRunning();
       m_currentStructure = getCurrentStructure();
@@ -140,7 +140,6 @@ namespace Avogadro {
         done++;
     }
     m_opt->tracker()->unlock();
-    qDebug() << "XtalOptTest::isFinished: " << done;
     if (done >= m_numberStructures) return true;
     else return false;
   }

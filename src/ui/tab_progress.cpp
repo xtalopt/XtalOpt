@@ -138,7 +138,8 @@ namespace Avogadro {
     ui.push_refreshAll->disconnect();
     ui.spin_period->disconnect();
     ui.table_list->disconnect();
-    disconnect(m_opt, 0, this, 0);
+    disconnect(m_opt->tracker(), 0, this, 0);
+    disconnect(m_opt->queue(), 0, this, 0);
     disconnect(m_dialog, 0, this, 0);
     this->disconnect();
   }

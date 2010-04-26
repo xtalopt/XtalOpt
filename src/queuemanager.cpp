@@ -163,7 +163,11 @@ namespace Avogadro {
     m_jobStartTracker.unlock();
 
     // Generate requests
-    while (running + m_requestedStructures < m_opt->contStructs) {
+    while ( running + m_requestedStructures < m_opt->contStructs &&
+            ( !m_opt->testingMode ||
+              m_tracker->size() + m_requestedStructures < m_opt->test_nStructs
+              )
+            ) {
       emit needNewStructure();
       m_requestedStructures++;
     }
