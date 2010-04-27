@@ -22,7 +22,7 @@
 
 #include "ui_tab_edit.h"
 
-#include "../templates.h"
+#include "../../generic/templates.h"
 
 
 namespace Avogadro {

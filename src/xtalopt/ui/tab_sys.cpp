@@ -16,7 +16,7 @@
 
 #include "tab_sys.h"
 
-#include "../macros.h"
+#include "../xtalopt.h"
 #include "dialog.h"
 
 #include <QSettings>

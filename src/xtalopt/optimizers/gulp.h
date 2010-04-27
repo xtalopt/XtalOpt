@@ -19,7 +19,7 @@
 #ifndef GULPOPTIMIZER_H
 #define GULPOPTIMIZER_H
 
-#include "../optimizer.h"
+#include "../../generic/optimizer.h"
 
 #include <QObject>
 

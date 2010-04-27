@@ -16,7 +16,7 @@
 
 #include "tab_plot.h"
 
-#include "../macros.h"
+#include "../xtalopt.h"
 #include "dialog.h"
 
 #include <avogadro/glwidget.h>

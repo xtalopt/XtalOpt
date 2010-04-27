@@ -19,7 +19,7 @@
 #ifndef XTALOPTGENETIC_H
 #define XTALOPTGENETIC_H
 
-#include "xtal.h"
+#include "../generic/xtal.h"
 #include "ui/dialog.h"
 
 #include <openbabel/rand.h>

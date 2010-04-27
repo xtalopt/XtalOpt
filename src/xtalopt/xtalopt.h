@@ -19,9 +19,10 @@
 #ifndef XTALOPT_H
 #define XTALOPT_H
 
-#include "xtal.h"
-#include "queuemanager.h"
-#include "tracker.h"
+#include "../generic/xtal.h"
+#include "../generic/queuemanager.h"
+#include "../generic/tracker.h"
+#include "../generic/macros.h"
 #include "genetic.h"
 
 #include <QDebug>

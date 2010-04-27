@@ -20,8 +20,6 @@
 #ifndef XTALOPTDIALOG_H
 #define XTALOPTDIALOG_H
 
-#include "../templates.h"
-
 #include <QDialog>
 #include <QMutex>
 #include <QTimer>
@@ -34,6 +32,7 @@
 #include "ui_dialog.h"
 
 namespace Avogadro {
+  class Xtal;
   class XtalOpt;
   class INCAR_Editor;
   class PlotObject;

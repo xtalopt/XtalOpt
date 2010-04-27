@@ -44,38 +44,38 @@ set (xtalopt_SRCS
 	src/spglib/spglib.c
 	src/spglib/symmetry.c
 	src/spglib/symmetry_kpoint.c
-    	src/structure.cpp
-    	src/xtal.cpp
+    	src/generic/structure.cpp
+    	src/generic/xtal.cpp
 	src/extension.cpp
-	src/templates.cpp
-	src/tracker.cpp
-	src/xtalopt.cpp
-	src/queuemanager.cpp
-	src/genetic.cpp
-	src/optimizer.cpp
-	src/optimizers/vasp.cpp
-	src/optimizers/gulp.cpp
-	src/optimizers/pwscf.cpp
-	src/testing/xtalopttest.cpp
-	src/ui/dialog.cpp
-	src/ui/tab_init.cpp
-	src/ui/tab_edit.cpp
-	src/ui/tab_opt.cpp
-	src/ui/tab_sys.cpp
-	src/ui/tab_progress.cpp
-	src/ui/tab_plot.cpp
-	src/ui/tab_log.cpp
-	src/bt.cpp)
+	src/generic/templates.cpp
+	src/generic/tracker.cpp
+	src/xtalopt/xtalopt.cpp
+	src/generic/queuemanager.cpp
+	src/xtalopt/genetic.cpp
+	src/generic/optimizer.cpp
+	src/xtalopt/optimizers/vasp.cpp
+	src/xtalopt/optimizers/gulp.cpp
+	src/xtalopt/optimizers/pwscf.cpp
+	src/xtalopt/testing/xtalopttest.cpp
+	src/xtalopt/ui/dialog.cpp
+	src/xtalopt/ui/tab_init.cpp
+	src/xtalopt/ui/tab_edit.cpp
+	src/xtalopt/ui/tab_opt.cpp
+	src/xtalopt/ui/tab_sys.cpp
+	src/xtalopt/ui/tab_progress.cpp
+	src/xtalopt/ui/tab_plot.cpp
+	src/xtalopt/ui/tab_log.cpp
+	src/generic/bt.cpp)
 
 set (xtalopt_UIS 
-        src/ui/dialog.ui
-	src/ui/tab_init.ui
-	src/ui/tab_edit.ui
-	src/ui/tab_opt.ui
-	src/ui/tab_sys.ui
-	src/ui/tab_progress.ui
-	src/ui/tab_plot.ui
-	src/ui/tab_log.ui)
+        src/xtalopt/ui/dialog.ui
+	src/xtalopt/ui/tab_init.ui
+	src/xtalopt/ui/tab_edit.ui
+	src/xtalopt/ui/tab_opt.ui
+	src/xtalopt/ui/tab_sys.ui
+	src/xtalopt/ui/tab_progress.ui
+	src/xtalopt/ui/tab_plot.ui
+	src/xtalopt/ui/tab_log.ui)
 
 avogadro_plugin(xtalopt 
 	"${xtalopt_SRCS}"

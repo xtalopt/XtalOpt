@@ -19,7 +19,7 @@
 #ifndef PWSCFOPTIMIZER_H
 #define PWSCFOPTIMIZER_H
 
-#include "../optimizer.h"
+#include "../../generic/optimizer.h"
 
 #include <QObject>
 

@@ -15,9 +15,9 @@
  ***********************************************************************/
 
 #include "tab_edit.h"
-#include "../macros.h"
+#include "../../generic/macros.h"
 
-#include "../templates.h"
+#include "../../generic/templates.h"
 #include "../optimizers/vasp.h"
 #include "../optimizers/gulp.h"
 #include "../optimizers/pwscf.h"

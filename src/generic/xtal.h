@@ -19,7 +19,7 @@
 #ifndef XTAL_H
 #define XTAL_H
 
-#include "structure.h"
+#include "../generic/structure.h"
 
 #include <openbabel/generic.h>
 #include <openbabel/mol.h>

@@ -18,15 +18,13 @@
 
 #include "genetic.h"
 
-#include "xtal.h"
+#include "../generic/xtal.h"
 #include "ui/dialog.h"
 
 #include <openbabel/rand.h>
 #include <openbabel/obiter.h>
 
-// Debugging includes:
 #include <QDebug>
-#include "templates.h"
 
 using namespace std;
 using namespace OpenBabel;

@@ -19,7 +19,7 @@
 #ifndef VASPOPTIMIZER_H
 #define VASPOPTIMIZER_H
 
-#include "../optimizer.h"
+#include "../../generic/optimizer.h"
 
 #include <QObject>
 

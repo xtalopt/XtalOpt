@@ -21,7 +21,7 @@
 #define XTALOPTTEMPLATES_H
 
 #include "xtal.h"
-#include "xtalopt.h"
+#include "../xtalopt/xtalopt.h" // TODO remove this
 
 namespace Avogadro {
   class XtalOpt;

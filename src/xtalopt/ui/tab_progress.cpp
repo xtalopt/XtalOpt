@@ -17,8 +17,8 @@
 #include "tab_progress.h"
 
 #include "dialog.h"
-#include "../optimizer.h"
-#include "../macros.h"
+#include "../../generic/optimizer.h"
+#include "../xtalopt.h"
 
 #include <QMenu>
 #include <QTimer>

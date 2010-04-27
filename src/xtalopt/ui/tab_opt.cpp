@@ -15,7 +15,8 @@
  ***********************************************************************/
 
 #include "tab_opt.h"
-#include "../macros.h"
+
+#include "../xtalopt.h"
 
 #include "dialog.h"
 

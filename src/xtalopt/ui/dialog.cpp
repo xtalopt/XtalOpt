@@ -16,7 +16,7 @@
 
 #include "dialog.h"
 
-#include "../optimizer.h"
+#include "../../generic/optimizer.h"
 #include "../testing/xtalopttest.h"
 
 #include "tab_init.h"

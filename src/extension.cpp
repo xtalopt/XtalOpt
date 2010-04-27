@@ -18,8 +18,8 @@
 
 #include "extension.h"
 
-#include "ui/dialog.h"
-#include "xtal.h"
+#include "xtalopt/ui/dialog.h"
+#include "generic/xtal.h"
 
 #include <avogadro/primitive.h>
 #include <avogadro/molecule.h>

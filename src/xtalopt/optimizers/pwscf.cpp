@@ -17,7 +17,7 @@
  ***********************************************************************/
 
 #include "pwscf.h"
-#include "../templates.h"
+#include "../../generic/templates.h"
 
 #include <QProcess>
 #include <QDir>

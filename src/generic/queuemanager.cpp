@@ -18,7 +18,7 @@
 
 #include "queuemanager.h"
 
-#include "xtalopt.h" // Change this into opt and xtalopt
+#include "../xtalopt/xtalopt.h" // TODO Change this into opt and xtalopt
 #include "structure.h"
 #include "optimizer.h"
 

@@ -17,8 +17,8 @@
  ***********************************************************************/
 
 #include "vasp.h"
-#include "../templates.h"
-#include "../macros.h"
+#include "../../generic/templates.h"
+#include "../../generic/macros.h"
 
 #include <QDir>
 #include <QDebug>

@@ -18,17 +18,17 @@
 
 #include "xtalopt.h"
 
-#include "xtal.h"
-#include "optimizer.h"
+#include "../generic/xtal.h"
+#include "../generic/optimizer.h"
 #include "optimizers/vasp.h"
 #include "optimizers/gulp.h"
 #include "optimizers/pwscf.h"
 #include "ui/dialog.h"
-#include "queuemanager.h"
-#include "templates.h"
-#include "macros.h"
+#include "../generic/queuemanager.h"
+#include "../generic/templates.h"
+#include "../generic/macros.h"
 #include "genetic.h"
-#include "bt.h"
+#include "../generic/bt.h"
 
 #include <openbabel/rand.h>
 
@@ -1156,7 +1156,8 @@ namespace Avogadro {
     m_dialog->errorBox(s);
   }
 
-  void XtalOpt::printBackTrace() {
+  void XtalOpt::printBackTrace
+() {
     backTraceMutex->lock();
     QStringList l = getBackTrace();
     backTraceMutex->unlock();

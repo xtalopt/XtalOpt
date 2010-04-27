@@ -31,7 +31,7 @@
 #include <QStringList>
 
 extern "C" {
-#include "spglib/spglib.h"
+#include "../spglib/spglib.h"
 }
 
 using namespace std;

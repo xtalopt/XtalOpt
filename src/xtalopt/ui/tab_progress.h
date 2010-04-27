@@ -22,7 +22,7 @@
 
 #include "ui_tab_progress.h"
 
-#include "../tracker.h"
+#include "../../generic/tracker.h"
 
 class QTimer;
 class QMutex;
