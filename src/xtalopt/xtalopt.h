@@ -153,8 +153,6 @@ namespace Avogadro {
     void setOptimizer(const QString &IDString);
     void setOptimizer(OptTypes opttype);
 
-   private slots:
-
    private:
     Tracker *m_tracker;
     QueueManager *m_queue;
