@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Tab_Plot</class>
+ <widget class="QWidget" name="Tab_Plot">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1069</width>
+    <height>569</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0" colspan="6">
+    <widget class="Avogadro::PlotWidget" name="plot_plot">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="push_refresh">
+     <property name="text">
+      <string>&amp;Refresh</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <spacer name="horizontalSpacer_3">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>650</width>
+       <height>24</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="2">
+    <widget class="QLabel" name="label_34">
+     <property name="text">
+      <string>&amp;Y Axis:</string>
+     </property>
+     <property name="buddy">
+      <cstring>combo_yAxis</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="3">
+    <widget class="QComboBox" name="combo_yAxis">
+     <item>
+      <property name="text">
+       <string>Structure</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Energy</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="1" column="4">
+    <widget class="QLabel" name="label_23">
+     <property name="text">
+      <string>&amp;X Axis</string>
+     </property>
+     <property name="buddy">
+      <cstring>combo_xAxis</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="5">
+    <widget class="QComboBox" name="combo_xAxis">
+     <item>
+      <property name="text">
+       <string>Structure</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Energy</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Avogadro::PlotWidget</class>
+   <extends>QFrame</extends>
+   <header location="global">avogadro/plotwidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>push_refresh</tabstop>
+  <tabstop>combo_yAxis</tabstop>
+  <tabstop>combo_xAxis</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>
