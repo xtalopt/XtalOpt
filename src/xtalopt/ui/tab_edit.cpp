@@ -516,17 +516,21 @@ namespace Avogadro {
     int currentOptStep = ui.list_opt->currentRow();
     QStringList templates = m_opt->optimizer()->getTemplateNames();
     QString currentTemplate;
-    for (int i = 0; i < templates.size(); i++) {
-      currentTemplate = m_opt->optimizer()->getTemplate(templates.at(i), currentOptStep);
-      m_opt->optimizer()->appendTemplate(templates.at(i), currentTemplate);
-    }
 
+    // Rebuild POTCARs if needed
     if (m_opt->optimizer()->getIDString() == "VASP") {
       QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
       potcarInfo.append(potcarInfo.at(currentOptStep));
       m_opt->optimizer()->setData("POTCAR info", potcarInfo);
       qobject_cast<VASPOptimizer*>(m_opt->optimizer())->buildPOTCARs();
     }
+
+    // Add optstep
+    for (int i = 0; i < templates.size(); i++) {
+      currentTemplate = m_opt->optimizer()->getTemplate(templates.at(i), currentOptStep);
+      m_opt->optimizer()->appendTemplate(templates.at(i), currentTemplate);
+    }
+
     populateOptList();
   }
 
