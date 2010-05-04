@@ -593,6 +593,10 @@ namespace Avogadro {
     prepareStructureForSubmission(structure);
   }
 
+  void QueueManager::appendToJobStartTracker(Structure *s) {
+    m_jobStartTracker.append(s);
+  }
+
 } // end namespace Avogadro
 
 #include "queuemanager.moc"

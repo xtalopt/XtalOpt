@@ -1026,9 +1026,13 @@ namespace Avogadro {
     filePath = newFilePath;
 
     
+    Structure *s= 0;
     for (int i = 0; i < loadedStructures.size(); i++) {
+      s = loadedStructures.at(i);
       m_dialog->updateProgressValue(i);
-      m_tracker->append(loadedStructures.at(i));
+      m_tracker->append(s);
+      if (s->getStatus() == Structure::WaitingForOptimization)
+        m_queue->appendToJobStartTracker(s);
     }
 
     m_dialog->updateProgressLabel("Done!");

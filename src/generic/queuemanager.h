@@ -61,6 +61,9 @@ namespace Avogadro {
     void prepareStructureForSubmission(Structure *s, int optStep=0);
     void startJob();
     void stopJob(Structure *s);
+    // This should only be used when say, resuming
+    // sessions. Otherwise, use prepareStructureForSubmission:
+    void appendToJobStartTracker(Structure *s);
 
     QStringList getRemoteQueueData() {return m_queueData;};
 
