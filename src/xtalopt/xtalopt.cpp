@@ -771,36 +771,34 @@ namespace Avogadro {
     QReadLocker trackerLocker (m_tracker->rwLock());
     QMutexLocker locker (stateFileMutex);
     QString filename = filePath + "/xtalopt.state";
+    QString tmpfilename = filename + ".tmp";
+    QString oldfilename = filename + ".old";
 
-    QFile file (filename);
-    QFile oldfile (filename + ".old");
-    QFile tmpfile (filename + ".tmp");
-    // Move xtalopt.state -> xtalopt.state.old
-    if (oldfile.open(QIODevice::ReadOnly))
-      oldfile.remove();
-    if (file.open(QIODevice::ReadOnly))
-      file.copy(oldfile.fileName());
-    if (file.open(QIODevice::ReadOnly))
-      file.remove();
-
-    // Actually save data
-    m_dialog->writeSettings(tmpfile.fileName());
-    SETTINGS(tmpfile.fileName());
+    // Save data to tmp
+    m_dialog->writeSettings(tmpfilename);
+    SETTINGS(tmpfilename);
     settings->sync();
 
-    // Move xtalopt.state.tmp to xtalopt.state
-    if (tmpfile.open(QIODevice::ReadOnly))
-      tmpfile.copy(file.fileName());
-    if (tmpfile.open(QIODevice::ReadOnly))
-      tmpfile.remove();
+    // Move xtalopt.state -> xtalopt.state.old
+    if (QFile::exists(filename) ) {
+      if (QFile::exists(oldfilename)) {
+        qDebug() << "rm old:    " << QFile::remove(oldfilename);
+      }
+      qDebug() << "Rename"
+               << filename
+               << oldfilename
+               << QFile::rename(filename, oldfilename);
+    }
 
-    oldfile.close();
-    tmpfile.close();
-    file.close();
+    // Move xtalopt.state.tmp to xtalopt.state
+      qDebug() << "Rename"
+               << tmpfilename
+               << filename
+               << QFile::rename(tmpfilename, filename);
 
     // Loop over xtals and save them
     QFile xfile;
-    QList<Structure*>* structures = m_tracker->list();
+    QList<Structure*> *structures = m_tracker->list();
 
     Xtal* xtal;
     QTextStream xout;
@@ -829,8 +827,8 @@ namespace Avogadro {
     // Print results files //
     /////////////////////////
 
-    file.setFileName(filePath + "/results.txt");
-    oldfile.setFileName(filePath + "/results_old.txt");
+    QFile file (filePath + "/results.txt");
+    QFile oldfile (filePath + "/results_old.txt");
     if (oldfile.open(QIODevice::ReadOnly))
       oldfile.remove();
     if (file.open(QIODevice::ReadOnly))
