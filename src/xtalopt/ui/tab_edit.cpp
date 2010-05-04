@@ -112,6 +112,15 @@ namespace Avogadro {
     updateOptType();
     m_opt->optimizer()->readSettings(filename);
 
+    // Do we need to update the POTCAR info?
+    if (ui.combo_optType->currentIndex() == XtalOpt::OT_VASP) {
+      VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
+      if (!vopt->POTCARInfoIsUpToDate()) {
+        generateVASP_POTCAR_info();
+        vopt->buildPOTCARs();
+      }
+    }
+
     updateGUI();
   }
 
@@ -268,20 +277,14 @@ namespace Avogadro {
         break;
       case VT_POTCAR:
         {
+          VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
           // Do we need to update the POTCAR info?
-          QList<uint> oldcomp, atomicNums = m_opt->comp.keys();
-          // No composition set
-          if (atomicNums.isEmpty()) break;
-          QList<QVariant> oldcomp_ = m_opt->optimizer()->getData("Composition").toList();
-          for (int i = 0; i < oldcomp_.size(); i++)
-            oldcomp.append(oldcomp_.at(i).toUInt());
-          qSort(atomicNums);
-          if (m_opt->optimizer()->getData("POTCAR info").toList().isEmpty() || // No info at all!
-              oldcomp != atomicNums // Composition has changed!
-              ) {
+          if (!vopt->POTCARInfoIsUpToDate()) {
             generateVASP_POTCAR_info();
-            qobject_cast<VASPOptimizer*>(m_opt->optimizer())->buildPOTCARs();
+            vopt->buildPOTCARs();
           }
+
+          // Build list in GUI
           ui.list_POTCARs->clear();
           // "POTCAR info" is of type
           // QList<QHash<QString, QString> >
@@ -439,6 +442,7 @@ namespace Avogadro {
     hash.insert(symbol,QVariant(filename));
     potcarInfo.replace(ui.list_opt->currentRow(), hash);
     m_opt->optimizer()->setData("POTCAR info", potcarInfo);
+    qobject_cast<VASPOptimizer*>(m_opt->optimizer())->buildPOTCARs();
     templateChanged(VT_POTCAR);
   }
 

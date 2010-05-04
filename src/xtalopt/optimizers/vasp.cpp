@@ -151,6 +151,26 @@ namespace Avogadro {
     return true;
   }
 
+  bool VASPOptimizer::POTCARInfoIsUpToDate()
+  {
+    // Get session's composition
+    QList<uint> atomicNums = m_opt->comp.keys();
+    // Get optimizer's composition
+    QList<uint> oldcomp;
+    QList<QVariant> oldcomp_ = getData("Composition").toList();
+    for (int i = 0; i < oldcomp_.size(); i++)
+      oldcomp.append(oldcomp_.at(i).toUInt());
+    // Sort the composition
+    qSort(atomicNums);
+    qSort(oldcomp);
+    if (getData("POTCAR info").toList().size() != getNumberOfOptSteps() ||
+        oldcomp != atomicNums
+        ) {
+      return false;
+    }
+    return true;
+  }
+
   void VASPOptimizer::buildPOTCARs() {
     double enmax = 0;
     m_templates["POTCAR"].clear();

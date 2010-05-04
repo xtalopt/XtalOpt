@@ -593,19 +593,19 @@ namespace Avogadro {
     if (!ok) {
       m_opt->warning(tr("Optimizer::load: Error loading structure at %1")
                  .arg(structure->fileName()));
+      structure->setStatus(Xtal::Error);
       return false;
     }
     return true;
   }
 
   bool Optimizer::read(Structure *structure,
-                         const QString & filename) {
+                       const QString & filename) {
     // Recast structure as xtal -- we'll need to access cell data later.
     Xtal *xtal = qobject_cast<Xtal*>(structure);
     // Test filename
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      xtal->setStatus(Xtal::Error);
       return false;
     }
     file.close();

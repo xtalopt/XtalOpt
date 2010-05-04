@@ -38,6 +38,7 @@ namespace Avogadro {
     void writeTemplatesToSettings(const QString &filename = "");
 
     void buildPOTCARs();
+    bool POTCARInfoIsUpToDate();
   };
 
 } // end namespace Avogadro
