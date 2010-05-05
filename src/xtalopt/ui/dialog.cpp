@@ -195,7 +195,7 @@ namespace Avogadro {
     QMutexLocker locker (m_opt->stateFileMutex);
     QString filename;
     QFileDialog dialog (NULL, QString("Select .state file to resume"), m_opt->filePath, "*.state;;*.*");
-    dialog.selectFile(m_opt->filePath + "/xtalopt.state");
+    dialog.selectFile("xtalopt.state");
     dialog.setFileMode(QFileDialog::ExistingFile);
     if (dialog.exec())
       filename = dialog.selectedFiles().first();

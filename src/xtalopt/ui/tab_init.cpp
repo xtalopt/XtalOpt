@@ -156,6 +156,7 @@ namespace Avogadro {
     ui.spin_shortestInteratomicDistance->setValue(	settings->value("limits/shortestInteratomicDistance",1).toDouble());
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
     ui.cb_shortestInteratomicDistance->setChecked(	settings->value("using/shortestInteratomicDistance",false).toBool());
+
     // Composition
     if (!filename.isEmpty()) {
       int size = settings->beginReadArray("composition");
