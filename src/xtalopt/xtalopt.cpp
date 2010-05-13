@@ -1,5 +1,5 @@
 /**********************************************************************
-  XtalOpt - Holds all data for genetic optimization
+  XtalOpt - "Engine" for the optimization process
 
   Copyright (C) 2009-2010 by David C. Lonie
 
@@ -777,6 +777,7 @@ namespace Avogadro {
     // Save data to tmp
     m_dialog->writeSettings(tmpfilename);
     SETTINGS(tmpfilename);
+    settings->setValue("xtalopt/saveSuccessful", true);
     settings->sync();
 
     // Move xtalopt.state -> xtalopt.state.old
@@ -898,6 +899,13 @@ namespace Avogadro {
       return false;
     }
 
+    SETTINGS(filename);
+    bool stateFileIsValid = settings->value("xtalopt/saveSuccessful", false).toBool();
+    if (!stateFileIsValid) {
+      error("XtalOpt::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid.");
+      return false;
+    }
+    
     // Get path and other info for later:
     QFileInfo stateInfo (file);
     // path to resume file
@@ -923,8 +931,6 @@ namespace Avogadro {
     newFileBase.remove("xtalopt.state");
 
     m_dialog->readSettings(filename);
-
-    SETTINGS(filename);
 
     // Set optimizer
     setOptimizer(OptTypes(settings->value("xtalopt/edit/optType").toInt()));
