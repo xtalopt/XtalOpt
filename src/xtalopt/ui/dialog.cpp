@@ -205,10 +205,13 @@ namespace Avogadro {
     m_opt->emitStartingSession();
     startProgressUpdate(tr("Loading structures..."), 0, 0);
     m_opt->tracker()->deleteAllStructures();
-    m_opt->load(filename);
+    if (!m_opt->load(filename)) {
+      stopProgressUpdate();
+      m_opt->isStarting = false;
+      return;
+    }
     // Refresh dialog and settings
     writeSettings();
-    readSettings();
     stopProgressUpdate();
     m_opt->emitSessionStarted();
   }
