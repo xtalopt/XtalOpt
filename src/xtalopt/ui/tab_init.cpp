@@ -122,14 +122,20 @@ namespace Avogadro {
     settings->setValue("using/shortestInteratomicDistance",	m_opt->using_shortestInteratomicDistance);
 
     // Composition
-    settings->beginWriteArray("composition");
-    QList<uint> keys = m_opt->comp.keys();
-    for (int i = 0; i < keys.size(); i++) {
-      settings->setArrayIndex(i);
-      settings->setValue("atomicNumber", keys.at(i));
-      settings->setValue("quantity", m_opt->comp.value(keys.at(i)));
+    // We only want to save POTCAR info and Composition to the resume
+    // file, not the main config file, so only dump the data here if
+    // we are given a filename and it contains the string
+    // "xtalopt.state"
+    if (!filename.isEmpty() && filename.contains("xtalopt.state")) {
+      settings->beginWriteArray("composition");
+      QList<uint> keys = m_opt->comp.keys();
+      for (int i = 0; i < keys.size(); i++) {
+        settings->setArrayIndex(i);
+        settings->setValue("atomicNumber", keys.at(i));
+        settings->setValue("quantity", m_opt->comp.value(keys.at(i)));
+      }
+      settings->endArray();
     }
-    settings->endArray();
 
     settings->endGroup();
   }

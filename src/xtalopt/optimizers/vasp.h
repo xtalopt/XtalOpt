@@ -36,6 +36,7 @@ namespace Avogadro {
     bool writeInputFiles(Structure *structure);
     void readSettings(const QString &filename = "");
     void writeTemplatesToSettings(const QString &filename = "");
+    void writeDataToSettings(const QString &filename = "");
 
     void buildPOTCARs();
     bool POTCARInfoIsUpToDate();

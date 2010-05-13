@@ -88,11 +88,31 @@ namespace Avogadro {
     SETTINGS(filename);
     QStringList filenames = getTemplateNames();
     for (int i = 0; i < filenames.size(); i++) {
-      if (filenames.at(i) == "POTCAR") break; // Don't bother saving this
+      // Don't bother saving the actual POTCAR files
+      if (filenames.at(i) == "POTCAR") break;
       settings->setValue("xtalopt/optimizer/" + 
                     getIDString() + "/" +
                     filenames.at(i) + "_list",
                     m_templates.value(filenames.at(i)));
+    }
+  }
+
+  void VASPOptimizer::writeDataToSettings(const QString &filename)
+  {
+    // We only want to save POTCAR info and Composition to the resume
+    // file, not the main config file, so only dump the data here if
+    // we are given a filename and it contains the string
+    // "xtalopt.state"
+    if (filename.isEmpty() || !filename.contains("xtalopt.state")) {
+      return;
+    }
+    SETTINGS(filename);
+    QStringList ids = getDataIdentifiers();
+    for (int i = 0; i < ids.size(); i++) {
+      settings->setValue("xtalopt/optimizer/" + 
+                         getIDString() + "/data/" +
+                         ids.at(i),
+                         m_data.value(ids.at(i)));
     }
   }
 
