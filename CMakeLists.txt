@@ -1,7 +1,3 @@
-# Example project building an external plugin against installed Avogadro
-# library. See http://avogadro.openmolecules.net/ for more information.
-
-# Project name - plugin name or something meaningful
 project(XtalOpt)
 
 set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
@@ -81,3 +77,6 @@ avogadro_plugin(xtalopt
 	"${xtalopt_SRCS}"
 	"${xtalopt_UIS}"
 )
+
+target_link_libraries(xtalopt QPlotWidget)
+
