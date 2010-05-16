@@ -56,7 +56,6 @@ namespace Avogadro {
     void prepareStructureForNextOptStep(Structure *s);
     void handleStructureError(Structure *s);
     void updateStructure(Structure *s);
-    void startStructure(Structure *s);
     void killStructure(Structure *s);
     void prepareStructureForSubmission(Structure *s, int optStep=0);
     void startJob();

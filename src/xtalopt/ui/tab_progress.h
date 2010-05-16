@@ -70,9 +70,6 @@ namespace Avogadro {
     void enableRowTracking() {rowTracking = true;};
     void disableRowTracking() {rowTracking = false;};
 
-  private slots:
-    void refreshProgressTable();
-
   signals:
     void newLog(const QString &);
     void moleculeChanged(Xtal*);

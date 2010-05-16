@@ -65,7 +65,6 @@ namespace Avogadro {
     void showHelp() {XtalOptTemplate::showHelp();}
     void updateTemplates();
     void changePOTCAR(QListWidgetItem *item);
-    void addOptStep();
     void populateOptList();
     void appendOptStep();
     void removeCurrentOptStep();
