@@ -21,44 +21,37 @@ GPL v2 or later. See COPYING.
 Files
 =====
 Interface (dialog, tabs, etc):
-  -- src/ui/dialog.*
-  -- src/ui/tab_edit.*
-  -- src/ui/tab_init.*
-  -- src/ui/tab_plot.*
-  -- src/ui/tab_progress.*
-  -- src/ui/tab_log.*
-  -- src/ui/tab_opt.*
-  -- src/ui/tab_sys.*
+  -- src/xtalopt/ui/*
+
+Genetic operator implementation:
+  -- src/xtalopt/genetic.*
 
 Debugging:
-  -- src/bt.*
-
-Avogadro extension interface:
-  -- src/extension.*
+  -- src/generic/bt.*
 
 Local optimizer interfaces:
-  -- src/optimizers/pwscf.*
-  -- src/optimizers/gulp.*
-  -- src/optimizers/vasp.*
-  -- src/optimizer.*
+  -- src/xtalopt/optimizers/pwscf.*
+  -- src/xtalopt/optimizers/gulp.*
+  -- src/xtalopt/optimizers/vasp.*
+  -- src/generic/optimizer.*
 
 Event loop for testing/benchmarking purposes
   -- src/testing/xtalopttest.*
 
-Local optimizer template generation:
-  -- src/templates.*
-
-Genetic operator implementation:
-  -- src/genetic.*
-
 Evolutionary algoritm "engine":
-  -- src/xtalopt.*
+  -- src/xtalopt/xtalopt.*
+
+Avogadro extension interface:
+  -- src/extension.*
+
+Local optimizer template generation:
+  -- src/generic/templates.*
 
 Queuing and job control:
-  -- src/queuemanager.*
+  -- src/generic/queuemanager.*
 
 Structure management:
-  -- src/tracker.*
+  -- src/generic/tracker.*
 
 Spacegroup identification:
   -- src/spglib/debug.*
@@ -76,5 +69,5 @@ Spacegroup identification:
   -- src/spglib/mathfunc.h
 
 Crystal object data structure:
-  -- src/structure.*
-  -- src/xtal.*
+  -- src/generic/structure.*
+  -- src/generic/xtal.*
