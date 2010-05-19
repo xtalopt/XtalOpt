@@ -235,6 +235,7 @@ namespace Avogadro {
           m_opt->warning(tr("Structure %1 has failed to perform local optimization (JobID = %2)")
                          .arg(structure->getIDString())
                          .arg(structure->getJobID()));
+          structure->setStatus(Structure::Error);
           handleStructureError(structure);
           break;
         }
@@ -353,6 +354,12 @@ namespace Avogadro {
     bool exists = false;
     int jobID;
     Structure *structure = m_errorPendingTracker.list()->takeFirst();
+
+    // Check that structure still shows error (in case of user intervention)
+    if (structure->getStatus() == Structure::Error) {
+      m_errorPendingTracker.unlock();
+      return;
+    }
 
     // Check if the  job is running under a  different JobID (Stranger
     // things have happened!)
