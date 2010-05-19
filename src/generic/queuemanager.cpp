@@ -209,18 +209,20 @@ namespace Avogadro {
     // Get queue data
     updateQueue();
 
+    Structure::State status;
+
     for (int i = 0; i < structures.size(); i++) {
       structure = structures.at(i);
 
-      QReadLocker structureLocker (structure->lock());
+      structure->lock()->lockForRead();
+      status = structure->getStatus();
+      structure->lock()->unlock();
 
       // Check status
-      switch (structure->getStatus()) {
+      switch (status) {
       case Structure::InProcess: {
-        structureLocker.unlock();
-        Optimizer::JobState state = m_opt->optimizer()->getStatus(structure);
-        structureLocker.relock();
-        switch (state) {
+        Optimizer::JobState substate = m_opt->optimizer()->getStatus(structure);
+        switch (substate) {
         case Optimizer::Running:
         case Optimizer::Queued:
         case Optimizer::CommunicationError:
@@ -232,19 +234,13 @@ namespace Avogadro {
           updateStructure(structure);
           break;
         case Optimizer::Error:
-          m_opt->warning(tr("Structure %1 has failed to perform local optimization (JobID = %2)")
-                         .arg(structure->getIDString())
-                         .arg(structure->getJobID()));
-          structure->setStatus(Structure::Error);
           handleStructureError(structure);
           break;
         }
         break;
       }
       case Structure::Submitted: {
-        structureLocker.unlock();
         Optimizer::JobState substate = m_opt->optimizer()->getStatus(structure);
-        structureLocker.relock();
         switch (substate) {
         case Optimizer::Running:
         case Optimizer::Queued:
