@@ -408,7 +408,11 @@ namespace Avogadro {
     if (!m_updatePendingTracker.popFirst(structure))
       return;
     structure->stopOptTimer();
-    m_opt->optimizer()->update(structure);
+    if (!m_opt->optimizer()->update(structure)) {
+      structure->setStatus(Structure::Error);
+      handleStructureError(structure);
+      return;
+    }
     structure->setStatus(Structure::StepOptimized);
     prepareStructureForNextOptStep(structure);
   }
