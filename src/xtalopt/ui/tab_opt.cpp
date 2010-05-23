@@ -276,7 +276,7 @@ namespace Avogadro {
     m_opt->runningJobLimit	= ui.spin_runningJobLimit->value();
     m_opt->limitRunningJobs	= ui.cb_limitRunningJobs->isChecked();
     m_opt->failLimit		= ui.spin_failLimit->value();
-    m_opt->failAction		= ui.combo_failAction->currentIndex();
+    m_opt->failAction		= XtalOpt::FailActions(ui.combo_failAction->currentIndex());
 
     // Duplicates
     m_opt->tol_enthalpy         = ui.spin_tol_enthalpy->value();

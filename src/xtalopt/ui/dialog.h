@@ -76,6 +76,9 @@ namespace Avogadro {
     void updateProgressValue(int val);
     void updateProgressLabel(const QString & text);
     void repaintProgressBar();
+    void newDebug(const QString &);
+    void newWarning(const QString &);
+    void newError(const QString &);
     void errorBox(const QString &);
 
   private slots:

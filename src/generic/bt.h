@@ -10,6 +10,4 @@
 #include <cxxabi.h>
 #endif
 
-QRegExp regexp("([^(]+)\\(([^)^+]+)(\\+[^)]+)\\)\\s(\\[[^]]+\\])");
-
 QStringList getBackTrace();

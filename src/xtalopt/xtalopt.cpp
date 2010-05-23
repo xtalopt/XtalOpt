@@ -18,6 +18,7 @@
 
 #include "xtalopt.h"
 
+#include "../generic/optbase.h"
 #include "../generic/xtal.h"
 #include "../generic/optimizer.h"
 #include "optimizers/vasp.h"
@@ -49,47 +50,20 @@ using namespace Eigen;
 namespace Avogadro {
 
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
-    QObject(parent)
+    OptBase(parent)
   {
-    m_tracker   = new Tracker (this);
-    m_queue     = new QueueManager(this, m_tracker);
-    m_optimizer = 0; // This will be set when the GUI is initialized
-    sOBMutex = new QMutex;
-    stateFileMutex = new QMutex;
-    backTraceMutex = new QMutex;
     xtalInitMutex = new QMutex;
     m_dialog = parent;
-
-    savePending = false;
-
-    testingMode = false;
-    test_nRunsStart = 1;
-    test_nRunsEnd = 100;
-    test_nStructs = 600;
 
     // Connections
     connect(m_tracker, SIGNAL(newStructureAdded(Structure*)),
             this, SLOT(checkForDuplicates()));
     connect(this, SIGNAL(sessionStarted()),
             this, SLOT(resetDuplicates()));
-    connect(this, SIGNAL(startingSession()),
-            this, SLOT(setIsStartingTrue()));
-    connect(this, SIGNAL(sessionStarted()),
-            this, SLOT(setIsStartingFalse()));
   }
 
-  XtalOpt::~XtalOpt() {
-    // Wait for save to finish
-    while (savePending) {};
-    savePending = true;
-    delete m_queue;
-    delete m_tracker;
-  }
-
-  void XtalOpt::reset() {
-    m_tracker->deleteAllStructures();
-    m_tracker->reset();
-    m_queue->reset();
+  XtalOpt::~XtalOpt()
+  {
   }
 
   void XtalOpt::startOptimization() {
@@ -783,19 +757,13 @@ namespace Avogadro {
     // Move xtalopt.state -> xtalopt.state.old
     if (QFile::exists(filename) ) {
       if (QFile::exists(oldfilename)) {
-        qDebug() << "rm old:    " << QFile::remove(oldfilename);
+        QFile::remove(oldfilename);
       }
-      qDebug() << "Rename"
-               << filename
-               << oldfilename
-               << QFile::rename(filename, oldfilename);
+      QFile::rename(filename, oldfilename);
     }
 
     // Move xtalopt.state.tmp to xtalopt.state
-      qDebug() << "Rename"
-               << tmpfilename
-               << filename
-               << QFile::rename(tmpfilename, filename);
+    QFile::rename(tmpfilename, filename);
 
     // Loop over xtals and save them
     QFile xfile;
@@ -934,9 +902,9 @@ namespace Avogadro {
 
     // Set optimizer
     setOptimizer(OptTypes(settings->value("xtalopt/edit/optType").toInt()));
-    qDebug() << "Resuming XtalOpt session in '" << filename 
-             << "' (" << m_optimizer->getIDString() << ")";
-
+    debug(tr("Resuming XtalOpt session in '%1' (%2)")
+          .arg(filename)
+          .arg(m_optimizer->getIDString()));
     // Xtals
     // Initialize progress bar:
     m_dialog->updateProgressMaximum(xtalDirs.size());
@@ -1148,44 +1116,7 @@ namespace Avogadro {
     emit updateAllInfo();
   }
 
-  void XtalOpt::warning(const QString & s) {
-    qWarning() << "Warning: " << s;
-    m_dialog->log("Warning: " + s);
-  }
-
-  void XtalOpt::debug(const QString & s) {
-    qDebug() << "Debug: " << s;
-    m_dialog->log("Debug: " + s);
-  }
-
-  void XtalOpt::error(const QString & s) {
-    qWarning() << "Error: " << s;
-    m_dialog->log("Error: " + s);
-    m_dialog->errorBox(s);
-  }
-
-  void XtalOpt::printBackTrace
-() {
-    backTraceMutex->lock();
-    QStringList l = getBackTrace();
-    backTraceMutex->unlock();
-    for (int i = 0; i < l.size();i++)
-      qDebug() << l.at(i);
-  }
-
-  void XtalOpt::setOptimizer(Optimizer *o) {
-    Optimizer *old = m_optimizer;
-    if (m_optimizer) {
-      // Save settings explicitly. This is called in the destructer, but
-      // we may need some settings in the new optimizer.
-      old->writeSettings();
-      old->deleteLater();
-    }
-    m_optimizer = o;
-    emit optimizerChanged(o);
-  }
-
-  void XtalOpt::setOptimizer(const QString &IDString)
+  void XtalOpt::setOptimizer_string(const QString &IDString)
   {
     if (IDString.toLower() == "vasp")
       setOptimizer(new VASPOptimizer (this));
@@ -1199,7 +1130,7 @@ namespace Avogadro {
   }
         
 
-  void XtalOpt::setOptimizer(OptTypes opttype)
+  void XtalOpt::setOptimizer_enum(OptTypes opttype)
   {
     switch (opttype) {
     case OT_VASP:

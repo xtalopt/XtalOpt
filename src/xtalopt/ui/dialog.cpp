@@ -122,6 +122,12 @@ namespace Avogadro {
     connect(this, SIGNAL(sig_repaintProgressBar()),
             this, SLOT(repaintProgressBar_()));
 
+    connect(m_opt, SIGNAL(warningStatement(const QString &)),
+            this, SLOT(newWarning(const QString &)));
+    connect(m_opt, SIGNAL(debugStatement(const QString &)),
+            this, SLOT(newDebug(const QString &)));
+    connect(m_opt, SIGNAL(errorStatement(const QString &)),
+            this, SLOT(newError(const QString &)));
     connect(this, SIGNAL(sig_errorBox(const QString &)),
             this, SLOT(errorBox_(const QString &)));
 
@@ -350,6 +356,19 @@ namespace Avogadro {
     //qDebug() << "XtalOptDialog::repaintProgressBar_: Val: " << ui.progbar->value() << " Min: " << ui.progbar->minimum() << " Max: " << ui.progbar->maximum();
     ui.label_prog->repaint();
     ui.label_prog->repaint();
+  }
+
+  void XtalOptDialog::newDebug(const QString & s) {
+    newLog("Debug: " + s);
+  }
+
+  void XtalOptDialog::newWarning(const QString & s) {
+    newLog("Warning: " + s);
+  }
+
+  void XtalOptDialog::newError(const QString & s) {
+    newLog("Error: " + s);
+    errorBox(s);
   }
 
   void XtalOptDialog::errorBox(const QString & s) {

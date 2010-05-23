@@ -18,7 +18,7 @@
 
 #include "queuemanager.h"
 
-#include "../xtalopt/xtalopt.h" // TODO Change this into opt and xtalopt
+#include "../generic/optbase.h"
 #include "structure.h"
 #include "optimizer.h"
 
@@ -31,7 +31,7 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  QueueManager::QueueManager(XtalOpt *opt, Tracker *tracker) :
+  QueueManager::QueueManager(OptBase *opt, Tracker *tracker) :
     QObject(opt),
     m_opt(opt),
     m_tracker(tracker)
@@ -370,16 +370,16 @@ namespace Avogadro {
     else {
       // Check failure count
       if (structure->getFailCount() >= m_opt->failLimit) {
-        switch (XtalOpt::FailActions(m_opt->failAction)) {
-        case XtalOpt::FA_DoNothing:
+        switch (OptBase::FailActions(m_opt->failAction)) {
+        case OptBase::FA_DoNothing:
         default:
           // resubmit job
           prepareStructureForSubmission(structure);
           break;
-        case XtalOpt::FA_KillIt:
+        case OptBase::FA_KillIt:
           killStructure(structure);
           break;
-        case XtalOpt::FA_Randomize:
+        case OptBase::FA_Randomize:
           structure->setStatus(Structure::Updating);
           locker.unlock();
           m_errorPendingTracker.unlock();

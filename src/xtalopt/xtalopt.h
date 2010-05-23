@@ -19,6 +19,7 @@
 #ifndef XTALOPT_H
 #define XTALOPT_H
 
+#include "../generic/optbase.h"
 #include "../generic/xtal.h"
 #include "../generic/queuemanager.h"
 #include "../generic/tracker.h"
@@ -30,13 +31,10 @@
 #include <QStringList>
 #include <QReadWriteLock>
 
-#include <openbabel/generic.h>
-#include <openbabel/mol.h>
-
 namespace Avogadro {
   class XtalOptDialog;
 
-  class XtalOpt : public QObject
+  class XtalOpt : public OptBase
   {
     Q_OBJECT
 
@@ -56,34 +54,20 @@ namespace Avogadro {
       OP_Permustrain
     };
 
-    enum FailActions {
-      FA_DoNothing = 0,
-      FA_KillIt,
-      FA_Randomize
-    };
-
     Xtal* generateRandomXtal(uint generation, uint id);
     Structure* replaceWithRandom(Structure *s, const QString & reason);
     bool checkLimits();
     bool checkXtal(Xtal *xtal);
     bool save();
     bool load(const QString & filename);
-    Tracker* tracker(){return m_tracker;};
-    QueueManager* queue(){return m_queue;};
-    Optimizer* optimizer() {return m_optimizer;};
     XtalOptDialog* dialog() {return m_dialog;};
     static void sortByEnthalpy(QList<Xtal*> *xtals);
     static void rankEnthalpies(QList<Xtal*> *xtals);
     static QList<double> getProbabilityList(QList<Xtal*> *xtals);
 
     uint numInitial;                    // Number of initial structures
-    uint runningJobLimit;		// Number of concurrent jobs allowed.
-    bool testingMode;
-    uint test_nRunsStart;		// Starting run number
-    uint test_nRunsEnd;			// Ending run number
-    uint test_nStructs;			// Number of structures per run when testing
+
     uint popSize;                       // Population size
-    uint contStructs;                   // Number of continuous structures generated
 
     uint p_cross;                       // Percentage of new structures by crossover
     uint p_strip;	                // Percentage of new structures by stripple
@@ -113,54 +97,35 @@ namespace Avogadro {
 
     double tol_enthalpy, tol_volume;	// Duplicate matching tolerances
 
-    uint failLimit, failAction;
-
-    bool using_fixed_volume, using_shortestInteratomicDistance, limitRunningJobs, isStarting;
+    bool using_fixed_volume, using_shortestInteratomicDistance;
     QString filePath, description, qsub, qstat, qdel, host, username, rempath;
     QHash<uint, uint> comp;
     QStringList seedList;
 
-    // sOBMutex is here because OB likes to implement singleton
-    // classes that aren't thread safe.
-    QMutex *sOBMutex, *stateFileMutex, *backTraceMutex, *xtalInitMutex;
-    // These were mutexes, but Qt suddenly started to complain...
-    bool savePending;
+    QMutex *xtalInitMutex;
 
    signals:
     void newInfoUpdate();
     void updateAllInfo();
-    void sessionStarted();
-    void startingSession();
-    void structuresCleared();
-    void optimizerChanged(Optimizer*);
 
    public slots:
-    void reset();
     void startOptimization();
     void generateNewStructure();
     void initializeAndAddXtal(Xtal *xtal, uint generation, const QString &parents);
-    void warning(const QString & s);
-    void debug(const QString & s);
-    void error(const QString & s);
-    void emitSessionStarted() {emit sessionStarted();};
-    void emitStartingSession() {emit startingSession();};
-    void setIsStartingTrue() {isStarting = true;};
-    void setIsStartingFalse() {isStarting = false;};
     void resetDuplicates();
     void checkForDuplicates();
-    void printBackTrace();
-    void setOptimizer(Optimizer* o);
-    void setOptimizer(const QString &IDString);
-    void setOptimizer(OptTypes opttype);
+    void setOptimizer(Optimizer *o) {setOptimizer_opt(o);};
+    void setOptimizer(const QString &IDString) {setOptimizer_string(IDString);};
+    void setOptimizer(OptTypes opttype) {setOptimizer_enum(opttype);};
 
    private:
-    Tracker *m_tracker;
-    QueueManager *m_queue;
-    Optimizer *m_optimizer;
     XtalOptDialog *m_dialog;
 
     void resetDuplicates_();
     void checkForDuplicates_();
+
+    void setOptimizer_string(const QString &s);
+    void setOptimizer_enum(OptTypes opttype);
   };
 
 } // end namespace Avogadro

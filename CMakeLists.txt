@@ -40,6 +40,7 @@ set (xtalopt_SRCS
 	src/spglib/spglib.c
 	src/spglib/symmetry.c
 	src/spglib/symmetry_kpoint.c
+    	src/generic/optbase.cpp
     	src/generic/structure.cpp
     	src/generic/xtal.cpp
 	src/extension.cpp

@@ -19,15 +19,13 @@
 #ifndef QUEUEMANAGER_H
 #define QUEUEMANAGER_H
 
+#include "optbase.h"
 #include "structure.h"
 #include "tracker.h"
 #include "optimizer.h"
 
 #include <QDebug>
 #include <QReadWriteLock>
-
-#include <openbabel/generic.h>
-#include <openbabel/mol.h>
 
 namespace Avogadro {
 
@@ -36,7 +34,7 @@ namespace Avogadro {
     Q_OBJECT
 
   public:
-    explicit QueueManager(XtalOpt *opt, Tracker *tracker);
+    explicit QueueManager(OptBase *opt, Tracker *tracker);
     virtual ~QueueManager();
 
 
@@ -92,7 +90,7 @@ namespace Avogadro {
     int m_requestedStructures;
 
 
-    XtalOpt *m_opt; // TODO change this
+    OptBase *m_opt;
 
     Tracker *m_tracker;
 
