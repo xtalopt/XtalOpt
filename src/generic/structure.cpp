@@ -56,14 +56,41 @@ namespace Avogadro {
   }
 
   bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, double maxAttempts) {
-    Q_UNUSED(atomicNumber);
-    Q_UNUSED(minIAD);
-    Q_UNUSED(maxIAD);
-    Q_UNUSED(maxAttempts);
-    // Treat this function as pure virtual for now. Should eventually
-    // be used for non-extended systems.
-    qWarning() << "WARNING: Structure::addAtomRandomly called. Should be pure virtual for now. This is a bug.";
-    return false;
+    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers.
+    rand.TimeSeed();
+
+    double IAD = -1;
+    int i = 0;
+    vector3 coords;
+
+    // For first atom, add to 0, 0, 0
+    if (numAtoms() == 0) {
+      coords = vector3 (0,0,0);
+    }
+    else {
+      do {
+        // Generate random coordinates
+        IAD = -1;
+        double x = rand.NextFloat() * radius() + maxIAD;
+        double y = rand.NextFloat() * radius() + maxIAD;
+        double z = rand.NextFloat() * radius() + maxIAD;
+
+        coords.Set(x,y,z);
+        if (minIAD != -1) {
+          getNearestNeighborDistance(x, y, z, IAD);
+        }
+        else { break;};
+        i++;
+      } while (i < maxAttempts && IAD <= minIAD);
+
+      if (i >= maxAttempts) return false;
+    }
+
+    Atom *atm = addAtom();
+    Eigen::Vector3d pos (coords[0],coords[1],coords[2]);
+    atm->setPos(pos);
+    atm->setAtomicNumber(static_cast<int>(atomicNumber));
+    return true;
   }
 
   void Structure::setOBEnergy(const QString &ff) {
@@ -80,36 +107,122 @@ namespace Avogadro {
     m_hasEnergy = true;
   }
 
-  bool Structure::getShortestInteratomicDistance(double & shortest) const {
-    Q_UNUSED(shortest);
-    // Treat this function as pure virtual for now. Should eventually
-    // be used for non-extended systems.
-    qWarning() << "WARNING: Structure::getShortestInteratomicDistance called. Should be pure virtual for now. This is a bug.";
-    return false;
+  bool Structure::getShortestInteratomicDistance(double & shortest) const
+  {
+    QList<Atom*> atomList = atoms();
+    if (atomList.size() <= 1) return false; // Need at least two atoms!
+    QList<Vector3d> atomPositions;
+    for (int i = 0; i < atomList.size(); i++)
+      atomPositions.push_back(*(atomList.at(i)->pos()));
+
+    Vector3d v1= atomPositions.at(0);
+    Vector3d v2= atomPositions.at(1);
+    shortest = abs((v1-v2).norm());
+    double distance;
+
+    // Find shortest distance
+    for (int i = 0; i < atomList.size(); i++) {
+      v1 = atomPositions.at(i);
+      for (int j = i+1; j < atomList.size(); j++) {
+        v2 = atomPositions.at(j);
+        // Intercell
+        distance = abs((v1-v2).norm());
+        if (distance < shortest) shortest = distance;
+      }
+    }
+
+    return true;
   }
 
   bool Structure::getNearestNeighborDistance(double x, double y, double z, double & shortest) const {
-    Q_UNUSED(x);
-    Q_UNUSED(y);
-    Q_UNUSED(z);
-    Q_UNUSED(shortest);
-    // Treat this function as pure virtual for now. Should eventually
-    // be used for non-extended systems.
-    qWarning() << "WARNING: Structure::getNearestNeighborDistance called. Should be pure virtual for now. This is a bug.";
-    return false;
+    QList<Atom*> atomList = atoms();
+    if (atomList.size() < 1) return false; // Need at least one atom!
+    QList<Vector3d> atomPositions;
+    for (int i = 0; i < atomList.size(); i++)
+      atomPositions.push_back(*(atomList.at(i)->pos()));
+
+    Vector3d v1 (x, y, z);
+    Vector3d v2 = atomPositions.at(0);
+    shortest = abs((v1-v2).norm());
+    double distance;
+
+    // Find shortest distance
+    for (int j = 0; j < atomList.size(); j++) {
+      v2 = atomPositions.at(j);
+      // Intercell
+      distance = abs((v1-v2).norm());
+      if (distance < shortest) shortest = distance;
+    }
+    return true;
   }
 
-  bool Structure::getNearestNeighborHistogram(QList<double> & distance, QList<double> & frequency, double min, double max, double step, Atom *atom) const {
-    Q_UNUSED(distance);
-    Q_UNUSED(frequency);
-    Q_UNUSED(min);
-    Q_UNUSED(max);
-    Q_UNUSED(step);
-    Q_UNUSED(atom);
-    // Treat this function as pure virtual for now. Should eventually
-    // be used for non-extended systems.
-    qWarning() << "WARNING: Structure::getNearestNeighborHistogram called. Should be pure virtual for now. This is a bug.";
-    return false;
+  bool Structure::getNearestNeighborHistogram(QList<double> & distance, QList<double> & frequency, double min, double max, double step, Atom *atom) const
+  {
+    if (min > max && step > 0) {
+      qWarning() << "Structure::getNearestNeighborHistogram: min cannot be greater than max!";
+      return false;
+    }
+    if (step < 0 || step == 0) {
+      qWarning() << "Structure::getNearestNeighborHistogram: invalid step size:" << step;
+      return false;
+    }
+    if (numAtoms() < 1) return false; // Need at least one atom!
+
+    // Populate distance list
+    distance.clear();
+    frequency.clear();
+    double val = min;
+    do {
+      distance.append(val);
+      frequency.append(0);
+      val += step;
+    } while (val < max);
+
+    QList<Atom*> atomList = atoms();
+    QList<Vector3d> atomPositions;
+    for (int i = 0; i < atomList.size(); i++)
+      atomPositions.push_back(*(atomList.at(i)->pos()));
+
+    Vector3d v1= atomPositions.at(0);
+    Vector3d v2= atomPositions.at(1);
+    double diff;
+
+    // build histogram
+    // Loop over all atoms
+    if (atom == 0) {
+      for (int i = 0; i < atomList.size(); i++) {
+        v1 = atomPositions.at(i);
+        for (int j = i+1; j < atomList.size(); j++) {
+          v2 = atomPositions.at(j);
+
+          diff = abs((v1-v2).norm());
+          for (int k = 0; k < distance.size(); k++) {
+            double radius = distance.at(k);
+            if (abs(diff-radius) < step/2) {
+              frequency[k]++;
+            }
+          }
+        }
+      }
+    }
+    // Or, just the one requested
+    else {
+      v1 = *atom->pos();
+      for (int j = 0; j < atomList.size(); j++) {
+        if (atomList.at(j) == atom) continue;
+        v2 = atomPositions.at(j);
+        // Intercell
+        diff = abs((v1-v2).norm());
+        for (int k = 0; k < distance.size(); k++) {
+          double radius = distance.at(k);
+          if (diff != 0 && abs(diff-radius) < step/2) {
+            frequency[k]++;
+          }
+        }
+      }
+    }
+
+    return true;
   }
 
   QList<QString> Structure::getSymbols() const {

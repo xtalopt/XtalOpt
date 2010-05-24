@@ -77,7 +77,7 @@ namespace Avogadro {
     virtual bool getShortestInteratomicDistance(double & shortest) const;
     virtual bool getNearestNeighborDistance(double x, double y, double z, double & shortest) const;
     virtual bool getNearestNeighborHistogram(QList<double> & distance, QList<double> & frequency, double min, double max, double step, Atom *atom = 0) const;
-    virtual bool addAtomRandomly(uint atomicNumber, double minIAD = 0.0, double maxIAD = 0.0, double maxAttempts = 100.0);
+    virtual bool addAtomRandomly(uint atomicNumber, double minIAD = 0.0, double maxIAD = 0.0, double maxAttempts = 1000.0);
 
     QList<QString> getSymbols() const;
     QList<uint> getNumberOfAtomsAlpha() const; // Number of each type of atom (sorted alphabetically by symbol)
