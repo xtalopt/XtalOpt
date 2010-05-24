@@ -484,7 +484,7 @@ namespace Avogadro {
       hash.insert(symbols.at(i), QVariant(filename));
     }
 
-    for (int i = 0; i < ui.list_opt->count(); i++)
+    for (int i = 0; i < m_opt->optimizer()->getNumberOfOptSteps(); i++)
       potcarInfo.append(QVariant(hash));
         
     m_opt->optimizer()->setData("POTCAR info", QVariant(potcarInfo));
@@ -565,7 +565,8 @@ namespace Avogadro {
   {
     SETTINGS("");
     QString filename = settings->value("xtalopt/edit/schemePath/", "").toString();
-    QFileDialog dialog (NULL, tr("Save Optimization Scheme as..."), filename, "*.scheme;;*.*");
+    QFileDialog dialog (NULL, tr("Save Optimization Scheme as..."),
+                        filename, "*.scheme;;*.*");
     dialog.selectFile(m_opt->optimizer()->getIDString() + ".scheme");
     dialog.setFileMode(QFileDialog::AnyFile);
     if (dialog.exec())
@@ -581,7 +582,8 @@ namespace Avogadro {
   {
     SETTINGS("");
     QString filename = settings->value("xtalopt/edit/schemePath/", "").toString();
-    QFileDialog dialog (NULL, tr("Select Optimization Scheme to load..."), filename, "*.scheme;;*.*");
+    QFileDialog dialog (NULL, tr("Select Optimization Scheme to load..."),
+ filename, "*.scheme;;*.*");
      dialog.setFileMode(QFileDialog::ExistingFile);
     if (dialog.exec())
       filename = dialog.selectedFiles().first();
