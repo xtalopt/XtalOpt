@@ -24,14 +24,14 @@
 #include <QObject>
 
 namespace Avogadro {
-  class XtalOpt;
+  class OptBase;
 
   class PWscfOptimizer : public Optimizer
   {
     Q_OBJECT
 
    public:
-    PWscfOptimizer(XtalOpt *parent);
+    PWscfOptimizer(OptBase *parent);
 
   };
 

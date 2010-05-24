@@ -20,6 +20,8 @@
 #include "templates.h"
 #include "xtal.h"
 #include "macros.h"
+#include "optbase.h"
+#include "queuemanager.h"
 
 #include <QDir>
 #include <QDebug>
@@ -36,7 +38,7 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  Optimizer::Optimizer(XtalOpt *parent) :
+  Optimizer::Optimizer(OptBase *parent) :
     QObject(parent),
     m_opt(parent)    
   {
@@ -223,7 +225,7 @@ namespace Avogadro {
     int optStepInd = structure->getCurrentOptStep() - 1;
     for (int i = 0; i < streams.size(); i++) {
       *(streams.at(i)) << XtalOptTemplate::interpretTemplate( m_templates.value(filenames.at(i)).at(optStepInd),
-                                                           structure, m_opt);
+                                                              structure, m_opt);
     }
 
     // Close files

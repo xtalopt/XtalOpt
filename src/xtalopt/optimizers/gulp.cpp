@@ -33,7 +33,7 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  GULPOptimizer::GULPOptimizer(XtalOpt *parent) :
+  GULPOptimizer::GULPOptimizer(OptBase *parent) :
     Optimizer(parent)
   {
     // Set allowed data structure keys, if any, e.g.

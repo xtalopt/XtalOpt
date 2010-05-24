@@ -34,14 +34,10 @@ namespace Avogadro {
   Substrate::Substrate(QObject *parent) : 
     Molecule(parent), m_probs(0)
   {
-    qDebug() << "Substrate::Substrate( " << &parent << " ) called";
-    m_probs = new QList<double>;
   }
 
   Substrate::Substrate(Molecule *mol) {
     qDebug() << "Substrate::Substrate( [copy " << &mol << "] ) called";
-
-    m_probs = new QList<double>;
 
     OpenBabel::OBMol obmol = mol->OBMol();
 
@@ -51,19 +47,6 @@ namespace Avogadro {
   }
 
   Substrate::~Substrate() {
-    delete m_probs;
-  }
-
-  void Substrate::load(QTextStream &in) {
-    Q_UNUSED(in);
-    qDebug() << "Substrate::load( ) called";
-    generateProbabilities();
-  }
-
-  void Substrate::save(QTextStream &in) {
-    Q_UNUSED(in);
-    qDebug() << "Substrate::save( ) called";
-    // Nothing to do here, yet...
   }
 
   void Substrate::sortConformers() {
@@ -96,7 +79,7 @@ namespace Avogadro {
     qDebug() << "Substrate::generateProbabilities( ) called";
 
     sortConformers();
-    m_probs->clear();
+    m_probs.clear();
     double lowest = energy(0);;
     double highest = energy(numConformers() - 1);
     double spread = highest - lowest + (highest - lowest) / static_cast<double>(numConformers());
@@ -111,9 +94,9 @@ namespace Avogadro {
     // We'll end up with:
     // 1  0.7  0.6  0.2  0  --   sum = 2.5
     double sum = 0;
-    for (int i = 0; i < m_probs->size(); i++){
-      m_probs->replace(i, 1.0 - m_probs->at(i));
-      sum += m_probs->at(i);
+    for (int i = 0; i < m_probs.size(); i++){
+      m_probs.replace(i, 1.0 - m_probs.at(i));
+      sum += m_probs.at(i);
     }
     // Normalize with the sum so that the list adds to 1
     // 0.4  0.28  0.24  0.08  0
@@ -127,7 +110,7 @@ namespace Avogadro {
       sum += m_probs->at(i);
       m_probs->replace(i, sum);
     }
-    // And we have a enthalpy weighted probability list! To use:
+    // And we have a energy weighted probability list! To use:
     //
     //   double r = rand.NextFloat();
     //   uint ind;
@@ -167,4 +150,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "substratemol.moc"
+#include "substrate.moc"

@@ -25,14 +25,14 @@
 
 namespace Avogadro {
   class Structure;
-  class XtalOpt;
+  class OptBase;
 
   class GULPOptimizer : public Optimizer
   {
     Q_OBJECT
 
    public:
-    GULPOptimizer(XtalOpt *parent);
+    GULPOptimizer(OptBase *parent);
 
     bool writeInputFiles(Structure *structure);
     bool startOptimization(Structure *structure);

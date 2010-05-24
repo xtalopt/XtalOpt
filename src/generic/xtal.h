@@ -21,10 +21,6 @@
 
 #include "../generic/structure.h"
 
-#include <openbabel/generic.h>
-#include <openbabel/mol.h>
-#include <openbabel/math/vector3.h>
-
 #include <QDebug>
 #include <QDateTime>
 #include <QTextStream>

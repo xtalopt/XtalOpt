@@ -24,8 +24,7 @@
 #include <QString>
 #include <QDebug>
 
-#include <avogadro/molecule.h>
-#include <avogadro/atom.h>
+#include "../../generic/structure.h"
 
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
@@ -36,7 +35,7 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  PWscfOptimizer::PWscfOptimizer(XtalOpt *parent) :
+  PWscfOptimizer::PWscfOptimizer(OptBase *parent) :
     Optimizer(parent)
   {
     // Set allowed data structure keys, if any, e.g.

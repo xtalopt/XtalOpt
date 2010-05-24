@@ -20,10 +20,11 @@
 #define STRUCTURE_H
 
 #include <avogadro/molecule.h>
+#include <avogadro/atom.h>
 
-#include <openbabel/generic.h>
-#include <openbabel/mol.h>
 #include <openbabel/math/vector3.h>
+#include <openbabel/mol.h>
+#include <openbabel/generic.h>
 
 #include <QDebug>
 #include <QDateTime>

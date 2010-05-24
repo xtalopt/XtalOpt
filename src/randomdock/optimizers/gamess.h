@@ -19,42 +19,17 @@
 #ifndef RANDOMDOCKGAMESS_H
 #define RANDOMDOCKGAMESS_H
 
-#include <openbabel/generic.h>
-#include <openbabel/obiter.h>
-
-#include <avogadro/molecule.h>
-
 namespace Avogadro {
   class RandomDockParams;
   class Scene;
 
-  class RandomDockGAMESS : public QObject
+  class GAMESSOptimizer : public QObject
   {
     Q_OBJECT
 
    public:
+    GAMESSOptimizer
 
-    enum GAMESSState	{ Unknown = -1, Success, Error, Queued, Running, CommunicationError};
-
-    static bool writeInputFiles(Scene *scene, RandomDockParams *p);
-    static bool readOutputFiles(Scene *scene, RandomDockParams *p);
-    static bool stripOutputFile(Scene *scene, RandomDockParams *p);
-    static bool copyToRemote(Scene *scene, RandomDockParams *p);
-    static bool copyFromRemote(Scene *scene, RandomDockParams *p);
-
-    static bool getQueue(RandomDockParams *p, QStringList & queuedata);
-    static int getStatus(Scene *scene, RandomDockParams *p, const QStringList & queuedata);
-
-    static bool startJob(Scene *scene, RandomDockParams *p);
-    static bool deleteJob(Scene *scene, RandomDockParams *p);
-
-   signals:
-
-   public slots:
-
-   private slots:
-
-   private:
   };
 
 } // end namespace Avogadro

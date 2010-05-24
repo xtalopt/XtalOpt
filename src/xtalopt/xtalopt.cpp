@@ -266,7 +266,7 @@ namespace Avogadro {
 
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id) {
     // Random number generator
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
+    OpenBabel::OBRandom rand (true);
     rand.TimeSeed();
 
     // Set cell parameters
@@ -1010,6 +1010,7 @@ namespace Avogadro {
     m_dialog->updateProgressLabel("Done!");
 
     return true;
+
   }
 
   void XtalOpt::resetDuplicates() {
@@ -1128,7 +1129,6 @@ namespace Avogadro {
       error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
             .arg(IDString));
   }
-        
 
   void XtalOpt::setOptimizer_enum(OptTypes opttype)
   {
@@ -1148,7 +1148,6 @@ namespace Avogadro {
       break;
     }
   }
-  
 
 } // end namespace Avogadro
 

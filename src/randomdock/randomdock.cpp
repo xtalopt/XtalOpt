@@ -32,50 +32,350 @@ using namespace std;
 
 namespace Avogadro {
 
-  bool RandomDock::save(RandomDockParams *p) {
-    qDebug() << "RandomDock::save( " << p << " ) called";
-    // Back up randomdock.state
-    QFile file (p->filePath + "/" + p->fileBase + "randomdock.state");
-    QFile oldfile (p->filePath + "/" + p->fileBase + "randomdock.state.old");
-    if (oldfile.open(QIODevice::ReadOnly))
-      oldfile.remove();
-    if (file.open(QIODevice::ReadOnly))
-      file.copy(oldfile.fileName());
-    file.close();
-    if (!file.open(QIODevice::WriteOnly)) {
-      qWarning() << "RandomDock::save(): Error opening file " << file.fileName() << " for writing...";
-      return false;
-    }
-    QTextStream out (&file);
+  RandomDock::RandomDock(RandomDockDialog *parent) :
+    OptBase(parent),
+    m_dialog(parent),
+    substrate(0)
+  {
+    sceneInitMutex = new QMutex;
+  }
 
-    // Store values in p
-    out << "TODO!";
+  RandomDock::~RandomDock()
+  {
+  }
+
+  void RandomDock::startOptimization() {
+    debug("Starting optimization.");
+    emit startingSession();
+
+    // Check that everything is in place
+    if (!m_params->substrate) {
+      error("Cannot begin search without specifying substrate.");
+      return;
+    }
+    if (m_params->matrixList->size() == 0) {
+      error("Cannot begin search without specifying matrix molecules.")
+      return;
+    }
+    if (!checkLimits()) {
+      return;
+    }
+
+    // prepare pointers
+    m_tracker->deleteAllStructures();
+
+    ////////////////////////////
+    // Generate random scenes //
+    ////////////////////////////
+
+    // Set up progress bar
+    m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
+
+    // Initalize loop variables
+    QString filename;
+    Scene *scene;
+    int progCount=0;
+
+    // Generation loop...
+    for (uint i = 0; i < m_params->numSearches; i++) {
+      m_dialog->updateProgressMaximum( (i == 0)
+                                        ? 0
+                                        : int(progCount / static_cast<double>(i)) * numSearches );
+      m_dialog->updateProgressValue(progCount);
+      progCount++;
+      m_dialog->updateProgressLabel(tr("%1 scenes generated of (%2)...").arg(i).arg(numSearches));
+ 
+      // Generate/Check molecule
+      scene = generateRandomScene();
+      initializeAndAddScene(scene);
+    }
+
+    m_dialog->stopProgressUpdate();
+
+    m_dialog->saveSession();
+    emit sessionStarted();
+  }
+
+  Scene* RandomDock::generateRandomScene() {
+    // Here we build a scene by extracting coordinates of the atoms
+    // from a random conformer of a substrate and the specified number
+    // of matrix molecules. The coordinates are rotated, translated,
+    // and checked before populating the new scene.
+
+    // Initialize vars
+    Atom *atom;
+    Bond *newbond;
+    Bond *oldbond;
+    Matrix *mat;
+    Substrate *sub;
+    Scene *scene = new Scene;
+    QHash<ulong, ulong> idMap; // Old id, new id
+    QList<Atom*> atomList;
+    QList<Eigen::Vector3d> positions;
+    QList<int> atomicNums;
+    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers.
+    rand.TimeSeed();
+
+    // Select random conformer of substrate
+    sub = substrate->getRandomConformer();
+
+    // Extract information from sub
+    atomList = sub->atoms();
+    for (int j = 0; j < atomList.size(); j++) {
+      atomicNums.append(atomList.at(j)->atomicNumber());
+      positions.append( *(atomList.at(j)->pos()));
+    }
+
+    // Place substrate's geometric center at origin
+    RandomDock::centerCoordinatesAtOrigin(positions);
+
+    // Add atoms to the scene
+    for (int i = 0; i < positions.size(); i++) {
+      atom = scene->addAtom();
+      idMap.insert(atomList.at(i)->id(), atom->id());
+      atom->setAtomicNumber(atomicNums.at(i));
+      atom->setPos(positions.at(i));
+    }
+
+    // Attach bonds
+    for (uint i = 0; i < sub->numBonds(); i++) {
+      newbond = scene->addBond();
+      oldbond = sub->bonds().at(i);
+      newbond->setAtoms(idMap[oldbond->beginAtomId()],
+                        idMap[oldbond->endAtomId()],
+                        oldbond->order());
+      newbond->setAromaticity(oldbond->isAromatic());
+    }
+
+    // Get matrix elements
+    // Generate probability list
+    QList<double> probs;
+    double total = 0; // leave as double for division below
+
+    // Probability based on stoichiometry
+    for (int i = 0; i < matrixStoich.size(); i++)
+      total += matrixStoich.at(i);
+    for (int i = 0; i < matrixStoich.size(); i++) {
+      if (i == 0) probs.append(matrixStoich.at(0)/total);
+      else probs.append(matrixStoich.at(i)/total + probs.at(i-1));
+    }
+
+    // Pick and add matrix elements
+    for (uint i = 0; i < numMatrixMol; i++) {
+      // Add random conformers of matrix molecule in random locations,
+      // orientations
+      double r = rand.NextFloat();
+      int ind;
+      for (ind = 0; ind < probs.size(); ind++)
+        if (r < probs.at(ind)) break;
+
+      mat = matrixList->at(ind);
+
+      // Extract information from matrix
+      atomList = mat->atoms();
+      atomicNums.clear();
+      positions.clear();
+      idMap.clear();
+      for (int j = 0; j < atomList.size(); j++) {
+        atomicNums.append(atomList.at(j)->atomicNumber());
+        positions.append( *(atomList.at(j)->pos()));
+      }
+
+      // Rotate, translate positions
+      RandomDock::randomlyRotateCoordinates(positions);
+      RandomDock::randomlyDisplaceCoordinates(positions, radius_min, radius_max);
+
+      // Check interatomic distances
+      double shortest, distance;
+      shortest = -1;
+      for (uint mi = 0; mi < mat->numAtoms(); mi++) {
+        for (uint si = 0; si < scene->numAtoms(); si++) {
+          distance = abs((
+                          *(scene->atoms().at(si)->pos()) -
+                          positions.at(mi)
+                          ).norm()
+                         );
+          if (shortest < 0)
+            shortest = distance; // initialize...
+          else {
+            if (distance < shortest) shortest = distance;
+          }
+        }
+      }
+      if (shortest > IAD_max || shortest < IAD_min) {
+        qDebug() << "Bad IAD: "  << shortest;
+        i--;
+        continue;
+      }
+      // If IAD checks out, add the atoms to the scene
+      for (int j = 0; j < positions.size(); j++) {
+        atom = scene->addAtom();
+        idMap.insert(atomList.at(j)->id(), atom->id());
+        atom->setAtomicNumber(atomicNums.at(j));
+        atom->setPos(positions.at(j));
+      }
+
+      // Attach bonds
+      for (uint j = 0; j < mat->numBonds(); j++) {
+        newbond = scene->addBond();
+        oldbond = mat->bonds().at(j);
+        newbond->setAtoms(idMap[oldbond->beginAtomId()],
+                          idMap[oldbond->endAtomId()],
+                          oldbond->order());
+        newbond->setAromaticity(oldbond->isAromatic());
+      }
+
+    } // end for i in numMatrixMol
+    return scene;
+  }
+
+  void RandomDock::initializeAndAddScene(Scene *scene)
+  {
+    // Initialize vars
+    QString id_s;
+
+    // So as to not assign duplicate ids, ensure only one assignment
+    // is made at a time
+    sceneInitMutex->lock();
+
+    // lockForNaming returns a list of all structures, both accepted
+    // and pending, so it's size is the id of the new structure.
+    int id = m_queue->lockForNaming().size();
+
+    // Generate locations using id number
+    id_s.sprintf("%05d",id);
+    locpath_s = filePath + "/" + id_s + "/";
+    rempath_s = rempath + "/" + id_s + "/";
+
+    // Create path
+    QDir dir (locpath_s);
+    if (!dir.exists()) {
+      if (!dir.mkpath(locpath_s)) {
+        error(tr("RandomDock::initializeAndAddScene: Cannot write to path: %1 (path creation failure)",
+                 "1 is a file path.")
+              .arg(locpath_s));
+      }
+    }
+
+    // Assign data to scene
+    scene->lock()->lockForWrite();
+    scene->setSceneNumber(id);
+    scene->setFileName(locpath_s);
+    scene->setRempath(rempath_s);
+    scene->setCurrentOptStep(1);
+    scene->lock()->unlock();
+
+    // unlockForNaming will append the scene
+    m_queue->unlockForNaming(scene);
+
+    // Done!
+    sceneInitMutex->unlock();
+  }
+
+  void RandomDock::generateNewStructure() {
+    initializeAndAddScene(generateRandomScene());
+  }
+
+  bool RandomDock::checkLimits() {
+    // TODO Are there any input parameters that need to be verified?
     return true;
   }
 
-  bool RandomDock::load(RandomDockParams *p, const QString &filename) {
-    qDebug() << "RandomDock::load( " << p << ", " << filename << " ) called";
-    QFile file (filename);
-    if (!file.open(QIODevice::ReadOnly)) {
-      qWarning() << "RandomDock::load(): Error opening file " << file.fileName() << " for writing...";
+  bool RandomDock::checkScene() {
+    // TODO Do we need anything here?
+    return true;
+  }
+
+  bool RandomDock::save() {
+    if (isStarting) {
+      savePending = false;
       return false;
     }
-    QTextStream in (&file);
-    QString line, str;
-    QStringList strl;
-    while (!in.atEnd()) {
-      line = in.readLine();
-      qDebug() << line;
-      strl = line.split(QRegExp("\\s+"));
+    QReadLocker trackerLocker (m_tracker->rwLock());
+    QMutexLocker locker (stateFileMutex);
+    QString filename = filePath + "/randomdock.state";
+    QString tmpfilename = filename + ".tmp";
+    QString oldfilename = filename + ".old";
 
-      // TODO....
+    // Save data to tmp
+    m_dialog->writeSettings(tmpfilename);
+    SETTINGS(tmpfilename);
+    settings->setValue("randomdock/saveSuccessful", true);
+    settings->sync();
 
+    // Move randomdock.state -> randomdock.state.old
+    if (QFile::exists(filename) ) {
+      if (QFile::exists(oldfilename)) {
+        QFile::remove(oldfilename);
+      }
+      QFile::rename(filename, oldfilename);
     }
+
+    // Move randomdock.state.tmp to randomdock.state
+    QFile::rename(tmpfilename, filename);
+
+    // TODO Check that settings are written correctly
+
+    savePending = false;
+    return true;
+  }
+
+  bool RandomDock::load(const QString &filename) {
+    // Attempt to open state file
+    QFile file (filename);
+    if (!file.open(QIODevice::ReadOnly)) {
+      error("RandomDock::load(): Error opening file "+file.fileName()+" for reading...");
+      return false;
+    }
+
+    SETTINGS(filename);
+    bool stateFileIsValid = settings->value("randomdock/saveSuccessful", false).toBool();
+    if (!stateFileIsValid) {
+      error("RandomDock::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid.");
+      return false;
+    }
+    
+    // Get path and other info for later:
+    QFileInfo stateInfo (file);
+    // path to resume file
+    QDir dataDir  = stateInfo.absoluteDir();
+    QString dataPath = dataDir.absolutePath() + "/";
+    // list of structure dirs
+    QStringList dirs = dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
+    xtalDirs.removeAll(".");
+    xtalDirs.removeAll("..");
+    for (int i = 0; i < xtalDirs.size(); i++) {
+      if (!QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/scene.state") &&
+          !QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/matrix.state") &&
+          !QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/substrate.state") &&
+          ) {
+          xtalDirs.removeAt(i);
+          i--;
+      }
+    }
+
+    // Set filePath:
+    QString newFilePath = dataPath;
+    QString newFileBase = filename;
+    newFileBase.remove(newFilePath);
+    newFileBase.remove("randomdock.state.old");
+    newFileBase.remove("randomdock.state.tmp");
+    newFileBase.remove("randomdock.state");
+
+    m_dialog->readSettings(filename);
+
+    // Set optimizer
+    setOptimizer(OptTypes(settings->value("randomdock/edit/optType").toInt()));
+    debug(tr("Resuming RandomDock session in '%1' (%2)")
+          .arg(filename)
+          .arg(m_optimizer->getIDString()));
+
+    // TODO load scenes, matrix, and substrate
+
     return true;
   }
 
   void RandomDock::rankByEnergy(QList<Scene*> *scenes) {
-    qDebug() << "RandomDock::rankByEnergy( " << scenes << " ) called.";
     uint numStructs = scenes->size();
     QList<Scene*> rscenes;
 
@@ -97,8 +397,6 @@ namespace Avogadro {
   }
 
   void RandomDock::centerCoordinatesAtOrigin(QList<Eigen::Vector3d> & coords) {
-    qDebug() << "RandomDock::centerCoordinatesAtOrigin() called;";
-
     // Find center of coordinates:
     Eigen::Vector3d center (0,0,0);
     for (int i = 0; i < coords.size(); i++)
@@ -112,8 +410,6 @@ namespace Avogadro {
   }
 
   void RandomDock::randomlyRotateCoordinates(QList<Eigen::Vector3d> & coords) {
-    qDebug() << "RandomDock::randomlyRotateCoordinates() called;";
-
     // Find center of coordinates:
     Eigen::Vector3d center (0,0,0);
     for (int i = 0; i < coords.size(); i++)
@@ -152,8 +448,6 @@ namespace Avogadro {
   }
 
   void RandomDock::randomlyDisplaceCoordinates(QList<Eigen::Vector3d> & coords, double radiusMin, double radiusMax) {
-    qDebug() << "RandomDock::randomlyDisplaceCoordinates() called.";
-
     // Get random spherical coordinates
     OpenBabel::OBRandom rand (true); 	// "true" uses system random numbers. OB's version isn't too good...
     rand.TimeSeed();
@@ -175,172 +469,27 @@ namespace Avogadro {
       coords[i] += t;
   }
 
-
-  RandomDockParams::RandomDockParams(RandomDockDialog* d) :
-    dialog(d), substrate(0)
+  void RandomDock::setOptimizer_string(const QString &IDString)
   {
-    rwLock = new QReadWriteLock;
-    scenes = new QList<Scene*>;
-    matrixList = new QList<Matrix*>;
+    if (IDString.toLower() == "gamess")
+      setOptimizer(new GAMESSOptimizer (this));
+    else
+      error(tr("RandomDock::setOptimizer: unable to determine optimizer from '%1'")
+            .arg(IDString));
   }
 
-  RandomDockParams::~RandomDockParams()
+  void RandomDock::setOptimizer_enum(OptTypes opttype)
   {
-    delete rwLock;
-    deleteAllScenes();
-    delete scenes;
-  }
-
-  void RandomDockParams::reset() {
-    clearAllScenes();
-  }
-
-  void RandomDockParams::deleteAllScenes() {
-    qDebug() << "RandomDockParams::deleteAllScenes() called";
-    qDeleteAll(*scenes);
-    clearAllScenes();
-  }
-
-  void RandomDockParams::clearAllScenes() {
-    qDebug() << "RandomDockParams::clearAllScenes() called";
-    scenes->clear();
-    emit sceneCountChanged();
-  }
-
-  Scene* RandomDockParams::generateNewScene() {
-    qDebug() << "RandomDockParams::addNewScene() called";
-
-    // Initialize
-    Atom *atom;
-    Bond *newbond;
-    Bond *oldbond;
-    Matrix *mat;
-    Substrate *sub;
-    Scene *scene = new Scene;
-    QHash<ulong, ulong> idMap; // Old id, new id
-    QList<Atom*> atomList;
-    QList<Eigen::Vector3d> positions;
-    QList<int> atomicNums;
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers.
-    rand.TimeSeed();
-
-    // Set scene id number
-    scene->setSceneNumber(getScenes()->size() + 1);
-
-    // Select random conformer of substrate
-    sub = substrate->getRandomConformer();
-
-    // Extract information from sub
-    atomList = sub->atoms();
-    atomicNums.clear();
-    positions.clear();
-    idMap.clear();
-    for (int j = 0; j < atomList.size(); j++) {
-      atomicNums.append(atomList.at(j)->atomicNumber());
-      positions.append( *(atomList.at(j)->pos()));
+    switch (opttype) {
+    case OT_GAMESS:
+      setOptimizer(new GAMESSOptimizer (this));
+      break;
+    default:
+      error(tr("RandomDock::setOptimizer: unable to determine optimizer from '%1'")
+            .arg(QString::number((int)opttype)));
+      break;
     }
 
-    // Place substrate's geometric center at origin
-    RandomDock::centerCoordinatesAtOrigin(positions);
-
-    // Add atoms to the scene
-    for (int i = 0; i < positions.size(); i++) {
-      atom = scene->addAtom();
-      idMap.insert(atomList.at(i)->id(), atom->id());
-      atom->setAtomicNumber(atomicNums.at(i));
-      atom->setPos(positions.at(i));
-    }
-
-    // Attach bonds
-    for (uint i = 0; i < sub->numBonds(); i++) {
-      newbond = scene->addBond();
-      oldbond = sub->bonds().at(i);
-      newbond->setAtoms(idMap[oldbond->beginAtomId()],
-                        idMap[oldbond->endAtomId()],
-                        oldbond->order());
-      newbond->setAromaticity(oldbond->isAromatic());
-    }
-
-    // Get matrix elements
-    // Generate probability list
-    QList<double> probs;
-    double total = 0; // leave as double for division below
-
-    for (int i = 0; i < matrixStoich.size(); i++)
-      total += matrixStoich.at(i);
-    for (int i = 0; i < matrixStoich.size(); i++) {
-      if (i == 0) probs.append(matrixStoich.at(0)/total);
-      else probs.append(matrixStoich.at(i)/total + probs.at(i-1));
-    }
-
-    // Pick and add matrix elements
-    for (uint i = 0; i < numMatrixMol; i++) {
-      // Add random conformers of matrix molecule in random locations, orientations
-      double r = rand.NextFloat();
-      int ind;
-      for (ind = 0; ind < probs.size(); ind++)
-        if (r < probs.at(ind)) break;
-
-      mat = matrixList->at(ind);
-
-      // Extract information from matrix
-      atomList = mat->atoms();
-      atomicNums.clear();
-      positions.clear();
-      idMap.clear();
-      for (int j = 0; j < atomList.size(); j++) {
-        atomicNums.append(atomList.at(j)->atomicNumber());
-        positions.append( *(atomList.at(j)->pos()));
-      }
-
-      // Rotate, translate positions
-      RandomDock::randomlyRotateCoordinates(positions);
-      RandomDock::randomlyDisplaceCoordinates(positions, radius_min, radius_max);
-
-      // Check IADs
-      double shortest, distance;
-      shortest = -1;
-      for (uint mi = 0; mi < mat->numAtoms(); mi++) {
-        for (uint si = 0; si < scene->numAtoms(); si++) {
-          distance = abs((
-                          *(scene->atoms().at(si)->pos()) -
-                          positions.at(mi)
-                          ).norm()
-                         );
-          if (shortest < 0)
-            shortest = distance; // initialize...
-          else {
-            if (distance < shortest) shortest = distance;
-          }
-        }
-      }
-      if (shortest > IAD_max || shortest < IAD_min) {
-        qDebug() << "Bad IAD: "  << shortest;
-        i--;
-        continue;
-      }
-      // If IAD checks work out ok, add the atoms to the scene
-      for (int j = 0; j < positions.size(); j++) {
-        atom = scene->addAtom();
-        idMap.insert(atomList.at(j)->id(), atom->id());
-        atom->setAtomicNumber(atomicNums.at(j));
-        atom->setPos(positions.at(j));
-      }
-
-      // Attach bonds
-      for (uint j = 0; j < mat->numBonds(); j++) {
-        newbond = scene->addBond();
-        oldbond = mat->bonds().at(j);
-        newbond->setAtoms(idMap[oldbond->beginAtomId()],
-                          idMap[oldbond->endAtomId()],
-                          oldbond->order());
-        newbond->setAromaticity(oldbond->isAromatic());
-      }
-
-    } // end for i in numMatrixMol
-    appendScene(scene);
-    return scene;
-  }
 } // end namespace Avogadro
 
 #include "randomdock.moc"

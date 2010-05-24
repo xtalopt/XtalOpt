@@ -32,17 +32,11 @@ using namespace std;
 namespace Avogadro {
 
   Matrix::Matrix(QObject *parent) : 
-    Molecule(parent), m_probs(0)
+    Molecule(parent)
   {
-    qDebug() << "Matrix::Matrix( " << parent << " ) called";
-    m_probs = new QList<double>;
   }
 
   Matrix::Matrix(Molecule *mol) {
-    qDebug() << "Matrix::Matrix( [copy " << &mol << "] ) called";
-
-    m_probs = new QList<double>;
-
     OpenBabel::OBMol obmol = mol->OBMol();
 
     setOBMol(&obmol);
@@ -51,19 +45,6 @@ namespace Avogadro {
   }
 
   Matrix::~Matrix() {
-    delete m_probs;
-  }
-
-  void Matrix::load(QTextStream &in) {
-    Q_UNUSED(in);
-    qDebug() << "Matrix::load( ) called";
-    generateProbabilities();
-  }
-
-  void Matrix::save(QTextStream &in) {
-    Q_UNUSED(in);
-    qDebug() << "Matrix::save( ) called";
-    // Nothing to do here, yet...
   }
 
   void Matrix::sortConformers() {
@@ -167,4 +148,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "matrixmol.moc"
+#include "matrix.moc"

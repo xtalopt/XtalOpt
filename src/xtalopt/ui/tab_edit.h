@@ -28,6 +28,7 @@
 namespace Avogadro {
   class XtalOptDialog;
   class XtalOpt;
+  class Optimizer;
 
   class TabEdit : public QObject
   {

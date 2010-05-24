@@ -20,26 +20,27 @@
 #define VASPOPTIMIZER_H
 
 #include "../../generic/optimizer.h"
+#include "../../generic/optbase.h"
 
 #include <QObject>
 
 namespace Avogadro {
   class Structure;
-  class XtalOpt;
+  class OptBase;
 
   class VASPOptimizer : public Optimizer
   {
     Q_OBJECT
 
    public:
-    VASPOptimizer(XtalOpt *parent);
+    VASPOptimizer(OptBase *parent);
     bool writeInputFiles(Structure *structure);
     void readSettings(const QString &filename = "");
     void writeTemplatesToSettings(const QString &filename = "");
     void writeDataToSettings(const QString &filename = "");
 
     void buildPOTCARs();
-    bool POTCARInfoIsUpToDate();
+    bool POTCARInfoIsUpToDate(QList<uint> comp);
   };
 
 } // end namespace Avogadro

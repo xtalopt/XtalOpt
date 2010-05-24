@@ -98,7 +98,6 @@ namespace Avogadro {
     double tol_enthalpy, tol_volume;	// Duplicate matching tolerances
 
     bool using_fixed_volume, using_shortestInteratomicDistance;
-    QString filePath, description, qsub, qstat, qdel, host, username, rempath;
     QHash<uint, uint> comp;
     QStringList seedList;
 

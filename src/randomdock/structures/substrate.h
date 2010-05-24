@@ -40,18 +40,16 @@ namespace Avogadro {
    signals:
 
    public slots:
-    void load(QTextStream &in);
-    void save(QTextStream &in);
     double prob(uint index) { checkProbs(); return m_probs->at(index);};
     void sortConformers();
     void generateProbabilities();
-    void checkProbs() {qDebug() << m_probs->size() << " " << numConformers(); if ((uint)m_probs->size() != numConformers()) generateProbabilities();};
+    void checkProbs() {if ((uint)m_probs->size() != numConformers()) generateProbabilities();};
     Substrate* getRandomConformer();
 
    private slots:
 
    private:
-    QList<double> *m_probs;
+    QList<double> m_probs;
   };
 
 } // end namespace Avogadro

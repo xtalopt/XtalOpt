@@ -65,9 +65,20 @@ namespace Avogadro {
     uint failLimit;			// Number of times a structure may fail
     FailActions failAction;		// What to do on excessive failures
 
+    QString filePath;
+    QString description;
+    QString qsub;
+    QString qstat;
+    QString qdel;
+    QString host;
+    QString username;
+    QString rempath;
+
     // sOBMutex is here because OB likes to implement singleton
     // classes that aren't thread safe.
-    QMutex *sOBMutex, *stateFileMutex, *backTraceMutex;
+    QMutex *sOBMutex;
+    QMutex *stateFileMutex;
+    QMutex *backTraceMutex;
 
     bool savePending, isStarting;
 

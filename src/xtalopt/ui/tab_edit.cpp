@@ -15,12 +15,14 @@
  ***********************************************************************/
 
 #include "tab_edit.h"
-#include "../../generic/macros.h"
 
-#include "../../generic/templates.h"
+#include "dialog.h"
+#include "../xtalopt.h"
 #include "../optimizers/vasp.h"
 #include "../optimizers/gulp.h"
 #include "../optimizers/pwscf.h"
+#include "../../generic/macros.h"
+#include "../../generic/templates.h"
 
 #include <QFont>
 #include <QSettings>
@@ -115,7 +117,7 @@ namespace Avogadro {
     // Do we need to update the POTCAR info?
     if (ui.combo_optType->currentIndex() == XtalOpt::OT_VASP) {
       VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
-      if (!vopt->POTCARInfoIsUpToDate()) {
+      if (!vopt->POTCARInfoIsUpToDate(m_opt->comp.keys())) {
         generateVASP_POTCAR_info();
         vopt->buildPOTCARs();
       }
@@ -279,7 +281,7 @@ namespace Avogadro {
         {
           VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
           // Do we need to update the POTCAR info?
-          if (!vopt->POTCARInfoIsUpToDate()) {
+          if (!vopt->POTCARInfoIsUpToDate(m_opt->comp.keys())) {
             generateVASP_POTCAR_info();
             vopt->buildPOTCARs();
           }

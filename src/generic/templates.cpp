@@ -17,6 +17,8 @@
 #include "templates.h"
 
 #include "xtal.h"
+#include "optbase.h"
+#include "optimizer.h"
 
 #include <QDebug>
 #include <QFile>
@@ -74,7 +76,7 @@ namespace Avogadro {
     QMessageBox::information(NULL, "Template Help", str);
   }
 
-  QString XtalOptTemplate::interpretTemplate(const QString & str, Structure* structure, XtalOpt *p) {
+  QString XtalOptTemplate::interpretTemplate(const QString & str, Structure* structure, OptBase *p) {
     QStringList list = str.split("%");
     QString line;
     QString rep;

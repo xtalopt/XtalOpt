@@ -38,7 +38,7 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  VASPOptimizer::VASPOptimizer(XtalOpt *parent) :
+  VASPOptimizer::VASPOptimizer(OptBase *parent) :
     Optimizer(parent)
   {
     // Set allowed data structure keys, if any
@@ -171,10 +171,8 @@ namespace Avogadro {
     return true;
   }
 
-  bool VASPOptimizer::POTCARInfoIsUpToDate()
+  bool VASPOptimizer::POTCARInfoIsUpToDate(QList<uint> atomicNums)
   {
-    // Get session's composition
-    QList<uint> atomicNums = m_opt->comp.keys();
     // Get optimizer's composition
     QList<uint> oldcomp;
     QList<QVariant> oldcomp_ = getData("Composition").toList();

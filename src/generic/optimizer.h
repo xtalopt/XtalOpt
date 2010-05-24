@@ -19,6 +19,8 @@
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 
+#include "optbase.h"
+
 #include <QHash>
 #include <QObject>
 #include <QVariant>
@@ -26,7 +28,7 @@
 
 namespace Avogadro {
   class Structure;
-  class XtalOpt;
+  class OptBase;
 
   class Optimizer : public QObject
   {
@@ -34,7 +36,7 @@ namespace Avogadro {
 
   public:
 
-    explicit Optimizer(XtalOpt *parent);
+    explicit Optimizer(OptBase *parent);
     virtual ~Optimizer();
 
     enum JobState { Unknown = -1, Success, Error, Queued, Running, CommunicationError, Started, Pending};
@@ -111,7 +113,7 @@ namespace Avogadro {
     QString m_user1, m_user2, m_user3, m_user4;
 
     // TODO change this when the time comes...
-    XtalOpt *m_opt;
+    OptBase *m_opt;
 
     // Identifier for this optimization type
     QString m_idString;

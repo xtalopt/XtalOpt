@@ -38,28 +38,20 @@ namespace Avogadro {
     Q_OBJECT
 
    public:
-    explicit RandomDock(QObject *parent = 0) : QObject(parent) {};
-    virtual ~RandomDock() {};
+    explicit RandomDock(RandomDockDialog *parent);
+    virtual ~RandomDock();
 
     enum OptTypes {
       OT_GAMESS = 0,
     }
 
-    enum FailActions {
-      FA_DoNothing = 0,
-      FA_KillIt,
-      FA_Randomize
-    };
-
     Scene* generateRandomScene();
     Structure* replaceWithRandom(Structure *s, const QString & reason);
     bool checkLimits();
-    bool checkScene(Scene *scene);
     bool save();
     bool load(const QString & filename);
-    Tracker* tracker(){return m_tracker;};
-    QueueManager* queue(){return m_queue;};
-    Optimizer* optimizer() {return m_optimizer;};
+
+    bool checkScene(Scene *scene);
     RandomDockDialog* dialog() {return m_dialog;};
     static void rankByEnergy(QList<Scene*> *scenes);
 
@@ -79,7 +71,7 @@ namespace Avogadro {
     QString substrateFile;	// Filename of the substrate
     Substrate *substrate;	// Pointer to the substrate
     QStringList matrixFiles;	// List of filenames
-    QList<Matrix*> *matrixList;	// List of pointers to the matrix molecules
+    QList<Matrix*> matrixList;	// List of pointers to the matrix molecules
     QList<int> matrixStoich;	// Stoichiometry of the matrix elements
     uint numMatrixMol;		// Number of matrix molecules to be placed around the substrate
     double IAD_min;		// Minimum allowed interatomic distance
@@ -88,57 +80,30 @@ namespace Avogadro {
     double radius_max;		// Maximum distance from origin to place matrix molecules
     bool radius_auto;		// Whether to automatically calculate the matrix radius
 
-    uint runningJobLimit;	// Number of searches to perform simultaneously
     uint cutoff;		// Number of searches to perform in total
 
     // sOBMutex is here because OB likes to implement singleton
     // classes that aren't thread safe.
-    QMutex *sOBMutex, *stateFileMutex, *backTraceMutex, *xtalInitMutex;
+    QMutex *sceneInitMutex;
     // These were mutexes, but Qt suddenly started to complain...
-    bool savePending;
+    bool savePending, isStarting;
 
 
    signals:
-    void newInfoUpdate();
-    void updateAllInfo();
-    void sessionStarted();
-    void startingSession();
-    void structuresCleared();
-    void optimizerChanged(Optimizer*);
 
    public slots:
-    void reset();
     void startOptimization();
     void generateNewStructure();
+    Scene* generateRandomScene();
     void initializeAndAddScene(Scene *scene);
-    void warning(const QString & s);
-    void debug(const QString & s);
-    void error(const QString & s);
-    void emitSessionStarted() {emit sessionStarted();};
-    void emitStartingSession() {emit startingSession();};
-    void setIsStartingTrue() {isStarting = true;};
-    void setIsStartingFalse() {isStarting = false;};
-    void resetDuplicates();
-    void checkForDuplicates();
-    void printBackTrace();
-    void setOptimizer(Optimizer* o);
-    void setOptimizer(const QString &IDString);
-    void setOptimizer(OptTypes opttype);
+    void setOptimizer(OptTypes opttype) {setOptimizer_enum(opttype);};
 
    private:
-    Tracker *m_tracker;
-    QueueManager *m_queue;
-    Optimizer *m_optimizer;
-    XtalOptDialog *m_dialog;
+    RandomDockDialog *m_dialog;
 
-    void resetDuplicates_();
-    void checkForDuplicates_();
+    void setOptimizer_string(const QString *s);
+    void setOptimizer_enum(OptTypes opttype);
 
-  };
-
-
-  signals:
-    void sceneCountChanged();
   };
 
 } // end namespace Avogadro

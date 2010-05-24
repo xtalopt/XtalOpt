@@ -17,18 +17,7 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "scenemol.h"
-
-#include "randomdock.h"
-#include "matrixmol.h"
-#include "substratemol.h"
-
-#include <avogadro/molecule.h>
-#include <avogadro/atom.h>
-#include <avogadro/bond.h>
-
-#include <openbabel/rand.h>
-#include <openbabel/mol.h>
+#include "scene.h"
 
 #include <QDebug>
 
@@ -37,18 +26,16 @@ using namespace std;
 namespace Avogadro {
 
   Scene::Scene(QObject *parent) : 
-    Molecule(parent)
+    Structure(parent)
   {
-    qDebug() << "Scene::Scene( " << parent << " ) called";
-    m_status = Empty;
   }
 
-  Scene::~Scene() {
+  Scene::~Scene()
+  {
   }
 
   void Scene::updateFromMolecule(Molecule *mol) {
-    qDebug() << "Scene::updateFromMolecule( " << mol << " ) called";
-
+    // TODO check if this is all we need to do.
     if (mol->numAtoms() != numAtoms()) {
       qWarning() << "Number of atoms changed during optimization. Killing structure!";
       setStatus(Killed);
@@ -67,4 +54,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "scenemol.moc"
+#include "scene.moc"

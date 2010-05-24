@@ -21,15 +21,14 @@
 #define XTALOPTTEMPLATES_H
 
 #include "xtal.h"
-#include "../xtalopt/xtalopt.h" // TODO remove this
 
 namespace Avogadro {
-  class XtalOpt;
+  class OptBase;
   class XtalOptTemplate
   {
   public:
     XtalOptTemplate() {};
-    static QString interpretTemplate(const QString & str, Structure* structure, XtalOpt *p);
+    static QString interpretTemplate(const QString & str, Structure* structure, OptBase *p);
     static void showHelp();
 
     /////////////////////
