@@ -21,13 +21,12 @@
 #define TAB_EDIT_H
 
 #include "ui_tab_edit.h"
+#include "../xtalopt.h"
 
-#include "../../generic/templates.h"
-
+#include <QMessageBox>
 
 namespace Avogadro {
   class XtalOptDialog;
-  class XtalOpt;
   class Optimizer;
 
   class TabEdit : public QObject
@@ -63,7 +62,8 @@ namespace Avogadro {
     void disconnectGUI();
     void generateVASP_POTCAR_info();
     void templateChanged(int ind);
-    void showHelp() {XtalOptTemplate::showHelp();}
+    void showHelp() {
+      QMessageBox::information(m_dialog, "Template Help", m_opt->getTemplateKeywordHelp());}
     void updateTemplates();
     void changePOTCAR(QListWidgetItem *item);
     void populateOptList();

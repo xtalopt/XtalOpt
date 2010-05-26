@@ -41,6 +41,9 @@ namespace Avogadro {
 
     savePending = false;
 
+    // Set this to false later when running CTests
+    saveOnExit = true;
+
     testingMode = false;
     test_nRunsStart = 1;
     test_nRunsEnd = 100;
@@ -55,8 +58,10 @@ namespace Avogadro {
 
   OptBase::~OptBase() {
     // Wait for save to finish
-    while (savePending) {};
-    savePending = true;
+    if (saveOnExit) {
+      while (savePending) {};
+      savePending = true;
+    }
     delete m_queue;
     delete m_tracker;
   }
@@ -73,6 +78,92 @@ namespace Avogadro {
     backTraceMutex->unlock();
     for (int i = 0; i < l.size();i++)
       qDebug() << l.at(i);
+  }
+
+  QString OptBase::interpretTemplate(const QString & str, Structure* structure)
+  {
+    QStringList list = str.split("%");
+    QString line;
+    QString origLine;
+    for (int line_ind = 0; line_ind < list.size(); line_ind++) {
+      origLine = line = list.at(line_ind);
+      interpretKeyword_base(line, structure);
+      // Add other interpret keyword sections here if needed
+      if (line != origLine) { // Line was a keyword
+        list.replace(line_ind, line);
+      }
+    }
+    // Rejoin string
+    QString ret = list.join("");
+    ret = ret.remove("%") + "\n";
+    return ret;
+  }
+
+  void OptBase::interpretKeyword_base(QString &line, Structure* structure)
+  {
+    QString rep = "";
+    // User data
+    if (line == "user1")    		rep += optimizer()->getUser1();
+    else if (line == "user2")    	rep += optimizer()->getUser2();
+    else if (line == "user3")    	rep += optimizer()->getUser3();
+    else if (line == "user4")    	rep += optimizer()->getUser4();
+    else if (line == "description")	rep += description;
+
+    // Structure specific data
+    if (line == "coords") {
+      OpenBabel::OBMol obmol = structure->OBMol();
+      FOR_ATOMS_OF_MOL(atom, obmol) {
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol(atom->GetAtomicNum())) + " ";
+        rep += QString::number(atom->GetX()) + " ";
+        rep += QString::number(atom->GetY()) + " ";
+        rep += QString::number(atom->GetZ()) + "\n";
+      }
+    }
+    else if (line == "coordsId") {
+      OpenBabel::OBMol obmol = structure->OBMol();
+      FOR_ATOMS_OF_MOL(atom, obmol) {
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol(atom->GetAtomicNum())) + " ";
+        rep += QString::number(atom->GetAtomicNum()) + " ";
+        rep += QString::number(atom->GetX()) + " ";
+        rep += QString::number(atom->GetY()) + " ";
+        rep += QString::number(atom->GetZ()) + "\n";
+      }
+    }
+    else if (line == "numAtoms")	rep += QString::number(structure->numAtoms());
+    else if (line == "numSpecies")	rep += QString::number(structure->getSymbols().size());
+    else if (line == "filename")	rep += structure->fileName();
+    else if (line == "rempath")       	rep += structure->getRempath();
+    else if (line == "gen")           	rep += QString::number(structure->getGeneration());
+    else if (line == "id")            	rep += QString::number(structure->getIDNumber());
+    else if (line == "incar")         	rep += QString::number(structure->getCurrentOptStep());
+    else if (line == "optStep")       	rep += QString::number(structure->getCurrentOptStep());
+
+    if (!rep.isEmpty()) {
+      line = rep;
+    }
+  }
+
+  QString OptBase::getTemplateKeywordHelp_base()
+  {
+    QString str;
+    QTextStream out (&str);
+    out
+      << "The following keywords should be used instead of the indicated variable data:\n"
+      << "\n"
+      << "User data:\n"
+      << "%userX% -- User specified value, where X = 1, 2, 3, or 4\n"
+      << "%description% -- Optimization description\n"
+      << "\n"
+      << "Generic structure data:\n"      
+      << "%coords% -- cartesian coordinate data\n\t[symbol] [x] [y] [z]\n"
+      << "%coordsId% -- cartesian coordinate data with atomic number\n\t[symbol] [atomic number] [x] [y] [z]\n"
+      << "%numAtoms% -- Number of atoms in unit cell\n"
+      << "%numSpecies% -- Number of unique atomic species in unit cell\n"
+      << "%filename% -- local output filename\n"
+      << "%rempath% -- path to structure's remote directory\n"
+      << "%gen% -- structure generation number (if relevant)\n"
+      << "%id% -- structure id number\n"
+      << "%optStep% -- current optimization step\n";
   }
 
   void OptBase::setOptimizer_opt(Optimizer *o) {

@@ -55,6 +55,7 @@ namespace Avogadro {
 
     void setMolecule(Molecule *molecule);
     GLWidget* getGLWidget();
+    XtalOpt* getXtalOpt() {return m_opt;};
 
   public slots:
     // used for testing. You probably don't want to call this.

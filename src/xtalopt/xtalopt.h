@@ -58,6 +58,8 @@ namespace Avogadro {
     Structure* replaceWithRandom(Structure *s, const QString & reason);
     bool checkLimits();
     bool checkXtal(Xtal *xtal);
+    QString interpretTemplate(const QString & templateString, Structure* structure);
+    QString getTemplateKeywordHelp();
     bool save();
     bool load(const QString & filename);
     XtalOptDialog* dialog() {return m_dialog;};
@@ -125,6 +127,10 @@ namespace Avogadro {
 
     void setOptimizer_string(const QString &s);
     void setOptimizer_enum(OptTypes opttype);
+
+    void interpretKeyword(QString &keyword, Structure* structure);
+    QString getTemplateKeywordHelp_xtalopt();
+
   };
 
 } // end namespace Avogadro

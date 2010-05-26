@@ -44,7 +44,6 @@ set (xtalopt_SRCS
     	src/generic/structure.cpp
     	src/generic/xtal.cpp
 	src/extension.cpp
-	src/generic/templates.cpp
 	src/generic/tracker.cpp
 	src/xtalopt/xtalopt.cpp
 	src/generic/queuemanager.cpp
@@ -81,3 +80,15 @@ avogadro_plugin(xtalopt
 
 target_link_libraries(xtalopt QPlotWidget)
 
+option( BUILD_TESTS
+	"Whether to compile the test suite as well as the main code."
+	OFF )
+
+if(BUILD_TESTS)
+  enable_testing()
+
+  add_executable(checkTemplates ${xtalopt_SRCS} tests/checkTemplates.cpp)
+  target_link_libraries(checkTemplates ${LINK_LIBS} ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${OPENBABEL2_LIBRARIES} avogadro QPlotWidget)
+  add_test(TemplateCheck checkTemplates)
+
+endif(BUILD_TESTS)

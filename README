@@ -44,9 +44,6 @@ Evolutionary algoritm "engine":
 Avogadro extension interface:
   -- src/extension.*
 
-Local optimizer template generation:
-  -- src/generic/templates.*
-
 Queuing and job control:
   -- src/generic/queuemanager.*
 

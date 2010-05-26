@@ -17,7 +17,6 @@
  ***********************************************************************/
 
 #include "optimizer.h"
-#include "templates.h"
 #include "xtal.h"
 #include "macros.h"
 #include "optbase.h"
@@ -224,8 +223,8 @@ namespace Avogadro {
     // Write files
     int optStepInd = structure->getCurrentOptStep() - 1;
     for (int i = 0; i < streams.size(); i++) {
-      *(streams.at(i)) << XtalOptTemplate::interpretTemplate( m_templates.value(filenames.at(i)).at(optStepInd),
-                                                              structure, m_opt);
+      *(streams.at(i)) << m_opt->interpretTemplate( m_templates.value(filenames.at(i)).at(optStepInd),
+                                                    structure);
     }
 
     // Close files
@@ -307,7 +306,7 @@ namespace Avogadro {
     QWriteLocker wlocker (structure->lock());
     structure->setJobID(jobID);
     structure->startOptTimer();
-    structure->setStatus(Xtal::Submitted);
+    structure->setStatus(Structure::Submitted);
     return true;
   }
 
@@ -426,12 +425,12 @@ namespace Avogadro {
           }
         }
         // Otherwise, it's an error!
-        structure->setStatus(Xtal::Error);
+        structure->setStatus(Structure::Error);
         return Optimizer::Error;
       }
     }
     // Not in queue and no output? Interesting...
-    structure->setStatus(Xtal::Error);
+    structure->setStatus(Structure::Error);
     return Optimizer::Unknown;
   }
 
@@ -574,7 +573,7 @@ namespace Avogadro {
     }
 
     structure->setJobID(0);
-    structure->setStatus(Xtal::StepOptimized);
+    structure->setStatus(Structure::StepOptimized);
     locker.unlock();
     return true;
   }
@@ -595,7 +594,7 @@ namespace Avogadro {
     if (!ok) {
       m_opt->warning(tr("Optimizer::load: Error loading structure at %1")
                  .arg(structure->fileName()));
-      structure->setStatus(Xtal::Error);
+      structure->setStatus(Structure::Error);
       return false;
     }
     return true;
@@ -603,7 +602,8 @@ namespace Avogadro {
 
   bool Optimizer::read(Structure *structure,
                        const QString & filename) {
-    // Recast structure as xtal -- we'll need to access cell data later.
+    // TODO Only pull structure specific info here -- create a XtalOptOptimizer to handle xtal data.
+    // Recast structure as xtal -- we'll need to access cell data later
     Xtal *xtal = qobject_cast<Xtal*>(structure);
     // Test filename
     QFile file (filename);

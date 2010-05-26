@@ -17,8 +17,8 @@
  ***********************************************************************/
 
 #include "vasp.h"
-#include "../../generic/templates.h"
 #include "../../generic/macros.h"
+#include "../../generic/xtal.h"
 
 #include <QDir>
 #include <QDebug>
@@ -150,7 +150,7 @@ namespace Avogadro {
     }
     int optStepInd = optStep - 1;
     QTextStream poscar (&pos);
-    poscar << XtalOptTemplate::interpretTemplate( XtalOptTemplate::input_VASP_POSCAR(), structure, m_opt);
+    poscar << m_opt->interpretTemplate( "%POSCAR%", structure);
     pos.close();
 
     // Copy to server

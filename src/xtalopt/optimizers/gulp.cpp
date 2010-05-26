@@ -17,7 +17,7 @@
  ***********************************************************************/
 
 #include "gulp.h"
-#include "../../generic/templates.h"
+#include "../../generic/xtal.h"
 
 #include <QProcess>
 #include <QDir>

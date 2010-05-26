@@ -137,10 +137,12 @@ namespace Avogadro {
   XtalOptDialog::~XtalOptDialog()
   {
     //qDebug() << "XtalOptDialog::~XtalOptDialog() called";
+    if (m_opt->saveOnExit) {
     m_opt->tracker()->lockForRead();
     writeSettings();
     saveSession();
     m_opt->tracker()->unlock();
+    }
     delete m_opt;
   }
 

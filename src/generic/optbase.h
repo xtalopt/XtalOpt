@@ -49,6 +49,9 @@ namespace Avogadro {
     virtual bool save() {};
     virtual bool load(const QString & filename) {};
 
+    virtual QString interpretTemplate(const QString & templateString, Structure* structure);
+    virtual QString getTemplateKeywordHelp() {return getTemplateKeywordHelp_base();};
+
     Tracker* tracker(){return m_tracker;};
     QueueManager* queue(){return m_queue;};
     Optimizer* optimizer() {return m_optimizer;};
@@ -80,7 +83,9 @@ namespace Avogadro {
     QMutex *stateFileMutex;
     QMutex *backTraceMutex;
 
-    bool savePending, isStarting;
+    bool savePending;
+    bool isStarting;
+    bool saveOnExit; // Disable when running CTest
 
    signals:
     void startingSession();
@@ -112,6 +117,9 @@ namespace Avogadro {
 
     virtual void setOptimizer_opt(Optimizer *o);
     virtual void setOptimizer_string(const QString &s) {};
+    void interpretKeyword_base(QString &keyword, Structure* structure);
+    QString getTemplateKeywordHelp_base();
+
   };
 
 } // end namespace Avogadro

@@ -22,12 +22,10 @@
 #include "../optimizers/gulp.h"
 #include "../optimizers/pwscf.h"
 #include "../../generic/macros.h"
-#include "../../generic/templates.h"
 
 #include <QFont>
 #include <QSettings>
 #include <QFileDialog>
-#include <QMessageBox>
 
 using namespace std;
 

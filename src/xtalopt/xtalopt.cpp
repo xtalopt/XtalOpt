@@ -26,7 +26,6 @@
 #include "optimizers/pwscf.h"
 #include "ui/dialog.h"
 #include "../generic/queuemanager.h"
-#include "../generic/templates.h"
 #include "../generic/macros.h"
 #include "genetic.h"
 #include "../generic/bt.h"
@@ -42,6 +41,8 @@
 #include <QReadWriteLock>
 #include <QMessageBox>
 #include <QtConcurrentRun>
+
+#define ANGSTROM_TO_BOHR 1.889725989
 
 using namespace std;
 using namespace OpenBabel;
@@ -735,6 +736,197 @@ namespace Avogadro {
     // Xtal is OK!
     return true;
   }
+
+  QString XtalOpt::interpretTemplate(const QString & templateString, Structure* structure)
+  {
+    QStringList list = templateString.split("%");
+    QString line;
+    QString origLine;
+    Xtal *xtal = qobject_cast<Xtal*>(structure);
+    for (int line_ind = 0; line_ind < list.size(); line_ind++) {
+      origLine = line = list.at(line_ind);
+      interpretKeyword_base(line, structure);
+      interpretKeyword(line, structure);      
+      if (line != origLine) { // Line was a keyword
+        list.replace(line_ind, line);
+      }
+    }
+    // Rejoin string
+    QString ret = list.join("");
+    ret = ret.remove("%") + "\n";
+    return ret;
+  }
+
+  void XtalOpt::interpretKeyword(QString &line, Structure* structure)
+  {
+    QString rep = "";
+    Xtal *xtal = qobject_cast<Xtal*>(structure);
+
+    // Xtal specific keywords
+    if (line == "a")			rep += QString::number(xtal->getA());
+    else if (line == "b")             	rep += QString::number(xtal->getB());
+    else if (line == "c")             	rep += QString::number(xtal->getC());
+    else if (line == "alphaRad")	rep += QString::number(xtal->getAlpha() * DEG_TO_RAD);
+    else if (line == "betaRad")       	rep += QString::number(xtal->getBeta() * DEG_TO_RAD);
+    else if (line == "gammaRad")      	rep += QString::number(xtal->getGamma() * DEG_TO_RAD);
+    else if (line == "alphaDeg")	rep += QString::number(xtal->getAlpha());
+    else if (line == "betaDeg")       	rep += QString::number(xtal->getBeta());
+    else if (line == "gammaDeg")      	rep += QString::number(xtal->getGamma());
+    else if (line == "volume")        	rep += QString::number(xtal->getVolume());
+    else if (line == "coordsFrac") {
+      OpenBabel::OBMol obmol = xtal->OBMol();
+      FOR_ATOMS_OF_MOL(atom, obmol) {
+        vector3 coords = xtal->cartToFrac(atom->GetVector());
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol(atom->GetAtomicNum())) + " ";
+        rep += QString::number(coords.x()) + " ";
+        rep += QString::number(coords.y()) + " ";
+        rep += QString::number(coords.z()) + "\n";
+      }
+    }
+    else if (line == "coordsFracId") {
+      OpenBabel::OBMol obmol = xtal->OBMol();
+      FOR_ATOMS_OF_MOL(atom, obmol) {
+        vector3 coords = xtal->cartToFrac(atom->GetVector());
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol(atom->GetAtomicNum())) + " ";
+        rep += QString::number(atom->GetAtomicNum()) + " ";
+        rep += QString::number(coords.x()) + " ";
+        rep += QString::number(coords.y()) + " ";
+        rep += QString::number(coords.z()) + "\n";
+      }
+    }
+    else if (line == "cellMatrixAngstrom") {
+      matrix3x3 m = xtal->OBUnitCell()->GetCellMatrix();
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+          rep += QString::number(m.Get(i,j)) + "\t";
+        }
+        rep += "\n";
+      }
+    }
+    else if (line == "cellVector1Angstrom") {
+      vector3 v = xtal->OBUnitCell()->GetCellVectors()[0];
+      for (int i = 0; i < 3; i++) {
+        rep += QString::number(v[i]) + "\t";
+      }
+    }
+    else if (line == "cellVector2Angstrom") {
+      vector3 v = xtal->OBUnitCell()->GetCellVectors()[1];
+      for (int i = 0; i < 3; i++) {
+        rep += QString::number(v[i]) + "\t";
+      }
+    }
+    else if (line == "cellVector3Angstrom") {
+      vector3 v = xtal->OBUnitCell()->GetCellVectors()[2];
+      for (int i = 0; i < 3; i++) {
+        rep += QString::number(v[i]) + "\t";
+      }
+    }
+    else if (line == "cellMatrixBohr") {
+      matrix3x3 m = xtal->OBUnitCell()->GetCellMatrix();
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+          rep += QString::number(m.Get(i,j) * ANGSTROM_TO_BOHR) + "\t";
+        }
+        rep += "\n";
+      }
+    }
+    else if (line == "cellVector1Bohr") {
+      vector3 v = xtal->OBUnitCell()->GetCellVectors()[0];
+      for (int i = 0; i < 3; i++) {
+        rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
+      }
+    }
+    else if (line == "cellVector2Bohr") {
+      vector3 v = xtal->OBUnitCell()->GetCellVectors()[1];
+      for (int i = 0; i < 3; i++) {
+        rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
+      }
+    }
+    else if (line == "cellVector3Bohr") {
+      vector3 v = xtal->OBUnitCell()->GetCellVectors()[2];
+      for (int i = 0; i < 3; i++) {
+        rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
+      }
+    }
+    else if (line == "POSCAR") {
+      // Comment line -- set to filename
+      rep += xtal->fileName();
+      rep += "\n";
+      // Scaling factor. Just 1.0
+      rep += QString::number(1.0);
+      rep += "\n";
+      // Unit Cell Vectors
+      std::vector< vector3 > vecs = xtal->OBUnitCell()->GetCellVectors();
+      for (uint i = 0; i < vecs.size(); i++) {
+        rep += QString::number(vecs.at(i).x()) + " ";
+        rep += QString::number(vecs.at(i).y()) + " ";
+        rep += QString::number(vecs.at(i).z()) + " ";
+        rep += "\n";
+      }
+      // Number of each type of atom (sorted alphabetically by symbol)
+      QList<uint> list = xtal->getNumberOfAtomsAlpha();
+      for (int i = 0; i < list.size(); i++) {
+        rep += QString::number(list.at(i)) + " ";
+      }
+      rep += "\n";
+      // Use fractional coordinates:
+      rep += "Direct\n";
+      // Coordinates of each atom (sorted alphabetically by symbol)
+      QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
+      for (int i = 0; i < coords.size(); i++) {
+        rep += QString::number(coords.at(i).x()) + " ";
+        rep += QString::number(coords.at(i).y()) + " ";
+        rep += QString::number(coords.at(i).z()) + " ";
+        rep += "\n";
+      }
+    } // End %POSCAR%
+
+    if (!rep.isEmpty()) {
+      line = rep;
+    }
+  }
+
+  QString XtalOpt::getTemplateKeywordHelp()
+  {
+    QString help = "";
+    help += getTemplateKeywordHelp_base();
+    help += getTemplateKeywordHelp_xtalopt();
+    return help;
+  }
+
+  QString XtalOpt::getTemplateKeywordHelp_xtalopt()
+  {
+    QString str;
+    QTextStream out (&str);
+    out
+      << "Crystal specific information:\n"
+      << "%POSCAR% -- VASP poscar generator\n"
+      << "%coordsFrac% -- fractional coordinate data\n\t[symbol] [x] [y] [z]\n"
+      << "%coordsFracId% -- fractional coordinate data with atomic number\n\t[symbol] [atomic number] [x] [y] [z]\n"
+      << "%cellMatrixAngstrom% -- Cell matrix in Angstrom\n"
+      << "%cellVector1Angstrom% -- First cell vector in Angstrom\n"
+      << "%cellVector2Angstrom% -- Second cell vector in Angstrom\n"
+      << "%cellVector3Angstrom% -- Third cell vector in Angstrom\n"
+      << "%cellMatrixBohr% -- Cell matrix in Bohr\n"
+      << "%cellVector1Bohr% -- First cell vector in Bohr\n"
+      << "%cellVector2Bohr% -- Second cell vector in Bohr\n"
+      << "%cellVector3Bohr% -- Third cell vector in Bohr\n"
+      << "%a% -- Lattice parameter A\n"
+      << "%b% -- Lattice parameter B\n"
+      << "%c% -- Lattice parameter C\n"
+      << "%alphaRad% -- Lattice parameter Alpha in rad\n"
+      << "%betaRad% -- Lattice parameter Beta in rad\n"
+      << "%gammaRad% -- Lattice parameter Gamma in rad\n"
+      << "%alphaDeg% -- Lattice parameter Alpha in degrees\n"
+      << "%betaDeg% -- Lattice parameter Beta in degrees\n"
+      << "%gammaDeg% -- Lattice parameter Gamma in degrees\n"
+      << "%volume% -- Unit cell volume\n"
+      << "%gen% -- xtal generation number\n"
+      << "%id% -- xtal id number\n";
+
+    return str;
+  }
+
 
   bool XtalOpt::save() {
     //qDebug() << "XtalOpt::save() called";
