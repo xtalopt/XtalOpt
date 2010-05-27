@@ -143,8 +143,6 @@ target_link_libraries( xtalopt
  		       globalsearch
  		       spglib)
 
-
-
 option( BUILD_TESTS
  	"Whether to compile the test suite as well as the main code."
  	OFF )
