@@ -17,7 +17,6 @@
  ***********************************************************************/
 
 #include "optimizer.h"
-#include "xtal.h"
 #include "macros.h"
 #include "optbase.h"
 #include "queuemanager.h"
@@ -164,7 +163,7 @@ namespace Avogadro {
   }
 
   bool Optimizer::writeInputFiles(Structure *structure) {
-    // Stop any running jobs associated with this xtal
+    // Stop any running jobs associated with this structure
     deleteJob(structure);
 
     // Lock
@@ -378,7 +377,7 @@ namespace Avogadro {
       }
     }
 
-    // Check if xtal is submitted:
+    // Check if structure is submitted:
     if (structure->getStatus() == Structure::Submitted) {
       if (status.isEmpty()) {
         return Optimizer::Pending;
@@ -539,7 +538,7 @@ namespace Avogadro {
     // lock structure
     QWriteLocker locker (structure->lock());
 
-    // Update Xtal status
+    // Update structure status
     structure->setStatus(Structure::Updating);
     structure->stopOptTimer();
 
@@ -602,9 +601,6 @@ namespace Avogadro {
 
   bool Optimizer::read(Structure *structure,
                        const QString & filename) {
-    // TODO Only pull structure specific info here -- create a XtalOptOptimizer to handle xtal data.
-    // Recast structure as xtal -- we'll need to access cell data later
-    Xtal *xtal = qobject_cast<Xtal*>(structure);
     // Test filename
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -623,7 +619,7 @@ namespace Avogadro {
     if ( !inFormat || !conv.SetInFormat( inFormat ) ) {
       m_opt->warning(tr("Optimizer::read: Error setting format for file %1")
                  .arg(filename));
-      xtal->setStatus(Xtal::Error);
+      structure->setStatus(Structure::Error);
       m_opt->sOBMutex->unlock();
       return false;
     }
@@ -632,22 +628,11 @@ namespace Avogadro {
     conv.ReadFile( &obmol, QString(QFile::encodeName(filename)).toStdString());
     m_opt->sOBMutex->unlock();
 
-    // Copy settings from obmol -> xtal.
-    // cell
-    OBUnitCell *cell = static_cast<OBUnitCell*>(obmol.GetData(OBGenericDataType::UnitCell));
-
-    if (cell == NULL) {
-      m_opt->warning(tr("Optimizer::read: No unit cell in %1? Weird...").arg(filename));
-      xtal->setStatus(Xtal::Error);
-      return false;
-    }
-
-    xtal->setCellInfo(cell->GetCellMatrix());
-
+    // Copy settings from obmol -> structure.
     // atoms
-    while (xtal->numAtoms() < obmol.NumAtoms())
-      xtal->addAtom();
-    QList<Atom*> atoms = xtal->atoms();
+    while (structure->numAtoms() < obmol.NumAtoms())
+      structure->addAtom();
+    QList<Atom*> atoms = structure->atoms();
     uint i = 0;
 
     FOR_ATOMS_OF_MOL(atm, obmol) {
@@ -659,16 +644,14 @@ namespace Avogadro {
     // energy/enthalpy
     const double KCAL_PER_MOL_TO_EV = 0.0433651224;
     if (obmol.HasData("Enthalpy (kcal/mol)"))
-      xtal->setEnthalpy(QString(obmol.GetData("Enthalpy (kcal/mol)")->GetValue().c_str()).toFloat()
+      structure->setEnthalpy(QString(obmol.GetData("Enthalpy (kcal/mol)")->GetValue().c_str()).toFloat()
                         * KCAL_PER_MOL_TO_EV);
     if (obmol.HasData("Enthalpy PV term (kcal/mol)"))
-      xtal->setPV(QString(obmol.GetData("Enthalpy PV term (kcal/mol)")->GetValue().c_str()).toFloat()
+      structure->setPV(QString(obmol.GetData("Enthalpy PV term (kcal/mol)")->GetValue().c_str()).toFloat()
                   * KCAL_PER_MOL_TO_EV);
-    xtal->setEnergy(obmol.GetEnergy());
+    structure->setEnergy(obmol.GetEnergy());
     // Modify as needed!
 
-    xtal->wrapAtomsToCell();
-    xtal->findSpaceGroup();
     return true;
   }
 

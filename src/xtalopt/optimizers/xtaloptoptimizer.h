@@ -1,7 +1,7 @@
 /**********************************************************************
-  VASPOptimizer - Tools to interface with VASP
+  XtalOptOptimizer - Generic optimizer interface
 
-  Copyright (C) 2009-2010 by David C. Lonie
+  Copyright (C) 2010 by David C. Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -16,10 +16,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#ifndef VASPOPTIMIZER_H
-#define VASPOPTIMIZER_H
+#ifndef XTALOPTOPTIMIZER_H
+#define XTALOPTOPTIMIZER_H
 
-#include "xtaloptoptimizer.h"
+#include "../../generic/optimizer.h"
 
 #include <QObject>
 
@@ -27,19 +27,17 @@ namespace Avogadro {
   class Structure;
   class OptBase;
 
-  class VASPOptimizer : public XtalOptOptimizer
+  class XtalOptOptimizer : public Optimizer
   {
     Q_OBJECT
 
-   public:
-    VASPOptimizer(OptBase *parent);
-    bool writeInputFiles(Structure *structure);
-    void readSettings(const QString &filename = "");
-    void writeTemplatesToSettings(const QString &filename = "");
-    void writeDataToSettings(const QString &filename = "");
+  public:
 
-    void buildPOTCARs();
-    bool POTCARInfoIsUpToDate(QList<uint> comp);
+    explicit XtalOptOptimizer(OptBase *parent);
+    virtual ~XtalOptOptimizer();
+
+    virtual bool read(Structure *structure, const QString & filename);
+
   };
 
 } // end namespace Avogadro

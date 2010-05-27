@@ -39,7 +39,7 @@ using namespace Eigen;
 namespace Avogadro {
 
   VASPOptimizer::VASPOptimizer(OptBase *parent) :
-    Optimizer(parent)
+    XtalOptOptimizer(parent)
   {
     // Set allowed data structure keys, if any
     // "POTCAR info" is of type

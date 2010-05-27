@@ -19,7 +19,7 @@
 #ifndef GULPOPTIMIZER_H
 #define GULPOPTIMIZER_H
 
-#include "../../generic/optimizer.h"
+#include "xtaloptoptimizer.h"
 
 #include <QObject>
 
@@ -27,7 +27,7 @@ namespace Avogadro {
   class Structure;
   class OptBase;
 
-  class GULPOptimizer : public Optimizer
+  class GULPOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT
 

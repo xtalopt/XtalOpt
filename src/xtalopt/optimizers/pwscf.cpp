@@ -36,7 +36,7 @@ using namespace Eigen;
 namespace Avogadro {
 
   PWscfOptimizer::PWscfOptimizer(OptBase *parent) :
-    Optimizer(parent)
+    XtalOptOptimizer(parent)
   {
     // Set allowed data structure keys, if any, e.g.
     // None here!

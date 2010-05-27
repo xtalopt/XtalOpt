@@ -19,14 +19,14 @@
 #ifndef PWSCFOPTIMIZER_H
 #define PWSCFOPTIMIZER_H
 
-#include "../../generic/optimizer.h"
+#include "xtaloptoptimizer.h"
 
 #include <QObject>
 
 namespace Avogadro {
   class OptBase;
 
-  class PWscfOptimizer : public Optimizer
+  class PWscfOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT
 

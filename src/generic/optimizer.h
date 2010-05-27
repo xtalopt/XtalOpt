@@ -112,7 +112,7 @@ namespace Avogadro {
     // User variables
     QString m_user1, m_user2, m_user3, m_user4;
 
-    // TODO change this when the time comes...
+    // Cached pointer to the optbase
     OptBase *m_opt;
 
     // Identifier for this optimization type
