@@ -889,8 +889,9 @@ namespace Avogadro {
   QString XtalOpt::getTemplateKeywordHelp()
   {
     QString help = "";
-    help += getTemplateKeywordHelp_base();
-    help += getTemplateKeywordHelp_xtalopt();
+    help.append(getTemplateKeywordHelp_base());
+    help.append("\n");
+    help.append(getTemplateKeywordHelp_xtalopt());
     return help;
   }
 

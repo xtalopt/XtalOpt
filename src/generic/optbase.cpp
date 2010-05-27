@@ -164,6 +164,7 @@ namespace Avogadro {
       << "%gen% -- structure generation number (if relevant)\n"
       << "%id% -- structure id number\n"
       << "%optStep% -- current optimization step\n";
+    return str;
   }
 
   void OptBase::setOptimizer_opt(Optimizer *o) {

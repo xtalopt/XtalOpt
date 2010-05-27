@@ -153,6 +153,12 @@ namespace Avogadro {
     ui.combo_optType->setDisabled(true);
   }
 
+  void TabEdit::showHelp() {
+    QMessageBox::information(m_dialog,
+                             "Template Help",
+                             m_opt->getTemplateKeywordHelp());
+  }
+
   void TabEdit::updateOptType()
   {
     // Check if the opttype has actually changed and that the

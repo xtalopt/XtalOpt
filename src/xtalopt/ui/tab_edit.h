@@ -62,8 +62,7 @@ namespace Avogadro {
     void disconnectGUI();
     void generateVASP_POTCAR_info();
     void templateChanged(int ind);
-    void showHelp() {
-      QMessageBox::information(m_dialog, "Template Help", m_opt->getTemplateKeywordHelp());}
+    void showHelp();
     void updateTemplates();
     void changePOTCAR(QListWidgetItem *item);
     void populateOptList();
