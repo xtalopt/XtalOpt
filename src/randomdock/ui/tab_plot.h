@@ -22,8 +22,9 @@
 
 #include "ui_tab_plot.h"
 
-namespace Avogadro {
-  class RandomDockParams;
+using namespace Avogadro;
+
+namespace RandomDock {
   class Scene;
   class Molecule;
 
@@ -32,7 +33,7 @@ namespace Avogadro {
     Q_OBJECT
 
   public:
-    explicit TabPlot( RandomDockParams *p );
+    explicit TabPlot( RandomDockDialog *dialog, RandomDock *opt );
     virtual ~TabPlot();
 
     enum PlotAxes	{Structure_T = 0, Energy_T};
@@ -52,8 +53,9 @@ namespace Avogadro {
   private:
     Ui::Tab_Plot ui;
     QWidget *m_tab_widget;
-    RandomDockParams *m_params;
     PlotObject *m_plotObject;
+    RandomDockDialog *m_dialog;
+    RandomDock *m_opt;
   };
 }
 

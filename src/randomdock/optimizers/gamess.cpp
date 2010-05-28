@@ -17,7 +17,6 @@
  ***********************************************************************/
 
 #include "gamess.h"
-#include "../../generic/templates.h"
 
 #include <QProcess>
 #include <QDir>
@@ -32,8 +31,9 @@
 using namespace std;
 using namespace OpenBabel;
 using namespace Eigen;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
   GAMESSOptimizer::GAMESSOptimizer(OptBase *parent) :
     Optimizer(parent)

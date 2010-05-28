@@ -24,14 +24,15 @@
 #include <QSettings>
 
 using namespace std;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
-  TabPlot::TabPlot( RandomDockParams *p ) :
-    QObject( p->dialog ), m_params(p)
+  TabPlot::TabPlot( RandomDockDialog *dialog, RandomDock *opt ) :
+    QObject(dialog),
+    m_dialog(dialog),
+    m_opt(opt)
   {
-    qDebug() << "TabPlot::TabPlot( " << p <<  " ) called.";
-
     m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 

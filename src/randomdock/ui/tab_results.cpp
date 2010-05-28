@@ -16,8 +16,8 @@
 
 #include "tab_results.h"
 
-#include "randomdock.h"
-#include "randomdockGAMESS.h"
+#include "../randomdock.h"
+#include "../randomdockGAMESS.h"
 #include "randomdockdialog.h"
 
 #include <QFile>
@@ -27,11 +27,17 @@
 #include <QtConcurrentRun>
 
 using namespace std;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
-  TabResults::TabResults( RandomDockParams *p ) :
-    QObject( p->dialog ), m_params(p), m_timer(0), m_update_mutex(0), m_mutex(0)
+  TabResults::TabResults( RandomDockDialog *dialog, RandomDock *opt ) :
+    QObject(dialog),
+    m_dialog(dialog),
+    m_opt(opt),
+    m_timer(0),
+    m_update_mutex(0),
+    m_mutex(0)
   {
     qDebug() << "TabResults::TabResult( " << p <<  " ) called.";
 

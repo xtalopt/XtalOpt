@@ -22,7 +22,6 @@ if(BUILD_TESTS)
    enable_testing()
 endif(BUILD_TESTS)
 
-
 # This is a modified version of the avogadro_plugin function that produces
 # a SHARED library instead of a MODULE
 function(process_plugin plugin_name src_list)
@@ -39,26 +38,6 @@ function(process_plugin plugin_name src_list)
   add_library(${plugin_name} SHARED ${src_list} ${plugin_UIS_H}
               ${plugin_RC_SRCS} ${moc_files})
   target_link_libraries(${plugin_name} AvogadroCore AvogadroWidget)
-
-  if(UNIX)
-    add_custom_target("${CMAKE_PROJECT_NAME}.mf"
-      COMMAND avopkg -wizard "${CMAKE_PROJECT_NAME}"
-    )
-    add_custom_target(manifest
-      DEPENDS "${CMAKE_PROJECT_NAME}.mf"
-      COMMAND avopkg -wizard "${CMAKE_PROJECT_NAME}"
-    )
-    add_custom_target("${CMAKE_PROJECT_NAME}.avo"
-      COMMAND avopkg -pack "${CMAKE_PROJECT_NAME}.mf"
-    )
-    add_custom_target(package
-      DEPENDS "${CMAKE_PROJECT_NAME}.avo"
-    )
-    add_custom_target(install_package
-      COMMAND avopkg "${CMAKE_PROJECT_NAME}.avo"
-      DEPENDS "${CMAKE_PROJECT_NAME}.avo"
-    )
-  endif(UNIX)
 
   install(TARGETS ${plugin_name} DESTINATION "${Avogadro_PLUGIN_DIR}/contrib")
 

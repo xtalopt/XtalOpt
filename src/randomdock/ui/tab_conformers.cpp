@@ -16,38 +16,42 @@
 
 #include "tab_conformers.h"
 
-#include "randomdock.h"
-#include "randomdockdialog.h"
-#include "matrixmol.h"
-#include "substratemol.h"
+#include "dialog.h"
+#include "../randomdock.h"
+#include "../structures/matrix.h"
+#include "../structures/substrate.h"
 
 #include <openbabel/forcefield.h>
+
+#include <avogadro/atom.h>
 
 #include <QSettings>
 #include <QMessageBox>
 #include <QProgressDialog>
 
 using namespace std;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
-  TabConformers::TabConformers( RandomDockParams *p ) :
-    QObject( p->dialog ), m_params(p), m_ff(0)
+  TabConformers::TabConformers( RandomDockDialog *dialog, RandomDock *opt) :
+    QObject(dialog),
+    m_dialog(dialog),
+    m_opt(opt),
+    m_ff(0)
   {
-    qDebug() << "TabConformers::TabConformers( " << p <<  " ) called.";
-
     m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 
     m_ff = OpenBabel::OBForceField::FindForceField("MMFF94");
 
     // dialog connections
-    connect(p->dialog, SIGNAL(tabsReadSettings()),
+    connect(dialog, SIGNAL(tabsReadSettings()),
             this, SLOT(readSettings()));
-    connect(p->dialog, SIGNAL(tabsWriteSettings()),
+    connect(dialog, SIGNAL(tabsWriteSettings()),
             this, SLOT(writeSettings()));
     connect(this, SIGNAL(moleculeChanged(Molecule*)),
-            p->dialog, SIGNAL(moleculeChanged(Molecule*)));
+            dialog, SIGNAL(moleculeChanged(Molecule*)));
 
     // tab connections
     connect(ui.push_generate, SIGNAL(clicked()),
@@ -85,10 +89,10 @@ namespace Avogadro {
   void TabConformers::updateMoleculeList() {
     qDebug() << "TabConformers::updateMoleculeList() called";
     ui.combo_mol->clear();
-    qDebug() << "substrate: " << m_params->substrate;
-    if (m_params->substrate)
+    qDebug() << "substrate: " << m_opt->substrate;
+    if (m_opt->substrate)
       ui.combo_mol->addItem("Substrate");
-    for (int i = 0; i < m_params->matrixList->size(); i++) {
+    for (int i = 0; i < m_opt->matrixList.size(); i++) {
       ui.combo_mol->addItem(tr("Matrix %1").arg(i+1));
     }
   }
@@ -113,13 +117,13 @@ namespace Avogadro {
     OpenBabel::OBMol obmol = mol->OBMol();
     qDebug() << obmol.NumAtoms();
     if (!ff) {
-      QMessageBox::warning( m_params->dialog, tr( "Avogadro" ),
+      QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Problem setting up forcefield '%1'.")
                             .arg(ui.combo_opt->currentText().trimmed()));
       return;
     }
     if (!ff->Setup(obmol)) {
-      QMessageBox::warning( m_params->dialog, tr( "Avogadro" ),
+      QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Cannot set up the force field for this molecule." ));
       return;
     }
@@ -130,7 +134,7 @@ namespace Avogadro {
     // Systematic search:
     if (ui.cb_allConformers->isChecked()) {
       int n = ff->SystematicRotorSearchInitialize(2500);
-      QProgressDialog prog ("Performing Systematic conformer search...", 0, 0, n, m_params->dialog);
+      QProgressDialog prog ("Performing Systematic conformer search...", 0, 0, n, m_dialog);
       int step = 0;
       prog.setValue(step);
       while (ff->SystematicRotorSearchNextConformer(500)) {
@@ -142,7 +146,7 @@ namespace Avogadro {
     else {
       int n = ui.spin_nConformers->value();
       ff->RandomRotorSearchInitialize(n, 2500);
-      QProgressDialog prog ("Performing Random conformer search...", 0, 0, n, m_params->dialog);
+      QProgressDialog prog ("Performing Random conformer search...", 0, 0, n, m_dialog);
       int step = 0;
       prog.setValue(step);
       while (ff->RandomRotorSearchNextConformer(500)) {
@@ -232,13 +236,13 @@ namespace Avogadro {
     Molecule *mol;
     QString text = ui.combo_mol->currentText();
     if (text == "Substrate")
-      mol = m_params->substrate;
+      mol = m_opt->substrate;
     else if (text.contains("Matrix")) {
       int ind = text.split(" ")[1].toInt() - 1;
-      if (ind + 1 > m_params->matrixList->size())
+      if (ind + 1 > m_opt->matrixList.size())
         mol = new Molecule;
       else
-        mol = m_params->matrixList->at(ind);
+        mol = m_opt->matrixList.at(ind);
     }
     else mol = new Molecule;
     return mol;
@@ -264,13 +268,13 @@ namespace Avogadro {
     OpenBabel::OBMol obmol = mol->OBMol();
     qDebug() << obmol.NumAtoms();
     if (!ff) {
-      QMessageBox::warning( m_params->dialog, tr( "Avogadro" ),
+      QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Problem setting up forcefield '%1'.")
                             .arg(ui.combo_opt->currentText().trimmed()));
       return;
     }
     if (!ff->Setup(obmol)) {
-      QMessageBox::warning( m_params->dialog, tr( "Avogadro" ),
+      QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Cannot set up the force field for this molecule." ));
       return;
     }

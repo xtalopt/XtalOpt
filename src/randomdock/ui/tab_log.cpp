@@ -23,14 +23,15 @@
 #include <QDateTime>
 
 using namespace std;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
-  TabLog::TabLog( RandomDockParams *p ) :
-    QObject( p->dialog ), m_params(p)
+  TabLog::TabLog( RandomDockDialog *dialog, RandomDock *opt ) :
+    QObject( dialog ),
+    m_dialog(dialog),
+    m_opt(opt)
   {
-    qDebug() << "TabLog::TabLog( " << p <<  " ) called.";
-
     m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 

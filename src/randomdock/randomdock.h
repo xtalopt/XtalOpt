@@ -20,20 +20,28 @@
 #ifndef RANDOMDOCK_H
 #define RANDOMDOCK_H
 
+#include "../generic/optbase.h"
+
 #include <Eigen/Geometry>
 
 #include <QDebug>
 #include <QStringList>
 #include <QReadWriteLock>
 
+using namespace Avogadro;
+
 namespace Avogadro {
+  class Structure;
+}
+
+namespace RandomDock {
   class RandomDockDialog;
   class RandomDockParams;
   class Scene;
   class Substrate;
   class Matrix;
 
-  class RandomDock : public QObject
+  class RandomDock : public OptBase
   {
     Q_OBJECT
 
@@ -43,7 +51,7 @@ namespace Avogadro {
 
     enum OptTypes {
       OT_GAMESS = 0,
-    }
+    };
 
     Scene* generateRandomScene();
     Structure* replaceWithRandom(Structure *s, const QString & reason);
@@ -59,14 +67,6 @@ namespace Avogadro {
     static void centerCoordinatesAtOrigin(QList<Eigen::Vector3d> & coords);
     static void randomlyRotateCoordinates(QList<Eigen::Vector3d> & coords);
     static void randomlyDisplaceCoordinates(QList<Eigen::Vector3d> & coords, double radiusMin, double radiusMax);
-
-    QString filePath;		// Path where scenes are saved
-    QString rempath;		// Path on remote server to use
-    QString qsub;		// Command used to submit jobs
-    QString qstat;		// Command used to check queue
-    QString qdel;		// Command used to delete jobs
-    QString host;		// Name of remote server
-    QString username;		// Name of user on remote server
 
     QString substrateFile;	// Filename of the substrate
     Substrate *substrate;	// Pointer to the substrate
@@ -94,14 +94,15 @@ namespace Avogadro {
    public slots:
     void startOptimization();
     void generateNewStructure();
-    Scene* generateRandomScene();
     void initializeAndAddScene(Scene *scene);
+    void setOptimizer(Optimizer *o) {setOptimizer_opt(o);};
+    void setOptimizer(const QString &IDString) {setOptimizer_string(IDString);};
     void setOptimizer(OptTypes opttype) {setOptimizer_enum(opttype);};
 
    private:
     RandomDockDialog *m_dialog;
 
-    void setOptimizer_string(const QString *s);
+    void setOptimizer_string(const QString &s);
     void setOptimizer_enum(OptTypes opttype);
 
   };

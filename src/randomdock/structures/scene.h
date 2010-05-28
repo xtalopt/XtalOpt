@@ -23,7 +23,9 @@
 
 #include <QDebug>
 
-namespace Avogadro {
+using namespace Avogadro;
+
+namespace RandomDock {
   class Scene : public Structure
   {
     Q_OBJECT

@@ -22,16 +22,16 @@
 
 #include "ui_tab_sys.h"
 
-namespace Avogadro {
+namespace RandomDock {
   class RandomDockDialog;
-  class RandomDockParams;
+  class RandomDock;
 
   class TabSys : public QObject
   {
     Q_OBJECT
 
   public:
-    explicit TabSys( RandomDockParams *p );
+    explicit TabSys( RandomDockDialog *dialog, RandomDock *opt );
     virtual ~TabSys();
 
     QWidget *getTabWidget() {return m_tab_widget;};
@@ -46,7 +46,8 @@ namespace Avogadro {
   private:
     Ui::Tab_Sys ui;
     QWidget *m_tab_widget;
-    RandomDockParams *m_params;
+    RandomDockDialog *m_dialog;
+    RandomDock *m_opt;
   };
 }
 

@@ -16,22 +16,24 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#ifndef RANDOMDOCKGAMESS_H
-#define RANDOMDOCKGAMESS_H
+#ifndef RDGAMESS_H
+#define RDGAMESS_H
 
-namespace Avogadro {
-  class RandomDockParams;
-  class Scene;
+#include "../../generic/optimizer.h"
 
-  class GAMESSOptimizer : public QObject
+using namespace Avogadro;
+
+namespace RandomDock {
+
+  class GAMESSOptimizer : public Optimizer
   {
     Q_OBJECT
 
    public:
-    GAMESSOptimizer
+    explicit GAMESSOptimizer(OptBase *parent);
 
   };
 
-} // end namespace Avogadro
+} // end namespace RandomDock
 
 #endif

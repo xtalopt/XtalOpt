@@ -24,9 +24,7 @@
 #include <QMutex>
 #include <QTimer>
 
-#include <avogadro/primitive.h>
 #include <avogadro/molecule.h>
-#include <avogadro/atom.h>
 #include <avogadro/glwidget.h>
 
 #include "ui_dialog.h"
@@ -34,7 +32,6 @@
 namespace Avogadro {
   class Xtal;
   class XtalOpt;
-  class INCAR_Editor;
   class PlotObject;
   class TabInit;
   class TabEdit;

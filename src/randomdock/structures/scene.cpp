@@ -22,8 +22,9 @@
 #include <QDebug>
 
 using namespace std;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
   Scene::Scene(QObject *parent) : 
     Structure(parent)

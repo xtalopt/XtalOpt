@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>323</width>
-    <height>296</height>
+    <width>1440</width>
+    <height>880</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -20,19 +20,6 @@
    <string>Random Docking Analysis</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="5" column="5">
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>40</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
    <item row="5" column="7">
     <widget class="QPushButton" name="pushButton">
      <property name="sizePolicy">
@@ -72,31 +59,45 @@
      </widget>
     </widget>
    </item>
-   <item row="5" column="1">
+   <item row="5" column="2">
     <widget class="QLabel" name="label">
      <property name="text">
       <string>Running: </string>
      </property>
     </widget>
    </item>
-   <item row="5" column="2">
+   <item row="5" column="3">
     <widget class="QLabel" name="label_running">
      <property name="text">
       <string>0</string>
      </property>
     </widget>
    </item>
-   <item row="5" column="3">
+   <item row="5" column="4">
     <widget class="QLabel" name="label_3">
      <property name="text">
       <string> Optimized:</string>
      </property>
     </widget>
    </item>
-   <item row="5" column="4">
+   <item row="5" column="5">
     <widget class="QLabel" name="label_optimized">
      <property name="text">
       <string>0</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QProgressBar" name="progbar">
+     <property name="value">
+      <number>24</number>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QLabel" name="label_prog">
+     <property name="text">
+      <string>TextLabel</string>
      </property>
     </widget>
    </item>

@@ -26,7 +26,9 @@
 #include <QDateTime>
 #include <QTextStream>
 
-namespace Avogadro {
+using namespace Avogadro;
+
+namespace RandomDock {
 
   class Substrate : public Molecule
   {
@@ -40,10 +42,10 @@ namespace Avogadro {
    signals:
 
    public slots:
-    double prob(uint index) { checkProbs(); return m_probs->at(index);};
+    double prob(uint index) { checkProbs(); return m_probs.at(index);};
     void sortConformers();
     void generateProbabilities();
-    void checkProbs() {if ((uint)m_probs->size() != numConformers()) generateProbabilities();};
+    void checkProbs() {if ((uint)m_probs.size() != numConformers()) generateProbabilities();};
     Substrate* getRandomConformer();
 
    private slots:

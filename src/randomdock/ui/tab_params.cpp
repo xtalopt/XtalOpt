@@ -1,4 +1,3 @@
-
 /**********************************************************************
   RandomDock -- A tool for analysing a matrix-substrate docking problem
 
@@ -17,10 +16,10 @@
 
 #include "tab_params.h"
 
-#include "randomdock.h"
-#include "randomdockdialog.h"
-#include "substratemol.h"
-#include "matrixmol.h"
+#include "dialog.h"
+#include "../randomdock.h"
+#include "../structures/substrate.h"
+#include "../structures/matrix.h"
 
 #include <QDebug>
 #include <QSettings>
@@ -28,21 +27,22 @@
 #include <QMessageBox>
 
 using namespace std;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
-  TabParams::TabParams( RandomDockParams *p ) :
-    QObject(p->dialog), m_params(p)
+  TabParams::TabParams( RandomDockDialog *dialog, RandomDock *opt ) :
+    QObject(dialog),
+    m_dialog(dialog),
+    m_opt(opt)
   {
-    qDebug() << "TabParams::TabParams( " << p <<  " ) called.";
-
     m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 
     // dialog connections
-    connect(p->dialog, SIGNAL(tabsReadSettings()),
+    connect(dialog, SIGNAL(tabsReadSettings()),
             this, SLOT(readSettings()));
-    connect(p->dialog, SIGNAL(tabsWriteSettings()),
+    connect(dialog, SIGNAL(tabsWriteSettings()),
             this, SLOT(writeSettings()));
 
     // Optimization connections
@@ -74,14 +74,14 @@ namespace Avogadro {
     qDebug() << "TabParams::writeSettings() called";
     QSettings settings; // Already set up in avogadro/src/main.cpp
 
-    settings.setValue("randomdock/params/numSearches",      	m_params->numSearches);
-    settings.setValue("randomdock/params/numMatrixMol",      	m_params->numMatrixMol);
-    settings.setValue("randomdock/params/cutoff",	      	m_params->cutoff);
-    settings.setValue("randomdock/params/IAD_min",      	m_params->IAD_min);
-    settings.setValue("randomdock/params/IAD_max",      	m_params->IAD_max);
-    settings.setValue("randomdock/params/radius_min",      	m_params->radius_min);
-    settings.setValue("randomdock/params/radius_max",      	m_params->radius_max);
-    settings.setValue("randomdock/params/radius_auto",      	m_params->radius_auto);
+    settings.setValue("randomdock/params/runningJobLimit",     	m_opt->runningJobLimit);
+    settings.setValue("randomdock/params/numMatrixMol",      	m_opt->numMatrixMol);
+    settings.setValue("randomdock/params/cutoff",	      	m_opt->cutoff);
+    settings.setValue("randomdock/params/IAD_min",      	m_opt->IAD_min);
+    settings.setValue("randomdock/params/IAD_max",      	m_opt->IAD_max);
+    settings.setValue("randomdock/params/radius_min",      	m_opt->radius_min);
+    settings.setValue("randomdock/params/radius_max",      	m_opt->radius_max);
+    settings.setValue("randomdock/params/radius_auto",      	m_opt->radius_auto);
   }
 
   void TabParams::readSettings() {
@@ -108,21 +108,21 @@ namespace Avogadro {
     if (ui.spin_radius_min->value() > ui.spin_radius_max->value())
       ui.spin_radius_max->setValue(ui.spin_radius_min->value());
 
-    m_params->numSearches	= ui.spin_numSearches->value();
-    m_params->numMatrixMol	= ui.spin_numMatrixMols->value();
-    m_params->cutoff		= ui.spin_cutoff->value();
-    m_params->IAD_min		= ui.spin_IAD_min->value();
-    m_params->IAD_max		= ui.spin_IAD_max->value();
+    m_opt->runningJobLimit	= ui.spin_numSearches->value();
+    m_opt->numMatrixMol	= ui.spin_numMatrixMols->value();
+    m_opt->cutoff		= ui.spin_cutoff->value();
+    m_opt->IAD_min		= ui.spin_IAD_min->value();
+    m_opt->IAD_max		= ui.spin_IAD_max->value();
     //  Auto radius --
     if (ui.cb_radius_auto->isChecked()) {
       // Check that we have substrate and at least one matrix element
-      if (!m_params->substrate || m_params->matrixList->size() == 0) {
+      if (!m_opt->substrate || m_opt->matrixList.size() == 0) {
         ui.cb_radius_auto->setChecked(false);
         return;
       }
       // Iterate over all substrate conformers, find the shortest and the largest radii.
       double sub_short, sub_long, tmp;
-      Substrate *sub = m_params->substrate;
+      Substrate *sub = m_opt->substrate;
       sub_short = sub_long = sub->radius();
       for (uint i = 0; i < sub->numConformers(); i++) {
         sub->setConformer(i);
@@ -133,9 +133,9 @@ namespace Avogadro {
       }
       //   Iterate over all atoms in matrix elements conformers, find longest radius of all
       double mat_short, mat_long;
-      mat_short = mat_long = m_params->matrixList->first()->radius();
-      for (int m = 0; m < m_params->matrixList->size(); m++) {
-        Matrix *mat = m_params->matrixList->at(m);
+      mat_short = mat_long = m_opt->matrixList.first()->radius();
+      for (int m = 0; m < m_opt->matrixList.size(); m++) {
+        Matrix *mat = m_opt->matrixList.at(m);
         for (uint i = 0; i < mat->numConformers(); i++) {
           mat->setConformer(i);
           mat->updateMolecule();
@@ -147,16 +147,16 @@ namespace Avogadro {
       ui.spin_radius_min->blockSignals(true);
       ui.spin_radius_max->blockSignals(true);
       ui.spin_radius_min->setValue(mat_short);
-      ui.spin_radius_max->setValue(mat_long + sub_long + m_params->IAD_max);
+      ui.spin_radius_max->setValue(mat_long + sub_long + m_opt->IAD_max);
       ui.spin_radius_min->blockSignals(false);
       ui.spin_radius_max->blockSignals(false);
       ui.spin_radius_min->update();
       ui.spin_radius_max->update();
       qDebug() << "Done!";
     }
-    m_params->radius_min	= ui.spin_radius_min->value();
-    m_params->radius_max	= ui.spin_radius_max->value();
-    m_params->radius_auto	= ui.cb_radius_auto->isChecked();
+    m_opt->radius_min	= ui.spin_radius_min->value();
+    m_opt->radius_max	= ui.spin_radius_max->value();
+    m_opt->radius_auto	= ui.cb_radius_auto->isChecked();
   }
 
   void TabParams::stopSubmission() {

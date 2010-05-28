@@ -16,27 +16,28 @@
 
 #include "tab_sys.h"
 
-#include "randomdock.h"
-#include "randomdockdialog.h"
+#include "dialog.h"
+#include "../randomdock.h"
 
 #include <QSettings>
 
 using namespace std;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
-  TabSys::TabSys( RandomDockParams *p ) :
-    QObject( p->dialog ), m_params(p)
+  TabSys::TabSys( RandomDockDialog *dialog, RandomDock *opt ) :
+    QObject(dialog),
+    m_dialog(dialog),
+    m_opt(opt)
   {
-    qDebug() << "TabSys::TabSys( " << p <<  " ) called.";
-
     m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 
     // dialog connections
-    connect(p->dialog, SIGNAL(tabsReadSettings()),
+    connect(m_dialog, SIGNAL(tabsReadSettings()),
             this, SLOT(readSettings()));
-    connect(p->dialog, SIGNAL(tabsWriteSettings()),
+    connect(m_dialog, SIGNAL(tabsWriteSettings()),
             this, SLOT(writeSettings()));
 
     // System Settings connections
@@ -70,15 +71,15 @@ namespace Avogadro {
     qDebug() << "TabSys::writeSettings() called";
     QSettings settings; // Already set up in avogadro/src/main.cpp
 
-    settings.setValue("randomdock/dialog/sys/file/path",	m_params->filePath);
-    settings.setValue("randomdock/dialog/sys/file/base",	m_params->fileBase);
-    settings.setValue("randomdock/dialog/sys/queue/launch",	m_params->launchCommand);
-    settings.setValue("randomdock/dialog/sys/queue/check",	m_params->queueCheck);
-    settings.setValue("randomdock/dialog/sys/queue/qdel",	m_params->queueDelete);
-    settings.setValue("randomdock/dialog/sys/remote/host",	m_params->host);
-    settings.setValue("randomdock/dialog/sys/remote/username",	m_params->username);
-    settings.setValue("randomdock/dialog/sys/remote/rempath",	m_params->rempath);
-    settings.setValue("randomdock/dialog/using/remote",    	m_params->using_remote);
+    settings.setValue("randomdock/dialog/sys/file/path",	m_opt->filePath);
+    settings.setValue("randomdock/dialog/sys/file/base",	m_opt->fileBase);
+    settings.setValue("randomdock/dialog/sys/queue/launch",	m_opt->launchCommand);
+    settings.setValue("randomdock/dialog/sys/queue/check",	m_opt->queueCheck);
+    settings.setValue("randomdock/dialog/sys/queue/qdel",	m_opt->queueDelete);
+    settings.setValue("randomdock/dialog/sys/remote/host",	m_opt->host);
+    settings.setValue("randomdock/dialog/sys/remote/username",	m_opt->username);
+    settings.setValue("randomdock/dialog/sys/remote/rempath",	m_opt->rempath);
+    settings.setValue("randomdock/dialog/using/remote",    	m_opt->using_remote);
   }
 
   void TabSys::readSettings() {
@@ -97,16 +98,15 @@ namespace Avogadro {
   }
 
   void TabSys::updateSystemInfo() {
-    qDebug() << "TabSys::updateSystemInfo() called";
-    m_params->filePath		= ui.edit_path->text();
-    m_params->fileBase		= ui.edit_base->text();
-    m_params->launchCommand	= ui.edit_launch->text();
-    m_params->queueCheck	= ui.edit_check->text();
-    m_params->queueDelete	= ui.edit_qdel->text();
-    m_params->using_remote	= ui.cb_remote->isChecked();
-    m_params->host		= ui.edit_host->text();
-    m_params->username		= ui.edit_username->text();
-    m_params->rempath		= ui.edit_rempath->text();
+    m_opt->filePath		= ui.edit_path->text();
+    m_opt->fileBase		= ui.edit_base->text();
+    m_opt->launchCommand	= ui.edit_launch->text();
+    m_opt->queueCheck		= ui.edit_check->text();
+    m_opt->queueDelete		= ui.edit_qdel->text();
+    m_opt->using_remote		= ui.cb_remote->isChecked();
+    m_opt->host			= ui.edit_host->text();
+    m_opt->username		= ui.edit_username->text();
+    m_opt->rempath		= ui.edit_rempath->text();
   }
 
 }

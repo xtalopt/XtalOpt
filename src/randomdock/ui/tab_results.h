@@ -27,9 +27,10 @@
 class QTimer;
 class QMutex;
 
-namespace Avogadro {
+using namespace Avogadro;
+
+namespace RandomDock {
   class RandomDockDialog;
-  class RandomDockParams;
   class Scene;
 
   class TabResults : public QObject
@@ -37,7 +38,7 @@ namespace Avogadro {
     Q_OBJECT
 
   public:
-    explicit TabResults( RandomDockParams *p );
+    explicit TabResults( RandomDockDialog *dialog, RandomDock  *opt );
     virtual ~TabResults();
 
     enum Columns {Rank, Index, Energy, Status};
@@ -73,10 +74,11 @@ namespace Avogadro {
   private:
     Ui::Tab_Results ui;
     QWidget *m_tab_widget;
-    RandomDockParams *m_params;
     QTimer *m_timer;
     QMutex *m_update_mutex;
     QMutex *m_mutex;
+    RandomDockDialog *m_dialog;
+    RandomDock *m_opt;
   };
 }
 

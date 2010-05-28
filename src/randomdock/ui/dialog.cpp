@@ -14,9 +14,7 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "randomdockdialog.h"
-
-#include "randomdockGAMESS.h"
+#include "dialog.h"
 
 #include "tab_init.h"
 #include "tab_conformers.h"
@@ -26,7 +24,9 @@
 #include "tab_results.h"
 #include "tab_plot.h"
 #include "tab_log.h"
+#include "../../generic/macros.h"
 
+#include <QTimer>
 #include <QSettings>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -34,31 +34,28 @@
 #include <QProgressDialog>
 
 using namespace std;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
-  RandomDockDialog::RandomDockDialog( QWidget *parent, Qt::WindowFlags f ) :
-    QDialog( parent, f ), m_params(0)
+  RandomDockDialog::RandomDockDialog(GLWidget *glWidget, QWidget *parent, Qt::WindowFlags f ) :
+    QDialog( parent, f ), m_glWidget(glWidget)
   {
-    qDebug() 
-      << "RandomDockDialog::RandomDockDialog( "
-      << parent << ", "
-      << f << ") "
-      << "called.";
     ui.setupUi(this);
 
     // Initialize vars, connections, etc
-    m_params = new RandomDockParams (this);
+    progMutex = new QMutex;
+    progTimer = new QTimer;
 
     // Initialize tabs
-    m_tab_init		= new TabInit(m_params);
-    m_tab_conformers	= new TabConformers(m_params);
-    m_tab_edit		= new TabEdit(m_params);
-    m_tab_params	= new TabParams(m_params);
-    m_tab_sys		= new TabSys(m_params);
-    m_tab_results	= new TabResults(m_params);
-    m_tab_plot		= new TabPlot(m_params);
-    m_tab_log		= new TabLog(m_params);
+    m_tab_init		= new TabInit(this, m_opt);
+    m_tab_conformers	= new TabConformers(this, m_opt);
+    m_tab_edit		= new TabEdit(this, m_opt);
+    m_tab_params	= new TabParams(this, m_opt);
+    m_tab_sys		= new TabSys(this, m_opt);
+    m_tab_results	= new TabResults(this, m_opt);
+    m_tab_plot		= new TabPlot(this, m_opt);
+    m_tab_log		= new TabLog(this, m_opt);
 
     // Populate tab widget
     ui.tabs->clear();
@@ -74,9 +71,30 @@ namespace Avogadro {
     // Select the first tab by default
     ui.tabs->setCurrentIndex(0);
 
+    // Hide the progress bar/label
+    ui.label_prog->setVisible(false);
+    ui.progbar->setVisible(false);
+
     // Connections
     connect(ui.push_begin, SIGNAL(clicked()),
             this, SLOT(startSearch()));
+
+    connect(progTimer, SIGNAL(timeout()),
+            this, SLOT(repaintProgressBar_()));
+    connect(this, SIGNAL(sig_startProgressUpdate(const QString &, int, int)),
+            this, SLOT(startProgressUpdate_(const QString &, int, int)));
+    connect(this, SIGNAL(sig_stopProgressUpdate()),
+            this, SLOT(stopProgressUpdate_()));
+    connect(this, SIGNAL(sig_updateProgressMinimum(int)),
+            this, SLOT(updateProgressMinimum_(int)));
+    connect(this, SIGNAL(sig_updateProgressMaximum(int)),
+            this, SLOT(updateProgressMaximum_(int)));
+    connect(this, SIGNAL(sig_updateProgressValue(int)),
+            this, SLOT(updateProgressValue_(int)));
+    connect(this, SIGNAL(sig_updateProgressLabel(const QString &)),
+            this, SLOT(updateProgressLabel_(const QString &)));
+    connect(this, SIGNAL(sig_repaintProgressBar()),
+            this, SLOT(repaintProgressBar_()));
 
     // Cross-tab connections
     connect(m_tab_results, SIGNAL(cutoffReached()),
@@ -92,99 +110,122 @@ namespace Avogadro {
   }
 
   void RandomDockDialog::saveSession() {
-    RandomDock::save(m_params);
+    // TODO more to do here?
+    m_opt->save();
   }
 
   void RandomDockDialog::resumeSession() {
+    // TODO is this right still?
     QString filename;
-    QFileDialog dialog (NULL, QString("Select .state file to resume"), m_params->filePath, "*.state;;*.*");
-    dialog.selectFile(m_params->filePath + "/" + m_params->fileBase + "randomdock.state");
+    QFileDialog dialog (NULL, QString("Select .state file to resume"), m_opt->filePath, "*.state;;*.*");
+    dialog.selectFile(m_opt->filePath + "/" + "randomdock.state");
     dialog.setFileMode(QFileDialog::ExistingFile);
     if (dialog.exec())
       filename = dialog.selectedFiles().first();
     else { return;} // User cancel file selection.
-    m_params->reset();
-    m_params->blockSignals(true);
-    RandomDock::load(m_params, filename);
-    m_params->blockSignals(false);
+    m_opt->reset();
+    m_opt->blockSignals(true);
+    m_opt->load(filename);
+    m_opt->blockSignals(false);
     // Refresh dialog and settings
     writeSettings();
     readSettings();
   }
 
-  void RandomDockDialog::writeSettings() {
-    qDebug() << "RandomDockDialog::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-
-    emit tabsWriteSettings();
+  void RandomDockDialog::writeSettings(const QString &filename) {
+    emit tabsWriteSettings(filename);
   }
 
-  void RandomDockDialog::readSettings() {
-    qDebug() << "RandomDockDialog::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-
-    emit tabsReadSettings();
+  void RandomDockDialog::readSettings(const QString &filename) {
+    emit tabsReadSettings(filename);
   }
 
-  void RandomDockDialog::updateScene(int ind) {
-    qDebug() << "RandomDockDialog::updateScene( " << ind << " ) called";
-    QtConcurrent::run(Avogadro::RandomDockGAMESS::readOutputFiles,
-                      m_params->getSceneAt(ind), m_params);
-    QtConcurrent::run(Avogadro::RandomDockGAMESS::stripOutputFile,
-                      m_params->getSceneAt(ind), m_params);
+  void RandomDockDialog::startProgressUpdate(const QString & text, int min, int max) {
+    //qDebug() << "RandomDockDialog::startProgressUpdate( " << text << ", " << min << ", " << max << ") called";
+    emit sig_startProgressUpdate(text,min,max);
   }
 
-  void RandomDockDialog::errorScene(int ind) {
-    qDebug() << "RandomDockDialog::errorScene( " << ind << " ) called";
-    QtConcurrent::run(this, &RandomDockDialog::errorScene_, ind);
+  void RandomDockDialog::startProgressUpdate_(const QString & text, int min, int max) {
+    //qDebug() << "RandomDockDialog::startProgressUpdate_( " << text << ", " << min << ", " << max << ") called";
+    progMutex->lock();
+    ui.progbar->reset();
+    ui.progbar->setRange(min, max);
+    ui.progbar->setValue(min);
+    ui.label_prog->setText(text);
+    ui.progbar->setVisible(true);
+    ui.label_prog->setVisible(true);
+    repaintProgressBar();
+    progTimer->start(1000);
   }
 
-  void RandomDockDialog::errorScene_(int ind) {
-    qDebug() << "RandomDockDialog::errorScene_( " << ind << " ) called";
-
-    m_params->rwLock->lockForRead();
-    Scene *scene = m_params->getSceneAt(ind);
-    m_params->rwLock->unlock();
-
-    if (scene->getJobID()) // e.g. if scene has a job id!
-      RandomDockGAMESS::deleteJob(scene, m_params);
-
-    m_params->rwLock->lockForWrite();
-    // Don'e restart job, just leave as errored and spawn a new job
-    //    RandomDockGAMESS::writeInputFiles(scene, m_params);
-    //    RandomDockGAMESS::startJob(scene, m_params);
-    scene->setStatus(Scene::Killed);
-    m_params->rwLock->unlock();
+  void RandomDockDialog::stopProgressUpdate() {
+    //qDebug() << "RandomDockDialog::stopProgressUpdate() called";
+    emit sig_stopProgressUpdate();
   }
 
-  void RandomDockDialog::deleteJob(int ind) {
-    qDebug() << "RandomDockDialog::deleteJob( " << ind << " ) called";
-    QtConcurrent::run(&RandomDockGAMESS::deleteJob, 
-                      m_params->getSceneAt(ind),
-                      m_params);
+  void RandomDockDialog::stopProgressUpdate_() {
+    //qDebug() << "RandomDockDialog::stopProgressUpdate_() called";
+    ui.progbar->reset();
+    ui.label_prog->setText("");
+    ui.progbar->setVisible(false);
+    ui.label_prog->setVisible(false);
+    progTimer->stop();
+    progMutex->unlock();
+    repaintProgressBar();
   }
 
-  void RandomDockDialog::killScene(int ind) {
-    qDebug() << "RandomDockDialog::killScene( " << ind << " ) called";
-    QtConcurrent::run(this, &RandomDockDialog::killScene_, ind);
+  void RandomDockDialog::updateProgressMaximum(int max) {
+    //qDebug() << "RandomDockDialog::updateProgressMaximum( " << max << " ) called";
+    emit sig_updateProgressMaximum(max);
   }
 
-  void RandomDockDialog::killScene_(int ind) {
-    qDebug() << "RandomDockDialog::killScene_( " << ind << " ) called";
-
-    m_params->rwLock->lockForWrite();
-    m_params->getSceneAt(ind)->setStatus(Scene::Killed);
-    m_params->rwLock->unlock();
+  void RandomDockDialog::updateProgressMaximum_(int max) {
+    //qDebug() << "RandomDockDialog::updateProgressMaximum_( " << max << " ) called";
+    ui.progbar->setMaximum(max);
+    repaintProgressBar();
   }
 
-  void RandomDockDialog::updateRunning(int i) {
-    qDebug() << "RandomDockDialog::updateRunning( " << i << " ) called";
-    ui.label_running->setText(QString::number(i));
+  void RandomDockDialog::updateProgressMinimum(int min) {
+    //qDebug() << "RandomDockDialog::updateProgressMinimum( " << min << " ) called";
+    emit sig_updateProgressMinimum(min);
   }
 
-  void RandomDockDialog::updateOptimized(int i) {
-    qDebug() << "RandomDockDialog::updateOptimized( " << i << " ) called";
-    ui.label_optimized->setText(QString::number(i));
+  void RandomDockDialog::updateProgressMinimum_(int min) {
+    //qDebug() << "RandomDockDialog::updateProgressMinimum_( " << min << " ) called";
+    ui.progbar->setMinimum(min);
+    repaintProgressBar();
+  }
+
+  void RandomDockDialog::updateProgressValue(int val) {
+    //qDebug() << "RandomDockDialog::updateProgressValue( " << val << " ) called";
+    emit sig_updateProgressValue(val);
+  }
+
+  void RandomDockDialog::updateProgressValue_(int val) {
+    //qDebug() << "RandomDockDialog::updateProgressValue_( " << val << " ) called";
+    ui.progbar->setValue(val);
+    repaintProgressBar();
+  }
+
+  void RandomDockDialog::updateProgressLabel(const QString & text) {
+    //qDebug() << "RandomDockDialog::updateProgressLabel( " << text << " ) called";
+    emit sig_updateProgressLabel(text);
+  }
+
+  void RandomDockDialog::updateProgressLabel_(const QString & text) {
+    //qDebug() << "RandomDockDialog::updateProgressLabel_( " << text << " ) called";
+    ui.label_prog->setText(text);
+    repaintProgressBar();
+  }
+
+  void RandomDockDialog::repaintProgressBar() {
+    emit sig_repaintProgressBar();
+  }
+
+  void RandomDockDialog::repaintProgressBar_() {
+    //qDebug() << "RandomDockDialog::repaintProgressBar_: Val: " << ui.progbar->value() << " Min: " << ui.progbar->minimum() << " Max: " << ui.progbar->maximum();
+    ui.label_prog->repaint();
+    ui.label_prog->repaint();
   }
 
 }

@@ -22,15 +22,16 @@
 
 #include "ui_tab_init.h"
 
-namespace Avogadro {
-  class RandomDockParams;
+namespace RandomDock {
+  class RandomDockDialog;
+  class RandomDock;
 
   class TabInit : public QObject
   {
     Q_OBJECT
 
   public:
-    explicit TabInit( RandomDockParams *p );
+    explicit TabInit( RandomDockDialog *dialog, RandomDock *opt );
     virtual ~TabInit();
 
     enum Columns	{ Num = 0, Stoich, Filename };
@@ -53,7 +54,8 @@ namespace Avogadro {
   private:
     Ui::Tab_Init ui;
     QWidget *m_tab_widget;
-    RandomDockParams *m_params;
+    RandomDockDialog *m_dialog;
+    RandomDock *m_opt;
   };
 }
 

@@ -27,15 +27,21 @@ namespace OpenBabel {
 }
 
 namespace Avogadro {
-  class RandomDockParams;
   class Molecule;
+}
+
+using namespace Avogadro;
+
+namespace RandomDock {
+  class RandomDockDialog;
+  class RandomDock;
 
   class TabConformers : public QObject
   {
     Q_OBJECT
 
   public:
-    explicit TabConformers( RandomDockParams *p );
+    explicit TabConformers( RandomDockDialog *dialog, RandomDock *opt);
     virtual ~TabConformers();
 
     enum OptTypes	{O_G03 = 0, O_Ghemical, O_MMFF94, O_MMFF94s, O_UFF};
@@ -61,9 +67,10 @@ namespace Avogadro {
   private:
     Ui::Tab_Conformers ui;
     QWidget *m_tab_widget;
-    RandomDockParams *m_params;
     Molecule *m_molecule;
     OpenBabel::OBForceField *m_ff;
+    RandomDockDialog *m_dialog;
+    RandomDock *m_opt;
   };
 }
 

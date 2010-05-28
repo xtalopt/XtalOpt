@@ -17,20 +17,30 @@
  ***********************************************************************/
 
 #include "randomdock.h"
-#include "matrixmol.h"
-#include "substratemol.h"
-#include "scenemol.h"
+
+#include "ui/dialog.h"
+#include "optimizers/gamess.h"
+#include "structures/matrix.h"
+#include "structures/substrate.h"
+#include "structures/scene.h"
+
+#include "../generic/tracker.h"
+#include "../generic/optbase.h"
+#include "../generic/queuemanager.h"
+#include "../generic/macros.h"
 
 #include <avogadro/atom.h>
 #include <avogadro/bond.h>
 #include <openbabel/rand.h>
 
+#include <QDir>
 #include <QFile>
 #include <QStringList>
 
 using namespace std;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
   RandomDock::RandomDock(RandomDockDialog *parent) :
     OptBase(parent),
@@ -38,6 +48,7 @@ namespace Avogadro {
     substrate(0)
   {
     sceneInitMutex = new QMutex;
+    limitRunningJobs = true;
   }
 
   RandomDock::~RandomDock()
@@ -49,12 +60,12 @@ namespace Avogadro {
     emit startingSession();
 
     // Check that everything is in place
-    if (!m_params->substrate) {
+    if (!substrate) {
       error("Cannot begin search without specifying substrate.");
       return;
     }
-    if (m_params->matrixList->size() == 0) {
-      error("Cannot begin search without specifying matrix molecules.")
+    if (matrixList.size() == 0) {
+      error("Cannot begin search without specifying matrix molecules.");
       return;
     }
     if (!checkLimits()) {
@@ -77,13 +88,13 @@ namespace Avogadro {
     int progCount=0;
 
     // Generation loop...
-    for (uint i = 0; i < m_params->numSearches; i++) {
+    for (uint i = 0; i < runningJobLimit; i++) {
       m_dialog->updateProgressMaximum( (i == 0)
                                         ? 0
-                                        : int(progCount / static_cast<double>(i)) * numSearches );
+                                        : int(progCount / static_cast<double>(i)) * runningJobLimit );
       m_dialog->updateProgressValue(progCount);
       progCount++;
-      m_dialog->updateProgressLabel(tr("%1 scenes generated of (%2)...").arg(i).arg(numSearches));
+      m_dialog->updateProgressLabel(tr("%1 scenes generated of (%2)...").arg(i).arg(runningJobLimit));
  
       // Generate/Check molecule
       scene = generateRandomScene();
@@ -169,7 +180,7 @@ namespace Avogadro {
       for (ind = 0; ind < probs.size(); ind++)
         if (r < probs.at(ind)) break;
 
-      mat = matrixList->at(ind);
+      mat = matrixList.at(ind);
 
       // Extract information from matrix
       atomList = mat->atoms();
@@ -233,6 +244,8 @@ namespace Avogadro {
   {
     // Initialize vars
     QString id_s;
+    QString locpath_s;
+    QString rempath_s;
 
     // So as to not assign duplicate ids, ensure only one assignment
     // is made at a time
@@ -259,7 +272,7 @@ namespace Avogadro {
 
     // Assign data to scene
     scene->lock()->lockForWrite();
-    scene->setSceneNumber(id);
+    scene->setIDNumber(id);
     scene->setFileName(locpath_s);
     scene->setRempath(rempath_s);
     scene->setCurrentOptStep(1);
@@ -281,8 +294,9 @@ namespace Avogadro {
     return true;
   }
 
-  bool RandomDock::checkScene() {
+  bool RandomDock::checkScene(Scene *scene) {
     // TODO Do we need anything here?
+    Q_UNUSED(scene);
     return true;
   }
 
@@ -342,14 +356,14 @@ namespace Avogadro {
     QString dataPath = dataDir.absolutePath() + "/";
     // list of structure dirs
     QStringList dirs = dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
-    xtalDirs.removeAll(".");
-    xtalDirs.removeAll("..");
-    for (int i = 0; i < xtalDirs.size(); i++) {
-      if (!QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/scene.state") &&
-          !QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/matrix.state") &&
-          !QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/substrate.state") &&
+    dirs.removeAll(".");
+    dirs.removeAll("..");
+    for (int i = 0; i < dirs.size(); i++) {
+      if (!QFile::exists(dataPath + "/" + dirs.at(i) + "/scene.state") &&
+          !QFile::exists(dataPath + "/" + dirs.at(i) + "/matrix.state") &&
+          !QFile::exists(dataPath + "/" + dirs.at(i) + "/substrate.state")
           ) {
-          xtalDirs.removeAt(i);
+          dirs.removeAt(i);
           i--;
       }
     }
@@ -393,7 +407,7 @@ namespace Avogadro {
     }
 
     for (uint i = 0; i < numStructs; i++)
-      rscenes.at(i)->setEnergyRank(i+1);
+      rscenes.at(i)->setRank(i+1);
   }
 
   void RandomDock::centerCoordinatesAtOrigin(QList<Eigen::Vector3d> & coords) {
@@ -489,7 +503,7 @@ namespace Avogadro {
             .arg(QString::number((int)opttype)));
       break;
     }
-
-} // end namespace Avogadro
+  }
+} // end namespace RandomDock
 
 //#include "randomdock.moc"

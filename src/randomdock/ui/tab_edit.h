@@ -1,7 +1,7 @@
 /**********************************************************************
   RandomDock -- A tool for analysing a matrix-substrate docking problem
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2009-2010 by David Lonie
 
   This file is part of the Avogadro molecular editor project.
   For more information, see <http://avogadro.openmolecules.net/>
@@ -21,39 +21,64 @@
 #define TAB_EDIT_H
 
 #include "ui_tab_edit.h"
+#include "../randomdock.h"
 
-#include "randomdock.h"
-#include "templates.h"
-
+#include <QMessageBox>
 
 namespace Avogadro {
-  class RandomDockParams;
+  class Optimizer;
+}  
+
+using namespace Avogadro;
+
+namespace RandomDock {
+  class RandomDockDialog;
 
   class TabEdit : public QObject
   {
     Q_OBJECT
 
   public:
-    explicit TabEdit( RandomDockParams *p );
+    explicit TabEdit( RandomDockDialog *parent, RandomDock *p );
     virtual ~TabEdit();
 
-    enum GAMESSTemplates		{GAMESST_QueueScript = 0, GAMESST_ConformerOpt, GAMESST_DockingOpt};
+    enum GAMESS_Templates {
+      GAMT_pbs = 0,
+      GAMT_inp
+    };
 
     QWidget *getTabWidget() {return m_tab_widget;};
 
-  public slots:
-    void readSettings();
-    void writeSettings();
+    public slots:
+    // used to lock bits of the GUI that shouldn't be change when a
+    // session starts. This will also pass the call on to all tabs.
+    void lockGUI();
+    void readSettings(const QString &filename = "");
+    void writeSettings(const QString &filename = "");
+    void updateGUI();
+    void disconnectGUI();
     void templateChanged(int ind);
+    void showHelp();
     void updateTemplates();
-    void showHelp() {Templates::showHelp();}
+    void populateOptList();
+    void appendOptStep();
+    void removeCurrentOptStep();
+    void optStepChanged();
+    void saveScheme();
+    void loadScheme();
 
   signals:
+    void optimizerChanged(Optimizer*);
+
+  private slots:
+    void updateUserValues();
+    void updateOptType();
 
   private:
     Ui::Tab_Edit ui;
     QWidget *m_tab_widget;
-    RandomDockParams *m_params;
+    RandomDockDialog *m_dialog;
+    RandomDock *m_opt;
   };
 }
 

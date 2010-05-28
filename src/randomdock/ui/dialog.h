@@ -17,22 +17,23 @@
   GNU General Public icense for more details.
  ***********************************************************************/
 
-#ifndef RANDOMDOCKDIALOG_H
-#define RANDOMDOCKDIALOG_H
-
-#include "templates.h"
+#ifndef RDDIALOG_H
+#define RDDIALOG_H
 
 #include <QDialog>
 #include <QMutex>
 
-#include <avogadro/primitive.h>
-#include <avogadro/molecule.h>
-#include <avogadro/atom.h>
-
-#include "ui_randomdockdialog.h"
+#include "ui_dialog.h"
 
 namespace Avogadro {
   class PlotObject;
+  class Molecule;
+  class GLWidget;
+}
+
+using namespace Avogadro;
+
+namespace RandomDock {
   class TabInit;
   class TabConformers;
   class TabEdit;
@@ -41,18 +42,23 @@ namespace Avogadro {
   class TabResults;
   class TabPlot;
   class TabLog;
+  class Scene;
+  class RandomDock;
 
   class RandomDockDialog : public QDialog
   {
     Q_OBJECT
 
   public:
-    explicit RandomDockDialog( QWidget *parent = 0, Qt::WindowFlags f = 0 );
+    explicit RandomDockDialog( GLWidget *glWidget = 0, QWidget *parent = 0, Qt::WindowFlags f = 0 );
     virtual ~RandomDockDialog();
 
-    void writeSettings();
-    void readSettings();
+    void writeSettings(const QString &filename = "");
+    void readSettings(const QString &filename = "");
+    Molecule* setMolecule(Molecule *mol) {Q_UNUSED(mol);};
     Molecule* getMolecule() {return m_molecule;};
+    GLWidget* getGLWidget();
+    RandomDock* getRandomDock() {return m_opt;};
 
     // TODO: Move this back to private after setting up signals/slot in progress update
     TabResults *m_tab_results;
@@ -60,23 +66,38 @@ namespace Avogadro {
   public slots:
     void saveSession();
     void log(const QString &str) {emit newLog(str);};
-    void updateScene(int ind);
-    void errorScene(int ind);
-    void deleteJob(int ind);
-    void killScene(int ind);
-    void updateRunning(int i);
-    void updateOptimized(int i);
+    void startProgressUpdate(const QString & text, int min, int max);
+    void stopProgressUpdate();
+    void updateProgressMinimum(int min);
+    void updateProgressMaximum(int max);
+    void updateProgressValue(int val);
+    void updateProgressLabel(const QString & text);
+    void repaintProgressBar();
 
   private slots:
     void startSearch();
     void resumeSession();
+    void startProgressUpdate_(const QString & text, int min, int max);
+    void stopProgressUpdate_();
+    void updateProgressMinimum_(int min);
+    void updateProgressMaximum_(int max);
+    void updateProgressValue_(int val);
+    void updateProgressLabel_(const QString & text);
+    void repaintProgressBar_();
 
   signals:
     void moleculeChanged(Molecule*);
     void sceneChanged(Scene*);
-    void tabsWriteSettings();
-    void tabsReadSettings();
+    void tabsWriteSettings(const QString &filename = "");
+    void tabsReadSettings(const QString &filename = "");
     void newLog(const QString &str);
+    void sig_startProgressUpdate(const QString & text, int min, int max);
+    void sig_stopProgressUpdate();
+    void sig_updateProgressMinimum(int min);
+    void sig_updateProgressMaximum(int max);
+    void sig_updateProgressValue(int val);
+    void sig_updateProgressLabel(const QString & text);
+    void sig_repaintProgressBar();
 
   private:
     Ui::RandomDockDialog ui;
@@ -89,11 +110,13 @@ namespace Avogadro {
     TabPlot *m_tab_plot;
     TabLog *m_tab_log;
 
-    RandomDockParams *m_params;
     Molecule *m_molecule;
 
-    void errorScene_(int ind);
-    void killScene_(int ind);
+    RandomDock *m_opt;
+    GLWidget *m_glWidget;
+    QMutex *progMutex;
+    QTimer *progTimer;
+
   };
 }
 

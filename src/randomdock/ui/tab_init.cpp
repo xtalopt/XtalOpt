@@ -16,10 +16,10 @@
 
 #include "tab_init.h"
 
-#include "randomdock.h"
-#include "randomdockdialog.h"
-#include "substratemol.h"
-#include "matrixmol.h"
+#include "dialog.h"
+#include "../randomdock.h"
+#include "../structures/substrate.h"
+#include "../structures/matrix.h"
 
 #include <avogadro/moleculefile.h>
 
@@ -27,21 +27,22 @@
 #include <QFileDialog>
 
 using namespace std;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
-  TabInit::TabInit( RandomDockParams *p ) :
-    QObject( p->dialog ), m_params(p)
+  TabInit::TabInit( RandomDockDialog *dialog, RandomDock *opt ) :
+    QObject( dialog ),
+    m_dialog(dialog),
+    m_opt(opt)
   {
-    qDebug() << "TabInit::TabInit( " << p <<  " ) called.";
-
     m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 
     // dialog connections
-    connect(p->dialog, SIGNAL(tabsReadSettings()),
+    connect(dialog, SIGNAL(tabsReadSettings()),
             this, SLOT(readSettings()));
-    connect(p->dialog, SIGNAL(tabsWriteSettings()),
+    connect(dialog, SIGNAL(tabsWriteSettings()),
             this, SLOT(writeSettings()));
 
     // tab connections
@@ -81,13 +82,13 @@ namespace Avogadro {
 
   void TabInit::updateParams() {
     qDebug() << "TabInit::updateParams() called";
-    m_params->substrateFile = ui.edit_substrateFile->text();
-    m_params->matrixFiles.clear();
-    m_params->matrixStoich.clear();
+    m_opt->substrateFile = ui.edit_substrateFile->text();
+    m_opt->matrixFiles.clear();
+    m_opt->matrixStoich.clear();
     for (int i = 0; i < ui.table_matrix->rowCount(); i++) {
       ui.table_matrix->item(i, Num)->setText(QString::number(i+1));
-      m_params->matrixFiles.append(ui.table_matrix->item(i, Filename)->text());
-      m_params->matrixStoich.append(ui.table_matrix->item(i, Stoich)->text().toInt());
+      m_opt->matrixFiles.append(ui.table_matrix->item(i, Filename)->text());
+      m_opt->matrixStoich.append(ui.table_matrix->item(i, Stoich)->text().toInt());
     }
   }
 
@@ -95,7 +96,7 @@ namespace Avogadro {
     qDebug() << "TabInit::substrateBrowse() called";
     QSettings settings;
     QString path = settings.value("randomdock/paths/moleculeBrowse", "").toString();
-    QString fileName = QFileDialog::getOpenFileName(m_params->dialog, 
+    QString fileName = QFileDialog::getOpenFileName(m_dialog, 
                                                     tr("Select molecule file to use for the substrate"),
                                                     path,
                                                     tr("All files (*)"));
@@ -111,7 +112,7 @@ namespace Avogadro {
     qDebug() << "TabInit::matrixAdd() called";
     QSettings settings;
     QString path = settings.value("randomdock/paths/moleculeBrowse", "").toString();
-    QString fileName = QFileDialog::getOpenFileName(m_params->dialog, 
+    QString fileName = QFileDialog::getOpenFileName(m_dialog, 
                                                     tr("Select molecule file to add as a matrix element"),
                                                     path,
                                                     tr("All files (*)"));
@@ -145,23 +146,23 @@ namespace Avogadro {
     Molecule *mol;
 
     // Substrate
-    if (m_params->substrate) {
-      m_params->substrate = 0;
+    if (m_opt->substrate) {
+      m_opt->substrate = 0;
     }
-    qDebug() << m_params->substrateFile;
-    if (!m_params->substrateFile.isEmpty()) {
-      mol = MoleculeFile::readMolecule(m_params->substrateFile);
-      m_params->substrate = new Substrate (mol);
-      qDebug() << "Updated substrate: " << m_params->substrate << " #atoms= " << m_params->substrate->numAtoms();
+    qDebug() << m_opt->substrateFile;
+    if (!m_opt->substrateFile.isEmpty()) {
+      mol = MoleculeFile::readMolecule(m_opt->substrateFile);
+      m_opt->substrate = new Substrate (mol);
+      qDebug() << "Updated substrate: " << m_opt->substrate << " #atoms= " << m_opt->substrate->numAtoms();
     }
 
     // Matrix
-    m_params->matrixList->clear();
-    for (int i = 0; i < m_params->matrixFiles.size(); i++) {
-      qDebug() << m_params->matrixFiles.at(i);
-      mol = MoleculeFile::readMolecule(m_params->matrixFiles.at(i));
-      m_params->matrixList->append(new Matrix (mol));
-      qDebug() << "Matrix added:" << m_params->matrixList->at(i);
+    m_opt->matrixList.clear();
+    for (int i = 0; i < m_opt->matrixFiles.size(); i++) {
+      qDebug() << m_opt->matrixFiles.at(i);
+      mol = MoleculeFile::readMolecule(m_opt->matrixFiles.at(i));
+      m_opt->matrixList.append(new Matrix (mol));
+      qDebug() << "Matrix added:" << m_opt->matrixList.at(i);
     }
     QApplication::restoreOverrideCursor();
   }
