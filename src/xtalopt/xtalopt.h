@@ -60,7 +60,7 @@ namespace Avogadro {
     bool checkXtal(Xtal *xtal);
     QString interpretTemplate(const QString & templateString, Structure* structure);
     QString getTemplateKeywordHelp();
-    bool save();
+    bool save(const QString & filename = "");
     bool load(const QString & filename);
     XtalOptDialog* dialog() {return m_dialog;};
     static void sortByEnthalpy(QList<Xtal*> *xtals);

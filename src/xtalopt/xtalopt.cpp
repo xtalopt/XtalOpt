@@ -929,7 +929,7 @@ namespace Avogadro {
   }
 
 
-  bool XtalOpt::save() {
+  bool XtalOpt::save(const QString &stateFilename) {
     //qDebug() << "XtalOpt::save() called";
     if (isStarting) {
       savePending = false;
@@ -937,7 +937,13 @@ namespace Avogadro {
     }
     QReadLocker trackerLocker (m_tracker->rwLock());
     QMutexLocker locker (stateFileMutex);
-    QString filename = filePath + "/xtalopt.state";
+    QString filename;
+    if (stateFilename.isEmpty()) {
+      filename = filePath + "/xtalopt.state";
+    }
+    else {
+      filename = stateFilename;
+    }
     QString tmpfilename = filename + ".tmp";
     QString oldfilename = filename + ".old";
 

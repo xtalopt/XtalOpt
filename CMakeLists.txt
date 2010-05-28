@@ -150,8 +150,12 @@ option( BUILD_TESTS
 if(BUILD_TESTS)
    enable_testing()
 
-add_executable(checkTemplates tests/checkTemplates.cpp)
-target_link_libraries(checkTemplates xtalopt)
-add_test(TemplateCheck checkTemplates)
+  add_executable(checkTemplates tests/checkTemplates.cpp)
+  target_link_libraries(checkTemplates xtalopt)
+  add_test(TemplateCheck checkTemplates)
+
+  add_executable(checkStateFileGenerator tests/checkStateFileGenerator.cpp)
+  target_link_libraries(checkStateFileGenerator xtalopt)
+  add_test(StateFileGeneratorCheck checkStateFileGenerator)
 
 endif(BUILD_TESTS)

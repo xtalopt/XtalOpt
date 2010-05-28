@@ -46,7 +46,7 @@ namespace Avogadro {
 
     virtual bool checkLimits() {};
 
-    virtual bool save() {};
+    virtual bool save(const QString & filename = "") {};
     virtual bool load(const QString & filename) {};
 
     virtual QString interpretTemplate(const QString & templateString, Structure* structure);

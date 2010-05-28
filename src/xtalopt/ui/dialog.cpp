@@ -196,7 +196,7 @@ namespace Avogadro {
       return;
     }
     m_opt->savePending = true;
-    QtConcurrent::run(m_opt, &XtalOpt::save);
+    QtConcurrent::run(m_opt, &XtalOpt::save, QString(""));
   }
 
   void XtalOptDialog::resumeSession() {
