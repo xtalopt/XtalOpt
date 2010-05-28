@@ -196,4 +196,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "optbase.moc"
+//#include "optbase.moc"

@@ -54,4 +54,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "scene.moc"
+//#include "scene.moc"

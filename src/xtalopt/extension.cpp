@@ -18,8 +18,8 @@
 
 #include "extension.h"
 
-#include "xtalopt/ui/dialog.h"
-#include "generic/xtal.h"
+#include "ui/dialog.h"
+#include "../generic/xtal.h"
 
 #include <avogadro/primitive.h>
 #include <avogadro/molecule.h>
@@ -123,6 +123,6 @@ namespace Avogadro {
   }
 } // end namespace Avogadro
 
-#include "extension.moc"
+//#include "extension.moc"
 
 Q_EXPORT_PLUGIN2(xtaloptextension, Avogadro::XtalOptExtensionFactory)

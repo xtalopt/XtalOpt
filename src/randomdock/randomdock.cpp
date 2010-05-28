@@ -492,4 +492,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "randomdock.moc"
+//#include "randomdock.moc"

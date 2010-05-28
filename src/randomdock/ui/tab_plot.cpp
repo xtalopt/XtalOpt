@@ -199,4 +199,4 @@ namespace Avogadro {
 
 }
 
-#include "tab_plot.moc"
+//#include "tab_plot.moc"

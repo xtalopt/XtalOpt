@@ -230,4 +230,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "vasp.moc"
+//#include "vasp.moc"

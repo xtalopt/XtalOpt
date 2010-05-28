@@ -121,4 +121,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "tracker.moc"
+//#include "tracker.moc"

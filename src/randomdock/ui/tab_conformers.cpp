@@ -280,4 +280,4 @@ namespace Avogadro {
   }
 }
 
-#include "tab_conformers.moc"
+//#include "tab_conformers.moc"

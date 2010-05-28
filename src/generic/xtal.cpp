@@ -796,4 +796,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "xtal.moc"
+//#include "xtal.moc"

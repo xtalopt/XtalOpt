@@ -189,4 +189,4 @@ namespace Avogadro {
 
 }
 
-#include "randomdockdialog.moc"
+//#include "randomdockdialog.moc"

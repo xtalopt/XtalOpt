@@ -433,4 +433,4 @@ namespace Avogadro {
 
 }
 
-#include "tab_results.moc"
+//#include "tab_results.moc"

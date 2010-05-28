@@ -343,4 +343,4 @@ namespace Avogadro {
   }
 } // end namespace Avogadro
 
-#include "structure.moc"
+//#include "structure.moc"

@@ -74,4 +74,4 @@ namespace Avogadro {
   }
 }
 
-#include "tab_log.moc"
+//#include "tab_log.moc"

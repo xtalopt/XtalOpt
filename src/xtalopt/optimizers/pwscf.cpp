@@ -60,4 +60,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "pwscf.moc"
+//#include "pwscf.moc"

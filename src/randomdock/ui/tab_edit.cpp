@@ -117,4 +117,4 @@ namespace Avogadro {
   }
 
 }
-#include "tab_edit.moc"
+//#include "tab_edit.moc"

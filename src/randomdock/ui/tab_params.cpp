@@ -165,4 +165,4 @@ namespace Avogadro {
   }
 
 }
-#include "tab_params.moc"
+//#include "tab_params.moc"

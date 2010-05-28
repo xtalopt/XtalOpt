@@ -177,4 +177,4 @@ namespace Avogadro {
   }
 } // end namespace Avogadro
 
-#include "gulp.moc"
+//#include "gulp.moc"

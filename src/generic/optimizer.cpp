@@ -792,4 +792,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "optimizer.moc"
+//#include "optimizer.moc"

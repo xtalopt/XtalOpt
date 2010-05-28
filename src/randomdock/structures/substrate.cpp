@@ -150,4 +150,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "substrate.moc"
+//#include "substrate.moc"

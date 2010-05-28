@@ -168,4 +168,4 @@ namespace Avogadro {
 
 }
 
-#include "tab_init.moc"
+//#include "tab_init.moc"

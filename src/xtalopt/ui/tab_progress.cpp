@@ -636,4 +636,4 @@ namespace Avogadro {
 
 }
 
-#include "tab_progress.moc"
+//#include "tab_progress.moc"

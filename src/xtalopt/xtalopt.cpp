@@ -1350,4 +1350,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "xtalopt.moc"
+//#include "xtalopt.moc"

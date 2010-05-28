@@ -19,7 +19,7 @@
 #ifndef XTALOPTEXTENSION_H
 #define XTALOPTEXTENSION_H
 
-#include "xtalopt/ui/dialog.h"
+#include "ui/dialog.h"
 
 #include <avogadro/extension.h>
 

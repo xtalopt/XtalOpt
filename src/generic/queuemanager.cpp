@@ -606,4 +606,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "queuemanager.moc"
+//#include "queuemanager.moc"

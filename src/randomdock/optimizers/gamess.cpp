@@ -60,4 +60,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "gamess.moc"
+//#include "gamess.moc"

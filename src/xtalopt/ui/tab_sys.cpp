@@ -187,4 +187,4 @@ namespace Avogadro {
 
 }
 
-#include "tab_sys.moc"
+//#include "tab_sys.moc"

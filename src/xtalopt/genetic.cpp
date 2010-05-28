@@ -591,4 +591,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "genetic.moc"
+//#include "genetic.moc"

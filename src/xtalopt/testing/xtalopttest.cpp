@@ -284,4 +284,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "xtalopttest.moc"
+//#include "xtalopttest.moc"

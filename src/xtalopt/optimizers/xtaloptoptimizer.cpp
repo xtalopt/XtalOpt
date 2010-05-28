@@ -113,4 +113,4 @@ namespace Avogadro {
 
 } // end namespace avogadro
 
-#include "xtaloptoptimizer.moc"
+//#include "xtaloptoptimizer.moc"

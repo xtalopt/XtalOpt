@@ -385,4 +385,4 @@ namespace Avogadro {
 
 }
 
-#include "dialog.moc"
+//#include "dialog.moc"

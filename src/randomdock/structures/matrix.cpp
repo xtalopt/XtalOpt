@@ -148,4 +148,4 @@ namespace Avogadro {
 
 } // end namespace Avogadro
 
-#include "matrix.moc"
+//#include "matrix.moc"
