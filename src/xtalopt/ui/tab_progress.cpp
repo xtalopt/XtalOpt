@@ -116,7 +116,8 @@ namespace Avogadro {
     SETTINGS(filename);
     settings->beginGroup("xtalopt/progress");
     settings->setValue("refreshTime", ui.spin_period->value());
-    settings->endGroup();      
+    settings->endGroup();
+    DESTROY_SETTINGS(filename);
   }
 
   void TabProgress::readSettings(const QString &filename) {

@@ -89,6 +89,8 @@ namespace Avogadro {
     settings->setValue("remote/username",	m_opt->username);
     settings->setValue("remote/rempath",	m_opt->rempath);
     settings->endGroup();
+
+    DESTROY_SETTINGS(filename);
   }
 
   void TabSys::readSettings(const QString &filename) {

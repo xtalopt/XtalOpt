@@ -160,6 +160,8 @@ namespace Avogadro {
     settings->setValue("opt/perm_ex",		m_opt->perm_ex);
 
     settings->endGroup();
+
+    DESTROY_SETTINGS(filename);
   }
 
   void TabOpt::readSettings(const QString &filename) {

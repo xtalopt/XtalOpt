@@ -138,6 +138,8 @@ namespace Avogadro {
     }
 
     settings->endGroup();
+
+    DESTROY_SETTINGS(filename);
   }
 
   void TabInit::readSettings(const QString &filename) {

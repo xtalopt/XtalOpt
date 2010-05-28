@@ -945,7 +945,7 @@ namespace Avogadro {
     m_dialog->writeSettings(tmpfilename);
     SETTINGS(tmpfilename);
     settings->setValue("xtalopt/saveSuccessful", true);
-    settings->sync();
+    DESTROY_SETTINGS(tmpfilename);
 
     // Move xtalopt.state -> xtalopt.state.old
     if (QFile::exists(filename) ) {

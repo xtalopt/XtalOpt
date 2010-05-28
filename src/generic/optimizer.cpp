@@ -122,6 +122,8 @@ namespace Avogadro {
     writeTemplatesToSettings(filename);
     writeUserValuesToSettings(filename);
     writeDataToSettings(filename);
+
+    DESTROY_SETTINGS(filename);
   }
 
   void Optimizer::writeTemplatesToSettings(const QString &filename)

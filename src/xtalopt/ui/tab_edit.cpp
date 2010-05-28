@@ -100,6 +100,8 @@ namespace Avogadro {
     settings->setValue("optType", ui.combo_optType->currentIndex());
     settings->endGroup();
     m_opt->optimizer()->writeSettings(filename);
+
+    DESTROY_SETTINGS(filename);
   }
 
   void TabEdit::readSettings(const QString &filename) {

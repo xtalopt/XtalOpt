@@ -119,6 +119,8 @@ namespace Avogadro {
     settings->setValue("labelType", ui.combo_labelType->currentIndex());
     settings->setValue("plotType", ui.combo_plotType->currentIndex());
     settings->endGroup();
+
+    DESTROY_SETTINGS(filename);
   }
 
   void TabPlot::readSettings(const QString &filename) {
