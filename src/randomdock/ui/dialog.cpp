@@ -21,7 +21,7 @@
 #include "tab_params.h"
 #include "tab_edit.h"
 #include "tab_sys.h"
-#include "tab_results.h"
+#include "tab_progress.h"
 #include "tab_plot.h"
 #include "tab_log.h"
 #include "../../generic/macros.h"
@@ -53,7 +53,7 @@ namespace RandomDock {
     m_tab_edit		= new TabEdit(this, m_opt);
     m_tab_params	= new TabParams(this, m_opt);
     m_tab_sys		= new TabSys(this, m_opt);
-    m_tab_results	= new TabResults(this, m_opt);
+    m_tab_progress	= new TabProgress(this, m_opt);
     m_tab_plot		= new TabPlot(this, m_opt);
     m_tab_log		= new TabLog(this, m_opt);
 
@@ -63,9 +63,9 @@ namespace RandomDock {
     ui.tabs->addTab(m_tab_conformers->getTabWidget(),  	tr("&Conformers"));
     ui.tabs->addTab(m_tab_edit->getTabWidget(), 	tr("Optimization &Templates"));
     ui.tabs->addTab(m_tab_params->getTabWidget(),  	tr("&Search Settings"));
-    ui.tabs->addTab(m_tab_sys->getTabWidget(),		tr("&System Settings"));
-    ui.tabs->addTab(m_tab_results->getTabWidget(),  	tr("&Results"));
-    ui.tabs->addTab(m_tab_plot->getTabWidget(),  	tr("&Plot"));
+    ui.tabs->addTab(m_tab_sys->getTabWidget(),		tr("S&ystem Settings"));
+    ui.tabs->addTab(m_tab_progress->getTabWidget(),  	tr("&Progress"));
+    ui.tabs->addTab(m_tab_plot->getTabWidget(),  	tr("P&lot"));
     ui.tabs->addTab(m_tab_log->getTabWidget(),  	tr("&Log"));
 
     // Select the first tab by default
@@ -95,10 +95,6 @@ namespace RandomDock {
             this, SLOT(updateProgressLabel_(const QString &)));
     connect(this, SIGNAL(sig_repaintProgressBar()),
             this, SLOT(repaintProgressBar_()));
-
-    // Cross-tab connections
-    connect(m_tab_results, SIGNAL(cutoffReached()),
-            m_tab_params, SLOT(stopSubmission()));
 
     readSettings();
   }
@@ -132,12 +128,19 @@ namespace RandomDock {
     readSettings();
   }
 
-  void RandomDockDialog::writeSettings(const QString &filename) {
+  void RandomDockDialog::writeSettings(const QString &filename)
+  {
     emit tabsWriteSettings(filename);
   }
 
-  void RandomDockDialog::readSettings(const QString &filename) {
+  void RandomDockDialog::readSettings(const QString &filename)
+  {
     emit tabsReadSettings(filename);
+  }
+
+  void RandomDockDialog::startSearch()
+  {
+    QtConcurrent::run(m_opt, &RandomDock::startOptimization);
   }
 
   void RandomDockDialog::startProgressUpdate(const QString & text, int min, int max) {
@@ -227,7 +230,6 @@ namespace RandomDock {
     ui.label_prog->repaint();
     ui.label_prog->repaint();
   }
-
 }
 
 //#include "randomdockdialog.moc"

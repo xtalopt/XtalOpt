@@ -32,6 +32,7 @@
 #include <avogadro/atom.h>
 #include <avogadro/bond.h>
 #include <openbabel/rand.h>
+#include <openbabel/mol.h>
 
 #include <QDir>
 #include <QFile>
@@ -240,6 +241,35 @@ namespace RandomDock {
     return scene;
   }
 
+  Structure* RandomDock::replaceWithRandom(Structure *s, const QString & reason)
+  {
+    Scene *oldScene = qobject_cast<Scene*>(s);
+    QWriteLocker locker1 (oldScene->lock());
+
+    // Generate/Check new scene
+    Scene *scene = 0;
+    while (!checkScene(scene))
+      scene = generateRandomScene();
+
+    // Copy info over
+    QWriteLocker locker2 (scene->lock());
+    OpenBabel::OBMol oldOBMol = scene->OBMol();
+    oldScene->setOBMol(&oldOBMol);
+    oldScene->resetEnergy();
+    oldScene->resetEnthalpy();
+    oldScene->setPV(0);
+    oldScene->setCurrentOptStep(1);
+    QString parents = "Randomly generated";
+    if (!reason.isEmpty())
+      parents += " (" + reason + ")";
+    oldScene->setParents(parents);
+    oldScene->resetFailCount();
+
+    // Delete random scene
+    scene->deleteLater();
+    return qobject_cast<Structure*>(oldScene);
+  }
+
   void RandomDock::initializeAndAddScene(Scene *scene)
   {
     // Initialize vars
@@ -393,7 +423,7 @@ namespace RandomDock {
     uint numStructs = scenes->size();
     QList<Scene*> rscenes;
 
-    // Copy xtals to a temporary list (don't modify input list!)
+    // Copy scenes to a temporary list (don't modify input list!)
     for (uint i = 0; i < numStructs; i++)
       rscenes.append(scenes->at(i));
 

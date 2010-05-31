@@ -17,17 +17,18 @@
   GNU General Public icense for more details.
  ***********************************************************************/
 
-#ifndef TAB_PLOT_H
-#define TAB_PLOT_H
+#ifndef TAB_PROGRESS_H
+#define TAB_PROGRESS_H
 
-#include "ui_tab_plot.h"
+#include "ui_tab_progress.h"
 
-class QReadWriteLock;
+#include "../../generic/tracker.h"
+
+class QTimer;
+class QMutex;
 
 namespace Avogadro {
   class Structure;
-  class PlotPoint;
-  class PlotObject;
 }
 
 using namespace Avogadro;
@@ -37,27 +38,21 @@ namespace RandomDock {
   class RandomDock;
   class Scene;
 
-  class TabPlot : public QObject
+  class TabProgress : public QObject
   {
     Q_OBJECT
 
   public:
-    explicit TabPlot( RandomDockDialog *parent, RandomDock *p );
-    virtual ~TabPlot();
+    explicit TabProgress( RandomDockDialog *parent, RandomDock *p );
+    virtual ~TabProgress();
 
-    enum PlotAxes {
-      Structure_T = 0,
-      Energy_T,
-    };
-
-    enum PlotType {
-      Trend_PT = 0,
-      DistHist_PT
-    };
-
-    enum LabelTypes {
-      Index_L = 0,
-      Energy_L,
+    enum ProgressColumns {
+      C_Rank = 0,
+      C_Index,
+      C_Energy,
+      C_Elapsed,
+      C_JobID,
+      C_Status
     };
 
     QWidget *getTabWidget() {return m_tab_widget;};
@@ -70,26 +65,51 @@ namespace RandomDock {
     void writeSettings(const QString &filename = "");
     void updateGUI();
     void disconnectGUI();
-    void lockClearAndSelectPoint(PlotPoint *pp);
-    void refreshPlot();
-    void updatePlot();
-    void plotTrends();
-    void plotDistHist();
-    void populateStructureList();
-    void selectStructureFromPlot(PlotPoint *pp);
-    void selectStructureFromIndex(int index);
-    void highlightStructure(Structure *stucture);
+    void addNewEntry();
+    void newInfoUpdate(Structure *);
+    void updateInfo();
+    void updateAllInfo();
+    void updateProgressTable();
+    void selectMoleculeFromProgress(int,int,int,int);
+    void highlightScene(Scene* scene);
+    void startTimer();
+    void stopTimer();
+    void progressContextMenu(QPoint);
+    void restartJobProgress();
+    void killSceneProgress();
+    void unkillSceneProgress();
+    void resetFailureCountProgress();
+    void randomizeStructureProgress();
+    void enableRowTracking() {rowTracking = true;};
+    void disableRowTracking() {rowTracking = false;};
 
   signals:
+    void newLog(const QString &);
     void moleculeChanged(Structure*);
+    void refresh();
+    void deleteJob(int);
+    void updateStatus(int opt, int run, int queue, int fail);
+    void infoUpdate();
 
   private:
-    Ui::Tab_Plot ui;
+    Ui::Tab_Progress ui;
     QWidget *m_tab_widget;
     RandomDockDialog *m_dialog;
     RandomDock *m_opt;
-    QReadWriteLock *m_plot_mutex;
-    PlotObject *m_plotObject;
+    QTimer *m_timer;
+    QMutex *m_mutex;
+    QMutex *m_update_mutex;
+    QMutex *m_update_all_mutex;
+    Scene *m_context_scene;
+    bool rowTracking;
+
+    Tracker m_infoUpdateTracker;
+
+    void restartJobProgress_(int incar);
+    void killSceneProgress_();
+    void unkillSceneProgress_();
+    void resetFailureCountProgress_();
+    void randomizeStructureProgress_();
   };
 }
 

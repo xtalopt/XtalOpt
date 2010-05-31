@@ -54,7 +54,6 @@ namespace RandomDock {
     void readSettings();
     void writeSettings();
     void generateConformers();
-    void optimizeConformers();
     void updateMoleculeList();
     void updateConformerTable();
     void selectMolecule(const QString & text);

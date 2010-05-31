@@ -13,7 +13,7 @@ set( randomdock_SRCS
      ui/tab_params.cpp
      ui/tab_conformers.cpp
      ui/tab_sys.cpp
-     ui/tab_results.cpp
+     ui/tab_progress.cpp
      ui/tab_plot.cpp
      ui/tab_log.cpp)
 
@@ -24,7 +24,7 @@ set( randomdock_UIS
      ui/tab_edit.ui
      ui/tab_params.ui
      ui/tab_sys.ui
-     ui/tab_results.ui
+     ui/tab_progress.ui
      ui/tab_plot.ui
      ui/tab_log.ui)
 
@@ -33,5 +33,4 @@ process_plugin(randomdock "${randomdock_SRCS}" "${randomdock_UIS}")
 add_dependencies(randomdock globalsearch)
 
 target_link_libraries( randomdock
- 		       QPlotWidget
  		       globalsearch)

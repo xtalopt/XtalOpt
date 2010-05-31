@@ -22,9 +22,9 @@
 
 #include "ui_tab_log.h"
 
-using namespace Avogadro;
-
 namespace RandomDock {
+  class RandomDockDialog;
+  class RandomDock;
 
   class TabLog : public QObject
   {

@@ -39,7 +39,7 @@ namespace RandomDock {
   class TabEdit;
   class TabParams;
   class TabSys;
-  class TabResults;
+  class TabProgress;
   class TabPlot;
   class TabLog;
   class Scene;
@@ -57,14 +57,12 @@ namespace RandomDock {
     void readSettings(const QString &filename = "");
     Molecule* setMolecule(Molecule *mol) {Q_UNUSED(mol);};
     Molecule* getMolecule() {return m_molecule;};
-    GLWidget* getGLWidget();
+    GLWidget* getGLWidget() {return m_glWidget;};
     RandomDock* getRandomDock() {return m_opt;};
-
-    // TODO: Move this back to private after setting up signals/slot in progress update
-    TabResults *m_tab_results;
 
   public slots:
     void saveSession();
+    void setGLWidget(GLWidget *w) {m_glWidget = w;};
     void log(const QString &str) {emit newLog(str);};
     void startProgressUpdate(const QString & text, int min, int max);
     void stopProgressUpdate();
@@ -107,6 +105,7 @@ namespace RandomDock {
     TabEdit *m_tab_edit;
     TabParams *m_tab_params;
     TabSys *m_tab_sys;
+    TabProgress *m_tab_progress;
     TabPlot *m_tab_plot;
     TabLog *m_tab_log;
 

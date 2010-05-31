@@ -16,8 +16,8 @@
 
 #include "tab_log.h"
 
-#include "randomdock.h"
-#include "randomdockdialog.h"
+#include "../randomdock.h"
+#include "dialog.h"
 
 #include <QSettings>
 #include <QDateTime>
@@ -36,37 +36,32 @@ namespace RandomDock {
     ui.setupUi(m_tab_widget);
 
     // dialog connections
-    connect(p->dialog, SIGNAL(tabsReadSettings()),
+    connect(dialog, SIGNAL(tabsReadSettings()),
             this, SLOT(readSettings()));
-    connect(p->dialog, SIGNAL(tabsWriteSettings()),
+    connect(dialog, SIGNAL(tabsWriteSettings()),
             this, SLOT(writeSettings()));
 
     // Log
-    connect(p->dialog, SIGNAL(newLog(QString)),
+    connect(dialog, SIGNAL(newLog(QString)),
             this, SLOT(newLog(QString)));
   }
 
   TabLog::~TabLog()
   {
-    qDebug() << "TabSys::~TabSys() called";
     writeSettings();
   }
 
-  void TabLog::writeSettings() {
-    qDebug() << "TabLog::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-
+  void TabLog::writeSettings()
+  {
   }
 
-  void TabLog::readSettings() {
-    qDebug() << "TabLog::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-
+  void TabLog::readSettings()
+  {
   }
 
 
-  void TabLog::newLog(const QString & info) {
-    qDebug() << "TabLog::newLog( " << info << " ) called";
+  void TabLog::newLog(const QString & info)
+  {
     QString entry;
     QString timestamp = QDateTime::currentDateTime().toString("MM/dd/yyyy hh:mm:ss (zzz) -- ");
     

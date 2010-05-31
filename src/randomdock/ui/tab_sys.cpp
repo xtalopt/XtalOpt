@@ -51,8 +51,6 @@ namespace RandomDock {
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_qdel, SIGNAL(textChanged(QString)),
             this, SLOT(updateSystemInfo()));
-    connect(ui.cb_remote, SIGNAL(toggled(bool)),
-            this, SLOT(updateSystemInfo()));
     connect(ui.edit_host, SIGNAL(textChanged(QString)),
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_username, SIGNAL(textChanged(QString)),
@@ -72,14 +70,12 @@ namespace RandomDock {
     QSettings settings; // Already set up in avogadro/src/main.cpp
 
     settings.setValue("randomdock/dialog/sys/file/path",	m_opt->filePath);
-    settings.setValue("randomdock/dialog/sys/file/base",	m_opt->fileBase);
-    settings.setValue("randomdock/dialog/sys/queue/launch",	m_opt->launchCommand);
-    settings.setValue("randomdock/dialog/sys/queue/check",	m_opt->queueCheck);
-    settings.setValue("randomdock/dialog/sys/queue/qdel",	m_opt->queueDelete);
+    settings.setValue("randomdock/dialog/sys/queue/launch",	m_opt->qsub);
+    settings.setValue("randomdock/dialog/sys/queue/check",	m_opt->qstat);
+    settings.setValue("randomdock/dialog/sys/queue/qdel",	m_opt->qdel);
     settings.setValue("randomdock/dialog/sys/remote/host",	m_opt->host);
     settings.setValue("randomdock/dialog/sys/remote/username",	m_opt->username);
     settings.setValue("randomdock/dialog/sys/remote/rempath",	m_opt->rempath);
-    settings.setValue("randomdock/dialog/using/remote",    	m_opt->using_remote);
   }
 
   void TabSys::readSettings() {
@@ -99,11 +95,9 @@ namespace RandomDock {
 
   void TabSys::updateSystemInfo() {
     m_opt->filePath		= ui.edit_path->text();
-    m_opt->fileBase		= ui.edit_base->text();
-    m_opt->launchCommand	= ui.edit_launch->text();
-    m_opt->queueCheck		= ui.edit_check->text();
-    m_opt->queueDelete		= ui.edit_qdel->text();
-    m_opt->using_remote		= ui.cb_remote->isChecked();
+    m_opt->qsub			= ui.edit_launch->text();
+    m_opt->qstat		= ui.edit_check->text();
+    m_opt->qdel			= ui.edit_qdel->text();
     m_opt->host			= ui.edit_host->text();
     m_opt->username		= ui.edit_username->text();
     m_opt->rempath		= ui.edit_rempath->text();
