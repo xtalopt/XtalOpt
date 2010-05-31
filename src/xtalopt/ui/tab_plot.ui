@@ -353,7 +353,7 @@
   <customwidget>
    <class>Avogadro::PlotWidget</class>
    <extends>QFrame</extends>
-   <header location="global">qplotwidget/plotwidget.h</header>
+   <header location="global">avogadro/plotwidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

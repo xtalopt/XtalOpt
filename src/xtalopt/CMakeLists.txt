@@ -33,6 +33,5 @@ process_plugin(xtalopt "${xtalopt_SRCS}" "${xtalopt_UIS}")
 add_dependencies(xtalopt globalsearch spglib)
 
 target_link_libraries( xtalopt
- 		       QPlotWidget
  		       globalsearch
  		       spglib)
