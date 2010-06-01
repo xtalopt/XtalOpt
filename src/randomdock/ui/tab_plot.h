@@ -63,8 +63,6 @@ namespace RandomDock {
     QWidget *getTabWidget() {return m_tab_widget;};
 
   public slots:
-    // used to lock bits of the GUI that shouldn't be changed when a
-    // session starts.
     void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");

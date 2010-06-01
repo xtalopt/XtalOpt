@@ -253,7 +253,6 @@ namespace Avogadro {
     emit tabsUpdateGUI();
   }
 
-
   void XtalOptDialog::updateStatus(int opt, int run, int fail) {
     // qDebug() << "XtalOptDialog::updateStatus( "
     //          << opt << ", "

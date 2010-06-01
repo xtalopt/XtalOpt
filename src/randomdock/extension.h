@@ -51,8 +51,7 @@ namespace RandomDock {
       void readSettings(QSettings &settings);
 
    public slots:
-
-      void reemitMoleculeChanged(Molecule *molecule);
+      void reemitMoleculeChanged(Structure *structure);
 
     private:
       QList<QAction *> m_actions;

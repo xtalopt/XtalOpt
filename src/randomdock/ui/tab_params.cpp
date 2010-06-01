@@ -20,6 +20,7 @@
 #include "../randomdock.h"
 #include "../structures/substrate.h"
 #include "../structures/matrix.h"
+#include "../../generic/macros.h"
 
 #include <QDebug>
 #include <QSettings>
@@ -40,10 +41,16 @@ namespace RandomDock {
     ui.setupUi(m_tab_widget);
 
     // dialog connections
-    connect(dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
+            this, SLOT(updateGUI()));
+    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
+            this, SLOT(disconnectGUI()));
+    connect(m_dialog, SIGNAL(tabsLockGUI()),
+            this, SLOT(lockGUI()));
 
     // Optimization connections
     connect(ui.spin_numSearches, SIGNAL(valueChanged(int)),
@@ -70,33 +77,54 @@ namespace RandomDock {
     writeSettings();
   }
 
-  void TabParams::writeSettings() {
-    qDebug() << "TabParams::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabParams::writeSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/params");
 
-    settings.setValue("randomdock/params/runningJobLimit",     	m_opt->runningJobLimit);
-    settings.setValue("randomdock/params/numMatrixMol",      	m_opt->numMatrixMol);
-    settings.setValue("randomdock/params/cutoff",	      	m_opt->cutoff);
-    settings.setValue("randomdock/params/IAD_min",      	m_opt->IAD_min);
-    settings.setValue("randomdock/params/IAD_max",      	m_opt->IAD_max);
-    settings.setValue("randomdock/params/radius_min",      	m_opt->radius_min);
-    settings.setValue("randomdock/params/radius_max",      	m_opt->radius_max);
-    settings.setValue("randomdock/params/radius_auto",      	m_opt->radius_auto);
+    settings->setValue("runningJobLimit",     	m_opt->runningJobLimit);
+    settings->setValue("numMatrixMol",      	m_opt->numMatrixMol);
+    settings->setValue("cutoff",	      		m_opt->cutoff);
+    settings->setValue("IAD_min",      		m_opt->IAD_min);
+    settings->setValue("IAD_max",      		m_opt->IAD_max);
+    settings->setValue("radius_min",      	m_opt->radius_min);
+    settings->setValue("radius_max",      	m_opt->radius_max);
+    settings->setValue("radius_auto",      	m_opt->radius_auto);
+
+    settings->endGroup();
+    DESTROY_SETTINGS(filename);
   }
 
-  void TabParams::readSettings() {
-    qDebug() << "TabParams::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabParams::readSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/params");
 
-    ui.spin_numSearches->setValue(	settings.value("randomdock/params/numSearches",		10).toInt());
-    ui.spin_numMatrixMols->setValue(	settings.value("randomdock/params/numMatrixMol",	1).toInt());
-    ui.spin_cutoff->setValue(		settings.value("randomdock/params/cutoff",		0).toInt());
-    ui.spin_IAD_min->setValue(		settings.value("randomdock/params/IAD_min",		0.8).toDouble());
-    ui.spin_IAD_max->setValue(		settings.value("randomdock/params/IAD_max",		3.0).toDouble());
-    ui.spin_radius_min->setValue(	settings.value("randomdock/params/radius_min",		20).toDouble());
-    ui.spin_radius_max->setValue(	settings.value("randomdock/params/radius_max",		100).toDouble());
-    ui.cb_radius_auto->setChecked(	settings.value("randomdock/params/radius_auto",		true).toBool());
+    ui.spin_numSearches->setValue(	settings->value("numSearches",		10).toInt());
+    ui.spin_numMatrixMols->setValue(	settings->value("numMatrixMol",		1).toInt());
+    ui.spin_cutoff->setValue(		settings->value("cutoff",		0).toInt());
+    ui.spin_IAD_min->setValue(		settings->value("IAD_min",		0.8).toDouble());
+    ui.spin_IAD_max->setValue(		settings->value("IAD_max",		3.0).toDouble());
+    ui.spin_radius_min->setValue(	settings->value("radius_min",		20).toDouble());
+    ui.spin_radius_max->setValue(	settings->value("radius_max",		100).toDouble());
+    ui.cb_radius_auto->setChecked(	settings->value("radius_auto",		true).toBool());
+
+    settings->endGroup();      
+
     updateOptimizationInfo();
+  }
+
+  void TabParams::updateGUI()
+  {
+  }
+
+  void TabParams::disconnectGUI()
+  {
+  }
+
+  void TabParams::lockGUI()
+  {
+    ui.spin_numMatrixMols->setDisabled(true);
   }
 
   void TabParams::updateOptimizationInfo() {

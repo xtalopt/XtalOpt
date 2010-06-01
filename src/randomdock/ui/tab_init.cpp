@@ -20,6 +20,7 @@
 #include "../randomdock.h"
 #include "../structures/substrate.h"
 #include "../structures/matrix.h"
+#include "../../generic/macros.h"
 
 #include <avogadro/moleculefile.h>
 
@@ -40,10 +41,16 @@ namespace RandomDock {
     ui.setupUi(m_tab_widget);
 
     // dialog connections
-    connect(dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
+            this, SLOT(updateGUI()));
+    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
+            this, SLOT(disconnectGUI()));
+    connect(m_dialog, SIGNAL(tabsLockGUI()),
+            this, SLOT(lockGUI()));
 
     // tab connections
     connect(ui.edit_substrateFile, SIGNAL(textChanged(QString)),
@@ -70,14 +77,41 @@ namespace RandomDock {
     writeSettings();
   }
 
-  void TabInit::writeSettings() {
-    qDebug() << "TabInit::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabInit::writeSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/init");
+
+    settings->endGroup();
+    DESTROY_SETTINGS(filename);
   }
 
-  void TabInit::readSettings() {
-    qDebug() << "TabInit::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabInit::readSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/init");
+
+    settings->endGroup();      
+  }
+
+  void TabInit::updateGUI()
+  {
+  }
+
+  void TabInit::disconnectGUI()
+  {
+  }
+
+  void TabInit::lockGUI()
+  {
+    ui.edit_substrateFile->setDisabled(true);
+    ui.push_substrateBrowse->setDisabled(true);
+    ui.push_substrateCurrent->setDisabled(true);
+    ui.push_matrixAdd->setDisabled(true);
+    ui.push_matrixCurrent->setDisabled(true);
+    ui.push_matrixRemove->setDisabled(true);
+    ui.push_readFiles->setDisabled(true);
+    ui.table_matrix->setDisabled(true);
   }
 
   void TabInit::updateParams() {

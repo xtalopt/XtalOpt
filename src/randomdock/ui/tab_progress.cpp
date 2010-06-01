@@ -17,11 +17,11 @@
 #include "tab_progress.h"
 
 #include "dialog.h"
+#include "../randomdock.h"
+#include "../structures/scene.h"
 #include "../../generic/optimizer.h"
 #include "../../generic/queuemanager.h"
 #include "../../generic/macros.h"
-#include "../structures/scene.h"
-#include "../randomdock.h"
 
 #include <QMenu>
 #include <QTimer>
@@ -77,7 +77,7 @@ namespace RandomDock {
     connect(this, SIGNAL(moleculeChanged(Structure*)),
             m_dialog, SIGNAL(moleculeChanged(Structure*)));
     connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
-            this, SLOT(highlightStructure(Structure*)));
+            this, SLOT(highlightScene(Structure*)));
     connect(this, SIGNAL(refresh()),
             m_opt->queue(), SLOT(checkRunning()));
     connect(this, SIGNAL(refresh()),
@@ -387,10 +387,10 @@ namespace RandomDock {
     emit moleculeChanged(m_opt->tracker()->at(row));
   }
 
-  void TabProgress::highlightScene(Scene* scene) {
-    scene->lock()->lockForRead();
-    int id  = scene->getIDNumber();
-    scene->lock()->unlock();
+  void TabProgress::highlightScene(Structure *structure) {
+    structure->lock()->lockForRead();
+    int id  = structure->getIDNumber();
+    structure->lock()->unlock();
     for (int row = 0; row < ui.table_list->rowCount(); row++) {
       if (ui.table_list->item(row, C_Index)->text().toInt() == id) {
         ui.table_list->blockSignals(true);

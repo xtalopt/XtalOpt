@@ -28,6 +28,7 @@ namespace OpenBabel {
 
 namespace Avogadro {
   class Molecule;
+  class Structure;
 }
 
 using namespace Avogadro;
@@ -48,25 +49,27 @@ namespace RandomDock {
     enum Columns	{Conformer = 0, Energy, Prob};
 
     QWidget *getTabWidget() {return m_tab_widget;};
-    Molecule* currentMolecule();
+    Structure* currentStructure();
 
   public slots:
-    void readSettings();
-    void writeSettings();
+    void lockGUI();
+    void readSettings(const QString &filename = "");
+    void writeSettings(const QString &filename = "");
+    void updateGUI();
+    void disconnectGUI();
     void generateConformers();
-    void updateMoleculeList();
+    void updateStructureList();
     void updateConformerTable();
-    void selectMolecule(const QString & text);
+    void selectStructure(const QString & text);
     void conformerChanged(int row, int, int oldrow, int);
     void calculateNumberOfConformers(bool isSystematic);
 
   signals:
-    void moleculeChanged(Molecule*);
+    void moleculeChanged(Structure*);
 
   private:
     Ui::Tab_Conformers ui;
     QWidget *m_tab_widget;
-    Molecule *m_molecule;
     OpenBabel::OBForceField *m_ff;
     RandomDockDialog *m_dialog;
     RandomDock *m_opt;

@@ -16,8 +16,9 @@
 
 #include "tab_log.h"
 
-#include "../randomdock.h"
 #include "dialog.h"
+#include "../randomdock.h"
+#include "../../generic/macros.h"
 
 #include <QSettings>
 #include <QDateTime>
@@ -36,10 +37,16 @@ namespace RandomDock {
     ui.setupUi(m_tab_widget);
 
     // dialog connections
-    connect(dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
+            this, SLOT(updateGUI()));
+    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
+            this, SLOT(disconnectGUI()));
+    connect(m_dialog, SIGNAL(tabsLockGUI()),
+            this, SLOT(lockGUI()));
 
     // Log
     connect(dialog, SIGNAL(newLog(QString)),
@@ -51,14 +58,33 @@ namespace RandomDock {
     writeSettings();
   }
 
-  void TabLog::writeSettings()
+  void TabLog::writeSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/log");
+
+    settings->endGroup();
+    DESTROY_SETTINGS(filename);
+  }
+
+  void TabLog::readSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/log");
+    settings->endGroup();      
+  }
+
+  void TabLog::updateGUI()
   {
   }
 
-  void TabLog::readSettings()
+  void TabLog::disconnectGUI()
   {
   }
 
+  void TabLog::lockGUI()
+  {
+  }
 
   void TabLog::newLog(const QString & info)
   {

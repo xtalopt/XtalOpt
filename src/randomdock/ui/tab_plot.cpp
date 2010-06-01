@@ -83,7 +83,7 @@ namespace RandomDock {
     connect(ui.combo_distHistStructure, SIGNAL(currentIndexChanged(int)),
             this, SLOT(refreshPlot()));
     connect(ui.combo_distHistStructure, SIGNAL(currentIndexChanged(int)),
-            this, SLOT(selectMoleculeFromIndex(int)));
+            this, SLOT(selectStructureFromIndex(int)));
     connect(ui.cb_labelPoints, SIGNAL(toggled(bool)),
             this, SLOT(updatePlot()));
     connect(ui.combo_labelType, SIGNAL(currentIndexChanged(int)),
@@ -93,7 +93,7 @@ namespace RandomDock {
     connect(ui.cb_showIncompletes, SIGNAL(toggled(bool)),
             this, SLOT(updatePlot()));
     connect(ui.plot_plot, SIGNAL(pointClicked(PlotPoint*)),
-            this, SLOT(selectMoleculeFromPlot(PlotPoint*)));
+            this, SLOT(selectStructureFromPlot(PlotPoint*)));
     connect(ui.plot_plot, SIGNAL(pointClicked(PlotPoint*)),
             this, SLOT(lockClearAndSelectPoint(PlotPoint*)));
     connect(m_opt, SIGNAL(newInfoUpdate()),

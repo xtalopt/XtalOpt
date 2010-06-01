@@ -90,6 +90,8 @@ namespace RandomDock {
 
 
    signals:
+    void newInfoUpdate();
+    void updateAllInfo();
 
    public slots:
     void startOptimization();
