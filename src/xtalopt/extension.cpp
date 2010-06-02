@@ -92,14 +92,21 @@ namespace Avogadro {
   }
 
   void XtalOptExtension::reemitMoleculeChanged(Xtal* xtal) {
-    //qDebug() << "XtalOptExtension::reemitMoleculeChanged( " << xtal << " ) called.";
     // Check for weirdness
-    if (xtal->numAtoms() != 0) {
-      if (!xtal->atom(0)) {
-        qDebug() << "XtalOptExtension::reemitMoleculeChanged: Molecule is invalid -- not sending to GLWidget";
-        return;
-      }
+    if (xtal->numAtoms() != 0 && !xtal->atom(0)) {
+      qWarning() << "XtalOptExtension::reemitMoleculeChanged: Molecule is invalid (bad atoms) -- not sending to GLWidget";
+      return;
     }
+    if (isnan(xtal->getA()) ||
+        isnan(xtal->getB()) ||
+        isnan(xtal->getC()) ||
+        isnan(xtal->getAlpha()) ||
+        isnan(xtal->getBeta()) ||
+        isnan(xtal->getGamma())) {
+      qWarning() << "XtalOptExtension::reemitMoleculeChanged: Molecule is invalid (cell param is nan) -- not sending to GLWidget";
+      return;
+    }
+    
     emit moleculeChanged(xtal, Extension::KeepOld);
   }
 
