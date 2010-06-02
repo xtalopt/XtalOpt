@@ -67,6 +67,11 @@ namespace Avogadro {
 
   void Optimizer::readSettings(const QString &filename)
   {
+    // Don't consider default setting,, only schemes and states.
+    if (filename.isEmpty()) {
+      return;
+    }
+
     SETTINGS(filename);
 
     readTemplatesFromSettings(filename);
@@ -117,6 +122,11 @@ namespace Avogadro {
 
   void Optimizer::writeSettings(const QString &filename)
   {
+    // Don't consider default setting,, only schemes and states.
+    if (filename.isEmpty()) {
+      return;
+    }
+
     SETTINGS(filename);
                          
     writeTemplatesToSettings(filename);

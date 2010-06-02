@@ -74,6 +74,10 @@ namespace Avogadro {
 
   void VASPOptimizer::readSettings(const QString &filename)
   {
+    // Don't consider default setting,, only schemes and states.
+    if (filename.isEmpty()) {
+      return;
+    }
     SETTINGS(filename);
 
     readTemplatesFromSettings(filename);
