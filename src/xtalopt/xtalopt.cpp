@@ -930,7 +930,6 @@ namespace Avogadro {
 
 
   bool XtalOpt::save(const QString &stateFilename) {
-    //qDebug() << "XtalOpt::save() called";
     if (isStarting) {
       savePending = false;
       return false;
