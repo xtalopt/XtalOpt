@@ -75,7 +75,7 @@ namespace Avogadro {
   void VASPOptimizer::readSettings(const QString &filename)
   {
     SETTINGS(filename);
-                         
+
     readTemplatesFromSettings(filename);
     readUserValuesFromSettings(filename);
     readDataFromSettings(filename);
@@ -89,7 +89,7 @@ namespace Avogadro {
     QStringList filenames = getTemplateNames();
     for (int i = 0; i < filenames.size(); i++) {
       // Don't bother saving the actual POTCAR files
-      if (filenames.at(i) == "POTCAR") break;
+      if (filenames.at(i) == "POTCAR") continue;
       settings->setValue("xtalopt/optimizer/" + 
                     getIDString() + "/" +
                     filenames.at(i) + "_list",
