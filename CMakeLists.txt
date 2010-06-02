@@ -46,5 +46,12 @@ function(process_plugin plugin_name src_list)
                         PREFIX "")
 endfunction(process_plugin)
 
+# Set -fPIC on x86_64
+if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC"  )
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC"  )
+endif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+
+
 add_subdirectory(src)
 add_subdirectory(tests)
