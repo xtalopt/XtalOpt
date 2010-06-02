@@ -1069,7 +1069,7 @@ namespace Avogadro {
     SETTINGS(filename);
     bool stateFileIsValid = settings->value("xtalopt/saveSuccessful", false).toBool();
     if (!stateFileIsValid) {
-      error("XtalOpt::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid.");
+      error("XtalOpt::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid. (Try " + file.fileName() + ".old if it exists)");
       return false;
     }
     
