@@ -943,25 +943,21 @@ namespace Avogadro {
     else {
       filename = stateFilename;
     }
-    QString tmpfilename = filename + ".tmp";
     QString oldfilename = filename + ".old";
 
-    // Save data to tmp
-    m_dialog->writeSettings(tmpfilename);
-    SETTINGS(tmpfilename);
-    settings->setValue("xtalopt/saveSuccessful", true);
-    DESTROY_SETTINGS(tmpfilename);
-
-    // Move xtalopt.state -> xtalopt.state.old
+    // Copy xtalopt.state -> xtalopt.state.old
     if (QFile::exists(filename) ) {
       if (QFile::exists(oldfilename)) {
         QFile::remove(oldfilename);
       }
-      QFile::rename(filename, oldfilename);
+      QFile::copy(filename, oldfilename);
     }
 
-    // Move xtalopt.state.tmp to xtalopt.state
-    QFile::rename(tmpfilename, filename);
+    SETTINGS(filename);
+    settings->setValue("xtalopt/saveSuccessful", false);
+
+    // Write/update xtalopt.state
+    m_dialog->writeSettings(filename);
 
     // Loop over xtals and save them
     QFile xfile;
@@ -1053,6 +1049,11 @@ namespace Avogadro {
       xtal->lock()->unlock();
       out << endl;
     }
+
+    // Mark operation successful
+    settings->setValue("xtalopt/saveSuccessful", true);
+    DESTROY_SETTINGS(filename);
+
     savePending = false;
     return true;
   }
