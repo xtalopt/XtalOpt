@@ -352,7 +352,7 @@ namespace Avogadro {
     Structure *structure = m_errorPendingTracker.list()->takeFirst();
 
     // Check that structure still shows error (in case of user intervention)
-    if (structure->getStatus() == Structure::Error) {
+    if (structure->getStatus() != Structure::Error) {
       m_errorPendingTracker.unlock();
       return;
     }
