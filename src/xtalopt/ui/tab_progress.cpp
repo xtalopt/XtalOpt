@@ -370,7 +370,7 @@ namespace Avogadro {
       brush.setColor(Qt::darkCyan);
       break;
     case Xtal::Error:
-      ui.table_list->item(i, Status)->setText(tr("Job failed. Restarting..."));
+      ui.table_list->item(i, Status)->setText(tr("Job failed"));
       brush.setColor(Qt::red);
       break;
     case Xtal::Updating:
