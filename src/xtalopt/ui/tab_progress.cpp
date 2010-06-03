@@ -283,7 +283,7 @@ namespace Avogadro {
     else
       ui.table_list->item(i, JobID)->setText("N/A");
 
-    if (xtal->hasEnthalpy() || xtal->hasEnergy())
+    if (xtal->hasEnthalpy() || xtal->getEnergy() != 0)
       ui.table_list->item(i, Enthalpy)->setText(QString::number(xtal->getEnthalpy()));
     else
       ui.table_list->item(i, Enthalpy)->setText("N/A");

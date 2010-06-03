@@ -19,7 +19,7 @@
 
 #include "substrate.h"
 
-#include <avogadro/molecule.h>
+#include "../../generic/structure.h"
 
 #include <openbabel/rand.h>
 #include <openbabel/mol.h>
@@ -33,7 +33,7 @@ using namespace Avogadro;
 namespace RandomDock {
 
   Substrate::Substrate(QObject *parent) : 
-    Molecule(parent)
+    Structure(parent)
   {
   }
 

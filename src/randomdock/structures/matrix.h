@@ -20,7 +20,7 @@
 #ifndef MATRIXMOL_H
 #define MATRIXMOL_H
 
-#include <avogadro/molecule.h>
+#include "../../generic/structure.h"
 
 #include <QDateTime>
 #include <QTextStream>
@@ -29,7 +29,7 @@ using namespace Avogadro;
 
 namespace RandomDock {
 
-  class Matrix : public Molecule
+  class Matrix : public Structure
   {
     Q_OBJECT
 

@@ -19,7 +19,7 @@
 
 #include "matrix.h"
 
-#include <avogadro/molecule.h>
+#include "../../generic/structure.h"
 
 #include <openbabel/rand.h>
 #include <openbabel/mol.h>
@@ -33,7 +33,7 @@ using namespace Avogadro;
 namespace RandomDock {
 
   Matrix::Matrix(QObject *parent) : 
-    Molecule(parent)
+    Structure(parent)
   {
   }
 

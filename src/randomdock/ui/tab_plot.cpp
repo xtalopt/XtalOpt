@@ -303,7 +303,7 @@ namespace RandomDock {
           break;
         case Energy_T:
           // Skip scenes that don't have energy set
-          if (!scene->hasEnergy()) continue;
+          if (scene->getEnergy() == 0.0) continue;
           switch (j) {
           case 0:       x = scene->getEnergy(); break;
           default:      y = scene->getEnergy(); break;

@@ -55,10 +55,9 @@ namespace Avogadro {
                 Restart
     };
 
-    bool hasEnergy()	const {return m_hasEnergy;};
     bool hasEnthalpy()	const {return m_hasEnthalpy;};
     double getEnergy()	const {return energy(0)/EV_TO_KCAL_PER_MOL;};
-    double getEnthalpy()const {if (!m_hasEnthalpy&&m_hasEnergy) return getEnergy(); return m_enthalpy;};
+    double getEnthalpy()const {if (!m_hasEnthalpy) return getEnergy(); return m_enthalpy;};
     double getPV()	const {return m_PV;};
     uint getRank()	const {return m_rank;};
     uint getJobID()	const {return m_jobID;};
@@ -92,9 +91,8 @@ namespace Avogadro {
    public slots:
     void setEnthalpy(double enthalpy) {m_hasEnthalpy = true; m_enthalpy = enthalpy;};
     void setPV(double pv) {m_PV = pv;};
-    void setEnergy(double e) {m_hasEnergy = true; std::vector<double> E; E.push_back(e); setEnergies(E);};
     void resetEnthalpy() {m_enthalpy=0; m_PV=0; m_hasEnthalpy=false;};
-    void resetEnergy() {std::vector<double> E; E.push_back(0); setEnergies(E); m_hasEnergy=false;};
+    void resetEnergy() {std::vector<double> E; E.push_back(0); setEnergies(E);};
     void setOBEnergy(const QString &ff = QString("UFF"));
     void setRank(uint rank) {m_rank = rank;};
     void setJobID(uint id) {m_jobID = id;};
@@ -119,7 +117,7 @@ namespace Avogadro {
    private slots:
 
    private:
-    bool m_hasEnergy, m_hasEnthalpy;
+    bool m_hasEnthalpy;
     uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount;
     QString m_parents, m_dupString, m_rempath;
     double m_enthalpy, m_PV;

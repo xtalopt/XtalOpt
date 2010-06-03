@@ -273,7 +273,7 @@ namespace RandomDock {
     else
       ui.table_list->item(i, C_JobID)->setText("N/A");
 
-    if (scene->hasEnergy())
+    if (scene->getEnergy() != 0.0)
       ui.table_list->item(i, C_Energy)->setText(QString::number(scene->getEnergy()));
     else
       ui.table_list->item(i, C_Energy)->setText("N/A");
