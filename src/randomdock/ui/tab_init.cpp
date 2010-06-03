@@ -129,12 +129,12 @@ namespace RandomDock {
   void TabInit::substrateBrowse() {
     qDebug() << "TabInit::substrateBrowse() called";
     QSettings settings;
-    QString path = settings.value("randomdock/paths/moleculeBrowse", "").toString();
+    QString path = settings.value("randomdock/paths/substrateBrowse", "").toString();
     QString fileName = QFileDialog::getOpenFileName(m_dialog, 
                                                     tr("Select molecule file to use for the substrate"),
                                                     path,
                                                     tr("All files (*)"));
-    settings.setValue("randomdock/paths/moleculeBrowse", fileName);
+    settings.setValue("randomdock/paths/substrateBrowse", fileName);
     ui.edit_substrateFile->setText(fileName);
   }
 
@@ -145,12 +145,12 @@ namespace RandomDock {
   void TabInit::matrixAdd() {
     qDebug() << "TabInit::matrixAdd() called";
     QSettings settings;
-    QString path = settings.value("randomdock/paths/moleculeBrowse", "").toString();
+    QString path = settings.value("randomdock/paths/matrixBrowse", "").toString();
     QString fileName = QFileDialog::getOpenFileName(m_dialog, 
                                                     tr("Select molecule file to add as a matrix element"),
                                                     path,
                                                     tr("All files (*)"));
-    settings.setValue("randomdock/paths/moleculeBrowse", fileName);
+    settings.setValue("randomdock/paths/matrixBrowse", fileName);
 
     int row = ui.table_matrix->rowCount();
     ui.table_matrix->insertRow(row);
