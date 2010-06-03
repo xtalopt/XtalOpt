@@ -227,9 +227,9 @@ namespace RandomDock {
     Structure* mol = currentStructure();
     if (mol) {
       emit moleculeChanged(mol);
+      updateConformerTable();
+      calculateNumberOfConformers(ui.cb_allConformers->isChecked());
     }
-    updateConformerTable();
-    calculateNumberOfConformers(ui.cb_allConformers->isChecked());
   }
 
   void TabConformers::updateConformerTable() {
