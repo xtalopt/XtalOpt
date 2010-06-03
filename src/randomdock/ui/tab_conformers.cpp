@@ -30,7 +30,7 @@
 
 #include <QSettings>
 #include <QMessageBox>
-#include <QProgressDialog>
+#include <QtConcurrentRun>
 
 using namespace std;
 using namespace Avogadro;
@@ -133,8 +133,16 @@ namespace RandomDock {
     }
   }
 
-  void TabConformers::generateConformers() {
-    qDebug() << "TabConformers::generateConformers() called";
+  void TabConformers::generateConformers()
+  {
+    QtConcurrent::run(this,
+                      &TabConformers::generateConformers_,
+                      currentStructure());
+  }
+
+  void TabConformers::generateConformers_(Structure *mol)
+  {
+    m_dialog->startProgressUpdate("Preparing conformer search...", 0, 0);
     if (ui.combo_opt->currentIndex() == O_G03) {
       // TODO: implement and use a G03 opt routine...
       return;
@@ -149,45 +157,44 @@ namespace RandomDock {
     ff->SetLogFile(&std::cout);
     ff->SetLogLevel(OBFF_LOGLVL_NONE);
 
-    Structure* mol = currentStructure();
     OpenBabel::OBMol obmol = mol->OBMol();
-    qDebug() << obmol.NumAtoms();
     if (!ff) {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Problem setting up forcefield '%1'.")
                             .arg(ui.combo_opt->currentText().trimmed()));
+      m_dialog->stopProgressUpdate();
       return;
     }
     if (!ff->Setup(obmol)) {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Cannot set up the force field for this molecule." ));
+      m_dialog->stopProgressUpdate();
       return;
     }
 
     // Pre-optimize
     ff->ConjugateGradients(1000);
 
+    // Prepare progress step variable
+    int step = 0;
+
     // Systematic search:
     if (ui.cb_allConformers->isChecked()) {
       int n = ff->SystematicRotorSearchInitialize(2500);
-      QProgressDialog prog ("Performing Systematic conformer search...", 0, 0, n, m_dialog);
-      int step = 0;
-      prog.setValue(step);
+      m_dialog->updateProgressLabel(tr("Performing systematic rotor search..."));
+      m_dialog->updateProgressMaximum(2*n);
       while (ff->SystematicRotorSearchNextConformer(500)) {
-        prog.setValue(++step);
-        qDebug() << step << " " << n;
+        m_dialog->updateProgressValue(++step);
       }
     }
     // Random conformer search
     else {
       int n = ui.spin_nConformers->value();
       ff->RandomRotorSearchInitialize(n, 2500);
-      QProgressDialog prog ("Performing Random conformer search...", 0, 0, n, m_dialog);
-      int step = 0;
-      prog.setValue(step);
+      m_dialog->updateProgressLabel(tr("Performing random rotor search..."));
+      m_dialog->updateProgressMaximum(2*n);
       while (ff->RandomRotorSearchNextConformer(500)) {
-        prog.setValue(++step);
-        qDebug() << step << " " << n;
+        m_dialog->updateProgressValue(++step);
       }
     }
     obmol = mol->OBMol();
@@ -199,6 +206,7 @@ namespace RandomDock {
     std::vector<double> energies;
 
     for (int i = 0; i < obmol.NumConformers(); i++) {
+      m_dialog->updateProgressValue(++step);
       double *coordPtr = obmol.GetConformer(i);
       conformer.clear();
       foreach (Atom *atom, mol->atoms()) {
@@ -208,18 +216,13 @@ namespace RandomDock {
         coordPtr += 3;
       }
       mol->addConformer(conformer, i);
-      // HACK:
-      // qobject_cast here to get to Avogadro::Molecule::setEnergy
-      // instead of Structure::setEnergy (overloaded virtual)
-      qobject_cast<Molecule*>(mol)->setEnergy(i, obmol.GetEnergy(i));
+      mol->setEnergy(i, obmol.GetEnergy(i));
       confs.push_back(&conformer);
       energies.push_back(obmol.GetEnergy(i));
     }
-    //mol->setAllConformers(confs);
-    //mol->setEnergies(energies);
-    qDebug() << "Lengths : " << confs.size() << " " << energies.size() << " " << mol->numConformers() << " " << mol->energies().size();
     delete ff;
     updateConformerTable();
+    m_dialog->stopProgressUpdate();
   }
 
   void TabConformers::selectStructure(const QString & text) {

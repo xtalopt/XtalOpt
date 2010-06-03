@@ -73,6 +73,8 @@ namespace RandomDock {
     OpenBabel::OBForceField *m_ff;
     RandomDockDialog *m_dialog;
     RandomDock *m_opt;
+
+    void generateConformers_(Structure *mol);
   };
 }
 
