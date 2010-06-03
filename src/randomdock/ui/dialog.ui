@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Random Docking Analysis</string>
+   <string>Random Docking Search</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="5" column="8">
