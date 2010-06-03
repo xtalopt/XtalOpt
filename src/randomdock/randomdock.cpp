@@ -379,7 +379,8 @@ namespace RandomDock {
     m_dialog->readSettings(filename);
 
     // Set optimizer
-    setOptimizer(OptTypes(settings->value("randomdock/edit/optType").toInt()));
+    setOptimizer(OptTypes(settings->value("randomdock/edit/optType").toInt()),
+                 filename);
     debug(tr("Resuming RandomDock session in '%1' (%2)")
           .arg(filename)
           .arg(m_optimizer->getIDString()));
@@ -483,20 +484,20 @@ namespace RandomDock {
       coords[i] += t;
   }
 
-  void RandomDock::setOptimizer_string(const QString &IDString)
+  void RandomDock::setOptimizer_string(const QString &IDString, const QString &filename)
   {
     if (IDString.toLower() == "gamess")
-      setOptimizer(new GAMESSOptimizer (this));
+      setOptimizer(new GAMESSOptimizer (this, filename));
     else
       error(tr("RandomDock::setOptimizer: unable to determine optimizer from '%1'")
             .arg(IDString));
   }
 
-  void RandomDock::setOptimizer_enum(OptTypes opttype)
+  void RandomDock::setOptimizer_enum(OptTypes opttype, const QString &filename)
   {
     switch (opttype) {
     case OT_GAMESS:
-      setOptimizer(new GAMESSOptimizer (this));
+      setOptimizer(new GAMESSOptimizer (this, filename));
       break;
     default:
       error(tr("RandomDock::setOptimizer: unable to determine optimizer from '%1'")

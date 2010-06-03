@@ -1100,7 +1100,8 @@ namespace Avogadro {
     m_dialog->readSettings(filename);
 
     // Set optimizer
-    setOptimizer(OptTypes(settings->value("xtalopt/edit/optType").toInt()));
+    setOptimizer(OptTypes(settings->value("xtalopt/edit/optType").toInt()),
+                 filename);
     debug(tr("Resuming XtalOpt session in '%1' (%2)")
           .arg(filename)
           .arg(m_optimizer->getIDString()));
@@ -1316,30 +1317,30 @@ namespace Avogadro {
     emit updateAllInfo();
   }
 
-  void XtalOpt::setOptimizer_string(const QString &IDString)
+  void XtalOpt::setOptimizer_string(const QString &IDString, const QString &filename)
   {
     if (IDString.toLower() == "vasp")
-      setOptimizer(new VASPOptimizer (this));
+      setOptimizer(new VASPOptimizer (this, filename));
     else if (IDString.toLower() == "gulp")
-      setOptimizer(new GULPOptimizer (this));
+      setOptimizer(new GULPOptimizer (this, filename));
     else if (IDString.toLower() == "pwscf")
-      setOptimizer(new PWscfOptimizer (this));
+      setOptimizer(new PWscfOptimizer (this, filename));
     else
       error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
             .arg(IDString));
   }
 
-  void XtalOpt::setOptimizer_enum(OptTypes opttype)
+  void XtalOpt::setOptimizer_enum(OptTypes opttype, const QString &filename)
   {
     switch (opttype) {
     case OT_VASP:
-      setOptimizer(new VASPOptimizer (this));
+      setOptimizer(new VASPOptimizer (this, filename));
       break;
     case OT_GULP:
-      setOptimizer(new GULPOptimizer (this));
+      setOptimizer(new GULPOptimizer (this, filename));
       break;
     case OT_PWscf:
-      setOptimizer(new PWscfOptimizer (this));
+      setOptimizer(new PWscfOptimizer (this, filename));
       break;
     default:
       error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")

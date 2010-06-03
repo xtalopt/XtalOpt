@@ -31,7 +31,7 @@ namespace Avogadro {
     Q_OBJECT
 
    public:
-    PWscfOptimizer(OptBase *parent);
+    PWscfOptimizer(OptBase *parent, const QString &filename = "");
 
   };
 

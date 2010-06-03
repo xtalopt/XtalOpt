@@ -32,8 +32,7 @@ namespace Avogadro {
     Q_OBJECT
 
   public:
-
-    explicit XtalOptOptimizer(OptBase *parent);
+    explicit XtalOptOptimizer(OptBase *parent, const QString &filename = "");
     virtual ~XtalOptOptimizer();
 
     virtual bool read(Structure *structure, const QString & filename);

@@ -170,9 +170,6 @@ namespace Avogadro {
   void OptBase::setOptimizer_opt(Optimizer *o) {
     Optimizer *old = m_optimizer;
     if (m_optimizer) {
-      // Save settings explicitly. This is called in the destructer, but
-      // we may need some settings in the new optimizer.
-      old->writeSettings();
       old->deleteLater();
     }
     m_optimizer = o;

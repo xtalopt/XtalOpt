@@ -36,7 +36,7 @@ namespace Avogadro {
 
   public:
 
-    explicit Optimizer(OptBase *parent);
+    explicit Optimizer(OptBase *parent, const QString &filename = "");
     virtual ~Optimizer();
 
     enum JobState { Unknown = -1, Success, Error, Queued, Running, CommunicationError, Started, Pending};

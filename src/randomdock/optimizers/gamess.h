@@ -30,7 +30,7 @@ namespace RandomDock {
     Q_OBJECT
 
    public:
-    explicit GAMESSOptimizer(OptBase *parent);
+    explicit GAMESSOptimizer(OptBase *parent, const QString &filename = "");
 
   };
 

@@ -35,7 +35,7 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  PWscfOptimizer::PWscfOptimizer(OptBase *parent) :
+  PWscfOptimizer::PWscfOptimizer(OptBase *parent, const QString &filename) :
     XtalOptOptimizer(parent)
   {
     // Set allowed data structure keys, if any, e.g.
@@ -55,7 +55,7 @@ namespace Avogadro {
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "PWscf";
 
-    readSettings();
+    readSettings(filename);
   }
 
 } // end namespace Avogadro

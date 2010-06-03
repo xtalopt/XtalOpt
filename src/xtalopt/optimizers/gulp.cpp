@@ -33,7 +33,7 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  GULPOptimizer::GULPOptimizer(OptBase *parent) :
+  GULPOptimizer::GULPOptimizer(OptBase *parent, const QString &filename) :
     XtalOptOptimizer(parent)
   {
     // Set allowed data structure keys, if any, e.g.
@@ -52,7 +52,7 @@ namespace Avogadro {
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "GULP";
 
-    readSettings();
+    readSettings(filename);
   }
 
   bool GULPOptimizer::writeInputFiles(Structure *structure) {

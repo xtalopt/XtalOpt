@@ -32,7 +32,7 @@ namespace Avogadro {
     Q_OBJECT
 
    public:
-    VASPOptimizer(OptBase *parent);
+    VASPOptimizer(OptBase *parent, const QString &filename = "");
     bool writeInputFiles(Structure *structure);
     void readSettings(const QString &filename = "");
     void writeTemplatesToSettings(const QString &filename = "");

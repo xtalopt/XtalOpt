@@ -38,7 +38,7 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  VASPOptimizer::VASPOptimizer(OptBase *parent) :
+  VASPOptimizer::VASPOptimizer(OptBase *parent, const QString &filename) :
     XtalOptOptimizer(parent)
   {
     // Set allowed data structure keys, if any
@@ -66,7 +66,7 @@ namespace Avogadro {
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "VASP";
 
-    readSettings();
+    readSettings(filename);
 
     buildPOTCARs();
 

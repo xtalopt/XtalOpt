@@ -32,7 +32,7 @@ namespace Avogadro {
     Q_OBJECT
 
    public:
-    GULPOptimizer(OptBase *parent);
+    GULPOptimizer(OptBase *parent, const QString &filename = "");
 
     bool writeInputFiles(Structure *structure);
     bool startOptimization(Structure *structure);

@@ -107,8 +107,10 @@ namespace Avogadro {
     void setIsStartingTrue() {isStarting = true;};
     void setIsStartingFalse() {isStarting = false;};
     void printBackTrace();
-    void setOptimizer(Optimizer *o) {setOptimizer_opt(o);};
-    void setOptimizer(const QString &IDString) {setOptimizer_string(IDString);};
+    void setOptimizer(Optimizer *o) {
+      setOptimizer_opt(o);};
+    void setOptimizer(const QString &IDString, const QString &filename = "") {
+      setOptimizer_string(IDString, filename);};
 
    protected:
     Tracker *m_tracker;
@@ -116,7 +118,7 @@ namespace Avogadro {
     Optimizer *m_optimizer;
 
     virtual void setOptimizer_opt(Optimizer *o);
-    virtual void setOptimizer_string(const QString &s) {};
+    virtual void setOptimizer_string(const QString &s, const QString &filename = "") {};
     void interpretKeyword_base(QString &keyword, Structure* structure);
     QString getTemplateKeywordHelp_base();
 

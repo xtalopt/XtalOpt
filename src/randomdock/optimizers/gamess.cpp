@@ -35,7 +35,7 @@ using namespace Avogadro;
 
 namespace RandomDock {
 
-  GAMESSOptimizer::GAMESSOptimizer(OptBase *parent) :
+  GAMESSOptimizer::GAMESSOptimizer(OptBase *parent, const QString &filename) :
     Optimizer(parent)
   {
     // Set allowed data structure keys, if any, e.g.
@@ -55,7 +55,7 @@ namespace RandomDock {
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "GAMESS";
 
-    readSettings();
+    readSettings(filename);
   }
 
 } // end namespace Avogadro

@@ -31,7 +31,7 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  XtalOptOptimizer::XtalOptOptimizer(OptBase *parent) :
+  XtalOptOptimizer::XtalOptOptimizer(OptBase *parent, const QString &filename) :
     Optimizer(parent)
   {
   }

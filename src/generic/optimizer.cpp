@@ -36,7 +36,7 @@ using namespace Eigen;
 
 namespace Avogadro {
 
-  Optimizer::Optimizer(OptBase *parent) :
+  Optimizer::Optimizer(OptBase *parent, const QString &filename) :
     QObject(parent),
     m_opt(parent)    
   {
@@ -57,12 +57,11 @@ namespace Avogadro {
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "Generic";
 
-    readSettings();
+    readSettings(filename);
   }
 
   Optimizer::~Optimizer()
   {
-    writeSettings();
   }
 
   void Optimizer::readSettings(const QString &filename)

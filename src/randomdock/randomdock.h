@@ -95,15 +95,18 @@ namespace RandomDock {
     void startOptimization();
     void generateNewStructure();
     void initializeAndAddScene(Scene *scene);
-    void setOptimizer(Optimizer *o) {setOptimizer_opt(o);};
-    void setOptimizer(const QString &IDString) {setOptimizer_string(IDString);};
-    void setOptimizer(OptTypes opttype) {setOptimizer_enum(opttype);};
+    void setOptimizer(Optimizer *o) {
+      setOptimizer_opt(o);};
+    void setOptimizer(const QString &IDString, const QString &filename = "") {
+      setOptimizer_string(IDString, filename);};
+    void setOptimizer(OptTypes opttype, const QString &filename = "") {
+      setOptimizer_enum(opttype, filename);};
 
    private:
     RandomDockDialog *m_dialog;
 
-    void setOptimizer_string(const QString &s);
-    void setOptimizer_enum(OptTypes opttype);
+    void setOptimizer_string(const QString &s, const QString &filename = "");
+    void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
 
   };
 

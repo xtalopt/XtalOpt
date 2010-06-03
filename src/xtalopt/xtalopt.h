@@ -115,9 +115,12 @@ namespace Avogadro {
     void initializeAndAddXtal(Xtal *xtal, uint generation, const QString &parents);
     void resetDuplicates();
     void checkForDuplicates();
-    void setOptimizer(Optimizer *o) {setOptimizer_opt(o);};
-    void setOptimizer(const QString &IDString) {setOptimizer_string(IDString);};
-    void setOptimizer(OptTypes opttype) {setOptimizer_enum(opttype);};
+    void setOptimizer(Optimizer *o) {
+      setOptimizer_opt(o);};
+    void setOptimizer(const QString &IDString, const QString &filename = "") {
+      setOptimizer_string(IDString, filename);};
+    void setOptimizer(OptTypes opttype, const QString &filename = "") {
+      setOptimizer_enum(opttype, filename);};
 
    private:
     XtalOptDialog *m_dialog;
@@ -125,8 +128,8 @@ namespace Avogadro {
     void resetDuplicates_();
     void checkForDuplicates_();
 
-    void setOptimizer_string(const QString &s);
-    void setOptimizer_enum(OptTypes opttype);
+    void setOptimizer_string(const QString &s, const QString &filename = "");
+    void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
 
     void interpretKeyword(QString &keyword, Structure* structure);
     QString getTemplateKeywordHelp_xtalopt();
