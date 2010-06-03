@@ -225,7 +225,9 @@ namespace RandomDock {
   void TabConformers::selectStructure(const QString & text) {
     qDebug() << "TabConformers::selectStructure( " << text << " ) called";
     Structure* mol = currentStructure();
-    emit moleculeChanged(mol);
+    if (mol) {
+      emit moleculeChanged(mol);
+    }
     updateConformerTable();
     calculateNumberOfConformers(ui.cb_allConformers->isChecked());
   }
