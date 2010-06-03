@@ -186,6 +186,14 @@ namespace RandomDock {
     qDebug() << m_opt->substrateFile;
     if (!m_opt->substrateFile.isEmpty()) {
       mol = MoleculeFile::readMolecule(m_opt->substrateFile);
+      // Check that molecule loaded successfully
+      if (!mol) {
+        // Pop-up error
+        m_opt->error(tr("Cannot load file %1 for substrate. Check that it contains valid molecule information.")
+                     .arg(m_opt->substrateFile));
+        QApplication::restoreOverrideCursor();
+        return;
+      }
       m_opt->substrate = new Substrate (mol);
       qDebug() << "Updated substrate: " << m_opt->substrate << " #atoms= " << m_opt->substrate->numAtoms();
     }
@@ -195,6 +203,19 @@ namespace RandomDock {
     for (int i = 0; i < m_opt->matrixFiles.size(); i++) {
       qDebug() << m_opt->matrixFiles.at(i);
       mol = MoleculeFile::readMolecule(m_opt->matrixFiles.at(i));
+      // Check that molecule loaded successfully
+      if (!mol) {
+        // Pop-up error
+        m_opt->error(tr("Cannot load file %1 for a matrix. Check that it contains valid molecule information.")
+                     .arg(m_opt->matrixFiles.at(i)));
+        // Cleanup
+        delete m_opt->substrate;
+        m_opt->substrate = 0;
+        qDeleteAll(m_opt->matrixList);
+        m_opt->matrixList.clear();
+        QApplication::restoreOverrideCursor();
+        return;
+      }
       m_opt->matrixList.append(new Matrix (mol));
       qDebug() << "Matrix added:" << m_opt->matrixList.at(i);
     }
