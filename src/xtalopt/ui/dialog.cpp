@@ -354,7 +354,6 @@ namespace Avogadro {
   }
 
   void XtalOptDialog::repaintProgressBar_() {
-    //qDebug() << "XtalOptDialog::repaintProgressBar_: Val: " << ui.progbar->value() << " Min: " << ui.progbar->minimum() << " Max: " << ui.progbar->maximum();
     ui.label_prog->repaint();
     ui.progbar->repaint();
   }
