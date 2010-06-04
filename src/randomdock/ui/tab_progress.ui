@@ -54,6 +54,16 @@
      </column>
      <column>
       <property name="text">
+       <string>Time Elapsed</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Job ID</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
        <string>Status</string>
       </property>
      </column>

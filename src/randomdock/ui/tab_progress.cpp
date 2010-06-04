@@ -198,7 +198,7 @@ namespace RandomDock {
     // Add the new row
     ui.table_list->insertRow(index);
     // Columns: once for each column in ProgressColumns:
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < 6; i++) {
       ui.table_list->setItem(index, i, new QTableWidgetItem());
     }
 
@@ -266,6 +266,8 @@ namespace RandomDock {
 
     QReadLocker sceneLocker (scene->lock());
 
+    ui.table_list->item(i, C_Rank)->setText(QString::number(scene->getRank()));
+    ui.table_list->item(i, C_Index)->setText(QString::number(scene->getIndex()));
     ui.table_list->item(i, C_Elapsed)->setText(scene->getOptElapsed());
 
     if (scene->getJobID())
@@ -277,6 +279,7 @@ namespace RandomDock {
       ui.table_list->item(i, C_Energy)->setText(QString::number(scene->getEnergy()));
     else
       ui.table_list->item(i, C_Energy)->setText("N/A");
+
     switch (scene->getStatus()) {
     case Scene::InProcess: {
       sceneLocker.unlock();
