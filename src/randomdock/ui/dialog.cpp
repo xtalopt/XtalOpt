@@ -269,7 +269,7 @@ namespace RandomDock {
 
   void RandomDockDialog::repaintProgressBar_() {
     ui.label_prog->repaint();
-    ui.label_prog->repaint();
+    ui.progbar->repaint();
   }
 
   void RandomDockDialog::errorBox(const QString & s) {
