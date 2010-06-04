@@ -63,13 +63,16 @@ namespace RandomDock {
     // Check that everything is in place
     if (!substrate) {
       error("Cannot begin search without specifying substrate.");
+      setIsStartingFalse();
       return;
     }
     if (matrixList.size() == 0) {
       error("Cannot begin search without specifying matrix molecules.");
+      setIsStartingFalse();
       return;
     }
     if (!checkLimits()) {
+      setIsStartingFalse();
       return;
     }
 
