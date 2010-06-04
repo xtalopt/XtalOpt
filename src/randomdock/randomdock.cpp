@@ -87,7 +87,6 @@ namespace RandomDock {
     m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
 
     // Initalize loop variables
-    QString filename;
     Scene *scene;
     int progCount=0;
 
@@ -95,10 +94,13 @@ namespace RandomDock {
     for (uint i = 0; i < runningJobLimit; i++) {
       m_dialog->updateProgressMaximum( (i == 0)
                                         ? 0
-                                        : int(progCount / static_cast<double>(i)) * runningJobLimit );
-      m_dialog->updateProgressValue(progCount);
-      progCount++;
-      m_dialog->updateProgressLabel(tr("%1 scenes generated of (%2)...").arg(i).arg(runningJobLimit));
+                                        : int(progCount
+                                              / static_cast<double>(i))
+                                       * runningJobLimit );
+      m_dialog->updateProgressValue(progCount++);
+      m_dialog->updateProgressLabel(tr("%1 scenes generated of (%2)...")
+                                    .arg(i)
+                                    .arg(runningJobLimit));
  
       // Generate/Check molecule
       scene = generateRandomScene();
