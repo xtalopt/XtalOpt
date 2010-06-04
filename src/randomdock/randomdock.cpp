@@ -285,8 +285,8 @@ namespace RandomDock {
     sceneInitMutex->lock();
 
     // lockForNaming returns a list of all structures, both accepted
-    // and pending, so it's size is the id of the new structure.
-    int id = m_queue->lockForNaming().size();
+    // and pending, so it's size+1 is the id of the new structure.
+    int id = m_queue->lockForNaming().size() + 1;
 
     // Generate locations using id number
     id_s.sprintf("%05d",id);
@@ -306,6 +306,7 @@ namespace RandomDock {
     // Assign data to scene
     scene->lock()->lockForWrite();
     scene->setIDNumber(id);
+    scene->setIndex(id-1);
     scene->setFileName(locpath_s);
     scene->setRempath(rempath_s);
     scene->setCurrentOptStep(1);
