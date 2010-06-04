@@ -45,7 +45,7 @@ namespace RandomDock {
     void sortConformers();
     void generateProbabilities();
     void checkProbs() {if ((uint)m_probs.size() != numConformers()) generateProbabilities();};
-    Matrix* getRandomConformer();
+    int getRandomConformerIndex();
 
    private slots:
 

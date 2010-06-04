@@ -124,7 +124,6 @@ namespace RandomDock {
     Bond *newbond;
     Bond *oldbond;
     Matrix *mat;
-    Substrate *sub;
     Scene *scene = new Scene;
     QHash<ulong, ulong> idMap; // Old id, new id
     QList<Atom*> atomList;
@@ -134,14 +133,18 @@ namespace RandomDock {
     rand.TimeSeed();
 
     // Select random conformer of substrate
-    sub = substrate->getRandomConformer();
+    substrate->lock()->lockForWrite();
+    int conformer = substrate->getRandomConformerIndex();
+    substrate->setConformer(conformer);
 
-    // Extract information from sub
-    atomList = sub->atoms();
+    // Extract information from substrate
+    atomList = substrate->atoms();
     for (int j = 0; j < atomList.size(); j++) {
       atomicNums.append(atomList.at(j)->atomicNumber());
       positions.append( *(atomList.at(j)->pos()));
     }
+
+    substrate->lock()->unlock();
 
     // Place substrate's geometric center at origin
     RandomDock::centerCoordinatesAtOrigin(positions);
@@ -155,9 +158,9 @@ namespace RandomDock {
     }
 
     // Attach bonds
-    for (uint i = 0; i < sub->numBonds(); i++) {
+    for (uint i = 0; i < substrate->numBonds(); i++) {
       newbond = scene->addBond();
-      oldbond = sub->bonds().at(i);
+      oldbond = substrate->bonds().at(i);
       newbond->setAtoms(idMap[oldbond->beginAtomId()],
                         idMap[oldbond->endAtomId()],
                         oldbond->order());
@@ -188,15 +191,22 @@ namespace RandomDock {
 
       mat = matrixList.at(ind);
 
-      // Extract information from matrix
-      atomList = mat->atoms();
       atomicNums.clear();
       positions.clear();
       idMap.clear();
+
+      mat->lock()->lockForWrite();
+      conformer = mat->getRandomConformerIndex();
+      mat->setConformer(conformer);
+
+      // Extract information from matrix
+      atomList = mat->atoms();
       for (int j = 0; j < atomList.size(); j++) {
         atomicNums.append(atomList.at(j)->atomicNumber());
         positions.append( *(atomList.at(j)->pos()));
       }
+
+      mat->lock()->unlock();
 
       // Rotate, translate positions
       RandomDock::randomlyRotateCoordinates(positions);

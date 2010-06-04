@@ -37,9 +37,9 @@ namespace RandomDock {
   {
   }
 
-  Substrate::Substrate(Molecule *mol) {
-    qDebug() << "Substrate::Substrate( [copy " << &mol << "] ) called";
-
+  Substrate::Substrate(Molecule *mol) :
+    Structure(mol->parent())
+  {
     OpenBabel::OBMol obmol = mol->OBMol();
 
     setOBMol(&obmol);
@@ -131,7 +131,7 @@ namespace RandomDock {
     // percents will hold the percent probabilities
   }
     
-  Substrate* Substrate::getRandomConformer() {
+  int Substrate::getRandomConformerIndex() {
     qDebug() << "Substrate::getRandomConformer( ) called";
     // Random number generator
     OpenBabel::OBRandom rand (true); 	// "true" uses system random numbers. OB's version isn't too good...
@@ -143,10 +143,7 @@ namespace RandomDock {
     for (ind = 0; ind < m_probs.size(); ind++)
       if (r < m_probs.at(ind)) break;
 
-    // Generate new substrate from current:
-    Substrate *sub = new Substrate (this);
-    sub->setConformer(r);
-    return sub;
+    return r;
   }
 
 } // end namespace Avogadro
