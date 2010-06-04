@@ -137,6 +137,8 @@ namespace RandomDock {
 
   void TabConformers::generateConformers()
   {
+    // Enable this when conformer generation is complete
+    ui.push_generate->setEnabled(false);
     QtConcurrent::run(this,
                       &TabConformers::generateConformers_,
                       currentStructure());
@@ -147,6 +149,7 @@ namespace RandomDock {
     m_dialog->startProgressUpdate("Preparing conformer search...", 0, 0);
     if (ui.combo_opt->currentIndex() == O_G03) {
       // TODO: implement and use a G03 opt routine...
+      ui.push_generate->setEnabled(true);
       return;
     }
     
@@ -167,12 +170,14 @@ namespace RandomDock {
                             tr( "Problem setting up forcefield '%1'.")
                             .arg(ui.combo_opt->currentText().trimmed()));
       m_dialog->stopProgressUpdate();
+      ui.push_generate->setEnabled(true);
       return;
     }
     if (!ff->Setup(obmol)) {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Cannot set up the force field for this molecule." ));
       m_dialog->stopProgressUpdate();
+      ui.push_generate->setEnabled(true);
       return;
     }
 
@@ -227,6 +232,7 @@ namespace RandomDock {
     }
     delete ff;
     emit conformersChanged();
+    ui.push_generate->setEnabled(true);
     m_dialog->stopProgressUpdate();
   }
 
