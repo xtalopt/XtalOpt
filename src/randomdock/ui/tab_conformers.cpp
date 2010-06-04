@@ -73,6 +73,8 @@ namespace RandomDock {
             this, SLOT(conformerChanged(int, int, int, int)));
     connect(ui.cb_allConformers, SIGNAL(toggled(bool)),
             this, SLOT(calculateNumberOfConformers(bool)));
+    connect(this, SIGNAL(conformersChanged()),
+            this, SLOT(updateConformerTable()));
   }
 
   TabConformers::~TabConformers()
@@ -153,10 +155,12 @@ namespace RandomDock {
      * forcefield extension...                            *
      ******************************************************/
 
+    m_dialog->updateProgressLabel("Preparing forcefield...");
     OpenBabel::OBForceField *ff = m_ff->MakeNewInstance();
     ff->SetLogFile(&std::cout);
     ff->SetLogLevel(OBFF_LOGLVL_NONE);
 
+    m_dialog->updateProgressLabel("Setting up molecule with forcefield...");
     OpenBabel::OBMol obmol = mol->OBMol();
     if (!ff) {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),
@@ -173,6 +177,7 @@ namespace RandomDock {
     }
 
     // Pre-optimize
+    m_dialog->updateProgressLabel("Pre-optimizing molecule...");
     ff->ConjugateGradients(1000);
 
     // Prepare progress step variable
@@ -180,8 +185,8 @@ namespace RandomDock {
 
     // Systematic search:
     if (ui.cb_allConformers->isChecked()) {
-      int n = ff->SystematicRotorSearchInitialize(2500);
       m_dialog->updateProgressLabel(tr("Performing systematic rotor search..."));
+      int n = ff->SystematicRotorSearchInitialize(2500);
       m_dialog->updateProgressMaximum(2*n);
       while (ff->SystematicRotorSearchNextConformer(500)) {
         m_dialog->updateProgressValue(++step);
@@ -190,8 +195,8 @@ namespace RandomDock {
     // Random conformer search
     else {
       int n = ui.spin_nConformers->value();
-      ff->RandomRotorSearchInitialize(n, 2500);
       m_dialog->updateProgressLabel(tr("Performing random rotor search..."));
+      ff->RandomRotorSearchInitialize(n, 2500);
       m_dialog->updateProgressMaximum(2*n);
       while (ff->RandomRotorSearchNextConformer(500)) {
         m_dialog->updateProgressValue(++step);
@@ -221,7 +226,7 @@ namespace RandomDock {
       energies.push_back(obmol.GetEnergy(i));
     }
     delete ff;
-    updateConformerTable();
+    emit conformersChanged();
     m_dialog->stopProgressUpdate();
   }
 

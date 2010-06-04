@@ -66,6 +66,7 @@ namespace RandomDock {
 
   signals:
     void moleculeChanged(Structure*);
+    void conformersChanged();
 
   private:
     Ui::Tab_Conformers ui;
