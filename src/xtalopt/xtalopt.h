@@ -32,7 +32,7 @@
 #include <QStringList>
 #include <QReadWriteLock>
 
-namespace Avogadro {
+namespace XtalOpt {
   class XtalOptDialog;
 
   class XtalOpt : public OptBase

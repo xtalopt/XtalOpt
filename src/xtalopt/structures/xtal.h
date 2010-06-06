@@ -29,7 +29,7 @@
 
 using namespace GlobalSearch;
 
-namespace Avogadro {
+namespace XtalOpt {
   class Xtal : public Structure
   {
     Q_OBJECT

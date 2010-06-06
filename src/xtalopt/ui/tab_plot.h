@@ -25,6 +25,12 @@
 class QReadWriteLock;
 
 namespace Avogadro {
+  class PlotPoint;
+}
+
+using namespace Avogadro;
+
+namespace XtalOpt {
   class XtalOptDialog;
   class XtalOpt;
   class Xtal;

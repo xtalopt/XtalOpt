@@ -26,9 +26,7 @@
 #include <QSettings>
 #include <QReadWriteLock>
 
-using namespace std;
-
-namespace Avogadro {
+namespace XtalOpt {
 
   TabPlot::TabPlot( XtalOptDialog *parent, XtalOpt *p ) :
     QObject( parent ), m_dialog(parent), m_opt(p), m_plot_mutex(0), m_plotObject(0)

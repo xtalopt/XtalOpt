@@ -34,11 +34,7 @@
 #include <QMessageBox>
 #include <QDebug>
 
-using namespace std;
-using namespace OpenBabel;
-using namespace Eigen;
-
-namespace Avogadro {
+namespace XtalOpt {
 
   XtalOptExtension::XtalOptExtension(QObject *parent) : Extension(parent),
                                                         m_dialog(0),
@@ -132,4 +128,4 @@ namespace Avogadro {
 
 //#include "extension.moc"
 
-Q_EXPORT_PLUGIN2(xtaloptextension, Avogadro::XtalOptExtensionFactory)
+Q_EXPORT_PLUGIN2(xtaloptextension, XtalOpt::XtalOptExtensionFactory)

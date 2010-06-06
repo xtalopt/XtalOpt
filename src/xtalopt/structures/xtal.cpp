@@ -38,7 +38,7 @@ using namespace std;
 using namespace OpenBabel;
 using namespace Eigen;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   Xtal::Xtal(QObject *parent) :
     Structure(parent)

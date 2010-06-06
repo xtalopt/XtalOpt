@@ -24,7 +24,7 @@
 #include <QDebug>
 #include <QProgressDialog>
 
-namespace Avogadro {
+namespace XtalOpt {
 
   class XtalOptTest : public QObject
   {

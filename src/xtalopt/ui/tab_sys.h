@@ -22,7 +22,7 @@
 
 #include "ui_tab_sys.h"
 
-namespace Avogadro {
+namespace XtalOpt {
   class XtalOptDialog;
   class XtalOpt;
 

@@ -24,7 +24,7 @@
 
 #include <openbabel/rand.h>
 
-namespace Avogadro {
+namespace XtalOpt {
 
   class XtalOptGenetic : public QObject
   {

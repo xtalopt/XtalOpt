@@ -31,7 +31,7 @@ namespace GlobalSearch {
 
 using namespace GlobalSearch;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   class XtalOptOptimizer : public Optimizer
   {

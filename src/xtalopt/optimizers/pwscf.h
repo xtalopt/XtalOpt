@@ -29,7 +29,7 @@ namespace GlobalSearch {
 
 using namespace GlobalSearch;
 
-namespace Avogadro {
+namespace XtalOpt {
   class PWscfOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT

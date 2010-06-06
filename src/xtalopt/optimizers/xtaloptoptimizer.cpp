@@ -29,7 +29,7 @@ using namespace std;
 using namespace OpenBabel;
 using namespace Eigen;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   XtalOptOptimizer::XtalOptOptimizer(OptBase *parent, const QString &filename) :
     Optimizer(parent)

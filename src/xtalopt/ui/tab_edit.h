@@ -32,7 +32,7 @@ namespace GlobalSearch {
 
 using namespace GlobalSearch;
 
-namespace Avogadro {
+namespace XtalOpt {
   class XtalOptDialog;
 
   class TabEdit : public QObject

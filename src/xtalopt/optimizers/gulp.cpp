@@ -27,11 +27,7 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
-using namespace std;
-using namespace OpenBabel;
-using namespace Eigen;
-
-namespace Avogadro {
+namespace XtalOpt {
 
   GULPOptimizer::GULPOptimizer(OptBase *parent, const QString &filename) :
     XtalOptOptimizer(parent)

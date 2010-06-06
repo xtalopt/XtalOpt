@@ -22,9 +22,7 @@
 
 #include "dialog.h"
 
-using namespace std;
-
-namespace Avogadro {
+namespace XtalOpt {
 
   TabInit::TabInit( XtalOptDialog *parent, XtalOpt *p ) :
     QObject( parent ), m_dialog(parent), m_opt(p)

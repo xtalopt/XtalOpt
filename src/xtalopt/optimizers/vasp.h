@@ -30,7 +30,7 @@ namespace GlobalSearch {
 
 using namespace GlobalSearch;
 
-namespace Avogadro {
+namespace XtalOpt {
   class VASPOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT

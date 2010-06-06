@@ -29,7 +29,7 @@
 using namespace std;
 using namespace OpenBabel;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   PWscfOptimizer::PWscfOptimizer(OptBase *parent, const QString &filename) :
     XtalOptOptimizer(parent)

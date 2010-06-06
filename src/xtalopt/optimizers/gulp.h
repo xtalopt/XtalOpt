@@ -31,7 +31,7 @@ namespace GlobalSearch {
 
 using namespace GlobalSearch;
 
-namespace Avogadro {
+namespace XtalOpt {
   class GULPOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT

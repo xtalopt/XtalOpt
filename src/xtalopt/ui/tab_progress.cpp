@@ -28,9 +28,7 @@
 #include <QInputDialog>
 #include <QtConcurrentRun>
 
-using namespace std;
-
-namespace Avogadro {
+namespace XtalOpt {
 
   TabProgress::TabProgress( XtalOptDialog *parent, XtalOpt *p ) :
     QObject( parent ), m_dialog(parent), m_opt(p), m_timer(0), m_mutex(0), m_update_mutex(0), m_update_all_mutex(0), m_context_xtal(0)

@@ -29,7 +29,7 @@
 
 using namespace std;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   TabEdit::TabEdit( XtalOptDialog *parent, XtalOpt *p ) :
     QObject( parent ), m_dialog(parent), m_opt(p)

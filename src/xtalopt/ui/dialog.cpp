@@ -39,7 +39,7 @@
 
 using namespace std;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   XtalOptDialog::XtalOptDialog( GLWidget *glWidget, QWidget *parent, Qt::WindowFlags f ) :
     QDialog( parent, f ), m_opt(0), m_glWidget(glWidget)

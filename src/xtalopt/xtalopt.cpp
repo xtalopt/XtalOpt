@@ -48,7 +48,7 @@
 using namespace GlobalSearch;
 using namespace OpenBabel;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
     OptBase(parent)

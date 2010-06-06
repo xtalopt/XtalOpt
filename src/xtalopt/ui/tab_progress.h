@@ -29,7 +29,7 @@ class QMutex;
 
 using namespace GlobalSearch;
 
-namespace Avogadro {
+namespace XtalOpt {
   class XtalOptDialog;
   class XtalOpt;
   class Xtal;

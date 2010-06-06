@@ -28,7 +28,7 @@
 #include <QString>
 #include <QUndoCommand>
 
-namespace Avogadro {
+namespace XtalOpt {
 
  class XtalOptExtension : public Extension
   {
