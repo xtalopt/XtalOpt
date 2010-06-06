@@ -68,7 +68,6 @@ namespace RandomDock {
 
   TabSys::~TabSys()
   {
-    qDebug() << "TabSys::~TabSys() called";
     writeSettings();
   }
 

@@ -72,7 +72,6 @@ namespace RandomDock {
 
   TabInit::~TabInit()
   {
-    qDebug() << "TabInit::~TabInit() called";
     writeSettings();
   }
 
@@ -113,7 +112,6 @@ namespace RandomDock {
   }
 
   void TabInit::updateParams() {
-    qDebug() << "TabInit::updateParams() called";
     m_opt->substrateFile = ui.edit_substrateFile->text();
     m_opt->matrixFiles.clear();
     m_opt->matrixStoich.clear();
@@ -175,8 +173,8 @@ namespace RandomDock {
     emit substrateChanged(m_opt->substrate);
   }
 
-  void TabInit::substrateCurrent() {
-    qDebug() << "TabInit::substrateCurrent() called";
+  void TabInit::substrateCurrent()
+  {
   }
 
   void TabInit::matrixAdd() {
@@ -237,7 +235,6 @@ namespace RandomDock {
   }
 
   void TabInit::matrixRemove() {
-    qDebug() << "TabInit::matrixRemove() called";
     int row = ui.table_matrix->currentRow();
     ui.table_matrix->removeRow(row);
     m_opt->matrixFiles.removeAt(row);
@@ -248,8 +245,8 @@ namespace RandomDock {
     emit matrixRemoved();
   }
 
-  void TabInit::matrixCurrent() {
-    qDebug() << "TabInit::matrixCurrent() called";
+  void TabInit::matrixCurrent()
+  {
   }
 
 }

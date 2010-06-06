@@ -51,7 +51,6 @@ namespace RandomDock {
   }
 
   void Substrate::sortConformers() {
-    qDebug() << "Substrate::sortConformers( ) called";
     std::vector<Eigen::Vector3d> tmp;
     double tmp_e;
 
@@ -136,7 +135,6 @@ namespace RandomDock {
   }
     
   int Substrate::getRandomConformerIndex() {
-    qDebug() << "Substrate::getRandomConformer( ) called";
     // Random number generator
     OpenBabel::OBRandom rand (true); 	// "true" uses system random numbers. OB's version isn't too good...
     rand.TimeSeed();

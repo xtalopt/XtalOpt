@@ -114,7 +114,6 @@ namespace RandomDock {
 
   TabProgress::~TabProgress()
   {
-    //qDebug() << "TabProgress::~TabProgress() called";
     delete m_mutex;
     delete m_update_mutex;
     delete m_update_all_mutex;
@@ -136,13 +135,11 @@ namespace RandomDock {
     settings->endGroup();      
   }
 
-  void TabProgress::updateGUI() {
-    //qDebug() << "TabProgress::updateGUI() called";
-    // Nothing to do!
+  void TabProgress::updateGUI()
+  {
   }
 
   void TabProgress::disconnectGUI() {
-    //qDebug() << "TabProgress::disconnectGUI() called";
     m_timer->disconnect();
     ui.push_refresh->disconnect();
     ui.push_refreshAll->disconnect();
@@ -154,9 +151,8 @@ namespace RandomDock {
     this->disconnect();
   }
 
-  void TabProgress::lockGUI() {
-    //qDebug() << "TabProgress::lockGUI() called";
-    // Nothing to do!
+  void TabProgress::lockGUI()
+  {
   }
 
   void TabProgress::updateProgressTable() {
@@ -481,7 +477,6 @@ namespace RandomDock {
   }
 
   void TabProgress::restartJobProgress() {
-    //qDebug() << "TabProgress::restartJobProgress() called";
     if (!m_context_scene) return;
 
     // Get info from scene
@@ -506,7 +501,6 @@ namespace RandomDock {
   }
 
   void TabProgress::restartJobProgress_(int optStep) {
-    //qDebug() << "TabProgress::restartJobProgress_( " << optStep << " ) called";
     QWriteLocker locker (m_context_scene->lock());
     m_context_scene->setCurrentOptStep(optStep);
 
@@ -527,12 +521,10 @@ namespace RandomDock {
   }
 
   void TabProgress::killSceneProgress() {
-    //qDebug() << "TabProgress::killSceneProgress() called";
     QtConcurrent::run(this, &TabProgress::killSceneProgress_);
   }
 
   void TabProgress::killSceneProgress_() {
-    //qDebug() << "TabProgress::killSceneProgress_() called";
     if (!m_context_scene) return;
     QWriteLocker locker (m_context_scene->lock());
 
@@ -552,12 +544,10 @@ namespace RandomDock {
   }
 
   void TabProgress::unkillSceneProgress() {
-    //qDebug() << "TabProgress::unkillSceneProgress() called";
     QtConcurrent::run(this, &TabProgress::unkillSceneProgress_);
   }
 
   void TabProgress::unkillSceneProgress_() {
-    //qDebug() << "TabProgress::unkillSceneProgress_() called";
     if (!m_context_scene) return;
     QWriteLocker locker (m_context_scene->lock());
     if (m_context_scene->getStatus() != Scene::Killed &&
@@ -578,12 +568,10 @@ namespace RandomDock {
   }
 
   void TabProgress::resetFailureCountProgress() {
-    //qDebug() << "TabProgress::resetFailureCountProgress() called";
     QtConcurrent::run(this, &TabProgress::resetFailureCountProgress_);
   }
 
   void TabProgress::resetFailureCountProgress_() {
-    //qDebug() << "TabProgress::resetFailureCountProgress_() called";
     if (!m_context_scene) return;
     QWriteLocker locker (m_context_scene->lock());
 
@@ -598,12 +586,10 @@ namespace RandomDock {
   }
 
   void TabProgress::randomizeStructureProgress() {
-    //qDebug() << "TabProgress::randomizeStructureProgress() called";
     QtConcurrent::run(this, &TabProgress::randomizeStructureProgress_);
   }
 
   void TabProgress::randomizeStructureProgress_() {
-    //qDebug() << "TabProgress::randomizeStructureProgress_() called";
     if (!m_context_scene) return;
 
     // End job if currently running

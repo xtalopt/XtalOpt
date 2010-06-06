@@ -73,7 +73,6 @@ namespace RandomDock {
 
   TabParams::~TabParams()
   {
-    qDebug() << "TabParams::~TabParams() called";
     writeSettings();
   }
 
@@ -128,8 +127,6 @@ namespace RandomDock {
   }
 
   void TabParams::updateOptimizationInfo() {
-    qDebug() << "TabParams::updateOptimizationInfo( ) called";
-
     // Logic first!
     if (ui.spin_IAD_min->value() > ui.spin_IAD_max->value())
       ui.spin_IAD_max->setValue(ui.spin_IAD_min->value());
@@ -180,7 +177,6 @@ namespace RandomDock {
       ui.spin_radius_max->blockSignals(false);
       ui.spin_radius_min->update();
       ui.spin_radius_max->update();
-      qDebug() << "Done!";
     }
     m_opt->radius_min	= ui.spin_radius_min->value();
     m_opt->radius_max	= ui.spin_radius_max->value();
@@ -188,7 +184,6 @@ namespace RandomDock {
   }
 
   void TabParams::stopSubmission() {
-    qDebug() << "TabParams::stopSubmission() called";
     ui.spin_numSearches->setValue(0);
   }
 

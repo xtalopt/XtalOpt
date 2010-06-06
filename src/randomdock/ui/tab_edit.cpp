@@ -191,7 +191,6 @@ namespace RandomDock {
   void TabEdit::templateChanged(int ind) {
     ui.edit_edit->setCurrentFont(QFont("Courier"));
     if (ind < 0) {
-      qDebug() << "TabEdit::templateChanged: Not changing template to a negative index.";
       return;
     }
 

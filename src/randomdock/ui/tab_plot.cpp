@@ -108,7 +108,6 @@ namespace RandomDock {
 
   TabPlot::~TabPlot()
   {
-    //qDebug() << "TabPlot::~TabPlot() called";
     delete m_plot_mutex;
     // m_plotObject is deleted by the PlotWidget
   }
@@ -143,7 +142,6 @@ namespace RandomDock {
   }
 
   void TabPlot::updateGUI() {
-    //qDebug() << "TabPlot::updateGUI() called";
     switch (ui.combo_plotType->currentIndex()) {
     case Trend_PT:
     default:
@@ -158,7 +156,6 @@ namespace RandomDock {
   }
 
   void TabPlot::disconnectGUI() {
-    //qDebug() << "TabPlot::disconnectGUI() called";
     ui.push_refresh->disconnect();
     ui.combo_xAxis->disconnect();
     ui.combo_yAxis->disconnect();
@@ -174,9 +171,8 @@ namespace RandomDock {
     disconnect(m_opt, 0, this, 0);
   }
 
-  void TabPlot::lockGUI() {
-    //qDebug() << "TabPlot::lockGUI() called";
-    // Nothing to do!
+  void TabPlot::lockGUI()
+  {
   }
 
   void TabPlot::lockClearAndSelectPoint(PlotPoint *pp) {
@@ -186,8 +182,6 @@ namespace RandomDock {
   }
 
   void TabPlot::refreshPlot() {
-    //qDebug() << "TabPlot::refreshPlot() called";
-
     // Reset connections
     ui.plot_plot->disconnect(this);
 
@@ -486,14 +480,12 @@ namespace RandomDock {
   }
 
   void TabPlot::selectStructureFromPlot(PlotPoint *pp) {
-    //qDebug() << "TabPlot::selectMoleculeFromPlot( " << pp << " ) called";
     if (!pp) return;
     int index = pp->customData().toInt();
     selectStructureFromIndex(index);
   }
 
   void TabPlot::selectStructureFromIndex(int index) {
-    //qDebug() << "TabPlot::selectMoleculeFromIndex( " << index << " ) called";
     if (index < 0 || index > m_opt->tracker()->size() - 1) {
       index = 0;
     }

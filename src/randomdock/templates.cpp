@@ -35,8 +35,6 @@ using namespace std;
 namespace Avogadro {
 
   void Templates::showHelp() {
-    qDebug() << "Templates::showHelp() called";
-
     QString str;
     QTextStream out (&str);
     out 
@@ -52,8 +50,6 @@ namespace Avogadro {
   }
 
   QString Templates::interpretTemplate(const QString & str, Scene *scene) {
-    qDebug() << "Templates::interpretTemplate( " << "<string omitted>" << ", " << scene << " ) called";
-
     QStringList list = str.split("%");
     QString line;
     QString rep;

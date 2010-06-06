@@ -51,7 +51,6 @@ namespace RandomDock {
   }
 
   void Matrix::sortConformers() {
-    qDebug() << "Matrix::sortConformers( ) called";
     std::vector<Eigen::Vector3d> tmp;
     double tmp_e;
 
@@ -136,7 +135,6 @@ namespace RandomDock {
   }
     
   int Matrix::getRandomConformerIndex() {
-    qDebug() << "Matrix::getRandomConformer( ) called";
     // Random number generator
     OpenBabel::OBRandom rand (true); 	// "true" uses system random numbers. OB's version isn't too good...
     rand.TimeSeed();

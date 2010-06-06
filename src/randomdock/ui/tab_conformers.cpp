@@ -77,7 +77,6 @@ namespace RandomDock {
 
   TabConformers::~TabConformers()
   {
-    qDebug() << "TabConformers::~TabConformers() called";
     writeSettings();
   }
 
@@ -122,9 +121,7 @@ namespace RandomDock {
   }
 
   void TabConformers::updateStructureList() {
-    qDebug() << "TabConformers::updateStructureList() called";
     ui.combo_mol->clear();
-    qDebug() << "substrate: " << m_opt->substrate;
     if (m_opt->substrate)
       ui.combo_mol->addItem("Substrate");
     for (int i = 0; i < m_opt->matrixList.size(); i++) {
@@ -234,7 +231,6 @@ namespace RandomDock {
   }
 
   void TabConformers::selectStructure(const QString & text) {
-    qDebug() << "TabConformers::selectStructure( " << text << " ) called";
     Structure* mol = currentStructure();
     if (mol) {
       emit moleculeChanged(mol);
@@ -244,8 +240,6 @@ namespace RandomDock {
   }
 
   void TabConformers::updateConformerTable() {
-    qDebug() << "TabConformers::updateConformerTable() called";
-
     Structure *mol = currentStructure();
 
     // Generate probability lists:
@@ -275,7 +269,6 @@ namespace RandomDock {
   }
 
   void TabConformers::conformerChanged(int row, int, int oldrow, int) {
-    qDebug() << "TabConformers::conformerChanged( " << row << ", " << oldrow << " ) called";
     if (row == oldrow)	return;
     if (row == -1)	{emit moleculeChanged(new Structure); return;}
     Structure *mol = currentStructure();
@@ -284,7 +277,6 @@ namespace RandomDock {
   }
 
   Structure* TabConformers::currentStructure() {
-    qDebug() << "TabConformers::currentStructure() called";
     Structure *mol;
     QString text = ui.combo_mol->currentText();
     if (text == "Substrate")
@@ -301,8 +293,6 @@ namespace RandomDock {
   }
 
   void TabConformers::calculateNumberOfConformers(bool isSystematic) {
-    qDebug() << "TabConformers::calculateNumberOfConformers( " << isSystematic << " ) called";
-
     // If we don't want a systematic search, let the user pick the number of conformers
     if (!isSystematic) return;
 
@@ -318,7 +308,6 @@ namespace RandomDock {
 
     Structure* mol = currentStructure();
     OpenBabel::OBMol obmol = mol->OBMol();
-    qDebug() << obmol.NumAtoms();
     if (!ff) {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Problem setting up forcefield '%1'.")
