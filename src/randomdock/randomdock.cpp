@@ -125,6 +125,7 @@ namespace RandomDock {
     Bond *oldbond;
     Matrix *mat;
     Scene *scene = new Scene;
+    QWriteLocker sceneLocker (scene->lock());
     QHash<ulong, ulong> idMap; // Old id, new id
     QList<Atom*> atomList;
     QList<Eigen::Vector3d> positions;
@@ -133,7 +134,8 @@ namespace RandomDock {
     rand.TimeSeed();
 
     // Select random conformer of substrate
-    substrate->lock()->lockForWrite();
+    substrate->lock()->lockForWrite(); // Write lock prevents
+                                       // conformer from changing
     int conformer = substrate->getRandomConformerIndex();
     substrate->setConformer(conformer);
 
@@ -195,7 +197,8 @@ namespace RandomDock {
       positions.clear();
       idMap.clear();
 
-      mat->lock()->lockForWrite();
+      mat->lock()->lockForWrite(); // Write lock prevents conformer
+                                   // from changing
       conformer = mat->getRandomConformerIndex();
       mat->setConformer(conformer);
 
@@ -445,16 +448,30 @@ namespace RandomDock {
       rscenes.append(scenes->at(i));
 
     // Simple selection sort
+    Scene *scene_i, scene_j, tmp;
     for (uint i = 0; i < numStructs; i++) {
+      scene_i = rscenes.at(i);
+      scene_i->lock()->lockForRead();
       for (uint j = i + 1; j < numStructs; j++) {
-        if (rscenes.at(j)->getEnergy() < rscenes.at(i)->getEnergy()) {
+        scene_j = rscenes.at(j);
+        scene_j->lock()->lockForRead();
+        if (scene_j->getEnergy() < scenes_i->getEnergy()) {
           rscenes.swap(i,j);
+          tmp = scene_i;
+          scene_i = scene_j;
+          scene_j = tmp;
         }
+        scene_i->lock()->unlock();
       }
+      scene_j->lock()->unlock();
     }
 
-    for (uint i = 0; i < numStructs; i++)
-      rscenes.at(i)->setRank(i+1);
+    for (uint i = 0; i < numStructs; i++) {
+      scene_i = rscenes.at(i);
+      scene_i->lock()->lockForWrite();
+      scene_i->setRank(i+1);
+      scene_i->lock()->unlock();
+    }
   }
 
   void RandomDock::centerCoordinatesAtOrigin(QList<Eigen::Vector3d> & coords) {
