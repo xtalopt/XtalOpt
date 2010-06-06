@@ -77,7 +77,11 @@ namespace RandomDock {
   }
 
   void Matrix::generateProbabilities() {
-    qDebug() << "Matrix::generateProbabilities( ) called";
+    if (numConformers() == 1) {
+      m_probs.clear();
+      m_probs.append(1.0);
+      return;
+    }
 
     sortConformers();
     m_probs.clear();
