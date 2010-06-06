@@ -65,8 +65,6 @@ namespace RandomDock {
     // tab connections
     connect(ui.push_generate, SIGNAL(clicked()),
             this, SLOT(generateConformers()));
-    connect(ui.push_refresh, SIGNAL(clicked()),
-            this, SLOT(updateStructureList()));
     connect(ui.combo_mol, SIGNAL(currentIndexChanged(QString)),
             this, SLOT(selectStructure(QString)));
     connect(ui.table_conformers, SIGNAL(currentCellChanged(int, int, int, int)),
@@ -117,7 +115,6 @@ namespace RandomDock {
 
   void TabConformers::lockGUI()
   {
-    ui.push_refresh->setDisabled(true);
     ui.push_generate->setDisabled(true);
     ui.combo_opt->setDisabled(true);
     ui.spin_nConformers->setDisabled(true);

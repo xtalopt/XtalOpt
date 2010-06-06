@@ -106,6 +106,15 @@ namespace RandomDock {
     connect(this, SIGNAL(sig_errorBox(const QString &)),
             this, SLOT(errorBox_(const QString &)));
 
+    // Cross-tab connections
+    // Update structure in conformer tab when sub/mat change
+    connect(m_tab_init, SIGNAL(substrateChanged(Substrate*)),
+            m_tab_conformers, SLOT(updateStructureList()));
+    connect(m_tab_init, SIGNAL(matrixAdded(Matrix*)),
+            m_tab_conformers, SLOT(updateStructureList()));
+    connect(m_tab_init, SIGNAL(matrixRemoved()),
+            m_tab_conformers, SLOT(updateStructureList()));
+
     readSettings();
   }
 

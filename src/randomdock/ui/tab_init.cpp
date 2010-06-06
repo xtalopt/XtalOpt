@@ -26,6 +26,7 @@
 
 #include <QSettings>
 #include <QFileDialog>
+#include <QMessageBox>
 
 using namespace std;
 using namespace Avogadro;
@@ -67,8 +68,6 @@ namespace RandomDock {
             this, SLOT(matrixCurrent()));
     connect(ui.table_matrix, SIGNAL(itemChanged(QTableWidgetItem*)),
             this, SLOT(updateParams()));
-    connect(ui.push_readFiles, SIGNAL(clicked()),
-            this, SLOT(readFiles()));
   }
 
   TabInit::~TabInit()
@@ -110,7 +109,6 @@ namespace RandomDock {
     ui.push_matrixAdd->setDisabled(true);
     ui.push_matrixCurrent->setDisabled(true);
     ui.push_matrixRemove->setDisabled(true);
-    ui.push_readFiles->setDisabled(true);
     ui.table_matrix->setDisabled(true);
   }
 
@@ -127,15 +125,54 @@ namespace RandomDock {
   }
 
   void TabInit::substrateBrowse() {
-    qDebug() << "TabInit::substrateBrowse() called";
+    // Initialize with previously selected substrate
     QSettings settings;
     QString path = settings.value("randomdock/paths/substrateBrowse", "").toString();
-    QString fileName = QFileDialog::getOpenFileName(m_dialog, 
-                                                    tr("Select molecule file to use for the substrate"),
-                                                    path,
-                                                    tr("All files (*)"));
-    settings.setValue("randomdock/paths/substrateBrowse", fileName);
-    ui.edit_substrateFile->setText(fileName);
+    QString filename;
+
+    // Prompt for file
+    bool selectionOk = false;
+    Molecule *mol;
+    while (!selectionOk) {
+      filename = QFileDialog::getOpenFileName(m_dialog,
+                                              tr("Select molecule file to use for the substrate"),
+                                              path,
+                                              tr("All files (*)"));
+
+      // User cancels
+      if (filename.isNull()) {
+        return;
+      }
+
+      // Read file
+      QApplication::setOverrideCursor( Qt::WaitCursor );
+      mol = MoleculeFile::readMolecule(filename);
+      // Check that molecule loaded successfully
+      if (!mol) {
+        // Pop-up error
+        QApplication::restoreOverrideCursor();
+        QMessageBox::warning(m_dialog,
+                             tr("Error loading substrate"),
+                             tr("Cannot load file %1 for substrate. Check that it contains valid molecule information.")
+                             .arg(filename));
+        continue;
+      }
+      else { // molecule loaded successfully
+        selectionOk = true;
+      }
+    }
+    // Read ok
+    // Delete old substrate if needed
+    if (m_opt->substrate) {
+      delete m_opt->substrate;
+      m_opt->substrate = 0;
+    }
+    m_opt->substrate = new Substrate (mol);
+    delete mol;
+    ui.edit_substrateFile->setText(filename);
+    QApplication::restoreOverrideCursor();
+    settings.setValue("randomdock/paths/substrateBrowse", filename);
+    emit substrateChanged(m_opt->substrate);
   }
 
   void TabInit::substrateCurrent() {
@@ -143,83 +180,76 @@ namespace RandomDock {
   }
 
   void TabInit::matrixAdd() {
-    qDebug() << "TabInit::matrixAdd() called";
+    // Initialize filename from settings object
     QSettings settings;
     QString path = settings.value("randomdock/paths/matrixBrowse", "").toString();
-    QString fileName = QFileDialog::getOpenFileName(m_dialog, 
-                                                    tr("Select molecule file to add as a matrix element"),
-                                                    path,
-                                                    tr("All files (*)"));
-    settings.setValue("randomdock/paths/matrixBrowse", fileName);
+    QString filename;
+
+    // Prompt for file
+    bool selectionOk = false;
+    Molecule *mol;
+    while (!selectionOk) {
+      filename = QFileDialog::getOpenFileName(m_dialog,
+                                                      tr("Select molecule file to add as a matrix element"),
+                                                      path,
+                                                      tr("All files (*)"));
+
+      // User cancels
+      if (filename.isNull()) {
+        return;
+      }
+
+      // Read file
+      QApplication::setOverrideCursor( Qt::WaitCursor );
+      mol = MoleculeFile::readMolecule(filename);
+      // Check that molecule loaded successfully
+      if (!mol) {
+        // Pop-up error
+        QApplication::restoreOverrideCursor();
+        QMessageBox::warning(m_dialog,
+                             tr("Error loading matrix"),
+                             tr("Cannot load file %1 as a matrix element. Check that it contains valid molecule information.")
+                             .arg(filename));
+        continue;
+      }
+      else { // molecule loaded successfully
+        selectionOk = true;
+      }
+    }
+    // Read ok
+    Matrix *mat = new Matrix (mol);
+    m_opt->matrixList.append(mat);
+    m_opt->matrixFiles.append(filename);
+    delete mol;
+    QApplication::restoreOverrideCursor();
+    settings.setValue("randomdock/paths/matrixBrowse", filename);
 
     int row = ui.table_matrix->rowCount();
     ui.table_matrix->insertRow(row);
-    // Block signals for all but the last addition -- this keeps
-    // updateParams() from crashing by not reading null items.
+
     ui.table_matrix->blockSignals(true);
     ui.table_matrix->setItem(row, Num, new QTableWidgetItem(QString::number(row+1)));
-    ui.table_matrix->setItem(row, Filename, new QTableWidgetItem(fileName));
-    ui.table_matrix->blockSignals(false);
+    ui.table_matrix->setItem(row, Filename, new QTableWidgetItem(filename));
     ui.table_matrix->setItem(row, Stoich, new QTableWidgetItem(QString::number(1)));
+    ui.table_matrix->blockSignals(false);
+    updateParams();
+    emit matrixAdded(mat);
   }
 
   void TabInit::matrixRemove() {
     qDebug() << "TabInit::matrixRemove() called";
-    ui.table_matrix->removeRow(ui.table_matrix->currentRow());
+    int row = ui.table_matrix->currentRow();
+    ui.table_matrix->removeRow(row);
+    m_opt->matrixFiles.removeAt(row);
+    Matrix *mat = m_opt->matrixList.at(row);
+    m_opt->matrixList.removeAt(row);
+    delete mat;
     updateParams();
+    emit matrixRemoved();
   }
 
   void TabInit::matrixCurrent() {
     qDebug() << "TabInit::matrixCurrent() called";
-  }
-
-  void TabInit::readFiles() {
-    qDebug() << "TabInit::readFiles() called";
-
-    QApplication::setOverrideCursor( Qt::WaitCursor );
-    Molecule *mol;
-
-    // Substrate
-    if (m_opt->substrate) {
-      m_opt->substrate = 0;
-    }
-    qDebug() << m_opt->substrateFile;
-    if (!m_opt->substrateFile.isEmpty()) {
-      mol = MoleculeFile::readMolecule(m_opt->substrateFile);
-      // Check that molecule loaded successfully
-      if (!mol) {
-        // Pop-up error
-        m_opt->error(tr("Cannot load file %1 for substrate. Check that it contains valid molecule information.")
-                     .arg(m_opt->substrateFile));
-        QApplication::restoreOverrideCursor();
-        return;
-      }
-      m_opt->substrate = new Substrate (mol);
-      qDebug() << "Updated substrate: " << m_opt->substrate << " #atoms= " << m_opt->substrate->numAtoms();
-    }
-
-    // Matrix
-    m_opt->matrixList.clear();
-    for (int i = 0; i < m_opt->matrixFiles.size(); i++) {
-      qDebug() << m_opt->matrixFiles.at(i);
-      mol = MoleculeFile::readMolecule(m_opt->matrixFiles.at(i));
-      // Check that molecule loaded successfully
-      if (!mol) {
-        // Pop-up error
-        m_opt->error(tr("Cannot load file %1 for a matrix. Check that it contains valid molecule information.")
-                     .arg(m_opt->matrixFiles.at(i)));
-        // Cleanup
-        delete m_opt->substrate;
-        m_opt->substrate = 0;
-        qDeleteAll(m_opt->matrixList);
-        m_opt->matrixList.clear();
-        QApplication::restoreOverrideCursor();
-        return;
-      }
-      m_opt->matrixList.append(new Matrix (mol));
-      qDebug() << "Matrix added:" << m_opt->matrixList.at(i);
-    }
-    QApplication::restoreOverrideCursor();
   }
 
 }

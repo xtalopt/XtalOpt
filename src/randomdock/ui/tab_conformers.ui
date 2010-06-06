@@ -40,20 +40,7 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="5">
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>40</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item row="2" column="0" colspan="10">
+   <item row="2" column="0" colspan="9">
     <widget class="QTableWidget" name="table_conformers">
      <property name="selectionMode">
       <enum>QAbstractItemView::SingleSelection</enum>
@@ -76,20 +63,6 @@
        <string>Probability</string>
       </property>
      </column>
-    </widget>
-   </item>
-   <item row="0" column="4">
-    <widget class="QPushButton" name="push_generate">
-     <property name="text">
-      <string>&amp;Generate conformers</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="2" colspan="2">
-    <widget class="QPushButton" name="push_refresh">
-     <property name="text">
-      <string>&amp;Refresh Molecule List</string>
-     </property>
     </widget>
    </item>
    <item row="1" column="0">
@@ -161,6 +134,13 @@
     <widget class="QCheckBox" name="cb_allConformers">
      <property name="text">
       <string>&amp;All</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QPushButton" name="push_generate">
+     <property name="text">
+      <string>&amp;Generate conformers</string>
      </property>
     </widget>
    </item>
