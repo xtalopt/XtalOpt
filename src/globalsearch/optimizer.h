@@ -19,7 +19,7 @@
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 
-#include "optbase.h"
+#include <globalsearch/optbase.h>
 
 #include <QHash>
 #include <QObject>

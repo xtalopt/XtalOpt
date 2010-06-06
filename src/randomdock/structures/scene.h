@@ -19,7 +19,7 @@
 #ifndef SCENEMOL_H
 #define SCENEMOL_H
 
-#include "../../generic/structure.h"
+#include <globalsearch/structure.h>
 
 #include <QDebug>
 

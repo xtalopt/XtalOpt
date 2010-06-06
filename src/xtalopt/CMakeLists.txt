@@ -4,6 +4,7 @@ set( xtalopt_SRCS
      extension.cpp
      xtalopt.cpp
      genetic.cpp
+     structures/xtal.cpp
      optimizers/xtaloptoptimizer.cpp
      optimizers/vasp.cpp
      optimizers/gulp.cpp

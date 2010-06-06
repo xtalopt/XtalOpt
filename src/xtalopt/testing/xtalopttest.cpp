@@ -18,7 +18,7 @@
 
 #include "xtalopttest.h"
 
-#include "../xtalopt.h"
+#include <xtalopt/xtalopt.h>
 
 #include <QDebug>
 #include <QInputDialog>

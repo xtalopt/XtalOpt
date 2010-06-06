@@ -19,7 +19,7 @@
 #ifndef XTALOPTOPTIMIZER_H
 #define XTALOPTOPTIMIZER_H
 
-#include "../../generic/optimizer.h"
+#include <globalsearch/optimizer.h>
 
 #include <QObject>
 

@@ -19,7 +19,7 @@
 #ifndef GULPOPTIMIZER_H
 #define GULPOPTIMIZER_H
 
-#include "xtaloptoptimizer.h"
+#include <xtalopt/optimizers/xtaloptoptimizer.h>
 
 #include <QObject>
 

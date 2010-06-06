@@ -16,10 +16,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "extension.h"
+#include <xtalopt/extension.h>
 
-#include "ui/dialog.h"
-#include "../generic/xtal.h"
+#include <xtalopt/structures/xtal.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <avogadro/primitive.h>
 #include <avogadro/molecule.h>

@@ -16,8 +16,8 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "gulp.h"
-#include "../../generic/xtal.h"
+#include <xtalopt/optimizers/gulp.h>
+#include <xtalopt/structures/xtal.h>
 
 #include <QProcess>
 #include <QDir>

@@ -14,14 +14,14 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_edit.h"
+#include <xtalopt/ui/tab_edit.h>
 
-#include "dialog.h"
-#include "../xtalopt.h"
-#include "../optimizers/vasp.h"
-#include "../optimizers/gulp.h"
-#include "../optimizers/pwscf.h"
-#include "../../generic/macros.h"
+#include <globalsearch/macros.h>
+#include <xtalopt/ui/dialog.h>
+#include <xtalopt/xtalopt.h>
+#include <xtalopt/optimizers/vasp.h>
+#include <xtalopt/optimizers/gulp.h>
+#include <xtalopt/optimizers/pwscf.h>
 
 #include <QFont>
 #include <QSettings>

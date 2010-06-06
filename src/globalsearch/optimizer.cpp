@@ -16,10 +16,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "optimizer.h"
-#include "macros.h"
-#include "optbase.h"
-#include "queuemanager.h"
+#include <globalsearch/optimizer.h>
+#include <globalsearch/macros.h>
+#include <globalsearch/optbase.h>
+#include <globalsearch/queuemanager.h>
 
 #include <QDir>
 #include <QDebug>

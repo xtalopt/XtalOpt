@@ -14,14 +14,15 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_progress.h"
+#include <randomdock/ui/tab_progress.h>
 
-#include "dialog.h"
-#include "../randomdock.h"
-#include "../structures/scene.h"
-#include "../../generic/optimizer.h"
-#include "../../generic/queuemanager.h"
-#include "../../generic/macros.h"
+#include <randomdock/ui/dialog.h>
+#include <randomdock/randomdock.h>
+#include <randomdock/structures/scene.h>
+
+#include <globalsearch/optimizer.h>
+#include <globalsearch/queuemanager.h>
+#include <globalsearch/macros.h>
 
 #include <QMenu>
 #include <QTimer>

@@ -19,7 +19,7 @@
 #ifndef XTAL_H
 #define XTAL_H
 
-#include "../generic/structure.h"
+#include <globalsearch/structure.h>
 
 #include <QDebug>
 #include <QDateTime>

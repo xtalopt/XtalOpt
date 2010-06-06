@@ -10,7 +10,8 @@ find_package(Avogadro REQUIRED)
 
 include(${Avogadro_USE_FILE})
 include_directories( ${CMAKE_CURRENT_BINARY_DIR}
-		     ${OPENBABEL2_INCLUDE_DIR})
+		     ${OPENBABEL2_INCLUDE_DIR}
+		     ${XtalOpt_SOURCE_DIR}/src/)
 
 link_directories(${OPENBABEL2_LIBRARIES_DIRS})
 

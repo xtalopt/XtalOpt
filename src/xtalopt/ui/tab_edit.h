@@ -21,7 +21,8 @@
 #define TAB_EDIT_H
 
 #include "ui_tab_edit.h"
-#include "../xtalopt.h"
+
+#include <xtalopt/xtalopt.h>
 
 #include <QMessageBox>
 

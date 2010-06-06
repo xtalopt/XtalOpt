@@ -14,10 +14,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_sys.h"
+#include <xtalopt/ui/tab_sys.h>
 
-#include "../xtalopt.h"
-#include "dialog.h"
+#include <xtalopt/xtalopt.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <QSettings>
 

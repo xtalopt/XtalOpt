@@ -20,7 +20,7 @@
 #ifndef MATRIXMOL_H
 #define MATRIXMOL_H
 
-#include "../../generic/structure.h"
+#include <globalsearch/structure.h>
 
 #include <QDateTime>
 #include <QTextStream>

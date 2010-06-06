@@ -16,19 +16,20 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "xtalopt.h"
+#include <xtalopt/xtalopt.h>
 
-#include "../generic/optbase.h"
-#include "../generic/xtal.h"
-#include "../generic/optimizer.h"
-#include "optimizers/vasp.h"
-#include "optimizers/gulp.h"
-#include "optimizers/pwscf.h"
-#include "ui/dialog.h"
-#include "../generic/queuemanager.h"
-#include "../generic/macros.h"
-#include "genetic.h"
-#include "../generic/bt.h"
+#include <xtalopt/structures/xtal.h>
+#include <xtalopt/optimizers/vasp.h>
+#include <xtalopt/optimizers/gulp.h>
+#include <xtalopt/optimizers/pwscf.h>
+#include <xtalopt/ui/dialog.h>
+#include <xtalopt/genetic.h>
+
+#include <globalsearch/optbase.h>
+#include <globalsearch/optimizer.h>
+#include <globalsearch/queuemanager.h>
+#include <globalsearch/macros.h>
+#include <globalsearch/bt.h>
 
 #include <openbabel/rand.h>
 

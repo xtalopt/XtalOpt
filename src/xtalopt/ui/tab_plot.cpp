@@ -14,10 +14,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_plot.h"
+#include <xtalopt/ui/tab_plot.h>
 
-#include "../xtalopt.h"
-#include "dialog.h"
+#include <xtalopt/xtalopt.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <avogadro/glwidget.h>
 #include <avogadro/primitive.h>

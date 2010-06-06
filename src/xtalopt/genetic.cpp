@@ -16,10 +16,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "genetic.h"
+#include <xtalopt/genetic.h>
 
-#include "../generic/xtal.h"
-#include "ui/dialog.h"
+#include <xtalopt/structures/xtal.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <openbabel/rand.h>
 #include <openbabel/obiter.h>

@@ -20,7 +20,7 @@
 #ifndef RANDOMDOCK_H
 #define RANDOMDOCK_H
 
-#include "../generic/optbase.h"
+#include <globalsearch/optbase.h>
 
 #include <Eigen/Geometry>
 

@@ -14,9 +14,9 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_init.h"
+#include <xtalopt/ui/tab_init.h>
 
-#include "../xtalopt.h"
+#include <xtalopt/xtalopt.h>
 
 #include <QSettings>
 

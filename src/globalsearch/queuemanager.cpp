@@ -16,11 +16,11 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "queuemanager.h"
+#include <globalsearch/queuemanager.h>
 
-#include "../generic/optbase.h"
-#include "structure.h"
-#include "optimizer.h"
+#include <globalsearch/optbase.h>
+#include <globalsearch/structure.h>
+#include <globalsearch/optimizer.h>
 
 #include <QDebug>
 #include <QtConcurrentRun>

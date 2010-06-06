@@ -14,12 +14,13 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_edit.h"
+#include <randomdock/ui/tab_edit.h>
 
-#include "dialog.h"
-#include "../randomdock.h"
-#include "../optimizers/gamess.h"
-#include "../../generic/macros.h"
+#include <randomdock/randomdock.h>
+#include <randomdock/ui/dialog.h>
+#include <randomdock/optimizers/gamess.h>
+
+#include <globalsearch/macros.h>
 
 #include <QFont>
 #include <QSettings>

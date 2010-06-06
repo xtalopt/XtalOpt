@@ -14,11 +14,11 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_progress.h"
+#include <xtalopt/ui/tab_progress.h>
 
-#include "dialog.h"
-#include "../../generic/optimizer.h"
-#include "../xtalopt.h"
+#include <globalsearch/optimizer.h>
+#include <xtalopt/xtalopt.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <QMenu>
 #include <QTimer>

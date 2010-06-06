@@ -16,7 +16,7 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "structure.h"
+#include <globalsearch/structure.h>
 
 #include <avogadro/primitive.h>
 #include <avogadro/molecule.h>

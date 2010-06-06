@@ -16,9 +16,9 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "xtaloptoptimizer.h"
-#include "../../generic/xtal.h"
-#include "../../generic/optbase.h"
+#include <xtalopt/optimizers/xtaloptoptimizer.h>
+#include <xtalopt/structures/xtal.h>
+#include <globalsearch/optbase.h>
 
 #include <QFile>
 

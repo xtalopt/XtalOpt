@@ -16,10 +16,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "extension.h"
+#include <randomdock/extension.h>
 
-#include "ui/dialog.h"
-#include "../generic/structure.h"
+#include <randomdock/ui/dialog.h>
+#include <globalsearch/structure.h>
 
 #include <avogadro/molecule.h>
 #include <avogadro/glwidget.h>

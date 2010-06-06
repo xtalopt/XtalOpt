@@ -17,9 +17,9 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "substrate.h"
+#include <randomdock/structures/substrate.h>
 
-#include "../../generic/structure.h"
+#include <globalsearch/structure.h>
 
 #include <openbabel/rand.h>
 #include <openbabel/mol.h>

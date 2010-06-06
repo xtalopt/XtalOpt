@@ -19,7 +19,7 @@
 #ifndef PWSCFOPTIMIZER_H
 #define PWSCFOPTIMIZER_H
 
-#include "xtaloptoptimizer.h"
+#include <xtalopt/optimizers/xtaloptoptimizer.h>
 
 #include <QObject>
 

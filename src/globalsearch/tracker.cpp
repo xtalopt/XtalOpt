@@ -16,8 +16,8 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tracker.h"
-#include "structure.h"
+#include <globalsearch/tracker.h>
+#include <globalsearch/structure.h>
 
 #include <QList>
 #include <QDebug>
