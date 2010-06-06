@@ -132,13 +132,13 @@ namespace RandomDock {
   void TabPlot::readSettings(const QString &filename) {
     SETTINGS(filename);
     settings->beginGroup("randomdock/plot/");
-    ui.combo_xAxis->setCurrentIndex( settings->value("x_label", Structure_T).toInt());
-    ui.combo_yAxis->setCurrentIndex( settings->value("y_label", Energy_T).toInt());
-    ui.cb_showDuplicates->setChecked( settings->value("showDuplicates", false).toBool());
-    ui.cb_showIncompletes->setChecked( settings->value("showIncompletes", false).toBool());
-    ui.cb_labelPoints->setChecked( settings->value("labelPoints", false).toBool());
-    ui.combo_labelType->setCurrentIndex( settings->value("labelType", Energy_L).toInt());
-    ui.combo_plotType->setCurrentIndex( settings->value("plotType", Trend_PT).toInt());
+    ui.combo_xAxis->setCurrentIndex(	settings->value("x_label", 		Structure_T).toInt());
+    ui.combo_yAxis->setCurrentIndex(	settings->value("y_label", 		Energy_T).toInt());
+    ui.cb_showDuplicates->setChecked(	settings->value("showDuplicates",       false).toBool());
+    ui.cb_showIncompletes->setChecked(	settings->value("showIncompletes",	false).toBool());
+    ui.cb_labelPoints->setChecked(	settings->value("labelPoints",		false).toBool());
+    ui.combo_labelType->setCurrentIndex(settings->value("labelType",		Energy_L).toInt());
+    ui.combo_plotType->setCurrentIndex(	settings->value("plotType",		Trend_PT).toInt());
     settings->endGroup();
   }
 

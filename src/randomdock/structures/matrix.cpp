@@ -47,10 +47,12 @@ namespace RandomDock {
     generateProbabilities();    
   }
 
-  Matrix::~Matrix() {
+  Matrix::~Matrix()
+  {
   }
 
-  void Matrix::sortConformers() {
+  void Matrix::sortConformers()
+  {
     std::vector<Eigen::Vector3d> tmp;
     double tmp_e;
 
@@ -75,7 +77,8 @@ namespace RandomDock {
     }
   }
 
-  void Matrix::generateProbabilities() {
+  void Matrix::generateProbabilities()
+  {
     if (numConformers() == 1) {
       m_probs.clear();
       m_probs.append(1.0);
@@ -134,9 +137,10 @@ namespace RandomDock {
     // percents will hold the percent probabilities
   }
     
-  int Matrix::getRandomConformerIndex() {
+  int Matrix::getRandomConformerIndex()
+  {
     // Random number generator
-    OpenBabel::OBRandom rand (true); 	// "true" uses system random numbers. OB's version isn't too good...
+    OpenBabel::OBRandom rand (true);
     rand.TimeSeed();
 
     // Select conformer to use:

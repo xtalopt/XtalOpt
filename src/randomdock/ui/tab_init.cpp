@@ -188,9 +188,9 @@ namespace RandomDock {
     Molecule *mol;
     while (!selectionOk) {
       filename = QFileDialog::getOpenFileName(m_dialog,
-                                                      tr("Select molecule file to add as a matrix element"),
-                                                      path,
-                                                      tr("All files (*)"));
+                                              tr("Select molecule file to add as a matrix element"),
+                                              path,
+                                              tr("All files (*)"));
 
       // User cancels
       if (filename.isNull()) {

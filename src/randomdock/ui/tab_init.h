@@ -36,7 +36,11 @@ namespace RandomDock {
     explicit TabInit( RandomDockDialog *dialog, RandomDock *opt );
     virtual ~TabInit();
 
-    enum Columns	{ Num = 0, Stoich, Filename };
+    enum Columns {
+      Num = 0,
+      Stoich,
+      Filename
+    };
 
     QWidget *getTabWidget() {return m_tab_widget;};
 

@@ -124,12 +124,14 @@ namespace RandomDock {
     writeSettings();
   }
 
-  void RandomDockDialog::saveSession() {
+  void RandomDockDialog::saveSession()
+  {
     // TODO more to do here?
     m_opt->save();
   }
 
-  void RandomDockDialog::resumeSession() {
+  void RandomDockDialog::resumeSession()
+  {
     // TODO is this right still?
     QString filename;
     QFileDialog dialog (NULL, QString("Select .state file to resume"), m_opt->filePath, "*.state;;*.*");
@@ -157,7 +159,8 @@ namespace RandomDock {
     emit tabsReadSettings(filename);
   }
 
-  void RandomDockDialog::disconnectGUI() {
+  void RandomDockDialog::disconnectGUI()
+  {
     emit tabsDisconnectGUI();
     disconnect(m_opt, SIGNAL(sessionStarted()),
                this, SLOT(updateGUI()));
@@ -165,13 +168,15 @@ namespace RandomDock {
                this, SLOT(updateStatus_(int,int,int)));
   }
 
-  void RandomDockDialog::lockGUI() {
+  void RandomDockDialog::lockGUI()
+  {
     // ui.push_resume->setDisabled(true);
     ui.push_begin->setDisabled(true);
     emit tabsLockGUI();
   }
 
-  void RandomDockDialog::updateGUI() {
+  void RandomDockDialog::updateGUI()
+  {
     setWindowTitle(QString("RandomDock - %1 @ %2")
                    .arg(m_opt->description)
                    .arg(m_opt->host)
@@ -179,24 +184,29 @@ namespace RandomDock {
     emit tabsUpdateGUI();
   }
 
-  void RandomDockDialog::newDebug(const QString & s) {
+  void RandomDockDialog::newDebug(const QString & s)
+  {
     newLog("Debug: " + s);
   }
 
-  void RandomDockDialog::newWarning(const QString & s) {
+  void RandomDockDialog::newWarning(const QString & s)
+  {
     newLog("Warning: " + s);
   }
 
-  void RandomDockDialog::newError(const QString & s) {
+  void RandomDockDialog::newError(const QString & s)
+  {
     newLog("Error: " + s);
     errorBox(s);
   }
 
-  void RandomDockDialog::updateStatus(int opt, int run, int fail) {
+  void RandomDockDialog::updateStatus(int opt, int run, int fail)
+  {
     emit sig_updateStatus(opt,run,fail);
   }
 
-  void RandomDockDialog::updateStatus_(int opt, int run, int fail) {
+  void RandomDockDialog::updateStatus_(int opt, int run, int fail)
+  {
     ui.label_opt->setText(QString::number(opt));
     ui.label_run->setText(QString::number(run));
     ui.label_fail->setText(QString::number(fail));
@@ -207,11 +217,13 @@ namespace RandomDock {
     QtConcurrent::run(m_opt, &RandomDock::startOptimization);
   }
 
-  void RandomDockDialog::startProgressUpdate(const QString & text, int min, int max) {
+  void RandomDockDialog::startProgressUpdate(const QString & text, int min, int max)
+  {
     emit sig_startProgressUpdate(text,min,max);
   }
 
-  void RandomDockDialog::startProgressUpdate_(const QString & text, int min, int max) {
+  void RandomDockDialog::startProgressUpdate_(const QString & text, int min, int max)
+  {
     progMutex->lock();
     ui.progbar->reset();
     ui.progbar->setRange(min, max);
@@ -223,11 +235,13 @@ namespace RandomDock {
     progTimer->start(1000);
   }
 
-  void RandomDockDialog::stopProgressUpdate() {
+  void RandomDockDialog::stopProgressUpdate()
+  {
     emit sig_stopProgressUpdate();
   }
 
-  void RandomDockDialog::stopProgressUpdate_() {
+  void RandomDockDialog::stopProgressUpdate_()
+  {
     ui.progbar->reset();
     ui.label_prog->setText("");
     ui.progbar->setVisible(false);
@@ -237,56 +251,68 @@ namespace RandomDock {
     repaintProgressBar();
   }
 
-  void RandomDockDialog::updateProgressMaximum(int max) {
+  void RandomDockDialog::updateProgressMaximum(int max)
+  {
     emit sig_updateProgressMaximum(max);
   }
 
-  void RandomDockDialog::updateProgressMaximum_(int max) {
+  void RandomDockDialog::updateProgressMaximum_(int max)
+  {
     ui.progbar->setMaximum(max);
     repaintProgressBar();
   }
 
-  void RandomDockDialog::updateProgressMinimum(int min) {
+  void RandomDockDialog::updateProgressMinimum(int min)
+  {
     emit sig_updateProgressMinimum(min);
   }
 
-  void RandomDockDialog::updateProgressMinimum_(int min) {
+  void RandomDockDialog::updateProgressMinimum_(int min)
+  {
     ui.progbar->setMinimum(min);
     repaintProgressBar();
   }
 
-  void RandomDockDialog::updateProgressValue(int val) {
+  void RandomDockDialog::updateProgressValue(int val)
+  {
     emit sig_updateProgressValue(val);
   }
 
-  void RandomDockDialog::updateProgressValue_(int val) {
+  void RandomDockDialog::updateProgressValue_(int val)
+  {
     ui.progbar->setValue(val);
     repaintProgressBar();
   }
 
-  void RandomDockDialog::updateProgressLabel(const QString & text) {
+  void RandomDockDialog::updateProgressLabel(const QString & text)
+  {
     emit sig_updateProgressLabel(text);
   }
 
-  void RandomDockDialog::updateProgressLabel_(const QString & text) {
+  void RandomDockDialog::updateProgressLabel_(const QString & text)
+  {
     ui.label_prog->setText(text);
     repaintProgressBar();
   }
 
-  void RandomDockDialog::repaintProgressBar() {
+  void RandomDockDialog::repaintProgressBar()
+  {
     emit sig_repaintProgressBar();
   }
 
-  void RandomDockDialog::repaintProgressBar_() {
+  void RandomDockDialog::repaintProgressBar_()
+  {
     ui.label_prog->repaint();
     ui.progbar->repaint();
   }
 
-  void RandomDockDialog::errorBox(const QString & s) {
+  void RandomDockDialog::errorBox(const QString & s)
+  {
     emit sig_errorBox(s);
   }
 
-  void RandomDockDialog::errorBox_(const QString & s) {
+  void RandomDockDialog::errorBox_(const QString & s)
+  {
     QMessageBox::critical(this, "Error", s);
   }
 

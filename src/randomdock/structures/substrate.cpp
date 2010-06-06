@@ -47,10 +47,12 @@ namespace RandomDock {
     generateProbabilities();    
   }
 
-  Substrate::~Substrate() {
+  Substrate::~Substrate()
+  {
   }
 
-  void Substrate::sortConformers() {
+  void Substrate::sortConformers()
+  {
     std::vector<Eigen::Vector3d> tmp;
     double tmp_e;
 
@@ -75,7 +77,8 @@ namespace RandomDock {
     }
   }
 
-  void Substrate::generateProbabilities() {
+  void Substrate::generateProbabilities()
+  {
     if (numConformers() == 1) {
       m_probs.clear();
       m_probs.append(1.0);
@@ -134,7 +137,8 @@ namespace RandomDock {
     // percents will hold the percent probabilities
   }
     
-  int Substrate::getRandomConformerIndex() {
+  int Substrate::getRandomConformerIndex()
+  {
     // Random number generator
     OpenBabel::OBRandom rand (true); 	// "true" uses system random numbers. OB's version isn't too good...
     rand.TimeSeed();

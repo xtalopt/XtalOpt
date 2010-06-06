@@ -36,9 +36,10 @@ using namespace Avogadro;
 
 namespace RandomDock {
 
-  RandomDockExtension::RandomDockExtension(QObject *parent) : Extension(parent),
-                                                              m_dialog(0),
-                                                              m_molecule(NULL)
+  RandomDockExtension::RandomDockExtension(QObject *parent) :
+    Extension(parent),
+    m_dialog(0),
+    m_molecule(NULL)
   {
     QAction *action = new QAction( this );
     action->setSeparator(true);
