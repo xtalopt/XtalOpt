@@ -172,7 +172,7 @@ namespace RandomDock {
       return;
     }
 
-    QtConcurrent::run(m_opt->queue(), &Avogadro::QueueManager::checkPopulation);
+    QtConcurrent::run(m_opt->queue(), &GlobalSearch::QueueManager::checkPopulation);
 
     emit refresh();
     m_update_mutex->unlock();

@@ -25,11 +25,7 @@
 #include <QDebug>
 #include <QtConcurrentRun>
 
-using namespace std;
-using namespace OpenBabel;
-using namespace Eigen;
-
-namespace Avogadro {
+namespace GlobalSearch {
 
   QueueManager::QueueManager(OptBase *opt, Tracker *tracker) :
     QObject(opt),

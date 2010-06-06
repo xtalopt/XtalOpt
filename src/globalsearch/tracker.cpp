@@ -23,11 +23,12 @@
 #include <QDebug>
 #include <QReadWriteLock>
 
-using namespace std;
+using namespace Avogadro;
 using namespace OpenBabel;
 using namespace Eigen;
+using namespace std;
 
-namespace Avogadro {
+namespace GlobalSearch {
 
   Tracker::Tracker(QObject *parent) :
     QObject(parent)

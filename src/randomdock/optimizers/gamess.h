@@ -21,7 +21,7 @@
 
 #include <globalsearch/optimizer.h>
 
-using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
 

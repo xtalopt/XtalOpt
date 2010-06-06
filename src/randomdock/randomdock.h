@@ -28,11 +28,11 @@
 #include <QStringList>
 #include <QReadWriteLock>
 
-using namespace Avogadro;
-
-namespace Avogadro {
+namespace GlobalSearch {
   class Structure;
 }
+
+using namespace GlobalSearch;
 
 namespace RandomDock {
   class RandomDockDialog;

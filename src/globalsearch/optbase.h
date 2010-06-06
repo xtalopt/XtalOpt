@@ -22,7 +22,7 @@
 #include <QObject>
 #include <QMutex>
 
-namespace Avogadro {
+namespace GlobalSearch {
   class Structure;
   class Tracker;
   class Optimizer;

@@ -27,7 +27,7 @@
 #include <QDebug>
 #include <QReadWriteLock>
 
-namespace Avogadro {
+namespace GlobalSearch {
 
   class QueueManager : public QObject
   {

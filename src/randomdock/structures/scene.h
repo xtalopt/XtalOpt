@@ -23,7 +23,7 @@
 
 #include <QDebug>
 
-using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
   class Scene : public Structure

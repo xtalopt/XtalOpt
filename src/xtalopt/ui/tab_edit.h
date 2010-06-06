@@ -26,9 +26,14 @@
 
 #include <QMessageBox>
 
+namespace GlobalSearch {
+  class Optimizer;
+}
+
+using namespace GlobalSearch;
+
 namespace Avogadro {
   class XtalOptDialog;
-  class Optimizer;
 
   class TabEdit : public QObject
   {

@@ -25,7 +25,7 @@
 #include <QDateTime>
 #include <QTextStream>
 
-using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
 

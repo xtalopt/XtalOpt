@@ -25,7 +25,7 @@
 #include <QList>
 #include <QReadWriteLock>
 
-namespace Avogadro {
+namespace GlobalSearch {
 
   class Tracker : public QObject
   {

@@ -30,11 +30,10 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
-using namespace std;
 using namespace OpenBabel;
 using namespace Eigen;
 
-namespace Avogadro {
+namespace GlobalSearch {
 
   Optimizer::Optimizer(OptBase *parent, const QString &filename) :
     QObject(parent),

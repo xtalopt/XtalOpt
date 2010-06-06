@@ -26,11 +26,11 @@
 
 #include <QMessageBox>
 
-namespace Avogadro {
+namespace GlobalSearch {
   class Optimizer;
 }  
 
-using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
   class RandomDockDialog;

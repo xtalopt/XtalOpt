@@ -27,6 +27,8 @@
 class QTimer;
 class QMutex;
 
+using namespace GlobalSearch;
+
 namespace Avogadro {
   class XtalOptDialog;
   class XtalOpt;

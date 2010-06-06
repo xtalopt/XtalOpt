@@ -26,7 +26,7 @@
 #include <QVariant>
 #include <QStringList>
 
-namespace Avogadro {
+namespace GlobalSearch {
   class Structure;
   class OptBase;
 

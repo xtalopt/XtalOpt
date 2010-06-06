@@ -45,9 +45,8 @@
 
 #define ANGSTROM_TO_BOHR 1.889725989
 
-using namespace std;
+using namespace GlobalSearch;
 using namespace OpenBabel;
-using namespace Eigen;
 
 namespace Avogadro {
 

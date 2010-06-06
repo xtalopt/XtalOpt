@@ -22,16 +22,21 @@
 
 #include "ui_tab_conformers.h"
 
-namespace OpenBabel {
-  class OBForceField;
+namespace GlobalSearch {
+  class Structure;
 }
 
 namespace Avogadro {
   class Molecule;
-  class Structure;
 }
 
+namespace OpenBabel {
+  class OBForceField;
+}
+
+using namespace GlobalSearch;
 using namespace Avogadro;
+using namespace OpenBabel;
 
 namespace RandomDock {
   class RandomDockDialog;
@@ -71,7 +76,7 @@ namespace RandomDock {
   private:
     Ui::Tab_Conformers ui;
     QWidget *m_tab_widget;
-    OpenBabel::OBForceField *m_ff;
+    OBForceField *m_ff;
     RandomDockDialog *m_dialog;
     RandomDock *m_opt;
 

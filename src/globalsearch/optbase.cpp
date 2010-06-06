@@ -23,11 +23,9 @@
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/bt.h>
 
-using namespace std;
 using namespace OpenBabel;
-using namespace Eigen;
 
-namespace Avogadro {
+namespace GlobalSearch {
 
   OptBase::OptBase(QObject *parent) :
     QObject(parent)

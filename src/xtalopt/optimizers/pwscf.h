@@ -23,9 +23,13 @@
 
 #include <QObject>
 
-namespace Avogadro {
+namespace GlobalSearch {
   class OptBase;
+}
 
+using namespace GlobalSearch;
+
+namespace Avogadro {
   class PWscfOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT

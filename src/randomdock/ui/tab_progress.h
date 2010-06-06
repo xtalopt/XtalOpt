@@ -27,11 +27,11 @@
 class QTimer;
 class QMutex;
 
-namespace Avogadro {
+namespace GlobalSearch {
   class Structure;
 }
 
-using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
   class RandomDockDialog;

@@ -30,11 +30,10 @@
 #include <QRegExp>
 #include <QStringList>
 
-using namespace std;
 using namespace OpenBabel;
 using namespace Eigen;
 
-namespace Avogadro {
+namespace GlobalSearch {
 
   Structure::Structure(QObject *parent) :
     Molecule(parent),
