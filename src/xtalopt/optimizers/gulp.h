@@ -19,14 +19,19 @@
 #ifndef GULPOPTIMIZER_H
 #define GULPOPTIMIZER_H
 
-#include "xtaloptoptimizer.h"
+#include <xtalopt/optimizers/xtaloptoptimizer.h>
 
 #include <QObject>
 
-namespace Avogadro {
+namespace GlobalSearch {
   class Structure;
   class OptBase;
+  class Optimizer;
+}
 
+using namespace GlobalSearch;
+
+namespace XtalOpt {
   class GULPOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT

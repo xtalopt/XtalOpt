@@ -17,7 +17,7 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "scene.h"
+#include <randomdock/structures/scene.h>
 
 #include <QDebug>
 

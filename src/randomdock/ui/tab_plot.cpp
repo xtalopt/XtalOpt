@@ -14,13 +14,14 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_plot.h"
+#include <randomdock/ui/tab_plot.h>
 
-#include "dialog.h"
-#include "../randomdock.h"
-#include "../structures/scene.h"
-#include "../../generic/tracker.h"
-#include "../../generic/macros.h"
+#include <randomdock/ui/dialog.h>
+#include <randomdock/randomdock.h>
+#include <randomdock/structures/scene.h>
+
+#include <globalsearch/tracker.h>
+#include <globalsearch/macros.h>
 
 #include <avogadro/glwidget.h>
 #include <avogadro/primitive.h>

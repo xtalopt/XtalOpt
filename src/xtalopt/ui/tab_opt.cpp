@@ -14,11 +14,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_opt.h"
+#include <xtalopt/ui/tab_opt.h>
 
-#include "../xtalopt.h"
-
-#include "dialog.h"
+#include <xtalopt/xtalopt.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <QDebug>
 #include <QSettings>
@@ -27,7 +26,7 @@
 
 using namespace std;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   TabOpt::TabOpt( XtalOptDialog *parent, XtalOpt *p ) :
     QObject(parent), m_dialog(parent), m_opt(p)

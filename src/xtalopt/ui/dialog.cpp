@@ -14,18 +14,18 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "dialog.h"
+#include <xtalopt/ui/dialog.h>
 
-#include "../../generic/optimizer.h"
-#include "../testing/xtalopttest.h"
+#include <globalsearch/optimizer.h>
+#include <xtalopt/testing/xtalopttest.h>
 
-#include "tab_init.h"
-#include "tab_edit.h"
-#include "tab_opt.h"
-#include "tab_sys.h"
-#include "tab_progress.h"
-#include "tab_plot.h"
-#include "tab_log.h"
+#include <xtalopt/ui/tab_init.h>
+#include <xtalopt/ui/tab_edit.h>
+#include <xtalopt/ui/tab_opt.h>
+#include <xtalopt/ui/tab_sys.h>
+#include <xtalopt/ui/tab_progress.h>
+#include <xtalopt/ui/tab_plot.h>
+#include <xtalopt/ui/tab_log.h>
 
 #include <avogadro/glwidget.h>
 
@@ -39,7 +39,7 @@
 
 using namespace std;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   XtalOptDialog::XtalOptDialog( GLWidget *glWidget, QWidget *parent, Qt::WindowFlags f ) :
     QDialog( parent, f ), m_opt(0), m_glWidget(glWidget)

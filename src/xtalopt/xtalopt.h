@@ -19,19 +19,20 @@
 #ifndef XTALOPT_H
 #define XTALOPT_H
 
-#include "../generic/optbase.h"
-#include "../generic/xtal.h"
-#include "../generic/queuemanager.h"
-#include "../generic/tracker.h"
-#include "../generic/macros.h"
-#include "genetic.h"
+#include <xtalopt/structures/xtal.h>
+#include <xtalopt/genetic.h>
+
+#include <globalsearch/optbase.h>
+#include <globalsearch/queuemanager.h>
+#include <globalsearch/tracker.h>
+#include <globalsearch/macros.h>
 
 #include <QDebug>
 #include <QMutex>
 #include <QStringList>
 #include <QReadWriteLock>
 
-namespace Avogadro {
+namespace XtalOpt {
   class XtalOptDialog;
 
   class XtalOpt : public OptBase

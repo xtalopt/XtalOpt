@@ -25,13 +25,17 @@
 
 #include "ui_dialog.h"
 
+namespace GlobalSearch {
+  class Structure;
+}
+
 namespace Avogadro {
   class PlotObject;
   class Molecule;
-  class Structure;
   class GLWidget;
 }
 
+using namespace GlobalSearch;
 using namespace Avogadro;
 
 namespace RandomDock {

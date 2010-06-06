@@ -19,15 +19,15 @@
 #ifndef QUEUEMANAGER_H
 #define QUEUEMANAGER_H
 
-#include "optbase.h"
-#include "structure.h"
-#include "tracker.h"
-#include "optimizer.h"
+#include <globalsearch/optbase.h>
+#include <globalsearch/structure.h>
+#include <globalsearch/tracker.h>
+#include <globalsearch/optimizer.h>
 
 #include <QDebug>
 #include <QReadWriteLock>
 
-namespace Avogadro {
+namespace GlobalSearch {
 
   class QueueManager : public QObject
   {

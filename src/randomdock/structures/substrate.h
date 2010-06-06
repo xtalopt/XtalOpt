@@ -20,13 +20,13 @@
 #ifndef SUBSTRATEMOL_H
 #define SUBSTRATEMOL_H
 
-#include "../../generic/structure.h"
+#include <globalsearch/structure.h>
 
 #include <QDebug>
 #include <QDateTime>
 #include <QTextStream>
 
-using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
 

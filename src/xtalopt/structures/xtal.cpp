@@ -16,7 +16,7 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "xtal.h"
+#include <xtalopt/structures/xtal.h>
 
 #include <avogadro/primitive.h>
 #include <avogadro/molecule.h>
@@ -31,14 +31,14 @@
 #include <QStringList>
 
 extern "C" {
-#include "../spglib/spglib.h"
+#include <spglib/spglib.h>
 }
 
 using namespace std;
 using namespace OpenBabel;
 using namespace Eigen;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   Xtal::Xtal(QObject *parent) :
     Structure(parent)

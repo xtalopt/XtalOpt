@@ -21,13 +21,19 @@
 #define TAB_EDIT_H
 
 #include "ui_tab_edit.h"
-#include "../xtalopt.h"
+
+#include <xtalopt/xtalopt.h>
 
 #include <QMessageBox>
 
-namespace Avogadro {
-  class XtalOptDialog;
+namespace GlobalSearch {
   class Optimizer;
+}
+
+using namespace GlobalSearch;
+
+namespace XtalOpt {
+  class XtalOptDialog;
 
   class TabEdit : public QObject
   {

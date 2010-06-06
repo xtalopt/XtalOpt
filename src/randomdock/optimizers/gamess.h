@@ -19,9 +19,9 @@
 #ifndef RDGAMESS_H
 #define RDGAMESS_H
 
-#include "../../generic/optimizer.h"
+#include <globalsearch/optimizer.h>
 
-using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
 

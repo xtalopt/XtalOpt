@@ -16,18 +16,18 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "randomdock.h"
+#include <randomdock/randomdock.h>
 
-#include "ui/dialog.h"
-#include "optimizers/gamess.h"
-#include "structures/matrix.h"
-#include "structures/substrate.h"
-#include "structures/scene.h"
+#include <randomdock/ui/dialog.h>
+#include <randomdock/optimizers/gamess.h>
+#include <randomdock/structures/matrix.h>
+#include <randomdock/structures/substrate.h>
+#include <randomdock/structures/scene.h>
 
-#include "../generic/tracker.h"
-#include "../generic/optbase.h"
-#include "../generic/queuemanager.h"
-#include "../generic/macros.h"
+#include <globalsearch/tracker.h>
+#include <globalsearch/optbase.h>
+#include <globalsearch/queuemanager.h>
+#include <globalsearch/macros.h>
 
 #include <avogadro/atom.h>
 #include <avogadro/bond.h>

@@ -32,7 +32,9 @@
 
 #define EV_TO_KCAL_PER_MOL 23.060538
 
-namespace Avogadro {
+using namespace Avogadro;
+
+namespace GlobalSearch {
   class Structure : public Molecule
   {
     Q_OBJECT

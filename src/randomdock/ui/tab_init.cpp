@@ -14,13 +14,13 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_init.h"
+#include <randomdock/ui/tab_init.h>
 
-#include "dialog.h"
-#include "../randomdock.h"
-#include "../structures/substrate.h"
-#include "../structures/matrix.h"
-#include "../../generic/macros.h"
+#include <randomdock/ui/dialog.h>
+#include <randomdock/randomdock.h>
+#include <randomdock/structures/substrate.h>
+#include <randomdock/structures/matrix.h>
+#include <globalsearch/macros.h>
 
 #include <avogadro/moleculefile.h>
 

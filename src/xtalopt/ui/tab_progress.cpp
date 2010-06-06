@@ -14,11 +14,11 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_progress.h"
+#include <xtalopt/ui/tab_progress.h>
 
-#include "dialog.h"
-#include "../../generic/optimizer.h"
-#include "../xtalopt.h"
+#include <globalsearch/optimizer.h>
+#include <xtalopt/xtalopt.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <QMenu>
 #include <QTimer>
@@ -28,9 +28,7 @@
 #include <QInputDialog>
 #include <QtConcurrentRun>
 
-using namespace std;
-
-namespace Avogadro {
+namespace XtalOpt {
 
   TabProgress::TabProgress( XtalOptDialog *parent, XtalOpt *p ) :
     QObject( parent ), m_dialog(parent), m_opt(p), m_timer(0), m_mutex(0), m_update_mutex(0), m_update_all_mutex(0), m_context_xtal(0)
@@ -169,7 +167,7 @@ namespace Avogadro {
       return;
     }
 
-    QtConcurrent::run(m_opt->queue(), &Avogadro::QueueManager::checkPopulation);
+    QtConcurrent::run(m_opt->queue(), &GlobalSearch::QueueManager::checkPopulation);
 
     emit refresh();
     m_update_mutex->unlock();

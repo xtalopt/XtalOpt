@@ -22,16 +22,16 @@
 
 #include "ui_tab_progress.h"
 
-#include "../../generic/tracker.h"
+#include <globalsearch/tracker.h>
 
 class QTimer;
 class QMutex;
 
-namespace Avogadro {
+namespace GlobalSearch {
   class Structure;
 }
 
-using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
   class RandomDockDialog;

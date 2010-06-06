@@ -21,15 +21,16 @@
 #define TAB_EDIT_H
 
 #include "ui_tab_edit.h"
-#include "../randomdock.h"
+
+#include <randomdock/randomdock.h>
 
 #include <QMessageBox>
 
-namespace Avogadro {
+namespace GlobalSearch {
   class Optimizer;
 }  
 
-using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
   class RandomDockDialog;

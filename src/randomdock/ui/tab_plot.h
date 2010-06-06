@@ -24,12 +24,16 @@
 
 class QReadWriteLock;
 
-namespace Avogadro {
+namespace GlobalSearch {
   class Structure;
+}
+
+namespace Avogadro {
   class PlotPoint;
   class PlotObject;
 }
 
+using namespace GlobalSearch;
 using namespace Avogadro;
 
 namespace RandomDock {

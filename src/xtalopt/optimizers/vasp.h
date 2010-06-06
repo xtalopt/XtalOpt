@@ -19,14 +19,18 @@
 #ifndef VASPOPTIMIZER_H
 #define VASPOPTIMIZER_H
 
-#include "xtaloptoptimizer.h"
+#include <xtalopt/optimizers/xtaloptoptimizer.h>
 
 #include <QObject>
 
-namespace Avogadro {
+namespace GlobalSearch {
   class Structure;
   class OptBase;
+}
 
+using namespace GlobalSearch;
+
+namespace XtalOpt {
   class VASPOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT

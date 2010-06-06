@@ -16,18 +16,16 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "optbase.h"
+#include <globalsearch/optbase.h>
 
-#include "structure.h"
-#include "optimizer.h"
-#include "queuemanager.h"
-#include "bt.h"
+#include <globalsearch/structure.h>
+#include <globalsearch/optimizer.h>
+#include <globalsearch/queuemanager.h>
+#include <globalsearch/bt.h>
 
-using namespace std;
 using namespace OpenBabel;
-using namespace Eigen;
 
-namespace Avogadro {
+namespace GlobalSearch {
 
   OptBase::OptBase(QObject *parent) :
     QObject(parent)

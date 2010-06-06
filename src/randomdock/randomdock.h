@@ -20,7 +20,7 @@
 #ifndef RANDOMDOCK_H
 #define RANDOMDOCK_H
 
-#include "../generic/optbase.h"
+#include <globalsearch/optbase.h>
 
 #include <Eigen/Geometry>
 
@@ -28,11 +28,11 @@
 #include <QStringList>
 #include <QReadWriteLock>
 
-using namespace Avogadro;
-
-namespace Avogadro {
+namespace GlobalSearch {
   class Structure;
 }
+
+using namespace GlobalSearch;
 
 namespace RandomDock {
   class RandomDockDialog;

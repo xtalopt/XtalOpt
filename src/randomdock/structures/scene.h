@@ -19,11 +19,11 @@
 #ifndef SCENEMOL_H
 #define SCENEMOL_H
 
-#include "../../generic/structure.h"
+#include <globalsearch/structure.h>
 
 #include <QDebug>
 
-using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
   class Scene : public Structure

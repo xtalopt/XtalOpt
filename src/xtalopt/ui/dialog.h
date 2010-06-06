@@ -29,10 +29,11 @@
 
 #include "ui_dialog.h"
 
-namespace Avogadro {
+using namespace Avogadro;
+
+namespace XtalOpt {
   class Xtal;
   class XtalOpt;
-  class PlotObject;
   class TabInit;
   class TabEdit;
   class TabOpt;

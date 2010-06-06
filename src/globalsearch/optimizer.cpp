@@ -16,10 +16,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "optimizer.h"
-#include "macros.h"
-#include "optbase.h"
-#include "queuemanager.h"
+#include <globalsearch/optimizer.h>
+#include <globalsearch/macros.h>
+#include <globalsearch/optbase.h>
+#include <globalsearch/queuemanager.h>
 
 #include <QDir>
 #include <QDebug>
@@ -30,11 +30,10 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
-using namespace std;
 using namespace OpenBabel;
 using namespace Eigen;
 
-namespace Avogadro {
+namespace GlobalSearch {
 
   Optimizer::Optimizer(OptBase *parent, const QString &filename) :
     QObject(parent),

@@ -18,7 +18,7 @@
 
 #include "xtalopttest.h"
 
-#include "../xtalopt.h"
+#include <xtalopt/xtalopt.h>
 
 #include <QDebug>
 #include <QInputDialog>
@@ -27,11 +27,7 @@
 #include <QTimer>
 #include <QtConcurrentRun>
 
-using namespace std;
-using namespace OpenBabel;
-using namespace Eigen;
-
-namespace Avogadro {
+namespace XtalOpt {
 
   XtalOptTest::XtalOptTest(XtalOpt *p, QObject *parent) :
     QObject(parent), m_opt(p), m_dialog(p->dialog())

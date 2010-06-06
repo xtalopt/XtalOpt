@@ -19,7 +19,7 @@
 #ifndef XTAL_H
 #define XTAL_H
 
-#include "../generic/structure.h"
+#include <globalsearch/structure.h>
 
 #include <QDebug>
 #include <QDateTime>
@@ -27,7 +27,9 @@
 
 #define EV_TO_KCAL_PER_MOL 23.060538
 
-namespace Avogadro {
+using namespace GlobalSearch;
+
+namespace XtalOpt {
   class Xtal : public Structure
   {
     Q_OBJECT

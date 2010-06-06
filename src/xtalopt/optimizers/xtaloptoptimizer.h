@@ -19,13 +19,19 @@
 #ifndef XTALOPTOPTIMIZER_H
 #define XTALOPTOPTIMIZER_H
 
-#include "../../generic/optimizer.h"
+#include <globalsearch/optimizer.h>
 
 #include <QObject>
 
-namespace Avogadro {
+namespace GlobalSearch {
   class Structure;
   class OptBase;
+  class Optimizer;
+}
+
+using namespace GlobalSearch;
+
+namespace XtalOpt {
 
   class XtalOptOptimizer : public Optimizer
   {

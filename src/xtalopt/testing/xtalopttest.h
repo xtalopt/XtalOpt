@@ -19,12 +19,12 @@
 #ifndef XTALOPTTEST_H
 #define XTALOPTTEST_H
 
-#include "../xtalopt.h"
+#include <xtalopt/xtalopt.h>
 
 #include <QDebug>
 #include <QProgressDialog>
 
-namespace Avogadro {
+namespace XtalOpt {
 
   class XtalOptTest : public QObject
   {

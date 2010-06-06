@@ -14,11 +14,11 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_log.h"
+#include <randomdock/ui/tab_log.h>
 
-#include "dialog.h"
-#include "../randomdock.h"
-#include "../../generic/macros.h"
+#include <randomdock/ui/dialog.h>
+#include <randomdock/randomdock.h>
+#include <globalsearch/macros.h>
 
 #include <QSettings>
 #include <QDateTime>

@@ -6,7 +6,7 @@ option( ENABLE_RANDOMDOCK
 	OFF )
 
 
-add_subdirectory(generic)
+add_subdirectory(globalsearch)
 add_subdirectory(spglib)
 
 if (ENABLE_XTALOPT)

@@ -16,8 +16,8 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "gulp.h"
-#include "../../generic/xtal.h"
+#include <xtalopt/optimizers/gulp.h>
+#include <xtalopt/structures/xtal.h>
 
 #include <QProcess>
 #include <QDir>
@@ -27,11 +27,7 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
-using namespace std;
-using namespace OpenBabel;
-using namespace Eigen;
-
-namespace Avogadro {
+namespace XtalOpt {
 
   GULPOptimizer::GULPOptimizer(OptBase *parent, const QString &filename) :
     XtalOptOptimizer(parent)

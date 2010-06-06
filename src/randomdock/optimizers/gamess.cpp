@@ -16,17 +16,17 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "gamess.h"
+#include <randomdock/optimizers/gamess.h>
+
+#include <globalsearch/structure.h>
+
+#include <openbabel/obconversion.h>
+#include <openbabel/mol.h>
 
 #include <QProcess>
 #include <QDir>
 #include <QString>
 #include <QDebug>
-
-#include "../../generic/structure.h"
-
-#include <openbabel/obconversion.h>
-#include <openbabel/mol.h>
 
 using namespace std;
 using namespace OpenBabel;

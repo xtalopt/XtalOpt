@@ -19,14 +19,14 @@
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 
-#include "optbase.h"
+#include <globalsearch/optbase.h>
 
 #include <QHash>
 #include <QObject>
 #include <QVariant>
 #include <QStringList>
 
-namespace Avogadro {
+namespace GlobalSearch {
   class Structure;
   class OptBase;
 

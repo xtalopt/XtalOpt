@@ -14,10 +14,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_plot.h"
+#include <xtalopt/ui/tab_plot.h>
 
-#include "../xtalopt.h"
-#include "dialog.h"
+#include <xtalopt/xtalopt.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <avogadro/glwidget.h>
 #include <avogadro/primitive.h>
@@ -26,9 +26,7 @@
 #include <QSettings>
 #include <QReadWriteLock>
 
-using namespace std;
-
-namespace Avogadro {
+namespace XtalOpt {
 
   TabPlot::TabPlot( XtalOptDialog *parent, XtalOpt *p ) :
     QObject( parent ), m_dialog(parent), m_opt(p), m_plot_mutex(0), m_plotObject(0)

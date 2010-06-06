@@ -19,13 +19,13 @@
 #ifndef TRACKER_H
 #define TRACKER_H
 
-#include "structure.h"
+#include <globalsearch/structure.h>
 
 #include <QDebug>
 #include <QList>
 #include <QReadWriteLock>
 
-namespace Avogadro {
+namespace GlobalSearch {
 
   class Tracker : public QObject
   {

@@ -16,9 +16,9 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "vasp.h"
-#include "../../generic/macros.h"
-#include "../../generic/xtal.h"
+#include <xtalopt/optimizers/vasp.h>
+#include <xtalopt/structures/xtal.h>
+#include <globalsearch/macros.h>
 
 #include <QDir>
 #include <QDebug>
@@ -32,11 +32,7 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
-using namespace std;
-using namespace OpenBabel;
-using namespace Eigen;
-
-namespace Avogadro {
+namespace XtalOpt {
 
   VASPOptimizer::VASPOptimizer(OptBase *parent, const QString &filename) :
     XtalOptOptimizer(parent)

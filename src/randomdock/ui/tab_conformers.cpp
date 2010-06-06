@@ -14,14 +14,15 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "tab_conformers.h"
+#include <randomdock/ui/tab_conformers.h>
 
-#include "dialog.h"
-#include "../randomdock.h"
-#include "../structures/matrix.h"
-#include "../structures/substrate.h"
-#include "../../generic/macros.h"
-#include "../../generic/structure.h"
+#include <randomdock/ui/dialog.h>
+#include <randomdock/randomdock.h>
+#include <randomdock/structures/matrix.h>
+#include <randomdock/structures/substrate.h>
+
+#include <globalsearch/macros.h>
+#include <globalsearch/structure.h>
 
 #include <openbabel/forcefield.h>
 

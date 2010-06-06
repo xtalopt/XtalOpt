@@ -19,7 +19,7 @@
 #ifndef RDEXTENSION_H
 #define RDEXTENSION_H
 
-#include "ui/dialog.h"
+#include <randomdock/ui/dialog.h>
 
 #include <avogadro/extension.h>
 

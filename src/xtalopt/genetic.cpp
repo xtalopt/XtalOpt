@@ -16,10 +16,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "genetic.h"
+#include <xtalopt/genetic.h>
 
-#include "../generic/xtal.h"
-#include "ui/dialog.h"
+#include <xtalopt/structures/xtal.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <openbabel/rand.h>
 #include <openbabel/obiter.h>
@@ -30,7 +30,7 @@ using namespace std;
 using namespace OpenBabel;
 using namespace Eigen;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution, double &percent1) {
     OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...

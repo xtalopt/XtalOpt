@@ -19,12 +19,12 @@
 #ifndef XTALOPTGENETIC_H
 #define XTALOPTGENETIC_H
 
-#include "../generic/xtal.h"
-#include "ui/dialog.h"
+#include <xtalopt/structures/xtal.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <openbabel/rand.h>
 
-namespace Avogadro {
+namespace XtalOpt {
 
   class XtalOptGenetic : public QObject
   {

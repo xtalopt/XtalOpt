@@ -14,17 +14,18 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "dialog.h"
+#include <randomdock/ui/dialog.h>
 
-#include "tab_init.h"
-#include "tab_conformers.h"
-#include "tab_params.h"
-#include "tab_edit.h"
-#include "tab_sys.h"
-#include "tab_progress.h"
-#include "tab_plot.h"
-#include "tab_log.h"
-#include "../../generic/macros.h"
+#include <randomdock/ui/tab_init.h>
+#include <randomdock/ui/tab_conformers.h>
+#include <randomdock/ui/tab_params.h>
+#include <randomdock/ui/tab_edit.h>
+#include <randomdock/ui/tab_sys.h>
+#include <randomdock/ui/tab_progress.h>
+#include <randomdock/ui/tab_plot.h>
+#include <randomdock/ui/tab_log.h>
+
+#include <globalsearch/macros.h>
 
 #include <QTimer>
 #include <QSettings>

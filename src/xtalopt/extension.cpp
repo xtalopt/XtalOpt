@@ -16,10 +16,10 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "extension.h"
+#include <xtalopt/extension.h>
 
-#include "ui/dialog.h"
-#include "../generic/xtal.h"
+#include <xtalopt/structures/xtal.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <avogadro/primitive.h>
 #include <avogadro/molecule.h>
@@ -34,11 +34,7 @@
 #include <QMessageBox>
 #include <QDebug>
 
-using namespace std;
-using namespace OpenBabel;
-using namespace Eigen;
-
-namespace Avogadro {
+namespace XtalOpt {
 
   XtalOptExtension::XtalOptExtension(QObject *parent) : Extension(parent),
                                                         m_dialog(0),
@@ -132,4 +128,4 @@ namespace Avogadro {
 
 //#include "extension.moc"
 
-Q_EXPORT_PLUGIN2(xtaloptextension, Avogadro::XtalOptExtensionFactory)
+Q_EXPORT_PLUGIN2(xtaloptextension, XtalOpt::XtalOptExtensionFactory)

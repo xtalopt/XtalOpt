@@ -16,24 +16,20 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include "pwscf.h"
-#include "../../generic/xtal.h"
+#include <xtalopt/optimizers/pwscf.h>
+
+#include <openbabel/obconversion.h>
+#include <openbabel/mol.h>
 
 #include <QProcess>
 #include <QDir>
 #include <QString>
 #include <QDebug>
 
-#include "../../generic/structure.h"
-
-#include <openbabel/obconversion.h>
-#include <openbabel/mol.h>
-
 using namespace std;
 using namespace OpenBabel;
-using namespace Eigen;
 
-namespace Avogadro {
+namespace XtalOpt {
 
   PWscfOptimizer::PWscfOptimizer(OptBase *parent, const QString &filename) :
     XtalOptOptimizer(parent)
