@@ -119,13 +119,6 @@
      </column>
     </widget>
    </item>
-   <item row="4" column="0">
-    <widget class="QPushButton" name="push_readFiles">
-     <property name="text">
-      <string>Read &amp;Files...</string>
-     </property>
-    </widget>
-   </item>
   </layout>
  </widget>
  <resources/>

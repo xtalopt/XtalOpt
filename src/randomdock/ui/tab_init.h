@@ -25,6 +25,8 @@
 namespace RandomDock {
   class RandomDockDialog;
   class RandomDock;
+  class Substrate;
+  class Matrix;
 
   class TabInit : public QObject
   {
@@ -50,9 +52,11 @@ namespace RandomDock {
     void matrixAdd();
     void matrixRemove();
     void matrixCurrent();
-    void readFiles();
 
   signals:
+    void substrateChanged(Substrate*);
+    void matrixAdded(Matrix*);
+    void matrixRemoved();
 
   private:
     Ui::Tab_Init ui;
