@@ -142,6 +142,7 @@ namespace RandomDock {
   void TabConformers::generateConformers_(Structure *mol)
   {
     m_dialog->startProgressUpdate("Preparing conformer search...", 0, 0);
+    QWriteLocker locker (mol->lock());
     if (ui.combo_opt->currentIndex() == O_G03) {
       // TODO: implement and use a G03 opt routine...
       ui.push_generate->setEnabled(true);
@@ -233,17 +234,20 @@ namespace RandomDock {
 
   void TabConformers::selectStructure(const QString & text) {
     Structure* mol = currentStructure();
-    if (mol) {
-      emit moleculeChanged(mol);
-      updateConformerTable();
-      calculateNumberOfConformers(ui.cb_allConformers->isChecked());
-    }
+
+    if (!mol) return;
+
+    updateConformerTable();
+    calculateNumberOfConformers(ui.cb_allConformers->isChecked());
+    emit moleculeChanged(mol);
   }
 
   void TabConformers::updateConformerTable() {
     Structure *mol = currentStructure();
+    QReadLocker locker (mol->lock());
 
     // Generate probability lists:
+    // TODO this can be cleaned up a lot once sub/mat are abstracted
     QList<double> tmp, probs;
     for (uint i = 0; i < mol->numConformers(); i++) {
       if (ui.combo_mol->currentText().contains("Substrate"))
@@ -308,6 +312,7 @@ namespace RandomDock {
     ff->SetLogLevel(OBFF_LOGLVL_NONE);
 
     Structure* mol = currentStructure();
+    QReadLocker locker (mol->lock());
     OpenBabel::OBMol obmol = mol->OBMol();
     if (!ff) {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),

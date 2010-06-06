@@ -35,7 +35,8 @@ namespace RandomDock {
   {
   }
 
-  void Scene::updateFromMolecule(Molecule *mol) {
+  void Scene::updateFromMolecule(Molecule *mol)
+  {
     // TODO check if this is all we need to do.
     if (mol->numAtoms() != numAtoms()) {
       qWarning() << "Number of atoms changed during optimization. Killing structure!";

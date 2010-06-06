@@ -127,7 +127,8 @@ namespace RandomDock {
     ui.spin_numMatrixMols->setDisabled(true);
   }
 
-  void TabParams::updateOptimizationInfo() {
+  void TabParams::updateOptimizationInfo()
+  {
     // Logic first!
     if (ui.spin_IAD_min->value() > ui.spin_IAD_max->value())
       ui.spin_IAD_max->setValue(ui.spin_IAD_min->value());
@@ -135,7 +136,7 @@ namespace RandomDock {
       ui.spin_radius_max->setValue(ui.spin_radius_min->value());
 
     m_opt->runningJobLimit	= ui.spin_numSearches->value();
-    m_opt->numMatrixMol	= ui.spin_numMatrixMols->value();
+    m_opt->numMatrixMol		= ui.spin_numMatrixMols->value();
     m_opt->cutoff		= ui.spin_cutoff->value();
     m_opt->IAD_min		= ui.spin_IAD_min->value();
     m_opt->IAD_max		= ui.spin_IAD_max->value();
@@ -184,7 +185,8 @@ namespace RandomDock {
     m_opt->radius_auto	= ui.cb_radius_auto->isChecked();
   }
 
-  void TabParams::stopSubmission() {
+  void TabParams::stopSubmission()
+  {
     ui.spin_numSearches->setValue(0);
   }
 
