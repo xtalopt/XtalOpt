@@ -18,6 +18,7 @@
 
 #include "dialog.h"
 #include "../randomdock.h"
+#include "../../generic/macros.h"
 
 #include <QSettings>
 
@@ -35,10 +36,16 @@ namespace RandomDock {
     ui.setupUi(m_tab_widget);
 
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(m_dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
+            this, SLOT(updateGUI()));
+    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
+            this, SLOT(disconnectGUI()));
+    connect(m_dialog, SIGNAL(tabsLockGUI()),
+            this, SLOT(lockGUI()));
 
     // System Settings connections
     connect(ui.edit_path, SIGNAL(textChanged(QString)),
@@ -50,8 +57,6 @@ namespace RandomDock {
     connect(ui.edit_check, SIGNAL(textChanged(QString)),
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_qdel, SIGNAL(textChanged(QString)),
-            this, SLOT(updateSystemInfo()));
-    connect(ui.cb_remote, SIGNAL(toggled(bool)),
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_host, SIGNAL(textChanged(QString)),
             this, SLOT(updateSystemInfo()));
@@ -67,43 +72,65 @@ namespace RandomDock {
     writeSettings();
   }
 
-  void TabSys::writeSettings() {
-    qDebug() << "TabSys::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabSys::writeSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/sys");
 
-    settings.setValue("randomdock/dialog/sys/file/path",	m_opt->filePath);
-    settings.setValue("randomdock/dialog/sys/file/base",	m_opt->fileBase);
-    settings.setValue("randomdock/dialog/sys/queue/launch",	m_opt->launchCommand);
-    settings.setValue("randomdock/dialog/sys/queue/check",	m_opt->queueCheck);
-    settings.setValue("randomdock/dialog/sys/queue/qdel",	m_opt->queueDelete);
-    settings.setValue("randomdock/dialog/sys/remote/host",	m_opt->host);
-    settings.setValue("randomdock/dialog/sys/remote/username",	m_opt->username);
-    settings.setValue("randomdock/dialog/sys/remote/rempath",	m_opt->rempath);
-    settings.setValue("randomdock/dialog/using/remote",    	m_opt->using_remote);
+    settings->setValue("file/path",		m_opt->filePath);
+    settings->setValue("queue/launch",		m_opt->qsub);
+    settings->setValue("queue/check",		m_opt->qstat);
+    settings->setValue("queue/qdel",		m_opt->qdel);
+    settings->setValue("remote/host",		m_opt->host);
+    settings->setValue("remote/username",	m_opt->username);
+    settings->setValue("remote/rempath",	m_opt->rempath);
+
+    settings->endGroup();
+    DESTROY_SETTINGS(filename);
   }
 
-  void TabSys::readSettings() {
-    qDebug() << "TabSys::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabSys::readSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/sys");
 
-    ui.edit_path->setText(	settings.value("randomdock/dialog/sys/file/path",		"/tmp").toString());
-    ui.edit_base->setText(	settings.value("randomdock/dialog/sys/file/base",		"/opt-").toString());
-    ui.edit_launch->setText(	settings.value("randomdock/dialog/sys/queue/launch",		"qsub").toString());
-    ui.edit_check->setText(	settings.value("randomdock/dialog/sys/queue/check",		"qstat").toString());
-    ui.edit_qdel->setText(	settings.value("randomdock/dialog/sys/queue/qdel",		"qdel").toString());
-    ui.edit_host->setText(	settings.value("randomdock/dialog/sys/remote/host",		"").toString());
-    ui.edit_username->setText(	settings.value("randomdock/dialog/sys/remote/username",		"").toString());
-    ui.edit_rempath->setText(	settings.value("randomdock/dialog/sys/remote/rempath",		"").toString());
-    ui.cb_remote->setChecked(	settings.value("randomdock/dialog/using/remote",		false).toBool());
+    ui.edit_path->setText(	settings->value("file/path",		"/tmp").toString());
+    ui.edit_base->setText(	settings->value("file/base",		"/opt-").toString());
+    ui.edit_launch->setText(	settings->value("queue/launch",		"qsub").toString());
+    ui.edit_check->setText(	settings->value("queue/check",		"qstat").toString());
+    ui.edit_qdel->setText(	settings->value("queue/qdel",		"qdel").toString());
+    ui.edit_host->setText(	settings->value("remote/host",		"").toString());
+    ui.edit_username->setText(	settings->value("remote/username",	"").toString());
+    ui.edit_rempath->setText(	settings->value("remote/rempath",	"").toString());
+
+    settings->endGroup();      
+  }
+
+  void TabSys::updateGUI()
+  {
+  }
+
+  void TabSys::disconnectGUI()
+  {
+  }
+
+  void TabSys::lockGUI()
+  {
+    ui.edit_path->setDisabled(true);
+    ui.edit_base->setDisabled(true);
+    ui.edit_launch->setDisabled(true);
+    ui.edit_check->setDisabled(true);
+    ui.edit_qdel->setDisabled(true);
+    ui.edit_host->setDisabled(true);
+    ui.edit_username->setDisabled(true);
+    ui.edit_rempath->setDisabled(true);
   }
 
   void TabSys::updateSystemInfo() {
     m_opt->filePath		= ui.edit_path->text();
-    m_opt->fileBase		= ui.edit_base->text();
-    m_opt->launchCommand	= ui.edit_launch->text();
-    m_opt->queueCheck		= ui.edit_check->text();
-    m_opt->queueDelete		= ui.edit_qdel->text();
-    m_opt->using_remote		= ui.cb_remote->isChecked();
+    m_opt->qsub			= ui.edit_launch->text();
+    m_opt->qstat		= ui.edit_check->text();
+    m_opt->qdel			= ui.edit_qdel->text();
     m_opt->host			= ui.edit_host->text();
     m_opt->username		= ui.edit_username->text();
     m_opt->rempath		= ui.edit_rempath->text();

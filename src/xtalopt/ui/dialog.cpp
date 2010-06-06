@@ -253,7 +253,6 @@ namespace Avogadro {
     emit tabsUpdateGUI();
   }
 
-
   void XtalOptDialog::updateStatus(int opt, int run, int fail) {
     // qDebug() << "XtalOptDialog::updateStatus( "
     //          << opt << ", "
@@ -355,9 +354,8 @@ namespace Avogadro {
   }
 
   void XtalOptDialog::repaintProgressBar_() {
-    //qDebug() << "XtalOptDialog::repaintProgressBar_: Val: " << ui.progbar->value() << " Min: " << ui.progbar->minimum() << " Max: " << ui.progbar->maximum();
     ui.label_prog->repaint();
-    ui.label_prog->repaint();
+    ui.progbar->repaint();
   }
 
   void XtalOptDialog::newDebug(const QString & s) {

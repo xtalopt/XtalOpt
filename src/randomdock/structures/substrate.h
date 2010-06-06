@@ -20,7 +20,7 @@
 #ifndef SUBSTRATEMOL_H
 #define SUBSTRATEMOL_H
 
-#include <avogadro/molecule.h>
+#include "../../generic/structure.h"
 
 #include <QDebug>
 #include <QDateTime>
@@ -30,7 +30,7 @@ using namespace Avogadro;
 
 namespace RandomDock {
 
-  class Substrate : public Molecule
+  class Substrate : public Structure
   {
     Q_OBJECT
 
@@ -46,7 +46,7 @@ namespace RandomDock {
     void sortConformers();
     void generateProbabilities();
     void checkProbs() {if ((uint)m_probs.size() != numConformers()) generateProbabilities();};
-    Substrate* getRandomConformer();
+    int getRandomConformerIndex();
 
    private slots:
 

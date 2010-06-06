@@ -20,6 +20,7 @@
 #include "../randomdock.h"
 #include "../structures/substrate.h"
 #include "../structures/matrix.h"
+#include "../../generic/macros.h"
 
 #include <avogadro/moleculefile.h>
 
@@ -40,10 +41,16 @@ namespace RandomDock {
     ui.setupUi(m_tab_widget);
 
     // dialog connections
-    connect(dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
+            this, SLOT(updateGUI()));
+    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
+            this, SLOT(disconnectGUI()));
+    connect(m_dialog, SIGNAL(tabsLockGUI()),
+            this, SLOT(lockGUI()));
 
     // tab connections
     connect(ui.edit_substrateFile, SIGNAL(textChanged(QString)),
@@ -70,14 +77,41 @@ namespace RandomDock {
     writeSettings();
   }
 
-  void TabInit::writeSettings() {
-    qDebug() << "TabInit::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabInit::writeSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/init");
+
+    settings->endGroup();
+    DESTROY_SETTINGS(filename);
   }
 
-  void TabInit::readSettings() {
-    qDebug() << "TabInit::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabInit::readSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/init");
+
+    settings->endGroup();      
+  }
+
+  void TabInit::updateGUI()
+  {
+  }
+
+  void TabInit::disconnectGUI()
+  {
+  }
+
+  void TabInit::lockGUI()
+  {
+    ui.edit_substrateFile->setDisabled(true);
+    ui.push_substrateBrowse->setDisabled(true);
+    ui.push_substrateCurrent->setDisabled(true);
+    ui.push_matrixAdd->setDisabled(true);
+    ui.push_matrixCurrent->setDisabled(true);
+    ui.push_matrixRemove->setDisabled(true);
+    ui.push_readFiles->setDisabled(true);
+    ui.table_matrix->setDisabled(true);
   }
 
   void TabInit::updateParams() {
@@ -95,12 +129,12 @@ namespace RandomDock {
   void TabInit::substrateBrowse() {
     qDebug() << "TabInit::substrateBrowse() called";
     QSettings settings;
-    QString path = settings.value("randomdock/paths/moleculeBrowse", "").toString();
+    QString path = settings.value("randomdock/paths/substrateBrowse", "").toString();
     QString fileName = QFileDialog::getOpenFileName(m_dialog, 
                                                     tr("Select molecule file to use for the substrate"),
                                                     path,
                                                     tr("All files (*)"));
-    settings.setValue("randomdock/paths/moleculeBrowse", fileName);
+    settings.setValue("randomdock/paths/substrateBrowse", fileName);
     ui.edit_substrateFile->setText(fileName);
   }
 
@@ -111,12 +145,12 @@ namespace RandomDock {
   void TabInit::matrixAdd() {
     qDebug() << "TabInit::matrixAdd() called";
     QSettings settings;
-    QString path = settings.value("randomdock/paths/moleculeBrowse", "").toString();
+    QString path = settings.value("randomdock/paths/matrixBrowse", "").toString();
     QString fileName = QFileDialog::getOpenFileName(m_dialog, 
                                                     tr("Select molecule file to add as a matrix element"),
                                                     path,
                                                     tr("All files (*)"));
-    settings.setValue("randomdock/paths/moleculeBrowse", fileName);
+    settings.setValue("randomdock/paths/matrixBrowse", fileName);
 
     int row = ui.table_matrix->rowCount();
     ui.table_matrix->insertRow(row);
@@ -152,6 +186,14 @@ namespace RandomDock {
     qDebug() << m_opt->substrateFile;
     if (!m_opt->substrateFile.isEmpty()) {
       mol = MoleculeFile::readMolecule(m_opt->substrateFile);
+      // Check that molecule loaded successfully
+      if (!mol) {
+        // Pop-up error
+        m_opt->error(tr("Cannot load file %1 for substrate. Check that it contains valid molecule information.")
+                     .arg(m_opt->substrateFile));
+        QApplication::restoreOverrideCursor();
+        return;
+      }
       m_opt->substrate = new Substrate (mol);
       qDebug() << "Updated substrate: " << m_opt->substrate << " #atoms= " << m_opt->substrate->numAtoms();
     }
@@ -161,6 +203,19 @@ namespace RandomDock {
     for (int i = 0; i < m_opt->matrixFiles.size(); i++) {
       qDebug() << m_opt->matrixFiles.at(i);
       mol = MoleculeFile::readMolecule(m_opt->matrixFiles.at(i));
+      // Check that molecule loaded successfully
+      if (!mol) {
+        // Pop-up error
+        m_opt->error(tr("Cannot load file %1 for a matrix. Check that it contains valid molecule information.")
+                     .arg(m_opt->matrixFiles.at(i)));
+        // Cleanup
+        delete m_opt->substrate;
+        m_opt->substrate = 0;
+        qDeleteAll(m_opt->matrixList);
+        m_opt->matrixList.clear();
+        QApplication::restoreOverrideCursor();
+        return;
+      }
       m_opt->matrixList.append(new Matrix (mol));
       qDebug() << "Matrix added:" << m_opt->matrixList.at(i);
     }

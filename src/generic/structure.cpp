@@ -46,7 +46,7 @@ namespace Avogadro {
     m_optEnd(QDateTime()),
     m_index(-1)
   {
-    m_hasEnergy = m_hasEnthalpy = false;
+    m_hasEnthalpy = false;
     m_currentOptStep = 1;
     setStatus(Empty);
     resetFailCount();
@@ -104,7 +104,6 @@ namespace Avogadro {
     std::vector<double> E;
     E.push_back(pFF->Energy());
     setEnergies(E);
-    m_hasEnergy = true;
   }
 
   bool Structure::getShortestInteratomicDistance(double & shortest) const
@@ -341,6 +340,7 @@ namespace Avogadro {
     qWarning() << "WARNING: Structure::getFingerprint called. Should be pure virtual for now. This is a bug.";
     return QHash<QString, double> ();
   }
+
 } // end namespace Avogadro
 
 //#include "structure.moc"

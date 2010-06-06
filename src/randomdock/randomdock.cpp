@@ -32,6 +32,7 @@
 #include <avogadro/atom.h>
 #include <avogadro/bond.h>
 #include <openbabel/rand.h>
+#include <openbabel/mol.h>
 
 #include <QDir>
 #include <QFile>
@@ -62,13 +63,16 @@ namespace RandomDock {
     // Check that everything is in place
     if (!substrate) {
       error("Cannot begin search without specifying substrate.");
+      setIsStartingFalse();
       return;
     }
     if (matrixList.size() == 0) {
       error("Cannot begin search without specifying matrix molecules.");
+      setIsStartingFalse();
       return;
     }
     if (!checkLimits()) {
+      setIsStartingFalse();
       return;
     }
 
@@ -83,7 +87,6 @@ namespace RandomDock {
     m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
 
     // Initalize loop variables
-    QString filename;
     Scene *scene;
     int progCount=0;
 
@@ -91,10 +94,13 @@ namespace RandomDock {
     for (uint i = 0; i < runningJobLimit; i++) {
       m_dialog->updateProgressMaximum( (i == 0)
                                         ? 0
-                                        : int(progCount / static_cast<double>(i)) * runningJobLimit );
-      m_dialog->updateProgressValue(progCount);
-      progCount++;
-      m_dialog->updateProgressLabel(tr("%1 scenes generated of (%2)...").arg(i).arg(runningJobLimit));
+                                        : int(progCount
+                                              / static_cast<double>(i))
+                                       * runningJobLimit );
+      m_dialog->updateProgressValue(progCount++);
+      m_dialog->updateProgressLabel(tr("%1 scenes generated of (%2)...")
+                                    .arg(i)
+                                    .arg(runningJobLimit));
  
       // Generate/Check molecule
       scene = generateRandomScene();
@@ -118,7 +124,6 @@ namespace RandomDock {
     Bond *newbond;
     Bond *oldbond;
     Matrix *mat;
-    Substrate *sub;
     Scene *scene = new Scene;
     QHash<ulong, ulong> idMap; // Old id, new id
     QList<Atom*> atomList;
@@ -128,14 +133,18 @@ namespace RandomDock {
     rand.TimeSeed();
 
     // Select random conformer of substrate
-    sub = substrate->getRandomConformer();
+    substrate->lock()->lockForWrite();
+    int conformer = substrate->getRandomConformerIndex();
+    substrate->setConformer(conformer);
 
-    // Extract information from sub
-    atomList = sub->atoms();
+    // Extract information from substrate
+    atomList = substrate->atoms();
     for (int j = 0; j < atomList.size(); j++) {
       atomicNums.append(atomList.at(j)->atomicNumber());
       positions.append( *(atomList.at(j)->pos()));
     }
+
+    substrate->lock()->unlock();
 
     // Place substrate's geometric center at origin
     RandomDock::centerCoordinatesAtOrigin(positions);
@@ -149,9 +158,9 @@ namespace RandomDock {
     }
 
     // Attach bonds
-    for (uint i = 0; i < sub->numBonds(); i++) {
+    for (uint i = 0; i < substrate->numBonds(); i++) {
       newbond = scene->addBond();
-      oldbond = sub->bonds().at(i);
+      oldbond = substrate->bonds().at(i);
       newbond->setAtoms(idMap[oldbond->beginAtomId()],
                         idMap[oldbond->endAtomId()],
                         oldbond->order());
@@ -182,15 +191,22 @@ namespace RandomDock {
 
       mat = matrixList.at(ind);
 
-      // Extract information from matrix
-      atomList = mat->atoms();
       atomicNums.clear();
       positions.clear();
       idMap.clear();
+
+      mat->lock()->lockForWrite();
+      conformer = mat->getRandomConformerIndex();
+      mat->setConformer(conformer);
+
+      // Extract information from matrix
+      atomList = mat->atoms();
       for (int j = 0; j < atomList.size(); j++) {
         atomicNums.append(atomList.at(j)->atomicNumber());
         positions.append( *(atomList.at(j)->pos()));
       }
+
+      mat->lock()->unlock();
 
       // Rotate, translate positions
       RandomDock::randomlyRotateCoordinates(positions);
@@ -240,6 +256,35 @@ namespace RandomDock {
     return scene;
   }
 
+  Structure* RandomDock::replaceWithRandom(Structure *s, const QString & reason)
+  {
+    Scene *oldScene = qobject_cast<Scene*>(s);
+    QWriteLocker locker1 (oldScene->lock());
+
+    // Generate/Check new scene
+    Scene *scene = 0;
+    while (!checkScene(scene))
+      scene = generateRandomScene();
+
+    // Copy info over
+    QWriteLocker locker2 (scene->lock());
+    OpenBabel::OBMol oldOBMol = scene->OBMol();
+    oldScene->setOBMol(&oldOBMol);
+    oldScene->resetEnergy();
+    oldScene->resetEnthalpy();
+    oldScene->setPV(0);
+    oldScene->setCurrentOptStep(1);
+    QString parents = "Randomly generated";
+    if (!reason.isEmpty())
+      parents += " (" + reason + ")";
+    oldScene->setParents(parents);
+    oldScene->resetFailCount();
+
+    // Delete random scene
+    scene->deleteLater();
+    return qobject_cast<Structure*>(oldScene);
+  }
+
   void RandomDock::initializeAndAddScene(Scene *scene)
   {
     // Initialize vars
@@ -252,8 +297,8 @@ namespace RandomDock {
     sceneInitMutex->lock();
 
     // lockForNaming returns a list of all structures, both accepted
-    // and pending, so it's size is the id of the new structure.
-    int id = m_queue->lockForNaming().size();
+    // and pending, so it's size+1 is the id of the new structure.
+    int id = m_queue->lockForNaming().size() + 1;
 
     // Generate locations using id number
     id_s.sprintf("%05d",id);
@@ -273,6 +318,7 @@ namespace RandomDock {
     // Assign data to scene
     scene->lock()->lockForWrite();
     scene->setIDNumber(id);
+    scene->setIndex(id-1);
     scene->setFileName(locpath_s);
     scene->setRempath(rempath_s);
     scene->setCurrentOptStep(1);
@@ -394,7 +440,7 @@ namespace RandomDock {
     uint numStructs = scenes->size();
     QList<Scene*> rscenes;
 
-    // Copy xtals to a temporary list (don't modify input list!)
+    // Copy scenes to a temporary list (don't modify input list!)
     for (uint i = 0; i < numStructs; i++)
       rscenes.append(scenes->at(i));
 

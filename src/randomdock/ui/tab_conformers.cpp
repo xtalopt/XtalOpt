@@ -20,14 +20,17 @@
 #include "../randomdock.h"
 #include "../structures/matrix.h"
 #include "../structures/substrate.h"
+#include "../../generic/macros.h"
+#include "../../generic/structure.h"
 
 #include <openbabel/forcefield.h>
 
 #include <avogadro/atom.h>
+#include <avogadro/molecule.h>
 
 #include <QSettings>
 #include <QMessageBox>
-#include <QProgressDialog>
+#include <QtConcurrentRun>
 
 using namespace std;
 using namespace Avogadro;
@@ -46,24 +49,32 @@ namespace RandomDock {
     m_ff = OpenBabel::OBForceField::FindForceField("MMFF94");
 
     // dialog connections
-    connect(dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
-    connect(this, SIGNAL(moleculeChanged(Molecule*)),
-            dialog, SIGNAL(moleculeChanged(Molecule*)));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
+            this, SLOT(updateGUI()));
+    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
+            this, SLOT(disconnectGUI()));
+    connect(m_dialog, SIGNAL(tabsLockGUI()),
+            this, SLOT(lockGUI()));
+    connect(this, SIGNAL(moleculeChanged(Structure*)),
+            m_dialog, SIGNAL(moleculeChanged(Structure*)));
 
     // tab connections
     connect(ui.push_generate, SIGNAL(clicked()),
             this, SLOT(generateConformers()));
     connect(ui.push_refresh, SIGNAL(clicked()),
-            this, SLOT(updateMoleculeList()));
+            this, SLOT(updateStructureList()));
     connect(ui.combo_mol, SIGNAL(currentIndexChanged(QString)),
-            this, SLOT(selectMolecule(QString)));
+            this, SLOT(selectStructure(QString)));
     connect(ui.table_conformers, SIGNAL(currentCellChanged(int, int, int, int)),
             this, SLOT(conformerChanged(int, int, int, int)));
     connect(ui.cb_allConformers, SIGNAL(toggled(bool)),
             this, SLOT(calculateNumberOfConformers(bool)));
+    connect(this, SIGNAL(conformersChanged()),
+            this, SLOT(updateConformerTable()));
   }
 
   TabConformers::~TabConformers()
@@ -72,22 +83,49 @@ namespace RandomDock {
     writeSettings();
   }
 
-  void TabConformers::writeSettings() {
-    qDebug() << "TabConformers::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-    settings.setValue("randomdock/conformers/number",      	ui.spin_nConformers->value());
-    settings.setValue("randomdock/conformers/all",      	ui.cb_allConformers->isChecked());
+  void TabConformers::writeSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/conformers");
+
+    settings->setValue("number",      	ui.spin_nConformers->value());
+    settings->setValue("all",      	ui.cb_allConformers->isChecked());
+
+    settings->endGroup();
+    DESTROY_SETTINGS(filename);
   }
 
-  void TabConformers::readSettings() {
-    qDebug() << "TabConformers::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-    ui.spin_nConformers->setValue(	settings.value("randomdock/conformers/number",		100).toInt());
-    ui.cb_allConformers->setChecked(	settings.value("randomdock/conformers/all",		true).toInt());
+  void TabConformers::readSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/conformers");
+
+    ui.spin_nConformers->setValue(	settings->value("number",	100).toInt());
+    ui.cb_allConformers->setChecked(	settings->value("all",		true).toInt());
+
+    settings->endGroup();      
   }
 
-  void TabConformers::updateMoleculeList() {
-    qDebug() << "TabConformers::updateMoleculeList() called";
+  void TabConformers::updateGUI()
+  {
+    updateStructureList();
+  }
+
+  void TabConformers::disconnectGUI()
+  {
+  }
+
+  void TabConformers::lockGUI()
+  {
+    ui.push_refresh->setDisabled(true);
+    ui.push_generate->setDisabled(true);
+    ui.combo_opt->setDisabled(true);
+    ui.spin_nConformers->setDisabled(true);
+    ui.cb_allConformers->setDisabled(true);
+  }
+
+  void TabConformers::updateStructureList() {
+    qDebug() << "TabConformers::updateStructureList() called";
     ui.combo_mol->clear();
     qDebug() << "substrate: " << m_opt->substrate;
     if (m_opt->substrate)
@@ -97,10 +135,21 @@ namespace RandomDock {
     }
   }
 
-  void TabConformers::generateConformers() {
-    qDebug() << "TabConformers::generateConformers() called";
+  void TabConformers::generateConformers()
+  {
+    // Enable this when conformer generation is complete
+    ui.push_generate->setEnabled(false);
+    QtConcurrent::run(this,
+                      &TabConformers::generateConformers_,
+                      currentStructure());
+  }
+
+  void TabConformers::generateConformers_(Structure *mol)
+  {
+    m_dialog->startProgressUpdate("Preparing conformer search...", 0, 0);
     if (ui.combo_opt->currentIndex() == O_G03) {
       // TODO: implement and use a G03 opt routine...
+      ui.push_generate->setEnabled(true);
       return;
     }
     
@@ -109,49 +158,53 @@ namespace RandomDock {
      * forcefield extension...                            *
      ******************************************************/
 
+    m_dialog->updateProgressLabel("Preparing forcefield...");
     OpenBabel::OBForceField *ff = m_ff->MakeNewInstance();
     ff->SetLogFile(&std::cout);
     ff->SetLogLevel(OBFF_LOGLVL_NONE);
 
-    Molecule* mol = currentMolecule();
+    m_dialog->updateProgressLabel("Setting up molecule with forcefield...");
     OpenBabel::OBMol obmol = mol->OBMol();
-    qDebug() << obmol.NumAtoms();
     if (!ff) {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Problem setting up forcefield '%1'.")
                             .arg(ui.combo_opt->currentText().trimmed()));
+      m_dialog->stopProgressUpdate();
+      ui.push_generate->setEnabled(true);
       return;
     }
     if (!ff->Setup(obmol)) {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Cannot set up the force field for this molecule." ));
+      m_dialog->stopProgressUpdate();
+      ui.push_generate->setEnabled(true);
       return;
     }
 
     // Pre-optimize
+    m_dialog->updateProgressLabel("Pre-optimizing molecule...");
     ff->ConjugateGradients(1000);
+
+    // Prepare progress step variable
+    int step = 0;
 
     // Systematic search:
     if (ui.cb_allConformers->isChecked()) {
+      m_dialog->updateProgressLabel(tr("Performing systematic rotor search..."));
       int n = ff->SystematicRotorSearchInitialize(2500);
-      QProgressDialog prog ("Performing Systematic conformer search...", 0, 0, n, m_dialog);
-      int step = 0;
-      prog.setValue(step);
+      m_dialog->updateProgressMaximum(2*n);
       while (ff->SystematicRotorSearchNextConformer(500)) {
-        prog.setValue(++step);
-        qDebug() << step << " " << n;
+        m_dialog->updateProgressValue(++step);
       }
     }
     // Random conformer search
     else {
       int n = ui.spin_nConformers->value();
+      m_dialog->updateProgressLabel(tr("Performing random rotor search..."));
       ff->RandomRotorSearchInitialize(n, 2500);
-      QProgressDialog prog ("Performing Random conformer search...", 0, 0, n, m_dialog);
-      int step = 0;
-      prog.setValue(step);
+      m_dialog->updateProgressMaximum(2*n);
       while (ff->RandomRotorSearchNextConformer(500)) {
-        prog.setValue(++step);
-        qDebug() << step << " " << n;
+        m_dialog->updateProgressValue(++step);
       }
     }
     obmol = mol->OBMol();
@@ -163,6 +216,7 @@ namespace RandomDock {
     std::vector<double> energies;
 
     for (int i = 0; i < obmol.NumConformers(); i++) {
+      m_dialog->updateProgressValue(++step);
       double *coordPtr = obmol.GetConformer(i);
       conformer.clear();
       foreach (Atom *atom, mol->atoms()) {
@@ -176,33 +230,34 @@ namespace RandomDock {
       confs.push_back(&conformer);
       energies.push_back(obmol.GetEnergy(i));
     }
-    //mol->setAllConformers(confs);
-    //mol->setEnergies(energies);
-    qDebug() << "Lengths : " << confs.size() << " " << energies.size() << " " << mol->numConformers() << " " << mol->energies().size();
     delete ff;
-    updateConformerTable();
+    emit conformersChanged();
+    ui.push_generate->setEnabled(true);
+    m_dialog->stopProgressUpdate();
   }
 
-  void TabConformers::selectMolecule(const QString & text) {
-    qDebug() << "TabConformers::selectMolecule( " << text << " ) called";
-    Molecule* mol = currentMolecule();
-    emit moleculeChanged(mol);
-    updateConformerTable();
-    calculateNumberOfConformers(ui.cb_allConformers->isChecked());
+  void TabConformers::selectStructure(const QString & text) {
+    qDebug() << "TabConformers::selectStructure( " << text << " ) called";
+    Structure* mol = currentStructure();
+    if (mol) {
+      emit moleculeChanged(mol);
+      updateConformerTable();
+      calculateNumberOfConformers(ui.cb_allConformers->isChecked());
+    }
   }
 
   void TabConformers::updateConformerTable() {
     qDebug() << "TabConformers::updateConformerTable() called";
 
-    Molecule *mol = currentMolecule();
+    Structure *mol = currentStructure();
 
     // Generate probability lists:
     QList<double> tmp, probs;
     for (uint i = 0; i < mol->numConformers(); i++) {
       if (ui.combo_mol->currentText().contains("Substrate"))
-        tmp.append(static_cast<Substrate*>(mol)->prob(i));
+        tmp.append(qobject_cast<Substrate*>(mol)->prob(i));
       else if (ui.combo_mol->currentText().contains("Matrix"))
-        tmp.append(static_cast<Matrix*>(mol)->prob(i));
+        tmp.append(qobject_cast<Matrix*>(mol)->prob(i));
       else tmp.append(0);
     }
     for (int i = 0; i < tmp.size(); i++)
@@ -225,26 +280,26 @@ namespace RandomDock {
   void TabConformers::conformerChanged(int row, int, int oldrow, int) {
     qDebug() << "TabConformers::conformerChanged( " << row << ", " << oldrow << " ) called";
     if (row == oldrow)	return;
-    if (row == -1)	{emit moleculeChanged(new Molecule); return;}
-    Molecule *mol = currentMolecule();
+    if (row == -1)	{emit moleculeChanged(new Structure); return;}
+    Structure *mol = currentStructure();
     mol->setConformer(row);
     emit moleculeChanged(mol);
   }
 
-  Molecule* TabConformers::currentMolecule() {
-    qDebug() << "TabConformers::currentMolecule() called";
-    Molecule *mol;
+  Structure* TabConformers::currentStructure() {
+    qDebug() << "TabConformers::currentStructure() called";
+    Structure *mol;
     QString text = ui.combo_mol->currentText();
     if (text == "Substrate")
-      mol = m_opt->substrate;
+      mol = qobject_cast<Structure*>(m_opt->substrate);
     else if (text.contains("Matrix")) {
       int ind = text.split(" ")[1].toInt() - 1;
       if (ind + 1 > m_opt->matrixList.size())
-        mol = new Molecule;
+        mol = new Structure;
       else
-        mol = m_opt->matrixList.at(ind);
+        mol = qobject_cast<Structure*>(m_opt->matrixList.at(ind));
     }
-    else mol = new Molecule;
+    else mol = new Structure;
     return mol;
   }
 
@@ -257,14 +312,14 @@ namespace RandomDock {
     // I probably will never add the external conformer search....
     if (ui.combo_opt->currentIndex() == O_G03) return;
 
-    // If there aren't any atoms in the molecule, don't bother checking either.
-    if (currentMolecule()->numAtoms() == 0) return;
+    // If there aren't any atoms in the structure, don't bother checking either.
+    if (currentStructure()->numAtoms() == 0) return;
 
     OpenBabel::OBForceField *ff = m_ff->MakeNewInstance();
     ff->SetLogFile(&std::cout);
     ff->SetLogLevel(OBFF_LOGLVL_NONE);
 
-    Molecule* mol = currentMolecule();
+    Structure* mol = currentStructure();
     OpenBabel::OBMol obmol = mol->OBMol();
     qDebug() << obmol.NumAtoms();
     if (!ff) {

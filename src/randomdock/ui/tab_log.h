@@ -22,9 +22,9 @@
 
 #include "ui_tab_log.h"
 
-using namespace Avogadro;
-
 namespace RandomDock {
+  class RandomDockDialog;
+  class RandomDock;
 
   class TabLog : public QObject
   {
@@ -37,8 +37,11 @@ namespace RandomDock {
     QWidget *getTabWidget() {return m_tab_widget;};
 
   public slots:
-    void readSettings();
-    void writeSettings();
+    void lockGUI();
+    void readSettings(const QString &filename = "");
+    void writeSettings(const QString &filename = "");
+    void updateGUI();
+    void disconnectGUI();
     void newLog(const QString & info);
 
   signals:

@@ -16,8 +16,9 @@
 
 #include "tab_log.h"
 
-#include "randomdock.h"
-#include "randomdockdialog.h"
+#include "dialog.h"
+#include "../randomdock.h"
+#include "../../generic/macros.h"
 
 #include <QSettings>
 #include <QDateTime>
@@ -36,37 +37,57 @@ namespace RandomDock {
     ui.setupUi(m_tab_widget);
 
     // dialog connections
-    connect(p->dialog, SIGNAL(tabsReadSettings()),
-            this, SLOT(readSettings()));
-    connect(p->dialog, SIGNAL(tabsWriteSettings()),
-            this, SLOT(writeSettings()));
+    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(readSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(writeSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
+            this, SLOT(updateGUI()));
+    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
+            this, SLOT(disconnectGUI()));
+    connect(m_dialog, SIGNAL(tabsLockGUI()),
+            this, SLOT(lockGUI()));
 
     // Log
-    connect(p->dialog, SIGNAL(newLog(QString)),
+    connect(dialog, SIGNAL(newLog(QString)),
             this, SLOT(newLog(QString)));
   }
 
   TabLog::~TabLog()
   {
-    qDebug() << "TabSys::~TabSys() called";
     writeSettings();
   }
 
-  void TabLog::writeSettings() {
-    qDebug() << "TabLog::writeSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+  void TabLog::writeSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/log");
 
+    settings->endGroup();
+    DESTROY_SETTINGS(filename);
   }
 
-  void TabLog::readSettings() {
-    qDebug() << "TabLog::readSettings() called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
-
+  void TabLog::readSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("randomdock/log");
+    settings->endGroup();      
   }
 
+  void TabLog::updateGUI()
+  {
+  }
 
-  void TabLog::newLog(const QString & info) {
-    qDebug() << "TabLog::newLog( " << info << " ) called";
+  void TabLog::disconnectGUI()
+  {
+  }
+
+  void TabLog::lockGUI()
+  {
+  }
+
+  void TabLog::newLog(const QString & info)
+  {
     QString entry;
     QString timestamp = QDateTime::currentDateTime().toString("MM/dd/yyyy hh:mm:ss (zzz) -- ");
     

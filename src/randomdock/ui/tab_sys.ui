@@ -40,10 +40,10 @@
       <item row="4" column="0" colspan="5">
        <widget class="QGroupBox" name="cb_remote">
         <property name="title">
-         <string>Use &amp;remote server to run calculations</string>
+         <string>Remote server setup</string>
         </property>
         <property name="checkable">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
         <property name="checked">
          <bool>false</bool>

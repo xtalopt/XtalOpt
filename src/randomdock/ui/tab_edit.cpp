@@ -18,8 +18,8 @@
 
 #include "dialog.h"
 #include "../randomdock.h"
-#include "../../generic/macros.h"
 #include "../optimizers/gamess.h"
+#include "../../generic/macros.h"
 
 #include <QFont>
 #include <QSettings>
@@ -63,8 +63,6 @@ namespace RandomDock {
             this, SLOT(updateTemplates()));
     connect(ui.combo_template, SIGNAL(currentIndexChanged(int)),
             this, SLOT(templateChanged(int)));
-    connect(ui.list_POTCARs, SIGNAL(itemDoubleClicked(QListWidgetItem*)),
-            this, SLOT(changePOTCAR(QListWidgetItem*)));
     connect(ui.push_add, SIGNAL(clicked()),
             this, SLOT(appendOptStep()));
     connect(ui.push_remove, SIGNAL(clicked()),

@@ -568,7 +568,11 @@ namespace Avogadro {
   }    
  
   void QueueManager::unlockForNaming(Structure *s) {
-    if (!s || m_startPendingTracker.list()->contains(s)) {
+    if (!s) {
+      m_startPendingTracker.unlock();
+      m_tracker->unlock();
+    }
+    if (m_startPendingTracker.list()->contains(s)) {
       m_opt->error(tr("QueueManager::unlockForNaming: Attempt to add structure %1 twice?")
                    .arg(s->getIDNumber()));
       m_startPendingTracker.unlock();

@@ -1,5 +1,5 @@
 /**********************************************************************
-  XtalOpt - Tools for advanced crystal optimization
+  RandomDock -- A tool for analysing a matrix-substrate docking problem
 
   Copyright (C) 2009-2010 by David Lonie
 
@@ -17,8 +17,11 @@
 #include "tab_progress.h"
 
 #include "dialog.h"
+#include "../randomdock.h"
+#include "../structures/scene.h"
 #include "../../generic/optimizer.h"
-#include "../xtalopt.h"
+#include "../../generic/queuemanager.h"
+#include "../../generic/macros.h"
 
 #include <QMenu>
 #include <QTimer>
@@ -29,14 +32,20 @@
 #include <QtConcurrentRun>
 
 using namespace std;
+using namespace Avogadro;
 
-namespace Avogadro {
+namespace RandomDock {
 
-  TabProgress::TabProgress( XtalOptDialog *parent, XtalOpt *p ) :
-    QObject( parent ), m_dialog(parent), m_opt(p), m_timer(0), m_mutex(0), m_update_mutex(0), m_update_all_mutex(0), m_context_xtal(0)
+  TabProgress::TabProgress( RandomDockDialog *parent, RandomDock *p ) :
+    QObject(parent),
+    m_dialog(parent),
+    m_opt(p),
+    m_timer(0),
+    m_mutex(0),
+    m_update_mutex(0),
+    m_update_all_mutex(0),
+    m_context_scene(0)
   {
-    //qDebug() << "TabProgress::TabProgress( " << parent <<  " ) called.";
-
     m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 
@@ -65,10 +74,10 @@ namespace Avogadro {
             this, SLOT(lockGUI()));
     connect(this, SIGNAL(newLog(QString)),
             m_dialog, SIGNAL(newLog(QString)));
-    connect(this, SIGNAL(moleculeChanged(Xtal*)),
-            m_dialog, SIGNAL(moleculeChanged(Xtal*)));
-    connect(m_dialog, SIGNAL(moleculeChanged(Xtal*)),
-            this, SLOT(highlightXtal(Xtal*)));
+    connect(this, SIGNAL(moleculeChanged(Structure*)),
+            m_dialog, SIGNAL(moleculeChanged(Structure*)));
+    connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
+            this, SLOT(highlightScene(Structure*)));
     connect(this, SIGNAL(refresh()),
             m_opt->queue(), SLOT(checkRunning()));
     connect(this, SIGNAL(refresh()),
@@ -114,7 +123,7 @@ namespace Avogadro {
 
   void TabProgress::writeSettings(const QString &filename) {
     SETTINGS(filename);
-    settings->beginGroup("xtalopt/progress");
+    settings->beginGroup("randomdock/progress");
     settings->setValue("refreshTime", ui.spin_period->value());
     settings->endGroup();
     DESTROY_SETTINGS(filename);
@@ -122,7 +131,7 @@ namespace Avogadro {
 
   void TabProgress::readSettings(const QString &filename) {
     SETTINGS(filename);
-    settings->beginGroup("xtalopt/progress");
+    settings->beginGroup("randomdock/progress");
     ui.spin_period->setValue(settings->value("refreshTime", 1).toInt());
     settings->endGroup();      
   }
@@ -151,11 +160,8 @@ namespace Avogadro {
   }
 
   void TabProgress::updateProgressTable() {
-    //qDebug() << "TabProgress::updateProgressTable( ) called";
-
     // Only allow one update at a time
     if (!m_update_mutex->tryLock()) {
-      qDebug() << "Killing extra TabProgress::updateProgressTable() call";
       return;
     }
 
@@ -176,15 +182,11 @@ namespace Avogadro {
   }
 
   void TabProgress::addNewEntry() {
-    //qDebug() << "TabProgress::addNewEntry() called";
-
-    // Prevent XtalOpt threads from modifying the table
     QMutexLocker locker (m_mutex);
 
     // The new entry will be at the end of the table, so determine the index:
     int index = ui.table_list->rowCount();
-    Xtal *xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
-    //qDebug() << "TabProgress::addNewEntry() at index " << index;
+    Scene *scene = qobject_cast<Scene*>(m_opt->tracker()->at(index));
 
     // Turn off signals
     ui.table_list->blockSignals(true);
@@ -196,11 +198,11 @@ namespace Avogadro {
     // Add the new row
     ui.table_list->insertRow(index);
     // Columns: once for each column in ProgressColumns:
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < 6; i++) {
       ui.table_list->setItem(index, i, new QTableWidgetItem());
     }
 
-    m_infoUpdateTracker.append(xtal);
+    m_infoUpdateTracker.append(scene);
     locker.unlock();
     emit infoUpdate();
 
@@ -211,15 +213,12 @@ namespace Avogadro {
   }
 
   void TabProgress::updateAllInfo() {
-    //qDebug() << "TabProgress::updateAllInfo() called";
     if (!m_update_all_mutex->tryLock()) {
-      qDebug() << "Killing extra TabProgress::updateAllInfo() call";
       return;
     }
     QList<Structure*> *structures = m_opt->tracker()->list();
     for (int i = 0; i < ui.table_list->rowCount(); i++) {
-      m_infoUpdateTracker.append(structures->at(i));
-      emit infoUpdate();
+      newInfoUpdate(structures->at(i));
     }
     m_update_all_mutex->unlock();
   }
@@ -230,15 +229,13 @@ namespace Avogadro {
   }
 
   void TabProgress::updateInfo() {
-    //qDebug() << "TabProgress::updateInfo( ) called";
-
     if (m_infoUpdateTracker.size() == 0) {
       return;
     }
 
     // Don't update while a context operation is in the works
-    if (m_context_xtal !=0) {
-      qDebug() << "TabProgress::updateInfo: Waiting for context operation to complete (" << m_context_xtal << ") Trying again very soon.";
+    if (m_context_scene !=0) {
+      qDebug() << "TabProgress::updateInfo: Waiting for context operation to complete (" << m_context_scene << ") Trying again very soon.";
       QTimer::singleShot(1000, this, SLOT(updateInfo()));
       return;
     }
@@ -252,80 +249,74 @@ namespace Avogadro {
       return;
     int i = m_opt->tracker()->list()->indexOf(structure);
 
-    Xtal *xtal = qobject_cast<Xtal*>(structure);
+    Scene *scene = qobject_cast<Scene*>(structure);
 
     if (i < 0 || i > ui.table_list->rowCount() - 1) {
       qDebug() << "TabProgress::updateInfo: Trying to update an index that doesn't exist (" << i << ") Waiting...";
-      m_infoUpdateTracker.append(xtal);
+      m_infoUpdateTracker.append(scene);
       QTimer::singleShot(100, this, SLOT(updateInfo()));
       return;
     }
 
-    QString time;
     uint totalOptSteps = m_opt->optimizer()->getNumberOfOptSteps();
     QBrush brush (Qt::white);
 
     // Get queue data
     m_opt->queue()->updateQueue();
 
-    QReadLocker xtalLocker (xtal->lock());
+    QReadLocker sceneLocker (scene->lock());
 
-    time = xtal->getOptElapsed();
+    ui.table_list->item(i, C_Rank)->setText(QString::number(scene->getRank()));
+    ui.table_list->item(i, C_Index)->setText(QString::number(scene->getIndex()));
+    ui.table_list->item(i, C_Elapsed)->setText(scene->getOptElapsed());
 
-    ui.table_list->item(i, TimeElapsed)->setText(time);
-
-    ui.table_list->item(i, Gen)->setText(QString::number(xtal->getGeneration()));
-    ui.table_list->item(i, Mol)->setText(QString::number(xtal->getIDNumber()));
-    ui.table_list->item(i, Ancestry)->setText(xtal->getParents());
-
-    if (xtal->getJobID())
-      ui.table_list->item(i, JobID)->setText(QString::number(xtal->getJobID()));
+    if (scene->getJobID())
+      ui.table_list->item(i, C_JobID)->setText(QString::number(scene->getJobID()));
     else
-      ui.table_list->item(i, JobID)->setText("N/A");
+      ui.table_list->item(i, C_JobID)->setText("N/A");
 
-    if (xtal->hasEnthalpy() || xtal->getEnergy() != 0)
-      ui.table_list->item(i, Enthalpy)->setText(QString::number(xtal->getEnthalpy()));
+    if (scene->getEnergy() != 0.0)
+      ui.table_list->item(i, C_Energy)->setText(QString::number(scene->getEnergy()));
     else
-      ui.table_list->item(i, Enthalpy)->setText("N/A");
-    ui.table_list->item(i, SpaceGroup)->setText( QString::number( xtal->getSpaceGroupNumber()) + ": " + xtal->getSpaceGroupSymbol() );
-    ui.table_list->item(i, Volume)->setText( QString::number( xtal->getVolume(), 'f', 2 ));
-    switch (xtal->getStatus()) {
-    case Xtal::InProcess: {
-      xtalLocker.unlock();
-      Optimizer::JobState state = m_opt->optimizer()->getStatus(xtal);
-      xtalLocker.relock();
+      ui.table_list->item(i, C_Energy)->setText("N/A");
+
+    switch (scene->getStatus()) {
+    case Scene::InProcess: {
+      sceneLocker.unlock();
+      Optimizer::JobState state = m_opt->optimizer()->getStatus(scene);
+      sceneLocker.relock();
       switch (state) {
       case Optimizer::Running:
-        ui.table_list->item(i, Status)->setText(tr("Running (Opt Step %1 of %2, %3 failures)")
-                                                .arg(QString::number(xtal->getCurrentOptStep()))
+        ui.table_list->item(i, C_Status)->setText(tr("Running (Opt Step %1 of %2, %3 failures)")
+                                                .arg(QString::number(scene->getCurrentOptStep()))
                                                 .arg(QString::number(totalOptSteps))
-                                                .arg(QString::number(xtal->getFailCount()))
+                                                .arg(QString::number(scene->getFailCount()))
                                                 );
         brush.setColor(Qt::green);
         break;
       case Optimizer::Queued:
-        ui.table_list->item(i, Status)->setText(tr("Queued (Opt Step %1 of %2, %3 failures)")
-                                                .arg(QString::number(xtal->getCurrentOptStep()))
+        ui.table_list->item(i, C_Status)->setText(tr("Queued (Opt Step %1 of %2, %3 failures)")
+                                                .arg(QString::number(scene->getCurrentOptStep()))
                                                 .arg(QString::number(totalOptSteps))
-                                                .arg(QString::number(xtal->getFailCount()))
+                                                .arg(QString::number(scene->getFailCount()))
                                                 );
         brush.setColor(Qt::cyan);
         break;
       case Optimizer::Success:
-        ui.table_list->item(i, Status)->setText("Starting update...");
+        ui.table_list->item(i, C_Status)->setText("Starting update...");
         break;
       case Optimizer::Unknown:
-        ui.table_list->item(i, Status)->setText("Unknown");
+        ui.table_list->item(i, C_Status)->setText("Unknown");
         break;
       case Optimizer::Error:
-        ui.table_list->item(i, Status)->setText("Error: Restarting job...");
+        ui.table_list->item(i, C_Status)->setText("Error: Restarting job...");
         brush.setColor(Qt::darkRed);
         break;
       case Optimizer::CommunicationError:
-        ui.table_list->item(i, Status)->setText("Comm. Error");
+        ui.table_list->item(i, C_Status)->setText("Comm. Error");
         brush.setColor(Qt::darkRed);
         break;
-      // Shouldn't happen; started and pending only occur when xtal is "Submitted"
+      // Shouldn't happen; started and pending only occur when scene is "Submitted"
       case Optimizer::Started:
       case Optimizer::Pending:
       default:
@@ -333,82 +324,78 @@ namespace Avogadro {
       }
       break;
     }
-    case Xtal::Submitted:
-      ui.table_list->item(i, Status)->setText(tr("Job submitted (%1 of %2)")
-                                              .arg(QString::number(xtal->getCurrentOptStep()))
+    case Scene::Submitted:
+      ui.table_list->item(i, C_Status)->setText(tr("Job submitted (%1 of %2)")
+                                              .arg(QString::number(scene->getCurrentOptStep()))
                                               .arg(QString::number(totalOptSteps))
                                               );
       brush.setColor(Qt::cyan);
       break;
-    case Xtal::Restart:
-      ui.table_list->item(i, Status)->setText("Restarting job...");
+    case Scene::Restart:
+      ui.table_list->item(i, C_Status)->setText("Restarting job...");
       brush.setColor(Qt::cyan);
       break;
-    case Xtal::Killed:
-    case Xtal::Removed:
+    case Scene::Killed:
+    case Scene::Removed:
       brush.setColor(Qt::darkGray);
-      ui.table_list->item(i, Status)->setText("Killed");
+      ui.table_list->item(i, C_Status)->setText("Killed");
       break;
-    case Xtal::Duplicate:
+    case Scene::Duplicate:
       brush.setColor(Qt::darkGreen);
-      ui.table_list->item(i, Status)->setText(tr("Duplicate of %1")
-                                              .arg(xtal->getDuplicateString()));
+      ui.table_list->item(i, C_Status)->setText(tr("Duplicate of %1")
+                                              .arg(scene->getDuplicateString()));
       break;
-    case Xtal::StepOptimized:
-      ui.table_list->item(i, Status)->setText("Checking status...");
+    case Scene::StepOptimized:
+      ui.table_list->item(i, C_Status)->setText("Checking status...");
       brush.setColor(Qt::cyan);
       break;
-    case Xtal::Optimized:
-      ui.table_list->item(i, Status)->setText("Optimized");
+    case Scene::Optimized:
+      ui.table_list->item(i, C_Status)->setText("Optimized");
       brush.setColor(Qt::yellow);
       break;
-    case Xtal::WaitingForOptimization:
-      ui.table_list->item(i, Status)->setText(tr("Waiting for Optimization (%1 of %2)")
-                                              .arg(QString::number(xtal->getCurrentOptStep()))
+    case Scene::WaitingForOptimization:
+      ui.table_list->item(i, C_Status)->setText(tr("Waiting for Optimization (%1 of %2)")
+                                              .arg(QString::number(scene->getCurrentOptStep()))
                                               .arg(QString::number(totalOptSteps))
                                               );
       brush.setColor(Qt::darkCyan);
       break;
-    case Xtal::Error:
-      ui.table_list->item(i, Status)->setText(tr("Job failed"));
+    case Scene::Error:
+      ui.table_list->item(i, C_Status)->setText(tr("Job failed. Restarting..."));
       brush.setColor(Qt::red);
       break;
-    case Xtal::Updating:
-      ui.table_list->item(i, Status)->setText("Updating structure...");
+    case Scene::Updating:
+      ui.table_list->item(i, C_Status)->setText("Updating structure...");
       brush.setColor(Qt::cyan);
       break;
-    case Xtal::Empty:
-      ui.table_list->item(i, Status)->setText("Structure empty...");
+    case Scene::Empty:
+      ui.table_list->item(i, C_Status)->setText("Structure empty...");
       break;
     }
 
-    if (xtal->getFailCount() != 0) {
+    if (scene->getFailCount() != 0) {
       brush.setColor(Qt::red);
     }
     // paint cell:
-    ui.table_list->item(i, Status)->setBackground(brush);
+    ui.table_list->item(i, C_Status)->setBackground(brush);
   }
 
   void TabProgress::selectMoleculeFromProgress(int row,int,int oldrow,int) {
-    //qDebug() << "TabProgress::selectMoleculeFromProgress( " << row << " " << oldrow << " ) called";
     Q_UNUSED(oldrow);
     if (m_opt->isStarting) {
       qDebug() << "TabProgress::selectMoleculeFromProgress: Not updating widget while session is starting";
       return;
     }
     if ( row == -1 ) return;
-    emit moleculeChanged(qobject_cast<Xtal*>(m_opt->tracker()->at(row)));
+    emit moleculeChanged(m_opt->tracker()->at(row));
   }
 
-  void TabProgress::highlightXtal(Xtal* xtal) {
-    //qDebug() << "TabProgress::highlightMolecule( " << xtal << " ) called.";
-    xtal->lock()->lockForRead();
-    int gen = xtal->getGeneration();
-    int id  = xtal->getIDNumber();
-    xtal->lock()->unlock();
+  void TabProgress::highlightScene(Structure *structure) {
+    structure->lock()->lockForRead();
+    int id  = structure->getIDNumber();
+    structure->lock()->unlock();
     for (int row = 0; row < ui.table_list->rowCount(); row++) {
-      if (ui.table_list->item(row, Gen)->text().toInt() == gen &&
-          ui.table_list->item(row, Mol)->text().toInt() == id) {
+      if (ui.table_list->item(row, C_Index)->text().toInt() == id) {
         ui.table_list->blockSignals(true);
         ui.table_list->setCurrentCell(row, 0);
         ui.table_list->blockSignals(false);
@@ -433,7 +420,7 @@ namespace Avogadro {
   }
 
   void TabProgress::progressContextMenu(QPoint p) {
-    if (m_context_xtal) return;
+    if (m_context_scene) return;
     QApplication::setOverrideCursor( Qt::WaitCursor );
     QTableWidgetItem *item = ui.table_list->itemAt(p);
     if (!item) {
@@ -444,16 +431,16 @@ namespace Avogadro {
 
     qDebug() << "Context menu at row " << index;
 
-    // Set m_context_xtal after locking to avoid threading issues.
-    Xtal* xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
+    // Set m_context_scene after locking to avoid threading issues.
+    Scene* scene = qobject_cast<Scene*>(m_opt->tracker()->at(index));
 
-    xtal->lock()->lockForRead();
+    scene->lock()->lockForRead();
 
-    m_context_xtal = xtal;
+    m_context_scene = scene;
 
     QApplication::restoreOverrideCursor();
 
-    Xtal::State state = m_context_xtal->getStatus();
+    Scene::State state = m_context_scene->getStatus();
 
     QMenu menu;
     QAction *a_restart  = menu.addAction("&Restart job");
@@ -465,12 +452,12 @@ namespace Avogadro {
 
     // Connect actions
     connect(a_restart, SIGNAL(triggered()), this, SLOT(restartJobProgress()));
-    connect(a_kill, SIGNAL(triggered()), this, SLOT(killXtalProgress()));
-    connect(a_unkill, SIGNAL(triggered()), this, SLOT(unkillXtalProgress()));
+    connect(a_kill, SIGNAL(triggered()), this, SLOT(killSceneProgress()));
+    connect(a_unkill, SIGNAL(triggered()), this, SLOT(unkillSceneProgress()));
     connect(a_resetFail, SIGNAL(triggered()), this, SLOT(resetFailureCountProgress()));
     connect(a_randomize, SIGNAL(triggered()), this, SLOT(randomizeStructureProgress()));
 
-    if (state == Xtal::Killed || state == Xtal::Removed) {
+    if (state == Scene::Killed || state == Scene::Removed) {
       a_kill->setVisible(false);
       a_restart->setVisible(false);
     }
@@ -478,11 +465,11 @@ namespace Avogadro {
       a_unkill->setVisible(false);
     }
 
-    m_context_xtal->lock()->unlock();
+    m_context_scene->lock()->unlock();
     QAction *selection = menu.exec(QCursor::pos());
 
     if (selection == 0) {
-      m_context_xtal = 0;
+      m_context_scene = 0;
       return;
     }
     QtConcurrent::run(this, &TabProgress::updateProgressTable);
@@ -495,20 +482,18 @@ namespace Avogadro {
 
   void TabProgress::restartJobProgress() {
     //qDebug() << "TabProgress::restartJobProgress() called";
-    if (!m_context_xtal) return;
+    if (!m_context_scene) return;
 
-    // Get info from xtal
-    m_context_xtal->lock()->lockForRead();
-    int gen = m_context_xtal->getGeneration();
-    int id = m_context_xtal->getIDNumber();
-    int optstep = m_context_xtal->getCurrentOptStep();
-    m_context_xtal->lock()->unlock();
+    // Get info from scene
+    m_context_scene->lock()->lockForRead();
+    int id = m_context_scene->getIDNumber();
+    int optstep = m_context_scene->getCurrentOptStep();
+    m_context_scene->lock()->unlock();
 
     // Choose which OptStep to use
     bool ok;
     int optStep = QInputDialog::getInt(m_dialog,
-                                       tr("Restart Optimization %1x%2")
-                                       .arg(gen)
+                                       tr("Restart Optimization %1")
                                        .arg(id),
                                        "Select optimization step to restart from:",
                                        optstep,
@@ -522,74 +507,74 @@ namespace Avogadro {
 
   void TabProgress::restartJobProgress_(int optStep) {
     //qDebug() << "TabProgress::restartJobProgress_( " << optStep << " ) called";
-    QWriteLocker locker (m_context_xtal->lock());
-    m_context_xtal->setCurrentOptStep(optStep);
+    QWriteLocker locker (m_context_scene->lock());
+    m_context_scene->setCurrentOptStep(optStep);
 
     // Restart job if currently running
-    if ( m_context_xtal->getStatus() == Xtal::InProcess ||
-         m_context_xtal->getStatus() == Xtal::Submitted ) {
+    if ( m_context_scene->getStatus() == Scene::InProcess ||
+         m_context_scene->getStatus() == Scene::Submitted ) {
       locker.unlock();
-      m_opt->optimizer()->deleteJob(m_context_xtal);
+      m_opt->optimizer()->deleteJob(m_context_scene);
       locker.relock();
     }
 
-    m_context_xtal->setStatus(Xtal::Restart);
-    newInfoUpdate(m_context_xtal);
+    m_context_scene->setStatus(Scene::Restart);
+    newInfoUpdate(m_context_scene);
 
-    // Clear context xtal pointer
+    // Clear context scene pointer
     locker.unlock();
-    m_context_xtal = 0;
+    m_context_scene = 0;
   }
 
-  void TabProgress::killXtalProgress() {
-    //qDebug() << "TabProgress::killXtalProgress() called";
-    QtConcurrent::run(this, &TabProgress::killXtalProgress_);
+  void TabProgress::killSceneProgress() {
+    //qDebug() << "TabProgress::killSceneProgress() called";
+    QtConcurrent::run(this, &TabProgress::killSceneProgress_);
   }
 
-  void TabProgress::killXtalProgress_() {
-    //qDebug() << "TabProgress::killXtalProgress_() called";
-    if (!m_context_xtal) return;
-    QWriteLocker locker (m_context_xtal->lock());
+  void TabProgress::killSceneProgress_() {
+    //qDebug() << "TabProgress::killSceneProgress_() called";
+    if (!m_context_scene) return;
+    QWriteLocker locker (m_context_scene->lock());
 
     // End job if currently running
-    if ( m_context_xtal->getStatus() != Xtal::Optimized ) {
+    if ( m_context_scene->getStatus() != Scene::Optimized ) {
       locker.unlock();
-      m_opt->optimizer()->deleteJob(m_context_xtal);
+      m_opt->optimizer()->deleteJob(m_context_scene);
       locker.relock();
-      m_context_xtal->setStatus(Xtal::Killed);
+      m_context_scene->setStatus(Scene::Killed);
     }
-    else m_context_xtal->setStatus(Xtal::Removed);
+    else m_context_scene->setStatus(Scene::Removed);
 
-    // Clear context xtal pointer
+    // Clear context scene pointer
     locker.unlock();
-    newInfoUpdate(m_context_xtal);
-    m_context_xtal = 0;
+    newInfoUpdate(m_context_scene);
+    m_context_scene = 0;
   }
 
-  void TabProgress::unkillXtalProgress() {
-    //qDebug() << "TabProgress::unkillXtalProgress() called";
-    QtConcurrent::run(this, &TabProgress::unkillXtalProgress_);
+  void TabProgress::unkillSceneProgress() {
+    //qDebug() << "TabProgress::unkillSceneProgress() called";
+    QtConcurrent::run(this, &TabProgress::unkillSceneProgress_);
   }
 
-  void TabProgress::unkillXtalProgress_() {
-    //qDebug() << "TabProgress::unkillXtalProgress_() called";
-    if (!m_context_xtal) return;
-    QWriteLocker locker (m_context_xtal->lock());
-    if (m_context_xtal->getStatus() != Xtal::Killed &&
-        m_context_xtal->getStatus() != Xtal::Removed ) return;
+  void TabProgress::unkillSceneProgress_() {
+    //qDebug() << "TabProgress::unkillSceneProgress_() called";
+    if (!m_context_scene) return;
+    QWriteLocker locker (m_context_scene->lock());
+    if (m_context_scene->getStatus() != Scene::Killed &&
+        m_context_scene->getStatus() != Scene::Removed ) return;
 
-    // Setting status to Xtal::Error will restart the job if was killed
-    if (m_context_xtal->getStatus() == Xtal::Killed)
-      m_context_xtal->setStatus(Xtal::Error);
+    // Setting status to Scene::Error will restart the job if was killed
+    if (m_context_scene->getStatus() == Scene::Killed)
+      m_context_scene->setStatus(Scene::Error);
 
-    // Set status to Optimized if xtal was previously optimized
-    if (m_context_xtal->getStatus() == Xtal::Removed)
-      m_context_xtal->setStatus(Xtal::Optimized);
+    // Set status to Optimized if scene was previously optimized
+    if (m_context_scene->getStatus() == Scene::Removed)
+      m_context_scene->setStatus(Scene::Optimized);
 
-    // Clear context xtal pointer
-    newInfoUpdate(m_context_xtal);
+    // Clear context scene pointer
+    newInfoUpdate(m_context_scene);
     locker.unlock();
-    m_context_xtal = 0;
+    m_context_scene = 0;
   }
 
   void TabProgress::resetFailureCountProgress() {
@@ -599,15 +584,15 @@ namespace Avogadro {
 
   void TabProgress::resetFailureCountProgress_() {
     //qDebug() << "TabProgress::resetFailureCountProgress_() called";
-    if (!m_context_xtal) return;
-    QWriteLocker locker (m_context_xtal->lock());
+    if (!m_context_scene) return;
+    QWriteLocker locker (m_context_scene->lock());
 
-    m_context_xtal->resetFailCount();
+    m_context_scene->resetFailCount();
 
-    // Clear context xtal pointer
-    newInfoUpdate(m_context_xtal);
+    // Clear context scene pointer
+    newInfoUpdate(m_context_scene);
     locker.unlock();
-    m_context_xtal = 0;
+    m_context_scene = 0;
 
     emit refresh();
   }
@@ -619,17 +604,17 @@ namespace Avogadro {
 
   void TabProgress::randomizeStructureProgress_() {
     //qDebug() << "TabProgress::randomizeStructureProgress_() called";
-    if (!m_context_xtal) return;
+    if (!m_context_scene) return;
 
     // End job if currently running
-    if (m_context_xtal->getJobID()) {
-      m_opt->optimizer()->deleteJob(m_context_xtal);
+    if (m_context_scene->getJobID()) {
+      m_opt->optimizer()->deleteJob(m_context_scene);
     }
 
-    m_opt->replaceWithRandom(m_context_xtal, "manual");
+    m_opt->replaceWithRandom(m_context_scene, "manual");
 
     // Restart job:
-    newInfoUpdate(m_context_xtal);
+    newInfoUpdate(m_context_scene);
     restartJobProgress_(1);
   }
 

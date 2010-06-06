@@ -300,7 +300,7 @@ namespace Avogadro {
           break;
         case Enthalpy_T:
           // Skip xtals that don't have enthalpy/energy set
-          if (!xtal->hasEnergy() && !xtal->hasEnthalpy()) continue;
+          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy()) continue;
           switch (j) {
           case 0:       x = xtal->getEnthalpy(); break;
           default:      y = xtal->getEnthalpy(); break;
@@ -308,7 +308,7 @@ namespace Avogadro {
           break;
         case Energy_T:
           // Skip xtals that don't have energy set
-          if (!xtal->hasEnergy()) continue;
+          if (xtal->getEnergy() == 0.0) continue;
           switch (j) {
           case 0:       x = xtal->getEnergy(); break;
           default:      y = xtal->getEnergy(); break;
@@ -316,7 +316,7 @@ namespace Avogadro {
           break;
         case PV_T:
           // Skip xtals that don't have enthalpy/energy set
-          if (!xtal->hasEnergy() && !xtal->hasEnthalpy()) continue;
+          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy()) continue;
           switch (j) {
           case 0:       x = xtal->getPV(); break;
           default:      y = xtal->getPV(); break;

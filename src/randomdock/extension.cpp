@@ -19,6 +19,7 @@
 #include "extension.h"
 
 #include "ui/dialog.h"
+#include "../generic/structure.h"
 
 #include <avogadro/molecule.h>
 #include <avogadro/glwidget.h>
@@ -86,7 +87,7 @@ namespace RandomDock {
     }
   }
 
-  void RandomDockExtension::reemitMoleculeChanged(Molecule *mol) {
+  void RandomDockExtension::reemitMoleculeChanged(Structure *mol) {
     // Check for weirdness
     if (mol->numAtoms() != 0) {
       if (!mol->atom(0)) {
@@ -107,8 +108,8 @@ namespace RandomDock {
       m_dialog = new RandomDockDialog(widget, qobject_cast<QWidget*>(parent()));
       m_dialog->setMolecule(m_molecule);
       // Allow setting of the molecule from within the dialog:
-      connect(m_dialog, SIGNAL(moleculeChanged(Molecule*)),
-              this, SLOT(reemitMoleculeChanged(Molecule*)));
+      connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
+              this, SLOT(reemitMoleculeChanged(Structure*)));
     }
     m_dialog->show();
     return NULL;
