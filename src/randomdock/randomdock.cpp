@@ -448,14 +448,14 @@ namespace RandomDock {
       rscenes.append(scenes->at(i));
 
     // Simple selection sort
-    Scene *scene_i, scene_j, tmp;
+    Scene *scene_i, *scene_j, *tmp;
     for (uint i = 0; i < numStructs; i++) {
       scene_i = rscenes.at(i);
       scene_i->lock()->lockForRead();
       for (uint j = i + 1; j < numStructs; j++) {
         scene_j = rscenes.at(j);
         scene_j->lock()->lockForRead();
-        if (scene_j->getEnergy() < scenes_i->getEnergy()) {
+        if (scene_j->getEnergy() < scene_i->getEnergy()) {
           rscenes.swap(i,j);
           tmp = scene_i;
           scene_i = scene_j;
