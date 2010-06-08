@@ -416,6 +416,23 @@ namespace GlobalSearch {
     prepareStructureForNextOptStep(structure);
   }
 
+  void QueueManager::killStructure(Structure *s) {
+    m_killPendingTracker.append(s);
+    stopJob(s);
+    QtConcurrent::run(this, &QueueManager::killStructure_);
+  }
+
+  void QueueManager::killStructure_() {
+    Structure *structure = 0;
+    if (!m_killPendingTracker.popFirst(structure)) {
+      return;
+    }
+    QWriteLocker locker (structure->lock());
+    structure->stopOptTimer();
+    structure->setStatus(Structure::Killed);
+    emit structureKilled(structure);
+  }
+
   void QueueManager::prepareStructureForSubmission(Structure *s, int optStep) {
     m_submissionPendingTracker.append(s);
     s->setStatus(Structure::WaitingForOptimization);
@@ -464,23 +481,6 @@ namespace GlobalSearch {
     }
   }
 
-  void QueueManager::killStructure(Structure *s) {
-    m_killPendingTracker.append(s);
-    stopJob(s);
-    QtConcurrent::run(this, &QueueManager::killStructure_);
-  }
-
-  void QueueManager::killStructure_() {
-    Structure *structure = 0;
-    if (!m_killPendingTracker.popFirst(structure)) {
-      return;
-    }
-    QWriteLocker locker (structure->lock());
-    structure->stopOptTimer();
-    structure->setStatus(Structure::Killed);
-    emit structureKilled(structure);
-  }
-
   void QueueManager::stopJob(Structure *s) {
     QtConcurrent::run(m_opt->optimizer(),
                       &Optimizer::deleteJob,
@@ -491,6 +491,19 @@ namespace GlobalSearch {
     m_runningTracker.lockForRead();
     QList<Structure*> list(*m_runningTracker.list());
     m_runningTracker.unlock();
+    return list;
+  }
+
+  QList<Structure*> QueueManager::getAllSubmittedStructures() {
+    m_tracker->lockForRead();
+    m_submissionPendingTracker.lockForRead();
+    m_jobStartTracker.lockForRead();
+    QList<Structure*> list (*m_tracker->list());
+    list.append(*m_submissionPendingTracker.list());
+    list.append(*m_jobStartTracker.list());
+    m_submissionPendingTracker.unlock();
+    m_jobStartTracker.unlock();
+    m_tracker->unlock();
     return list;
   }
 
@@ -541,28 +554,12 @@ namespace GlobalSearch {
     return list;
   }
 
-  QList<Structure*> QueueManager::getAllSubmittedStructures() {
-    m_tracker->lockForRead();
-    m_submissionPendingTracker.lockForRead();
-    m_jobStartTracker.lockForRead();
-    QList<Structure*> list (*m_tracker->list());
-    list.append(*m_submissionPendingTracker.list());
-    list.append(*m_jobStartTracker.list());
-    m_submissionPendingTracker.unlock();
-    m_jobStartTracker.unlock();
-    m_tracker->unlock();
-    return list;
-  }
-
-
   QList<Structure*> QueueManager::lockForNaming() {
     m_tracker->lockForRead();
     m_startPendingTracker.lockForRead();
-    QList<Structure*> list (*m_tracker->list());
-    list.append(*m_startPendingTracker.list());
-    return list;
-  }    
- 
+    return getAllStructures;
+  }
+
   void QueueManager::unlockForNaming(Structure *s) {
     if (!s) {
       m_startPendingTracker.unlock();
