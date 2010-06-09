@@ -1,15 +1,14 @@
-///////////////
-/////////////// Function to get a backtrace
-///////////////
-/////////////// Fixed so that it correctly demangles the function names!
-///////////////
-/////////////// See glibc documentation for backtrace
-/////////////// (http://www.gnu.org/software/libc/manual/html_node/Backtraces.html#Backtraces)
-///////////////
-/////////////// This code comes from a mailing list discussion at:
-/////////////// http://lists.trolltech.com/qt-interest/2006-07/thread00444-0.html
-/////////////// I owe the author my eternal gratitude.
-
+//
+// Function to get a backtrace
+//
+// Fixed so that it correctly demangles the function names!
+//
+// See glibc documentation for backtrace
+// (http://www.gnu.org/software/libc/manual/html_node/Backtraces.html#Backtraces)
+//
+// This code comes from a mailing list discussion at:
+// http://lists.trolltech.com/qt-interest/2006-07/thread00444-0.html
+// I owe the author my eternal gratitude.
 
 #include <QObject>
 #include <QString>
@@ -114,36 +113,3 @@ QStringList getBackTrace()
 #endif
 
 }
-
-/////// Test of print backtrace - go a couple of functions deep and print the backtrace
-
-#include <iostream>
-
-class Foo
-{
-public:
-  Foo()
-  {}
-
-  ~Foo()
-  {}
-
-  void bar() const
-  {
-    QStringList backtrace = getBackTrace();
-
-    foreach( QString line, backtrace )
-      {
-        std::cout << qPrintable(line) << std::endl;
-      }
-  }
-};
-
-void bar()
-{
-  Foo foo;
-  foo.bar();
-}
-
-//compilation with -O2 will probably optimise out
-//this function - I see it disappear when I compile
