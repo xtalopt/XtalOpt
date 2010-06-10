@@ -929,7 +929,7 @@ namespace XtalOpt {
   }
 
 
-  bool XtalOpt::save(const QString &stateFilename) {
+  bool XtalOpt::save(const QString &stateFilename, bool notify) {
     if (isStarting) {
       savePending = false;
       return false;
@@ -944,6 +944,12 @@ namespace XtalOpt {
       filename = stateFilename;
     }
     QString oldfilename = filename + ".old";
+
+    if (notify) {
+      m_dialog->startProgressUpdate(tr("Saving: Writing %1...")
+                                    .arg(filename),
+                                    0, 0);
+    }
 
     // Copy xtalopt.state -> xtalopt.state.old
     if (QFile::exists(filename) ) {
@@ -972,6 +978,10 @@ namespace XtalOpt {
       // this is ok under a read lock because of the savePending logic
       xtal->setIndex(i);
       xfile.setFileName(xtal->fileName() + "/xtal.state");
+      if (notify) {
+        m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
+                                      .arg(xfile.fileName()));
+      }
       if (!xfile.open(QIODevice::WriteOnly)) {
         error(tr("XtalOpt::save(): Error opening file %1 for writing (Structure %2)...")
               .arg(xfile.fileName())
@@ -992,6 +1002,10 @@ namespace XtalOpt {
 
     QFile file (filePath + "/results.txt");
     QFile oldfile (filePath + "/results_old.txt");
+    if (notify) {
+      m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
+                                    .arg(file.fileName()));
+    }
     if (oldfile.open(QIODevice::ReadOnly))
       oldfile.remove();
     if (file.open(QIODevice::ReadOnly))
@@ -1048,6 +1062,9 @@ namespace XtalOpt {
       }
       xtal->lock()->unlock();
       out << endl;
+      if (notify) {
+        m_dialog->stopProgressUpdate();
+      }
     }
 
     // Mark operation successful

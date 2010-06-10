@@ -138,10 +138,10 @@ namespace XtalOpt {
   {
     //qDebug() << "XtalOptDialog::~XtalOptDialog() called";
     if (m_opt->saveOnExit) {
-    m_opt->tracker()->lockForRead();
-    writeSettings();
-    saveSession();
-    m_opt->tracker()->unlock();
+      m_opt->tracker()->lockForRead();
+      writeSettings();
+      saveSession();
+      m_opt->tracker()->unlock();
     }
     delete m_opt;
   }
@@ -192,11 +192,16 @@ namespace XtalOpt {
   }
 
   void XtalOptDialog::saveSession() {
+    // Notify if this was user requested.
+    bool notify = false;
+    if (sender() == ui.push_save) {
+      notify = true;
+    }
     if (m_opt->savePending) {
       return;
     }
     m_opt->savePending = true;
-    QtConcurrent::run(m_opt, &XtalOpt::save, QString(""));
+    QtConcurrent::run(m_opt, &XtalOpt::save, QString(""), notify);
   }
 
   void XtalOptDialog::resumeSession() {
