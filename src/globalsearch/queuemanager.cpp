@@ -557,7 +557,7 @@ namespace GlobalSearch {
   QList<Structure*> QueueManager::lockForNaming() {
     m_tracker->lockForRead();
     m_startPendingTracker.lockForRead();
-    return getAllStructures;
+    return getAllStructures();
   }
 
   void QueueManager::unlockForNaming(Structure *s) {
