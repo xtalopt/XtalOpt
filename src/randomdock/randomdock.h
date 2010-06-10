@@ -56,7 +56,7 @@ namespace RandomDock {
     Scene* generateRandomScene();
     Structure* replaceWithRandom(Structure *s, const QString & reason);
     bool checkLimits();
-    bool save(const QString & filename = "");
+    bool save(const QString & filename = "", bool notify = false);
     bool load(const QString & filename);
 
     bool checkScene(Scene *scene);

@@ -349,7 +349,8 @@ namespace RandomDock {
     return true;
   }
 
-  bool RandomDock::save(const QString &stateFilename) {
+  bool RandomDock::save(const QString &stateFilename, bool notify) {
+    Q_UNUSED(notify); //TODO!
     if (isStarting) {
       savePending = false;
       return false;

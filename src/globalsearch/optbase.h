@@ -99,10 +99,11 @@ namespace GlobalSearch {
      * m_filePath + "/[search name].state".
      *
      * @param filename Filename to write to. Optional.
+     * @param notify Whether to display a user-visible notification
      *
      * @return True if successful, false otherwise.
      */
-    virtual bool save(const QString & filename = "") = 0;
+    virtual bool save(const QString & filename = "", bool notify = false) = 0;
 
     /**
      * Load a search session from the specified filename.
