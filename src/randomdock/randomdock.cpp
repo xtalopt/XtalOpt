@@ -349,14 +349,20 @@ namespace RandomDock {
     return true;
   }
 
-  bool RandomDock::save() {
+  bool RandomDock::save(const QString &stateFilename) {
     if (isStarting) {
       savePending = false;
       return false;
     }
+    QString filename;
     QReadLocker trackerLocker (m_tracker->rwLock());
     QMutexLocker locker (stateFileMutex);
-    QString filename = filePath + "/randomdock.state";
+    if (stateFilename.isEmpty()) {
+      filename = filePath + "/randomdock.state";
+    }
+    else {
+      filename = stateFilename;
+    }
     QString tmpfilename = filename + ".tmp";
     QString oldfilename = filename + ".old";
 
