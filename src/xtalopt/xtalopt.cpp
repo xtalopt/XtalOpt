@@ -969,34 +969,24 @@ namespace XtalOpt {
     m_dialog->writeSettings(filename);
 
     // Loop over xtals and save them
-    QFile xfile;
     QList<Structure*> *structures = m_tracker->list();
 
+    QString xtalStateFileName;
+
     Xtal* xtal;
-    QTextStream xout;
     for (int i = 0; i < structures->size(); i++) {
       xtal = qobject_cast<Xtal*>(structures->at(i));
       xtal->lock()->lockForRead();
       // Set index here -- this is the only time these are written, so
       // this is ok under a read lock because of the savePending logic
       xtal->setIndex(i);
-      xfile.setFileName(xtal->fileName() + "/xtal.state");
+      xtalStateFileName = xtal->fileName() + "/xtal.state";
       if (notify) {
         m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
-                                      .arg(xfile.fileName()));
+                                      .arg(xtalStateFileName));
       }
-      if (!xfile.open(QIODevice::WriteOnly)) {
-        error(tr("XtalOpt::save(): Error opening file %1 for writing (Structure %2)...")
-              .arg(xfile.fileName())
-              .arg(xtal->getIDString()));
-        xtal->lock()->unlock();
-        savePending = false;
-        return false;
-      }
-      xout.setDevice(&xfile);
-      xtal->save(xout);
+      xtal->writeSettings(xtalStateFileName);
       xtal->lock()->unlock();
-      xfile.close();
     }
 
     /////////////////////////
@@ -1141,8 +1131,7 @@ namespace XtalOpt {
     Xtal* xtal;
     QList<uint> keys = comp.keys();
     QList<Structure*> loadedStructures;
-    QFile xfile;
-    QTextStream xin;
+    QString xtalStateFileName;
     uint count = 0;
     int numDirs = xtalDirs.size();
     for (int i = 0; i < numDirs; i++) {
@@ -1150,12 +1139,7 @@ namespace XtalOpt {
       m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...").arg(count).arg(numDirs));
       m_dialog->updateProgressValue(count-1);
 
-      xfile.setFileName(dataPath + "/" + xtalDirs.at(i) + "/xtal.state");
-      if (!xfile.open(QIODevice::ReadOnly)) {
-        error("Error, cannot open file for reading: "+xfile.fileName());
-        return false;
-      }
-      xin.setDevice(&xfile);
+      xtalStateFileName = dataPath + "/" + xtalDirs.at(i) + "/xtal.state";
 
       xtal = new Xtal();
       QWriteLocker locker (xtal->lock());
@@ -1165,7 +1149,7 @@ namespace XtalOpt {
           xtal->addAtom();
       }
       xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
-      xtal->load(xin);
+      xtal->readSettings(xtalStateFileName);
 
       // Store current state -- updateXtal will overwrite it.
       Xtal::State state = xtal->getStatus();

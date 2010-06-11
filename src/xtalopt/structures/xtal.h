@@ -109,10 +109,6 @@ namespace XtalOpt {
     // Spacegroup
     void findSpaceGroup(double prec = 5e-2);
 
-    // Virtuals from Structure
-    void load(QTextStream &in);
-    void save(QTextStream &in);
-
    private slots:
 
    private:

@@ -17,6 +17,7 @@
  ***********************************************************************/
 
 #include <globalsearch/structure.h>
+#include <globalsearch/macros.h>
 
 #include <avogadro/primitive.h>
 #include <avogadro/molecule.h>
@@ -26,6 +27,7 @@
 #include <openbabel/rand.h>
 #include <openbabel/forcefield.h>
 
+#include <QFile>
 #include <QDebug>
 #include <QRegExp>
 #include <QStringList>
@@ -52,6 +54,68 @@ namespace GlobalSearch {
   }
 
   Structure::~Structure() {
+  }
+
+  void Structure::writeStructureSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    const int VERSION = 1;
+    settings->beginGroup("structure");
+    settings->setValue("version",     VERSION);
+    settings->setValue("generation", getGeneration());
+    settings->setValue("id", getIDNumber());
+    settings->setValue("index", getIndex());
+    settings->setValue("rank", getRank());
+    settings->setValue("jobID", getJobID());
+    settings->setValue("currentOptStep", getCurrentOptStep());
+    settings->setValue("parents", getParents());
+    settings->setValue("rempath", getRempath());
+    settings->setValue("status", int(getStatus()));
+    settings->setValue("failCount", getFailCount());
+    settings->setValue("startTime", getOptTimerStart().toString());
+    settings->setValue("endTime", getOptTimerEnd().toString());
+    settings->endGroup();
+    DESTROY_SETTINGS(filename);
+  }
+
+  void Structure::readStructureSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("structure");
+    int loadedVersion = settings->value("version", 0).toInt();
+    if (loadedVersion >= 1) { // Version 0 uses save(QTextStream)
+      setGeneration(     settings->value("generation",     0).toInt());
+      setIDNumber(       settings->value("id",             0).toInt());
+      setIndex(          settings->value("index",          0).toInt());
+      setRank(           settings->value("rank",           0).toInt());
+      setJobID(          settings->value("jobID",          0).toInt());
+      setCurrentOptStep( settings->value("currentOptStep", 0).toInt());
+      setFailCount(      settings->value("failCount",      0).toInt());
+      setParents(        settings->value("parents",        "").toString());
+      setRempath(        settings->value("rempath",        "").toString());
+      setStatus(   State(settings->value("status",         -1).toInt()));
+
+      setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));
+      setOptTimerEnd(   QDateTime::fromString(settings->value("endTime",   "").toString()));
+    }
+    settings->endGroup();
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0: {
+      // Call load(QTextStream) to update
+      qDebug() << "Updating "
+               << filename
+               << " from Version 0 -> 1";
+      QFile file (filename);
+      file.open(QIODevice::ReadOnly);
+      QTextStream stream (&file);
+      load(stream);
+    }
+    case 1:
+    default:
+      break;
+    }
   }
 
   bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, double maxAttempts) {
@@ -268,25 +332,11 @@ namespace GlobalSearch {
     return ret;
   }
 
-  void Structure::save(QTextStream &out) {
-    out << "Generation: " << getGeneration() << endl
-        << "ID#: " << getIDNumber() << endl
-        << "Index: " << getIndex() << endl
-        << "Enthalpy Rank: " << getRank() << endl
-        << "Job ID: " << getJobID() << endl
-        << "Current OptStep: " << getCurrentOptStep() << endl
-        << "Ancestry: " << getParents() << endl
-        << "Remote Path: " << getRempath() << endl
-        << "Status: " << getStatus() << endl
-        << "failCount: " << getFailCount() << endl
-        << "Start Time: " << getOptTimerStart().toString() << endl
-        << "End Time: " << getOptTimerEnd().toString() << endl;
-  }
-
   void Structure::load(QTextStream &in) {
     QString line, str;
     QStringList strl;
     setStatus(InProcess); // Override later if status is available
+    in.seek(0);
     while (!in.atEnd()) {
       line = in.readLine();
       strl = line.split(QRegExp(" "));

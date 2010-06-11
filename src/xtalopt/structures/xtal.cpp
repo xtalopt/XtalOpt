@@ -599,14 +599,6 @@ namespace XtalOpt {
     }
   }
 
-  void Xtal::save(QTextStream &out) {
-    Structure::save(out);
-  }
-
-  void Xtal::load(QTextStream &in) {
-    Structure::load(in);
-  }
-
   QHash<QString, double> Xtal::getFingerprint() {
     QHash<QString, double> fp; // fingerprint hash
     fp.insert("enthalpy", getEnthalpy());
