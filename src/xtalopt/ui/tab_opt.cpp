@@ -125,6 +125,10 @@ namespace XtalOpt {
 
     settings->beginGroup("xtalopt/opt/");
 
+    // config version
+    const int VERSION = 1;
+    settings->setValue("version",          VERSION);
+
     // Initial generation
     settings->setValue("opt/numInitial",	m_opt->numInitial);
 
@@ -168,6 +172,8 @@ namespace XtalOpt {
 
     settings->beginGroup("xtalopt/opt/");
 
+    // Config version
+    int loadedVersion = settings->value("version", 0).toInt();
 
     // Initial generation
     ui.spin_numInitial->setValue(	settings->value("opt/numInitial",	20).toInt()     );
@@ -203,6 +209,14 @@ namespace XtalOpt {
     ui.spin_perm_ex->setValue(		settings->value("opt/perm_ex",		4).toUInt()     );
 
     settings->endGroup();
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
 
     updateOptimizationInfo();
   }

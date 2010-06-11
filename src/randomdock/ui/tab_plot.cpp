@@ -117,6 +117,9 @@ namespace RandomDock {
     SETTINGS(filename);
 
     settings->beginGroup("randomdock/plot/");
+    const int VERSION = 1;
+    settings->setValue("version",     VERSION);
+
     settings->setValue("x_label", ui.combo_xAxis->currentIndex());
     settings->setValue("y_label", ui.combo_yAxis->currentIndex());
     settings->setValue("showDuplicates", ui.cb_showDuplicates->isChecked());
@@ -132,6 +135,8 @@ namespace RandomDock {
   void TabPlot::readSettings(const QString &filename) {
     SETTINGS(filename);
     settings->beginGroup("randomdock/plot/");
+    int loadedVersion = settings->value("version", 0).toInt();
+
     ui.combo_xAxis->setCurrentIndex(	settings->value("x_label", 		Structure_T).toInt());
     ui.combo_yAxis->setCurrentIndex(	settings->value("y_label", 		Energy_T).toInt());
     ui.cb_showDuplicates->setChecked(	settings->value("showDuplicates",       false).toBool());
@@ -140,6 +145,15 @@ namespace RandomDock {
     ui.combo_labelType->setCurrentIndex(settings->value("labelType",		Energy_L).toInt());
     ui.combo_plotType->setCurrentIndex(	settings->value("plotType",		Trend_PT).toInt());
     settings->endGroup();
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
+
   }
 
   void TabPlot::updateGUI() {

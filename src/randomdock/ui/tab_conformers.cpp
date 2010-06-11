@@ -85,6 +85,8 @@ namespace RandomDock {
   {
     SETTINGS(filename);
     settings->beginGroup("randomdock/conformers");
+    const int VERSION = 1;
+    settings->setValue("version",     VERSION);
 
     settings->setValue("number",      	ui.spin_nConformers->value());
     settings->setValue("all",      	ui.cb_allConformers->isChecked());
@@ -97,11 +99,20 @@ namespace RandomDock {
   {
     SETTINGS(filename);
     settings->beginGroup("randomdock/conformers");
+    int loadedVersion = settings->value("version", 0).toInt();
 
     ui.spin_nConformers->setValue(	settings->value("number",	100).toInt());
     ui.cb_allConformers->setChecked(	settings->value("all",		true).toInt());
 
-    settings->endGroup();      
+    settings->endGroup();
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
   }
 
   void TabConformers::updateGUI()

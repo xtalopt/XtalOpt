@@ -77,15 +77,17 @@ namespace XtalOpt {
 
   void TabSys::writeSettings(const QString &filename) {
     SETTINGS(filename);
+    const int VERSION = 1;
     settings->beginGroup("xtalopt/sys/");
-    settings->setValue("file/path",		m_opt->filePath);
-    settings->setValue("description",		m_opt->description);
-    settings->setValue("queue/qsub",		m_opt->qsub);
-    settings->setValue("queue/qstat",		m_opt->qstat);
-    settings->setValue("queue/qdel",		m_opt->qdel);
-    settings->setValue("remote/host",		m_opt->host);
-    settings->setValue("remote/username",	m_opt->username);
-    settings->setValue("remote/rempath",	m_opt->rempath);
+    settings->setValue("version",          VERSION);
+    settings->setValue("file/path",        m_opt->filePath);
+    settings->setValue("description",      m_opt->description);
+    settings->setValue("queue/qsub",       m_opt->qsub);
+    settings->setValue("queue/qstat",      m_opt->qstat);
+    settings->setValue("queue/qdel",       m_opt->qdel);
+    settings->setValue("remote/host",      m_opt->host);
+    settings->setValue("remote/username",  m_opt->username);
+    settings->setValue("remote/rempath",   m_opt->rempath);
     settings->endGroup();
 
     DESTROY_SETTINGS(filename);
@@ -94,6 +96,7 @@ namespace XtalOpt {
   void TabSys::readSettings(const QString &filename) {
     SETTINGS(filename);
     settings->beginGroup("xtalopt/sys/");
+    int loadedVersion = settings->value("version", 0).toInt();
     ui.edit_path->setText(	settings->value("file/path",		"/tmp").toString());
     ui.edit_description->setText(settings->value("description",		"").toString());
     ui.edit_qsub->setText(	settings->value("queue/qsub",		"qsub").toString());
@@ -104,6 +107,14 @@ namespace XtalOpt {
     ui.edit_rempath->setText(	settings->value("remote/rempath",	"").toString());
     ui.cb_remote->setChecked(	settings->value("remote",		false).toBool());
     settings->endGroup();
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
 
     updateSystemInfo();
   }

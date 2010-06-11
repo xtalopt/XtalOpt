@@ -75,6 +75,8 @@ namespace RandomDock {
   {
     SETTINGS(filename);
     settings->beginGroup("randomdock/sys");
+    const int VERSION = 1;
+    settings->setValue("version",     VERSION);
 
     settings->setValue("file/path",		m_opt->filePath);
     settings->setValue("queue/launch",		m_opt->qsub);
@@ -92,6 +94,7 @@ namespace RandomDock {
   {
     SETTINGS(filename);
     settings->beginGroup("randomdock/sys");
+    int loadedVersion = settings->value("version", 0).toInt();
 
     ui.edit_path->setText(	settings->value("file/path",		"/tmp").toString());
     ui.edit_base->setText(	settings->value("file/base",		"/opt-").toString());
@@ -102,7 +105,16 @@ namespace RandomDock {
     ui.edit_username->setText(	settings->value("remote/username",	"").toString());
     ui.edit_rempath->setText(	settings->value("remote/rempath",	"").toString());
 
-    settings->endGroup();      
+    settings->endGroup();
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
+
   }
 
   void TabSys::updateGUI()
