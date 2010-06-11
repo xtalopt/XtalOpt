@@ -84,7 +84,8 @@ namespace GlobalSearch {
     QStringList filenames = getTemplateNames();
     for (int i = 0; i < filenames.size(); i++) {
       m_templates.insert(filenames.at(i),
-                         settings->value("xtalopt/optimizer/" + 
+                         settings->value(m_opt->getIDString().toLower() +
+                                         "/optimizer/" +
                                          getIDString() + "/" +
                                          filenames.at(i) + "_list",
                                          "").toStringList());
@@ -95,7 +96,9 @@ namespace GlobalSearch {
   {
     SETTINGS(filename);
 
-    settings->beginGroup("xtalopt/optimizer/" + getIDString());
+    settings->beginGroup(m_opt->getIDString().toLower() +
+                         "/optimizer/" +
+                         getIDString());
     m_user1 = settings->value("/user1", "").toString();
     m_user2 = settings->value("/user2", "").toString();
     m_user3 = settings->value("/user3", "").toString();
@@ -110,7 +113,8 @@ namespace GlobalSearch {
     QStringList ids = getDataIdentifiers();
     for (int i = 0; i < ids.size(); i++) {
       m_data.insert(ids.at(i),
-                         settings->value("xtalopt/optimizer/" + 
+                         settings->value(m_opt->getIDString().toLower() +
+                                         "/optimizer/" +
                                          getIDString() + "/data/" +
                                          ids.at(i),
                                          ""));
@@ -139,10 +143,11 @@ namespace GlobalSearch {
     SETTINGS(filename);
     QStringList filenames = getTemplateNames();
     for (int i = 0; i < filenames.size(); i++) {
-      settings->setValue("xtalopt/optimizer/" + 
-                    getIDString() + "/" +
-                    filenames.at(i) + "_list",
-                    m_templates.value(filenames.at(i)));
+      settings->setValue(m_opt->getIDString().toLower() +
+                         "/optimizer/" +
+                         getIDString() + "/" +
+                         filenames.at(i) + "_list",
+                         m_templates.value(filenames.at(i)));
     }
   }
 
@@ -150,13 +155,25 @@ namespace GlobalSearch {
   {
     SETTINGS(filename);
 
-    settings->setValue("xtalopt/optimizer/" + getIDString() + "/user1",
+    settings->setValue(m_opt->getIDString().toLower() +
+                       "/optimizer/" +
+                       getIDString() +
+                       "/user1",
                        m_user1);
-    settings->setValue("xtalopt/optimizer/" + getIDString() + "/user2",
+    settings->setValue(m_opt->getIDString().toLower() +
+                       "/optimizer/" +
+                       getIDString() +
+                       "/user2",
                        m_user2);
-    settings->setValue("xtalopt/optimizer/" + getIDString() + "/user3",
+    settings->setValue(m_opt->getIDString().toLower() +
+                       "/optimizer/" +
+                       getIDString() +
+                       "/user3",
                        m_user3);
-    settings->setValue("xtalopt/optimizer/" + getIDString() + "/user4",
+    settings->setValue(m_opt->getIDString().toLower() +
+                       "/optimizer/" +
+                       getIDString() +
+                       "/user4",
                        m_user4);
   }
 
@@ -165,8 +182,10 @@ namespace GlobalSearch {
     SETTINGS(filename);
     QStringList ids = getDataIdentifiers();
     for (int i = 0; i < ids.size(); i++) {
-      settings->setValue("xtalopt/optimizer/" + 
-                         getIDString() + "/data/" +
+      settings->setValue(m_opt->getIDString().toLower() +
+                         "/optimizer/" +
+                         getIDString() +
+                         "/data/" +
                          ids.at(i),
                          m_data.value(ids.at(i)));
     }
