@@ -101,7 +101,8 @@ namespace GlobalSearch {
 
     /**
      * Save the current search. If filename is omitted, default to
-     * m_filePath + "/[search name].state".
+     * m_filePath + "/[search name].state". Must set
+     * OptBase::savePending = true before calling.
      *
      * @param filename Filename to write to. Optional.
      * @param notify Whether to display a user-visible notification

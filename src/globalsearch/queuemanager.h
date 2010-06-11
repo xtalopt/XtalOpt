@@ -74,8 +74,8 @@ newStructure->setGeneration(generation);
 newStructure->setParents(parents);
 // Determine, create, and assign paths
 QString id_s, gen_s, locpath_s, rempath_s;
-id_s.sprintf("%05d",xtal->getIDNumber());
-gen_s.sprintf("%05d",xtal->getGeneration());
+id_s.sprintf("%05d",structure->getIDNumber());
+gen_s.sprintf("%05d",structure->getGeneration());
 locpath_s = filePath + "/" + gen_s + "x" + id_s + "/";
 rempath_s = rempath + "/" + gen_s + "x" + id_s + "/";
 QDir dir (locpath_s);
