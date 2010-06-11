@@ -1,10 +1,7 @@
 /**********************************************************************
   RandomDock -- A tool for analysing a matrix-substrate docking problem
 
-  Copyright (C) 2009 by David Lonie
-
-  This file is part of the Avogadro molecular editor project.
-  For more information, see <http://avogadro.openmolecules.net/>
+  Copyright (C) 2009-2010 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
