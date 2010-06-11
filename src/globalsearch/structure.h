@@ -422,6 +422,35 @@ namespace GlobalSearch {
    signals:
 
    public slots:
+
+    /**
+     * Write supplementary data about this Structure to a file. All
+     * data that is not stored in the OpenBabel-readable optimizer
+     * output file should be written here.
+     *
+     * If reimplementing this in a derived class, call
+     * writeStructureSettings(filename) to write inherited data.
+     * @param filename Filename to write data to.
+     * @sa writeStructureSettings
+     * @sa readSettings
+     */
+    virtual void writeSettings(const QString &filename) {
+      writeStructureSettings(filename);};
+
+    /**
+     * Read supplementary data about this Structure from a file. All
+     * data that is not stored in the OpenBabel-readable optimizer
+     * output file should be read here.
+     *
+     * If reimplementing this in a derived class, call
+     * readStructureSettings(filename) to read inherited data.
+     * @param filename Filename to read data from.
+     * @sa readStructureSettings
+     * @sa writeSettings
+     */
+    virtual void readSettings(const QString &filename) {
+      readStructureSettings(filename);};
+
     /** Set the enthalpy of the Structure.
      * @param enthalpy The Structure's enthalpy
      * @sa getEnthalpy
@@ -614,18 +643,32 @@ namespace GlobalSearch {
     void setOptTimerEnd(const QDateTime &d) {m_optEnd = d;};
 
     /** Load data into Structure.
+     * @attention Do not use this function in new code, as it has been
+     * replaced by readSettings. Old code should be rewritten to use
+     * readSettings as well.
+     * @deprecated Use readSettings instead, and call this only as a
+     * backup for outdates .state files
      * @param in QTextStream containing load data.
-     * @sa save
+     * @sa readSettings
      */
     virtual void load(QTextStream &in);
 
-    /** Export data from Structure.
-     * @param in QTextStream in which to write data.
-     * @sa load
+   protected slots:
+    /**
+     * Write data from the Structure class to a file.
+     * @param filename Filename to write data to.
+     * @sa writeSettings
+     * @sa readSettings
      */
-    virtual void save(QTextStream &in);
+    void writeStructureSettings(const QString &filename);
 
-   private slots:
+    /**
+     * Read data concerning the Structure class from a file.
+     * @param filename Filename to read data from.
+     * @sa writeSettings
+     * @sa readSettings
+     */
+    void readStructureSettings(const QString &filename);
 
    private:
     bool m_hasEnthalpy;
