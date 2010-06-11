@@ -124,6 +124,9 @@ namespace RandomDock {
   void TabProgress::writeSettings(const QString &filename) {
     SETTINGS(filename);
     settings->beginGroup("randomdock/progress");
+    const int VERSION = 1;
+    settings->setValue("version",     VERSION);
+
     settings->setValue("refreshTime", ui.spin_period->value());
     settings->endGroup();
     DESTROY_SETTINGS(filename);
@@ -132,8 +135,19 @@ namespace RandomDock {
   void TabProgress::readSettings(const QString &filename) {
     SETTINGS(filename);
     settings->beginGroup("randomdock/progress");
+    int loadedVersion = settings->value("version", 0).toInt();
+
     ui.spin_period->setValue(settings->value("refreshTime", 1).toInt());
     settings->endGroup();      
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
+
   }
 
   void TabProgress::updateGUI()

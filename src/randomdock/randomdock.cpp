@@ -371,6 +371,9 @@ namespace RandomDock {
     // Save data to tmp
     m_dialog->writeSettings(tmpfilename);
     SETTINGS(tmpfilename);
+    const int VERSION = 1;
+    settings->setValue("randomdock/version",     VERSION);
+
     settings->setValue("randomdock/saveSuccessful", true);
     settings->sync();
 
@@ -400,6 +403,15 @@ namespace RandomDock {
     }
 
     SETTINGS(filename);
+    // Update config data
+    int loadedVersion = settings->value("randomdock/version", 0).toInt();
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
+
     bool stateFileIsValid = settings->value("randomdock/saveSuccessful", false).toBool();
     if (!stateFileIsValid) {
       error("RandomDock::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid.");

@@ -79,6 +79,8 @@ namespace RandomDock {
   {
     SETTINGS(filename);
     settings->beginGroup("randomdock/init");
+    const int VERSION = 1;
+    settings->setValue("version",     VERSION);
 
     settings->endGroup();
     DESTROY_SETTINGS(filename);
@@ -88,8 +90,18 @@ namespace RandomDock {
   {
     SETTINGS(filename);
     settings->beginGroup("randomdock/init");
+    int loadedVersion = settings->value("version", 0).toInt();
 
     settings->endGroup();      
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
+
   }
 
   void TabInit::updateGUI()

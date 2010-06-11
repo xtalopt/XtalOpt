@@ -81,6 +81,8 @@ namespace RandomDock {
   {
     SETTINGS(filename);
     settings->beginGroup("randomdock/params");
+    const int VERSION = 1;
+    settings->setValue("version",     VERSION);
 
     settings->setValue("runningJobLimit",     	m_opt->runningJobLimit);
     settings->setValue("numMatrixMol",      	m_opt->numMatrixMol);
@@ -99,6 +101,7 @@ namespace RandomDock {
   {
     SETTINGS(filename);
     settings->beginGroup("randomdock/params");
+    int loadedVersion = settings->value("version", 0).toInt();
 
     ui.spin_numSearches->setValue(	settings->value("numSearches",		10).toInt());
     ui.spin_numMatrixMols->setValue(	settings->value("numMatrixMol",		1).toInt());
@@ -110,6 +113,14 @@ namespace RandomDock {
     ui.cb_radius_auto->setChecked(	settings->value("radius_auto",		true).toBool());
 
     settings->endGroup();      
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
 
     updateOptimizationInfo();
   }
