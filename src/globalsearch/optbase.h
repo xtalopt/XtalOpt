@@ -74,6 +74,11 @@ namespace GlobalSearch {
     };
 
     /**
+     * @return An ID string that uniquely identifies this OptBase.
+     */    QString getIDString() {
+      return m_idString;};
+
+    /**
      * Replace the Structure with an appropriate random Structure.
      *
      * @param s The Structure to be replaced. This pointer remains
@@ -305,7 +310,7 @@ namespace GlobalSearch {
     /**
      * Begin the search.
      */
-    virtual void startOptimization() = 0;
+    virtual void startSearch() = 0;
 
     /**
      * Called when the QueueManager requests more Structures.
@@ -409,6 +414,10 @@ namespace GlobalSearch {
       setOptimizer_string(IDString, filename);};
 
    protected:
+    /// String that uniquely identifies the derived OptBase
+    /// @sa getIDString
+    QString m_idString;
+
     /// Cached pointer to the main Tracker
     /// @sa tracker
     Tracker *m_tracker;

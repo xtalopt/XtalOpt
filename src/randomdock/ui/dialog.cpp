@@ -214,7 +214,7 @@ namespace RandomDock {
 
   void RandomDockDialog::startSearch()
   {
-    QtConcurrent::run(m_opt, &RandomDock::startOptimization);
+    QtConcurrent::run(m_opt, &RandomDock::startSearch);
   }
 
   void RandomDockDialog::startProgressUpdate(const QString & text, int min, int max)

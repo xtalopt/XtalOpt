@@ -94,7 +94,7 @@ namespace RandomDock {
     void updateAllInfo();
 
    public slots:
-    void startOptimization();
+    void startSearch();
     void generateNewStructure();
     void initializeAndAddScene(Scene *scene);
     void setOptimizer(Optimizer *o) {

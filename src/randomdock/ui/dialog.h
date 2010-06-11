@@ -20,14 +20,12 @@
 #ifndef RDDIALOG_H
 #define RDDIALOG_H
 
+#include <randomdock/randomdock.h>
+
 #include <QDialog>
 #include <QMutex>
 
 #include "ui_dialog.h"
-
-namespace GlobalSearch {
-  class Structure;
-}
 
 namespace Avogadro {
   class PlotObject;
@@ -61,7 +59,6 @@ namespace RandomDock {
     Molecule* setMolecule(Molecule *mol) {Q_UNUSED(mol);};
     Molecule* getMolecule() {return m_molecule;};
     GLWidget* getGLWidget() {return m_glWidget;};
-    RandomDock* getRandomDock() {return m_opt;};
 
   public slots:
     // used for testing. You probably don't want to call this.
@@ -72,7 +69,6 @@ namespace RandomDock {
     void writeSettings(const QString &filename = "");
     void readSettings(const QString &filename = "");
     void saveSession();
-    void log(const QString &str) {emit newLog(str);};
     void updateStatus(int opt, int run, int fail);
     void updateGUI();
     void setGLWidget(GLWidget *w) {m_glWidget = w;};
@@ -109,9 +105,6 @@ namespace RandomDock {
     void tabsReadSettings(const QString &filename);
     void tabsUpdateGUI();
     void newLog(const QString &str);
-    void xtalReadyToSubmit();
-    void optTypeChanged();
-    void updateAllInfo();
     void sig_updateStatus(int,int,int);
     void sig_startProgressUpdate(const QString & text, int min, int max);
     void sig_stopProgressUpdate();

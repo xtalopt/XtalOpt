@@ -48,6 +48,7 @@ namespace RandomDock {
     m_dialog(parent),
     substrate(0)
   {
+    m_idString = "RandomDock";
     sceneInitMutex = new QMutex;
     limitRunningJobs = true;
   }
@@ -56,7 +57,7 @@ namespace RandomDock {
   {
   }
 
-  void RandomDock::startOptimization() {
+  void RandomDock::startSearch() {
     debug("Starting optimization.");
     emit startingSession();
 
