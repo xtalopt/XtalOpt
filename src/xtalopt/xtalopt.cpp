@@ -961,6 +961,8 @@ namespace XtalOpt {
     }
 
     SETTINGS(filename);
+    const int VERSION = 1;
+    settings->setValue("xtalopt/version",          VERSION);
     settings->setValue("xtalopt/saveSuccessful", false);
 
     // Write/update xtalopt.state
@@ -1085,6 +1087,16 @@ namespace XtalOpt {
     }
 
     SETTINGS(filename);
+    int loadedVersion = settings->value("xtalopt/version", 0).toInt();
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
+
     bool stateFileIsValid = settings->value("xtalopt/saveSuccessful", false).toBool();
     if (!stateFileIsValid) {
       error("XtalOpt::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid. (Try " + file.fileName() + ".old if it exists)");

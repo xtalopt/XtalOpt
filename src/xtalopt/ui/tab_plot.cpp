@@ -107,15 +107,16 @@ namespace XtalOpt {
 
   void TabPlot::writeSettings(const QString &filename) {
     SETTINGS(filename);
-
+    const int VERSION = 1;
     settings->beginGroup("xtalopt/plot/");
-    settings->setValue("x_label", ui.combo_xAxis->currentIndex());
-    settings->setValue("y_label", ui.combo_yAxis->currentIndex());
-    settings->setValue("showDuplicates", ui.cb_showDuplicates->isChecked());
+    settings->setValue("version",         VERSION);
+    settings->setValue("x_label",         ui.combo_xAxis->currentIndex());
+    settings->setValue("y_label",         ui.combo_yAxis->currentIndex());
+    settings->setValue("showDuplicates",  ui.cb_showDuplicates->isChecked());
     settings->setValue("showIncompletes", ui.cb_showIncompletes->isChecked());
-    settings->setValue("labelPoints", ui.cb_labelPoints->isChecked());
-    settings->setValue("labelType", ui.combo_labelType->currentIndex());
-    settings->setValue("plotType", ui.combo_plotType->currentIndex());
+    settings->setValue("labelPoints",     ui.cb_labelPoints->isChecked());
+    settings->setValue("labelType",       ui.combo_labelType->currentIndex());
+    settings->setValue("plotType",        ui.combo_plotType->currentIndex());
     settings->endGroup();
 
     DESTROY_SETTINGS(filename);
@@ -124,6 +125,7 @@ namespace XtalOpt {
   void TabPlot::readSettings(const QString &filename) {
     SETTINGS(filename);
     settings->beginGroup("xtalopt/plot/");
+    int loadedVersion = settings->value("version", 0).toInt();
     ui.combo_xAxis->setCurrentIndex( settings->value("x_label", Structure_T).toInt());
     ui.combo_yAxis->setCurrentIndex( settings->value("y_label", Enthalpy_T).toInt());
     ui.cb_showDuplicates->setChecked( settings->value("showDuplicates", false).toBool());
@@ -132,6 +134,15 @@ namespace XtalOpt {
     ui.combo_labelType->setCurrentIndex( settings->value("labelType", Symbol_L).toInt());
     ui.combo_plotType->setCurrentIndex( settings->value("plotType", Trend_PT).toInt());
     settings->endGroup();
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
+
   }
 
   void TabPlot::updateGUI() {

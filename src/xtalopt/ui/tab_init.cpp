@@ -100,6 +100,10 @@ namespace XtalOpt {
     SETTINGS(filename);
 
     settings->beginGroup("xtalopt/init/");
+
+    const int VERSION = 1;
+    settings->setValue("version",          VERSION);
+
     settings->setValue("limits/a/min",				m_opt->a_min);
     settings->setValue("limits/b/min",            		m_opt->b_min);
     settings->setValue("limits/c/min",            		m_opt->c_min);
@@ -144,6 +148,8 @@ namespace XtalOpt {
     SETTINGS(filename);
 
     settings->beginGroup("xtalopt/init/");
+    int loadedVersion = settings->value("version", 0).toInt();
+
     ui.spin_a_min->setValue(		settings->value("limits/a/min",		3).toDouble()   );
     ui.spin_b_min->setValue(		settings->value("limits/b/min",		3).toDouble()   );
     ui.spin_c_min->setValue(		settings->value("limits/c/min",		3).toDouble()   );
@@ -178,6 +184,14 @@ namespace XtalOpt {
     }
 
     settings->endGroup();
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
 
     // Enact changesSetup templates
     updateDimensions();

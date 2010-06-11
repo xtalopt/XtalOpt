@@ -97,6 +97,9 @@ namespace XtalOpt {
     SETTINGS(filename);
 
     settings->beginGroup("xtalopt/edit");
+    const int VERSION = 1;
+    settings->setValue("version",          VERSION);
+
     settings->setValue("optType", ui.combo_optType->currentIndex());
     settings->endGroup();
     m_opt->optimizer()->writeSettings(filename);
@@ -108,6 +111,8 @@ namespace XtalOpt {
     SETTINGS(filename);
 
     settings->beginGroup("xtalopt/edit");
+    int loadedVersion = settings->value("version", 0).toInt();
+
     ui.combo_optType->setCurrentIndex( settings->value("optType", 0).toInt());
     settings->endGroup();
 
@@ -121,6 +126,14 @@ namespace XtalOpt {
         generateVASP_POTCAR_info();
         vopt->buildPOTCARs();
       }
+    }
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
     }
 
     updateGUI();
