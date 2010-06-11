@@ -87,7 +87,7 @@ namespace XtalOpt {
     // Perform run
     emit status();
     resetOpt();
-    m_opt->startOptimization();
+    m_opt->startSearch();
     emit status();
     m_message = "Looping...";
     while (m_opt->tracker()->size() < m_numberStructures) {

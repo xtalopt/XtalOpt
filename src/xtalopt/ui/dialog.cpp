@@ -87,7 +87,7 @@ namespace XtalOpt {
 
     // Connections
     connect(ui.push_begin, SIGNAL(clicked()),
-            this, SLOT(startOptimization()));
+            this, SLOT(startSearch()));
     connect(ui.push_save, SIGNAL(clicked()),
             this, SLOT(saveSession()));
     connect(ui.push_resume, SIGNAL(clicked()),
@@ -229,14 +229,13 @@ namespace XtalOpt {
     m_opt->emitSessionStarted();
   }
 
-  void XtalOptDialog::startOptimization() {
-    //qDebug() << "XtalOptDialog::startOptimization() called";
+  void XtalOptDialog::startSearch() {
     if (m_opt->testingMode) {
       m_test = new XtalOptTest(m_opt);
       QtConcurrent::run(m_test, &XtalOptTest::start);
     }
     else {
-      QtConcurrent::run(m_opt, &XtalOpt::startOptimization);
+      QtConcurrent::run(m_opt, &XtalOpt::startSearch);
     }
   }
 

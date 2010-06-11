@@ -111,7 +111,7 @@ namespace XtalOpt {
     void updateAllInfo();
 
    public slots:
-    void startOptimization();
+    void startSearch();
     void generateNewStructure();
     void initializeAndAddXtal(Xtal *xtal, uint generation, const QString &parents);
     void resetDuplicates();

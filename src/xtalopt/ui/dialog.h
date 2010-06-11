@@ -53,7 +53,6 @@ namespace XtalOpt {
 
     void setMolecule(Molecule *molecule);
     GLWidget* getGLWidget();
-    XtalOpt* getXtalOpt() {return m_opt;};
 
   public slots:
     // used for testing. You probably don't want to call this.
@@ -64,7 +63,6 @@ namespace XtalOpt {
     void writeSettings(const QString &filename = "");
     void readSettings(const QString &filename = "");
     void saveSession();
-    void log(const QString &str) {emit newLog(str);};
     void updateStatus(int opt, int run, int fail);
     void updateGUI();
     void setGLWidget(GLWidget *w);
@@ -81,7 +79,7 @@ namespace XtalOpt {
     void errorBox(const QString &);
 
   private slots:
-    void startOptimization();
+    void startSearch();
     void resumeSession();
     void updateStatus_(int,int,int);
     void startProgressUpdate_(const QString & text, int min, int max);
@@ -101,9 +99,6 @@ namespace XtalOpt {
     void tabsReadSettings(const QString &filename);
     void tabsUpdateGUI();
     void newLog(const QString &str);
-    void xtalReadyToSubmit();
-    void optTypeChanged();
-    void updateAllInfo();
     void sig_updateStatus(int,int,int);
     void sig_startProgressUpdate(const QString & text, int min, int max);
     void sig_stopProgressUpdate();

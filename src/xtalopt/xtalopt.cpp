@@ -55,6 +55,7 @@ namespace XtalOpt {
   {
     xtalInitMutex = new QMutex;
     m_dialog = parent;
+    m_idString = "XtalOpt";
 
     // Connections
     connect(m_tracker, SIGNAL(newStructureAdded(Structure*)),
@@ -67,7 +68,7 @@ namespace XtalOpt {
   {
   }
 
-  void XtalOpt::startOptimization() {
+  void XtalOpt::startSearch() {
     debug("Starting optimization.");
     emit startingSession();
 
