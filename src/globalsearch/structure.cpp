@@ -115,7 +115,7 @@ namespace GlobalSearch {
     }
   }
 
-  bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, double maxAttempts) {
+  bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom) {
     OpenBabel::OBRandom rand (true);    // "true" uses system random numbers.
     rand.TimeSeed();
 
@@ -147,9 +147,10 @@ namespace GlobalSearch {
     }
 
     Atom *atm = addAtom();
+    atom = &atm;
     Eigen::Vector3d pos (coords[0],coords[1],coords[2]);
-    atm->setPos(pos);
-    atm->setAtomicNumber(static_cast<int>(atomicNumber));
+    (*atom)->setPos(pos);
+    (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
     return true;
   }
 

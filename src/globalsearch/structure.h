@@ -374,11 +374,14 @@ namespace GlobalSearch {
      * omit for no limit)
      *
      * @param maxAttempts Maximum number of tries before giving up.
+     *
+     * @param atom Returns a pointer to the new atom.
      */
     virtual bool addAtomRandomly(uint atomicNumber,
                                  double minIAD = 0.0,
                                  double maxIAD = 0.0,
-                                 double maxAttempts = 1000.0);
+                                 int maxAttempts = 1000,
+                                 Atom **atom = 0);
 
     /** @return An alphabetized list of the atomic symbols for the
      * atomic species present in the Structure.
