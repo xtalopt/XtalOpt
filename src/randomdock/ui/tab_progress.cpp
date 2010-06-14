@@ -138,7 +138,7 @@ namespace RandomDock {
     int loadedVersion = settings->value("version", 0).toInt();
 
     ui.spin_period->setValue(settings->value("refreshTime", 1).toInt());
-    settings->endGroup();      
+    settings->endGroup();
 
     // Update config data
     switch (loadedVersion) {

@@ -1,5 +1,5 @@
 /**********************************************************************
-  RandomDock - Matrix: Wrapper for Avogadro::Molecule to hold the 
+  RandomDock - Matrix: Wrapper for Avogadro::Molecule to hold the
   matrix monomers in a docking problem
 
   Copyright (C) 2009 by David C. Lonie

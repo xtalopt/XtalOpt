@@ -1,6 +1,6 @@
 /**********************************************************************
-  RandomDock - Holds parameters and static functions for random 
-		docking analysis
+  RandomDock - Holds parameters and static functions for random
+                docking analysis
 
   Copyright (C) 2009 by David C. Lonie
 

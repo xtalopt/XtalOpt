@@ -88,8 +88,8 @@ namespace RandomDock {
     const int VERSION = 1;
     settings->setValue("version",     VERSION);
 
-    settings->setValue("number",      	ui.spin_nConformers->value());
-    settings->setValue("all",      	ui.cb_allConformers->isChecked());
+    settings->setValue("number",        ui.spin_nConformers->value());
+    settings->setValue("all",           ui.cb_allConformers->isChecked());
 
     settings->endGroup();
     DESTROY_SETTINGS(filename);
@@ -159,7 +159,7 @@ namespace RandomDock {
       ui.push_generate->setEnabled(true);
       return;
     }
-    
+
     /******************************************************
      * Most of this is shamelessly taken from Avogadro's  *
      * forcefield extension...                            *

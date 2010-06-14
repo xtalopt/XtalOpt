@@ -272,9 +272,9 @@ namespace XtalOpt {
     double a            = rand.NextFloat() * (a_max-a_min) + a_min;
     double b            = rand.NextFloat() * (b_max-b_min) + b_min;
     double c            = rand.NextFloat() * (c_max-c_min) + c_min;
-    double alpha	= rand.NextFloat() * (alpha_max - alpha_min) + alpha_min;
+    double alpha        = rand.NextFloat() * (alpha_max - alpha_min) + alpha_min;
     double beta         = rand.NextFloat() * (beta_max  - beta_min ) + beta_min;
-    double gamma	= rand.NextFloat() * (gamma_max - gamma_min) + gamma_min;
+    double gamma        = rand.NextFloat() * (gamma_max - gamma_min) + gamma_min;
 
     // Create crystal
     Xtal *xtal	= new Xtal(a, b, c, alpha, beta, gamma);
@@ -612,10 +612,10 @@ namespace XtalOpt {
       if (attemptCount >= 1000) {
         QString opStr;
         switch (op) {
-        case OP_Crossover:                 opStr = "crossover"; break;
-        case OP_Stripple:                  opStr = "stripple"; break;
-        case OP_Permustrain:               opStr = "permustrain"; break;
-        default:                        opStr = "(unknown)"; break;
+        case OP_Crossover:   opStr = "crossover"; break;
+        case OP_Stripple:    opStr = "stripple"; break;
+        case OP_Permustrain: opStr = "permustrain"; break;
+        default:             opStr = "(unknown)"; break;
         }
         warning(tr("Unable to perform operation %1 after 1000 tries. Reselecting operator...").arg(opStr));
       }
@@ -696,9 +696,9 @@ namespace XtalOpt {
     if (a_min == a_max) a = a_min;
     if (b_min == b_max) b = b_min;
     if (c_min == c_max) c = c_min;
-    if (alpha_min ==	alpha_max)	alpha = alpha_min;
-    if (beta_min ==	beta_max)	beta = beta_min;
-    if (gamma_min ==	gamma_max)	gamma = gamma_min;
+    if (alpha_min ==    alpha_max)      alpha = alpha_min;
+    if (beta_min ==     beta_max)       beta = beta_min;
+    if (gamma_min ==    gamma_max)      gamma = gamma_min;
     xtal->rescaleCell(a, b, c, alpha, beta, gamma);
 
     // Ensure that all angles are between 60 and 120:
@@ -726,7 +726,9 @@ namespace XtalOpt {
       double distance = 0;
       if (xtal->getShortestInteratomicDistance(distance))
         if (distance < shortestInteratomicDistance) {
-          qDebug() << "Discarding structure -- Bad IAD (" << distance << " < " << shortestInteratomicDistance << ")";
+          qDebug() << "Discarding structure -- Bad IAD ("
+                   << distance << " < "
+                   << shortestInteratomicDistance << ")";
           return false;
         }
     }
@@ -744,7 +746,7 @@ namespace XtalOpt {
     for (int line_ind = 0; line_ind < list.size(); line_ind++) {
       origLine = line = list.at(line_ind);
       interpretKeyword_base(line, structure);
-      interpretKeyword(line, structure);      
+      interpretKeyword(line, structure);
       if (line != origLine) { // Line was a keyword
         list.replace(line_ind, line);
       }
@@ -761,16 +763,16 @@ namespace XtalOpt {
     Xtal *xtal = qobject_cast<Xtal*>(structure);
 
     // Xtal specific keywords
-    if (line == "a")			rep += QString::number(xtal->getA());
-    else if (line == "b")             	rep += QString::number(xtal->getB());
-    else if (line == "c")             	rep += QString::number(xtal->getC());
-    else if (line == "alphaRad")	rep += QString::number(xtal->getAlpha() * DEG_TO_RAD);
-    else if (line == "betaRad")       	rep += QString::number(xtal->getBeta() * DEG_TO_RAD);
-    else if (line == "gammaRad")      	rep += QString::number(xtal->getGamma() * DEG_TO_RAD);
-    else if (line == "alphaDeg")	rep += QString::number(xtal->getAlpha());
-    else if (line == "betaDeg")       	rep += QString::number(xtal->getBeta());
-    else if (line == "gammaDeg")      	rep += QString::number(xtal->getGamma());
-    else if (line == "volume")        	rep += QString::number(xtal->getVolume());
+    if (line == "a")                    rep += QString::number(xtal->getA());
+    else if (line == "b")               rep += QString::number(xtal->getB());
+    else if (line == "c")               rep += QString::number(xtal->getC());
+    else if (line == "alphaRad")        rep += QString::number(xtal->getAlpha() * DEG_TO_RAD);
+    else if (line == "betaRad")         rep += QString::number(xtal->getBeta() * DEG_TO_RAD);
+    else if (line == "gammaRad")        rep += QString::number(xtal->getGamma() * DEG_TO_RAD);
+    else if (line == "alphaDeg")        rep += QString::number(xtal->getAlpha());
+    else if (line == "betaDeg")         rep += QString::number(xtal->getBeta());
+    else if (line == "gammaDeg")        rep += QString::number(xtal->getGamma());
+    else if (line == "volume")          rep += QString::number(xtal->getVolume());
     else if (line == "coordsFrac") {
       OpenBabel::OBMol obmol = xtal->OBMol();
       FOR_ATOMS_OF_MOL(atom, obmol) {
@@ -1089,7 +1091,7 @@ namespace XtalOpt {
       error("XtalOpt::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid. (Try " + file.fileName() + ".old if it exists)");
       return false;
     }
-    
+
     // Get path and other info for later:
     QFileInfo stateInfo (file);
     // path to resume file
@@ -1208,7 +1210,6 @@ namespace XtalOpt {
     // Reset the local file path information in case the files have moved
     filePath = newFilePath;
 
-    
     Structure *s= 0;
     for (int i = 0; i < loadedStructures.size(); i++) {
       s = loadedStructures.at(i);

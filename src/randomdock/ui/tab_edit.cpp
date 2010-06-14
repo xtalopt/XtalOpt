@@ -165,7 +165,7 @@ namespace RandomDock {
          && (
              ( ui.combo_optType->currentIndex() == RandomDock::OT_GAMESS
                && m_opt->optimizer()->getIDString() == "GAMESS" )
-             ) 
+             )
          ) {
       return;
     }
@@ -233,7 +233,7 @@ namespace RandomDock {
       break;
     }
     default: // shouldn't happen...
-      qWarning() << "TabEdit::templateChanged: Selected OptStep out of range? " 
+      qWarning() << "TabEdit::templateChanged: Selected OptStep out of range? "
                  << ui.combo_optType->currentIndex();
       break;
     }

@@ -153,25 +153,25 @@ namespace XtalOpt {
       }
       // Case two lengths are static
       else if (a && b && !c) {    // AB
-        scale_primary     = a / nA;
-        scale_secondary	= b / nB;
-        scale_tertiary	= scale_primary * scale_secondary;
+        scale_primary   = a / nA;
+        scale_secondary = b / nB;
+        scale_tertiary  = scale_primary * scale_secondary;
         nA = a;
         nB = b;
         nC *= scale_tertiary;
       }
       else if (a && !b && c) {    // AC
-        scale_primary     = a / nA;
-        scale_secondary	= c / nC;
-        scale_tertiary	= scale_primary * scale_secondary;
+        scale_primary   = a / nA;
+        scale_secondary = c / nC;
+        scale_tertiary  = scale_primary * scale_secondary;
         nA = a;
         nC = c;
         nB *= scale_tertiary;
       }
       else if (!a && b && c) {    // BC
-        scale_primary     = c / nC;
-        scale_secondary	= b / nB;
-        scale_tertiary	= scale_primary * scale_secondary;
+        scale_primary   = c / nC;
+        scale_secondary = b / nB;
+        scale_tertiary  = scale_primary * scale_secondary;
         nC = c;
         nB = b;
         nA *= scale_tertiary;

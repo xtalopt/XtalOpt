@@ -34,7 +34,7 @@ namespace GlobalSearch {
 
   Optimizer::Optimizer(OptBase *parent, const QString &filename) :
     QObject(parent),
-    m_opt(parent)    
+    m_opt(parent)
   {
     // Set allowed data structure keys, if any, e.g.
     // m_data.insert("Identifier name",QVariant())
@@ -77,7 +77,7 @@ namespace GlobalSearch {
   void Optimizer::readTemplatesFromSettings(const QString &filename)
   {
     SETTINGS(filename);
-                         
+
     QStringList filenames = getTemplateNames();
     for (int i = 0; i < filenames.size(); i++) {
       m_templates.insert(filenames.at(i),
@@ -106,7 +106,7 @@ namespace GlobalSearch {
   void Optimizer::readDataFromSettings(const QString &filename)
   {
     SETTINGS(filename);
-                         
+
     QStringList ids = getDataIdentifiers();
     for (int i = 0; i < ids.size(); i++) {
       m_data.insert(ids.at(i),
@@ -127,7 +127,7 @@ namespace GlobalSearch {
     }
 
     SETTINGS(filename);
-                         
+
     writeTemplatesToSettings(filename);
     writeUserValuesToSettings(filename);
     writeDataToSettings(filename);
@@ -274,7 +274,7 @@ namespace GlobalSearch {
     QString command;
 
     // mkdir
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host + 
+    command = "ssh -q " + m_opt->username + "@" + m_opt->host +
       " sh -c \'mkdir -p " + structure->getRempath() + "|cat\'";
     qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
     if (QProcess::execute(command) != 0) {
@@ -285,7 +285,7 @@ namespace GlobalSearch {
     // rm -rf
     // the cat is neccessary on teragrid to get around the 'rm: No match' error when calling
     // * on an empty directory. Even though -f is supposed to ignore non-existant files...
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host + 
+    command = "ssh -q " + m_opt->username + "@" + m_opt->host +
       " sh -c \'rm -rf " + structure->getRempath() + "/*|cat\'";
     qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
     if (QProcess::execute(command) != 0) {
@@ -294,8 +294,8 @@ namespace GlobalSearch {
     }
 
     // scp
-    command = "scp -qr " + 
-      structure->fileName() + " " + 
+    command = "scp -qr " +
+      structure->fileName() + " " +
       m_opt->username + "@" + m_opt->host + ":" + structure->getRempath() + "/..";
     qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
     if (QProcess::execute(command) != 0) {
@@ -309,7 +309,7 @@ namespace GlobalSearch {
   bool Optimizer::startOptimization(Structure *structure) {
     // ssh
     QProcess proc;
-    QString command = "ssh -q " + m_opt->username + "@" + m_opt->host + " " + 
+    QString command = "ssh -q " + m_opt->username + "@" + m_opt->host + " " +
       m_opt->qsub + " " + structure->getRempath() + "/job.pbs";
     qDebug() << "Optimizer::startOptimization: Calling " << command;
     proc.start(command);
@@ -342,7 +342,7 @@ namespace GlobalSearch {
     QString command;
 
     // ssh -q <user>@<host> cat <path>/<filename>
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host + " " + 
+    command = "ssh -q " + m_opt->username + "@" + m_opt->host + " " +
       "cat " + filename;
     qDebug() << "Optimizer::getOutputFile: Calling " << command;
     proc.start(command);
@@ -367,8 +367,8 @@ namespace GlobalSearch {
     QReadLocker locker (structure->lock());
     QString command;
 
-    command = "scp -r " + 
-      m_opt->username + "@" + m_opt->host + ":" + structure->getRempath() + " " + 
+    command = "scp -r " +
+      m_opt->username + "@" + m_opt->host + ":" + structure->getRempath() + " " +
       structure->fileName() + "/..";
     qDebug() << "Optimizer::copyRemoteToLocalCache: Calling " << command;
     if (QProcess::execute(command) != 0) {
@@ -469,7 +469,7 @@ namespace GlobalSearch {
       return true;
 
     // ssh -q <user>@<host> <qdel> <jobID>
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host + " " + 
+    command = "ssh -q " + m_opt->username + "@" + m_opt->host + " " +
       m_opt->qdel + " " + QString::number(structure->getJobID());
 
     // Execute
@@ -541,8 +541,8 @@ namespace GlobalSearch {
       }
     }
 
-    qDebug() << "Optimizer::checkIfJobNameExists: Job name is " 
-             << jobName << " according to " 
+    qDebug() << "Optimizer::checkIfJobNameExists: Job name is "
+             << jobName << " according to "
              << jobScript.fileName() << "...";
 
     for (int i = 0; i < queueData.size(); i++) {
@@ -585,7 +585,7 @@ namespace GlobalSearch {
     // Try to read all files in outputFileNames
     ok = false;
     for (int i = 0; i < m_outputFilenames.size(); i++) {
-      if (read(structure, 
+      if (read(structure,
                structure->fileName() + "/" + m_outputFilenames.at(i))) {
         ok = true;
         break;
@@ -610,7 +610,7 @@ namespace GlobalSearch {
     // Try to read all files in outputFileNames
     bool ok = false;
     for (int i = 0; i < m_outputFilenames.size(); i++) {
-      if (read(structure, 
+      if (read(structure,
                structure->fileName() + "/" + m_outputFilenames.at(i))) {
         ok = true;
         break;

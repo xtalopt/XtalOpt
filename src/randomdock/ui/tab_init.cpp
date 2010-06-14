@@ -92,7 +92,7 @@ namespace RandomDock {
     settings->beginGroup("randomdock/init");
     int loadedVersion = settings->value("version", 0).toInt();
 
-    settings->endGroup();      
+    settings->endGroup();
 
     // Update config data
     switch (loadedVersion) {

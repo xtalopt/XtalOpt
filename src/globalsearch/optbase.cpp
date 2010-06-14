@@ -150,7 +150,7 @@ namespace GlobalSearch {
       << "%userX% -- User specified value, where X = 1, 2, 3, or 4\n"
       << "%description% -- Optimization description\n"
       << "\n"
-      << "Generic structure data:\n"      
+      << "Generic structure data:\n"
       << "%coords% -- cartesian coordinate data\n\t[symbol] [x] [y] [z]\n"
       << "%coordsId% -- cartesian coordinate data with atomic number\n\t[symbol] [atomic number] [x] [y] [z]\n"
       << "%numAtoms% -- Number of atoms in unit cell\n"

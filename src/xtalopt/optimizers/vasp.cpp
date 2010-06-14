@@ -37,7 +37,7 @@ namespace XtalOpt {
     // Set allowed data structure keys, if any
     // "POTCAR info" is of type
     // QList<QHash<QString, QString> >
-    // e.g. a list of hashes containing 
+    // e.g. a list of hashes containing
     // [atomic symbol : pseudopotential file] pairs
     m_data.insert("POTCAR info",QVariant());
     m_data.insert("Composition",QVariant());
@@ -87,7 +87,7 @@ namespace XtalOpt {
     for (int i = 0; i < filenames.size(); i++) {
       // Don't bother saving the actual POTCAR files
       if (filenames.at(i) == "POTCAR") continue;
-      settings->setValue("xtalopt/optimizer/" + 
+      settings->setValue("xtalopt/optimizer/" +
                     getIDString() + "/" +
                     filenames.at(i) + "_list",
                     m_templates.value(filenames.at(i)));
@@ -106,7 +106,7 @@ namespace XtalOpt {
     SETTINGS(filename);
     QStringList ids = getDataIdentifiers();
     for (int i = 0; i < ids.size(); i++) {
-      settings->setValue("xtalopt/optimizer/" + 
+      settings->setValue("xtalopt/optimizer/" +
                          getIDString() + "/data/" +
                          ids.at(i),
                          m_data.value(ids.at(i)));
@@ -191,7 +191,7 @@ namespace XtalOpt {
     m_templates["POTCAR"].clear();
     // "POTCAR info" is of type
     // QList<QHash<QString, QString> >
-    // e.g. a list of hashes containing 
+    // e.g. a list of hashes containing
     // [atomic symbol : pseudopotential file] pairs
     QVariantList potcarInfo = m_data["POTCAR info"].toList();
     for (int optIndex = 0;

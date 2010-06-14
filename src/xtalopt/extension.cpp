@@ -99,7 +99,7 @@ namespace XtalOpt {
       qWarning() << "XtalOptExtension::reemitMoleculeChanged: Molecule is invalid (cell param is nan) -- not sending to GLWidget";
       return;
     }
-    
+
     emit moleculeChanged(xtal, Extension::KeepOld);
   }
 

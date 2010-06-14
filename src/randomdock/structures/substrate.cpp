@@ -1,5 +1,5 @@
 /**********************************************************************
-  RandomDock - Substrate: Wrapper for Avogadro::Molecule to hold the 
+  RandomDock - Substrate: Wrapper for Avogadro::Molecule to hold the
   central molecule in a docking problem
 
   Copyright (C) 2009 by David C. Lonie
@@ -29,7 +29,7 @@ using namespace Avogadro;
 
 namespace RandomDock {
 
-  Substrate::Substrate(QObject *parent) : 
+  Substrate::Substrate(QObject *parent) :
     Structure(parent)
   {
   }
@@ -41,7 +41,7 @@ namespace RandomDock {
 
     setOBMol(&obmol);
 
-    generateProbabilities();    
+    generateProbabilities();
   }
 
   Substrate::~Substrate()
@@ -124,7 +124,7 @@ namespace RandomDock {
     // ind will hold the chosen index.
     //
     // Alternatively, the percent probability can be recovered as such:
-    // 
+    //
     //   QList<double> percents;
     //   for (int i = 0; i < m_probs.size(); i++) {
     //     if (i == 0) percents.append(m_probs.at(i) * 100.0);
@@ -133,11 +133,11 @@ namespace RandomDock {
     //
     // percents will hold the percent probabilities
   }
-    
+
   int Substrate::getRandomConformerIndex()
   {
     // Random number generator
-    OpenBabel::OBRandom rand (true); 	// "true" uses system random numbers. OB's version isn't too good...
+    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
     rand.TimeSeed();
 
     // Select conformer to use:

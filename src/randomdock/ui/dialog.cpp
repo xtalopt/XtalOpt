@@ -62,13 +62,13 @@ namespace RandomDock {
     // Populate tab widget
     ui.tabs->clear();
     ui.tabs->addTab(m_tab_init->getTabWidget(),		tr("&Structures"));
-    ui.tabs->addTab(m_tab_conformers->getTabWidget(),  	tr("&Conformers"));
-    ui.tabs->addTab(m_tab_edit->getTabWidget(), 	tr("Optimization &Templates"));
-    ui.tabs->addTab(m_tab_params->getTabWidget(),  	tr("&Search Settings"));
+    ui.tabs->addTab(m_tab_conformers->getTabWidget(),   tr("&Conformers"));
+    ui.tabs->addTab(m_tab_edit->getTabWidget(),         tr("Optimization &Templates"));
+    ui.tabs->addTab(m_tab_params->getTabWidget(),       tr("&Search Settings"));
     ui.tabs->addTab(m_tab_sys->getTabWidget(),		tr("S&ystem Settings"));
-    ui.tabs->addTab(m_tab_progress->getTabWidget(),  	tr("&Progress"));
-    ui.tabs->addTab(m_tab_plot->getTabWidget(),  	tr("P&lot"));
-    ui.tabs->addTab(m_tab_log->getTabWidget(),  	tr("&Log"));
+    ui.tabs->addTab(m_tab_progress->getTabWidget(),     tr("&Progress"));
+    ui.tabs->addTab(m_tab_plot->getTabWidget(),         tr("P&lot"));
+    ui.tabs->addTab(m_tab_log->getTabWidget(),          tr("&Log"));
 
     // Select the first tab by default
     ui.tabs->setCurrentIndex(0);

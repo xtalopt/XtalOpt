@@ -71,7 +71,7 @@ namespace RandomDock {
   {
     SETTINGS(filename);
     settings->beginGroup("randomdock/log");
-    settings->endGroup();      
+    settings->endGroup();
   }
 
   void TabLog::updateGUI()
@@ -90,7 +90,7 @@ namespace RandomDock {
   {
     QString entry;
     QString timestamp = QDateTime::currentDateTime().toString("MM/dd/yyyy hh:mm:ss (zzz) -- ");
-    
+
     entry = timestamp + info;
     ui.list_list->addItem(entry);
   }

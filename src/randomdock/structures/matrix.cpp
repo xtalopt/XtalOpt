@@ -1,5 +1,5 @@
 /**********************************************************************
-  RandomDock - Matrix: Wrapper for Avogadro::Molecule to hold the 
+  RandomDock - Matrix: Wrapper for Avogadro::Molecule to hold the
   matrix monomers in a docking problem
 
   Copyright (C) 2009 by David C. Lonie
@@ -29,7 +29,7 @@ using namespace Avogadro;
 
 namespace RandomDock {
 
-  Matrix::Matrix(QObject *parent) : 
+  Matrix::Matrix(QObject *parent) :
     Structure(parent)
   {
   }
@@ -41,7 +41,7 @@ namespace RandomDock {
 
     setOBMol(&obmol);
 
-    generateProbabilities();    
+    generateProbabilities();
   }
 
   Matrix::~Matrix()
@@ -124,7 +124,7 @@ namespace RandomDock {
     // ind will hold the chosen index.
     //
     // Alternatively, the percent probability can be recovered as such:
-    // 
+    //
     //   QList<double> percents;
     //   for (int i = 0; i < m_probs.size(); i++) {
     //     if (i == 0) percents.append(m_probs.at(i) * 100.0);
@@ -133,7 +133,7 @@ namespace RandomDock {
     //
     // percents will hold the percent probabilities
   }
-    
+
   int Matrix::getRandomConformerIndex()
   {
     // Random number generator

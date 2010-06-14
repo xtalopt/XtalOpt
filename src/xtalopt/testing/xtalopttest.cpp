@@ -27,15 +27,20 @@
 namespace XtalOpt {
 
   XtalOptTest::XtalOptTest(XtalOpt *p, QObject *parent) :
-    QObject(parent), m_opt(p), m_dialog(p->dialog())
-  {}
+    QObject(parent),
+    m_opt(p),
+    m_dialog(p->dialog())
+  {
+  }
 
-  XtalOptTest::~XtalOptTest() {
+  XtalOptTest::~XtalOptTest()
+  {
     m_prog->deleteLater();
   }
 
 
-  void XtalOptTest::start() {
+  void XtalOptTest::start()
+  {
     m_dialog->disconnectGUI();
     m_dialog->lockGUI();
 

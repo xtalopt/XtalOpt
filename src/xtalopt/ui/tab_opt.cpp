@@ -127,40 +127,40 @@ namespace XtalOpt {
 
     // config version
     const int VERSION = 1;
-    settings->setValue("version",          VERSION);
+    settings->setValue("version",               VERSION);
 
     // Initial generation
-    settings->setValue("opt/numInitial",	m_opt->numInitial);
+    settings->setValue("opt/numInitial",        m_opt->numInitial);
 
     // Search parameters
-    settings->setValue("opt/popSize",		m_opt->popSize);
-    settings->setValue("opt/contStructs",	m_opt->contStructs);
+    settings->setValue("opt/popSize",           m_opt->popSize);
+    settings->setValue("opt/contStructs",       m_opt->contStructs);
     settings->setValue("opt/limitRunningJobs",  m_opt->limitRunningJobs);
     settings->setValue("opt/runningJobLimit",   m_opt->runningJobLimit);
-    settings->setValue("opt/failLimit",		m_opt->failLimit);
-    settings->setValue("opt/failAction",	m_opt->failAction);
+    settings->setValue("opt/failLimit",         m_opt->failLimit);
+    settings->setValue("opt/failAction",        m_opt->failAction);
 
     // Duplicates
-    settings->setValue("tol/enthalpy",		m_opt->tol_enthalpy);
-    settings->setValue("tol/volume",		m_opt->tol_volume);
+    settings->setValue("tol/enthalpy",          m_opt->tol_enthalpy);
+    settings->setValue("tol/volume",            m_opt->tol_volume);
 
     // Crossover
-    settings->setValue("opt/p_cross",		m_opt->p_cross);
+    settings->setValue("opt/p_cross",           m_opt->p_cross);
     settings->setValue("opt/cross_minimumContribution",m_opt->cross_minimumContribution);
 
     // Stripple
-    settings->setValue("opt/p_strip",		m_opt->p_strip);
-    settings->setValue("opt/strip_strainStdev_min",	m_opt->strip_strainStdev_min);
-    settings->setValue("opt/strip_strainStdev_max",	m_opt->strip_strainStdev_max);
-    settings->setValue("opt/strip_amp_min",	m_opt->strip_amp_min);
-    settings->setValue("opt/strip_amp_max",	m_opt->strip_amp_max);
-    settings->setValue("opt/strip_per1",	m_opt->strip_per1);
-    settings->setValue("opt/strip_per2",	m_opt->strip_per2);
+    settings->setValue("opt/p_strip",           m_opt->p_strip);
+    settings->setValue("opt/strip_strainStdev_min",     m_opt->strip_strainStdev_min);
+    settings->setValue("opt/strip_strainStdev_max",     m_opt->strip_strainStdev_max);
+    settings->setValue("opt/strip_amp_min",     m_opt->strip_amp_min);
+    settings->setValue("opt/strip_amp_max",     m_opt->strip_amp_max);
+    settings->setValue("opt/strip_per1",        m_opt->strip_per1);
+    settings->setValue("opt/strip_per2",        m_opt->strip_per2);
 
     // Permustrain
-    settings->setValue("opt/p_perm",		m_opt->p_perm);
+    settings->setValue("opt/p_perm",            m_opt->p_perm);
     settings->setValue("opt/perm_strainStdev_max",m_opt->perm_strainStdev_max);
-    settings->setValue("opt/perm_ex",		m_opt->perm_ex);
+    settings->setValue("opt/perm_ex",           m_opt->perm_ex);
 
     settings->endGroup();
 
@@ -176,37 +176,37 @@ namespace XtalOpt {
     int loadedVersion = settings->value("version", 0).toInt();
 
     // Initial generation
-    ui.spin_numInitial->setValue(	settings->value("opt/numInitial",	20).toInt()     );
+    ui.spin_numInitial->setValue(       settings->value("opt/numInitial",       20).toInt()     );
 
     // Search parameters
-    ui.spin_popSize->setValue(		settings->value("opt/popSize",		20).toUInt()    );
-    ui.spin_contStructs->setValue(	settings->value("opt/contStructs",	10).toUInt()    );
-    ui.cb_limitRunningJobs->setChecked(	settings->value("opt/limitRunningJobs"	,false).toBool());
-    ui.spin_runningJobLimit->setValue(	settings->value("opt/runningJobLimit",	1).toUInt()    );
-    ui.spin_failLimit->setValue(	settings->value("opt/failLimit",	2).toUInt()    );
-    ui.combo_failAction->setCurrentIndex(settings->value("opt/failAction",	XtalOpt::FA_Randomize).toUInt()    );
+    ui.spin_popSize->setValue(          settings->value("opt/popSize",          20).toUInt()    );
+    ui.spin_contStructs->setValue(      settings->value("opt/contStructs",      10).toUInt()    );
+    ui.cb_limitRunningJobs->setChecked( settings->value("opt/limitRunningJobs"  ,false).toBool());
+    ui.spin_runningJobLimit->setValue(  settings->value("opt/runningJobLimit",  1).toUInt()    );
+    ui.spin_failLimit->setValue(        settings->value("opt/failLimit",        2).toUInt()    );
+    ui.combo_failAction->setCurrentIndex(settings->value("opt/failAction",      XtalOpt::FA_Randomize).toUInt()    );
 
     // Duplicates
-    ui.spin_tol_enthalpy->setValue(	settings->value("tol/enthalpy",		1e-2).toDouble());
-    ui.spin_tol_volume->setValue(       settings->value("tol/volume",		1e-2).toDouble());
+    ui.spin_tol_enthalpy->setValue(     settings->value("tol/enthalpy",         1e-2).toDouble());
+    ui.spin_tol_volume->setValue(       settings->value("tol/volume",           1e-2).toDouble());
 
     // Crossover
-    ui.spin_p_cross->setValue(		settings->value("opt/p_cross",		15).toUInt()    );
+    ui.spin_p_cross->setValue(          settings->value("opt/p_cross",          15).toUInt()    );
     ui.spin_cross_minimumContribution->setValue(settings->value("opt/cross_minimumContribution",25).toUInt());
 
     // Stripple
-    ui.spin_p_strip->setValue(		settings->value("opt/p_strip",		50).toUInt()    );
+    ui.spin_p_strip->setValue(          settings->value("opt/p_strip",          50).toUInt()    );
     ui.spin_strip_strainStdev_min->setValue( settings->value("opt/strip_strainStdev_min", 0.5).toDouble());
     ui.spin_strip_strainStdev_max->setValue( settings->value("opt/strip_strainStdev_max", 0.5).toDouble());
-    ui.spin_strip_amp_min->setValue(	settings->value("opt/strip_amp_min",	0.5).toDouble() );
-    ui.spin_strip_amp_max->setValue(	settings->value("opt/strip_amp_max",	1.0).toDouble() );
-    ui.spin_strip_per1->setValue(		settings->value("opt/strip_per1",		1).toUInt()     );
-    ui.spin_strip_per2->setValue(		settings->value("opt/strip_per2",		1).toUInt()     );
+    ui.spin_strip_amp_min->setValue(    settings->value("opt/strip_amp_min",    0.5).toDouble() );
+    ui.spin_strip_amp_max->setValue(    settings->value("opt/strip_amp_max",    1.0).toDouble() );
+    ui.spin_strip_per1->setValue(               settings->value("opt/strip_per1",               1).toUInt()     );
+    ui.spin_strip_per2->setValue(               settings->value("opt/strip_per2",               1).toUInt()     );
 
     // Permustrain
-    ui.spin_p_perm->setValue(		settings->value("opt/p_perm",		35).toUInt()     );
+    ui.spin_p_perm->setValue(           settings->value("opt/p_perm",           35).toUInt()     );
     ui.spin_perm_strainStdev_max->setValue(settings->value("opt/perm_strainStdev_max",0.5).toDouble());
-    ui.spin_perm_ex->setValue(		settings->value("opt/perm_ex",		4).toUInt()     );
+    ui.spin_perm_ex->setValue(          settings->value("opt/perm_ex",          4).toUInt()     );
 
     settings->endGroup();
 
@@ -224,37 +224,37 @@ namespace XtalOpt {
   void TabOpt::updateGUI() {
     //qDebug() << "TabOpt::updateGUI() called";
     // Initial generation
-    ui.spin_numInitial->setValue(	m_opt->numInitial);
+    ui.spin_numInitial->setValue(       m_opt->numInitial);
 
     // Search parameters
-    ui.spin_popSize->setValue(		m_opt->popSize);
-    ui.spin_contStructs->setValue(	m_opt->contStructs);
-    ui.cb_limitRunningJobs->setChecked(	m_opt->limitRunningJobs);
-    ui.spin_runningJobLimit->setValue(	m_opt->runningJobLimit);
-    ui.spin_failLimit->setValue(	m_opt->failLimit);
+    ui.spin_popSize->setValue(          m_opt->popSize);
+    ui.spin_contStructs->setValue(      m_opt->contStructs);
+    ui.cb_limitRunningJobs->setChecked( m_opt->limitRunningJobs);
+    ui.spin_runningJobLimit->setValue(  m_opt->runningJobLimit);
+    ui.spin_failLimit->setValue(        m_opt->failLimit);
     ui.combo_failAction->setCurrentIndex(m_opt->failAction);
 
     // Duplicates
-    ui.spin_tol_enthalpy->setValue(	m_opt->tol_enthalpy);
+    ui.spin_tol_enthalpy->setValue(     m_opt->tol_enthalpy);
     ui.spin_tol_volume->setValue(       m_opt->tol_volume);
 
     // Crossover
-    ui.spin_p_cross->setValue(		m_opt->p_cross);
+    ui.spin_p_cross->setValue(          m_opt->p_cross);
     ui.spin_cross_minimumContribution->setValue(m_opt->cross_minimumContribution);
 
     // Stripple
-    ui.spin_p_strip->setValue(		m_opt->p_strip);
+    ui.spin_p_strip->setValue(          m_opt->p_strip);
     ui.spin_strip_strainStdev_min->setValue( m_opt->strip_strainStdev_min);
     ui.spin_strip_strainStdev_max->setValue( m_opt->strip_strainStdev_max);
-    ui.spin_strip_amp_min->setValue(	m_opt->strip_amp_min);
-    ui.spin_strip_amp_max->setValue(	m_opt->strip_amp_max);
-    ui.spin_strip_per1->setValue(		m_opt->strip_per1);
-    ui.spin_strip_per2->setValue(		m_opt->strip_per2);
+    ui.spin_strip_amp_min->setValue(    m_opt->strip_amp_min);
+    ui.spin_strip_amp_max->setValue(    m_opt->strip_amp_max);
+    ui.spin_strip_per1->setValue(       m_opt->strip_per1);
+    ui.spin_strip_per2->setValue(       m_opt->strip_per2);
 
     // Permustrain
-    ui.spin_p_perm->setValue(	m_opt->p_perm);
+    ui.spin_p_perm->setValue(   m_opt->p_perm);
     ui.spin_perm_strainStdev_max->setValue( m_opt->perm_strainStdev_max);
-    ui.spin_perm_ex->setValue(	m_opt->perm_ex);
+    ui.spin_perm_ex->setValue(  m_opt->perm_ex);
   }
 
   void TabOpt::disconnectGUI() {

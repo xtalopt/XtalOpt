@@ -25,7 +25,7 @@
 
 namespace GlobalSearch {
   class Optimizer;
-}  
+}
 
 using namespace GlobalSearch;
 

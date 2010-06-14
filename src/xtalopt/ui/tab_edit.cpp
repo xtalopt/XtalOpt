@@ -188,7 +188,7 @@ namespace XtalOpt {
              ||
              ( ui.combo_optType->currentIndex() == XtalOpt::OT_PWscf
                && m_opt->optimizer()->getIDString() == "PWscf" )
-             ) 
+             )
          ) {
       return;
     }
@@ -309,7 +309,7 @@ namespace XtalOpt {
           ui.list_POTCARs->clear();
           // "POTCAR info" is of type
           // QList<QHash<QString, QString> >
-          // e.g. a list of hashes containing 
+          // e.g. a list of hashes containing
           // [atomic symbol : pseudopotential file] pairs
           QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
           QList<QString> symbols = potcarInfo.at(row).toHash().keys();
@@ -365,7 +365,7 @@ namespace XtalOpt {
       break;
     }
     default: // shouldn't happen...
-      qWarning() << "TabEdit::templateChanged: Selected OptStep out of range? " 
+      qWarning() << "TabEdit::templateChanged: Selected OptStep out of range? "
                  << ui.combo_optType->currentIndex();
       break;
     }
@@ -454,7 +454,7 @@ namespace XtalOpt {
     else { return;} // User cancel file selection.
     // "POTCAR info" is of type
     // QList<QHash<QString, QString> >
-    // e.g. a list of hashes containing 
+    // e.g. a list of hashes containing
     // [atomic symbol : pseudopotential file] pairs
     qDebug() << filename;
     QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
@@ -507,7 +507,7 @@ namespace XtalOpt {
 
     for (int i = 0; i < m_opt->optimizer()->getNumberOfOptSteps(); i++)
       potcarInfo.append(QVariant(hash));
-        
+
     m_opt->optimizer()->setData("POTCAR info", QVariant(potcarInfo));
     templateChanged(VT_POTCAR);
   }

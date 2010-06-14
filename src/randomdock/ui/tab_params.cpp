@@ -84,14 +84,14 @@ namespace RandomDock {
     const int VERSION = 1;
     settings->setValue("version",     VERSION);
 
-    settings->setValue("runningJobLimit",     	m_opt->runningJobLimit);
-    settings->setValue("numMatrixMol",      	m_opt->numMatrixMol);
-    settings->setValue("cutoff",	      		m_opt->cutoff);
-    settings->setValue("IAD_min",      		m_opt->IAD_min);
-    settings->setValue("IAD_max",      		m_opt->IAD_max);
-    settings->setValue("radius_min",      	m_opt->radius_min);
-    settings->setValue("radius_max",      	m_opt->radius_max);
-    settings->setValue("radius_auto",      	m_opt->radius_auto);
+    settings->setValue("runningJobLimit",       m_opt->runningJobLimit);
+    settings->setValue("numMatrixMol",          m_opt->numMatrixMol);
+    settings->setValue("cutoff",                        m_opt->cutoff);
+    settings->setValue("IAD_min",               m_opt->IAD_min);
+    settings->setValue("IAD_max",               m_opt->IAD_max);
+    settings->setValue("radius_min",            m_opt->radius_min);
+    settings->setValue("radius_max",            m_opt->radius_max);
+    settings->setValue("radius_auto",           m_opt->radius_auto);
 
     settings->endGroup();
     DESTROY_SETTINGS(filename);
@@ -112,7 +112,7 @@ namespace RandomDock {
     ui.spin_radius_max->setValue(	settings->value("radius_max",		100).toDouble());
     ui.cb_radius_auto->setChecked(	settings->value("radius_auto",		true).toBool());
 
-    settings->endGroup();      
+    settings->endGroup();
 
     // Update config data
     switch (loadedVersion) {

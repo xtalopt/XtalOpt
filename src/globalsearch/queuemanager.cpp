@@ -88,7 +88,7 @@ namespace GlobalSearch {
 
     m_checkPopulationPending = true;
     QtConcurrent::run(this, &QueueManager::checkPopulation_);
-  }    
+  }
 
   void QueueManager::checkPopulation_() {
     // Count jobs

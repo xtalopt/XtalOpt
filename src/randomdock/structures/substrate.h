@@ -1,5 +1,5 @@
 /**********************************************************************
-  RandomDock - Substrate: Wrapper for Avogadro::Molecule to hold the 
+  RandomDock - Substrate: Wrapper for Avogadro::Molecule to hold the
   central molecule in a docking problem
 
   Copyright (C) 2009 by David C. Lonie

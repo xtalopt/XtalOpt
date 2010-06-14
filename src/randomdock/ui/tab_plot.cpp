@@ -137,8 +137,8 @@ namespace RandomDock {
     settings->beginGroup("randomdock/plot/");
     int loadedVersion = settings->value("version", 0).toInt();
 
-    ui.combo_xAxis->setCurrentIndex(	settings->value("x_label", 		Structure_T).toInt());
-    ui.combo_yAxis->setCurrentIndex(	settings->value("y_label", 		Energy_T).toInt());
+    ui.combo_xAxis->setCurrentIndex(	settings->value("x_label",              Structure_T).toInt());
+    ui.combo_yAxis->setCurrentIndex(	settings->value("y_label",              Energy_T).toInt());
     ui.cb_showDuplicates->setChecked(	settings->value("showDuplicates",       false).toBool());
     ui.cb_showIncompletes->setChecked(	settings->value("showIncompletes",	false).toBool());
     ui.cb_labelPoints->setChecked(	settings->value("labelPoints",		false).toBool());

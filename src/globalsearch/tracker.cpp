@@ -40,7 +40,7 @@ namespace GlobalSearch {
   bool Tracker::append(QList<Structure*> s) {
     bool ret = true;
     for (int i = 0; i < s.size(); i++) {
-      if (!append(s.at(i))) 
+      if (!append(s.at(i)))
         ret = false;
     }
     return ret;
@@ -87,9 +87,9 @@ namespace GlobalSearch {
   }
 
   bool Tracker::contains(Structure* s) {
-    lockForRead(); 
+    lockForRead();
     bool b = m_list.contains(s);
-    unlock(); 
+    unlock();
     return b;
   }
 

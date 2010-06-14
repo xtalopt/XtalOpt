@@ -40,11 +40,36 @@ namespace XtalOpt {
     explicit TabPlot( XtalOptDialog *parent, XtalOpt *p );
     virtual ~TabPlot();
 
-    enum PlotAxes		{Structure_T = 0, Generation_T, Enthalpy_T, Energy_T, PV_T,
-                                 A_T, B_T, C_T, Alpha_T, Beta_T, Gamma_A, Volume_T};
-    enum PlotType		{ Trend_PT = 0, DistHist_PT };
-    enum LabelTypes		{Number_L = 0, Symbol_L, Enthalpy_L, Energy_L, PV_L,
-                                 Volume_L, Generation_L, Structure_L };
+    enum PlotAxes {
+      Structure_T = 0,
+      Generation_T,
+      Enthalpy_T,
+      Energy_T,
+      PV_T,
+      A_T,
+      B_T,
+      C_T,
+      Alpha_T,
+      Beta_T,
+      Gamma_A,
+      Volume_T
+    };
+
+    enum PlotType {
+      Trend_PT = 0,
+      DistHist_PT
+    };
+
+    enum LabelTypes {
+      Number_L = 0,
+      Symbol_L,
+      Enthalpy_L,
+      Energy_L,
+      PV_L,
+      Volume_L,
+      Generation_L,
+      Structure_L
+    };
 
     QWidget *getTabWidget() {return m_tab_widget;};
 

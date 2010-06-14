@@ -1,5 +1,5 @@
 /**********************************************************************
-  RandomDock - Scene: Wrapper for Avogadro::Molecule to hold the 
+  RandomDock - Scene: Wrapper for Avogadro::Molecule to hold the
   central molecule and matrix elements in a docking problem
 
   Copyright (C) 2009 by David C. Lonie
@@ -23,7 +23,7 @@ using namespace Avogadro;
 
 namespace RandomDock {
 
-  Scene::Scene(QObject *parent) : 
+  Scene::Scene(QObject *parent) :
     Structure(parent)
   {
   }

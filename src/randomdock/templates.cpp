@@ -37,7 +37,7 @@ namespace Avogadro {
   void Templates::showHelp() {
     QString str;
     QTextStream out (&str);
-    out 
+    out
       << "The following keywords should be used instead of the indicated variable data:\n\n"
       << "%coords% -- cartesian coordinate data\n\t[symbol] [x] [y] [z]\n"
       << "%coordsId% -- cartesian coordinate data with atomic number\n\t[symbol] [atomic number] [x] [y] [z]\n"
@@ -84,9 +84,9 @@ namespace Avogadro {
         }
       }
       else if (line == "numAtoms")	rep += QString::number(scene->numAtoms());
-      else if (line == "filename") 	rep += scene->fileName();
-      else if (line == "rempath") 	rep += scene->getRempath();
-      else if (line == "id")	 	rep += QString::number(scene->getSceneNumber());
+      else if (line == "filename")      rep += scene->fileName();
+      else if (line == "rempath")       rep += scene->getRempath();
+      else if (line == "id")            rep += QString::number(scene->getSceneNumber());
 
       // In case the replacement key is invalid, leave it
       else if (rep.isEmpty()) rep = line;
