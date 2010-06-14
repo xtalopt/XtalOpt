@@ -272,7 +272,7 @@ namespace XtalOpt {
   }
 
 
-  bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, double maxAttempts) {
+  bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom) {
     Q_UNUSED(maxIAD);
     // Random number generator
     OpenBabel::OBRandom rand (true);    // "true" uses system random numbers.
@@ -309,11 +309,11 @@ namespace XtalOpt {
 
       if (i >= maxAttempts) return false;
     }
-
     Atom *atm = addAtom();
+    atom = &atm;
     Eigen::Vector3d pos (cartCoords[0],cartCoords[1],cartCoords[2]);
-    atm->setPos(pos);
-    atm->setAtomicNumber(static_cast<int>(atomicNumber));
+    (*atom)->setPos(pos);
+    (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
     return true;
   }
 
