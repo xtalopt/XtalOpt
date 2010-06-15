@@ -19,8 +19,7 @@
 
 #include <randomdock/randomdock.h>
 
-#include <QDialog>
-#include <QMutex>
+#include <globalsearch/ui/abstractdialog.h>
 
 #include "ui_dialog.h"
 
@@ -45,72 +44,23 @@ namespace RandomDock {
   class Scene;
   class RandomDock;
 
-  class RandomDockDialog : public QDialog
+  class RandomDockDialog : public AbstractDialog
   {
     Q_OBJECT
 
   public:
-    explicit RandomDockDialog( GLWidget *glWidget = 0, QWidget *parent = 0, Qt::WindowFlags f = 0 );
+    explicit RandomDockDialog( GLWidget *glWidget = 0,
+                               QWidget *parent = 0,
+                               Qt::WindowFlags f = 0 );
     virtual ~RandomDockDialog();
 
-    Molecule* setMolecule(Molecule *mol) {Q_UNUSED(mol);};
-    Molecule* getMolecule() {return m_molecule;};
-    GLWidget* getGLWidget() {return m_glWidget;};
-
   public slots:
-    // used for testing. You probably don't want to call this.
-    void disconnectGUI();
-    // used to lock bits of the GUI that shouldn't be change when a
-    // session starts. This will also pass the call on to all tabs.
-    void lockGUI();
-    void writeSettings(const QString &filename = "");
-    void readSettings(const QString &filename = "");
     void saveSession();
-    void updateStatus(int opt, int run, int fail);
-    void updateGUI();
-    void setGLWidget(GLWidget *w) {m_glWidget = w;};
-    void startProgressUpdate(const QString & text, int min, int max);
-    void stopProgressUpdate();
-    void updateProgressMinimum(int min);
-    void updateProgressMaximum(int max);
-    void updateProgressValue(int val);
-    void updateProgressLabel(const QString & text);
-    void repaintProgressBar();
-    void newDebug(const QString &);
-    void newWarning(const QString &);
-    void newError(const QString &);
-    void errorBox(const QString &);
 
   private slots:
     void startSearch();
-    void resumeSession();
-    void updateStatus_(int,int,int);
-    void startProgressUpdate_(const QString & text, int min, int max);
-    void stopProgressUpdate_();
-    void updateProgressMinimum_(int min);
-    void updateProgressMaximum_(int max);
-    void updateProgressValue_(int val);
-    void updateProgressLabel_(const QString & text);
-    void repaintProgressBar_();
-    void errorBox_(const QString &);
 
   signals:
-    void tabsDisconnectGUI();
-    void tabsLockGUI();
-    void moleculeChanged(Structure*);
-    void tabsWriteSettings(const QString &filename);
-    void tabsReadSettings(const QString &filename);
-    void tabsUpdateGUI();
-    void newLog(const QString &str);
-    void sig_updateStatus(int,int,int);
-    void sig_startProgressUpdate(const QString & text, int min, int max);
-    void sig_stopProgressUpdate();
-    void sig_updateProgressMinimum(int min);
-    void sig_updateProgressMaximum(int max);
-    void sig_updateProgressValue(int val);
-    void sig_updateProgressLabel(const QString & text);
-    void sig_repaintProgressBar();
-    void sig_errorBox(const QString &);
 
   private:
     Ui::RandomDockDialog ui;
@@ -123,14 +73,6 @@ namespace RandomDock {
     TabProgress *m_tab_progress;
     TabPlot *m_tab_plot;
     TabLog *m_tab_log;
-
-    Molecule *m_molecule;
-
-    RandomDock *m_opt;
-    GLWidget *m_glWidget;
-    QMutex *progMutex;
-    QTimer *progTimer;
-
   };
 }
 

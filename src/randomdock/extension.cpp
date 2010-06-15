@@ -80,9 +80,6 @@ namespace RandomDock {
   void RandomDockExtension::setMolecule(Molecule *molecule)
   {
     m_molecule = molecule;
-    if (m_dialog) {
-      m_dialog->setMolecule(molecule);
-    }
   }
 
   void RandomDockExtension::reemitMoleculeChanged(Structure *mol) {
@@ -104,7 +101,6 @@ namespace RandomDock {
 
     if (!m_dialog) {
       m_dialog = new RandomDockDialog(widget, qobject_cast<QWidget*>(parent()));
-      m_dialog->setMolecule(m_molecule);
       // Allow setting of the molecule from within the dialog:
       connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
               this, SLOT(reemitMoleculeChanged(Structure*)));
