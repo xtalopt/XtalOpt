@@ -53,7 +53,7 @@ namespace XtalOpt {
     };
 
     Xtal* generateRandomXtal(uint generation, uint id);
-    Structure* replaceWithRandom(Structure *s, const QString & reason);
+    Structure* replaceWithRandom(Structure *s, const QString & reason = "");
     bool checkLimits();
     bool checkXtal(Xtal *xtal);
     QString interpretTemplate(const QString & templateString, Structure* structure);

@@ -81,11 +81,11 @@ namespace GlobalSearch {
      * @param s The Structure to be replaced. This pointer remains
      * valid -- the structure it points will be modified.
      * @param reason Reason for replacing. This will appear in the
-     * Structure::getParents() string.
+     * Structure::getParents() string. (Optional)
      *
      * @return The pointer to the structure (same as s).
      */
-    virtual Structure* replaceWithRandom(Structure *s, const QString & reason) {};
+    virtual Structure* replaceWithRandom(Structure *s, const QString & reason = "") {};
 
     /**
      * Before starting an optimization, this function will check the
