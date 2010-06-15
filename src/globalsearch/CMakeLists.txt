@@ -5,7 +5,8 @@ set( globalsearch_SRCS
      tracker.cpp
      optimizer.cpp
      bt.cpp
-     ui/abstractdialog.cpp)
+     ui/abstractdialog.cpp
+     ui/abstracttab.cpp)
 
 string(REPLACE ".cpp" ".h" hdr_list "${globalsearch_SRCS}")
 qt4_wrap_cpp(moc_files ${hdr_list})
