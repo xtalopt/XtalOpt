@@ -46,8 +46,6 @@ namespace XtalOpt {
             this, SLOT(lockGUI()));
     connect(this, SIGNAL(dataChanged()),
             m_dialog, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(optTypeChanged()),
-            this, SLOT(updateGUI()));
 
     // System Settings connections
     connect(ui.edit_path, SIGNAL(editingFinished()),
