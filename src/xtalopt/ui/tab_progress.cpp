@@ -63,10 +63,10 @@ namespace XtalOpt {
             this, SLOT(lockGUI()));
     connect(this, SIGNAL(newLog(QString)),
             m_dialog, SIGNAL(newLog(QString)));
-    connect(this, SIGNAL(moleculeChanged(Xtal*)),
-            m_dialog, SIGNAL(moleculeChanged(Xtal*)));
-    connect(m_dialog, SIGNAL(moleculeChanged(Xtal*)),
-            this, SLOT(highlightXtal(Xtal*)));
+    connect(this, SIGNAL(moleculeChanged(Structure*)),
+            m_dialog, SIGNAL(moleculeChanged(Structure*)));
+    connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
+            this, SLOT(highlightXtal(Structure*)));
     connect(this, SIGNAL(refresh()),
             m_opt->queue(), SLOT(checkRunning()));
     connect(this, SIGNAL(refresh()),
@@ -410,8 +410,8 @@ namespace XtalOpt {
     emit moleculeChanged(qobject_cast<Xtal*>(m_opt->tracker()->at(row)));
   }
 
-  void TabProgress::highlightXtal(Xtal* xtal) {
-    //qDebug() << "TabProgress::highlightMolecule( " << xtal << " ) called.";
+  void TabProgress::highlightXtal(Structure *s) {
+    Xtal *xtal = qobject_cast<Xtal*>(s);
     xtal->lock()->lockForRead();
     int gen = xtal->getGeneration();
     int id  = xtal->getIDNumber();

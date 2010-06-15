@@ -54,10 +54,10 @@ namespace XtalOpt {
             this, SLOT(disconnectGUI()));
     connect(m_dialog, SIGNAL(tabsLockGUI()),
             this, SLOT(lockGUI()));
-    connect(this, SIGNAL(moleculeChanged(Xtal*)),
-            m_dialog, SIGNAL(moleculeChanged(Xtal*)));
-    connect(m_dialog, SIGNAL(moleculeChanged(Xtal*)),
-            this, SLOT(highlightXtal(Xtal*)));
+    connect(this, SIGNAL(moleculeChanged(Structure*)),
+            m_dialog, SIGNAL(moleculeChanged(Structure*)));
+    connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
+            this, SLOT(highlightXtal(Structure*)));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(populateXtalList()));
     connect(m_dialog->getGLWidget(), SIGNAL(mouseRelease(QMouseEvent*)),
@@ -657,8 +657,9 @@ namespace XtalOpt {
     emit moleculeChanged(qobject_cast<Xtal*>(m_opt->tracker()->at(index)));
   }
 
-  void TabPlot::highlightXtal(Xtal* xtal) {
-    //qDebug() << "TabPlot::highlightMolecule( " << xtal << " ) called.";
+  void TabPlot::highlightXtal(Structure *s) {
+    Xtal *xtal = qobject_cast<Xtal*>(s);
+
     // Bail out if there is no plotobject in memory
     if (!m_plotObject)
       return;

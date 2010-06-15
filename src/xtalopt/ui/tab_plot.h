@@ -21,10 +21,15 @@
 
 class QReadWriteLock;
 
+namespace GlobalSearch {
+  class Structure;
+}
+
 namespace Avogadro {
   class PlotPoint;
 }
 
+using namespace GlobalSearch;
 using namespace Avogadro;
 
 namespace XtalOpt {
@@ -89,10 +94,10 @@ namespace XtalOpt {
     void populateXtalList();
     void selectMoleculeFromPlot(PlotPoint *pp);
     void selectMoleculeFromIndex(int index);
-    void highlightXtal(Xtal* xtal);
+    void highlightXtal(Structure *s);
 
   signals:
-    void moleculeChanged(Xtal*);
+    void moleculeChanged(Structure*);
 
   private:
     Ui::Tab_Plot ui;

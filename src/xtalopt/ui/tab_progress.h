@@ -24,6 +24,10 @@
 class QTimer;
 class QMutex;
 
+namespace GlobalSearch {
+  class Structure;
+}
+
 using namespace GlobalSearch;
 
 namespace XtalOpt {
@@ -57,7 +61,7 @@ namespace XtalOpt {
     void updateAllInfo();
     void updateProgressTable();
     void selectMoleculeFromProgress(int,int,int,int);
-    void highlightXtal(Xtal* xtal);
+    void highlightXtal(Structure *s);
     void startTimer();
     void stopTimer();
     void progressContextMenu(QPoint);
@@ -71,7 +75,7 @@ namespace XtalOpt {
 
   signals:
     void newLog(const QString &);
-    void moleculeChanged(Xtal*);
+    void moleculeChanged(Structure*);
     void refresh();
     void deleteJob(int);
     void updateStatus(int opt, int run, int queue, int fail);
