@@ -91,7 +91,7 @@ namespace RandomDock {
     settings->beginGroup("randomdock/params");
     int loadedVersion = settings->value("version", 0).toInt();
 
-    ui.spin_numSearches->setValue(	settings->value("numSearches",		10).toInt());
+    ui.spin_numSearches->setValue(	settings->value("runningJobLimit",	10).toInt());
     ui.spin_numMatrixMols->setValue(	settings->value("numMatrixMol",		1).toInt());
     ui.spin_cutoff->setValue(		settings->value("cutoff",		0).toInt());
     ui.spin_IAD_min->setValue(		settings->value("IAD_min",		0.8).toDouble());
@@ -128,7 +128,7 @@ namespace RandomDock {
       ui.spin_radius_max->setValue(ui.spin_radius_min->value());
 
     randomdock->runningJobLimit	= ui.spin_numSearches->value();
-    randomdock->numMatrixMol		= ui.spin_numMatrixMols->value();
+    randomdock->numMatrixMol	= ui.spin_numMatrixMols->value();
     randomdock->cutoff		= ui.spin_cutoff->value();
     randomdock->IAD_min		= ui.spin_IAD_min->value();
     randomdock->IAD_max		= ui.spin_IAD_max->value();
