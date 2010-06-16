@@ -29,11 +29,11 @@
 namespace XtalOpt {
 
   TabPlot::TabPlot( XtalOptDialog *parent, XtalOpt *p ) :
-    AbstractTab(parent, p)
+    AbstractTab(parent, p),
+    m_plot_mutex(new QReadWriteLock()),
+    m_plotObject(0)
   {
     ui.setupUi(m_tab_widget);
-
-    m_plot_mutex = new QReadWriteLock();
 
     // Plot setup
     ui.plot_plot->setAntialiasing(true);
