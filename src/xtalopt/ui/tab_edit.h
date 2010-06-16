@@ -21,6 +21,8 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <globalsearch/ui/abstracttab.h>
+
 #include <QMessageBox>
 
 namespace GlobalSearch {
@@ -32,7 +34,7 @@ using namespace GlobalSearch;
 namespace XtalOpt {
   class XtalOptDialog;
 
-  class TabEdit : public QObject
+  class TabEdit : public AbstractTab
   {
     Q_OBJECT
 
@@ -53,16 +55,11 @@ namespace XtalOpt {
       PWscfT_in
     };
 
-    QWidget *getTabWidget() {return m_tab_widget;};
-
   public slots:
-    // used to lock bits of the GUI that shouldn't be change when a
-    // session starts. This will also pass the call on to all tabs.
     void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
     void updateGUI();
-    void disconnectGUI();
     void generateVASP_POTCAR_info();
     void templateChanged(int ind);
     void showHelp();
@@ -84,9 +81,6 @@ namespace XtalOpt {
 
   private:
     Ui::Tab_Edit ui;
-    QWidget *m_tab_widget;
-    XtalOptDialog *m_dialog;
-    XtalOpt *m_opt;
   };
 }
 

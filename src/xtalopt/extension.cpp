@@ -84,7 +84,8 @@ namespace XtalOpt {
     }
   }
 
-  void XtalOptExtension::reemitMoleculeChanged(Xtal* xtal) {
+  void XtalOptExtension::reemitMoleculeChanged(Structure *s) {
+    Xtal *xtal = qobject_cast<Xtal*>(s);
     // Check for weirdness
     if (xtal->numAtoms() != 0 && !xtal->atom(0)) {
       qWarning() << "XtalOptExtension::reemitMoleculeChanged: Molecule is invalid (bad atoms) -- not sending to GLWidget";
@@ -115,8 +116,8 @@ namespace XtalOpt {
       m_dialog = new XtalOptDialog(widget, qobject_cast<QWidget*>(parent()));
       m_dialog->setMolecule(m_molecule);
       // Allow setting of the molecule from within the dialog:
-      connect(m_dialog, SIGNAL(moleculeChanged(Xtal*)),
-              this, SLOT(reemitMoleculeChanged(Xtal*)));
+      connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
+              this, SLOT(reemitMoleculeChanged(Structure*)));
     }
     m_dialog->show();
     return NULL;

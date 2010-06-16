@@ -34,24 +34,9 @@ using namespace Avogadro;
 namespace RandomDock {
 
   TabInit::TabInit( RandomDockDialog *dialog, RandomDock *opt ) :
-    QObject( dialog ),
-    m_dialog(dialog),
-    m_opt(opt)
+    AbstractTab(dialog, opt)
   {
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
-
-    // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
 
     // tab connections
     connect(ui.edit_substrateFile, SIGNAL(textChanged(QString)),
@@ -68,47 +53,11 @@ namespace RandomDock {
             this, SLOT(matrixCurrent()));
     connect(ui.table_matrix, SIGNAL(itemChanged(QTableWidgetItem*)),
             this, SLOT(updateParams()));
+
+    initialize();
   }
 
   TabInit::~TabInit()
-  {
-    writeSettings();
-  }
-
-  void TabInit::writeSettings(const QString &filename)
-  {
-    SETTINGS(filename);
-    settings->beginGroup("randomdock/init");
-    const int VERSION = 1;
-    settings->setValue("version",     VERSION);
-
-    settings->endGroup();
-    DESTROY_SETTINGS(filename);
-  }
-
-  void TabInit::readSettings(const QString &filename)
-  {
-    SETTINGS(filename);
-    settings->beginGroup("randomdock/init");
-    int loadedVersion = settings->value("version", 0).toInt();
-
-    settings->endGroup();
-
-    // Update config data
-    switch (loadedVersion) {
-    case 0:
-    case 1:
-    default:
-      break;
-    }
-
-  }
-
-  void TabInit::updateGUI()
-  {
-  }
-
-  void TabInit::disconnectGUI()
   {
   }
 
@@ -123,18 +72,23 @@ namespace RandomDock {
     ui.table_matrix->setDisabled(true);
   }
 
-  void TabInit::updateParams() {
-    m_opt->substrateFile = ui.edit_substrateFile->text();
-    m_opt->matrixFiles.clear();
-    m_opt->matrixStoich.clear();
+  void TabInit::updateParams()
+  {
+    RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
+    randomdock->substrateFile = ui.edit_substrateFile->text();
+    randomdock->matrixFiles.clear();
+    randomdock->matrixStoich.clear();
     for (int i = 0; i < ui.table_matrix->rowCount(); i++) {
       ui.table_matrix->item(i, Num)->setText(QString::number(i+1));
-      m_opt->matrixFiles.append(ui.table_matrix->item(i, Filename)->text());
-      m_opt->matrixStoich.append(ui.table_matrix->item(i, Stoich)->text().toInt());
+      randomdock->matrixFiles.append(ui.table_matrix->item(i, Filename)->text());
+      randomdock->matrixStoich.append(ui.table_matrix->item(i, Stoich)->text().toInt());
     }
   }
 
-  void TabInit::substrateBrowse() {
+  void TabInit::substrateBrowse()
+  {
+    RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
+
     // Initialize with previously selected substrate
     QSettings settings;
     QString path = settings.value("randomdock/paths/substrateBrowse", "").toString();
@@ -173,23 +127,26 @@ namespace RandomDock {
     }
     // Read ok
     // Delete old substrate if needed
-    if (m_opt->substrate) {
-      delete m_opt->substrate;
-      m_opt->substrate = 0;
+    if (randomdock->substrate) {
+      delete randomdock->substrate;
+      randomdock->substrate = 0;
     }
-    m_opt->substrate = new Substrate (mol);
+    randomdock->substrate = new Substrate (mol);
     delete mol;
     ui.edit_substrateFile->setText(filename);
     QApplication::restoreOverrideCursor();
     settings.setValue("randomdock/paths/substrateBrowse", filename);
-    emit substrateChanged(m_opt->substrate);
+    emit substrateChanged(randomdock->substrate);
   }
 
   void TabInit::substrateCurrent()
   {
   }
 
-  void TabInit::matrixAdd() {
+  void TabInit::matrixAdd()
+  {
+    RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
+
     // Initialize filename from settings object
     QSettings settings;
     QString path = settings.value("randomdock/paths/matrixBrowse", "").toString();
@@ -228,8 +185,8 @@ namespace RandomDock {
     }
     // Read ok
     Matrix *mat = new Matrix (mol);
-    m_opt->matrixList.append(mat);
-    m_opt->matrixFiles.append(filename);
+    randomdock->matrixList.append(mat);
+    randomdock->matrixFiles.append(filename);
     delete mol;
     QApplication::restoreOverrideCursor();
     settings.setValue("randomdock/paths/matrixBrowse", filename);
@@ -246,12 +203,15 @@ namespace RandomDock {
     emit matrixAdded(mat);
   }
 
-  void TabInit::matrixRemove() {
+  void TabInit::matrixRemove()
+  {
+    RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
+
     int row = ui.table_matrix->currentRow();
     ui.table_matrix->removeRow(row);
-    m_opt->matrixFiles.removeAt(row);
-    Matrix *mat = m_opt->matrixList.at(row);
-    m_opt->matrixList.removeAt(row);
+    randomdock->matrixFiles.removeAt(row);
+    Matrix *mat = randomdock->matrixList.at(row);
+    randomdock->matrixList.removeAt(row);
     delete mat;
     updateParams();
     emit matrixRemoved();
@@ -262,5 +222,3 @@ namespace RandomDock {
   }
 
 }
-
-//#include "tab_init.moc"

@@ -17,6 +17,8 @@
 #include <xtalopt/ui/tab_progress.h>
 
 #include <globalsearch/optimizer.h>
+#include <globalsearch/ui/abstracttab.h>
+
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
@@ -31,42 +33,23 @@
 namespace XtalOpt {
 
   TabProgress::TabProgress( XtalOptDialog *parent, XtalOpt *p ) :
-    QObject( parent ), m_dialog(parent), m_opt(p), m_timer(0), m_mutex(0), m_update_mutex(0), m_update_all_mutex(0), m_context_xtal(0)
+    AbstractTab(parent, p),
+    m_timer(new QTimer (this)),
+    m_mutex(new QMutex),
+    m_update_mutex(new QMutex),
+    m_update_all_mutex(new QMutex),
+    m_context_xtal(0)
   {
-    //qDebug() << "TabProgress::TabProgress( " << parent <<  " ) called.";
-
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
-
-    m_dialog = parent;
 
     QHeaderView *horizontal = ui.table_list->horizontalHeader();
     horizontal->setResizeMode(QHeaderView::ResizeToContents);
 
-    m_mutex = new QMutex;
-    m_update_mutex = new QMutex;
-    m_update_all_mutex = new QMutex;
-    m_timer = new QTimer(this);
-
     rowTracking = true;
 
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
-    connect(this, SIGNAL(newLog(QString)),
-            m_dialog, SIGNAL(newLog(QString)));
-    connect(this, SIGNAL(moleculeChanged(Xtal*)),
-            m_dialog, SIGNAL(moleculeChanged(Xtal*)));
-    connect(m_dialog, SIGNAL(moleculeChanged(Xtal*)),
-            this, SLOT(highlightXtal(Xtal*)));
+    connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
+            this, SLOT(highlightXtal(Structure*)));
     connect(this, SIGNAL(refresh()),
             m_opt->queue(), SLOT(checkRunning()));
     connect(this, SIGNAL(refresh()),
@@ -99,18 +82,20 @@ namespace XtalOpt {
             this, SLOT(disableRowTracking()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(enableRowTracking()));
+
+    initialize();
   }
 
   TabProgress::~TabProgress()
   {
-    //qDebug() << "TabProgress::~TabProgress() called";
     delete m_mutex;
     delete m_update_mutex;
     delete m_update_all_mutex;
     delete m_timer;
   }
 
-  void TabProgress::writeSettings(const QString &filename) {
+  void TabProgress::writeSettings(const QString &filename)
+  {
     SETTINGS(filename);
     const int VERSION = 1;
     settings->beginGroup("xtalopt/progress");
@@ -120,7 +105,8 @@ namespace XtalOpt {
     DESTROY_SETTINGS(filename);
   }
 
-  void TabProgress::readSettings(const QString &filename) {
+  void TabProgress::readSettings(const QString &filename)
+  {
     SETTINGS(filename);
     settings->beginGroup("xtalopt/progress");
     int loadedVersion = settings->value("version", 0).toInt();
@@ -137,13 +123,8 @@ namespace XtalOpt {
 
   }
 
-  void TabProgress::updateGUI() {
-    //qDebug() << "TabProgress::updateGUI() called";
-    // Nothing to do!
-  }
-
-  void TabProgress::disconnectGUI() {
-    //qDebug() << "TabProgress::disconnectGUI() called";
+  void TabProgress::disconnectGUI()
+  {
     m_timer->disconnect();
     ui.push_refresh->disconnect();
     ui.push_refreshAll->disconnect();
@@ -155,14 +136,8 @@ namespace XtalOpt {
     this->disconnect();
   }
 
-  void TabProgress::lockGUI() {
-    //qDebug() << "TabProgress::lockGUI() called";
-    // Nothing to do!
-  }
-
-  void TabProgress::updateProgressTable() {
-    //qDebug() << "TabProgress::updateProgressTable( ) called";
-
+  void TabProgress::updateProgressTable()
+  {
     // Only allow one update at a time
     if (!m_update_mutex->tryLock()) {
       qDebug() << "Killing extra TabProgress::updateProgressTable() call";
@@ -179,15 +154,15 @@ namespace XtalOpt {
       return;
     }
 
-    QtConcurrent::run(m_opt->queue(), &GlobalSearch::QueueManager::checkPopulation);
+    QtConcurrent::run(m_opt->queue(),
+                      &GlobalSearch::QueueManager::checkPopulation);
 
     emit refresh();
     m_update_mutex->unlock();
   }
 
-  void TabProgress::addNewEntry() {
-    //qDebug() << "TabProgress::addNewEntry() called";
-
+  void TabProgress::addNewEntry()
+  {
     // Prevent XtalOpt threads from modifying the table
     QMutexLocker locker (m_mutex);
 
@@ -220,8 +195,8 @@ namespace XtalOpt {
     if (rowTracking) ui.table_list->setCurrentCell(currentInd, 0);
   }
 
-  void TabProgress::updateAllInfo() {
-    //qDebug() << "TabProgress::updateAllInfo() called";
+  void TabProgress::updateAllInfo()
+  {
     if (!m_update_all_mutex->tryLock()) {
       qDebug() << "Killing extra TabProgress::updateAllInfo() call";
       return;
@@ -234,14 +209,14 @@ namespace XtalOpt {
     m_update_all_mutex->unlock();
   }
 
-  void TabProgress::newInfoUpdate(Structure *s) {
+  void TabProgress::newInfoUpdate(Structure *s)
+  {
     m_infoUpdateTracker.append(s);
     emit infoUpdate();
   }
 
-  void TabProgress::updateInfo() {
-    //qDebug() << "TabProgress::updateInfo( ) called";
-
+  void TabProgress::updateInfo()
+  {
     if (m_infoUpdateTracker.size() == 0) {
       return;
     }
@@ -265,7 +240,8 @@ namespace XtalOpt {
     Xtal *xtal = qobject_cast<Xtal*>(structure);
 
     if (i < 0 || i > ui.table_list->rowCount() - 1) {
-      qDebug() << "TabProgress::updateInfo: Trying to update an index that doesn't exist (" << i << ") Waiting...";
+      qDebug() << "TabProgress::updateInfo: Trying to update an index that doesn't exist ("
+               << i << ") Waiting...";
       m_infoUpdateTracker.append(xtal);
       QTimer::singleShot(100, this, SLOT(updateInfo()));
       return;
@@ -399,8 +375,8 @@ namespace XtalOpt {
     ui.table_list->item(i, Status)->setBackground(brush);
   }
 
-  void TabProgress::selectMoleculeFromProgress(int row,int,int oldrow,int) {
-    //qDebug() << "TabProgress::selectMoleculeFromProgress( " << row << " " << oldrow << " ) called";
+  void TabProgress::selectMoleculeFromProgress(int row,int,int oldrow,int)
+  {
     Q_UNUSED(oldrow);
     if (m_opt->isStarting) {
       qDebug() << "TabProgress::selectMoleculeFromProgress: Not updating widget while session is starting";
@@ -410,8 +386,9 @@ namespace XtalOpt {
     emit moleculeChanged(qobject_cast<Xtal*>(m_opt->tracker()->at(row)));
   }
 
-  void TabProgress::highlightXtal(Xtal* xtal) {
-    //qDebug() << "TabProgress::highlightMolecule( " << xtal << " ) called.";
+  void TabProgress::highlightXtal(Structure *s)
+  {
+    Xtal *xtal = qobject_cast<Xtal*>(s);
     xtal->lock()->lockForRead();
     int gen = xtal->getGeneration();
     int id  = xtal->getIDNumber();
@@ -432,17 +409,20 @@ namespace XtalOpt {
   }
 
 
-  void TabProgress::startTimer() {
+  void TabProgress::startTimer()
+  {
     if (m_timer->isActive())
       m_timer->stop();
     m_timer->start(ui.spin_period->value() * 1000);
   }
 
-  void TabProgress::stopTimer() {
+  void TabProgress::stopTimer()
+  {
     m_timer->stop();
   }
 
-  void TabProgress::progressContextMenu(QPoint p) {
+  void TabProgress::progressContextMenu(QPoint p)
+  {
     if (m_context_xtal) return;
     QApplication::setOverrideCursor( Qt::WaitCursor );
     QTableWidgetItem *item = ui.table_list->itemAt(p);
@@ -503,8 +483,8 @@ namespace XtalOpt {
     a_randomize->disconnect();
   }
 
-  void TabProgress::restartJobProgress() {
-    //qDebug() << "TabProgress::restartJobProgress() called";
+  void TabProgress::restartJobProgress()
+  {
     if (!m_context_xtal) return;
 
     // Get info from xtal
@@ -530,8 +510,8 @@ namespace XtalOpt {
     QtConcurrent::run(this, &TabProgress::restartJobProgress_, optStep);
   }
 
-  void TabProgress::restartJobProgress_(int optStep) {
-    //qDebug() << "TabProgress::restartJobProgress_( " << optStep << " ) called";
+  void TabProgress::restartJobProgress_(int optStep)
+  {
     QWriteLocker locker (m_context_xtal->lock());
     m_context_xtal->setCurrentOptStep(optStep);
 
@@ -551,13 +531,13 @@ namespace XtalOpt {
     m_context_xtal = 0;
   }
 
-  void TabProgress::killXtalProgress() {
-    //qDebug() << "TabProgress::killXtalProgress() called";
+  void TabProgress::killXtalProgress()
+  {
     QtConcurrent::run(this, &TabProgress::killXtalProgress_);
   }
 
-  void TabProgress::killXtalProgress_() {
-    //qDebug() << "TabProgress::killXtalProgress_() called";
+  void TabProgress::killXtalProgress_()
+  {
     if (!m_context_xtal) return;
     QWriteLocker locker (m_context_xtal->lock());
 
@@ -576,13 +556,13 @@ namespace XtalOpt {
     m_context_xtal = 0;
   }
 
-  void TabProgress::unkillXtalProgress() {
-    //qDebug() << "TabProgress::unkillXtalProgress() called";
+  void TabProgress::unkillXtalProgress()
+  {
     QtConcurrent::run(this, &TabProgress::unkillXtalProgress_);
   }
 
-  void TabProgress::unkillXtalProgress_() {
-    //qDebug() << "TabProgress::unkillXtalProgress_() called";
+  void TabProgress::unkillXtalProgress_()
+  {
     if (!m_context_xtal) return;
     QWriteLocker locker (m_context_xtal->lock());
     if (m_context_xtal->getStatus() != Xtal::Killed &&
@@ -602,13 +582,13 @@ namespace XtalOpt {
     m_context_xtal = 0;
   }
 
-  void TabProgress::resetFailureCountProgress() {
-    //qDebug() << "TabProgress::resetFailureCountProgress() called";
+  void TabProgress::resetFailureCountProgress()
+  {
     QtConcurrent::run(this, &TabProgress::resetFailureCountProgress_);
   }
 
-  void TabProgress::resetFailureCountProgress_() {
-    //qDebug() << "TabProgress::resetFailureCountProgress_() called";
+  void TabProgress::resetFailureCountProgress_()
+  {
     if (!m_context_xtal) return;
     QWriteLocker locker (m_context_xtal->lock());
 
@@ -622,13 +602,13 @@ namespace XtalOpt {
     emit refresh();
   }
 
-  void TabProgress::randomizeStructureProgress() {
-    //qDebug() << "TabProgress::randomizeStructureProgress() called";
+  void TabProgress::randomizeStructureProgress()
+  {
     QtConcurrent::run(this, &TabProgress::randomizeStructureProgress_);
   }
 
-  void TabProgress::randomizeStructureProgress_() {
-    //qDebug() << "TabProgress::randomizeStructureProgress_() called";
+  void TabProgress::randomizeStructureProgress_()
+  {
     if (!m_context_xtal) return;
 
     // End job if currently running
@@ -643,7 +623,4 @@ namespace XtalOpt {
     restartJobProgress_(1);
   }
 
-
 }
-
-//#include "tab_progress.moc"

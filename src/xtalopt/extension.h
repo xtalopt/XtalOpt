@@ -49,7 +49,7 @@ namespace XtalOpt {
 
    public slots:
 
-      void reemitMoleculeChanged(Xtal* xtal);
+      void reemitMoleculeChanged(Structure *s);
 
     private:
       QList<QAction *> m_actions;

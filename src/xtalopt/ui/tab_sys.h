@@ -17,13 +17,17 @@
 #ifndef TAB_SYS_H
 #define TAB_SYS_H
 
+#include <globalsearch/ui/abstracttab.h>
+
 #include "ui_tab_sys.h"
+
+using namespace GlobalSearch;
 
 namespace XtalOpt {
   class XtalOptDialog;
   class XtalOpt;
 
-  class TabSys : public QObject
+  class TabSys : public AbstractTab
   {
     Q_OBJECT
 
@@ -31,16 +35,11 @@ namespace XtalOpt {
     explicit TabSys( XtalOptDialog *parent, XtalOpt *p );
     virtual ~TabSys();
 
-    QWidget *getTabWidget() {return m_tab_widget;};
-
   public slots:
-    // used to lock bits of the GUI that shouldn't be change when a
-    // session starts. This will also pass the call on to all tabs.
     void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
     void updateGUI();
-    void disconnectGUI();
     void updateSystemInfo();
 
   signals:
@@ -48,9 +47,6 @@ namespace XtalOpt {
 
   private:
     Ui::Tab_Sys ui;
-    QWidget *m_tab_widget;
-    XtalOptDialog *m_dialog;
-    XtalOpt *m_opt;
   };
 }
 

@@ -24,26 +24,10 @@
 namespace XtalOpt {
 
   TabSys::TabSys( XtalOptDialog *parent, XtalOpt *p ) :
-    QObject( parent ), m_dialog(parent), m_opt(p)
+    AbstractTab(parent, p)
   {
-    //qDebug() << "TabSys::TabSys( " << parent <<  " ) called.";
-
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 
-    m_dialog = parent;
-
-    // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
     connect(this, SIGNAL(dataChanged()),
             m_dialog, SLOT(updateGUI()));
 
@@ -66,14 +50,16 @@ namespace XtalOpt {
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_rempath, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
+
+    initialize();
   }
 
   TabSys::~TabSys()
   {
-    //qDebug() << "TabSys::~TabSys() called";
   }
 
-  void TabSys::writeSettings(const QString &filename) {
+  void TabSys::writeSettings(const QString &filename)
+  {
     SETTINGS(filename);
     const int VERSION = 1;
     settings->beginGroup("xtalopt/sys/");
@@ -91,7 +77,8 @@ namespace XtalOpt {
     DESTROY_SETTINGS(filename);
   }
 
-  void TabSys::readSettings(const QString &filename) {
+  void TabSys::readSettings(const QString &filename)
+  {
     SETTINGS(filename);
     settings->beginGroup("xtalopt/sys/");
     int loadedVersion = settings->value("version", 0).toInt();
@@ -117,8 +104,8 @@ namespace XtalOpt {
     updateSystemInfo();
   }
 
-  void TabSys::updateGUI() {
-    //qDebug() << "TabSys::updateGUI() called";
+  void TabSys::updateGUI()
+  {
     ui.edit_path->setText(	m_opt->filePath);
     ui.edit_description->setText(m_opt->description);
     ui.edit_qsub->setText(	m_opt->qsub);
@@ -157,17 +144,13 @@ namespace XtalOpt {
       ui.label_qdel->setVisible(false);
     }
     else {
-      qWarning() << "TabSys::updateGUI: Selected OptType unknown? " << m_opt->optimizer()->getIDString();
+      qWarning() << "TabSys::updateGUI: Selected OptType unknown? "
+                 << m_opt->optimizer()->getIDString();
     }
   }
 
-  void TabSys::disconnectGUI() {
-    //qDebug() << "TabSys::disconnectGUI() called";
-    // Nothing I want to disconnect here!
-  }
-
-  void TabSys::lockGUI() {
-    //qDebug() << "TabSys::lockGUI() called";
+  void TabSys::lockGUI()
+  {
     ui.edit_path->setDisabled(true);
     ui.edit_description->setDisabled(true);
     ui.edit_qsub->setDisabled(true);
@@ -179,8 +162,8 @@ namespace XtalOpt {
     ui.edit_rempath->setDisabled(true);
   }
 
-  void TabSys::updateSystemInfo() {
-    //qDebug() << "TabSys::updateSystemInfo() called";
+  void TabSys::updateSystemInfo()
+  {
     m_opt->filePath	= ui.edit_path->text();
     m_opt->description	= ui.edit_description->text();
     m_opt->qsub		= ui.edit_qsub->text();
@@ -193,5 +176,3 @@ namespace XtalOpt {
   }
 
 }
-
-//#include "tab_sys.moc"

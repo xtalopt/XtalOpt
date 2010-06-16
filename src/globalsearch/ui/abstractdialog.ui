@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>RandomDockDialog</class>
- <widget class="QDialog" name="RandomDockDialog">
+ <class>GlobalSearchDialog</class>
+ <widget class="QDialog" name="GlobalSearchDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Random Docking Search</string>
+   <string>Generic Global Search Dialog Window</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="4" column="8">
@@ -205,7 +205,7 @@
   <connection>
    <sender>pushButton</sender>
    <signal>clicked()</signal>
-   <receiver>RandomDockDialog</receiver>
+   <receiver>GlobalSearchDialog</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">

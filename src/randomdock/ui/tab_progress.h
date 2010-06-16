@@ -20,6 +20,7 @@
 #include "ui_tab_progress.h"
 
 #include <globalsearch/tracker.h>
+#include <globalsearch/ui/abstracttab.h>
 
 class QTimer;
 class QMutex;
@@ -35,7 +36,7 @@ namespace RandomDock {
   class RandomDock;
   class Scene;
 
-  class TabProgress : public QObject
+  class TabProgress : public AbstractTab
   {
     Q_OBJECT
 
@@ -52,13 +53,9 @@ namespace RandomDock {
       C_Status
     };
 
-    QWidget *getTabWidget() {return m_tab_widget;};
-
   public slots:
-    void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
-    void updateGUI();
     void disconnectGUI();
     void addNewEntry();
     void newInfoUpdate(Structure *);
@@ -79,7 +76,6 @@ namespace RandomDock {
     void disableRowTracking() {rowTracking = false;};
 
   signals:
-    void newLog(const QString &);
     void moleculeChanged(Structure*);
     void refresh();
     void deleteJob(int);
@@ -88,9 +84,6 @@ namespace RandomDock {
 
   private:
     Ui::Tab_Progress ui;
-    QWidget *m_tab_widget;
-    RandomDockDialog *m_dialog;
-    RandomDock *m_opt;
     QTimer *m_timer;
     QMutex *m_mutex;
     QMutex *m_update_mutex;
