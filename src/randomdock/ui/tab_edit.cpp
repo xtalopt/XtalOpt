@@ -32,9 +32,8 @@ using namespace Avogadro;
 namespace RandomDock {
 
   TabEdit::TabEdit( RandomDockDialog *parent, RandomDock *p ) :
-    QObject( parent ), m_dialog(parent), m_opt(p)
+    AbstractTab(parent, p)
   {
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 
     ui.edit_edit->setCurrentFont(QFont("Courier"));
@@ -44,16 +43,6 @@ namespace RandomDock {
             m_opt, SLOT(setOptimizer(Optimizer*)));
 
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
     connect(this, SIGNAL(optimizerChanged(Optimizer*)),
             m_dialog, SIGNAL(tabsUpdateGUI()));
 
@@ -85,13 +74,16 @@ namespace RandomDock {
     connect(ui.push_loadScheme, SIGNAL(clicked()),
             this, SLOT(loadScheme()));
     ui.combo_optType->setCurrentIndex(0);
+
+    initialize();
   }
 
   TabEdit::~TabEdit()
   {
   }
 
-  void TabEdit::writeSettings(const QString &filename) {
+  void TabEdit::writeSettings(const QString &filename)
+  {
     SETTINGS(filename);
 
     settings->beginGroup("randomdock/edit");
@@ -105,7 +97,8 @@ namespace RandomDock {
     DESTROY_SETTINGS(filename);
   }
 
-  void TabEdit::readSettings(const QString &filename) {
+  void TabEdit::readSettings(const QString &filename)
+  {
     SETTINGS(filename);
 
     settings->beginGroup("randomdock/edit");
@@ -128,7 +121,8 @@ namespace RandomDock {
     updateGUI();
   }
 
-  void TabEdit::updateGUI() {
+  void TabEdit::updateGUI()
+  {
     populateOptList();
     if (m_opt->optimizer()->getIDString() == "GAMESS") {
       ui.combo_optType->setCurrentIndex(RandomDock::OT_GAMESS);
@@ -139,11 +133,6 @@ namespace RandomDock {
     ui.edit_user2->setText(	m_opt->optimizer()->getUser2());
     ui.edit_user3->setText(	m_opt->optimizer()->getUser3());
     ui.edit_user4->setText(	m_opt->optimizer()->getUser4());
-  }
-
-  void TabEdit::disconnectGUI()
-  {
-    // nothing I want to disconnect here!
   }
 
   void TabEdit::lockGUI()
@@ -202,7 +191,8 @@ namespace RandomDock {
     templateChanged(0);
   }
 
-  void TabEdit::templateChanged(int ind) {
+  void TabEdit::templateChanged(int ind)
+  {
     ui.edit_edit->setCurrentFont(QFont("Courier"));
     if (ind < 0) {
       return;
@@ -239,7 +229,8 @@ namespace RandomDock {
     }
   }
 
-  void TabEdit::updateTemplates() {
+  void TabEdit::updateTemplates()
+  {
     int row = ui.list_opt->currentRow();
 
     switch (ui.combo_optType->currentIndex()) {
@@ -263,14 +254,16 @@ namespace RandomDock {
     }
   }
 
-  void TabEdit::updateUserValues() {
+  void TabEdit::updateUserValues()
+  {
     m_opt->optimizer()->setUser1(ui.edit_user1->text());
     m_opt->optimizer()->setUser2(ui.edit_user2->text());
     m_opt->optimizer()->setUser3(ui.edit_user3->text());
     m_opt->optimizer()->setUser4(ui.edit_user4->text());
   }
 
-  void TabEdit::populateOptList() {
+  void TabEdit::populateOptList()
+  {
     int selection = ui.list_opt->currentRow();
     int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
     if (selection < 0) selection = 0;
@@ -286,7 +279,8 @@ namespace RandomDock {
     ui.list_opt->setCurrentRow(selection);
   }
 
-  void TabEdit::appendOptStep() {
+  void TabEdit::appendOptStep()
+  {
     // Copy the current files into a new entry at the end of the opt step list
     int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
     int currentOptStep = ui.list_opt->currentRow();
@@ -302,7 +296,8 @@ namespace RandomDock {
     populateOptList();
   }
 
-  void TabEdit::removeCurrentOptStep() {
+  void TabEdit::removeCurrentOptStep()
+  {
     int currentOptStep = ui.list_opt->currentRow();
     int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
     QStringList templates = m_opt->optimizer()->getTemplateNames();
@@ -314,7 +309,8 @@ namespace RandomDock {
     populateOptList();
   }
 
-  void TabEdit::optStepChanged() {
+  void TabEdit::optStepChanged()
+  {
     templateChanged(ui.combo_template->currentIndex());
   }
 
@@ -339,8 +335,10 @@ namespace RandomDock {
   {
     SETTINGS("");
     QString filename = settings->value("xtalopt/edit/schemePath/", "").toString();
-    QFileDialog dialog (NULL, tr("Select Optimization Scheme to load..."),
- filename, "*.scheme;;*.*");
+    QFileDialog dialog (NULL,
+                        tr("Select Optimization Scheme to load..."),
+                        filename,
+                        "*.scheme;;*.*");
      dialog.setFileMode(QFileDialog::ExistingFile);
     if (dialog.exec())
       filename = dialog.selectedFiles().first();
@@ -351,4 +349,3 @@ namespace RandomDock {
     readSettings(filename);
   }
 }
-//#include "tab_edit.moc"

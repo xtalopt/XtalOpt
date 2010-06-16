@@ -28,24 +28,9 @@ using namespace Avogadro;
 namespace RandomDock {
 
   TabSys::TabSys( RandomDockDialog *dialog, RandomDock *opt ) :
-    QObject(dialog),
-    m_dialog(dialog),
-    m_opt(opt)
+    AbstractTab(dialog, opt)
   {
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
-
-    // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
 
     // System Settings connections
     connect(ui.edit_path, SIGNAL(textChanged(QString)),
@@ -64,11 +49,12 @@ namespace RandomDock {
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_rempath, SIGNAL(textChanged(QString)),
             this, SLOT(updateSystemInfo()));
+
+    initialize();
   }
 
   TabSys::~TabSys()
   {
-    writeSettings();
   }
 
   void TabSys::writeSettings(const QString &filename)
@@ -117,14 +103,6 @@ namespace RandomDock {
 
   }
 
-  void TabSys::updateGUI()
-  {
-  }
-
-  void TabSys::disconnectGUI()
-  {
-  }
-
   void TabSys::lockGUI()
   {
     ui.edit_path->setDisabled(true);
@@ -137,7 +115,8 @@ namespace RandomDock {
     ui.edit_rempath->setDisabled(true);
   }
 
-  void TabSys::updateSystemInfo() {
+  void TabSys::updateSystemInfo()
+  {
     m_opt->filePath		= ui.edit_path->text();
     m_opt->qsub			= ui.edit_launch->text();
     m_opt->qstat		= ui.edit_check->text();
@@ -148,5 +127,3 @@ namespace RandomDock {
   }
 
 }
-
-//#include "tab_sys.moc"

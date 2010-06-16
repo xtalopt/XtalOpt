@@ -17,6 +17,8 @@
 #ifndef TAB_CONFORMERS_H
 #define TAB_CONFORMERS_H
 
+#include <globalsearch/ui/abstracttab.h>
+
 #include "ui_tab_conformers.h"
 
 namespace GlobalSearch {
@@ -39,7 +41,7 @@ namespace RandomDock {
   class RandomDockDialog;
   class RandomDock;
 
-  class TabConformers : public QObject
+  class TabConformers : public AbstractTab
   {
     Q_OBJECT
 
@@ -47,10 +49,20 @@ namespace RandomDock {
     explicit TabConformers( RandomDockDialog *dialog, RandomDock *opt);
     virtual ~TabConformers();
 
-    enum OptTypes	{O_G03 = 0, O_Ghemical, O_MMFF94, O_MMFF94s, O_UFF};
-    enum Columns	{Conformer = 0, Energy, Prob};
+    enum OptTypes {
+      O_G03 = 0,
+      O_Ghemical,
+      O_MMFF94,
+      O_MMFF94s,
+      O_UFF
+    };
 
-    QWidget *getTabWidget() {return m_tab_widget;};
+    enum Columns {
+      Conformer = 0,
+      Energy,
+      Prob
+    };
+
     Structure* currentStructure();
 
   public slots:
@@ -58,7 +70,6 @@ namespace RandomDock {
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
     void updateGUI();
-    void disconnectGUI();
     void generateConformers();
     void updateStructureList();
     void updateConformerTable();
@@ -67,15 +78,11 @@ namespace RandomDock {
     void calculateNumberOfConformers(bool isSystematic);
 
   signals:
-    void moleculeChanged(Structure*);
     void conformersChanged();
 
   private:
     Ui::Tab_Conformers ui;
-    QWidget *m_tab_widget;
     OBForceField *m_ff;
-    RandomDockDialog *m_dialog;
-    RandomDock *m_opt;
 
     void generateConformers_(Structure *mol);
   };

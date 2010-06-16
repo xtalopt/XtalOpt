@@ -34,24 +34,9 @@ using namespace Avogadro;
 namespace RandomDock {
 
   TabParams::TabParams( RandomDockDialog *dialog, RandomDock *opt ) :
-    QObject(dialog),
-    m_dialog(dialog),
-    m_opt(opt)
+    AbstractTab(dialog, opt)
   {
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
-
-    // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
 
     // Optimization connections
     connect(ui.spin_numSearches, SIGNAL(valueChanged(int)),
@@ -70,28 +55,30 @@ namespace RandomDock {
             this, SLOT(updateOptimizationInfo()));
     connect(ui.cb_radius_auto, SIGNAL(toggled(bool)),
             this, SLOT(updateOptimizationInfo()));
+
+    initialize();
   }
 
   TabParams::~TabParams()
   {
-    writeSettings();
   }
 
   void TabParams::writeSettings(const QString &filename)
   {
     SETTINGS(filename);
+    RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
     settings->beginGroup("randomdock/params");
     const int VERSION = 1;
     settings->setValue("version",     VERSION);
 
-    settings->setValue("runningJobLimit",       m_opt->runningJobLimit);
-    settings->setValue("numMatrixMol",          m_opt->numMatrixMol);
-    settings->setValue("cutoff",                        m_opt->cutoff);
-    settings->setValue("IAD_min",               m_opt->IAD_min);
-    settings->setValue("IAD_max",               m_opt->IAD_max);
-    settings->setValue("radius_min",            m_opt->radius_min);
-    settings->setValue("radius_max",            m_opt->radius_max);
-    settings->setValue("radius_auto",           m_opt->radius_auto);
+    settings->setValue("runningJobLimit",       randomdock->runningJobLimit);
+    settings->setValue("numMatrixMol",          randomdock->numMatrixMol);
+    settings->setValue("cutoff",                randomdock->cutoff);
+    settings->setValue("IAD_min",               randomdock->IAD_min);
+    settings->setValue("IAD_max",               randomdock->IAD_max);
+    settings->setValue("radius_min",            randomdock->radius_min);
+    settings->setValue("radius_max",            randomdock->radius_max);
+    settings->setValue("radius_auto",           randomdock->radius_auto);
 
     settings->endGroup();
     DESTROY_SETTINGS(filename);
@@ -100,6 +87,7 @@ namespace RandomDock {
   void TabParams::readSettings(const QString &filename)
   {
     SETTINGS(filename);
+    RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
     settings->beginGroup("randomdock/params");
     int loadedVersion = settings->value("version", 0).toInt();
 
@@ -125,14 +113,6 @@ namespace RandomDock {
     updateOptimizationInfo();
   }
 
-  void TabParams::updateGUI()
-  {
-  }
-
-  void TabParams::disconnectGUI()
-  {
-  }
-
   void TabParams::lockGUI()
   {
     ui.spin_numMatrixMols->setDisabled(true);
@@ -140,27 +120,28 @@ namespace RandomDock {
 
   void TabParams::updateOptimizationInfo()
   {
+    RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
     // Logic first!
     if (ui.spin_IAD_min->value() > ui.spin_IAD_max->value())
       ui.spin_IAD_max->setValue(ui.spin_IAD_min->value());
     if (ui.spin_radius_min->value() > ui.spin_radius_max->value())
       ui.spin_radius_max->setValue(ui.spin_radius_min->value());
 
-    m_opt->runningJobLimit	= ui.spin_numSearches->value();
-    m_opt->numMatrixMol		= ui.spin_numMatrixMols->value();
-    m_opt->cutoff		= ui.spin_cutoff->value();
-    m_opt->IAD_min		= ui.spin_IAD_min->value();
-    m_opt->IAD_max		= ui.spin_IAD_max->value();
+    randomdock->runningJobLimit	= ui.spin_numSearches->value();
+    randomdock->numMatrixMol		= ui.spin_numMatrixMols->value();
+    randomdock->cutoff		= ui.spin_cutoff->value();
+    randomdock->IAD_min		= ui.spin_IAD_min->value();
+    randomdock->IAD_max		= ui.spin_IAD_max->value();
     //  Auto radius --
     if (ui.cb_radius_auto->isChecked()) {
       // Check that we have substrate and at least one matrix element
-      if (!m_opt->substrate || m_opt->matrixList.size() == 0) {
+      if (!randomdock->substrate || randomdock->matrixList.size() == 0) {
         ui.cb_radius_auto->setChecked(false);
         return;
       }
       // Iterate over all substrate conformers, find the shortest and the largest radii.
       double sub_short, sub_long, tmp;
-      Substrate *sub = m_opt->substrate;
+      Substrate *sub = randomdock->substrate;
       sub_short = sub_long = sub->radius();
       for (uint i = 0; i < sub->numConformers(); i++) {
         sub->setConformer(i);
@@ -171,9 +152,9 @@ namespace RandomDock {
       }
       //   Iterate over all atoms in matrix elements conformers, find longest radius of all
       double mat_short, mat_long;
-      mat_short = mat_long = m_opt->matrixList.first()->radius();
-      for (int m = 0; m < m_opt->matrixList.size(); m++) {
-        Matrix *mat = m_opt->matrixList.at(m);
+      mat_short = mat_long = randomdock->matrixList.first()->radius();
+      for (int m = 0; m < randomdock->matrixList.size(); m++) {
+        Matrix *mat = randomdock->matrixList.at(m);
         for (uint i = 0; i < mat->numConformers(); i++) {
           mat->setConformer(i);
           mat->updateMolecule();
@@ -185,21 +166,15 @@ namespace RandomDock {
       ui.spin_radius_min->blockSignals(true);
       ui.spin_radius_max->blockSignals(true);
       ui.spin_radius_min->setValue(mat_short);
-      ui.spin_radius_max->setValue(mat_long + sub_long + m_opt->IAD_max);
+      ui.spin_radius_max->setValue(mat_long + sub_long + randomdock->IAD_max);
       ui.spin_radius_min->blockSignals(false);
       ui.spin_radius_max->blockSignals(false);
       ui.spin_radius_min->update();
       ui.spin_radius_max->update();
     }
-    m_opt->radius_min	= ui.spin_radius_min->value();
-    m_opt->radius_max	= ui.spin_radius_max->value();
-    m_opt->radius_auto	= ui.cb_radius_auto->isChecked();
-  }
-
-  void TabParams::stopSubmission()
-  {
-    ui.spin_numSearches->setValue(0);
+    randomdock->radius_min	= ui.spin_radius_min->value();
+    randomdock->radius_max	= ui.spin_radius_max->value();
+    randomdock->radius_auto	= ui.cb_radius_auto->isChecked();
   }
 
 }
-//#include "tab_params.moc"

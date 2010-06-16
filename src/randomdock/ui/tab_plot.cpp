@@ -36,35 +36,17 @@ using namespace Avogadro;
 namespace RandomDock {
 
   TabPlot::TabPlot( RandomDockDialog *parent, RandomDock *p ) :
-    QObject(parent),
-    m_dialog(parent),
-    m_opt(p),
-    m_plot_mutex(0),
+    AbstractTab(parent, p),
+    m_plot_mutex(new QReadWriteLock()),
     m_plotObject(0)
   {
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
-
-    m_dialog = parent;
-    m_plot_mutex = new QReadWriteLock();
 
     // Plot setup
     ui.plot_plot->setAntialiasing(true);
     updatePlot();
 
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
-    connect(this, SIGNAL(moleculeChanged(Structure*)),
-            m_dialog, SIGNAL(moleculeChanged(Structure*)));
     connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
             this, SLOT(highlightStructure(Structure*)));
     connect(m_opt, SIGNAL(sessionStarted()),
@@ -105,6 +87,8 @@ namespace RandomDock {
             this, SLOT(updatePlot()));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
             this, SLOT(updatePlot()));
+
+    initialize();
   }
 
   TabPlot::~TabPlot()
@@ -113,7 +97,8 @@ namespace RandomDock {
     // m_plotObject is deleted by the PlotWidget
   }
 
-  void TabPlot::writeSettings(const QString &filename) {
+  void TabPlot::writeSettings(const QString &filename)
+  {
     SETTINGS(filename);
 
     settings->beginGroup("randomdock/plot/");
@@ -132,7 +117,8 @@ namespace RandomDock {
     DESTROY_SETTINGS(filename);
   }
 
-  void TabPlot::readSettings(const QString &filename) {
+  void TabPlot::readSettings(const QString &filename)
+  {
     SETTINGS(filename);
     settings->beginGroup("randomdock/plot/");
     int loadedVersion = settings->value("version", 0).toInt();
@@ -156,7 +142,8 @@ namespace RandomDock {
 
   }
 
-  void TabPlot::updateGUI() {
+  void TabPlot::updateGUI()
+  {
     switch (ui.combo_plotType->currentIndex()) {
     case Trend_PT:
     default:
@@ -170,7 +157,8 @@ namespace RandomDock {
     }
   }
 
-  void TabPlot::disconnectGUI() {
+  void TabPlot::disconnectGUI()
+  {
     ui.push_refresh->disconnect();
     ui.combo_xAxis->disconnect();
     ui.combo_yAxis->disconnect();
@@ -186,17 +174,15 @@ namespace RandomDock {
     disconnect(m_opt, 0, this, 0);
   }
 
-  void TabPlot::lockGUI()
+  void TabPlot::lockClearAndSelectPoint(PlotPoint *pp)
   {
-  }
-
-  void TabPlot::lockClearAndSelectPoint(PlotPoint *pp) {
     m_plot_mutex->lockForRead();
     ui.plot_plot->clearAndSelectPoint(pp);
     m_plot_mutex->unlock();
   }
 
-  void TabPlot::refreshPlot() {
+  void TabPlot::refreshPlot()
+  {
     // Reset connections
     ui.plot_plot->disconnect(this);
 
@@ -213,7 +199,8 @@ namespace RandomDock {
     }
   }
 
-  void TabPlot::updatePlot() {
+  void TabPlot::updatePlot()
+  {
     updateGUI();
     if (!m_opt) return;
 
@@ -248,7 +235,8 @@ namespace RandomDock {
     m_plot_mutex->unlock();
   }
 
-  void TabPlot::plotTrends() {
+  void TabPlot::plotTrends()
+  {
     // Store current limits for later
     QRectF oldDataRect = ui.plot_plot->dataRect();
 
@@ -386,7 +374,8 @@ namespace RandomDock {
     }
   }
 
-  void TabPlot::plotDistHist() {
+  void TabPlot::plotDistHist()
+  {
     // Clear old data...
     ui.plot_plot->resetPlot();
 
@@ -447,7 +436,8 @@ namespace RandomDock {
     ui.plot_plot->setDefaultLimits(0, 8, 0, ui.plot_plot->dataRect().bottom());
   }
 
-  void TabPlot::populateStructureList() {
+  void TabPlot::populateStructureList()
+  {
     int ind = ui.combo_distHistStructure->currentIndex();
     ui.combo_distHistStructure->blockSignals(true);
     ui.combo_distHistStructure->clear();
@@ -494,13 +484,15 @@ namespace RandomDock {
     ui.combo_distHistStructure->blockSignals(false);
   }
 
-  void TabPlot::selectStructureFromPlot(PlotPoint *pp) {
+  void TabPlot::selectStructureFromPlot(PlotPoint *pp)
+  {
     if (!pp) return;
     int index = pp->customData().toInt();
     selectStructureFromIndex(index);
   }
 
-  void TabPlot::selectStructureFromIndex(int index) {
+  void TabPlot::selectStructureFromIndex(int index)
+  {
     if (index < 0 || index > m_opt->tracker()->size() - 1) {
       index = 0;
     }
@@ -510,7 +502,8 @@ namespace RandomDock {
     emit moleculeChanged(m_opt->tracker()->at(index));
   }
 
-  void TabPlot::highlightStructure(Structure *structure) {
+  void TabPlot::highlightStructure(Structure *structure)
+  {
     // Bail out if there is no plotobject in memory
     if (!m_plotObject)
       return;
@@ -561,5 +554,3 @@ namespace RandomDock {
     }
   }
 }
-
-//#include "tab_plot.moc"

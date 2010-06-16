@@ -17,6 +17,8 @@
 #ifndef TAB_PLOT_H
 #define TAB_PLOT_H
 
+#include <globalsearch/ui/abstracttab.h>
+
 #include "ui_tab_plot.h"
 
 class QReadWriteLock;
@@ -38,7 +40,7 @@ namespace RandomDock {
   class RandomDock;
   class Scene;
 
-  class TabPlot : public QObject
+  class TabPlot : public AbstractTab
   {
     Q_OBJECT
 
@@ -61,10 +63,7 @@ namespace RandomDock {
       Energy_L,
     };
 
-    QWidget *getTabWidget() {return m_tab_widget;};
-
   public slots:
-    void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
     void updateGUI();
@@ -84,9 +83,6 @@ namespace RandomDock {
 
   private:
     Ui::Tab_Plot ui;
-    QWidget *m_tab_widget;
-    RandomDockDialog *m_dialog;
-    RandomDock *m_opt;
     QReadWriteLock *m_plot_mutex;
     PlotObject *m_plotObject;
   };

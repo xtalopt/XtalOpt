@@ -39,29 +39,12 @@ using namespace Avogadro;
 namespace RandomDock {
 
   TabConformers::TabConformers( RandomDockDialog *dialog, RandomDock *opt) :
-    QObject(dialog),
-    m_dialog(dialog),
-    m_opt(opt),
+    AbstractTab(dialog, opt),
     m_ff(0)
   {
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 
     m_ff = OpenBabel::OBForceField::FindForceField("MMFF94");
-
-    // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
-    connect(this, SIGNAL(moleculeChanged(Structure*)),
-            m_dialog, SIGNAL(moleculeChanged(Structure*)));
 
     // tab connections
     connect(ui.push_generate, SIGNAL(clicked()),
@@ -74,11 +57,12 @@ namespace RandomDock {
             this, SLOT(calculateNumberOfConformers(bool)));
     connect(this, SIGNAL(conformersChanged()),
             this, SLOT(updateConformerTable()));
+
+    initialize();
   }
 
   TabConformers::~TabConformers()
   {
-    writeSettings();
   }
 
   void TabConformers::writeSettings(const QString &filename)
@@ -120,10 +104,6 @@ namespace RandomDock {
     updateStructureList();
   }
 
-  void TabConformers::disconnectGUI()
-  {
-  }
-
   void TabConformers::lockGUI()
   {
     ui.push_generate->setDisabled(true);
@@ -132,11 +112,13 @@ namespace RandomDock {
     ui.cb_allConformers->setDisabled(true);
   }
 
-  void TabConformers::updateStructureList() {
+  void TabConformers::updateStructureList()
+  {
+    RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
     ui.combo_mol->clear();
-    if (m_opt->substrate)
+    if (randomdock->substrate)
       ui.combo_mol->addItem("Substrate");
-    for (int i = 0; i < m_opt->matrixList.size(); i++) {
+    for (int i = 0; i < randomdock->matrixList.size(); i++) {
       ui.combo_mol->addItem(tr("Matrix %1").arg(i+1));
     }
   }
@@ -243,7 +225,8 @@ namespace RandomDock {
     m_dialog->stopProgressUpdate();
   }
 
-  void TabConformers::selectStructure(const QString & text) {
+  void TabConformers::selectStructure(const QString & text)
+  {
     Structure* mol = currentStructure();
 
     if (!mol) return;
@@ -253,7 +236,8 @@ namespace RandomDock {
     emit moleculeChanged(mol);
   }
 
-  void TabConformers::updateConformerTable() {
+  void TabConformers::updateConformerTable()
+  {
     Structure *mol = currentStructure();
     QReadLocker locker (mol->lock());
 
@@ -284,7 +268,8 @@ namespace RandomDock {
     }
   }
 
-  void TabConformers::conformerChanged(int row, int, int oldrow, int) {
+  void TabConformers::conformerChanged(int row, int, int oldrow, int)
+  {
     if (row == oldrow)	return;
     if (row == -1)	{emit moleculeChanged(new Structure); return;}
     Structure *mol = currentStructure();
@@ -292,23 +277,26 @@ namespace RandomDock {
     emit moleculeChanged(mol);
   }
 
-  Structure* TabConformers::currentStructure() {
+  Structure* TabConformers::currentStructure()
+  {
+    RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
     Structure *mol;
     QString text = ui.combo_mol->currentText();
     if (text == "Substrate")
-      mol = qobject_cast<Structure*>(m_opt->substrate);
+      mol = qobject_cast<Structure*>(randomdock->substrate);
     else if (text.contains("Matrix")) {
       int ind = text.split(" ")[1].toInt() - 1;
-      if (ind + 1 > m_opt->matrixList.size())
+      if (ind + 1 > randomdock->matrixList.size())
         mol = new Structure;
       else
-        mol = qobject_cast<Structure*>(m_opt->matrixList.at(ind));
+        mol = qobject_cast<Structure*>(randomdock->matrixList.at(ind));
     }
     else mol = new Structure;
     return mol;
   }
 
-  void TabConformers::calculateNumberOfConformers(bool isSystematic) {
+  void TabConformers::calculateNumberOfConformers(bool isSystematic)
+  {
     // If we don't want a systematic search, let the user pick the number of conformers
     if (!isSystematic) return;
 
@@ -341,5 +329,3 @@ namespace RandomDock {
     delete ff;
   }
 }
-
-//#include "tab_conformers.moc"

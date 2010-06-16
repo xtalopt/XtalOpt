@@ -21,6 +21,8 @@
 
 #include <randomdock/randomdock.h>
 
+#include <globalsearch/ui/abstracttab.h>
+
 #include <QMessageBox>
 
 namespace GlobalSearch {
@@ -32,7 +34,7 @@ using namespace GlobalSearch;
 namespace RandomDock {
   class RandomDockDialog;
 
-  class TabEdit : public QObject
+  class TabEdit : public AbstractTab
   {
     Q_OBJECT
 
@@ -45,14 +47,11 @@ namespace RandomDock {
       GAMT_inp
     };
 
-    QWidget *getTabWidget() {return m_tab_widget;};
-
-    public slots:
+  public slots:
     void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
     void updateGUI();
-    void disconnectGUI();
     void templateChanged(int ind);
     void showHelp();
     void updateTemplates();
@@ -72,9 +71,6 @@ namespace RandomDock {
 
   private:
     Ui::Tab_Edit ui;
-    QWidget *m_tab_widget;
-    RandomDockDialog *m_dialog;
-    RandomDock *m_opt;
   };
 }
 

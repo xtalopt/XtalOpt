@@ -17,7 +17,11 @@
 #ifndef TAB_INIT_H
 #define TAB_INIT_H
 
+#include <globalsearch/ui/abstracttab.h>
+
 #include "ui_tab_init.h"
+
+using namespace GlobalSearch;
 
 namespace RandomDock {
   class RandomDockDialog;
@@ -25,7 +29,7 @@ namespace RandomDock {
   class Substrate;
   class Matrix;
 
-  class TabInit : public QObject
+  class TabInit : public AbstractTab
   {
     Q_OBJECT
 
@@ -39,14 +43,8 @@ namespace RandomDock {
       Filename
     };
 
-    QWidget *getTabWidget() {return m_tab_widget;};
-
   public slots:
     void lockGUI();
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void updateGUI();
-    void disconnectGUI();
     void updateParams();
     void substrateBrowse();
     void substrateCurrent();
@@ -61,9 +59,6 @@ namespace RandomDock {
 
   private:
     Ui::Tab_Init ui;
-    QWidget *m_tab_widget;
-    RandomDockDialog *m_dialog;
-    RandomDock *m_opt;
   };
 }
 

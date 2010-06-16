@@ -17,13 +17,17 @@
 #ifndef TAB_PARAMS_H
 #define TAB_PARAMS_H
 
+#include <globalsearch/ui/abstracttab.h>
+
 #include "ui_tab_params.h"
+
+using namespace GlobalSearch;
 
 namespace RandomDock {
   class RandomDockDialog;
   class RandomDock;
 
-  class TabParams : public QObject
+  class TabParams : public AbstractTab
   {
     Q_OBJECT
 
@@ -31,24 +35,16 @@ namespace RandomDock {
     explicit TabParams( RandomDockDialog *dialog, RandomDock *opt );
     virtual ~TabParams();
 
-    QWidget *getTabWidget() {return m_tab_widget;};
-
   public slots:
     void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
-    void updateGUI();
-    void disconnectGUI();
     void updateOptimizationInfo();
-    void stopSubmission();
 
   signals:
 
   private:
     Ui::Tab_Params ui;
-    QWidget *m_tab_widget;
-    RandomDockDialog *m_dialog;
-    RandomDock *m_opt;
   };
 }
 

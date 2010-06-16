@@ -38,45 +38,21 @@ using namespace Avogadro;
 namespace RandomDock {
 
   TabProgress::TabProgress( RandomDockDialog *parent, RandomDock *p ) :
-    QObject(parent),
-    m_dialog(parent),
-    m_opt(p),
-    m_timer(0),
-    m_mutex(0),
-    m_update_mutex(0),
-    m_update_all_mutex(0),
+    AbstractTab(parent, p),
+    m_timer(new QTimer (this)),
+    m_mutex(new QMutex),
+    m_update_mutex(new QMutex),
+    m_update_all_mutex(new QMutex),
     m_context_scene(0)
   {
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
-
-    m_dialog = parent;
 
     QHeaderView *horizontal = ui.table_list->horizontalHeader();
     horizontal->setResizeMode(QHeaderView::ResizeToContents);
 
-    m_mutex = new QMutex;
-    m_update_mutex = new QMutex;
-    m_update_all_mutex = new QMutex;
-    m_timer = new QTimer(this);
-
     rowTracking = true;
 
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
-    connect(this, SIGNAL(newLog(QString)),
-            m_dialog, SIGNAL(newLog(QString)));
-    connect(this, SIGNAL(moleculeChanged(Structure*)),
-            m_dialog, SIGNAL(moleculeChanged(Structure*)));
     connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
             this, SLOT(highlightScene(Structure*)));
     connect(this, SIGNAL(refresh()),
@@ -111,6 +87,8 @@ namespace RandomDock {
             this, SLOT(disableRowTracking()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(enableRowTracking()));
+
+    initialize();
   }
 
   TabProgress::~TabProgress()
@@ -121,7 +99,8 @@ namespace RandomDock {
     delete m_timer;
   }
 
-  void TabProgress::writeSettings(const QString &filename) {
+  void TabProgress::writeSettings(const QString &filename)
+  {
     SETTINGS(filename);
     settings->beginGroup("randomdock/progress");
     const int VERSION = 1;
@@ -132,7 +111,8 @@ namespace RandomDock {
     DESTROY_SETTINGS(filename);
   }
 
-  void TabProgress::readSettings(const QString &filename) {
+  void TabProgress::readSettings(const QString &filename)
+  {
     SETTINGS(filename);
     settings->beginGroup("randomdock/progress");
     int loadedVersion = settings->value("version", 0).toInt();
@@ -147,14 +127,10 @@ namespace RandomDock {
     default:
       break;
     }
-
   }
 
-  void TabProgress::updateGUI()
-  {
-  }
-
-  void TabProgress::disconnectGUI() {
+  void TabProgress::disconnectGUI()
+ {
     m_timer->disconnect();
     ui.push_refresh->disconnect();
     ui.push_refreshAll->disconnect();
@@ -166,11 +142,8 @@ namespace RandomDock {
     this->disconnect();
   }
 
-  void TabProgress::lockGUI()
+  void TabProgress::updateProgressTable()
   {
-  }
-
-  void TabProgress::updateProgressTable() {
     // Only allow one update at a time
     if (!m_update_mutex->tryLock()) {
       return;
@@ -186,13 +159,15 @@ namespace RandomDock {
       return;
     }
 
-    QtConcurrent::run(m_opt->queue(), &GlobalSearch::QueueManager::checkPopulation);
+    QtConcurrent::run(m_opt->queue(),
+                      &GlobalSearch::QueueManager::checkPopulation);
 
     emit refresh();
     m_update_mutex->unlock();
   }
 
-  void TabProgress::addNewEntry() {
+  void TabProgress::addNewEntry()
+  {
     QMutexLocker locker (m_mutex);
 
     // The new entry will be at the end of the table, so determine the index:
@@ -223,7 +198,8 @@ namespace RandomDock {
     if (rowTracking) ui.table_list->setCurrentCell(currentInd, 0);
   }
 
-  void TabProgress::updateAllInfo() {
+  void TabProgress::updateAllInfo()
+  {
     if (!m_update_all_mutex->tryLock()) {
       return;
     }
@@ -234,12 +210,14 @@ namespace RandomDock {
     m_update_all_mutex->unlock();
   }
 
-  void TabProgress::newInfoUpdate(Structure *s) {
+  void TabProgress::newInfoUpdate(Structure *s)
+  {
     m_infoUpdateTracker.append(s);
     emit infoUpdate();
   }
 
-  void TabProgress::updateInfo() {
+  void TabProgress::updateInfo()
+  {
     if (m_infoUpdateTracker.size() == 0) {
       return;
     }
@@ -391,7 +369,8 @@ namespace RandomDock {
     ui.table_list->item(i, C_Status)->setBackground(brush);
   }
 
-  void TabProgress::selectMoleculeFromProgress(int row,int,int oldrow,int) {
+  void TabProgress::selectMoleculeFromProgress(int row,int,int oldrow,int)
+  {
     Q_UNUSED(oldrow);
     if (m_opt->isStarting) {
       qDebug() << "TabProgress::selectMoleculeFromProgress: Not updating widget while session is starting";
@@ -401,7 +380,8 @@ namespace RandomDock {
     emit moleculeChanged(m_opt->tracker()->at(row));
   }
 
-  void TabProgress::highlightScene(Structure *structure) {
+  void TabProgress::highlightScene(Structure *structure)
+  {
     structure->lock()->lockForRead();
     int id  = structure->getIDNumber();
     structure->lock()->unlock();
@@ -420,17 +400,20 @@ namespace RandomDock {
   }
 
 
-  void TabProgress::startTimer() {
+  void TabProgress::startTimer()
+  {
     if (m_timer->isActive())
       m_timer->stop();
     m_timer->start(ui.spin_period->value() * 1000);
   }
 
-  void TabProgress::stopTimer() {
+  void TabProgress::stopTimer()
+  {
     m_timer->stop();
   }
 
-  void TabProgress::progressContextMenu(QPoint p) {
+  void TabProgress::progressContextMenu(QPoint p)
+  {
     if (m_context_scene) return;
     QApplication::setOverrideCursor( Qt::WaitCursor );
     QTableWidgetItem *item = ui.table_list->itemAt(p);
@@ -491,7 +474,8 @@ namespace RandomDock {
     a_randomize->disconnect();
   }
 
-  void TabProgress::restartJobProgress() {
+  void TabProgress::restartJobProgress()
+  {
     if (!m_context_scene) return;
 
     // Get info from scene
@@ -515,7 +499,8 @@ namespace RandomDock {
     QtConcurrent::run(this, &TabProgress::restartJobProgress_, optStep);
   }
 
-  void TabProgress::restartJobProgress_(int optStep) {
+  void TabProgress::restartJobProgress_(int optStep)
+  {
     QWriteLocker locker (m_context_scene->lock());
     m_context_scene->setCurrentOptStep(optStep);
 
@@ -535,11 +520,13 @@ namespace RandomDock {
     m_context_scene = 0;
   }
 
-  void TabProgress::killSceneProgress() {
+  void TabProgress::killSceneProgress()
+  {
     QtConcurrent::run(this, &TabProgress::killSceneProgress_);
   }
 
-  void TabProgress::killSceneProgress_() {
+  void TabProgress::killSceneProgress_()
+  {
     if (!m_context_scene) return;
     QWriteLocker locker (m_context_scene->lock());
 
@@ -558,11 +545,13 @@ namespace RandomDock {
     m_context_scene = 0;
   }
 
-  void TabProgress::unkillSceneProgress() {
+  void TabProgress::unkillSceneProgress()
+  {
     QtConcurrent::run(this, &TabProgress::unkillSceneProgress_);
   }
 
-  void TabProgress::unkillSceneProgress_() {
+  void TabProgress::unkillSceneProgress_()
+  {
     if (!m_context_scene) return;
     QWriteLocker locker (m_context_scene->lock());
     if (m_context_scene->getStatus() != Scene::Killed &&
@@ -582,11 +571,13 @@ namespace RandomDock {
     m_context_scene = 0;
   }
 
-  void TabProgress::resetFailureCountProgress() {
+  void TabProgress::resetFailureCountProgress()
+  {
     QtConcurrent::run(this, &TabProgress::resetFailureCountProgress_);
   }
 
-  void TabProgress::resetFailureCountProgress_() {
+  void TabProgress::resetFailureCountProgress_()
+  {
     if (!m_context_scene) return;
     QWriteLocker locker (m_context_scene->lock());
 
@@ -600,11 +591,13 @@ namespace RandomDock {
     emit refresh();
   }
 
-  void TabProgress::randomizeStructureProgress() {
+  void TabProgress::randomizeStructureProgress()
+  {
     QtConcurrent::run(this, &TabProgress::randomizeStructureProgress_);
   }
 
-  void TabProgress::randomizeStructureProgress_() {
+  void TabProgress::randomizeStructureProgress_()
+  {
     if (!m_context_scene) return;
 
     // End job if currently running
@@ -619,7 +612,5 @@ namespace RandomDock {
     restartJobProgress_(1);
   }
 
-
 }
 
-//#include "tab_progress.moc"

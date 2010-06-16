@@ -17,13 +17,17 @@
 #ifndef TAB_LOG_H
 #define TAB_LOG_H
 
+#include <globalsearch/ui/abstracttab.h>
+
 #include "ui_tab_log.h"
+
+using namespace GlobalSearch;
 
 namespace RandomDock {
   class RandomDockDialog;
   class RandomDock;
 
-  class TabLog : public QObject
+  class TabLog : public AbstractTab
   {
     Q_OBJECT
 
@@ -31,23 +35,13 @@ namespace RandomDock {
     explicit TabLog( RandomDockDialog *dialog, RandomDock *opt );
     virtual ~TabLog();
 
-    QWidget *getTabWidget() {return m_tab_widget;};
-
   public slots:
-    void lockGUI();
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void updateGUI();
-    void disconnectGUI();
     void newLog(const QString & info);
 
   signals:
 
   private:
     Ui::Tab_Log ui;
-    QWidget *m_tab_widget;
-    RandomDockDialog *m_dialog;
-    RandomDock *m_opt;
   };
 }
 
