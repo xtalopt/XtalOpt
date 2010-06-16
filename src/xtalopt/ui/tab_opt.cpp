@@ -29,26 +29,9 @@ using namespace std;
 namespace XtalOpt {
 
   TabOpt::TabOpt( XtalOptDialog *parent, XtalOpt *p ) :
-    QObject(parent), m_dialog(parent), m_opt(p)
+    AbstractTab(parent, p)
   {
-    //qDebug() << "TabOpt::TabOpt( " << parent <<  " ) called.";
-
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
-
-    m_dialog = parent;
-
-    // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
 
     // Optimization connections
     // Initial generation
@@ -113,15 +96,19 @@ namespace XtalOpt {
             this, SLOT(updateOptimizationInfo()));
     connect(ui.spin_perm_ex, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
+
+    initialize();
   }
 
   TabOpt::~TabOpt()
   {
-    //qDebug() << "TabOpt::~TabOpt() called";
   }
 
-  void TabOpt::writeSettings(const QString &filename) {
+  void TabOpt::writeSettings(const QString &filename)
+  {
     SETTINGS(filename);
+
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
     settings->beginGroup("xtalopt/opt/");
 
@@ -130,44 +117,45 @@ namespace XtalOpt {
     settings->setValue("version",               VERSION);
 
     // Initial generation
-    settings->setValue("opt/numInitial",        m_opt->numInitial);
+    settings->setValue("opt/numInitial",        xtalopt->numInitial);
 
     // Search parameters
-    settings->setValue("opt/popSize",           m_opt->popSize);
-    settings->setValue("opt/contStructs",       m_opt->contStructs);
-    settings->setValue("opt/limitRunningJobs",  m_opt->limitRunningJobs);
-    settings->setValue("opt/runningJobLimit",   m_opt->runningJobLimit);
-    settings->setValue("opt/failLimit",         m_opt->failLimit);
-    settings->setValue("opt/failAction",        m_opt->failAction);
+    settings->setValue("opt/popSize",           xtalopt->popSize);
+    settings->setValue("opt/contStructs",       xtalopt->contStructs);
+    settings->setValue("opt/limitRunningJobs",  xtalopt->limitRunningJobs);
+    settings->setValue("opt/runningJobLimit",   xtalopt->runningJobLimit);
+    settings->setValue("opt/failLimit",         xtalopt->failLimit);
+    settings->setValue("opt/failAction",        xtalopt->failAction);
 
     // Duplicates
-    settings->setValue("tol/enthalpy",          m_opt->tol_enthalpy);
-    settings->setValue("tol/volume",            m_opt->tol_volume);
+    settings->setValue("tol/enthalpy",          xtalopt->tol_enthalpy);
+    settings->setValue("tol/volume",            xtalopt->tol_volume);
 
     // Crossover
-    settings->setValue("opt/p_cross",           m_opt->p_cross);
-    settings->setValue("opt/cross_minimumContribution",m_opt->cross_minimumContribution);
+    settings->setValue("opt/p_cross",           xtalopt->p_cross);
+    settings->setValue("opt/cross_minimumContribution",xtalopt->cross_minimumContribution);
 
     // Stripple
-    settings->setValue("opt/p_strip",           m_opt->p_strip);
-    settings->setValue("opt/strip_strainStdev_min",     m_opt->strip_strainStdev_min);
-    settings->setValue("opt/strip_strainStdev_max",     m_opt->strip_strainStdev_max);
-    settings->setValue("opt/strip_amp_min",     m_opt->strip_amp_min);
-    settings->setValue("opt/strip_amp_max",     m_opt->strip_amp_max);
-    settings->setValue("opt/strip_per1",        m_opt->strip_per1);
-    settings->setValue("opt/strip_per2",        m_opt->strip_per2);
+    settings->setValue("opt/p_strip",           xtalopt->p_strip);
+    settings->setValue("opt/strip_strainStdev_min",     xtalopt->strip_strainStdev_min);
+    settings->setValue("opt/strip_strainStdev_max",     xtalopt->strip_strainStdev_max);
+    settings->setValue("opt/strip_amp_min",     xtalopt->strip_amp_min);
+    settings->setValue("opt/strip_amp_max",     xtalopt->strip_amp_max);
+    settings->setValue("opt/strip_per1",        xtalopt->strip_per1);
+    settings->setValue("opt/strip_per2",        xtalopt->strip_per2);
 
     // Permustrain
-    settings->setValue("opt/p_perm",            m_opt->p_perm);
-    settings->setValue("opt/perm_strainStdev_max",m_opt->perm_strainStdev_max);
-    settings->setValue("opt/perm_ex",           m_opt->perm_ex);
+    settings->setValue("opt/p_perm",            xtalopt->p_perm);
+    settings->setValue("opt/perm_strainStdev_max",xtalopt->perm_strainStdev_max);
+    settings->setValue("opt/perm_ex",           xtalopt->perm_ex);
 
     settings->endGroup();
 
     DESTROY_SETTINGS(filename);
   }
 
-  void TabOpt::readSettings(const QString &filename) {
+  void TabOpt::readSettings(const QString &filename)
+  {
     SETTINGS(filename);
 
     settings->beginGroup("xtalopt/opt/");
@@ -221,49 +209,46 @@ namespace XtalOpt {
     updateOptimizationInfo();
   }
 
-  void TabOpt::updateGUI() {
-    //qDebug() << "TabOpt::updateGUI() called";
+  void TabOpt::updateGUI()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
     // Initial generation
-    ui.spin_numInitial->setValue(       m_opt->numInitial);
+    ui.spin_numInitial->setValue(       xtalopt->numInitial);
 
     // Search parameters
-    ui.spin_popSize->setValue(          m_opt->popSize);
-    ui.spin_contStructs->setValue(      m_opt->contStructs);
-    ui.cb_limitRunningJobs->setChecked( m_opt->limitRunningJobs);
-    ui.spin_runningJobLimit->setValue(  m_opt->runningJobLimit);
-    ui.spin_failLimit->setValue(        m_opt->failLimit);
-    ui.combo_failAction->setCurrentIndex(m_opt->failAction);
+    ui.spin_popSize->setValue(          xtalopt->popSize);
+    ui.spin_contStructs->setValue(      xtalopt->contStructs);
+    ui.cb_limitRunningJobs->setChecked( xtalopt->limitRunningJobs);
+    ui.spin_runningJobLimit->setValue(  xtalopt->runningJobLimit);
+    ui.spin_failLimit->setValue(        xtalopt->failLimit);
+    ui.combo_failAction->setCurrentIndex(xtalopt->failAction);
 
     // Duplicates
-    ui.spin_tol_enthalpy->setValue(     m_opt->tol_enthalpy);
-    ui.spin_tol_volume->setValue(       m_opt->tol_volume);
+    ui.spin_tol_enthalpy->setValue(     xtalopt->tol_enthalpy);
+    ui.spin_tol_volume->setValue(       xtalopt->tol_volume);
 
     // Crossover
-    ui.spin_p_cross->setValue(          m_opt->p_cross);
-    ui.spin_cross_minimumContribution->setValue(m_opt->cross_minimumContribution);
+    ui.spin_p_cross->setValue(          xtalopt->p_cross);
+    ui.spin_cross_minimumContribution->setValue(xtalopt->cross_minimumContribution);
 
     // Stripple
-    ui.spin_p_strip->setValue(          m_opt->p_strip);
-    ui.spin_strip_strainStdev_min->setValue( m_opt->strip_strainStdev_min);
-    ui.spin_strip_strainStdev_max->setValue( m_opt->strip_strainStdev_max);
-    ui.spin_strip_amp_min->setValue(    m_opt->strip_amp_min);
-    ui.spin_strip_amp_max->setValue(    m_opt->strip_amp_max);
-    ui.spin_strip_per1->setValue(       m_opt->strip_per1);
-    ui.spin_strip_per2->setValue(       m_opt->strip_per2);
+    ui.spin_p_strip->setValue(          xtalopt->p_strip);
+    ui.spin_strip_strainStdev_min->setValue( xtalopt->strip_strainStdev_min);
+    ui.spin_strip_strainStdev_max->setValue( xtalopt->strip_strainStdev_max);
+    ui.spin_strip_amp_min->setValue(    xtalopt->strip_amp_min);
+    ui.spin_strip_amp_max->setValue(    xtalopt->strip_amp_max);
+    ui.spin_strip_per1->setValue(       xtalopt->strip_per1);
+    ui.spin_strip_per2->setValue(       xtalopt->strip_per2);
 
     // Permustrain
-    ui.spin_p_perm->setValue(   m_opt->p_perm);
-    ui.spin_perm_strainStdev_max->setValue( m_opt->perm_strainStdev_max);
-    ui.spin_perm_ex->setValue(  m_opt->perm_ex);
+    ui.spin_p_perm->setValue(   xtalopt->p_perm);
+    ui.spin_perm_strainStdev_max->setValue( xtalopt->perm_strainStdev_max);
+    ui.spin_perm_ex->setValue(  xtalopt->perm_ex);
   }
 
-  void TabOpt::disconnectGUI() {
-    //qDebug() << "TabOpt::disconnectGUI() called";
-    // nothing I want to disconnect here!
-  }
-
-  void TabOpt::lockGUI() {
-    //qDebug() << "TabPlot::lockGUI() called";
+  void TabOpt::lockGUI()
+  {
     ui.spin_numInitial->setDisabled(true);
     ui.list_seeds->setDisabled(true);
     ui.push_addSeed->setDisabled(true);
@@ -271,46 +256,48 @@ namespace XtalOpt {
     ui.push_removeSeed->setDisabled(true);
   }
 
-  void TabOpt::updateOptimizationInfo() {
-    //qDebug() << "TabOpt::updateOptimizationInfo( ) called";
-    m_opt->p_cross                = ui.spin_p_cross->value();
-    m_opt->p_strip		= ui.spin_p_strip->value();
-    m_opt->p_perm		= 100 - (m_opt->p_cross + m_opt->p_strip);
+  void TabOpt::updateOptimizationInfo()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    xtalopt->p_cross                = ui.spin_p_cross->value();
+    xtalopt->p_strip		= ui.spin_p_strip->value();
+    xtalopt->p_perm		= 100 - (xtalopt->p_cross + xtalopt->p_strip);
     ui.spin_p_perm->blockSignals(true);
-    ui.spin_p_perm->setValue(m_opt->p_perm);
+    ui.spin_p_perm->setValue(xtalopt->p_perm);
     ui.spin_p_perm->blockSignals(false);
 
     // Initial generation
-    m_opt->numInitial           = ui.spin_numInitial->value();
-    if (int(m_opt->numInitial) < ui.list_seeds->count())
+    xtalopt->numInitial           = ui.spin_numInitial->value();
+    if (int(xtalopt->numInitial) < ui.list_seeds->count())
       ui.spin_numInitial->setValue(ui.list_seeds->count());
 
     // Search parameters
-    m_opt->popSize              = ui.spin_popSize->value();
-    m_opt->contStructs          = ui.spin_contStructs->value();
-    m_opt->runningJobLimit	= ui.spin_runningJobLimit->value();
-    m_opt->limitRunningJobs	= ui.cb_limitRunningJobs->isChecked();
-    m_opt->failLimit		= ui.spin_failLimit->value();
-    m_opt->failAction		= XtalOpt::FailActions(ui.combo_failAction->currentIndex());
+    xtalopt->popSize              = ui.spin_popSize->value();
+    xtalopt->contStructs          = ui.spin_contStructs->value();
+    xtalopt->runningJobLimit	= ui.spin_runningJobLimit->value();
+    xtalopt->limitRunningJobs	= ui.cb_limitRunningJobs->isChecked();
+    xtalopt->failLimit		= ui.spin_failLimit->value();
+    xtalopt->failAction		= XtalOpt::FailActions(ui.combo_failAction->currentIndex());
 
     // Duplicates
-    m_opt->tol_enthalpy         = ui.spin_tol_enthalpy->value();
-    m_opt->tol_volume           = ui.spin_tol_volume->value();
+    xtalopt->tol_enthalpy         = ui.spin_tol_enthalpy->value();
+    xtalopt->tol_volume           = ui.spin_tol_volume->value();
 
     // Crossover
-    m_opt->cross_minimumContribution=ui.spin_cross_minimumContribution->value();
+    xtalopt->cross_minimumContribution=ui.spin_cross_minimumContribution->value();
 
     // Stripple
-    m_opt->strip_strainStdev_min  = ui.spin_strip_strainStdev_min->value();
-    m_opt->strip_strainStdev_max  = ui.spin_strip_strainStdev_max->value();
-    m_opt->strip_amp_min          = ui.spin_strip_amp_min->value();
-    m_opt->strip_amp_max          = ui.spin_strip_amp_max->value();
-    m_opt->strip_per1             = ui.spin_strip_per1->value();
-    m_opt->strip_per2             = ui.spin_strip_per2->value();
+    xtalopt->strip_strainStdev_min  = ui.spin_strip_strainStdev_min->value();
+    xtalopt->strip_strainStdev_max  = ui.spin_strip_strainStdev_max->value();
+    xtalopt->strip_amp_min          = ui.spin_strip_amp_min->value();
+    xtalopt->strip_amp_max          = ui.spin_strip_amp_max->value();
+    xtalopt->strip_per1             = ui.spin_strip_per1->value();
+    xtalopt->strip_per2             = ui.spin_strip_per2->value();
 
     // Permustrain
-    m_opt->perm_strainStdev_max	= ui.spin_perm_strainStdev_max->value();
-    m_opt->perm_ex              = ui.spin_perm_ex->value();
+    xtalopt->perm_strainStdev_max	= ui.spin_perm_strainStdev_max->value();
+    xtalopt->perm_ex              = ui.spin_perm_ex->value();
   }
 
   void TabOpt::addSeed(QListWidgetItem *item) {
@@ -348,19 +335,20 @@ namespace XtalOpt {
     updateSeeds();
   }
 
-  void TabOpt::removeSeed() {
-    //qDebug() << "TabOpt::removeSeeds() called";
+  void TabOpt::removeSeed()
+  {
     if (ui.list_seeds->count() == 0) return;
     delete ui.list_seeds->takeItem(ui.list_seeds->currentRow());
     updateSeeds();
   }
 
-  void TabOpt::updateSeeds() {
-    //qDebug() << "TabOpt::updateSeeds() called";
-    m_opt->seedList.clear();
+  void TabOpt::updateSeeds()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    xtalopt->seedList.clear();
     for (int i = 0; i < ui.list_seeds->count(); i++)
-      m_opt->seedList.append(ui.list_seeds->item(i)->text());
+      xtalopt->seedList.append(ui.list_seeds->item(i)->text());
   }
 
 }
-//#include "tab_opt.moc"

@@ -20,6 +20,7 @@
 #include "ui_tab_progress.h"
 
 #include <globalsearch/tracker.h>
+#include <globalsearch/ui/abstracttab.h>
 
 class QTimer;
 class QMutex;
@@ -35,7 +36,7 @@ namespace XtalOpt {
   class XtalOpt;
   class Xtal;
 
-  class TabProgress : public QObject
+  class TabProgress : public AbstractTab
   {
     Q_OBJECT
 
@@ -43,17 +44,21 @@ namespace XtalOpt {
     explicit TabProgress( XtalOptDialog *parent, XtalOpt *p );
     virtual ~TabProgress();
 
-    enum ProgressColumns	{Gen = 0, Mol, JobID, Status, TimeElapsed, Enthalpy, Volume, SpaceGroup, Ancestry};
-
-    QWidget *getTabWidget() {return m_tab_widget;};
+    enum ProgressColumns {
+      Gen = 0,
+      Mol,
+      JobID,
+      Status,
+      TimeElapsed,
+      Enthalpy,
+      Volume,
+      SpaceGroup,
+      Ancestry
+    };
 
   public slots:
-    // used to lock bits of the GUI that shouldn't be change when a
-    // session starts. This will also pass the call on to all tabs.
-    void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
-    void updateGUI();
     void disconnectGUI();
     void addNewEntry();
     void newInfoUpdate(Structure *);
@@ -74,8 +79,6 @@ namespace XtalOpt {
     void disableRowTracking() {rowTracking = false;};
 
   signals:
-    void newLog(const QString &);
-    void moleculeChanged(Structure*);
     void refresh();
     void deleteJob(int);
     void updateStatus(int opt, int run, int queue, int fail);
@@ -83,9 +86,6 @@ namespace XtalOpt {
 
   private:
     Ui::Tab_Progress ui;
-    QWidget *m_tab_widget;
-    XtalOptDialog *m_dialog;
-    XtalOpt *m_opt;
     QTimer *m_timer;
     QMutex *m_mutex;
     QMutex *m_update_mutex, *m_update_all_mutex;

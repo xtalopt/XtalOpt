@@ -29,14 +29,10 @@
 namespace XtalOpt {
 
   TabPlot::TabPlot( XtalOptDialog *parent, XtalOpt *p ) :
-    QObject( parent ), m_dialog(parent), m_opt(p), m_plot_mutex(0), m_plotObject(0)
+    AbstractTab(parent, p)
   {
-    //qDebug() << "TabPlot::TabPlot( " << parent <<  " ) called.";
-
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 
-    m_dialog = parent;
     m_plot_mutex = new QReadWriteLock();
 
     // Plot setup
@@ -44,18 +40,6 @@ namespace XtalOpt {
     updatePlot();
 
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
-    connect(this, SIGNAL(moleculeChanged(Structure*)),
-            m_dialog, SIGNAL(moleculeChanged(Structure*)));
     connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
             this, SLOT(highlightXtal(Structure*)));
     connect(m_opt, SIGNAL(sessionStarted()),
@@ -96,16 +80,18 @@ namespace XtalOpt {
             this, SLOT(updatePlot()));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
             this, SLOT(updatePlot()));
+
+    initialize();
   }
 
   TabPlot::~TabPlot()
   {
-    //qDebug() << "TabPlot::~TabPlot() called";
     delete m_plot_mutex;
     // m_plotObject is deleted by the PlotWidget
   }
 
-  void TabPlot::writeSettings(const QString &filename) {
+  void TabPlot::writeSettings(const QString &filename)
+  {
     SETTINGS(filename);
     const int VERSION = 1;
     settings->beginGroup("xtalopt/plot/");
@@ -122,7 +108,8 @@ namespace XtalOpt {
     DESTROY_SETTINGS(filename);
   }
 
-  void TabPlot::readSettings(const QString &filename) {
+  void TabPlot::readSettings(const QString &filename)
+  {
     SETTINGS(filename);
     settings->beginGroup("xtalopt/plot/");
     int loadedVersion = settings->value("version", 0).toInt();
@@ -145,8 +132,8 @@ namespace XtalOpt {
 
   }
 
-  void TabPlot::updateGUI() {
-    //qDebug() << "TabPlot::updateGUI() called";
+  void TabPlot::updateGUI()
+  {
     switch (ui.combo_plotType->currentIndex()) {
     case Trend_PT:
     default:
@@ -161,7 +148,6 @@ namespace XtalOpt {
   }
 
   void TabPlot::disconnectGUI() {
-    //qDebug() << "TabPlot::disconnectGUI() called";
     ui.push_refresh->disconnect();
     ui.combo_xAxis->disconnect();
     ui.combo_yAxis->disconnect();
@@ -175,11 +161,6 @@ namespace XtalOpt {
     this->disconnect();
     disconnect(m_dialog, 0, this, 0);
     disconnect(m_opt, 0, this, 0);
-  }
-
-  void TabPlot::lockGUI() {
-    //qDebug() << "TabPlot::lockGUI() called";
-    // Nothing to do!
   }
 
   void TabPlot::lockClearAndSelectPoint(PlotPoint *pp) {
@@ -207,8 +188,8 @@ namespace XtalOpt {
     }
   }
 
-  void TabPlot::updatePlot() {
-    //qDebug() << "TabPlot::updatePlot() called";
+  void TabPlot::updatePlot()
+  {
     updateGUI();
     if (!m_opt) return;
 
@@ -243,9 +224,8 @@ namespace XtalOpt {
     m_plot_mutex->unlock();
   }
 
-  void TabPlot::plotTrends() {
-    //qDebug() << "TabPlot::plotTrends() called";
-
+  void TabPlot::plotTrends()
+  {
     // Store current limits for later
     QRectF oldDataRect = ui.plot_plot->dataRect();
 
@@ -526,9 +506,8 @@ namespace XtalOpt {
     }
   }
 
-  void TabPlot::plotDistHist() {
-    //qDebug() << "TabPlot::plotDistHist() called";
-
+  void TabPlot::plotDistHist()
+  {
     // Clear old data...
     ui.plot_plot->resetPlot();
 
@@ -589,8 +568,8 @@ namespace XtalOpt {
     ui.plot_plot->setDefaultLimits(0, 8, 0, ui.plot_plot->dataRect().bottom());
   }
 
-  void TabPlot::populateXtalList() {
-    //qDebug() << "TabPlot::populateXtalList()";
+  void TabPlot::populateXtalList()
+  {
     int ind = ui.combo_distHistXtal->currentIndex();
     ui.combo_distHistXtal->blockSignals(true);
     ui.combo_distHistXtal->clear();
@@ -639,25 +618,26 @@ namespace XtalOpt {
     ui.combo_distHistXtal->blockSignals(false);
   }
 
-  void TabPlot::selectMoleculeFromPlot(PlotPoint *pp) {
-    //qDebug() << "TabPlot::selectMoleculeFromPlot( " << pp << " ) called";
+  void TabPlot::selectMoleculeFromPlot(PlotPoint *pp)
+  {
     if (!pp) return;
     int index = pp->customData().toInt();
     selectMoleculeFromIndex(index);
   }
 
-  void TabPlot::selectMoleculeFromIndex(int index) {
-    //qDebug() << "TabPlot::selectMoleculeFromIndex( " << index << " ) called";
+  void TabPlot::selectMoleculeFromIndex(int index)
+  {
     if (index < 0 || index > m_opt->tracker()->size() - 1) {
       index = 0;
     }
     if (m_opt->tracker()->size() == 0) {
       return;
     }
-    emit moleculeChanged(qobject_cast<Xtal*>(m_opt->tracker()->at(index)));
+    emit moleculeChanged(m_opt->tracker()->at(index));
   }
 
-  void TabPlot::highlightXtal(Structure *s) {
+  void TabPlot::highlightXtal(Structure *s)
+  {
     Xtal *xtal = qobject_cast<Xtal*>(s);
 
     // Bail out if there is no plotobject in memory
@@ -715,4 +695,3 @@ namespace XtalOpt {
   }
 }
 
-//#include "tab_plot.moc"

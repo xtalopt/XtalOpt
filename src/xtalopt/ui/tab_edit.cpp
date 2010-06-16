@@ -32,9 +32,8 @@ using namespace std;
 namespace XtalOpt {
 
   TabEdit::TabEdit( XtalOptDialog *parent, XtalOpt *p ) :
-    QObject( parent ), m_dialog(parent), m_opt(p)
+    AbstractTab(parent, p)
   {
-    m_tab_widget = new QWidget;
     ui.setupUi(m_tab_widget);
 
     ui.edit_edit->setCurrentFont(QFont("Courier"));
@@ -43,17 +42,7 @@ namespace XtalOpt {
     connect(this, SIGNAL(optimizerChanged(Optimizer*)),
             m_opt, SLOT(setOptimizer(Optimizer*)));
 
-    // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsUpdateGUI()),
-            this, SLOT(updateGUI()));
-    connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
-            this, SLOT(disconnectGUI()));
-    connect(m_dialog, SIGNAL(tabsLockGUI()),
-            this, SLOT(lockGUI()));
+    // Dialog connections
     connect(this, SIGNAL(optimizerChanged(Optimizer*)),
             m_dialog, SIGNAL(tabsUpdateGUI()));
 
@@ -87,6 +76,8 @@ namespace XtalOpt {
     connect(ui.push_loadScheme, SIGNAL(clicked()),
             this, SLOT(loadScheme()));
     ui.combo_optType->setCurrentIndex(0);
+
+    initialize();
   }
 
   TabEdit::~TabEdit()
@@ -110,6 +101,8 @@ namespace XtalOpt {
   void TabEdit::readSettings(const QString &filename) {
     SETTINGS(filename);
 
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
     settings->beginGroup("xtalopt/edit");
     int loadedVersion = settings->value("version", 0).toInt();
 
@@ -122,7 +115,7 @@ namespace XtalOpt {
     // Do we need to update the POTCAR info?
     if (ui.combo_optType->currentIndex() == XtalOpt::OT_VASP) {
       VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
-      if (!vopt->POTCARInfoIsUpToDate(m_opt->comp.keys())) {
+      if (!vopt->POTCARInfoIsUpToDate(xtalopt->comp.keys())) {
         generateVASP_POTCAR_info();
         vopt->buildPOTCARs();
       }
@@ -156,11 +149,6 @@ namespace XtalOpt {
     ui.edit_user2->setText(	m_opt->optimizer()->getUser2());
     ui.edit_user3->setText(	m_opt->optimizer()->getUser3());
     ui.edit_user4->setText(	m_opt->optimizer()->getUser4());
-  }
-
-  void TabEdit::disconnectGUI()
-  {
-    // nothing I want to disconnect here!
   }
 
   void TabEdit::lockGUI()
@@ -266,6 +254,7 @@ namespace XtalOpt {
   }
 
   void TabEdit::templateChanged(int ind) {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
     ui.edit_edit->setCurrentFont(QFont("Courier"));
     if (ind < 0) {
       qDebug() << "TabEdit::templateChanged: Not changing template to a negative index.";
@@ -300,7 +289,7 @@ namespace XtalOpt {
         {
           VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
           // Do we need to update the POTCAR info?
-          if (!vopt->POTCARInfoIsUpToDate(m_opt->comp.keys())) {
+          if (!vopt->POTCARInfoIsUpToDate(xtalopt->comp.keys())) {
             generateVASP_POTCAR_info();
             vopt->buildPOTCARs();
           }
@@ -371,8 +360,8 @@ namespace XtalOpt {
     }
   }
 
-  void TabEdit::updateTemplates() {
-    //qDebug() << "TabEdit::updateTemplates() called";
+  void TabEdit::updateTemplates()
+  {
     int row = ui.list_opt->currentRow();
 
     switch (ui.combo_optType->currentIndex()) {
@@ -438,7 +427,6 @@ namespace XtalOpt {
     QStringList strl = item->text().split(":");
     QString symbol   = strl.at(0).trimmed();
     QString filename = strl.at(1).trimmed();
-    qDebug() << filename;
 
     QStringList files;
     QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
@@ -456,9 +444,7 @@ namespace XtalOpt {
     // QList<QHash<QString, QString> >
     // e.g. a list of hashes containing
     // [atomic symbol : pseudopotential file] pairs
-    qDebug() << filename;
     QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
-    qDebug() << potcarInfo.at(ui.list_opt->currentRow()).toHash().size();
     QVariantHash hash = potcarInfo.at(ui.list_opt->currentRow()).toHash();
     hash.insert(symbol,QVariant(filename));
     potcarInfo.replace(ui.list_opt->currentRow(), hash);
@@ -468,13 +454,14 @@ namespace XtalOpt {
   }
 
   void TabEdit::generateVASP_POTCAR_info() {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
     QSettings settings; // Already set up in avogadro/src/main.cpp
     QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
     QVariantList potcarInfo;
 
     // Generate list of symbols
     QList<QString> symbols;
-    QList<uint> atomicNums = m_opt->comp.keys();
+    QList<uint> atomicNums = xtalopt->comp.keys();
     qSort(atomicNums);
     QVariantList toOpt;
     for (int i = 0; i < atomicNums.size(); i++) toOpt.append(atomicNums.at(i));

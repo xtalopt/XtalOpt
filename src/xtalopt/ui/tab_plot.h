@@ -17,6 +17,8 @@
 #ifndef TAB_PLOT_H
 #define TAB_PLOT_H
 
+#include <globalsearch/ui/abstracttab.h>
+
 #include "ui_tab_plot.h"
 
 class QReadWriteLock;
@@ -37,7 +39,7 @@ namespace XtalOpt {
   class XtalOpt;
   class Xtal;
 
-  class TabPlot : public QObject
+  class TabPlot : public AbstractTab
   {
     Q_OBJECT
 
@@ -76,12 +78,7 @@ namespace XtalOpt {
       Structure_L
     };
 
-    QWidget *getTabWidget() {return m_tab_widget;};
-
   public slots:
-    // used to lock bits of the GUI that shouldn't be change when a
-    // session starts. This will also pass the call on to all tabs.
-    void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
     void updateGUI();
@@ -96,14 +93,8 @@ namespace XtalOpt {
     void selectMoleculeFromIndex(int index);
     void highlightXtal(Structure *s);
 
-  signals:
-    void moleculeChanged(Structure*);
-
   private:
     Ui::Tab_Plot ui;
-    QWidget *m_tab_widget;
-    XtalOptDialog *m_dialog;
-    XtalOpt *m_opt;
     QReadWriteLock *m_plot_mutex;
     PlotObject *m_plotObject;
   };
