@@ -44,7 +44,9 @@ namespace RandomDock {
 
     // Setup for completion values
     m_completionFilename = "job.gamout";
-    m_completionString   = "***** EQUILIBRIUM GEOMETRY LOCATED *****";
+    // TODO This appears too far up to be read. Maybe grep for this instead of tailing?
+    //m_completionString   = "***** EQUILIBRIUM GEOMETRY LOCATED *****";
+    m_completionString   = "......END OF GEOMETRY SEARCH......";
 
     // Set output filenames to try to read data from
     m_outputFilenames.append(m_completionFilename);
