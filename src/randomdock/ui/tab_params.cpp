@@ -128,6 +128,9 @@ namespace RandomDock {
       ui.spin_radius_max->setValue(ui.spin_radius_min->value());
 
     randomdock->runningJobLimit	= ui.spin_numSearches->value();
+    // Number of continuous structures is the same as the running job
+    // limit for now:
+    randomdock->contStructs     = randomdock->runningJobLimit;
     randomdock->numMatrixMol	= ui.spin_numMatrixMols->value();
     randomdock->cutoff		= ui.spin_cutoff->value();
     randomdock->IAD_min		= ui.spin_IAD_min->value();
