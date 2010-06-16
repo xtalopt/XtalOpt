@@ -49,7 +49,6 @@ namespace GlobalSearch {
 
   AbstractTab::~AbstractTab()
   {
-    delete m_tab_widget;
   }
 
 }
