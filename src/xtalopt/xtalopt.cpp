@@ -882,6 +882,8 @@ namespace XtalOpt {
     } // End %POSCAR%
 
     if (!rep.isEmpty()) {
+      // Remove any trailing newlines
+      rep = rep.replace(QRegExp("\n$"), "");
       line = rep;
     }
   }

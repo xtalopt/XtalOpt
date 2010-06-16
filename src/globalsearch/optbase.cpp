@@ -135,6 +135,8 @@ namespace GlobalSearch {
     else if (line == "optStep")       	rep += QString::number(structure->getCurrentOptStep());
 
     if (!rep.isEmpty()) {
+      // Remove any trailing newlines
+      rep = rep.replace(QRegExp("\n$"), "");
       line = rep;
     }
   }
