@@ -44,7 +44,7 @@ namespace GlobalSearch {
 
     // Setup for completion values
     // m_completionFilename = name of file to check when opt stops
-    // m_completionString   = string in last 100 lines of m_completionFilename to search for
+    // m_completionString   = string in m_completionFilename to search for
 
     // Set output filenames to try to read data from, e.g.
     // m_outputFilenames.append("output filename");
@@ -342,8 +342,8 @@ namespace GlobalSearch {
     QString command;
 
     // ssh -q <user>@<host> cat <path>/<filename>
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host + " " +
-      "cat " + filename;
+    command = "ssh -q " + m_opt->username + "@" + m_opt->host + " \"" +
+      "cat " + filename + "\"";
     qDebug() << "Optimizer::getOutputFile: Calling " << command;
     proc.start(command);
     proc.waitForFinished(-1);
@@ -420,8 +420,9 @@ namespace GlobalSearch {
     }
     else if (status == "Q")
       return Optimizer::Queued;
-    // Even if the job has errored in the queue, leave it as "running" and wait for it to leave the queue
-    // then check the m_completion file. The optimization may have finished OK.
+    // Even if the job has errored in the queue, leave it as "running"
+    // and wait for it to leave the queue then check the m_completion
+    // file. The optimization may have finished OK.
     else if (status == "E") {
       qWarning() << "Optimizer::getStatus: Structure " << structure->getIDString()
                  << " has errored in the queue, but may have optimized successfully.\n"
@@ -435,9 +436,11 @@ namespace GlobalSearch {
       QString rempath = structure->getRempath();
       QString fileName = structure->fileName();
 
-      // Get the last 100 lines of the m_completion file -- the line we need should be in there...
+      // Check for m_completionString in m_completionFilename
       locker.unlock();
-      outputFileExists = getOutputFile(rempath + "/" + m_completionFilename +"|tail -n 100", outputFileData);
+      outputFileExists = getOutputFile(rempath + "/" + m_completionFilename +
+                                       "|grep \'" + m_completionString + "\'",
+                                       outputFileData);
       locker.relock();
 
       // Check for m_completionString in outputFileData, which indicates success.
