@@ -519,19 +519,15 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
      */
     QHash<QString, QStringList > m_templates;
 
-    // Filename and string to check for to confirm that optimization
-    // completed successfully. Only last 100 lines are checked.
     /**
-     * File to check if optimization has complete successfully. Only
-     * the last 100 lines of this file are checked.
+     * File to check if optimization has complete successfully.
      * @sa m_completionString
      */
     QString m_completionFilename;
 
     /**
      * String to search for in m_completionFilename when checking if
-     * optimization has complete successfully. This string must appear
-     * in the last 100 lines of m_completionFilename.
+     * optimization has complete successfully.
      * @sa m_completionFilename.
      */
     QString m_completionString;
