@@ -48,6 +48,9 @@ namespace RandomDock {
     m_idString = "RandomDock";
     sceneInitMutex = new QMutex;
     limitRunningJobs = true;
+    // By default, just replace with random when a scene fails.
+    failLimit = 1;
+    failAction = FA_Randomize;
   }
 
   RandomDock::~RandomDock()
