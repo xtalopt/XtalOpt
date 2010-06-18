@@ -415,7 +415,7 @@ namespace RandomDock {
       error("RandomDock::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid.");
       return false;
     }
-    
+
     // Get path and other info for later:
     QFileInfo stateInfo (file);
     // path to resume file
@@ -513,7 +513,7 @@ namespace RandomDock {
     center /= static_cast<float>(coords.size());
 
     // Get random angles
-    OpenBabel::OBRandom rand (true); 	// "true" uses system random numbers. OB's version isn't too good...
+    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
     rand.TimeSeed();
     double X = rand.NextFloat() * 2 * 3.14159265;
     double Y = rand.NextFloat() * 2 * 3.14159265;
@@ -522,12 +522,12 @@ namespace RandomDock {
     // Build rotation matrix
     Eigen::Matrix3d rx, ry, rz, rot;
     rx <<
-      1, 	0, 	0,
-      0, 	cos(X),	-sin(X),
-      0, 	sin(X), cos(X);
+      1,        0,      0,
+      0,        cos(X),	-sin(X),
+      0,        sin(X), cos(X);
     ry <<
-      cos(Y),	0, 	sin(Y),
-      0,	1, 	0,
+      cos(Y),	0,      sin(Y),
+      0,	1,      0,
       -sin(Y),	0,	cos(Y);
     rz <<
       cos(Z),	-sin(Z),0,
@@ -545,12 +545,12 @@ namespace RandomDock {
 
   void RandomDock::randomlyDisplaceCoordinates(QList<Eigen::Vector3d> & coords, double radiusMin, double radiusMax) {
     // Get random spherical coordinates
-    OpenBabel::OBRandom rand (true); 	// "true" uses system random numbers. OB's version isn't too good...
+    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
     rand.TimeSeed();
-    double rho 	= rand.NextFloat() * (radiusMax - radiusMin) + radiusMin;
+    double rho  = rand.NextFloat() * (radiusMax - radiusMin) + radiusMin;
     double theta= rand.NextFloat() * 2 * 3.14159265;
     double phi	= rand.NextFloat() * 2 * 3.14159265;
-    
+
     // convert to cartesian coordinates
     double x = rho * sin(phi) * cos(theta);
     double y = rho * sin(phi) * sin(theta);
