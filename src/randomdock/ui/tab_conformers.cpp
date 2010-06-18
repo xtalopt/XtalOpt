@@ -91,7 +91,7 @@ namespace RandomDock {
     int loadedVersion = settings->value("version", 0).toInt();
 
     ui.spin_nConformers->setValue(	settings->value("number",	100).toInt());
-    ui.cb_allConformers->setChecked(	settings->value("all",		true).toInt());
+    ui.cb_allConformers->setChecked(	settings->value("all",		true).toBool());
     updateForceField(                   settings->value("ff",           "").toString());
 
     settings->endGroup();
