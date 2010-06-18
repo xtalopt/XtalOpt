@@ -343,8 +343,9 @@ namespace RandomDock {
   }
 
   bool RandomDock::checkScene(Scene *scene) {
-    // TODO Do we need anything here?
-    Q_UNUSED(scene);
+    // Check if null
+    if (!scene) return false;
+
     return true;
   }
 
