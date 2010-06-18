@@ -24,6 +24,14 @@ namespace GlobalSearch {
   class Structure;
   class OptBase;
 
+  /**
+   * @class AbstractTab abstracttab.h <globalsearch/ui/abstracttab.h>
+   *
+   * @brief The base class for UI tabs, preconfigured to work with
+   * dialogs derived from AbstractDialog.
+   *
+   * @author David C. Lonie
+   */
   class AbstractTab : public QObject
   {
     Q_OBJECT
@@ -109,8 +117,13 @@ namespace GlobalSearch {
     void moleculeChanged(Structure*);
 
   protected:
+    /// The actual widget that will be made into a tab.
     QWidget *m_tab_widget;
+
+    /// A pointer to the parent dialog.
     AbstractDialog *m_dialog;
+
+    /// A pointer to the associated OptBase class.
     OptBase *m_opt;
   };
 }
