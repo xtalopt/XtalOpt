@@ -25,25 +25,21 @@ using namespace OpenBabel;
 namespace GlobalSearch {
 
   OptBase::OptBase(QObject *parent) :
-    QObject(parent)
+    QObject(parent),
+    m_tracker(new Tracker (this)),
+    m_queue(new QueueManager(this, m_tracker)),
+    m_optimizer(0), // This will be set when the GUI is initialized
+    m_idString("Generic"),
+    sOBMutex(new QMutex),
+    stateFileMutex(new QMutex),
+    backTraceMutex(new QMutex),
+    savePending(false),
+    saveOnExit(true),
+    testingMode(false),
+    test_nRunsStart(1),
+    test_nRunsEnd(100),
+    test_nStructs(600)
   {
-    m_tracker   = new Tracker (this);
-    m_queue     = new QueueManager(this, m_tracker);
-    m_optimizer = 0; // This will be set when the GUI is initialized
-    m_idString  = "Generic";
-    sOBMutex = new QMutex;
-    stateFileMutex = new QMutex;
-    backTraceMutex = new QMutex;
-
-    savePending = false;
-
-    // Set this to false later when running CTests
-    saveOnExit = true;
-
-    testingMode = false;
-    test_nRunsStart = 1;
-    test_nRunsEnd = 100;
-    test_nStructs = 600;
 
     // Connections
     connect(this, SIGNAL(startingSession()),
