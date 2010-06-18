@@ -134,12 +134,15 @@ namespace RandomDock {
   void TabConformers::updateStructureList()
   {
     RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
+    ui.combo_mol->blockSignals(true);
     ui.combo_mol->clear();
     if (randomdock->substrate)
       ui.combo_mol->addItem("Substrate");
     for (int i = 0; i < randomdock->matrixList.size(); i++) {
       ui.combo_mol->addItem(tr("Matrix %1").arg(i+1));
     }
+    ui.combo_mol->blockSignals(false);
+    ui.combo_mol->setCurrentIndex(0);
   }
 
   void TabConformers::updateForceField(const QString & s)
@@ -274,6 +277,7 @@ namespace RandomDock {
   void TabConformers::updateConformerTable()
   {
     Structure *mol = currentStructure();
+    if (!mol) return;
     QReadLocker locker (mol->lock());
 
     // Generate probability lists:
@@ -308,15 +312,18 @@ namespace RandomDock {
     if (row == oldrow)	return;
     if (row == -1)	{emit moleculeChanged(new Structure); return;}
     Structure *mol = currentStructure();
+    if (!mol) return;
     mol->setConformer(row);
     emit moleculeChanged(mol);
   }
 
   Structure* TabConformers::currentStructure()
   {
+    QString text = ui.combo_mol->currentText();
+    if (text.isEmpty()) return 0;
+
     RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
     Structure *mol;
-    QString text = ui.combo_mol->currentText();
     if (text == "Substrate")
       mol = qobject_cast<Structure*>(randomdock->substrate);
     else if (text.contains("Matrix")) {
@@ -334,11 +341,14 @@ namespace RandomDock {
   {
     // If we don't want a systematic search, let the user pick the
     // number of conformers
-    if (!isSystematic) return;
+    if (!isSystematic)
+      return;
 
     // If there aren't any atoms in the structure, don't bother
     // checking either.
-    if (currentStructure()->numAtoms() == 0) return;
+    Structure* mol = currentStructure();
+    if (!mol || mol->numAtoms() == 0)
+      return;
 
     QMutexLocker ffLocker (&m_ffMutex);
 
@@ -355,7 +365,6 @@ namespace RandomDock {
     ff->SetLogFile(&std::cout);
     ff->SetLogLevel(OBFF_LOGLVL_NONE);
 
-    Structure* mol = currentStructure();
     QReadLocker locker (mol->lock());
     OpenBabel::OBMol obmol = mol->OBMol();
     if (!ff) {
