@@ -80,12 +80,7 @@ namespace RandomDock {
 
     uint cutoff;		// Number of searches to perform in total
 
-    // sOBMutex is here because OB likes to implement singleton
-    // classes that aren't thread safe.
     QMutex *sceneInitMutex;
-    // These were mutexes, but Qt suddenly started to complain...
-    bool savePending, isStarting;
-
 
    signals:
     void newInfoUpdate();
