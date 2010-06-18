@@ -99,7 +99,7 @@ namespace RandomDock {
       m_dialog->updateProgressLabel(tr("%1 scenes generated of (%2)...")
                                     .arg(i)
                                     .arg(runningJobLimit));
- 
+
       // Generate/Check molecule
       scene = generateRandomScene();
       initializeAndAddScene(scene);
@@ -323,6 +323,7 @@ namespace RandomDock {
     scene->setFileName(locpath_s);
     scene->setRempath(rempath_s);
     scene->setCurrentOptStep(1);
+    scene->setStatus(Structure::WaitingForOptimization);
     scene->lock()->unlock();
 
     // unlockForNaming will append the scene
