@@ -59,7 +59,7 @@ namespace RandomDock {
 
     bool checkScene(Scene *scene);
     RandomDockDialog* dialog() {return m_dialog;};
-    static void rankByEnergy(QList<Scene*> *scenes);
+    static void sortAndRankByEnergy(QList<Scene*> *scenes);
 
     //TODO move to structure-derived classes, or incorporate into scene generation
     static void centerCoordinatesAtOrigin(QList<Eigen::Vector3d> & coords);
