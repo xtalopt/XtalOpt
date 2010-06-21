@@ -307,10 +307,10 @@ namespace GlobalSearch {
   }
 
   bool Optimizer::startOptimization(Structure *structure) {
-    // ssh
     QProcess proc;
-    QString command = "ssh -q " + m_opt->username + "@" + m_opt->host + " " +
-      m_opt->qsub + " " + structure->getRempath() + "/job.pbs";
+    QString command = "ssh -q " + m_opt->username + "@" + m_opt->host +
+      " \"cd " + structure->getRempath() + " && " +
+      m_opt->qsub + " job.pbs\"";
     qDebug() << "Optimizer::startOptimization: Calling " << command;
     proc.start(command);
     proc.waitForFinished(-1);
