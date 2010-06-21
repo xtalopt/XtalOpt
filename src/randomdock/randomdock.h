@@ -48,6 +48,7 @@ namespace RandomDock {
 
     enum OptTypes {
       OT_GAMESS = 0,
+      OT_ADF
     };
 
     Scene* generateRandomScene();

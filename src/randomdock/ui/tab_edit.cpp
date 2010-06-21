@@ -19,6 +19,7 @@
 #include <randomdock/randomdock.h>
 #include <randomdock/ui/dialog.h>
 #include <randomdock/optimizers/gamess.h>
+#include <randomdock/optimizers/adf.h>
 
 #include <globalsearch/macros.h>
 
@@ -127,6 +128,9 @@ namespace RandomDock {
     if (m_opt->optimizer()->getIDString() == "GAMESS") {
       ui.combo_optType->setCurrentIndex(RandomDock::OT_GAMESS);
     }
+    else if (m_opt->optimizer()->getIDString() == "ADF") {
+      ui.combo_optType->setCurrentIndex(RandomDock::OT_ADF);
+    }
 
     templateChanged(ui.combo_template->currentIndex());
     ui.edit_user1->setText(	m_opt->optimizer()->getUser1());
@@ -154,6 +158,9 @@ namespace RandomDock {
          && (
              ( ui.combo_optType->currentIndex() == RandomDock::OT_GAMESS
                && m_opt->optimizer()->getIDString() == "GAMESS" )
+             ||
+             ( ui.combo_optType->currentIndex() == RandomDock::OT_ADF
+               && m_opt->optimizer()->getIDString() == "ADF" )
              )
          ) {
       return;
@@ -179,6 +186,23 @@ namespace RandomDock {
       ui.combo_template->blockSignals(false);
 
       emit optimizerChanged(new GAMESSOptimizer (m_opt) );
+      ui.combo_template->setCurrentIndex(0);
+
+      break;
+    }
+    case RandomDock::OT_ADF: {
+      // Set total number of templates (1, length of ADF_Templates)
+      QStringList sl;
+      sl << "";
+      ui.combo_template->blockSignals(true);
+      ui.combo_template->insertItems(0, sl);
+
+      // Set each template at the appropriate index:
+      ui.combo_template->removeItem(GAMT_pbs);
+      ui.combo_template->insertItem(GAMT_pbs,	tr("job.pbs"));
+      ui.combo_template->blockSignals(false);
+
+      emit optimizerChanged(new ADFOptimizer (m_opt) );
       ui.combo_template->setCurrentIndex(0);
 
       break;
@@ -222,6 +246,21 @@ namespace RandomDock {
       }
       break;
     }
+    case RandomDock::OT_ADF: {
+      // Hide/show appropriate GUI elements
+      ui.list_POTCARs->setVisible(false);
+      ui.edit_edit->setVisible(true);
+
+      switch (ind) {
+      case ADFT_pbs:
+        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.pbs", row));
+        break;
+      default: // shouldn't happen...
+        qWarning() << "TabEdit::templateChanged: Selected template out of range? " << ind;
+        break;
+      }
+      break;
+    }
     default: // shouldn't happen...
       qWarning() << "TabEdit::templateChanged: Selected OptStep out of range? "
                  << ui.combo_optType->currentIndex();
@@ -241,6 +280,16 @@ namespace RandomDock {
         break;
       case GAMT_inp:
         m_opt->optimizer()->setTemplate("job.inp", ui.edit_edit->document()->toPlainText(), row);
+        break;
+      default: // shouldn't happen...
+        qWarning() << "TabEdit::updateTemplates: Selected template out of range?";
+        break;
+      }
+      break;
+    case RandomDock::OT_ADF:
+      switch (ui.combo_template->currentIndex()) {
+      case ADFT_pbs:
+        m_opt->optimizer()->setTemplate("job.pbs", ui.edit_edit->document()->toPlainText(), row);
         break;
       default: // shouldn't happen...
         qWarning() << "TabEdit::updateTemplates: Selected template out of range?";

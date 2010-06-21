@@ -4,6 +4,7 @@ set( randomdock_SRCS
      extension.cpp
      randomdock.cpp
      optimizers/gamess.cpp
+     optimizers/adf.cpp
      structures/scene.cpp
      structures/matrix.cpp
      structures/substrate.cpp
