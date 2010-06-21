@@ -132,42 +132,12 @@
           <widget class="QComboBox" name="combo_labelType">
            <item>
             <property name="text">
-             <string>SG Number</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>SG Symbol</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Enthalpy (eV)</string>
+             <string>Index</string>
             </property>
            </item>
            <item>
             <property name="text">
              <string>Energy (eV)</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>PV enthalpy term (eV)</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Volume</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Generation</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Structure #</string>
             </property>
            </item>
           </widget>
