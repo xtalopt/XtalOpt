@@ -47,6 +47,11 @@ namespace RandomDock {
       GAMT_inp
     };
 
+    enum ADF_Templates {
+      ADFT_pbs = 0,
+      ADFT_inp
+    };
+
   public slots:
     void lockGUI();
     void readSettings(const QString &filename = "");
