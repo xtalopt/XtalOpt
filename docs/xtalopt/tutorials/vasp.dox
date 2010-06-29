@@ -118,10 +118,9 @@ seeds, but the option to do so exists on this screen.
 
 The next tab is where system settings are specified.
 
-@subsection locpath Local path
-We set the local path to "/tmp/tutorial"; this is where the structures
-will be written and stored on the local computer during the
-search.
+@subsection locpath Local path We set the local path to
+"/tmp/xtalopt/tutorial"; this is where the structures will be written
+and stored on the local computer during the search.
 
 This configuration will create a directory for each structure at
 
