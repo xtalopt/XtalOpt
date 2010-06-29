@@ -77,10 +77,10 @@ specify initial seeds, but the option to do so exists on this screen.
 XtalOpt currently will only run GULP on a local installation (although
 VASP and pwSCF can run on a remote cluster). Thus, for GULP to run we
 only need to specify the local path and the path to the "gulp"
-executable. In the "System Settings" tab, we use "/tmp/xtalopt" for
-the path. The path to GULP will depend on your specific
-installation. This configuration will create a directory for each
-structure at
+executable. In the "System Settings" tab, we use
+"/tmp/xtalopt/tutorial" for the path. The path to GULP will depend on
+your specific installation. This configuration will create a directory
+for each structure at
 
 \code
 /tmp/xtalopt/tutorial/<gen#>x<id#>
