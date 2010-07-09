@@ -29,7 +29,7 @@ namespace XtalOpt {
   XtalOptTest::XtalOptTest(XtalOpt *p, QObject *parent) :
     QObject(parent),
     m_opt(p),
-    m_dialog(p->dialog())
+    m_dialog(qobject_cast<XtalOptDialog*>(p->dialog()))
   {
   }
 

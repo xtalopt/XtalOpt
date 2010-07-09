@@ -58,7 +58,6 @@ namespace RandomDock {
     bool load(const QString & filename);
 
     bool checkScene(Scene *scene);
-    RandomDockDialog* dialog() {return m_dialog;};
     static void rankByEnergy(QList<Scene*> *scenes);
 
     //TODO move to structure-derived classes, or incorporate into scene generation
@@ -103,8 +102,6 @@ namespace RandomDock {
       setOptimizer_enum(opttype, filename);};
 
    private:
-    RandomDockDialog *m_dialog;
-
     void setOptimizer_string(const QString &s, const QString &filename = "");
     void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
 

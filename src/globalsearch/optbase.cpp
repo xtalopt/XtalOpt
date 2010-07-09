@@ -18,14 +18,16 @@
 #include <globalsearch/structure.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/bt.h>
 
 using namespace OpenBabel;
 
 namespace GlobalSearch {
 
-  OptBase::OptBase(QObject *parent) :
+  OptBase::OptBase(AbstractDialog *parent) :
     QObject(parent),
+    m_dialog(parent),
     m_tracker(new Tracker (this)),
     m_queue(new QueueManager(this, m_tracker)),
     m_optimizer(0), // This will be set when the GUI is initialized
