@@ -12,15 +12,15 @@ a PBS queue. For XtalOpt access the cluster, it is necessary to set up
 password-less ssh logins. This is most easily done using the
 "ssh-copy-id" command, e.g.
 
-@verbatim
+@code
 ssh-copy-id myusername@remote.host.with.PBS.queue
-@endverbatim
+@endcode
 
 If this complains about a missing key, run
 
-@verbatim
+@code
 ssh-keygen
-@endverbatim
+@endcode
 
 first, using all defaults and no passphrase. Then rerun ssh-copy-id.
 
