@@ -51,7 +51,6 @@ namespace XtalOpt {
     OptBase(parent)
   {
     xtalInitMutex = new QMutex;
-    m_dialog = parent;
     m_idString = "XtalOpt";
 
     // Connections

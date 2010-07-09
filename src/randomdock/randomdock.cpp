@@ -42,7 +42,6 @@ namespace RandomDock {
 
   RandomDock::RandomDock(RandomDockDialog *parent) :
     OptBase(parent),
-    m_dialog(parent),
     substrate(0)
   {
     m_idString = "RandomDock";
@@ -99,7 +98,7 @@ namespace RandomDock {
       m_dialog->updateProgressLabel(tr("%1 scenes generated of (%2)...")
                                     .arg(i)
                                     .arg(runningJobLimit));
- 
+
       // Generate/Check molecule
       scene = generateRandomScene();
       initializeAndAddScene(scene);
@@ -414,7 +413,7 @@ namespace RandomDock {
       error("RandomDock::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid.");
       return false;
     }
-    
+
     // Get path and other info for later:
     QFileInfo stateInfo (file);
     // path to resume file

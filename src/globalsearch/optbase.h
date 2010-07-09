@@ -24,6 +24,7 @@ namespace GlobalSearch {
   class Tracker;
   class Optimizer;
   class QueueManager;
+  class AbstractDialog;
 
   /**
    * @class OptBase optbase.h <globalsearch/optbase.h>
@@ -47,7 +48,7 @@ namespace GlobalSearch {
      *
      * @param parent Dialog window of GUI.
      */
-    explicit OptBase(QObject *parent);
+    explicit OptBase(AbstractDialog *parent);
 
     /**
      * Destructor
@@ -138,6 +139,11 @@ namespace GlobalSearch {
      */
     virtual QString getTemplateKeywordHelp() {
       return getTemplateKeywordHelp_base();};
+
+    /**
+     * @return A pointer to the main dialog..
+     */
+    AbstractDialog* dialog() {return m_dialog;};
 
     /**
      * @return A pointer to the main Structure Tracker.
@@ -415,6 +421,10 @@ namespace GlobalSearch {
     /// String that uniquely identifies the derived OptBase
     /// @sa getIDString
     QString m_idString;
+
+    /// Cached pointer to the Dialog window
+    /// @sa tracker
+    AbstractDialog *m_dialog;
 
     /// Cached pointer to the main Tracker
     /// @sa tracker
