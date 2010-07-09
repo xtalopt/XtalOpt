@@ -60,7 +60,6 @@ namespace XtalOpt {
     QString getTemplateKeywordHelp();
     bool save(const QString & filename = "", bool notify = false);
     bool load(const QString & filename);
-    XtalOptDialog* dialog() {return m_dialog;};
     static void sortByEnthalpy(QList<Xtal*> *xtals);
     static void rankEnthalpies(QList<Xtal*> *xtals);
     static QList<double> getProbabilityList(QList<Xtal*> *xtals);
@@ -121,8 +120,6 @@ namespace XtalOpt {
       setOptimizer_enum(opttype, filename);};
 
    private:
-    XtalOptDialog *m_dialog;
-
     void resetDuplicates_();
     void checkForDuplicates_();
 
