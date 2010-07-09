@@ -23,7 +23,7 @@ If both conditions
 @f}
 
 are true, the cell should be transformed. To do this, the vector
-$\vec{v_i}$ is replaced by the vector $\vec{v_i'}$, defined as
+@f$\vec{v_i}@f$ is replaced by the vector @f$\vec{v_i'}@f$, defined as
 
 @f[
   \vec{v_i'} = \vec{v_i} - \mbox{ceil}\left(\left|\frac{\vec{v_i}\cdot \vec{v_j}}
