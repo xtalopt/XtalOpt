@@ -28,7 +28,7 @@ On the next tab we choose GULP for the local optimizer and enter a template
 for GULP to use. Select "GULP" as the "Optimization Type" and
 "GULP .gin" as "Template". Next, fill out the text field on the
 right with the following template:
-\verbatim
+\code
 opti conj conp
 switch_minimiser bfgs gnorm 0.5
 cell
@@ -46,7 +46,7 @@ lennard 12 6
 Ti Ti 1 0 15
 O  O  1 0 15
 Ti O  1 0 15
-\endverbatim
+\endcode
 
 Alternatively, one can load the scheme file distributed with the
 source code under samples/gulp-TiO-xtalopt.scheme.
