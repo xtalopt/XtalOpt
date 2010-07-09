@@ -255,7 +255,6 @@ namespace XtalOpt {
 
   void TabEdit::templateChanged(int ind) {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-    ui.edit_edit->setCurrentFont(QFont("Courier"));
     if (ind < 0) {
       qDebug() << "TabEdit::templateChanged: Not changing template to a negative index.";
       return;
@@ -411,6 +410,8 @@ namespace XtalOpt {
       qWarning() << "TabEdit::updateTemplates: Selected OptStep out of range?";
       break;
     }
+
+    ui.edit_edit->setCurrentFont(QFont("Courier"));
   }
 
   void TabEdit::updateUserValues() {
