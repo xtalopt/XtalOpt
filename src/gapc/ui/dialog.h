@@ -34,14 +34,13 @@ using namespace Avogadro;
 namespace GAPC {
   class ProtectedCluster;
   class GAPC;
-  /* class TabInit; */
-  /* class TabEdit; */
-  /* class TabOpt; */
-  /* class TabSys; */
-  /* class TabProgress; */
-  /* class TabPlot; */
-  /* class TabLog; */
-  /* class XtalOptTest; */
+  class TabInit;
+  class TabEdit;
+  class TabOpt;
+  class TabSys;
+  class TabProgress;
+  class TabPlot;
+  class TabLog;
 
   class GAPCDialog : public AbstractDialog
   {
@@ -66,15 +65,13 @@ namespace GAPC {
   private:
     Ui::GAPCDialog ui;
 
-    /* TabInit *m_tab_init; */
-    /* TabEdit *m_tab_edit; */
-    /* TabOpt *m_tab_opt; */
-    /* TabSys *m_tab_sys; */
-    /* TabProgress *m_tab_progress; */
-    /* TabPlot *m_tab_plot; */
-    /* TabLog *m_tab_log; */
-
-    /* XtalOptTest *m_test; */
+    TabInit *m_tab_init;
+    TabEdit *m_tab_edit;
+    TabOpt *m_tab_opt;
+    TabSys *m_tab_sys;
+    TabProgress *m_tab_progress;
+    TabPlot *m_tab_plot;
+    TabLog *m_tab_log;
   };
 }
 

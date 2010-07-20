@@ -131,8 +131,8 @@ namespace GAPC {
     uint progCount = 0;
     QString filename;
     ProtectedCluster *pc = 0;
-    // Use newPCCount in case "addXtal" falls behind so that we don't
-    // duplicate structures when switching from seeds -> random.
+    // Use newPCCount in case the tracker falls behind so that we
+    // don't duplicate structures when switching from seeds -> random.
     uint newPCCount=0;
 
     // Load seeds...
@@ -162,7 +162,7 @@ namespace GAPC {
       progCount++;
       m_dialog->updateProgressLabel(tr("%1 structures generated (%2 kept, %3 rejected)...").arg(i + failed).arg(i).arg(failed));
 
-      // Generate/Check xtal
+      // Generate/Check cluster
       pc = generateRandomPC(1, i+1);
       if (!checkPC(pc)) {
         delete pc;
@@ -210,7 +210,7 @@ namespace GAPC {
     QDir dir (locpath_s);
     if (!dir.exists()) {
       if (!dir.mkpath(locpath_s)) {
-        error(tr("OptGAPC::initializeAndAddXtal: Cannot write to path: %1 (path creation failure)",
+        error(tr("OptGAPC::initializeAndAddPC: Cannot write to path: %1 (path creation failure)",
                  "1 is a file path.")
               .arg(locpath_s));
       }

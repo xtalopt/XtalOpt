@@ -48,6 +48,8 @@ namespace GAPC {
     GAPC_Comp comp;
     QStringList seedList;
     unsigned int numInitial;
+    unsigned int popSize;
+    float tol_enthalpy;
     float minIAD;
     float maxIAD;
     QMutex initMutex;
