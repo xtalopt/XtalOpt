@@ -9,6 +9,7 @@ Open avogadro, go to the "Extensions" menu and select
 
 @section init Enter composition and restraints
 @image html cell-init.png
+@image latex cell-init.png width=\textwidth
 
 The interface opens to the "Cell Initialization" tab, shown above. We
 will use a 6 formula unit supercell of titanium dioxide for this
@@ -23,6 +24,7 @@ the largest range of cell angles that XtalOpt will generate.)
 
 @section opt Optimizer setup
 \image html opt-temp-gulp.png
+\image latex opt-temp-gulp.png width=\textwidth
 
 On the next tab we choose GULP for the local optimizer and enter a template
 for GULP to use. Select "GULP" as the "Optimization Type" and
@@ -62,6 +64,7 @@ one optimization step in this tutorial.
 
 \section opt-set Optimization settings
 \image html opt-set.png
+\image latex opt-set.png width=\textwidth
 
 In the "Optimization Settings" tab, most of the default settings
 should suffice (See CPC 2010 publication). We will be running our test
@@ -73,6 +76,7 @@ specify initial seeds, but the option to do so exists on this screen.
 
 \section sys-set System settings
 \image html sys-set.png
+\image latex sys-set.png width=\textwidth
 
 XtalOpt currently will only run GULP on a local installation (although
 VASP and pwSCF can run on a remote cluster). Thus, for GULP to run we
@@ -107,6 +111,7 @@ previous search.
 
 \section begin "Begin"
 \image html prog-start.png "The ``Progress'' tab immediately after starting a search"
+\image latex prog-start.png "The ``Progress'' tab immediately after starting a search" width=\textwidth
 
 XtalOpt has everything it needs to start its search at this point;
 click the "Begin" button in the lower right corner of the application
@@ -120,6 +125,7 @@ it is stopped by the user.
 
 \section prog-mon Monitor progress
 \image html prog-mon.png "The ``Progress'' tab mid-run"
+\image latex prog-mon.png "The ``Progress'' tab mid-run" width=\textwidth
 
 As XtalOpt performs the search, the progress table continuously
 updates, providing information about each structure. We see
@@ -151,6 +157,7 @@ random individual.
 
 \subsection trends View trends
 \image html trend-view.png "The ``Plot'' tab mid-run displaying enthalpy vs. volume. Each structure is labeled with its Hermann Mauguin spacegroup symbol."
+\image latex trend-view.png "The ``Plot'' tab mid-run displaying enthalpy vs. volume. Each structure is labeled with its Hermann Mauguin spacegroup symbol." width=\textwidth
 
 Another visualization and analysis tool available during the search is
 the interactive plot. The plot is capable of investigating trends in
