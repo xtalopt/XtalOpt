@@ -16,9 +16,11 @@
 
 #include <gapc/ui/tab_edit.h>
 
-#include <globalsearch/macros.h>
+#include <gapc/optimizers/openbabel.h>
 #include <gapc/ui/dialog.h>
 #include <gapc/gapc.h>
+
+#include <globalsearch/macros.h>
 
 #include <QFont>
 #include <QDebug>
@@ -51,8 +53,6 @@ namespace GAPC {
             this, SLOT(updateTemplates()));
     connect(ui.combo_template, SIGNAL(currentIndexChanged(int)),
             this, SLOT(templateChanged(int)));
-    connect(ui.list_POTCARs, SIGNAL(itemDoubleClicked(QListWidgetItem*)),
-            this, SLOT(changePOTCAR(QListWidgetItem*)));
     connect(ui.push_add, SIGNAL(clicked()),
             this, SLOT(appendOptStep()));
     connect(ui.push_remove, SIGNAL(clicked()),
@@ -123,6 +123,11 @@ namespace GAPC {
 
   void TabEdit::updateGUI() {
     populateOptList();
+
+    if (m_opt->optimizer()->getIDString() == "OpenBabel") {
+      ui.combo_optType->setCurrentIndex(OptGAPC::OT_OpenBabel);
+    }
+
     templateChanged(ui.combo_template->currentIndex());
     ui.edit_user1->setText(	m_opt->optimizer()->getUser1());
     ui.edit_user2->setText(	m_opt->optimizer()->getUser2());
@@ -146,6 +151,10 @@ namespace GAPC {
     // Check if the opttype has actually changed and that the
     // optimizer is set.
     if ( m_opt->optimizer()
+         && (
+             ( ui.combo_optType->currentIndex() == OptGAPC::OT_OpenBabel
+               && m_opt->optimizer()->getIDString() == "OpenBabel" )
+             )
          ) {
       return;
     }
@@ -155,6 +164,13 @@ namespace GAPC {
     ui.combo_template->blockSignals(false);
 
     switch (ui.combo_optType->currentIndex()) {
+    case OptGAPC::OT_OpenBabel: {
+      // No need to populate the template combo box for OB
+      emit optimizerChanged(new OpenBabelOptimizer (m_opt) );
+      ui.combo_template->setCurrentIndex(0);
+
+      break;
+    }
     default: // shouldn't happen...
       qWarning() << "TabEdit::updateOptType: Selected OptType out of range?";
       break;
@@ -165,10 +181,6 @@ namespace GAPC {
 
   void TabEdit::templateChanged(int ind) {
     OptGAPC *gapc = qobject_cast<OptGAPC*>(m_opt);
-    if (ind < 0) {
-      qDebug() << "TabEdit::templateChanged: Not changing template to a negative index.";
-      return;
-    }
 
     int row = ui.list_opt->currentRow();
 
@@ -176,6 +188,15 @@ namespace GAPC {
       populateOptList();
 
     switch (ui.combo_optType->currentIndex()) {
+    case OptGAPC::OT_OpenBabel: {
+      // Hide/show appropriate GUI elements
+      ui.list_POTCARs->setVisible(false);
+      ui.edit_edit->setVisible(false);
+
+      // No edit data to set
+      break;
+    }
+
     default: // shouldn't happen...
       qWarning() << "TabEdit::templateChanged: Selected OptStep out of range? "
                  << ui.combo_optType->currentIndex();
@@ -188,6 +209,10 @@ namespace GAPC {
     int row = ui.list_opt->currentRow();
 
     switch (ui.combo_optType->currentIndex()) {
+    case OptGAPC::OT_OpenBabel:
+      // Nothing to do.
+      break;
+
     default: // shouldn't happen...
       qWarning() << "TabEdit::updateTemplates: Selected OptStep out of range?";
       break;

@@ -5,6 +5,7 @@ set( gapc_SRCS
      gapc.cpp
      structures/cluster.cpp
      structures/protectedcluster.cpp
+     optimizers/openbabel.cpp
      ui/dialog.cpp
      ui/tab_init.cpp
      ui/tab_edit.cpp

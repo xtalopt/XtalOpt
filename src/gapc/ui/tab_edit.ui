@@ -111,17 +111,7 @@
     <widget class="QComboBox" name="combo_optType">
      <item>
       <property name="text">
-       <string>VASP</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>GULP</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>PWscf</string>
+       <string>OpenBabel - UFF</string>
       </property>
      </item>
     </widget>

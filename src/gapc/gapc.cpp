@@ -17,6 +17,7 @@
 
 #include <gapc/ui/dialog.h>
 #include <gapc/structures/protectedcluster.h>
+#include <gapc/optimizers/openbabel.h>
 
 #include <globalsearch/structure.h>
 #include <globalsearch/tracker.h>
@@ -30,9 +31,13 @@
 namespace GAPC {
 
   OptGAPC::OptGAPC(GAPCDialog *parent) :
-    OptBase(parent)
+    OptBase(parent),
+    minIAD(0.8),
+    maxIAD(2.0)
   {
     m_idString = "GAPC";
+    // Setup random generator
+    std::srand(std::time(0));
   }
 
   OptGAPC:: ~OptGAPC()
@@ -82,21 +87,25 @@ namespace GAPC {
   {
     // Call error() and return false if there's a problem
     // TODO
+    return true;
   }
 
   bool OptGAPC::checkPC(ProtectedCluster *pc)
   {
     // TODO
+    return true;
   }
 
   bool OptGAPC::save(const QString & filename, bool notify)
   {
     // TODO
+    return true;
   }
 
   bool OptGAPC::load(const QString & filename)
   {
     // TODO
+    return true;
   }
 
   void OptGAPC::startSearch()
@@ -258,9 +267,26 @@ namespace GAPC {
     return pc;
   }
 
-  void OptGAPC::setOptimizer_string(const QString &s, const QString &filename)
+  void OptGAPC::setOptimizer_string(const QString &IDString, const QString &filename)
   {
-    // TODO
+    if (IDString.toLower() == "openbabel")
+      setOptimizer(new OpenBabelOptimizer (this, filename));
+    else
+      error(tr("GAPC::setOptimizer: unable to determine optimizer from '%1'")
+            .arg(IDString));
+  }
+
+  void OptGAPC::setOptimizer_enum(OptTypes opttype, const QString &filename)
+  {
+    switch (opttype) {
+    case OT_OpenBabel:
+      setOptimizer(new OpenBabelOptimizer (this, filename));
+      break;
+    default:
+      error(tr("GAPC::setOptimizer: unable to determine optimizer from '%1'")
+            .arg(QString::number((int)opttype)));
+      break;
+    }
   }
 
 }

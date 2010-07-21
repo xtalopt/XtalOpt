@@ -37,9 +37,6 @@ namespace GAPC {
                                        float minIAD,
                                        float maxIAD)
   {
-    // Initialize random number generator
-    srand(time(NULL));
-
     // Get atomic numbers
     QList<unsigned int> atomicnums = comp.keys();
     unsigned int totalSpecies = atomicnums.size();
@@ -50,12 +47,13 @@ namespace GAPC {
       totalAtoms += comp.value(atomicnums.at(i));
     }
 
-    // Use this queue to determine the order to add the atoms. Value is atomic number
+    // Use this queue to determine the order to add the atoms. Value
+    // is atomic number
     deque<unsigned int> q;
 
     // Populate queue
     // - Fill queue
-    for (int i = 0; i < totalAtoms; i++) {
+    for (int i = 0; i < totalSpecies; i++) {
       unsigned int atomicnum = atomicnums.at(i);
       for (int j = 0; j < comp[atomicnum]; j++) {
         q.push_back(atomicnum);

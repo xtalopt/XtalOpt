@@ -54,6 +54,10 @@ namespace GAPC {
     float maxIAD;
     QMutex initMutex;
 
+    enum OptTypes {
+      OT_OpenBabel = 0,
+    };
+
     /**
      * Constructor
      *
@@ -120,6 +124,8 @@ namespace GAPC {
     ProtectedCluster* generateRandomPC(unsigned int gen = 1, unsigned int id = 0);
 
    signals:
+    void updateAllInfo();
+    void newInfoUpdate();
 
    public slots:
     /**
@@ -136,9 +142,17 @@ namespace GAPC {
     void initializeAndAddPC(ProtectedCluster *pc,
                             uint gen, const QString &parents);
 
+    void setOptimizer(Optimizer *o) {
+      setOptimizer_opt(o);};
+    void setOptimizer(const QString &IDString, const QString &filename = "") {
+      setOptimizer_string(IDString, filename);};
+    void setOptimizer(OptTypes opttype, const QString &filename = "") {
+      setOptimizer_enum(opttype, filename);};
+
    protected:
-    /// Hidden call to setOptimizer
-    virtual void setOptimizer_string(const QString &s, const QString &filename = "");
+    /// Hidden calls to setOptimizer
+    void setOptimizer_string(const QString &s, const QString &filename = "");
+    void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
 
   };
 
