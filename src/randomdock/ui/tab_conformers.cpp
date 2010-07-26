@@ -44,8 +44,6 @@ namespace RandomDock {
   {
     ui.setupUi(m_tab_widget);
 
-    m_ff = OpenBabel::OBForceField::FindForceField("MMFF94");
-
     // tab connections
     connect(ui.push_generate, SIGNAL(clicked()),
             this, SLOT(generateConformers()));
@@ -57,6 +55,12 @@ namespace RandomDock {
             this, SLOT(calculateNumberOfConformers(bool)));
     connect(this, SIGNAL(conformersChanged()),
             this, SLOT(updateConformerTable()));
+    connect(ui.combo_opt, SIGNAL(currentIndexChanged(const QString&)),
+            this, SLOT(updateForceField(const QString&)));
+
+    OBPlugin::ListAsVector("forcefields", "ids", m_forceFieldList);
+
+    fillForceFieldCombo();
 
     initialize();
   }
@@ -74,6 +78,7 @@ namespace RandomDock {
 
     settings->setValue("number",        ui.spin_nConformers->value());
     settings->setValue("all",           ui.cb_allConformers->isChecked());
+    settings->setValue("ff",            ui.combo_opt->currentText());
 
     settings->endGroup();
     DESTROY_SETTINGS(filename);
@@ -86,7 +91,8 @@ namespace RandomDock {
     int loadedVersion = settings->value("version", 0).toInt();
 
     ui.spin_nConformers->setValue(	settings->value("number",	100).toInt());
-    ui.cb_allConformers->setChecked(	settings->value("all",		true).toInt());
+    ui.cb_allConformers->setChecked(	settings->value("all",		true).toBool());
+    updateForceField(                   settings->value("ff",           "").toString());
 
     settings->endGroup();
 
@@ -112,15 +118,47 @@ namespace RandomDock {
     ui.cb_allConformers->setDisabled(true);
   }
 
+  void TabConformers::fillForceFieldCombo()
+  {
+    m_ffMutex.lock();
+    ui.combo_opt->blockSignals(true);
+    ui.combo_opt->clear();
+    for (int i = 0; i < m_forceFieldList.size(); i++) {
+      ui.combo_opt->addItem(m_forceFieldList.at(i).c_str());
+    }
+    ui.combo_opt->blockSignals(false);
+    m_ffMutex.unlock();
+    updateForceField();
+  }
+
   void TabConformers::updateStructureList()
   {
     RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
+    ui.combo_mol->blockSignals(true);
     ui.combo_mol->clear();
     if (randomdock->substrate)
       ui.combo_mol->addItem("Substrate");
     for (int i = 0; i < randomdock->matrixList.size(); i++) {
       ui.combo_mol->addItem(tr("Matrix %1").arg(i+1));
     }
+    ui.combo_mol->blockSignals(false);
+    ui.combo_mol->setCurrentIndex(0);
+  }
+
+  void TabConformers::updateForceField(const QString & s)
+  {
+    if (s.isEmpty()) {
+      ui.combo_opt->setCurrentIndex(0);
+    }
+
+    m_ffMutex.lock();
+    // Sync GUI
+    ui.combo_opt->blockSignals(true);
+    ui.combo_opt->setCurrentIndex(ui.combo_opt->findText(s));
+    ui.combo_opt->blockSignals(false);
+    // Grab forcefield
+    m_ff = OpenBabel::OBForceField::FindForceField(s.toStdString());
+    m_ffMutex.unlock();
   }
 
   void TabConformers::generateConformers()
@@ -136,16 +174,16 @@ namespace RandomDock {
   {
     m_dialog->startProgressUpdate("Preparing conformer search...", 0, 0);
     QWriteLocker locker (mol->lock());
-    if (ui.combo_opt->currentIndex() == O_G03) {
-      // TODO: implement and use a G03 opt routine...
+    QMutexLocker fflocker (&m_ffMutex);
+
+    if (!m_ff) {
+      QMessageBox::warning( m_dialog, tr( "Avogadro" ),
+                            tr( "Problem setting up forcefield '%1'.")
+                            .arg(ui.combo_opt->currentText().trimmed()));
+      m_dialog->stopProgressUpdate();
       ui.push_generate->setEnabled(true);
       return;
     }
-
-    /******************************************************
-     * Most of this is shamelessly taken from Avogadro's  *
-     * forcefield extension...                            *
-     ******************************************************/
 
     m_dialog->updateProgressLabel("Preparing forcefield...");
     OpenBabel::OBForceField *ff = m_ff->MakeNewInstance();
@@ -239,6 +277,7 @@ namespace RandomDock {
   void TabConformers::updateConformerTable()
   {
     Structure *mol = currentStructure();
+    if (!mol) return;
     QReadLocker locker (mol->lock());
 
     // Generate probability lists:
@@ -273,15 +312,18 @@ namespace RandomDock {
     if (row == oldrow)	return;
     if (row == -1)	{emit moleculeChanged(new Structure); return;}
     Structure *mol = currentStructure();
+    if (!mol) return;
     mol->setConformer(row);
     emit moleculeChanged(mol);
   }
 
   Structure* TabConformers::currentStructure()
   {
+    QString text = ui.combo_mol->currentText();
+    if (text.isEmpty()) return 0;
+
     RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
     Structure *mol;
-    QString text = ui.combo_mol->currentText();
     if (text == "Substrate")
       mol = qobject_cast<Structure*>(randomdock->substrate);
     else if (text.contains("Matrix")) {
@@ -297,20 +339,32 @@ namespace RandomDock {
 
   void TabConformers::calculateNumberOfConformers(bool isSystematic)
   {
-    // If we don't want a systematic search, let the user pick the number of conformers
-    if (!isSystematic) return;
+    // If we don't want a systematic search, let the user pick the
+    // number of conformers
+    if (!isSystematic)
+      return;
 
-    // I probably will never add the external conformer search....
-    if (ui.combo_opt->currentIndex() == O_G03) return;
+    // If there aren't any atoms in the structure, don't bother
+    // checking either.
+    Structure* mol = currentStructure();
+    if (!mol || mol->numAtoms() == 0)
+      return;
 
-    // If there aren't any atoms in the structure, don't bother checking either.
-    if (currentStructure()->numAtoms() == 0) return;
+    QMutexLocker ffLocker (&m_ffMutex);
+
+    if (!m_ff) {
+      QMessageBox::warning( m_dialog, tr( "Avogadro" ),
+                            tr( "Problem setting up forcefield '%1'.")
+                            .arg(ui.combo_opt->currentText().trimmed()));
+      m_dialog->stopProgressUpdate();
+      ui.push_generate->setEnabled(true);
+      return;
+    }
 
     OpenBabel::OBForceField *ff = m_ff->MakeNewInstance();
     ff->SetLogFile(&std::cout);
     ff->SetLogLevel(OBFF_LOGLVL_NONE);
 
-    Structure* mol = currentStructure();
     QReadLocker locker (mol->lock());
     OpenBabel::OBMol obmol = mol->OBMol();
     if (!ff) {

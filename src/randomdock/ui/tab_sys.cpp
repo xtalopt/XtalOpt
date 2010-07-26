@@ -35,7 +35,7 @@ namespace RandomDock {
     // System Settings connections
     connect(ui.edit_path, SIGNAL(textChanged(QString)),
             this, SLOT(updateSystemInfo()));
-    connect(ui.edit_base, SIGNAL(textChanged(QString)),
+    connect(ui.edit_description, SIGNAL(textChanged(QString)),
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_launch, SIGNAL(textChanged(QString)),
             this, SLOT(updateSystemInfo()));
@@ -62,15 +62,15 @@ namespace RandomDock {
     SETTINGS(filename);
     settings->beginGroup("randomdock/sys");
     const int VERSION = 1;
-    settings->setValue("version",     VERSION);
+    settings->setValue("version",               VERSION);
 
-    settings->setValue("file/path",		m_opt->filePath);
-    settings->setValue("queue/launch",		m_opt->qsub);
-    settings->setValue("queue/check",		m_opt->qstat);
-    settings->setValue("queue/qdel",		m_opt->qdel);
-    settings->setValue("remote/host",		m_opt->host);
-    settings->setValue("remote/username",	m_opt->username);
-    settings->setValue("remote/rempath",	m_opt->rempath);
+    settings->setValue("file/path",             m_opt->filePath);
+    settings->setValue("queue/launch",          m_opt->qsub);
+    settings->setValue("queue/check",           m_opt->qstat);
+    settings->setValue("queue/qdel",            m_opt->qdel);
+    settings->setValue("remote/host",           m_opt->host);
+    settings->setValue("remote/username",       m_opt->username);
+    settings->setValue("remote/rempath",        m_opt->rempath);
 
     settings->endGroup();
     DESTROY_SETTINGS(filename);
@@ -82,14 +82,14 @@ namespace RandomDock {
     settings->beginGroup("randomdock/sys");
     int loadedVersion = settings->value("version", 0).toInt();
 
-    ui.edit_path->setText(	settings->value("file/path",		"/tmp").toString());
-    ui.edit_base->setText(	settings->value("file/base",		"/opt-").toString());
-    ui.edit_launch->setText(	settings->value("queue/launch",		"qsub").toString());
-    ui.edit_check->setText(	settings->value("queue/check",		"qstat").toString());
-    ui.edit_qdel->setText(	settings->value("queue/qdel",		"qdel").toString());
-    ui.edit_host->setText(	settings->value("remote/host",		"").toString());
-    ui.edit_username->setText(	settings->value("remote/username",	"").toString());
-    ui.edit_rempath->setText(	settings->value("remote/rempath",	"").toString());
+    ui.edit_path->setText(        settings->value("file/path",        "/tmp").toString());
+    ui.edit_description->setText( settings->value("file/description", "").toString());
+    ui.edit_launch->setText(      settings->value("queue/launch",     "qsub").toString());
+    ui.edit_check->setText(       settings->value("queue/check",      "qstat").toString());
+    ui.edit_qdel->setText(        settings->value("queue/qdel",       "qdel").toString());
+    ui.edit_host->setText(        settings->value("remote/host",      "").toString());
+    ui.edit_username->setText(    settings->value("remote/username",  "").toString());
+    ui.edit_rempath->setText(     settings->value("remote/rempath",   "").toString());
 
     settings->endGroup();
 
@@ -106,7 +106,6 @@ namespace RandomDock {
   void TabSys::lockGUI()
   {
     ui.edit_path->setDisabled(true);
-    ui.edit_base->setDisabled(true);
     ui.edit_launch->setDisabled(true);
     ui.edit_check->setDisabled(true);
     ui.edit_qdel->setDisabled(true);
@@ -117,13 +116,14 @@ namespace RandomDock {
 
   void TabSys::updateSystemInfo()
   {
-    m_opt->filePath		= ui.edit_path->text();
-    m_opt->qsub			= ui.edit_launch->text();
-    m_opt->qstat		= ui.edit_check->text();
-    m_opt->qdel			= ui.edit_qdel->text();
-    m_opt->host			= ui.edit_host->text();
-    m_opt->username		= ui.edit_username->text();
-    m_opt->rempath		= ui.edit_rempath->text();
+    m_opt->filePath             = ui.edit_path->text();
+    m_opt->qsub                 = ui.edit_launch->text();
+    m_opt->qstat                = ui.edit_check->text();
+    m_opt->qdel                 = ui.edit_qdel->text();
+    m_opt->host                 = ui.edit_host->text();
+    m_opt->username             = ui.edit_username->text();
+    m_opt->rempath              = ui.edit_rempath->text();
+    m_opt->description          = ui.edit_description->text();
   }
 
 }

@@ -171,6 +171,9 @@ namespace GlobalSearch {
     /// Number of continuous structures generated
     uint contStructs;
 
+    /// How many structures to produce before halting search. -1 for no limit
+    int cutoff;
+
     /// Whether to run benchmarking tests
     bool testingMode;
 

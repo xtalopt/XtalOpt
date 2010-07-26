@@ -40,9 +40,9 @@ namespace GlobalSearch {
     testingMode(false),
     test_nRunsStart(1),
     test_nRunsEnd(100),
-    test_nStructs(600)
+    test_nStructs(600),
+    cutoff(-1)
   {
-
     // Connections
     connect(this, SIGNAL(startingSession()),
             this, SLOT(setIsStartingTrue()));

@@ -58,7 +58,7 @@ namespace RandomDock {
     bool load(const QString & filename);
 
     bool checkScene(Scene *scene);
-    static void rankByEnergy(QList<Scene*> *scenes);
+    static void sortAndRankByEnergy(QList<Scene*> *scenes);
 
     //TODO move to structure-derived classes, or incorporate into scene generation
     static void centerCoordinatesAtOrigin(QList<Eigen::Vector3d> & coords);
@@ -77,14 +77,7 @@ namespace RandomDock {
     double radius_max;		// Maximum distance from origin to place matrix molecules
     bool radius_auto;		// Whether to automatically calculate the matrix radius
 
-    uint cutoff;		// Number of searches to perform in total
-
-    // sOBMutex is here because OB likes to implement singleton
-    // classes that aren't thread safe.
     QMutex *sceneInitMutex;
-    // These were mutexes, but Qt suddenly started to complain...
-    bool savePending, isStarting;
-
 
    signals:
     void newInfoUpdate();

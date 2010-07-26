@@ -191,6 +191,13 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
     virtual bool startOptimization(Structure *structure);
 
     /**
+     * @param filename Name of file to check for on the remote server.
+     *
+     * @return True if it exists, false otherwise.
+     */
+    virtual bool checkIfOutputFileExists(const QString & filename);
+
+    /**
      * Retrieve the contents of an output file from the remote server.
      *
      * @param filename Filename to retrieve

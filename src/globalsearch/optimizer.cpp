@@ -335,13 +335,31 @@ namespace GlobalSearch {
     return true;
   }
 
+  bool Optimizer::checkIfOutputFileExists(const QString & filename)
+  {
+    QProcess proc;
+    QString command;
+
+    // ssh -q <user>@<host> "[ -e <filename> ]"
+    command = "ssh -q " + m_opt->username + "@" + m_opt->host +
+      " \"[ -e " + filename + " ]\"";
+    qDebug() << "Optimizer::getOutputFile: Calling " << command;
+    proc.start(command);
+    proc.waitForFinished(-1);
+    qDebug() << "Optimizer::getOutputFile: " << command
+             << " = " << proc.exitCode();;
+    // Bang this, since a exit code of zero is success, but will be
+    // converted to false.
+    return (!static_cast<bool>(proc.exitCode()));
+  }
+
   bool Optimizer::getOutputFile(const QString & filename,
                                 QStringList & data)
   {
     QProcess proc;
     QString command;
 
-    // ssh -q <user>@<host> cat <path>/<filename>
+    // ssh -q <user>@<host> cat <filename>
     command = "ssh -q " + m_opt->username + "@" + m_opt->host + " \"" +
       "cat " + filename + "\"";
     qDebug() << "Optimizer::getOutputFile: Calling " << command;
@@ -403,12 +421,31 @@ namespace GlobalSearch {
       }
     }
 
-    // Check if structure is submitted:
+    // If structure is submitted, check if it is in the queue. If not,
+    // check if the completion file has been written.
+    //
+    // If the completion file exists, then the job finished before the
+    // queue checks could see it, and the function will continue on to
+    // the status checks below.
     if (structure->getStatus() == Structure::Submitted) {
+      // Structure is submitted
       if (status.isEmpty()) {
-        return Optimizer::Pending;
+        // Job is not in queue
+        if (checkIfOutputFileExists(structure->getRempath() +
+                                    "/" + m_completionFilename) ) {
+          // The output file exists -- the job completed. No further
+          // action needed.
+          qDebug() << "Structure " << structure->getIDString()
+                   << " ran before it was noticed in the queue.";
+        }
+        else {
+          // The output file does not exist -- the job is still
+          // pending.
+          return Optimizer::Pending;
+        }
       }
       else {
+        // The job is in the queue.
         return Optimizer::Started;
       }
     }

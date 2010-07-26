@@ -38,6 +38,7 @@ namespace GlobalSearch {
     Molecule(parent),
     m_generation(0),
     m_id(0),
+    m_rank(0),
     m_jobID(0),
     m_PV(0),
     m_optStart(QDateTime()),
