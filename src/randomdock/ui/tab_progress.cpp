@@ -383,7 +383,7 @@ namespace RandomDock {
   void TabProgress::highlightScene(Structure *structure)
   {
     structure->lock()->lockForRead();
-    int id  = structure->getIDNumber();
+    int id  = structure->getIndex();
     structure->lock()->unlock();
     for (int row = 0; row < ui.table_list->rowCount(); row++) {
       if (ui.table_list->item(row, C_Index)->text().toInt() == id) {

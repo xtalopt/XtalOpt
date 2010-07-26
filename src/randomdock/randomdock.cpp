@@ -48,6 +48,9 @@ namespace RandomDock {
     m_idString = "RandomDock";
     sceneInitMutex = new QMutex;
     limitRunningJobs = true;
+    // By default, just replace with random when a scene fails.
+    failLimit = 1;
+    failAction = FA_Randomize;
   }
 
   RandomDock::~RandomDock()
@@ -99,7 +102,7 @@ namespace RandomDock {
       m_dialog->updateProgressLabel(tr("%1 scenes generated of (%2)...")
                                     .arg(i)
                                     .arg(runningJobLimit));
- 
+
       // Generate/Check molecule
       scene = generateRandomScene();
       initializeAndAddScene(scene);
@@ -107,8 +110,8 @@ namespace RandomDock {
 
     m_dialog->stopProgressUpdate();
 
-    m_dialog->saveSession();
     emit sessionStarted();
+    m_dialog->saveSession();
   }
 
   Scene* RandomDock::generateRandomScene() {
@@ -323,6 +326,7 @@ namespace RandomDock {
     scene->setFileName(locpath_s);
     scene->setRempath(rempath_s);
     scene->setCurrentOptStep(1);
+    scene->setStatus(Structure::WaitingForOptimization);
     scene->lock()->unlock();
 
     // unlockForNaming will append the scene
@@ -342,8 +346,9 @@ namespace RandomDock {
   }
 
   bool RandomDock::checkScene(Scene *scene) {
-    // TODO Do we need anything here?
-    Q_UNUSED(scene);
+    // Check if null
+    if (!scene) return false;
+
     return true;
   }
 
@@ -371,9 +376,6 @@ namespace RandomDock {
     const int VERSION = 1;
     settings->setValue("randomdock/version",     VERSION);
 
-    settings->setValue("randomdock/saveSuccessful", true);
-    settings->sync();
-
     // Move randomdock.state -> randomdock.state.old
     if (QFile::exists(filename) ) {
       if (QFile::exists(oldfilename)) {
@@ -386,6 +388,82 @@ namespace RandomDock {
     QFile::rename(tmpfilename, filename);
 
     // TODO Check that settings are written correctly
+
+    /////////////////////////
+    // Print results files //
+    /////////////////////////
+
+    QFile file (filePath + "/results.txt");
+    QFile oldfile (filePath + "/results_old.txt");
+    // if (notify) {
+    //   m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
+    //                                 .arg(file.fileName()));
+    // }
+    if (oldfile.open(QIODevice::ReadOnly))
+      oldfile.remove();
+    if (file.open(QIODevice::ReadOnly))
+      file.copy(oldfile.fileName());
+    file.close();
+    if (!file.open(QIODevice::WriteOnly)) {
+      error("RandomDock::save(): Error opening file "+file.fileName()+" for writing...");
+      savePending = false;
+      return false;
+    }
+    QTextStream out (&file);
+
+    QList<Structure*> *structures = m_tracker->list();
+    QList<Scene*> sortedScenes;
+    Scene *scene;
+
+    for (int i = 0; i < structures->size(); i++)
+      sortedScenes.append(qobject_cast<Scene*>(structures->at(i)));
+    if (sortedScenes.size() != 0) {
+      sortAndRankByEnergy(&sortedScenes);
+    }
+
+    // Print the data to the file:
+    out << "Rank\tID\tEnergy\tStatus\n";
+    for (int i = 0; i < sortedScenes.size(); i++) {
+      scene = sortedScenes.at(i);
+      if (!scene) continue; // In case there was a problem copying.
+      scene->lock()->lockForRead();
+      out << i << "\t"
+          << scene->getIDNumber() << "\t"
+          << scene->getEnergy() << "\t\t";
+      // Status:
+      switch (scene->getStatus()) {
+      case Scene::Optimized:
+        out << "Optimized";
+        break;
+      case Scene::Killed:
+      case Scene::Removed:
+        out << "Killed";
+        break;
+      case Scene::Duplicate:
+        out << "Duplicate";
+        break;
+      case Scene::Error:
+        out << "Error";
+        break;
+      case Scene::StepOptimized:
+      case Scene::WaitingForOptimization:
+      case Scene::InProcess:
+      case Scene::Empty:
+      case Scene::Updating:
+      case Scene::Submitted:
+      default:
+        out << "In progress";
+        break;
+      }
+      scene->lock()->unlock();
+      out << endl;
+      // if (notify) {
+      //   m_dialog->stopProgressUpdate();
+      // }
+    }
+
+    // Mark operation successful
+    settings->setValue("randomdock/saveSuccessful", true);
 
     savePending = false;
     return true;
@@ -414,7 +492,7 @@ namespace RandomDock {
       error("RandomDock::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid.");
       return false;
     }
-    
+
     // Get path and other info for later:
     QFileInfo stateInfo (file);
     // path to resume file
@@ -456,35 +534,30 @@ namespace RandomDock {
     return true;
   }
 
-  void RandomDock::rankByEnergy(QList<Scene*> *scenes) {
+  void RandomDock::sortAndRankByEnergy(QList<Scene*> *scenes) {
     uint numStructs = scenes->size();
-    QList<Scene*> rscenes;
-
-    // Copy scenes to a temporary list (don't modify input list!)
-    for (uint i = 0; i < numStructs; i++)
-      rscenes.append(scenes->at(i));
 
     // Simple selection sort
     Scene *scene_i, *scene_j, *tmp;
     for (uint i = 0; i < numStructs; i++) {
-      scene_i = rscenes.at(i);
+      scene_i = scenes->at(i);
       scene_i->lock()->lockForRead();
       for (uint j = i + 1; j < numStructs; j++) {
-        scene_j = rscenes.at(j);
+        scene_j = scenes->at(j);
         scene_j->lock()->lockForRead();
         if (scene_j->getEnergy() < scene_i->getEnergy()) {
-          rscenes.swap(i,j);
+          scenes->swap(i,j);
           tmp = scene_i;
           scene_i = scene_j;
           scene_j = tmp;
         }
-        scene_i->lock()->unlock();
+        scene_j->lock()->unlock();
       }
-      scene_j->lock()->unlock();
+      scene_i->lock()->unlock();
     }
 
     for (uint i = 0; i < numStructs; i++) {
-      scene_i = rscenes.at(i);
+      scene_i = scenes->at(i);
       scene_i->lock()->lockForWrite();
       scene_i->setRank(i+1);
       scene_i->lock()->unlock();
@@ -512,7 +585,7 @@ namespace RandomDock {
     center /= static_cast<float>(coords.size());
 
     // Get random angles
-    OpenBabel::OBRandom rand (true); 	// "true" uses system random numbers. OB's version isn't too good...
+    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
     rand.TimeSeed();
     double X = rand.NextFloat() * 2 * 3.14159265;
     double Y = rand.NextFloat() * 2 * 3.14159265;
@@ -521,12 +594,12 @@ namespace RandomDock {
     // Build rotation matrix
     Eigen::Matrix3d rx, ry, rz, rot;
     rx <<
-      1, 	0, 	0,
-      0, 	cos(X),	-sin(X),
-      0, 	sin(X), cos(X);
+      1,        0,      0,
+      0,        cos(X),	-sin(X),
+      0,        sin(X), cos(X);
     ry <<
-      cos(Y),	0, 	sin(Y),
-      0,	1, 	0,
+      cos(Y),	0,      sin(Y),
+      0,	1,      0,
       -sin(Y),	0,	cos(Y);
     rz <<
       cos(Z),	-sin(Z),0,
@@ -544,12 +617,12 @@ namespace RandomDock {
 
   void RandomDock::randomlyDisplaceCoordinates(QList<Eigen::Vector3d> & coords, double radiusMin, double radiusMax) {
     // Get random spherical coordinates
-    OpenBabel::OBRandom rand (true); 	// "true" uses system random numbers. OB's version isn't too good...
+    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
     rand.TimeSeed();
-    double rho 	= rand.NextFloat() * (radiusMax - radiusMin) + radiusMin;
+    double rho  = rand.NextFloat() * (radiusMax - radiusMin) + radiusMin;
     double theta= rand.NextFloat() * 2 * 3.14159265;
     double phi	= rand.NextFloat() * 2 * 3.14159265;
-    
+
     // convert to cartesian coordinates
     double x = rho * sin(phi) * cos(theta);
     double y = rho * sin(phi) * sin(theta);

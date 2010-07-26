@@ -21,6 +21,8 @@
 
 #include "ui_tab_conformers.h"
 
+#include <QMutex>
+
 namespace GlobalSearch {
   class Structure;
 }
@@ -49,14 +51,6 @@ namespace RandomDock {
     explicit TabConformers( RandomDockDialog *dialog, RandomDock *opt);
     virtual ~TabConformers();
 
-    enum OptTypes {
-      O_G03 = 0,
-      O_Ghemical,
-      O_MMFF94,
-      O_MMFF94s,
-      O_UFF
-    };
-
     enum Columns {
       Conformer = 0,
       Energy,
@@ -71,8 +65,10 @@ namespace RandomDock {
     void writeSettings(const QString &filename = "");
     void updateGUI();
     void generateConformers();
+    void fillForceFieldCombo();
     void updateStructureList();
     void updateConformerTable();
+    void updateForceField(const QString & s = "");
     void selectStructure(const QString & text);
     void conformerChanged(int row, int, int oldrow, int);
     void calculateNumberOfConformers(bool isSystematic);
@@ -83,6 +79,8 @@ namespace RandomDock {
   private:
     Ui::Tab_Conformers ui;
     OBForceField *m_ff;
+    std::vector<std::string> m_forceFieldList;
+    QMutex m_ffMutex;
 
     void generateConformers_(Structure *mol);
   };
