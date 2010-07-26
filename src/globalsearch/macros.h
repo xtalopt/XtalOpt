@@ -17,6 +17,7 @@
 #define XTALOPTMACROS_H
 
 #include <QSettings>
+#include <cstdlib>
 
 // Create a pointer of type QSettings *settings that points to either:
 // 1) The default application QSettings object, or
@@ -26,5 +27,7 @@
 // If string f is non-empty, write the file immediately with sync(),
 // otherwise, let the system decide when to write to file
 #define DESTROY_SETTINGS(f) if (!QString(f).isEmpty()) settings->sync();
+
+#define RANDDOUBLE() ( rand() / double(RAND_MAX) )
 
 #endif

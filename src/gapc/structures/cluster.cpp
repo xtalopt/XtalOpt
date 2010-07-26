@@ -15,10 +15,10 @@
 
 #include <gapc/structures/cluster.h>
 
+#include <globalsearch/macros.h>
+
 #include <algorithm>
-#include <cstdlib>
 #include <deque>
-#include <ctime>
 
 using namespace std;
 
@@ -79,11 +79,11 @@ namespace GAPC {
       else {
         do {
           // Randomly generate coordinates
-          x = double(rand()) / double(RAND_MAX) * max;
-          y = double(rand()) / double(RAND_MAX) * max;
-          z = double(rand()) / double(RAND_MAX) * max;
+          x = RANDDOUBLE() * max;
+          y = RANDDOUBLE() * max;
+          z = RANDDOUBLE() * max;
           getNearestNeighborDistance(x, y, z, shortest);
-        } while (shortest >= minIAD && shortest <= maxIAD);
+        } while (shortest >= maxIAD || shortest <= minIAD);
       }
       Atom *atm = addAtom();
       Eigen::Vector3d pos (x, y, z);

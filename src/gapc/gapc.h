@@ -39,6 +39,10 @@ namespace GAPC {
     //QHash <Ligand, unsigned int> ligands;
   };
 
+    enum Operators {
+      OP_Crossover = 0
+    };
+
   class OptGAPC : public GlobalSearch::OptBase
   {
     Q_OBJECT
@@ -122,6 +126,9 @@ namespace GAPC {
     bool load(const QString & filename);
 
     ProtectedCluster* generateRandomPC(unsigned int gen = 1, unsigned int id = 0);
+    static void sortByEnthalpy(QList<ProtectedCluster*> *pcs);
+    static void rankEnthalpies(QList<ProtectedCluster*> *pcs);
+    static QList<double> getProbabilityList(QList<ProtectedCluster*> *xtals);
 
    signals:
     void updateAllInfo();

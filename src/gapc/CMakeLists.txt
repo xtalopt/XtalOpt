@@ -3,6 +3,7 @@ INCLUDE_DIRECTORIES(${XtalOpt_BINARY_DIR}/src/gapc)
 set( gapc_SRCS
      extension.cpp
      gapc.cpp
+     genetic.cpp
      structures/cluster.cpp
      structures/protectedcluster.cpp
      optimizers/openbabel.cpp
