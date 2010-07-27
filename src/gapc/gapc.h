@@ -40,7 +40,8 @@ namespace GAPC {
   };
 
     enum Operators {
-      OP_Crossover = 0
+      OP_Crossover = 0,
+      OP_Twist
     };
 
   class OptGAPC : public GlobalSearch::OptBase

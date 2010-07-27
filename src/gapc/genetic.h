@@ -26,14 +26,14 @@ namespace GAPC {
     static ProtectedCluster* crossover(ProtectedCluster* pc1,
                                        ProtectedCluster* pc2);
     static ProtectedCluster* twist(ProtectedCluster* pc,
-                                   float minimumRotation,
-                                   float &rotationDeg);
+                                   double minimumRotation,
+                                   double &rotationDeg);
     static ProtectedCluster* exchange(ProtectedCluster* pc,
                                       unsigned int exchanges);
     static ProtectedCluster* randomWalk(ProtectedCluster* pc,
                                         unsigned int numberAtoms,
-                                        float minWalk,
-                                        float maxWalk);
+                                        double minWalk,
+                                        double maxWalk);
   };
 
 } // end namespace GAPC

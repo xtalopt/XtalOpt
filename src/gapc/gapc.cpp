@@ -285,8 +285,11 @@ namespace GAPC {
       // Decide operator:
       r = RANDDOUBLE();
       Operators op;
-      // TODO select operator here based on r and p_[opname]
-      op = OP_Crossover;
+      // TODO Don't hardcode probabilities
+      if (r < 0.5)
+        op = OP_Crossover;
+      else
+        op = OP_Twist;
 
       // Try 1000 times to get a good structure from the selected
       // operation. If not possible, send a warning to the log and
@@ -317,7 +320,6 @@ namespace GAPC {
           pc2 = pcs.at(ind2);
 
           // Perform operation
-          double percent1;
           pc = GAPCGenetic::crossover(pc1, pc2);
 
           // Lock parents and get info from them
@@ -341,12 +343,42 @@ namespace GAPC {
             .arg(id2);
           continue;
         }
+
+        case OP_Twist: {
+          int ind=0;
+          ProtectedCluster *pc1=0;
+          // Select structures
+          for (ind = 0; ind < probs.size(); ind++)
+            if (RANDDOUBLE() < probs.at(ind)) break;
+
+          pc1 = pcs.at(ind);
+
+          // Perform operation
+          double rotation;
+          // TODO Don't hardcode the min rotation
+          pc = GAPCGenetic::twist(pc1, 0, rotation);
+
+          // Lock parents and get info from them
+          pc1->lock()->lockForRead();
+          unsigned int gen1 = pc1->getGeneration();
+          unsigned int id1  = pc1->getIDNumber();
+          pc1->lock()->unlock();
+
+          // Determine generation number
+          gen = gen1 + 1;
+          parents = tr("Twist: %1x%2 (%3 deg)")
+            .arg(gen1)
+            .arg(id1)
+            .arg(rotation);
+          continue;
+        }
         }
       }
       if (attemptCount >= 1000) {
         QString opStr;
         switch (op) {
         case OP_Crossover:   opStr = "crossover"; break;
+        case OP_Twist:       opStr = "twist"; break;
         default:             opStr = "(unknown)"; break;
         }
         warning(tr("Unable to perform operation %1 after 1000 tries. Reselecting operator...").arg(opStr));

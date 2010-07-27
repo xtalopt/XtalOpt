@@ -85,6 +85,20 @@ namespace GAPC {
     return m;
   }
 
+  // rotate the vector of coordinates by the rotation matrix rot
+  inline vector<Vector3d> rotateCoordinates(vector<Vector3d> coords, Matrix3d rot)
+  {
+    vector<Vector3d> newCoords;
+    // Eigen::Vector3d is a column vector, so transpose before and
+    // after transforming them.
+    for (int i = 0; i < coords.size(); i++) {
+      newCoords.push_back( ( coords.at(i).transpose()
+                             * rot).transpose() );
+    }
+    return newCoords;
+  }
+
+
 
   ProtectedCluster* GAPCGenetic::crossover(ProtectedCluster* pc1,
                                                   ProtectedCluster* pc2)
@@ -111,9 +125,8 @@ namespace GAPC {
       coordsList2.append(*(atomList2.at(i)->pos()));
     pc2->lock()->unlock();
 
-    // Transform atoms
-    // Eigen::Vector3d is a column vector, so transpose before and
-    // after transforming them.
+    // Transform atoms -- don't use helper function here since it
+    // would need two loops.
     for (int i = 0; i < coordsList1.size(); i++) {
       coordsList1[i] = (coordsList1[i].transpose() *
                         xform1).transpose();
@@ -232,10 +245,64 @@ namespace GAPC {
   }
 
   ProtectedCluster* GAPCGenetic::twist(ProtectedCluster* pc,
-                                       float minimumRotation,
-                                       float &rotationDeg)
+                                       double minimumRotation,
+                                       double &rotationDeg)
   {
+    // Extract data from parent
+    pc->lock()->lockForRead();
+    QList<Atom*> atoms = pc->atoms();
+    vector<Vector3d> coords;
+    for (int i = 0; i < atoms.size(); i++)
+      coords.push_back(*(atoms.at(i)->pos()));
+    pc->lock()->unlock();
 
+    // randomly rotate parent coordinates
+    coords = rotateCoordinates(coords, createRotationMatrix());
+
+    // Create vector of atoms to twist (positive z coordinate)
+    vector<Vector3d> twisters_pos;
+    vector<int> twisters_id;
+    vector<Vector3d> nontwisters_pos;
+    vector<int> nontwisters_id;
+    for (int i = 0; i < coords.size(); i++) {
+      if (coords.at(i).z() >= 0.0) {
+        twisters_pos.push_back(coords.at(i));
+        twisters_id.push_back(atoms.at(i)->atomicNumber());
+      }
+      else {
+        nontwisters_pos.push_back(coords.at(i));
+        nontwisters_id.push_back(atoms.at(i)->atomicNumber());
+      }
+    }
+
+    // Twist the twisters randomly around the z axis
+    rotationDeg = minimumRotation + (RANDDOUBLE() * (360.0 - minimumRotation) );
+
+    rotateCoordinates(twisters_pos,
+                      createRotationMatrix(0,
+                                           0,
+                                           1,
+                                           rotationDeg * DEG_TO_RAD));
+
+    // Build new cluster
+    ProtectedCluster *npc = new ProtectedCluster();
+    QWriteLocker npcLocker (npc->lock());
+
+    for (int i = 0; i < twisters_id.size(); i++) {
+      Atom* newAtom = npc->addAtom();
+      newAtom->setAtomicNumber(twisters_id.at(i));
+      newAtom->setPos(twisters_pos.at(i));
+    }
+    for (int i = 0; i < nontwisters_id.size(); i++) {
+      Atom* newAtom = npc->addAtom();
+      newAtom->setAtomicNumber(nontwisters_id.at(i));
+      newAtom->setPos(nontwisters_pos.at(i));
+    }
+
+    // Done!
+    npc->centerAtoms();
+    npc->setStatus(ProtectedCluster::WaitingForOptimization);
+    return npc;
   }
 
   ProtectedCluster* GAPCGenetic::exchange(ProtectedCluster* pc,
@@ -246,8 +313,8 @@ namespace GAPC {
 
   ProtectedCluster* GAPCGenetic::randomWalk(ProtectedCluster* pc,
                                             unsigned int numberAtoms,
-                                            float minWalk,
-                                            float maxWalk)
+                                            double minWalk,
+                                            double maxWalk)
   {
 
   }
