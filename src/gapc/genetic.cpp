@@ -19,7 +19,6 @@
 
 #include <QDebug>
 
-#include <cstdlib>
 #include <vector>
 
 using namespace std;
@@ -29,7 +28,17 @@ using namespace Eigen;
 namespace GAPC {
 
   // helper functions
-  inline Matrix3d createRandomRotationMatrix()
+  //
+  // Create a rotation matrix. x, y, z are the components of a vector
+  // along the rotation axis, and theta is the angle. Omit theta to
+  // create a random rotation around a specified axis, or omit all for
+  // a fully random rotation matrix.
+  //
+  // theta is in radians.
+  inline Matrix3d createRotationMatrix(double x = 0.0,
+                                       double y = 0.0,
+                                       double z = 0.0,
+                                       double theta = 0.0)
   {
     // This function builds a rotation matrix:
     //
@@ -48,16 +57,21 @@ namespace GAPC {
     //
     // First, generate x,y,z randomly and normalize to get the
     // rotation axis:
-    double x = RANDDOUBLE();
-    double y = RANDDOUBLE();
-    double z = RANDDOUBLE();
+    if (x == 0.0 && y == 0.0 && z == 0.0) {
+      x = RANDDOUBLE();
+      y = RANDDOUBLE();
+      z = RANDDOUBLE();
+    }
+    // Normalize
     double length = sqrt(x*x+y*y+z*z);
     x /= length;
     y /= length;
     z /= length;
 
     // Now randomly generate theta (on [0,2*pi]), c, s, and t
-    double theta = RANDDOUBLE() * 2*M_PI;
+    if (theta == 0.0) {
+      theta = RANDDOUBLE() * 2*M_PI;
+    }
     double c = cos(theta);
     double s = sin(theta);
     double t = 1 - c;
@@ -76,8 +90,8 @@ namespace GAPC {
                                                   ProtectedCluster* pc2)
   {
     // Create rotation matricies to modify the clusters
-    Matrix3d xform1 = createRandomRotationMatrix();
-    Matrix3d xform2 = createRandomRotationMatrix();
+    Matrix3d xform1 = createRotationMatrix();
+    Matrix3d xform2 = createRotationMatrix();
 
     // Get lists of atoms and coordinates
     pc1->lock()->lockForRead();
