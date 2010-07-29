@@ -202,6 +202,7 @@ namespace GAPC {
                  << ui.combo_optType->currentIndex();
       break;
     }
+    ui.edit_edit->setCurrentFont(QFont("Courier"));
   }
 
   void TabEdit::updateTemplates()
