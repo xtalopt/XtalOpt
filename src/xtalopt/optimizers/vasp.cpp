@@ -138,6 +138,8 @@ namespace XtalOpt {
       }
     }
     // Write all explicit templates
+    if (!createRemoteDirectory(structure)) return false;
+    if (!cleanRemoteDirectory(structure)) return false;
     if (!writeTemplates(structure)) return false;
     // POSCAR is slightly different, must be done here.
     QFile pos (structure->fileName() + "/POSCAR");
@@ -152,7 +154,7 @@ namespace XtalOpt {
 
     // Copy to server
     if (!copyLocalTemplateFilesToRemote(structure)) return false;
-    // Again, POS is done separatel
+    // Again, POS is done separately
     QString command = "scp -q " + structure->fileName() + "/POSCAR " + m_opt->username + "@" + m_opt->host + ":" + structure->getRempath() + "/POSCAR";
     qDebug() << command;
     if (QProcess::execute(command) != 0) {

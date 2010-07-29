@@ -447,6 +447,20 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
 
   protected:
     /**
+     * Create the structure's remote working directory.
+     *
+     * @return True if successful, false otherwise.
+     */
+    virtual bool createRemoteDirectory(Structure *structure);
+
+    /**
+     * Clean all files from the structure's remote working directory.
+     *
+     * @return True if successful, false otherwise.
+     */
+    virtual bool cleanRemoteDirectory(Structure *structure);
+
+    /**
      * Interpret and write all templates in m_templates at the
      * Structure's current optimization step.
      *

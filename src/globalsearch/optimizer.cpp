@@ -212,6 +212,8 @@ namespace GlobalSearch {
         return false;
       }
     }
+    if (!createRemoteDirectory(structure)) return false;
+    if (!cleanRemoteDirectory(structure)) return false;
     if (!writeTemplates(structure)) return false;
     if (!copyLocalTemplateFilesToRemote(structure)) return false;
 
@@ -219,6 +221,33 @@ namespace GlobalSearch {
     structure->lock()->lockForWrite();
     structure->setStatus(Structure::WaitingForOptimization);
     structure->lock()->unlock();
+    return true;
+  }
+
+  bool Optimizer::createRemoteDirectory(Structure *structure)
+  {
+    QString command = "ssh -q " + m_opt->username + "@" + m_opt->host +
+      " sh -c \'mkdir -p " + structure->getRempath() + "|cat\'";
+    qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
+    if (QProcess::execute(command) != 0) {
+      m_opt->warning(tr("Error executing %1").arg(command));
+      return false;
+    }
+    return true;
+  }
+
+  bool Optimizer::cleanRemoteDirectory(Structure *structure)
+  {
+    // rm -rf
+    // the cat is neccessary on teragrid to get around the 'rm: No match' error when calling
+    // * on an empty directory. Even though -f is supposed to ignore non-existant files...
+    QString command = "ssh -q " + m_opt->username + "@" + m_opt->host +
+      " sh -c \'rm -rf " + structure->getRempath() + "/*|cat\'";
+    qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
+    if (QProcess::execute(command) != 0) {
+      m_opt->warning(tr("Error executing %1").arg(command));
+      return false;
+    }
     return true;
   }
 
@@ -263,46 +292,22 @@ namespace GlobalSearch {
     return true;
   }
 
-  bool Optimizer::copyLocalTemplateFilesToRemote(Structure *structure) {
-    // Remote writing
-    // Use a QProcess to scp the directory over, but first delete existing rempath
-    // e.g.,
-    // ssh -q <user>@<host> sh -c 'mkdir -p <rempath>|cat'
-    // ssh -q <user>@<host> sh -c 'rm -rf <rempath>/*|cat'
-    // scp -q <structure->fileName()>/<FILE> <user>@<host>:<rempath>/..
-    // ssh -q <user>@<host> <queueInsertProgram> <scriptname>
+  bool Optimizer::copyLocalTemplateFilesToRemote(Structure *structure)
+  {
     QString command;
+    QStringList templates = getTemplateNames();
 
-    // mkdir
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host +
-      " sh -c \'mkdir -p " + structure->getRempath() + "|cat\'";
-    qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
-    if (QProcess::execute(command) != 0) {
-      m_opt->warning(tr("Error executing %1").arg(command));
-      return false;
+    for (int i = 0; i < templates.size(); i++) {
+      // scp -q <structure->fileName()>/<FILE> <user>@<host>:<rempath>/
+      command = "scp -qr " +
+        structure->fileName() + "/" + templates.at(i) + " " +
+        m_opt->username + "@" + m_opt->host + ":" + structure->getRempath() + "/";
+      qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
+      if (QProcess::execute(command) != 0) {
+        m_opt->warning(tr("Optimizer::copyLocalTemplateFilesToRemote: Error executing %1").arg(command));
+        return false;
+      }
     }
-
-    // rm -rf
-    // the cat is neccessary on teragrid to get around the 'rm: No match' error when calling
-    // * on an empty directory. Even though -f is supposed to ignore non-existant files...
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host +
-      " sh -c \'rm -rf " + structure->getRempath() + "/*|cat\'";
-    qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
-    if (QProcess::execute(command) != 0) {
-      m_opt->warning(tr("Error executing %1").arg(command));
-      return false;
-    }
-
-    // scp
-    command = "scp -qr " +
-      structure->fileName() + " " +
-      m_opt->username + "@" + m_opt->host + ":" + structure->getRempath() + "/..";
-    qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
-    if (QProcess::execute(command) != 0) {
-      m_opt->warning(tr("Optimizer::copyLocalTemplateFilesToRemote: Error executing %1").arg(command));
-      return false;
-    }
-
     return true;
   }
 
