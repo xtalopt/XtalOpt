@@ -286,12 +286,14 @@ namespace GAPC {
       r = RANDDOUBLE();
       Operators op;
       // TODO Don't hardcode probabilities
-      if (r < 0.33)
+      if (r < 0.25)
         op = OP_Crossover;
-      else if (r < 0.66)
+      else if (r < 0.50)
         op = OP_Twist;
-      else
+      else if (r < 0.75)
         op = OP_Exchange;
+      else
+        op = OP_RandomWalk;
 
       // Try 1000 times to get a good structure from the selected
       // operation. If not possible, send a warning to the log and
@@ -401,6 +403,39 @@ namespace GAPC {
             .arg(gen1)
             .arg(id1)
             .arg(exch);
+          continue;
+        }
+
+        case OP_RandomWalk: {
+          int ind=0;
+          ProtectedCluster *pc1=0;
+          // Select structures
+          for (ind = 0; ind < probs.size(); ind++)
+            if (RANDDOUBLE() < probs.at(ind)) break;
+
+          pc1 = pcs.at(ind);
+
+          // Perform operation
+          // TODO Don't hardcode the num walkers or min/maxWalk
+          int walkers = ceil(pc1->numAtoms() / 2);
+          double minWalk = 0.2;
+          double maxWalk = 1.5;
+          pc = GAPCGenetic::randomWalk(pc1, walkers, minWalk, maxWalk);
+
+          // Lock parents and get info from them
+          pc1->lock()->lockForRead();
+          unsigned int gen1 = pc1->getGeneration();
+          unsigned int id1  = pc1->getIDNumber();
+          pc1->lock()->unlock();
+
+          // Determine generation number
+          gen = gen1 + 1;
+          parents = tr("RandomWalk: %1x%2 (%3 walkers, %4-%5)")
+            .arg(gen1)
+            .arg(id1)
+            .arg(walkers)
+            .arg(minWalk)
+            .arg(maxWalk);
           continue;
         }
 

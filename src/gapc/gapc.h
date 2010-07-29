@@ -42,7 +42,8 @@ namespace GAPC {
     enum Operators {
       OP_Crossover = 0,
       OP_Twist,
-      OP_Exchange
+      OP_Exchange,
+      OP_RandomWalk
     };
 
   class OptGAPC : public GlobalSearch::OptBase

@@ -357,7 +357,81 @@ namespace GAPC {
                                             double minWalk,
                                             double maxWalk)
   {
+    // lock parent pc for reading
+    QReadLocker locker (pc->lock());
 
+    // Copy info over from parent to new pc
+    ProtectedCluster *npc = new ProtectedCluster;
+    QWriteLocker npcLocker (npc->lock());
+    QList<Atom*> atoms = pc->atoms();
+    for (int i = 0; i < atoms.size(); i++) {
+      Atom* atom = npc->addAtom();
+      atom->setAtomicNumber(atoms.at(i)->atomicNumber());
+      atom->setPos(atoms.at(i)->pos());
+    }
+
+    // Check that the number of requested walkers does not exceed the
+    // number of available atoms
+    if (numberAtoms > npc->numAtoms()) {
+      numberAtoms = npc->numAtoms();
+      qWarning() << "GAPCGenetic::randomWalk: "
+                 << "number of requested walkers exceeds number of "
+                 << "available atoms. Limiting to " << numberAtoms;
+    }
+
+    // Pick walkers
+    vector<int> walkers;
+    // Select all if all atoms move:
+    if (numberAtoms == npc->numAtoms()) {
+      for (int i = 0; i < atoms.size(); i++) {
+        walkers.push_back(i);
+      }
+    }
+    // otherwise, select randomly
+    else {
+      for (int i = 0; i < numberAtoms; i++) {
+        int index = floor(RANDDOUBLE() * atoms.size());
+        // Have we already selected this atom?
+        if (find(walkers.begin(), walkers.end(), index) == walkers.end())
+          walkers.push_back(index);
+        else {
+          i--;
+          continue;
+        }
+      }
+    }
+
+    // Generate translation vectors
+    vector<Vector3d> trans;
+    double minWalkSquared = minWalk*minWalk;
+    double maxWalkSquared = maxWalk*maxWalk;
+    for (int i = 0; i < walkers.size(); i++) {
+      double dx = RANDDOUBLE() * maxWalk;
+      double dy = RANDDOUBLE() * maxWalk;
+      double dz = RANDDOUBLE() * maxWalk;
+      double lengthSquared = dx*dx + dy*dy + dz*dz;
+      // check length
+      if ( lengthSquared < minWalkSquared ||
+           lengthSquared > maxWalkSquared ) {
+        i--;
+        continue;
+      }
+      Vector3d t;
+      t << dx, dy, dz;
+      trans.push_back(t);
+    }
+
+    // Walk 'em
+    for (int i = 0; i < walkers.size(); i++) {
+      int ind = walkers.at(i);
+      Atom *atm = atoms.at(i);
+      atm->setPos( *(atm->pos()) + trans.at(i) );
+    }
+
+    // Done!
+    npc->centerAtoms();
+    npc->setStatus(ProtectedCluster::WaitingForOptimization);
+    return npc;
   }
 
 }
