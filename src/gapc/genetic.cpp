@@ -308,7 +308,48 @@ namespace GAPC {
   ProtectedCluster* GAPCGenetic::exchange(ProtectedCluster* pc,
                                           unsigned int exchanges)
   {
+    // lock parent pc for reading
+    QReadLocker locker (pc->lock());
 
+    // Copy info over from parent to new pc
+    ProtectedCluster *npc = new ProtectedCluster;
+    QWriteLocker npcLocker (npc->lock());
+    QList<Atom*> atoms = pc->atoms();
+    for (int i = 0; i < atoms.size(); i++) {
+      Atom* atom = npc->addAtom();
+      atom->setAtomicNumber(atoms.at(i)->atomicNumber());
+      atom->setPos(atoms.at(i)->pos());
+    }
+
+    // Check that there is more than 1 atom type present.
+    // If not, print a warning and return input pc:
+    if (pc->getSymbols().size() <= 1) {
+      qWarning()
+        << "WARNING: *********************************************************************" << endl
+        << "WARNING: * Cannot perform exchange with fewer than 2 atomic species present. *" << endl
+        << "WARNING: *********************************************************************";
+      return npc;
+    }
+
+    QList<Atom*> natoms = npc->atoms();
+    // Swap <exchanges> number of atoms
+    for (uint ex = 0; ex < exchanges; ex++) {
+      // Generate some indicies
+      uint index1 = 0, index2 = 0;
+      // Make sure we're swapping different atom types
+      while (natoms.at(index1)->atomicNumber() == natoms.at(index2)->atomicNumber()) {
+        index1 = index2 = 0;
+        while (index1 == index2) {
+          index1 = static_cast<uint>(RANDDOUBLE() * natoms.size());
+          index2 = static_cast<uint>(RANDDOUBLE() * natoms.size());
+        }
+      }
+      // Swap the atoms
+      const Vector3d tmp = *(natoms.at(index1)->pos());
+      natoms.at(index1)->setPos(*(natoms.at(index2)->pos()));
+      natoms.at(index2)->setPos(tmp);
+    }
+    return npc;
   }
 
   ProtectedCluster* GAPCGenetic::randomWalk(ProtectedCluster* pc,

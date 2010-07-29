@@ -286,10 +286,12 @@ namespace GAPC {
       r = RANDDOUBLE();
       Operators op;
       // TODO Don't hardcode probabilities
-      if (r < 0.5)
+      if (r < 0.33)
         op = OP_Crossover;
-      else
+      else if (r < 0.66)
         op = OP_Twist;
+      else
+        op = OP_Exchange;
 
       // Try 1000 times to get a good structure from the selected
       // operation. If not possible, send a warning to the log and
@@ -372,13 +374,44 @@ namespace GAPC {
             .arg(rotation);
           continue;
         }
+
+        case OP_Exchange: {
+          int ind=0;
+          ProtectedCluster *pc1=0;
+          // Select structures
+          for (ind = 0; ind < probs.size(); ind++)
+            if (RANDDOUBLE() < probs.at(ind)) break;
+
+          pc1 = pcs.at(ind);
+
+          // Perform operation
+          // TODO Don't hardcode the num exchanges
+          int exch = 4;
+          pc = GAPCGenetic::exchange(pc1, exch);
+
+          // Lock parents and get info from them
+          pc1->lock()->lockForRead();
+          unsigned int gen1 = pc1->getGeneration();
+          unsigned int id1  = pc1->getIDNumber();
+          pc1->lock()->unlock();
+
+          // Determine generation number
+          gen = gen1 + 1;
+          parents = tr("Exchange: %1x%2 (%3 swaps)")
+            .arg(gen1)
+            .arg(id1)
+            .arg(exch);
+          continue;
         }
+
+        } // end switch
       }
       if (attemptCount >= 1000) {
         QString opStr;
         switch (op) {
         case OP_Crossover:   opStr = "crossover"; break;
         case OP_Twist:       opStr = "twist"; break;
+        case OP_Exchange:       opStr = "exchange"; break;
         default:             opStr = "(unknown)"; break;
         }
         warning(tr("Unable to perform operation %1 after 1000 tries. Reselecting operator...").arg(opStr));
