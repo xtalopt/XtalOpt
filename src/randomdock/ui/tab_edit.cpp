@@ -217,7 +217,6 @@ namespace RandomDock {
 
   void TabEdit::templateChanged(int ind)
   {
-    ui.edit_edit->setCurrentFont(QFont("Courier"));
     if (ind < 0) {
       return;
     }
@@ -266,6 +265,7 @@ namespace RandomDock {
                  << ui.combo_optType->currentIndex();
       break;
     }
+    ui.edit_edit->setCurrentFont(QFont("Courier"));
   }
 
   void TabEdit::updateTemplates()
