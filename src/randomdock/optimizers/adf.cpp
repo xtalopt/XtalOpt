@@ -38,7 +38,7 @@ namespace RandomDock {
 
     // Setup for completion values
     m_completionFilename = "job.adfout";
-    m_completionString   = "Geometry Convergence after Step";
+    m_completionString   = "GEOMETRY CONVERGED";
 
     // Set output filenames to try to read data from
     m_outputFilenames.append(m_completionFilename);
