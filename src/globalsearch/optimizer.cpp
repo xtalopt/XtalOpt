@@ -227,7 +227,7 @@ namespace GlobalSearch {
   bool Optimizer::createRemoteDirectory(Structure *structure)
   {
     QString command = "ssh -q " + m_opt->username + "@" + m_opt->host +
-      " sh -c \'mkdir -p " + structure->getRempath() + "|cat\'";
+      " \"sh -c \'mkdir -p " + structure->getRempath() + "|cat\'\"";
     qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
     if (QProcess::execute(command) != 0) {
       m_opt->warning(tr("Error executing %1").arg(command));
@@ -242,7 +242,7 @@ namespace GlobalSearch {
     // the cat is neccessary on teragrid to get around the 'rm: No match' error when calling
     // * on an empty directory. Even though -f is supposed to ignore non-existant files...
     QString command = "ssh -q " + m_opt->username + "@" + m_opt->host +
-      " sh -c \'rm -rf " + structure->getRempath() + "/*|cat\'";
+      " \"sh -c \'rm -rf " + structure->getRempath() + "/*|cat\'\"";
     qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
     if (QProcess::execute(command) != 0) {
       m_opt->warning(tr("Error executing %1").arg(command));
@@ -541,8 +541,8 @@ namespace GlobalSearch {
 
     // ssh -q <user>@<host> sh -c '<qstat>|grep <username>|cat'
     // Somewhat ridiculous construct ensures that a non-zero status indicates a problem with ssh, i.e. communication error.
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host + " sh -c \'"
-      + m_opt->qstat + "|grep " + m_opt->username + "|cat\'";
+    command = "ssh -q " + m_opt->username + "@" + m_opt->host + " \"sh -c \'"
+      + m_opt->qstat + "|grep " + m_opt->username + "|cat\'\"";
 
     // Execute
     qDebug() << "Optimizer::getQueueList: Calling " << command;
