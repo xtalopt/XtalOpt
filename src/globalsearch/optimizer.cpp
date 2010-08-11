@@ -17,11 +17,11 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/sshconnection.h>
 
 #include <QDir>
 #include <QDebug>
 #include <QString>
-#include <QProcess>
 #include <QSettings>
 
 #include <openbabel/obconversion.h>
@@ -226,11 +226,11 @@ namespace GlobalSearch {
 
   bool Optimizer::createRemoteDirectory(Structure *structure)
   {
-    QString command = "ssh -q " + m_opt->username + "@" + m_opt->host +
-      " \"sh -c \'mkdir -p " + structure->getRempath() + "|cat\'\"";
-    qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
-    if (QProcess::execute(command) != 0) {
-      m_opt->warning(tr("Error executing %1").arg(command));
+    QString command = "mkdir -p " + structure->getRempath();
+    qDebug() << "Optimizer::createRemoteDirectory: Calling " << command;
+    QString stdout, stderr; int ec;
+    if (!m_opt->ssh()->execute(command, stdout, stderr, ec) || ec != 0) {
+      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
       return false;
     }
     return true;
@@ -238,14 +238,10 @@ namespace GlobalSearch {
 
   bool Optimizer::cleanRemoteDirectory(Structure *structure)
   {
-    // rm -rf
-    // the cat is neccessary on teragrid to get around the 'rm: No match' error when calling
-    // * on an empty directory. Even though -f is supposed to ignore non-existant files...
-    QString command = "ssh -q " + m_opt->username + "@" + m_opt->host +
-      " \"sh -c \'rm -rf " + structure->getRempath() + "/*|cat\'\"";
-    qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
-    if (QProcess::execute(command) != 0) {
-      m_opt->warning(tr("Error executing %1").arg(command));
+    // 2nd arg keeps the directory, only removes directory contents.
+    if (!m_opt->ssh()->removeRemoteDirectory(structure->getRempath(), true)) {
+      m_opt->warning(tr("Error clearing remote directory %1")
+                     .arg(structure->getRempath()));
       return false;
     }
     return true;
@@ -294,17 +290,14 @@ namespace GlobalSearch {
 
   bool Optimizer::copyLocalTemplateFilesToRemote(Structure *structure)
   {
-    QString command;
     QStringList templates = getTemplateNames();
-
-    for (int i = 0; i < templates.size(); i++) {
-      // scp -q <structure->fileName()>/<FILE> <user>@<host>:<rempath>/
-      command = "scp -qr " +
-        structure->fileName() + "/" + templates.at(i) + " " +
-        m_opt->username + "@" + m_opt->host + ":" + structure->getRempath() + "/";
-      qDebug() << "Optimizer::copyLocalTemplateFilesToRemote: Calling " << command;
-      if (QProcess::execute(command) != 0) {
-        m_opt->warning(tr("Optimizer::copyLocalTemplateFilesToRemote: Error executing %1").arg(command));
+    QStringList::const_iterator it;
+    for (it = templates.begin(); it != templates.end(); it++) {
+      if (!m_opt->ssh()->copyFileToServer(structure->fileName() + "/" + (*it),
+                                          structure->getRempath() + "/" + (*it))) {
+        m_opt->warning(tr("Error copying \"%1\" to remote server (structure %2)")
+                       .arg(*it)
+                       .arg(structure->getIDString()));
         return false;
       }
     }
@@ -312,25 +305,17 @@ namespace GlobalSearch {
   }
 
   bool Optimizer::startOptimization(Structure *structure) {
-    QProcess proc;
-    QString command = "ssh -q " + m_opt->username + "@" + m_opt->host +
-      " \"cd " + structure->getRempath() + " && " +
-      m_opt->qsub + " job.pbs\"";
+    QString command = "cd " + structure->getRempath() + " && " +
+      m_opt->qsub + " job.pbs";
     qDebug() << "Optimizer::startOptimization: Calling " << command;
-    proc.start(command);
-    proc.waitForFinished(-1);
-    if (proc.exitCode() != 0) {
-      m_opt->warning(tr("Optimizer::startOptimization: Error executing %1:\n\t%2")
-                     .arg(command)
-                     .arg(QString(proc.readAllStandardError())));
+    QString stdout, stderr; int ec;
+    if (!m_opt->ssh()->execute(command, stdout, stderr, ec) || ec != 0) {
+      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
       return false;
     }
 
-    // read data in
-    proc.setReadChannel(QProcess::StandardOutput);
-
-    // Assuming the return value is <jobID>.trailing.garbage.hostname.edu or similar
-    uint jobID = (QString(proc.readLine()).split(".")[0]).toUInt();
+    // Assuming stdout value is <jobID>.trailing.garbage.hostname.edu or similar
+    uint jobID = stdout.split(".")[0].toUInt();
 
     // lock for writing and update structure
     QWriteLocker wlocker (structure->lock());
@@ -342,45 +327,33 @@ namespace GlobalSearch {
 
   bool Optimizer::checkIfOutputFileExists(const QString & filename)
   {
-    QProcess proc;
     QString command;
 
-    // ssh -q <user>@<host> "[ -e <filename> ]"
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host +
-      " \"[ -e " + filename + " ]\"";
-    qDebug() << "Optimizer::getOutputFile: Calling " << command;
-    proc.start(command);
-    proc.waitForFinished(-1);
+    command = "[ -e " + filename + " ]  && echo true || echo false";
+    qDebug() << "Optimizer::checkIfOutputFileExists: Calling " << command;
+    QString stdout, stderr; int ec;
+    if (!m_opt->ssh()->execute(command, stdout, stderr, ec) || ec != 0) {
+      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
+      return false;
+    }
     qDebug() << "Optimizer::getOutputFile: " << command
-             << " = " << proc.exitCode();;
-    // Bang this, since a exit code of zero is success, but will be
-    // converted to false.
-    return (!static_cast<bool>(proc.exitCode()));
+             << " = " << stdout;
+    if (stdout.contains("true")) return true;
+    else return false;
   }
 
   bool Optimizer::getOutputFile(const QString & filename,
                                 QStringList & data)
   {
-    QProcess proc;
-    QString command;
-
-    // ssh -q <user>@<host> cat <filename>
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host + " \"" +
-      "cat " + filename + "\"";
-    qDebug() << "Optimizer::getOutputFile: Calling " << command;
-    proc.start(command);
-    proc.waitForFinished(-1);
-    if (proc.exitCode() != 0) {
-      m_opt->warning(tr("Optimizer::getOutputFile: Error executing %1:\n\t%2")
-                     .arg(command)
-                     .arg(QString(proc.readAllStandardError())));
+    QString tmp;
+    if (!m_opt->ssh()->readRemoteFile(filename, tmp)) {
+      m_opt->warning(tr("Error retrieving remote file %1.")
+                     .arg(filename));
       return false;
     }
 
     // Fill data list
-    proc.setReadChannel(QProcess::StandardOutput);
-    while (!proc.atEnd())
-      data << proc.readLine();
+    data = tmp.split("\n", QString::KeepEmptyParts);
     return true;
   }
 
@@ -388,15 +361,11 @@ namespace GlobalSearch {
   {
     // lock structure
     QReadLocker locker (structure->lock());
-    QString command;
-
-    command = "scp -r " +
-      m_opt->username + "@" + m_opt->host + ":" + structure->getRempath() + " " +
-      structure->fileName() + "/..";
-    qDebug() << "Optimizer::copyRemoteToLocalCache: Calling " << command;
-    if (QProcess::execute(command) != 0) {
-      m_opt->warning(tr("Optimizer::copyRemoteToLocalCache: Error executing %1")
-                     .arg(command));
+    QString stdout, stderr; int ec;
+    if (!m_opt->ssh()->copyDirectoryFromServer(structure->getRempath(),
+                                               structure->fileName())) {
+      m_opt->error("Cannot copy from remote directory for Structure "
+                   + structure->getIDString());
       return false;
     }
     return true;
@@ -407,8 +376,6 @@ namespace GlobalSearch {
     // lock structure
     QWriteLocker locker (structure->lock());
     QStringList queueData (m_opt->queue()->getRemoteQueueData());
-    QProcess proc;
-    QString command;
     uint jobID = structure->getJobID();
 
     // If jobID = 0, return an error.
@@ -480,8 +447,7 @@ namespace GlobalSearch {
 
       // Check for m_completionString in m_completionFilename
       locker.unlock();
-      outputFileExists = getOutputFile(rempath + "/" + m_completionFilename +
-                                       "|grep \'" + m_completionString + "\'",
+      outputFileExists = getOutputFile(rempath + "/" + m_completionFilename,
                                        outputFileData);
       locker.relock();
 
@@ -507,24 +473,18 @@ namespace GlobalSearch {
   bool Optimizer::deleteJob(Structure *structure) {
     // lock structure
     QWriteLocker locker (structure->lock());
-    QProcess proc;
     QString command;
 
     if (structure->getJobID() == 0) // jobid has not been set, cannot delete!
       return true;
 
-    // ssh -q <user>@<host> <qdel> <jobID>
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host + " " +
-      m_opt->qdel + " " + QString::number(structure->getJobID());
+    command = m_opt->qdel + " " + QString::number(structure->getJobID());
 
     // Execute
     qDebug() << "Optimizer::deleteJob: Calling " << command;
-    proc.start(command);
-    proc.waitForFinished(); // times out in 30 seconds
-    if (proc.exitCode() != 0) {
-      m_opt->warning(tr("Optimizer::deleteJob: Error executing %1:\n\t%2")
-                     .arg(command)
-                     .arg(QString(proc.readAllStandardError())));
+    QString stdout, stderr; int ec;
+    if (!m_opt->ssh()->execute(command, stdout, stderr, ec) || ec != 0) {
+      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
       // Most likely job is already gone from queue. Set jobID to 0.
       structure->setJobID(0);
       return false;
@@ -536,32 +496,26 @@ namespace GlobalSearch {
   }
 
   bool Optimizer::getQueueList(QStringList & queueData) {
-    QProcess proc;
     QString command;
-
-    // ssh -q <user>@<host> sh -c '<qstat>|grep <username>|cat'
-    // Somewhat ridiculous construct ensures that a non-zero status indicates a problem with ssh, i.e. communication error.
-    command = "ssh -q " + m_opt->username + "@" + m_opt->host + " \"sh -c \'"
-      + m_opt->qstat + "|grep " + m_opt->username + "|cat\'\"";
+    command = m_opt->qstat + " | grep " + m_opt->username;
 
     // Execute
     qDebug() << "Optimizer::getQueueList: Calling " << command;
-    proc.start(command);
-    proc.waitForFinished(-1);
-    if (proc.exitCode() != 0) {
-      m_opt->warning(tr("Optimizer::getQueueList: Error executing %1:\n\t%2")
+    QString stdout, stderr; int ec;
+    // Valid exit codes for grep: (0) matches found, execution successful
+    //                            (1) no matches found, execution successful
+    //                            (2) execution unsuccessful
+    if (!m_opt->ssh()->execute(command, stdout, stderr, ec)
+        || (ec != 0 && ec != 1 )
+        ) {
+      m_opt->warning(tr("Error executing %1: (%2) %3")
                      .arg(command)
-                     .arg(QString(proc.readAllStandardError())));
+                     .arg(QString::number(ec))
+                     .arg(stderr));
       return false;
     }
 
-    // read data in
-    proc.setReadChannel(QProcess::StandardOutput);
-
-    queueData.clear();
-    while (proc.canReadLine())
-      queueData << proc.readLine();
-
+    queueData = stdout.split("\n", QString::SkipEmptyParts);
     return true;
   }
 
