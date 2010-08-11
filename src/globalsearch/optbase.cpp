@@ -18,8 +18,11 @@
 #include <globalsearch/structure.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/sshconnection.h>
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/bt.h>
+
+#include <QInputDialog>
 
 using namespace OpenBabel;
 
@@ -31,6 +34,7 @@ namespace GlobalSearch {
     m_tracker(new Tracker (this)),
     m_queue(new QueueManager(this, m_tracker)),
     m_optimizer(0), // This will be set when the GUI is initialized
+    m_ssh(0), // Initialize this on resume/startSearch
     m_idString("Generic"),
     sOBMutex(new QMutex),
     stateFileMutex(new QMutex),
@@ -170,6 +174,58 @@ namespace GlobalSearch {
     }
     m_optimizer = o;
     emit optimizerChanged(o);
+  }
+
+  bool OptBase::openSSHConnection(const QString &host,
+                                  const QString &user,
+                                  const QString &pass,
+                                  int port)
+  {
+    if (m_ssh) {
+      delete m_ssh;
+      m_ssh = 0;
+    }
+    try {
+    m_ssh = new SSHConnection(host, user, pass, port);
+    }
+    catch (SSHConnection::SSHConnectionException e) {
+      delete m_ssh;
+      m_ssh = 0;
+      QString err;
+      switch (e) {
+      case SSHConnection::SSH_CONNECTION_ERROR:
+      case SSHConnection::SSH_UNKNOWN_HOST_ERROR:
+      case SSHConnection::SSH_UNKNOWN_ERROR:
+      default:
+        err = "There was a problem connection to the ssh server at "
+          + user + "@" + host + ":" + QString::number(port) + ". "
+          + "Please check that all provided information is correct, "
+          + "and attempt to log in outside of Avogadro before trying again.";
+        error(err);
+        return false;
+      case SSHConnection::SSH_BAD_PASSWORD_ERROR:
+        // Chances are that the pubkey auth was attempted but failed,
+        // so just prompt user for password.
+        err = "Please enter a password for "
+          + user + "@" + host + ":" + QString::number(port)
+          + ":";
+        bool ok;
+        QString newPassword = QInputDialog::getText(dialog(),
+                                                    "Need password:",
+                                                    err,
+                                                    QLineEdit::Password,
+                                                    QString(),
+                                                    &ok);
+        if (!ok) { // user cancels
+          return false;
+        }
+        return openSSHConnection(host,
+                                 user,
+                                 newPassword,
+                                 port);
+      }
+    }
+    return true;
   }
 
   void OptBase::warning(const QString & s) {
