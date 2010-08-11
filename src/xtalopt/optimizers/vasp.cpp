@@ -15,12 +15,13 @@
 
 #include <xtalopt/optimizers/vasp.h>
 #include <xtalopt/structures/xtal.h>
+
 #include <globalsearch/macros.h>
+#include <globalsearch/sshconnection.h>
 
 #include <QDir>
 #include <QDebug>
 #include <QString>
-#include <QProcess>
 #include <QSettings>
 
 #include <avogadro/molecule.h>
@@ -154,11 +155,12 @@ namespace XtalOpt {
 
     // Copy to server
     if (!copyLocalTemplateFilesToRemote(structure)) return false;
-    // Again, POS is done separately
-    QString command = "scp -q " + structure->fileName() + "/POSCAR " + m_opt->username + "@" + m_opt->host + ":" + structure->getRempath() + "/POSCAR";
-    qDebug() << command;
-    if (QProcess::execute(command) != 0) {
-      qWarning() << tr("Error executing %1").arg(command);
+    // Again, POSCAR is done separately
+    if (!m_opt->ssh()->copyFileToServer(structure->fileName() + "/POSCAR",
+                                        structure->getRempath() + "/POSCAR")) {
+      m_opt->warning(tr("Error copying \"%1\" to remote server (structure %2)")
+                     .arg("POSCAR")
+                     .arg(structure->getIDString()));
       return false;
     }
 

@@ -20,7 +20,6 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
-#include <QProcess>
 #include <QDir>
 #include <QString>
 #include <QDebug>
