@@ -101,6 +101,14 @@ namespace XtalOpt {
       qobject_cast<VASPOptimizer*>(m_optimizer)->buildPOTCARs();
     }
 
+    // Create the SSHConnection to the server
+    if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
+      if (!openSSHConnection(host, username)) {
+        error("Cannot connect to server. Check settings and try again.");
+        return;
+      }
+    }
+
     // prepare pointers
     m_tracker->deleteAllStructures();
 
@@ -1122,6 +1130,17 @@ namespace XtalOpt {
     // Set optimizer
     setOptimizer(OptTypes(settings->value("xtalopt/edit/optType").toInt()),
                  filename);
+
+    // Create SSHConnection
+    if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
+      if (!openSSHConnection(host, username)) {
+        // TODO implement a read-only mode for reviewing when the
+        // server isn't available
+        error("Cannot connect to server. Check settings and try again.");
+        return false;
+      }
+    }
+
     debug(tr("Resuming XtalOpt session in '%1' (%2)")
           .arg(filename)
           .arg(m_optimizer->getIDString()));
