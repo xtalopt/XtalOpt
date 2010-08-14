@@ -1,20 +1,6 @@
 /* spglib.c */
 /* Copyright (C) 2008 Atsushi Togo */
 
-/* This program is free software; you can redistribute it and/or */
-/* modify it under the terms of the GNU General Public License */
-/* as published by the Free Software Foundation; either version 2 */
-/* of the License, or (at your option) any later version. */
-
-/* This program is distributed in the hope that it will be useful, */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-/* GNU General Public License for more details. */
-
-/* You should have received a copy of the GNU General Public License */
-/* along with this program; if not, write to the Free Software */
-/* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA. */
-
 #ifdef DEBUG
 #include "debug.h"
 #endif
@@ -24,9 +10,10 @@
 #include <string.h>
 #include "spglib.h"
 #include "bravais.h"
+#include "bravais_art.h"
+#include "cell.h"
 #include "mathfunc.h"
 #include "primitive.h"
-#include "cell.h"
 #include "symmetry.h"
 #include "symmetry_kpoint.h"
 #include "pointgroup.h"
@@ -83,13 +70,12 @@
  */
 
 
-
-
-/* Find symmetry operations. The operations are stored in ``rotatiion`` */
-/* and ``translation``. The number of operations is return as the return */
-/* value. Rotations and translations are given in fractional coordinates, */
-/* and ``rotation[i]`` and ``translation[i]`` with same index give a */
-/* symmetry oprations, i.e., these have to be used togather. */
+/* Find symmetry operations. The operations are stored in */
+/* ``rotatiion`` and ``translation``. The number of operations is */
+/* return as the return value. Rotations and translations are */
+/* given in fractional coordinates, and ``rotation[i]`` and */
+/* ``translation[i]`` with same index give a symmetry oprations, */
+/* i.e., these have to be used togather. */
 int spg_get_symmetry(int rotation[][3][3], double translation[][3],
 		     const int max_size, const double lattice[3][3],
 		     const double position[][3], const int types[],
@@ -128,22 +114,74 @@ int spg_get_symmetry(int rotation[][3][3], double translation[][3],
   return size;
 }
 
-/* Bravais lattice is estimated from lattice vectors. Internal */
-/* coordinates of atoms are not considered. Therefore it is not correctly */
-/* handled in the case of virtual structure. */
-void spg_get_bravais_lattice(double bravais_lattice[3][3],
-			     const double lattice[3][3],
-                             const double symprec)
+int spg_get_conventional_symmetry( double bravais_lattice[3][3], 
+				   int rotation[][3][3], double translation[][3],
+				   const int max_size, const double lattice[3][3],
+				   const double position[][3], const int types[],
+				   const int num_atom, const double symprec )
 {
-  Bravais bravais;
+  /* max_size is used for allocating memory space for returning */
+  /* symmetry operations. */
 
-  bravais = brv_get_brv_lattice(lattice, symprec);
-  mat_copy_matrix_d3(bravais_lattice, bravais.lattice);
+  int i, j, size;
+  Symmetry symmetry, conv_sym;
+  Bravais bravais;
+  Holohedry holohedry;
+  Cell primitive, cell;
+
+  cell = cel_new_cell(num_atom);
+  cel_set_cell(&cell, lattice, position, types);
+
+  if ( sym_get_multiplicity(&cell, symprec) > 1) {
+    primitive = prm_get_primitive(&cell, symprec);
+    if ( primitive.size == 0 ) {
+      return 0;
+    } 
+    cel_delete_cell(&cell);
+    cell = cel_new_cell(primitive.size);
+    cel_set_cell(&cell, primitive.lattice, primitive.position, primitive.types);
+    cel_delete_cell(&primitive);
+  }
+
+  bravais = brv_get_brv_lattice(cell.lattice, symprec);
+  symmetry = sym_get_operation(&bravais, &cell, symprec);
+  holohedry = ptg_get_holohedry(bravais.holohedry, &symmetry);
+
+  if (holohedry < bravais.holohedry) {
+    if ( ! ( art_get_artificial_bravais(&bravais, &symmetry, &cell, holohedry, symprec) ) ) {
+      cel_delete_cell(&cell);
+      sym_delete_symmetry(&symmetry);
+      return 0;
+    }
+  }
+
+  conv_sym = tbl_get_conventional_symmetry(&bravais, &cell, &symmetry, symprec);
+  sym_delete_symmetry(&symmetry);
+
+  if (conv_sym.size > max_size) {
+    fprintf(stderr, "spglib: Indicated max size(=%d) is less than number ", max_size);
+    fprintf(stderr, "spglib: of conventional symmetry operations(=%d).\n", conv_sym.size);
+    sym_delete_symmetry(&conv_sym);
+    return 0;
+  }
+
+  for (i = 0; i < conv_sym.size; i++) {
+    mat_copy_matrix_i3(rotation[i], conv_sym.rot[i]);
+    for (j = 0; j < 3; j++)
+      translation[i][j] = conv_sym.trans[i][j];
+  }
+
+  size = conv_sym.size;
+  mat_copy_matrix_d3( bravais_lattice, bravais.lattice );
+
+  cel_delete_cell(&cell);
+  sym_delete_symmetry(&conv_sym);
+
+  return size;
 }
 
-
-/* Considering periodicity of crystal, one of the possible smallest lattice is */
-/* searched. The lattice is stored in ``smallest_lattice``. */
+/* Considering periodicity of crystal, one of the possible smallest */
+/* lattice is searched. The lattice is stored in ``smallest_lattice``. */
 void spg_get_smallest_lattice(double smallest_lattice[3][3],
 			      const double lattice[3][3],
 			      const double symprec)
@@ -151,11 +189,12 @@ void spg_get_smallest_lattice(double smallest_lattice[3][3],
   brv_smallest_lattice_vector(smallest_lattice, lattice, symprec);
 }
 
-/* Return exact number of symmetry operations. This function may be used */
-/* in advance to allocate memoery space for symmetry operations. Only */
-/* upper bound is required, ``spg_get_max_multiplicity`` can be used */
-/* instead of this function and ``spg_get_max_multiplicity`` is faster */
-/* than this function. */
+/* Return exact number of symmetry operations. This function may */
+/* be used in advance to allocate memoery space for symmetry */
+/* operations. Only upper bound is required, */
+/* ``spg_get_max_multiplicity`` can be used instead of this */
+/* function and ``spg_get_max_multiplicity`` is faster than this */
+/* function. */
 int spg_get_multiplicity(const double lattice[3][3], const double position[][3],
 			 const int types[], const int num_atom,
 			 const double symprec)
@@ -179,7 +218,8 @@ int spg_get_multiplicity(const double lattice[3][3], const double position[][3],
 }
 
 
-/* Upper bound of number of symmetry operations is found. See ``spg_get_multiplicity``. */
+/* Upper bound of number of symmetry operations is found. */
+/* See ``spg_get_multiplicity``. */
 int spg_get_max_multiplicity(const double lattice[3][3], const double position[][3],
 			     const int types[], const int num_atom,
 			     const double symprec)
@@ -198,8 +238,8 @@ int spg_get_max_multiplicity(const double lattice[3][3], const double position[]
 }
 
 /* A primitive cell is found from an input cell. Be careful that  */
-/* ``lattice``, ``position``, and ``types`` are overwritten. ``num_atom`` */
-/* is returned as return value. */
+/* ``lattice``, ``position``, and ``types`` are overwritten. */
+/* ``num_atom`` is returned as return value. */
 int spg_find_primitive(double lattice[3][3], double position[][3],
                        int types[], const int num_atom, const double symprec)
 {
@@ -285,6 +325,34 @@ int spg_get_international(char symbol[21], const double lattice[3][3],
   return spacegroup.number;
 }
 
+/* Space group is found in international table symbol (``symbol``) */
+/* number (return value). Bravais lattice parameters are written on */
+/* (``lattice``) destructively. 0 is returned when it fails. */
+int spg_get_international_with_bravais(char symbol[21],
+				       double lattice[3][3],
+				       const double position[][3],
+				       const int types[], const int num_atom,
+				       const double symprec)
+{
+  Cell cell;
+  Spacegroup spacegroup;
+
+  cell = cel_new_cell(num_atom);
+  cel_set_cell(&cell, lattice, position, types);
+
+  spacegroup = tbl_get_spacegroup(&cell, symprec);
+  if ( spacegroup.number > 0 ) {
+    strcpy(symbol, spacegroup.bravais_symbol);
+    strcpy(&symbol[1], spacegroup.international);
+    mat_copy_matrix_d3( lattice, spacegroup.bravais_lattice );
+  }
+
+  cel_delete_cell(&cell);
+  
+  return spacegroup.number;
+}
+
+
 /* Space group is found in schoenflies (``symbol``) and as number (return */
 /* value).  0 is returned when it fails. */
 int spg_get_schoenflies(char symbol[10], const double lattice[3][3],
@@ -309,13 +377,15 @@ int spg_get_schoenflies(char symbol[10], const double lattice[3][3],
 }
 
 /* Irreducible k-points are searched from the input k-points */
-/* (``kpoints``).  The result is returned as a map of numbers (``map``), */
-/* where ``kpoints`` and ``map`` have to have the same number of elements. */
-/* The array index of ``map`` corresponds to the reducible k-point numbering. */
-/* After finding irreducible k-points, the indices of the irreducible */
-/* k-points are mapped to the elements of ``map``, i.e., number of unique */
+/* (``kpoints``).  The result is returned as a map of */
+/* numbers (``map``), where ``kpoints`` and ``map`` have to have */
+/* the same number of elements.  The array index of ``map`` */
+/* corresponds to the reducible k-point numbering.  After finding */
+/* irreducible k-points, the indices of the irreducible k-points */
+/* are mapped to the elements of ``map``, i.e., number of unique */
 /* values in ``map`` is the number of the irreducible k-points. */
-/* The number of the irreducible k-points is also returned as the return value. */
+/* The number of the irreducible k-points is also returned as the */
+/* return value. */
 int spg_get_ir_kpoints(int map[], const double kpoints[][3],
 		       const int num_kpoint,
 		       const double lattice[3][3],
@@ -345,20 +415,22 @@ int spg_get_ir_kpoints(int map[], const double kpoints[][3],
   return num_ir_kpoint;
 }
 
-/* Irreducible reciprocal grid points are searched from uniform mesh grid */
-/* points specified by ``mesh`` and ``is_shift``.  ``mesh`` stores three */
-/* integers. Reciprocal primitive vectors are divided by the number */
-/* stored in ``mesh`` with (0,0,0) point centering. The centering can be */
-/* shifted only half of one mesh by setting 1 for each ``is_shift`` */
-/* element. If 0 is set for ``is_shift``, it means there is no */
-/* shift. This limitation of shifting enables the irreducible k-point */
-/* search significantly faster when the mesh is very dense. */
-/* */
-/* The reducible uniform grid points are returned in reduced coordinates */
-/* as ``grid_point``. A map between reducible and irreducible points are */
-/* returned as ``map`` as in the indices of ``grid_point``. The number of */
-/* the irreducible k-points are returned as the return value.  The time */
-/* reversal symmetry is imposed by setting ``is_time_reversal`` 1. */
+/* Irreducible reciprocal grid points are searched from uniform */
+/* mesh grid points specified by ``mesh`` and ``is_shift``. */
+/* ``mesh`` stores three integers. Reciprocal primitive vectors */
+/* are divided by the number stored in ``mesh`` with (0,0,0) point */
+/* centering. The centering can be shifted only half of one mesh */
+/* by setting 1 for each ``is_shift`` element. If 0 is set for */
+/* ``is_shift``, it means there is no shift. This limitation of */
+/* shifting enables the irreducible k-point search significantly */
+/* faster when the mesh is very dense. */
+
+/* The reducible uniform grid points are returned in reduced */
+/* coordinates as ``grid_point``. A map between reducible and */
+/* irreducible points are returned as ``map`` as in the indices of */
+/* ``grid_point``. The number of the irreducible k-points are */
+/* returned as the return value.  The time reversal symmetry is */
+/* imposed by setting ``is_time_reversal`` 1. */
 int spg_get_ir_reciprocal_mesh(int grid_point[][3], int map[], const int num_grid,
 			       const int mesh[3], const int is_shift[3],
 			       const int is_time_reversal,
@@ -388,13 +460,14 @@ int spg_get_ir_reciprocal_mesh(int grid_point[][3], int map[], const int num_gri
   return num_ir;
 }
 
-/* The irreducible k-points are searched from unique k-point mesh grids */
-/* from real space lattice vectors and rotation matrices of symmetry */
-/* operations in real space with stabilizers. The stabilizers are written */
-/* in reduced coordinates. Number of the stabilizers are given by */
-/* ``num_q``. Reduced k-points are stored in ``map`` as indices of */
-/* ``grid_point``. The number of the reduced k-points with stabilizers */
-/* are returned as the return value. */
+/* The irreducible k-points are searched from unique k-point mesh */
+/* grids from real space lattice vectors and rotation matrices of */
+/* symmetry operations in real space with stabilizers. The */
+/* stabilizers are written in reduced coordinates. Number of the */
+/* stabilizers are given by ``num_q``. Reduced k-points are stored */
+/* in ``map`` as indices of ``grid_point``. The number of the */
+/* reduced k-points with stabilizers are returned as the return */
+/* value. */
 int spg_get_stabilized_reciprocal_mesh( int grid_point[][3],
 				        int map[],
 				        const int num_grid,
@@ -466,6 +539,45 @@ int spg_get_triplets_reciprocal_mesh( int triplets[][3],
 					     &symmetry,
 					     symprec );
 
+  sym_delete_symmetry(&symmetry);
+
+  return num_ir;
+}
+
+int spg_get_triplets_reciprocal_mesh_with_q( int triplets_with_q[][3],
+					     int weight_triplets_with_q[],
+					     const int fixed_grid_number,
+					     const int num_triplets,
+					     const int triplets[][3],
+					     const int weight_triplets[],
+					     const int mesh[3],
+					     const int is_time_reversal,
+					     const double lattice[3][3],
+					     const int num_rot,
+					     const int rotations[][3][3],
+					     const double symprec )
+{
+  Symmetry symmetry;
+  int i, num_ir;
+  
+  symmetry = sym_new_symmetry(num_rot);
+  for ( i = 0; i < num_rot; i++ ) {
+    mat_copy_matrix_i3( symmetry.rot[i], rotations[i] );
+  }
+
+  num_ir = kpt_get_triplets_reciprocal_mesh_with_q( triplets_with_q,
+						    weight_triplets_with_q,
+						    fixed_grid_number,
+						    num_triplets,
+						    triplets,
+						    weight_triplets,
+						    mesh,
+						    is_time_reversal,
+						    lattice,
+						    &symmetry,
+						    symprec );
+
+  
   sym_delete_symmetry(&symmetry);
 
   return num_ir;

@@ -1,20 +1,6 @@
 /* symmetry_kpoints.h */
 /* Copyright (C) 2008 Atsushi Togo */
 
-/* This program is free software; you can redistribute it and/or */
-/* modify it under the terms of the GNU General Public License */
-/* as published by the Free Software Foundation; either version 2 */
-/* of the License, or (at your option) any later version. */
-
-/* This program is distributed in the hope that it will be useful, */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-/* GNU General Public License for more details. */
-
-/* You should have received a copy of the GNU General Public License */
-/* along with this program; if not, write to the Free Software */
-/* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA. */
-
 #ifndef __symmetry_kpoints_H__
 #define __symmetry_kpoints_H__
 
@@ -57,5 +43,15 @@ int kpt_get_triplets_reciprocal_mesh( int triplets[][3],
 				      const double lattice[3][3],
 				      const Symmetry * symmetry,
 				      const double symprec );
-  
+int kpt_get_triplets_reciprocal_mesh_with_q( int triplets_with_q[][3],
+					     int weight_with_q[],
+					     const int fixed_grid_number,
+					     const int num_triplets,
+					     const int triplets[][3],
+					     const int weight[],
+					     const int mesh[3],
+					     const int is_time_reversal,
+					     const double lattice[3][3],
+					     const Symmetry * symmetry,
+					     const double symprec );
 #endif

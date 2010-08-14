@@ -1,20 +1,6 @@
 /* primitive.c */
 /* Copyright (C) 2008 Atsushi Togo */
 
-/* This program is free software; you can redistribute it and/or */
-/* modify it under the terms of the GNU General Public License */
-/* as published by the Free Software Foundation; either version 2 */
-/* of the License, or (at your option) any later version. */
-
-/* This program is distributed in the hope that it will be useful, */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-/* GNU General Public License for more details. */
-
-/* You should have received a copy of the GNU General Public License */
-/* along with this program; if not, write to the Free Software */
-/* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA. */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "cell.h"
@@ -33,7 +19,7 @@ static int get_primitive( Cell * primitive, const Cell * cell,
 
 Cell prm_get_primitive(const Cell * cell, const double symprec)
 {
-  int i, multi;
+  int multi;
   double pure_trans[cell->size][3];
   Cell primitive;
 
@@ -158,8 +144,8 @@ static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
   }
 
   /* Create overlapping table */
-  finished = 0; // Boolean for do-while loop
-  attempt = 0; // Count how many times trimming has been attempted. Stop trying after 1000.
+  finished = 0; /* Boolean for do-while loop */
+  attempt = 0; /* Count how many times trimming has been attempted. Stop trying after 1000. */
   do {
     attempt++;
     finished = 1;
@@ -178,11 +164,11 @@ static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
       }
       if (count != ratio) {
         count_error = count - ratio;
-        // Initialize count error if needed:
+        /* Initialize count error if needed: */
         if (old_count_error == 0) {
           old_count_error = count - ratio;
         }
-        // Adjust the tolerance adjustment if needed
+        /* Adjust the tolerance adjustment if needed */
         if ( (old_count_error > 0 && count_error < 0) ||
              (old_count_error < 0 && count_error > 0) ||
              trim_tolerance - tol_adjust <= 0 ){
@@ -190,11 +176,11 @@ static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
         }
         old_count_error = count_error;
         debug_print("Bad tolerance: count=%d ratio=%d tol_adjust=%f\n",count,ratio,tol_adjust);
-        if (count_error > 0) { // tolerance is too large, reduce
+        if (count_error > 0) { /* tolerance is too large, reduce */
           trim_tolerance -= tol_adjust;
-          finished = 0; // Set as not finished and restart.
+          finished = 0; /* Set as not finished and restart. */
           i = cell->size;
-        } else { // tolerance is too small, increase
+        } else { /* tolerance is too small, increase */
           trim_tolerance += tol_adjust;
           finished = 0;
           i = cell->size;

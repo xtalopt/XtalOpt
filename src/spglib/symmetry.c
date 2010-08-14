@@ -1,20 +1,6 @@
 /* symmetry.c */
 /* Copyright (C) 2008 Atsushi Togo */
 
-/* This program is free software; you can redistribute it and/or */
-/* modify it under the terms of the GNU General Public License */
-/* as published by the Free Software Foundation; either version 2 */
-/* of the License, or (at your option) any later version. */
-
-/* This program is distributed in the hope that it will be useful, */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-/* GNU General Public License for more details. */
-
-/* You should have received a copy of the GNU General Public License */
-/* along with this program; if not, write to the Free Software */
-/* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA. */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "bravais.h"
@@ -82,8 +68,8 @@ static int get_operation(int rot[][3][3], double trans[][3], const Bravais *brav
 static int get_operation_supercell(int rot[][3][3], double trans[][3], const int num_sym, 
 				   const int multi, const double pure_trans[][3], const Cell *cell,
 				   const Cell *primitive, const double symprec);
-/* static int get_sorted_positions(double position[][3], const Cell * cell, const double symprec); */
-/* static int compare_vectors(const void *vec1, const void *vec2); */
+
+
 
 Symmetry sym_new_symmetry(const int size)
 {
@@ -151,15 +137,53 @@ int sym_get_pure_translation(double pure_trans[][3], const Cell *cell,
   return get_translation(pure_trans, identity, cell, symprec);
 }
 
+double sym_get_fractional_translation( double translation )
+{
+  switch ( (int) ( mat_Dmod1( translation, 0.0 ) * 24 ) ) {
+  case 0:
+  case 23:
+  case 24:
+    return 0.0;
+  case 3:
+  case 4:
+    return 1.0 / 6;
+  case 5:
+  case 6:
+    return 1.0 / 4;
+  case 7:
+  case 8:
+    return 1.0 / 3;
+  case 11:
+  case 12:
+    return 1.0 / 2;
+  case 15:
+  case 16:
+    return 2.0 / 3;
+  case 17:
+  case 18:
+    return 3.0 / 4;
+  case 19:
+  case 20:
+    return 5.0 / 6;
+  default:
+    fprintf(stderr, "spglib: Unexpected behavior in sym_get_fraceional_translation.\n");
+    fprintf(stderr, "spglib: The value is %d.\n", (int) ( mat_Dmod1( translation, 0.0 ) * 24 ));
+    fprintf(stderr, "spglib: Please report atz.togo@gmail.com\n");
+    return translation;
+  }
+}
+
 /* Look for the translations which satisfy the input symmetry operation. */
 /* This function is heaviest in this code. */
 static int get_translation(double trans[][3], const int rot[3][3], const Cell *cell,
 			   const double symprec)
 {
   int i, j, k, l, count, num_trans = 0;
-  double diff;
-  double test_trans[3], tmp_vector[3], origin[3];
-  
+  double symprec_squared, v_diff_norm_squared;
+  double v_diff[3], test_trans[3], tmp_vector[3], origin[3];
+
+  symprec_squared = pow(symprec, 2);
+
   /* atom 0 is the origine to measure the distance between atoms. */
   mat_multiply_matrix_vector_id3(origin, rot, cell->position[0]);
 
@@ -183,13 +207,27 @@ static int get_translation(double trans[][3], const int rot[3][3], const Cell *c
 	
 	for (l = 0; l < 3; l++) {	/* pos_l = S*pos_k + test_translation ?  */
 
-	  diff = cell->position[k][l] - tmp_vector[l] - test_trans[l];
-	  diff = mat_Dabs(diff - mat_Nint(diff));
+	  /* cell->position[k]      Position of reference atom
+	     tmp_vector             Position of transformed atom
+             test_trans             Guessed translation from above */
 
-	  if (diff > symprec)
-	    goto end_loop_k;
+	  v_diff[l] = cell->position[k][l] - tmp_vector[l] - test_trans[l];
+	  v_diff[l] = mat_Dabs(v_diff[l] - mat_Nint(v_diff[l]));
+
 	}
 
+	/* Convert diff vector to cartesian coordinates */
+	cel_frac_to_cart(cell, v_diff, v_diff);
+
+	/* Calculate squared norm and compare to symprec */
+	v_diff_norm_squared = 0;
+	for (l = 0; l < 3; l++) {
+	  v_diff_norm_squared += pow(v_diff[l], 2);
+	}
+
+	if (v_diff_norm_squared > symprec_squared)
+	  goto end_loop_k;
+	
 	/* OK: atom_k on atom_j */
 	count++;
 	break;
@@ -204,8 +242,11 @@ static int get_translation(double trans[][3], const int rot[3][3], const Cell *c
     }
 
     if (count == cell->size) {	/* all atoms OK ? */
-      for (j = 0; j < 3; j++)
-	trans[num_trans][j] = test_trans[j] - mat_Nint(test_trans[j] - symprec);
+      for (j = 0; j < 3; j++) {
+	trans[num_trans][j] =
+	  test_trans[j] - mat_Nint(test_trans[j] - symprec);
+	  /* test_trans[j] = sym_get_fractional_translation( test_trans[j] ); */
+      }
       num_trans++;
     }
   }
@@ -213,6 +254,16 @@ static int get_translation(double trans[][3], const int rot[3][3], const Cell *c
   return num_trans;
 }
 
+/* 1) A primitive cell of the input cell is searched. */
+/* 2) Pointgroup operations of the primitive cell are obtained. */
+/*    These are constrained by the input cell lattice pointgroup. */
+/*    Therefore even if the lattice of the primitive cell has higher */
+/*    symmetry than that of the input cell, it is not considered. */
+/* 3) Spacegroup operations are searched for the primitive cell */
+/*    through the point group operations. */
+/* 4) The spacegroup operations for the primitive cell are */
+/*    transformed to the original input cells, if the input cell */
+/*    was not a primitive cell. */
 static int get_operation(int rot[][3][3], double trans[][3],
 			 const Bravais *bravais, const Cell *cell,
 			 const double symprec)
@@ -304,8 +355,10 @@ static int get_operation_supercell(int rot[][3][3], double trans[][3],
   for( i = 0; i < num_sym; i++ ) {
     for( j = 0; j < multi; j++ ) {
       mat_copy_matrix_i3( rot[ i * multi + j ], rot_prim[i] );
-      for ( k = 0; k < 3; k++ )
-	trans[i * multi + j][k] = trans_prim[i][k] + pure_trans[j][k];
+      for ( k = 0; k < 3; k++ ) {
+	trans[i * multi + j][k] =
+	  mat_Dmod1( trans_prim[i][k] + pure_trans[j][k], symprec );
+      }
     }
   }
 
@@ -313,6 +366,9 @@ static int get_operation_supercell(int rot[][3][3], double trans[][3],
   return num_sym * multi;
 }
 
+/* Pointgroup operations are obtained for the lattice of the input */
+/* cell. Then they are transformed to those in the primitive cell */
+/* using similarity transformation. */
 static PointSymmetry get_candidate(const Bravais * bravais,
 				     const double lattice[3][3],
 				     const double symprec)
@@ -335,7 +391,6 @@ static PointSymmetry get_candidate(const Bravais * bravais,
   debug_print("Ratio of lattice and bravais lattice. B^-1*P.\n");
   debug_print_matrix_d3(coordinate);
 
-  /* lattice_sym of conventional cell is replaced by that of primitive cell. */
   debug_print("*** get_candidate ***\n");
 
   debug_print("*** candidate in unit cell ***\n");
@@ -368,7 +423,6 @@ static PointSymmetry get_candidate(const Bravais * bravais,
     debug_print_matrix_i3(lattice_sym.rot[i]);
   }
 #endif
-
 
   return lattice_sym;
 }
@@ -449,9 +503,8 @@ static void generate_operation(int point_symmetry[][3][3],
       mat_multiply_matrix_i3(tmp_matrix, generator,
 			     point_symmetry[count - n_sym]);
       mat_copy_matrix_i3(point_symmetry[count], tmp_matrix);
-/*       debug_print("--- %d ---\n", count + 1); */
-/*       debug_print_matrix_i3(tmp_matrix); */
     }
   }
 }
+
 

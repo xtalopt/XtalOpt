@@ -1,67 +1,95 @@
 /* bravais.c */
 /* Copyright (C) 2008 Atsushi Togo */
 
-/* This program is free software; you can redistribute it and/or */
-/* modify it under the terms of the GNU General Public License */
-/* as published by the Free Software Foundation; either version 2 */
-/* of the License, or (at your option) any later version. */
-
-/* This program is distributed in the hope that it will be useful, */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-/* GNU General Public License for more details. */
-
-/* You should have received a copy of the GNU General Public License */
-/* along with this program; if not, write to the Free Software */
-/* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA. */
-
 #include <stdio.h>
 #include <stdlib.h>
+/* #include <math.h> */
 #include "bravais.h"
 #include "debug.h"
 #include "mathfunc.h"
 
-static int get_brv_cubic(Bravais *bravais, const double min_lattice[3][3],
+static int relative_lattice1[39192][3][3];
+static int relative_lattice2[31848][3][3];
+static int relative_lattice4[20352][3][3];
+
+static int get_brv_cubic(Bravais *bravais,
+			 const double min_lattice[3][3],
 			 const double symprec);
-static int get_brv_tetra(Bravais *bravais, const double min_lattice[3][3], const double symprec);
-static int get_brv_hexa(Bravais *bravais, const double min_lattice[3][3], const double symprec);
-static int get_brv_rhombo(Bravais *bravais, const double min_lattice[3][3], const double symprec);
-static int get_brv_ortho(Bravais *bravais, const double min_lattice[3][3], const double symprec);
-static int get_brv_monocli(Bravais *bravais, const double min_lattice[3][3], const double symprec);
-static int brv_exhaustive_search(double lattice[3][3], const double min_lattice[3][3],
-				 int (*check_bravais)(const double lattice[3][3], const double symprec),
-				 const int relative_axes[][3], const int num_axes, const Centering centering,
+static int get_brv_tetra(Bravais *bravais,
+			 const double min_lattice[3][3],
+			 const double symprec);
+static int get_brv_hexa(Bravais *bravais,
+			const double min_lattice[3][3],
+			const double symprec);
+static int get_brv_rhombo(Bravais *bravais,
+			  const double min_lattice[3][3],
+			  const double symprec);
+static int get_brv_ortho(Bravais *bravais,
+			 const double min_lattice[3][3],
+			 const double symprec);
+static int get_brv_monocli(Bravais *bravais,
+			   const double min_lattice[3][3],
+			   const double symprec);
+static int brv_cubic_I_center(double lattice[3][3],
+			      const double min_lattice[3][3],
+			      const double symprec);
+static int brv_cubic_F_center(double lattice[3][3],
+			      const double min_lattice[3][3],
+			      const double symprec);
+static int brv_tetra_primitive(double lattice[3][3],
+			       const double min_lattice[3][3],
+			       const double symprec);
+static int brv_tetra_body(double lattice[3][3],
+			 const double min_lattice[3][3],
+			 const double symprec);
+static Centering brv_ortho_base_I_center(double lattice[3][3],
+				       const double min_lattice[3][3],
+				       const double symprec);
+static Centering get_base_center(const double brv_lattice[3][3],
+				 const double min_lattice[3][3],
 				 const double symprec);
-static int brv_cubic_I_center(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static int brv_cubic_F_center(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static int brv_tetra_primitive(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static int brv_tetra_one(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static int brv_tetra_two(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static int brv_tetra_three(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static Centering brv_ortho_base_center(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static Centering get_base_center(const double brv_lattice[3][3], const double min_lattice[3][3], const double symprec);
-static int brv_ortho_I_center(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static int brv_ortho_F_center(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static int brv_rhombo_two(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static int brv_rhombo_three(double lattice[3][3], const double min_lattice[3][3], const double symprec);
+static int brv_ortho_F_center(double lattice[3][3],
+			      const double min_lattice[3][3],
+			      const double symprec);
+static int brv_rhombo(double lattice[3][3],
+		      const double min_lattice[3][3],
+		      const double symprec);
 static void set_brv_monocli(Bravais *bravais, const double symprec);
-static int brv_monocli_primitive(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static Centering brv_monocli_base_center(double lattice[3][3], const double min_lattice[3][3], const double symprec);
-static void check_angle90(int angle_90[3], const double lattice[3][3], const double symprec);
-static void check_equal_edge(int edge_equal[3], const double lattice[3][3], const double symprec);
+static int brv_monocli_primitive(double lattice[3][3],
+				 const double min_lattice[3][3],
+				 const double symprec);
+static Centering brv_monocli_base_center(double lattice[3][3],
+					 const double min_lattice[3][3],
+					 const double symprec);
+static void check_angle90(int angle_90[3],
+			  const double lattice[3][3],
+			  const double symprec);
+static void check_equal_edge(int edge_equal[3],
+			     const double lattice[3][3],
+			     const double symprec);
 static int check_cubic(const double lattice[3][3], const double symprec);
 static int check_hexa(const double lattice[3][3], const double symprec);
 static int check_tetra(const double lattice[3][3], const double symprec);
 static int check_ortho(const double lattice[3][3], const double symprec);
 static int check_monocli(const double lattice[3][3], const double symprec);
 static int check_rhombo(const double lattice[3][3], const double symprec);
-static void get_right_hand_lattice(double lattice[3][3], const double symprec);
-static void get_projection(double projection[3][3], const double min_lattice[3][3], const double lattice[3][3]);
+static void set_relative_lattice(void);
+static int exhaustive_search(double lattice[3][3],
+			     const double min_lattice[3][3],
+			     int (*check_bravais)(const double lattice[3][3], const double symprec),
+			     const Centering centering,
+			     const double symprec);
+static void get_right_hand_lattice(double lattice[3][3],
+				   const double symprec);
+static void get_projection(double projection[3][3],
+			   const double min_lattice[3][3],
+			   const double lattice[3][3]);
 static void get_Delaunay_reduction(double red_lattice[3][3], 
 				   const double lattice[3][3],
 				   const double symprec);
 static int get_Delaunay_reduction_basis(double basis[4][3], double symprec);
-static void get_exteneded_basis(double basis[4][3], const double lattice[3][3]);
+static void get_exteneded_basis(double basis[4][3],
+				const double lattice[3][3]);
 static int compare_vectors(const void *_vec1, const void *_vec2);
 static void get_smallest_basis(double basis[4][3], double symprec);
 
@@ -73,7 +101,8 @@ static void get_metric(double metric[3][3], const double lattice[3][3]);
 /** Public functions **/
 /**********************/
 /**********************/
-Bravais brv_get_brv_lattice(const double lattice_orig[3][3], const double symprec)
+Bravais brv_get_brv_lattice(const double lattice_orig[3][3],
+			    const double symprec)
 {
   Bravais bravais;
   double min_lattice[3][3];
@@ -107,6 +136,7 @@ Bravais brv_get_brv_lattice(const double lattice_orig[3][3], const double sympre
   printf("equal:    %d %d %d\n", edge_equal[0], edge_equal[1], edge_equal[2]);
 #endif
 
+  set_relative_lattice();
   for (i = 0; i < 7; i++) {
     bravais.holohedry = holohedries[i];
     debug_print_holohedry(&bravais);
@@ -124,7 +154,8 @@ Bravais brv_get_brv_lattice(const double lattice_orig[3][3], const double sympre
 }
 
 /* Note: bravais is overwritten. */
-int brv_get_brv_lattice_in_loop(Bravais *bravais, const double min_lattice[3][3],
+int brv_get_brv_lattice_in_loop(Bravais *bravais,
+				const double min_lattice[3][3],
                                 const double symprec)
 {
   switch (bravais->holohedry) {
@@ -176,7 +207,8 @@ int brv_get_brv_lattice_in_loop(Bravais *bravais, const double min_lattice[3][3]
   return 1;
 }
 
-void brv_smallest_lattice_vector(double min_lattice[3][3], const double lattice[3][3],
+void brv_smallest_lattice_vector(double min_lattice[3][3],
+				 const double lattice[3][3],
 				 const double symprec)
 {
   int i, j;
@@ -248,7 +280,8 @@ void brv_smallest_lattice_vector(double min_lattice[3][3], const double lattice[
   }
 }
 
-static void get_projection(double projection[3][3], const double min_lattice[3][3],
+static void get_projection(double projection[3][3],
+			   const double min_lattice[3][3],
 			   double const lattice[3][3])
 {
   double tmp_matrix[3][3];
@@ -339,52 +372,21 @@ static int check_cubic(const double lattice[3][3], const double symprec)
   return 0;
 }
 
-static int brv_cubic_F_center(double lattice[3][3], const double min_lattice[3][3],
+static int brv_cubic_F_center(double lattice[3][3],
+			      const double min_lattice[3][3],
 			      const double symprec)
 {
-  const int relative_axes[22][3] = {
-    {-1, 1, 1},
-    { 1,-1, 1},
-    { 1, 1,-1},
-    { 1, 1, 1},
-    { 0, 1, 1}, /* 5 */
-    { 1, 0, 1},
-    { 1, 1, 0},
-    { 0, 1,-1},
-    {-1, 0, 1},
-    { 1,-1, 0}, /* 10 */
-    { 2, 1, 1},
-    { 1, 2, 1},
-    { 1, 1, 2},
-    { 2, 1,-1},
-    {-1, 2, 1}, /* 15 */
-    { 1,-1, 2},
-    { 2,-1,-1},
-    {-1, 2,-1},
-    {-1,-1, 2},
-    { 2,-1, 1}, /* 20 */
-    { 1, 2,-1},
-    {-1, 1, 2},
-  };
+  return exhaustive_search( lattice, min_lattice,
+			    check_cubic, FACE, symprec );
 
-  return brv_exhaustive_search(lattice, min_lattice, check_cubic, relative_axes,
-			       22, FACE, symprec);
 }
 
-static int brv_cubic_I_center(double lattice[3][3], const double min_lattice[3][3],
+static int brv_cubic_I_center(double lattice[3][3],
+			      const double min_lattice[3][3],
 			      const double symprec)
 {
-  const int relative_axes[6][3] = {
-    { 0, 1, 1},
-    { 1, 0, 1},
-    { 1, 1, 0},
-    { 0, 1,-1},
-    {-1, 0, 1},
-    { 1,-1, 0},
-  };
-
-  return brv_exhaustive_search(lattice, min_lattice, check_cubic, relative_axes,
-			       6, BODY, symprec);
+  return exhaustive_search( lattice, min_lattice,
+			    check_cubic, BODY, symprec );
 }
 
 /****************/
@@ -411,36 +413,10 @@ static int get_brv_tetra(Bravais *bravais, const double min_lattice[3][3],
   }
 
   /* Tetragonal-I */
-  /* There are three patterns. */
-  /* One or two or three primitive axes orient to the body center. */
-
-  /* One */
-  if ((angle_90[0] && edge_equal[0]) || (angle_90[1] && edge_equal[1])
-      || (angle_90[2] && edge_equal[2])) {
-    if (brv_tetra_one(bravais->lattice, min_lattice, symprec)) {
-      debug_print("tetra1, I-center\n");
-      bravais->centering = BODY;
-      goto found;
-    }
-  }
-
-  /* Three */
-  /* All thses axes orient to the body center. */
-  if (edge_equal[0] && edge_equal[1] && edge_equal[2]) {
-    if (brv_tetra_three(bravais->lattice, min_lattice, symprec)) {
-      bravais->centering = BODY;
-      debug_print("tetra three, I-center\n");
-      goto found;
-    }
-  }
-
-  /* Two */
-  if (edge_equal[0] || edge_equal[1] || edge_equal[2]) {
-    if (brv_tetra_two(bravais->lattice, min_lattice, symprec)) {
-      bravais->centering = BODY;
-      debug_print("tetra two, I-center\n");
-      goto found;
-    }
+  if (brv_tetra_body(bravais->lattice, min_lattice, symprec)) {
+    bravais->centering = BODY;
+    debug_print("tetra, I-center\n");
+    goto found;
   }
 
  not_found:
@@ -497,87 +473,27 @@ static int check_tetra(const double lattice[3][3], const double symprec)
   return 0;
 }
 
-static int brv_tetra_primitive(double lattice[3][3], const double min_lattice[3][3],
+static int brv_tetra_primitive(double lattice[3][3],
+			       const double min_lattice[3][3],
 			       const double symprec)
 {
-  const int relative_axes[3][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1}
-  };
-
-  return brv_exhaustive_search(lattice, min_lattice, check_tetra, relative_axes,
-			       3, NO_CENTER, symprec);
+  return exhaustive_search( lattice, min_lattice,
+			    check_tetra, NO_CENTER, symprec );
 }
 
-static int brv_tetra_one(double lattice[3][3], const double min_lattice[3][3],
+static int brv_tetra_body(double lattice[3][3],
+			 const double min_lattice[3][3],
 			 const double symprec)
 {
-  const int relative_axes[15][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    { 1, 1, 2},
-    {-1, 1, 2},
-    { 1,-1, 2},
-    {-1,-1, 2},
-    { 1, 2, 1},
-    {-1, 2, 1},
-    { 1, 2,-1},
-    {-1, 2,-1},
-    { 2, 1, 1},
-    { 2,-1, 1},
-    { 2, 1,-1},
-    { 2,-1,-1}
-  };
-
-  return brv_exhaustive_search(lattice, min_lattice, check_tetra, relative_axes,
-			       15, BODY, symprec);
-}
-
-static int brv_tetra_two(double lattice[3][3], const double min_lattice[3][3],
-			 const double symprec)
-{
-  const int relative_axes[13][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    { 1, 1, 0},
-    { 1,-1, 0},
-    { 0, 1, 1},
-    { 0, 1,-1},
-    { 1, 0, 1},
-    {-1, 0, 1},
-    {-1, 1, 1},
-    { 1,-1, 1},
-    { 1, 1,-1},
-    { 1, 1, 1},
-  };
-
-  return brv_exhaustive_search(lattice, min_lattice, check_tetra, relative_axes,
-			       13, BODY, symprec);
-}
-
-static int brv_tetra_three(double lattice[3][3], const double min_lattice[3][3],
-			   const double symprec)
-{
-  const int relative_axes[6][3] = {
-    { 0, 1, 1},
-    { 1, 0, 1},
-    { 1, 1, 0},
-    { 0, 1,-1},
-    {-1, 0, 1},
-    { 1,-1, 0},
-  };
-
-  return brv_exhaustive_search(lattice, min_lattice, check_tetra, relative_axes,
-			       6, BODY, symprec);
+  return exhaustive_search( lattice, min_lattice,
+			    check_tetra, BODY, symprec );
 }
 
 /******************/
 /*  Orthorhombic  */
 /******************/
-static int get_brv_ortho(Bravais *bravais, const double min_lattice[3][3],
+static int get_brv_ortho(Bravais *bravais,
+			 const double min_lattice[3][3],
 			 const double symprec)
 {
   Centering centering;
@@ -589,20 +505,16 @@ static int get_brv_ortho(Bravais *bravais, const double min_lattice[3][3],
     goto found;
   }
 
-  /* orthorhombic-C (or A,B) */
-  centering = brv_ortho_base_center(bravais->lattice, min_lattice, symprec);
+  /* orthorhombic-C (or A,B) or I */
+  debug_print("Checking Ortho base or body center ...\n");
+  centering = brv_ortho_base_I_center(bravais->lattice, min_lattice, symprec);
   if (centering) {
     bravais->centering = centering;
     goto found;
   }
 
-  /* orthorhombic-I */
-  if (brv_ortho_I_center(bravais->lattice, min_lattice, symprec)) {
-    bravais->centering = BODY;
-    goto found;
-  }
-
   /* orthorhombic-F */
+  debug_print("Checking Ortho face center ...\n");
   if (brv_ortho_F_center(bravais->lattice, min_lattice, symprec)) {
     bravais->centering = FACE;
     goto found;
@@ -630,208 +542,38 @@ static int check_ortho(const double lattice[3][3], const double symprec)
   return 0;
 }
 
-static Centering brv_ortho_base_center(double lattice[3][3],
-				       const double min_lattice[3][3],
-				       const double symprec)
+static Centering brv_ortho_base_I_center(double lattice[3][3],
+					 const double min_lattice[3][3],
+					 const double symprec)
 {
-  const int relative_axes_one[15][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    { 1, 0, 2},
-    {-1, 0, 2},
-    { 0, 1, 2},
-    { 0,-1, 2},
-    { 0, 2, 1},
-    { 0, 2,-1},
-    { 1, 2, 0},
-    {-1, 2, 0},
-    { 2, 1, 0},
-    { 2,-1, 0},
-    { 2, 0, 1},
-    { 2, 0,-1}
-  };
-
-  const int relative_axes_two[9][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    { 0, 1, 1},
-    { 0, 1,-1},
-    { 1, 0, 1},
-    {-1, 0, 1},
-    { 1, 1, 0},
-    { 1,-1, 0},
-  };
-
-
-  /* One axis orients to the base center. */
-  if (brv_exhaustive_search(lattice, min_lattice, check_ortho, relative_axes_one,
-			    15, BASE, symprec))
+  if (exhaustive_search( lattice, min_lattice,
+			 check_ortho, BASE, symprec ))
     return get_base_center(lattice, min_lattice, symprec);
-
-
-  /* Two axes orient to the base center. */
-  if (brv_exhaustive_search(lattice, min_lattice, check_ortho, relative_axes_two,
-			    9, BASE, symprec))
-    return get_base_center(lattice, min_lattice, symprec);
-
 
   return NO_CENTER;
 }
 
-static int brv_ortho_I_center(double lattice[3][3], const double min_lattice[3][3],
+static int brv_ortho_F_center(double lattice[3][3],
+			      const double min_lattice[3][3],
 			      const double symprec)
 {
-  /* Basically same as Tetra-I */
-
-  const int relative_axes_one[15][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    { 1, 1, 2},
-    {-1, 1, 2}, /*  5 */
-    { 1,-1, 2},
-    {-1,-1, 2},
-    { 1, 2, 1},
-    {-1, 2, 1},
-    { 1, 2,-1}, /* 10 */
-    {-1, 2,-1},
-    { 2, 1, 1},
-    { 2,-1, 1},
-    { 2, 1,-1},
-    { 2,-1,-1}  /* 15 */
-  };
-
-  const int relative_axes_two[13][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    { 1, 1, 0},
-    { 1,-1, 0}, /*  5 */
-    { 0, 1, 1},
-    { 0, 1,-1},
-    { 1, 0, 1},
-    {-1, 0, 1},
-    {-1, 1, 1}, /* 10 */
-    { 1,-1, 1},
-    { 1, 1,-1},
-    { 1, 1, 1},
-  };
-
-  const int relative_axes_three[6][3] = {
-    { 0, 1, 1},
-    { 1, 0, 1},
-    { 1, 1, 0},
-    { 0, 1,-1},
-    {-1, 0, 1}, /*  5 */
-    { 1,-1, 0},
-  };
-
-
-  /* One axis orients to the I center. */
-  if (brv_exhaustive_search(lattice, min_lattice, check_ortho, relative_axes_one,
-			    15, BODY, symprec))
-    return 1;
-
-  /* Two axes orient to the I center. */
-  if (brv_exhaustive_search(lattice, min_lattice, check_ortho, relative_axes_two,
-			    13, BODY, symprec))
-    return 1;
-
-  /* Three axes orient to the I center. */
-  if (brv_exhaustive_search(lattice, min_lattice, check_ortho, relative_axes_three,
-			    6, BODY, symprec))
+  if (exhaustive_search( lattice, min_lattice,
+			 check_ortho, FACE, symprec ))
     return 1;
 
   return 0;
 }
-
-static int brv_ortho_F_center(double lattice[3][3], const double min_lattice[3][3],
-			      const double symprec)
-{
-  /* At least two axes orient to the face center. */
-  const int relative_axes_two[21][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    { 1, 1, 0},
-    { 1,-1, 0}, /* 5 */
-    { 0, 1, 1},
-    { 0, 1,-1},
-    { 1, 0, 1},
-    {-1, 0, 1},
-    { 1, 0, 2}, /* 10 */
-    {-1, 0, 2},
-    { 0, 1, 2},
-    { 0,-1, 2},
-    { 0, 2, 1},
-    { 0, 2,-1}, /* 15 */
-    { 1, 2, 0},
-    {-1, 2, 0},
-    { 2, 1, 0},
-    { 2,-1, 0},
-    { 2, 0, 1}, /* 20 */
-    { 2, 0,-1}
-  };
-
-  const int relative_axes_three[22][3] = {
-    {-1, 1, 1},
-    { 1,-1, 1},
-    { 1, 1,-1},
-    { 1, 1, 1},
-    { 0, 1, 1}, /* 5 */
-    { 1, 0, 1},
-    { 1, 1, 0},
-    { 0, 1,-1},
-    {-1, 0, 1},
-    { 1,-1, 0}, /* 10 */
-    { 2, 1, 1},
-    { 1, 2, 1},
-    { 1, 1, 2},
-    { 2, 1,-1},
-    {-1, 2, 1}, /* 15 */
-    { 1,-1, 2},
-    { 2,-1,-1},
-    {-1, 2,-1},
-    {-1,-1, 2},
-    { 2,-1, 1}, /* 20 */
-    { 1, 2,-1},
-    {-1, 1, 2},
-  };
-
-
-  /* Two axes orient to the F center. */
-  if (brv_exhaustive_search(lattice, min_lattice, check_ortho, relative_axes_two,
-			    21, FACE, symprec))
-    return 1;
-
-  /* Three axes orient to the F center. */
-  if (brv_exhaustive_search(lattice, min_lattice, check_ortho, relative_axes_three,
-			    22, FACE, symprec))
-    return 1;
-
-  return 0;
-}
-
 
 
 /************************************/
 /*  Hexagonal and Trigonal systems  */
 /************************************/
-static int get_brv_hexa(Bravais *bravais, const double min_lattice[3][3],
+static int get_brv_hexa(Bravais *bravais,
+			const double min_lattice[3][3],
 			const double symprec)
 {
-  const int relative_axes[5][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    {-1, 0, 0},
-    { 0,-1, 0},
-  };
-
-  if (brv_exhaustive_search(bravais->lattice, min_lattice, check_hexa,
-			    relative_axes, 5, NO_CENTER, symprec)) {
+  if (exhaustive_search(bravais->lattice, min_lattice, check_hexa,
+			NO_CENTER, symprec)) {
     bravais->centering = NO_CENTER;
     return 1;
   }
@@ -862,28 +604,16 @@ static int check_hexa(const double lattice[3][3], const double symprec)
 /*************************/
 /*  Rhombohedral system  */
 /*************************/
-static int get_brv_rhombo(Bravais *bravais, const double min_lattice[3][3],
+static int get_brv_rhombo(Bravais *bravais,
+			  const double min_lattice[3][3],
 			  const double symprec)
 {
   int edge_equal[3];
   check_equal_edge(edge_equal, min_lattice, symprec);
 
-  /* One or two or three axes orient to the rhombochedral lattice points. */
-
-  /* Three */
-  if (edge_equal[0] && edge_equal[1] && edge_equal[2]) {
-    if (brv_rhombo_three(bravais->lattice, min_lattice, symprec)) {
-      bravais->centering = NO_CENTER;
-      return 1;
-    }
-  }
-
-  /* Two of three are in the basal plane or Two are the rhombo axes. */
-  if (edge_equal[0] || edge_equal[1] || edge_equal[2]) {
-    if (brv_rhombo_two(bravais->lattice, min_lattice, symprec)) {
-      bravais->centering = NO_CENTER;
-      return 1;
-    }
+  if (brv_rhombo(bravais->lattice, min_lattice, symprec)) {
+    bravais->centering = NO_CENTER;
+    return 1;
   }
 
   return 0;
@@ -898,93 +628,32 @@ static int check_rhombo(const double lattice[3][3], const double symprec)
   check_equal_edge(edge_equal, lattice, symprec);
 
   if (edge_equal[0] && edge_equal[1] && edge_equal[2] &&
-      (mat_Dabs((metric[0][1] - metric[1][2]) / metric[0][1]) < symprec * symprec) &&
-      (mat_Dabs((metric[0][1] - metric[0][2]) / metric[0][1]) < symprec * symprec)) {
+      (mat_Dabs(metric[0][1] - metric[1][2]) < symprec * symprec ) &&
+      (mat_Dabs(metric[0][1] - metric[0][2]) < symprec * symprec )) {
+
     return 1;
   }
 
   return 0;
 }
 
-static int brv_rhombo_two(double lattice[3][3], const double min_lattice[3][3], const double symprec)
+static int brv_rhombo(double lattice[3][3],
+		      const double min_lattice[3][3],
+		      const double symprec)
 {
-  const int relative_axes_rhombo[13][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    {-1, 0, 0},
-    { 0,-1, 0}, /*  5 */
-    { 0, 0,-1},
-    {-1, 1, 1},
-    { 1,-1, 1},
-    { 1, 1,-1},
-    { 1,-1,-1}, /* 10 */
-    {-1, 1,-1},
-    {-1,-1, 1},
-    { 1, 1, 1} 
-  };
-
-  const int relative_axes_base[26][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    {-1, 0, 0},
-    { 0,-1, 0}, /*  5 */ 
-    { 0, 0,-1},
-    {-1, 1, 1},
-    { 1,-1, 1},
-    { 1, 1,-1},
-    { 1,-1,-1}, /* 10 */
-    {-1, 1,-1},
-    {-1,-1, 1},
-    { 0, 1, 1},
-    { 1, 0, 1},
-    { 1, 1, 0}, /* 15 */ 
-    { 0, 1,-1},
-    {-1, 0, 1},
-    { 1,-1, 0},
-    { 0,-1, 1},
-    { 1, 0,-1}, /* 20 */
-    {-1, 1, 0},
-    { 0,-1,-1},
-    {-1, 0,-1},
-    {-1,-1, 0},
-    { 1, 1, 1}, /* 25 */
-    {-1,-1,-1} 
-  };
-
-  if (brv_exhaustive_search(lattice, min_lattice, check_rhombo,
-			    relative_axes_rhombo, 13, NO_CENTER, symprec)) {
-    return 1;
-  }
-
-  if (brv_exhaustive_search(lattice, min_lattice, check_rhombo, relative_axes_base,
-			    26, NO_CENTER, symprec)) {
+  if (exhaustive_search( lattice, min_lattice,
+			 check_rhombo, NO_CENTER, symprec )) {
     return 1;
   }
 
   return 0;
-}
-
-static int brv_rhombo_three(double lattice[3][3], const double min_lattice[3][3], 
-			    const double symprec)
-{
-  const int relative_axes[5][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    { 0,-1, 0},
-    { 0, 0,-1},
-  };
-
-  return brv_exhaustive_search(lattice, min_lattice, check_rhombo, relative_axes,
-			       5, NO_CENTER, symprec);
 }
 
 /***********************/
 /*  Monoclinic system  */
 /***********************/
-static int get_brv_monocli(Bravais *bravais, const double min_lattice[3][3],
+static int get_brv_monocli(Bravais *bravais,
+			   const double min_lattice[3][3],
 			   const double symprec)
 {
   Centering centering;
@@ -1092,14 +761,8 @@ static int brv_monocli_primitive(double lattice[3][3],
 				 const double min_lattice[3][3],
 				 const double symprec)
 {
-  const int relative_axes[3][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1}
-  };
-
-  return brv_exhaustive_search(lattice, min_lattice, check_monocli, relative_axes,
-			       3, NO_CENTER, symprec);
+  return exhaustive_search( lattice, min_lattice,
+			    check_monocli, NO_CENTER, symprec );
 }
 
 static Centering brv_monocli_base_center(double lattice[3][3],
@@ -1109,70 +772,8 @@ static Centering brv_monocli_base_center(double lattice[3][3],
   int found;
   Centering centering = NO_CENTER;
   
-  int relative_axes_one[15][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    { 1, 0, 2},
-    {-1, 0, 2}, /*  5 */
-    { 0, 1, 2},
-    { 0,-1, 2},
-    { 0, 2, 1},
-    { 0, 2,-1},
-    { 1, 2, 0}, /* 10 */
-    {-1, 2, 0},
-    { 2, 1, 0},
-    { 2,-1, 0},
-    { 2, 0, 1},
-    { 2, 0,-1}  /* 15 */
-  };
-
-  int relative_axes_two_three[34][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    { 0, 1, 1},
-    { 0, 1,-1}, /*  5 */
-    { 1, 0, 1},
-    {-1, 0, 1},
-    { 1, 1, 0},
-    { 1,-1, 0},
-    { 1, 0, 2}, /* 10 */
-    {-1, 0, 2},
-    { 0, 1, 2},
-    { 0,-1, 2},
-    { 0, 2, 1},
-    { 0, 2,-1}, /* 15 */
-    { 1, 2, 0},
-    {-1, 2, 0},
-    { 2, 1, 0},
-    { 2,-1, 0},
-    { 2, 0, 1}, /* 20 */
-    { 2, 0,-1},
-    { 1, 1, 2},
-    {-1, 1, 2},
-    {-1,-1, 2},
-    { 1, 2, 1}, /* 25 */
-    { 1, 2,-1},
-    {-1, 2,-1},
-    { 2, 1, 1},
-    { 2,-1, 1},
-    { 2, 1,-1}, /* 30 */
-    {-1, 1, 1},
-    { 1,-1, 1},
-    { 1, 1,-1},
-    { 1, 1, 1}  /* 34 */
-  };
-
-  /* One axis orients to the base center. */
-  found = brv_exhaustive_search(lattice, min_lattice, check_monocli, relative_axes_one,
-				15, BASE, symprec);
-
-  /* Two or three axes orient to the base center. */
-  if (!found) {
-   found = brv_exhaustive_search(lattice, min_lattice, check_monocli,
-				 relative_axes_two_three, 34, BASE, symprec);
-  }
+  found = exhaustive_search( lattice, min_lattice,
+			     check_monocli, BASE, symprec );
 
   if (found) {
     brv_smallest_lattice_vector(lattice, lattice, symprec);
@@ -1239,16 +840,135 @@ static void get_metric(double metric[3][3], const double lattice[3][3])
   mat_multiply_matrix_d3(metric, lattice_t, lattice);
 }
 
-static int brv_exhaustive_search(double lattice[3][3], const double min_lattice[3][3],
-				 int (*check_bravais)(const double lattice[3][3], const double symprec),
-				 const int relative_axes[][3], const int num_axes,
-				 const Centering centering, const double symprec)
+static void set_relative_lattice(void)
 {
-  int i, j, k, l, factor = 1, coordinate[3][3];
-  double tmp_matrix[3][3];
+  const int num_relative_lattice1 = 39192;
+  const int num_relative_lattice2 = 31848;
+  const int num_relative_lattice4 = 20352;
+  const int num_relative_axes = 74;
+  const int relative_axes[][3] = {
+    { 1, 0, 0},
+    { 0, 1, 0},
+    { 0, 0, 1},
+    {-1, 0, 0},
+    { 0,-1, 0}, /* 5 */
+    { 0, 0,-1},
+    { 0, 1, 1},
+    { 1, 0, 1},
+    { 1, 1, 0},
+    { 0,-1,-1}, /* 10 */
+    {-1, 0,-1},
+    {-1,-1, 0},
+    { 0, 1,-1},
+    {-1, 0, 1},
+    { 1,-1, 0}, /* 15 */
+    { 0,-1, 1},
+    { 1, 0,-1},
+    {-1, 1, 0},
+    { 1, 1, 1},
+    {-1,-1,-1}, /* 20 */
+    {-1, 1, 1},
+    { 1,-1, 1},
+    { 1, 1,-1},
+    { 1,-1,-1},
+    {-1, 1,-1}, /* 25 */
+    {-1,-1, 1},
+    { 0, 1, 2},
+    { 2, 0, 1},
+    { 1, 2, 0},
+    { 0,-1,-2}, /* 30 */
+    {-2, 0,-1},
+    {-1,-2, 0},
+    { 0, 2, 1},
+    { 1, 0, 2},
+    { 2, 1, 0}, /* 35 */
+    { 0,-2,-1},
+    {-1, 0,-2},
+    {-2,-1, 0},
+    { 0,-1, 2},
+    { 2, 0,-1}, /* 40 */
+    {-1, 2, 0},
+    { 0, 1,-2},
+    {-2, 0, 1},
+    { 1,-2, 0},
+    { 0,-2, 1}, /* 45 */
+    { 1, 0,-2},
+    {-2, 1, 0},
+    { 0, 2,-1},
+    {-1, 0, 2},
+    { 2,-1, 0}, /* 50 */
+    { 2, 1, 1},
+    { 1, 2, 1},
+    { 1, 1, 2},
+    {-2,-1,-1},
+    {-1,-2,-1}, /* 55 */
+    {-1,-1,-2},
+    { 2,-1,-1},
+    {-1, 2,-1},
+    {-1,-1, 2},
+    {-2, 1, 1}, /* 60 */
+    { 1,-2, 1},
+    { 1, 1,-2},
+    { 2, 1,-1},
+    {-1, 2, 1},
+    { 1,-1, 2}, /* 65 */
+    {-2,-1, 1},
+    { 1,-2,-1},
+    {-1, 1,-2},
+    { 2,-1, 1},
+    { 1, 2,-1}, /* 70 */
+    {-1, 1, 2},
+    {-2, 1,-1},
+    {-1,-2, 1},
+    { 1,-1,-2},
+  };
+
+  int i, j, k, l, det;
+  int coordinate[3][3];
+  int count1 = 0, count2 = 0, count4 = 0;
+  
+  for (i = 0; i < num_relative_axes; i++) {
+    for (j = 0; j < num_relative_axes; j ++) {
+      for (k = 0; k < num_relative_axes; k++) {
+	for (l = 0; l < 3; l++) {
+	  coordinate[l][0] = relative_axes[i][l];
+	  coordinate[l][1] = relative_axes[j][l];
+	  coordinate[l][2] = relative_axes[k][l];
+	}
+
+	det = mat_get_determinant_i3(coordinate);
+	if ( det == 1 ) {
+	  mat_copy_matrix_i3( relative_lattice1[count1], coordinate );
+	  count1++;
+	} else {
+	  if ( det == 2 ) {
+	    mat_copy_matrix_i3( relative_lattice2[count2], coordinate );
+	    count2++;
+	  } else {
+	    if ( det == 4 ) {
+	      mat_copy_matrix_i3( relative_lattice4[count4], coordinate );
+	      count4++;
+	    }  
+	  }
+	}
+      }
+    }
+  }
+  /* printf("%d %d %d\n", count1, count2, count4 ); */
+}
+
+static int exhaustive_search(double lattice[3][3],
+			     const double min_lattice[3][3],
+			     int (*check_bravais)(const double lattice[3][3], const double symprec),
+			     const Centering centering,
+			     const double symprec)
+{
+  int i, j, factor = 1;
+  int num_relative_lattice;
 
   switch (centering) {
   case NO_CENTER:
+    num_relative_lattice = 39192;
     factor = 1;
     break;
   case BODY:
@@ -1257,31 +977,46 @@ static int brv_exhaustive_search(double lattice[3][3], const double min_lattice[
   case B_FACE:
   case C_FACE:
     factor = 2;
+    num_relative_lattice = 31848;
     break;
   case FACE:
     factor = 4;
+    num_relative_lattice = 20352;
     break;
   }
 
-  for (i = 0; i < num_axes; i++) {
-    for (j = 0; j < num_axes; j ++) {
-      for (k = 0; k < num_axes; k++) {
+  for ( i = 0; i < num_relative_lattice; i++ ) {
+    if ( factor == 1 ) {
+      mat_multiply_matrix_di3( lattice, min_lattice, relative_lattice1[i] );
+    }
+    if ( factor == 2 ) {
+      mat_multiply_matrix_di3( lattice, min_lattice, relative_lattice2[i] );
+    }
+    if ( factor == 4 ) {
+      mat_multiply_matrix_di3( lattice, min_lattice, relative_lattice4[i] );
+    }
 
-	for (l = 0; l < 3; l++) {
-	  coordinate[l][0] = relative_axes[i][l];
-	  coordinate[l][1] = relative_axes[j][l];
-	  coordinate[l][2] = relative_axes[k][l];
-	}
-	    
-	if (mat_Dabs(mat_get_determinant_i3(coordinate)) == factor) { 
-
-	  mat_cast_matrix_3i_to_3d(tmp_matrix, coordinate);
-	  mat_multiply_matrix_d3(lattice, min_lattice, tmp_matrix);
-
-	  if ((*check_bravais)(lattice, symprec) &&
-	      mat_Dabs(mat_get_determinant_d3(lattice)) > symprec)
-	    return 1;
-	}
+    if ( mat_Dabs(mat_get_determinant_d3(lattice)) > symprec ) {
+      if ((*check_bravais)(lattice, symprec)) {
+	/* printf("%d\n", factor); */
+	/* for ( j = 0; j < 3; j++ ) { */
+	/*   if ( factor == 1 )  */
+	/*     printf("%d %d %d\n", */
+	/* 	   relative_lattice1[i][j][0], */
+	/* 	   relative_lattice1[i][j][1], */
+	/* 	   relative_lattice1[i][j][2]); */
+	/*   if ( factor == 2 )  */
+	/*     printf("%d %d %d\n", */
+	/* 	   relative_lattice2[i][j][0], */
+	/* 	   relative_lattice2[i][j][1], */
+	/* 	   relative_lattice2[i][j][2]); */
+	/*   if ( factor == 4 )  */
+	/*     printf("%d %d %d\n", */
+	/* 	   relative_lattice4[i][j][0], */
+	/* 	   relative_lattice4[i][j][1], */
+	/* 	   relative_lattice4[i][j][2]); */
+	/* } */
+	return 1;
       }
     }
   }
@@ -1303,8 +1038,7 @@ static Centering get_base_center(const double brv_lattice[3][3],
     return NO_CENTER;
   }
 
-  debug_print_matrix_d3(min_lattice);
-  debug_print_matrix_d3(brv_lattice);
+  debug_print("get_base_center\n");
   debug_print("%f %f %f\n", axis[0][0], axis[0][1], axis[0][2]);
   debug_print("%f %f %f\n", axis[1][0], axis[1][1], axis[1][2]);
   debug_print("%f %f %f\n", axis[2][0], axis[2][1], axis[2][2]);
@@ -1379,8 +1113,8 @@ static void get_Delaunay_reduction(double red_lattice[3][3],
 				   const double lattice[3][3],
 				   const double symprec)
 {
-  int i, j, cell_type;
-  double basis[4][3], tmp_lattice[3][3];
+  int i, j;
+  double basis[4][3];
 
   get_exteneded_basis(basis, lattice);
 
@@ -1397,6 +1131,12 @@ static void get_Delaunay_reduction(double red_lattice[3][3],
 
   debug_print("Delaunay reduction\n");
   debug_print_matrix_d3(red_lattice);
+#ifdef DEBUG
+  double metric[3][3];
+  get_metric(metric, red_lattice);
+  debug_print("Metric of Delaunay reduction\n");
+  debug_print_matrix_d3(metric);
+#endif
 
 }
 

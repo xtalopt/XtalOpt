@@ -1,20 +1,6 @@
 /* bravais_art.c */
 /* Copyright (C) 2008 Atsushi Togo */
 
-/* This program is free software; you can redistribute it and/or */
-/* modify it under the terms of the GNU General Public License */
-/* as published by the Free Software Foundation; either version 2 */
-/* of the License, or (at your option) any later version. */
-
-/* This program is distributed in the hope that it will be useful, */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-/* GNU General Public License for more details. */
-
-/* You should have received a copy of the GNU General Public License */
-/* along with this program; if not, write to the Free Software */
-/* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA. */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "bravais.h"
@@ -72,6 +58,22 @@ static double primitive_axes[13][3] = {
   { 1.0, 1.0,-1.0},
 };
 
+static int rot_axes[13][3] = {
+  { 1, 0, 0},
+  { 0, 1, 0},
+  { 0, 0, 1},
+  { 0, 1, 1},
+  { 0,-1, 1},
+  { 1, 0, 1},
+  {-1, 0, 1},
+  { 1, 1, 0},
+  {-1, 1, 0},
+  {-1, 1, 1},
+  { 1,-1, 1},
+  { 1, 1,-1},
+  { 1, 1, 1},
+};
+
 static int is_holohedry(Bravais *bravais, const Cell *cell, const Holohedry holohedry, const double symprec);
 static int get_rotation_axis(const int rot[3][3], const int axis_num);
 static int is_monocli(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
@@ -86,13 +88,14 @@ static void get_monocli_bcc_to_c_center(double lattice[3][3]);
 static int is_monocli_orthogonal(const int b_axis, const int naxis, const double monocli_axes[13][3], const double symprec);
 static void get_monocli_relative_axes(double relative_axis[3][3], const double new_lattice[3][3],
 				      const double old_lattice[3][3], const double symprec);
-static int is_tetra(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
+static int is_tetra(Bravais *bravais, const Symmetry *conv_sym);
+static int is_rhombo(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
 static int is_ortho(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
 static int is_ortho_from_H(Bravais *bravais, const Cell *cell, const Symmetry *symmetry, const double symprec);
 static int is_ortho_from_H_axis(const Bravais *bravais, const Cell *cell, const Symmetry *symmetry, const double symprec);
 static int is_ortho_from_I(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
 static int is_ortho_from_F(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
-static int is_ortho_from_P(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
+static int is_ortho_from_P(Bravais *bravais, const Symmetry *conv_sym);
 static int get_ortho_axis(int naxis[3], const Symmetry *conv_sym);
 
 /* bravais is going to be changed. */
@@ -102,7 +105,7 @@ int art_get_artificial_bravais(Bravais *bravais, const Symmetry *symmetry,
 {
   int i, j;
   Symmetry conv_sym;
-  
+
   /* Triogonal */
   if (holohedry == TRIGO && bravais->holohedry == HEXA) {
     /* Just change the holohedry. */
@@ -115,17 +118,16 @@ int art_get_artificial_bravais(Bravais *bravais, const Symmetry *symmetry,
     goto end;
   }
 
-  /* Rhombohedral from Cubic */
-  if (holohedry == TRIGO && bravais->holohedry == CUBIC ) {
-    if (is_holohedry(bravais, cell, RHOMB, symprec)) {
-      goto end;
-    }
-    goto not_found;
-  }
+  /* /\* Rhombohedral from Cubic *\/ */
+  /* if (holohedry == TRIGO && bravais->holohedry == CUBIC ) { */
+  /*   if (is_holohedry(bravais, cell, RHOMB, symprec)) { */
+  /*     goto end; */
+  /*   } */
+  /*   goto not_found; */
+  /* } */
 
   /* Orthorhombic from Hexagonal */
   if (holohedry == ORTHO && bravais->holohedry == HEXA ) {
-
     if (is_ortho_from_H(bravais, cell, symmetry, symprec)) {
       goto end;
     }
@@ -135,7 +137,15 @@ int art_get_artificial_bravais(Bravais *bravais, const Symmetry *symmetry,
 
   conv_sym = tbl_get_conventional_symmetry(bravais, cell, symmetry, symprec);
 
-  debug_print("*** bravais_art ***\n");
+  /* Rhombohedral from Cubic */
+  if (holohedry == TRIGO && bravais->holohedry == CUBIC ) {
+    if (is_rhombo(bravais, &conv_sym, symprec)) {
+      /* for ( i = 0; i < 3; i++ ) */
+      /* 	printf("%f %f %f\n", cell->lattice[0][i], cell->lattice[1][i], cell->lattice[2][i]); */
+      goto end;
+    }
+    goto not_found;
+  }
 
   /* Monoclinic */
   if ( holohedry == MONOCLI ) {
@@ -147,7 +157,7 @@ int art_get_artificial_bravais(Bravais *bravais, const Symmetry *symmetry,
 
   /* Tetragonal */
   if (holohedry == TETRA) {
-    if (is_tetra(bravais, &conv_sym, symprec)) {
+    if (is_tetra(bravais, &conv_sym)) {
       goto found_and_deallocate;
     }
     goto not_found_and_deallocate;
@@ -202,6 +212,124 @@ int art_get_artificial_bravais(Bravais *bravais, const Symmetry *symmetry,
   return 0;
 }
 
+static int is_rhombo(Bravais *bravais, const Symmetry *conv_sym, const double symprec)
+{
+  int i, j, k, l, naxis;
+  double bravais_lattice[3][3];
+  double transform_matrix[3][3] = {
+    { 1.0, 0.0, 0.0},
+    { 0.0, 1.0, 0.0},
+    { 0.0, 0.0, 1.0}
+  };
+  int bcc_basis[8][3] = {
+    { 1, 1, 1},
+    {-1, 1, 1},
+    { 1,-1, 1},
+    { 1, 1,-1},
+    {-1,-1,-1},
+    { 1,-1,-1},
+    {-1, 1,-1},
+    {-1,-1, 1},
+  };
+  int fcc_basis[6][3] = {
+    { 0, 1, 1},
+    { 1, 0, 1},
+    { 1, 1, 0},
+    { 0,-1,-1},
+    {-1, 0,-1},
+    {-1,-1, 0},
+  };
+
+  /* 'axis' has to be 9, 10, 11, or 12 in rot_axes. */
+  for ( i = 0; i < conv_sym->size; i++ ) {
+    naxis = get_rotation_axis(conv_sym->rot[i], 3);
+    if ( naxis > 8 ) {
+      break;
+    }
+  }
+
+  if ( naxis < 9 ) {
+    fprintf(stderr, "spglib: BUG in spglib in __LINE__, __FILE__.");
+    return 0;
+  }
+
+  if (bravais->centering == BODY) {
+    for ( i = 0; i < 8; i++ ) {
+      for ( j = i+1; j < 8; j++ ) {
+	for ( k = j+1; k < 8; k++ ) {
+	  if ( bcc_basis[i][0] +
+	       bcc_basis[j][0] +
+	       bcc_basis[k][0] == rot_axes[naxis][0] &&
+	       bcc_basis[i][1] +
+	       bcc_basis[j][1] +
+	       bcc_basis[k][1] == rot_axes[naxis][1] &&
+	       bcc_basis[i][2] +
+	       bcc_basis[j][2] +
+	       bcc_basis[k][2] == rot_axes[naxis][2] ) {
+	    for ( l = 0; l < 3; l++ ) {
+	      transform_matrix[l][0] = ((double) bcc_basis[i][l]) / 2;
+	      transform_matrix[l][1] = ((double) bcc_basis[j][l]) / 2;
+	      transform_matrix[l][2] = ((double) bcc_basis[k][l]) / 2;
+	    }
+	    if ( mat_Dabs( mat_get_determinant_d3( transform_matrix ) ) > symprec ) {
+	      goto found;
+	    }
+	  }
+	}
+      }
+    }
+  }  
+
+  if (bravais->centering == FACE) {
+    for ( i = 0; i < 6; i++ ) {
+      for ( j = i+1; j < 6; j++ ) {
+	for ( k = j+1; k < 6; k++ ) {
+	  if ( fcc_basis[i][0] +
+	       fcc_basis[j][0] +
+	       fcc_basis[k][0] == 2*rot_axes[naxis][0] &&
+	       fcc_basis[i][1] +
+	       fcc_basis[j][1] +
+	       fcc_basis[k][1] == 2*rot_axes[naxis][1] &&
+	       fcc_basis[i][2] +
+	       fcc_basis[j][2] +
+	       fcc_basis[k][2] == 2*rot_axes[naxis][2] ) {
+	    for ( l = 0; l < 3; l++ ) {
+	      transform_matrix[l][0] = ((double) fcc_basis[i][l]) / 2;
+	      transform_matrix[l][1] = ((double) fcc_basis[j][l]) / 2;
+	      transform_matrix[l][2] = ((double) fcc_basis[k][l]) / 2;
+	    }
+	    if ( mat_Dabs( mat_get_determinant_d3( transform_matrix ) ) > symprec ) {
+	      goto found;
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  /* NO_CENTER */
+  for ( i = 0; i < 3; i++ ) {
+    transform_matrix[i][i] *= rot_axes[naxis][i];
+  }
+
+ found:
+  mat_multiply_matrix_d3( bravais->lattice, bravais->lattice,
+			  transform_matrix );
+  bravais->holohedry = RHOMB;
+  bravais->centering = NO_CENTER;
+
+  /* Swap if determinant < 0 */
+  if ( mat_get_determinant_d3( bravais->lattice ) < symprec ) {
+    mat_copy_matrix_d3( transform_matrix, bravais->lattice );
+    for ( i = 0; i < 3; i++ ) {
+      bravais->lattice[i][1] = transform_matrix[i][2];
+      bravais->lattice[i][2] = transform_matrix[i][1];
+    }
+  }
+
+  return 1;
+}
+
 static int is_ortho(Bravais *bravais, const Symmetry *conv_sym, const double symprec)
 {
   /* I-Ortho and F-Ortho from I-Cbuic or I-Tetragonal */
@@ -216,7 +344,7 @@ static int is_ortho(Bravais *bravais, const Symmetry *conv_sym, const double sym
   }
 
   if (bravais->centering == NO_CENTER) {
-    if (is_ortho_from_P(bravais, conv_sym, symprec))
+    if (is_ortho_from_P(bravais, conv_sym))
       goto found;
   }
 
@@ -330,8 +458,7 @@ static int get_ortho_axis(int naxis[3], const Symmetry *conv_sym)
   return 0;
 }
 
-static int is_ortho_from_I(Bravais *bravais, const Symmetry *conv_sym,
-			   const double symprec)
+static int is_ortho_from_I(Bravais *bravais, const Symmetry *conv_sym, const double symprec)
 {
   int i, j, naxis[3];
   double relative_axis[3][3];
@@ -346,9 +473,13 @@ static int is_ortho_from_I(Bravais *bravais, const Symmetry *conv_sym,
 
   debug_print("is_ortho_from_I\n");
   debug_print_matrix_d3(relative_axis);
-
   mat_multiply_matrix_d3(bravais->lattice, bravais->lattice, relative_axis);
 
+  /* F case */
+  if (mat_Dabs(mat_Dabs(mat_get_determinant_d3(relative_axis)) - 2.0) < symprec) {
+    bravais->centering = FACE;
+  }
+  
   return 1;
 
  not_found:
@@ -372,7 +503,7 @@ static int is_ortho_from_F(Bravais *bravais, const Symmetry *conv_sym,
   debug_print("is_ortho_from_F\n");
   debug_print_matrix_d3(relative_axis);
   mat_multiply_matrix_d3(bravais->lattice, bravais->lattice, relative_axis);
-
+  
   /* I case */
   if (mat_Dabs(mat_Dabs(mat_get_determinant_d3(relative_axis)) - 0.5) < symprec) {
     bravais->centering = BODY;
@@ -384,8 +515,7 @@ static int is_ortho_from_F(Bravais *bravais, const Symmetry *conv_sym,
   return 0;
 }
 
-static int is_ortho_from_P(Bravais *bravais, const Symmetry *conv_sym,
-			   const double symprec)
+static int is_ortho_from_P(Bravais *bravais, const Symmetry *conv_sym)
 {
   int i, j, naxis[3];
   double relative_axis[3][3];
@@ -414,8 +544,7 @@ static int is_ortho_from_P(Bravais *bravais, const Symmetry *conv_sym,
   return 0;
 }
 
-static int is_tetra(Bravais *bravais, const Symmetry *conv_sym,
-		    const double symprec)
+static int is_tetra(Bravais *bravais, const Symmetry *conv_sym)
 {
   int i, tmp_naxis = -1;
   double permutate_axis_a[3][3] = {
@@ -635,47 +764,43 @@ static int is_monocli_from_P(Bravais *bravais, const Symmetry *conv_sym,
 
   /* base center */
   mat_copy_matrix_d3(lattice, bravais->lattice);
-  if ( bravais->centering == A_FACE || 
-       bravais->centering == B_FACE || 
-       bravais->centering == C_FACE ) {
-    if (get_monocli_bravais(bravais->lattice, conv_sym, 2.0, primitive_axes, symprec)) {
+  if (get_monocli_bravais(bravais->lattice, conv_sym, 2.0, primitive_axes, symprec)) {
 
-      get_monocli_relative_axes(relative_axis, bravais->lattice, lattice, symprec);
+    get_monocli_relative_axes(relative_axis, bravais->lattice, lattice, symprec);
 
-      debug_print("is_monocli_from_P\n");
-      debug_print_matrix_d3(relative_axis);
+    debug_print("is_monocli_from_P\n");
+    debug_print_matrix_d3(relative_axis);
 
-      if ((mat_Dabs(mat_Dabs(relative_axis[0][0]+relative_axis[0][1]) - 2.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[1][0]+relative_axis[1][1]) - 0.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[2][0]+relative_axis[2][1]) - 0.0) < symprec) ||
-	  (mat_Dabs(mat_Dabs(relative_axis[0][0]+relative_axis[0][1]) - 0.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[1][0]+relative_axis[1][1]) - 2.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[2][0]+relative_axis[2][1]) - 0.0) < symprec) ||
-	  (mat_Dabs(mat_Dabs(relative_axis[0][0]+relative_axis[0][1]) - 0.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[1][0]+relative_axis[1][1]) - 0.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[2][0]+relative_axis[2][1]) - 2.0) < symprec)) {
-	bravais->centering = C_FACE;
-	goto found;
-      }
-
-      if ((mat_Dabs(mat_Dabs(relative_axis[0][1]+relative_axis[0][2]) - 2.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[1][1]+relative_axis[1][2]) - 0.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[2][1]+relative_axis[2][2]) - 0.0) < symprec) ||
-	  (mat_Dabs(mat_Dabs(relative_axis[0][1]+relative_axis[0][2]) - 0.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[1][1]+relative_axis[1][2]) - 2.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[2][1]+relative_axis[2][2]) - 0.0) < symprec) ||
-	  (mat_Dabs(mat_Dabs(relative_axis[0][1]+relative_axis[0][2]) - 0.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[1][1]+relative_axis[1][2]) - 0.0) < symprec &&
-	   mat_Dabs(mat_Dabs(relative_axis[2][1]+relative_axis[2][2]) - 2.0) < symprec)) {
-	bravais->centering = A_FACE;
-	goto found;
-      }
-
-      /* otherwise bcc */
-      get_monocli_bcc_to_c_center(bravais->lattice);
+    if ((mat_Dabs(mat_Dabs(relative_axis[0][0]+relative_axis[0][1]) - 2.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[1][0]+relative_axis[1][1]) - 0.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[2][0]+relative_axis[2][1]) - 0.0) < symprec) ||
+	(mat_Dabs(mat_Dabs(relative_axis[0][0]+relative_axis[0][1]) - 0.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[1][0]+relative_axis[1][1]) - 2.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[2][0]+relative_axis[2][1]) - 0.0) < symprec) ||
+	(mat_Dabs(mat_Dabs(relative_axis[0][0]+relative_axis[0][1]) - 0.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[1][0]+relative_axis[1][1]) - 0.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[2][0]+relative_axis[2][1]) - 2.0) < symprec)) {
       bravais->centering = C_FACE;
       goto found;
     }
+
+    if ((mat_Dabs(mat_Dabs(relative_axis[0][1]+relative_axis[0][2]) - 2.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[1][1]+relative_axis[1][2]) - 0.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[2][1]+relative_axis[2][2]) - 0.0) < symprec) ||
+	(mat_Dabs(mat_Dabs(relative_axis[0][1]+relative_axis[0][2]) - 0.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[1][1]+relative_axis[1][2]) - 2.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[2][1]+relative_axis[2][2]) - 0.0) < symprec) ||
+	(mat_Dabs(mat_Dabs(relative_axis[0][1]+relative_axis[0][2]) - 0.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[1][1]+relative_axis[1][2]) - 0.0) < symprec &&
+	 mat_Dabs(mat_Dabs(relative_axis[2][1]+relative_axis[2][2]) - 2.0) < symprec)) {
+      bravais->centering = A_FACE;
+      goto found;
+    }
+
+    /* otherwise bcc */
+    get_monocli_bcc_to_c_center(bravais->lattice);
+    bravais->centering = C_FACE;
+    goto found;
   }
 
   return 0;
@@ -780,7 +905,7 @@ static int is_holohedry(Bravais *bravais, const Cell *cell,
   temp_bravais = *bravais;
   temp_bravais.holohedry = holohedry;
   brv_smallest_lattice_vector(min_lattice, cell->lattice, symprec);
-  
+
   if ( brv_get_brv_lattice_in_loop(&temp_bravais, min_lattice, symprec) ) {
     *bravais = temp_bravais;
     return 1;
@@ -790,25 +915,10 @@ static int is_holohedry(Bravais *bravais, const Cell *cell,
   }
 }
 
+/* axis_num: Rotation type N */
 static int get_rotation_axis(const int rot[3][3], const int axis_num)
 {
   int i, axis = -1, tmp_rot[3][3], test_rot[3][3], vec[3];
-  int rot_axes[13][3] = {
-    { 1, 0, 0},
-    { 0, 1, 0},
-    { 0, 0, 1},
-    { 0, 1, 1},
-    { 0, 1,-1},
-    { 1, 0, 1},
-    {-1, 0, 1},
-    { 1, 1, 0},
-    { 1,-1, 0},
-    {-1, 1, 1},
-    { 1,-1, 1},
-    { 1, 1,-1},
-    { 1, 1, 1},
-  };
-
   int identity[3][3] = {
     { 1, 0, 0},
     { 0, 1, 0},
