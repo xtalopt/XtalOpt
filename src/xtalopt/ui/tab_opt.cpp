@@ -178,9 +178,9 @@ namespace XtalOpt {
     ui.combo_failAction->setCurrentIndex(settings->value("opt/failAction",      XtalOpt::FA_Randomize).toUInt()    );
 
     // Duplicates
-    ui.spin_tol_enthalpy->setValue(     settings->value("tol/enthalpy",         1e-2).toDouble());
-    ui.spin_tol_volume->setValue(       settings->value("tol/volume",           1e-2).toDouble());
-    ui.spin_tol_spg->setValue(          settings->value("tol/spg",              5e-2).toDouble());
+    ui.spin_tol_enthalpy->setValue(     settings->value("tol/enthalpy",         0.005).toDouble());
+    ui.spin_tol_volume->setValue(       settings->value("tol/volume",           1.0).toDouble());
+    ui.spin_tol_spg->setValue(          settings->value("tol/spg",              0.05).toDouble());
 
     // Crossover
     ui.spin_p_cross->setValue(          settings->value("opt/p_cross",          15).toUInt()    );
