@@ -1,25 +1,16 @@
 /* symmetry_kpoints.c */
 /* Copyright (C) 2008 Atsushi Togo */
 
-/* This program is free software; you can redistribute it and/or */
-/* modify it under the terms of the GNU General Public License */
-/* as published by the Free Software Foundation; either version 2 */
-/* of the License, or (at your option) any later version. */
-
-/* This program is distributed in the hope that it will be useful, */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-/* GNU General Public License for more details. */
-
-/* You should have received a copy of the GNU General Public License */
-/* along with this program; if not, write to the Free Software */
-/* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA. */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "debug.h"
 #include "mathfunc.h"
 #include "symmetry.h"
+
+/* #define QXYZ */
+/* The addressing order of mesh grid is defined as running left */
+/* element first. But when QXYZ is defined, it is changed to right */ 
+/* element first. */
 
 static PointSymmetry get_point_group_rotation(const double lattice[3][3], 
 					      const Symmetry * symmetry,
@@ -42,6 +33,17 @@ static int get_ir_triplets( int triplets[][3],
 			    const double lattice[3][3],
 			    const Symmetry *symmetry,
 			    const double symprec );
+static int get_ir_triplets_with_q( int triplets_with_q[][3], 
+				   int weight_with_q[],
+				   const int fixed_grid_number,
+				   const int triplets[][3],
+				   const int num_triplets,
+				   const int mesh[3],
+				   const PointSymmetry * point_symmetry );
+static void get_grid_mapping_table( const PointSymmetry * point_symmetry,
+				    const int mesh[3],
+				    int map_sym[point_symmetry->size][mesh[0]*mesh[1]*mesh[2]],
+				    const int is_shift[3] );
 static void address_to_grid( int grid_double[3], const int address,
 			     const int mesh[3], const int is_shift[3] );
 static void get_grid_points(int grid_point[3], const int grid[3], const int mesh[3]);
@@ -119,7 +121,6 @@ int kpt_get_stabilized_reciprocal_mesh( int grid_point[][3],
 					const double symprec )
 {
   PointSymmetry point_symmetry;
-  int n_ir, i;
   
   if (! check_input_values( num_grid, mesh ) )
     return 0;
@@ -144,8 +145,6 @@ int kpt_get_triplets_reciprocal_mesh( int triplets[][3],
 				      const Symmetry * symmetry,
 				      const double symprec )
 {
-  int i;
-
   if (! check_input_values( num_grid, mesh ) )
     return 0;
 
@@ -158,6 +157,36 @@ int kpt_get_triplets_reciprocal_mesh( int triplets[][3],
 			  lattice,
 			  symmetry,
 			  symprec );
+}
+
+int kpt_get_triplets_reciprocal_mesh_with_q( int triplets_with_q[][3],
+					     int weight_with_q[],
+					     const int fixed_grid_number,
+					     const int num_triplets,
+					     const int triplets[][3],
+					     const int weight[],
+					     const int mesh[3],
+					     const int is_time_reversal,
+					     const double lattice[3][3],
+					     const Symmetry * symmetry,
+					     const double symprec )
+{
+  PointSymmetry point_symmetry;
+
+  point_symmetry = get_point_group_rotation( lattice,
+					     symmetry,
+					     is_time_reversal,
+					     symprec,
+					     0, NULL );
+
+  return get_ir_triplets_with_q( triplets_with_q,
+				 weight_with_q,
+				 fixed_grid_number,
+				 triplets,
+				 num_triplets,
+				 mesh,
+				 &point_symmetry );
+				 
 }
 
 /* qpoints are used to find stabilizers (operations). */
@@ -320,6 +349,7 @@ static int get_ir_reciprocal_mesh(int grid[][3], int map[],
     map[i] = -1;
   }
 
+#ifndef QXYZ
   for ( i = 0; i < mesh_double[2]; i++ ) {
     if ( ( is_shift[2] && i % 2 == 0 ) ||
 	 ( is_shift[2] == 0 && i % 2 != 0 ) ) 
@@ -338,7 +368,27 @@ static int get_ir_reciprocal_mesh(int grid[][3], int map[],
 	grid_double[0] = k;
 	grid_double[1] = j;
 	grid_double[2] = i;
-	
+#else
+  for ( i = 0; i < mesh_double[0]; i++ ) {
+    if ( ( is_shift[0] && i % 2 == 0 ) ||
+  	 ( is_shift[0] == 0 && i % 2 != 0 ) )
+      continue;
+
+    for ( j = 0; j < mesh_double[1]; j++ ) {
+      if ( ( is_shift[1] && j % 2 == 0 ) ||
+  	   ( is_shift[1] == 0 && j % 2 != 0 ) )
+  	continue;
+      
+      for ( k = 0; k < mesh_double[2]; k++ ) {
+  	if ( ( is_shift[2] && k % 2 == 0 ) ||
+  	     ( is_shift[2] == 0 && k % 2 != 0 ) )
+  	  continue;
+
+  	grid_double[0] = i;
+  	grid_double[1] = j;
+  	grid_double[2] = k;
+#endif	
+
 	address = grid_to_address( grid_double, mesh, is_shift );
 	get_grid_points(grid[ address ], grid_double, mesh);
 
@@ -369,8 +419,16 @@ static int get_ir_reciprocal_mesh(int grid[][3], int map[],
   return num_ir;
 }
 
-/* Unique q-point triplets that conserve the momentum, */
-/* q+q'+q''=G, are obtained. */
+
+/* Unique q-point triplets that conserve the momentum,  */
+/* q+q'+q''=G, are obtained.                            */
+/*                                                      */
+/* The first q-point is selected among the ir-q-points. */
+/* The second q-point is selected among the ir-q-points */
+/* constrained by the first q-point (stabilizer)        */
+/* The third q-point is searched through the all grid   */
+/* points and is checked if it satisfies q+q'+q''=G,    */
+/* here q, q', and q'' can be exchanged one another.    */
 static int get_ir_triplets( int triplets[][3],
 			    int weight_triplets[],
 			    int grid[][3],
@@ -382,10 +440,10 @@ static int get_ir_triplets( int triplets[][3],
 			    const double symprec )
 {
   int i, j, l, m, num_ir, is_found, weight, weight_q, num_triplets=0, num_unique_q=0;
-  int mesh_double[3], address[3], tmp_address[3], tmp_grid_double[3], is_shift[3];
-  int grid_double[3][3], grid_rot[3][3], tmp_grid_rot[3];
-  const int num_mesh = mesh[0] * mesh[1] * mesh[2];
-  int map[num_mesh], map_q[num_mesh], map_sym[symmetry->size][num_mesh], unique_q[num_mesh];
+  int mesh_double[3], address[3], is_shift[3];
+  int grid_double[3][3];
+  const int num_grid = mesh[0] * mesh[1] * mesh[2];
+  int map[num_grid], map_q[num_grid], map_sym[symmetry->size][num_grid], unique_q[num_grid];
   double q[3];
   PointSymmetry point_symmetry, point_symmetry_q;
   
@@ -395,25 +453,26 @@ static int get_ir_triplets( int triplets[][3],
 					     symprec,
 					     0, NULL );
 
+  /* Only consider the gamma-point */
   for ( i = 0; i < 3; i++ )
     is_shift[i] = 0;
 
   num_ir = get_ir_reciprocal_mesh( grid, map, mesh, is_shift, &point_symmetry );
 
-  int map_triplets[num_ir][num_mesh];
+  int map_triplets[num_ir][num_grid];
 
   for ( i = 0; i < 3; i++ )
     mesh_double[i] = mesh[i] * 2;
 
   /* Memory space check */
-  if ( num_ir * num_mesh < max_num_triplets ) {
+  if ( num_ir * num_grid < max_num_triplets ) {
     fprintf(stderr, "spglib: More memory space for triplets is required.");
     return 0;
   }
 
   /* Prepare triplet mapping table to enhance speed of query */
   /* 'unique_q' table is prepared for saving memory space */
-  for ( i = 0; i < num_mesh; i++ ) {
+  for ( i = 0; i < num_grid; i++ ) {
     if ( i == map[i] ) {
       unique_q[i] = num_unique_q;
       num_unique_q++;
@@ -423,37 +482,30 @@ static int get_ir_triplets( int triplets[][3],
     }
   }
 
+
   for ( i = 0; i < num_ir; i++ )
-    for ( j = 0; j < num_mesh; j++ )
+    for ( j = 0; j < num_grid; j++ )
       map_triplets[i][j] = 0;
 
   /* Prepare grid point mapping table */
-  for ( i = 0; i < point_symmetry.size; i++ ) {
-    for ( j = 0; j < num_mesh; j++ ) {
-      address_to_grid( tmp_grid_double, j, mesh, is_shift );
-      mat_multiply_matrix_vector_i3( tmp_grid_rot, point_symmetry.rot[i], tmp_grid_double );
-      get_vector_modulo( tmp_grid_rot, mesh_double );
-      map_sym[i][j] = grid_to_address( tmp_grid_rot, mesh, is_shift );
-    }
-  }
+  get_grid_mapping_table( &point_symmetry, mesh, map_sym, is_shift );
 
   /* Search triplets without considersing combination */
-  for ( i = 0; i < num_mesh; i++ ) {
+  for ( i = 0; i < num_grid; i++ ) {
     if ( i != map[ i ] )
       continue;
 
     weight = 0;
-    for ( j = 0; j < num_mesh; j++ ) {
-/*       printf("%d: %d ( %d, %d, %d)\n", j, map[j], grid[j][0],grid[j][1],grid[j][2]); */
+    for ( j = 0; j < num_grid; j++ ) {
       if ( i == map[j] )
 	weight++;
     }
 
-    printf("%d/%d: weight = %d\n", map[i]+1, num_mesh, weight);
-
+    /* Search irreducible q-points (map_q) with a stabilizer */
     address_to_grid( grid_double[0], i, mesh, is_shift );
-    for ( j = 0; j < 3; j++ )
+    for ( j = 0; j < 3; j++ ) {
       q[j] = (double)grid_double[0][j] / mesh_double[j];
+    }
 
     point_symmetry_q = get_point_group_rotation( lattice,
 						 symmetry,
@@ -463,14 +515,18 @@ static int get_ir_triplets( int triplets[][3],
 
     get_ir_reciprocal_mesh(grid, map_q, mesh, is_shift, &point_symmetry_q);
 
-    for ( j = 0; j < num_mesh; j++ ) {
-      if ( j != map_q[ j ] )
+
+    for ( j = 0; j < num_grid; j++ ) {
+      if ( j != map_q[ j ] ) {
 	continue;
+      }
 
       weight_q = 0;
-      for ( l = 0; l < num_mesh; l++ )
-	if ( j == map_q[l] )
+      for ( l = 0; l < num_grid; l++ ) {
+	if ( j == map_q[l] ) {
 	  weight_q++;
+	}
+      }
 
       address_to_grid( grid_double[1], j, mesh, is_shift );
 
@@ -479,16 +535,18 @@ static int get_ir_triplets( int triplets[][3],
       grid_double[2][2] = - grid_double[0][2] - grid_double[1][2];
       get_vector_modulo( grid_double[2], mesh_double );
 
+      /* Look for irreducible triplets exchanging three q-points */
+      /* and searching by symmetry rotations */
       is_found = 0;
-
       for ( l = 0; l < point_symmetry.size; l++ ) {
 
+	/* Check six combinations */
 	for ( m = 0; m < 3; m++ ) {
-
 	  address[m%3] = map_sym[l][i];
 	  address[(m+1)%3] = map_sym[l][j];
 	  address[(m+2)%3] = map_sym[l][grid_to_address( grid_double[2], mesh, is_shift )];
 	
+	  /* Found in the list (even) */
 	  if ( address[0] == map[address[0]] ) {
 	    if ( map_triplets[ unique_q[address[0]] ][ address[1] ] ) {
 	      is_found = 1;
@@ -497,10 +555,11 @@ static int get_ir_triplets( int triplets[][3],
 	    }
 	  }
 
+	  /* Found in the list (odd) */
 	  if ( address[1] == map[address[1]] ) {
-	    if ( map_triplets[ unique_q[address[1]] ][ address[0] ] ) {
+	    if ( map_triplets[ unique_q[ address[1]] ][ address[0] ] ) {
 	      is_found = 1;
-	      map_triplets[ unique_q[address[1]] ][ address[0] ] += weight * weight_q;
+	      map_triplets[ unique_q[ address[1]] ][ address[0] ] += weight * weight_q;
 	      break;
 	    }
 	  }
@@ -510,23 +569,177 @@ static int get_ir_triplets( int triplets[][3],
 	  break;
       }
 
+      /* Not found in the list, then this is an irreducible triplet. */
       if (! is_found ) {
 	triplets[num_triplets][0] = i;
 	triplets[num_triplets][1] = j;
 	triplets[num_triplets][2] = grid_to_address( grid_double[2], mesh, is_shift );
 	num_triplets++;
-	map_triplets[unique_q[i]][j] += weight * weight_q;
+	map_triplets[unique_q[i]][j] = weight * weight_q;
       }
     }
   }
 
   for ( i = 0; i < num_triplets; i++ )
-    weight_triplets[i] = map_triplets[ unique_q[triplets[i][0]] ][ triplets[i][1] ];
+    weight_triplets[i] = map_triplets[ unique_q[ triplets[i][0]] ][ triplets[i][1] ];
 
   return num_triplets;
 }
 
-static int grid_to_address(const int grid_double[3], const int mesh[3], const int is_shift[3])
+static int get_ir_triplets_with_q( int triplets_with_q[][3], 
+				   int weight_with_q[],
+				   const int fixed_grid_number,
+				   const int triplets[][3],
+				   const int num_triplets,
+				   const int mesh[3],
+				   const PointSymmetry *point_symmetry )
+{
+  int i, j, k, sym_num, rest_index, num_triplets_with_q;
+  int address0, address1, address1_orig, found;
+  int is_shift[3];
+  const int num_grid = mesh[0] * mesh[1] * mesh[2];
+  int map_sym[point_symmetry->size][num_grid];
+
+  /* Only consider the gamma-point */
+  for ( i = 0; i < 3; i++ ) {
+    is_shift[i] = 0;
+  }
+
+  /* Prepare mapping tables */
+  get_grid_mapping_table( point_symmetry, mesh, map_sym, is_shift );
+
+  num_triplets_with_q = 0;
+
+  for ( i = 0; i < num_triplets; i++ ) {
+    sym_num = -1;
+    for ( j = 0; j < point_symmetry->size; j++ ) {
+      address0 = map_sym[j][fixed_grid_number];
+      if ( triplets[i][0] == address0 ||
+	   triplets[i][1] == address0 ||
+	   triplets[i][2] == address0 ) {
+	for ( k = 0; k < num_grid; k++ ) {
+	  address1 = map_sym[j][k];
+	  /* Matching indices 0 and 1 */
+	  if ( ( triplets[i][0] == address0 && triplets[i][1] == address1 ) ||
+	       ( triplets[i][1] == address0 && triplets[i][0] == address1 ) ) {
+	    sym_num = j;
+	    rest_index = 2;
+	    address1_orig = k;
+	    break;
+	  }
+	  /* Matching indices 1 and 2 */
+	  if ( ( triplets[i][1] == address0 && triplets[i][2] == address1 ) ||
+	       ( triplets[i][2] == address0 && triplets[i][1] == address1 ) ) {
+	    sym_num = j;
+	    rest_index = 0;
+	    address1_orig = k;
+	    break;
+	  }
+	  /* Matching indices 2 and 0 */
+	  if ( ( triplets[i][2] == address0 && triplets[i][0] == address1 ) ||
+	       ( triplets[i][0] == address0 && triplets[i][2] == address1 ) ) {
+	    sym_num = j;
+	    rest_index = 1;
+	    address1_orig = k;
+	    break;
+	  }
+	}
+	if ( sym_num > -1 ) {
+	  break;
+	}
+      }
+    }
+
+    /* Found? */
+    if ( sym_num > -1 ) {
+      for ( j = 0; j < num_grid; j++ ) {
+	if ( map_sym[sym_num][j] == triplets[i][rest_index] ) {
+	  triplets_with_q[num_triplets_with_q][0] = fixed_grid_number;
+	  if ( j > address1_orig ) {
+	    triplets_with_q[num_triplets_with_q][1] = address1_orig;
+	    triplets_with_q[num_triplets_with_q][2] = j;
+	  } else {
+	    triplets_with_q[num_triplets_with_q][2] = address1_orig;
+	    triplets_with_q[num_triplets_with_q][1] = j;
+	  }
+	  num_triplets_with_q++;
+	  break;
+	}
+      }
+    }
+  }
+
+  for ( i = 0; i < num_triplets_with_q; i++ ) {
+    weight_with_q[i] = 0;
+  }
+
+  for ( i = 0; i < num_grid; i++ ) {
+    found = 0;
+    for ( j = 0; j < num_triplets_with_q; j++ ) {
+      for ( k = 0; k < point_symmetry->size; k++ ) {
+
+	if ( map_sym[k][fixed_grid_number] == triplets_with_q[j][0] ) {
+	  if ( map_sym[k][i] == triplets_with_q[j][1] ||
+	       map_sym[k][i] == triplets_with_q[j][2] ) {
+	    weight_with_q[j]++;
+	    found = 1;
+	    break;
+	  }	  
+	}
+	if ( map_sym[k][fixed_grid_number] == triplets_with_q[j][1] ) {
+	  if ( map_sym[k][i] == triplets_with_q[j][2] ||
+	       map_sym[k][i] == triplets_with_q[j][0] ) {
+	    weight_with_q[j]++;
+	    found = 1;
+	    break;
+	  }	  
+	}
+	if ( map_sym[k][fixed_grid_number] == triplets_with_q[j][2] ) {
+	  if ( map_sym[k][i] == triplets_with_q[j][0] ||
+	       map_sym[k][i] == triplets_with_q[j][1] ) {
+	    weight_with_q[j]++;
+	    found = 1;
+	    break;
+	  }
+	}
+      }
+      if ( found ) {
+	break;
+      }
+    }
+    if ( ! found ) {
+      fprintf(stderr, "spglib: Unexpected behavior in get_ir_triplets_with_q.\n");
+    }
+  }
+  
+  return num_triplets_with_q;
+}
+
+static void get_grid_mapping_table( const PointSymmetry *point_symmetry,
+				    const int mesh[3],
+				    int map_sym[point_symmetry->size][mesh[0]*mesh[1]*mesh[2]],
+				    const int is_shift[3] )
+{
+  int i, j;
+  int grid_rot[3], grid_double[3], mesh_double[3];
+
+  for ( i = 0; i < 3; i++ )
+    mesh_double[i] = mesh[i] * 2;
+
+  for ( i = 0; i < point_symmetry->size; i++ ) {
+    for ( j = 0; j < mesh[0]*mesh[1]*mesh[2]; j++ ) {
+      address_to_grid( grid_double, j, mesh, is_shift );
+      mat_multiply_matrix_vector_i3( grid_rot, point_symmetry->rot[i], grid_double );
+      get_vector_modulo( grid_rot, mesh_double );
+      map_sym[i][j] = grid_to_address( grid_rot, mesh, is_shift );
+    }
+  }
+}  
+
+
+static int grid_to_address( const int grid_double[3],
+			    const int mesh[3],
+			    const int is_shift[3] )
 {
   int i, grid[3];
 
@@ -541,8 +754,12 @@ static int grid_to_address(const int grid_double[3], const int mesh[3], const in
       }
     }
   }
-  
+
+#ifndef QXYZ
   return grid[2] * mesh[0] * mesh[1] + grid[1] * mesh[0] + grid[0];
+#else
+  return grid[0] * mesh[1] * mesh[2] + grid[1] * mesh[2] + grid[2];
+#endif  
 }
 
 static void address_to_grid( int grid_double[3], const int address,
@@ -551,9 +768,15 @@ static void address_to_grid( int grid_double[3], const int address,
   int i;
   int grid[3];
 
+#ifndef QXYZ
   grid[2] = address / ( mesh[0] * mesh[1] );
   grid[1] = ( address - grid[2] * mesh[0] * mesh[1] ) / mesh[0];
   grid[0] = address % mesh[0];
+#else
+  grid[0] = address / ( mesh[1] * mesh[2] );
+  grid[1] = ( address - grid[0] * mesh[1] * mesh[2] ) / mesh[2];
+  grid[2] = address % mesh[2];
+#endif
 
   for ( i = 0; i < 3; i++ ) {
     grid_double[i] = grid[i] * 2 + is_shift[i];

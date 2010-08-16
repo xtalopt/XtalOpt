@@ -1,21 +1,21 @@
 set( spglib_SRCS 
-     bravais.c
      bravais_art.c
+     bravais.c
      cell.c
      debug.c
+     hall_symbol.c
      mathfunc.c
-     mathfunc.h
      pointgroup.c
      primitive.c
      spacegroup.c
-     spacegroup.h
-     spacegroup_data.c
-     spacegroup_data.h
      spacegroup_database.c
-     spacegroup_database.h
+     spacegroup_data.c
+     spg_database.c
      spglib.c
+     spglib_f.c
      symmetry.c
-     symmetry_kpoint.c)
+     symmetry_kpoint.c
+)
 
 add_library(spglib STATIC ${spglib_SRCS})
 # Suppress spglib warnings

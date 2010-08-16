@@ -64,6 +64,8 @@ namespace XtalOpt {
             this, SLOT(updateOptimizationInfo()));
     connect(ui.spin_tol_volume, SIGNAL(editingFinished()),
             this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_tol_spg, SIGNAL(editingFinished()),
+            this, SLOT(updateOptimizationInfo()));
     connect(ui.push_dup_reset, SIGNAL(clicked()),
             m_opt, SLOT(resetDuplicates()));
 
@@ -130,6 +132,7 @@ namespace XtalOpt {
     // Duplicates
     settings->setValue("tol/enthalpy",          xtalopt->tol_enthalpy);
     settings->setValue("tol/volume",            xtalopt->tol_volume);
+    settings->setValue("tol/spg",               xtalopt->tol_spg);
 
     // Crossover
     settings->setValue("opt/p_cross",           xtalopt->p_cross);
@@ -177,6 +180,7 @@ namespace XtalOpt {
     // Duplicates
     ui.spin_tol_enthalpy->setValue(     settings->value("tol/enthalpy",         1e-2).toDouble());
     ui.spin_tol_volume->setValue(       settings->value("tol/volume",           1e-2).toDouble());
+    ui.spin_tol_spg->setValue(          settings->value("tol/spg",              5e-2).toDouble());
 
     // Crossover
     ui.spin_p_cross->setValue(          settings->value("opt/p_cross",          15).toUInt()    );
@@ -227,6 +231,7 @@ namespace XtalOpt {
     // Duplicates
     ui.spin_tol_enthalpy->setValue(     xtalopt->tol_enthalpy);
     ui.spin_tol_volume->setValue(       xtalopt->tol_volume);
+    ui.spin_tol_spg->setValue(          xtalopt->tol_spg);
 
     // Crossover
     ui.spin_p_cross->setValue(          xtalopt->p_cross);
@@ -283,6 +288,7 @@ namespace XtalOpt {
     // Duplicates
     xtalopt->tol_enthalpy         = ui.spin_tol_enthalpy->value();
     xtalopt->tol_volume           = ui.spin_tol_volume->value();
+    xtalopt->tol_spg              = ui.spin_tol_spg->value();
 
     // Crossover
     xtalopt->cross_minimumContribution=ui.spin_cross_minimumContribution->value();

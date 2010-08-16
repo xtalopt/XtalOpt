@@ -1,20 +1,6 @@
 /* cell.c */
 /* Copyright (C) 2008 Atsushi Togo */
 
-/* This program is free software; you can redistribute it and/or */
-/* modify it under the terms of the GNU General Public License */
-/* as published by the Free Software Foundation; either version 2 */
-/* of the License, or (at your option) any later version. */
-
-/* This program is distributed in the hope that it will be useful, */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-/* GNU General Public License for more details. */
-
-/* You should have received a copy of the GNU General Public License */
-/* along with this program; if not, write to the Free Software */
-/* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA. */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include "cell.h"
@@ -66,3 +52,24 @@ void cel_set_cell(Cell * cell, const double lattice[3][3], const double position
     }
 }
 
+/*
+ * Convert a vector from fractional coordinates to cartesian coordinates
+ */
+void cel_frac_to_cart(Cell * cell, const double frac[3], double cart[3])
+{
+  double v[3];
+  mat_multiply_matrix_vector_d3(v, cell->lattice, frac);
+  mat_copy_vector_d3(cart, v);
+}
+
+/*
+ * Convert a vector from cartesian coordinates to fractional coordinates
+ */
+void cel_cart_to_frac(Cell * cell, const double cart[3], double frac[3], const double precision)
+{
+  double v[3];
+  double fracMat[3][3];
+  mat_inverse_matrix_d3(fracMat, cell->lattice, precision);
+  mat_multiply_matrix_vector_d3(v, fracMat, cart);
+  mat_copy_vector_d3(frac, v);
+}

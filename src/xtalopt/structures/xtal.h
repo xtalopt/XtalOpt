@@ -104,7 +104,7 @@ namespace XtalOpt {
     void wrapAtomsToCell();
 
     // Spacegroup
-    void findSpaceGroup(double prec = 5e-2);
+    void findSpaceGroup(double prec = 0.05);
 
    private slots:
 

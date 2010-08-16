@@ -155,7 +155,7 @@ namespace XtalOpt {
         failed++;
       }
       else {
-        xtal->findSpaceGroup();
+        xtal->findSpaceGroup(tol_spg);
         initializeAndAddXtal(xtal, 1, xtal->getParents());
         newXtalCount++;
       }
@@ -254,7 +254,7 @@ namespace XtalOpt {
       atom1->setPos(atom2->pos());
       atom1->setAtomicNumber(atom2->atomicNumber());
     }
-    oldXtal->findSpaceGroup();
+    oldXtal->findSpaceGroup(tol_spg);
     oldXtal->resetFailCount();
 
     // Delete random xtal
@@ -422,7 +422,7 @@ namespace XtalOpt {
     xtal->setFileName(locpath_s);
     xtal->setRempath(rempath_s);
     xtal->setCurrentOptStep(1);
-    xtal->findSpaceGroup();
+    xtal->findSpaceGroup(tol_spg);
     m_queue->unlockForNaming(xtal);
     xtalInitMutex->unlock();
   }
@@ -1235,15 +1235,22 @@ namespace XtalOpt {
 
   void XtalOpt::resetDuplicates_() {
     QList<Structure*> *structures = m_tracker->list();
+    m_dialog->startProgressUpdate(tr("Rechecking duplicate structures..."),
+                                  0,
+                                  structures->size());
     Xtal *xtal = 0;
     for (int i = 0; i < structures->size(); i++) {
+      m_dialog->updateProgressValue(i+1);
       xtal = qobject_cast<Xtal*>(structures->at(i));
       xtal->lock()->lockForWrite();
+      xtal->findSpaceGroup(tol_spg);
       if (xtal->getStatus() == Xtal::Duplicate)
         xtal->setStatus(Xtal::Optimized);
       xtal->lock()->unlock();
     }
     checkForDuplicates();
+    emit updateAllInfo();
+    m_dialog->stopProgressUpdate();
   }
 
   void XtalOpt::checkForDuplicates() {
@@ -1280,9 +1287,13 @@ namespace XtalOpt {
     for (int i = 0; i < fps.size(); i++) {
       if ( states.at(i) != Xtal::Optimized ) continue;
       fp_i = fps.at(i);
+      // skip unknown spacegroups
+      if (fp_i.value("spacegroup") == 0) continue;
       for (int j = i+1; j < fps.size(); j++) {
         if (states.at(j) != Xtal::Optimized ) continue;
         fp_j = fps.at(j);
+        // skip unknown spacegroups
+        if (fp_j.value("spacegroup") == 0) continue;
         // If xtals do not have the same spacegroup number, break
         if (fp_i.value("spacegroup") != fp_j.value("spacegroup")) {
           continue;

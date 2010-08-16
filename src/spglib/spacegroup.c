@@ -1,28 +1,9 @@
 /* spacegroup.c */
 /* Copyright (C) 2008 Atsushi Togo */
 
-/* This program is free software; you can redistribute it and/or */
-/* modify it under the terms of the GNU General Public License */
-/* as published by the Free Software Foundation; either version 2 */
-/* of the License, or (at your option) any later version. */
-
-/* This program is distributed in the hope that it will be useful, */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the */
-/* GNU General Public License for more details. */
-
-/* You should have received a copy of the GNU General Public License */
-/* along with this program; if not, write to the Free Software */
-/* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA. */
-
-
-
-
-
 /* This code was originally a C-porting from ABINIT symmetry finder. */
 /* For the algorithms, see International table A, */
 /* 'Derivation of symbols and coordinate triplets' */
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -104,7 +85,6 @@ Spacegroup tbl_get_spacegroup(const Cell * cell, const double symprec)
 
   }
 
-  /* symmetry check after getting correct Bravais lattice */
   bravais = brv_get_brv_lattice(cell->lattice, symprec);
   symmetry = sym_get_operation(&bravais, cell, symprec);
 
@@ -125,6 +105,7 @@ Spacegroup tbl_get_spacegroup(const Cell * cell, const double symprec)
     spacegroup = tbl_get_spacegroup_database(spacegroup_number, 1, 1);
     pointgroup = tbl_get_pointgroup_database(spacegroup_number);
     spacegroup.pointgroup = pointgroup;
+    mat_copy_matrix_d3(spacegroup.bravais_lattice, bravais.lattice);
   }
   else {
     spacegroup.number = 0;
@@ -233,12 +214,14 @@ Symmetry tbl_get_conventional_symmetry(const Bravais *bravais,
   for (i = 0; i < multi; i++) {
     for (j = 0; j < size; j++) {
       for (k = 0; k < 3; k++) {
-	tmp_trans = symmetry.trans[i * size + j][k];
-	tmp_trans -= mat_Nint(tmp_trans);
-	if ( tmp_trans < -symprec ) {
-	  tmp_trans += 1.0;
-	}
-	symmetry.trans[i * size + j][k] = tmp_trans;
+  	tmp_trans = symmetry.trans[i * size + j][k];
+  	tmp_trans -= mat_Nint(tmp_trans);
+  	if ( tmp_trans < -symprec ) {
+  	  tmp_trans += 1.0;
+  	}
+  	symmetry.trans[i * size + j][k] = tmp_trans;
+  	/* symmetry.trans[i * size + j][k] = */
+  	/*   sym_get_fractional_translation( symmetry.trans[i * size + j][k] ); */
       }
     }
   }
