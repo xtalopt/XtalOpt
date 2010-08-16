@@ -15,6 +15,8 @@
 
 #include <xtalopt/optimizers/xtaloptoptimizer.h>
 #include <xtalopt/structures/xtal.h>
+#include <xtalopt/xtalopt.h>
+
 #include <globalsearch/optbase.h>
 
 #include <QFile>
@@ -41,6 +43,7 @@ namespace XtalOpt {
                               const QString & filename) {
     // Recast structure as xtal -- we'll need to access cell data later
     Xtal *xtal = qobject_cast<Xtal*>(structure);
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
     // Test filename
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -104,7 +107,7 @@ namespace XtalOpt {
     // Modify as needed!
 
     xtal->wrapAtomsToCell();
-    xtal->findSpaceGroup();
+    xtal->findSpaceGroup(xtalopt->tol_spg);
     return true;
   }
 

@@ -681,14 +681,6 @@ namespace XtalOpt {
       positions[i][2]   = fracCoords.z();
     }
 
-    // Scale precision to the cell size
-    double shortestLength = getA();
-    shortestLength = (shortestLength < getB()) ? shortestLength : getB();
-    shortestLength = (shortestLength < getC()) ? shortestLength : getC();
-    if (shortestLength == 0) return;
-    prec /= shortestLength;
-    if (prec >=0.5) prec = 0.5;
-
     // qDebug() << "double lattice[3][3] = {";
     // for (int i = 0;  i < 3; i++) {
     //   qDebug() <<

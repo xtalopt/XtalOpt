@@ -94,7 +94,9 @@ namespace XtalOpt {
       vol_min,		vol_max,        vol_fixed,
       shortestInteratomicDistance;
 
-    double tol_enthalpy, tol_volume;	// Duplicate matching tolerances
+    double tol_enthalpy;        	// Duplicate matching tolerances
+    double tol_volume;
+    double tol_spg;
 
     bool using_fixed_volume, using_shortestInteratomicDistance;
     QHash<uint, uint> comp;
