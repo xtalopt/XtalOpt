@@ -42,11 +42,9 @@ namespace GlobalSearch {
    * example), or on a remote cluster (the default for the Optimizer
    * class).
    *
-   * Remote communication is performed by calling ssh in a QProcess,
-   * though this may change in the future. The default remote job
-   * control assumes that the remote system is running a PBS server.
-   * @note Must have passwordless-login enabled to use ssh (man
-   * ssh-copy-id)
+   * Remote communication is performed by libssh. The default remote
+   * job control assumes that the remote system is running a PBS
+   * server.
    *
    * To implement a new optimizer that will use a remote PBS server,
    * simply derive Optimizer and implement the constructor:
