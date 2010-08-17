@@ -24,7 +24,6 @@
 
 #include <QMenu>
 #include <QTimer>
-#include <QBrush>
 #include <QSettings>
 #include <QMutexLocker>
 #include <QInputDialog>
@@ -40,6 +39,9 @@ namespace XtalOpt {
     m_update_all_mutex(new QMutex),
     m_context_xtal(0)
   {
+    // Allow queued connections to work with the TableEntry struct
+    qRegisterMetaType<TableEntry>("TableEntry");
+
     ui.setupUi(m_tab_widget);
 
     QHeaderView *horizontal = ui.table_list->horizontalHeader();
@@ -82,6 +84,8 @@ namespace XtalOpt {
             this, SLOT(disableRowTracking()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(enableRowTracking()));
+    connect(this, SIGNAL(updateTableEntry(int, const TableEntry&)),
+            this, SLOT(setTableEntry(int, const TableEntry&)));
 
     initialize();
   }
@@ -187,12 +191,34 @@ namespace XtalOpt {
 
     m_infoUpdateTracker.append(xtal);
     locker.unlock();
-    emit infoUpdate();
+    TableEntry e;
+    xtal->lock()->lockForRead();
+    e.elapsed = xtal->getOptElapsed();
+    e.gen     = xtal->getGeneration();
+    e.id      = xtal->getIDNumber();
+    e.parents = xtal->getParents();
+    e.jobID   = xtal->getJobID();
+    e.volume  = xtal->getVolume();
+    e.status  = "Waiting for data...";
+    e.brush   = QBrush (Qt::white);
+    e.spg     = QString::number( xtal->getSpaceGroupNumber()) + ": "
+      + xtal->getSpaceGroupSymbol();
+
+    if (xtal->hasEnthalpy() || xtal->getEnergy() != 0)
+      e.enthalpy = xtal->getEnthalpy();
+    else
+      e.enthalpy = 0.0;
+    xtal->lock()->unlock();
 
     ui.table_list->blockSignals(false);
 
     if (currentInd < 0) currentInd = index;
     if (rowTracking) ui.table_list->setCurrentCell(currentInd, 0);
+
+    locker.unlock();
+
+    setTableEntry(index, e);
+    emit infoUpdate();
   }
 
   void TabProgress::updateAllInfo()
@@ -211,12 +237,14 @@ namespace XtalOpt {
 
   void TabProgress::newInfoUpdate(Structure *s)
   {
-    m_infoUpdateTracker.append(s);
-    emit infoUpdate();
+    if (m_infoUpdateTracker.append(s)) {
+      emit infoUpdate();
+    }
   }
 
   void TabProgress::updateInfo()
   {
+    qDebug() << "!!!!!!! " << __PRETTY_FUNCTION__;
     if (m_infoUpdateTracker.size() == 0) {
       return;
     }
@@ -228,9 +256,13 @@ namespace XtalOpt {
       return;
     }
 
-    // Lock the table
-    QMutexLocker locker (m_mutex);
+    QtConcurrent::run(this, &TabProgress::updateInfo_);
+    return;
+  }
 
+  void TabProgress::updateInfo_()
+  {
+    qDebug() << "!!!!!!! " << __PRETTY_FUNCTION__;
     // Prep variables
     Structure *structure;
     if (!m_infoUpdateTracker.popFirst(structure))
@@ -240,41 +272,32 @@ namespace XtalOpt {
     Xtal *xtal = qobject_cast<Xtal*>(structure);
 
     if (i < 0 || i > ui.table_list->rowCount() - 1) {
-      qDebug() << "TabProgress::updateInfo: Trying to update an index that doesn't exist ("
+      qDebug() << "TabProgress::updateInfo: Trying to update an index that doesn't exist...yet: ("
                << i << ") Waiting...";
       m_infoUpdateTracker.append(xtal);
       QTimer::singleShot(100, this, SLOT(updateInfo()));
       return;
     }
 
-    QString time;
+    TableEntry e;
     uint totalOptSteps = m_opt->optimizer()->getNumberOfOptSteps();
-    QBrush brush (Qt::white);
-
-    // Get queue data
-    m_opt->queue()->updateQueue();
+    e.brush = QBrush (Qt::white);
 
     QReadLocker xtalLocker (xtal->lock());
-
-    time = xtal->getOptElapsed();
-
-    ui.table_list->item(i, TimeElapsed)->setText(time);
-
-    ui.table_list->item(i, Gen)->setText(QString::number(xtal->getGeneration()));
-    ui.table_list->item(i, Mol)->setText(QString::number(xtal->getIDNumber()));
-    ui.table_list->item(i, Ancestry)->setText(xtal->getParents());
-
-    if (xtal->getJobID())
-      ui.table_list->item(i, JobID)->setText(QString::number(xtal->getJobID()));
-    else
-      ui.table_list->item(i, JobID)->setText("N/A");
+    e.elapsed = xtal->getOptElapsed();
+    e.gen     = xtal->getGeneration();
+    e.id      = xtal->getIDNumber();
+    e.parents = xtal->getParents();
+    e.jobID   = xtal->getJobID();
+    e.volume  = xtal->getVolume();
+    e.spg     = QString::number( xtal->getSpaceGroupNumber()) + ": "
+      + xtal->getSpaceGroupSymbol();
 
     if (xtal->hasEnthalpy() || xtal->getEnergy() != 0)
-      ui.table_list->item(i, Enthalpy)->setText(QString::number(xtal->getEnthalpy()));
+      e.enthalpy = xtal->getEnthalpy();
     else
-      ui.table_list->item(i, Enthalpy)->setText("N/A");
-    ui.table_list->item(i, SpaceGroup)->setText( QString::number( xtal->getSpaceGroupNumber()) + ": " + xtal->getSpaceGroupSymbol() );
-    ui.table_list->item(i, Volume)->setText( QString::number( xtal->getVolume(), 'f', 2 ));
+      e.enthalpy = 0.0;
+
     switch (xtal->getStatus()) {
     case Xtal::InProcess: {
       xtalLocker.unlock();
@@ -282,34 +305,33 @@ namespace XtalOpt {
       xtalLocker.relock();
       switch (state) {
       case Optimizer::Running:
-        ui.table_list->item(i, Status)->setText(tr("Running (Opt Step %1 of %2, %3 failures)")
-                                                .arg(QString::number(xtal->getCurrentOptStep()))
-                                                .arg(QString::number(totalOptSteps))
-                                                .arg(QString::number(xtal->getFailCount()))
-                                                );
-        brush.setColor(Qt::green);
+        e.status = tr("Running (Opt Step %1 of %2, %3 failures)")
+          .arg(QString::number(xtal->getCurrentOptStep()))
+          .arg(QString::number(totalOptSteps))
+          .arg(QString::number(xtal->getFailCount()));
+        e.brush.setColor(Qt::green);
         break;
       case Optimizer::Queued:
-        ui.table_list->item(i, Status)->setText(tr("Queued (Opt Step %1 of %2, %3 failures)")
-                                                .arg(QString::number(xtal->getCurrentOptStep()))
-                                                .arg(QString::number(totalOptSteps))
-                                                .arg(QString::number(xtal->getFailCount()))
-                                                );
-        brush.setColor(Qt::cyan);
+        e.status = tr("Queued (Opt Step %1 of %2, %3 failures)")
+          .arg(QString::number(xtal->getCurrentOptStep()))
+          .arg(QString::number(totalOptSteps))
+          .arg(QString::number(xtal->getFailCount()));
+        e.brush.setColor(Qt::cyan);
         break;
       case Optimizer::Success:
-        ui.table_list->item(i, Status)->setText("Starting update...");
+        e.status = "Starting update...";
         break;
       case Optimizer::Unknown:
-        ui.table_list->item(i, Status)->setText("Unknown");
+        e.status = "Unknown";
+        e.brush.setColor(Qt::red);
         break;
       case Optimizer::Error:
-        ui.table_list->item(i, Status)->setText("Error: Restarting job...");
-        brush.setColor(Qt::darkRed);
+        e.status = "Error: Restarting job...";
+        e.brush.setColor(Qt::darkRed);
         break;
       case Optimizer::CommunicationError:
-        ui.table_list->item(i, Status)->setText("Comm. Error");
-        brush.setColor(Qt::darkRed);
+        e.status = "Communication Error";
+        e.brush.setColor(Qt::darkRed);
         break;
       // Shouldn't happen; started and pending only occur when xtal is "Submitted"
       case Optimizer::Started:
@@ -320,59 +342,82 @@ namespace XtalOpt {
       break;
     }
     case Xtal::Submitted:
-      ui.table_list->item(i, Status)->setText(tr("Job submitted (%1 of %2)")
-                                              .arg(QString::number(xtal->getCurrentOptStep()))
-                                              .arg(QString::number(totalOptSteps))
-                                              );
-      brush.setColor(Qt::cyan);
+      e.status = tr("Job submitted (%1 of %2)")
+        .arg(QString::number(xtal->getCurrentOptStep()))
+        .arg(QString::number(totalOptSteps));
+      e.brush.setColor(Qt::cyan);
       break;
     case Xtal::Restart:
-      ui.table_list->item(i, Status)->setText("Restarting job...");
-      brush.setColor(Qt::cyan);
+      e.status = "Restarting job...";
+      e.brush.setColor(Qt::cyan);
       break;
     case Xtal::Killed:
     case Xtal::Removed:
-      brush.setColor(Qt::darkGray);
-      ui.table_list->item(i, Status)->setText("Killed");
+      e.status = "Killed";
+      e.brush.setColor(Qt::darkGray);
       break;
     case Xtal::Duplicate:
-      brush.setColor(Qt::darkGreen);
-      ui.table_list->item(i, Status)->setText(tr("Duplicate of %1")
-                                              .arg(xtal->getDuplicateString()));
+      e.status = tr("Duplicate of %1")
+        .arg(xtal->getDuplicateString());
+      e.brush.setColor(Qt::darkGreen);
       break;
     case Xtal::StepOptimized:
-      ui.table_list->item(i, Status)->setText("Checking status...");
-      brush.setColor(Qt::cyan);
+      e.status = "Checking status...";
+      e.brush.setColor(Qt::cyan);
       break;
     case Xtal::Optimized:
-      ui.table_list->item(i, Status)->setText("Optimized");
-      brush.setColor(Qt::yellow);
+      e.status = "Optimized";
+      e.brush.setColor(Qt::yellow);
       break;
     case Xtal::WaitingForOptimization:
-      ui.table_list->item(i, Status)->setText(tr("Waiting for Optimization (%1 of %2)")
-                                              .arg(QString::number(xtal->getCurrentOptStep()))
-                                              .arg(QString::number(totalOptSteps))
-                                              );
-      brush.setColor(Qt::darkCyan);
+      e.status = tr("Waiting for Optimization (%1 of %2)")
+        .arg(QString::number(xtal->getCurrentOptStep()))
+        .arg(QString::number(totalOptSteps));
+      e.brush.setColor(Qt::darkCyan);
       break;
     case Xtal::Error:
-      ui.table_list->item(i, Status)->setText(tr("Job failed"));
-      brush.setColor(Qt::red);
+      e.status = "Job failed";
+      e.brush.setColor(Qt::red);
       break;
     case Xtal::Updating:
-      ui.table_list->item(i, Status)->setText("Updating structure...");
-      brush.setColor(Qt::cyan);
+      e.status = "Updating structure...";
+      e.brush.setColor(Qt::cyan);
       break;
     case Xtal::Empty:
-      ui.table_list->item(i, Status)->setText("Structure empty...");
+      e.status = "Structure empty...";
       break;
     }
 
     if (xtal->getFailCount() != 0) {
-      brush.setColor(Qt::red);
+      e.brush.setColor(Qt::red);
     }
-    // paint cell:
-    ui.table_list->item(i, Status)->setBackground(brush);
+    emit updateTableEntry(i, e);
+  }
+
+  void TabProgress::setTableEntry(int row, const TableEntry & e)
+  {
+    qDebug() << "!!!!!!! " << __PRETTY_FUNCTION__;
+    // Lock the table
+    QMutexLocker locker (m_mutex);
+
+    ui.table_list->item(row, TimeElapsed)->setText(e.elapsed);
+    ui.table_list->item(row, Gen)->setText(QString::number(e.gen));
+    ui.table_list->item(row, Mol)->setText(QString::number(e.id));
+    ui.table_list->item(row, Ancestry)->setText(e.parents);
+    ui.table_list->item(row, SpaceGroup)->setText(e.spg);
+    ui.table_list->item(row, Volume)->setText(QString::number(e.volume,'f',2));
+    ui.table_list->item(row, Status)->setText(e.status);
+    ui.table_list->item(row, Status)->setBackground(e.brush);
+
+    if (e.jobID)
+      ui.table_list->item(row, JobID)->setText(QString::number(e.jobID));
+    else
+      ui.table_list->item(row, JobID)->setText("N/A");
+
+    if (e.enthalpy != 0)
+      ui.table_list->item(row, Enthalpy)->setText(QString::number(e.enthalpy));
+    else
+      ui.table_list->item(row, Enthalpy)->setText("N/A");
   }
 
   void TabProgress::selectMoleculeFromProgress(int row,int,int oldrow,int)

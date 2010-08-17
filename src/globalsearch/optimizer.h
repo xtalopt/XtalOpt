@@ -213,10 +213,11 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
      *
      * @param queueData QStringList to fill with the contents of the
      * queue.
+     * @param mutex Mutex to lock while overwriting queueData
      *
      * @return True if query is successful, false otherwise
      */
-    virtual bool getQueueList(QStringList & queueData);
+    virtual bool getQueueList(QStringList & queueData, QMutex *mutex);
 
     /**
      * Call OptBase::qdel on the Structure's job ID.

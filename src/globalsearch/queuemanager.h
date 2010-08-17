@@ -194,11 +194,8 @@ m_queue->unlockForNaming(newStructure);
 
     /**
      * Update the data from the remote PBS queue.
-     *
-     * @param time Do not fetch queue if cached queue info is less
-     * than this many seconds old.
      */
-    void updateQueue(int time = 10);
+    void updateQueue();
 
     /**
      * Checks if the Structure has completed all required optimization
@@ -286,7 +283,8 @@ m_queue->unlockForNaming(newStructure);
      * on the remote server.
      * @sa updateQueue
      */
-    QStringList getRemoteQueueData() {return m_queueData;};
+    QStringList getRemoteQueueData() {QMutexLocker l (&m_queueDataMutex);
+      return m_queueData;};
 
      /**
      * Reset the number of requested Structures. Helpful when running
@@ -350,9 +348,9 @@ m_queue->unlockForNaming(newStructure);
    private:
     bool m_checkPopulationPending;
     bool m_checkRunningPending;
+    bool m_queueUpdatePending;
 
     int m_requestedStructures;
-
 
     OptBase *m_opt;
 
@@ -368,9 +366,10 @@ m_queue->unlockForNaming(newStructure);
     Tracker m_updatePendingTracker;
     Tracker m_killPendingTracker;
 
-    QDateTime m_queueTimeStamp;
     QStringList m_queueData;
+    QMutex m_queueDataMutex;
 
+    void updateQueue_();
     void checkPopulation_();
     void checkRunning_();
     void addNewStructure();

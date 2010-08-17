@@ -329,17 +329,15 @@ namespace GlobalSearch {
   {
     QString command;
 
-    command = "[ -e " + filename + " ]  && echo true || echo false";
+    command = "[ -e " + filename + " ]";
     qDebug() << "Optimizer::checkIfOutputFileExists: Calling " << command;
     QString stdout, stderr; int ec;
-    if (!m_opt->ssh()->execute(command, stdout, stderr, ec) || ec != 0) {
+    if (!m_opt->ssh()->execute(command, stdout, stderr, ec)) {
       m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
       return false;
     }
-    qDebug() << "Optimizer::getOutputFile: " << command
-             << " = " << stdout;
-    if (stdout.contains("true")) return true;
-    else return false;
+
+    return (!ec);
   }
 
   bool Optimizer::getOutputFile(const QString & filename,
@@ -440,25 +438,34 @@ namespace GlobalSearch {
     }
 
     else { // Entry is missing from queue! Were the output files written?
-      QStringList outputFileData;
       bool outputFileExists;
       QString rempath = structure->getRempath();
       QString fileName = structure->fileName();
 
       // Check for m_completionString in m_completionFilename
       locker.unlock();
-      outputFileExists = getOutputFile(rempath + "/" + m_completionFilename,
-                                       outputFileData);
+      outputFileExists = checkIfOutputFileExists(rempath
+                                                 + "/"
+                                                 + m_completionFilename);
       locker.relock();
 
       // Check for m_completionString in outputFileData, which indicates success.
       qDebug() << "Optimizer::getStatus: Job  " << jobID << " not in queue. Does output exist? " << outputFileExists;
       if (outputFileExists) {
-        for (int i = 0; i < outputFileData.size(); i++) {
-          if (outputFileData.at(i).contains(m_completionString)) {
-            structure->resetFailCount();
-            return Optimizer::Success;
-          }
+        QString stdout, stderr; int ec;
+        // Valid exit codes for grep: (0) matches found, execution successful
+        //                            (1) no matches found, execution successful
+        //                            (2) execution unsuccessful
+        QString command = "grep \'" + m_completionString + "\' "
+          + rempath + "/" + m_completionFilename;
+        qDebug() << "Optimizer::getStatus: Calling " << command;
+        if (!m_opt->ssh()->execute(command, stdout, stderr, ec)) {
+          m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
+          return Optimizer::CommunicationError;
+        }
+        if (ec == 0) {
+          structure->resetFailCount();
+          return Optimizer::Success;
         }
         // Otherwise, it's an error!
         structure->setStatus(Structure::Error);
@@ -495,7 +502,7 @@ namespace GlobalSearch {
     return true;
   }
 
-  bool Optimizer::getQueueList(QStringList & queueData) {
+  bool Optimizer::getQueueList(QStringList & queueData, QMutex *mutex) {
     QString command;
     command = m_opt->qstat + " | grep " + m_opt->username;
 
@@ -515,6 +522,7 @@ namespace GlobalSearch {
       return false;
     }
 
+    QMutexLocker queueDataMutexLocker (mutex);
     queueData = stdout.split("\n", QString::SkipEmptyParts);
     return true;
   }

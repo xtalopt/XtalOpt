@@ -26,13 +26,13 @@ namespace GlobalSearch {
 
   QueueManager::QueueManager(OptBase *opt, Tracker *tracker) :
     QObject(opt),
+    m_checkPopulationPending(false),
+    m_checkRunningPending(false),
+    m_queueUpdatePending(false),
+    m_requestedStructures(0),
     m_opt(opt),
     m_tracker(tracker)
   {
-    m_checkPopulationPending = false;
-    m_checkRunningPending = false;
-
-    m_requestedStructures = 0;
 
     trackerList.append(&m_runningTracker);
     trackerList.append(&m_submissionPendingTracker);
@@ -283,20 +283,20 @@ namespace GlobalSearch {
     m_checkRunningPending = false;
   }
 
-  void QueueManager::updateQueue(int time) {
-    if (m_opt->isStarting) {
+  void QueueManager::updateQueue()
+  {
+    if (m_opt->isStarting ||
+        m_queueUpdatePending) {
       return;
     }
+    m_queueUpdatePending = true;
+    QtConcurrent::run(this, &QueueManager::updateQueue_);
+  }
 
-    int elapsed = m_queueTimeStamp.secsTo(QDateTime::currentDateTime());
-    if (elapsed < 0 || time < elapsed) {
-      if (!m_opt->optimizer()->getQueueList(m_queueData)) {
-        m_opt->warning("Cannot fetch queue -- check stderr");
-      }
-      m_queueTimeStamp = QDateTime::currentDateTime();
-    }
-    else {
-    }
+  void QueueManager::updateQueue_()
+  {
+    m_opt->optimizer()->getQueueList(m_queueData, &m_queueDataMutex);
+    m_queueUpdatePending = false;
   }
 
   void QueueManager::prepareStructureForNextOptStep(Structure *s) {
@@ -478,7 +478,6 @@ namespace GlobalSearch {
       structure->lock()->lockForWrite();
       structure->setStatus(Structure::Error);
       structure->lock()->unlock();
-      updateQueue(-1);
       return;
     }
   }
