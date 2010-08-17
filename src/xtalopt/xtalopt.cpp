@@ -1235,12 +1235,8 @@ namespace XtalOpt {
 
   void XtalOpt::resetDuplicates_() {
     QList<Structure*> *structures = m_tracker->list();
-    m_dialog->startProgressUpdate(tr("Rechecking duplicate structures..."),
-                                  0,
-                                  structures->size());
     Xtal *xtal = 0;
     for (int i = 0; i < structures->size(); i++) {
-      m_dialog->updateProgressValue(i+1);
       xtal = qobject_cast<Xtal*>(structures->at(i));
       xtal->lock()->lockForWrite();
       xtal->findSpaceGroup(tol_spg);
@@ -1250,7 +1246,6 @@ namespace XtalOpt {
     }
     checkForDuplicates();
     emit updateAllInfo();
-    m_dialog->stopProgressUpdate();
   }
 
   void XtalOpt::checkForDuplicates() {
