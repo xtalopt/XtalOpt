@@ -72,7 +72,13 @@ class SSHConnectionTest : public QObject
 
   // Tests
   void isValid();
+  void isConnected1();
+  void disconnect();
+  void isConnected2();
+  void reconnect();
+
   void execute();
+
   void copyFileToServer();
   void readRemoteFile();
   void copyFileFromServer();
@@ -183,6 +189,26 @@ void SSHConnectionTest::cleanup()
 void SSHConnectionTest::isValid()
 {
   QVERIFY2(conn->isValid(), "The SSHConnection is not valid.");
+}
+
+void SSHConnectionTest::isConnected1()
+{
+  QVERIFY(conn->isConnected());
+}
+
+void SSHConnectionTest::disconnect()
+{
+  conn->disconnect();
+}
+
+void SSHConnectionTest::isConnected2()
+{
+  QCOMPARE(conn->isConnected(), false);
+}
+
+void SSHConnectionTest::reconnect()
+{
+  QVERIFY(conn->reconnect(false));
 }
 
 void SSHConnectionTest::execute()

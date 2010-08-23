@@ -42,10 +42,78 @@ namespace GlobalSearch {
       m_isValid(false)
   {
     START;
+    connect(true);
+    END;
+  }
+
+  SSHConnection::~SSHConnection()
+  {
+    START;
+    disconnect();
+    END;
+  }
+
+  bool SSHConnection::isConnected(ssh_channel channel)
+  {
+    if (!m_session)
+      return false;
+
+    QMutexLocker locker (&m_lock);
+    START;
+    bool deleteChannel = false;
+    if (!channel) {
+      deleteChannel = true;
+      channel = ssh_channel_new(m_session);
+      if (!channel) {
+        m_isValid = false;
+        qWarning() << "SSH error: " << ssh_get_error(m_session);
+        return false;
+      }
+    }
+
+    bool connected = false;
+    if (ssh_channel_poll(channel, 0) != SSH_ERROR) {
+      connected = true;
+    }
+
+    if (deleteChannel) {
+      ssh_channel_free(channel);
+    }
+    END;
+    return connected;
+  }
+
+  bool SSHConnection::disconnect()
+  {
+    QMutexLocker locker (&m_lock);
+    START;
+    if (m_session)
+      ssh_free(m_session);
+    m_session = 0;
+    m_isValid = false;
+    END;
+  }
+
+  bool SSHConnection::reconnect(bool throwExceptions)
+  {
+    START;
+    disconnect();
+    connect(throwExceptions);
+    END;
+  }
+
+  bool SSHConnection::connect(bool throwExceptions)
+  {
+    QMutexLocker locker (&m_lock);
     // Create session
     m_session = ssh_new();
     if (!m_session) {
-      throw SSH_UNKNOWN_ERROR;
+      if (throwExceptions) {
+        throw SSH_UNKNOWN_ERROR;
+      }
+      else {
+        return false;
+      }
     }
 
     // Set options
@@ -64,7 +132,12 @@ namespace GlobalSearch {
     // Connect
     if (ssh_connect(m_session) != SSH_OK) {
       qWarning() << "SSH error: " << ssh_get_error(m_session);
-      throw SSH_CONNECTION_ERROR;
+      if (throwExceptions) {
+        throw SSH_CONNECTION_ERROR;
+      }
+      else {
+        return false;
+      }
     }
 
     // Verify that host is known
@@ -76,10 +149,20 @@ namespace GlobalSearch {
     case SSH_SERVER_FOUND_OTHER:
     case SSH_SERVER_FILE_NOT_FOUND:
     case SSH_SERVER_NOT_KNOWN:
-      throw SSH_UNKNOWN_HOST_ERROR;
+      if (throwExceptions) {
+        throw SSH_UNKNOWN_HOST_ERROR;
+      }
+      else {
+        return false;
+      }
     case SSH_SERVER_ERROR:
       qWarning() << "SSH error: " << ssh_get_error(m_session);
-      throw SSH_UNKNOWN_ERROR;
+      if (throwExceptions) {
+        throw SSH_UNKNOWN_ERROR;
+      }
+      else {
+        return false;
+      }
     }
 
     // Authenticate
@@ -91,7 +174,12 @@ namespace GlobalSearch {
     rc = ssh_userauth_none(m_session, NULL);
     if (rc == SSH_AUTH_ERROR) {
       qWarning() << "SSH error: " << ssh_get_error(m_session);
-      throw SSH_UNKNOWN_ERROR;
+      if (throwExceptions) {
+        throw SSH_UNKNOWN_ERROR;
+      }
+      else {
+        return false;
+      }
     }
 
     method = ssh_auth_list(m_session);
@@ -106,7 +194,12 @@ namespace GlobalSearch {
         if (rc == SSH_AUTH_ERROR) {
           qWarning() << "Error during auth (pubkey)";
           qWarning() << "Error: " << ssh_get_error(m_session);
-          throw SSH_UNKNOWN_ERROR;
+          if (throwExceptions) {
+            throw SSH_UNKNOWN_ERROR;
+          }
+          else {
+            return false;
+          }
         } else if (rc == SSH_AUTH_SUCCESS) {
           break;
         }
@@ -120,24 +213,28 @@ namespace GlobalSearch {
         if (rc == SSH_AUTH_ERROR) {
           qWarning() << "Error during auth (passwd)";
           qWarning() << "Error: " << ssh_get_error(m_session);
-          throw SSH_UNKNOWN_ERROR;
+          if (throwExceptions) {
+            throw SSH_UNKNOWN_ERROR;
+          }
+          else {
+            return false;
+          }
         } else if (rc == SSH_AUTH_SUCCESS) {
           break;
         }
       }
 
       // One of the above should work, else throw an exception
-      throw SSH_BAD_PASSWORD_ERROR;
+      if (throwExceptions) {
+        throw SSH_BAD_PASSWORD_ERROR;
+      }
+      else {
+        return false;
+      }
     }
 
     m_isValid = true;
-    END;
-  }
-
-  SSHConnection::~SSHConnection()
-  {
-    START;
-    ssh_free(m_session);
+    return true;
     END;
   }
 
@@ -156,7 +253,6 @@ namespace GlobalSearch {
     }
     return sftp;
   }
-
 
   bool SSHConnection::execute(const QString &command,
                               QString &stdout,

@@ -73,6 +73,10 @@ namespace GlobalSearch {
      */
     virtual ~SSHConnection();
 
+    QString getUser() {return m_user;};
+    QString getHost() {return m_host;};
+    int getPort() {return m_port;};
+
   public slots:
     bool execute(const QString &command,
                  QString &stdout,
@@ -97,6 +101,13 @@ namespace GlobalSearch {
 
 
     bool isValid() {return m_isValid;};
+    bool isConnected(ssh_channel channel = 0);
+    bool connect(bool throwExceptions = false);
+    bool reconnect(bool throwExceptions = false);
+    bool disconnect();
+
+    bool reconnectIfNeeded() {if (!isConnected()) return reconnect(false);
+      return true;};
 
   private:
     bool _execute(const QString &command,
