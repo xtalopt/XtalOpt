@@ -226,6 +226,14 @@ namespace GlobalSearch {
 
   bool Optimizer::createRemoteDirectory(Structure *structure)
   {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return false;
+    }
     QString command = "mkdir -p " + structure->getRempath();
     qDebug() << "Optimizer::createRemoteDirectory: Calling " << command;
     QString stdout, stderr; int ec;
@@ -238,6 +246,14 @@ namespace GlobalSearch {
 
   bool Optimizer::cleanRemoteDirectory(Structure *structure)
   {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return false;
+    }
     // 2nd arg keeps the directory, only removes directory contents.
     if (!m_opt->ssh()->removeRemoteDirectory(structure->getRempath(), true)) {
       m_opt->warning(tr("Error clearing remote directory %1")
@@ -248,6 +264,14 @@ namespace GlobalSearch {
   }
 
   bool Optimizer::writeTemplates(Structure *structure) {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return false;
+    }
     // Create file objects
     QList<QFile*> files;
     QStringList filenames = getTemplateNames();
@@ -290,6 +314,14 @@ namespace GlobalSearch {
 
   bool Optimizer::copyLocalTemplateFilesToRemote(Structure *structure)
   {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return false;
+    }
     QStringList templates = getTemplateNames();
     QStringList::const_iterator it;
     for (it = templates.begin(); it != templates.end(); it++) {
@@ -305,6 +337,14 @@ namespace GlobalSearch {
   }
 
   bool Optimizer::startOptimization(Structure *structure) {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return false;
+    }
     QString command = "cd " + structure->getRempath() + " && " +
       m_opt->qsub + " job.pbs";
     qDebug() << "Optimizer::startOptimization: Calling " << command;
@@ -327,6 +367,14 @@ namespace GlobalSearch {
 
   bool Optimizer::checkIfOutputFileExists(const QString & filename)
   {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return false;
+    }
     QString command;
 
     command = "[ -e " + filename + " ]";
@@ -343,6 +391,14 @@ namespace GlobalSearch {
   bool Optimizer::getOutputFile(const QString & filename,
                                 QStringList & data)
   {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return false;
+    }
     QString tmp;
     if (!m_opt->ssh()->readRemoteFile(filename, tmp)) {
       m_opt->warning(tr("Error retrieving remote file %1.")
@@ -357,6 +413,14 @@ namespace GlobalSearch {
 
   bool Optimizer::copyRemoteToLocalCache(Structure *structure)
   {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return false;
+    }
     // lock structure
     QReadLocker locker (structure->lock());
     QString stdout, stderr; int ec;
@@ -371,6 +435,14 @@ namespace GlobalSearch {
 
   Optimizer::JobState Optimizer::getStatus(Structure *structure)
   {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return Optimizer::CommunicationError;
+    }
     // lock structure
     QWriteLocker locker (structure->lock());
     QStringList queueData (m_opt->queue()->getRemoteQueueData());
@@ -478,6 +550,14 @@ namespace GlobalSearch {
   }
 
   bool Optimizer::deleteJob(Structure *structure) {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return false;
+    }
     // lock structure
     QWriteLocker locker (structure->lock());
     QString command;
@@ -503,6 +583,14 @@ namespace GlobalSearch {
   }
 
   bool Optimizer::getQueueList(QStringList & queueData, QMutex *mutex) {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return false;
+    }
     QString command;
     command = m_opt->qstat + " | grep " + m_opt->username;
 
@@ -527,7 +615,9 @@ namespace GlobalSearch {
     return true;
   }
 
-  int Optimizer::checkIfJobNameExists(Structure *structure, const QStringList & queueData, bool & exists) {
+  int Optimizer::checkIfJobNameExists(Structure *structure,
+                                      const QStringList & queueData,
+                                      bool & exists) {
     structure->lock()->lockForRead();
     QFile jobScript (structure->fileName() + "/job.pbs");
     structure->lock()->unlock();

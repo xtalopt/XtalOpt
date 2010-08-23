@@ -115,6 +115,14 @@ namespace XtalOpt {
   }
 
   bool VASPOptimizer::writeInputFiles(Structure *structure) {
+    if (!m_opt->ssh()->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      return false;
+    }
     // Stop any running jobs associated with this xtal
     deleteJob(structure);
 
