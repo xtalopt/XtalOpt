@@ -120,9 +120,11 @@ namespace GlobalSearch {
     int verbosity = SSH_LOG_NOLOG;
     //int verbosity = SSH_LOG_PROTOCOL;
     //int verbosity = SSH_LOG_PACKET;
+    int timeout = 5; // timeout in sec
 
     ssh_options_set(m_session, SSH_OPTIONS_HOST, m_host.toStdString().c_str());
     ssh_options_set(m_session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);
+    ssh_options_set(m_session, SSH_OPTIONS_TIMEOUT, &timeout);
 
     if (!m_user.isEmpty()) {
       ssh_options_set(m_session, SSH_OPTIONS_USER, m_user.toStdString().c_str());
