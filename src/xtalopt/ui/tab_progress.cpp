@@ -244,7 +244,6 @@ namespace XtalOpt {
 
   void TabProgress::updateInfo()
   {
-    qDebug() << "!!!!!!! " << __PRETTY_FUNCTION__;
     if (m_infoUpdateTracker.size() == 0) {
       return;
     }
@@ -262,7 +261,6 @@ namespace XtalOpt {
 
   void TabProgress::updateInfo_()
   {
-    qDebug() << "!!!!!!! " << __PRETTY_FUNCTION__;
     // Prep variables
     Structure *structure;
     if (!m_infoUpdateTracker.popFirst(structure))
@@ -396,7 +394,6 @@ namespace XtalOpt {
 
   void TabProgress::setTableEntry(int row, const TableEntry & e)
   {
-    qDebug() << "!!!!!!! " << __PRETTY_FUNCTION__;
     // Lock the table
     QMutexLocker locker (m_mutex);
 

@@ -26,8 +26,8 @@ using namespace std;
 
 namespace GlobalSearch {
 
-#define START qDebug() << __PRETTY_FUNCTION__ << " called...";
-#define END qDebug() << __PRETTY_FUNCTION__ << " finished...";
+#define START //qDebug() << __PRETTY_FUNCTION__ << " called...";
+#define END //qDebug() << __PRETTY_FUNCTION__ << " finished...";
 
   SSHConnection::SSHConnection(const QString &host,
                                const QString &user,
