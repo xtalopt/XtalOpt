@@ -20,6 +20,7 @@ link_directories(
 
 set (tests
     sshconnection
+    sshmanager
 )
 
 foreach (test ${tests})
