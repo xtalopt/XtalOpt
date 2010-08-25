@@ -26,11 +26,13 @@
 #include "libssh/priv.h"
 
 /**
- * @defgroup libssh_error The SSH error functions.
- * @ingroup libssh
+ * @defgroup ssh_error SSH Errors
  *
- * Functions for error handling.
- *
+ * @brief Functions for error handling.
+ */
+
+/**
+ * @addtogroup ssh_error
  * @{
  */
 
@@ -118,6 +120,5 @@ int ssh_get_error_code(void *error) {
   return err->error_code;
 }
 
-/* @} */
-
-/* vim: set ts=4 sw=4 et cindent: */
+/** @} */
+/* vim: set ts=2 sw=2 et cindent: */

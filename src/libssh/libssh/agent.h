@@ -48,7 +48,7 @@
 #define SSH_AGENT_OLD_SIGNATURE                  0x01
 
 struct ssh_agent_struct {
-  struct ssh_socket_struct *sock;
+  struct socket *sock;
   ssh_buffer ident;
   unsigned int count;
 };

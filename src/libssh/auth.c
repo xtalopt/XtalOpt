@@ -39,211 +39,133 @@
 #include "libssh/packet.h"
 #include "libssh/session.h"
 #include "libssh/keys.h"
-#include "libssh/auth.h"
 
-/**
- * @defgroup libssh_auth The SSH authentication functions.
- * @ingroup libssh
- *
- * Functions to authenticate with a server.
- *
- * @{
+/** \defgroup ssh_auth SSH Authentication functions
+ * \brief functions to authenticate to servers
  */
+/** \addtogroup ssh_auth
+ * @{ */
 
-/**
- * @internal
- *
- * @brief Ask access to the ssh-userauth service.
- *
- * @param[in] session   The SSH session handle.
- *
- * @returns SSH_OK on success, SSH_ERROR on error.
- *
- * @bug current implementation is blocking
- */
 static int ask_userauth(ssh_session session) {
   int rc = 0;
 
   enter_function();
-  do {
-  	rc=ssh_service_request(session,"ssh-userauth");
-  	if(rc==SSH_AGAIN)
-  		ssh_handle_packets(session,-1);
-  } while(rc==SSH_AGAIN);
+
+  if (session->auth_service_asked) {
+    rc = 0;
+  } else if (ssh_service_request(session,"ssh-userauth")) {
+    rc = -1;
+  } else {
+    session->auth_service_asked++;
+  }
+
   leave_function();
   return rc;
 }
 
-/**
- * @internal
- *
- * @brief Handles a SSH_USERAUTH_BANNER packet.
- *
- * This banner should be shown to user prior to authentication
- */
-SSH_PACKET_CALLBACK(ssh_packet_userauth_banner){
-  ssh_string banner;
-  (void)type;
-  (void)user;
-  enter_function();
-  banner = buffer_get_ssh_string(packet);
-  if (banner == NULL) {
-    ssh_log(session, SSH_LOG_RARE,
-        "Invalid SSH_USERAUTH_BANNER packet");
-  } else {
-    ssh_log(session, SSH_LOG_PACKET,
-        "Received SSH_USERAUTH_BANNER packet");
-    if(session->banner != NULL)
-      ssh_string_free(session->banner);
-    session->banner = banner;
-  }
-  leave_function();
-  return SSH_PACKET_USED;
-}
-
-/**
- * @internal
- *
- * @brief Handles a SSH_USERAUTH_FAILURE packet.
- *
- * This handles the complete or partial authentication failure.
- */
-SSH_PACKET_CALLBACK(ssh_packet_userauth_failure){
+static int wait_auth_status(ssh_session session, int kbdint) {
   char *auth_methods = NULL;
   ssh_string auth;
-  uint8_t partial = 0;
-  (void) type;
-  (void) user;
-  enter_function();
-
-  auth = buffer_get_ssh_string(packet);
-  if (auth == NULL || buffer_get_u8(packet, &partial) != 1) {
-    ssh_set_error(session, SSH_FATAL,
-        "Invalid SSH_MSG_USERAUTH_FAILURE message");
-    session->auth_state=SSH_AUTH_STATE_ERROR;
-    goto end;
-  }
-
-  auth_methods = ssh_string_to_char(auth);
-  if (auth_methods == NULL) {
-    ssh_set_error_oom(session);
-    goto end;
-  }
-
-  if (partial) {
-    session->auth_state=SSH_AUTH_STATE_PARTIAL;
-    ssh_log(session,SSH_LOG_PROTOCOL,
-        "Partial success. Authentication that can continue: %s",
-        auth_methods);
-  } else {
-    session->auth_state=SSH_AUTH_STATE_FAILED;
-    ssh_log(session, SSH_LOG_PROTOCOL,
-        "Access denied. Authentication that can continue: %s",
-        auth_methods);
-    ssh_set_error(session, SSH_REQUEST_DENIED,
-            "Access denied. Authentication that can continue: %s",
-            auth_methods);
-
-    session->auth_methods = 0;
-  }
-  if (strstr(auth_methods, "password") != NULL) {
-    session->auth_methods |= SSH_AUTH_METHOD_PASSWORD;
-  }
-  if (strstr(auth_methods, "keyboard-interactive") != NULL) {
-    session->auth_methods |= SSH_AUTH_METHOD_INTERACTIVE;
-  }
-  if (strstr(auth_methods, "publickey") != NULL) {
-    session->auth_methods |= SSH_AUTH_METHOD_PUBLICKEY;
-  }
-  if (strstr(auth_methods, "hostbased") != NULL) {
-    session->auth_methods |= SSH_AUTH_METHOD_HOSTBASED;
-  }
-
-end:
-  ssh_string_free(auth);
-  SAFE_FREE(auth_methods);
-  leave_function();
-  return SSH_PACKET_USED;
-}
-
-/**
- * @internal
- *
- * @brief Handles a SSH_USERAUTH_SUCCESS packet.
- *
- * It is also used to communicate the new to the upper levels.
- */
-SSH_PACKET_CALLBACK(ssh_packet_userauth_success){
-  enter_function();
-  (void)packet;
-  (void)type;
-  (void)user;
-  ssh_log(session,SSH_LOG_PACKET,"Received SSH_USERAUTH_SUCCESS");
-  ssh_log(session,SSH_LOG_PROTOCOL,"Authentication successful");
-  session->auth_state=SSH_AUTH_STATE_SUCCESS;
-  session->session_state=SSH_SESSION_STATE_AUTHENTICATED;
-  leave_function();
-  return SSH_PACKET_USED;
-}
-
-/**
- * @internal
- *
- * @brief Handles a SSH_USERAUTH_PK_OK or SSH_USERAUTH_INFO_REQUEST packet.
- *
- * Since the two types of packets share the same code, additional work is done
- * to understand if we are in a public key or keyboard-interactive context.
- */
-SSH_PACKET_CALLBACK(ssh_packet_userauth_pk_ok){
-	int rc;
-	enter_function();
-  ssh_log(session,SSH_LOG_PACKET,"Received SSH_USERAUTH_PK_OK/INFO_REQUEST");
-  if(session->auth_state==SSH_AUTH_STATE_KBDINT_SENT){
-    /* Assuming we are in keyboard-interactive context */
-    ssh_log(session,SSH_LOG_PACKET,"keyboard-interactive context, assuming SSH_USERAUTH_INFO_REQUEST");
-    rc=ssh_packet_userauth_info_request(session,type,packet,user);
-  } else {
-    session->auth_state=SSH_AUTH_STATE_PK_OK;
-    ssh_log(session,SSH_LOG_PACKET,"assuming SSH_USERAUTH_PK_OK");
-    rc=SSH_PACKET_USED;
-  }
-  leave_function();
-  return rc;
-}
-
-static int wait_auth_status(ssh_session session) {
   int rc = SSH_AUTH_ERROR;
+  int cont = 1;
+  uint8_t partial = 0;
 
   enter_function();
 
-  while (session->auth_state == SSH_AUTH_STATE_NONE ||
-  		session->auth_state == SSH_AUTH_STATE_KBDINT_SENT) {
-    if (ssh_handle_packets(session,-1) != SSH_OK)
+  while (cont) {
+    if (packet_read(session) != SSH_OK) {
       break;
+    }
+    if (packet_translate(session) != SSH_OK) {
+      break;
+    }
+
+    switch (session->in_packet.type) {
+      case SSH2_MSG_USERAUTH_FAILURE:
+        auth = buffer_get_ssh_string(session->in_buffer);
+        if (auth == NULL || buffer_get_u8(session->in_buffer, &partial) != 1) {
+          ssh_set_error(session, SSH_FATAL,
+              "Invalid SSH_MSG_USERAUTH_FAILURE message");
+          leave_function();
+          return SSH_AUTH_ERROR;
+        }
+
+        auth_methods = string_to_char(auth);
+        if (auth_methods == NULL) {
+          ssh_set_error(session, SSH_FATAL,
+              "Not enough space");
+          string_free(auth);
+          leave_function();
+          return SSH_AUTH_ERROR;
+        }
+
+        if (partial) {
+          rc = SSH_AUTH_PARTIAL;
+          ssh_set_error(session, SSH_NO_ERROR,
+              "Partial success. Authentication that can continue: %s",
+              auth_methods);
+        } else {
+          rc = SSH_AUTH_DENIED;
+          ssh_set_error(session, SSH_REQUEST_DENIED,
+              "Access denied. Authentication that can continue: %s",
+              auth_methods);
+
+          session->auth_methods = 0;
+          if (strstr(auth_methods, "password") != NULL) {
+            session->auth_methods |= SSH_AUTH_METHOD_PASSWORD;
+          }
+          if (strstr(auth_methods, "keyboard-interactive") != NULL) {
+            session->auth_methods |= SSH_AUTH_METHOD_INTERACTIVE;
+          }
+          if (strstr(auth_methods, "publickey") != NULL) {
+            session->auth_methods |= SSH_AUTH_METHOD_PUBLICKEY;
+          }
+          if (strstr(auth_methods, "hostbased") != NULL) {
+            session->auth_methods |= SSH_AUTH_METHOD_HOSTBASED;
+          }
+        }
+
+        string_free(auth);
+        SAFE_FREE(auth_methods);
+        cont = 0;
+        break;
+      case SSH2_MSG_USERAUTH_PK_OK:
+        /* SSH monkeys have defined the same number for both */
+        /* SSH_MSG_USERAUTH_PK_OK and SSH_MSG_USERAUTH_INFO_REQUEST */
+        /* which is not really smart; */
+        /*case SSH2_MSG_USERAUTH_INFO_REQUEST: */
+        if (kbdint) {
+          rc = SSH_AUTH_INFO;
+          cont = 0;
+          break;
+        }
+        /* continue through success */
+      case SSH2_MSG_USERAUTH_SUCCESS:
+        rc = SSH_AUTH_SUCCESS;
+        cont = 0;
+        break;
+      case SSH2_MSG_USERAUTH_BANNER:
+        {
+          ssh_string banner;
+
+          banner = buffer_get_ssh_string(session->in_buffer);
+          if (banner == NULL) {
+            ssh_log(session, SSH_LOG_PACKET,
+                "The banner message was invalid. Continuing though\n");
+            break;
+          }
+          ssh_log(session, SSH_LOG_PACKET,
+              "Received a message banner\n");
+          string_free(session->banner); /* erase the older one */
+          session->banner = banner;
+          break;
+        }
+      default:
+        packet_parse(session);
+        break;
+    }
   }
-  switch(session->auth_state){
-    case SSH_AUTH_STATE_ERROR:
-      rc=SSH_AUTH_ERROR;
-      break;
-    case SSH_AUTH_STATE_FAILED:
-      rc=SSH_AUTH_DENIED;
-      break;
-    case SSH_AUTH_STATE_INFO:
-      rc=SSH_AUTH_INFO;
-      break;
-    case SSH_AUTH_STATE_PARTIAL:
-      rc=SSH_AUTH_PARTIAL;
-      break;
-    case SSH_AUTH_STATE_PK_OK:
-    case SSH_AUTH_STATE_SUCCESS:
-      rc=SSH_AUTH_SUCCESS;
-      break;
-    case SSH_AUTH_STATE_KBDINT_SENT:
-    case SSH_AUTH_STATE_NONE:
-      /* not reached */
-      rc=SSH_AUTH_ERROR;
-      break;
-  }
+
   leave_function();
   return rc;
 }
@@ -252,11 +174,7 @@ int ssh_auth_list(ssh_session session) {
   if (session == NULL) {
     return -1;
   }
-#ifdef WITH_SSH1
-  if(session->version==1){
-    return SSH_AUTH_METHOD_PASSWORD;
-  }
-#endif
+
   return session->auth_methods;
 }
 
@@ -277,9 +195,11 @@ int ssh_userauth_list(ssh_session session, const char *username) {
 /**
  * @brief Try to authenticate through the "none" method.
  *
- * @param[in] session   The ssh session to use.
+ * @param session       The ssh session to use.
  *
- * @param[in] username  Deprecated, set to NULL.
+ * @param username      The username to authenticate. You can specify NULL if
+ *                      ssh_option_set_username() has been used. You cannot try
+ *                      two different logins in a row.
  *
  * @returns SSH_AUTH_ERROR:   A serious error happened.\n
  *          SSH_AUTH_DENIED:  Authentication failed: use another method\n
@@ -297,17 +217,12 @@ int ssh_userauth_none(ssh_session session, const char *username) {
 
 #ifdef WITH_SSH1
   if (session->version == 1) {
-    rc = ssh_userauth1_none(session, username);
+    ssh_userauth1_none(session, username);
     leave_function();
     return rc;
   }
 #endif
-  if(session->auth_methods != 0){
-    /* userauth_none or other method was already tried before */
-    ssh_set_error(session,SSH_REQUEST_DENIED,"None method rejected by server");
-    leave_function();
-    return SSH_AUTH_DENIED;
-  }
+
   if (username == NULL) {
     if (session->username == NULL) {
       if (ssh_options_apply(session) < 0) {
@@ -315,9 +230,9 @@ int ssh_userauth_none(ssh_session session, const char *username) {
         return rc;
       }
     }
-    user = ssh_string_from_char(session->username);
+    user = string_from_char(session->username);
   } else {
-    user = ssh_string_from_char(username);
+    user = string_from_char(username);
   }
 
   if (user == NULL) {
@@ -326,16 +241,16 @@ int ssh_userauth_none(ssh_session session, const char *username) {
   }
 
   if (ask_userauth(session) < 0) {
-    ssh_string_free(user);
+    string_free(user);
     leave_function();
     return rc;
   }
 
-  method = ssh_string_from_char("none");
+  method = string_from_char("none");
   if (method == NULL) {
     goto error;
   }
-  service = ssh_string_from_char("ssh-connection");
+  service = string_from_char("ssh-connection");
   if (service == NULL) {
     goto error;
   }
@@ -347,23 +262,23 @@ int ssh_userauth_none(ssh_session session, const char *username) {
     goto error;
   }
 
-  ssh_string_free(service);
-  ssh_string_free(method);
-  ssh_string_free(user);
-  session->auth_state=SSH_AUTH_STATE_NONE;
-  if (packet_send(session) == SSH_ERROR) {
+  string_free(service);
+  string_free(method);
+  string_free(user);
+
+  if (packet_send(session) != SSH_OK) {
     leave_function();
     return rc;
   }
-  rc = wait_auth_status(session);
+  rc = wait_auth_status(session, 0);
 
   leave_function();
   return rc;
 error:
   buffer_reinit(session->out_buffer);
-  ssh_string_free(service);
-  ssh_string_free(method);
-  ssh_string_free(user);
+  string_free(service);
+  string_free(method);
+  string_free(user);
 
   leave_function();
   return rc;
@@ -372,16 +287,16 @@ error:
 /**
  * @brief Try to authenticate through public key.
  *
- * @param[in]  session  The ssh session to use.
+ * @param session       The ssh session to use.
  *
- * @param[in]  username The username to authenticate. You can specify NULL if
+ * @param username      The username to authenticate. You can specify NULL if
  *                      ssh_option_set_username() has been used. You cannot try
  *                      two different logins in a row.
  *
- * @param[in]  type     The type of the public key. This value is given by
- *                      publickey_from_file() or ssh_privatekey_type().
+ * @param type          The type of the public key. This value is given by
+ *                      publickey_from_file().
  *
- * @param[in]  publickey A public key returned by publickey_from_file().
+ * @param publickey     A public key returned by publickey_from_file().
  *
  * @returns SSH_AUTH_ERROR:   A serious error happened.\n
  *          SSH_AUTH_DENIED:  The server doesn't accept that public key as an
@@ -394,7 +309,6 @@ error:
  *
  * @see publickey_from_file()
  * @see privatekey_from_file()
- * @see ssh_privatekey_type()
  * @see ssh_userauth_pubkey()
  */
 int ssh_userauth_offer_pubkey(ssh_session session, const char *username,
@@ -422,9 +336,9 @@ int ssh_userauth_offer_pubkey(ssh_session session, const char *username,
         return rc;
       }
     }
-    user = ssh_string_from_char(session->username);
+    user = string_from_char(session->username);
   } else {
-    user = ssh_string_from_char(username);
+    user = string_from_char(username);
   }
 
   if (user == NULL) {
@@ -433,20 +347,20 @@ int ssh_userauth_offer_pubkey(ssh_session session, const char *username,
   }
 
   if (ask_userauth(session) < 0) {
-    ssh_string_free(user);
+    string_free(user);
     leave_function();
     return rc;
   }
 
-  service = ssh_string_from_char("ssh-connection");
+  service = string_from_char("ssh-connection");
   if (service == NULL) {
     goto error;
   }
-  method = ssh_string_from_char("publickey");
+  method = string_from_char("publickey");
   if (method == NULL) {
     goto error;
   }
-  algo = ssh_string_from_char(ssh_type_to_char(type));
+  algo = string_from_char(ssh_type_to_char(type));
   if (algo == NULL) {
     goto error;
   }
@@ -461,25 +375,25 @@ int ssh_userauth_offer_pubkey(ssh_session session, const char *username,
     goto error;
   }
 
-  ssh_string_free(user);
-  ssh_string_free(method);
-  ssh_string_free(service);
-  ssh_string_free(algo);
-  session->auth_state=SSH_AUTH_STATE_NONE;
-  if (packet_send(session) == SSH_ERROR) {
+  string_free(user);
+  string_free(method);
+  string_free(service);
+  string_free(algo);
+
+  if (packet_send(session) != SSH_OK) {
     leave_function();
     return rc;
   }
-  rc = wait_auth_status(session);
+  rc = wait_auth_status(session,0);
 
   leave_function();
   return rc;
 error:
   buffer_reinit(session->out_buffer);
-  ssh_string_free(user);
-  ssh_string_free(method);
-  ssh_string_free(service);
-  ssh_string_free(algo);
+  string_free(user);
+  string_free(method);
+  string_free(service);
+  string_free(algo);
 
   leave_function();
   return rc;
@@ -489,16 +403,15 @@ error:
 /**
  * @brief Try to authenticate through public key.
  *
- * @param[in]  session  The ssh session to use.
+ * @param session       The ssh session to use.
  *
- * @param[in]  username The username to authenticate. You can specify NULL if
+ * @param username      The username to authenticate. You can specify NULL if
  *                      ssh_option_set_username() has been used. You cannot try
  *                      two different logins in a row.
  *
- * @param[in]  publickey A public key returned by publickey_from_file(), or NULL
- *                       to generate automatically from privatekey.
+ * @param publickey     A public key returned by publickey_from_file().
  *
- * @param[in]  privatekey A private key returned by privatekey_from_file().
+ * @param privatekey    A private key returned by privatekey_from_file().
  *
  * @returns SSH_AUTH_ERROR:   A serious error happened.\n
  *          SSH_AUTH_DENIED:  Authentication failed: use another method.\n
@@ -518,8 +431,6 @@ int ssh_userauth_pubkey(ssh_session session, const char *username,
   ssh_string method = NULL;
   ssh_string algo = NULL;
   ssh_string sign = NULL;
-  ssh_public_key pk = NULL;
-  ssh_string pkstr = NULL;
   int rc = SSH_AUTH_ERROR;
 
   enter_function();
@@ -537,9 +448,9 @@ int ssh_userauth_pubkey(ssh_session session, const char *username,
         return rc;
       }
     }
-    user = ssh_string_from_char(session->username);
+    user = string_from_char(session->username);
   } else {
-    user = ssh_string_from_char(username);
+    user = string_from_char(username);
   }
 
   if (user == NULL) {
@@ -548,33 +459,22 @@ int ssh_userauth_pubkey(ssh_session session, const char *username,
   }
 
   if (ask_userauth(session) < 0) {
-    ssh_string_free(user);
+    string_free(user);
     leave_function();
     return rc;
   }
 
-  service = ssh_string_from_char("ssh-connection");
+  service = string_from_char("ssh-connection");
   if (service == NULL) {
     goto error;
   }
-  method = ssh_string_from_char("publickey");
+  method = string_from_char("publickey");
   if (method == NULL) {
     goto error;
   }
-  algo = ssh_string_from_char(ssh_type_to_char(privatekey->type));
+  algo = string_from_char(ssh_type_to_char(privatekey->type));
   if (algo == NULL) {
     goto error;
-  }
-  if (publickey == NULL) {
-    pk = publickey_from_privatekey(privatekey);
-    if (pk == NULL) {
-      goto error;
-    }
-    pkstr = publickey_to_string(pk);
-    publickey_free(pk);
-    if (pkstr == NULL) {
-      goto error;
-    }
   }
 
   /* we said previously the public key was accepted */
@@ -584,105 +484,37 @@ int ssh_userauth_pubkey(ssh_session session, const char *username,
       buffer_add_ssh_string(session->out_buffer, method) < 0 ||
       buffer_add_u8(session->out_buffer, 1) < 0 ||
       buffer_add_ssh_string(session->out_buffer, algo) < 0 ||
-      buffer_add_ssh_string(session->out_buffer, (publickey == NULL ? pkstr : publickey)) < 0) {
+      buffer_add_ssh_string(session->out_buffer, publickey) < 0) {
     goto error;
   }
 
-  ssh_string_free(user);
-  ssh_string_free(service);
-  ssh_string_free(method);
-  ssh_string_free(algo);
-  ssh_string_free(pkstr);
+  string_free(user);
+  string_free(service);
+  string_free(method);
+  string_free(algo);
 
   sign = ssh_do_sign(session,session->out_buffer, privatekey);
   if (sign) {
     if (buffer_add_ssh_string(session->out_buffer,sign) < 0) {
       goto error;
     }
-    ssh_string_free(sign);
-    session->auth_state=SSH_AUTH_STATE_NONE;
-    if (packet_send(session) == SSH_ERROR) {
+    string_free(sign);
+
+    if (packet_send(session) != SSH_OK) {
       leave_function();
       return rc;
     }
-    rc = wait_auth_status(session);
+    rc = wait_auth_status(session,0);
   }
 
   leave_function();
   return rc;
 error:
   buffer_reinit(session->out_buffer);
-  ssh_string_free(user);
-  ssh_string_free(service);
-  ssh_string_free(method);
-  ssh_string_free(algo);
-  ssh_string_free(pkstr);
-
-  leave_function();
-  return rc;
-}
-
-/**
- * @brief Try to authenticate through a private key file.
- *
- * @param[in]  session  The ssh session to use.
- *
- * @param[in]  username The username to authenticate. You can specify NULL if
- *                      ssh_option_set_username() has been used. You cannot try
- *                      two different logins in a row.
- *
- * @param[in] filename  Filename containing the private key.
- *
- * @param[in] passphrase Passphrase to decrypt the private key. Set to null if
- *                       none is needed or it is unknown.
- *
- * @returns SSH_AUTH_ERROR:   A serious error happened.\n
- *          SSH_AUTH_DENIED:  Authentication failed: use another method.\n
- *          SSH_AUTH_PARTIAL: You've been partially authenticated, you still
- *                            have to use another method.\n
- *          SSH_AUTH_SUCCESS: Authentication successful.
- *
- * @see publickey_from_file()
- * @see privatekey_from_file()
- * @see privatekey_free()
- * @see ssh_userauth_pubkey()
- */
-int ssh_userauth_privatekey_file(ssh_session session, const char *username,
-    const char *filename, const char *passphrase) {
-  char *pubkeyfile = NULL;
-  ssh_string pubkey = NULL;
-  ssh_private_key privkey = NULL;
-  int type = 0;
-  int rc = SSH_AUTH_ERROR;
-
-  enter_function();
-
-  pubkeyfile = malloc(strlen(filename) + 1 + 4);
-  if (pubkeyfile == NULL) {
-    leave_function();
-    return SSH_AUTH_ERROR;
-  }
-  sprintf(pubkeyfile, "%s.pub", filename);
-
-  pubkey = publickey_from_file(session, pubkeyfile, &type);
-  if (pubkey == NULL) {
-    ssh_log(session, SSH_LOG_RARE, "Public key file %s not found. Trying to generate it.", pubkeyfile);
-    /* auto-detect the key type with type=0 */
-    privkey = privatekey_from_file(session, filename, 0, passphrase);
-  } else {
-    ssh_log(session, SSH_LOG_RARE, "Public key file %s loaded.", pubkeyfile);
-    privkey = privatekey_from_file(session, filename, type, passphrase);
-  }
-  if (privkey == NULL) {
-    goto error;
-  }
-  /* ssh_userauth_pubkey is responsible for taking care of null-pubkey */
-  rc = ssh_userauth_pubkey(session, username, pubkey, privkey);
-  privatekey_free(privkey);
-
-error:
-  SAFE_FREE(pubkeyfile);
-  ssh_string_free(pubkey);
+  string_free(user);
+  string_free(service);
+  string_free(method);
+  string_free(algo);
 
   leave_function();
   return rc;
@@ -692,13 +524,13 @@ error:
 /**
  * @brief Try to authenticate through public key with an ssh agent.
  *
- * @param[in]  session  The ssh session to use.
+ * @param session       The ssh session to use.
  *
- * @param[in]  username The username to authenticate. You can specify NULL if
+ * @param username      The username to authenticate. You can specify NULL if
  *                      ssh_option_set_username() has been used. You cannot try
  *                      two different logins in a row.
  *
- * @param[in]  publickey The public key provided by the agent.
+ * @param publickey     The public key provided by the agent.
  *
  * @returns SSH_AUTH_ERROR:   A serious error happened.\n
  *          SSH_AUTH_DENIED:  Authentication failed: use another method.\n
@@ -734,9 +566,9 @@ int ssh_userauth_agent_pubkey(ssh_session session, const char *username,
         return rc;
       }
     }
-    user = ssh_string_from_char(session->username);
+    user = string_from_char(session->username);
   } else {
-    user = ssh_string_from_char(username);
+    user = string_from_char(username);
   }
 
   if (user == NULL) {
@@ -745,20 +577,20 @@ int ssh_userauth_agent_pubkey(ssh_session session, const char *username,
   }
 
   if (ask_userauth(session) < 0) {
-    ssh_string_free(user);
+    string_free(user);
     leave_function();
     return rc;
   }
 
-  service = ssh_string_from_char("ssh-connection");
+  service = string_from_char("ssh-connection");
   if (service == NULL) {
     goto error;
   }
-  method = ssh_string_from_char("publickey");
+  method = string_from_char("publickey");
   if (method == NULL) {
     goto error;
   }
-  algo = ssh_string_from_char(ssh_type_to_char(publickey->type));
+  algo = string_from_char(ssh_type_to_char(publickey->type));
   if (algo == NULL) {
     goto error;
   }
@@ -784,32 +616,31 @@ int ssh_userauth_agent_pubkey(ssh_session session, const char *username,
     if (buffer_add_ssh_string(session->out_buffer, sign) < 0) {
       goto error;
     }
-    ssh_string_free(sign);
-    session->auth_state=SSH_AUTH_STATE_NONE;
-    if (packet_send(session) == SSH_ERROR) {
+    string_free(sign);
+    if (packet_send(session) != SSH_OK) {
       leave_function();
       return rc;
     }
-    rc = wait_auth_status(session);
+    rc = wait_auth_status(session,0);
   }
 
-  ssh_string_free(user);
-  ssh_string_free(service);
-  ssh_string_free(method);
-  ssh_string_free(algo);
-  ssh_string_free(key);
+  string_free(user);
+  string_free(service);
+  string_free(method);
+  string_free(algo);
+  string_free(key);
 
   leave_function();
 
   return rc;
 error:
   buffer_reinit(session->out_buffer);
-  ssh_string_free(sign);
-  ssh_string_free(user);
-  ssh_string_free(service);
-  ssh_string_free(method);
-  ssh_string_free(algo);
-  ssh_string_free(key);
+  string_free(sign);
+  string_free(user);
+  string_free(service);
+  string_free(method);
+  string_free(algo);
+  string_free(key);
 
   leave_function();
   return rc;
@@ -819,13 +650,13 @@ error:
 /**
  * @brief Try to authenticate by password.
  *
- * @param[in]  session  The ssh session to use.
+ * @param session       The ssh session to use.
  *
- * @param[in]  username The username to authenticate. You can specify NULL if
+ * @param username      The username to authenticate. You can specify NULL if
  *                      ssh_option_set_username() has been used. You cannot try
  *                      two different logins in a row.
  *
- * @param[in]  password The password to use. Take care to clean it after
+ * @param password      The password to use. Take care to clean it after
  *                      the authentication.
  *
  * @returns SSH_AUTH_ERROR:   A serious error happened.\n
@@ -862,9 +693,9 @@ int ssh_userauth_password(ssh_session session, const char *username,
         return rc;
       }
     }
-    user = ssh_string_from_char(session->username);
+    user = string_from_char(session->username);
   } else {
-    user = ssh_string_from_char(username);
+    user = string_from_char(username);
   }
 
   if (user == NULL) {
@@ -873,20 +704,20 @@ int ssh_userauth_password(ssh_session session, const char *username,
   }
 
   if (ask_userauth(session) < 0) {
-    ssh_string_free(user);
+    string_free(user);
     leave_function();
     return rc;
   }
 
-  service = ssh_string_from_char("ssh-connection");
+  service = string_from_char("ssh-connection");
   if (service == NULL) {
     goto error;
   }
-  method = ssh_string_from_char("password");
+  method = string_from_char("password");
   if (method == NULL) {
     goto error;
   }
-  pwd = ssh_string_from_char(password);
+  pwd = string_from_char(password);
   if (pwd == NULL) {
     goto error;
   }
@@ -900,43 +731,43 @@ int ssh_userauth_password(ssh_session session, const char *username,
     goto error;
   }
 
-  ssh_string_free(user);
-  ssh_string_free(service);
-  ssh_string_free(method);
-  ssh_string_burn(pwd);
-  ssh_string_free(pwd);
-  session->auth_state=SSH_AUTH_STATE_NONE;
-  if (packet_send(session) == SSH_ERROR) {
+  string_free(user);
+  string_free(service);
+  string_free(method);
+  string_burn(pwd);
+  string_free(pwd);
+
+  if (packet_send(session) != SSH_OK) {
     leave_function();
     return rc;
   }
-  rc = wait_auth_status(session);
+  rc = wait_auth_status(session, 0);
 
   leave_function();
   return rc;
 error:
   buffer_reinit(session->out_buffer);
-  ssh_string_free(user);
-  ssh_string_free(service);
-  ssh_string_free(method);
-  ssh_string_burn(pwd);
-  ssh_string_free(pwd);
+  string_free(user);
+  string_free(service);
+  string_free(method);
+  string_burn(pwd);
+  string_free(pwd);
 
   leave_function();
   return rc;
 }
 
 /**
- * @brief Tries to automatically authenticate with public key and "none"
+ * @brief Tries to automaticaly authenticate with public key and "none"
  *
  * It may fail, for instance it doesn't ask for a password and uses a default
  * asker for passphrases (in case the private key is encrypted).
  *
- * @param[in]  session  The ssh session to authenticate with.
+ * @param session       The ssh session to authenticate with.
  *
- * @param[in]  passphrase Use this passphrase to unlock the privatekey. Use NULL
- *                        if you don't want to use a passphrase or the user
- *                        should be asked.
+ * @param passphrase    Use this passphrase to unlock the privatekey. Use NULL
+ *                      if you don't want to use a passphrase or the user
+ *                      should be asked.
  *
  * @returns SSH_AUTH_ERROR:   A serious error happened\n
  *          SSH_AUTH_DENIED:  Authentication failed: use another method\n
@@ -982,7 +813,7 @@ int ssh_userauth_autopubkey(ssh_session session, const char *passphrase) {
       pubkey_string = publickey_to_string(pubkey);
       if (pubkey_string) {
         rc = ssh_userauth_offer_pubkey(session, NULL, pubkey->type, pubkey_string);
-        ssh_string_free(pubkey_string);
+        string_free(pubkey_string);
         if (rc == SSH_AUTH_ERROR) {
           SAFE_FREE(privkey_file);
           publickey_free(pubkey);
@@ -995,7 +826,7 @@ int ssh_userauth_autopubkey(ssh_session session, const char *passphrase) {
           publickey_free(pubkey);
           continue;
         }
-        ssh_log(session, SSH_LOG_PROTOCOL, "Public key accepted");
+        ssh_log(session, SSH_LOG_RARE, "Public key accepted");
         /* pubkey accepted by server ! */
         rc = ssh_userauth_agent_pubkey(session, NULL, pubkey);
         if (rc == SSH_AUTH_ERROR) {
@@ -1091,14 +922,14 @@ int ssh_userauth_autopubkey(ssh_session session, const char *passphrase) {
 
     rc = ssh_userauth_offer_pubkey(session, NULL, type, pubkey_string);
     if (rc == SSH_AUTH_ERROR){
-      ssh_string_free(pubkey_string);
+      string_free(pubkey_string);
       ssh_log(session, SSH_LOG_RARE, "Publickey authentication error");
       leave_function();
       return rc;
     } else {
       if (rc != SSH_AUTH_SUCCESS){
         ssh_log(session, SSH_LOG_PROTOCOL, "Publickey refused by server");
-        ssh_string_free(pubkey_string);
+        string_free(pubkey_string);
         continue;
       }
     }
@@ -1112,22 +943,22 @@ int ssh_userauth_autopubkey(ssh_session session, const char *passphrase) {
         ssh_log(session, SSH_LOG_RARE,
             "Reading private key %s failed (bad passphrase ?)",
             privkey_file);
-        ssh_string_free(pubkey_string);
+        string_free(pubkey_string);
         continue; /* continue the loop with other pubkey */
       }
     }
 
     rc = ssh_userauth_pubkey(session, NULL, pubkey_string, privkey);
     if (rc == SSH_AUTH_ERROR) {
-      ssh_string_free(pubkey_string);
+      string_free(pubkey_string);
       privatekey_free(privkey);
       leave_function();
       return rc;
     } else {
       if (rc != SSH_AUTH_SUCCESS){
-        ssh_log(session, SSH_LOG_RARE,
+        ssh_log(session, SSH_LOG_FUNCTIONS,
             "The server accepted the public key but refused the signature");
-        ssh_string_free(pubkey_string);
+        string_free(pubkey_string);
         privatekey_free(privkey);
         continue;
       }
@@ -1136,7 +967,7 @@ int ssh_userauth_autopubkey(ssh_session session, const char *passphrase) {
     /* auth success */
     ssh_log(session, SSH_LOG_PROTOCOL,
         "Successfully authenticated using %s", privkey_file);
-    ssh_string_free(pubkey_string);
+    string_free(pubkey_string);
     privatekey_free(privkey);
 
     leave_function();
@@ -1144,7 +975,7 @@ int ssh_userauth_autopubkey(ssh_session session, const char *passphrase) {
   }
 
   /* at this point, pubkey is NULL and so is privkeyfile */
-  ssh_log(session, SSH_LOG_PROTOCOL,
+  ssh_log(session, SSH_LOG_FUNCTIONS,
       "Tried every public key, none matched");
   ssh_set_error(session,SSH_NO_ERROR,"No public key matched");
 
@@ -1249,19 +1080,19 @@ static int kbdauth_init(ssh_session session, const char *user,
 
   enter_function();
 
-  usr = ssh_string_from_char(user);
+  usr = string_from_char(user);
   if (usr == NULL) {
     goto error;
   }
-  sub = (submethods ? ssh_string_from_char(submethods) : ssh_string_from_char(""));
+  sub = (submethods ? string_from_char(submethods) : string_from_char(""));
   if (sub == NULL) {
     goto error;
   }
-  service = ssh_string_from_char("ssh-connection");
+  service = string_from_char("ssh-connection");
   if (service == NULL) {
     goto error;
   }
-  method = ssh_string_from_char("keyboard-interactive");
+  method = string_from_char("keyboard-interactive");
   if (method == NULL) {
     goto error;
   }
@@ -1275,96 +1106,88 @@ static int kbdauth_init(ssh_session session, const char *user,
     goto error;
   }
 
-  ssh_string_free(usr);
-  ssh_string_free(service);
-  ssh_string_free(method);
-  ssh_string_free(sub);
-  session->auth_state=SSH_AUTH_STATE_KBDINT_SENT;
-  if (packet_send(session) == SSH_ERROR) {
+  string_free(usr);
+  string_free(service);
+  string_free(method);
+  string_free(sub);
+
+  if (packet_send(session) != SSH_OK) {
     leave_function();
     return rc;
   }
-  rc = wait_auth_status(session);
+  rc = wait_auth_status(session,1);
 
   leave_function();
   return rc;
 error:
   buffer_reinit(session->out_buffer);
-  ssh_string_free(usr);
-  ssh_string_free(service);
-  ssh_string_free(method);
-  ssh_string_free(sub);
+  string_free(usr);
+  string_free(service);
+  string_free(method);
+  string_free(sub);
 
   leave_function();
   return rc;
 }
 
-/**
- * @internal
- * @brief handles a SSH_USERAUTH_INFO_REQUEST packet, as used in
- *        keyboard-interactive authentication, and changes the
- *        authentication state.
- */
-SSH_PACKET_CALLBACK(ssh_packet_userauth_info_request) {
+static int kbdauth_info_get(ssh_session session) {
   ssh_string name; /* name of the "asking" window showed to client */
   ssh_string instruction;
   ssh_string tmp;
   uint32_t nprompts;
   uint32_t i;
-  (void)user;
-  (void)type;
+
   enter_function();
 
-  name = buffer_get_ssh_string(packet);
-  instruction = buffer_get_ssh_string(packet);
-  tmp = buffer_get_ssh_string(packet);
-  buffer_get_u32(packet, &nprompts);
+  name = buffer_get_ssh_string(session->in_buffer);
+  instruction = buffer_get_ssh_string(session->in_buffer);
+  tmp = buffer_get_ssh_string(session->in_buffer);
+  buffer_get_u32(session->in_buffer, &nprompts);
 
   if (name == NULL || instruction == NULL || tmp == NULL) {
-    ssh_string_free(name);
-    ssh_string_free(instruction);
+    string_free(name);
+    string_free(instruction);
     /* tmp if empty if we got here */
     ssh_set_error(session, SSH_FATAL, "Invalid USERAUTH_INFO_REQUEST msg");
     leave_function();
-    return SSH_PACKET_USED;
+    return SSH_AUTH_ERROR;
   }
-  ssh_string_free(tmp);
+  string_free(tmp);
 
   if (session->kbdint == NULL) {
     session->kbdint = kbdint_new();
     if (session->kbdint == NULL) {
-      ssh_set_error_oom(session);
-      ssh_string_free(name);
-      ssh_string_free(instruction);
+      ssh_set_error(session, SSH_FATAL, "Not enough space");
+      string_free(name);
+      string_free(instruction);
 
       leave_function();
-      return SSH_PACKET_USED;
+      return SSH_AUTH_ERROR;
     }
   } else {
     kbdint_clean(session->kbdint);
   }
 
-  session->kbdint->name = ssh_string_to_char(name);
-  ssh_string_free(name);
+  session->kbdint->name = string_to_char(name);
+  string_free(name);
   if (session->kbdint->name == NULL) {
-    ssh_set_error_oom(session);
+    ssh_set_error(session, SSH_FATAL, "Not enough space");
     kbdint_free(session->kbdint);
     leave_function();
-    return SSH_PACKET_USED;
+    return SSH_AUTH_ERROR;
   }
 
-  session->kbdint->instruction = ssh_string_to_char(instruction);
-  ssh_string_free(instruction);
+  session->kbdint->instruction = string_to_char(instruction);
+  string_free(instruction);
   if (session->kbdint->instruction == NULL) {
-    ssh_set_error_oom(session);
+    ssh_set_error(session, SSH_FATAL, "Not enough space");
     kbdint_free(session->kbdint);
     session->kbdint = NULL;
     leave_function();
-    return SSH_PACKET_USED;
+    return SSH_AUTH_ERROR;
   }
 
   nprompts = ntohl(nprompts);
-  ssh_log(session,SSH_LOG_PACKET,"kbdint: %d prompts",nprompts);
   if (nprompts > KBDINT_MAX_PROMPT) {
     ssh_set_error(session, SSH_FATAL,
         "Too much prompt asked from server: %u (0x%.4x)",
@@ -1372,66 +1195,58 @@ SSH_PACKET_CALLBACK(ssh_packet_userauth_info_request) {
     kbdint_free(session->kbdint);
     session->kbdint = NULL;
     leave_function();
-    return SSH_PACKET_USED;
+    return SSH_AUTH_ERROR;
   }
 
   session->kbdint->nprompts = nprompts;
   session->kbdint->prompts = malloc(nprompts * sizeof(char *));
   if (session->kbdint->prompts == NULL) {
     session->kbdint->nprompts = 0;
-    ssh_set_error_oom(session);
+    ssh_set_error(session, SSH_FATAL, "No space left");
     kbdint_free(session->kbdint);
     session->kbdint = NULL;
     leave_function();
-    return SSH_PACKET_USED;
+    return SSH_AUTH_ERROR;
   }
   memset(session->kbdint->prompts, 0, nprompts * sizeof(char *));
 
   session->kbdint->echo = malloc(nprompts);
   if (session->kbdint->echo == NULL) {
     session->kbdint->nprompts = 0;
-    ssh_set_error_oom(session);
+    ssh_set_error(session, SSH_FATAL, "No space left");
     kbdint_free(session->kbdint);
     session->kbdint = NULL;
     leave_function();
-    return SSH_PACKET_USED;
+    return SSH_AUTH_ERROR;
   }
   memset(session->kbdint->echo, 0, nprompts);
 
   for (i = 0; i < nprompts; i++) {
-    tmp = buffer_get_ssh_string(packet);
-    buffer_get_u8(packet, &session->kbdint->echo[i]);
+    tmp = buffer_get_ssh_string(session->in_buffer);
+    buffer_get_u8(session->in_buffer, &session->kbdint->echo[i]);
     if (tmp == NULL) {
       ssh_set_error(session, SSH_FATAL, "Short INFO_REQUEST packet");
       kbdint_free(session->kbdint);
       session->kbdint = NULL;
       leave_function();
-      return SSH_PACKET_USED;
+      return SSH_AUTH_ERROR;
     }
-    session->kbdint->prompts[i] = ssh_string_to_char(tmp);
-    ssh_string_free(tmp);
+    session->kbdint->prompts[i] = string_to_char(tmp);
+    string_free(tmp);
     if (session->kbdint->prompts[i] == NULL) {
-      ssh_set_error_oom(session);
+      ssh_set_error(session, SSH_FATAL, "Not enough space");
       kbdint_free(session->kbdint);
       session->kbdint = NULL;
       leave_function();
-      return SSH_PACKET_USED;
+      return SSH_AUTH_ERROR;
     }
   }
-  session->auth_state=SSH_AUTH_STATE_INFO;
+
   leave_function();
-  return SSH_PACKET_USED;
+  return SSH_AUTH_INFO; /* we are not auth. but we parsed the packet */
 }
 
-/**
- * @internal
- * @brief Sends the current challenge response and wait for a
- * reply from the server
- * @returns SSH_AUTH_INFO if more info is needed
- * @returns SSH_AUTH_SUCCESS
- * @returns SSH_AUTH_FAILURE
- * @returns SSH_AUTH_PARTIAL
- */
+/* sends challenge back to the server */
 static int kbdauth_send(ssh_session session) {
   ssh_string answer = NULL;
   int rc = SSH_AUTH_ERROR;
@@ -1447,9 +1262,9 @@ static int kbdauth_send(ssh_session session) {
 
   for (i = 0; i < session->kbdint->nprompts; i++) {
     if (session->kbdint->answers[i]) {
-      answer = ssh_string_from_char(session->kbdint->answers[i]);
+      answer = string_from_char(session->kbdint->answers[i]);
     } else {
-      answer = ssh_string_from_char("");
+      answer = string_from_char("");
     }
     if (answer == NULL) {
       goto error;
@@ -1459,24 +1274,22 @@ static int kbdauth_send(ssh_session session) {
       goto error;
     }
 
-    ssh_string_burn(answer);
-    ssh_string_free(answer);
+    string_burn(answer);
+    string_free(answer);
   }
-  session->auth_state=SSH_AUTH_STATE_KBDINT_SENT;
-  kbdint_free(session->kbdint);
-  session->kbdint = NULL;
-  if (packet_send(session) == SSH_ERROR) {
+
+  if (packet_send(session) != SSH_OK) {
     leave_function();
     return rc;
   }
-  rc = wait_auth_status(session);
+  rc = wait_auth_status(session,1);
 
   leave_function();
   return rc;
 error:
   buffer_reinit(session->out_buffer);
-  ssh_string_burn(answer);
-  ssh_string_free(answer);
+  string_burn(answer);
+  string_free(answer);
 
   leave_function();
   return rc;
@@ -1485,13 +1298,13 @@ error:
 /**
  * @brief Try to authenticate through the "keyboard-interactive" method.
  *
- * @param[in]  session  The ssh session to use.
+ * @param session       The ssh session to use.
  *
- * @param[in]  user     The username to authenticate. You can specify NULL if
+ * @param user          The username to authenticate. You can specify NULL if
  *                      ssh_option_set_username() has been used. You cannot try
  *                      two different logins in a row.
  *
- * @param[in]  submethods Undocumented. Set it to NULL.
+ * @param submethods    Undocumented. Set it to NULL.
  *
  * @returns SSH_AUTH_ERROR:   A serious error happened\n
  *          SSH_AUTH_DENIED:  Authentication failed : use another method\n
@@ -1537,18 +1350,41 @@ int ssh_userauth_kbdint(ssh_session session, const char *user,
     }
 
     rc = kbdauth_init(session, user, submethods);
+    if (rc != SSH_AUTH_INFO) {
+      leave_function();
+      return rc; /* error or first try success */
+    }
+
+    rc = kbdauth_info_get(session);
+    if (rc == SSH_AUTH_ERROR) {
+      kbdint_free(session->kbdint);
+      session->kbdint = NULL;
+    }
 
     leave_function();
     return rc;
   }
 
   /*
-   * If we are at this point, it is because session->kbdint exists.
+   * If we are at this point, it ss because session->kbdint exists.
    * It means the user has set some information there we need to send
    * the server and then we need to ack the status (new questions or ok
    * pass in).
    */
   rc = kbdauth_send(session);
+  kbdint_free(session->kbdint);
+  session->kbdint = NULL;
+
+  if(rc != SSH_AUTH_INFO) {
+    leave_function();
+    return rc;
+  }
+
+  rc = kbdauth_info_get(session);
+  if (rc == SSH_AUTH_ERROR) {
+    kbdint_free(session->kbdint);
+    session->kbdint = NULL;
+  }
 
   leave_function();
   return rc;
@@ -1560,7 +1396,7 @@ int ssh_userauth_kbdint(ssh_session session, const char *user,
  * You have called ssh_userauth_kbdint() and got SSH_AUTH_INFO. This
  * function returns the questions from the server.
  *
- * @param[in]  session  The ssh session to use.
+ * @param session       The ssh session to use.
  *
  * @returns             The number of prompts.
  */
@@ -1574,7 +1410,7 @@ int ssh_userauth_kbdint_getnprompts(ssh_session session) {
  * You have called ssh_userauth_kbdint() and got SSH_AUTH_INFO. This
  * function returns the questions from the server.
  *
- * @param[in]  session  The ssh session to use.
+ * @param session       The ssh session to use.
  *
  * @returns             The name of the message block. Do not free it.
  */
@@ -1588,7 +1424,7 @@ const char *ssh_userauth_kbdint_getname(ssh_session session) {
  * You have called ssh_userauth_kbdint() and got SSH_AUTH_INFO. This
  * function returns the questions from the server.
  *
- * @param[in]  session  The ssh session to use.
+ * @param session       The ssh session to use.
  *
  * @returns             The instruction of the message block.
  */
@@ -1603,11 +1439,11 @@ const char *ssh_userauth_kbdint_getinstruction(ssh_session session) {
  * You have called ssh_userauth_kbdint() and got SSH_AUTH_INFO. This
  * function returns the questions from the server.
  *
- * @param[in]  session  The ssh session to use.
+ * @param session       The ssh session to use.
  *
- * @param[in]  i        The index number of the i'th prompt.
+ * @param i             The inndex number of the i'th prompt.
  *
- * @param[in]  echo     When different of NULL, it will obtain a boolean meaning
+ * @param echo          When different of NULL, it will obtain a boolean meaning
  *                      that the resulting user input should be echoed or not
  *                      (like passwords).
  *
@@ -1626,19 +1462,13 @@ const char *ssh_userauth_kbdint_getprompt(ssh_session session, unsigned int i,
   return session->kbdint->prompts[i];
 }
 
-/**
- * @brief Set the answer for a question from a message block.
- *
- * If you have called ssh_userauth_kbdint() and got SSH_AUTH_INFO, this
- * function returns the questions from the server.
- *
- * @param[in]  session  The ssh session to use.
- *
- * @param[in]  i index  The number of the ith prompt.
- *
- * @param[in]  answer   The answer to give to the server.
- *
- * @return              0 on success, < 0 on error.
+/** You have called ssh_userauth_kbdint() and got SSH_AUTH_INFO. this
+ * function returns the questions from the server
+ * \brief set the answer for a question from a message block.
+ * \param session ssh session
+ * \param i index number of the ith prompt
+ * \param answer answer to give to server
+ * \return 0 on success, < 0 on error.
  */
 int ssh_userauth_kbdint_setanswer(ssh_session session, unsigned int i,
     const char *answer) {
@@ -1667,6 +1497,5 @@ int ssh_userauth_kbdint_setanswer(ssh_session session, unsigned int i,
   return 0;
 }
 
-/* @} */
-
-/* vim: set ts=4 sw=4 et cindent: */
+/** @} */
+/* vim: set ts=2 sw=2 et cindent: */

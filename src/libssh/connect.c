@@ -45,11 +45,6 @@
 #define NTDDI_VERSION 0x05010000 /* NTDDI_WINXP */
 #endif
 
-#if _MSC_VER >= 1400
-#include <io.h>
-#undef close
-#define close _close
-#endif /* _MSC_VER */
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
@@ -90,12 +85,12 @@
 #endif /* HAVE_REGCOMP */
 
 #ifdef _WIN32
-void ssh_sock_set_nonblocking(socket_t sock) {
+static void sock_set_nonblocking(socket_t sock) {
   u_long nonblocking = 1;
   ioctlsocket(sock, FIONBIO, &nonblocking);
 }
 
-void ssh_sock_set_blocking(socket_t sock) {
+static void sock_set_blocking(socket_t sock) {
   u_long nonblocking = 0;
   ioctlsocket(sock, FIONBIO, &nonblocking);
 }
@@ -111,11 +106,11 @@ char WSAAPI *gai_strerrorA(int code) {
 #endif /* gai_strerror */
 
 #else /* _WIN32 */
-void ssh_sock_set_nonblocking(socket_t sock) {
+static void sock_set_nonblocking(socket_t sock) {
   fcntl(sock, F_SETFL, O_NONBLOCK);
 }
 
-void ssh_sock_set_blocking(socket_t sock) {
+static void sock_set_blocking(socket_t sock) {
   fcntl(sock, F_SETFL, 0);
 }
 
@@ -189,7 +184,7 @@ static int getai(ssh_session session, const char *host, int port, struct addrinf
   if (port == 0) {
     hints.ai_flags = AI_PASSIVE;
   } else {
-    snprintf(s_port, sizeof(s_port), "%hu", (unsigned short)port);
+    snprintf(s_port, sizeof(s_port), "%hu", port);
     service = s_port;
 #ifdef AI_NUMERICSERV
     hints.ai_flags=AI_NUMERICSERV;
@@ -217,7 +212,7 @@ static int ssh_connect_ai_timeout(ssh_session session, const char *host,
   to.tv_sec = timeout;
   to.tv_usec = usec;
 
-  ssh_sock_set_nonblocking(s);
+  sock_set_nonblocking(s);
 
   ssh_log(session, SSH_LOG_RARE, "Trying to connect to host: %s:%d with "
       "timeout %ld.%ld", host, port, timeout, usec);
@@ -260,7 +255,7 @@ static int ssh_connect_ai_timeout(ssh_session session, const char *host,
 
   /* s is connected ? */
   ssh_log(session, SSH_LOG_PACKET, "Socket connected with timeout\n");
-  ssh_sock_set_blocking(s);
+  sock_set_blocking(s);
 
   leave_function();
   return s;
@@ -346,7 +341,6 @@ socket_t ssh_connect_host(ssh_session session, const char *host,
       ssh_set_error(session, SSH_FATAL, "Connect failed: %s", strerror(errno));
       ssh_connect_socket_close(s);
       s = -1;
-      leave_function();
       continue;
     } else {
       /* We are connected */
@@ -361,92 +355,8 @@ socket_t ssh_connect_host(ssh_session session, const char *host,
 }
 
 /**
- * @internal
- *
- * @brief Launches a nonblocking connect to an IPv4 or IPv6 host
- * specified by its IP address or hostname.
- *
- * @returns A file descriptor, < 0 on error.
- * @warning very ugly !!!
- */
-socket_t ssh_connect_host_nonblocking(ssh_session session, const char *host,
-    const char *bind_addr, int port) {
-  socket_t s = -1;
-  int rc;
-  struct addrinfo *ai;
-  struct addrinfo *itr;
-
-  enter_function();
-
-  rc = getai(session,host, port, &ai);
-  if (rc != 0) {
-    ssh_set_error(session, SSH_FATAL,
-        "Failed to resolve hostname %s (%s)", host, gai_strerror(rc));
-    leave_function();
-    return -1;
-  }
-
-  for (itr = ai; itr != NULL; itr = itr->ai_next){
-    /* create socket */
-    s = socket(itr->ai_family, itr->ai_socktype, itr->ai_protocol);
-    if (s < 0) {
-      ssh_set_error(session, SSH_FATAL,
-          "Socket create failed: %s", strerror(errno));
-      continue;
-    }
-
-    if (bind_addr) {
-      struct addrinfo *bind_ai;
-      struct addrinfo *bind_itr;
-
-      ssh_log(session, SSH_LOG_PACKET, "Resolving %s\n", bind_addr);
-
-      rc = getai(session,bind_addr, 0, &bind_ai);
-      if (rc != 0) {
-        ssh_set_error(session, SSH_FATAL,
-            "Failed to resolve bind address %s (%s)",
-            bind_addr,
-            gai_strerror(rc));
-        close(s);
-        s=-1;
-        break;
-      }
-
-      for (bind_itr = bind_ai; bind_itr != NULL; bind_itr = bind_itr->ai_next) {
-        if (bind(s, bind_itr->ai_addr, bind_itr->ai_addrlen) < 0) {
-          ssh_set_error(session, SSH_FATAL,
-              "Binding local address: %s", strerror(errno));
-          continue;
-        } else {
-          break;
-        }
-      }
-      freeaddrinfo(bind_ai);
-
-      /* Cannot bind to any local addresses */
-      if (bind_itr == NULL) {
-        ssh_connect_socket_close(s);
-        s = -1;
-        continue;
-      }
-    }
-    ssh_sock_set_nonblocking(s);
-
-    connect(s, itr->ai_addr, itr->ai_addrlen);
-    break;
-  }
-
-  freeaddrinfo(ai);
-  leave_function();
-
-  return s;
-}
-
-/**
- * @addtogroup libssh_session
- *
- * @{
- */
+ * @addtogroup ssh_session
+ * @{ */
 
 /**
  * @brief A wrapper for the select syscall
@@ -454,25 +364,25 @@ socket_t ssh_connect_host_nonblocking(ssh_session session, const char *host,
  * This functions acts more or less like the select(2) syscall.\n
  * There is no support for writing or exceptions.\n
  *
- * @param[in]  channels Arrays of channels pointers terminated by a NULL.
+ * @param  channels     Arrays of channels pointers terminated by a NULL.
  *                      It is never rewritten.
  *
- * @param[out] outchannels Arrays of same size that "channels", there is no need
- *                         to initialize it.
+ * @param  outchannels  Arrays of same size that "channels", there is no need
+ *                      to initialize it.
  *
- * @param[in]  maxfd    Maximum +1 file descriptor from readfds.
+ * @param  maxfd        Maximum +1 file descriptor from readfds.
  *
- * @param[in]  readfds  A fd_set of file descriptors to be select'ed for
+ * @param  readfds      A fd_set of file descriptors to be select'ed for
  *                      reading.
  *
- * @param[in]  timeout  A timeout for the select.
+ * @param  timeout      A timeout for the select.
  *
- * @return              -1 if an error occured. E_INTR if it was interrupted, in
- *                      that case, just restart it.
+ * @return -1 if an error occured. E_INTR if it was interrupted. In that case,
+ *          just restart it.
  *
  * @warning libssh is not threadsafe here. That means that if a signal is caught
- *          during the processing of this function, you cannot call ssh
- *          functions on sessions that are busy with ssh_select().
+ * during the processing of this function, you cannot call ssh functions on
+ * sessions that are busy with ssh_select().
  *
  * @see select(2)
  */
@@ -506,11 +416,11 @@ int ssh_select(ssh_channel *channels, ssh_channel *outchannels, socket_t maxfd,
   j = 0;
   for (i = 0; channels[i]; i++) {
     if (channels[i]->session->alive) {
-      if(ssh_channel_poll(channels[i], 0) > 0) {
+      if(channel_poll(channels[i], 0) > 0) {
         outchannels[j] = channels[i];
         j++;
       } else {
-        if(ssh_channel_poll(channels[i], 1) > 0) {
+        if(channel_poll(channels[i], 1) > 0) {
           outchannels[j] = channels[i];
           j++;
         }
@@ -574,8 +484,8 @@ int ssh_select(ssh_channel *channels, ssh_channel *outchannels, socket_t maxfd,
   for (i = 0; channels[i]; i++) {
     if (channels[i]->session->alive &&
         ssh_socket_fd_isset(channels[i]->session->socket,&localset)) {
-      if ((ssh_channel_poll(channels[i],0) > 0) ||
-          (ssh_channel_poll(channels[i], 1) > 0)) {
+      if ((channel_poll(channels[i],0) > 0) ||
+          (channel_poll(channels[i], 1) > 0)) {
         outchannels[j] = channels[i];
         j++;
       }
@@ -585,7 +495,7 @@ int ssh_select(ssh_channel *channels, ssh_channel *outchannels, socket_t maxfd,
 
   FD_ZERO(&localset2);
   for (f = 0; f < maxfd; f++) {
-    if (FD_ISSET(f, readfds) && FD_ISSET(f, &localset)) {
+    if (FD_ISSET(f, readfds) && FD_ISSET(i, &localset)) {
       FD_SET(f, &localset2);
     }
   }
@@ -595,6 +505,5 @@ int ssh_select(ssh_channel *channels, ssh_channel *outchannels, socket_t maxfd,
   return 0;
 }
 
-/* @} */
-
-/* vim: set ts=4 sw=4 et cindent: */
+/** @} */
+/* vim: set ts=2 sw=2 et cindent: */

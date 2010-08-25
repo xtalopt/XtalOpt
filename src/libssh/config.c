@@ -27,7 +27,6 @@
 
 #include "libssh/priv.h"
 #include "libssh/session.h"
-#include "libssh/misc.h"
 
 enum ssh_config_opcode_e {
   SOC_UNSUPPORTED = -1,
@@ -40,8 +39,6 @@ enum ssh_config_opcode_e {
   SOC_COMPRESSION,
   SOC_TIMEOUT,
   SOC_PROTOCOL,
-  SOC_HOSTKEYCHECK,
-  SOC_KNOWNHOSTS,
   SOC_PROXYCOMMAND
 };
 
@@ -60,8 +57,6 @@ static struct ssh_config_keyword_table_s ssh_config_keyword_table[] = {
   { "compression", SOC_COMPRESSION },
   { "connecttimeout", SOC_TIMEOUT },
   { "protocol", SOC_PROTOCOL },
-  { "stricthostkeychecking", SOC_HOSTKEYCHECK },
-  { "userknownhostsfile", SOC_KNOWNHOSTS },
   { "proxycommand", SOC_PROXYCOMMAND },
   { NULL, SOC_UNSUPPORTED }
 };
@@ -161,7 +156,6 @@ static int ssh_config_parse_line(ssh_session session, const char *line,
   const char *p;
   char *s, *x;
   char *keyword;
-  char *lowerhost;
   size_t len;
   int i;
 
@@ -191,14 +185,12 @@ static int ssh_config_parse_line(ssh_session session, const char *line,
   switch (opcode) {
     case SOC_HOST:
       *parsing = 0;
-      lowerhost = (session->host) ? ssh_lowercase(session->host) : NULL;
       for (p = ssh_config_get_str(&s, NULL); p && *p;
           p = ssh_config_get_str(&s, NULL)) {
-        if (match_hostname(lowerhost, p, strlen(p))) {
+        if (match_hostname(session->host, p, strlen(p))) {
           *parsing = 1;
         }
       }
-      SAFE_FREE(lowerhost);
       break;
     case SOC_HOSTNAME:
       p = ssh_config_get_str(&s, NULL);
@@ -282,18 +274,6 @@ static int ssh_config_parse_line(ssh_session session, const char *line,
       i = ssh_config_get_int(&s, -1);
       if (i >= 0 && *parsing) {
         ssh_options_set(session, SSH_OPTIONS_TIMEOUT, &i);
-      }
-      break;
-    case SOC_HOSTKEYCHECK:
-      i = ssh_config_get_yesno(&s, -1);
-      if (i >= 0 && *parsing) {
-        ssh_options_set(session, SSH_OPTIONS_HOSTKEYCHECK, &i);
-      }
-      break;
-    case SOC_KNOWNHOSTS:
-      p = ssh_config_get_str(&s, NULL);
-      if (p && *parsing) {
-        ssh_options_set(session, SSH_OPTIONS_KNOWNHOSTS, p);
       }
       break;
     case SOC_PROXYCOMMAND:

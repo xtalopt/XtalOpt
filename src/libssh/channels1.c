@@ -41,9 +41,9 @@
 /*
  * This is a big hack. In fact, SSH1 doesn't make a clever use of channels.
  * The whole packets concerning shells are sent outside of a channel.
- * Thus, an inside limitation of this behavior is that you can't only
+ * Thus, an inside limitation of this behaviour is that you can't only
  * request one shell.
- * The question is still how they managed to embed two "channel" into one
+ * The question is stil how they managed to imbed two "channel" into one
  * protocol.
  */
 
@@ -60,7 +60,7 @@ int channel_open_session1(ssh_channel chan) {
     return -1;
   }
   session->exec_channel_opened = 1;
-  chan->state = SSH_CHANNEL_STATE_OPEN;
+  chan->open = 1;
   chan->local_maxpacket = 32000;
   chan->local_window = 64000;
   ssh_log(session, SSH_LOG_PACKET, "Opened a SSH1 channel session");
@@ -84,22 +84,18 @@ int channel_request_pty_size1(ssh_channel channel, const char *terminal, int col
     int row) {
   ssh_session session = channel->session;
   ssh_string str = NULL;
-  if(channel->request_state != SSH_CHANNEL_REQ_STATE_NONE){
-    ssh_set_error(session,SSH_REQUEST_DENIED,"Wrong request state");
-    return SSH_ERROR;
-  }
-  str = ssh_string_from_char(terminal);
+
+  str = string_from_char(terminal);
   if (str == NULL) {
-    ssh_set_error_oom(session);
     return -1;
   }
 
   if (buffer_add_u8(session->out_buffer, SSH_CMSG_REQUEST_PTY) < 0 ||
       buffer_add_ssh_string(session->out_buffer, str) < 0) {
-    ssh_string_free(str);
+    string_free(str);
     return -1;
   }
-  ssh_string_free(str);
+  string_free(str);
 
   if (buffer_add_u32(session->out_buffer, ntohl(row)) < 0 ||
       buffer_add_u32(session->out_buffer, ntohl(col)) < 0 ||
@@ -110,72 +106,68 @@ int channel_request_pty_size1(ssh_channel channel, const char *terminal, int col
   }
 
   ssh_log(session, SSH_LOG_FUNCTIONS, "Opening a ssh1 pty");
-
-  if (packet_send(session) == SSH_ERROR) {
+  if (packet_send(session) != SSH_OK ||
+      packet_read(session) != SSH_OK ||
+      packet_translate(session) != SSH_OK) {
     return -1;
   }
-  switch(channel->request_state){
-    case SSH_CHANNEL_REQ_STATE_ERROR:
-    case SSH_CHANNEL_REQ_STATE_PENDING:
-    case SSH_CHANNEL_REQ_STATE_NONE:
-      channel->request_state=SSH_CHANNEL_REQ_STATE_NONE;
-      return SSH_ERROR;
-    case SSH_CHANNEL_REQ_STATE_ACCEPTED:
-      channel->request_state=SSH_CHANNEL_REQ_STATE_NONE;
+
+  switch (session->in_packet.type) {
+    case SSH_SMSG_SUCCESS:
       ssh_log(session, SSH_LOG_RARE, "PTY: Success");
-      return SSH_OK;
-    case SSH_CHANNEL_REQ_STATE_DENIED:
-      channel->request_state=SSH_CHANNEL_REQ_STATE_NONE;
+      return 0;
+      break;
+    case SSH_SMSG_FAILURE:
       ssh_set_error(session, SSH_REQUEST_DENIED,
           "Server denied PTY allocation");
       ssh_log(session, SSH_LOG_RARE, "PTY: denied\n");
-      return SSH_ERROR;
+      break;
+    default:
+      ssh_log(session, SSH_LOG_RARE, "PTY: error\n");
+      ssh_set_error(session, SSH_FATAL,
+          "Received unexpected packet type %d",
+          session->in_packet.type);
+      return -1;
   }
-  // Not reached
-  return SSH_ERROR;
+
+  return -1;
 }
 
 int channel_change_pty_size1(ssh_channel channel, int cols, int rows) {
   ssh_session session = channel->session;
-  if(channel->request_state != SSH_CHANNEL_REQ_STATE_NONE){
-    ssh_set_error(session,SSH_REQUEST_DENIED,"Wrong request state");
-    return SSH_ERROR;
-  }
+
   if (buffer_add_u8(session->out_buffer, SSH_CMSG_WINDOW_SIZE) < 0 ||
       buffer_add_u32(session->out_buffer, ntohl(rows)) < 0 ||
       buffer_add_u32(session->out_buffer, ntohl(cols)) < 0 ||
       buffer_add_u32(session->out_buffer, 0) < 0 ||
       buffer_add_u32(session->out_buffer, 0) < 0) {
-    return SSH_ERROR;
-  }
-  channel->request_state=SSH_CHANNEL_REQ_STATE_PENDING;
-  if (packet_send(session) == SSH_ERROR) {
-    return SSH_ERROR;
+    return -1;
   }
 
-  ssh_log(session, SSH_LOG_PROTOCOL, "Change pty size send");
-  while(channel->request_state==SSH_CHANNEL_REQ_STATE_PENDING){
-    ssh_handle_packets(session,-1);
+  if (packet_send(session)) {
+    return -1;
   }
-  switch(channel->request_state){
-    case SSH_CHANNEL_REQ_STATE_ERROR:
-    case SSH_CHANNEL_REQ_STATE_PENDING:
-    case SSH_CHANNEL_REQ_STATE_NONE:
-      channel->request_state=SSH_CHANNEL_REQ_STATE_NONE;
-      return SSH_ERROR;
-    case SSH_CHANNEL_REQ_STATE_ACCEPTED:
-      channel->request_state=SSH_CHANNEL_REQ_STATE_NONE;
-      ssh_log(session, SSH_LOG_PROTOCOL, "pty size changed");
-      return SSH_OK;
-    case SSH_CHANNEL_REQ_STATE_DENIED:
-      channel->request_state=SSH_CHANNEL_REQ_STATE_NONE;
+
+  ssh_log(session, SSH_LOG_RARE, "Change pty size send");
+
+  if (packet_wait(session, SSH_SMSG_SUCCESS, 1) != SSH_OK) {
+    return -1;
+  }
+
+  switch (session->in_packet.type) {
+    case SSH_SMSG_SUCCESS:
+      ssh_log(session, SSH_LOG_RARE, "pty size changed");
+      return 0;
+    case SSH_SMSG_FAILURE:
       ssh_log(session, SSH_LOG_RARE, "pty size change denied");
       ssh_set_error(session, SSH_REQUEST_DENIED, "pty size change denied");
-      return SSH_ERROR;
+      return -1;
   }
-  // Not reached
-  return SSH_ERROR;
 
+  ssh_set_error(session, SSH_FATAL, "Received unexpected packet type %d",
+      session->in_packet.type);
+
+  return -1;
 }
 
 int channel_request_shell1(ssh_channel channel) {
@@ -185,7 +177,7 @@ int channel_request_shell1(ssh_channel channel) {
     return -1;
   }
 
-  if (packet_send(session) == SSH_ERROR) {
+  if (packet_send(session) != SSH_OK) {
     return -1;
   }
 
@@ -198,19 +190,19 @@ int channel_request_exec1(ssh_channel channel, const char *cmd) {
   ssh_session session = channel->session;
   ssh_string command = NULL;
 
-  command = ssh_string_from_char(cmd);
+  command = string_from_char(cmd);
   if (command == NULL) {
     return -1;
   }
 
   if (buffer_add_u8(session->out_buffer, SSH_CMSG_EXEC_CMD) < 0 ||
       buffer_add_ssh_string(session->out_buffer, command) < 0) {
-    ssh_string_free(command);
+    string_free(command);
     return -1;
   }
-  ssh_string_free(command);
+  string_free(command);
 
-  if(packet_send(session) == SSH_ERROR) {
+  if(packet_send(session) != SSH_OK) {
     return -1;
   }
 
@@ -219,52 +211,79 @@ int channel_request_exec1(ssh_channel channel, const char *cmd) {
   return 0;
 }
 
-SSH_PACKET_CALLBACK(ssh_packet_data1){
+static int channel_rcv_data1(ssh_session session, int is_stderr) {
     ssh_channel channel = session->channels;
     ssh_string str = NULL;
-    int is_stderr=(type==SSH_SMSG_STDOUT_DATA ? 0 : 1);
-    (void)user;
-    str = buffer_get_ssh_string(packet);
+
+    str = buffer_get_ssh_string(session->in_buffer);
     if (str == NULL) {
       ssh_log(session, SSH_LOG_FUNCTIONS, "Invalid data packet !\n");
-      return SSH_PACKET_USED;
+      return -1;
     }
 
-    ssh_log(session, SSH_LOG_PROTOCOL,
+    ssh_log(session, SSH_LOG_RARE,
         "Adding %zu bytes data in %d",
-        ssh_string_len(str), is_stderr);
+        string_len(str), is_stderr);
 
-    if (channel_default_bufferize(channel, ssh_string_data(str), ssh_string_len(str),
+    if (channel_default_bufferize(channel, string_data(str), string_len(str),
           is_stderr) < 0) {
-      ssh_string_free(str);
-      return SSH_PACKET_USED;
+      string_free(str);
+      return -1;
     }
-    ssh_string_free(str);
+    string_free(str);
 
-    return SSH_PACKET_USED;
+    return 0;
 }
 
-SSH_PACKET_CALLBACK(ssh_packet_close1){
+static int channel_rcv_close1(ssh_session session) {
   ssh_channel channel = session->channels;
   uint32_t status;
-  (void)type;
-  (void)user;
-  buffer_get_u32(packet, &status);
+
+  buffer_get_u32(session->in_buffer, &status);
   /*
    * It's much more than a channel closing. spec says it's the last
    * message sent by server (strange)
    */
 
   /* actually status is lost somewhere */
-  channel->state = SSH_CHANNEL_STATE_CLOSED;
+  channel->open = 0;
   channel->remote_eof = 1;
 
-  buffer_add_u8(session->out_buffer, SSH_CMSG_EXIT_CONFIRMATION);
-  packet_send(session);
+  if (buffer_add_u8(session->out_buffer, SSH_CMSG_EXIT_CONFIRMATION) < 0) {
+    return -1;
+  }
 
-  return SSH_PACKET_USED;
+  if (packet_send(session) != SSH_OK) {
+    return -1;
+  }
+
+  return 0;
 }
 
+int channel_handle1(ssh_session session, int type) {
+  ssh_log(session, SSH_LOG_RARE, "Channel_handle1(%d)", type);
+  switch (type) {
+    case SSH_SMSG_STDOUT_DATA:
+      if (channel_rcv_data1(session,0) < 0) {
+        return -1;
+      }
+      break;
+    case SSH_SMSG_STDERR_DATA:
+      if (channel_rcv_data1(session,1) < 0) {
+        return -1;
+      }
+      break;
+    case SSH_SMSG_EXITSTATUS:
+      if (channel_rcv_close1(session) < 0) {
+        return -1;
+      }
+      break;
+    default:
+      ssh_log(session, SSH_LOG_FUNCTIONS, "Unexepected message %d", type);
+  }
+
+  return 0;
+}
 
 int channel_write1(ssh_channel channel, const void *data, int len) {
   ssh_session session = channel->session;
@@ -286,7 +305,7 @@ int channel_write1(ssh_channel channel, const void *data, int len) {
     ptr += effectivelen;
     len -= effectivelen;
 
-    if (packet_send(session) == SSH_ERROR) {
+    if (packet_send(session) != SSH_OK) {
       return -1;
     }
   }

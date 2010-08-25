@@ -32,7 +32,7 @@
  * it can fetch it, while continuing to read for other messages (it is
  * unspecified in which order messages may be sent back to the client
  *
- * @defgroup libssh_sftp The libssh SFTP API
+ * @defgroup ssh_sftp SFTP Functions
  * @{
  */
 

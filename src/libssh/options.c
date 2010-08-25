@@ -40,7 +40,7 @@
 #endif
 
 /**
- * @addtogroup libssh_session
+ * @addtogroup ssh_session
  * @{
  */
 
@@ -131,11 +131,6 @@ int ssh_options_copy(ssh_session src, ssh_session *dest) {
     }
   }
 
-  if(src->ProxyCommand) {
-    new->ProxyCommand = strdup(src->ProxyCommand);
-    if(new->ProxyCommand == NULL)
-      return -1;
-  }
   new->fd = src->fd;
   new->port = src->port;
   new->callbacks = src->callbacks;
@@ -318,9 +313,6 @@ int ssh_options_set_algo(ssh_session session, int algo,
  *                        Set the compression to use for server to client
  *                        communication (string, "none" or "zlib").
  *
- *                      - SSH_OPTIONS_HOSTKEYCHECK:
- *                        Set the parameter StrictHostKeyChecking to avoid
- *                        asking about a fingerprint
  *                      - SSH_OPTIONS_PROXYCOMMAND:
  *                        Set the command to be executed in order to connect to
  *                        server.
@@ -401,7 +393,7 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
       break;
     case SSH_OPTIONS_FD:
       if (value == NULL) {
-        session->fd = SSH_INVALID_SOCKET;
+        session->fd = -1;
       } else {
         socket_t *x = (socket_t *) value;
 
@@ -440,7 +432,7 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
       if (value == NULL) {
         SAFE_FREE(session->sshdir);
 
-        session->sshdir = ssh_path_expand_tilde("~/.ssh");
+        session->sshdir = ssh_path_expand_tilde("~/.ssh/");
         if (session->sshdir == NULL) {
           return -1;
         }
@@ -587,14 +579,6 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
           return -1;
       }
       break;
-    case SSH_OPTIONS_HOSTKEYCHECK:
-      if (value == NULL) {
-        ssh_set_error_invalid(session, __FUNCTION__);
-        return -1;
-      } else {
-        session->StrictHostKeyChecking = *(int*)value;
-      }
-      break;
     case SSH_OPTIONS_PROXYCOMMAND:
       if (value == NULL) {
         ssh_set_error_invalid(session, __FUNCTION__);
@@ -616,312 +600,11 @@ int ssh_options_set(ssh_session session, enum ssh_options_e type,
 
   return 0;
 }
-
-
-/**
- * @brief Parse command line arguments.
- *
- * This is a helper for your application to generate the appropriate
- * options from the command line arguments.\n
- * The argv array and argc value are changed so that the parsed
- * arguments wont appear anymore in them.\n
- * The single arguments (without switches) are not parsed. thus,
- * myssh -l user localhost\n
- * The command wont set the hostname value of options to localhost.
- *
- * @param session       The session to configure.
- *
- * @param argcptr       The pointer to the argument count.
- *
- * @param argv          The arguments list pointer.
- *
- * @returns 0 on success, < 0 on error.
- *
- * @see ssh_session_new()
- */
-int ssh_options_getopt(ssh_session session, int *argcptr, char **argv) {
-  char *user = NULL;
-  char *cipher = NULL;
-  char *localaddr = NULL;
-  char *identity = NULL;
-  char *port = NULL;
-  char *bindport = NULL;
-  char **save = NULL;
-  int i = 0;
-  int argc = *argcptr;
-  int debuglevel = 0;
-  int usersa = 0;
-  int usedss = 0;
-  int compress = 0;
-  int cont = 1;
-  int current = 0;
-#ifdef WITH_SSH1
-  int ssh1 = 1;
-#else
-  int ssh1 = 0;
-#endif
-  int ssh2 = 1;
-#ifdef _MSC_VER
-    /* Not supported with a Microsoft compiler */
-    return -1;
-#else
-  int saveoptind = optind; /* need to save 'em */
-  int saveopterr = opterr;
-
-  save = malloc(argc * sizeof(char *));
-  if (save == NULL) {
-    ssh_set_error_oom(session);
-    return -1;
-  }
-
-  opterr = 0; /* shut up getopt */
-  while(cont && ((i = getopt(argc, argv, "c:i:Cl:p:vb:t:rd12")) != -1)) {
-    switch(i) {
-      case 'l':
-        user = optarg;
-        break;
-      case 'p':
-        port = optarg;
-        break;
-      case 't':
-        bindport = optarg;
-        break;
-      case 'v':
-        debuglevel++;
-        break;
-      case 'r':
-        usersa++;
-        break;
-      case 'd':
-        usedss++;
-        break;
-      case 'c':
-        cipher = optarg;
-        break;
-      case 'i':
-        identity = optarg;
-        break;
-      case 'b':
-        localaddr = optarg;
-        break;
-      case 'C':
-        compress++;
-        break;
-      case '2':
-        ssh2 = 1;
-        ssh1 = 0;
-        break;
-      case '1':
-        ssh2 = 0;
-        ssh1 = 1;
-        break;
-      default:
-        {
-          char opt[3]="- ";
-          opt[1] = optopt;
-          save[current] = strdup(opt);
-          if (save[current] == NULL) {
-            SAFE_FREE(save);
-            ssh_set_error_oom(session);
-            return -1;
-          }
-          current++;
-          if (optarg) {
-            save[current++] = argv[optind + 1];
-          }
-        }
-    } /* switch */
-  } /* while */
-  opterr = saveopterr;
-  while (optind < argc) {
-    save[current++] = argv[optind++];
-  }
-
-  if (usersa && usedss) {
-    ssh_set_error(session, SSH_FATAL, "Either RSA or DSS must be chosen");
-    cont = 0;
-  }
-
-  ssh_options_set(session, SSH_OPTIONS_LOG_VERBOSITY, &debuglevel);
-
-  optind = saveoptind;
-
-  if(!cont) {
-    SAFE_FREE(save);
-    return -1;
-  }
-
-  /* first recopy the save vector into the original's */
-  for (i = 0; i < current; i++) {
-    /* don't erase argv[0] */
-    argv[ i + 1] = save[i];
-  }
-  argv[current + 1] = NULL;
-  *argcptr = current + 1;
-  SAFE_FREE(save);
-
-  /* set a new option struct */
-  if (compress) {
-    if (ssh_options_set(session, SSH_OPTIONS_COMPRESSION_C_S, "zlib,none") < 0) {
-      cont = 0;
-    }
-    if (ssh_options_set(session, SSH_OPTIONS_COMPRESSION_S_C, "zlib,none") < 0) {
-      cont = 0;
-    }
-  }
-
-  if (cont && cipher) {
-    if (ssh_options_set(session, SSH_OPTIONS_CIPHERS_C_S, cipher) < 0) {
-      cont = 0;
-    }
-    if (cont && ssh_options_set(session, SSH_OPTIONS_CIPHERS_S_C, cipher) < 0) {
-      cont = 0;
-    }
-  }
-
-  if (cont && user) {
-    if (ssh_options_set(session, SSH_OPTIONS_USER, user) < 0) {
-      cont = 0;
-    }
-  }
-
-  if (cont && identity) {
-    if (ssh_options_set(session, SSH_OPTIONS_IDENTITY, identity) < 0) {
-      cont = 0;
-    }
-  }
-
-  ssh_options_set(session, SSH_OPTIONS_PORT_STR, port);
-
-  ssh_options_set(session, SSH_OPTIONS_SSH1, &ssh1);
-  ssh_options_set(session, SSH_OPTIONS_SSH2, &ssh2);
-
-  if (!cont) {
-    return SSH_ERROR;
-  }
-
-  return SSH_OK;
-#endif
-}
-
-/**
- * @brief Parse the ssh config file.
- *
- * This should be the last call of all options, it may overwrite options which
- * are already set. It requires that the host name is already set with
- * ssh_options_set_host().
- *
- * @param  session      SSH session handle
- *
- * @param  filename     The options file to use, if NULL the default
- *                      ~/.ssh/config will be used.
- *
- * @return 0 on success, < 0 on error.
- *
- * @see ssh_options_set_host()
- */
-int ssh_options_parse_config(ssh_session session, const char *filename) {
-  char *expanded_filename;
-  int r;
-
-  if (session == NULL) {
-    return -1;
-  }
-  if (session->host == NULL) {
-    ssh_set_error_invalid(session, __FUNCTION__);
-    return -1;
-  }
-
-  if (session->sshdir == NULL) {
-      r = ssh_options_set(session, SSH_OPTIONS_SSH_DIR, NULL);
-      if (r < 0) {
-          ssh_set_error_oom(session);
-          return -1;
-      }
-  }
-
-  /* set default filename */
-  if (filename == NULL) {
-    expanded_filename = ssh_path_expand_escape(session, "%d/config");
-  } else {
-    expanded_filename = ssh_path_expand_escape(session, filename);
-  }
-  if (expanded_filename == NULL) {
-    return -1;
-  }
-
-  r = ssh_config_parse_file(session, expanded_filename);
-  if (r < 0) {
-      goto out;
-  }
-  if (filename == NULL) {
-      r = ssh_config_parse_file(session, "/etc/ssh/ssh_config");
-  }
-
-out:
-  free(expanded_filename);
-  return r;
-}
-
-int ssh_options_apply(ssh_session session) {
-    struct ssh_iterator *it;
-    char *tmp;
-    int rc;
-
-    if (session->sshdir == NULL) {
-        rc = ssh_options_set(session, SSH_OPTIONS_SSH_DIR, NULL);
-        if (rc < 0) {
-            return -1;
-        }
-    }
-
-    if (session->username == NULL) {
-        rc = ssh_options_set(session, SSH_OPTIONS_USER, NULL);
-        if (rc < 0) {
-            return -1;
-        }
-    }
-
-    if (session->knownhosts == NULL) {
-        tmp = ssh_path_expand_escape(session, "%d/known_hosts");
-    } else {
-        tmp = ssh_path_expand_escape(session, session->knownhosts);
-    }
-    if (tmp == NULL) {
-        return -1;
-    }
-    free(session->knownhosts);
-    session->knownhosts = tmp;
-
-    if (session->ProxyCommand != NULL) {
-        tmp = ssh_path_expand_escape(session, session->ProxyCommand);
-        if (tmp == NULL) {
-            return -1;
-        }
-        free(session->ProxyCommand);
-        session->ProxyCommand = tmp;
-    }
-
-    for (it = ssh_list_get_iterator(session->identity);
-         it != NULL;
-         it = it->next) {
-        char *id = (char *) it->data;
-        tmp = ssh_path_expand_escape(session, id);
-        if (tmp == NULL) {
-            return -1;
-        }
-        free(id);
-        it->data = tmp;
-    }
-
-    return 0;
-}
-
-/* @} */
+/** @} */
 
 #ifdef WITH_SERVER
 /**
- * @addtogroup libssh_server
+ * @addtogroup ssh_server
  * @{
  */
 static int ssh_bind_options_set_algo(ssh_bind sshbind, int algo,
@@ -1132,6 +815,305 @@ int ssh_bind_options_set(ssh_bind sshbind, enum ssh_bind_options_e type,
   return 0;
 }
 #endif
+
+/**
+ * @brief Parse command line arguments.
+ *
+ * This is a helper for your application to generate the appropriate
+ * options from the command line arguments.\n
+ * The argv array and argc value are changed so that the parsed
+ * arguments wont appear anymore in them.\n
+ * The single arguments (without switches) are not parsed. thus,
+ * myssh -l user localhost\n
+ * The command wont set the hostname value of options to localhost.
+ *
+ * @param session       The session to configure.
+ *
+ * @param argcptr       The pointer to the argument count.
+ *
+ * @param argv          The arguments list pointer.
+ *
+ * @returns 0 on success, < 0 on error.
+ *
+ * @see ssh_session_new()
+ */
+int ssh_options_getopt(ssh_session session, int *argcptr, char **argv) {
+  char *user = NULL;
+  char *cipher = NULL;
+  char *localaddr = NULL;
+  char *identity = NULL;
+  char *port = NULL;
+  char *bindport = NULL;
+  char **save = NULL;
+  int i = 0;
+  int argc = *argcptr;
+  int debuglevel = 0;
+  int usersa = 0;
+  int usedss = 0;
+  int compress = 0;
+  int cont = 1;
+  int current = 0;
+#ifdef WITH_SSH1
+  int ssh1 = 1;
+#else
+  int ssh1 = 0;
+#endif
+  int ssh2 = 1;
+#ifdef _MSC_VER
+    /* Not supported with a Microsoft compiler */
+    return -1;
+#else
+  int saveoptind = optind; /* need to save 'em */
+  int saveopterr = opterr;
+
+  save = malloc(argc * sizeof(char *));
+  if (save == NULL) {
+    ssh_set_error_oom(session);
+    return -1;
+  }
+
+  opterr = 0; /* shut up getopt */
+  while(cont && ((i = getopt(argc, argv, "c:i:Cl:p:vb:t:rd12")) != -1)) {
+    switch(i) {
+      case 'l':
+        user = optarg;
+        break;
+      case 'p':
+        port = optarg;
+        break;
+      case 't':
+        bindport = optarg;
+        break;
+      case 'v':
+        debuglevel++;
+        break;
+      case 'r':
+        usersa++;
+        break;
+      case 'd':
+        usedss++;
+        break;
+      case 'c':
+        cipher = optarg;
+        break;
+      case 'i':
+        identity = optarg;
+        break;
+      case 'b':
+        localaddr = optarg;
+        break;
+      case 'C':
+        compress++;
+        break;
+      case '2':
+        ssh2 = 1;
+        ssh1 = 0;
+        break;
+      case '1':
+        ssh2 = 0;
+        ssh1 = 1;
+        break;
+      default:
+        {
+          char opt[3]="- ";
+          opt[1] = optopt;
+          save[current] = strdup(opt);
+          if (save[current] == NULL) {
+            SAFE_FREE(save);
+            ssh_set_error_oom(session);
+            return -1;
+          }
+          current++;
+          if (optarg) {
+            save[current++] = argv[optind + 1];
+          }
+        }
+    } /* switch */
+  } /* while */
+  opterr = saveopterr;
+  while (optind < argc) {
+    save[current++] = argv[optind++];
+  }
+
+  if (usersa && usedss) {
+    ssh_set_error(session, SSH_FATAL, "Either RSA or DSS must be chosen");
+    cont = 0;
+  }
+
+  ssh_options_set(session, SSH_OPTIONS_LOG_VERBOSITY, &debuglevel);
+
+  optind = saveoptind;
+
+  if(!cont) {
+    SAFE_FREE(save);
+    return -1;
+  }
+
+  /* first recopy the save vector into the original's */
+  for (i = 0; i < current; i++) {
+    /* don't erase argv[0] */
+    argv[ i + 1] = save[i];
+  }
+  argv[current + 1] = NULL;
+  *argcptr = current + 1;
+  SAFE_FREE(save);
+
+  /* set a new option struct */
+  if (compress) {
+    if (ssh_options_set(session, SSH_OPTIONS_COMPRESSION_C_S, "zlib") < 0) {
+      cont = 0;
+    }
+    if (ssh_options_set(session, SSH_OPTIONS_COMPRESSION_S_C, "zlib") < 0) {
+      cont = 0;
+    }
+  }
+
+  if (cont && cipher) {
+    if (ssh_options_set(session, SSH_OPTIONS_CIPHERS_C_S, cipher) < 0) {
+      cont = 0;
+    }
+    if (cont && ssh_options_set(session, SSH_OPTIONS_CIPHERS_S_C, cipher) < 0) {
+      cont = 0;
+    }
+  }
+
+  if (cont && user) {
+    if (ssh_options_set(session, SSH_OPTIONS_USER, user) < 0) {
+      cont = 0;
+    }
+  }
+
+  if (cont && identity) {
+    if (ssh_options_set(session, SSH_OPTIONS_IDENTITY, identity) < 0) {
+      cont = 0;
+    }
+  }
+
+  ssh_options_set(session, SSH_OPTIONS_PORT_STR, port);
+
+  ssh_options_set(session, SSH_OPTIONS_SSH1, &ssh1);
+  ssh_options_set(session, SSH_OPTIONS_SSH2, &ssh2);
+
+  if (!cont) {
+    return SSH_ERROR;
+  }
+
+  return SSH_OK;
+#endif
+}
+
+/**
+ * @brief Parse the ssh config file.
+ *
+ * This should be the last call of all options, it may overwrite options which
+ * are already set. It requires that the host name is already set with
+ * ssh_options_set_host().
+ *
+ * @param  session      SSH session handle
+ *
+ * @param  filename     The options file to use, if NULL the default
+ *                      ~/.ssh/config will be used.
+ *
+ * @return 0 on success, < 0 on error.
+ *
+ * @see ssh_options_set_host()
+ */
+int ssh_options_parse_config(ssh_session session, const char *filename) {
+  char *expanded_filename;
+  int r;
+
+  if (session == NULL) {
+    return -1;
+  }
+  if (session->host == NULL) {
+    ssh_set_error_invalid(session, __FUNCTION__);
+    return -1;
+  }
+
+  if (session->sshdir == NULL) {
+      r = ssh_options_set(session, SSH_OPTIONS_SSH_DIR, NULL);
+      if (r < 0) {
+          ssh_set_error_oom(session);
+          return -1;
+      }
+  }
+
+  /* set default filename */
+  if (filename == NULL) {
+    expanded_filename = ssh_path_expand_escape(session, "%d/config");
+  } else {
+    expanded_filename = ssh_path_expand_escape(session, filename);
+  }
+  if (expanded_filename == NULL) {
+    return -1;
+  }
+
+  r = ssh_config_parse_file(session, expanded_filename);
+  if (r < 0) {
+      goto out;
+  }
+  if (filename == NULL) {
+      r = ssh_config_parse_file(session, "/etc/ssh/ssh_config");
+  }
+
+out:
+  free(expanded_filename);
+  return r;
+}
+
+int ssh_options_apply(ssh_session session) {
+    struct ssh_iterator *it;
+    char *tmp;
+    int rc;
+
+    if (session->sshdir == NULL) {
+        rc = ssh_options_set(session, SSH_OPTIONS_SSH_DIR, NULL);
+        if (rc < 0) {
+            return -1;
+        }
+    }
+
+    if (session->username == NULL) {
+        rc = ssh_options_set(session, SSH_OPTIONS_USER, NULL);
+        if (rc < 0) {
+            return -1;
+        }
+    }
+
+    if (session->knownhosts == NULL) {
+        tmp = ssh_path_expand_escape(session, "%d/known_hosts");
+    } else {
+        tmp = ssh_path_expand_escape(session, session->knownhosts);
+    }
+    if (tmp == NULL) {
+        return -1;
+    }
+    free(session->knownhosts);
+    session->knownhosts = tmp;
+
+    if (session->ProxyCommand != NULL) {
+        tmp = ssh_path_expand_escape(session, session->ProxyCommand);
+        if (tmp == NULL) {
+            return -1;
+        }
+        free(session->ProxyCommand);
+        session->ProxyCommand = tmp;
+    }
+
+    for (it = ssh_list_get_iterator(session->identity);
+         it != NULL;
+         it = it->next) {
+        char *id = (char *) it->data;
+        tmp = ssh_path_expand_escape(session, id);
+        if (tmp == NULL) {
+            return -1;
+        }
+        free(id);
+        it->data = tmp;
+    }
+
+    return 0;
+}
 
 /* @} */
 

@@ -32,83 +32,73 @@
 
 #include "config.h"
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 
-/* Imitate define of inttypes.h */
-# ifndef PRIdS
-#  define PRIdS "Id"
-# endif
+/** Imitate define of inttypes.h */
+#define PRIdS "Id"
 
-# ifdef _MSC_VER
-#  include <stdio.h>
+#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
+#define strtoull _strtoui64
+#define isblank(ch) ((ch) == ' ' || (ch) == '\t' || (ch) == '\n' || (ch) == '\r')
 
-/* On Microsoft compilers define inline to __inline on all others use inline */
-#  undef inline
-#  define inline __inline
+#if _MSC_VER >= 1400
+#define strdup _strdup
+#endif
+#define usleep(X) Sleep(((X)+1000)/1000)
 
-#  undef strdup
-#  define strdup _strdup
+#undef strtok_r
+#define strtok_r strtok_s
 
-#  define strcasecmp _stricmp
-#  define strncasecmp _strnicmp
-#  define strtoull _strtoui64
-#  define isblank(ch) ((ch) == ' ' || (ch) == '\t' || (ch) == '\n' || (ch) == '\r')
+#ifndef HAVE_SNPRINTF
+#ifdef HAVE__SNPRINTF_S
+#define snprintf(d, n, ...) _snprintf_s((d), (n), _TRUNCATE, __VA_ARGS__)
+#else
+#ifdef HAVE__SNPRINTF
+#define snprintf _snprintf
+#else 
+#error "no snprintf compatible function found"
+#endif /* HAVE__SNPRINTF */
+#endif /* HAVE__SNPRINTF_S */
+#endif /* HAVE_SNPRINTF */
 
-#  define usleep(X) Sleep(((X)+1000)/1000)
+#ifndef HAVE_VSNPRINTF
+#ifdef HAVE__VSNPRINTF_S
+#define vsnprintf(s, n, f, v) _vsnprintf_s((s), (n), _TRUNCATE, (f), (v))
+#else
+#ifdef HAVE__VSNPRINTF
+#define vsnprintf _vsnprintf
+#else /* HAVE_VSNPRINTF */
+#error "No vsnprintf compatible function found"
+#endif /* HAVE__VSNPRINTF */
+#endif /* HAVE__VSNPRINTF_S */
+#endif /* HAVE_VSNPRINTF */
 
-#  undef strtok_r
-#  define strtok_r strtok_s
-
-#  if defined(HAVE__SNPRINTF_S)
-#   undef snprintf
-#   define snprintf(d, n, ...) _snprintf_s((d), (n), _TRUNCATE, __VA_ARGS__)
-#  else /* HAVE__SNPRINTF_S */
-#   if defined(HAVE__SNPRINTF)
-#     undef snprintf
-#     define snprintf _snprintf
-#   else /* HAVE__SNPRINTF */
-#    if !defined(HAVE_SNPRINTF)
-#     error "no snprintf compatible function found"
-#    endif /* HAVE_SNPRINTF */
-#   endif /* HAVE__SNPRINTF */
-#  endif /* HAVE__SNPRINTF_S */
-
-#  if defined(HAVE__VSNPRINTF_S)
-#   undef vsnprintf
-#   define vsnprintf(s, n, f, v) _vsnprintf_s((s), (n), _TRUNCATE, (f), (v))
-#  else /* HAVE__VSNPRINTF_S */
-#   if defined(HAVE__VSNPRINTF)
-#    undef vsnprintf
-#    define vsnprintf _vsnprintf
-#   else
-#    if !defined(HAVE_VSNPRINTF)
-#     error "No vsnprintf compatible function found"
-#    endif /* HAVE_VSNPRINTF */
-#   endif /* HAVE__VSNPRINTF */
-#  endif /* HAVE__VSNPRINTF_S */
-
-#  ifndef HAVE_STRNCPY
-#  define strncpy(d, s, n) strncpy_s((d), (n), (s), _TRUNCATE)
-#  endif
-# endif /* _MSC_VER */
-
-#else /* _WIN32 */
+#ifndef HAVE_STRNCPY
+#define strncpy(d, s, n) strncpy_s((d), (n), (s), _TRUNCATE)
+#endif
+#else /* _MSC_VER */
 
 #include <unistd.h>
 #define PRIdS "zd"
 
-#endif /* _WIN32 */
+#endif /* _MSC_VER */
 
 #include "libssh/libssh.h"
 #include "libssh/callbacks.h"
 #include "libssh/crypto.h"
-
 /* some constants */
 #define MAX_PACKET_LEN 262144
 #define ERROR_BUFFERLEN 1024
 #define CLIENTBANNER1 "SSH-1.5-libssh-" SSH_STRINGIFY(LIBSSH_VERSION)
 #define CLIENTBANNER2 "SSH-2.0-libssh-" SSH_STRINGIFY(LIBSSH_VERSION)
 #define KBDINT_MAX_PROMPT 256 /* more than openssh's :) */
+/* some types for public keys */
+enum public_key_types_e{
+	TYPE_DSS=1,
+	TYPE_RSA,
+	TYPE_RSA1
+};
 
 #ifdef __cplusplus
 extern "C" {
@@ -126,7 +116,7 @@ typedef struct kex_struct {
 
 struct error_struct {
 /* error handling */
-    int error_code;
+    unsigned int error_code;
     char error_buffer[ERROR_BUFFERLEN];
 };
 
@@ -139,7 +129,7 @@ struct ssh_keys_struct {
 };
 
 struct ssh_message_struct;
-struct ssh_poll_handle_struct;
+
 
 /* server data */
 
@@ -162,16 +152,11 @@ struct ssh_bind_struct {
   int toaccept;
 };
 
-SSH_PACKET_CALLBACK(ssh_packet_disconnect_callback);
-SSH_PACKET_CALLBACK(ssh_packet_ignore_callback);
 
 /* client.c */
 
 int ssh_send_banner(ssh_session session, int is_server);
-void ssh_connection_callback(ssh_session session);
-SSH_PACKET_CALLBACK(ssh_packet_dh_reply);
-SSH_PACKET_CALLBACK(ssh_packet_newkeys);
-SSH_PACKET_CALLBACK(ssh_packet_service_accept);
+char *ssh_get_banner(ssh_session session);
 
 /* config.c */
 int ssh_config_parse_file(ssh_session session, const char *filename);
@@ -188,38 +173,23 @@ unsigned char *packet_encrypt(ssh_session session,void *packet,unsigned int len)
  /* it returns the hmac buffer if exists*/
 int packet_hmac_verify(ssh_session session,ssh_buffer buffer,unsigned char *mac);
 
-struct ssh_socket_struct;
-
-int ssh_packet_socket_callback(const void *data, size_t len, void *user);
-void ssh_packet_register_socket_callback(ssh_session session, struct ssh_socket_struct *s);
-void ssh_packet_set_callbacks(ssh_session session, ssh_packet_callbacks callbacks);
-void ssh_packet_set_default_callbacks(ssh_session session);
-void ssh_packet_process(ssh_session session, uint8_t type);
 /* connect.c */
 int ssh_regex_init(void);
 void ssh_regex_finalize(void);
+ssh_session ssh_session_new(void);
 socket_t ssh_connect_host(ssh_session session, const char *host,const char
         *bind_addr, int port, long timeout, long usec);
-socket_t ssh_connect_host_nonblocking(ssh_session session, const char *host,
-		const char *bind_addr, int port);
-void ssh_sock_set_nonblocking(socket_t sock);
-void ssh_sock_set_blocking(socket_t sock);
 
 /* in kex.c */
 extern const char *ssh_kex_nums[];
 int ssh_send_kex(ssh_session session, int server_kex);
 void ssh_list_kex(ssh_session session, KEX *kex);
 int set_kex(ssh_session session);
+int ssh_get_kex(ssh_session session, int server_kex);
 int verify_existing_algo(int algo, const char *name);
 char **space_tokenize(const char *chain);
 int ssh_get_kex1(ssh_session session);
 char *ssh_find_matching(const char *in_d, const char *what_d);
-
-SSH_PACKET_CALLBACK(channel_rcv_change_window);
-SSH_PACKET_CALLBACK(channel_rcv_eof);
-SSH_PACKET_CALLBACK(channel_rcv_close);
-SSH_PACKET_CALLBACK(channel_rcv_request);
-SSH_PACKET_CALLBACK(channel_rcv_data);
 
 /* in base64.c */
 ssh_buffer base64_to_bin(const char *source);
@@ -239,7 +209,6 @@ int ssh_userauth1_offer_pubkey(ssh_session session, const char *username,
 int ssh_userauth1_password(ssh_session session, const char *username,
         const char *password);
 
-#ifdef WITH_SSH1
 /* channels1.c */
 int channel_open_session1(ssh_channel channel);
 int channel_request_pty_size1(ssh_channel channel, const char *terminal,
@@ -247,13 +216,12 @@ int channel_request_pty_size1(ssh_channel channel, const char *terminal,
 int channel_change_pty_size1(ssh_channel channel, int cols, int rows);
 int channel_request_shell1(ssh_channel channel);
 int channel_request_exec1(ssh_channel channel, const char *cmd);
+int channel_handle1(ssh_session session, int type);
 int channel_write1(ssh_channel channel, const void *data, int len);
 
-#endif
 /* match.c */
 int match_hostname(const char *host, const char *pattern, unsigned int len);
 
-int message_handle(ssh_session session, void *user, uint8_t type, ssh_buffer packet);
 /* log.c */
 
 /* misc.c */
@@ -295,9 +263,6 @@ int gettimeofday(struct timeval *__p, void *__t);
 
 int ssh_options_set_algo(ssh_session session, int algo, const char *list);
 int ssh_options_apply(ssh_session session);
-
-/* server.c */
-SSH_PACKET_CALLBACK(ssh_packet_kexdh_init);
 
 /** Free memory space */
 #define SAFE_FREE(x) do { if ((x) != NULL) {free(x); x=NULL;} } while(0)

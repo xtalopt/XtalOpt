@@ -34,15 +34,6 @@
 #include <stdlib.h>
 
 #ifndef _WIN32
-#if _MSC_VER >= 1400
-#include <io.h>
-#undef open
-#define open _open
-#undef close
-#define close _close
-#undef read
-#define read _read
-#endif /* _MSC_VER */
 #include <arpa/inet.h>
 #endif
 
@@ -155,13 +146,13 @@ static ssh_string asn1_get_int(ssh_buffer buffer) {
     return NULL;
   }
 
-  str = ssh_string_new(size);
+  str = string_new(size);
   if (str == NULL) {
     return NULL;
   }
 
   if (buffer_get_data(buffer, str->string, size) == 0) {
-    ssh_string_free(str);
+    string_free(str);
     return NULL;
   }
 
@@ -180,9 +171,9 @@ static int asn1_check_sequence(ssh_buffer buffer) {
   }
 
   size = asn1_get_len(buffer);
-  if ((padding = ssh_buffer_get_len(buffer) - buffer->pos - size) > 0) {
-    for (i = ssh_buffer_get_len(buffer) - buffer->pos - size,
-         j = (unsigned char*)ssh_buffer_get_begin(buffer) + size + buffer->pos;
+  if ((padding = buffer_get_len(buffer) - buffer->pos - size) > 0) {
+    for (i = buffer_get_len(buffer) - buffer->pos - size,
+         j = (unsigned char*)buffer_get(buffer) + size + buffer->pos;
          i;
          i--, j++)
     {
@@ -280,14 +271,14 @@ static int privatekey_decrypt(int algo, int mode, unsigned int key_len,
   if (gcry_cipher_open(&cipher, algo, mode, 0)
       || gcry_cipher_setkey(cipher, key, key_len)
       || gcry_cipher_setiv(cipher, iv, iv_len)
-      || (tmp = malloc(ssh_buffer_get_len(data) * sizeof (char))) == NULL
-      || gcry_cipher_decrypt(cipher, tmp, ssh_buffer_get_len(data),
-                       ssh_buffer_get_begin(data), ssh_buffer_get_len(data))) {
+      || (tmp = malloc(buffer_get_len(data) * sizeof (char))) == NULL
+      || gcry_cipher_decrypt(cipher, tmp, buffer_get_len(data),
+                       buffer_get(data), buffer_get_len(data))) {
     gcry_cipher_close(cipher);
     return -1;
   }
 
-  memcpy(ssh_buffer_get_begin(data), tmp, ssh_buffer_get_len(data));
+  memcpy(buffer_get(data), tmp, buffer_get_len(data));
 
   SAFE_FREE(tmp);
   gcry_cipher_close(cipher);
@@ -367,22 +358,22 @@ static ssh_buffer privatekey_file_to_buffer(FILE *fp, int type,
   int mode = 0;
   int len;
 
-  buffer = ssh_buffer_new();
+  buffer = buffer_new();
   if (buffer == NULL) {
     return NULL;
   }
 
   switch(type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
       header_begin = DSA_HEADER_BEGIN;
       header_end = DSA_HEADER_END;
       break;
-    case SSH_KEYTYPE_RSA:
+    case TYPE_RSA:
       header_begin = RSA_HEADER_BEGIN;
       header_end = RSA_HEADER_END;
       break;
     default:
-      ssh_buffer_free(buffer);
+      buffer_free(buffer);
       return NULL;
   }
 
@@ -400,18 +391,18 @@ static ssh_buffer privatekey_file_to_buffer(FILE *fp, int type,
       if ((privatekey_dek_header(buf + 10, len - 10, &algo, &mode, &key_len,
                                  &iv, &iv_len) < 0)
           || read_line(buf, MAXLINESIZE, fp)) {
-        ssh_buffer_free(buffer);
+        buffer_free(buffer);
         SAFE_FREE(iv);
         return NULL;
       }
     } else {
-      ssh_buffer_free(buffer);
+      buffer_free(buffer);
       SAFE_FREE(iv);
       return NULL;
     }
   } else {
     if (buffer_add_data(buffer, buf, len) < 0) {
-      ssh_buffer_free(buffer);
+      buffer_free(buffer);
       SAFE_FREE(iv);
       return NULL;
     }
@@ -420,31 +411,31 @@ static ssh_buffer privatekey_file_to_buffer(FILE *fp, int type,
   while ((len = read_line(buf,MAXLINESIZE,fp)) &&
       strncmp(buf, header_end, header_end_size) != 0) {
     if (len == -1) {
-      ssh_buffer_free(buffer);
+      buffer_free(buffer);
       SAFE_FREE(iv);
       return NULL;
     }
     if (buffer_add_data(buffer, buf, len) < 0) {
-      ssh_buffer_free(buffer);
+      buffer_free(buffer);
       SAFE_FREE(iv);
       return NULL;
     }
   }
 
   if (strncmp(buf,header_end,header_end_size) != 0) {
-    ssh_buffer_free(buffer);
+    buffer_free(buffer);
     SAFE_FREE(iv);
     return NULL;
   }
 
   if (buffer_add_data(buffer, "\0", 1) < 0) {
-    ssh_buffer_free(buffer);
+    buffer_free(buffer);
     SAFE_FREE(iv);
     return NULL;
   }
 
-  out = base64_to_bin(ssh_buffer_get_begin(buffer));
-  ssh_buffer_free(buffer);
+  out = base64_to_bin(buffer_get(buffer));
+  buffer_free(buffer);
   if (out == NULL) {
     SAFE_FREE(iv);
     return NULL;
@@ -453,7 +444,7 @@ static ssh_buffer privatekey_file_to_buffer(FILE *fp, int type,
   if (algo) {
     if (privatekey_decrypt(algo, mode, key_len, iv, iv_len, out,
           cb, userdata, desc) < 0) {
-      ssh_buffer_free(out);
+      buffer_free(out);
       SAFE_FREE(iv);
       return NULL;
     }
@@ -477,19 +468,19 @@ static int read_rsa_privatekey(FILE *fp, gcry_sexp_t *r,
   ssh_buffer buffer = NULL;
   int rc = 1;
 
-  buffer = privatekey_file_to_buffer(fp, SSH_KEYTYPE_RSA, cb, userdata, desc);
+  buffer = privatekey_file_to_buffer(fp, TYPE_RSA, cb, userdata, desc);
   if (buffer == NULL) {
     return 0;
   }
 
   if (!asn1_check_sequence(buffer)) {
-    ssh_buffer_free(buffer);
+    buffer_free(buffer);
     return 0;
   }
 
   v = asn1_get_int(buffer);
   if (ntohl(v->size) != 1 || v->string[0] != 0) {
-    ssh_buffer_free(buffer);
+    buffer_free(buffer);
     return 0;
   }
 
@@ -502,7 +493,7 @@ static int read_rsa_privatekey(FILE *fp, gcry_sexp_t *r,
   unused2 = asn1_get_int(buffer);
   u = asn1_get_int(buffer);
 
-  ssh_buffer_free(buffer);
+  buffer_free(buffer);
 
   if (n == NULL || e == NULL || d == NULL || p == NULL || q == NULL ||
       unused1 == NULL || unused2 == NULL|| u == NULL) {
@@ -522,15 +513,15 @@ static int read_rsa_privatekey(FILE *fp, gcry_sexp_t *r,
   }
 
 error:
-  ssh_string_free(n);
-  ssh_string_free(e);
-  ssh_string_free(d);
-  ssh_string_free(p);
-  ssh_string_free(q);
-  ssh_string_free(unused1);
-  ssh_string_free(unused2);
-  ssh_string_free(u);
-  ssh_string_free(v);
+  string_free(n);
+  string_free(e);
+  string_free(d);
+  string_free(p);
+  string_free(q);
+  string_free(unused1);
+  string_free(unused2);
+  string_free(u);
+  string_free(v);
 
   return rc;
 }
@@ -546,19 +537,19 @@ static int read_dsa_privatekey(FILE *fp, gcry_sexp_t *r, ssh_auth_callback cb,
   ssh_string v = NULL;
   int rc = 1;
 
-  buffer = privatekey_file_to_buffer(fp, SSH_KEYTYPE_DSS, cb, userdata, desc);
+  buffer = privatekey_file_to_buffer(fp, TYPE_DSS, cb, userdata, desc);
   if (buffer == NULL) {
     return 0;
   }
 
   if (!asn1_check_sequence(buffer)) {
-    ssh_buffer_free(buffer);
+    buffer_free(buffer);
     return 0;
   }
 
   v = asn1_get_int(buffer);
   if (ntohl(v->size) != 1 || v->string[0] != 0) {
-    ssh_buffer_free(buffer);
+    buffer_free(buffer);
     return 0;
   }
 
@@ -567,7 +558,7 @@ static int read_dsa_privatekey(FILE *fp, gcry_sexp_t *r, ssh_auth_callback cb,
   g = asn1_get_int(buffer);
   y = asn1_get_int(buffer);
   x = asn1_get_int(buffer);
-  ssh_buffer_free(buffer);
+  buffer_free(buffer);
 
   if (p == NULL || q == NULL || g == NULL || y == NULL || x == NULL) {
     rc = 0;
@@ -585,12 +576,12 @@ static int read_dsa_privatekey(FILE *fp, gcry_sexp_t *r, ssh_auth_callback cb,
   }
 
 error:
-  ssh_string_free(p);
-  ssh_string_free(q);
-  ssh_string_free(g);
-  ssh_string_free(y);
-  ssh_string_free(x);
-  ssh_string_free(v);
+  string_free(p);
+  string_free(q);
+  string_free(g);
+  string_free(y);
+  string_free(x);
+  string_free(v);
 
   return rc;
 }
@@ -602,13 +593,12 @@ static int pem_get_password(char *buf, int size, int rwflag, void *userdata) {
 
   /* unused flag */
   (void) rwflag;
-  if(buf==NULL)
-    return 0;
-  memset(buf,'\0',size);
+
+  ZERO_STRUCTP(buf);
   ssh_log(session, SSH_LOG_RARE,
       "Trying to call external authentication function");
 
-  if (session && session->callbacks && session->callbacks->auth_function) {
+  if (session && session->callbacks->auth_function) {
     if (session->callbacks->auth_function("Passphrase for private key:", buf, size, 0, 0,
         session->callbacks->userdata) < 0) {
       return 0;
@@ -629,49 +619,34 @@ static int privatekey_type_from_file(FILE *fp) {
   }
   fseek(fp, 0, SEEK_SET);
   if (strncmp(buffer, DSA_HEADER_BEGIN, strlen(DSA_HEADER_BEGIN)) == 0) {
-    return SSH_KEYTYPE_DSS;
+    return TYPE_DSS;
   }
   if (strncmp(buffer, RSA_HEADER_BEGIN, strlen(RSA_HEADER_BEGIN)) == 0) {
-    return SSH_KEYTYPE_RSA;
+    return TYPE_RSA;
   }
   return 0;
 }
 
-/**
- * @addtogroup libssh_auth
- *
+/** \addtogroup ssh_auth
  * @{
  */
-
-/**
- * @brief Reads a SSH private key from a file.
- *
- * @param[in]  session  The SSH Session to use.
- *
- * @param[in]  filename The filename of the the private key.
- *
- * @param[in]  type     The type of the private key. This could be SSH_KEYTYPE_DSS or
- *                      SSH_KEYTYPE_RSA. Pass 0 to automatically detect the type.
- *
- * @param[in]  passphrase The passphrase to decrypt the private key. Set to null
- *                        if none is needed or it is unknown.
- *
- * @returns               A private_key object containing the private key, or
- *                        NULL on error.
- *
- * @todo Implement to read both DSA and RSA at once.
- *
- * @see privatekey_free()
- * @see publickey_from_privatekey()
+/* TODO : implement it to read both DSA and RSA at once */
+/** \brief Reads a SSH private key from a file
+ * \param session SSH Session
+ * \param filename Filename containing the private key
+ * \param type Type of the private key. One of TYPE_DSS or TYPE_RSA. Pass 0 to automatically detect the type.
+ * \param passphrase Passphrase to decrypt the private key. Set to null if none is needed or it is unknown.
+ * \returns a PRIVATE_KEY object containing the private key, or NULL if it failed.
+ * \see privatekey_free()
+ * \see publickey_from_privatekey()
  */
 ssh_private_key privatekey_from_file(ssh_session session, const char *filename,
     int type, const char *passphrase) {
+  ssh_auth_callback auth_cb = NULL;
   ssh_private_key privkey = NULL;
+  void *auth_ud = NULL;
   FILE *file = NULL;
 #ifdef HAVE_LIBGCRYPT
-  ssh_auth_callback auth_cb = NULL;
-  void *auth_ud = NULL;
-
   gcry_sexp_t dsa = NULL;
   gcry_sexp_t rsa = NULL;
   int valid;
@@ -679,8 +654,6 @@ ssh_private_key privatekey_from_file(ssh_session session, const char *filename,
   DSA *dsa = NULL;
   RSA *rsa = NULL;
 #endif
-  /* needed for openssl initialization */
-  ssh_init();
   ssh_log(session, SSH_LOG_RARE, "Trying to open %s", filename);
   file = fopen(filename,"r");
   if (file == NULL) {
@@ -702,13 +675,13 @@ ssh_private_key privatekey_from_file(ssh_session session, const char *filename,
     }
   }
   switch (type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
       if (passphrase == NULL) {
         if (session->callbacks && session->callbacks->auth_function) {
-#ifdef HAVE_LIBGCRYPT
           auth_cb = session->callbacks->auth_function;
           auth_ud = session->callbacks->userdata;
 
+#ifdef HAVE_LIBGCRYPT
           valid = read_dsa_privatekey(file, &dsa, auth_cb, auth_ud,
               "Passphrase for private key:");
         } else { /* authcb */
@@ -726,7 +699,7 @@ ssh_private_key privatekey_from_file(ssh_session session, const char *filename,
 #elif defined HAVE_LIBCRYPTO
           dsa = PEM_read_DSAPrivateKey(file, NULL, pem_get_password, session);
         } else { /* authcb */
-          /* openssl uses its own callback to get the passphrase here */
+          /* openssl uses it's own callback to get the passphrase here */
           dsa = PEM_read_DSAPrivateKey(file, NULL, NULL, NULL);
         } /* authcb */
       } else { /* passphrase */
@@ -742,12 +715,12 @@ ssh_private_key privatekey_from_file(ssh_session session, const char *filename,
         return NULL;
       }
       break;
-    case SSH_KEYTYPE_RSA:
+    case TYPE_RSA:
       if (passphrase == NULL) {
-        if (session->callbacks && session->callbacks->auth_function) {
+	if (session->callbacks && session->callbacks->auth_function) {
+		auth_cb = session->callbacks->auth_function;
+		auth_ud = session->callbacks->userdata;
 #ifdef HAVE_LIBGCRYPT
-          auth_cb = session->callbacks->auth_function;
-          auth_ud = session->callbacks->userdata;
           valid = read_rsa_privatekey(file, &rsa, auth_cb, auth_ud,
               "Passphrase for private key:");
         } else { /* authcb */
@@ -765,7 +738,7 @@ ssh_private_key privatekey_from_file(ssh_session session, const char *filename,
 #elif defined HAVE_LIBCRYPTO
           rsa = PEM_read_RSAPrivateKey(file, NULL, pem_get_password, session);
         } else { /* authcb */
-          /* openssl uses its own callback to get the passphrase here */
+          /* openssl uses it's own callback to get the passphrase here */
           rsa = PEM_read_RSAPrivateKey(file, NULL, NULL, NULL);
         } /* authcb */
       } else { /* passphrase */
@@ -809,15 +782,15 @@ ssh_private_key privatekey_from_file(ssh_session session, const char *filename,
 
 /**
  * @brief returns the type of a private key
- * @param[in] privatekey the private key handle
- * @returns one of SSH_KEYTYPE_RSA,SSH_KEYTYPE_DSS,SSH_KEYTYPE_RSA1
- * @returns SSH_KEYTYPE_UNKNOWN if the type is unknown
+ * @param privatekey[in] the private key handle
+ * @returns one of TYPE_RSA,TYPE_DSS,TYPE_RSA1
+ * @returns 0 if the type is unknown
  * @see privatekey_from_file
  * @see ssh_userauth_offer_pubkey
  */
-enum ssh_keytypes_e ssh_privatekey_type(ssh_private_key privatekey){
+int ssh_privatekey_type(ssh_private_key privatekey){
   if (privatekey==NULL)
-    return SSH_KEYTYPE_UNKNOWN;
+    return 0;
   return privatekey->type;
 }
 
@@ -843,7 +816,7 @@ ssh_private_key _privatekey_from_file(void *session, const char *filename,
   }
 
   switch (type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
 #ifdef HAVE_LIBGCRYPT
       valid = read_dsa_privatekey(file, &dsa, NULL, NULL, NULL);
 
@@ -864,7 +837,7 @@ ssh_private_key _privatekey_from_file(void *session, const char *filename,
         return NULL;
       }
       break;
-    case SSH_KEYTYPE_RSA:
+    case TYPE_RSA:
 #ifdef HAVE_LIBGCRYPT
       valid = read_rsa_privatekey(file, &rsa, NULL, NULL, NULL);
 
@@ -909,10 +882,8 @@ ssh_private_key _privatekey_from_file(void *session, const char *filename,
   return privkey;
 }
 
-/**
- * @brief Deallocate a private key object.
- *
- * @param[in]  prv      The private_key object to free.
+/** \brief deallocate a private key
+ * \param prv a PRIVATE_KEY object
  */
 void privatekey_free(ssh_private_key prv) {
   if (prv == NULL) {
@@ -953,7 +924,7 @@ int ssh_publickey_to_file(ssh_session session, const char *file,
   size_t len;
   int rc;
 
-  pubkey_64 = bin_to_base64(pubkey->string, ssh_string_len(pubkey));
+  pubkey_64 = bin_to_base64(pubkey->string, string_len(pubkey));
   if (pubkey_64 == NULL) {
     return -1;
   }
@@ -1003,21 +974,13 @@ int ssh_publickey_to_file(ssh_session session, const char *file,
   return 0;
 }
 
-/**
- * @brief Retrieve a public key from a file.
- *
- * @param[in]  session  The SSH session to use.
- *
- * @param[in]  filename The filename of the public key.
- *
- * @param[out] type     The Pointer to a integer. If it is not NULL, it will
- *                      contain the type of the key after execution.
- *
- * @return              A SSH String containing the public key, or NULL if it
- *                      failed.
- *
- * @see string_free()
- * @see publickey_from_privatekey()
+/** \brief Retrieve a public key from a file
+ * \param session the SSH session
+ * \param filename Filename of the key
+ * \param type Pointer to a integer. If it is not null, it contains the type of the key after execution.
+ * \return a SSH String containing the public key, or NULL if it failed.
+ * \see string_free()
+ * \see publickey_from_privatekey()
  */
 ssh_string publickey_from_file(ssh_session session, const char *filename,
     int *type) {
@@ -1071,15 +1034,15 @@ ssh_string publickey_from_file(ssh_session session, const char *filename,
     return NULL;
   }
 
-  str = ssh_string_new(ssh_buffer_get_len(buffer));
+  str = string_new(buffer_get_len(buffer));
   if (str == NULL) {
     ssh_set_error(session, SSH_FATAL, "Not enough space");
-    ssh_buffer_free(buffer);
+    buffer_free(buffer);
     return NULL;
   }
 
-  ssh_string_fill(str, ssh_buffer_get_begin(buffer), ssh_buffer_get_len(buffer));
-  ssh_buffer_free(buffer);
+  string_fill(str, buffer_get(buffer), buffer_get_len(buffer));
+  buffer_free(buffer);
 
   if (type) {
     *type = key_type;
@@ -1216,7 +1179,7 @@ ssh_string try_publickey_from_file(ssh_session session, struct ssh_keys_struct k
 
   new = realloc(*privkeyfile, strlen(priv) + 1);
   if (new == NULL) {
-    ssh_string_free(pubkey);
+    string_free(pubkey);
     goto error;
   }
 
@@ -1238,19 +1201,39 @@ static int alldigits(const char *s) {
   return 1;
 }
 
-/* @} */
-
-
-/**
- * @addtogroup libssh_session
- *
- * @{
+/** @}
  */
 
+/** \addtogroup ssh_session
+ * @{ */
+
 /**
- * @internal
- *
- * @brief Free a token array.
+ * \brief Lowercase a string.
+ * \param  str          String to lowercase.
+ * \return              The malloced lowered string or NULL on error.
+ * \internal
+ */
+static char *lowercase(const char* str) {
+  char *new, *p;
+
+  if (str == NULL) {
+    return NULL;
+  }
+
+  new = strdup(str);
+  if (new == NULL) {
+    return NULL;
+  }
+
+  for (p = new; *p; p++) {
+    *p = tolower(*p);
+  }
+
+  return new;
+}
+
+/** \brief frees a token array
+ * \internal
  */
 static void tokens_free(char **tokens) {
   if (tokens == NULL) {
@@ -1264,24 +1247,14 @@ static void tokens_free(char **tokens) {
   SAFE_FREE(tokens);
 }
 
-/**
- * @internal
- *
- * @brief Return one line of known host file.
- *
- * This will return a token array containing (host|ip), keytype and key.
- *
- * @param[out] file     A pointer to the known host file. Could be pointing to
- *                      NULL at start.
- *
- * @param[in]  filename The file name of the known host file.
- *
- * @param[out] found_type A pointer to a string to be set with the found key
- *                        type.
- *
- * @returns             The found_type type of key (ie "dsa","ssh-rsa1"). Don't
- *                      free that value. NULL if no match was found or the file
- *                      was not found.
+/** \brief returns one line of known host file
+ * will return a token array containing (host|ip) keytype key
+ * \param file pointer to the known host file. Could be pointing to NULL at start
+ * \param filename file name of the known host file
+ * \param found_type pointer to a string to be set with the found key type
+ * \internal
+ * \returns NULL if no match was found or the file was not found
+ * \returns found_type type of key (ie "dsa","ssh-rsa1"). Don't free that value.
  */
 static char **ssh_get_knownhost_line(ssh_session session, FILE **file,
     const char *filename, const char **found_type) {
@@ -1358,15 +1331,12 @@ static char **ssh_get_knownhost_line(ssh_session session, FILE **file,
 }
 
 /**
- * @brief Check the public key in the known host line matches the public key of
- * the currently connected server.
- *
- * @param[in] session   The SSH session to use.
- *
- * @param[in] tokens    A list of tokens in the known_hosts line.
- *
- * @returns             1 if the key matches, 0 if the key doesn't match and -1
- *                      on error.
+ * \brief Check the public key in the known host line matches the
+ * public key of the currently connected server.
+ * \param tokens list of tokens in the known_hosts line.
+ * \return 1 if the key matches
+ * \return 0 if the key doesn't match
+ * \return -1 on error
  */
 static int check_public_key(ssh_session session, char **tokens) {
   ssh_string pubkey = session->current_crypto->server_pubkey;
@@ -1381,29 +1351,29 @@ static int check_public_key(ssh_session session, char **tokens) {
     unsigned int len;
     int i;
 
-    pubkey_buffer = ssh_buffer_new();
+    pubkey_buffer = buffer_new();
     if (pubkey_buffer == NULL) {
       return -1;
     }
 
-    tmpstring = ssh_string_from_char("ssh-rsa1");
+    tmpstring = string_from_char("ssh-rsa1");
     if (tmpstring == NULL) {
-      ssh_buffer_free(pubkey_buffer);
+      buffer_free(pubkey_buffer);
       return -1;
     }
 
     if (buffer_add_ssh_string(pubkey_buffer, tmpstring) < 0) {
-      ssh_buffer_free(pubkey_buffer);
-      ssh_string_free(tmpstring);
+      buffer_free(pubkey_buffer);
+      string_free(tmpstring);
       return -1;
     }
-    ssh_string_free(tmpstring);
+    string_free(tmpstring);
 
     for (i = 2; i < 4; i++) { /* e, then n */
       tmpbn = NULL;
       bignum_dec2bn(tokens[i], &tmpbn);
       if (tmpbn == NULL) {
-        ssh_buffer_free(pubkey_buffer);
+        buffer_free(pubkey_buffer);
         return -1;
       }
       /* for some reason, make_bignum_string does not work
@@ -1413,7 +1383,7 @@ static int check_public_key(ssh_session session, char **tokens) {
       len = bignum_num_bytes(tmpbn);
       tmpstring = malloc(4 + len);
       if (tmpstring == NULL) {
-        ssh_buffer_free(pubkey_buffer);
+        buffer_free(pubkey_buffer);
         bignum_free(tmpbn);
         return -1;
       }
@@ -1426,12 +1396,12 @@ static int check_public_key(ssh_session session, char **tokens) {
 #endif
       bignum_free(tmpbn);
       if (buffer_add_ssh_string(pubkey_buffer, tmpstring) < 0) {
-        ssh_buffer_free(pubkey_buffer);
-        ssh_string_free(tmpstring);
+        buffer_free(pubkey_buffer);
+        string_free(tmpstring);
         bignum_free(tmpbn);
         return -1;
       }
-      ssh_string_free(tmpstring);
+      string_free(tmpstring);
     }
   } else {
     /* ssh-dss or ssh-rsa */
@@ -1445,30 +1415,28 @@ static int check_public_key(ssh_session session, char **tokens) {
     return -1;
   }
 
-  if (ssh_buffer_get_len(pubkey_buffer) != ssh_string_len(pubkey)) {
-    ssh_buffer_free(pubkey_buffer);
+  if (buffer_get_len(pubkey_buffer) != string_len(pubkey)) {
+    buffer_free(pubkey_buffer);
     return 0;
   }
 
   /* now test that they are identical */
-  if (memcmp(ssh_buffer_get_begin(pubkey_buffer), pubkey->string,
-        ssh_buffer_get_len(pubkey_buffer)) != 0) {
-    ssh_buffer_free(pubkey_buffer);
+  if (memcmp(buffer_get(pubkey_buffer), pubkey->string,
+        buffer_get_len(pubkey_buffer)) != 0) {
+    buffer_free(pubkey_buffer);
     return 0;
   }
 
-  ssh_buffer_free(pubkey_buffer);
+  buffer_free(pubkey_buffer);
   return 1;
 }
 
 /**
- * @brief Check if a hostname matches a openssh-style hashed known host.
- *
- * @param[in]  host     The host to check.
- *
- * @param[in]  hashed   The hashed value.
- *
- * @returns             1 if it matches, 0 otherwise.
+ * \brief checks if a hostname matches a openssh-style hashed known host
+ * \param host host to check
+ * \param hashed hashed value
+ * \returns 1 if it matches
+ * \returns 0 otherwise
  */
 static int match_hashed_host(ssh_session session, const char *host,
     const char *sourcehash) {
@@ -1489,7 +1457,6 @@ static int match_hashed_host(ssh_session session, const char *host,
   enter_function();
 
   if (strncmp(sourcehash, "|1|", 3) != 0) {
-  	leave_function();
     return 0;
   }
 
@@ -1520,15 +1487,15 @@ static int match_hashed_host(ssh_session session, const char *host,
   hash = base64_to_bin(b64hash);
   SAFE_FREE(source);
   if (hash == NULL) {
-    ssh_buffer_free(salt);
+    buffer_free(salt);
     leave_function();
     return 0;
   }
 
-  mac = hmac_init(ssh_buffer_get_begin(salt), ssh_buffer_get_len(salt), HMAC_SHA1);
+  mac = hmac_init(buffer_get(salt), buffer_get_len(salt), HMAC_SHA1);
   if (mac == NULL) {
-    ssh_buffer_free(salt);
-    ssh_buffer_free(hash);
+    buffer_free(salt);
+    buffer_free(hash);
     leave_function();
     return 0;
   }
@@ -1536,15 +1503,15 @@ static int match_hashed_host(ssh_session session, const char *host,
   hmac_update(mac, host, strlen(host));
   hmac_final(mac, buffer, &size);
 
-  if (size == ssh_buffer_get_len(hash) &&
-      memcmp(buffer, ssh_buffer_get_begin(hash), size) == 0) {
+  if (size == buffer_get_len(hash) &&
+      memcmp(buffer, buffer_get(hash), size) == 0) {
     match = 1;
   } else {
     match = 0;
   }
 
-  ssh_buffer_free(salt);
-  ssh_buffer_free(hash);
+  buffer_free(salt);
+  buffer_free(hash);
 
   ssh_log(session, SSH_LOG_PACKET,
       "Matching a hashed host: %s match=%d", host, match);
@@ -1562,32 +1529,31 @@ static int match_hashed_host(ssh_session session, const char *host,
  */
 
 /**
- * @brief Check if the server is known.
- *
+ * \brief Check if the server is known.
  * Checks the user's known host file for a previous connection to the
  * current server.
  *
- * @param[in]  session  The SSH session to use.
+ * \param session ssh session
  *
- * @returns SSH_SERVER_KNOWN_OK:       The server is known and has not changed.\n
- *          SSH_SERVER_KNOWN_CHANGED:  The server key has changed. Either you
- *                                     are under attack or the administrator
- *                                     changed the key. You HAVE to warn the
- *                                     user about a possible attack.\n
- *          SSH_SERVER_FOUND_OTHER:    The server gave use a key of a type while
- *                                     we had an other type recorded. It is a
- *                                     possible attack.\n
- *          SSH_SERVER_NOT_KNOWN:      The server is unknown. User should
- *                                     confirm the MD5 is correct.\n
- *          SSH_SERVER_FILE_NOT_FOUND: The known host file does not exist. The
- *                                     host is thus unknown. File will be
- *                                     created if host key is accepted.\n
- *          SSH_SERVER_ERROR:          Some error happened.
+ * \return SSH_SERVER_KNOWN_OK:      The server is known and has not changed\n
+ *         SSH_SERVER_KNOWN_CHANGED: The server key has changed. Either you are
+ *                                   under attack or the administrator changed
+ *                                   the key. You HAVE to warn the user about
+ *                                   a possible attack\n
+ *         SSH_SERVER_FOUND_OTHER:   The server gave use a key of a type while
+ *                                   we had an other type recorded. It is a
+ *                                   possible attack \n
+ *         SSH_SERVER_NOT_KNOWN:     The server is unknown. User should confirm
+ *                                   the MD5 is correct\n
+ *         SSH_SERVER_FILE_NOT_FOUND:The known host file does not exist. The
+ *                                   host is thus unknown. File will be created
+ *                                   if host key is accepted\n
+ *         SSH_SERVER_ERROR:         Some error happened
  *
- * @see ssh_get_pubkey_hash()
+ * \see ssh_get_pubkey_hash()
  *
- * @bug There is no current way to remove or modify an entry into the known
- *      host table.
+ * \bug There is no current way to remove or modify an entry into the known
+ * host table.
  */
 int ssh_is_server_known(ssh_session session) {
   FILE *file = NULL;
@@ -1616,7 +1582,7 @@ int ssh_is_server_known(ssh_session session) {
     return SSH_SERVER_ERROR;
   }
 
-  host = ssh_lowercase(session->host);
+  host = lowercase(session->host);
   hostport = ssh_hostport(host,session->port);
   if (host == NULL || hostport == NULL) {
     ssh_set_error_oom(session);
@@ -1673,11 +1639,6 @@ int ssh_is_server_known(ssh_session session) {
     }
   } while (1);
 
-  if ( (ret == SSH_SERVER_NOT_KNOWN) && (session->StrictHostKeyChecking == 0) ) {
-    ssh_write_knownhost(session);
-    ret = SSH_SERVER_KNOWN_OK;
-  }
-
   SAFE_FREE(host);
   SAFE_FREE(hostport);
   if (file != NULL) {
@@ -1700,7 +1661,7 @@ int ssh_is_server_known(ssh_session session) {
  * @return              SSH_OK on success, SSH_ERROR on error.
  */
 int ssh_write_knownhost(ssh_session session) {
-  ssh_string pubkey;
+  ssh_string pubkey = session->current_crypto->server_pubkey;
   unsigned char *pubkey_64;
   char buffer[4096] = {0};
   FILE *file;
@@ -1715,7 +1676,7 @@ int ssh_write_knownhost(ssh_session session) {
     return SSH_ERROR;
   }
 
-  host = ssh_lowercase(session->host);
+  host = lowercase(session->host);
   /* If using a nonstandard port, save the host in the [host]:port format */
   if(session->port != 22){
     hostport = ssh_hostport(host,session->port);
@@ -1727,19 +1688,8 @@ int ssh_write_knownhost(ssh_session session) {
   if (session->knownhosts == NULL) {
     if (ssh_options_apply(session) < 0) {
       ssh_set_error(session, SSH_FATAL, "Can't find a known_hosts file");
-      return SSH_ERROR;
+      return -1;
     }
-  }
-
-  if(session->current_crypto==NULL) {
-  	ssh_set_error(session, SSH_FATAL, "No current crypto context");
-  	return SSH_ERROR;
-  }
-
-  pubkey = session->current_crypto->server_pubkey;
-  if(pubkey == NULL){
-  	ssh_set_error(session, SSH_FATAL, "No public key present");
-  	return SSH_ERROR;
   }
 
   /* Check if ~/.ssh exists and create it if not */
@@ -1866,7 +1816,7 @@ int ssh_write_knownhost(ssh_session session) {
 
     publickey_free(key);
   } else {
-    pubkey_64 = bin_to_base64(pubkey->string, ssh_string_len(pubkey));
+    pubkey_64 = bin_to_base64(pubkey->string, string_len(pubkey));
     if (pubkey_64 == NULL) {
       fclose(file);
       SAFE_FREE(host);
@@ -1892,6 +1842,5 @@ int ssh_write_knownhost(ssh_session session) {
   return 0;
 }
 
-/* @} */
-
-/* vim: set ts=4 sw=4 et cindent: */
+/** @} */
+/* vim: set ts=2 sw=2 et cindent: */

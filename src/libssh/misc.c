@@ -30,7 +30,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <ctype.h>
+
 
 #ifdef _WIN32
 #define _WIN32_IE 0x0501 //SHGetSpecialFolderPath
@@ -38,15 +38,12 @@
 #include <ws2tcpip.h>
 #include <shlobj.h>
 #include <direct.h>
-#if _MSC_VER >= 1400
-#include <io.h>
-#endif /* _MSC_VER */
-#else /* _WIN32 */
+#else
 /* This is needed for a standard getpwuid_r on opensolaris */
 #define _POSIX_PTHREAD_SEMANTICS
 #include <pwd.h>
 #include <arpa/inet.h>
-#endif /* _WIN32 */
+#endif
 
 #include "libssh/priv.h"
 #include "libssh/misc.h"
@@ -70,14 +67,11 @@
 #define LIBZ_STRING ""
 #endif
 
-/**
- * @defgroup libssh_misc The SSH helper functions.
- * @ingroup libssh
- *
- * Different helper functions used in the SSH Library.
- *
- * @{
+/** \defgroup ssh_misc SSH Misc
+ * \brief Misc functions
  */
+/** \addtogroup ssh_misc
+ * @{ */
 
 #ifdef _WIN32
 char *ssh_get_user_home_dir(void) {
@@ -121,31 +115,10 @@ int gettimeofday(struct timeval *__p, void *__t) {
 
   return (0);
 }
-
-char *ssh_get_local_username(ssh_session session) {
-  DWORD size = 0;
-  char *user;
-
-  /* get the size */
-  GetUserName(NULL, &size);
-
-  user = malloc(size);
-  if (user == NULL) {
-    ssh_set_error_oom(session);
-    return NULL;
-  }
-
-  if (GetUserName(user, &size)) {
-    return user;
-  }
-
-  return NULL;
-}
 #else /* _WIN32 */
-
 #ifndef NSS_BUFLEN_PASSWD
 #define NSS_BUFLEN_PASSWD 4096
-#endif /* NSS_BUFLEN_PASSWD */
+#endif
 
 char *ssh_get_user_home_dir(void) {
   char *szPath = NULL;
@@ -172,7 +145,56 @@ int ssh_file_readaccess_ok(const char *file) {
 
   return 1;
 }
+#endif
 
+char *ssh_hostport(const char *host, int port){
+	char *dest;
+	size_t len;
+	if(host==NULL)
+		return NULL;
+	/* 3 for []:, 5 for 65536 and 1 for nul */
+	len=strlen(host) + 3 + 5 + 1;
+	dest=malloc(len);
+	if(dest==NULL)
+		return NULL;
+	snprintf(dest,len,"[%s]:%d",host,port);
+	return dest;
+}
+
+uint64_t ntohll(uint64_t a) {
+#ifdef WORDS_BIGENDIAN
+  return a;
+#else
+  uint32_t low = (uint32_t)(a & 0xffffffff);
+  uint32_t high = (uint32_t)(a >> 32);
+  low = ntohl(low);
+  high = ntohl(high);
+
+  return ((((uint64_t) low) << 32) | ( high));
+#endif
+}
+
+#ifdef _WIN32
+char *ssh_get_local_username(ssh_session session) {
+  DWORD size = 0;
+  char *user;
+
+  /* get the size */
+  GetUserName(NULL, &size);
+
+  user = malloc(size);
+  if (user == NULL) {
+    ssh_set_error_oom(session);
+    return NULL;
+  }
+
+  if (GetUserName(user, &size)) {
+    return user;
+  }
+
+  return NULL;
+}
+#else
 char *ssh_get_local_username(ssh_session session) {
     struct passwd pwd;
     struct passwd *pwdbuf;
@@ -196,59 +218,13 @@ char *ssh_get_local_username(ssh_session session) {
 
     return name;
 }
-#endif /* _WIN32 */
-
-uint64_t ntohll(uint64_t a) {
-#ifdef WORDS_BIGENDIAN
-  return a;
-#else
-  uint32_t low = (uint32_t)(a & 0xffffffff);
-  uint32_t high = (uint32_t)(a >> 32);
-  low = ntohl(low);
-  high = ntohl(high);
-
-  return ((((uint64_t) low) << 32) | ( high));
 #endif
-}
-
-char *ssh_lowercase(const char* str) {
-  char *new, *p;
-
-  if (str == NULL) {
-    return NULL;
-  }
-
-  new = strdup(str);
-  if (new == NULL) {
-    return NULL;
-  }
-
-  for (p = new; *p; p++) {
-    *p = tolower(*p);
-  }
-
-  return new;
-}
-
-char *ssh_hostport(const char *host, int port){
-    char *dest;
-    size_t len;
-    if(host==NULL)
-        return NULL;
-    /* 3 for []:, 5 for 65536 and 1 for nul */
-    len=strlen(host) + 3 + 5 + 1;
-    dest=malloc(len);
-    if(dest==NULL)
-        return NULL;
-    snprintf(dest,len,"[%s]:%d",host,port);
-    return dest;
-}
 
 /**
  * @brief Check if libssh is the required version or get the version
  * string.
  *
- * @param[in]  req_version The version required.
+ * @param req_version   The version required.
  *
  * @return              If the version of libssh is newer than the version
  *                      required it will return a version string.
@@ -366,16 +342,12 @@ void ssh_list_remove(struct ssh_list *list, struct ssh_iterator *iterator){
   SAFE_FREE(iterator);
 }
 
-/**
- * @internal
- *
- * @brief Removes the top element of the list and returns the data value
- * attached to it.
- *
- * @param[in[  list     The ssh_list to remove the element.
- *
- * @returns             A pointer to the element being stored in head, or NULL
- *                      if the list is empty.
+/** @internal
+ * @brief Removes the top element of the list and returns the data value attached
+ * to it
+ * @param list the ssh_list
+ * @returns pointer to the element being stored in head, or
+ * NULL if the list is empty.
  */
 const void *_ssh_list_pop_head(struct ssh_list *list){
   struct ssh_iterator *iterator=list->root;
@@ -398,13 +370,12 @@ const void *_ssh_list_pop_head(struct ssh_list *list){
  * the final '/'. Trailing '/' characters are  not  counted as part of the
  * pathname. The caller must free the memory.
  *
- * @param[in]  path     The path to parse.
+ * @param path  The path to parse.
  *
- * @return              The dirname of path or NULL if we can't allocate memory.
- *                      If path does not contain a slash, c_dirname() returns
- *                      the string ".".  If path is the string "/", it returns
- *                      the string "/". If path is NULL or an empty string,
- *                      "." is returned.
+ * @return  The dirname of path or NULL if we can't allocate memory. If path
+ *          does not contain a slash, c_dirname() returns the string ".".  If
+ *          path is the string "/", it returns the string "/". If path is
+ *          NULL or an empty string, "." is returned.
  */
 char *ssh_dirname (const char *path) {
   char *new = NULL;
@@ -454,12 +425,11 @@ char *ssh_dirname (const char *path) {
  * ssh_basename() returns the component following the final '/'.  Trailing '/'
  * characters are not counted as part of the pathname.
  *
- * @param[in]  path     The path to parse.
+ * @param path The path to parse.
  *
- * @return              The filename of path or NULL if we can't allocate
- *                      memory. If path is a the string "/", basename returns
- *                      the string "/". If path is NULL or an empty string,
- *                      "." is returned.
+ * @return  The filename of path or NULL if we can't allocate memory. If path
+ *          is a the string "/", basename returns the string "/". If path is
+ *          NULL or an empty string, "." is returned.
  */
 char *ssh_basename (const char *path) {
   char *new = NULL;
@@ -506,11 +476,11 @@ char *ssh_basename (const char *path) {
  *
  * This is the portable version of mkdir, mode is ignored on Windows systems.
  *
- * @param[in]  pathname The path name to create the directory.
+ * @param  pathname     The path name to create the directory.
  *
- * @param[in]  mode     The permissions to use.
+ * @param  mode         The permissions to use.
  *
- * @return              0 on success, < 0 on error with errno set.
+ * @return 0 on success, < 0 on error with errno set.
  */
 int ssh_mkdir(const char *pathname, mode_t mode) {
   int r;
@@ -526,6 +496,8 @@ int ssh_mkdir(const char *pathname, mode_t mode) {
 
 /**
  * @brief Expand a directory starting with a tilde '~'
+ *
+ * @param[in]  session  The ssh session to use.
  *
  * @param[in]  d        The directory to expand.
  *
@@ -595,15 +567,14 @@ char *ssh_path_expand_escape(ssh_session session, const char *s) {
     const char *p;
     size_t i, l;
 
-    r = ssh_path_expand_tilde(s);
-    if (r == NULL) {
-        ssh_set_error_oom(session);
+    if (strlen(s) > MAX_BUF_SIZE) {
+        ssh_set_error(session, SSH_FATAL, "string to expand too long");
         return NULL;
     }
 
-    if (strlen(r) > MAX_BUF_SIZE) {
-        ssh_set_error(session, SSH_FATAL, "string to expand too long");
-        free(r);
+    r = ssh_path_expand_tilde(s);
+    if (r == NULL) {
+        ssh_set_error_oom(session);
         return NULL;
     }
 

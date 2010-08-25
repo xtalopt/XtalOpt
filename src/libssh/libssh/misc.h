@@ -53,7 +53,6 @@ struct ssh_iterator *ssh_list_get_iterator(const struct ssh_list *list);
 int ssh_list_append(struct ssh_list *list, const void *data);
 int ssh_list_prepend(struct ssh_list *list, const void *data);
 void ssh_list_remove(struct ssh_list *list, struct ssh_iterator *iterator);
-char *ssh_lowercase(const char* str);
 char *ssh_hostport(const char *host, int port);
 
 const void *_ssh_list_pop_head(struct ssh_list *list);

@@ -40,8 +40,6 @@
 #include "libssh/session.h"
 #include "libssh/wrapper.h"
 #include "libssh/crypto.h"
-#include "libssh/buffer.h"
-
 uint32_t packet_decrypt_len(ssh_session session, char *crypted){
   uint32_t decrypted;
 
@@ -181,7 +179,7 @@ unsigned char *packet_encrypt(ssh_session session, void *data, uint32_t len) {
  * @param  mac          The mac to compare with the hmac.
  *
  * @return              0 if hmac and mac are equal, < 0 if not or an error
- *                      occurred.
+ *                      occured.
  */
 int packet_hmac_verify(ssh_session session, ssh_buffer buffer,
     unsigned char *mac) {
@@ -198,7 +196,7 @@ int packet_hmac_verify(ssh_session session, ssh_buffer buffer,
   seq = htonl(session->recv_seq);
 
   hmac_update(ctx, (unsigned char *) &seq, sizeof(uint32_t));
-  hmac_update(ctx, ssh_buffer_get_begin(buffer), ssh_buffer_get_len(buffer));
+  hmac_update(ctx, buffer_get(buffer), buffer_get_len(buffer));
   hmac_final(ctx, hmacbuf, &len);
 
 #ifdef DEBUG_CRYPTO

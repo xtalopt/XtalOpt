@@ -29,10 +29,10 @@
  * g and n are two numbers common to every ssh software.
  * client's public key (e) is calculated by doing:
  * e = g^x mod p
- * client sends e to the server.
+ * client sents e to the server.
  * the server computes his own public key, f
  * f = g^y mod p
- * it sends it to the client
+ * it sents it to the client
  * the common key K is calculated by the client by doing
  * k = f^x mod p
  * the server does the same with the client public key e
@@ -209,7 +209,7 @@ char *ssh_get_hexa(const unsigned char *what, size_t len) {
 /**
  * @brief Print a buffer as colon separated hex string.
  *
- * @param  descr        Description printed in front of the hex string.
+ * @param  descr        Description printed infront of the hex string.
  *
  * @param  what         What should be converted to a hex string.
  *
@@ -368,7 +368,7 @@ ssh_string make_bignum_string(bignum num) {
 
 bignum make_string_bn(ssh_string string){
   bignum bn = NULL;
-  unsigned int len = ssh_string_len(string);
+  unsigned int len = string_len(string);
 
 #ifdef DEBUG_CRYPTO
   fprintf(stderr, "Importing a %d bits, %d bytes object ...\n",
@@ -498,12 +498,12 @@ int make_sessionid(ssh_session session) {
     return rc;
   }
 
-  buf = ssh_buffer_new();
+  buf = buffer_new();
   if (buf == NULL) {
     return rc;
   }
 
-  str = ssh_string_from_char(session->clientbanner);
+  str = string_from_char(session->clientbanner);
   if (str == NULL) {
     goto error;
   }
@@ -511,9 +511,9 @@ int make_sessionid(ssh_session session) {
   if (buffer_add_ssh_string(buf, str) < 0) {
     goto error;
   }
-  ssh_string_free(str);
+  string_free(str);
 
-  str = ssh_string_from_char(session->serverbanner);
+  str = string_from_char(session->serverbanner);
   if (str == NULL) {
     goto error;
   }
@@ -543,25 +543,25 @@ int make_sessionid(ssh_session session) {
     goto error;
   }
 
-  len = ntohl(ssh_buffer_get_len(client_hash));
+  len = ntohl(buffer_get_len(client_hash));
   if (buffer_add_u32(buf,len) < 0) {
     goto error;
   }
-  if (buffer_add_data(buf, ssh_buffer_get_begin(client_hash),
-        ssh_buffer_get_len(client_hash)) < 0) {
+  if (buffer_add_data(buf, buffer_get(client_hash),
+        buffer_get_len(client_hash)) < 0) {
     goto error;
   }
 
-  len = ntohl(ssh_buffer_get_len(server_hash));
+  len = ntohl(buffer_get_len(server_hash));
   if (buffer_add_u32(buf, len) < 0) {
     goto error;
   }
-  if (buffer_add_data(buf, ssh_buffer_get_begin(server_hash),
-        ssh_buffer_get_len(server_hash)) < 0) {
+  if (buffer_add_data(buf, buffer_get(server_hash),
+        buffer_get_len(server_hash)) < 0) {
     goto error;
   }
 
-  len = ssh_string_len(session->next_crypto->server_pubkey) + 4;
+  len = string_len(session->next_crypto->server_pubkey) + 4;
   if (buffer_add_data(buf, session->next_crypto->server_pubkey, len) < 0) {
     goto error;
   }
@@ -571,38 +571,38 @@ int make_sessionid(ssh_session session) {
     goto error;
   }
 
-  len = ssh_string_len(num) + 4;
+  len = string_len(num) + 4;
   if (buffer_add_data(buf, num, len) < 0) {
     goto error;
   }
 
-  ssh_string_free(num);
+  string_free(num);
   num = make_bignum_string(session->next_crypto->f);
   if (num == NULL) {
     goto error;
   }
 
-  len = ssh_string_len(num) + 4;
+  len = string_len(num) + 4;
   if (buffer_add_data(buf, num, len) < 0) {
     goto error;
   }
 
-  ssh_string_free(num);
+  string_free(num);
   num = make_bignum_string(session->next_crypto->k);
   if (num == NULL) {
     goto error;
   }
 
-  len = ssh_string_len(num) + 4;
+  len = string_len(num) + 4;
   if (buffer_add_data(buf, num, len) < 0) {
     goto error;
   }
 
 #ifdef DEBUG_CRYPTO
-  ssh_print_hexa("hash buffer", ssh_buffer_get_begin(buf), ssh_buffer_get_len(buf));
+  ssh_print_hexa("hash buffer", buffer_get(buf), buffer_get_len(buf));
 #endif
 
-  sha1_update(ctx, ssh_buffer_get_begin(buf), ssh_buffer_get_len(buf));
+  sha1_update(ctx, buffer_get(buf), buffer_get_len(buf));
   sha1_final(session->next_crypto->session_id, ctx);
 
 #ifdef DEBUG_CRYPTO
@@ -612,15 +612,15 @@ int make_sessionid(ssh_session session) {
 
   rc = SSH_OK;
 error:
-  ssh_buffer_free(buf);
-  ssh_buffer_free(client_hash);
-  ssh_buffer_free(server_hash);
+  buffer_free(buf);
+  buffer_free(client_hash);
+  buffer_free(server_hash);
 
   session->in_hashbuf = NULL;
   session->out_hashbuf = NULL;
 
-  ssh_string_free(str);
-  ssh_string_free(num);
+  string_free(str);
+  string_free(num);
 
   leave_function();
 
@@ -628,7 +628,7 @@ error:
 }
 
 int hashbufout_add_cookie(ssh_session session) {
-  session->out_hashbuf = ssh_buffer_new();
+  session->out_hashbuf = buffer_new();
   if (session->out_hashbuf == NULL) {
     return -1;
   }
@@ -656,7 +656,7 @@ int hashbufout_add_cookie(ssh_session session) {
 }
 
 int hashbufin_add_cookie(ssh_session session, unsigned char *cookie) {
-  session->in_hashbuf = ssh_buffer_new();
+  session->in_hashbuf = buffer_new();
   if (session->in_hashbuf == NULL) {
     return -1;
   }
@@ -684,7 +684,7 @@ static int generate_one_key(ssh_string k,
     return -1;
   }
 
-  sha1_update(ctx, k, ssh_string_len(k) + 4);
+  sha1_update(ctx, k, string_len(k) + 4);
   sha1_update(ctx, session_id, SHA_DIGEST_LEN);
   sha1_update(ctx, &letter, 1);
   sha1_update(ctx, session_id, SHA_DIGEST_LEN);
@@ -752,7 +752,7 @@ int generate_session_keys(ssh_session session) {
     if (ctx == NULL) {
       goto error;
     }
-    sha1_update(ctx, k_string, ssh_string_len(k_string) + 4);
+    sha1_update(ctx, k_string, string_len(k_string) + 4);
     sha1_update(ctx, session->next_crypto->session_id, SHA_DIGEST_LEN);
     sha1_update(ctx, session->next_crypto->encryptkey, SHA_DIGEST_LEN);
     sha1_final(session->next_crypto->encryptkey + SHA_DIGEST_LEN, ctx);
@@ -760,7 +760,7 @@ int generate_session_keys(ssh_session session) {
 
   if (session->next_crypto->in_cipher->keysize > SHA_DIGEST_LEN * 8) {
     ctx = sha1_init();
-    sha1_update(ctx, k_string, ssh_string_len(k_string) + 4);
+    sha1_update(ctx, k_string, string_len(k_string) + 4);
     sha1_update(ctx, session->next_crypto->session_id, SHA_DIGEST_LEN);
     sha1_update(ctx, session->next_crypto->decryptkey, SHA_DIGEST_LEN);
     sha1_final(session->next_crypto->decryptkey + SHA_DIGEST_LEN, ctx);
@@ -798,24 +798,20 @@ int generate_session_keys(ssh_session session) {
 
   rc = 0;
 error:
-  ssh_string_free(k_string);
+  string_free(k_string);
   leave_function();
 
   return rc;
 }
 
-/**
- * @addtogroup libssh_session
- *
- * @{
- */
-
+/** \addtogroup ssh_session
+ * @{ */
 /**
  * @brief Allocates a buffer with the MD5 hash of the server public key.
  *
- * @param[in] session   The SSH session to use.
+ * @param  session      The SSH session to use.
  *
- * @param[in] hash      The buffer to allocate.
+ * @param  hash         The buffer to allocate.
  *
  * @return The bytes allocated or < 0 on error.
  *
@@ -851,7 +847,7 @@ int ssh_get_pubkey_hash(ssh_session session, unsigned char **hash) {
 
   pubkey = session->current_crypto->server_pubkey;
 
-  md5_update(ctx, pubkey->string, ssh_string_len(pubkey));
+  md5_update(ctx, pubkey->string, string_len(pubkey));
   md5_final(h, ctx);
 
   *hash = h;
@@ -861,11 +857,10 @@ int ssh_get_pubkey_hash(ssh_session session, unsigned char **hash) {
 
 /**
  * @brief Deallocate the hash obtained by ssh_get_pubkey_hash.
- *
  * This is required under Microsoft platform as this library might use a 
  * different C library than your software, hence a different heap.
  *
- * @param[in] hash      The buffer to deallocate.
+ * @param  hash         The buffer to deallocate.
  *
  * @see ssh_get_pubkey_hash()
  */
@@ -875,14 +870,14 @@ void ssh_clean_pubkey_hash(unsigned char **hash) {
 }
 
 ssh_string ssh_get_pubkey(ssh_session session){
-    return ssh_string_copy(session->current_crypto->server_pubkey);
+    return string_copy(session->current_crypto->server_pubkey);
 }
 
 static int match(const char *group, const char *object){
   const char *a;
   const char *z;
 
-  z = group;
+  a = z = group;
   do {
     a = strchr(z, ',');
     if (a == NULL) {
@@ -919,7 +914,7 @@ int sig_verify(ssh_session session, ssh_public_key pubkey,
 #endif
 
   switch(pubkey->type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
 #ifdef HAVE_LIBGCRYPT
       valid = gcry_sexp_build(&gcryhash, NULL, "%b", SHA_DIGEST_LEN + 1, hash);
       if (valid != 0) {
@@ -954,8 +949,8 @@ int sig_verify(ssh_session session, ssh_public_key pubkey,
       ssh_set_error(session, SSH_FATAL, "Invalid DSA signature");
       return -1;
 
-    case SSH_KEYTYPE_RSA:
-    case SSH_KEYTYPE_RSA1:
+    case TYPE_RSA:
+    case TYPE_RSA1:
 #ifdef HAVE_LIBGCRYPT
       valid = gcry_sexp_build(&gcryhash, NULL,
           "(data(flags pkcs1)(hash sha1 %b))", SHA_DIGEST_LEN, hash + 1);
@@ -976,7 +971,7 @@ int sig_verify(ssh_session session, ssh_public_key pubkey,
       }
 #elif defined HAVE_LIBCRYPTO
       valid = RSA_verify(NID_sha1, hash + 1, SHA_DIGEST_LEN,
-          signature->rsa_sign->string, ssh_string_len(signature->rsa_sign),
+          signature->rsa_sign->string, string_len(signature->rsa_sign),
           pubkey->rsa_pub);
       if (valid == 1) {
         return 0;
@@ -1042,6 +1037,5 @@ int signature_verify(ssh_session session, ssh_string signature) {
   return err;
 }
 
-/* @} */
-
-/* vim: set ts=4 sw=4 et cindent: */
+/** @} */
+/* vim: set ts=2 sw=2 et cindent: */

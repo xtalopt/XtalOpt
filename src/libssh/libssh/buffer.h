@@ -22,7 +22,6 @@
 #ifndef BUFFER_H_
 #define BUFFER_H_
 
-#include "libssh/libssh.h"
 /* Describes a buffer state */
 struct ssh_buffer_struct {
     char *data;
@@ -31,10 +30,6 @@ struct ssh_buffer_struct {
     uint32_t pos;
 };
 
-LIBSSH_API void ssh_buffer_free(ssh_buffer buffer);
-LIBSSH_API void *ssh_buffer_get_begin(ssh_buffer buffer);
-LIBSSH_API uint32_t ssh_buffer_get_len(ssh_buffer buffer);
-LIBSSH_API ssh_buffer ssh_buffer_new(void);
 int buffer_add_ssh_string(ssh_buffer buffer, ssh_string string);
 int buffer_add_u8(ssh_buffer buffer, uint8_t data);
 int buffer_add_u16(ssh_buffer buffer, uint16_t data);

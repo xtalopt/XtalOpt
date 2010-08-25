@@ -29,34 +29,13 @@ typedef struct packet_struct {
 	uint8_t type;
 } PACKET;
 
-/** different state of packet reading. */
-enum ssh_packet_state_e {
-  /** Packet not initialized, must read the size of packet */
-  PACKET_STATE_INIT,
-  /** Size was read, waiting for the rest of data */
-  PACKET_STATE_SIZEREAD,
-  /** Full packet was read and callbacks are being called. Future packets
-   * should wait for the end of the callback. */
-  PACKET_STATE_PROCESSING
-};
-
+void packet_parse(ssh_session session);
 int packet_send(ssh_session session);
 
-#ifdef WITH_SSH1
-int packet_send1(ssh_session session) ;
-void ssh_packet_set_default_callbacks1(ssh_session session);
-
-SSH_PACKET_CALLBACK(ssh_packet_disconnect1);
-SSH_PACKET_CALLBACK(ssh_packet_smsg_success1);
-SSH_PACKET_CALLBACK(ssh_packet_smsg_failure1);
-int ssh_packet_socket_callback1(const void *data, size_t receivedlen, void *user);
-
-#endif
-
-SSH_PACKET_CALLBACK(ssh_packet_unimplemented);
-int ssh_packet_send_unimplemented(ssh_session session, uint32_t seqnum);
-int ssh_packet_parse_type(ssh_session session);
-//int packet_flush(ssh_session session, int enforce_blocking);
+int packet_read(ssh_session session);
+int packet_translate(ssh_session session);
+int packet_wait(ssh_session session,int type,int blocking);
+int packet_flush(ssh_session session, int enforce_blocking);
 
 
 #endif /* PACKET_H_ */

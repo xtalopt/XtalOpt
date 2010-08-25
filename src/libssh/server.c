@@ -21,6 +21,12 @@
  * MA 02111-1307, USA.
  */
 
+/**
+ * \defgroup ssh_server SSH Server
+ * \addtogroup ssh_server
+ * @{
+ */
+
 #include "config.h"
 
 #include <errno.h>
@@ -43,12 +49,6 @@
 #include "libssh/keys.h"
 #include "libssh/dh.h"
 #include "libssh/messages.h"
-
-/**
- * @addtogroup libssh_server
- *
- * @{
- */
 
 #ifdef _WIN32
 
@@ -150,7 +150,7 @@ int ssh_bind_listen(ssh_bind sshbind) {
   }
 
   fd = bind_socket(sshbind, host, sshbind->bindport);
-  if (fd == SSH_INVALID_SOCKET) {
+  if (fd < 0) {
     return -1;
   }
   sshbind->bindfd = fd;
@@ -204,14 +204,14 @@ int ssh_bind_accept(ssh_bind sshbind, ssh_session session) {
   }
 
   if (sshbind->dsakey) {
-    dsa = _privatekey_from_file(sshbind, sshbind->dsakey, SSH_KEYTYPE_DSS);
+    dsa = _privatekey_from_file(sshbind, sshbind->dsakey, TYPE_DSS);
     if (dsa == NULL) {
       return SSH_ERROR;
     }
   }
 
   if (sshbind->rsakey) {
-    rsa = _privatekey_from_file(sshbind, sshbind->rsakey, SSH_KEYTYPE_RSA);
+    rsa = _privatekey_from_file(sshbind, sshbind->rsakey, TYPE_RSA);
     if (rsa == NULL) {
       privatekey_free(dsa);
       return SSH_ERROR;
@@ -355,44 +355,29 @@ static int server_set_kex(ssh_session session) {
   return 0;
 }
 
-SSH_PACKET_CALLBACK(ssh_packet_kexdh_init){
+static int dh_handshake_server(ssh_session session) {
   ssh_string e;
-  (void)type;
-  (void)user;enter_function();
-  ssh_log(session,SSH_LOG_PACKET,"Received SSH_MSG_KEXDH_INIT");
-  if(session->dh_handshake_state != DH_STATE_INIT){
-    ssh_log(session,SSH_LOG_RARE,"Invalid state for SSH_MSG_KEXDH_INIT");
-    goto error;
+  ssh_string f;
+  ssh_string pubkey;
+  ssh_string sign;
+  ssh_public_key pub;
+  ssh_private_key prv;
+
+  if (packet_wait(session, SSH2_MSG_KEXDH_INIT, 1) != SSH_OK) {
+    return -1;
   }
-  e = buffer_get_ssh_string(packet);
+
+  e = buffer_get_ssh_string(session->in_buffer);
   if (e == NULL) {
     ssh_set_error(session, SSH_FATAL, "No e number in client request");
     return -1;
   }
   if (dh_import_e(session, e) < 0) {
     ssh_set_error(session, SSH_FATAL, "Cannot import e number");
-    session->session_state=SSH_SESSION_STATE_ERROR;
-  } else {
-    session->dh_handshake_state=DH_STATE_INIT_SENT;
+    string_free(e);
+    return -1;
   }
-  ssh_string_free(e);
-
-  error:
-  leave_function();
-  return SSH_PACKET_USED;
-}
-
-static int dh_handshake_server(ssh_session session) {
-  ssh_string f;
-  ssh_string pubkey;
-  ssh_string sign;
-  ssh_public_key pub;
-  ssh_private_key prv;
-  /* waiting for SSH_MSG_KEXDH_INIT */
-  while(session->dh_handshake_state != DH_STATE_INIT_SENT){
-    ssh_handle_packets(session,-1);
-  }
-  /* received SSH_MSG_KEXDH_INIT */
+  string_free(e);
 
   if (dh_generate_y(session) < 0) {
     ssh_set_error(session, SSH_FATAL, "Could not create y number");
@@ -410,10 +395,10 @@ static int dh_handshake_server(ssh_session session) {
   }
 
   switch(session->hostkeys){
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
       prv = session->dsa_key;
       break;
-    case SSH_KEYTYPE_RSA:
+    case TYPE_RSA:
       prv = session->rsa_key;
       break;
     default:
@@ -424,34 +409,34 @@ static int dh_handshake_server(ssh_session session) {
   if (pub == NULL) {
     ssh_set_error(session, SSH_FATAL,
         "Could not get the public key from the private key");
-    ssh_string_free(f);
+    string_free(f);
     return -1;
   }
   pubkey = publickey_to_string(pub);
   publickey_free(pub);
   if (pubkey == NULL) {
     ssh_set_error(session, SSH_FATAL, "Not enough space");
-    ssh_string_free(f);
+    string_free(f);
     return -1;
   }
 
   dh_import_pubkey(session, pubkey);
   if (dh_build_k(session) < 0) {
     ssh_set_error(session, SSH_FATAL, "Could not import the public key");
-    ssh_string_free(f);
+    string_free(f);
     return -1;
   }
 
   if (make_sessionid(session) != SSH_OK) {
     ssh_set_error(session, SSH_FATAL, "Could not create a session id");
-    ssh_string_free(f);
+    string_free(f);
     return -1;
   }
 
   sign = ssh_sign_session_id(session, prv);
   if (sign == NULL) {
     ssh_set_error(session, SSH_FATAL, "Could not sign the session id");
-    ssh_string_free(f);
+    string_free(f);
     return -1;
   }
 
@@ -471,13 +456,14 @@ static int dh_handshake_server(ssh_session session) {
       buffer_add_ssh_string(session->out_buffer, sign) < 0) {
     ssh_set_error(session, SSH_FATAL, "Not enough space");
     buffer_reinit(session->out_buffer);
-    ssh_string_free(f);
-    ssh_string_free(sign);
+    string_free(f);
+    string_free(sign);
     return -1;
   }
-  ssh_string_free(f);
-  ssh_string_free(sign);
-  if (packet_send(session) == SSH_ERROR) {
+  string_free(f);
+  string_free(sign);
+
+  if (packet_send(session) != SSH_OK) {
     return -1;
   }
 
@@ -486,14 +472,15 @@ static int dh_handshake_server(ssh_session session) {
     return -1;
   }
 
-  if (packet_send(session) == SSH_ERROR) {
+  if (packet_send(session) != SSH_OK) {
     return -1;
   }
   ssh_log(session, SSH_LOG_PACKET, "SSH_MSG_NEWKEYS sent");
-  session->dh_handshake_state=DH_STATE_NEWKEYS_SENT;
 
-  while(session->dh_handshake_state != DH_STATE_FINISHED)
-    ssh_handle_packets(session,-1);
+  if (packet_wait(session, SSH2_MSG_NEWKEYS, 1) != SSH_OK) {
+    return -1;
+  }
+  ssh_log(session, SSH_LOG_PACKET, "Got SSH_MSG_NEWKEYS");
 
   if (generate_session_keys(session) < 0) {
     return -1;
@@ -517,13 +504,6 @@ static int dh_handshake_server(ssh_session session) {
   return 0;
 }
 
-/* FIXME TODO BUG
- * Makes linker happy until I work on server code
- */
-static char *ssh_get_banner(ssh_session session){
-	(void)session;
-	return strdup("BUG");
-}
 /* Do the banner and key exchange */
 int ssh_accept(ssh_session session) {
   if (ssh_send_banner(session, 1) < 0) {
@@ -545,10 +525,9 @@ int ssh_accept(ssh_session session) {
     return -1;
   }
 
-  /* TODO here things won't work anymore */
-//  if (ssh_get_kex(session,1) < 0) {
-//    return -1;
-//  }
+  if (ssh_get_kex(session,1) < 0) {
+    return -1;
+  }
 
   ssh_list_kex(session, &session->client_kex);
   crypt_set_algorithms_server(session);
@@ -615,7 +594,7 @@ static int ssh_message_auth_reply_default(ssh_message msg,int partial) {
   ssh_log(session, SSH_LOG_PACKET,
       "Sending a auth failure. methods that can continue: %s", methods_c);
 
-  methods = ssh_string_from_char(methods_c);
+  methods = string_from_char(methods_c);
   if (methods == NULL) {
     goto error;
   }
@@ -636,7 +615,7 @@ static int ssh_message_auth_reply_default(ssh_message msg,int partial) {
 
   rc = packet_send(msg->session);
 error:
-  ssh_string_free(methods);
+  string_free(methods);
 
   leave_function();
   return rc;
@@ -712,12 +691,12 @@ int ssh_message_service_reply_success(ssh_message msg) {
   if (buffer_add_u8(session->out_buffer, SSH2_MSG_SERVICE_ACCEPT) < 0) {
     return -1;
   }
-  service=ssh_string_from_char(msg->service_request.service);
+  service=string_from_char(msg->service_request.service);
   if (buffer_add_ssh_string(session->out_buffer, service) < 0) {
-    ssh_string_free(service);
+    string_free(service);
     return -1;
   }
-  ssh_string_free(service);
+  string_free(service);
   return packet_send(msg->session);
 }
 
@@ -777,13 +756,6 @@ ssh_public_key ssh_message_auth_publickey(ssh_message msg){
   return msg->auth_request.public_key;
 }
 
-enum ssh_publickey_state_e ssh_message_auth_publickey_state(ssh_message msg){
-	if (msg == NULL) {
-	    return -1;
-	  }
-	  return msg->auth_request.signature_state;
-}
-
 int ssh_message_auth_set_methods(ssh_message msg, int methods) {
   if (msg == NULL || msg->session == NULL) {
     return -1;
@@ -824,19 +796,6 @@ int ssh_message_auth_reply_pk_ok(ssh_message msg, ssh_string algo, ssh_string pu
 
   return packet_send(msg->session);
 }
-
-int ssh_message_auth_reply_pk_ok_simple(ssh_message msg) {
-	ssh_string algo;
-	ssh_string pubkey;
-	int ret;
-	algo=ssh_string_from_char(msg->auth_request.public_key->type_c);
-	pubkey=publickey_to_string(msg->auth_request.public_key);
-	ret=ssh_message_auth_reply_pk_ok(msg,algo,pubkey);
-	ssh_string_free(algo);
-	ssh_string_free(pubkey);
-	return ret;
-}
-
 
 char *ssh_message_channel_request_open_originator(ssh_message msg){
     return msg->channel_request_open.originator;
@@ -896,14 +855,14 @@ char *ssh_message_channel_request_subsystem(ssh_message msg){
 
 /** @brief defines the SSH_MESSAGE callback
  * @param session the current ssh session
- * @param ssh_message_callback_ a function pointer to a callback taking the
+ * @param ssh_message_callback a function pointer to a callback taking the
  * current ssh session and received message as parameters. the function returns
  * 0 if the message has been parsed and treated sucessfuly, 1 otherwise (libssh
  * must take care of the response).
  */
 void ssh_set_message_callback(ssh_session session,
-    int(*ssh_message_callback_)(ssh_session session, ssh_message msg)){
-  session->ssh_message_callback=ssh_message_callback_;
+    int(*ssh_message_callback)(ssh_session session, ssh_message msg)){
+  session->ssh_message_callback=ssh_message_callback;
 }
 
 int ssh_execute_message_callbacks(ssh_session session){
@@ -912,30 +871,23 @@ int ssh_execute_message_callbacks(ssh_session session){
   if(!session->ssh_message_list)
     return SSH_OK;
   if(session->ssh_message_callback){
-    while(ssh_list_pop_head(ssh_message , session->ssh_message_list) != NULL){
-      msg=ssh_message_pop_head(session);
+    while((msg=ssh_list_pop_head(ssh_message , session->ssh_message_list)) != NULL){
       ret=session->ssh_message_callback(session,msg);
       if(ret==1){
         ret = ssh_message_reply_default(msg);
-        ssh_message_free(msg);
         if(ret != SSH_OK)
           return ret;
-      } else {
-        ssh_message_free(msg);
       }
     }
   } else {
-    while(ssh_list_pop_head(ssh_message , session->ssh_message_list) != NULL){
-      msg=ssh_message_pop_head(session);
+    while((msg=ssh_list_pop_head(ssh_message , session->ssh_message_list)) != NULL){
       ret = ssh_message_reply_default(msg);
-      ssh_message_free(msg);
       if(ret != SSH_OK)
         return ret;
     }
   }
   return SSH_OK;
 }
-
-/* @} */
-
-/* vim: set ts=4 sw=4 et cindent: */
+/** @}
+ */
+/* vim: set ts=2 sw=2 et cindent: */

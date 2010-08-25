@@ -38,20 +38,18 @@
 #include "libssh/messages.h"
 #include "libssh/string.h"
 
-/**
- * @addtogroup libssh_auth
- *
+/** \addtogroup ssh_auth
  * @{
  */
-
 /* Public key decoding functions */
+
 const char *ssh_type_to_char(int type) {
   switch (type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
       return "ssh-dss";
-    case SSH_KEYTYPE_RSA:
+    case TYPE_RSA:
       return "ssh-rsa";
-    case SSH_KEYTYPE_RSA1:
+    case TYPE_RSA1:
       return "ssh-rsa1";
     default:
       return NULL;
@@ -60,17 +58,17 @@ const char *ssh_type_to_char(int type) {
 
 int ssh_type_from_name(const char *name) {
   if (strcmp(name, "rsa1") == 0) {
-    return SSH_KEYTYPE_RSA1;
+    return TYPE_RSA1;
   } else if (strcmp(name, "rsa") == 0) {
-    return SSH_KEYTYPE_RSA;
+    return TYPE_RSA;
   } else if (strcmp(name, "dsa") == 0) {
-    return SSH_KEYTYPE_DSS;
+    return TYPE_DSS;
   } else if (strcmp(name, "ssh-rsa1") == 0) {
-    return SSH_KEYTYPE_RSA1;
+    return TYPE_RSA1;
   } else if (strcmp(name, "ssh-rsa") == 0) {
-    return SSH_KEYTYPE_RSA;
+    return TYPE_RSA;
   } else if (strcmp(name, "ssh-dss") == 0) {
-    return SSH_KEYTYPE_DSS;
+    return TYPE_DSS;
   }
 
   return -1;
@@ -85,11 +83,11 @@ ssh_public_key publickey_make_dss(ssh_session session, ssh_buffer buffer) {
 
   key = malloc(sizeof(struct ssh_public_key_struct));
   if (key == NULL) {
-    ssh_buffer_free(buffer);
+    buffer_free(buffer);
     return NULL;
   }
 
-  key->type = SSH_KEYTYPE_DSS;
+  key->type = TYPE_DSS;
   key->type_c = ssh_type_to_char(key->type);
 
   p = buffer_get_ssh_string(buffer);
@@ -97,7 +95,7 @@ ssh_public_key publickey_make_dss(ssh_session session, ssh_buffer buffer) {
   g = buffer_get_ssh_string(buffer);
   pubkey = buffer_get_ssh_string(buffer);
 
-  ssh_buffer_free(buffer); /* we don't need it anymore */
+  buffer_free(buffer); /* we don't need it anymore */
 
   if (p == NULL || q == NULL || g == NULL || pubkey == NULL) {
     ssh_set_error(session, SSH_FATAL, "Invalid DSA public key");
@@ -107,10 +105,10 @@ ssh_public_key publickey_make_dss(ssh_session session, ssh_buffer buffer) {
 #ifdef HAVE_LIBGCRYPT
   gcry_sexp_build(&key->dsa_pub, NULL,
       "(public-key(dsa(p %b)(q %b)(g %b)(y %b)))",
-      ssh_string_len(p), ssh_string_data(p),
-      ssh_string_len(q), ssh_string_data(q),
-      ssh_string_len(g), ssh_string_data(g),
-      ssh_string_len(pubkey), ssh_string_data(pubkey));
+      string_len(p), string_data(p),
+      string_len(q), string_data(q),
+      string_len(g), string_data(g),
+      string_len(pubkey), string_data(pubkey));
   if (key->dsa_pub == NULL) {
     goto error;
   }
@@ -133,30 +131,30 @@ ssh_public_key publickey_make_dss(ssh_session session, ssh_buffer buffer) {
 #endif /* HAVE_LIBCRYPTO */
 
 #ifdef DEBUG_CRYPTO
-  ssh_print_hexa("p", ssh_string_data(p), ssh_string_len(p));
-  ssh_print_hexa("q", ssh_string_data(q), ssh_string_len(q));
-  ssh_print_hexa("g", ssh_string_data(g), ssh_string_len(g));
+  ssh_print_hexa("p", string_data(p), string_len(p));
+  ssh_print_hexa("q", string_data(q), string_len(q));
+  ssh_print_hexa("g", string_data(g), string_len(g));
 #endif
 
-  ssh_string_burn(p);
-  ssh_string_free(p);
-  ssh_string_burn(q);
-  ssh_string_free(q);
-  ssh_string_burn(g);
-  ssh_string_free(g);
-  ssh_string_burn(pubkey);
-  ssh_string_free(pubkey);
+  string_burn(p);
+  string_free(p);
+  string_burn(q);
+  string_free(q);
+  string_burn(g);
+  string_free(g);
+  string_burn(pubkey);
+  string_free(pubkey);
 
   return key;
 error:
-  ssh_string_burn(p);
-  ssh_string_free(p);
-  ssh_string_burn(q);
-  ssh_string_free(q);
-  ssh_string_burn(g);
-  ssh_string_free(g);
-  ssh_string_burn(pubkey);
-  ssh_string_free(pubkey);
+  string_burn(p);
+  string_free(p);
+  string_burn(q);
+  string_free(q);
+  string_burn(g);
+  string_free(g);
+  string_burn(pubkey);
+  string_free(pubkey);
   publickey_free(key);
 
   return NULL;
@@ -170,7 +168,7 @@ ssh_public_key publickey_make_rsa(ssh_session session, ssh_buffer buffer,
 
   key = malloc(sizeof(struct ssh_public_key_struct));
   if (key == NULL) {
-    ssh_buffer_free(buffer);
+    buffer_free(buffer);
     return NULL;
   }
 
@@ -180,7 +178,7 @@ ssh_public_key publickey_make_rsa(ssh_session session, ssh_buffer buffer,
   e = buffer_get_ssh_string(buffer);
   n = buffer_get_ssh_string(buffer);
 
-  ssh_buffer_free(buffer); /* we don't need it anymore */
+  buffer_free(buffer); /* we don't need it anymore */
 
   if(e == NULL || n == NULL) {
     ssh_set_error(session, SSH_FATAL, "Invalid RSA public key");
@@ -189,8 +187,8 @@ ssh_public_key publickey_make_rsa(ssh_session session, ssh_buffer buffer,
 #ifdef HAVE_LIBGCRYPT
   gcry_sexp_build(&key->rsa_pub, NULL,
       "(public-key(rsa(n %b)(e %b)))",
-      ssh_string_len(n), ssh_string_data(n),
-      ssh_string_len(e),ssh_string_data(e));
+      string_len(n), string_data(n),
+      string_len(e),string_data(e));
   if (key->rsa_pub == NULL) {
     goto error;
   }
@@ -209,21 +207,21 @@ ssh_public_key publickey_make_rsa(ssh_session session, ssh_buffer buffer,
 #endif
 
 #ifdef DEBUG_CRYPTO
-  ssh_print_hexa("e", ssh_string_data(e), ssh_string_len(e));
-  ssh_print_hexa("n", ssh_string_data(n), ssh_string_len(n));
+  ssh_print_hexa("e", string_data(e), string_len(e));
+  ssh_print_hexa("n", string_data(n), string_len(n));
 #endif
 
-  ssh_string_burn(e);
-  ssh_string_free(e);
-  ssh_string_burn(n);
-  ssh_string_free(n);
+  string_burn(e);
+  string_free(e);
+  string_burn(n);
+  string_free(n);
 
   return key;
 error:
-  ssh_string_burn(e);
-  ssh_string_free(e);
-  ssh_string_burn(n);
-  ssh_string_free(n);
+  string_burn(e);
+  string_free(e);
+  string_burn(n);
+  string_free(n);
   publickey_free(key);
 
   return NULL;
@@ -235,15 +233,15 @@ void publickey_free(ssh_public_key key) {
   }
 
   switch(key->type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
 #ifdef HAVE_LIBGCRYPT
       gcry_sexp_release(key->dsa_pub);
 #elif HAVE_LIBCRYPTO
       DSA_free(key->dsa_pub);
 #endif
       break;
-    case SSH_KEYTYPE_RSA:
-    case SSH_KEYTYPE_RSA1:
+    case TYPE_RSA:
+    case TYPE_RSA1:
 #ifdef HAVE_LIBGCRYPT
       gcry_sexp_release(key->rsa_pub);
 #elif defined HAVE_LIBCRYPTO
@@ -262,12 +260,12 @@ ssh_public_key publickey_from_string(ssh_session session, ssh_string pubkey_s) {
   char *type_c = NULL;
   int type;
 
-  tmpbuf = ssh_buffer_new();
+  tmpbuf = buffer_new();
   if (tmpbuf == NULL) {
     return NULL;
   }
 
-  if (buffer_add_data(tmpbuf, ssh_string_data(pubkey_s), ssh_string_len(pubkey_s)) < 0) {
+  if (buffer_add_data(tmpbuf, string_data(pubkey_s), string_len(pubkey_s)) < 0) {
     goto error;
   }
 
@@ -277,8 +275,8 @@ ssh_public_key publickey_from_string(ssh_session session, ssh_string pubkey_s) {
     goto error;
   }
 
-  type_c = ssh_string_to_char(type_s);
-  ssh_string_free(type_s);
+  type_c = string_to_char(type_s);
+  string_free(type_s);
   if (type_c == NULL) {
     goto error;
   }
@@ -287,10 +285,10 @@ ssh_public_key publickey_from_string(ssh_session session, ssh_string pubkey_s) {
   SAFE_FREE(type_c);
 
   switch (type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
       return publickey_make_dss(session, tmpbuf);
-    case SSH_KEYTYPE_RSA:
-    case SSH_KEYTYPE_RSA1:
+    case TYPE_RSA:
+    case TYPE_RSA1:
       return publickey_make_rsa(session, tmpbuf, type);
   }
 
@@ -298,18 +296,14 @@ ssh_public_key publickey_from_string(ssh_session session, ssh_string pubkey_s) {
       ssh_type_to_char(type));
 
 error:
-  ssh_buffer_free(tmpbuf);
+  buffer_free(tmpbuf);
   return NULL;
 }
 
-/**
- * @brief Make a public_key object out of a private_key object.
- *
- * @param[in]  prv      The private key to generate the public key.
- *
- * @returns             The generated public key, NULL on error.
- *
- * @see publickey_to_string()
+/** \brief Makes a PUBLIC_KEY object out of a PRIVATE_KEY object
+ * \param prv the Private key
+ * \returns the public key
+ * \see publickey_to_string()
  */
 ssh_public_key publickey_from_privatekey(ssh_private_key prv) {
   ssh_public_key key = NULL;
@@ -332,18 +326,18 @@ ssh_public_key publickey_from_privatekey(ssh_private_key prv) {
 
   key->type = prv->type;
   switch(key->type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
 #ifdef HAVE_LIBGCRYPT
       sexp = gcry_sexp_find_token(prv->dsa_priv, "p", 0);
       if (sexp == NULL) {
         goto error;
       }
       tmp = gcry_sexp_nth_data(sexp, 1, &size);
-      p = ssh_string_new(size);
+      p = string_new(size);
       if (p == NULL) {
         goto error;
       }
-      ssh_string_fill(p,(char *) tmp, size);
+      string_fill(p,(char *) tmp, size);
       gcry_sexp_release(sexp);
 
       sexp = gcry_sexp_find_token(prv->dsa_priv,"q",0);
@@ -351,11 +345,11 @@ ssh_public_key publickey_from_privatekey(ssh_private_key prv) {
         goto error;
       }
       tmp = gcry_sexp_nth_data(sexp,1,&size);
-      q = ssh_string_new(size);
+      q = string_new(size);
       if (q == NULL) {
         goto error;
       }
-      ssh_string_fill(q,(char *) tmp,size);
+      string_fill(q,(char *) tmp,size);
       gcry_sexp_release(sexp);
 
       sexp = gcry_sexp_find_token(prv->dsa_priv, "g", 0);
@@ -363,11 +357,11 @@ ssh_public_key publickey_from_privatekey(ssh_private_key prv) {
         goto error;
       }
       tmp = gcry_sexp_nth_data(sexp,1,&size);
-      g = ssh_string_new(size);
+      g = string_new(size);
       if (g == NULL) {
         goto error;
       }
-      ssh_string_fill(g,(char *) tmp,size);
+      string_fill(g,(char *) tmp,size);
       gcry_sexp_release(sexp);
 
       sexp = gcry_sexp_find_token(prv->dsa_priv,"y",0);
@@ -375,28 +369,28 @@ ssh_public_key publickey_from_privatekey(ssh_private_key prv) {
         goto error;
       }
       tmp = gcry_sexp_nth_data(sexp,1,&size);
-      y = ssh_string_new(size);
+      y = string_new(size);
       if (y == NULL) {
         goto error;
       }
-      ssh_string_fill(y,(char *) tmp,size);
+      string_fill(y,(char *) tmp,size);
       gcry_sexp_release(sexp);
 
       gcry_sexp_build(&key->dsa_pub, NULL,
           "(public-key(dsa(p %b)(q %b)(g %b)(y %b)))",
-          ssh_string_len(p), ssh_string_data(p),
-          ssh_string_len(q), ssh_string_data(q),
-          ssh_string_len(g), ssh_string_data(g),
-          ssh_string_len(y), ssh_string_data(y));
+          string_len(p), string_data(p),
+          string_len(q), string_data(q),
+          string_len(g), string_data(g),
+          string_len(y), string_data(y));
 
-      ssh_string_burn(p);
-      ssh_string_free(p);
-      ssh_string_burn(q);
-      ssh_string_free(q);
-      ssh_string_burn(g);
-      ssh_string_free(g);
-      ssh_string_burn(y);
-      ssh_string_free(y);
+      string_burn(p);
+      string_free(p);
+      string_burn(q);
+      string_free(q);
+      string_burn(g);
+      string_free(g);
+      string_burn(y);
+      string_free(y);
 #elif defined HAVE_LIBCRYPTO
       key->dsa_pub = DSA_new();
       if (key->dsa_pub == NULL) {
@@ -414,19 +408,19 @@ ssh_public_key publickey_from_privatekey(ssh_private_key prv) {
       }
 #endif /* HAVE_LIBCRYPTO */
       break;
-    case SSH_KEYTYPE_RSA:
-    case SSH_KEYTYPE_RSA1:
+    case TYPE_RSA:
+    case TYPE_RSA1:
 #ifdef HAVE_LIBGCRYPT
       sexp = gcry_sexp_find_token(prv->rsa_priv, "n", 0);
       if (sexp == NULL) {
         goto error;
       }
       tmp = gcry_sexp_nth_data(sexp, 1, &size);
-      n = ssh_string_new(size);
+      n = string_new(size);
       if (n == NULL) {
         goto error;
       }
-      ssh_string_fill(n, (char *) tmp, size);
+      string_fill(n, (char *) tmp, size);
       gcry_sexp_release(sexp);
 
       sexp = gcry_sexp_find_token(prv->rsa_priv, "e", 0);
@@ -434,25 +428,25 @@ ssh_public_key publickey_from_privatekey(ssh_private_key prv) {
         goto error;
       }
       tmp = gcry_sexp_nth_data(sexp, 1, &size);
-      e = ssh_string_new(size);
+      e = string_new(size);
       if (e == NULL) {
         goto error;
       }
-      ssh_string_fill(e, (char *) tmp, size);
+      string_fill(e, (char *) tmp, size);
       gcry_sexp_release(sexp);
 
       gcry_sexp_build(&key->rsa_pub, NULL,
           "(public-key(rsa(n %b)(e %b)))",
-          ssh_string_len(n), ssh_string_data(n),
-          ssh_string_len(e), ssh_string_data(e));
+          string_len(n), string_data(n),
+          string_len(e), string_data(e));
       if (key->rsa_pub == NULL) {
         goto error;
       }
 
-      ssh_string_burn(e);
-      ssh_string_free(e);
-      ssh_string_burn(n);
-      ssh_string_free(n);
+      string_burn(e);
+      string_free(e);
+      string_burn(n);
+      string_free(n);
 #elif defined HAVE_LIBCRYPTO
       key->rsa_pub = RSA_new();
       if (key->rsa_pub == NULL) {
@@ -473,19 +467,19 @@ ssh_public_key publickey_from_privatekey(ssh_private_key prv) {
 error:
 #ifdef HAVE_LIBGCRYPT
   gcry_sexp_release(sexp);
-  ssh_string_burn(p);
-  ssh_string_free(p);
-  ssh_string_burn(q);
-  ssh_string_free(q);
-  ssh_string_burn(g);
-  ssh_string_free(g);
-  ssh_string_burn(y);
-  ssh_string_free(y);
+  string_burn(p);
+  string_free(p);
+  string_burn(q);
+  string_free(q);
+  string_burn(g);
+  string_free(g);
+  string_burn(y);
+  string_free(y);
 
-  ssh_string_burn(e);
-  ssh_string_free(e);
-  ssh_string_burn(n);
-  ssh_string_free(n);
+  string_burn(e);
+  string_free(e);
+  string_burn(n);
+  string_free(n);
 #endif
   publickey_free(key);
 
@@ -514,11 +508,11 @@ static int dsa_public_to_string(DSA *key, ssh_buffer buffer) {
     goto error;
   }
   tmp = gcry_sexp_nth_data(sexp, 1, &size);
-  p = ssh_string_new(size);
+  p = string_new(size);
   if (p == NULL) {
     goto error;
   }
-  ssh_string_fill(p, (char *) tmp, size);
+  string_fill(p, (char *) tmp, size);
   gcry_sexp_release(sexp);
 
   sexp = gcry_sexp_find_token(key, "q", 0);
@@ -526,11 +520,11 @@ static int dsa_public_to_string(DSA *key, ssh_buffer buffer) {
     goto error;
   }
   tmp = gcry_sexp_nth_data(sexp, 1, &size);
-  q = ssh_string_new(size);
+  q = string_new(size);
   if (q == NULL) {
     goto error;
   }
-  ssh_string_fill(q, (char *) tmp, size);
+  string_fill(q, (char *) tmp, size);
   gcry_sexp_release(sexp);
 
   sexp = gcry_sexp_find_token(key, "g", 0);
@@ -538,11 +532,11 @@ static int dsa_public_to_string(DSA *key, ssh_buffer buffer) {
     goto error;
   }
   tmp = gcry_sexp_nth_data(sexp, 1, &size);
-  g = ssh_string_new(size);
+  g = string_new(size);
   if (g == NULL) {
     goto error;
   }
-  ssh_string_fill(g, (char *) tmp, size);
+  string_fill(g, (char *) tmp, size);
   gcry_sexp_release(sexp);
 
   sexp = gcry_sexp_find_token(key, "y", 0);
@@ -550,11 +544,11 @@ static int dsa_public_to_string(DSA *key, ssh_buffer buffer) {
     goto error;
   }
   tmp = gcry_sexp_nth_data(sexp, 1, &size);
-  n = ssh_string_new(size);
+  n = string_new(size);
   if (n == NULL) {
     goto error;
   }
-  ssh_string_fill(n, (char *) tmp, size);
+  string_fill(n, (char *) tmp, size);
 
 #elif defined HAVE_LIBCRYPTO
   p = make_bignum_string(key->p);
@@ -584,14 +578,14 @@ error:
   gcry_sexp_release(sexp);
 #endif
 
-  ssh_string_burn(p);
-  ssh_string_free(p);
-  ssh_string_burn(q);
-  ssh_string_free(q);
-  ssh_string_burn(g);
-  ssh_string_free(g);
-  ssh_string_burn(n);
-  ssh_string_free(n);
+  string_burn(p);
+  string_free(p);
+  string_burn(q);
+  string_free(q);
+  string_burn(g);
+  string_free(g);
+  string_burn(n);
+  string_free(n);
 
   return rc;
 }
@@ -617,11 +611,11 @@ static int rsa_public_to_string(RSA *key, ssh_buffer buffer) {
     goto error;
   }
   tmp = gcry_sexp_nth_data(sexp, 1, &size);
-  n = ssh_string_new(size);
+  n = string_new(size);
   if (n == NULL) {
     goto error;
   }
-  ssh_string_fill(n, (char *) tmp, size);
+  string_fill(n, (char *) tmp, size);
   gcry_sexp_release(sexp);
 
   sexp = gcry_sexp_find_token(key, "e", 0);
@@ -629,11 +623,11 @@ static int rsa_public_to_string(RSA *key, ssh_buffer buffer) {
     goto error;
   }
   tmp = gcry_sexp_nth_data(sexp, 1, &size);
-  e = ssh_string_new(size);
+  e = string_new(size);
   if (e == NULL) {
     goto error;
   }
-  ssh_string_fill(e, (char *) tmp, size);
+  string_fill(e, (char *) tmp, size);
 
 #elif defined HAVE_LIBCRYPTO
   e = make_bignum_string(key->e);
@@ -656,35 +650,30 @@ error:
   gcry_sexp_release(sexp);
 #endif
 
-  ssh_string_burn(e);
-  ssh_string_free(e);
-  ssh_string_burn(n);
-  ssh_string_free(n);
+  string_burn(e);
+  string_free(e);
+  string_burn(n);
+  string_free(n);
 
   return rc;
 }
 
-/**
- * @brief Convert a public_key object into a a SSH string.
- *
- * @param[in]  key      The public key to convert.
- *
- * @returns             An allocated SSH String containing the public key, NULL
- *                      on error.
- *
- * @see string_free()
+/** \brief makes a SSH String out of a PUBLIC_KEY object
+ * \param key the public key
+ * \returns a SSH String containing the public key
+ * \see string_free()
  */
 ssh_string publickey_to_string(ssh_public_key key) {
   ssh_string type = NULL;
   ssh_string ret = NULL;
   ssh_buffer buf = NULL;
 
-  buf = ssh_buffer_new();
+  buf = buffer_new();
   if (buf == NULL) {
     return NULL;
   }
 
-  type = ssh_string_from_char(key->type_c);
+  type = string_from_char(key->type_c);
   if (type == NULL) {
     goto error;
   }
@@ -694,28 +683,28 @@ ssh_string publickey_to_string(ssh_public_key key) {
   }
 
   switch (key->type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
       if (dsa_public_to_string(key->dsa_pub, buf) < 0) {
         goto error;
       }
       break;
-    case SSH_KEYTYPE_RSA:
-    case SSH_KEYTYPE_RSA1:
+    case TYPE_RSA:
+    case TYPE_RSA1:
       if (rsa_public_to_string(key->rsa_pub, buf) < 0) {
         goto error;
       }
       break;
   }
 
-  ret = ssh_string_new(ssh_buffer_get_len(buf));
+  ret = string_new(buffer_get_len(buf));
   if (ret == NULL) {
     goto error;
   }
 
-  ssh_string_fill(ret, ssh_buffer_get_begin(buf), ssh_buffer_get_len(buf));
+  string_fill(ret, buffer_get(buf), buffer_get_len(buf));
 error:
-  ssh_buffer_free(buf);
-  ssh_string_free(type);
+  buffer_free(buf);
+  string_free(type);
 
   return ret;
 }
@@ -738,29 +727,29 @@ static ssh_string signature_to_string(SIGNATURE *sign) {
   ssh_string s = NULL;
 #endif
 
-  tmpbuf = ssh_buffer_new();
+  tmpbuf = buffer_new();
   if (tmpbuf == NULL) {
     return NULL;
   }
 
-  tmp = ssh_string_from_char(ssh_type_to_char(sign->type));
+  tmp = string_from_char(ssh_type_to_char(sign->type));
   if (tmp == NULL) {
-    ssh_buffer_free(tmpbuf);
+    buffer_free(tmpbuf);
     return NULL;
   }
   if (buffer_add_ssh_string(tmpbuf, tmp) < 0) {
-    ssh_buffer_free(tmpbuf);
-    ssh_string_free(tmp);
+    buffer_free(tmpbuf);
+    string_free(tmp);
     return NULL;
   }
-  ssh_string_free(tmp);
+  string_free(tmp);
 
   switch(sign->type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
 #ifdef HAVE_LIBGCRYPT
       sexp = gcry_sexp_find_token(sign->dsa_sign, "r", 0);
       if (sexp == NULL) {
-        ssh_buffer_free(tmpbuf);
+        buffer_free(tmpbuf);
         return NULL;
       }
       r = gcry_sexp_nth_data(sexp, 1, &size);
@@ -773,7 +762,7 @@ static ssh_string signature_to_string(SIGNATURE *sign) {
 
       sexp = gcry_sexp_find_token(sign->dsa_sign, "s", 0);
       if (sexp == NULL) {
-        ssh_buffer_free(tmpbuf);
+        buffer_free(tmpbuf);
         return NULL;
       }
       s = gcry_sexp_nth_data(sexp,1,&size);
@@ -786,43 +775,43 @@ static ssh_string signature_to_string(SIGNATURE *sign) {
 #elif defined HAVE_LIBCRYPTO
       r = make_bignum_string(sign->dsa_sign->r);
       if (r == NULL) {
-        ssh_buffer_free(tmpbuf);
+        buffer_free(tmpbuf);
         return NULL;
       }
       s = make_bignum_string(sign->dsa_sign->s);
       if (s == NULL) {
-        ssh_buffer_free(tmpbuf);
-        ssh_string_free(r);
+        buffer_free(tmpbuf);
+        string_free(r);
         return NULL;
       }
 
-      memcpy(buffer, (char *)ssh_string_data(r) + ssh_string_len(r) - 20, 20);
-      memcpy(buffer + 20, (char *)ssh_string_data(s) + ssh_string_len(s) - 20, 20);
+      memcpy(buffer, (char *)string_data(r) + string_len(r) - 20, 20);
+      memcpy(buffer + 20, (char *)string_data(s) + string_len(s) - 20, 20);
 
-      ssh_string_free(r);
-      ssh_string_free(s);
+      string_free(r);
+      string_free(s);
 #endif /* HAVE_LIBCRYPTO */
-      rs = ssh_string_new(40);
+      rs = string_new(40);
       if (rs == NULL) {
-        ssh_buffer_free(tmpbuf);
+        buffer_free(tmpbuf);
         return NULL;
       }
 
-      ssh_string_fill(rs, buffer, 40);
+      string_fill(rs, buffer, 40);
       rc = buffer_add_ssh_string(tmpbuf, rs);
-      ssh_string_free(rs);
+      string_free(rs);
       if (rc < 0) {
-        ssh_buffer_free(tmpbuf);
+        buffer_free(tmpbuf);
         return NULL;
       }
 
       break;
-    case SSH_KEYTYPE_RSA:
-    case SSH_KEYTYPE_RSA1:
+    case TYPE_RSA:
+    case TYPE_RSA1:
 #ifdef HAVE_LIBGCRYPT
       sexp = gcry_sexp_find_token(sign->rsa_sign, "s", 0);
       if (sexp == NULL) {
-        ssh_buffer_free(tmpbuf);
+        buffer_free(tmpbuf);
         return NULL;
       }
       s = gcry_sexp_nth_data(sexp,1,&size);
@@ -830,36 +819,36 @@ static ssh_string signature_to_string(SIGNATURE *sign) {
         size--;
         s++;
       }
-      rs = ssh_string_new(size);
+      rs = string_new(size);
       if (rs == NULL) {
-        ssh_buffer_free(tmpbuf);
+        buffer_free(tmpbuf);
         return NULL;
       }
 
-      ssh_string_fill(rs, (char *) s, size);
+      string_fill(rs, (char *) s, size);
       rc = buffer_add_ssh_string(tmpbuf, rs);
       gcry_sexp_release(sexp);
-      ssh_string_free(rs);
+      string_free(rs);
       if (rc < 0) {
-        ssh_buffer_free(tmpbuf);
+        buffer_free(tmpbuf);
         return NULL;
       }
 #elif defined HAVE_LIBCRYPTO
       if (buffer_add_ssh_string(tmpbuf,sign->rsa_sign) < 0) {
-        ssh_buffer_free(tmpbuf);
+        buffer_free(tmpbuf);
         return NULL;
       }
 #endif
       break;
   }
 
-  str = ssh_string_new(ssh_buffer_get_len(tmpbuf));
+  str = string_new(buffer_get_len(tmpbuf));
   if (str == NULL) {
-    ssh_buffer_free(tmpbuf);
+    buffer_free(tmpbuf);
     return NULL;
   }
-  ssh_string_fill(str, ssh_buffer_get_begin(tmpbuf), ssh_buffer_get_len(tmpbuf));
-  ssh_buffer_free(tmpbuf);
+  string_fill(str, buffer_get(tmpbuf), buffer_get_len(tmpbuf));
+  buffer_free(tmpbuf);
 
   return str;
 }
@@ -890,16 +879,16 @@ SIGNATURE *signature_from_string(ssh_session session, ssh_string signature,
     return NULL;
   }
 
-  tmpbuf = ssh_buffer_new();
+  tmpbuf = buffer_new();
   if (tmpbuf == NULL) {
     ssh_set_error(session, SSH_FATAL, "Not enough space");
     signature_free(sign);
     return NULL;
   }
 
-  if (buffer_add_data(tmpbuf, ssh_string_data(signature), ssh_string_len(signature)) < 0) {
+  if (buffer_add_data(tmpbuf, string_data(signature), string_len(signature)) < 0) {
     signature_free(sign);
-    ssh_buffer_free(tmpbuf);
+    buffer_free(tmpbuf);
     return NULL;
   }
 
@@ -907,15 +896,15 @@ SIGNATURE *signature_from_string(ssh_session session, ssh_string signature,
   if (type_s == NULL) {
     ssh_set_error(session, SSH_FATAL, "Invalid signature packet");
     signature_free(sign);
-    ssh_buffer_free(tmpbuf);
+    buffer_free(tmpbuf);
     return NULL;
   }
 
-  type_c = ssh_string_to_char(type_s);
-  ssh_string_free(type_s);
+  type_c = string_to_char(type_s);
+  string_free(type_s);
   if (type_c == NULL) {
     signature_free(sign);
-    ssh_buffer_free(tmpbuf);
+    buffer_free(tmpbuf);
     return NULL;
   }
   type = ssh_type_from_name(type_c);
@@ -925,18 +914,18 @@ SIGNATURE *signature_from_string(ssh_session session, ssh_string signature,
     ssh_set_error(session, SSH_FATAL, "Invalid signature type: %s",
         ssh_type_to_char(type));
     signature_free(sign);
-    ssh_buffer_free(tmpbuf);
+    buffer_free(tmpbuf);
     return NULL;
   }
 
   switch(needed_type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
       rs = buffer_get_ssh_string(tmpbuf);
-      ssh_buffer_free(tmpbuf);
+      buffer_free(tmpbuf);
 
       /* 40 is the dual signature blob len. */
-      if (rs == NULL || ssh_string_len(rs) != 40) {
-        ssh_string_free(rs);
+      if (rs == NULL || string_len(rs) != 40) {
+        string_free(rs);
         signature_free(sign);
         return NULL;
       }
@@ -945,40 +934,40 @@ SIGNATURE *signature_from_string(ssh_session session, ssh_string signature,
        * them to bignums (ou pas ;) */
 #ifdef HAVE_LIBGCRYPT
       if (gcry_sexp_build(&sig, NULL, "(sig-val(dsa(r %b)(s %b)))",
-            20 ,ssh_string_data(rs), 20,(unsigned char *)ssh_string_data(rs) + 20)) {
-        ssh_string_free(rs);
+            20 ,string_data(rs), 20,(unsigned char *)string_data(rs) + 20)) {
+        string_free(rs);
         signature_free(sign);
         return NULL;
       }
 #elif defined HAVE_LIBCRYPTO
-      r = ssh_string_new(20);
-      s = ssh_string_new(20);
+      r = string_new(20);
+      s = string_new(20);
       if (r == NULL || s == NULL) {
-        ssh_string_free(r);
-        ssh_string_free(s);
-        ssh_string_free(rs);
+        string_free(r);
+        string_free(s);
+        string_free(rs);
         signature_free(sign);
         return NULL;
       }
 
-      ssh_string_fill(r, ssh_string_data(rs), 20);
-      ssh_string_fill(s, (char *)ssh_string_data(rs) + 20, 20);
+      string_fill(r, string_data(rs), 20);
+      string_fill(s, (char *)string_data(rs) + 20, 20);
 
       sig = DSA_SIG_new();
       if (sig == NULL) {
-        ssh_string_free(r);
-        ssh_string_free(s);
-        ssh_string_free(rs);
+        string_free(r);
+        string_free(s);
+        string_free(rs);
         signature_free(sign);
         return NULL;
       }
       sig->r = make_string_bn(r); /* is that really portable ? Openssh's hack isn't better */
       sig->s = make_string_bn(s);
-      ssh_string_free(r);
-      ssh_string_free(s);
+      string_free(r);
+      string_free(s);
 
       if (sig->r == NULL || sig->s == NULL) {
-        ssh_string_free(rs);
+        string_free(rs);
         DSA_SIG_free(sig);
         signature_free(sign);
         return NULL;
@@ -986,30 +975,30 @@ SIGNATURE *signature_from_string(ssh_session session, ssh_string signature,
 #endif
 
 #ifdef DEBUG_CRYPTO
-      ssh_print_hexa("r", ssh_string_data(rs), 20);
-      ssh_print_hexa("s", (const unsigned char *)ssh_string_data(rs) + 20, 20);
+      ssh_print_hexa("r", string_data(rs), 20);
+      ssh_print_hexa("s", (const unsigned char *)string_data(rs) + 20, 20);
 #endif
-      ssh_string_free(rs);
+      string_free(rs);
 
-      sign->type = SSH_KEYTYPE_DSS;
+      sign->type = TYPE_DSS;
       sign->dsa_sign = sig;
 
       return sign;
-    case SSH_KEYTYPE_RSA:
+    case TYPE_RSA:
       e = buffer_get_ssh_string(tmpbuf);
-      ssh_buffer_free(tmpbuf);
+      buffer_free(tmpbuf);
       if (e == NULL) {
         signature_free(sign);
         return NULL;
       }
-      len = ssh_string_len(e);
+      len = string_len(e);
 #ifdef HAVE_LIBGCRYPT
       rsalen = (gcry_pk_get_nbits(pubkey->rsa_pub) + 7) / 8;
 #elif defined HAVE_LIBCRYPTO
       rsalen = RSA_size(pubkey->rsa_pub);
 #endif
       if (len > rsalen) {
-        ssh_string_free(e);
+        string_free(e);
         signature_free(sign);
         ssh_set_error(session, SSH_FATAL, "Signature too big! %d instead of %d",
             len, rsalen);
@@ -1020,12 +1009,12 @@ SIGNATURE *signature_from_string(ssh_session session, ssh_string signature,
         ssh_log(session, SSH_LOG_RARE, "RSA signature len %d < %d",
             len, rsalen);
       }
-      sign->type = SSH_KEYTYPE_RSA;
+      sign->type = TYPE_RSA;
 #ifdef HAVE_LIBGCRYPT
       if (gcry_sexp_build(&sig, NULL, "(sig-val(rsa(s %b)))",
-          ssh_string_len(e), ssh_string_data(e))) {
+          string_len(e), string_data(e))) {
         signature_free(sign);
-        ssh_string_free(e);
+        string_free(e);
         return NULL;
       }
 
@@ -1036,11 +1025,11 @@ SIGNATURE *signature_from_string(ssh_session session, ssh_string signature,
 
 #ifdef DEBUG_CRYPTO
       ssh_log(session, SSH_LOG_FUNCTIONS, "len e: %d", len);
-      ssh_print_hexa("RSA signature", ssh_string_data(e), len);
+      ssh_print_hexa("RSA signature", string_data(e), len);
 #endif
 
 #ifdef HAVE_LIBGCRYPT
-      ssh_string_free(e);
+      string_free(e);
 #endif
 
       return sign;
@@ -1057,15 +1046,15 @@ void signature_free(SIGNATURE *sign) {
   }
 
   switch(sign->type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
 #ifdef HAVE_LIBGCRYPT
       gcry_sexp_release(sign->dsa_sign);
 #elif defined HAVE_LIBCRYPTO
       DSA_SIG_free(sign->dsa_sign);
 #endif
       break;
-    case SSH_KEYTYPE_RSA:
-    case SSH_KEYTYPE_RSA1:
+    case TYPE_RSA:
+    case TYPE_RSA1:
 #ifdef HAVE_LIBGCRYPT
       gcry_sexp_release(sign->rsa_sign);
 #elif defined HAVE_LIBCRYPTO
@@ -1104,13 +1093,13 @@ static ssh_string RSA_do_sign(const unsigned char *payload, int len, RSA *privke
     return NULL;
   }
 
-  sign = ssh_string_new(size);
+  sign = string_new(size);
   if (sign == NULL) {
     SAFE_FREE(buffer);
     return NULL;
   }
 
-  ssh_string_fill(sign, buffer, size);
+  string_fill(sign, buffer, size);
   SAFE_FREE(buffer);
 
   return sign;
@@ -1132,35 +1121,35 @@ ssh_string ssh_do_sign_with_agent(ssh_session session,
   }
 
   /* prepend session identifier */
-  session_id = ssh_string_new(SHA_DIGEST_LEN);
+  session_id = string_new(SHA_DIGEST_LEN);
   if (session_id == NULL) {
     return NULL;
   }
-  ssh_string_fill(session_id, crypto->session_id, SHA_DIGEST_LEN);
+  string_fill(session_id, crypto->session_id, SHA_DIGEST_LEN);
 
-  sigbuf = ssh_buffer_new();
+  sigbuf = buffer_new();
   if (sigbuf == NULL) {
-    ssh_string_free(session_id);
+    string_free(session_id);
     return NULL;
   }
 
   if (buffer_add_ssh_string(sigbuf, session_id) < 0) {
-    ssh_buffer_free(sigbuf);
-    ssh_string_free(session_id);
+    buffer_free(sigbuf);
+    string_free(session_id);
     return NULL;
   }
-  ssh_string_free(session_id);
+  string_free(session_id);
 
   /* append out buffer */
   if (buffer_add_buffer(sigbuf, buf) < 0) {
-    ssh_buffer_free(sigbuf);
+    buffer_free(sigbuf);
     return NULL;
   }
 
   /* create signature */
   signature = agent_sign_data(session, sigbuf, publickey);
 
-  ssh_buffer_free(sigbuf);
+  buffer_free(sigbuf);
 
   return signature;
 }
@@ -1188,24 +1177,24 @@ ssh_buffer ssh_userauth_build_digest(ssh_session session, ssh_message msg, char 
   ssh_buffer buffer = NULL;
   ssh_string session_id = NULL;
   uint8_t type = SSH2_MSG_USERAUTH_REQUEST;
-  ssh_string username = ssh_string_from_char(msg->auth_request.username);
-  ssh_string servicename = ssh_string_from_char(service);
-  ssh_string method = ssh_string_from_char("publickey");
+  ssh_string username = string_from_char(msg->auth_request.username);
+  ssh_string servicename = string_from_char(service);
+  ssh_string method = string_from_char("publickey");
   uint8_t has_sign = 1;
-  ssh_string algo = ssh_string_from_char(msg->auth_request.public_key->type_c);
+  ssh_string algo = string_from_char(msg->auth_request.public_key->type_c);
   ssh_string publickey = publickey_to_string(msg->auth_request.public_key);
 
-  buffer = ssh_buffer_new();
+  buffer = buffer_new();
   if (buffer == NULL) {
     goto error;
   }
-  session_id = ssh_string_new(SHA_DIGEST_LEN);
+  session_id = string_new(SHA_DIGEST_LEN);
   if (session_id == NULL) {
-    ssh_buffer_free(buffer);
+    buffer_free(buffer);
     buffer = NULL;
     goto error;
   }
-  ssh_string_fill(session_id, crypto->session_id, SHA_DIGEST_LEN);
+  string_fill(session_id, crypto->session_id, SHA_DIGEST_LEN);
 
   if(buffer_add_ssh_string(buffer, session_id) < 0 ||
      buffer_add_u8(buffer, type) < 0 ||
@@ -1215,18 +1204,18 @@ ssh_buffer ssh_userauth_build_digest(ssh_session session, ssh_message msg, char 
      buffer_add_u8(buffer, has_sign) < 0 ||
      buffer_add_ssh_string(buffer, algo) < 0 ||
      buffer_add_ssh_string(buffer, publickey) < 0) {
-    ssh_buffer_free(buffer);
+    buffer_free(buffer);
     buffer = NULL;
     goto error;
   }
 
 error:
-  if(session_id) ssh_string_free(session_id);
-  if(username) ssh_string_free(username);
-  if(servicename) ssh_string_free(servicename);
-  if(method) ssh_string_free(method);
-  if(algo) ssh_string_free(algo);
-  if(publickey) ssh_string_free(publickey);
+  if(session_id) string_free(session_id);
+  if(username) string_free(username);
+  if(servicename) string_free(servicename);
+  if(method) string_free(method);
+  if(algo) string_free(algo);
+  if(publickey) string_free(publickey);
   return buffer;
 }
 
@@ -1246,21 +1235,21 @@ ssh_string ssh_do_sign(ssh_session session, ssh_buffer sigbuf,
   gcry_sexp_t gcryhash;
 #endif
 
-  session_str = ssh_string_new(SHA_DIGEST_LEN);
+  session_str = string_new(SHA_DIGEST_LEN);
   if (session_str == NULL) {
     return NULL;
   }
-  ssh_string_fill(session_str, crypto->session_id, SHA_DIGEST_LEN);
+  string_fill(session_str, crypto->session_id, SHA_DIGEST_LEN);
 
   ctx = sha1_init();
   if (ctx == NULL) {
-    ssh_string_free(session_str);
+    string_free(session_str);
     return NULL;
   }
 
-  sha1_update(ctx, session_str, ssh_string_len(session_str) + 4);
-  ssh_string_free(session_str);
-  sha1_update(ctx, ssh_buffer_get_begin(sigbuf), ssh_buffer_get_len(sigbuf));
+  sha1_update(ctx, session_str, string_len(session_str) + 4);
+  string_free(session_str);
+  sha1_update(ctx, buffer_get(sigbuf), buffer_get_len(sigbuf));
   sha1_final(hash + 1,ctx);
   hash[0] = 0;
 
@@ -1274,7 +1263,7 @@ ssh_string ssh_do_sign(ssh_session session, ssh_buffer sigbuf,
   }
 
   switch(privatekey->type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
 #ifdef HAVE_LIBGCRYPT
       if (gcry_sexp_build(&gcryhash, NULL, "%b", SHA_DIGEST_LEN + 1, hash) ||
           gcry_pk_sign(&sign->dsa_sign, gcryhash, privatekey->dsa_priv)) {
@@ -1298,7 +1287,7 @@ ssh_string ssh_do_sign(ssh_session session, ssh_buffer sigbuf,
 #endif /* HAVE_LIBCRYPTO */
       sign->rsa_sign = NULL;
       break;
-    case SSH_KEYTYPE_RSA:
+    case TYPE_RSA:
 #ifdef HAVE_LIBGCRYPT
       if (gcry_sexp_build(&gcryhash, NULL, "(data(flags pkcs1)(hash sha1 %b))",
             SHA_DIGEST_LEN, hash + 1) ||
@@ -1319,8 +1308,6 @@ ssh_string ssh_do_sign(ssh_session session, ssh_buffer sigbuf,
 #endif
       sign->dsa_sign = NULL;
       break;
-    default:
-      return NULL;
   }
 #ifdef HAVE_LIBGCRYPT
   gcry_sexp_release(gcryhash);
@@ -1336,7 +1323,7 @@ ssh_string ssh_do_sign(ssh_session session, ssh_buffer sigbuf,
 
 ssh_string ssh_encrypt_rsa1(ssh_session session, ssh_string data, ssh_public_key key) {
   ssh_string str = NULL;
-  size_t len = ssh_string_len(data);
+  size_t len = string_len(data);
   size_t size = 0;
 #ifdef HAVE_LIBGCRYPT
   const char *tmp = NULL;
@@ -1344,7 +1331,7 @@ ssh_string ssh_encrypt_rsa1(ssh_session session, ssh_string data, ssh_public_key
   gcry_sexp_t data_sexp;
 
   if (gcry_sexp_build(&data_sexp, NULL, "(data(flags pkcs1)(value %b))",
-      len, ssh_string_data(data))) {
+      len, string_data(data))) {
     ssh_set_error(session, SSH_FATAL, "RSA1 encrypt: libgcrypt error");
     return NULL;
   }
@@ -1368,29 +1355,29 @@ ssh_string ssh_encrypt_rsa1(ssh_session session, ssh_string data, ssh_public_key
     tmp++;
   }
 
-  str = ssh_string_new(size);
+  str = string_new(size);
   if (str == NULL) {
     ssh_set_error(session, SSH_FATAL, "Not enough space");
     gcry_sexp_release(data_sexp);
     gcry_sexp_release(ret_sexp);
     return NULL;
   }
-  ssh_string_fill(str, tmp, size);
+  string_fill(str, tmp, size);
 
   gcry_sexp_release(data_sexp);
   gcry_sexp_release(ret_sexp);
 #elif defined HAVE_LIBCRYPTO
   size = RSA_size(key->rsa_pub);
 
-  str = ssh_string_new(size);
+  str = string_new(size);
   if (str == NULL) {
     ssh_set_error(session, SSH_FATAL, "Not enough space");
     return NULL;
   }
 
-  if (RSA_public_encrypt(len, ssh_string_data(data), ssh_string_data(str), key->rsa_pub,
+  if (RSA_public_encrypt(len, string_data(data), string_data(str), key->rsa_pub,
       RSA_PKCS1_PADDING) < 0) {
-    ssh_string_free(str);
+    string_free(str);
     return NULL;
   }
 #endif
@@ -1429,7 +1416,7 @@ ssh_string ssh_sign_session_id(ssh_session session, ssh_private_key privatekey) 
   }
 
   switch(privatekey->type) {
-    case SSH_KEYTYPE_DSS:
+    case TYPE_DSS:
 #ifdef HAVE_LIBGCRYPT
       if (gcry_sexp_build(&data_sexp, NULL, "%b", SHA_DIGEST_LEN + 1, hash) ||
           gcry_pk_sign(&sign->dsa_sign, data_sexp, privatekey->dsa_priv)) {
@@ -1455,7 +1442,7 @@ ssh_string ssh_sign_session_id(ssh_session session, ssh_private_key privatekey) 
 #endif /* HAVE_LIBCRYPTO */
       sign->rsa_sign = NULL;
       break;
-    case SSH_KEYTYPE_RSA:
+    case TYPE_RSA:
 #ifdef HAVE_LIBGCRYPT
       if (gcry_sexp_build(&data_sexp, NULL, "(data(flags pkcs1)(hash sha1 %b))",
             SHA_DIGEST_LEN, hash + 1) ||
@@ -1476,8 +1463,6 @@ ssh_string ssh_sign_session_id(ssh_session session, ssh_private_key privatekey) 
 #endif
       sign->dsa_sign = NULL;
       break;
-    default:
-      return NULL;
   }
 
 #ifdef HAVE_LIBGCRYPT
@@ -1492,6 +1477,5 @@ ssh_string ssh_sign_session_id(ssh_session session, ssh_private_key privatekey) 
   return signature;
 }
 
-/* @} */
-
-/* vim: set ts=4 sw=4 et cindent: */
+/** @} */
+/* vim: set ts=2 sw=2 et cindent: */

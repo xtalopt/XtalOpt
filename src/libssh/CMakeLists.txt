@@ -109,10 +109,12 @@ set(LIBSSH_LINK_LIBRARIES
 
 set(libssh_SRCS
   agent.c
+  auth1.c
   auth.c
   base64.c
   buffer.c
   callbacks.c
+  channels1.c
   channels.c
   client.c
   config.c
@@ -127,9 +129,6 @@ set(libssh_SRCS
   kex.c
   keyfiles.c
   keys.c
-  legacy.c
-  libcrypto.c
-  libgcrypt.c
   log.c
   match.c
   messages.c
@@ -137,10 +136,12 @@ set(libssh_SRCS
   options.c
   packet.c
   pcap.c
-  pki.c
   poll.c
-  session.c
   scp.c
+  server.c
+  session.c
+  sftp.c
+  sftpserver.c
   socket.c
   string.c
   wrapper.c

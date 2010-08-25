@@ -20,6 +20,12 @@
  */
 
 /* pcap.c */
+/** \defgroup ssh_pcap SSH-pcap
+ * \brief libssh pcap file generation
+ *
+ * \addtogroup ssh_pcap
+ * @{ */
+
 #include "config.h"
 #ifdef WITH_PCAP
 
@@ -32,23 +38,12 @@
 #endif
 #include <errno.h>
 
+
 #include "libssh/libssh.h"
 #include "libssh/pcap.h"
 #include "libssh/session.h"
 #include "libssh/buffer.h"
 #include "libssh/socket.h"
-
-/**
- * @internal
- *
- * @defgroup libssh_pcap The libssh pcap functions
- * @ingroup libssh
- *
- * The pcap file generation
- *
- *
- * @{
- */
 
 /* The header of a pcap file is the following. We are not going to make it
  * very complicated.
@@ -133,8 +128,8 @@ static int ssh_pcap_file_write(ssh_pcap_file pcap, ssh_buffer packet){
 	uint32_t len;
 	if(pcap == NULL || pcap->output==NULL)
 		return SSH_ERROR;
-	len=ssh_buffer_get_len(packet);
-	err=fwrite(ssh_buffer_get_begin(packet),len,1,pcap->output);
+	len=buffer_get_len(packet);
+	err=fwrite(buffer_get(packet),len,1,pcap->output);
 	if(err<0)
 		return SSH_ERROR;
 	else
@@ -146,7 +141,7 @@ static int ssh_pcap_file_write(ssh_pcap_file pcap, ssh_buffer packet){
  * on file
  */
 int ssh_pcap_file_write_packet(ssh_pcap_file pcap, ssh_buffer packet, uint32_t original_len){
-	ssh_buffer header=ssh_buffer_new();
+	ssh_buffer header=buffer_new();
 	struct timeval now;
 	int err;
 	if(header == NULL)
@@ -154,11 +149,11 @@ int ssh_pcap_file_write_packet(ssh_pcap_file pcap, ssh_buffer packet, uint32_t o
 	gettimeofday(&now,NULL);
 	buffer_add_u32(header,htonl(now.tv_sec));
 	buffer_add_u32(header,htonl(now.tv_usec));
-	buffer_add_u32(header,htonl(ssh_buffer_get_len(packet)));
+	buffer_add_u32(header,htonl(buffer_get_len(packet)));
 	buffer_add_u32(header,htonl(original_len));
 	buffer_add_buffer(header,packet);
 	err=ssh_pcap_file_write(pcap,header);
-	ssh_buffer_free(header);
+	buffer_free(header);
 	return err;
 }
 
@@ -177,7 +172,7 @@ int ssh_pcap_file_open(ssh_pcap_file pcap, const char *filename){
 	pcap->output=fopen(filename,"wb");
 	if(pcap->output==NULL)
 		return SSH_ERROR;
-	header=ssh_buffer_new();
+	header=buffer_new();
 	if(header==NULL)
 		return SSH_ERROR;
 	buffer_add_u32(header,htonl(PCAP_MAGIC));
@@ -192,7 +187,7 @@ int ssh_pcap_file_open(ssh_pcap_file pcap, const char *filename){
 	/* we will write sort-of IP */
 	buffer_add_u32(header,htonl(DLT_RAW));
 	err=ssh_pcap_file_write(pcap,header);
-	ssh_buffer_free(header);
+	buffer_free(header);
 	return err;
 }
 
@@ -249,7 +244,7 @@ static int ssh_pcap_context_connect(ssh_pcap_context ctx){
 		return SSH_ERROR;
 	if(session->socket==NULL)
 		return SSH_ERROR;
-	fd=ssh_socket_get_fd_in(session->socket);
+	fd=ssh_socket_get_fd(session->socket);
 	/* TODO: adapt for windows */
 	if(fd<0)
 		return SSH_ERROR;
@@ -299,7 +294,7 @@ int ssh_pcap_context_write(ssh_pcap_context ctx,enum ssh_pcap_direction directio
 	if(ctx->connected==0)
 		if(ssh_pcap_context_connect(ctx)==SSH_ERROR)
 			return SSH_ERROR;
-	ip=ssh_buffer_new();
+	ip=buffer_new();
 	if(ip==NULL){
 		ssh_set_error_oom(ctx->session);
 		return SSH_ERROR;
@@ -364,7 +359,7 @@ int ssh_pcap_context_write(ssh_pcap_context ctx,enum ssh_pcap_direction directio
 	/* actual data */
 	buffer_add_data(ip,data,len);
 	err=ssh_pcap_file_write_packet(ctx->file,ip,origlen + TCPIPHDR_LEN);
-	ssh_buffer_free(ip);
+	buffer_free(ip);
 	return err;
 }
 
@@ -388,39 +383,6 @@ int ssh_set_pcap_file(ssh_session session, ssh_pcap_file pcap){
 }
 
 
-#else /* WITH_PCAP */
-
-/* Simple stub returning errors when no pcap compiled in */
-
-#include "libssh/libssh.h"
-#include "libssh/priv.h"
-
-int ssh_pcap_file_close(ssh_pcap_file pcap){
-	(void) pcap;
-	return SSH_ERROR;
-}
-
-void ssh_pcap_file_free(ssh_pcap_file pcap){
-	(void) pcap;
-}
-
-ssh_pcap_file ssh_pcap_file_new(void){
-	return NULL;
-}
-int ssh_pcap_file_open(ssh_pcap_file pcap, const char *filename){
-	(void) pcap;
-	(void) filename;
-	return SSH_ERROR;
-}
-
-int ssh_set_pcap_file(ssh_session session, ssh_pcap_file pcapfile){
-	(void) pcapfile;
-	ssh_set_error(session,SSH_REQUEST_DENIED,"Pcap support not compiled in");
-	return SSH_ERROR;
-}
-
-#endif
-
-/* @} */
-
-/* vim: set ts=4 sw=4 et cindent: */
+#endif /* WITH_PCAP */
+/** @} */
+/* vim: set ts=2 sw=2 et cindent: */

@@ -30,24 +30,18 @@
 
 #include "libssh/priv.h"
 #include "libssh/string.h"
+/** \defgroup ssh_string SSH Strings
+ * \brief string manipulations
+ */
+/** \addtogroup ssh_string
+ * @{ */
 
 /**
- * @defgroup libssh_string The SSH string functions
- * @ingroup libssh
- *
- * @brief String manipulations used in libssh.
- *
- * @{
+ * \brief Creates a new SSH String object
+ * \param size size of the string
+ * \return the newly allocated string
  */
-
-/**
- * @brief Create a new SSH String object.
- *
- * @param[in] size       The size of the string.
- *
- * @return               The newly allocated string, NULL on error.
- */
-struct ssh_string_struct *ssh_string_new(size_t size) {
+struct ssh_string_struct *string_new(size_t size) {
   struct ssh_string_struct *str = NULL;
 
   str = malloc(size + 4);
@@ -70,7 +64,7 @@ struct ssh_string_struct *ssh_string_new(size_t size) {
  *
  * @return         0 on success, < 0 on error.
  */
-int ssh_string_fill(struct ssh_string_struct *s, const void *data, size_t len) {
+int string_fill(struct ssh_string_struct *s, const void *data, size_t len) {
   if ((s == NULL) || (data == NULL) ||
       (len == 0) || (len > s->size)) {
     return -1;
@@ -81,16 +75,12 @@ int ssh_string_fill(struct ssh_string_struct *s, const void *data, size_t len) {
 }
 
 /**
- * @brief Create a ssh string using a C string
- *
- * @param[in] what      The source 0-terminated C string.
- *
- * @return              The newly allocated string, NULL on error with errno
- *                      set.
- *
- * @note The nul byte is not copied nor counted in the ouput string.
+ * \brief Creates a ssh stream using a C string
+ * \param what source 0-terminated C string
+ * \return the newly allocated string.
+ * \warning The nul byte is not copied nor counted in the ouput string.
  */
-struct ssh_string_struct *ssh_string_from_char(const char *what) {
+struct ssh_string_struct *string_from_char(const char *what) {
   struct ssh_string_struct *ptr = NULL;
   size_t len = strlen(what);
 
@@ -105,13 +95,11 @@ struct ssh_string_struct *ssh_string_from_char(const char *what) {
 }
 
 /**
- * @brief Return the size of a SSH string.
- *
- * @param[in] s         The the input SSH string.
- *
- * @return The size of the content of the string, 0 on error.
+ * \brief returns the size of a SSH string
+ * \param s the input SSH string
+ * \return size of the content of str, 0 on error
  */
-size_t ssh_string_len(struct ssh_string_struct *s) {
+size_t string_len(struct ssh_string_struct *s) {
   if (s == NULL) {
     return ntohl(0);
   }
@@ -120,17 +108,13 @@ size_t ssh_string_len(struct ssh_string_struct *s) {
 }
 
 /**
- * @brief Convert a SSH string to a C nul-terminated string.
- *
- * @param[in] s         The SSH input string.
- *
- * @return              An allocated string pointer, NULL on error with errno
- *                      set.
- *
- * @note If the input SSH string contains zeroes, some parts of the output
- * string may not be readable with regular libc functions.
+ * \brief convert a SSH string to a C nul-terminated string
+ * \param s the input SSH string
+ * \return a malloc'ed string pointer.
+ * \warning If the input SSH string contains zeroes, some parts of
+ * the output string may not be readable with regular libc functions.
  */
-char *ssh_string_to_char(struct ssh_string_struct *s) {
+char *string_to_char(struct ssh_string_struct *s) {
   size_t len = ntohl(s->size) + 1;
   char *new = malloc(len);
 
@@ -143,23 +127,14 @@ char *ssh_string_to_char(struct ssh_string_struct *s) {
 }
 
 /**
- * @brief Deallocate a char string object.
- *
- * @param[in] s         The string to delete.
- */
-void ssh_string_free_char(char *s) {
-    SAFE_FREE(s);
-}
-
-/**
  * @brief Copy a string, return a newly allocated string. The caller has to
  *        free the string.
  *
- * @param[in] s         String to copy.
+ * @param s             String to copy.
  *
  * @return              Newly allocated copy of the string, NULL on error.
  */
-struct ssh_string_struct *ssh_string_copy(struct ssh_string_struct *s) {
+struct ssh_string_struct *string_copy(struct ssh_string_struct *s) {
   struct ssh_string_struct *new = malloc(ntohl(s->size) + 4);
 
   if (new == NULL) {
@@ -171,16 +146,14 @@ struct ssh_string_struct *ssh_string_copy(struct ssh_string_struct *s) {
   return new;
 }
 
-/**
- * @brief Destroy the data in a string so it couldn't appear in a core dump.
- *
- * @param[in] s         The string to burn.
+/** \brief destroy data in a string so it couldn't appear in a core dump
+ * \param s string to burn
  */
-void ssh_string_burn(struct ssh_string_struct *s) {
+void string_burn(struct ssh_string_struct *s) {
   if (s == NULL) {
     return;
   }
-  memset(s->string, 'X', ssh_string_len(s));
+  memset(s->string, 'X', string_len(s));
 }
 
 /**
@@ -190,7 +163,7 @@ void ssh_string_burn(struct ssh_string_struct *s) {
  *
  * @return              Return the data of the string or NULL on error.
  */
-void *ssh_string_data(struct ssh_string_struct *s) {
+void *string_data(struct ssh_string_struct *s) {
   if (s == NULL) {
     return NULL;
   }
@@ -199,14 +172,12 @@ void *ssh_string_data(struct ssh_string_struct *s) {
 }
 
 /**
- * @brief Deallocate a SSH string object.
- *
- * \param[in] s         The SSH string to delete.
+ * \brief deallocate a STRING object
+ * \param s String to delete
  */
-void ssh_string_free(struct ssh_string_struct *s) {
+void string_free(struct ssh_string_struct *s) {
   SAFE_FREE(s);
 }
 
-/* @} */
-
-/* vim: set ts=4 sw=4 et cindent: */
+/** @} */
+/* vim: set ts=2 sw=2 et cindent: */

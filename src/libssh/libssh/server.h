@@ -21,8 +21,8 @@
  */
 
 /**
- * @defgroup libssh_server The libssh server API
- *
+ * @defgroup ssh_server SSH Server
+ * @addtogroup ssh_server
  * @{
  */
 
@@ -59,14 +59,15 @@ typedef struct ssh_bind_struct* ssh_bind;
 LIBSSH_API ssh_bind ssh_bind_new(void);
 
 /**
- * @brief Set the options for the current SSH server bind.
+ * @brief Set the opitons for the current SSH server bind.
  *
- * @param  sshbind     The ssh server bind to configure.
+ * @param  sshbind     The ssh server bind to use.
  *
- * @param  type         Option to set up.
- * @param  value        Value to set.
- * @returns SSH_OK	    No error.
- * @returns SSH_ERROR   Invalid option or parameter.
+ * @param  type        The option type to set.
+ *
+ * @param  value       The option value to set.
+ *
+ * @return 0 on success, < 0 on error.
  */
 LIBSSH_API int ssh_bind_options_set(ssh_bind sshbind,
     enum ssh_bind_options_e type, const void *value);
@@ -148,11 +149,8 @@ LIBSSH_API int ssh_message_reply_default(ssh_message msg);
 LIBSSH_API char *ssh_message_auth_user(ssh_message msg);
 LIBSSH_API char *ssh_message_auth_password(ssh_message msg);
 LIBSSH_API ssh_public_key ssh_message_auth_publickey(ssh_message msg);
-LIBSSH_API enum ssh_publickey_state_e ssh_message_auth_publickey_state(ssh_message msg);
 LIBSSH_API int ssh_message_auth_reply_success(ssh_message msg,int partial);
 LIBSSH_API int ssh_message_auth_reply_pk_ok(ssh_message msg, ssh_string algo, ssh_string pubkey);
-LIBSSH_API int ssh_message_auth_reply_pk_ok_simple(ssh_message msg);
-
 LIBSSH_API int ssh_message_auth_set_methods(ssh_message msg, int methods);
 
 LIBSSH_API int ssh_message_service_reply_success(ssh_message msg);

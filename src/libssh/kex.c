@@ -40,7 +40,6 @@
 #include "libssh/wrapper.h"
 #include "libssh/keys.h"
 #include "libssh/dh.h"
-#include "libssh/kex.h"
 #include "libssh/string.h"
 
 #ifdef HAVE_LIBGCRYPT
@@ -67,7 +66,7 @@
 #endif
 
 #if defined(HAVE_LIBZ) && defined(WITH_LIBZ)
-#define ZLIB "none,zlib,zlib@openssh.org"
+#define ZLIB "none,zlib"
 #else
 #define ZLIB "none"
 #endif
@@ -203,7 +202,7 @@ char **space_tokenize(const char *chain){
 
 /* find_matching gets 2 parameters : a list of available objects (available_d), separated by colons,*/
 /* and a list of preferred objects (preferred_d) */
-/* it will return a strduped pointer on the first preferred object found in the available objects list */
+/* it will return a strduped pointer on the first prefered object found in the available objects list */
 
 char *ssh_find_matching(const char *available_d, const char *preferred_d){
     char ** tok_available, **tok_preferred;
@@ -223,7 +222,6 @@ char *ssh_find_matching(const char *available_d, const char *preferred_d){
     if (tok_preferred == NULL) {
       SAFE_FREE(tok_available[0]);
       SAFE_FREE(tok_available);
-      return NULL;
     }
 
     for(i_pref=0; tok_preferred[i_pref] ; ++i_pref){
@@ -232,48 +230,49 @@ char *ssh_find_matching(const char *available_d, const char *preferred_d){
           /* match */
           ret=strdup(tok_available[i_avail]);
           /* free the tokens */
-          SAFE_FREE(tok_available[0]);
-          SAFE_FREE(tok_preferred[0]);
-          SAFE_FREE(tok_available);
-          SAFE_FREE(tok_preferred);
+          free(tok_available[0]);
+          free(tok_preferred[0]);
+          free(tok_available);
+          free(tok_preferred);
           return ret;
         }
       }
     }
-    SAFE_FREE(tok_available[0]);
-    SAFE_FREE(tok_preferred[0]);
-    SAFE_FREE(tok_available);
-    SAFE_FREE(tok_preferred);
+    free(tok_available[0]);
+    free(tok_preferred[0]);
+    free(tok_available);
+    free(tok_preferred);
     return NULL;
 }
 
-SSH_PACKET_CALLBACK(ssh_packet_kexinit){
-	int server_kex=session->server;
+int ssh_get_kex(ssh_session session, int server_kex) {
   ssh_string str = NULL;
   char *strings[10];
   int i;
 
   enter_function();
-  (void)type;
-  (void)user;
-  if(session->session_state != SSH_SESSION_STATE_INITIAL_KEX){
-  	ssh_set_error(session,SSH_FATAL,"SSH_KEXINIT received in wrong state");
-  	goto error;
+
+  if (packet_wait(session, SSH2_MSG_KEXINIT, 1) != SSH_OK) {
+    leave_function();
+    return -1;
   }
-  if (buffer_get_data(packet,session->server_kex.cookie,16) != 16) {
-    ssh_set_error(session, SSH_FATAL, "ssh_packet_kexinit: no cookie in packet");
-    goto error;
+
+  if (buffer_get_data(session->in_buffer,session->server_kex.cookie,16) != 16) {
+    ssh_set_error(session, SSH_FATAL, "get_kex(): no cookie in packet");
+    leave_function();
+    return -1;
   }
 
   if (hashbufin_add_cookie(session, session->server_kex.cookie) < 0) {
-    ssh_set_error(session, SSH_FATAL, "ssh_packet_kexinit: adding cookie failed");
-    goto error;
+    ssh_set_error(session, SSH_FATAL, "get_kex(): adding cookie failed");
+    leave_function();
+    return -1;
   }
 
   memset(strings, 0, sizeof(char *) * 10);
 
   for (i = 0; i < 10; i++) {
-    str = buffer_get_ssh_string(packet);
+    str = buffer_get_ssh_string(session->in_buffer);
     if (str == NULL) {
       break;
     }
@@ -282,11 +281,11 @@ SSH_PACKET_CALLBACK(ssh_packet_kexinit){
       goto error;
     }
 
-    strings[i] = ssh_string_to_char(str);
+    strings[i] = string_to_char(str);
     if (strings[i] == NULL) {
       goto error;
     }
-    ssh_string_free(str);
+    string_free(str);
     str = NULL;
   }
 
@@ -314,18 +313,15 @@ SSH_PACKET_CALLBACK(ssh_packet_kexinit){
   }
 
   leave_function();
-  session->session_state=SSH_SESSION_STATE_KEXINIT_RECEIVED;
-  ssh_connection_callback(session);
-  return SSH_PACKET_USED;
+  return 0;
 error:
-  ssh_string_free(str);
+  string_free(str);
   for (i = 0; i < 10; i++) {
     SAFE_FREE(strings[i]);
   }
 
-  session->session_state = SSH_SESSION_STATE_ERROR;
   leave_function();
-  return SSH_PACKET_USED;
+  return -1;
 }
 
 void ssh_list_kex(ssh_session session, KEX *kex) {
@@ -334,10 +330,7 @@ void ssh_list_kex(ssh_session session, KEX *kex) {
 #ifdef DEBUG_CRYPTO
   ssh_print_hexa("session cookie", kex->cookie, 16);
 #endif
-  if(kex->methods==NULL){
-    ssh_log(session, SSH_LOG_RARE,"kex->methods is NULL");
-    return;
-  }
+
   for(i = 0; i < 10; i++) {
     ssh_log(session, SSH_LOG_FUNCTIONS, "%s: %s",
         ssh_kex_nums[i], kex->methods[i]);
@@ -407,7 +400,7 @@ int ssh_send_kex(ssh_session session, int server_kex) {
   ssh_list_kex(session, kex);
 
   for (i = 0; i < 10; i++) {
-    str = ssh_string_from_char(kex->methods[i]);
+    str = string_from_char(kex->methods[i]);
     if (str == NULL) {
       goto error;
     }
@@ -418,7 +411,7 @@ int ssh_send_kex(ssh_session session, int server_kex) {
     if (buffer_add_ssh_string(session->out_buffer, str) < 0) {
       goto error;
     }
-    ssh_string_free(str);
+    string_free(str);
   }
 
   if (buffer_add_u8(session->out_buffer, 0) < 0) {
@@ -428,7 +421,7 @@ int ssh_send_kex(ssh_session session, int server_kex) {
     goto error;
   }
 
-  if (packet_send(session) == SSH_ERROR) {
+  if (packet_send(session) != SSH_OK) {
     leave_function();
     return -1;
   }
@@ -438,7 +431,7 @@ int ssh_send_kex(ssh_session session, int server_kex) {
 error:
   buffer_reinit(session->out_buffer);
   buffer_reinit(session->out_hashbuf);
-  ssh_string_free(str);
+  string_free(str);
 
   leave_function();
   return -1;
@@ -457,8 +450,6 @@ int verify_existing_algo(int algo, const char *name){
     return 0;
 }
 
-#ifdef WITH_SSH1
-
 /* makes a STRING contating 3 strings : ssh-rsa1,e and n */
 /* this is a public key in openssh's format */
 static ssh_string make_rsa1_string(ssh_string e, ssh_string n){
@@ -466,8 +457,8 @@ static ssh_string make_rsa1_string(ssh_string e, ssh_string n){
   ssh_string rsa = NULL;
   ssh_string ret = NULL;
 
-  buffer = ssh_buffer_new();
-  rsa = ssh_string_from_char("ssh-rsa1");
+  buffer = buffer_new();
+  rsa = string_from_char("ssh-rsa1");
 
   if (buffer_add_ssh_string(buffer, rsa) < 0) {
     goto error;
@@ -479,15 +470,15 @@ static ssh_string make_rsa1_string(ssh_string e, ssh_string n){
     goto error;
   }
 
-  ret = ssh_string_new(ssh_buffer_get_len(buffer));
+  ret = string_new(buffer_get_len(buffer));
   if (ret == NULL) {
     goto error;
   }
 
-  ssh_string_fill(ret, ssh_buffer_get_begin(buffer), ssh_buffer_get_len(buffer));
+  string_fill(ret, buffer_get(buffer), buffer_get_len(buffer));
 error:
-  ssh_buffer_free(buffer);
-  ssh_string_free(rsa);
+  buffer_free(buffer);
+  string_free(rsa);
 
   return ret;
 }
@@ -502,11 +493,11 @@ static int build_session_id1(ssh_session session, ssh_string servern,
   }
 
 #ifdef DEBUG_CRYPTO
-  ssh_print_hexa("host modulus",ssh_string_data(hostn),ssh_string_len(hostn));
-  ssh_print_hexa("server modulus",ssh_string_data(servern),ssh_string_len(servern));
+  ssh_print_hexa("host modulus",string_data(hostn),string_len(hostn));
+  ssh_print_hexa("server modulus",string_data(servern),string_len(servern));
 #endif
-  md5_update(md5,ssh_string_data(hostn),ssh_string_len(hostn));
-  md5_update(md5,ssh_string_data(servern),ssh_string_len(servern));
+  md5_update(md5,string_data(hostn),string_len(hostn));
+  md5_update(md5,string_data(servern),string_len(servern));
   md5_update(md5,session->server_kex.cookie,8);
   md5_final(session->next_crypto->session_id,md5);
 #ifdef DEBUG_CRYPTO
@@ -566,11 +557,11 @@ static ssh_string encrypt_session_key(ssh_session session, ssh_public_key srvkey
   for (i = 0; i < 16; i++) {
     buffer[i] ^= session->next_crypto->session_id[i];
   }
-  data1 = ssh_string_new(32);
+  data1 = string_new(32);
   if (data1 == NULL) {
     return NULL;
   }
-  ssh_string_fill(data1, buffer, 32);
+  string_fill(data1, buffer, 32);
   if (ABS(hlen - slen) < 128){
     ssh_log(session, SSH_LOG_FUNCTIONS,
         "Difference between server modulus and host modulus is only %d. "
@@ -580,25 +571,25 @@ static ssh_string encrypt_session_key(ssh_session session, ssh_public_key srvkey
 
   if (modulus_smaller(srvkey, hostkey)) {
     data2 = ssh_encrypt_rsa1(session, data1, srvkey);
-    ssh_string_free(data1);
+    string_free(data1);
     data1 = NULL;
     if (data2 == NULL) {
       return NULL;
     }
     data1 = ssh_encrypt_rsa1(session, data2, hostkey);
-    ssh_string_free(data2);
+    string_free(data2);
     if (data1 == NULL) {
       return NULL;
     }
   } else {
     data2 = ssh_encrypt_rsa1(session, data1, hostkey);
-    ssh_string_free(data1);
+    string_free(data1);
     data1 = NULL;
     if (data2 == NULL) {
       return NULL;
     }
     data1 = ssh_encrypt_rsa1(session, data2, srvkey);
-    ssh_string_free(data2);
+    string_free(data2);
     if (data1 == NULL) {
       return NULL;
     }
@@ -606,6 +597,7 @@ static ssh_string encrypt_session_key(ssh_session session, ssh_public_key srvkey
 
   return data1;
 }
+
 
 /* SSH-1 functions */
 /*    2 SSH_SMSG_PUBLIC_KEY
@@ -621,16 +613,15 @@ static ssh_string encrypt_session_key(ssh_session session, ssh_public_key srvkey
  *    32-bit int   supported_ciphers_mask
  *    32-bit int   supported_authentications_mask
  */
-/**
- * @brief Wait for a SSH_SMSG_PUBLIC_KEY and does the key exchange
- */
-SSH_PACKET_CALLBACK(ssh_packet_publickey1){
+
+int ssh_get_kex1(ssh_session session) {
   ssh_string server_exp = NULL;
   ssh_string server_mod = NULL;
   ssh_string host_exp = NULL;
   ssh_string host_mod = NULL;
   ssh_string serverkey = NULL;
   ssh_string hostkey = NULL;
+  ssh_string enc_session = NULL;
   ssh_public_key srv = NULL;
   ssh_public_key host = NULL;
   uint32_t server_bits;
@@ -638,43 +629,45 @@ SSH_PACKET_CALLBACK(ssh_packet_publickey1){
   uint32_t protocol_flags;
   uint32_t supported_ciphers_mask;
   uint32_t supported_authentications_mask;
-  ssh_string enc_session = NULL;
   uint16_t bits;
+  int rc = -1;
   int ko;
+
   enter_function();
-  (void)type;
-  (void)user;
-  ssh_log(session, SSH_LOG_PROTOCOL, "Got a SSH_SMSG_PUBLIC_KEY");
-  if(session->session_state != SSH_SESSION_STATE_INITIAL_KEX){
-    ssh_set_error(session,SSH_FATAL,"SSH_KEXINIT received in wrong state");
-    goto error;
-  }
-  if (buffer_get_data(packet, session->server_kex.cookie, 8) != 8) {
-    ssh_set_error(session, SSH_FATAL, "Can't get cookie in buffer");
-    goto error;
+  ssh_log(session, SSH_LOG_PROTOCOL, "Waiting for a SSH_SMSG_PUBLIC_KEY");
+  if (packet_wait(session, SSH_SMSG_PUBLIC_KEY, 1) != SSH_OK) {
+    leave_function();
+    return -1;
   }
 
-  buffer_get_u32(packet, &server_bits);
-  server_exp = buffer_get_mpint(packet);
+  ssh_log(session, SSH_LOG_PROTOCOL, "Got a SSH_SMSG_PUBLIC_KEY");
+  if (buffer_get_data(session->in_buffer, session->server_kex.cookie, 8) != 8) {
+    ssh_set_error(session, SSH_FATAL, "Can't get cookie in buffer");
+    leave_function();
+    return -1;
+  }
+
+  buffer_get_u32(session->in_buffer, &server_bits);
+  server_exp = buffer_get_mpint(session->in_buffer);
   if (server_exp == NULL) {
     goto error;
   }
-  server_mod = buffer_get_mpint(packet);
+  server_mod = buffer_get_mpint(session->in_buffer);
   if (server_mod == NULL) {
     goto error;
   }
-  buffer_get_u32(packet, &host_bits);
-  host_exp = buffer_get_mpint(packet);
+  buffer_get_u32(session->in_buffer, &host_bits);
+  host_exp = buffer_get_mpint(session->in_buffer);
   if (host_exp == NULL) {
     goto error;
   }
-  host_mod = buffer_get_mpint(packet);
+  host_mod = buffer_get_mpint(session->in_buffer);
   if (host_mod == NULL) {
     goto error;
   }
-  buffer_get_u32(packet, &protocol_flags);
-  buffer_get_u32(packet, &supported_ciphers_mask);
-  ko = buffer_get_u32(packet, &supported_authentications_mask);
+  buffer_get_u32(session->in_buffer, &protocol_flags);
+  buffer_get_u32(session->in_buffer, &supported_ciphers_mask);
+  ko = buffer_get_u32(session->in_buffer, &supported_authentications_mask);
 
   if ((ko != sizeof(uint32_t)) || !host_mod || !host_exp
       || !server_mod || !server_exp) {
@@ -718,7 +711,7 @@ SSH_PACKET_CALLBACK(ssh_packet_publickey1){
     goto error;
   }
 
-  session->next_crypto->server_pubkey = ssh_string_copy(hostkey);
+  session->next_crypto->server_pubkey = string_copy(hostkey);
   if (session->next_crypto->server_pubkey == NULL) {
     goto error;
   }
@@ -730,94 +723,77 @@ SSH_PACKET_CALLBACK(ssh_packet_publickey1){
     ssh_set_error(session, SSH_FATAL, "Remote server doesn't accept 3DES");
     goto error;
   }
+
   ssh_log(session, SSH_LOG_PROTOCOL, "Sending SSH_CMSG_SESSION_KEY");
 
-   if (buffer_add_u8(session->out_buffer, SSH_CMSG_SESSION_KEY) < 0) {
-     goto error;
-   }
-   if (buffer_add_u8(session->out_buffer, SSH_CIPHER_3DES) < 0) {
-     goto error;
-   }
-   if (buffer_add_data(session->out_buffer, session->server_kex.cookie, 8) < 0) {
-     goto error;
-   }
-
-   enc_session = encrypt_session_key(session, srv, host, server_bits, host_bits);
-   if (enc_session == NULL) {
-     goto error;
-   }
-
-   bits = ssh_string_len(enc_session) * 8 - 7;
-   ssh_log(session, SSH_LOG_PROTOCOL, "%d bits, %zu bytes encrypted session",
-       bits, ssh_string_len(enc_session));
-   bits = htons(bits);
-   /* the encrypted mpint */
-   if (buffer_add_data(session->out_buffer, &bits, sizeof(uint16_t)) < 0) {
-     goto error;
-   }
-   if (buffer_add_data(session->out_buffer, ssh_string_data(enc_session),
-         ssh_string_len(enc_session)) < 0) {
-     goto error;
-   }
-   /* the protocol flags */
-   if (buffer_add_u32(session->out_buffer, 0) < 0) {
-     goto error;
-   }
-   session->session_state=SSH_SESSION_STATE_KEXINIT_RECEIVED;
-   if (packet_send(session) == SSH_ERROR) {
-     goto error;
-   }
-
-   /* we can set encryption */
-   if (crypt_set_algorithms(session)) {
-     goto error;
-   }
-
-   session->current_crypto = session->next_crypto;
-   session->next_crypto = NULL;
-   goto end;
-error:
-  session->session_state=SSH_SESSION_STATE_ERROR;
-end:
-
-   ssh_string_free(host_mod);
-   ssh_string_free(host_exp);
-   ssh_string_free(server_mod);
-   ssh_string_free(server_exp);
-   ssh_string_free(serverkey);
-   ssh_string_free(hostkey);
-   ssh_string_free(enc_session);
-
-   publickey_free(srv);
-   publickey_free(host);
-
-   leave_function();
-   return SSH_PACKET_USED;
-}
-
-int ssh_get_kex1(ssh_session session) {
-  int ret=SSH_ERROR;
-  enter_function();
-  ssh_log(session, SSH_LOG_PROTOCOL, "Waiting for a SSH_SMSG_PUBLIC_KEY");
-  /* Here the callback is called */
-  while(session->session_state==SSH_SESSION_STATE_INITIAL_KEX){
-    ssh_handle_packets(session,-1);
-  }
-  if(session->session_state==SSH_SESSION_STATE_ERROR)
+  if (buffer_add_u8(session->out_buffer, SSH_CMSG_SESSION_KEY) < 0) {
     goto error;
-  ssh_log(session, SSH_LOG_PROTOCOL, "Waiting for a SSH_SMSG_SUCCESS");
-  /* Waiting for SSH_SMSG_SUCCESS */
-  while(session->session_state==SSH_SESSION_STATE_KEXINIT_RECEIVED){
-    ssh_handle_packets(session,-1);
   }
-  if(session->session_state==SSH_SESSION_STATE_ERROR)
-      goto error;
+  if (buffer_add_u8(session->out_buffer, SSH_CIPHER_3DES) < 0) {
+    goto error;
+  }
+  if (buffer_add_data(session->out_buffer, session->server_kex.cookie, 8) < 0) {
+    goto error;
+  }
+
+  enc_session = encrypt_session_key(session, srv, host, server_bits, host_bits);
+  if (enc_session == NULL) {
+    goto error;
+  }
+
+  bits = string_len(enc_session) * 8 - 7;
+  ssh_log(session, SSH_LOG_PROTOCOL, "%d bits, %zu bytes encrypted session",
+      bits, string_len(enc_session));
+  bits = htons(bits);
+  /* the encrypted mpint */
+  if (buffer_add_data(session->out_buffer, &bits, sizeof(uint16_t)) < 0) {
+    goto error;
+  }
+  if (buffer_add_data(session->out_buffer, string_data(enc_session),
+        string_len(enc_session)) < 0) {
+    goto error;
+  }
+  /* the protocol flags */
+  if (buffer_add_u32(session->out_buffer, 0) < 0) {
+    goto error;
+  }
+
+  if (packet_send(session) != SSH_OK) {
+    goto error;
+  }
+
+  /* we can set encryption */
+  if (crypt_set_algorithms(session)) {
+    goto error;
+  }
+
+  session->current_crypto = session->next_crypto;
+  session->next_crypto = NULL;
+
+  ssh_log(session, SSH_LOG_PROTOCOL, "Waiting for a SSH_SMSG_SUCCESS");
+  if (packet_wait(session,SSH_SMSG_SUCCESS,1) != SSH_OK) {
+    char buffer[1024] = {0};
+    snprintf(buffer, sizeof(buffer),
+        "Key exchange failed: %s", ssh_get_error(session));
+    ssh_set_error(session, SSH_FATAL, "%s",buffer);
+    goto error;
+  }
   ssh_log(session, SSH_LOG_PROTOCOL, "received SSH_SMSG_SUCCESS\n");
-  ret=SSH_OK;
+
+  rc = 0;
 error:
+  string_free(host_mod);
+  string_free(host_exp);
+  string_free(server_mod);
+  string_free(server_exp);
+  string_free(serverkey);
+  string_free(hostkey);
+
+  publickey_free(srv);
+  publickey_free(host);
+
   leave_function();
-  return ret;
+  return rc;
 }
 
-#endif /* WITH_SSH1 */
 /* vim: set ts=2 sw=2 et cindent: */

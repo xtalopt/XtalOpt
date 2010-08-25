@@ -25,28 +25,23 @@
 #include "libssh/priv.h"
 #include "libssh/socket.h"
 #include "libssh/dh.h"
-#include "libssh/poll.h"
+
 #ifdef _WIN32
 #include <winsock2.h>
 #endif
 
 /**
- * @defgroup libssh The libssh API
- *
- * The libssh library is implementing the SSH protocols and some of its
- * extensions. This group of functions is mostly used to implment a SSH client.
- * Some function are needed to implement a SSH server too.
- *
+ * \addtogroup ssh_session
  * @{
  */
 
 /**
- * @brief Initialize global cryptographic data structures.
+ * @brief initialize global cryptographic data structures.
  *
  * This function should only be called once, at the beginning of the program, in
  * the main thread. It may be omitted if your program is not multithreaded.
  *
- * @returns             0 on success, -1 if an error occured.
+ * @returns 0
  */
 int ssh_init(void) {
   if(ssh_crypto_init())
@@ -64,15 +59,12 @@ int ssh_init(void) {
  *
  * This function should only be called once, at the end of the program!
  *
- * @returns             0 on succes, -1 if an error occured.
- *
+ * @returns -1 in case of error
    @returns 0 otherwise
  */
 int ssh_finalize(void) {
-	ssh_free_global_poll_ctx();
   ssh_regex_finalize();
   ssh_crypto_finalize();
-  ssh_socket_cleanup();
 #ifdef HAVE_LIBGCRYPT
   gcry_control(GCRYCTL_TERM_SECMEM);
 #elif defined HAVE_LIBCRYPTO
@@ -84,6 +76,7 @@ int ssh_finalize(void) {
   return 0;
 }
 
-/* @} */
-
-/* vim: set ts=4 sw=4 et cindent: */
+/**
+ * @}
+ */
+/* vim: set ts=2 sw=2 et cindent: */

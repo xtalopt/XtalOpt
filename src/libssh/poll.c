@@ -32,31 +32,10 @@
 #include "libssh/priv.h"
 #include "libssh/libssh.h"
 #include "libssh/poll.h"
-#include "libssh/socket.h"
 
 #ifndef SSH_POLL_CTX_CHUNK
 #define SSH_POLL_CTX_CHUNK			5
 #endif
-
-/**
- * @defgroup libssh_poll The SSH poll functions.
- * @ingroup libssh
- *
- * Add a generic way to handle sockets asynchronously.
- *
- * It's based on poll objects, each of which store a socket, it's events and a
- * callback, which gets called whenever an event is set. The poll objects are
- * attached to a poll context, which should be allocated on per thread basis.
- *
- * Polling the poll context will poll all the attached poll objects and call
- * their callbacks (handlers) if any of the socket events are set. This should
- * be done within the main loop of an application.
- *
- * @{
- */
-
-/** global poll context used for blocking operations */
-static ssh_poll_ctx global_poll_ctx;
 
 struct ssh_poll_handle_struct {
   ssh_poll_ctx ctx;
@@ -81,10 +60,6 @@ struct ssh_poll_ctx_struct {
 #include <poll.h>
 
 void ssh_poll_init(void) {
-    return;
-}
-
-void ssh_poll_cleanup(void) {
     return;
 }
 
@@ -259,14 +234,6 @@ void ssh_poll_init(void) {
     }
 }
 
-void ssh_poll_cleanup(void) {
-    win_poll = bsd_poll;
-
-    FreeLibrary(hlib);
-
-    hlib = NULL;
-}
-
 int ssh_poll(ssh_pollfd_t *fds, nfds_t nfds, int timeout) {
     return win_poll(fds, nfds, timeout);
 }
@@ -310,10 +277,6 @@ ssh_poll_handle ssh_poll_new(socket_t fd, short events, ssh_poll_callback cb,
  */
 
 void ssh_poll_free(ssh_poll_handle p) {
-	if(p->ctx != NULL){
-		ssh_poll_ctx_remove(p->ctx,p);
-		p->ctx=NULL;
-	}
   SAFE_FREE(p);
 }
 
@@ -350,21 +313,6 @@ void ssh_poll_set_events(ssh_poll_handle p, short events) {
   p->events = events;
   if (p->ctx != NULL) {
     p->ctx->pollfds[p->x.idx].events = events;
-  }
-}
-
-/**
- * @brief  Set the file descriptor of a poll object. The FD will also be propagated
- *         to an associated poll context.
- *
- * @param  p            Pointer to an already allocated poll object.
- * @param  fd       New file descriptor.
- */
-void ssh_poll_set_fd(ssh_poll_handle p, socket_t fd) {
-  if (p->ctx != NULL) {
-    p->ctx->pollfds[p->x.idx].fd = fd;
-  } else {
-  	p->x.fd = fd;
   }
 }
 
@@ -534,30 +482,6 @@ int ssh_poll_ctx_add(ssh_poll_ctx ctx, ssh_poll_handle p) {
 }
 
 /**
- * @brief  Add a socket object to a poll context.
- *
- * @param  ctx          Pointer to an already allocated poll context.
- * @param  s            A SSH socket handle
- *
- * @return              0 on success, < 0 on error
- */
-int ssh_poll_ctx_add_socket (ssh_poll_ctx ctx, ssh_socket s) {
-  ssh_poll_handle p_in, p_out;
-  int ret;
-  p_in=ssh_socket_get_poll_handle_in(s);
-  if(p_in==NULL)
-  	return -1;
-  ret = ssh_poll_ctx_add(ctx,p_in);
-  if(ret != 0)
-    return ret;
-  p_out=ssh_socket_get_poll_handle_out(s);
-  if(p_in != p_out)
-    ret = ssh_poll_ctx_add(ctx,p_out);
-  return ret;
-}
-
-
-/**
  * @brief  Remove a poll object from a poll context.
  *
  * @param  ctx          Pointer to an already allocated poll context.
@@ -595,78 +519,39 @@ void ssh_poll_ctx_remove(ssh_poll_ctx ctx, ssh_poll_handle p) {
  *                      block, in milliseconds. Specifying a negative value
  *                      means an infinite timeout. This parameter is passed to
  *                      the poll() function.
- * @returns SSH_OK      No error.
- *          SSH_ERROR   Error happened during the poll.
  */
 
 int ssh_poll_ctx_dopoll(ssh_poll_ctx ctx, int timeout) {
   int rc;
-  int i, used;
-  ssh_poll_handle p;
-  socket_t fd;
-  int revents;
 
   if (!ctx->polls_used)
     return 0;
 
   rc = ssh_poll(ctx->pollfds, ctx->polls_used, timeout);
-  if(rc < 0)
-    rc=SSH_ERROR;
-  if(rc <= 0)
-    return rc;
-  used = ctx->polls_used;
-  for (i = 0; i < used && rc > 0; ) {
-    if (!ctx->pollfds[i].revents) {
-      i++;
-    } else {
-      p = ctx->pollptrs[i];
-      fd = ctx->pollfds[i].fd;
-      revents = ctx->pollfds[i].revents;
+  if (rc > 0) {
+    register size_t i, used;
 
-      if (p->cb(p, fd, revents, p->cb_data) < 0) {
-        /* the poll was removed, reload the used counter and start again */
-        used = ctx->polls_used;
-        i=0;
-      } else {
-        ctx->pollfds[i].revents = 0;
+    used = ctx->polls_used;
+    for (i = 0; i < used && rc > 0; ) {
+      if (!ctx->pollfds[i].revents) {
         i++;
-      }
+      } else {
+        ssh_poll_handle p = ctx->pollptrs[i];
+        socket_t fd = ctx->pollfds[i].fd;
+        int revents = ctx->pollfds[i].revents;
 
-      rc--;
+        if (p->cb(p, fd, revents, p->cb_data) < 0) {
+          /* the poll was removed, reload the used counter and stall the loop */
+          used = ctx->polls_used;
+        } else {
+          ctx->pollfds[i].revents = 0;
+          i++;
+        }
+
+        rc--;
+      }
     }
   }
 
   return rc;
 }
-
-/** @internal
- * @brief returns a pointer to the global poll context.
- * Allocates it if it does not exist.
- * @param session an optional session handler, used to store the error
- * message if needed.
- * @returns pointer to the global poll context.
- */
-ssh_poll_ctx ssh_get_global_poll_ctx(ssh_session session){
-	if(global_poll_ctx != NULL)
-		return global_poll_ctx;
-	global_poll_ctx=ssh_poll_ctx_new(5);
-	if(global_poll_ctx == NULL && session != NULL){
-		ssh_set_error_oom(session);
-		return NULL;
-	}
-	return global_poll_ctx;
-}
-
-/** @internal
- * @brief Deallocate the global poll context
- */
-void ssh_free_global_poll_ctx(){
-	if(global_poll_ctx != NULL){
-		ssh_poll_ctx_free(global_poll_ctx);
-		global_poll_ctx=NULL;
-	}
-}
-
-/* @} */
-
-/* vim: set ts=4 sw=4 et cindent: */

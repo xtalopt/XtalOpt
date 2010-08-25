@@ -58,8 +58,6 @@ struct ssh_crypto_struct {
     const char *server_pubkey_type;
     int do_compress_out; /* idem */
     int do_compress_in; /* don't set them, set the option instead */
-    int delayed_compress_in; /* Use of zlib@openssh.org */
-    int delayed_compress_out;
     void *compress_out_ctx; /* don't touch it */
     void *compress_in_ctx; /* really, don't */
 };

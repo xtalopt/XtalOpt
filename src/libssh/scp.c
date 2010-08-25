@@ -26,29 +26,20 @@
 
 #include "libssh/priv.h"
 #include "libssh/scp.h"
-
-/**
- * @defgroup libssh_scp The SSH scp functions
- * @ingroup libssh
- *
- * SCP protocol over SSH functions
- *
+/** @defgroup ssh_scp SSH-scp
+ * @brief SCP protocol over SSH functions
+ * @addtogroup ssh_scp
  * @{
- */
+*/
 
-/**
- * @brief Create a new scp session.
- *
- * @param[in]  session  The SSH session to use.
- *
- * @param[in]  mode     One of SSH_SCP_WRITE or SSH_SCP_READ, depending if you
- *                      need to drop files remotely or read them.
- *                      It is not possible to combine read and write.
- *
- * @param[in]  location The directory in which write or read will be done. Any
- *                      push or pull will be relative to this place.
- *
- * @returns             A ssh_scp handle, NULL if the creation was impossible.
+/** @brief Creates a new scp session
+ * @param session the SSH session to use
+ * @param mode one of SSH_SCP_WRITE or SSH_SCP_READ, depending if you need to drop files remotely or read them.
+ * It is not possible to combine read and write.
+ * @param location The directory in which write or read will be done. Any push or pull will be relative 
+ * to this place
+ * @returns NULL if the creation was impossible.
+ * @returns a ssh_scp handle if it worked.
  */
 ssh_scp ssh_scp_new(ssh_session session, int mode, const char *location){
   ssh_scp scp=malloc(sizeof(struct ssh_scp_struct));
@@ -80,8 +71,6 @@ int ssh_scp_init(ssh_scp scp){
   int r;
   char execbuffer[1024];
   uint8_t code;
-  if(scp==NULL)
-      return SSH_ERROR;
   if(scp->state != SSH_SCP_NEW){
     ssh_set_error(scp->session,SSH_FATAL,"ssh_scp_init called under invalid state");
     return SSH_ERROR;
@@ -90,12 +79,12 @@ int ssh_scp_init(ssh_scp scp){
 		  scp->mode==SSH_SCP_WRITE?"write":"read",
 				  scp->recursive?"recursive ":"",
 						  scp->location);
-  scp->channel=ssh_channel_new(scp->session);
+  scp->channel=channel_new(scp->session);
   if(scp->channel == NULL){
     scp->state=SSH_SCP_ERROR;
     return SSH_ERROR;
   }
-  r= ssh_channel_open_session(scp->channel);
+  r= channel_open_session(scp->channel);
   if(r==SSH_ERROR){
     scp->state=SSH_SCP_ERROR;
     return SSH_ERROR;
@@ -106,24 +95,19 @@ int ssh_scp_init(ssh_scp scp){
   else
     snprintf(execbuffer,sizeof(execbuffer),"scp -f %s %s",
     		scp->recursive ? "-r":"", scp->location);
-  if(ssh_channel_request_exec(scp->channel,execbuffer) == SSH_ERROR){
+  if(channel_request_exec(scp->channel,execbuffer) == SSH_ERROR){
     scp->state=SSH_SCP_ERROR;
     return SSH_ERROR;
   }
   if(scp->mode == SSH_SCP_WRITE){
-	  r=ssh_channel_read(scp->channel,&code,1,0);
-	  if(r<=0){
-	    ssh_set_error(scp->session,SSH_FATAL, "Error reading status code: %s",ssh_get_error(scp->session));
-	    scp->state=SSH_SCP_ERROR;
-	    return SSH_ERROR;
-	  }
+	  r=channel_read(scp->channel,&code,1,0);
 	  if(code != 0){
 		  ssh_set_error(scp->session,SSH_FATAL, "scp status code %ud not valid", code);
 		  scp->state=SSH_SCP_ERROR;
 		  return SSH_ERROR;
 	  }
   } else {
-	  ssh_channel_write(scp->channel,"",1);
+	  channel_write(scp->channel,"",1);
   }
   if(scp->mode == SSH_SCP_WRITE)
     scp->state=SSH_SCP_WRITE_INITED;
@@ -135,10 +119,8 @@ int ssh_scp_init(ssh_scp scp){
 int ssh_scp_close(ssh_scp scp){
   char buffer[128];
   int err;
-  if(scp==NULL)
-    return SSH_ERROR;
   if(scp->channel != NULL){
-    if(ssh_channel_send_eof(scp->channel) == SSH_ERROR){
+    if(channel_send_eof(scp->channel) == SSH_ERROR){
       scp->state=SSH_SCP_ERROR;
       return SSH_ERROR;
     }
@@ -146,16 +128,16 @@ int ssh_scp_close(ssh_scp scp){
      * not yet stored on disk. This can happen if the close is sent
      * before we got the EOF back
      */
-    while(!ssh_channel_is_eof(scp->channel)){
-      err=ssh_channel_read(scp->channel,buffer,sizeof(buffer),0);
+    while(!channel_is_eof(scp->channel)){
+      err=channel_read(scp->channel,buffer,sizeof(buffer),0);
       if(err==SSH_ERROR)
         break;
     }
-    if(ssh_channel_close(scp->channel) == SSH_ERROR){
+    if(channel_close(scp->channel) == SSH_ERROR){
       scp->state=SSH_SCP_ERROR;
       return SSH_ERROR;
     }
-    ssh_channel_free(scp->channel);
+    channel_free(scp->channel);
     scp->channel=NULL;
   }
   scp->state=SSH_SCP_NEW;
@@ -163,31 +145,23 @@ int ssh_scp_close(ssh_scp scp){
 }
 
 void ssh_scp_free(ssh_scp scp){
-  if(scp==NULL)
-      return;
   if(scp->state != SSH_SCP_NEW)
     ssh_scp_close(scp);
   if(scp->channel)
-    ssh_channel_free(scp->channel);
+    channel_free(scp->channel);
   SAFE_FREE(scp->location);
   SAFE_FREE(scp->request_name);
   SAFE_FREE(scp->warning);
   SAFE_FREE(scp);
 }
 
-/**
- * @brief Create a directory in a scp in sink mode.
- *
- * @param[in]  scp      The scp handle.
- *
- * @param[in]  dirname  The name of the directory being created.
- *
- * @param[in]  mode     The UNIX permissions for the new directory, e.g. 0755.
- *
- * @returns             SSH_OK if the directory has been created, SSH_ERROR if
- *                      an error occured.
- *
- * @see ssh_scp_leave_directory()
+/** @brief creates a directory in a scp in sink mode
+ * @param scp the scp handle.
+ * @param dirname Name of the directory being created.
+ * @param mode  Unix permissions for the new directory, e.g. 0755.
+ * @returns SSH_OK if the directory was created.
+ * @returns SSH_ERROR if an error happened.
+ * @see ssh_scp_leave_directory
  */
 int ssh_scp_push_directory(ssh_scp scp, const char *dirname, int mode){
   char buffer[1024];
@@ -195,8 +169,6 @@ int ssh_scp_push_directory(ssh_scp scp, const char *dirname, int mode){
   uint8_t code;
   char *dir;
   char *perms;
-  if(scp==NULL)
-      return SSH_ERROR;
   if(scp->state != SSH_SCP_WRITE_INITED){
     ssh_set_error(scp->session,SSH_FATAL,"ssh_scp_push_directory called under invalid state");
     return SSH_ERROR;
@@ -206,17 +178,12 @@ int ssh_scp_push_directory(ssh_scp scp, const char *dirname, int mode){
   snprintf(buffer, sizeof(buffer), "D%s 0 %s\n", perms, dir);
   SAFE_FREE(dir);
   SAFE_FREE(perms);
-  r=ssh_channel_write(scp->channel,buffer,strlen(buffer));
+  r=channel_write(scp->channel,buffer,strlen(buffer));
   if(r==SSH_ERROR){
     scp->state=SSH_SCP_ERROR;
     return SSH_ERROR;
   }
-  r=ssh_channel_read(scp->channel,&code,1,0);
-  if(r<=0){
-    ssh_set_error(scp->session,SSH_FATAL, "Error reading status code: %s",ssh_get_error(scp->session));
-    scp->state=SSH_SCP_ERROR;
-    return SSH_ERROR;
-  }
+  r=channel_read(scp->channel,&code,1,0);
   if(code != 0){
     ssh_set_error(scp->session,SSH_FATAL, "scp status code %ud not valid", code);
     scp->state=SSH_SCP_ERROR;
@@ -226,34 +193,25 @@ int ssh_scp_push_directory(ssh_scp scp, const char *dirname, int mode){
 }
 
 /**
- * @brief Leave a directory.
- *
- * @returns             SSH_OK if the directory has been left,SSH_ERROR if an
- *                      error occured.
- *
- * @see ssh_scp_push_directory()
+ * @brief Leaves a directory
+ * @returns SSH_OK if the directory was created.
+ * @returns SSH_ERROR if an error happened.
+ * @see ssh_scp_push_directory
  */
  int ssh_scp_leave_directory(ssh_scp scp){
   char buffer[]="E\n";
   int r;
   uint8_t code;
-  if(scp==NULL)
-      return SSH_ERROR;
   if(scp->state != SSH_SCP_WRITE_INITED){
     ssh_set_error(scp->session,SSH_FATAL,"ssh_scp_leave_directory called under invalid state");
     return SSH_ERROR;
   }
-  r=ssh_channel_write(scp->channel,buffer,strlen(buffer));
+  r=channel_write(scp->channel,buffer,strlen(buffer));
   if(r==SSH_ERROR){
     scp->state=SSH_SCP_ERROR;
     return SSH_ERROR;
   }
-  r=ssh_channel_read(scp->channel,&code,1,0);
-  if(r<=0){
-    ssh_set_error(scp->session,SSH_FATAL, "Error reading status code: %s",ssh_get_error(scp->session));
-    scp->state=SSH_SCP_ERROR;
-    return SSH_ERROR;
-  }
+  r=channel_read(scp->channel,&code,1,0);
   if(code != 0){
     ssh_set_error(scp->session,SSH_FATAL, "scp status code %ud not valid", code);
     scp->state=SSH_SCP_ERROR;
@@ -262,20 +220,14 @@ int ssh_scp_push_directory(ssh_scp scp, const char *dirname, int mode){
   return SSH_OK;
 }
 
-/**
- * @brief Initialize the sending of a file to a scp in sink mode.
- *
- * @param[in]  scp      The scp handle.
- *
- * @param[in]  filename The name of the file being sent. It should not contain
- *                      any path indicator
- *
- * @param[in]  size     Exact size in bytes of the file being sent.
- *
- * @param[in]  mode     The UNIX permissions for the new file, e.g. 0644.
- *
- * @returns             SSH_OK if the file is ready to be sent, SSH_ERROR if an
- *                      error occured.
+
+/** @brief initializes the sending of a file to a scp in sink mode
+ * @param scp the scp handle.
+ * @param filename Name of the file being sent. It should not contain any path indicator
+ * @param size Exact size in bytes of the file being sent.
+ * @param mode Unix permissions for the new file, e.g. 0644
+ * @returns SSH_OK if the file is ready to be sent.
+ * @returns SSH_ERROR if an error happened.
  */
 int ssh_scp_push_file(ssh_scp scp, const char *filename, size_t size, int mode){
   char buffer[1024];
@@ -283,8 +235,6 @@ int ssh_scp_push_file(ssh_scp scp, const char *filename, size_t size, int mode){
   uint8_t code;
   char *file;
   char *perms;
-  if(scp==NULL)
-      return SSH_ERROR;
   if(scp->state != SSH_SCP_WRITE_INITED){
     ssh_set_error(scp->session,SSH_FATAL,"ssh_scp_push_file called under invalid state");
     return SSH_ERROR;
@@ -295,17 +245,12 @@ int ssh_scp_push_file(ssh_scp scp, const char *filename, size_t size, int mode){
   snprintf(buffer, sizeof(buffer), "C%s %" PRIdS " %s\n", perms, size, file);
   SAFE_FREE(file);
   SAFE_FREE(perms);
-  r=ssh_channel_write(scp->channel,buffer,strlen(buffer));
+  r=channel_write(scp->channel,buffer,strlen(buffer));
   if(r==SSH_ERROR){
     scp->state=SSH_SCP_ERROR;
     return SSH_ERROR;
   }
-  r=ssh_channel_read(scp->channel,&code,1,0);
-  if(r<=0){
-    ssh_set_error(scp->session,SSH_FATAL, "Error reading status code: %s",ssh_get_error(scp->session));
-    scp->state=SSH_SCP_ERROR;
-    return SSH_ERROR;
-  }
+  r=channel_read(scp->channel,&code,1,0);
   if(code != 0){
     ssh_set_error(scp->session,SSH_FATAL, "scp status code %ud not valid", code);
     scp->state=SSH_SCP_ERROR;
@@ -317,25 +262,18 @@ int ssh_scp_push_file(ssh_scp scp, const char *filename, size_t size, int mode){
   return SSH_OK;
 }
 
-/**
+/** @brief waits for a response of the scp server
  * @internal
- *
- * @brief Wait for a response of the scp server.
- *
- * @param[in]  scp      The scp handle.
- *
- * @param[out] response A pointer where the response message must be copied if
- *                      any. This pointer must then be free'd.
- *
- * @returns             The return code, SSH_ERROR a error occured.
+ * @param response pointer where the response message must be
+ * copied if any. This pointer must then be free'd.
+ * @returns the return code.
+ * @returns SSH_ERROR a error occured
  */
 int ssh_scp_response(ssh_scp scp, char **response){
 	unsigned char code;
 	int r;
 	char msg[128];
-	if(scp==NULL)
-	    return SSH_ERROR;
-	r=ssh_channel_read(scp->channel,&code,1,0);
+	r=channel_read(scp->channel,&code,1,0);
 	if(r == SSH_ERROR)
 		return SSH_ERROR;
 	if(code == 0)
@@ -366,24 +304,17 @@ int ssh_scp_response(ssh_scp scp, char **response){
 	return SSH_ERROR;
 }
 
-/**
- * @brief Write into a remote scp file.
- *
- * @param[in]  scp      The scp handle.
- *
- * @param[in]  buffer   The buffer to write.
- *
- * @param[in]  len      The number of bytes to write.
- *
- * @returns             SSH_OK if the write was successful, SSH_ERROR an error
- *                      occured while writing.
+/** @brief Write into a remote scp file
+ * @param scp the scp handle.
+ * @param buffer the buffer to write
+ * @param len the number of bytes to write
+ * @returns SSH_OK the write was successful
+ * @returns SSH_ERROR an error happened while writing
  */
 int ssh_scp_write(ssh_scp scp, const void *buffer, size_t len){
   int w;
   //int r;
   //uint8_t code;
-  if(scp==NULL)
-      return SSH_ERROR;
   if(scp->state != SSH_SCP_WRITE_WRITING){
     ssh_set_error(scp->session,SSH_FATAL,"ssh_scp_write called under invalid state");
     return SSH_ERROR;
@@ -391,8 +322,8 @@ int ssh_scp_write(ssh_scp scp, const void *buffer, size_t len){
   if(scp->processed + len > scp->filelen)
     len = scp->filelen - scp->processed;
   /* hack to avoid waiting for window change */
-  ssh_channel_poll(scp->channel,0);
-  w=ssh_channel_write(scp->channel,buffer,len);
+  channel_poll(scp->channel,0);
+  w=channel_write(scp->channel,buffer,len);
   if(w != SSH_ERROR)
     scp->processed += w;
   else {
@@ -420,26 +351,20 @@ int ssh_scp_write(ssh_scp scp, const void *buffer, size_t len){
 }
 
 /**
- * @brief Read a string on a channel, terminated by '\n'
- *
- * @param[in]  scp      The scp handle.
- *
- * @param[out] buffer   A pointer to a buffer to place the string.
- *
- * @param[in]  len      The size of the buffer in bytes. If the string is bigger
- *                      than len-1, only len-1 bytes are read and the string is
- *                      null-terminated.
- *
- * @returns             SSH_OK if the string was read, SSH_ERROR if an error
- *                      occured while reading.
+ * @brief reads a string on a channel, terminated by '\n'
+ * @param scp the scp handle.
+ * @param buffer pointer to a buffer to place the string
+ * @param len size of the buffer in bytes. If the string is bigger
+ * than len-1, only len-1 bytes are read and the string
+ * is null-terminated.
+ * @returns SSH_OK The string was read
+ * @returns SSH_ERROR Error happened while reading
  */
 int ssh_scp_read_string(ssh_scp scp, char *buffer, size_t len){
   size_t r=0;
   int err=SSH_OK;
-  if(scp==NULL)
-      return SSH_ERROR;
   while(r<len-1){
-    err=ssh_channel_read(scp->channel,&buffer[r],1,0);
+    err=channel_read(scp->channel,&buffer[r],1,0);
     if(err==SSH_ERROR){
       break;
     }
@@ -456,21 +381,14 @@ int ssh_scp_read_string(ssh_scp scp, char *buffer, size_t len){
   return err;
 }
 
-/**
- * @brief Wait for a scp request (file, directory).
- *
- * @returns             SSH_SCP_REQUEST_NEWFILE:       The other side is sending
- *                                                     a file
- *                      SSH_SCP_REQUEST_NEWDIRECTORY:  The other side is sending
- *                                                     a directory
- *                      SSH_SCP_REQUEST_END_DIRECTORY: The other side has
- *                                                     finished with the current
- *                                                     directory
- *                      SSH_ERROR:                     Some error happened
- *
- * @see ssh_scp_read()
- * @see ssh_scp_deny_request()
- * @see ssh_scp_accept_request()
+/** @brief waits for a scp request (file, directory)
+ * @returns SSH_ERROR Some error happened
+ * @returns SSH_SCP_REQUEST_NEWFILE The other side is sending a file
+ * @returns SSH_SCP_REQUEST_NEWDIRECTORY The other side is sending a directory
+ * @returns SSH_SCP_REQUEST_END_DIRECTORY The other side has finished with the current directory
+ * @see ssh_scp_read
+ * @see ssh_scp_deny_request
+ * @see ssh_scp_accept_request
  */
 int ssh_scp_pull_request(ssh_scp scp){
   char buffer[4096];
@@ -479,15 +397,13 @@ int ssh_scp_pull_request(ssh_scp scp){
   size_t size;
   char *name=NULL;
   int err;
-  if(scp==NULL)
-      return SSH_ERROR;
   if(scp->state != SSH_SCP_READ_INITED){
     ssh_set_error(scp->session,SSH_FATAL,"ssh_scp_pull_request called under invalid state");
     return SSH_ERROR;
   }
   err=ssh_scp_read_string(scp,buffer,sizeof(buffer));
   if(err==SSH_ERROR){
-	if(ssh_channel_is_eof(scp->channel)){
+	if(channel_is_eof(scp->channel)){
 		scp->state=SSH_SCP_TERMINATED;
 		return SSH_SCP_REQUEST_EOF;
 	}
@@ -532,7 +448,7 @@ int ssh_scp_pull_request(ssh_scp scp){
       break;
     case 'E':
     	scp->request_type=SSH_SCP_REQUEST_ENDDIR;
-    	ssh_channel_write(scp->channel,"",1);
+    	channel_write(scp->channel,"",1);
     	return scp->request_type;
     case 0x1:
     	ssh_set_error(scp->session,SSH_REQUEST_DENIED,"SCP: Warning: %s",&buffer[1]);
@@ -559,27 +475,23 @@ int ssh_scp_pull_request(ssh_scp scp){
 }
 
 /**
- * @brief Deny the transfer of a file or creation of a directory coming from the
- * remote party.
- *
- * @param[in]  scp      The scp handle.
- * @param[in]  reason   A nul-terminated string with a human-readable
- *                      explanation of the deny.
- *
- * @returns             SSH_OK if the message was sent, SSH_ERROR if the sending
- *                      the message failed, or sending it in a bad state.
+ * @brief denies the transfer of a file or creation of a directory
+ *  coming from the remote party
+ *  @param scp the scp handle.
+ *  @param reason nul-terminated string with a human-readable explanation
+ *  of the deny
+ *  @returns SSH_OK the message was sent
+ *  @returns SSH_ERROR Error sending the message, or sending it in a bad state
  */
 int ssh_scp_deny_request(ssh_scp scp, const char *reason){
   char buffer[4096];
   int err;
-  if(scp==NULL)
-      return SSH_ERROR;
   if(scp->state != SSH_SCP_READ_REQUESTED){
     ssh_set_error(scp->session,SSH_FATAL,"ssh_scp_deny_request called under invalid state");
     return SSH_ERROR;
   }
   snprintf(buffer,sizeof(buffer),"%c%s\n",2,reason);
-  err=ssh_channel_write(scp->channel,buffer,strlen(buffer));
+  err=channel_write(scp->channel,buffer,strlen(buffer));
   if(err==SSH_ERROR) {
     return SSH_ERROR;
   }
@@ -590,24 +502,20 @@ int ssh_scp_deny_request(ssh_scp scp, const char *reason){
 }
 
 /**
- * @brief Accepts transfer of a file or creation of a directory coming from the
- * remote party.
- *
- * @param[in]  scp      The scp handle.
- *
- * @returns             SSH_OK if the message was sent, SSH_ERROR if sending the
- *                      message failed, or sending it in a bad state.
+ * @brief accepts transfer of a file or creation of a directory
+ *  coming from the remote party
+ *  @param scp the scp handle.
+ *  @returns SSH_OK the message was sent
+ *  @returns SSH_ERROR Error sending the message, or sending it in a bad state
  */
 int ssh_scp_accept_request(ssh_scp scp){
   char buffer[]={0x00};
   int err;
-  if(scp==NULL)
-      return SSH_ERROR;
   if(scp->state != SSH_SCP_READ_REQUESTED){
     ssh_set_error(scp->session,SSH_FATAL,"ssh_scp_deny_request called under invalid state");
     return SSH_ERROR;
   }
-  err=ssh_channel_write(scp->channel,buffer,1);
+  err=channel_write(scp->channel,buffer,1);
   if(err==SSH_ERROR) {
     return SSH_ERROR;
   }
@@ -619,20 +527,15 @@ int ssh_scp_accept_request(ssh_scp scp){
 }
 
 /** @brief Read from a remote scp file
- * @param[in]  scp      The scp handle.
- *
- * @param[in]  buffer   The destination buffer.
- *
- * @param[in]  size     The size of the buffer.
- *
- * @returns             The nNumber of bytes read, SSH_ERROR if an error occured
- *                      while reading.
+ * @param scp the scp handle.
+ * @param buffer Destination buffer
+ * @param size Size of the buffer
+ * @returns Number of bytes read
+ * @returns SSH_ERROR An error happened while reading
  */
 int ssh_scp_read(ssh_scp scp, void *buffer, size_t size){
   int r;
   int code;
-  if(scp==NULL)
-      return SSH_ERROR;
   if(scp->state == SSH_SCP_READ_REQUESTED && scp->request_type == SSH_SCP_REQUEST_NEWFILE){
     r=ssh_scp_accept_request(scp);
     if(r==SSH_ERROR)
@@ -646,7 +549,7 @@ int ssh_scp_read(ssh_scp scp, void *buffer, size_t size){
     size = scp->filelen - scp->processed;
   if(size > 65536)
     size=65536; /* avoid too large reads */
-  r=ssh_channel_read(scp->channel,buffer,size,0);
+  r=channel_read(scp->channel,buffer,size,0);
   if(r != SSH_ERROR)
     scp->processed += r;
   else {
@@ -656,7 +559,7 @@ int ssh_scp_read(ssh_scp scp, void *buffer, size_t size){
   /* Check if we arrived at end of file */
   if(scp->processed == scp->filelen) {
     scp->processed=scp->filelen=0;
-    ssh_channel_write(scp->channel,"",1);
+    channel_write(scp->channel,"",1);
     code=ssh_scp_response(scp,NULL);
     if(code == 0){
     	scp->state=SSH_SCP_READ_INITED;
@@ -672,60 +575,43 @@ int ssh_scp_read(ssh_scp scp, void *buffer, size_t size){
   return r;
 }
 
-/**
- * @brief Get the name of the directory or file being pushed from the other
- * party.
- *
- * @returns             The file name, NULL on error. The string should not be
- *                      freed.
+/** @brief Gets the name of the directory or file being
+ * pushed from the other party
+ * @returns file name. Should not be freed.
  */
 const char *ssh_scp_request_get_filename(ssh_scp scp){
-  if(scp==NULL)
-      return NULL;
   return scp->request_name;
 }
 
-/**
- * @brief Get the permissions of the directory or file being pushed from the
- * other party.
- *
- * @returns             The UNIX permission, e.g 0644, -1 on error.
+/**@brief Gets the permissions of the directory or file being
+ * pushed from the other party
+ * @returns Unix permission, e.g 0644.
  */
 int ssh_scp_request_get_permissions(ssh_scp scp){
-  if(scp==NULL)
-      return -1;
   return scp->request_mode;
 }
 
-/** @brief Get the size of the file being pushed from the other party.
- *
- * @returns             The numeric size of the file being read.
+/** @brief Gets the size of the file being pushed
+ * from the other party
+ * @returns Numeric size of the file being read.
  */
 size_t ssh_scp_request_get_size(ssh_scp scp){
-  if(scp==NULL)
-      return 0;
   return scp->filelen;
 }
 
-/**
- * @brief Convert a scp text mode to an integer.
- *
- * @param[in]  mode     The mode to convert, e.g. "0644".
- *
- * @returns             An integer value, e.g. 420 for "0644".
+/** @brief Converts a scp text mode to an integer one
+ * @param mode mode to convert, e.g. "0644"
+ * @returns integer value, e.g. 420 for "0644"
  */
 int ssh_scp_integer_mode(const char *mode){
 	int value=strtoul(mode,NULL,8) & 0xffff;
 	return value;
 }
 
-/**
- * @brief Convert a unix mode into a scp string.
- *
- * @param[in]  mode     The mode to convert, e.g. 420 or 0644.
- *
- * @returns             A pointer to a malloc'ed string containing the scp mode,
- *                      e.g. "0644".
+/** @brief Converts a unix mode into a scp string one.
+ * @param mode mode to convert, e.g. 420 or 0644
+ * @returns pointer to a malloc'ed string containing the scp mode,
+ * e.g. "0644".
  */
 char *ssh_scp_string_mode(int mode){
 	char buffer[16];
@@ -733,20 +619,13 @@ char *ssh_scp_string_mode(int mode){
 	return strdup(buffer);
 }
 
-/**
- * @brief Get the warning string from a scp handle.
- *
- * @param[in]  scp      The scp handle.
- *
- * @returns             A warning string, or NULL on error. The string should
- *                      not be freed.
+/** @brief Gets the warning string
+ * @returns Warning string. Should not be freed.
  */
+
 const char *ssh_scp_request_get_warning(ssh_scp scp){
-  if(scp==NULL)
-      return NULL;
 	return scp->warning;
 }
 
 /** @} */
 
-/* vim: set ts=4 sw=4 et cindent: */

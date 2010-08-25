@@ -64,7 +64,7 @@ namespace GlobalSearch {
     bool deleteChannel = false;
     if (!channel) {
       deleteChannel = true;
-      channel = ssh_channel_new(m_session);
+      channel = channel_new(m_session);
       if (!channel) {
         m_isValid = false;
         qWarning() << "SSH error: " << ssh_get_error(m_session);
@@ -73,12 +73,12 @@ namespace GlobalSearch {
     }
 
     bool connected = false;
-    if (ssh_channel_poll(channel, 0) != SSH_ERROR) {
+    if (channel_poll(channel, 0) != SSH_ERROR) {
       connected = true;
     }
 
     if (deleteChannel) {
-      ssh_channel_free(channel);
+      channel_free(channel);
     }
     END;
     return connected;
@@ -272,22 +272,22 @@ namespace GlobalSearch {
   {
     START;
     // Open new channel for exec
-    ssh_channel channel = ssh_channel_new(m_session);
+    ssh_channel channel = channel_new(m_session);
     if (!channel) {
       qWarning() << "SSH error: " << ssh_get_error(m_session);
       return false;
     }
-    if (ssh_channel_open_session(channel) != SSH_OK) {
+    if (channel_open_session(channel) != SSH_OK) {
       qWarning() << "SSH error: " << ssh_get_error(m_session);
       return false;
     }
 
     // Execute command
-    int ssh_exit = ssh_channel_request_exec(channel, command.toStdString().c_str());
-    ssh_channel_send_eof(channel);
+    int ssh_exit = channel_request_exec(channel, command.toStdString().c_str());
+    channel_send_eof(channel);
 
     if (ssh_exit == SSH_ERROR) {
-      ssh_channel_close(channel);
+      channel_close(channel);
       return false;
     }
 
@@ -297,19 +297,19 @@ namespace GlobalSearch {
     // Read output
     char buffer[SSH_BUFFER_SIZE];
     int len;
-    while ((len = ssh_channel_read(channel, buffer, sizeof(buffer), 0)) > 0) {
+    while ((len = channel_read(channel, buffer, sizeof(buffer), 0)) > 0) {
       ossout.write(buffer,len);
     }
     stdout = QString(ossout.str().c_str());
-    while ((len = ssh_channel_read(channel, buffer, sizeof(buffer), 1)) > 0) {
+    while ((len = channel_read(channel, buffer, sizeof(buffer), 1)) > 0) {
       osserr.write(buffer,len);
     }
     stderr = QString(osserr.str().c_str());
 
-    exitcode = ssh_channel_get_exit_status(channel);
+    exitcode = channel_get_exit_status(channel);
 
-    ssh_channel_close(channel);
-    ssh_channel_free(channel);
+    channel_close(channel);
+    channel_free(channel);
     END;
     return true;
   }
