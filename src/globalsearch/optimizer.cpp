@@ -17,7 +17,7 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/queuemanager.h>
-#include <globalsearch/sshconnection.h>
+#include <globalsearch/sshmanager.h>
 
 #include <QDir>
 #include <QDebug>
@@ -226,50 +226,63 @@ namespace GlobalSearch {
 
   bool Optimizer::createRemoteDirectory(Structure *structure)
   {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+
+    if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort())
                      );
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
     QString command = "mkdir -p " + structure->getRempath();
     qDebug() << "Optimizer::createRemoteDirectory: Calling " << command;
     QString stdout, stderr; int ec;
-    if (!m_opt->ssh()->execute(command, stdout, stderr, ec) || ec != 0) {
+    if (!ssh->execute(command, stdout, stderr, ec) || ec != 0) {
       m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
+    m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
 
   bool Optimizer::cleanRemoteDirectory(Structure *structure)
   {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+
+    if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort())
                      );
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
     // 2nd arg keeps the directory, only removes directory contents.
-    if (!m_opt->ssh()->removeRemoteDirectory(structure->getRempath(), true)) {
+    if (!ssh->removeRemoteDirectory(structure->getRempath(), true)) {
       m_opt->warning(tr("Error clearing remote directory %1")
                      .arg(structure->getRempath()));
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
+    m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
 
   bool Optimizer::writeTemplates(Structure *structure) {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+
+    if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort())
                      );
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
     // Create file objects
@@ -284,6 +297,7 @@ namespace GlobalSearch {
       if (!files.at(i)->open( QIODevice::WriteOnly | QIODevice::Text ) ) {
         m_opt->error(tr("Cannot write input file %1 (file writing failure)", "1 is a file path").arg(files.at(i)->fileName()));
         qDeleteAll(files);
+        m_opt->ssh()->unlockConnection(ssh);
         return false;
       }
     }
@@ -309,48 +323,58 @@ namespace GlobalSearch {
     // Clean up
     qDeleteAll(files);
     qDeleteAll(streams);
+    m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
 
   bool Optimizer::copyLocalTemplateFilesToRemote(Structure *structure)
   {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+
+    if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort())
                      );
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
     QStringList templates = getTemplateNames();
     QStringList::const_iterator it;
     for (it = templates.begin(); it != templates.end(); it++) {
-      if (!m_opt->ssh()->copyFileToServer(structure->fileName() + "/" + (*it),
+      if (!ssh->copyFileToServer(structure->fileName() + "/" + (*it),
                                           structure->getRempath() + "/" + (*it))) {
         m_opt->warning(tr("Error copying \"%1\" to remote server (structure %2)")
                        .arg(*it)
                        .arg(structure->getIDString()));
+        m_opt->ssh()->unlockConnection(ssh);
         return false;
       }
     }
+    m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
 
   bool Optimizer::startOptimization(Structure *structure) {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+
+    if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort())
                      );
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
     QString command = "cd " + structure->getRempath() + " && " +
       m_opt->qsub + " job.pbs";
     qDebug() << "Optimizer::startOptimization: Calling " << command;
     QString stdout, stderr; int ec;
-    if (!m_opt->ssh()->execute(command, stdout, stderr, ec) || ec != 0) {
+    if (!ssh->execute(command, stdout, stderr, ec) || ec != 0) {
       m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
 
@@ -362,17 +386,21 @@ namespace GlobalSearch {
     structure->setJobID(jobID);
     structure->startOptTimer();
     structure->setStatus(Structure::Submitted);
+    m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
 
   bool Optimizer::checkIfOutputFileExists(const QString & filename)
   {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+
+    if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort())
                      );
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
     QString command;
@@ -380,67 +408,82 @@ namespace GlobalSearch {
     command = "[ -e " + filename + " ]";
     qDebug() << "Optimizer::checkIfOutputFileExists: Calling " << command;
     QString stdout, stderr; int ec;
-    if (!m_opt->ssh()->execute(command, stdout, stderr, ec)) {
+    if (!ssh->execute(command, stdout, stderr, ec)) {
       m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
 
+    m_opt->ssh()->unlockConnection(ssh);
     return (!ec);
   }
 
   bool Optimizer::getOutputFile(const QString & filename,
                                 QStringList & data)
   {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+
+    if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort())
                      );
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
     QString tmp;
-    if (!m_opt->ssh()->readRemoteFile(filename, tmp)) {
+    if (!ssh->readRemoteFile(filename, tmp)) {
       m_opt->warning(tr("Error retrieving remote file %1.")
                      .arg(filename));
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
 
     // Fill data list
     data = tmp.split("\n", QString::KeepEmptyParts);
+    m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
 
   bool Optimizer::copyRemoteToLocalCache(Structure *structure)
   {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+
+    if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort())
                      );
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
     // lock structure
     QReadLocker locker (structure->lock());
     QString stdout, stderr; int ec;
-    if (!m_opt->ssh()->copyDirectoryFromServer(structure->getRempath(),
+    if (!ssh->copyDirectoryFromServer(structure->getRempath(),
                                                structure->fileName())) {
       m_opt->error("Cannot copy from remote directory for Structure "
                    + structure->getIDString());
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
+    m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
 
   Optimizer::JobState Optimizer::getStatus(Structure *structure)
   {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+
+    if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort())
                      );
+      m_opt->ssh()->unlockConnection(ssh);
       return Optimizer::CommunicationError;
     }
     // lock structure
@@ -451,6 +494,7 @@ namespace GlobalSearch {
     // If jobID = 0, return an error.
     if (!jobID) {
       structure->setStatus(Structure::Error);
+      m_opt->ssh()->unlockConnection(ssh);
       return Optimizer::Error;
     }
 
@@ -483,11 +527,13 @@ namespace GlobalSearch {
         else {
           // The output file does not exist -- the job is still
           // pending.
+          m_opt->ssh()->unlockConnection(ssh);
           return Optimizer::Pending;
         }
       }
       else {
         // The job is in the queue.
+        m_opt->ssh()->unlockConnection(ssh);
         return Optimizer::Started;
       }
     }
@@ -495,10 +541,13 @@ namespace GlobalSearch {
     if (status == "R") {
       if (structure->getOptElapsed() == "0:00:00")
         structure->startOptTimer();
+      m_opt->ssh()->unlockConnection(ssh);
       return Optimizer::Running;
     }
-    else if (status == "Q")
+    else if (status == "Q") {
+      m_opt->ssh()->unlockConnection(ssh);
       return Optimizer::Queued;
+    }
     // Even if the job has errored in the queue, leave it as "running"
     // and wait for it to leave the queue then check the m_completion
     // file. The optimization may have finished OK.
@@ -506,6 +555,7 @@ namespace GlobalSearch {
       qWarning() << "Optimizer::getStatus: Structure " << structure->getIDString()
                  << " has errored in the queue, but may have optimized successfully.\n"
                  << "Marking job as 'Running' until it's gone from the queue...";
+      m_opt->ssh()->unlockConnection(ssh);
       return Optimizer::Running;
     }
 
@@ -531,64 +581,79 @@ namespace GlobalSearch {
         QString command = "grep \'" + m_completionString + "\' "
           + rempath + "/" + m_completionFilename;
         qDebug() << "Optimizer::getStatus: Calling " << command;
-        if (!m_opt->ssh()->execute(command, stdout, stderr, ec)) {
+        if (!ssh->execute(command, stdout, stderr, ec)) {
           m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
+          m_opt->ssh()->unlockConnection(ssh);
           return Optimizer::CommunicationError;
         }
         if (ec == 0) {
           structure->resetFailCount();
+          m_opt->ssh()->unlockConnection(ssh);
           return Optimizer::Success;
         }
         // Otherwise, it's an error!
         structure->setStatus(Structure::Error);
+        m_opt->ssh()->unlockConnection(ssh);
         return Optimizer::Error;
       }
     }
     // Not in queue and no output? Interesting...
     structure->setStatus(Structure::Error);
+    m_opt->ssh()->unlockConnection(ssh);
     return Optimizer::Unknown;
   }
 
   bool Optimizer::deleteJob(Structure *structure) {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+
+    if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort())
                      );
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
     // lock structure
     QWriteLocker locker (structure->lock());
     QString command;
 
-    if (structure->getJobID() == 0) // jobid has not been set, cannot delete!
+    // jobid has not been set, cannot delete!
+    if (structure->getJobID() == 0) {
+      m_opt->ssh()->unlockConnection(ssh);
       return true;
+    }
 
     command = m_opt->qdel + " " + QString::number(structure->getJobID());
 
     // Execute
     qDebug() << "Optimizer::deleteJob: Calling " << command;
     QString stdout, stderr; int ec;
-    if (!m_opt->ssh()->execute(command, stdout, stderr, ec) || ec != 0) {
+    if (!ssh->execute(command, stdout, stderr, ec) || ec != 0) {
       m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
       // Most likely job is already gone from queue. Set jobID to 0.
       structure->setJobID(0);
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
 
     structure->setJobID(0);
     structure->stopOptTimer();
+    m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
 
   bool Optimizer::getQueueList(QStringList & queueData, QMutex *mutex) {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+
+    if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort())
                      );
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
     QString command;
@@ -600,18 +665,20 @@ namespace GlobalSearch {
     // Valid exit codes for grep: (0) matches found, execution successful
     //                            (1) no matches found, execution successful
     //                            (2) execution unsuccessful
-    if (!m_opt->ssh()->execute(command, stdout, stderr, ec)
+    if (!ssh->execute(command, stdout, stderr, ec)
         || (ec != 0 && ec != 1 )
         ) {
       m_opt->warning(tr("Error executing %1: (%2) %3")
                      .arg(command)
                      .arg(QString::number(ec))
                      .arg(stderr));
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
 
     QMutexLocker queueDataMutexLocker (mutex);
     queueData = stdout.split("\n", QString::SkipEmptyParts);
+    m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
 

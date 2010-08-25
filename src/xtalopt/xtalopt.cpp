@@ -25,6 +25,7 @@
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/sshmanager.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/bt.h>
 
@@ -101,12 +102,9 @@ namespace XtalOpt {
       qobject_cast<VASPOptimizer*>(m_optimizer)->buildPOTCARs();
     }
 
-    // Create the SSHConnection to the server
+    // Create the SSHManager
     if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
-      if (!openSSHConnection(host, username)) {
-        error("Cannot connect to server. Check settings and try again.");
-        return;
-      }
+      m_ssh = new SSHManager(5, host, username, "", 22, this);
     }
 
     // prepare pointers
@@ -1133,12 +1131,9 @@ namespace XtalOpt {
 
     // Create SSHConnection
     if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
-      if (!openSSHConnection(host, username)) {
-        // TODO implement a read-only mode for reviewing when the
-        // server isn't available
-        error("Cannot connect to server. Check settings and try again.");
-        return false;
-      }
+      m_ssh = new SSHManager(5, host, username, "", 22, this);
+      // TODO implement a read-only mode for reviewing when the
+      // server isn't available
     }
 
     debug(tr("Resuming XtalOpt session in '%1' (%2)")

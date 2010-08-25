@@ -17,7 +17,7 @@
 #include <xtalopt/structures/xtal.h>
 
 #include <globalsearch/macros.h>
-#include <globalsearch/sshconnection.h>
+#include <globalsearch/sshmanager.h>
 
 #include <QDir>
 #include <QDebug>
@@ -115,14 +115,7 @@ namespace XtalOpt {
   }
 
   bool VASPOptimizer::writeInputFiles(Structure *structure) {
-    if (!m_opt->ssh()->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
-                     );
-      return false;
-    }
+
     // Stop any running jobs associated with this xtal
     deleteJob(structure);
 
@@ -164,13 +157,26 @@ namespace XtalOpt {
     // Copy to server
     if (!copyLocalTemplateFilesToRemote(structure)) return false;
     // Again, POSCAR is done separately
-    if (!m_opt->ssh()->copyFileToServer(structure->fileName() + "/POSCAR",
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+    if (!ssh->reconnectIfNeeded()) {
+      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                     .arg(m_opt->ssh()->getUser())
+                     .arg(m_opt->ssh()->getHost())
+                     .arg(m_opt->ssh()->getPort())
+                     );
+      m_opt->ssh()->unlockConnection(ssh);
+      return false;
+    }
+
+    if (!ssh->copyFileToServer(structure->fileName() + "/POSCAR",
                                         structure->getRempath() + "/POSCAR")) {
       m_opt->warning(tr("Error copying \"%1\" to remote server (structure %2)")
                      .arg("POSCAR")
                      .arg(structure->getIDString()));
+      m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
+    m_opt->ssh()->unlockConnection(ssh);
 
     // Update info
     locker.unlock();

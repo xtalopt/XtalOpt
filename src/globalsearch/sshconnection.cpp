@@ -39,7 +39,8 @@ namespace GlobalSearch {
       m_user(user),
       m_pass(pass),
       m_port(port),
-      m_isValid(false)
+      m_isValid(false),
+      m_inUse(false)
   {
     START;
     connect(true);

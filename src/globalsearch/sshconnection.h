@@ -78,6 +78,9 @@ namespace GlobalSearch {
     int getPort() {return m_port;};
 
   public slots:
+    void setUsed(bool b) {m_inUse = b;};
+    bool inUse() {return m_inUse;};
+
     bool execute(const QString &command,
                  QString &stdout,
                  QString &stderr,
@@ -138,6 +141,7 @@ namespace GlobalSearch {
     QString m_pass;
     int m_port;
     bool m_isValid;
+    bool m_inUse;
     QMutex m_lock;
   };
 

@@ -24,7 +24,7 @@ namespace GlobalSearch {
   class Tracker;
   class Optimizer;
   class QueueManager;
-  class SSHConnection;
+  class SSHManager;
   class AbstractDialog;
 
   /**
@@ -164,9 +164,9 @@ namespace GlobalSearch {
     Optimizer* optimizer() {return m_optimizer;};
 
     /**
-     * @return A pointer to the SSHConnection instance.
+     * @return A pointer to the SSHManager instance.
      */
-    SSHConnection* ssh() {return m_ssh;};
+    SSHManager* ssh() {return m_ssh;};
 
     /// Whether to impose the running job limit
     bool limitRunningJobs;
@@ -426,24 +426,6 @@ namespace GlobalSearch {
     void setOptimizer(const QString &IDString, const QString &filename = "") {
       setOptimizer_string(IDString, filename);};
 
-    /**
-     * Open a new SSH connection.
-     *
-     * @param host Host name of ssh server
-
-     * @param user Username (optional, if omitted the current user's
-     * name will be used)
-     * @param pass User password (optional if passwordless logins are
-     * enabled)
-     * @param port Port of ssh server (optional, default: 22)
-     *
-     * @return True if successful, false otherwise.
-     */
-    bool openSSHConnection(const QString &host,
-                           const QString &user = "",
-                           const QString &pass = "",
-                           int port = 22);
-
    protected:
     /// String that uniquely identifies the derived OptBase
     /// @sa getIDString
@@ -467,8 +449,8 @@ namespace GlobalSearch {
     /// @sa setOptimizer
     Optimizer *m_optimizer;
 
-    /// Cached pointer to the SSHConnection
-    SSHConnection *m_ssh;
+    /// Cached pointer to the SSHManager
+    SSHManager *m_ssh;
 
     /// Hidden call to setOptimizer
     virtual void setOptimizer_opt(Optimizer *o);

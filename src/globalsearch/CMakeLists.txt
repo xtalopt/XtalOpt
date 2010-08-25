@@ -6,6 +6,7 @@ set( globalsearch_SRCS
      optimizer.cpp
      bt.cpp
      sshconnection.cpp
+     sshmanager.cpp
      ui/abstractdialog.cpp
      ui/abstracttab.cpp)
 
