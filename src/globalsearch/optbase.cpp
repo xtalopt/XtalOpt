@@ -22,8 +22,6 @@
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/bt.h>
 
-#include <QInputDialog>
-
 using namespace OpenBabel;
 
 namespace GlobalSearch {

@@ -59,6 +59,9 @@ namespace XtalOpt {
             this, SLOT(checkForDuplicates()));
     connect(this, SIGNAL(sessionStarted()),
             this, SLOT(resetDuplicates()));
+    connect(this, SIGNAL(needPassword(const QString&, QString*, bool*)),
+            this, SLOT(promptForPassword(const QString&, QString*, bool*)),
+            Qt::BlockingQueuedConnection); // Wait until slot returns
   }
 
   XtalOpt::~XtalOpt()
@@ -102,9 +105,55 @@ namespace XtalOpt {
       qobject_cast<VASPOptimizer*>(m_optimizer)->buildPOTCARs();
     }
 
+    // TODO Don't hardcode port
+    int port = 22;
+
     // Create the SSHManager
     if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
-      m_ssh = new SSHManager(5, host, username, "", 22, this);
+      QString pw = "";
+      for (;;) {
+        if (m_ssh) {
+          delete m_ssh;
+          m_ssh = 0;
+        }
+        try {
+          m_ssh = new SSHManager(5, host, username, pw, port, this);
+        }
+        catch (SSHConnection::SSHConnectionException e) {
+          delete m_ssh;
+          m_ssh = 0;
+          QString err;
+          switch (e) {
+          case SSHConnection::SSH_CONNECTION_ERROR:
+          case SSHConnection::SSH_UNKNOWN_HOST_ERROR:
+          case SSHConnection::SSH_UNKNOWN_ERROR:
+          default:
+            err = "There was a problem connection to the ssh server at "
+              + username + "@" + host + ":" + QString::number(port) + ". "
+              + "Please check that all provided information is correct, "
+              + "and attempt to log in outside of Avogadro before trying again.";
+            error(err);
+            return;
+          case SSHConnection::SSH_BAD_PASSWORD_ERROR:
+            // Chances are that the pubkey auth was attempted but failed,
+            // so just prompt user for password.
+            err = "Please enter a password for "
+              + username + "@" + host + ":" + QString::number(port)
+              + ":";
+            bool ok;
+            QString newPassword;
+            // This is a BlockingQueuedConnection, which blocks until
+            // the slot returns.
+            emit needPassword(err, &newPassword, &ok);
+            if (!ok) { // user cancels
+              return;
+            }
+            pw = newPassword;
+            continue;
+          } // end switch
+        } // end catch
+        break;
+      } // end forever
     }
 
     // prepare pointers
