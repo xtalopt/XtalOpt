@@ -76,10 +76,18 @@
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="QLineEdit" name="edit_host"/>
+          <widget class="QLineEdit" name="edit_host">
+           <property name="toolTip">
+            <string>Address of host. Can use IP or host name.</string>
+           </property>
+          </widget>
          </item>
          <item row="1" column="1">
-          <widget class="QLineEdit" name="edit_username"/>
+          <widget class="QLineEdit" name="edit_username">
+           <property name="toolTip">
+            <string>Username on above host.</string>
+           </property>
+          </widget>
          </item>
          <item row="2" column="0">
           <widget class="QLabel" name="label_20">
@@ -92,7 +100,11 @@
           </widget>
          </item>
          <item row="2" column="1">
-          <widget class="QLineEdit" name="edit_rempath"/>
+          <widget class="QLineEdit" name="edit_rempath">
+           <property name="toolTip">
+            <string>Path on remote host to use during optimizations. Do not use wildcard characters or BASH-specific characters (e.g. '~' in place of /home/user).</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
@@ -146,10 +158,7 @@
       <item row="0" column="4">
        <widget class="QLineEdit" name="edit_description">
         <property name="toolTip">
-         <string>Base name of individual structure files.
-
-Final name will be: 
-[base name][generation number]x[id number]</string>
+         <string>Description of optimization. Used in the %description% template keyword and the XtalOpt title bar.</string>
         </property>
         <property name="text">
          <string/>
