@@ -100,7 +100,9 @@ namespace XtalOpt {
     double tol_volume;
     double tol_spg;
 
-    bool using_fixed_volume, using_shortestInteratomicDistance;
+    bool using_fixed_volume;
+    bool using_shortestInteratomicDistance;
+
     QHash<uint, uint> comp;
     QStringList seedList;
 
@@ -124,7 +126,7 @@ namespace XtalOpt {
     void setOptimizer(OptTypes opttype, const QString &filename = "") {
       setOptimizer_enum(opttype, filename);};
 
-    QString promptForPassword(const QString &message, QString *newPassword, bool *ok = 0) {
+    void promptForPassword(const QString &message, QString *newPassword, bool *ok = 0) {
       // The QFuture::d object is undocumented and may break at some point
       (*newPassword) = QInputDialog::getText(dialog(), "Need password:", message,
                                              QLineEdit::Password, QString(), ok);

@@ -39,6 +39,7 @@ namespace GlobalSearch {
     backTraceMutex(new QMutex),
     savePending(false),
     saveOnExit(true),
+    readOnly(false),
     testingMode(false),
     test_nRunsStart(1),
     test_nRunsEnd(100),

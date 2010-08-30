@@ -82,6 +82,7 @@ namespace GlobalSearch {
 
   void QueueManager::checkPopulation() {
     if (m_opt->isStarting ||
+        m_opt->readOnly ||
         m_checkPopulationPending) {
       return;
     }
@@ -175,6 +176,7 @@ namespace GlobalSearch {
 
   void QueueManager::checkRunning() {
     if (m_opt->isStarting ||
+        m_opt->readOnly ||
         m_checkRunningPending) {
       return;
     }
@@ -286,6 +288,7 @@ namespace GlobalSearch {
   void QueueManager::updateQueue()
   {
     if (m_opt->isStarting ||
+        m_opt->readOnly ||
         m_queueUpdatePending) {
       return;
     }

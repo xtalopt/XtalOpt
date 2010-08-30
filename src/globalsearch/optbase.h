@@ -250,6 +250,9 @@ namespace GlobalSearch {
     /// Set to false when running unit tests
     bool saveOnExit;
 
+    /// Whether readOnly mode is enabled (e.g. no connection to server)
+    bool readOnly;
+
    signals:
     /**
      * Emitted when a session is starting or being loaded.
