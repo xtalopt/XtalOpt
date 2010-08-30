@@ -38,6 +38,7 @@ namespace XtalOpt {
     m_mutex(new QMutex),
     m_update_mutex(new QMutex),
     m_update_all_mutex(new QMutex),
+    m_context_mutex(new QMutex),
     m_context_xtal(0)
   {
     ui.setupUi(m_tab_widget);
@@ -91,6 +92,7 @@ namespace XtalOpt {
     delete m_mutex;
     delete m_update_mutex;
     delete m_update_all_mutex;
+    delete m_context_mutex;
     delete m_timer;
   }
 
@@ -424,12 +426,20 @@ namespace XtalOpt {
   void TabProgress::progressContextMenu(QPoint p)
   {
     if (m_context_xtal) return;
+    // m_context_mutex prevents multiple menus from appearing, which
+    // ultimately prevents m_context_xtal from being cleared.
+    if (!m_context_mutex->tryLock()) {
+      return;
+    }
+
     QApplication::setOverrideCursor( Qt::WaitCursor );
     QTableWidgetItem *item = ui.table_list->itemAt(p);
     if (!item) {
       QApplication::restoreOverrideCursor();
+      m_context_mutex->unlock();
       return;
     }
+
     int index = item->row();
 
     qDebug() << "Context menu at row " << index;
@@ -470,17 +480,20 @@ namespace XtalOpt {
 
     m_context_xtal->lock()->unlock();
     QAction *selection = menu.exec(QCursor::pos());
+    qDebug() << selection;
 
     if (selection == 0) {
       m_context_xtal = 0;
-      return;
     }
-    QtConcurrent::run(this, &TabProgress::updateProgressTable);
-    a_restart->disconnect();
-    a_kill->disconnect();
-    a_unkill->disconnect();
-    a_resetFail->disconnect();
-    a_randomize->disconnect();
+    else {
+      QtConcurrent::run(this, &TabProgress::updateProgressTable);
+      a_restart->disconnect();
+      a_kill->disconnect();
+      a_unkill->disconnect();
+      a_resetFail->disconnect();
+      a_randomize->disconnect();
+    }
+    m_context_mutex->unlock();
   }
 
   void TabProgress::restartJobProgress()

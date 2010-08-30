@@ -89,6 +89,7 @@ namespace XtalOpt {
     QTimer *m_timer;
     QMutex *m_mutex;
     QMutex *m_update_mutex, *m_update_all_mutex;
+    QMutex *m_context_mutex;
     Xtal *m_context_xtal;
     bool rowTracking;
 
