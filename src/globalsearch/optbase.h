@@ -218,11 +218,12 @@ namespace GlobalSearch {
     QString qdel;
 
     /// Host name or IP address of remote PBS server
-    /// @note Must have passwordless-login enabled (man ssh-copy-id)
     QString host;
 
+    /// Port on remote PBS server used for SSH communication
+    int port;
+
     /// Username for ssh login on remote PBS server
-    /// @note Must have passwordless-login enabled (man ssh-copy-id)
     QString username;
 
     /// Path on remote server to store files during and after

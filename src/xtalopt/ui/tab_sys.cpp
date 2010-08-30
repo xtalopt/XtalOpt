@@ -46,6 +46,8 @@ namespace XtalOpt {
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_host, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
+    connect(ui.spin_port, SIGNAL(valueChanged(int)),
+            this, SLOT(updateSystemInfo()));
     connect(ui.edit_username, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_rempath, SIGNAL(editingFinished()),
@@ -61,7 +63,7 @@ namespace XtalOpt {
   void TabSys::writeSettings(const QString &filename)
   {
     SETTINGS(filename);
-    const int VERSION = 1;
+    const int VERSION = 2;
     settings->beginGroup("xtalopt/sys/");
     settings->setValue("version",          VERSION);
     settings->setValue("file/path",        m_opt->filePath);
@@ -70,6 +72,7 @@ namespace XtalOpt {
     settings->setValue("queue/qstat",      m_opt->qstat);
     settings->setValue("queue/qdel",       m_opt->qdel);
     settings->setValue("remote/host",      m_opt->host);
+    settings->setValue("remote/port",      m_opt->port);
     settings->setValue("remote/username",  m_opt->username);
     settings->setValue("remote/rempath",   m_opt->rempath);
     settings->endGroup();
@@ -82,21 +85,25 @@ namespace XtalOpt {
     SETTINGS(filename);
     settings->beginGroup("xtalopt/sys/");
     int loadedVersion = settings->value("version", 0).toInt();
-    ui.edit_path->setText(	settings->value("file/path",		"/tmp").toString());
-    ui.edit_description->setText(settings->value("description",		"").toString());
-    ui.edit_qsub->setText(	settings->value("queue/qsub",		"qsub").toString());
-    ui.edit_qstat->setText(	settings->value("queue/qstat",		"qstat").toString());
-    ui.edit_qdel->setText(	settings->value("queue/qdel",		"qdel").toString());
-    ui.edit_host->setText(	settings->value("remote/host",		"").toString());
-    ui.edit_username->setText(	settings->value("remote/username",	"").toString());
-    ui.edit_rempath->setText(	settings->value("remote/rempath",	"").toString());
-    ui.cb_remote->setChecked(	settings->value("remote",		false).toBool());
+    ui.edit_path->setText(      settings->value("file/path",       "/tmp").toString());
+    ui.edit_description->setText(settings->value("description",    "").toString());
+    ui.edit_qsub->setText(      settings->value("queue/qsub",      "qsub").toString());
+    ui.edit_qstat->setText(     settings->value("queue/qstat",     "qstat").toString());
+    ui.edit_qdel->setText(      settings->value("queue/qdel",      "qdel").toString());
+    ui.edit_host->setText(      settings->value("remote/host",     "").toString());
+    ui.spin_port->setValue(     settings->value("remote/port",     "").toInt());
+    ui.edit_username->setText(  settings->value("remote/username", "").toString());
+    ui.edit_rempath->setText(   settings->value("remote/rempath",  "").toString());
+    ui.cb_remote->setChecked(   settings->value("remote",          false).toBool());
     settings->endGroup();
 
     // Update config data
     switch (loadedVersion) {
     case 0:
     case 1:
+      // Added remote/port to settings
+      ui.spin_port->setValue(22);
+    case 2:
     default:
       break;
     }
@@ -112,6 +119,7 @@ namespace XtalOpt {
     ui.edit_qstat->setText(	m_opt->qstat);
     ui.edit_qdel->setText(	m_opt->qdel);
     ui.edit_host->setText(	m_opt->host);
+    ui.spin_port->setValue(	m_opt->port);
     ui.edit_username->setText(	m_opt->username);
     ui.edit_rempath->setText(	m_opt->rempath);
 
@@ -158,6 +166,7 @@ namespace XtalOpt {
     ui.edit_qdel->setDisabled(true);
     ui.cb_remote->setDisabled(true);
     ui.edit_host->setDisabled(true);
+    ui.spin_port->setDisabled(true);
     ui.edit_username->setDisabled(true);
     ui.edit_rempath->setDisabled(true);
   }
@@ -170,6 +179,7 @@ namespace XtalOpt {
     m_opt->qstat	= ui.edit_qstat->text();
     m_opt->qdel		= ui.edit_qdel->text();
     m_opt->host		= ui.edit_host->text();
+    m_opt->port		= ui.spin_port->value();
     m_opt->username	= ui.edit_username->text();
     m_opt->rempath	= ui.edit_rempath->text();
     emit dataChanged();

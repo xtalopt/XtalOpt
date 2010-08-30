@@ -105,9 +105,6 @@ namespace XtalOpt {
       qobject_cast<VASPOptimizer*>(m_optimizer)->buildPOTCARs();
     }
 
-    // TODO Don't hardcode port
-    int port = 22;
-
     // Create the SSHManager
     if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
       QString pw = "";
@@ -1181,8 +1178,6 @@ namespace XtalOpt {
 
     // Create SSHConnection
     if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
-      // TODO Don't hardcode port
-      int port = 22;
       QString pw = "";
       for (;;) {
         if (m_ssh) {
