@@ -519,7 +519,10 @@ namespace XtalOpt {
                                        m_opt->optimizer()->getNumberOfOptSteps(),
                                        1,
                                        &ok);
-    if (!ok) return;
+    if (!ok) {
+      m_context_xtal = 0;
+      return;
+    }
     QtConcurrent::run(this, &TabProgress::restartJobProgress_, optStep);
   }
 
