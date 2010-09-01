@@ -130,10 +130,13 @@ namespace GlobalSearch {
   }
 
   void AbstractDialog::updateGUI() {
-    setWindowTitle(QString("%1 - %2 @ %3")
+    setWindowTitle(QString("%1 - %2 @ %3%4")
                    .arg(m_opt->getIDString())
                    .arg(m_opt->description)
                    .arg(m_opt->host)
+                   .arg( m_opt->readOnly ?
+                         " (Read-Only mode)" :
+                         "" )
                    );
     emit tabsUpdateGUI();
   }

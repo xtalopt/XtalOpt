@@ -24,6 +24,7 @@
 #include <QDebug>
 #include <QStringList>
 #include <QReadWriteLock>
+#include <QInputDialog>
 
 namespace GlobalSearch {
   class Structure;
@@ -82,6 +83,7 @@ namespace RandomDock {
    signals:
     void newInfoUpdate();
     void updateAllInfo();
+    
 
    public slots:
     void startSearch();

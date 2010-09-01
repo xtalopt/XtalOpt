@@ -26,7 +26,6 @@
 
 #include <QMenu>
 #include <QTimer>
-#include <QBrush>
 #include <QSettings>
 #include <QMutexLocker>
 #include <QInputDialog>
@@ -45,6 +44,9 @@ namespace RandomDock {
     m_update_all_mutex(new QMutex),
     m_context_scene(0)
   {
+    // Allow queued connections to work with the TableEntry struct
+    qRegisterMetaType<TableEntry>("TableEntry");
+
     ui.setupUi(m_tab_widget);
 
     QHeaderView *horizontal = ui.table_list->horizontalHeader();
@@ -87,6 +89,8 @@ namespace RandomDock {
             this, SLOT(disableRowTracking()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(enableRowTracking()));
+    connect(this, SIGNAL(updateTableEntry(int, const TableEntry&)),
+            this, SLOT(setTableEntry(int, const TableEntry&)));
 
     initialize();
   }
@@ -190,12 +194,29 @@ namespace RandomDock {
 
     m_infoUpdateTracker.append(scene);
     locker.unlock();
-    emit infoUpdate();
+    TableEntry e;
+    scene->lock()->lockForRead();
+    e.rank    = scene->getRank();
+    e.elapsed = scene->getOptElapsed();
+    e.id      = scene->getIDNumber();
+    e.jobID   = scene->getJobID();
+    e.status  = "Waiting for data...";
+    e.brush   = QBrush (Qt::white);
+
+    if (scene->hasEnthalpy() || scene->getEnergy() != 0)
+      e.energy = scene->getEnthalpy();
+    else
+      e.energy = 0.0;
+    scene->lock()->unlock();
 
     ui.table_list->blockSignals(false);
 
     if (currentInd < 0) currentInd = index;
     if (rowTracking) ui.table_list->setCurrentCell(currentInd, 0);
+
+    locker.unlock();
+    setTableEntry(index, e);
+    emit infoUpdate();
   }
 
   void TabProgress::updateAllInfo()
@@ -212,8 +233,9 @@ namespace RandomDock {
 
   void TabProgress::newInfoUpdate(Structure *s)
   {
-    m_infoUpdateTracker.append(s);
-    emit infoUpdate();
+    if (m_infoUpdateTracker.append(s)) {
+      emit infoUpdate();
+    }
   }
 
   void TabProgress::updateInfo()
@@ -229,9 +251,12 @@ namespace RandomDock {
       return;
     }
 
-    // Lock the table
-    QMutexLocker locker (m_mutex);
+    QtConcurrent::run(this, &TabProgress::updateInfo_);
+    return;
+  }
 
+  void TabProgress::updateInfo_()
+  {
     // Prep variables
     Structure *structure;
     if (!m_infoUpdateTracker.popFirst(structure))
@@ -241,33 +266,24 @@ namespace RandomDock {
     Scene *scene = qobject_cast<Scene*>(structure);
 
     if (i < 0 || i > ui.table_list->rowCount() - 1) {
-      qDebug() << "TabProgress::updateInfo: Trying to update an index that doesn't exist (" << i << ") Waiting...";
+      qDebug() << "TabProgress::updateInfo: Trying to update an index that doesn't exist...yet: (" << i << ") Waiting...";
       m_infoUpdateTracker.append(scene);
       QTimer::singleShot(100, this, SLOT(updateInfo()));
       return;
     }
 
+    TableEntry e;
     uint totalOptSteps = m_opt->optimizer()->getNumberOfOptSteps();
-    QBrush brush (Qt::white);
 
-    // Get queue data
-    m_opt->queue()->updateQueue();
+    e.brush = QBrush(Qt::white);
 
     QReadLocker sceneLocker (scene->lock());
 
-    ui.table_list->item(i, C_Rank)->setText(QString::number(scene->getRank()));
-    ui.table_list->item(i, C_Index)->setText(QString::number(scene->getIndex()));
-    ui.table_list->item(i, C_Elapsed)->setText(scene->getOptElapsed());
-
-    if (scene->getJobID())
-      ui.table_list->item(i, C_JobID)->setText(QString::number(scene->getJobID()));
-    else
-      ui.table_list->item(i, C_JobID)->setText("N/A");
-
-    if (scene->getEnergy() != 0.0)
-      ui.table_list->item(i, C_Energy)->setText(QString::number(scene->getEnergy()));
-    else
-      ui.table_list->item(i, C_Energy)->setText("N/A");
+    e.rank    = scene->getRank();
+    e.id      = scene->getIndex();
+    e.elapsed = scene->getOptElapsed();
+    e.jobID   = scene->getJobID();
+    e.energy  = scene->getEnergy();
 
     switch (scene->getStatus()) {
     case Scene::InProcess: {
@@ -276,36 +292,34 @@ namespace RandomDock {
       sceneLocker.relock();
       switch (state) {
       case Optimizer::Running:
-        ui.table_list->item(i, C_Status)->setText(tr("Running (Opt Step %1 of %2, %3 failures)")
-                                                .arg(QString::number(scene->getCurrentOptStep()))
-                                                .arg(QString::number(totalOptSteps))
-                                                .arg(QString::number(scene->getFailCount()))
-                                                );
-        brush.setColor(Qt::green);
+        e.status = tr("Running (Opt Step %1 of %2, %3 failures)")
+          .arg(QString::number(scene->getCurrentOptStep()))
+          .arg(QString::number(totalOptSteps))
+          .arg(QString::number(scene->getFailCount()));
+        e.brush.setColor(Qt::green);
         break;
       case Optimizer::Queued:
-        ui.table_list->item(i, C_Status)->setText(tr("Queued (Opt Step %1 of %2, %3 failures)")
-                                                .arg(QString::number(scene->getCurrentOptStep()))
-                                                .arg(QString::number(totalOptSteps))
-                                                .arg(QString::number(scene->getFailCount()))
-                                                );
-        brush.setColor(Qt::cyan);
+        e.status = tr("Queued (Opt Step %1 of %2, %3 failures)")
+          .arg(QString::number(scene->getCurrentOptStep()))
+          .arg(QString::number(totalOptSteps))
+          .arg(QString::number(scene->getFailCount()));
+        e.brush.setColor(Qt::cyan);
         break;
       case Optimizer::Success:
-        ui.table_list->item(i, C_Status)->setText("Starting update...");
+        e.status = "Starting update...";
         break;
       case Optimizer::Unknown:
-        ui.table_list->item(i, C_Status)->setText("Unknown");
+        e.status = "Unknown";
         break;
       case Optimizer::Error:
-        ui.table_list->item(i, C_Status)->setText("Error: Restarting job...");
-        brush.setColor(Qt::darkRed);
+        e.status = "Error: Restarting job...";
+        e.brush.setColor(Qt::darkRed);
         break;
       case Optimizer::CommunicationError:
-        ui.table_list->item(i, C_Status)->setText("Comm. Error");
-        brush.setColor(Qt::darkRed);
+        e.status = "Communication Error";
+        e.brush.setColor(Qt::darkRed);
         break;
-      // Shouldn't happen; started and pending only occur when scene is "Submitted"
+        // Shouldn't happen; started and pending only occur when scene is "Submitted"
       case Optimizer::Started:
       case Optimizer::Pending:
       default:
@@ -314,59 +328,78 @@ namespace RandomDock {
       break;
     }
     case Scene::Submitted:
-      ui.table_list->item(i, C_Status)->setText(tr("Job submitted (%1 of %2)")
-                                              .arg(QString::number(scene->getCurrentOptStep()))
-                                              .arg(QString::number(totalOptSteps))
-                                              );
-      brush.setColor(Qt::cyan);
+      e.status = tr("Job submitted (%1 of %2)")
+        .arg(QString::number(scene->getCurrentOptStep()))
+        .arg(QString::number(totalOptSteps));
+      e.brush.setColor(Qt::cyan);
       break;
     case Scene::Restart:
-      ui.table_list->item(i, C_Status)->setText("Restarting job...");
-      brush.setColor(Qt::cyan);
+      e.status = "Restarting job...";
+      e.brush.setColor(Qt::cyan);
       break;
     case Scene::Killed:
     case Scene::Removed:
-      brush.setColor(Qt::darkGray);
-      ui.table_list->item(i, C_Status)->setText("Killed");
+      e.status = "Killed";
+      e.brush.setColor(Qt::darkGray);
       break;
     case Scene::Duplicate:
-      brush.setColor(Qt::darkGreen);
-      ui.table_list->item(i, C_Status)->setText(tr("Duplicate of %1")
-                                              .arg(scene->getDuplicateString()));
+      e.status = tr("Duplicate of %1")
+        .arg(scene->getDuplicateString());
+      e.brush.setColor(Qt::darkGreen);
       break;
     case Scene::StepOptimized:
-      ui.table_list->item(i, C_Status)->setText("Checking status...");
-      brush.setColor(Qt::cyan);
+      e.status = "Checking status...";
+      e.brush.setColor(Qt::cyan);
       break;
     case Scene::Optimized:
-      ui.table_list->item(i, C_Status)->setText("Optimized");
-      brush.setColor(Qt::yellow);
+      e.status = "Optimized";
+      e.brush.setColor(Qt::yellow);
       break;
     case Scene::WaitingForOptimization:
-      ui.table_list->item(i, C_Status)->setText(tr("Waiting for Optimization (%1 of %2)")
-                                              .arg(QString::number(scene->getCurrentOptStep()))
-                                              .arg(QString::number(totalOptSteps))
-                                              );
-      brush.setColor(Qt::darkCyan);
+      e.status = tr("Waiting for Optimization (%1 of %2)")
+        .arg(QString::number(scene->getCurrentOptStep()))
+        .arg(QString::number(totalOptSteps));
+      e.brush.setColor(Qt::darkCyan);
       break;
     case Scene::Error:
-      ui.table_list->item(i, C_Status)->setText(tr("Job failed. Restarting..."));
-      brush.setColor(Qt::red);
+      e.status = tr("Job failed. Restarting...");
+      e.brush.setColor(Qt::red);
       break;
     case Scene::Updating:
-      ui.table_list->item(i, C_Status)->setText("Updating structure...");
-      brush.setColor(Qt::cyan);
+      e.status = "Updating structure...";
+      e.brush.setColor(Qt::cyan);
       break;
     case Scene::Empty:
-      ui.table_list->item(i, C_Status)->setText("Structure empty...");
+      e.status = "Structure empty...";
       break;
     }
 
     if (scene->getFailCount() != 0) {
-      brush.setColor(Qt::red);
+      e.brush.setColor(Qt::red);
     }
-    // paint cell:
-    ui.table_list->item(i, C_Status)->setBackground(brush);
+
+    emit updateTableEntry(i, e);
+  }
+
+  void TabProgress::setTableEntry(int row, const TableEntry &e)
+  {
+    QMutexLocker locker (m_mutex);
+
+    ui.table_list->item(row, C_Rank)->setText(QString::number(e.rank));
+    ui.table_list->item(row, C_Index)->setText(QString::number(e.id));
+    ui.table_list->item(row, C_Elapsed)->setText(e.elapsed);
+    ui.table_list->item(row, C_Status)->setText(e.status);
+    ui.table_list->item(row, C_Status)->setBackground(e.brush);
+
+    if (e.jobID)
+      ui.table_list->item(row, C_JobID)->setText(QString::number(e.jobID));
+    else
+      ui.table_list->item(row, C_JobID)->setText("N/A");
+
+    if (e.energy != 0.0)
+      ui.table_list->item(row, C_Energy)->setText(QString::number(e.energy));
+    else
+      ui.table_list->item(row, C_Energy)->setText("N/A");
   }
 
   void TabProgress::selectMoleculeFromProgress(int row,int,int oldrow,int)

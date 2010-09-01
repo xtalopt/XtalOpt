@@ -24,6 +24,7 @@ namespace GlobalSearch {
   class Tracker;
   class Optimizer;
   class QueueManager;
+  class SSHManager;
   class AbstractDialog;
 
   /**
@@ -162,6 +163,11 @@ namespace GlobalSearch {
      */
     Optimizer* optimizer() {return m_optimizer;};
 
+    /**
+     * @return A pointer to the SSHManager instance.
+     */
+    SSHManager* ssh() {return m_ssh;};
+
     /// Whether to impose the running job limit
     bool limitRunningJobs;
 
@@ -212,11 +218,12 @@ namespace GlobalSearch {
     QString qdel;
 
     /// Host name or IP address of remote PBS server
-    /// @note Must have passwordless-login enabled (man ssh-copy-id)
     QString host;
 
+    /// Port on remote PBS server used for SSH communication
+    int port;
+
     /// Username for ssh login on remote PBS server
-    /// @note Must have passwordless-login enabled (man ssh-copy-id)
     QString username;
 
     /// Path on remote server to store files during and after
@@ -243,6 +250,9 @@ namespace GlobalSearch {
 
     /// Set to false when running unit tests
     bool saveOnExit;
+
+    /// Whether readOnly mode is enabled (e.g. no connection to server)
+    bool readOnly;
 
    signals:
     /**
@@ -305,6 +315,17 @@ namespace GlobalSearch {
      * @sa errorStatement
      */
     void errorStatement(const QString &s);
+
+    /**
+     * Request a password from the user, used for libssh
+     * authentication.
+     *
+     * @param message Message to the user.
+     * @param newPassword pointer to the QString that will hold the new password.
+     * @param ok True if user accepts dialog, false if they cancel.
+     * @sa promptForPassword
+     */
+    void needPassword(const QString &message, QString *newPassword, bool *ok);
 
    public slots:
 
@@ -420,6 +441,18 @@ namespace GlobalSearch {
     void setOptimizer(const QString &IDString, const QString &filename = "") {
       setOptimizer_string(IDString, filename);};
 
+
+    /**
+     * Request a password from the user, used for libssh
+     * authentication.
+     *
+     * @param message Message to the user.
+     * @param newPassword pointer to the QString that will hold the new password.
+     * @param ok True if user accepts dialog, false if they cancel.
+     * @sa needPassword
+     */
+    void promptForPassword(const QString &message, QString *newPassword, bool *ok = 0);
+
    protected:
     /// String that uniquely identifies the derived OptBase
     /// @sa getIDString
@@ -442,6 +475,9 @@ namespace GlobalSearch {
     /// @sa optimizer
     /// @sa setOptimizer
     Optimizer *m_optimizer;
+
+    /// Cached pointer to the SSHManager
+    SSHManager *m_ssh;
 
     /// Hidden call to setOptimizer
     virtual void setOptimizer_opt(Optimizer *o);

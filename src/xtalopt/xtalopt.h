@@ -26,7 +26,9 @@
 
 #include <QDebug>
 #include <QMutex>
+#include <QFuture>
 #include <QStringList>
+#include <QInputDialog>
 #include <QReadWriteLock>
 
 namespace XtalOpt {
@@ -98,7 +100,9 @@ namespace XtalOpt {
     double tol_volume;
     double tol_spg;
 
-    bool using_fixed_volume, using_shortestInteratomicDistance;
+    bool using_fixed_volume;
+    bool using_shortestInteratomicDistance;
+
     QHash<uint, uint> comp;
     QStringList seedList;
 

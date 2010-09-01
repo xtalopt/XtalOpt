@@ -18,8 +18,11 @@
 #include <globalsearch/structure.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/sshmanager.h>
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/bt.h>
+
+#include <QInputDialog>
 
 using namespace OpenBabel;
 
@@ -31,12 +34,14 @@ namespace GlobalSearch {
     m_tracker(new Tracker (this)),
     m_queue(new QueueManager(this, m_tracker)),
     m_optimizer(0), // This will be set when the GUI is initialized
+    m_ssh(0), // Initialize this on resume/startSearch
     m_idString("Generic"),
     sOBMutex(new QMutex),
     stateFileMutex(new QMutex),
     backTraceMutex(new QMutex),
     savePending(false),
     saveOnExit(true),
+    readOnly(false),
     testingMode(false),
     test_nRunsStart(1),
     test_nRunsEnd(100),
@@ -48,6 +53,9 @@ namespace GlobalSearch {
             this, SLOT(setIsStartingTrue()));
     connect(this, SIGNAL(sessionStarted()),
             this, SLOT(setIsStartingFalse()));
+    connect(this, SIGNAL(needPassword(const QString&, QString*, bool*)),
+            this, SLOT(promptForPassword(const QString&, QString*, bool*)),
+            Qt::BlockingQueuedConnection); // Wait until slot returns
   }
 
   OptBase::~OptBase() {
@@ -171,6 +179,15 @@ namespace GlobalSearch {
     m_optimizer = o;
     emit optimizerChanged(o);
   }
+
+  void OptBase::promptForPassword(const QString &message,
+                                  QString *newPassword,
+                                  bool *ok)
+  {
+    (*newPassword) = QInputDialog::getText(dialog(), "Need password:", message,
+                                           QLineEdit::Password, QString(), ok);
+  };
+
 
   void OptBase::warning(const QString & s) {
     qWarning() << "Warning: " << s;

@@ -22,6 +22,8 @@
 #include <globalsearch/tracker.h>
 #include <globalsearch/ui/abstracttab.h>
 
+#include <QBrush>
+
 class QTimer;
 class QMutex;
 
@@ -56,6 +58,19 @@ namespace XtalOpt {
       Ancestry
     };
 
+    struct TableEntry {
+      int gen;
+      int id;
+      int jobID;
+      double enthalpy;
+      double volume;
+      QString elapsed;
+      QString parents;
+      QString spg;
+      QString status;
+      QBrush brush;
+    };
+
   public slots:
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
@@ -65,6 +80,7 @@ namespace XtalOpt {
     void updateInfo();
     void updateAllInfo();
     void updateProgressTable();
+    void setTableEntry(int row, const TableEntry& e);
     void selectMoleculeFromProgress(int,int,int,int);
     void highlightXtal(Structure *s);
     void startTimer();
@@ -83,6 +99,7 @@ namespace XtalOpt {
     void deleteJob(int);
     void updateStatus(int opt, int run, int queue, int fail);
     void infoUpdate();
+    void updateTableEntry(int row, const TableEntry& e);
 
   private:
     Ui::Tab_Progress ui;
@@ -95,6 +112,7 @@ namespace XtalOpt {
 
     Tracker m_infoUpdateTracker;
 
+    void updateInfo_();
     void restartJobProgress_(int incar);
     void killXtalProgress_();
     void unkillXtalProgress_();
