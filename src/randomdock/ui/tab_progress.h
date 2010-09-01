@@ -22,6 +22,8 @@
 #include <globalsearch/tracker.h>
 #include <globalsearch/ui/abstracttab.h>
 
+#include <QBrush>
+
 class QTimer;
 class QMutex;
 
@@ -53,6 +55,16 @@ namespace RandomDock {
       C_Status
     };
 
+    struct TableEntry {
+      int rank;
+      int id;
+      int jobID;
+      double energy;
+      QString elapsed;
+      QString status;
+      QBrush brush;
+    };
+
   public slots:
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
@@ -62,6 +74,7 @@ namespace RandomDock {
     void updateInfo();
     void updateAllInfo();
     void updateProgressTable();
+    void setTableEntry(int row, const TableEntry& e);
     void selectMoleculeFromProgress(int,int,int,int);
     void highlightScene(Structure *structure);
     void startTimer();
@@ -81,6 +94,7 @@ namespace RandomDock {
     void deleteJob(int);
     void updateStatus(int opt, int run, int queue, int fail);
     void infoUpdate();
+    void updateTableEntry(int row, const TableEntry& e);
 
   private:
     Ui::Tab_Progress ui;
@@ -93,6 +107,7 @@ namespace RandomDock {
 
     Tracker m_infoUpdateTracker;
 
+    void updateInfo_();
     void restartJobProgress_(int incar);
     void killSceneProgress_();
     void unkillSceneProgress_();

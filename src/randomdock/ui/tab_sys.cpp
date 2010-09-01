@@ -45,6 +45,8 @@ namespace RandomDock {
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_host, SIGNAL(textChanged(QString)),
             this, SLOT(updateSystemInfo()));
+    connect(ui.spin_port, SIGNAL(valueChanged(int)),
+            this, SLOT(updateSystemInfo()));
     connect(ui.edit_username, SIGNAL(textChanged(QString)),
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_rempath, SIGNAL(textChanged(QString)),
@@ -61,7 +63,7 @@ namespace RandomDock {
   {
     SETTINGS(filename);
     settings->beginGroup("randomdock/sys");
-    const int VERSION = 1;
+    const int VERSION = 2;
     settings->setValue("version",               VERSION);
 
     settings->setValue("file/path",             m_opt->filePath);
@@ -69,6 +71,7 @@ namespace RandomDock {
     settings->setValue("queue/check",           m_opt->qstat);
     settings->setValue("queue/qdel",            m_opt->qdel);
     settings->setValue("remote/host",           m_opt->host);
+    settings->setValue("remote/port",           m_opt->port);
     settings->setValue("remote/username",       m_opt->username);
     settings->setValue("remote/rempath",        m_opt->rempath);
 
@@ -82,14 +85,15 @@ namespace RandomDock {
     settings->beginGroup("randomdock/sys");
     int loadedVersion = settings->value("version", 0).toInt();
 
-    ui.edit_path->setText(        settings->value("file/path",        "/tmp").toString());
+    ui.edit_path->setText(    settings->value("file/path",       "/tmp").toString());
     ui.edit_description->setText( settings->value("file/description", "").toString());
-    ui.edit_launch->setText(      settings->value("queue/launch",     "qsub").toString());
-    ui.edit_check->setText(       settings->value("queue/check",      "qstat").toString());
-    ui.edit_qdel->setText(        settings->value("queue/qdel",       "qdel").toString());
-    ui.edit_host->setText(        settings->value("remote/host",      "").toString());
-    ui.edit_username->setText(    settings->value("remote/username",  "").toString());
-    ui.edit_rempath->setText(     settings->value("remote/rempath",   "").toString());
+    ui.edit_launch->setText(  settings->value("queue/launch",    "qsub").toString());
+    ui.edit_check->setText(   settings->value("queue/check",     "qstat").toString());
+    ui.edit_qdel->setText(    settings->value("queue/qdel",      "qdel").toString());
+    ui.edit_host->setText(    settings->value("remote/host",     "").toString());
+    ui.spin_port->setValue(   settings->value("remote/port",     "").toInt());
+    ui.edit_username->setText(settings->value("remote/username", "").toString());
+    ui.edit_rempath->setText( settings->value("remote/rempath",  "").toString());
 
     settings->endGroup();
 
@@ -97,6 +101,9 @@ namespace RandomDock {
     switch (loadedVersion) {
     case 0:
     case 1:
+      // Added remote/port to settings
+      ui.spin_port->setValue(22);
+    case 2:
     default:
       break;
     }
@@ -110,6 +117,7 @@ namespace RandomDock {
     ui.edit_check->setDisabled(true);
     ui.edit_qdel->setDisabled(true);
     ui.edit_host->setDisabled(true);
+    ui.spin_port->setDisabled(true);
     ui.edit_username->setDisabled(true);
     ui.edit_rempath->setDisabled(true);
   }
@@ -121,6 +129,7 @@ namespace RandomDock {
     m_opt->qstat                = ui.edit_check->text();
     m_opt->qdel                 = ui.edit_qdel->text();
     m_opt->host                 = ui.edit_host->text();
+    m_opt->port                 = ui.spin_port->value();
     m_opt->username             = ui.edit_username->text();
     m_opt->rempath              = ui.edit_rempath->text();
     m_opt->description          = ui.edit_description->text();
