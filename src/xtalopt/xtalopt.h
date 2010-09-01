@@ -111,7 +111,6 @@ namespace XtalOpt {
    signals:
     void newInfoUpdate();
     void updateAllInfo();
-    void needPassword(const QString &message, QString *newPassword, bool *ok);
 
    public slots:
     void startSearch();
@@ -125,13 +124,6 @@ namespace XtalOpt {
       setOptimizer_string(IDString, filename);};
     void setOptimizer(OptTypes opttype, const QString &filename = "") {
       setOptimizer_enum(opttype, filename);};
-
-    void promptForPassword(const QString &message, QString *newPassword, bool *ok = 0) {
-      // The QFuture::d object is undocumented and may break at some point
-      (*newPassword) = QInputDialog::getText(dialog(), "Need password:", message,
-                                             QLineEdit::Password, QString(), ok);
-    };
-
 
    private:
     void resetDuplicates_();

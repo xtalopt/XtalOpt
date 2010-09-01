@@ -59,9 +59,6 @@ namespace XtalOpt {
             this, SLOT(checkForDuplicates()));
     connect(this, SIGNAL(sessionStarted()),
             this, SLOT(resetDuplicates()));
-    connect(this, SIGNAL(needPassword(const QString&, QString*, bool*)),
-            this, SLOT(promptForPassword(const QString&, QString*, bool*)),
-            Qt::BlockingQueuedConnection); // Wait until slot returns
   }
 
   XtalOpt::~XtalOpt()

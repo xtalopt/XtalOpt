@@ -316,6 +316,17 @@ namespace GlobalSearch {
      */
     void errorStatement(const QString &s);
 
+    /**
+     * Request a password from the user, used for libssh
+     * authentication.
+     *
+     * @param message Message to the user.
+     * @param newPassword pointer to the QString that will hold the new password.
+     * @param ok True if user accepts dialog, false if they cancel.
+     * @sa promptForPassword
+     */
+    void needPassword(const QString &message, QString *newPassword, bool *ok);
+
    public slots:
 
     /**
@@ -429,6 +440,18 @@ namespace GlobalSearch {
      */
     void setOptimizer(const QString &IDString, const QString &filename = "") {
       setOptimizer_string(IDString, filename);};
+
+
+    /**
+     * Request a password from the user, used for libssh
+     * authentication.
+     *
+     * @param message Message to the user.
+     * @param newPassword pointer to the QString that will hold the new password.
+     * @param ok True if user accepts dialog, false if they cancel.
+     * @sa needPassword
+     */
+    void promptForPassword(const QString &message, QString *newPassword, bool *ok = 0);
 
    protected:
     /// String that uniquely identifies the derived OptBase

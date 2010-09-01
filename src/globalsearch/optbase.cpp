@@ -22,6 +22,8 @@
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/bt.h>
 
+#include <QInputDialog>
+
 using namespace OpenBabel;
 
 namespace GlobalSearch {
@@ -51,6 +53,9 @@ namespace GlobalSearch {
             this, SLOT(setIsStartingTrue()));
     connect(this, SIGNAL(sessionStarted()),
             this, SLOT(setIsStartingFalse()));
+    connect(this, SIGNAL(needPassword(const QString&, QString*, bool*)),
+            this, SLOT(promptForPassword(const QString&, QString*, bool*)),
+            Qt::BlockingQueuedConnection); // Wait until slot returns
   }
 
   OptBase::~OptBase() {
@@ -174,6 +179,15 @@ namespace GlobalSearch {
     m_optimizer = o;
     emit optimizerChanged(o);
   }
+
+  void OptBase::promptForPassword(const QString &message,
+                                  QString *newPassword,
+                                  bool *ok)
+  {
+    (*newPassword) = QInputDialog::getText(dialog(), "Need password:", message,
+                                           QLineEdit::Password, QString(), ok);
+  };
+
 
   void OptBase::warning(const QString & s) {
     qWarning() << "Warning: " << s;
