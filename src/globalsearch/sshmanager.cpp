@@ -41,7 +41,7 @@ namespace GlobalSearch {
 
     for (unsigned int i = 0; i < connections; i++) {
       m_conns.append(new SSHConnection(host, user, pass, port, parent));
-      qDebug() << "Created connection #" << i+1;
+      //qDebug() << "Created connection #" << i+1;
     }
 
     END;
@@ -71,7 +71,7 @@ namespace GlobalSearch {
       for (it =  m_conns.begin(); it != m_conns.end(); it++) {
         if (!(*it)->inUse()) {
           (*it)->setUsed(true);
-          qDebug() << "Returning SSHConnection instance " << (*it);
+          //qDebug() << "Returning SSHConnection instance " << (*it);
           END;
           return (*it);
         }
@@ -83,7 +83,7 @@ namespace GlobalSearch {
   void SSHManager::unlockConnection(SSHConnection* ssh)
   {
     // Don't lock m_lock here
-    qDebug() << "Connection " << ssh << " unlocked";
+    //qDebug() << "Connection " << ssh << " unlocked";
     ssh->setUsed(false);
   }
 
