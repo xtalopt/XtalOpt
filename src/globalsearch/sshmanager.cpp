@@ -17,8 +17,8 @@
 
 #include <QDebug>
 
-#define START qDebug() << __PRETTY_FUNCTION__ << " called...";
-#define END qDebug() << __PRETTY_FUNCTION__ << " finished...";
+#define START //qDebug() << __PRETTY_FUNCTION__ << " called...";
+#define END //qDebug() << __PRETTY_FUNCTION__ << " finished...";
 
 using namespace std;
 
