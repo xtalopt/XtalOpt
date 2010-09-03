@@ -86,7 +86,7 @@ namespace GAPC {
   }
 
   // rotate the vector of coordinates by the rotation matrix rot
-  inline vector<Vector3d> rotateCoordinates(vector<Vector3d> coords, Matrix3d rot)
+  inline vector<Vector3d> rotateCoordinates(const vector<Vector3d> &coords, Matrix3d rot)
   {
     vector<Vector3d> newCoords;
     // Eigen::Vector3d is a column vector, so transpose before and
@@ -101,7 +101,7 @@ namespace GAPC {
 
 
   ProtectedCluster* GAPCGenetic::crossover(ProtectedCluster* pc1,
-                                                  ProtectedCluster* pc2)
+                                           ProtectedCluster* pc2)
   {
     // Create rotation matricies to modify the clusters
     Matrix3d xform1 = createRotationMatrix();
