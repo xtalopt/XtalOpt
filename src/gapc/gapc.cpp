@@ -283,14 +283,13 @@ namespace GAPC {
       }
 
       // Decide operator:
-      r = RANDDOUBLE();
+      r = RANDDOUBLE() * 100.0;
       Operators op;
-      // TODO Don't hardcode probabilities
-      if (r < 0.25)
+      if (r < p_cross)
         op = OP_Crossover;
-      else if (r < 0.50)
+      else if (r < p_cross + p_twist)
         op = OP_Twist;
-      else if (r < 0.75)
+      else if (r < p_cross + p_twist + p_exch)
         op = OP_Exchange;
       else
         op = OP_RandomWalk;
@@ -359,8 +358,7 @@ namespace GAPC {
 
           // Perform operation
           double rotation;
-          // TODO Don't hardcode the min rotation
-          pc = GAPCGenetic::twist(pc1, 0, rotation);
+          pc = GAPCGenetic::twist(pc1, twist_minRot, rotation);
 
           // Lock parents and get info from them
           pc1->lock()->lockForRead();
@@ -387,9 +385,7 @@ namespace GAPC {
           pc1 = pcs.at(ind);
 
           // Perform operation
-          // TODO Don't hardcode the num exchanges
-          int exch = 4;
-          pc = GAPCGenetic::exchange(pc1, exch);
+          pc = GAPCGenetic::exchange(pc1, exch_numExch);
 
           // Lock parents and get info from them
           pc1->lock()->lockForRead();
@@ -402,7 +398,7 @@ namespace GAPC {
           parents = tr("Exchange: %1x%2 (%3 swaps)")
             .arg(gen1)
             .arg(id1)
-            .arg(exch);
+            .arg(exch_numExch);
           continue;
         }
 
@@ -416,11 +412,10 @@ namespace GAPC {
           pc1 = pcs.at(ind);
 
           // Perform operation
-          // TODO Don't hardcode the num walkers or min/maxWalk
-          int walkers = ceil(pc1->numAtoms() / 2);
-          double minWalk = 0.2;
-          double maxWalk = 1.5;
-          pc = GAPCGenetic::randomWalk(pc1, walkers, minWalk, maxWalk);
+          pc = GAPCGenetic::randomWalk(pc1,
+                                       randw_numWalkers,
+                                       randw_minWalk,
+                                       randw_maxWalk);
 
           // Lock parents and get info from them
           pc1->lock()->lockForRead();
@@ -433,9 +428,9 @@ namespace GAPC {
           parents = tr("RandomWalk: %1x%2 (%3 walkers, %4-%5)")
             .arg(gen1)
             .arg(id1)
-            .arg(walkers)
-            .arg(minWalk)
-            .arg(maxWalk);
+            .arg(randw_numWalkers)
+            .arg(randw_minWalk)
+            .arg(randw_maxWalk);
           continue;
         }
 
@@ -446,7 +441,8 @@ namespace GAPC {
         switch (op) {
         case OP_Crossover:   opStr = "crossover"; break;
         case OP_Twist:       opStr = "twist"; break;
-        case OP_Exchange:       opStr = "exchange"; break;
+        case OP_Exchange:    opStr = "exchange"; break;
+        case OP_RandomWalk:  opStr = "random walk"; break;
         default:             opStr = "(unknown)"; break;
         }
         warning(tr("Unable to perform operation %1 after 1000 tries. Reselecting operator...").arg(opStr));

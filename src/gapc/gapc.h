@@ -52,6 +52,7 @@ namespace GAPC {
 
    public:
     // Variables for GAPC
+    QMutex initMutex;
     GAPC_Comp comp;
     QStringList seedList;
     unsigned int numInitial;
@@ -59,7 +60,15 @@ namespace GAPC {
     float tol_enthalpy;
     float minIAD;
     float maxIAD;
-    QMutex initMutex;
+    int p_cross;
+    int p_twist;
+    int p_exch;
+    int p_randw;
+    int twist_minRot;
+    int exch_numExch;
+    int randw_numWalkers;
+    float randw_minWalk;
+    float randw_maxWalk;
 
     enum OptTypes {
       OT_OpenBabel = 0,
