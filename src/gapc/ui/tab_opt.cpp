@@ -262,10 +262,10 @@ namespace GAPC {
     // Search parameters
     gapc->popSize              = ui.spin_popSize->value();
     gapc->contStructs          = ui.spin_contStructs->value();
-    gapc->runningJobLimit	= ui.spin_runningJobLimit->value();
-    gapc->limitRunningJobs	= ui.cb_limitRunningJobs->isChecked();
-    gapc->failLimit		= ui.spin_failLimit->value();
-    gapc->failAction		= OptGAPC::FailActions(ui.combo_failAction->currentIndex());
+    gapc->runningJobLimit      = ui.spin_runningJobLimit->value();
+    gapc->limitRunningJobs     = ui.cb_limitRunningJobs->isChecked();
+    gapc->failLimit            = ui.spin_failLimit->value();
+    gapc->failAction           = OptGAPC::FailActions(ui.combo_failAction->currentIndex());
 
     // Duplicates
     gapc->tol_enthalpy         = ui.spin_tol_enthalpy->value();
@@ -317,8 +317,10 @@ namespace GAPC {
     settings.setValue("gapc/opt/seedPath", filename);
 
     // Update text
-    if (replace)	item->setText(filename);
-    else		ui.list_seeds->addItem(filename);
+    if (replace)
+      item->setText(filename);
+    else
+      ui.list_seeds->addItem(filename);
     updateOptimizationInfo();
     updateSeeds();
   }
