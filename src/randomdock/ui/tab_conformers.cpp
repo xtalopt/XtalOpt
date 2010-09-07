@@ -57,6 +57,10 @@ namespace RandomDock {
             this, SLOT(updateConformerTable()));
     connect(ui.combo_opt, SIGNAL(currentIndexChanged(const QString&)),
             this, SLOT(updateForceField(const QString&)));
+    connect(this, SIGNAL(conformerGenerationStarting()),
+            this, SLOT(disableGenerateButton()));
+    connect(this, SIGNAL(conformerGenerationDone()),
+            this, SLOT(enableGenerateButton()));
 
     OBPlugin::ListAsVector("forcefields", "ids", m_forceFieldList);
 
@@ -163,8 +167,7 @@ namespace RandomDock {
 
   void TabConformers::generateConformers()
   {
-    // Enable this when conformer generation is complete
-    ui.push_generate->setEnabled(false);
+    emit conformerGenerationStarting();
     QtConcurrent::run(this,
                       &TabConformers::generateConformers_,
                       currentStructure());
@@ -259,7 +262,7 @@ namespace RandomDock {
     }
     delete ff;
     emit conformersChanged();
-    ui.push_generate->setEnabled(true);
+    emit conformerGenerationDone();
     m_dialog->stopProgressUpdate();
   }
 

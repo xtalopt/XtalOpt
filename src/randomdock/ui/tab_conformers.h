@@ -74,7 +74,13 @@ namespace RandomDock {
     void calculateNumberOfConformers(bool isSystematic);
 
   signals:
+    void conformerGenerationStarting();
+    void conformerGenerationDone();
     void conformersChanged();
+
+  private slots:
+    void enableGenerateButton() {ui.push_generate->setEnabled(true);};
+    void disableGenerateButton() {ui.push_generate->setEnabled(false);};
 
   private:
     Ui::Tab_Conformers ui;
