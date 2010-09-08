@@ -62,11 +62,7 @@ namespace GlobalSearch {
      *
      * @param parent The OptBase parent
      */
-    explicit SSHConnection(const QString &host,
-                           const QString &user = "",
-                           const QString &pass = "",
-                           int port = 22,
-                           OptBase *parent = 0);
+    explicit SSHConnection(OptBase *parent = 0);
 
     /**
      * Destructor.
@@ -78,6 +74,10 @@ namespace GlobalSearch {
     int getPort() {return m_port;};
 
   public slots:
+    void setLoginDetails(const QString &host,
+                         const QString &user = "",
+                         const QString &pass = "",
+                         int port = 22);
     void setUsed(bool b) {m_inUse = b;};
     bool inUse() {return m_inUse;};
 

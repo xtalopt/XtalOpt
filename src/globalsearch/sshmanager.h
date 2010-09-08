@@ -40,22 +40,26 @@ namespace GlobalSearch {
     /**
      * Constructor.
      *
-     * @oaram connections The number of simultaneous connection to
-     * create.
      * @param parent The OptBase parent
      */
-    explicit SSHManager(unsigned int connections,
-                        const QString &host,
-                        const QString &user = "",
-                        const QString &pass = "",
-                        unsigned int port = 22,
-                        OptBase *parent = 0);
+    explicit SSHManager(unsigned int connections = 5, OptBase *parent = 0);
 
     /**
      * Destructor.
      */
     virtual ~SSHManager();
 
+    /**
+     * Create connections to the specifed host. If the connections
+     * cannot be made, an SSHConnection::SSHConnectionException will
+     * be thrown.
+     */
+    void makeConnections(const QString &host,
+                         const QString &user = "",
+                         const QString &pass = "",
+                         unsigned int port = 22);
+
+    bool isValid() {return m_isValid;};
     QString getUser() {return m_user;};
     QString getHost() {return m_host;};
     int getPort() {return m_port;};
@@ -82,6 +86,8 @@ namespace GlobalSearch {
     QString m_user;
     QString m_pass;
     unsigned int m_port;
+    unsigned int m_connections;
+    bool m_isValid;
   };
 
 } // end namespace GlobalSearch

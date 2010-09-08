@@ -29,22 +29,15 @@ namespace GlobalSearch {
 #define START //qDebug() << __PRETTY_FUNCTION__ << " called...";
 #define END //qDebug() << __PRETTY_FUNCTION__ << " finished...";
 
-  SSHConnection::SSHConnection(const QString &host,
-                               const QString &user,
-                               const QString &pass,
-                               int port,
-                               OptBase *parent)
+  SSHConnection::SSHConnection(OptBase *parent)
     : QObject(parent),
-      m_host(host),
-      m_user(user),
-      m_pass(pass),
-      m_port(port),
+      m_host(""),
+      m_user(""),
+      m_pass(""),
+      m_port(22),
       m_isValid(false),
       m_inUse(false)
   {
-    START;
-    connect(true);
-    END;
   }
 
   SSHConnection::~SSHConnection()
@@ -83,6 +76,18 @@ namespace GlobalSearch {
     END;
     return connected;
   }
+
+  void SSHConnection::setLoginDetails(const QString &host,
+                                      const QString &user,
+                                      const QString &pass,
+                                      int port)
+  {
+    m_host = host;
+    m_user = user;
+    m_pass = pass;
+    m_port = port;
+  }
+
 
   bool SSHConnection::disconnect()
   {

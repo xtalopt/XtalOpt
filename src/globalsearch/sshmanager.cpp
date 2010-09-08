@@ -24,26 +24,40 @@ using namespace std;
 
 namespace GlobalSearch {
 
-  SSHManager::SSHManager(unsigned int connections,
-                         const QString &host,
-                         const QString &user,
-                         const QString &pass,
-                         unsigned int port,
-                         OptBase *parent)
+  SSHManager::SSHManager(unsigned int connections, OptBase *parent)
     : QObject(parent),
-      m_host(host),
-      m_user(user),
-      m_pass(pass),
-      m_port(port)
+      m_connections(connections),
+      m_isValid(false)
   {
+    for (unsigned int i = 0; i < connections; i++) {
+      m_conns.append(new SSHConnection(qobject_cast<OptBase*>(this->parent())));
+      //qDebug() << "Created connection #" << i+1;
+    }
+  }
+
+  void SSHManager::makeConnections(const QString &host,
+                                   const QString &user,
+                                   const QString &pass,
+                                   unsigned int port)
+  {
+    m_isValid = false;
     QMutexLocker locker (&m_lock);
     START;
 
-    for (unsigned int i = 0; i < connections; i++) {
-      m_conns.append(new SSHConnection(host, user, pass, port, parent));
-      //qDebug() << "Created connection #" << i+1;
+    m_host = host;
+    m_user = user;
+    m_pass = pass;
+    m_port = port;
+
+    QList<SSHConnection*>::iterator it;
+    for (it = m_conns.begin(); it != m_conns.end(); it++) {
+      (*it)->setLoginDetails(m_host, m_user, m_pass, m_port);
+      // No need to check return value, the "true" arguement will
+      // throw exceptions.
+      (*it)->connect(true);
     }
 
+    m_isValid = true;
     END;
   }
 
