@@ -79,7 +79,6 @@ namespace RandomDock {
     void highlightStructure(Structure *stucture);
 
   signals:
-    void moleculeChanged(Structure*);
 
   private:
     Ui::Tab_Plot ui;

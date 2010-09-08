@@ -89,7 +89,6 @@ namespace RandomDock {
     void disableRowTracking() {rowTracking = false;};
 
   signals:
-    void moleculeChanged(Structure*);
     void refresh();
     void deleteJob(int);
     void updateStatus(int opt, int run, int queue, int fail);
