@@ -106,16 +106,10 @@ namespace XtalOpt {
     if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
       QString pw = "";
       for (;;) {
-        if (m_ssh) {
-          delete m_ssh;
-          m_ssh = 0;
-        }
         try {
-          m_ssh = new SSHManager(5, host, username, pw, port, this);
+          m_ssh->makeConnections(host, username, pw, port);
         }
         catch (SSHConnection::SSHConnectionException e) {
-          delete m_ssh;
-          m_ssh = 0;
           QString err;
           switch (e) {
           case SSHConnection::SSH_CONNECTION_ERROR:
@@ -1177,16 +1171,10 @@ namespace XtalOpt {
     if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
       QString pw = "";
       for (;;) {
-        if (m_ssh) {
-          delete m_ssh;
-          m_ssh = 0;
-        }
         try {
-          m_ssh = new SSHManager(5, host, username, pw, port, this);
+          m_ssh->makeConnections(host, username, pw, port);
         }
         catch (SSHConnection::SSHConnectionException e) {
-          delete m_ssh;
-          m_ssh = 0;
           QString err;
           switch (e) {
           case SSHConnection::SSH_CONNECTION_ERROR:

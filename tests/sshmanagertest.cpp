@@ -103,15 +103,15 @@ void SSHManagerTest::initTestCase()
   testfile2.close();
 
   // Open ssh connection
+  manager = new SSHManager(NUM_CONN);
   try {
     // Ensure that the following points to a real server, acct, and pw
     // combo. Do not commit any changes here! (considering using
     // /etc/hosts to map "testserver" to a real server with a
     // chroot-jailed acct/pw = "test")
-    manager = new SSHManager(NUM_CONN, "testserver", "test", "test", 22);
+    manager->makeConnections("testserver", "test", "test", 22);
   }
   catch (SSHConnection::SSHConnectionException) {
-    manager = 0;
     QFAIL("Cannot connect to ssh server. Make sure that the connection opened in initTestCase() points to a valid account on a real host before debugging this failure.");
   }
 }

@@ -34,7 +34,7 @@ namespace GlobalSearch {
     m_tracker(new Tracker (this)),
     m_queue(new QueueManager(this, m_tracker)),
     m_optimizer(0), // This will be set when the GUI is initialized
-    m_ssh(0), // Initialize this on resume/startSearch
+    m_ssh(new SSHManager (5, this)),
     m_idString("Generic"),
     sOBMutex(new QMutex),
     stateFileMutex(new QMutex),

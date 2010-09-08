@@ -150,7 +150,9 @@ void SSHConnectionTest::initTestCase()
     // combo. Do not commit any changes here! (considering using
     // /etc/hosts to map "testserver" to a real server with a
     // chroot-jailed acct/pw = "test")
-    conn = new SSHConnection("testserver", "test", "test");
+    conn = new SSHConnection();
+    conn->setLoginDetails("testserver", "test", "test");
+    conn->connect();
   }
   catch (SSHConnection::SSHConnectionException) {
     conn = 0;
