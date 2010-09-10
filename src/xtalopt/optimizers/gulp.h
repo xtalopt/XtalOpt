@@ -38,11 +38,12 @@ namespace XtalOpt {
 
     bool writeInputFiles(Structure *structure);
     bool startOptimization(Structure *structure);
-    bool getQueueList(QStringList & queueData);
+    bool getQueueList(QStringList & queueData, QMutex *mutex);
     Optimizer::JobState getStatus(Structure *structure);
     bool copyRemoteToLocalCache(Structure *structure);
     int checkIfJobNameExists(Structure *, const QStringList &, bool &b) {
       b=false;return 0;};
+    bool deleteJob(Structure *s) {};
   };
 
 } // end namespace Avogadro

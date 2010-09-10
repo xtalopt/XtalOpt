@@ -274,17 +274,6 @@ namespace GlobalSearch {
   }
 
   bool Optimizer::writeTemplates(Structure *structure) {
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
-
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
     // Create file objects
     QList<QFile*> files;
     QStringList filenames = getTemplateNames();
@@ -297,7 +286,6 @@ namespace GlobalSearch {
       if (!files.at(i)->open( QIODevice::WriteOnly | QIODevice::Text ) ) {
         m_opt->error(tr("Cannot write input file %1 (file writing failure)", "1 is a file path").arg(files.at(i)->fileName()));
         qDeleteAll(files);
-        m_opt->ssh()->unlockConnection(ssh);
         return false;
       }
     }
@@ -323,7 +311,6 @@ namespace GlobalSearch {
     // Clean up
     qDeleteAll(files);
     qDeleteAll(streams);
-    m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
 

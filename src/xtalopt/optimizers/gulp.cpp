@@ -159,7 +159,7 @@ namespace XtalOpt {
     }
   }
 
-  bool GULPOptimizer::getQueueList(QStringList & queueData) {
+  bool GULPOptimizer::getQueueList(QStringList & queueData, QMutex *mutex) {
     Q_UNUSED(queueData);
     return true;
   }
