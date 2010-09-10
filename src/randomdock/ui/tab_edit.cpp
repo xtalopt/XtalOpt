@@ -366,7 +366,7 @@ namespace RandomDock {
   void TabEdit::saveScheme()
   {
     SETTINGS("");
-    QString filename = settings->value("xtalopt/edit/schemePath/", "").toString();
+    QString filename = settings->value("randomdock/edit/schemePath/", "").toString();
     QFileDialog dialog (NULL, tr("Save Optimization Scheme as..."),
                         filename, "*.scheme;;*.*");
     dialog.selectFile(m_opt->optimizer()->getIDString() + ".scheme");
@@ -376,14 +376,14 @@ namespace RandomDock {
     else { // User cancel file selection.
       return;
     }
-    settings->setValue("xtalopt/edit/schemePath/", filename);
+    settings->setValue("randomdock/edit/schemePath/", filename);
     writeSettings(filename);
   }
 
   void TabEdit::loadScheme()
   {
     SETTINGS("");
-    QString filename = settings->value("xtalopt/edit/schemePath/", "").toString();
+    QString filename = settings->value("randomdock/edit/schemePath/", "").toString();
     QFileDialog dialog (NULL,
                         tr("Select Optimization Scheme to load..."),
                         filename,
@@ -394,7 +394,7 @@ namespace RandomDock {
     else { // User cancel file selection.
       return;
     }
-    settings->setValue("xtalopt/edit/schemePath/", filename);
+    settings->setValue("randomdock/edit/schemePath/", filename);
     readSettings(filename);
   }
 }
