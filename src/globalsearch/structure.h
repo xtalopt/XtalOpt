@@ -56,9 +56,25 @@ namespace GlobalSearch {
     Structure(QObject *parent = 0);
 
     /**
+     * Copy constructor.
+     */
+    Structure(const Structure &other);
+
+    /**
      * Destructor.
      */
     virtual ~Structure();
+
+    /**
+     * Assignment operator
+     */
+    Structure& operator=(const Structure& other);
+
+    /**
+     * Update the structure's atoms, bonds, and residue information
+     * from other.
+     */
+    Structure& copyStructure(Structure *other);
 
     /**
      * Enum containing possible optimization statuses.
@@ -670,7 +686,7 @@ namespace GlobalSearch {
      */
     void readStructureSettings(const QString &filename);
 
-   private:
+  protected:
     bool m_hasEnthalpy;
     uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount;
     QString m_parents, m_dupString, m_rempath;

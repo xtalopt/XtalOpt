@@ -51,7 +51,53 @@ namespace GlobalSearch {
     resetFailCount();
   }
 
+  Structure::Structure(const Structure &other) :
+    Molecule(other),
+    m_generation(0),
+    m_id(0),
+    m_rank(0),
+    m_jobID(0),
+    m_PV(0),
+    m_optStart(QDateTime()),
+    m_optEnd(QDateTime()),
+    m_index(-1)
+  {
+    *this = other;
+  }
+
+
   Structure::~Structure() {
+  }
+
+  Structure& Structure::operator=(const Structure& other)
+  {
+    Molecule::operator=(other);
+
+    // Set properties
+    m_hasEnthalpy    = other.m_hasEnthalpy;
+    m_generation     = other.m_generation;
+    m_id             = other.m_id;
+    m_rank           = other.m_rank;
+    m_jobID          = other.m_jobID;
+    m_currentOptStep = other.m_currentOptStep;
+    m_failCount      = other.m_failCount;
+    m_parents        = other.m_parents;
+    m_dupString      = other.m_dupString;
+    m_rempath        = other.m_rempath;
+    m_enthalpy       = other.m_enthalpy;
+    m_PV             = other.m_PV;
+    m_status         = other.m_status;
+    m_optStart       = other.m_optStart;
+    m_optEnd         = other.m_optEnd;
+    m_index          = other.m_index;
+
+    return *this;
+  }
+
+  Structure& Structure::copyStructure(Structure *other)
+  {
+    Molecule::operator=(*other);
+    return *this;
   }
 
   void Structure::writeStructureSettings(const QString &filename)
