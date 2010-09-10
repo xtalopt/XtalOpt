@@ -18,7 +18,7 @@
 
 #include <xtalopt/xtalopt.h>
 
-#include <QSettings>
+#include <QtCore/QSettings>
 
 #include "dialog.h"
 

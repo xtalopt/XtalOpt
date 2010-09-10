@@ -26,10 +26,11 @@
 #include <openbabel/generic.h>
 #include <openbabel/mol.h>
 
-#include <QAction>
-#include <QWidget>
-#include <QMessageBox>
-#include <QDebug>
+#include <QtGui/QAction>
+#include <QtGui/QWidget>
+#include <QtGui/QMessageBox>
+
+#include <QtCore/QDebug>
 
 namespace XtalOpt {
 

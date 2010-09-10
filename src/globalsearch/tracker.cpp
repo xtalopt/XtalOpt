@@ -16,9 +16,9 @@
 #include <globalsearch/tracker.h>
 #include <globalsearch/structure.h>
 
-#include <QList>
-#include <QDebug>
-#include <QReadWriteLock>
+#include <QtCore/QList>
+#include <QtCore/QDebug>
+#include <QtCore/QReadWriteLock>
 
 using namespace Avogadro;
 using namespace OpenBabel;

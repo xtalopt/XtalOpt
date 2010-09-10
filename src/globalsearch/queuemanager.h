@@ -21,8 +21,8 @@
 #include <globalsearch/tracker.h>
 #include <globalsearch/optimizer.h>
 
-#include <QDebug>
-#include <QReadWriteLock>
+#include <QtCore/QDebug>
+#include <QtCore/QReadWriteLock>
 
 namespace GlobalSearch {
 

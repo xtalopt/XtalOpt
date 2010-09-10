@@ -17,12 +17,13 @@
 
 #include <xtalopt/xtalopt.h>
 
-#include <QDebug>
-#include <QInputDialog>
-#include <QProgressDialog>
-#include <QFile>
-#include <QTimer>
-#include <QtConcurrentRun>
+#include <QtCore/QDebug>
+#include <QtCore/QFile>
+#include <QtCore/QTimer>
+#include <QtCore/QtConcurrentRun>
+
+#include <QtGui/QInputDialog>
+#include <QtGui/QProgressDialog>
 
 namespace XtalOpt {
 

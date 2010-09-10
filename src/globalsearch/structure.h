@@ -23,9 +23,9 @@
 #include <openbabel/mol.h>
 #include <openbabel/generic.h>
 
-#include <QDebug>
-#include <QDateTime>
-#include <QTextStream>
+#include <QtCore/QDebug>
+#include <QtCore/QDateTime>
+#include <QtCore/QTextStream>
 
 #define EV_TO_KCAL_PER_MOL 23.060538
 

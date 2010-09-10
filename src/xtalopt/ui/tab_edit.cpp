@@ -23,9 +23,10 @@
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/pwscf.h>
 
-#include <QFont>
-#include <QSettings>
-#include <QFileDialog>
+#include <QtCore/QSettings>
+
+#include <QtGui/QFont>
+#include <QtGui/QFileDialog>
 
 using namespace std;
 

@@ -31,15 +31,16 @@
 
 #include <openbabel/rand.h>
 
-#include <QDir>
-#include <QList>
-#include <QFile>
-#include <QDebug>
-#include <QTimer>
-#include <QFileInfo>
-#include <QReadWriteLock>
-#include <QMessageBox>
-#include <QtConcurrentRun>
+#include <QtCore/QDir>
+#include <QtCore/QList>
+#include <QtCore/QFile>
+#include <QtCore/QDebug>
+#include <QtCore/QTimer>
+#include <QtCore/QFileInfo>
+#include <QtCore/QReadWriteLock>
+#include <QtCore/QtConcurrentRun>
+
+#include <QtGui/QMessageBox>
 
 #define ANGSTROM_TO_BOHR 1.889725989
 

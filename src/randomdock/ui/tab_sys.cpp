@@ -20,7 +20,7 @@
 #include <randomdock/randomdock.h>
 #include <globalsearch/macros.h>
 
-#include <QSettings>
+#include <QtCore/QSettings>
 
 using namespace std;
 using namespace Avogadro;

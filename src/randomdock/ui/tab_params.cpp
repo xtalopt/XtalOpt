@@ -23,10 +23,11 @@
 
 #include <globalsearch/macros.h>
 
-#include <QDebug>
-#include <QSettings>
-#include <QFileDialog>
-#include <QMessageBox>
+#include <QtCore/QDebug>
+#include <QtCore/QSettings>
+
+#include <QtGui/QFileDialog>
+#include <QtGui/QMessageBox>
 
 using namespace std;
 using namespace Avogadro;

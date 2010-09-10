@@ -15,8 +15,8 @@
 
 #include <globalsearch/sshconnection.h>
 
-#include <QDebug>
-#include <QDir>
+#include <QtCore/QDebug>
+#include <QtCore/QDir>
 
 #include <fstream>
 #include <sstream>

@@ -24,12 +24,13 @@
 #include <globalsearch/tracker.h>
 #include <globalsearch/macros.h>
 
-#include <QDebug>
-#include <QMutex>
-#include <QFuture>
-#include <QStringList>
-#include <QInputDialog>
-#include <QReadWriteLock>
+#include <QtCore/QDebug>
+#include <QtCore/QMutex>
+#include <QtCore/QFuture>
+#include <QtCore/QStringList>
+#include <QtCore/QReadWriteLock>
+
+#include <QtGui/QInputDialog>
 
 namespace XtalOpt {
   class XtalOptDialog;

@@ -19,7 +19,7 @@
 
 #include <globalsearch/optbase.h>
 
-#include <QFile>
+#include <QtCore/QFile>
 
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>

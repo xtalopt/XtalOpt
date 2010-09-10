@@ -19,7 +19,7 @@
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
-#include <QSettings>
+#include <QtCore/QSettings>
 
 using namespace std;
 

@@ -19,10 +19,11 @@
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
-#include <QDebug>
-#include <QSettings>
-#include <QFileDialog>
-#include <QMessageBox>
+#include <QtCore/QDebug>
+#include <QtCore/QSettings>
+
+#include <QtGui/QFileDialog>
+#include <QtGui/QMessageBox>
 
 using namespace std;
 

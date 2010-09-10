@@ -16,10 +16,10 @@
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/structures/xtal.h>
 
-#include <QProcess>
-#include <QDir>
-#include <QString>
-#include <QSemaphore>
+#include <QtCore/QProcess>
+#include <QtCore/QDir>
+#include <QtCore/QString>
+#include <QtCore/QSemaphore>
 
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>

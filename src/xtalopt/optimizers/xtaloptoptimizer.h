@@ -18,7 +18,7 @@
 
 #include <globalsearch/optimizer.h>
 
-#include <QObject>
+#include <QtCore/QObject>
 
 namespace GlobalSearch {
   class Structure;

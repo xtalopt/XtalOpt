@@ -21,10 +21,11 @@
 #include <avogadro/molecule.h>
 #include <avogadro/glwidget.h>
 
-#include <QAction>
-#include <QWidget>
-#include <QMessageBox>
-#include <QDebug>
+#include <QtCore/QDebug>
+
+#include <QtGui/QAction>
+#include <QtGui/QWidget>
+#include <QtGui/QMessageBox>
 
 using namespace std;
 using namespace OpenBabel;

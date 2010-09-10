@@ -22,7 +22,7 @@
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/bt.h>
 
-#include <QInputDialog>
+#include <QtGui/QInputDialog>
 
 using namespace OpenBabel;
 

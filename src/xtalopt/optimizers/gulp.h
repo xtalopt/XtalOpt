@@ -18,7 +18,7 @@
 
 #include <xtalopt/optimizers/xtaloptoptimizer.h>
 
-#include <QObject>
+#include <QtCore/QObject>
 
 namespace GlobalSearch {
   class Structure;

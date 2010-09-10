@@ -17,14 +17,15 @@
 #ifndef XTALOPTDIALOG_H
 #define XTALOPTDIALOG_H
 
-#include <QDialog>
-#include <QMutex>
-#include <QTimer>
-
 #include <globalsearch/ui/abstractdialog.h>
 
 #include <avogadro/molecule.h>
 #include <avogadro/glwidget.h>
+
+#include <QtCore/QMutex>
+#include <QtCore/QTimer>
+
+#include <QtGui/QDialog>
 
 #include "ui_dialog.h"
 

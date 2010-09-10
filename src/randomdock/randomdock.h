@@ -21,10 +21,11 @@
 
 #include <Eigen/Geometry>
 
-#include <QDebug>
-#include <QStringList>
-#include <QReadWriteLock>
-#include <QInputDialog>
+#include <QtCore/QDebug>
+#include <QtCore/QStringList>
+#include <QtCore/QReadWriteLock>
+
+#include <QtGui/QInputDialog>
 
 namespace GlobalSearch {
   class Structure;

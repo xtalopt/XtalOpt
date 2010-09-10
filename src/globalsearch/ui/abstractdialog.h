@@ -21,12 +21,13 @@
 #include <globalsearch/optimizer.h>
 #include <globalsearch/optbase.h>
 
-#include <QProgressBar>
-#include <QMessageBox>
-#include <QTabWidget>
-#include <QDialog>
-#include <QMutex>
-#include <QTimer>
+#include <QtGui/QProgressBar>
+#include <QtGui/QMessageBox>
+#include <QtGui/QTabWidget>
+#include <QtGui/QDialog>
+
+#include <QtCore/QMutex>
+#include <QtCore/QTimer>
 
 namespace Avogadro {
   class GLWidget;

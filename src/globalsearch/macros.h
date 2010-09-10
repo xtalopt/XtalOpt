@@ -16,7 +16,7 @@
 #ifndef XTALOPTMACROS_H
 #define XTALOPTMACROS_H
 
-#include <QSettings>
+#include <QtCore/QSettings>
 
 // Create a pointer of type QSettings *settings that points to either:
 // 1) The default application QSettings object, or

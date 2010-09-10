@@ -19,10 +19,10 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/sshmanager.h>
 
-#include <QDir>
-#include <QDebug>
-#include <QString>
-#include <QSettings>
+#include <QtCore/QDir>
+#include <QtCore/QDebug>
+#include <QtCore/QString>
+#include <QtCore/QSettings>
 
 #include <avogadro/molecule.h>
 #include <avogadro/atom.h>

@@ -16,8 +16,8 @@
 #ifndef OPTBASE_H
 #define OPTBASE_H
 
-#include <QObject>
-#include <QMutex>
+#include <QtCore/QObject>
+#include <QtCore/QMutex>
 
 namespace GlobalSearch {
   class Structure;

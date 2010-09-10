@@ -19,8 +19,8 @@
 
 #include <globalsearch/structure.h>
 
-#include <QDateTime>
-#include <QTextStream>
+#include <QtCore/QDateTime>
+#include <QtCore/QTextStream>
 
 using namespace GlobalSearch;
 

@@ -16,7 +16,7 @@
 
 #include <randomdock/structures/scene.h>
 
-#include <QDebug>
+#include <QtCore/QDebug>
 
 using namespace std;
 using namespace Avogadro;

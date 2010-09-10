@@ -20,10 +20,11 @@
 
 #include <avogadro/extension.h>
 
-#include <QObject>
-#include <QList>
-#include <QString>
-#include <QUndoCommand>
+#include <QtCore/QObject>
+#include <QtCore/QList>
+#include <QtCore/QString>
+
+#include <QtGui/QUndoCommand>
 
 namespace XtalOpt {
 

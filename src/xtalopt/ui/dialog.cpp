@@ -31,11 +31,11 @@
 
 #include <openbabel/oberror.h>
 
-#include <QSettings>
-#include <QFileDialog>
-#include <QMessageBox>
-#include <QtConcurrentRun>
-#include <QSemaphore>
+#include <QtCore/QSettings>
+#include <QtCore/QtConcurrentRun>
+
+#include <QtGui/QFileDialog>
+#include <QtGui/QMessageBox>
 
 using namespace Avogadro;
 using namespace std;

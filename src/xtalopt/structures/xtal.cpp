@@ -23,9 +23,9 @@
 #include <openbabel/rand.h>
 #include <openbabel/forcefield.h>
 
-#include <QDebug>
-#include <QRegExp>
-#include <QStringList>
+#include <QtCore/QDebug>
+#include <QtCore/QRegExp>
+#include <QtCore/QStringList>
 
 extern "C" {
 #include <spglib/spglib.h>

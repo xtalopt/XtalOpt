@@ -1,7 +1,7 @@
-#include <QObject>
-#include <QString>
-#include <QStringList>
-#include <QRegExp>
+#include <QtCore/QObject>
+#include <QtCore/QString>
+#include <QtCore/QStringList>
+#include <QtCore/QRegExp>
 
 #define _HAVE_EXECINFO_H_ 1
 

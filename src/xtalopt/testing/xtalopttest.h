@@ -18,8 +18,9 @@
 
 #include <xtalopt/xtalopt.h>
 
-#include <QDebug>
-#include <QProgressDialog>
+#include <QtCore/QDebug>
+
+#include <QtGui/QProgressDialog>
 
 namespace XtalOpt {
 

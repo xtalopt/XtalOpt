@@ -23,8 +23,8 @@
 #include <avogadro/primitive.h>
 #include <avogadro/primitivelist.h>
 
-#include <QSettings>
-#include <QReadWriteLock>
+#include <QtCore/QSettings>
+#include <QtCore/QReadWriteLock>
 
 namespace XtalOpt {
 

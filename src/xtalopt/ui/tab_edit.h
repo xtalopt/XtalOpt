@@ -23,7 +23,7 @@
 
 #include <globalsearch/ui/abstracttab.h>
 
-#include <QMessageBox>
+#include <QtGui/QMessageBox>
 
 namespace GlobalSearch {
   class Optimizer;

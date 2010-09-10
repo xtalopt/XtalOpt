@@ -23,9 +23,9 @@ extern "C" {
 
 #include <globalsearch/optbase.h>
 
-#include <QObject>
-#include <QString>
-#include <QMutex>
+#include <QtCore/QObject>
+#include <QtCore/QString>
+#include <QtCore/QMutex>
 
 #define SSH_BUFFER_SIZE 20480
 

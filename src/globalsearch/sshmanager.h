@@ -18,9 +18,9 @@
 
 #include <globalsearch/sshconnection.h>
 
-#include <QObject>
-#include <QMutex>
-#include <QHash>
+#include <QtCore/QObject>
+#include <QtCore/QMutex>
+#include <QtCore/QHash>
 
 namespace GlobalSearch {
   class OptBase;

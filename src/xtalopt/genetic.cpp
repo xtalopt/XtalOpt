@@ -21,7 +21,7 @@
 #include <openbabel/rand.h>
 #include <openbabel/obiter.h>
 
-#include <QDebug>
+#include <QtCore/QDebug>
 
 using namespace std;
 using namespace OpenBabel;

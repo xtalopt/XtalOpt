@@ -18,7 +18,7 @@
 
 #include <globalsearch/structure.h>
 
-#include <QDebug>
+#include <QtCore/QDebug>
 
 using namespace GlobalSearch;
 

@@ -15,7 +15,7 @@
 
 #include <globalsearch/sshmanager.h>
 
-#include <QDebug>
+#include <QtCore/QDebug>
 
 #define START //qDebug() << __PRETTY_FUNCTION__ << " called...";
 #define END //qDebug() << __PRETTY_FUNCTION__ << " finished...";

@@ -24,12 +24,13 @@
 
 #include <openbabel/oberror.h>
 
-#include <QLabel>
-#include <QSettings>
-#include <QFileDialog>
-#include <QPushButton>
-#include <QMessageBox>
-#include <QtConcurrentRun>
+#include <QtGui/QLabel>
+#include <QtGui/QFileDialog>
+#include <QtGui/QPushButton>
+#include <QtGui/QMessageBox>
+
+#include <QtCore/QSettings>
+#include <QtCore/QtConcurrentRun>
 
 using namespace std;
 

@@ -18,9 +18,9 @@
 
 #include <globalsearch/structure.h>
 
-#include <QDebug>
-#include <QList>
-#include <QReadWriteLock>
+#include <QtCore/QDebug>
+#include <QtCore/QList>
+#include <QtCore/QReadWriteLock>
 
 namespace GlobalSearch {
 

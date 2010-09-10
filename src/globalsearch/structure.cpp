@@ -24,10 +24,10 @@
 #include <openbabel/rand.h>
 #include <openbabel/forcefield.h>
 
-#include <QFile>
-#include <QDebug>
-#include <QRegExp>
-#include <QStringList>
+#include <QtCore/QFile>
+#include <QtCore/QDebug>
+#include <QtCore/QRegExp>
+#include <QtCore/QStringList>
 
 using namespace OpenBabel;
 using namespace Eigen;

@@ -18,9 +18,9 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
-#include <QDir>
-#include <QString>
-#include <QDebug>
+#include <QtCore/QDir>
+#include <QtCore/QString>
+#include <QtCore/QDebug>
 
 using namespace std;
 using namespace OpenBabel;

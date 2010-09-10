@@ -23,9 +23,10 @@
 
 #include <globalsearch/macros.h>
 
-#include <QFont>
-#include <QSettings>
-#include <QFileDialog>
+#include <QtCore/QSettings>
+
+#include <QtGui/QFont>
+#include <QtGui/QFileDialog>
 
 using namespace std;
 using namespace Avogadro;

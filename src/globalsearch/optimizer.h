@@ -18,10 +18,10 @@
 
 #include <globalsearch/optbase.h>
 
-#include <QHash>
-#include <QObject>
-#include <QVariant>
-#include <QStringList>
+#include <QtCore/QHash>
+#include <QtCore/QObject>
+#include <QtCore/QVariant>
+#include <QtCore/QStringList>
 
 namespace GlobalSearch {
   class Structure;

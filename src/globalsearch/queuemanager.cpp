@@ -19,8 +19,8 @@
 #include <globalsearch/structure.h>
 #include <globalsearch/optimizer.h>
 
-#include <QDebug>
-#include <QtConcurrentRun>
+#include <QtCore/QDebug>
+#include <QtCore/QtConcurrentRun>
 
 namespace GlobalSearch {
 

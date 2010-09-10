@@ -22,12 +22,13 @@
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
-#include <QMenu>
-#include <QTimer>
-#include <QSettings>
-#include <QMutexLocker>
-#include <QInputDialog>
-#include <QtConcurrentRun>
+#include <QtCore/QTimer>
+#include <QtCore/QSettings>
+#include <QtCore/QMutexLocker>
+#include <QtCore/QtConcurrentRun>
+
+#include <QtGui/QMenu>
+#include <QtGui/QInputDialog>
 
 namespace XtalOpt {
 

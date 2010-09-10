@@ -20,8 +20,8 @@
 #include <randomdock/randomdock.h>
 #include <globalsearch/macros.h>
 
-#include <QSettings>
-#include <QDateTime>
+#include <QtCore/QSettings>
+#include <QtCore/QDateTime>
 
 using namespace std;
 using namespace Avogadro;

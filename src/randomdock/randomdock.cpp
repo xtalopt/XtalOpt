@@ -29,12 +29,13 @@
 
 #include <avogadro/atom.h>
 #include <avogadro/bond.h>
+
 #include <openbabel/rand.h>
 #include <openbabel/mol.h>
 
-#include <QDir>
-#include <QFile>
-#include <QStringList>
+#include <QtCore/QDir>
+#include <QtCore/QFile>
+#include <QtCore/QStringList>
 
 using namespace std;
 using namespace Avogadro;
