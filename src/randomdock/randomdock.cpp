@@ -312,8 +312,7 @@ namespace RandomDock {
 
     // Copy info over
     QWriteLocker locker2 (scene->lock());
-    OpenBabel::OBMol oldOBMol = scene->OBMol();
-    oldScene->setOBMol(&oldOBMol);
+    oldScene->copyStructure(scene);
     oldScene->resetEnergy();
     oldScene->resetEnthalpy();
     oldScene->setPV(0);
