@@ -66,13 +66,16 @@ namespace GlobalSearch {
     virtual ~Structure();
 
     /**
-     * Assignment operator
+     * Assignment operator. Makes a new structure with all Structure
+     * specific information copied.
+     * @sa copyStructure
      */
     Structure& operator=(const Structure& other);
 
     /**
-     * Update the structure's atoms, bonds, and residue information
+     * Only update the structure's atoms, bonds, and residue information
      * from other.
+     * @sa operator=
      */
     Structure& copyStructure(Structure *other);
 
