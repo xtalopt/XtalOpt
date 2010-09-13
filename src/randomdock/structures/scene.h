@@ -34,7 +34,6 @@ namespace RandomDock {
    signals:
 
    public slots:
-    void updateFromMolecule(Molecule *mol);
 
    private slots:
 

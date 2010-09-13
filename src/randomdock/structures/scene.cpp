@@ -32,25 +32,6 @@ namespace RandomDock {
   {
   }
 
-  void Scene::updateFromMolecule(Molecule *mol)
-  {
-    // TODO check if this is all we need to do.
-    if (mol->numAtoms() != numAtoms()) {
-      qWarning() << "Number of atoms changed during optimization. Killing structure!";
-      setStatus(Killed);
-      return;
-    }
-
-    // Update atom positions, assume indexes are the same.
-    for (uint i = 0; i < numAtoms(); i++)
-      atom(i)->setPos(mol->atom(i)->pos());
-
-    // Update energy
-    setEnergy(mol->energy(0));
-
-    emit moleculeChanged();
-  }
-
 } // end namespace Avogadro
 
 //#include "scene.moc"
