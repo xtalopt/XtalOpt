@@ -63,16 +63,20 @@ void ssh_poll_init(void) {
     return;
 }
 
+void ssh_poll_cleanup(void) {
+    return;
+}
+
 int ssh_poll(ssh_pollfd_t *fds, nfds_t nfds, int timeout) {
   return poll((struct pollfd *) fds, nfds, timeout);
 }
 
 #else /* HAVE_POLL */
 
-#include <sys/types.h>
-
 typedef int (*poll_fn)(ssh_pollfd_t *, nfds_t, int);
-static poll_fn win_poll;
+static poll_fn ssh_poll_emu;
+
+#include <sys/types.h>
 
 #ifdef _WIN32
 #ifndef STRICT
@@ -82,6 +86,25 @@ static poll_fn win_poll;
 #include <time.h>
 #include <windows.h>
 #include <winsock2.h>
+
+#if (_WIN32_WINNT < 0x0600)
+typedef struct ssh_pollfd_struct WSAPOLLFD;
+#endif
+
+typedef int (WSAAPI* WSAPoll_FunctionType)(WSAPOLLFD fdarray[],
+                                           ULONG nfds,
+                                           INT timeout
+);
+
+static WSAPoll_FunctionType wsa_poll;
+
+int win_poll(ssh_pollfd_t *fds, nfds_t nfds, int timeout) {
+    if (wsa_poll) {
+        return (wsa_poll)(fds, nfds, timeout);
+    }
+
+    return SOCKET_ERROR;
+}
 
 #define WS2_LIBRARY "ws2_32.dll"
 static HINSTANCE hlib;
@@ -218,24 +241,33 @@ static int bsd_poll(ssh_pollfd_t *fds, nfds_t nfds, int timeout) {
 }
 
 void ssh_poll_init(void) {
-    poll_fn wsa_poll = NULL;
+    ssh_poll_emu = bsd_poll;
 
 #ifdef _WIN32
     hlib = LoadLibrary(WS2_LIBRARY);
     if (hlib != NULL) {
-        wsa_poll = (poll_fn) GetProcAddress(hlib, "WSAPoll");
+        wsa_poll = (WSAPoll_FunctionType) (void *) GetProcAddress(hlib, "WSAPoll");
     }
 #endif /* _WIN32 */
 
-    if (wsa_poll == NULL) {
-        win_poll = bsd_poll;
-    } else {
-        win_poll = wsa_poll;
+    if (wsa_poll != NULL) {
+        ssh_poll_emu = bsd_poll;
     }
 }
 
+void ssh_poll_cleanup(void) {
+    ssh_poll_emu = bsd_poll;
+#ifdef _WIN32
+    wsa_poll = NULL;
+
+    FreeLibrary(hlib);
+
+    hlib = NULL;
+#endif /* _WIN32 */
+}
+
 int ssh_poll(ssh_pollfd_t *fds, nfds_t nfds, int timeout) {
-    return win_poll(fds, nfds, timeout);
+    return (ssh_poll_emu)(fds, nfds, timeout);
 }
 
 #endif /* HAVE_POLL */

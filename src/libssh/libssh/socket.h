@@ -30,6 +30,7 @@ struct socket *ssh_socket_new(ssh_session session);
 void ssh_socket_free(struct socket *s);
 void ssh_socket_set_fd(struct socket *s, socket_t fd);
 socket_t ssh_socket_get_fd(struct socket *s);
+void ssh_socket_cleanup(void);
 #ifndef _WIN32
 int ssh_socket_unix(struct socket *s, const char *path);
 #endif
