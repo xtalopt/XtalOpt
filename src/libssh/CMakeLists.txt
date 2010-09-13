@@ -7,6 +7,7 @@ include(DefineOptions.cmake)
 
 # These aren't configurable for the XtalOpt build
 set (WITH_STATIC_LIB ON)
+set (WITH_PCAP ON)
 set (WITH_SFTP ON)
 set (WITH_SERVER OFF)
 
@@ -109,12 +110,10 @@ set(LIBSSH_LINK_LIBRARIES
 
 set(libssh_SRCS
   agent.c
-  auth1.c
   auth.c
   base64.c
   buffer.c
   callbacks.c
-  channels1.c
   channels.c
   client.c
   config.c
@@ -135,18 +134,21 @@ set(libssh_SRCS
   misc.c
   options.c
   packet.c
-  pcap.c
   poll.c
-  scp.c
-  server.c
   session.c
-  sftp.c
-  sftpserver.c
+  scp.c
   socket.c
   string.c
   wrapper.c
 )
 
+if (WITH_PCAP)
+  set(libssh_SRCS
+    ${libssh_SRCS}
+    pcap.c
+  )
+
+endif (WITH_PCAP)
 if (WITH_SFTP)
   set(libssh_SRCS
     ${libssh_SRCS}
