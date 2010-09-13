@@ -32,57 +32,72 @@
 
 #include "config.h"
 
-#ifdef _MSC_VER
+#ifdef _WIN32
 
-/** Imitate define of inttypes.h */
-#define PRIdS "Id"
+/* Imitate define of inttypes.h */
+# ifndef PRIdS
+#  define PRIdS "Id"
+# endif
 
-#define strcasecmp _stricmp
-#define strncasecmp _strnicmp
-#define strtoull _strtoui64
-#define isblank(ch) ((ch) == ' ' || (ch) == '\t' || (ch) == '\n' || (ch) == '\r')
+# ifdef _MSC_VER
+#  include <stdio.h>
 
-#if _MSC_VER >= 1400
-#define strdup _strdup
-#endif
-#define usleep(X) Sleep(((X)+1000)/1000)
+/* On Microsoft compilers define inline to __inline on all others use inline */
+#  undef inline
+#  define inline __inline
 
-#undef strtok_r
-#define strtok_r strtok_s
+#  undef strdup
+#  define strdup _strdup
 
-#ifndef HAVE_SNPRINTF
-#ifdef HAVE__SNPRINTF_S
-#define snprintf(d, n, ...) _snprintf_s((d), (n), _TRUNCATE, __VA_ARGS__)
-#else
-#ifdef HAVE__SNPRINTF
-#define snprintf _snprintf
-#else 
-#error "no snprintf compatible function found"
-#endif /* HAVE__SNPRINTF */
-#endif /* HAVE__SNPRINTF_S */
-#endif /* HAVE_SNPRINTF */
+#  define strcasecmp _stricmp
+#  define strncasecmp _strnicmp
+#  define strtoull _strtoui64
+#  define isblank(ch) ((ch) == ' ' || (ch) == '\t' || (ch) == '\n' || (ch) == '\r')
 
-#ifndef HAVE_VSNPRINTF
-#ifdef HAVE__VSNPRINTF_S
-#define vsnprintf(s, n, f, v) _vsnprintf_s((s), (n), _TRUNCATE, (f), (v))
-#else
-#ifdef HAVE__VSNPRINTF
-#define vsnprintf _vsnprintf
-#else /* HAVE_VSNPRINTF */
-#error "No vsnprintf compatible function found"
-#endif /* HAVE__VSNPRINTF */
-#endif /* HAVE__VSNPRINTF_S */
-#endif /* HAVE_VSNPRINTF */
+#  define usleep(X) Sleep(((X)+1000)/1000)
 
-#ifndef HAVE_STRNCPY
-#define strncpy(d, s, n) strncpy_s((d), (n), (s), _TRUNCATE)
-#endif
-#else /* _MSC_VER */
+#  undef strtok_r
+#  define strtok_r strtok_s
+
+#  if defined(HAVE__SNPRINTF_S)
+#   undef snprintf
+#   define snprintf(d, n, ...) _snprintf_s((d), (n), _TRUNCATE, __VA_ARGS__)
+#  else /* HAVE__SNPRINTF_S */
+#   if defined(HAVE__SNPRINTF)
+#     undef snprintf
+#     define snprintf _snprintf
+#   else /* HAVE__SNPRINTF */
+#    if !defined(HAVE_SNPRINTF)
+#     error "no snprintf compatible function found"
+#    endif /* HAVE_SNPRINTF */
+#   endif /* HAVE__SNPRINTF */
+#  endif /* HAVE__SNPRINTF_S */
+
+#  if defined(HAVE__VSNPRINTF_S)
+#   undef vsnprintf
+#   define vsnprintf(s, n, f, v) _vsnprintf_s((s), (n), _TRUNCATE, (f), (v))
+#  else /* HAVE__VSNPRINTF_S */
+#   if defined(HAVE__VSNPRINTF)
+#    undef vsnprintf
+#    define vsnprintf _vsnprintf
+#   else
+#    if !defined(HAVE_VSNPRINTF)
+#     error "No vsnprintf compatible function found"
+#    endif /* HAVE_VSNPRINTF */
+#   endif /* HAVE__VSNPRINTF */
+#  endif /* HAVE__VSNPRINTF_S */
+
+#  ifndef HAVE_STRNCPY
+#  define strncpy(d, s, n) strncpy_s((d), (n), (s), _TRUNCATE)
+#  endif
+# endif /* _MSC_VER */
+
+#else /* _WIN32 */
 
 #include <unistd.h>
 #define PRIdS "zd"
 
-#endif /* _MSC_VER */
+#endif /* _WIN32 */
 
 #include "libssh/libssh.h"
 #include "libssh/callbacks.h"

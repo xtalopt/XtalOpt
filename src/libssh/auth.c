@@ -170,24 +170,33 @@ static int wait_auth_status(ssh_session session, int kbdint) {
   return rc;
 }
 
+/**
+ * @brief retrieves available authentication methods for this session
+ * @deprecated
+ * @see ssh_userauth_list
+ */
 int ssh_auth_list(ssh_session session) {
-  if (session == NULL) {
-    return -1;
-  }
-
-  return session->auth_methods;
+  return ssh_userauth_list(session, NULL);
 }
 
+/**
+ * @brief retrieves available authentication methods for this session
+ * @param[in] session the SSH session
+ * @param[in] username set to NULL
+ * @returns A bitfield of values SSH_AUTH_METHOD_NONE, SSH_AUTH_METHOD_PASSWORD,
+            SSH_AUTH_METHOD_PUBLICKEY, SSH_AUTH_METHOD_HOSTBASED,
+            SSH_AUTH_METHOD_INTERACTIVE.
+   @warning Other reserved flags may appear in future versions.
+ */
 int ssh_userauth_list(ssh_session session, const char *username) {
-  if (session == NULL || username == NULL) {
+  if (session == NULL) {
     return SSH_AUTH_ERROR;
   }
 
   if (session->auth_methods == 0) {
     ssh_userauth_none(session, username);
   }
-
-  return ssh_auth_list(session);
+  return session->auth_methods;
 }
 
 /* use the "none" authentication question */

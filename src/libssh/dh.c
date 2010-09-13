@@ -831,8 +831,11 @@ int ssh_get_pubkey_hash(ssh_session session, unsigned char **hash) {
   if (session == NULL || hash == NULL) {
     return -1;
   }
-
   *hash = NULL;
+  if (session->current_crypto == NULL ||
+      session->current_crypto->server_pubkey == NULL){
+    ssh_set_error(session,SSH_FATAL,"No current cryptographic context");
+  }
 
   h = malloc(sizeof(unsigned char *) * MD5_DIGEST_LEN);
   if (h == NULL) {

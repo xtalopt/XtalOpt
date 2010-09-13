@@ -65,6 +65,7 @@ int ssh_init(void) {
 int ssh_finalize(void) {
   ssh_regex_finalize();
   ssh_crypto_finalize();
+  ssh_socket_cleanup();
 #ifdef HAVE_LIBGCRYPT
   gcry_control(GCRYCTL_TERM_SECMEM);
 #elif defined HAVE_LIBCRYPTO

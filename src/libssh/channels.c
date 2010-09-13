@@ -165,8 +165,10 @@ static int channel_open(ssh_channel channel, const char *type_c, int window,
       type_c, channel->local_channel);
 
   if (packet_wait(session, SSH2_MSG_CHANNEL_OPEN_CONFIRMATION, 1) != SSH_OK) {
-    leave_function();
-    return -1;
+  	if(session->in_packet.type != SSH2_MSG_CHANNEL_OPEN_FAILURE) {
+  		leave_function();
+  		return -1;
+  	}
   }
 
   switch(session->in_packet.type) {
@@ -555,7 +557,7 @@ static void channel_rcv_request(ssh_session session) {
   if(strcmp(request,"keepalive@openssh.com")==0){
     SAFE_FREE(request);
     ssh_log(session, SSH_LOG_PROTOCOL,"Responding to Openssh's keepalive");
-    buffer_add_u8(session->out_buffer, SSH2_MSG_CHANNEL_SUCCESS);
+    buffer_add_u8(session->out_buffer, SSH2_MSG_CHANNEL_FAILURE);
     buffer_add_u32(session->out_buffer, htonl(channel->remote_channel));
     packet_send(session);
     leave_function();
@@ -794,7 +796,7 @@ void channel_free(ssh_channel channel) {
  *
  * @param channel       The channel to send the eof to.
  *
- * @return SSH_SUCCESS on success\n
+ * @return SSH_OK on success\n
  *         SSH_ERROR on error\n
  *
  * @see channel_close()
@@ -837,7 +839,7 @@ error:
  *
  * @param channel       The channel to close.
  *
- * @return SSH_SUCCESS on success\n
+ * @return SSH_OK on success\n
  *         SSH_ERROR on error
  *
  * @see channel_free()
@@ -1116,7 +1118,7 @@ error:
  *
  * @param row           The number of rows.
  *
- * @return SSH_SUCCESS on success, SSH_ERROR on error.
+ * @return SSH_OK on success, SSH_ERROR on error.
  */
 int channel_request_pty_size(ssh_channel channel, const char *terminal,
     int col, int row) {
@@ -1167,7 +1169,7 @@ error:
  *
  * @param channel       The channel to send the request.
  *
- * @return SSH_SUCCESS on success, SSH_ERROR on error.
+ * @return SSH_OK on success, SSH_ERROR on error.
  *
  * @see channel_request_pty_size()
  */
@@ -1228,7 +1230,7 @@ error:
  *
  * @param channel      The channel to send the request.
  *
- * @returns SSH_SUCCESS on success, SSH_ERROR on error.
+ * @returns SSH_OK on success, SSH_ERROR on error.
  */
 int channel_request_shell(ssh_channel channel) {
 #ifdef WITH_SSH1
@@ -1246,7 +1248,7 @@ int channel_request_shell(ssh_channel channel) {
  *
  * @param subsys        The subsystem to request (for example "sftp").
  *
- * @return SSH_SUCCESS on success, SSH_ERROR on error.
+ * @return SSH_OK on success, SSH_ERROR on error.
  *
  * @warning You normally don't have to call it for sftp, see sftp_new().
  */
@@ -1594,7 +1596,7 @@ error:
  *
  * @param value         The value to set.
  *
- * @return SSH_SUCCESS on success, SSH_ERROR on error.
+ * @return SSH_OK on success, SSH_ERROR on error.
  *
  * @warning Some environement variables may be refused by security reasons.
  * */
@@ -1645,7 +1647,7 @@ error:
  * @param cmd           The command to execute
  *                      (e.g. "ls ~/ -al | grep -i reports").
  *
- * @return SSH_SUCCESS on success, SSH_ERROR on error.
+ * @return SSH_OK on success, SSH_ERROR on error.
  *
  * @see channel_request_shell()
  */
@@ -1695,7 +1697,7 @@ error:
  * @param signal        The signal to send (without SIG prefix)
  *                      (e.g. "TERM" or "KILL").
  *
- * @return SSH_SUCCESS on success, SSH_ERROR on error (including attempt to send signal via SSH-v1 session).
+ * @return SSH_OK on success, SSH_ERROR on error (including attempt to send signal via SSH-v1 session).
  *
  */
 int channel_request_send_signal(ssh_channel channel, const char *signal) {
@@ -2150,7 +2152,7 @@ static int count_ptrs(ssh_channel *ptrs) {
  *
  * @param timeout       Timeout as defined by select(2).
  *
- * @return SSH_SUCCESS operation successful\n
+ * @return SSH_OK operation successful\n
  *         SSH_EINTR select(2) syscall was interrupted, relaunch the function
  */
 int channel_select(ssh_channel *readchans, ssh_channel *writechans,
