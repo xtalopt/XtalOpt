@@ -87,7 +87,7 @@ namespace GlobalSearch {
      *
      * @return The pointer to the structure (same as s).
      */
-    virtual Structure* replaceWithRandom(Structure *s, const QString & reason = "") {};
+    virtual Structure* replaceWithRandom(Structure *s, const QString & reason = "") {return 0;};
 
     /**
      * Before starting an optimization, this function will check the
@@ -117,7 +117,7 @@ namespace GlobalSearch {
      *
      * @return True is successful, false otherwise.
      */
-    virtual bool load(const QString & filename) {};
+    virtual bool load(const QString & filename) {return false;};
 
     /**
      * Takes a template and inserts structure specific information by

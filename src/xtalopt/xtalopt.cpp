@@ -13,6 +13,11 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+// Prevent redefinition of symbols on windows
+#ifdef WIN32
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 #include <xtalopt/xtalopt.h>
 
 #include <xtalopt/structures/xtal.h>
@@ -490,9 +495,6 @@ namespace XtalOpt {
 
     // return xtal
     Xtal *xtal = 0;
-
-    // temporary use xtal
-    Xtal *txtal;
 
     // Setup random engine
     OpenBabel::OBRandom rand (true);    // "true" uses system random

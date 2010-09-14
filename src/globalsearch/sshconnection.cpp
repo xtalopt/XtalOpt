@@ -43,7 +43,7 @@ namespace GlobalSearch {
   SSHConnection::~SSHConnection()
   {
     START;
-    disconnect();
+    disconnectSession();
     END;
   }
 
@@ -89,7 +89,7 @@ namespace GlobalSearch {
   }
 
 
-  bool SSHConnection::disconnect()
+  bool SSHConnection::disconnectSession()
   {
     QMutexLocker locker (&m_lock);
     START;
@@ -97,18 +97,20 @@ namespace GlobalSearch {
       ssh_free(m_session);
     m_session = 0;
     m_isValid = false;
+    return true;
     END;
   }
 
-  bool SSHConnection::reconnect(bool throwExceptions)
+  bool SSHConnection::reconnectSession(bool throwExceptions)
   {
     START;
-    disconnect();
-    connect(throwExceptions);
+    if (!disconnectSession()) return false;
+    if (!connectSession(throwExceptions)) return false;
+    return true;
     END;
   }
 
-  bool SSHConnection::connect(bool throwExceptions)
+  bool SSHConnection::connectSession(bool throwExceptions)
   {
     QMutexLocker locker (&m_lock);
     // Create session
@@ -176,7 +178,6 @@ namespace GlobalSearch {
     // Authenticate
     int rc;
     int method;
-    char *banner;
 
     // Try to authenticate
     rc = ssh_userauth_none(m_session, NULL);
@@ -263,16 +264,16 @@ namespace GlobalSearch {
   }
 
   bool SSHConnection::execute(const QString &command,
-                              QString &stdout,
-                              QString &stderr,
+                              QString &stdout_str,
+                              QString &stderr_str,
                               int &exitcode) {
     QMutexLocker locker (&m_lock);
-    return _execute(command, stdout, stderr, exitcode);
+    return _execute(command, stdout_str, stderr_str, exitcode);
   }
 
   bool SSHConnection::_execute(const QString &command,
-                               QString &stdout,
-                               QString &stderr,
+                               QString &stdout_str,
+                               QString &stderr_str,
                                int &exitcode)
   {
     START;
@@ -305,11 +306,11 @@ namespace GlobalSearch {
     while ((len = channel_read(channel, buffer, sizeof(buffer), 0)) > 0) {
       ossout.write(buffer,len);
     }
-    stdout = QString(ossout.str().c_str());
+    stdout_str = QString(ossout.str().c_str());
     while ((len = channel_read(channel, buffer, sizeof(buffer), 1)) > 0) {
       osserr.write(buffer,len);
     }
-    stderr = QString(osserr.str().c_str());
+    stderr_str = QString(osserr.str().c_str());
 
     exitcode = channel_get_exit_status(channel);
 

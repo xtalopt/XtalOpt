@@ -13,6 +13,12 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+#ifdef WIN32
+#define	ISNAN(a) _isnan(a)
+#else
+#define ISNAN(a) isnan(a)
+#endif
+
 #include <xtalopt/extension.h>
 
 #include <xtalopt/structures/xtal.h>
@@ -92,12 +98,12 @@ namespace XtalOpt {
       qWarning() << "XtalOptExtension::reemitMoleculeChanged: Molecule is invalid (bad atoms) -- not sending to GLWidget";
       return;
     }
-    if (isnan(xtal->getA()) ||
-        isnan(xtal->getB()) ||
-        isnan(xtal->getC()) ||
-        isnan(xtal->getAlpha()) ||
-        isnan(xtal->getBeta()) ||
-        isnan(xtal->getGamma())) {
+    if (ISNAN(xtal->getA()) ||
+        ISNAN(xtal->getB()) ||
+        ISNAN(xtal->getC()) ||
+        ISNAN(xtal->getAlpha()) ||
+        ISNAN(xtal->getBeta()) ||
+        ISNAN(xtal->getGamma())) {
       qWarning() << "XtalOptExtension::reemitMoleculeChanged: Molecule is invalid (cell param is nan) -- not sending to GLWidget";
       return;
     }

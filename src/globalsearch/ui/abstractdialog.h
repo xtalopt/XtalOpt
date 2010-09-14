@@ -35,7 +35,6 @@ namespace Avogadro {
 }
 
 using namespace Avogadro;
-using namespace Qt;
 
 namespace GlobalSearch {
 

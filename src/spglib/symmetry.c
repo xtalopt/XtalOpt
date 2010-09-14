@@ -97,10 +97,23 @@ void sym_delete_symmetry(Symmetry *symmetry)
 Symmetry sym_get_operation(const Bravais *bravais, const Cell *cell, const double symprec)
 {
   int i, j, num_sym;
-  int rot[cell->size * 48][3][3];
-  double trans[cell->size * 48][3];
+  int ***rot;
+  double **trans;
   Symmetry symmetry;
-  
+
+  rot = (int***)malloc(cell->size * 48 * sizeof(int**));
+  for (i = 0; i < cell->size * 48; i++) {
+    rot[i] = (int**)malloc(3 * sizeof(int*));
+    for (i = 0; i < 3; i++) {
+      rot[i][j] = (int*)malloc(3 * sizeof(int));
+    }
+  }
+
+  trans = (double **)malloc(cell->size * 48 * sizeof(double*));
+  for (i = 0; i < cell->size * 48; i++) {
+    trans[i] = (double*)malloc(3*sizeof(double));
+  }
+
   num_sym = get_operation(rot, trans, bravais, cell, symprec);
 
   /* New a symmetry object */
@@ -122,13 +135,39 @@ Symmetry sym_get_operation(const Bravais *bravais, const Cell *cell, const doubl
       symmetry.trans[i][j] = trans[i][j];
   }
 
+  for (i = 0; i < cell->size * 48; i++) {
+    for (i = 0; i < 3; i++) {
+      free(rot[i][j]);
+    }
+    free(rot[i]);
+  }
+  free(rot);
+
+  for (i = 0; i < cell->size * 48; i++) {
+    free(trans[i]);
+  }
+  free(trans);
+
   return symmetry;
 }
 
 int sym_get_multiplicity(const Cell *cell, const double symprec)
 {
-  double trans[cell->size][3];
-  return get_translation(trans, identity, cell, symprec);
+  int i, rc;
+  double **trans;
+  trans = (double**)malloc(cell->size * sizeof(double*));
+  for (i = 0; i < cell->size; i++) {
+    trans[i] = (double*)malloc(3 * sizeof(double));
+  }
+
+  rc = get_translation(trans, identity, cell, symprec);
+
+  for (i = 0; i < cell->size; i++) {
+    free(trans[i]);
+  }
+  free(trans);
+
+  return rc;
 }
 
 int sym_get_pure_translation(double pure_trans[][3], const Cell *cell,
@@ -268,10 +307,18 @@ static int get_operation(int rot[][3][3], double trans[][3],
 			 const Bravais *bravais, const Cell *cell,
 			 const double symprec)
 {
-  double trans_tmp[cell->size][3], pure_trans[cell->size][3];
+  double **trans_tmp, **pure_trans;
   int i, j, k, num_trans, num_sym = 0, multi;
   PointSymmetry lattice_sym;
   Cell primitive;
+
+  /* Allocate trans_tmp and pure_trans in one loop */
+  trans_tmp = (double**)malloc(cell->size * sizeof(double*));
+  pure_trans = (double**)malloc(cell->size * sizeof(double*));
+  for (i = 0; i < cell->size; i++) {
+	  trans_tmp[i] = (double*)malloc(3 * sizeof(double));
+	  pure_trans[i] = (double*)malloc(3 * sizeof(double));
+  }
 
   multi = sym_get_pure_translation(pure_trans, cell, symprec);
   if( multi > 1 ) {
@@ -303,6 +350,13 @@ static int get_operation(int rot[][3][3], double trans[][3],
     cel_delete_cell(&primitive);
   }
 
+  for (i = 0; i < cell->size; i++) {
+    free(trans_tmp[i]);
+    free(pure_trans[i]);
+  }
+  free(trans_tmp);
+  free(pure_trans);
+
   return num_sym;
 }
 
@@ -313,8 +367,18 @@ static int get_operation_supercell(int rot[][3][3], double trans[][3],
 				   const double symprec)
 {
   int i, j, k;
-  int rot_prim[num_sym][3][3];
-  double tmp_mat[3][3], coordinate[3][3], coordinate_inv[3][3], trans_prim[num_sym][3];
+  int ***rot_prim;
+  double tmp_mat[3][3], coordinate[3][3], coordinate_inv[3][3], **trans_prim;
+
+  rot_prim = (int***)malloc(num_sym * sizeof(int**));
+  trans_prim = (double**)malloc(num_sym * sizeof(double*));
+  for (i = 0; i < num_sym; i++) {
+    rot_prim[i] = (int**)malloc(3 * sizeof(int*));
+    trans_prim[i] = (double*)malloc(3 * sizeof(double));
+    for (j = 0; j < 3; j++) {
+      rot_prim[i][j] = (int*)malloc(3 * sizeof(int));
+    }
+  }
 
   debug_print("get_operation_supercell\n");
 
@@ -361,6 +425,16 @@ static int get_operation_supercell(int rot[][3][3], double trans[][3],
       }
     }
   }
+
+  for (i = 0; i < num_sym; i++) {
+    for (j = 0; j < 3; j++) {
+      free(rot_prim[i][j]);
+    }
+    free(rot_prim[i]);
+    free(trans_prim[i]);
+  }
+  free(rot_prim);
+  free(trans_prim);
 
   /* return number of symmetry operation of supercell */
   return num_sym * multi;

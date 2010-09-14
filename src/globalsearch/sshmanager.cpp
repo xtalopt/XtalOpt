@@ -54,7 +54,7 @@ namespace GlobalSearch {
       (*it)->setLoginDetails(m_host, m_user, m_pass, m_port);
       // No need to check return value, the "true" arguement will
       // throw exceptions.
-      (*it)->connect(true);
+      (*it)->connectSession(true);
     }
 
     m_isValid = true;

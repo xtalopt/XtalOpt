@@ -104,7 +104,11 @@ namespace XtalOpt {
                    m_numberStructures,
                    (m_currentRun-m_startRun) * m_numberStructures + m_currentStructure,
                    m_totalNumberStructures);
+#ifdef WIN32
+      _sleep(1);
+#else
       sleep(1);
+#endif // _WIN32
     }
     m_message = "Waiting to finish...";
     while (!isFinished()) {
@@ -118,7 +122,11 @@ namespace XtalOpt {
                    m_numberStructures,
                    (m_currentRun-m_startRun) * m_numberStructures + m_currentStructure,
                    m_totalNumberStructures);
+#ifdef WIN32
+      _sleep(1);
+#else
       sleep(1);
+#endif // _WIN32
     }
   }
 

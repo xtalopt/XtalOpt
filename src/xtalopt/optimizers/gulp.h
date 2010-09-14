@@ -43,7 +43,7 @@ namespace XtalOpt {
     bool copyRemoteToLocalCache(Structure *structure);
     int checkIfJobNameExists(Structure *, const QStringList &, bool &b) {
       b=false;return 0;};
-    bool deleteJob(Structure *s) {};
+    bool deleteJob(Structure *s) {return true;};
   };
 
 } // end namespace Avogadro

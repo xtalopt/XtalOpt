@@ -42,7 +42,7 @@ static int get_ir_triplets_with_q( int triplets_with_q[][3],
 				   const PointSymmetry * point_symmetry );
 static void get_grid_mapping_table( const PointSymmetry * point_symmetry,
 				    const int mesh[3],
-				    int map_sym[point_symmetry->size][mesh[0]*mesh[1]*mesh[2]],
+				    int **map_sym,
 				    const int is_shift[3] );
 static void address_to_grid( int grid_double[3], const int address,
 			     const int mesh[3], const int is_shift[3] );
@@ -202,7 +202,6 @@ static PointSymmetry get_point_group_rotation(const double lattice[3][3],
   double volume;
   double rot_d[3][3], lat_inv[3][3], glat[3][3], tmp_mat[3][3], grot_d[3][3];
   double vec[3], diff[3];
-  double rotations[symmetry->size*2][3][3];
   PointSymmetry point_symmetry;
   const int time_reversal_rotation[3][3] = {
     {-1, 0, 0 },
@@ -210,6 +209,14 @@ static PointSymmetry get_point_group_rotation(const double lattice[3][3],
     { 0, 0,-1 }
   };
 
+  double ***rotations;
+  rotations = (double ***)malloc(symmetry->size*2 * sizeof(double**));
+  for (i = 0; i < symmetry->size*2; i++) {
+    rotations[i] = (double **)malloc(3*sizeof(double*));
+    for (j = 0; j < 3; j++) {
+      rotations[i][j] = (double *)malloc(3*sizeof(double));
+    }
+  }
 
   volume = mat_get_determinant_d3(lattice);
 
@@ -265,6 +272,14 @@ static PointSymmetry get_point_group_rotation(const double lattice[3][3],
   }
 
   point_symmetry.size = count;
+  
+  for (i = 0; i < symmetry->size*2; i++) {
+    for (j = 0; j < 3; j++) {
+      free(rotations[i][j]);
+    }
+    free(rotations[i]);
+  }
+  free(rotations);
 
   return point_symmetry;
 }
@@ -273,9 +288,15 @@ static int get_ir_kpoints(int map[], const double kpoints[][3], const int num_kp
 		  const PointSymmetry * point_symmetry, const double symprec)
 {
   int i, j, k, l, num_ir_kpoint = 0, is_found;
-  int ir_map[num_kpoint];
-  double ir_kpoint[num_kpoint][3];
+  int *ir_map = (int*)malloc(num_kpoint*sizeof(int));
+  double **ir_kpoint;
   double kpt_rot[3], diff[3];
+
+  ir_kpoint[num_kpoint][3];
+  ir_kpoint = (double**)malloc(num_kpoint * sizeof(double*));
+  for (i = 0; i < num_kpoint; i++) {
+    ir_kpoint[i] = (double*)malloc(3 * sizeof(double));
+  }
 
   for ( i = 0; i < num_kpoint; i++ ) {
 
@@ -324,6 +345,12 @@ static int get_ir_kpoints(int map[], const double kpoints[][3], const int num_kp
       num_ir_kpoint++;
     }
   }
+
+  free(ir_map);
+  for (i = 0; i < num_kpoint; i++) {
+    free(ir_kpoint[i]);
+  }
+  free(ir_kpoint);
 
   return num_ir_kpoint;
 }
@@ -443,10 +470,18 @@ static int get_ir_triplets( int triplets[][3],
   int mesh_double[3], address[3], is_shift[3];
   int grid_double[3][3];
   const int num_grid = mesh[0] * mesh[1] * mesh[2];
-  int map[num_grid], map_q[num_grid], map_sym[symmetry->size][num_grid], unique_q[num_grid];
+  int *map, *map_q, **map_sym, *unique_q, **map_triplets;
   double q[3];
   PointSymmetry point_symmetry, point_symmetry_q;
-  
+
+  map = (int*)malloc(num_grid * sizeof(int));
+  map_q = (int*)malloc(num_grid * sizeof(int));
+  map_sym = (int**)malloc(symmetry->size * sizeof(int*));
+  for (i = 0; i < symmetry->size; i++) {
+    map_sym[i] = (int*)malloc(num_grid * sizeof(int));
+  }
+  unique_q = (int*)malloc(num_grid * sizeof(int));
+
   point_symmetry = get_point_group_rotation( lattice,
 					     symmetry,
 					     is_time_reversal,
@@ -459,7 +494,10 @@ static int get_ir_triplets( int triplets[][3],
 
   num_ir = get_ir_reciprocal_mesh( grid, map, mesh, is_shift, &point_symmetry );
 
-  int map_triplets[num_ir][num_grid];
+  map_triplets = (int**)malloc(num_ir * sizeof(int*));
+  for (i = 0; i < num_ir; i++) {
+    map_triplets[i] = (int*)malloc(num_grid * sizeof(int));
+  }
 
   for ( i = 0; i < 3; i++ )
     mesh_double[i] = mesh[i] * 2;
@@ -467,7 +505,18 @@ static int get_ir_triplets( int triplets[][3],
   /* Memory space check */
   if ( num_ir * num_grid < max_num_triplets ) {
     fprintf(stderr, "spglib: More memory space for triplets is required.");
-    return 0;
+    free(map);
+    free(map_q);
+    for (i = 0; i < symmetry->size; i++) {
+      free(map_sym[i]);
+    }
+    free(map_sym);
+    for (i = 0; i < num_ir; i++) {
+      free(map_triplets[i]);
+    }
+    free(map_triplets);
+	free(unique_q);
+	return 0;
   }
 
   /* Prepare triplet mapping table to enhance speed of query */
@@ -583,6 +632,18 @@ static int get_ir_triplets( int triplets[][3],
   for ( i = 0; i < num_triplets; i++ )
     weight_triplets[i] = map_triplets[ unique_q[ triplets[i][0]] ][ triplets[i][1] ];
 
+  free(map);
+  free(map_q);
+  for (i = 0; i < symmetry->size; i++) {
+    free(map_sym[i]);
+  }
+  free(map_sym);
+  for (i = 0; i < num_ir; i++) {
+    free(map_triplets[i]);
+  }
+  free(map_triplets);
+  free(unique_q);
+
   return num_triplets;
 }
 
@@ -598,7 +659,12 @@ static int get_ir_triplets_with_q( int triplets_with_q[][3],
   int address0, address1, address1_orig, found;
   int is_shift[3];
   const int num_grid = mesh[0] * mesh[1] * mesh[2];
-  int map_sym[point_symmetry->size][num_grid];
+  int **map_sym;
+
+  map_sym = (int**)malloc(point_symmetry->size * sizeof(int*));
+  for (i = 0; i < point_symmetry->size; i++) {
+    map_sym[i] = (int*)malloc(num_grid * sizeof(int));
+  }
 
   /* Only consider the gamma-point */
   for ( i = 0; i < 3; i++ ) {
@@ -711,13 +777,18 @@ static int get_ir_triplets_with_q( int triplets_with_q[][3],
       fprintf(stderr, "spglib: Unexpected behavior in get_ir_triplets_with_q.\n");
     }
   }
-  
+
+  for (i = 0; i < point_symmetry->size; i++) {
+    free(map_sym[i]);
+  }
+  free(map_sym);
+
   return num_triplets_with_q;
 }
 
 static void get_grid_mapping_table( const PointSymmetry *point_symmetry,
 				    const int mesh[3],
-				    int map_sym[point_symmetry->size][mesh[0]*mesh[1]*mesh[2]],
+				    int **map_sym,
 				    const int is_shift[3] )
 {
   int i, j;

@@ -20,8 +20,6 @@
 #include <globalsearch/tracker.h>
 #include <globalsearch/queuemanager.h>
 
-#include <avogadro/glwidget.h>
-
 #include <openbabel/oberror.h>
 
 #include <QtGui/QLabel>

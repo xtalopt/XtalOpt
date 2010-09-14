@@ -142,26 +142,11 @@ set(libssh_SRCS
   wrapper.c
 )
 
-if (WITH_PCAP)
-  set(libssh_SRCS
+set(libssh_SRCS
     ${libssh_SRCS}
     pcap.c
-  )
-
-endif (WITH_PCAP)
-if (WITH_SFTP)
-  set(libssh_SRCS
-    ${libssh_SRCS}
     sftp.c
   )
-
-  if (WITH_SERVER)
-    set(libssh_SRCS
-      ${libssh_SRCS}
-      sftpserver.c
-    )
-  endif (WITH_SERVER)
-endif (WITH_SFTP)
 
 if (WITH_SSH1)
   set(libssh_SRCS
@@ -172,41 +157,16 @@ if (WITH_SSH1)
   )
 endif (WITH_SSH1)
 
-if (WITH_SERVER)
-  set(libssh_SRCS
-    ${libssh_SRCS}
-    server.c
-  )
-endif (WITH_SERVER)
-
 include_directories(
   ${LIBSSH_PUBLIC_INCLUDE_DIRS}
   ${LIBSSH_PRIVATE_INCLUDE_DIRS}
 )
 
-install(
-  TARGETS
-    ${LIBSSH_SHARED_LIBRARY}
-  RUNTIME DESTINATION ${BIN_INSTALL_DIR}
-  LIBRARY DESTINATION ${LIB_INSTALL_DIR}
-  ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
-  COMPONENT libraries
+add_library(${LIBSSH_STATIC_LIBRARY} STATIC ${libssh_SRCS})
+
+set_target_properties(
+  ${LIBSSH_STATIC_LIBRARY}
+    PROPERTIES
+      COMPILE_FLAGS
+        "-DLIBSSH_STATIC"
 )
-
-if (WITH_STATIC_LIB)
-  add_library(${LIBSSH_STATIC_LIBRARY} STATIC ${libssh_SRCS})
-
-  set_target_properties(
-    ${LIBSSH_STATIC_LIBRARY}
-      PROPERTIES
-        VERSION
-          ${LIBRARY_VERSION}
-        SOVERSION
-          ${LIBRARY_SOVERSION}
-        COMPILE_FLAGS
-          "-DLIBSSH_STATIC"
-  )
-
-# No installation!
-endif (WITH_STATIC_LIB)
-

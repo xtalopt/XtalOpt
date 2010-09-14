@@ -239,9 +239,9 @@ namespace GlobalSearch {
     }
     QString command = "mkdir -p " + structure->getRempath();
     qDebug() << "Optimizer::createRemoteDirectory: Calling " << command;
-    QString stdout, stderr; int ec;
-    if (!ssh->execute(command, stdout, stderr, ec) || ec != 0) {
-      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
+    QString stdout_str, stderr_str; int ec;
+    if (!ssh->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
+      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
       m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
@@ -358,15 +358,15 @@ namespace GlobalSearch {
     QString command = "cd " + structure->getRempath() + " && " +
       m_opt->qsub + " job.pbs";
     qDebug() << "Optimizer::startOptimization: Calling " << command;
-    QString stdout, stderr; int ec;
-    if (!ssh->execute(command, stdout, stderr, ec) || ec != 0) {
-      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
+    QString stdout_str, stderr_str; int ec;
+    if (!ssh->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
+      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
       m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
 
-    // Assuming stdout value is <jobID>.trailing.garbage.hostname.edu or similar
-    uint jobID = stdout.split(".")[0].toUInt();
+    // Assuming stdout_str value is <jobID>.trailing.garbage.hostname.edu or similar
+    uint jobID = stdout_str.split(".")[0].toUInt();
 
     // lock for writing and update structure
     QWriteLocker wlocker (structure->lock());
@@ -394,9 +394,9 @@ namespace GlobalSearch {
 
     command = "[ -e " + filename + " ]";
     qDebug() << "Optimizer::checkIfOutputFileExists: Calling " << command;
-    QString stdout, stderr; int ec;
-    if (!ssh->execute(command, stdout, stderr, ec)) {
-      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
+    QString stdout_str, stderr_str; int ec;
+    if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
+      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
       m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
@@ -448,7 +448,6 @@ namespace GlobalSearch {
     }
     // lock structure
     QReadLocker locker (structure->lock());
-    QString stdout, stderr; int ec;
     if (!ssh->copyDirectoryFromServer(structure->getRempath(),
                                                structure->fileName())) {
       m_opt->error("Cannot copy from remote directory for Structure "
@@ -561,15 +560,15 @@ namespace GlobalSearch {
       // Check for m_completionString in outputFileData, which indicates success.
       qDebug() << "Optimizer::getStatus: Job  " << jobID << " not in queue. Does output exist? " << outputFileExists;
       if (outputFileExists) {
-        QString stdout, stderr; int ec;
+        QString stdout_str, stderr_str; int ec;
         // Valid exit codes for grep: (0) matches found, execution successful
         //                            (1) no matches found, execution successful
         //                            (2) execution unsuccessful
         QString command = "grep \'" + m_completionString + "\' "
           + rempath + "/" + m_completionFilename;
         qDebug() << "Optimizer::getStatus: Calling " << command;
-        if (!ssh->execute(command, stdout, stderr, ec)) {
-          m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
+        if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
+          m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
           m_opt->ssh()->unlockConnection(ssh);
           return Optimizer::CommunicationError;
         }
@@ -616,9 +615,9 @@ namespace GlobalSearch {
 
     // Execute
     qDebug() << "Optimizer::deleteJob: Calling " << command;
-    QString stdout, stderr; int ec;
-    if (!ssh->execute(command, stdout, stderr, ec) || ec != 0) {
-      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr));
+    QString stdout_str, stderr_str; int ec;
+    if (!ssh->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
+      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
       // Most likely job is already gone from queue. Set jobID to 0.
       structure->setJobID(0);
       m_opt->ssh()->unlockConnection(ssh);
@@ -648,23 +647,23 @@ namespace GlobalSearch {
 
     // Execute
     qDebug() << "Optimizer::getQueueList: Calling " << command;
-    QString stdout, stderr; int ec;
+    QString stdout_str, stderr_str; int ec;
     // Valid exit codes for grep: (0) matches found, execution successful
     //                            (1) no matches found, execution successful
     //                            (2) execution unsuccessful
-    if (!ssh->execute(command, stdout, stderr, ec)
+    if (!ssh->execute(command, stdout_str, stderr_str, ec)
         || (ec != 0 && ec != 1 )
         ) {
       m_opt->warning(tr("Error executing %1: (%2) %3")
                      .arg(command)
                      .arg(QString::number(ec))
-                     .arg(stderr));
+                     .arg(stderr_str));
       m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
 
     QMutexLocker queueDataMutexLocker (mutex);
-    queueData = stdout.split("\n", QString::SkipEmptyParts);
+    queueData = stdout_str.split("\n", QString::SkipEmptyParts);
     m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
@@ -912,10 +911,11 @@ namespace GlobalSearch {
     if (!m_templates.contains(filename)) {
       m_opt->warning(tr("Optimizer::appendTemplate: unknown filename '%1'")
                      .arg(filename));
-      return "Error in Optimizer::appendTemplate\n";
+      return false;
     }
 
     m_templates[filename].append(templateData);
+	return true;
   }
 
   bool Optimizer::removeTemplate(const QString &filename, int optStep)
@@ -924,17 +924,18 @@ namespace GlobalSearch {
     if (!m_templates.contains(filename)) {
       m_opt->warning(tr("Optimizer::removeTemplate: unknown filename '%1'")
                      .arg(filename));
-      return "Error in Optimizer::removeTemplate\n";
+      return false;
     }
 
     // Check if optStep is reasonable
     if (optStep < 0 || optStep > getNumberOfOptSteps() - 1) {
       m_opt->warning(tr("Optimizer::removeTemplate: bad optStep '%1'")
                      .arg(optStep));
-      return "Error in Optimizer::removeTemplate\n";
+      return false;
     }
 
     m_templates[filename].removeAt(optStep);
+	return true;
   }
 
 

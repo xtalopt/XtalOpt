@@ -82,8 +82,8 @@ namespace GlobalSearch {
     bool inUse() {return m_inUse;};
 
     bool execute(const QString &command,
-                 QString &stdout,
-                 QString &stderr,
+                 QString &stdout_str,
+                 QString &stderr_str,
                  int &exitcode);
     bool copyFileToServer(const QString & localpath,
                           const QString & remotepath);
@@ -105,17 +105,17 @@ namespace GlobalSearch {
 
     bool isValid() {return m_isValid;};
     bool isConnected(ssh_channel channel = 0);
-    bool connect(bool throwExceptions = false);
-    bool reconnect(bool throwExceptions = false);
-    bool disconnect();
+    bool connectSession(bool throwExceptions = false);
+    bool reconnectSession(bool throwExceptions = false);
+    bool disconnectSession();
 
-    bool reconnectIfNeeded() {if (!isConnected()) return reconnect(false);
+    bool reconnectIfNeeded() {if (!isConnected()) return reconnectSession(false);
       return true;};
 
   private:
     bool _execute(const QString &command,
-                  QString &stdout,
-                  QString &stderr,
+                  QString &stdout_err,
+                  QString &stderr_err,
                   int &exitcode);
     bool _copyFileToServer(const QString & localpath,
                            const QString & remotepath);
