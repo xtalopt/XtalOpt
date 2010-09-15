@@ -104,7 +104,7 @@ Symmetry sym_get_operation(const Bravais *bravais, const Cell *cell, const doubl
   rot = (int***)malloc(cell->size * 48 * sizeof(int**));
   for (i = 0; i < cell->size * 48; i++) {
     rot[i] = (int**)malloc(3 * sizeof(int*));
-    for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
       rot[i][j] = (int*)malloc(3 * sizeof(int));
     }
   }
@@ -136,7 +136,7 @@ Symmetry sym_get_operation(const Bravais *bravais, const Cell *cell, const doubl
   }
 
   for (i = 0; i < cell->size * 48; i++) {
-    for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
       free(rot[i][j]);
     }
     free(rot[i]);

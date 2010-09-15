@@ -21,6 +21,7 @@ link_directories(
 set (tests
     sshconnection
     sshmanager
+    spglib
 )
 
 foreach (test ${tests})
@@ -35,6 +36,8 @@ foreach (test ${tests})
     ${OPENBABEL2_LIBRARIES}
     ${QT_LIBRARIES}
     ${QT_QTTEST_LIBRARY}
+    xtalopt
+    spglib
     ssh_static
     avogadro
     globalsearch)
