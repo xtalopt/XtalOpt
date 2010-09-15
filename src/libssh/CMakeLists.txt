@@ -164,6 +164,8 @@ include_directories(
 
 add_library(${LIBSSH_STATIC_LIBRARY} STATIC ${libssh_SRCS})
 
+target_link_libraries(${LIBSSH_STATIC_LIBRARY} ${LIBSSH_LINK_LIBRARIES})
+
 set_target_properties(
   ${LIBSSH_STATIC_LIBRARY}
     PROPERTIES

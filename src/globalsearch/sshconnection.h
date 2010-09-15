@@ -16,6 +16,7 @@
 #ifndef SSHCONNECTION_H
 #define SSHCONNECTION_H
 
+#define LIBSSH_STATIC
 extern "C" {
 #include <libssh/libssh/libssh.h>
 #include <libssh/libssh/sftp.h>

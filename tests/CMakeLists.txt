@@ -35,6 +35,7 @@ foreach (test ${tests})
     ${OPENBABEL2_LIBRARIES}
     ${QT_LIBRARIES}
     ${QT_QTTEST_LIBRARY}
+    ssh_static
     avogadro
     globalsearch)
   add_test(${test}Test ${CMAKE_BINARY_DIR}/tests/${test}test)
