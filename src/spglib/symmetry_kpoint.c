@@ -209,14 +209,7 @@ static PointSymmetry get_point_group_rotation(const double lattice[3][3],
     { 0, 0,-1 }
   };
 
-  double ***rotations;
-  rotations = (double ***)malloc(symmetry->size*2 * sizeof(double**));
-  for (i = 0; i < symmetry->size*2; i++) {
-    rotations[i] = (double **)malloc(3*sizeof(double*));
-    for (j = 0; j < 3; j++) {
-      rotations[i][j] = (double *)malloc(3*sizeof(double));
-    }
-  }
+  double (*rotations)[3][3] = malloc(symmetry->size*2 * sizeof(double[3][3]));
 
   volume = mat_get_determinant_d3(lattice);
 
@@ -273,12 +266,6 @@ static PointSymmetry get_point_group_rotation(const double lattice[3][3],
 
   point_symmetry.size = count;
   
-  for (i = 0; i < symmetry->size*2; i++) {
-    for (j = 0; j < 3; j++) {
-      free(rotations[i][j]);
-    }
-    free(rotations[i]);
-  }
   free(rotations);
 
   return point_symmetry;
@@ -289,14 +276,8 @@ static int get_ir_kpoints(int map[], const double kpoints[][3], const int num_kp
 {
   int i, j, k, l, num_ir_kpoint = 0, is_found;
   int *ir_map = (int*)malloc(num_kpoint*sizeof(int));
-  double **ir_kpoint;
   double kpt_rot[3], diff[3];
-
-  ir_kpoint[num_kpoint][3];
-  ir_kpoint = (double**)malloc(num_kpoint * sizeof(double*));
-  for (i = 0; i < num_kpoint; i++) {
-    ir_kpoint[i] = (double*)malloc(3 * sizeof(double));
-  }
+  double (*ir_kpoint)[3] = malloc(num_kpoint * sizeof(double[3]));
 
   for ( i = 0; i < num_kpoint; i++ ) {
 
@@ -347,9 +328,6 @@ static int get_ir_kpoints(int map[], const double kpoints[][3], const int num_kp
   }
 
   free(ir_map);
-  for (i = 0; i < num_kpoint; i++) {
-    free(ir_kpoint[i]);
-  }
   free(ir_kpoint);
 
   return num_ir_kpoint;
@@ -470,17 +448,16 @@ static int get_ir_triplets( int triplets[][3],
   int mesh_double[3], address[3], is_shift[3];
   int grid_double[3][3];
   const int num_grid = mesh[0] * mesh[1] * mesh[2];
-  int *map, *map_q, **map_sym, *unique_q, **map_triplets;
   double q[3];
   PointSymmetry point_symmetry, point_symmetry_q;
-
-  map = (int*)malloc(num_grid * sizeof(int));
-  map_q = (int*)malloc(num_grid * sizeof(int));
-  map_sym = (int**)malloc(symmetry->size * sizeof(int*));
+  int *map = (int*)malloc(num_grid * sizeof(int));
+  int *map_q = (int*)malloc(num_grid * sizeof(int));
+  int *unique_q = (int*)malloc(num_grid * sizeof(int));
+  int **map_triplets;
+  int **map_sym = (int**)malloc(symmetry->size * sizeof(int*));
   for (i = 0; i < symmetry->size; i++) {
     map_sym[i] = (int*)malloc(num_grid * sizeof(int));
   }
-  unique_q = (int*)malloc(num_grid * sizeof(int));
 
   point_symmetry = get_point_group_rotation( lattice,
 					     symmetry,

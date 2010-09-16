@@ -255,9 +255,9 @@ static int get_spacegroup_number(const Bravais *bravais, const Cell *cell,
   int i, order, spacegroup, *rot_class;
   Symmetry symmetry;
 
-  rot_class = (int*)malloc(symmetry.size * sizeof(int));
-
   symmetry = tbl_get_conventional_symmetry(bravais, cell, prim_sym, symprec);
+
+  rot_class = (int*)malloc(symmetry.size * sizeof(int));
 
   debug_print("*** get_spacegroup_number ***\n");
   for (i = 0; i < symmetry.size; i++) {

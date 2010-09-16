@@ -669,11 +669,8 @@ namespace XtalOpt {
     };
 
     // Get atom info
-    double ** positions = new double * [num];
-	for (int i = 0; i < num; i++) {
-      positions[i] = new double[3];
-    }
-    int * types = new int[num];
+    double (*positions)[3] = new double[num][3];
+    int *types = new int[num];
     QList<Atom*> atomList = atoms();
     Eigen::Vector3d fracCoords;
     for (int i = 0; i < atomList.size(); i++) {
@@ -732,14 +729,11 @@ namespace XtalOpt {
     // find spacegroup
     char symbol[21];
     m_spgNumber = spg_get_international(symbol,
-                                        lattice, 
-                                        const_cast<const double **>(positions),
-                                        const_cast<const int *>(types),
+                                        lattice,
+                                        positions,
+                                        types,
                                         num, prec);
 
-	for (int i = 0; i < num; i++) {
-      delete [] positions[i];
-    }
     delete [] positions;
     delete [] types;
 
@@ -751,7 +745,7 @@ namespace XtalOpt {
 
     // Set and clean up the symbol string
     m_spgSymbol = QString(symbol);
-    m_spgSymbol.replace(QRegExp("\\s"), "");
+    m_spgSymbol.remove(" ");
     return;
   }
 

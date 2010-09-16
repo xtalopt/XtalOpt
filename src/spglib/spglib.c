@@ -240,7 +240,7 @@ int spg_get_max_multiplicity(const double lattice[3][3], const double **position
 /* A primitive cell is found from an input cell. Be careful that  */
 /* ``lattice``, ``position``, and ``types`` are overwritten. */
 /* ``num_atom`` is returned as return value. */
-int spg_find_primitive(double lattice[3][3], double **position,
+int spg_find_primitive(double lattice[3][3], double (*position)[3],
                        int *types, const int num_atom, const double symprec)
 {
   int i, j, num_prim_atom=0;
@@ -304,7 +304,7 @@ void spg_show_symmetry(const double lattice[3][3], const double **position,
 /* Space group is found in international table symbol (``symbol``) and */
 /* number (return value). 0 is returned when it fails. */
 int spg_get_international(char symbol[21], const double lattice[3][3],
-			  const double **position,
+			  const double (*position)[3],
 			  const int *types, const int num_atom,
 			  const double symprec)
 {

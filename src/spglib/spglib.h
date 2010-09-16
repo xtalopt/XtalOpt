@@ -27,12 +27,12 @@ void spg_get_smallest_lattice(double smallest_lattice[3][3], const double lattic
 			      const double symprec);
 int spg_get_max_multiplicity(const double lattice[3][3], const double **position,
 			     const int *types, const int num_atom, const double symprec);
-int spg_find_primitive(double lattice[3][3], double **position,
+int spg_find_primitive(double lattice[3][3], double (*position)[3],
                        int *types, const int num_atom, const double symprec);
 void spg_show_symmetry(const double lattice[3][3], const double **position,
                        const int *types, const int num_atom, const double symprec);
 int spg_get_international(char symbol[21], const double lattice[3][3],
-                          const double **position, const int *types,
+                          const double (*position)[3], const int *types,
                           const int num_atom, const double symprec);
 int spg_get_international_with_bravais(char symbol[21],
 				       double lattice[3][3],
