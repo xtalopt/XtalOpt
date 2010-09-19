@@ -198,8 +198,8 @@ namespace RandomDock {
       ui.combo_template->insertItems(0, sl);
 
       // Set each template at the appropriate index:
-      ui.combo_template->removeItem(GAMT_pbs);
-      ui.combo_template->insertItem(GAMT_pbs,	tr("job.pbs"));
+      ui.combo_template->removeItem(ADFT_pbs);
+      ui.combo_template->insertItem(ADFT_pbs,	tr("job.pbs"));
       ui.combo_template->blockSignals(false);
 
       emit optimizerChanged(new ADFOptimizer (m_opt) );

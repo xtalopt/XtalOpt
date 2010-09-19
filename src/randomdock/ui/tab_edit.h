@@ -48,8 +48,7 @@ namespace RandomDock {
     };
 
     enum ADF_Templates {
-      ADFT_pbs = 0,
-      ADFT_inp
+      ADFT_pbs = 0
     };
 
   public slots:
