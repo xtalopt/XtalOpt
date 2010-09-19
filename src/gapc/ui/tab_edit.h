@@ -39,6 +39,10 @@ namespace GAPC {
     Q_OBJECT
 
   public:
+    enum ADF_Templates {
+      ADFT_pbs = 0
+    };
+
     explicit TabEdit( GAPCDialog *parent, OptGAPC *p );
     virtual ~TabEdit();
 

@@ -17,6 +17,7 @@
 #include <gapc/ui/tab_edit.h>
 
 #include <gapc/optimizers/openbabel.h>
+#include <gapc/optimizers/adf.h>
 #include <gapc/ui/dialog.h>
 #include <gapc/gapc.h>
 
@@ -127,6 +128,9 @@ namespace GAPC {
     if (m_opt->optimizer()->getIDString() == "OpenBabel") {
       ui.combo_optType->setCurrentIndex(OptGAPC::OT_OpenBabel);
     }
+    else if (m_opt->optimizer()->getIDString() == "ADF") {
+      ui.combo_optType->setCurrentIndex(OptGAPC::OT_ADF);
+    }
 
     templateChanged(ui.combo_template->currentIndex());
     ui.edit_user1->setText(	m_opt->optimizer()->getUser1());
@@ -153,7 +157,12 @@ namespace GAPC {
     if ( m_opt->optimizer()
          && (
              ( ui.combo_optType->currentIndex() == OptGAPC::OT_OpenBabel
-               && m_opt->optimizer()->getIDString() == "OpenBabel" )
+               && m_opt->optimizer()->getIDString() == "OpenBabel"
+               )
+             ||
+             ( ui.combo_optType->currentIndex() == OptGAPC::OT_ADF
+               && m_opt->optimizer()->getIDString() == "ADF"
+               )
              )
          ) {
       return;
@@ -167,6 +176,23 @@ namespace GAPC {
     case OptGAPC::OT_OpenBabel: {
       // No need to populate the template combo box for OB
       emit optimizerChanged(new OpenBabelOptimizer (m_opt) );
+      ui.combo_template->setCurrentIndex(0);
+
+      break;
+    }
+    case OptGAPC::OT_ADF: {
+      // Set total number of templates (1, length of ADF_Templates)
+      QStringList sl;
+      sl << "";
+      ui.combo_template->blockSignals(true);
+      ui.combo_template->insertItems(0, sl);
+
+      // Set each template at the appropriate index:
+      ui.combo_template->removeItem(ADFT_pbs);
+      ui.combo_template->insertItem(ADFT_pbs,	tr("job.pbs"));
+      ui.combo_template->blockSignals(false);
+
+      emit optimizerChanged(new ADFOptimizer (m_opt) );
       ui.combo_template->setCurrentIndex(0);
 
       break;
@@ -196,6 +222,21 @@ namespace GAPC {
       // No edit data to set
       break;
     }
+    case OptGAPC::OT_ADF: {
+      // Hide/show appropriate GUI elements
+      ui.list_POTCARs->setVisible(false);
+      ui.edit_edit->setVisible(true);
+
+      switch (ind) {
+      case ADFT_pbs:
+        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.pbs", row));
+        break;
+      default: // shouldn't happen...
+        qWarning() << "TabEdit::templateChanged: Selected template out of range? " << ind;
+        break;
+      }
+      break;
+    }
 
     default: // shouldn't happen...
       qWarning() << "TabEdit::templateChanged: Selected OptStep out of range? "
@@ -212,6 +253,16 @@ namespace GAPC {
     switch (ui.combo_optType->currentIndex()) {
     case OptGAPC::OT_OpenBabel:
       // Nothing to do.
+      break;
+    case OptGAPC::OT_ADF:
+      switch (ui.combo_template->currentIndex()) {
+      case ADFT_pbs:
+        m_opt->optimizer()->setTemplate("job.pbs", ui.edit_edit->document()->toPlainText(), row);
+        break;
+      default: // shouldn't happen...
+        qWarning() << "TabEdit::updateTemplates: Selected template out of range?";
+        break;
+      }
       break;
 
     default: // shouldn't happen...

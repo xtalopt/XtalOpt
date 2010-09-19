@@ -72,6 +72,7 @@ namespace GAPC {
 
     enum OptTypes {
       OT_OpenBabel = 0,
+      OT_ADF
     };
 
     /**
