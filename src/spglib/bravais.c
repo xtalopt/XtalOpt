@@ -399,6 +399,8 @@ static int get_brv_tetra(Bravais *bravais, const double min_lattice[3][3],
   int angle_90[3], edge_equal[3];
   double length[3];
 
+  count = 0;
+
   check_angle90(angle_90, min_lattice, symprec);
   check_equal_edge(edge_equal, min_lattice, symprec);
 

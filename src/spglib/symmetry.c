@@ -192,7 +192,8 @@ static int get_translation(double trans[][3], const int rot[3][3], const Cell *c
   double symprec_squared, v_diff_norm_squared;
   double v_diff[3], test_trans[3], tmp_vector[3], origin[3];
 
-  symprec_squared = pow(symprec, 2);
+  /* pow(symprec, 2) was behaving badly on MSVC 2008 */
+  symprec_squared = symprec*symprec;
 
   /* atom 0 is the origine to measure the distance between atoms. */
   mat_multiply_matrix_vector_id3(origin, rot, cell->position[0]);
@@ -232,7 +233,7 @@ static int get_translation(double trans[][3], const int rot[3][3], const Cell *c
 	/* Calculate squared norm and compare to symprec */
 	v_diff_norm_squared = 0;
 	for (l = 0; l < 3; l++) {
-	  v_diff_norm_squared += pow(v_diff[l], 2);
+	  v_diff_norm_squared += v_diff[l]*v_diff[l];
 	}
 
 	if (v_diff_norm_squared > symprec_squared)
