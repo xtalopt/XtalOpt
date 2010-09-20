@@ -36,7 +36,7 @@ foreach (test ${tests})
     ${OPENBABEL2_LIBRARIES}
     ${QT_LIBRARIES}
     ${QT_QTTEST_LIBRARY}
-    xtalopt
+    xtalopt_static
     spglib
     ssh_static
     avogadro

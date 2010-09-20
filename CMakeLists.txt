@@ -36,8 +36,12 @@ function(process_plugin plugin_name src_list)
     # Process the RC file and add it to the plugin
     qt4_add_resources(plugin_RC_SRCS ${ARGV3})
   endif(NOT "${ARGV3}" STREQUAL "")
+  # Build static lib for linking to tests
+  add_library(${plugin_name}_static STATIC ${src_list} ${plugin_UIS_H}
+              ${plugin_RC_SRCS} ${moc_files})
   add_library(${plugin_name} SHARED ${src_list} ${plugin_UIS_H}
               ${plugin_RC_SRCS} ${moc_files})
+  target_link_libraries(${plugin_name}_static avogadro)
   target_link_libraries(${plugin_name} avogadro)
 
   install(TARGETS ${plugin_name} DESTINATION "${Avogadro_PLUGIN_DIR}/contrib")
