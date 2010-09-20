@@ -31,6 +31,7 @@ namespace GlobalSearch {
 
   SSHConnection::SSHConnection(OptBase *parent)
     : QObject(parent),
+      m_session(0),
       m_host(""),
       m_user(""),
       m_pass(""),

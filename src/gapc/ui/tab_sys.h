@@ -1,5 +1,5 @@
 /**********************************************************************
-  RandomDock -- A tool for analysing a matrix-substrate docking problem
+  TabSys - Settings related to the local and remote computers
 
   Copyright (C) 2009-2010 by David Lonie
 
@@ -14,67 +14,39 @@
   GNU General Public icense for more details.
  ***********************************************************************/
 
-#ifndef TAB_EDIT_H
-#define TAB_EDIT_H
-
-#include "ui_tab_edit.h"
-
-#include <randomdock/randomdock.h>
+#ifndef TAB_SYS_H
+#define TAB_SYS_H
 
 #include <globalsearch/ui/abstracttab.h>
 
-#include <QtGui/QMessageBox>
-
-namespace GlobalSearch {
-  class Optimizer;
-}
+#include "ui_tab_sys.h"
 
 using namespace GlobalSearch;
 
-namespace RandomDock {
-  class RandomDockDialog;
+namespace GAPC {
+  class GAPCDialog;
+  class OptGAPC;
 
-  class TabEdit : public AbstractTab
+  class TabSys : public AbstractTab
   {
     Q_OBJECT
 
   public:
-    explicit TabEdit( RandomDockDialog *parent, RandomDock *p );
-    virtual ~TabEdit();
-
-    enum GAMESS_Templates {
-      GAMT_pbs = 0,
-      GAMT_inp
-    };
-
-    enum ADF_Templates {
-      ADFT_pbs = 0
-    };
+    explicit TabSys( GAPCDialog *parent, OptGAPC *p );
+    virtual ~TabSys();
 
   public slots:
     void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
     void updateGUI();
-    void templateChanged(int ind);
-    void showHelp();
-    void updateTemplates();
-    void populateOptList();
-    void appendOptStep();
-    void removeCurrentOptStep();
-    void optStepChanged();
-    void saveScheme();
-    void loadScheme();
+    void updateSystemInfo();
 
   signals:
-    void optimizerChanged(Optimizer*);
-
-  private slots:
-    void updateUserValues();
-    void updateOptType();
+    void dataChanged();
 
   private:
-    Ui::Tab_Edit ui;
+    Ui::Tab_Sys ui;
   };
 }
 

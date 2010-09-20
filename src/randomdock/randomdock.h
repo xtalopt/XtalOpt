@@ -84,7 +84,6 @@ namespace RandomDock {
    signals:
     void newInfoUpdate();
     void updateAllInfo();
-    
 
    public slots:
     void startSearch();
@@ -103,6 +102,6 @@ namespace RandomDock {
 
   };
 
-} // end namespace Avogadro
+} // end namespace RandomDock
 
 #endif
