@@ -50,6 +50,8 @@ namespace GAPC {
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_username, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
+    connect(ui.spin_port, SIGNAL(valueChanged(int)),
+            this, SLOT(updateSystemInfo()));
     connect(ui.edit_rempath, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
 
@@ -73,6 +75,7 @@ namespace GAPC {
     settings->setValue("queue/qdel",       m_opt->qdel);
     settings->setValue("remote/host",      m_opt->host);
     settings->setValue("remote/username",  m_opt->username);
+    settings->setValue("remote/port",      m_opt->port);
     settings->setValue("remote/rempath",   m_opt->rempath);
     settings->endGroup();
 
@@ -84,15 +87,16 @@ namespace GAPC {
     SETTINGS(filename);
     settings->beginGroup("gapc/sys/");
     int loadedVersion = settings->value("version", 0).toInt();
-    ui.edit_path->setText(	settings->value("file/path",		"/tmp").toString());
-    ui.edit_description->setText(settings->value("description",		"").toString());
-    ui.edit_qsub->setText(	settings->value("queue/qsub",		"qsub").toString());
-    ui.edit_qstat->setText(	settings->value("queue/qstat",		"qstat").toString());
-    ui.edit_qdel->setText(	settings->value("queue/qdel",		"qdel").toString());
-    ui.edit_host->setText(	settings->value("remote/host",		"").toString());
-    ui.edit_username->setText(	settings->value("remote/username",	"").toString());
-    ui.edit_rempath->setText(	settings->value("remote/rempath",	"").toString());
-    ui.cb_remote->setChecked(	settings->value("remote",		false).toBool());
+    ui.edit_path->setText(      settings->value("file/path",       "/tmp").toString());
+    ui.edit_description->setText(settings->value("description",    "").toString());
+    ui.edit_qsub->setText(      settings->value("queue/qsub",      "qsub").toString());
+    ui.edit_qstat->setText(     settings->value("queue/qstat",     "qstat").toString());
+    ui.edit_qdel->setText(      settings->value("queue/qdel",      "qdel").toString());
+    ui.edit_host->setText(      settings->value("remote/host",     "").toString());
+    ui.edit_username->setText(  settings->value("remote/username", "").toString());
+    ui.spin_port->setValue(     settings->value("remote/port",     22).toInt());
+    ui.edit_rempath->setText(   settings->value("remote/rempath",  "").toString());
+    ui.cb_remote->setChecked(   settings->value("remote",          false).toBool());
     settings->endGroup();
 
     // Update config data
@@ -108,14 +112,15 @@ namespace GAPC {
 
   void TabSys::updateGUI()
   {
-    ui.edit_path->setText(	m_opt->filePath);
+    ui.edit_path->setText(      m_opt->filePath);
     ui.edit_description->setText(m_opt->description);
-    ui.edit_qsub->setText(	m_opt->qsub);
-    ui.edit_qstat->setText(	m_opt->qstat);
-    ui.edit_qdel->setText(	m_opt->qdel);
-    ui.edit_host->setText(	m_opt->host);
-    ui.edit_username->setText(	m_opt->username);
-    ui.edit_rempath->setText(	m_opt->rempath);
+    ui.edit_qsub->setText(      m_opt->qsub);
+    ui.edit_qstat->setText(     m_opt->qstat);
+    ui.edit_qdel->setText(      m_opt->qdel);
+    ui.edit_host->setText(      m_opt->host);
+    ui.edit_username->setText(  m_opt->username);
+    ui.spin_port->setValue(     m_opt->port);
+    ui.edit_rempath->setText(   m_opt->rempath);
   }
 
   void TabSys::lockGUI()
@@ -128,19 +133,21 @@ namespace GAPC {
     ui.cb_remote->setDisabled(true);
     ui.edit_host->setDisabled(true);
     ui.edit_username->setDisabled(true);
+    ui.spin_port->setDisabled(true);
     ui.edit_rempath->setDisabled(true);
   }
 
   void TabSys::updateSystemInfo()
   {
-    m_opt->filePath	= ui.edit_path->text();
-    m_opt->description	= ui.edit_description->text();
-    m_opt->qsub		= ui.edit_qsub->text();
-    m_opt->qstat	= ui.edit_qstat->text();
-    m_opt->qdel		= ui.edit_qdel->text();
-    m_opt->host		= ui.edit_host->text();
-    m_opt->username	= ui.edit_username->text();
-    m_opt->rempath	= ui.edit_rempath->text();
+    m_opt->filePath     = ui.edit_path->text();
+    m_opt->description  = ui.edit_description->text();
+    m_opt->qsub         = ui.edit_qsub->text();
+    m_opt->qstat        = ui.edit_qstat->text();
+    m_opt->qdel         = ui.edit_qdel->text();
+    m_opt->host         = ui.edit_host->text();
+    m_opt->username     = ui.edit_username->text();
+    m_opt->port         = ui.spin_port->value();
+    m_opt->rempath      = ui.edit_rempath->text();
     emit dataChanged();
   }
 

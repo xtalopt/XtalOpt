@@ -24,6 +24,7 @@
 #include <globalsearch/structure.h>
 #include <globalsearch/tracker.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/sshmanager.h>
 
 #include <QDir>
 
@@ -127,6 +128,48 @@ namespace GAPC {
     if (comp.core.isEmpty()) {
       error("Cannot create structures. Core composition is not set.");
       return;
+    }
+
+    // Create the SSHManager
+    if (m_optimizer->getIDString() != "OpenBabel") { // OB doesn't use ssh
+      QString pw = "";
+      for (;;) {
+        try {
+          m_ssh->makeConnections(host, username, pw, port);
+        }
+        catch (SSHConnection::SSHConnectionException e) {
+          QString err;
+          switch (e) {
+          case SSHConnection::SSH_CONNECTION_ERROR:
+          case SSHConnection::SSH_UNKNOWN_HOST_ERROR:
+          case SSHConnection::SSH_UNKNOWN_ERROR:
+          default:
+            err = "There was a problem connection to the ssh server at "
+              + username + "@" + host + ":" + QString::number(port) + ". "
+              + "Please check that all provided information is correct, "
+              + "and attempt to log in outside of Avogadro before trying again.";
+            error(err);
+            return;
+          case SSHConnection::SSH_BAD_PASSWORD_ERROR:
+            // Chances are that the pubkey auth was attempted but failed,
+            // so just prompt user for password.
+            err = "Please enter a password for "
+              + username + "@" + host + ":" + QString::number(port)
+              + ":";
+            bool ok;
+            QString newPassword;
+            // This is a BlockingQueuedConnection, which blocks until
+            // the slot returns.
+            emit needPassword(err, &newPassword, &ok);
+            if (!ok) { // user cancels
+              return;
+            }
+            pw = newPassword;
+            continue;
+          } // end switch
+        } // end catch
+        break;
+      } // end forever
     }
 
     // prepare pointers
