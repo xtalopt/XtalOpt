@@ -1,5 +1,5 @@
 /**********************************************************************
-  RandomDock -- A tool for analysing a matrix-substrate docking problem
+  TabEdit - Interface to edit optimization templates
 
   Copyright (C) 2009-2010 by David Lonie
 
@@ -19,11 +19,11 @@
 
 #include "ui_tab_edit.h"
 
-#include <randomdock/randomdock.h>
+#include <gapc/gapc.h>
 
 #include <globalsearch/ui/abstracttab.h>
 
-#include <QtGui/QMessageBox>
+#include <QMessageBox>
 
 namespace GlobalSearch {
   class Optimizer;
@@ -31,25 +31,20 @@ namespace GlobalSearch {
 
 using namespace GlobalSearch;
 
-namespace RandomDock {
-  class RandomDockDialog;
+namespace GAPC {
+  class GAPCDialog;
 
   class TabEdit : public AbstractTab
   {
     Q_OBJECT
 
   public:
-    explicit TabEdit( RandomDockDialog *parent, RandomDock *p );
-    virtual ~TabEdit();
-
-    enum GAMESS_Templates {
-      GAMT_pbs = 0,
-      GAMT_inp
-    };
-
     enum ADF_Templates {
       ADFT_pbs = 0
     };
+
+    explicit TabEdit( GAPCDialog *parent, OptGAPC *p );
+    virtual ~TabEdit();
 
   public slots:
     void lockGUI();

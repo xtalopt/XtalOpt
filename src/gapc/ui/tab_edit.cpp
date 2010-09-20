@@ -1,5 +1,5 @@
 /**********************************************************************
-  RandomDock -- A tool for analysing a matrix-substrate docking problem
+  TabEdit - Interface to edit optimization templates
 
   Copyright (C) 2009-2010 by David Lonie
 
@@ -14,26 +14,25 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#include <randomdock/ui/tab_edit.h>
+#include <gapc/ui/tab_edit.h>
 
-#include <randomdock/randomdock.h>
-#include <randomdock/ui/dialog.h>
-#include <randomdock/optimizers/gamess.h>
-#include <randomdock/optimizers/adf.h>
+#include <gapc/optimizers/openbabel.h>
+#include <gapc/optimizers/adf.h>
+#include <gapc/ui/dialog.h>
+#include <gapc/gapc.h>
 
 #include <globalsearch/macros.h>
 
-#include <QtCore/QSettings>
-
-#include <QtGui/QFont>
-#include <QtGui/QFileDialog>
+#include <QFont>
+#include <QDebug>
+#include <QSettings>
+#include <QFileDialog>
 
 using namespace std;
-using namespace Avogadro;
 
-namespace RandomDock {
+namespace GAPC {
 
-  TabEdit::TabEdit( RandomDockDialog *parent, RandomDock *p ) :
+  TabEdit::TabEdit( GAPCDialog *parent, OptGAPC *p ) :
     AbstractTab(parent, p)
   {
     ui.setupUi(m_tab_widget);
@@ -44,7 +43,7 @@ namespace RandomDock {
     connect(this, SIGNAL(optimizerChanged(Optimizer*)),
             m_opt, SLOT(setOptimizer(Optimizer*)));
 
-    // dialog connections
+    // Dialog connections
     connect(this, SIGNAL(optimizerChanged(Optimizer*)),
             m_dialog, SIGNAL(tabsUpdateGUI()));
 
@@ -84,13 +83,12 @@ namespace RandomDock {
   {
   }
 
-  void TabEdit::writeSettings(const QString &filename)
-  {
+  void TabEdit::writeSettings(const QString &filename) {
     SETTINGS(filename);
 
-    settings->beginGroup("randomdock/edit");
+    settings->beginGroup("gapc/edit");
     const int VERSION = 1;
-    settings->setValue("version",     VERSION);
+    settings->setValue("version",          VERSION);
 
     settings->setValue("optType", ui.combo_optType->currentIndex());
     settings->endGroup();
@@ -99,15 +97,19 @@ namespace RandomDock {
     DESTROY_SETTINGS(filename);
   }
 
-  void TabEdit::readSettings(const QString &filename)
-  {
+  void TabEdit::readSettings(const QString &filename) {
     SETTINGS(filename);
 
-    settings->beginGroup("randomdock/edit");
+    OptGAPC *gapc = qobject_cast<OptGAPC*>(m_opt);
+
+    settings->beginGroup("gapc/edit");
     int loadedVersion = settings->value("version", 0).toInt();
 
     ui.combo_optType->setCurrentIndex( settings->value("optType", 0).toInt());
     settings->endGroup();
+
+    updateOptType();
+    m_opt->optimizer()->readSettings(filename);
 
     // Update config data
     switch (loadedVersion) {
@@ -117,20 +119,17 @@ namespace RandomDock {
       break;
     }
 
-    updateOptType();
-    m_opt->optimizer()->readSettings(filename);
-
     updateGUI();
   }
 
-  void TabEdit::updateGUI()
-  {
+  void TabEdit::updateGUI() {
     populateOptList();
-    if (m_opt->optimizer()->getIDString() == "GAMESS") {
-      ui.combo_optType->setCurrentIndex(RandomDock::OT_GAMESS);
+
+    if (m_opt->optimizer()->getIDString() == "OpenBabel") {
+      ui.combo_optType->setCurrentIndex(OptGAPC::OT_OpenBabel);
     }
     else if (m_opt->optimizer()->getIDString() == "ADF") {
-      ui.combo_optType->setCurrentIndex(RandomDock::OT_ADF);
+      ui.combo_optType->setCurrentIndex(OptGAPC::OT_ADF);
     }
 
     templateChanged(ui.combo_template->currentIndex());
@@ -157,11 +156,13 @@ namespace RandomDock {
     // optimizer is set.
     if ( m_opt->optimizer()
          && (
-             ( ui.combo_optType->currentIndex() == RandomDock::OT_GAMESS
-               && m_opt->optimizer()->getIDString() == "GAMESS" )
+             ( ui.combo_optType->currentIndex() == OptGAPC::OT_OpenBabel
+               && m_opt->optimizer()->getIDString() == "OpenBabel"
+               )
              ||
-             ( ui.combo_optType->currentIndex() == RandomDock::OT_ADF
-               && m_opt->optimizer()->getIDString() == "ADF" )
+             ( ui.combo_optType->currentIndex() == OptGAPC::OT_ADF
+               && m_opt->optimizer()->getIDString() == "ADF"
+               )
              )
          ) {
       return;
@@ -172,26 +173,14 @@ namespace RandomDock {
     ui.combo_template->blockSignals(false);
 
     switch (ui.combo_optType->currentIndex()) {
-    case RandomDock::OT_GAMESS: {
-      // Set total number of templates (2, length of GAMESS_Templates)
-      QStringList sl;
-      sl << "" << "";
-      ui.combo_template->blockSignals(true);
-      ui.combo_template->insertItems(0, sl);
-
-      // Set each template at the appropriate index:
-      ui.combo_template->removeItem(GAMT_pbs);
-      ui.combo_template->insertItem(GAMT_pbs,	tr("job.pbs"));
-      ui.combo_template->removeItem(GAMT_inp);
-      ui.combo_template->insertItem(GAMT_inp,	tr("job.inp"));
-      ui.combo_template->blockSignals(false);
-
-      emit optimizerChanged(new GAMESSOptimizer (m_opt) );
+    case OptGAPC::OT_OpenBabel: {
+      // No need to populate the template combo box for OB
+      emit optimizerChanged(new OpenBabelOptimizer (m_opt) );
       ui.combo_template->setCurrentIndex(0);
 
       break;
     }
-    case RandomDock::OT_ADF: {
+    case OptGAPC::OT_ADF: {
       // Set total number of templates (1, length of ADF_Templates)
       QStringList sl;
       sl << "";
@@ -216,11 +205,8 @@ namespace RandomDock {
     templateChanged(0);
   }
 
-  void TabEdit::templateChanged(int ind)
-  {
-    if (ind < 0) {
-      return;
-    }
+  void TabEdit::templateChanged(int ind) {
+    OptGAPC *gapc = qobject_cast<OptGAPC*>(m_opt);
 
     int row = ui.list_opt->currentRow();
 
@@ -228,25 +214,15 @@ namespace RandomDock {
       populateOptList();
 
     switch (ui.combo_optType->currentIndex()) {
-    case RandomDock::OT_GAMESS: {
+    case OptGAPC::OT_OpenBabel: {
       // Hide/show appropriate GUI elements
       ui.list_POTCARs->setVisible(false);
-      ui.edit_edit->setVisible(true);
+      ui.edit_edit->setVisible(false);
 
-      switch (ind) {
-      case GAMT_pbs:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.pbs", row));
-        break;
-      case GAMT_inp:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.inp", row));
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::templateChanged: Selected template out of range? " << ind;
-        break;
-      }
+      // No edit data to set
       break;
     }
-    case RandomDock::OT_ADF: {
+    case OptGAPC::OT_ADF: {
       // Hide/show appropriate GUI elements
       ui.list_POTCARs->setVisible(false);
       ui.edit_edit->setVisible(true);
@@ -261,6 +237,7 @@ namespace RandomDock {
       }
       break;
     }
+
     default: // shouldn't happen...
       qWarning() << "TabEdit::templateChanged: Selected OptStep out of range? "
                  << ui.combo_optType->currentIndex();
@@ -274,20 +251,10 @@ namespace RandomDock {
     int row = ui.list_opt->currentRow();
 
     switch (ui.combo_optType->currentIndex()) {
-    case RandomDock::OT_GAMESS:
-      switch (ui.combo_template->currentIndex()) {
-      case GAMT_pbs:
-        m_opt->optimizer()->setTemplate("job.pbs", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      case GAMT_inp:
-        m_opt->optimizer()->setTemplate("job.inp", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::updateTemplates: Selected template out of range?";
-        break;
-      }
+    case OptGAPC::OT_OpenBabel:
+      // Nothing to do.
       break;
-    case RandomDock::OT_ADF:
+    case OptGAPC::OT_ADF:
       switch (ui.combo_template->currentIndex()) {
       case ADFT_pbs:
         m_opt->optimizer()->setTemplate("job.pbs", ui.edit_edit->document()->toPlainText(), row);
@@ -302,18 +269,18 @@ namespace RandomDock {
       qWarning() << "TabEdit::updateTemplates: Selected OptStep out of range?";
       break;
     }
+
+    ui.edit_edit->setCurrentFont(QFont("Courier"));
   }
 
-  void TabEdit::updateUserValues()
-  {
+  void TabEdit::updateUserValues() {
     m_opt->optimizer()->setUser1(ui.edit_user1->text());
     m_opt->optimizer()->setUser2(ui.edit_user2->text());
     m_opt->optimizer()->setUser3(ui.edit_user3->text());
     m_opt->optimizer()->setUser4(ui.edit_user4->text());
   }
 
-  void TabEdit::populateOptList()
-  {
+  void TabEdit::populateOptList() {
     int selection = ui.list_opt->currentRow();
     int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
     if (selection < 0) selection = 0;
@@ -329,8 +296,7 @@ namespace RandomDock {
     ui.list_opt->setCurrentRow(selection);
   }
 
-  void TabEdit::appendOptStep()
-  {
+  void TabEdit::appendOptStep() {
     // Copy the current files into a new entry at the end of the opt step list
     int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
     int currentOptStep = ui.list_opt->currentRow();
@@ -346,8 +312,7 @@ namespace RandomDock {
     populateOptList();
   }
 
-  void TabEdit::removeCurrentOptStep()
-  {
+  void TabEdit::removeCurrentOptStep() {
     int currentOptStep = ui.list_opt->currentRow();
     int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
     QStringList templates = m_opt->optimizer()->getTemplateNames();
@@ -359,15 +324,14 @@ namespace RandomDock {
     populateOptList();
   }
 
-  void TabEdit::optStepChanged()
-  {
+  void TabEdit::optStepChanged() {
     templateChanged(ui.combo_template->currentIndex());
   }
 
   void TabEdit::saveScheme()
   {
     SETTINGS("");
-    QString filename = settings->value("randomdock/edit/schemePath/", "").toString();
+    QString filename = settings->value("gapc/edit/schemePath/", "").toString();
     QFileDialog dialog (NULL, tr("Save Optimization Scheme as..."),
                         filename, "*.scheme;;*.*");
     dialog.selectFile(m_opt->optimizer()->getIDString() + ".scheme");
@@ -377,25 +341,24 @@ namespace RandomDock {
     else { // User cancel file selection.
       return;
     }
-    settings->setValue("randomdock/edit/schemePath/", filename);
+    settings->setValue("gapc/edit/schemePath/", filename);
     writeSettings(filename);
   }
 
   void TabEdit::loadScheme()
   {
     SETTINGS("");
-    QString filename = settings->value("randomdock/edit/schemePath/", "").toString();
-    QFileDialog dialog (NULL,
-                        tr("Select Optimization Scheme to load..."),
-                        filename,
-                        "*.scheme;;*.*");
+    QString filename = settings->value("gapc/edit/schemePath/", "").toString();
+    QFileDialog dialog (NULL, tr("Select Optimization Scheme to load..."),
+                        filename, "*.scheme;;*.*");
      dialog.setFileMode(QFileDialog::ExistingFile);
     if (dialog.exec())
       filename = dialog.selectedFiles().first();
     else { // User cancel file selection.
       return;
     }
-    settings->setValue("randomdock/edit/schemePath/", filename);
+    settings->setValue("gapc/edit/schemePath/", filename);
     readSettings(filename);
   }
+
 }

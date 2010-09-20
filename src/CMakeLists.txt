@@ -4,16 +4,22 @@ option( ENABLE_XTALOPT
 option( ENABLE_RANDOMDOCK
 	"Build the RandomDock extension"
 	OFF )
-
+option( ENABLE_GAPC
+	"Build the evolutionary cluster search extension"
+	OFF )
 
 add_subdirectory(libssh)
 add_subdirectory(globalsearch)
 
 if (ENABLE_XTALOPT)
-  add_subdirectory(spglib)
-  add_subdirectory(xtalopt)
+   add_subdirectory(spglib)
+   add_subdirectory(xtalopt)
 endif (ENABLE_XTALOPT)
 
 if (ENABLE_RANDOMDOCK)
-  add_subdirectory(randomdock)
+   add_subdirectory(randomdock)
 endif (ENABLE_RANDOMDOCK)
+
+if (ENABLE_GAPC)
+   add_subdirectory(gapc)
+endif (ENABLE_GAPC)
