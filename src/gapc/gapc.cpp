@@ -103,6 +103,7 @@ namespace GAPC {
 
   bool OptGAPC::save(const QString & filename, bool notify)
   {
+    savePending = false;
     // TODO
     return true;
   }
