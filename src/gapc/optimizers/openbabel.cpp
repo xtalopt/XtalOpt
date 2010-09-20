@@ -139,14 +139,12 @@ namespace GAPC {
     }
   }
 
-  bool OpenBabelOptimizer::getQueueList(QStringList & queueData) {
-    Q_UNUSED(queueData);
+  bool OpenBabelOptimizer::getQueueList(QStringList &, QMutex*) {
     return true;
   }
 
-  bool OpenBabelOptimizer::copyRemoteToLocalCache(Structure *structure)
+  bool OpenBabelOptimizer::copyRemoteToLocalCache(Structure*)
   {
-    Q_UNUSED(structure);
     return true;
   }
 
