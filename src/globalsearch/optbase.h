@@ -317,6 +317,15 @@ namespace GlobalSearch {
     void errorStatement(const QString &s);
 
     /**
+     * Prompts user with an "Yes/No" dialog
+     *
+     * @param message Message to the user.
+     * @param ok True if user accepts dialog, false if they cancel.
+     * @sa promptForBoolean
+     */
+    void needBoolean(const QString &message, bool *ok);
+
+    /**
      * Request a password from the user, used for libssh
      * authentication.
      *
@@ -441,6 +450,14 @@ namespace GlobalSearch {
     void setOptimizer(const QString &IDString, const QString &filename = "") {
       setOptimizer_string(IDString, filename);};
 
+    /**
+     * Prompt user with a "Yes/No" dialog.
+     *
+     * @param message Message to the user.
+     * @param ok True if user accepts dialog, false if they cancel.
+     * @sa needBoolean
+     */
+    void promptForBoolean(const QString &message, bool *ok = 0);
 
     /**
      * Request a password from the user, used for libssh

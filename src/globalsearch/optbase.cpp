@@ -23,6 +23,7 @@
 #include <globalsearch/bt.h>
 
 #include <QtGui/QInputDialog>
+#include <QtGui/QMessageBox>
 
 using namespace OpenBabel;
 
@@ -53,6 +54,9 @@ namespace GlobalSearch {
             this, SLOT(setIsStartingTrue()));
     connect(this, SIGNAL(sessionStarted()),
             this, SLOT(setIsStartingFalse()));
+    connect(this, SIGNAL(needBoolean(const QString&, bool*)),
+            this, SLOT(promptForBoolean(const QString&, bool*)),
+            Qt::BlockingQueuedConnection); // Wait until slot returns
     connect(this, SIGNAL(needPassword(const QString&, QString*, bool*)),
             this, SLOT(promptForPassword(const QString&, QString*, bool*)),
             Qt::BlockingQueuedConnection); // Wait until slot returns
@@ -188,6 +192,17 @@ namespace GlobalSearch {
                                            QLineEdit::Password, QString(), ok);
   };
 
+  void OptBase::promptForBoolean(const QString &message,
+                                 bool *ok)
+  {
+    if (QMessageBox::question(dialog(), m_idString, message,
+                              QMessageBox::Yes | QMessageBox::No)
+        == QMessageBox::Yes) {
+      *ok = true;
+    } else {
+      *ok = false;
+    }
+  }
 
   void OptBase::warning(const QString & s) {
     qWarning() << "Warning: " << s;
