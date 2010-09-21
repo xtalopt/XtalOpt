@@ -14,6 +14,7 @@
  ***********************************************************************/
 
 #include <globalsearch/sshconnection.h>
+#include <globalsearch/sshmanager.h>
 
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
@@ -29,7 +30,7 @@ namespace GlobalSearch {
 #define START //qDebug() << __PRETTY_FUNCTION__ << " called...";
 #define END //qDebug() << __PRETTY_FUNCTION__ << " finished...";
 
-  SSHConnection::SSHConnection(OptBase *parent)
+  SSHConnection::SSHConnection(SSHManager *parent)
     : QObject(parent),
       m_session(0),
       m_host(""),
@@ -39,6 +40,12 @@ namespace GlobalSearch {
       m_isValid(false),
       m_inUse(false)
   {
+    if (parent) {
+      // block this connection so that a thrown exception won't cause problems
+      connect(this, SIGNAL(unknownHostKey(const QString &)),
+              parent, SLOT(setServerKey(const QString &)),
+              Qt::BlockingQueuedConnection);
+    }
   }
 
   SSHConnection::~SSHConnection()
@@ -159,13 +166,20 @@ namespace GlobalSearch {
     case SSH_SERVER_KNOWN_CHANGED:
     case SSH_SERVER_FOUND_OTHER:
     case SSH_SERVER_FILE_NOT_FOUND:
-    case SSH_SERVER_NOT_KNOWN:
+    case SSH_SERVER_NOT_KNOWN: {
+      int hlen;
+      unsigned char *hash = 0;
+      char *hexa;
+      hlen = ssh_get_pubkey_hash(m_session, &hash);
+      hexa = ssh_get_hexa(hash, hlen);
+      emit unknownHostKey(QString(hexa));
       if (throwExceptions) {
         throw SSH_UNKNOWN_HOST_ERROR;
       }
       else {
         return false;
       }
+    }
     case SSH_SERVER_ERROR:
       qWarning() << "SSH error: " << ssh_get_error(m_session);
       if (throwExceptions) {
@@ -823,6 +837,39 @@ namespace GlobalSearch {
     }
     sftp_free(sftp);
     END;
+    return true;
+  }
+
+  bool SSHConnection::addKeyToKnownHosts(const QString &host, unsigned int port)
+  {
+    // Create session
+    ssh_session session = ssh_new();
+    if (!session) {
+      return false;
+    }
+
+    // Set options
+    int verbosity = SSH_LOG_NOLOG;
+    int timeout = 5; // timeout in sec
+
+    ssh_options_set(session, SSH_OPTIONS_HOST, host.toStdString().c_str());
+    ssh_options_set(session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);
+    ssh_options_set(session, SSH_OPTIONS_TIMEOUT, &timeout);
+    ssh_options_set(session, SSH_OPTIONS_PORT, &port);
+
+    // Connect
+    if (ssh_connect(session) != SSH_OK) {
+      qWarning() << "SSH error: " << ssh_get_error(session);
+      ssh_free(session);
+      return false;
+    }
+
+    if (ssh_write_knownhost(session) < 0) {
+      ssh_free(session);
+      return false;
+    }
+
+    ssh_free(session);
     return true;
   }
 

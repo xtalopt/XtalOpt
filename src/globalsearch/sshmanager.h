@@ -77,6 +77,29 @@ namespace GlobalSearch {
      */
     void unlockConnection(SSHConnection* ssh);
 
+    /**
+     * Retreive the public key from the server. This is set when a
+     * connection fails with SSH_UNKNOWN_HOST_ERROR.
+     *
+     * @sa SSH_UNKNOWN_HOST_ERROR
+     * @sa validateServerKey
+     */
+    QString getServerKeyHash();
+
+    /**
+     * Add currently set key to the known host cache.
+     *
+     * @sa SSH_UNKNOWN_HOST_ERROR
+     * @sa getServerKey;
+     */
+    bool validateServerKey();
+
+    /**
+     * Set the server key. This is used internally.
+     */
+    void setServerKey(const QString &hexa);
+
+
   private:
     QList<SSHConnection*> m_conns;
 
@@ -85,6 +108,7 @@ namespace GlobalSearch {
     QString m_host;
     QString m_user;
     QString m_pass;
+    QString m_hexa;
     unsigned int m_port;
     unsigned int m_connections;
     bool m_isValid;
