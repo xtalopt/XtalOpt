@@ -49,8 +49,9 @@ namespace GlobalSearch {
     enum SSHConnectionException {
       /// An error connecting to the host has occurred
       SSH_CONNECTION_ERROR = 1,
-      /// The host is unknown or has changed its key. Login via
-      /// terminal first and verify, then retry.
+      /// The host is unknown or has changed its key.
+      /// The key can be retrieved through SSHManager::getServerKey()
+      /// and accepted via SSHManager::validateServerKey()
       SSH_UNKNOWN_HOST_ERROR,
       /// A bad password was given and public key auth is not set up
       SSH_BAD_PASSWORD_ERROR,
@@ -63,7 +64,7 @@ namespace GlobalSearch {
      *
      * @param parent The OptBase parent
      */
-    explicit SSHConnection(OptBase *parent = 0);
+    explicit SSHConnection(SSHManager *parent = 0);
 
     /**
      * Destructor.
@@ -112,6 +113,11 @@ namespace GlobalSearch {
 
     bool reconnectIfNeeded() {if (!isConnected()) return reconnectSession(false);
       return true;};
+
+    static bool addKeyToKnownHosts(const QString &host, unsigned int port);
+
+  signals:
+    void unknownHostKey(const QString &hexa);
 
   private:
     bool _execute(const QString &command,

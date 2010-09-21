@@ -30,7 +30,7 @@ namespace GlobalSearch {
       m_isValid(false)
   {
     for (unsigned int i = 0; i < connections; i++) {
-      m_conns.append(new SSHConnection(qobject_cast<OptBase*>(this->parent())));
+      m_conns.append(new SSHConnection(this));
       //qDebug() << "Created connection #" << i+1;
     }
   }
@@ -99,6 +99,21 @@ namespace GlobalSearch {
     // Don't lock m_lock here
     //qDebug() << "Connection " << ssh << " unlocked";
     ssh->setUsed(false);
+  }
+
+  QString SSHManager::getServerKeyHash()
+  {
+    return m_hexa;
+  }
+
+  bool SSHManager::validateServerKey()
+  {
+    return SSHConnection::addKeyToKnownHosts(m_host, m_port);
+  }
+
+  void SSHManager::setServerKey(const QString &hexa)
+  {
+    m_hexa = hexa;
   }
 
 } // end namespace GlobalSearch
