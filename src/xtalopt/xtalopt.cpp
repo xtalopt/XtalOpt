@@ -119,7 +119,6 @@ namespace XtalOpt {
           QString err;
           switch (e) {
           case SSHConnection::SSH_CONNECTION_ERROR:
-          case SSHConnection::SSH_UNKNOWN_HOST_ERROR:
           case SSHConnection::SSH_UNKNOWN_ERROR:
           default:
             err = "There was a problem connection to the ssh server at "
@@ -128,7 +127,25 @@ namespace XtalOpt {
               + "and attempt to log in outside of Avogadro before trying again.";
             error(err);
             return;
-          case SSHConnection::SSH_BAD_PASSWORD_ERROR:
+          case SSHConnection::SSH_UNKNOWN_HOST_ERROR: {
+            // The host is not known, or has changed its key.
+            // Ask user if this is ok.
+            err = "The host "
+              + host + ":" + QString::number(port)
+              + " either has an unknown key, or has changed it's key:\n"
+              + m_ssh->getServerKeyHash() + "\n"
+              + "Would you like to trust the specified host?";
+            bool ok;
+            // This is a BlockingQueuedConnection, which blocks until
+            // the slot returns.
+            emit needBoolean(err, &ok);
+            if (!ok) { // user cancels
+              return;
+            }
+            m_ssh->validateServerKey();
+            continue;
+          } // end case
+          case SSHConnection::SSH_BAD_PASSWORD_ERROR: {
             // Chances are that the pubkey auth was attempted but failed,
             // so just prompt user for password.
             err = "Please enter a password for "
@@ -144,6 +161,7 @@ namespace XtalOpt {
             }
             pw = newPassword;
             continue;
+          } // end case
           } // end switch
         } // end catch
         break;
@@ -1181,7 +1199,6 @@ namespace XtalOpt {
           QString err;
           switch (e) {
           case SSHConnection::SSH_CONNECTION_ERROR:
-          case SSHConnection::SSH_UNKNOWN_HOST_ERROR:
           case SSHConnection::SSH_UNKNOWN_ERROR:
           default:
             err = "There was a problem connection to the ssh server at "
@@ -1192,7 +1209,29 @@ namespace XtalOpt {
             error(err);
             readOnly = true;
             break;
-          case SSHConnection::SSH_BAD_PASSWORD_ERROR:
+          case SSHConnection::SSH_UNKNOWN_HOST_ERROR: {
+            // The host is not known, or has changed its key.
+            // Ask user if this is ok.
+            err = "The host "
+              + host + ":" + QString::number(port)
+              + " either has an unknown key, or has changed it's key:\n"
+              + m_ssh->getServerKeyHash() + "\n"
+              + "Would you like to trust the specified host? (Clicking 'No' will"
+              + "resume the session in read only mode.)";
+            bool ok;
+            // Commenting this until ticket:53 (load in bg thread) is fixed
+            // // This is a BlockingQueuedConnection, which blocks until
+            // // the slot returns.
+            // emit needPassword(err, &newPassword, &ok);
+            promptForBoolean(err, &ok);
+            if (!ok) { // user cancels
+              readOnly = true;
+              break;
+            }
+            m_ssh->validateServerKey();
+            continue;
+          } // end case
+          case SSHConnection::SSH_BAD_PASSWORD_ERROR: {
             // Chances are that the pubkey auth was attempted but failed,
             // so just prompt user for password.
             err = "Please enter a password for "
@@ -1211,6 +1250,7 @@ namespace XtalOpt {
             }
             pw = newPassword;
             continue;
+          } // end case
           } // end switch
         } // end catch
         break;
