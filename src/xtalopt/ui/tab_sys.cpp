@@ -20,6 +20,7 @@
 #include <xtalopt/ui/dialog.h>
 
 #include <QtCore/QSettings>
+#include <QtGui/QFileDialog>
 
 namespace XtalOpt {
 
@@ -52,6 +53,8 @@ namespace XtalOpt {
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_rempath, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
+    connect(ui.push_path, SIGNAL(clicked()),
+            this, SLOT(selectLocalPath()));
 
     initialize();
   }
@@ -160,6 +163,7 @@ namespace XtalOpt {
   void TabSys::lockGUI()
   {
     ui.edit_path->setDisabled(true);
+    ui.push_path->setDisabled(true);
     ui.edit_description->setDisabled(true);
     ui.edit_qsub->setDisabled(true);
     ui.edit_qstat->setDisabled(true);
@@ -169,6 +173,20 @@ namespace XtalOpt {
     ui.spin_port->setDisabled(true);
     ui.edit_username->setDisabled(true);
     ui.edit_rempath->setDisabled(true);
+  }
+
+  void TabSys::selectLocalPath()
+  {
+    QString dir = QFileDialog::getExistingDirectory(m_dialog,
+                                                    tr("Select directory to store structures:"),
+                                                    ui.edit_path->text(),
+                                                    QFileDialog::ShowDirsOnly
+                                                    | QFileDialog::DontResolveSymlinks);
+
+    if (dir.isEmpty()) return; // user canceled
+
+    ui.edit_path->setText(dir);
+    updateSystemInfo();
   }
 
   void TabSys::updateSystemInfo()
