@@ -28,9 +28,6 @@
 
 #include <QDir>
 
-#include <cstdlib>
-#include <ctime>
-
 namespace GAPC {
 
   OptGAPC::OptGAPC(GAPCDialog *parent) :
@@ -39,8 +36,6 @@ namespace GAPC {
     maxIAD(2.0)
   {
     m_idString = "GAPC";
-    // Setup random generator
-    std::srand(std::time(0));
   }
 
   OptGAPC:: ~OptGAPC()

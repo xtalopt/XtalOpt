@@ -34,8 +34,6 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/bt.h>
 
-#include <openbabel/rand.h>
-
 #include <QtCore/QDir>
 #include <QtCore/QList>
 #include <QtCore/QFile>
@@ -330,17 +328,13 @@ namespace XtalOpt {
   }
 
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id) {
-    // Random number generator
-    OpenBabel::OBRandom rand (true);
-    rand.TimeSeed();
-
     // Set cell parameters
-    double a            = rand.NextFloat() * (a_max-a_min) + a_min;
-    double b            = rand.NextFloat() * (b_max-b_min) + b_min;
-    double c            = rand.NextFloat() * (c_max-c_min) + c_min;
-    double alpha        = rand.NextFloat() * (alpha_max - alpha_min) + alpha_min;
-    double beta         = rand.NextFloat() * (beta_max  - beta_min ) + beta_min;
-    double gamma        = rand.NextFloat() * (gamma_max - gamma_min) + gamma_min;
+    double a            = RANDDOUBLE() * (a_max-a_min) + a_min;
+    double b            = RANDDOUBLE() * (b_max-b_min) + b_min;
+    double c            = RANDDOUBLE() * (c_max-c_min) + c_min;
+    double alpha        = RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
+    double beta         = RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
+    double gamma        = RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
 
     // Create crystal
     Xtal *xtal	= new Xtal(a, b, c, alpha, beta, gamma);
@@ -444,7 +438,7 @@ namespace XtalOpt {
     probs.removeLast();
     // And we have a enthalpy weighted probability list! To use:
     //
-    //   double r = rand.NextFloat();
+    //   double r = RANDDOUBLE();
     //   uint ind;
     //   for (ind = 0; ind < probs.size(); ind++)
     //     if (r < probs.at(ind)) break;
@@ -514,12 +508,6 @@ namespace XtalOpt {
     // return xtal
     Xtal *xtal = 0;
 
-    // Setup random engine
-    OpenBabel::OBRandom rand (true);    // "true" uses system random
-                                        // numbers. OB's version isn't
-                                        // too good...
-    rand.TimeSeed();
-
     // Trim and sort list
     XtalOpt::sortByEnthalpy(&xtals);
     // Remove all but (n_consider + 1). The "+ 1" will be removed
@@ -544,7 +532,7 @@ namespace XtalOpt {
       }
 
       // Decide operator:
-      r = rand.NextFloat();
+      r = RANDDOUBLE();
       Operators op;
       if (r < p_cross/100.0)
         op = OP_Crossover;
@@ -573,9 +561,9 @@ namespace XtalOpt {
           ind1 = ind2 = 0;
           while (ind1 == ind2) {
             for (ind1 = 0; ind1 < probs.size(); ind1++)
-              if (rand.NextFloat() < probs.at(ind1)) break;
+              if (RANDDOUBLE() < probs.at(ind1)) break;
             for (ind2 = 0; ind2 < probs.size(); ind2++)
-              if (rand.NextFloat() < probs.at(ind2)) break;
+              if (RANDDOUBLE() < probs.at(ind2)) break;
           }
 
           xtal1 = xtals.at(ind1);
@@ -612,7 +600,7 @@ namespace XtalOpt {
           // Pick a parent
           int ind;
           for (ind = 0; ind < probs.size(); ind++)
-            if (rand.NextFloat() < probs.at(ind)) break;
+            if (RANDDOUBLE() < probs.at(ind)) break;
           Xtal *xtal1 = xtals.at(ind);
 
           // Perform stripple
@@ -647,7 +635,7 @@ namespace XtalOpt {
         case OP_Permustrain: {
           int ind;
           for (ind = 0; ind < probs.size(); ind++)
-            if (rand.NextFloat() < probs.at(ind)) break;
+            if (RANDDOUBLE() < probs.at(ind)) break;
 
           Xtal *xtal1 = xtals.at(ind);
           double stdev=0;

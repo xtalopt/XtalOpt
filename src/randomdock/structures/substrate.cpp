@@ -17,8 +17,8 @@
 #include <randomdock/structures/substrate.h>
 
 #include <globalsearch/structure.h>
+#include <globalsearch/macros.h>
 
-#include <openbabel/rand.h>
 #include <openbabel/mol.h>
 
 #include <QtCore/QDebug>
@@ -117,7 +117,7 @@ namespace RandomDock {
     }
     // And we have a energy weighted probability list! To use:
     //
-    //   double r = rand.NextFloat();
+    //   double r = RANDDOUBLE();
     //   uint ind;
     //   for (ind = 0; ind < m_probs.size(); ind++)
     //     if (r < m_probs.at(ind)) break;
@@ -137,12 +137,8 @@ namespace RandomDock {
 
   int Substrate::getRandomConformerIndex()
   {
-    // Random number generator
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
-    rand.TimeSeed();
-
     // Select conformer to use:
-    double r = rand.NextFloat();
+    double r = RANDDOUBLE();
     int ind;
     for (ind = 0; ind < m_probs.size(); ind++)
       if (r < m_probs.at(ind)) break;

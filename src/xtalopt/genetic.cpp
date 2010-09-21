@@ -18,7 +18,8 @@
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/ui/dialog.h>
 
-#include <openbabel/rand.h>
+#include <globalsearch/macros.h>
+
 #include <openbabel/obiter.h>
 
 #include <QtCore/QDebug>
@@ -30,25 +31,22 @@ using namespace Eigen;
 namespace XtalOpt {
 
   Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution, double &percent1) {
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
-    rand.TimeSeed();
-
     //
     // Random Assignments
     //
     // Where to slice in fractional units
-    double cutVal = ((100.0-(2.0*minimumContribution) ) * rand.NextFloat() + minimumContribution) / 100.0;
+    double cutVal = ((100.0-(2.0*minimumContribution) ) * RANDDOUBLE() + minimumContribution) / 100.0;
     percent1 = cutVal * 100.0;
     // Shift values = s_n_m:
     //  n = xtal (1,2)
     //  m = axes (1 = a_ch; 2,3 = secondary axes)
     double s_1_1, s_1_2, s_1_3, s_2_1, s_2_2, s_2_3;
-    s_1_1 = rand.NextFloat();
-    s_2_1 = rand.NextFloat();
-    s_1_2 = rand.NextFloat();
-    s_2_2 = rand.NextFloat();
-    s_1_3 = rand.NextFloat();
-    s_2_3 = rand.NextFloat();
+    s_1_1 = RANDDOUBLE();
+    s_2_1 = RANDDOUBLE();
+    s_1_2 = RANDDOUBLE();
+    s_2_2 = RANDDOUBLE();
+    s_1_3 = RANDDOUBLE();
+    s_2_3 = RANDDOUBLE();
     //
     // Transformation matrixes
     //
@@ -76,11 +74,11 @@ namespace XtalOpt {
     // should do the trick.
     //
     QList<int> list1;
-    list1.append(static_cast<int>(floor(rand.NextFloat()*3)));
+    list1.append(static_cast<int>(floor(RANDDOUBLE()*3)));
     if (list1.at(0) == 3) list1[0] = 2;
     switch (list1.at(0)) {
     case 0:
-      if (rand.NextFloat() > 0.5) {
+      if (RANDDOUBLE() > 0.5) {
         list1.append(1);
         list1.append(2);
       } else {
@@ -89,7 +87,7 @@ namespace XtalOpt {
       }
       break;
     case 1:
-      if (rand.NextFloat() > 0.5) {
+      if (RANDDOUBLE() > 0.5) {
         list1.append(0);
         list1.append(2);
       } else {
@@ -98,7 +96,7 @@ namespace XtalOpt {
       }
       break;
     case 2:
-      if (rand.NextFloat() > 0.5) {
+      if (RANDDOUBLE() > 0.5) {
         list1.append(0);
         list1.append(1);
       } else {
@@ -109,11 +107,11 @@ namespace XtalOpt {
     }
 
     QList<int> list2;
-    list2.append(static_cast<int>(floor(rand.NextFloat()*3)));
+    list2.append(static_cast<int>(floor(RANDDOUBLE()*3)));
     if (list2.at(0) == 3) list2[0] = 2;
     switch (list2.at(0)) {
     case 0:
-      if (rand.NextFloat() > 0.5) {
+      if (RANDDOUBLE() > 0.5) {
         list2.append(1);
         list2.append(2);
       } else {
@@ -122,7 +120,7 @@ namespace XtalOpt {
       }
       break;
     case 1:
-      if (rand.NextFloat() > 0.5) {
+      if (RANDDOUBLE() > 0.5) {
         list2.append(0);
         list2.append(2);
       } else {
@@ -131,7 +129,7 @@ namespace XtalOpt {
       }
       break;
     case 2:
-      if (rand.NextFloat() > 0.5) {
+      if (RANDDOUBLE() > 0.5) {
         list2.append(0);
         list2.append(1);
       } else {
@@ -146,8 +144,8 @@ namespace XtalOpt {
     Eigen::Matrix3d xform1 = Eigen::Matrix3d::Zero();
     Eigen::Matrix3d xform2 = Eigen::Matrix3d::Zero();
     for (int i = 0; i < 3; i++) {
-      double r1 = rand.NextFloat() - 0.5;
-      double r2 = rand.NextFloat() - 0.5;
+      double r1 = RANDDOUBLE() - 0.5;
+      double r2 = RANDDOUBLE() - 0.5;
       int s1 = int(r1/fabs(r1));
       int s2 = int(r2/fabs(r2));
       if (list1.at(i) == 0)             xform1.block(0, i, 3, 1) << s1, 0, 0;
@@ -227,7 +225,7 @@ namespace XtalOpt {
     //
     // Average cell matricies
     // Randomly weight the parameters of the two parents
-    double weight = rand.NextFloat();
+    double weight = RANDDOUBLE();
     matrix3x3 dims;
     for (uint row = 0; row < 3; row++) {
       for (uint col = 0; col < 3; col++) {
@@ -291,7 +289,7 @@ namespace XtalOpt {
         for (int j = 0; j < atomList.size(); j++) {
           if (atomList.at(j)->atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str())) {
             // atom at j is the type that needs to be deleted.
-            if (rand.NextFloat() < 1.0/static_cast<double>(nxtalCounts.at(i))) {
+            if (RANDDOUBLE() < 1.0/static_cast<double>(nxtalCounts.at(i))) {
               // If the odds are right, delete the atom and break loop to recheck condition.
               nxtal->removeAtom(atomList.at(j)); // removeAtom(Atom*) takes care of deleting pointer.
               delta++;
@@ -307,7 +305,7 @@ namespace XtalOpt {
         //
         // First, pick the parent. 50/50 chance for each:
         uint parent;
-        if (rand.NextFloat() < 0.5) parent = 1;
+        if (RANDDOUBLE() < 0.5) parent = 1;
         else parent = 2;
         for (int j = 0; j < fracCoordsList1.size(); j++) { // size should be the same for both parents
           if (
@@ -326,7 +324,7 @@ namespace XtalOpt {
                )
               &&
               // and the odds favor it, add the atom to nxtal
-              ( rand.NextFloat() < 1.0/static_cast<double>(xtalCounts.at(i)) )
+              ( RANDDOUBLE() < 1.0/static_cast<double>(xtalCounts.at(i)) )
               ) {
             Atom* newAtom = nxtal->addAtom();
             newAtom->setAtomicNumber(atomList1.at(j)->atomicNumber());
@@ -353,8 +351,6 @@ namespace XtalOpt {
                                  uint eta, uint mu,
                                  double &sigma_lattice,
                                  double &rho) {
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
-    rand.TimeSeed();
 
     // lock parent xtal and copy into return xtal
     Xtal *nxtal = new Xtal;
@@ -374,16 +370,16 @@ namespace XtalOpt {
     // Note that this will repeat until EITHER sigma OR rho is greater
     // than its respective minimum value, not both
     do {
-      sigma_lattice = rand.NextFloat();
+      sigma_lattice = RANDDOUBLE();
       sigma_lattice *= sigma_lattice_max;
-      rho = rand.NextFloat();
+      rho = RANDDOUBLE();
       rho *= rho_max;
       // If values are fixed (min==max), check to see if they need to
       // be set manually, since it is unlikely that the above
       // randomization will produce an acceptable value. Randomize
       // which parameter to check to avoid biasing setting one value
       // over the other.
-      double r = rand.NextFloat();
+      double r = RANDDOUBLE();
       if (r < 0.5 &&
           sigma_lattice_min == sigma_lattice_max &&
           rho < rho_min) {
@@ -404,10 +400,6 @@ namespace XtalOpt {
   }
 
   Xtal* XtalOptGenetic::permustrain(Xtal* xtal, double sigma_lattice_max, uint exchanges, double &sigma_lattice) {
-    // Setup random number generator
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
-    rand.TimeSeed();
-
     // lock parent xtal for reading
     QReadLocker locker (xtal->lock());
 
@@ -423,7 +415,7 @@ namespace XtalOpt {
     }
 
     // Perform lattice strain
-    sigma_lattice = sigma_lattice_max * rand.NextFloat();
+    sigma_lattice = sigma_lattice_max * RANDDOUBLE();
     XtalOptGenetic::strain(nxtal, sigma_lattice);
     XtalOptGenetic::exchange(nxtal, exchanges);
 
@@ -435,10 +427,6 @@ namespace XtalOpt {
   }
 
   void XtalOptGenetic::exchange(Xtal *xtal, uint exchanges) {
-    // Setup random number generator
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
-    rand.TimeSeed();
-
     // Check that there is more than 1 atom type present.
     // If not, print a warning and return input xtal:
     if (xtal->getSymbols().size() <= 1) {
@@ -458,8 +446,8 @@ namespace XtalOpt {
       while (atoms.at(index1)->atomicNumber() == atoms.at(index2)->atomicNumber()) {
         index1 = index2 = 0;
         while (index1 == index2) {
-          index1 = static_cast<uint>(rand.NextFloat() * atoms.size());
-          index2 = static_cast<uint>(rand.NextFloat() * atoms.size());
+          index1 = static_cast<uint>(RANDDOUBLE() * atoms.size());
+          index2 = static_cast<uint>(RANDDOUBLE() * atoms.size());
         }
       }
       // Swap the atoms
@@ -471,9 +459,6 @@ namespace XtalOpt {
   }
 
   void XtalOptGenetic::strain(Xtal *xtal, double sigma_lattice) {
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
-    rand.TimeSeed();
-
     // Build Voight strain matrix
     double volume = xtal->getVolume();
     matrix3x3 strainM;
@@ -489,8 +474,8 @@ namespace XtalOpt {
         // mu = 0, sigma = sigma_lattice
         double z;
         while (true) {
-          double u1 = rand.NextFloat();
-          double u2 = 1.0 - rand.NextFloat();
+          double u1 = RANDDOUBLE();
+          double u2 = 1.0 - RANDDOUBLE();
           z = NV_MAGICCONST*(u1-0.5)/u2;
           double zz = z*z/4.0;
           if (zz <= -log(u2))
@@ -526,17 +511,13 @@ namespace XtalOpt {
   }
 
   void XtalOptGenetic::ripple(Xtal* xtal, double rho, uint eta, uint mu) {
-    // Setup random generator
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
-    rand.TimeSeed();
-
-    double phase1 = rand.NextFloat() * 2 * M_PI;
-    double phase2 = rand.NextFloat() * 2 * M_PI;
+    double phase1 = RANDDOUBLE() * 2 * M_PI;
+    double phase2 = RANDDOUBLE() * 2 * M_PI;
 
     // Get random direction to shift atoms (x=0, y=1, z=2)
     int shiftAxis = 3, axis1, axis2;
     while (shiftAxis == 3)
-      shiftAxis = static_cast<uint>(rand.NextFloat() * 3);
+      shiftAxis = static_cast<uint>(RANDDOUBLE() * 3);
     switch (shiftAxis) {
     case 0:
       axis1 = 1;

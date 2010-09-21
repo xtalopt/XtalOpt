@@ -19,6 +19,7 @@
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/sshmanager.h>
+#include <globalsearch/macros.h>
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/bt.h>
 
@@ -60,6 +61,8 @@ namespace GlobalSearch {
     connect(this, SIGNAL(needPassword(const QString&, QString*, bool*)),
             this, SLOT(promptForPassword(const QString&, QString*, bool*)),
             Qt::BlockingQueuedConnection); // Wait until slot returns
+
+    INIT_RANDOM_GENERATOR();
   }
 
   OptBase::~OptBase() {

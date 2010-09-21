@@ -21,7 +21,6 @@
 #include <avogadro/atom.h>
 
 #include <openbabel/generic.h>
-#include <openbabel/rand.h>
 #include <openbabel/forcefield.h>
 
 #include <QtCore/QFile>
@@ -163,9 +162,6 @@ namespace GlobalSearch {
   }
 
   bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom) {
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers.
-    rand.TimeSeed();
-
     double IAD = -1;
     int i = 0;
     vector3 coords;
@@ -178,9 +174,9 @@ namespace GlobalSearch {
       do {
         // Generate random coordinates
         IAD = -1;
-        double x = rand.NextFloat() * radius() + maxIAD;
-        double y = rand.NextFloat() * radius() + maxIAD;
-        double z = rand.NextFloat() * radius() + maxIAD;
+        double x = RANDDOUBLE() * radius() + maxIAD;
+        double y = RANDDOUBLE() * radius() + maxIAD;
+        double z = RANDDOUBLE() * radius() + maxIAD;
 
         coords.Set(x,y,z);
         if (minIAD != -1) {

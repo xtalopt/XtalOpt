@@ -19,8 +19,9 @@
 #include <avogadro/molecule.h>
 #include <avogadro/atom.h>
 
+#include <globalsearch/macros.h>
+
 #include <openbabel/generic.h>
-#include <openbabel/rand.h>
 #include <openbabel/forcefield.h>
 
 #include <QtCore/QDebug>
@@ -274,10 +275,7 @@ namespace XtalOpt {
 
   bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom) {
     Q_UNUSED(maxIAD);
-    // Random number generator
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers.
-                                        // OB's alogrithm resulted in sheets of atoms sloped through the cell.
-    rand.TimeSeed();
+
     double IAD = -1;
     int i = 0;
     vector3 cartCoords;
@@ -290,9 +288,9 @@ namespace XtalOpt {
       do {
         // Generate fractional coordinates
         IAD = -1;
-        double x = rand.NextFloat();
-        double y = rand.NextFloat();
-        double z = rand.NextFloat();
+        double x = RANDDOUBLE();
+        double y = RANDDOUBLE();
+        double z = RANDDOUBLE();
 
         // Convert to cartesian coordinates and store
         vector3 fracCoords (x,y,z);

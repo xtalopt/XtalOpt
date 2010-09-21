@@ -30,7 +30,6 @@
 #include <avogadro/atom.h>
 #include <avogadro/bond.h>
 
-#include <openbabel/rand.h>
 #include <openbabel/mol.h>
 
 #include <QtCore/QDir>
@@ -190,8 +189,6 @@ namespace RandomDock {
     QList<Atom*> atomList;
     QList<Eigen::Vector3d> positions;
     QList<int> atomicNums;
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers.
-    rand.TimeSeed();
 
     // Select random conformer of substrate
     substrate->lock()->lockForWrite(); // Write lock prevents
@@ -246,7 +243,7 @@ namespace RandomDock {
     for (uint i = 0; i < numMatrixMol; i++) {
       // Add random conformers of matrix molecule in random locations,
       // orientations
-      double r = rand.NextFloat();
+      double r = RANDDOUBLE();
       int ind;
       for (ind = 0; ind < probs.size(); ind++)
         if (r < probs.at(ind)) break;
@@ -644,11 +641,9 @@ namespace RandomDock {
     center /= static_cast<float>(coords.size());
 
     // Get random angles
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
-    rand.TimeSeed();
-    double X = rand.NextFloat() * 2 * 3.14159265;
-    double Y = rand.NextFloat() * 2 * 3.14159265;
-    double Z = rand.NextFloat() * 2 * 3.14159265;
+    double X = RANDDOUBLE() * 2 * 3.14159265;
+    double Y = RANDDOUBLE() * 2 * 3.14159265;
+    double Z = RANDDOUBLE() * 2 * 3.14159265;
 
     // Build rotation matrix
     Eigen::Matrix3d rx, ry, rz, rot;
@@ -676,11 +671,9 @@ namespace RandomDock {
 
   void RandomDock::randomlyDisplaceCoordinates(QList<Eigen::Vector3d> & coords, double radiusMin, double radiusMax) {
     // Get random spherical coordinates
-    OpenBabel::OBRandom rand (true);    // "true" uses system random numbers. OB's version isn't too good...
-    rand.TimeSeed();
-    double rho  = rand.NextFloat() * (radiusMax - radiusMin) + radiusMin;
-    double theta= rand.NextFloat() * 2 * 3.14159265;
-    double phi	= rand.NextFloat() * 2 * 3.14159265;
+    double rho  = RANDDOUBLE() * (radiusMax - radiusMin) + radiusMin;
+    double theta= RANDDOUBLE() * 2 * 3.14159265;
+    double phi	= RANDDOUBLE() * 2 * 3.14159265;
 
     // convert to cartesian coordinates
     double x = rho * sin(phi) * cos(theta);
