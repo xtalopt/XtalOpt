@@ -40,6 +40,7 @@ namespace GAPC {
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
     void updateGUI();
+    void selectLocalPath();
     void updateSystemInfo();
 
   signals:
