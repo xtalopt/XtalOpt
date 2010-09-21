@@ -20,8 +20,8 @@ static int get_primitive( Cell * primitive, const Cell * cell,
 Cell prm_get_primitive(const Cell * cell, const double symprec)
 {
   int multi;
-  double pure_trans[cell->size][3];
   Cell primitive;
+  double (*pure_trans)[3] = malloc(cell->size * sizeof(double[3]));
 
   debug_print("*** prm_get_primitive ***\n");
 
@@ -31,9 +31,8 @@ Cell prm_get_primitive(const Cell * cell, const double symprec)
     /* Create primitive lattice */
     primitive = cel_new_cell(cell->size / multi);
     if ( get_primitive( &primitive, cell, pure_trans, multi, symprec ) ) {
-
+      free(pure_trans);
       return primitive;
-
     } else {
       /* Sometimes primitive cell can not be found. */
       cel_delete_cell( &primitive );
@@ -44,6 +43,8 @@ Cell prm_get_primitive(const Cell * cell, const double symprec)
   debug_print("Primitive cell could not be found.\n");
   primitive = cel_new_cell( 0 );
 
+  free(pure_trans);
+
   return primitive;
 }
 
@@ -52,7 +53,9 @@ static int get_primitive( Cell * primitive, const Cell * cell,
 			  const double symprec )
 {
   int i, j;
-  double prim_lattice[3][3], relative_lattice[3][3], vectors[multi + 2][3];
+  double prim_lattice[3][3], relative_lattice[3][3];
+
+  double (*vectors)[3] = malloc( (multi+2) * sizeof(double[3]));
 
   /* store pure translations in original cell */ 
   /* as trial primitive lattice vectors */
@@ -82,6 +85,7 @@ static int get_primitive( Cell * primitive, const Cell * cell,
   /* Lattice of primitive cell is found among pure translation vectors */
   /* vectors[0], vectors[1], and vectors[2] are overwritten. */
   if ( ! get_least_axes( vectors, multi, cell, symprec ) ) {
+    free(vectors);
     return 0;
   }
 
@@ -101,8 +105,10 @@ static int get_primitive( Cell * primitive, const Cell * cell,
   brv_smallest_lattice_vector( primitive->lattice, prim_lattice, symprec );
 
   /* Fit atoms into new primitive cell */
-  if (!trim_cell( primitive, cell, symprec))
+  if (!trim_cell( primitive, cell, symprec)) {
+    free(vectors);
     return 0;
+  }
 
   debug_print("Original cell lattice.\n");
   debug_print_matrix_d3(cell->lattice);
@@ -115,6 +121,7 @@ static int get_primitive( Cell * primitive, const Cell * cell,
 	      mat_get_determinant_d3(cell->lattice),
 	      mat_get_determinant_d3(primitive->lattice));
 
+  free(vectors);
   return 1;
 }
 
@@ -122,9 +129,14 @@ static int get_primitive( Cell * primitive, const Cell * cell,
 static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
 {
   int i, j, k, count, ratio, attempt, finished, count_error=0, old_count_error=0;
-  int table[cell->size][cell->size], check_table[cell->size];
-  double axis_inv[3][3], tmp_matrix[3][3], position[cell->size][3];
+  double axis_inv[3][3], tmp_matrix[3][3];
   double trim_tolerance, tol_adjust;
+  double (*position)[3] = malloc(cell->size * sizeof(double[3]));
+  int *check_table = malloc(cell->size * sizeof(int));
+  int **table = (int**)malloc(cell->size * sizeof(int*));
+  for (i = 0; i < cell->size; i++) {
+    table[i] = (int*)malloc(cell->size * sizeof(int));
+  }
 
   ratio = cell->size / primitive->size;
   trim_tolerance = ratio * symprec;
@@ -190,6 +202,9 @@ static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
   } while (!finished && attempt < 1000);
   if (attempt >= 1000) {
     fprintf(stderr, "Bug: Could not trim cell into primitive.\n");
+    free(table);
+    free(check_table);
+    free(position);
     return 0;
   }
 
@@ -267,6 +282,9 @@ static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
   debug_print_vectors_with_label(primitive->position, primitive->types,
 				 primitive->size);
 
+  free(table);
+  free(check_table);
+  free(position);
   return 1;
 }
 

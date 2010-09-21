@@ -73,9 +73,9 @@ class SSHConnectionTest : public QObject
   // Tests
   void isValid();
   void isConnected1();
-  void disconnect();
+  void disconnectSession();
   void isConnected2();
-  void reconnect();
+  void reconnectSession();
 
   void execute();
 
@@ -152,7 +152,7 @@ void SSHConnectionTest::initTestCase()
     // chroot-jailed acct/pw = "test")
     conn = new SSHConnection();
     conn->setLoginDetails("testserver", "test", "test");
-    conn->connect();
+    conn->connectSession();
   }
   catch (SSHConnection::SSHConnectionException) {
     conn = 0;
@@ -198,9 +198,9 @@ void SSHConnectionTest::isConnected1()
   QVERIFY(conn->isConnected());
 }
 
-void SSHConnectionTest::disconnect()
+void SSHConnectionTest::disconnectSession()
 {
-  conn->disconnect();
+  conn->disconnectSession();
 }
 
 void SSHConnectionTest::isConnected2()
@@ -208,21 +208,21 @@ void SSHConnectionTest::isConnected2()
   QCOMPARE(conn->isConnected(), false);
 }
 
-void SSHConnectionTest::reconnect()
+void SSHConnectionTest::reconnectSession()
 {
-  QVERIFY(conn->reconnect(false));
+  QVERIFY(conn->reconnectSession(false));
 }
 
 void SSHConnectionTest::execute()
 {
   QString command = "expr 2 + 4";
-  QString stdout, stderr;
+  QString stdout_str, stderr_str;
   int ec;
 
   // Execute the command 200 times.
   QBENCHMARK_ONCE {
     for (int i = 1; i <= 200; i++) {
-      QVERIFY2(conn->execute(command, stdout, stderr, ec),
+      QVERIFY2(conn->execute(command, stdout_str, stderr_str, ec),
                QString("Execution of \'"
                        + command
                        + "\' (#"
@@ -231,12 +231,12 @@ void SSHConnectionTest::execute()
                        ).toStdString().c_str()
                );
       QCOMPARE(ec, 0);
-      QCOMPARE(stdout, QString("6\n"));
-      QVERIFY2(stderr.isEmpty(),
+      QCOMPARE(stdout_str, QString("6\n"));
+      QVERIFY2(stderr_str.isEmpty(),
                QString("Execution of \'"
                        + command
                        + "\' produced an error: "
-                       + stderr
+                       + stderr_str
                        ).toStdString().c_str()
                );
     }

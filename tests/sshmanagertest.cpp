@@ -149,16 +149,16 @@ void SSHManagerTest::lockAllAndExecute()
   }
 
   QString command = "expr 2 + 4";
-  QString stdout, stderr;
+  QString stdout_str, stderr_str;
   SSHConnection* conn;
   int ec;
 
   for (int i = 0; i < NUM_CONN; i++) {
     conn = list.at(i);
-    QVERIFY(conn->execute(command, stdout, stderr, ec));
+    QVERIFY(conn->execute(command, stdout_str, stderr_str, ec));
       QCOMPARE(ec, 0);
-      QCOMPARE(stdout, QString("6\n"));
-      QVERIFY(stderr.isEmpty());
+      QCOMPARE(stdout_str, QString("6\n"));
+      QVERIFY(stderr_str.isEmpty());
   }
 
   for (int i = 0; i < NUM_CONN; i++) {

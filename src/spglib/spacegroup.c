@@ -252,13 +252,13 @@ Symmetry tbl_get_conventional_symmetry(const Bravais *bravais,
 static int get_spacegroup_number(const Bravais *bravais, const Cell *cell,
 				 const Symmetry *prim_sym, const double symprec)
 {
-  int i, order, spacegroup;
+  int i, order, spacegroup, *rot_class;
   Symmetry symmetry;
 
   symmetry = tbl_get_conventional_symmetry(bravais, cell, prim_sym, symprec);
 
-  int rot_class[symmetry.size];
-  
+  rot_class = (int*)malloc(symmetry.size * sizeof(int));
+
   debug_print("*** get_spacegroup_number ***\n");
   for (i = 0; i < symmetry.size; i++) {
 
@@ -278,6 +278,7 @@ static int get_spacegroup_number(const Bravais *bravais, const Cell *cell,
     /* Error to find class */
     if (rot_class[i] == 0) {
       sym_delete_symmetry(&symmetry);
+      free(rot_class);
       return 0;
     }
   }
@@ -287,6 +288,7 @@ static int get_spacegroup_number(const Bravais *bravais, const Cell *cell,
 
   spacegroup = tbl_get_spacegroup_data(&symmetry, bravais, rot_class, symprec);
   sym_delete_symmetry(&symmetry);
+  free(rot_class);
   return spacegroup;
 }
 
