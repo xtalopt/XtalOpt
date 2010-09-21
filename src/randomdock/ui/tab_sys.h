@@ -39,6 +39,7 @@ namespace RandomDock {
     void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
+    void selectLocalPath();
     void updateSystemInfo();
 
   signals:
