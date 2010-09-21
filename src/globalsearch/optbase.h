@@ -108,7 +108,8 @@ namespace GlobalSearch {
      *
      * @return True if successful, false otherwise.
      */
-    virtual bool save(const QString & filename = "", bool notify = false) = 0;
+    virtual bool save(const QString & filename = "", bool notify = false)
+    {savePending = false;};
 
     /**
      * Load a search session from the specified filename.
