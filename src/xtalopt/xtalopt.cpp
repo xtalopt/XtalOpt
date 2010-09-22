@@ -441,6 +441,9 @@ namespace XtalOpt {
       return;
     }
 
+    // Sort structure list
+    Structure::sortByEnthalpy(&structures);
+
     QList<Xtal*> xtals;
     for (int i = 0; i < structures.size(); i++)
       xtals.append(qobject_cast<Xtal*>(structures.at(i)));
@@ -449,8 +452,7 @@ namespace XtalOpt {
     // return xtal
     Xtal *xtal = 0;
 
-    // Trim and sort list
-    XtalOpt::sortByEnthalpy(&xtals);
+    // Trim list
     // Remove all but (n_consider + 1). The "+ 1" will be removed
     // during probability generation.
     while ( static_cast<uint>(xtals.size()) > popSize + 1 )
@@ -922,146 +924,6 @@ namespace XtalOpt {
     return str;
   }
 
-
-  bool XtalOpt::save(const QString &stateFilename, bool notify) {
-    if (isStarting ||
-        readOnly) {
-      savePending = false;
-      return false;
-    }
-    QReadLocker trackerLocker (m_tracker->rwLock());
-    QMutexLocker locker (stateFileMutex);
-    QString filename;
-    if (stateFilename.isEmpty()) {
-      filename = filePath + "/xtalopt.state";
-    }
-    else {
-      filename = stateFilename;
-    }
-    QString oldfilename = filename + ".old";
-
-    if (notify) {
-      m_dialog->startProgressUpdate(tr("Saving: Writing %1...")
-                                    .arg(filename),
-                                    0, 0);
-    }
-
-    // Copy xtalopt.state -> xtalopt.state.old
-    if (QFile::exists(filename) ) {
-      if (QFile::exists(oldfilename)) {
-        QFile::remove(oldfilename);
-      }
-      QFile::copy(filename, oldfilename);
-    }
-
-    SETTINGS(filename);
-    const int VERSION = 1;
-    settings->setValue("xtalopt/version",          VERSION);
-    settings->setValue("xtalopt/saveSuccessful", false);
-
-    // Write/update xtalopt.state
-    m_dialog->writeSettings(filename);
-
-    // Loop over xtals and save them
-    QList<Structure*> *structures = m_tracker->list();
-
-    QString xtalStateFileName;
-
-    Xtal* xtal;
-    for (int i = 0; i < structures->size(); i++) {
-      xtal = qobject_cast<Xtal*>(structures->at(i));
-      xtal->lock()->lockForRead();
-      // Set index here -- this is the only time these are written, so
-      // this is ok under a read lock because of the savePending logic
-      xtal->setIndex(i);
-      xtalStateFileName = xtal->fileName() + "/xtal.state";
-      if (notify) {
-        m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
-                                      .arg(xtalStateFileName));
-      }
-      xtal->writeSettings(xtalStateFileName);
-      xtal->lock()->unlock();
-    }
-
-    /////////////////////////
-    // Print results files //
-    /////////////////////////
-
-    QFile file (filePath + "/results.txt");
-    QFile oldfile (filePath + "/results_old.txt");
-    if (notify) {
-      m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
-                                    .arg(file.fileName()));
-    }
-    if (oldfile.open(QIODevice::ReadOnly))
-      oldfile.remove();
-    if (file.open(QIODevice::ReadOnly))
-      file.copy(oldfile.fileName());
-    file.close();
-    if (!file.open(QIODevice::WriteOnly)) {
-      error("XtalOpt::save(): Error opening file "+file.fileName()+" for writing...");
-      savePending = false;
-      return false;
-    }
-    QTextStream out (&file);
-
-    QList<Xtal*> sortedXtals;
-
-    for (int i = 0; i < structures->size(); i++)
-      sortedXtals.append(qobject_cast<Xtal*>(structures->at(i)));
-    if (sortedXtals.size() != 0) sortByEnthalpy(&sortedXtals);
-
-    // Print the data to the file:
-    out << "Rank\tGen\tID\tEnthalpy\tSpaceGroup\tStatus\n";
-    for (int i = 0; i < sortedXtals.size(); i++) {
-      xtal = sortedXtals.at(i);
-      if (!xtal) continue; // In case there was a problem copying.
-      xtal->lock()->lockForRead();
-      out << i << "\t"
-          << xtal->getGeneration() << "\t"
-          << xtal->getIDNumber() << "\t"
-          << xtal->getEnthalpy() << "\t\t"
-          << xtal->getSpaceGroupNumber() << ": " << xtal->getSpaceGroupSymbol() << "\t\t";
-      // Status:
-      switch (xtal->getStatus()) {
-      case Xtal::Optimized:
-        out << "Optimized";
-        break;
-      case Xtal::Killed:
-      case Xtal::Removed:
-        out << "Killed";
-        break;
-      case Xtal::Duplicate:
-        out << "Duplicate";
-        break;
-      case Xtal::Error:
-        out << "Error";
-        break;
-      case Xtal::StepOptimized:
-      case Xtal::WaitingForOptimization:
-      case Xtal::InProcess:
-      case Xtal::Empty:
-      case Xtal::Updating:
-      case Xtal::Submitted:
-      default:
-        out << "In progress";
-        break;
-      }
-      xtal->lock()->unlock();
-      out << endl;
-      if (notify) {
-        m_dialog->stopProgressUpdate();
-      }
-    }
-
-    // Mark operation successful
-    settings->setValue("xtalopt/saveSuccessful", true);
-    DESTROY_SETTINGS(filename);
-
-    savePending = false;
-    return true;
-  }
-
   bool XtalOpt::load(const QString &filename) {
     // Attempt to open state file
     QFile file (filename);
@@ -1097,7 +959,9 @@ namespace XtalOpt {
     xtalDirs.removeAll(".");
     xtalDirs.removeAll("..");
     for (int i = 0; i < xtalDirs.size(); i++) {
-      if (!QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/xtal.state")) {
+      // old versions of xtalopt used xtal.state, so still check for it.
+      if (!QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/structure.state") &&
+          !QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/xtal.state") ) {
           xtalDirs.removeAt(i);
           i--;
       }
@@ -1205,7 +1069,12 @@ namespace XtalOpt {
       m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...").arg(count).arg(numDirs));
       m_dialog->updateProgressValue(count-1);
 
-      xtalStateFileName = dataPath + "/" + xtalDirs.at(i) + "/xtal.state";
+      xtalStateFileName = dataPath + "/" + xtalDirs.at(i) + "/structure.state";
+      // Check if this is an older session that used xtal.state instead.
+      if ( !QFile::exists(xtalStateFileName) &&
+           QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/xtal.state") ) {
+        xtalStateFileName = dataPath + "/" + xtalDirs.at(i) + "/xtal.state";
+      }
 
       xtal = new Xtal();
       QWriteLocker locker (xtal->lock());

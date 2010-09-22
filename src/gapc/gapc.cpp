@@ -96,13 +96,6 @@ namespace GAPC {
     return true;
   }
 
-  bool OptGAPC::save(const QString & filename, bool notify)
-  {
-    savePending = false;
-    // TODO
-    return true;
-  }
-
   bool OptGAPC::load(const QString & filename)
   {
     // TODO

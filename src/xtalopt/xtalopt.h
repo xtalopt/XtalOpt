@@ -61,7 +61,6 @@ namespace XtalOpt {
     bool checkXtal(Xtal *xtal);
     QString interpretTemplate(const QString & templateString, Structure* structure);
     QString getTemplateKeywordHelp();
-    bool save(const QString & filename = "", bool notify = false);
     bool load(const QString & filename);
     static QList<double> getProbabilityList(QList<Xtal*> *xtals);
 

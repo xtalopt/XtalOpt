@@ -210,6 +210,41 @@ namespace GlobalSearch {
     setEnergies(E);
   }
 
+  QString Structure::getResultsEntry() const
+  {
+    QString status;
+    switch (getStatus()) {
+    case Optimized:
+      status = "Optimized";
+      break;
+    case Killed:
+    case Removed:
+      status = "Killed";
+      break;
+    case Duplicate:
+      status = "Duplicate";
+      break;
+    case Error:
+      status = "Error";
+      break;
+    case StepOptimized:
+    case WaitingForOptimization:
+    case InProcess:
+    case Empty:
+    case Updating:
+    case Submitted:
+    default:
+      status = "In progress";
+      break;
+    }
+    return QString("%1 %2 %3 %4 %5")
+      .arg(getRank(), 6)
+      .arg(getGeneration(), 6)
+      .arg(getIDNumber(), 6)
+      .arg(getEnthalpy(), 10)
+      .arg(status, 11);
+  };
+
   bool Structure::getShortestInteratomicDistance(double & shortest) const
   {
     QList<Atom*> atomList = atoms();

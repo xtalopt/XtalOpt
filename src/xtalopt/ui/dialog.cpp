@@ -128,8 +128,8 @@ namespace XtalOpt {
       return;
     }
     m_opt->savePending = true;
-    QtConcurrent::run(qobject_cast<XtalOpt*>(m_opt),
-                      &XtalOpt::save,
+    QtConcurrent::run(m_opt,
+                      &OptBase::save,
                       QString(""),
                       notify);
   }

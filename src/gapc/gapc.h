@@ -118,18 +118,6 @@ namespace GAPC {
     bool checkPC(ProtectedCluster *pc);
 
     /**
-     * Save the current search. If filename is omitted, default to
-     * m_filePath + "/[search name].state". Must set
-     * OptBase::savePending = true before calling.
-     *
-     * @param filename Filename to write to. Optional.
-     * @param notify Whether to display a user-visible notification
-     *
-     * @return True if successful, false otherwise.
-     */
-    bool save(const QString & filename = "", bool notify = false);
-
-    /**
      * Load a search session from the specified filename.
      *
      * @param filename State file to resume.

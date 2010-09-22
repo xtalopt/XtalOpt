@@ -304,6 +304,24 @@ namespace GlobalSearch {
     QString getIDString() const {
       return tr("%1x%2").arg(getGeneration()).arg(getIDNumber());};
 
+    /** @return A header line for a results printout
+     * @sa getResultsEntry
+     * @sa OptBase::save
+     */
+    virtual QString getResultsHeader() const {
+      return QString("%1 %2 %3 %4 %5")
+        .arg("Rank", 6)
+        .arg("Gen", 6)
+        .arg("ID", 6)
+        .arg("Enthalpy", 10)
+        .arg("Status", 11);};
+
+    /** @return A structure-specific entry for a results printout
+     * @sa getResultsHeader
+     * @sa OptBase::save
+     */
+    virtual QString getResultsEntry() const;
+
     /** Find the smallest separation between all atoms in the
      * Structure.
      *
