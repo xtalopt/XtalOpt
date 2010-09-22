@@ -210,6 +210,41 @@ namespace GlobalSearch {
     setEnergies(E);
   }
 
+  QString Structure::getResultsEntry() const
+  {
+    QString status;
+    switch (getStatus()) {
+    case Optimized:
+      status = "Optimized";
+      break;
+    case Killed:
+    case Removed:
+      status = "Killed";
+      break;
+    case Duplicate:
+      status = "Duplicate";
+      break;
+    case Error:
+      status = "Error";
+      break;
+    case StepOptimized:
+    case WaitingForOptimization:
+    case InProcess:
+    case Empty:
+    case Updating:
+    case Submitted:
+    default:
+      status = "In progress";
+      break;
+    }
+    return QString("%1 %2 %3 %4 %5")
+      .arg(getRank(), 6)
+      .arg(getGeneration(), 6)
+      .arg(getIDNumber(), 6)
+      .arg(getEnthalpy(), 10)
+      .arg(status, 11);
+  };
+
   bool Structure::getShortestInteratomicDistance(double & shortest) const
   {
     QList<Atom*> atomList = atoms();
@@ -431,6 +466,77 @@ namespace GlobalSearch {
     return QHash<QString, double> ();
   }
 
-} // end namespace Avogadro
+  void Structure::sortByEnthalpy(QList<Structure*> *structures)
+  {
+    uint numStructs = structures->size();
 
-//#include "structure.moc"
+    // Simple selection sort
+    Structure *structure_i=0, *structure_j=0, *tmp=0;
+    for (uint i = 0; i < numStructs-1; i++) {
+      structure_i = structures->at(i);
+      structure_i->lock()->lockForRead();
+      for (uint j = i+1; j < numStructs; j++) {
+        structure_j = structures->at(j);
+        structure_j->lock()->lockForRead();
+        if (structure_j->getEnthalpy() < structure_i->getEnthalpy()) {
+          structures->swap(i,j);
+          tmp = structure_i;
+          structure_i = structure_j;
+          structure_j = tmp;
+        }
+        structure_j->lock()->unlock();
+      }
+      structure_i->lock()->unlock();
+    }
+  }
+
+  void rankInPlace(const QList<Structure*> &structures)
+  {
+    Structure *s;
+    for (uint i = 0; i < structures.size(); i++) {
+      s = structures.at(i);
+      s->lock()->lockForWrite();
+      s->setRank(i+1);
+      s->lock()->unlock();
+    }
+  }
+
+  void Structure::rankByEnthalpy(const QList<Structure*> &structures)
+  {
+    uint numStructs = structures.size();
+    QList<Structure*> rstructures;
+
+    // Copy structures to a temporary list (don't modify input list!)
+    for (uint i = 0; i < numStructs; i++)
+      rstructures.append(structures.at(i));
+
+    // Simple selection sort
+    Structure *structure_i=0, *structure_j=0, *tmp=0;
+    for (uint i = 0; i < numStructs-1; i++) {
+      structure_i = rstructures.at(i);
+      structure_i->lock()->lockForRead();
+      for (uint j = i+1; j < numStructs; j++) {
+        structure_j = rstructures.at(j);
+        structure_j->lock()->lockForRead();
+        if (structure_j->getEnthalpy() < structure_i->getEnthalpy()) {
+          rstructures.swap(i,j);
+          tmp = structure_i;
+          structure_i = structure_j;
+          structure_j = tmp;
+        }
+        structure_j->lock()->unlock();
+      }
+      structure_i->lock()->unlock();
+    }
+
+    rankInPlace(rstructures);
+  }
+
+  void Structure::sortAndRankByEnthalpy(QList<Structure*> *structures)
+  {
+    sortByEnthalpy(structures);
+    rankInPlace(*structures);
+  }
+
+
+} // end namespace GlobalSearch

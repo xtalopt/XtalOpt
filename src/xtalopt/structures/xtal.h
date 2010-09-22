@@ -44,6 +44,15 @@ namespace XtalOpt {
     bool getNearestNeighborHistogram(QList<double> & distance, QList<double> & frequency, double min, double max, double step, Atom *atom = 0) const;
     bool addAtomRandomly(uint atomicNumber, double minIAD = 0.0, double maxIAD = 0.0, int maxAttempts = 100.0, Atom **atom = 0); //maxIAD is not used.
     QHash<QString, double> getFingerprint();
+    virtual QString getResultsEntry() const;
+    virtual QString getResultsHeader() const {
+      return QString("%1 %2 %3 %4 %5 %6")
+        .arg("Rank", 6)
+        .arg("Gen", 6)
+        .arg("ID", 6)
+        .arg("Enthalpy", 10)
+        .arg("SpaceGroup", 10)
+        .arg("Status", 11);};
 
     // Cell paramters
     double getA()       const {return cell()->GetA();};

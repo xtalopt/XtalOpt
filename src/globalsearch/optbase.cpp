@@ -23,6 +23,7 @@
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/bt.h>
 
+#include <QtCore/QFile>
 #include <QtGui/QInputDialog>
 #include <QtGui/QMessageBox>
 
@@ -87,6 +88,119 @@ namespace GlobalSearch {
     backTraceMutex->unlock();
     for (int i = 0; i < l.size();i++)
       qDebug() << l.at(i);
+  }
+
+  bool OptBase::save(const QString &stateFilename, bool notify)
+  {
+    if (isStarting ||
+        readOnly) {
+      savePending = false;
+      return false;
+    }
+    QReadLocker trackerLocker (m_tracker->rwLock());
+    QMutexLocker locker (stateFileMutex);
+    QString filename;
+    if (stateFilename.isEmpty()) {
+      filename = filePath + "/" + m_idString.toLower() + ".state";
+    }
+    else {
+      filename = stateFilename;
+    }
+    QString oldfilename = filename + ".old";
+
+    if (notify) {
+      m_dialog->startProgressUpdate(tr("Saving: Writing %1...")
+                                    .arg(filename),
+                                    0, 0);
+    }
+
+    // Copy .state -> .state.old
+    if (QFile::exists(filename) ) {
+      if (QFile::exists(oldfilename)) {
+        QFile::remove(oldfilename);
+      }
+      QFile::copy(filename, oldfilename);
+    }
+
+    SETTINGS(filename);
+    const int VERSION = 1;
+    settings->beginGroup(m_idString.toLower());
+    settings->setValue("version",          VERSION);
+    settings->setValue("saveSuccessful", false);
+    settings->endGroup();
+
+    // Write/update .state
+    m_dialog->writeSettings(filename);
+
+    // Loop over structures and save them
+    QList<Structure*> *structures = m_tracker->list();
+
+    QString structureStateFileName;
+
+    Structure* structure;
+    for (int i = 0; i < structures->size(); i++) {
+      structure = structures->at(i);
+      structure->lock()->lockForRead();
+      // Set index here -- this is the only time these are written, so
+      // this is "ok" under a read lock because of the savePending logic
+      structure->setIndex(i);
+      structureStateFileName = structure->fileName() + "/structure.state";
+      if (notify) {
+        m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
+                                      .arg(structureStateFileName));
+      }
+      structure->writeSettings(structureStateFileName);
+      structure->lock()->unlock();
+    }
+
+    /////////////////////////
+    // Print results files //
+    /////////////////////////
+
+    QFile file (filePath + "/results.txt");
+    QFile oldfile (filePath + "/results_old.txt");
+    if (notify) {
+      m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
+                                    .arg(file.fileName()));
+    }
+    if (oldfile.open(QIODevice::ReadOnly))
+      oldfile.remove();
+    if (file.open(QIODevice::ReadOnly))
+      file.copy(oldfile.fileName());
+    file.close();
+    if (!file.open(QIODevice::WriteOnly)) {
+      error("OptBase::save(): Error opening file "+file.fileName()+" for writing...");
+      savePending = false;
+      return false;
+    }
+    QTextStream out (&file);
+
+    QList<Structure*> sortedStructures;
+
+    for (int i = 0; i < structures->size(); i++)
+      sortedStructures.append(structures->at(i));
+    if (sortedStructures.size() != 0) {
+      Structure::sortAndRankByEnthalpy(&sortedStructures);
+      out << sortedStructures.first()->getResultsHeader() << endl;
+    }
+
+    for (int i = 0; i < sortedStructures.size(); i++) {
+      structure = sortedStructures.at(i);
+      if (!structure) continue; // In case there was a problem copying.
+      structure->lock()->lockForRead();
+      out << structure->getResultsEntry() << endl;
+      structure->lock()->unlock();
+      if (notify) {
+        m_dialog->stopProgressUpdate();
+      }
+    }
+
+    // Mark operation successful
+    settings->setValue(m_idString.toLower() + "/saveSuccessful", true);
+    DESTROY_SETTINGS(filename);
+
+    savePending = false;
+    return true;
   }
 
   QString OptBase::interpretTemplate(const QString & str, Structure* structure)

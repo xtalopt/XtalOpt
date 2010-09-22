@@ -602,6 +602,43 @@ namespace XtalOpt {
     return fp;
   }
 
+  QString Xtal::getResultsEntry() const
+  {
+    QString status;
+    switch (getStatus()) {
+    case Optimized:
+      status = "Optimized";
+      break;
+    case Killed:
+    case Removed:
+      status = "Killed";
+      break;
+    case Duplicate:
+      status = "Duplicate";
+      break;
+    case Error:
+      status = "Error";
+      break;
+    case StepOptimized:
+    case WaitingForOptimization:
+    case InProcess:
+    case Empty:
+    case Updating:
+    case Submitted:
+    default:
+      status = "In progress";
+      break;
+    }
+    return QString("%1 %2 %3 %4 %5 %6")
+      .arg(getRank(), 6)
+      .arg(getGeneration(), 6)
+      .arg(getIDNumber(), 6)
+      .arg(getEnthalpy(), 10)
+      .arg(m_spgSymbol, 10)
+      .arg(status, 11);
+  };
+
+
   uint Xtal::getSpaceGroupNumber() {
     if (m_spgNumber > 230)
       findSpaceGroup();

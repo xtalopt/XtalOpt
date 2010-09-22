@@ -61,10 +61,7 @@ namespace XtalOpt {
     bool checkXtal(Xtal *xtal);
     QString interpretTemplate(const QString & templateString, Structure* structure);
     QString getTemplateKeywordHelp();
-    bool save(const QString & filename = "", bool notify = false);
     bool load(const QString & filename);
-    static void sortByEnthalpy(QList<Xtal*> *xtals);
-    static void rankEnthalpies(QList<Xtal*> *xtals);
     static QList<double> getProbabilityList(QList<Xtal*> *xtals);
 
     uint numInitial;                    // Number of initial structures

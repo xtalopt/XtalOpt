@@ -115,8 +115,8 @@ namespace GAPC {
       return;
     }
     m_opt->savePending = true;
-    QtConcurrent::run(qobject_cast<OptGAPC*>(m_opt),
-                      &OptGAPC::save,
+    QtConcurrent::run(m_opt,
+                      &OptBase::save,
                       QString(""),
                       notify);
   }

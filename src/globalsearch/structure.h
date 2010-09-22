@@ -304,6 +304,24 @@ namespace GlobalSearch {
     QString getIDString() const {
       return tr("%1x%2").arg(getGeneration()).arg(getIDNumber());};
 
+    /** @return A header line for a results printout
+     * @sa getResultsEntry
+     * @sa OptBase::save
+     */
+    virtual QString getResultsHeader() const {
+      return QString("%1 %2 %3 %4 %5")
+        .arg("Rank", 6)
+        .arg("Gen", 6)
+        .arg("ID", 6)
+        .arg("Enthalpy", 10)
+        .arg("Status", 11);};
+
+    /** @return A structure-specific entry for a results printout
+     * @sa getResultsHeader
+     * @sa OptBase::save
+     */
+    virtual QString getResultsEntry() const;
+
     /** Find the smallest separation between all atoms in the
      * Structure.
      *
@@ -437,6 +455,34 @@ namespace GlobalSearch {
      * representative of the Structure.
      */
     virtual QHash<QString, double> getFingerprint();
+
+    /** Sort the listed structures by their enthalpies
+     *
+     * @param structures List of structures to sort
+     * @sa rankEnthalpies
+     * @sa sortAndRankByEnthalpy
+     */
+    static void sortByEnthalpy(QList<Structure*> *structures);
+
+    /** Rank the listed structures by their enthalpies
+     *
+     * @param structures List of structures to assign ranks
+     * @sa sortEnthalpies
+     * @sa sortAndRankByEnthalpy
+     * @sa setRank
+     * @sa getRank
+     */
+    static void rankByEnthalpy(const QList<Structure*> &structures);
+
+    /** Sort and rank the listed structures by their enthalpies
+     *
+     * @param structures List of structures to sort and assign rank
+     * @sa sortByEnthalpy
+     * @sa rankEnthalpies
+     * @sa setRank
+     * @sa getRank
+     */
+    static void sortAndRankByEnthalpy(QList<Structure*> *structures);
 
    signals:
 
