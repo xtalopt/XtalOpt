@@ -232,65 +232,6 @@ namespace XtalOpt {
     emit sessionStarted();
   }
 
-  void XtalOpt::sortByEnthalpy(QList<Xtal*> *xtals) {
-    uint numStructs = xtals->size();
-
-    // Simple selection sort
-    Xtal *xtal_i=0, *xtal_j=0, *tmp=0;
-    for (uint i = 0; i < numStructs-1; i++) {
-      xtal_i = xtals->at(i);
-      xtal_i->lock()->lockForRead();
-      for (uint j = i+1; j < numStructs; j++) {
-        xtal_j = xtals->at(j);
-        xtal_j->lock()->lockForRead();
-        if (xtal_j->getEnthalpy() < xtal_i->getEnthalpy()) {
-          xtals->swap(i,j);
-          tmp = xtal_i;
-          xtal_i = xtal_j;
-          xtal_j = tmp;
-        }
-        xtal_j->lock()->unlock();
-      }
-      xtal_i->lock()->unlock();
-    }
-  }
-
-  void XtalOpt::rankEnthalpies(QList<Xtal*> *xtals) {
-    uint numStructs = xtals->size();
-    QList<Xtal*> rxtals;
-
-    // Copy xtals to a temporary list (don't modify input list!)
-    for (uint i = 0; i < numStructs; i++)
-      rxtals.append(xtals->at(i));
-
-    // Simple selection sort
-    Xtal *xtal_i=0, *xtal_j=0, *tmp=0;
-    for (uint i = 0; i < numStructs-1; i++) {
-      xtal_i = rxtals.at(i);
-      xtal_i->lock()->lockForRead();
-      for (uint j = i+1; j < numStructs; j++) {
-        xtal_j = rxtals.at(j);
-        xtal_j->lock()->lockForRead();
-        if (xtal_j->getEnthalpy() < xtal_i->getEnthalpy()) {
-          rxtals.swap(i,j);
-          tmp = xtal_i;
-          xtal_i = xtal_j;
-          xtal_j = tmp;
-        }
-        xtal_j->lock()->unlock();
-      }
-      xtal_i->lock()->unlock();
-    }
-
-    // Set rankings
-    for (uint i = 0; i < numStructs; i++) {
-      xtal_i = rxtals.at(i);
-      xtal_i->lock()->lockForWrite();
-      xtal_i->setRank(i+1);
-      xtal_i->lock()->unlock();
-    }
-  }
-
   Structure* XtalOpt::replaceWithRandom(Structure *s, const QString & reason) {
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
     QWriteLocker locker1 (oldXtal->lock());

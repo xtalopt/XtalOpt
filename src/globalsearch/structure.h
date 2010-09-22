@@ -438,6 +438,34 @@ namespace GlobalSearch {
      */
     virtual QHash<QString, double> getFingerprint();
 
+    /** Sort the listed structures by their enthalpies
+     *
+     * @param structures List of structures to sort
+     * @sa rankEnthalpies
+     * @sa sortAndRankByEnthalpy
+     */
+    static void sortByEnthalpy(QList<Structure*> *structures);
+
+    /** Rank the listed structures by their enthalpies
+     *
+     * @param structures List of structures to assign ranks
+     * @sa sortEnthalpies
+     * @sa sortAndRankByEnthalpy
+     * @sa setRank
+     * @sa getRank
+     */
+    static void rankByEnthalpy(const QList<Structure*> &structures);
+
+    /** Sort and rank the listed structures by their enthalpies
+     *
+     * @param structures List of structures to sort and assign rank
+     * @sa sortByEnthalpy
+     * @sa rankEnthalpies
+     * @sa setRank
+     * @sa getRank
+     */
+    static void sortAndRankByEnthalpy(QList<Structure*> *structures);
+
    signals:
 
    public slots:
