@@ -96,9 +96,234 @@ namespace GAPC {
     return true;
   }
 
-  bool OptGAPC::load(const QString & filename)
-  {
-    // TODO
+  bool OptGAPC::load(const QString &filename) {
+    // Attempt to open state file
+    QFile file (filename);
+    if (!file.open(QIODevice::ReadOnly)) {
+      error("OptGAPC::load(): Error opening file "+file.fileName()+" for reading...");
+      return false;
+    }
+
+    SETTINGS(filename);
+    int loadedVersion = settings->value(m_idString.toLower() + "/version", 0).toInt();
+
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1:
+    default:
+      break;
+    }
+
+    bool stateFileIsValid = settings->value(m_idString.toLower() + "/saveSuccessful", false).toBool();
+    if (!stateFileIsValid) {
+      error("OptGAPC::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid. (Try "
+            + file.fileName() + ".old if it exists)");
+      return false;
+    }
+
+    // Get path and other info for later:
+    QFileInfo stateInfo (file);
+    // path to resume file
+    QDir dataDir  = stateInfo.absoluteDir();
+    QString dataPath = dataDir.absolutePath() + "/";
+    // list of xtal dirs
+    QStringList structureDirs = dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
+    structureDirs.removeAll(".");
+    structureDirs.removeAll("..");
+    for (int i = 0; i < structureDirs.size(); i++) {
+      // old versions of xtalopt used xtal.state, so still check for it.
+      if (!QFile::exists(dataPath + "/" + structureDirs.at(i) + "/structure.state") ){
+        structureDirs.removeAt(i);
+        i--;
+      }
+    }
+
+    // Set filePath:
+    QString newFilePath = dataPath;
+    QString newFileBase = filename;
+    newFileBase.remove(newFilePath);
+    newFileBase.remove(m_idString.toLower() + ".state.old");
+    newFileBase.remove(m_idString.toLower() + ".state.tmp");
+    newFileBase.remove(m_idString.toLower() + ".state");
+
+    m_dialog->readSettings(filename);
+
+    // Set optimizer
+    setOptimizer(OptTypes(settings->value(m_idString.toLower() + "/edit/optType").toInt()),
+                 filename);
+
+    // Create SSHConnection
+    if (m_optimizer->getIDString() != "OpenBabel") { // OpenBabel won't use ssh
+      QString pw = "";
+      for (;;) {
+        try {
+          m_ssh->makeConnections(host, username, pw, port);
+        }
+        catch (SSHConnection::SSHConnectionException e) {
+          QString err;
+          switch (e) {
+          case SSHConnection::SSH_CONNECTION_ERROR:
+          case SSHConnection::SSH_UNKNOWN_ERROR:
+          default:
+            err = "There was a problem connection to the ssh server at "
+              + username + "@" + host + ":" + QString::number(port) + ". "
+              + "Please check that all provided information is correct, "
+              + "and attempt to log in outside of Avogadro before trying again."
+              + "XtalOpt will continue to load in read-only mode.";
+            error(err);
+            readOnly = true;
+            break;
+          case SSHConnection::SSH_UNKNOWN_HOST_ERROR: {
+            // The host is not known, or has changed its key.
+            // Ask user if this is ok.
+            err = "The host "
+              + host + ":" + QString::number(port)
+              + " either has an unknown key, or has changed it's key:\n"
+              + m_ssh->getServerKeyHash() + "\n"
+              + "Would you like to trust the specified host? (Clicking 'No' will"
+              + "resume the session in read only mode.)";
+            bool ok;
+            // Commenting this until ticket:53 (load in bg thread) is fixed
+            // // This is a BlockingQueuedConnection, which blocks until
+            // // the slot returns.
+            // emit needPassword(err, &newPassword, &ok);
+            promptForBoolean(err, &ok);
+            if (!ok) { // user cancels
+              readOnly = true;
+              break;
+            }
+            m_ssh->validateServerKey();
+            continue;
+          } // end case
+          case SSHConnection::SSH_BAD_PASSWORD_ERROR: {
+            // Chances are that the pubkey auth was attempted but failed,
+            // so just prompt user for password.
+            err = "Please enter a password for "
+              + username + "@" + host + ":" + QString::number(port)
+              + " or cancel to load the session in read-only mode.";
+            bool ok;
+            QString newPassword;
+            // Commenting this until ticket:53 (load in bg thread) is fixed
+            // // This is a BlockingQueuedConnection, which blocks until
+            // // the slot returns.
+            // emit needPassword(err, &newPassword, &ok);
+            promptForPassword(err, &newPassword, &ok);
+            if (!ok) { // user cancels
+              readOnly = true;
+              break;
+            }
+            pw = newPassword;
+            continue;
+          } // end case
+          } // end switch
+        } // end catch
+        break;
+      } // end forever
+    }
+
+    debug(tr("Resuming %1 session in '%2' (%3) readOnly = %4")
+          .arg(m_idString)
+          .arg(filename)
+          .arg(m_optimizer->getIDString())
+          .arg( (readOnly) ? "true" : "false"));
+
+    // Structures
+    // Initialize progress bar:
+    m_dialog->updateProgressMaximum(structureDirs.size());
+    ProtectedCluster *pc;
+    QList<uint> keys = comp.core.keys();
+    QList<Structure*> loadedStructures;
+    QString pcStateFileName;
+    uint count = 0;
+    int numDirs = structureDirs.size();
+    for (int i = 0; i < numDirs; i++) {
+      count++;
+      m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...").arg(count).arg(numDirs));
+      m_dialog->updateProgressValue(count-1);
+
+      pcStateFileName = dataPath + "/" + structureDirs.at(i) + "/structure.state";
+
+      pc = new ProtectedCluster();
+      QWriteLocker locker (pc->lock());
+      // Add empty atoms to xtal, updateXtal will populate it
+      for (int j = 0; j < keys.size(); j++) {
+        for (uint k = 0; k < comp.core.value(keys.at(j)); k++)
+          pc->addAtom();
+      }
+      pc->setFileName(dataPath + "/" + structureDirs.at(i) + "/");
+      pc->readSettings(pcStateFileName);
+
+      // Store current state -- updateXtal will overwrite it.
+      ProtectedCluster::State state = pc->getStatus();
+      QDateTime endtime = pc->getOptTimerEnd();
+
+      locker.unlock();
+
+      if (!m_optimizer->load(pc)) {
+        error(tr("Error, no (or not appropriate for %1) structural data in %2.\n\n\
+This could be a result of resuming a structure that has not yet done any local \
+optimizations. If so, safely ignore this message.")
+              .arg(m_optimizer->getIDString())
+              .arg(pc->fileName()));
+        continue;
+      }
+
+      // Reset state
+      locker.relock();
+      pc->setStatus(state);
+      pc->setOptTimerEnd(endtime);
+      locker.unlock();
+      loadedStructures.append(qobject_cast<Structure*>(pc));
+    }
+
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressValue(0);
+    m_dialog->updateProgressMaximum(loadedStructures.size());
+    m_dialog->updateProgressLabel("Sorting and checking structures...");
+
+    // Sort structures by index values
+    int curpos = 0;
+    for (int i = 0; i < loadedStructures.size(); i++) {
+      m_dialog->updateProgressValue(i);
+      for (int j = 0; j < loadedStructures.size(); j++) {
+        if (loadedStructures.at(j)->getIndex() == i) {
+          loadedStructures.swap(j, curpos);
+          curpos++;
+        }
+      }
+    }
+
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressValue(0);
+    m_dialog->updateProgressMaximum(loadedStructures.size());
+    m_dialog->updateProgressLabel("Updating structure indices...");
+
+    // Reassign indices (shouldn't always be necessary, but just in case...)
+    for (int i = 0; i < loadedStructures.size(); i++) {
+      m_dialog->updateProgressValue(i);
+      loadedStructures.at(i)->setIndex(i);
+    }
+
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressValue(0);
+    m_dialog->updateProgressMaximum(loadedStructures.size());
+    m_dialog->updateProgressLabel("Preparing GUI and tracker...");
+
+    // Reset the local file path information in case the files have moved
+    filePath = newFilePath;
+
+    Structure *s= 0;
+    for (int i = 0; i < loadedStructures.size(); i++) {
+      s = loadedStructures.at(i);
+      m_dialog->updateProgressValue(i);
+      m_tracker->append(s);
+      if (s->getStatus() == Structure::WaitingForOptimization)
+        m_queue->appendToJobStartTracker(s);
+    }
+
+    m_dialog->updateProgressLabel("Done!");
+
     return true;
   }
 
