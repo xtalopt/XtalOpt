@@ -74,19 +74,6 @@ namespace XtalOpt {
     }
     // Write all explicit templates
     if (!writeTemplates(structure)) return false;
-    // job.sh is always the same
-    int optStepInd = optStep - 1;
-    QFile ls (structure->fileName() + "/xtal.sh");
-    if (!ls.open( QIODevice::WriteOnly | QIODevice::Text)) {
-      m_opt->warning(tr("Cannot write input files to specified path: %1 (file writing failure)", "1 is a file path").arg(structure->fileName()));
-      return false;
-    }
-    QTextStream ls_s (&ls);
-    ls_s	<< "#!/bin/bash\n"
-                << "cd " << structure->fileName() << endl
-                << "gulp < xtal.gin > xtal.got" << endl
-                << "exit 0" << endl;
-    ls.close();
 
     // No copying to server -- GULP is local only for now.
 
@@ -99,7 +86,9 @@ namespace XtalOpt {
   }
 
   bool GULPOptimizer::startOptimization(Structure *structure) {
-    QString command = "bash " + structure->fileName() + "/xtal.sh";
+    QString command = "cd " + structure->fileName() + " && "
+      + " gulp < xtal.gin > xtal.got";
+
 
     structure->setStatus(Xtal::InProcess);
     structure->startOptTimer();
