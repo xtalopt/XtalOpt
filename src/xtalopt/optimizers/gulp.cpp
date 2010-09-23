@@ -15,6 +15,7 @@
 
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/structures/xtal.h>
+#include <xtalopt/xtalopt.h>
 
 #include <QtCore/QProcess>
 #include <QtCore/QDir>
@@ -87,7 +88,8 @@ namespace XtalOpt {
 
   bool GULPOptimizer::startOptimization(Structure *structure) {
     QString command = "cd " + structure->fileName() + " && "
-      + " gulp < xtal.gin > xtal.got";
+      + " " + qobject_cast<XtalOpt*>(m_opt)->gulpPath
+      + " < xtal.gin > xtal.got";
 
 
     structure->setStatus(Xtal::InProcess);

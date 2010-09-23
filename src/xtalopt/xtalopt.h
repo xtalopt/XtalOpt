@@ -106,6 +106,8 @@ namespace XtalOpt {
 
     QMutex *xtalInitMutex;
 
+    QString gulpPath;
+
    signals:
     void newInfoUpdate();
     void updateAllInfo();
