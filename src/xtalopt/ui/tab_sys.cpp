@@ -35,6 +35,8 @@ namespace XtalOpt {
     // System Settings connections
     connect(ui.edit_path, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
+    connect(ui.push_path, SIGNAL(clicked()),
+            this, SLOT(selectLocalPath()));
     connect(ui.edit_description, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_qsub, SIGNAL(editingFinished()),
@@ -53,8 +55,10 @@ namespace XtalOpt {
             this, SLOT(updateSystemInfo()));
     connect(ui.edit_rempath, SIGNAL(editingFinished()),
             this, SLOT(updateSystemInfo()));
-    connect(ui.push_path, SIGNAL(clicked()),
-            this, SLOT(selectLocalPath()));
+    connect(ui.edit_gulpPath, SIGNAL(editingFinished()),
+            this, SLOT(updateSystemInfo()));
+    connect(ui.push_gulpPath, SIGNAL(clicked()),
+            this, SLOT(selectGULPPath()));
 
     initialize();
   }
@@ -70,6 +74,7 @@ namespace XtalOpt {
     settings->beginGroup("xtalopt/sys/");
     settings->setValue("version",          VERSION);
     settings->setValue("file/path",        m_opt->filePath);
+    settings->setValue("file/gulpPath",    qobject_cast<XtalOpt*>(m_opt)->gulpPath);
     settings->setValue("description",      m_opt->description);
     settings->setValue("queue/qsub",       m_opt->qsub);
     settings->setValue("queue/qstat",      m_opt->qstat);
@@ -89,6 +94,7 @@ namespace XtalOpt {
     settings->beginGroup("xtalopt/sys/");
     int loadedVersion = settings->value("version", 0).toInt();
     ui.edit_path->setText(      settings->value("file/path",       "/tmp").toString());
+    ui.edit_gulpPath->setText(  settings->value("file/gulpPath",   "gulp").toString());
     ui.edit_description->setText(settings->value("description",    "").toString());
     ui.edit_qsub->setText(      settings->value("queue/qsub",      "qsub").toString());
     ui.edit_qstat->setText(     settings->value("queue/qstat",     "qstat").toString());
@@ -117,6 +123,7 @@ namespace XtalOpt {
   void TabSys::updateGUI()
   {
     ui.edit_path->setText(	m_opt->filePath);
+    ui.edit_gulpPath->setText(	qobject_cast<XtalOpt*>(m_opt)->gulpPath);
     ui.edit_description->setText(m_opt->description);
     ui.edit_qsub->setText(	m_opt->qsub);
     ui.edit_qstat->setText(	m_opt->qstat);
@@ -135,6 +142,7 @@ namespace XtalOpt {
       ui.edit_qstat->setVisible(true);
       ui.edit_qdel->setVisible(true);
       ui.cb_remote->setVisible(true);
+      ui.cb_gulp->setVisible(false);
       ui.label_path->setVisible(true);
       ui.label_description->setVisible(true);
       ui.label_launch->setVisible(true);
@@ -148,6 +156,7 @@ namespace XtalOpt {
       ui.edit_qstat->setVisible(false);
       ui.edit_qdel->setVisible(false);
       ui.cb_remote->setVisible(false);
+      ui.cb_gulp->setVisible(true);
       ui.label_path->setVisible(true);
       ui.label_description->setVisible(true);
       ui.label_launch->setVisible(false);
@@ -163,7 +172,9 @@ namespace XtalOpt {
   void TabSys::lockGUI()
   {
     ui.edit_path->setDisabled(true);
+    ui.edit_gulpPath->setDisabled(true);
     ui.push_path->setDisabled(true);
+    ui.push_gulpPath->setDisabled(true);
     ui.edit_description->setDisabled(true);
     ui.edit_qsub->setDisabled(true);
     ui.edit_qstat->setDisabled(true);
@@ -189,8 +200,21 @@ namespace XtalOpt {
     updateSystemInfo();
   }
 
+  void TabSys::selectGULPPath()
+  {
+    QString path = QFileDialog::getOpenFileName(m_dialog,
+                                                tr("Select the GULP executable:"),
+                                                ui.edit_gulpPath->text());
+
+    if (path.isEmpty()) return; // user canceled
+
+    ui.edit_gulpPath->setText(path);
+    updateSystemInfo();
+  }
+
   void TabSys::updateSystemInfo()
   {
+    qobject_cast<XtalOpt*>(m_opt)->gulpPath	= ui.edit_gulpPath->text();
     m_opt->filePath	= ui.edit_path->text();
     m_opt->description	= ui.edit_description->text();
     m_opt->qsub		= ui.edit_qsub->text();

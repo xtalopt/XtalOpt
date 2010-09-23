@@ -41,6 +41,7 @@ namespace XtalOpt {
     void writeSettings(const QString &filename = "");
     void updateGUI();
     void selectLocalPath();
+    void selectGULPPath();
     void updateSystemInfo();
 
   signals:
