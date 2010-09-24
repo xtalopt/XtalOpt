@@ -105,7 +105,7 @@ namespace XtalOpt {
                    (m_currentRun-m_startRun) * m_numberStructures + m_currentStructure,
                    m_totalNumberStructures);
 #ifdef WIN32
-      _sleep(1);
+      _sleep(1000);
 #else
       sleep(1);
 #endif // _WIN32
@@ -123,7 +123,7 @@ namespace XtalOpt {
                    (m_currentRun-m_startRun) * m_numberStructures + m_currentStructure,
                    m_totalNumberStructures);
 #ifdef WIN32
-      _sleep(1);
+      _sleep(1000);
 #else
       sleep(1);
 #endif // _WIN32
