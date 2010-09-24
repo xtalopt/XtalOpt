@@ -69,7 +69,14 @@ namespace GlobalSearch {
   OptBase::~OptBase() {
     // Wait for save to finish
     if (saveOnExit) {
-      while (savePending) {};
+      while (savePending) {
+        qDebug() << "Spinning on save before destroying OptBase...";
+#ifdef WIN32
+        _sleep(1000);
+#else
+        sleep(1);
+#endif // _WIN32
+      };
       savePending = true;
     }
     delete m_queue;
