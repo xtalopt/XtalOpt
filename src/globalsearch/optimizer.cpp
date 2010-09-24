@@ -237,7 +237,7 @@ namespace GlobalSearch {
       m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
-    QString command = "mkdir -p " + structure->getRempath();
+    QString command = "mkdir -p \"" + structure->getRempath() + "\"";
     qDebug() << "Optimizer::createRemoteDirectory: Calling " << command;
     QString stdout_str, stderr_str; int ec;
     if (!ssh->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
@@ -355,7 +355,7 @@ namespace GlobalSearch {
       m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
-    QString command = "cd " + structure->getRempath() + " && " +
+    QString command = "cd \"" + structure->getRempath() + "\" && " +
       m_opt->qsub + " job.pbs";
     qDebug() << "Optimizer::startOptimization: Calling " << command;
     QString stdout_str, stderr_str; int ec;
@@ -392,7 +392,7 @@ namespace GlobalSearch {
     }
     QString command;
 
-    command = "[ -e " + filename + " ]";
+    command = "[ -e \"" + filename + "\" ]";
     qDebug() << "Optimizer::checkIfOutputFileExists: Calling " << command;
     QString stdout_str, stderr_str; int ec;
     if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
@@ -564,8 +564,8 @@ namespace GlobalSearch {
         // Valid exit codes for grep: (0) matches found, execution successful
         //                            (1) no matches found, execution successful
         //                            (2) execution unsuccessful
-        QString command = "grep \'" + m_completionString + "\' "
-          + rempath + "/" + m_completionFilename;
+        QString command = "grep \'" + m_completionString + "\' \""
+          + rempath + "/" + m_completionFilename + "\"";
         qDebug() << "Optimizer::getStatus: Calling " << command;
         if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
           m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
