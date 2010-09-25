@@ -40,6 +40,7 @@ namespace GAPC {
                                        double z = 0.0,
                                        double theta = 0.0)
   {
+    INIT_RANDOM_GENERATOR();
     // This function builds a rotation matrix:
     //
     // [ [ tx^2+c txy-sz txz+sy ]
@@ -103,6 +104,7 @@ namespace GAPC {
   ProtectedCluster* GAPCGenetic::crossover(ProtectedCluster* pc1,
                                            ProtectedCluster* pc2)
   {
+    INIT_RANDOM_GENERATOR();
     // Create rotation matricies to modify the clusters
     Matrix3d xform1 = createRotationMatrix();
     Matrix3d xform2 = createRotationMatrix();
@@ -248,6 +250,7 @@ namespace GAPC {
                                        double minimumRotation,
                                        double &rotationDeg)
   {
+    INIT_RANDOM_GENERATOR();
     // Extract data from parent
     pc->lock()->lockForRead();
     QList<Atom*> atoms = pc->atoms();
@@ -308,6 +311,7 @@ namespace GAPC {
   ProtectedCluster* GAPCGenetic::exchange(ProtectedCluster* pc,
                                           unsigned int exchanges)
   {
+    INIT_RANDOM_GENERATOR();
     // lock parent pc for reading
     QReadLocker locker (pc->lock());
 
@@ -357,6 +361,7 @@ namespace GAPC {
                                             double minWalk,
                                             double maxWalk)
   {
+    INIT_RANDOM_GENERATOR();
     // lock parent pc for reading
     QReadLocker locker (pc->lock());
 

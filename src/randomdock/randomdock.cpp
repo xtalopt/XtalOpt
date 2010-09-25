@@ -173,6 +173,7 @@ namespace RandomDock {
   }
 
   Scene* RandomDock::generateRandomScene() {
+    INIT_RANDOM_GENERATOR();
     // Here we build a scene by extracting coordinates of the atoms
     // from a random conformer of a substrate and the specified number
     // of matrix molecules. The coordinates are rotated, translated,
@@ -634,6 +635,7 @@ namespace RandomDock {
   }
 
   void RandomDock::randomlyRotateCoordinates(QList<Eigen::Vector3d> & coords) {
+    INIT_RANDOM_GENERATOR();
     // Find center of coordinates:
     Eigen::Vector3d center (0,0,0);
     for (int i = 0; i < coords.size(); i++)
@@ -670,6 +672,7 @@ namespace RandomDock {
   }
 
   void RandomDock::randomlyDisplaceCoordinates(QList<Eigen::Vector3d> & coords, double radiusMin, double radiusMax) {
+    INIT_RANDOM_GENERATOR();
     // Get random spherical coordinates
     double rho  = RANDDOUBLE() * (radiusMax - radiusMin) + radiusMin;
     double theta= RANDDOUBLE() * 2 * 3.14159265;

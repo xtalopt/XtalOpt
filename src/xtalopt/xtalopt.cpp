@@ -269,6 +269,7 @@ namespace XtalOpt {
   }
 
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id) {
+    INIT_RANDOM_GENERATOR();
     // Set cell parameters
     double a            = RANDDOUBLE() * (a_max-a_min) + a_min;
     double b            = RANDDOUBLE() * (b_max-b_min) + b_min;
@@ -430,6 +431,7 @@ namespace XtalOpt {
   }
 
   void XtalOpt::generateNewStructure() {
+    INIT_RANDOM_GENERATOR();
     // Get all optimized structures
     QList<Structure*> structures = m_queue->getAllOptimizedStructures();
 
