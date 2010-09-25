@@ -19,7 +19,6 @@
 #include <QtCore/QSettings>
 
 #include <cstdlib>
-#include <ctime>
 
 // Create a pointer of type QSettings *settings that points to either:
 // 1) The default application QSettings object, or
@@ -30,7 +29,11 @@
 // otherwise, let the system decide when to write to file
 #define DESTROY_SETTINGS(f) if (!QString(f).isEmpty()) settings->sync();
 
-#define INIT_RANDOM_GENERATOR() std::srand(std::time(0));
+// This function will return a random seed to initialize srand
+// http://stackoverflow.com/questions/322938
+unsigned long GLOBALSEARCH_GETRANDOMSEED();
+
+#define INIT_RANDOM_GENERATOR() std::srand(GLOBALSEARCH_GETRANDOMSEED());
 
 #define RANDDOUBLE() ( rand() / double(RAND_MAX) )
 

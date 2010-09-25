@@ -512,6 +512,7 @@ optimizations. If so, safely ignore this message.")
 
   void OptGAPC::generateNewStructure()
   {
+    INIT_RANDOM_GENERATOR();
     // Get all optimized structures
     QList<Structure*> structures = m_queue->getAllOptimizedStructures();
 

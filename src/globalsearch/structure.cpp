@@ -162,6 +162,7 @@ namespace GlobalSearch {
   }
 
   bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom) {
+    INIT_RANDOM_GENERATOR();
     double IAD = -1;
     int i = 0;
     vector3 coords;

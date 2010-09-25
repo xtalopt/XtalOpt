@@ -31,6 +31,7 @@ using namespace Eigen;
 namespace XtalOpt {
 
   Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution, double &percent1) {
+    INIT_RANDOM_GENERATOR();
     //
     // Random Assignments
     //
@@ -351,6 +352,7 @@ namespace XtalOpt {
                                  uint eta, uint mu,
                                  double &sigma_lattice,
                                  double &rho) {
+    INIT_RANDOM_GENERATOR();
 
     // lock parent xtal and copy into return xtal
     Xtal *nxtal = new Xtal;
@@ -400,6 +402,7 @@ namespace XtalOpt {
   }
 
   Xtal* XtalOptGenetic::permustrain(Xtal* xtal, double sigma_lattice_max, uint exchanges, double &sigma_lattice) {
+    INIT_RANDOM_GENERATOR();
     // lock parent xtal for reading
     QReadLocker locker (xtal->lock());
 
@@ -427,6 +430,7 @@ namespace XtalOpt {
   }
 
   void XtalOptGenetic::exchange(Xtal *xtal, uint exchanges) {
+    INIT_RANDOM_GENERATOR();
     // Check that there is more than 1 atom type present.
     // If not, print a warning and return input xtal:
     if (xtal->getSymbols().size() <= 1) {
@@ -459,6 +463,7 @@ namespace XtalOpt {
   }
 
   void XtalOptGenetic::strain(Xtal *xtal, double sigma_lattice) {
+    INIT_RANDOM_GENERATOR();
     // Build Voight strain matrix
     double volume = xtal->getVolume();
     matrix3x3 strainM;
@@ -511,6 +516,7 @@ namespace XtalOpt {
   }
 
   void XtalOptGenetic::ripple(Xtal* xtal, double rho, uint eta, uint mu) {
+    INIT_RANDOM_GENERATOR();
     double phase1 = RANDDOUBLE() * 2 * M_PI;
     double phase2 = RANDDOUBLE() * 2 * M_PI;
 
