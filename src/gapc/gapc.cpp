@@ -31,9 +31,7 @@
 namespace GAPC {
 
   OptGAPC::OptGAPC(GAPCDialog *parent) :
-    OptBase(parent),
-    minIAD(0.8), // TODO Don't hardcode these!
-    maxIAD(2.0)
+    OptBase(parent)
   {
     m_idString = "GAPC";
   }

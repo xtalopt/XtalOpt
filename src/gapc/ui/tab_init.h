@@ -42,7 +42,7 @@ namespace GAPC {
     void updateGUI();
     void getComposition(const QString & str);
     void updateComposition();
-    void updateDimensions();
+    void updateParams();
 
   signals:
 
