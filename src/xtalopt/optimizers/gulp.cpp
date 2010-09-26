@@ -88,19 +88,24 @@ namespace XtalOpt {
 
   bool GULPOptimizer::startOptimization(Structure *structure) {
     QString command = "\"" + qobject_cast<XtalOpt*>(m_opt)->gulpPath
-      + "\" < xtal.gin > xtal.got";
+      + "\"";
+
 #ifdef WIN32
     command = "cmd.exe /C " + command;
 #endif // WIN32
 
     QProcess proc;
     proc.setWorkingDirectory(structure->fileName());
+    proc.setStandardInputFile(structure->fileName() + "/xtal.gin");
+    proc.setStandardOutputFile(structure->fileName() + "/xtal.got");
+    proc.setStandardErrorFile(structure->fileName() + "/xtal.err");
 
-    structure->setStatus(Xtal::InProcess);
+    structure->setStatus(Structure::InProcess);
     structure->startOptTimer();
 
     proc.start(command);
     proc.waitForFinished(-1);
+
     int exitStatus = proc.exitCode();
 
     // lock xtal
