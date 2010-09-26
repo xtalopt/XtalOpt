@@ -22,6 +22,7 @@ set (tests
     sshconnection
     sshmanager
     spglib
+    randdouble
 )
 
 foreach (test ${tests})
