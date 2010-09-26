@@ -720,13 +720,14 @@ namespace XtalOpt {
     // Check interatomic distances
     if (using_shortestInteratomicDistance) {
       double distance = 0;
-      if (xtal->getShortestInteratomicDistance(distance))
+      if (xtal->getShortestInteratomicDistance(distance)) {
         if (distance < shortestInteratomicDistance) {
           qDebug() << "Discarding structure -- Bad IAD ("
                    << distance << " < "
                    << shortestInteratomicDistance << ")";
           return false;
         }
+      }
     }
 
     // Xtal is OK!
