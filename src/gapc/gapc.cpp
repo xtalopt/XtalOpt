@@ -82,15 +82,22 @@ namespace GAPC {
   bool OptGAPC::checkLimits()
   {
     // Call error() and return false if there's a problem
-    // TODO
+    // Nothing to do here now -- limits cannot conflict.
     return true;
   }
 
   bool OptGAPC::checkPC(ProtectedCluster *pc)
   {
-    // TODO (anything else?)
     if (!pc)
       return false;
+
+    double shortest = 0;
+    if (pc->getShortestInteratomicDistance(shortest)) {
+      if (shortest < minIAD) {
+        return false;
+      }
+    }
+
     return true;
   }
 
