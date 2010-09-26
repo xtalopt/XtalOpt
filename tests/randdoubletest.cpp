@@ -16,6 +16,8 @@
 
 #include <globalsearch/macros.h>
 
+#include <openbabel/rand.h>
+
 #include <QtCore/QDebug>
 #include <QtGui/QImage>
 #include <QtTest/QtTest>
@@ -25,6 +27,8 @@ class RANDDOUBLETest : public QObject
   Q_OBJECT
 
   private:
+  int size;
+  int numPoints;
 
   private slots:
   /**
@@ -49,10 +53,13 @@ class RANDDOUBLETest : public QObject
 
   // Tests
   void generateImage();
+  void generateImageOBRandom();
 };
 
 void RANDDOUBLETest::initTestCase()
 {
+  size = 1e4;
+  numPoints = 1e7;
 }
 
 void RANDDOUBLETest::cleanupTestCase()
@@ -69,21 +76,37 @@ void RANDDOUBLETest::cleanup()
 
 void RANDDOUBLETest::generateImage()
 {
-  const int size = 1e4;
-  const int numPoints = 1e7;
-
   INIT_RANDOM_GENERATOR();
 
   QImage im (size, size, QImage::Format_Mono);
   im.fill(0);
   int x,y;
-  for (int i = 0; i < numPoints; i++) {
-    x = (int)(RANDDOUBLE() * size);
-    y = (int)(RANDDOUBLE() * size);
-    im.setPixel(x,y, 1);
-    qDebug() << i << " of " << numPoints;
+  QBENCHMARK {
+    for (int i = 0; i < numPoints; i++) {
+      x = (int)(RANDDOUBLE() * size);
+      y = (int)(RANDDOUBLE() * size);
+      im.setPixel(x,y, 1);
+    }
   }
-  im.save("RANDDOUBLETest.png");
+  im.save("RANDDOUBLETest-default.png");
+}
+
+void RANDDOUBLETest::generateImageOBRandom()
+{
+  OpenBabel::OBRandom rand;
+  rand.TimeSeed();
+
+  QImage im (size, size, QImage::Format_Mono);
+  im.fill(0);
+  int x,y;
+  QBENCHMARK {
+    for (int i = 0; i < numPoints; i++) {
+      x = (int)(rand.NextFloat() * size);
+      y = (int)(rand.NextFloat() * size);
+      im.setPixel(x,y, 1);
+    }
+  }
+  im.save("RANDDOUBLETest-OBRandom.png");
 }
 
 QTEST_MAIN(RANDDOUBLETest)
