@@ -21,7 +21,7 @@
 
 #include <globalsearch/macros.h>
 
-#include <QSettings>
+#include <QtCore/QDebug>
 #include <QtGui/QFileDialog>
 
 namespace GAPC {
@@ -57,6 +57,10 @@ namespace GAPC {
             this, SLOT(updateSystemInfo()));
     connect(ui.push_path, SIGNAL(clicked()),
             this, SLOT(selectLocalPath()));
+    connect(ui.edit_gulpPath, SIGNAL(editingFinished()),
+            this, SLOT(updateSystemInfo()));
+    connect(ui.push_gulpPath, SIGNAL(clicked()),
+            this, SLOT(selectGULPPath()));
 
     initialize();
   }
@@ -72,6 +76,7 @@ namespace GAPC {
     settings->beginGroup("gapc/sys/");
     settings->setValue("version",          VERSION);
     settings->setValue("file/path",        m_opt->filePath);
+    settings->setValue("file/gulpPath",    qobject_cast<OptGAPC*>(m_opt)->gulpPath);
     settings->setValue("description",      m_opt->description);
     settings->setValue("queue/qsub",       m_opt->qsub);
     settings->setValue("queue/qstat",      m_opt->qstat);
@@ -91,6 +96,7 @@ namespace GAPC {
     settings->beginGroup("gapc/sys/");
     int loadedVersion = settings->value("version", 0).toInt();
     ui.edit_path->setText(      settings->value("file/path",       "/tmp").toString());
+    ui.edit_gulpPath->setText(  settings->value("file/gulpPath",   "gulp").toString());
     ui.edit_description->setText(settings->value("description",    "").toString());
     ui.edit_qsub->setText(      settings->value("queue/qsub",      "qsub").toString());
     ui.edit_qstat->setText(     settings->value("queue/qstat",     "qstat").toString());
@@ -116,6 +122,7 @@ namespace GAPC {
   void TabSys::updateGUI()
   {
     ui.edit_path->setText(      m_opt->filePath);
+    ui.edit_gulpPath->setText(	qobject_cast<OptGAPC*>(m_opt)->gulpPath);
     ui.edit_description->setText(m_opt->description);
     ui.edit_qsub->setText(      m_opt->qsub);
     ui.edit_qstat->setText(     m_opt->qstat);
@@ -124,12 +131,63 @@ namespace GAPC {
     ui.edit_username->setText(  m_opt->username);
     ui.spin_port->setValue(     m_opt->port);
     ui.edit_rempath->setText(   m_opt->rempath);
+
+    // Hide optType specific settings
+    if (m_opt->optimizer()->getIDString() == "ADF") {
+      ui.edit_path->setVisible(true);
+      ui.edit_description->setVisible(true);
+      ui.edit_qsub->setVisible(true);
+      ui.edit_qstat->setVisible(true);
+      ui.edit_qdel->setVisible(true);
+      ui.cb_remote->setVisible(true);
+      ui.cb_gulp->setVisible(false);
+      ui.label_path->setVisible(true);
+      ui.label_description->setVisible(true);
+      ui.label_launch->setVisible(true);
+      ui.label_check->setVisible(true);
+      ui.label_qdel->setVisible(true);
+    }
+    else if ( m_opt->optimizer()->getIDString() == "GULP" ) {
+      ui.edit_path->setVisible(true);
+      ui.edit_description->setVisible(true);
+      ui.edit_qsub->setVisible(false);
+      ui.edit_qstat->setVisible(false);
+      ui.edit_qdel->setVisible(false);
+      ui.cb_remote->setVisible(false);
+      ui.cb_gulp->setVisible(true);
+      ui.label_path->setVisible(true);
+      ui.label_description->setVisible(true);
+      ui.label_launch->setVisible(false);
+      ui.label_check->setVisible(false);
+      ui.label_qdel->setVisible(false);
+    }
+    else if ( m_opt->optimizer()->getIDString() == "OpenBabel" ) {
+      ui.edit_path->setVisible(true);
+      ui.edit_description->setVisible(true);
+      ui.edit_qsub->setVisible(false);
+      ui.edit_qstat->setVisible(false);
+      ui.edit_qdel->setVisible(false);
+      ui.cb_remote->setVisible(false);
+      ui.cb_gulp->setVisible(false);
+      ui.label_path->setVisible(true);
+      ui.label_description->setVisible(true);
+      ui.label_launch->setVisible(false);
+      ui.label_check->setVisible(false);
+      ui.label_qdel->setVisible(false);
+    }
+    else {
+      qWarning() << "TabSys::updateGUI: Selected OptType unknown? "
+                 << m_opt->optimizer()->getIDString();
+    }
+
   }
 
   void TabSys::lockGUI()
   {
     ui.edit_path->setDisabled(true);
+    ui.edit_gulpPath->setDisabled(true);
     ui.push_path->setDisabled(true);
+    ui.push_gulpPath->setDisabled(true);
     ui.edit_description->setDisabled(true);
     ui.edit_qsub->setDisabled(true);
     ui.edit_qstat->setDisabled(true);
@@ -155,8 +213,21 @@ namespace GAPC {
     updateSystemInfo();
   }
 
+  void TabSys::selectGULPPath()
+  {
+    QString path = QFileDialog::getOpenFileName(m_dialog,
+                                                tr("Select the GULP executable:"),
+                                                ui.edit_gulpPath->text());
+
+    if (path.isEmpty()) return; // user canceled
+
+    ui.edit_gulpPath->setText(path);
+    updateSystemInfo();
+  }
+
   void TabSys::updateSystemInfo()
   {
+    qobject_cast<OptGAPC*>(m_opt)->gulpPath	= ui.edit_gulpPath->text();
     m_opt->filePath     = ui.edit_path->text();
     m_opt->description  = ui.edit_description->text();
     m_opt->qsub         = ui.edit_qsub->text();

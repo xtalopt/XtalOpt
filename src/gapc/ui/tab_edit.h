@@ -43,6 +43,10 @@ namespace GAPC {
       ADFT_pbs = 0
     };
 
+    enum GULP_Templates {
+      GULPT_gin = 0
+    };
+
     explicit TabEdit( GAPCDialog *parent, OptGAPC *p );
     virtual ~TabEdit();
 

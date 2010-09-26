@@ -19,6 +19,8 @@
 #include <gapc/ui/dialog.h>
 #include <gapc/structures/protectedcluster.h>
 #include <gapc/optimizers/openbabel.h>
+#include <gapc/optimizers/adf.h>
+#include <gapc/optimizers/gulp.h>
 
 #include <globalsearch/macros.h>
 #include <globalsearch/structure.h>
@@ -159,7 +161,8 @@ namespace GAPC {
                  filename);
 
     // Create SSHConnection
-    if (m_optimizer->getIDString() != "OpenBabel") { // OpenBabel won't use ssh
+    if (m_optimizer->getIDString() != "OpenBabel" && // OpenBabel won't use ssh
+        m_optimizer->getIDString() != "GULP") {      // Nor will GULP
       QString pw = "";
       for (;;) {
         try {
@@ -350,7 +353,8 @@ optimizations. If so, safely ignore this message.")
     }
 
     // Create the SSHManager
-    if (m_optimizer->getIDString() != "OpenBabel") { // OB doesn't use ssh
+    if (m_optimizer->getIDString() != "OpenBabel" && // OpenBabel won't use ssh
+        m_optimizer->getIDString() != "GULP") {      // Nor will GULP
       QString pw = "";
       for (;;) {
         try {
@@ -890,6 +894,10 @@ optimizations. If so, safely ignore this message.")
   {
     if (IDString.toLower() == "openbabel")
       setOptimizer(new OpenBabelOptimizer (this, filename));
+    else if (IDString.toLower() == "adf")
+      setOptimizer(new ADFOptimizer (this, filename));
+    else if (IDString.toLower() == "gulp")
+      setOptimizer(new GULPOptimizer (this, filename));
     else
       error(tr("GAPC::setOptimizer: unable to determine optimizer from '%1'")
             .arg(IDString));
@@ -900,6 +908,12 @@ optimizations. If so, safely ignore this message.")
     switch (opttype) {
     case OT_OpenBabel:
       setOptimizer(new OpenBabelOptimizer (this, filename));
+      break;
+    case OT_ADF:
+      setOptimizer(new ADFOptimizer (this, filename));
+      break;
+    case OT_GULP:
+      setOptimizer(new GULPOptimizer (this, filename));
       break;
     default:
       error(tr("GAPC::setOptimizer: unable to determine optimizer from '%1'")

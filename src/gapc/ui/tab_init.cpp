@@ -94,8 +94,8 @@ namespace GAPC {
 
     settings->beginGroup("gapc/init/");
     int loadedVersion = settings->value("version", 0).toInt();
-    gapc->minIAD = settings->value("minIAD", 0.8).toDouble();
-    gapc->maxIAD = settings->value("maxIAD", 3.0).toDouble();
+    ui.spin_minIAD->setValue( settings->value("minIAD", 0.8).toDouble());
+    ui.spin_maxIAD->setValue( settings->value("maxIAD", 3.0).toDouble());
 
     // Composition
     if (!filename.isEmpty()) {
