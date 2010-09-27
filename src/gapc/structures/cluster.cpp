@@ -37,6 +37,7 @@ namespace GAPC {
                                        float minIAD,
                                        float maxIAD)
   {
+    INIT_RANDOM_GENERATOR();
     // Get atomic numbers
     QList<unsigned int> atomicnums = comp.keys();
     unsigned int totalSpecies = atomicnums.size();
@@ -102,6 +103,6 @@ namespace GAPC {
     translate(-center());
   }
 
-} // end namespace Avogadro
+} // end namespace GAPC
 
 //#include "scene.moc"

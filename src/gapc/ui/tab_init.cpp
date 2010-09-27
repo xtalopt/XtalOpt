@@ -33,6 +33,12 @@ namespace GAPC {
   {
     ui.setupUi(m_tab_widget);
 
+    // param connections
+    connect(ui.spin_minIAD, SIGNAL(valueChanged(double)),
+            this, SLOT(updateParams()));
+    connect(ui.spin_maxIAD, SIGNAL(valueChanged(double)),
+            this, SLOT(updateParams()));
+
     // composition connections
     connect(ui.edit_composition, SIGNAL(textChanged(QString)),
             this, SLOT(getComposition(QString)));
@@ -56,6 +62,8 @@ namespace GAPC {
 
     const int VERSION = 1;
     settings->setValue("version",          VERSION);
+    settings->setValue("minIAD",           gapc->minIAD);
+    settings->setValue("maxIAD",           gapc->maxIAD);
 
     // Composition
     // We only want to save POTCAR info and Composition to the resume
@@ -86,6 +94,8 @@ namespace GAPC {
 
     settings->beginGroup("gapc/init/");
     int loadedVersion = settings->value("version", 0).toInt();
+    gapc->minIAD = settings->value("minIAD", 0.8).toDouble();
+    gapc->maxIAD = settings->value("maxIAD", 3.0).toDouble();
 
     // Composition
     if (!filename.isEmpty()) {
@@ -112,12 +122,15 @@ namespace GAPC {
     }
 
     // Enact changesSetup templates
-    updateDimensions();
+    updateParams();
   }
 
   void TabInit::updateGUI()
   {
     OptGAPC *gapc = qobject_cast<OptGAPC*>(m_opt);
+
+    ui.spin_minIAD->setValue(gapc->minIAD);
+    ui.spin_maxIAD->setValue(gapc->maxIAD);
 
     updateComposition();
   }
@@ -198,9 +211,12 @@ namespace GAPC {
     ui.edit_composition->setText(tmp.trimmed());
   }
 
-  void TabInit::updateDimensions()
+  void TabInit::updateParams()
   {
-    // TODO Can this be removed?
+    OptGAPC *gapc = qobject_cast<OptGAPC*>(m_opt);
+
+    gapc->minIAD = ui.spin_minIAD->value();
+    gapc->maxIAD = ui.spin_maxIAD->value();
   }
 
 }

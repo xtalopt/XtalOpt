@@ -54,33 +54,26 @@
       <string>Structural Parameters</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
-      <item row="0" column="2" rowspan="3">
+      <item row="0" column="0" rowspan="3">
        <widget class="Line" name="line">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
         </property>
        </widget>
       </item>
-      <item row="4" column="0" colspan="2">
-       <widget class="QCheckBox" name="cb_shortestInteratomicDistance">
-        <property name="toolTip">
-         <string>Use this to limit the shortest interatomic distance between atoms. This ensures that atoms aren't overlapping.</string>
-        </property>
-        <property name="text">
-         <string>Limit interatomic distance? (Å)</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="3">
-       <widget class="QDoubleSpinBox" name="spin_shortestInteratomicDistance">
+      <item row="4" column="1">
+       <widget class="QDoubleSpinBox" name="spin_minIAD">
         <property name="enabled">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
         <property name="toolTip">
          <string>Use this to limit the shortest interatomic distance between atoms. This ensures that atoms aren't overlapping.</string>
+        </property>
+        <property name="suffix">
+         <string> Å</string>
         </property>
         <property name="decimals">
-         <number>5</number>
+         <number>2</number>
         </property>
         <property name="maximum">
          <double>999999.000000000000000</double>
@@ -93,7 +86,7 @@
         </property>
        </widget>
       </item>
-      <item row="5" column="3">
+      <item row="5" column="1">
        <spacer name="verticalSpacer_2">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
@@ -106,6 +99,26 @@
         </property>
        </spacer>
       </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label">
+        <property name="toolTip">
+         <string>Set the range for the nearest neighbor distance in the cluster.</string>
+        </property>
+        <property name="text">
+         <string>Nearest neighbor distance range:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="QDoubleSpinBox" name="spin_maxIAD">
+        <property name="suffix">
+         <string> Å</string>
+        </property>
+        <property name="value">
+         <double>3.000000000000000</double>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
@@ -114,26 +127,8 @@
  <tabstops>
   <tabstop>edit_composition</tabstop>
   <tabstop>list_composition</tabstop>
-  <tabstop>cb_shortestInteratomicDistance</tabstop>
-  <tabstop>spin_shortestInteratomicDistance</tabstop>
+  <tabstop>spin_minIAD</tabstop>
  </tabstops>
  <resources/>
- <connections>
-  <connection>
-   <sender>cb_shortestInteratomicDistance</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>spin_shortestInteratomicDistance</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>606</x>
-     <y>331</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>814</x>
-     <y>336</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

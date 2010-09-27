@@ -137,6 +137,7 @@ namespace RandomDock {
 
   int Matrix::getRandomConformerIndex()
   {
+    INIT_RANDOM_GENERATOR();
     // Select conformer to use:
     double r = RANDDOUBLE();
     int ind;

@@ -31,9 +31,7 @@
 namespace GAPC {
 
   OptGAPC::OptGAPC(GAPCDialog *parent) :
-    OptBase(parent),
-    minIAD(0.8), // TODO Don't hardcode these!
-    maxIAD(2.0)
+    OptBase(parent)
   {
     m_idString = "GAPC";
   }
@@ -84,15 +82,22 @@ namespace GAPC {
   bool OptGAPC::checkLimits()
   {
     // Call error() and return false if there's a problem
-    // TODO
+    // Nothing to do here now -- limits cannot conflict.
     return true;
   }
 
   bool OptGAPC::checkPC(ProtectedCluster *pc)
   {
-    // TODO (anything else?)
     if (!pc)
       return false;
+
+    double shortest = 0;
+    if (pc->getShortestInteratomicDistance(shortest)) {
+      if (shortest < minIAD) {
+        return false;
+      }
+    }
+
     return true;
   }
 
@@ -512,6 +517,7 @@ optimizations. If so, safely ignore this message.")
 
   void OptGAPC::generateNewStructure()
   {
+    INIT_RANDOM_GENERATOR();
     // Get all optimized structures
     QList<Structure*> structures = m_queue->getAllOptimizedStructures();
 
