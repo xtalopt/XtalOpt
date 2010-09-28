@@ -22,7 +22,6 @@
 #include <openbabel/forcefield.h>
 #include <openbabel/mol.h>
 
-#include <QProcess>
 #include <QDir>
 #include <QString>
 #include <QSemaphore>
