@@ -299,22 +299,6 @@ namespace GAPC {
           default:      y = pc->getEnthalpy(); break;
           }
           break;
-        case Energy_T:
-          // Skip pcs that don't have energy set
-          if (pc->getEnergy() == 0.0) continue;
-          switch (j) {
-          case 0:       x = pc->getEnergy(); break;
-          default:      y = pc->getEnergy(); break;
-          }
-          break;
-        case PV_T:
-          // Skip pcs that don't have enthalpy/energy set
-          if (pc->getEnergy() == 0.0 && !pc->hasEnthalpy()) continue;
-          switch (j) {
-          case 0:       x = pc->getPV(); break;
-          default:      y = pc->getPV(); break;
-          }
-          break;
         }
       }
       pp = m_plotObject->addPoint(x,y);
@@ -325,12 +309,6 @@ namespace GAPC {
         switch (labelType) {
         case Enthalpy_L:
           pp->setLabel(QString::number(pc->getEnthalpy(), 'g', 5));
-          break;
-        case Energy_L:
-          pp->setLabel(QString::number(pc->getEnergy(), 'g', 5));
-          break;
-        case PV_L:
-          pp->setLabel(QString::number(pc->getPV(), 'g', 5));
           break;
         case Generation_L:
           pp->setLabel(QString::number(pc->getGeneration()));
@@ -367,20 +345,6 @@ namespace GAPC {
         break;
       case Enthalpy_T:
         label = tr("Enthalpy (eV)");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
-        break;
-      case Energy_T:
-        label = tr("Energy (eV)");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
-        break;
-      case PV_T:
-        label = tr("Enthalpy PV term (eV)");
         switch (j) {
         case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
         default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;

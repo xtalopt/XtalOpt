@@ -50,9 +50,7 @@ namespace GAPC {
     enum PlotAxes {
       Structure_T = 0,
       Generation_T,
-      Enthalpy_T,
-      Energy_T,
-      PV_T,
+      Enthalpy_T
     };
 
     enum PlotType {
@@ -61,11 +59,9 @@ namespace GAPC {
     };
 
     enum LabelTypes {
-      Enthalpy_L,
-      Energy_L,
-      PV_L,
+      Structure_L = 0,
       Generation_L,
-      Structure_L
+      Enthalpy_L
     };
 
   public slots:

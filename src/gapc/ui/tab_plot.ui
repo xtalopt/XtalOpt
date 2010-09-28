@@ -86,51 +86,6 @@
              <string>Enthalpy (eV)</string>
             </property>
            </item>
-           <item>
-            <property name="text">
-             <string>Energy (eV)</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>PV enthalpy term (eV)</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>A</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>B</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>C</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>α</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>β</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>γ</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Volume</string>
-            </property>
-           </item>
           </widget>
          </item>
          <item row="1" column="0">
@@ -160,51 +115,6 @@
              <string>Enthalpy (eV)</string>
             </property>
            </item>
-           <item>
-            <property name="text">
-             <string>Energy (eV)</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>PV enthalpy term (eV)</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>A</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>B</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>C</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>α</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>β</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>γ</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Volume</string>
-            </property>
-           </item>
           </widget>
          </item>
          <item row="2" column="0" colspan="2">
@@ -232,32 +142,7 @@
           <widget class="QComboBox" name="combo_labelType">
            <item>
             <property name="text">
-             <string>SG Number</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>SG Symbol</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Enthalpy (eV)</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Energy (eV)</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>PV enthalpy term (eV)</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Volume</string>
+             <string>Structure #</string>
             </property>
            </item>
            <item>
@@ -267,7 +152,7 @@
            </item>
            <item>
             <property name="text">
-             <string>Structure #</string>
+             <string>Enthalpy (eV)</string>
             </property>
            </item>
           </widget>
