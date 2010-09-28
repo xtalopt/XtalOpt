@@ -326,13 +326,13 @@ namespace GAPC {
     }
 
     // Check that there is more than 1 atom type present.
-    // If not, print a warning and return input pc:
+    // If not, print a warning and return a null pointer;
     if (pc->getSymbols().size() <= 1) {
       qWarning()
         << "WARNING: *********************************************************************" << endl
         << "WARNING: * Cannot perform exchange with fewer than 2 atomic species present. *" << endl
         << "WARNING: *********************************************************************";
-      return npc;
+      return 0;
     }
 
     QList<Atom*> natoms = npc->atoms();

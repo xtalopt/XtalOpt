@@ -39,12 +39,12 @@ namespace GAPC {
     //QHash <Ligand, unsigned int> ligands;
   };
 
-    enum Operators {
-      OP_Crossover = 0,
-      OP_Twist,
-      OP_Exchange,
-      OP_RandomWalk
-    };
+  enum Operators {
+    OP_Crossover = 0,
+    OP_Twist,
+    OP_Exchange,
+    OP_RandomWalk
+  };
 
   class OptGAPC : public GlobalSearch::OptBase
   {
@@ -55,6 +55,7 @@ namespace GAPC {
     QMutex initMutex;
     GAPC_Comp comp;
     QStringList seedList;
+    QString gulpPath;
     unsigned int numInitial;
     unsigned int popSize;
     float tol_enthalpy;
@@ -72,7 +73,8 @@ namespace GAPC {
 
     enum OptTypes {
       OT_OpenBabel = 0,
-      OT_ADF
+      OT_ADF,
+      OT_GULP
     };
 
     /**

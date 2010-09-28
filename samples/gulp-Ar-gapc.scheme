@@ -1,0 +1,8 @@
+[gapc]
+edit\version=1
+edit\optType=2
+optimizer\GULP\cluster.gin_list=opti conj conp\nswitch_minimiser bfgs gnorm 0.01\nmaxcyc 10000\ncart\n%coords%\nlennard epsilon 12 6\nAr Ar 1 1 15\n
+optimizer\GULP\user1=
+optimizer\GULP\user2=
+optimizer\GULP\user3=
+optimizer\GULP\user4=

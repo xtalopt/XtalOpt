@@ -84,7 +84,7 @@ namespace GAPC {
           y = RANDDOUBLE() * max;
           z = RANDDOUBLE() * max;
           getNearestNeighborDistance(x, y, z, shortest);
-        } while (shortest >= maxIAD || shortest <= minIAD);
+        } while (shortest > maxIAD || shortest < minIAD);
       }
       Atom *atm = addAtom();
       Eigen::Vector3d pos (x, y, z);

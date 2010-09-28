@@ -8,6 +8,7 @@ set( gapc_SRCS
      structures/protectedcluster.cpp
      optimizers/openbabel.cpp
      optimizers/adf.cpp
+     optimizers/gulp.cpp
      ui/dialog.cpp
      ui/tab_init.cpp
      ui/tab_edit.cpp

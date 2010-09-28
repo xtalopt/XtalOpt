@@ -282,7 +282,7 @@ namespace GlobalSearch {
 
     Vector3d v1 (x, y, z);
     Vector3d v2 = atomPositions.at(0);
-    shortest = abs((v1-v2).norm());
+    shortest = fabs((v1-v2).norm());
     double distance;
 
     // Find shortest distance
