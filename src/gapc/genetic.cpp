@@ -429,7 +429,7 @@ namespace GAPC {
     // Walk 'em
     for (int i = 0; i < walkers.size(); i++) {
       int ind = walkers.at(i);
-      Atom *atm = atoms.at(i);
+      Atom *atm = atoms.at(ind);
       atm->setPos( *(atm->pos()) + trans.at(i) );
     }
 
