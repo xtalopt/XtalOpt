@@ -151,6 +151,8 @@ namespace GAPC {
 
     void initializeAndAddPC(ProtectedCluster *pc,
                             uint gen, const QString &parents);
+    void resetDuplicates();
+    void checkForDuplicates();
 
     void setOptimizer(Optimizer *o) {
       setOptimizer_opt(o);};
@@ -160,7 +162,8 @@ namespace GAPC {
       setOptimizer_enum(opttype, filename);};
 
    protected:
-    /// Hidden calls to setOptimizer
+    void resetDuplicates_();
+    void checkForDuplicates_();
     void setOptimizer_string(const QString &s, const QString &filename = "");
     void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
 

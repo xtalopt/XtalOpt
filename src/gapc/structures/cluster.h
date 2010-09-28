@@ -29,6 +29,13 @@ namespace GAPC {
     Cluster(QObject *parent = 0);
     virtual ~Cluster();
 
+    static bool compareNearestNeighborDistributions(const QList<double> &d,
+                                                    const QList<double> &f1,
+                                                    const QList<double> &f2,
+                                                    double decay,
+                                                    double smear,
+                                                    double *error);
+
    signals:
 
    public slots:

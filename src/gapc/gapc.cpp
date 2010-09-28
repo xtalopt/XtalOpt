@@ -28,7 +28,8 @@
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/sshmanager.h>
 
-#include <QDir>
+#include <QtCore/QDir>
+#include <QtConcurrentRun>
 
 namespace GAPC {
 
@@ -36,6 +37,11 @@ namespace GAPC {
     OptBase(parent)
   {
     m_idString = "GAPC";
+
+    connect(m_tracker, SIGNAL(newStructureAdded(Structure*)),
+            this, SLOT(checkForDuplicates()));
+    connect(this, SIGNAL(sessionStarted()),
+            this, SLOT(resetDuplicates()));
   }
 
   OptGAPC:: ~OptGAPC()
@@ -134,12 +140,11 @@ namespace GAPC {
     // path to resume file
     QDir dataDir  = stateInfo.absoluteDir();
     QString dataPath = dataDir.absolutePath() + "/";
-    // list of xtal dirs
+    // list of structure dirs
     QStringList structureDirs = dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
     structureDirs.removeAll(".");
     structureDirs.removeAll("..");
     for (int i = 0; i < structureDirs.size(); i++) {
-      // old versions of xtalopt used xtal.state, so still check for it.
       if (!QFile::exists(dataPath + "/" + structureDirs.at(i) + "/structure.state") ){
         structureDirs.removeAt(i);
         i--;
@@ -178,7 +183,7 @@ namespace GAPC {
               + username + "@" + host + ":" + QString::number(port) + ". "
               + "Please check that all provided information is correct, "
               + "and attempt to log in outside of Avogadro before trying again."
-              + "XtalOpt will continue to load in read-only mode.";
+              + "GAPC will continue to load in read-only mode.";
             error(err);
             readOnly = true;
             break;
@@ -254,7 +259,7 @@ namespace GAPC {
 
       pc = new ProtectedCluster();
       QWriteLocker locker (pc->lock());
-      // Add empty atoms to xtal, updateXtal will populate it
+      // Add empty atoms to pc, updatePC will populate it
       for (int j = 0; j < keys.size(); j++) {
         for (uint k = 0; k < comp.core.value(keys.at(j)); k++)
           pc->addAtom();
@@ -262,7 +267,7 @@ namespace GAPC {
       pc->setFileName(dataPath + "/" + structureDirs.at(i) + "/");
       pc->readSettings(pcStateFileName);
 
-      // Store current state -- updateXtal will overwrite it.
+      // Store current state -- updatePC will overwrite it.
       ProtectedCluster::State state = pc->getStatus();
       QDateTime endtime = pc->getOptTimerEnd();
 
@@ -888,6 +893,70 @@ optimizations. If so, safely ignore this message.")
     // ind will hold the chosen index.
 
     return probs;
+  }
+
+  void OptGAPC::resetDuplicates() {
+    if (isStarting) {
+      return;
+    }
+    QtConcurrent::run(this, &OptGAPC::resetDuplicates_);
+  }
+
+  void OptGAPC::resetDuplicates_() {
+    QList<Structure*> *structures = m_tracker->list();
+    ProtectedCluster *pc;
+    for (int i = 0; i < structures->size(); i++) {
+      pc = qobject_cast<ProtectedCluster*>(structures->at(i));
+      pc->lock()->lockForWrite();
+      if (pc->getStatus() == ProtectedCluster::Duplicate)
+        pc->setStatus(ProtectedCluster::Optimized);
+      pc->lock()->unlock();
+    }
+    checkForDuplicates();
+    emit updateAllInfo();
+  }
+
+  void OptGAPC::checkForDuplicates() {
+    if (isStarting) {
+      return;
+    }
+    QtConcurrent::run(this, &OptGAPC::checkForDuplicates_);
+  }
+
+  void OptGAPC::checkForDuplicates_() {
+    QList<QList<double> > freqs;
+    QList<double> freq;
+    QList<double> dist;
+
+    m_tracker->lockForRead();
+    QList<Structure*> *structures = m_tracker->list();
+
+    ProtectedCluster *pc=0, *pc_i=0, *pc_j=0;
+    for (int i = 0; i < structures->size(); i++) {
+      pc = qobject_cast<ProtectedCluster*>(structures->at(i));
+      pc->lock()->lockForRead();
+      pc->getNearestNeighborHistogram(dist, freq, 0, 10, 0.01);
+      freqs.append(freq);
+      pc->lock()->unlock();
+    }
+
+    // Iterate over all pcs
+    for (int i = 0; i < structures->size(); i++) {
+      pc_i = qobject_cast<ProtectedCluster*>(structures->at(i));
+      for (int j = i; j < structures->size(); j++) {
+        pc_j = qobject_cast<ProtectedCluster*>(structures->at(j));
+        double error = 0;
+        ProtectedCluster::compareNearestNeighborDistributions(dist,
+                                                              freqs.at(i),
+                                                              freqs.at(j),
+                                                              0, 0.5, &error);
+        qDebug() << pc_i->getIDString() << " vs: " << pc_j->getIDString()
+                 << " error: " << error;
+      }
+    }
+
+    m_tracker->unlock();
+    emit updateAllInfo();
   }
 
   void OptGAPC::setOptimizer_string(const QString &IDString, const QString &filename)

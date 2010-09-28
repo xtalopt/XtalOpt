@@ -18,6 +18,7 @@
 #include <globalsearch/macros.h>
 
 #include <algorithm>
+#include <vector>
 #include <deque>
 
 using namespace std;
@@ -32,6 +33,70 @@ namespace GAPC {
   Cluster::~Cluster()
   {
   }
+
+  bool Cluster::compareNearestNeighborDistributions(const QList<double> &d,
+                                                    const QList<double> &f1,
+                                                    const QList<double> &f2,
+                                                    double decay,
+                                                    double smear,
+                                                    double *error)
+  {
+    // Check that smearing is possible
+    if (smear != 0 && d.size() <= 1) {
+      qWarning() << "Cluster::compareNNDist: Cannot smear with 1 or fewer points.";
+      return false;
+    }
+    // Check sizes
+    if (d.size() != f1.size() || f1.size() != f2.size()) {
+      qWarning() << "Cluster::compareNNDist: Vectors are not the same size.";
+      return false;
+    }
+
+    // Perform a boxcar smoothing over range set by "smear"
+    // First determine step size of d, then convert smear to index units
+    double stepSize = fabs(d.at(1) - d.at(0));
+    int boxSize = ceil(smear/stepSize);
+    if (boxSize > d.size()) {
+      qWarning() << "Cluster::compareNNDist: Smear length is greater then d vector range.";
+      return false;
+    }
+    // Smear
+    vector<double> f1s, f2s, ds; // smeared vectors
+    double f1t, f2t, dt; // temporary variables
+    for (int i = 0; i < d.size() - boxSize; i++) {
+      f1t = f2t = dt = 0;
+      for (int j = 0; j < boxSize; j++) {
+        f1t += f1.at(i+j);
+        f2t += f2.at(i+j);
+      }
+      f1s.push_back(f1t / double(boxSize));
+      f2s.push_back(f2t / double(boxSize));
+      ds.push_back(dt / double(boxSize));
+    }
+
+    // Calculate diff vector
+    vector<double> diff;
+    for (int i = 0; i < ds.size(); i++) {
+      diff.push_back(fabs(f1s.at(i) - f2s.at(i)));
+    }
+
+    // Calculate decay function: Standard exponential decay with a
+    // halflife of decay. If decay==0, no decay.
+    double decayFactor = 0;
+    // ln(2) / decay:
+    if (decay != 0) {
+      decayFactor = 0.69314718055994530941723 / decay;
+    }
+
+    // Calculate error:
+    (*error) = 0;
+    for (int i = 0; i < ds.size(); i++) {
+      (*error) += exp(-decayFactor * ds.at(i)) * diff.at(i);
+    }
+
+    return true;
+  }
+
 
   void Cluster::constructRandomCluster(const QHash<unsigned int, unsigned int> &comp,
                                        float minIAD,
