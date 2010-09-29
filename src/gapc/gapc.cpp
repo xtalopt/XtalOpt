@@ -30,6 +30,7 @@
 
 #include <QtCore/QDir>
 #include <QtConcurrentRun>
+#include <QtConcurrentMap>
 
 namespace GAPC {
 
@@ -923,39 +924,96 @@ optimizations. If so, safely ignore this message.")
     QtConcurrent::run(this, &OptGAPC::checkForDuplicates_);
   }
 
-  void OptGAPC::checkForDuplicates_() {
-    QList<QList<double> > freqs;
-    QList<double> freq;
-    QList<double> dist;
+  QHash<QString, QVariant> getFingerprint(Structure *s)
+  { return s->getFingerprint();}
 
+  void OptGAPC::checkForDuplicates_() {
     m_tracker->lockForRead();
     QList<Structure*> *structures = m_tracker->list();
 
-    ProtectedCluster *pc=0, *pc_i=0, *pc_j=0;
-    for (int i = 0; i < structures->size(); i++) {
-      pc = qobject_cast<ProtectedCluster*>(structures->at(i));
-      pc->lock()->lockForRead();
-      pc->getNearestNeighborHistogram(dist, freq, 0, 10, 0.01);
-      freqs.append(freq);
-      pc->lock()->unlock();
-    }
+    if (structures->size() == 0) return;
+    // getFingerprint is defined above
+    QList<QHash<QString, QVariant> > fps = QtConcurrent::blockingMapped((*structures),
+                                                                        getFingerprint);
+    m_tracker->unlock();
 
-    // Iterate over all pcs
-    for (int i = 0; i < structures->size(); i++) {
-      pc_i = qobject_cast<ProtectedCluster*>(structures->at(i));
-      for (int j = i; j < structures->size(); j++) {
-        pc_j = qobject_cast<ProtectedCluster*>(structures->at(j));
-        double error = 0;
-        ProtectedCluster::compareNearestNeighborDistributions(dist,
-                                                              freqs.at(i),
-                                                              freqs.at(j),
-                                                              0, 0.5, &error);
-        qDebug() << pc_i->getIDString() << " vs: " << pc_j->getIDString()
-                 << " error: " << error;
+    QVariantList distv = fps.first().value("IADDist").toList();
+    QList<double> dist;
+    QList<QList<double> > freqs;
+    QVariantList freqv;
+    QList<double> *freq;
+
+    // Convert QVariant lists to doubles
+    // TODO next line: Wait until Qt 4.7.0 is req'd
+    // dist.reserve(distv.size());
+    for (int i = 0; i < distv.size(); i++) {
+      dist.append(distv.at(i).toDouble());
+    }
+    // TODO next line: Wait until Qt 4.7.0 is req'd
+    // freqs.reserve(fps.size());
+    for (int i = 0; i < fps.size(); i++) {
+      freqs.append(QList<double>());
+      freq = &(freqs[i]);
+      freqv = fps.at(i).value("IADFreq").toList();
+      // TODO next line: Wait until Qt 4.7.0 is req'd
+      // freq->reserve(freqv.size());
+      for (int i = 0; i < freqv.size(); i++) {
+        freq->append(freqv.at(i).toDouble());
       }
     }
 
-    m_tracker->unlock();
+    QHash<QString, QVariant> *fp_i=0, *fp_j=0;
+    QList<double> *freq_i, *freq_j;
+    Structure *s_i, *s_j;
+
+    for (int i = 0; i < structures->size(); i++) {
+      if (structures->at(i)->getStatus() != Structure::Optimized) continue;
+      fp_i = &(fps[i]);
+      freq_i = &(freqs[i]);
+      for (int j = i+1; j < structures->size(); j++) {
+        if (structures->at(j)->getStatus() != Structure::Optimized) continue;
+        fp_j = &(fps[j]);
+        freq_j = &(freqs[i]);
+        double error = 0;
+        ProtectedCluster::compareNearestNeighborDistributions(dist,
+                                                              (*freq_i),
+                                                              (*freq_j),
+                                                              0, 0.5, &error);
+        qDebug() << error;
+        if (error >= tol_geo) continue;
+        if ( fabs(fp_i->value("enthalpy").toDouble() -
+                  fp_j->value("enthalpy").toDouble()) >=
+             tol_enthalpy) continue;
+        // If we get here, all the fingerprint values match,
+        // and we have a duplicate. Mark the xtal with the
+        // highest enthalpy as a duplicate of the other.
+        s_i = structures->at(i);
+        s_j = structures->at(j);
+        if (fp_i->value("enthalpy").toDouble() > fp_j->value("enthalpy").toDouble()) {
+          s_i->lock()->lockForWrite();
+          s_j->lock()->lockForRead();
+          s_i->setStatus(Structure::Duplicate);
+          s_i->setDuplicateString(QString("%1x%2")
+                                  .arg(s_j->getGeneration())
+                                  .arg(s_j->getIDNumber()));
+          s_i->lock()->unlock();
+          s_j->lock()->unlock();
+          break; // if s_i is a duplicate, break the inner loop so
+                 // that we stop comparing it.
+        }
+        else {
+          s_j->lock()->lockForWrite();
+          s_i->lock()->lockForRead();
+          s_j->setStatus(Structure::Duplicate);
+          s_j->setDuplicateString(QString("%1x%2")
+                                  .arg(s_i->getGeneration())
+                                  .arg(s_i->getIDNumber()));
+          s_j->lock()->unlock();
+          s_i->lock()->unlock();
+        }
+      }
+    }
+
     emit updateAllInfo();
   }
 

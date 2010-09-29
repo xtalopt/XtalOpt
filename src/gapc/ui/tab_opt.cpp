@@ -84,6 +84,8 @@ namespace GAPC {
     // Duplicate tolerances
     connect(ui.spin_tol_enthalpy, SIGNAL(editingFinished()),
             this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_tol_geo, SIGNAL(editingFinished()),
+            this, SLOT(updateOptimizationInfo()));
     connect(ui.push_dup_reset, SIGNAL(clicked()),
             m_opt, SLOT(resetDuplicates()));
 
@@ -119,6 +121,7 @@ namespace GAPC {
 
     // Duplicates
     settings->setValue("tol/enthalpy",      gapc->tol_enthalpy);
+    settings->setValue("tol/geo",           gapc->tol_geo);
 
     // Crossover
     settings->setValue("p_cross",           gapc->p_cross);
@@ -164,6 +167,7 @@ namespace GAPC {
 
     // Duplicates
     ui.spin_tol_enthalpy->setValue(     settings->value("tol/enthalpy",         1e-2).toDouble());
+    ui.spin_tol_geo->setValue(          settings->value("tol/geo",              5e2).toDouble());
 
     // Crossover
     ui.spin_p_cross->setValue(          settings->value("p_cross",              25).toInt());
@@ -212,6 +216,7 @@ namespace GAPC {
 
     // Duplicates
     ui.spin_tol_enthalpy->setValue(     gapc->tol_enthalpy);
+    ui.spin_tol_geo->setValue(          gapc->tol_geo);
 
     // Crossover
     ui.spin_p_cross->setValue(          gapc->p_cross);
@@ -269,6 +274,7 @@ namespace GAPC {
 
     // Duplicates
     gapc->tol_enthalpy         = ui.spin_tol_enthalpy->value();
+    gapc->tol_geo              = ui.spin_tol_geo->value();
 
     // Crossover
     // p_cross set above

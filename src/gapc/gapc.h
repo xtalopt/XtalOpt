@@ -58,9 +58,10 @@ namespace GAPC {
     QString gulpPath;
     unsigned int numInitial;
     unsigned int popSize;
-    float tol_enthalpy;
-    float minIAD;
-    float maxIAD;
+    double tol_enthalpy;
+    double tol_geo;
+    double minIAD;
+    double maxIAD;
     int p_cross;
     int p_twist;
     int p_exch;

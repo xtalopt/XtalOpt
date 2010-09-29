@@ -168,6 +168,22 @@ namespace GAPC {
     translate(-center());
   }
 
+  QHash<QString, QVariant> Cluster::getFingerprint() const
+  {
+    QHash<QString, QVariant> fp = Structure::getFingerprint();
+    QList<double> dist, freq;
+    QList<QVariant> vdist, vfreq;
+    getNearestNeighborHistogram(dist, freq, 0, 10, 0.01);
+    for (int i = 0; i < dist.size(); i++) {
+      vdist.append(dist.at(i));
+      vfreq.append(freq.at(i));
+    }
+    fp.insert("IADFreq", QVariant(vfreq));
+    fp.insert("IADDist", QVariant(vdist));
+    return fp;
+  }
+
+
 } // end namespace GAPC
 
 //#include "scene.moc"
