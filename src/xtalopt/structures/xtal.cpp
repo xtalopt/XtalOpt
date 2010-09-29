@@ -595,9 +595,9 @@ namespace XtalOpt {
     }
   }
 
-  QHash<QString, double> Xtal::getFingerprint() {
-    QHash<QString, double> fp; // fingerprint hash
-    fp.insert("enthalpy", getEnthalpy());
+  QHash<QString, QVariant> Xtal::getFingerprint()
+  {
+    QHash<QString, QVariant> fp = Structure::getFingerprint();
     fp.insert("volume", getVolume());
     fp.insert("spacegroup", getSpaceGroupNumber());
     return fp;

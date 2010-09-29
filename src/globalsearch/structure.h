@@ -444,9 +444,9 @@ namespace GlobalSearch {
      */
     QString getOptElapsed() const;
 
-    /** A "fingerprint" hash of the structure. This should be treated
-     * a pure virtual for now and reimplimented when needed for
-     * derived class.
+    /** A "fingerprint" hash of the structure. Returns "enthalpy" key
+     * with the enthalpy value as a double wrapped in a QVariant. May
+     * be extended in derived classes.
      *
      * Used for checking if two Structures are similar enough to be
      * marked as duplicates.
@@ -454,7 +454,7 @@ namespace GlobalSearch {
      * @return A hash of key/value pairs containing data that is
      * representative of the Structure.
      */
-    virtual QHash<QString, double> getFingerprint();
+    virtual QHash<QString, QVariant> getFingerprint();
 
     /** Sort the listed structures by their enthalpies
      *

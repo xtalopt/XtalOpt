@@ -1199,7 +1199,7 @@ namespace XtalOpt {
     limits.insert("volume", tol_volume);
 
     QList<QString> keys = limits.keys();
-    QList<QHash<QString, double> > fps;
+    QList<QHash<QString, QVariant> > fps;
     QList<Xtal::State> states;
 
     m_tracker->lockForRead();
@@ -1215,20 +1215,20 @@ namespace XtalOpt {
     }
 
     // Iterate over all xtals
-    QHash<QString, double> fp_i, fp_j;
+    const QHash<QString, QVariant> *fp_i, *fp_j;
     QString key;
     for (int i = 0; i < fps.size(); i++) {
       if ( states.at(i) != Xtal::Optimized ) continue;
-      fp_i = fps.at(i);
+      fp_i = &fps.at(i);
       // skip unknown spacegroups
-      if (fp_i.value("spacegroup") == 0) continue;
+      if (fp_i->value("spacegroup").toUInt() == 0) continue;
       for (int j = i+1; j < fps.size(); j++) {
         if (states.at(j) != Xtal::Optimized ) continue;
-        fp_j = fps.at(j);
+        fp_j = &fps.at(j);
         // skip unknown spacegroups
-        if (fp_j.value("spacegroup") == 0) continue;
+        if (fp_j->value("spacegroup").toUInt() == 0) continue;
         // If xtals do not have the same spacegroup number, break
-        if (fp_i.value("spacegroup") != fp_j.value("spacegroup")) {
+        if (fp_i->value("spacegroup").toUInt() != fp_j->value("spacegroup").toUInt()) {
           continue;
         }
         // Check limits
@@ -1236,7 +1236,8 @@ namespace XtalOpt {
         for (int k = 0; k < keys.size(); k++) {
           key = keys.at(k);
           // If values do not match, skip to next pair of xtals.
-          if (fabs(fp_i.value(key) - fp_j.value(key) ) > limits.value(key)) {
+          if (fabs(fp_i->value(key).toDouble() - fp_j->value(key).toDouble() )
+              > limits.value(key)) {
             match = false;
             break;
           }
@@ -1247,7 +1248,7 @@ namespace XtalOpt {
         // highest enthalpy as a duplicate of the other.
         xtal_i = qobject_cast<Xtal*>(structures->at(i));
         xtal_j = qobject_cast<Xtal*>(structures->at(j));
-        if (fp_i["enthalpy"] > fp_j["enthalpy"]) {
+        if (fp_i->value("enthalpy").toDouble() > fp_j->value("enthalpy").toDouble()) {
           xtal_i->lock()->lockForWrite();
           xtal_j->lock()->lockForRead();
           xtal_i->setStatus(Xtal::Duplicate);

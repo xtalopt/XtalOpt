@@ -460,11 +460,11 @@ namespace GlobalSearch {
     }
   }
 
-  QHash<QString, double> Structure::getFingerprint() {
-    // Treat this function as pure virtual for now. Should eventually
-    // be used for non-extended systems.
-    qWarning() << "WARNING: Structure::getFingerprint called. Should be pure virtual for now. This is a bug.";
-    return QHash<QString, double> ();
+  QHash<QString, QVariant> Structure::getFingerprint()
+  {
+    QHash<QString, QVariant> fp;
+    fp.insert("enthalpy", getEnthalpy());
+    return fp;
   }
 
   void Structure::sortByEnthalpy(QList<Structure*> *structures)
