@@ -130,9 +130,6 @@ namespace GAPC {
     bool load(const QString & filename);
 
     ProtectedCluster* generateRandomPC(unsigned int gen = 1, unsigned int id = 0);
-    static void sortByEnthalpy(QList<ProtectedCluster*> *pcs);
-    static void rankEnthalpies(QList<ProtectedCluster*> *pcs);
-    static QList<double> getProbabilityList(QList<ProtectedCluster*> *xtals);
 
    signals:
     void updateAllInfo();

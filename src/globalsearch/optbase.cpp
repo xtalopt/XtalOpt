@@ -97,6 +97,80 @@ namespace GlobalSearch {
       qDebug() << l.at(i);
   }
 
+  QList<double> OptBase::getProbabilityList(const QList<Structure*> &structures) {
+    // IMPORTANT: structures must contain one more structure than
+    // needed -- the last structure in the list will be removed from
+    // the probability list!
+    if (structures.size() <= 2) {
+      return QList<double>();
+    }
+
+    QList<double> probs;
+    Structure *s=0, *first=0, *last=0;
+    first = structures.first();
+    last = structures.last();
+    first->lock()->lockForRead();
+    last->lock()->lockForRead();
+    double lowest = first->getEnthalpy();
+    double highest = last->getEnthalpy();;
+    double spread = highest - lowest;
+    last->lock()->unlock();
+    first->lock()->unlock();
+    // If all structures are at the same enthalpy, lets save some time...
+    if (spread <= 1e-5) {
+      double v = 1.0/static_cast<double>(structures.size()-1);
+      double p = v;
+      for (int i = 0; i < structures.size()-1; i++) {
+        probs.append(v);
+        v += p;
+      }
+      return probs;
+    }
+    // Generate a list of floats from 0->1 proportional to the enthalpies;
+    // E.g. if enthalpies are:
+    // -5   -2   -1   3   5
+    // We'll have:
+    // 0   0.3  0.4  0.8  1
+    for (int i = 0; i < structures.size(); i++) {
+      s = structures.at(i);
+      s->lock()->lockForRead();
+      probs.append( ( s->getEnthalpy() - lowest ) / spread);
+      s->lock()->unlock();
+    }
+    // Subtract each value from one, and find the sum of the resulting list
+    // We'll end up with:
+    // 1  0.7  0.6  0.2  0   --   sum = 2.5
+    double sum = 0;
+    for (int i = 0; i < probs.size(); i++){
+      probs[i] = 1.0 - probs.at(i);
+      sum += probs.at(i);
+    }
+    // Normalize with the sum so that the list adds to 1
+    // 0.4  0.28  0.24  0.08  0
+    for (int i = 0; i < probs.size(); i++){
+      probs[i] /= sum;
+    }
+    // Then replace each entry with a cumulative total:
+    // 0.4 0.68 0.92 1 1
+    sum = 0;
+    for (int i = 0; i < probs.size(); i++){
+      sum += probs.at(i);
+      probs[i] = sum;
+    }
+    // Pop off the last entry (remember the n_popSize + 1 earlier?)
+    // 0.4 0.68 0.92 1
+    probs.removeLast();
+    // And we have a enthalpy weighted probability list! To use:
+    //
+    //   double r = rand.NextFloat();
+    //   uint ind;
+    //   for (ind = 0; ind < probs.size(); ind++)
+    //     if (r < probs.at(ind)) break;
+    //
+    // ind will hold the chosen index.
+    return probs;
+  }
+
   bool OptBase::save(const QString &stateFilename, bool notify)
   {
     if (isStarting ||

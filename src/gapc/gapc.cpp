@@ -539,11 +539,6 @@ optimizations. If so, safely ignore this message.")
       return;
     }
 
-    QList<ProtectedCluster*> pcs;
-    for (int i = 0; i < structures.size(); i++)
-      pcs.append(qobject_cast<ProtectedCluster*>(structures.at(i)));
-
-
     // return pc
     ProtectedCluster *pc = 0;
 
@@ -551,14 +546,19 @@ optimizations. If so, safely ignore this message.")
     ProtectedCluster *tpc;
 
     // Trim and sort list
-    sortByEnthalpy(&pcs);
+    Structure::sortByEnthalpy(&structures);
     // Remove all but (n_consider + 1). The "+ 1" will be removed
     // during probability generation.
-    while ( static_cast<uint>(pcs.size()) > popSize + 1 )
-      pcs.removeLast();
+    while ( static_cast<uint>(structures.size()) > popSize + 1 )
+      structures.removeLast();
 
     // Make list of weighted probabilities based on enthalpy values
-    QList<double> probs = getProbabilityList(&pcs);
+    QList<double> probs = getProbabilityList(structures);
+
+    // Convert stuctures to pcs
+    QList<ProtectedCluster*> pcs;
+    for (int i = 0; i < structures.size(); i++)
+      pcs.append(qobject_cast<ProtectedCluster*>(structures.at(i)));
 
     // Initialize loop vars
     double r;
@@ -761,139 +761,6 @@ optimizations. If so, safely ignore this message.")
     pc->setStatus(ProtectedCluster::WaitingForOptimization);
 
     return pc;
-  }
-
-  void OptGAPC::sortByEnthalpy(QList<ProtectedCluster*> *pcs) {
-    uint numStructs = pcs->size();
-
-    // Simple selection sort
-    ProtectedCluster *pc_i=0, *pc_j=0, *tmp=0;
-    for (uint i = 0; i < numStructs-1; i++) {
-      pc_i = pcs->at(i);
-      pc_i->lock()->lockForRead();
-      for (uint j = i+1; j < numStructs; j++) {
-        pc_j = pcs->at(j);
-        pc_j->lock()->lockForRead();
-        if (pc_j->getEnthalpy() < pc_i->getEnthalpy()) {
-          pcs->swap(i,j);
-          tmp = pc_i;
-          pc_i = pc_j;
-          pc_j = tmp;
-        }
-        pc_j->lock()->unlock();
-      }
-      pc_i->lock()->unlock();
-    }
-  }
-
-  void OptGAPC::rankEnthalpies(QList<ProtectedCluster*> *pcs) {
-    uint numStructs = pcs->size();
-    QList<ProtectedCluster*> rpcs;
-
-    // Copy pcs to a temporary list (don't modify input list!)
-    for (uint i = 0; i < numStructs; i++)
-      rpcs.append(pcs->at(i));
-
-    // Simple selection sort
-    ProtectedCluster *pc_i=0, *pc_j=0, *tmp=0;
-    for (uint i = 0; i < numStructs-1; i++) {
-      pc_i = rpcs.at(i);
-      pc_i->lock()->lockForRead();
-      for (uint j = i+1; j < numStructs; j++) {
-        pc_j = rpcs.at(j);
-        pc_j->lock()->lockForRead();
-        if (pc_j->getEnthalpy() < pc_i->getEnthalpy()) {
-          rpcs.swap(i,j);
-          tmp = pc_i;
-          pc_i = pc_j;
-          pc_j = tmp;
-        }
-        pc_j->lock()->unlock();
-      }
-      pc_i->lock()->unlock();
-    }
-
-    // Set rankings
-    for (uint i = 0; i < numStructs; i++) {
-      pc_i = rpcs.at(i);
-      pc_i->lock()->lockForWrite();
-      pc_i->setRank(i+1);
-      pc_i->lock()->unlock();
-    }
-  }
-
-  QList<double> OptGAPC::getProbabilityList(QList<ProtectedCluster*> *pcs) {
-    // IMPORTANT: pcs must contain one more pc than needed -- the last pc in the
-    // list will be removed from the probability list!
-    if (pcs->size() <= 1) {
-      qDebug() << "OptGAPC::getProbabilityList: Structure list too small -- bailing out.";
-      return QList<double>();
-    }
-    QList<double> probs;
-    ProtectedCluster *pc=0, *first=0, *last=0;
-    first = pcs->first();
-    last = pcs->last();
-    first->lock()->lockForRead();
-    last->lock()->lockForRead();
-    double lowest = first->getEnthalpy();
-    double highest = last->getEnthalpy();;
-    double spread = highest - lowest;
-    last->lock()->unlock();
-    first->lock()->unlock();
-    // If all structures are at the same enthalpy, lets save some time...
-    if (spread <= 1e-5) {
-      double v = 1.0/static_cast<double>(pcs->size());
-      double p = v;
-      for (int i = 0; i < pcs->size(); i++) {
-        probs.append(v);
-        v += p;
-      }
-      return probs;
-    }
-    // Generate a list of floats from 0->1 proportional to the enthalpies;
-    // E.g. if enthalpies are:
-    // -5   -2   -1   3   5
-    // We'll have:
-    // 0   0.3  0.4  0.8  1
-    for (int i = 0; i < pcs->size(); i++) {
-      pc = pcs->at(i);
-      pc->lock()->lockForRead();
-      probs.append( ( pc->getEnthalpy() - lowest ) / spread);
-      pc->lock()->unlock();
-    }
-    // Subtract each value from one, and find the sum of the resulting list
-    // We'll end up with:
-    // 1  0.7  0.6  0.2  0   --   sum = 2.5
-    double sum = 0;
-    for (int i = 0; i < probs.size(); i++){
-      probs[i] = 1.0 - probs.at(i);
-      sum += probs.at(i);
-    }
-    // Normalize with the sum so that the list adds to 1
-    // 0.4  0.28  0.24  0.08  0
-    for (int i = 0; i < probs.size(); i++){
-      probs[i] /= sum;
-    }
-    // Then replace each entry with a cumulative total:
-    // 0.4 0.68 0.92 1 1
-    sum = 0;
-    for (int i = 0; i < probs.size(); i++){
-      sum += probs.at(i);
-      probs[i] = sum;
-    }
-    // Pop off the last entry (remember the n_popSize + 1 earlier?)
-    // 0.4 0.68 0.92 1
-    probs.removeLast();
-    // And we have a enthalpy weighted probability list! To use:
-    //
-    //   double r = rand.NextFloat();
-    //   uint ind;
-    //   for (ind = 0; ind < probs.size(); ind++)
-    //     if (r < probs.at(ind)) break;
-    //
-    // ind will hold the chosen index.
-
-    return probs;
   }
 
   void OptGAPC::resetDuplicates() {
