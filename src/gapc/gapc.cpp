@@ -795,13 +795,17 @@ optimizations. If so, safely ignore this message.")
   { return s->getFingerprint();}
 
   void OptGAPC::checkForDuplicates_() {
+    QTime timer = QTime::currentTime();
     m_tracker->lockForRead();
     QList<Structure*> *structures = m_tracker->list();
 
     if (structures->size() == 0) return;
     // getFingerprint is defined above
+    QTime timer1 = QTime::currentTime();
     QList<QHash<QString, QVariant> > fps = QtConcurrent::blockingMapped((*structures),
                                                                         getFingerprint);
+    double fptime = timer1.msecsTo(QTime::currentTime()) / (double)1000;
+    qDebug() << "Fingerprint generation took " << fptime << " for " << fps.size() << "structs";
     m_tracker->unlock();
 
     QVariantList distv = fps.first().value("IADDist").toList();
@@ -840,13 +844,17 @@ optimizations. If so, safely ignore this message.")
       for (int j = i+1; j < structures->size(); j++) {
         if (structures->at(j)->getStatus() != Structure::Optimized) continue;
         fp_j = &(fps[j]);
-        freq_j = &(freqs[i]);
+        freq_j = &(freqs[j]);
         double error = 0;
-        ProtectedCluster::compareNearestNeighborDistributions(dist,
-                                                              (*freq_i),
-                                                              (*freq_j),
-                                                              0, 0.5, &error);
-        qDebug() << error;
+        if (!ProtectedCluster::compareNearestNeighborDistributions(dist,
+                                                                  (*freq_i),
+                                                                  (*freq_j),
+                                                                  0, 0.5,
+                                                                  &error))
+          {
+            warning("Geometric fingerprint comparison failed. Aborting...");
+            continue;
+          }
         if (error >= tol_geo) continue;
         if ( fabs(fp_i->value("enthalpy").toDouble() -
                   fp_j->value("enthalpy").toDouble()) >=
@@ -881,6 +889,8 @@ optimizations. If so, safely ignore this message.")
       }
     }
 
+    double alltime = timer.msecsTo(QTime::currentTime()) / (double)1000;
+    qDebug() << "comparison took " << alltime << " for " << fps.size() << "structs";
     emit updateAllInfo();
   }
 
