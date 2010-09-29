@@ -597,14 +597,12 @@ optimizations. If so, safely ignore this message.")
           ProtectedCluster *pc1=0, *pc2=0;
           // Select structures
           ind1 = ind2 = 0;
-          while (ind1 == ind2) {
-            double r1 = RANDDOUBLE();
-            double r2 = RANDDOUBLE();
-            for (ind1 = 0; ind1 < probs.size(); ind1++)
-              if (r1 < probs.at(ind1)) break;
-            for (ind2 = 0; ind2 < probs.size(); ind2++)
-              if (r2 < probs.at(ind2)) break;
-          }
+          double r1 = RANDDOUBLE();
+          double r2 = RANDDOUBLE();
+          for (ind1 = 0; ind1 < probs.size(); ind1++)
+            if (r1 < probs.at(ind1)) break;
+          for (ind2 = 0; ind2 < probs.size(); ind2++)
+            if (r2 < probs.at(ind2)) break;
 
           pc1 = pcs.at(ind1);
           pc2 = pcs.at(ind2);
