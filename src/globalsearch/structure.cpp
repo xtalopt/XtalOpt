@@ -460,7 +460,7 @@ namespace GlobalSearch {
     }
   }
 
-  QHash<QString, QVariant> Structure::getFingerprint()
+  QHash<QString, QVariant> Structure::getFingerprint() const
   {
     QHash<QString, QVariant> fp;
     fp.insert("enthalpy", getEnthalpy());

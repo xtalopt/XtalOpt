@@ -454,7 +454,7 @@ namespace GlobalSearch {
      * @return A hash of key/value pairs containing data that is
      * representative of the Structure.
      */
-    virtual QHash<QString, QVariant> getFingerprint();
+    virtual QHash<QString, QVariant> getFingerprint() const;
 
     /** Sort the listed structures by their enthalpies
      *
