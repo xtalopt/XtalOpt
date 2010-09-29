@@ -505,10 +505,12 @@ namespace XtalOpt {
           // Select structures
           ind1 = ind2 = 0;
           while (ind1 == ind2) {
+            double r1 = RANDDOUBLE();
+            double r2 = RANDDOUBLE();
             for (ind1 = 0; ind1 < probs.size(); ind1++)
-              if (RANDDOUBLE() < probs.at(ind1)) break;
+              if (r1 < probs.at(ind1)) break;
             for (ind2 = 0; ind2 < probs.size(); ind2++)
-              if (RANDDOUBLE() < probs.at(ind2)) break;
+              if (r2 < probs.at(ind2)) break;
           }
 
           xtal1 = xtals.at(ind1);
@@ -544,8 +546,9 @@ namespace XtalOpt {
         case OP_Stripple: {
           // Pick a parent
           int ind;
+          double r = RANDDOUBLE();
           for (ind = 0; ind < probs.size(); ind++)
-            if (RANDDOUBLE() < probs.at(ind)) break;
+            if (r < probs.at(ind)) break;
           Xtal *xtal1 = xtals.at(ind);
 
           // Perform stripple
@@ -579,8 +582,9 @@ namespace XtalOpt {
         }
         case OP_Permustrain: {
           int ind;
+          double r = RANDDOUBLE();
           for (ind = 0; ind < probs.size(); ind++)
-            if (RANDDOUBLE() < probs.at(ind)) break;
+            if (r < probs.at(ind)) break;
 
           Xtal *xtal1 = xtals.at(ind);
           double stdev=0;
