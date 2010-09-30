@@ -28,39 +28,61 @@ typedef enum {
 
 
 
-static int get_spacegroup_number(const Bravais *bravais, const Cell *primitive,
-				 const Symmetry *primitive_sym, const double symprec);
-static int get_rotation_class(const Bravais * bravais, const int order, const int rot[3][3],
-			      const double trans[3], const double symprec);
-static int get_improper_rotation_class_2axis(const Bravais * bravais, const int rot[3][3],
-					     const double raw_trans[3], const double symprec);
-static int get_proper_rotation_class(const Bravais * bravais, const int order, const int rot[3][3],
-				     const double raw_trans[3], const double symprec);
-static int get_proper_rotation_class_6axis(const int rot[3][3], const int trans_order,
-					   const int nonsymmorphic);
-static int get_proper_rotation_class_4axis(const Centering centering, const int rot[3][3],
-					   const int trans_order, const int nonsymmorphic[3]);
-static int get_proper_rotation_class_3axis(const Holohedry holohedry, const int rot[3][3],
-					   const int trans_order, const int nonsymmorphic);
-static int get_proper_rotation_class_2axis(const Bravais * bravais, const int rot[3][3],
-					   const int trans_order);
-static int get_translation_order(const Centering centering, const int order, const double raw_trans[3],
-				 const int rot[3][3], const double symprec);
-static int get_class_order(int rot[3][3]);
-static double get_abs_diff_two_vectors(double a[3], double b[3]);
-static void get_order_times_translation(double trans[3], const int order,
-					const int rot[3][3],
-					const double raw_trans[3],
-					const double symprec);
-static int get_class_order(int rot[3][3]);
-static int is_d_glide(const double glide[3], const Axis_type axis_type,
-		      const double symprec);
+static int get_spacegroup_number( SPGCONST Bravais *bravais,
+				  SPGCONST Cell *primitive,
+				  const Symmetry *primitive_sym,
+				  const double symprec );
+static int get_rotation_class( SPGCONST Bravais * bravais,
+			       const int order,
+			       SPGCONST int rot[3][3],
+			       const double trans[3],
+			       const double symprec );
+static int get_improper_rotation_class_2axis( SPGCONST Bravais * bravais,
+					      SPGCONST int rot[3][3],
+					      const double raw_trans[3],
+					      const double symprec );
+static int get_proper_rotation_class( const Bravais * bravais,
+				      const int order,
+				      SPGCONST int rot[3][3],
+				      const double raw_trans[3],
+				      const double symprec );
+static int get_proper_rotation_class_6axis( SPGCONST int rot[3][3],
+					    const int trans_order,
+					    const int nonsymmorphic );
+static int get_proper_rotation_class_4axis( const Centering centering,
+					    SPGCONST int rot[3][3],
+					    const int trans_order,
+					    const int nonsymmorphic[3] );
+static int get_proper_rotation_class_3axis( const Holohedry holohedry,
+					    SPGCONST int rot[3][3],
+					    const int trans_order,
+					    const int nonsymmorphic );
+static int get_proper_rotation_class_2axis( const Bravais * bravais,
+					    SPGCONST int rot[3][3],
+					    const int trans_order );
+static int get_translation_order( const Centering centering,
+				  const int order,
+				  const double raw_trans[3],
+				  SPGCONST int rot[3][3],
+				  const double symprec );
+static int get_class_order( int rot[3][3] );
+static double get_abs_diff_two_vectors( double a[3], double b[3] );
+static void get_order_times_translation( double trans[3],
+					 const int order,
+					 SPGCONST int rot[3][3],
+					 const double raw_trans[3],
+					 const double symprec );
+static int get_class_order( int rot[3][3] );
+static int is_d_glide( const double glide[3],
+		       const Axis_type axis_type,
+		       const double symprec );
 
 #ifdef DEBUG
-static void print_rotation_class(int rot_class);
+static void print_rotation_class( int rot_class );
 #endif
 
-Spacegroup tbl_get_spacegroup(const Cell * cell, const double symprec)
+Spacegroup tbl_get_spacegroup( SPGCONST Cell * cell,
+			       const double symprec )
 {
   int spacegroup_number;
   Bravais bravais;
@@ -120,10 +142,10 @@ Spacegroup tbl_get_spacegroup(const Cell * cell, const double symprec)
   return spacegroup;
 }
 
-Symmetry tbl_get_conventional_symmetry(const Bravais *bravais,
-				       const Cell *primitive,
-				       const Symmetry *primitive_sym,
-				       const double symprec)
+Symmetry tbl_get_conventional_symmetry( SPGCONST Bravais *bravais,
+					SPGCONST Cell *primitive,
+					const Symmetry *primitive_sym,
+					const double symprec )
 {
   int i, j, k, multi, size;
   Centering centering;
@@ -249,16 +271,18 @@ Symmetry tbl_get_conventional_symmetry(const Bravais *bravais,
   return symmetry;
 }
 
-static int get_spacegroup_number(const Bravais *bravais, const Cell *cell,
-				 const Symmetry *prim_sym, const double symprec)
+static int get_spacegroup_number( SPGCONST Bravais *bravais,
+				  SPGCONST Cell *cell,
+				  const Symmetry *prim_sym,
+				  const double symprec )
 {
-  int i, order, spacegroup, *rot_class;
+  int i, order, spacegroup;
   Symmetry symmetry;
+  int *rot_class;
 
   symmetry = tbl_get_conventional_symmetry(bravais, cell, prim_sym, symprec);
-
   rot_class = (int*)malloc(symmetry.size * sizeof(int));
-
+  
   debug_print("*** get_spacegroup_number ***\n");
   for (i = 0; i < symmetry.size; i++) {
 
@@ -278,8 +302,7 @@ static int get_spacegroup_number(const Bravais *bravais, const Cell *cell,
     /* Error to find class */
     if (rot_class[i] == 0) {
       sym_delete_symmetry(&symmetry);
-      free(rot_class);
-      return 0;
+      goto err;
     }
   }
 
@@ -289,10 +312,16 @@ static int get_spacegroup_number(const Bravais *bravais, const Cell *cell,
   spacegroup = tbl_get_spacegroup_data(&symmetry, bravais, rot_class, symprec);
   sym_delete_symmetry(&symmetry);
   free(rot_class);
+  rot_class = NULL;
   return spacegroup;
+
+ err:
+  free(rot_class);
+  rot_class = NULL;
+  return 0;
 }
 
-static int get_class_order(int rot[3][3])
+static int get_class_order( int rot[3][3] )
 {
   int i, order = 0, test_rot[3][3];
   int identity[3][3] = {
@@ -329,9 +358,11 @@ static int get_class_order(int rot[3][3])
   return order;
 }
 
-static int get_rotation_class(const Bravais * bravais, const int order,
-			      const int rot[3][3], const double trans[3],
-			      const double symprec)
+static int get_rotation_class( SPGCONST Bravais * bravais,
+			       const int order,
+			       SPGCONST int rot[3][3],
+			       const double trans[3],
+			       const double symprec )
 {
   int i;
   double sum;
@@ -379,10 +410,10 @@ static int get_rotation_class(const Bravais * bravais, const int order,
   return 0;
 }
 
-static int get_improper_rotation_class_2axis(const Bravais * bravais,
-					     const int rot[3][3],
-					     const double trans[3],
-					     const double symprec)
+static int get_improper_rotation_class_2axis( SPGCONST Bravais * bravais,
+					      SPGCONST int rot[3][3],
+					      const double trans[3],
+					      const double symprec )
 {
   int i, sum=0;
   Holohedry holohedry;
@@ -625,8 +656,9 @@ static int get_improper_rotation_class_2axis(const Bravais * bravais,
   return G_PLANE;
 }
 
-static int is_d_glide(const double glide[3], const Axis_type axis_type,
-		      const double symprec)
+static int is_d_glide( const double glide[3],
+		       const Axis_type axis_type,
+		       const double symprec )
 {
   int i, j;
   double sum;
@@ -666,7 +698,7 @@ static int is_d_glide(const double glide[3], const Axis_type axis_type,
   return 0;
 }
 
-static double get_abs_diff_two_vectors(double a[3], double b[3])
+static double get_abs_diff_two_vectors( double a[3], double b[3] )
 {
   int i;
   double sum = 0;
@@ -677,9 +709,11 @@ static double get_abs_diff_two_vectors(double a[3], double b[3])
   return sum;
 }
 
-static int get_proper_rotation_class(const Bravais * bravais, const int order,
-				     const int rot[3][3], const double raw_trans[3],
-				     const double symprec)
+static int get_proper_rotation_class( const Bravais * bravais,
+				      const int order,
+				      SPGCONST int rot[3][3],
+				      const double raw_trans[3],
+				      const double symprec )
 {
   int i, rot_class, trans_order, sum_glide[3];
   Holohedry holohedry;
@@ -725,8 +759,9 @@ static int get_proper_rotation_class(const Bravais * bravais, const int order,
   return rot_class;
 }
 
-int get_proper_rotation_class_6axis(const int rot[3][3], const int trans_order,
-                                    const int sum_glide)
+int get_proper_rotation_class_6axis( SPGCONST int rot[3][3],
+				     const int trans_order,
+				     const int sum_glide )
 {
   if (trans_order == 1)
     return PRIMARY_6_AXIS;
@@ -785,9 +820,10 @@ int get_proper_rotation_class_6axis(const int rot[3][3], const int trans_order,
   return 0;
 }
 
-int get_proper_rotation_class_4axis(const Centering centering, const  int rot[3][3],
-                                    const int trans_order,
-				    const int sum_glide[3])
+int get_proper_rotation_class_4axis( const Centering centering,
+				     SPGCONST int rot[3][3],
+				     const int trans_order,
+				     const int sum_glide[3] )
 {
   int i;
 
@@ -833,10 +869,10 @@ int get_proper_rotation_class_4axis(const Centering centering, const  int rot[3]
   return 0;
 }
 
-static int get_proper_rotation_class_3axis(const Holohedry holohedry,
-					   const int rot[3][3],
-					   const int trans_order,
-					   const int sum_glide)
+static int get_proper_rotation_class_3axis( const Holohedry holohedry,
+					    SPGCONST int rot[3][3],
+					    const int trans_order,
+					    const int sum_glide )
 {
   if (trans_order == 1)
     return PRIMARY_3_AXIS;
@@ -869,9 +905,9 @@ static int get_proper_rotation_class_3axis(const Holohedry holohedry,
 
 }
 
-static int get_proper_rotation_class_2axis(const Bravais * bravais,
-					   const int rot[3][3],
-					   const int trans_order)
+static int get_proper_rotation_class_2axis( const Bravais * bravais,
+					    SPGCONST int rot[3][3],
+					    const int trans_order )
 {
   Holohedry holohedry;
   Centering centering;
@@ -924,9 +960,11 @@ static int get_proper_rotation_class_2axis(const Bravais * bravais,
 }
 
 
-static int get_translation_order(const Centering centering, const int order,
-				 const double trans[3], const int rot[3][3],
-				 const double symprec)
+static int get_translation_order( const Centering centering,
+				  const int order,
+				  const double trans[3],
+				  SPGCONST int rot[3][3],
+				  const double symprec )
 {
   int i, j, k;
   double sum, reduced_trans[3], glide[3];
@@ -992,10 +1030,11 @@ static int get_translation_order(const Centering centering, const int order,
 }
 
 /* measure translation after 'symmetry order' times symmetry operations */
-static void get_order_times_translation(double glide[3], const int order,
-					const int rot[3][3],
-					const double trans[3],
-					const double symprec )
+static void get_order_times_translation( double glide[3],
+					 const int order,
+					 SPGCONST int rot[3][3],
+					 const double trans[3],
+					 const double symprec )
 {
   int i, j;
   double reduced_trans[3];
@@ -1020,7 +1059,7 @@ static void get_order_times_translation(double glide[3], const int order,
 }
 
 #ifdef DEBUG
-static void print_rotation_class(int rot_class)
+static void print_rotation_class( int rot_class )
 {
 
   switch (rot_class) {

@@ -74,34 +74,71 @@ static int rot_axes[13][3] = {
   { 1, 1, 1},
 };
 
-static int is_holohedry(Bravais *bravais, const Cell *cell, const Holohedry holohedry, const double symprec);
-static int get_rotation_axis(const int rot[3][3], const int axis_num);
-static int is_monocli(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
-static int is_monocli_from_I(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
-static int is_monocli_from_F(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
-static int is_monocli_from_P(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
-static int get_monocli_bravais(double lattice[3][3], const Symmetry *conv_sym,
-			       const double relative_vol,  const
-			       double monocli_axes[13][3],
-			       const double symprec);
-static void get_monocli_bcc_to_c_center(double lattice[3][3]);
-static int is_monocli_orthogonal(const int b_axis, const int naxis, const double monocli_axes[13][3], const double symprec);
-static void get_monocli_relative_axes(double relative_axis[3][3], const double new_lattice[3][3],
-				      const double old_lattice[3][3], const double symprec);
-static int is_tetra(Bravais *bravais, const Symmetry *conv_sym);
-static int is_rhombo(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
-static int is_ortho(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
-static int is_ortho_from_H(Bravais *bravais, const Cell *cell, const Symmetry *symmetry, const double symprec);
-static int is_ortho_from_H_axis(const Bravais *bravais, const Cell *cell, const Symmetry *symmetry, const double symprec);
-static int is_ortho_from_I(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
-static int is_ortho_from_F(Bravais *bravais, const Symmetry *conv_sym, const double symprec);
-static int is_ortho_from_P(Bravais *bravais, const Symmetry *conv_sym);
-static int get_ortho_axis(int naxis[3], const Symmetry *conv_sym);
+static int is_holohedry( Bravais *bravais,
+			 SPGCONST Cell *cell,
+			 const Holohedry holohedry,
+			 const double symprec );
+static int get_rotation_axis( SPGCONST int rot[3][3],
+			      const int axis_num );
+static int is_monocli( Bravais *bravais,
+		       const Symmetry *conv_sym,
+		       const double symprec );
+static int is_monocli_from_I( Bravais *bravais,
+			      const Symmetry *conv_sym,
+			      const double symprec );
+static int is_monocli_from_F( Bravais *bravais,
+			      const Symmetry *conv_sym,
+			      const double symprec );
+static int is_monocli_from_P( Bravais *bravais,
+			      const Symmetry *conv_sym,
+			      const double symprec );
+static int get_monocli_bravais( double lattice[3][3],
+				const Symmetry *conv_sym,
+				const double relative_vol,
+				SPGCONST double monocli_axes[13][3],
+				const double symprec );
+static void get_monocli_bcc_to_c_center( double lattice[3][3] );
+static int is_monocli_orthogonal( const int b_axis,
+				  const int naxis,
+				  SPGCONST double monocli_axes[13][3],
+				  const double symprec );
+static void get_monocli_relative_axes( double relative_axis[3][3],
+				       SPGCONST double new_lattice[3][3],
+				       SPGCONST double old_lattice[3][3],
+				       const double symprec );
+static int is_tetra( Bravais *bravais,
+		     const Symmetry *conv_sym );
+static int is_rhombo( Bravais *bravais,
+		      const Symmetry *conv_sym,
+		      const double symprec );
+static int is_ortho( Bravais *bravais,
+		     const Symmetry *conv_sym,
+		     const double symprec );
+static int is_ortho_from_H( Bravais *bravais,
+			    SPGCONST Cell *cell,
+			    const Symmetry *symmetry,
+			    const double symprec );
+static int is_ortho_from_H_axis( SPGCONST Bravais *bravais,
+				 SPGCONST Cell *cell,
+				 const Symmetry *symmetry,
+				 const double symprec );
+static int is_ortho_from_I( Bravais *bravais,
+			    const Symmetry *conv_sym,
+			    const double symprec );
+static int is_ortho_from_F( Bravais *bravais,
+			    const Symmetry *conv_sym,
+			    const double symprec );
+static int is_ortho_from_P( Bravais *bravais,
+			    const Symmetry *conv_sym );
+static int get_ortho_axis( int naxis[3],
+			   const Symmetry *conv_sym );
 
 /* bravais is going to be changed. */
-int art_get_artificial_bravais(Bravais *bravais, const Symmetry *symmetry,
-			       const Cell *cell, const Holohedry holohedry,
-			       const double symprec)
+int art_get_artificial_bravais( Bravais *bravais,
+				const Symmetry *symmetry,
+				SPGCONST Cell *cell,
+				const Holohedry holohedry,
+				const double symprec )
 {
   int i, j;
   Symmetry conv_sym;
@@ -212,10 +249,11 @@ int art_get_artificial_bravais(Bravais *bravais, const Symmetry *symmetry,
   return 0;
 }
 
-static int is_rhombo(Bravais *bravais, const Symmetry *conv_sym, const double symprec)
+static int is_rhombo( Bravais *bravais,
+		      const Symmetry *conv_sym,
+		      const double symprec )
 {
   int i, j, k, l, naxis;
-  double bravais_lattice[3][3];
   double transform_matrix[3][3] = {
     { 1.0, 0.0, 0.0},
     { 0.0, 1.0, 0.0},
@@ -330,7 +368,9 @@ static int is_rhombo(Bravais *bravais, const Symmetry *conv_sym, const double sy
   return 1;
 }
 
-static int is_ortho(Bravais *bravais, const Symmetry *conv_sym, const double symprec)
+static int is_ortho( Bravais *bravais,
+		     const Symmetry *conv_sym,
+		     const double symprec )
 {
   /* I-Ortho and F-Ortho from I-Cbuic or I-Tetragonal */
   if (bravais->centering == BODY) {
@@ -354,8 +394,10 @@ static int is_ortho(Bravais *bravais, const Symmetry *conv_sym, const double sym
   return 1;
 }
 
-static int is_ortho_from_H(Bravais *bravais, const Cell *cell,
-			   const Symmetry *symmetry, const double symprec)
+static int is_ortho_from_H( Bravais *bravais,
+			    SPGCONST Cell *cell,
+			    const Symmetry *symmetry,
+			    const double symprec )
 {
   int i;
   double bravais_lattice[3][3];
@@ -402,8 +444,10 @@ static int is_ortho_from_H(Bravais *bravais, const Cell *cell,
   return 1;
 }
 
-static int is_ortho_from_H_axis(const Bravais *bravais, const Cell *cell,
-			   const Symmetry *symmetry, const double symprec)
+static int is_ortho_from_H_axis( SPGCONST Bravais *bravais,
+				 SPGCONST Cell *cell,
+				 const Symmetry *symmetry,
+				 const double symprec )
 {
   int naxis[3];
   Symmetry conv_sym;
@@ -421,7 +465,8 @@ static int is_ortho_from_H_axis(const Bravais *bravais, const Cell *cell,
   return 0;
 }
 
-static int get_ortho_axis(int naxis[3], const Symmetry *conv_sym)
+static int get_ortho_axis( int naxis[3],
+			   const Symmetry *conv_sym )
 {
   int i, tmp_naxis, num_ortho_axis = 0;
 
@@ -458,7 +503,9 @@ static int get_ortho_axis(int naxis[3], const Symmetry *conv_sym)
   return 0;
 }
 
-static int is_ortho_from_I(Bravais *bravais, const Symmetry *conv_sym, const double symprec)
+static int is_ortho_from_I( Bravais *bravais,
+			    const Symmetry *conv_sym,
+			    const double symprec )
 {
   int i, j, naxis[3];
   double relative_axis[3][3];
@@ -486,8 +533,9 @@ static int is_ortho_from_I(Bravais *bravais, const Symmetry *conv_sym, const dou
   return 0;
 }
 
-static int is_ortho_from_F(Bravais *bravais, const Symmetry *conv_sym,
-			   const double symprec)
+static int is_ortho_from_F( Bravais *bravais,
+			    const Symmetry *conv_sym,
+			    const double symprec )
 {
   int i, j, naxis[3];
   double relative_axis[3][3];
@@ -515,7 +563,8 @@ static int is_ortho_from_F(Bravais *bravais, const Symmetry *conv_sym,
   return 0;
 }
 
-static int is_ortho_from_P(Bravais *bravais, const Symmetry *conv_sym)
+static int is_ortho_from_P( Bravais *bravais,
+			    const Symmetry *conv_sym )
 {
   int i, j, naxis[3];
   double relative_axis[3][3];
@@ -544,7 +593,8 @@ static int is_ortho_from_P(Bravais *bravais, const Symmetry *conv_sym)
   return 0;
 }
 
-static int is_tetra(Bravais *bravais, const Symmetry *conv_sym)
+static int is_tetra( Bravais *bravais,
+		     const Symmetry *conv_sym )
 {
   int i, tmp_naxis = -1;
   double permutate_axis_a[3][3] = {
@@ -624,8 +674,9 @@ static int is_tetra(Bravais *bravais, const Symmetry *conv_sym)
   return 1;
 }
 
-static int is_monocli(Bravais *bravais, const Symmetry *conv_sym,
-		      const double symprec)
+static int is_monocli( Bravais *bravais,
+		       const Symmetry *conv_sym,
+		       const double symprec )
 {
   /* Monoclinic from I-cubic, I-tetra, and I-ortho */
   if (bravais->centering == BODY) {
@@ -654,8 +705,9 @@ static int is_monocli(Bravais *bravais, const Symmetry *conv_sym,
   return 1;
 }
 
-static int is_monocli_from_I(Bravais *bravais, const Symmetry *conv_sym,
-			     const double symprec)
+static int is_monocli_from_I( Bravais *bravais,
+			      const Symmetry *conv_sym,
+			      const double symprec )
 {
   double lattice[3][3], relative_axis[3][3];
 
@@ -695,8 +747,9 @@ static int is_monocli_from_I(Bravais *bravais, const Symmetry *conv_sym,
   return 1;
 }
 
-static int is_monocli_from_F(Bravais *bravais, const Symmetry *conv_sym,
-			     const double symprec)
+static int is_monocli_from_F( Bravais *bravais,
+			      const Symmetry *conv_sym,
+			      const double symprec )
 {
   double lattice[3][3], relative_axis[3][3];
 
@@ -748,8 +801,9 @@ static int is_monocli_from_F(Bravais *bravais, const Symmetry *conv_sym,
   return 1;
 }
 
-static int is_monocli_from_P(Bravais *bravais, const Symmetry *conv_sym, 
-			     const double symprec)
+static int is_monocli_from_P( Bravais *bravais,
+			      const Symmetry *conv_sym, 
+			      const double symprec )
 {
   double lattice[3][3], relative_axis[3][3];
 
@@ -810,10 +864,10 @@ static int is_monocli_from_P(Bravais *bravais, const Symmetry *conv_sym,
   return 1;
 }
 
-static void get_monocli_relative_axes(double relative_axis[3][3],
-				      const double new_lattice[3][3],
-				      const double old_lattice[3][3],
-				      const double symprec)
+static void get_monocli_relative_axes( double relative_axis[3][3],
+				       SPGCONST double new_lattice[3][3],
+				       SPGCONST double old_lattice[3][3],
+				       const double symprec )
 {
   double inv_lattice[3][3];
 
@@ -823,7 +877,7 @@ static void get_monocli_relative_axes(double relative_axis[3][3],
   mat_multiply_matrix_d3(relative_axis, inv_lattice, new_lattice);
 }
 
-static void get_monocli_bcc_to_c_center(double lattice[3][3])
+static void get_monocli_bcc_to_c_center( double lattice[3][3] )
 {
   int i;
   double tmp_lattice[3][3];
@@ -833,10 +887,11 @@ static void get_monocli_bcc_to_c_center(double lattice[3][3])
     lattice[i][0] = tmp_lattice[i][0] + tmp_lattice[i][2];
 }
 
-static int get_monocli_bravais(double lattice[3][3], const Symmetry *conv_sym,
-			       const double relative_vol,
-			       const double monocli_axes[13][3],
-			       const double symprec)
+static int get_monocli_bravais( double lattice[3][3],
+				const Symmetry *conv_sym,
+				const double relative_vol,
+				SPGCONST double monocli_axes[13][3],
+				const double symprec )
 {
   int i, j, k, l, naxis[3];
   double relative_axis[3][3], volume;
@@ -881,9 +936,10 @@ static int get_monocli_bravais(double lattice[3][3], const Symmetry *conv_sym,
   return 1;
 }
 
-static int is_monocli_orthogonal(const int b_axis, const int naxis,
-				 const double monocli_axes[13][3],
-				 const double symprec)
+static int is_monocli_orthogonal( const int b_axis,
+				  const int naxis,
+				  SPGCONST double monocli_axes[13][3],
+				  const double symprec )
 {
   if (mat_Dabs(monocli_axes[b_axis][0] * monocli_axes[naxis][0] +
 	       monocli_axes[b_axis][1] * monocli_axes[naxis][1] +
@@ -895,9 +951,10 @@ static int is_monocli_orthogonal(const int b_axis, const int naxis,
 }
 
 /* bravais is going to be modified */
-static int is_holohedry(Bravais *bravais, const Cell *cell,
-			const Holohedry holohedry,
-			const double symprec)
+static int is_holohedry( Bravais *bravais,
+			 SPGCONST Cell *cell,
+			 const Holohedry holohedry,
+			 const double symprec )
 {
   Bravais temp_bravais;
   double min_lattice[3][3];
@@ -916,7 +973,8 @@ static int is_holohedry(Bravais *bravais, const Cell *cell,
 }
 
 /* axis_num: Rotation type N */
-static int get_rotation_axis(const int rot[3][3], const int axis_num)
+static int get_rotation_axis( SPGCONST int rot[3][3],
+			      const int axis_num )
 {
   int i, axis = -1, tmp_rot[3][3], test_rot[3][3], vec[3];
   int identity[3][3] = {

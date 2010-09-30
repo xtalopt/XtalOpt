@@ -7,6 +7,7 @@
 #include "bravais.h"
 #include "cell.h"
 #include "symmetry.h"
+#include "mathfunc.h"
 
 typedef struct {
   char international[10];
@@ -72,10 +73,11 @@ enum {
   G_PLANE = 119
 };
 
-Spacegroup tbl_get_spacegroup(const Cell * cell, const double symprec);
-Symmetry tbl_get_conventional_symmetry(const Bravais * bravais,
-				       const Cell * primitive,
-				       const Symmetry * primitive_sym,
-				       const double symprec);
+Spacegroup tbl_get_spacegroup( SPGCONST Cell * cell,
+			       const double symprec );
+Symmetry tbl_get_conventional_symmetry( SPGCONST Bravais * bravais,
+					SPGCONST Cell * primitive,
+					const Symmetry * primitive_sym,
+					const double symprec );
 
 #endif

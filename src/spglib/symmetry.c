@@ -55,23 +55,33 @@ static int generator2z[3][3] = {
 
 
 
-static void generate_operation(int point_symmetry[][3][3],
-			       int generator[3][3], int n_sym, int n_gen);
-static PointSymmetry get_candidate(const Bravais * bravais,
-				     const double lattice[3][3],
-				     const double symprec);
-static PointSymmetry get_conventional(Holohedry holohedry);
-static int get_translation(double trans[][3], const int rot[3][3], const Cell *cell,
-			   const double symprec);
-static int get_operation(int rot[][3][3], double trans[][3], const Bravais *bravais,
-			 const Cell * cell, const double symprec);
-static int get_operation_supercell(int rot[][3][3], double trans[][3], const int num_sym, 
-				   const int multi, const double pure_trans[][3], const Cell *cell,
-				   const Cell *primitive, const double symprec);
+static void generate_operation( int point_symmetry[][3][3],
+				int generator[3][3],
+				int n_sym,
+				int n_gen );
+static PointSymmetry get_conventional( Holohedry holohedry );
+static VecDBL * get_translation( SPGCONST int rot[3][3],
+				 SPGCONST Cell *cell,
+				 const double symprec );
+static int get_operation( int rot[][3][3],
+			  double trans[][3],
+			  SPGCONST Bravais *bravais,
+			  SPGCONST Cell * cell,
+			  const double symprec );
+static int get_operation_supercell( int rot[][3][3],
+				    double trans[][3],
+				    const int num_sym, 
+				    const VecDBL * pure_trans,
+				    SPGCONST Cell *cell,
+				    SPGCONST Cell *primitive,
+				    const double symprec );
+static PointSymmetry get_candidate( SPGCONST Bravais * bravais,
+				    SPGCONST double lattice[3][3],
+				    const double symprec );
 
 
 
-Symmetry sym_new_symmetry(const int size)
+Symmetry sym_new_symmetry( const int size )
 {
   Symmetry symmetry;
   symmetry.size = size;
@@ -88,20 +98,25 @@ Symmetry sym_new_symmetry(const int size)
   return symmetry;
 }
 
-void sym_delete_symmetry(Symmetry *symmetry)
+void sym_delete_symmetry( Symmetry *symmetry )
 {
   free(symmetry->rot);
   free(symmetry->trans);
 }
 
-Symmetry sym_get_operation(const Bravais *bravais, const Cell *cell, const double symprec)
+Symmetry sym_get_operation( SPGCONST Bravais *bravais,
+			    SPGCONST Cell *cell,
+			    const double symprec )
 {
   int i, j, num_sym;
+  MatINT *rot;
+  VecDBL *trans;
   Symmetry symmetry;
-  double (*trans)[3] = malloc(cell->size * 48 * sizeof(double[3]));
-  int (*rot)[3][3] = malloc(cell->size * 48 * sizeof(int[3][3]));
+  
 
-  num_sym = get_operation(rot, trans, bravais, cell, symprec);
+  rot = mat_alloc_MatINT( cell->size * 48 );
+  trans = mat_alloc_VecDBL( cell->size * 48 );
+  num_sym = get_operation(rot->mat, trans->vec, bravais, cell, symprec);
 
   /* New a symmetry object */
   debug_print("*** get_symmetry (found symmetry operations) *** \n");
@@ -114,86 +129,51 @@ Symmetry sym_get_operation(const Bravais *bravais, const Cell *cell, const doubl
   for (i = 0; i < num_sym; i++) {
     debug_print("--- %d ---\n", i + 1);
     debug_print_matrix_i3(rot[i]);
-    debug_print("%f %f %f\n", trans[i][0], trans[i][1], trans[i][2]);
+    debug_print("%f %f %f\n",
+		trans->vec[i][0], trans->vec[i][1], trans->vec[i][2]);
     
-    mat_copy_matrix_i3(symmetry.rot[i], rot[i]);
+    mat_copy_matrix_i3(symmetry.rot[i], rot->mat[i]);
 
     for (j = 0; j < 3; j++)
-      symmetry.trans[i][j] = trans[i][j];
+      symmetry.trans[i][j] = trans->vec[i][j];
   }
 
-  free(rot);
-  free(trans);
+  mat_free_MatINT( rot );
+  mat_free_VecDBL( trans );
 
   return symmetry;
 }
 
-int sym_get_multiplicity(const Cell *cell, const double symprec)
+int sym_get_multiplicity( SPGCONST Cell *cell,
+			  const double symprec )
 {
-  int i, rc;
+  int multi;
 
-  double (*trans)[3] = malloc(cell->size * sizeof(double[3]));
-
-  rc = get_translation(trans, identity, cell, symprec);
-
-  free(trans);
-
-  return rc;
+  VecDBL * trans = get_translation(identity, cell, symprec);
+  multi = trans->size;
+  mat_free_VecDBL( trans );
+  return multi;
 }
 
-int sym_get_pure_translation(double pure_trans[][3], const Cell *cell,
-			     const double symprec)
+VecDBL * sym_get_pure_translation( SPGCONST Cell *cell,
+				   const double symprec )
 {
-  return get_translation(pure_trans, identity, cell, symprec);
-}
-
-double sym_get_fractional_translation( double translation )
-{
-  switch ( (int) ( mat_Dmod1( translation, 0.0 ) * 24 ) ) {
-  case 0:
-  case 23:
-  case 24:
-    return 0.0;
-  case 3:
-  case 4:
-    return 1.0 / 6;
-  case 5:
-  case 6:
-    return 1.0 / 4;
-  case 7:
-  case 8:
-    return 1.0 / 3;
-  case 11:
-  case 12:
-    return 1.0 / 2;
-  case 15:
-  case 16:
-    return 2.0 / 3;
-  case 17:
-  case 18:
-    return 3.0 / 4;
-  case 19:
-  case 20:
-    return 5.0 / 6;
-  default:
-    fprintf(stderr, "spglib: Unexpected behavior in sym_get_fraceional_translation.\n");
-    fprintf(stderr, "spglib: The value is %d.\n", (int) ( mat_Dmod1( translation, 0.0 ) * 24 ));
-    fprintf(stderr, "spglib: Please report atz.togo@gmail.com\n");
-    return translation;
-  }
+  return get_translation(identity, cell, symprec);
 }
 
 /* Look for the translations which satisfy the input symmetry operation. */
 /* This function is heaviest in this code. */
-static int get_translation(double trans[][3], const int rot[3][3], const Cell *cell,
-			   const double symprec)
+static VecDBL * get_translation( SPGCONST int rot[3][3],
+				 SPGCONST Cell *cell,
+				 const double symprec )
 {
   int i, j, k, l, count, num_trans = 0;
   double symprec_squared, v_diff_norm_squared;
   double v_diff[3], test_trans[3], tmp_vector[3], origin[3];
+  VecDBL *tmp_trans, *trans;
 
-  /* pow(symprec, 2) was behaving badly on MSVC 2008 */
-  symprec_squared = symprec*symprec;
+  tmp_trans = mat_alloc_VecDBL( cell->size );
+  symprec_squared = symprec * symprec;
 
   /* atom 0 is the origine to measure the distance between atoms. */
   mat_multiply_matrix_vector_id3(origin, rot, cell->position[0]);
@@ -208,19 +188,19 @@ static int get_translation(double trans[][3], const int rot[3][3], const Cell *c
 
     count = 0;
 
-    for (j = 0; j < cell->size; j++) {	/* test nonsymmorphic operation for an atom */
+    for (j = 0; j < cell->size; j++) { /* test nonsymmorphic operation for an atom */
       mat_multiply_matrix_vector_id3(tmp_vector, rot, cell->position[j]);
 
-      for (k = 0; k < cell->size; k++) {	/* check overlap of atom_k and atom_l */
+      for (k = 0; k < cell->size; k++) { /* check overlap of atom_k and atom_l */
 
 	if (cell->types[j] != cell->types[k])
 	  continue;
 	
-	for (l = 0; l < 3; l++) {	/* pos_l = S*pos_k + test_translation ?  */
+	for (l = 0; l < 3; l++) { /* pos_l = S*pos_k + test_translation ?  */
 
-	  /* cell->position[k]      Position of reference atom
-	     tmp_vector             Position of transformed atom
-             test_trans             Guessed translation from above */
+	  /* cell->position[k]      Position of reference atom     */
+	  /* tmp_vector             Position of transformed atom   */
+	  /* test_trans             Guessed translation from above */
 
 	  v_diff[l] = cell->position[k][l] - tmp_vector[l] - test_trans[l];
 	  v_diff[l] = mat_Dabs(v_diff[l] - mat_Nint(v_diff[l]));
@@ -233,7 +213,7 @@ static int get_translation(double trans[][3], const int rot[3][3], const Cell *c
 	/* Calculate squared norm and compare to symprec */
 	v_diff_norm_squared = 0;
 	for (l = 0; l < 3; l++) {
-	  v_diff_norm_squared += v_diff[l]*v_diff[l];
+	  v_diff_norm_squared += v_diff[l] * v_diff[l];
 	}
 
 	if (v_diff_norm_squared > symprec_squared)
@@ -254,15 +234,22 @@ static int get_translation(double trans[][3], const int rot[3][3], const Cell *c
 
     if (count == cell->size) {	/* all atoms OK ? */
       for (j = 0; j < 3; j++) {
-	trans[num_trans][j] =
+	tmp_trans->vec[num_trans][j] =
 	  test_trans[j] - mat_Nint(test_trans[j] - symprec);
-	  /* test_trans[j] = sym_get_fractional_translation( test_trans[j] ); */
       }
       num_trans++;
     }
   }
 
-  return num_trans;
+
+  trans = mat_alloc_VecDBL( num_trans );
+  for ( i = 0; i < num_trans; i++ ) {
+    mat_copy_vector_d3( trans->vec[i], tmp_trans->vec[i] );
+  }
+
+  mat_free_VecDBL( tmp_trans );
+  
+  return trans;
 }
 
 /* 1) A primitive cell of the input cell is searched. */
@@ -275,17 +262,22 @@ static int get_translation(double trans[][3], const int rot[3][3], const Cell *c
 /* 4) The spacegroup operations for the primitive cell are */
 /*    transformed to the original input cells, if the input cell */
 /*    was not a primitive cell. */
-static int get_operation(int rot[][3][3], double trans[][3],
-			 const Bravais *bravais, const Cell *cell,
-			 const double symprec)
+static int get_operation( int rot[][3][3],
+			  double trans[][3],
+			  SPGCONST Bravais *bravais,
+			  SPGCONST Cell *cell,
+			  const double symprec )
 {
-  int i, j, k, num_trans, num_sym = 0, multi;
+  int i, j, k, num_sym = 0, multi;
   PointSymmetry lattice_sym;
   Cell primitive;
-  double (*trans_tmp)[3] = malloc(cell->size * sizeof(double[3]));
-  double (*pure_trans)[3] = malloc(cell->size * sizeof(double[3]));
+  VecDBL *pure_trans, *tmp_trans;
 
-  multi = sym_get_pure_translation(pure_trans, cell, symprec);
+  pure_trans = mat_alloc_VecDBL( cell->size );
+
+  pure_trans = sym_get_pure_translation(cell, symprec);
+  multi = pure_trans->size;
+
   if( multi > 1 ) {
     primitive = prm_get_primitive(cell, symprec);
     if ( primitive.size == 0 ) {
@@ -299,46 +291,45 @@ static int get_operation(int rot[][3][3], double trans[][3],
 
   for (i = 0; i < lattice_sym.size; i++) {
     /* get translation corresponding to a rotation */
-    num_trans = get_translation(trans_tmp, lattice_sym.rot[i], &primitive, symprec);
+    tmp_trans = get_translation(lattice_sym.rot[i], &primitive, symprec);
 
-    for (j = 0; j < num_trans; j++) {
+    for (j = 0; j < tmp_trans->size; j++) {
       for (k = 0; k < 3; k++) {
-	trans[num_sym + j][k] = trans_tmp[j][k];
+	trans[num_sym + j][k] = tmp_trans->vec[j][k];
       }
       mat_copy_matrix_i3(rot[num_sym + j], lattice_sym.rot[i]);
     }
-    num_sym += num_trans;
+    num_sym += tmp_trans->size;
   }
 
   if( multi > 1 ) {
-    num_sym = get_operation_supercell(rot, trans, num_sym, multi, pure_trans, cell, &primitive, symprec);
+    num_sym = get_operation_supercell(rot, trans, num_sym,
+				      pure_trans, cell,
+				      &primitive, symprec);
     cel_delete_cell(&primitive);
   }
 
-  free(trans_tmp);
-  free(pure_trans);
-
+  mat_free_VecDBL(pure_trans);
+  mat_free_VecDBL(tmp_trans);
   return num_sym;
 }
 
-static int get_operation_supercell(int rot[][3][3], double trans[][3],
-				   const int num_sym, 
-				   const int multi, const double pure_trans[][3], 
-				   const Cell *cell, const Cell *primitive,
-				   const double symprec)
+static int get_operation_supercell( int rot[][3][3],
+				    double trans[][3],
+				    const int num_sym, 
+				    const VecDBL * pure_trans,
+				    SPGCONST Cell *cell,
+				    SPGCONST Cell *primitive,
+				    const double symprec )
 {
-  int i, j, k;
-  int ***rot_prim;
+  int i, j, k, multi;
   double tmp_mat[3][3], coordinate[3][3], coordinate_inv[3][3];
-  double (*trans_prim)[3] = malloc(num_sym * sizeof(double[3]));
+  MatINT *rot_prim;
+  VecDBL *trans_prim;
 
-  rot_prim = (int***)malloc(num_sym * sizeof(int**));
-  for (i = 0; i < num_sym; i++) {
-    rot_prim[i] = (int**)malloc(3 * sizeof(int*));
-    for (j = 0; j < 3; j++) {
-      rot_prim[i][j] = (int*)malloc(3 * sizeof(int));
-    }
-  }
+  rot_prim = mat_alloc_MatINT( num_sym );
+  trans_prim = mat_alloc_VecDBL( num_sym );
+  multi = pure_trans->size;
 
   debug_print("get_operation_supercell\n");
 
@@ -370,31 +361,25 @@ static int get_operation_supercell(int rot[][3][3], double trans[][3],
 
   /* Rotations and translations are backed up to re-use arrays rot[] and trans[]. */
   for( i = 0; i < num_sym; i++ ) {
-    mat_copy_matrix_i3( rot_prim[i], rot[i] );
+    mat_copy_matrix_i3( rot_prim->mat[i], rot[i] );
     for( j = 0; j < 3; j++ )
-      trans_prim[i][j] = trans[i][j];
+      trans_prim->vec[i][j] = trans[i][j];
   }
 
   /* Rotations and translations plus pure translations are set. */
   for( i = 0; i < num_sym; i++ ) {
     for( j = 0; j < multi; j++ ) {
-      mat_copy_matrix_i3( rot[ i * multi + j ], rot_prim[i] );
+      mat_copy_matrix_i3( rot[ i * multi + j ], rot_prim->mat[i] );
       for ( k = 0; k < 3; k++ ) {
 	trans[i * multi + j][k] =
-	  mat_Dmod1( trans_prim[i][k] + pure_trans[j][k], symprec );
+	  mat_Dmod1( trans_prim->vec[i][k] + pure_trans->vec[j][k],
+		     symprec );
       }
     }
   }
 
-  for (i = 0; i < num_sym; i++) {
-    for (j = 0; j < 3; j++) {
-      free(rot_prim[i][j]);
-    }
-    free(rot_prim[i]);
-  }
-  free(rot_prim);
-  free(trans_prim);
-
+  mat_free_MatINT( rot_prim );
+  mat_free_VecDBL( trans_prim );
   /* return number of symmetry operation of supercell */
   return num_sym * multi;
 }
@@ -402,9 +387,9 @@ static int get_operation_supercell(int rot[][3][3], double trans[][3],
 /* Pointgroup operations are obtained for the lattice of the input */
 /* cell. Then they are transformed to those in the primitive cell */
 /* using similarity transformation. */
-static PointSymmetry get_candidate(const Bravais * bravais,
-				     const double lattice[3][3],
-				     const double symprec)
+static PointSymmetry get_candidate( SPGCONST Bravais * bravais,
+				    SPGCONST double lattice[3][3],
+				    const double symprec )
 {
   int i;
   double coordinate[3][3], tmp_matrix_d3[3][3];
@@ -460,7 +445,7 @@ static PointSymmetry get_candidate(const Bravais * bravais,
   return lattice_sym;
 }
 
-static PointSymmetry get_conventional(Holohedry holohedry)
+static PointSymmetry get_conventional( Holohedry holohedry )
 {
   int i, j, k;
   PointSymmetry lattice_sym;
@@ -522,8 +507,9 @@ static PointSymmetry get_conventional(Holohedry holohedry)
   return lattice_sym;
 }
 
-static void generate_operation(int point_symmetry[][3][3],
-			       int generator[3][3], int n_sym, int n_gen)
+static void generate_operation( int point_symmetry[][3][3],
+				int generator[3][3],
+				int n_sym, int n_gen )
 {
   int i, j, count;
   int tmp_matrix[3][3];

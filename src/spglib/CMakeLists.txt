@@ -3,14 +3,12 @@ set( spglib_SRCS
      bravais.c
      cell.c
      debug.c
-     hall_symbol.c
      mathfunc.c
      pointgroup.c
      primitive.c
      spacegroup.c
      spacegroup_database.c
      spacegroup_data.c
-     spg_database.c
      spglib.c
      spglib_f.c
      symmetry.c

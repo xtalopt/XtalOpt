@@ -12,97 +12,104 @@ static int relative_lattice1[39192][3][3];
 static int relative_lattice2[31848][3][3];
 static int relative_lattice4[20352][3][3];
 
-static int get_brv_cubic(Bravais *bravais,
-			 const double min_lattice[3][3],
-			 const double symprec);
-static int get_brv_tetra(Bravais *bravais,
-			 const double min_lattice[3][3],
-			 const double symprec);
-static int get_brv_hexa(Bravais *bravais,
-			const double min_lattice[3][3],
-			const double symprec);
-static int get_brv_rhombo(Bravais *bravais,
-			  const double min_lattice[3][3],
-			  const double symprec);
-static int get_brv_ortho(Bravais *bravais,
-			 const double min_lattice[3][3],
-			 const double symprec);
-static int get_brv_monocli(Bravais *bravais,
-			   const double min_lattice[3][3],
-			   const double symprec);
-static int brv_cubic_I_center(double lattice[3][3],
-			      const double min_lattice[3][3],
+static int get_brv_cubic( Bravais *bravais,
+			  SPGCONST double min_lattice[3][3],
+			  const double symprec );
+static int get_brv_tetra( Bravais *bravais,
+			  SPGCONST double min_lattice[3][3],
+			  const double symprec );
+static int get_brv_hexa( Bravais *bravais,
+			 SPGCONST double min_lattice[3][3],
+			 const double symprec );
+static int get_brv_rhombo( Bravais *bravais,
+			   SPGCONST double min_lattice[3][3],
+			   const double symprec );
+static int get_brv_ortho( Bravais *bravais,
+			  SPGCONST double min_lattice[3][3],
+			  const double symprec );
+static int get_brv_monocli( Bravais *bravais,
+			    SPGCONST double min_lattice[3][3],
+			    const double symprec );
+static int brv_cubic_I_center( double lattice[3][3],
+			       SPGCONST double min_lattice[3][3],
+			       const double symprec );
+static int brv_cubic_F_center( double lattice[3][3],
+			       SPGCONST double min_lattice[3][3],
+			       const double symprec );
+static int brv_tetra_primitive( double lattice[3][3],
+				SPGCONST double min_lattice[3][3],
+				const double symprec );
+static int brv_tetra_body( double lattice[3][3],
+			   SPGCONST double min_lattice[3][3],
+			   const double symprec );
+static Centering brv_ortho_base_I_center( double lattice[3][3],
+					  SPGCONST double min_lattice[3][3],
+					  const double symprec);
+static Centering get_base_center( SPGCONST double brv_lattice[3][3],
+				  SPGCONST double min_lattice[3][3],
+				  const double symprec );
+static int brv_ortho_F_center( double lattice[3][3],
+			       SPGCONST double min_lattice[3][3],
+			       const double symprec );
+static int brv_rhombo( double lattice[3][3],
+		       SPGCONST double min_lattice[3][3],
+		       const double symprec );
+static void set_brv_monocli( Bravais *bravais,
+			     const double symprec );
+static int brv_monocli_primitive( double lattice[3][3],
+				  SPGCONST double min_lattice[3][3],
+				  const double symprec );
+static Centering brv_monocli_base_center( double lattice[3][3],
+					  SPGCONST double min_lattice[3][3],
+					  const double symprec );
+static void check_angle90( int angle_90[3],
+			   SPGCONST double lattice[3][3],
+			   const double symprec );
+static void check_equal_edge( int edge_equal[3],
+			      SPGCONST double lattice[3][3],
 			      const double symprec);
-static int brv_cubic_F_center(double lattice[3][3],
-			      const double min_lattice[3][3],
-			      const double symprec);
-static int brv_tetra_primitive(double lattice[3][3],
-			       const double min_lattice[3][3],
-			       const double symprec);
-static int brv_tetra_body(double lattice[3][3],
-			 const double min_lattice[3][3],
-			 const double symprec);
-static Centering brv_ortho_base_I_center(double lattice[3][3],
-				       const double min_lattice[3][3],
-				       const double symprec);
-static Centering get_base_center(const double brv_lattice[3][3],
-				 const double min_lattice[3][3],
-				 const double symprec);
-static int brv_ortho_F_center(double lattice[3][3],
-			      const double min_lattice[3][3],
-			      const double symprec);
-static int brv_rhombo(double lattice[3][3],
-		      const double min_lattice[3][3],
-		      const double symprec);
-static void set_brv_monocli(Bravais *bravais, const double symprec);
-static int brv_monocli_primitive(double lattice[3][3],
-				 const double min_lattice[3][3],
-				 const double symprec);
-static Centering brv_monocli_base_center(double lattice[3][3],
-					 const double min_lattice[3][3],
-					 const double symprec);
-static void check_angle90(int angle_90[3],
-			  const double lattice[3][3],
-			  const double symprec);
-static void check_equal_edge(int edge_equal[3],
-			     const double lattice[3][3],
-			     const double symprec);
-static int check_cubic(const double lattice[3][3], const double symprec);
-static int check_hexa(const double lattice[3][3], const double symprec);
-static int check_tetra(const double lattice[3][3], const double symprec);
-static int check_ortho(const double lattice[3][3], const double symprec);
-static int check_monocli(const double lattice[3][3], const double symprec);
-static int check_rhombo(const double lattice[3][3], const double symprec);
-static void set_relative_lattice(void);
-static int exhaustive_search(double lattice[3][3],
-			     const double min_lattice[3][3],
-			     int (*check_bravais)(const double lattice[3][3], const double symprec),
+static int check_cubic( SPGCONST double lattice[3][3],
+			const double symprec );
+static int check_hexa( SPGCONST double lattice[3][3],
+		       const double symprec );
+static int check_tetra( SPGCONST double lattice[3][3],
+			const double symprec );
+static int check_ortho( SPGCONST double lattice[3][3],
+			const double symprec );
+static int check_monocli( SPGCONST double lattice[3][3],
+			  const double symprec );
+static int check_rhombo( SPGCONST double lattice[3][3],
+			 const double symprec );
+static void set_relative_lattice( void );
+static int exhaustive_search( double lattice[3][3],
+			      SPGCONST double min_lattice[3][3],
+			      int (*check_bravais)(SPGCONST double lattice[3][3], const double symprec),
 			     const Centering centering,
-			     const double symprec);
-static void get_right_hand_lattice(double lattice[3][3],
-				   const double symprec);
-static void get_projection(double projection[3][3],
-			   const double min_lattice[3][3],
-			   const double lattice[3][3]);
-static void get_Delaunay_reduction(double red_lattice[3][3], 
-				   const double lattice[3][3],
-				   const double symprec);
-static int get_Delaunay_reduction_basis(double basis[4][3], double symprec);
-static void get_exteneded_basis(double basis[4][3],
-				const double lattice[3][3]);
-static int compare_vectors(const void *_vec1, const void *_vec2);
-static void get_smallest_basis(double basis[4][3], double symprec);
+			     const double symprec );
+static void get_right_hand_lattice( double lattice[3][3],
+				    const double symprec );
+static void get_projection( double projection[3][3],
+			    SPGCONST double min_lattice[3][3],
+			    SPGCONST double lattice[3][3] );
+static void get_Delaunay_reduction( double red_lattice[3][3], 
+				   SPGCONST double lattice[3][3],
+				   SPGCONST double symprec );
+static int get_Delaunay_reduction_basis( double basis[4][3],
+					 double symprec );
+static void get_exteneded_basis( double basis[4][3],
+				 SPGCONST double lattice[3][3] );
 
 /* math */
-static void get_metric(double metric[3][3], const double lattice[3][3]);
+static void get_metric( double metric[3][3],
+			SPGCONST double lattice[3][3]);
 
 /**********************/
 /**********************/
 /** Public functions **/
 /**********************/
 /**********************/
-Bravais brv_get_brv_lattice(const double lattice_orig[3][3],
-			    const double symprec)
+Bravais brv_get_brv_lattice( SPGCONST double lattice_orig[3][3],
+			     const double symprec )
 {
   Bravais bravais;
   double min_lattice[3][3];
@@ -154,9 +161,9 @@ Bravais brv_get_brv_lattice(const double lattice_orig[3][3],
 }
 
 /* Note: bravais is overwritten. */
-int brv_get_brv_lattice_in_loop(Bravais *bravais,
-				const double min_lattice[3][3],
-                                const double symprec)
+int brv_get_brv_lattice_in_loop( Bravais *bravais,
+				 SPGCONST double min_lattice[3][3],
+				 const double symprec )
 {
   switch (bravais->holohedry) {
 
@@ -207,9 +214,9 @@ int brv_get_brv_lattice_in_loop(Bravais *bravais,
   return 1;
 }
 
-void brv_smallest_lattice_vector(double min_lattice[3][3],
-				 const double lattice[3][3],
-				 const double symprec)
+void brv_smallest_lattice_vector( double min_lattice[3][3],
+				  SPGCONST double lattice[3][3],
+				  const double symprec )
 {
   int i, j;
   double tmp_matrix[3][3], projection[3][3];
@@ -280,9 +287,9 @@ void brv_smallest_lattice_vector(double min_lattice[3][3],
   }
 }
 
-static void get_projection(double projection[3][3],
-			   const double min_lattice[3][3],
-			   double const lattice[3][3])
+static void get_projection( double projection[3][3],
+			    SPGCONST double min_lattice[3][3],
+			    SPGCONST double lattice[3][3] )
 {
   double tmp_matrix[3][3];
   
@@ -293,8 +300,9 @@ static void get_projection(double projection[3][3],
 /***********/
 /*  Cubic  */
 /***********/
-static int get_brv_cubic(Bravais *bravais, const double min_lattice[3][3],
-			 const double symprec)
+static int get_brv_cubic( Bravais *bravais,
+			  SPGCONST double min_lattice[3][3],
+			  const double symprec )
 {
   int i, j, count = 0;
   int edge_equal[3];
@@ -326,7 +334,7 @@ static int get_brv_cubic(Bravais *bravais, const double min_lattice[3][3],
     goto found;
   }
 
- not_found:
+  /* Not found */
   return 0;
 
  found:
@@ -358,7 +366,8 @@ static int get_brv_cubic(Bravais *bravais, const double min_lattice[3][3],
   return 1;
 }
   
-static int check_cubic(const double lattice[3][3], const double symprec)
+static int check_cubic( SPGCONST double lattice[3][3],
+			const double symprec )
 {
   int angle_90[3], edge_equal[3];
   check_angle90(angle_90, lattice, symprec);
@@ -372,18 +381,18 @@ static int check_cubic(const double lattice[3][3], const double symprec)
   return 0;
 }
 
-static int brv_cubic_F_center(double lattice[3][3],
-			      const double min_lattice[3][3],
-			      const double symprec)
+static int brv_cubic_F_center( double lattice[3][3],
+			       SPGCONST double min_lattice[3][3],
+			       const double symprec )
 {
   return exhaustive_search( lattice, min_lattice,
 			    check_cubic, FACE, symprec );
 
 }
 
-static int brv_cubic_I_center(double lattice[3][3],
-			      const double min_lattice[3][3],
-			      const double symprec)
+static int brv_cubic_I_center( double lattice[3][3],
+			       SPGCONST double min_lattice[3][3],
+			       const double symprec )
 {
   return exhaustive_search( lattice, min_lattice,
 			    check_cubic, BODY, symprec );
@@ -392,14 +401,13 @@ static int brv_cubic_I_center(double lattice[3][3],
 /****************/
 /*  Tetragonal  */
 /****************/
-static int get_brv_tetra(Bravais *bravais, const double min_lattice[3][3],
-			 const double symprec)
+static int get_brv_tetra( Bravais *bravais,
+			  SPGCONST double min_lattice[3][3],
+			  const double symprec )
 {
   int i, j, count;
   int angle_90[3], edge_equal[3];
   double length[3];
-
-  count = 0;
 
   check_angle90(angle_90, min_lattice, symprec);
   check_equal_edge(edge_equal, min_lattice, symprec);
@@ -421,7 +429,7 @@ static int get_brv_tetra(Bravais *bravais, const double min_lattice[3][3],
     goto found;
   }
 
- not_found:
+  /* Not found */
   return 0;
 
  found:
@@ -459,7 +467,8 @@ static int get_brv_tetra(Bravais *bravais, const double min_lattice[3][3],
   return 1;
 }
 
-static int check_tetra(const double lattice[3][3], const double symprec)
+static int check_tetra( SPGCONST double lattice[3][3],
+			const double symprec)
 {
   int angle_90[3], edge_equal[3];
 
@@ -475,17 +484,17 @@ static int check_tetra(const double lattice[3][3], const double symprec)
   return 0;
 }
 
-static int brv_tetra_primitive(double lattice[3][3],
-			       const double min_lattice[3][3],
-			       const double symprec)
+static int brv_tetra_primitive( double lattice[3][3],
+				SPGCONST double min_lattice[3][3],
+				const double symprec )
 {
   return exhaustive_search( lattice, min_lattice,
 			    check_tetra, NO_CENTER, symprec );
 }
 
-static int brv_tetra_body(double lattice[3][3],
-			 const double min_lattice[3][3],
-			 const double symprec)
+static int brv_tetra_body( double lattice[3][3],
+			   SPGCONST double min_lattice[3][3],
+			   const double symprec )
 {
   return exhaustive_search( lattice, min_lattice,
 			    check_tetra, BODY, symprec );
@@ -494,9 +503,9 @@ static int brv_tetra_body(double lattice[3][3],
 /******************/
 /*  Orthorhombic  */
 /******************/
-static int get_brv_ortho(Bravais *bravais,
-			 const double min_lattice[3][3],
-			 const double symprec)
+static int get_brv_ortho( Bravais *bravais,
+			  SPGCONST double min_lattice[3][3],
+			  const double symprec )
 {
   Centering centering;
 
@@ -523,7 +532,6 @@ static int get_brv_ortho(Bravais *bravais,
   }
 
   /* Not found */
- not_found:
   return 0;
 
   /* Found */
@@ -531,7 +539,8 @@ static int get_brv_ortho(Bravais *bravais,
   return 1;
 }
 
-static int check_ortho(const double lattice[3][3], const double symprec)
+static int check_ortho( SPGCONST double lattice[3][3],
+			const double symprec )
 {
   int angle_90[3];
 
@@ -544,9 +553,9 @@ static int check_ortho(const double lattice[3][3], const double symprec)
   return 0;
 }
 
-static Centering brv_ortho_base_I_center(double lattice[3][3],
-					 const double min_lattice[3][3],
-					 const double symprec)
+static Centering brv_ortho_base_I_center( double lattice[3][3],
+					  SPGCONST double min_lattice[3][3],
+					  const double symprec )
 {
   if (exhaustive_search( lattice, min_lattice,
 			 check_ortho, BASE, symprec ))
@@ -555,9 +564,9 @@ static Centering brv_ortho_base_I_center(double lattice[3][3],
   return NO_CENTER;
 }
 
-static int brv_ortho_F_center(double lattice[3][3],
-			      const double min_lattice[3][3],
-			      const double symprec)
+static int brv_ortho_F_center( double lattice[3][3],
+			       SPGCONST double min_lattice[3][3],
+			       const double symprec )
 {
   if (exhaustive_search( lattice, min_lattice,
 			 check_ortho, FACE, symprec ))
@@ -570,9 +579,9 @@ static int brv_ortho_F_center(double lattice[3][3],
 /************************************/
 /*  Hexagonal and Trigonal systems  */
 /************************************/
-static int get_brv_hexa(Bravais *bravais,
-			const double min_lattice[3][3],
-			const double symprec)
+static int get_brv_hexa( Bravais *bravais,
+			 SPGCONST double min_lattice[3][3],
+			 const double symprec )
 {
   if (exhaustive_search(bravais->lattice, min_lattice, check_hexa,
 			NO_CENTER, symprec)) {
@@ -583,7 +592,8 @@ static int get_brv_hexa(Bravais *bravais,
   return 0;
 }
 
-static int check_hexa(const double lattice[3][3], const double symprec)
+static int check_hexa( SPGCONST double lattice[3][3],
+		       const double symprec )
 {
   int angle_90[3], edge_equal[3];
   double ratio, metric[3][3];
@@ -606,9 +616,9 @@ static int check_hexa(const double lattice[3][3], const double symprec)
 /*************************/
 /*  Rhombohedral system  */
 /*************************/
-static int get_brv_rhombo(Bravais *bravais,
-			  const double min_lattice[3][3],
-			  const double symprec)
+static int get_brv_rhombo( Bravais *bravais,
+			   SPGCONST double min_lattice[3][3],
+			   const double symprec )
 {
   int edge_equal[3];
   check_equal_edge(edge_equal, min_lattice, symprec);
@@ -621,7 +631,8 @@ static int get_brv_rhombo(Bravais *bravais,
   return 0;
 }
 
-static int check_rhombo(const double lattice[3][3], const double symprec)
+static int check_rhombo( SPGCONST double lattice[3][3],
+			 const double symprec )
 {
   double metric[3][3];
   int edge_equal[3];
@@ -639,9 +650,9 @@ static int check_rhombo(const double lattice[3][3], const double symprec)
   return 0;
 }
 
-static int brv_rhombo(double lattice[3][3],
-		      const double min_lattice[3][3],
-		      const double symprec)
+static int brv_rhombo( double lattice[3][3],
+		       SPGCONST double min_lattice[3][3],
+		       const double symprec )
 {
   if (exhaustive_search( lattice, min_lattice,
 			 check_rhombo, NO_CENTER, symprec )) {
@@ -654,9 +665,9 @@ static int brv_rhombo(double lattice[3][3],
 /***********************/
 /*  Monoclinic system  */
 /***********************/
-static int get_brv_monocli(Bravais *bravais,
-			   const double min_lattice[3][3],
-			   const double symprec)
+static int get_brv_monocli( Bravais *bravais,
+			    SPGCONST double min_lattice[3][3],
+			    const double symprec )
 {
   Centering centering;
 
@@ -686,7 +697,8 @@ static int get_brv_monocli(Bravais *bravais,
 }
 
 
-static int check_monocli(const double lattice[3][3], const double symprec)
+static int check_monocli( SPGCONST double lattice[3][3],
+			  const double symprec )
 {
   int angle_90[3];
 
@@ -700,7 +712,8 @@ static int check_monocli(const double lattice[3][3], const double symprec)
   return 0;
 }
 
-static void set_brv_monocli(Bravais *bravais, const double symprec)
+static void set_brv_monocli( Bravais *bravais,
+			     const double symprec )
 {
   int i, angle_90[3];
   Centering centering;
@@ -759,17 +772,17 @@ static void set_brv_monocli(Bravais *bravais, const double symprec)
   bravais->centering = centering;
 }
 
-static int brv_monocli_primitive(double lattice[3][3],
-				 const double min_lattice[3][3],
-				 const double symprec)
+static int brv_monocli_primitive( double lattice[3][3],
+				  SPGCONST double min_lattice[3][3],
+				  const double symprec )
 {
   return exhaustive_search( lattice, min_lattice,
 			    check_monocli, NO_CENTER, symprec );
 }
 
-static Centering brv_monocli_base_center(double lattice[3][3],
-					 const double min_lattice[3][3],
-					 const double symprec)
+static Centering brv_monocli_base_center( double lattice[3][3],
+					  SPGCONST double min_lattice[3][3],
+					  const double symprec )
 {
   int found;
   Centering centering = NO_CENTER;
@@ -791,8 +804,9 @@ static Centering brv_monocli_base_center(double lattice[3][3],
 /*******************************/
 /* The other private functions */
 /*******************************/
-static void check_angle90(int angle_90[3], const double lattice[3][3],
-			  const double symprec)
+static void check_angle90( int angle_90[3],
+			   SPGCONST double lattice[3][3],
+			   const double symprec )
 {
   int i, c0, c1;
   double metric[3][3];
@@ -813,8 +827,9 @@ static void check_angle90(int angle_90[3], const double lattice[3][3],
   }
 }
 
-static void check_equal_edge(int edge_equal[3], const double lattice[3][3],
-			     const double symprec)
+static void check_equal_edge( int edge_equal[3],
+			      SPGCONST double lattice[3][3],
+			      const double symprec )
 {
   int i, c0, c1;
   double metric[3][3];
@@ -835,7 +850,8 @@ static void check_equal_edge(int edge_equal[3], const double lattice[3][3],
   }
 }
 
-static void get_metric(double metric[3][3], const double lattice[3][3])
+static void get_metric( double metric[3][3],
+			SPGCONST double lattice[3][3])
 {
   double lattice_t[3][3];
   mat_transpose_matrix_d3(lattice_t, lattice);
@@ -844,9 +860,9 @@ static void get_metric(double metric[3][3], const double lattice[3][3])
 
 static void set_relative_lattice(void)
 {
-  const int num_relative_lattice1 = 39192;
-  const int num_relative_lattice2 = 31848;
-  const int num_relative_lattice4 = 20352;
+  /* const int num_relative_lattice1 = 39192; */
+  /* const int num_relative_lattice2 = 31848; */
+  /* const int num_relative_lattice4 = 20352; */
   const int num_relative_axes = 74;
   const int relative_axes[][3] = {
     { 1, 0, 0},
@@ -959,13 +975,13 @@ static void set_relative_lattice(void)
   /* printf("%d %d %d\n", count1, count2, count4 ); */
 }
 
-static int exhaustive_search(double lattice[3][3],
-			     const double min_lattice[3][3],
-			     int (*check_bravais)(const double lattice[3][3], const double symprec),
-			     const Centering centering,
-			     const double symprec)
+static int exhaustive_search( double lattice[3][3],
+			      SPGCONST double min_lattice[3][3],
+			      int (*check_bravais)(SPGCONST double lattice[3][3], const double symprec),
+			      const Centering centering,
+			      const double symprec )
 {
-  int i, j, factor = 1;
+  int i, factor = 1;
   int num_relative_lattice;
 
   switch (centering) {
@@ -1026,9 +1042,9 @@ static int exhaustive_search(double lattice[3][3],
   return 0;
 }
 
-static Centering get_base_center(const double brv_lattice[3][3],
-				 const double min_lattice[3][3],
-				 const double symprec) {
+static Centering get_base_center( SPGCONST double brv_lattice[3][3],
+				  SPGCONST double min_lattice[3][3],
+				  const double symprec) {
   int i;
   Centering centering = NO_CENTER;
   double tmp_matrix[3][3], axis[3][3];
@@ -1093,7 +1109,8 @@ static Centering get_base_center(const double brv_lattice[3][3],
   return centering;
 }
 
-static void get_right_hand_lattice(double lattice[3][3], const double symprec)
+static void get_right_hand_lattice( double lattice[3][3],
+				    const double symprec )
 {
   int i;
 
@@ -1111,9 +1128,9 @@ static void get_right_hand_lattice(double lattice[3][3], const double symprec)
 
 /* Delaunay reduction */
 /* Pointers can be found in International table A. */
-static void get_Delaunay_reduction(double red_lattice[3][3], 
-				   const double lattice[3][3],
-				   const double symprec)
+static void get_Delaunay_reduction( double red_lattice[3][3], 
+				    SPGCONST double lattice[3][3],
+				    const double symprec )
 {
   int i, j;
   double basis[4][3];
@@ -1126,7 +1143,6 @@ static void get_Delaunay_reduction(double red_lattice[3][3],
     }
   }
 
-/*   get_smallest_basis(basis, symprec); */
   for ( i = 0; i < 3; i++ ) 
     for ( j = 0; j < 3; j++ )
       red_lattice[i][j] = basis[j][i];
@@ -1142,16 +1158,8 @@ static void get_Delaunay_reduction(double red_lattice[3][3],
 
 }
 
-static int compare_vectors(const void *_vec1, const void *_vec2)
-{
-  double *vec1 = (double *)_vec1;
-  double *vec2 = (double *)_vec2;
-
-  return (vec1[0] * vec1[0] + vec1[1] * vec1[1] + vec1[2] * vec1[2] >
-	  vec2[0] * vec2[0] + vec2[1] * vec2[1] + vec2[2] * vec2[2]);
-}
-
-static int get_Delaunay_reduction_basis(double basis[4][3], double symprec)
+static int get_Delaunay_reduction_basis( double basis[4][3],
+					 double symprec )
 {
   int i, j, k, l;
   double dot_product;
@@ -1182,66 +1190,8 @@ static int get_Delaunay_reduction_basis(double basis[4][3], double symprec)
   return 1;
 }
 
-static void get_smallest_basis(double basis[4][3], double symprec)
-{
-  int i, j, k, l;
-  double vectors[20][3], tmp_lattice[3][3], metric[3][3];
-  double sum, min, vol, min_vol;
-
-  /* ----------------------- */
-  /* Look for shortest three */
-  /* ----------------------- */
-  for ( i = 0; i < 4; i++ ) {
-    for ( j = 0; j < 3; j++ ) {
-      vectors[i][j] = basis[i][j];
-    }
-  }
-
-  for ( i = 0; i < 3; i++ ) {
-    vectors[4][i] = basis[0][i] + basis[1][i];
-    vectors[5][i] = basis[1][i] + basis[2][i];
-    vectors[6][i] = basis[2][i] + basis[0][i];
-  }
-
-  qsort(vectors, 7, sizeof(vectors[0]), (int (*)(const void*, const void*))compare_vectors);
-
-  min = ( vectors[6][0]*vectors[6][0] + vectors[6][1]*vectors[6][1] + 
-	  vectors[6][2]*vectors[6][2] ) * 4;
-  for ( i = 0; i < 7; i++ ) {
-    for ( j = i+1; j < 7; j++ ) {
-      for ( k = j+1; k < 7; k++ ) {
-	for ( l = 0; l < 3; l++ ) {
-	  tmp_lattice[0][l] = vectors[i][l];
-	  tmp_lattice[1][l] = vectors[j][l];
-	  tmp_lattice[2][l] = vectors[k][l];
-	}
-	vol = mat_Dabs(mat_get_determinant_d3(tmp_lattice));
-	if ( vol > symprec ) {
-	  get_metric(metric, tmp_lattice);
-	  sum = metric[0][0] + metric[1][1] + metric[2][2];
-	  for ( l = 0; l < 3; l++ ) {
-	    sum += (tmp_lattice[0][l] + tmp_lattice[1][l] + tmp_lattice[2][l]) * 
-	      (tmp_lattice[0][l] + tmp_lattice[1][l] + tmp_lattice[2][l]);
-	  }
-	  if ( mat_Dabs(sum - min) < symprec*2 ) {
-	    debug_print("1: sum %f (%f), vol %f (%f)\n", sum, min, vol, min_vol);
-	    min = sum;
-	    min_vol = vol;
-	    for ( l = 0; l < 3; l++ ) {
-	      basis[0][l] = vectors[i][l];
-	      basis[1][l] = vectors[j][l];
-	      basis[2][l] = vectors[k][l];
-	      basis[3][l] = -vectors[i][l]-vectors[j][l]-vectors[k][l];
-	    }
-	  }
-	}
-      }
-    }
-  }
-}
-
-
-static void get_exteneded_basis(double basis[4][3], const double lattice[3][3])
+static void get_exteneded_basis( double basis[4][3],
+				 SPGCONST double lattice[3][3] )
 {
   int i, j;
 

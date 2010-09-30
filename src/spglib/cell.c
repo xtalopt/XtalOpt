@@ -6,7 +6,7 @@
 #include "cell.h"
 #include "mathfunc.h"
 
-Cell cel_new_cell(const int size)
+Cell cel_new_cell( const int size )
 {
     Cell cell;
     int i, j;
@@ -32,7 +32,7 @@ Cell cel_new_cell(const int size)
     return cell;
 }
 
-void cel_delete_cell(Cell * cell)
+void cel_delete_cell( Cell * cell )
 {
   if ( cell->size > 0 ) {
     free(cell->position);
@@ -40,8 +40,10 @@ void cel_delete_cell(Cell * cell)
   }
 }
 
-void cel_set_cell(Cell * cell, const double lattice[3][3], const double position[][3],
-              const int types[])
+void cel_set_cell( Cell * cell,
+		   SPGCONST double lattice[3][3],
+		   SPGCONST double position[][3],
+		   const int types[] )
 {
     int i, j;
     mat_copy_matrix_d3(cell->lattice, lattice);
@@ -55,7 +57,9 @@ void cel_set_cell(Cell * cell, const double lattice[3][3], const double position
 /*
  * Convert a vector from fractional coordinates to cartesian coordinates
  */
-void cel_frac_to_cart(Cell * cell, const double frac[3], double cart[3])
+void cel_frac_to_cart( Cell * cell,
+		       const double frac[3],
+		       double cart[3] )
 {
   double v[3];
   mat_multiply_matrix_vector_d3(v, cell->lattice, frac);
@@ -65,7 +69,10 @@ void cel_frac_to_cart(Cell * cell, const double frac[3], double cart[3])
 /*
  * Convert a vector from cartesian coordinates to fractional coordinates
  */
-void cel_cart_to_frac(Cell * cell, const double cart[3], double frac[3], const double precision)
+void cel_cart_to_frac( Cell * cell,
+		       const double cart[3],
+		       double frac[3],
+		       const double precision )
 {
   double v[3];
   double fracMat[3][3];

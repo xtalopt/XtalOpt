@@ -4,6 +4,8 @@
 #ifndef __bravasis_H__
 #define __bravasis_H__
 
+#include "mathfunc.h"
+
 typedef enum {
   TRICLI = 1,
   MONOCLI,
@@ -32,10 +34,13 @@ typedef struct {
 } Bravais;
 
 
-Bravais brv_get_brv_lattice(const double lattice_orig[3][3], const double symprec);
-int brv_get_brv_lattice_in_loop(Bravais *bravais, const double min_lattice[3][3],
-                                const double symprec);
-void brv_smallest_lattice_vector(double lattice_new[3][3], const double lattice[3][3],
-				 const double symprec);
+Bravais brv_get_brv_lattice( SPGCONST double lattice_orig[3][3],
+			     const double symprec );
+int brv_get_brv_lattice_in_loop( Bravais *bravais,
+				 SPGCONST double min_lattice[3][3],
+				 const double symprec );
+void brv_smallest_lattice_vector( double lattice_new[3][3],
+				  SPGCONST double lattice[3][3],
+				  const double symprec );
 
 #endif

@@ -12,54 +12,70 @@
 /* element first. But when QXYZ is defined, it is changed to right */ 
 /* element first. */
 
-static PointSymmetry get_point_group_rotation(const double lattice[3][3], 
-					      const Symmetry * symmetry,
-					      const int is_time_reversal,
-					      const double symprec,
-					      const int num_q,
-					      const double q[][3]);
-static int get_ir_kpoints(int map[], const double kpoints[][3], const int num_kpoint,
-			  const PointSymmetry * point_symmetry,
-			  const double symprec);
-static int get_ir_reciprocal_mesh(int grid_point[][3], int map[],
-				  const int mesh[3], const int is_shift[3],
-				  const PointSymmetry * point_symmetry);
+static PointSymmetry get_point_group_rotation( SPGCONST double lattice[3][3], 
+					       const Symmetry * symmetry,
+					       const int is_time_reversal,
+					       const double symprec,
+					       const int num_q,
+					       SPGCONST double q[][3] );
+static int get_ir_kpoints( int map[],
+			   SPGCONST double kpoints[][3],
+			   const int num_kpoint,
+			   SPGCONST PointSymmetry * point_symmetry,
+			   const double symprec );
+static int get_ir_reciprocal_mesh( int grid_point[][3],
+				   int map[],
+				   const int mesh[3],
+				   const int is_shift[3],
+				   SPGCONST PointSymmetry * point_symmetry );
 static int get_ir_triplets( int triplets[][3],
 			    int weight_triplets[],
 			    int grid[][3],
 			    const int num_triplets,
 			    const int mesh[3],
 			    const int is_time_reversal,
-			    const double lattice[3][3],
+			    SPGCONST double lattice[3][3],
 			    const Symmetry *symmetry,
 			    const double symprec );
 static int get_ir_triplets_with_q( int triplets_with_q[][3], 
 				   int weight_with_q[],
 				   const int fixed_grid_number,
-				   const int triplets[][3],
+				   SPGCONST int triplets[][3],
 				   const int num_triplets,
 				   const int mesh[3],
-				   const PointSymmetry * point_symmetry );
-static void get_grid_mapping_table( const PointSymmetry * point_symmetry,
+				   SPGCONST PointSymmetry * point_symmetry );
+static void get_grid_mapping_table( SPGCONST PointSymmetry * point_symmetry,
 				    const int mesh[3],
 				    int **map_sym,
 				    const int is_shift[3] );
-static void address_to_grid( int grid_double[3], const int address,
-			     const int mesh[3], const int is_shift[3] );
-static void get_grid_points(int grid_point[3], const int grid[3], const int mesh[3]);
-static void get_vector_modulo(int v[3], const int m[3]);
-static int grid_to_address(const int grid[3], const int mesh[3], const int is_shift[3]);
-static int check_input_values(const int num_kpoint, const int mesh[3]);
+static void address_to_grid( int grid_double[3],
+			     const int address,
+			     const int mesh[3],
+			     const int is_shift[3] );
+static void get_grid_points( int grid_point[3],
+			     const int grid[3],
+			     const int mesh[3] );
+static void get_vector_modulo( int v[3],
+			       const int m[3] );
+static int grid_to_address( const int grid[3],
+			    const int mesh[3],
+			    const int is_shift[3] );
+static int check_input_values( const int num_kpoint,
+			       const int mesh[3] );
+static void free_array2D_int( int **array,
+			      const int num_row );
+static int ** allocate_array2d_int( const int num_row,
+				    const int num_column );
 
 
 
-int kpt_get_irreducible_kpoints(int map[],
-				const double kpoints[][3],
-				const int num_kpoint,
-				const double lattice[3][3],
-				const Symmetry * symmetry,
-				const int is_time_reversal,
-				const double symprec)
+int kpt_get_irreducible_kpoints( int map[],
+				 SPGCONST double kpoints[][3],
+				 const int num_kpoint,
+				 SPGCONST double lattice[3][3],
+				 const Symmetry * symmetry,
+				 const int is_time_reversal,
+				 const double symprec )
 {
   PointSymmetry point_symmetry;
 
@@ -84,20 +100,16 @@ int kpt_get_irreducible_kpoints(int map[],
 /*     ....      ]                                            */
 /*                                                            */
 /* Each value of 'map' correspnds to the index of grid_point. */
-int kpt_get_irreducible_reciprocal_mesh(int grid_point[][3],
-					int map[],
-					const int num_grid,
-					const int mesh[3],
-					const int is_shift[3],
-					const int is_time_reversal,
-					const double lattice[3][3],
-					const Symmetry * symmetry,
-					const double symprec)
+int kpt_get_irreducible_reciprocal_mesh( int grid_point[][3],
+					 int map[],
+					 const int mesh[3],
+					 const int is_shift[3],
+					 const int is_time_reversal,
+					 SPGCONST double lattice[3][3],
+					 const Symmetry * symmetry,
+					 const double symprec )
 {
   PointSymmetry point_symmetry;
-
-  if (! check_input_values( num_grid, mesh ) )
-    return 0;
 
   point_symmetry = get_point_group_rotation( lattice,
 					     symmetry,
@@ -110,21 +122,17 @@ int kpt_get_irreducible_reciprocal_mesh(int grid_point[][3],
 
 int kpt_get_stabilized_reciprocal_mesh( int grid_point[][3],
 					int map[],
-					const int num_grid,
 					const int mesh[3],
 					const int is_shift[3],
 					const int is_time_reversal,
-					const double lattice[3][3],
+					SPGCONST double lattice[3][3],
 					const Symmetry * symmetry,
 					const int num_q,
-					const double qpoints[][3],
+					SPGCONST double qpoints[][3],
 					const double symprec )
 {
   PointSymmetry point_symmetry;
   
-  if (! check_input_values( num_grid, mesh ) )
-    return 0;
-
   point_symmetry = get_point_group_rotation( lattice,
 					     symmetry,
 					     is_time_reversal,
@@ -138,16 +146,12 @@ int kpt_get_triplets_reciprocal_mesh( int triplets[][3],
 				      int weight_triplets[],
 				      int grid_point[][3],
 				      const int num_triplets,
-				      const int num_grid,
 				      const int mesh[3],
 				      const int is_time_reversal,
-				      const double lattice[3][3],
+				      SPGCONST double lattice[3][3],
 				      const Symmetry * symmetry,
 				      const double symprec )
 {
-  if (! check_input_values( num_grid, mesh ) )
-    return 0;
-
   return get_ir_triplets( triplets,
 			  weight_triplets,
 			  grid_point,
@@ -163,11 +167,11 @@ int kpt_get_triplets_reciprocal_mesh_with_q( int triplets_with_q[][3],
 					     int weight_with_q[],
 					     const int fixed_grid_number,
 					     const int num_triplets,
-					     const int triplets[][3],
+					     SPGCONST int triplets[][3],
 					     const int weight[],
 					     const int mesh[3],
 					     const int is_time_reversal,
-					     const double lattice[3][3],
+					     SPGCONST double lattice[3][3],
 					     const Symmetry * symmetry,
 					     const double symprec )
 {
@@ -191,25 +195,25 @@ int kpt_get_triplets_reciprocal_mesh_with_q( int triplets_with_q[][3],
 
 /* qpoints are used to find stabilizers (operations). */
 /* num_q is the number of the qpoints. */
-static PointSymmetry get_point_group_rotation(const double lattice[3][3], 
-					      const Symmetry * symmetry,
-					      const int is_time_reversal,
-					      const double symprec,
-					      const int num_q,
-					      const double qpoints[][3])
+static PointSymmetry get_point_group_rotation( SPGCONST double lattice[3][3], 
+					       const Symmetry * symmetry,
+					       const int is_time_reversal,
+					       const double symprec,
+					       const int num_q,
+					       SPGCONST double qpoints[][3])
 {
   int i, j, k, l, is_found, count = 0;
   double volume;
   double rot_d[3][3], lat_inv[3][3], glat[3][3], tmp_mat[3][3], grot_d[3][3];
   double vec[3], diff[3];
+  MatINT *rotations;
   PointSymmetry point_symmetry;
-  const int time_reversal_rotation[3][3] = {
+  SPGCONST int time_reversal_rotation[3][3] = {
     {-1, 0, 0 },
     { 0,-1, 0 },
     { 0, 0,-1 }
   };
-
-  double (*rotations)[3][3] = malloc(symmetry->size*2 * sizeof(double[3][3]));
+  rotations = mat_alloc_MatINT(symmetry->size*2);
 
   volume = mat_get_determinant_d3(lattice);
 
@@ -219,17 +223,20 @@ static PointSymmetry get_point_group_rotation(const double lattice[3][3],
   
   for ( i = 0; i < symmetry->size; i++ ) {
     mat_cast_matrix_3i_to_3d(rot_d, symmetry->rot[i]);
-    mat_get_similar_matrix_d3(grot_d, rot_d, tmp_mat, symprec / volume / volume);
-    mat_cast_matrix_3d_to_3i(rotations[i], grot_d);
-    mat_multiply_matrix_i3(rotations[symmetry->size+i], time_reversal_rotation,
-			   rotations[i]);
+    mat_get_similar_matrix_d3(grot_d, rot_d, tmp_mat,
+			      symprec / volume / volume);
+    mat_cast_matrix_3d_to_3i(rotations->mat[i], grot_d);
+    mat_multiply_matrix_i3(rotations->mat[symmetry->size+i],
+			   time_reversal_rotation,
+			   rotations->mat[i]);
   }
 
   for ( i = 0; i < symmetry->size * (1 + (is_time_reversal != 0)); i++ ) {
     is_found = 1;
 
     for ( j = 0; j < count; j++ ) {
-      if (mat_check_identity_matrix_i3(point_symmetry.rot[j], rotations[i])) {
+      if (mat_check_identity_matrix_i3(point_symmetry.rot[j],
+				       rotations->mat[i])) {
 	is_found = 0;
 	break;
       }
@@ -238,7 +245,8 @@ static PointSymmetry get_point_group_rotation(const double lattice[3][3],
     if ( is_found ) {
       for ( k = 0; k < num_q; k++ ) { /* Loop to find stabilizers */
 	is_found = 0;
-	mat_multiply_matrix_vector_id3( vec, rotations[i], qpoints[k] );
+	mat_multiply_matrix_vector_id3( vec, rotations->mat[i],
+					qpoints[k] );
 
 	for ( l = 0; l < num_q; l++ ) {
 	  diff[0] = vec[0] - qpoints[l][0];
@@ -258,26 +266,30 @@ static PointSymmetry get_point_group_rotation(const double lattice[3][3],
       }
       
       if ( is_found ) {
-	mat_copy_matrix_i3(point_symmetry.rot[count], rotations[i]);
+	mat_copy_matrix_i3(point_symmetry.rot[count], rotations->mat[i]);
 	count++;
       }
     }
   }
 
   point_symmetry.size = count;
-  
-  free(rotations);
+
+  mat_free_MatINT(rotations);
 
   return point_symmetry;
 }
 
-static int get_ir_kpoints(int map[], const double kpoints[][3], const int num_kpoint,
-		  const PointSymmetry * point_symmetry, const double symprec)
+static int get_ir_kpoints( int map[],
+			   SPGCONST double kpoints[][3],
+			   const int num_kpoint,
+			   SPGCONST PointSymmetry * point_symmetry,
+			   const double symprec )
 {
   int i, j, k, l, num_ir_kpoint = 0, is_found;
-  int *ir_map = (int*)malloc(num_kpoint*sizeof(int));
+  int *ir_map;
   double kpt_rot[3], diff[3];
-  double (*ir_kpoint)[3] = malloc(num_kpoint * sizeof(double[3]));
+
+  ir_map = (int*)malloc(num_kpoint*sizeof(int));
 
   for ( i = 0; i < num_kpoint; i++ ) {
 
@@ -303,7 +315,7 @@ static int get_ir_kpoints(int map[], const double kpoints[][3], const int num_kp
 	mat_multiply_matrix_vector_id3(kpt_rot, point_symmetry->rot[j], kpoints[i]);
 
 	for ( l = 0; l < 3; l++ ) {
-	  diff[l] = kpt_rot[l] - ir_kpoint[k][l];
+	  diff[l] = kpt_rot[l] - kpoints[ir_map[k]][l];
 	  diff[l] = diff[l] - mat_Nint(diff[l]);
 	}
 
@@ -321,21 +333,22 @@ static int get_ir_kpoints(int map[], const double kpoints[][3], const int num_kp
     }
 
     if ( is_found ) {
-      mat_copy_vector_d3(ir_kpoint[num_ir_kpoint], kpoints[i]);
       ir_map[num_ir_kpoint] = i;
       num_ir_kpoint++;
     }
   }
 
-  free(ir_map);
-  free(ir_kpoint);
+  free( ir_map );
+  ir_map = NULL;
 
   return num_ir_kpoint;
 }
 
-static int get_ir_reciprocal_mesh(int grid[][3], int map[],
-				  const int mesh[3], const int is_shift[3],
-				  const PointSymmetry * point_symmetry)
+static int get_ir_reciprocal_mesh( int grid[][3],
+				   int map[],
+				   const int mesh[3],
+				   const int is_shift[3],
+				   SPGCONST PointSymmetry * point_symmetry )
 {
   /* In the following loop, mesh is doubled. */
   /* Even and odd mesh numbers correspond to */
@@ -440,25 +453,26 @@ static int get_ir_triplets( int triplets[][3],
 			    const int max_num_triplets,
 			    const int mesh[3],
 			    const int is_time_reversal,
-			    const double lattice[3][3],
+			    SPGCONST double lattice[3][3],
 			    const Symmetry *symmetry,
 			    const double symprec )
 {
-  int i, j, l, m, num_ir, is_found, weight, weight_q, num_triplets=0, num_unique_q=0;
+  int i, j, l, m, num_ir, is_found, weight, weight_q;
+  int num_triplets=0, num_unique_q=0;
   int mesh_double[3], address[3], is_shift[3];
   int grid_double[3][3];
   const int num_grid = mesh[0] * mesh[1] * mesh[2];
+  int *map, *map_q, *unique_q;
+  int **map_sym, **map_triplets;
   double q[3];
   PointSymmetry point_symmetry, point_symmetry_q;
-  int *map = (int*)malloc(num_grid * sizeof(int));
-  int *map_q = (int*)malloc(num_grid * sizeof(int));
-  int *unique_q = (int*)malloc(num_grid * sizeof(int));
-  int **map_triplets;
-  int **map_sym = (int**)malloc(symmetry->size * sizeof(int*));
-  for (i = 0; i < symmetry->size; i++) {
-    map_sym[i] = (int*)malloc(num_grid * sizeof(int));
-  }
+  
+  map_sym = allocate_array2d_int( symmetry->size, num_grid );
+  map = (int*)malloc(num_grid * sizeof(int));
+  map_q = (int*)malloc(num_grid * sizeof(int));
+  unique_q = (int*)malloc(num_grid * sizeof(int));
 
+  
   point_symmetry = get_point_group_rotation( lattice,
 					     symmetry,
 					     is_time_reversal,
@@ -470,11 +484,7 @@ static int get_ir_triplets( int triplets[][3],
     is_shift[i] = 0;
 
   num_ir = get_ir_reciprocal_mesh( grid, map, mesh, is_shift, &point_symmetry );
-
-  map_triplets = (int**)malloc(num_ir * sizeof(int*));
-  for (i = 0; i < num_ir; i++) {
-    map_triplets[i] = (int*)malloc(num_grid * sizeof(int));
-  }
+  map_triplets = allocate_array2d_int( num_ir, num_grid );
 
   for ( i = 0; i < 3; i++ )
     mesh_double[i] = mesh[i] * 2;
@@ -482,18 +492,7 @@ static int get_ir_triplets( int triplets[][3],
   /* Memory space check */
   if ( num_ir * num_grid < max_num_triplets ) {
     fprintf(stderr, "spglib: More memory space for triplets is required.");
-    free(map);
-    free(map_q);
-    for (i = 0; i < symmetry->size; i++) {
-      free(map_sym[i]);
-    }
-    free(map_sym);
-    for (i = 0; i < num_ir; i++) {
-      free(map_triplets[i]);
-    }
-    free(map_triplets);
-	free(unique_q);
-	return 0;
+    goto err;
   }
 
   /* Prepare triplet mapping table to enhance speed of query */
@@ -609,28 +608,29 @@ static int get_ir_triplets( int triplets[][3],
   for ( i = 0; i < num_triplets; i++ )
     weight_triplets[i] = map_triplets[ unique_q[ triplets[i][0]] ][ triplets[i][1] ];
 
-  free(map);
-  free(map_q);
-  for (i = 0; i < symmetry->size; i++) {
-    free(map_sym[i]);
-  }
-  free(map_sym);
-  for (i = 0; i < num_ir; i++) {
-    free(map_triplets[i]);
-  }
-  free(map_triplets);
-  free(unique_q);
-
+  free_array2D_int( map_sym, symmetry->size );
+  free_array2D_int( map_triplets, num_ir );
+  free( map );
+  free( map_q );
+  free( unique_q );
   return num_triplets;
+
+ err:
+  free_array2D_int( map_sym, symmetry->size );  
+  free_array2D_int( map_triplets, num_ir );
+  free( map );
+  free( map_q );
+  free( unique_q );
+  return 0;
 }
 
 static int get_ir_triplets_with_q( int triplets_with_q[][3], 
 				   int weight_with_q[],
 				   const int fixed_grid_number,
-				   const int triplets[][3],
+				   SPGCONST int triplets[][3],
 				   const int num_triplets,
 				   const int mesh[3],
-				   const PointSymmetry *point_symmetry )
+				   SPGCONST PointSymmetry *point_symmetry )
 {
   int i, j, k, sym_num, rest_index, num_triplets_with_q;
   int address0, address1, address1_orig, found;
@@ -638,10 +638,7 @@ static int get_ir_triplets_with_q( int triplets_with_q[][3],
   const int num_grid = mesh[0] * mesh[1] * mesh[2];
   int **map_sym;
 
-  map_sym = (int**)malloc(point_symmetry->size * sizeof(int*));
-  for (i = 0; i < point_symmetry->size; i++) {
-    map_sym[i] = (int*)malloc(num_grid * sizeof(int));
-  }
+  map_sym = allocate_array2d_int( point_symmetry->size, num_grid );
 
   /* Only consider the gamma-point */
   for ( i = 0; i < 3; i++ ) {
@@ -755,15 +752,11 @@ static int get_ir_triplets_with_q( int triplets_with_q[][3],
     }
   }
 
-  for (i = 0; i < point_symmetry->size; i++) {
-    free(map_sym[i]);
-  }
-  free(map_sym);
-
+  free_array2D_int( map_sym, point_symmetry->size );
   return num_triplets_with_q;
 }
 
-static void get_grid_mapping_table( const PointSymmetry *point_symmetry,
+static void get_grid_mapping_table( SPGCONST PointSymmetry *point_symmetry,
 				    const int mesh[3],
 				    int **map_sym,
 				    const int is_shift[3] )
@@ -810,8 +803,10 @@ static int grid_to_address( const int grid_double[3],
 #endif  
 }
 
-static void address_to_grid( int grid_double[3], const int address,
-			     const int mesh[3], const int is_shift[3] )
+static void address_to_grid( int grid_double[3],
+			     const int address,
+			     const int mesh[3],
+			     const int is_shift[3] )
 {
   int i;
   int grid[3];
@@ -831,7 +826,9 @@ static void address_to_grid( int grid_double[3], const int address,
   }
 }
 
-static void get_grid_points(int grid[3], const int grid_double[3], const int mesh[3])
+static void get_grid_points( int grid[3],
+			     const int grid_double[3],
+			     const int mesh[3] )
 {
   int i;
 
@@ -846,7 +843,8 @@ static void get_grid_points(int grid[3], const int grid_double[3], const int mes
   }  
 }
 
-static void get_vector_modulo(int v[3], const int m[3])
+static void get_vector_modulo( int v[3],
+			       const int m[3] )
 {
   int i;
 
@@ -858,7 +856,8 @@ static void get_vector_modulo(int v[3], const int m[3])
   }
 }
 
-static int check_input_values(const int num_kpoint, const int mesh[3])
+static int check_input_values( const int num_kpoint,
+			       const int mesh[3] )
 {
   if ( num_kpoint < mesh[0] * mesh[1] * mesh[2] ) {
     fprintf(stderr, "spglib: More memory space for grid points is required.");
@@ -873,3 +872,26 @@ static int check_input_values(const int num_kpoint, const int mesh[3])
   return 1;
 }
 
+
+static void free_array2D_int( int **array,
+			  const int num_row )
+{
+  int i;
+  for ( i = 0; i < num_row; i++ ) {
+    free( array[i] );
+    array[i] = NULL;
+  }
+  free( array );
+  array = NULL;
+}
+
+static int ** allocate_array2d_int( const int num_row,
+				    const int num_column )
+{
+  int i;
+  int **array = (int**)malloc(num_row * sizeof(int*));
+  for (i = 0; i < num_row; i++) {
+    array[i] = (int*)malloc(num_column * sizeof(int));
+  }
+  return array;
+}
