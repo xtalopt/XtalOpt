@@ -795,17 +795,17 @@ optimizations. If so, safely ignore this message.")
   { return s->getFingerprint();}
 
   void OptGAPC::checkForDuplicates_() {
-    QTime timer = QTime::currentTime();
+    QTime alltimer = QTime::currentTime();
     m_tracker->lockForRead();
     QList<Structure*> *structures = m_tracker->list();
 
     if (structures->size() == 0) return;
     // getFingerprint is defined above
-    QTime timer1 = QTime::currentTime();
+    QTime gentimer = QTime::currentTime();
     QList<QHash<QString, QVariant> > fps = QtConcurrent::blockingMapped((*structures),
                                                                         getFingerprint);
-    double fptime = timer1.msecsTo(QTime::currentTime()) / (double)1000;
-    qDebug() << "Fingerprint generation took " << fptime << " for " << fps.size() << "structs";
+    double gentime = gentimer.msecsTo(QTime::currentTime()) / (double)1000;
+
     m_tracker->unlock();
 
     QVariantList distv = fps.first().value("IADDist").toList();
@@ -814,6 +814,7 @@ optimizations. If so, safely ignore this message.")
     QVariantList freqv;
     QList<double> *freq;
 
+    QTime convtimer = QTime::currentTime();
     // Convert QVariant lists to doubles
     // TODO next line: Wait until Qt 4.7.0 is req'd
     // dist.reserve(distv.size());
@@ -833,9 +834,13 @@ optimizations. If so, safely ignore this message.")
       }
     }
 
+    double convtime = convtimer.msecsTo(QTime::currentTime()) / (double)1000;
+
     QHash<QString, QVariant> *fp_i=0, *fp_j=0;
     QList<double> *freq_i, *freq_j;
     Structure *s_i, *s_j;
+
+    QTime comptimer = QTime::currentTime();
 
     for (int i = 0; i < structures->size(); i++) {
       if (structures->at(i)->getStatus() != Structure::Optimized) continue;
@@ -889,8 +894,14 @@ optimizations. If so, safely ignore this message.")
       }
     }
 
-    double alltime = timer.msecsTo(QTime::currentTime()) / (double)1000;
-    qDebug() << "comparison took " << alltime << " for " << fps.size() << "structs";
+    double comptime = comptimer.msecsTo(QTime::currentTime()) / (double)1000;
+    double alltime = alltimer.msecsTo(QTime::currentTime()) / (double)1000;
+    qDebug() << QString("Fingerprint timings: %1 structs | %2 (gen) + %3 (conv) + %4 (comp) = %5 (tot)")
+      .arg(fps.size())
+      .arg(gentime,  5, 'g')
+      .arg(convtime, 5, 'g')
+      .arg(comptime, 5, 'g')
+      .arg(alltime,  5, 'g');
     emit updateAllInfo();
   }
 
