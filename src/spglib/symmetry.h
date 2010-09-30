@@ -6,6 +6,7 @@
 
 #include "bravais.h"
 #include "cell.h"
+#include "mathfunc.h"
 
 typedef struct {
   int size;
@@ -18,11 +19,15 @@ typedef struct {
   int size;
 } PointSymmetry;
 
-Symmetry sym_new_symmetry(const int size);
-void sym_delete_symmetry(Symmetry * symmetry);
-int sym_get_multiplicity(const Cell *cell, const double symprec);
-Symmetry sym_get_operation(const Bravais *bravais, const Cell *cell, const double symprec);
-int sym_get_pure_translation(double pure_trans[][3], const Cell *cell, const double symprec);
-double sym_get_fractional_translation( double tranlation );
+Symmetry sym_new_symmetry( const int size );
+void sym_delete_symmetry( Symmetry * symmetry );
+int sym_get_multiplicity( SPGCONST Cell *cell,
+			  const double symprec );
+Symmetry sym_get_operation( SPGCONST Bravais *bravais,
+			    SPGCONST Cell *cell,
+			    const double symprec );
+VecDBL * sym_get_pure_translation( SPGCONST Cell *cell,
+				   const double symprec );
+// double sym_get_fractional_translation( double tranlation );
 
 #endif

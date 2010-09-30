@@ -9,30 +9,45 @@
 #include "primitive.h"
 #include "symmetry.h"
 
-static int is_overlap(const double a[3], const double b[3], const double symprec);
-static int get_least_axes( double vectors[][3], const int multi, const Cell * cell,
+static int is_overlap( const double a[3],
+		       const double b[3],
+		       const double symprec );
+static int get_least_axes( double vectors[][3],
+			   const int multi,
+			   SPGCONST Cell * cell,
 			   const double symprec );
-static int trim_cell(Cell * primitive, const Cell * cell, const double symprec);
-static int get_primitive( Cell * primitive, const Cell * cell,
-			  const double pure_trans[][3], const int multi,
+static int trim_cell( Cell * primitive,
+		      SPGCONST Cell * cell,
+		      const double symprec );
+static void free_table( int **table, const int size );
+static int ** allocate_table( const int size );
+static int get_primitive( Cell * primitive,
+			  SPGCONST Cell * cell,
+			  SPGCONST double pure_trans[][3],
+			  const int multi,
 			  const double symprec );
 
-Cell prm_get_primitive(const Cell * cell, const double symprec)
+
+Cell prm_get_primitive( SPGCONST Cell * cell,
+			const double symprec )
 {
   int multi;
   Cell primitive;
-  double (*pure_trans)[3] = malloc(cell->size * sizeof(double[3]));
+  /* double (*pure_trans)[3] = malloc(cell->size * sizeof(double[3])); */
+  VecDBL *pure_trans;
 
   debug_print("*** prm_get_primitive ***\n");
-
-  multi = sym_get_pure_translation( pure_trans, cell, symprec );
-
+  pure_trans = mat_alloc_VecDBL( cell->size );
+  pure_trans = sym_get_pure_translation( cell, symprec );
+  multi = pure_trans->size;
+  
   if ( multi > 1 ) {
     /* Create primitive lattice */
     primitive = cel_new_cell(cell->size / multi);
-    if ( get_primitive( &primitive, cell, pure_trans, multi, symprec ) ) {
-      free(pure_trans);
-      return primitive;
+    if ( get_primitive( &primitive, cell,
+			pure_trans->vec, multi, symprec ) ) {
+      goto ret;
+
     } else {
       /* Sometimes primitive cell can not be found. */
       cel_delete_cell( &primitive );
@@ -43,24 +58,27 @@ Cell prm_get_primitive(const Cell * cell, const double symprec)
   debug_print("Primitive cell could not be found.\n");
   primitive = cel_new_cell( 0 );
 
-  free(pure_trans);
-
+ ret:
+  mat_free_VecDBL( pure_trans );
   return primitive;
 }
 
-static int get_primitive( Cell * primitive, const Cell * cell,
-			  const double pure_trans[][3], const int multi,
+static int get_primitive( Cell * primitive,
+			  SPGCONST Cell * cell,
+			  SPGCONST double pure_trans[][3],
+			  const int multi,
 			  const double symprec )
 {
   int i, j;
   double prim_lattice[3][3], relative_lattice[3][3];
+  VecDBL * vectors;
 
-  double (*vectors)[3] = malloc( (multi+2) * sizeof(double[3]));
+  vectors = mat_alloc_VecDBL( multi+2 );
 
   /* store pure translations in original cell */ 
   /* as trial primitive lattice vectors */
   for (i = 0; i < multi - 1; i++) {
-    mat_copy_vector_d3( vectors[i], pure_trans[i + 1]);
+    mat_copy_vector_d3( vectors->vec[i], pure_trans[i + 1]);
   }
 
   /* store lattice translations of original cell */
@@ -68,34 +86,33 @@ static int get_primitive( Cell * primitive, const Cell * cell,
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       if (i == j) {
-	vectors[i+multi-1][j] = 1;
+	vectors->vec[i+multi-1][j] = 1;
       } else {
-	vectors[i+multi-1][j] = 0;
+	vectors->vec[i+multi-1][j] = 0;
       }
     }
   }
 
 #ifdef DEBUG
   for (i = 0; i < multi + 2; i++) {
-    debug_print("%d: %f %f %f\n", i + 1, vectors[i][0],
-		vectors[i][1], vectors[i][2]);
+    debug_print("%d: %f %f %f\n", i + 1, vectors->vec[i][0],
+		vectors->vec[i][1], vectors->vec[i][2]);
   }
 #endif
 
   /* Lattice of primitive cell is found among pure translation vectors */
   /* vectors[0], vectors[1], and vectors[2] are overwritten. */
-  if ( ! get_least_axes( vectors, multi, cell, symprec ) ) {
-    free(vectors);
-    return 0;
+  if ( ! get_least_axes( vectors->vec, multi, cell, symprec ) ) {
+    goto not_found;
   }
 
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
-      relative_lattice[j][i] = vectors[i][j];
+      relative_lattice[j][i] = vectors->vec[i][j];
     }
 
-    debug_print("found axis %d: %f %f %f\n", i + 1, vectors[i][0],
-		vectors[i][1], vectors[i][2]);
+    debug_print("found axis %d: %f %f %f\n", i + 1, vectors->vec[i][0],
+		vectors->vec[i][1], vectors->vec[i][2]);
   }
 
   /* A primitive lattice is obtained. */
@@ -106,8 +123,7 @@ static int get_primitive( Cell * primitive, const Cell * cell,
 
   /* Fit atoms into new primitive cell */
   if (!trim_cell( primitive, cell, symprec)) {
-    free(vectors);
-    return 0;
+    goto not_found;
   }
 
   debug_print("Original cell lattice.\n");
@@ -121,23 +137,30 @@ static int get_primitive( Cell * primitive, const Cell * cell,
 	      mat_get_determinant_d3(cell->lattice),
 	      mat_get_determinant_d3(primitive->lattice));
 
-  free(vectors);
+  /* found */
+  mat_free_VecDBL( vectors );
   return 1;
+
+ not_found:
+  mat_free_VecDBL( vectors );
+  return 0;
+
 }
 
 
-static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
+static int trim_cell( Cell * primitive,
+		      SPGCONST Cell * cell,
+		      const double symprec )
 {
   int i, j, k, count, ratio, attempt, finished, count_error=0, old_count_error=0;
   double axis_inv[3][3], tmp_matrix[3][3];
   double trim_tolerance, tol_adjust;
-  double (*position)[3] = malloc(cell->size * sizeof(double[3]));
-  int *check_table = malloc(cell->size * sizeof(int));
-  int **table = (int**)malloc(cell->size * sizeof(int*));
-  for (i = 0; i < cell->size; i++) {
-    table[i] = (int*)malloc(cell->size * sizeof(int));
-  }
+  VecDBL * position;
+  int **table;
+  int *check_table = (int*)malloc(cell->size * sizeof(int));
 
+  table = allocate_table( cell->size );
+  position = mat_alloc_VecDBL( cell->size );
   ratio = cell->size / primitive->size;
   trim_tolerance = ratio * symprec;
   tol_adjust = trim_tolerance/2.0;
@@ -148,11 +171,14 @@ static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
   /* Send atoms into the primitive cell */
   debug_print("Positions in new axes reduced to primitive cell\n");
   for (i = 0; i < cell->size; i++) {
-    mat_multiply_matrix_vector_d3( position[i], axis_inv, cell->position[i] );
+    mat_multiply_matrix_vector_d3( position->vec[i],
+				   axis_inv, cell->position[i] );
     for (j = 0; j < 3; j++)
-      position[i][j] = position[i][j] - mat_Nint( position[i][j] );
+      position->vec[i][j] =
+	position->vec[i][j] - mat_Nint( position->vec[i][j] );
 
-    debug_print("%d: %f %f %f\n", i + 1, position[i][0], position[i][1], position[i][2]);
+    debug_print("%d: %f %f %f\n", i + 1,
+		position->vec[i][0], position->vec[i][1], position->vec[i][2]);
   }
 
   /* Create overlapping table */
@@ -162,14 +188,17 @@ static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
     attempt++;
     finished = 1;
     debug_print("Trim attempt %d: tolerance=%f\n",attempt,trim_tolerance);
-    for (i = 0; i < cell->size; i++)
-      for (j = 0; j < cell->size; j++)
+    for (i = 0; i < cell->size; i++) {
+      for (j = 0; j < cell->size; j++) {
         table[i][j] = -1;
+      }
+    }
 
     for (i = 0; i < cell->size; i++) {
       count = 0;
       for (j = 0; j < cell->size; j++) {
-        if ( is_overlap( position[i], position[j], trim_tolerance ) ) {
+        if ( is_overlap( position->vec[i], position->vec[j],
+			 trim_tolerance ) ) {
           table[i][count] = j;
           count++;
         }
@@ -202,10 +231,7 @@ static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
   } while (!finished && attempt < 1000);
   if (attempt >= 1000) {
     fprintf(stderr, "Bug: Could not trim cell into primitive.\n");
-    free(table);
-    free(check_table);
-    free(position);
-    return 0;
+    goto err;
   }
 
 #ifdef DEBUG
@@ -241,23 +267,23 @@ static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
 	for (k = 0; k < 3; k++)
 
 	  /* boundary treatment */
-	  if (mat_Dabs(position[table[i][0]][k] -
-		       position[table[i][j]][k]) > 0.5)
+	  if (mat_Dabs(position->vec[table[i][0]][k] -
+		       position->vec[table[i][j]][k]) > 0.5)
 
-	    if (position[table[i][j]][k] < 0)
+	    if (position->vec[table[i][j]][k] < 0)
 	      primitive->position[count][k]
 		= primitive->position[count][k] +
-		position[table[i][j]][k] + 1;
+		position->vec[table[i][j]][k] + 1;
 
 	    else
 	      primitive->position[count][k]
 		= primitive->position[count][k] +
-		position[table[i][j]][k] - 1;
+		position->vec[table[i][j]][k] - 1;
 
 	  else
 	    primitive->position[count][k]
 	      = primitive->position[count][k] +
-	      position[table[i][j]][k];
+	      position->vec[table[i][j]][k];
 	check_table[table[i][j]] = 1;
       }
 
@@ -282,13 +308,45 @@ static int trim_cell(Cell * primitive, const Cell * cell, const double symprec)
   debug_print_vectors_with_label(primitive->position, primitive->types,
 				 primitive->size);
 
-  free(table);
+  
+  mat_free_VecDBL( position );
+  free_table( table, cell->size );
   free(check_table);
-  free(position);
+  check_table = NULL;
   return 1;
+
+ err:
+  mat_free_VecDBL( position );
+  free_table( table, cell->size );
+  free(check_table);
+  check_table = NULL;
+  return 0;
 }
 
-static int is_overlap(const double a[3], const double b[3], const double symprec)
+static void free_table( int **table, const int size )
+{
+  int i;
+  for ( i = 0; i < size; i++ ) {
+    free( table[i] );
+    table[i] = NULL;
+  }
+  free( table );
+  table = NULL;
+}
+
+static int ** allocate_table( const int size )
+{
+  int i;
+  int **table = (int**)malloc(size * sizeof(int*));
+  for (i = 0; i < size; i++) {
+    table[i] = (int*)malloc(size * sizeof(int));
+  }
+  return table;
+}
+
+static int is_overlap( const double a[3],
+		       const double b[3],
+		       const double symprec )
 {
   if ( ( mat_Dabs(a[0] - b[0]) < symprec ||
 	 mat_Dabs( mat_Dabs(a[0] - b[0]) - 1) < symprec ) &&
@@ -301,8 +359,10 @@ static int is_overlap(const double a[3], const double b[3], const double symprec
   return 0;
 }
 
-static int get_least_axes( double vectors[][3], const int multi,
-			   const Cell * cell, const double symprec )
+static int get_least_axes( double vectors[][3],
+			   const int multi,
+			   SPGCONST Cell * cell,
+			   const double symprec )
 {
   int i, j, k;
   double initial_volume, volume, min_vectors[3][3], tmp_lattice[3][3];

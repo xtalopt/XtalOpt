@@ -76,10 +76,14 @@
 /* given in fractional coordinates, and ``rotation[i]`` and */
 /* ``translation[i]`` with same index give a symmetry oprations, */
 /* i.e., these have to be used togather. */
-int spg_get_symmetry(int rotation[][3][3], double translation[][3],
-		     const int max_size, const double lattice[3][3],
-		     const double position[][3], const int types[],
-		     const int num_atom, const double symprec)
+int spg_get_symmetry( int rotation[][3][3],
+		      double translation[][3],
+		      const int max_size,
+		      SPGCONST double lattice[3][3],
+		      SPGCONST double position[][3],
+		      const int types[],
+		      const int num_atom,
+		      const double symprec )
 {
   /* max_size is used for allocating memory space for returning symmetry operations. */
 
@@ -115,10 +119,14 @@ int spg_get_symmetry(int rotation[][3][3], double translation[][3],
 }
 
 int spg_get_conventional_symmetry( double bravais_lattice[3][3], 
-				   int rotation[][3][3], double translation[][3],
-				   const int max_size, const double lattice[3][3],
-				   const double position[][3], const int types[],
-				   const int num_atom, const double symprec )
+				   int rotation[][3][3],
+				   double translation[][3],
+				   const int max_size,
+				   SPGCONST double lattice[3][3],
+				   SPGCONST double position[][3],
+				   const int types[],
+				   const int num_atom,
+				   const double symprec )
 {
   /* max_size is used for allocating memory space for returning */
   /* symmetry operations. */
@@ -182,9 +190,9 @@ int spg_get_conventional_symmetry( double bravais_lattice[3][3],
 
 /* Considering periodicity of crystal, one of the possible smallest */
 /* lattice is searched. The lattice is stored in ``smallest_lattice``. */
-void spg_get_smallest_lattice(double smallest_lattice[3][3],
-			      const double lattice[3][3],
-			      const double symprec)
+void spg_get_smallest_lattice( double smallest_lattice[3][3],
+			       SPGCONST double lattice[3][3],
+			       const double symprec )
 {
   brv_smallest_lattice_vector(smallest_lattice, lattice, symprec);
 }
@@ -195,9 +203,11 @@ void spg_get_smallest_lattice(double smallest_lattice[3][3],
 /* ``spg_get_max_multiplicity`` can be used instead of this */
 /* function and ``spg_get_max_multiplicity`` is faster than this */
 /* function. */
-int spg_get_multiplicity(const double lattice[3][3], const double position[][3],
-			 const int types[], const int num_atom,
-			 const double symprec)
+int spg_get_multiplicity( SPGCONST double lattice[3][3],
+			  SPGCONST double position[][3],
+			  const int types[],
+			  const int num_atom,
+			  const double symprec )
 {
   Symmetry symmetry;
   Bravais bravais;
@@ -220,9 +230,11 @@ int spg_get_multiplicity(const double lattice[3][3], const double position[][3],
 
 /* Upper bound of number of symmetry operations is found. */
 /* See ``spg_get_multiplicity``. */
-int spg_get_max_multiplicity(const double lattice[3][3], const double position[][3],
-			     const int types[], const int num_atom,
-			     const double symprec)
+int spg_get_max_multiplicity( SPGCONST double lattice[3][3],
+			      SPGCONST double position[][3],
+			      const int types[],
+			      const int num_atom,
+			      const double symprec )
 {
   Cell cell;
   int num_max_multi;
@@ -240,8 +252,11 @@ int spg_get_max_multiplicity(const double lattice[3][3], const double position[]
 /* A primitive cell is found from an input cell. Be careful that  */
 /* ``lattice``, ``position``, and ``types`` are overwritten. */
 /* ``num_atom`` is returned as return value. */
-int spg_find_primitive(double lattice[3][3], double position[][3],
-                       int types[], const int num_atom, const double symprec)
+int spg_find_primitive( double lattice[3][3],
+			double position[][3],
+			int types[],
+			const int num_atom,
+			const double symprec )
 {
   int i, j, num_prim_atom=0;
   Cell cell, primitive;
@@ -275,8 +290,11 @@ int spg_find_primitive(double lattice[3][3], double position[][3],
 
 /* Print-out space and point groups. This may be useful for */
 /* testing, tasting, or debuging. */
-void spg_show_symmetry(const double lattice[3][3], const double position[][3],
-		       const int types[], const int num_atom, const double symprec)
+void spg_show_symmetry( SPGCONST double lattice[3][3],
+			SPGCONST double position[][3],
+			const int types[],
+			const int num_atom,
+			const double symprec )
 {
   Cell cell;
   Spacegroup spacegroup;
@@ -303,10 +321,12 @@ void spg_show_symmetry(const double lattice[3][3], const double position[][3],
 
 /* Space group is found in international table symbol (``symbol``) and */
 /* number (return value). 0 is returned when it fails. */
-int spg_get_international(char symbol[21], const double lattice[3][3],
-			  const double position[][3],
-			  const int types[], const int num_atom,
-			  const double symprec)
+int spg_get_international( char symbol[21],
+			   SPGCONST double lattice[3][3],
+			   SPGCONST double position[][3],
+			   const int types[],
+			   const int num_atom,
+			   const double symprec )
 {
   Cell cell;
   Spacegroup spacegroup;
@@ -328,11 +348,12 @@ int spg_get_international(char symbol[21], const double lattice[3][3],
 /* Space group is found in international table symbol (``symbol``) */
 /* number (return value). Bravais lattice parameters are written on */
 /* (``lattice``) destructively. 0 is returned when it fails. */
-int spg_get_international_with_bravais(char symbol[21],
-				       double lattice[3][3],
-				       const double position[][3],
-				       const int types[], const int num_atom,
-				       const double symprec)
+int spg_get_international_with_bravais( char symbol[21],
+					double lattice[3][3],
+					SPGCONST double position[][3],
+					const int types[],
+					const int num_atom,
+					const double symprec )
 {
   Cell cell;
   Spacegroup spacegroup;
@@ -355,10 +376,11 @@ int spg_get_international_with_bravais(char symbol[21],
 
 /* Space group is found in schoenflies (``symbol``) and as number (return */
 /* value).  0 is returned when it fails. */
-int spg_get_schoenflies(char symbol[10], const double lattice[3][3],
-                        const double position[][3],
-                        const int types[], const int num_atom,
-			const double symprec)
+int spg_get_schoenflies( char symbol[10],
+			 SPGCONST double lattice[3][3],
+			 SPGCONST double position[][3],
+			 const int types[], const int num_atom,
+			 const double symprec )
 {
   Cell cell;
   Spacegroup spacegroup;
@@ -386,13 +408,15 @@ int spg_get_schoenflies(char symbol[10], const double lattice[3][3],
 /* values in ``map`` is the number of the irreducible k-points. */
 /* The number of the irreducible k-points is also returned as the */
 /* return value. */
-int spg_get_ir_kpoints(int map[], const double kpoints[][3],
-		       const int num_kpoint,
-		       const double lattice[3][3],
-		       const double position[][3], const int types[],
-		       const int num_atom,
-		       const int is_time_reversal,
-		       const double symprec)
+int spg_get_ir_kpoints( int map[],
+			SPGCONST double kpoints[][3],
+			const int num_kpoint,
+			SPGCONST double lattice[3][3],
+			SPGCONST double position[][3],
+			const int types[],
+			const int num_atom,
+			const int is_time_reversal,
+			const double symprec )
 {
   Symmetry symmetry;
   Bravais bravais;
@@ -404,9 +428,9 @@ int spg_get_ir_kpoints(int map[], const double kpoints[][3],
   bravais = brv_get_brv_lattice(cell.lattice, symprec);
   symmetry = sym_get_operation(&bravais, &cell, symprec);
 
-  num_ir_kpoint = kpt_get_irreducible_kpoints(map, kpoints, num_kpoint,
-					      lattice, &symmetry,
-					      is_time_reversal, symprec);
+  num_ir_kpoint = kpt_get_irreducible_kpoints( map, kpoints, num_kpoint,
+					       lattice, &symmetry,
+					       is_time_reversal, symprec );
 
 
   cel_delete_cell(&cell);
@@ -431,12 +455,16 @@ int spg_get_ir_kpoints(int map[], const double kpoints[][3],
 /* ``grid_point``. The number of the irreducible k-points are */
 /* returned as the return value.  The time reversal symmetry is */
 /* imposed by setting ``is_time_reversal`` 1. */
-int spg_get_ir_reciprocal_mesh(int grid_point[][3], int map[], const int num_grid,
-			       const int mesh[3], const int is_shift[3],
-			       const int is_time_reversal,
-			       const double lattice[3][3],
-			       const double position[][3], const int types[],
-			       const int num_atom, const double symprec)
+int spg_get_ir_reciprocal_mesh( int grid_point[][3],
+				int map[],
+				const int mesh[3],
+				const int is_shift[3],
+				const int is_time_reversal,
+				SPGCONST double lattice[3][3],
+				SPGCONST double position[][3],
+				const int types[],
+				const int num_atom,
+				const double symprec )
 {
   Symmetry symmetry;
   Bravais bravais;
@@ -448,10 +476,14 @@ int spg_get_ir_reciprocal_mesh(int grid_point[][3], int map[], const int num_gri
   bravais = brv_get_brv_lattice(cell.lattice, symprec);
   symmetry = sym_get_operation(&bravais, &cell, symprec);
 
-  num_ir = kpt_get_irreducible_reciprocal_mesh(grid_point, map, num_grid,
-					       mesh, is_shift,
-					       is_time_reversal,
-					       lattice, &symmetry, symprec);
+  num_ir = kpt_get_irreducible_reciprocal_mesh( grid_point,
+						map,
+						mesh,
+						is_shift,
+						is_time_reversal,
+						lattice,
+						&symmetry,
+						symprec );
 
 
   cel_delete_cell(&cell);
@@ -470,15 +502,14 @@ int spg_get_ir_reciprocal_mesh(int grid_point[][3], int map[], const int num_gri
 /* value. */
 int spg_get_stabilized_reciprocal_mesh( int grid_point[][3],
 				        int map[],
-				        const int num_grid,
 				        const int mesh[3],
 				        const int is_shift[3],
 				        const int is_time_reversal,
-				        const double lattice[3][3],
+				        SPGCONST double lattice[3][3],
 					const int num_rot,
-				        const int rotations[][3][3],
+				        SPGCONST int rotations[][3][3],
 				        const int num_q,
-				        const double qpoints[][3],
+				        SPGCONST double qpoints[][3],
 				        const double symprec )
 {
   Symmetry symmetry;
@@ -491,7 +522,6 @@ int spg_get_stabilized_reciprocal_mesh( int grid_point[][3],
 
   num_ir = kpt_get_stabilized_reciprocal_mesh( grid_point,
 					       map,
-					       num_grid,
 					       mesh,
 					       is_shift,
 					       is_time_reversal,
@@ -512,12 +542,11 @@ int spg_get_triplets_reciprocal_mesh( int triplets[][3],
 				      int weight_triplets[],
 				      int grid_point[][3],
 				      const int num_triplets,
-				      const int num_grid,
 				      const int mesh[3],
 				      const int is_time_reversal,
-				      const double lattice[3][3],
+				      SPGCONST double lattice[3][3],
 				      const int num_rot,
-				      const int rotations[][3][3],
+				      SPGCONST int rotations[][3][3],
 				      const double symprec )
 {
   Symmetry symmetry;
@@ -532,7 +561,6 @@ int spg_get_triplets_reciprocal_mesh( int triplets[][3],
 					     weight_triplets,
 					     grid_point,
 					     num_triplets,
-					     num_grid,
 					     mesh,
 					     is_time_reversal,
 					     lattice,
@@ -548,13 +576,13 @@ int spg_get_triplets_reciprocal_mesh_with_q( int triplets_with_q[][3],
 					     int weight_triplets_with_q[],
 					     const int fixed_grid_number,
 					     const int num_triplets,
-					     const int triplets[][3],
+					     SPGCONST int triplets[][3],
 					     const int weight_triplets[],
 					     const int mesh[3],
 					     const int is_time_reversal,
-					     const double lattice[3][3],
+					     SPGCONST double lattice[3][3],
 					     const int num_rot,
-					     const int rotations[][3][3],
+					     SPGCONST int rotations[][3][3],
 					     const double symprec )
 {
   Symmetry symmetry;

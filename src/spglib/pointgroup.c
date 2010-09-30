@@ -11,21 +11,26 @@
 #include "mathfunc.h"
 #include "spacegroup_data.h"
 
-static void get_pointgroup_class_table(int table[10], const Symmetry * symmetry);
-static void count_pointgroup_class_table(int table[10], const int order, const int order_inv,
-					 const int symmetry[3][3]);
-static int check_pointgroup_class_table(const int a[10], const int b[10]);
-static PointgroupData get_pointgroup_data(const int num);
-static PointgroupData get_pointgroup(const Symmetry * symmetry);
+static void get_pointgroup_class_table( int table[10],
+					const Symmetry * symmetry );
+static void count_pointgroup_class_table( int table[10],
+					  const int order,
+					  const int order_inv,
+					  SPGCONST int symmetry[3][3] );
+static int check_pointgroup_class_table( const int a[10],
+					 const int b[10] );
+static PointgroupData get_pointgroup_data( const int num );
+static PointgroupData get_pointgroup( const Symmetry * symmetry );
 
 #ifdef DEBUG
-static void print_pointgroup_comment(const Holohedry pointgroup_holohedry,
-				     const Holohedry holohedry);
-static void print_holohedry(const Holohedry holohedry);
+static void print_pointgroup_comment( const Holohedry pointgroup_holohedry,
+				      const Holohedry holohedry );
+static void print_holohedry( const Holohedry holohedry );
 #endif
 
 
-Holohedry ptg_get_holohedry(const Holohedry holohedry, const Symmetry * symmetry)
+Holohedry ptg_get_holohedry( const Holohedry holohedry,
+			     const Symmetry * symmetry )
 {
   PointgroupData pointgroup_data;
 
@@ -44,7 +49,7 @@ Holohedry ptg_get_holohedry(const Holohedry holohedry, const Symmetry * symmetry
   return pointgroup_data.holohedry;
 }
 
-static PointgroupData get_pointgroup(const Symmetry * symmetry)
+static PointgroupData get_pointgroup( const Symmetry * symmetry )
 {
   int i, table[10];
   PointgroupData pointgroup_data;
@@ -76,7 +81,8 @@ static PointgroupData get_pointgroup(const Symmetry * symmetry)
   return pointgroup_data;
 }
 
-static void get_pointgroup_class_table(int table[10], const Symmetry * symmetry)
+static void get_pointgroup_class_table( int table[10],
+					const Symmetry * symmetry )
 {
   /* table[0] = -6 axis */
   /* table[1] = -4 axis */
@@ -128,7 +134,8 @@ static void get_pointgroup_class_table(int table[10], const Symmetry * symmetry)
 
 }
 
-static int check_pointgroup_class_table(const int a[10], const int b[10])
+static int check_pointgroup_class_table( const int a[10],
+					 const int b[10] )
 {
   int i;
   for (i = 0; i < 10; i++)
@@ -137,9 +144,10 @@ static int check_pointgroup_class_table(const int a[10], const int b[10])
   return 1;
 }
 
-static void count_pointgroup_class_table(int table[10], const int order,
-					 const int order_inv,
-					 const int symmetry[3][3])
+static void count_pointgroup_class_table( int table[10],
+					  const int order,
+					  const int order_inv,
+					  SPGCONST int symmetry[3][3] )
 {
   int det;
   det = mat_get_determinant_i3(symmetry);
@@ -179,7 +187,7 @@ static void count_pointgroup_class_table(int table[10], const int order,
   }
 }
 
-static PointgroupData get_pointgroup_data(const int num)
+static PointgroupData get_pointgroup_data( const int num )
 {
   PointgroupData pointgroup_data[32] = {
     {
@@ -347,8 +355,8 @@ static PointgroupData get_pointgroup_data(const int num)
 }
 
 #ifdef DEBUG
-static void print_pointgroup_comment(const Holohedry pointgroup_holohedry,
-				     const Holohedry holohedry)
+static void print_pointgroup_comment( const Holohedry pointgroup_holohedry,
+				      const Holohedry holohedry )
 {
   printf("Comment:\n");
   printf(" Bravais lattice determined only from input lattice doesn't\n");
@@ -361,7 +369,7 @@ static void print_pointgroup_comment(const Holohedry pointgroup_holohedry,
   printf(" ***\n\n");
 }
 
-static void print_holohedry(const Holohedry holohedry)
+static void print_holohedry( const Holohedry holohedry )
 {
   switch (holohedry) {
   case TRICLI:
