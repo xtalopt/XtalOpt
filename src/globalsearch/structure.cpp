@@ -27,6 +27,7 @@
 #include <QtCore/QDebug>
 #include <QtCore/QRegExp>
 #include <QtCore/QStringList>
+#include <QtCore/QtConcurrentMap>
 
 using namespace OpenBabel;
 using namespace Eigen;
@@ -295,21 +296,67 @@ namespace GlobalSearch {
     return true;
   }
 
+  // Helper functions and structs for the histogram generator
+  struct NNHistMap {
+    int i;
+    double step;
+    QList<Vector3d> *atomPositions;
+    QList<double> *dist;
+  };
+
+  // Returns the frequencies for this chunk
+  QList<int> calcNNHistChunk(const NNHistMap &m)
+  {
+    const Vector3d *v1 = &(m.atomPositions->at(m.i));
+    const Vector3d *v2;
+    QList<int> freq;
+    double diff, radius;
+    for (int ind = 0; ind < m.dist->size(); ind++) {
+      freq.append(0);
+    }
+    for (int j = m.i+1; j < m.atomPositions->size(); j++) {
+      v2 = &(m.atomPositions->at(j));
+      diff = abs(((*v1)-(*v2)).norm());
+      for (int k = 0; k < m.dist->size(); k++) {
+        if (fabs(diff-(m.dist->at(k))) < m.step/2) {
+          freq[k]++;
+        }
+      }
+    }
+    return freq;
+  }
+
+  QList<double> reduceNNHistChunks(QList<double> &final, const QList<int> &tmp)
+  {
+    if (final.size() != tmp.size()) {
+      final.clear();
+      for (int i = 0; i < tmp.size(); i++) {
+        final.append(tmp.at(i));
+      }
+    }
+    else {
+      for (int i = 0; i < final.size(); i++) {
+        final[i] += tmp.at(i);
+      }
+    }
+    return final;
+  }
+
   bool Structure::getNearestNeighborHistogram(QList<double> & distance, QList<double> & frequency, double min, double max, double step, Atom *atom) const
   {
     if (min > max && step > 0) {
       qWarning() << "Structure::getNearestNeighborHistogram: min cannot be greater than max!";
       return false;
     }
-    if (step < 0 || step == 0) {
+    if (step <= 0) {
       qWarning() << "Structure::getNearestNeighborHistogram: invalid step size:" << step;
       return false;
     }
-    if (numAtoms() < 1) return false; // Need at least one atom!
 
     // Populate distance list
     distance.clear();
     frequency.clear();
+
     double val = min;
     do {
       distance.append(val);
@@ -327,22 +374,15 @@ namespace GlobalSearch {
     double diff;
 
     // build histogram
-    // Loop over all atoms
+    // Loop over all atoms -- use map-reduce
     if (atom == 0) {
+      QList<NNHistMap> ml;
       for (int i = 0; i < atomList.size(); i++) {
-        v1 = atomPositions.at(i);
-        for (int j = i+1; j < atomList.size(); j++) {
-          v2 = atomPositions.at(j);
-
-          diff = abs((v1-v2).norm());
-          for (int k = 0; k < distance.size(); k++) {
-            double radius = distance.at(k);
-            if (abs(diff-radius) < step/2) {
-              frequency[k]++;
-            }
-          }
-        }
+        NNHistMap m;
+        m.i = i; m.step = step; m.atomPositions = &atomPositions; m.dist = &distance;
+        ml.append(m);
       }
+      frequency = QtConcurrent::blockingMappedReduced(ml, calcNNHistChunk, reduceNNHistChunks);
     }
     // Or, just the one requested
     else {
