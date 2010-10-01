@@ -144,6 +144,13 @@ m_queue->unlockForNaming(newStructure);
     void structureUpdated(Structure *s);
 
     /**
+     * Emitted when a Structure has completed all optimization steps.
+     *
+     * @param s The Structure that has been updated
+     */
+    void structureFinished(Structure *s);
+
+    /**
      * Emitted when the number of unoptimized Structures drops below
      * OptBase::contStructs. This is connected to
      * OptBase::generateNewStructure() by default.

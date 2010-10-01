@@ -43,7 +43,7 @@ namespace GAPC {
   {
     m_idString = "GAPC";
 
-    connect(m_tracker, SIGNAL(newStructureAdded(Structure*)),
+    connect(m_queue, SIGNAL(structureFinished(Structure*)),
             this, SLOT(checkForDuplicates()));
     connect(this, SIGNAL(sessionStarted()),
             this, SLOT(resetDuplicates()));
