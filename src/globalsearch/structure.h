@@ -357,6 +357,17 @@ namespace GlobalSearch {
                                             double z,
                                             double & shortest) const;
 
+    /** Get the default histogram data.
+     */
+    virtual void getDefaultHistogram(QList<double> *dist, QList<double> *freq) const;
+
+    /** Get the default histogram data.
+     */
+    virtual void getDefaultHistogram(QList<QVariant> *dist, QList<QVariant> *freq) const;
+
+    virtual bool isHistogramGenerationPending() const {
+      return m_histogramGenerationPending;};
+
     /** Generate data for a histogram of the distances between all
      * atoms, or between one atom and all others.
      *
@@ -386,14 +397,54 @@ namespace GlobalSearch {
      * @param atom Optional: Atom to calculate distances from.
      *
      * @sa getShortestInteratomicDistance
+     * @sa requestHistogramGeneration
      * @sa getNearestNeighborDistance
      */
-    virtual bool getNearestNeighborHistogram(QList<double> & distance,
-                                             QList<double> & frequency,
-                                             double min,
-                                             double max,
-                                             double step,
-                                             Atom *atom = 0) const;
+    virtual bool generateIADHistogram(QList<double> * distance,
+                                      QList<double> * frequency,
+                                      double min = 0.0,
+                                      double max = 10.0,
+                                      double step = 0.01,
+                                      Avogadro::Atom *atom = 0) const;
+
+    /** Generate data for a histogram of the distances between all
+     * atoms, or between one atom and all others.
+     *
+     * If the parameter atom is specified, the resulting data will
+     * represent the distance distribution between that atom and all
+     * others. If omitted (or NULL), a histogram of all interatomic
+     * distances is calculated.
+     *
+     * Useful for estimating the coordination number of an atom from
+     * a plot.
+     *
+     * @warning This algorithm is not thoroughly tested and should not
+     * be relied upon. It is merely an estimation.
+     *
+     * @return true if the operation makes sense for this Structure,
+     * false otherwise (i.e. fewer than one atom present)
+     *
+     * @param distance List of distance values for the histogram
+     * bins.
+     *
+     * @param frequency Number of Atoms within the corresponding
+     * distance bin.
+     *
+     * @param min Value of starting histogram distance.
+     * @param max Value of ending histogram distance.
+     * @param step Increment between bins.
+     * @param atom Optional: Atom to calculate distances from.
+     *
+     * @sa getShortestInteratomicDistance
+     * @sa requestHistogramGeneration
+     * @sa getNearestNeighborDistance
+     */
+    virtual bool generateIADHistogram(QList<QVariant> * distance,
+                                      QList<QVariant> * frequency,
+                                      double min = 0.0,
+                                      double max = 10.0,
+                                      double step = 0.01,
+                                      Avogadro::Atom *atom = 0) const;
 
     /** Add an atom to a random position in the Structure. If no other
      * atoms exist in the Structure, the new atom is placed at
@@ -487,6 +538,27 @@ namespace GlobalSearch {
    signals:
 
    public slots:
+
+    /**
+     * Set whether the default histogram generation should be
+     * performed (default is off)
+     */
+    virtual void enableAutoHistogramGeneration(bool);
+
+    /**
+     * Request that histogram data be regenerated. This is connected
+     * to Molecule::update() and calls
+     * generateDefaultHistogram(). This function is throttled to only
+     * run every 250 ms.
+     */
+    virtual void requestHistogramGeneration();
+
+    /**
+     * Generate default histogram data (0:10 A, 0.01 A step)
+     * @sa isHistogramGenerationPending()
+     * @sa getDefaultHistogram()
+     */
+    virtual void generateDefaultHistogram();
 
     /**
      * Write supplementary data about this Structure to a file. All
@@ -736,13 +808,14 @@ namespace GlobalSearch {
     void readStructureSettings(const QString &filename);
 
   protected:
-    bool m_hasEnthalpy;
+    bool m_hasEnthalpy, m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount;
     QString m_parents, m_dupString, m_rempath;
     double m_enthalpy, m_PV;
     State m_status;
     QDateTime m_optStart, m_optEnd;
     int m_index;
+    QList<QVariant> m_histogramDist, m_histogramFreq;
   };
 
 } // end namespace Avogadro

@@ -521,6 +521,8 @@ optimizations. If so, safely ignore this message.")
     pc->setFileName(locpath_s);
     pc->setRempath(rempath_s);
     pc->setCurrentOptStep(1);
+    pc->moveToThread(m_tracker->thread());
+    pc->enableAutoHistogramGeneration(true);
     m_queue->unlockForNaming(pc);
     initMutex.unlock();
   }

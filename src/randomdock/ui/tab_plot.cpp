@@ -399,14 +399,14 @@ namespace RandomDock {
     // If no atoms selected...
     if (selected.size() == 0) {
       scene->lock()->lockForRead();
-      scene->getNearestNeighborHistogram(d, f, 0, 15, .1);
+      scene->getDefaultHistogram(&d, &f);
       scene->lock()->unlock();
     }
     // If atoms are selected:
     else {
       scene->lock()->lockForRead();
       for (int i = 0; i < selected.size(); i++) {
-        scene->getNearestNeighborHistogram(d, f_temp, 0, 15, .1, qobject_cast<Atom*>(selected.at(i)));
+        scene->generateIADHistogram(&d, &f_temp, 0, 15, .1, qobject_cast<Atom*>(selected.at(i)));
         if (f.isEmpty()) {
           f = f_temp;
         }

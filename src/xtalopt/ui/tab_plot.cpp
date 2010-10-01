@@ -531,14 +531,14 @@ namespace XtalOpt {
     // If no atoms selected...
     if (selected.size() == 0) {
       xtal->lock()->lockForRead();
-      xtal->getNearestNeighborHistogram(d, f, 0, 15, .1);
+      xtal->getIADHistogram(&d, &f, 0, 15, .1);
       xtal->lock()->unlock();
     }
     // If atoms are selected:
     else {
       xtal->lock()->lockForRead();
       for (int i = 0; i < selected.size(); i++) {
-        xtal->getNearestNeighborHistogram(d, f_temp, 0, 15, .1, qobject_cast<Atom*>(selected.at(i)));
+        xtal->getIADHistogram(&d, &f_temp, 0, 15, .1, qobject_cast<Atom*>(selected.at(i)));
         if (f.isEmpty()) {
           f = f_temp;
         }

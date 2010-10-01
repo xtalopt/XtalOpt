@@ -36,6 +36,8 @@ namespace GlobalSearch {
 
   Structure::Structure(QObject *parent) :
     Molecule(parent),
+    m_hasEnthalpy(false),
+    m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -45,7 +47,6 @@ namespace GlobalSearch {
     m_optEnd(QDateTime()),
     m_index(-1)
   {
-    m_hasEnthalpy = false;
     m_currentOptStep = 1;
     setStatus(Empty);
     resetFailCount();
@@ -53,6 +54,7 @@ namespace GlobalSearch {
 
   Structure::Structure(const Structure &other) :
     Molecule(other),
+    m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -74,22 +76,23 @@ namespace GlobalSearch {
     Molecule::operator=(other);
 
     // Set properties
-    m_hasEnthalpy    = other.m_hasEnthalpy;
-    m_generation     = other.m_generation;
-    m_id             = other.m_id;
-    m_rank           = other.m_rank;
-    m_jobID          = other.m_jobID;
-    m_currentOptStep = other.m_currentOptStep;
-    m_failCount      = other.m_failCount;
-    m_parents        = other.m_parents;
-    m_dupString      = other.m_dupString;
-    m_rempath        = other.m_rempath;
-    m_enthalpy       = other.m_enthalpy;
-    m_PV             = other.m_PV;
-    m_status         = other.m_status;
-    m_optStart       = other.m_optStart;
-    m_optEnd         = other.m_optEnd;
-    m_index          = other.m_index;
+    m_histogramGenerationPending = other.m_histogramGenerationPending;
+    m_hasEnthalpy                = other.m_hasEnthalpy;
+    m_generation                 = other.m_generation;
+    m_id                         = other.m_id;
+    m_rank                       = other.m_rank;
+    m_jobID                      = other.m_jobID;
+    m_currentOptStep             = other.m_currentOptStep;
+    m_failCount                  = other.m_failCount;
+    m_parents                    = other.m_parents;
+    m_dupString                  = other.m_dupString;
+    m_rempath                    = other.m_rempath;
+    m_enthalpy                   = other.m_enthalpy;
+    m_PV                         = other.m_PV;
+    m_status                     = other.m_status;
+    m_optStart                   = other.m_optStart;
+    m_optEnd                     = other.m_optEnd;
+    m_index                      = other.m_index;
 
     return *this;
   }
@@ -296,12 +299,120 @@ namespace GlobalSearch {
     return true;
   }
 
+  void Structure::enableAutoHistogramGeneration(bool b) {
+    if (b) {
+      connect(this, SIGNAL(updated()),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(atomAdded(Atom*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(atomUpdated(Atom*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(atomRemoved(Atom*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(bondAdded(Bond*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(bondUpdated(Bond*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(bondRemoved(Bond*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(primitiveAdded(Primitive*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(primitiveUpdated(Primitive*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(primitiveRemoved(Primitive*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+    } else {
+      disconnect(this, SIGNAL(updated()),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(atomAdded(Atom*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(atomUpdated(Atom*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(atomRemoved(Atom*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(bondAdded(Bond*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(bondUpdated(Bond*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(bondRemoved(Bond*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(primitiveAdded(Primitive*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(primitiveUpdated(Primitive*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(primitiveRemoved(Primitive*)),
+                 this, SLOT(requestHistogramGeneration()));
+    }
+  }
+
+  void Structure::requestHistogramGeneration()
+  {
+    if (!m_histogramGenerationPending) {
+      m_histogramGenerationPending = true;
+      // Wait 250 ms before requesting to limit number of requests
+      QTimer::singleShot(250, this, SLOT(generateDefaultHistogram()));
+    }
+  }
+
+  void Structure::generateDefaultHistogram()
+  {
+    generateIADHistogram(&m_histogramDist, &m_histogramFreq, 0, 10, 0.01);
+    m_histogramGenerationPending = false;
+  }
+
+  void Structure::getDefaultHistogram(QList<double> *dist, QList<double> *freq) const
+  {
+    dist->clear();
+    freq->clear();
+    for (int i = 0; i < m_histogramDist.size(); i++) {
+      dist->append(m_histogramDist.at(i).toDouble());
+      freq->append(m_histogramFreq.at(i).toDouble());
+    }
+  }
+
+  void Structure::getDefaultHistogram(QList<QVariant> *dist, QList<QVariant> *freq) const
+  {
+    (*dist) = m_histogramDist;
+    (*freq) = m_histogramFreq;
+  }
+
+
+  bool Structure::generateIADHistogram(QList<double> * dist,
+                                       QList<double> * freq,
+                                       double min,
+                                       double max,
+                                       double step,
+                                       Atom *atom) const
+  {
+    QList<QVariant> distv, freqv;
+    if (!generateIADHistogram(&distv, &freqv, min, max, step, atom)) {
+      return false;
+    }
+    dist->clear();
+    freq->clear();
+    for (int i = 0; i < distv.size(); i++) {
+      dist->append(distv.at(i).toDouble());
+      freq->append(freqv.at(i).toDouble());
+    }
+    return true;
+  }
+
   // Helper functions and structs for the histogram generator
   struct NNHistMap {
     int i;
     double step;
     QList<Vector3d> *atomPositions;
-    QList<double> *dist;
+    QList<QVariant> *dist;
   };
 
   // Returns the frequencies for this chunk
@@ -316,9 +427,9 @@ namespace GlobalSearch {
     }
     for (int j = m.i+1; j < m.atomPositions->size(); j++) {
       v2 = &(m.atomPositions->at(j));
-      diff = abs(((*v1)-(*v2)).norm());
+      diff = fabs(((*v1)-(*v2)).norm());
       for (int k = 0; k < m.dist->size(); k++) {
-        if (fabs(diff-(m.dist->at(k))) < m.step/2) {
+        if (fabs(diff-(m.dist->at(k).toDouble())) < m.step/2) {
           freq[k]++;
         }
       }
@@ -326,7 +437,7 @@ namespace GlobalSearch {
     return freq;
   }
 
-  QList<double> reduceNNHistChunks(QList<double> &final, const QList<int> &tmp)
+  QList<QVariant> reduceNNHistChunks(QList<QVariant> &final, const QList<int> &tmp)
   {
     if (final.size() != tmp.size()) {
       final.clear();
@@ -335,15 +446,24 @@ namespace GlobalSearch {
       }
     }
     else {
+      double d;
       for (int i = 0; i < final.size(); i++) {
-        final[i] += tmp.at(i);
+        d = final.at(i).toDouble();
+        d += tmp.at(i);
+        final.replace(i, d);
       }
     }
     return final;
   }
 
-  bool Structure::getNearestNeighborHistogram(QList<double> & distance, QList<double> & frequency, double min, double max, double step, Atom *atom) const
+  bool Structure::generateIADHistogram(QList<QVariant> * distance,
+                                       QList<QVariant> * frequency,
+                                       double min, double max, double step,
+                                       Atom *atom) const
   {
+    distance->clear();
+    frequency->clear();
+
     if (min > max && step > 0) {
       qWarning() << "Structure::getNearestNeighborHistogram: min cannot be greater than max!";
       return false;
@@ -353,14 +473,10 @@ namespace GlobalSearch {
       return false;
     }
 
-    // Populate distance list
-    distance.clear();
-    frequency.clear();
-
     double val = min;
     do {
-      distance.append(val);
-      frequency.append(0);
+      distance->append(val);
+      frequency->append(0);
       val += step;
     } while (val < max);
 
@@ -379,10 +495,10 @@ namespace GlobalSearch {
       QList<NNHistMap> ml;
       for (int i = 0; i < atomList.size(); i++) {
         NNHistMap m;
-        m.i = i; m.step = step; m.atomPositions = &atomPositions; m.dist = &distance;
+        m.i = i; m.step = step; m.atomPositions = &atomPositions; m.dist = distance;
         ml.append(m);
       }
-      frequency = QtConcurrent::blockingMappedReduced(ml, calcNNHistChunk, reduceNNHistChunks);
+      (*frequency) = QtConcurrent::blockingMappedReduced(ml, calcNNHistChunk, reduceNNHistChunks);
     }
     // Or, just the one requested
     else {
@@ -391,11 +507,14 @@ namespace GlobalSearch {
         if (atomList.at(j) == atom) continue;
         v2 = atomPositions.at(j);
         // Intercell
-        diff = abs((v1-v2).norm());
-        for (int k = 0; k < distance.size(); k++) {
-          double radius = distance.at(k);
-          if (diff != 0 && abs(diff-radius) < step/2) {
-            frequency[k]++;
+        diff = fabs((v1-v2).norm());
+        for (int k = 0; k < distance->size(); k++) {
+          double radius = distance->at(k).toDouble();
+          double d;
+          if (diff != 0 && fabs(diff-radius) < step/2) {
+            d = frequency->at(k).toDouble();
+            d++;
+            frequency->replace(k, d);
           }
         }
       }

@@ -40,9 +40,17 @@ namespace XtalOpt {
 
     // Virtuals from structure
     bool getShortestInteratomicDistance(double & shortest) const;
-    bool getNearestNeighborDistance(double x, double y, double z, double & shortest) const;
-    bool getNearestNeighborHistogram(QList<double> & distance, QList<double> & frequency, double min, double max, double step, Atom *atom = 0) const;
-    bool addAtomRandomly(uint atomicNumber, double minIAD = 0.0, double maxIAD = 0.0, int maxAttempts = 100.0, Atom **atom = 0); //maxIAD is not used.
+    bool getNearestNeighborDistance(double x, double y, double z,
+                                    double & shortest) const;
+    bool getIADHistogram(QList<double> * distance,
+                         QList<double> * frequency,
+                         double min, double max, double step,
+                         Avogadro::Atom *atom = 0) const;
+    bool addAtomRandomly(uint atomicNumber,
+                         double minIAD = 0.0,
+                         double maxIAD = 0.0,
+                         int maxAttempts = 100.0,
+                         Avogadro::Atom **atom = 0); //maxIAD is not used.
     QHash<QString, QVariant> getFingerprint();
     virtual QString getResultsEntry() const;
     virtual QString getResultsHeader() const {
