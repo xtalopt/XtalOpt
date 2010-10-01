@@ -802,7 +802,13 @@ namespace GlobalSearch {
     }
 
     OBMol obmol;
-    conv.ReadFile( &obmol, QString(QFile::encodeName(filename)).toStdString());
+    if (!conv.ReadFile( &obmol, QString(QFile::encodeName(filename)).toStdString())) {
+      m_opt->error(tr("Cannot update structure %1 from file \n%2")
+                   .arg(structure->getIDString())
+                   .arg(QString(QFile::encodeName(filename))));
+      m_opt->sOBMutex->unlock();
+      return false;
+    }
     m_opt->sOBMutex->unlock();
 
     // Copy settings from obmol -> structure.
