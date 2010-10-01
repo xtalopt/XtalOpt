@@ -336,7 +336,7 @@ is a good value here.</string>
            <string>Experimental: These options are used to fine-tune matching of duplicate structures.</string>
           </property>
           <property name="text">
-           <string>Enthalpy (eV)</string>
+           <string>Enthalpy (eV/atom)</string>
           </property>
           <property name="buddy">
            <cstring>spin_tol_enthalpy</cstring>

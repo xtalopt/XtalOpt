@@ -38,6 +38,7 @@ namespace GlobalSearch {
   Structure::Structure(QObject *parent) :
     Molecule(parent),
     m_hasEnthalpy(false),
+    m_updatedSinceDupChecked(true),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -56,6 +57,7 @@ namespace GlobalSearch {
   Structure::Structure(const Structure &other) :
     Molecule(other),
     m_histogramGenerationPending(false),
+    m_updatedSinceDupChecked(true),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -68,6 +70,101 @@ namespace GlobalSearch {
     *this = other;
   }
 
+  void Structure::setupConnections()
+  {
+    // List of slots to be called each time the structure changes
+    QList<const char*> slotlist;
+    slotlist.append(SLOT(structureChanged()));
+    for (int i = 0; i < slotlist.size(); i++) {
+      connect(this, SIGNAL(updated()),
+              this, slotlist.at(i),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(atomAdded(Atom*)),
+              this, slotlist.at(i),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(atomUpdated(Atom*)),
+              this, slotlist.at(i),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(atomRemoved(Atom*)),
+              this, slotlist.at(i),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(bondAdded(Bond*)),
+              this, slotlist.at(i),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(bondUpdated(Bond*)),
+              this, slotlist.at(i),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(bondRemoved(Bond*)),
+              this, slotlist.at(i),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(primitiveAdded(Primitive*)),
+              this, slotlist.at(i),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(primitiveUpdated(Primitive*)),
+              this, slotlist.at(i),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(primitiveRemoved(Primitive*)),
+              this, slotlist.at(i),
+              Qt::QueuedConnection);
+    }
+  }
+
+  void Structure::enableAutoHistogramGeneration(bool b)
+  {
+    if (b) {
+      connect(this, SIGNAL(updated()),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(atomAdded(Atom*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(atomUpdated(Atom*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(atomRemoved(Atom*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(bondAdded(Bond*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(bondUpdated(Bond*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(bondRemoved(Bond*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(primitiveAdded(Primitive*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(primitiveUpdated(Primitive*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+      connect(this, SIGNAL(primitiveRemoved(Primitive*)),
+              this, SLOT(requestHistogramGeneration()),
+              Qt::QueuedConnection);
+    } else {
+      disconnect(this, SIGNAL(updated()),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(atomAdded(Atom*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(atomUpdated(Atom*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(atomRemoved(Atom*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(bondAdded(Bond*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(bondUpdated(Bond*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(bondRemoved(Bond*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(primitiveAdded(Primitive*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(primitiveUpdated(Primitive*)),
+                 this, SLOT(requestHistogramGeneration()));
+      disconnect(this, SIGNAL(primitiveRemoved(Primitive*)),
+                 this, SLOT(requestHistogramGeneration()));
+    }
+  }
 
   Structure::~Structure() {
   }
@@ -166,7 +263,13 @@ namespace GlobalSearch {
     }
   }
 
-  bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom) {
+  void Structure::structureChanged()
+  {
+    m_updatedSinceDupChecked = true;
+  }
+
+  bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom)
+  {
     INIT_RANDOM_GENERATOR();
     double IAD = -1;
     int i = 0;
@@ -298,62 +401,6 @@ namespace GlobalSearch {
       if (distance < shortest) shortest = distance;
     }
     return true;
-  }
-
-  void Structure::enableAutoHistogramGeneration(bool b) {
-    if (b) {
-      connect(this, SIGNAL(updated()),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(atomAdded(Atom*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(atomUpdated(Atom*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(atomRemoved(Atom*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(bondAdded(Bond*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(bondUpdated(Bond*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(bondRemoved(Bond*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(primitiveAdded(Primitive*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(primitiveUpdated(Primitive*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(primitiveRemoved(Primitive*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-    } else {
-      disconnect(this, SIGNAL(updated()),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(atomAdded(Atom*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(atomUpdated(Atom*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(atomRemoved(Atom*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(bondAdded(Bond*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(bondUpdated(Bond*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(bondRemoved(Bond*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(primitiveAdded(Primitive*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(primitiveUpdated(Primitive*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(primitiveRemoved(Primitive*)),
-                 this, SLOT(requestHistogramGeneration()));
-    }
   }
 
   void Structure::requestHistogramGeneration()

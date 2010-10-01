@@ -509,6 +509,16 @@ namespace GlobalSearch {
      */
     virtual QHash<QString, QVariant> getFingerprint() const;
 
+    /**
+     * Structure can track if it has changed since it was last checked
+     * in a duplicate finding routine. This is useful for cutting down
+     * on the number of comparisons needed.
+     *
+     * Must call setupConnections() before using this function.
+     * @sa setChangedSinceDupChecked()
+     */
+    bool hasChangedSinceDupChecked() {return m_updatedSinceDupChecked;};
+
     /** Sort the listed structures by their enthalpies
      *
      * @param structures List of structures to sort
@@ -542,6 +552,12 @@ namespace GlobalSearch {
    public slots:
 
     /**
+     * Connect slots/signals within the molecule. This must be called
+     * AFTER moving the Structure to it's final thread.
+     */
+    virtual void setupConnections();
+
+    /**
      * Set whether the default histogram generation should be
      * performed (default is off)
      */
@@ -561,6 +577,12 @@ namespace GlobalSearch {
      * @sa getDefaultHistogram()
      */
     virtual void generateDefaultHistogram();
+
+    /**
+     * After calling setupConnections(), this will be called when the
+     * structure is update, atoms moved, added, etc...
+     */
+    virtual void structureChanged();
 
     /**
      * Compare two IAD histograms.
@@ -811,6 +833,16 @@ namespace GlobalSearch {
      */
     void setDuplicateString(const QString & s) {m_dupString = s;};
 
+    /**
+     * Structure can track if it has changed since it was last checked
+     * in a duplicate finding routine. This is useful for cutting down
+     * on the number of comparisons needed.
+     *
+     * Must call setupConnections() before using this function.
+     * @sa hasChangedSinceDupChecked()
+     */
+    void setChangedSinceDupChecked(bool b) {m_updatedSinceDupChecked = b;};
+
     /** Record the current time as when the current optimization
      * process started.
      *
@@ -890,7 +922,8 @@ namespace GlobalSearch {
     void readStructureSettings(const QString &filename);
 
   protected:
-    bool m_hasEnthalpy, m_histogramGenerationPending;
+    bool m_hasEnthalpy, m_updatedSinceDupChecked;
+    bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount;
     QString m_parents, m_dupString, m_rempath;
     double m_enthalpy, m_PV;
