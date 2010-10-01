@@ -32,6 +32,10 @@
 #include <QtConcurrentRun>
 #include <QtConcurrentMap>
 
+#include <vector>
+
+using namespace std;
+
 namespace GAPC {
 
   OptGAPC::OptGAPC(GAPCDialog *parent) :
@@ -523,6 +527,7 @@ optimizations. If so, safely ignore this message.")
     pc->setCurrentOptStep(1);
     pc->moveToThread(m_tracker->thread());
     pc->enableAutoHistogramGeneration(true);
+    pc->update();
     m_queue->unlockForNaming(pc);
     initMutex.unlock();
   }
@@ -793,8 +798,72 @@ optimizations. If so, safely ignore this message.")
     QtConcurrent::run(this, &OptGAPC::checkForDuplicates_);
   }
 
+  // Helper function for QtConcurrent::blockingMapped below
   QHash<QString, QVariant> getFingerprint(Structure *s)
   { return s->getFingerprint();}
+
+  // Helper function/struct for QtConcurrent::blockingMap below
+  struct checkForDupsStruct {
+    int i, j;
+    QList<QHash<QString, QVariant> > *fps;
+    QList<Structure*> *structures;
+    vector<double> *dist;
+    QList<vector<double> > *freqs;
+    OptGAPC *opt;
+  };
+
+  void checkIfDuplicates(checkForDupsStruct & st)
+  {
+    QHash<QString, QVariant> *fp_i=0, *fp_j=0;
+    vector<double> *freq_i, *freq_j;
+    Structure *s_i, *s_j;
+
+    if (st.structures->at(st.i)->getStatus() != Structure::Optimized) return;
+    fp_i = &((*st.fps)[st.i]);
+    freq_i = &((*st.freqs)[st.i]);
+    if (st.structures->at(st.j)->getStatus() != Structure::Optimized) return;
+    fp_j = &((*st.fps)[st.j]);
+    freq_j = &((*st.freqs)[st.j]);
+    double error = 0;
+    if (!ProtectedCluster::compareIADDistributions((*st.dist),
+                                                   (*freq_i),
+                                                   (*freq_j),
+                                                   0, 0.5,
+                                                   &error))
+      {
+        st.opt->warning("Geometric fingerprint comparison failed. Aborting...");
+        return;
+      }
+    if (error >= st.opt->tol_geo) return;
+    if ( fabs(fp_i->value("enthalpy").toDouble() -
+              fp_j->value("enthalpy").toDouble()) >=
+         st.opt->tol_enthalpy) return;
+    // If we get here, all the fingerprint values match,
+    // and we have a duplicate. Mark the xtal with the
+    // highest enthalpy as a duplicate of the other.
+    s_i = st.structures->at(st.i);
+    s_j = st.structures->at(st.j);
+    if (fp_i->value("enthalpy").toDouble() > fp_j->value("enthalpy").toDouble()) {
+      s_i->lock()->lockForWrite();
+      s_j->lock()->lockForRead();
+      s_i->setStatus(Structure::Duplicate);
+      s_i->setDuplicateString(QString("%1x%2")
+                              .arg(s_j->getGeneration())
+                              .arg(s_j->getIDNumber()));
+      s_i->lock()->unlock();
+      s_j->lock()->unlock();
+    }
+    else {
+      s_j->lock()->lockForWrite();
+      s_i->lock()->lockForRead();
+      s_j->setStatus(Structure::Duplicate);
+      s_j->setDuplicateString(QString("%1x%2")
+                              .arg(s_i->getGeneration())
+                              .arg(s_i->getIDNumber()));
+      s_j->lock()->unlock();
+      s_i->lock()->unlock();
+    }
+  }
 
   void OptGAPC::checkForDuplicates_() {
     QTime alltimer = QTime::currentTime();
@@ -811,91 +880,41 @@ optimizations. If so, safely ignore this message.")
     m_tracker->unlock();
 
     QVariantList distv = fps.first().value("IADDist").toList();
-    QList<double> dist;
-    QList<QList<double> > freqs;
+    vector<double> dist;
+    QList<vector<double> > freqs;
     QVariantList freqv;
-    QList<double> *freq;
+    vector<double> *freq;
 
     QTime convtimer = QTime::currentTime();
     // Convert QVariant lists to doubles
-    // TODO next line: Wait until Qt 4.7.0 is req'd
-    // dist.reserve(distv.size());
+    dist.reserve(distv.size());
     for (int i = 0; i < distv.size(); i++) {
-      dist.append(distv.at(i).toDouble());
+      dist.push_back(distv.at(i).toDouble());
     }
-    // TODO next line: Wait until Qt 4.7.0 is req'd
-    // freqs.reserve(fps.size());
     for (int i = 0; i < fps.size(); i++) {
-      freqs.append(QList<double>());
-      freq = &(freqs[i]);
       freqv = fps.at(i).value("IADFreq").toList();
-      // TODO next line: Wait until Qt 4.7.0 is req'd
-      // freq->reserve(freqv.size());
+      freqs.append(vector<double>());
+      freq = &(freqs[i]);
+      freq->reserve(freqv.size());
       for (int i = 0; i < freqv.size(); i++) {
-        freq->append(freqv.at(i).toDouble());
+        freq->push_back(freqv.at(i).toDouble());
       }
     }
 
     double convtime = convtimer.msecsTo(QTime::currentTime()) / (double)1000;
 
-    QHash<QString, QVariant> *fp_i=0, *fp_j=0;
-    QList<double> *freq_i, *freq_j;
-    Structure *s_i, *s_j;
-
     QTime comptimer = QTime::currentTime();
-
-    for (int i = 0; i < structures->size(); i++) {
-      if (structures->at(i)->getStatus() != Structure::Optimized) continue;
-      fp_i = &(fps[i]);
-      freq_i = &(freqs[i]);
+    // Create helper structs
+    QList<checkForDupsStruct> sts;
+    for (int i = 0; i < structures->size()-1; i++) {
       for (int j = i+1; j < structures->size(); j++) {
-        if (structures->at(j)->getStatus() != Structure::Optimized) continue;
-        fp_j = &(fps[j]);
-        freq_j = &(freqs[j]);
-        double error = 0;
-        if (!ProtectedCluster::compareNearestNeighborDistributions(dist,
-                                                                  (*freq_i),
-                                                                  (*freq_j),
-                                                                  0, 0.5,
-                                                                  &error))
-          {
-            warning("Geometric fingerprint comparison failed. Aborting...");
-            continue;
-          }
-        if (error >= tol_geo) continue;
-        if ( fabs(fp_i->value("enthalpy").toDouble() -
-                  fp_j->value("enthalpy").toDouble()) >=
-             tol_enthalpy) continue;
-        // If we get here, all the fingerprint values match,
-        // and we have a duplicate. Mark the xtal with the
-        // highest enthalpy as a duplicate of the other.
-        s_i = structures->at(i);
-        s_j = structures->at(j);
-        if (fp_i->value("enthalpy").toDouble() > fp_j->value("enthalpy").toDouble()) {
-          s_i->lock()->lockForWrite();
-          s_j->lock()->lockForRead();
-          s_i->setStatus(Structure::Duplicate);
-          s_i->setDuplicateString(QString("%1x%2")
-                                  .arg(s_j->getGeneration())
-                                  .arg(s_j->getIDNumber()));
-          s_i->lock()->unlock();
-          s_j->lock()->unlock();
-          break; // if s_i is a duplicate, break the inner loop so
-                 // that we stop comparing it.
-        }
-        else {
-          s_j->lock()->lockForWrite();
-          s_i->lock()->lockForRead();
-          s_j->setStatus(Structure::Duplicate);
-          s_j->setDuplicateString(QString("%1x%2")
-                                  .arg(s_i->getGeneration())
-                                  .arg(s_i->getIDNumber()));
-          s_j->lock()->unlock();
-          s_i->lock()->unlock();
-        }
+        checkForDupsStruct st;
+        st.i = i; st.j = j; st.fps = &fps; st.structures = structures;
+        st.dist = &dist; st.freqs = &freqs; st.opt = this;
+        sts.append(st);
       }
     }
-
+    QtConcurrent::blockingMap(sts, checkIfDuplicates);
     double comptime = comptimer.msecsTo(QTime::currentTime()) / (double)1000;
     double alltime = alltimer.msecsTo(QTime::currentTime()) / (double)1000;
     qDebug() << QString("Fingerprint timings: %1 structs | %2 (gen) + %3 (conv) + %4 (comp) = %5 (tot)")

@@ -31,6 +31,7 @@
 
 using namespace OpenBabel;
 using namespace Eigen;
+using namespace std;
 
 namespace GlobalSearch {
 
@@ -521,6 +522,119 @@ namespace GlobalSearch {
     }
 
     return true;
+  }
+
+  bool Structure::compareIADDistributions(const vector<double> &d,
+                                          const vector<double> &f1,
+                                          const vector<double> &f2,
+                                          double decay,
+                                          double smear,
+                                          double *error)
+  {
+    // Check that smearing is possible
+    if (smear != 0 && d.size() <= 1) {
+      qWarning() << "Cluster::compareNNDist: Cannot smear with 1 or fewer points.";
+      return false;
+    }
+    // Check sizes
+    if (d.size() != f1.size() || f1.size() != f2.size()) {
+      qWarning() << "Cluster::compareNNDist: Vectors are not the same size.";
+      return false;
+    }
+
+    // Perform a boxcar smoothing over range set by "smear"
+    // First determine step size of d, then convert smear to index units
+    double stepSize = fabs(d.at(1) - d.at(0));
+    int boxSize = ceil(smear/stepSize);
+    if (boxSize > d.size()) {
+      qWarning() << "Cluster::compareNNDist: Smear length is greater then d vector range.";
+      return false;
+    }
+    // Smear
+    vector<double> f1s, f2s, ds; // smeared vectors
+    if (smear != 0) {
+      double f1t, f2t, dt; // temporary variables
+      for (int i = 0; i < d.size() - boxSize; i++) {
+        f1t = f2t = dt = 0;
+        for (int j = 0; j < boxSize; j++) {
+          f1t += f1.at(i+j);
+          f2t += f2.at(i+j);
+        }
+        f1s.push_back(f1t / double(boxSize));
+        f2s.push_back(f2t / double(boxSize));
+        ds.push_back(dt / double(boxSize));
+      }
+    } else {
+      for (int i = 0; i < d.size() - boxSize; i++) {
+        f1s.push_back(f1.at(i));
+        f2s.push_back(f2.at(i));
+        ds.push_back(d.at(i));
+      }
+    }
+
+    // Calculate diff vector
+    vector<double> diff;
+    for (int i = 0; i < ds.size(); i++) {
+      diff.push_back(fabs(f1s.at(i) - f2s.at(i)));
+    }
+
+    // Calculate decay function: Standard exponential decay with a
+    // halflife of decay. If decay==0, no decay.
+    double decayFactor = 0;
+    // ln(2) / decay:
+    if (decay != 0) {
+      decayFactor = 0.69314718055994530941723 / decay;
+    }
+
+    // Calculate error:
+    (*error) = 0;
+    for (int i = 0; i < ds.size(); i++) {
+      (*error) += exp(-decayFactor * ds.at(i)) * diff.at(i);
+    }
+
+    return true;
+  }
+
+  bool Structure::compareIADDistributions(const QList<double> &d,
+                                          const QList<double> &f1,
+                                          const QList<double> &f2,
+                                          double decay,
+                                          double smear,
+                                          double *error)
+  {
+    // Check sizes
+    if (d.size() != f1.size() || f1.size() != f2.size()) {
+      qWarning() << "Cluster::compareIADDist: Vectors are not the same size.";
+      return false;
+    }
+    vector<double> dd, f1d, f2d;
+    for (int i = 0; i < d.size(); i++) {
+      dd.push_back(d.at(i));
+      f1d.push_back(f1.at(i));
+      f2d.push_back(f2.at(i));
+    }
+    return compareIADDistributions(dd, f1d, f2d, decay, smear, error);
+  }
+
+  bool Structure::compareIADDistributions(const QList<QVariant> &d,
+                                          const QList<QVariant> &f1,
+                                          const QList<QVariant> &f2,
+                                          double decay,
+                                          double smear,
+                                          double *error)
+  {
+    // Check sizes
+    if (d.size() != f1.size() || f1.size() != f2.size()) {
+      qWarning() << "Cluster::compareIADDist: Vectors are not the same size.";
+      return false;
+    }
+    vector<double> dd, f1d, f2d;
+    for (int i = 0; i < d.size(); i++) {
+      dd.push_back(d.at(i).toDouble());
+      f1d.push_back(f1.at(i).toDouble());
+      f2d.push_back(f2.at(i).toDouble());
+    }
+    return compareIADDistributions(dd, f1d, f2d, decay, smear, error);
   }
 
   QList<QString> Structure::getSymbols() const {

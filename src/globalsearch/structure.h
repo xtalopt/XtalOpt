@@ -27,6 +27,8 @@
 #include <QtCore/QDateTime>
 #include <QtCore/QTextStream>
 
+#include <vector>
+
 #define EV_TO_KCAL_PER_MOL 23.060538
 
 using namespace Avogadro;
@@ -559,6 +561,86 @@ namespace GlobalSearch {
      * @sa getDefaultHistogram()
      */
     virtual void generateDefaultHistogram();
+
+    /**
+     * Compare two IAD histograms.
+     *
+     * Given two histograms over the same range with the same step,
+     * this function calculates an error value to measure the
+     * differences between the two. A boxcar smoothing is performed
+     * using a width of "smear", and an optional weight can be
+     * applied. The weight is a standard exponential decay with a
+     * halflife of "decay".
+     *
+     * @param d List of distances
+     * @param f1 First list of frequencies
+     * @param f2 Second list of frequencies
+     * @param decay Exponential decay parameter for lowering weight of large
+     * IADs
+     * @param smear Boxcar smoothing width in Angstroms
+     * @param error Return error value
+     *
+     * @return Whether or not the operation could be performed.
+     */
+    static bool compareIADDistributions(const std::vector<double> &d,
+                                        const std::vector<double> &f1,
+                                        const std::vector<double> &f2,
+                                        double decay,
+                                        double smear,
+                                        double *error);
+    /**
+     * Compare two IAD histograms.
+     *
+     * Given two histograms over the same range with the same step,
+     * this function calculates an error value to measure the
+     * differences between the two. A boxcar smoothing is performed
+     * using a width of "smear", and an optional weight can be
+     * applied. The weight is a standard exponential decay with a
+     * halflife of "decay".
+     *
+     * @param d List of distances
+     * @param f1 First list of frequencies
+     * @param f2 Second list of frequencies
+     * @param decay Exponential decay parameter for lowering weight of large
+     * IADs
+     * @param smear Boxcar smoothing width in Angstroms
+     * @param error Return error value
+     *
+     * @return Whether or not the operation could be performed.
+     */
+    static bool compareIADDistributions(const QList<double> &d,
+                                        const QList<double> &f1,
+                                        const QList<double> &f2,
+                                        double decay,
+                                        double smear,
+                                        double *error);
+
+    /**
+     * Compare two IAD histograms.
+     *
+     * Given two histograms over the same range with the same step,
+     * this function calculates an error value to measure the
+     * differences between the two. A boxcar smoothing is performed
+     * using a width of "smear", and an optional weight can be
+     * applied. The weight is a standard exponential decay with a
+     * halflife of "decay".
+     *
+     * @param d List of distances
+     * @param f1 First list of frequencies
+     * @param f2 Second list of frequencies
+     * @param decay Exponential decay parameter for lowering weight of large
+     * IADs
+     * @param smear Boxcar smoothing width in Angstroms
+     * @param error Return error value
+     *
+     * @return Whether or not the operation could be performed.
+     */
+    static bool compareIADDistributions(const QList<QVariant> &d,
+                                        const QList<QVariant> &f1,
+                                        const QList<QVariant> &f2,
+                                        double decay,
+                                        double smear,
+                                        double *error);
 
     /**
      * Write supplementary data about this Structure to a file. All
