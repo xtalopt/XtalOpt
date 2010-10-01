@@ -27,6 +27,7 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
+using namespace Avogadro;
 using namespace OpenBabel;
 using namespace Eigen;
 

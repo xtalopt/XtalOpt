@@ -25,9 +25,11 @@
 
 #include <QtCore/QFile>
 #include <QtCore/QDebug>
+#include <QtCore/QTimer>
 #include <QtCore/QRegExp>
 #include <QtCore/QStringList>
 
+using namespace Avogadro;
 using namespace OpenBabel;
 using namespace Eigen;
 

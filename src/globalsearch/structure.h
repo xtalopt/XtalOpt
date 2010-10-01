@@ -29,8 +29,6 @@
 
 #define EV_TO_KCAL_PER_MOL 23.060538
 
-using namespace Avogadro;
-
 namespace GlobalSearch {
 
   /**
@@ -43,11 +41,12 @@ namespace GlobalSearch {
    * adding new functionality to help with common tasks during a
    * global structure search.
    */
-  class Structure : public Molecule
+  class Structure : public Avogadro::Molecule
   {
     Q_OBJECT
 
    public:
+
     /**
      * Constructor.
      *
@@ -418,7 +417,7 @@ namespace GlobalSearch {
                                  double minIAD = 0.0,
                                  double maxIAD = 0.0,
                                  int maxAttempts = 1000,
-                                 Atom **atom = 0);
+                                 Avogadro::Atom **atom = 0);
 
     /** @return An alphabetized list of the atomic symbols for the
      * atomic species present in the Structure.

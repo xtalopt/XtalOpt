@@ -24,10 +24,8 @@
 
 #define EV_TO_KCAL_PER_MOL 23.060538
 
-using namespace GlobalSearch;
-
 namespace XtalOpt {
-  class Xtal : public Structure
+  class Xtal : public GlobalSearch::Structure
   {
     Q_OBJECT
 

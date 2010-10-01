@@ -21,6 +21,7 @@
 #include <QtTest/QtTest>
 
 using namespace XtalOpt;
+using namespace Avogadro;
 
 class SPGLibTest : public QObject
 {

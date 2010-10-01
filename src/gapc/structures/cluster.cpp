@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <deque>
 
+using namespace Avogadro;
 using namespace std;
 
 namespace GAPC {

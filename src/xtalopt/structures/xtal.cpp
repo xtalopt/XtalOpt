@@ -34,6 +34,7 @@ extern "C" {
 
 using namespace std;
 using namespace OpenBabel;
+using namespace Avogadro;
 using namespace Eigen;
 
 namespace XtalOpt {
