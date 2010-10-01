@@ -93,6 +93,8 @@ namespace GAPC {
     if (!pc)
       return false;
 
+    QReadLocker locker (pc->lock());
+
     double shortest = 0;
     if (pc->getShortestInteratomicDistance(shortest)) {
       if (shortest < minIAD) {
