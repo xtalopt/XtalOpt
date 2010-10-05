@@ -16,6 +16,8 @@
 #ifndef GLOBALSEARCHMACROS_H
 #define GLOBALSEARCHMACROS_H
 
+#include <globalsearch/random.h>
+
 #include <QtCore/QSettings>
 
 #include <cstdlib>
@@ -33,11 +35,8 @@
 // http://stackoverflow.com/questions/322938
 unsigned long GLOBALSEARCH_GETRANDOMSEED();
 
-#ifdef WIN32
-#define INIT_RANDOM_GENERATOR() std::srand(GLOBALSEARCH_GETRANDOMSEED());
-#define RANDDOUBLE() ( rand() / double(RAND_MAX) )
-#else
-#define INIT_RANDOM_GENERATOR() unsigned int GS_RSEED = GLOBALSEARCH_GETRANDOMSEED();
-#define RANDDOUBLE() ( rand_r(&GS_RSEED) / double(RAND_MAX) )
-#endif // WIN32
+#define INIT_RANDOM_GENERATOR()
+#define RANDDOUBLE() ( GlobalSearch::GSRandom::instance()->getRandomDouble() )
+#define RANDUINT() ( GlobalSearch::GSRandom::instance()->getRandomUInt() )
+
 #endif // GLOBALSEARCHMACROS_H
