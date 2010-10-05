@@ -7,7 +7,7 @@ set( globalsearch_SRCS
      bt.cpp
      sshconnection.cpp
      sshmanager.cpp
-     macros.cpp
+     random.cpp
      ui/abstractdialog.cpp
      ui/abstracttab.cpp)
 
