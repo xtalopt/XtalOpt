@@ -182,6 +182,7 @@ namespace GAPC {
    protected:
     void resetDuplicates_();
     void checkForDuplicates_();
+    void generateNewStructure_();
     void setOptimizer_string(const QString &s, const QString &filename = "");
     void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
 

@@ -570,6 +570,11 @@ optimizations. If so, safely ignore this message.")
 
   void OptGAPC::generateNewStructure()
   {
+    QtConcurrent::run(this, &OptGAPC::generateNewStructure_);
+  }
+
+  void OptGAPC::generateNewStructure_()
+  {
     INIT_RANDOM_GENERATOR();
     // Get all optimized structures
     QList<Structure*> structures = m_queue->getAllOptimizedStructures();
