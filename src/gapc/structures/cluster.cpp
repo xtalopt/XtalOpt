@@ -17,6 +17,8 @@
 
 #include <globalsearch/macros.h>
 
+#include <avogadro/neighborlist.h>
+
 #include <algorithm>
 #include <vector>
 #include <deque>
