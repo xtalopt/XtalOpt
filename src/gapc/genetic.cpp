@@ -242,7 +242,8 @@ namespace GAPC {
     }
 
     // Done!
-    npc->centerAtoms();
+    // Expand will center the atoms
+    npc->expand(1.2);
     npc->setStatus(ProtectedCluster::WaitingForOptimization);
     return npc;
   }
@@ -304,7 +305,8 @@ namespace GAPC {
     }
 
     // Done!
-    npc->centerAtoms();
+    // Expand will center the atoms
+    npc->expand(1.2);
     npc->setStatus(ProtectedCluster::WaitingForOptimization);
     return npc;
   }
@@ -354,6 +356,8 @@ namespace GAPC {
       natoms.at(index1)->setPos(*(natoms.at(index2)->pos()));
       natoms.at(index2)->setPos(tmp);
     }
+    // Expand will center the atoms
+    npc->expand(1.2);
     return npc;
   }
 
@@ -435,7 +439,8 @@ namespace GAPC {
     }
 
     // Done!
-    npc->centerAtoms();
+    // Expand will center the atoms
+    npc->expand(1.2);
     npc->setStatus(ProtectedCluster::WaitingForOptimization);
     return npc;
   }

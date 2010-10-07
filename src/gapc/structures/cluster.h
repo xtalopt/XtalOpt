@@ -39,6 +39,7 @@ namespace GAPC {
     void centerAtoms();
     QHash<QString, QVariant> getFingerprint() const;
     bool checkForExplosion(double rcut) const;
+    void expand(double factor);
 
    private slots:
 
