@@ -111,6 +111,8 @@ namespace GAPC {
     double shortest = 0;
     if (pc->getShortestInteratomicDistance(shortest)) {
       if (shortest < minIAD) {
+        qDebug() << "Discarding structure: IAD check failed: "
+                 << shortest << " < " << minIAD;
         return false;
       }
     }
