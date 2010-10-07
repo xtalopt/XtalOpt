@@ -43,8 +43,10 @@ namespace GAPC {
   {
     m_idString = "GAPC";
 
-    connect(m_tracker, SIGNAL(newStructureAdded(Structure*)),
+    connect(m_queue, SIGNAL(structureFinished(Structure*)),
             this, SLOT(checkForDuplicates()));
+    connect(m_queue, SIGNAL(structureFinished(Structure*)),
+            this, SLOT(checkOptimizedPC(Structure*)));
     connect(this, SIGNAL(sessionStarted()),
             this, SLOT(resetDuplicates()));
   }
@@ -114,6 +116,35 @@ namespace GAPC {
     }
 
     return true;
+  }
+
+  void OptGAPC::checkOptimizedPC(Structure *s)
+  {
+    if (!s)
+      return;
+
+    ProtectedCluster *pc = qobject_cast<ProtectedCluster*>(s);
+    if (!pc)
+      return;
+
+    QReadLocker locker (pc->lock());
+
+    // Explode check
+    QList<double> dists;
+    if (!pc->checkForExplosion(explodeLimit)) {
+      qDebug() << "Cluster " << pc->getIDString() << " exploded!";
+      switch (explodeAction) {
+      case EA_Kill:
+        m_queue->killStructure(pc);
+        return;
+      case EA_Randomize:
+        pc->setStatus(ProtectedCluster::Updating);
+        locker.unlock();
+        replaceWithRandom(pc, tr("Cluster exploded"));
+        m_queue->prepareStructureForSubmission(pc);
+        return;
+      }
+    }
   }
 
   bool OptGAPC::load(const QString &filename) {

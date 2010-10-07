@@ -60,6 +60,10 @@ namespace GAPC {
             this, SLOT(updateOptimizationInfo()));
     connect(ui.combo_failAction, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_explode, SIGNAL(valueChanged(double)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.combo_explode, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateOptimizationInfo()));
     connect(ui.spin_p_cross, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.spin_p_twist, SIGNAL(valueChanged(int)),
@@ -79,6 +83,10 @@ namespace GAPC {
     connect(ui.spin_randw_minWalk, SIGNAL(valueChanged(double)),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.spin_randw_maxWalk, SIGNAL(valueChanged(double)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_p_aniso, SIGNAL(valueChanged(int)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_aniso_amp, SIGNAL(valueChanged(double)),
             this, SLOT(updateOptimizationInfo()));
 
     // Duplicate tolerances
@@ -118,6 +126,8 @@ namespace GAPC {
     settings->setValue("runningJobLimit",   gapc->runningJobLimit);
     settings->setValue("failLimit",         gapc->failLimit);
     settings->setValue("failAction",        gapc->failAction);
+    settings->setValue("explodeLimit",      gapc->explodeLimit);
+    settings->setValue("explodeAction",     gapc->explodeAction);
 
     // Duplicates
     settings->setValue("tol/enthalpy",      gapc->tol_enthalpy);
@@ -155,15 +165,17 @@ namespace GAPC {
     int loadedVersion = settings->value("version", 0).toInt();
 
     // Initial generation
-    ui.spin_numInitial->setValue(       settings->value("opt/numInitial",       20).toInt()     );
+    ui.spin_numInitial->setValue(       settings->value("numInitial",       20).toInt());
 
     // Search parameters
-    ui.spin_popSize->setValue(          settings->value("opt/popSize",          20).toUInt()    );
-    ui.spin_contStructs->setValue(      settings->value("opt/contStructs",      10).toUInt()    );
-    ui.cb_limitRunningJobs->setChecked( settings->value("opt/limitRunningJobs", false).toBool());
-    ui.spin_runningJobLimit->setValue(  settings->value("opt/runningJobLimit",  1).toUInt()    );
-    ui.spin_failLimit->setValue(        settings->value("opt/failLimit",        2).toUInt()    );
-    ui.combo_failAction->setCurrentIndex(settings->value("opt/failAction",      OptGAPC::FA_Randomize).toUInt()    );
+    ui.spin_popSize->setValue(          settings->value("popSize",          20).toUInt());
+    ui.spin_contStructs->setValue(      settings->value("contStructs",      10).toUInt());
+    ui.cb_limitRunningJobs->setChecked( settings->value("limitRunningJobs", false).toBool());
+    ui.spin_runningJobLimit->setValue(  settings->value("runningJobLimit",  1).toUInt());
+    ui.spin_failLimit->setValue(        settings->value("failLimit",        2).toUInt());
+    ui.combo_failAction->setCurrentIndex(settings->value("failAction",      OptGAPC::FA_Randomize).toUInt());
+    ui.spin_explode->setValue(          settings->value("explodeLimit",     5.0).toDouble());
+    ui.combo_explode->setCurrentIndex(  settings->value("explodeAction",    OptGAPC::EA_Randomize).toUInt());
 
     // Duplicates
     ui.spin_tol_enthalpy->setValue(     settings->value("tol/enthalpy",         1e-2).toDouble());
@@ -213,6 +225,8 @@ namespace GAPC {
     ui.spin_runningJobLimit->setValue(  gapc->runningJobLimit);
     ui.spin_failLimit->setValue(        gapc->failLimit);
     ui.combo_failAction->setCurrentIndex(gapc->failAction);
+    ui.spin_explode->setValue(          gapc->explodeLimit);
+    ui.combo_explode->setCurrentIndex(  gapc->explodeAction);
 
     // Duplicates
     ui.spin_tol_enthalpy->setValue(     gapc->tol_enthalpy);
@@ -271,6 +285,8 @@ namespace GAPC {
     gapc->limitRunningJobs     = ui.cb_limitRunningJobs->isChecked();
     gapc->failLimit            = ui.spin_failLimit->value();
     gapc->failAction           = OptGAPC::FailActions(ui.combo_failAction->currentIndex());
+    gapc->explodeLimit         = ui.spin_explode->value();
+    gapc->explodeAction        = OptGAPC::ExplodeActions(ui.combo_explode->currentIndex());
 
     // Duplicates
     gapc->tol_enthalpy         = ui.spin_tol_enthalpy->value();

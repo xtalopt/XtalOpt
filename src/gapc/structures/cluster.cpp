@@ -113,7 +113,48 @@ namespace GAPC {
     return fp;
   }
 
+  Eigen::Vector3f ev3dToev3f(const Eigen::Vector3d *v)
+  {
+    return Eigen::Vector3f(v->x(), v->y(), v->z());
+  }
+
+  inline void QListUniqueAppend(QList<Atom*> *perm, const QList<Atom*> *tmp)
+  {
+    for (int i = 0; i < tmp->size(); i++) {
+      if (!perm->contains(tmp->at(i))) {
+        perm->append(tmp->at(i));
+      }
+    }
+  }
+
+  bool Cluster::checkForExplosion(double rcut) const
+  {
+    NeighborList nl (const_cast<Cluster*>(this), rcut);
+    QList<Atom*> found, tmp;
+
+    // The found list is treated as unique list, using the
+    // QListUniqueAppend function above. We'll start at the farthest
+    // atom from the molecule's center, then iteratively add all
+    // neighbors within rcut. This is repeated until we have added all
+    // atoms that we can using this method of traversal. Then we
+    // compare the size of the found tracker to numAtoms() to see if
+    // all atoms were found using this method.
+
+    const Atom *start = farthestAtom();
+    Eigen::Vector3f fpos = ev3dToev3f(start->pos());
+    tmp = nl.nbrs(&fpos);
+    QListUniqueAppend(&found, &tmp);
+
+    for (int i = 0; i < found.size(); i++) {
+      Eigen::Vector3f fpos = ev3dToev3f(found.at(i)->pos());
+      tmp = nl.nbrs(&fpos);
+      QListUniqueAppend(&found, &tmp);
+    }
+
+    if (found.size() != numAtoms()) {
+      return false;
+    }
+    return true;
+  }
 
 } // end namespace GAPC
-
-//#include "scene.moc"

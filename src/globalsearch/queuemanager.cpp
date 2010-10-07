@@ -62,6 +62,8 @@ namespace GlobalSearch {
             this, SIGNAL(structureUpdated(Structure *)));
     connect(this, SIGNAL(structureKilled(Structure *)),
             this, SIGNAL(structureUpdated(Structure *)));
+    connect(this, SIGNAL(structureFinished(Structure *)),
+            this, SIGNAL(structureUpdated(Structure *)));
   }
 
   QueueManager::~QueueManager()
@@ -331,6 +333,7 @@ namespace GlobalSearch {
     // Otherwise, it's done
     else {
       structure->setStatus(Structure::Optimized);
+      emit structureFinished(structure);
       m_runningTracker.remove(structure);
     }
     m_nextOptStepTracker.unlock();
