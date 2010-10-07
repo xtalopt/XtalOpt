@@ -157,4 +157,36 @@ namespace GAPC {
     return true;
   }
 
+  void Cluster::expand(double factor)
+  {
+    // Center atom
+    centerAtoms();
+
+    // Perform expansion on all atoms
+    double rho, phi, theta, x, y, z;
+    Atom *atom;
+    const Eigen::Vector3d *pos;
+    Eigen::Vector3d npos;
+    for (int i = 0; i < numAtoms(); i++) {
+      // Convert cartestian coords to spherical coords
+      atom = atoms().at(i);
+      pos = atom->pos();
+      x = pos->x();
+      y = pos->y();
+      z = pos->z();
+      rho = sqrt(x*x+y*y+z*z);
+      phi = acos(z/rho);
+      theta = asin(y/sqrt(x*x+y*y));
+      if (x < 0) theta = M_PI-theta;
+      // Expand
+      rho *= factor;
+      // Back to cartesian
+      npos.x() = rho*sin(phi)*cos(theta);
+      npos.y() = rho*sin(phi)*sin(theta);
+      npos.z() = rho*cos(phi);
+      atom->setPos(&npos);
+    }
+    emit update();
+  }
+
 } // end namespace GAPC
