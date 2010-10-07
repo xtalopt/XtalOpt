@@ -379,6 +379,7 @@ namespace GAPC {
       atom->setAtomicNumber(atoms.at(i)->atomicNumber());
       atom->setPos(atoms.at(i)->pos());
     }
+    QList<Atom*> natoms = npc->atoms();
 
     // Check that the number of requested walkers does not exceed the
     // number of available atoms
@@ -393,14 +394,14 @@ namespace GAPC {
     vector<int> walkers;
     // Select all if all atoms move:
     if (numberAtoms == npc->numAtoms()) {
-      for (int i = 0; i < atoms.size(); i++) {
+      for (int i = 0; i < natoms.size(); i++) {
         walkers.push_back(i);
       }
     }
     // otherwise, select randomly
     else {
       for (int i = 0; i < numberAtoms; i++) {
-        int index = floor(RANDDOUBLE() * atoms.size());
+        int index = floor(RANDDOUBLE() * natoms.size());
         // Have we already selected this atom?
         if (find(walkers.begin(), walkers.end(), index) == walkers.end())
           walkers.push_back(index);
@@ -434,7 +435,7 @@ namespace GAPC {
     // Walk 'em
     for (int i = 0; i < walkers.size(); i++) {
       int ind = walkers.at(i);
-      Atom *atm = atoms.at(ind);
+      Atom *atm = natoms.at(ind);
       atm->setPos( *(atm->pos()) + trans.at(i) );
     }
 
