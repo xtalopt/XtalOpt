@@ -51,6 +51,17 @@ namespace GAPC {
     Q_OBJECT
 
    public:
+    enum OptTypes {
+      OT_OpenBabel = 0,
+      OT_ADF,
+      OT_GULP
+    };
+
+    enum ExplodeActions {
+      EA_Randomize = 0,
+      EA_Kill
+    };
+
     // Variables for GAPC
     QMutex initMutex;
     GAPC_Comp comp;
@@ -62,6 +73,7 @@ namespace GAPC {
     double tol_geo;
     double minIAD;
     double maxIAD;
+    double explodeLimit;
     int p_cross;
     int p_twist;
     int p_exch;
@@ -71,12 +83,7 @@ namespace GAPC {
     int randw_numWalkers;
     float randw_minWalk;
     float randw_maxWalk;
-
-    enum OptTypes {
-      OT_OpenBabel = 0,
-      OT_ADF,
-      OT_GULP
-    };
+    ExplodeActions explodeAction;
 
     /**
      * Constructor
@@ -140,6 +147,16 @@ namespace GAPC {
      * Begin the search.
      */
     void startSearch();
+
+    /**
+     * Check a protected cluster after all optimization steps are
+     * completed to ensure that it conforms to the specified limits.
+     *
+     * This currently checks to see if the structure has exploded. If
+     * it has, the action described by explodeAction is taken.
+     *
+     */
+    void checkOptimizedPC(Structure *s);
 
     /**
      * Called when the QueueManager requests more Structures.

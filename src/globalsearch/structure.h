@@ -330,6 +330,18 @@ namespace GlobalSearch {
      * @return true if the operation makes sense for this Structure,
      * false otherwise (i.e. fewer than two atoms present)
      *
+     * @param list list of distances in Angstrom
+     * @sa getNearestNeighborDistance
+     * @sa getNearestNeighborHistogram
+     */
+    virtual bool getNearestNeighborDistances(QList<double> * list) const;
+
+    /** Return a list of nearest neighbor distances for each atom in
+     * the Structure
+     *
+     * @return true if the operation makes sense for this Structure,
+     * false otherwise (i.e. fewer than two atoms present)
+     *
      * @param shortest An empty double to be overwritten with the
      * shortest interatomic distance.
      * @sa getNearestNeighborDistance
@@ -357,6 +369,20 @@ namespace GlobalSearch {
     virtual bool getNearestNeighborDistance(double x,
                                             double y,
                                             double z,
+                                            double & shortest) const;
+
+    /** Find the nearest neighbor distance of a specified atom.
+     *
+     * @return true if the operation makes sense for this Structure,
+     * false otherwise (i.e. fewer than one atom present)
+     *
+     * @param atom Atom of interest
+     * @param shortest An empty double to be overwritten with the
+     * nearest neighbor distance.
+     * @sa getShortestInteratomicDistance
+     * @sa getNearestNeighborHistogram
+     */
+    virtual bool getNearestNeighborDistance(Avogadro::Atom *atom,
                                             double & shortest) const;
 
     /** Get the default histogram data.

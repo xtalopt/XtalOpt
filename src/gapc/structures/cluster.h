@@ -38,6 +38,7 @@ namespace GAPC {
     void constructRandomCluster(const QHash<unsigned int, unsigned int> &comp, float minIAD, float maxIAD);
     void centerAtoms();
     QHash<QString, QVariant> getFingerprint() const;
+    bool checkForExplosion(double rcut) const;
 
    private slots:
 

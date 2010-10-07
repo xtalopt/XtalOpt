@@ -251,6 +251,21 @@ namespace GlobalSearch {
       .arg(status, 11);
   };
 
+  bool Structure::getNearestNeighborDistances(QList<double> * list) const
+  {
+    list->clear();
+    QList<Atom *> atomList = atoms();
+    if (atomList.size() < 2) return false;
+
+    QList<Atom *>::const_iterator at_i;
+    double shortest;
+    for (at_i = atomList.begin(); at_i != atomList.end(); at_i++) {
+      getNearestNeighborDistance((*at_i), shortest);
+      list->append(shortest);
+    }
+    return true;
+  }
+
   bool Structure::getShortestInteratomicDistance(double & shortest) const
   {
     QList<Atom*> atomList = atoms();
@@ -274,7 +289,6 @@ namespace GlobalSearch {
         if (distance < shortest) shortest = distance;
       }
     }
-
     return true;
   }
 
@@ -354,6 +368,22 @@ namespace GlobalSearch {
       disconnect(this, SIGNAL(primitiveRemoved(Primitive*)),
                  this, SLOT(requestHistogramGeneration()));
     }
+  }
+
+  bool Structure::getNearestNeighborDistance(Atom *atom,
+                                             double & shortest) const
+  {
+    QList<Atom*> atomList = atoms();
+    QList<Atom *>::const_iterator at_i;
+    shortest = 1e9;
+    for (at_i = atomList.begin(); at_i != atomList.end(); at_i++) {
+      if ((*at_i) == atom) continue;
+      double dist = fabs( ( (*(*at_i)->pos()) -
+                            (*(atom->pos()))
+                            ).norm() );
+      if (dist < shortest) shortest = dist;
+    }
+    return shortest;
   }
 
   void Structure::requestHistogramGeneration()
