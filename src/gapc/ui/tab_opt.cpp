@@ -182,21 +182,25 @@ namespace GAPC {
     ui.spin_tol_geo->setValue(          settings->value("tol/geo",              5e2).toDouble());
 
     // Crossover
-    ui.spin_p_cross->setValue(          settings->value("p_cross",              25).toInt());
+    ui.spin_p_cross->setValue(          settings->value("p_cross",              10).toInt());
 
     // Twist
-    ui.spin_p_twist->setValue(          settings->value("p_twist",              25).toInt());
+    ui.spin_p_twist->setValue(          settings->value("p_twist",              20).toInt());
     ui.spin_twist_minRot->setValue(     settings->value("twist_minRot",         25).toInt());
 
     // Exchange
-    ui.spin_p_exch->setValue(           settings->value("p_exch",               25).toInt());
+    ui.spin_p_exch->setValue(           settings->value("p_exch",               20).toInt());
     ui.spin_exch_numExch->setValue(     settings->value("exch_numExch",         4).toInt());
 
     // Random Walk
-    ui.spin_p_randw->setValue(          settings->value("p_randw",              25).toInt());
+    ui.spin_p_randw->setValue(          settings->value("p_randw",              20).toInt());
     ui.spin_randw_numWalkers->setValue( settings->value("randw_numWalkers",     4).toInt());
     ui.spin_randw_minWalk->setValue(    settings->value("randw_minWalk",        1.00).toDouble());
     ui.spin_randw_maxWalk->setValue(    settings->value("randw_maxWalk",        5.00).toDouble());
+
+    // Anisotropic Expansion
+    ui.spin_p_aniso->setValue(          settings->value("p_aniso",              30).toInt());
+    ui.spin_aniso_amp->setValue(        settings->value("aniso_amp",            1.0).toDouble());
 
     settings->endGroup();
 
@@ -248,6 +252,10 @@ namespace GAPC {
     ui.spin_randw_numWalkers->setValue( gapc->randw_numWalkers);
     ui.spin_randw_minWalk->setValue(    gapc->randw_minWalk);
     ui.spin_randw_maxWalk->setValue(    gapc->randw_maxWalk);
+
+    // Anisotropic Expansion
+    ui.spin_p_aniso->setValue(          gapc->p_aniso);
+    ui.spin_aniso_amp->setValue(        gapc->aniso_amp);
   }
 
   void TabOpt::lockGUI()
@@ -266,12 +274,14 @@ namespace GAPC {
     gapc->p_cross  = ui.spin_p_cross->value();
     gapc->p_twist  = ui.spin_p_twist->value();
     gapc->p_exch   = ui.spin_p_exch->value();
-    gapc->p_randw  = 100 - (gapc->p_cross +
+    gapc->p_randw  = ui.spin_p_randw->value();
+    gapc->p_aniso  = 100 - (gapc->p_cross +
                             gapc->p_twist +
-                            gapc->p_exch);
-    ui.spin_p_randw->blockSignals(true);
-    ui.spin_p_randw->setValue(gapc->p_randw);
-    ui.spin_p_randw->blockSignals(false);
+                            gapc->p_exch +
+                            gapc->p_randw);
+    ui.spin_p_aniso->blockSignals(true);
+    ui.spin_p_aniso->setValue(gapc->p_aniso);
+    ui.spin_p_aniso->blockSignals(false);
 
     // Initial generation
     gapc->numInitial           = ui.spin_numInitial->value();
@@ -308,6 +318,10 @@ namespace GAPC {
     gapc->randw_numWalkers     = ui.spin_randw_numWalkers->value();
     gapc->randw_minWalk        = ui.spin_randw_minWalk->value();
     gapc->randw_maxWalk        = ui.spin_randw_maxWalk->value();
+
+    // Anisotropic Expansion
+    // p_aniso set above
+    gapc->aniso_amp            = ui.spin_aniso_amp->value();
   }
 
   void TabOpt::addSeed(QListWidgetItem *item)

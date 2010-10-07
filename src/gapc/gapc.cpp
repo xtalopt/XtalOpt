@@ -625,8 +625,10 @@ optimizations. If so, safely ignore this message.")
         op = OP_Twist;
       else if (r < p_cross + p_twist + p_exch)
         op = OP_Exchange;
-      else
+      else if (r < p_cross + p_twist + p_exch + p_randw)
         op = OP_RandomWalk;
+      else
+        op = OP_AnisotropicExpansion;
 
       // Try 1000 times to get a good structure from the selected
       // operation. If not possible, send a warning to the log and
@@ -771,16 +773,45 @@ optimizations. If so, safely ignore this message.")
           continue;
         }
 
+        case OP_AnisotropicExpansion: {
+          int ind=0;
+          ProtectedCluster *pc1=0;
+          // Select structures
+          double r = RANDDOUBLE();
+          for (ind = 0; ind < probs.size(); ind++)
+            if (r < probs.at(ind)) break;
+
+          pc1 = pcs.at(ind);
+
+          // Perform operation
+          pc = GAPCGenetic::anisotropicExpansion(pc1, aniso_amp);
+
+          // Lock parents and get info from them
+          pc1->lock()->lockForRead();
+          unsigned int gen1 = pc1->getGeneration();
+          unsigned int id1  = pc1->getIDNumber();
+          pc1->lock()->unlock();
+
+          // Determine generation number
+          gen = gen1 + 1;
+          parents = tr("AnisoExp: %1x%2 (%3 amp)")
+            .arg(gen1)
+            .arg(id1)
+            .arg(aniso_amp);
+          continue;
+        }
+
         } // end switch
       }
       if (attemptCount >= 1000) {
         QString opStr;
         switch (op) {
-        case OP_Crossover:   opStr = "crossover"; break;
-        case OP_Twist:       opStr = "twist"; break;
-        case OP_Exchange:    opStr = "exchange"; break;
-        case OP_RandomWalk:  opStr = "random walk"; break;
-        default:             opStr = "(unknown)"; break;
+        case OP_Crossover:            opStr = "crossover"; break;
+        case OP_Twist:                opStr = "twist"; break;
+        case OP_Exchange:             opStr = "exchange"; break;
+        case OP_RandomWalk:           opStr = "random walk"; break;
+        case OP_AnisotropicExpansion: opStr = "anisotropic expansion"; break;
+        default:                      opStr = "(unknown)"; break;
         }
         warning(tr("Unable to perform operation %1 after 1000 tries. Reselecting operator...").arg(opStr));
       }

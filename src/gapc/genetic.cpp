@@ -446,4 +446,61 @@ namespace GAPC {
     return npc;
   }
 
+  ProtectedCluster* GAPCGenetic::anisotropicExpansion(ProtectedCluster *pc,
+                                                           double amp)
+  {
+    INIT_RANDOM_GENERATOR();
+
+    // Extract data from parent
+    pc->lock()->lockForWrite();
+    pc->centerAtoms();
+    pc->lock()->unlock();
+    pc->lock()->lockForRead();
+    QList<Atom*> atoms = pc->atoms();
+    vector<Vector3d> coords;
+    for (int i = 0; i < atoms.size(); i++)
+      coords.push_back(*(atoms.at(i)->pos()));
+    pc->lock()->unlock();
+
+    // randomly rotate parent coordinates
+    coords = rotateCoordinates(coords, createRotationMatrix());
+
+    // Perform expansion
+    double rho, phi, theta, x, y, z;
+    Eigen::Vector3d npos, *pos;
+    for (int i = 0; i < coords.size(); i++) {
+      // Convert cartestian coords to spherical coords
+      pos = &(coords[i]);
+      x = pos->x();
+      y = pos->y();
+      z = pos->z();
+      rho = sqrt(x*x+y*y+z*z);
+      phi = acos(z/rho);
+      theta = asin(y/sqrt(x*x+y*y));
+      if (x < 0) theta = M_PI-theta;
+      // Expand
+      double factor = (cos(2*phi) + 1)/2.0;
+      // cube factor
+      rho *= amp * factor * factor * factor * factor;
+      // Back to cartesian
+      pos->x() = rho*sin(phi)*cos(theta);
+      pos->y() = rho*sin(phi)*sin(theta);
+      pos->z() = rho*cos(phi);
+    }
+
+    // Build new cluster
+    ProtectedCluster *npc = new ProtectedCluster();
+    QWriteLocker npcLocker (npc->lock());
+
+    for (int i = 0; i < atoms.size(); i++) {
+      Atom* newAtom = npc->addAtom();
+      newAtom->setAtomicNumber(atoms.at(i)->atomicNumber());
+      newAtom->setPos(coords.at(i));
+    }
+
+    // Done!
+    npc->setStatus(ProtectedCluster::WaitingForOptimization);
+    return npc;
+  }
+
 }

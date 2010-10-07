@@ -43,7 +43,8 @@ namespace GAPC {
     OP_Crossover = 0,
     OP_Twist,
     OP_Exchange,
-    OP_RandomWalk
+    OP_RandomWalk,
+    OP_AnisotropicExpansion
   };
 
   class OptGAPC : public GlobalSearch::OptBase
@@ -78,11 +79,13 @@ namespace GAPC {
     int p_twist;
     int p_exch;
     int p_randw;
+    int p_aniso;
     int twist_minRot;
     int exch_numExch;
     int randw_numWalkers;
     float randw_minWalk;
     float randw_maxWalk;
+    float aniso_amp;
     ExplodeActions explodeAction;
 
     /**

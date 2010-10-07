@@ -26,49 +26,7 @@
       <string>Initial Generation</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_9">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="toolTip">
-         <string>Number of initial structures / number of structures to keep in queue for continuous mode.
-
-Default: 20
-</string>
-        </property>
-        <property name="text">
-         <string>Initial structures:</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_numInitial</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QSpinBox" name="spin_numInitial">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="toolTip">
-         <string>Number of initial structures / number of structures to keep in queue for continuous mode.
-</string>
-        </property>
-        <property name="maximum">
-         <number>9999</number>
-        </property>
-        <property name="value">
-         <number>20</number>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0" colspan="2">
+      <item row="2" column="0" colspan="2">
        <widget class="QGroupBox" name="groupBox_2">
         <property name="title">
          <string>Initial Seed Structures:</string>
@@ -128,6 +86,65 @@ Default: 20
          </item>
         </layout>
        </widget>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <layout class="QHBoxLayout" name="horizontalLayout_6">
+        <item>
+         <widget class="QLabel" name="label_9">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Number of initial structures / number of structures to keep in queue for continuous mode.
+
+Default: 20
+</string>
+          </property>
+          <property name="text">
+           <string>Initial structures:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_numInitial</cstring>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_4">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="spin_numInitial">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Number of initial structures / number of structures to keep in queue for continuous mode.
+</string>
+          </property>
+          <property name="maximum">
+           <number>9999</number>
+          </property>
+          <property name="value">
+           <number>20</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
@@ -456,319 +473,325 @@ is a good value here.</string>
      </item>
     </layout>
    </item>
-   <item row="1" column="1">
-    <widget class="QGroupBox" name="groupBox_6">
-     <property name="title">
-      <string>Exchange</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_7">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_29">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>Percent new exchange:</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_p_exch</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_27">
-        <property name="toolTip">
-         <string>Standard deviation of the random elements of the strain matrix.
-
-Default: 0.07</string>
-        </property>
-        <property name="text">
-         <string>Number of exchanges:</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_exch_numExch</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QSpinBox" name="spin_p_exch">
-        <property name="toolTip">
-         <string/>
-        </property>
-        <property name="suffix">
-         <string>%</string>
-        </property>
-        <property name="maximum">
-         <number>100</number>
-        </property>
-        <property name="value">
-         <number>50</number>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <spacer name="verticalSpacer_4">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item row="1" column="1">
-       <widget class="QSpinBox" name="spin_exch_numExch"/>
-      </item>
-     </layout>
-    </widget>
-   </item>
    <item row="0" column="2">
-    <widget class="QGroupBox" name="groupBox_5">
-     <property name="title">
-      <string>Crossover</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_6">
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_25">
-        <property name="toolTip">
-         <string>Percentage of new structures to be created from the heredity operator.
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QGroupBox" name="groupBox_5">
+       <property name="title">
+        <string>Crossover</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_6">
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_25">
+          <property name="toolTip">
+           <string>Percentage of new structures to be created from the heredity operator.
 
 Heredity combines two random spatially coherent slabs from two unique parents to form a single offspring.
 
 Default: 85</string>
-        </property>
-        <property name="text">
-         <string>Percent new crossover:</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_p_cross</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QSpinBox" name="spin_p_cross">
-        <property name="toolTip">
-         <string>Percentage of new structures to be created from the crossover operator.
-
-Default: 15</string>
-        </property>
-        <property name="suffix">
-         <string>%</string>
-        </property>
-        <property name="maximum">
-         <number>100</number>
-        </property>
-        <property name="value">
-         <number>15</number>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <spacer name="verticalSpacer_3">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="QGroupBox" name="groupBox_8">
-     <property name="title">
-      <string>Twist</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_9">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>Percent new twist:</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_p_twist</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QSpinBox" name="spin_p_twist">
-        <property name="toolTip">
-         <string>Percentage of new structures to be created from the crossover operator.
-
-Default: 15</string>
-        </property>
-        <property name="suffix">
-         <string>%</string>
-        </property>
-        <property name="maximum">
-         <number>100</number>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_10">
-        <property name="text">
-         <string>Minimum rotation:</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_twist_minRot</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QSpinBox" name="spin_twist_minRot">
-        <property name="toolTip">
-         <string>The smallest rotation allowed during the twist.</string>
-        </property>
-        <property name="suffix">
-         <string>°</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <spacer name="verticalSpacer_6">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item row="1" column="2">
-    <widget class="QGroupBox" name="groupBox_7">
-     <property name="title">
-      <string>Random Walk</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_8">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_31">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="toolTip">
-         <string>Percentage of offspring structures that will be generated from the permutation operator.
-
-The permutation operator will swap two atoms of different type within a single parent. Set to zero if there is only one atom type in the cell!
-
-Default: 5%</string>
-        </property>
-        <property name="text">
-         <string>Percent new:</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_p_randw</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_30">
-        <property name="toolTip">
-         <string>Number of separate swaps in the permutation operator.
-
-Default: 3</string>
-        </property>
-        <property name="text">
-         <string>Displacement range:</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_randw_minWalk</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QSpinBox" name="spin_p_randw">
-        <property name="toolTip">
-         <string/>
-        </property>
-        <property name="suffix">
-         <string>%</string>
-        </property>
-        <property name="maximum">
-         <number>100</number>
-        </property>
-        <property name="value">
-         <number>35</number>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Number of walkers:</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_randw_numWalkers</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <spacer name="verticalSpacer_5">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item row="1" column="1">
-       <widget class="QSpinBox" name="spin_randw_numWalkers"/>
-      </item>
-      <item row="2" column="1">
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <widget class="QDoubleSpinBox" name="spin_randw_minWalk">
-          <property name="suffix">
-           <string> Å</string>
+          </property>
+          <property name="text">
+           <string>Percent new crossover:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_p_cross</cstring>
           </property>
          </widget>
         </item>
-        <item>
-         <widget class="QDoubleSpinBox" name="spin_randw_maxWalk">
+        <item row="2" column="1">
+         <widget class="QSpinBox" name="spin_p_cross">
+          <property name="toolTip">
+           <string>Percentage of new structures to be created from the crossover operator.
+
+Default: 15</string>
+          </property>
           <property name="suffix">
-           <string> Å</string>
+           <string>%</string>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>15</number>
           </property>
          </widget>
         </item>
        </layout>
-      </item>
-     </layout>
-    </widget>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_8">
+       <property name="title">
+        <string>Twist</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_9">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_3">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Percent new twist:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_p_twist</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSpinBox" name="spin_p_twist">
+          <property name="toolTip">
+           <string>Percentage of new structures to be created from the crossover operator.
+
+Default: 15</string>
+          </property>
+          <property name="suffix">
+           <string>%</string>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_10">
+          <property name="text">
+           <string>Minimum rotation:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_twist_minRot</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QSpinBox" name="spin_twist_minRot">
+          <property name="toolTip">
+           <string>The smallest rotation allowed during the twist.</string>
+          </property>
+          <property name="suffix">
+           <string>°</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_6">
+       <property name="title">
+        <string>Exchange</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_7">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_29">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Percent new exchange:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_p_exch</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_27">
+          <property name="toolTip">
+           <string>Standard deviation of the random elements of the strain matrix.
+
+Default: 0.07</string>
+          </property>
+          <property name="text">
+           <string>Number of exchanges:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_exch_numExch</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSpinBox" name="spin_p_exch">
+          <property name="toolTip">
+           <string/>
+          </property>
+          <property name="suffix">
+           <string>%</string>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>50</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QSpinBox" name="spin_exch_numExch"/>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_7">
+       <property name="title">
+        <string>Random Walk</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_8">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_31">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Percentage of offspring structures that will be generated from the permutation operator.
+
+The permutation operator will swap two atoms of different type within a single parent. Set to zero if there is only one atom type in the cell!
+
+Default: 5%</string>
+          </property>
+          <property name="text">
+           <string>Percent new:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_p_randw</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_30">
+          <property name="toolTip">
+           <string>Number of separate swaps in the permutation operator.
+
+Default: 3</string>
+          </property>
+          <property name="text">
+           <string>Displacement range:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_randw_minWalk</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSpinBox" name="spin_p_randw">
+          <property name="toolTip">
+           <string/>
+          </property>
+          <property name="suffix">
+           <string>%</string>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>35</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Number of walkers:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_randw_numWalkers</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QSpinBox" name="spin_randw_numWalkers"/>
+        </item>
+        <item row="2" column="1">
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QDoubleSpinBox" name="spin_randw_minWalk">
+            <property name="suffix">
+             <string> Å</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="spin_randw_maxWalk">
+            <property name="suffix">
+             <string> Å</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_9">
+       <property name="title">
+        <string>Anisotropic Expansion</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_10">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Percent new:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_p_aniso</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSpinBox" name="spin_p_aniso">
+          <property name="suffix">
+           <string>%</string>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QDoubleSpinBox" name="spin_aniso_amp"/>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_11">
+          <property name="text">
+           <string>Amplitude:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_aniso_amp</cstring>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer_3">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>
  <tabstops>
-  <tabstop>spin_numInitial</tabstop>
   <tabstop>list_seeds</tabstop>
   <tabstop>push_addSeed</tabstop>
   <tabstop>push_removeSeed</tabstop>

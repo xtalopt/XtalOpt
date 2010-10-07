@@ -34,6 +34,8 @@ namespace GAPC {
                                         unsigned int numberAtoms,
                                         double minWalk,
                                         double maxWalk);
+    static ProtectedCluster* anisotropicExpansion(ProtectedCluster *pc,
+                                                  double amp);
   };
 
 } // end namespace GAPC
