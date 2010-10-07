@@ -28,7 +28,13 @@
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/sshmanager.h>
 
-#include <QDir>
+#include <QtCore/QDir>
+#include <QtConcurrentRun>
+#include <QtConcurrentMap>
+
+#include <vector>
+
+using namespace std;
 
 namespace GAPC {
 
@@ -36,6 +42,11 @@ namespace GAPC {
     OptBase(parent)
   {
     m_idString = "GAPC";
+
+    connect(m_tracker, SIGNAL(newStructureAdded(Structure*)),
+            this, SLOT(checkForDuplicates()));
+    connect(this, SIGNAL(sessionStarted()),
+            this, SLOT(resetDuplicates()));
   }
 
   OptGAPC:: ~OptGAPC()
@@ -136,12 +147,11 @@ namespace GAPC {
     // path to resume file
     QDir dataDir  = stateInfo.absoluteDir();
     QString dataPath = dataDir.absolutePath() + "/";
-    // list of xtal dirs
+    // list of structure dirs
     QStringList structureDirs = dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
     structureDirs.removeAll(".");
     structureDirs.removeAll("..");
     for (int i = 0; i < structureDirs.size(); i++) {
-      // old versions of xtalopt used xtal.state, so still check for it.
       if (!QFile::exists(dataPath + "/" + structureDirs.at(i) + "/structure.state") ){
         structureDirs.removeAt(i);
         i--;
@@ -180,7 +190,7 @@ namespace GAPC {
               + username + "@" + host + ":" + QString::number(port) + ". "
               + "Please check that all provided information is correct, "
               + "and attempt to log in outside of Avogadro before trying again."
-              + "XtalOpt will continue to load in read-only mode.";
+              + "GAPC will continue to load in read-only mode.";
             error(err);
             readOnly = true;
             break;
@@ -256,7 +266,7 @@ namespace GAPC {
 
       pc = new ProtectedCluster();
       QWriteLocker locker (pc->lock());
-      // Add empty atoms to xtal, updateXtal will populate it
+      // Add empty atoms to pc, updatePC will populate it
       for (int j = 0; j < keys.size(); j++) {
         for (uint k = 0; k < comp.core.value(keys.at(j)); k++)
           pc->addAtom();
@@ -264,7 +274,7 @@ namespace GAPC {
       pc->setFileName(dataPath + "/" + structureDirs.at(i) + "/");
       pc->readSettings(pcStateFileName);
 
-      // Store current state -- updateXtal will overwrite it.
+      // Store current state -- updatePC will overwrite it.
       ProtectedCluster::State state = pc->getStatus();
       QDateTime endtime = pc->getOptTimerEnd();
 
@@ -517,6 +527,10 @@ optimizations. If so, safely ignore this message.")
     pc->setFileName(locpath_s);
     pc->setRempath(rempath_s);
     pc->setCurrentOptStep(1);
+    pc->moveToThread(m_tracker->thread());
+    pc->setupConnections();
+    pc->enableAutoHistogramGeneration(true);
+    pc->update();
     m_queue->unlockForNaming(pc);
     initMutex.unlock();
   }
@@ -535,11 +549,6 @@ optimizations. If so, safely ignore this message.")
       return;
     }
 
-    QList<ProtectedCluster*> pcs;
-    for (int i = 0; i < structures.size(); i++)
-      pcs.append(qobject_cast<ProtectedCluster*>(structures.at(i)));
-
-
     // return pc
     ProtectedCluster *pc = 0;
 
@@ -547,14 +556,19 @@ optimizations. If so, safely ignore this message.")
     ProtectedCluster *tpc;
 
     // Trim and sort list
-    sortByEnthalpy(&pcs);
+    Structure::sortByEnthalpy(&structures);
     // Remove all but (n_consider + 1). The "+ 1" will be removed
     // during probability generation.
-    while ( static_cast<uint>(pcs.size()) > popSize + 1 )
-      pcs.removeLast();
+    while ( static_cast<uint>(structures.size()) > popSize + 1 )
+      structures.removeLast();
 
     // Make list of weighted probabilities based on enthalpy values
-    QList<double> probs = getProbabilityList(&pcs);
+    QList<double> probs = getProbabilityList(structures);
+
+    // Convert stuctures to pcs
+    QList<ProtectedCluster*> pcs;
+    for (int i = 0; i < structures.size(); i++)
+      pcs.append(qobject_cast<ProtectedCluster*>(structures.at(i)));
 
     // Initialize loop vars
     double r;
@@ -762,137 +776,191 @@ optimizations. If so, safely ignore this message.")
     return pc;
   }
 
-  void OptGAPC::sortByEnthalpy(QList<ProtectedCluster*> *pcs) {
-    uint numStructs = pcs->size();
-
-    // Simple selection sort
-    ProtectedCluster *pc_i=0, *pc_j=0, *tmp=0;
-    for (uint i = 0; i < numStructs-1; i++) {
-      pc_i = pcs->at(i);
-      pc_i->lock()->lockForRead();
-      for (uint j = i+1; j < numStructs; j++) {
-        pc_j = pcs->at(j);
-        pc_j->lock()->lockForRead();
-        if (pc_j->getEnthalpy() < pc_i->getEnthalpy()) {
-          pcs->swap(i,j);
-          tmp = pc_i;
-          pc_i = pc_j;
-          pc_j = tmp;
-        }
-        pc_j->lock()->unlock();
-      }
-      pc_i->lock()->unlock();
+  void OptGAPC::resetDuplicates() {
+    if (isStarting) {
+      return;
     }
+    QtConcurrent::run(this, &OptGAPC::resetDuplicates_);
   }
 
-  void OptGAPC::rankEnthalpies(QList<ProtectedCluster*> *pcs) {
-    uint numStructs = pcs->size();
-    QList<ProtectedCluster*> rpcs;
-
-    // Copy pcs to a temporary list (don't modify input list!)
-    for (uint i = 0; i < numStructs; i++)
-      rpcs.append(pcs->at(i));
-
-    // Simple selection sort
-    ProtectedCluster *pc_i=0, *pc_j=0, *tmp=0;
-    for (uint i = 0; i < numStructs-1; i++) {
-      pc_i = rpcs.at(i);
-      pc_i->lock()->lockForRead();
-      for (uint j = i+1; j < numStructs; j++) {
-        pc_j = rpcs.at(j);
-        pc_j->lock()->lockForRead();
-        if (pc_j->getEnthalpy() < pc_i->getEnthalpy()) {
-          rpcs.swap(i,j);
-          tmp = pc_i;
-          pc_i = pc_j;
-          pc_j = tmp;
-        }
-        pc_j->lock()->unlock();
-      }
-      pc_i->lock()->unlock();
-    }
-
-    // Set rankings
-    for (uint i = 0; i < numStructs; i++) {
-      pc_i = rpcs.at(i);
-      pc_i->lock()->lockForWrite();
-      pc_i->setRank(i+1);
-      pc_i->lock()->unlock();
-    }
-  }
-
-  QList<double> OptGAPC::getProbabilityList(QList<ProtectedCluster*> *pcs) {
-    // IMPORTANT: pcs must contain one more pc than needed -- the last pc in the
-    // list will be removed from the probability list!
-    if (pcs->size() <= 1) {
-      qDebug() << "OptGAPC::getProbabilityList: Structure list too small -- bailing out.";
-      return QList<double>();
-    }
-    QList<double> probs;
-    ProtectedCluster *pc=0, *first=0, *last=0;
-    first = pcs->first();
-    last = pcs->last();
-    first->lock()->lockForRead();
-    last->lock()->lockForRead();
-    double lowest = first->getEnthalpy();
-    double highest = last->getEnthalpy();;
-    double spread = highest - lowest;
-    last->lock()->unlock();
-    first->lock()->unlock();
-    // If all structures are at the same enthalpy, lets save some time...
-    if (spread <= 1e-5) {
-      double v = 1.0/static_cast<double>(pcs->size());
-      double p = v;
-      for (int i = 0; i < pcs->size(); i++) {
-        probs.append(v);
-        v += p;
-      }
-      return probs;
-    }
-    // Generate a list of floats from 0->1 proportional to the enthalpies;
-    // E.g. if enthalpies are:
-    // -5   -2   -1   3   5
-    // We'll have:
-    // 0   0.3  0.4  0.8  1
-    for (int i = 0; i < pcs->size(); i++) {
-      pc = pcs->at(i);
-      pc->lock()->lockForRead();
-      probs.append( ( pc->getEnthalpy() - lowest ) / spread);
+  void OptGAPC::resetDuplicates_() {
+    QList<Structure*> *structures = m_tracker->list();
+    ProtectedCluster *pc;
+    for (int i = 0; i < structures->size(); i++) {
+      pc = qobject_cast<ProtectedCluster*>(structures->at(i));
+      pc->lock()->lockForWrite();
+      pc->setChangedSinceDupChecked(true);
+      if (pc->getStatus() == ProtectedCluster::Duplicate)
+        pc->setStatus(ProtectedCluster::Optimized);
       pc->lock()->unlock();
     }
-    // Subtract each value from one, and find the sum of the resulting list
-    // We'll end up with:
-    // 1  0.7  0.6  0.2  0   --   sum = 2.5
-    double sum = 0;
-    for (int i = 0; i < probs.size(); i++){
-      probs[i] = 1.0 - probs.at(i);
-      sum += probs.at(i);
-    }
-    // Normalize with the sum so that the list adds to 1
-    // 0.4  0.28  0.24  0.08  0
-    for (int i = 0; i < probs.size(); i++){
-      probs[i] /= sum;
-    }
-    // Then replace each entry with a cumulative total:
-    // 0.4 0.68 0.92 1 1
-    sum = 0;
-    for (int i = 0; i < probs.size(); i++){
-      sum += probs.at(i);
-      probs[i] = sum;
-    }
-    // Pop off the last entry (remember the n_popSize + 1 earlier?)
-    // 0.4 0.68 0.92 1
-    probs.removeLast();
-    // And we have a enthalpy weighted probability list! To use:
-    //
-    //   double r = rand.NextFloat();
-    //   uint ind;
-    //   for (ind = 0; ind < probs.size(); ind++)
-    //     if (r < probs.at(ind)) break;
-    //
-    // ind will hold the chosen index.
+    checkForDuplicates();
+    emit updateAllInfo();
+  }
 
-    return probs;
+  void OptGAPC::checkForDuplicates() {
+    if (isStarting) {
+      return;
+    }
+    QtConcurrent::run(this, &OptGAPC::checkForDuplicates_);
+  }
+
+  // Helper function for QtConcurrent::blockingMapped below
+  QHash<QString, QVariant> getFingerprint(Structure *s)
+  { return s->getFingerprint();}
+
+  // Helper function/struct for QtConcurrent::blockingMap below
+  struct checkForDupsStruct {
+    unsigned int i, j, numAtoms;
+    double scale;
+    QList<QHash<QString, QVariant> > *fps;
+    Structure *s_i, *s_j;
+    vector<double> *dist;
+    QList<vector<double> > *freqs;
+    OptGAPC *opt;
+  };
+
+  void checkIfDuplicates(checkForDupsStruct & st)
+  {
+    QHash<QString, QVariant> *fp_i=0, *fp_j=0;
+    vector<double> *freq_i, *freq_j;
+
+    fp_i = &((*st.fps)[st.i]);
+    fp_j = &((*st.fps)[st.j]);
+    freq_i = &((*st.freqs)[st.i]);
+    freq_j = &((*st.freqs)[st.j]);
+
+    double error = 0;
+    if (!ProtectedCluster::compareIADDistributions((*st.dist),
+                                                   (*freq_i),
+                                                   (*freq_j),
+                                                   0, 0.1,
+                                                   &error))
+      {
+        st.opt->warning("Geometric fingerprint comparison failed. Aborting...");
+        return;
+      }
+    error /= st.scale;
+    qDebug() << error;
+    if (error >= st.opt->tol_geo) return;
+    if ( fabs(
+              fp_i->value("enthalpy").toDouble() -
+              fp_j->value("enthalpy").toDouble()
+              ) /
+         st.scale
+         >=
+         st.opt->tol_enthalpy
+         ) return;
+    // If we get here, all the fingerprint values match,
+    // and we have a duplicate. Mark the xtal with the
+    // highest enthalpy as a duplicate of the other.
+    if (fp_i->value("enthalpy").toDouble() > fp_j->value("enthalpy").toDouble()) {
+      st.s_i->lock()->lockForWrite();
+      st.s_j->lock()->lockForRead();
+      st.s_i->setStatus(Structure::Duplicate);
+      st.s_i->setDuplicateString(QString("%1x%2 (%3)")
+                                 .arg(st.s_j->getGeneration())
+                                 .arg(st.s_j->getIDNumber())
+                                 .arg(error, 5, 'g'));
+      st.s_i->lock()->unlock();
+      st.s_j->lock()->unlock();
+    }
+    else {
+      st.s_j->lock()->lockForWrite();
+      st.s_i->lock()->lockForRead();
+      st.s_j->setStatus(Structure::Duplicate);
+      st.s_j->setDuplicateString(QString("%1x%2 (%3)")
+                                 .arg(st.s_i->getGeneration())
+                                 .arg(st.s_i->getIDNumber())
+                                 .arg(error, 5, 'g'));
+      st.s_j->lock()->unlock();
+      st.s_i->lock()->unlock();
+    }
+  }
+
+  long factorial (long a)
+  {
+    if (a > 1)
+      return (a * factorial (a-1));
+    else
+      return (1);
+  }
+
+  void OptGAPC::checkForDuplicates_() {
+    QTime alltimer = QTime::currentTime();
+    m_tracker->lockForRead();
+    QList<Structure*> *structures = m_tracker->list();
+
+    if (structures->size() == 0) return;
+    // getFingerprint is defined above
+    QTime gentimer = QTime::currentTime();
+    QList<QHash<QString, QVariant> > fps = QtConcurrent::blockingMapped((*structures),
+                                                                        getFingerprint);
+    double gentime = gentimer.msecsTo(QTime::currentTime()) / (double)1000;
+
+    m_tracker->unlock();
+
+    QVariantList distv = fps.first().value("IADDist").toList();
+    vector<double> dist;
+    QList<vector<double> > freqs;
+    QVariantList freqv;
+    vector<double> *freq;
+
+    QTime convtimer = QTime::currentTime();
+    // Convert QVariant lists to doubles
+    dist.reserve(distv.size());
+    for (int i = 0; i < distv.size(); i++) {
+      dist.push_back(distv.at(i).toDouble());
+    }
+    for (int i = 0; i < fps.size(); i++) {
+      freqv = fps.at(i).value("IADFreq").toList();
+      freqs.append(vector<double>());
+      freq = &(freqs[i]);
+      freq->reserve(freqv.size());
+      for (int i = 0; i < freqv.size(); i++) {
+        freq->push_back(freqv.at(i).toDouble());
+      }
+    }
+
+    double convtime = convtimer.msecsTo(QTime::currentTime()) / (double)1000;
+
+    QTime comptimer = QTime::currentTime();
+    // compute tol scaling factor (number of atoms)
+    double scale = 1;
+    if (structures->size() > 0 &&
+        structures->first()->numAtoms() != 0) {
+      scale = structures->first()->numAtoms();
+    }
+    // Create helper structs
+    QList<checkForDupsStruct> sts;
+    Structure *s_i, *s_j;
+    for (int i = 0; i < structures->size()-1; i++) {
+      s_i = structures->at(i);
+      if (s_i->getStatus() != Structure::Optimized) continue;
+      for (int j = i+1; j < structures->size(); j++) {
+        s_j = structures->at(j);
+        if (s_j->getStatus() != Structure::Optimized) continue;
+        if (s_i->hasChangedSinceDupChecked() ||
+            s_j->hasChangedSinceDupChecked()) {
+          checkForDupsStruct st;
+          st.i = i; st.j = j; st.fps = &fps; st.s_i = s_i; st.s_j = s_j;
+          st.scale = scale; st.dist = &dist; st.freqs = &freqs; st.opt = this;
+          sts.append(st);
+        }
+      }
+      s_i->setChangedSinceDupChecked(false);
+    }
+    QtConcurrent::blockingMap(sts, checkIfDuplicates);
+    double comptime = comptimer.msecsTo(QTime::currentTime()) / (double)1000;
+    double alltime = alltimer.msecsTo(QTime::currentTime()) / (double)1000;
+    qDebug() << QString("Fingerprint timings: %1 structs | %2 (gen) + %3 (conv) + %4 (comp) = %5 (tot). %6 comps")
+      .arg(fps.size())
+      .arg(gentime,  5, 'g')
+      .arg(convtime, 5, 'g')
+      .arg(comptime, 5, 'g')
+      .arg(alltime,  5, 'g')
+      .arg(sts.size());
+    emit updateAllInfo();
   }
 
   void OptGAPC::setOptimizer_string(const QString &IDString, const QString &filename)

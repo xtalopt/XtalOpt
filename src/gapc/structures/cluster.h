@@ -18,6 +18,9 @@
 
 #include <globalsearch/structure.h>
 
+#include <QtCore/QVariant>
+#include <QtCore/QHash>
+
 using namespace GlobalSearch;
 
 namespace GAPC {
@@ -34,6 +37,7 @@ namespace GAPC {
    public slots:
     void constructRandomCluster(const QHash<unsigned int, unsigned int> &comp, float minIAD, float maxIAD);
     void centerAtoms();
+    QHash<QString, QVariant> getFingerprint() const;
 
    private slots:
 

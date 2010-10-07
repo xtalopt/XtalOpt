@@ -230,7 +230,7 @@ namespace XtalOpt {
               //qDebug() << "Attempt " << limit << vectorAngle(vs[i], vs[j]);
               //qDebug() << "Vi " << vs[i].x() << vs[i].y() << vs[i].z();
               //qDebug() << "Vj " << vs[j].x() << vs[j].y() << vs[j].z();
-              double nproj = abs(dot(vs[i],vs[j])/vs[j].length());
+              double nproj = fabs(dot(vs[i],vs[j])/vs[j].length());
               int sign = (dot(vs[i],vs[j]) > 0) ? 1 : -1;
               vs[i] = vs[i] - ceil(nproj/vs[j].length()) * sign * vs[j];
               changes++;
@@ -253,7 +253,7 @@ namespace XtalOpt {
       return true;
     }
 
-    double newVolume = abs(dot(vs[0],cross(vs[1],vs[2])));
+    double newVolume = fabs(dot(vs[0],cross(vs[1],vs[2])));
     if (getVolume() - newVolume > 1e-8){
       qWarning() << "Volume before ("
                  << getVolume()
@@ -348,7 +348,7 @@ namespace XtalOpt {
       }
     }
 
-    shortest = abs((v1-v2).norm());
+    shortest = fabs((v1-v2).norm());
     double distance;
 
     // Find shortest distance
@@ -357,11 +357,11 @@ namespace XtalOpt {
       for (int j = i+1; j < atomList.size(); j++) {
         v2 = atomPositions.at(j);
         // Intercell
-        distance = abs((v1-v2).norm());
+        distance = fabs((v1-v2).norm());
         if (distance < shortest) shortest = distance;
         // Intracell
         for (int vecInd = 0; vecInd < uVecs.size(); vecInd++) {
-          distance = abs(((v1+uVecs.at(vecInd))-v2).norm());
+          distance = fabs(((v1+uVecs.at(vecInd))-v2).norm());
           if (distance < shortest) shortest = distance;
         }
       }
@@ -401,42 +401,45 @@ namespace XtalOpt {
       }
     }
 
-    shortest = abs((v1-v2).norm());
+    shortest = fabs((v1-v2).norm());
     double distance;
 
     // Find shortest distance
     for (int j = 0; j < atomList.size(); j++) {
       v2 = atomPositions.at(j);
       // Intercell
-      distance = abs((v1-v2).norm());
+      distance = fabs((v1-v2).norm());
       if (distance < shortest) shortest = distance;
       // Intracell
       for (int vecInd = 0; vecInd < uVecs.size(); vecInd++) {
-        distance = abs(((v2+uVecs.at(vecInd))-v1).norm());
+        distance = fabs(((v2+uVecs.at(vecInd))-v1).norm());
         if (distance < shortest) shortest = distance;
       }
     }
     return true;
   }
 
-  bool Xtal::getNearestNeighborHistogram(QList<double> & distance, QList<double> & frequency, double min, double max, double step, Atom *atom) const {
+  bool Xtal::getIADHistogram(QList<double> * distance,
+                             QList<double> * frequency,
+                             double min, double max, double step,
+                             Atom *atom) const {
 
     if (min > max && step > 0) {
-      qWarning() << "Xtal::getNearestNeighborHistogram: min cannot be greater than max!";
+      qWarning() << "Xtal::getIADHistogram: min cannot be greater than max!";
       return false;
     }
     if (step < 0 || step == 0) {
-      qWarning() << "Xtal::getNearestNeighborHistogram: invalid step size:" << step;
+      qWarning() << "Xtal::getIADHistogram: invalid step size:" << step;
       return false;
     }
 
     // Populate distance list
-    distance.clear();
-    frequency.clear();
+    distance->clear();
+    frequency->clear();
     double val = min;
     do {
-      distance.append(val);
-      frequency.append(0);
+      distance->append(val);
+      frequency->append(0);
       val += step;
     } while (val < max);
 
@@ -478,20 +481,20 @@ namespace XtalOpt {
         for (int j = i+1; j < atomList.size(); j++) {
           v2 = atomPositions.at(j);
           // Intercell
-          diff = abs((v1-v2).norm());
-          for (int k = 0; k < distance.size(); k++) {
-            double radius = distance.at(k);
-            if (abs(diff-radius) < step/2) {
-              frequency[k]++;
+          diff = fabs((v1-v2).norm());
+          for (int k = 0; k < distance->size(); k++) {
+            double radius = distance->at(k);
+            if (fabs(diff-radius) < step/2) {
+              (*frequency)[k]++;
             }
           }
           // Intracell
           for (int vecInd = 0; vecInd < uVecs.size(); vecInd++) {
-            diff = abs(((v1+uVecs.at(vecInd))-v2).norm());
-            for (int k = 0; k < distance.size(); k++) {
-              double radius = distance.at(k);
-              if (abs(diff-radius) < step/2) {
-                frequency[k]++;
+            diff = fabs(((v1+uVecs.at(vecInd))-v2).norm());
+            for (int k = 0; k < distance->size(); k++) {
+              double radius = distance->at(k);
+              if (fabs(diff-radius) < step/2) {
+                (*frequency)[k]++;
               }
             }
           }
@@ -504,20 +507,20 @@ namespace XtalOpt {
       for (int j = 0; j < atomList.size(); j++) {
         v2 = atomPositions.at(j);
         // Intercell
-        diff = abs((v1-v2).norm());
-        for (int k = 0; k < distance.size(); k++) {
-          double radius = distance.at(k);
-          if (diff != 0 && abs(diff-radius) < step/2) {
-            frequency[k]++;
+        diff = fabs((v1-v2).norm());
+        for (int k = 0; k < distance->size(); k++) {
+          double radius = distance->at(k);
+          if (diff != 0 && fabs(diff-radius) < step/2) {
+            (*frequency)[k]++;
           }
         }
         // Intracell
         for (int vecInd = 0; vecInd < uVecs.size(); vecInd++) {
-          diff = abs(((v1+uVecs.at(vecInd))-v2).norm());
-          for (int k = 0; k < distance.size(); k++) {
-            double radius = distance.at(k);
-            if (abs(diff-radius) < step/2) {
-              frequency[k]++;
+          diff = fabs(((v1+uVecs.at(vecInd))-v2).norm());
+          for (int k = 0; k < distance->size(); k++) {
+            double radius = distance->at(k);
+            if (fabs(diff-radius) < step/2) {
+              (*frequency)[k]++;
             }
           }
         }
@@ -596,9 +599,9 @@ namespace XtalOpt {
     }
   }
 
-  QHash<QString, double> Xtal::getFingerprint() {
-    QHash<QString, double> fp; // fingerprint hash
-    fp.insert("enthalpy", getEnthalpy());
+  QHash<QString, QVariant> Xtal::getFingerprint()
+  {
+    QHash<QString, QVariant> fp = Structure::getFingerprint();
     fp.insert("volume", getVolume());
     fp.insert("spacegroup", getSpaceGroupNumber());
     return fp;

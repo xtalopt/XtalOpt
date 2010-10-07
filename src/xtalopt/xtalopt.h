@@ -62,7 +62,6 @@ namespace XtalOpt {
     QString interpretTemplate(const QString & templateString, Structure* structure);
     QString getTemplateKeywordHelp();
     bool load(const QString & filename);
-    static QList<double> getProbabilityList(QList<Xtal*> *xtals);
 
     uint numInitial;                    // Number of initial structures
 

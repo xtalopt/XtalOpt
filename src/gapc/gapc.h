@@ -58,9 +58,10 @@ namespace GAPC {
     QString gulpPath;
     unsigned int numInitial;
     unsigned int popSize;
-    float tol_enthalpy;
-    float minIAD;
-    float maxIAD;
+    double tol_enthalpy;
+    double tol_geo;
+    double minIAD;
+    double maxIAD;
     int p_cross;
     int p_twist;
     int p_exch;
@@ -129,9 +130,6 @@ namespace GAPC {
     bool load(const QString & filename);
 
     ProtectedCluster* generateRandomPC(unsigned int gen = 1, unsigned int id = 0);
-    static void sortByEnthalpy(QList<ProtectedCluster*> *pcs);
-    static void rankEnthalpies(QList<ProtectedCluster*> *pcs);
-    static QList<double> getProbabilityList(QList<ProtectedCluster*> *xtals);
 
    signals:
     void updateAllInfo();
@@ -151,6 +149,8 @@ namespace GAPC {
 
     void initializeAndAddPC(ProtectedCluster *pc,
                             uint gen, const QString &parents);
+    void resetDuplicates();
+    void checkForDuplicates();
 
     void setOptimizer(Optimizer *o) {
       setOptimizer_opt(o);};
@@ -160,7 +160,8 @@ namespace GAPC {
       setOptimizer_enum(opttype, filename);};
 
    protected:
-    /// Hidden calls to setOptimizer
+    void resetDuplicates_();
+    void checkForDuplicates_();
     void setOptimizer_string(const QString &s, const QString &filename = "");
     void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
 

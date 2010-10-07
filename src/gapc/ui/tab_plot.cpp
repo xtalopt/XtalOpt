@@ -399,14 +399,16 @@ namespace GAPC {
     // If no atoms selected...
     if (selected.size() == 0) {
       pc->lock()->lockForRead();
-      pc->getNearestNeighborHistogram(d, f, 0, 15, .1);
+      pc->getDefaultHistogram(&d, &f);
       pc->lock()->unlock();
     }
     // If atoms are selected:
     else {
       pc->lock()->lockForRead();
       for (int i = 0; i < selected.size(); i++) {
-        pc->getNearestNeighborHistogram(d, f_temp, 0, 15, .1, qobject_cast<Atom*>(selected.at(i)));
+        pc->generateIADHistogram(&d, &f_temp,
+                                 0, 15, .1,
+                                 qobject_cast<Atom*>(selected.at(i)));
         if (f.isEmpty()) {
           f = f_temp;
         }

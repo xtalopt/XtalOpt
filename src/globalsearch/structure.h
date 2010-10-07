@@ -27,6 +27,8 @@
 #include <QtCore/QDateTime>
 #include <QtCore/QTextStream>
 
+#include <vector>
+
 #define EV_TO_KCAL_PER_MOL 23.060538
 
 namespace GlobalSearch {
@@ -356,6 +358,17 @@ namespace GlobalSearch {
                                             double z,
                                             double & shortest) const;
 
+    /** Get the default histogram data.
+     */
+    virtual void getDefaultHistogram(QList<double> *dist, QList<double> *freq) const;
+
+    /** Get the default histogram data.
+     */
+    virtual void getDefaultHistogram(QList<QVariant> *dist, QList<QVariant> *freq) const;
+
+    virtual bool isHistogramGenerationPending() const {
+      return m_histogramGenerationPending;};
+
     /** Generate data for a histogram of the distances between all
      * atoms, or between one atom and all others.
      *
@@ -385,14 +398,54 @@ namespace GlobalSearch {
      * @param atom Optional: Atom to calculate distances from.
      *
      * @sa getShortestInteratomicDistance
+     * @sa requestHistogramGeneration
      * @sa getNearestNeighborDistance
      */
-    virtual bool getNearestNeighborHistogram(QList<double> & distance,
-                                             QList<double> & frequency,
-                                             double min,
-                                             double max,
-                                             double step,
-                                             Atom *atom = 0) const;
+    virtual bool generateIADHistogram(QList<double> * distance,
+                                      QList<double> * frequency,
+                                      double min = 0.0,
+                                      double max = 10.0,
+                                      double step = 0.01,
+                                      Avogadro::Atom *atom = 0) const;
+
+    /** Generate data for a histogram of the distances between all
+     * atoms, or between one atom and all others.
+     *
+     * If the parameter atom is specified, the resulting data will
+     * represent the distance distribution between that atom and all
+     * others. If omitted (or NULL), a histogram of all interatomic
+     * distances is calculated.
+     *
+     * Useful for estimating the coordination number of an atom from
+     * a plot.
+     *
+     * @warning This algorithm is not thoroughly tested and should not
+     * be relied upon. It is merely an estimation.
+     *
+     * @return true if the operation makes sense for this Structure,
+     * false otherwise (i.e. fewer than one atom present)
+     *
+     * @param distance List of distance values for the histogram
+     * bins.
+     *
+     * @param frequency Number of Atoms within the corresponding
+     * distance bin.
+     *
+     * @param min Value of starting histogram distance.
+     * @param max Value of ending histogram distance.
+     * @param step Increment between bins.
+     * @param atom Optional: Atom to calculate distances from.
+     *
+     * @sa getShortestInteratomicDistance
+     * @sa requestHistogramGeneration
+     * @sa getNearestNeighborDistance
+     */
+    virtual bool generateIADHistogram(QList<QVariant> * distance,
+                                      QList<QVariant> * frequency,
+                                      double min = 0.0,
+                                      double max = 10.0,
+                                      double step = 0.01,
+                                      Avogadro::Atom *atom = 0) const;
 
     /** Add an atom to a random position in the Structure. If no other
      * atoms exist in the Structure, the new atom is placed at
@@ -443,9 +496,9 @@ namespace GlobalSearch {
      */
     QString getOptElapsed() const;
 
-    /** A "fingerprint" hash of the structure. This should be treated
-     * a pure virtual for now and reimplimented when needed for
-     * derived class.
+    /** A "fingerprint" hash of the structure. Returns "enthalpy" key
+     * with the enthalpy value as a double wrapped in a QVariant. May
+     * be extended in derived classes.
      *
      * Used for checking if two Structures are similar enough to be
      * marked as duplicates.
@@ -453,7 +506,17 @@ namespace GlobalSearch {
      * @return A hash of key/value pairs containing data that is
      * representative of the Structure.
      */
-    virtual QHash<QString, double> getFingerprint();
+    virtual QHash<QString, QVariant> getFingerprint() const;
+
+    /**
+     * Structure can track if it has changed since it was last checked
+     * in a duplicate finding routine. This is useful for cutting down
+     * on the number of comparisons needed.
+     *
+     * Must call setupConnections() before using this function.
+     * @sa setChangedSinceDupChecked()
+     */
+    bool hasChangedSinceDupChecked() {return m_updatedSinceDupChecked;};
 
     /** Sort the listed structures by their enthalpies
      *
@@ -486,6 +549,119 @@ namespace GlobalSearch {
    signals:
 
    public slots:
+
+    /**
+     * Connect slots/signals within the molecule. This must be called
+     * AFTER moving the Structure to it's final thread.
+     */
+    virtual void setupConnections();
+
+    /**
+     * Set whether the default histogram generation should be
+     * performed (default is off)
+     */
+    virtual void enableAutoHistogramGeneration(bool);
+
+    /**
+     * Request that histogram data be regenerated. This is connected
+     * to Molecule::update() and calls
+     * generateDefaultHistogram(). This function is throttled to only
+     * run every 250 ms.
+     */
+    virtual void requestHistogramGeneration();
+
+    /**
+     * Generate default histogram data (0:10 A, 0.01 A step)
+     * @sa isHistogramGenerationPending()
+     * @sa getDefaultHistogram()
+     */
+    virtual void generateDefaultHistogram();
+
+    /**
+     * After calling setupConnections(), this will be called when the
+     * structure is update, atoms moved, added, etc...
+     */
+    virtual void structureChanged();
+
+    /**
+     * Compare two IAD histograms.
+     *
+     * Given two histograms over the same range with the same step,
+     * this function calculates an error value to measure the
+     * differences between the two. A boxcar smoothing is performed
+     * using a width of "smear", and an optional weight can be
+     * applied. The weight is a standard exponential decay with a
+     * halflife of "decay".
+     *
+     * @param d List of distances
+     * @param f1 First list of frequencies
+     * @param f2 Second list of frequencies
+     * @param decay Exponential decay parameter for lowering weight of large
+     * IADs
+     * @param smear Boxcar smoothing width in Angstroms
+     * @param error Return error value
+     *
+     * @return Whether or not the operation could be performed.
+     */
+    static bool compareIADDistributions(const std::vector<double> &d,
+                                        const std::vector<double> &f1,
+                                        const std::vector<double> &f2,
+                                        double decay,
+                                        double smear,
+                                        double *error);
+    /**
+     * Compare two IAD histograms.
+     *
+     * Given two histograms over the same range with the same step,
+     * this function calculates an error value to measure the
+     * differences between the two. A boxcar smoothing is performed
+     * using a width of "smear", and an optional weight can be
+     * applied. The weight is a standard exponential decay with a
+     * halflife of "decay".
+     *
+     * @param d List of distances
+     * @param f1 First list of frequencies
+     * @param f2 Second list of frequencies
+     * @param decay Exponential decay parameter for lowering weight of large
+     * IADs
+     * @param smear Boxcar smoothing width in Angstroms
+     * @param error Return error value
+     *
+     * @return Whether or not the operation could be performed.
+     */
+    static bool compareIADDistributions(const QList<double> &d,
+                                        const QList<double> &f1,
+                                        const QList<double> &f2,
+                                        double decay,
+                                        double smear,
+                                        double *error);
+
+    /**
+     * Compare two IAD histograms.
+     *
+     * Given two histograms over the same range with the same step,
+     * this function calculates an error value to measure the
+     * differences between the two. A boxcar smoothing is performed
+     * using a width of "smear", and an optional weight can be
+     * applied. The weight is a standard exponential decay with a
+     * halflife of "decay".
+     *
+     * @param d List of distances
+     * @param f1 First list of frequencies
+     * @param f2 Second list of frequencies
+     * @param decay Exponential decay parameter for lowering weight of large
+     * IADs
+     * @param smear Boxcar smoothing width in Angstroms
+     * @param error Return error value
+     *
+     * @return Whether or not the operation could be performed.
+     */
+    static bool compareIADDistributions(const QList<QVariant> &d,
+                                        const QList<QVariant> &f1,
+                                        const QList<QVariant> &f2,
+                                        double decay,
+                                        double smear,
+                                        double *error);
 
     /**
      * Write supplementary data about this Structure to a file. All
@@ -656,6 +832,16 @@ namespace GlobalSearch {
      */
     void setDuplicateString(const QString & s) {m_dupString = s;};
 
+    /**
+     * Structure can track if it has changed since it was last checked
+     * in a duplicate finding routine. This is useful for cutting down
+     * on the number of comparisons needed.
+     *
+     * Must call setupConnections() before using this function.
+     * @sa hasChangedSinceDupChecked()
+     */
+    void setChangedSinceDupChecked(bool b) {m_updatedSinceDupChecked = b;};
+
     /** Record the current time as when the current optimization
      * process started.
      *
@@ -735,13 +921,15 @@ namespace GlobalSearch {
     void readStructureSettings(const QString &filename);
 
   protected:
-    bool m_hasEnthalpy;
+    bool m_hasEnthalpy, m_updatedSinceDupChecked;
+    bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount;
     QString m_parents, m_dupString, m_rempath;
     double m_enthalpy, m_PV;
     State m_status;
     QDateTime m_optStart, m_optEnd;
     int m_index;
+    QList<QVariant> m_histogramDist, m_histogramFreq;
   };
 
 } // end namespace Avogadro

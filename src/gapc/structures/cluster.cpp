@@ -18,6 +18,7 @@
 #include <globalsearch/macros.h>
 
 #include <algorithm>
+#include <vector>
 #include <deque>
 
 using namespace Avogadro;
@@ -103,6 +104,15 @@ namespace GAPC {
   {
     translate(-center());
   }
+
+  QHash<QString, QVariant> Cluster::getFingerprint() const
+  {
+    QHash<QString, QVariant> fp = Structure::getFingerprint();
+    fp.insert("IADFreq", QVariant(m_histogramFreq));
+    fp.insert("IADDist", QVariant(m_histogramDist));
+    return fp;
+  }
+
 
 } // end namespace GAPC
 

@@ -336,14 +336,14 @@ is a good value here.</string>
            <string>Experimental: These options are used to fine-tune matching of duplicate structures.</string>
           </property>
           <property name="text">
-           <string>Enthalpy (eV)</string>
+           <string>Enthalpy (eV/atom)</string>
           </property>
           <property name="buddy">
            <cstring>spin_tol_enthalpy</cstring>
           </property>
          </widget>
         </item>
-        <item row="1" column="1" colspan="2">
+        <item row="2" column="1" colspan="2">
          <widget class="QPushButton" name="push_dup_reset">
           <property name="toolTip">
            <string>Manually recheck all structures for duplicates (necessary after changing the above options).</string>
@@ -353,7 +353,7 @@ is a good value here.</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
+        <item row="3" column="1">
          <spacer name="verticalSpacer_2">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
@@ -365,6 +365,29 @@ is a good value here.</string>
            </size>
           </property>
          </spacer>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Geometry</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_tol_geo</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QDoubleSpinBox" name="spin_tol_geo">
+          <property name="toolTip">
+           <string>Geometry tolerance setting</string>
+          </property>
+          <property name="decimals">
+           <number>6</number>
+          </property>
+          <property name="maximum">
+           <double>100000.000000000000000</double>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -694,6 +717,7 @@ Default: 3</string>
   <tabstop>spin_failLimit</tabstop>
   <tabstop>combo_failAction</tabstop>
   <tabstop>spin_tol_enthalpy</tabstop>
+  <tabstop>spin_tol_geo</tabstop>
   <tabstop>push_dup_reset</tabstop>
   <tabstop>spin_p_cross</tabstop>
   <tabstop>spin_p_twist</tabstop>
@@ -714,12 +738,12 @@ Default: 3</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>635</x>
-     <y>152</y>
+     <x>618</x>
+     <y>105</y>
     </hint>
     <hint type="destinationlabel">
-     <x>669</x>
-     <y>184</y>
+     <x>816</x>
+     <y>106</y>
     </hint>
    </hints>
   </connection>
