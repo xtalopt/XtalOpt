@@ -419,62 +419,6 @@ namespace GlobalSearch {
     return true;
   }
 
-  void Structure::enableAutoHistogramGeneration(bool b) {
-    if (b) {
-      connect(this, SIGNAL(updated()),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(atomAdded(Atom*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(atomUpdated(Atom*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(atomRemoved(Atom*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(bondAdded(Bond*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(bondUpdated(Bond*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(bondRemoved(Bond*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(primitiveAdded(Primitive*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(primitiveUpdated(Primitive*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-      connect(this, SIGNAL(primitiveRemoved(Primitive*)),
-              this, SLOT(requestHistogramGeneration()),
-              Qt::QueuedConnection);
-    } else {
-      disconnect(this, SIGNAL(updated()),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(atomAdded(Atom*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(atomUpdated(Atom*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(atomRemoved(Atom*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(bondAdded(Bond*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(bondUpdated(Bond*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(bondRemoved(Bond*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(primitiveAdded(Primitive*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(primitiveUpdated(Primitive*)),
-                 this, SLOT(requestHistogramGeneration()));
-      disconnect(this, SIGNAL(primitiveRemoved(Primitive*)),
-                 this, SLOT(requestHistogramGeneration()));
-    }
-  }
-
   bool Structure::getNearestNeighborDistance(Atom *atom,
                                              double & shortest) const
   {
