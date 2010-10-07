@@ -356,7 +356,13 @@ namespace XtalOpt {
     xtalInitMutex->unlock();
   }
 
-  void XtalOpt::generateNewStructure() {
+  void XtalOpt::generateNewStructure()
+  {
+    QtConcurrent::run(this, &XtalOpt::generateNewStructure_);
+  }
+
+  void XtalOpt::generateNewStructure_()
+  {
     INIT_RANDOM_GENERATOR();
     // Get all optimized structures
     QList<Structure*> structures = m_queue->getAllOptimizedStructures();
