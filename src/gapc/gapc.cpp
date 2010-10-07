@@ -910,7 +910,7 @@ optimizations. If so, safely ignore this message.")
         return;
       }
     error /= st.scale;
-    qDebug() << error;
+    //qDebug() << error;
     if (error >= st.opt->tol_geo) return;
     if ( fabs(
               fp_i->value("enthalpy").toDouble() -
