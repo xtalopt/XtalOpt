@@ -5,21 +5,21 @@
 #include <stdlib.h>
 #include "mathfunc.h"
 
-double mat_get_determinant_d3(const double a[3][3])
+double mat_get_determinant_d3(SPGCONST double a[3][3])
 {
   return a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
     + a[0][1] * (a[1][2] * a[2][0] - a[1][0] * a[2][2])
     + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
 }
 
-double mat_get_determinant_i3(const int a[3][3])
+double mat_get_determinant_i3(SPGCONST int a[3][3])
 {
   return a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
     + a[0][1] * (a[1][2] * a[2][0] - a[1][0] * a[2][2])
     + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
 }
 
-void mat_copy_matrix_d3(double a[3][3], const double b[3][3])
+void mat_copy_matrix_d3(double a[3][3], SPGCONST double (*b)[3])
 {
   a[0][0] = b[0][0];
   a[0][1] = b[0][1];
@@ -32,7 +32,7 @@ void mat_copy_matrix_d3(double a[3][3], const double b[3][3])
   a[2][2] = b[2][2];
 }
 
-void mat_copy_matrix_i3(int a[3][3], const int b[3][3])
+void mat_copy_matrix_i3(int a[3][3], SPGCONST int b[3][3])
 {
   a[0][0] = b[0][0];
   a[0][1] = b[0][1];
@@ -59,7 +59,8 @@ void mat_copy_vector_i3(int a[3], const int b[3])
   a[2] = b[2];
 }
 
-int mat_check_identity_matrix_i3(const int a[3][3], const int b[3][3])
+int mat_check_identity_matrix_i3(SPGCONST int a[3][3],
+				 SPGCONST int b[3][3])
 {
   if (a[0][0] - b[0][0] ||
       a[0][1] - b[0][1] ||
@@ -76,7 +77,9 @@ int mat_check_identity_matrix_i3(const int a[3][3], const int b[3][3])
 }
 
 /* m=axb */
-void mat_multiply_matrix_d3(double m[3][3], const double a[3][3], const double b[3][3])
+void mat_multiply_matrix_d3(double m[3][3],
+			    SPGCONST double a[3][3],
+			    SPGCONST double b[3][3])
 {
   int i, j;                   /* a_ij */
   double c[3][3];
@@ -89,7 +92,9 @@ void mat_multiply_matrix_d3(double m[3][3], const double a[3][3], const double b
   mat_copy_matrix_d3(m, c);
 }
 
-void mat_multiply_matrix_i3(int m[3][3], const int a[3][3], const int b[3][3])
+void mat_multiply_matrix_i3(int m[3][3],
+			    SPGCONST int a[3][3],
+			    SPGCONST int b[3][3])
 {
   int i, j;                   /* a_ij */
   int c[3][3];
@@ -102,7 +107,9 @@ void mat_multiply_matrix_i3(int m[3][3], const int a[3][3], const int b[3][3])
   mat_copy_matrix_i3(m, c);
 }
 
-void mat_multiply_matrix_di3(double m[3][3], const double a[3][3], const int b[3][3])
+void mat_multiply_matrix_di3(double m[3][3],
+			     SPGCONST double a[3][3],
+			     SPGCONST int b[3][3])
 {
   int i, j;                   /* a_ij */
   double c[3][3];
@@ -115,7 +122,9 @@ void mat_multiply_matrix_di3(double m[3][3], const double a[3][3], const int b[3
   mat_copy_matrix_d3(m, c);
 }
 
-void mat_multiply_matrix_vector_i3(int v[3], const int a[3][3], const int b[3])
+void mat_multiply_matrix_vector_i3(int v[3],
+				   SPGCONST int a[3][3],
+				   const int b[3])
 {
   int i;
   int c[3];
@@ -125,7 +134,9 @@ void mat_multiply_matrix_vector_i3(int v[3], const int a[3][3], const int b[3])
     v[i] = c[i];
 }
 
-void mat_multiply_matrix_vector_d3(double v[3], const double a[3][3], const double b[3])
+void mat_multiply_matrix_vector_d3(double v[3],
+				   SPGCONST double a[3][3],
+				   const double b[3])
 {
   int i;
   double c[3];
@@ -135,7 +146,9 @@ void mat_multiply_matrix_vector_d3(double v[3], const double a[3][3], const doub
     v[i] = c[i];
 }
 
-void mat_multiply_matrix_vector_id3(double v[3], const int a[3][3], const double b[3])
+void mat_multiply_matrix_vector_id3(double v[3],
+				    SPGCONST int a[3][3],
+				    const double b[3])
 {
   int i;
   double c[3];
@@ -145,7 +158,7 @@ void mat_multiply_matrix_vector_id3(double v[3], const int a[3][3], const double
     v[i] = c[i];
 }
 
-void mat_cast_matrix_3i_to_3d(double m[3][3], const int a[3][3])
+void mat_cast_matrix_3i_to_3d(double m[3][3], SPGCONST int a[3][3])
 {
   m[0][0] = a[0][0];
   m[0][1] = a[0][1];
@@ -158,7 +171,7 @@ void mat_cast_matrix_3i_to_3d(double m[3][3], const int a[3][3])
   m[2][2] = a[2][2];
 }
 
-void mat_cast_matrix_3d_to_3i(int m[3][3], const double a[3][3])
+void mat_cast_matrix_3d_to_3i(int m[3][3], SPGCONST double a[3][3])
 {
   m[0][0] = mat_Nint(a[0][0]);
   m[0][1] = mat_Nint(a[0][1]);
@@ -177,7 +190,9 @@ void mat_cast_matrix_3d_to_3i(int m[3][3], const double a[3][3])
 /*       puts "m[#{j}][#{i}]=(a[#{(i+1)%3}][#{(j+1)%3}]*a[#{(i+2)%3}][#{(j+2)%3}] */
 /*	 -a[#{(i+1)%3}][#{(j+2)%3}]*a[#{(i+2)%3}][#{(j+1)%3}])/det;" */
 /* }} */
-int mat_inverse_matrix_d3(double m[3][3], const double a[3][3], const double precision)
+int mat_inverse_matrix_d3(double m[3][3],
+			  SPGCONST double a[3][3],
+			  SPGCONST double precision)
 {
   double det;
   double c[3][3];
@@ -201,8 +216,10 @@ int mat_inverse_matrix_d3(double m[3][3], const double a[3][3], const double pre
 }
 
 /* m = b^-1 a b */
-int mat_get_similar_matrix_d3(double m[3][3], const double a[3][3],
-			      const double b[3][3], const double precision)
+int mat_get_similar_matrix_d3(double m[3][3],
+			      SPGCONST double a[3][3],
+			      SPGCONST double b[3][3],
+			      const double precision)
 {
   double c[3][3];
   if (!mat_inverse_matrix_d3(c, b, precision)) {
@@ -214,7 +231,7 @@ int mat_get_similar_matrix_d3(double m[3][3], const double a[3][3],
   return 1;
 }
 
-void mat_transpose_matrix_d3(double a[3][3], const double b[3][3])
+void mat_transpose_matrix_d3(double a[3][3], SPGCONST double b[3][3])
 {
   double c[3][3];
   c[0][0] = b[0][0];
@@ -229,7 +246,7 @@ void mat_transpose_matrix_d3(double a[3][3], const double b[3][3])
   mat_copy_matrix_d3(a, c);
 }
 
-void mat_transpose_matrix_i3(int a[3][3], const int b[3][3])
+void mat_transpose_matrix_i3(int a[3][3], SPGCONST int b[3][3])
 {
   int c[3][3];
   c[0][0] = b[0][0];
@@ -267,3 +284,75 @@ double mat_Dmod1(const double a, const double prec)
   else
     return a - (int) a;
 }
+
+
+MatDBL * mat_alloc_MatDBL(const int size)
+{
+  MatDBL *matdbl;
+  matdbl = malloc( sizeof( MatDBL ) );
+  matdbl->size = size;
+  if ( ( matdbl->mat = malloc( sizeof(double[3][3]) * size) )
+       == NULL ) {
+    fprintf(stderr, "spglib: Memory could not be allocated.");
+    exit(1);
+  }
+  return matdbl;
+}
+
+MatINT * mat_alloc_MatINT(const int size)
+{
+  MatINT *matint;
+  matint = malloc( sizeof( MatINT ) );
+  matint->size = size;
+  if ( ( matint->mat = malloc( sizeof(int[3][3]) * size) )
+       == NULL ) {
+    fprintf(stderr, "spglib: Memory could not be allocated.");
+    exit(1);
+  }
+  return matint;
+}
+
+void mat_free_MatINT( MatINT * matint )
+{
+  free( matint->mat );
+  matint->mat = NULL;
+  free( matint );
+  matint = NULL;
+}
+
+VecDBL * mat_alloc_VecDBL( const int size )
+{
+  VecDBL *vecdbl;
+  vecdbl = malloc( sizeof( VecDBL ) );
+  vecdbl->size = size;
+  if ( ( vecdbl->vec = malloc( sizeof(double[3]) * size) )
+       == NULL ) {
+    fprintf(stderr, "spglib: Memory could not be allocated.");
+    exit(1);
+  }
+  return vecdbl;
+}
+
+void mat_free_VecDBL( VecDBL * vecdbl )
+{
+  free( vecdbl->vec );
+  vecdbl->vec = NULL;
+  free( vecdbl );
+  vecdbl = NULL;
+}
+
+
+VecINT * mat_alloc_VecINT( const int size )
+{
+  VecINT *vecint;
+  vecint = malloc( sizeof( VecINT ) );
+  vecint->size = size;
+  if ( ( vecint->vec = malloc( sizeof(double[3]) * size) )
+       == NULL ) {
+    fprintf(stderr, "spglib: Memory could not be allocated.");
+    exit(1);
+  }
+  return vecint;
+}
+
+

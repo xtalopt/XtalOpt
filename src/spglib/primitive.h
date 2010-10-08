@@ -6,7 +6,9 @@
 
 #include "symmetry.h"
 #include "cell.h"
+#include "mathfunc.h"
 
-Cell prm_get_primitive(const Cell * cell, const double symprec);
+Cell prm_get_primitive( SPGCONST Cell * cell,
+			const double symprec );
 
 #endif

@@ -8,8 +8,10 @@
 #include "cell.h"
 #include "symmetry.h"
 
-int art_get_artificial_bravais(Bravais *bravais, const Symmetry *symmetry,
-			       const Cell *cell, const Holohedry holohedry,
-			       const double symprec);
+int art_get_artificial_bravais( Bravais *bravais,
+				const Symmetry *symmetry,
+				const Cell *cell,
+				const Holohedry holohedry,
+				const double symprec );
 
 #endif
