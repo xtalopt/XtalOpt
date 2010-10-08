@@ -17,9 +17,13 @@
 
 #include <globalsearch/macros.h>
 
+#include <QFile>
 #include <QDebug>
 
 #include <vector>
+
+// Debugging:
+#define DUMP_STRUCTURES
 
 using namespace std;
 using namespace OpenBabel;
@@ -100,7 +104,48 @@ namespace GAPC {
     return newCoords;
   }
 
+#ifdef DUMP_STRUCTURES
+  // Write an xyz file of the passed structure
+  inline void dumpXYZ(const QString &filename,
+                      const QList<Eigen::Vector3d*> &vs,
+                      const QList<int> &ans)
+  {
+    QFile f (filename);
+    f.open(QIODevice::WriteOnly | QIODevice::Text);
+    QTextStream out (&f);
+    out << vs.size() << endl << endl;
+    for (int i = 0; i < vs.size(); i++) {
+      out << QString("%1 %2 %3 %4\n")
+        .arg(ans.at(i), 3)
+        .arg(vs.at(i)->x(), 5, 'g')
+        .arg(vs.at(i)->y(), 5, 'g')
+        .arg(vs.at(i)->z(), 5, 'g');
+    }
+    f.close();
+  }
 
+  inline void dumpXYZ(const QString &filename,
+                      const QList<Eigen::Vector3d> &vs,
+                      const QList<int> &ans)
+  {
+    QList<Eigen::Vector3d*> ps;
+    for (int i = 0; i < vs.size(); i++)
+      ps.append(const_cast<Eigen::Vector3d*>(&vs[i]));
+    dumpXYZ(filename, ps, ans);
+  }
+
+  inline void dumpXYZ(const QString &filename,
+                      const QList<Atom*> &vs)
+  {
+    QList<Eigen::Vector3d*> ps;
+    QList<int> ans;
+    for (int i = 0; i < vs.size(); i++) {
+      ps.append(const_cast<Eigen::Vector3d*>(vs.at(i)->pos()));
+      ans.append(vs.at(i)->atomicNumber());
+    }
+    dumpXYZ(filename, ps, ans);
+  }
+#endif // DUMP_STRUCTURES
 
   ProtectedCluster* GAPCGenetic::crossover(ProtectedCluster* pc1,
                                            ProtectedCluster* pc2)
@@ -117,16 +162,31 @@ namespace GAPC {
     QList<uint> atomCounts      = pc1->getNumberOfAtomsAlpha();
     QList<Atom*> atomList1      = pc1->atoms();
     QList<Vector3d> coordsList1;
-    for (int i = 0; i < atomList1.size(); i++)
+#ifdef DUMP_STRUCTURES
+    QList<int> ans1;
+#endif
+    for (int i = 0; i < atomList1.size(); i++) {
       coordsList1.append(*(atomList1.at(i)->pos()));
+      ans1.append(atomList1.at(i)->atomicNumber());
+    }
     pc1->lock()->unlock();
 
     pc2->lock()->lockForRead();
     QList<Atom*> atomList2 = pc2->atoms();
     QList<Vector3d> coordsList2;
-    for (int i = 0; i < atomList2.size(); i++)
+#ifdef DUMP_STRUCTURES
+    QList<int> ans2;
+#endif
+    for (int i = 0; i < atomList2.size(); i++) {
       coordsList2.append(*(atomList2.at(i)->pos()));
+      ans2.append(atomList2.at(i)->atomicNumber());
+    }
     pc2->lock()->unlock();
+
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("crossover01-parent1.xyz", coordsList1, ans1);
+    dumpXYZ("crossover01-parent2.xyz", coordsList2, ans2);
+#endif
 
     // Transform atoms -- don't use helper function here since it
     // would need two loops.
@@ -137,9 +197,19 @@ namespace GAPC {
                         xform2).transpose();
     }
 
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("crossover02-xformed1.xyz", coordsList1, ans1);
+    dumpXYZ("crossover02-xformed2.xyz", coordsList2, ans2);
+#endif
+
     // Build new cluster
     ProtectedCluster *npc = new ProtectedCluster();
     QWriteLocker npcLocker (npc->lock());
+
+#ifdef DUMP_STRUCTURES
+    QList<Eigen::Vector3d> vs1, vs2;
+    ans1.clear(); ans2.clear();
+#endif
 
     // Cut pcs and populate new one.
     for (int i = 0; i < coordsList1.size(); i++) {
@@ -147,13 +217,27 @@ namespace GAPC {
         Atom* newAtom = npc->addAtom();
         newAtom->setAtomicNumber(atomList1.at(i)->atomicNumber());
         newAtom->setPos(coordsList1.at(i));
+#ifdef DUMP_STRUCTURES
+        ans1.append(atomList1.at(i)->atomicNumber());
+        vs1.append(coordsList1.at(i));
+#endif
       }
       if ( coordsList2.at(i)[0] > 0.0 ) {
         Atom* newAtom = npc->addAtom();
         newAtom->setAtomicNumber(atomList2.at(i)->atomicNumber());
         newAtom->setPos(coordsList2.at(i));
+#ifdef DUMP_STRUCTURES
+        ans2.append(atomList2.at(i)->atomicNumber());
+        vs2.append(coordsList2.at(i));
+#endif
       }
     }
+
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("crossover03-cut1.xyz", vs1, ans1);
+    dumpXYZ("crossover03-cut2.xyz", vs2, ans2);
+    dumpXYZ("crossover04-unchecked.xyz", npc->atoms());
+#endif
 
     // Check composition of npc
     QList<int> deltas;
@@ -241,9 +325,18 @@ namespace GAPC {
       }
     }
 
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("crossover05-checked.xyz", npc->atoms());
+#endif
+
     // Done!
     // Expand will center the atoms
     npc->expand(1.2);
+
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("crossover06-expanded.xyz", npc->atoms());
+#endif
+
     npc->setStatus(ProtectedCluster::WaitingForOptimization);
     return npc;
   }
@@ -261,8 +354,21 @@ namespace GAPC {
       coords.push_back(*(atoms.at(i)->pos()));
     pc->lock()->unlock();
 
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("twist01-parent.xyz", pc->atoms());
+#endif
+
     // randomly rotate parent coordinates
     coords = rotateCoordinates(coords, createRotationMatrix());
+
+#ifdef DUMP_STRUCTURES
+    QList<Vector3d> vs; QList<int> ans;
+    for (int i = 0; i < coords.size(); i++) {
+      vs.append(coords.at(i));
+      ans.append(atoms.at(i)->atomicNumber());
+    }
+    dumpXYZ("twist01-parent-rot.xyz", pc->atoms());
+#endif
 
     // Create vector of atoms to twist (positive z coordinate)
     vector<Vector3d> twisters_pos;
@@ -280,6 +386,22 @@ namespace GAPC {
       }
     }
 
+#ifdef DUMP_STRUCTURES
+    vs.clear(); ans.clear();
+    for (int i = 0; i < nontwisters_pos.size(); i++) {
+      vs.append(nontwisters_pos.at(i));
+      ans.append(nontwisters_id.at(i));
+    }
+    dumpXYZ("twist02-nontwisters.xyz", vs, ans);
+    vs.clear(); ans.clear();
+    for (int i = 0; i < twisters_pos.size(); i++) {
+      vs.append(twisters_pos.at(i));
+      ans.append(twisters_id.at(i));
+    }
+    dumpXYZ("twist02-twisters.xyz", vs, ans);
+#endif
+
+
     // Twist the twisters randomly around the z axis
     rotationDeg = minimumRotation + (RANDDOUBLE() * (360.0 - minimumRotation) );
 
@@ -288,6 +410,15 @@ namespace GAPC {
                                            0,
                                            1,
                                            rotationDeg * DEG_TO_RAD));
+
+#ifdef DUMP_STRUCTURES
+    vs.clear(); ans.clear();
+    for (int i = 0; i < twisters_pos.size(); i++) {
+      vs.append(twisters_pos.at(i));
+      ans.append(twisters_id.at(i));
+    }
+    dumpXYZ("twist03-twistedtwisters.xyz", vs, ans);
+#endif
 
     // Build new cluster
     ProtectedCluster *npc = new ProtectedCluster();
@@ -304,9 +435,18 @@ namespace GAPC {
       newAtom->setPos(nontwisters_pos.at(i));
     }
 
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("twist04-child.xyz", npc->atoms());
+#endif
+
     // Done!
     // Expand will center the atoms
     npc->expand(1.2);
+
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("twist05-expanded.xyz", npc->atoms());
+#endif
+
     npc->setStatus(ProtectedCluster::WaitingForOptimization);
     return npc;
   }
@@ -327,6 +467,10 @@ namespace GAPC {
       atom->setAtomicNumber(atoms.at(i)->atomicNumber());
       atom->setPos(atoms.at(i)->pos());
     }
+
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("exchange01-parent.xyz", pc->atoms());
+#endif
 
     // Check that there is more than 1 atom type present.
     // If not, print a warning and return a null pointer;
@@ -356,8 +500,18 @@ namespace GAPC {
       natoms.at(index1)->setPos(*(natoms.at(index2)->pos()));
       natoms.at(index2)->setPos(tmp);
     }
+
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("exchange02-child.xyz", npc->atoms());
+#endif
+
     // Expand will center the atoms
     npc->expand(1.2);
+
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("exchange02-expanded.xyz", npc->atoms());
+#endif
+
     return npc;
   }
 
@@ -369,6 +523,10 @@ namespace GAPC {
     INIT_RANDOM_GENERATOR();
     // lock parent pc for reading
     QReadLocker locker (pc->lock());
+
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("randomWalk01-parent.xyz", pc->atoms());
+#endif
 
     // Copy info over from parent to new pc
     ProtectedCluster *npc = new ProtectedCluster;
@@ -439,9 +597,18 @@ namespace GAPC {
       atm->setPos( *(atm->pos()) + trans.at(i) );
     }
 
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("randomWalk02-child.xyz", npc->atoms());
+#endif
+
     // Done!
     // Expand will center the atoms
     npc->expand(1.2);
+
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("randomWalk03-expanded.xyz", npc->atoms());
+#endif
+
     npc->setStatus(ProtectedCluster::WaitingForOptimization);
     return npc;
   }
@@ -462,8 +629,20 @@ namespace GAPC {
       coords.push_back(*(atoms.at(i)->pos()));
     pc->lock()->unlock();
 
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("aniso01-parent.xyz", pc->atoms());
+#endif
+
     // randomly rotate parent coordinates
     coords = rotateCoordinates(coords, createRotationMatrix());
+
+#ifdef DUMP_STRUCTURES
+    QList<Eigen::Vector3d> vs;
+    for (int i = 0; i < coords.size(); i++) vs.append(coords.at(i));
+    QList<int> ans;
+    for (int i = 0; i < atoms.size(); i++) ans.append(atoms.at(i)->atomicNumber());
+    dumpXYZ("aniso02-rotated.xyz", vs, ans);
+#endif
 
     // Perform expansion
     double rho, phi, theta, x, y, z;
@@ -481,7 +660,7 @@ namespace GAPC {
       // Expand
       double factor = (cos(2*phi) + 1)/2.0;
       // cube factor
-      rho *= amp * factor * factor * factor * factor;
+      rho *= 1 + amp * factor * factor * factor * factor;
       // Back to cartesian
       pos->x() = rho*sin(phi)*cos(theta);
       pos->y() = rho*sin(phi)*sin(theta);
@@ -497,6 +676,10 @@ namespace GAPC {
       newAtom->setAtomicNumber(atoms.at(i)->atomicNumber());
       newAtom->setPos(coords.at(i));
     }
+
+#ifdef DUMP_STRUCTURES
+    dumpXYZ("aniso03-child.xyz", npc->atoms());
+#endif
 
     // Done!
     npc->setStatus(ProtectedCluster::WaitingForOptimization);
