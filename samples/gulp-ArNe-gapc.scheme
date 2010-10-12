@@ -1,0 +1,8 @@
+[gapc]
+edit\version=1
+edit\optType=2
+optimizer\GULP\cluster.gin_list="# NOTE: This potential is not actually for a\n# Ar-Ne system, but rather a binary LJ system\n# with a sigma ratio of 1.2.\n# See Doye and Meyer, cond mat mtrl 2008 for more\n# info.\nopti conj conp\nswitch_minimiser bfgs gnorm 0.01\nmaxcyc 10000\ncart\n%coords%\nlennard epsilon 12 6\nAr Ar 1.0 1.0 15\nNe Ne 1.0 1.2 15\nAr Ne 1.0 1.1 15\n"
+optimizer\GULP\user1=
+optimizer\GULP\user2=
+optimizer\GULP\user3=
+optimizer\GULP\user4=
