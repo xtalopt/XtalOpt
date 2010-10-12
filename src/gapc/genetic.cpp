@@ -367,7 +367,7 @@ namespace GAPC {
       vs.append(coords.at(i));
       ans.append(atoms.at(i)->atomicNumber());
     }
-    dumpXYZ("twist01-parent-rot.xyz", pc->atoms());
+    dumpXYZ("twist01-parent-rot.xyz", vs, ans);
 #endif
 
     // Create vector of atoms to twist (positive z coordinate)
@@ -405,11 +405,11 @@ namespace GAPC {
     // Twist the twisters randomly around the z axis
     rotationDeg = minimumRotation + (RANDDOUBLE() * (360.0 - minimumRotation) );
 
-    rotateCoordinates(twisters_pos,
-                      createRotationMatrix(0,
-                                           0,
-                                           1,
-                                           rotationDeg * DEG_TO_RAD));
+    twisters_pos = rotateCoordinates(twisters_pos,
+                                     createRotationMatrix(0,
+                                                          0,
+                                                          1,
+                                                          rotationDeg * DEG_TO_RAD));
 
 #ifdef DUMP_STRUCTURES
     vs.clear(); ans.clear();
