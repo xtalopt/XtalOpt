@@ -823,6 +823,8 @@ namespace GlobalSearch {
   {
     uint numStructs = structures->size();
 
+    if (numStructs <= 1) return;
+
     // Simple selection sort
     Structure *structure_i=0, *structure_j=0, *tmp=0;
     for (uint i = 0; i < numStructs-1; i++) {
@@ -845,6 +847,7 @@ namespace GlobalSearch {
 
   void rankInPlace(const QList<Structure*> &structures)
   {
+    if (structures.size() == 0) return;
     Structure *s;
     for (uint i = 0; i < structures.size(); i++) {
       s = structures.at(i);
@@ -857,6 +860,9 @@ namespace GlobalSearch {
   void Structure::rankByEnthalpy(const QList<Structure*> &structures)
   {
     uint numStructs = structures.size();
+
+    if (numStructs == 0) return;
+
     QList<Structure*> rstructures;
 
     // Copy structures to a temporary list (don't modify input list!)
