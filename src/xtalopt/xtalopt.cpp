@@ -370,7 +370,11 @@ namespace XtalOpt {
     // Check to see if there are enough optimized structure to perform
     // genetic operations
     if (structures.size() < 3) {
-      Xtal *xtal = generateRandomXtal(1, 0);
+      Xtal *xtal = 0;
+      while (!checkXtal(xtal)) {
+        if (xtal) xtal->deleteLater();
+        xtal = generateRandomXtal(1, 0);
+      }
       initializeAndAddXtal(xtal, 1, xtal->getParents());
       return;
     }
