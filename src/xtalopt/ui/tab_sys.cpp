@@ -135,7 +135,8 @@ namespace XtalOpt {
 
     // Hide optType specific settings
     if (m_opt->optimizer()->getIDString() == "VASP" ||
-        m_opt->optimizer()->getIDString() == "PWscf" ) {
+        m_opt->optimizer()->getIDString() == "PWscf"||
+        m_opt->optimizer()->getIDString() == "CASTEP" ) {
       ui.edit_path->setVisible(true);
       ui.edit_description->setVisible(true);
       ui.edit_qsub->setVisible(true);
