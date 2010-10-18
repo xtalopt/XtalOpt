@@ -7,22 +7,8 @@ namespace XtalOpt {
 
 @subsection ssh-setup Password-less ssh
 
-XtalOpt will currently run VASP on a remote cluster that is managed by
-a PBS queue. For XtalOpt access the cluster, it is necessary to set up
-password-less ssh logins. This is most easily done using the
-"ssh-copy-id" command, e.g.
-
-@code
-ssh-copy-id myusername@remote.host.with.PBS.queue
-@endcode
-
-If this complains about a missing key, run
-
-@code
-ssh-keygen
-@endcode
-
-first, using all defaults and no passphrase. Then rerun ssh-copy-id.
+Password-less ssh logins are no longer required in recent versions of
+XtalOpt. Please update to use the new interactive login interface.
 
 @subsection VASP POTCAR files
 
