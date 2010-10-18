@@ -1,28 +1,17 @@
 namespace XtalOpt {
 /**
 
-@page tut-xo-pwscf XtalOpt with PWscf: Tutorial
+@page tut-xo-pwscf XtalOpt with PWscf or CASTEP: Tutorial
+
+PWscf and CASTEP behave very similarly in XtalOpt, the only difference
+being the template input. This tutorial covers both optimizers.
 
 @section setup Setup
 
 @subsection ssh-setup Password-less ssh
 
-XtalOpt will currently run PWscf on a remote cluster that is managed
-by a PBS queue. For XtalOpt to access the cluster, it is necessary to
-set up password-less ssh logins. This is most easily done using the
-"ssh-copy-id" command, e.g.
-
-@code
-ssh-copy-id myusername@remote.host.with.PBS.queue
-@endcode
-
-If this complains about a missing key, run
-
-@code
-ssh-keygen
-@endcode
-
-first, using all defaults and no passphrase. Then rerun ssh-copy-id.
+Password-less ssh logins are no longer required in recent versions of
+XtalOpt. Please update to use the new interactive login interface.
 
 @section launch Launch XtalOpt
 Open avogadro, go to the "Extensions" menu and select
@@ -47,6 +36,7 @@ the largest range of cell angles that XtalOpt will generate.)
 \image html opt-temp-pwscf.png
 \image latex opt-temp-pwscf.png width=\textwidth
 
+@subsection pwscf-opt PWscf
 On the next tab, load the optimization scheme that is distributed with
 the source code under the samples/ directory. The scheme that we want
 is named "pwscf-xtalopt.scheme". If the source code is not available,
@@ -59,6 +49,31 @@ Each PWscf input file will need to be edited to specify:
  -# The pseudo_dir containing the pseudopotential files on the remote cluster, and
  -# The pseudopotentials for each atom (under ATOMIC_SPECIES)
 
+@subsection castep-opt CASTEP
+On the next tab, load the optimization scheme that is distributed with
+the source code under the samples/ directory. The scheme that we want
+is named "castep-xtalopt.scheme". If the source code is not available,
+the scheme file can be obtained by clicking the "Original Format" link
+at the bottom of the page <a
+href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/castep-xtalopt.scheme">
+here</a>.
+
+It is important to note that CASTEP input files require the "%"
+character to define blocks. The percent character is special in the
+XtalOpt input template parser to define keywords (see below). To
+insert a literal "%" into the input, use %percent%.
+
+E.g. Specification of the fractional coordinate block in the .cell
+template should look like:
+
+@code
+%percent%BLOCK POSITIONS_FRAC
+%coordsFrac%
+%percent%ENDBLOCK POSITIONS_FRAC
+@endcode
+
+@subsection both-opt CASTEP and PWscf
+
 Take a moment to look through each file for each optimization step.
 
 Notice the %%keyword% values in the job.pbs templates. These are used
@@ -66,17 +81,17 @@ to enter information that is specific to a search or structure when
 the actual input files are written prior to job submission. Click the
 "Help" button for a full listing of the available keywords.
 
-Be aware that every PWscf installation is different, and it is almost
-certain that the job.pbs file included with this scheme will not work
-on any cluster other than the Zurek group's "parity" cluster at SUNY
-Buffalo's Center for Computational Resources. It may take some
+Be aware that every PWscf/CASTEP installation is different, and it is
+almost certain that the job.pbs file included with this scheme will
+not work on any cluster other than the Zurek group's "parity" cluster
+at SUNY Buffalo's Center for Computational Resources. It may take some
 experimentation to get jobs to submit successfully, and you may need
 to contact the mantainers of the cluster for assistance for
-information about MPI, executable locations, etc. Perhaps the
-easiest method to find the correct PBS script is to run some trial
-submissions by hand, and then replace the structure/search specific
-information with the appropriate keywords once a working script has
-been generated.
+information about MPI, executable locations, etc. Perhaps the easiest
+method to find the correct PBS script is to run some trial submissions
+by hand, and then replace the structure/search specific information
+with the appropriate keywords once a working script has been
+generated.
 
 A final word of warning: We strongly recommend that the job name line
 in job.pbs be left as 
