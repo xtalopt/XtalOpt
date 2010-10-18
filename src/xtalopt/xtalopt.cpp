@@ -686,7 +686,7 @@ namespace XtalOpt {
     }
     // Rejoin string
     QString ret = list.join("");
-    ret = ret.remove("%") + "\n";
+    ret += "\n";
     return ret;
   }
 

@@ -292,14 +292,14 @@ namespace GlobalSearch {
     for (int line_ind = 0; line_ind < list.size(); line_ind++) {
       origLine = line = list.at(line_ind);
       interpretKeyword_base(line, structure);
-      // Add other interpret keyword sections here if needed
+      // Add other interpret keyword sections here if needed when subclassing
       if (line != origLine) { // Line was a keyword
         list.replace(line_ind, line);
       }
     }
     // Rejoin string
     QString ret = list.join("");
-    ret = ret.remove("%") + "\n";
+    ret += "\n";
     return ret;
   }
 
@@ -307,11 +307,12 @@ namespace GlobalSearch {
   {
     QString rep = "";
     // User data
-    if (line == "user1")    		rep += optimizer()->getUser1();
-    else if (line == "user2")    	rep += optimizer()->getUser2();
-    else if (line == "user3")    	rep += optimizer()->getUser3();
-    else if (line == "user4")    	rep += optimizer()->getUser4();
-    else if (line == "description")	rep += description;
+    if (line == "user1")                rep += optimizer()->getUser1();
+    else if (line == "user2")           rep += optimizer()->getUser2();
+    else if (line == "user3")           rep += optimizer()->getUser3();
+    else if (line == "user4")           rep += optimizer()->getUser4();
+    else if (line == "description")     rep += description;
+    else if (line == "percent")         rep += "%";
 
     // Structure specific data
     if (line == "coords") {
@@ -355,6 +356,9 @@ namespace GlobalSearch {
     QTextStream out (&str);
     out
       << "The following keywords should be used instead of the indicated variable data:\n"
+      << "\n"
+      << "Misc:\n"
+      << "%percent% -- Literal percent sign (needed for CASTEP!)\n"
       << "\n"
       << "User data:\n"
       << "%userX% -- User specified value, where X = 1, 2, 3, or 4\n"
