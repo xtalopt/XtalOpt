@@ -9,6 +9,7 @@ set( xtalopt_SRCS
      optimizers/vasp.cpp
      optimizers/gulp.cpp
      optimizers/pwscf.cpp
+     optimizers/castep.cpp
      testing/xtalopttest.cpp
      ui/dialog.cpp
      ui/tab_init.cpp
@@ -19,7 +20,7 @@ set( xtalopt_SRCS
      ui/tab_plot.cpp
      ui/tab_log.cpp)
 
-set( xtalopt_UIS 
+set( xtalopt_UIS
      ui/dialog.ui
      ui/tab_init.ui
      ui/tab_edit.ui

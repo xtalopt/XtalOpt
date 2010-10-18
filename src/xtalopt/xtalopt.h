@@ -46,7 +46,8 @@ namespace XtalOpt {
     enum OptTypes {
       OT_VASP = 0,
       OT_GULP,
-      OT_PWscf
+      OT_PWscf,
+      OT_CASTEP
     };
 
     enum Operators {

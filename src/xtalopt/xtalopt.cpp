@@ -24,6 +24,7 @@
 #include <xtalopt/optimizers/vasp.h>
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/pwscf.h>
+#include <xtalopt/optimizers/castep.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
 
@@ -685,7 +686,7 @@ namespace XtalOpt {
     }
     // Rejoin string
     QString ret = list.join("");
-    ret = ret.remove("%") + "\n";
+    ret += "\n";
     return ret;
   }
 
@@ -1218,6 +1219,8 @@ namespace XtalOpt {
       setOptimizer(new GULPOptimizer (this, filename));
     else if (IDString.toLower() == "pwscf")
       setOptimizer(new PWscfOptimizer (this, filename));
+    else if (IDString.toLower() == "castep")
+      setOptimizer(new CASTEPOptimizer (this, filename));
     else
       error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
             .arg(IDString));
@@ -1234,6 +1237,9 @@ namespace XtalOpt {
       break;
     case OT_PWscf:
       setOptimizer(new PWscfOptimizer (this, filename));
+      break;
+    case OT_CASTEP:
+      setOptimizer(new CASTEPOptimizer (this, filename));
       break;
     default:
       error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
