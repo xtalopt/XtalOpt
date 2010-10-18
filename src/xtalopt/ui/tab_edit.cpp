@@ -22,6 +22,7 @@
 #include <xtalopt/optimizers/vasp.h>
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/pwscf.h>
+#include <xtalopt/optimizers/castep.h>
 
 #include <QtCore/QSettings>
 
@@ -144,6 +145,9 @@ namespace XtalOpt {
     else if (m_opt->optimizer()->getIDString() == "PWscf") {
       ui.combo_optType->setCurrentIndex(XtalOpt::OT_PWscf);
     }
+    else if (m_opt->optimizer()->getIDString() == "CASTEP") {
+      ui.combo_optType->setCurrentIndex(XtalOpt::OT_CASTEP);
+    }
 
     templateChanged(ui.combo_template->currentIndex());
     ui.edit_user1->setText(	m_opt->optimizer()->getUser1());
@@ -177,6 +181,9 @@ namespace XtalOpt {
              ||
              ( ui.combo_optType->currentIndex() == XtalOpt::OT_PWscf
                && m_opt->optimizer()->getIDString() == "PWscf" )
+             ||
+             ( ui.combo_optType->currentIndex() == XtalOpt::OT_CASTEP
+               && m_opt->optimizer()->getIDString() == "CASTEP" )
              )
          ) {
       return;
@@ -242,6 +249,27 @@ namespace XtalOpt {
       ui.combo_template->blockSignals(false);
 
       emit optimizerChanged(new PWscfOptimizer (m_opt) );
+      ui.combo_template->setCurrentIndex(0);
+
+      break;
+    }
+    case XtalOpt::OT_CASTEP: {
+      // Set total number of templates (3, length of CASTEP_Templates)
+      QStringList sl;
+      sl << "" << "" << "";
+      ui.combo_template->blockSignals(true);
+      ui.combo_template->insertItems(0, sl);
+
+      // Set each template at the appropriate index:
+      ui.combo_template->removeItem(CASTEPT_queueScript);
+      ui.combo_template->insertItem(CASTEPT_queueScript,   tr("Queue Script"));
+      ui.combo_template->removeItem(CASTEPT_param);
+      ui.combo_template->insertItem(CASTEPT_param,         tr(".param File"));
+      ui.combo_template->removeItem(CASTEPT_cell);
+      ui.combo_template->insertItem(CASTEPT_cell,         tr(".cell File"));
+      ui.combo_template->blockSignals(false);
+
+      emit optimizerChanged(new CASTEPOptimizer (m_opt) );
       ui.combo_template->setCurrentIndex(0);
 
       break;
@@ -353,8 +381,29 @@ namespace XtalOpt {
       }
       break;
     }
+    case XtalOpt::OT_CASTEP: {
+      // Hide/show appropriate GUI elements
+      ui.list_POTCARs->setVisible(false);
+      ui.edit_edit->setVisible(true);
+
+      switch (ind) {
+      case CASTEPT_queueScript:
+        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.pbs", row));
+        break;
+      case CASTEPT_param:
+        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("xtal.param", row));
+        break;
+      case CASTEPT_cell:
+        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("xtal.cell", row));
+        break;
+      default: // shouldn't happen...
+        qWarning() << "TabEdit::templateChanged: Selected template out of range? " << ind;
+        break;
+      }
+      break;
+    }
     default: // shouldn't happen...
-      qWarning() << "TabEdit::templateChanged: Selected OptStep out of range? "
+      qWarning() << "TabEdit::templateChanged: Selected OptType out of range? "
                  << ui.combo_optType->currentIndex();
       break;
     }
@@ -400,6 +449,23 @@ namespace XtalOpt {
         break;
       case PWscfT_in:
         m_opt->optimizer()->setTemplate("xtal.in", ui.edit_edit->document()->toPlainText(), row);
+        break;
+      default: // shouldn't happen...
+        qWarning() << "TabEdit::updateTemplates: Selected template out of range?";
+        break;
+      }
+      break;
+
+    case XtalOpt::OT_CASTEP:
+      switch (ui.combo_template->currentIndex()) {
+      case CASTEPT_queueScript:
+        m_opt->optimizer()->setTemplate("job.pbs", ui.edit_edit->document()->toPlainText(), row);
+        break;
+      case CASTEPT_param:
+        m_opt->optimizer()->setTemplate("xtal.param", ui.edit_edit->document()->toPlainText(), row);
+        break;
+      case CASTEPT_cell:
+        m_opt->optimizer()->setTemplate("xtal.cell", ui.edit_edit->document()->toPlainText(), row);
         break;
       default: // shouldn't happen...
         qWarning() << "TabEdit::updateTemplates: Selected template out of range?";

@@ -54,6 +54,11 @@ namespace XtalOpt {
       PWscfT_queueScript = 0,
       PWscfT_in
     };
+    enum CASTEP_Templates {
+      CASTEPT_queueScript = 0,
+      CASTEPT_param,
+      CASTEPT_cell
+    };
 
   public slots:
     void lockGUI();
