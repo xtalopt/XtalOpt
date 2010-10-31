@@ -13,6 +13,6 @@ typedef struct {
     Holohedry holohedry;
 } PointgroupData;
 
-Holohedry ptg_get_holohedry(const Holohedry holohedry, const Symmetry * symmetry);
+Holohedry ptg_get_holohedry( const Symmetry * symmetry );
 
 #endif

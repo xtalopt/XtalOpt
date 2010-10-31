@@ -3,7 +3,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-/* #include <math.h> */
 #include "bravais.h"
 #include "debug.h"
 #include "mathfunc.h"
@@ -30,38 +29,41 @@ static int get_brv_ortho( Bravais *bravais,
 static int get_brv_monocli( Bravais *bravais,
 			    SPGCONST double min_lattice[3][3],
 			    const double symprec );
-static int brv_cubic_I_center( double lattice[3][3],
+static int get_brv_cubic_primitive( double lattice[3][3],
+				    SPGCONST double min_lattice[3][3],
+				    const double symprec );
+static int get_brv_cubic_I_center( double lattice[3][3],
+				   SPGCONST double min_lattice[3][3],
+				   const double symprec );
+static int get_brv_cubic_F_center( double lattice[3][3],
+				   SPGCONST double min_lattice[3][3],
+				   const double symprec );
+static int get_brv_tetra_primitive( double lattice[3][3],
+				    SPGCONST double min_lattice[3][3],
+				    const double symprec );
+static int get_brv_tetra_body( double lattice[3][3],
 			       SPGCONST double min_lattice[3][3],
 			       const double symprec );
-static int brv_cubic_F_center( double lattice[3][3],
-			       SPGCONST double min_lattice[3][3],
-			       const double symprec );
-static int brv_tetra_primitive( double lattice[3][3],
-				SPGCONST double min_lattice[3][3],
-				const double symprec );
-static int brv_tetra_body( double lattice[3][3],
-			   SPGCONST double min_lattice[3][3],
-			   const double symprec );
-static Centering brv_ortho_base_I_center( double lattice[3][3],
-					  SPGCONST double min_lattice[3][3],
-					  const double symprec);
+static Centering get_brv_ortho_base_I_center( double lattice[3][3],
+					      SPGCONST double min_lattice[3][3],
+					      const double symprec);
 static Centering get_base_center( SPGCONST double brv_lattice[3][3],
 				  SPGCONST double min_lattice[3][3],
 				  const double symprec );
-static int brv_ortho_F_center( double lattice[3][3],
-			       SPGCONST double min_lattice[3][3],
-			       const double symprec );
-static int brv_rhombo( double lattice[3][3],
-		       SPGCONST double min_lattice[3][3],
-		       const double symprec );
+static int get_brv_ortho_primitive( double lattice[3][3],
+				    SPGCONST double min_lattice[3][3],
+				    const double symprec );
+static int get_brv_ortho_F_center( double lattice[3][3],
+				   SPGCONST double min_lattice[3][3],
+				   const double symprec );
 static void set_brv_monocli( Bravais *bravais,
 			     const double symprec );
-static int brv_monocli_primitive( double lattice[3][3],
-				  SPGCONST double min_lattice[3][3],
-				  const double symprec );
-static Centering brv_monocli_base_center( double lattice[3][3],
-					  SPGCONST double min_lattice[3][3],
-					  const double symprec );
+static int get_brv_monocli_primitive( double lattice[3][3],
+				      SPGCONST double min_lattice[3][3],
+				      const double symprec );
+static Centering get_brv_monocli_base_center( double lattice[3][3],
+					      SPGCONST double min_lattice[3][3],
+					      const double symprec );
 static void check_angle90( int angle_90[3],
 			   SPGCONST double lattice[3][3],
 			   const double symprec );
@@ -88,26 +90,25 @@ static int exhaustive_search( double lattice[3][3],
 			     const double symprec );
 static void get_right_hand_lattice( double lattice[3][3],
 				    const double symprec );
-static void get_projection( double projection[3][3],
-			    SPGCONST double min_lattice[3][3],
-			    SPGCONST double lattice[3][3] );
 static void get_Delaunay_reduction( double red_lattice[3][3], 
-				   SPGCONST double lattice[3][3],
-				   SPGCONST double symprec );
+				    SPGCONST double lattice[3][3],
+				    SPGCONST double symprec );
 static int get_Delaunay_reduction_basis( double basis[4][3],
 					 double symprec );
 static void get_exteneded_basis( double basis[4][3],
 				 SPGCONST double lattice[3][3] );
-
-/* math */
-static void get_metric( double metric[3][3],
-			SPGCONST double lattice[3][3]);
 
 /**********************/
 /**********************/
 /** Public functions **/
 /**********************/
 /**********************/
+void brv_set_relative_lattice( void )
+{
+  set_relative_lattice();
+}
+
+
 Bravais brv_get_brv_lattice( SPGCONST double lattice_orig[3][3],
 			     const double symprec )
 {
@@ -117,7 +118,6 @@ Bravais brv_get_brv_lattice( SPGCONST double lattice_orig[3][3],
   Holohedry holohedries[] = {
     CUBIC,
     HEXA,
-    RHOMB,
     TETRA,
     ORTHO,
     MONOCLI,
@@ -135,7 +135,7 @@ Bravais brv_get_brv_lattice( SPGCONST double lattice_orig[3][3],
   debug_print("Minimum lattice\n");
   debug_print_matrix_d3(min_lattice);
   debug_print("Metric tensor of minimum lattice\n");
-  get_metric(metric, min_lattice);
+  mat_get_metric(metric, min_lattice);
   debug_print_matrix_d3(metric);
   check_angle90(angle_90, min_lattice, symprec);
   check_equal_edge(edge_equal, min_lattice, symprec);
@@ -144,7 +144,7 @@ Bravais brv_get_brv_lattice( SPGCONST double lattice_orig[3][3],
 #endif
 
   set_relative_lattice();
-  for (i = 0; i < 7; i++) {
+  for (i = 0; i < 6; i++) {
     bravais.holohedry = holohedries[i];
     debug_print_holohedry(&bravais);
     if ( brv_get_brv_lattice_in_loop(&bravais, min_lattice, symprec) ) {
@@ -168,34 +168,29 @@ int brv_get_brv_lattice_in_loop( Bravais *bravais,
   switch (bravais->holohedry) {
 
   case CUBIC:
-    if (get_brv_cubic(bravais, min_lattice, symprec))
-      goto ok;
+    if (get_brv_cubic(bravais, min_lattice, symprec)) { goto ok; }
     break;
     
   case TETRA:
-    if (get_brv_tetra(bravais, min_lattice, symprec))
-      goto ok;
+    if (get_brv_tetra(bravais, min_lattice, symprec)) { goto ok; }
     break;
   
   case ORTHO:
-    if (get_brv_ortho(bravais, min_lattice, symprec))
-      goto ok;
+    if (get_brv_ortho(bravais, min_lattice, symprec)) { goto ok; }
     break;
 
   case HEXA:
   case TRIGO:
-    if (get_brv_hexa(bravais, min_lattice, symprec))
-      goto ok;
-    break;
-
   case RHOMB:
-    if (get_brv_rhombo(bravais, min_lattice, symprec))
+    if (get_brv_hexa(bravais, min_lattice, symprec)) { goto ok; }
+    if (get_brv_rhombo(bravais, min_lattice, symprec)) {
+      bravais->holohedry = RHOMB;
       goto ok;
+    }
     break;
 
   case MONOCLI:
-    if (get_brv_monocli(bravais, min_lattice, symprec))
-      goto ok;
+    if (get_brv_monocli(bravais, min_lattice, symprec)) { goto ok; }
     break;
 
   case TRICLI:
@@ -218,83 +213,16 @@ void brv_smallest_lattice_vector( double min_lattice[3][3],
 				  SPGCONST double lattice[3][3],
 				  const double symprec )
 {
-  int i, j;
-  double tmp_matrix[3][3], projection[3][3];
+  int i;
 
   get_Delaunay_reduction(min_lattice, lattice, symprec);
-  
-  debug_print("New lattice before forcing right handed orientation\n");
-  debug_print_matrix_d3(min_lattice);
 
-  /* Choose first vector as most overwrapping with the original first vector. */
-  get_projection(projection, min_lattice, lattice);
-
-  debug_print("Projection\n");
-  debug_print("%f %f %f\n", projection[0][0], projection[1][0], projection[2][0]);
-  debug_print("%f %f %f\n", projection[0][1], projection[1][1], projection[2][1]);
-  debug_print("%f %f %f\n", projection[0][2], projection[1][2], projection[2][2]);
-
-  /* Choose first axis (well projected one) */
-  i = 0;
-    
-  if (mat_Dabs(projection[1][0]) - mat_Dabs(projection[0][0]) > symprec)
-    i = 1;
-
-  if (mat_Dabs(projection[2][0]) - mat_Dabs(projection[i][0]) > symprec)
-    i = 2;
-
-
-  /* Swap axes */
-  mat_copy_matrix_d3(tmp_matrix, min_lattice);
-
-  for (j = 0; j < 3; j++) {
-    min_lattice[j][0] = tmp_matrix[j][i];
-    min_lattice[j][i] = tmp_matrix[j][0];
-  }
-
-  /* Flip first axis */
-  if (projection[i][0] < -symprec)
-    for (j = 0; j < 3; j++)
-      min_lattice[j][0] = -min_lattice[j][0];
-
-
-  /* Choose second axis (better projected one) */
-  i = 1;
-
-  if (mat_Dabs(projection[2][0]) - mat_Dabs(projection[1][0]) > symprec) {
-    i = 2;
-
-    /* Swap axes */
-    mat_copy_matrix_d3(tmp_matrix, min_lattice);
-
-    for (j = 0; j < 3; j++) {
-      min_lattice[j][1] = tmp_matrix[j][i];
-      min_lattice[j][i] = tmp_matrix[j][1];
+  if (mat_get_determinant_d3(min_lattice) < -symprec*symprec*symprec) {
+    /* Flip third axis */
+    for (i = 0; i < 3; i++) {
+      min_lattice[i][2] = -min_lattice[i][2];
     }
   }
-
-  /* Flip second axis */
-  if (projection[i][0] < -symprec)
-    for (j = 0; j < 3; j++)
-      min_lattice[j][1] = -min_lattice[j][1];
-    
-  /*   Right-handed orientation */
-  if (mat_get_determinant_d3(min_lattice) < -symprec*symprec*symprec) {
-
-    /* Flip third axis */
-    for (j = 0; j < 3; j++)
-      min_lattice[j][2] = -min_lattice[j][2];
-  }
-}
-
-static void get_projection( double projection[3][3],
-			    SPGCONST double min_lattice[3][3],
-			    SPGCONST double lattice[3][3] )
-{
-  double tmp_matrix[3][3];
-  
-  mat_transpose_matrix_d3(tmp_matrix, min_lattice);
-  mat_multiply_matrix_d3(projection, tmp_matrix, lattice);
 }
 
 /***********/
@@ -313,22 +241,21 @@ static int get_brv_cubic( Bravais *bravais,
     return 0;
 
   /* Cubic-P */
-  if (check_cubic(min_lattice, symprec)) {
-    mat_copy_matrix_d3(bravais->lattice, min_lattice);
+  if (get_brv_cubic_primitive(bravais->lattice, min_lattice, symprec)) {
     bravais->centering = NO_CENTER;
-    debug_print("cubic, no-centering\n");
+    debug_print("cubic, no-center\n");
     goto found;
   }
 
   /* Cubic-I */
-  if (brv_cubic_I_center(bravais->lattice, min_lattice, symprec)) {
+  if (get_brv_cubic_I_center(bravais->lattice, min_lattice, symprec)) {
     bravais->centering = BODY;
     debug_print("cubic, I-center\n");
     goto found;
   }
 
   /* Cubic-F */
-  if (brv_cubic_F_center(bravais->lattice, min_lattice, symprec)) {
+  if (get_brv_cubic_F_center(bravais->lattice, min_lattice, symprec)) {
     bravais->centering = FACE;
     debug_print("cubic, F-center\n");
     goto found;
@@ -381,7 +308,15 @@ static int check_cubic( SPGCONST double lattice[3][3],
   return 0;
 }
 
-static int brv_cubic_F_center( double lattice[3][3],
+static int get_brv_cubic_primitive( double lattice[3][3],
+				    SPGCONST double min_lattice[3][3],
+				    const double symprec )
+{
+  return exhaustive_search( lattice, min_lattice,
+			    check_cubic, NO_CENTER, symprec );
+}
+
+static int get_brv_cubic_F_center( double lattice[3][3],
 			       SPGCONST double min_lattice[3][3],
 			       const double symprec )
 {
@@ -390,7 +325,7 @@ static int brv_cubic_F_center( double lattice[3][3],
 
 }
 
-static int brv_cubic_I_center( double lattice[3][3],
+static int get_brv_cubic_I_center( double lattice[3][3],
 			       SPGCONST double min_lattice[3][3],
 			       const double symprec )
 {
@@ -413,17 +348,14 @@ static int get_brv_tetra( Bravais *bravais,
   check_equal_edge(edge_equal, min_lattice, symprec);
 
   /* Tetragonal-P */
-  if ((angle_90[0] && angle_90[1] && angle_90[2]) &&
-      (edge_equal[0] || edge_equal[1] || edge_equal[2])) {
-    if (brv_tetra_primitive(bravais->lattice, min_lattice, symprec)) {
-      bravais->centering = NO_CENTER;
-      debug_print("tetra, no-centering\n");
-      goto found;
-    }
+  if (get_brv_tetra_primitive(bravais->lattice, min_lattice, symprec)) {
+    bravais->centering = NO_CENTER;
+    debug_print("tetra, no-centering\n");
+    goto found;
   }
 
   /* Tetragonal-I */
-  if (brv_tetra_body(bravais->lattice, min_lattice, symprec)) {
+  if (get_brv_tetra_body(bravais->lattice, min_lattice, symprec)) {
     bravais->centering = BODY;
     debug_print("tetra, I-center\n");
     goto found;
@@ -484,7 +416,7 @@ static int check_tetra( SPGCONST double lattice[3][3],
   return 0;
 }
 
-static int brv_tetra_primitive( double lattice[3][3],
+static int get_brv_tetra_primitive( double lattice[3][3],
 				SPGCONST double min_lattice[3][3],
 				const double symprec )
 {
@@ -492,7 +424,7 @@ static int brv_tetra_primitive( double lattice[3][3],
 			    check_tetra, NO_CENTER, symprec );
 }
 
-static int brv_tetra_body( double lattice[3][3],
+static int get_brv_tetra_body( double lattice[3][3],
 			   SPGCONST double min_lattice[3][3],
 			   const double symprec )
 {
@@ -510,15 +442,15 @@ static int get_brv_ortho( Bravais *bravais,
   Centering centering;
 
   /* orthorhombic-P */
-  if (check_ortho(min_lattice, symprec)) {
-    mat_copy_matrix_d3(bravais->lattice, min_lattice);
+  if (get_brv_ortho_primitive(bravais->lattice, min_lattice, symprec)) {
     bravais->centering = NO_CENTER;
+    debug_print("ortho, no-centering\n");
     goto found;
   }
 
   /* orthorhombic-C (or A,B) or I */
   debug_print("Checking Ortho base or body center ...\n");
-  centering = brv_ortho_base_I_center(bravais->lattice, min_lattice, symprec);
+  centering = get_brv_ortho_base_I_center(bravais->lattice, min_lattice, symprec);
   if (centering) {
     bravais->centering = centering;
     goto found;
@@ -526,7 +458,7 @@ static int get_brv_ortho( Bravais *bravais,
 
   /* orthorhombic-F */
   debug_print("Checking Ortho face center ...\n");
-  if (brv_ortho_F_center(bravais->lattice, min_lattice, symprec)) {
+  if (get_brv_ortho_F_center(bravais->lattice, min_lattice, symprec)) {
     bravais->centering = FACE;
     goto found;
   }
@@ -553,7 +485,15 @@ static int check_ortho( SPGCONST double lattice[3][3],
   return 0;
 }
 
-static Centering brv_ortho_base_I_center( double lattice[3][3],
+static int get_brv_ortho_primitive( double lattice[3][3],
+				    SPGCONST double min_lattice[3][3],
+				    const double symprec )
+{
+  return exhaustive_search( lattice, min_lattice,
+			    check_ortho, NO_CENTER, symprec );
+}
+
+static Centering get_brv_ortho_base_I_center( double lattice[3][3],
 					  SPGCONST double min_lattice[3][3],
 					  const double symprec )
 {
@@ -564,7 +504,7 @@ static Centering brv_ortho_base_I_center( double lattice[3][3],
   return NO_CENTER;
 }
 
-static int brv_ortho_F_center( double lattice[3][3],
+static int get_brv_ortho_F_center( double lattice[3][3],
 			       SPGCONST double min_lattice[3][3],
 			       const double symprec )
 {
@@ -602,7 +542,7 @@ static int check_hexa( SPGCONST double lattice[3][3],
   check_equal_edge(edge_equal, lattice, symprec);
 
   if (angle_90[0] && angle_90[1] && edge_equal[2]) {
-    get_metric(metric, lattice);
+    mat_get_metric(metric, lattice);
     ratio = metric[0][1] / metric[0][0];
 
     if ( mat_Dabs(ratio + 0.5) < symprec ) {
@@ -621,10 +561,11 @@ static int get_brv_rhombo( Bravais *bravais,
 			   const double symprec )
 {
   int edge_equal[3];
-  check_equal_edge(edge_equal, min_lattice, symprec);
 
-  if (brv_rhombo(bravais->lattice, min_lattice, symprec)) {
+  if ( exhaustive_search( bravais->lattice, min_lattice,
+			  check_rhombo, NO_CENTER, symprec ) ) {
     bravais->centering = NO_CENTER;
+    debug_print("Rhombohedral lattice\n");
     return 1;
   }
 
@@ -637,25 +578,13 @@ static int check_rhombo( SPGCONST double lattice[3][3],
   double metric[3][3];
   int edge_equal[3];
 
-  get_metric(metric, lattice);
+  mat_get_metric(metric, lattice);
   check_equal_edge(edge_equal, lattice, symprec);
 
   if (edge_equal[0] && edge_equal[1] && edge_equal[2] &&
       (mat_Dabs(metric[0][1] - metric[1][2]) < symprec * symprec ) &&
       (mat_Dabs(metric[0][1] - metric[0][2]) < symprec * symprec )) {
 
-    return 1;
-  }
-
-  return 0;
-}
-
-static int brv_rhombo( double lattice[3][3],
-		       SPGCONST double min_lattice[3][3],
-		       const double symprec )
-{
-  if (exhaustive_search( lattice, min_lattice,
-			 check_rhombo, NO_CENTER, symprec )) {
     return 1;
   }
 
@@ -675,14 +604,14 @@ static int get_brv_monocli( Bravais *bravais,
   /*  second setting, i.e., alpha=gamma=90 deg. beta is not 90 deg. */
 
   /* Monoclinic-P */
-  if (brv_monocli_primitive(bravais->lattice, min_lattice, symprec)) {
+  if (get_brv_monocli_primitive(bravais->lattice, min_lattice, symprec)) {
     bravais->centering = NO_CENTER;
     debug_print("Monoclinic-P\n");
     goto end;
   }
 
   /* Monoclinic base center*/
-  centering = brv_monocli_base_center(bravais->lattice, min_lattice, symprec);
+  centering = get_brv_monocli_base_center(bravais->lattice, min_lattice, symprec);
   if (centering) {
     bravais->centering = centering;
     debug_print("Monoclinic base center\n");
@@ -731,8 +660,7 @@ static void set_brv_monocli( Bravais *bravais,
       lattice[i][2] =  tmp_lattice[i][2];
     }
 
-    if (centering == B_FACE)
-      centering = A_FACE;
+    if (centering == B_FACE) { centering = A_FACE; }
 
   } else {
     if (angle_90[0] && angle_90[1]) {
@@ -742,8 +670,7 @@ static void set_brv_monocli( Bravais *bravais,
 	lattice[i][2] =  tmp_lattice[i][1];
       }
 
-      if (centering == B_FACE)
-	centering = C_FACE;
+      if (centering == B_FACE) { centering = C_FACE; }
     }
   }
 
@@ -772,17 +699,17 @@ static void set_brv_monocli( Bravais *bravais,
   bravais->centering = centering;
 }
 
-static int brv_monocli_primitive( double lattice[3][3],
-				  SPGCONST double min_lattice[3][3],
-				  const double symprec )
+static int get_brv_monocli_primitive( double lattice[3][3],
+				      SPGCONST double min_lattice[3][3],
+				      const double symprec )
 {
   return exhaustive_search( lattice, min_lattice,
 			    check_monocli, NO_CENTER, symprec );
 }
 
-static Centering brv_monocli_base_center( double lattice[3][3],
-					  SPGCONST double min_lattice[3][3],
-					  const double symprec )
+static Centering get_brv_monocli_base_center( double lattice[3][3],
+					      SPGCONST double min_lattice[3][3],
+					      const double symprec )
 {
   int found;
   Centering centering = NO_CENTER;
@@ -791,7 +718,6 @@ static Centering brv_monocli_base_center( double lattice[3][3],
 			     check_monocli, BASE, symprec );
 
   if (found) {
-    brv_smallest_lattice_vector(lattice, lattice, symprec);
     centering = get_base_center(lattice, min_lattice, symprec);
     debug_print("Monocli centering: %d\n",  centering);
     return centering;
@@ -811,7 +737,7 @@ static void check_angle90( int angle_90[3],
   int i, c0, c1;
   double metric[3][3];
 
-  get_metric(metric, lattice);
+  mat_get_metric(metric, lattice);
   for (i = 0; i < 3; i++) {
 
     c0 = (i + 1) % 3;
@@ -834,7 +760,7 @@ static void check_equal_edge( int edge_equal[3],
   int i, c0, c1;
   double metric[3][3];
 
-  get_metric(metric, lattice);
+  mat_get_metric(metric, lattice);
   for (i = 0; i < 3; i++) {
 
     c0 = (i + 1) % 3;
@@ -848,14 +774,6 @@ static void check_equal_edge( int edge_equal[3],
       edge_equal[i] = 0;
     }
   }
-}
-
-static void get_metric( double metric[3][3],
-			SPGCONST double lattice[3][3])
-{
-  double lattice_t[3][3];
-  mat_transpose_matrix_d3(lattice_t, lattice);
-  mat_multiply_matrix_d3(metric, lattice_t, lattice);
 }
 
 static void set_relative_lattice(void)
@@ -1016,24 +934,6 @@ static int exhaustive_search( double lattice[3][3],
 
     if ( mat_Dabs(mat_get_determinant_d3(lattice)) > symprec ) {
       if ((*check_bravais)(lattice, symprec)) {
-	/* printf("%d\n", factor); */
-	/* for ( j = 0; j < 3; j++ ) { */
-	/*   if ( factor == 1 )  */
-	/*     printf("%d %d %d\n", */
-	/* 	   relative_lattice1[i][j][0], */
-	/* 	   relative_lattice1[i][j][1], */
-	/* 	   relative_lattice1[i][j][2]); */
-	/*   if ( factor == 2 )  */
-	/*     printf("%d %d %d\n", */
-	/* 	   relative_lattice2[i][j][0], */
-	/* 	   relative_lattice2[i][j][1], */
-	/* 	   relative_lattice2[i][j][2]); */
-	/*   if ( factor == 4 )  */
-	/*     printf("%d %d %d\n", */
-	/* 	   relative_lattice4[i][j][0], */
-	/* 	   relative_lattice4[i][j][1], */
-	/* 	   relative_lattice4[i][j][2]); */
-	/* } */
 	return 1;
       }
     }
@@ -1106,6 +1006,7 @@ static Centering get_base_center( SPGCONST double brv_lattice[3][3],
   return NO_CENTER;
 
  end:
+  debug_print("centering: %d\n", centering);
   return centering;
 }
 
@@ -1151,7 +1052,7 @@ static void get_Delaunay_reduction( double red_lattice[3][3],
   debug_print_matrix_d3(red_lattice);
 #ifdef DEBUG
   double metric[3][3];
-  get_metric(metric, red_lattice);
+  mat_get_metric(metric, red_lattice);
   debug_print("Metric of Delaunay reduction\n");
   debug_print_matrix_d3(metric);
 #endif
@@ -1170,7 +1071,7 @@ static int get_Delaunay_reduction_basis( double basis[4][3],
       for ( k = 0; k < 3; k++ ) {
 	dot_product += basis[i][k] * basis[j][k];
       }
-      if ( dot_product > symprec ) {
+      if ( dot_product > symprec) {
 	for ( k = 0; k < 4; k++ ) {
 	  if ( k != i && k != j ) {
 	    for ( l = 0; l < 3; l++ ) {

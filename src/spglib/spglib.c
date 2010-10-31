@@ -6,19 +6,17 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include "spglib.h"
 #include "bravais.h"
-#include "bravais_art.h"
+#include "bravais_virtual.h"
 #include "cell.h"
 #include "mathfunc.h"
+#include "pointgroup.h"
 #include "primitive.h"
 #include "symmetry.h"
 #include "symmetry_kpoint.h"
-#include "pointgroup.h"
-#include "spacegroup.h"
-#include "spacegroup_database.h"
+#include "spacegroup_type.h"
 
 /*
   ------------------------------------------------------------------
@@ -88,35 +86,76 @@ int spg_get_symmetry( int rotation[][3][3],
   /* max_size is used for allocating memory space for returning symmetry operations. */
 
   int i, j, size;
-  Symmetry symmetry;
+  Symmetry *symmetry;
   Bravais bravais;
-  Cell cell;
+  Cell *cell;
 
-  cell = cel_new_cell(num_atom);
-  cel_set_cell(&cell, lattice, position, types);
-  bravais = brv_get_brv_lattice(cell.lattice, symprec);
-  symmetry = sym_get_operation(&bravais, &cell, symprec);
+  cell = cel_alloc_cell( num_atom );
+  cel_set_cell( cell, lattice, position, types );
+  bravais = brv_get_brv_lattice( cell->lattice, symprec );
+  symmetry = sym_get_operation( &bravais, cell, symprec );
 
-  if (symmetry.size > max_size) {
+  if (symmetry->size > max_size) {
     fprintf(stderr, "spglib: Indicated max size(=%d) is less than number ", max_size);
-    fprintf(stderr, "spglib: of symmetry operations(=%d).\n", symmetry.size);
-    sym_delete_symmetry(&symmetry);
+    fprintf(stderr, "spglib: of symmetry operations(=%d).\n", symmetry->size);
+    sym_free_symmetry( symmetry );
     return 0;
   }
 
-  for (i = 0; i < symmetry.size; i++) {
-    mat_copy_matrix_i3(rotation[i], symmetry.rot[i]);
-    for (j = 0; j < 3; j++)
-      translation[i][j] = symmetry.trans[i][j];
+  for (i = 0; i < symmetry->size; i++) {
+    mat_copy_matrix_i3(rotation[i], symmetry->rot[i]);
+    for (j = 0; j < 3; j++) {
+      translation[i][j] = symmetry->trans[i][j];
+    }
   }
 
-  size = symmetry.size;
+  size = symmetry->size;
 
-  cel_delete_cell(&cell);
-  sym_delete_symmetry(&symmetry);
+  cel_free_cell( cell );
+  sym_free_symmetry( symmetry );
 
   return size;
 }
+
+/* This works perfectly. */
+/* int spg_get_symmetry_new( int rotation[][3][3], */
+/* 			  double translation[][3], */
+/* 			  const int max_size, */
+/* 			  SPGCONST double lattice[3][3], */
+/* 			  SPGCONST double position[][3], */
+/* 			  const int types[], */
+/* 			  const int num_atom, */
+/* 			  const double symprec ) { */
+/*   int i, j, size; */
+/*   Symmetry *symmetry; */
+/*   Cell *cell; */
+
+/*   cell = cel_alloc_cell( num_atom ); */
+/*   cel_set_cell( cell, lattice, position, types ); */
+/*   symmetry = sym_get_operation_direct( cell, symprec ); */
+
+/*   if (symmetry->size > max_size) { */
+/*     fprintf(stderr, "spglib: Indicated max size(=%d) is less than number ", max_size); */
+/*     fprintf(stderr, "spglib: of symmetry operations(=%d).\n", symmetry->size); */
+/*     sym_free_symmetry( symmetry ); */
+/*     return 0; */
+/*   } */
+
+/*   for (i = 0; i < symmetry->size; i++) { */
+/*     mat_copy_matrix_i3(rotation[i], symmetry->rot[i]); */
+/*     for (j = 0; j < 3; j++) { */
+/*       translation[i][j] = symmetry->trans[i][j]; */
+/*     } */
+/*   } */
+
+/*   size = symmetry->size; */
+
+/*   cel_free_cell( cell ); */
+/*   sym_free_symmetry( symmetry ); */
+
+/*   return size; */
+/* } */
+
 
 int spg_get_conventional_symmetry( double bravais_lattice[3][3], 
 				   int rotation[][3][3],
@@ -132,58 +171,64 @@ int spg_get_conventional_symmetry( double bravais_lattice[3][3],
   /* symmetry operations. */
 
   int i, j, size;
-  Symmetry symmetry, conv_sym;
+  Symmetry *symmetry, *conv_sym;
   Bravais bravais;
   Holohedry holohedry;
-  Cell primitive, cell;
+  Cell *primitive, *cell;
 
-  cell = cel_new_cell(num_atom);
-  cel_set_cell(&cell, lattice, position, types);
+  cell = cel_alloc_cell(num_atom);
+  cel_set_cell( cell, lattice, position, types );
 
-  if ( sym_get_multiplicity(&cell, symprec) > 1) {
-    primitive = prm_get_primitive(&cell, symprec);
-    if ( primitive.size == 0 ) {
+  if ( sym_get_multiplicity( cell, symprec ) > 1) {
+    primitive = prm_get_primitive( cell, symprec );
+    if ( primitive->size == 0 ) {
       return 0;
     } 
-    cel_delete_cell(&cell);
-    cell = cel_new_cell(primitive.size);
-    cel_set_cell(&cell, primitive.lattice, primitive.position, primitive.types);
-    cel_delete_cell(&primitive);
+    cel_free_cell( cell );
+    cell = cel_alloc_cell( primitive->size );
+    cel_set_cell( cell, primitive->lattice,
+		  primitive->position, primitive->types );
+    cel_free_cell( primitive );
   }
 
-  bravais = brv_get_brv_lattice(cell.lattice, symprec);
-  symmetry = sym_get_operation(&bravais, &cell, symprec);
-  holohedry = ptg_get_holohedry(bravais.holohedry, &symmetry);
+  bravais = brv_get_brv_lattice( cell->lattice, symprec );
+  symmetry = sym_get_operation( &bravais, cell, symprec );
+  holohedry = ptg_get_holohedry( symmetry );
 
   if (holohedry < bravais.holohedry) {
-    if ( ! ( art_get_artificial_bravais(&bravais, &symmetry, &cell, holohedry, symprec) ) ) {
-      cel_delete_cell(&cell);
-      sym_delete_symmetry(&symmetry);
+    if ( ! ( art_get_artificial_bravais( &bravais, symmetry,
+					 cell, holohedry, symprec ) ) ) {
+      cel_free_cell( cell );
+      sym_free_symmetry( symmetry );
       return 0;
     }
   }
 
-  conv_sym = tbl_get_conventional_symmetry(&bravais, &cell, &symmetry, symprec);
-  sym_delete_symmetry(&symmetry);
+  conv_sym = typ_get_conventional_symmetry( &bravais,
+					    cell->lattice,
+					    symmetry,
+					    symprec );
+  sym_free_symmetry( symmetry );
 
-  if (conv_sym.size > max_size) {
+  if ( conv_sym->size > max_size ) {
     fprintf(stderr, "spglib: Indicated max size(=%d) is less than number ", max_size);
-    fprintf(stderr, "spglib: of conventional symmetry operations(=%d).\n", conv_sym.size);
-    sym_delete_symmetry(&conv_sym);
+    fprintf(stderr, "spglib: of conventional symmetry operations(=%d).\n", conv_sym->size);
+    sym_free_symmetry( conv_sym );
     return 0;
   }
 
-  for (i = 0; i < conv_sym.size; i++) {
-    mat_copy_matrix_i3(rotation[i], conv_sym.rot[i]);
-    for (j = 0; j < 3; j++)
-      translation[i][j] = conv_sym.trans[i][j];
+  for (i = 0; i < conv_sym->size; i++) {
+    mat_copy_matrix_i3(rotation[i], conv_sym->rot[i]);
+    for (j = 0; j < 3; j++) {
+      translation[i][j] = conv_sym->trans[i][j];
+    }
   }
 
-  size = conv_sym.size;
+  size = conv_sym->size;
   mat_copy_matrix_d3( bravais_lattice, bravais.lattice );
 
-  cel_delete_cell(&cell);
-  sym_delete_symmetry(&conv_sym);
+  cel_free_cell( cell );
+  sym_free_symmetry( conv_sym );
 
   return size;
 }
@@ -209,20 +254,20 @@ int spg_get_multiplicity( SPGCONST double lattice[3][3],
 			  const int num_atom,
 			  const double symprec )
 {
-  Symmetry symmetry;
+  Symmetry *symmetry;
   Bravais bravais;
-  Cell cell;
+  Cell *cell;
   int size;
 
-  cell = cel_new_cell(num_atom);
-  cel_set_cell(&cell, lattice, position, types);
-  bravais = brv_get_brv_lattice(cell.lattice, symprec);
-  symmetry = sym_get_operation(&bravais, &cell, symprec);
+  cell = cel_alloc_cell( num_atom );
+  cel_set_cell( cell, lattice, position, types );
+  bravais = brv_get_brv_lattice( cell->lattice, symprec );
+  symmetry = sym_get_operation( &bravais, cell, symprec );
 
-  size = symmetry.size;
+  size = symmetry->size;
 
-  cel_delete_cell(&cell);
-  sym_delete_symmetry(&symmetry);
+  cel_free_cell( cell );
+  sym_free_symmetry( symmetry );
 
   return size;
 }
@@ -236,15 +281,15 @@ int spg_get_max_multiplicity( SPGCONST double lattice[3][3],
 			      const int num_atom,
 			      const double symprec )
 {
-  Cell cell;
+  Cell *cell;
   int num_max_multi;
 
-  cell = cel_new_cell(num_atom);
-  cel_set_cell(&cell, lattice, position, types);
+  cell = cel_alloc_cell( num_atom );
+  cel_set_cell( cell, lattice, position, types );
   /* 48 is the magic number, which is the number of rotations */
   /* in the highest point symmetry Oh. */
-  num_max_multi = sym_get_multiplicity(&cell, symprec) * 48;
-  cel_delete_cell(&cell);
+  num_max_multi = sym_get_multiplicity( cell, symprec ) * 48;
+  cel_free_cell( cell );
 
   return num_max_multi;
 }
@@ -259,31 +304,31 @@ int spg_find_primitive( double lattice[3][3],
 			const double symprec )
 {
   int i, j, num_prim_atom=0;
-  Cell cell, primitive;
+  Cell *cell, *primitive;
 
-  cell = cel_new_cell(num_atom);
-  cel_set_cell(&cell, lattice, position, types);
+  cell = cel_alloc_cell( num_atom );
+  cel_set_cell( cell, lattice, position, types );
 
   /* find primitive cell */
-  if (sym_get_multiplicity(&cell, symprec) > 1) {
+  if (sym_get_multiplicity( cell, symprec ) > 1) {
 
-    primitive = prm_get_primitive(&cell, symprec);
-    num_prim_atom = primitive.size;
+    primitive = prm_get_primitive( cell, symprec );
+    num_prim_atom = primitive->size;
     if ( num_prim_atom > 0 ) {
-      mat_copy_matrix_d3(lattice, primitive.lattice);
-      for (i=0; i<primitive.size; i++) {
-	types[i] = primitive.types[i];
+      mat_copy_matrix_d3( lattice, primitive->lattice );
+      for ( i = 0; i < primitive->size; i++ ) {
+	types[i] = primitive->types[i];
 	for (j=0; j<3; j++) {
-	  position[i][j] = primitive.position[i][j];
+	  position[i][j] = primitive->position[i][j];
 	}
       }
-      cel_delete_cell(&primitive);
+      cel_free_cell( primitive );
     }
   } else {
     num_prim_atom = 0;
   }
 
-  cel_delete_cell(&cell);
+  cel_free_cell( cell );
     
   return num_prim_atom;
 }
@@ -296,51 +341,44 @@ void spg_show_symmetry( SPGCONST double lattice[3][3],
 			const int num_atom,
 			const double symprec )
 {
-  Cell cell;
+  Cell *cell;
   Spacegroup spacegroup;
-  cell = cel_new_cell(num_atom);
-  cel_set_cell(&cell, lattice, position, types);
+  cell = cel_alloc_cell( num_atom );
+  cel_set_cell( cell, lattice, position, types );
 
-  spacegroup = tbl_get_spacegroup(&cell, symprec);
+  spacegroup = typ_get_spacegroup( cell, symprec );
 
   if (spacegroup.number) {
     printf("Space group No.%d\n", spacegroup.number);
-    printf(" International: %s%s\n", spacegroup.bravais_symbol,
-	   spacegroup.international);
-    printf(" International(long): %s%s\n", spacegroup.bravais_symbol,
-	   spacegroup.international_long);
+    printf(" International: %s\n", spacegroup.international_short);
+    printf(" International(long): %s\n", spacegroup.international_long);
     printf(" Schoenflies: %s\n", spacegroup.schoenflies);
-    printf(" Multiplicity: %d\n", spacegroup.multi);
-    printf("Point group\n");
-    printf(" International: %s\n", spacegroup.pointgroup.international);
-    printf(" Schoenflies: %s\n", spacegroup.pointgroup.schoenflies);
   }
     
-  cel_delete_cell(&cell);
+  cel_free_cell( cell );
 }
 
 /* Space group is found in international table symbol (``symbol``) and */
 /* number (return value). 0 is returned when it fails. */
-int spg_get_international( char symbol[21],
+int spg_get_international( char symbol[11],
 			   SPGCONST double lattice[3][3],
 			   SPGCONST double position[][3],
 			   const int types[],
 			   const int num_atom,
 			   const double symprec )
 {
-  Cell cell;
+  Cell *cell;
   Spacegroup spacegroup;
 
-  cell = cel_new_cell(num_atom);
-  cel_set_cell(&cell, lattice, position, types);
+  cell = cel_alloc_cell( num_atom );
+  cel_set_cell( cell, lattice, position, types );
 
-  spacegroup = tbl_get_spacegroup(&cell, symprec);
+  spacegroup = typ_get_spacegroup( cell, symprec );
   if ( spacegroup.number > 0 ) {
-    strcpy(symbol, spacegroup.bravais_symbol);
-    strcpy(&symbol[1], spacegroup.international);
+    strcpy(symbol, spacegroup.international_short);
   }
 
-  cel_delete_cell(&cell);
+  cel_free_cell( cell );
   
   return spacegroup.number;
 }
@@ -348,27 +386,26 @@ int spg_get_international( char symbol[21],
 /* Space group is found in international table symbol (``symbol``) */
 /* number (return value). Bravais lattice parameters are written on */
 /* (``lattice``) destructively. 0 is returned when it fails. */
-int spg_get_international_with_bravais( char symbol[21],
+int spg_get_international_with_bravais( char symbol[11],
 					double lattice[3][3],
 					SPGCONST double position[][3],
 					const int types[],
 					const int num_atom,
 					const double symprec )
 {
-  Cell cell;
+  Cell *cell;
   Spacegroup spacegroup;
 
-  cell = cel_new_cell(num_atom);
-  cel_set_cell(&cell, lattice, position, types);
+  cell = cel_alloc_cell( num_atom );
+  cel_set_cell( cell, lattice, position, types );
 
-  spacegroup = tbl_get_spacegroup(&cell, symprec);
+  spacegroup = typ_get_spacegroup( cell, symprec );
   if ( spacegroup.number > 0 ) {
-    strcpy(symbol, spacegroup.bravais_symbol);
-    strcpy(&symbol[1], spacegroup.international);
+    strcpy(symbol, spacegroup.international_short);
     mat_copy_matrix_d3( lattice, spacegroup.bravais_lattice );
   }
 
-  cel_delete_cell(&cell);
+  cel_free_cell( cell );
   
   return spacegroup.number;
 }
@@ -382,18 +419,18 @@ int spg_get_schoenflies( char symbol[10],
 			 const int types[], const int num_atom,
 			 const double symprec )
 {
-  Cell cell;
+  Cell *cell;
   Spacegroup spacegroup;
 
-  cell = cel_new_cell(num_atom);
-  cel_set_cell(&cell, lattice, position, types);
+  cell = cel_alloc_cell( num_atom );
+  cel_set_cell( cell, lattice, position, types );
 
-  spacegroup = tbl_get_spacegroup(&cell, symprec);
+  spacegroup = typ_get_spacegroup( cell, symprec );
   if ( spacegroup.number > 0 ) {
     strcpy(symbol, spacegroup.schoenflies);
   }
 
-  cel_delete_cell(&cell);
+  cel_free_cell( cell );
 
   return spacegroup.number;
 }
@@ -418,23 +455,23 @@ int spg_get_ir_kpoints( int map[],
 			const int is_time_reversal,
 			const double symprec )
 {
-  Symmetry symmetry;
+  Symmetry *symmetry;
   Bravais bravais;
-  Cell cell;
+  Cell *cell;
   int num_ir_kpoint;
 
-  cell = cel_new_cell(num_atom);
-  cel_set_cell(&cell, lattice, position, types);
-  bravais = brv_get_brv_lattice(cell.lattice, symprec);
-  symmetry = sym_get_operation(&bravais, &cell, symprec);
+  cell = cel_alloc_cell( num_atom );
+  cel_set_cell( cell, lattice, position, types );
+  bravais = brv_get_brv_lattice( cell->lattice, symprec );
+  symmetry = sym_get_operation( &bravais, cell, symprec );
 
   num_ir_kpoint = kpt_get_irreducible_kpoints( map, kpoints, num_kpoint,
-					       lattice, &symmetry,
+					       lattice, symmetry,
 					       is_time_reversal, symprec );
 
 
-  cel_delete_cell(&cell);
-  sym_delete_symmetry(&symmetry);
+  cel_free_cell( cell );
+  sym_free_symmetry( symmetry );
 
   return num_ir_kpoint;
 }
@@ -466,15 +503,15 @@ int spg_get_ir_reciprocal_mesh( int grid_point[][3],
 				const int num_atom,
 				const double symprec )
 {
-  Symmetry symmetry;
+  Symmetry *symmetry;
   Bravais bravais;
-  Cell cell;
+  Cell *cell;
   int num_ir;
 
-  cell = cel_new_cell(num_atom);
-  cel_set_cell(&cell, lattice, position, types);
-  bravais = brv_get_brv_lattice(cell.lattice, symprec);
-  symmetry = sym_get_operation(&bravais, &cell, symprec);
+  cell = cel_alloc_cell( num_atom );
+  cel_set_cell( cell, lattice, position, types );
+  bravais = brv_get_brv_lattice( cell->lattice, symprec );
+  symmetry = sym_get_operation( &bravais, cell, symprec );
 
   num_ir = kpt_get_irreducible_reciprocal_mesh( grid_point,
 						map,
@@ -482,12 +519,12 @@ int spg_get_ir_reciprocal_mesh( int grid_point[][3],
 						is_shift,
 						is_time_reversal,
 						lattice,
-						&symmetry,
+						symmetry,
 						symprec );
 
 
-  cel_delete_cell(&cell);
-  sym_delete_symmetry(&symmetry);
+  cel_free_cell( cell );
+  sym_free_symmetry( symmetry );
 
   return num_ir;
 }
@@ -512,12 +549,12 @@ int spg_get_stabilized_reciprocal_mesh( int grid_point[][3],
 				        SPGCONST double qpoints[][3],
 				        const double symprec )
 {
-  Symmetry symmetry;
+  Symmetry *symmetry;
   int i, num_ir;
   
-  symmetry = sym_new_symmetry(num_rot);
+  symmetry = sym_alloc_symmetry( num_rot );
   for ( i = 0; i < num_rot; i++ ) {
-    mat_copy_matrix_i3( symmetry.rot[i], rotations[i] );
+    mat_copy_matrix_i3( symmetry->rot[i], rotations[i] );
   }
 
   num_ir = kpt_get_stabilized_reciprocal_mesh( grid_point,
@@ -526,12 +563,12 @@ int spg_get_stabilized_reciprocal_mesh( int grid_point[][3],
 					       is_shift,
 					       is_time_reversal,
 					       lattice,
-					       &symmetry,
+					       symmetry,
 					       num_q,
 					       qpoints,
 					       symprec );
 
-  sym_delete_symmetry(&symmetry);
+  sym_free_symmetry( symmetry );
 
   return num_ir;
 }
@@ -549,12 +586,12 @@ int spg_get_triplets_reciprocal_mesh( int triplets[][3],
 				      SPGCONST int rotations[][3][3],
 				      const double symprec )
 {
-  Symmetry symmetry;
+  Symmetry *symmetry;
   int i, num_ir;
   
-  symmetry = sym_new_symmetry(num_rot);
+  symmetry = sym_alloc_symmetry( num_rot );
   for ( i = 0; i < num_rot; i++ ) {
-    mat_copy_matrix_i3( symmetry.rot[i], rotations[i] );
+    mat_copy_matrix_i3( symmetry->rot[i], rotations[i] );
   }
 
   num_ir = kpt_get_triplets_reciprocal_mesh( triplets, 
@@ -564,10 +601,10 @@ int spg_get_triplets_reciprocal_mesh( int triplets[][3],
 					     mesh,
 					     is_time_reversal,
 					     lattice,
-					     &symmetry,
+					     symmetry,
 					     symprec );
 
-  sym_delete_symmetry(&symmetry);
+  sym_free_symmetry( symmetry );
 
   return num_ir;
 }
@@ -585,12 +622,12 @@ int spg_get_triplets_reciprocal_mesh_with_q( int triplets_with_q[][3],
 					     SPGCONST int rotations[][3][3],
 					     const double symprec )
 {
-  Symmetry symmetry;
+  Symmetry *symmetry;
   int i, num_ir;
   
-  symmetry = sym_new_symmetry(num_rot);
+  symmetry = sym_alloc_symmetry( num_rot );
   for ( i = 0; i < num_rot; i++ ) {
-    mat_copy_matrix_i3( symmetry.rot[i], rotations[i] );
+    mat_copy_matrix_i3( symmetry->rot[i], rotations[i] );
   }
 
   num_ir = kpt_get_triplets_reciprocal_mesh_with_q( triplets_with_q,
@@ -602,11 +639,11 @@ int spg_get_triplets_reciprocal_mesh_with_q( int triplets_with_q[][3],
 						    mesh,
 						    is_time_reversal,
 						    lattice,
-						    &symmetry,
+						    symmetry,
 						    symprec );
 
   
-  sym_delete_symmetry(&symmetry);
+  sym_free_symmetry( symmetry );
 
   return num_ir;
 }

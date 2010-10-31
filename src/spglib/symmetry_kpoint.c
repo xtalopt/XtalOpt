@@ -60,8 +60,6 @@ static void get_vector_modulo( int v[3],
 static int grid_to_address( const int grid[3],
 			    const int mesh[3],
 			    const int is_shift[3] );
-static int check_input_values( const int num_kpoint,
-			       const int mesh[3] );
 static void free_array2D_int( int **array,
 			      const int num_row );
 static int ** allocate_array2d_int( const int num_row,
@@ -855,23 +853,6 @@ static void get_vector_modulo( int v[3],
       v[i] += m[i];
   }
 }
-
-static int check_input_values( const int num_kpoint,
-			       const int mesh[3] )
-{
-  if ( num_kpoint < mesh[0] * mesh[1] * mesh[2] ) {
-    fprintf(stderr, "spglib: More memory space for grid points is required.");
-    return 0;
-  }
-
-  if ( mesh[0] < 1 || mesh[1] < 1 || mesh[2] < 1 ) {
-    fprintf(stderr, "spglib: Each mesh number has to be positive.");
-    return 0;
-  }
-
-  return 1;
-}
-
 
 static void free_array2D_int( int **array,
 			  const int num_row )

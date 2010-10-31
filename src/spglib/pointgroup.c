@@ -9,7 +9,6 @@
 #include "pointgroup.h"
 #include "symmetry.h"
 #include "mathfunc.h"
-#include "spacegroup_data.h"
 
 static void get_pointgroup_class_table( int table[10],
 					const Symmetry * symmetry );
@@ -23,28 +22,16 @@ static PointgroupData get_pointgroup_data( const int num );
 static PointgroupData get_pointgroup( const Symmetry * symmetry );
 
 #ifdef DEBUG
-static void print_pointgroup_comment( const Holohedry pointgroup_holohedry,
-				      const Holohedry holohedry );
 static void print_holohedry( const Holohedry holohedry );
 #endif
 
 
-Holohedry ptg_get_holohedry( const Holohedry holohedry,
-			     const Symmetry * symmetry )
+Holohedry ptg_get_holohedry( const Symmetry * symmetry )
 {
   PointgroupData pointgroup_data;
 
-  pointgroup_data = get_pointgroup(symmetry);
-
-  /* Bravais lattice may be changed by the obtained symmetry operations. */
-  debug_print("pointgroup: %s\n", pointgroup_data.symbol);
-  debug_print("holohedry in bravais:%d,  in pointgroup_data: %d\n",
-	      holohedry, pointgroup_data.holohedry);
-
-#ifdef DEBUG
-  if (pointgroup_data.holohedry != holohedry)
-    print_pointgroup_comment(pointgroup_data.holohedry, holohedry);
-#endif
+  pointgroup_data = get_pointgroup( symmetry );
+  debug_print("Holohedry: %d\n", pointgroup_data.holohedry);
 
   return pointgroup_data.holohedry;
 }
@@ -192,72 +179,72 @@ static PointgroupData get_pointgroup_data( const int num )
   PointgroupData pointgroup_data[32] = {
     {
       {0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
-      "    1",
+      "1    ",
       TRICLI
     },
     {
       {0, 0, 0, 0, 1, 1, 0, 0, 0, 0},
-      "   -1",
+      "-1   ",
       TRICLI
     },
     {
       {0, 0, 0, 0, 0, 1, 1, 0, 0, 0},
-      "    2",
+      "2    ",
       MONOCLI
     },
     {
       {0, 0, 0, 1, 0, 1, 0, 0, 0, 0},
-      "   -2",
+      "m    ",
       MONOCLI
     },
     {
       {0, 0, 0, 1, 1, 1, 1, 0, 0, 0},
-      "  2/m",
+      "2/m  ",
       MONOCLI
     },
     {
       {0, 0, 0, 0, 0, 1, 3, 0, 0, 0},
-      "  222",
+      "222  ",
       ORTHO
     },
     {
       {0, 0, 0, 2, 0, 1, 1, 0, 0, 0},
-      "  mm2",
+      "mm2  ",
       ORTHO
     },
     {
       {0, 0, 0, 3, 1, 1, 3, 0, 0, 0},
-      "  mmm",
+      "mmm  ",
       ORTHO
     },
     {
       {0, 0, 0, 0, 0, 1, 1, 0, 2, 0},
-      "    4",
+      "4    ",
       TETRA
     },
     {
       {0, 2, 0, 0, 0, 1, 1, 0, 0, 0},
-      "   -4",
+      "-4   ",
       TETRA
     },
     {
       {0, 2, 0, 1, 1, 1, 1, 0, 2, 0},
-      "  4/m",
+      "4/m  ",
       TETRA
     },
     {
       {0, 0, 0, 0, 0, 1, 5, 0, 2, 0},
-      "  422",
+      "422  ",
       TETRA
     },
     {
       {0, 0, 0, 4, 0, 1, 1, 0, 2, 0},
-      "  4mm",
+      "4mm  ",
       TETRA
     },
     {
       {0, 2, 0, 2, 0, 1, 3, 0, 0, 0},
-      " -42m",
+      "-42m ",
       TETRA
     },
     {
@@ -267,57 +254,57 @@ static PointgroupData get_pointgroup_data( const int num )
     },
     {
       {0, 0, 0, 0, 0, 1, 0, 2, 0, 0},
-      "    3",
+      "3    ",
       TRIGO
     },
     {
       {0, 0, 2, 0, 1, 1, 0, 2, 0, 0},
-      "   -3",
+      "-3   ",
       TRIGO
     },
     {
       {0, 0, 0, 0, 0, 1, 3, 2, 0, 0},
-      "   32",
+      "32   ",
       TRIGO
     },
     {
       {0, 0, 0, 3, 0, 1, 0, 2, 0, 0},
-      "   3m",
+      "3m   ",
       TRIGO
     },
     {
       {0, 0, 2, 3, 1, 1, 3, 2, 0, 0},
-      "  -3m",
+      "-3m  ",
       TRIGO
     },
     {
       {0, 0, 0, 0, 0, 1, 1, 2, 0, 2},
-      "    6",
+      "6    ",
       HEXA
     },
     {
       {2, 0, 0, 1, 0, 1, 0, 2, 0, 0},
-      "   -6",
+      "-6   ",
       HEXA
     },
     {
       {2, 0, 2, 1, 1, 1, 1, 2, 0, 2},
-      "  6/m",
+      "6/m  ",
       HEXA
     },
     {
       {0, 0, 0, 0, 0, 1, 7, 2, 0, 2},
-      "  622",
+      "622  ",
       HEXA
     },
     {
       {0, 0, 0, 6, 0, 1, 1, 2, 0, 2},
-      "  6mm",
+      "6mm  ",
       HEXA
     },
     {
       {2, 0, 0, 4, 0, 1, 3, 2, 0, 0},
-      " -62m",
+      "-62m ",
       HEXA
     },
     {
@@ -327,27 +314,27 @@ static PointgroupData get_pointgroup_data( const int num )
     },
     {
       {0, 0, 0, 0, 0, 1, 3, 8, 0, 0},
-      "   23",
+      "23   ",
       CUBIC
     },
     {
       {0, 0, 8, 3, 1, 1, 3, 8, 0, 0},
-      "  m-3",
+      "m-3  ",
       CUBIC
     },
     {
       {0, 0, 0, 0, 0, 1, 9, 8, 6, 0},
-      "  432",
+      "432  ",
       CUBIC
     },
     {
       {0, 6, 0, 6, 0, 1, 3, 8, 0, 0},
-      " -43m",
+      "-43m ",
       CUBIC
     },
     {
       {0, 6, 8, 9, 1, 1, 9, 8, 6, 0},
-      " m-3m",
+      "m-3m ",
       CUBIC
     }
   };
@@ -355,20 +342,6 @@ static PointgroupData get_pointgroup_data( const int num )
 }
 
 #ifdef DEBUG
-static void print_pointgroup_comment( const Holohedry pointgroup_holohedry,
-				      const Holohedry holohedry )
-{
-  printf("Comment:\n");
-  printf(" Bravais lattice determined only from input lattice doesn't\n");
-  printf(" match Bravais lattice determined from symmetry operations.\n");
-  printf(" The Bravais lattice is changed:\n");
-  printf("                                *** ");
-  print_holohedry(holohedry);
-  printf(" --> ");
-  print_holohedry(pointgroup_holohedry);
-  printf(" ***\n\n");
-}
-
 static void print_holohedry( const Holohedry holohedry )
 {
   switch (holohedry) {
@@ -398,6 +371,5 @@ static void print_holohedry( const Holohedry holohedry )
     break;
   }
 }
-
 #endif
 

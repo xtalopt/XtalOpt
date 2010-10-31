@@ -8,7 +8,11 @@
 #include "cell.h"
 #include "mathfunc.h"
 
-Cell prm_get_primitive( SPGCONST Cell * cell,
-			const double symprec );
+Cell * prm_get_primitive( SPGCONST Cell * cell,
+			  const double symprec );
+
+Cell * prm_get_primitive_with_pure_trans( SPGCONST Cell * cell,
+					  const VecDBL *pure_trans,
+					  const double symprec );
 
 #endif
