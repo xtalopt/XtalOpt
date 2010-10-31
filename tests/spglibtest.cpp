@@ -213,7 +213,7 @@ Direct\n\
   xtal->findSpaceGroup(0.05);
   // "spglib finds Ima2 (#46) whereas findsym detects Cmc2_1" with
   // tol=0.05
-  // SPGLib currently finds P1
+  QEXPECT_FAIL("", "spglib: P1, findsym: Cmc2_1", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Cmc2_1"));
   delete xtal;
 }
@@ -254,7 +254,7 @@ Direct\n\
 
   xtal = POSCARToXtal(poscar);
   xtal->findSpaceGroup(0.05);
-  // SPGLib currently finds P1
+  QEXPECT_FAIL("", "spglib: P1, findsym: Pc", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pc"));
   delete xtal;
 }
@@ -295,7 +295,7 @@ Direct\n\
 
   xtal = POSCARToXtal(poscar);
   xtal->findSpaceGroup(0.05);
-  // SPGLib currently finds P1
+  QEXPECT_FAIL("", "spglib: P1, findsym: Pc", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pc"));
   delete xtal;
 }
@@ -336,7 +336,7 @@ Direct\n\
 
   xtal = POSCARToXtal(poscar);
   xtal->findSpaceGroup(0.05);
-  // SPGLib currently finds P1
+  QEXPECT_FAIL("", "spglib: P1, findsym: Cm", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Cm"));
   delete xtal;
 }
@@ -377,7 +377,7 @@ Direct\n\
 
   xtal = POSCARToXtal(poscar);
   xtal->findSpaceGroup(0.05);
-  // SPGLib currently finds P1
+  QEXPECT_FAIL("", "spglib: P1, findsym: C2", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("C2"));
   delete xtal;
 }
@@ -418,7 +418,7 @@ Direct\n\
 
   xtal = POSCARToXtal(poscar);
   xtal->findSpaceGroup(0.05);
-  // SPGLib currently finds P1
+  QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("R3c"));
   delete xtal;
 }
@@ -459,7 +459,7 @@ Direct\n\
 
   xtal = POSCARToXtal(poscar);
   xtal->findSpaceGroup(0.05);
-  // SPGLib currently finds P1
+  QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("R3c"));
   delete xtal;
 }
@@ -500,7 +500,7 @@ Direct\n\
 
   xtal = POSCARToXtal(poscar);
   xtal->findSpaceGroup(0.05);
-  // SPGLib currently finds P1
+  QEXPECT_FAIL("", "spglib: P1, findsym: Pm", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pm"));
   delete xtal;
 }
