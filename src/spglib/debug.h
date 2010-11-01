@@ -13,11 +13,11 @@
 #define debug_print_vectors_with_label(...) dbg_print_vectors_with_label(__VA_ARGS__)
 #define debug_print_holohedry( a ) dbg_print_holohedry( a )
 
-void dbg_print_matrix_d3(const double a[3][3]);
-void dbg_print_matrix_i3(const int a[3][3]);
-void dbg_print_vectors_d3(const double a[][3], const int size);
-void dbg_print_vectors_with_label(const double a[][3], const int b[], const int size);
-void dbg_print_holohedry(const Bravais *bravais);
+void dbg_print_matrix_d3(double a[3][3]);
+void dbg_print_matrix_i3(int a[3][3]);
+void dbg_print_vectors_d3(double a[][3], int size);
+void dbg_print_vectors_with_label(double a[][3], int b[], int size);
+void dbg_print_holohedry(Bravais *bravais);
 
 #else
 #define debug_print(...)

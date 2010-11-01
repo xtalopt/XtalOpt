@@ -14,7 +14,7 @@ typedef enum {
   RHOMB,
   TRIGO,
   HEXA,
-  CUBIC
+  CUBIC,
 } Holohedry;
 
 typedef enum {
@@ -24,7 +24,7 @@ typedef enum {
   A_FACE = 1,
   B_FACE = 2,
   C_FACE = 3,
-  BASE = 4
+  BASE = 4,
 } Centering;
 
 typedef struct {
@@ -42,5 +42,6 @@ int brv_get_brv_lattice_in_loop( Bravais *bravais,
 void brv_smallest_lattice_vector( double lattice_new[3][3],
 				  SPGCONST double lattice[3][3],
 				  const double symprec );
+void brv_set_relative_lattice( void );
 
 #endif

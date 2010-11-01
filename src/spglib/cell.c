@@ -6,23 +6,26 @@
 #include "cell.h"
 #include "mathfunc.h"
 
-Cell cel_new_cell( const int size )
+Cell * cel_alloc_cell( const int size )
 {
-    Cell cell;
+    Cell *cell;
     int i, j;
     
-    for ( i = 0; i < 3; i++ )
-      for ( j = 0; j < 3; j++ )
-	cell.lattice[i][j] = 0;
-    
-    cell.size = size;
+    cell = malloc( sizeof( Cell ) );
+
+    for ( i = 0; i < 3; i++ ) {
+      for ( j = 0; j < 3; j++ ) {
+	cell->lattice[i][j] = 0;
+      }
+    }
+    cell->size = size;
     
     if ( size > 0 ) {
-      if ((cell.types = (int *) malloc(sizeof(int) * size)) == NULL) {
+      if ((cell->types = (int *) malloc(sizeof(int) * size)) == NULL) {
         fprintf(stderr, "spglib: Memory of cell could not be allocated.");
         exit(1);
       }
-      if ((cell.position =
+      if ((cell->position =
 	   (double (*)[3]) malloc(sizeof(double[3]) * size)) == NULL) {
         fprintf(stderr, "spglib: Memory of cell could not be allocated.");
         exit(1);
@@ -32,12 +35,13 @@ Cell cel_new_cell( const int size )
     return cell;
 }
 
-void cel_delete_cell( Cell * cell )
+void cel_free_cell( Cell * cell )
 {
   if ( cell->size > 0 ) {
-    free(cell->position);
-    free(cell->types);
+    free( cell->position );
+    free( cell->types );
   }
+  free ( cell );
 }
 
 void cel_set_cell( Cell * cell,
@@ -54,29 +58,24 @@ void cel_set_cell( Cell * cell,
     }
 }
 
-/*
- * Convert a vector from fractional coordinates to cartesian coordinates
- */
-void cel_frac_to_cart( Cell * cell,
-		       const double frac[3],
-		       double cart[3] )
+int cel_is_overlap( const double a[3],
+		    const double b[3],
+		    SPGCONST double lattice[3][3],
+		    const double symprec )
 {
-  double v[3];
-  mat_multiply_matrix_vector_d3(v, cell->lattice, frac);
-  mat_copy_vector_d3(cart, v);
+  int i;
+  double v_diff[3];
+
+  for ( i = 0; i < 3; i++ ) {
+    v_diff[i] = a[i] - b[i];
+    v_diff[i] -= mat_Nint( v_diff[i] );
+  }
+
+  mat_multiply_matrix_vector_d3( v_diff, lattice, v_diff );
+  if ( mat_norm_squared( v_diff ) < symprec*symprec ) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
-/*
- * Convert a vector from cartesian coordinates to fractional coordinates
- */
-void cel_cart_to_frac( Cell * cell,
-		       const double cart[3],
-		       double frac[3],
-		       const double precision )
-{
-  double v[3];
-  double fracMat[3][3];
-  mat_inverse_matrix_d3(fracMat, cell->lattice, precision);
-  mat_multiply_matrix_vector_d3(v, fracMat, cart);
-  mat_copy_vector_d3(frac, v);
-}

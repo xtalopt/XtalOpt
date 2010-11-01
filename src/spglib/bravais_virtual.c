@@ -4,10 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "bravais.h"
+#include "bravais_virtual.h"
 #include "cell.h"
 #include "debug.h"
 #include "mathfunc.h"
-#include "spacegroup.h"
+#include "spacegroup_type.h"
 #include "symmetry.h"
 
 static double bcc_axes[13][3] = {
@@ -74,10 +75,6 @@ static int rot_axes[13][3] = {
   { 1, 1, 1},
 };
 
-static int is_holohedry( Bravais *bravais,
-			 SPGCONST Cell *cell,
-			 const Holohedry holohedry,
-			 const double symprec );
 static int get_rotation_axis( SPGCONST int rot[3][3],
 			      const int axis_num );
 static int is_monocli( Bravais *bravais,
@@ -141,7 +138,7 @@ int art_get_artificial_bravais( Bravais *bravais,
 				const double symprec )
 {
   int i, j;
-  Symmetry conv_sym;
+  Symmetry *conv_sym;
 
   /* Triogonal */
   if (holohedry == TRIGO && bravais->holohedry == HEXA) {
@@ -155,14 +152,6 @@ int art_get_artificial_bravais( Bravais *bravais,
     goto end;
   }
 
-  /* /\* Rhombohedral from Cubic *\/ */
-  /* if (holohedry == TRIGO && bravais->holohedry == CUBIC ) { */
-  /*   if (is_holohedry(bravais, cell, RHOMB, symprec)) { */
-  /*     goto end; */
-  /*   } */
-  /*   goto not_found; */
-  /* } */
-
   /* Orthorhombic from Hexagonal */
   if (holohedry == ORTHO && bravais->holohedry == HEXA ) {
     if (is_ortho_from_H(bravais, cell, symmetry, symprec)) {
@@ -171,22 +160,22 @@ int art_get_artificial_bravais( Bravais *bravais,
     goto not_found;
   }
 
-
-  conv_sym = tbl_get_conventional_symmetry(bravais, cell, symmetry, symprec);
+  conv_sym = typ_get_conventional_symmetry( bravais, cell->lattice,
+					    symmetry, symprec );
 
   /* Rhombohedral from Cubic */
   if (holohedry == TRIGO && bravais->holohedry == CUBIC ) {
-    if (is_rhombo(bravais, &conv_sym, symprec)) {
-      /* for ( i = 0; i < 3; i++ ) */
-      /* 	printf("%f %f %f\n", cell->lattice[0][i], cell->lattice[1][i], cell->lattice[2][i]); */
+    if (is_rhombo(bravais, conv_sym, symprec)) {
+      sym_free_symmetry( conv_sym );
+      bravais->holohedry = RHOMB;
       goto end;
     }
-    goto not_found;
+    goto not_found_and_deallocate;
   }
 
   /* Monoclinic */
   if ( holohedry == MONOCLI ) {
-    if (is_monocli(bravais, &conv_sym, symprec)) {
+    if (is_monocli(bravais, conv_sym, symprec)) {
       goto found_and_deallocate;
     }
     goto not_found_and_deallocate;
@@ -194,7 +183,7 @@ int art_get_artificial_bravais( Bravais *bravais,
 
   /* Tetragonal */
   if (holohedry == TETRA) {
-    if (is_tetra(bravais, &conv_sym)) {
+    if ( is_tetra( bravais, conv_sym ) ) {
       goto found_and_deallocate;
     }
     goto not_found_and_deallocate;
@@ -202,39 +191,39 @@ int art_get_artificial_bravais( Bravais *bravais,
 
   /* Orthorhombic */
   if (holohedry == ORTHO) {
-    if (is_ortho(bravais, &conv_sym, symprec)) {
+    if ( is_ortho( bravais, conv_sym, symprec ) ) {
       goto found_and_deallocate;
     }
 
     goto not_found_and_deallocate;
   }
 
-  sym_delete_symmetry(&conv_sym);
-
   /* Triclinic */
-  if (is_holohedry(bravais, cell, holohedry, symprec)) {
-    goto end;
+  if ( holohedry == TRICLI ) {
+    mat_copy_matrix_d3( bravais->lattice, cell->lattice );
+    bravais->centering = NO_CENTER;
+    goto found_and_deallocate;
   }
 
-  goto not_found;
-
-
+  goto not_found_and_deallocate;
 
   /*************/
   /*** Found ***/
   /*************/
 
  found_and_deallocate:
-  sym_delete_symmetry(&conv_sym);
+  sym_free_symmetry( conv_sym );
  found:
   bravais->holohedry = holohedry;
 
  end:
   /* Check if right hand system  */
   if (mat_get_determinant_d3(bravais->lattice) < -symprec) {
-    for (i = 0; i < 3; i++)
-      for (j = 0; j < 3; j++)
+    for (i = 0; i < 3; i++) { 
+      for (j = 0; j < 3; j++) {
 	bravais->lattice[i][j] = -bravais->lattice[i][j];
+      }
+    }
   }
   return 1;
 
@@ -243,7 +232,7 @@ int art_get_artificial_bravais( Bravais *bravais,
   /*****************/
 
  not_found_and_deallocate:
-  sym_delete_symmetry(&conv_sym);
+  sym_free_symmetry( conv_sym );
   
  not_found:
   return 0;
@@ -288,7 +277,7 @@ static int is_rhombo( Bravais *bravais,
 
   if ( naxis < 9 ) {
     fprintf(stderr, "spglib: BUG in spglib in __LINE__, __FILE__.");
-    return 0;
+    goto err;
   }
 
   if (bravais->centering == BODY) {
@@ -366,6 +355,9 @@ static int is_rhombo( Bravais *bravais,
   }
 
   return 1;
+
+ err:
+  return 0;
 }
 
 static int is_ortho( Bravais *bravais,
@@ -450,18 +442,19 @@ static int is_ortho_from_H_axis( SPGCONST Bravais *bravais,
 				 const double symprec )
 {
   int naxis[3];
-  Symmetry conv_sym;
+  Symmetry *conv_sym;
 
-  conv_sym = tbl_get_conventional_symmetry(bravais, cell, symmetry, symprec);
+  conv_sym = typ_get_conventional_symmetry( bravais, cell->lattice,
+					    symmetry, symprec );
 
-  if ( get_ortho_axis(naxis, &conv_sym) ) {
+  if ( get_ortho_axis( naxis, conv_sym ) ) {
     /* Found */
-    sym_delete_symmetry(&conv_sym);
+    sym_free_symmetry( conv_sym );
     return 1;
   }
 
   /* Not found */
-  sym_delete_symmetry(&conv_sym);
+  sym_free_symmetry( conv_sym );
   return 0;
 }
 
@@ -948,28 +941,6 @@ static int is_monocli_orthogonal( const int b_axis,
   }
 
   return 0;
-}
-
-/* bravais is going to be modified */
-static int is_holohedry( Bravais *bravais,
-			 SPGCONST Cell *cell,
-			 const Holohedry holohedry,
-			 const double symprec )
-{
-  Bravais temp_bravais;
-  double min_lattice[3][3];
-
-  temp_bravais = *bravais;
-  temp_bravais.holohedry = holohedry;
-  brv_smallest_lattice_vector(min_lattice, cell->lattice, symprec);
-
-  if ( brv_get_brv_lattice_in_loop(&temp_bravais, min_lattice, symprec) ) {
-    *bravais = temp_bravais;
-    return 1;
-  }
-  else {
-    return 0;
-  }
 }
 
 /* axis_num: Rotation type N */

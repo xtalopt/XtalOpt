@@ -1,14 +1,14 @@
 set( spglib_SRCS 
-     bravais_art.c
      bravais.c
+     bravais_virtual.c
      cell.c
      debug.c
+     hall_symbol.c
      mathfunc.c
      pointgroup.c
      primitive.c
-     spacegroup.c
-     spacegroup_database.c
-     spacegroup_data.c
+     spacegroup_type.c
+     spg_database.c
      spglib.c
      spglib_f.c
      symmetry.c

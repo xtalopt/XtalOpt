@@ -34,6 +34,9 @@ void mat_copy_vector_d3(double a[3], const double b[3]);
 void mat_copy_vector_i3(int a[3], const int b[3]);
 int mat_check_identity_matrix_i3(SPGCONST int a[3][3],
 				 SPGCONST int b[3][3]);
+int mat_check_identity_matrix_d3( SPGCONST double a[3][3],
+				  SPGCONST double b[3][3],
+				  const double symprec );
 void mat_multiply_matrix_d3(double m[3][3],
 			    SPGCONST double a[3][3],
 			    SPGCONST double b[3][3]);
@@ -67,15 +70,15 @@ void mat_transpose_matrix_d3(double a[3][3],
 			     SPGCONST double b[3][3]);
 void mat_transpose_matrix_i3(int a[3][3],
 			     SPGCONST int b[3][3]);
+void mat_get_metric( double metric[3][3],
+		     SPGCONST double lattice[3][3]);
+double mat_norm_squared( const double a[3] );
 double mat_Dabs(const double a);
 int mat_Nint(const double a);
 double mat_Dmod1(const double a, const double prec);
-
-MatDBL * mat_alloc_MatDBL(const int size);
 MatINT * mat_alloc_MatINT(const int size);
 void mat_free_MatINT( MatINT * matint );
 VecDBL * mat_alloc_VecDBL(const int size);
 void mat_free_VecDBL( VecDBL * vecdbl );
-VecINT * mat_alloc_VecINT(const int size);
 
 #endif

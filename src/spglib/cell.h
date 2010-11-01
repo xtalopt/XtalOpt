@@ -13,18 +13,15 @@ typedef struct {
     double (*position)[3];
 } Cell;
 
-Cell cel_new_cell( const int size );
-void cel_delete_cell( Cell * cell );
+Cell *cel_alloc_cell( const int size );
+void cel_free_cell( Cell * cell );
 void cel_set_cell( Cell * cell,
 		   SPGCONST double lattice[3][3],
 		   SPGCONST double position[][3],
 		   const int types[] );
-void cel_frac_to_cart( Cell * cell,
-		       const double frac[3],
-		       double cart[3] );
-void cel_cart_to_frac( Cell * cell,
-		       const double cart[3],
-		       double frac[3],
-		       const double precision );
+int cel_is_overlap( const double a[3],
+		    const double b[3],
+		    SPGCONST double lattice[3][3],
+		    const double symprec );
 
 #endif

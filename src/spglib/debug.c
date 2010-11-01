@@ -6,7 +6,7 @@
 #include "bravais.h"
 #include "debug.h"
 
-void dbg_print_matrix_d3(const double a[3][3])
+void dbg_print_matrix_d3(double a[3][3])
 {
     int i;
     for (i = 0; i < 3; i++) {
@@ -14,7 +14,7 @@ void dbg_print_matrix_d3(const double a[3][3])
     }
 }
 
-void dbg_print_matrix_i3(const int a[3][3])
+void dbg_print_matrix_i3(int a[3][3])
 {
     int i;
     for (i = 0; i < 3; i++) {
@@ -22,7 +22,7 @@ void dbg_print_matrix_i3(const int a[3][3])
     }
 }
 
-void dbg_print_vectors_d3(const double a[][3], const int size)
+void dbg_print_vectors_d3(double a[][3], int size)
 {
     int i;
     for (i = 0; i < size; i++) {
@@ -30,7 +30,7 @@ void dbg_print_vectors_d3(const double a[][3], const int size)
     }
 }
 
-void dbg_print_vectors_with_label(const double a[][3], const int b[], const int size)
+void dbg_print_vectors_with_label(double a[][3], int b[], int size)
 {
     int i;
     for (i = 0; i < size; i++) {
@@ -38,7 +38,7 @@ void dbg_print_vectors_with_label(const double a[][3], const int b[], const int 
     }
 }
 
-void dbg_print_holohedry(const Bravais *bravais)
+void dbg_print_holohedry(Bravais *bravais)
 {
   switch (bravais->centering) {
   case NO_CENTER:

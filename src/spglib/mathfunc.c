@@ -62,13 +62,35 @@ void mat_copy_vector_i3(int a[3], const int b[3])
 int mat_check_identity_matrix_i3(SPGCONST int a[3][3],
 				 SPGCONST int b[3][3])
 {
-  if (a[0][0] - b[0][0] ||
-      a[0][1] - b[0][1] ||
-      a[0][2] - b[0][2] ||
-      a[1][0] - b[1][0] ||
-      a[1][1] - b[1][1] ||
-      a[1][2] - b[1][2] ||
-      a[2][0] - b[2][0] || a[2][1] - b[2][1] || a[2][2] - b[2][2]) {
+  if ( a[0][0] - b[0][0] ||
+       a[0][1] - b[0][1] ||
+       a[0][2] - b[0][2] ||
+       a[1][0] - b[1][0] ||
+       a[1][1] - b[1][1] ||
+       a[1][2] - b[1][2] ||
+       a[2][0] - b[2][0] ||
+       a[2][1] - b[2][1] ||
+       a[2][2] - b[2][2]) {
+    return 0;
+  }
+  else {
+    return 1;
+  }
+}
+
+int mat_check_identity_matrix_d3( SPGCONST double a[3][3],
+				  SPGCONST double b[3][3],
+				  const double symprec )
+{
+  if ( mat_Dabs( a[0][0] - b[0][0] ) > symprec ||
+       mat_Dabs( a[0][1] - b[0][1] ) > symprec ||
+       mat_Dabs( a[0][2] - b[0][2] ) > symprec ||
+       mat_Dabs( a[1][0] - b[1][0] ) > symprec ||
+       mat_Dabs( a[1][1] - b[1][1] ) > symprec ||
+       mat_Dabs( a[1][2] - b[1][2] ) > symprec ||
+       mat_Dabs( a[2][0] - b[2][0] ) > symprec ||
+       mat_Dabs( a[2][1] - b[2][1] ) > symprec ||
+       mat_Dabs( a[2][2] - b[2][2] ) > symprec ) {
     return 0;
   }
   else {
@@ -261,6 +283,20 @@ void mat_transpose_matrix_i3(int a[3][3], SPGCONST int b[3][3])
   mat_copy_matrix_i3(a, c);
 }
 
+void mat_get_metric( double metric[3][3],
+		     SPGCONST double lattice[3][3])
+{
+  double lattice_t[3][3];
+  mat_transpose_matrix_d3(lattice_t, lattice);
+  mat_multiply_matrix_d3(metric, lattice_t, lattice);
+}
+
+
+double mat_norm_squared( const double a[3] )
+{
+  return a[0]*a[0]+a[1]*a[1]+a[2]*a[2];
+}
+
 double mat_Dabs(const double a)
 {
   if (a < 0.0)
@@ -283,20 +319,6 @@ double mat_Dmod1(const double a, const double prec)
     return a + 1.0 - (int) a;
   else
     return a - (int) a;
-}
-
-
-MatDBL * mat_alloc_MatDBL(const int size)
-{
-  MatDBL *matdbl;
-  matdbl = malloc( sizeof( MatDBL ) );
-  matdbl->size = size;
-  if ( ( matdbl->mat = malloc( sizeof(double[3][3]) * size) )
-       == NULL ) {
-    fprintf(stderr, "spglib: Memory could not be allocated.");
-    exit(1);
-  }
-  return matdbl;
 }
 
 MatINT * mat_alloc_MatINT(const int size)
@@ -339,20 +361,6 @@ void mat_free_VecDBL( VecDBL * vecdbl )
   vecdbl->vec = NULL;
   free( vecdbl );
   vecdbl = NULL;
-}
-
-
-VecINT * mat_alloc_VecINT( const int size )
-{
-  VecINT *vecint;
-  vecint = malloc( sizeof( VecINT ) );
-  vecint->size = size;
-  if ( ( vecint->vec = malloc( sizeof(double[3]) * size) )
-       == NULL ) {
-    fprintf(stderr, "spglib: Memory could not be allocated.");
-    exit(1);
-  }
-  return vecint;
 }
 
 
