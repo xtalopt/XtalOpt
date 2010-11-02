@@ -74,30 +74,42 @@ namespace GlobalSearch {
             this, SLOT(updateStatus_(int,int,int)));
 
     connect(progTimer, SIGNAL(timeout()),
-            this, SLOT(repaintProgressBar_()));
+            this, SLOT(repaintProgressBar_()),
+            Qt::QueuedConnection);
     connect(this, SIGNAL(sig_startProgressUpdate(const QString &, int, int)),
-            this, SLOT(startProgressUpdate_(const QString &, int, int)));
+            this, SLOT(startProgressUpdate_(const QString &, int, int)),
+            Qt::QueuedConnection);
     connect(this, SIGNAL(sig_stopProgressUpdate()),
-            this, SLOT(stopProgressUpdate_()));
+            this, SLOT(stopProgressUpdate_()),
+            Qt::QueuedConnection);
     connect(this, SIGNAL(sig_updateProgressMinimum(int)),
-            this, SLOT(updateProgressMinimum_(int)));
+            this, SLOT(updateProgressMinimum_(int)),
+            Qt::QueuedConnection);
     connect(this, SIGNAL(sig_updateProgressMaximum(int)),
-            this, SLOT(updateProgressMaximum_(int)));
+            this, SLOT(updateProgressMaximum_(int)),
+            Qt::QueuedConnection);
     connect(this, SIGNAL(sig_updateProgressValue(int)),
-            this, SLOT(updateProgressValue_(int)));
+            this, SLOT(updateProgressValue_(int)),
+            Qt::QueuedConnection);
     connect(this, SIGNAL(sig_updateProgressLabel(const QString &)),
-            this, SLOT(updateProgressLabel_(const QString &)));
+            this, SLOT(updateProgressLabel_(const QString &)),
+            Qt::QueuedConnection);
     connect(this, SIGNAL(sig_repaintProgressBar()),
-            this, SLOT(repaintProgressBar_()));
+            this, SLOT(repaintProgressBar_()),
+            Qt::QueuedConnection);
 
     connect(m_opt, SIGNAL(warningStatement(const QString &)),
-            this, SLOT(newWarning(const QString &)));
+            this, SLOT(newWarning(const QString &)),
+            Qt::QueuedConnection);
     connect(m_opt, SIGNAL(debugStatement(const QString &)),
-            this, SLOT(newDebug(const QString &)));
+            this, SLOT(newDebug(const QString &)),
+            Qt::QueuedConnection);
     connect(m_opt, SIGNAL(errorStatement(const QString &)),
-            this, SLOT(newError(const QString &)));
+            this, SLOT(newError(const QString &)),
+            Qt::QueuedConnection);
     connect(this, SIGNAL(sig_errorBox(const QString &)),
-            this, SLOT(errorBox_(const QString &)));
+            this, SLOT(errorBox_(const QString &)),
+            Qt::QueuedConnection);
 
     // Select the first tab by default
     ui_tabs->setCurrentIndex(0);
@@ -176,7 +188,7 @@ namespace GlobalSearch {
   }
 
   void AbstractDialog::startProgressUpdate_(const QString & text, int min, int max) {
-    progMutex->lock();
+    //progMutex->lock();
     ui_progbar->reset();
     ui_progbar->setRange(min, max);
     ui_progbar->setValue(min);
@@ -193,7 +205,7 @@ namespace GlobalSearch {
     ui_progbar->setVisible(false);
     ui_label_prog->setVisible(false);
     progTimer->stop();
-    progMutex->unlock();
+    //progMutex->unlock();
     repaintProgressBar();
   }
 
