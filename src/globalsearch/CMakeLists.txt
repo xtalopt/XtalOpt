@@ -1,3 +1,5 @@
+include(CheckIncludeFiles)
+
 set( globalsearch_SRCS
      optbase.cpp
      queuemanager.cpp
@@ -23,3 +25,10 @@ target_link_libraries( globalsearch
 		       ${OPENBABEL2_LIBRARIES})
 
 add_dependencies(globalsearch ssh_static)
+
+# This is needed for backtraces
+check_include_files(execinfo.h HAVE_EXECINFO_H)
+if(HAVE_EXECINFO_H)
+  add_definitions(-D_HAVE_EXECINFO_H_)
+endif()
+
