@@ -41,7 +41,7 @@ namespace GAPC {
 
     m_templates.clear();
     m_completionFilename = "NA";
-    m_completionString   = "Not used!";
+    m_completionStrings.clear();
     m_outputFilenames.append("structure.cml");
 
     readSettings(filename);

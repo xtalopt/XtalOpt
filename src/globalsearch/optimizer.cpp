@@ -27,6 +27,8 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
+#define KCAL_PER_MOL_TO_EV 0.0433651224
+
 using namespace Avogadro;
 using namespace OpenBabel;
 using namespace Eigen;
@@ -45,7 +47,9 @@ namespace GlobalSearch {
 
     // Setup for completion values
     // m_completionFilename = name of file to check when opt stops
-    // m_completionString   = string in m_completionFilename to search for
+    // m_completionStrings.clear();
+    // m_completionStrings.append("string in m_completionFilename to search for");
+    // m_completionStrings.append("Another string");
 
     // Set output filenames to try to read data from, e.g.
     // m_outputFilenames.append("output filename");
@@ -550,33 +554,33 @@ namespace GlobalSearch {
       bool outputFileExists;
       QString rempath = structure->getRempath();
       QString fileName = structure->fileName();
-
-      // Check for m_completionString in m_completionFilename
       locker.unlock();
       outputFileExists = checkIfOutputFileExists(rempath
                                                  + "/"
                                                  + m_completionFilename);
       locker.relock();
 
-      // Check for m_completionString in outputFileData, which indicates success.
+      // Check for m_completionStrings in outputFileData, which indicates success.
       qDebug() << "Optimizer::getStatus: Job  " << jobID << " not in queue. Does output exist? " << outputFileExists;
       if (outputFileExists) {
-        QString stdout_str, stderr_str; int ec;
-        // Valid exit codes for grep: (0) matches found, execution successful
-        //                            (1) no matches found, execution successful
-        //                            (2) execution unsuccessful
-        QString command = "grep \'" + m_completionString + "\' \""
-          + rempath + "/" + m_completionFilename + "\"";
-        qDebug() << "Optimizer::getStatus: Calling " << command;
-        if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
-          m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
-          m_opt->ssh()->unlockConnection(ssh);
-          return Optimizer::CommunicationError;
-        }
-        if (ec == 0) {
-          structure->resetFailCount();
-          m_opt->ssh()->unlockConnection(ssh);
-          return Optimizer::Success;
+        for (int i = 0; i < m_completionStrings.size(); i++) {
+          QString stdout_str, stderr_str; int ec;
+          // Valid exit codes for grep: (0) matches found, execution successful
+          //                            (1) no matches found, execution successful
+          //                            (2) execution unsuccessful
+          QString command = "grep \'" + m_completionStrings.at(i) + "\' \""
+            + rempath + "/" + m_completionFilename + "\"";
+          qDebug() << "Optimizer::getStatus: Calling " << command;
+          if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
+            m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
+            m_opt->ssh()->unlockConnection(ssh);
+            return Optimizer::CommunicationError;
+          }
+          if (ec == 0) {
+            structure->resetFailCount();
+            m_opt->ssh()->unlockConnection(ssh);
+            return Optimizer::Success;
+          }
         }
         // Otherwise, it's an error!
         structure->setStatus(Structure::Error);
@@ -811,29 +815,50 @@ namespace GlobalSearch {
     }
     m_opt->sOBMutex->unlock();
 
-    // Copy settings from obmol -> structure.
-    // atoms
+    // Extract data from obmol and update structure
+    double energy=0.0;
+    double enthalpy=0.0;
+    QList<unsigned int> atomicNums;
+    QList<Eigen::Vector3d> coords;
+    Eigen::Matrix3d cellMat = Eigen::Matrix3d::Zero();
+
+    // Ensure that there are the correct number of atoms in the
+    // structure
     while (structure->numAtoms() < obmol.NumAtoms())
       structure->addAtom();
-    QList<Atom*> atoms = structure->atoms();
-    uint i = 0;
+    while (structure->numAtoms() > obmol.NumAtoms())
+      structure->removeAtom(structure->atoms().last());
 
+    // Atomic data
     FOR_ATOMS_OF_MOL(atm, obmol) {
-      atoms.at(i)->setPos(Vector3d(atm->x(), atm->y(), atm->z()));
-      atoms.at(i)->setAtomicNumber(atm->GetAtomicNum());
-      i++;
+      coords.append(Vector3d(atm->x(), atm->y(), atm->z()));
+      atomicNums.append(atm->GetAtomicNum());
     }
 
     // energy/enthalpy
-    const double KCAL_PER_MOL_TO_EV = 0.0433651224;
-    if (obmol.HasData("Enthalpy (kcal/mol)"))
-      structure->setEnthalpy(QString(obmol.GetData("Enthalpy (kcal/mol)")->GetValue().c_str()).toFloat()
-                        * KCAL_PER_MOL_TO_EV);
-    if (obmol.HasData("Enthalpy PV term (kcal/mol)"))
-      structure->setPV(QString(obmol.GetData("Enthalpy PV term (kcal/mol)")->GetValue().c_str()).toFloat()
-                  * KCAL_PER_MOL_TO_EV);
-    structure->setEnergy(obmol.GetEnergy());
-    // Modify as needed!
+    if (obmol.HasData("Enthalpy (kcal/mol)")) {
+      enthalpy = QString(obmol.GetData("Enthalpy (kcal/mol)")->GetValue().c_str()
+                         ).toDouble() * KCAL_PER_MOL_TO_EV;
+    }
+    energy = obmol.GetEnergy();
+
+    // Cell
+    OBUnitCell *cell = static_cast<OBUnitCell*>(obmol.GetData(OBGenericDataType::UnitCell));
+
+    if (cell != NULL) {
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+          cellMat(i,j) = cell->GetCellMatrix().Get(i,j);
+        }
+      }
+    }
+
+    if (m_opt->isStarting) {
+      structure->updateAndSkipHistory(atomicNums, coords, energy, enthalpy, cellMat);
+    }
+    else {
+      structure->updateAndAddToHistory(atomicNums, coords, energy, enthalpy, cellMat);
+    }
 
     return true;
   }

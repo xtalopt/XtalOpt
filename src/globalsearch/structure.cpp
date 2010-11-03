@@ -206,7 +206,7 @@ namespace GlobalSearch {
   void Structure::writeStructureSettings(const QString &filename)
   {
     SETTINGS(filename);
-    const int VERSION = 1;
+    const int VERSION = 2;
     settings->beginGroup("structure");
     settings->setValue("version",     VERSION);
     settings->setValue("generation", getGeneration());
@@ -221,7 +221,74 @@ namespace GlobalSearch {
     settings->setValue("failCount", getFailCount());
     settings->setValue("startTime", getOptTimerStart().toString());
     settings->setValue("endTime", getOptTimerEnd().toString());
-    settings->endGroup();
+
+    // History
+    settings->beginGroup("history");
+    //  Atomic nums
+    settings->beginWriteArray("atomicNums");
+    for (int i = 0; i < m_histAtomicNums.size(); i++) {
+      settings->setArrayIndex(i);
+      const QList<unsigned int> *ptr = &(m_histAtomicNums.at(i));
+      settings->beginWriteArray(QString("atomicNums-%1").arg(i));
+      for (int j = 0; j < ptr->size(); j++) {
+        settings->setArrayIndex(j);
+        settings->setValue("value", ptr->at(j));
+      }
+      settings->endArray();
+    }
+    settings->endArray();
+
+    //  Coords
+    settings->beginWriteArray("coords");
+    for (int i = 0; i < m_histCoords.size(); i++) {
+      settings->setArrayIndex(i);
+      const QList<Eigen::Vector3d> *ptr = &(m_histCoords.at(i));
+      settings->beginWriteArray(QString("coords-%1").arg(i));
+      for (int j = 0; j < ptr->size(); j++) {
+        settings->setArrayIndex(j);
+        settings->setValue("x", ptr->at(j).x());
+        settings->setValue("y", ptr->at(j).y());
+        settings->setValue("z", ptr->at(j).z());
+      }
+      settings->endArray();
+    }
+    settings->endArray();
+
+    //  Energies
+    settings->beginWriteArray("energies");
+    for (int i = 0; i < m_histEnergies.size(); i++) {
+      settings->setArrayIndex(i);
+      settings->setValue("value", m_histEnergies.at(i));
+    }
+    settings->endArray();
+
+    //  Enthalpies
+    settings->beginWriteArray("enthalpies");
+    for (int i = 0; i < m_histEnthalpies.size(); i++) {
+      settings->setArrayIndex(i);
+      settings->setValue("value", m_histEnthalpies.at(i));
+    }
+    settings->endArray();
+
+    //  Cells
+    settings->beginWriteArray("cells");
+    for (int i = 0; i < m_histCells.size(); i++) {
+      settings->setArrayIndex(i);
+      const Eigen::Matrix3d *ptr = &m_histCells.at(i);
+      settings->setValue("00", (*ptr)(0, 0));
+      settings->setValue("01", (*ptr)(0, 1));
+      settings->setValue("02", (*ptr)(0, 2));
+      settings->setValue("10", (*ptr)(1, 0));
+      settings->setValue("11", (*ptr)(1, 1));
+      settings->setValue("12", (*ptr)(1, 2));
+      settings->setValue("20", (*ptr)(2, 0));
+      settings->setValue("21", (*ptr)(2, 1));
+      settings->setValue("22", (*ptr)(2, 2));
+    }
+    settings->endArray();
+
+    settings->endGroup(); // history
+    settings->endGroup(); // structure
     DESTROY_SETTINGS(filename);
   }
 
@@ -244,6 +311,84 @@ namespace GlobalSearch {
 
       setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));
       setOptTimerEnd(   QDateTime::fromString(settings->value("endTime",   "").toString()));
+
+    // History
+    settings->beginGroup("history");
+    //  Atomic nums
+    int size, size2;
+    size = settings->beginReadArray("atomicNums");
+    m_histAtomicNums.clear();
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      size2 = settings->beginReadArray(QString("atomicNums-%1").arg(i));
+      QList<unsigned int> cur;
+      for (int j = 0; j < size2; j++) {
+        settings->setArrayIndex(j);
+        cur.append(settings->value("value").toUInt());
+      }
+      settings->endArray();
+      m_histAtomicNums.append(cur);
+    }
+    settings->endArray();
+
+    //  Coords
+    size = settings->beginReadArray("coords");
+    m_histCoords.clear();
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      size2 = settings->beginReadArray(QString("coords-%1").arg(i));
+      QList<Eigen::Vector3d> cur;
+      for (int j = 0; j < size2; j++) {
+        settings->setArrayIndex(j);
+        double x = settings->value("x").toDouble();
+        double y = settings->value("y").toDouble();
+        double z = settings->value("z").toDouble();
+        cur.append(Eigen::Vector3d(x, y, z));
+        }
+      settings->endArray();
+      m_histCoords.append(cur);
+    }
+    settings->endArray();
+
+    //  Energies
+    size = settings->beginReadArray("energies");
+    m_histEnergies.clear();
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      m_histEnergies.append(settings->value("value").toDouble());
+    }
+    settings->endArray();
+
+    //  Enthalpies
+    size = settings->beginReadArray("enthalpies");
+    m_histEnthalpies.clear();
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      m_histEnthalpies.append(settings->value("value").toDouble());
+    }
+    settings->endArray();
+
+    //  Cells
+    size = settings->beginReadArray("cells");
+    m_histCells.clear();
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      Eigen::Matrix3d cur;
+      cur(0, 0) = settings->value("00").toDouble();
+      cur(0, 1) = settings->value("01").toDouble();
+      cur(0, 2) = settings->value("02").toDouble();
+      cur(1, 0) = settings->value("10").toDouble();
+      cur(1, 1) = settings->value("11").toDouble();
+      cur(1, 2) = settings->value("12").toDouble();
+      cur(2, 0) = settings->value("20").toDouble();
+      cur(2, 1) = settings->value("21").toDouble();
+      cur(2, 2) = settings->value("22").toDouble();
+      m_histCells.append(cur);
+    }
+    settings->endArray();
+
+    settings->endGroup(); // history
+
     }
     settings->endGroup();
 
@@ -259,7 +404,9 @@ namespace GlobalSearch {
       QTextStream stream (&file);
       load(stream);
     }
-    case 1:
+    case 1: // Histories added. Nothing to do, structures loaded will
+            // have empty histories
+    case 2:
     default:
       break;
     }
@@ -268,6 +415,146 @@ namespace GlobalSearch {
   void Structure::structureChanged()
   {
     m_updatedSinceDupChecked = true;
+  }
+
+  void Structure::updateAndSkipHistory(const QList<unsigned int> &atomicNums,
+                                       const QList<Eigen::Vector3d> &coords,
+                                       const double energy,
+                                       const double enthalpy,
+                                       const Eigen::Matrix3d &cell)
+  {
+    Q_ASSERT_X(atomicNums.size() == coords.size() && coords.size() == numAtoms(),
+               Q_FUNC_INFO,
+               "Lengths of atomicNums and coords must match numAtoms().");
+
+    // Update atoms
+    Atom *atom;
+    for (int i = 0; i < numAtoms(); i++) {
+      atom = atoms().at(i);
+      atom->setAtomicNumber(atomicNums.at(i));
+      atom->setPos(coords.at(i));
+    }
+
+    // Update energy/enthalpy
+    if (enthalpy != 0.0) {
+      m_hasEnthalpy == false;
+      m_PV = false;
+    }
+    else {
+      m_hasEnthalpy = true;
+      m_PV = enthalpy - energy;
+    }
+    m_enthalpy = enthalpy;
+    setEnergy(energy);
+
+    // Update cell if necessary
+    if (!cell.isZero()) {
+      OpenBabel::matrix3x3 obmat;
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+          obmat.Set(i,j,cell(i,j));
+        }
+      }
+      OpenBabel::OBUnitCell *obcell = OBUnitCell();
+      obcell->SetData(obmat);
+      setOBUnitCell(obcell);
+    }
+
+    emit moleculeChanged();
+    update();
+  }
+
+  void Structure::updateAndAddToHistory(const QList<unsigned int> &atomicNums,
+                                        const QList<Eigen::Vector3d> &coords,
+                                        const double energy,
+                                        const double enthalpy,
+                                        const Eigen::Matrix3d &cell)
+  {
+    Q_ASSERT_X(atomicNums.size() == coords.size() && coords.size() == numAtoms(),
+               Q_FUNC_INFO,
+               "Lengths of atomicNums and coords must match numAtoms().");
+
+    // Update history
+    m_histAtomicNums.append(atomicNums);
+    m_histCoords.append(coords);
+    m_histEnergies.append(energy);
+    m_histEnthalpies.append(enthalpy);
+    m_histCells.append(cell);
+
+    // Update atoms
+    Atom *atom;
+    for (int i = 0; i < numAtoms(); i++) {
+      atom = atoms().at(i);
+      atom->setAtomicNumber(atomicNums.at(i));
+      atom->setPos(coords.at(i));
+    }
+
+    // Update energy/enthalpy
+    m_enthalpy = enthalpy;
+    if (enthalpy == 0.0) {
+      m_hasEnthalpy == false;
+      m_PV = 0.0;
+    }
+    else {
+      m_hasEnthalpy = true;
+      m_PV = enthalpy - energy;
+    }
+    setEnergy(energy);
+
+    // Update cell if necessary
+    if (!cell.isZero()) {
+      OpenBabel::matrix3x3 obmat;
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+          obmat.Set(i,j,cell(i,j));
+        }
+      }
+      OpenBabel::OBUnitCell *obcell = OBUnitCell();
+      obcell->SetData(obmat);
+      setOBUnitCell(obcell);
+    }
+
+    emit moleculeChanged();
+    update();
+  }
+
+  void Structure::deleteFromHistory(unsigned int index) {
+    Q_ASSERT_X(index < sizeOfHistory() - 1, Q_FUNC_INFO,
+               "Requested history index greater than the number of available entries.");
+
+    m_histAtomicNums.removeAt(index);
+    m_histEnthalpies.removeAt(index);
+    m_histEnergies.removeAt(index);
+    m_histCoords.removeAt(index);
+    m_histCells.removeAt(index);
+  }
+
+  void Structure::retrieveHistoryEntry(unsigned int index,
+                                       QList<unsigned int> *atomicNums,
+                                       QList<Eigen::Vector3d> *coords,
+                                       double *energy,
+                                       double *enthalpy,
+                                       Eigen::Matrix3d *cell)
+  {
+    Q_ASSERT_X(index < sizeOfHistory() - 1, Q_FUNC_INFO,
+               "Requested history index greater than the number of available entries.");
+
+    if (atomicNums != NULL) {
+      *atomicNums = m_histAtomicNums.at(index);
+    }
+    if (coords != NULL) {
+      *coords = m_histCoords.at(index);
+    }
+    if (energy != NULL) {
+      *energy = m_histEnergies.at(index);
+    }
+    if (enthalpy != NULL) {
+      *enthalpy = m_histEnthalpies.at(index);
+    }
+    if (cell != NULL) {
+      *cell = m_histCells.at(index);
+    }
+
   }
 
   bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom)

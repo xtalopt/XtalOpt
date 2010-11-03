@@ -67,7 +67,9 @@ public:
 
     // Setup for completion values
     m_completionFilename = job.out
-    m_completionString   = "Optimization completed successfully"
+    m_completionStrings.clear();
+    m_completionString.append("Optimization completed successfully")
+    m_completionString.append("This is a single point calculation")
 
     // Set output filenames to try to read data from, e.g.
     m_outputFilenames.append("job.out");
@@ -550,7 +552,7 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
      * optimization has complete successfully.
      * @sa m_completionFilename.
      */
-    QString m_completionString;
+    QStringList m_completionStrings;
 
     /**
      * List of filenames to check when updating structure (will be

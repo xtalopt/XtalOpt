@@ -39,7 +39,8 @@ namespace XtalOpt {
 
     // Setup for completion values
     m_completionFilename = "xtal.out";
-    m_completionString   = "Final";
+    m_completionStrings.clear();
+    m_completionStrings.append("Final");
 
     // Set output filenames to try to read data from, e.g.
     m_outputFilenames.append(m_completionFilename);
