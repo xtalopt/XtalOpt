@@ -45,7 +45,9 @@ namespace GlobalSearch {
 
     // Setup for completion values
     // m_completionFilename = name of file to check when opt stops
-    // m_completionString   = string in m_completionFilename to search for
+    // m_completionStrings.clear();
+    // m_completionStrings.append("string in m_completionFilename to search for");
+    // m_completionStrings.append("Another string");
 
     // Set output filenames to try to read data from, e.g.
     // m_outputFilenames.append("output filename");
@@ -550,33 +552,33 @@ namespace GlobalSearch {
       bool outputFileExists;
       QString rempath = structure->getRempath();
       QString fileName = structure->fileName();
-
-      // Check for m_completionString in m_completionFilename
       locker.unlock();
       outputFileExists = checkIfOutputFileExists(rempath
                                                  + "/"
                                                  + m_completionFilename);
       locker.relock();
 
-      // Check for m_completionString in outputFileData, which indicates success.
+      // Check for m_completionStrings in outputFileData, which indicates success.
       qDebug() << "Optimizer::getStatus: Job  " << jobID << " not in queue. Does output exist? " << outputFileExists;
       if (outputFileExists) {
-        QString stdout_str, stderr_str; int ec;
-        // Valid exit codes for grep: (0) matches found, execution successful
-        //                            (1) no matches found, execution successful
-        //                            (2) execution unsuccessful
-        QString command = "grep \'" + m_completionString + "\' \""
-          + rempath + "/" + m_completionFilename + "\"";
-        qDebug() << "Optimizer::getStatus: Calling " << command;
-        if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
-          m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
-          m_opt->ssh()->unlockConnection(ssh);
-          return Optimizer::CommunicationError;
-        }
-        if (ec == 0) {
-          structure->resetFailCount();
-          m_opt->ssh()->unlockConnection(ssh);
-          return Optimizer::Success;
+        for (int i = 0; i < m_completionStrings.size(); i++) {
+          QString stdout_str, stderr_str; int ec;
+          // Valid exit codes for grep: (0) matches found, execution successful
+          //                            (1) no matches found, execution successful
+          //                            (2) execution unsuccessful
+          QString command = "grep \'" + m_completionStrings.at(i) + "\' \""
+            + rempath + "/" + m_completionFilename + "\"";
+          qDebug() << "Optimizer::getStatus: Calling " << command;
+          if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
+            m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
+            m_opt->ssh()->unlockConnection(ssh);
+            return Optimizer::CommunicationError;
+          }
+          if (ec == 0) {
+            structure->resetFailCount();
+            m_opt->ssh()->unlockConnection(ssh);
+            return Optimizer::Success;
+          }
         }
         // Otherwise, it's an error!
         structure->setStatus(Structure::Error);

@@ -43,7 +43,8 @@ namespace RandomDock {
 
     // Setup for completion values
     m_completionFilename = "job.gamout";
-    m_completionString   = "***** EQUILIBRIUM GEOMETRY LOCATED *****";
+    m_completionStrings.clear();
+    m_completionStrings.append("***** EQUILIBRIUM GEOMETRY LOCATED *****");
 
     // Set output filenames to try to read data from
     m_outputFilenames.append(m_completionFilename);

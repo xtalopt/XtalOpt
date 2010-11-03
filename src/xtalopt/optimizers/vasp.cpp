@@ -51,7 +51,8 @@ namespace XtalOpt {
 
     // Setup for completion values
     m_completionFilename = "OUTCAR";
-    m_completionString   = "General timing and accounting informations for this job:";
+    m_completionStrings.clear();
+    m_completionStrings.append("General timing and accounting informations for this job:");
 
     // Set output filenames to try to read data from, e.g.
     m_outputFilenames.append("CONTCAR");

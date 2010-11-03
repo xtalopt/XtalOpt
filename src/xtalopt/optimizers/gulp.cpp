@@ -38,7 +38,7 @@ namespace XtalOpt {
 
     // Setup for completion values
     m_completionFilename = "xtal.got";
-    m_completionString   = "Not used!";
+    m_completionStrings.clear(); // Not used!
 
     // Set output filenames to try to read data from, e.g.
     m_outputFilenames.append(m_completionFilename);
@@ -129,7 +129,8 @@ namespace XtalOpt {
     QString line;
     while (!file.atEnd()) {
       line = file.readLine();
-      if (line.contains("**** Optimisation achieved ****")) {
+      if (line.contains("**** Optimisation achieved ****") ||
+          line.contains("single       - perform a single point run")) {
         structure->resetFailCount();
         wlocker.unlock();
         return update(structure);
