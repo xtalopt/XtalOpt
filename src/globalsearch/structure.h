@@ -717,6 +717,82 @@ namespace GlobalSearch {
     virtual void readSettings(const QString &filename) {
       readStructureSettings(filename);};
 
+    /**
+     * Update the coordinates, enthalpy and/or energy, and optionally
+     * unit cell of the structure, without adding the data to the
+     * structure's history.
+     *
+     * @param coords List of cartesian coordinates
+     * @param energy
+     * @param enthalpy
+     * @param cell Matrix of cell vectors (row vectors)
+     */
+    virtual void updateAndSkipHistory(const QList<unsigned int> &atomicNums,
+                                      const QList<Eigen::Vector3d> &coords,
+                                      const double energy = 0,
+                                      const double enthalpy = 0,
+                                      const Eigen::Matrix3d &cell = Eigen::Matrix3d::Zero());
+
+    /**
+     * Update the coordinates, enthalpy and/or energy, and optionally
+     * unit cell of the structure, appending the data to the
+     * structure's history.
+     *
+     * @param coords List of cartesian coordinates
+     * @param energy
+     * @param enthalpy
+     * @param cell Matrix of cell vectors (row vectors)
+     */
+    virtual void updateAndAddToHistory(const QList<unsigned int> &atomicNums,
+                                       const QList<Eigen::Vector3d> &coords,
+                                       const double energy = 0,
+                                       const double enthalpy = 0,
+                                       const Eigen::Matrix3d &cell = Eigen::Matrix3d::Zero());
+
+    /**
+     * @param index Index of entry to remove from structure's history.
+     */
+    virtual void deleteFromHistory(unsigned int index);
+
+    /**
+     * This function is used to retrieve data from the structure's
+     * history. All non-zero pointers will be modified to contain the
+     * information at the specified index of the history.
+     *
+     * @param index Entry in history to return
+     *
+     * @param atomicNums Pointer to a list that will be filled with
+     * atomic numbers. Can be zero if this is not needed.
+     *
+     * @param coords Pointer to a list that will be filled with
+     * cartesian atomic coordinates. Can be zero if this is not
+     * needed.
+     *
+     * @param energy Pointer to a double that will contain the entry's
+     * energy. Can be zero if this is not needed.
+     *
+     * @param enthalpy Pointer to a double that will contain the
+     * entry's enthalpy. Can be zero if this is not needed.
+     *
+     * @param cell Pointer to an Eigen::Matrix3f filled with the unit
+     * cell vectors (row vectors). Can be zero if this is not needed.
+     *
+     * @note If the system is not periodic, the cell matrix will be a
+     * zero matrix. Use Eigen::Matrix3d::isZero() to test for a valid
+     * cell.
+     */
+    virtual void retrieveHistoryEntry(unsigned int index,
+                                      QList<unsigned int> *atomicNums,
+                                      QList<Eigen::Vector3d> *coords,
+                                      double *energy,
+                                      double *enthalpy,
+                                      Eigen::Matrix3d *cell);
+
+      /**
+       * @return Number of history entries available
+       */
+    virtual unsigned int sizeOfHistory() {return m_histEnergies.size();};
+
     /** Set the enthalpy of the Structure.
      * @param enthalpy The Structure's enthalpy
      * @sa getEnthalpy
@@ -956,6 +1032,13 @@ namespace GlobalSearch {
     QDateTime m_optStart, m_optEnd;
     int m_index;
     QList<QVariant> m_histogramDist, m_histogramFreq;
+
+    // History
+    QList<QList<unsigned int> > m_histAtomicNums;
+    QList<double> m_histEnthalpies;
+    QList<double> m_histEnergies;
+    QList<QList<Eigen::Vector3d> > m_histCoords;
+    QList<Eigen::Matrix3d> m_histCells;
   };
 
 } // end namespace Avogadro

@@ -27,6 +27,8 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
+#define KCAL_PER_MOL_TO_EV 0.0433651224
+
 using namespace Avogadro;
 using namespace OpenBabel;
 using namespace Eigen;
@@ -813,29 +815,50 @@ namespace GlobalSearch {
     }
     m_opt->sOBMutex->unlock();
 
-    // Copy settings from obmol -> structure.
-    // atoms
+    // Extract data from obmol and update structure
+    double energy=0.0;
+    double enthalpy=0.0;
+    QList<unsigned int> atomicNums;
+    QList<Eigen::Vector3d> coords;
+    Eigen::Matrix3d cellMat = Eigen::Matrix3d::Zero();
+
+    // Ensure that there are the correct number of atoms in the
+    // structure
     while (structure->numAtoms() < obmol.NumAtoms())
       structure->addAtom();
-    QList<Atom*> atoms = structure->atoms();
-    uint i = 0;
+    while (structure->numAtoms() > obmol.NumAtoms())
+      structure->removeAtom(structure->atoms().last());
 
+    // Atomic data
     FOR_ATOMS_OF_MOL(atm, obmol) {
-      atoms.at(i)->setPos(Vector3d(atm->x(), atm->y(), atm->z()));
-      atoms.at(i)->setAtomicNumber(atm->GetAtomicNum());
-      i++;
+      coords.append(Vector3d(atm->x(), atm->y(), atm->z()));
+      atomicNums.append(atm->GetAtomicNum());
     }
 
     // energy/enthalpy
-    const double KCAL_PER_MOL_TO_EV = 0.0433651224;
-    if (obmol.HasData("Enthalpy (kcal/mol)"))
-      structure->setEnthalpy(QString(obmol.GetData("Enthalpy (kcal/mol)")->GetValue().c_str()).toFloat()
-                        * KCAL_PER_MOL_TO_EV);
-    if (obmol.HasData("Enthalpy PV term (kcal/mol)"))
-      structure->setPV(QString(obmol.GetData("Enthalpy PV term (kcal/mol)")->GetValue().c_str()).toFloat()
-                  * KCAL_PER_MOL_TO_EV);
-    structure->setEnergy(obmol.GetEnergy());
-    // Modify as needed!
+    if (obmol.HasData("Enthalpy (kcal/mol)")) {
+      enthalpy = QString(obmol.GetData("Enthalpy (kcal/mol)")->GetValue().c_str()
+                         ).toDouble() * KCAL_PER_MOL_TO_EV;
+    }
+    energy = obmol.GetEnergy();
+
+    // Cell
+    OBUnitCell *cell = static_cast<OBUnitCell*>(obmol.GetData(OBGenericDataType::UnitCell));
+
+    if (cell != NULL) {
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+          cellMat(i,j) = cell->GetCellMatrix().Get(i,j);
+        }
+      }
+    }
+
+    if (m_opt->isStarting) {
+      structure->updateAndSkipHistory(atomicNums, coords, energy, enthalpy, cellMat);
+    }
+    else {
+      structure->updateAndAddToHistory(atomicNums, coords, energy, enthalpy, cellMat);
+    }
 
     return true;
   }
