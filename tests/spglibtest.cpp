@@ -22,6 +22,8 @@
 #include <QtCore/QString>
 #include <QtTest/QtTest>
 
+#define FROMPIO_TOL 0.05
+
 using namespace XtalOpt;
 using namespace OpenBabel;
 using namespace Avogadro;
@@ -210,7 +212,7 @@ Direct\n\
   0.8425094428620844  0.0566577187900324  0.9787883487020472\n";
 
   xtal = POSCARToXtal(poscar);
-  xtal->findSpaceGroup(0.05);
+  xtal->findSpaceGroup(FROMPIO_TOL);
   // "spglib finds Ima2 (#46) whereas findsym detects Cmc2_1" with
   // tol=0.05
   QEXPECT_FAIL("", "spglib: P1, findsym: Cmc2_1", Continue);
@@ -253,7 +255,7 @@ Direct\n\
   0.9157795264006211  0.1707042360529422  0.4975145053028533\n";
 
   xtal = POSCARToXtal(poscar);
-  xtal->findSpaceGroup(0.05);
+  xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: Pc", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pc"));
   delete xtal;
@@ -294,7 +296,7 @@ Direct\n\
   0.7463983483277447  0.1492850621013686  0.4899991401664211\n";
 
   xtal = POSCARToXtal(poscar);
-  xtal->findSpaceGroup(0.05);
+  xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: Pc", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pc"));
   delete xtal;
@@ -335,7 +337,7 @@ Direct\n\
   0.7367029916892964  0.5218437165288294  0.3287928749647472\n";
 
   xtal = POSCARToXtal(poscar);
-  xtal->findSpaceGroup(0.05);
+  xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: Cm", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Cm"));
   delete xtal;
@@ -376,7 +378,7 @@ Direct\n\
   0.2896425582783375  0.2910093076828788  0.9171800811376110\n";
 
   xtal = POSCARToXtal(poscar);
-  xtal->findSpaceGroup(0.05);
+  xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: C2", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("C2"));
   delete xtal;
@@ -417,7 +419,7 @@ Direct\n\
   0.9040034399388319  0.0189356918567516  0.1140071312905779\n";
 
   xtal = POSCARToXtal(poscar);
-  xtal->findSpaceGroup(0.05);
+  xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("R3c"));
   delete xtal;
@@ -458,7 +460,7 @@ Direct\n\
   0.8055230400371350  0.0074671815226643  0.3731271370795857\n";
 
   xtal = POSCARToXtal(poscar);
-  xtal->findSpaceGroup(0.05);
+  xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("R3c"));
   delete xtal;
@@ -499,7 +501,7 @@ Direct\n\
   0.8055230400371350  0.0074671815226643  0.3731271370795857\n";
 
   xtal = POSCARToXtal(poscar);
-  xtal->findSpaceGroup(0.05);
+  xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: Pm", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pm"));
   delete xtal;

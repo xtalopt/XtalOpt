@@ -3,9 +3,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "debug.h"
 #include "mathfunc.h"
 #include "symmetry.h"
+
+#include "debug.h"
 
 /* #define QXYZ */
 /* The addressing order of mesh grid is defined as running left */

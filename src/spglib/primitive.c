@@ -4,10 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cell.h"
-#include "debug.h"
 #include "mathfunc.h"
 #include "primitive.h"
 #include "symmetry.h"
+
+#include "debug.h"
 
 static int get_least_axes( double vectors[][3],
 			   const int multi,
@@ -19,7 +20,7 @@ static int trim_cell( Cell * primitive,
 static int set_primitive_positions( Cell * primitive,
 				    const VecDBL * position,
 				    const Cell * cell,
-				    SPGCONST int ** table,
+				    int * const * table,
 				    const double symprec );
 static VecDBL * get_positions_primitive( SPGCONST Cell * cell,
 					 SPGCONST double prim_lat[3][3],
@@ -205,7 +206,7 @@ static int trim_cell( Cell * primitive,
 static int set_primitive_positions( Cell * primitive,
 				    const VecDBL * position,
 				    const Cell * cell,
-				    SPGCONST int ** table,
+				    int * const * table,
 				    const double symprec )
 {
   int i, j, k, ratio, count;

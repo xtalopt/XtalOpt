@@ -19,6 +19,11 @@ double mat_get_determinant_i3(SPGCONST int a[3][3])
     + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
 }
 
+int mat_get_trace_i3( SPGCONST int a[3][3] )
+{
+  return a[0][0] + a[1][1] + a[2][2];
+}
+
 void mat_copy_matrix_d3(double a[3][3], SPGCONST double (*b)[3])
 {
   a[0][0] = b[0][0];
@@ -180,6 +185,19 @@ void mat_multiply_matrix_vector_id3(double v[3],
     v[i] = c[i];
 }
 
+void mat_add_matrix_i3( int m[3][3],
+			SPGCONST int a[3][3],
+			SPGCONST int b[3][3] )
+{
+  int i, j;
+  for ( i = 0; i < 3; i++ ) {
+    for ( j = 0; j < 3; j++ ) {
+      m[i][j] = a[i][j] + b[i][j];
+    }
+  }
+}
+
+
 void mat_cast_matrix_3i_to_3d(double m[3][3], SPGCONST int a[3][3])
 {
   m[0][0] = a[0][0];
@@ -291,8 +309,12 @@ void mat_get_metric( double metric[3][3],
   mat_multiply_matrix_d3(metric, lattice_t, lattice);
 }
 
+double mat_norm_squared_d3( const double a[3] )
+{
+  return a[0]*a[0]+a[1]*a[1]+a[2]*a[2];
+}
 
-double mat_norm_squared( const double a[3] )
+int mat_norm_squared_i3( const int a[3] )
 {
   return a[0]*a[0]+a[1]*a[1]+a[2]*a[2];
 }

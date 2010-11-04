@@ -49,13 +49,14 @@ void cel_set_cell( Cell * cell,
 		   SPGCONST double position[][3],
 		   const int types[] )
 {
-    int i, j;
-    mat_copy_matrix_d3(cell->lattice, lattice);
-    for (i = 0; i < cell->size; i++) {
-        for (j = 0; j < 3; j++)
-            cell->position[i][j] = position[i][j];
-        cell->types[i] = types[i];
+  int i, j;
+  mat_copy_matrix_d3(cell->lattice, lattice);
+  for (i = 0; i < cell->size; i++) {
+    for (j = 0; j < 3; j++) {
+      cell->position[i][j] = position[i][j];
     }
+    cell->types[i] = types[i];
+  }
 }
 
 int cel_is_overlap( const double a[3],
@@ -72,7 +73,7 @@ int cel_is_overlap( const double a[3],
   }
 
   mat_multiply_matrix_vector_d3( v_diff, lattice, v_diff );
-  if ( mat_norm_squared( v_diff ) < symprec*symprec ) {
+  if ( mat_norm_squared_d3( v_diff ) < symprec*symprec ) {
     return 1;
   } else {
     return 0;
