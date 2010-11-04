@@ -9,12 +9,13 @@
 #include "bravais.h"
 #include "bravais_virtual.h"
 #include "cell.h"
-#include "debug.h"
 #include "mathfunc.h"
 #include "pointgroup.h"
 #include "primitive.h"
 #include "symmetry.h"
 #include "hall_symbol.h"
+
+#include "debug.h"
 
 Spacegroup typ_get_spacegroup( SPGCONST Cell * cell,
 			       const double symprec )
@@ -26,11 +27,20 @@ Spacegroup typ_get_spacegroup( SPGCONST Cell * cell,
   Cell *primitive;
   Holohedry holohedry;
   Symmetry *symmetry, *conv_symmetry;
+  Pointgroup pointgroup;
   Spacegroup spacegroup;
   SpacegroupType spacegroup_type;
 
 #ifdef DEBUG
   int i;
+  printf("Input structure\n");
+  printf("lattice:\n");
+  debug_print_matrix_d3( cell->lattice );
+  debug_print("Metric tensor:\n");
+  double metric[3][3];
+  mat_get_metric( metric, cell->lattice );
+  debug_print_matrix_d3( metric );
+  printf("positions:\n");
   for ( i = 0; i < cell->size; i++ ) {
     printf("%f %f %f\n",
 	   cell->position[i][0],
@@ -64,7 +74,10 @@ Spacegroup typ_get_spacegroup( SPGCONST Cell * cell,
   bravais = brv_get_brv_lattice( cell->lattice, symprec );
   symmetry = sym_get_operation( &bravais, cell, symprec );
   /* Get correct Bravais lattice including internal symmetry */
-  holohedry = ptg_get_holohedry( symmetry );
+  /* 'symmetry' may be changed along point group constraint.. */
+  pointgroup = ptg_get_symmetry_pointgroup( symmetry );
+
+  holohedry = pointgroup.holohedry;
   /* When holohedry from lattice doesn't correspond to holohedry   */
   /* determined by pointgroup, careful treatment is required. */
   if (holohedry < bravais.holohedry) {
@@ -80,7 +93,8 @@ Spacegroup typ_get_spacegroup( SPGCONST Cell * cell,
   /* /\* however virtual structure treatment is not implemented. *\/ */
   /* /\* Therefore space group type determination is not perfect. *\/ */
   /* symmetry = sym_get_operation_direct( cell, symprec ); */
-  /* bravais.holohedry = ptg_get_holohedry( symmetry ); */
+  /* pointgroup = ptg_get_pointgroup( symmetry ); */
+  /* bravais.holohedry = pointgroup.holohedry; */
   /* brv_set_relative_lattice(); */
   /* if ( ! brv_get_brv_lattice_in_loop( &bravais, */
   /* 				      cell->lattice, */
@@ -103,11 +117,11 @@ Spacegroup typ_get_spacegroup( SPGCONST Cell * cell,
   spacegroup_type = spgdb_get_spacegroup_type( hall_number );
   
   debug_print("Hall number: %d\n", hall_number);
-  debug_print("Spacegroup number: %d\n", spacegroup_type.spacegroup_number);
+  debug_print("Spacegroup number: %d\n", spacegroup_type.number);
   
   if ( hall_number > 0 ) {
     mat_copy_matrix_d3(spacegroup.bravais_lattice, bravais.lattice);
-    spacegroup.number = spacegroup_type.spacegroup_number;
+    spacegroup.number = spacegroup_type.number;
     strcpy(spacegroup.schoenflies,
 	   spacegroup_type.schoenflies);
     strcpy(spacegroup.hall_symbol,

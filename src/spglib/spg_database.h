@@ -7,7 +7,7 @@
 #include "bravais.h"
 
 typedef struct {
-  int spacegroup_number;
+  int number;
   char schoenflies[7];
   char hall_symbol[17];
   char international[32];

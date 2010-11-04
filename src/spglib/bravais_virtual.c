@@ -6,10 +6,11 @@
 #include "bravais.h"
 #include "bravais_virtual.h"
 #include "cell.h"
-#include "debug.h"
 #include "mathfunc.h"
 #include "spacegroup_type.h"
 #include "symmetry.h"
+
+#include "debug.h"
 
 static double bcc_axes[13][3] = {
   { 1.0, 0.0, 0.0},
@@ -970,12 +971,12 @@ static int get_rotation_axis( SPGCONST int rot[3][3],
   /* Look for rotation axis */
   if (!(mat_check_identity_matrix_i3(tmp_rot, identity))) {
 
+    /* check rotation order */
     for (i = 0; i < axis_num; i++) {
       mat_multiply_matrix_i3(test_rot, tmp_rot, test_rot);
       if (mat_check_identity_matrix_i3(test_rot, identity) && i < axis_num - 1)
 	goto end;
     }
-
     if (mat_check_identity_matrix_i3(test_rot, identity)) {
 
       /* Look for eigenvector = rotation axis */

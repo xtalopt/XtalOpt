@@ -11,6 +11,8 @@
 #include "primitive.h"
 #include "symmetry.h"
 
+#include "debug.h"
+
 static int identity[3][3] = {
   {1, 0, 0},              /* order 1 */
   {0, 1, 0},
@@ -95,10 +97,10 @@ static int relative_axes[][3] = {
 };
 
 static void generate_operation( int point_symmetry[][3][3],
-				int generator[3][3],
-				int n_sym,
-				int n_gen );
-static PointSymmetry get_conventional( Holohedry holohedry );
+				SPGCONST int generator[3][3],
+				const int n_sym,
+				const int n_gen );
+static PointSymmetry get_conventional( const Holohedry holohedry );
 static int get_index_with_least_atoms( const Cell *cell );
 static VecDBL * get_translation( SPGCONST int rot[3][3],
 				 SPGCONST Cell *cell,
@@ -110,7 +112,7 @@ static int get_operation( int rot[][3][3],
 			  const double symprec );
 static int get_space_group_operation( int rot[][3][3],
 				      double trans[][3],
-				      PointSymmetry *lattice_sym,
+				      SPGCONST PointSymmetry *lattice_sym,
 				      SPGCONST Cell *primitive,
 				      const double symprec );
 static int get_operation_supercell( int rot[][3][3],
@@ -435,7 +437,7 @@ static int get_operation( int rot[][3][3],
 
 static int get_space_group_operation( int rot[][3][3],
 				      double trans[][3],
-				      PointSymmetry *lattice_sym,
+				      SPGCONST PointSymmetry *lattice_sym,
 				      SPGCONST Cell *cell,
 				      const double symprec )
 {
@@ -591,7 +593,7 @@ static PointSymmetry get_candidate( SPGCONST Bravais * bravais,
   return lattice_sym;
 }
 
-static PointSymmetry get_conventional( Holohedry holohedry )
+static PointSymmetry get_conventional( const Holohedry holohedry )
 {
   int i, j, k;
   PointSymmetry lattice_sym;
@@ -653,8 +655,9 @@ static PointSymmetry get_conventional( Holohedry holohedry )
 }
 
 static void generate_operation( int point_symmetry[][3][3],
-				int generator[3][3],
-				int n_sym, int n_gen )
+				SPGCONST int generator[3][3],
+				const int n_sym,
+				const int n_gen )
 {
   int i, j, count;
   int tmp_matrix[3][3];

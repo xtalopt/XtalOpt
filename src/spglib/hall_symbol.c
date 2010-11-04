@@ -3,12 +3,13 @@
 
 #include <stdio.h>
 #include "bravais.h"
-#include "debug.h"
 #include "hall_symbol.h"
 #include "spg_database.h"
 #include "spacegroup_type.h"
 #include "symmetry.h"
 #include "mathfunc.h"
+
+#include "debug.h"
 
 /* See: R. W. Grosse-Kunstleve, Acta Cryst. (1999). A55, 383-395 */
 /* */

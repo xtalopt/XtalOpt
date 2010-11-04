@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "bravais.h"
-#include "debug.h"
 #include "mathfunc.h"
+#include "debug.h"
 
 static int relative_lattice1[39192][3][3];
 static int relative_lattice2[31848][3][3];
@@ -112,9 +112,10 @@ void brv_set_relative_lattice( void )
 Bravais brv_get_brv_lattice( SPGCONST double lattice_orig[3][3],
 			     const double symprec )
 {
+  int i;
   Bravais bravais;
   double min_lattice[3][3];
-  int i;
+
   Holohedry holohedries[] = {
     CUBIC,
     HEXA,
@@ -124,11 +125,12 @@ Bravais brv_get_brv_lattice( SPGCONST double lattice_orig[3][3],
     TRICLI
   };
 
-  brv_smallest_lattice_vector(min_lattice, lattice_orig, symprec);
+  brv_smallest_lattice_vector( min_lattice, lattice_orig,
+			       symprec );
 
 #ifdef DEBUG
-  double metric[3][3];
   int angle_90[3], edge_equal[3];
+  double metric[3][3];
   debug_print("*** brv_get_brv_lattice ***\n");
   debug_print("Original lattice\n");
   debug_print_matrix_d3(lattice_orig);
@@ -217,7 +219,7 @@ void brv_smallest_lattice_vector( double min_lattice[3][3],
 
   get_Delaunay_reduction(min_lattice, lattice, symprec);
 
-  if (mat_get_determinant_d3(min_lattice) < -symprec*symprec*symprec) {
+  if (mat_get_determinant_d3(min_lattice) < -symprec) {
     /* Flip third axis */
     for (i = 0; i < 3; i++) {
       min_lattice[i][2] = -min_lattice[i][2];
@@ -560,8 +562,6 @@ static int get_brv_rhombo( Bravais *bravais,
 			   SPGCONST double min_lattice[3][3],
 			   const double symprec )
 {
-  int edge_equal[3];
-
   if ( exhaustive_search( bravais->lattice, min_lattice,
 			  check_rhombo, NO_CENTER, symprec ) ) {
     bravais->centering = NO_CENTER;
@@ -582,8 +582,8 @@ static int check_rhombo( SPGCONST double lattice[3][3],
   check_equal_edge(edge_equal, lattice, symprec);
 
   if (edge_equal[0] && edge_equal[1] && edge_equal[2] &&
-      (mat_Dabs(metric[0][1] - metric[1][2]) < symprec * symprec ) &&
-      (mat_Dabs(metric[0][1] - metric[0][2]) < symprec * symprec )) {
+      (mat_Dabs(metric[0][1] - metric[1][2]) < symprec ) &&
+      (mat_Dabs(metric[0][1] - metric[0][2]) < symprec )) {
 
     return 1;
   }
@@ -743,8 +743,7 @@ static void check_angle90( int angle_90[3],
     c0 = (i + 1) % 3;
     c1 = (i + 2) % 3;
 
-    if ( mat_Dabs(metric[c0][c1] * metric[c1][c0]) / metric[c0][c0] / metric[c1][c1]
-        < symprec * symprec ) {        /* orthogonal */
+    if ( mat_Dabs(metric[c0][c1]) + mat_Dabs(metric[c1][c0]) < symprec * 2 ) {
       angle_90[i] = 1;
     }
     else {
@@ -766,8 +765,7 @@ static void check_equal_edge( int edge_equal[3],
     c0 = (i + 1) % 3;
     c1 = (i + 2) % 3;
 
-    if ( mat_Dabs(metric[c0][c0] - metric[c1][c1]) / metric[c0][c0]
-	 < symprec * symprec) {	/* Equal edges */
+    if ( mat_Dabs(metric[c0][c0] - metric[c1][c1]) < symprec) {
       edge_equal[i] = 1;
     }
     else {
@@ -1028,7 +1026,7 @@ static void get_right_hand_lattice( double lattice[3][3],
 
 
 /* Delaunay reduction */
-/* Pointers can be found in International table A. */
+/* Reference can be found in International table A. */
 static void get_Delaunay_reduction( double red_lattice[3][3], 
 				    SPGCONST double lattice[3][3],
 				    const double symprec )
@@ -1044,18 +1042,21 @@ static void get_Delaunay_reduction( double red_lattice[3][3],
     }
   }
 
-  for ( i = 0; i < 3; i++ ) 
-    for ( j = 0; j < 3; j++ )
+  for ( i = 0; i < 3; i++ ) {
+    for ( j = 0; j < 3; j++ ) {
       red_lattice[i][j] = basis[j][i];
+    }
+  }
 
-  debug_print("Delaunay reduction\n");
-  debug_print_matrix_d3(red_lattice);
 #ifdef DEBUG
+  debug_print("Delaunay reduction:\n");
+  debug_print_matrix_d3(red_lattice);
   double metric[3][3];
-  mat_get_metric(metric, red_lattice);
-  debug_print("Metric of Delaunay reduction\n");
-  debug_print_matrix_d3(metric);
+  mat_get_metric( metric, red_lattice );
+  debug_print("It's metric tensor.\n");
+  debug_print_matrix_d3( metric );
 #endif
+
 
 }
 
@@ -1071,17 +1072,16 @@ static int get_Delaunay_reduction_basis( double basis[4][3],
       for ( k = 0; k < 3; k++ ) {
 	dot_product += basis[i][k] * basis[j][k];
       }
-      if ( dot_product > symprec) {
+      if ( dot_product > symprec ) {
 	for ( k = 0; k < 4; k++ ) {
-	  if ( k != i && k != j ) {
+	  if ( ! ( k == i || k == j ) ) {
 	    for ( l = 0; l < 3; l++ ) {
-	      basis[k][l] = basis[i][l] + basis[k][l];
+	      basis[k][l] += basis[i][l];
 	    }
 	  }
 	}
 	for ( k = 0; k < 3; k++ ) {
 	  basis[i][k] = -basis[i][k];
-	  basis[j][k] = basis[j][k];
 	}
 	return 0;
       }
