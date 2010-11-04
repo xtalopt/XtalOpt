@@ -521,7 +521,7 @@ namespace GlobalSearch {
   }
 
   void Structure::deleteFromHistory(unsigned int index) {
-    Q_ASSERT_X(index < sizeOfHistory() - 1, Q_FUNC_INFO,
+    Q_ASSERT_X(index <= sizeOfHistory() - 1, Q_FUNC_INFO,
                "Requested history index greater than the number of available entries.");
 
     m_histAtomicNums.removeAt(index);
@@ -538,7 +538,7 @@ namespace GlobalSearch {
                                        double *enthalpy,
                                        Eigen::Matrix3d *cell)
   {
-    Q_ASSERT_X(index < sizeOfHistory() - 1, Q_FUNC_INFO,
+    Q_ASSERT_X(index <= sizeOfHistory() - 1, Q_FUNC_INFO,
                "Requested history index greater than the number of available entries.");
 
     if (atomicNums != NULL) {
