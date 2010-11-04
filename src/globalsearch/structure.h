@@ -723,8 +723,8 @@ namespace GlobalSearch {
      * structure's history.
      *
      * @param coords List of cartesian coordinates
-     * @param energy
-     * @param enthalpy
+     * @param energy in eV
+     * @param enthalpy in eV
      * @param cell Matrix of cell vectors (row vectors)
      */
     virtual void updateAndSkipHistory(const QList<unsigned int> &atomicNums,
@@ -739,8 +739,8 @@ namespace GlobalSearch {
      * structure's history.
      *
      * @param coords List of cartesian coordinates
-     * @param energy
-     * @param enthalpy
+     * @param energy in eV
+     * @param enthalpy in eV
      * @param cell Matrix of cell vectors (row vectors)
      */
     virtual void updateAndAddToHistory(const QList<unsigned int> &atomicNums,
@@ -769,10 +769,10 @@ namespace GlobalSearch {
      * needed.
      *
      * @param energy Pointer to a double that will contain the entry's
-     * energy. Can be zero if this is not needed.
+     * energy in eV. Can be zero if this is not needed.
      *
      * @param enthalpy Pointer to a double that will contain the
-     * entry's enthalpy. Can be zero if this is not needed.
+     * entry's enthalpy in eV. Can be zero if this is not needed.
      *
      * @param cell Pointer to an Eigen::Matrix3f filled with the unit
      * cell vectors (row vectors). Can be zero if this is not needed.

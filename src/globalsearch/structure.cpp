@@ -30,6 +30,8 @@
 #include <QtCore/QStringList>
 #include <QtCore/QtConcurrentMap>
 
+#define KCAL_PER_MOL_TO_EV 0.0433651224
+
 using namespace Avogadro;
 using namespace OpenBabel;
 using namespace Eigen;
@@ -445,7 +447,7 @@ namespace GlobalSearch {
       m_PV = enthalpy - energy;
     }
     m_enthalpy = enthalpy;
-    setEnergy(energy);
+    setEnergy(energy / KCAL_PER_MOL_TO_EV);
 
     // Update cell if necessary
     if (!cell.isZero()) {
@@ -499,7 +501,7 @@ namespace GlobalSearch {
       m_hasEnthalpy = true;
       m_PV = enthalpy - energy;
     }
-    setEnergy(energy);
+    setEnergy(energy / KCAL_PER_MOL_TO_EV);
 
     // Update cell if necessary
     if (!cell.isZero()) {

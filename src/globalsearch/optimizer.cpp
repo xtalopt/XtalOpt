@@ -840,7 +840,9 @@ namespace GlobalSearch {
       enthalpy = QString(obmol.GetData("Enthalpy (kcal/mol)")->GetValue().c_str()
                          ).toDouble() * KCAL_PER_MOL_TO_EV;
     }
-    energy = obmol.GetEnergy();
+    // Convert energy to eV (Avogadro::Molecule expects kcal/mol, but
+    // the updateAnd*History functions below want eV)
+    energy = obmol.GetEnergy() * KCAL_PER_MOL_TO_EV;
 
     // Cell
     OBUnitCell *cell = static_cast<OBUnitCell*>(obmol.GetData(OBGenericDataType::UnitCell));
