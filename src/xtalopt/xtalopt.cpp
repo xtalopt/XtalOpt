@@ -244,6 +244,8 @@ namespace XtalOpt {
 
     // Copy info over
     QWriteLocker locker2 (xtal->lock());
+    oldXtal->clear();
+    oldXtal->setOBUnitCell(new OpenBabel::OBUnitCell);
     oldXtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
     oldXtal->resetEnergy();
     oldXtal->resetEnthalpy();
@@ -256,7 +258,7 @@ namespace XtalOpt {
 
     Atom *atom1, *atom2;
     for (uint i = 0; i < xtal->numAtoms(); i++) {
-      atom1 = oldXtal->atom(i);
+      atom1 = oldXtal->addAtom();
       atom2 = xtal->atom(i);
       atom1->setPos(atom2->pos());
       atom1->setAtomicNumber(atom2->atomicNumber());
