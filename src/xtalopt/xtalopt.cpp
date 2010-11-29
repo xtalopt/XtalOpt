@@ -1098,8 +1098,24 @@ namespace XtalOpt {
 
     m_dialog->updateProgressLabel("Done!");
 
-    return true;
+    // Check if user wants to resume the search
+    if (!readOnly) {
+      bool resume;
+      // TODO Change this to needBoolean once reload in move to bg thread
+      promptForBoolean(tr("Session '%1' (%2) loaded. Would you like to start submitting jobs and resume the search? (Answering \"No\" will enter read-only mode.)")
+                       .arg(description).arg(filePath),
+                       &resume);
 
+      readOnly = !resume;
+      qDebug() << "Read only? " << readOnly;
+
+      // Start search if needed
+      if (!readOnly) {
+	qobject_cast<XtalOptDialog*>(m_dialog)->startProgressTimer();
+      }
+    }
+
+    return true;
   }
 
   void XtalOpt::resetDuplicates() {

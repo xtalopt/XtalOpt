@@ -145,6 +145,11 @@ namespace XtalOpt {
     }
   }
 
+  void XtalOptDialog::startProgressTimer()
+  {
+    m_tab_progress->startTimer();
+  };
+
 }
 
 //#include "dialog.moc"
