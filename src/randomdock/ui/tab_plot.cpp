@@ -48,8 +48,8 @@ namespace RandomDock {
     updatePlot();
 
     // dialog connections
-    connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
-            this, SLOT(highlightStructure(Structure*)));
+    connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
+            this, SLOT(highlightStructure(GlobalSearch::Structure*)));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(populateStructureList()));
     connect(m_dialog->getGLWidget(), SIGNAL(mouseRelease(QMouseEvent*)),
@@ -82,11 +82,11 @@ namespace RandomDock {
             this, SLOT(lockClearAndSelectPoint(PlotPoint*)));
     connect(m_opt, SIGNAL(newInfoUpdate()),
             this, SLOT(populateStructureList()));
-    connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
+    connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(populateStructureList()));
     connect(m_opt, SIGNAL(newInfoUpdate()),
             this, SLOT(updatePlot()));
-    connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
+    connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(updatePlot()));
 
     initialize();

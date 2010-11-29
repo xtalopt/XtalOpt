@@ -183,7 +183,7 @@ namespace GlobalSearch {
      * Signal emitted when a new Structure is added to the Tracker.
      * @param s A Pointer to the new Structure.
      */
-    void newStructureAdded(Structure *s);
+    void newStructureAdded(GlobalSearch::Structure *s);
 
     /**
      * Signal emitted when then number of Structures in the Tracker
@@ -196,6 +196,6 @@ namespace GlobalSearch {
     QReadWriteLock m_mutex;
     QList<Structure*> m_list;
   };
-} // end namespace Avogadro
+} // end namespace GlobalSearch
 
 #endif

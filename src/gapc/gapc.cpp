@@ -45,10 +45,10 @@ namespace GAPC {
   {
     m_idString = "GAPC";
 
-    connect(m_queue, SIGNAL(structureFinished(Structure*)),
+    connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
             this, SLOT(checkForDuplicates()));
-    connect(m_queue, SIGNAL(structureFinished(Structure*)),
-            this, SLOT(checkOptimizedPC(Structure*)));
+    connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
+            this, SLOT(checkOptimizedPC(GlobalSearch::Structure*)));
     connect(this, SIGNAL(sessionStarted()),
             this, SLOT(resetDuplicates()));
   }

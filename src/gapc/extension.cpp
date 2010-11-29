@@ -100,8 +100,8 @@ namespace GAPC {
       m_dialog = new GAPCDialog(widget, qobject_cast<QWidget*>(parent()));
       m_dialog->setMolecule(m_molecule);
       // Allow setting of the molecule from within the dialog:
-      connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
-              this, SLOT(reemitMoleculeChanged(Structure*)));
+      connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
+              this, SLOT(reemitMoleculeChanged(GlobalSearch::Structure*)));
     }
     m_dialog->show();
     return NULL;

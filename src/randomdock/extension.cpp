@@ -103,8 +103,8 @@ namespace RandomDock {
     if (!m_dialog) {
       m_dialog = new RandomDockDialog(widget, qobject_cast<QWidget*>(parent()));
       // Allow setting of the molecule from within the dialog:
-      connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
-              this, SLOT(reemitMoleculeChanged(Structure*)));
+      connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
+              this, SLOT(reemitMoleculeChanged(GlobalSearch::Structure*)));
     }
     m_dialog->show();
     return NULL;

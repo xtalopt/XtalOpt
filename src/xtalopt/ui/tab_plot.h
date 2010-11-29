@@ -38,7 +38,9 @@ namespace XtalOpt {
 
   class TabPlot : public GlobalSearch::AbstractTab
   {
-    Q_OBJECT
+    Q_OBJECT;
+    // Workaround for Qt's ignorance of namespaces in signals/slots
+    typedef Avogadro::PlotPoint PlotPoint;
 
   public:
     explicit TabPlot( XtalOptDialog *parent, XtalOpt *p );
@@ -80,13 +82,14 @@ namespace XtalOpt {
     void writeSettings(const QString &filename = "");
     void updateGUI();
     void disconnectGUI();
-    void lockClearAndSelectPoint(Avogadro::PlotPoint *pp);
+    // PlotPoint is typedef'd to Avogadro::PlotPoint above
+    void lockClearAndSelectPoint(PlotPoint *pp);
+    void selectMoleculeFromPlot(PlotPoint *pp);
     void refreshPlot();
     void updatePlot();
     void plotTrends();
     void plotDistHist();
     void populateXtalList();
-    void selectMoleculeFromPlot(Avogadro::PlotPoint *pp);
     void selectMoleculeFromIndex(int index);
     void highlightXtal(GlobalSearch::Structure *s);
 

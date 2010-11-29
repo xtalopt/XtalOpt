@@ -120,13 +120,13 @@ m_queue->unlockForNaming(newStructure);
      * @sa lockForNaming
      * @sa unlockForNaming
      */
-    void structureStarted(Structure *s);
+    void structureStarted(GlobalSearch::Structure *s);
 
     /**
      *  Emitted when a Structure is submitted for optimization
      * @param s The Structure that has been submitted
      */
-    void structureSubmitted(Structure *s);
+    void structureSubmitted(GlobalSearch::Structure *s);
 
     /**
      * Emitted when a Structure has been killed through
@@ -134,21 +134,21 @@ m_queue->unlockForNaming(newStructure);
      * @param s The Structure that has been killed
      * @sa killStructure
      */
-    void structureKilled(Structure *s);
+    void structureKilled(GlobalSearch::Structure *s);
 
     /**
      * Emitted when a Structure has changed status. Useful for
      * updating progress tables, plots, etc
      * @param s The Structure that has been updated
      */
-    void structureUpdated(Structure *s);
+    void structureUpdated(GlobalSearch::Structure *s);
 
     /**
      * Emitted when a Structure has completed all optimization steps.
      *
      * @param s The Structure that has been updated
      */
-    void structureFinished(Structure *s);
+    void structureFinished(GlobalSearch::Structure *s);
 
     /**
      * Emitted when the number of unoptimized Structures drops below

@@ -449,7 +449,7 @@ namespace GlobalSearch {
      * Emitted to change/update the molecule displayed in the Avogadro
      * main window.
      */
-    void moleculeChanged(Structure*);
+    void moleculeChanged(GlobalSearch::Structure*);
 
     /**
      * Emitted when there is a new log message ready.

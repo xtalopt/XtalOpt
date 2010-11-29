@@ -36,6 +36,16 @@ namespace RandomDock {
   class RandomDock;
   class Scene;
 
+  struct TableEntry {
+    int rank;
+    int id;
+    int jobID;
+    double energy;
+    QString elapsed;
+    QString status;
+    QBrush brush;
+  };
+
   class TabProgress : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
@@ -51,16 +61,6 @@ namespace RandomDock {
       C_Elapsed,
       C_JobID,
       C_Status
-    };
-
-    struct TableEntry {
-      int rank;
-      int id;
-      int jobID;
-      double energy;
-      QString elapsed;
-      QString status;
-      QBrush brush;
     };
 
   public slots:

@@ -52,8 +52,8 @@ namespace GAPC {
     rowTracking = true;
 
     // dialog connections
-    connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
-            this, SLOT(highlightPC(Structure*)));
+    connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
+            this, SLOT(highlightPC(GlobalSearch::Structure*)));
     connect(this, SIGNAL(refresh()),
             m_opt->queue(), SLOT(checkRunning()));
     connect(this, SIGNAL(refresh()),
@@ -72,10 +72,10 @@ namespace GAPC {
             this, SLOT(updateProgressTable()));
     connect(ui.table_list, SIGNAL(currentCellChanged(int,int,int,int)),
             this, SLOT(selectMoleculeFromProgress(int,int,int,int)));
-    connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
+    connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(addNewEntry()));
-    connect(m_opt->queue(), SIGNAL(structureUpdated(Structure*)),
-            this, SLOT(newInfoUpdate(Structure *)));
+    connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
+            this, SLOT(newInfoUpdate(GlobalSearch::Structure *)));
     connect(this, SIGNAL(infoUpdate()),
             this, SLOT(updateInfo()));
     connect(ui.table_list, SIGNAL(customContextMenuRequested(QPoint)),

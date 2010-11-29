@@ -43,8 +43,8 @@ namespace GlobalSearch {
             this, SLOT(disconnectGUI()));
     connect(m_dialog, SIGNAL(tabsLockGUI()),
             this, SLOT(lockGUI()));
-    connect(this, SIGNAL(moleculeChanged(Structure*)),
-            m_dialog, SIGNAL(moleculeChanged(Structure*)));
+    connect(this, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
+            m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)));
   }
 
   AbstractTab::~AbstractTab()

@@ -61,7 +61,7 @@ namespace GlobalSearch {
     connect(ui_push_resume, SIGNAL(clicked()),
             this, SLOT(resumeSession()));
 
-    connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
+    connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(saveSession()));
     connect(m_opt, SIGNAL(newInfoUpdate()),
             this, SLOT(saveSession()));

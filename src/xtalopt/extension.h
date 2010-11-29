@@ -49,7 +49,6 @@ namespace XtalOpt {
       void readSettings(QSettings &settings);
 
    public slots:
-
       void reemitMoleculeChanged(GlobalSearch::Structure *s);
 
     private:

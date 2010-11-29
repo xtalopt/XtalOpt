@@ -116,14 +116,16 @@ namespace XtalOpt {
    public slots:
     void startSearch();
     void generateNewStructure();
-    void initializeAndAddXtal(Xtal *xtal, uint generation, const QString &parents);
+    void initializeAndAddXtal(Xtal *xtal,
+                              unsigned int generation,
+                              const QString &parents);
     void resetDuplicates();
     void checkForDuplicates();
     void setOptimizer(GlobalSearch::Optimizer *o) {
       setOptimizer_opt(o);};
     void setOptimizer(const QString &IDString, const QString &filename = "") {
       setOptimizer_string(IDString, filename);};
-    void setOptimizer(OptTypes opttype, const QString &filename = "") {
+    void setOptimizer(XtalOpt::OptTypes opttype, const QString &filename = "") {
       setOptimizer_enum(opttype, filename);};
 
    private:

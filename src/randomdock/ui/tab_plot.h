@@ -32,6 +32,9 @@ namespace Avogadro {
   class PlotObject;
 }
 
+// Workaround for Qt's ignorance of namespaces in signals/slots
+using Avogadro::PlotPoint;
+
 namespace RandomDock {
   class RandomDockDialog;
   class RandomDock;
@@ -39,7 +42,7 @@ namespace RandomDock {
 
   class TabPlot : public GlobalSearch::AbstractTab
   {
-    Q_OBJECT
+    Q_OBJECT;
 
   public:
     explicit TabPlot( RandomDockDialog *parent, RandomDock *p );
@@ -65,13 +68,13 @@ namespace RandomDock {
     void writeSettings(const QString &filename = "");
     void updateGUI();
     void disconnectGUI();
-    void lockClearAndSelectPoint(Avogadro::PlotPoint *pp);
+    void lockClearAndSelectPoint(PlotPoint *pp);
+    void selectStructureFromPlot(PlotPoint *pp);
     void refreshPlot();
     void updatePlot();
     void plotTrends();
     void plotDistHist();
     void populateStructureList();
-    void selectStructureFromPlot(Avogadro::PlotPoint *pp);
     void selectStructureFromIndex(int index);
     void highlightStructure(GlobalSearch::Structure *stucture);
 

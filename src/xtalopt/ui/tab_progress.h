@@ -36,6 +36,19 @@ namespace XtalOpt {
   class XtalOpt;
   class Xtal;
 
+  struct TableEntry {
+    int gen;
+    int id;
+    int jobID;
+    double enthalpy;
+    double volume;
+    QString elapsed;
+    QString parents;
+    QString spg;
+    QString status;
+    QBrush brush;
+  };
+
   class TabProgress : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
@@ -56,19 +69,6 @@ namespace XtalOpt {
       Ancestry
     };
 
-    struct TableEntry {
-      int gen;
-      int id;
-      int jobID;
-      double enthalpy;
-      double volume;
-      QString elapsed;
-      QString parents;
-      QString spg;
-      QString status;
-      QBrush brush;
-    };
-
   public slots:
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
@@ -78,7 +78,8 @@ namespace XtalOpt {
     void updateInfo();
     void updateAllInfo();
     void updateProgressTable();
-    void setTableEntry(int row, const TableEntry& e);
+    void setTableEntry(int row,
+                       const TableEntry& e);
     void selectMoleculeFromProgress(int,int,int,int);
     void highlightXtal(GlobalSearch::Structure *s);
     void startTimer();
