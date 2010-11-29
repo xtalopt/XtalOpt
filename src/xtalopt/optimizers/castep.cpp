@@ -27,7 +27,8 @@ using namespace OpenBabel;
 
 namespace XtalOpt {
 
-  CASTEPOptimizer::CASTEPOptimizer(OptBase *parent, const QString &filename) :
+  CASTEPOptimizer::CASTEPOptimizer(GlobalSearch::OptBase *parent,
+                                   const QString &filename) :
     XtalOptOptimizer(parent)
   {
     // Set allowed data structure keys, if any, e.g.

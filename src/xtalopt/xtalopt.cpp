@@ -50,6 +50,7 @@
 
 using namespace GlobalSearch;
 using namespace OpenBabel;
+using namespace Avogadro;
 
 namespace XtalOpt {
 
@@ -60,7 +61,7 @@ namespace XtalOpt {
     m_idString = "XtalOpt";
 
     // Connections
-    connect(m_tracker, SIGNAL(newStructureAdded(Structure*)),
+    connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(checkForDuplicates()));
     connect(this, SIGNAL(sessionStarted()),
             this, SLOT(resetDuplicates()));

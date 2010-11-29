@@ -26,22 +26,21 @@ namespace GlobalSearch {
   class Optimizer;
 }
 
-using namespace GlobalSearch;
-
 namespace XtalOpt {
 
-  class XtalOptOptimizer : public Optimizer
+  class XtalOptOptimizer : public GlobalSearch::Optimizer
   {
     Q_OBJECT
 
   public:
-    explicit XtalOptOptimizer(OptBase *parent, const QString &filename = "");
+    explicit XtalOptOptimizer(GlobalSearch::OptBase *parent,
+                              const QString &filename = "");
     virtual ~XtalOptOptimizer();
 
-    virtual bool read(Structure *structure, const QString & filename);
+    virtual bool read(GlobalSearch::Structure *structure, const QString & filename);
 
   };
 
-} // end namespace Avogadro
+} // end namespace XtalOpt
 
 #endif

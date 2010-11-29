@@ -21,15 +21,13 @@
 
 #include "ui_tab_init.h"
 
-using namespace GlobalSearch;
-
 namespace RandomDock {
   class RandomDockDialog;
   class RandomDock;
   class Substrate;
   class Matrix;
 
-  class TabInit : public AbstractTab
+  class TabInit : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 

@@ -35,6 +35,7 @@
 #include <QtGui/QFileDialog>
 #include <QtGui/QMessageBox>
 
+using namespace GlobalSearch;
 using namespace Avogadro;
 using namespace std;
 

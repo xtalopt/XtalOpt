@@ -34,8 +34,6 @@ namespace Avogadro {
   class Molecule;
 }
 
-using namespace Avogadro;
-
 namespace GlobalSearch {
 
   /**
@@ -113,7 +111,7 @@ namespace GlobalSearch {
      * @param parent Parent object
      * @param f Window flags
      */
-    explicit AbstractDialog( GLWidget *glWidget = 0,
+    explicit AbstractDialog( Avogadro::GLWidget *glWidget = 0,
                              QWidget *parent = 0,
                              Qt::WindowFlags f = 0 );
 
@@ -143,7 +141,7 @@ namespace GlobalSearch {
     /**
      * @return The GLWidget of the main Avogadro window.
      */
-    GLWidget* getGLWidget() {return m_glWidget;};
+    Avogadro::GLWidget* getGLWidget() {return m_glWidget;};
 
     /**
      * @return The associated OptBase derived class.
@@ -231,7 +229,7 @@ namespace GlobalSearch {
      *
      * @param w The Avogadro GLWidget
      */
-    void setGLWidget(GLWidget *w) {m_glWidget = w;};
+    void setGLWidget(Avogadro::GLWidget *w) {m_glWidget = w;};
 
     /**
      * @name Progressbar functions
@@ -451,7 +449,7 @@ namespace GlobalSearch {
      * Emitted to change/update the molecule displayed in the Avogadro
      * main window.
      */
-    void moleculeChanged(Structure*);
+    void moleculeChanged(GlobalSearch::Structure*);
 
     /**
      * Emitted when there is a new log message ready.
@@ -534,12 +532,12 @@ namespace GlobalSearch {
     /**
      * The molecule object in the main Avogadro window.
      */
-    Molecule *m_molecule;
+    Avogadro::Molecule *m_molecule;
 
     /**
      * Cached pointer to the Avogadro GLWidget.
      */
-    GLWidget *m_glWidget;
+    Avogadro::GLWidget *m_glWidget;
 
     /**
      * Mutex governing progress bar usage.

@@ -23,17 +23,15 @@
 #include <QtCore/QDateTime>
 #include <QtCore/QTextStream>
 
-using namespace GlobalSearch;
-
 namespace RandomDock {
 
-  class Substrate : public Structure
+  class Substrate : public GlobalSearch::Structure
   {
     Q_OBJECT
 
    public:
     Substrate(QObject *parent = 0);
-    Substrate(Molecule *mol);
+    Substrate(Avogadro::Molecule *mol);
     virtual ~Substrate();
 
    signals:

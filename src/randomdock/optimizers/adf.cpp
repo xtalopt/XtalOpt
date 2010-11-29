@@ -26,8 +26,8 @@
 
 namespace RandomDock {
 
-  ADFOptimizer::ADFOptimizer(OptBase *parent, const QString &filename) :
-    Optimizer(parent)
+  ADFOptimizer::ADFOptimizer(GlobalSearch::OptBase *parent, const QString &filename) :
+    GlobalSearch::Optimizer(parent)
   {
     // Set allowed data structure keys, if any, e.g.
     // None here!

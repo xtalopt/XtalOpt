@@ -25,16 +25,14 @@ namespace GlobalSearch {
   class OptBase;
 }
 
-using namespace GlobalSearch;
-
 namespace XtalOpt {
   class VASPOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT
 
    public:
-    VASPOptimizer(OptBase *parent, const QString &filename = "");
-    bool writeInputFiles(Structure *structure);
+    VASPOptimizer(GlobalSearch::OptBase *parent, const QString &filename = "");
+    bool writeInputFiles(GlobalSearch::Structure *structure);
     void readSettings(const QString &filename = "");
     void writeTemplatesToSettings(const QString &filename = "");
     void writeDataToSettings(const QString &filename = "");
@@ -43,6 +41,6 @@ namespace XtalOpt {
     bool POTCARInfoIsUpToDate(QList<uint> comp);
   };
 
-} // end namespace Avogadro
+} // end namespace XtalOpt
 
 #endif

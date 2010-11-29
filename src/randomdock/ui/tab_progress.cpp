@@ -34,6 +34,7 @@
 
 using namespace std;
 using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
 
@@ -56,8 +57,8 @@ namespace RandomDock {
     rowTracking = true;
 
     // dialog connections
-    connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
-            this, SLOT(highlightScene(Structure*)));
+    connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
+            this, SLOT(highlightScene(GlobalSearch::Structure*)));
     connect(this, SIGNAL(refresh()),
             m_opt->queue(), SLOT(checkRunning()));
     connect(this, SIGNAL(refresh()),
@@ -76,10 +77,10 @@ namespace RandomDock {
             this, SLOT(updateProgressTable()));
     connect(ui.table_list, SIGNAL(currentCellChanged(int,int,int,int)),
             this, SLOT(selectMoleculeFromProgress(int,int,int,int)));
-    connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
+    connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(addNewEntry()));
-    connect(m_opt->queue(), SIGNAL(structureUpdated(Structure*)),
-            this, SLOT(newInfoUpdate(Structure *)));
+    connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
+            this, SLOT(newInfoUpdate(GlobalSearch::Structure *)));
     connect(this, SIGNAL(infoUpdate()),
             this, SLOT(updateInfo()));
     connect(ui.table_list, SIGNAL(customContextMenuRequested(QPoint)),
@@ -90,8 +91,8 @@ namespace RandomDock {
             this, SLOT(disableRowTracking()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(enableRowTracking()));
-    connect(this, SIGNAL(updateTableEntry(int, const TableEntry&)),
-            this, SLOT(setTableEntry(int, const TableEntry&)));
+    connect(this, SIGNAL(updateTableEntry(int, const RandomDock::TableEntry&)),
+            this, SLOT(setTableEntry(int, const RandomDock::TableEntry&)));
 
     initialize();
   }

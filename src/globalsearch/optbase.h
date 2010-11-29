@@ -308,7 +308,7 @@ for (ind = 0; ind < probs.size(); ind++)
      * @sa setOptimizer
      * @sa optimizer
      */
-    void optimizerChanged(Optimizer*);
+    void optimizerChanged(GlobalSearch::Optimizer*);
 
     /**
      * Emitted when debug(const QString&) is called.
@@ -353,7 +353,7 @@ for (ind = 0; ind < probs.size(); ind++)
      * @param ok True if user accepts dialog, false if they cancel.
      * @sa promptForBoolean
      */
-    void needBoolean(const QString &message, bool *ok);
+    void needBoolean(const QString &message, bool *b);
 
     /**
      * Request a password from the user, used for libssh

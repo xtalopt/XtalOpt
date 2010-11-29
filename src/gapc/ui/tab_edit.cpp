@@ -41,11 +41,11 @@ namespace GAPC {
     ui.edit_edit->setCurrentFont(QFont("Courier"));
 
     // opt connections
-    connect(this, SIGNAL(optimizerChanged(Optimizer*)),
-            m_opt, SLOT(setOptimizer(Optimizer*)));
+    connect(this, SIGNAL(optimizerChanged(GlobalSearch::Optimizer*)),
+            m_opt, SLOT(setOptimizer(GlobalSearch::Optimizer*)));
 
     // Dialog connections
-    connect(this, SIGNAL(optimizerChanged(Optimizer*)),
+    connect(this, SIGNAL(optimizerChanged(GlobalSearch::Optimizer*)),
             m_dialog, SIGNAL(tabsUpdateGUI()));
 
     // Edit tab connections

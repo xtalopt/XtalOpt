@@ -31,8 +31,6 @@ namespace GlobalSearch {
   class Structure;
 }
 
-using namespace GlobalSearch;
-
 namespace RandomDock {
   class RandomDockDialog;
   class RandomDockParams;
@@ -40,7 +38,7 @@ namespace RandomDock {
   class Substrate;
   class Matrix;
 
-  class RandomDock : public OptBase
+  class RandomDock : public GlobalSearch::OptBase
   {
     Q_OBJECT
 
@@ -54,7 +52,8 @@ namespace RandomDock {
     };
 
     Scene* generateRandomScene();
-    Structure* replaceWithRandom(Structure *s, const QString & reason = "");
+    GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
+                                               const QString & reason = "");
     bool checkLimits();
     bool save(const QString & filename = "", bool notify = false);
     bool load(const QString & filename);
@@ -89,7 +88,7 @@ namespace RandomDock {
     void startSearch();
     void generateNewStructure();
     void initializeAndAddScene(Scene *scene);
-    void setOptimizer(Optimizer *o) {
+    void setOptimizer(GlobalSearch::Optimizer *o) {
       setOptimizer_opt(o);};
     void setOptimizer(const QString &IDString, const QString &filename = "") {
       setOptimizer_string(IDString, filename);};

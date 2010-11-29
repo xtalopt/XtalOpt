@@ -16,6 +16,7 @@
 #include "xtalopttest.h"
 
 #include <xtalopt/xtalopt.h>
+#include <xtalopt/ui/dialog.h>
 
 #include <QtCore/QDebug>
 #include <QtCore/QFile>
@@ -24,6 +25,8 @@
 
 #include <QtGui/QInputDialog>
 #include <QtGui/QProgressDialog>
+
+using namespace GlobalSearch;
 
 namespace XtalOpt {
 

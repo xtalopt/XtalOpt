@@ -28,9 +28,6 @@
 
 #include "ui_dialog.h"
 
-using namespace GlobalSearch;
-using namespace Avogadro;
-
 namespace GAPC {
   class ProtectedCluster;
   class GAPC;
@@ -42,17 +39,17 @@ namespace GAPC {
   class TabPlot;
   class TabLog;
 
-  class GAPCDialog : public AbstractDialog
+  class GAPCDialog : public GlobalSearch::AbstractDialog
   {
     Q_OBJECT
 
   public:
-    explicit GAPCDialog( GLWidget *glWidget = 0,
-                            QWidget *parent = 0,
-                            Qt::WindowFlags f = 0 );
+    explicit GAPCDialog( Avogadro::GLWidget *glWidget = 0,
+                         QWidget *parent = 0,
+                         Qt::WindowFlags f = 0 );
     virtual ~GAPCDialog();
 
-    void setMolecule(Molecule *molecule);
+    void setMolecule(Avogadro::Molecule *molecule);
 
   public slots:
     void saveSession();

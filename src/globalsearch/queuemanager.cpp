@@ -56,14 +56,14 @@ namespace GlobalSearch {
             this, SLOT(resetRequestCount()));
 
     // internal connections
-    connect(this, SIGNAL(structureStarted(Structure *)),
-            this, SIGNAL(structureUpdated(Structure *)));
-    connect(this, SIGNAL(structureSubmitted(Structure *)),
-            this, SIGNAL(structureUpdated(Structure *)));
-    connect(this, SIGNAL(structureKilled(Structure *)),
-            this, SIGNAL(structureUpdated(Structure *)));
-    connect(this, SIGNAL(structureFinished(Structure *)),
-            this, SIGNAL(structureUpdated(Structure *)));
+    connect(this, SIGNAL(structureStarted(GlobalSearch::Structure *)),
+            this, SIGNAL(structureUpdated(GlobalSearch::Structure *)));
+    connect(this, SIGNAL(structureSubmitted(GlobalSearch::Structure *)),
+            this, SIGNAL(structureUpdated(GlobalSearch::Structure *)));
+    connect(this, SIGNAL(structureKilled(GlobalSearch::Structure *)),
+            this, SIGNAL(structureUpdated(GlobalSearch::Structure *)));
+    connect(this, SIGNAL(structureFinished(GlobalSearch::Structure *)),
+            this, SIGNAL(structureUpdated(GlobalSearch::Structure *)));
   }
 
   QueueManager::~QueueManager()

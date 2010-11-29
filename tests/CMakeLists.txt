@@ -23,6 +23,7 @@ set (tests
     sshmanager
     spglib
     randdouble
+    xtalopt_genetic
 )
 
 foreach (test ${tests})

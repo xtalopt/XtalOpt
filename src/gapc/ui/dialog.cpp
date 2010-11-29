@@ -38,6 +38,7 @@
 #include <QtConcurrentRun>
 #include <QSemaphore>
 
+using namespace GlobalSearch;
 using namespace Avogadro;
 using namespace std;
 

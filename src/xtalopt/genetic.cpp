@@ -27,6 +27,7 @@
 using namespace std;
 using namespace OpenBabel;
 using namespace Eigen;
+using namespace Avogadro;
 
 namespace XtalOpt {
 

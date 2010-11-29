@@ -21,13 +21,11 @@
 
 #include "ui_tab_log.h"
 
-using namespace GlobalSearch;
-
 namespace XtalOpt {
   class XtalOptDialog;
   class XtalOpt;
 
-  class TabLog : public AbstractTab
+  class TabLog : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 

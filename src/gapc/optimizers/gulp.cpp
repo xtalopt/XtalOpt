@@ -26,6 +26,8 @@
 #include <QtCore/QString>
 #include <QtCore/QDir>
 
+using namespace GlobalSearch;
+
 namespace GAPC {
 
   GULPOptimizer::GULPOptimizer(OptBase *parent, const QString &filename) :

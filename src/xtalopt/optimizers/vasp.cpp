@@ -30,6 +30,8 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
+using namespace GlobalSearch;
+
 namespace XtalOpt {
 
   VASPOptimizer::VASPOptimizer(OptBase *parent, const QString &filename) :

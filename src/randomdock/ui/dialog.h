@@ -29,9 +29,6 @@ namespace Avogadro {
   class GLWidget;
 }
 
-using namespace GlobalSearch;
-using namespace Avogadro;
-
 namespace RandomDock {
   class TabInit;
   class TabConformers;
@@ -44,12 +41,13 @@ namespace RandomDock {
   class Scene;
   class RandomDock;
 
-  class RandomDockDialog : public AbstractDialog
+  class RandomDockDialog : public GlobalSearch::AbstractDialog
   {
     Q_OBJECT
 
   public:
-    explicit RandomDockDialog( GLWidget *glWidget = 0,
+
+    explicit RandomDockDialog( Avogadro::GLWidget *glWidget = 0,
                                QWidget *parent = 0,
                                Qt::WindowFlags f = 0 );
     virtual ~RandomDockDialog();

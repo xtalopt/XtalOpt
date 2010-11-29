@@ -30,6 +30,9 @@
 #include <QSettings>
 #include <QReadWriteLock>
 
+using namespace Avogadro;
+using namespace GlobalSearch;
+
 namespace GAPC {
 
   TabPlot::TabPlot( GAPCDialog *parent, OptGAPC *p ) :
@@ -44,8 +47,8 @@ namespace GAPC {
     updatePlot();
 
     // dialog connections
-    connect(m_dialog, SIGNAL(moleculeChanged(Structure*)),
-            this, SLOT(highlightPC(Structure*)));
+    connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
+            this, SLOT(highlightPC(GlobalSearch::Structure*)));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(populatePCList()));
     connect(m_dialog->getGLWidget(), SIGNAL(mouseRelease(QMouseEvent*)),
@@ -78,11 +81,11 @@ namespace GAPC {
             this, SLOT(lockClearAndSelectPoint(PlotPoint*)));
     connect(m_opt, SIGNAL(newInfoUpdate()),
             this, SLOT(populatePCList()));
-    connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
+    connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(populatePCList()));
     connect(m_opt, SIGNAL(newInfoUpdate()),
             this, SLOT(updatePlot()));
-    connect(m_opt->tracker(), SIGNAL(newStructureAdded(Structure*)),
+    connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(updatePlot()));
 
     initialize();

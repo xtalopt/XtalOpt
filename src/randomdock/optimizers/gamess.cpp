@@ -24,10 +24,7 @@
 #include <QtCore/QString>
 #include <QtCore/QDebug>
 
-using namespace std;
-using namespace OpenBabel;
-using namespace Eigen;
-using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
 

@@ -26,8 +26,6 @@ namespace GlobalSearch {
   class Optimizer;
 }
 
-using namespace GlobalSearch;
-
 namespace GAPC {
   class GAPCDialog;
   class ProtectedCluster;
@@ -110,7 +108,8 @@ namespace GAPC {
      *
      * @return The pointer to the structure (same as s).
      */
-    GlobalSearch::Structure* replaceWithRandom(Structure *s, const QString & reason = "");
+    GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
+                                               const QString & reason = "");
 
     /**
      * Before starting an optimization, this function will check the
@@ -159,7 +158,7 @@ namespace GAPC {
      * it has, the action described by explodeAction is taken.
      *
      */
-    void checkOptimizedPC(Structure *s);
+    void checkOptimizedPC(GlobalSearch::Structure *s);
 
     /**
      * Called when the QueueManager requests more Structures.
@@ -172,7 +171,7 @@ namespace GAPC {
     void resetDuplicates();
     void checkForDuplicates();
 
-    void setOptimizer(Optimizer *o) {
+    void setOptimizer(GlobalSearch::Optimizer *o) {
       setOptimizer_opt(o);};
     void setOptimizer(const QString &IDString, const QString &filename = "") {
       setOptimizer_string(IDString, filename);};

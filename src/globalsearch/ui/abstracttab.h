@@ -114,7 +114,7 @@ namespace GlobalSearch {
     /**
      * Emit to update the molecule displayed in the Avogadro GLWidget
      */
-    void moleculeChanged(Structure*);
+    void moleculeChanged(GlobalSearch::Structure*);
 
   protected:
     /// The actual widget that will be made into a tab.

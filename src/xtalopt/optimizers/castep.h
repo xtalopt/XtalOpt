@@ -24,15 +24,13 @@ namespace GlobalSearch {
   class OptBase;
 }
 
-using namespace GlobalSearch;
-
 namespace XtalOpt {
   class CASTEPOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT
 
    public:
-    CASTEPOptimizer(OptBase *parent, const QString &filename = "");
+    CASTEPOptimizer(GlobalSearch::OptBase *parent, const QString &filename = "");
 
   };
 

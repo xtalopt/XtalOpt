@@ -17,7 +17,6 @@
 #define XTALOPTGENETIC_H
 
 #include <xtalopt/structures/xtal.h>
-#include <xtalopt/ui/dialog.h>
 
 #include <openbabel/rand.h>
 

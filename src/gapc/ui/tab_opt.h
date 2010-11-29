@@ -21,13 +21,11 @@
 
 #include "ui_tab_opt.h"
 
-using namespace GlobalSearch;
-
 namespace GAPC {
   class GAPCDialog;
   class OptGAPC;
 
-  class TabOpt : public AbstractTab
+  class TabOpt : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
