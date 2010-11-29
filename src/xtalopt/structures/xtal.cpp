@@ -24,6 +24,7 @@
 #include <openbabel/generic.h>
 #include <openbabel/forcefield.h>
 
+#include <QtCore/QFile>
 #include <QtCore/QDebug>
 #include <QtCore/QRegExp>
 #include <QtCore/QStringList>
@@ -822,6 +823,71 @@ namespace XtalOpt {
     qDebug() << t;
   }
 
-} // end namespace Avogadro
+  Xtal* Xtal::POSCARToXtal(const QString &poscar)
+  {
+    QTextStream ps (&const_cast<QString &>(poscar));
+    QStringList sl;
+    vector3 v1, v2, v3, pos;
+    Xtal *xtal = new Xtal;
+
+    ps.readLine(); // title
+    float scale = ps.readLine().toFloat(); // Scale factor
+    sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // v1
+    v1.x() = sl.at(0).toFloat() * scale;
+    v1.y() = sl.at(1).toFloat() * scale;
+    v1.z() = sl.at(2).toFloat() * scale;
+
+    sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // v2
+    v2.x() = sl.at(0).toFloat() * scale;
+    v2.y() = sl.at(1).toFloat() * scale;
+    v2.z() = sl.at(2).toFloat() * scale;
+
+    sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // v3
+    v3.x() = sl.at(0).toFloat() * scale;
+    v3.y() = sl.at(1).toFloat() * scale;
+    v3.z() = sl.at(2).toFloat() * scale;
+
+    xtal->setCellInfo(v1, v2, v3);
+
+    sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // atom types
+    unsigned int numAtomTypes = sl.size();
+    QList<unsigned int> atomCounts;
+    for (int i = 0; i < numAtomTypes; i++) {
+      atomCounts.append(sl.at(i).toUInt());
+    }
+
+    // TODO this will assume fractional coordinates. VASP can use cartesian!
+    ps.readLine(); // direct or cartesian
+    // Atom coords begin
+    Atom *atom;
+    for (unsigned int i = 0; i < numAtomTypes; i++) {
+      for (unsigned int j = 0; j < atomCounts.at(i); j++) {
+        // Actual identity of the atoms doesn't matter for the symmetry
+        // test. Just use (i+1) as the atomic number.
+        atom = xtal->addAtom();
+        atom->setAtomicNumber(i+1);
+        // Get coords
+        sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // coords
+        Eigen::Vector3d pos;
+        pos.x() = sl.at(0).toDouble();
+        pos.y() = sl.at(1).toDouble();
+        pos.z() = sl.at(2).toDouble();
+        atom->setPos(pos);
+      }
+    }
+
+    return xtal;
+  }
+
+  Xtal* Xtal::POSCARToXtal(QFile *file)
+  {
+    QString poscar;
+    file->open(QFile::ReadOnly);
+    poscar = file->readAll();
+    file->close();
+    return POSCARToXtal(poscar);
+  }
+
+} // end namespace XtalOpt
 
 //#include "xtal.moc"

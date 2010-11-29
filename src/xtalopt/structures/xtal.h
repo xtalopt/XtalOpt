@@ -24,6 +24,8 @@
 
 #define EV_TO_KCAL_PER_MOL 23.060538
 
+class QFile;
+
 namespace XtalOpt {
   class Xtal : public GlobalSearch::Structure
   {
@@ -95,6 +97,26 @@ namespace XtalOpt {
     QString getSpaceGroupSymbol();
     QString getHTMLSpaceGroupSymbol();
 
+    // Testing use only
+    /**
+     * Given a QString containing a POSCAR formatted structure, create
+     * a generic Xtal object.
+     *
+     * \note The atom types will not be correct here -- this function
+     * should only be used in testing. To actually read in a QM
+     * output, see the OpenBabel::OBConversion documentation.
+     */
+    static Xtal* POSCARToXtal(const QString &poscar);
+
+    /**
+     * Given a QFile handle containing a POSCAR formatted structure,
+     * create a generic Xtal object.
+     *
+     * \note The atom types will not be correct here -- this function
+     * should only be used in testing. To actually read in a QM
+     * output, see the OpenBabel::OBConversion documentation.
+     */
+    static Xtal* POSCARToXtal(QFile *file);
 
    signals:
     void dimensionsChanged();
@@ -130,6 +152,6 @@ namespace XtalOpt {
     QString m_spgSymbol;
   };
 
-} // end namespace Avogadro
+} // end namespace XtalOpt
 
 #endif

@@ -71,71 +71,6 @@ class SPGLibTest : public QObject
   void fromPio8();
 };
 
-Xtal* POSCARToXtal(QString poscar)
-{
-  QTextStream ps (&poscar);
-  QStringList sl;
-  vector3 v1, v2, v3, pos;
-  Xtal *xtal = new Xtal;
-
-  ps.readLine(); // title
-  float scale = ps.readLine().toFloat(); // Scale factor
-  sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // v1
-  v1.x() = sl.at(0).toFloat() * scale;
-  v1.y() = sl.at(1).toFloat() * scale;
-  v1.z() = sl.at(2).toFloat() * scale;
-
-  sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // v2
-  v2.x() = sl.at(0).toFloat() * scale;
-  v2.y() = sl.at(1).toFloat() * scale;
-  v2.z() = sl.at(2).toFloat() * scale;
-
-  sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // v3
-  v3.x() = sl.at(0).toFloat() * scale;
-  v3.y() = sl.at(1).toFloat() * scale;
-  v3.z() = sl.at(2).toFloat() * scale;
-
-  xtal->setCellInfo(v1, v2, v3);
-
-  sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // atom types
-  unsigned int numAtomTypes = sl.size();
-  QList<unsigned int> atomCounts;
-  for (int i = 0; i < numAtomTypes; i++) {
-    atomCounts.append(sl.at(i).toUInt());
-  }
-
-  // TODO this will assume fractional coordinates. VASP can use cartesian!
-  ps.readLine(); // direct or cartesian
-  // Atom coords begin
-  Atom *atom;
-  for (unsigned int i = 0; i < numAtomTypes; i++) {
-    for (unsigned int j = 0; j < atomCounts.at(i); j++) {
-      // Actual identity of the atoms doesn't matter for the symmetry
-      // test. Just use (i+1) as the atomic number.
-      atom = xtal->addAtom();
-      atom->setAtomicNumber(i+1);
-      // Get coords
-      sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // coords
-      Eigen::Vector3d pos;
-      pos.x() = sl.at(0).toDouble();
-      pos.y() = sl.at(1).toDouble();
-      pos.z() = sl.at(2).toDouble();
-      atom->setPos(pos);
-    }
-  }
-
-  return xtal;
-}
-
-Xtal* POSCARToXtal(QFile *file)
-{
-  QString poscar;
-  file->open(QFile::ReadOnly);
-  poscar = file->readAll();
-  file->close();
-  return POSCARToXtal(poscar);
-}
-
 void SPGLibTest::initTestCase()
 {
 }
@@ -211,7 +146,7 @@ Direct\n\
   0.3424316793489581  0.8742328696958156  0.6616426675432113\n\
   0.8425094428620844  0.0566577187900324  0.9787883487020472\n";
 
-  xtal = POSCARToXtal(poscar);
+  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
   // "spglib finds Ima2 (#46) whereas findsym detects Cmc2_1" with
   // tol=0.05
@@ -254,7 +189,7 @@ Direct\n\
   0.4395130866383787  0.6878349360194402  0.2551439498569619\n\
   0.9157795264006211  0.1707042360529422  0.4975145053028533\n";
 
-  xtal = POSCARToXtal(poscar);
+  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: Pc", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pc"));
@@ -295,7 +230,7 @@ Direct\n\
   0.9781965053169768  0.6649451293532957  0.2314368458367852\n\
   0.7463983483277447  0.1492850621013686  0.4899991401664211\n";
 
-  xtal = POSCARToXtal(poscar);
+  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: Pc", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pc"));
@@ -336,7 +271,7 @@ Direct\n\
   0.6674747362028992  0.8704642893766082  0.1224072925140652\n\
   0.7367029916892964  0.5218437165288294  0.3287928749647472\n";
 
-  xtal = POSCARToXtal(poscar);
+  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: Cm", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Cm"));
@@ -377,7 +312,7 @@ Direct\n\
   0.4262835864572549  0.6772099041761191  0.1738038318846121\n\
   0.2896425582783375  0.2910093076828788  0.9171800811376110\n";
 
-  xtal = POSCARToXtal(poscar);
+  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: C2", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("C2"));
@@ -418,7 +353,7 @@ Direct\n\
   0.8128017616748885  0.5798945619454959  0.8945428636351559\n\
   0.9040034399388319  0.0189356918567516  0.1140071312905779\n";
 
-  xtal = POSCARToXtal(poscar);
+  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("R3c"));
@@ -459,7 +394,7 @@ Direct\n\
   0.3055698460566810  0.5376042224815617  0.1232255686839733\n\
   0.8055230400371350  0.0074671815226643  0.3731271370795857\n";
 
-  xtal = POSCARToXtal(poscar);
+  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("R3c"));
@@ -500,7 +435,7 @@ Direct\n\
   0.3055698460566810  0.5376042224815617  0.1232255686839733\n\
   0.8055230400371350  0.0074671815226643  0.3731271370795857\n";
 
-  xtal = POSCARToXtal(poscar);
+  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: Pm", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pm"));
