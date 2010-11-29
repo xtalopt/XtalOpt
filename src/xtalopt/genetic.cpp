@@ -482,6 +482,7 @@ namespace XtalOpt {
         while (true) {
           double u1 = RANDDOUBLE();
           double u2 = 1.0 - RANDDOUBLE();
+          if (u2 == 0.0) continue; // happens a _lot_ with MSVC...
           z = NV_MAGICCONST*(u1-0.5)/u2;
           double zz = z*z/4.0;
           if (zz <= -log(u2))
