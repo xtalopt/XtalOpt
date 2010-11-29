@@ -31,6 +31,7 @@
 #include <QtCore/QtConcurrentRun>
 
 using namespace std;
+using namespace Avogadro;
 
 namespace GlobalSearch {
 

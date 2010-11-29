@@ -32,6 +32,8 @@
 #include <QInputDialog>
 #include <QtConcurrentRun>
 
+using namespace GlobalSearch;
+
 namespace GAPC {
 
   TabProgress::TabProgress( GAPCDialog *parent, OptGAPC *p ) :

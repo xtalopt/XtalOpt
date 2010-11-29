@@ -50,6 +50,7 @@
 
 using namespace GlobalSearch;
 using namespace OpenBabel;
+using namespace Avogadro;
 
 namespace XtalOpt {
 

@@ -31,14 +31,12 @@ namespace GlobalSearch {
   class Structure;
 }
 
-using namespace GlobalSearch;
-
 namespace XtalOpt {
   class XtalOptDialog;
   class XtalOpt;
   class Xtal;
 
-  class TabProgress : public AbstractTab
+  class TabProgress : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
@@ -76,13 +74,13 @@ namespace XtalOpt {
     void writeSettings(const QString &filename = "");
     void disconnectGUI();
     void addNewEntry();
-    void newInfoUpdate(Structure *);
+    void newInfoUpdate(GlobalSearch::Structure *);
     void updateInfo();
     void updateAllInfo();
     void updateProgressTable();
     void setTableEntry(int row, const TableEntry& e);
     void selectMoleculeFromProgress(int,int,int,int);
-    void highlightXtal(Structure *s);
+    void highlightXtal(GlobalSearch::Structure *s);
     void startTimer();
     void stopTimer();
     void progressContextMenu(QPoint);
@@ -110,7 +108,7 @@ namespace XtalOpt {
     Xtal *m_context_xtal;
     bool rowTracking;
 
-    Tracker m_infoUpdateTracker;
+    GlobalSearch::Tracker m_infoUpdateTracker;
 
     void updateInfo_();
     void restartJobProgress_(int incar);

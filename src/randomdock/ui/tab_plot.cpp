@@ -32,6 +32,7 @@
 
 using namespace std;
 using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
 

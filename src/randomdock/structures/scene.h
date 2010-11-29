@@ -20,10 +20,8 @@
 
 #include <QtCore/QDebug>
 
-using namespace GlobalSearch;
-
 namespace RandomDock {
-  class Scene : public Structure
+  class Scene : public GlobalSearch::Structure
   {
     Q_OBJECT
 

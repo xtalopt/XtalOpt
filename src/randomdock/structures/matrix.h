@@ -22,17 +22,15 @@
 #include <QtCore/QDateTime>
 #include <QtCore/QTextStream>
 
-using namespace GlobalSearch;
-
 namespace RandomDock {
 
-  class Matrix : public Structure
+  class Matrix : public GlobalSearch::Structure
   {
     Q_OBJECT
 
    public:
     Matrix(QObject *parent = 0);
-    Matrix(Molecule *mol);
+    Matrix(Avogadro::Molecule *mol);
     virtual ~Matrix();
 
    signals:
@@ -50,6 +48,6 @@ namespace RandomDock {
     QList<double> m_probs;
   };
 
-} // end namespace Avogadro
+} // end namespace RandomDock
 
 #endif

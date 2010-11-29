@@ -35,15 +35,11 @@ namespace OpenBabel {
   class OBForceField;
 }
 
-using namespace GlobalSearch;
-using namespace Avogadro;
-using namespace OpenBabel;
-
 namespace RandomDock {
   class RandomDockDialog;
   class RandomDock;
 
-  class TabConformers : public AbstractTab
+  class TabConformers : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
@@ -57,7 +53,7 @@ namespace RandomDock {
       Prob
     };
 
-    Structure* currentStructure();
+    GlobalSearch::Structure* currentStructure();
 
   public slots:
     void lockGUI();
@@ -84,11 +80,11 @@ namespace RandomDock {
 
   private:
     Ui::Tab_Conformers ui;
-    OBForceField *m_ff;
+    OpenBabel::OBForceField *m_ff;
     std::vector<std::string> m_forceFieldList;
     QMutex m_ffMutex;
 
-    void generateConformers_(Structure *mol);
+    void generateConformers_(GlobalSearch::Structure *mol);
   };
 }
 

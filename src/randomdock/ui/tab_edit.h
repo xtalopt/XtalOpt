@@ -29,12 +29,10 @@ namespace GlobalSearch {
   class Optimizer;
 }
 
-using namespace GlobalSearch;
-
 namespace RandomDock {
   class RandomDockDialog;
 
-  class TabEdit : public AbstractTab
+  class TabEdit : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
@@ -67,7 +65,7 @@ namespace RandomDock {
     void loadScheme();
 
   signals:
-    void optimizerChanged(Optimizer*);
+    void optimizerChanged(GlobalSearch::Optimizer*);
 
   private slots:
     void updateUserValues();

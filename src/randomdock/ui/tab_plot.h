@@ -32,15 +32,12 @@ namespace Avogadro {
   class PlotObject;
 }
 
-using namespace GlobalSearch;
-using namespace Avogadro;
-
 namespace RandomDock {
   class RandomDockDialog;
   class RandomDock;
   class Scene;
 
-  class TabPlot : public AbstractTab
+  class TabPlot : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
@@ -68,22 +65,22 @@ namespace RandomDock {
     void writeSettings(const QString &filename = "");
     void updateGUI();
     void disconnectGUI();
-    void lockClearAndSelectPoint(PlotPoint *pp);
+    void lockClearAndSelectPoint(Avogadro::PlotPoint *pp);
     void refreshPlot();
     void updatePlot();
     void plotTrends();
     void plotDistHist();
     void populateStructureList();
-    void selectStructureFromPlot(PlotPoint *pp);
+    void selectStructureFromPlot(Avogadro::PlotPoint *pp);
     void selectStructureFromIndex(int index);
-    void highlightStructure(Structure *stucture);
+    void highlightStructure(GlobalSearch::Structure *stucture);
 
   signals:
 
   private:
     Ui::Tab_Plot ui;
     QReadWriteLock *m_plot_mutex;
-    PlotObject *m_plotObject;
+    Avogadro::PlotObject *m_plotObject;
   };
 }
 

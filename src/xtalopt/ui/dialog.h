@@ -28,9 +28,6 @@
 
 #include "ui_dialog.h"
 
-using namespace GlobalSearch;
-using namespace Avogadro;
-
 namespace XtalOpt {
   class Xtal;
   class XtalOpt;
@@ -43,17 +40,17 @@ namespace XtalOpt {
   class TabLog;
   class XtalOptTest;
 
-  class XtalOptDialog : public AbstractDialog
+  class XtalOptDialog : public GlobalSearch::AbstractDialog
   {
     Q_OBJECT
 
   public:
-    explicit XtalOptDialog( GLWidget *glWidget = 0,
+    explicit XtalOptDialog( Avogadro::GLWidget *glWidget = 0,
                             QWidget *parent = 0,
                             Qt::WindowFlags f = 0 );
     virtual ~XtalOptDialog();
 
-    void setMolecule(Molecule *molecule);
+    void setMolecule(Avogadro::Molecule *molecule);
 
   public slots:
     void saveSession();

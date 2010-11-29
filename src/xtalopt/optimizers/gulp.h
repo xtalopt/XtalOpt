@@ -26,24 +26,23 @@ namespace GlobalSearch {
   class Optimizer;
 }
 
-using namespace GlobalSearch;
-
 namespace XtalOpt {
   class GULPOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT
 
    public:
-    GULPOptimizer(OptBase *parent, const QString &filename = "");
+    GULPOptimizer(GlobalSearch::OptBase *parent, const QString &filename = "");
 
-    bool writeInputFiles(Structure *structure);
-    bool startOptimization(Structure *structure);
+    bool writeInputFiles(GlobalSearch::Structure *structure);
+    bool startOptimization(GlobalSearch::Structure *structure);
     bool getQueueList(QStringList & queueData, QMutex *mutex);
-    Optimizer::JobState getStatus(Structure *structure);
-    bool copyRemoteToLocalCache(Structure *structure);
-    int checkIfJobNameExists(Structure *, const QStringList &, bool &b) {
+    Optimizer::JobState getStatus(GlobalSearch::Structure *structure);
+    bool copyRemoteToLocalCache(GlobalSearch::Structure *structure);
+    int checkIfJobNameExists(GlobalSearch::Structure *,
+                             const QStringList &, bool &b) {
       b=false;return 0;};
-    bool deleteJob(Structure *s) {return true;};
+    bool deleteJob(GlobalSearch::Structure *s) {return true;};
   };
 
 } // end namespace Avogadro

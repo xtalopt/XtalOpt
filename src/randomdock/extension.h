@@ -28,7 +28,7 @@
 
 namespace RandomDock {
 
- class RandomDockExtension : public Extension
+  class RandomDockExtension : public Avogadro::Extension
   {
     Q_OBJECT
     AVOGADRO_EXTENSION("RandomDock", tr("Random Docking Search"),
@@ -42,22 +42,25 @@ namespace RandomDock {
 
       //! Perform Action
       virtual QList<QAction *> actions() const;
-      virtual QUndoCommand* performAction(QAction *action, GLWidget *widget);
+      virtual QUndoCommand* performAction(QAction *action, Avogadro::GLWidget *widget);
       virtual QString menuPath(QAction *action) const;
-      virtual void setMolecule(Molecule *molecule);
+      virtual void setMolecule(Avogadro::Molecule *molecule);
       void writeSettings(QSettings &settings) const;
       void readSettings(QSettings &settings);
 
    public slots:
-      void reemitMoleculeChanged(Structure *structure);
+      void reemitMoleculeChanged(GlobalSearch::Structure *structure);
 
     private:
       QList<QAction *> m_actions;
       RandomDockDialog *m_dialog;
-      Molecule *m_molecule;
+      Avogadro::Molecule *m_molecule;
   };
 
-  class RandomDockExtensionFactory : public QObject, public PluginFactory
+  // Workaround for Avogadro bug:
+  using Avogadro::Plugin;
+
+  class RandomDockExtensionFactory : public QObject, public Avogadro::PluginFactory
   {
       Q_OBJECT
       Q_INTERFACES(Avogadro::PluginFactory)

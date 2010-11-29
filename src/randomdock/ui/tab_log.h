@@ -21,13 +21,11 @@
 
 #include "ui_tab_log.h"
 
-using namespace GlobalSearch;
-
 namespace RandomDock {
   class RandomDockDialog;
   class RandomDock;
 
-  class TabLog : public AbstractTab
+  class TabLog : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 

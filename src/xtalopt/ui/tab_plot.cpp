@@ -26,6 +26,9 @@
 #include <QtCore/QSettings>
 #include <QtCore/QReadWriteLock>
 
+using namespace GlobalSearch;
+using namespace Avogadro;
+
 namespace XtalOpt {
 
   TabPlot::TabPlot( XtalOptDialog *parent, XtalOpt *p ) :

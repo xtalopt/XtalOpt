@@ -24,9 +24,7 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
-using namespace std;
-using namespace OpenBabel;
-using namespace Eigen;
+using namespace GlobalSearch;
 
 namespace XtalOpt {
 

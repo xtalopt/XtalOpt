@@ -18,16 +18,15 @@
 
 #include <globalsearch/optimizer.h>
 
-using namespace GlobalSearch;
-
 namespace RandomDock {
 
-  class GAMESSOptimizer : public Optimizer
+  class GAMESSOptimizer : public GlobalSearch::Optimizer
   {
     Q_OBJECT
 
    public:
-    explicit GAMESSOptimizer(OptBase *parent, const QString &filename = "");
+    explicit GAMESSOptimizer(GlobalSearch::OptBase *parent,
+                             const QString &filename = "");
 
   };
 

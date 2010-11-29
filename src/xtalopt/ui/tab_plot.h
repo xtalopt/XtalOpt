@@ -31,15 +31,12 @@ namespace Avogadro {
   class PlotPoint;
 }
 
-using namespace GlobalSearch;
-using namespace Avogadro;
-
 namespace XtalOpt {
   class XtalOptDialog;
   class XtalOpt;
   class Xtal;
 
-  class TabPlot : public AbstractTab
+  class TabPlot : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
@@ -83,20 +80,20 @@ namespace XtalOpt {
     void writeSettings(const QString &filename = "");
     void updateGUI();
     void disconnectGUI();
-    void lockClearAndSelectPoint(PlotPoint *pp);
+    void lockClearAndSelectPoint(Avogadro::PlotPoint *pp);
     void refreshPlot();
     void updatePlot();
     void plotTrends();
     void plotDistHist();
     void populateXtalList();
-    void selectMoleculeFromPlot(PlotPoint *pp);
+    void selectMoleculeFromPlot(Avogadro::PlotPoint *pp);
     void selectMoleculeFromIndex(int index);
-    void highlightXtal(Structure *s);
+    void highlightXtal(GlobalSearch::Structure *s);
 
   private:
     Ui::Tab_Plot ui;
     QReadWriteLock *m_plot_mutex;
-    PlotObject *m_plotObject;
+    Avogadro::PlotObject *m_plotObject;
   };
 }
 

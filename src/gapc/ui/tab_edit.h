@@ -29,12 +29,10 @@ namespace GlobalSearch {
   class Optimizer;
 }
 
-using namespace GlobalSearch;
-
 namespace GAPC {
   class GAPCDialog;
 
-  class TabEdit : public AbstractTab
+  class TabEdit : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
@@ -66,7 +64,7 @@ namespace GAPC {
     void loadScheme();
 
   signals:
-    void optimizerChanged(Optimizer*);
+    void optimizerChanged(GlobalSearch::Optimizer*);
 
   private slots:
     void updateUserValues();

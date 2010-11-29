@@ -22,8 +22,7 @@
 #include <QtCore/QString>
 #include <QtCore/QDebug>
 
-using namespace std;
-using namespace OpenBabel;
+using namespace GlobalSearch;
 
 namespace XtalOpt {
 

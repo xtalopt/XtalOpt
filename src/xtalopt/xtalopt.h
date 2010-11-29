@@ -35,7 +35,7 @@
 namespace XtalOpt {
   class XtalOptDialog;
 
-  class XtalOpt : public OptBase
+  class XtalOpt : public GlobalSearch::OptBase
   {
     Q_OBJECT
 
@@ -57,10 +57,11 @@ namespace XtalOpt {
     };
 
     Xtal* generateRandomXtal(uint generation, uint id);
-    Structure* replaceWithRandom(Structure *s, const QString & reason = "");
+    GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
+                                               const QString & reason = "");
     bool checkLimits();
     bool checkXtal(Xtal *xtal);
-    QString interpretTemplate(const QString & templateString, Structure* structure);
+    QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp();
     bool load(const QString & filename);
 
@@ -118,7 +119,7 @@ namespace XtalOpt {
     void initializeAndAddXtal(Xtal *xtal, uint generation, const QString &parents);
     void resetDuplicates();
     void checkForDuplicates();
-    void setOptimizer(Optimizer *o) {
+    void setOptimizer(GlobalSearch::Optimizer *o) {
       setOptimizer_opt(o);};
     void setOptimizer(const QString &IDString, const QString &filename = "") {
       setOptimizer_string(IDString, filename);};
@@ -133,7 +134,7 @@ namespace XtalOpt {
     void setOptimizer_string(const QString &s, const QString &filename = "");
     void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
 
-    void interpretKeyword(QString &keyword, Structure* structure);
+    void interpretKeyword(QString &keyword, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp_xtalopt();
 
   };

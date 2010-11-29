@@ -26,6 +26,7 @@
 #include <QString>
 #include <QSemaphore>
 
+using namespace GlobalSearch;
 using namespace Avogadro;
 using namespace OpenBabel;
 

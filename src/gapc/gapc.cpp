@@ -35,6 +35,8 @@
 #include <vector>
 
 using namespace std;
+using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace GAPC {
 

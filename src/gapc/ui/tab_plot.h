@@ -31,15 +31,12 @@ namespace Avogadro {
   class PlotPoint;
 }
 
-using namespace GlobalSearch;
-using namespace Avogadro;
-
 namespace GAPC {
   class GAPCDialog;
   class OptGAPC;
   class ProtectedCluster;
 
-  class TabPlot : public AbstractTab
+  class TabPlot : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
@@ -69,20 +66,20 @@ namespace GAPC {
     void writeSettings(const QString &filename = "");
     void updateGUI();
     void disconnectGUI();
-    void lockClearAndSelectPoint(PlotPoint *pp);
+    void lockClearAndSelectPoint(Avogadro::PlotPoint *pp);
     void refreshPlot();
     void updatePlot();
     void plotTrends();
     void plotDistHist();
     void populatePCList();
-    void selectMoleculeFromPlot(PlotPoint *pp);
+    void selectMoleculeFromPlot(Avogadro::PlotPoint *pp);
     void selectMoleculeFromIndex(int index);
-    void highlightPC(Structure *s);
+    void highlightPC(GlobalSearch::Structure *s);
 
   private:
     Ui::Tab_Plot ui;
     QReadWriteLock *m_plot_mutex;
-    PlotObject *m_plotObject;
+    Avogadro::PlotObject *m_plotObject;
   };
 }
 

@@ -18,16 +18,14 @@
 
 #include <globalsearch/optimizer.h>
 
-using namespace GlobalSearch;
-
 namespace RandomDock {
 
-  class ADFOptimizer : public Optimizer
+  class ADFOptimizer : public GlobalSearch::Optimizer
   {
     Q_OBJECT
 
    public:
-    explicit ADFOptimizer(OptBase *parent, const QString &filename = "");
+    explicit ADFOptimizer(GlobalSearch::OptBase *parent, const QString &filename = "");
 
   };
 

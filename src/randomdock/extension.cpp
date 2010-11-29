@@ -83,7 +83,7 @@ namespace RandomDock {
     m_molecule = molecule;
   }
 
-  void RandomDockExtension::reemitMoleculeChanged(Structure *mol) {
+  void RandomDockExtension::reemitMoleculeChanged(GlobalSearch::Structure *mol) {
     // Check for weirdness
     if (mol->numAtoms() != 0) {
       if (!mol->atom(0)) {

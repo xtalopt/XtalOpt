@@ -24,15 +24,13 @@ namespace GlobalSearch {
   class OptBase;
 }
 
-using namespace GlobalSearch;
-
 namespace XtalOpt {
   class PWscfOptimizer : public XtalOptOptimizer
   {
     Q_OBJECT
 
    public:
-    PWscfOptimizer(OptBase *parent, const QString &filename = "");
+    PWscfOptimizer(GlobalSearch::OptBase *parent, const QString &filename = "");
 
   };
 

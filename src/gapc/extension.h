@@ -27,7 +27,7 @@
 
 namespace GAPC {
 
- class GAPCExtension : public Extension
+  class GAPCExtension : public Avogadro::Extension
   {
     Q_OBJECT
     AVOGADRO_EXTENSION("GAPC", tr("Evolutionary Cluster Search"),
@@ -41,22 +41,25 @@ namespace GAPC {
 
       //! Perform Action
       virtual QList<QAction *> actions() const;
-      virtual QUndoCommand* performAction(QAction *action, GLWidget *widget);
+      virtual QUndoCommand* performAction(QAction *action, Avogadro::GLWidget *widget);
       virtual QString menuPath(QAction *action) const;
-      virtual void setMolecule(Molecule *molecule);
+      virtual void setMolecule(Avogadro::Molecule *molecule);
       void writeSettings(QSettings &settings) const;
       void readSettings(QSettings &settings);
 
    public slots:
-      void reemitMoleculeChanged(Structure *s);
+      void reemitMoleculeChanged(GlobalSearch::Structure *s);
 
     private:
       QList<QAction *> m_actions;
       GAPCDialog *m_dialog;
-      Molecule *m_molecule;
+      Avogadro::Molecule *m_molecule;
   };
 
-  class GAPCExtensionFactory : public QObject, public PluginFactory
+  // workaround for Avogadro bug:
+  using Avogadro::Plugin;
+
+  class GAPCExtensionFactory : public QObject, public Avogadro::PluginFactory
   {
       Q_OBJECT
       Q_INTERFACES(Avogadro::PluginFactory)

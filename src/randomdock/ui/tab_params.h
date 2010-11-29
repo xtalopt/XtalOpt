@@ -21,13 +21,11 @@
 
 #include "ui_tab_params.h"
 
-using namespace GlobalSearch;
-
 namespace RandomDock {
   class RandomDockDialog;
   class RandomDock;
 
-  class TabParams : public AbstractTab
+  class TabParams : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 

@@ -21,10 +21,8 @@
 #include <QtCore/QVariant>
 #include <QtCore/QHash>
 
-using namespace GlobalSearch;
-
 namespace GAPC {
-  class Cluster : public Structure
+  class Cluster : public GlobalSearch::Structure
   {
     Q_OBJECT
 

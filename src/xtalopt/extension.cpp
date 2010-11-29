@@ -38,6 +38,9 @@
 
 #include <QtCore/QDebug>
 
+using namespace Avogadro;
+using namespace GlobalSearch;
+
 namespace XtalOpt {
 
   XtalOptExtension::XtalOptExtension(QObject *parent) : Extension(parent),

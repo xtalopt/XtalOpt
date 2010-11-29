@@ -30,6 +30,9 @@
 #include <QSettings>
 #include <QReadWriteLock>
 
+using namespace Avogadro;
+using namespace GlobalSearch;
+
 namespace GAPC {
 
   TabPlot::TabPlot( GAPCDialog *parent, OptGAPC *p ) :

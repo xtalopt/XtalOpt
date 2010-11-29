@@ -29,12 +29,10 @@ namespace GlobalSearch {
   class Optimizer;
 }
 
-using namespace GlobalSearch;
-
 namespace XtalOpt {
   class XtalOptDialog;
 
-  class TabEdit : public AbstractTab
+  class TabEdit : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
@@ -78,7 +76,7 @@ namespace XtalOpt {
     void loadScheme();
 
   signals:
-    void optimizerChanged(Optimizer*);
+    void optimizerChanged(GlobalSearch::Optimizer*);
 
   private slots:
     void updateUserValues();

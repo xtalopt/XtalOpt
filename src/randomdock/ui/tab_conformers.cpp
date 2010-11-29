@@ -36,6 +36,7 @@
 
 using namespace std;
 using namespace Avogadro;
+using namespace GlobalSearch;
 
 namespace RandomDock {
 
@@ -63,7 +64,7 @@ namespace RandomDock {
     connect(this, SIGNAL(conformerGenerationDone()),
             this, SLOT(enableGenerateButton()));
 
-    OBPlugin::ListAsVector("forcefields", "ids", m_forceFieldList);
+    OpenBabel::OBPlugin::ListAsVector("forcefields", "ids", m_forceFieldList);
 
     fillForceFieldCombo();
 

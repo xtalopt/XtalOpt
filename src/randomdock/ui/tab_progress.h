@@ -31,14 +31,12 @@ namespace GlobalSearch {
   class Structure;
 }
 
-using namespace GlobalSearch;
-
 namespace RandomDock {
   class RandomDockDialog;
   class RandomDock;
   class Scene;
 
-  class TabProgress : public AbstractTab
+  class TabProgress : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
@@ -70,13 +68,13 @@ namespace RandomDock {
     void writeSettings(const QString &filename = "");
     void disconnectGUI();
     void addNewEntry();
-    void newInfoUpdate(Structure *);
+    void newInfoUpdate(GlobalSearch::Structure *);
     void updateInfo();
     void updateAllInfo();
     void updateProgressTable();
     void setTableEntry(int row, const TableEntry& e);
     void selectMoleculeFromProgress(int,int,int,int);
-    void highlightScene(Structure *structure);
+    void highlightScene(GlobalSearch::Structure *structure);
     void startTimer();
     void stopTimer();
     void progressContextMenu(QPoint);
@@ -104,7 +102,7 @@ namespace RandomDock {
     Scene *m_context_scene;
     bool rowTracking;
 
-    Tracker m_infoUpdateTracker;
+    GlobalSearch::Tracker m_infoUpdateTracker;
 
     void updateInfo_();
     void restartJobProgress_(int incar);

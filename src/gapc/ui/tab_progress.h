@@ -29,14 +29,12 @@ namespace GlobalSearch {
   class Structure;
 }
 
-using namespace GlobalSearch;
-
 namespace GAPC {
   class GAPCDialog;
   class OptGAPC;
   class ProtectedCluster;
 
-  class TabProgress : public AbstractTab
+  class TabProgress : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
@@ -59,12 +57,12 @@ namespace GAPC {
     void writeSettings(const QString &filename = "");
     void disconnectGUI();
     void addNewEntry();
-    void newInfoUpdate(Structure *);
+    void newInfoUpdate(GlobalSearch::Structure *);
     void updateInfo();
     void updateAllInfo();
     void updateProgressTable();
     void selectMoleculeFromProgress(int,int,int,int);
-    void highlightPC(Structure *s);
+    void highlightPC(GlobalSearch::Structure *s);
     void startTimer();
     void stopTimer();
     void progressContextMenu(QPoint);
@@ -90,7 +88,7 @@ namespace GAPC {
     ProtectedCluster *m_context_pc;
     bool rowTracking;
 
-    Tracker m_infoUpdateTracker;
+    GlobalSearch::Tracker m_infoUpdateTracker;
 
     void restartJobProgress_(int incar);
     void killPCProgress_();

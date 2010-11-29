@@ -30,6 +30,8 @@
 #include <QtGui/QMenu>
 #include <QtGui/QInputDialog>
 
+using namespace GlobalSearch;
+
 namespace XtalOpt {
 
   TabProgress::TabProgress( XtalOptDialog *parent, XtalOpt *p ) :

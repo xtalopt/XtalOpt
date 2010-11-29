@@ -30,11 +30,14 @@
 #include <QMessageBox>
 #include <QDebug>
 
+using namespace Avogadro;
+using namespace GlobalSearch;
+
 namespace GAPC {
 
   GAPCExtension::GAPCExtension(QObject *parent) : Extension(parent),
-                                                        m_dialog(0),
-                                                        m_molecule(NULL)
+                                                  m_dialog(0),
+                                                  m_molecule(NULL)
   {
     QAction *action = new QAction( this );
     action->setSeparator(true);
