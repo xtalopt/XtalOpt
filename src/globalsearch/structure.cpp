@@ -438,9 +438,9 @@ namespace GlobalSearch {
     }
 
     // Update energy/enthalpy
-    if (enthalpy != 0.0) {
-      m_hasEnthalpy == false;
-      m_PV = false;
+    if (enthalpy < 1e-6) {
+      m_hasEnthalpy = false;
+      m_PV = 0.0;
     }
     else {
       m_hasEnthalpy = true;
@@ -493,8 +493,8 @@ namespace GlobalSearch {
 
     // Update energy/enthalpy
     m_enthalpy = enthalpy;
-    if (enthalpy == 0.0) {
-      m_hasEnthalpy == false;
+    if (enthalpy < 1e-6) {
+      m_hasEnthalpy = false;
       m_PV = 0.0;
     }
     else {
