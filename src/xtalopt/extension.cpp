@@ -13,16 +13,12 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#ifdef WIN32
-#define	ISNAN(a) _isnan(a)
-#else
-#define ISNAN(a) isnan(a)
-#endif
-
 #include <xtalopt/extension.h>
 
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/ui/dialog.h>
+
+#include <globalsearch/macros.h>
 
 #include <avogadro/primitive.h>
 #include <avogadro/molecule.h>
@@ -101,12 +97,12 @@ namespace XtalOpt {
       qWarning() << "XtalOptExtension::reemitMoleculeChanged: Molecule is invalid (bad atoms) -- not sending to GLWidget";
       return;
     }
-    if (ISNAN(xtal->getA()) ||
-        ISNAN(xtal->getB()) ||
-        ISNAN(xtal->getC()) ||
-        ISNAN(xtal->getAlpha()) ||
-        ISNAN(xtal->getBeta()) ||
-        ISNAN(xtal->getGamma())) {
+    if (GS_ISNAN(xtal->getA()) ||
+        GS_ISNAN(xtal->getB()) ||
+        GS_ISNAN(xtal->getC()) ||
+        GS_ISNAN(xtal->getAlpha()) ||
+        GS_ISNAN(xtal->getBeta()) ||
+        GS_ISNAN(xtal->getGamma())) {
       qWarning() << "XtalOptExtension::reemitMoleculeChanged: Molecule is invalid (cell param is nan) -- not sending to GLWidget";
       return;
     }
@@ -132,7 +128,7 @@ namespace XtalOpt {
     m_dialog->show();
     return NULL;
   }
-} // end namespace Avogadro
+} // end namespace XtalOpt
 
 //#include "extension.moc"
 

@@ -39,4 +39,23 @@ unsigned long GLOBALSEARCH_GETRANDOMSEED();
 #define RANDDOUBLE() ( GlobalSearch::GSRandom::instance()->getRandomDouble() )
 #define RANDUINT() ( GlobalSearch::GSRandom::instance()->getRandomUInt() )
 
+// Platform specific defines
+#ifdef WIN32
+
+// Legacy windows functions with underscore prefix
+#define	GS_ISNAN(a) _isnan(a)
+#define	GS_ISINF(a) _isinf(a)
+
+#else
+
+// Legacy windows functions have underscore prefix
+#define GS_ISNAN(a) isnan(a)
+#define	GS_ISINF(a) isinf(a)
+
+#endif // WIN32
+
+// combine isnan with inf
+
+#define GS_IS_NAN_OR_INF(a) (GS_ISNAN(a) || GS_ISINF(a))
+
 #endif // GLOBALSEARCHMACROS_H
