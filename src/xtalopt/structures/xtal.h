@@ -97,6 +97,24 @@ namespace XtalOpt {
     QString getSpaceGroupSymbol();
     QString getHTMLSpaceGroupSymbol();
 
+    // Reduce cell. See member function fixAngles()
+    // Returns true if successful, false otherwise
+    // The cell-parameter arguments are overwritten if successful.
+    // Angles are in degrees.
+    static bool niggliReduce(double *a, double *b, double *c,
+                             double *alpha, double *beta, double *gamma,
+                             const unsigned int iterations = 100);
+    static bool isNiggliReduced(const double a, const double b, const double c,
+                                const double alpha, const double beta,
+                                const double gamma);
+    bool isNiggliReduced() const;
+
+    bool operator==(const Xtal &other) const;
+    bool operator!=(const Xtal &other) const {return !operator==(other);};
+
+    // Tolerance in angstrom:
+    bool compareCoordinates(const Xtal &other, const double tol = 0.05) const;
+
     // Testing use only
     /**
      * Given a QString containing a POSCAR formatted structure, create
@@ -137,7 +155,7 @@ namespace XtalOpt {
     void rescaleCell(double a, double b, double c, double alpha, double beta, double gamma);
 
     // Self-correction
-    bool fixAngles(int attempts = 20);
+    bool fixAngles(int attempts = 100);
     void wrapAtomsToCell();
 
     // Spacegroup

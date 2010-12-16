@@ -78,7 +78,7 @@ namespace GlobalSearch {
      * from other.
      * @sa operator=
      */
-    Structure& copyStructure(Structure *other);
+    Structure& copyStructure(const Structure &other);
 
     /**
      * Enum containing possible optimization statuses.

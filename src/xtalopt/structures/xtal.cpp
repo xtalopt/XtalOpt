@@ -38,6 +38,26 @@ using namespace OpenBabel;
 using namespace Avogadro;
 using namespace Eigen;
 
+#define STABLE_COMP_TOL 1e-5
+#define SWAP(v1, v2, tmp) tmp=v1;v1=v2;v2=tmp;
+
+// Verbose printing of iterative information during Niggli reduction
+//#define NIGGLI_DEBUG
+#ifdef NIGGLI_DEBUG
+#define NIGGLI_PRINT_HEADER                      \
+  printf("%3s %1s %5s %5s %5s %5s %5s %5s\n",    \
+         "Itr", "S", "A", "B", "C", "zeta", "eta", "xi");
+#define NIGGLI_PRINT(iter, step)                 \
+  printf("%3d %1d %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f\n",    \
+         iter, step, A, B, C, zeta, eta, xi);
+
+#else
+
+#define NIGGLI_PRINT_HEADER void();
+#define NIGGLI_PRINT(iter, step) void();
+
+#endif
+
 namespace XtalOpt {
 
   Xtal::Xtal(QObject *parent) :
@@ -200,73 +220,515 @@ namespace XtalOpt {
       atomList.at(i)->setPos(fracToCart(fracCoordsList.at(i)));
   }
 
-  bool Xtal::fixAngles(int attempts) {
-    //qDebug() << "Xtal::fixAngles(" << attempts << ") called.";
-    vector<vector3> vs = cell()->GetCellVectors();
-    vector<vector3> vs_orig = cell()->GetCellVectors();
-    //qDebug() << "V0" << vs_orig[0].x() << vs_orig[0].y() << vs_orig[0].z();
-    //qDebug() << "V1" << vs_orig[1].x() << vs_orig[1].y() << vs_orig[1].z();
-    //qDebug() << "V2" << vs_orig[2].x() << vs_orig[2].y() << vs_orig[2].z();
+  // Helper functions for comparing numbers with a tolerance
+  inline bool stable_lt(const double &v1, const double &v2, const double &prec = STABLE_COMP_TOL)
+  {
+    return ( v1 < (v2 - prec) );
+  }
 
-    int attempt=0, totalChanges=0, changes=0, limit=0;
-    while (true) {
-      attempt++;
-      changes = 0;
-      if (attempt > attempts) {
-        qWarning() << "Xtal::fixAngles: Maximum attempts to fix angles reached. Bailing.";
-        return false;
+  inline bool stable_gt(const double &v1, const double &v2, const double &prec = STABLE_COMP_TOL)
+  {
+    return ( v2 < (v1 - prec) );
+  }
+
+  inline bool stable_eq(const double &v1, const double &v2, const double &prec = STABLE_COMP_TOL)
+  {
+    return (!(stable_lt(v1,v2,prec) ||
+              stable_gt(v1,v2,prec) ) );
+  }
+
+  inline bool stable_neq(const double &v1, const double &v2, const double &prec = STABLE_COMP_TOL)
+  {
+    return (!(stable_eq(v1,v2,prec)));
+  }
+
+  inline bool stable_leq(const double &v1, const double &v2, const double &prec = STABLE_COMP_TOL)
+  {
+    return (!stable_gt(v1, v2, prec));
+  }
+
+  inline bool stable_geq(const double &v1, const double &v2, const double &prec = STABLE_COMP_TOL)
+  {
+    return (!stable_lt(v1, v2, prec));
+  }
+
+  inline double sign(const double &v)
+  {
+    // consider 0 to be positive
+    if (v >= 0) return 1.0;
+    else return -1.0;
+  }
+
+  bool Xtal::niggliReduce(double *a_, double *b_, double *c_,
+                          double *alpha_, double *beta_, double *gamma_,
+                          const unsigned int iterations)
+  {
+    // convert deg->rad
+    double a     = *a_;
+    double b     = *b_;
+    double c     = *c_;
+    double alpha = (*alpha_) * DEG_TO_RAD;
+    double beta  = (*beta_)  * DEG_TO_RAD;
+    double gamma = (*gamma_) * DEG_TO_RAD;
+
+    // For swapping
+    double tmp;
+
+    // Characteristic (step 0)
+    double A    = a*a;
+    double B    = b*b;
+    double C    = c*c;
+    double zeta = 2*b*c*cos(alpha);
+    double eta  = 2*a*c*cos(beta);
+    double xi   = 2*a*b*cos(gamma);
+
+    // Return value
+    bool ret = false;
+
+    // comparison tolerance
+    double tol = STABLE_COMP_TOL * pow(a * b * c, 1.0/3.0);
+
+    NIGGLI_PRINT_HEADER;
+    NIGGLI_PRINT(0,0);
+
+    for (int iter = 0; iter < iterations; iter++) {
+      // Step 1:
+      if (
+          stable_gt(A, B, tol)
+          || (
+              stable_eq(A, B, tol)
+              &&
+              stable_gt(fabs(zeta), fabs(eta), tol)
+              )
+          ) {
+        SWAP(A, B, tmp);
+        SWAP(zeta, eta, tmp);
+        NIGGLI_PRINT(iter+1,1);
       }
-      for (unsigned int i = 0; i < vs.size(); i++) {
-        for (unsigned int j = 0; j < vs.size(); j++) {
-          if (i != j) {
-            limit = 0;
-            while (limit < 20
-                   &&
-                   (vectorAngle(vs[i],vs[j]) < 60
-                    ||
-                    vectorAngle(vs[i],vs[j]) > 120)
-                   &&
-                   (vs[i].length() >= vs[j].length())
-                   ) {
-              //qDebug() << "Attempt " << limit << vectorAngle(vs[i], vs[j]);
-              //qDebug() << "Vi " << vs[i].x() << vs[i].y() << vs[i].z();
-              //qDebug() << "Vj " << vs[j].x() << vs[j].y() << vs[j].z();
-              double nproj = fabs(dot(vs[i],vs[j])/vs[j].length());
-              int sign = (dot(vs[i],vs[j]) > 0) ? 1 : -1;
-              vs[i] = vs[i] - ceil(nproj/vs[j].length()) * sign * vs[j];
-              changes++;
-              totalChanges++;
-              limit++;
-            }
-            if (limit >= 20) {
-              qWarning() << "Xtal::fixAngles: Maximum vector iteration reached. Bailing.";
-              qWarning() << vectorAngle(vs[i],vs[j]);
-              qWarning() << i << j;
-              return false;
-            }
+
+      // Step 2:
+      if (
+          stable_gt(B, C, tol)
+          || (
+              stable_eq(B, C, tol)
+              &&
+              stable_gt(fabs(eta), fabs(xi), tol)
+              )
+          ) {
+        SWAP(B, C, tmp);
+        SWAP(eta, xi, tmp);
+        NIGGLI_PRINT(iter+1,2);
+        continue;
+      }
+
+      double zetaEtaXi = zeta*eta*xi;
+      // Step 3:
+      if (stable_gt(zetaEtaXi, 0, tol)) {
+        zeta = fabs(zeta);
+        eta  = fabs(eta);
+        xi   = fabs(xi);
+        NIGGLI_PRINT(iter+1,3);
+      }
+
+      // Step 4:
+      if (stable_leq(zetaEtaXi, 0, tol)) {
+        zeta = -fabs(zeta);
+        eta  = -fabs(eta);
+        xi   = -fabs(xi);
+        NIGGLI_PRINT(iter+1,4);
+      }
+
+      // Step 5:
+      if (stable_gt(fabs(zeta), B, tol)
+          || (stable_eq(zeta, B, tol)
+              && stable_lt(2*eta, xi, tol)
+              )
+          || (stable_eq(zeta, -B, tol)
+              && stable_lt(xi, 0, tol)
+              )
+          ) {
+        double signZeta = sign(zeta);
+        C    = B + C - zeta*signZeta;
+        eta  = eta - xi*signZeta;
+        zeta = zeta - 2*B*signZeta;
+        NIGGLI_PRINT(iter+1,5);
+        continue;
+      }
+
+      // Step 6:
+      if (stable_gt(fabs(eta), A, tol)
+          || (stable_eq(eta, A, tol)
+              && stable_lt(2*zeta, xi, tol)
+              )
+          || (stable_eq(eta, -A, tol)
+              && stable_lt(xi, 0, tol)
+              )
+          ) {
+        double signEta = sign(eta);
+        C    = A + C - eta*signEta;
+        zeta = zeta - xi*signEta;
+        eta  = eta - 2*A*signEta;
+        NIGGLI_PRINT(iter+1,6);
+        continue;
+      }
+
+      // Step 7:
+      if (stable_gt(fabs(xi), A, tol)
+          || (stable_eq(xi, A, tol)
+              && stable_lt(2*zeta, eta, tol)
+              )
+          || (stable_eq(xi, -A, tol)
+              && stable_lt(eta, 0, tol)
+              )
+          ) {
+        double signXi = sign(xi);
+        B    = A + B - xi*signXi;
+        zeta = zeta - eta*signXi;
+        xi   = xi - 2*A*signXi;
+        NIGGLI_PRINT(iter+1,7);
+        continue;
+      }
+
+      // Step 8:
+      double sumAllButC = A + B + zeta + eta + xi;
+      if (stable_lt(sumAllButC, 0, tol)
+          || (stable_eq(sumAllButC, 0, tol)
+              && stable_gt(2*(A+eta)+xi, 0, tol)
+              )
+          ) {
+        C    = sumAllButC + C;
+        zeta = 2*B + zeta + xi;
+        eta  = 2*A + eta + xi;
+        NIGGLI_PRINT(iter+1,8);
+        continue;
+      }
+
+      // Done!
+      ret = true;
+      NIGGLI_PRINT(iter+1,0);
+      break;
+    }
+
+    // Update values
+    if (ret == true) {
+      (*a_) = sqrt(A);
+      (*b_) = sqrt(B);
+      (*c_) = sqrt(C);
+      (*alpha_) = acos(zeta / (2*(*b_)*(*c_))) * RAD_TO_DEG;
+      (*beta_)  = acos(eta  / (2*(*a_)*(*c_))) * RAD_TO_DEG;
+      (*gamma_) = acos(xi   / (2*(*a_)*(*b_))) * RAD_TO_DEG;
+    }
+
+    return ret;
+  }
+
+  bool Xtal::isNiggliReduced() const
+  {
+    // cache params
+    double a     = getA();
+    double b     = getB();
+    double c     = getC();
+    double alpha = getAlpha();
+    double beta  = getBeta();
+    double gamma = getGamma();
+
+    return Xtal::isNiggliReduced(a, b, c, alpha, beta, gamma);
+  }
+
+  bool Xtal::isNiggliReduced(const double a, const double b, const double c,
+                             const double alpha, const double beta, const double gamma)
+  {
+    // Calculate characteristic
+    double A    = a*a;
+    double B    = b*b;
+    double C    = c*c;
+    double zeta = 2*b*c*cos(alpha);
+    double eta  = 2*a*c*cos(beta);
+    double xi   = 2*a*b*cos(gamma);
+
+    // comparison tolerance
+    double tol = STABLE_COMP_TOL * pow(a * b * c, 1.0/3.0);
+
+    // Check against Niggli conditions (taken from Gruber 1973). The
+    // logic of the second comparison is reversed from the paper to
+    // simplify the algorithm.
+    if (stable_eq(zeta,  B, tol) && stable_gt (xi,   2*eta,  tol)) return false;
+    if (stable_eq(eta ,  A, tol) && stable_gt (xi,   2*zeta, tol)) return false;
+    if (stable_eq(xi,    A, tol) && stable_gt (eta,  2*zeta, tol)) return false;
+    if (stable_eq(zeta, -B, tol) && stable_neq(xi,   0,      tol)) return false;
+    if (stable_eq(eta,  -A, tol) && stable_neq(xi,   0,      tol)) return false;
+    if (stable_eq(xi,   -A, tol) && stable_neq(eta,  0,      tol)) return false;
+
+    if (stable_eq(zeta+eta+xi+A+B, 0, tol)
+        && stable_gt(2*(A+eta)+xi,  0, tol)) return false;
+
+    // all good!
+    return true;
+  }
+
+  bool Xtal::fixAngles(int attempts)
+  {
+    // Store checks
+    double oldVolume = getVolume();
+
+    // Get rotation matrix
+    matrix3x3 rot = cell()->GetOrientationMatrix();
+
+    // Extract cell parameters
+    double a_, b_, c_, alpha_, beta_, gamma_;
+    double a = a_ = getA();
+    double b = b_ = getB();
+    double c = c_ = getC();
+    double alpha = alpha_ = getAlpha();
+    double beta  = beta_  = getBeta();
+    double gamma = gamma_ = getGamma();
+
+    // Remove rotation matrix if needed
+    if (!rot.isUnitMatrix()) {
+      // If so, store the fractional coordinates
+      QList<Eigen::Vector3d> fracpos;
+      for (int i = 0; i < numAtoms(); i++) {
+        fracpos.append(cartToFrac(*atom(i)->pos()));
+      }
+      // Set the cell using only parameters
+      setCellInfo(a,b,c,alpha,beta,gamma);
+      // Update atom positions using old frac coords
+      for (int i = 0; i < numAtoms(); i++) {
+        atom(i)->setPos(fracToCart(fracpos.at(i)));
+      }
+    }
+
+    // Perform niggli reduction
+    if (!niggliReduce(&a, &b, &c, &alpha, &beta, &gamma, attempts)) {
+      qDebug() << "Unable to perform cell reduction on Xtal " << getIDString()
+               << "( " << a_ << b_ << c_ << alpha_ << beta_ << gamma_ << " )";
+      return false;
+    }
+
+    // Build update cell with new params
+    setCellInfo(a,b,c,alpha,beta,gamma);
+
+    // Wrap atoms into new cell
+    wrapAtomsToCell();
+
+    // Check volume
+    double newVolume = getVolume();
+    Q_ASSERT_X(fabs(oldVolume - newVolume) < 1e-8,
+               Q_FUNC_INFO,
+               QString("Cell volume changed during niggli reduction for structure %1.\n\
+Params: %2 %3 %4 %5 %6 %7\n\
+Volumes: old=%8 new=%9")
+               .arg(getIDString())
+               .arg(a)
+               .arg(b)
+               .arg(c)
+               .arg(alpha)
+               .arg(beta)
+               .arg(gamma)
+               .arg(oldVolume)
+               .arg(newVolume)
+               .toStdString().c_str());
+
+    // Ensure that the new cell is actually the niggli cell. If not, print warning
+    if (!isNiggliReduced()) {
+      qWarning() << QString("Niggli-reduction failed for structure %1.\n\
+Params: %2 %3 %4 %5 %6 %7")
+        .arg(getIDString())
+        .arg(a)
+        .arg(b)
+        .arg(c)
+        .arg(alpha)
+        .arg(beta)
+        .arg(gamma)
+        .toStdString().c_str();
+    }
+
+    findSpaceGroup();
+    return true;
+  }
+
+  bool Xtal::operator==(const Xtal &o) const
+  {
+    // check that the cells are niggli reduced first. If not, warn in debug output
+    if (!isNiggliReduced()) {
+      qWarning() << "Warning: Structure " << getIDString() <<
+        " is be compared but is not Niggli reduced.";
+    }
+    if (!o.isNiggliReduced()) {
+      qWarning() << "Warning: Structure " << o.getIDString() <<
+        " is be compared but is not Niggli reduced.";
+    }
+
+    // Compare coordinates using the default tolerance
+    if (!compareCoordinates(o)) return false;
+
+    // Compare volumes. Tolerance is 1% of this->getVolume()
+    double vol = getVolume();
+    const double voltol = 0.01 * vol;
+    if (fabs(vol - o.getVolume()) > voltol) return false;
+
+    // Compare lattice params
+    const double lengthtol = 0.05;
+    const double angletol  = 0.1;
+    if (fabs(getA() - o.getA()) > lengthtol) return false;
+    if (fabs(getB() - o.getB()) > lengthtol) return false;
+    if (fabs(getC() - o.getC()) > lengthtol) return false;
+    if (fabs(getAlpha() - o.getAlpha()) > angletol) return false;
+    if (fabs(getBeta()  - o.getBeta())  > angletol) return false;
+    if (fabs(getGamma() - o.getGamma()) > angletol) return false;
+
+    // all good!
+    return true;
+  }
+
+  struct ComparisonAtom
+  {
+    unsigned int atomicNumber;
+    Eigen::Vector3d pos;
+  };
+
+  bool Xtal::compareCoordinates(const Xtal &o, const double tol) const
+  {
+    double tol2 = tol*tol;
+
+    // Are there any atoms?
+    unsigned int thisNumAtoms = this->numAtoms();
+    if (thisNumAtoms == 0) {
+      if (o.numAtoms() == 0) return true;
+      else return false;
+    }
+
+    // First ensure that the compositions are the same
+    QList<QString> atomSymbols = getSymbols();
+    QList<unsigned int> atomCounts = getNumberOfAtomsAlpha();
+
+    if (atomSymbols != o.getSymbols()) return false;
+    if (atomCounts  != o.getNumberOfAtomsAlpha()) return false;
+
+    // Now locate the most infrequent species in the structures
+    unsigned int min=UINT_MAX, minIndex, current;
+    for (unsigned int i = 0; i < atomCounts.size(); i++) {
+      current = atomCounts[i];
+      if (current < min && current != 0) {
+        min = current;
+        minIndex = i;
+      }
+    }
+
+    // Find atomic number of most infrequent species;
+    unsigned int lfAtomicNumber =
+      OpenBabel::etab.GetAtomicNum(atomSymbols[minIndex].toStdString().c_str());
+
+    // Now build a list of all atoms in this
+    ComparisonAtom thisAtoms[thisNumAtoms];
+    ComparisonAtom ca;
+    unsigned int atomCounter = 0;
+    for (QList<Atom*>::const_iterator atm = m_atomList.begin();
+         atm != m_atomList.end();
+         atm++) {
+      ca.atomicNumber = (*atm)->atomicNumber();
+      ca.pos = *(*atm)->pos();
+      thisAtoms[atomCounter++] = ca;
+    }
+
+    // Now build a list of all atoms in a 3x3x3 supercell of other
+    unsigned int otherNumAtoms = 27 * thisNumAtoms; // # atoms in supercell
+    ComparisonAtom otherAtoms[otherNumAtoms];
+    matrix3x3 obmat = o.cell()->GetCellMatrix();
+    const Eigen::Vector3d xvec (obmat.Get(0,0),
+                                obmat.Get(0,1),
+                                obmat.Get(0,2));
+    const Eigen::Vector3d yvec (obmat.Get(1,0),
+                                obmat.Get(1,1),
+                                obmat.Get(1,2));
+    const Eigen::Vector3d zvec (obmat.Get(2,0),
+                                obmat.Get(2,1),
+                                obmat.Get(2,2));
+    Eigen::Vector3d tmpTranslation;
+    atomCounter = 0;
+    for (int dx = -1; dx <= 1; dx++) {
+      for (int dy = -1; dy <= 1; dy++) {
+        for (int dz = -1; dz <= 1; dz++) {
+          // Calc translation vector
+          tmpTranslation = dx*xvec;
+          tmpTranslation += dy*yvec;
+          tmpTranslation += dz*zvec;
+
+          // Add atoms (loop over thisNumAtoms since we already
+          // checked composition, and otherNumAtoms counts for the supercell
+          for (QList<Atom*>::const_iterator atm = o.m_atomList.begin();
+               atm != o.m_atomList.end();
+               atm++) {
+            ca.atomicNumber = (*atm)->atomicNumber();
+            ca.pos = *(*atm)->pos();
+            ca.pos += tmpTranslation;
+            otherAtoms[atomCounter++] = ca;
           }
         }
       }
-      if (changes == 0) break;
     }
 
-    if (totalChanges == 0) {
-      return true;
+    // Prepare for the comparisons. First locate the reference atom in
+    // this. It is the first atom of type lfAtomicNumber
+    Eigen::Vector3d refTrans;
+    for (unsigned int i = 0; i < thisNumAtoms; i++) {
+      if (thisAtoms[i].atomicNumber == lfAtomicNumber) {
+        refTrans = thisAtoms[i].pos;
+        break;
+      }
     }
 
-    double newVolume = fabs(dot(vs[0],cross(vs[1],vs[2])));
-    if (getVolume() - newVolume > 1e-8){
-      qWarning() << "Volume before ("
-                 << getVolume()
-                 << ") and after ("
-                 << newVolume
-                 << ") Xtal::fixAngles() doesn't match -- not updating cell.";
-      return false;
+    // Translate all atoms in thisAtoms by the -ref.pos, effectively
+    // placing ref at the origin;
+    for (unsigned int i = 0; i < thisNumAtoms; i++) {
+      thisAtoms[i].pos -= refTrans;
     }
-    setCellInfo(vs[0], vs[1], vs[2]);
-    wrapAtomsToCell();
-    findSpaceGroup();
-    return true;
+
+    // Now for the comparisons. Declarations:
+    const Eigen::Vector3d *pivotTrans;
+    const ComparisonAtom *pivot;
+    const ComparisonAtom *thisAtom;
+    const ComparisonAtom *otherAtom;
+    bool atomMatched;
+    double dx, dy, dz;
+
+    // First locate a pivot atom in otherAtomList of type lfAtomicNumber
+    for (unsigned int pivotIndex = 0; pivotIndex < otherNumAtoms; pivotIndex++) {
+      pivot = &otherAtoms[pivotIndex];
+      if (pivot->atomicNumber != lfAtomicNumber) continue;
+      pivotTrans = &pivot->pos;
+
+      // Now that we have a pivot, compare all atoms in thisAtoms with
+      // all atoms in otherAtoms after translating other's atoms by -pivotTrans
+      for (unsigned int thisAtomIndex = 0;
+           thisAtomIndex < thisNumAtoms;
+           thisAtomIndex++) {
+        thisAtom = &thisAtoms[thisAtomIndex];
+        atomMatched = false;
+        for (unsigned int otherAtomIndex = 0;
+             otherAtomIndex < otherNumAtoms;
+             otherAtomIndex++) {
+          otherAtom = &otherAtoms[otherAtomIndex];
+
+          // compare atomic numbers
+          if (otherAtom->atomicNumber != thisAtom->atomicNumber) continue;
+          // compare positions
+          dx = thisAtom->pos.x() - otherAtom->pos.x() + pivotTrans->x();
+          dy = thisAtom->pos.y() - otherAtom->pos.y() + pivotTrans->y();
+          dz = thisAtom->pos.z() - otherAtom->pos.z() + pivotTrans->z();
+          if (fabs( dx*dx+dy*dy+dz*dz ) < tol2) {
+            atomMatched = true;
+            break;
+          }
+        }
+        if (!atomMatched) break; // Find new pivot
+      }
+      if (atomMatched) { // All atoms have a match, success!
+        return true;
+      }
+    }
+    // All pivots failed; coordinates do not match
+    return false;
   }
 
   OpenBabel::OBUnitCell* Xtal::cell() const
