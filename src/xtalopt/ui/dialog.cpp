@@ -16,6 +16,8 @@
 
 #include <xtalopt/ui/dialog.h>
 
+#include "ui_dialog.h"
+
 #include <globalsearch/optimizer.h>
 #include <xtalopt/testing/xtalopttest.h>
 
@@ -46,16 +48,17 @@ namespace XtalOpt {
                                 Qt::WindowFlags f ) :
     AbstractDialog( glWidget, parent, f )
   {
-    ui.setupUi(this);
-    ui_push_begin   = ui.push_begin;
-    ui_push_save    = ui.push_save;
-    ui_push_resume  = ui.push_resume;
-    ui_label_opt    = ui.label_opt;
-    ui_label_run    = ui.label_run;
-    ui_label_fail   = ui.label_fail;
-    ui_label_prog   = ui.label_prog;
-    ui_progbar      = ui.progbar;
-    ui_tabs         = ui.tabs;
+    ui = new Ui::XtalOptDialog;
+    ui->setupUi(this);
+    ui_push_begin   = ui->push_begin;
+    ui_push_save    = ui->push_save;
+    ui_push_resume  = ui->push_resume;
+    ui_label_opt    = ui->label_opt;
+    ui_label_run    = ui->label_run;
+    ui_label_fail   = ui->label_fail;
+    ui_label_prog   = ui->label_prog;
+    ui_progbar      = ui->progbar;
+    ui_tabs         = ui->tabs;
 
     // Initialize vars, connections, etc
     XtalOpt *xtalopt = new XtalOpt (this);
@@ -72,14 +75,14 @@ namespace XtalOpt {
     m_tab_log		= new TabLog(this, xtalopt);
 
     // Populate tab widget
-    ui.tabs->clear();
-    ui.tabs->addTab(m_tab_init->getTabWidget(),		tr("Cell &Initialization"));
-    ui.tabs->addTab(m_tab_edit->getTabWidget(),         tr("Optimization &Templates"));
-    ui.tabs->addTab(m_tab_opt->getTabWidget(),          tr("&Optimization Settings"));
-    ui.tabs->addTab(m_tab_sys->getTabWidget(),		tr("&System Settings"));
-    ui.tabs->addTab(m_tab_progress->getTabWidget(),     tr("&Progress"));
-    ui.tabs->addTab(m_tab_plot->getTabWidget(),         tr("&Plot"));
-    ui.tabs->addTab(m_tab_log->getTabWidget(),          tr("&Log"));
+    ui->tabs->clear();
+    ui->tabs->addTab(m_tab_init->getTabWidget(),		tr("Cell &Initialization"));
+    ui->tabs->addTab(m_tab_edit->getTabWidget(),         tr("Optimization &Templates"));
+    ui->tabs->addTab(m_tab_opt->getTabWidget(),          tr("&Optimization Settings"));
+    ui->tabs->addTab(m_tab_sys->getTabWidget(),		tr("&System Settings"));
+    ui->tabs->addTab(m_tab_progress->getTabWidget(),     tr("&Progress"));
+    ui->tabs->addTab(m_tab_plot->getTabWidget(),         tr("&Plot"));
+    ui->tabs->addTab(m_tab_log->getTabWidget(),          tr("&Log"));
 
     initialize();
   }
@@ -122,7 +125,7 @@ namespace XtalOpt {
   void XtalOptDialog::saveSession() {
     // Notify if this was user requested.
     bool notify = false;
-    if (sender() == ui.push_save) {
+    if (sender() == ui->push_save) {
       notify = true;
     }
     if (m_opt->savePending) {
