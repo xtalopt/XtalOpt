@@ -1178,84 +1178,51 @@ namespace XtalOpt {
   }
 
   void XtalOpt::checkForDuplicates_() {
-    QHash<QString, double> limits;
-    limits.insert("enthalpy", tol_enthalpy);
-    limits.insert("volume", tol_volume);
-
-    QList<QString> keys = limits.keys();
-    QList<QHash<QString, QVariant> > fps;
-    QList<Xtal::State> states;
-
     m_tracker->lockForRead();
     QList<Structure*> *structures = m_tracker->list();
+    m_tracker->unlock();
+    QList<Xtal*> xtals;
 
-    Xtal *xtal=0, *xtal_i=0, *xtal_j=0;
+    Xtal *xtal, *highXtal, *lowXtal;
     for (int i = 0; i < structures->size(); i++) {
       xtal = qobject_cast<Xtal*>(structures->at(i));
-      xtal->lock()->lockForRead();
-      fps.append(xtal->getFingerprint());
-      states.append(xtal->getStatus());
-      xtal->lock()->unlock();
+      xtals.append(xtal);
     }
 
-    // Iterate over all xtals
-    const QHash<QString, QVariant> *fp_i, *fp_j;
-    QString key;
-    for (int i = 0; i < fps.size(); i++) {
-      if ( states.at(i) != Xtal::Optimized ) continue;
-      fp_i = &fps.at(i);
-      // skip unknown spacegroups
-      if (fp_i->value("spacegroup").toUInt() == 0) continue;
-      for (int j = i+1; j < fps.size(); j++) {
-        if (states.at(j) != Xtal::Optimized ) continue;
-        fp_j = &fps.at(j);
-        // skip unknown spacegroups
-        if (fp_j->value("spacegroup").toUInt() == 0) continue;
-        // If xtals do not have the same spacegroup number, break
-        if (fp_i->value("spacegroup").toUInt() != fp_j->value("spacegroup").toUInt()) {
-          continue;
-        }
-        // Check limits
-        bool match = true;
-        for (int k = 0; k < keys.size(); k++) {
-          key = keys.at(k);
-          // If values do not match, skip to next pair of xtals.
-          if (fabs(fp_i->value(key).toDouble() - fp_j->value(key).toDouble() )
-              > limits.value(key)) {
-            match = false;
-            break;
+    for (QList<Xtal*>::iterator xi = xtals.begin();
+         xi != xtals.end(); xi++) {
+      (*xi)->lock()->lockForRead();
+
+      for (QList<Xtal*>::iterator xj = xi + 1;
+           xj != xtals.end(); xj++) {
+        (*xj)->lock()->lockForRead();
+
+        if ((**xi) == (**xj)) {
+          // Mark the xtal with the highest enthalpy as a duplicate of
+          // the other.
+          if ((*xi)->getEnthalpy() > (*xj)->getEnthalpy()) {
+            highXtal = (*xi);
+            lowXtal = (*xj);
           }
+          else {
+            highXtal = (*xj);
+            lowXtal = (*xi);
+          }
+          highXtal->lock()->unlock();
+          highXtal->lock()->lockForWrite();
+          highXtal->setStatus(Xtal::Duplicate);
+          highXtal->setDuplicateString(QString("%1x%2")
+                                       .arg(lowXtal->getGeneration())
+                                       .arg(lowXtal->getIDNumber()));
+          // Unlock outside of the if statement.
         }
-        if (!match) continue;
-        // If we get here, all the fingerprint values match,
-        // and we have a duplicate. Mark the xtal with the
-        // highest enthalpy as a duplicate of the other.
-        xtal_i = qobject_cast<Xtal*>(structures->at(i));
-        xtal_j = qobject_cast<Xtal*>(structures->at(j));
-        if (fp_i->value("enthalpy").toDouble() > fp_j->value("enthalpy").toDouble()) {
-          xtal_i->lock()->lockForWrite();
-          xtal_j->lock()->lockForRead();
-          xtal_i->setStatus(Xtal::Duplicate);
-          xtal_i->setDuplicateString(QString("%1x%2")
-                                     .arg(xtal_j->getGeneration())
-                                     .arg(xtal_j->getIDNumber()));
-          xtal_i->lock()->unlock();
-          xtal_j->lock()->unlock();
-          break; // If xtals->at(i) is now a duplicate, don't bother comparing it anymore
-        }
-        else {
-          xtal_j->lock()->lockForWrite();
-          xtal_i->lock()->lockForRead();
-          xtal_j->setStatus(Xtal::Duplicate);
-          xtal_j->setDuplicateString(QString("%1x%2")
-                                     .arg(xtal_i->getGeneration())
-                                     .arg(xtal_i->getIDNumber()));
-          xtal_j->lock()->unlock();
-          xtal_i->lock()->unlock();
-        }
+        (*xj)->lock()->unlock();
       }
+      // Nothing else should be setting this, so just update under a
+      // read lock
+      (*xi)->setChangedSinceDupChecked(false);
+      (*xi)->lock()->unlock();
     }
-    m_tracker->unlock();
     emit updateAllInfo();
   }
 
