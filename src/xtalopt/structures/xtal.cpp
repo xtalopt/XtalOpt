@@ -513,7 +513,7 @@ namespace XtalOpt {
 
     // Check volume
     double newVolume = getVolume();
-    Q_ASSERT_X(fabs(oldVolume - newVolume) < 1e-8,
+    Q_ASSERT_X(fabs(oldVolume - newVolume) < 1e-5,
                Q_FUNC_INFO,
                QString("Cell volume changed during niggli reduction for structure %1.\n\
 Params: %2 %3 %4 %5 %6 %7\n\
