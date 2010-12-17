@@ -1013,9 +1013,10 @@ namespace GlobalSearch {
 
   QList<QString> Structure::getSymbols() const {
     QList<QString> list;
-    OpenBabel::OBMol obmol = OBMol();
-    FOR_ATOMS_OF_MOL(atom,obmol) {
-      QString symbol = QString(OpenBabel::etab.GetSymbol(atom->GetAtomicNum()));
+    for (QList<Atom*>::const_iterator atmit = m_atomList.begin();
+         atmit != m_atomList.end();
+         atmit++) {
+      QString symbol = QString(OpenBabel::etab.GetSymbol((*atmit)->atomicNumber()));
       if (!list.contains(symbol)) {
         list.append(symbol);
       }
@@ -1029,14 +1030,13 @@ namespace GlobalSearch {
     QList<QString> symbols = getSymbols();
     for (int i = 0; i < symbols.size(); i++)
       list.append(0);
-    OpenBabel::OBMol obmol = OBMol();
-    int ind, tmp;
-    FOR_ATOMS_OF_MOL(atom,obmol) {
-      QString symbol            = QString(OpenBabel::etab.GetSymbol(atom->GetAtomicNum()));
+    int ind;
+    for (QList<Atom*>::const_iterator atmit = m_atomList.begin();
+         atmit != m_atomList.end();
+         atmit++) {
+      QString symbol = QString(OpenBabel::etab.GetSymbol((*atmit)->atomicNumber()));
       ind = symbols.indexOf(symbol);
-      tmp = list.at(ind);
-      tmp++;
-      list.replace(ind, tmp);
+      list[ind]++;
     }
     return list;
   }
