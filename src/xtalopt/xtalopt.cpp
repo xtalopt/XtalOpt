@@ -43,6 +43,7 @@
 #include <QtCore/QFileInfo>
 #include <QtCore/QReadWriteLock>
 #include <QtCore/QtConcurrentRun>
+#include <QtCore/QtConcurrentMap>
 
 #include <QtGui/QMessageBox>
 
@@ -1170,6 +1171,39 @@ namespace XtalOpt {
     emit updateAllInfo();
   }
 
+  // Helper struct for the map below
+  struct dupCheckStruct
+  {
+    Xtal *i, *j;
+  };
+
+  void checkIfDups(dupCheckStruct & st)
+  {
+    Xtal *highXtal, *lowXtal;
+    st.i->lock()->lockForRead();
+    st.j->lock()->lockForRead();
+    if ((*st.i) == (*st.j)) {
+      // Mark the xtal with the highest enthalpy as a duplicate of
+      // the other.
+      if (st.i->getEnthalpy() > st.j->getEnthalpy()) {
+        highXtal = st.i;
+        lowXtal = st.j;
+      }
+      else {
+        highXtal = st.j;
+        lowXtal = st.i;
+      }
+      highXtal->lock()->unlock();
+      highXtal->lock()->lockForWrite();
+      highXtal->setStatus(Xtal::Duplicate);
+      highXtal->setDuplicateString(QString("%1x%2")
+                                   .arg(lowXtal->getGeneration())
+                                   .arg(lowXtal->getIDNumber()));
+    }
+    st.i->lock()->unlock();
+    st.j->lock()->unlock();
+  }
+
   void XtalOpt::checkForDuplicates() {
     if (isStarting) {
       return;
@@ -1183,39 +1217,34 @@ namespace XtalOpt {
     m_tracker->unlock();
     QList<Xtal*> xtals;
 
-    Xtal *xtal, *highXtal, *lowXtal;
+    Xtal *xtal;
     for (int i = 0; i < structures->size(); i++) {
       xtal = qobject_cast<Xtal*>(structures->at(i));
       xtals.append(xtal);
     }
 
+    // Build helper structs
+    QList<dupCheckStruct> sts;
+    dupCheckStruct st;
     for (QList<Xtal*>::iterator xi = xtals.begin();
          xi != xtals.end(); xi++) {
       (*xi)->lock()->lockForRead();
+      if ((*xi)->getStatus() == Xtal::Duplicate) {
+        (*xi)->lock()->unlock();
+        continue;
+      }
 
       for (QList<Xtal*>::iterator xj = xi + 1;
            xj != xtals.end(); xj++) {
         (*xj)->lock()->lockForRead();
-
-        if ((**xi) == (**xj)) {
-          // Mark the xtal with the highest enthalpy as a duplicate of
-          // the other.
-          if ((*xi)->getEnthalpy() > (*xj)->getEnthalpy()) {
-            highXtal = (*xi);
-            lowXtal = (*xj);
-          }
-          else {
-            highXtal = (*xj);
-            lowXtal = (*xi);
-          }
-          highXtal->lock()->unlock();
-          highXtal->lock()->lockForWrite();
-          highXtal->setStatus(Xtal::Duplicate);
-          highXtal->setDuplicateString(QString("%1x%2")
-                                       .arg(lowXtal->getGeneration())
-                                       .arg(lowXtal->getIDNumber()));
-          // Unlock outside of the if statement.
+        if ((*xj)->getStatus() == Xtal::Duplicate) {
+          (*xj)->lock()->unlock();
+          continue;
         }
+
+        st.i = (*xi);
+        st.j = (*xj);
+        sts.append(st);
         (*xj)->lock()->unlock();
       }
       // Nothing else should be setting this, so just update under a
@@ -1223,6 +1252,9 @@ namespace XtalOpt {
       (*xi)->setChangedSinceDupChecked(false);
       (*xi)->lock()->unlock();
     }
+
+    QtConcurrent::blockingMap(sts, checkIfDups);
+
     emit updateAllInfo();
   }
 
