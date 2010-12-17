@@ -34,9 +34,11 @@ namespace GlobalSearch {
   {
     // dialog connections
     connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
+            this, SLOT(readSettings(const QString &)),
+            Qt::DirectConnection);
     connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
+            this, SLOT(writeSettings(const QString &)),
+            Qt::DirectConnection);
     connect(m_dialog, SIGNAL(tabsUpdateGUI()),
             this, SLOT(updateGUI()));
     connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
