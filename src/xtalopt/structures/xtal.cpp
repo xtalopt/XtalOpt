@@ -559,9 +559,6 @@ Params: %2 %3 %4 %5 %6 %7")
         " is be compared but is not Niggli reduced.";
     }
 
-    // Compare coordinates using the default tolerance
-    if (!compareCoordinates(o)) return false;
-
     // Compare volumes. Tolerance is 1% of this->getVolume()
     double vol = getVolume();
     const double voltol = 0.01 * vol;
@@ -576,6 +573,9 @@ Params: %2 %3 %4 %5 %6 %7")
     if (fabs(getAlpha() - o.getAlpha()) > angletol) return false;
     if (fabs(getBeta()  - o.getBeta())  > angletol) return false;
     if (fabs(getGamma() - o.getGamma()) > angletol) return false;
+
+    // Compare coordinates using the default tolerance
+    if (!compareCoordinates(o)) return false;
 
     // all good!
     return true;
