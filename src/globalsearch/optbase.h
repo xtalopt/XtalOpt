@@ -144,10 +144,14 @@ for (ind = 0; ind < probs.size(); ind++)
      * Load a search session from the specified filename.
      *
      * @param filename State file to resume.
+     * @param forceReadOnly Set to true to skip any prompts and load the
+     * session readonly
      *
      * @return True is successful, false otherwise.
      */
-    virtual bool load(const QString & filename) {return false;};
+    virtual bool load(const QString & filename,
+                      const bool forceReadOnly = false) {
+      Q_UNUSED(forceReadOnly);return false;};
 
     /**
      * Takes a template and inserts structure specific information by

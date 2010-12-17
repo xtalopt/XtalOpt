@@ -136,7 +136,7 @@ namespace GAPC {
      *
      * @return True is successful, false otherwise.
      */
-    bool load(const QString & filename);
+    bool load(const QString & filename, const bool forceReadOnly = false);
 
     ProtectedCluster* generateRandomPC(unsigned int gen = 1, unsigned int id = 0);
 

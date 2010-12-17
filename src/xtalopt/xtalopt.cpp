@@ -866,7 +866,11 @@ namespace XtalOpt {
     return str;
   }
 
-  bool XtalOpt::load(const QString &filename) {
+  bool XtalOpt::load(const QString &filename, const bool forceReadOnly) {
+    if (forceReadOnly) {
+      readOnly = true;
+    }
+
     // Attempt to open state file
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -885,9 +889,12 @@ namespace XtalOpt {
       break;
     }
 
-    bool stateFileIsValid = settings->value("xtalopt/saveSuccessful", false).toBool();
+    bool stateFileIsValid = settings->value("xtalopt/saveSuccessful",
+                                            false).toBool();
     if (!stateFileIsValid) {
-      error("XtalOpt::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid. (Try " + file.fileName() + ".old if it exists)");
+      error("XtalOpt::load(): File "+file.fileName()+
+            " is incomplete, corrupt, or invalid. (Try "
+            + file.fileName() + ".old if it exists)");
       return false;
     }
 
@@ -897,13 +904,17 @@ namespace XtalOpt {
     QDir dataDir  = stateInfo.absoluteDir();
     QString dataPath = dataDir.absolutePath() + "/";
     // list of xtal dirs
-    QStringList xtalDirs = dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
+    QStringList xtalDirs = dataDir.entryList(QStringList(),
+                                             QDir::AllDirs,
+                                             QDir::Size);
     xtalDirs.removeAll(".");
     xtalDirs.removeAll("..");
     for (int i = 0; i < xtalDirs.size(); i++) {
       // old versions of xtalopt used xtal.state, so still check for it.
-      if (!QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/structure.state") &&
-          !QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/xtal.state") ) {
+      if (!QFile::exists(dataPath + "/" + xtalDirs.at(i)
+                         + "/structure.state") &&
+          !QFile::exists(dataPath + "/" + xtalDirs.at(i)
+                         + "/xtal.state") ) {
           xtalDirs.removeAt(i);
           i--;
       }
@@ -924,7 +935,7 @@ namespace XtalOpt {
                  filename);
 
     // Create SSHConnection
-    if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
+    if (!forceReadOnly && m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
       QString pw = "";
       for (;;) {
         try {
@@ -1072,7 +1083,7 @@ namespace XtalOpt {
     m_dialog->updateProgressMinimum(0);
     m_dialog->updateProgressValue(0);
     m_dialog->updateProgressMaximum(loadedStructures.size());
-    m_dialog->updateProgressLabel("Updating  structure indices...");
+    m_dialog->updateProgressLabel("Updating structure indices...");
 
     // Reassign indices (shouldn't always be necessary, but just in case...)
     for (int i = 0; i < loadedStructures.size(); i++) {

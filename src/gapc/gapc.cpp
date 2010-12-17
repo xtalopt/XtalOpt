@@ -151,7 +151,10 @@ namespace GAPC {
     }
   }
 
-  bool OptGAPC::load(const QString &filename) {
+  bool OptGAPC::load(const QString &filename, const bool forceReadOnly) {
+    if (forceReadOnly) {
+      readOnly = true;
+    }
     // Attempt to open state file
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -208,7 +211,8 @@ namespace GAPC {
                  filename);
 
     // Create SSHConnection
-    if (m_optimizer->getIDString() != "OpenBabel" && // OpenBabel won't use ssh
+    if (!forceReadOnly &&
+        m_optimizer->getIDString() != "OpenBabel" && // OpenBabel won't use ssh
         m_optimizer->getIDString() != "GULP") {      // Nor will GULP
       QString pw = "";
       for (;;) {
