@@ -240,6 +240,16 @@ void XtalTest::niggliReduceTest()
   VERIFY_PARAMS(2.0, 4.0, 4.0,
                 60.0, 79.1931, 75.5225);
 
+  // This currently fails
+  ASSIGN_PARAMS(5.33246,
+                7.54122,
+                7.64391,
+                75.7212,
+                110.414,
+                44.9999);
+  QEXPECT_FAIL("", "This fails the Niggli reduction.", Continue);
+  QVERIFY(Xtal::niggliReduce(&a, &b, &c, &alpha, &beta, &gamma));
+
   // Random test
   const double minLength = 10.0;
   const double maxLength = 30.0;
