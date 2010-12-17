@@ -128,7 +128,8 @@ namespace XtalOpt {
     void setOptimizer(XtalOpt::OptTypes opttype, const QString &filename = "") {
       setOptimizer_enum(opttype, filename);};
 
-   private:
+   protected:
+    friend class XtalOptUnitTest;
     void resetDuplicates_();
     void checkForDuplicates_();
     void generateNewStructure_();
