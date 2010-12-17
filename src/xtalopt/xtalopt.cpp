@@ -638,6 +638,18 @@ namespace XtalOpt {
     if (gamma_min ==    gamma_max)      gamma = gamma_min;
     xtal->rescaleCell(a, b, c, alpha, beta, gamma);
 
+    // Before fixing angles, make sure that the current cell
+    // parameters are realistic
+    if (GS_IS_NAN_OR_INF(xtal->getA()) || fabs(xtal->getA()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getB()) || fabs(xtal->getB()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getC()) || fabs(xtal->getC()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getAlpha()) || fabs(xtal->getAlpha()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getBeta())  || fabs(xtal->getBeta())  < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getGamma()) || fabs(xtal->getGamma()) < 1e-8 ) {
+      qDebug() << "XtalOpt::checkXtal: A cell parameter is either 0, nan, or inf. Discarding.";
+      return false;
+    }
+
     // Ensure that all angles are between 60 and 120:
     xtal->fixAngles();
 
