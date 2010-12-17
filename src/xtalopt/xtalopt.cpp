@@ -620,8 +620,10 @@ namespace XtalOpt {
               xtal->getVolume() > vol_max ) {
       // I don't want to initialize a random number generator here, so
       // just use the modulus of the current volume as a random float.
-      double newvol = abs(fmod(xtal->getVolume(), 1)) * (vol_max - vol_min) + vol_min;
-      qDebug() << "XtalOpt::checkXtal: Rescaling volume from " << xtal->getVolume() << " to " << newvol;
+      double newvol = fabs(fmod(xtal->getVolume(), 1)) * (vol_max - vol_min) + vol_min;
+      if (fabs(newvol) < 1e-8) newvol = (vol_max - vol_min)*0.5 + vol_min;
+      qDebug() << "XtalOpt::checkXtal: Rescaling volume from "
+               << xtal->getVolume() << " to " << newvol;
       xtal->setVolume(newvol);
     }
 
