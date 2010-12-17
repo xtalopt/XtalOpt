@@ -71,11 +71,8 @@ namespace GlobalSearch {
     if (saveOnExit) {
       while (savePending) {
         qDebug() << "Spinning on save before destroying OptBase...";
-#ifdef WIN32
-        _sleep(1000);
-#else
-        sleep(1);
-#endif // _WIN32
+        save();
+        GS_SLEEP(1);
       };
       savePending = true;
     }
