@@ -325,8 +325,14 @@ namespace RandomDock {
 
     // Generate/Check new scene
     Scene *scene = 0;
-    while (!checkScene(scene))
+    while (!checkScene(scene)) {
+      if (scene) {
+        delete scene;
+        scene = 0;
+      }
+
       scene = generateRandomScene();
+    }
 
     // Copy info over
     QWriteLocker locker2 (scene->lock());
