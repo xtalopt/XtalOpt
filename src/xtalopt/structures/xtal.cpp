@@ -533,16 +533,19 @@ namespace XtalOpt {
 
   QList<Vector3d> Xtal::getAtomCoordsFrac() const {
     QList<Vector3d> list;
+    // Sort by symbols
     QList<QString> symbols = getSymbols();
     QString symbol_ref;
-    OpenBabel::OBMol obmol = OBMol();
+    QString symbol_cur;
+    QList<Atom*>::const_iterator it;
     for (int i = 0; i < symbols.size(); i++) {
       symbol_ref = symbols.at(i);
-      FOR_ATOMS_OF_MOL(atom,obmol) {
-        QString symbol_cur = QString(OpenBabel::etab.GetSymbol(atom->GetAtomicNum()));
+      for (it  = m_atomList.begin();
+           it != m_atomList.end();
+           it++) {
+        symbol_cur = QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()));
         if (symbol_cur == symbol_ref) {
-          vector3 obvec = cartToFrac(atom->GetVector());
-          list.append(Vector3d(obvec.x(), obvec.y(), obvec.z()));
+          list.append( *(cartToFrac((*it)->pos())));
         }
       }
     }
