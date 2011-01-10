@@ -14,6 +14,7 @@ http://xtalopt.openmolecules.net/wiki/index.fcgi/wiki/Installation
     -- GULP
     -- VASP
     -- PWscf
+    -- CASTEP
 
 
 2. Dependencies
@@ -68,6 +69,7 @@ versions.
   -- GULP,   https://www.ivec.org/gulp/
   -- VASP,   http://cms.mpi.univie.ac.at/vasp/vasp/vasp.html
   -- PWscf,  http://www.quantum-espresso.org/
+  -- CASTEP, http://www.castep.org/
 
   Information on obtaining/installing each can be found on their
   respective websites.
