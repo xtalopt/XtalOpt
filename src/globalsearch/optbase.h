@@ -366,6 +366,11 @@ for (ind = 0; ind < probs.size(); ind++)
      */
     void needPassword(const QString &message, QString *newPassword, bool *ok);
 
+    // Omit the following from doxygen:
+    /// \cond
+    void sig_setClipboard(const QString &text) const;
+    /// \endcond
+
    public slots:
 
     /**
@@ -500,6 +505,14 @@ for (ind = 0; ind < probs.size(); ind++)
      */
     void promptForPassword(const QString &message, QString *newPassword, bool *ok = 0);
 
+    /**
+     * Set the clipboard contents to \a text. Also sets the global
+     * mouse selection on supported systems.
+     *
+     * @param text Text to place on the clipboard
+     */
+    void setClipboard(const QString &text) const;
+
    protected:
     /// String that uniquely identifies the derived OptBase
     /// @sa getIDString
@@ -537,6 +550,9 @@ for (ind = 0; ind < probs.size(); ind++)
 
     /// Hidden call to getTemplateKeywordHelp
     QString getTemplateKeywordHelp_base();
+
+    /// Internal use only
+    void setClipboard_(const QString &text) const;
 
   };
 

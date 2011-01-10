@@ -90,6 +90,7 @@ namespace XtalOpt {
     void unkillXtalProgress();
     void resetFailureCountProgress();
     void randomizeStructureProgress();
+    void clipPOSCARProgress();
     void enableRowTracking() {rowTracking = true;};
     void disableRowTracking() {rowTracking = false;};
 
@@ -117,6 +118,7 @@ namespace XtalOpt {
     void unkillXtalProgress_();
     void resetFailureCountProgress_();
     void randomizeStructureProgress_();
+    void clipPOSCARProgress_();
   };
 }
 
