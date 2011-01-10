@@ -36,12 +36,8 @@ namespace RandomDock {
   }
 
   Matrix::Matrix(Molecule *mol) :
-    Structure(mol->parent())
+    Structure(mol)
   {
-    OpenBabel::OBMol obmol = mol->OBMol();
-
-    setOBMol(&obmol);
-
     generateProbabilities();
   }
 

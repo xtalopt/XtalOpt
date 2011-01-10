@@ -316,22 +316,30 @@ namespace GlobalSearch {
 
     // Structure specific data
     if (line == "coords") {
-      OpenBabel::OBMol obmol = structure->OBMol();
-      FOR_ATOMS_OF_MOL(atom, obmol) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol(atom->GetAtomicNum())) + " ";
-        rep += QString::number(atom->GetX()) + " ";
-        rep += QString::number(atom->GetY()) + " ";
-        rep += QString::number(atom->GetZ()) + "\n";
+      QList<Avogadro::Atom*>::const_iterator it;
+      const Eigen::Vector3d *vec;
+      for (it  = structure->atoms().begin();
+           it != structure->atoms().end();
+           it++) {
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        vec = (*it)->pos();
+        rep += QString::number(vec->x()) + " ";
+        rep += QString::number(vec->y()) + " ";
+        rep += QString::number(vec->z()) + "\n";
       }
     }
     else if (line == "coordsId") {
-      OpenBabel::OBMol obmol = structure->OBMol();
-      FOR_ATOMS_OF_MOL(atom, obmol) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol(atom->GetAtomicNum())) + " ";
-        rep += QString::number(atom->GetAtomicNum()) + " ";
-        rep += QString::number(atom->GetX()) + " ";
-        rep += QString::number(atom->GetY()) + " ";
-        rep += QString::number(atom->GetZ()) + "\n";
+      QList<Avogadro::Atom*>::const_iterator it;
+      const Eigen::Vector3d *vec;
+      for (it  = structure->atoms().begin();
+           it != structure->atoms().end();
+           it++) {
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        rep += QString::number((*it)->atomicNumber()) + " ";
+        vec = (*it)->pos();
+        rep += QString::number(vec->x()) + " ";
+        rep += QString::number(vec->y()) + " ";
+        rep += QString::number(vec->z()) + "\n";
       }
     }
     else if (line == "numAtoms")	rep += QString::number(structure->numAtoms());
