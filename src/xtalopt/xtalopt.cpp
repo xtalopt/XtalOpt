@@ -881,8 +881,13 @@ namespace XtalOpt {
     switch (loadedVersion) {
     case 0:
     case 1:
-    default:
       break;
+    default:
+      error("\
+XtalOpt::load(): Settings in file "+file.fileName()+ " cannot be opened \
+by this version of XtalOpt. Please visit http://xtalopt.openmolecules.net \
+to obtain a newer version.");
+      return false;
     }
 
     bool stateFileIsValid = settings->value("xtalopt/saveSuccessful", false).toBool();
