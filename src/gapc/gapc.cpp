@@ -65,7 +65,11 @@ namespace GAPC {
     // Generate/Check new cluster
     ProtectedCluster *PC = 0;
     while (!checkPC(PC)) {
-      if (PC) delete PC;
+      if (PC) {
+        delete PC;
+        PC = 0;
+      }
+
       PC = generateRandomPC();
     }
 

@@ -240,8 +240,14 @@ namespace XtalOpt {
 
     // Generate/Check new xtal
     Xtal *xtal = 0;
-    while (!checkXtal(xtal))
+    while (!checkXtal(xtal)) {
+      if (xtal) {
+        delete xtal;
+        xtal = 0;
+      }
+
       xtal = generateRandomXtal(0, 0);
+    }
 
     // Copy info over
     QWriteLocker locker2 (xtal->lock());
