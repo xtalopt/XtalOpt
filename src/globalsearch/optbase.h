@@ -353,7 +353,7 @@ for (ind = 0; ind < probs.size(); ind++)
      * @param ok True if user accepts dialog, false if they cancel.
      * @sa promptForBoolean
      */
-    void needBoolean(const QString &message, bool *b);
+    void needBoolean(const QString &message, bool *ok);
 
     /**
      * Request a password from the user, used for libssh
