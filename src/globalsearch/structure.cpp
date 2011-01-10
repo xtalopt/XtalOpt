@@ -777,12 +777,17 @@ namespace GlobalSearch {
   }
 
   // Helper functions and structs for the histogram generator
+  // Skip doxygenation:
+  /// \cond
   struct NNHistMap {
     int i;
     double step;
     QList<Vector3d> *atomPositions;
     QList<QVariant> *dist;
   };
+
+  // End doxygenation skip:
+  /// \endcond
 
   // Returns the frequencies for this chunk
   QList<int> calcNNHistChunk(const NNHistMap &m)

@@ -392,6 +392,9 @@ namespace GlobalSearch {
      */
     virtual void getDefaultHistogram(QList<QVariant> *dist, QList<QVariant> *freq) const;
 
+    /**
+     * @return True is histogram generation is pending.
+     */
     virtual bool isHistogramGenerationPending() const {
       return m_histogramGenerationPending;};
 
@@ -722,6 +725,7 @@ namespace GlobalSearch {
      * unit cell of the structure, without adding the data to the
      * structure's history.
      *
+     * @param atomicNums List of atomic numbers
      * @param coords List of cartesian coordinates
      * @param energy in eV
      * @param enthalpy in eV
@@ -1023,6 +1027,8 @@ namespace GlobalSearch {
     void readStructureSettings(const QString &filename);
 
   protected:
+    // skip Doxygen parsing
+    /// \cond
     bool m_hasEnthalpy, m_updatedSinceDupChecked;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount;
@@ -1039,8 +1045,10 @@ namespace GlobalSearch {
     QList<double> m_histEnergies;
     QList<QList<Eigen::Vector3d> > m_histCoords;
     QList<Eigen::Matrix3d> m_histCells;
+    // End doxygen skip:
+    /// \endcond
   };
 
-} // end namespace Avogadro
+} // end namespace GlobalSearch
 
 #endif
