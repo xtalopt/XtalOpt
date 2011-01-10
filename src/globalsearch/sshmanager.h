@@ -40,6 +40,7 @@ namespace GlobalSearch {
     /**
      * Constructor.
      *
+     * @param connections The maximum number of simultaneous connections.
      * @param parent The OptBase parent
      */
     explicit SSHManager(unsigned int connections = 5, OptBase *parent = 0);
@@ -59,9 +60,18 @@ namespace GlobalSearch {
                          const QString &pass = "",
                          unsigned int port = 22);
 
+    /**
+     * @return Whether the connection has been made successfully.
+     */
     bool isValid() {return m_isValid;};
+
+    /// Get the currently set user name
     QString getUser() {return m_user;};
+
+    /// Get the currently set hostname
     QString getHost() {return m_host;};
+
+    /// Get the currently set port
     int getPort() {return m_port;};
 
   public slots:
@@ -100,17 +110,26 @@ namespace GlobalSearch {
     void setServerKey(const QString &hexa);
 
 
-  private:
+  protected:
+    /// List of all SSHConnection objects managed by this instance
     QList<SSHConnection*> m_conns;
 
+    /// Internally used mutex
     QMutex m_lock;
 
+    /// Hostname
     QString m_host;
+    /// Username
     QString m_user;
+    /// Password
     QString m_pass;
+    /// Key
     QString m_hexa;
+    /// Port
     unsigned int m_port;
+    /// Number of connections
     unsigned int m_connections;
+    /// Monitor whether the connections are valid
     bool m_isValid;
   };
 
