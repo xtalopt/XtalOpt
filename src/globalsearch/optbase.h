@@ -513,6 +513,12 @@ for (ind = 0; ind < probs.size(); ind++)
      */
     void setClipboard(const QString &text) const;
 
+  protected slots:
+    // Disable doxygen parser here:
+    /// \cond
+    void setClipboard_(const QString &text) const;
+    /// \endcond
+
    protected:
     /// String that uniquely identifies the derived OptBase
     /// @sa getIDString
@@ -550,9 +556,6 @@ for (ind = 0; ind < probs.size(); ind++)
 
     /// Hidden call to getTemplateKeywordHelp
     QString getTemplateKeywordHelp_base();
-
-    /// Internal use only
-    void setClipboard_(const QString &text) const;
 
   };
 

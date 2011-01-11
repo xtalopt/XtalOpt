@@ -66,7 +66,7 @@ namespace GlobalSearch {
             this, SLOT(promptForPassword(const QString&, QString*, bool*)),
             Qt::BlockingQueuedConnection); // Wait until slot returns
     connect(this, SIGNAL(sig_setClipboard(const QString&)),
-            this, SLOT(setClipBoard_(const QString&)),
+            this, SLOT(setClipboard_(const QString&)),
             Qt::QueuedConnection);
 
     INIT_RANDOM_GENERATOR();
