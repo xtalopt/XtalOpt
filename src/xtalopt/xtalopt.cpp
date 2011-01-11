@@ -795,7 +795,16 @@ namespace XtalOpt {
       }
     }
     else if (line == "POSCAR") {
-      // Comment line -- set to filename
+      // Comment line -- set to composition then filename
+      // Construct composition
+      QStringList symbols = xtal->getSymbols();
+      QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
+      Q_ASSERT_X(symbols.size() == atomCounts.size(), Q_FUNC_INFO,
+                 "xtal->getSymbols is not the same size as xtal->getNumberOfAtomsAlpha.");
+      for (unsigned int i = 0; i < symbols.size(); i++) {
+        rep += QString("%1%2").arg(symbols[i]).arg(atomCounts[i]);
+      }
+      rep += " ";
       rep += xtal->fileName();
       rep += "\n";
       // Scaling factor. Just 1.0
@@ -804,15 +813,14 @@ namespace XtalOpt {
       // Unit Cell Vectors
       std::vector< vector3 > vecs = xtal->OBUnitCell()->GetCellVectors();
       for (uint i = 0; i < vecs.size(); i++) {
-        rep += QString::number(vecs.at(i).x()) + " ";
-        rep += QString::number(vecs.at(i).y()) + " ";
-        rep += QString::number(vecs.at(i).z()) + " ";
-        rep += "\n";
+        rep += QString("  %1 %2 %3\n")
+          .arg(vecs[i].x(), 12, 'f', 8)
+          .arg(vecs[i].y(), 12, 'f', 8)
+          .arg(vecs[i].z(), 12, 'f', 8);
       }
       // Number of each type of atom (sorted alphabetically by symbol)
-      QList<uint> list = xtal->getNumberOfAtomsAlpha();
-      for (int i = 0; i < list.size(); i++) {
-        rep += QString::number(list.at(i)) + " ";
+      for (int i = 0; i < atomCounts.size(); i++) {
+        rep += QString::number(atomCounts.at(i)) + " ";
       }
       rep += "\n";
       // Use fractional coordinates:
@@ -820,10 +828,10 @@ namespace XtalOpt {
       // Coordinates of each atom (sorted alphabetically by symbol)
       QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
       for (int i = 0; i < coords.size(); i++) {
-        rep += QString::number(coords.at(i).x()) + " ";
-        rep += QString::number(coords.at(i).y()) + " ";
-        rep += QString::number(coords.at(i).z()) + " ";
-        rep += "\n";
+        rep += QString("  %1 %2 %3\n")
+          .arg(coords[i].x(), 12, 'f', 8)
+          .arg(coords[i].y(), 12, 'f', 8)
+          .arg(coords[i].z(), 12, 'f', 8);
       }
     } // End %POSCAR%
 
