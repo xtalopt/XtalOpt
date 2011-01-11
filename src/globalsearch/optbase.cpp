@@ -24,8 +24,11 @@
 #include <globalsearch/bt.h>
 
 #include <QtCore/QFile>
-#include <QtGui/QInputDialog>
+
+#include <QtGui/QClipboard>
 #include <QtGui/QMessageBox>
+#include <QtGui/QApplication>
+#include <QtGui/QInputDialog>
 
 using namespace OpenBabel;
 
@@ -62,6 +65,9 @@ namespace GlobalSearch {
     connect(this, SIGNAL(needPassword(const QString&, QString*, bool*)),
             this, SLOT(promptForPassword(const QString&, QString*, bool*)),
             Qt::BlockingQueuedConnection); // Wait until slot returns
+    connect(this, SIGNAL(sig_setClipboard(const QString&)),
+            this, SLOT(setClipBoard_(const QString&)),
+            Qt::QueuedConnection);
 
     INIT_RANDOM_GENERATOR();
   }
@@ -411,6 +417,21 @@ namespace GlobalSearch {
       *ok = true;
     } else {
       *ok = false;
+    }
+  }
+
+  void OptBase::setClipboard(const QString &text) const
+  {
+    emit sig_setClipboard(text);
+  }
+
+  void OptBase::setClipboard_(const QString &text) const
+  {
+    // Set to system clipboard
+    QApplication::clipboard()->setText(text, QClipboard::Clipboard);
+    // For middle-click on X11
+    if (QApplication::clipboard()->supportsSelection()) {
+      QApplication::clipboard()->setText(text, QClipboard::Selection);
     }
   }
 

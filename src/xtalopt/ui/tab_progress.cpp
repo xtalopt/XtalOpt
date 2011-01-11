@@ -507,6 +507,8 @@ namespace XtalOpt {
     QAction *a_resetFail= menu.addAction("Reset &failure count");
     menu.addSeparator();
     QAction *a_randomize= menu.addAction("Replace with &new random structure");
+    menu.addSeparator();
+    QAction *a_clipPOSCAR= menu.addAction("&Copy POSCAR to clipboard");
 
     // Connect actions
     connect(a_restart, SIGNAL(triggered()), this, SLOT(restartJobProgress()));
@@ -514,6 +516,7 @@ namespace XtalOpt {
     connect(a_unkill, SIGNAL(triggered()), this, SLOT(unkillXtalProgress()));
     connect(a_resetFail, SIGNAL(triggered()), this, SLOT(resetFailureCountProgress()));
     connect(a_randomize, SIGNAL(triggered()), this, SLOT(randomizeStructureProgress()));
+    connect(a_clipPOSCAR, SIGNAL(triggered()), this, SLOT(clipPOSCARProgress()));
 
     if (state == Xtal::Killed || state == Xtal::Removed) {
       a_kill->setVisible(false);
@@ -684,4 +687,23 @@ namespace XtalOpt {
     restartJobProgress_(1);
   }
 
+  void TabProgress::clipPOSCARProgress()
+  {
+    QtConcurrent::run(this, &TabProgress::clipPOSCARProgress_);
+  }
+
+  void TabProgress::clipPOSCARProgress_()
+  {
+    if (!m_context_xtal) return;
+    QReadLocker locker (m_context_xtal->lock());
+
+    QString poscar = qobject_cast<XtalOpt*>(m_opt)->
+      interpretTemplate("%POSCAR%", m_context_xtal);
+
+    m_opt->setClipboard(poscar);
+
+    // Clear context xtal pointer
+    locker.unlock();
+    m_context_xtal = 0;
+  }
 }
