@@ -322,10 +322,11 @@ namespace GlobalSearch {
 
     // Structure specific data
     if (line == "coords") {
+      QList<Avogadro::Atom*> atoms = structure->atoms();
       QList<Avogadro::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
-      for (it  = structure->atoms().begin();
-           it != structure->atoms().end();
+      for (it  = atoms.begin();
+           it != atoms.end();
            it++) {
         rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
         vec = (*it)->pos();
@@ -335,10 +336,11 @@ namespace GlobalSearch {
       }
     }
     else if (line == "coordsId") {
+      QList<Avogadro::Atom*> atoms = structure->atoms();
       QList<Avogadro::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
-      for (it  = structure->atoms().begin();
-           it != structure->atoms().end();
+      for (it  = atoms.begin();
+           it != atoms.end();
            it++) {
         rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
         rep += QString::number((*it)->atomicNumber()) + " ";

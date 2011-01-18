@@ -716,11 +716,12 @@ namespace XtalOpt {
     else if (line == "gammaDeg")        rep += QString::number(xtal->getGamma());
     else if (line == "volume")          rep += QString::number(xtal->getVolume());
     else if (line == "coordsFrac") {
+      QList<Atom*> atoms = structure->atoms();
       QList<Atom*>::const_iterator it;
-      for (it  = structure->atoms().begin();
-           it != structure->atoms().end();
+      for (it  = atoms.begin();
+           it != atoms.end();
            it++) {
-        const Eigen::Vector3d coords = xtal->cartToFrac(*(*it)->pos());
+        const Eigen::Vector3d coords = xtal->cartToFrac(*((*it)->pos()));
         rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
@@ -728,9 +729,10 @@ namespace XtalOpt {
       }
     }
     else if (line == "coordsFracId") {
+      QList<Atom*> atoms = structure->atoms();
       QList<Atom*>::const_iterator it;
-      for (it  = structure->atoms().begin();
-           it != structure->atoms().end();
+      for (it  = atoms.begin();
+           it != atoms.end();
            it++) {
         const Eigen::Vector3d coords = xtal->cartToFrac(*(*it)->pos());
         rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
