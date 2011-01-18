@@ -222,6 +222,8 @@ void ssh_print_hexa(const char *descr, const unsigned char *what, size_t len) {
       return;
     }
     printf("%s: %s\n", descr, hexa);
+
+    free(hexa);
 }
 
 int dh_generate_x(ssh_session session) {

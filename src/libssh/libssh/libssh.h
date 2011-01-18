@@ -40,7 +40,7 @@
       #endif
     #endif
   #else
-    #if __GNUC__ >= 4
+    #if __GNUC__ >= 4 && !defined(__OS2__)
       #define LIBSSH_API __attribute__((visibility("default")))
     #else
       #define LIBSSH_API
@@ -79,7 +79,7 @@
 /* libssh version */
 #define LIBSSH_VERSION_MAJOR  0
 #define LIBSSH_VERSION_MINOR  4
-#define LIBSSH_VERSION_MICRO  6
+#define LIBSSH_VERSION_MICRO  8
 
 #define LIBSSH_VERSION_INT SSH_VERSION_INT(LIBSSH_VERSION_MAJOR, \
                                            LIBSSH_VERSION_MINOR, \
@@ -171,7 +171,7 @@ enum ssh_requests_e {
 	SSH_REQUEST_CHANNEL_OPEN,
 	SSH_REQUEST_CHANNEL,
 	SSH_REQUEST_SERVICE,
-	SSH_REQUEST_GLOBAL,
+	SSH_REQUEST_GLOBAL
 };
 
 enum ssh_channel_type_e {
@@ -189,7 +189,7 @@ enum ssh_channel_requests_e {
 	SSH_CHANNEL_REQUEST_SHELL,
 	SSH_CHANNEL_REQUEST_ENV,
 	SSH_CHANNEL_REQUEST_SUBSYSTEM,
-	SSH_CHANNEL_REQUEST_WINDOW_CHANGE,
+	SSH_CHANNEL_REQUEST_WINDOW_CHANGE
 };
 
 /* status flags */
@@ -203,7 +203,7 @@ enum ssh_server_known_e {
 	SSH_SERVER_KNOWN_OK,
 	SSH_SERVER_KNOWN_CHANGED,
 	SSH_SERVER_FOUND_OTHER,
-	SSH_SERVER_FILE_NOT_FOUND,
+	SSH_SERVER_FILE_NOT_FOUND
 };
 
 #ifndef MD5_DIGEST_LEN

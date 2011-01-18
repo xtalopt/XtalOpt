@@ -1392,11 +1392,13 @@ static ssh_channel channel_accept(ssh_session session, int channeltype,
         iterator = iterator->next;
       }
     }
+    if(t>0){
 #ifdef _WIN32
-    Sleep(50); /* 50ms */
+      Sleep(50); /* 50ms */
 #else
-    nanosleep(&ts, NULL);
+      nanosleep(&ts, NULL);
 #endif
+    }
   }
 
   return NULL;

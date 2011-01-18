@@ -3123,7 +3123,10 @@ static sftp_attributes sftp_xstat(sftp_session sftp, const char *path,
   }
 
   if (msg->packet_type == SSH_FXP_ATTRS) {
-    return sftp_parse_attr(sftp, msg->payload, 0);
+    sftp_attributes attr = sftp_parse_attr(sftp, msg->payload, 0);
+    sftp_message_free(msg);
+
+    return attr;
   } else if (msg->packet_type == SSH_FXP_STATUS) {
     status = parse_status_msg(msg);
     sftp_message_free(msg);
