@@ -46,13 +46,15 @@ unsigned long GLOBALSEARCH_GETRANDOMSEED();
 #define	GS_ISNAN(a) _isnan(a)
 #define	GS_ISINF(a) _isinf(a)
 #define	GS_SLEEP(a) _sleep(a*1000) // arg in seconds
+#define	GS_MSLEEP(a) _sleep(a) // arg in milliseconds
 
-#else
+#else // def WIN32
 
 // Legacy windows functions have underscore prefix
 #define GS_ISNAN(a) isnan(a)
 #define	GS_ISINF(a) isinf(a)
 #define	GS_SLEEP(a) sleep(a) // arg in seconds
+#define	GS_MSLEEP(a) usleep(a*1000) // arg in milliseconds
 
 #endif // WIN32
 
