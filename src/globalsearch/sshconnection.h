@@ -208,7 +208,7 @@ namespace GlobalSearch {
     bool isValid() {return m_isValid;};
 
     /// @return True if the session is connected
-    bool isConnected(ssh_channel channel = 0);
+    bool isConnected();
 
     /**
      * Attempts to create a connection to the remote server. If \a
@@ -294,11 +294,10 @@ namespace GlobalSearch {
                                 bool onlyDeleteContents = false);
 
     /// Internal use only
-    sftp_session _openSFTP();
-
-    /// Internal use only
     ssh_session m_session;
     /// Internal use only
+    ssh_channel m_shell;
+    sftp_session m_sftp;
     QString m_host;
     /// Internal use only
     QString m_user;
