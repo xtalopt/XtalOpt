@@ -264,53 +264,41 @@ namespace GlobalSearch {
     void unknownHostKey(const QString &hexa);
 
   protected:
-    /// Internal use only
+    // Disable doxygen parsing
+    /// \cond
     bool _execute(const QString &command,
                   QString &stdout_err,
                   QString &stderr_err,
                   int &exitcode);
-    /// Internal use only
     bool _copyFileToServer(const QString & localpath,
                            const QString & remotepath);
-    /// Internal use only
     bool _copyFileFromServer(const QString & remotepath,
                              const QString & localpath);
-    /// Internal use only
     bool _readRemoteFile(const QString &filename,
                          QString &contents);
-    /// Internal use only
     bool _removeRemoteFile(const QString &filename);
-    /// Internal use only
     bool _copyDirectoryToServer(const QString & localpath,
                                 const QString & remotepath);
-    /// Internal use only
     bool _copyDirectoryFromServer(const QString & remotepath,
                                   const QString & localpath);
-    /// Internal use only
     bool _readRemoteDirectoryContents(const QString & remotepath,
                                       QStringList & contents);
-    /// Internal use only
     bool _removeRemoteDirectory(const QString & remotepath,
                                 bool onlyDeleteContents = false);
 
-    /// Internal use only
     ssh_session m_session;
-    /// Internal use only
     ssh_channel m_shell;
     sftp_session m_sftp;
     QString m_host;
-    /// Internal use only
     QString m_user;
-    /// Internal use only
     QString m_pass;
-    /// Internal use only
     int m_port;
-    /// Internal use only
     bool m_isValid;
-    /// Internal use only
     bool m_inUse;
-    /// Internal use only
     QMutex m_lock;
+
+    // Resume doxygen parsing
+    /// \endcond
   };
 
 } // end namespace GlobalSearch
