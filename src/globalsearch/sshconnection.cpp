@@ -462,8 +462,6 @@ namespace GlobalSearch {
                                buffer,
                                (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
                                0)) > 0) {
-      qDebug() << QString("Reading output: Bytes available: %1 Buffer size: %2 Bytes read: %3")
-        .arg(bytesAvail).arg(SSH_BUFFER_SIZE).arg(len);
       ossout.write(buffer,len);
       // Poll for number of bytes available using a 1 second timeout in case the stack is full.
       timeout = 1000;
@@ -496,8 +494,6 @@ namespace GlobalSearch {
                                buffer,
                                (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
                                1)) > 0) {
-      qDebug() << QString("Reading ec: Bytes available: %1 Buffer size: %2 Bytes read: %3")
-        .arg(bytesAvail).arg(SSH_BUFFER_SIZE).arg(len);
       osserr.write(buffer,len);
       // Poll for number of bytes available using a 1 second timeout in case the stack is full.
       timeout = 1000;
