@@ -413,8 +413,10 @@ namespace GlobalSearch {
       return false;
     }
 
-    // Set a three second timeout, check every 50 ms for new data.
-    int timeout = 3000;
+    // Set a 500 millisecond timeout, check every 50 ms for new data A
+    // timeout here is not an error. It is more likely that the
+    // command has no output.
+    int timeout = 500;
     int bytesAvail;
     do {
       // Poll for number of bytes available
@@ -435,11 +437,6 @@ namespace GlobalSearch {
     if (bytesAvail < 0) {
       qWarning() << "SSHConnection::_execute: server returns a a bizarre poll value: "
                  << bytesAvail << "; " << ssh_get_error(m_session);
-      return false;
-    }
-    // Timeout case
-    else if (timeout < 0 && bytesAvail == 0) {
-      qWarning() << "SSHConnection::_execute: server timeout.";
       return false;
     }
 
