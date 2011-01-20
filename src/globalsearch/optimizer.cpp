@@ -27,7 +27,7 @@
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
-#define KCAL_PER_MOL_TO_EV 0.0433651224
+#define KCAL_PER_MOL_TO_EV 0.043364122
 
 using namespace Avogadro;
 using namespace OpenBabel;

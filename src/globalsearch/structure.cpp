@@ -30,7 +30,7 @@
 #include <QtCore/QStringList>
 #include <QtCore/QtConcurrentMap>
 
-#define KCAL_PER_MOL_TO_EV 0.0433651224
+#define KCAL_PER_MOL_TO_EV 0.043364122
 
 using namespace Avogadro;
 using namespace OpenBabel;
