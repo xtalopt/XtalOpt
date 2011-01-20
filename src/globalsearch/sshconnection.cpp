@@ -483,8 +483,68 @@ namespace GlobalSearch {
 
     stderr_str = QString(osserr.str().c_str());
 
-    // TODO this doesn't work in a shell.
-    //exitcode = channel_get_exit_status(m_shell);
+    // Get exit code (via "echo $?")
+    // Execute command
+    char ecCommand[] = "echo $?\n";
+    if (channel_write(m_shell, ecCommand, strlen(ecCommand)) == SSH_ERROR) {
+      qWarning() << "SSHConnection::_execute: Error writing\n\t'"
+                 << ecCommand
+                 << "'\n\t to host. " << ssh_get_error(m_session);
+      return false;
+    }
+
+    // Set a three second timeout, check every 50 ms for new data.
+    timeout = 3000;
+    do {
+      // Poll for number of bytes available
+      bytesAvail = channel_poll(m_shell, 0);
+      if (bytesAvail == SSH_ERROR) {
+        qWarning() << "SSHConnection::_execute: server returns an error; "
+                   << ssh_get_error(m_session);
+        return false;
+      }
+      // Sleep for 50 ms if no data yet.
+      if (bytesAvail <= 0) {
+        GS_MSLEEP(50);
+        timeout -= 50;
+      }
+    }
+    while (timeout >= 0 && bytesAvail <= 0);
+    // Negative value is an error (SSH_ERROR is explicitly detected earlier)
+    if (bytesAvail < 0) {
+      qWarning() << "SSHConnection::_execute: server returns a bizarre poll value: "
+                 << bytesAvail << "; " << ssh_get_error(m_session);
+      return false;
+    }
+    // Timeout case
+    else if (timeout < 0 && bytesAvail == 0) {
+      qWarning() << "SSHConnection::_execute: server timeout.";
+      return false;
+    }
+
+    // Assume the exit code is less than 256 char.
+    char ecChar[256];
+    unsigned int ecCharIndex = 0;
+
+    // Read output
+    // stdout (bytesAvail is set earlier)
+    while ((len = channel_read(m_shell, buffer, bytesAvail, 0)) > 0) {
+      unsigned int bufferInd = 0;
+      while (len > 0) {
+        ecChar[ecCharIndex++] = buffer[bufferInd++];
+        len--;
+      }
+      // Check for new bytes (shouldn't happen here...)
+      bytesAvail = channel_poll(m_shell, 0);
+      if (bytesAvail == SSH_ERROR) {
+        qWarning() << "SSHConnection::_execute: server returns an error; "
+                   << ssh_get_error(m_session);
+        return false;
+      }
+    }
+    ecChar[ecCharIndex] = '\0';
+
+    exitcode = atoi(ecChar);
 
     END;
     return true;
