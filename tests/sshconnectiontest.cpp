@@ -78,6 +78,7 @@ class SSHConnectionTest : public QObject
   void reconnectSession();
 
   void execute();
+  void executeLargeOutput();
 
   void copyFileToServer();
   void readRemoteFile();
@@ -243,6 +244,38 @@ void SSHConnectionTest::execute()
                );
     }
   }
+}
+
+void SSHConnectionTest::executeLargeOutput()
+{
+  QString command = QString("for i in `seq 0 %1`;do echo 000; done")
+    .arg(SSH_BUFFER_SIZE);
+
+  QString refout;
+  for (int i = 0; i <= SSH_BUFFER_SIZE; i++) {
+    refout += "000\n";
+  }
+
+  qDebug() << command;
+  QString stdout_str, stderr_str;
+  int ec;
+
+  QVERIFY2(conn->execute(command, stdout_str, stderr_str, ec),
+           QString("Execution of \'"
+                   + command
+                   + " failed."
+                   ).toStdString().c_str()
+               );
+
+  QCOMPARE(ec, 0);
+  QCOMPARE(stdout_str, refout);
+  QVERIFY2(stderr_str.isEmpty(),
+           QString("Execution of \'"
+                   + command
+                   + "\' produced an error: "
+                   + stderr_str
+                   ).toStdString().c_str()
+           );
 }
 
   void SSHConnectionTest::copyFileToServer()
