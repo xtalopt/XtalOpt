@@ -67,10 +67,7 @@
 #include "libssh/socket.h"
 #include "libssh/channels.h"
 #include "libssh/session.h"
-
-#ifndef HAVE_SELECT
-#error "Your system must have select()"
-#endif
+#include "libssh/poll.h"
 
 #ifndef HAVE_GETADDRINFO
 #error "Your system must have getaddrinfo()"
@@ -202,29 +199,35 @@ static int getai(ssh_session session, const char *host, int port, struct addrinf
 
 static int ssh_connect_ai_timeout(ssh_session session, const char *host,
     int port, struct addrinfo *ai, long timeout, long usec, socket_t s) {
-  struct timeval to;
-  fd_set set;
+  int timeout_ms;
+  ssh_pollfd_t fds;
   int rc = 0;
   unsigned int len = sizeof(rc);
 
   enter_function();
 
-  to.tv_sec = timeout;
-  to.tv_usec = usec;
+  /* I know we're losing some precision. But it's not like poll-like family
+   * type of mechanisms are precise up to the microsecond.
+   */
+  timeout_ms=timeout * 1000 + usec / 1000;
 
   sock_set_nonblocking(s);
 
   ssh_log(session, SSH_LOG_RARE, "Trying to connect to host: %s:%d with "
-      "timeout %ld.%ld", host, port, timeout, usec);
+      "timeout %d ms", host, port, timeout_ms);
 
   /* The return value is checked later */
   connect(s, ai->ai_addr, ai->ai_addrlen);
   freeaddrinfo(ai);
 
-  FD_ZERO(&set);
-  FD_SET(s, &set);
+  fds.fd=s;
+  fds.revents=0;
+  fds.events=POLLOUT;
+#ifdef _WIN32
+  fds.events |= POLLWRNORM;
+#endif
+  rc = ssh_poll(&fds,1,timeout_ms);
 
-  rc = select(s + 1, NULL, &set, NULL, &to);
   if (rc == 0) {
     /* timeout */
     ssh_set_error(session, SSH_FATAL,
@@ -236,7 +239,7 @@ static int ssh_connect_ai_timeout(ssh_session session, const char *host,
 
   if (rc < 0) {
     ssh_set_error(session, SSH_FATAL,
-        "Select error: %s", strerror(errno));
+        "poll error: %s", strerror(errno));
     ssh_connect_socket_close(s);
     leave_function();
     return -1;

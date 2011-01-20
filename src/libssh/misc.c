@@ -504,7 +504,7 @@ int ssh_mkdir(const char *pathname, mode_t mode) {
  * @return              The expanded directory, NULL on error.
  */
 char *ssh_path_expand_tilde(const char *d) {
-    char *h, *r;
+    char *h = NULL, *r;
     const char *p;
     size_t ld;
     size_t lh = 0;
@@ -548,12 +548,14 @@ char *ssh_path_expand_tilde(const char *d) {
 
     r = malloc(ld + lh + 1);
     if (r == NULL) {
+        SAFE_FREE(h);
         return NULL;
     }
 
     if (lh > 0) {
         memcpy(r, h, lh);
     }
+    SAFE_FREE(h);
     memcpy(r + lh, p, ld + 1);
 
     return r;

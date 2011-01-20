@@ -246,6 +246,7 @@ int ssh_bind_accept(ssh_bind sshbind, ssh_session session) {
   if (sshbind->bindaddr == NULL)
     session->bindaddr = NULL;
   else {
+    SAFE_FREE(session->bindaddr);
     session->bindaddr = strdup(sshbind->bindaddr);
     if (session->bindaddr == NULL) {
       privatekey_free(dsa);

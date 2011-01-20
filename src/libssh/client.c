@@ -110,26 +110,37 @@ static int ssh_analyze_banner(ssh_session session, int *ssh1, int *ssh2) {
   const char *banner = session->serverbanner;
   const char *openssh;
 
-  ssh_log(session, SSH_LOG_RARE, "Analyzing banner: %s", banner);
-
-  if (strncmp(banner, "SSH-", 4) != 0) {
-    ssh_set_error(session, SSH_FATAL, "Protocol mismatch: %s", banner);
-    return -1;
+  if (banner == NULL) {
+      ssh_set_error(session, SSH_FATAL, "Invalid banner");
+      return -1;
   }
 
   /*
    * Typical banners e.g. are:
-   * SSH-1.5-blah
-   * SSH-1.99-blah
-   * SSH-2.0-blah
+   *
+   * SSH-1.5-openSSH_5.4
+   * SSH-1.99-openSSH_3.0
+   *
+   * SSH-2.0-something
+   * 012345678901234567890
    */
+  if (strlen(banner) < 6 ||
+      strncmp(banner, "SSH-", 4) != 0) {
+    ssh_set_error(session, SSH_FATAL, "Protocol mismatch: %s", banner);
+    return -1;
+  }
+
+  ssh_log(session, SSH_LOG_RARE, "Analyzing banner: %s", banner);
+
   switch(banner[4]) {
     case '1':
       *ssh1 = 1;
-      if (banner[6] == '9') {
-        *ssh2 = 1;
-      } else {
-        *ssh2 = 0;
+      if (strlen(banner) > 6) {
+          if (banner[6] == '9') {
+            *ssh2 = 1;
+          } else {
+            *ssh2 = 0;
+          }
       }
       break;
     case '2':
@@ -143,13 +154,21 @@ static int ssh_analyze_banner(ssh_session session, int *ssh1, int *ssh2) {
 
   openssh = strstr(banner, "OpenSSH");
   if (openssh != NULL) {
-    int major, minor;
-    major = strtol(openssh + 8, (char **) NULL, 10);
-    minor = strtol(openssh + 10, (char **) NULL, 10);
-    session->openssh = SSH_VERSION_INT(major, minor, 0);
-    ssh_log(session, SSH_LOG_RARE,
-        "We are talking to an OpenSSH server version: %d.%d (%x)",
-        major, minor, session->openssh);
+      int major, minor;
+
+      /*
+       * The banner is typical:
+       * OpenSSH_5.4
+       * 012345678901234567890
+       */
+      if (strlen(openssh) > 9) {
+          major = strtol(openssh + 8, (char **) NULL, 10);
+          minor = strtol(openssh + 10, (char **) NULL, 10);
+          session->openssh = SSH_VERSION_INT(major, minor, 0);
+          ssh_log(session, SSH_LOG_RARE,
+                  "We are talking to an OpenSSH client version: %d.%d (%x)",
+                  major, minor, session->openssh);
+      }
   }
 
   return 0;

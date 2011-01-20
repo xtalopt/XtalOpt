@@ -156,9 +156,9 @@ void SSHManagerTest::lockAllAndExecute()
   for (int i = 0; i < NUM_CONN; i++) {
     conn = list.at(i);
     QVERIFY(conn->execute(command, stdout_str, stderr_str, ec));
-      QCOMPARE(ec, 0);
-      QCOMPARE(stdout_str, QString("6\n"));
-      QVERIFY(stderr_str.isEmpty());
+    QCOMPARE(ec, 0);
+    QCOMPARE(stdout_str, QString("6\n"));
+    QVERIFY(stderr_str.isEmpty());
   }
 
   for (int i = 0; i < NUM_CONN; i++) {

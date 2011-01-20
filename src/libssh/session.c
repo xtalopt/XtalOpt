@@ -153,6 +153,7 @@ void ssh_free(ssh_session session) {
 
   SAFE_FREE(session->serverbanner);
   SAFE_FREE(session->clientbanner);
+  SAFE_FREE(session->bindaddr);
   SAFE_FREE(session->banner);
 #ifdef WITH_PCAP
   if(session->pcap_ctx){

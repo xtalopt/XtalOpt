@@ -466,17 +466,6 @@ namespace GlobalSearch {
 
   Optimizer::JobState Optimizer::getStatus(Structure *structure)
   {
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
-
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
-      return Optimizer::CommunicationError;
-    }
     // lock structure
     QWriteLocker locker (structure->lock());
     QStringList queueData (m_opt->queue()->getRemoteQueueData());
@@ -485,8 +474,13 @@ namespace GlobalSearch {
     // If jobID = 0, return an error.
     if (!jobID) {
       structure->setStatus(Structure::Error);
-      m_opt->ssh()->unlockConnection(ssh);
       return Optimizer::Error;
+    }
+
+    // If the queueData cannot be fetched, queueData contains a single
+    // string, "CommError"
+    if (queueData.size() == 1 && queueData[0].compare("CommError") == 0) {
+      return Optimizer::CommunicationError;
     }
 
     // Determine status if structure is in the queue
@@ -518,13 +512,11 @@ namespace GlobalSearch {
         else {
           // The output file does not exist -- the job is still
           // pending.
-          m_opt->ssh()->unlockConnection(ssh);
           return Optimizer::Pending;
         }
       }
       else {
         // The job is in the queue.
-        m_opt->ssh()->unlockConnection(ssh);
         return Optimizer::Started;
       }
     }
@@ -532,11 +524,9 @@ namespace GlobalSearch {
     if (status == "R") {
       if (structure->getOptElapsed() == "0:00:00")
         structure->startOptTimer();
-      m_opt->ssh()->unlockConnection(ssh);
       return Optimizer::Running;
     }
     else if (status == "Q") {
-      m_opt->ssh()->unlockConnection(ssh);
       return Optimizer::Queued;
     }
     // Even if the job has errored in the queue, leave it as "running"
@@ -546,7 +536,6 @@ namespace GlobalSearch {
       qWarning() << "Optimizer::getStatus: Structure " << structure->getIDString()
                  << " has errored in the queue, but may have optimized successfully.\n"
                  << "Marking job as 'Running' until it's gone from the queue...";
-      m_opt->ssh()->unlockConnection(ssh);
       return Optimizer::Running;
     }
 
@@ -563,6 +552,16 @@ namespace GlobalSearch {
       // Check for m_completionStrings in outputFileData, which indicates success.
       qDebug() << "Optimizer::getStatus: Job  " << jobID << " not in queue. Does output exist? " << outputFileExists;
       if (outputFileExists) {
+        SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+        if (!ssh->reconnectIfNeeded()) {
+          m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
+                         .arg(ssh->getUser())
+                         .arg(ssh->getHost())
+                         .arg(ssh->getPort())
+                         );
+          m_opt->ssh()->unlockConnection(ssh);
+          return Optimizer::CommunicationError;
+        }
         for (int i = 0; i < m_completionStrings.size(); i++) {
           QString stdout_str, stderr_str; int ec;
           // Valid exit codes for grep: (0) matches found, execution successful
@@ -590,7 +589,6 @@ namespace GlobalSearch {
     }
     // Not in queue and no output? Interesting...
     structure->setStatus(Structure::Error);
-    m_opt->ssh()->unlockConnection(ssh);
     return Optimizer::Unknown;
   }
 
@@ -644,6 +642,10 @@ namespace GlobalSearch {
                      .arg(ssh->getHost())
                      .arg(ssh->getPort())
                      );
+      mutex->lock();
+      queueData.clear();
+      queueData << "CommError";
+      mutex->unlock();
       m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
