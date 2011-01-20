@@ -515,7 +515,8 @@ namespace GlobalSearch {
     }
     // Timeout case
     else if (timeout < 0 && bytesAvail == 0) {
-      qWarning() << "SSHConnection::_execute: server timeout.";
+      qWarning() << "SSHConnection::_execute: server timeout while waiting for exit code: "
+                 << command;
       return false;
     }
 
