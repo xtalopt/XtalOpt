@@ -489,6 +489,12 @@ namespace GlobalSearch {
       return Optimizer::Error;
     }
 
+    // If the queueData cannot be fetched, queueData contains a single
+    // string, "CommError"
+    if (queueData.size() == 1 && queueData[0].compare("CommError") == 0) {
+      return Optimizer::CommunicationError;
+    }
+
     // Determine status if structure is in the queue
     QString status;
     for (int i = 0; i < queueData.size(); i++) {
@@ -644,6 +650,10 @@ namespace GlobalSearch {
                      .arg(ssh->getHost())
                      .arg(ssh->getPort())
                      );
+      mutex->lock();
+      queueData.clear();
+      queueData << "CommError";
+      mutex->unlock();
       m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
