@@ -205,6 +205,8 @@ void SSHConnectionTest::disconnectSession()
 
 void SSHConnectionTest::isConnected2()
 {
+  qDebug() << "Ignore the following warning about a failed connection \
+-- the connection is not expected to be active here.";
   QCOMPARE(conn->isConnected(), false);
 }
 
