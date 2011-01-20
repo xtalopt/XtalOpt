@@ -18,11 +18,12 @@ link_directories(
   ${OPENBABEL2_LIBRARY_DIRS}
 )
 
-set (tests
-    sshconnection
-    sshmanager
-    spglib
-    randdouble
+set( tests
+  structure
+  sshconnection
+  sshmanager
+  spglib
+  randdouble
 )
 
 foreach (test ${tests})
