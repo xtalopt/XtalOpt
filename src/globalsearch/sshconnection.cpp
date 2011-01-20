@@ -112,15 +112,26 @@ namespace GlobalSearch {
     ostringstream ossout;
     char buffer[SSH_BUFFER_SIZE];
     int len;
-    while ((len = channel_read(m_shell, buffer, bytesAvail, 0)) > 0) {
+    while ((len = channel_read(m_shell,
+                               buffer,
+                               (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
+                               0)) > 0) {
       ossout.write(buffer,len);
-      // Poll for number of bytes available
-      bytesAvail = channel_poll(m_shell, 0);
-      if (bytesAvail == SSH_ERROR) {
-        qWarning() << "SSHConnection::isConnected(): server returns an error; "
-                   << ssh_get_error(m_session);
-        return false;
+      // Poll for number of bytes available using a 1 second timeout in case the stack is full.
+      timeout = 1000;
+      do {
+        bytesAvail = channel_poll(m_shell, 0);
+        if (bytesAvail == SSH_ERROR) {
+          qWarning() << "SSHConnection::_execute: server returns an error; "
+                     << ssh_get_error(m_session);
+          return false;
+        }
+        if (bytesAvail <= 0) {
+          GS_MSLEEP(50);
+          timeout -= 50;
+        }
       }
+      while (timeout >= 0 && bytesAvail <= 0);
     }
 
     // Test output
@@ -447,15 +458,28 @@ namespace GlobalSearch {
     char buffer[SSH_BUFFER_SIZE];
     int len;
     // stdout (bytesAvail is set earlier)
-    while ((len = channel_read(m_shell, buffer, bytesAvail, 0)) > 0) {
+    while ((len = channel_read(m_shell,
+                               buffer,
+                               (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
+                               0)) > 0) {
+      qDebug() << QString("Reading output: Bytes available: %1 Buffer size: %2 Bytes read: %3")
+        .arg(bytesAvail).arg(SSH_BUFFER_SIZE).arg(len);
       ossout.write(buffer,len);
-      // Poll for number of bytes available
-      bytesAvail = channel_poll(m_shell, 0);
-      if (bytesAvail == SSH_ERROR) {
-        qWarning() << "SSHConnection::_execute: server returns an error; "
-                   << ssh_get_error(m_session);
-        return false;
+      // Poll for number of bytes available using a 1 second timeout in case the stack is full.
+      timeout = 1000;
+      do {
+        bytesAvail = channel_poll(m_shell, 0);
+        if (bytesAvail == SSH_ERROR) {
+          qWarning() << "SSHConnection::_execute: server returns an error; "
+                     << ssh_get_error(m_session);
+          return false;
+        }
+        if (bytesAvail <= 0) {
+          GS_MSLEEP(50);
+          timeout -= 50;
+        }
       }
+      while (timeout >= 0 && bytesAvail <= 0);
     }
     stdout_str = QString(ossout.str().c_str());
 
@@ -468,14 +492,28 @@ namespace GlobalSearch {
       return false;
     }
 
-    while ((len = channel_read(m_shell, buffer, bytesAvail, 1)) > 0) {
+    while ((len = channel_read(m_shell,
+                               buffer,
+                               (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
+                               1)) > 0) {
+      qDebug() << QString("Reading ec: Bytes available: %1 Buffer size: %2 Bytes read: %3")
+        .arg(bytesAvail).arg(SSH_BUFFER_SIZE).arg(len);
       osserr.write(buffer,len);
-      bytesAvail = channel_poll(m_shell, 1);
-      if (bytesAvail == SSH_ERROR) {
-        qWarning() << "SSHConnection::_execute: server returns an error; "
-                   << ssh_get_error(m_session);
-        return false;
+      // Poll for number of bytes available using a 1 second timeout in case the stack is full.
+      timeout = 1000;
+      do {
+        bytesAvail = channel_poll(m_shell, 1);
+        if (bytesAvail == SSH_ERROR) {
+          qWarning() << "SSHConnection::_execute: server returns an error; "
+                     << ssh_get_error(m_session);
+          return false;
+        }
+        if (bytesAvail <= 0) {
+          GS_MSLEEP(50);
+          timeout -= 50;
+        }
       }
+      while (timeout >= 0 && bytesAvail <= 0);
     }
 
     stderr_str = QString(osserr.str().c_str());
@@ -526,19 +564,30 @@ namespace GlobalSearch {
 
     // Read output
     // stdout (bytesAvail is set earlier)
-    while ((len = channel_read(m_shell, buffer, bytesAvail, 0)) > 0) {
+    while ((len = channel_read(m_shell,
+                               buffer,
+                               (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
+                               0)) > 0) {
       unsigned int bufferInd = 0;
       while (len > 0) {
         ecChar[ecCharIndex++] = buffer[bufferInd++];
         len--;
       }
-      // Check for new bytes (shouldn't happen here...)
-      bytesAvail = channel_poll(m_shell, 0);
-      if (bytesAvail == SSH_ERROR) {
-        qWarning() << "SSHConnection::_execute: server returns an error; "
-                   << ssh_get_error(m_session);
-        return false;
+      // Poll for number of bytes available using a 1 second timeout in case the stack is full.
+      timeout = 1000;
+      do {
+        bytesAvail = channel_poll(m_shell, 0);
+        if (bytesAvail == SSH_ERROR) {
+          qWarning() << "SSHConnection::_execute: server returns an error; "
+                     << ssh_get_error(m_session);
+          return false;
+        }
+        if (bytesAvail <= 0) {
+          GS_MSLEEP(50);
+          timeout -= 50;
+        }
       }
+      while (timeout >= 0 && bytesAvail <= 0);
     }
     ecChar[ecCharIndex] = '\0';
 
