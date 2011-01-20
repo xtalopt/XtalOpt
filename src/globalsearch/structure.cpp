@@ -438,7 +438,7 @@ namespace GlobalSearch {
     }
 
     // Update energy/enthalpy
-    if (enthalpy < 1e-6) {
+    if (fabs(enthalpy) < 1e-6) {
       m_hasEnthalpy = false;
       m_PV = 0.0;
     }
@@ -492,8 +492,7 @@ namespace GlobalSearch {
     }
 
     // Update energy/enthalpy
-    m_enthalpy = enthalpy;
-    if (enthalpy < 1e-6) {
+    if (fabs(enthalpy) < 1e-6) {
       m_hasEnthalpy = false;
       m_PV = 0.0;
     }
@@ -501,6 +500,7 @@ namespace GlobalSearch {
       m_hasEnthalpy = true;
       m_PV = enthalpy - energy;
     }
+    m_enthalpy = enthalpy;
     setEnergy(energy / KCAL_PER_MOL_TO_EV);
 
     // Update cell if necessary
