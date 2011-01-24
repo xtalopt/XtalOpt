@@ -256,7 +256,6 @@ void SSHConnectionTest::executeLargeOutput()
     refout += "000\n";
   }
 
-  qDebug() << command;
   QString stdout_str, stderr_str;
   int ec;
 
