@@ -47,49 +47,34 @@ namespace GlobalSearch {
   }
 
   bool Tracker::append(Structure* s) {
-    lockForWrite();
-    return appendAndUnlock(s);
-  }
-
-  bool Tracker::appendAndUnlock(Structure* s) {
     if (m_list.contains(s)) {
-      unlock();
       return false;
     }
     m_list.append(s);
     emit newStructureAdded(s);
     emit structureCountChanged(m_list.size());
-    unlock();
     return true;
   }
 
   bool Tracker::popFirst(Structure *&s) {
-    lockForWrite();
     if (m_list.isEmpty()) {
-      unlock();
       return false;
     }
     s = m_list.takeFirst();
     emit structureCountChanged(m_list.size());
-    unlock();
     return true;
   }
 
   bool Tracker::remove(Structure *s) {
-    lockForWrite();
     if (m_list.removeAll(s)) { // returns number of entries removed
       emit structureCountChanged(m_list.size());
-      unlock();
       return true;
     }
-    unlock();
     return false;
   }
 
   bool Tracker::contains(Structure* s) {
-    lockForRead();
     bool b = m_list.contains(s);
-    unlock();
     return b;
   }
 
@@ -98,14 +83,11 @@ namespace GlobalSearch {
   }
 
   void Tracker::reset() {
-    lockForWrite();
     m_list.clear();
     emit structureCountChanged(m_list.size());
-    unlock();
   }
 
   void Tracker::deleteAllStructures() {
-    lockForWrite();
     Structure *s = 0;
     for (int i = 0; i < m_list.size(); i++) {
       s = m_list.at(i);
@@ -114,9 +96,6 @@ namespace GlobalSearch {
     }
     m_list.clear();
     emit structureCountChanged(m_list.size());
-    unlock();
   }
 
-} // end namespace Avogadro
-
-//#include "tracker.moc"
+} // end namespace GlobalSearch

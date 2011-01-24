@@ -446,7 +446,7 @@ namespace GAPC {
     int ind = ui.combo_distHistPC->currentIndex();
     ui.combo_distHistPC->blockSignals(true);
     ui.combo_distHistPC->clear();
-    QList<Structure*> *structures = m_opt->tracker()->list();
+    const QList<Structure*> *structures = m_opt->tracker()->list();
     ProtectedCluster *pc;
     QString s;
     for (int i = 0; i < structures->size(); i++) {

@@ -178,7 +178,9 @@ namespace RandomDock {
 
     // The new entry will be at the end of the table, so determine the index:
     int index = ui.table_list->rowCount();
+    m_opt->tracker()->lockForRead();
     Scene *scene = qobject_cast<Scene*>(m_opt->tracker()->at(index));
+    m_opt->tracker()->unlock();
 
     // Turn off signals
     ui.table_list->blockSignals(true);
@@ -194,7 +196,9 @@ namespace RandomDock {
       ui.table_list->setItem(index, i, new QTableWidgetItem());
     }
 
+    m_infoUpdateTracker.lockForWrite();
     m_infoUpdateTracker.append(scene);
+    m_infoUpdateTracker.unlock();
     locker.unlock();
     TableEntry e;
     scene->lock()->lockForRead();
@@ -235,9 +239,11 @@ namespace RandomDock {
 
   void TabProgress::newInfoUpdate(Structure *s)
   {
+    m_infoUpdateTracker.lockForWrite();
     if (m_infoUpdateTracker.append(s)) {
       emit infoUpdate();
     }
+    m_infoUpdateTracker.unlock();
   }
 
   void TabProgress::updateInfo()
@@ -261,15 +267,22 @@ namespace RandomDock {
   {
     // Prep variables
     Structure *structure;
-    if (!m_infoUpdateTracker.popFirst(structure))
+
+    m_infoUpdateTracker.lockForWrite();
+    if (!m_infoUpdateTracker.popFirst(structure)) {
+      m_infoUpdateTracker.unlock();
       return;
+    }
+
     int i = m_opt->tracker()->list()->indexOf(structure);
 
     Scene *scene = qobject_cast<Scene*>(structure);
 
     if (i < 0 || i > ui.table_list->rowCount() - 1) {
       qDebug() << "TabProgress::updateInfo: Trying to update an index that doesn't exist...yet: (" << i << ") Waiting...";
+      m_infoUpdateTracker.lockForWrite();
       m_infoUpdateTracker.append(scene);
+      m_infoUpdateTracker.unlock();
       QTimer::singleShot(100, this, SLOT(updateInfo()));
       return;
     }

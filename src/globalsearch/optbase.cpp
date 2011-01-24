@@ -87,8 +87,10 @@ namespace GlobalSearch {
   }
 
   void OptBase::reset() {
+    m_tracker->lockForWrite();
     m_tracker->deleteAllStructures();
     m_tracker->reset();
+    m_tracker->unlock();
     m_queue->reset();
   }
 

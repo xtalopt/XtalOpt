@@ -170,7 +170,9 @@ namespace GlobalSearch {
     }
     m_opt->emitStartingSession();
     startProgressUpdate(tr("Resuming session..."), 0, 0);
+    m_opt->tracker()->lockForWrite();
     m_opt->tracker()->deleteAllStructures();
+    m_opt->tracker()->unlock();
     if (!m_opt->load(filename)) {
       stopProgressUpdate();
       m_opt->isStarting = false;

@@ -114,22 +114,6 @@ namespace GlobalSearch {
     bool append(Structure* s);
 
     /**
-     * Similar to append(Structure* s), but expects the mutex to
-     * already be locked when called.
-     *
-     * @param s A Structures to append to the Tracker
-     *
-     * @return true if the Structure was not contained in the list,
-     * false if it were already present.
-     *
-     * @note If the Structure is already present, it will not be added
-     * again.
-     *
-     * @note The Structures are compared using pointer values
-     */
-    bool appendAndUnlock(Structure* s);
-
-    /**
      * Remove and return the first Structure in the Tracker's
      * list. Useful for creating a FIFO buffer.
      *

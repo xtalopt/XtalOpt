@@ -137,7 +137,9 @@ namespace RandomDock {
     } // end forever
 
     // prepare pointers
+    m_tracker->lockForWrite();
     m_tracker->deleteAllStructures();
+    m_tracker->unlock();
 
     ////////////////////////////
     // Generate random scenes //
@@ -475,7 +477,7 @@ namespace RandomDock {
     }
     QTextStream out (&file);
 
-    QList<Structure*> *structures = m_tracker->list();
+    const QList<Structure*> *structures = m_tracker->list();
     QList<Scene*> sortedScenes;
     Scene *scene;
 

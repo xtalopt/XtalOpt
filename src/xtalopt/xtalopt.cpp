@@ -169,7 +169,9 @@ namespace XtalOpt {
     }
 
     // prepare pointers
+    m_tracker->lockForWrite();
     m_tracker->deleteAllStructures();
+    m_tracker->unlock();
 
     ///////////////////////////////////////////////
     // Generate random structures and load seeds //
@@ -193,7 +195,9 @@ namespace XtalOpt {
       Xtal *xtal = new Xtal;
       xtal->setFileName(filename);
       if ( !m_optimizer->read(xtal, filename) || (xtal == 0) ) {
+        m_tracker->lockForWrite();
         m_tracker->deleteAllStructures();
+        m_tracker->unlock();
         error(tr("Error loading seed %1").arg(filename));
         return;
       }
@@ -1117,7 +1121,9 @@ to obtain a newer version.");
     for (int i = 0; i < loadedStructures.size(); i++) {
       s = loadedStructures.at(i);
       m_dialog->updateProgressValue(i);
+      m_tracker->lockForWrite();
       m_tracker->append(s);
+      m_tracker->unlock();
       if (s->getStatus() == Structure::WaitingForOptimization)
         m_queue->appendToJobStartTracker(s);
     }
@@ -1152,6 +1158,7 @@ to obtain a newer version.");
   }
 
   void XtalOpt::resetDuplicates_() {
+    m_tracker->lockForRead();
     QList<Structure*> *structures = m_tracker->list();
     Xtal *xtal = 0;
     for (int i = 0; i < structures->size(); i++) {
@@ -1162,6 +1169,7 @@ to obtain a newer version.");
         xtal->setStatus(Xtal::Optimized);
       xtal->lock()->unlock();
     }
+    m_tracker->unlock();
     checkForDuplicates();
     emit updateAllInfo();
   }

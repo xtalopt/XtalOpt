@@ -21,7 +21,6 @@
 
 #include <globalsearch/optbase.h>
 #include <globalsearch/queuemanager.h>
-#include <globalsearch/tracker.h>
 #include <globalsearch/macros.h>
 
 #include <QtCore/QDebug>
