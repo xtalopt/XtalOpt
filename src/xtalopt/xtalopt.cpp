@@ -1158,8 +1158,7 @@ to obtain a newer version.");
   }
 
   void XtalOpt::resetDuplicates_() {
-    m_tracker->lockForRead();
-    QList<Structure*> *structures = m_tracker->list();
+    const QList<Structure*> *structures = m_tracker->list();
     Xtal *xtal = 0;
     for (int i = 0; i < structures->size(); i++) {
       xtal = qobject_cast<Xtal*>(structures->at(i));
@@ -1169,7 +1168,6 @@ to obtain a newer version.");
         xtal->setStatus(Xtal::Optimized);
       xtal->lock()->unlock();
     }
-    m_tracker->unlock();
     checkForDuplicates();
     emit updateAllInfo();
   }

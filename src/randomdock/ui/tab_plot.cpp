@@ -205,10 +205,6 @@ namespace RandomDock {
     updateGUI();
     if (!m_opt) return;
 
-    if (!m_opt->tracker()->rwLock()->tryLockForRead()) {
-      return;
-    }
-
     // Make sure we have structures!
     if (m_opt->tracker()->size() == 0) {
       m_opt->tracker()->unlock();
@@ -232,7 +228,6 @@ namespace RandomDock {
 
     ui.plot_plot->blockSignals(false);
 
-    m_opt->tracker()->unlock();
     m_plot_mutex->unlock();
   }
 
@@ -261,7 +256,6 @@ namespace RandomDock {
     PlotAxes xAxis		= PlotAxes(ui.combo_xAxis->currentIndex());
     PlotAxes yAxis              = PlotAxes(ui.combo_yAxis->currentIndex());
 
-    QReadLocker trackerLocker (m_opt->tracker());
     for (int i = 0; i < m_opt->tracker()->size(); i++) {
       x = y = 0;
       scene = qobject_cast<Scene*>(m_opt->tracker()->at(i));
@@ -388,7 +382,6 @@ namespace RandomDock {
     QList<double> d, f, f_temp;
 
     // Determine structure
-    QReadLocker trackerLocker (m_opt->tracker());
     int ind = ui.combo_distHistStructure->currentIndex();
     if (ind < 0 || ind > m_opt->tracker()->size() - 1) {
       ind = 0;
@@ -444,7 +437,6 @@ namespace RandomDock {
     int ind = ui.combo_distHistStructure->currentIndex();
     ui.combo_distHistStructure->blockSignals(true);
     ui.combo_distHistStructure->clear();
-    QReadLocker trackerLocker (m_opt->tracker());
     QList<Structure*> *structures = m_opt->tracker()->list();
     Scene *scene;
     QString s;

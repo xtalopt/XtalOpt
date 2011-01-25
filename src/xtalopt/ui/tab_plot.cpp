@@ -196,13 +196,8 @@ namespace XtalOpt {
     updateGUI();
     if (!m_opt) return;
 
-    if (!m_opt->tracker()->rwLock()->tryLockForRead()) {
-      return;
-    }
-
     // Make sure we have structures!
     if (m_opt->tracker()->size() == 0) {
-      m_opt->tracker()->unlock();
       return;
     }
 
@@ -223,7 +218,6 @@ namespace XtalOpt {
 
     ui.plot_plot->blockSignals(false);
 
-    m_opt->tracker()->unlock();
     m_plot_mutex->unlock();
   }
 
@@ -249,10 +243,10 @@ namespace XtalOpt {
     PlotAxes xAxis		= PlotAxes(ui.combo_xAxis->currentIndex());
     PlotAxes yAxis              = PlotAxes(ui.combo_yAxis->currentIndex());
 
-    QReadLocker trackerLocker (m_opt->tracker()->rwLock());
-    for (int i = 0; i < m_opt->tracker()->size(); i++) {
+    const QList<Structure*> structures (*m_opt->tracker()->list());
+    for (int i = 0; i < structures.size(); i++) {
       x = y = 0;
-      xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(i));
+      xtal = qobject_cast<Xtal*>(structures[i]);
       QReadLocker xtalLocker (xtal->lock());
       // Don't plot removed structures or those who have not completed their first INCAR.
       if ((xtal->getStatus() != Xtal::Optimized && !showIncompletes)) {
@@ -523,12 +517,10 @@ namespace XtalOpt {
 
     // Determine xtal
     int ind = ui.combo_distHistXtal->currentIndex();
-    m_opt->tracker()->lockForRead();
     if (ind < 0 || ind > m_opt->tracker()->size() - 1) {
       ind = 0;
     }
     Xtal* xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(ind));
-    m_opt->tracker()->unlock();
 
     // Determine selected atoms, if any
     QList<Primitive*> selected = m_dialog->getGLWidget()->selectedPrimitives().subList(Primitive::AtomType);
@@ -580,12 +572,11 @@ namespace XtalOpt {
     ui.combo_distHistXtal->blockSignals(true);
     ui.combo_distHistXtal->clear();
 
-    QReadLocker trackerLocker (m_opt->tracker()->rwLock());
-    QList<Structure*> *structures = m_opt->tracker()->list();
+    const QList<Structure*> structures (*m_opt->tracker()->list());
     Xtal *xtal;
     QString s;
-    for (int i = 0; i < structures->size(); i++) {
-      xtal = qobject_cast<Xtal*>(structures->at(i));
+    for (int i = 0; i < structures.size(); i++) {
+      xtal = qobject_cast<Xtal*>(structures.at(i));
       xtal->lock()->lockForRead();
       s.clear();
       // index:
@@ -635,15 +626,12 @@ namespace XtalOpt {
 
   void TabPlot::selectMoleculeFromIndex(int index)
   {
-    m_opt->tracker()->lockForRead();
     if (index < 0 || index > m_opt->tracker()->size() - 1) {
       index = 0;
     }
     if (m_opt->tracker()->size() == 0) {
-      m_opt->tracker()->unlock();
       return;
     }
-    m_opt->tracker()->unlock();
     emit moleculeChanged(m_opt->tracker()->at(index));
   }
 
@@ -661,7 +649,6 @@ namespace XtalOpt {
     xtal->lock()->unlock();
     int ind;
     Xtal *txtal;
-    m_opt->tracker()->lockForRead();
     for (int i = 0; i < m_opt->tracker()->size(); i++) {
       txtal = qobject_cast<Xtal*>(m_opt->tracker()->at(i));
       txtal->lock()->lockForRead();
@@ -674,7 +661,7 @@ namespace XtalOpt {
         break;
       }
     }
-    m_opt->tracker()->unlock();
+
     if (ui.combo_plotType->currentIndex() == Trend_PT) {
       PlotPoint* pp;
       bool found = false;

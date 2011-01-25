@@ -153,20 +153,18 @@ namespace XtalOpt {
       return;
     }
 
-    if (!m_opt) {
-      m_update_mutex->unlock();
-      return;
-    }
-
-    if (m_opt->tracker()->size() == 0) {
-      m_update_mutex->unlock();
-      return;
-    }
-
-    QtConcurrent::run(m_opt->queue(),
-                      &GlobalSearch::QueueManager::checkPopulation);
-
     emit refresh();
+
+    QList<Structure*> running = m_opt->queue()->getAllRunningStructures();
+
+    for (QList<Structure*>::iterator
+           it = running.begin(),
+           it_end = running.end();
+         it != it_end;
+         ++it) {
+      newInfoUpdate(*it);
+    }
+
     m_update_mutex->unlock();
   }
 

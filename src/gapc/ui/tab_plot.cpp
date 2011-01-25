@@ -200,10 +200,6 @@ namespace GAPC {
     updateGUI();
     if (!m_opt) return;
 
-    if (!m_opt->tracker()->rwLock()->tryLockForRead()) {
-      return;
-    }
-
     // Make sure we have structures!
     if (m_opt->tracker()->size() == 0) {
       m_opt->tracker()->unlock();
@@ -227,7 +223,6 @@ namespace GAPC {
 
     ui.plot_plot->blockSignals(false);
 
-    m_opt->tracker()->unlock();
     m_plot_mutex->unlock();
   }
 
