@@ -149,7 +149,9 @@ namespace GAPC {
         pc->setStatus(ProtectedCluster::Updating);
         locker.unlock();
         replaceWithRandom(pc, tr("Cluster exploded"));
-        m_queue->prepareStructureForSubmission(pc);
+        pc->lock()->lockForWrite();
+        pc->setStatus(ProtectedCluster::Restart);
+        pc->lock()->unlock();
         return;
       }
     }
@@ -576,16 +578,12 @@ optimizations. If so, safely ignore this message.")
     pc->setupConnections();
     pc->enableAutoHistogramGeneration(true);
     pc->update();
+    pcLocker.unlock();
     m_queue->unlockForNaming(pc);
     initMutex.unlock();
   }
 
   void OptGAPC::generateNewStructure()
-  {
-    QtConcurrent::run(this, &OptGAPC::generateNewStructure_);
-  }
-
-  void OptGAPC::generateNewStructure_()
   {
     INIT_RANDOM_GENERATOR();
     // Get all optimized structures

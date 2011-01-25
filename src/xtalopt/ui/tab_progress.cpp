@@ -242,7 +242,7 @@ namespace XtalOpt {
       emit infoUpdate();
     }
     m_infoUpdateTracker.unlock();
-    m_opt->tracker()->lockForRead();
+    m_opt->tracker()->unlock();
     m_update_all_mutex->unlock();
   }
 

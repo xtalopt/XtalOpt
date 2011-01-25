@@ -16,15 +16,17 @@
 #ifndef QUEUEMANAGER_H
 #define QUEUEMANAGER_H
 
-#include <globalsearch/optbase.h>
-#include <globalsearch/structure.h>
 #include <globalsearch/tracker.h>
-#include <globalsearch/optimizer.h>
 
+#include <QtCore/QMutex>
 #include <QtCore/QDebug>
+#include <QtCore/QThread>
+#include <QtCore/QStringList>
 #include <QtCore/QReadWriteLock>
 
 namespace GlobalSearch {
+  class OptBase;
+  class Structure;
 
   /**
    * @class QueueManager queuemanager.h <globalsearch/queuemanager.h>
@@ -93,7 +95,7 @@ m_queue->unlockForNaming(newStructure);
    * Most functions in this class do not need to be called as they are
    * automatically called when needed. Check the source if in doubt.
    */
-  class QueueManager : public QObject
+  class QueueManager : public QThread
   {
     Q_OBJECT
 
@@ -102,9 +104,8 @@ m_queue->unlockForNaming(newStructure);
      * Constructor.
      *
      * @param opt The OptBase class the QueueManager uses
-     * @param tracker The main Tracker
      */
-    explicit QueueManager(OptBase *opt, Tracker *tracker);
+    explicit QueueManager(OptBase *opt);
 
     /**
      * Destructor.
@@ -174,6 +175,8 @@ m_queue->unlockForNaming(newStructure);
      */
     void reset();
 
+    void resetRequestedStructures(int i = 0) {m_requestedStructures = i;};
+
     /**
      * Check all Structures in the main Tracker and assign them to
      * other trackers as needed (runningTracker, etc.).
@@ -186,8 +189,6 @@ m_queue->unlockForNaming(newStructure);
      *
      * Also emits newStatusOverview for a summary of the queue's
      * status.
-     * @note This function works in a background thread and is safe to
-     * call from a GUI thread.
      * @sa newStatusOverview
      * @sa needNewStructure
      */
@@ -203,25 +204,6 @@ m_queue->unlockForNaming(newStructure);
      * Update the data from the remote PBS queue.
      */
     void updateQueue();
-
-    /**
-     * Checks if the Structure has completed all required optimization
-     * steps. If so, it is marked as Structure::Optimized. If not, the
-     * Structure's current optimization step is incremented forward
-     * and prepared for submission.
-     *
-     * @param s The Structure to be prepared.
-     */
-    void prepareStructureForNextOptStep(Structure *s);
-
-    /**
-     * Adds a failure to the Structure's fail count, and performs the
-     * action specified in OptBase::failAction if
-     * Structure::getFailCount() exceeds OptBase::failLimit.
-     *
-     * @param s The failing structure
-     */
-    void handleStructureError(Structure *s);
 
     /**
      * Called on Structures that are Structure::StepOptimized, this
@@ -253,15 +235,18 @@ m_queue->unlockForNaming(newStructure);
      * @param optStep Optional optimization step. If omitted, the
      * Structure's currentOptStep() is used.
      */
-    void prepareStructureForSubmission(Structure *s, int optStep=0);
+    void submitStructure(Structure *s, int optStep = 0);
 
     /**
      * Submits the first Structure in m_jobStartTracker for
      * submission. This should not be called directly, instead call
      * prepareStructureForSubmission(Structure*).
+     *
+     * @param structure The structure to submit
+     *
      * @sa prepareStructureForSubmission
      */
-    void startJob();
+    void startJob(Structure *structure);
 
     /**
      * Kills the optimization process for the indicated Structure.
@@ -293,24 +278,10 @@ m_queue->unlockForNaming(newStructure);
     QStringList getRemoteQueueData() {QMutexLocker l (&m_queueDataMutex);
       return m_queueData;};
 
-     /**
-     * Reset the number of requested Structures. Helpful when running
-     * multiple search in succession (e.g. benchmarking).
-     *
-     * @param i New number of requested structures.
-     */
-    void resetRequestCount(int i = 0) {m_requestedStructures = i;};
-
     /**
      * @return All Structures in m_runningTracker
      */
     QList<Structure*> getAllRunningStructures();
-
-    /**
-     * @return All Structures in m_tracker,
-     * m_submissionPendingTracker, and m_jobStartTracker.
-     */
-    QList<Structure*> getAllSubmittedStructures();
 
     /**
      * @return All Structures in m_tracker with status
@@ -325,17 +296,12 @@ m_queue->unlockForNaming(newStructure);
     QList<Structure*> getAllDuplicateStructures();
 
     /**
-     * @return All Structures in m_startPendingTracker
-     */
-    QList<Structure*> getAllPendingStructures();
-
-    /**
      * @return All Structures in m_tracker and m_startPendingTracker
      */
     QList<Structure*> getAllStructures();
 
     /**
-     * Locks the m_tracker and m_startPendingTracker for
+     * Locks the m_tracker and m_newStructure for
      * reading.
      *
      * @return All Structures in getAllStructures()
@@ -350,47 +316,44 @@ m_queue->unlockForNaming(newStructure);
      */
     void unlockForNaming(Structure *s = 0);
 
-   private slots:
+    void run();
 
-   private:
-    bool m_checkPopulationPending;
-    bool m_checkRunningPending;
-    bool m_queueUpdatePending;
+   protected slots:
+    void handleOptimizedStructure(Structure *s);
+    void handleStepOptimizedStructure(Structure *s);
+    void handleWaitingForOptimizationStructure(Structure *s);
+    void handleInProcessStructure(Structure *s);
+    void handleEmptyStructure(Structure *s);
+    void handleUpdatingStructure(Structure *s);
+    void handleErrorStructure(Structure *s);
+    void handleSubmittedStructure(Structure *s);
+    void handleKilledStructure(Structure *s);
+    void handleRemovedStructure(Structure *s);
+    void handleDuplicateStructure(Structure *s);
+    void handleRestartStructure(Structure *s);
 
-    int m_requestedStructures;
-
+   protected:
     OptBase *m_opt;
-
     Tracker *m_tracker;
 
-    QList<Tracker*> trackerList;
+    /// Tracks which structures are currently running
     Tracker m_runningTracker;
-    Tracker m_submissionPendingTracker;
-    Tracker m_startPendingTracker;
+    /// Tracks which structures are queued to be submitted
     Tracker m_jobStartTracker;
-    Tracker m_nextOptStepTracker;
-    Tracker m_errorPendingTracker;
-    Tracker m_updatePendingTracker;
-    Tracker m_killPendingTracker;
+    /// Tracks structures that have been returned from m_opt but have
+    /// not yet been accepted into m_tracker.
+    Tracker m_newStructureTracker;
+
+    int m_requestedStructures;
 
     QStringList m_queueData;
     QMutex m_queueDataMutex;
 
-    void updateQueue_();
-    void checkPopulation_();
-    void checkRunning_();
-    void addNewStructure();
-    void addNewStructure_();
-    void prepareStructureForNextOptStep_();
-    void handleStructureError_();
-    void updateStructure_();
-    void startStructure_();
-    void killStructure_();
-    void prepareStructureForSubmission_();
-    void startJob_();
-    void stopJob_();
-  };
+    void submitStructure_(Structure *s);
+    void startJob_(Structure *s);
+    void unlockForNaming_();
+ };
 
-} // end namespace Avogadro
+} // end namespace GlobalSearch
 
 #endif

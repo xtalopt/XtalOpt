@@ -471,16 +471,16 @@ namespace GlobalSearch {
     QStringList queueData (m_opt->queue()->getRemoteQueueData());
     uint jobID = structure->getJobID();
 
-    // If jobID = 0, return an error.
-    if (!jobID) {
-      structure->setStatus(Structure::Error);
-      return Optimizer::Error;
-    }
-
     // If the queueData cannot be fetched, queueData contains a single
     // string, "CommError"
     if (queueData.size() == 1 && queueData[0].compare("CommError") == 0) {
       return Optimizer::CommunicationError;
+    }
+
+    // If jobID = 0 and structure is not in "Submitted" state, return an error.
+    if (!jobID && structure->getStatus() != Structure::Submitted) {
+      structure->setStatus(Structure::Error);
+      return Optimizer::Error;
     }
 
     // Determine status if structure is in the queue
@@ -500,7 +500,7 @@ namespace GlobalSearch {
     // the status checks below.
     if (structure->getStatus() == Structure::Submitted) {
       // Structure is submitted
-      if (status.isEmpty()) {
+      if (jobID == 0 || status.isEmpty()) {
         // Job is not in queue
         if (checkIfOutputFileExists(structure->getRempath() +
                                     "/" + m_completionFilename) ) {

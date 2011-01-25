@@ -366,16 +366,12 @@ namespace XtalOpt {
     xtal->setRempath(rempath_s);
     xtal->setCurrentOptStep(1);
     xtal->findSpaceGroup(tol_spg);
+    xtalLocker.unlock();
     m_queue->unlockForNaming(xtal);
     xtalInitMutex->unlock();
   }
 
   void XtalOpt::generateNewStructure()
-  {
-    QtConcurrent::run(this, &XtalOpt::generateNewStructure_);
-  }
-
-  void XtalOpt::generateNewStructure_()
   {
     INIT_RANDOM_GENERATOR();
     // Get all optimized structures
@@ -1189,7 +1185,7 @@ to obtain a newer version.");
     QList<Xtal::State> states;
 
     m_tracker->lockForRead();
-    QList<Structure*> *structures = m_tracker->list();
+    const QList<Structure*> *structures = m_tracker->list();
 
     Xtal *xtal=0, *xtal_i=0, *xtal_j=0;
     for (int i = 0; i < structures->size(); i++) {
@@ -1199,6 +1195,7 @@ to obtain a newer version.");
       states.append(xtal->getStatus());
       xtal->lock()->unlock();
     }
+    m_tracker->unlock();
 
     // Iterate over all xtals
     const QHash<QString, QVariant> *fp_i, *fp_j;
@@ -1257,7 +1254,6 @@ to obtain a newer version.");
         }
       }
     }
-    m_tracker->unlock();
     emit updateAllInfo();
   }
 

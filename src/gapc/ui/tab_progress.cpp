@@ -209,13 +209,13 @@ namespace GAPC {
     }
 
     m_opt->tracker()->lockForRead();
-    m_infoUpdateTracker->lockForWrite();
+    m_infoUpdateTracker.lockForWrite();
     QList<Structure*> *structures = m_opt->tracker()->list();
     for (int i = 0; i < ui.table_list->rowCount(); i++) {
       m_infoUpdateTracker.append(structures->at(i));
       emit infoUpdate();
     }
-    m_infoUpdateTracker->unlock();
+    m_infoUpdateTracker.unlock();
     m_opt->tracker()->unlock();
     m_update_all_mutex->unlock();
   }

@@ -38,7 +38,7 @@ namespace GlobalSearch {
     QObject(parent),
     m_dialog(parent),
     m_tracker(new Tracker (this)),
-    m_queue(new QueueManager(this, m_tracker)),
+    m_queue(new QueueManager(this)),
     m_optimizer(0), // This will be set when the GUI is initialized
     m_ssh(new SSHManager (5, this)),
     m_idString("Generic"),
