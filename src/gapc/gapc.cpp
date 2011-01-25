@@ -149,7 +149,9 @@ namespace GAPC {
         pc->setStatus(ProtectedCluster::Updating);
         locker.unlock();
         replaceWithRandom(pc, tr("Cluster exploded"));
-        m_queue->prepareStructureForSubmission(pc);
+        pc->lock()->lockForWrite();
+        pc->setStatus(ProtectedCluster::Restart);
+        pc->lock()->unlock();
         return;
       }
     }
@@ -376,7 +378,9 @@ optimizations. If so, safely ignore this message.")
     for (int i = 0; i < loadedStructures.size(); i++) {
       s = loadedStructures.at(i);
       m_dialog->updateProgressValue(i);
+      m_tracker->lockForWrite();
       m_tracker->append(s);
+      m_tracker->unlock();
       if (s->getStatus() == Structure::WaitingForOptimization)
         m_queue->appendToJobStartTracker(s);
     }
@@ -465,7 +469,9 @@ optimizations. If so, safely ignore this message.")
     }
 
     // prepare pointers
+    m_tracker->lockForWrite();
     m_tracker->deleteAllStructures();
+    m_tracker->unlock();
 
     ///////////////////////////////////////////////
     // Generate random structures and load seeds //
@@ -489,7 +495,9 @@ optimizations. If so, safely ignore this message.")
       pc = new ProtectedCluster;
       pc->setFileName(filename);
       if ( !m_optimizer->read(pc, filename) || (pc == 0) ) {
+        m_tracker->lockForWrite();
         m_tracker->deleteAllStructures();
+        m_tracker->unlock();
         error(tr("Error loading seed %1").arg(filename));
         return;
       }
@@ -570,16 +578,12 @@ optimizations. If so, safely ignore this message.")
     pc->setupConnections();
     pc->enableAutoHistogramGeneration(true);
     pc->update();
+    pcLocker.unlock();
     m_queue->unlockForNaming(pc);
     initMutex.unlock();
   }
 
   void OptGAPC::generateNewStructure()
-  {
-    QtConcurrent::run(this, &OptGAPC::generateNewStructure_);
-  }
-
-  void OptGAPC::generateNewStructure_()
   {
     INIT_RANDOM_GENERATOR();
     // Get all optimized structures

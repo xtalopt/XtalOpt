@@ -196,13 +196,8 @@ namespace XtalOpt {
     updateGUI();
     if (!m_opt) return;
 
-    if (!m_opt->tracker()->rwLock()->tryLockForRead()) {
-      return;
-    }
-
     // Make sure we have structures!
     if (m_opt->tracker()->size() == 0) {
-      m_opt->tracker()->unlock();
       return;
     }
 
@@ -223,7 +218,6 @@ namespace XtalOpt {
 
     ui.plot_plot->blockSignals(false);
 
-    m_opt->tracker()->unlock();
     m_plot_mutex->unlock();
   }
 
@@ -249,9 +243,10 @@ namespace XtalOpt {
     PlotAxes xAxis		= PlotAxes(ui.combo_xAxis->currentIndex());
     PlotAxes yAxis              = PlotAxes(ui.combo_yAxis->currentIndex());
 
-    for (int i = 0; i < m_opt->tracker()->size(); i++) {
+    const QList<Structure*> structures (*m_opt->tracker()->list());
+    for (int i = 0; i < structures.size(); i++) {
       x = y = 0;
-      xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(i));
+      xtal = qobject_cast<Xtal*>(structures[i]);
       QReadLocker xtalLocker (xtal->lock());
       // Don't plot removed structures or those who have not completed their first INCAR.
       if ((xtal->getStatus() != Xtal::Optimized && !showIncompletes)) {
@@ -576,11 +571,12 @@ namespace XtalOpt {
     int ind = ui.combo_distHistXtal->currentIndex();
     ui.combo_distHistXtal->blockSignals(true);
     ui.combo_distHistXtal->clear();
-    QList<Structure*> *structures = m_opt->tracker()->list();
+
+    const QList<Structure*> structures (*m_opt->tracker()->list());
     Xtal *xtal;
     QString s;
-    for (int i = 0; i < structures->size(); i++) {
-      xtal = qobject_cast<Xtal*>(structures->at(i));
+    for (int i = 0; i < structures.size(); i++) {
+      xtal = qobject_cast<Xtal*>(structures.at(i));
       xtal->lock()->lockForRead();
       s.clear();
       // index:
@@ -665,6 +661,7 @@ namespace XtalOpt {
         break;
       }
     }
+
     if (ui.combo_plotType->currentIndex() == Trend_PT) {
       PlotPoint* pp;
       bool found = false;

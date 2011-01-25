@@ -189,7 +189,9 @@ namespace GAPC {
       ui.table_list->setItem(index, i, new QTableWidgetItem());
     }
 
+    m_infoUpdateTracker.lockForWrite();
     m_infoUpdateTracker.append(pc);
+    m_infoUpdateTracker.unlock();
     locker.unlock();
     emit infoUpdate();
 
@@ -205,17 +207,24 @@ namespace GAPC {
       qDebug() << "Killing extra TabProgress::updateAllInfo() call";
       return;
     }
+
+    m_opt->tracker()->lockForRead();
+    m_infoUpdateTracker.lockForWrite();
     QList<Structure*> *structures = m_opt->tracker()->list();
     for (int i = 0; i < ui.table_list->rowCount(); i++) {
       m_infoUpdateTracker.append(structures->at(i));
       emit infoUpdate();
     }
+    m_infoUpdateTracker.unlock();
+    m_opt->tracker()->unlock();
     m_update_all_mutex->unlock();
   }
 
   void TabProgress::newInfoUpdate(Structure *s)
   {
+    m_infoUpdateTracker.lockForWrite();
     m_infoUpdateTracker.append(s);
+    m_infoUpdateTracker.unlock();
     emit infoUpdate();
   }
 
@@ -237,8 +246,13 @@ namespace GAPC {
 
     // Prep variables
     Structure *structure;
-    if (!m_infoUpdateTracker.popFirst(structure))
+    m_infoUpdateTracker.lockForWrite();
+    if (!m_infoUpdateTracker.popFirst(structure)) {
+      m_infoUpdateTracker.unlock();
       return;
+    }
+    m_infoUpdateTracker.unlock();
+
     int i = m_opt->tracker()->list()->indexOf(structure);
 
     ProtectedCluster *pc = qobject_cast<ProtectedCluster*>(structure);
@@ -246,7 +260,9 @@ namespace GAPC {
     if (i < 0 || i > ui.table_list->rowCount() - 1) {
       qDebug() << "TabProgress::updateInfo: Trying to update an index that doesn't exist ("
                << i << ") Waiting...";
+      m_infoUpdateTracker.lockForWrite();
       m_infoUpdateTracker.append(pc);
+      m_infoUpdateTracker.unlock();
       QTimer::singleShot(100, this, SLOT(updateInfo()));
       return;
     }

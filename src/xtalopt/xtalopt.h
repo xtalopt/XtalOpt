@@ -21,7 +21,6 @@
 
 #include <globalsearch/optbase.h>
 #include <globalsearch/queuemanager.h>
-#include <globalsearch/tracker.h>
 #include <globalsearch/macros.h>
 
 #include <QtCore/QDebug>
@@ -131,7 +130,6 @@ namespace XtalOpt {
    private:
     void resetDuplicates_();
     void checkForDuplicates_();
-    void generateNewStructure_();
 
     void setOptimizer_string(const QString &s, const QString &filename = "");
     void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
