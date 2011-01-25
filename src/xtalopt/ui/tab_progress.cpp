@@ -62,6 +62,8 @@ namespace XtalOpt {
             m_opt->queue(), SLOT(checkPopulation()));
     connect(m_opt, SIGNAL(updateAllInfo()),
             this, SLOT(updateAllInfo()));
+    connect(m_opt, SIGNAL(sessionStarted()),
+            this, SLOT(startTimer()));
 
     // Progress table connections
     connect(m_timer, SIGNAL(timeout()),
