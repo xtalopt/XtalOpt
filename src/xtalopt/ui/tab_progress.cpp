@@ -77,7 +77,8 @@ namespace XtalOpt {
     connect(ui.table_list, SIGNAL(currentCellChanged(int,int,int,int)),
             this, SLOT(selectMoleculeFromProgress(int,int,int,int)));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
-            this, SLOT(addNewEntry()));
+            this, SLOT(addNewEntry()),
+            Qt::QueuedConnection);
     connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(newInfoUpdate(GlobalSearch::Structure *)));
     connect(this, SIGNAL(infoUpdate()),
