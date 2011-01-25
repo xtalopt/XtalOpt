@@ -78,7 +78,7 @@ namespace GlobalSearch {
       return false;
     }
 
-    // Set a three second timeout, check every 50 ms for new data.
+    // Set a three timeout, check every 50 ms for new data.
     int bytesAvail;
     int timeout = 3000;
     do {
@@ -122,7 +122,7 @@ namespace GlobalSearch {
       do {
         bytesAvail = channel_poll(m_shell, 0);
         if (bytesAvail == SSH_ERROR) {
-          qWarning() << "SSHConnection::_execute: server returns an error; "
+          qWarning() << "SSHConnection::_isConnected: server returns an error; "
                      << ssh_get_error(m_session);
           return false;
         }
@@ -424,10 +424,9 @@ namespace GlobalSearch {
       return false;
     }
 
-    // Set a 500 millisecond timeout, check every 50 ms for new data A
-    // timeout here is not an error. It is more likely that the
-    // command has no output.
-    int timeout = 500;
+    // Set a timeout, check every 50 ms for new data A timeout here is
+    // not an error. It is more likely that the command has no output.
+    int timeout = 200;
     int bytesAvail;
     do {
       // Poll for number of bytes available
@@ -463,8 +462,8 @@ namespace GlobalSearch {
                                (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
                                0)) > 0) {
       ossout.write(buffer,len);
-      // Poll for number of bytes available using a 1 second timeout in case the stack is full.
-      timeout = 1000;
+      // Poll for number of bytes available using a timeout in case the stack is full.
+      timeout = 100;
       do {
         bytesAvail = channel_poll(m_shell, 0);
         if (bytesAvail == SSH_ERROR) {
@@ -495,8 +494,8 @@ namespace GlobalSearch {
                                (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
                                1)) > 0) {
       osserr.write(buffer,len);
-      // Poll for number of bytes available using a 1 second timeout in case the stack is full.
-      timeout = 1000;
+      // Poll for number of bytes available using a timeout in case the stack is full.
+      timeout = 200;
       do {
         bytesAvail = channel_poll(m_shell, 1);
         if (bytesAvail == SSH_ERROR) {
@@ -524,8 +523,8 @@ namespace GlobalSearch {
       return false;
     }
 
-    // Set a three second timeout, check every 50 ms for new data.
-    timeout = 3000;
+    // Set a timeout, check every 50 ms for new data.
+    timeout = 200;
     do {
       // Poll for number of bytes available
       bytesAvail = channel_poll(m_shell, 0);
@@ -569,8 +568,8 @@ namespace GlobalSearch {
         ecChar[ecCharIndex++] = buffer[bufferInd++];
         len--;
       }
-      // Poll for number of bytes available using a 1 second timeout in case the stack is full.
-      timeout = 1000;
+      // Poll for number of bytes available using a timeout in case the stack is full.
+      timeout = 100;
       do {
         bytesAvail = channel_poll(m_shell, 0);
         if (bytesAvail == SSH_ERROR) {
