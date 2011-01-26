@@ -72,16 +72,8 @@ namespace GlobalSearch {
     INIT_RANDOM_GENERATOR();
   }
 
-  OptBase::~OptBase() {
-    // Wait for save to finish
-    if (saveOnExit) {
-      while (savePending) {
-        qDebug() << "Spinning on save before destroying OptBase...";
-        save();
-        GS_SLEEP(1);
-      };
-      savePending = true;
-    }
+  OptBase::~OptBase()
+  {
     delete m_queue;
     delete m_tracker;
   }

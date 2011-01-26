@@ -69,6 +69,15 @@ namespace XtalOpt {
 
   XtalOpt::~XtalOpt()
   {
+    // Wait for save to finish
+    if (saveOnExit) {
+      while (savePending) {
+        qDebug() << "Spinning on save before destroying XtalOpt...";
+        save();
+        GS_SLEEP(1);
+      };
+      savePending = true;
+    }
   }
 
   void XtalOpt::startSearch() {
