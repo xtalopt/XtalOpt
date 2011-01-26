@@ -1012,9 +1012,12 @@ namespace GlobalSearch {
 
   QList<QString> Structure::getSymbols() const {
     QList<QString> list;
-    OpenBabel::OBMol obmol = OBMol();
-    FOR_ATOMS_OF_MOL(atom,obmol) {
-      QString symbol = QString(OpenBabel::etab.GetSymbol(atom->GetAtomicNum()));
+    for (QList<Atom*>::const_iterator
+           it = m_atomList.begin(),
+           it_end = m_atomList.end();
+         it != it_end;
+         ++it) {
+      QString symbol = QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()));
       if (!list.contains(symbol)) {
         list.append(symbol);
       }
@@ -1028,14 +1031,17 @@ namespace GlobalSearch {
     QList<QString> symbols = getSymbols();
     for (int i = 0; i < symbols.size(); i++)
       list.append(0);
-    OpenBabel::OBMol obmol = OBMol();
-    int ind, tmp;
-    FOR_ATOMS_OF_MOL(atom,obmol) {
-      QString symbol            = QString(OpenBabel::etab.GetSymbol(atom->GetAtomicNum()));
+    int ind;
+    for (QList<Atom*>::const_iterator
+           it = m_atomList.begin(),
+           it_end = m_atomList.end();
+         it != it_end;
+         ++it) {
+      QString symbol = QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()));
+      Q_ASSERT_X(symbols.contains(symbol), Q_FUNC_INFO,
+                 "getNumberOfAtomsAlpha found a symbol not in getSymbols.");
       ind = symbols.indexOf(symbol);
-      tmp = list.at(ind);
-      tmp++;
-      list.replace(ind, tmp);
+      ++list[ind];
     }
     return list;
   }
