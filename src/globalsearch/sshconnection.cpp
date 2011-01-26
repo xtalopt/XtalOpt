@@ -426,7 +426,7 @@ namespace GlobalSearch {
 
     // Set a timeout, check every 50 ms for new data A timeout here is
     // not an error. It is more likely that the command has no output.
-    int timeout = 200;
+    int timeout = 500;
     int bytesAvail;
     do {
       // Poll for number of bytes available
@@ -463,7 +463,7 @@ namespace GlobalSearch {
                                0)) > 0) {
       ossout.write(buffer,len);
       // Poll for number of bytes available using a timeout in case the stack is full.
-      timeout = 100;
+      timeout = 400;
       do {
         bytesAvail = channel_poll(m_shell, 0);
         if (bytesAvail == SSH_ERROR) {
@@ -495,7 +495,7 @@ namespace GlobalSearch {
                                1)) > 0) {
       osserr.write(buffer,len);
       // Poll for number of bytes available using a timeout in case the stack is full.
-      timeout = 200;
+      timeout = 400;
       do {
         bytesAvail = channel_poll(m_shell, 1);
         if (bytesAvail == SSH_ERROR) {
@@ -524,7 +524,7 @@ namespace GlobalSearch {
     }
 
     // Set a timeout, check every 50 ms for new data.
-    timeout = 200;
+    timeout = 500;
     do {
       // Poll for number of bytes available
       bytesAvail = channel_poll(m_shell, 0);
@@ -564,12 +564,14 @@ namespace GlobalSearch {
                                (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
                                0)) > 0) {
       unsigned int bufferInd = 0;
+      Q_ASSERT_X(len < 256, Q_FUNC_INFO,
+                 "Exit code of SSHConnection::execute call exceeds 256 bytes.");
       while (len > 0) {
         ecChar[ecCharIndex++] = buffer[bufferInd++];
         len--;
       }
       // Poll for number of bytes available using a timeout in case the stack is full.
-      timeout = 100;
+      timeout = 400;
       do {
         bytesAvail = channel_poll(m_shell, 0);
         if (bytesAvail == SSH_ERROR) {
