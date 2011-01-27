@@ -61,7 +61,9 @@ namespace GlobalSearch {
 
   bool SSHConnection::isConnected()
   {
-    if (!m_session || !m_shell || !m_sftp) {
+    if (!m_session || !m_shell || !m_sftp ||
+        channel_is_closed(m_shell) || channel_is_eof(m_shell) ||
+        channel_is_closed(m_sftp->channel) || channel_is_eof(m_sftp->channel) ) {
       qWarning() << "SSHConnection is not connected: one or more required channels are not initialized.";
       return false;
     };
