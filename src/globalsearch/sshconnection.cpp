@@ -402,51 +402,29 @@ namespace GlobalSearch {
     return _execute(command, stdout_str, stderr_str, exitcode);
   }
 
-  bool SSHConnection::_execute(const QString &qcommand,
+  bool SSHConnection::_execute(const QString &command,
                                QString &stdout_str,
                                QString &stderr_str,
                                int &exitcode)
   {
     START;
-
-    // Append newline to command if needed
-    char command[qcommand.size() + 1];
-    strcpy(command, qcommand.toStdString().c_str());
-    if (!qcommand.endsWith('\n')) {
-      strcat(command, "\n");
+    // Open new channel for exec
+    ssh_channel channel = channel_new(m_session);
+    if (!channel) {
+      qWarning() << "SSH error: " << ssh_get_error(m_session);
+      return false;
     }
-
-    // Execute command
-    if (channel_write(m_shell, command, strlen(command)) == SSH_ERROR) {
-      qWarning() << "SSHConnection::_execute: Error writing\n\t'"
-                 << command
-                 << "'\n\t to host. " << ssh_get_error(m_session);
+    if (channel_open_session(channel) != SSH_OK) {
+      qWarning() << "SSH error: " << ssh_get_error(m_session);
       return false;
     }
 
-    // Set a timeout, check every 50 ms for new data A timeout here is
-    // not an error. It is more likely that the command has no output.
-    int timeout = 500;
-    int bytesAvail;
-    do {
-      // Poll for number of bytes available
-      bytesAvail = channel_poll(m_shell, 0);
-      if (bytesAvail == SSH_ERROR) {
-        qWarning() << "SSHConnection::_execute: server returns an error; "
-                   << ssh_get_error(m_session);
-        return false;
-      }
-      // Sleep for 50 ms if no data yet.
-      if (bytesAvail <= 0) {
-        GS_MSLEEP(50);
-        timeout -= 50;
-      }
-    }
-    while (timeout >= 0 && bytesAvail <= 0);
-    // Negative value is an error (SSH_ERROR is explicitly detected earlier)
-    if (bytesAvail < 0) {
-      qWarning() << "SSHConnection::_execute: server returns a a bizarre poll value: "
-                 << bytesAvail << "; " << ssh_get_error(m_session);
+    // Execute command
+    int ssh_exit = channel_request_exec(channel, command.toStdString().c_str());
+    channel_send_eof(channel);
+
+    if (ssh_exit == SSH_ERROR) {
+      channel_close(channel);
       return false;
     }
 
@@ -456,140 +434,19 @@ namespace GlobalSearch {
     // Read output
     char buffer[SSH_BUFFER_SIZE];
     int len;
-    // stdout (bytesAvail is set earlier)
-    while ((len = channel_read(m_shell,
-                               buffer,
-                               (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
-                               0)) > 0) {
+    while ((len = channel_read(channel, buffer, sizeof(buffer), 0)) > 0) {
       ossout.write(buffer,len);
-      // Poll for number of bytes available using a timeout in case the stack is full.
-      timeout = 400;
-      do {
-        bytesAvail = channel_poll(m_shell, 0);
-        if (bytesAvail == SSH_ERROR) {
-          qWarning() << "SSHConnection::_execute: server returns an error; "
-                     << ssh_get_error(m_session);
-          return false;
-        }
-        if (bytesAvail <= 0) {
-          GS_MSLEEP(50);
-          timeout -= 50;
-        }
-      }
-      while (timeout >= 0 && bytesAvail <= 0);
     }
     stdout_str = QString(ossout.str().c_str());
-
-    // stderr
-    // Poll for number of bytes available
-    bytesAvail = channel_poll(m_shell, 1);
-    if (bytesAvail == SSH_ERROR) {
-      qWarning() << "SSHConnection::_execute: server returns an error; "
-                 << ssh_get_error(m_session);
-      return false;
-    }
-
-    while ((len = channel_read(m_shell,
-                               buffer,
-                               (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
-                               1)) > 0) {
+    while ((len = channel_read(channel, buffer, sizeof(buffer), 1)) > 0) {
       osserr.write(buffer,len);
-      // Poll for number of bytes available using a timeout in case the stack is full.
-      timeout = 400;
-      do {
-        bytesAvail = channel_poll(m_shell, 1);
-        if (bytesAvail == SSH_ERROR) {
-          qWarning() << "SSHConnection::_execute: server returns an error; "
-                     << ssh_get_error(m_session);
-          return false;
-        }
-        if (bytesAvail <= 0) {
-          GS_MSLEEP(50);
-          timeout -= 50;
-        }
-      }
-      while (timeout >= 0 && bytesAvail <= 0);
     }
-
     stderr_str = QString(osserr.str().c_str());
 
-    // Get exit code (via "echo $?")
-    // Execute command
-    char ecCommand[] = "echo $?\n";
-    if (channel_write(m_shell, ecCommand, strlen(ecCommand)) == SSH_ERROR) {
-      qWarning() << "SSHConnection::_execute: Error writing\n\t'"
-                 << ecCommand
-                 << "'\n\t to host. " << ssh_get_error(m_session);
-      return false;
-    }
+    exitcode = channel_get_exit_status(channel);
 
-    // Set a timeout, check every 50 ms for new data.
-    timeout = 500;
-    do {
-      // Poll for number of bytes available
-      bytesAvail = channel_poll(m_shell, 0);
-      if (bytesAvail == SSH_ERROR) {
-        qWarning() << "SSHConnection::_execute: server returns an error; "
-                   << ssh_get_error(m_session);
-        return false;
-      }
-      // Sleep for 50 ms if no data yet.
-      if (bytesAvail <= 0) {
-        GS_MSLEEP(50);
-        timeout -= 50;
-      }
-    }
-    while (timeout >= 0 && bytesAvail <= 0);
-    // Negative value is an error (SSH_ERROR is explicitly detected earlier)
-    if (bytesAvail < 0) {
-      qWarning() << "SSHConnection::_execute: server returns a bizarre poll value: "
-                 << bytesAvail << "; " << ssh_get_error(m_session);
-      return false;
-    }
-    // Timeout case
-    else if (timeout < 0 && bytesAvail == 0) {
-      qWarning() << "SSHConnection::_execute: server timeout while waiting for exit code: "
-                 << command;
-      return false;
-    }
-
-    // Assume the exit code is less than 256 char.
-    char ecChar[256];
-    unsigned int ecCharIndex = 0;
-
-    // Read output
-    // stdout (bytesAvail is set earlier)
-    while ((len = channel_read(m_shell,
-                               buffer,
-                               (bytesAvail < SSH_BUFFER_SIZE) ? bytesAvail : SSH_BUFFER_SIZE,
-                               0)) > 0) {
-      unsigned int bufferInd = 0;
-      Q_ASSERT_X(len < 256, Q_FUNC_INFO,
-                 "Exit code of SSHConnection::execute call exceeds 256 bytes.");
-      while (len > 0) {
-        ecChar[ecCharIndex++] = buffer[bufferInd++];
-        len--;
-      }
-      // Poll for number of bytes available using a timeout in case the stack is full.
-      timeout = 400;
-      do {
-        bytesAvail = channel_poll(m_shell, 0);
-        if (bytesAvail == SSH_ERROR) {
-          qWarning() << "SSHConnection::_execute: server returns an error; "
-                     << ssh_get_error(m_session);
-          return false;
-        }
-        if (bytesAvail <= 0) {
-          GS_MSLEEP(50);
-          timeout -= 50;
-        }
-      }
-      while (timeout >= 0 && bytesAvail <= 0);
-    }
-    ecChar[ecCharIndex] = '\0';
-
-    exitcode = atoi(ecChar);
-
+    channel_close(channel);
+    channel_free(channel);
     END;
     return true;
   }
