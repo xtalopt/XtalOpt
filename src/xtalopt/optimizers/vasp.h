@@ -31,8 +31,12 @@ namespace XtalOpt {
     Q_OBJECT
 
    public:
-    VASPOptimizer(GlobalSearch::OptBase *parent, const QString &filename = "");
-    bool writeInputFiles(GlobalSearch::Structure *structure);
+    VASPOptimizer(GlobalSearch::OptBase *parent,
+                  const QString &filename = "");
+
+    QHash<QString, QString>
+      getInterpretedTemplates(GlobalSearch::Structure *structure);
+
     void readSettings(const QString &filename = "");
     void writeTemplatesToSettings(const QString &filename = "");
     void writeDataToSettings(const QString &filename = "");

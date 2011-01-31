@@ -171,19 +171,9 @@ namespace GAPC {
     void resetDuplicates();
     void checkForDuplicates();
 
-    void setOptimizer(GlobalSearch::Optimizer *o) {
-      setOptimizer_opt(o);};
-    void setOptimizer(const QString &IDString, const QString &filename = "") {
-      setOptimizer_string(IDString, filename);};
-    void setOptimizer(OptTypes opttype, const QString &filename = "") {
-      setOptimizer_enum(opttype, filename);};
-
    protected:
     void resetDuplicates_();
     void checkForDuplicates_();
-    void setOptimizer_string(const QString &s, const QString &filename = "");
-    void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
-
   };
 
 } // end namespace GAPC

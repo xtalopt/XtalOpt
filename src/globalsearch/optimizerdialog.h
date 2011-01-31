@@ -1,7 +1,7 @@
 /**********************************************************************
-  GULPOptimizer - Tools to interface with GULP
+  Optimizer - Generic optimizer interface
 
-  Copyright (C) 2009-2010 by David C. Lonie
+  Copyright (C) 2010 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -13,34 +13,40 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#ifndef GULPOPTIMIZER_H
-#define GULPOPTIMIZER_H
+// Don't document this:
+/// @cond
+#ifndef OPTIMIZERDIALOG_H
+#define OPTIMIZERDIALOG_H
 
-#include <globalsearch/optimizer.h>
+#include <QtGui/QDialog>
 
-#include <QObject>
+class QLineEdit;
 
 namespace GlobalSearch {
-  class Structure;
+  class AbstractDialog;
   class OptBase;
   class Optimizer;
-}
 
-/*
- * This optimizer is of little utility beyond simple testing. It is
- * deprecated and will soon be removed.
- */
-
-namespace GAPC {
-  class OpenBabelOptimizer : public GlobalSearch::Optimizer
+  // Basic input dialog needed for all optimizers
+  class OptimizerConfigDialog : public QDialog
   {
-    Q_OBJECT
+    Q_OBJECT;
+  public:
+    OptimizerConfigDialog(AbstractDialog *parent,
+                          OptBase *opt, Optimizer *o);
 
-   public:
-    OpenBabelOptimizer(GlobalSearch::OptBase *parent,
-                       const QString &filename = "");
+  public slots:
+    void updateState();
+    void updateGUI();
+
+  protected:
+    OptBase *m_opt;
+    Optimizer *m_optimizer;
+    QLineEdit *m_lineedit;
+
   };
 
-} // end namespace GAPC
+} // end namespace GlobalSearch
 
 #endif
+/// @endcond

@@ -567,68 +567,9 @@ namespace RandomDock {
     return true;
   }
 
-  bool RandomDock::load(const QString &filename) {
-    // Attempt to open state file
-    QFile file (filename);
-    if (!file.open(QIODevice::ReadOnly)) {
-      error("RandomDock::load(): Error opening file "+file.fileName()+" for reading...");
-      return false;
-    }
-
-    SETTINGS(filename);
-    // Update config data
-    int loadedVersion = settings->value("randomdock/version", 0).toInt();
-    switch (loadedVersion) {
-    case 0:
-    case 1:
-    default:
-      break;
-    }
-
-    bool stateFileIsValid = settings->value("randomdock/saveSuccessful", false).toBool();
-    if (!stateFileIsValid) {
-      error("RandomDock::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid.");
-      return false;
-    }
-
-    // Get path and other info for later:
-    QFileInfo stateInfo (file);
-    // path to resume file
-    QDir dataDir  = stateInfo.absoluteDir();
-    QString dataPath = dataDir.absolutePath() + "/";
-    // list of structure dirs
-    QStringList dirs = dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
-    dirs.removeAll(".");
-    dirs.removeAll("..");
-    for (int i = 0; i < dirs.size(); i++) {
-      if (!QFile::exists(dataPath + "/" + dirs.at(i) + "/scene.state") &&
-          !QFile::exists(dataPath + "/" + dirs.at(i) + "/matrix.state") &&
-          !QFile::exists(dataPath + "/" + dirs.at(i) + "/substrate.state")
-          ) {
-          dirs.removeAt(i);
-          i--;
-      }
-    }
-
-    // Set filePath:
-    QString newFilePath = dataPath;
-    QString newFileBase = filename;
-    newFileBase.remove(newFilePath);
-    newFileBase.remove("randomdock.state.old");
-    newFileBase.remove("randomdock.state.tmp");
-    newFileBase.remove("randomdock.state");
-
-    m_dialog->readSettings(filename);
-
-    // Set optimizer
-    setOptimizer(OptTypes(settings->value("randomdock/edit/optType").toInt()),
-                 filename);
-    debug(tr("Resuming RandomDock session in '%1' (%2)")
-          .arg(filename)
-          .arg(m_optimizer->getIDString()));
-
-    // TODO load scenes, matrix, and substrate
-
+  bool RandomDock::load(const QString &filename)
+  {
+    // Nothing to do...
     return true;
   }
 
@@ -733,25 +674,4 @@ namespace RandomDock {
       coords[i] += t;
   }
 
-  void RandomDock::setOptimizer_string(const QString &IDString, const QString &filename)
-  {
-    if (IDString.toLower() == "gamess")
-      setOptimizer(new GAMESSOptimizer (this, filename));
-    else
-      error(tr("RandomDock::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(IDString));
-  }
-
-  void RandomDock::setOptimizer_enum(OptTypes opttype, const QString &filename)
-  {
-    switch (opttype) {
-    case OT_GAMESS:
-      setOptimizer(new GAMESSOptimizer (this, filename));
-      break;
-    default:
-      error(tr("RandomDock::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(QString::number((int)opttype)));
-      break;
-    }
-  }
 } // end namespace RandomDock

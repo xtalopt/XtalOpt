@@ -1,7 +1,7 @@
 /**********************************************************************
-  GULPOptimizer - Tools to interface with GULP
+  QueueInterface - Base queue interface class implementation
 
-  Copyright (C) 2009-2010 by David C. Lonie
+  Copyright (C) 2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -13,34 +13,21 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
-#ifndef GULPOPTIMIZER_H
-#define GULPOPTIMIZER_H
+#include <globalsearch/queueinterface.h>
 
+#include <globalsearch/structure.h>
 #include <globalsearch/optimizer.h>
+#include <globalsearch/structure.h>
 
-#include <QObject>
+#include <QtCore/QString>
+#include <QtCore/QStringList>
+
 
 namespace GlobalSearch {
-  class Structure;
-  class OptBase;
-  class Optimizer;
-}
 
-/*
- * This optimizer is of little utility beyond simple testing. It is
- * deprecated and will soon be removed.
- */
-
-namespace GAPC {
-  class OpenBabelOptimizer : public GlobalSearch::Optimizer
+  bool QueueInterface::writeInputFiles(Structure *s) const
   {
-    Q_OBJECT
+    return writeFiles(s, m_opt->optimizer()->getInterpretedTemplates(s));
+  }
 
-   public:
-    OpenBabelOptimizer(GlobalSearch::OptBase *parent,
-                       const QString &filename = "");
-  };
-
-} // end namespace GAPC
-
-#endif
+} // end namespace GlobalSearch

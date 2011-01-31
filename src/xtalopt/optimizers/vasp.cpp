@@ -49,7 +49,6 @@ namespace XtalOpt {
     m_templates.insert("INCAR",QStringList(""));
     m_templates.insert("POTCAR",QStringList(""));
     m_templates.insert("KPOINTS",QStringList(""));
-    m_templates.insert("job.pbs",QStringList(""));
 
     // Setup for completion values
     m_completionFilename = "OUTCAR";
@@ -62,6 +61,12 @@ namespace XtalOpt {
 
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "VASP";
+
+    // Local execution setup:
+    m_localRunCommand = "vasp";
+    m_stdinFilename = "";
+    m_stdoutFilename = "";
+    m_stderrFilename = "";
 
     readSettings(filename);
 
@@ -117,73 +122,43 @@ namespace XtalOpt {
     }
   }
 
-  bool VASPOptimizer::writeInputFiles(Structure *structure) {
-
-    // Stop any running jobs associated with this xtal
-    deleteJob(structure);
+  QHash<QString, QString>
+  VASPOptimizer::getInterpretedTemplates(Structure *structure)
+  {
+    // Stop any running jobs associated with this structure
+    m_opt->queueInterface()->stopJob(structure);
 
     // Lock
     QReadLocker locker (structure->lock());
 
     // Check optstep info
     int optStep = structure->getCurrentOptStep();
-    if (optStep < 1 || optStep > getNumberOfOptSteps()) {
-      m_opt->error(tr("Error: Requested OptStep (%1) out of range (1-%2)")
-                   .arg(optStep)
-                   .arg(getNumberOfOptSteps()));
-      return false;
-    }
 
-    // Create local files
-    QDir dir (structure->fileName());
-    if (!dir.exists()) {
-      if (!dir.mkpath(structure->fileName())) {
-        m_opt->warning(tr("Cannot write input files to specified path: %1 (path creation failure)", "1 is a file path.").arg(structure->fileName()));
-        return false;
-      }
-    }
-    // Write all explicit templates
-    if (!createRemoteDirectory(structure)) return false;
-    if (!cleanRemoteDirectory(structure)) return false;
-    if (!writeTemplates(structure)) return false;
-    // POSCAR is slightly different, must be done here.
-    QFile pos (structure->fileName() + "/POSCAR");
-    if (!pos.open(QIODevice::WriteOnly | QIODevice::Text)) {
-      m_opt->warning(tr("Cannot write input files to specified path: %1 (file writing failure)", "1 is a file path").arg(structure->fileName()));
-      return false;
-    }
-    int optStepInd = optStep - 1;
-    QTextStream poscar (&pos);
-    poscar << m_opt->interpretTemplate( "%POSCAR%", structure);
-    pos.close();
+    Q_ASSERT_X(optStep <= m_opt->optimizer()->getNumberOfOptSteps(),
+               Q_FUNC_INFO, QString("OptStep of Structure %1 exceeds "
+                                    "number of known OptSteps (%2, limit %3).")
+               .arg(structure->getIDString()).arg(optStep)
+               .arg(m_opt->optimizer()->getNumberOfOptSteps()).toStdString().c_str());
 
-    // Copy to server
-    if (!copyLocalTemplateFilesToRemote(structure)) return false;
-    // Again, POSCAR is done separately
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(m_opt->ssh()->getUser())
-                     .arg(m_opt->ssh()->getHost())
-                     .arg(m_opt->ssh()->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-
-    if (!ssh->copyFileToServer(structure->fileName() + "/POSCAR",
-                                        structure->getRempath() + "/POSCAR")) {
-      m_opt->warning(tr("Error copying \"%1\" to remote server (structure %2)")
-                     .arg("POSCAR")
-                     .arg(structure->getIDString()));
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-    m_opt->ssh()->unlockConnection(ssh);
-
-    // Update info
+    // Unlock for optimizer calls
     locker.unlock();
-    return true;
+
+    // Build hash
+    QHash<QString, QString> hash;
+    QStringList filenames = getTemplateNames();
+    QString contents;
+    for (QStringList::const_iterator
+           it = filenames.constBegin(),
+           it_end = filenames.constEnd();
+         it != it_end;
+         it++) {
+      hash.insert((*it), m_opt->interpretTemplate(m_templates.value(*it)
+                                                  .at(optStep),
+                                                  structure));
+    }
+    // POSCAR is slightly different, must be done here.
+    hash.insert("POSCAR", m_opt->interpretTemplate("%POSCAR%", structure));
+    return hash;
   }
 
   bool VASPOptimizer::POTCARInfoIsUpToDate(QList<uint> atomicNums)

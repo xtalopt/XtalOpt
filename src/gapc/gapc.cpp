@@ -209,10 +209,6 @@ namespace GAPC {
 
     m_dialog->readSettings(filename);
 
-    // Set optimizer
-    setOptimizer(OptTypes(settings->value(m_idString.toLower() + "/edit/optType").toInt()),
-                 filename);
-
     // Create SSHConnection
     if (m_optimizer->getIDString() != "OpenBabel" && // OpenBabel won't use ssh
         m_optimizer->getIDString() != "GULP") {      // Nor will GULP
@@ -1040,38 +1036,6 @@ optimizations. If so, safely ignore this message.")
       .arg(alltime,  5, 'g')
       .arg(sts.size());
     emit updateAllInfo();
-  }
-
-  void OptGAPC::setOptimizer_string(const QString &IDString, const QString &filename)
-  {
-    if (IDString.toLower() == "openbabel")
-      setOptimizer(new OpenBabelOptimizer (this, filename));
-    else if (IDString.toLower() == "adf")
-      setOptimizer(new ADFOptimizer (this, filename));
-    else if (IDString.toLower() == "gulp")
-      setOptimizer(new GULPOptimizer (this, filename));
-    else
-      error(tr("GAPC::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(IDString));
-  }
-
-  void OptGAPC::setOptimizer_enum(OptTypes opttype, const QString &filename)
-  {
-    switch (opttype) {
-    case OT_OpenBabel:
-      setOptimizer(new OpenBabelOptimizer (this, filename));
-      break;
-    case OT_ADF:
-      setOptimizer(new ADFOptimizer (this, filename));
-      break;
-    case OT_GULP:
-      setOptimizer(new GULPOptimizer (this, filename));
-      break;
-    default:
-      error(tr("GAPC::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(QString::number((int)opttype)));
-      break;
-    }
   }
 
 }

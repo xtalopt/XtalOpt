@@ -89,17 +89,6 @@ namespace RandomDock {
     void startSearch();
     void generateNewStructure();
     void initializeAndAddScene(Scene *scene);
-    void setOptimizer(GlobalSearch::Optimizer *o) {
-      setOptimizer_opt(o);};
-    void setOptimizer(const QString &IDString, const QString &filename = "") {
-      setOptimizer_string(IDString, filename);};
-    void setOptimizer(OptTypes opttype, const QString &filename = "") {
-      setOptimizer_enum(opttype, filename);};
-
-   private:
-    void setOptimizer_string(const QString &s, const QString &filename = "");
-    void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
-
   };
 
 } // end namespace RandomDock

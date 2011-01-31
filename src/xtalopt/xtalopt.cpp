@@ -974,10 +974,6 @@ to obtain a newer version.");
 
     m_dialog->readSettings(filename);
 
-    // Set optimizer
-    setOptimizer(OptTypes(settings->value("xtalopt/edit/optType").toInt()),
-                 filename);
-
     // Create SSHConnection
     if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
       QString pw = "";
@@ -1285,43 +1281,6 @@ to obtain a newer version.");
       }
     }
     emit updateAllInfo();
-  }
-
-  void XtalOpt::setOptimizer_string(const QString &IDString, const QString &filename)
-  {
-    if (IDString.toLower() == "vasp")
-      setOptimizer(new VASPOptimizer (this, filename));
-    else if (IDString.toLower() == "gulp")
-      setOptimizer(new GULPOptimizer (this, filename));
-    else if (IDString.toLower() == "pwscf")
-      setOptimizer(new PWscfOptimizer (this, filename));
-    else if (IDString.toLower() == "castep")
-      setOptimizer(new CASTEPOptimizer (this, filename));
-    else
-      error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(IDString));
-  }
-
-  void XtalOpt::setOptimizer_enum(OptTypes opttype, const QString &filename)
-  {
-    switch (opttype) {
-    case OT_VASP:
-      setOptimizer(new VASPOptimizer (this, filename));
-      break;
-    case OT_GULP:
-      setOptimizer(new GULPOptimizer (this, filename));
-      break;
-    case OT_PWscf:
-      setOptimizer(new PWscfOptimizer (this, filename));
-      break;
-    case OT_CASTEP:
-      setOptimizer(new CASTEPOptimizer (this, filename));
-      break;
-    default:
-      error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(QString::number((int)opttype)));
-      break;
-    }
   }
 
 } // end namespace XtalOpt

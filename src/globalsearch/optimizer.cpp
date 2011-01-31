@@ -14,30 +14,35 @@
  ***********************************************************************/
 
 #include <globalsearch/optimizer.h>
+
 #include <globalsearch/macros.h>
 #include <globalsearch/optbase.h>
-#include <globalsearch/queuemanager.h>
-#include <globalsearch/sshmanager.h>
-
-#include <QtCore/QDir>
-#include <QtCore/QDebug>
-#include <QtCore/QString>
-#include <QtCore/QSettings>
+#include <globalsearch/optimizerdialog.h>
+#include <globalsearch/queueinterface.h>
+#include <globalsearch/structure.h>
 
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 
+#include <Eigen/Core>
+
+#include <QtCore/QDebug>
+#include <QtCore/QDir>
+#include <QtCore/QReadLocker>
+#include <QtCore/QSettings>
+#include <QtCore/QString>
+
 #define KCAL_PER_MOL_TO_EV 0.043364122
 
-using namespace Avogadro;
 using namespace OpenBabel;
-using namespace Eigen;
 
 namespace GlobalSearch {
 
   Optimizer::Optimizer(OptBase *parent, const QString &filename) :
     QObject(parent),
-    m_opt(parent)
+    m_opt(parent),
+    m_hasDialog(true),
+    m_dialog(0)
   {
     // Set allowed data structure keys, if any, e.g.
     // m_data.insert("Identifier name",QVariant())
@@ -55,8 +60,46 @@ namespace GlobalSearch {
     // m_outputFilenames.append("output filename");
     // m_outputFilenames.append("input  filename");
 
+    // Set up commands
+    // Three common scenarios:
+    //
+    // VASP-esque: $ vasp
+    //  Runs in working directory reading from predefined input
+    //  filenames (ie. POSCAR). Set m_localRunCommand="vasp", and
+    //  m_stdinFilename=m_stdoutFilename=m_stderrFilename="";
+    //
+    // GULP-esque: $ gulp < job.gin 1>job.got 2>job.err
+    //
+    //  Runs in working directory using redirection to specify
+    //  input/output. Set m_localRunCommand="gulp",
+    //  m_stdinFilename="job.gin", m_stdoutFilename="job.got",
+    //  m_stderrFilename="job.err".
+    //
+    // MOPAC-esque: $ mopac job
+    //
+    //  Runs in working directory, specifying either an input filename
+    //  or a base name. In both cases, put the entire command line
+    //  into m_localRunCommand, ="mopac job",
+    //  m_stdinFilename=m_stdoutFilename=m_stderrFilename=""
+    //
+    // m_localRunCommand = how to run this optimizer from the commandline
+    // m_stdinFilename   = name of standard input file
+    // m_stdoutFilename  = name of standard output file
+    // m_stderrFilename  = name of standard error file
+    //
+    // Stdin/out/err is not used by default:
+    m_stdinFilename = "";
+    m_stdoutFilename = "";
+    m_stderrFilename = "";
+
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "Generic";
+
+    if (m_opt->queueInterface()) {
+      updateQueueInterface();
+    }
+    connect(m_opt, SIGNAL(queueInterfaceChanged(QueueInterface*)),
+            this, SLOT(updateQueueInterface()));
 
     readSettings(filename);
   }
@@ -92,6 +135,27 @@ namespace GlobalSearch {
                                          filenames.at(i) + "_list",
                                          "").toStringList());
     }
+
+    // QueueInterface templates
+    settings->beginGroup(m_opt->getIDString().toLower() +
+                         "/optimizer/" +
+                         getIDString() + "/QI/" +
+                         m_opt->queueInterface()->getIDString());
+    filenames = m_QITemplates.keys();
+    for (QStringList::const_iterator
+           it = filenames.constBegin(),
+           it_end = filenames.constEnd();
+         it != it_end;
+         ++it) {
+      m_QITemplates.insert(*it,
+                           settings->value((*it) + "_list",
+                                           "").toStringList());
+    }
+    settings->endGroup();
+
+    fixTemplateLengths();
+
+    DESTROY_SETTINGS(filename);
   }
 
   void Optimizer::readUserValuesFromSettings(const QString &filename)
@@ -123,10 +187,9 @@ namespace GlobalSearch {
     }
   }
 
-
   void Optimizer::writeSettings(const QString &filename)
   {
-    // Don't consider default setting,, only schemes and states.
+    // Don't consider default settings, only schemes and states.
     if (filename.isEmpty()) {
       return;
     }
@@ -136,6 +199,9 @@ namespace GlobalSearch {
     writeTemplatesToSettings(filename);
     writeUserValuesToSettings(filename);
     writeDataToSettings(filename);
+    if (m_opt->queueInterface()) {
+      m_opt->queueInterface()->writeSettings(filename);
+    }
 
     DESTROY_SETTINGS(filename);
   }
@@ -151,6 +217,24 @@ namespace GlobalSearch {
                          filenames.at(i) + "_list",
                          m_templates.value(filenames.at(i)));
     }
+
+    // QueueInterface templates
+    settings->beginGroup(m_opt->getIDString().toLower() +
+                         "/optimizer/" +
+                         getIDString() + "/QI/" +
+                         m_opt->queueInterface()->getIDString());
+    filenames = m_QITemplates.keys();
+    for (QStringList::const_iterator
+           it = filenames.constBegin(),
+           it_end = filenames.constEnd();
+         it != it_end;
+         ++it) {
+      settings->setValue((*it) + "_list",
+                         m_QITemplates.value(*it));
+    }
+    settings->endGroup();
+
+    DESTROY_SETTINGS(filename);
   }
 
   void Optimizer::writeUserValuesToSettings(const QString &filename)
@@ -193,537 +277,133 @@ namespace GlobalSearch {
     }
   }
 
-  bool Optimizer::writeInputFiles(Structure *structure) {
+  QHash<QString, QString>
+  Optimizer::getInterpretedTemplates(Structure *structure)
+  {
     // Stop any running jobs associated with this structure
-    deleteJob(structure);
+    m_opt->queueInterface()->stopJob(structure);
 
     // Lock
     QReadLocker locker (structure->lock());
 
     // Check optstep info
     int optStep = structure->getCurrentOptStep();
-    if (optStep < 1 || optStep > getNumberOfOptSteps()) {
-      m_opt->error(tr("Error: Requested OptStep (%1) out of range (1-%2)")
-                   .arg(optStep)
-                   .arg(getNumberOfOptSteps()));
-      return false;
-    }
 
-    // Create local files
-    QDir dir (structure->fileName());
-    if (!dir.exists()) {
-      if (!dir.mkpath(structure->fileName())) {
-        m_opt->warning(tr("Cannot write input files to specified path: %1 (path creation failure)", "1 is a file path.").arg(structure->fileName()));
-        return false;
-      }
-    }
-    if (!createRemoteDirectory(structure)) return false;
-    if (!cleanRemoteDirectory(structure)) return false;
-    if (!writeTemplates(structure)) return false;
-    if (!copyLocalTemplateFilesToRemote(structure)) return false;
+    Q_ASSERT_X(optStep <= m_opt->optimizer()->getNumberOfOptSteps(),
+               Q_FUNC_INFO, QString("OptStep of Structure %1 exceeds "
+                                    "number of known OptSteps (%2, limit %3).")
+               .arg(structure->getIDString()).arg(optStep)
+               .arg(m_opt->optimizer()->getNumberOfOptSteps()).toStdString().c_str());
 
+    // Unlock for optimizer calls
     locker.unlock();
-    return true;
+
+    // Build hash
+    QHash<QString, QString> hash;
+    QStringList filenames = m_templates.keys();
+    QString contents;
+    for (QStringList::const_iterator
+           it = filenames.constBegin(),
+           it_end = filenames.constEnd();
+         it != it_end;
+         it++) {
+      hash.insert((*it), m_opt->interpretTemplate(m_templates.value(*it)
+                                                  .at(optStep - 1),
+                                                  structure));
+    }
+    // QueueInterface templates
+    filenames = m_QITemplates.keys();
+    for (QStringList::const_iterator
+           it = filenames.constBegin(),
+           it_end = filenames.constEnd();
+         it != it_end;
+         it++) {
+      hash.insert((*it), m_opt->interpretTemplate(m_QITemplates.value(*it)
+                                                  .at(optStep - 1),
+                                                  structure));
+    }
+
+    return hash;
   }
 
-  bool Optimizer::createRemoteDirectory(Structure *structure)
+  QDialog* Optimizer::dialog()
   {
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+    if (!m_dialog) {
+      m_dialog = new OptimizerConfigDialog (m_opt->dialog(),
+                                            m_opt,
+                                            this);
+    }
+    OptimizerConfigDialog *d =
+      qobject_cast<OptimizerConfigDialog*>(m_dialog);
+    d->updateGUI();
 
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-    QString command = "mkdir -p \"" + structure->getRempath() + "\"";
-    qDebug() << "Optimizer::createRemoteDirectory: Calling " << command;
-    QString stdout_str, stderr_str; int ec;
-    if (!ssh->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
-      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-    m_opt->ssh()->unlockConnection(ssh);
-    return true;
+    return d;
   }
 
-  bool Optimizer::cleanRemoteDirectory(Structure *structure)
+  void Optimizer::updateQueueInterface()
   {
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+    m_QITemplates.clear();
 
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
+    QStringList init;
+    for (unsigned int i = 0; i < getNumberOfOptSteps(); ++i) {
+      init << "";
     }
-    // 2nd arg keeps the directory, only removes directory contents.
-    if (!ssh->removeRemoteDirectory(structure->getRempath(), true)) {
-      m_opt->warning(tr("Error clearing remote directory %1")
-                     .arg(structure->getRempath()));
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
+
+    QStringList filenames = m_opt->queueInterface()->getTemplateFileNames();
+    for (QStringList::const_iterator
+           it = filenames.constBegin(),
+           it_end = filenames.constEnd();
+         it != it_end;
+         ++it) {
+      m_QITemplates.insert(*it, init);
     }
-    m_opt->ssh()->unlockConnection(ssh);
-    return true;
   }
 
-  bool Optimizer::writeTemplates(Structure *structure) {
-    // Create file objects
-    QList<QFile*> files;
-    QStringList filenames = getTemplateNames();
-    for (int i = 0; i < filenames.size(); i++) {
-      files.append(new QFile (structure->fileName() + "/" + filenames.at(i)));
-    }
+  bool Optimizer::checkIfOutputFileExists(Structure *s, bool *exists)
+  {
+    return m_opt->queueInterface()->checkIfFileExists(s,
+                                                      m_completionFilename,
+                                                      exists);
+  }
 
-    // Check that the files can be written to
-    for (int i = 0; i < files.size(); i++) {
-      if (!files.at(i)->open( QIODevice::WriteOnly | QIODevice::Text ) ) {
-        m_opt->error(tr("Cannot write input file %1 (file writing failure)", "1 is a file path").arg(files.at(i)->fileName()));
-        qDeleteAll(files);
+  bool Optimizer::checkForSuccessfulOutput(Structure *s, bool *success)
+  {
+    int ec;
+    *success = false;
+    for (QStringList::const_iterator
+           it = m_completionStrings.constBegin(),
+           it_end = m_completionStrings.constEnd();
+         it != it_end;
+         ++it) {
+      if (!m_opt->queueInterface()->grepFile(s,
+                                             (*it),
+                                             m_completionFilename,
+                                             0,
+                                             &ec)) {
         return false;
       }
+      if (ec == 0) {
+        *success = true;
+        return true;
+      }
     }
-
-    // Set up text streams
-    QList<QTextStream*> streams;
-    for (int i = 0; i < files.size(); i++) {
-      streams.append(new QTextStream (files.at(i)));
-    }
-
-    // Write files
-    int optStepInd = structure->getCurrentOptStep() - 1;
-    for (int i = 0; i < streams.size(); i++) {
-      *(streams.at(i)) << m_opt->interpretTemplate( m_templates.value(filenames.at(i)).at(optStepInd),
-                                                    structure);
-    }
-
-    // Close files
-    for (int i = 0; i < files.size(); i++) {
-      files.at(i)->close();
-    }
-
-    // Clean up
-    qDeleteAll(files);
-    qDeleteAll(streams);
     return true;
   }
 
-  bool Optimizer::copyLocalTemplateFilesToRemote(Structure *structure)
-  {
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
-
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-    QStringList templates = getTemplateNames();
-    QStringList::const_iterator it;
-    for (it = templates.begin(); it != templates.end(); it++) {
-      if (!ssh->copyFileToServer(structure->fileName() + "/" + (*it),
-                                          structure->getRempath() + "/" + (*it))) {
-        m_opt->warning(tr("Error copying \"%1\" to remote server (structure %2)")
-                       .arg(*it)
-                       .arg(structure->getIDString()));
-        m_opt->ssh()->unlockConnection(ssh);
-        return false;
-      }
-    }
-    m_opt->ssh()->unlockConnection(ssh);
-    return true;
-  }
-
-  bool Optimizer::startOptimization(Structure *structure) {
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
-
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-    QString command = "cd \"" + structure->getRempath() + "\" && " +
-      m_opt->qsub + " job.pbs";
-    qDebug() << "Optimizer::startOptimization: Calling " << command;
-    QString stdout_str, stderr_str; int ec;
-    if (!ssh->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
-      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-
-    // Assuming stdout_str value is <jobID>.trailing.garbage.hostname.edu or similar
-    uint jobID = stdout_str.split(".")[0].toUInt();
-
-    // lock for writing and update structure
-    QWriteLocker wlocker (structure->lock());
-    structure->setJobID(jobID);
-    structure->startOptTimer();
-    m_opt->ssh()->unlockConnection(ssh);
-    return true;
-  }
-
-  bool Optimizer::checkIfOutputFileExists(const QString & filename)
-  {
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
-
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-    QString command;
-
-    command = "[ -e \"" + filename + "\" ]";
-    qDebug() << "Optimizer::checkIfOutputFileExists: Calling " << command;
-    QString stdout_str, stderr_str; int ec;
-    if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
-      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-
-    m_opt->ssh()->unlockConnection(ssh);
-    return (!ec);
-  }
-
-  bool Optimizer::getOutputFile(const QString & filename,
-                                QStringList & data)
-  {
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
-
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-    QString tmp;
-    if (!ssh->readRemoteFile(filename, tmp)) {
-      m_opt->warning(tr("Error retrieving remote file %1.")
-                     .arg(filename));
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-
-    // Fill data list
-    data = tmp.split("\n", QString::KeepEmptyParts);
-    m_opt->ssh()->unlockConnection(ssh);
-    return true;
-  }
-
-  bool Optimizer::copyRemoteToLocalCache(Structure *structure)
-  {
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
-
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-    // lock structure
-    QReadLocker locker (structure->lock());
-    if (!ssh->copyDirectoryFromServer(structure->getRempath(),
-                                               structure->fileName())) {
-      m_opt->error("Cannot copy from remote directory for Structure "
-                   + structure->getIDString());
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-    m_opt->ssh()->unlockConnection(ssh);
-    return true;
-  }
-
-  Optimizer::JobState Optimizer::getStatus(Structure *structure)
-  {
-    // lock structure
-    QWriteLocker locker (structure->lock());
-    QStringList queueData (m_opt->queue()->getRemoteQueueData());
-    uint jobID = structure->getJobID();
-
-    // If the queueData cannot be fetched, queueData contains a single
-    // string, "CommError"
-    if (queueData.size() == 1 && queueData[0].compare("CommError") == 0) {
-      return Optimizer::CommunicationError;
-    }
-
-    // If jobID = 0 and structure is not in "Submitted" state, return an error.
-    if (!jobID && structure->getStatus() != Structure::Submitted) {
-      return Optimizer::Error;
-    }
-
-    // Determine status if structure is in the queue
-    QString status;
-    for (int i = 0; i < queueData.size(); i++) {
-      if (queueData.at(i).split(".")[0] == QString::number(jobID)) {
-        status = (queueData.at(i).split(QRegExp("\\s+")))[4];
-        continue;
-      }
-    }
-
-    // If structure is submitted, check if it is in the queue. If not,
-    // check if the completion file has been written.
-    //
-    // If the completion file exists, then the job finished before the
-    // queue checks could see it, and the function will continue on to
-    // the status checks below.
-    if (structure->getStatus() == Structure::Submitted) {
-      // Structure is submitted
-      if (jobID == 0 || status.isEmpty()) {
-        // Job is not in queue
-        if (checkIfOutputFileExists(structure->getRempath() +
-                                    "/" + m_completionFilename) ) {
-          // The output file exists -- the job completed. No further
-          // action needed.
-          qDebug() << "Structure " << structure->getIDString()
-                   << " ran before it was noticed in the queue.";
-        }
-        else {
-          // The output file does not exist -- the job is still
-          // pending.
-          return Optimizer::Pending;
-        }
-      }
-      else {
-        // The job is in the queue.
-        return Optimizer::Started;
-      }
-    }
-
-    if (status == "R") {
-      if (structure->getOptElapsed() == "0:00:00")
-        structure->startOptTimer();
-      return Optimizer::Running;
-    }
-    else if (status == "Q") {
-      return Optimizer::Queued;
-    }
-    // Even if the job has errored in the queue, leave it as "running"
-    // and wait for it to leave the queue then check the m_completion
-    // file. The optimization may have finished OK.
-    else if (status == "E") {
-      qWarning() << "Optimizer::getStatus: Structure " << structure->getIDString()
-                 << " has errored in the queue, but may have optimized successfully.\n"
-                 << "Marking job as 'Running' until it's gone from the queue...";
-      return Optimizer::Running;
-    }
-
-    else { // Entry is missing from queue! Were the output files written?
-      bool outputFileExists;
-      QString rempath = structure->getRempath();
-      QString fileName = structure->fileName();
-      locker.unlock();
-      outputFileExists = checkIfOutputFileExists(rempath
-                                                 + "/"
-                                                 + m_completionFilename);
-      locker.relock();
-
-      // Check for m_completionStrings in outputFileData, which indicates success.
-      qDebug() << "Optimizer::getStatus: Job  " << jobID << " not in queue. Does output exist? " << outputFileExists;
-      if (outputFileExists) {
-        SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
-        if (!ssh->reconnectIfNeeded()) {
-          m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                         .arg(ssh->getUser())
-                         .arg(ssh->getHost())
-                         .arg(ssh->getPort())
-                         );
-          m_opt->ssh()->unlockConnection(ssh);
-          return Optimizer::CommunicationError;
-        }
-        for (int i = 0; i < m_completionStrings.size(); i++) {
-          QString stdout_str, stderr_str; int ec;
-          // Valid exit codes for grep: (0) matches found, execution successful
-          //                            (1) no matches found, execution successful
-          //                            (2) execution unsuccessful
-          QString command = "grep \'" + m_completionStrings.at(i) + "\' \""
-            + rempath + "/" + m_completionFilename + "\"";
-          qDebug() << "Optimizer::getStatus: Calling " << command;
-          if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
-            m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
-            m_opt->ssh()->unlockConnection(ssh);
-            return Optimizer::CommunicationError;
-          }
-          if (ec == 0) {
-            structure->resetFailCount();
-            m_opt->ssh()->unlockConnection(ssh);
-            return Optimizer::Success;
-          }
-        }
-        // Otherwise, it's an error!
-        m_opt->ssh()->unlockConnection(ssh);
-        return Optimizer::Error;
-      }
-    }
-    // Not in queue and no output? Interesting...
-    return Optimizer::Unknown;
-  }
-
-  bool Optimizer::deleteJob(Structure *structure) {
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
-
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-    // lock structure
-    QWriteLocker locker (structure->lock());
-    QString command;
-
-    // jobid has not been set, cannot delete!
-    if (structure->getJobID() == 0) {
-      m_opt->ssh()->unlockConnection(ssh);
-      return true;
-    }
-
-    command = m_opt->qdel + " " + QString::number(structure->getJobID());
-
-    // Execute
-    qDebug() << "Optimizer::deleteJob: Calling " << command;
-    QString stdout_str, stderr_str; int ec;
-    if (!ssh->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
-      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
-      // Most likely job is already gone from queue. Set jobID to 0.
-      structure->setJobID(0);
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-
-    structure->setJobID(0);
-    structure->stopOptTimer();
-    m_opt->ssh()->unlockConnection(ssh);
-    return true;
-  }
-
-  bool Optimizer::getQueueList(QStringList & queueData, QMutex *mutex) {
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
-
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      mutex->lock();
-      queueData.clear();
-      queueData << "CommError";
-      mutex->unlock();
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-    QString command;
-    command = m_opt->qstat + " | grep " + m_opt->username;
-
-    // Execute
-    qDebug() << "Optimizer::getQueueList: Calling " << command;
-    QString stdout_str, stderr_str; int ec;
-    // Valid exit codes for grep: (0) matches found, execution successful
-    //                            (1) no matches found, execution successful
-    //                            (2) execution unsuccessful
-    if (!ssh->execute(command, stdout_str, stderr_str, ec)
-        || (ec != 0 && ec != 1 )
-        ) {
-      m_opt->warning(tr("Error executing %1: (%2) %3")
-                     .arg(command)
-                     .arg(QString::number(ec))
-                     .arg(stderr_str));
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
-    }
-
-    QMutexLocker queueDataMutexLocker (mutex);
-    queueData = stdout_str.split("\n", QString::SkipEmptyParts);
-    m_opt->ssh()->unlockConnection(ssh);
-    return true;
-  }
-
-  int Optimizer::checkIfJobNameExists(Structure *structure,
-                                      const QStringList & queueData,
-                                      bool & exists) {
-    structure->lock()->lockForRead();
-    QFile jobScript (structure->fileName() + "/job.pbs");
-    structure->lock()->unlock();
-    QString line, jobName;
-    QStringList strl;
-    exists = false;
-
-    if (!jobScript.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      m_opt->warning(tr("Optimizer::checkIfJobNameExists: Error opening file: %1")
-                 .arg(jobScript.fileName()));
-      return 0;
-    }
-    while (!jobScript.atEnd()) {
-      line = jobScript.readLine();
-      if (line.contains("#PBS -N")) {
-        jobName = line.split(QRegExp("\\s+"))[2];
-        break;
-      }
-    }
-
-    qDebug() << "Optimizer::checkIfJobNameExists: Job name is "
-             << jobName << " according to "
-             << jobScript.fileName() << "...";
-
-    for (int i = 0; i < queueData.size(); i++) {
-      if (queueData.at(i).contains(jobName)) {
-        // Set the bool to true, and return job ID.
-        exists = true;
-        int jobID = queueData.at(i).split(".").at(0).toInt();
-        qDebug() << "Optimizer::checkIfJobNameExists: Found it! ID = " << jobID;
-        return jobID;
-      }
-    }
-
-    return 0;
-  }
-
-  // Convenience functions
   bool Optimizer::update(Structure *structure)
   {
     // lock structure
     QWriteLocker locker (structure->lock());
 
-    // Copy remote files over
+    structure->stopOptTimer();
+
+    // Copy remote files over, other prep work:
     locker.unlock();
-    bool ok = copyRemoteToLocalCache(structure);
+    bool ok = m_opt->queueInterface()->prepareForStructureUpdate(structure);
     locker.relock();
     if (!ok) {
-      m_opt->warning(tr("Optimizer::update: Error copying remote files to local dir\n\tremote: %1 on %2@%3\n\tlocal: %4")
-                     .arg(structure->getRempath())
-                     .arg(m_opt->username)
-                     .arg(m_opt->host)
-                     .arg(structure->fileName()));
+      m_opt->warning(tr("Optimizer::update: Error while preparing to update structure %1")
+                     .arg(structure->getIDString()));
       return false;
     }
 
@@ -786,7 +466,7 @@ namespace GlobalSearch {
     OBFormat* inFormat = conv.FormatFromExt(QString(QFile::encodeName(filename.trimmed())).toAscii());
 
     if ( !inFormat || !conv.SetInFormat( inFormat ) ) {
-      m_opt->warning(tr("Optimizer::read: Error setting format for file %1")
+      m_opt->warning(tr("Optimizer::read: Error setting openbabel format for file %1")
                  .arg(filename));
       m_opt->sOBMutex->unlock();
       return false;
@@ -818,7 +498,7 @@ namespace GlobalSearch {
 
     // Atomic data
     FOR_ATOMS_OF_MOL(atm, obmol) {
-      coords.append(Vector3d(atm->x(), atm->y(), atm->z()));
+      coords.append(Eigen::Vector3d(atm->x(), atm->y(), atm->z()));
       atomicNums.append(atm->GetAtomicNum());
     }
 
@@ -859,116 +539,71 @@ namespace GlobalSearch {
       return m_templates.values().first().size();
   }
 
-  bool Optimizer::setTemplate(const QString &filename, const QString &templateData, int optStep)
+  bool Optimizer::setTemplate(const QString &filename,
+                              const QString &templateData,
+                              int optStepIndex)
   {
-    // check if template name is valid
-    if (!m_templates.contains(filename)) {
-      m_opt->warning(tr("Optimizer::setTemplate: unknown filename '%1'")
-                     .arg(filename));
-      return false;
-    }
+    Q_ASSERT(m_templates.contains(filename) ||
+             m_QITemplates.contains(filename));
+    Q_ASSERT(optStepIndex >= 0 && optStepIndex < getNumberOfOptSteps());
 
-    // Check if optStep is reasonable
-    if (optStep < 0 || optStep > getNumberOfOptSteps() - 1) {
-      m_opt->warning(tr("Optimizer::setTemplate: bad optStep '%1'")
-                     .arg(optStep));
-      return "Error in Optimizer::setTemplate\n";
-    }
-
-    m_templates[filename][optStep] = templateData;
+    resolveTemplateHash(filename)[filename][optStepIndex] = templateData;
     return true;
   }
 
-  bool Optimizer::setTemplate(const QString &filename, const QStringList &templateData)
+  bool Optimizer::setTemplate(const QString &filename,
+                              const QStringList &templateData)
   {
-    // check if template name is valid
-    if (!m_templates.contains(filename)) {
-      m_opt->warning(tr("Optimizer::setTemplate: unknown filename '%1'")
-                     .arg(filename));
-      return false;
-    }
+    Q_ASSERT(m_templates.contains(filename) ||
+             m_QITemplates.contains(filename));
 
-    m_templates.insert(filename, templateData);
+    resolveTemplateHash(filename).insert(filename, templateData);
     return true;
   }
 
 
-  QString Optimizer::getTemplate(const QString &filename, int optStep)
+  QString Optimizer::getTemplate(const QString &filename,
+                                 int optStepIndex)
   {
-    // check if template name is valid
-    if (!m_templates.contains(filename)) {
-      m_opt->warning(tr("Optimizer::getTemplate: unknown filename '%1'")
-                     .arg(filename));
-      return "Error in Optimizer::getTemplate\n";
-    }
+    Q_ASSERT(m_templates.contains(filename) ||
+             m_QITemplates.contains(filename));
+    Q_ASSERT(optStepIndex >= 0 && optStepIndex < getNumberOfOptSteps());
 
-    // Check if optStep is reasonable
-    if (optStep < 0 || optStep > getNumberOfOptSteps() - 1) {
-      m_opt->warning(tr("Optimizer::getTemplate: bad optStep '%1'")
-                     .arg(optStep));
-      return "Error in Optimizer::getTemplate\n";
-    }
-
-    // Return value
-    return m_templates.value(filename).at(optStep);
+    return resolveTemplateHash(filename)[filename][optStepIndex];
   }
 
   QStringList Optimizer::getTemplate(const QString &filename)
   {
-    // check if template name is valid
-    if (!m_templates.contains(filename)) {
-      m_opt->warning(tr("Optimizer::getTemplate: unknown filename '%1'")
-                     .arg(filename));
-      return QStringList("Error in Optimizer::getTemplate\n");
-    }
+    Q_ASSERT(m_templates.contains(filename) ||
+             m_QITemplates.contains(filename));
 
-    // Return value
-    return m_templates.value(filename);
+    return resolveTemplateHash(filename)[filename];
   }
 
-  bool Optimizer::appendTemplate(const QString &filename, const QString &templateData)
+  bool Optimizer::appendTemplate(const QString &filename,
+                                 const QString &templateData)
   {
-    // check if template name is valid
-    if (!m_templates.contains(filename)) {
-      m_opt->warning(tr("Optimizer::appendTemplate: unknown filename '%1'")
-                     .arg(filename));
-      return false;
-    }
+    Q_ASSERT(m_templates.contains(filename) ||
+             m_QITemplates.contains(filename));
 
-    m_templates[filename].append(templateData);
-	return true;
+    resolveTemplateHash(filename)[filename].append(templateData);
+    return true;
   }
 
-  bool Optimizer::removeTemplate(const QString &filename, int optStep)
+  bool Optimizer::removeTemplate(const QString &filename, int optStepIndex)
   {
-    // check if template name is valid
-    if (!m_templates.contains(filename)) {
-      m_opt->warning(tr("Optimizer::removeTemplate: unknown filename '%1'")
-                     .arg(filename));
-      return false;
-    }
+    Q_ASSERT(m_templates.contains(filename) ||
+             m_QITemplates.contains(filename));
+    Q_ASSERT(optStepIndex >= 0 &&
+             optStepIndex < getNumberOfOptSteps());
 
-    // Check if optStep is reasonable
-    if (optStep < 0 || optStep > getNumberOfOptSteps() - 1) {
-      m_opt->warning(tr("Optimizer::removeTemplate: bad optStep '%1'")
-                     .arg(optStep));
-      return false;
-    }
-
-    m_templates[filename].removeAt(optStep);
-	return true;
+    resolveTemplateHash(filename)[filename].removeAt(optStepIndex);
+    return true;
   }
-
-
 
   bool Optimizer::setData(const QString &identifier, const QVariant &data)
   {
-    // check if template name is valid
-    if (!m_data.contains(identifier)) {
-      m_opt->warning(tr("Optimizer::setTemplate: unknown data identifier '%1'")
-                     .arg(identifier));
-      return false;
-    }
+    Q_ASSERT(m_data.contains(identifier));
 
     m_data.insert(identifier, data);
     return true;
@@ -976,16 +611,83 @@ namespace GlobalSearch {
 
   QVariant Optimizer::getData(const QString &identifier)
   {
-    // check if template name is valid
-    if (!m_data.contains(identifier)) {
-      m_opt->warning(tr("Optimizer::setTemplate: unknown data identifier '%1'")
-                     .arg(identifier));
-      return false;
-    }
+    Q_ASSERT(m_data.contains(identifier));
 
-    // Return value
     return m_data.value(identifier);
   }
 
-} // end namespace GlobalSearch
+  QHash<QString, QStringList> &
+  Optimizer::resolveTemplateHash(const QString &filename)
+  {
+    if (m_templates.contains(filename)) {
+      return m_templates;
+    }
+    else if (m_QITemplates.contains(filename)) {
+      return m_QITemplates;
+    }
+    else {
+      qFatal("In %s:\n\t%s '%s'\n",
+             Q_FUNC_INFO,
+             "No current template contains file",
+             filename.toStdString().c_str());
+    }
+  }
 
+  const QHash<QString, QStringList> &
+  Optimizer::resolveTemplateHash(const QString &filename) const
+  {
+    if (m_templates.contains(filename)) {
+      return m_templates;
+    }
+    else if (m_QITemplates.contains(filename)) {
+      return m_QITemplates;
+    }
+    else {
+      qFatal("In %s:\n\t%s '%s'\n",
+             Q_FUNC_INFO,
+             "No current template contains file",
+             filename.toStdString().c_str());
+    }
+  }
+
+  void Optimizer::fixTemplateLengths()
+  {
+    int steps = getNumberOfOptSteps();
+    if (steps < 1) {
+      steps = 1;
+    }
+
+    // Optimizer:
+    QStringList filenames = m_templates.keys();
+    for (QStringList::const_iterator
+           it = filenames.constBegin(),
+           it_end = filenames.constEnd();
+         it != it_end;
+         ++it) {
+      QStringList &current = m_templates[*it];
+      while (current.size() > steps) {
+        current.removeLast();
+      }
+      while (current.size() < steps) {
+        current << "";
+      }
+    }
+
+    // Optimizer:
+    filenames = m_QITemplates.keys();
+    for (QStringList::const_iterator
+           it = filenames.constBegin(),
+           it_end = filenames.constEnd();
+         it != it_end;
+         ++it) {
+      QStringList &current = m_QITemplates[*it];
+      while (current.size() > steps) {
+        current.removeLast();
+      }
+      while (current.size() < steps) {
+        current << "";
+      }
+    }
+  }
+
+} // end namespace GlobalSearch

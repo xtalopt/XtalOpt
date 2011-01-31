@@ -209,16 +209,6 @@ m_queue->unlockForNaming(newStructure);
     void appendToJobStartTracker(Structure *s);
 
     /**
-     * Return the cached queue data from a remote PBS server.
-     *
-     * @return A QStringList containing the output of OptBase::qstat
-     * on the remote server.
-     * @sa updateQueue
-     */
-    QStringList getRemoteQueueData() {QMutexLocker l (&m_queueDataMutex);
-      return m_queueData;};
-
-    /**
      * @return All Structures in m_runningTracker
      */
     QList<Structure*> getAllRunningStructures();
@@ -267,7 +257,7 @@ m_queue->unlockForNaming(newStructure);
     void moveToQMThread();
     void setupConnections();
 
-   protected:
+  protected:
     OptBase *m_opt;
     QThread *m_thread;
     Tracker *m_tracker;
@@ -303,11 +293,9 @@ m_queue->unlockForNaming(newStructure);
      * submission. This should not be called directly, instead call
      * prepareStructureForSubmission(Structure*).
      *
-     * @param structure The structure to submit
-     *
      * @sa prepareStructureForSubmission
      */
-    void startJob(Structure *structure);
+    void startJob();
 
     /**
      * Kills the optimization process for the indicated Structure.
@@ -365,7 +353,6 @@ m_queue->unlockForNaming(newStructure);
     void handleOptimizedStructure_();
     void handleStepOptimizedStructure_();
     void handleInProcessStructure_();
-    void handleErrorStructure_();
     void handleSubmittedStructure_();
     void handleKilledStructure_();
 
@@ -373,7 +360,6 @@ m_queue->unlockForNaming(newStructure);
     Tracker m_newlyOptimizedTracker;
     Tracker m_stepOptimizedTracker;
     Tracker m_inProcessTracker;
-    Tracker m_errorTracker;
     Tracker m_submittedTracker;
     Tracker m_newlyKilledTracker;
 
@@ -387,13 +373,8 @@ m_queue->unlockForNaming(newStructure);
 
     int m_requestedStructures;
 
-    QStringList m_queueData;
-    QMutex m_queueDataMutex;
-
     QMutex m_checkRunningMutex;
     QMutex m_checkPopulationMutex;
-
-
  };
 
 } // end namespace GlobalSearch

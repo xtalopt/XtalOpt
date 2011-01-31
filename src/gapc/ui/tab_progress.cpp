@@ -22,6 +22,7 @@
 
 #include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
+#include <globalsearch/queueinterface.h>
 #include <globalsearch/queuemanager.h>
 
 #include <QMenu>
@@ -286,10 +287,10 @@ namespace GAPC {
     switch (pc->getStatus()) {
     case ProtectedCluster::InProcess: {
       pcLocker.unlock();
-      Optimizer::JobState state = m_opt->optimizer()->getStatus(pc);
+      QueueInterface::QueueStatus state = m_opt->queueInterface()->getStatus(pc);
       pcLocker.relock();
       switch (state) {
-      case Optimizer::Running:
+      case QueueInterface::Running:
         ui.table_list->item(i, Status)->setText(tr("Running (Opt Step %1 of %2, %3 failures)")
                                                 .arg(QString::number(pc->getCurrentOptStep()))
                                                 .arg(QString::number(totalOptSteps))
@@ -297,7 +298,7 @@ namespace GAPC {
                                                 );
         brush.setColor(Qt::green);
         break;
-      case Optimizer::Queued:
+      case QueueInterface::Queued:
         ui.table_list->item(i, Status)->setText(tr("Queued (Opt Step %1 of %2, %3 failures)")
                                                 .arg(QString::number(pc->getCurrentOptStep()))
                                                 .arg(QString::number(totalOptSteps))
@@ -305,23 +306,23 @@ namespace GAPC {
                                                 );
         brush.setColor(Qt::cyan);
         break;
-      case Optimizer::Success:
+      case QueueInterface::Success:
         ui.table_list->item(i, Status)->setText("Starting update...");
         break;
-      case Optimizer::Unknown:
+      case QueueInterface::Unknown:
         ui.table_list->item(i, Status)->setText("Unknown");
         break;
-      case Optimizer::Error:
+      case QueueInterface::Error:
         ui.table_list->item(i, Status)->setText("Error: Restarting job...");
         brush.setColor(Qt::darkRed);
         break;
-      case Optimizer::CommunicationError:
+      case QueueInterface::CommunicationError:
         ui.table_list->item(i, Status)->setText("Comm. Error");
         brush.setColor(Qt::darkRed);
         break;
       // Shouldn't happen; started and pending only occur when pc is "Submitted"
-      case Optimizer::Started:
-      case Optimizer::Pending:
+      case QueueInterface::Started:
+      case QueueInterface::Pending:
       default:
         break;
       }
@@ -527,7 +528,7 @@ namespace GAPC {
     if ( m_context_pc->getStatus() == ProtectedCluster::InProcess ||
          m_context_pc->getStatus() == ProtectedCluster::Submitted ) {
       locker.unlock();
-      m_opt->optimizer()->deleteJob(m_context_pc);
+      m_opt->queueInterface()->stopJob(m_context_pc);
       locker.relock();
     }
 
@@ -552,7 +553,7 @@ namespace GAPC {
     // End job if currently running
     if ( m_context_pc->getStatus() != ProtectedCluster::Optimized ) {
       locker.unlock();
-      m_opt->optimizer()->deleteJob(m_context_pc);
+      m_opt->queueInterface()->stopJob(m_context_pc);
       locker.relock();
       m_context_pc->setStatus(ProtectedCluster::Killed);
     }
@@ -619,7 +620,7 @@ namespace GAPC {
 
     // End job if currently running
     if (m_context_pc->getJobID()) {
-      m_opt->optimizer()->deleteJob(m_context_pc);
+      m_opt->queueInterface()->stopJob(m_context_pc);
     }
 
     m_opt->replaceWithRandom(m_context_pc, "manual");

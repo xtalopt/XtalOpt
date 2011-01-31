@@ -50,6 +50,12 @@ namespace RandomDock {
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "MOPAC";
 
+    // Local execution setup:
+    m_localRunCommand = "mopac job";
+    m_stdinFilename = "";
+    m_stdoutFilename = "";
+    m_stderrFilename = "";
+
     readSettings(filename);
   }
 

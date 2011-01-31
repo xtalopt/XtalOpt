@@ -48,41 +48,13 @@ namespace XtalOpt {
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "GULP";
 
+    // Local execution setup:
+    m_localRunCommand = "gulp";
+    m_stdinFilename = "xtal.gin";
+    m_stdoutFilename = "xtal.got";
+    m_stderrFilename = "xtal.ger";
+
     readSettings(filename);
-  }
-
-  bool GULPOptimizer::writeInputFiles(Structure *structure) {
-    // Stop any running jobs associated with this xtal
-    deleteJob(structure);
-
-    // Lock
-    QReadLocker locker (structure->lock());
-
-    // Check optstep info
-    int optStep = structure->getCurrentOptStep();
-    if (optStep < 1 || optStep > getNumberOfOptSteps()) {
-      m_opt->error(tr("Error: Requested OptStep (%1) out of range (1-%2)")
-                   .arg(optStep)
-                   .arg(getNumberOfOptSteps()));
-      return false;
-    }
-
-    // Create local files
-    QDir dir (structure->fileName());
-    if (!dir.exists()) {
-      if (!dir.mkpath(structure->fileName())) {
-        m_opt->warning(tr("Cannot write input files to specified path: %1 (path creation failure)", "1 is a file path.").arg(structure->fileName()));
-        return false;
-      }
-    }
-    // Write all explicit templates
-    if (!writeTemplates(structure)) return false;
-
-    // No copying to server -- GULP is local only for now.
-
-    // Update info
-    locker.unlock();
-    return true;
   }
 
   bool GULPOptimizer::startOptimization(Structure *structure) {
@@ -114,7 +86,6 @@ namespace XtalOpt {
 
     if (exitStatus != 0) {
       m_opt->warning(tr("XtalOptGULP::startOptimization: Error running command:\n\t%1").arg(command));
-      structure->setStatus(Xtal::Error);
       return false;
     }
 
@@ -122,7 +93,6 @@ namespace XtalOpt {
     QFile file (structure->fileName() + "/xtal.got");
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
       m_opt->warning(tr("XtalOptGULP::getStatus: Error opening file: %1").arg(file.fileName()));
-      structure->setStatus(Xtal::Error);
       return false;
     }
     QString line;
@@ -150,14 +120,15 @@ namespace XtalOpt {
     return false;
   }
 
-  Optimizer::JobState GULPOptimizer::getStatus(Structure *structure)
+  QueueInterface::QueueStatus
+  GULPOptimizer::getStatus(Structure *structure)
   {
     QReadLocker rlocker (structure->lock());
     if (structure->getStatus() == Xtal::InProcess) {
-      return Optimizer::Running;
+      return QueueInterface::Running;
     }
     else {
-      return Optimizer::Unknown;
+      return QueueInterface::Unknown;
     }
   }
 

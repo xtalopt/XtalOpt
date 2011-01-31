@@ -37,7 +37,6 @@ namespace XtalOpt {
     // Set allowed filenames, e.g.
     m_templates.insert("xtal.param",QStringList(""));
     m_templates.insert("xtal.cell",QStringList(""));
-    m_templates.insert("job.pbs",QStringList(""));
 
     // Setup for completion values
     m_completionFilename = "xtal.castep";
@@ -49,6 +48,12 @@ namespace XtalOpt {
 
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "CASTEP";
+
+    // Local execution setup:
+    m_localRunCommand = "castep xtal";
+    m_stdinFilename = "";
+    m_stdoutFilename = "";
+    m_stderrFilename = "";
 
     readSettings(filename);
   }
