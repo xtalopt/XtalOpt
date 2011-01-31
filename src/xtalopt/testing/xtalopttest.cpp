@@ -97,8 +97,8 @@ namespace XtalOpt {
     emit status();
     m_message = "Looping...";
     while (m_opt->tracker()->size() < m_numberStructures) {
-      m_opt->queue()->checkPopulation();
-      m_opt->queue()->checkRunning();
+      //m_opt->queue()->checkPopulation();
+      //m_opt->queue()->checkRunning();
       m_currentStructure = getCurrentStructure();
       outputStatus(m_message,
                    m_currentRun - m_startRun + 1,
@@ -115,8 +115,8 @@ namespace XtalOpt {
     }
     m_message = "Waiting to finish...";
     while (!isFinished()) {
-      m_opt->queue()->checkPopulation();
-      m_opt->queue()->checkRunning();
+      //m_opt->queue()->checkPopulation();
+      //m_opt->queue()->checkRunning();
       m_currentStructure = getCurrentStructure();
       outputStatus(m_message,
                    m_currentRun - m_startRun + 1,

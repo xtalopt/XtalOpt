@@ -70,10 +70,11 @@ namespace XtalOpt {
   XtalOpt::~XtalOpt()
   {
     // Stop queuemanager
-    if (m_queue->isRunning()) {
-      m_queue->disconnect();
-      m_queue->quit();
+    if (m_queueThread->isRunning()) {
+      m_queueThread->disconnect();
+      m_queueThread->quit();
     }
+
 
     // Wait for save to finish
     if (saveOnExit) {
@@ -84,9 +85,6 @@ namespace XtalOpt {
       };
       savePending = true;
     }
-
-    // Ensure that the QueueManager has terminated before continuing.
-    m_queue->wait();
   }
 
   void XtalOpt::startSearch() {

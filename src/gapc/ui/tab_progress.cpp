@@ -54,10 +54,6 @@ namespace GAPC {
     // dialog connections
     connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
             this, SLOT(highlightPC(GlobalSearch::Structure*)));
-    connect(this, SIGNAL(refresh()),
-            m_opt->queue(), SLOT(checkRunning()));
-    connect(this, SIGNAL(refresh()),
-            m_opt->queue(), SLOT(checkPopulation()));
     connect(m_opt, SIGNAL(updateAllInfo()),
             this, SLOT(updateAllInfo()));
 
@@ -158,10 +154,6 @@ namespace GAPC {
       return;
     }
 
-    QtConcurrent::run(m_opt->queue(),
-                      &GlobalSearch::QueueManager::checkPopulation);
-
-    emit refresh();
     m_update_mutex->unlock();
   }
 
@@ -270,9 +262,6 @@ namespace GAPC {
     QString time;
     uint totalOptSteps = m_opt->optimizer()->getNumberOfOptSteps();
     QBrush brush (Qt::white);
-
-    // Get queue data
-    m_opt->queue()->updateQueue();
 
     QReadLocker pcLocker (pc->lock());
 
@@ -617,8 +606,6 @@ namespace GAPC {
     newInfoUpdate(m_context_pc);
     locker.unlock();
     m_context_pc = 0;
-
-    emit refresh();
   }
 
   void TabProgress::randomizeStructureProgress()

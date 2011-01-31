@@ -538,6 +538,9 @@ for (ind = 0; ind < probs.size(); ind++)
     /// @sa tracker
     Tracker *m_tracker;
 
+    /// Thread to run the QueueManager
+    QThread *m_queueThread;
+
     /// Cached pointer to the QueueManager
     /// @sa queue
     QueueManager *m_queue;

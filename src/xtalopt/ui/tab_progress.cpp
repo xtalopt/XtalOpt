@@ -56,10 +56,6 @@ namespace XtalOpt {
     // dialog connections
     connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
             this, SLOT(highlightXtal(GlobalSearch::Structure*)));
-    connect(this, SIGNAL(refresh()),
-            m_opt->queue(), SLOT(checkRunning()));
-    connect(this, SIGNAL(refresh()),
-            m_opt->queue(), SLOT(checkPopulation()));
     connect(m_opt, SIGNAL(updateAllInfo()),
             this, SLOT(updateAllInfo()));
     connect(m_opt, SIGNAL(sessionStarted()),
@@ -155,8 +151,6 @@ namespace XtalOpt {
       qDebug() << "Killing extra TabProgress::updateProgressTable() call";
       return;
     }
-
-    emit refresh();
 
     QList<Structure*> running = m_opt->queue()->getAllRunningStructures();
 
@@ -682,8 +676,6 @@ namespace XtalOpt {
     newInfoUpdate(m_context_xtal);
     locker.unlock();
     m_context_xtal = 0;
-
-    emit refresh();
   }
 
   void TabProgress::randomizeStructureProgress()

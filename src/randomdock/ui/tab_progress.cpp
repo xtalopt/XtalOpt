@@ -59,10 +59,6 @@ namespace RandomDock {
     // dialog connections
     connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
             this, SLOT(highlightScene(GlobalSearch::Structure*)));
-    connect(this, SIGNAL(refresh()),
-            m_opt->queue(), SLOT(checkRunning()));
-    connect(this, SIGNAL(refresh()),
-            m_opt->queue(), SLOT(checkPopulation()));
     connect(m_opt, SIGNAL(updateAllInfo()),
             this, SLOT(updateAllInfo()));
     connect(m_opt, SIGNAL(sessionStarted()),
@@ -157,8 +153,6 @@ namespace RandomDock {
       qDebug() << "Killing extra TabProgress::updateProgressTable() call";
       return;
     }
-
-    emit refresh();
 
     QList<Structure*> running = m_opt->queue()->getAllRunningStructures();
 
@@ -643,8 +637,6 @@ namespace RandomDock {
     newInfoUpdate(m_context_scene);
     locker.unlock();
     m_context_scene = 0;
-
-    emit refresh();
   }
 
   void TabProgress::randomizeStructureProgress()

@@ -24,6 +24,7 @@
 #include <globalsearch/bt.h>
 
 #include <QtCore/QFile>
+#include <QtCore/QThread>
 
 #include <QtGui/QClipboard>
 #include <QtGui/QMessageBox>
@@ -38,7 +39,8 @@ namespace GlobalSearch {
     QObject(parent),
     m_dialog(parent),
     m_tracker(new Tracker (this)),
-    m_queue(new QueueManager(this)),
+    m_queueThread(new QThread),
+    m_queue(new QueueManager(m_queueThread, this)),
     m_optimizer(0), // This will be set when the GUI is initialized
     m_ssh(new SSHManager (5, this)),
     m_idString("Generic"),
@@ -55,6 +57,9 @@ namespace GlobalSearch {
     cutoff(-1)
   {
     // Connections
+    connect(this, SIGNAL(sessionStarted()),
+            m_queueThread, SLOT(start()),
+            Qt::DirectConnection);
     connect(this, SIGNAL(startingSession()),
             this, SLOT(setIsStartingTrue()));
     connect(this, SIGNAL(sessionStarted()),
@@ -75,7 +80,16 @@ namespace GlobalSearch {
   OptBase::~OptBase()
   {
     delete m_queue;
+    m_queue = 0;
+
+    if (m_queueThread && m_queueThread->isRunning()) {
+      m_queueThread->wait();
+    }
+    delete m_queueThread;
+    m_queueThread = 0;
+
     delete m_tracker;
+    m_tracker = 0;
   }
 
   void OptBase::reset() {
