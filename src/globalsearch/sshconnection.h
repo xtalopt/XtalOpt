@@ -266,6 +266,7 @@ namespace GlobalSearch {
   protected:
     // Disable doxygen parsing
     /// \cond
+    sftp_session _openSFTP();
     bool _execute(const QString &command,
                   QString &stdout_err,
                   QString &stderr_err,
@@ -288,7 +289,7 @@ namespace GlobalSearch {
 
     ssh_session m_session;
     ssh_channel m_shell;
-    sftp_session m_sftp;
+
     QString m_host;
     QString m_user;
     QString m_pass;

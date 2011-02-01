@@ -36,7 +36,6 @@ namespace GlobalSearch {
     : QObject(parent),
       m_session(0),
       m_shell(0),
-      m_sftp(0),
       m_host(""),
       m_user(""),
       m_pass(""),
@@ -61,9 +60,8 @@ namespace GlobalSearch {
 
   bool SSHConnection::isConnected()
   {
-    if (!m_session || !m_shell || !m_sftp ||
-        channel_is_closed(m_shell) || channel_is_eof(m_shell) ||
-        channel_is_closed(m_sftp->channel) || channel_is_eof(m_sftp->channel) ) {
+    if (!m_session || !m_shell ||
+        channel_is_closed(m_shell) || channel_is_eof(m_shell) ) {
       qWarning() << "SSHConnection is not connected: one or more required channels are not initialized.";
       return false;
     };
@@ -167,10 +165,6 @@ namespace GlobalSearch {
     if (m_shell)
       channel_free(m_shell);
     m_shell = 0;
-
-    if (m_sftp)
-      sftp_free(m_sftp);
-    m_sftp = 0;
 
     if (m_session)
       ssh_free(m_session);
@@ -368,29 +362,6 @@ namespace GlobalSearch {
       }
     }
 
-    // Open sftp session
-    m_sftp = sftp_new(m_session);
-    if(!m_sftp){
-      qWarning() << "sftp error initialising channel" << endl
-                 << ssh_get_error(m_session);
-      if (throwExceptions) {
-        throw SSH_UNKNOWN_ERROR;
-      }
-      else {
-        return false;
-      }
-    }
-    if(sftp_init(m_sftp) != SSH_OK){
-      qWarning() << "error initialising sftp" << endl
-                 << ssh_get_error(m_session);
-      if (throwExceptions) {
-        throw SSH_UNKNOWN_ERROR;
-      }
-      else {
-        return false;
-      }
-    }
-
     m_isValid = true;
     END;
     return true;
@@ -453,6 +424,22 @@ namespace GlobalSearch {
     return true;
   }
 
+  sftp_session SSHConnection::_openSFTP()
+  {
+    sftp_session sftp = sftp_new(m_session);
+    if(!sftp){
+      qWarning() << "sftp error initialising channel" << endl
+                 << ssh_get_error(m_session);
+      return 0;
+    }
+    if(sftp_init(sftp) != SSH_OK){
+      qWarning() << "error initialising sftp" << endl
+                 << ssh_get_error(m_session);
+      return 0;
+    }
+    return sftp;
+  }
+
   bool SSHConnection::copyFileToServer(const QString & localpath,
                                        const QString & remotepath)
   {
@@ -465,20 +452,28 @@ namespace GlobalSearch {
   {
     START;
 
+    sftp_session sftp = _openSFTP();
+    if (!sftp) {
+      qWarning() << "Could not create sftp channel.";
+      return false;
+    }
+
     // Create input file handle
     ifstream from (localpath.toStdString().c_str());
     if (!from.is_open()) {
       qWarning() << "Error opening file " << localpath << " for reading.";
+      sftp_free(sftp);
       return false;
     }
 
     // Create output file handle
-    sftp_file to = sftp_open(m_sftp,
+    sftp_file to = sftp_open(sftp,
                              remotepath.toStdString().c_str(),
                              O_WRONLY | O_CREAT | O_TRUNC,
                              0750);
     if (!to) {
       qWarning() << "Error opening file " << remotepath << " for writing.";
+      sftp_free(sftp);
       return false;
     }
 
@@ -494,12 +489,14 @@ namespace GlobalSearch {
         qWarning() << "Error writing to " << remotepath;
         from.close();
         sftp_close(to);
+        sftp_free(sftp);
         delete[] buffer;
         return false;
       }
     }
     from.close();
     sftp_close(to);
+    sftp_free(sftp);
     delete[] buffer;
     END;
     return true;
@@ -516,13 +513,20 @@ namespace GlobalSearch {
                                           const QString & localpath)
   {
     START;
+    sftp_session sftp = _openSFTP();
+    if (!sftp) {
+      qWarning() << "Could not create sftp channel.";
+      return false;
+    }
+
     // Open remote file
-    sftp_file from = sftp_open(m_sftp,
+    sftp_file from = sftp_open(sftp,
                                remotepath.toStdString().c_str(),
                                O_RDONLY,
                                0);
     if(!from){
       qWarning() << "Error opening file " << remotepath << " for reading.";
+      sftp_free(sftp);
       return false;
     }
 
@@ -531,6 +535,7 @@ namespace GlobalSearch {
     if (!to.is_open()) {
       qWarning() << "Error opening file " << localpath << " for writing.";
       sftp_close(from);
+      sftp_free(sftp);
       return false;
     }
 
@@ -544,12 +549,14 @@ namespace GlobalSearch {
         qWarning() << "Error writing to " << localpath;
         to.close();
         sftp_close(from);
+        sftp_free(sftp);
         delete[] buffer;
         return false;
       }
     }
     to.close();
     sftp_close(from);
+    sftp_free(sftp);
     delete[] buffer;
     END;
     return true;
@@ -566,13 +573,21 @@ namespace GlobalSearch {
                                       QString &contents)
   {
     START;
+
+    sftp_session sftp = _openSFTP();
+    if (!sftp) {
+      qWarning() << "Could not create sftp channel.";
+      return false;
+    }
+
     // Open remote file
-    sftp_file from = sftp_open(m_sftp,
+    sftp_file from = sftp_open(sftp,
                                filename.toStdString().c_str(),
                                O_RDONLY,
                                0);
     if(!from){
       qWarning() << "Error opening file " << filename << " for reading.";
+      sftp_free(sftp);
       return false;
     }
 
@@ -588,6 +603,7 @@ namespace GlobalSearch {
     }
     sftp_close(from);
     contents = QString(oss.str().c_str());
+    sftp_free(sftp);
     delete[] buffer;
     END;
     return true;
@@ -602,13 +618,22 @@ namespace GlobalSearch {
   bool SSHConnection::_removeRemoteFile(const QString &filename)
   {
     START;
-    if (sftp_unlink(m_sftp,
+
+    sftp_session sftp = _openSFTP();
+    if (!sftp) {
+      qWarning() << "Could not create sftp channel.";
+      return false;
+    }
+
+    if (sftp_unlink(sftp,
                     filename.toStdString().c_str())
         != 0) {
       qWarning() << "Error removing remote file " << filename;
+      sftp_free(sftp);
       return false;
     }
     END;
+    sftp_free(sftp);
     return true;
   }
 
@@ -641,8 +666,14 @@ namespace GlobalSearch {
                                                QDir::Name);
     QStringList files = locdir.entryList(QDir::Files, QDir::Name);
 
+    sftp_session sftp = _openSFTP();
+    if (!sftp) {
+      qWarning() << "Could not create sftp channel.";
+      return false;
+    }
+
     // Create remote directory:
-    sftp_mkdir(m_sftp,
+    sftp_mkdir(sftp,
                remotepath.toStdString().c_str(),
                0750);
 
@@ -655,6 +686,7 @@ namespace GlobalSearch {
                                   remotepath + (*dir))) {
         qWarning() << "Error copying " << localpath + (*dir) << " to "
                    << remotepath + (*dir);
+        sftp_free(sftp);
         return false;
       }
     }
@@ -665,9 +697,11 @@ namespace GlobalSearch {
                              remotepath + (*file))) {
         qWarning() << "Error copying " << localpath + (*file) << " to "
                    << remotepath + (*file);
+        sftp_free(sftp);
         return false;
       }
     }
+    sftp_free(sftp);
     END;
     return true;
   }
@@ -689,12 +723,18 @@ namespace GlobalSearch {
 
     sftp_dir dir;
     sftp_attributes file;
+    sftp_session sftp = _openSFTP();
+    if (!sftp) {
+      qWarning() << "Could not create sftp channel.";
+      return false;
+    }
 
     // Open remote directory
-    dir = sftp_opendir(m_sftp, remotepath.toStdString().c_str());
+    dir = sftp_opendir(sftp, remotepath.toStdString().c_str());
     if (!dir) {
       qWarning() << "Could not open remote directory " << remotepath
                  << ":\n\t" << ssh_get_error(m_session);
+      sftp_free(sftp);
       return false;
     }
 
@@ -702,11 +742,12 @@ namespace GlobalSearch {
     QDir locdir;
     if (!locdir.mkpath(localpath)) {
       qWarning() << "Could not create local directory " << localpath;
+      sftp_free(sftp);
       return false;
     }
 
     // Handle each object in the directory:
-    while ((file = sftp_readdir(m_sftp,dir))) {
+    while ((file = sftp_readdir(sftp,dir))) {
       if (strcmp(file->name, ".") == 0 ||
           strcmp(file->name, "..") == 0 ) {
         continue;
@@ -717,6 +758,7 @@ namespace GlobalSearch {
         if (!_copyDirectoryFromServer(remotepath + file->name,
                                       localpath + file->name)) {
           sftp_attributes_free(file);
+          sftp_free(sftp);
           return false;
         }
         break;
@@ -724,6 +766,7 @@ namespace GlobalSearch {
         if (!_copyFileFromServer(remotepath + file->name,
                                  localpath + file->name)) {
           sftp_attributes_free(file);
+          sftp_free(sftp);
           return false;
         }
         break;
@@ -735,9 +778,11 @@ namespace GlobalSearch {
     if ( !sftp_dir_eof(dir) && sftp_closedir(dir) == SSH_ERROR ) {
       qWarning() << "Error copying \'" << remotepath << "\' to \'" << localpath
                  << "\': " << ssh_get_error(m_session);
+      sftp_free(sftp);
       return false;
     }
     END;
+    sftp_free(sftp);
     return true;
   }
 
@@ -758,17 +803,24 @@ namespace GlobalSearch {
     sftp_attributes file;
     contents.clear();
 
+    sftp_session sftp = _openSFTP();
+    if (!sftp) {
+      qWarning() << "Could not create sftp channel.";
+      return false;
+    }
+
     // Open remote directory
-    dir = sftp_opendir(m_sftp, remotepath.toStdString().c_str());
+    dir = sftp_opendir(sftp, remotepath.toStdString().c_str());
     if (!dir) {
       qWarning() << "Could not open remote directory " << remotepath
                  << ":\n\t" << ssh_get_error(m_session);
+      sftp_free(sftp);
       return false;
     }
 
     // Handle each object in the directory:
     QStringList tmp;
-    while ((file = sftp_readdir(m_sftp,dir))) {
+    while ((file = sftp_readdir(sftp,dir))) {
       if (strcmp(file->name, ".") == 0 ||
           strcmp(file->name, "..") == 0 ) {
         continue;
@@ -779,6 +831,7 @@ namespace GlobalSearch {
         if (!_readRemoteDirectoryContents(remotepath + file->name,
                                           tmp)) {
           sftp_attributes_free(file);
+          sftp_free(sftp);
           return false;
         }
         contents << tmp;
@@ -794,9 +847,11 @@ namespace GlobalSearch {
     if ( !sftp_dir_eof(dir) && sftp_closedir(dir) == SSH_ERROR ) {
       qWarning() << "Error reading contents of \'" << remotepath
                  << "\': " << ssh_get_error(m_session);
+      sftp_free(sftp);
       return false;
     }
     END;
+    sftp_free(sftp);
     return true;
   }
 
@@ -817,16 +872,23 @@ namespace GlobalSearch {
     sftp_attributes file;
     bool ok = true;
 
+    sftp_session sftp = _openSFTP();
+    if (!sftp) {
+      qWarning() << "Could not create sftp channel.";
+      return false;
+    }
+
     // Open remote directory
-    dir = sftp_opendir(m_sftp, remotepath.toStdString().c_str());
+    dir = sftp_opendir(sftp, remotepath.toStdString().c_str());
     if (!dir) {
       qWarning() << "Could not open remote directory " << remotepath
                  << ":\n\t" << ssh_get_error(m_session);
+      sftp_free(sftp);
       return false;
     }
 
     // Handle each object in the directory:
-    while ((file = sftp_readdir(m_sftp,dir))) {
+    while ((file = sftp_readdir(sftp,dir))) {
       if (strcmp(file->name, ".") == 0 ||
           strcmp(file->name, "..") == 0 ) {
         continue;
@@ -854,24 +916,28 @@ namespace GlobalSearch {
     if ( !sftp_dir_eof(dir) && sftp_closedir(dir) == SSH_ERROR ) {
       qWarning() << "Error reading contents of \'" << remotepath
                  << "\': " << ssh_get_error(m_session);
+      sftp_free(sftp);
       return false;
     }
     if ( !ok ) {
       qWarning() << "Some files could not be removed from "
                  << remotepath;
+      sftp_free(sftp);
       return false;
     }
 
     // Finally remove directory if asked
     if (!onlyDeleteContents) {
-      if (sftp_rmdir(m_sftp,
+      if (sftp_rmdir(sftp,
                      remotepath.toStdString().c_str())
           == SSH_ERROR) {
         qWarning() << "Error removing remote directory " << remotepath
                    << ": " << ssh_get_error(m_session);
+        sftp_free(sftp);
         return false;
       }
     }
+    sftp_free(sftp);
     END;
     return true;
   }
