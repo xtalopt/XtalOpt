@@ -101,22 +101,6 @@ namespace XtalOpt {
       return;
     }
     m_molecule = molecule;
-
-    // Populate m_comp with molecule if empty
-    if (!qobject_cast<XtalOpt*>(m_opt)->comp.isEmpty()) {
-      QHash<uint, uint> comp;
-      uint atomicNum;
-      QList<Atom *> atoms = m_molecule->atoms();
-
-      for (int i = 0; i < atoms.size(); i++) {
-        atomicNum = atoms.at(i)->atomicNumber();
-
-        if (!comp.contains(atomicNum)) comp[atomicNum] = 0;
-        comp[atomicNum]++;
-      }
-      qobject_cast<XtalOpt*>(m_opt)->comp = comp;
-      emit m_tab_init->updateComposition();
-    }
   }
 
   void XtalOptDialog::saveSession() {
