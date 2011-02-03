@@ -74,6 +74,22 @@ namespace GlobalSearch {
     *this = other;
   }
 
+  Structure::Structure(const Molecule &other) :
+    Molecule(other),
+    m_histogramGenerationPending(false),
+    m_updatedSinceDupChecked(true),
+    m_generation(0),
+    m_id(0),
+    m_rank(0),
+    m_jobID(0),
+    m_PV(0),
+    m_optStart(QDateTime()),
+    m_optEnd(QDateTime()),
+    m_index(-1)
+  {
+    *this = other;
+  }
+
   void Structure::setupConnections()
   {
     // List of slots to be called each time the structure changes
@@ -199,7 +215,13 @@ namespace GlobalSearch {
     return *this;
   }
 
-  Structure& Structure::copyStructure(Structure *other)
+  Structure& Structure::operator=(const Molecule &mol)
+  {
+    Molecule::operator=(mol);
+    return *this;
+  }
+
+  Structure& Structure::copyStructure(const Structure *other)
   {
     Molecule::operator=(*other);
     return *this;

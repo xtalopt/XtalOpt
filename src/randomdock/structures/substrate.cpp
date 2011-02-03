@@ -36,7 +36,7 @@ namespace RandomDock {
   }
 
   Substrate::Substrate(Molecule *mol) :
-    Structure(mol)
+    Structure(*mol)
   {
     generateProbabilities();
   }

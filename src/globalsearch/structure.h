@@ -1,7 +1,7 @@
 /**********************************************************************
   Structure - Generic wrapper for Avogadro's molecule class
 
-  Copyright (C) 2009-2010 by David C. Lonie
+  Copyright (C) 2009-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -62,23 +62,35 @@ namespace GlobalSearch {
     Structure(const Structure &other);
 
     /**
+     * Explicit copy constructor for Molecules.
+     */
+    Structure(const Avogadro::Molecule &other);
+
+    /**
      * Destructor.
      */
     virtual ~Structure();
 
     /**
      * Assignment operator. Makes a new structure with all Structure
-     * specific information copied.
+     * specific information copied from \a other.
      * @sa copyStructure
      */
     Structure& operator=(const Structure& other);
+
+    /**
+     * Assignment operator. Makes a new structure with all Molecule
+     * specific information copied from \a other.
+     * @sa copyStructure
+     */
+    Structure& operator=(const Avogadro::Molecule& other);
 
     /**
      * Only update the structure's atoms, bonds, and residue information
      * from other.
      * @sa operator=
      */
-    Structure& copyStructure(Structure *other);
+    Structure& copyStructure(const Structure *other);
 
     /**
      * Enum containing possible optimization statuses.
