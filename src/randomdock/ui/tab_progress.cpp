@@ -91,8 +91,8 @@ namespace RandomDock {
             this, SLOT(disableRowTracking()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(enableRowTracking()));
-    connect(this, SIGNAL(updateTableEntry(int, const RandomDock::TableEntry&)),
-            this, SLOT(setTableEntry(int, const RandomDock::TableEntry&)));
+    connect(this, SIGNAL(updateTableEntry(int, const TableEntry&)),
+            this, SLOT(setTableEntry(int, const TableEntry&)));
 
     initialize();
   }

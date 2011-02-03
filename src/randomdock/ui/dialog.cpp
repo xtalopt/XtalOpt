@@ -87,9 +87,9 @@ namespace RandomDock {
 
     // Cross-tab connections
     // Update structure in conformer tab when sub/mat change
-    connect(m_tab_init, SIGNAL(substrateChanged(RandomDock::Substrate*)),
+    connect(m_tab_init, SIGNAL(substrateChanged(Substrate*)),
             m_tab_conformers, SLOT(updateStructureList()));
-    connect(m_tab_init, SIGNAL(matrixAdded(RandomDock::Matrix*)),
+    connect(m_tab_init, SIGNAL(matrixAdded(Matrix*)),
             m_tab_conformers, SLOT(updateStructureList()));
     connect(m_tab_init, SIGNAL(matrixRemoved()),
             m_tab_conformers, SLOT(updateStructureList()));
