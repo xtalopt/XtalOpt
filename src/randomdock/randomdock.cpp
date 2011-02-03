@@ -477,12 +477,12 @@ namespace RandomDock {
     }
     QTextStream out (&file);
 
-    const QList<Structure*> *structures = m_tracker->list();
+    const QList<Structure*> structures = *m_tracker->list();
     QList<Scene*> sortedScenes;
     Scene *scene;
 
-    for (int i = 0; i < structures->size(); i++)
-      sortedScenes.append(qobject_cast<Scene*>(structures->at(i)));
+    for (int i = 0; i < structures.size(); i++)
+      sortedScenes.append(qobject_cast<Scene*>(structures.at(i)));
     if (sortedScenes.size() != 0) {
       sortAndRankByEnergy(&sortedScenes);
     }
