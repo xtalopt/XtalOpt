@@ -19,6 +19,7 @@ link_directories(
 )
 
 set( tests
+  optbase
   structure
   sshconnection
   sshmanager
