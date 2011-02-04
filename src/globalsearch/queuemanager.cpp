@@ -627,8 +627,9 @@ namespace GlobalSearch {
       return;
     }
 
-    m_tracker->unlock();
     m_newStructureTracker.lockForWrite();
+
+    m_tracker->unlock();
 
     if (!m_opt->isStarting) {
       --m_requestedStructures;
@@ -645,15 +646,15 @@ namespace GlobalSearch {
   void QueueManager::unlockForNaming_()
   {
     Structure *s;
+    m_tracker->lockForWrite();
     m_newStructureTracker.lockForWrite();
     if (!m_newStructureTracker.popFirst(s)) {
       m_newStructureTracker.unlock();
+      m_tracker->unlock();
       return;
     }
-    m_tracker->lockForWrite();
     m_tracker->append(s);
     m_tracker->unlock();
-
     m_newStructureTracker.unlock();
 
     submitStructure(s);
