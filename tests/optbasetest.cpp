@@ -243,6 +243,8 @@ void OptBaseTest::interpretKeyword()
   // Reference outputs
   QString coordsRef;
   QString coordsIdRef;
+  QString coordsInternalFlagsRef;
+  QString coordsSuffixFlagsRef;
 
   coordsRef =
     "H 0 0 0\nHe 1 1 1\nLi 2 2 2\nBe 3 3 3\nB 4 4 4\nH 5 5 5\nHe 6 6 6\n"
@@ -261,6 +263,28 @@ void OptBaseTest::interpretKeyword()
     "Be 4 23 23 23\nB 5 24 24 24\nH 1 25 25 25\nHe 2 26 26 26\n"
     "Li 3 27 27 27\nBe 4 28 28 28\nB 5 29 29 29";
 
+  coordsInternalFlagsRef =
+    "H 0 1 0 1 0 1\nHe 1 1 1 1 1 1\nLi 2 1 2 1 2 1\nBe 3 1 3 1 3 1\n"
+    "B 4 1 4 1 4 1\nH 5 1 5 1 5 1\nHe 6 1 6 1 6 1\nLi 7 1 7 1 7 1\n"
+    "Be 8 1 8 1 8 1\nB 9 1 9 1 9 1\nH 10 1 10 1 10 1\nHe 11 1 11 1 11 1\n"
+    "Li 12 1 12 1 12 1\nBe 13 1 13 1 13 1\nB 14 1 14 1 14 1\n"
+    "H 15 1 15 1 15 1\nHe 16 1 16 1 16 1\nLi 17 1 17 1 17 1\n"
+    "Be 18 1 18 1 18 1\nB 19 1 19 1 19 1\nH 20 1 20 1 20 1\n"
+    "He 21 1 21 1 21 1\nLi 22 1 22 1 22 1\nBe 23 1 23 1 23 1\n"
+    "B 24 1 24 1 24 1\nH 25 1 25 1 25 1\nHe 26 1 26 1 26 1\n"
+    "Li 27 1 27 1 27 1\nBe 28 1 28 1 28 1\nB 29 1 29 1 29 1";
+
+  coordsSuffixFlagsRef =
+    "H 0 0 0 1 1 1\nHe 1 1 1 1 1 1\nLi 2 2 2 1 1 1\nBe 3 3 3 1 1 1\n"
+    "B 4 4 4 1 1 1\nH 5 5 5 1 1 1\nHe 6 6 6 1 1 1\nLi 7 7 7 1 1 1\n"
+    "Be 8 8 8 1 1 1\nB 9 9 9 1 1 1\nH 10 10 10 1 1 1\nHe 11 11 11 1 1 1\n"
+    "Li 12 12 12 1 1 1\nBe 13 13 13 1 1 1\nB 14 14 14 1 1 1\n"
+    "H 15 15 15 1 1 1\nHe 16 16 16 1 1 1\nLi 17 17 17 1 1 1\n"
+    "Be 18 18 18 1 1 1\nB 19 19 19 1 1 1\nH 20 20 20 1 1 1\n"
+    "He 21 21 21 1 1 1\nLi 22 22 22 1 1 1\nBe 23 23 23 1 1 1\n"
+    "B 24 24 24 1 1 1\nH 25 25 25 1 1 1\nHe 26 26 26 1 1 1\n"
+    "Li 27 27 27 1 1 1\nBe 28 28 28 1 1 1\nB 29 29 29 1 1 1";
+
 #define VERIFYKEYWORD(key, value)                 \
   QVERIFY(m_opt->interpretTemplate(key, s)        \
           .compare(QString(value) + "\n") == 0)
@@ -273,6 +297,8 @@ void OptBaseTest::interpretKeyword()
   VERIFYKEYWORD("%description%", DESCRIPTION);
   VERIFYKEYWORD("%coords%", coordsRef);
   VERIFYKEYWORD("%coordsId%", coordsIdRef);
+  VERIFYKEYWORD("%coordsInternalFlags%", coordsInternalFlagsRef);
+  VERIFYKEYWORD("%coordsSuffixFlags%", coordsSuffixFlagsRef);
   VERIFYKEYWORD("%numAtoms%", QString::number(NUMATOMS));
   VERIFYKEYWORD("%numSpecies%", QString::number(NUMSPECIES));
   VERIFYKEYWORD("%filename%", FILENAME);
