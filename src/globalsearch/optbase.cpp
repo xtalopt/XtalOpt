@@ -115,11 +115,11 @@ namespace GlobalSearch {
     first->lock()->unlock();
     // If all structures are at the same enthalpy, lets save some time...
     if (spread <= 1e-5) {
-      double v = 1.0/static_cast<double>(structures.size()-1);
-      double p = v;
+      double dprob = 1.0/static_cast<double>(structures.size()-1);
+      double prob = 0;
       for (int i = 0; i < structures.size()-1; i++) {
-        probs.append(v);
-        v += p;
+        probs.append(prob);
+        prob += dprob;
       }
       return probs;
     }
