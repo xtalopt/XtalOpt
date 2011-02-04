@@ -149,6 +149,7 @@ namespace RandomDock {
     }
     ui.combo_mol->blockSignals(false);
     ui.combo_mol->setCurrentIndex(0);
+    updateConformerTable();
   }
 
   void TabConformers::updateForceField(const QString & s)
