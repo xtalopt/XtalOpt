@@ -3,8 +3,9 @@ INCLUDE_DIRECTORIES(${XtalOpt_BINARY_DIR}/src/randomdock)
 set( randomdock_SRCS
      extension.cpp
      randomdock.cpp
-     optimizers/gamess.cpp
      optimizers/adf.cpp
+     optimizers/gamess.cpp
+     optimizers/mopac.cpp
      structures/scene.cpp
      structures/matrix.cpp
      structures/substrate.cpp

@@ -109,6 +109,11 @@
        <string>ADF</string>
       </property>
      </item>
+     <item>
+      <property name="text">
+       <string>MOPAC</string>
+      </property>
+     </item>
     </widget>
    </item>
    <item row="3" column="0" rowspan="2" colspan="4">
