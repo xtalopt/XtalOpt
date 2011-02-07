@@ -326,6 +326,34 @@ namespace GlobalSearch {
         rep += QString::number(vec->z()) + "\n";
       }
     }
+    else if (line == "coordsInternalFlags") {
+      QList<Avogadro::Atom*> atoms = structure->atoms();
+      QList<Avogadro::Atom*>::const_iterator it;
+      const Eigen::Vector3d *vec;
+      for (it  = atoms.begin();
+           it != atoms.end();
+           it++) {
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        vec = (*it)->pos();
+        rep += QString::number(vec->x()) + " 1 ";
+        rep += QString::number(vec->y()) + " 1 ";
+        rep += QString::number(vec->z()) + " 1\n";
+      }
+    }
+    else if (line == "coordsSuffixFlags") {
+      QList<Avogadro::Atom*> atoms = structure->atoms();
+      QList<Avogadro::Atom*>::const_iterator it;
+      const Eigen::Vector3d *vec;
+      for (it  = atoms.begin();
+           it != atoms.end();
+           it++) {
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        vec = (*it)->pos();
+        rep += QString::number(vec->x()) + " ";
+        rep += QString::number(vec->y()) + " ";
+        rep += QString::number(vec->z()) + " 1 1 1\n";
+      }
+    }
     else if (line == "coordsId") {
       QList<Avogadro::Atom*> atoms = structure->atoms();
       QList<Avogadro::Atom*>::const_iterator it;
@@ -371,16 +399,21 @@ namespace GlobalSearch {
       << "%userX% -- User specified value, where X = 1, 2, 3, or 4\n"
       << "%description% -- Optimization description\n"
       << "\n"
+      << "Atomic coordinate formats for isolated structures:\n"
+      << "%coords% -- cartesian coordinates\n\t[symbol] [x] [y] [z]\n"
+      << "%coordsInternalFlags% -- cartesian coordinates; flag after each coordinate\n\t[symbol] [x] 1 [y] 1 [z] 1\n"
+      << "%coordsSuffixFlags% -- cartesian coordinates; flags after all coordinates\n\t[symbol] [x] [y] [z] 1 1 1\n"
+      << "%coordsId% -- cartesian coordinates with atomic number\n\t[symbol] [atomic number] [x] [y] [z]\n"
+      << "\n"
       << "Generic structure data:\n"
-      << "%coords% -- cartesian coordinate data\n\t[symbol] [x] [y] [z]\n"
-      << "%coordsId% -- cartesian coordinate data with atomic number\n\t[symbol] [atomic number] [x] [y] [z]\n"
       << "%numAtoms% -- Number of atoms in unit cell\n"
       << "%numSpecies% -- Number of unique atomic species in unit cell\n"
       << "%filename% -- local output filename\n"
       << "%rempath% -- path to structure's remote directory\n"
       << "%gen% -- structure generation number (if relevant)\n"
       << "%id% -- structure id number\n"
-      << "%optStep% -- current optimization step\n";
+      << "%optStep% -- current optimization step\n"
+      ;
     return str;
   }
 

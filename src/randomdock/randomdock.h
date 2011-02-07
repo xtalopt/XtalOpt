@@ -1,8 +1,7 @@
 /**********************************************************************
-  RandomDock - Holds parameters and static functions for random
-                docking analysis
+  RandomDock
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -48,7 +47,8 @@ namespace RandomDock {
 
     enum OptTypes {
       OT_GAMESS = 0,
-      OT_ADF
+      OT_ADF,
+      OT_MOPAC
     };
 
     Scene* generateRandomScene();

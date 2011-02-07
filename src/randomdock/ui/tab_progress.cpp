@@ -65,6 +65,8 @@ namespace RandomDock {
             m_opt->queue(), SLOT(checkPopulation()));
     connect(m_opt, SIGNAL(updateAllInfo()),
             this, SLOT(updateAllInfo()));
+    connect(m_opt, SIGNAL(sessionStarted()),
+            this, SLOT(startTimer()));
 
     // Progress table connections
     connect(m_timer, SIGNAL(timeout()),
@@ -91,8 +93,8 @@ namespace RandomDock {
             this, SLOT(disableRowTracking()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(enableRowTracking()));
-    connect(this, SIGNAL(updateTableEntry(int, const RandomDock::TableEntry&)),
-            this, SLOT(setTableEntry(int, const RandomDock::TableEntry&)));
+    connect(this, SIGNAL(updateTableEntry(int, const TableEntry&)),
+            this, SLOT(setTableEntry(int, const TableEntry&)));
 
     initialize();
   }
@@ -152,23 +154,22 @@ namespace RandomDock {
   {
     // Only allow one update at a time
     if (!m_update_mutex->tryLock()) {
+      qDebug() << "Killing extra TabProgress::updateProgressTable() call";
       return;
     }
-
-    if (!m_opt) {
-      m_update_mutex->unlock();
-      return;
-    }
-
-    if (m_opt->tracker()->size() == 0) {
-      m_update_mutex->unlock();
-      return;
-    }
-
-    QtConcurrent::run(m_opt->queue(),
-                      &GlobalSearch::QueueManager::checkPopulation);
 
     emit refresh();
+
+    QList<Structure*> running = m_opt->queue()->getAllRunningStructures();
+
+    for (QList<Structure*>::iterator
+           it = running.begin(),
+           it_end = running.end();
+         it != it_end;
+         ++it) {
+      newInfoUpdate(*it);
+    }
+
     m_update_mutex->unlock();
   }
 
@@ -228,12 +229,18 @@ namespace RandomDock {
   void TabProgress::updateAllInfo()
   {
     if (!m_update_all_mutex->tryLock()) {
+      qDebug() << "Killing extra TabProgress::updateAllInfo() call";
       return;
     }
+    m_opt->tracker()->lockForRead();
+    m_infoUpdateTracker.lockForWrite();
     QList<Structure*> *structures = m_opt->tracker()->list();
     for (int i = 0; i < ui.table_list->rowCount(); i++) {
-      newInfoUpdate(structures->at(i));
+      m_infoUpdateTracker.append(structures->at(i));
+      emit infoUpdate();
     }
+    m_infoUpdateTracker.unlock();
+    m_opt->tracker()->unlock();
     m_update_all_mutex->unlock();
   }
 
@@ -273,6 +280,7 @@ namespace RandomDock {
       m_infoUpdateTracker.unlock();
       return;
     }
+    m_infoUpdateTracker.unlock();
 
     int i = m_opt->tracker()->list()->indexOf(structure);
 

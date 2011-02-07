@@ -49,6 +49,11 @@ namespace RandomDock {
       ADFT_pbs = 0
     };
 
+    enum MOPAC_Templates {
+      MOPACT_pbs = 0,
+      MOPACT_mop
+    };
+
   public slots:
     void lockGUI();
     void readSettings(const QString &filename = "");

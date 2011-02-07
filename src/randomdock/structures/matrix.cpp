@@ -36,7 +36,7 @@ namespace RandomDock {
   }
 
   Matrix::Matrix(Molecule *mol) :
-    Structure(mol)
+    Structure(*mol)
   {
     generateProbabilities();
   }

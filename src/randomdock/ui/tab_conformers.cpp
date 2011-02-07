@@ -149,6 +149,7 @@ namespace RandomDock {
     }
     ui.combo_mol->blockSignals(false);
     ui.combo_mol->setCurrentIndex(0);
+    updateConformerTable();
   }
 
   void TabConformers::updateForceField(const QString & s)
@@ -197,6 +198,14 @@ namespace RandomDock {
 
     m_dialog->updateProgressLabel("Setting up molecule with forcefield...");
     OpenBabel::OBMol obmol = mol->OBMol();
+
+    // Explicitly set the energy, otherwise the ff may crash due to OB bug
+    std::vector<double> obenergies (mol->energies());
+    if (obenergies.size() == 0) {
+      obenergies.push_back(0.0);
+    }
+    obmol.SetEnergies(obenergies);
+
     if (!ff) {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Problem setting up forcefield '%1'.")

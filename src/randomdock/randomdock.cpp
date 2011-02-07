@@ -1,7 +1,7 @@
 /**********************************************************************
-  RandomDock - Holds all data for genetic optimization
+  RandomDock
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -477,12 +477,12 @@ namespace RandomDock {
     }
     QTextStream out (&file);
 
-    const QList<Structure*> *structures = m_tracker->list();
+    const QList<Structure*> structures = *m_tracker->list();
     QList<Scene*> sortedScenes;
     Scene *scene;
 
-    for (int i = 0; i < structures->size(); i++)
-      sortedScenes.append(qobject_cast<Scene*>(structures->at(i)));
+    for (int i = 0; i < structures.size(); i++)
+      sortedScenes.append(qobject_cast<Scene*>(structures.at(i)));
     if (sortedScenes.size() != 0) {
       sortAndRankByEnergy(&sortedScenes);
     }
