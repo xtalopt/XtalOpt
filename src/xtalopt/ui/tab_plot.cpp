@@ -166,15 +166,15 @@ namespace XtalOpt {
     disconnect(m_opt, 0, this, 0);
   }
 
-  void TabPlot::lockClearAndSelectPoint(PlotPoint *pp) {
+  void TabPlot::lockClearAndSelectPoint(PlotPoint *pp)
+  {
     m_plot_mutex->lockForRead();
     ui.plot_plot->clearAndSelectPoint(pp);
     m_plot_mutex->unlock();
   }
 
-  void TabPlot::refreshPlot() {
-    //qDebug() << "TabPlot::refreshPlot() called";
-
+  void TabPlot::refreshPlot()
+  {
     // Reset connections
     ui.plot_plot->disconnect(this);
 

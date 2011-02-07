@@ -186,7 +186,8 @@ namespace GlobalSearch {
     }
   }
 
-  Structure::~Structure() {
+  Structure::~Structure()
+  {
   }
 
   Structure& Structure::operator=(const Structure& other)
