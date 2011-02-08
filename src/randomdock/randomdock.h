@@ -77,6 +77,7 @@ namespace RandomDock {
     double radius_min;		// Minimum distance from origin to place matrix molecules
     double radius_max;		// Maximum distance from origin to place matrix molecules
     bool radius_auto;		// Whether to automatically calculate the matrix radius
+    bool cluster_mode;
 
     QMutex *sceneInitMutex;
 
