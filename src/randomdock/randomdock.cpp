@@ -272,9 +272,41 @@ namespace RandomDock {
 
       mat->lock()->unlock();
 
+      // Calculate radii if we're in cluster mode, otherwise use user
+      // specified limits
+      double r_min;
+      double r_max;
+      if (cluster_mode) {
+        double sceneRadius = scene->radius();
+        double substrateRadius = substrate->radius();
+        // Find shortest and longest matrix radii
+        double mat_short;
+        double mat_long;
+        mat_short = mat_long = matrixList.first()->radius();
+        for (int m = 0; m < matrixList.size(); m++) {
+          Matrix *mat = matrixList.at(m);
+          mat->lock()->lockForWrite();
+          for (uint i = 0; i < mat->numConformers(); i++) {
+            mat->setConformer(i);
+            mat->updateMolecule();
+            double tmp = mat->radius();
+            if (tmp < mat_short) mat_short = tmp;
+            if (tmp > mat_long) mat_long = tmp;
+          }
+          mat->lock()->unlock();
+        }
+        r_min = (mat_short < substrateRadius)
+          ? mat_short : substrateRadius;
+        r_max = mat_long + substrateRadius + IAD_max;
+      }
+      else {
+        r_min = radius_min;
+        r_max = radius_max;
+      }
+
       // Rotate, translate positions
       RandomDock::randomlyRotateCoordinates(positions);
-      RandomDock::randomlyDisplaceCoordinates(positions, radius_min, radius_max);
+      RandomDock::randomlyDisplaceCoordinates(positions, r_min, r_max);
 
       // Check interatomic distances
       double shortest, distance;

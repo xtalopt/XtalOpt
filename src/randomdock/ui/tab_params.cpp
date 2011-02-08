@@ -56,6 +56,8 @@ namespace RandomDock {
             this, SLOT(updateOptimizationInfo()));
     connect(ui.cb_radius_auto, SIGNAL(toggled(bool)),
             this, SLOT(updateOptimizationInfo()));
+    connect(ui.cb_cluster, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
 
     initialize();
   }
@@ -80,6 +82,7 @@ namespace RandomDock {
     settings->setValue("radius_min",            randomdock->radius_min);
     settings->setValue("radius_max",            randomdock->radius_max);
     settings->setValue("radius_auto",           randomdock->radius_auto);
+    settings->setValue("cluster_mode",          randomdock->cluster_mode);
 
     settings->endGroup();
     DESTROY_SETTINGS(filename);
@@ -92,14 +95,15 @@ namespace RandomDock {
     settings->beginGroup("randomdock/params");
     int loadedVersion = settings->value("version", 0).toInt();
 
-    ui.spin_numSearches->setValue(	settings->value("runningJobLimit",	10).toInt());
-    ui.spin_numMatrixMols->setValue(	settings->value("numMatrixMol",		1).toInt());
-    ui.spin_cutoff->setValue(		settings->value("cutoff",		0).toInt());
-    ui.spin_IAD_min->setValue(		settings->value("IAD_min",		0.8).toDouble());
-    ui.spin_IAD_max->setValue(		settings->value("IAD_max",		3.0).toDouble());
-    ui.spin_radius_min->setValue(	settings->value("radius_min",		20).toDouble());
-    ui.spin_radius_max->setValue(	settings->value("radius_max",		100).toDouble());
-    ui.cb_radius_auto->setChecked(	settings->value("radius_auto",		true).toBool());
+    ui.spin_numSearches->setValue(      settings->value("runningJobLimit",      10).toInt());
+    ui.spin_numMatrixMols->setValue(    settings->value("numMatrixMol",         1).toInt());
+    ui.spin_cutoff->setValue(           settings->value("cutoff",               0).toInt());
+    ui.spin_IAD_min->setValue(          settings->value("IAD_min",              0.8).toDouble());
+    ui.spin_IAD_max->setValue(          settings->value("IAD_max",              3.0).toDouble());
+    ui.spin_radius_min->setValue(       settings->value("radius_min",           20).toDouble());
+    ui.spin_radius_max->setValue(       settings->value("radius_max",           100).toDouble());
+    ui.cb_radius_auto->setChecked(      settings->value("radius_auto",          true).toBool());
+    ui.cb_cluster->setChecked(          settings->value("cluster_mode",         false).toBool());
 
     settings->endGroup();
 
@@ -162,7 +166,7 @@ namespace RandomDock {
         for (uint i = 0; i < mat->numConformers(); i++) {
           mat->setConformer(i);
           mat->updateMolecule();
-          tmp = mat->radius();
+          double tmp = mat->radius();
           if (tmp < mat_short) mat_short = tmp;
           if (tmp > mat_long) mat_long = tmp;
         }
@@ -176,9 +180,10 @@ namespace RandomDock {
       ui.spin_radius_min->update();
       ui.spin_radius_max->update();
     }
-    randomdock->radius_min	= ui.spin_radius_min->value();
-    randomdock->radius_max	= ui.spin_radius_max->value();
-    randomdock->radius_auto	= ui.cb_radius_auto->isChecked();
+    randomdock->radius_min      = ui.spin_radius_min->value();
+    randomdock->radius_max      = ui.spin_radius_max->value();
+    randomdock->radius_auto     = ui.cb_radius_auto->isChecked();
+    randomdock->cluster_mode    = ui.cb_cluster->isChecked();
   }
 
 }
