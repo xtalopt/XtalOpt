@@ -139,12 +139,14 @@ The matrix radius coordinate limits will be ignored, and the IAD range above wil
  </widget>
  <tabstops>
   <tabstop>spin_numSearches</tabstop>
+  <tabstop>spin_cutoff</tabstop>
   <tabstop>spin_numMatrixMols</tabstop>
   <tabstop>spin_IAD_min</tabstop>
   <tabstop>spin_IAD_max</tabstop>
   <tabstop>spin_radius_min</tabstop>
   <tabstop>spin_radius_max</tabstop>
   <tabstop>cb_radius_auto</tabstop>
+  <tabstop>cb_cluster</tabstop>
  </tabstops>
  <resources/>
  <connections>

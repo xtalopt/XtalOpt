@@ -99,9 +99,6 @@
      <attribute name="horizontalHeaderStretchLastSection">
       <bool>true</bool>
      </attribute>
-     <attribute name="horizontalHeaderStretchLastSection">
-      <bool>true</bool>
-     </attribute>
      <column>
       <property name="text">
        <string>#</string>
@@ -121,6 +118,15 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>edit_substrateFile</tabstop>
+  <tabstop>push_substrateBrowse</tabstop>
+  <tabstop>push_substrateCurrent</tabstop>
+  <tabstop>table_matrix</tabstop>
+  <tabstop>push_matrixAdd</tabstop>
+  <tabstop>push_matrixRemove</tabstop>
+  <tabstop>push_matrixCurrent</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
