@@ -165,6 +165,11 @@
   <tabstop>combo_optType</tabstop>
   <tabstop>combo_template</tabstop>
   <tabstop>list_opt</tabstop>
+  <tabstop>push_add</tabstop>
+  <tabstop>push_remove</tabstop>
+  <tabstop>push_help</tabstop>
+  <tabstop>push_saveScheme</tabstop>
+  <tabstop>push_loadScheme</tabstop>
   <tabstop>edit_user1</tabstop>
   <tabstop>edit_user2</tabstop>
   <tabstop>edit_user3</tabstop>

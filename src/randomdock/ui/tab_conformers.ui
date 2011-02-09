@@ -146,6 +146,14 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>combo_mol</tabstop>
+  <tabstop>push_generate</tabstop>
+  <tabstop>combo_opt</tabstop>
+  <tabstop>spin_nConformers</tabstop>
+  <tabstop>cb_allConformers</tabstop>
+  <tabstop>table_conformers</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>
