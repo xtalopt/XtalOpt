@@ -47,7 +47,7 @@ namespace RandomDock {
     m_context_scene(0)
   {
     // Allow queued connections to work with the TableEntry struct
-    qRegisterMetaType<TableEntry>("TableEntry");
+    qRegisterMetaType<RD_Prog_TableEntry>("RD_Prog_TableEntry");
 
     ui.setupUi(m_tab_widget);
 
@@ -93,8 +93,8 @@ namespace RandomDock {
             this, SLOT(disableRowTracking()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(enableRowTracking()));
-    connect(this, SIGNAL(updateTableEntry(int, const TableEntry&)),
-            this, SLOT(setTableEntry(int, const TableEntry&)));
+    connect(this, SIGNAL(updateTableEntry(int, const RD_Prog_TableEntry&)),
+            this, SLOT(setTableEntry(int, const RD_Prog_TableEntry&)));
 
     initialize();
   }
@@ -201,7 +201,7 @@ namespace RandomDock {
     m_infoUpdateTracker.append(scene);
     m_infoUpdateTracker.unlock();
     locker.unlock();
-    TableEntry e;
+    RD_Prog_TableEntry e;
     scene->lock()->lockForRead();
     e.rank    = scene->getRank();
     e.elapsed = scene->getOptElapsed();
@@ -295,7 +295,7 @@ namespace RandomDock {
       return;
     }
 
-    TableEntry e;
+    RD_Prog_TableEntry e;
     uint totalOptSteps = m_opt->optimizer()->getNumberOfOptSteps();
 
     e.brush = QBrush(Qt::white);
@@ -404,7 +404,7 @@ namespace RandomDock {
     emit updateTableEntry(i, e);
   }
 
-  void TabProgress::setTableEntry(int row, const TableEntry &e)
+  void TabProgress::setTableEntry(int row, const RD_Prog_TableEntry &e)
   {
     QMutexLocker locker (m_mutex);
 

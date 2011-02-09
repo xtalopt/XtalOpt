@@ -44,7 +44,7 @@ namespace XtalOpt {
     m_context_xtal(0)
   {
     // Allow queued connections to work with the TableEntry struct
-    qRegisterMetaType<TableEntry>("TableEntry");
+    qRegisterMetaType<XO_Prog_TableEntry>("XO_Prog_TableEntry");
 
     ui.setupUi(m_tab_widget);
 
@@ -91,8 +91,8 @@ namespace XtalOpt {
             this, SLOT(disableRowTracking()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(enableRowTracking()));
-    connect(this, SIGNAL(updateTableEntry(int, const TableEntry&)),
-            this, SLOT(setTableEntry(int, const TableEntry&)));
+    connect(this, SIGNAL(updateTableEntry(int, const XO_Prog_TableEntry&)),
+            this, SLOT(setTableEntry(int, const XO_Prog_TableEntry&)));
 
     initialize();
   }
@@ -201,7 +201,7 @@ namespace XtalOpt {
     m_infoUpdateTracker.append(xtal);
     m_infoUpdateTracker.unlock();
     locker.unlock();
-    TableEntry e;
+    XO_Prog_TableEntry e;
     xtal->lock()->lockForRead();
     e.elapsed = xtal->getOptElapsed();
     e.gen     = xtal->getGeneration();
@@ -302,7 +302,7 @@ namespace XtalOpt {
       return;
     }
 
-    TableEntry e;
+    XO_Prog_TableEntry e;
     uint totalOptSteps = m_opt->optimizer()->getNumberOfOptSteps();
     e.brush = QBrush (Qt::white);
 
@@ -417,7 +417,7 @@ namespace XtalOpt {
     emit updateTableEntry(i, e);
   }
 
-  void TabProgress::setTableEntry(int row, const TableEntry & e)
+  void TabProgress::setTableEntry(int row, const XO_Prog_TableEntry & e)
   {
     // Lock the table
     QMutexLocker locker (m_mutex);
