@@ -454,16 +454,28 @@ for (ind = 0; ind < probs.size(); ind++)
     void emitStartingSession() {emit startingSession();};
 
     /**
-     * Sets OptBase::isStarting to true;
+     * Sets this->isStarting to true;
      * @sa setIsStartingFalse
      */
     void setIsStartingTrue() {isStarting = true;};
 
     /**
-     * Sets OptBase::isStarting to false;
+     * Sets this->isStarting to false;
      * @sa setIsStartingTrue
      */
     void setIsStartingFalse() {isStarting = false;};
+
+    /**
+     * Sets this->readOnly to true;
+     * @sa setReadOnlyFalse
+     */
+    void setReadOnlyTrue() {readOnly = true;};
+
+    /**
+     * Sets this->readOnly to false;
+     * @sa setReadOnlyTrue
+     */
+    void setReadOnlyFalse() {readOnly = false;};
 
     /**
      * Prints a backtrace to the terminal
