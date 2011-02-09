@@ -130,6 +130,4 @@ namespace XtalOpt {
   }
 } // end namespace XtalOpt
 
-//#include "extension.moc"
-
 Q_EXPORT_PLUGIN2(xtaloptextension, XtalOpt::XtalOptExtensionFactory)

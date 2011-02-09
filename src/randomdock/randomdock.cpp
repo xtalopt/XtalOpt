@@ -755,5 +755,3 @@ namespace RandomDock {
     }
   }
 } // end namespace RandomDock
-
-//#include "randomdock.moc"

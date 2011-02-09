@@ -476,6 +476,5 @@ namespace GlobalSearch {
     emit errorStatement(s);
   }
 
-} // end namespace Avogadro
+} // end namespace GlobalSearch
 
-//#include "optbase.moc"

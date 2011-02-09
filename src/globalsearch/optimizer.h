@@ -595,6 +595,6 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
     QString m_idString;
   };
 
-} // end namespace Avogadro
+} // end namespace GlobalSearch
 
 #endif

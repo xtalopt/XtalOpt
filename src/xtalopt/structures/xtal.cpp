@@ -892,5 +892,3 @@ namespace XtalOpt {
   }
 
 } // end namespace XtalOpt
-
-//#include "xtal.moc"

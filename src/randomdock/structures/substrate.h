@@ -49,6 +49,6 @@ namespace RandomDock {
     QList<double> m_probs;
   };
 
-} // end namespace Avogadro
+} // end namespace RandomDock
 
 #endif

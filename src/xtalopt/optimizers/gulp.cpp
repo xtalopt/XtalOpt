@@ -173,6 +173,4 @@ namespace XtalOpt {
   {
     return true;
   }
-} // end namespace Avogadro
-
-//#include "gulp.moc"
+} // end namespace XtalOpt

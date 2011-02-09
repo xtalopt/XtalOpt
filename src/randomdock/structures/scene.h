@@ -39,6 +39,6 @@ namespace RandomDock {
 
   };
 
-} // end namespace Avogadro
+} // end namespace RandomDock
 
 #endif

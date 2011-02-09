@@ -292,6 +292,4 @@ namespace XtalOpt {
     qDebug() << "";
   }
 
-} // end namespace Avogadro
-
-//#include "xtalopttest.moc"
+} // end namespace XtalOpt

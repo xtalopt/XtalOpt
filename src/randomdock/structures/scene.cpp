@@ -32,6 +32,4 @@ namespace RandomDock {
   {
   }
 
-} // end namespace Avogadro
-
-//#include "scene.moc"
+} // end namespace RandomDock

@@ -238,5 +238,3 @@ namespace GlobalSearch {
   }
 
 }
-
-//#include "dialog.moc"

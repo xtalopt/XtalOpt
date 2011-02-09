@@ -246,6 +246,4 @@ namespace XtalOpt {
     }
   }
 
-} // end namespace Avogadro
-
-//#include "vasp.moc"
+} // end namespace XtalOpt
