@@ -36,7 +36,7 @@ namespace RandomDock {
   class RandomDock;
   class Scene;
 
-  struct TableEntry {
+  struct RD_Prog_TableEntry {
     int rank;
     int id;
     int jobID;
@@ -72,7 +72,7 @@ namespace RandomDock {
     void updateInfo();
     void updateAllInfo();
     void updateProgressTable();
-    void setTableEntry(int row, const TableEntry& e);
+    void setTableEntry(int row, const RD_Prog_TableEntry& e);
     void selectMoleculeFromProgress(int,int,int,int);
     void highlightScene(GlobalSearch::Structure *structure);
     void startTimer();
@@ -91,7 +91,7 @@ namespace RandomDock {
     void deleteJob(int);
     void updateStatus(int opt, int run, int queue, int fail);
     void infoUpdate();
-    void updateTableEntry(int row, const TableEntry& e);
+    void updateTableEntry(int row, const RD_Prog_TableEntry& e);
 
   private:
     Ui::Tab_Progress ui;

@@ -36,7 +36,7 @@ namespace XtalOpt {
   class XtalOpt;
   class Xtal;
 
-  struct TableEntry {
+  struct XO_Prog_TableEntry {
     int gen;
     int id;
     int jobID;
@@ -79,7 +79,7 @@ namespace XtalOpt {
     void updateAllInfo();
     void updateProgressTable();
     void setTableEntry(int row,
-                       const TableEntry& e);
+                       const XO_Prog_TableEntry& e);
     void selectMoleculeFromProgress(int,int,int,int);
     void highlightXtal(GlobalSearch::Structure *s);
     void startTimer();
@@ -99,7 +99,7 @@ namespace XtalOpt {
     void deleteJob(int);
     void updateStatus(int opt, int run, int queue, int fail);
     void infoUpdate();
-    void updateTableEntry(int row, const TableEntry& e);
+    void updateTableEntry(int row, const XO_Prog_TableEntry& e);
 
   private:
     Ui::Tab_Progress ui;
