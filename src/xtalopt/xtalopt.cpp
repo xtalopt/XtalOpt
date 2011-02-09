@@ -248,6 +248,20 @@ namespace XtalOpt {
       }
     }
 
+    // Wait for all structures to appear in tracker
+    m_dialog->updateProgressLabel(tr("Waiting for structures to initialize..."));
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressMinimum(newXtalCount);
+
+    do {
+      m_dialog->updateProgressValue(m_tracker->size());
+      m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
+                                    .arg(m_tracker->size())
+                                    .arg(newXtalCount));
+      GS_MSLEEP(100);
+    }
+    while (m_tracker->size() < newXtalCount);
+
     m_dialog->stopProgressUpdate();
 
     m_dialog->saveSession();
