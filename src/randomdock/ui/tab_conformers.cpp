@@ -232,10 +232,12 @@ namespace RandomDock {
     // Systematic search:
     if (ui.cb_allConformers->isChecked()) {
       m_dialog->updateProgressLabel(tr("Performing systematic rotor search..."));
-      int n = ff->SystematicRotorSearchInitialize(2500);
-      m_dialog->updateProgressMaximum(2*n);
-      while (ff->SystematicRotorSearchNextConformer(500)) {
-        m_dialog->updateProgressValue(++step);
+      // Only search if there is more than one conformer possible.
+      if (int n = ff->SystematicRotorSearchInitialize(2500) > 1) {
+        m_dialog->updateProgressMaximum(2*n);
+        while (ff->SystematicRotorSearchNextConformer(500)) {
+          m_dialog->updateProgressValue(++step);
+        }
       }
     }
     // Random conformer search
