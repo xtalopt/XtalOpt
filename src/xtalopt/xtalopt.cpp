@@ -1155,7 +1155,7 @@ to obtain a newer version.");
 
       // Start search if needed
       if (!readOnly) {
-	qobject_cast<XtalOptDialog*>(m_dialog)->startProgressTimer();
+	emit sessionStarted();
       }
     }
 
