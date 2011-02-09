@@ -132,9 +132,7 @@ namespace GlobalSearch {
 
     if (!m_opt->readOnly ||
         !m_opt->isStarting ) {
-      qDebug() << "checkLoop calling checkPopulation...";
       checkPopulation();
-      qDebug() << "checkLoop calling checkRunning...";
       checkRunning();
     }
 
@@ -143,7 +141,6 @@ namespace GlobalSearch {
 
   void QueueManager::checkPopulation()
   {
-    qDebug() << "checkPopulation called...";
     // Return if already checking
     if (!m_checkPopulationMutex.tryLock()) {
       return;
@@ -248,8 +245,6 @@ namespace GlobalSearch {
 
   void QueueManager::checkRunning()
   {
-    qDebug() << "checkRunning called...";
-
     // Ensure that this is only called from the QM thread:
     Q_ASSERT_X(QThread::currentThread() == m_thread, Q_FUNC_INFO,
                "Attempting to run QueueManager::checkRunning "
