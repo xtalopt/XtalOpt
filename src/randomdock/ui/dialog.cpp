@@ -109,7 +109,19 @@ namespace RandomDock {
 
   void RandomDockDialog::saveSession()
   {
-    m_opt->save();
+    // Notify if this was user requested.
+    bool notify = false;
+    if (sender() == ui.push_save) {
+      notify = true;
+    }
+    if (m_opt->savePending) {
+      return;
+    }
+    m_opt->savePending = true;
+    QtConcurrent::run(m_opt,
+                      &GlobalSearch::OptBase::save,
+                      QString(""),
+                      notify);
   }
 
   void RandomDockDialog::startSearch()
