@@ -565,6 +565,6 @@ for (ind = 0; ind < probs.size(); ind++)
 
   };
 
-} // end namespace Avogadro
+} // end namespace GlobalSearch
 
 #endif

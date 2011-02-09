@@ -143,6 +143,4 @@ namespace RandomDock {
     return r;
   }
 
-} // end namespace Avogadro
-
-//#include "substrate.moc"
+} // end namespace RandomDock

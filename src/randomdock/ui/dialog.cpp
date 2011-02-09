@@ -131,5 +131,3 @@ namespace RandomDock {
   }
 
 }
-
-//#include "randomdockdialog.moc"

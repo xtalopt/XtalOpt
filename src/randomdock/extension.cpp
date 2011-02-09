@@ -111,6 +111,4 @@ namespace RandomDock {
   }
 } // end namespace RandomDock
 
-//#include "extension.moc"
-
 Q_EXPORT_PLUGIN2(randomdockextension, RandomDock::RandomDockExtensionFactory)

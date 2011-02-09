@@ -62,6 +62,6 @@ namespace XtalOpt {
     XtalOpt *m_opt;
     XtalOptDialog *m_dialog;
   };
-} // end namespace Avogadro
+} // end namespace XtalOpt
 
 #endif

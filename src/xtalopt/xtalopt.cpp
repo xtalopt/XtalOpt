@@ -1312,6 +1312,4 @@ to obtain a newer version.");
     }
   }
 
-} // end namespace Avogadro
-
-//#include "xtalopt.moc"
+} // end namespace XtalOpt

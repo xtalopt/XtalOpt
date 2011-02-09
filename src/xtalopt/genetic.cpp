@@ -575,6 +575,4 @@ namespace XtalOpt {
     xtal->wrapAtomsToCell();
   }
 
-} // end namespace Avogadro
-
-//#include "genetic.moc"
+} // end namespace XtalOpt

@@ -1002,6 +1002,5 @@ namespace GlobalSearch {
     return m_data.value(identifier);
   }
 
-} // end namespace Avogadro
+} // end namespace GlobalSearch
 
-//#include "optimizer.moc"

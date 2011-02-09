@@ -41,6 +41,6 @@ namespace XtalOpt {
     static void ripple(Xtal* xtal, double rho, uint eta, uint mu);
   };
 
-} // end namespace Avogadro
+} // end namespace XtalOpt
 
 #endif

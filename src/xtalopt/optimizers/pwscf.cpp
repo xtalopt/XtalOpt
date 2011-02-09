@@ -50,6 +50,4 @@ namespace XtalOpt {
     readSettings(filename);
   }
 
-} // end namespace Avogadro
-
-//#include "pwscf.moc"
+} // end namespace XtalOpt

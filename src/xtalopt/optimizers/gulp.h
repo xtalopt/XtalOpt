@@ -45,6 +45,6 @@ namespace XtalOpt {
     bool deleteJob(GlobalSearch::Structure *s) {return true;};
   };
 
-} // end namespace Avogadro
+} // end namespace XtalOpt
 
 #endif

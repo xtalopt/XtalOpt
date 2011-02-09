@@ -45,6 +45,6 @@ namespace GAPC {
 
   };
 
-} // end namespace Avogadro
+} // end namespace GAPC
 
 #endif

@@ -52,6 +52,4 @@ namespace XtalOpt {
     return true;
   }
 
-} // end namespace avogadro
-
-//#include "xtaloptoptimizer.moc"
+} // end namespace XtalOpt

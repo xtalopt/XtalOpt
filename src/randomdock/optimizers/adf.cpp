@@ -49,4 +49,4 @@ namespace RandomDock {
     readSettings(filename);
   }
 
-} // end namespace Avogadro
+} // end namespace RandomDock

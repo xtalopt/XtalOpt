@@ -136,5 +136,3 @@ namespace XtalOpt {
   };
 
 }
-
-//#include "dialog.moc"

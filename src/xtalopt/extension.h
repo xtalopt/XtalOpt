@@ -68,6 +68,6 @@ namespace XtalOpt {
   };
 
 
-} // end namespace Avogadro
+} // end namespace XtalOpt
 
 #endif
