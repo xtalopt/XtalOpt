@@ -652,7 +652,10 @@ namespace GlobalSearch {
   }
 
   void QueueManager::updateStructure(Structure *s) {
+    s->lock()->lockForWrite();
     s->stopOptTimer();
+    s->setStatus(Structure::Updating);
+    s->lock()->unlock();
     if (!m_opt->optimizer()->update(s)) {
       s->lock()->lockForWrite();
       s->setStatus(Structure::Error);
@@ -696,6 +699,10 @@ namespace GlobalSearch {
     // Perform writing
     m_opt->optimizer()->writeInputFiles(s);
 
+    s->lock()->lockForWrite();
+    s->setStatus(Structure::WaitingForOptimization);
+    s->lock()->unlock();
+
     m_jobStartTracker.lockForWrite();
     m_jobStartTracker.append(s);
     m_jobStartTracker.unlock();
@@ -730,6 +737,9 @@ namespace GlobalSearch {
       structure->lock()->unlock();
       return;
     }
+      structure->lock()->lockForWrite();
+      structure->setStatus(Structure::Submitted);
+      structure->lock()->unlock();
     return;
   }
 

@@ -183,9 +183,6 @@ namespace XtalOpt {
 
     // Update info
     locker.unlock();
-    structure->lock()->lockForWrite();
-    structure->setStatus(Structure::WaitingForOptimization);
-    structure->lock()->unlock();
     return true;
   }
 

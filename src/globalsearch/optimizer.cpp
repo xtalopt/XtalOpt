@@ -223,9 +223,6 @@ namespace GlobalSearch {
     if (!copyLocalTemplateFilesToRemote(structure)) return false;
 
     locker.unlock();
-    structure->lock()->lockForWrite();
-    structure->setStatus(Structure::WaitingForOptimization);
-    structure->lock()->unlock();
     return true;
   }
 
@@ -377,7 +374,6 @@ namespace GlobalSearch {
     QWriteLocker wlocker (structure->lock());
     structure->setJobID(jobID);
     structure->startOptTimer();
-    structure->setStatus(Structure::Submitted);
     m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
@@ -479,7 +475,6 @@ namespace GlobalSearch {
 
     // If jobID = 0 and structure is not in "Submitted" state, return an error.
     if (!jobID && structure->getStatus() != Structure::Submitted) {
-      structure->setStatus(Structure::Error);
       return Optimizer::Error;
     }
 
@@ -582,13 +577,11 @@ namespace GlobalSearch {
           }
         }
         // Otherwise, it's an error!
-        structure->setStatus(Structure::Error);
         m_opt->ssh()->unlockConnection(ssh);
         return Optimizer::Error;
       }
     }
     // Not in queue and no output? Interesting...
-    structure->setStatus(Structure::Error);
     return Optimizer::Unknown;
   }
 
@@ -721,10 +714,6 @@ namespace GlobalSearch {
     // lock structure
     QWriteLocker locker (structure->lock());
 
-    // Update structure status
-    structure->setStatus(Structure::Updating);
-    structure->stopOptTimer();
-
     // Copy remote files over
     locker.unlock();
     bool ok = copyRemoteToLocalCache(structure);
@@ -735,7 +724,6 @@ namespace GlobalSearch {
                      .arg(m_opt->username)
                      .arg(m_opt->host)
                      .arg(structure->fileName()));
-      structure->setStatus(Structure::Error);
       return false;
     }
 
@@ -755,7 +743,6 @@ namespace GlobalSearch {
     }
 
     structure->setJobID(0);
-    structure->setStatus(Structure::StepOptimized);
     locker.unlock();
     return true;
   }
@@ -776,7 +763,6 @@ namespace GlobalSearch {
     if (!ok) {
       m_opt->warning(tr("Optimizer::load: Error loading structure at %1")
                  .arg(structure->fileName()));
-      structure->setStatus(Structure::Error);
       return false;
     }
     return true;
@@ -802,7 +788,6 @@ namespace GlobalSearch {
     if ( !inFormat || !conv.SetInFormat( inFormat ) ) {
       m_opt->warning(tr("Optimizer::read: Error setting format for file %1")
                  .arg(filename));
-      structure->setStatus(Structure::Error);
       m_opt->sOBMutex->unlock();
       return false;
     }
