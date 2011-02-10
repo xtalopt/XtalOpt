@@ -446,7 +446,7 @@ namespace GlobalSearch {
       m_runningTracker.unlock();
       locker.unlock();
       emit structureUpdated(s);
-      submitStructure(s);
+      addStructureToSubmissionQueue(s);
       return;
     }
     // Otherwise, it's done
@@ -630,7 +630,7 @@ namespace GlobalSearch {
 
   void QueueManager::handleRestartStructure(Structure *s)
   {
-    submitStructure(s);
+    addStructureToSubmissionQueue(s);
   }
 
   void QueueManager::updateQueue()
@@ -674,9 +674,8 @@ namespace GlobalSearch {
     emit structureKilled(s);
   }
 
-  void QueueManager::submitStructure(Structure *s, int optStep) {
-    if (!s) return;
-
+  void QueueManager::addStructureToSubmissionQueue(Structure *s,
+                                                   int optStep) {
     QWriteLocker locker (s->lock());
 
     s->setStatus(Structure::WaitingForOptimization);
@@ -687,10 +686,10 @@ namespace GlobalSearch {
     emit structureUpdated(s);
 
     // write/copy in background thread
-    QtConcurrent::run(this, &QueueManager::submitStructure_, s);
+    QtConcurrent::run(this, &QueueManager::addStructureToSubmissionQueue_, s);
   }
 
-  void QueueManager::submitStructure_(Structure *s) {
+  void QueueManager::addStructureToSubmissionQueue_(Structure *s) {
     // Perform writing
     m_opt->optimizer()->writeInputFiles(s);
 
@@ -725,7 +724,7 @@ namespace GlobalSearch {
     // Make sure no mutexes are locked here -- this can take a while...
     if (!m_opt->optimizer()->startOptimization(structure)) {
       structure->lock()->lockForWrite();
-      m_opt->warning(tr("QueueManager::submitStructure_: Job did not run successfully for structure %1-%2.")
+      m_opt->warning(tr("QueueManager::startJob_: Job did not run successfully for structure %1-%2.")
                      .arg(structure->getIDString())
                      .arg(structure->getCurrentOptStep()));
       structure->setStatus(Structure::Error);
@@ -835,7 +834,7 @@ namespace GlobalSearch {
     m_tracker->append(s);
     m_tracker->unlock();
 
-    submitStructure(s);
+    addStructureToSubmissionQueue(s);
     emit structureStarted(s);
   }
 

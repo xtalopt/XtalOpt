@@ -296,7 +296,7 @@ m_queue->unlockForNaming(newStructure);
      * @param optStep Optional optimization step. If omitted, the
      * Structure's currentOptStep() is used.
      */
-    void submitStructure(Structure *s, int optStep = 0);
+    void addStructureToSubmissionQueue(Structure *s, int optStep = 0);
 
     /**
      * Submits the first Structure in m_jobStartTracker for
@@ -343,7 +343,7 @@ m_queue->unlockForNaming(newStructure);
      */
     void checkRunning();
 
-    void submitStructure_(Structure *s);
+    void addStructureToSubmissionQueue_(Structure *s);
     void startJob_(Structure *s);
     void unlockForNaming_();
 
