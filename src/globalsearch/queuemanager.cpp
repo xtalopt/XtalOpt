@@ -731,9 +731,9 @@ namespace GlobalSearch {
       structure->lock()->unlock();
       return;
     }
-      structure->lock()->lockForWrite();
-      structure->setStatus(Structure::Submitted);
-      structure->lock()->unlock();
+    structure->lock()->lockForWrite();
+    structure->setStatus(Structure::Submitted);
+    structure->lock()->unlock();
     return;
   }
 
