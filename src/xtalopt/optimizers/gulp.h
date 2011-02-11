@@ -35,15 +35,6 @@ namespace XtalOpt {
     GULPOptimizer(GlobalSearch::OptBase *parent,
                   const QString &filename = "");
 
-    bool startOptimization(GlobalSearch::Structure *structure);
-    bool getQueueList(QStringList & queueData, QMutex *mutex);
-    GlobalSearch::QueueInterface::QueueStatus
-      getStatus(GlobalSearch::Structure *structure);
-    bool copyRemoteToLocalCache(GlobalSearch::Structure *structure);
-    int checkIfJobNameExists(GlobalSearch::Structure *,
-                             const QStringList &, bool &b) {
-      b=false;return 0;};
-    bool deleteJob(GlobalSearch::Structure *s) {return true;};
   };
 
 } // end namespace XtalOpt

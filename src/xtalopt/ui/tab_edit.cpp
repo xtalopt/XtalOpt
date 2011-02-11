@@ -16,70 +16,72 @@
 
 #include <xtalopt/ui/tab_edit.h>
 
-#include <globalsearch/macros.h>
-#include <xtalopt/ui/dialog.h>
-#include <xtalopt/xtalopt.h>
 #include <xtalopt/optimizers/vasp.h>
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/pwscf.h>
 #include <xtalopt/optimizers/castep.h>
+#include <xtalopt/ui/dialog.h>
+#include <xtalopt/xtalopt.h>
+
+#include <globalsearch/macros.h>
+#include <globalsearch/queueinterfaces/local.h>
+#include <globalsearch/queueinterfaces/pbs.h>
 
 #include <QtCore/QSettings>
 
+#include <QtGui/QComboBox>
 #include <QtGui/QFont>
 #include <QtGui/QFileDialog>
+#include <QtGui/QListWidgetItem>
+#include <QtGui/QTextEdit>
 
-using namespace std;
+using namespace GlobalSearch;
 
 namespace XtalOpt {
 
   TabEdit::TabEdit( XtalOptDialog *parent, XtalOpt *p ) :
-    AbstractTab(parent, p)
+    DefaultEditTab(parent, p)
   {
-    ui.setupUi(m_tab_widget);
+    // Fill m_optimizers in order of XtalOpt::OptTypes
+    m_optimizers.clear();
+    const unsigned int numOptimizers = 4;
+    for (unsigned int i = 0; i < numOptimizers; ++i) {
+      switch (i) {
+      case XtalOpt::OT_VASP:
+        m_optimizers.append(new VASPOptimizer (m_opt));
+        break;
+      case XtalOpt::OT_GULP:
+        m_optimizers.append(new GULPOptimizer (m_opt));
+        break;
+      case XtalOpt::OT_PWscf:
+        m_optimizers.append(new PWscfOptimizer (m_opt));
+        break;
+      case XtalOpt::OT_CASTEP:
+        m_optimizers.append(new CASTEPOptimizer (m_opt));
+        break;
+      }
+    }
 
-    ui.edit_edit->setCurrentFont(QFont("Courier"));
+    // Fill m_optimizers in order of XtalOpt::QueueInterfaces
+    m_queueInterfaces.clear();
+    const unsigned int numQIs = 2;
+    for (unsigned int i = 0; i < numQIs; ++i) {
+      switch (i) {
+      case XtalOpt::QI_LOCAL:
+        m_queueInterfaces.append(new LocalQueueInterface (m_opt));
+        break;
+      case XtalOpt::QI_PBS:
+        m_queueInterfaces.append(new PbsQueueInterface (m_opt));
+        break;
+      }
+    }
 
-    // opt connections
-    connect(this, SIGNAL(optimizerChanged(GlobalSearch::Optimizer*)),
-            m_opt, SLOT(setOptimizer(GlobalSearch::Optimizer*)));
-
-    // Dialog connections
-    connect(this, SIGNAL(optimizerChanged(GlobalSearch::Optimizer*)),
-            m_dialog, SIGNAL(tabsUpdateGUI()));
-
-    // Edit tab connections
-    connect(ui.push_help, SIGNAL(clicked()),
-            this, SLOT(showHelp()));
-    connect(ui.edit_edit, SIGNAL(textChanged()),
-            this, SLOT(updateTemplates()));
-    connect(ui.combo_template, SIGNAL(currentIndexChanged(int)),
-            this, SLOT(templateChanged(int)));
-    connect(ui.list_POTCARs, SIGNAL(itemDoubleClicked(QListWidgetItem*)),
+    connect(ui_list_edit, SIGNAL(itemDoubleClicked(QListWidgetItem*)),
             this, SLOT(changePOTCAR(QListWidgetItem*)));
-    connect(ui.push_add, SIGNAL(clicked()),
-            this, SLOT(appendOptStep()));
-    connect(ui.push_remove, SIGNAL(clicked()),
-            this, SLOT(removeCurrentOptStep()));
-    connect(ui.list_opt, SIGNAL(currentRowChanged(int)),
-            this, SLOT(optStepChanged()));
-    connect(ui.edit_user1, SIGNAL(editingFinished()),
-            this, SLOT(updateUserValues()));
-    connect(ui.edit_user2, SIGNAL(editingFinished()),
-            this, SLOT(updateUserValues()));
-    connect(ui.edit_user3, SIGNAL(editingFinished()),
-            this, SLOT(updateUserValues()));
-    connect(ui.edit_user4, SIGNAL(editingFinished()),
-            this, SLOT(updateUserValues()));
-    connect(ui.combo_optType, SIGNAL(currentIndexChanged(int)),
-            this, SLOT(updateOptType()));
-    connect(ui.push_saveScheme, SIGNAL(clicked()),
-            this, SLOT(saveScheme()));
-    connect(ui.push_loadScheme, SIGNAL(clicked()),
-            this, SLOT(loadScheme()));
-    ui.combo_optType->setCurrentIndex(0);
 
-    initialize();
+    DefaultEditTab::initialize();
+
+    populateTemplates();
   }
 
   TabEdit::~TabEdit()
@@ -90,10 +92,20 @@ namespace XtalOpt {
     SETTINGS(filename);
 
     settings->beginGroup("xtalopt/edit");
-    const int VERSION = 1;
+    const int VERSION = 2;
     settings->setValue("version",          VERSION);
 
-    settings->setValue("optType", ui.combo_optType->currentIndex());
+    settings->setValue("description", m_opt->description);
+    settings->setValue("rempath", m_opt->rempath);
+    settings->setValue("localpath", m_opt->filePath);
+    settings->setValue("remote/host", m_opt->host);
+    settings->setValue("remote/port", m_opt->port);
+    settings->setValue("remote/username", m_opt->username);
+    settings->setValue("remote/rempath", m_opt->rempath);
+
+    settings->setValue("optimizer", m_opt->optimizer()->getIDString().toLower());
+    settings->setValue("queueInterface", m_opt->queueInterface()->getIDString().toLower());
+
     settings->endGroup();
     m_opt->optimizer()->writeSettings(filename);
 
@@ -108,14 +120,105 @@ namespace XtalOpt {
     settings->beginGroup("xtalopt/edit");
     int loadedVersion = settings->value("version", 0).toInt();
 
-    ui.combo_optType->setCurrentIndex( settings->value("optType", 0).toInt());
+    m_opt->description = settings->value("description", "").toString();
+    m_opt->rempath = settings->value("rempath", "").toString();
+    m_opt->filePath = settings->value("localpath", "").toString();
+    m_opt->host = settings->value("remote/host", "").toString();
+    m_opt->port = settings->value("remote/port", 22).toInt();
+    m_opt->username = settings->value("remote/username", "").toString();
+    m_opt->rempath = settings->value("remote/rempath", "").toString();
+
+    if (loadedVersion >= 2) {
+      QString optimizer =
+        settings->value("optimizer", "gulp").toString().toLower();
+      for (QList<Optimizer*>::const_iterator
+             it = m_optimizers.constBegin(),
+             it_end = m_optimizers.constEnd();
+           it != it_end; ++it) {
+        if ((*it)->getIDString().toLower().compare(optimizer) == 0) {
+          emit optimizerChanged(*it);
+          break;
+        }
+      }
+
+      QString queueInterface =
+        settings->value("queueInterface", "local").toString().toLower();
+      for (QList<QueueInterface*>::const_iterator
+             it = m_queueInterfaces.constBegin(),
+             it_end = m_queueInterfaces.constEnd();
+           it != it_end; ++it) {
+        if ((*it)->getIDString().toLower().compare(queueInterface) == 0) {
+          emit queueInterfaceChanged(*it);
+          break;
+        }
+      }
+    }
+
     settings->endGroup();
 
-    updateOptType();
+    // Update config data
+    switch (loadedVersion) {
+    case 0:
+    case 1: // Renamed optType to optimizer, added
+            // queueInterface. Both now use lowercase strings to
+            // identify. Took ownership of variables previously held
+            // by tabsys.
+      {
+        // Extract optimizer ID
+        ui_combo_optimizers->setCurrentIndex
+          (settings->value("xtalopt/edit/optType", 0).toInt());
+        // Set QueueInterface based on optimizer
+        switch (ui_combo_optimizers->currentIndex()) {
+        case XtalOpt::OT_VASP:
+          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_PBS);
+          // Copy over job.pbs
+          settings->setValue
+            ("xtalopt/optimizer/VASP/QI/PBS/job.pbs_list",
+             settings->value
+             ("xtalopt/optimizer/VASP/job.pbs_list", QStringList("")));
+          break;
+        case XtalOpt::OT_PWscf:
+          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_PBS);
+          // Copy over job.pbs
+          settings->setValue
+            ("xtalopt/optimizer/PWscf/QI/PBS/job.pbs_list",
+             settings->value
+             ("xtalopt/optimizer/PWscf/job.pbs_list", QStringList("")));
+          break;
+        case XtalOpt::OT_CASTEP:
+          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_PBS);
+          // Copy over job.pbs
+          settings->setValue
+            ("xtalopt/optimizer/CASTEP/QI/PBS/job.pbs_list",
+             settings->value
+             ("xtalopt/optimizer/CASTEP/job.pbs_list", QStringList("")));
+          break;
+        default:
+        case XtalOpt::OT_GULP:
+          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_LOCAL);
+          break;
+        }
+        // Formerly tab_sys stuff. Read from default settings object:
+        settings->beginGroup("xtalopt/sys/");
+        m_opt->description = settings->value("description", "").toString();
+        m_opt->rempath = settings->value("remote/rempath", "").toString();
+        m_opt->filePath = settings->value("file/path", "").toString();
+        m_opt->host = settings->value("remote/host", "").toString();
+        m_opt->port = settings->value("remote/port", 22).toInt();
+        m_opt->username = settings->value("remote/username", "").toString();
+        m_opt->rempath = settings->value("remote/rempath", "").toString();
+        settings->endGroup(); // "xtalopt/sys"
+      }
+    case 2:
+    default:
+      break;
+    }
+
     m_opt->optimizer()->readSettings(filename);
+    m_opt->queueInterface()->readSettings(filename);
 
     // Do we need to update the POTCAR info?
-    if (ui.combo_optType->currentIndex() == XtalOpt::OT_VASP) {
+    if (ui_combo_optimizers->currentIndex() == XtalOpt::OT_VASP) {
       VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
       if (!vopt->POTCARInfoIsUpToDate(xtalopt->comp.keys())) {
         generateVASP_POTCAR_info();
@@ -123,369 +226,102 @@ namespace XtalOpt {
       }
     }
 
-    // Update config data
-    switch (loadedVersion) {
-    case 0:
-    case 1:
-    default:
-      break;
-    }
-
     updateGUI();
   }
 
-  void TabEdit::updateGUI() {
-    populateOptList();
+  void TabEdit::updateEditWidget()
+  {
+    if (!m_isInitialized) {
+      return;
+    }
+
+    QStringList filenames = getTemplateNames();
+    int templateInd = ui_combo_templates->currentIndex();
+    QString templateName = ui_combo_templates->currentText();
+    Q_ASSERT(templateInd >= 0 && templateInd < filenames.size());
+    Q_ASSERT(templateName.compare(filenames.at(templateInd)) == 0);
+
+    if (m_opt->optimizer()->getIDString().compare("VASP") == 0 &&
+        templateName.compare("POTCAR") == 0) {
+
+      if (m_opt->optimizer()->getNumberOfOptSteps() !=
+          ui_list_optStep->count()) {
+        populateOptStepList();
+      }
+
+      int optStepIndex = ui_list_optStep->currentRow();
+      Q_ASSERT(optStepIndex >= 0 &&
+               optStepIndex < m_opt->optimizer()->getNumberOfOptSteps());
+
+      // Display appropriate entry widget.
+      ui_list_edit->setVisible(true);
+      ui_edit_edit->setVisible(false);
+
+      XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+      VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
+      // Do we need to update the POTCAR info?
+      if (!vopt->POTCARInfoIsUpToDate(xtalopt->comp.keys())) {
+        generateVASP_POTCAR_info();
+        vopt->buildPOTCARs();
+      }
+
+      // Build list in GUI
+      ui_list_edit->clear();
+      // "POTCAR info" is of type
+      // QList<QHash<QString, QString> >
+      // e.g. a list of hashes containing
+      // [atomic symbol : pseudopotential file] pairs
+      QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
+      QList<QString> symbols = potcarInfo.at(optStepIndex).toHash().keys();
+      qSort(symbols);
+      for (int i = 0; i < symbols.size(); i++) {
+        ui_list_edit->addItem(tr("%1: %2")
+                               .arg(symbols.at(i), 2)
+                               .arg(potcarInfo.at(optStepIndex).toHash()[symbols.at(i)].toString()));
+      }
+    }
+    // Default for all templates using text entry
+    else {
+      AbstractEditTab::updateEditWidget();
+    }
+  }
+
+  void TabEdit::appendOptStep() {
+    // Copy the current files into a new entry at the end of the opt step list
+    if (m_opt->optimizer()->getIDString() == "VASP" &&
+        m_opt->optimizer()->getData("POTCAR info").toStringList().isEmpty()) {
+      QMessageBox::information(m_dialog, "POTCAR info missing!", "You need to specify POTCAR information before adding more steps!");
+      generateVASP_POTCAR_info();
+    }
+
+    // Rebuild POTCARs if needed
     if (m_opt->optimizer()->getIDString() == "VASP") {
-      ui.combo_optType->setCurrentIndex(XtalOpt::OT_VASP);
-    }
-    else if (m_opt->optimizer()->getIDString() == "GULP") {
-      ui.combo_optType->setCurrentIndex(XtalOpt::OT_GULP);
-    }
-    else if (m_opt->optimizer()->getIDString() == "PWscf") {
-      ui.combo_optType->setCurrentIndex(XtalOpt::OT_PWscf);
-    }
-    else if (m_opt->optimizer()->getIDString() == "CASTEP") {
-      ui.combo_optType->setCurrentIndex(XtalOpt::OT_CASTEP);
+      int currentOptStep = ui_list_optStep->currentRow();
+      QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
+      potcarInfo.append(potcarInfo.at(currentOptStep));
+      m_opt->optimizer()->setData("POTCAR info", potcarInfo);
+      qobject_cast<VASPOptimizer*>(m_opt->optimizer())->buildPOTCARs();
     }
 
-    templateChanged(ui.combo_template->currentIndex());
-    ui.edit_user1->setText(	m_opt->optimizer()->getUser1());
-    ui.edit_user2->setText(	m_opt->optimizer()->getUser2());
-    ui.edit_user3->setText(	m_opt->optimizer()->getUser3());
-    ui.edit_user4->setText(	m_opt->optimizer()->getUser4());
+    AbstractEditTab::appendOptStep();
+
+    populateOptStepList();
   }
 
-  void TabEdit::lockGUI()
-  {
-    ui.combo_optType->setDisabled(true);
-  }
+  void TabEdit::removeCurrentOptStep() {
+    int currentOptStep = ui_list_optStep->currentRow();
 
-  void TabEdit::showHelp() {
-    QMessageBox::information(m_dialog,
-                             "Template Help",
-                             m_opt->getTemplateKeywordHelp());
-  }
-
-  void TabEdit::updateOptType()
-  {
-    // Check if the opttype has actually changed and that the
-    // optimizer is set.
-    if ( m_opt->optimizer()
-         && (
-             ( ui.combo_optType->currentIndex() == XtalOpt::OT_VASP
-               && m_opt->optimizer()->getIDString() == "VASP" )
-             ||
-             ( ui.combo_optType->currentIndex() == XtalOpt::OT_GULP
-               && m_opt->optimizer()->getIDString() == "GULP" )
-             ||
-             ( ui.combo_optType->currentIndex() == XtalOpt::OT_PWscf
-               && m_opt->optimizer()->getIDString() == "PWscf" )
-             ||
-             ( ui.combo_optType->currentIndex() == XtalOpt::OT_CASTEP
-               && m_opt->optimizer()->getIDString() == "CASTEP" )
-             )
-         ) {
-      return;
+    if (m_opt->optimizer()->getIDString() == "VASP") {
+      QStringList sl = m_opt->optimizer()->getData("POTCAR info").toStringList();
+      sl.removeAt(currentOptStep);
+      m_opt->optimizer()->setData("POTCAR info", sl);
+      qobject_cast<VASPOptimizer*>(m_opt->optimizer())->buildPOTCARs();
     }
 
-    ui.combo_template->blockSignals(true);
-    ui.combo_template->clear();
-    ui.combo_template->blockSignals(false);
+    GlobalSearch::AbstractEditTab::removeCurrentOptStep();
 
-    switch (ui.combo_optType->currentIndex()) {
-    case XtalOpt::OT_VASP: {
-      // Set total number of templates (4, length of VASP_Templates)
-      QStringList sl;
-      sl << "" << "" << "" << "";
-      ui.combo_template->blockSignals(true);
-      ui.combo_template->insertItems(0, sl);
-
-      // Set each template at the appropriate index:
-      ui.combo_template->removeItem(VT_queueScript);
-      ui.combo_template->insertItem(VT_queueScript,	tr("Queue Script"));
-      ui.combo_template->removeItem(VT_INCAR);
-      ui.combo_template->insertItem(VT_INCAR,		"INCAR");
-      ui.combo_template->removeItem(VT_POTCAR);
-      ui.combo_template->insertItem(VT_POTCAR,		"POTCAR");
-      ui.combo_template->removeItem(VT_KPOINTS);
-      ui.combo_template->insertItem(VT_KPOINTS,		"KPOINTS");
-      ui.combo_template->blockSignals(false);
-
-      emit optimizerChanged(new VASPOptimizer (m_opt) );
-      ui.combo_template->setCurrentIndex(0);
-
-      break;
-    }
-    case XtalOpt::OT_GULP: {
-      // Set total number of templates (1, length of GULP_Templates)
-      QStringList sl;
-      sl << "";
-      ui.combo_template->blockSignals(true);
-      ui.combo_template->insertItems(0, sl);
-
-      // Set each template at the appropriate index:
-      ui.combo_template->removeItem(GT_gin);
-      ui.combo_template->insertItem(GT_gin,	tr("GULP .gin"));
-      ui.combo_template->blockSignals(false);
-
-      emit optimizerChanged(new GULPOptimizer (m_opt) );
-      ui.combo_template->setCurrentIndex(0);
-
-      break;
-    }
-    case XtalOpt::OT_PWscf: {
-      // Set total number of templates (2, length of PWscf_Templates)
-      QStringList sl;
-      sl << "" << "";
-      ui.combo_template->blockSignals(true);
-      ui.combo_template->insertItems(0, sl);
-
-      // Set each template at the appropriate index:
-      ui.combo_template->removeItem(PWscfT_queueScript);
-      ui.combo_template->insertItem(PWscfT_queueScript,	tr("Queue Script"));
-      ui.combo_template->removeItem(PWscfT_in);
-      ui.combo_template->insertItem(PWscfT_in,		tr("Input file"));
-      ui.combo_template->blockSignals(false);
-
-      emit optimizerChanged(new PWscfOptimizer (m_opt) );
-      ui.combo_template->setCurrentIndex(0);
-
-      break;
-    }
-    case XtalOpt::OT_CASTEP: {
-      // Set total number of templates (3, length of CASTEP_Templates)
-      QStringList sl;
-      sl << "" << "" << "";
-      ui.combo_template->blockSignals(true);
-      ui.combo_template->insertItems(0, sl);
-
-      // Set each template at the appropriate index:
-      ui.combo_template->removeItem(CASTEPT_queueScript);
-      ui.combo_template->insertItem(CASTEPT_queueScript,   tr("Queue Script"));
-      ui.combo_template->removeItem(CASTEPT_param);
-      ui.combo_template->insertItem(CASTEPT_param,         tr(".param File"));
-      ui.combo_template->removeItem(CASTEPT_cell);
-      ui.combo_template->insertItem(CASTEPT_cell,         tr(".cell File"));
-      ui.combo_template->blockSignals(false);
-
-      emit optimizerChanged(new CASTEPOptimizer (m_opt) );
-      ui.combo_template->setCurrentIndex(0);
-
-      break;
-    }
-    default: // shouldn't happen...
-      qWarning() << "TabEdit::updateOptType: Selected OptType out of range?";
-      break;
-    }
-    populateOptList();
-    templateChanged(0);
-  }
-
-  void TabEdit::templateChanged(int ind) {
-    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-    if (ind < 0) {
-      qDebug() << "TabEdit::templateChanged: Not changing template to a negative index.";
-      return;
-    }
-
-    int row = ui.list_opt->currentRow();
-
-    if (m_opt->optimizer()->getNumberOfOptSteps() != ui.list_opt->count())
-      populateOptList();
-
-    switch (ui.combo_optType->currentIndex()) {
-    case XtalOpt::OT_VASP: {
-      // Hide/show appropriate GUI elements
-      if (ind == VT_POTCAR) {
-        ui.list_POTCARs->setVisible(true);
-        ui.edit_edit->setVisible(false);
-      }
-      else {
-        ui.list_POTCARs->setVisible(false);
-        ui.edit_edit->setVisible(true);
-      }
-
-      switch (ind) {
-      case VT_queueScript:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.pbs", row));
-        break;
-      case VT_INCAR:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("INCAR", row));
-        break;
-      case VT_POTCAR:
-        {
-          VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
-          // Do we need to update the POTCAR info?
-          if (!vopt->POTCARInfoIsUpToDate(xtalopt->comp.keys())) {
-            generateVASP_POTCAR_info();
-            vopt->buildPOTCARs();
-          }
-
-          // Build list in GUI
-          ui.list_POTCARs->clear();
-          // "POTCAR info" is of type
-          // QList<QHash<QString, QString> >
-          // e.g. a list of hashes containing
-          // [atomic symbol : pseudopotential file] pairs
-          QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
-          QList<QString> symbols = potcarInfo.at(row).toHash().keys();
-          qSort(symbols);
-          for (int i = 0; i < symbols.size(); i++) {
-            ui.list_POTCARs->addItem(tr("%1: %2")
-                                     .arg(symbols.at(i), 2)
-                                     .arg(potcarInfo.at(row).toHash()[symbols.at(i)].toString()));
-          }
-          break;
-        }
-      case VT_KPOINTS:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("KPOINTS", row));
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::templateChanged: Selected template out of range? " << ind;
-        break;
-      }
-      break;
-    }
-    case XtalOpt::OT_GULP: {
-      // Hide/show appropriate GUI elements
-      ui.list_POTCARs->setVisible(false);
-      ui.edit_edit->setVisible(true);
-
-      // Set edit data
-      switch (ind) {
-      case GT_gin:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("xtal.gin", row));
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::templateChanged: Selected template out of range? " << ind;
-        break;
-      }
-      break;
-    }
-    case XtalOpt::OT_PWscf: {
-      // Hide/show appropriate GUI elements
-      ui.list_POTCARs->setVisible(false);
-      ui.edit_edit->setVisible(true);
-
-      switch (ind) {
-      case PWscfT_queueScript:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.pbs", row));
-        break;
-      case PWscfT_in:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("xtal.in", row));
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::templateChanged: Selected template out of range? " << ind;
-        break;
-      }
-      break;
-    }
-    case XtalOpt::OT_CASTEP: {
-      // Hide/show appropriate GUI elements
-      ui.list_POTCARs->setVisible(false);
-      ui.edit_edit->setVisible(true);
-
-      switch (ind) {
-      case CASTEPT_queueScript:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.pbs", row));
-        break;
-      case CASTEPT_param:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("xtal.param", row));
-        break;
-      case CASTEPT_cell:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("xtal.cell", row));
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::templateChanged: Selected template out of range? " << ind;
-        break;
-      }
-      break;
-    }
-    default: // shouldn't happen...
-      qWarning() << "TabEdit::templateChanged: Selected OptType out of range? "
-                 << ui.combo_optType->currentIndex();
-      break;
-    }
-  }
-
-  void TabEdit::updateTemplates()
-  {
-    int row = ui.list_opt->currentRow();
-
-    switch (ui.combo_optType->currentIndex()) {
-    case XtalOpt::OT_VASP:
-      switch (ui.combo_template->currentIndex()) {
-      case VT_queueScript:
-        m_opt->optimizer()->setTemplate("job.pbs", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      case VT_INCAR:
-        m_opt->optimizer()->setTemplate("INCAR", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      case VT_KPOINTS:
-        m_opt->optimizer()->setTemplate("KPOINTS", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::updateTemplates: Selected template out of range?";
-        break;
-      }
-      break;
-
-    case XtalOpt::OT_GULP:
-      switch (ui.combo_template->currentIndex()) {
-      case GT_gin:
-        m_opt->optimizer()->setTemplate("xtal.gin", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::updateTemplates: Selected template out of range?";
-        break;
-      }
-      break;
-
-    case XtalOpt::OT_PWscf:
-      switch (ui.combo_template->currentIndex()) {
-      case PWscfT_queueScript:
-        m_opt->optimizer()->setTemplate("job.pbs", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      case PWscfT_in:
-        m_opt->optimizer()->setTemplate("xtal.in", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::updateTemplates: Selected template out of range?";
-        break;
-      }
-      break;
-
-    case XtalOpt::OT_CASTEP:
-      switch (ui.combo_template->currentIndex()) {
-      case CASTEPT_queueScript:
-        m_opt->optimizer()->setTemplate("job.pbs", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      case CASTEPT_param:
-        m_opt->optimizer()->setTemplate("xtal.param", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      case CASTEPT_cell:
-        m_opt->optimizer()->setTemplate("xtal.cell", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::updateTemplates: Selected template out of range?";
-        break;
-      }
-      break;
-
-    default: // shouldn't happen...
-      qWarning() << "TabEdit::updateTemplates: Selected OptStep out of range?";
-      break;
-    }
-
-    ui.edit_edit->setCurrentFont(QFont("Courier"));
-  }
-
-  void TabEdit::updateUserValues() {
-    m_opt->optimizer()->setUser1(ui.edit_user1->text());
-    m_opt->optimizer()->setUser2(ui.edit_user2->text());
-    m_opt->optimizer()->setUser3(ui.edit_user3->text());
-    m_opt->optimizer()->setUser4(ui.edit_user4->text());
+    populateOptStepList();
   }
 
   void TabEdit::changePOTCAR(QListWidgetItem *item) {
@@ -513,12 +349,12 @@ namespace XtalOpt {
     // e.g. a list of hashes containing
     // [atomic symbol : pseudopotential file] pairs
     QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
-    QVariantHash hash = potcarInfo.at(ui.list_opt->currentRow()).toHash();
+    QVariantHash hash = potcarInfo.at(ui_list_optStep->currentRow()).toHash();
     hash.insert(symbol,QVariant(filename));
-    potcarInfo.replace(ui.list_opt->currentRow(), hash);
+    potcarInfo.replace(ui_list_optStep->currentRow(), hash);
     m_opt->optimizer()->setData("POTCAR info", potcarInfo);
     qobject_cast<VASPOptimizer*>(m_opt->optimizer())->buildPOTCARs();
-    templateChanged(VT_POTCAR);
+    updateEditWidget();
   }
 
   void TabEdit::generateVASP_POTCAR_info() {
@@ -564,110 +400,6 @@ namespace XtalOpt {
       potcarInfo.append(QVariant(hash));
 
     m_opt->optimizer()->setData("POTCAR info", QVariant(potcarInfo));
-    templateChanged(VT_POTCAR);
+    updateEditWidget();
   }
-
-  void TabEdit::populateOptList() {
-    int selection = ui.list_opt->currentRow();
-    int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
-    if (selection < 0) selection = 0;
-    if (selection >= maxSteps) selection = maxSteps - 1;
-
-    ui.list_opt->blockSignals(true);
-    ui.list_opt->clear();
-    for (int i = 1; i <= m_opt->optimizer()->getNumberOfOptSteps(); i++) {
-      ui.list_opt->addItem(tr("Optimization %1").arg(i));
-    }
-    ui.list_opt->blockSignals(false);
-
-    ui.list_opt->setCurrentRow(selection);
-  }
-
-  void TabEdit::appendOptStep() {
-    // Copy the current files into a new entry at the end of the opt step list
-
-    if (m_opt->optimizer()->getIDString() == "VASP" &&
-        m_opt->optimizer()->getData("POTCAR info").toStringList().isEmpty()) {
-      QMessageBox::information(m_dialog, "POTCAR info missing!", "You need to specify POTCAR information before adding more steps!");
-      generateVASP_POTCAR_info();
-    }
-
-    int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
-    int currentOptStep = ui.list_opt->currentRow();
-    QStringList templates = m_opt->optimizer()->getTemplateNames();
-    QString currentTemplate;
-
-    // Rebuild POTCARs if needed
-    if (m_opt->optimizer()->getIDString() == "VASP") {
-      QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
-      potcarInfo.append(potcarInfo.at(currentOptStep));
-      m_opt->optimizer()->setData("POTCAR info", potcarInfo);
-      qobject_cast<VASPOptimizer*>(m_opt->optimizer())->buildPOTCARs();
-    }
-
-    // Add optstep
-    for (int i = 0; i < templates.size(); i++) {
-      currentTemplate = m_opt->optimizer()->getTemplate(templates.at(i), currentOptStep);
-      m_opt->optimizer()->appendTemplate(templates.at(i), currentTemplate);
-    }
-
-    populateOptList();
-  }
-
-  void TabEdit::removeCurrentOptStep() {
-    int currentOptStep = ui.list_opt->currentRow();
-    int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
-    QStringList templates = m_opt->optimizer()->getTemplateNames();
-    QString currentTemplate;
-    for (int i = 0; i < templates.size(); i++) {
-      m_opt->optimizer()->removeTemplate(templates.at(i), currentOptStep);
-    }
-
-    if (m_opt->optimizer()->getIDString() == "VASP") {
-      QStringList sl = m_opt->optimizer()->getData("POTCAR info").toStringList();
-      sl.removeAt(currentOptStep);
-      m_opt->optimizer()->setData("POTCAR info", sl);
-      qobject_cast<VASPOptimizer*>(m_opt->optimizer())->buildPOTCARs();
-    }
-
-    populateOptList();
-  }
-
-  void TabEdit::optStepChanged() {
-    templateChanged(ui.combo_template->currentIndex());
-  }
-
-  void TabEdit::saveScheme()
-  {
-    SETTINGS("");
-    QString filename = settings->value("xtalopt/edit/schemePath/", "").toString();
-    QFileDialog dialog (NULL, tr("Save Optimization Scheme as..."),
-                        filename, "*.scheme;;*.*");
-    dialog.selectFile(m_opt->optimizer()->getIDString() + ".scheme");
-    dialog.setFileMode(QFileDialog::AnyFile);
-    if (dialog.exec())
-      filename = dialog.selectedFiles().first();
-    else { // User cancel file selection.
-      return;
-    }
-    settings->setValue("xtalopt/edit/schemePath/", filename);
-    writeSettings(filename);
-  }
-
-  void TabEdit::loadScheme()
-  {
-    SETTINGS("");
-    QString filename = settings->value("xtalopt/edit/schemePath/", "").toString();
-    QFileDialog dialog (NULL, tr("Select Optimization Scheme to load..."),
- filename, "*.scheme;;*.*");
-     dialog.setFileMode(QFileDialog::ExistingFile);
-    if (dialog.exec())
-      filename = dialog.selectedFiles().first();
-    else { // User cancel file selection.
-      return;
-    }
-    settings->setValue("xtalopt/edit/schemePath/", filename);
-    readSettings(filename);
-  }
-
 }

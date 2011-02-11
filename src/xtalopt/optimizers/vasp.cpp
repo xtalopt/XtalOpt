@@ -101,6 +101,24 @@ namespace XtalOpt {
                     filenames.at(i) + "_list",
                     m_templates.value(filenames.at(i)));
     }
+
+    // QueueInterface templates
+    settings->beginGroup(m_opt->getIDString().toLower() +
+                         "/optimizer/" +
+                         getIDString() + "/QI/" +
+                         m_opt->queueInterface()->getIDString() + "/");
+    filenames = m_QITemplates.keys();
+    for (QStringList::const_iterator
+           it = filenames.constBegin(),
+           it_end = filenames.constEnd();
+         it != it_end;
+         ++it) {
+      settings->setValue((*it) + "_list",
+                         m_QITemplates.value(*it));
+    }
+    settings->endGroup();
+
+    DESTROY_SETTINGS(filename);
   }
 
   void VASPOptimizer::writeDataToSettings(const QString &filename)
@@ -125,38 +143,7 @@ namespace XtalOpt {
   QHash<QString, QString>
   VASPOptimizer::getInterpretedTemplates(Structure *structure)
   {
-    // Stop any running jobs associated with this structure
-    m_opt->queueInterface()->stopJob(structure);
-
-    // Lock
-    QReadLocker locker (structure->lock());
-
-    // Check optstep info
-    int optStep = structure->getCurrentOptStep();
-
-    Q_ASSERT_X(optStep <= m_opt->optimizer()->getNumberOfOptSteps(),
-               Q_FUNC_INFO, QString("OptStep of Structure %1 exceeds "
-                                    "number of known OptSteps (%2, limit %3).")
-               .arg(structure->getIDString()).arg(optStep)
-               .arg(m_opt->optimizer()->getNumberOfOptSteps()).toStdString().c_str());
-
-    // Unlock for optimizer calls
-    locker.unlock();
-
-    // Build hash
-    QHash<QString, QString> hash;
-    QStringList filenames = getTemplateNames();
-    QString contents;
-    for (QStringList::const_iterator
-           it = filenames.constBegin(),
-           it_end = filenames.constEnd();
-         it != it_end;
-         it++) {
-      hash.insert((*it), m_opt->interpretTemplate(m_templates.value(*it)
-                                                  .at(optStep),
-                                                  structure));
-    }
-    // POSCAR is slightly different, must be done here.
+    QHash<QString, QString> hash = Optimizer::getInterpretedTemplates(structure);
     hash.insert("POSCAR", m_opt->interpretTemplate("%POSCAR%", structure));
     return hash;
   }

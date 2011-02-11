@@ -49,6 +49,11 @@ namespace XtalOpt {
       OT_CASTEP
     };
 
+    enum QueueInterfaces {
+      QI_LOCAL = 0,
+      QI_PBS
+    };
+
     enum Operators {
       OP_Crossover = 0,
       OP_Stripple,
@@ -106,8 +111,6 @@ namespace XtalOpt {
 
     QMutex *xtalInitMutex;
 
-    QString gulpPath;
-
    signals:
     void newInfoUpdate();
     void updateAllInfo();
@@ -124,6 +127,7 @@ namespace XtalOpt {
    private:
     void resetDuplicates_();
     void checkForDuplicates_();
+    void generateNewStructure_();
 
     void interpretKeyword(QString &keyword, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp_xtalopt();

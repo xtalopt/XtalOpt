@@ -40,7 +40,7 @@ namespace XtalOpt {
 
     // Setup for completion values
     m_completionFilename = "xtal.got";
-    m_completionStrings.clear(); // Not used!
+    m_completionStrings.append("**** Optimisation achieved ****");
 
     // Set output filenames to try to read data from, e.g.
     m_outputFilenames.append(m_completionFilename);
@@ -57,88 +57,4 @@ namespace XtalOpt {
     readSettings(filename);
   }
 
-  bool GULPOptimizer::startOptimization(Structure *structure) {
-    QString command = "\"" + qobject_cast<XtalOpt*>(m_opt)->gulpPath
-      + "\"";
-
-#ifdef WIN32
-    command = "cmd.exe /C " + command;
-#endif // WIN32
-
-    QProcess proc;
-    proc.setWorkingDirectory(structure->fileName());
-    proc.setStandardInputFile(structure->fileName() + "/xtal.gin");
-    proc.setStandardOutputFile(structure->fileName() + "/xtal.got");
-    proc.setStandardErrorFile(structure->fileName() + "/xtal.err");
-
-    structure->setStatus(Structure::InProcess);
-    structure->startOptTimer();
-
-    proc.start(command);
-    proc.waitForFinished(-1);
-
-    int exitStatus = proc.exitCode();
-
-    // lock xtal
-    QWriteLocker wlocker (structure->lock());
-
-    structure->stopOptTimer();
-
-    if (exitStatus != 0) {
-      m_opt->warning(tr("XtalOptGULP::startOptimization: Error running command:\n\t%1").arg(command));
-      return false;
-    }
-
-    // Was the run sucessful?
-    QFile file (structure->fileName() + "/xtal.got");
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      m_opt->warning(tr("XtalOptGULP::getStatus: Error opening file: %1").arg(file.fileName()));
-      return false;
-    }
-    QString line;
-    while (!file.atEnd()) {
-      line = file.readLine();
-      if (line.contains("**** Optimisation achieved ****") ||
-          line.contains("single       - perform a single point run")) {
-        structure->resetFailCount();
-        wlocker.unlock();
-        return update(structure);
-      }
-      if (line.contains("**** unless gradient norm is small (less than 0.1)             ****")) {
-        for (int i = 0; i < 4; i++) line = file.readLine();
-        double gnorm = (line.split(QRegExp("\\s+"))[4]).toFloat();
-        qDebug() << "Checking gnorm: " << gnorm;
-        if (gnorm <= 0.1) {
-          structure->resetFailCount();
-          wlocker.unlock();
-          return update(structure);
-        }
-        else break;
-      }
-    }
-
-    return false;
-  }
-
-  QueueInterface::QueueStatus
-  GULPOptimizer::getStatus(Structure *structure)
-  {
-    QReadLocker rlocker (structure->lock());
-    if (structure->getStatus() == Xtal::InProcess) {
-      return QueueInterface::Running;
-    }
-    else {
-      return QueueInterface::Unknown;
-    }
-  }
-
-  bool GULPOptimizer::getQueueList(QStringList & queueData, QMutex *mutex) {
-    Q_UNUSED(queueData);
-    return true;
-  }
-
-  bool GULPOptimizer::copyRemoteToLocalCache(Structure *structure)
-  {
-    return true;
-  }
 } // end namespace XtalOpt
