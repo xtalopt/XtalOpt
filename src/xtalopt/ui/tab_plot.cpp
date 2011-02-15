@@ -26,6 +26,8 @@
 #include <QtCore/QSettings>
 #include <QtCore/QReadWriteLock>
 
+#include <float.h>
+
 using namespace GlobalSearch;
 using namespace Avogadro;
 
@@ -71,10 +73,8 @@ namespace XtalOpt {
             this, SLOT(updatePlot()));
     connect(ui.cb_showIncompletes, SIGNAL(toggled(bool)),
             this, SLOT(updatePlot()));
-    connect(ui.plot_plot, SIGNAL(pointClicked(PlotPoint*)),
-            this, SLOT(selectMoleculeFromPlot(PlotPoint*)));
-    connect(ui.plot_plot, SIGNAL(pointClicked(PlotPoint*)),
-            this, SLOT(lockClearAndSelectPoint(PlotPoint*)));
+    connect(ui.plot_plot, SIGNAL(pointClicked(double, double)),
+            this, SLOT(selectMoleculeFromPlot(double, double)));
     connect(m_opt, SIGNAL(newInfoUpdate()),
             this, SLOT(populateXtalList()));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
@@ -184,10 +184,8 @@ namespace XtalOpt {
     // Reset limits and connections.
     if (ui.combo_plotType->currentIndex() != DistHist_PT) {
       ui.plot_plot->scaleLimits();
-      connect(ui.plot_plot, SIGNAL(pointClicked(PlotPoint*)),
-              this, SLOT(selectMoleculeFromPlot(PlotPoint*)));
-      connect(ui.plot_plot, SIGNAL(pointClicked(PlotPoint*)),
-              this, SLOT(lockClearAndSelectPoint(PlotPoint*)));
+      connect(ui.plot_plot, SIGNAL(pointClicked(double, double)),
+              this, SLOT(selectMoleculeFromPlot(double, double)));
     }
   }
 
@@ -243,8 +241,21 @@ namespace XtalOpt {
     PlotAxes xAxis		= PlotAxes(ui.combo_xAxis->currentIndex());
     PlotAxes yAxis              = PlotAxes(ui.combo_yAxis->currentIndex());
 
+    // For minimum-energy traces
+    double minE = DBL_MAX;
+    PlotObject *traceObject = 0;
+    if (xAxis == Structure_T &&
+        (yAxis == Energy_T ||
+         yAxis == Enthalpy_T)) {
+      traceObject = new PlotObject(Qt::gray, PlotObject::Lines, 1);
+    }
+
     const QList<Structure*> structures (*m_opt->tracker()->list());
     for (int i = 0; i < structures.size(); i++) {
+      // Always put a trace point in for each structure index
+      if (traceObject && minE != DBL_MAX) {
+        traceObject->addPoint(i+1, minE);
+      }
       x = y = 0;
       xtal = qobject_cast<Xtal*>(structures[i]);
       QReadLocker xtalLocker (xtal->lock());
@@ -263,6 +274,26 @@ namespace XtalOpt {
           xtal->getStatus() == Xtal::Removed ||
           fabs(xtal->getEnthalpy()) <= 1e-50) {
         continue;
+      }
+
+      // Update trace
+      if (traceObject) {
+        // Get current value
+        double currentE;
+        if (yAxis == Energy_T) {
+          currentE = xtal->getEnergy();
+        }
+        else if (yAxis == Enthalpy_T) {
+          currentE = xtal->getEnthalpy();
+        }
+
+        // Update minimum if needed
+        if (minE > currentE) {
+          minE = currentE;
+        }
+        // The two points ensure that the lines between points are
+        // correct.
+        traceObject->addPoint(i+1, minE);
       }
 
       // Get X/Y data
@@ -484,6 +515,9 @@ namespace XtalOpt {
     }
 
     ui.plot_plot->addPlotObject(m_plotObject);
+    if (traceObject) {
+      ui.plot_plot->addPlotObject(traceObject);
+    }
 
     // Do not scale if m_plotObject is empty.
     // If we have one point, set limits to something appropriate:
@@ -617,11 +651,28 @@ namespace XtalOpt {
     ui.combo_distHistXtal->blockSignals(false);
   }
 
+  void TabPlot::selectMoleculeFromPlot(double x, double y)
+  {
+    QPoint p (x,y);
+    PlotPoint* pt = NULL;
+    double cur;
+    double distance = DBL_MAX;
+    foreach ( PlotPoint *pp, m_plotObject->points() ) {
+      cur = ( p - pp->position().toPoint() ).manhattanLength();
+      if ( cur < distance ) {
+        pt = pp;
+        distance = cur;
+      }
+    }
+    selectMoleculeFromPlot(pt);
+  }
+
   void TabPlot::selectMoleculeFromPlot(PlotPoint *pp)
   {
     if (!pp) return;
     int index = pp->customData().toInt();
     selectMoleculeFromIndex(index);
+    lockClearAndSelectPoint(pp);
   }
 
   void TabPlot::selectMoleculeFromIndex(int index)

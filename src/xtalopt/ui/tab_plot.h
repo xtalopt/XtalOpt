@@ -84,6 +84,7 @@ namespace XtalOpt {
     void disconnectGUI();
     // PlotPoint is typedef'd to Avogadro::PlotPoint above
     void lockClearAndSelectPoint(PlotPoint *pp);
+    void selectMoleculeFromPlot(double x, double y);
     void selectMoleculeFromPlot(PlotPoint *pp);
     void refreshPlot();
     void updatePlot();
