@@ -36,7 +36,6 @@ namespace RandomDock {
 
     // Set allowed filenames, e.g.
     m_templates.insert("job.inp",QStringList(""));
-    m_templates.insert("job.pbs",QStringList(""));
 
     // Setup for completion values
     m_completionFilename = "job.gamout";

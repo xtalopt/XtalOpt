@@ -35,7 +35,6 @@ namespace RandomDock {
     // None here!
 
     // Set allowed filenames, e.g.
-    m_templates.insert("job.pbs",QStringList(""));
     m_templates.insert("job.mop",QStringList(""));
 
     // Setup for completion values

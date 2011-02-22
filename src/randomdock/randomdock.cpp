@@ -47,6 +47,7 @@ namespace RandomDock {
     substrate(0)
   {
     m_idString = "RandomDock";
+    m_schemaVersion = 2;
     sceneInitMutex = new QMutex;
     limitRunningJobs = true;
     // By default, just replace with random when a scene fails.
@@ -56,6 +57,30 @@ namespace RandomDock {
 
   RandomDock::~RandomDock()
   {
+    // Stop queuemanager thread
+    if (m_queueThread->isRunning()) {
+      m_queueThread->disconnect();
+      m_queueThread->quit();
+      m_queueThread->wait();
+    }
+
+    // Delete queuemanager
+    delete m_queue;
+    m_queue = 0;
+
+    // Stop SSHManager
+    delete m_ssh;
+    m_ssh = 0;
+
+    // Wait for save to finish
+    if (saveOnExit) {
+      while (savePending) {
+        qDebug() << "Spinning on save before destroying RandomDock...";
+        save();
+        GS_SLEEP(1);
+      };
+      savePending = true;
+    }
   }
 
   void RandomDock::startSearch() {
@@ -168,6 +193,20 @@ namespace RandomDock {
       scene = generateRandomScene();
       initializeAndAddScene(scene);
     }
+
+    // Wait for all structures to appear in tracker
+    m_dialog->updateProgressLabel(tr("Waiting for structures to initialize..."));
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressMinimum(runningJobLimit);
+
+    do {
+      m_dialog->updateProgressValue(m_tracker->size());
+      m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
+                                    .arg(m_tracker->size())
+                                    .arg(runningJobLimit));
+      GS_MSLEEP(100);
+    }
+    while (m_tracker->size() < runningJobLimit);
 
     m_dialog->stopProgressUpdate();
 
@@ -418,6 +457,7 @@ namespace RandomDock {
 
     // Assign data to scene
     scene->lock()->lockForWrite();
+    scene->moveToThread(m_queueThread);
     scene->setIDNumber(id);
     scene->setIndex(id-1);
     scene->setFileName(locpath_s);

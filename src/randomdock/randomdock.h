@@ -51,6 +51,11 @@ namespace RandomDock {
       OT_MOPAC
     };
 
+    enum QueueInterfaces {
+      QI_LOCAL = 0,
+      QI_PBS
+    };
+
     Scene* generateRandomScene();
     GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
                                                const QString & reason = "");
