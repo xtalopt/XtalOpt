@@ -74,7 +74,8 @@ namespace GAPC {
     connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(newInfoUpdate(GlobalSearch::Structure *)));
     connect(this, SIGNAL(infoUpdate()),
-            this, SLOT(updateInfo()));
+            this, SLOT(updateInfo()),
+            Qt::QueuedConnection);
     connect(ui.table_list, SIGNAL(customContextMenuRequested(QPoint)),
             this, SLOT(progressContextMenu(QPoint)));
     connect(ui.push_refreshAll, SIGNAL(clicked()),
@@ -524,14 +525,6 @@ namespace GAPC {
     QWriteLocker locker (m_context_pc->lock());
     m_context_pc->setCurrentOptStep(optStep);
 
-    // Restart job if currently running
-    if ( m_context_pc->getStatus() == ProtectedCluster::InProcess ||
-         m_context_pc->getStatus() == ProtectedCluster::Submitted ) {
-      locker.unlock();
-      m_opt->queueInterface()->stopJob(m_context_pc);
-      locker.relock();
-    }
-
     m_context_pc->setStatus(ProtectedCluster::Restart);
     newInfoUpdate(m_context_pc);
 
@@ -550,14 +543,7 @@ namespace GAPC {
     if (!m_context_pc) return;
     QWriteLocker locker (m_context_pc->lock());
 
-    // End job if currently running
-    if ( m_context_pc->getStatus() != ProtectedCluster::Optimized ) {
-      locker.unlock();
-      m_opt->queueInterface()->stopJob(m_context_pc);
-      locker.relock();
-      m_context_pc->setStatus(ProtectedCluster::Killed);
-    }
-    else m_context_pc->setStatus(ProtectedCluster::Removed);
+    m_opt->queue()->killStructure(m_context_pc);
 
     // Clear context pointer
     locker.unlock();

@@ -14,17 +14,6 @@
  ***********************************************************************/
 
 #include <gapc/optimizers/gulp.h>
-#include <gapc/gapc.h>
-
-#include <globalsearch/structure.h>
-
-#include <openbabel/obconversion.h>
-#include <openbabel/mol.h>
-
-#include <QtCore/QReadLocker>
-#include <QtCore/QProcess>
-#include <QtCore/QString>
-#include <QtCore/QDir>
 
 using namespace GlobalSearch;
 
@@ -37,11 +26,11 @@ namespace GAPC {
     // None here!
 
     // Set allowed filenames, e.g.
-    m_templates.insert("cluster.gin",QStringList(""));
+    m_templates.insert("job.gin",QStringList(""));
 
     // Setup for completion values
-    m_completionFilename = "cluster.got";
-    m_completionStrings.clear(); // Not used!
+    m_completionFilename = "job.got";
+    m_completionStrings.append("**** Optimisation achieved ****");
 
     // Set output filenames to try to read data from, e.g.
     m_outputFilenames.append(m_completionFilename);
@@ -58,89 +47,4 @@ namespace GAPC {
     readSettings(filename);
   }
 
-  bool GULPOptimizer::startOptimization(Structure *structure) {
-    QString command = "\"" + qobject_cast<OptGAPC*>(m_opt)->gulpPath
-      + "\"";
-
-#ifdef WIN32
-    command = "cmd.exe /C " + command;
-#endif // WIN32
-
-    QProcess proc;
-    proc.setWorkingDirectory(structure->fileName());
-    proc.setStandardInputFile(structure->fileName() + "/cluster.gin");
-    proc.setStandardOutputFile(structure->fileName() + "/cluster.got");
-    proc.setStandardErrorFile(structure->fileName() + "/cluster.err");
-
-    structure->setStatus(Structure::InProcess);
-    structure->startOptTimer();
-
-    proc.start(command);
-    proc.waitForFinished(-1);
-
-    int exitStatus = proc.exitCode();
-
-    // lock structure
-    QWriteLocker wlocker (structure->lock());
-
-    structure->stopOptTimer();
-
-    if (exitStatus != 0) {
-      m_opt->warning(tr("GULPOptimizer::startOptimization: Error running command:\n\t%1").arg(command));
-      return false;
-    }
-
-    // Was the run sucessful?
-    QFile file (structure->fileName() + "/cluster.got");
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      m_opt->warning(tr("GULPOptimizer::getStatus: Error opening file: %1").arg(file.fileName()));
-      return false;
-    }
-    QString line;
-    while (!file.atEnd()) {
-      line = file.readLine();
-      if (line.contains("**** Optimisation achieved ****") ||
-          line.contains("single       - perform a single point run")) {
-        structure->resetFailCount();
-        wlocker.unlock();
-        return update(structure);
-      }
-      if (line.contains("**** unless gradient norm is small (less than 0.1)             ****")) {
-        for (int i = 0; i < 4; i++) line = file.readLine();
-        double gnorm = (line.split(QRegExp("\\s+"))[4]).toFloat();
-        qDebug() << "Checking gnorm: " << gnorm;
-        if (gnorm <= 0.1) {
-          structure->resetFailCount();
-          wlocker.unlock();
-          return update(structure);
-        }
-        else break;
-      }
-    }
-
-    return false;
-  }
-
-  QueueInterface::QueueStatus
-  GULPOptimizer::getStatus(Structure *structure)
-  {
-    QReadLocker rlocker (structure->lock());
-    if (structure->getStatus() == Structure::InProcess) {
-      return QueueInterface::Running;
-    }
-    else {
-      return QueueInterface::Unknown;
-    }
-  }
-
-  bool GULPOptimizer::getQueueList(QStringList & queueData, QMutex *mutex) {
-    Q_UNUSED(queueData);
-    return true;
-  }
-
-  bool GULPOptimizer::copyRemoteToLocalCache(Structure *structure)
-  {
-    return true;
-  }
 } // end namespace GAPC
-

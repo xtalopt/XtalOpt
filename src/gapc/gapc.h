@@ -51,9 +51,13 @@ namespace GAPC {
 
    public:
     enum OptTypes {
-      OT_OpenBabel = 0,
-      OT_ADF,
+      OT_ADF = 0,
       OT_GULP
+    };
+
+    enum QueueInterfaces {
+      QI_LOCAL = 0,
+      QI_PBS
     };
 
     enum ExplodeActions {
@@ -65,7 +69,6 @@ namespace GAPC {
     QMutex initMutex;
     GAPC_Comp comp;
     QStringList seedList;
-    QString gulpPath;
     unsigned int numInitial;
     unsigned int popSize;
     double tol_enthalpy;
@@ -174,6 +177,7 @@ namespace GAPC {
    protected:
     void resetDuplicates_();
     void checkForDuplicates_();
+    void generateNewStructure_();
   };
 
 } // end namespace GAPC
