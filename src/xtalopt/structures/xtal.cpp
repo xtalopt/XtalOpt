@@ -725,51 +725,6 @@ namespace XtalOpt {
       positions[i][2]   = fracCoords.z();
     }
 
-    // qDebug() << "double lattice[3][3] = {";
-    // for (int i = 0;  i < 3; i++) {
-    //   qDebug() <<
-    //     QString("  {%1, %2, %3},")
-    //     .arg(QString::number(lattice[i][0]))
-    //     .arg(QString::number(lattice[i][1]))
-    //     .arg(QString::number(lattice[i][2]));
-    // }
-    // qDebug() << "  };\n";
-
-    // qDebug() << "double position[][3] = {";
-    // for (int i = 0;  i < num; i++) {
-    //   qDebug() <<
-    //     QString("  {%1, %2, %3},")
-    //     .arg(QString::number(positions[i][0]))
-    //     .arg(QString::number(positions[i][1]))
-    //     .arg(QString::number(positions[i][2]));
-    // }
-    // qDebug() << "  };\n";
-
-    // QString str; QTextStream t (&str);
-    // t << "int types[] = {";
-    // for (int i = 0;  i < num; i++) {
-    //   t << types[i];
-    //   if (i != num-1) t << ",";
-    // }
-    // t << "};";
-    // qDebug() << str;
-
-    // qDebug() << "int num_atom = " << num;
-    // qDebug() << "double prec = " << prec;
-
-    // Find primitive cell
-    num = spg_find_primitive(lattice, positions, types, num, prec);
-
-    //qDebug() << "Spglib spg_find_primitive returns: " << num;
-
-    // if spglib cannot find the primitive cell, just set the number
-    // of atoms to numAtoms, since this means the unit cell is the
-    // primitive cell.
-    if (num == 0) {
-      //qDebug() << "Xtal::findSpaceGroup( " << prec << " ): spglib unable to find primitive cell. Using unit cell.";
-      num = numAtoms();
-    }
-
     // find spacegroup
     char symbol[21];
     m_spgNumber = spg_get_international(symbol,
@@ -783,7 +738,6 @@ namespace XtalOpt {
 
     // Fail if m_spgNumber is still 0
     if (m_spgNumber == 0) {
-      //qDebug() << "Xtal::findSpaceGroup( " << prec << " ): spglib unable to find spacegroup!";
       return;
     }
 
