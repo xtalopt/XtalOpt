@@ -48,7 +48,7 @@ namespace XtalOpt {
     m_actions.append( action );
 
     action = new QAction(this);
-    action->setText(tr("&Crystal Optimization..."));
+    action->setText(tr("&XtalOpt"));
     m_actions.append(action);
   }
 
