@@ -79,7 +79,6 @@ namespace GAPC {
     settings->setValue("version",          VERSION);
 
     settings->setValue("description", m_opt->description);
-    settings->setValue("rempath", m_opt->rempath);
     settings->setValue("localpath", m_opt->filePath);
     settings->setValue("remote/host", m_opt->host);
     settings->setValue("remote/port", m_opt->port);
@@ -100,13 +99,36 @@ namespace GAPC {
     settings->beginGroup("gapc/edit");
     int loadedVersion = settings->value("version", 0).toInt();
 
-    m_opt->description = settings->value("description", "").toString();
-    m_opt->rempath = settings->value("rempath", "").toString();
-    m_opt->filePath = settings->value("localpath", "").toString();
-    m_opt->host = settings->value("remote/host", "").toString();
     m_opt->port = settings->value("remote/port", 22).toInt();
-    m_opt->username = settings->value("remote/username", "").toString();
-    m_opt->rempath = settings->value("remote/rempath", "").toString();
+
+    // Temporary variables to test settings. This prevents empty
+    // scheme values from overwriting defaults.
+    QString tmpstr;
+
+    tmpstr = settings->value("description", "").toString();
+    if (!tmpstr.isEmpty()) {
+      m_opt->description = tmpstr;
+    }
+
+    tmpstr = settings->value("remote/rempath", "").toString();
+    if (!tmpstr.isEmpty()) {
+      m_opt->rempath = tmpstr;
+    }
+
+    tmpstr = settings->value("localpath", "").toString();
+    if (!tmpstr.isEmpty()) {
+      m_opt->filePath = tmpstr;
+    }
+
+    tmpstr = settings->value("remote/host", "").toString();
+    if (!tmpstr.isEmpty()) {
+      m_opt->host = tmpstr;
+    }
+
+    tmpstr = settings->value("remote/username", "").toString();
+    if (!tmpstr.isEmpty()) {
+      m_opt->username = tmpstr;
+    }
 
     if (loadedVersion >= 2) {
       QString optimizer =
