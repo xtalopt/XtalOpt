@@ -291,20 +291,44 @@ namespace GlobalSearch {
 
   QStringList PbsQueueInterface::getQueueList() const
   {
+    // recast queue mutex as mutable for safe access:
+    QReadWriteLock &queueMutex = const_cast<QReadWriteLock&> (m_queueMutex);
+
+    queueMutex.lockForRead();
     // Limit queries to once per second
     if (m_queueTimeStamp.isValid() &&
         m_queueTimeStamp.msecsTo(QDateTime::currentDateTime())
         <= 1000) {
-      return m_queueData;
+      // If the cache is valid, return it
+      QStringList ret (m_queueData);
+      queueMutex.unlock();
+      return ret;
     }
 
-    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
+    // Otherwise, store a copy of the current timestamp and switch
+    // queuemutex to writelock
+    QDateTime oldTimeStamp (m_queueTimeStamp);
+    queueMutex.unlock();
 
-    // Queue will be updated -- cast queue cache, mutex, and timestamp
-    // as mutable
+    // Relock mutex
+    QWriteLocker queueLocker (&queueMutex);
+
+    // Non-fatal assert: Check current timestamp against the
+    // oldTimeStamp from earlier. If they don't match, another thread
+    // has already updated the queueData, so tail-recurse this
+    // function and try again.
+    if (m_queueTimeStamp.msecsTo(oldTimeStamp) != 0) {
+      queueLocker.unlock();
+      return this->getQueueList();
+    }
+
+    // Queue will be updated -- cast queue cache and timestamp as
+    // mutable
     QStringList &queueData     = const_cast<QStringList&> (m_queueData);
-    QReadWriteLock &queueMutex = const_cast<QReadWriteLock&> (m_queueMutex);
     QDateTime &queueTimeStamp  = const_cast<QDateTime&> (m_queueTimeStamp);
+
+    // Get SSH connection
+    SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
     if (!ssh->reconnectIfNeeded()) {
       m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
@@ -312,16 +336,14 @@ namespace GlobalSearch {
                      .arg(ssh->getHost())
                      .arg(ssh->getPort())
                      );
-      queueMutex.lockForWrite();
-      queueData.clear();
-      queueData << "CommError";
-      queueMutex.unlock();
       m_opt->ssh()->unlockConnection(ssh);
       queueTimeStamp = QDateTime::currentDateTime();
-      return m_queueData;
+      queueData.clear();
+      queueData << "CommError";
+      QStringList ret (m_queueData);
+      return ret;
     }
 
-    // TODO allow optional path setting here
     QString command = m_qstat + " | grep " + m_opt->username;
 
     // Execute
@@ -334,28 +356,23 @@ namespace GlobalSearch {
     if (!ssh->execute(command, stdout_str, stderr_str, ec)
         || (ec != 0 && ec != 1 )
         ) {
+      m_opt->ssh()->unlockConnection(ssh);
       m_opt->warning(tr("Error executing %1: (%2) %3\n\t"
                         "Using cached queue data.")
                      .arg(command)
                      .arg(QString::number(ec))
                      .arg(stderr_str));
-      m_opt->ssh()->unlockConnection(ssh);
       queueTimeStamp = QDateTime::currentDateTime();
-      return m_queueData;
+      QStringList ret (m_queueData);
+      return ret;
     }
-
-    queueMutex.lockForWrite();
-    queueData = stdout_str.split("\n", QString::SkipEmptyParts);
-    // Sometimes there is a bit of garbage in the list?
-    for (int i = 0; i < queueData.size(); ++i) {
-      if (!queueData.at(i).contains(m_opt->username)) {
-        queueData.removeAt(i);
-      }
-    }
-    queueMutex.unlock();
     m_opt->ssh()->unlockConnection(ssh);
+
+    queueData = stdout_str.split("\n", QString::SkipEmptyParts);
+
+    QStringList ret (m_queueData);
     queueTimeStamp = QDateTime::currentDateTime();
-    return m_queueData;
+    return ret;
   }
 
 }
