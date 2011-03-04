@@ -26,6 +26,7 @@ namespace GlobalSearch {
 
   SSHManager::SSHManager(unsigned int connections, OptBase *parent)
     : QObject(parent),
+      m_connSemaphore(connections),
       m_connections(connections),
       m_isValid(false)
   {
@@ -77,28 +78,49 @@ namespace GlobalSearch {
 
   SSHConnection* SSHManager::getFreeConnection()
   {
+    // Wait until a connection is available:
+    m_connSemaphore.acquire();
+
+    // When a connection is available, allow one thread at a time to
+    // obtain the next available SSHConnection
     QMutexLocker locker (&m_lock);
+
     START;
 
     QList<SSHConnection*>::iterator it;
-    for (;;) {
-      for (it =  m_conns.begin(); it != m_conns.end(); it++) {
-        if (!(*it)->inUse()) {
-          (*it)->setUsed(true);
-          //qDebug() << "Returning SSHConnection instance " << (*it);
-          END;
-          return (*it);
-        }
+    for (it =  m_conns.begin(); it != m_conns.end(); it++) {
+      if (!(*it)->inUse()) {
+        (*it)->setUsed(true);
+        //qDebug() << "Returning SSHConnection instance " << (*it);
+        END;
+        return (*it);
       }
     }
-    END;
+    // If this point is reached, no connections are available. If in
+    // debug mode, fail here
+    Q_ASSERT_X(false, Q_FUNC_INFO,
+               "No SSHConnections available. This should not "
+               "happen with the protection provided by "
+               "m_connSemaphore. Is SSHManager::unlockConnection "
+               "being called correctly?");
+
+    // If this is a release build, release semaphore and tail-recurse.
+    m_connSemaphore.release();
+
+    return this->getFreeConnection();
   }
 
   void SSHManager::unlockConnection(SSHConnection* ssh)
   {
-    // Don't lock m_lock here
-    //qDebug() << "Connection " << ssh << " unlocked";
+    Q_ASSERT_X(m_conns.contains(ssh), Q_FUNC_INFO,
+               "Attempt to unlock an SSHConnection not owned by this "
+               "SSHManager.");
+    Q_ASSERT(ssh->inUse());
+
+    m_lock.lock();
     ssh->setUsed(false);
+    m_connSemaphore.release();
+    m_lock.unlock();
   }
 
   QString SSHManager::getServerKeyHash()
