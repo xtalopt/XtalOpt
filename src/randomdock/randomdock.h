@@ -53,7 +53,8 @@ namespace RandomDock {
 
     enum QueueInterfaces {
       QI_LOCAL = 0,
-      QI_PBS
+      QI_PBS,
+      QI_SGE
     };
 
     Scene* generateRandomScene();

@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009-2010 by David Lonie
+  Copyright (C) 2009-2011 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -26,6 +26,7 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/pbs.h>
+#include <globalsearch/queueinterfaces/sge.h>
 
 #include <QtCore/QSettings>
 
@@ -64,7 +65,7 @@ namespace XtalOpt {
 
     // Fill m_optimizers in order of XtalOpt::QueueInterfaces
     m_queueInterfaces.clear();
-    const unsigned int numQIs = 2;
+    const unsigned int numQIs = 3;
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
       case XtalOpt::QI_LOCAL:
@@ -72,6 +73,9 @@ namespace XtalOpt {
         break;
       case XtalOpt::QI_PBS:
         m_queueInterfaces.append(new PbsQueueInterface (m_opt));
+        break;
+      case XtalOpt::QI_SGE:
+        m_queueInterfaces.append(new SgeQueueInterface (m_opt));
         break;
       }
     }

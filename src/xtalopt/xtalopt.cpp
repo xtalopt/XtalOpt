@@ -33,6 +33,7 @@
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/pbs.h>
+#include <globalsearch/queueinterfaces/sge.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/sshmanager.h>
 #include <globalsearch/macros.h>
