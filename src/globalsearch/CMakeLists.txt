@@ -22,11 +22,14 @@ set( globalsearch_SRCS
      queueinterfaces/remote.cpp
      queueinterfaces/pbs.cpp
      queueinterfaces/pbsdialog.cpp
+     queueinterfaces/sge.cpp
+     queueinterfaces/sgedialog.cpp
 )
 
 set( globalsearch_UIS
      ui/defaultedittab.ui
      queueinterfaces/pbsdialog.ui
+     queueinterfaces/sgedialog.ui
 )
 
 string(REPLACE ".cpp" ".h" hdr_list "${globalsearch_SRCS}")
