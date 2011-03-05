@@ -30,6 +30,9 @@
 
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
+#include <globalsearch/queueinterface.h>
+#include <globalsearch/queueinterfaces/local.h>
+#include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/sshmanager.h>
 #include <globalsearch/macros.h>
@@ -59,6 +62,7 @@ namespace XtalOpt {
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";
+    m_schemaVersion = 2;
 
     // Connections
     connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
@@ -69,11 +73,20 @@ namespace XtalOpt {
 
   XtalOpt::~XtalOpt()
   {
-    // Stop queuemanager
-    if (m_queue->isRunning()) {
-      m_queue->disconnect();
-      m_queue->quit();
+    // Stop queuemanager thread
+    if (m_queueThread->isRunning()) {
+      m_queueThread->disconnect();
+      m_queueThread->quit();
+      m_queueThread->wait();
     }
+
+    // Delete queuemanager
+    delete m_queue;
+    m_queue = 0;
+
+    // Stop SSHManager
+    delete m_ssh;
+    m_ssh = 0;
 
     // Wait for save to finish
     if (saveOnExit) {
@@ -84,9 +97,6 @@ namespace XtalOpt {
       };
       savePending = true;
     }
-
-    // Ensure that the QueueManager has terminated before continuing.
-    m_queue->wait();
   }
 
   void XtalOpt::startSearch() {
@@ -126,8 +136,8 @@ namespace XtalOpt {
       qobject_cast<VASPOptimizer*>(m_optimizer)->buildPOTCARs();
     }
 
-    // Create the SSHManager
-    if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
+    // Create the SSHManager if running remotely
+    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
       for (;;) {
         try {
@@ -250,6 +260,20 @@ namespace XtalOpt {
       }
     }
 
+    // Wait for all structures to appear in tracker
+    m_dialog->updateProgressLabel(tr("Waiting for structures to initialize..."));
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressMinimum(newXtalCount);
+
+    do {
+      m_dialog->updateProgressValue(m_tracker->size());
+      m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
+                                    .arg(m_tracker->size())
+                                    .arg(newXtalCount));
+      GS_MSLEEP(100);
+    }
+    while (m_tracker->size() < newXtalCount);
+
     m_dialog->stopProgressUpdate();
 
     m_dialog->saveSession();
@@ -364,6 +388,7 @@ namespace XtalOpt {
     }
 
     QWriteLocker xtalLocker (xtal->lock());
+    xtal->moveToThread(m_queueThread);
     xtal->setIDNumber(id);
     xtal->setGeneration(generation);
     xtal->setParents(parents);
@@ -390,6 +415,12 @@ namespace XtalOpt {
   }
 
   void XtalOpt::generateNewStructure()
+  {
+    // Generate in background thread:
+    QtConcurrent::run(this, &XtalOpt::generateNewStructure_);
+  }
+
+  void XtalOpt::generateNewStructure_()
   {
     INIT_RANDOM_GENERATOR();
     // Get all optimized structures
@@ -915,10 +946,12 @@ namespace XtalOpt {
     SETTINGS(filename);
     int loadedVersion = settings->value("xtalopt/version", 0).toInt();
 
-    // Update config data
+    // Update config data. Be sure to bump m_schemaVersion in ctor if
+    // adding updates.
     switch (loadedVersion) {
     case 0:
     case 1:
+    case 2: // Tab edit bumped to V2. No change here.
       break;
     default:
       error("\
@@ -962,12 +995,8 @@ to obtain a newer version.");
 
     m_dialog->readSettings(filename);
 
-    // Set optimizer
-    setOptimizer(OptTypes(settings->value("xtalopt/edit/optType").toInt()),
-                 filename);
-
-    // Create SSHConnection
-    if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
+    // Create SSHConnection if we are running remotely
+    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
       for (;;) {
         try {
@@ -1047,14 +1076,13 @@ to obtain a newer version.");
     QList<uint> keys = comp.keys();
     QList<Structure*> loadedStructures;
     QString xtalStateFileName;
-    uint count = 0;
-    int numDirs = xtalDirs.size();
-    for (int i = 0; i < numDirs; i++) {
-      count++;
-      m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...").arg(count).arg(numDirs));
-      m_dialog->updateProgressValue(count-1);
+    for (int i = 0; i < xtalDirs.size(); i++) {
+      m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...")
+                                    .arg(i+1).arg(xtalDirs.size()));
+      m_dialog->updateProgressValue(i);
 
       xtalStateFileName = dataPath + "/" + xtalDirs.at(i) + "/structure.state";
+      debug(tr("Loading structure %1").arg(xtalStateFileName));
       // Check if this is an older session that used xtal.state instead.
       if ( !QFile::exists(xtalStateFileName) &&
            QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/xtal.state") ) {
@@ -1157,7 +1185,7 @@ to obtain a newer version.");
 
       // Start search if needed
       if (!readOnly) {
-	qobject_cast<XtalOptDialog*>(m_dialog)->startProgressTimer();
+	emit sessionStarted();
       }
     }
 
@@ -1273,43 +1301,6 @@ to obtain a newer version.");
       }
     }
     emit updateAllInfo();
-  }
-
-  void XtalOpt::setOptimizer_string(const QString &IDString, const QString &filename)
-  {
-    if (IDString.toLower() == "vasp")
-      setOptimizer(new VASPOptimizer (this, filename));
-    else if (IDString.toLower() == "gulp")
-      setOptimizer(new GULPOptimizer (this, filename));
-    else if (IDString.toLower() == "pwscf")
-      setOptimizer(new PWscfOptimizer (this, filename));
-    else if (IDString.toLower() == "castep")
-      setOptimizer(new CASTEPOptimizer (this, filename));
-    else
-      error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(IDString));
-  }
-
-  void XtalOpt::setOptimizer_enum(OptTypes opttype, const QString &filename)
-  {
-    switch (opttype) {
-    case OT_VASP:
-      setOptimizer(new VASPOptimizer (this, filename));
-      break;
-    case OT_GULP:
-      setOptimizer(new GULPOptimizer (this, filename));
-      break;
-    case OT_PWscf:
-      setOptimizer(new PWscfOptimizer (this, filename));
-      break;
-    case OT_CASTEP:
-      setOptimizer(new CASTEPOptimizer (this, filename));
-      break;
-    default:
-      error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(QString::number((int)opttype)));
-      break;
-    }
   }
 
 } // end namespace XtalOpt
