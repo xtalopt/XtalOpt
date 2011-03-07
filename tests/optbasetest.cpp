@@ -36,6 +36,8 @@ public:
 public slots:
   void startSearch() {};
   bool checkLimits() {return true;};
+protected:
+  void setOptimizer_string(const QString&, const QString&) {};
 };
 
 // Dummy optimizer for user value keyword checking

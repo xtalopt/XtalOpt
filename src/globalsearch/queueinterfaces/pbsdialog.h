@@ -1,7 +1,7 @@
 /**********************************************************************
-  TabSys - Settings related to the local and remote computers
+  PbsConfigDialog -- Setup for remote PBS queues
 
-  Copyright (C) 2009-2010 by David Lonie
+  Copyright (C) 2011 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -14,40 +14,50 @@
   GNU General Public icense for more details.
  ***********************************************************************/
 
-#ifndef TAB_SYS_H
-#define TAB_SYS_H
+#ifndef PBSCONFIGDIALOG_H
+#define PBSCONFIGDIALOG_H
 
-#include <globalsearch/ui/abstracttab.h>
+//Doxygen should ignore this file:
+/// @cond
 
-#include "ui_tab_sys.h"
+#include <QtGui/QDialog>
 
-namespace GAPC {
-  class GAPCDialog;
-  class OptGAPC;
+namespace Ui {
+  class PbsConfigDialog;
+}
 
-  class TabSys : public GlobalSearch::AbstractTab
+namespace GlobalSearch {
+  class AbstractDialog;
+  class OptBase;
+  class PbsQueueInterface;
+
+  class PbsConfigDialog : public QDialog
   {
     Q_OBJECT
 
   public:
-    explicit TabSys( GAPCDialog *parent, OptGAPC *p );
-    virtual ~TabSys();
+
+    explicit PbsConfigDialog(AbstractDialog *parent,
+                             OptBase *o,
+                             PbsQueueInterface *p);
+    virtual ~PbsConfigDialog();
 
   public slots:
-    void lockGUI();
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
     void updateGUI();
-    void selectLocalPath();
-    void selectGULPPath();
-    void updateSystemInfo();
 
-  signals:
-    void dataChanged();
+  protected slots:
+    void accept();
+    void reject();
+
+  protected:
+    OptBase *m_opt;
+    PbsQueueInterface *m_pbs;
 
   private:
-    Ui::Tab_Sys ui;
+    Ui::PbsConfigDialog *ui;
+
   };
 }
 
+/// @endcond
 #endif

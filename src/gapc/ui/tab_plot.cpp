@@ -202,7 +202,6 @@ namespace GAPC {
 
     // Make sure we have structures!
     if (m_opt->tracker()->size() == 0) {
-      m_opt->tracker()->unlock();
       return;
     }
 

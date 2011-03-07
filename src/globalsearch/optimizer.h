@@ -17,6 +17,7 @@
 #define OPTIMIZER_H
 
 #include <globalsearch/optbase.h>
+#include <globalsearch/queueinterface.h>
 
 #include <QtCore/QHash>
 #include <QtCore/QObject>
@@ -25,7 +26,7 @@
 
 namespace GlobalSearch {
   class Structure;
-  class OptBase;
+  class OptimizerConfigDialog;
 
   /**
    * @class Optimizer optimizer.h <globalsearch/optimizer.h>
@@ -37,56 +38,7 @@ namespace GlobalSearch {
    *
    * The Optimizer class standardizes communication between an OptBase
    * instance and an external chemical optimization engine, such as
-   * GAMESS, ADF, VASP, etc. The optimization can be performed on the
-   * local system (see XtalOpt's GULPOptimizer implementation for an
-   * example), or on a remote cluster (the default for the Optimizer
-   * class).
-   *
-   * Remote communication is performed by libssh. The default remote
-   * job control assumes that the remote system is running a PBS
-   * server.
-   *
-   * To implement a new optimizer that will use a remote PBS server,
-   * simply derive Optimizer and implement the constructor:
-@verbatim
-class MyOptimizer : public GlobalSearch::Optimizer
-{
-  Q_OBJECT
-public:
-  MyOptimizer(Optbase *parent, const QString &filename = "") :
-    QObject(parent),
-    m_opt(parent)
-  {
-    // Set allowed generic data structure keys, if any, e.g.
-    // (uncommon)
-    // m_data.insert("Identifier name",QVariant())
-
-    // Set allowed filenames, e.g.
-    m_templates.insert("job.pbs",QStringList) // PBS queue script
-    m_templates.insert("job.inp",QStringList) // Optimizer input file
-
-    // Setup for completion values
-    m_completionFilename = job.out
-    m_completionStrings.clear();
-    m_completionString.append("Optimization completed successfully")
-    m_completionString.append("This is a single point calculation")
-
-    // Set output filenames to try to read data from, e.g.
-    m_outputFilenames.append("job.out");
-
-    // Set the name of the optimizer to be returned by getIDString()
-    m_idString = "MyOptimizer";
-
-    readSettings(filename);
-   }
-}
-@endverbatim
-   *
-   * The simplest usage of an Optimizer is to attach it to an OptBase
-   * derived class:
-@verbatim
-myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
-@endverbatim
+   * GAMESS, ADF, VASP, etc.
    *
    * The file contents may be set using the setTemplate,
    * appendTemplate, and removeTemplate functions. These will be
@@ -102,6 +54,8 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
     Q_OBJECT
 
   public:
+    friend class OptimizerConfigDialog;
+
     /**
      * Constructor
      *
@@ -115,31 +69,6 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
      * Destructor
      */
     virtual ~Optimizer();
-
-    /**
-     * Possible status for jobs submitted by the Optimizer
-     * @sa getStatus
-     */
-    enum JobState {
-      /// Something very bizarre has happened
-      Unknown = -1,
-      /// Job has completed successfully
-      Success,
-      /// Job finished, but the optimization was unsuccessful
-      Error,
-      /// Job is queued with the PBS server
-      Queued,
-      /// Optimization is current running
-      Running,
-      /// Communication with the remote server has failed
-      CommunicationError,
-      /// Job has been submitted, but has not appeared in queue
-      Started,
-      /// Job has appeared in queue, but the Structure still returns
-      /// Structure::Submitted instead of Structure::InProcess. This
-      /// will be corrected by the QueueManager.
-      Pending
-    };
 
     /**
      * Read optimizer data from file (.scheme or .state). If called
@@ -172,92 +101,31 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
     virtual int getNumberOfOptSteps();
 
     /**
-     * Write the input files to the Structure's local path after
-     * interpreting the templates.
+     * Check if the file m_completionFilename exists in the working
+     * directory of Structure \a s and store the result in \a exists.
      *
-     * @param structure Structure to generate input files for
+     * @note This function uses the argument \a exists to report
+     * whether or not the file exists. The return value indicates
+     * whether the file check was performed without errors
+     * (e.g. network errors).
      *
-     * @return True if write was successful, false otherwise.
+     * @return True if the test encountered no errors, false otherwise.
      */
-    virtual bool writeInputFiles(Structure *structure);
+    bool checkIfOutputFileExists(Structure *s, bool *exists);
 
     /**
-     * Submit the job to the PBS queue.
+     * Check m_completionFilename for any of the m_completionStrings
+     * in the working directory of Structure \a s. If any are found,
+     * \a success is set to true.
      *
-     * @param structure Structure to begin optimizing
+     * @note This function uses the argument \a success to report
+     * whether or not m_completionFileName contains any
+     * m_completionStrings. The return value indicates whether the
+     * file check was performed without errors (e.g. network errors).
      *
-     * @return True if submission is successful, false otherwise
+     * @return True if the test encountered no errors, false otherwise.
      */
-    virtual bool startOptimization(Structure *structure);
-
-    /**
-     * @param filename Name of file to check for on the remote server.
-     *
-     * @return True if it exists, false otherwise.
-     */
-    virtual bool checkIfOutputFileExists(const QString & filename);
-
-    /**
-     * Retrieve the contents of an output file from the remote server.
-     *
-     * @param filename Filename to retrieve
-     * @param data QStringList to fill with the file's contents, one
-     * line per item.
-     *
-     * @return True if successful, false otherwise.
-     */
-    virtual bool getOutputFile(const QString & filename, QStringList & data);
-
-    /**
-     * Query the remote server for the contents of the PBS queue. The
-     * results are filtered to contain only the entries submitted by
-     * OptBase::username.
-     *
-     * @param queueData QStringList to fill with the contents of the
-     * queue.
-     * @param mutex Mutex to lock while overwriting queueData
-     *
-     * @return True if query is successful, false otherwise
-     */
-    virtual bool getQueueList(QStringList & queueData, QMutex *mutex);
-
-    /**
-     * Call OptBase::qdel on the Structure's job ID.
-     *
-     * @param structure Structure to delete from PBS queue
-     *
-     * @return True if successful, false otherwise.
-     */
-    virtual bool deleteJob(Structure *structure);
-
-    /**
-     * Find out the status of the currently optimizing structure.
-     *
-     * @note This function will check the cached queue information
-     * in OptBase::queue()->getRemoteQueueData(), which may be
-     * slightly outdated. If you need absolutely current status, call
-     * OptBase::queue()->updateQueue(0) first.
-     *
-     * @param structure The Structure whose status is to be determined
-     *
-     * @return The JobState status of the optimization job.
-     * @sa JobState
-     */
-    virtual Optimizer::JobState getStatus(Structure *structure);
-
-    /**
-     * Checks the entries in queueData list for the jobname of the
-     * structure, which is extracted from structure->fileName() +
-     * "job.pbs". If a job with this name is found in queueData, the
-     * referenced boolean is set to true and the job ID is returned.
-     *
-     * @param structure Structure to check
-     * @param queueData List containing the queue data.
-     * @param exists Boolean to be set to true if the job exists.
-     *
-     * @return The job ID of the running job, if found. Otherwise, 0.
-     */
-    virtual int checkIfJobNameExists(Structure *structure, const QStringList &queueData, bool &exists);
+    bool checkForSuccessfulOutput(Structure *s, bool *success);
 
     /**
      * Copy the files from the Structure's remote path to the local
@@ -300,11 +168,11 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
      * Return a specified template.
      *
      * @param filename Filename of template
-     * @param optStep Optimization step of template to retrieve.
+     * @param optStep Optimization step index of template to retrieve.
      *
      * @return The requested template
      */
-    virtual QString getTemplate(const QString &filename, int optStep);
+    virtual QString getTemplate(const QString &filename, int optStepIndex);
 
     /**
      * Return a list of all templates for a given filename
@@ -366,13 +234,13 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
      *
      * @param filename Filename of template
      * @param templateData Template string
-     * @param optStep Optimization step
+     * @param optStep Optimization step (index, starts at 0)
      *
      * @return True if successful, false otherwise.
      */
     virtual bool setTemplate(const QString &filename,
                              const QString &templateData,
-                             int optStep);
+                             int optStepIndex);
 
     /**
      * Set all templates for the specified filename.
@@ -402,12 +270,12 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
      * Remove an optimization step from a filename's templates.
      *
      * @param filename Filename of interest
-     * @param optStep Optimization step to remove
+     * @param optStep Optimization step index to remove
      *
      * @return True if successful, false otherwise.
      */
     virtual bool removeTemplate(const QString &filename,
-                                int optStep);
+                                int optStepIndex);
 
     /**
      * Set a generic data entry.
@@ -446,31 +314,104 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
      */
     void setUser4(const QString &s) {m_user4 = s;};
 
-  protected:
     /**
-     * Create the structure's remote working directory.
+     * Command line used in local execution
      *
-     * @return True if successful, false otherwise.
+     * Details given in m_localRunCommand.
+     *
+     * @sa stdinFilename
+     * @sa stdoutFilename
+     * @sa stderrFilename
+     * @sa m_localRunCommand
+     * @sa m_stdinFilename
+     * @sa m_stdoutFilename
+     * @sa m_stderrFilename
      */
-    virtual bool createRemoteDirectory(Structure *structure);
+    QString localRunCommand() const {return m_localRunCommand;};
 
     /**
-     * Clean all files from the structure's remote working directory.
+     * Filename for standard input
      *
-     * @return True if successful, false otherwise.
+     * Details given in m_localRunCommand.
+     *
+     * @sa localRunCommand
+     * @sa stdoutFilename
+     * @sa stderrFilename
+     * @sa m_localRunCommand
+     * @sa m_stdinFilename
+     * @sa m_stdoutFilename
+     * @sa m_stderrFilename
      */
-    virtual bool cleanRemoteDirectory(Structure *structure);
+    QString stdinFilename() const {return m_stdinFilename;};
 
     /**
-     * Interpret and write all templates in m_templates at the
-     * Structure's current optimization step.
+     * Filename for standard output
+     *
+     * Details given in m_localRunCommand.
+     *
+     * @sa localRunCommand
+     * @sa stdinFilename
+     * @sa stderrFilename
+     * @sa m_localRunCommand
+     * @sa m_stdinFilename
+     * @sa m_stdoutFilename
+     * @sa m_stderrFilename
+     */
+    QString stdoutFilename() const {return m_stdoutFilename;};
+
+    /**
+     * Filename for standard error
+     *
+     * Details given in m_localRunCommand.
+     *
+     * @sa localRunCommand
+     * @sa stdinFilename
+     * @sa stdoutFilename
+     * @sa m_localRunCommand
+     * @sa m_stdinFilename
+     * @sa m_stdoutFilename
+     * @sa m_stderrFilename
+     */
+    QString stderrFilename() const {return m_stderrFilename;};
+
+    /**
+     * Interpret all templates in m_templates at the Structure's
+     * current optimization step.
      *
      * @param s Structure of interest
      *
-     * @return True if successful, false otherwise.
+     * @return A hash containing the interpreted templates, key:
+     * filename, value: file contents
      */
-    virtual bool writeTemplates(Structure *s);
+    virtual QHash<QString, QString> getInterpretedTemplates(Structure *s);
 
+    /// \defgroup dialog Dialog access
+
+    /**
+     * @return True if this QueueInterface has a configuration dialog.
+     * @sa dialog()
+     * @ingroup dialog
+     */
+    bool hasDialog() {return m_hasDialog;};
+
+    /**
+     * @return The configuration dialog for this QueueInterface, if it
+     * exists, otherwise 0.
+     * @sa hasDialog()
+     * @ingroup dialog
+     */
+    virtual QDialog* dialog();
+
+  protected slots:
+    /**
+     * Update the m_QITemplates hash.
+     *
+     * Automatically connected to m_opt's queueInterfaceChanged
+     * signal. Should not need to be called directly.
+     */
+    void updateQueueInterface();
+
+  protected:
     /**
      * @param filename Scheme or state file from which to load all
      * templates in m_templates
@@ -508,26 +449,6 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
     virtual void writeDataToSettings(const QString &filename = "");
 
     /**
-     * Copies all filenames in getTemplateNames() from the Structure's
-     * local path to its remote path.
-     *
-     * @param structure Structure of interest
-     *
-     * @return True if successful, false otherwise.
-     */
-    virtual bool copyLocalTemplateFilesToRemote(Structure *structure);
-
-    /**
-     * Copies the contents of the Structure's remote path to its local
-     * path.
-     *
-     * @param structure Structure of interest
-     *
-     * @return True if successful, false otherwise.
-     */
-    virtual bool copyRemoteToLocalCache(Structure *structure);
-
-    /**
      * Store generic data types. This is not commonly used, see
      * XtalOpt's VASPOptimizer for an example where it is used to
      * store information about pseudopotentials.
@@ -535,11 +456,40 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
     QHash<QString, QVariant> m_data;
 
     /**
-     * Stores all template data. Key is the filename to be written and
-     * the value is a list of corresponding templates in order of
-     * optimization step.
+     * Determine which internal template hash contains \a filename and
+     * return a reference to the correct hash.
+     */
+    QHash<QString, QStringList>& resolveTemplateHash(const QString &filename);
+
+    /**
+     * @overload
+     * Determine which internal template hash contains \a filename and
+     * return a reference to the correct hash.
+     */
+    const QHash<QString, QStringList>& resolveTemplateHash(const QString &filename) const;
+
+    /**
+     * Ensure that all template lists in m_templates and m_QITemplates
+     * contain getNumberOfOptSteps() optimization steps.
+     *
+     * If a template list has too few entries, empty strings are
+     * appended.
+     */
+    void fixTemplateLengths();
+
+    /**
+     * Stores all template data for this optimizer. Key is the
+     * filename to be written and the value is a list of corresponding
+     * templates in order of optimization step.
      */
     QHash<QString, QStringList > m_templates;
+
+    /**
+     * Stores all template data for the current QueueInterface. Key is
+     * the filename to be written and the value is a list of
+     * corresponding templates in order of optimization step.
+     */
+    QHash<QString, QStringList > m_QITemplates;
 
     /**
      * File to check if optimization has complete successfully.
@@ -559,6 +509,87 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
      * checked in order of index).
      */
     QStringList m_outputFilenames;
+
+    /**
+     * Commandline instruction to run this program locally
+     *
+     * Three common scenarios:
+     *
+     * VASP-esque: $ vasp
+     *  Runs in working directory reading from predefined input
+     *  filenames (ie. POSCAR). Set m_localRunCommand="vasp", and
+     *  m_stdinFilename=m_stdoutFilename=m_stderrFilename="";
+     *
+     * GULP-esque: $ gulp < job.gin 1>job.got 2>job.err
+     *
+     *  Runs in working directory using redirection to specify
+     *  input/output. Set m_localRunCommand="gulp",
+     *  m_stdinFilename="job.gin", m_stdoutFilename="job.got",
+     *  m_stderrFilename="job.err".
+     *
+     * MOPAC-esque: $ mopac job
+     *
+     *  Runs in working directory, specifying either an input filename
+     *  or a base name. In both cases, put the entire command line
+     *  into m_localRunCommand, ="mopac job",
+     *  m_stdinFilename=m_stdoutFilename=m_stderrFilename=""
+     *
+     * Stdin/out/err is not used (="") by default.
+     *
+     * @sa localRunCommand
+     * @sa stdinFilename
+     * @sa stdoutFilename
+     * @sa stderrFilename
+     * @sa m_stdinFilename
+     * @sa m_stdoutFilename
+     * @sa m_stderrFilename
+     */
+    QString m_localRunCommand;
+
+    /**
+     * Filename for standard input
+     *
+     * Details given in m_localRunCommand.
+     *
+     * @sa localRunCommand
+     * @sa stdinFilename
+     * @sa stdoutFilename
+     * @sa stderrFilename
+     * @sa m_localRunCommand
+     * @sa m_stdoutFilename
+     * @sa m_stderrFilename
+     */
+    QString m_stdinFilename;
+
+    /**
+     * Filename for standard output
+     *
+     * Details given in m_localRunCommand.
+     *
+     * @sa localRunCommand
+     * @sa stdinFilename
+     * @sa stdoutFilename
+     * @sa stderrFilename
+     * @sa m_localRunCommand
+     * @sa m_stdinFilename
+     * @sa m_stderrFilename
+     */
+    QString m_stdoutFilename;
+
+    /**
+     * Filename for standard error
+     *
+     * Details given in m_localRunCommand.
+     *
+     * @sa localRunCommand
+     * @sa stdinFilename
+     * @sa stdoutFilename
+     * @sa stderrFilename
+     * @sa m_localRunCommand
+     * @sa m_stdinFilename
+     * @sa m_stdoutFilename
+     */
+    QString m_stderrFilename;
 
     /**
      * User defined string that is used during template
@@ -593,8 +624,12 @@ myOptBase->setOptimizer(new MyOptimizer( myOptBase, filename ));
      * Unique identification string for this Optimizer.
      */
     QString m_idString;
-  };
 
+    /// @cond
+    bool m_hasDialog;
+    QDialog *m_dialog;
+    /// @endcond
+  };
 } // end namespace GlobalSearch
 
 #endif

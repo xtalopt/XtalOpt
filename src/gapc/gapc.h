@@ -51,9 +51,13 @@ namespace GAPC {
 
    public:
     enum OptTypes {
-      OT_OpenBabel = 0,
-      OT_ADF,
+      OT_ADF = 0,
       OT_GULP
+    };
+
+    enum QueueInterfaces {
+      QI_LOCAL = 0,
+      QI_PBS
     };
 
     enum ExplodeActions {
@@ -65,7 +69,6 @@ namespace GAPC {
     QMutex initMutex;
     GAPC_Comp comp;
     QStringList seedList;
-    QString gulpPath;
     unsigned int numInitial;
     unsigned int popSize;
     double tol_enthalpy;
@@ -171,19 +174,10 @@ namespace GAPC {
     void resetDuplicates();
     void checkForDuplicates();
 
-    void setOptimizer(GlobalSearch::Optimizer *o) {
-      setOptimizer_opt(o);};
-    void setOptimizer(const QString &IDString, const QString &filename = "") {
-      setOptimizer_string(IDString, filename);};
-    void setOptimizer(OptTypes opttype, const QString &filename = "") {
-      setOptimizer_enum(opttype, filename);};
-
    protected:
     void resetDuplicates_();
     void checkForDuplicates_();
-    void setOptimizer_string(const QString &s, const QString &filename = "");
-    void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
-
+    void generateNewStructure_();
   };
 
 } // end namespace GAPC

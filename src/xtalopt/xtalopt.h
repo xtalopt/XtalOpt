@@ -49,6 +49,11 @@ namespace XtalOpt {
       OT_CASTEP
     };
 
+    enum QueueInterfaces {
+      QI_LOCAL = 0,
+      QI_PBS
+    };
+
     enum Operators {
       OP_Crossover = 0,
       OP_Stripple,
@@ -106,8 +111,6 @@ namespace XtalOpt {
 
     QMutex *xtalInitMutex;
 
-    QString gulpPath;
-
    signals:
     void newInfoUpdate();
     void updateAllInfo();
@@ -120,19 +123,11 @@ namespace XtalOpt {
                               const QString &parents);
     void resetDuplicates();
     void checkForDuplicates();
-    void setOptimizer(GlobalSearch::Optimizer *o) {
-      setOptimizer_opt(o);};
-    void setOptimizer(const QString &IDString, const QString &filename = "") {
-      setOptimizer_string(IDString, filename);};
-    void setOptimizer(XtalOpt::OptTypes opttype, const QString &filename = "") {
-      setOptimizer_enum(opttype, filename);};
 
    private:
     void resetDuplicates_();
     void checkForDuplicates_();
-
-    void setOptimizer_string(const QString &s, const QString &filename = "");
-    void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
+    void generateNewStructure_();
 
     void interpretKeyword(QString &keyword, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp_xtalopt();

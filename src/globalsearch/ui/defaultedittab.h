@@ -1,7 +1,7 @@
 /**********************************************************************
-  RandomDock -- A tool for analysing a matrix-substrate docking problem
+  DefaultEditTab - Simple implementation of AbstractEditTab
 
-  Copyright (C) 2009 by David Lonie
+  Copyright (C) 2011 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -14,36 +14,33 @@
   GNU General Public icense for more details.
  ***********************************************************************/
 
-#ifndef TAB_SYS_H
-#define TAB_SYS_H
+#ifndef DEFAULTEDITTAB_H
+#define DEFAULTEDITTAB_H
 
-#include <globalsearch/ui/abstracttab.h>
+#include <globalsearch/ui/abstractedittab.h>
 
-#include "ui_tab_sys.h"
+namespace Ui {
+  class DefaultEditTab;
+}
 
-namespace RandomDock {
-  class RandomDockDialog;
-  class RandomDock;
+namespace GlobalSearch {
+  class AbstractDialog;
+  class OptBase;
 
-  class TabSys : public GlobalSearch::AbstractTab
+  class DefaultEditTab : public GlobalSearch::AbstractEditTab
   {
-    Q_OBJECT
+    Q_OBJECT;
 
   public:
-    explicit TabSys( RandomDockDialog *dialog, RandomDock *opt );
-    virtual ~TabSys();
+    explicit DefaultEditTab(AbstractDialog *dialog,
+                            OptBase *opt);
+    virtual ~DefaultEditTab();
 
-  public slots:
-    void lockGUI();
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void selectLocalPath();
-    void updateSystemInfo();
-
-  signals:
+  protected slots:
+    virtual void initialize();
 
   private:
-    Ui::Tab_Sys ui;
+    Ui::DefaultEditTab *ui;
   };
 }
 
