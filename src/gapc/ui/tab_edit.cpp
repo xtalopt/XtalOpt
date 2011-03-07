@@ -172,8 +172,9 @@ namespace GAPC {
       {
         // Extract optimizer ID and subtract 1 -- we removed the
         // openbabel optimizer (was at enum value 0)
+        // Also make default value 1 to reflect OB's removal.
         ui_combo_optimizers->setCurrentIndex
-          (settings->value("gapc/edit/optType", 0).toInt() - 1);
+          (settings->value("gapc/edit/optType", 1).toInt() - 1);
         // Set QueueInterface based on optimizer
         switch (ui_combo_optimizers->currentIndex()) {
         default:

@@ -25,26 +25,20 @@
 #include <QtCore/QtConcurrentRun>
 #include <QtCore/QTimer>
 
-// For monitoring background threads:
-#define GSQM_QTCONCURRENTRUN_REQUESTED \
-  ++numConcurrentOps;
-#define GSQM_QTCONCURRENTRUN_STARTED \
-  ConcurrentCountModifier c (&numConcurrentOps);
-#define GSQM_QTCONCURRENTRUN_WAIT \
-  while (numConcurrentOps > 0) { \
-    GS_SLEEP(1);                  \
-    qDebug() << "Spinning for Queuemanager's bkgd thread count to reach 0"; \
-  };
-
 /// @cond
 namespace {
-  int numConcurrentOps = 0;
-  class ConcurrentCountModifier
+  class removeFromTrackerWhenScopeEnds
   {
-    int *m_count;
+    GlobalSearch::Tracker *m_tracker;
+    GlobalSearch::Structure *m_structure;
   public:
-    ConcurrentCountModifier (int *c) : m_count(c) {}
-    ~ConcurrentCountModifier() {--(*m_count);}
+    removeFromTrackerWhenScopeEnds(GlobalSearch::Structure *s,
+                                   GlobalSearch::Tracker *t)
+      : m_tracker(t), m_structure(s) {}
+    ~removeFromTrackerWhenScopeEnds() {
+      m_tracker->lockForWrite();
+      m_tracker->remove(m_structure);
+      m_tracker->unlock();}
   };
 }
 /// @endcond
@@ -76,8 +70,12 @@ namespace GlobalSearch {
     trackers.append(&m_newlyOptimizedTracker);
     trackers.append(&m_stepOptimizedTracker);
     trackers.append(&m_inProcessTracker);
+    trackers.append(&m_errorTracker);
     trackers.append(&m_submittedTracker);
     trackers.append(&m_newlyKilledTracker);
+    trackers.append(&m_newDuplicateTracker);
+    trackers.append(&m_restartTracker);
+    trackers.append(&m_newSubmissionTracker);
 
     for (QList<Tracker*>::iterator
            it = trackers.begin(),
@@ -89,7 +87,6 @@ namespace GlobalSearch {
         GS_SLEEP(1);
       }
     }
-    GSQM_QTCONCURRENTRUN_WAIT;
   }
 
   void QueueManager::moveToQMThread()
@@ -110,7 +107,7 @@ namespace GlobalSearch {
             m_opt, SLOT(generateNewStructure()),
             Qt::QueuedConnection);
 
-    // internal connections
+    // re-emit connections
     connect(this, SIGNAL(structureStarted(GlobalSearch::Structure *)),
             this, SIGNAL(structureUpdated(GlobalSearch::Structure *)));
     connect(this, SIGNAL(structureSubmitted(GlobalSearch::Structure *)),
@@ -119,6 +116,11 @@ namespace GlobalSearch {
             this, SIGNAL(structureUpdated(GlobalSearch::Structure *)));
     connect(this, SIGNAL(structureFinished(GlobalSearch::Structure *)),
             this, SIGNAL(structureUpdated(GlobalSearch::Structure *)));
+
+    // internal connections
+    connect(this, SIGNAL(structureStarted(GlobalSearch::Structure *)),
+            this, SLOT(addStructureToSubmissionQueue(GlobalSearch::Structure *)),
+            Qt::QueuedConnection);
 
     QTimer::singleShot(0, this, SLOT(checkLoop()));
   }
@@ -133,8 +135,12 @@ namespace GlobalSearch {
     trackers.append(&m_newlyOptimizedTracker);
     trackers.append(&m_stepOptimizedTracker);
     trackers.append(&m_inProcessTracker);
+    trackers.append(&m_errorTracker);
     trackers.append(&m_submittedTracker);
     trackers.append(&m_newlyKilledTracker);
+    trackers.append(&m_newDuplicateTracker);
+    trackers.append(&m_restartTracker);
+    trackers.append(&m_newSubmissionTracker);
 
     for (QList<Tracker*>::iterator
            it = trackers.begin(),
@@ -301,8 +307,12 @@ namespace GlobalSearch {
       if (m_newlyOptimizedTracker.contains(structure) ||
           m_stepOptimizedTracker.contains(structure)  ||
           m_inProcessTracker.contains(structure)      ||
+          m_errorTracker.contains(structure)          ||
           m_submittedTracker.contains(structure)      ||
-          m_newlyKilledTracker.contains(structure)) {
+          m_newlyKilledTracker.contains(structure)    ||
+          m_newDuplicateTracker.contains(structure)   ||
+          m_restartTracker.contains(structure)        ||
+          m_newSubmissionTracker.contains(structure)) {
         continue;
       }
 
@@ -358,25 +368,20 @@ namespace GlobalSearch {
 
   void QueueManager::handleInProcessStructure(Structure *s)
   {
-    m_inProcessTracker.lockForWrite();
-    m_inProcessTracker.append(s);
-    GSQM_QTCONCURRENTRUN_REQUESTED;
-    QtConcurrent::run(this,
-                      &QueueManager::handleInProcessStructure_);
-    m_inProcessTracker.unlock();
-  }
-
-  void QueueManager::handleInProcessStructure_()
-  {
-    GSQM_QTCONCURRENTRUN_STARTED;
-    Structure *s;
-    m_inProcessTracker.lockForWrite();
-    if (!m_inProcessTracker.popFirst(s)) {
-      m_inProcessTracker.unlock();
+    QWriteLocker locker (m_inProcessTracker.rwLock());
+    if (!m_inProcessTracker.append(s)) {
       return;
     }
-    m_inProcessTracker.unlock();
+    QtConcurrent::run(this,
+                      &QueueManager::handleInProcessStructure_, s);
+  }
 
+  void QueueManager::handleInProcessStructure_(Structure *s)
+  {
+    Q_ASSERT(m_inProcessTracker.contains(s));
+    removeFromTrackerWhenScopeEnds popper (s, &m_inProcessTracker);
+
+    // Revalidate assumptions
     if (s->getStatus() != Structure::InProcess) {
       return;
     }
@@ -400,29 +405,26 @@ namespace GlobalSearch {
       emit structureUpdated(s);
       break;
     }
+
     return;
   }
 
   void QueueManager::handleOptimizedStructure(Structure *s)
   {
-    m_newlyOptimizedTracker.lockForWrite();
-    m_newlyOptimizedTracker.append(s);
-    GSQM_QTCONCURRENTRUN_REQUESTED;
-    QtConcurrent::run(this,
-                      &QueueManager::handleOptimizedStructure_);
-    m_newlyOptimizedTracker.unlock();
-  }
-
-  void QueueManager::handleOptimizedStructure_() {
-    GSQM_QTCONCURRENTRUN_STARTED;
-    Structure *s;
-    m_newlyOptimizedTracker.lockForWrite();
-    if (!m_newlyOptimizedTracker.popFirst(s)) {
-      m_newlyOptimizedTracker.unlock();
+    QWriteLocker locker (m_newlyOptimizedTracker.rwLock());
+    if (!m_newlyOptimizedTracker.append(s)) {
       return;
     }
-    m_newlyOptimizedTracker.unlock();
+    QtConcurrent::run(this,
+                      &QueueManager::handleOptimizedStructure_, s);
+  }
 
+  void QueueManager::handleOptimizedStructure_(Structure *s)
+  {
+    Q_ASSERT(m_newlyOptimizedTracker.contains(s));
+    removeFromTrackerWhenScopeEnds popper (s, &m_newlyOptimizedTracker);
+
+    // Revalidate assumptions
     if (s->getStatus() != Structure::Optimized) {
       return;
     }
@@ -438,26 +440,20 @@ namespace GlobalSearch {
 
   void QueueManager::handleStepOptimizedStructure(Structure *s)
   {
-    m_stepOptimizedTracker.lockForWrite();
+    QWriteLocker locker (m_stepOptimizedTracker.rwLock());
     m_stepOptimizedTracker.append(s);
-    GSQM_QTCONCURRENTRUN_REQUESTED;
     QtConcurrent::run(this,
-                      &QueueManager::handleStepOptimizedStructure_);
-    m_stepOptimizedTracker.unlock();
+                      &QueueManager::handleStepOptimizedStructure_, s);
   }
 
-  void QueueManager::handleStepOptimizedStructure_() {
-    GSQM_QTCONCURRENTRUN_STARTED;
-    Structure *s;
-    m_stepOptimizedTracker.lockForWrite();
-    if (!m_stepOptimizedTracker.popFirst(s)) {
-      m_stepOptimizedTracker.unlock();
-      return;
-    }
-    m_stepOptimizedTracker.unlock();
+  void QueueManager::handleStepOptimizedStructure_(Structure *s)
+  {
+    Q_ASSERT(m_stepOptimizedTracker.contains(s));
+    removeFromTrackerWhenScopeEnds popper (s, &m_stepOptimizedTracker);
 
     QWriteLocker locker (s->lock());
 
+    // Validate assumptions
     if (s->getStatus() != Structure::StepOptimized) {
       return;
     }
@@ -507,6 +503,19 @@ namespace GlobalSearch {
 
   void QueueManager::handleErrorStructure(Structure *s)
   {
+    QWriteLocker locker (m_errorTracker.rwLock());
+    if (!m_errorTracker.append(s)) {
+      return;
+    }
+    QtConcurrent::run(this,
+                      &QueueManager::handleErrorStructure_, s);
+  }
+
+  void QueueManager::handleErrorStructure_(Structure *s)
+  {
+    Q_ASSERT(m_errorTracker.contains(s));
+    removeFromTrackerWhenScopeEnds popper (s, &m_errorTracker);
+
     if (s->getStatus() != Structure::Error) {
       return;
     }
@@ -551,23 +560,18 @@ namespace GlobalSearch {
 
   void QueueManager::handleSubmittedStructure(Structure *s)
   {
-    m_submittedTracker.lockForWrite();
-    m_submittedTracker.append(s);
-    GSQM_QTCONCURRENTRUN_REQUESTED;
-    QtConcurrent::run(this,
-                      &QueueManager::handleSubmittedStructure_);
-    m_submittedTracker.unlock();
-  }
-
-  void QueueManager::handleSubmittedStructure_() {
-    GSQM_QTCONCURRENTRUN_STARTED;
-    Structure *s;
-    m_submittedTracker.lockForWrite();
-    if (!m_submittedTracker.popFirst(s)) {
-      m_submittedTracker.unlock();
+    QWriteLocker locker (m_submittedTracker.rwLock());
+    if (!m_submittedTracker.append(s)) {
       return;
     }
-    m_submittedTracker.unlock();
+    QtConcurrent::run(this,
+                      &QueueManager::handleSubmittedStructure_, s);
+  }
+
+  void QueueManager::handleSubmittedStructure_(Structure *s)
+  {
+    Q_ASSERT(m_submittedTracker.contains(s));
+    removeFromTrackerWhenScopeEnds popper (s, &m_submittedTracker);
 
     if (s->getStatus() != Structure::Submitted) {
       return;
@@ -601,23 +605,18 @@ namespace GlobalSearch {
 
   void QueueManager::handleKilledStructure(Structure *s)
   {
-    m_newlyKilledTracker.lockForWrite();
-    m_newlyKilledTracker.append(s);
-    GSQM_QTCONCURRENTRUN_REQUESTED;
-    QtConcurrent::run(this,
-                      &QueueManager::handleKilledStructure_);
-    m_newlyKilledTracker.unlock();
-  }
-
-  void QueueManager::handleKilledStructure_() {
-    GSQM_QTCONCURRENTRUN_STARTED;
-    Structure *s;
-    m_newlyKilledTracker.lockForWrite();
-    if (!m_newlyKilledTracker.popFirst(s)) {
-      m_newlyKilledTracker.unlock();
+    QWriteLocker locker (m_newlyKilledTracker.rwLock());
+    if (!m_newlyKilledTracker.append(s)) {
       return;
     }
-    m_newlyKilledTracker.unlock();
+    QtConcurrent::run(this,
+                      &QueueManager::handleKilledStructure_, s);
+  }
+
+  void QueueManager::handleKilledStructure_(Structure *s)
+  {
+    Q_ASSERT(m_newlyKilledTracker.contains(s));
+    removeFromTrackerWhenScopeEnds popper (s, &m_newlyKilledTracker);
 
     if (s->getStatus() != Structure::Killed &&
         // Remove structures end up here, too, so check this (see
@@ -642,6 +641,23 @@ namespace GlobalSearch {
 
   void QueueManager::handleDuplicateStructure(Structure *s)
   {
+    QWriteLocker locker (m_newDuplicateTracker.rwLock());
+    if (!m_newDuplicateTracker.append(s)) {
+      return;
+    }
+    QtConcurrent::run(this,
+                      &QueueManager::handleDuplicateStructure_, s);
+  }
+
+  void QueueManager::handleDuplicateStructure_(Structure *s)
+  {
+    Q_ASSERT(m_newDuplicateTracker.contains(s));
+    removeFromTrackerWhenScopeEnds popper (s, &m_newDuplicateTracker);
+
+    if (s->getStatus() != Structure::Duplicate) {
+      return;
+    }
+
     // Ensure that the job is not tying up the queue
     stopJob(s);
 
@@ -653,6 +669,23 @@ namespace GlobalSearch {
 
   void QueueManager::handleRestartStructure(Structure *s)
   {
+    QWriteLocker locker (m_restartTracker.rwLock());
+    if (!m_restartTracker.append(s)) {
+      return;
+    }
+    QtConcurrent::run(this,
+                      &QueueManager::handleRestartStructure_, s);
+  }
+
+  void QueueManager::handleRestartStructure_(Structure *s)
+  {
+    Q_ASSERT(m_restartTracker.contains(s));
+    removeFromTrackerWhenScopeEnds popper (s, &m_restartTracker);
+
+    if (s->getStatus() != Structure::Restart) {
+      return;
+    }
+
     stopJob(s);
 
     addStructureToSubmissionQueue(s);
@@ -697,29 +730,33 @@ namespace GlobalSearch {
   }
 
   void QueueManager::addStructureToSubmissionQueue(Structure *s,
-                                                   int optStep) {
-    QWriteLocker locker (s->lock());
+                                                   int optStep)
+  {
+    QWriteLocker locker (m_newSubmissionTracker.rwLock());
+    if (!m_newSubmissionTracker.append(s)) {
+      return;
+    }
 
+    QtConcurrent::run(this,
+                      &QueueManager::addStructureToSubmissionQueue_,
+                      s, optStep);
+  }
+
+  void QueueManager::addStructureToSubmissionQueue_(Structure *s, int optStep)
+  {
+    Q_ASSERT(m_newSubmissionTracker.contains(s));
+    removeFromTrackerWhenScopeEnds popper (s, &m_newSubmissionTracker);
+
+    // Update structure
+    s->lock()->lockForWrite();
     s->setStatus(Structure::WaitingForOptimization);
     if (optStep != 0) {
       s->setCurrentOptStep(optStep);
     }
-    locker.unlock();
-    emit structureUpdated(s);
+    s->lock()->unlock();
 
-    // write/copy in background thread
-    GSQM_QTCONCURRENTRUN_REQUESTED;
-    QtConcurrent::run(this, &QueueManager::addStructureToSubmissionQueue_, s);
-  }
-
-  void QueueManager::addStructureToSubmissionQueue_(Structure *s) {
-    GSQM_QTCONCURRENTRUN_STARTED;
     // Perform writing
     m_opt->queueInterface()->writeInputFiles(s);
-
-    s->lock()->lockForWrite();
-    s->setStatus(Structure::WaitingForOptimization);
-    s->lock()->unlock();
 
     m_jobStartTracker.lockForWrite();
     m_jobStartTracker.append(s);
@@ -732,7 +769,8 @@ namespace GlobalSearch {
     emit structureUpdated(s);
   }
 
-  void QueueManager::startJob() {
+  void QueueManager::startJob()
+  {
     Structure *s;
     if (!m_jobStartTracker.popFirst(s)) {
       return;
@@ -756,11 +794,13 @@ namespace GlobalSearch {
     emit structureSubmitted(s);
   }
 
-  void QueueManager::stopJob(Structure *s) {
+  void QueueManager::stopJob(Structure *s)
+  {
     m_opt->queueInterface()->stopJob(s);
   }
 
-  QList<Structure*> QueueManager::getAllRunningStructures() {
+  QList<Structure*> QueueManager::getAllRunningStructures()
+  {
     m_runningTracker.lockForRead();
     m_newStructureTracker.lockForRead();
     QList<Structure*> list(*m_runningTracker.list());
@@ -770,7 +810,8 @@ namespace GlobalSearch {
     return list;
   }
 
-  QList<Structure*> QueueManager::getAllOptimizedStructures() {
+  QList<Structure*> QueueManager::getAllOptimizedStructures()
+  {
     QList<Structure*> list;
     m_tracker->lockForRead();
     Structure *s;
@@ -785,7 +826,8 @@ namespace GlobalSearch {
     return list;
   }
 
-  QList<Structure*> QueueManager::getAllDuplicateStructures() {
+  QList<Structure*> QueueManager::getAllDuplicateStructures()
+  {
     QList<Structure*> list;
     m_tracker->lockForRead();
     Structure *s;
@@ -800,7 +842,8 @@ namespace GlobalSearch {
     return list;
   }
 
-  QList<Structure*> QueueManager::getAllStructures() {
+  QList<Structure*> QueueManager::getAllStructures()
+  {
     m_tracker->lockForRead();
     m_newStructureTracker.lockForRead();
     QList<Structure*> list (*m_tracker->list());
@@ -810,7 +853,8 @@ namespace GlobalSearch {
     return list;
   }
 
-  QList<Structure*> QueueManager::lockForNaming() {
+  QList<Structure*> QueueManager::lockForNaming()
+  {
     QList<Structure*> structures = getAllStructures();
     // prevent compiler from optimizing "structures" out:
     structures.size();
@@ -819,7 +863,8 @@ namespace GlobalSearch {
     return structures;
   }
 
-  void QueueManager::unlockForNaming(Structure *s) {
+  void QueueManager::unlockForNaming(Structure *s)
+  {
     if (!s) {
       m_tracker->unlock();
       return;
@@ -839,13 +884,11 @@ namespace GlobalSearch {
 
     m_newStructureTracker.unlock();
     m_tracker->unlock();
-    GSQM_QTCONCURRENTRUN_REQUESTED;
     QtConcurrent::run(this, &QueueManager::unlockForNaming_);
   }
 
   void QueueManager::unlockForNaming_()
   {
-    GSQM_QTCONCURRENTRUN_STARTED;
     Structure *s;
     m_tracker->lockForWrite();
     m_newStructureTracker.lockForWrite();
@@ -854,12 +897,17 @@ namespace GlobalSearch {
       m_tracker->unlock();
       return;
     }
-    m_newStructureTracker.unlock();
+
+    // Update structure
+    s->lock()->lockForWrite();
+    s->setStatus(Structure::WaitingForOptimization);
+    s->lock()->unlock();
 
     m_tracker->append(s);
+
+    m_newStructureTracker.unlock();
     m_tracker->unlock();
 
-    addStructureToSubmissionQueue(s);
     emit structureStarted(s);
   }
 
