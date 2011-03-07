@@ -570,19 +570,11 @@ namespace RandomDock {
   void TabProgress::killSceneProgress_()
   {
     if (!m_context_scene) return;
-    QWriteLocker locker (m_context_scene->lock());
 
-    // End job if currently running
-    if ( m_context_scene->getStatus() != Scene::Optimized ) {
-      locker.unlock();
-      m_opt->queueInterface()->stopJob(m_context_scene);
-      locker.relock();
-      m_context_scene->setStatus(Scene::Killed);
-    }
-    else m_context_scene->setStatus(Scene::Removed);
+    // QueueManager will take care of mutex locking
+    m_opt->queueInterface()->stopJob(m_context_scene);
 
     // Clear context scene pointer
-    locker.unlock();
     newInfoUpdate(m_context_scene);
     m_context_scene = 0;
   }

@@ -541,12 +541,11 @@ namespace GAPC {
   void TabProgress::killPCProgress_()
   {
     if (!m_context_pc) return;
-    QWriteLocker locker (m_context_pc->lock());
 
+    // QueueManager takes care of mutex locking
     m_opt->queue()->killStructure(m_context_pc);
 
     // Clear context pointer
-    locker.unlock();
     newInfoUpdate(m_context_pc);
     m_context_pc = 0;
   }

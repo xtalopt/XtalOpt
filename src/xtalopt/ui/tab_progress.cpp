@@ -609,12 +609,11 @@ namespace XtalOpt {
   void TabProgress::killXtalProgress_()
   {
     if (!m_context_xtal) return;
-    QWriteLocker locker (m_context_xtal->lock());
 
+    // QueueManager will handle mutex locking
     m_opt->queue()->killStructure(m_context_xtal);
 
     // Clear context xtal pointer
-    locker.unlock();
     newInfoUpdate(m_context_xtal);
     m_context_xtal = 0;
   }
