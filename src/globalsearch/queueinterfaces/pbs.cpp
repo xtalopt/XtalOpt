@@ -144,7 +144,21 @@ namespace GlobalSearch {
     m_opt->ssh()->unlockConnection(ssh);
 
     // Assuming stdout_str value is <jobID>.trailing.garbage.hostname.edu or similar
-    unsigned int jobID = stdout_str.split(".")[0].toUInt();
+    QStringList list = stdout_str.split(".");
+    bool ok;
+    unsigned int jobID;
+    if (list.size()) {
+      jobID = list.first().toUInt(&ok);
+    }
+    else {
+      ok = false;
+    }
+
+    if (!ok) {
+      m_opt->warning(tr("Error retrieving jobID for structure %1.")
+                     .arg(s->getIDString()));
+      return false;
+    }
 
     s->setJobID(jobID);
     s->startOptTimer();
@@ -216,10 +230,27 @@ namespace GlobalSearch {
 
     // Determine status if structure is in the queue
     QString status;
+    QStringList entryList;
+    unsigned int curJobID = 0;
+    bool ok;
     for (int i = 0; i < queueData.size(); i++) {
-      if (queueData.at(i).split(".")[0].toUInt() == jobID) {
-        status = (queueData.at(i).split(QRegExp("\\s+")))[4];
+      entryList = queueData.at(i).split(".");
+      if (entryList.size()) {
+        curJobID = entryList.first().toUInt(&ok);
+        if (!ok) {
+          continue;
+        }
+      }
+      else {
         continue;
+      }
+      if (curJobID == jobID) {
+        entryList = queueData.at(i).split(QRegExp("\\s+"));
+        if (entryList.size() < 5) {
+          continue;
+        }
+        status = entryList.at(4);
+        break;
       }
     }
 
@@ -254,16 +285,13 @@ namespace GlobalSearch {
       }
     }
 
-    if (status == "R") {
+    if (status.contains(QRegExp("R|E"))) {
       return QueueInterface::Running;
     }
-    else if (status == "Q") {
+    else if (status.contains(QRegExp("Q|H|T|W|S"))) {
       return QueueInterface::Queued;
     }
-    else if (status == "E") { // "Exiting"
-      return QueueInterface::Running;
-    }
-    else { // Entry is missing from queue. Were the output files written?
+    else if (status.isEmpty()) { // Entry is missing from queue. Were the output files written?
       locker.unlock();
       bool outputFileExists;
       if (!m_opt->optimizer()->checkIfOutputFileExists(s, &outputFileExists) ) {
@@ -284,9 +312,19 @@ namespace GlobalSearch {
           return QueueInterface::Error;
         }
       }
+      m_opt->debug(tr("Structure %1 with jobID %2 is missing "
+                      "from the queue and has not written any output.")
+                   .arg(s->getIDString()).arg(s->getJobID()));
+      return QueueInterface::Unknown;
     }
-    // Not in queue and no output? Error!
-    return QueueInterface::Unknown;
+    // Unrecognized status:
+    else {
+      m_opt->debug(tr("Structure %1 with jobID %2 has "
+                      "unrecognized status: %3")
+                   .arg(s->getIDString()).arg(s->getJobID())
+                   .arg(status));
+      return QueueInterface::Unknown;
+    }
   }
 
   QStringList PbsQueueInterface::getQueueList() const
