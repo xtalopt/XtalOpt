@@ -653,12 +653,22 @@ namespace XtalOpt {
 
   void TabPlot::selectMoleculeFromPlot(double x, double y)
   {
-    QPoint p (x,y);
     PlotPoint* pt = NULL;
-    double cur;
-    double distance = DBL_MAX;
+    unsigned int distance = UINT_MAX;
+    unsigned int cur;
+    QPoint clickedPt = ui.plot_plot->mapToWidget(QPointF(x,y)).toPoint();
+    int cx = clickedPt.x();
+    int cy = clickedPt.y();
+    QPoint refPt;
+    int dx, dy;
     foreach ( PlotPoint *pp, m_plotObject->points() ) {
-      cur = ( p - pp->position().toPoint() ).manhattanLength();
+      refPt = ui.plot_plot->mapToWidget(pp->position()).toPoint();
+      dx = refPt.x() - cx;
+      dy = refPt.y() - cy;
+      // Squared dist:
+      cur = dx*dx + dy*dy;
+      // Fast sqrt:
+      cur >>= 1;
       if ( cur < distance ) {
         pt = pp;
         distance = cur;
