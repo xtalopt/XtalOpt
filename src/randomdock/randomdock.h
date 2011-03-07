@@ -27,6 +27,7 @@
 #include <QtGui/QInputDialog>
 
 namespace GlobalSearch {
+  class SlottedWaitCondition;
   class Structure;
 }
 
@@ -94,6 +95,9 @@ namespace RandomDock {
     void startSearch();
     void generateNewStructure();
     void initializeAndAddScene(Scene *scene);
+
+  private:
+    GlobalSearch::SlottedWaitCondition *m_initWC;
   };
 
 } // end namespace RandomDock

@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Crystal Optimization Tool</string>
+   <string>XtalOpt</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="4" column="8">

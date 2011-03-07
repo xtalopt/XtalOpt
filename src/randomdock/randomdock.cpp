@@ -24,6 +24,7 @@
 #include <globalsearch/tracker.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/slottedwaitcondition.h>
 #include <globalsearch/sshmanager.h>
 #include <globalsearch/macros.h>
 
@@ -44,7 +45,8 @@ namespace RandomDock {
 
   RandomDock::RandomDock(RandomDockDialog *parent) :
     OptBase(parent),
-    substrate(0)
+    substrate(0),
+    m_initWC(new SlottedWaitCondition (this))
   {
     m_idString = "RandomDock";
     m_schemaVersion = 2;
@@ -81,6 +83,10 @@ namespace RandomDock {
       };
       savePending = true;
     }
+
+    // Clean up various members
+    m_initWC->deleteLater();
+    m_initWC = 0;
   }
 
   void RandomDock::startSearch() {
@@ -199,14 +205,27 @@ namespace RandomDock {
     m_dialog->updateProgressMinimum(0);
     m_dialog->updateProgressMinimum(runningJobLimit);
 
+    connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
+            m_initWC, SLOT(wakeAllSlot()));
+
+    m_initWC->prewaitLock();
     do {
       m_dialog->updateProgressValue(m_tracker->size());
       m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
                                     .arg(m_tracker->size())
                                     .arg(runningJobLimit));
-      GS_MSLEEP(100);
+      // Don't block here forever -- there is a race condition where
+      // the final newStructureAdded signal may be emitted while the
+      // WC is not waiting. Since this is just trivial GUI updating
+      // and we check the condition in the do-while loop, this is
+      // acceptable. The following call will timeout in 250 ms.
+      m_initWC->wait(250);
     }
     while (m_tracker->size() < runningJobLimit);
+    m_initWC->postwaitUnlock();
+
+    // We're done with m_initWC.
+    m_initWC->disconnect();
 
     m_dialog->stopProgressUpdate();
 
