@@ -254,6 +254,28 @@ m_queue->unlockForNaming(newStructure);
      */
     void checkLoop();
 
+    /**
+     * Writes the input files for the optimization process and queues
+     * the Structure to be submitted for optimization.
+     *
+     * @param s The Structure to be submitted
+     * @param optStep The optStep to perform. s->currentOptStep is
+     * used if optStep==0.
+     */
+    void addStructureToSubmissionQueue(GlobalSearch::Structure *s, int optStep);
+
+    /**
+     * @overload
+     *
+     * Writes the input files for the optimization process and queues
+     * the Structure to be submitted for optimization at its current
+     * optStep.
+     *
+     * @param s The Structure to be submitted
+     */
+    void addStructureToSubmissionQueue(GlobalSearch::Structure *s) {
+      addStructureToSubmissionQueue(s, 0);}
+
     void moveToQMThread();
     void setupConnections();
 
@@ -277,16 +299,6 @@ m_queue->unlockForNaming(newStructure);
      * @sa prepareStructureForNextOptStep
      */
     void updateStructure(Structure *s);
-
-    /**
-     * Writes the input files for the optimization process and queues
-     * the Structure to be submitted for optimization.
-     *
-     * @param s The Structure to be submitted
-     * @param optStep Optional optimization step. If omitted, the
-     * Structure's currentOptStep() is used.
-     */
-    void addStructureToSubmissionQueue(Structure *s, int optStep = 0);
 
     /**
      * Submits the first Structure in m_jobStartTracker for
@@ -331,10 +343,6 @@ m_queue->unlockForNaming(newStructure);
      */
     void checkRunning();
 
-    void addStructureToSubmissionQueue_(Structure *s);
-    void startJob_(Structure *s);
-    void unlockForNaming_();
-
     void handleOptimizedStructure(Structure *s);
     void handleStepOptimizedStructure(Structure *s);
     void handleWaitingForOptimizationStructure(Structure *s);
@@ -350,18 +358,30 @@ m_queue->unlockForNaming(newStructure);
 
     // These run in the background and are called by the above
     // functions via QtConcurrent::run.
-    void handleOptimizedStructure_();
-    void handleStepOptimizedStructure_();
-    void handleInProcessStructure_();
-    void handleSubmittedStructure_();
-    void handleKilledStructure_();
+    void handleOptimizedStructure_(Structure *s);
+    void handleStepOptimizedStructure_(Structure *s);
+    void handleInProcessStructure_(Structure *s);
+    void handleErrorStructure_(Structure *s);
+    void handleSubmittedStructure_(Structure *s);
+    void handleKilledStructure_(Structure *s);
+    void handleDuplicateStructure_(Structure *s);
+    void handleRestartStructure_(Structure *s);
+
+    // Other background handlers
+    void addStructureToSubmissionQueue_(Structure *s, int optStep);
+    void startJob_(Structure *s);
+    void unlockForNaming_();
 
     // Trackers for above handlers
     Tracker m_newlyOptimizedTracker;
     Tracker m_stepOptimizedTracker;
     Tracker m_inProcessTracker;
+    Tracker m_errorTracker;
     Tracker m_submittedTracker;
     Tracker m_newlyKilledTracker;
+    Tracker m_newDuplicateTracker;
+    Tracker m_restartTracker;
+    Tracker m_newSubmissionTracker;
 
     /// Tracks which structures are currently running
     Tracker m_runningTracker;
