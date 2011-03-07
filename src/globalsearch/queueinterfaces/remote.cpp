@@ -152,20 +152,33 @@ namespace GlobalSearch {
       return false;
     }
 
-    QString command = "[ -e \"" + s->getRempath() +
-      "/" + filename + "\" ]";
-    QString stdout_str;
-    QString stderr_str;
-    int ec;
-    if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
-      m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
+    const QString searchPath = s->getRempath();
+    const QString needle = s->getRempath() + "/" + filename;
+    QStringList haystack;
+
+    if (!ssh->readRemoteDirectoryContents(searchPath, haystack)) {
+      m_opt->warning(tr("Error reading directory %1 on %2@%3:%4")
+                     .arg(searchPath)
+                     .arg(ssh->getUser())
+                     .arg(ssh->getHost())
+                     .arg(ssh->getPort()));
       m_opt->ssh()->unlockConnection(ssh);
       return false;
     }
-
-    *exists = !ec;
-
     m_opt->ssh()->unlockConnection(ssh);
+
+    *exists = false;
+    for (QStringList::const_iterator
+           it = haystack.constBegin(),
+           it_end = haystack.constEnd();
+         it != it_end; ++it) {
+      if (it->compare(needle) == 0) {
+        // Ouch!
+        *exists = true;
+        break;
+      }
+    }
+
     return true;
   }
 
