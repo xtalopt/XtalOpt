@@ -31,6 +31,10 @@
 
 #include <QtGui/QInputDialog>
 
+namespace GlobalSearch {
+  class SlottedWaitCondition;
+}
+
 namespace XtalOpt {
   class XtalOptDialog;
 
@@ -133,6 +137,7 @@ namespace XtalOpt {
     void interpretKeyword(QString &keyword, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp_xtalopt();
 
+    GlobalSearch::SlottedWaitCondition *m_initWC;
   };
 
 } // end namespace XtalOpt

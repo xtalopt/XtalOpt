@@ -23,7 +23,7 @@
 
 namespace GlobalSearch {
   class Structure;
-  class Optimizer;
+  class SlottedWaitCondition;
 }
 
 namespace GAPC {
@@ -179,6 +179,8 @@ namespace GAPC {
     void resetDuplicates_();
     void checkForDuplicates_();
     void generateNewStructure_();
+
+    GlobalSearch::SlottedWaitCondition *m_initWC;
   };
 
 } // end namespace GAPC

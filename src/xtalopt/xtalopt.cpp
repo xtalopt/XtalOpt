@@ -35,6 +35,7 @@
 #include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/queueinterfaces/sge.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/slottedwaitcondition.h>
 #include <globalsearch/sshmanager.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/bt.h>
@@ -48,8 +49,6 @@
 #include <QtCore/QReadWriteLock>
 #include <QtCore/QtConcurrentRun>
 
-#include <QtGui/QMessageBox>
-
 #define ANGSTROM_TO_BOHR 1.889725989
 
 using namespace GlobalSearch;
@@ -59,7 +58,8 @@ using namespace Avogadro;
 namespace XtalOpt {
 
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
-    OptBase(parent)
+    OptBase(parent),
+    m_initWC(new SlottedWaitCondition (this))
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";
@@ -98,6 +98,10 @@ namespace XtalOpt {
       };
       savePending = true;
     }
+
+    // Clean up various members
+    m_initWC->deleteLater();
+    m_initWC = 0;
   }
 
   void XtalOpt::startSearch() {
@@ -266,14 +270,27 @@ namespace XtalOpt {
     m_dialog->updateProgressMinimum(0);
     m_dialog->updateProgressMinimum(newXtalCount);
 
+    connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
+            m_initWC, SLOT(wakeAllSlot()));
+
+    m_initWC->prewaitLock();
     do {
       m_dialog->updateProgressValue(m_tracker->size());
       m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
                                     .arg(m_tracker->size())
                                     .arg(newXtalCount));
-      GS_MSLEEP(100);
+      // Don't block here forever -- there is a race condition where
+      // the final newStructureAdded signal may be emitted while the
+      // WC is not waiting. Since this is just trivial GUI updating
+      // and we check the condition in the do-while loop, this is
+      // acceptable. The following call will timeout in 250 ms.
+      m_initWC->wait(250);
     }
     while (m_tracker->size() < newXtalCount);
+    m_initWC->postwaitUnlock();
+
+    // We're done with m_initWC.
+    m_initWC->disconnect();
 
     m_dialog->stopProgressUpdate();
 

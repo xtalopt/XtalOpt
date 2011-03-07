@@ -26,6 +26,7 @@
 #include <globalsearch/tracker.h>
 #include <globalsearch/queueinterfaces/remote.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/slottedwaitcondition.h>
 #include <globalsearch/sshmanager.h>
 
 #include <QtCore/QDir>
@@ -41,7 +42,8 @@ using namespace GlobalSearch;
 namespace GAPC {
 
   OptGAPC::OptGAPC(GAPCDialog *parent) :
-    OptBase(parent)
+    OptBase(parent),
+    m_initWC(new SlottedWaitCondition(this))
   {
     m_idString = "GAPC";
     m_schemaVersion = 2;
@@ -80,6 +82,10 @@ namespace GAPC {
       };
       savePending = true;
     }
+
+    // Clean up various members
+    m_initWC->deleteLater();
+    m_initWC = 0;
   }
 
   Structure* OptGAPC::replaceWithRandom(Structure *s, const QString & reason)
@@ -558,14 +564,27 @@ optimizations. If so, safely ignore this message.")
     m_dialog->updateProgressMinimum(0);
     m_dialog->updateProgressMinimum(newPCCount);
 
+    connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
+            m_initWC, SLOT(wakeAllSlot()));
+
+    m_initWC->prewaitLock();
     do {
       m_dialog->updateProgressValue(m_tracker->size());
       m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
                                     .arg(m_tracker->size())
                                     .arg(newPCCount));
-      GS_MSLEEP(100);
+      // Don't block here forever -- there is a race condition where
+      // the final newStructureAdded signal may be emitted while the
+      // WC is not waiting. Since this is just trivial GUI updating
+      // and we check the condition in the do-while loop, this is
+      // acceptable. The following call will timeout in 250 ms.
+      m_initWC->wait(250);
     }
     while (m_tracker->size() < newPCCount);
+    m_initWC->postwaitUnlock();
+
+    // We're done with m_initWC.
+    m_initWC->disconnect();
 
     m_dialog->stopProgressUpdate();
 
