@@ -38,22 +38,10 @@ namespace GlobalSearch {
 
   LocalQueueInterface::~LocalQueueInterface()
   {
-    // Kill any process that are still running.
-    // for (QHash<Q_PID, LocalQueueProcess*>::const_iterator
-    //        it = m_processes.constBegin(),
-    //        it_end = m_processes.constEnd();
-    //      it != it_end;
-    //      ++it) {
-    //   // Dereferencing a QHash::iterator returns the value
-    //   if (*it) {
-    //     (*it)->kill();
-    //   }
-    // }
-    // qDeleteAll(m_processes);
   }
 
-  bool LocalQueueInterface::writeFiles(Structure *s,
-                                       const QHash<QString, QString> &fileHash) const
+  bool LocalQueueInterface::writeFiles
+  (Structure *s, const QHash<QString, QString> &fileHash) const
   {
     // Create file objects
     QList<QFile*> files;
@@ -207,6 +195,11 @@ namespace GlobalSearch {
       }
       // The job is either running or finished
       return QueueInterface::Started;
+    }
+
+    // If the process is not in the table, return an error
+    if (!proc) {
+      return QueueInterface::Error;
     }
 
     // Note that this is not part of QProcess - status() is defined in
