@@ -191,18 +191,23 @@ private:
 void SSHManagerTest::copyThreads()
 {
   QList<CopyThread*> list;
-  for (int i = 0; i < NUM_CONN*20; i++) {
+  for (int i = 0; i < NUM_CONN*20; ++i) {
     CopyThread *ct = new CopyThread(manager,
                                     m_localTempDir.path(),
                                     m_remoteDir + QString::number(i+1));
     list.append(ct);
-    ct->start();
   }
 
-  for (int i = 0; i < list.size(); i++) {
-    list.at(i)->wait();
-    qDebug() << "Thread " << i+1 << " of "
-             << list.size() << " finished.";
+  QBENCHMARK {
+    for (int i = 0; i < list.size(); ++i) {
+      list.at(i)->start();
+    }
+
+    for (int i = 0; i < list.size(); ++i) {
+      list.at(i)->wait();
+      qDebug() << "Thread " << i+1 << " of "
+               << list.size() << " finished.";
+    }
   }
 }
 

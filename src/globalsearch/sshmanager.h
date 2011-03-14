@@ -18,9 +18,10 @@
 
 #include <globalsearch/sshconnection.h>
 
+#include <QtCore/QHash>
 #include <QtCore/QObject>
 #include <QtCore/QMutex>
-#include <QtCore/QHash>
+#include <QtCore/QSemaphore>
 
 namespace GlobalSearch {
   class OptBase;
@@ -116,6 +117,9 @@ namespace GlobalSearch {
 
     /// Internally used mutex
     QMutex m_lock;
+
+    /// Internally used semaphore
+    QSemaphore m_connSemaphore;
 
     /// Hostname
     QString m_host;
