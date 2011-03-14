@@ -99,6 +99,8 @@ namespace RandomDock {
 
   RandomDockDialog::~RandomDockDialog()
   {
+    this->hide();
+
     if (m_opt->saveOnExit) {
       m_opt->tracker()->lockForRead();
       writeSettings();

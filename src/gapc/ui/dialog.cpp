@@ -89,6 +89,8 @@ namespace GAPC {
 
   GAPCDialog::~GAPCDialog()
   {
+    this->hide();
+
     if (m_opt->saveOnExit) {
       m_opt->tracker()->lockForRead();
       writeSettings();
