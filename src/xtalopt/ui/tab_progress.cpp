@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Tools for advanced crystal optimization
 
-  Copyright (C) 2009-2010 by David Lonie
+  Copyright (C) 2009-2011 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -493,14 +493,12 @@ namespace XtalOpt {
     if (m_context_xtal) return;
     // m_context_mutex prevents multiple menus from appearing, which
     // ultimately prevents m_context_xtal from being cleared.
-    if (!m_context_mutex->tryLock()) {
+    if (!m_context_mutex->tryLock(100)) {
       return;
     }
 
-    QApplication::setOverrideCursor( Qt::WaitCursor );
     QTableWidgetItem *item = ui.table_list->itemAt(p);
     if (!item) {
-      QApplication::restoreOverrideCursor();
       m_context_mutex->unlock();
       return;
     }
@@ -515,8 +513,6 @@ namespace XtalOpt {
     xtal->lock()->lockForRead();
 
     m_context_xtal = xtal;
-
-    QApplication::restoreOverrideCursor();
 
     Xtal::State state = m_context_xtal->getStatus();
 
@@ -552,15 +548,16 @@ namespace XtalOpt {
 
     if (selection == 0) {
       m_context_xtal = 0;
+      m_context_mutex->unlock();
+      return;
     }
-    else {
-      QtConcurrent::run(this, &TabProgress::updateProgressTable);
-      a_restart->disconnect();
-      a_kill->disconnect();
-      a_unkill->disconnect();
-      a_resetFail->disconnect();
-      a_randomize->disconnect();
-    }
+
+    a_restart->disconnect();
+    a_kill->disconnect();
+    a_unkill->disconnect();
+    a_resetFail->disconnect();
+    a_randomize->disconnect();
+
     m_context_mutex->unlock();
   }
 
@@ -591,6 +588,7 @@ namespace XtalOpt {
       m_context_xtal = 0;
       return;
     }
+    emit startingBackgroundProcessing();
     QtConcurrent::run(this, &TabProgress::restartJobProgress_, optStep);
   }
 
@@ -611,18 +609,24 @@ namespace XtalOpt {
     newInfoUpdate(m_context_xtal);
 
     // Clear context xtal pointer
+    emit finishedBackgroundProcessing();
     locker.unlock();
     m_context_xtal = 0;
   }
 
   void TabProgress::killXtalProgress()
   {
+    emit startingBackgroundProcessing();
     QtConcurrent::run(this, &TabProgress::killXtalProgress_);
   }
 
   void TabProgress::killXtalProgress_()
   {
-    if (!m_context_xtal) return;
+    if (!m_context_xtal) {
+      emit finishedBackgroundProcessing();
+      return;
+    }
+
     QWriteLocker locker (m_context_xtal->lock());
 
     // End job if currently running
@@ -635,6 +639,7 @@ namespace XtalOpt {
     else m_context_xtal->setStatus(Xtal::Removed);
 
     // Clear context xtal pointer
+    emit finishedBackgroundProcessing();
     locker.unlock();
     newInfoUpdate(m_context_xtal);
     m_context_xtal = 0;
@@ -642,25 +647,33 @@ namespace XtalOpt {
 
   void TabProgress::unkillXtalProgress()
   {
+    emit startingBackgroundProcessing();
     QtConcurrent::run(this, &TabProgress::unkillXtalProgress_);
   }
 
   void TabProgress::unkillXtalProgress_()
   {
-    if (!m_context_xtal) return;
+    if (!m_context_xtal) {
+      emit finishedBackgroundProcessing();
+      return;
+    }
+
     QWriteLocker locker (m_context_xtal->lock());
     if (m_context_xtal->getStatus() != Xtal::Killed &&
-        m_context_xtal->getStatus() != Xtal::Removed ) return;
+        m_context_xtal->getStatus() != Xtal::Removed ) {
+      emit finishedBackgroundProcessing();
+      return;
+    }
 
     // Setting status to Xtal::Error will restart the job if was killed
     if (m_context_xtal->getStatus() == Xtal::Killed)
       m_context_xtal->setStatus(Xtal::Error);
-
     // Set status to Optimized if xtal was previously optimized
-    if (m_context_xtal->getStatus() == Xtal::Removed)
+    else if (m_context_xtal->getStatus() == Xtal::Removed)
       m_context_xtal->setStatus(Xtal::Optimized);
 
     // Clear context xtal pointer
+    emit finishedBackgroundProcessing();
     newInfoUpdate(m_context_xtal);
     locker.unlock();
     m_context_xtal = 0;
@@ -668,17 +681,23 @@ namespace XtalOpt {
 
   void TabProgress::resetFailureCountProgress()
   {
+    emit startingBackgroundProcessing();
     QtConcurrent::run(this, &TabProgress::resetFailureCountProgress_);
   }
 
   void TabProgress::resetFailureCountProgress_()
   {
-    if (!m_context_xtal) return;
+    if (!m_context_xtal) {
+      emit finishedBackgroundProcessing();
+      return;
+    }
+
     QWriteLocker locker (m_context_xtal->lock());
 
     m_context_xtal->resetFailCount();
 
     // Clear context xtal pointer
+    emit finishedBackgroundProcessing();
     newInfoUpdate(m_context_xtal);
     locker.unlock();
     m_context_xtal = 0;
@@ -688,12 +707,16 @@ namespace XtalOpt {
 
   void TabProgress::randomizeStructureProgress()
   {
+    emit startingBackgroundProcessing();
     QtConcurrent::run(this, &TabProgress::randomizeStructureProgress_);
   }
 
   void TabProgress::randomizeStructureProgress_()
   {
-    if (!m_context_xtal) return;
+    if (!m_context_xtal) {
+      emit finishedBackgroundProcessing();
+      return;
+    }
 
     // End job if currently running
     if (m_context_xtal->getJobID()) {
@@ -705,16 +728,21 @@ namespace XtalOpt {
     // Restart job:
     newInfoUpdate(m_context_xtal);
     restartJobProgress_(1);
+    // above function handles background processing signal
   }
 
   void TabProgress::clipPOSCARProgress()
   {
+    emit startingBackgroundProcessing();
     QtConcurrent::run(this, &TabProgress::clipPOSCARProgress_);
   }
 
   void TabProgress::clipPOSCARProgress_()
   {
-    if (!m_context_xtal) return;
+    if (!m_context_xtal) {
+      emit finishedBackgroundProcessing();
+      return;
+    }
     QReadLocker locker (m_context_xtal->lock());
 
     QString poscar = qobject_cast<XtalOpt*>(m_opt)->
@@ -723,6 +751,7 @@ namespace XtalOpt {
     m_opt->setClipboard(poscar);
 
     // Clear context xtal pointer
+    emit finishedBackgroundProcessing();
     locker.unlock();
     m_context_xtal = 0;
   }

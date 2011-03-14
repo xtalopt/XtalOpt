@@ -110,11 +110,44 @@ namespace GlobalSearch {
      */
     void initialize();
 
+    /**
+     * Sets the application's busy cursor. This should not be called
+     * directly, instead emit startingBackgroundProcessing(), which is
+     * safe to use from a background thread.
+     *
+     * @sa startingBackgroundProcessing()
+     * @sa finishedBackgroundProcessing()
+     */
+    void setBusyCursor();
+
+    /**
+     * Resets the application's busy cursor. This should not be called
+     * directly, instead emit finishedBackgroundProcessing(), which is
+     * safe to use from a background thread.
+     *
+     * @sa startingBackgroundProcessing()
+     * @sa finishedBackgroundProcessing()
+     */
+    void clearBusyCursor();
+
   signals:
     /**
      * Emit to update the molecule displayed in the Avogadro GLWidget
      */
     void moleculeChanged(GlobalSearch::Structure*);
+
+    /**
+     * Emit this signal before beginning user-requested
+     * processing. This will set the busy cursor in the application.
+     */
+    void startingBackgroundProcessing();
+
+    /**
+     * Emit this signal after user-requested processing has
+     * completed. This will reset the busy cursor in the application.
+     */
+    void finishedBackgroundProcessing();
+
 
   protected:
     /// The actual widget that will be made into a tab.

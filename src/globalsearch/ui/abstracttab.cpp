@@ -19,6 +19,10 @@
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/optbase.h>
 
+#include <QtGui/QApplication>
+
+#include <QtCore/QThread>
+
 namespace GlobalSearch {
 
   AbstractTab::AbstractTab( AbstractDialog *parent,
@@ -45,10 +49,33 @@ namespace GlobalSearch {
             this, SLOT(lockGUI()));
     connect(this, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
             m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)));
+    connect(this, SIGNAL(startingBackgroundProcessing()),
+            this, SLOT(setBusyCursor()),
+            Qt::QueuedConnection);
+    connect(this, SIGNAL(finishedBackgroundProcessing()),
+            this, SLOT(clearBusyCursor()),
+            Qt::QueuedConnection);
   }
 
   AbstractTab::~AbstractTab()
   {
   }
+
+  void AbstractTab::setBusyCursor()
+  {
+    Q_ASSERT_X(QThread::currentThread() == qApp->thread(), Q_FUNC_INFO,
+               "This function cannot be called from an background thread. "
+               "Emit AbstractTab::startingBackgroundProcessing instead.");
+    qApp->setOverrideCursor( Qt::WaitCursor );
+  }
+
+  void AbstractTab::clearBusyCursor()
+  {
+    Q_ASSERT_X(QThread::currentThread() == qApp->thread(), Q_FUNC_INFO,
+               "This function cannot be called from an background thread. "
+               "Emit AbstractTab::finishedBackgroundProcessing instead.");
+    qApp->restoreOverrideCursor();
+  }
+
 
 }
