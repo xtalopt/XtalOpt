@@ -101,6 +101,18 @@ namespace GlobalSearch {
     virtual int getNumberOfOptSteps();
 
     /**
+     * Check that all mandatory internal variables are set. Check this
+     * before starting a search.
+     *
+     * @param err String to be overwritten with an error message
+     *
+     * @return true if all variables are initialized, false
+     * otherwise. If false, \a err will be overwritten with a
+     * user-friendly error message.
+     */
+    virtual bool isReadyToSearch(QString *str) {*str = ""; return true;}
+
+    /**
      * Check if the file m_completionFilename exists in the working
      * directory of Structure \a s and store the result in \a exists.
      *

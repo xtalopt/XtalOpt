@@ -1,7 +1,7 @@
 /**********************************************************************
   GAPC -- A genetic algorithm for protected clusters
 
-  Copyright (C) 2010 by David C. Lonie
+  Copyright (C) 2010-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -421,9 +421,6 @@ optimizations. If so, safely ignore this message.")
 
   void OptGAPC::startSearch()
   {
-    debug("Starting optimization.");
-    emit startingSession();
-
     // Settings checks
     // Check lattice parameters, volume, etc
     if (!checkLimits()) {
@@ -433,6 +430,18 @@ optimizations. If so, safely ignore this message.")
     // Do we have a composition?
     if (comp.core.isEmpty()) {
       error("Cannot create structures. Core composition is not set.");
+      return;
+    }
+
+    // Are the selected queueinterface and optimizer happy?
+    QString err;
+    if (!m_optimizer->isReadyToSearch(&err)) {
+      error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
+      return;
+    }
+
+    if (!m_queueInterface->isReadyToSearch(&err)) {
+      error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
       return;
     }
 
@@ -495,6 +504,10 @@ optimizations. If so, safely ignore this message.")
         break;
       } // end forever
     }
+
+    // Here we go!
+    debug("Starting optimization.");
+    emit startingSession();
 
     // prepare pointers
     m_tracker->lockForWrite();

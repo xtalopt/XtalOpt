@@ -78,6 +78,18 @@ namespace GlobalSearch {
      */
     virtual ~LocalQueueInterface();
 
+    /**
+     * Check that all mandatory internal variables are set. Check this
+     * before starting a search.
+     *
+     * @param err String to be overwritten with an error message
+     *
+     * @return true if all variables are initialized, false
+     * otherwise. If false, \a err will be overwritten with a
+     * user-friendly error message.
+     */
+    virtual bool isReadyToSearch(QString *str);
+
   public slots:
 
     /**

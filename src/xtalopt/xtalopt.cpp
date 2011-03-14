@@ -103,9 +103,8 @@ namespace XtalOpt {
     m_initWC = 0;
   }
 
-  void XtalOpt::startSearch() {
-    debug("Starting optimization.");
-    emit startingSession();
+  void XtalOpt::startSearch()
+  {
 
     // Settings checks
     // Check lattice parameters, volume, etc
@@ -117,6 +116,18 @@ namespace XtalOpt {
     // Do we have a composition?
     if (comp.isEmpty()) {
       error("Cannot create structures. Composition is not set.");
+      return;
+    }
+
+    // Are the selected queueinterface and optimizer happy?
+    QString err;
+    if (!m_optimizer->isReadyToSearch(&err)) {
+      error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
+      return;
+    }
+
+    if (!m_queueInterface->isReadyToSearch(&err)) {
+      error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
       return;
     }
 
@@ -199,6 +210,10 @@ namespace XtalOpt {
         break;
       } // end forever
     }
+
+    // Here we go!
+    debug("Starting optimization.");
+    emit startingSession();
 
     // prepare pointers
     m_tracker->lockForWrite();
