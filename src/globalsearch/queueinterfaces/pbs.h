@@ -40,6 +40,8 @@ namespace GlobalSearch {
 
     virtual ~PbsQueueInterface();
 
+    virtual bool isReadyToSearch(QString *str);
+
     QDialog* dialog();
 
     friend class PbsConfigDialog;

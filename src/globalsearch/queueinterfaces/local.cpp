@@ -15,11 +15,13 @@
 
 #include <globalsearch/queueinterfaces/local.h>
 
+#include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterfaces/localdialog.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/structure.h>
 
+#include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QHash>
 #include <QtCore/QProcess>
@@ -38,22 +40,48 @@ namespace GlobalSearch {
 
   LocalQueueInterface::~LocalQueueInterface()
   {
-    // Kill any process that are still running.
-    // for (QHash<Q_PID, LocalQueueProcess*>::const_iterator
-    //        it = m_processes.constBegin(),
-    //        it_end = m_processes.constEnd();
-    //      it != it_end;
-    //      ++it) {
-    //   // Dereferencing a QHash::iterator returns the value
-    //   if (*it) {
-    //     (*it)->kill();
-    //   }
-    // }
-    // qDeleteAll(m_processes);
   }
 
-  bool LocalQueueInterface::writeFiles(Structure *s,
-                                       const QHash<QString, QString> &fileHash) const
+  bool LocalQueueInterface::isReadyToSearch(QString *str)
+  {
+    // Is a working directory specified?
+    if (m_opt->filePath.isEmpty()) {
+      *str = tr("Local working directory is not set. Check your Queue "
+                "configuration.");
+      return false;
+    }
+
+    // Can we write to the working directory?
+    QDir workingdir (m_opt->filePath);
+    bool writable = true;
+    if (!workingdir.exists()) {
+      if (!workingdir.mkpath(m_opt->filePath)) {
+        writable = false;
+      }
+    }
+    else {
+      // If the path exists, attempt to open a small test file for writing
+      QString filename = m_opt->filePath + QString("queuetest-")
+        + QString::number(RANDUINT());
+      QFile file (filename);
+      if (!file.open(QFile::ReadWrite)) {
+        writable = false;
+      }
+      file.remove();
+    }
+    if (!writable) {
+      *str = tr("Cannot write to working directory '%1'.\n\nPlease "
+                "change the permissions on this directory or use "
+                "a different one.").arg(m_opt->filePath);
+      return false;
+    }
+
+    *str = "";
+    return true;
+  }
+
+  bool LocalQueueInterface::writeFiles
+  (Structure *s, const QHash<QString, QString> &fileHash) const
   {
     // Create file objects
     QList<QFile*> files;
@@ -207,6 +235,11 @@ namespace GlobalSearch {
       }
       // The job is either running or finished
       return QueueInterface::Started;
+    }
+
+    // If the process is not in the table, return an error
+    if (!proc) {
+      return QueueInterface::Error;
     }
 
     // Note that this is not part of QProcess - status() is defined in

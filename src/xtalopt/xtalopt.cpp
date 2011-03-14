@@ -104,9 +104,8 @@ namespace XtalOpt {
     m_initWC = 0;
   }
 
-  void XtalOpt::startSearch() {
-    debug("Starting optimization.");
-    emit startingSession();
+  void XtalOpt::startSearch()
+  {
 
     // Settings checks
     // Check lattice parameters, volume, etc
@@ -118,6 +117,18 @@ namespace XtalOpt {
     // Do we have a composition?
     if (comp.isEmpty()) {
       error("Cannot create structures. Composition is not set.");
+      return;
+    }
+
+    // Are the selected queueinterface and optimizer happy?
+    QString err;
+    if (!m_optimizer->isReadyToSearch(&err)) {
+      error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
+      return;
+    }
+
+    if (!m_queueInterface->isReadyToSearch(&err)) {
+      error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
       return;
     }
 
@@ -200,6 +211,10 @@ namespace XtalOpt {
         break;
       } // end forever
     }
+
+    // Here we go!
+    debug("Starting optimization.");
+    emit startingSession();
 
     // prepare pointers
     m_tracker->lockForWrite();
@@ -972,16 +987,19 @@ namespace XtalOpt {
     case 2: // Tab edit bumped to V2. No change here.
       break;
     default:
-      error("\
-XtalOpt::load(): Settings in file "+file.fileName()+ " cannot be opened \
-by this version of XtalOpt. Please visit http://xtalopt.openmolecules.net \
-to obtain a newer version.");
+      error("XtalOpt::load(): Settings in file "+file.fileName()+
+            " cannot be opened by this version of XtalOpt. Please "
+            "visit http://xtalopt.openmolecules.net to obtain a "
+            "newer version.");
       return false;
     }
 
-    bool stateFileIsValid = settings->value("xtalopt/saveSuccessful", false).toBool();
+    bool stateFileIsValid =
+      settings->value("xtalopt/saveSuccessful", false).toBool();
     if (!stateFileIsValid) {
-      error("XtalOpt::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid. (Try " + file.fileName() + ".old if it exists)");
+      error("XtalOpt::load(): File "+file.fileName()+" is incomplete, "
+            "corrupt, or invalid. (Try " + file.fileName() +
+            ".old if it exists)");
       return false;
     }
 
@@ -991,7 +1009,8 @@ to obtain a newer version.");
     QDir dataDir  = stateInfo.absoluteDir();
     QString dataPath = dataDir.absolutePath() + "/";
     // list of xtal dirs
-    QStringList xtalDirs = dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
+    QStringList xtalDirs = dataDir.entryList(QStringList(),
+                                             QDir::AllDirs, QDir::Size);
     xtalDirs.removeAll(".");
     xtalDirs.removeAll("..");
     for (int i = 0; i < xtalDirs.size(); i++) {
@@ -1090,6 +1109,15 @@ to obtain a newer version.");
     // Xtals
     // Initialize progress bar:
     m_dialog->updateProgressMaximum(xtalDirs.size());
+    // If a local queue interface was used, all InProcess structures must be
+    // Restarted.
+    bool restartInProcessStructures = false;
+    bool clearJobIDs = false;
+    if (qobject_cast<LocalQueueInterface*>(m_queueInterface)) {
+      restartInProcessStructures = true;
+      clearJobIDs = true;
+    }
+    // Load xtals
     Xtal* xtal;
     QList<uint> keys = comp.keys();
     QList<Structure*> loadedStructures;
@@ -1119,6 +1147,10 @@ to obtain a newer version.");
 
       // Store current state -- updateXtal will overwrite it.
       Xtal::State state = xtal->getStatus();
+      // Set state from InProcess -> Restart if needed
+      if (restartInProcessStructures && state == Structure::InProcess) {
+        state = Structure::Restart;
+      }
       QDateTime endtime = xtal->getOptTimerEnd();
 
       locker.unlock();
@@ -1134,6 +1166,9 @@ to obtain a newer version.");
       locker.relock();
       xtal->setStatus(state);
       xtal->setOptTimerEnd(endtime);
+      if (clearJobIDs) {
+        xtal->setJobID(0);
+      }
       locker.unlock();
       loadedStructures.append(qobject_cast<Structure*>(xtal));
     }

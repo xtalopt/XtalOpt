@@ -90,9 +90,6 @@ namespace RandomDock {
   }
 
   void RandomDock::startSearch() {
-    debug("Starting optimization.");
-    emit startingSession();
-
     // Check that everything is in place
     if (!substrate) {
       error("Cannot begin search without specifying substrate.");
@@ -106,6 +103,18 @@ namespace RandomDock {
     }
     if (!checkLimits()) {
       setIsStartingFalse();
+      return;
+    }
+
+    // Are the selected queueinterface and optimizer happy?
+    QString err;
+    if (!m_optimizer->isReadyToSearch(&err)) {
+      error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
+      return;
+    }
+
+    if (!m_queueInterface->isReadyToSearch(&err)) {
+      error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
       return;
     }
 
@@ -166,6 +175,10 @@ namespace RandomDock {
       } // end catch
       break;
     } // end forever
+
+    // Here we go!
+    debug("Starting optimization.");
+    emit startingSession();
 
     // prepare pointers
     m_tracker->lockForWrite();

@@ -96,6 +96,12 @@ namespace GlobalSearch {
     delete m_queueThread;
     m_queueThread = 0;
 
+    delete m_optimizer;
+    m_optimizer = 0;
+
+    delete m_queueInterface;
+    m_queueInterface = 0;
+
     delete m_tracker;
     m_tracker = 0;
   }
