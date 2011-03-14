@@ -16,11 +16,14 @@
 
 #include <globalsearch/queueinterfaces/sge.h>
 
-#include <globalsearch/optimizer.h>
 #include <globalsearch/macros.h>
+#include <globalsearch/optimizer.h>
 #include <globalsearch/sshconnection.h>
 #include <globalsearch/sshmanager.h>
 #include <globalsearch/structure.h>
+
+#include <QtCore/QDir>
+#include <QtCore/QFile>
 
 namespace GlobalSearch {
 
@@ -40,6 +43,94 @@ namespace GlobalSearch {
 
   SgeQueueInterface::~SgeQueueInterface()
   {
+  }
+
+  bool SgeQueueInterface::isReadyToSearch(QString *str)
+  {
+    // Is a working directory specified?
+    if (m_opt->filePath.isEmpty()) {
+      *str = tr("Local working directory is not set. Check your Queue "
+                "configuration.");
+      return false;
+    }
+
+    // Can we write to the working directory?
+    QDir workingdir (m_opt->filePath);
+    bool writable = true;
+    if (!workingdir.exists()) {
+      if (!workingdir.mkpath(m_opt->filePath)) {
+        writable = false;
+      }
+    }
+    else {
+      // If the path exists, attempt to open a small test file for writing
+      QString filename = m_opt->filePath + QString("queuetest-")
+        + QString::number(RANDUINT());
+      QFile file (filename);
+      if (!file.open(QFile::ReadWrite)) {
+        writable = false;
+      }
+      file.remove();
+    }
+    if (!writable) {
+      *str = tr("Cannot write to working directory '%1'.\n\nPlease "
+                "change the permissions on this directory or specify "
+                "a different one in the Queue configuration.")
+        .arg(m_opt->filePath);
+      return false;
+    }
+
+    // Check all other parameters:
+    if (m_opt->host.isEmpty()) {
+      *str = tr("Hostname of SGE server is not set. Check your Queue "
+                "configuration.");
+      return false;
+    }
+
+    if (m_qdel.isEmpty()) {
+      *str = tr("qdel command is not set. Check your Queue "
+                "configuration.");
+      return false;
+    }
+
+    if (m_qdel.isEmpty()) {
+      *str = tr("qdel command is not set. Check your Queue "
+                "configuration.");
+      return false;
+    }
+
+    if (m_qstat.isEmpty()) {
+      *str = tr("qstat command is not set. Check your Queue "
+                "configuration.");
+      return false;
+    }
+
+    if (m_qsub.isEmpty()) {
+      *str = tr("qsub command is not set. Check your Queue "
+                "configuration.");
+      return false;
+    }
+
+    if (m_opt->rempath.isEmpty()) {
+      *str = tr("Remote working directory is not set. Check your Queue "
+                "configuration.");
+      return false;
+    }
+
+    if (m_opt->username.isEmpty()) {
+      *str = tr("SSH username for SGE server is not set. Check your Queue "
+                "configuration.");
+      return false;
+    }
+
+    if (m_opt->port < 0) {
+      *str = tr("SSH port is invalid (Port %1). Check your Queue "
+                "configuration.").arg(m_opt->port);
+      return false;
+    }
+
+    *str = "";
+    return true;
   }
 
   QDialog* SgeQueueInterface::dialog()

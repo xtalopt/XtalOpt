@@ -40,6 +40,8 @@ namespace GlobalSearch {
 
     virtual ~SgeQueueInterface();
 
+    virtual bool isReadyToSearch(QString *str);
+
     QDialog* dialog();
 
     friend class SgeConfigDialog;
