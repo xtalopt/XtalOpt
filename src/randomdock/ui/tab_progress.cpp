@@ -59,8 +59,6 @@ namespace RandomDock {
     // dialog connections
     connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
             this, SLOT(highlightScene(GlobalSearch::Structure*)));
-    connect(m_opt, SIGNAL(updateAllInfo()),
-            this, SLOT(updateAllInfo()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(startTimer()));
 

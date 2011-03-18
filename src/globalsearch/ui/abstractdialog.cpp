@@ -69,7 +69,7 @@ namespace GlobalSearch {
 
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(saveSession()));
-    connect(m_opt, SIGNAL(newInfoUpdate()),
+    connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(saveSession()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(updateGUI()));

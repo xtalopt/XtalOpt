@@ -20,8 +20,9 @@
 #include <randomdock/randomdock.h>
 #include <randomdock/structures/scene.h>
 
-#include <globalsearch/tracker.h>
 #include <globalsearch/macros.h>
+#include <globalsearch/queuemanager.h>
+#include <globalsearch/tracker.h>
 
 #include <avogadro/glwidget.h>
 #include <avogadro/primitive.h>
@@ -80,11 +81,11 @@ namespace RandomDock {
             this, SLOT(selectStructureFromPlot(PlotPoint*)));
     connect(ui.plot_plot, SIGNAL(pointClicked(PlotPoint*)),
             this, SLOT(lockClearAndSelectPoint(PlotPoint*)));
-    connect(m_opt, SIGNAL(newInfoUpdate()),
+    connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(populateStructureList()));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(populateStructureList()));
-    connect(m_opt, SIGNAL(newInfoUpdate()),
+    connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(updatePlot()));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(updatePlot()));

@@ -87,11 +87,7 @@ namespace RandomDock {
 
     QMutex *sceneInitMutex;
 
-   signals:
-    void newInfoUpdate();
-    void updateAllInfo();
-
-   public slots:
+  public slots:
     void startSearch();
     void generateNewStructure();
     void initializeAndAddScene(Scene *scene);

@@ -75,11 +75,11 @@ namespace XtalOpt {
             this, SLOT(updatePlot()));
     connect(ui.plot_plot, SIGNAL(pointClicked(double, double)),
             this, SLOT(selectMoleculeFromPlot(double, double)));
-    connect(m_opt, SIGNAL(newInfoUpdate()),
+    connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(populateXtalList()));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(populateXtalList()));
-    connect(m_opt, SIGNAL(newInfoUpdate()),
+    connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(updatePlot()));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(updatePlot()));

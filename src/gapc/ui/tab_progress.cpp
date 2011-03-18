@@ -55,8 +55,6 @@ namespace GAPC {
     // dialog connections
     connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
             this, SLOT(highlightPC(GlobalSearch::Structure*)));
-    connect(m_opt, SIGNAL(updateAllInfo()),
-            this, SLOT(updateAllInfo()));
 
     // Progress table connections
     connect(m_timer, SIGNAL(timeout()),

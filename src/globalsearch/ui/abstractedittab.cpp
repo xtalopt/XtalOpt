@@ -88,8 +88,6 @@ namespace GlobalSearch {
             this, SLOT(saveCurrentTemplate()));
     connect(ui_combo_templates, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateEditWidget()));
-    connect(ui_list_edit, SIGNAL(itemDoubleClicked(QListWidgetItem*)),
-            this, SLOT(changePOTCAR(QListWidgetItem*)));
     connect(ui_push_add, SIGNAL(clicked()),
             this, SLOT(appendOptStep()));
     connect(ui_push_remove, SIGNAL(clicked()),
