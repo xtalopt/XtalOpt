@@ -95,7 +95,6 @@ namespace XtalOpt {
     void disableRowTracking() {rowTracking = false;};
 
   signals:
-    void refresh();
     void deleteJob(int);
     void updateStatus(int opt, int run, int queue, int fail);
     void infoUpdate();

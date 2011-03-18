@@ -34,7 +34,6 @@ namespace XtalOpt {
 
     // Set allowed filenames, e.g.
     m_templates.insert("xtal.in",QStringList(""));
-    m_templates.insert("job.pbs",QStringList(""));
 
     // Setup for completion values
     m_completionFilename = "xtal.out";
@@ -46,6 +45,12 @@ namespace XtalOpt {
 
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "PWscf";
+
+    // Local execution setup:
+    m_localRunCommand = "pw.x";
+    m_stdinFilename = "xtal.in";
+    m_stdoutFilename = "xtal.out";
+    m_stderrFilename = "xtal.err";
 
     readSettings(filename);
   }

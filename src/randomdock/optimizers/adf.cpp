@@ -33,7 +33,7 @@ namespace RandomDock {
     // None here!
 
     // Set allowed filenames, e.g.
-    m_templates.insert("job.pbs",QStringList(""));
+    m_templates.insert("job.adfin",QStringList(""));
 
     // Setup for completion values
     m_completionFilename = "job.adfout";
@@ -45,6 +45,12 @@ namespace RandomDock {
 
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "ADF";
+
+    // Local execution setup:
+    m_localRunCommand = "adf";
+    m_stdinFilename = "job.adfin";
+    m_stdoutFilename = "job.adfout";
+    m_stderrFilename = "job.adferr";
 
     readSettings(filename);
   }

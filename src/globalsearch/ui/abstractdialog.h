@@ -612,6 +612,21 @@ namespace GlobalSearch {
      */
     QTabWidget *ui_tabs;
 
+    /// @cond
+    // These are used to ensure that all tab*settings signals are
+    // handled immediately, using direct or blocking connections as
+    // needed.
+  signals:
+    void tabsWriteSettingsBlockingQueued(const QString &filename);
+    void tabsWriteSettingsDirect(const QString &filename);
+    void tabsReadSettingsBlockingQueued(const QString &filename);
+    void tabsReadSettingsDirect(const QString &filename);
+  private slots:
+    void reemitTabsWriteSettings(const QString &filename);
+    void reemitTabsReadSettings(const QString &filename);
+    /// @endcond
+
+
   };
 }
 

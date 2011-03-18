@@ -35,7 +35,6 @@ namespace RandomDock {
     // None here!
 
     // Set allowed filenames, e.g.
-    m_templates.insert("job.pbs",QStringList(""));
     m_templates.insert("job.mop",QStringList(""));
 
     // Setup for completion values
@@ -49,6 +48,12 @@ namespace RandomDock {
 
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "MOPAC";
+
+    // Local execution setup:
+    m_localRunCommand = "mopac job";
+    m_stdinFilename = "";
+    m_stdoutFilename = "";
+    m_stderrFilename = "";
 
     readSettings(filename);
   }

@@ -1,7 +1,7 @@
 /**********************************************************************
   GAPC -- A genetic algorithm for protected clusters
 
-  Copyright (C) 2010 by David C. Lonie
+  Copyright (C) 2010-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,14 +18,15 @@
 #include <gapc/genetic.h>
 #include <gapc/ui/dialog.h>
 #include <gapc/structures/protectedcluster.h>
-#include <gapc/optimizers/openbabel.h>
 #include <gapc/optimizers/adf.h>
 #include <gapc/optimizers/gulp.h>
 
 #include <globalsearch/macros.h>
 #include <globalsearch/structure.h>
 #include <globalsearch/tracker.h>
+#include <globalsearch/queueinterfaces/remote.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/slottedwaitcondition.h>
 #include <globalsearch/sshmanager.h>
 
 #include <QtCore/QDir>
@@ -41,9 +42,11 @@ using namespace GlobalSearch;
 namespace GAPC {
 
   OptGAPC::OptGAPC(GAPCDialog *parent) :
-    OptBase(parent)
+    OptBase(parent),
+    m_initWC(new SlottedWaitCondition(this))
   {
     m_idString = "GAPC";
+    m_schemaVersion = 2;
 
     connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
             this, SLOT(checkForDuplicates()));
@@ -55,6 +58,34 @@ namespace GAPC {
 
   OptGAPC:: ~OptGAPC()
   {
+    // Stop queuemanager thread
+    if (m_queueThread->isRunning()) {
+      m_queueThread->disconnect();
+      m_queueThread->quit();
+      m_queueThread->wait();
+    }
+
+    // Delete queuemanager
+    delete m_queue;
+    m_queue = 0;
+
+    // Stop SSHManager
+    delete m_ssh;
+    m_ssh = 0;
+
+    // Wait for save to finish
+    if (saveOnExit) {
+      while (savePending) {
+        qDebug() << "Spinning on save before destroying GAPC...";
+        save();
+        GS_SLEEP(1);
+      };
+      savePending = true;
+    }
+
+    // Clean up various members
+    m_initWC->deleteLater();
+    m_initWC = 0;
   }
 
   Structure* OptGAPC::replaceWithRandom(Structure *s, const QString & reason)
@@ -168,10 +199,12 @@ namespace GAPC {
     SETTINGS(filename);
     int loadedVersion = settings->value(m_idString.toLower() + "/version", 0).toInt();
 
-    // Update config data
+    // Update config data. Be sure to bump m_schemaVersion in ctor if
+    // adding updates.
     switch (loadedVersion) {
-    case 0:
-    case 1:
+    case 0: // Initial version
+    case 1: // Edit tab bumped to V2. No change here.
+    case 2: // Current version
     default:
       break;
     }
@@ -209,13 +242,8 @@ namespace GAPC {
 
     m_dialog->readSettings(filename);
 
-    // Set optimizer
-    setOptimizer(OptTypes(settings->value(m_idString.toLower() + "/edit/optType").toInt()),
-                 filename);
-
-    // Create SSHConnection
-    if (m_optimizer->getIDString() != "OpenBabel" && // OpenBabel won't use ssh
-        m_optimizer->getIDString() != "GULP") {      // Nor will GULP
+    // Create SSHConnection if we are running remotely
+    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
       for (;;) {
         try {
@@ -304,6 +332,7 @@ namespace GAPC {
       m_dialog->updateProgressValue(count-1);
 
       pcStateFileName = dataPath + "/" + structureDirs.at(i) + "/structure.state";
+      debug(tr("Loading structure %1").arg(pcStateFileName));
 
       pc = new ProtectedCluster();
       QWriteLocker locker (pc->lock());
@@ -392,9 +421,6 @@ optimizations. If so, safely ignore this message.")
 
   void OptGAPC::startSearch()
   {
-    debug("Starting optimization.");
-    emit startingSession();
-
     // Settings checks
     // Check lattice parameters, volume, etc
     if (!checkLimits()) {
@@ -407,9 +433,20 @@ optimizations. If so, safely ignore this message.")
       return;
     }
 
-    // Create the SSHManager
-    if (m_optimizer->getIDString() != "OpenBabel" && // OpenBabel won't use ssh
-        m_optimizer->getIDString() != "GULP") {      // Nor will GULP
+    // Are the selected queueinterface and optimizer happy?
+    QString err;
+    if (!m_optimizer->isReadyToSearch(&err)) {
+      error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
+      return;
+    }
+
+    if (!m_queueInterface->isReadyToSearch(&err)) {
+      error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
+      return;
+    }
+
+    // Create the SSHManager if running remotely
+    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
       for (;;) {
         try {
@@ -467,6 +504,10 @@ optimizations. If so, safely ignore this message.")
         break;
       } // end forever
     }
+
+    // Here we go!
+    debug("Starting optimization.");
+    emit startingSession();
 
     // prepare pointers
     m_tracker->lockForWrite();
@@ -531,6 +572,33 @@ optimizations. If so, safely ignore this message.")
       }
     }
 
+    // Wait for all structures to appear in tracker
+    m_dialog->updateProgressLabel(tr("Waiting for structures to initialize..."));
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressMinimum(newPCCount);
+
+    connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
+            m_initWC, SLOT(wakeAllSlot()));
+
+    m_initWC->prewaitLock();
+    do {
+      m_dialog->updateProgressValue(m_tracker->size());
+      m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
+                                    .arg(m_tracker->size())
+                                    .arg(newPCCount));
+      // Don't block here forever -- there is a race condition where
+      // the final newStructureAdded signal may be emitted while the
+      // WC is not waiting. Since this is just trivial GUI updating
+      // and we check the condition in the do-while loop, this is
+      // acceptable. The following call will timeout in 250 ms.
+      m_initWC->wait(250);
+    }
+    while (m_tracker->size() < newPCCount);
+    m_initWC->postwaitUnlock();
+
+    // We're done with m_initWC.
+    m_initWC->disconnect();
+
     m_dialog->stopProgressUpdate();
 
     m_dialog->saveSession();
@@ -555,6 +623,7 @@ optimizations. If so, safely ignore this message.")
     }
 
     QWriteLocker pcLocker (pc->lock());
+    pc->moveToThread(m_queueThread);
     pc->setIDNumber(id);
     pc->setGeneration(generation);
     pc->setParents(parents);
@@ -574,7 +643,6 @@ optimizations. If so, safely ignore this message.")
     pc->setFileName(locpath_s);
     pc->setRempath(rempath_s);
     pc->setCurrentOptStep(1);
-    pc->moveToThread(m_tracker->thread());
     pc->setupConnections();
     pc->enableAutoHistogramGeneration(true);
     pc->update();
@@ -584,6 +652,11 @@ optimizations. If so, safely ignore this message.")
   }
 
   void OptGAPC::generateNewStructure()
+  {
+    QtConcurrent::run(this, &OptGAPC::generateNewStructure_);
+  }
+
+  void OptGAPC::generateNewStructure_()
   {
     INIT_RANDOM_GENERATOR();
     // Get all optimized structures
@@ -1040,38 +1113,6 @@ optimizations. If so, safely ignore this message.")
       .arg(alltime,  5, 'g')
       .arg(sts.size());
     emit updateAllInfo();
-  }
-
-  void OptGAPC::setOptimizer_string(const QString &IDString, const QString &filename)
-  {
-    if (IDString.toLower() == "openbabel")
-      setOptimizer(new OpenBabelOptimizer (this, filename));
-    else if (IDString.toLower() == "adf")
-      setOptimizer(new ADFOptimizer (this, filename));
-    else if (IDString.toLower() == "gulp")
-      setOptimizer(new GULPOptimizer (this, filename));
-    else
-      error(tr("GAPC::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(IDString));
-  }
-
-  void OptGAPC::setOptimizer_enum(OptTypes opttype, const QString &filename)
-  {
-    switch (opttype) {
-    case OT_OpenBabel:
-      setOptimizer(new OpenBabelOptimizer (this, filename));
-      break;
-    case OT_ADF:
-      setOptimizer(new ADFOptimizer (this, filename));
-      break;
-    case OT_GULP:
-      setOptimizer(new GULPOptimizer (this, filename));
-      break;
-    default:
-      error(tr("GAPC::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(QString::number((int)opttype)));
-      break;
-    }
   }
 
 }

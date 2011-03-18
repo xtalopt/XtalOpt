@@ -16,446 +16,216 @@
 
 #include <randomdock/ui/tab_edit.h>
 
-#include <randomdock/randomdock.h>
-#include <randomdock/ui/dialog.h>
-
 #include <randomdock/optimizers/adf.h>
 #include <randomdock/optimizers/gamess.h>
 #include <randomdock/optimizers/mopac.h>
+#include <randomdock/randomdock.h>
+#include <randomdock/ui/dialog.h>
 
 #include <globalsearch/macros.h>
+#include <globalsearch/queueinterfaces/local.h>
+#include <globalsearch/queueinterfaces/pbs.h>
 
-#include <QtCore/QSettings>
-
+#include <QtGui/QComboBox>
 #include <QtGui/QFont>
 #include <QtGui/QFileDialog>
 
-using namespace std;
+#include <QtCore/QSettings>
+
+using namespace GlobalSearch;
 using namespace Avogadro;
+using namespace std;
 
 namespace RandomDock {
 
   TabEdit::TabEdit( RandomDockDialog *parent, RandomDock *p ) :
-    AbstractTab(parent, p)
+    DefaultEditTab(parent, p)
   {
-    ui.setupUi(m_tab_widget);
+    // Fill m_optimizers in order of RandomDock::OptTypes
+    m_optimizers.clear();
+    const unsigned int numOptimizers = 3;
+    for (unsigned int i = 0; i < numOptimizers; ++i) {
+      switch (i) {
+      case RandomDock::OT_GAMESS:
+        m_optimizers.append(new GAMESSOptimizer (m_opt));
+        break;
+      case RandomDock::OT_ADF:
+        m_optimizers.append(new ADFOptimizer (m_opt));
+        break;
+      case RandomDock::OT_MOPAC:
+        m_optimizers.append(new MopacOptimizer (m_opt));
+        break;
+      }
+    }
 
-    ui.edit_edit->setCurrentFont(QFont("Courier"));
+    // Fill m_optimizers in order of RandomDock::QueueInterfaces
+    m_queueInterfaces.clear();
+    const unsigned int numQIs = 2;
+    for (unsigned int i = 0; i < numQIs; ++i) {
+      switch (i) {
+      case RandomDock::QI_LOCAL:
+        m_queueInterfaces.append(new LocalQueueInterface (m_opt));
+        break;
+      case RandomDock::QI_PBS:
+        m_queueInterfaces.append(new PbsQueueInterface (m_opt));
+        break;
+      }
+    }
 
-    // opt connections
-    connect(this, SIGNAL(optimizerChanged(GlobalSearch::Optimizer*)),
-            m_opt, SLOT(setOptimizer(GlobalSearch::Optimizer*)));
+    DefaultEditTab::initialize();
 
-    // dialog connections
-    connect(this, SIGNAL(optimizerChanged(GlobalSearch::Optimizer*)),
-            m_dialog, SIGNAL(tabsUpdateGUI()));
-
-    // Edit tab connections
-    connect(ui.push_help, SIGNAL(clicked()),
-            this, SLOT(showHelp()));
-    connect(ui.edit_edit, SIGNAL(textChanged()),
-            this, SLOT(updateTemplates()));
-    connect(ui.combo_template, SIGNAL(currentIndexChanged(int)),
-            this, SLOT(templateChanged(int)));
-    connect(ui.push_add, SIGNAL(clicked()),
-            this, SLOT(appendOptStep()));
-    connect(ui.push_remove, SIGNAL(clicked()),
-            this, SLOT(removeCurrentOptStep()));
-    connect(ui.list_opt, SIGNAL(currentRowChanged(int)),
-            this, SLOT(optStepChanged()));
-    connect(ui.edit_user1, SIGNAL(editingFinished()),
-            this, SLOT(updateUserValues()));
-    connect(ui.edit_user2, SIGNAL(editingFinished()),
-            this, SLOT(updateUserValues()));
-    connect(ui.edit_user3, SIGNAL(editingFinished()),
-            this, SLOT(updateUserValues()));
-    connect(ui.edit_user4, SIGNAL(editingFinished()),
-            this, SLOT(updateUserValues()));
-    connect(ui.combo_optType, SIGNAL(currentIndexChanged(int)),
-            this, SLOT(updateOptType()));
-    connect(ui.push_saveScheme, SIGNAL(clicked()),
-            this, SLOT(saveScheme()));
-    connect(ui.push_loadScheme, SIGNAL(clicked()),
-            this, SLOT(loadScheme()));
-    ui.combo_optType->setCurrentIndex(0);
-
-    initialize();
+    populateTemplates();
   }
 
   TabEdit::~TabEdit()
   {
   }
 
-  void TabEdit::writeSettings(const QString &filename)
-  {
+  void TabEdit::writeSettings(const QString &filename) {
     SETTINGS(filename);
 
     settings->beginGroup("randomdock/edit");
-    const int VERSION = 1;
-    settings->setValue("version",     VERSION);
+    const int VERSION = 2;
+    settings->setValue("version",          VERSION);
 
-    settings->setValue("optType", ui.combo_optType->currentIndex());
+    settings->setValue("description", m_opt->description);
+    settings->setValue("localpath", m_opt->filePath);
+    settings->setValue("remote/host", m_opt->host);
+    settings->setValue("remote/port", m_opt->port);
+    settings->setValue("remote/username", m_opt->username);
+    settings->setValue("remote/rempath", m_opt->rempath);
+
+    settings->setValue("optimizer", m_opt->optimizer()->getIDString().toLower());
+    settings->setValue("queueInterface", m_opt->queueInterface()->getIDString().toLower());
+
     settings->endGroup();
     m_opt->optimizer()->writeSettings(filename);
 
     DESTROY_SETTINGS(filename);
   }
 
-  void TabEdit::readSettings(const QString &filename)
-  {
+  void TabEdit::readSettings(const QString &filename) {
     SETTINGS(filename);
-
     settings->beginGroup("randomdock/edit");
     int loadedVersion = settings->value("version", 0).toInt();
 
-    ui.combo_optType->setCurrentIndex( settings->value("optType", 0).toInt());
+    m_opt->port = settings->value("remote/port", 22).toInt();
+
+    // Temporary variables to test settings. This prevents empty
+    // scheme values from overwriting defaults.
+    QString tmpstr;
+
+    tmpstr = settings->value("description", "").toString();
+    if (!tmpstr.isEmpty()) {
+      m_opt->description = tmpstr;
+    }
+
+    tmpstr = settings->value("remote/rempath", "").toString();
+    if (!tmpstr.isEmpty()) {
+      m_opt->rempath = tmpstr;
+    }
+
+    tmpstr = settings->value("localpath", "").toString();
+    if (!tmpstr.isEmpty()) {
+      m_opt->filePath = tmpstr;
+    }
+
+    tmpstr = settings->value("remote/host", "").toString();
+    if (!tmpstr.isEmpty()) {
+      m_opt->host = tmpstr;
+    }
+
+    tmpstr = settings->value("remote/username", "").toString();
+    if (!tmpstr.isEmpty()) {
+      m_opt->username = tmpstr;
+    }
+
+    if (loadedVersion >= 2) {
+      QString optimizer =
+        settings->value("optimizer", "adf").toString().toLower();
+      for (QList<Optimizer*>::const_iterator
+             it = m_optimizers.constBegin(),
+             it_end = m_optimizers.constEnd();
+           it != it_end; ++it) {
+        if ((*it)->getIDString().toLower().compare(optimizer) == 0) {
+          emit optimizerChanged(*it);
+          break;
+        }
+      }
+
+      QString queueInterface =
+        settings->value("queueInterface", "local").toString().toLower();
+      for (QList<QueueInterface*>::const_iterator
+             it = m_queueInterfaces.constBegin(),
+             it_end = m_queueInterfaces.constEnd();
+           it != it_end; ++it) {
+        if ((*it)->getIDString().toLower().compare(queueInterface) == 0) {
+          emit queueInterfaceChanged(*it);
+          break;
+        }
+      }
+    }
+
     settings->endGroup();
 
     // Update config data
     switch (loadedVersion) {
     case 0:
-    case 1:
+    case 1: // Renamed optType to optimizer, added
+            // queueInterface. Both now use lowercase strings to
+            // identify. Took ownership of variables previously held
+            // by tabsys.
+      {
+        // Extract optimizer ID
+        ui_combo_optimizers->setCurrentIndex
+          (settings->value("randomdock/edit/optType", 0).toInt());
+        // Set QueueInterface based on optimizer
+        switch (ui_combo_optimizers->currentIndex()) {
+        default:
+        case RandomDock::OT_ADF:
+          ui_combo_queueInterfaces->setCurrentIndex(RandomDock::QI_PBS);
+          // Copy over job.pbs
+          settings->setValue
+            ("randomdock/optimizer/ADF/QI/PBS/job.pbs_list",
+             settings->value
+             ("randomdock/optimizer/ADF/job.pbs_list", QStringList("")));
+          break;
+        case RandomDock::OT_GAMESS:
+          ui_combo_queueInterfaces->setCurrentIndex(RandomDock::QI_PBS);
+          // Copy over job.pbs
+          settings->setValue
+            ("randomdock/optimizer/GAMESS/QI/PBS/job.pbs_list",
+             settings->value
+             ("randomdock/optimizer/GAMESS/job.pbs_list", QStringList("")));
+          break;
+        case RandomDock::OT_MOPAC:
+          ui_combo_queueInterfaces->setCurrentIndex(RandomDock::QI_PBS);
+          // Copy over job.pbs
+          settings->setValue
+            ("randomdock/optimizer/MOPAC/QI/PBS/job.pbs_list",
+             settings->value
+             ("randomdock/optimizer/MOPAC/job.pbs_list", QStringList("")));
+          break;
+        }
+        // Formerly tab_sys stuff. Read from default settings object:
+        settings->beginGroup("randomdock/sys/");
+        m_opt->description = settings->value("description", "").toString();
+        m_opt->rempath = settings->value("remote/rempath", "").toString();
+        m_opt->filePath = settings->value("file/path", "").toString();
+        m_opt->host = settings->value("remote/host", "").toString();
+        m_opt->port = settings->value("remote/port", 22).toInt();
+        m_opt->username = settings->value("remote/username", "").toString();
+        m_opt->rempath = settings->value("remote/rempath", "").toString();
+        settings->endGroup(); // "randomdock/sys"
+      }
+    case 2:
     default:
       break;
     }
 
-    updateOptType();
     m_opt->optimizer()->readSettings(filename);
+    m_opt->queueInterface()->readSettings(filename);
 
     updateGUI();
-  }
-
-  void TabEdit::updateGUI()
-  {
-    populateOptList();
-    if (m_opt->optimizer()->getIDString() == "GAMESS") {
-      ui.combo_optType->setCurrentIndex(RandomDock::OT_GAMESS);
-    }
-    else if (m_opt->optimizer()->getIDString() == "ADF") {
-      ui.combo_optType->setCurrentIndex(RandomDock::OT_ADF);
-    }
-    else if (m_opt->optimizer()->getIDString() == "MOPAC") {
-      ui.combo_optType->setCurrentIndex(RandomDock::OT_MOPAC);
-    }
-
-    templateChanged(ui.combo_template->currentIndex());
-    ui.edit_user1->setText(	m_opt->optimizer()->getUser1());
-    ui.edit_user2->setText(	m_opt->optimizer()->getUser2());
-    ui.edit_user3->setText(	m_opt->optimizer()->getUser3());
-    ui.edit_user4->setText(	m_opt->optimizer()->getUser4());
-  }
-
-  void TabEdit::lockGUI()
-  {
-    ui.combo_optType->setDisabled(true);
-  }
-
-  void TabEdit::showHelp() {
-    QMessageBox::information(m_dialog,
-                             "Template Help",
-                             m_opt->getTemplateKeywordHelp());
-  }
-
-  void TabEdit::updateOptType()
-  {
-    // Check if the opttype has actually changed and that the
-    // optimizer is set.
-    if ( m_opt->optimizer()
-         && (
-             ( ui.combo_optType->currentIndex() == RandomDock::OT_GAMESS
-               && m_opt->optimizer()->getIDString() == "GAMESS" )
-             ||
-             ( ui.combo_optType->currentIndex() == RandomDock::OT_ADF
-               && m_opt->optimizer()->getIDString() == "ADF" )
-             ||
-             ( ui.combo_optType->currentIndex() == RandomDock::OT_MOPAC
-               && m_opt->optimizer()->getIDString() == "MOPAC" )
-             )
-         ) {
-      return;
-    }
-
-    ui.combo_template->blockSignals(true);
-    ui.combo_template->clear();
-    ui.combo_template->blockSignals(false);
-
-    switch (ui.combo_optType->currentIndex()) {
-    case RandomDock::OT_GAMESS: {
-      // Set total number of templates (2, length of GAMESS_Templates)
-      QStringList sl;
-      sl << "" << "";
-      ui.combo_template->blockSignals(true);
-      ui.combo_template->insertItems(0, sl);
-
-      // Set each template at the appropriate index:
-      ui.combo_template->removeItem(GAMT_pbs);
-      ui.combo_template->insertItem(GAMT_pbs,	tr("job.pbs"));
-      ui.combo_template->removeItem(GAMT_inp);
-      ui.combo_template->insertItem(GAMT_inp,	tr("job.inp"));
-      ui.combo_template->blockSignals(false);
-
-      emit optimizerChanged(new GAMESSOptimizer (m_opt) );
-      ui.combo_template->setCurrentIndex(0);
-
-      break;
-    }
-    case RandomDock::OT_ADF: {
-      // Set total number of templates (1, length of ADF_Templates)
-      QStringList sl;
-      sl << "";
-      ui.combo_template->blockSignals(true);
-      ui.combo_template->insertItems(0, sl);
-
-      // Set each template at the appropriate index:
-      ui.combo_template->removeItem(ADFT_pbs);
-      ui.combo_template->insertItem(ADFT_pbs,	tr("job.pbs"));
-      ui.combo_template->blockSignals(false);
-
-      emit optimizerChanged(new ADFOptimizer (m_opt) );
-      ui.combo_template->setCurrentIndex(0);
-
-      break;
-    }
-    case RandomDock::OT_MOPAC: {
-      // Set total number of templates (2, length of MOPAC_Templates)
-      QStringList sl;
-      sl << "" << "";
-      ui.combo_template->blockSignals(true);
-      ui.combo_template->insertItems(0, sl);
-
-      // Set each template at the appropriate index:
-      ui.combo_template->removeItem(MOPACT_pbs);
-      ui.combo_template->insertItem(MOPACT_pbs,	tr("job.pbs"));
-
-      ui.combo_template->removeItem(MOPACT_mop);
-      ui.combo_template->insertItem(MOPACT_mop,	tr("job.mop"));
-
-      ui.combo_template->blockSignals(false);
-
-      emit optimizerChanged(new MopacOptimizer (m_opt) );
-      ui.combo_template->setCurrentIndex(0);
-
-      break;
-    }
-    default: // shouldn't happen...
-      qWarning() << "TabEdit::updateOptType: Selected OptType out of range?";
-      break;
-    }
-    populateOptList();
-    templateChanged(0);
-  }
-
-  void TabEdit::templateChanged(int ind)
-  {
-    if (ind < 0) {
-      return;
-    }
-
-    int row = ui.list_opt->currentRow();
-
-    if (m_opt->optimizer()->getNumberOfOptSteps() != ui.list_opt->count())
-      populateOptList();
-
-    switch (ui.combo_optType->currentIndex()) {
-    case RandomDock::OT_GAMESS: {
-      // Hide/show appropriate GUI elements
-      ui.list_POTCARs->setVisible(false);
-      ui.edit_edit->setVisible(true);
-
-      switch (ind) {
-      case GAMT_pbs:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.pbs", row));
-        break;
-      case GAMT_inp:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.inp", row));
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::templateChanged: Selected template out of range? " << ind;
-        break;
-      }
-      break;
-    }
-    case RandomDock::OT_ADF: {
-      // Hide/show appropriate GUI elements
-      ui.list_POTCARs->setVisible(false);
-      ui.edit_edit->setVisible(true);
-
-      switch (ind) {
-      case ADFT_pbs:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.pbs", row));
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::templateChanged: Selected template out of range? " << ind;
-        break;
-      }
-      break;
-    }
-    case RandomDock::OT_MOPAC: {
-      // Hide/show appropriate GUI elements
-      ui.list_POTCARs->setVisible(false);
-      ui.edit_edit->setVisible(true);
-
-      switch (ind) {
-      case MOPACT_pbs:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.pbs", row));
-        break;
-      case MOPACT_mop:
-        ui.edit_edit->setText(m_opt->optimizer()->getTemplate("job.mop", row));
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::templateChanged: Selected template out of range? " << ind;
-        break;
-      }
-      break;
-    }
-    default: // shouldn't happen...
-      qWarning() << "TabEdit::templateChanged: Selected OptStep out of range? "
-                 << ui.combo_optType->currentIndex();
-      break;
-    }
-    ui.edit_edit->setCurrentFont(QFont("Courier"));
-  }
-
-  void TabEdit::updateTemplates()
-  {
-    int row = ui.list_opt->currentRow();
-
-    switch (ui.combo_optType->currentIndex()) {
-    case RandomDock::OT_GAMESS:
-      switch (ui.combo_template->currentIndex()) {
-      case GAMT_pbs:
-        m_opt->optimizer()->setTemplate("job.pbs", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      case GAMT_inp:
-        m_opt->optimizer()->setTemplate("job.inp", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::updateTemplates: Selected template out of range?";
-        break;
-      }
-      break;
-    case RandomDock::OT_ADF:
-      switch (ui.combo_template->currentIndex()) {
-      case ADFT_pbs:
-        m_opt->optimizer()->setTemplate("job.pbs", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::updateTemplates: Selected template out of range?";
-        break;
-      }
-      break;
-    case RandomDock::OT_MOPAC:
-      switch (ui.combo_template->currentIndex()) {
-      case MOPACT_pbs:
-        m_opt->optimizer()->setTemplate("job.pbs", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      case MOPACT_mop:
-        m_opt->optimizer()->setTemplate("job.mop", ui.edit_edit->document()->toPlainText(), row);
-        break;
-      default: // shouldn't happen...
-        qWarning() << "TabEdit::updateTemplates: Selected template out of range?";
-        break;
-      }
-      break;
-
-    default: // shouldn't happen...
-      qWarning() << "TabEdit::updateTemplates: Selected OptStep out of range?";
-      break;
-    }
-  }
-
-  void TabEdit::updateUserValues()
-  {
-    m_opt->optimizer()->setUser1(ui.edit_user1->text());
-    m_opt->optimizer()->setUser2(ui.edit_user2->text());
-    m_opt->optimizer()->setUser3(ui.edit_user3->text());
-    m_opt->optimizer()->setUser4(ui.edit_user4->text());
-  }
-
-  void TabEdit::populateOptList()
-  {
-    int selection = ui.list_opt->currentRow();
-    int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
-    if (selection < 0) selection = 0;
-    if (selection >= maxSteps) selection = maxSteps - 1;
-
-    ui.list_opt->blockSignals(true);
-    ui.list_opt->clear();
-    for (int i = 1; i <= m_opt->optimizer()->getNumberOfOptSteps(); i++) {
-      ui.list_opt->addItem(tr("Optimization %1").arg(i));
-    }
-    ui.list_opt->blockSignals(false);
-
-    ui.list_opt->setCurrentRow(selection);
-  }
-
-  void TabEdit::appendOptStep()
-  {
-    // Copy the current files into a new entry at the end of the opt step list
-    int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
-    int currentOptStep = ui.list_opt->currentRow();
-    QStringList templates = m_opt->optimizer()->getTemplateNames();
-    QString currentTemplate;
-
-    // Add optstep
-    for (int i = 0; i < templates.size(); i++) {
-      currentTemplate = m_opt->optimizer()->getTemplate(templates.at(i), currentOptStep);
-      m_opt->optimizer()->appendTemplate(templates.at(i), currentTemplate);
-    }
-
-    populateOptList();
-  }
-
-  void TabEdit::removeCurrentOptStep()
-  {
-    int currentOptStep = ui.list_opt->currentRow();
-    int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
-    QStringList templates = m_opt->optimizer()->getTemplateNames();
-    QString currentTemplate;
-    for (int i = 0; i < templates.size(); i++) {
-      m_opt->optimizer()->removeTemplate(templates.at(i), currentOptStep);
-    }
-
-    populateOptList();
-  }
-
-  void TabEdit::optStepChanged()
-  {
-    templateChanged(ui.combo_template->currentIndex());
-  }
-
-  void TabEdit::saveScheme()
-  {
-    SETTINGS("");
-    QString filename = settings->value("randomdock/edit/schemePath/", "").toString();
-    QFileDialog dialog (NULL, tr("Save Optimization Scheme as..."),
-                        filename, "*.scheme;;*.*");
-    dialog.selectFile(m_opt->optimizer()->getIDString() + ".scheme");
-    dialog.setFileMode(QFileDialog::AnyFile);
-    if (dialog.exec())
-      filename = dialog.selectedFiles().first();
-    else { // User cancel file selection.
-      return;
-    }
-    settings->setValue("randomdock/edit/schemePath/", filename);
-    writeSettings(filename);
-  }
-
-  void TabEdit::loadScheme()
-  {
-    SETTINGS("");
-    QString filename = settings->value("randomdock/edit/schemePath/", "").toString();
-    QFileDialog dialog (NULL,
-                        tr("Select Optimization Scheme to load..."),
-                        filename,
-                        "*.scheme;;*.*");
-     dialog.setFileMode(QFileDialog::ExistingFile);
-    if (dialog.exec())
-      filename = dialog.selectedFiles().first();
-    else { // User cancel file selection.
-      return;
-    }
-    settings->setValue("randomdock/edit/schemePath/", filename);
-    readSettings(filename);
   }
 }

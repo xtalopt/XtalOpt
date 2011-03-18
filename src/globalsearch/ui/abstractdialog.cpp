@@ -22,6 +22,7 @@
 
 #include <openbabel/oberror.h>
 
+#include <QtGui/QApplication>
 #include <QtGui/QLabel>
 #include <QtGui/QFileDialog>
 #include <QtGui/QPushButton>
@@ -54,6 +55,11 @@ namespace GlobalSearch {
   void AbstractDialog::initialize()
   {
     // Connections
+    connect(this, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(reemitTabsReadSettings(const QString &)));
+    connect(this, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(reemitTabsWriteSettings(const QString &)));
+
     connect(ui_push_begin, SIGNAL(clicked()),
             this, SLOT(startSearch()));
     connect(ui_push_save, SIGNAL(clicked()),
@@ -235,6 +241,28 @@ namespace GlobalSearch {
   void AbstractDialog::repaintProgressBar_() {
     ui_label_prog->repaint();
     ui_progbar->repaint();
+  }
+
+  void AbstractDialog::reemitTabsWriteSettings(const QString &filename)
+  {
+    if (QThread::currentThread() == qApp->thread()) {
+      // In GUI thread, direct connection
+      emit tabsWriteSettingsDirect(filename);
+    } else {
+      // In a worker thread, use BlockingQueued
+      emit tabsWriteSettingsBlockingQueued(filename);
+    }
+  }
+
+  void AbstractDialog::reemitTabsReadSettings(const QString &filename)
+  {
+    if (QThread::currentThread() == qApp->thread()) {
+      // In GUI thread, direct connection
+      emit tabsReadSettingsDirect(filename);
+    } else {
+      // In a worker thread, use BlockingQueued
+      emit tabsReadSettingsBlockingQueued(filename);
+    }
   }
 
 }

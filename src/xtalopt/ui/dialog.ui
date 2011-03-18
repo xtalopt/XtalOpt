@@ -143,6 +143,9 @@
      <property name="currentIndex">
       <number>0</number>
      </property>
+     <property name="usesScrollButtons">
+      <bool>false</bool>
+     </property>
      <widget class="QWidget" name="tab_log">
       <attribute name="title">
        <string>&amp;Log</string>

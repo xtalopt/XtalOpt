@@ -56,10 +56,6 @@ namespace XtalOpt {
     // dialog connections
     connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
             this, SLOT(highlightXtal(GlobalSearch::Structure*)));
-    connect(this, SIGNAL(refresh()),
-            m_opt->queue(), SLOT(checkRunning()));
-    connect(this, SIGNAL(refresh()),
-            m_opt->queue(), SLOT(checkPopulation()));
     connect(m_opt, SIGNAL(updateAllInfo()),
             this, SLOT(updateAllInfo()));
     connect(m_opt, SIGNAL(sessionStarted()),
@@ -155,8 +151,6 @@ namespace XtalOpt {
       qDebug() << "Killing extra TabProgress::updateProgressTable() call";
       return;
     }
-
-    emit refresh();
 
     QList<Structure*> running = m_opt->queue()->getAllRunningStructures();
 
@@ -324,41 +318,41 @@ namespace XtalOpt {
     switch (xtal->getStatus()) {
     case Xtal::InProcess: {
       xtalLocker.unlock();
-      Optimizer::JobState state = m_opt->optimizer()->getStatus(xtal);
+      QueueInterface::QueueStatus state = m_opt->queueInterface()->getStatus(xtal);
       xtalLocker.relock();
       switch (state) {
-      case Optimizer::Running:
+      case QueueInterface::Running:
         e.status = tr("Running (Opt Step %1 of %2, %3 failures)")
           .arg(QString::number(xtal->getCurrentOptStep()))
           .arg(QString::number(totalOptSteps))
           .arg(QString::number(xtal->getFailCount()));
         e.brush.setColor(Qt::green);
         break;
-      case Optimizer::Queued:
+      case QueueInterface::Queued:
         e.status = tr("Queued (Opt Step %1 of %2, %3 failures)")
           .arg(QString::number(xtal->getCurrentOptStep()))
           .arg(QString::number(totalOptSteps))
           .arg(QString::number(xtal->getFailCount()));
         e.brush.setColor(Qt::cyan);
         break;
-      case Optimizer::Success:
+      case QueueInterface::Success:
         e.status = "Starting update...";
         break;
-      case Optimizer::Unknown:
+      case QueueInterface::Unknown:
         e.status = "Unknown";
         e.brush.setColor(Qt::red);
         break;
-      case Optimizer::Error:
+      case QueueInterface::Error:
         e.status = "Error: Restarting job...";
         e.brush.setColor(Qt::darkRed);
         break;
-      case Optimizer::CommunicationError:
+      case QueueInterface::CommunicationError:
         e.status = "Communication Error";
         e.brush.setColor(Qt::darkRed);
         break;
       // Shouldn't happen; started and pending only occur when xtal is "Submitted"
-      case Optimizer::Started:
-      case Optimizer::Pending:
+      case QueueInterface::Started:
+      case QueueInterface::Pending:
       default:
         break;
       }
@@ -599,14 +593,6 @@ namespace XtalOpt {
     QWriteLocker locker (m_context_xtal->lock());
     m_context_xtal->setCurrentOptStep(optStep);
 
-    // Restart job if currently running
-    if ( m_context_xtal->getStatus() == Xtal::InProcess ||
-         m_context_xtal->getStatus() == Xtal::Submitted ) {
-      locker.unlock();
-      m_opt->optimizer()->deleteJob(m_context_xtal);
-      locker.relock();
-    }
-
     m_context_xtal->setStatus(Xtal::Restart);
     newInfoUpdate(m_context_xtal);
 
@@ -623,19 +609,11 @@ namespace XtalOpt {
   void TabProgress::killXtalProgress_()
   {
     if (!m_context_xtal) return;
-    QWriteLocker locker (m_context_xtal->lock());
 
-    // End job if currently running
-    if ( m_context_xtal->getStatus() != Xtal::Optimized ) {
-      locker.unlock();
-      m_opt->optimizer()->deleteJob(m_context_xtal);
-      locker.relock();
-      m_context_xtal->setStatus(Xtal::Killed);
-    }
-    else m_context_xtal->setStatus(Xtal::Removed);
+    // QueueManager will handle mutex locking
+    m_opt->queue()->killStructure(m_context_xtal);
 
     // Clear context xtal pointer
-    locker.unlock();
     newInfoUpdate(m_context_xtal);
     m_context_xtal = 0;
   }
@@ -682,8 +660,6 @@ namespace XtalOpt {
     newInfoUpdate(m_context_xtal);
     locker.unlock();
     m_context_xtal = 0;
-
-    emit refresh();
   }
 
   void TabProgress::randomizeStructureProgress()
@@ -697,7 +673,7 @@ namespace XtalOpt {
 
     // End job if currently running
     if (m_context_xtal->getJobID()) {
-      m_opt->optimizer()->deleteJob(m_context_xtal);
+      m_opt->queueInterface()->stopJob(m_context_xtal);
     }
 
     m_opt->replaceWithRandom(m_context_xtal, "manual");

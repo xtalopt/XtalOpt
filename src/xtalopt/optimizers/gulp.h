@@ -32,17 +32,9 @@ namespace XtalOpt {
     Q_OBJECT
 
    public:
-    GULPOptimizer(GlobalSearch::OptBase *parent, const QString &filename = "");
+    GULPOptimizer(GlobalSearch::OptBase *parent,
+                  const QString &filename = "");
 
-    bool writeInputFiles(GlobalSearch::Structure *structure);
-    bool startOptimization(GlobalSearch::Structure *structure);
-    bool getQueueList(QStringList & queueData, QMutex *mutex);
-    Optimizer::JobState getStatus(GlobalSearch::Structure *structure);
-    bool copyRemoteToLocalCache(GlobalSearch::Structure *structure);
-    int checkIfJobNameExists(GlobalSearch::Structure *,
-                             const QStringList &, bool &b) {
-      b=false;return 0;};
-    bool deleteJob(GlobalSearch::Structure *s) {return true;};
   };
 
 } // end namespace XtalOpt

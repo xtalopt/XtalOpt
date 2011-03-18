@@ -24,6 +24,7 @@
 #include <globalsearch/tracker.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/slottedwaitcondition.h>
 #include <globalsearch/sshmanager.h>
 #include <globalsearch/macros.h>
 
@@ -44,9 +45,11 @@ namespace RandomDock {
 
   RandomDock::RandomDock(RandomDockDialog *parent) :
     OptBase(parent),
-    substrate(0)
+    substrate(0),
+    m_initWC(new SlottedWaitCondition (this))
   {
     m_idString = "RandomDock";
+    m_schemaVersion = 2;
     sceneInitMutex = new QMutex;
     limitRunningJobs = true;
     // By default, just replace with random when a scene fails.
@@ -56,12 +59,37 @@ namespace RandomDock {
 
   RandomDock::~RandomDock()
   {
+    // Stop queuemanager thread
+    if (m_queueThread->isRunning()) {
+      m_queueThread->disconnect();
+      m_queueThread->quit();
+      m_queueThread->wait();
+    }
+
+    // Delete queuemanager
+    delete m_queue;
+    m_queue = 0;
+
+    // Stop SSHManager
+    delete m_ssh;
+    m_ssh = 0;
+
+    // Wait for save to finish
+    if (saveOnExit) {
+      while (savePending) {
+        qDebug() << "Spinning on save before destroying RandomDock...";
+        save();
+        GS_SLEEP(1);
+      };
+      savePending = true;
+    }
+
+    // Clean up various members
+    m_initWC->deleteLater();
+    m_initWC = 0;
   }
 
   void RandomDock::startSearch() {
-    debug("Starting optimization.");
-    emit startingSession();
-
     // Check that everything is in place
     if (!substrate) {
       error("Cannot begin search without specifying substrate.");
@@ -75,6 +103,18 @@ namespace RandomDock {
     }
     if (!checkLimits()) {
       setIsStartingFalse();
+      return;
+    }
+
+    // Are the selected queueinterface and optimizer happy?
+    QString err;
+    if (!m_optimizer->isReadyToSearch(&err)) {
+      error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
+      return;
+    }
+
+    if (!m_queueInterface->isReadyToSearch(&err)) {
+      error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
       return;
     }
 
@@ -136,6 +176,10 @@ namespace RandomDock {
       break;
     } // end forever
 
+    // Here we go!
+    debug("Starting optimization.");
+    emit startingSession();
+
     // prepare pointers
     m_tracker->lockForWrite();
     m_tracker->deleteAllStructures();
@@ -168,6 +212,33 @@ namespace RandomDock {
       scene = generateRandomScene();
       initializeAndAddScene(scene);
     }
+
+    // Wait for all structures to appear in tracker
+    m_dialog->updateProgressLabel(tr("Waiting for structures to initialize..."));
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressMinimum(runningJobLimit);
+
+    connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
+            m_initWC, SLOT(wakeAllSlot()));
+
+    m_initWC->prewaitLock();
+    do {
+      m_dialog->updateProgressValue(m_tracker->size());
+      m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
+                                    .arg(m_tracker->size())
+                                    .arg(runningJobLimit));
+      // Don't block here forever -- there is a race condition where
+      // the final newStructureAdded signal may be emitted while the
+      // WC is not waiting. Since this is just trivial GUI updating
+      // and we check the condition in the do-while loop, this is
+      // acceptable. The following call will timeout in 250 ms.
+      m_initWC->wait(250);
+    }
+    while (m_tracker->size() < runningJobLimit);
+    m_initWC->postwaitUnlock();
+
+    // We're done with m_initWC.
+    m_initWC->disconnect();
 
     m_dialog->stopProgressUpdate();
 
@@ -418,6 +489,7 @@ namespace RandomDock {
 
     // Assign data to scene
     scene->lock()->lockForWrite();
+    scene->moveToThread(m_queueThread);
     scene->setIDNumber(id);
     scene->setIndex(id-1);
     scene->setFileName(locpath_s);
@@ -567,68 +639,9 @@ namespace RandomDock {
     return true;
   }
 
-  bool RandomDock::load(const QString &filename) {
-    // Attempt to open state file
-    QFile file (filename);
-    if (!file.open(QIODevice::ReadOnly)) {
-      error("RandomDock::load(): Error opening file "+file.fileName()+" for reading...");
-      return false;
-    }
-
-    SETTINGS(filename);
-    // Update config data
-    int loadedVersion = settings->value("randomdock/version", 0).toInt();
-    switch (loadedVersion) {
-    case 0:
-    case 1:
-    default:
-      break;
-    }
-
-    bool stateFileIsValid = settings->value("randomdock/saveSuccessful", false).toBool();
-    if (!stateFileIsValid) {
-      error("RandomDock::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid.");
-      return false;
-    }
-
-    // Get path and other info for later:
-    QFileInfo stateInfo (file);
-    // path to resume file
-    QDir dataDir  = stateInfo.absoluteDir();
-    QString dataPath = dataDir.absolutePath() + "/";
-    // list of structure dirs
-    QStringList dirs = dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
-    dirs.removeAll(".");
-    dirs.removeAll("..");
-    for (int i = 0; i < dirs.size(); i++) {
-      if (!QFile::exists(dataPath + "/" + dirs.at(i) + "/scene.state") &&
-          !QFile::exists(dataPath + "/" + dirs.at(i) + "/matrix.state") &&
-          !QFile::exists(dataPath + "/" + dirs.at(i) + "/substrate.state")
-          ) {
-          dirs.removeAt(i);
-          i--;
-      }
-    }
-
-    // Set filePath:
-    QString newFilePath = dataPath;
-    QString newFileBase = filename;
-    newFileBase.remove(newFilePath);
-    newFileBase.remove("randomdock.state.old");
-    newFileBase.remove("randomdock.state.tmp");
-    newFileBase.remove("randomdock.state");
-
-    m_dialog->readSettings(filename);
-
-    // Set optimizer
-    setOptimizer(OptTypes(settings->value("randomdock/edit/optType").toInt()),
-                 filename);
-    debug(tr("Resuming RandomDock session in '%1' (%2)")
-          .arg(filename)
-          .arg(m_optimizer->getIDString()));
-
-    // TODO load scenes, matrix, and substrate
-
+  bool RandomDock::load(const QString &filename)
+  {
+    // Nothing to do...
     return true;
   }
 
@@ -733,25 +746,4 @@ namespace RandomDock {
       coords[i] += t;
   }
 
-  void RandomDock::setOptimizer_string(const QString &IDString, const QString &filename)
-  {
-    if (IDString.toLower() == "gamess")
-      setOptimizer(new GAMESSOptimizer (this, filename));
-    else
-      error(tr("RandomDock::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(IDString));
-  }
-
-  void RandomDock::setOptimizer_enum(OptTypes opttype, const QString &filename)
-  {
-    switch (opttype) {
-    case OT_GAMESS:
-      setOptimizer(new GAMESSOptimizer (this, filename));
-      break;
-    default:
-      error(tr("RandomDock::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(QString::number((int)opttype)));
-      break;
-    }
-  }
 } // end namespace RandomDock
