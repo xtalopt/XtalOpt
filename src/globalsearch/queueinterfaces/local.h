@@ -34,7 +34,8 @@ namespace GlobalSearch {
     enum Status {NotStarted = 0, Running, Finished, Error};
   LocalQueueProcess(QObject *parent) :
     QProcess(parent), m_status(NotStarted)
-    { connect(this, SIGNAL(started()), this, SLOT(setRunning()));
+    {
+      connect(this, SIGNAL(started()), this, SLOT(setRunning()));
       connect(this, SIGNAL(finished(int, QProcess::ExitStatus)),
               this, SLOT(setFinished()));
       connect(this, SIGNAL(error(QProcess::ProcessError)),

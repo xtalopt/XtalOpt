@@ -50,7 +50,8 @@ namespace GlobalSearch {
     m_opt(opt),
     m_thread(thread),
     m_tracker(opt->tracker()),
-    m_requestedStructures(0)
+    m_requestedStructures(0),
+    m_isDestroying(false)
   {
     // Thread connections
     connect(m_thread, SIGNAL(started()),
@@ -59,6 +60,7 @@ namespace GlobalSearch {
 
   QueueManager::~QueueManager()
   {
+    m_isDestroying = true;
     this->disconnect();
 
     // Prevent the check functions from running again
@@ -86,6 +88,12 @@ namespace GlobalSearch {
         qDebug() << "Spinning on QueueManager handler trackers to empty...";
         GS_SLEEP(1);
       }
+    }
+
+    // Wait for m_requestedStructures to == 0
+    while (m_requestedStructures > 0) {
+        qDebug() << "Waiting for structure generation threads to finish...";
+        GS_SLEEP(1);
     }
   }
 
@@ -867,6 +875,13 @@ namespace GlobalSearch {
   {
     if (!s) {
       m_tracker->unlock();
+      return;
+    }
+
+    // Discard structure if we're shutting down
+    if (m_isDestroying) {
+      m_tracker->unlock();
+      --m_requestedStructures;
       return;
     }
 

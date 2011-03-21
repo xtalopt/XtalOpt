@@ -395,6 +395,8 @@ m_queue->unlockForNaming(newStructure);
 
     QMutex m_checkRunningMutex;
     QMutex m_checkPopulationMutex;
+
+    bool m_isDestroying;
  };
 
 } // end namespace GlobalSearch

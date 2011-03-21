@@ -34,12 +34,28 @@ namespace GlobalSearch {
                                            const QString &settingFile) :
     QueueInterface(parent)
   {
+    // Needed for LocalQueueProcess:
+    qRegisterMetaType<QProcess::ExitStatus>("QProcess::ExitStatus");
+    qRegisterMetaType<QProcess::ProcessError>("QProcess::ProcessError");
+
     m_idString = "Local";
     m_hasDialog = true;
   }
 
   LocalQueueInterface::~LocalQueueInterface()
   {
+    for (QHash<Q_PID, LocalQueueProcess*>::iterator
+           it = m_processes.begin(),
+           it_end = m_processes.end();
+         it != it_end; ++it) {
+      if ((*it) && ((*it)->state() == QProcess::Running)) {
+        // Give each process 5 seconds to do any cleanup needed, then
+        // kill it.
+        (*it)->terminate();
+        (*it)->waitForFinished(5000);
+        (*it)->kill();
+      }
+    }
   }
 
   bool LocalQueueInterface::isReadyToSearch(QString *str)
@@ -138,7 +154,7 @@ namespace GlobalSearch {
     command = "cmd.exe /C " + command;
 #endif // WIN32
 
-    LocalQueueProcess *proc = new LocalQueueProcess(m_opt->queue());
+    LocalQueueProcess *proc = new LocalQueueProcess(this);
     proc->setWorkingDirectory(s->fileName());
     if (!m_opt->optimizer()->stdinFilename().isEmpty()) {
       proc->setStandardInputFile(s->fileName()
