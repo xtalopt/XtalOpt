@@ -429,7 +429,7 @@ optimizations. If so, safely ignore this message.")
 
     // Do we have a composition?
     if (comp.core.isEmpty()) {
-      error("Cannot create structures. Core composition is not set.");
+      error(tr("Cannot create structures. Core composition is not set."));
       return;
     }
 
@@ -444,6 +444,13 @@ optimizations. If so, safely ignore this message.")
       error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
       return;
     }
+
+    // Warn user if runningJobLimit is 0
+    if (limitRunningJobs && runningJobLimit == 0) {
+      error(tr("Warning: the number of running jobs is currently set to 0."
+               "\n\nYou will need to increase this value before the search "
+               "can begin (The option is on the 'Optimization Settings' tab)."));
+    };
 
     // Create the SSHManager if running remotely
     if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {

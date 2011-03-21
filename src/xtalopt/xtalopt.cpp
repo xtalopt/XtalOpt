@@ -131,6 +131,13 @@ namespace XtalOpt {
       return;
     }
 
+    // Warn user if runningJobLimit is 0
+    if (limitRunningJobs && runningJobLimit == 0) {
+      error(tr("Warning: the number of running jobs is currently set to 0."
+               "\n\nYou will need to increase this value before the search "
+               "can begin (The option is on the 'Optimization Settings' tab)."));
+    };
+
     // VASP checks:
     if (m_optimizer->getIDString() == "VASP") {
       // Is the POTCAR generated? If not, warn user in log and launch generator.

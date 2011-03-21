@@ -118,6 +118,13 @@ namespace RandomDock {
       return;
     }
 
+    // Warn user if runningJobLimit is 0
+    if (limitRunningJobs && runningJobLimit == 0) {
+      error(tr("Warning: the number of running jobs is currently set to 0."
+               "\n\nYou will need to increase this value before the search "
+               "can begin (The option is on the 'Optimization Settings' tab)."));
+    };
+
     // Create the SSHManager
     QString pw = "";
     for (;;) {
