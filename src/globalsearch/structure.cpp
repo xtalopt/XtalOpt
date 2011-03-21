@@ -778,7 +778,6 @@ namespace GlobalSearch {
     (*freq) = m_histogramFreq;
   }
 
-
   bool Structure::generateIADHistogram(QList<double> * dist,
                                        QList<double> * freq,
                                        double min,
@@ -804,7 +803,7 @@ namespace GlobalSearch {
   /// \cond
   struct NNHistMap {
     int i;
-    double step;
+    double halfstep;
     QList<Vector3d> *atomPositions;
     QList<QVariant> *dist;
   };
@@ -826,7 +825,7 @@ namespace GlobalSearch {
       v2 = &(m.atomPositions->at(j));
       diff = fabs(((*v1)-(*v2)).norm());
       for (int k = 0; k < m.dist->size(); k++) {
-        if (fabs(diff-(m.dist->at(k).toDouble())) < m.step/2) {
+        if (fabs(diff-(m.dist->at(k).toDouble())) < m.halfstep) {
           freq[k]++;
         }
       }
@@ -870,6 +869,8 @@ namespace GlobalSearch {
       return false;
     }
 
+    double halfstep = step / 2.0;
+
     double val = min;
     do {
       distance->append(val);
@@ -892,7 +893,7 @@ namespace GlobalSearch {
       QList<NNHistMap> ml;
       for (int i = 0; i < atomList.size(); i++) {
         NNHistMap m;
-        m.i = i; m.step = step; m.atomPositions = &atomPositions; m.dist = distance;
+        m.i = i; m.halfstep = halfstep; m.atomPositions = &atomPositions; m.dist = distance;
         ml.append(m);
       }
       (*frequency) = QtConcurrent::blockingMappedReduced(ml, calcNNHistChunk, reduceNNHistChunks);
@@ -908,7 +909,7 @@ namespace GlobalSearch {
         for (int k = 0; k < distance->size(); k++) {
           double radius = distance->at(k).toDouble();
           double d;
-          if (diff != 0 && fabs(diff-radius) < step/2) {
+          if (diff != 0 && fabs(diff-radius) < halfstep) {
             d = frequency->at(k).toDouble();
             d++;
             frequency->replace(k, d);
