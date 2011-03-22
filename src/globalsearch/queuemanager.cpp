@@ -892,12 +892,15 @@ namespace GlobalSearch {
       return;
     }
 
-    m_newStructureTracker.lockForWrite();
-    m_newStructureTracker.append(s);
-
     if (!m_opt->isStarting) {
       --m_requestedStructures;
     }
+
+    // Append to tracker after decrementing
+    // m_requestedStructures. This keeps behavior predictable during
+    // session initialization.
+    m_newStructureTracker.lockForWrite();
+    m_newStructureTracker.append(s);
 
     Q_ASSERT_X(m_requestedStructures >= 0, Q_FUNC_INFO,
                "The requested structures counter has become negative.");
