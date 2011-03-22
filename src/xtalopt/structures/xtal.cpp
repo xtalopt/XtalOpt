@@ -736,6 +736,9 @@ namespace XtalOpt {
     delete [] positions;
     delete [] types;
 
+    // Update the OBUnitCell object.
+    cell()->SetSpaceGroup(m_spgNumber);
+
     // Fail if m_spgNumber is still 0
     if (m_spgNumber == 0) {
       return;
