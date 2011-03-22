@@ -244,6 +244,7 @@ namespace XtalOpt {
     // For minimum-energy traces
     double minE = DBL_MAX;
     PlotObject *traceObject = 0;
+    unsigned int lastGoodTraceIndex = 0; // Used to trim points from end
     if (xAxis == Structure_T &&
         (yAxis == Energy_T ||
          yAxis == Enthalpy_T)) {
@@ -383,6 +384,9 @@ namespace XtalOpt {
           }
         }
       }
+      if (traceObject) {
+        lastGoodTraceIndex = traceObject->points().size() - 1;
+      }
       pp = m_plotObject->addPoint(x,y);
       // Store index for later lookup
       pp->setCustomData(i);
@@ -516,6 +520,11 @@ namespace XtalOpt {
 
     ui.plot_plot->addPlotObject(m_plotObject);
     if (traceObject) {
+      int numPoints = traceObject->points().size();
+      for (int i = numPoints - 1;
+           (i > lastGoodTraceIndex && i >= 0); --i) {
+        traceObject->removePoint(i);
+      }
       ui.plot_plot->addPlotObject(traceObject);
     }
 
