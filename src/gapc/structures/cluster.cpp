@@ -19,6 +19,8 @@
 
 #include <avogadro/neighborlist.h>
 
+#include <Eigen/Array>
+
 #include <algorithm>
 #include <vector>
 #include <deque>
@@ -69,26 +71,71 @@ namespace GAPC {
 
     // Populate cluster
     clear();
+    Eigen::Vector3d tmpvec;
+    QList<Atom*> neighbors;
+    QList<double> distances;
     while (!q.empty()) {
       // Center the molecule at the origin
       centerAtoms();
       // Upper limit for new position distance
       double max = radius() + maxIAD;
+      // temp coordinates
       double x, y, z;
-      double shortest;
       // Set first atom to origin
       if (numAtoms() == 0) {
         x = y = z = 0.0;
       }
-      // Randomly generate other atoms
+      // Set second atom randomly between minIAD and maxIAD from origin
+      else if (numAtoms() == 1) {
+        tmpvec.setRandom();
+        tmpvec.normalize();
+        tmpvec = tmpvec * (maxIAD-minIAD) * RANDDOUBLE() +
+          (Eigen::Vector3d::Ones() * minIAD);
+        x = tmpvec.x();
+        y = tmpvec.y();
+        z = tmpvec.z();
+      }
+      // Randomly generate other atoms, ensuring that they lie between
+      // minIAD and maxIAD from at least two other atoms and no more
+      // than minIAD from any atom
       else {
-        do {
+        forever {
           // Randomly generate coordinates
-          x = RANDDOUBLE() * max;
-          y = RANDDOUBLE() * max;
-          z = RANDDOUBLE() * max;
-          getNearestNeighborDistance(x, y, z, shortest);
-        } while (shortest > maxIAD || shortest < minIAD);
+          tmpvec.setRandom();
+          tmpvec.normalize();
+          tmpvec = tmpvec * max * RANDDOUBLE();
+          x = tmpvec.x();
+          y = tmpvec.y();
+          z = tmpvec.z();
+          neighbors = getNeighbors(x, y, z, maxIAD, &distances);
+
+          Q_ASSERT(neighbors.size() == distances.size());
+
+          // If not neighbors, continue
+          if (neighbors.size() < 2) {
+            continue;
+          }
+
+          unsigned int found = 0;
+          bool invalid = false;
+          for (QList<double>::const_iterator
+                 dit = distances.constBegin(),
+                 dit_end = distances.constEnd(); dit != dit_end; ++dit) {
+            // check that the distance is greater than minIAD from the new point
+            if (*dit < minIAD) {
+              invalid = true;
+              break;
+            }
+            ++found;
+          }
+
+          // If the conditions aren't met, generate a new set of coordinates
+          if (invalid || found < 2) {
+            continue;
+          }
+          // Otherwise add the atom.
+          break;
+        }
       }
       Atom *atm = addAtom();
       Eigen::Vector3d pos (x, y, z);
