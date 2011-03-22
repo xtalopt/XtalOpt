@@ -271,17 +271,43 @@ namespace GAPC {
   {
     OptGAPC *gapc = qobject_cast<OptGAPC*>(m_opt);
 
-    gapc->p_cross  = ui.spin_p_cross->value();
-    gapc->p_twist  = ui.spin_p_twist->value();
-    gapc->p_exch   = ui.spin_p_exch->value();
-    gapc->p_randw  = ui.spin_p_randw->value();
-    gapc->p_aniso  = 100 - (gapc->p_cross +
-                            gapc->p_twist +
-                            gapc->p_exch +
-                            gapc->p_randw);
-    ui.spin_p_aniso->blockSignals(true);
-    ui.spin_p_aniso->setValue(gapc->p_aniso);
-    ui.spin_p_aniso->blockSignals(false);
+    // See if any of the spin boxes caused this change
+    if (sender() == ui.spin_p_cross ||
+        sender() == ui.spin_p_twist ||
+        sender() == ui.spin_p_exch ||
+        sender() == ui.spin_p_randw) {
+      gapc->p_cross  = ui.spin_p_cross->value();
+      gapc->p_twist  = ui.spin_p_twist->value();
+      gapc->p_exch   = ui.spin_p_exch->value();
+      gapc->p_randw  = ui.spin_p_randw->value();
+      gapc->p_aniso  = 100 - (gapc->p_cross +
+                              gapc->p_twist +
+                              gapc->p_exch +
+                              gapc->p_randw);
+      ui.spin_p_aniso->blockSignals(true);
+      ui.spin_p_aniso->setValue(gapc->p_aniso);
+      ui.spin_p_aniso->blockSignals(false);
+    }
+    else if (sender() == ui.spin_p_aniso) {
+      gapc->p_aniso  = ui.spin_p_aniso->value();
+      gapc->p_twist  = ui.spin_p_twist->value();
+      gapc->p_exch   = ui.spin_p_exch->value();
+      gapc->p_randw  = ui.spin_p_randw->value();
+      gapc->p_cross  = 100 - (gapc->p_aniso +
+                              gapc->p_twist +
+                              gapc->p_exch +
+                              gapc->p_randw);
+      ui.spin_p_cross->blockSignals(true);
+      ui.spin_p_cross->setValue(gapc->p_cross);
+      ui.spin_p_cross->blockSignals(false);
+    }
+    else {
+      gapc->p_cross  = ui.spin_p_cross->value();
+      gapc->p_twist  = ui.spin_p_twist->value();
+      gapc->p_exch   = ui.spin_p_exch->value();
+      gapc->p_randw  = ui.spin_p_randw->value();
+      gapc->p_aniso  = ui.spin_p_aniso->value();
+    }
 
     // Initial generation
     gapc->numInitial           = ui.spin_numInitial->value();

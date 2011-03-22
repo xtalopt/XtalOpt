@@ -266,12 +266,29 @@ namespace XtalOpt {
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
-    xtalopt->p_cross                = ui.spin_p_cross->value();
-    xtalopt->p_strip		= ui.spin_p_strip->value();
-    xtalopt->p_perm		= 100 - (xtalopt->p_cross + xtalopt->p_strip);
-    ui.spin_p_perm->blockSignals(true);
-    ui.spin_p_perm->setValue(xtalopt->p_perm);
-    ui.spin_p_perm->blockSignals(false);
+    // See if the spin boxes caused this change.
+    if (sender() == ui.spin_p_cross ||
+        sender() == ui.spin_p_strip) {
+      xtalopt->p_cross            = ui.spin_p_cross->value();
+      xtalopt->p_strip            = ui.spin_p_strip->value();
+      xtalopt->p_perm             = 100 - (xtalopt->p_cross + xtalopt->p_strip);
+      ui.spin_p_perm->blockSignals(true);
+      ui.spin_p_perm->setValue(xtalopt->p_perm);
+      ui.spin_p_perm->blockSignals(false);
+    }
+    else if (sender() == ui.spin_p_perm) {
+      xtalopt->p_perm             = ui.spin_p_perm->value();
+      xtalopt->p_strip            = ui.spin_p_strip->value();
+      xtalopt->p_cross            = 100 - (xtalopt->p_perm + xtalopt->p_strip);
+      ui.spin_p_cross->blockSignals(true);
+      ui.spin_p_cross->setValue(xtalopt->p_cross);
+      ui.spin_p_cross->blockSignals(false);
+    }
+    else {
+      xtalopt->p_perm             = ui.spin_p_perm->value();
+      xtalopt->p_strip            = ui.spin_p_strip->value();
+      xtalopt->p_cross            = ui.spin_p_cross->value();
+    }
 
     // Initial generation
     xtalopt->numInitial           = ui.spin_numInitial->value();
