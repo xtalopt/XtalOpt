@@ -86,12 +86,10 @@ namespace GAPC {
 
   GAPCDialog::~GAPCDialog()
   {
-    if (m_opt->saveOnExit) {
-      m_opt->tracker()->lockForRead();
-      writeSettings();
-      saveSession();
-      m_opt->tracker()->unlock();
-    }
+    m_opt->tracker()->lockForRead();
+    writeSettings();
+    saveSession();
+    m_opt->tracker()->unlock();
     // m_opt is deleted by ~AbstractDialog
   }
 

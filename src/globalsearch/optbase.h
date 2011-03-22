@@ -283,9 +283,6 @@ for (ind = 0; ind < probs.size(); ind++)
     /// True if a session is starting or being loaded
     bool isStarting;
 
-    /// Set to false when running unit tests
-    bool saveOnExit;
-
     /// Whether readOnly mode is enabled (e.g. no connection to server)
     bool readOnly;
 

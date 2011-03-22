@@ -83,12 +83,10 @@ namespace XtalOpt {
 
   XtalOptDialog::~XtalOptDialog()
   {
-    if (m_opt->saveOnExit) {
-      m_opt->tracker()->lockForRead();
-      writeSettings();
-      saveSession();
-      m_opt->tracker()->unlock();
-    }
+    m_opt->tracker()->lockForRead();
+    writeSettings();
+    saveSession();
+    m_opt->tracker()->unlock();
     // m_opt is deleted by ~AbstractDialog
   }
 
@@ -126,10 +124,5 @@ namespace XtalOpt {
                         &XtalOpt::startSearch);
     }
   }
-
-  void XtalOptDialog::startProgressTimer()
-  {
-    m_tab_progress->startTimer();
-  };
 
 }

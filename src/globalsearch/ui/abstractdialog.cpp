@@ -56,7 +56,9 @@ namespace GlobalSearch {
   {
     // Connections
     connect(this, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(reemitTabsReadSettings(const QString &)));
+            this, SLOT(reemitTabsReadSettings(const QString &)),
+            Qt::DirectConnection);
+    // Leave this as an autoconnection to prevent deadlocks on shutdown
     connect(this, SIGNAL(tabsWriteSettings(const QString &)),
             this, SLOT(reemitTabsWriteSettings(const QString &)));
 
@@ -159,8 +161,8 @@ namespace GlobalSearch {
     emit tabsUpdateGUI();
   }
 
-  void AbstractDialog::resumeSession() {
-    QMutexLocker locker (m_opt->stateFileMutex);
+  void AbstractDialog::resumeSession()
+  {
     QString filename;
     QFileDialog dialog (NULL,
                         QString("Select .state file to resume"),
@@ -174,6 +176,12 @@ namespace GlobalSearch {
     else { // User cancel file selection.
       return;
     }
+
+    QtConcurrent::run(this, &AbstractDialog::resumeSession_, filename);
+  }
+
+  void AbstractDialog::resumeSession_(const QString &filename)
+  {
     m_opt->emitStartingSession();
     startProgressUpdate(tr("Resuming session..."), 0, 0);
     m_opt->tracker()->lockForWrite();
@@ -187,7 +195,6 @@ namespace GlobalSearch {
     // Refresh dialog and settings
     writeSettings();
     stopProgressUpdate();
-    m_opt->emitSessionStarted();
   }
 
   void AbstractDialog::updateStatus_(int opt, int run, int fail) {

@@ -52,7 +52,6 @@ namespace GlobalSearch {
     stateFileMutex(new QMutex),
     backTraceMutex(new QMutex),
     savePending(false),
-    saveOnExit(true),
     readOnly(false),
     testingMode(false),
     test_nRunsStart(1),

@@ -74,14 +74,11 @@ namespace GAPC {
     m_ssh = 0;
 
     // Wait for save to finish
-    if (saveOnExit) {
-      while (savePending) {
-        qDebug() << "Spinning on save before destroying GAPC...";
-        save();
-        GS_SLEEP(1);
-      };
-      savePending = true;
-    }
+    while (savePending) {
+      qDebug() << "Spinning on save before destroying GAPC...";
+      GS_SLEEP(1);
+    };
+    savePending = true;
 
     // Clean up various members
     m_initWC->deleteLater();
@@ -188,7 +185,8 @@ namespace GAPC {
     }
   }
 
-  bool OptGAPC::load(const QString &filename) {
+  bool OptGAPC::load(const QString &filename)
+  {
     // Attempt to open state file
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -209,9 +207,11 @@ namespace GAPC {
       break;
     }
 
-    bool stateFileIsValid = settings->value(m_idString.toLower() + "/saveSuccessful", false).toBool();
+    bool stateFileIsValid = settings->value
+      (m_idString.toLower() + "/saveSuccessful", false).toBool();
     if (!stateFileIsValid) {
-      error("OptGAPC::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid. (Try "
+      error("OptGAPC::load(): File " + file.fileName() +
+            " is incomplete, corrupt, or invalid. (Try "
             + file.fileName() + ".old if it exists)");
       return false;
     }
@@ -222,11 +222,14 @@ namespace GAPC {
     QDir dataDir  = stateInfo.absoluteDir();
     QString dataPath = dataDir.absolutePath() + "/";
     // list of structure dirs
-    QStringList structureDirs = dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
+    QStringList structureDirs = dataDir.entryList(QStringList(),
+                                                  QDir::AllDirs,
+                                                  QDir::Size);
     structureDirs.removeAll(".");
     structureDirs.removeAll("..");
     for (int i = 0; i < structureDirs.size(); i++) {
-      if (!QFile::exists(dataPath + "/" + structureDirs.at(i) + "/structure.state") ){
+      if (!QFile::exists(dataPath + "/" + structureDirs.at(i) +
+                         "/structure.state") ){
         structureDirs.removeAt(i);
         i--;
       }
@@ -273,11 +276,9 @@ namespace GAPC {
               + "Would you like to trust the specified host? (Clicking 'No' will"
               + "resume the session in read only mode.)";
             bool ok;
-            // Commenting this until ticket:53 (load in bg thread) is fixed
-            // // This is a BlockingQueuedConnection, which blocks until
-            // // the slot returns.
-            // emit needPassword(err, &newPassword, &ok);
-            promptForBoolean(err, &ok);
+            // This is a BlockingQueuedConnection, which blocks until
+            // the slot returns.
+            emit needBoolean(err, &ok);
             if (!ok) { // user cancels
               readOnly = true;
               break;
@@ -293,11 +294,9 @@ namespace GAPC {
               + " or cancel to load the session in read-only mode.";
             bool ok;
             QString newPassword;
-            // Commenting this until ticket:53 (load in bg thread) is fixed
-            // // This is a BlockingQueuedConnection, which blocks until
-            // // the slot returns.
-            // emit needPassword(err, &newPassword, &ok);
-            promptForPassword(err, &newPassword, &ok);
+            // This is a BlockingQueuedConnection, which blocks until
+            // the slot returns.
+            emit needPassword(err, &newPassword, &ok);
             if (!ok) { // user cancels
               readOnly = true;
               break;

@@ -600,6 +600,7 @@ namespace XtalOpt {
     ui.plot_plot->setDefaultLimits(0, 8, 0, ui.plot_plot->dataRect().bottom());
   }
 
+  /// @todo move this to a background thread
   void TabPlot::populateXtalList()
   {
     int ind = ui.combo_distHistXtal->currentIndex();
@@ -611,7 +612,6 @@ namespace XtalOpt {
     QString s;
     for (int i = 0; i < structures.size(); i++) {
       xtal = qobject_cast<Xtal*>(structures.at(i));
-      xtal->lock()->lockForRead();
       s.clear();
       // index:
       s.append(QString::number(i) + ": ");
@@ -644,7 +644,6 @@ namespace XtalOpt {
       default: break;
       }
       ui.combo_distHistXtal->addItem(s);
-      xtal->lock()->unlock();
     }
     if (ind == -1) ind = 0;
     ui.combo_distHistXtal->setCurrentIndex(ind);

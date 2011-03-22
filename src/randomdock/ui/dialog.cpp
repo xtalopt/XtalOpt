@@ -96,12 +96,10 @@ namespace RandomDock {
 
   RandomDockDialog::~RandomDockDialog()
   {
-    if (m_opt->saveOnExit) {
-      m_opt->tracker()->lockForRead();
-      writeSettings();
-      saveSession();
-      m_opt->tracker()->unlock();
-    }
+    m_opt->tracker()->lockForRead();
+    writeSettings();
+    saveSession();
+    m_opt->tracker()->unlock();
   }
 
   void RandomDockDialog::saveSession()

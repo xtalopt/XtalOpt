@@ -89,14 +89,11 @@ namespace XtalOpt {
     m_ssh = 0;
 
     // Wait for save to finish
-    if (saveOnExit) {
-      while (savePending) {
-        qDebug() << "Spinning on save before destroying XtalOpt...";
-        save();
-        GS_SLEEP(1);
-      };
-      savePending = true;
-    }
+    while (savePending) {
+      qDebug() << "Spinning on save before destroying XtalOpt...";
+      GS_SLEEP(1);
+    };
+    savePending = true;
 
     // Clean up various members
     m_initWC->deleteLater();
@@ -974,11 +971,13 @@ namespace XtalOpt {
     return str;
   }
 
-  bool XtalOpt::load(const QString &filename) {
+  bool XtalOpt::load(const QString &filename)
+  {
     // Attempt to open state file
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly)) {
-      error("XtalOpt::load(): Error opening file "+file.fileName()+" for reading...");
+      error("XtalOpt::load(): Error opening file "
+            +file.fileName() + " for reading...");
       return false;
     }
 
@@ -1069,11 +1068,9 @@ namespace XtalOpt {
               + "Would you like to trust the specified host? (Clicking 'No' will"
               + "resume the session in read only mode.)";
             bool ok;
-            // Commenting this until ticket:53 (load in bg thread) is fixed
-            // // This is a BlockingQueuedConnection, which blocks until
-            // // the slot returns.
-            // emit needPassword(err, &newPassword, &ok);
-            promptForBoolean(err, &ok);
+            // This is a BlockingQueuedConnection, which blocks until
+            // the slot returns.
+            emit needBoolean(err, &ok);
             if (!ok) { // user cancels
               readOnly = true;
               break;
@@ -1089,11 +1086,9 @@ namespace XtalOpt {
               + " or cancel to load the session in read-only mode.";
             bool ok;
             QString newPassword;
-            // Commenting this until ticket:53 (load in bg thread) is fixed
-            // // This is a BlockingQueuedConnection, which blocks until
-            // // the slot returns.
-            // emit needPassword(err, &newPassword, &ok);
-            promptForPassword(err, &newPassword, &ok);
+            // This is a BlockingQueuedConnection, which blocks until
+            // the slot returns.
+            emit needPassword(err, &newPassword, &ok);
             if (!ok) { // user cancels
               readOnly = true;
               break;
@@ -1162,7 +1157,10 @@ namespace XtalOpt {
       locker.unlock();
 
       if (!m_optimizer->load(xtal)) {
-        error(tr("Error, no (or not appropriate for %1) xtal data in %2.\n\nThis could be a result of resuming a structure that has not yet done any local optimizations. If so, safely ignore this message.")
+        error(tr("Error, no (or not appropriate for %1) xtal data in "
+                 "%2.\n\nThis could be a result of resuming a structure "
+                 "that has not yet done any local optimizations. If so, "
+                 "safely ignore this message.")
               .arg(m_optimizer->getIDString())
               .arg(xtal->fileName()));
         continue;
@@ -1234,8 +1232,9 @@ namespace XtalOpt {
     // Check if user wants to resume the search
     if (!readOnly) {
       bool resume;
-      // TODO Change this to needBoolean once reload in move to bg thread
-      promptForBoolean(tr("Session '%1' (%2) loaded. Would you like to start submitting jobs and resume the search? (Answering \"No\" will enter read-only mode.)")
+      needBoolean(tr("Session '%1' (%2) loaded. Would you like to start "
+                     "submitting jobs and resume the search? (Answering "
+                     "\"No\" will enter read-only mode.)")
                        .arg(description).arg(filePath),
                        &resume);
 

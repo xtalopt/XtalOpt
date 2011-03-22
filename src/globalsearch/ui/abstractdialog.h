@@ -346,8 +346,8 @@ namespace GlobalSearch {
     virtual void startSearch() =0;
 
     /**
-     * Prompt user for a resume file and then pass it off to
-     * OptBase::load
+     * Prompt user for a resume file and then call resumeSession_ in a
+     * background thread.
      */
     virtual void resumeSession();
 
@@ -524,6 +524,11 @@ namespace GlobalSearch {
     void sig_errorBox(const QString &);
 
   protected:
+    /**
+     * Resumes the session in file \a filename.
+     */
+    virtual void resumeSession_(const QString &filename);
+
     /**
      * Cached pointer to the associated OptBase object.
      */

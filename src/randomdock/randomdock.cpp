@@ -75,14 +75,11 @@ namespace RandomDock {
     m_ssh = 0;
 
     // Wait for save to finish
-    if (saveOnExit) {
-      while (savePending) {
-        qDebug() << "Spinning on save before destroying RandomDock...";
-        save();
-        GS_SLEEP(1);
-      };
-      savePending = true;
-    }
+    while (savePending) {
+      qDebug() << "Spinning on save before destroying RandomDock...";
+      GS_SLEEP(1);
+    };
+    savePending = true;
 
     // Clean up various members
     m_initWC->deleteLater();
