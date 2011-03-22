@@ -30,7 +30,11 @@
 
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
+#include <globalsearch/queueinterface.h>
+#include <globalsearch/queueinterfaces/local.h>
+#include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/slottedwaitcondition.h>
 #include <globalsearch/sshmanager.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/bt.h>
@@ -44,8 +48,6 @@
 #include <QtCore/QReadWriteLock>
 #include <QtCore/QtConcurrentRun>
 
-#include <QtGui/QMessageBox>
-
 #define ANGSTROM_TO_BOHR 1.889725989
 
 using namespace GlobalSearch;
@@ -55,10 +57,12 @@ using namespace Avogadro;
 namespace XtalOpt {
 
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
-    OptBase(parent)
+    OptBase(parent),
+    m_initWC(new SlottedWaitCondition (this))
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";
+    m_schemaVersion = 2;
 
     // Connections
     connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
@@ -69,11 +73,20 @@ namespace XtalOpt {
 
   XtalOpt::~XtalOpt()
   {
-    // Stop queuemanager
-    if (m_queue->isRunning()) {
-      m_queue->disconnect();
-      m_queue->quit();
+    // Stop queuemanager thread
+    if (m_queueThread->isRunning()) {
+      m_queueThread->disconnect();
+      m_queueThread->quit();
+      m_queueThread->wait();
     }
+
+    // Delete queuemanager
+    delete m_queue;
+    m_queue = 0;
+
+    // Stop SSHManager
+    delete m_ssh;
+    m_ssh = 0;
 
     // Wait for save to finish
     if (saveOnExit) {
@@ -85,13 +98,13 @@ namespace XtalOpt {
       savePending = true;
     }
 
-    // Ensure that the QueueManager has terminated before continuing.
-    m_queue->wait();
+    // Clean up various members
+    m_initWC->deleteLater();
+    m_initWC = 0;
   }
 
-  void XtalOpt::startSearch() {
-    debug("Starting optimization.");
-    emit startingSession();
+  void XtalOpt::startSearch()
+  {
 
     // Settings checks
     // Check lattice parameters, volume, etc
@@ -105,6 +118,25 @@ namespace XtalOpt {
       error("Cannot create structures. Composition is not set.");
       return;
     }
+
+    // Are the selected queueinterface and optimizer happy?
+    QString err;
+    if (!m_optimizer->isReadyToSearch(&err)) {
+      error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
+      return;
+    }
+
+    if (!m_queueInterface->isReadyToSearch(&err)) {
+      error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
+      return;
+    }
+
+    // Warn user if runningJobLimit is 0
+    if (limitRunningJobs && runningJobLimit == 0) {
+      error(tr("Warning: the number of running jobs is currently set to 0."
+               "\n\nYou will need to increase this value before the search "
+               "can begin (The option is on the 'Optimization Settings' tab)."));
+    };
 
     // VASP checks:
     if (m_optimizer->getIDString() == "VASP") {
@@ -126,8 +158,8 @@ namespace XtalOpt {
       qobject_cast<VASPOptimizer*>(m_optimizer)->buildPOTCARs();
     }
 
-    // Create the SSHManager
-    if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
+    // Create the SSHManager if running remotely
+    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
       for (;;) {
         try {
@@ -185,6 +217,10 @@ namespace XtalOpt {
         break;
       } // end forever
     }
+
+    // Here we go!
+    debug("Starting optimization.");
+    emit startingSession();
 
     // prepare pointers
     m_tracker->lockForWrite();
@@ -249,6 +285,33 @@ namespace XtalOpt {
         newXtalCount++;
       }
     }
+
+    // Wait for all structures to appear in tracker
+    m_dialog->updateProgressLabel(tr("Waiting for structures to initialize..."));
+    m_dialog->updateProgressMinimum(0);
+    m_dialog->updateProgressMinimum(newXtalCount);
+
+    connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
+            m_initWC, SLOT(wakeAllSlot()));
+
+    m_initWC->prewaitLock();
+    do {
+      m_dialog->updateProgressValue(m_tracker->size());
+      m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
+                                    .arg(m_tracker->size())
+                                    .arg(newXtalCount));
+      // Don't block here forever -- there is a race condition where
+      // the final newStructureAdded signal may be emitted while the
+      // WC is not waiting. Since this is just trivial GUI updating
+      // and we check the condition in the do-while loop, this is
+      // acceptable. The following call will timeout in 250 ms.
+      m_initWC->wait(250);
+    }
+    while (m_tracker->size() < newXtalCount);
+    m_initWC->postwaitUnlock();
+
+    // We're done with m_initWC.
+    m_initWC->disconnect();
 
     m_dialog->stopProgressUpdate();
 
@@ -364,6 +427,7 @@ namespace XtalOpt {
     }
 
     QWriteLocker xtalLocker (xtal->lock());
+    xtal->moveToThread(m_queueThread);
     xtal->setIDNumber(id);
     xtal->setGeneration(generation);
     xtal->setParents(parents);
@@ -390,6 +454,12 @@ namespace XtalOpt {
   }
 
   void XtalOpt::generateNewStructure()
+  {
+    // Generate in background thread:
+    QtConcurrent::run(this, &XtalOpt::generateNewStructure_);
+  }
+
+  void XtalOpt::generateNewStructure_()
   {
     INIT_RANDOM_GENERATOR();
     // Get all optimized structures
@@ -915,22 +985,27 @@ namespace XtalOpt {
     SETTINGS(filename);
     int loadedVersion = settings->value("xtalopt/version", 0).toInt();
 
-    // Update config data
+    // Update config data. Be sure to bump m_schemaVersion in ctor if
+    // adding updates.
     switch (loadedVersion) {
     case 0:
     case 1:
+    case 2: // Tab edit bumped to V2. No change here.
       break;
     default:
-      error("\
-XtalOpt::load(): Settings in file "+file.fileName()+ " cannot be opened \
-by this version of XtalOpt. Please visit http://xtalopt.openmolecules.net \
-to obtain a newer version.");
+      error("XtalOpt::load(): Settings in file "+file.fileName()+
+            " cannot be opened by this version of XtalOpt. Please "
+            "visit http://xtalopt.openmolecules.net to obtain a "
+            "newer version.");
       return false;
     }
 
-    bool stateFileIsValid = settings->value("xtalopt/saveSuccessful", false).toBool();
+    bool stateFileIsValid =
+      settings->value("xtalopt/saveSuccessful", false).toBool();
     if (!stateFileIsValid) {
-      error("XtalOpt::load(): File "+file.fileName()+" is incomplete, corrupt, or invalid. (Try " + file.fileName() + ".old if it exists)");
+      error("XtalOpt::load(): File "+file.fileName()+" is incomplete, "
+            "corrupt, or invalid. (Try " + file.fileName() +
+            ".old if it exists)");
       return false;
     }
 
@@ -940,7 +1015,8 @@ to obtain a newer version.");
     QDir dataDir  = stateInfo.absoluteDir();
     QString dataPath = dataDir.absolutePath() + "/";
     // list of xtal dirs
-    QStringList xtalDirs = dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
+    QStringList xtalDirs = dataDir.entryList(QStringList(),
+                                             QDir::AllDirs, QDir::Size);
     xtalDirs.removeAll(".");
     xtalDirs.removeAll("..");
     for (int i = 0; i < xtalDirs.size(); i++) {
@@ -962,12 +1038,8 @@ to obtain a newer version.");
 
     m_dialog->readSettings(filename);
 
-    // Set optimizer
-    setOptimizer(OptTypes(settings->value("xtalopt/edit/optType").toInt()),
-                 filename);
-
-    // Create SSHConnection
-    if (m_optimizer->getIDString() != "GULP") { // GULP won't use ssh
+    // Create SSHConnection if we are running remotely
+    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
       for (;;) {
         try {
@@ -1043,18 +1115,26 @@ to obtain a newer version.");
     // Xtals
     // Initialize progress bar:
     m_dialog->updateProgressMaximum(xtalDirs.size());
+    // If a local queue interface was used, all InProcess structures must be
+    // Restarted.
+    bool restartInProcessStructures = false;
+    bool clearJobIDs = false;
+    if (qobject_cast<LocalQueueInterface*>(m_queueInterface)) {
+      restartInProcessStructures = true;
+      clearJobIDs = true;
+    }
+    // Load xtals
     Xtal* xtal;
     QList<uint> keys = comp.keys();
     QList<Structure*> loadedStructures;
     QString xtalStateFileName;
-    uint count = 0;
-    int numDirs = xtalDirs.size();
-    for (int i = 0; i < numDirs; i++) {
-      count++;
-      m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...").arg(count).arg(numDirs));
-      m_dialog->updateProgressValue(count-1);
+    for (int i = 0; i < xtalDirs.size(); i++) {
+      m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...")
+                                    .arg(i+1).arg(xtalDirs.size()));
+      m_dialog->updateProgressValue(i);
 
       xtalStateFileName = dataPath + "/" + xtalDirs.at(i) + "/structure.state";
+      debug(tr("Loading structure %1").arg(xtalStateFileName));
       // Check if this is an older session that used xtal.state instead.
       if ( !QFile::exists(xtalStateFileName) &&
            QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/xtal.state") ) {
@@ -1073,6 +1153,10 @@ to obtain a newer version.");
 
       // Store current state -- updateXtal will overwrite it.
       Xtal::State state = xtal->getStatus();
+      // Set state from InProcess -> Restart if needed
+      if (restartInProcessStructures && state == Structure::InProcess) {
+        state = Structure::Restart;
+      }
       QDateTime endtime = xtal->getOptTimerEnd();
 
       locker.unlock();
@@ -1088,6 +1172,9 @@ to obtain a newer version.");
       locker.relock();
       xtal->setStatus(state);
       xtal->setOptTimerEnd(endtime);
+      if (clearJobIDs) {
+        xtal->setJobID(0);
+      }
       locker.unlock();
       loadedStructures.append(qobject_cast<Structure*>(xtal));
     }
@@ -1157,7 +1244,7 @@ to obtain a newer version.");
 
       // Start search if needed
       if (!readOnly) {
-	qobject_cast<XtalOptDialog*>(m_dialog)->startProgressTimer();
+	emit sessionStarted();
       }
     }
 
@@ -1273,43 +1360,6 @@ to obtain a newer version.");
       }
     }
     emit updateAllInfo();
-  }
-
-  void XtalOpt::setOptimizer_string(const QString &IDString, const QString &filename)
-  {
-    if (IDString.toLower() == "vasp")
-      setOptimizer(new VASPOptimizer (this, filename));
-    else if (IDString.toLower() == "gulp")
-      setOptimizer(new GULPOptimizer (this, filename));
-    else if (IDString.toLower() == "pwscf")
-      setOptimizer(new PWscfOptimizer (this, filename));
-    else if (IDString.toLower() == "castep")
-      setOptimizer(new CASTEPOptimizer (this, filename));
-    else
-      error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(IDString));
-  }
-
-  void XtalOpt::setOptimizer_enum(OptTypes opttype, const QString &filename)
-  {
-    switch (opttype) {
-    case OT_VASP:
-      setOptimizer(new VASPOptimizer (this, filename));
-      break;
-    case OT_GULP:
-      setOptimizer(new GULPOptimizer (this, filename));
-      break;
-    case OT_PWscf:
-      setOptimizer(new PWscfOptimizer (this, filename));
-      break;
-    case OT_CASTEP:
-      setOptimizer(new CASTEPOptimizer (this, filename));
-      break;
-    default:
-      error(tr("XtalOpt::setOptimizer: unable to determine optimizer from '%1'")
-            .arg(QString::number((int)opttype)));
-      break;
-    }
   }
 
 } // end namespace XtalOpt

@@ -29,7 +29,8 @@ namespace GlobalSearch {
                             OptBase *p ) :
     QObject( parent ),
     m_dialog(parent),
-    m_opt(p)
+    m_opt(p),
+    m_isInitialized(false)
   {
     m_tab_widget = new QWidget;
   }
@@ -37,10 +38,18 @@ namespace GlobalSearch {
   void AbstractTab::initialize()
   {
     // dialog connections
-    connect(m_dialog, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(readSettings(const QString &)));
-    connect(m_dialog, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(writeSettings(const QString &)));
+    connect(m_dialog, SIGNAL(tabsReadSettingsDirect(const QString &)),
+            this, SLOT(readSettings(const QString &)),
+            Qt::DirectConnection);
+    connect(m_dialog, SIGNAL(tabsReadSettingsBlockingQueued(const QString &)),
+            this, SLOT(readSettings(const QString &)),
+            Qt::BlockingQueuedConnection);
+    connect(m_dialog, SIGNAL(tabsWriteSettingsDirect(const QString &)),
+            this, SLOT(writeSettings(const QString &)),
+            Qt::DirectConnection);
+    connect(m_dialog, SIGNAL(tabsWriteSettingsBlockingQueued(const QString &)),
+            this, SLOT(writeSettings(const QString &)),
+            Qt::BlockingQueuedConnection);
     connect(m_dialog, SIGNAL(tabsUpdateGUI()),
             this, SLOT(updateGUI()));
     connect(m_dialog, SIGNAL(tabsDisconnectGUI()),
@@ -55,6 +64,9 @@ namespace GlobalSearch {
     connect(this, SIGNAL(finishedBackgroundProcessing()),
             this, SLOT(clearBusyCursor()),
             Qt::QueuedConnection);
+
+    m_isInitialized = true;
+    emit initialized();
   }
 
   AbstractTab::~AbstractTab()

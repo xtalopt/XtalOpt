@@ -108,7 +108,7 @@ namespace GlobalSearch {
      * Create some default connections between the main dialog and
      * this tab.
      */
-    void initialize();
+    virtual void initialize();
 
     /**
      * Sets the application's busy cursor. This should not be called
@@ -148,6 +148,10 @@ namespace GlobalSearch {
      */
     void finishedBackgroundProcessing();
 
+    /**
+     * Emitted when initialized completes
+     */
+    void initialized();
 
   protected:
     /// The actual widget that will be made into a tab.
@@ -158,6 +162,9 @@ namespace GlobalSearch {
 
     /// A pointer to the associated OptBase class.
     OptBase *m_opt;
+
+    /// Set to true once initialized() completes.
+    bool m_isInitialized;
   };
 }
 

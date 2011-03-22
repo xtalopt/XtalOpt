@@ -29,7 +29,7 @@
 
 // If string f is non-empty, write the file immediately with sync(),
 // otherwise, let the system decide when to write to file
-#define DESTROY_SETTINGS(f) if (!QString(f).isEmpty()) settings->sync();
+#define DESTROY_SETTINGS(f) settings->sync();
 
 // This function will return a random seed to initialize srand
 // http://stackoverflow.com/questions/322938

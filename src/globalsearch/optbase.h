@@ -24,6 +24,7 @@ namespace GlobalSearch {
   class Tracker;
   class Optimizer;
   class QueueManager;
+  class QueueInterface;
   class SSHManager;
   class AbstractDialog;
 
@@ -193,6 +194,13 @@ for (ind = 0; ind < probs.size(); ind++)
     QueueManager* queue() {return m_queue;};
 
     /**
+     * @return A pointer to the associated QueueManager.
+     * @sa setQueueInterface
+     * @sa queueInterfaceChanged
+     */
+    QueueInterface* queueInterface() {return m_queueInterface;};
+
+    /**
      * @return A pointer to the current Optimizer.
      * @sa setOptimizer
      * @sa optimizerChanged
@@ -243,15 +251,6 @@ for (ind = 0; ind < probs.size(); ind++)
 
     /// Terse description of current search
     QString description;
-
-    /// Command to submit jobs to the queuing system (default: qsub)
-    QString qsub;
-
-    /// Command to check the queuing system (default: qstat)
-    QString qstat;
-
-    /// Command to check the queuing system (default: qstat)
-    QString qdel;
 
     /// Host name or IP address of remote PBS server
     QString host;
@@ -310,11 +309,18 @@ for (ind = 0; ind < probs.size(); ind++)
     void sessionStarted();
 
     /**
+     * Emitted when the current QueueInterface changes
+     * @sa setQueueInterface
+     * @sa queueInterface
+     */
+    void queueInterfaceChanged(QueueInterface*);
+
+    /**
      * Emitted when the current Optimizer changed
      * @sa setOptimizer
      * @sa optimizer
      */
-    void optimizerChanged(GlobalSearch::Optimizer*);
+    void optimizerChanged(Optimizer*);
 
     /**
      * Emitted when debug(const QString&) is called.
@@ -454,21 +460,41 @@ for (ind = 0; ind < probs.size(); ind++)
     void emitStartingSession() {emit startingSession();};
 
     /**
-     * Sets OptBase::isStarting to true;
+     * Sets this->isStarting to true;
      * @sa setIsStartingFalse
      */
     void setIsStartingTrue() {isStarting = true;};
 
     /**
-     * Sets OptBase::isStarting to false;
+     * Sets this->isStarting to false;
      * @sa setIsStartingTrue
      */
     void setIsStartingFalse() {isStarting = false;};
 
     /**
+     * Sets this->readOnly to true;
+     * @sa setReadOnlyFalse
+     */
+    void setReadOnlyTrue() {readOnly = true;};
+
+    /**
+     * Sets this->readOnly to false;
+     * @sa setReadOnlyTrue
+     */
+    void setReadOnlyFalse() {readOnly = false;};
+
+    /**
      * Prints a backtrace to the terminal
      */
     void printBackTrace();
+
+    /**
+     * Update the QueueInterface to \a q.
+     *
+     * @sa queueInterfaceChanged
+     * @sa queueInterface
+     */
+    void setQueueInterface(QueueInterface *q);
 
     /**
      * Update the Optimizer to the one indicated
@@ -477,19 +503,7 @@ for (ind = 0; ind < probs.size(); ind++)
      * @sa optimizerChanged
      * @sa optimizer
      */
-    void setOptimizer(Optimizer *o) {
-      setOptimizer_opt(o);};
-
-    /**
-     * Update the Optimizer to the one identified by IDString
-     *
-     * @param IDString Name of new Optimizer to use
-     * @param filename Scheme or state file to initialize Optimizer with
-     * @sa optimizerChanged
-     * @sa optimizer
-     */
-    void setOptimizer(const QString &IDString, const QString &filename = "") {
-      setOptimizer_string(IDString, filename);};
+    void setOptimizer(Optimizer *o);
 
     /**
      * Prompt user with a "Yes/No" dialog.
@@ -525,10 +539,14 @@ for (ind = 0; ind < probs.size(); ind++)
     void setClipboard_(const QString &text) const;
     /// \endcond
 
-   protected:
+  protected:
     /// String that uniquely identifies the derived OptBase
     /// @sa getIDString
     QString m_idString;
+
+    /// Cached pointer to the SSHManager
+    /// @sa ssh
+    SSHManager *m_ssh;
 
     /// Cached pointer to the Dialog window
     /// @sa tracker
@@ -538,9 +556,16 @@ for (ind = 0; ind < probs.size(); ind++)
     /// @sa tracker
     Tracker *m_tracker;
 
+    /// Thread to run the QueueManager
+    QThread *m_queueThread;
+
     /// Cached pointer to the QueueManager
     /// @sa queue
     QueueManager *m_queue;
+
+    /// Cached pointer to the QueueInterface
+    /// @sa queueInterface
+    QueueInterface *m_queueInterface;
 
     /// Cache pointer to the current optimizer
     /// @sa optimizerChanged
@@ -548,20 +573,14 @@ for (ind = 0; ind < probs.size(); ind++)
     /// @sa setOptimizer
     Optimizer *m_optimizer;
 
-    /// Cached pointer to the SSHManager
-    SSHManager *m_ssh;
-
-    /// Hidden call to setOptimizer
-    virtual void setOptimizer_opt(Optimizer *o);
-
-    /// Hidden call to setOptimizer
-    virtual void setOptimizer_string(const QString &s, const QString &filename = "") {};
-
     /// Hidden call to interpretKeyword
     void interpretKeyword_base(QString &keyword, Structure* structure);
 
     /// Hidden call to getTemplateKeywordHelp
     QString getTemplateKeywordHelp_base();
+
+    /// Current version of save/resume schema
+    unsigned int m_schemaVersion;
 
   };
 
