@@ -62,21 +62,27 @@ namespace XtalOpt {
     m_opt = xtalopt;
 
     // Initialize tabs
-    m_tab_init		= new TabInit(this, xtalopt);
-    m_tab_edit		= new TabEdit(this, xtalopt);
-    m_tab_opt		= new TabOpt(this, xtalopt);
-    m_tab_progress	= new TabProgress(this, xtalopt);
-    m_tab_plot		= new TabPlot(this, xtalopt);
-    m_tab_log		= new TabLog(this, xtalopt);
+    m_tab_init          = new TabInit(this, xtalopt);
+    m_tab_edit          = new TabEdit(this, xtalopt);
+    m_tab_opt           = new TabOpt(this, xtalopt);
+    m_tab_progress      = new TabProgress(this, xtalopt);
+    m_tab_plot          = new TabPlot(this, xtalopt);
+    m_tab_log           = new TabLog(this, xtalopt);
 
     // Populate tab widget
     ui.tabs->clear();
-    ui.tabs->addTab(m_tab_init->getTabWidget(),		tr("Cell &Initialization"));
-    ui.tabs->addTab(m_tab_edit->getTabWidget(),         tr("Optimization &Templates"));
-    ui.tabs->addTab(m_tab_opt->getTabWidget(),          tr("&Optimization Settings"));
-    ui.tabs->addTab(m_tab_progress->getTabWidget(),     tr("&Progress"));
-    ui.tabs->addTab(m_tab_plot->getTabWidget(),         tr("&Plot"));
-    ui.tabs->addTab(m_tab_log->getTabWidget(),          tr("&Log"));
+    ui.tabs->addTab(m_tab_init->getTabWidget(),
+                    tr("&Structure Limits"));
+    ui.tabs->addTab(m_tab_edit->getTabWidget(),
+                    tr("Optimization &Settings"));
+    ui.tabs->addTab(m_tab_opt->getTabWidget(),
+                    tr("&Search Settings"));
+    ui.tabs->addTab(m_tab_progress->getTabWidget(),
+                    tr("&Progress"));
+    ui.tabs->addTab(m_tab_plot->getTabWidget(),
+                    tr("&Plot"));
+    ui.tabs->addTab(m_tab_log->getTabWidget(),
+                    tr("&Log"));
 
     initialize();
   }
