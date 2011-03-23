@@ -403,10 +403,14 @@ namespace GlobalSearch {
           return QueueInterface::Error;
         }
       }
+      // Not in queue and no output?
+      //
+      // I've seen this a few times when mpd dies unexpectedly and the
+      // output files are never copied back. Just restart.
       m_opt->debug(tr("Structure %1 with jobID %2 is missing "
                       "from the queue and has not written any output.")
                    .arg(s->getIDString()).arg(s->getJobID()));
-      return QueueInterface::Unknown;
+      return QueueInterface::Error;
     }
     // Unrecognized status:
     else {
