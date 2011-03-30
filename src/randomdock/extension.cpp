@@ -83,15 +83,20 @@ namespace RandomDock {
     m_molecule = molecule;
   }
 
-  void RandomDockExtension::reemitMoleculeChanged(GlobalSearch::Structure *mol) {
+  void RandomDockExtension::reemitMoleculeChanged(GlobalSearch::Structure *s) {
+    // Make copy of s to pass to editor
+    GlobalSearch::Structure *newS = new GlobalSearch::Structure (*s);
+    // Reset filename to something unique
+    newS->setFileName(s->fileName() + "/usermodified.cml");
+
     // Check for weirdness
-    if (mol->numAtoms() != 0) {
-      if (!mol->atom(0)) {
+    if (newS->numAtoms() != 0) {
+      if (!newS->atom(0)) {
         qDebug() << "RandomDockExtension::reemitMoleculeChanged: Molecule is invalid -- not sending to GLWidget";
         return;
       }
     }
-    emit moleculeChanged(mol, Extension::KeepOld);
+    emit moleculeChanged(newS, Extension::DeleteOld);
   }
 
   QUndoCommand* RandomDockExtension::performAction( QAction *, GLWidget *widget )

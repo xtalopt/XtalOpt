@@ -91,7 +91,12 @@ namespace XtalOpt {
   }
 
   void XtalOptExtension::reemitMoleculeChanged(Structure *s) {
-    Xtal *xtal = qobject_cast<Xtal*>(s);
+    // Make copy of Xtal to pass to editor
+    Xtal *xtal = new Xtal (*qobject_cast<Xtal*>(s));
+    xtal->setOBUnitCell(new OpenBabel::OBUnitCell (*s->OBUnitCell()));
+    // Reset filename to something unique
+    xtal->setFileName(s->fileName() + "/usermodified.cml");
+
     // Check for weirdness
     if (xtal->numAtoms() != 0 && !xtal->atom(0)) {
       qWarning() << "XtalOptExtension::reemitMoleculeChanged: Molecule is invalid (bad atoms) -- not sending to GLWidget";
@@ -107,7 +112,7 @@ namespace XtalOpt {
       return;
     }
 
-    emit moleculeChanged(xtal, Extension::KeepOld);
+    emit moleculeChanged(xtal, Extension::DeleteOld);
   }
 
   QUndoCommand* XtalOptExtension::performAction( QAction *, GLWidget *widget )

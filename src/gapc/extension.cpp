@@ -87,7 +87,12 @@ namespace GAPC {
   }
 
   void GAPCExtension::reemitMoleculeChanged(Structure *s) {
-    emit moleculeChanged(s, Extension::KeepOld);
+    // Make copy of s to pass to editor
+    GlobalSearch::Structure *newS = new GlobalSearch::Structure (*s);
+    // Reset filename to something unique
+    newS->setFileName(s->fileName() + "/usermodified.cml");
+
+    emit moleculeChanged(newS, Extension::DeleteOld);
   }
 
   QUndoCommand* GAPCExtension::performAction( QAction *, GLWidget *widget )
