@@ -25,6 +25,7 @@
 #include <QtCore/QtConcurrentRun>
 #include <QtCore/QTimer>
 
+// A couple helper functions/classes -- disable doxygen parsing:
 /// @cond
 namespace {
   class removeFromTrackerWhenScopeEnds
@@ -38,8 +39,16 @@ namespace {
     ~removeFromTrackerWhenScopeEnds() {
       m_tracker->lockForWrite();
       m_tracker->remove(m_structure);
-      m_tracker->unlock();}
+      m_tracker->unlock(); }
   };
+
+  // Locks tracker for reading and calls t->contains(s)
+  bool trackerContainsStructure(GlobalSearch::Structure *s,
+                                GlobalSearch::Tracker *t)
+  { t->lockForRead();
+    bool b = t->contains(s);
+    t->unlock();
+    return b; }
 }
 /// @endcond
 
@@ -393,7 +402,7 @@ namespace GlobalSearch {
 
   void QueueManager::handleInProcessStructure_(Structure *s)
   {
-    Q_ASSERT(m_inProcessTracker.contains(s));
+    Q_ASSERT(trackerContainsStructure(s, &m_inProcessTracker));
     removeFromTrackerWhenScopeEnds popper (s, &m_inProcessTracker);
 
     // Revalidate assumptions
@@ -436,7 +445,7 @@ namespace GlobalSearch {
 
   void QueueManager::handleOptimizedStructure_(Structure *s)
   {
-    Q_ASSERT(m_newlyOptimizedTracker.contains(s));
+    Q_ASSERT(trackerContainsStructure(s, &m_newlyOptimizedTracker));
     removeFromTrackerWhenScopeEnds popper (s, &m_newlyOptimizedTracker);
 
     // Revalidate assumptions
@@ -463,7 +472,7 @@ namespace GlobalSearch {
 
   void QueueManager::handleStepOptimizedStructure_(Structure *s)
   {
-    Q_ASSERT(m_stepOptimizedTracker.contains(s));
+    Q_ASSERT(trackerContainsStructure(s, &m_stepOptimizedTracker));
     removeFromTrackerWhenScopeEnds popper (s, &m_stepOptimizedTracker);
 
     QWriteLocker locker (s->lock());
@@ -528,7 +537,7 @@ namespace GlobalSearch {
 
   void QueueManager::handleErrorStructure_(Structure *s)
   {
-    Q_ASSERT(m_errorTracker.contains(s));
+    Q_ASSERT(trackerContainsStructure(s, &m_errorTracker));
     removeFromTrackerWhenScopeEnds popper (s, &m_errorTracker);
 
     if (s->getStatus() != Structure::Error) {
@@ -585,7 +594,7 @@ namespace GlobalSearch {
 
   void QueueManager::handleSubmittedStructure_(Structure *s)
   {
-    Q_ASSERT(m_submittedTracker.contains(s));
+    Q_ASSERT(trackerContainsStructure(s, &m_submittedTracker));
     removeFromTrackerWhenScopeEnds popper (s, &m_submittedTracker);
 
     if (s->getStatus() != Structure::Submitted) {
@@ -630,7 +639,7 @@ namespace GlobalSearch {
 
   void QueueManager::handleKilledStructure_(Structure *s)
   {
-    Q_ASSERT(m_newlyKilledTracker.contains(s));
+    Q_ASSERT(trackerContainsStructure(s, &m_newlyKilledTracker));
     removeFromTrackerWhenScopeEnds popper (s, &m_newlyKilledTracker);
 
     if (s->getStatus() != Structure::Killed &&
@@ -666,7 +675,7 @@ namespace GlobalSearch {
 
   void QueueManager::handleDuplicateStructure_(Structure *s)
   {
-    Q_ASSERT(m_newDuplicateTracker.contains(s));
+    Q_ASSERT(trackerContainsStructure(s, &m_newDuplicateTracker));
     removeFromTrackerWhenScopeEnds popper (s, &m_newDuplicateTracker);
 
     if (s->getStatus() != Structure::Duplicate) {
@@ -694,7 +703,7 @@ namespace GlobalSearch {
 
   void QueueManager::handleRestartStructure_(Structure *s)
   {
-    Q_ASSERT(m_restartTracker.contains(s));
+    Q_ASSERT(trackerContainsStructure(s, &m_restartTracker));
     removeFromTrackerWhenScopeEnds popper (s, &m_restartTracker);
 
     if (s->getStatus() != Structure::Restart) {
@@ -759,7 +768,7 @@ namespace GlobalSearch {
 
   void QueueManager::addStructureToSubmissionQueue_(Structure *s, int optStep)
   {
-    Q_ASSERT(m_newSubmissionTracker.contains(s));
+    Q_ASSERT(trackerContainsStructure(s, &m_newSubmissionTracker));
     removeFromTrackerWhenScopeEnds popper (s, &m_newSubmissionTracker);
 
     // Update structure
