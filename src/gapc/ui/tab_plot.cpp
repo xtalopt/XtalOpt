@@ -20,8 +20,9 @@
 #include <gapc/ui/dialog.h>
 #include <gapc/structures/protectedcluster.h>
 
-#include <globalsearch/tracker.h>
 #include <globalsearch/macros.h>
+#include <globalsearch/queuemanager.h>
+#include <globalsearch/tracker.h>
 
 #include <avogadro/glwidget.h>
 #include <avogadro/primitive.h>
@@ -79,11 +80,15 @@ namespace GAPC {
             this, SLOT(selectMoleculeFromPlot(PlotPoint*)));
     connect(ui.plot_plot, SIGNAL(pointClicked(PlotPoint*)),
             this, SLOT(lockClearAndSelectPoint(PlotPoint*)));
-    connect(m_opt, SIGNAL(newInfoUpdate()),
+    connect(m_opt, SIGNAL(refreshAllStructureInfo()),
+            this, SLOT(refreshPlot()));
+    connect(m_opt, SIGNAL(refreshAllStructureInfo()),
+            this, SLOT(populatePCList()));
+    connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(populatePCList()));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(populatePCList()));
-    connect(m_opt, SIGNAL(newInfoUpdate()),
+    connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(updatePlot()));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(updatePlot()));

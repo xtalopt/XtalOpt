@@ -55,8 +55,6 @@ namespace GAPC {
     // dialog connections
     connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
             this, SLOT(highlightPC(GlobalSearch::Structure*)));
-    connect(m_opt, SIGNAL(updateAllInfo()),
-            this, SLOT(updateAllInfo()));
 
     // Progress table connections
     connect(m_timer, SIGNAL(timeout()),
@@ -79,6 +77,8 @@ namespace GAPC {
     connect(ui.table_list, SIGNAL(customContextMenuRequested(QPoint)),
             this, SLOT(progressContextMenu(QPoint)));
     connect(ui.push_refreshAll, SIGNAL(clicked()),
+            this, SLOT(updateAllInfo()));
+    connect(m_opt, SIGNAL(refreshAllStructureInfo()),
             this, SLOT(updateAllInfo()));
     connect(m_opt, SIGNAL(startingSession()),
             this, SLOT(disableRowTracking()));

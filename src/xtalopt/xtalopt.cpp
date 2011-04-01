@@ -1269,7 +1269,6 @@ namespace XtalOpt {
       xtal->lock()->unlock();
     }
     checkForDuplicates();
-    emit updateAllInfo();
   }
 
   void XtalOpt::checkForDuplicates() {
@@ -1358,7 +1357,7 @@ namespace XtalOpt {
         }
       }
     }
-    emit updateAllInfo();
+    emit refreshAllStructureInfo();
   }
 
 } // end namespace XtalOpt

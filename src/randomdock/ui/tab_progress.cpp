@@ -59,8 +59,6 @@ namespace RandomDock {
     // dialog connections
     connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
             this, SLOT(highlightScene(GlobalSearch::Structure*)));
-    connect(m_opt, SIGNAL(updateAllInfo()),
-            this, SLOT(updateAllInfo()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(startTimer()));
 
@@ -84,6 +82,8 @@ namespace RandomDock {
     connect(ui.table_list, SIGNAL(customContextMenuRequested(QPoint)),
             this, SLOT(progressContextMenu(QPoint)));
     connect(ui.push_refreshAll, SIGNAL(clicked()),
+            this, SLOT(updateAllInfo()));
+    connect(m_opt, SIGNAL(refreshAllStructureInfo()),
             this, SLOT(updateAllInfo()));
     connect(m_opt, SIGNAL(startingSession()),
             this, SLOT(disableRowTracking()));

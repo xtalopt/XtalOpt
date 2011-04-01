@@ -143,11 +143,7 @@ namespace GAPC {
 
     ProtectedCluster* generateRandomPC(unsigned int gen = 1, unsigned int id = 0);
 
-   signals:
-    void updateAllInfo();
-    void newInfoUpdate();
-
-   public slots:
+  public slots:
     /**
      * Begin the search.
      */
