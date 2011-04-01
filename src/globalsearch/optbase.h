@@ -378,6 +378,14 @@ for (ind = 0; ind < probs.size(); ind++)
      */
     void needPassword(const QString &message, QString *newPassword, bool *ok);
 
+    /**
+     * Emitted when a major change has occurred affecting many
+     * structures, e.g. when duplicates are set/reset. It is
+     * recommended that any user-visible structure data is rebuilt
+     * from scratch when this is called.
+     */
+    void refreshAllStructureInfo();
+
     // Omit the following from doxygen:
     /// \cond
     void sig_setClipboard(const QString &text) const;

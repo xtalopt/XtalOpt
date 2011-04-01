@@ -1111,6 +1111,8 @@ optimizations. If so, safely ignore this message.")
       .arg(comptime, 5, 'g')
       .arg(alltime,  5, 'g')
       .arg(sts.size());
+
+    emit refreshAllStructureInfo();
   }
 
 }

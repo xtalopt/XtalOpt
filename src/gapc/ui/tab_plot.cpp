@@ -80,6 +80,10 @@ namespace GAPC {
             this, SLOT(selectMoleculeFromPlot(PlotPoint*)));
     connect(ui.plot_plot, SIGNAL(pointClicked(PlotPoint*)),
             this, SLOT(lockClearAndSelectPoint(PlotPoint*)));
+    connect(m_opt, SIGNAL(refreshAllStructureInfo()),
+            this, SLOT(refreshPlot()));
+    connect(m_opt, SIGNAL(refreshAllStructureInfo()),
+            this, SLOT(populatePCList()));
     connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(populatePCList()));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),

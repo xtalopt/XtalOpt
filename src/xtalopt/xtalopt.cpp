@@ -1351,6 +1351,7 @@ namespace XtalOpt {
         }
       }
     }
+    emit refreshAllStructureInfo();
   }
 
 } // end namespace XtalOpt

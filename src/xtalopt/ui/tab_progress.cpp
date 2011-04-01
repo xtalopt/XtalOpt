@@ -81,6 +81,8 @@ namespace XtalOpt {
             this, SLOT(progressContextMenu(QPoint)));
     connect(ui.push_refreshAll, SIGNAL(clicked()),
             this, SLOT(updateAllInfo()));
+    connect(m_opt, SIGNAL(refreshAllStructureInfo()),
+            this, SLOT(updateAllInfo()));
     connect(m_opt, SIGNAL(startingSession()),
             this, SLOT(disableRowTracking()));
     connect(m_opt, SIGNAL(sessionStarted()),
