@@ -344,6 +344,7 @@ namespace GlobalSearch {
      * @param list list of distances in Angstrom
      * @sa getNearestNeighborDistance
      * @sa getNearestNeighborHistogram
+     * @sa getNeighbors
      */
     virtual bool getNearestNeighborDistances(QList<double> * list) const;
 
@@ -357,6 +358,7 @@ namespace GlobalSearch {
      * shortest interatomic distance.
      * @sa getNearestNeighborDistance
      * @sa getNearestNeighborHistogram
+     * @sa getNeighbors
      */
     virtual bool getShortestInteratomicDistance(double & shortest) const;
 
@@ -376,10 +378,11 @@ namespace GlobalSearch {
      * nearest neighbor distance.
      * @sa getShortestInteratomicDistance
      * @sa getNearestNeighborHistogram
+     * @sa getNeighbors
      */
-    virtual bool getNearestNeighborDistance(double x,
-                                            double y,
-                                            double z,
+    virtual bool getNearestNeighborDistance(const double x,
+                                            const double y,
+                                            const double z,
                                             double & shortest) const;
 
     /** Find the nearest neighbor distance of a specified atom.
@@ -392,9 +395,30 @@ namespace GlobalSearch {
      * nearest neighbor distance.
      * @sa getShortestInteratomicDistance
      * @sa getNearestNeighborHistogram
+     * @sa getNeighbors
      */
-    virtual bool getNearestNeighborDistance(Avogadro::Atom *atom,
+    virtual bool getNearestNeighborDistance(const Avogadro::Atom *atom,
                                             double & shortest) const;
+
+    /**
+     * @return a list of all atoms within \a cutoff of
+     * (\a x,\a y,\a z) and, optionally, their \a distances.
+     */
+    QList<Avogadro::Atom*> getNeighbors (const double x,
+                                         const double y,
+                                         const double z,
+                                         const double cutoff,
+                                         QList<double> *distances = 0) const;
+
+    /**
+     * @overload
+     *
+     * @return a list of all atoms within \a cutoff of \a atom and,
+     *  optionally, their \a distances.
+     */
+    QList<Avogadro::Atom*> getNeighbors (const Avogadro::Atom *atom,
+                                         const double cutoff,
+                                         QList<double> *distances = 0) const;
 
     /** Get the default histogram data.
      */

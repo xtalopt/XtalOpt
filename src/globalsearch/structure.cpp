@@ -709,9 +709,13 @@ namespace GlobalSearch {
     return true;
   }
 
-  bool Structure::getNearestNeighborDistance(double x, double y, double z, double & shortest) const {
+  bool Structure::getNearestNeighborDistance(const double x,
+                                             const double y,
+                                             const double z,
+                                             double & shortest) const
+  {
     QList<Atom*> atomList = atoms();
-    if (atomList.size() < 1) return false; // Need at least one atom!
+    if (atomList.size() < 2) return false; // Need at least two atoms!
     QList<Vector3d> atomPositions;
     for (int i = 0; i < atomList.size(); i++)
       atomPositions.push_back(*(atomList.at(i)->pos()));
@@ -731,20 +735,48 @@ namespace GlobalSearch {
     return true;
   }
 
-  bool Structure::getNearestNeighborDistance(Atom *atom,
+  bool Structure::getNearestNeighborDistance(const Atom *atom,
                                              double & shortest) const
   {
-    QList<Atom*> atomList = atoms();
-    QList<Atom *>::const_iterator at_i;
-    shortest = 1e9;
-    for (at_i = atomList.begin(); at_i != atomList.end(); at_i++) {
-      if ((*at_i) == atom) continue;
-      double dist = fabs( ( (*(*at_i)->pos()) -
-                            (*(atom->pos()))
-                            ).norm() );
-      if (dist < shortest) shortest = dist;
+    const Eigen::Vector3d *position = atom->pos();
+    return getNearestNeighborDistance(position->x(),
+                                      position->y(),
+                                      position->z(), shortest);
+  }
+
+  QList<Atom*> Structure::getNeighbors(const double x,
+                                       const double y,
+                                       const double z,
+                                       const double cutoff,
+                                       QList<double> *distances) const
+  {
+    QList<Atom*> neighbors;
+    if (distances) {
+      distances->clear();
     }
-    return shortest;
+    Eigen::Vector3d vec (x,y,z);
+    double cutoffSquared = cutoff*cutoff;
+    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
+           it_end = m_atomList.constEnd(); it != it_end; ++it) {
+      double distSq = ((*(*it)->pos()) - vec).squaredNorm();
+      if (distSq <= cutoffSquared) {
+        neighbors << *it;
+        if (distances) {
+          *distances << sqrt(distSq);
+        }
+      }
+    }
+    return neighbors;
+  }
+
+  QList<Atom*> Structure::getNeighbors(const Atom *atom,
+                                       const double cutoff,
+                                       QList<double> *distances) const
+  {
+    const Eigen::Vector3d *position = atom->pos();
+    return getNeighbors(position->x(),
+                        position->y(),
+                        position->z(), cutoff, distances);
   }
 
   void Structure::requestHistogramGeneration()
