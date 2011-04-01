@@ -15,6 +15,8 @@
 
 #include <globalsearch/sshmanager.h>
 
+#include <globalsearch/macros.h>
+
 #include <QtCore/QDebug>
 
 #define START //qDebug() << __PRETTY_FUNCTION__ << " called...";
@@ -69,6 +71,13 @@ namespace GlobalSearch {
 
     QList<SSHConnection*>::iterator it;
     for (it =  m_conns.begin(); it != m_conns.end(); it++) {
+      while ((*it)->inUse()) {
+        // Wait for connection to become free
+        qDebug() << "Spinning while waiting for SSHConnection to free."
+                 << *it;
+        GS_SLEEP(1);
+      }
+      (*it)->setUsed(true);
       delete (*it);
       (*it) = 0;
     }
@@ -89,7 +98,7 @@ namespace GlobalSearch {
 
     QList<SSHConnection*>::iterator it;
     for (it =  m_conns.begin(); it != m_conns.end(); it++) {
-      if (!(*it)->inUse()) {
+      if ((*it) && !(*it)->inUse()) {
         (*it)->setUsed(true);
         //qDebug() << "Returning SSHConnection instance " << (*it);
         END;

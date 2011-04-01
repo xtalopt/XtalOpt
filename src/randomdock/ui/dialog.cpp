@@ -20,7 +20,6 @@
 #include <randomdock/ui/tab_conformers.h>
 #include <randomdock/ui/tab_params.h>
 #include <randomdock/ui/tab_edit.h>
-#include <randomdock/ui/tab_sys.h>
 #include <randomdock/ui/tab_progress.h>
 #include <randomdock/ui/tab_plot.h>
 #include <randomdock/ui/tab_log.h>
@@ -69,7 +68,6 @@ namespace RandomDock {
     m_tab_conformers	= new TabConformers(this, randomdock);
     m_tab_edit		= new TabEdit(this, randomdock);
     m_tab_params	= new TabParams(this, randomdock);
-    m_tab_sys		= new TabSys(this, randomdock);
     m_tab_progress	= new TabProgress(this, randomdock);
     m_tab_plot		= new TabPlot(this, randomdock);
     m_tab_log		= new TabLog(this, randomdock);
@@ -80,7 +78,6 @@ namespace RandomDock {
     ui.tabs->addTab(m_tab_conformers->getTabWidget(),   tr("&Conformers"));
     ui.tabs->addTab(m_tab_edit->getTabWidget(),         tr("Optimization &Templates"));
     ui.tabs->addTab(m_tab_params->getTabWidget(),       tr("&Search Settings"));
-    ui.tabs->addTab(m_tab_sys->getTabWidget(),		tr("S&ystem Settings"));
     ui.tabs->addTab(m_tab_progress->getTabWidget(),     tr("&Progress"));
     ui.tabs->addTab(m_tab_plot->getTabWidget(),         tr("P&lot"));
     ui.tabs->addTab(m_tab_log->getTabWidget(),          tr("&Log"));
@@ -101,12 +98,10 @@ namespace RandomDock {
   {
     this->hide();
 
-    if (m_opt->saveOnExit) {
-      m_opt->tracker()->lockForRead();
-      writeSettings();
-      saveSession();
-      m_opt->tracker()->unlock();
-    }
+    m_opt->tracker()->lockForRead();
+    writeSettings();
+    saveSession();
+    m_opt->tracker()->unlock();
   }
 
   void RandomDockDialog::saveSession()

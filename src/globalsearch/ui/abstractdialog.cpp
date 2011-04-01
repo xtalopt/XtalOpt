@@ -22,6 +22,7 @@
 
 #include <openbabel/oberror.h>
 
+#include <QtGui/QApplication>
 #include <QtGui/QLabel>
 #include <QtGui/QFileDialog>
 #include <QtGui/QPushButton>
@@ -54,6 +55,13 @@ namespace GlobalSearch {
   void AbstractDialog::initialize()
   {
     // Connections
+    connect(this, SIGNAL(tabsReadSettings(const QString &)),
+            this, SLOT(reemitTabsReadSettings(const QString &)),
+            Qt::DirectConnection);
+    // Leave this as an autoconnection to prevent deadlocks on shutdown
+    connect(this, SIGNAL(tabsWriteSettings(const QString &)),
+            this, SLOT(reemitTabsWriteSettings(const QString &)));
+
     connect(ui_push_begin, SIGNAL(clicked()),
             this, SLOT(startSearch()));
     connect(ui_push_save, SIGNAL(clicked()),
@@ -153,8 +161,8 @@ namespace GlobalSearch {
     emit tabsUpdateGUI();
   }
 
-  void AbstractDialog::resumeSession() {
-    QMutexLocker locker (m_opt->stateFileMutex);
+  void AbstractDialog::resumeSession()
+  {
     QString filename;
     QFileDialog dialog (NULL,
                         QString("Select .state file to resume"),
@@ -168,6 +176,12 @@ namespace GlobalSearch {
     else { // User cancel file selection.
       return;
     }
+
+    QtConcurrent::run(this, &AbstractDialog::resumeSession_, filename);
+  }
+
+  void AbstractDialog::resumeSession_(const QString &filename)
+  {
     m_opt->emitStartingSession();
     startProgressUpdate(tr("Resuming session..."), 0, 0);
     m_opt->tracker()->lockForWrite();
@@ -181,7 +195,6 @@ namespace GlobalSearch {
     // Refresh dialog and settings
     writeSettings();
     stopProgressUpdate();
-    m_opt->emitSessionStarted();
   }
 
   void AbstractDialog::updateStatus_(int opt, int run, int fail) {
@@ -235,6 +248,28 @@ namespace GlobalSearch {
   void AbstractDialog::repaintProgressBar_() {
     ui_label_prog->repaint();
     ui_progbar->repaint();
+  }
+
+  void AbstractDialog::reemitTabsWriteSettings(const QString &filename)
+  {
+    if (QThread::currentThread() == qApp->thread()) {
+      // In GUI thread, direct connection
+      emit tabsWriteSettingsDirect(filename);
+    } else {
+      // In a worker thread, use BlockingQueued
+      emit tabsWriteSettingsBlockingQueued(filename);
+    }
+  }
+
+  void AbstractDialog::reemitTabsReadSettings(const QString &filename)
+  {
+    if (QThread::currentThread() == qApp->thread()) {
+      // In GUI thread, direct connection
+      emit tabsReadSettingsDirect(filename);
+    } else {
+      // In a worker thread, use BlockingQueued
+      emit tabsReadSettingsBlockingQueued(filename);
+    }
   }
 
 }

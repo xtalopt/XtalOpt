@@ -27,6 +27,7 @@
 #include <QtGui/QInputDialog>
 
 namespace GlobalSearch {
+  class SlottedWaitCondition;
   class Structure;
 }
 
@@ -49,6 +50,11 @@ namespace RandomDock {
       OT_GAMESS = 0,
       OT_ADF,
       OT_MOPAC
+    };
+
+    enum QueueInterfaces {
+      QI_LOCAL = 0,
+      QI_PBS
     };
 
     Scene* generateRandomScene();
@@ -89,17 +95,9 @@ namespace RandomDock {
     void startSearch();
     void generateNewStructure();
     void initializeAndAddScene(Scene *scene);
-    void setOptimizer(GlobalSearch::Optimizer *o) {
-      setOptimizer_opt(o);};
-    void setOptimizer(const QString &IDString, const QString &filename = "") {
-      setOptimizer_string(IDString, filename);};
-    void setOptimizer(OptTypes opttype, const QString &filename = "") {
-      setOptimizer_enum(opttype, filename);};
 
-   private:
-    void setOptimizer_string(const QString &s, const QString &filename = "");
-    void setOptimizer_enum(OptTypes opttype, const QString &filename = "");
-
+  private:
+    GlobalSearch::SlottedWaitCondition *m_initWC;
   };
 
 } // end namespace RandomDock

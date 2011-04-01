@@ -15,15 +15,19 @@
 
 #include <globalsearch/optbase.h>
 
-#include <globalsearch/structure.h>
+#include <globalsearch/bt.h>
+#include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/queueinterface.h>
+#include <globalsearch/queueinterfaces/local.h>
+#include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/sshmanager.h>
-#include <globalsearch/macros.h>
+#include <globalsearch/structure.h>
 #include <globalsearch/ui/abstractdialog.h>
-#include <globalsearch/bt.h>
 
 #include <QtCore/QFile>
+#include <QtCore/QThread>
 
 #include <QtGui/QClipboard>
 #include <QtGui/QMessageBox>
@@ -38,23 +42,31 @@ namespace GlobalSearch {
     QObject(parent),
     m_dialog(parent),
     m_tracker(new Tracker (this)),
-    m_queue(new QueueManager(this)),
-    m_optimizer(0), // This will be set when the GUI is initialized
+    m_queueThread(new QThread),
+    m_queue(new QueueManager(m_queueThread, this)),
+    m_queueInterface(0), // This will be set when the GUI is initialized
+    m_optimizer(0),      // This will be set when the GUI is initialized
     m_ssh(new SSHManager (5, this)),
     m_idString("Generic"),
     sOBMutex(new QMutex),
     stateFileMutex(new QMutex),
     backTraceMutex(new QMutex),
     savePending(false),
-    saveOnExit(true),
     readOnly(false),
     testingMode(false),
     test_nRunsStart(1),
     test_nRunsEnd(100),
     test_nStructs(600),
-    cutoff(-1)
+    cutoff(-1),
+    m_schemaVersion(1)
   {
     // Connections
+    connect(this, SIGNAL(sessionStarted()),
+            m_queueThread, SLOT(start()),
+            Qt::DirectConnection);
+    connect(this, SIGNAL(startingSession()),
+            m_queueThread, SLOT(start()),
+            Qt::DirectConnection);
     connect(this, SIGNAL(startingSession()),
             this, SLOT(setIsStartingTrue()));
     connect(this, SIGNAL(sessionStarted()),
@@ -75,7 +87,22 @@ namespace GlobalSearch {
   OptBase::~OptBase()
   {
     delete m_queue;
+    m_queue = 0;
+
+    if (m_queueThread && m_queueThread->isRunning()) {
+      m_queueThread->wait();
+    }
+    delete m_queueThread;
+    m_queueThread = 0;
+
+    delete m_optimizer;
+    m_optimizer = 0;
+
+    delete m_queueInterface;
+    m_queueInterface = 0;
+
     delete m_tracker;
+    m_tracker = 0;
   }
 
   void OptBase::reset() {
@@ -201,7 +228,7 @@ namespace GlobalSearch {
     }
 
     SETTINGS(filename);
-    const int VERSION = 1;
+    const int VERSION = m_schemaVersion;
     settings->beginGroup(m_idString.toLower());
     settings->setValue("version",          VERSION);
     settings->setValue("saveSuccessful", false);
@@ -417,13 +444,16 @@ namespace GlobalSearch {
     return str;
   }
 
-  void OptBase::setOptimizer_opt(Optimizer *o) {
-    Optimizer *old = m_optimizer;
-    if (m_optimizer) {
-      old->deleteLater();
-    }
+  void OptBase::setOptimizer(Optimizer *o)
+  {
     m_optimizer = o;
     emit optimizerChanged(o);
+  }
+
+  void OptBase::setQueueInterface(QueueInterface *q)
+  {
+    m_queueInterface = q;
+    emit queueInterfaceChanged(q);
   }
 
   void OptBase::promptForPassword(const QString &message,

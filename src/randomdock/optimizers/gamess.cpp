@@ -36,7 +36,6 @@ namespace RandomDock {
 
     // Set allowed filenames, e.g.
     m_templates.insert("job.inp",QStringList(""));
-    m_templates.insert("job.pbs",QStringList(""));
 
     // Setup for completion values
     m_completionFilename = "job.gamout";
@@ -48,6 +47,12 @@ namespace RandomDock {
 
     // Set the name of the optimizer to be returned by getIDString()
     m_idString = "GAMESS";
+
+    // Local execution setup:
+    m_localRunCommand = "gms job";
+    m_stdinFilename = "";
+    m_stdoutFilename = "";
+    m_stderrFilename = "";
 
     readSettings(filename);
   }

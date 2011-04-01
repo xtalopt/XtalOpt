@@ -22,7 +22,6 @@
 #include <xtalopt/ui/tab_init.h>
 #include <xtalopt/ui/tab_edit.h>
 #include <xtalopt/ui/tab_opt.h>
-#include <xtalopt/ui/tab_sys.h>
 #include <xtalopt/ui/tab_progress.h>
 #include <xtalopt/ui/tab_plot.h>
 #include <xtalopt/ui/tab_log.h>
@@ -63,23 +62,27 @@ namespace XtalOpt {
     m_opt = xtalopt;
 
     // Initialize tabs
-    m_tab_init		= new TabInit(this, xtalopt);
-    m_tab_edit		= new TabEdit(this, xtalopt);
-    m_tab_opt		= new TabOpt(this, xtalopt);
-    m_tab_sys		= new TabSys(this, xtalopt);
-    m_tab_progress	= new TabProgress(this, xtalopt);
-    m_tab_plot		= new TabPlot(this, xtalopt);
-    m_tab_log		= new TabLog(this, xtalopt);
+    m_tab_init          = new TabInit(this, xtalopt);
+    m_tab_edit          = new TabEdit(this, xtalopt);
+    m_tab_opt           = new TabOpt(this, xtalopt);
+    m_tab_progress      = new TabProgress(this, xtalopt);
+    m_tab_plot          = new TabPlot(this, xtalopt);
+    m_tab_log           = new TabLog(this, xtalopt);
 
     // Populate tab widget
     ui.tabs->clear();
-    ui.tabs->addTab(m_tab_init->getTabWidget(),		tr("Cell &Initialization"));
-    ui.tabs->addTab(m_tab_edit->getTabWidget(),         tr("Optimization &Templates"));
-    ui.tabs->addTab(m_tab_opt->getTabWidget(),          tr("&Optimization Settings"));
-    ui.tabs->addTab(m_tab_sys->getTabWidget(),		tr("&System Settings"));
-    ui.tabs->addTab(m_tab_progress->getTabWidget(),     tr("&Progress"));
-    ui.tabs->addTab(m_tab_plot->getTabWidget(),         tr("&Plot"));
-    ui.tabs->addTab(m_tab_log->getTabWidget(),          tr("&Log"));
+    ui.tabs->addTab(m_tab_init->getTabWidget(),
+                    tr("&Structure Limits"));
+    ui.tabs->addTab(m_tab_edit->getTabWidget(),
+                    tr("Optimization &Settings"));
+    ui.tabs->addTab(m_tab_opt->getTabWidget(),
+                    tr("&Search Settings"));
+    ui.tabs->addTab(m_tab_progress->getTabWidget(),
+                    tr("&Progress"));
+    ui.tabs->addTab(m_tab_plot->getTabWidget(),
+                    tr("&Plot"));
+    ui.tabs->addTab(m_tab_log->getTabWidget(),
+                    tr("&Log"));
 
     initialize();
   }
@@ -88,12 +91,10 @@ namespace XtalOpt {
   {
     this->hide();
 
-    if (m_opt->saveOnExit) {
-      m_opt->tracker()->lockForRead();
-      writeSettings();
-      saveSession();
-      m_opt->tracker()->unlock();
-    }
+    m_opt->tracker()->lockForRead();
+    writeSettings();
+    saveSession();
+    m_opt->tracker()->unlock();
     // m_opt is deleted by ~AbstractDialog
   }
 
@@ -131,10 +132,5 @@ namespace XtalOpt {
                         &XtalOpt::startSearch);
     }
   }
-
-  void XtalOptDialog::startProgressTimer()
-  {
-    m_tab_progress->startTimer();
-  };
 
 }

@@ -22,6 +22,7 @@
 
 #include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
+#include <globalsearch/queueinterface.h>
 #include <globalsearch/queuemanager.h>
 
 #include <QMenu>
@@ -54,10 +55,6 @@ namespace GAPC {
     // dialog connections
     connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
             this, SLOT(highlightPC(GlobalSearch::Structure*)));
-    connect(this, SIGNAL(refresh()),
-            m_opt->queue(), SLOT(checkRunning()));
-    connect(this, SIGNAL(refresh()),
-            m_opt->queue(), SLOT(checkPopulation()));
     connect(m_opt, SIGNAL(updateAllInfo()),
             this, SLOT(updateAllInfo()));
 
@@ -77,7 +74,8 @@ namespace GAPC {
     connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(newInfoUpdate(GlobalSearch::Structure *)));
     connect(this, SIGNAL(infoUpdate()),
-            this, SLOT(updateInfo()));
+            this, SLOT(updateInfo()),
+            Qt::QueuedConnection);
     connect(ui.table_list, SIGNAL(customContextMenuRequested(QPoint)),
             this, SLOT(progressContextMenu(QPoint)));
     connect(ui.push_refreshAll, SIGNAL(clicked()),
@@ -158,10 +156,6 @@ namespace GAPC {
       return;
     }
 
-    QtConcurrent::run(m_opt->queue(),
-                      &GlobalSearch::QueueManager::checkPopulation);
-
-    emit refresh();
     m_update_mutex->unlock();
   }
 
@@ -271,9 +265,6 @@ namespace GAPC {
     uint totalOptSteps = m_opt->optimizer()->getNumberOfOptSteps();
     QBrush brush (Qt::white);
 
-    // Get queue data
-    m_opt->queue()->updateQueue();
-
     QReadLocker pcLocker (pc->lock());
 
     time = pc->getOptElapsed();
@@ -297,10 +288,10 @@ namespace GAPC {
     switch (pc->getStatus()) {
     case ProtectedCluster::InProcess: {
       pcLocker.unlock();
-      Optimizer::JobState state = m_opt->optimizer()->getStatus(pc);
+      QueueInterface::QueueStatus state = m_opt->queueInterface()->getStatus(pc);
       pcLocker.relock();
       switch (state) {
-      case Optimizer::Running:
+      case QueueInterface::Running:
         ui.table_list->item(i, Status)->setText(tr("Running (Opt Step %1 of %2, %3 failures)")
                                                 .arg(QString::number(pc->getCurrentOptStep()))
                                                 .arg(QString::number(totalOptSteps))
@@ -308,7 +299,7 @@ namespace GAPC {
                                                 );
         brush.setColor(Qt::green);
         break;
-      case Optimizer::Queued:
+      case QueueInterface::Queued:
         ui.table_list->item(i, Status)->setText(tr("Queued (Opt Step %1 of %2, %3 failures)")
                                                 .arg(QString::number(pc->getCurrentOptStep()))
                                                 .arg(QString::number(totalOptSteps))
@@ -316,23 +307,23 @@ namespace GAPC {
                                                 );
         brush.setColor(Qt::cyan);
         break;
-      case Optimizer::Success:
+      case QueueInterface::Success:
         ui.table_list->item(i, Status)->setText("Starting update...");
         break;
-      case Optimizer::Unknown:
+      case QueueInterface::Unknown:
         ui.table_list->item(i, Status)->setText("Unknown");
         break;
-      case Optimizer::Error:
+      case QueueInterface::Error:
         ui.table_list->item(i, Status)->setText("Error: Restarting job...");
         brush.setColor(Qt::darkRed);
         break;
-      case Optimizer::CommunicationError:
+      case QueueInterface::CommunicationError:
         ui.table_list->item(i, Status)->setText("Comm. Error");
         brush.setColor(Qt::darkRed);
         break;
       // Shouldn't happen; started and pending only occur when pc is "Submitted"
-      case Optimizer::Started:
-      case Optimizer::Pending:
+      case QueueInterface::Started:
+      case QueueInterface::Pending:
       default:
         break;
       }
@@ -534,14 +525,6 @@ namespace GAPC {
     QWriteLocker locker (m_context_pc->lock());
     m_context_pc->setCurrentOptStep(optStep);
 
-    // Restart job if currently running
-    if ( m_context_pc->getStatus() == ProtectedCluster::InProcess ||
-         m_context_pc->getStatus() == ProtectedCluster::Submitted ) {
-      locker.unlock();
-      m_opt->optimizer()->deleteJob(m_context_pc);
-      locker.relock();
-    }
-
     m_context_pc->setStatus(ProtectedCluster::Restart);
     newInfoUpdate(m_context_pc);
 
@@ -558,19 +541,11 @@ namespace GAPC {
   void TabProgress::killPCProgress_()
   {
     if (!m_context_pc) return;
-    QWriteLocker locker (m_context_pc->lock());
 
-    // End job if currently running
-    if ( m_context_pc->getStatus() != ProtectedCluster::Optimized ) {
-      locker.unlock();
-      m_opt->optimizer()->deleteJob(m_context_pc);
-      locker.relock();
-      m_context_pc->setStatus(ProtectedCluster::Killed);
-    }
-    else m_context_pc->setStatus(ProtectedCluster::Removed);
+    // QueueManager takes care of mutex locking
+    m_opt->queue()->killStructure(m_context_pc);
 
     // Clear context pointer
-    locker.unlock();
     newInfoUpdate(m_context_pc);
     m_context_pc = 0;
   }
@@ -617,8 +592,6 @@ namespace GAPC {
     newInfoUpdate(m_context_pc);
     locker.unlock();
     m_context_pc = 0;
-
-    emit refresh();
   }
 
   void TabProgress::randomizeStructureProgress()
@@ -632,7 +605,7 @@ namespace GAPC {
 
     // End job if currently running
     if (m_context_pc->getJobID()) {
-      m_opt->optimizer()->deleteJob(m_context_pc);
+      m_opt->queueInterface()->stopJob(m_context_pc);
     }
 
     m_opt->replaceWithRandom(m_context_pc, "manual");

@@ -23,7 +23,6 @@
 #include <gapc/ui/tab_init.h>
 #include <gapc/ui/tab_edit.h>
 #include <gapc/ui/tab_opt.h>
-#include <gapc/ui/tab_sys.h>
 #include <gapc/ui/tab_progress.h>
 #include <gapc/ui/tab_plot.h>
 #include <gapc/ui/tab_log.h>
@@ -69,7 +68,6 @@ namespace GAPC {
     m_tab_init		= new TabInit(this, gapc);
     m_tab_edit		= new TabEdit(this, gapc);
     m_tab_opt		= new TabOpt(this, gapc);
-    m_tab_sys		= new TabSys(this, gapc);
     m_tab_progress	= new TabProgress(this, gapc);
     m_tab_plot		= new TabPlot(this, gapc);
     m_tab_log		= new TabLog(this, gapc);
@@ -79,7 +77,6 @@ namespace GAPC {
     ui.tabs->addTab(m_tab_init->getTabWidget(),		tr("Cell &Initialization"));
     ui.tabs->addTab(m_tab_edit->getTabWidget(),         tr("Optimization &Templates"));
     ui.tabs->addTab(m_tab_opt->getTabWidget(),          tr("&Optimization Settings"));
-    ui.tabs->addTab(m_tab_sys->getTabWidget(),		tr("&System Settings"));
     ui.tabs->addTab(m_tab_progress->getTabWidget(),     tr("&Progress"));
     ui.tabs->addTab(m_tab_plot->getTabWidget(),         tr("&Plot"));
     ui.tabs->addTab(m_tab_log->getTabWidget(),          tr("&Log"));
@@ -91,12 +88,10 @@ namespace GAPC {
   {
     this->hide();
 
-    if (m_opt->saveOnExit) {
-      m_opt->tracker()->lockForRead();
-      writeSettings();
-      saveSession();
-      m_opt->tracker()->unlock();
-    }
+    m_opt->tracker()->lockForRead();
+    writeSettings();
+    saveSession();
+    m_opt->tracker()->unlock();
     // m_opt is deleted by ~AbstractDialog
   }
 

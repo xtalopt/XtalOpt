@@ -346,8 +346,8 @@ namespace GlobalSearch {
     virtual void startSearch() =0;
 
     /**
-     * Prompt user for a resume file and then pass it off to
-     * OptBase::load
+     * Prompt user for a resume file and then call resumeSession_ in a
+     * background thread.
      */
     virtual void resumeSession();
 
@@ -525,6 +525,11 @@ namespace GlobalSearch {
 
   protected:
     /**
+     * Resumes the session in file \a filename.
+     */
+    virtual void resumeSession_(const QString &filename);
+
+    /**
      * Cached pointer to the associated OptBase object.
      */
     OptBase *m_opt;
@@ -611,6 +616,21 @@ namespace GlobalSearch {
      * description.
      */
     QTabWidget *ui_tabs;
+
+    /// @cond
+    // These are used to ensure that all tab*settings signals are
+    // handled immediately, using direct or blocking connections as
+    // needed.
+  signals:
+    void tabsWriteSettingsBlockingQueued(const QString &filename);
+    void tabsWriteSettingsDirect(const QString &filename);
+    void tabsReadSettingsBlockingQueued(const QString &filename);
+    void tabsReadSettingsDirect(const QString &filename);
+  private slots:
+    void reemitTabsWriteSettings(const QString &filename);
+    void reemitTabsReadSettings(const QString &filename);
+    /// @endcond
+
 
   };
 }

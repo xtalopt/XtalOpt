@@ -17,67 +17,23 @@
 #ifndef TAB_EDIT_H
 #define TAB_EDIT_H
 
-#include "ui_tab_edit.h"
-
-#include <randomdock/randomdock.h>
-
-#include <globalsearch/ui/abstracttab.h>
-
-#include <QtGui/QMessageBox>
-
-namespace GlobalSearch {
-  class Optimizer;
-}
+#include <globalsearch/ui/defaultedittab.h>
 
 namespace RandomDock {
+  class RandomDock;
   class RandomDockDialog;
 
-  class TabEdit : public GlobalSearch::AbstractTab
+  class TabEdit : public GlobalSearch::DefaultEditTab
   {
-    Q_OBJECT
+    Q_OBJECT;
 
   public:
     explicit TabEdit( RandomDockDialog *parent, RandomDock *p );
     virtual ~TabEdit();
 
-    enum GAMESS_Templates {
-      GAMT_pbs = 0,
-      GAMT_inp
-    };
-
-    enum ADF_Templates {
-      ADFT_pbs = 0
-    };
-
-    enum MOPAC_Templates {
-      MOPACT_pbs = 0,
-      MOPACT_mop
-    };
-
   public slots:
-    void lockGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
-    void updateGUI();
-    void templateChanged(int ind);
-    void showHelp();
-    void updateTemplates();
-    void populateOptList();
-    void appendOptStep();
-    void removeCurrentOptStep();
-    void optStepChanged();
-    void saveScheme();
-    void loadScheme();
-
-  signals:
-    void optimizerChanged(GlobalSearch::Optimizer*);
-
-  private slots:
-    void updateUserValues();
-    void updateOptType();
-
-  private:
-    Ui::Tab_Edit ui;
   };
 }
 

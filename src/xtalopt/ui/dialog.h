@@ -54,8 +54,6 @@ namespace XtalOpt {
 
   public slots:
     void saveSession();
-    // TODO this will need to be reworked when the QueueManager is rewritten.
-    void startProgressTimer();
 
   private slots:
     void startSearch();
