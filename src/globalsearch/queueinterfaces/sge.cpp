@@ -317,7 +317,7 @@ namespace GlobalSearch {
     QString status;
     QStringList list;
     for (int i = 0; i < queueData.size(); i++) {
-      list = queueData.at(i).split(QRegExp("\\s+"));
+      list = queueData.at(i).split(QRegExp("\\s+"), QString::SkipEmptyParts);
       if (list[0].toUInt() == jobID) {
         status = list[4];
         continue;
