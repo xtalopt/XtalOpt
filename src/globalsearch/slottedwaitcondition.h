@@ -133,7 +133,7 @@ slottedWC->postwaitUnlock();
      * can be unlocked by calling the convenience function
      * postwaitUnlock(). See class description for example usage.
      */
-    void wait(unsigned long timeout = ULONG_MAX) {
+    void wait(unsigned long timeout) {
       QWaitCondition::wait(&m_mutex, timeout);}
 
   public slots:
