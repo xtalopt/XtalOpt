@@ -55,7 +55,8 @@ namespace XtalOpt {
 
     enum QueueInterfaces {
       QI_LOCAL = 0,
-      QI_PBS
+      QI_PBS,
+      QI_SGE
     };
 
     enum Operators {

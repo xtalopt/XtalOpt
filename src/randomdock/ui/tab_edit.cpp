@@ -25,6 +25,7 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/pbs.h>
+#include <globalsearch/queueinterfaces/sge.h>
 
 #include <QtGui/QComboBox>
 #include <QtGui/QFont>
@@ -60,7 +61,7 @@ namespace RandomDock {
 
     // Fill m_optimizers in order of RandomDock::QueueInterfaces
     m_queueInterfaces.clear();
-    const unsigned int numQIs = 2;
+    const unsigned int numQIs = 3;
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
       case RandomDock::QI_LOCAL:
@@ -68,6 +69,9 @@ namespace RandomDock {
         break;
       case RandomDock::QI_PBS:
         m_queueInterfaces.append(new PbsQueueInterface (m_opt));
+        break;
+      case RandomDock::QI_SGE:
+        m_queueInterfaces.append(new SgeQueueInterface (m_opt));
         break;
       }
     }
