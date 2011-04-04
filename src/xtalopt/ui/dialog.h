@@ -54,6 +54,7 @@ namespace XtalOpt {
 
   public slots:
     void saveSession();
+    void showTutorialDialog() const;
 
   private slots:
     void startSearch();
