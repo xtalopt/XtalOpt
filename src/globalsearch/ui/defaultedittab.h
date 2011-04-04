@@ -27,16 +27,36 @@ namespace GlobalSearch {
   class AbstractDialog;
   class OptBase;
 
+  /**
+   * @class DefaultEditTab defaultedittab.h <globalsearch/defaultedittab.h>
+   *
+   * @brief Default implementation of a template editor tab.
+   *
+   * @author David C. Lonie
+   */
   class DefaultEditTab : public GlobalSearch::AbstractEditTab
   {
     Q_OBJECT;
 
   public:
+    /**
+     * Constructor
+     *
+     * @param dialog Parent AbstractDialog
+     * @param opt Associated OptBase
+     */
     explicit DefaultEditTab(AbstractDialog *dialog,
                             OptBase *opt);
+
+    /**
+     * Destructor
+     */
     virtual ~DefaultEditTab();
 
   protected slots:
+    /**
+     * Set up the GUI pointers and call AbstractEditTab::initialize()
+     */
     virtual void initialize();
 
   private:

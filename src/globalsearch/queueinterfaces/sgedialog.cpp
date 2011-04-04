@@ -14,6 +14,9 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+// Doxygen skip:
+/// @cond
+
 #include <globalsearch/queueinterfaces/sgedialog.h>
 
 #include <globalsearch/queueinterfaces/sge.h>
@@ -97,3 +100,5 @@ namespace GlobalSearch {
   }
 
 }
+
+/// @endcond

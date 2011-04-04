@@ -778,6 +778,7 @@ namespace GlobalSearch {
      * unit cell of the structure, appending the data to the
      * structure's history.
      *
+     * @param atomicNums List of atomic numbers
      * @param coords List of cartesian coordinates
      * @param energy in eV
      * @param enthalpy in eV

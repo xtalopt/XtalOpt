@@ -14,6 +14,9 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+// Doxygen skip:
+/// @cond
+
 #include <globalsearch/queueinterfaces/pbsdialog.h>
 
 #include <globalsearch/queueinterfaces/pbs.h>
@@ -97,3 +100,5 @@ namespace GlobalSearch {
   }
 
 }
+
+/// @endcond

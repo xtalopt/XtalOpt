@@ -22,13 +22,11 @@ namespace GlobalSearch {
   class SSHConnection;
 
   /**
-   * @class RemoteQueueInterface remotequeueinterface.h <globalsearch/remotequeueinterface.h>
+   * @class RemoteQueueInterface remote.h <globalsearch/remote.h>
    *
    * @brief Interface for running jobs on a remote cluster.
    *
    * @author David C. Lonie
-   *
-   * TODO detailed description.
    */
   class RemoteQueueInterface : public QueueInterface
   {
@@ -58,6 +56,7 @@ namespace GlobalSearch {
      * This function will also construct and write any queue-specific
      * files in m_templates (e.g. job.pbs for PBS queues).
      *
+     * @param s Structure of interest
      * @param files Key: filename, Value: text.
      *
      * @note The filenames in \a files must not be absolute, but
@@ -137,8 +136,13 @@ namespace GlobalSearch {
      *   - 1: No matches found, execution successful
      *   - 2: Execution unsuccessful
      *
+     * @param s Structure of interest
+     * @param matchText Text to match
+     * @param filename Name of file to grep
+     * @param matches List of matches (return)
+     * @param exitcode Exit code of grep (see details) (return)
      * @param caseSensitive If true, match case. Otherwise, perform
-     * case-insensitive search (e.g. grep -i)
+     * case-insensitive search (e.g. grep -i) Default is true.
      *
      * @return True on success, false otherwise.
      *
@@ -163,6 +167,7 @@ namespace GlobalSearch {
      * Create a working directory for \a structure on the remote
      * cluster.
      *
+     * @param structure Structure of interest
      * @param ssh An initialized SSHConnection to use.
      *
      * @sa Structure::getRempath, Structure::setRempath
@@ -173,8 +178,9 @@ namespace GlobalSearch {
                                SSHConnection *ssh) const;
 
     /**
-     * Remote all files from \a structure's remote working directory.
+     * Remove all files from \a structure's remote working directory.
      *
+     * @param structure Structure of interest
      * @param ssh An initialized SSHConnection
      *
      * @return True on success, false otherwise
@@ -186,6 +192,7 @@ namespace GlobalSearch {
      * Copy all files from \a structure's remote working directory to the local
      * working directory.
      *
+     * @param structure Structure of interest
      * @param ssh An initialized SSHConnection to use.
      *
      * @return True on success, false otherwise
