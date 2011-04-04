@@ -30,7 +30,9 @@
 
 #include <QtCore/QSettings>
 #include <QtCore/QtConcurrentRun>
+#include <QtCore/QUrl>
 
+#include <QtGui/QDesktopServices>
 #include <QtGui/QFileDialog>
 #include <QtGui/QMessageBox>
 
@@ -85,6 +87,11 @@ namespace XtalOpt {
                     tr("&Log"));
 
     initialize();
+
+    QSettings settings;
+    if (settings.value("xtalopt/showTutorialLink", true).toBool()) {
+      showTutorialDialog();
+    }
   }
 
   XtalOptDialog::~XtalOptDialog()
@@ -133,4 +140,33 @@ namespace XtalOpt {
     }
   }
 
+  void XtalOptDialog::showTutorialDialog() const
+  {
+    QMessageBox mbox;
+    mbox.setText("There is a tutorial available for new XtalOpt users at\n\n"
+                 "http://xtalopt.openmolecules.net/globalsearch/docs/tut-xo.html"
+                 "\n\nWould you like to go there now?");
+    mbox.setIcon(QMessageBox::Information);
+    QPushButton *yes = mbox.addButton(tr("&Yes"), QMessageBox::YesRole);
+    QPushButton *no = mbox.addButton(tr("&No"), QMessageBox::NoRole);
+    QPushButton *never = mbox.addButton(tr("No, stop asking!"),
+                                        QMessageBox::NoRole);
+
+    mbox.exec();
+
+    QAbstractButton *clicked = mbox.clickedButton();
+
+    if (clicked == yes) {
+      QDesktopServices::openUrl
+        (QUrl("http://xtalopt.openmolecules.net/globalsearch/docs/tut-xo.html",
+              QUrl::TolerantMode));
+    }
+    else if (clicked == never) {
+      QSettings settings;
+      settings.setValue("xtalopt/showTutorialLink", false);
+    }
+    // else ("no" clicked) just return;
+
+    return;
+  }
 }
