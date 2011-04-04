@@ -677,10 +677,8 @@ namespace XtalOpt {
       refPt = ui.plot_plot->mapToWidget(pp->position()).toPoint();
       dx = refPt.x() - cx;
       dy = refPt.y() - cy;
-      // Squared dist:
+      // Squared distance. Don't bother with sqrts here:
       cur = dx*dx + dy*dy;
-      // Fast sqrt:
-      cur >>= 1;
       if ( cur < distance ) {
         pt = pp;
         distance = cur;
