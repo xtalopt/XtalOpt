@@ -481,6 +481,8 @@ namespace GlobalSearch {
     emit sig_setClipboard(text);
   }
 
+  // No need to document this
+  /// @cond
   void OptBase::setClipboard_(const QString &text) const
   {
     // Set to system clipboard
@@ -490,6 +492,7 @@ namespace GlobalSearch {
       QApplication::clipboard()->setText(text, QClipboard::Selection);
     }
   }
+  /// @endcond
 
   void OptBase::warning(const QString & s) {
     qWarning() << "Warning: " << s;

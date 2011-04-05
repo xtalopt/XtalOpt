@@ -94,7 +94,7 @@ namespace GlobalSearch {
      * otherwise. If false, \a err will be overwritten with a
      * user-friendly error message.
      */
-    virtual bool isReadyToSearch(QString *str) {*str = ""; return true;}
+    virtual bool isReadyToSearch(QString *err) {*err = ""; return true;}
 
   public slots:
 
@@ -106,7 +106,7 @@ namespace GlobalSearch {
      * @param filename Scheme or state file to load data from.
      * @sa writeSettings
      */
-    virtual void readSettings(const QString & = "") {}
+    virtual void readSettings(const QString &filename = "") {}
 
     /**
      * Write optimizer data to file (.scheme or .state). If called
@@ -116,7 +116,7 @@ namespace GlobalSearch {
      * @param filename Scheme or state file to write data to.
      * @sa readSettings
      */
-    virtual void writeSettings(const QString & = "") {}
+    virtual void writeSettings(const QString &filename = "") {}
 
     /**
      * Write the input files for Structure \a s to the appropriate
@@ -135,6 +135,7 @@ namespace GlobalSearch {
      * working directory for Structure \a s and (if appropriate) copy
      * them to a remote server.
      *
+     * @param s Structure of interest
      * @param files Key: filename, Value: text.
      *
      * @note The filenames in \a files must not be absolute, but
@@ -215,8 +216,13 @@ namespace GlobalSearch {
      *   - 1: No matches found, execution successful
      *   - 2: Execution unsuccessful
      *
+     * @param s Structure of interest
+     * @param matchText Text to match
+     * @param filename Name of file to grep
+     * @param matches List of matches (return)
+     * @param exitcode Exit code of grep (see details) (return)
      * @param caseSensitive If true, match case. Otherwise, perform
-     * case-insensitive search (e.g. grep -i)
+     * case-insensitive search (e.g. grep -i) Default is true.
      *
      * @return True on success, false otherwise.
      *
@@ -266,7 +272,6 @@ namespace GlobalSearch {
     virtual QDialog* dialog() {return m_dialog;};
 
   protected:
-    /// \cond
     /// Cached pointer to the parent OptBase class
     OptBase *m_opt;
 
@@ -280,9 +285,8 @@ namespace GlobalSearch {
     /// Whether this QueueInterface has a configuration dialog.
     bool m_hasDialog;
 
-    /// Dialog object
-    QDialog* m_dialog;
-    /// \endcond
+    /// Pointer to configuration dialog (may be NULL)
+    QDialog *m_dialog;
 
   };
 }

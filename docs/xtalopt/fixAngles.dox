@@ -6,7 +6,7 @@ namespace XtalOpt {
 @image html fixAngles.png "Example of the angle correction transformation in two dimensions"
 
 Prior to optimization, the structure's lattice is adjusted so that all
-angles are between 60&deg; and 120&deg; by a process similar to that
+angles are between @f$60^\circ@f$ and @f$120^\circ@f$; by a process similar to that
 described by Oganov et al. in their 2008 paper. The following
 transformations are applied to all combinations of the three lattice
 vectors:

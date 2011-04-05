@@ -14,6 +14,9 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+// Doxygen skip:
+/// @cond
+
 #include <globalsearch/queueinterfaces/pbs.h>
 
 #include <globalsearch/macros.h>
@@ -510,3 +513,4 @@ namespace GlobalSearch {
 
 }
 
+/// @endcond

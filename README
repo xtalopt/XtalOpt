@@ -5,66 +5,20 @@ XtalOpt searches for the global minimum of a crystal structure's
 PES using a evolutionary algorithm. It is implemented as an extension
 to the Avogadro molecular editor and licensed under the GPL v2 or later.
 
+More information can be found at http://xtalopt.openmolecules.net.
 
 Installation
 ============
 
-See INSTALL.
+An up-to-date copy of the installation instructions is maintained at:
 
+http://xtalopt.openmolecules.net/wiki/index.fcgi/wiki/Installation
+
+There is also a tutorial available at:
+
+http://xtalopt.openmolecules.net/globalsearch/docs/tut-xo.html
 
 License
 =======
 
 GPL v2 or later. See COPYING.
-
-
-Files
-=====
-Interface (dialog, tabs, etc):
-  -- src/xtalopt/ui/*
-
-Genetic operator implementation:
-  -- src/xtalopt/genetic.*
-
-Debugging:
-  -- src/generic/bt.*
-
-Local optimizer interfaces:
-  -- src/xtalopt/optimizers/pwscf.*
-  -- src/xtalopt/optimizers/gulp.*
-  -- src/xtalopt/optimizers/vasp.*
-  -- src/generic/optimizer.*
-
-Event loop for testing/benchmarking purposes
-  -- src/testing/xtalopttest.*
-
-Evolutionary algoritm "engine":
-  -- src/xtalopt/xtalopt.*
-
-Avogadro extension interface:
-  -- src/extension.*
-
-Queuing and job control:
-  -- src/generic/queuemanager.*
-
-Structure management:
-  -- src/generic/tracker.*
-
-Spacegroup identification:
-  -- src/spglib/debug.*
-  -- src/spglib/pointgroup.*
-  -- src/spglib/spglib.*
-  -- src/spglib/symmetry_kpoint.*
-  -- src/spglib/spacegroup_database.*
-  -- src/spglib/primitive.*
-  -- src/spglib/cell.*
-  -- src/spglib/bravais_art.*
-  -- src/spglib/symmetry.*
-  -- src/spglib/spacegroup_data.*
-  -- src/spglib/spacegroup.*
-  -- src/spglib/bravais.*
-  -- src/spglib/mathfunc.h
-
-Crystal object data structure:
-  -- src/generic/structure.*
-  -- src/generic/xtal.*

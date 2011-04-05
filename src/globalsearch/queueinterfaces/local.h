@@ -50,13 +50,11 @@ namespace GlobalSearch {
   /// @endcond
 
   /**
-   * @class LocalQueueInterface localqueueinterface.h <globalsearch/localqueueinterface.h>
+   * @class LocalQueueInterface local.h <globalsearch/local.h>
    *
    * @brief Interface for running jobs locally.
    *
    * @author David C. Lonie
-   *
-   * TODO detailed description.
    */
   class LocalQueueInterface : public QueueInterface
   {
@@ -89,7 +87,7 @@ namespace GlobalSearch {
      * otherwise. If false, \a err will be overwritten with a
      * user-friendly error message.
      */
-    virtual bool isReadyToSearch(QString *str);
+    virtual bool isReadyToSearch(QString *err);
 
   public slots:
 
@@ -97,6 +95,7 @@ namespace GlobalSearch {
      * Write the input files in the hash \a files to the appropriate
      * location for Structure \a s.
      *
+     * @param s Structure of interest
      * @param files Key: filename, Value: text.
      *
      * @note The filenames in \a files must not be absolute, but
@@ -177,8 +176,13 @@ namespace GlobalSearch {
      *   - 1: No matches found, execution successful
      *   - 2: Execution unsuccessful
      *
+     * @param s Structure of interest
+     * @param matchText Text to match
+     * @param filename Name of file to grep
+     * @param matches List of matches (return)
+     * @param exitcode Exit code of grep (see details) (return)
      * @param caseSensitive If true, match case. Otherwise, perform
-     * case-insensitive search (e.g. grep -i)
+     * case-insensitive search (e.g. grep -i) Default is true.
      *
      * @return True on success, false otherwise.
      *

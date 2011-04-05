@@ -250,6 +250,7 @@ namespace GlobalSearch {
     ui_progbar->repaint();
   }
 
+  /// @cond
   void AbstractDialog::reemitTabsWriteSettings(const QString &filename)
   {
     if (QThread::currentThread() == qApp->thread()) {
@@ -271,5 +272,5 @@ namespace GlobalSearch {
       emit tabsReadSettingsBlockingQueued(filename);
     }
   }
-
+  /// @endcond
 }
