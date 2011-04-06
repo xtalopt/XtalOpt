@@ -36,6 +36,7 @@
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QStringList>
+#include <QtCore/QThread>
 
 using namespace std;
 using namespace Avogadro;

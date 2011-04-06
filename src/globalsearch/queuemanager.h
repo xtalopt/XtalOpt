@@ -18,13 +18,6 @@
 
 #include <globalsearch/tracker.h>
 
-#include <QtCore/QDebug>
-#include <QtCore/QMutex>
-#include <QtCore/QReadWriteLock>
-#include <QtCore/QStringList>
-#include <QtCore/QThread>
-#include <QtCore/QTimer>
-
 namespace GlobalSearch {
   class OptBase;
   class Structure;
