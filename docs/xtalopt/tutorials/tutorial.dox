@@ -3,6 +3,25 @@ namespace XtalOpt {
 
 @page tut-xo XtalOpt: Tutorial
 
+@section Contents
+  - \ref setup
+  - \ref launch
+  - \ref init
+  - \ref opt
+    - \ref vasp-opt
+    - \ref gulp-opt
+    - \ref pwscf-opt
+    - \ref castep-opt
+  - \ref qisetup
+    - \ref remotepbs
+    - \ref remotesge
+    - \ref localqi
+  - \ref files
+  - \ref search-set
+  - \ref begin
+  - \ref prog-mon
+    - \ref trends
+
 @section setup Setup
 
 @section launch Launch XtalOpt
@@ -294,7 +313,43 @@ xtalSearch is a user-specified description of the search, and 3x4-2
 means that it is the fourth structure in the third generation running
 its second optimization step.
 
-@subsection local Running optimations locally
+@subsection remotesge Using a remote SGE cluster
+\image html opt-set-pbs.png
+\image latex opt-set-pbs.png width=\textwidth
+@todo Get screenshots of SGE config dialog
+
+Select "SGE" from the list of Queues, and then click the "Configure..."
+button. A new window will prompt for:
+  - host: The hostname of the SGE cluster's head node
+  - user: The username used to log into the cluster
+  - Working directory (Server): A directory that is readable/writable
+      by "user" on the cluster, used when performing optimizations.
+  - Working directory (Local): A directory that is readable/writable
+      by the current user on the local computer. This is where the
+      final structures and resume files are written.
+  - Description: Used for the %%description% keyword in input templates.
+  - Path to qsub: Where to find the qsub executable on the remote
+      cluster. Note that if qsub is in the cluster's $PATH, setting
+      this to just 'qsub' will work.
+  - Path to qdel: Where to find the qdel executable on the remote
+      cluster. Note that if qdel is in the cluster's $PATH, setting
+      this to just 'qdel' will work.
+  - Path to qstat: Where to find the qstat executable on the remote
+      cluster. Note that if qstat is in the cluster's $PATH, setting
+      this to just 'qstat' will work.
+
+@todo Get template for job.sge scripts
+
+A new template, "job.sge" is added to the list of available
+templates. This is the job submission script for SGE. It may take some
+experimentation to get jobs to submit successfully, and you may need
+to contact the mantainers of the cluster for assistance or information
+about MPI, executable locations, etc. Perhaps the easiest method to
+find the correct SGE script is to run some trial submissions by hand,
+and then replace the structure/search specific information with the
+appropriate keywords once a working script has been generated.
+
+@subsection localqi Running optimations locally
 \image html opt-set-local.png
 \image latex opt-set-local.png width=\textwidth
 
@@ -309,7 +364,7 @@ in your system path, you will need to specify the location of the
 executable by clicking the "Configure..."  button next to the
 optimizer selection menu.
 
-\subsection files What is written to the local directory?
+\section files What is written to the local directory?
 A directory for each structure is created at
 
 \code
@@ -434,7 +489,7 @@ algorithm.
 The plot is also interactive; zooming and panning are possible using
 simple mouse controls. Clicking on a structure's point on the plot
 will load it in the main Avogadro window, allow all the same
-functionality as described above in the progress table section.
+functionality as described above in \ref prog-mon .
 */
 
 }
