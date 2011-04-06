@@ -72,10 +72,6 @@ namespace GlobalSearch {
     m_isDestroying = true;
     this->disconnect();
 
-    // Prevent the check functions from running again
-    m_checkRunningMutex.lock();
-    m_checkPopulationMutex.lock();
-
     // Wait for handler trackers to empty.
     QList<Tracker*> trackers;
     trackers.append(&m_newlyOptimizedTracker);
@@ -196,11 +192,6 @@ namespace GlobalSearch {
 
   void QueueManager::checkPopulation()
   {
-    // Return if already checking
-    if (!m_checkPopulationMutex.tryLock()) {
-      return;
-    }
-
     // Count jobs
     uint running = 0;
     uint optimized = 0;
@@ -297,7 +288,6 @@ namespace GlobalSearch {
 
     m_newStructureTracker.unlock();
     m_tracker->unlock();
-    m_checkPopulationMutex.unlock();
     return;
   }
 
@@ -308,11 +298,6 @@ namespace GlobalSearch {
                "Attempting to run QueueManager::checkRunning "
                "from a thread other than the QM thread. "
                );
-
-    // Return if mutex is already locked
-    if (!m_checkRunningMutex.tryLock()) {
-      return;
-    }
 
     // Get list of running structures
     QList<Structure*> runningStructures = getAllRunningStructures();
@@ -386,7 +371,6 @@ namespace GlobalSearch {
       }
     }
 
-    m_checkRunningMutex.unlock();
     return;
   }
 

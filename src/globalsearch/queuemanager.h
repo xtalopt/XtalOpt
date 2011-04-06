@@ -483,11 +483,6 @@ m_queue->unlockForNaming(newStructure);
     /// Number of structure requests pending.
     int m_requestedStructures;
 
-    /// @cond
-    QMutex m_checkRunningMutex;
-    QMutex m_checkPopulationMutex;
-    /// @endcond
-
     /// Boolean set to true while the destructor is running.
     bool m_isDestroying;
  };
