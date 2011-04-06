@@ -57,6 +57,8 @@ the "Original Format" link at the bottom of the page <a
 href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/vasp-xtalopt.scheme">
 here</a>.
 
+For more details on optimization schemes, see \ref optschemes.
+
 After loading the optimization scheme, XtalOpt will prompt for the
 POTCAR files to use. Select files appropriated for the prompted atom.
 XtalOpt will construct the POTCAR files on the local computer, and
@@ -115,6 +117,8 @@ is not available, the scheme file can be obtained by clicking the
 href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/gulp-xtalopt.scheme">
 here</a>.
 
+For more details on optimization schemes, see \ref optschemes.
+
 Note the "%" surrounding various keywords. These will be replaced by
 the structure-specific data when the optimizer is invoked for each
 structure. Click "Help" to view all of the keywords available. The
@@ -141,6 +145,8 @@ the scheme file can be obtained by clicking the "Original Format" link
 at the bottom of the page <a
 href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/pwscf-xtalopt.scheme">
 here</a>.
+
+For more details on optimization schemes, see \ref optschemes.
 
 Each PWscf input file will need to be edited to specify:
  -# The pseudo_dir containing the pseudopotential files on the remote cluster, and
@@ -182,6 +188,8 @@ the scheme file can be obtained by clicking the "Original Format" link
 at the bottom of the page <a
 href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/castep-xtalopt.scheme">
 here</a>.
+
+For more details on optimization schemes, see \ref optschemes.
 
 It is important to note that CASTEP input files require the "%"
 character to define blocks. The percent character is special in the
@@ -290,6 +298,8 @@ done
 cp $PBSTMPDIR/* $PBS_O_WORKDIR/
 @endcode
 
+For more details on optimization schemes, see \ref optschemes.
+
 Be aware that every installation is different, and it is almost
 certain that the job.pbs file included with this scheme will not work
 on any cluster other than the Zurek group's "parity" cluster at SUNY
@@ -349,6 +359,8 @@ find the correct SGE script is to run some trial submissions by hand,
 and then replace the structure/search specific information with the
 appropriate keywords once a working script has been generated.
 
+For more details on optimization schemes, see \ref optschemes.
+
 @subsection localqi Running optimations locally
 \image html opt-set-local.png
 \image latex opt-set-local.png width=\textwidth
@@ -363,6 +375,8 @@ If the optimizer's executable (vasp, gulp, pw.x, castep, etc) is not
 in your system path, you will need to specify the location of the
 executable by clicking the "Configure..."  button next to the
 optimizer selection menu.
+
+For more details on optimization schemes, see \ref optschemes.
 
 \section files What is written to the local directory?
 A directory for each structure is created at
