@@ -41,7 +41,8 @@ namespace XtalOpt {
     void removeCurrentOptStep();
 
   protected slots:
-    void generateVASP_POTCAR_info();
+    // Returns false if user cancels
+    bool generateVASP_POTCAR_info();
     void changePOTCAR(QListWidgetItem *item);
   };
 }
