@@ -1,10 +1,9 @@
 namespace XtalOpt {
 /**
 
-@page tut-xo XtalOpt: Tutorial
+@page tut-xo XtalOpt Tutorial
 
 @section Contents
-  - \ref setup
   - \ref launch
   - \ref init
   - \ref opt
@@ -21,8 +20,9 @@ namespace XtalOpt {
   - \ref begin
   - \ref prog-mon
     - \ref trends
-
-@section setup Setup
+  - \ref xo_tut_further
+    - \ref optschemes
+    - \ref xo_saveresume
 
 @section launch Launch XtalOpt
 Open avogadro, go to the "Extensions" menu and select
@@ -503,7 +503,14 @@ algorithm.
 The plot is also interactive; zooming and panning are possible using
 simple mouse controls. Clicking on a structure's point on the plot
 will load it in the main Avogadro window, allow all the same
-functionality as described above in \ref prog-mon .
+functionality as described above in \ref prog-mon.
+
+@section xo_tut_further Further reading
+
+From here, you may be interested in:
+  - \ref optschemes
+  - \ref xo_saveresume
+
 */
 
 }
