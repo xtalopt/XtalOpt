@@ -45,6 +45,10 @@ the largest range of cell angles that XtalOpt will generate.)
 
 @section opt Optimizer setup
 
+XtalOpt currently supports the \ref vasp-opt, \ref gulp-opt, \ref
+pwscf-opt, and \ref castep-opt codes for performing geometry
+optimizations. Each is detailed in its own section below.
+
 @subsection vasp-opt VASP
 \image html opt-set-vasp.png
 \image latex opt-set-vasp.png width=\textwidth
@@ -233,6 +237,12 @@ castep xtal
 \endcode
 
 @section qisetup Queue setup
+
+XtalOpt currently supports using the \ref remotepbs "PBS" and \ref
+remotesge "SGE" queuing systems on remote SSH-accessible clusters, as
+well as an internal \ref localqi "local" queue that manages
+calculations on the user's workstation. Each queueing interface is
+detailed in its own section below.
 
 @subsection remotepbs Using a remote PBS cluster
 \image html opt-set-pbs.png
