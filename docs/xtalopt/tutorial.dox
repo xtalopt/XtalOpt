@@ -86,6 +86,8 @@ the "Help" button for a full listing of the available keywords.
 XtalOpt expects VASP to use the default filenames, mainly POSCAR,
 CONTCAR, and OUTCAR.
 
+\ref qisetup "Skip to next section."
+
 @subsection gulp-opt GULP
 \image html opt-set-gulp.png
 \image latex opt-set-gulp.png width=\textwidth
@@ -138,6 +140,8 @@ XtalOpt expects GULP to use the following filenames:
 gulp < xtal.gin > xtal.got
 \endcode
 
+\ref qisetup "Skip to next section."
+
 @subsection pwscf-opt PWscf
 \image html opt-set-pwscf.png
 \image latex opt-set-pwscf.png width=\textwidth
@@ -180,6 +184,8 @@ XtalOpt expects PWscf to use the following filenames:
 \code
 pw.x < xtal.in > xtal.out
 \endcode
+
+\ref qisetup "Skip to next section."
 
 @subsection castep-opt CASTEP
 \image html opt-set-castep.png
@@ -333,6 +339,8 @@ xtalSearch is a user-specified description of the search, and 3x4-2
 means that it is the fourth structure in the third generation running
 its second optimization step.
 
+\ref files "Skip to next section."
+
 @subsection remotesge Using a remote SGE cluster
 \image html opt-set-pbs.png
 \image latex opt-set-pbs.png width=\textwidth
@@ -370,6 +378,8 @@ and then replace the structure/search specific information with the
 appropriate keywords once a working script has been generated.
 
 For more details on optimization schemes, see \ref optschemes.
+
+\ref files "Skip to next section."
 
 @subsection localqi Running optimations locally
 \image html opt-set-local.png
