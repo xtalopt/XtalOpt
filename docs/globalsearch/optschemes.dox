@@ -62,13 +62,14 @@ randomly generated structures in the first generation of an
 evolutionary search are often highly disordered with unrealistic
 atomic separations. If these structures were to be optimized in a
 single step with accurately small convergence criteria, it would be
-quite expensive and, more than likely, most of the optimizations would
-not finish successfully before reaching the maximum number of geometry
-steps allowed by the optimizer. Furthermore, complex structures such
-as periodic crystals often have so many degrees of freedom that
-convergence in a single step is quite difficult from a poor starting
-point (consider the effect of modifying a crystal structure's
-translation vector).
+quite expensive. Also, it is more than likely that most of the
+optimizations would not finish successfully before reaching the
+maximum number of geometry steps allowed by the optimizer or specified
+in the input. A second issue is that complex structures (periodic
+crystals, for example) often have so many degrees of freedom that
+convergence in a single step is difficult from a poor starting point
+(consider the effect on atomic coordinates when a unit cell's
+translation vector is modified).
 
 The first problem (effectively optimizing to small convergence) can be
 solved by implementing an optimization scheme that optimizes to

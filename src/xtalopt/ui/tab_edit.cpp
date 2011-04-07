@@ -247,7 +247,7 @@ namespace XtalOpt {
     if (ui_combo_optimizers->currentIndex() == XtalOpt::OT_VASP) {
       VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
       if (!vopt->POTCARInfoIsUpToDate(xtalopt->comp.keys())) {
-        generateVASP_POTCAR_info();
+        if (generateVASP_POTCAR_info());
         vopt->buildPOTCARs();
       }
     }
@@ -288,12 +288,13 @@ namespace XtalOpt {
       VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
       // Do we need to update the POTCAR info?
       if (!vopt->POTCARInfoIsUpToDate(xtalopt->comp.keys())) {
-        generateVASP_POTCAR_info();
+        if (!generateVASP_POTCAR_info()) {
+          return;
+        }
         vopt->buildPOTCARs();
       }
 
       // Build list in GUI
-      ui_list_edit->clear();
       // "POTCAR info" is of type
       // QList<QHash<QString, QString> >
       // e.g. a list of hashes containing
@@ -301,6 +302,7 @@ namespace XtalOpt {
       QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
       QList<QString> symbols = potcarInfo.at(optStepIndex).toHash().keys();
       qSort(symbols);
+      ui_list_edit->clear();
       for (int i = 0; i < symbols.size(); i++) {
         ui_list_edit->addItem(tr("%1: %2")
                                .arg(symbols.at(i), 2)
@@ -313,7 +315,8 @@ namespace XtalOpt {
     }
   }
 
-  void TabEdit::appendOptStep() {
+  void TabEdit::appendOptStep()
+  {
     // Copy the current files into a new entry at the end of the opt step list
     if (m_opt->optimizer()->getIDString() == "VASP" &&
         m_opt->optimizer()->getData("POTCAR info").toStringList().isEmpty()) {
@@ -335,7 +338,8 @@ namespace XtalOpt {
     populateOptStepList();
   }
 
-  void TabEdit::removeCurrentOptStep() {
+  void TabEdit::removeCurrentOptStep()
+  {
     int currentOptStep = ui_list_optStep->currentRow();
 
     if (m_opt->optimizer()->getIDString() == "VASP") {
@@ -350,7 +354,8 @@ namespace XtalOpt {
     populateOptStepList();
   }
 
-  void TabEdit::changePOTCAR(QListWidgetItem *item) {
+  void TabEdit::changePOTCAR(QListWidgetItem *item)
+  {
     QSettings settings; // Already set up in avogadro/src/main.cpp
 
     // Get symbol and filename
@@ -383,7 +388,8 @@ namespace XtalOpt {
     updateEditWidget();
   }
 
-  void TabEdit::generateVASP_POTCAR_info() {
+  bool TabEdit::generateVASP_POTCAR_info()
+  {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
     QSettings settings; // Already set up in avogadro/src/main.cpp
     QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
@@ -393,9 +399,7 @@ namespace XtalOpt {
     QList<QString> symbols;
     QList<uint> atomicNums = xtalopt->comp.keys();
     qSort(atomicNums);
-    QVariantList toOpt;
-    for (int i = 0; i < atomicNums.size(); i++) toOpt.append(atomicNums.at(i));
-    m_opt->optimizer()->setData("Composition", toOpt);
+
     for (int i = 0; i < atomicNums.size(); i++)
       symbols.append(OpenBabel::etab.GetSymbol(atomicNums.at(i)));
     qSort(symbols);
@@ -416,16 +420,34 @@ namespace XtalOpt {
         filename = files.first();
         settings.setValue("xtalopt/templates/potcarPath", dialog.directory().absolutePath());
       }
-      else { // User cancel file selection. POTCAR will be blank.
-        return;
+      else {
+        // User cancel file selection. Set template selection combo to
+        // something else so the list will remain empty and be
+        // detected when the search starts. Ref ticket 79.
+        int curInd = ui_combo_templates->currentIndex();
+        int maxInd = ui_combo_templates->count() - 1;
+        int newInd = (curInd == maxInd) ? 0 : maxInd;
+        ui_combo_templates->setCurrentIndex(newInd);
+        return false;
       }
       hash.insert(symbols.at(i), QVariant(filename));
     }
 
-    for (int i = 0; i < m_opt->optimizer()->getNumberOfOptSteps(); i++)
+    for (int i = 0; i < m_opt->optimizer()->getNumberOfOptSteps(); i++) {
       potcarInfo.append(QVariant(hash));
+    }
 
+    // Set composition in optimizer
+    QVariantList toOpt;
+    for (int i = 0; i < atomicNums.size(); i++) {
+      toOpt.append(atomicNums.at(i));
+    }
+    m_opt->optimizer()->setData("Composition", toOpt);
+
+    // Set POTCAR info
     m_opt->optimizer()->setData("POTCAR info", QVariant(potcarInfo));
+
     updateEditWidget();
+    return true;
   }
 }

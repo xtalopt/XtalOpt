@@ -1,0 +1,15 @@
+namespace GlobalSearch {
+/**
+
+@mainpage User documentation
+
+  - \ref tut-xo Demonstrates how to use XtalOpt with the various
+    supported optimizers and queuing systems.
+
+  - \ref optschemes What are Optimization Schemes, and how are they used?
+
+  - \ref xo_saveresume How to continue a session that has stopped.
+
+*/
+
+}
