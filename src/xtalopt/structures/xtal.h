@@ -40,7 +40,7 @@ namespace XtalOpt {
 
     // Virtuals from structure
     bool getShortestInteratomicDistance(double & shortest) const;
-    bool getNearestNeighborDistance(double x, double y, double z,
+    bool getNearestNeighborDistance(const double x, const double y, const double z,
                                     double & shortest) const;
     bool getIADHistogram(QList<double> * distance,
                          QList<double> * frequency,

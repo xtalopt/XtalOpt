@@ -371,7 +371,10 @@ namespace XtalOpt {
     return true;
   }
 
-  bool Xtal::getNearestNeighborDistance(double x, double y, double z, double & shortest) const {
+  bool Xtal::getNearestNeighborDistance(const double x,
+                                        const double y,
+                                        const double z,
+                                        double & shortest) const {
     QList<Atom*> atomList = atoms();
     if (atomList.size() < 1) return false; // Need at least one atom!
     QList<Vector3d> atomPositions;
