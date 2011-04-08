@@ -16,6 +16,8 @@
 #ifndef REMOTEQUEUEINTERFACE_H
 #define REMOTEQUEUEINTERFACE_H
 
+#ifdef ENABLE_SSH
+
 #include <globalsearch/queueinterface.h>
 
 namespace GlobalSearch {
@@ -202,4 +204,5 @@ namespace GlobalSearch {
   };
 }
 
-#endif
+#endif // ENABLE_SSH
+#endif // REMOTEQUEUEINTERFACE_H

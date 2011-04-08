@@ -3,7 +3,7 @@ project(XtalOpt)
 cmake_minimum_required(VERSION 2.6)
 set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
 
-set(QT_MIN_VERSION "4.5.0")
+set(QT_MIN_VERSION "4.6.0")
 find_package(Qt4 REQUIRED)
 find_package(OpenBabel2 REQUIRED)
 find_package(Avogadro REQUIRED)
@@ -22,6 +22,14 @@ option( BUILD_TESTS
 if(BUILD_TESTS)
    enable_testing()
 endif(BUILD_TESTS)
+
+option( ENABLE_SSH
+ 	"Enable SSH. Only the local queue interface will be available if disabled."
+ 	ON )
+
+if (ENABLE_SSH)
+  add_definitions(-DENABLE_SSH)
+endif()
 
 # This is a modified version of the avogadro_plugin function that produces
 # a SHARED library instead of a MODULE

@@ -21,11 +21,17 @@ link_directories(
 set( tests
   optbase
   structure
-  sshconnection
-  sshmanager
   spglib
   randdouble
 )
+
+if (ENABLE_SSH)
+set( tests
+  ${tests}
+  sshconnection
+  sshmanager
+)
+endif()
 
 foreach (test ${tests})
   message(STATUS "Test:  ${test}")
@@ -41,9 +47,11 @@ foreach (test ${tests})
     ${QT_QTTEST_LIBRARY}
     xtalopt_static
     spglib
-    ssh_static
     avogadro
     globalsearch)
+  if (ENABLE_SSH)
+    target_link_libraries(${test}test ssh_static)
+  endif()
   add_test(${test}Test ${CMAKE_BINARY_DIR}/tests/${test}test)
   set_property(SOURCE ${test_SRCS} PROPERTY LABELS globalsearch)
   set_property(TARGET ${test}test PROPERTY LABELS globalsearch)

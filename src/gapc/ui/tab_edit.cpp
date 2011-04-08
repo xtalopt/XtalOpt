@@ -23,8 +23,11 @@
 
 #include <globalsearch/macros.h>
 #include <globalsearch/queueinterfaces/local.h>
+
+#ifdef ENABLE_SSH
 #include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/queueinterfaces/sge.h>
+#endif // ENABLE_SSH
 
 #include <QtGui/QComboBox>
 
@@ -57,12 +60,14 @@ namespace GAPC {
       case OptGAPC::QI_LOCAL:
         m_queueInterfaces.append(new LocalQueueInterface (m_opt));
         break;
+#ifdef ENABLE_SSH
       case OptGAPC::QI_PBS:
         m_queueInterfaces.append(new PbsQueueInterface (m_opt));
         break;
       case OptGAPC::QI_SGE:
         m_queueInterfaces.append(new SgeQueueInterface (m_opt));
         break;
+#endif // ENABLE_SSH
       }
     }
 
@@ -170,6 +175,7 @@ namespace GAPC {
             // identify. Took ownership of variables previously held
             // by tabsys.
       {
+#ifdef ENABLE_SSH
         // Extract optimizer ID and subtract 1 -- we removed the
         // openbabel optimizer (was at enum value 0)
         // Also make default value 1 to reflect OB's removal.
@@ -190,6 +196,8 @@ namespace GAPC {
           ui_combo_queueInterfaces->setCurrentIndex(OptGAPC::QI_LOCAL);
           break;
         }
+#endif // ENABLE_SSH
+
         // Formerly tab_sys stuff. Read from default settings object:
         settings->beginGroup("gapc/sys/");
         m_opt->description = settings->value("description", "").toString();
@@ -200,6 +208,7 @@ namespace GAPC {
         m_opt->username = settings->value("remote/username", "").toString();
         m_opt->rempath = settings->value("remote/rempath", "").toString();
         settings->endGroup(); // "gapc/sys"
+
       }
     case 2:
     default:

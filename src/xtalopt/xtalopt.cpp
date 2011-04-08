@@ -32,13 +32,15 @@
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/local.h>
-#include <globalsearch/queueinterfaces/pbs.h>
-#include <globalsearch/queueinterfaces/sge.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/slottedwaitcondition.h>
-#include <globalsearch/sshmanager.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/bt.h>
+
+#ifdef ENABLE_SSH
+#include <globalsearch/sshmanager.h>
+#include <globalsearch/queueinterfaces/remote.h>
+#endif // ENABLE_SSH
 
 #include <QtCore/QDir>
 #include <QtCore/QList>
@@ -85,9 +87,11 @@ namespace XtalOpt {
     delete m_queue;
     m_queue = 0;
 
+#ifdef ENABLE_SSH
     // Stop SSHManager
     delete m_ssh;
     m_ssh = 0;
+#endif // ENABLE_SSH
 
     // Wait for save to finish
     while (savePending) {
@@ -156,6 +160,7 @@ namespace XtalOpt {
       qobject_cast<VASPOptimizer*>(m_optimizer)->buildPOTCARs();
     }
 
+#ifdef ENABLE_SSH
     // Create the SSHManager if running remotely
     if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
@@ -215,6 +220,7 @@ namespace XtalOpt {
         break;
       } // end forever
     }
+#endif // ENABLE_SSH
 
     // Here we go!
     debug("Starting optimization.");
@@ -1038,6 +1044,7 @@ namespace XtalOpt {
 
     m_dialog->readSettings(filename);
 
+#ifdef ENABLE_SSH
     // Create SSHConnection if we are running remotely
     if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
@@ -1102,6 +1109,7 @@ namespace XtalOpt {
         break;
       } // end forever
     }
+#endif // ENABLE_SSH
 
     debug(tr("Resuming XtalOpt session in '%1' (%2) readOnly = %3")
           .arg(filename)

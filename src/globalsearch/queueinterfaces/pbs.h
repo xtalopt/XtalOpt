@@ -17,6 +17,8 @@
 #ifndef PBSQUEUEINTERFACE_H
 #define PBSQUEUEINTERFACE_H
 
+#ifdef ENABLE_SSH
+
 // Tell doxygen to skip this file
 /// \cond
 
@@ -69,7 +71,8 @@ namespace GlobalSearch {
   };
 }
 
-#endif
+#endif // ENABLE_SSH
+#endif // PBSQUEUEINTERFACE_H
 
 // End doxygen skip:
 /// \endcond

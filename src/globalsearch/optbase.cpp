@@ -22,7 +22,9 @@
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/pbs.h>
+#ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
+#endif // ENABLE_SSH
 #include <globalsearch/structure.h>
 #include <globalsearch/ui/abstractdialog.h>
 
@@ -46,7 +48,9 @@ namespace GlobalSearch {
     m_queue(new QueueManager(m_queueThread, this)),
     m_queueInterface(0), // This will be set when the GUI is initialized
     m_optimizer(0),      // This will be set when the GUI is initialized
+#ifdef ENABLE_SSH
     m_ssh(new SSHManager (5, this)),
+#endif // ENABLE_SSH
     m_idString("Generic"),
     sOBMutex(new QMutex),
     stateFileMutex(new QMutex),

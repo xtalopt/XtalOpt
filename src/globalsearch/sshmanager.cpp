@@ -12,6 +12,8 @@
   limitations under the License.
  ***********************************************************************/
 
+#ifdef ENABLE_SSH
+
 #include <globalsearch/sshmanager.h>
 
 #include <globalsearch/macros.h>
@@ -147,3 +149,5 @@ namespace GlobalSearch {
   }
 
 } // end namespace GlobalSearch
+
+#endif // ENABLE_SSH

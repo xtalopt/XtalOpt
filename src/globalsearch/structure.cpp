@@ -849,7 +849,7 @@ namespace GlobalSearch {
     const Vector3d *v1 = &(m.atomPositions->at(m.i));
     const Vector3d *v2;
     QList<int> freq;
-    double diff, radius;
+    double diff;
     for (int ind = 0; ind < m.dist->size(); ind++) {
       freq.append(0);
     }

@@ -8,7 +8,10 @@ option( ENABLE_GAPC
 	"Build the evolutionary cluster search extension"
 	OFF )
 
-add_subdirectory(libssh)
+if (ENABLE_SSH)
+  add_subdirectory(libssh)
+endif()
+
 add_subdirectory(globalsearch)
 
 if (ENABLE_XTALOPT)
