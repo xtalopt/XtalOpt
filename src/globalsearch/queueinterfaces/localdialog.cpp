@@ -88,8 +88,8 @@ namespace GlobalSearch {
 
   void LocalQueueInterfaceConfigDialog::accept()
   {
-    m_opt->filePath = m_edit_workdir->text();
-    m_opt->description = m_edit_description->text();
+    m_opt->filePath = m_edit_workdir->text().trimmed();
+    m_opt->description = m_edit_description->text().trimmed();
     QDialog::accept();
     this->close();
   }
