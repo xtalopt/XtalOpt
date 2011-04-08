@@ -16,6 +16,16 @@
 #ifndef OPTBASE_H
 #define OPTBASE_H
 
+// Prevent redefinition of symbols on windows
+#ifdef WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif // WIN32_LEAN_AND_MEAN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif // NOMINMAX
+#endif // WIN32
+
 #include <QtCore/QObject>
 #include <QtCore/QMutex>
 
