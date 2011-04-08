@@ -56,9 +56,12 @@ namespace GAPC {
     };
 
     enum QueueInterfaces {
-      QI_LOCAL = 0,
+      QI_LOCAL = 0
+#ifdef ENABLE_SSH
+      ,
       QI_PBS,
       QI_SGE
+#endif // ENABLE_SSH
     };
 
     enum ExplodeActions {

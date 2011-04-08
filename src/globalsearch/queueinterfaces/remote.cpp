@@ -13,6 +13,8 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+#ifdef ENABLE_SSH
+
 #include <globalsearch/queueinterfaces/remote.h>
 
 #include <globalsearch/sshmanager.h>
@@ -300,3 +302,5 @@ namespace GlobalSearch {
     return true;
   }
 }
+
+#endif // ENABLE_SSH

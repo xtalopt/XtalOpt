@@ -24,8 +24,11 @@
 
 #include <globalsearch/macros.h>
 #include <globalsearch/queueinterfaces/local.h>
+
+#ifdef ENABLE_SSH
 #include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/queueinterfaces/sge.h>
+#endif // ENABLE_SSH
 
 #include <QtGui/QComboBox>
 #include <QtGui/QFont>
@@ -67,12 +70,14 @@ namespace RandomDock {
       case RandomDock::QI_LOCAL:
         m_queueInterfaces.append(new LocalQueueInterface (m_opt));
         break;
+#ifdef ENABLE_SSH
       case RandomDock::QI_PBS:
         m_queueInterfaces.append(new PbsQueueInterface (m_opt));
         break;
       case RandomDock::QI_SGE:
         m_queueInterfaces.append(new SgeQueueInterface (m_opt));
         break;
+#endif // ENABLE_SSH
       }
     }
 
@@ -180,6 +185,7 @@ namespace RandomDock {
             // identify. Took ownership of variables previously held
             // by tabsys.
       {
+#ifdef ENABLE_SSH
         // Extract optimizer ID
         ui_combo_optimizers->setCurrentIndex
           (settings->value("randomdock/edit/optType", 0).toInt());
@@ -211,6 +217,8 @@ namespace RandomDock {
              ("randomdock/optimizer/MOPAC/job.pbs_list", QStringList("")));
           break;
         }
+#endif // ENABLE_SSH
+
         // Formerly tab_sys stuff. Read from default settings object:
         settings->beginGroup("randomdock/sys/");
         m_opt->description = settings->value("description", "").toString();

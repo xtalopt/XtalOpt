@@ -23,6 +23,14 @@ if(BUILD_TESTS)
    enable_testing()
 endif(BUILD_TESTS)
 
+option( ENABLE_SSH
+ 	"Enable SSH. Only the local queue interface will be available if disabled."
+ 	ON )
+
+if (ENABLE_SSH)
+  add_definitions(-DENABLE_SSH)
+endif()
+
 # This is a modified version of the avogadro_plugin function that produces
 # a SHARED library instead of a MODULE
 function(process_plugin plugin_name src_list)

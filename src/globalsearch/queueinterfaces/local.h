@@ -218,4 +218,4 @@ namespace GlobalSearch {
   };
 }
 
-#endif
+#endif // LOCALQUEUEINTERFACE_H

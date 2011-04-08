@@ -15,6 +15,8 @@
 #ifndef SSHMANAGER_H
 #define SSHMANAGER_H
 
+#ifdef ENABLE_SSH
+
 #include <globalsearch/sshconnection.h>
 
 #include <QtCore/QHash>
@@ -138,4 +140,5 @@ namespace GlobalSearch {
 
 } // end namespace GlobalSearch
 
-#endif
+#endif // ENABLE_SSH
+#endif // SSHMANAGER_H

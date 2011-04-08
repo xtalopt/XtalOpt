@@ -71,12 +71,14 @@ namespace XtalOpt {
       case XtalOpt::QI_LOCAL:
         m_queueInterfaces.append(new LocalQueueInterface (m_opt));
         break;
+#ifdef ENABLE_SSH
       case XtalOpt::QI_PBS:
         m_queueInterfaces.append(new PbsQueueInterface (m_opt));
         break;
       case XtalOpt::QI_SGE:
         m_queueInterfaces.append(new SgeQueueInterface (m_opt));
         break;
+#endif // ENABLE_SSH
       }
     }
 
@@ -190,6 +192,7 @@ namespace XtalOpt {
             // identify. Took ownership of variables previously held
             // by tabsys.
       {
+#ifdef ENABLE_SSH
         // Extract optimizer ID
         ui_combo_optimizers->setCurrentIndex
           (settings->value("xtalopt/edit/optType", 0).toInt());
@@ -224,6 +227,8 @@ namespace XtalOpt {
           ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_LOCAL);
           break;
         }
+#endif // ENABLE_SSH
+
         // Formerly tab_sys stuff. Read from default settings object:
         settings->beginGroup("xtalopt/sys/");
         m_opt->description = settings->value("description", "").toString();

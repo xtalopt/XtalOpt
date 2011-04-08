@@ -14,6 +14,8 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+#ifdef ENABLE_SSH
+
 // Doxygen skip:
 /// @cond
 
@@ -514,3 +516,5 @@ namespace GlobalSearch {
 }
 
 /// @endcond
+
+#endif // ENABLE_SSH

@@ -15,6 +15,8 @@
 #ifndef SSHCONNECTION_H
 #define SSHCONNECTION_H
 
+#ifdef ENABLE_SSH
+
 #define LIBSSH_STATIC
 extern "C" {
 #include <libssh/libssh/libssh.h>
@@ -303,4 +305,6 @@ namespace GlobalSearch {
 
 } // end namespace GlobalSearch
 
-#endif
+
+#endif // ENABLE_SSH
+#endif // SSHCONNECTION_H
