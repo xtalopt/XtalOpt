@@ -1,17 +1,18 @@
 /**********************************************************************
   SSHConnection - Connection to an ssh server for execution, sftp, etc.
 
-  Copyright (C) 2010 by David C. Lonie
+  Copyright (C) 2010-2011 by David C. Lonie
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation version 2 of the License.
+  This source code is released under the New BSD License, (the "License").
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
  ***********************************************************************/
+
+#ifdef ENABLE_SSH
 
 #include <globalsearch/sshconnection.h>
 
@@ -375,6 +376,8 @@ namespace GlobalSearch {
     return _execute(command, stdout_str, stderr_str, exitcode);
   }
 
+  // No need to document this:
+  /// @cond
   bool SSHConnection::_execute(const QString &command,
                                QString &stdout_str,
                                QString &stderr_str,
@@ -423,7 +426,10 @@ namespace GlobalSearch {
     END;
     return true;
   }
+  /// @endcond
 
+  // No need to document this:
+  /// @cond
   sftp_session SSHConnection::_openSFTP()
   {
     sftp_session sftp = sftp_new(m_session);
@@ -439,6 +445,7 @@ namespace GlobalSearch {
     }
     return sftp;
   }
+  /// @endcond
 
   bool SSHConnection::copyFileToServer(const QString & localpath,
                                        const QString & remotepath)
@@ -447,6 +454,8 @@ namespace GlobalSearch {
     return _copyFileToServer(localpath, remotepath);
   }
 
+  // No need to document this:
+  /// @cond
   bool SSHConnection::_copyFileToServer(const QString & localpath,
                                         const QString & remotepath)
   {
@@ -501,6 +510,7 @@ namespace GlobalSearch {
     END;
     return true;
   }
+  /// @endcond
 
   bool SSHConnection::copyFileFromServer(const QString & remotepath,
                                          const QString & localpath)
@@ -509,6 +519,8 @@ namespace GlobalSearch {
     return _copyFileFromServer(remotepath, localpath);
   }
 
+  // No need to document this:
+  /// @cond
   bool SSHConnection::_copyFileFromServer(const QString & remotepath,
                                           const QString & localpath)
   {
@@ -561,6 +573,7 @@ namespace GlobalSearch {
     END;
     return true;
   }
+  /// @endcond
 
   bool SSHConnection::readRemoteFile(const QString &filename,
                                      QString &contents)
@@ -569,6 +582,8 @@ namespace GlobalSearch {
     return _readRemoteFile(filename, contents);
   }
 
+  // No need to document this:
+  /// @cond
   bool SSHConnection::_readRemoteFile(const QString &filename,
                                       QString &contents)
   {
@@ -608,6 +623,7 @@ namespace GlobalSearch {
     END;
     return true;
   }
+  /// @endcond
 
   bool SSHConnection::removeRemoteFile(const QString &filename)
   {
@@ -615,6 +631,8 @@ namespace GlobalSearch {
     return _removeRemoteFile(filename);
   }
 
+  // No need to document this:
+  /// @cond
   bool SSHConnection::_removeRemoteFile(const QString &filename)
   {
     START;
@@ -636,6 +654,7 @@ namespace GlobalSearch {
     sftp_free(sftp);
     return true;
   }
+  /// @endcond
 
   bool SSHConnection::copyDirectoryToServer(const QString & local,
                                             const QString & remote)
@@ -644,6 +663,8 @@ namespace GlobalSearch {
     return _copyDirectoryToServer(local, remote);
   }
 
+  // No need to document this:
+  /// @cond
   bool SSHConnection::_copyDirectoryToServer(const QString & local,
                                              const QString & remote)
   {
@@ -705,6 +726,7 @@ namespace GlobalSearch {
     END;
     return true;
   }
+  /// @endcond
 
   bool SSHConnection::copyDirectoryFromServer(const QString & remote,
                                               const QString & local)
@@ -713,6 +735,8 @@ namespace GlobalSearch {
     return _copyDirectoryFromServer(remote, local);
   }
 
+  // No need to document this:
+  /// @cond
   bool SSHConnection::_copyDirectoryFromServer(const QString & remote,
                                                const QString & local)
   {
@@ -785,6 +809,7 @@ namespace GlobalSearch {
     sftp_free(sftp);
     return true;
   }
+  /// @endcond
 
   bool SSHConnection::readRemoteDirectoryContents(const QString & path,
                                                   QStringList & contents)
@@ -793,8 +818,10 @@ namespace GlobalSearch {
     return _readRemoteDirectoryContents(path, contents);
   }
 
+  // No need to document this:
+  /// @cond
   bool SSHConnection::_readRemoteDirectoryContents(const QString & path,
-                                                  QStringList & contents)
+                                                   QStringList & contents)
   {
     START;
 
@@ -854,6 +881,7 @@ namespace GlobalSearch {
     sftp_free(sftp);
     return true;
   }
+  /// @endcond
 
   bool SSHConnection::removeRemoteDirectory(const QString & path,
                                             bool onlyDeleteContents)
@@ -862,6 +890,8 @@ namespace GlobalSearch {
     return _removeRemoteDirectory(path, onlyDeleteContents);
   }
 
+  // No need to document this:
+  /// @cond
   bool SSHConnection::_removeRemoteDirectory(const QString & path,
                                             bool onlyDeleteContents)
   {
@@ -941,6 +971,7 @@ namespace GlobalSearch {
     END;
     return true;
   }
+  /// @endcond
 
   bool SSHConnection::addKeyToKnownHosts(const QString &host, unsigned int port)
   {
@@ -976,3 +1007,5 @@ namespace GlobalSearch {
   }
 
 } // end namespace GlobalSearch
+
+#endif // ENABLE_SSH

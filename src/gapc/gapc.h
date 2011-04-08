@@ -1,7 +1,7 @@
 /**********************************************************************
   GAPC -- A genetic algorithm for protected clusters
 
-  Copyright (C) 2010 by David C. Lonie
+  Copyright (C) 2010-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -56,9 +56,12 @@ namespace GAPC {
     };
 
     enum QueueInterfaces {
-      QI_LOCAL = 0,
+      QI_LOCAL = 0
+#ifdef ENABLE_SSH
+      ,
       QI_PBS,
       QI_SGE
+#endif // ENABLE_SSH
     };
 
     enum ExplodeActions {

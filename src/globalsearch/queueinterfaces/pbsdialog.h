@@ -17,6 +17,8 @@
 #ifndef PBSCONFIGDIALOG_H
 #define PBSCONFIGDIALOG_H
 
+#ifdef ENABLE_SSH
+
 //Doxygen should ignore this file:
 /// @cond
 
@@ -60,4 +62,5 @@ namespace GlobalSearch {
 }
 
 /// @endcond
-#endif
+#endif // ENABLE_SSH
+#endif // PBSCONFIGDIALOG_H

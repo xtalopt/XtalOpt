@@ -1,9 +1,28 @@
 namespace XtalOpt {
 /**
 
-@page tut-xo XtalOpt: Tutorial
+@page tut-xo XtalOpt Tutorial
 
-@section setup Setup
+@section Contents
+  - \ref launch
+  - \ref init
+  - \ref opt
+    - \ref vasp-opt
+    - \ref gulp-opt
+    - \ref pwscf-opt
+    - \ref castep-opt
+  - \ref qisetup
+    - \ref remotepbs
+    - \ref remotesge
+    - \ref localqi
+  - \ref files
+  - \ref search-set
+  - \ref begin
+  - \ref prog-mon
+    - \ref trends
+  - \ref xo_tut_further
+    - \ref optschemes
+    - \ref xo_saveresume
 
 @section launch Launch XtalOpt
 Open avogadro, go to the "Extensions" menu and select
@@ -26,6 +45,10 @@ the largest range of cell angles that XtalOpt will generate.)
 
 @section opt Optimizer setup
 
+XtalOpt currently supports the \ref vasp-opt, \ref gulp-opt, \ref
+pwscf-opt, and \ref castep-opt codes for performing geometry
+optimizations. Each is detailed in its own section below.
+
 @subsection vasp-opt VASP
 \image html opt-set-vasp.png
 \image latex opt-set-vasp.png width=\textwidth
@@ -37,6 +60,8 @@ copy of the source code, the scheme file can be obtained by clicking
 the "Original Format" link at the bottom of the page <a
 href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/vasp-xtalopt.scheme">
 here</a>.
+
+For more details on optimization schemes, see \ref optschemes.
 
 After loading the optimization scheme, XtalOpt will prompt for the
 POTCAR files to use. Select files appropriated for the prompted atom.
@@ -60,6 +85,8 @@ the "Help" button for a full listing of the available keywords.
 
 XtalOpt expects VASP to use the default filenames, mainly POSCAR,
 CONTCAR, and OUTCAR.
+
+\ref qisetup "Skip to next section."
 
 @subsection gulp-opt GULP
 \image html opt-set-gulp.png
@@ -96,6 +123,8 @@ is not available, the scheme file can be obtained by clicking the
 href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/gulp-xtalopt.scheme">
 here</a>.
 
+For more details on optimization schemes, see \ref optschemes.
+
 Note the "%" surrounding various keywords. These will be replaced by
 the structure-specific data when the optimizer is invoked for each
 structure. Click "Help" to view all of the keywords available. The
@@ -111,6 +140,8 @@ XtalOpt expects GULP to use the following filenames:
 gulp < xtal.gin > xtal.got
 \endcode
 
+\ref qisetup "Skip to next section."
+
 @subsection pwscf-opt PWscf
 \image html opt-set-pwscf.png
 \image latex opt-set-pwscf.png width=\textwidth
@@ -122,6 +153,8 @@ the scheme file can be obtained by clicking the "Original Format" link
 at the bottom of the page <a
 href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/pwscf-xtalopt.scheme">
 here</a>.
+
+For more details on optimization schemes, see \ref optschemes.
 
 Each PWscf input file will need to be edited to specify:
  -# The pseudo_dir containing the pseudopotential files on the remote cluster, and
@@ -152,6 +185,8 @@ XtalOpt expects PWscf to use the following filenames:
 pw.x < xtal.in > xtal.out
 \endcode
 
+\ref qisetup "Skip to next section."
+
 @subsection castep-opt CASTEP
 \image html opt-set-castep.png
 \image latex opt-set-castep.png width=\textwidth
@@ -163,6 +198,8 @@ the scheme file can be obtained by clicking the "Original Format" link
 at the bottom of the page <a
 href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/castep-xtalopt.scheme">
 here</a>.
+
+For more details on optimization schemes, see \ref optschemes.
 
 It is important to note that CASTEP input files require the "%"
 character to define blocks. The percent character is special in the
@@ -206,6 +243,12 @@ castep xtal
 \endcode
 
 @section qisetup Queue setup
+
+XtalOpt currently supports using the \ref remotepbs "PBS" and \ref
+remotesge "SGE" queuing systems on remote SSH-accessible clusters, as
+well as an internal \ref localqi "local" queue that manages
+calculations on the user's workstation. Each queueing interface is
+detailed in its own section below.
 
 @subsection remotepbs Using a remote PBS cluster
 \image html opt-set-pbs.png
@@ -271,6 +314,8 @@ done
 cp $PBSTMPDIR/* $PBS_O_WORKDIR/
 @endcode
 
+For more details on optimization schemes, see \ref optschemes.
+
 Be aware that every installation is different, and it is almost
 certain that the job.pbs file included with this scheme will not work
 on any cluster other than the Zurek group's "parity" cluster at SUNY
@@ -294,7 +339,49 @@ xtalSearch is a user-specified description of the search, and 3x4-2
 means that it is the fourth structure in the third generation running
 its second optimization step.
 
-@subsection local Running optimations locally
+\ref files "Skip to next section."
+
+@subsection remotesge Using a remote SGE cluster
+\image html opt-set-pbs.png
+\image latex opt-set-pbs.png width=\textwidth
+@todo Get screenshots of SGE config dialog
+
+Select "SGE" from the list of Queues, and then click the "Configure..."
+button. A new window will prompt for:
+  - host: The hostname of the SGE cluster's head node
+  - user: The username used to log into the cluster
+  - Working directory (Server): A directory that is readable/writable
+      by "user" on the cluster, used when performing optimizations.
+  - Working directory (Local): A directory that is readable/writable
+      by the current user on the local computer. This is where the
+      final structures and resume files are written.
+  - Description: Used for the %%description% keyword in input templates.
+  - Path to qsub: Where to find the qsub executable on the remote
+      cluster. Note that if qsub is in the cluster's $PATH, setting
+      this to just 'qsub' will work.
+  - Path to qdel: Where to find the qdel executable on the remote
+      cluster. Note that if qdel is in the cluster's $PATH, setting
+      this to just 'qdel' will work.
+  - Path to qstat: Where to find the qstat executable on the remote
+      cluster. Note that if qstat is in the cluster's $PATH, setting
+      this to just 'qstat' will work.
+
+@todo Get template for job.sge scripts
+
+A new template, "job.sge" is added to the list of available
+templates. This is the job submission script for SGE. It may take some
+experimentation to get jobs to submit successfully, and you may need
+to contact the mantainers of the cluster for assistance or information
+about MPI, executable locations, etc. Perhaps the easiest method to
+find the correct SGE script is to run some trial submissions by hand,
+and then replace the structure/search specific information with the
+appropriate keywords once a working script has been generated.
+
+For more details on optimization schemes, see \ref optschemes.
+
+\ref files "Skip to next section."
+
+@subsection localqi Running optimations locally
 \image html opt-set-local.png
 \image latex opt-set-local.png width=\textwidth
 
@@ -309,7 +396,9 @@ in your system path, you will need to specify the location of the
 executable by clicking the "Configure..."  button next to the
 optimizer selection menu.
 
-\subsection files What is written to the local directory?
+For more details on optimization schemes, see \ref optschemes.
+
+\section files What is written to the local directory?
 A directory for each structure is created at
 
 \code
@@ -434,7 +523,14 @@ algorithm.
 The plot is also interactive; zooming and panning are possible using
 simple mouse controls. Clicking on a structure's point on the plot
 will load it in the main Avogadro window, allow all the same
-functionality as described above in the progress table section.
+functionality as described above in \ref prog-mon.
+
+@section xo_tut_further Further reading
+
+From here, you may be interested in:
+  - \ref optschemes
+  - \ref xo_saveresume
+
 */
 
 }

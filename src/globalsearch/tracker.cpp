@@ -1,7 +1,7 @@
 /**********************************************************************
   Tracker - A thread safe duplicate checking structure FIFO
 
-  Copyright (C) 2010 by David C. Lonie
+  Copyright (C) 2010-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by

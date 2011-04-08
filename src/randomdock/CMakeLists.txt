@@ -16,7 +16,8 @@ set( randomdock_SRCS
      ui/tab_conformers.cpp
      ui/tab_progress.cpp
      ui/tab_plot.cpp
-     ui/tab_log.cpp)
+     ui/tab_log.cpp
+)
 
 set( randomdock_UIS
      ui/dialog.ui
@@ -25,7 +26,8 @@ set( randomdock_UIS
      ui/tab_params.ui
      ui/tab_progress.ui
      ui/tab_plot.ui
-     ui/tab_log.ui)
+     ui/tab_log.ui
+)
 
 process_plugin(randomdock "${randomdock_SRCS}" "${randomdock_UIS}")
 

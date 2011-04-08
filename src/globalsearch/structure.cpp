@@ -1,7 +1,7 @@
 /**********************************************************************
   Structure - Wrapper for Avogadro's molecule class
 
-  Copyright (C) 2009-2010 by David C. Lonie
+  Copyright (C) 2009-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -74,7 +74,7 @@ namespace GlobalSearch {
     *this = other;
   }
 
-  Structure::Structure(const Molecule &other) :
+  Structure::Structure(const Avogadro::Molecule &other) :
     Molecule(other),
     m_histogramGenerationPending(false),
     m_updatedSinceDupChecked(true),
@@ -216,7 +216,7 @@ namespace GlobalSearch {
     return *this;
   }
 
-  Structure& Structure::operator=(const Molecule &mol)
+  Structure& Structure::operator=(const Avogadro::Molecule &mol)
   {
     Molecule::operator=(mol);
     return *this;
@@ -735,7 +735,7 @@ namespace GlobalSearch {
     return true;
   }
 
-  bool Structure::getNearestNeighborDistance(const Atom *atom,
+  bool Structure::getNearestNeighborDistance(const Avogadro::Atom *atom,
                                              double & shortest) const
   {
     const Eigen::Vector3d *position = atom->pos();
@@ -769,7 +769,7 @@ namespace GlobalSearch {
     return neighbors;
   }
 
-  QList<Atom*> Structure::getNeighbors(const Atom *atom,
+  QList<Atom*> Structure::getNeighbors(const Avogadro::Atom *atom,
                                        const double cutoff,
                                        QList<double> *distances) const
   {
@@ -815,7 +815,7 @@ namespace GlobalSearch {
                                        double min,
                                        double max,
                                        double step,
-                                       Atom *atom) const
+                                       Avogadro::Atom *atom) const
   {
     QList<QVariant> distv, freqv;
     if (!generateIADHistogram(&distv, &freqv, min, max, step, atom)) {
@@ -849,7 +849,7 @@ namespace GlobalSearch {
     const Vector3d *v1 = &(m.atomPositions->at(m.i));
     const Vector3d *v2;
     QList<int> freq;
-    double diff, radius;
+    double diff;
     for (int ind = 0; ind < m.dist->size(); ind++) {
       freq.append(0);
     }
@@ -887,7 +887,7 @@ namespace GlobalSearch {
   bool Structure::generateIADHistogram(QList<QVariant> * distance,
                                        QList<QVariant> * frequency,
                                        double min, double max, double step,
-                                       Atom *atom) const
+                                       Avogadro::Atom *atom) const
   {
     distance->clear();
     frequency->clear();
@@ -953,9 +953,9 @@ namespace GlobalSearch {
     return true;
   }
 
-  bool Structure::compareIADDistributions(const vector<double> &d,
-                                          const vector<double> &f1,
-                                          const vector<double> &f2,
+  bool Structure::compareIADDistributions(const std::vector<double> &d,
+                                          const std::vector<double> &f1,
+                                          const std::vector<double> &f2,
                                           double decay,
                                           double smear,
                                           double *error)

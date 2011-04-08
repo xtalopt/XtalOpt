@@ -1,4 +1,4 @@
-set( spglib_SRCS 
+set( spglib_SRCS
      bravais.c
      bravais_virtual.c
      cell.c

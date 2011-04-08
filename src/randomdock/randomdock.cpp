@@ -25,7 +25,9 @@
 #include <globalsearch/optbase.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/slottedwaitcondition.h>
+#ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
+#endif // ENABLE_SSH
 #include <globalsearch/macros.h>
 
 #include <avogadro/atom.h>
@@ -36,6 +38,7 @@
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QStringList>
+#include <QtCore/QThread>
 
 using namespace std;
 using namespace Avogadro;
@@ -70,9 +73,11 @@ namespace RandomDock {
     delete m_queue;
     m_queue = 0;
 
+#ifdef ENABLE_SSH
     // Stop SSHManager
     delete m_ssh;
     m_ssh = 0;
+#endif // ENABLE_SSH
 
     // Wait for save to finish
     while (savePending) {
@@ -122,6 +127,7 @@ namespace RandomDock {
                "can begin (The option is on the 'Optimization Settings' tab)."));
     };
 
+#ifdef ENABLE_SSH
     // Create the SSHManager
     QString pw = "";
     for (;;) {
@@ -179,6 +185,7 @@ namespace RandomDock {
       } // end catch
       break;
     } // end forever
+#endif // ENABLE_SSH
 
     // Here we go!
     debug("Starting optimization.");

@@ -17,6 +17,8 @@
 #ifndef SGEQUEUEINTERFACE_H
 #define SGEQUEUEINTERFACE_H
 
+#ifdef ENABLE_SSH
+
 // Tell doxygen to skip this file
 /// \cond
 
@@ -69,7 +71,8 @@ namespace GlobalSearch {
   };
 }
 
-#endif
-
 // End doxygen skip:
 /// \endcond
+
+#endif // ENABLE_SSH
+#endif // SGEQUEUEINTERFACE

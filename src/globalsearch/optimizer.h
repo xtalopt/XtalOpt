@@ -1,7 +1,7 @@
 /**********************************************************************
   Optimizer - Generic optimizer interface
 
-  Copyright (C) 2010 by David C. Lonie
+  Copyright (C) 2010-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -110,7 +110,7 @@ namespace GlobalSearch {
      * otherwise. If false, \a err will be overwritten with a
      * user-friendly error message.
      */
-    virtual bool isReadyToSearch(QString *str) {*str = ""; return true;}
+    virtual bool isReadyToSearch(QString *err) {*err = ""; return true;}
 
     /**
      * Check if the file m_completionFilename exists in the working
@@ -180,7 +180,7 @@ namespace GlobalSearch {
      * Return a specified template.
      *
      * @param filename Filename of template
-     * @param optStep Optimization step index of template to retrieve.
+     * @param optStepIndex  Optimization step index of template to retrieve.
      *
      * @return The requested template
      */
@@ -246,7 +246,7 @@ namespace GlobalSearch {
      *
      * @param filename Filename of template
      * @param templateData Template string
-     * @param optStep Optimization step (index, starts at 0)
+     * @param optStepIndex Optimization step (index, starts at 0)
      *
      * @return True if successful, false otherwise.
      */
@@ -282,7 +282,7 @@ namespace GlobalSearch {
      * Remove an optimization step from a filename's templates.
      *
      * @param filename Filename of interest
-     * @param optStep Optimization step index to remove
+     * @param optStepIndex Optimization step index to remove
      *
      * @return True if successful, false otherwise.
      */

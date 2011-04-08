@@ -1,7 +1,7 @@
 /**********************************************************************
   QueueManager - Generic queue manager to track running structures
 
-  Copyright (C) 2010 by David C. Lonie
+  Copyright (C) 2010-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,13 +17,6 @@
 #define QUEUEMANAGER_H
 
 #include <globalsearch/tracker.h>
-
-#include <QtCore/QDebug>
-#include <QtCore/QMutex>
-#include <QtCore/QReadWriteLock>
-#include <QtCore/QStringList>
-#include <QtCore/QThread>
-#include <QtCore/QTimer>
 
 namespace GlobalSearch {
   class OptBase;
@@ -104,8 +97,8 @@ m_queue->unlockForNaming(newStructure);
     /**
      * Constructor.
      *
-     * @param A QThread instance to run in
-     * @param opt The OptBase class the QueueManager uses
+     * @param thread A QThread instance to run in
+     * @param parent The OptBase class the QueueManager uses
      */
     explicit QueueManager(QThread *thread, OptBase *parent);
 
@@ -181,8 +174,6 @@ m_queue->unlockForNaming(newStructure);
      * Reset all trackers in trackerList
      */
     void reset();
-
-    void resetRequestedStructures(int i = 0) {m_requestedStructures = i;};
 
     /**
      * Stops any running optimization processes associated with a
@@ -276,12 +267,26 @@ m_queue->unlockForNaming(newStructure);
     void addStructureToSubmissionQueue(GlobalSearch::Structure *s) {
       addStructureToSubmissionQueue(s, 0);}
 
+    /**
+     * Move \b this to the QThread specified in the constructor and
+     * setup connections in that thread's event loop.
+     */
     void moveToQMThread();
+
+    /**
+     * Called by moveToQMThread(), this function installs connections
+     * in the owning thread's event loop.
+     */
     void setupConnections();
 
   protected:
+    /// Cached pointer to main optbase class
     OptBase *m_opt;
+
+    /// Pointer to the thread where the queuemanager lives
     QThread *m_thread;
+
+    /// Convenience pointer to m_opt->tracker()
     Tracker *m_tracker;
 
     /**
@@ -343,21 +348,93 @@ m_queue->unlockForNaming(newStructure);
      */
     void checkRunning();
 
+    /**
+     * Perform actions on the Optimized Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleOptimizedStructure(Structure *s);
+
+    /**
+     * Perform actions on the StepOptimized Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleStepOptimizedStructure(Structure *s);
+
+    /**
+     * Perform actions on the WaitingForOptimization Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleWaitingForOptimizationStructure(Structure *s);
+
+    /**
+     * Perform actions on the InProcess Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleInProcessStructure(Structure *s);
+
+    /**
+     * Perform actions on the Empty Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleEmptyStructure(Structure *s);
+
+    /**
+     * Perform actions on the Updating Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleUpdatingStructure(Structure *s);
+
+    /**
+     * Perform actions on the Error'd Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleErrorStructure(Structure *s);
+
+    /**
+     * Perform actions on the Submitted Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleSubmittedStructure(Structure *s);
+
+    /**
+     * Perform actions on the Killed Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleKilledStructure(Structure *s);
+
+    /**
+     * Perform actions on the Removed Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleRemovedStructure(Structure *s);
+
+    /**
+     * Perform actions on the Duplicate Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleDuplicateStructure(Structure *s);
+
+    /**
+     * Perform actions on the Restart'ing Structure \a s.
+     *
+     * @param s Structure of interest
+     */
     void handleRestartStructure(Structure *s);
 
     // These run in the background and are called by the above
     // functions via QtConcurrent::run.
+    /// @cond
     void handleOptimizedStructure_(Structure *s);
     void handleStepOptimizedStructure_(Structure *s);
     void handleInProcessStructure_(Structure *s);
@@ -366,13 +443,17 @@ m_queue->unlockForNaming(newStructure);
     void handleKilledStructure_(Structure *s);
     void handleDuplicateStructure_(Structure *s);
     void handleRestartStructure_(Structure *s);
+    /// @endcond
 
     // Other background handlers
+    /// @cond
     void addStructureToSubmissionQueue_(Structure *s, int optStep);
     void startJob_(Structure *s);
     void unlockForNaming_();
+    /// @endcond
 
     // Trackers for above handlers
+    /// @cond
     Tracker m_newlyOptimizedTracker;
     Tracker m_stepOptimizedTracker;
     Tracker m_inProcessTracker;
@@ -382,6 +463,7 @@ m_queue->unlockForNaming(newStructure);
     Tracker m_newDuplicateTracker;
     Tracker m_restartTracker;
     Tracker m_newSubmissionTracker;
+    /// @endcond
 
     /// Tracks which structures are currently running
     Tracker m_runningTracker;
@@ -391,11 +473,10 @@ m_queue->unlockForNaming(newStructure);
     /// not yet been accepted into m_tracker.
     Tracker m_newStructureTracker;
 
+    /// Number of structure requests pending.
     int m_requestedStructures;
 
-    QMutex m_checkRunningMutex;
-    QMutex m_checkPopulationMutex;
-
+    /// Boolean set to true while the destructor is running.
     bool m_isDestroying;
  };
 

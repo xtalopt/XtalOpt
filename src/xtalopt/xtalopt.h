@@ -1,7 +1,7 @@
 /**********************************************************************
   XtalOpt - Holds all data for genetic optimization
 
-  Copyright (C) 2009-2010 by David C. Lonie
+  Copyright (C) 2009-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -54,9 +54,12 @@ namespace XtalOpt {
     };
 
     enum QueueInterfaces {
-      QI_LOCAL = 0,
+      QI_LOCAL = 0
+#ifdef ENABLE_SSH
+      ,
       QI_PBS,
       QI_SGE
+#endif // ENABLE_SSH
     };
 
     enum Operators {

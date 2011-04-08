@@ -2,7 +2,7 @@
   AbstractDialog -- A base dialog class for use with libglobalsearch
   projects. See the accompanying .ui file for a Qt Designer template.
 
-  Copyright (C) 2010 by David Lonie
+  Copyright (C) 2010-2011 by David Lonie
 
   This library is free software; you can redistribute it and/or modify
   it under the terms of the GNU Library General Public License as
@@ -250,6 +250,7 @@ namespace GlobalSearch {
     ui_progbar->repaint();
   }
 
+  /// @cond
   void AbstractDialog::reemitTabsWriteSettings(const QString &filename)
   {
     if (QThread::currentThread() == qApp->thread()) {
@@ -271,5 +272,5 @@ namespace GlobalSearch {
       emit tabsReadSettingsBlockingQueued(filename);
     }
   }
-
+  /// @endcond
 }

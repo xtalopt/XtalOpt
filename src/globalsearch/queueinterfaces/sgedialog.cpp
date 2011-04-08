@@ -14,6 +14,11 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+#ifdef ENABLE_SSH
+
+// Doxygen skip:
+/// @cond
+
 #include <globalsearch/queueinterfaces/sgedialog.h>
 
 #include <globalsearch/queueinterfaces/sge.h>
@@ -76,14 +81,14 @@ namespace GlobalSearch {
 
   void SgeConfigDialog::accept()
   {
-    m_opt->description = ui->edit_description->text();
-    m_opt->host = ui->edit_host->text();
-    m_sge->m_qdel = ui->edit_qdel->text();
-    m_sge->m_qstat = ui->edit_qstat->text();
-    m_sge->m_qsub = ui->edit_qsub->text();
-    m_opt->rempath = ui->edit_rempath->text();
-    m_opt->filePath = ui->edit_locpath->text();
-    m_opt->username = ui->edit_username->text();
+    m_opt->description = ui->edit_description->text().trimmed();
+    m_opt->host = ui->edit_host->text().trimmed();
+    m_sge->m_qdel = ui->edit_qdel->text().trimmed();
+    m_sge->m_qstat = ui->edit_qstat->text().trimmed();
+    m_sge->m_qsub = ui->edit_qsub->text().trimmed();
+    m_opt->rempath = ui->edit_rempath->text().trimmed();
+    m_opt->filePath = ui->edit_locpath->text().trimmed();
+    m_opt->username = ui->edit_username->text().trimmed();
     m_opt->port = ui->spin_port->value();
     QDialog::accepted();
     close();
@@ -97,3 +102,7 @@ namespace GlobalSearch {
   }
 
 }
+
+/// @endcond
+
+#endif // ENABLE_SSH

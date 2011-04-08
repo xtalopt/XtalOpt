@@ -1,0 +1,70 @@
+namespace XtalOpt {
+/**
+
+@page xo_saveresume Saving and Resuming Sessions in XtalOpt
+
+@section sr_contents Contents
+
+  - \ref sr_saving
+  - \ref sr_resuming
+
+@image html xo-saveresume.png
+@image latex xo-saveresume.png width=\textwidth
+
+@section sr_saving How to save your session
+
+XtalOpt will write a small file named xtalopt.state to its working
+directory that contains the information necessary to resume the
+session at a later time. The file can be rewritten manually by
+clicking the "Save Session" button highlighted above, and XtalOpt will
+automatically save the session every time a structure is updated.
+
+XtalOpt will also write a file "structure.state" in each candidate
+structure's directory. This file stores XtalOpt-specific information
+about the structure.
+
+@section sr_resuming How to resume your session
+
+To resume a session, simply click "Resume stored session" (highlighted
+above) and select the xtalopt.state file in the working directory of
+the session you would like to resume. XtalOpt will then begin to load
+the structures and search parameters. You can monitor the progress
+with the progress bar that appears at the bottom of the window.
+
+While the structures are loading, you may encounter errors that say:
+
+@verbatim
+Error, no (or not appropriate for [OPTIMIZER]) xtal data in [DIRECTORY].
+
+This could be a result of resuming a structure that has not yet done
+any local optimizations. If so, safely ignore this message.
+@endverbatim
+
+As mentioned in the message, these can typically be ignored if it only
+happens for a handful of structures. This occurs when a structure has
+been generated in XtalOpt, but it has not completed any geometry
+optimization so there are no output files from which to load the
+geometry. If it happens for a significant number of structures (or
+structures that are known to have completed at least one geometry
+optimization step), the output files from the optimizer may be missing
+or corrupt.
+
+After resuming a session, XtalOpt will ask if you would like to
+continue the search or enter read-only mode. Read-only mode will not
+generate new structures or submit geometry optimizations.
+
+@note If you are considering resuming a read-only session, take a look
+at the results.txt file in the working directory. It contains a list
+of all structures, sorted by enthalpy, with additional useful
+information. This can save some time when trying to locate the most
+stable structure of a old search.
+
+The working directories for XtalOpt are relocatable, meaning that the
+directory containing xtalopt.state and the [gen]x[id] structure
+folders may be moved, tarred, zipped, etc. and still be resumed at a
+later time from a different location on the filesystem, or even a
+different computer.
+
+*/
+
+}

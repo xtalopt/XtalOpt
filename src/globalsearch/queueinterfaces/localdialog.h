@@ -44,7 +44,8 @@ namespace GlobalSearch {
   protected:
     OptBase *m_opt;
     LocalQueueInterface *m_queueInterface;
-    QLineEdit *m_lineedit;
+    QLineEdit *m_edit_workdir;
+    QLineEdit *m_edit_description;
 
   };
 

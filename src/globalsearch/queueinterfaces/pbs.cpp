@@ -14,6 +14,11 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+#ifdef ENABLE_SSH
+
+// Doxygen skip:
+/// @cond
+
 #include <globalsearch/queueinterfaces/pbs.h>
 
 #include <globalsearch/macros.h>
@@ -510,3 +515,6 @@ namespace GlobalSearch {
 
 }
 
+/// @endcond
+
+#endif // ENABLE_SSH

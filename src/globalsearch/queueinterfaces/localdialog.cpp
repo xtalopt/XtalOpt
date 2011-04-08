@@ -24,9 +24,10 @@
 
 #include <QtGui/QDialog>
 #include <QtGui/QDialogButtonBox>
-#include <QtGui/QSpacerItem>
+#include <QtGui/QHBoxLayout>
 #include <QtGui/QLabel>
 #include <QtGui/QLineEdit>
+#include <QtGui/QSpacerItem>
 #include <QtGui/QVBoxLayout>
 
 #include <QtCore/QObject>
@@ -38,17 +39,36 @@ namespace GlobalSearch {
     : QDialog(parent),
       m_opt(opt),
       m_queueInterface(o),
-      m_lineedit(0)
+      m_edit_workdir(0),
+      m_edit_description(0)
   {
     QVBoxLayout *vlayout = new QVBoxLayout(this);
 
+    // Create workdir prompt
+    QHBoxLayout *workdir_layout = new QHBoxLayout();
+
     QLabel *label = new QLabel
       (tr("Local working directory:"), this);
-    vlayout->addWidget(label);
+    workdir_layout->addWidget(label);
 
-    m_lineedit = new QLineEdit(this);
-    vlayout->addWidget(m_lineedit);
+    m_edit_workdir = new QLineEdit(this);
+    workdir_layout->addWidget(m_edit_workdir);
 
+    vlayout->addItem(workdir_layout);
+
+    // Create description prompt
+    QHBoxLayout *desc_layout = new QHBoxLayout();
+
+    label = new QLabel
+      (tr("Search description:"), this);
+    desc_layout->addWidget(label);
+
+    m_edit_description = new QLineEdit(this);
+    desc_layout->addWidget(m_edit_description);
+
+    vlayout->addItem(desc_layout);
+
+    // Add spacer
     QSpacerItem *spacer = new QSpacerItem
       (10,10, QSizePolicy::Minimum, QSizePolicy::Expanding);
     vlayout->addItem(spacer);
@@ -68,7 +88,8 @@ namespace GlobalSearch {
 
   void LocalQueueInterfaceConfigDialog::accept()
   {
-    m_opt->filePath = m_lineedit->text();
+    m_opt->filePath = m_edit_workdir->text().trimmed();
+    m_opt->description = m_edit_description->text().trimmed();
     QDialog::accept();
     this->close();
   }
@@ -82,7 +103,8 @@ namespace GlobalSearch {
 
   void LocalQueueInterfaceConfigDialog::updateGUI()
   {
-    m_lineedit->setText(m_opt->filePath);
+    m_edit_workdir->setText(m_opt->filePath);
+    m_edit_description->setText(m_opt->description);
   }
 
 } // end namespace GlobalSearch

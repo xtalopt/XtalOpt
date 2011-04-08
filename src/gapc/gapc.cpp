@@ -22,12 +22,15 @@
 #include <gapc/optimizers/gulp.h>
 
 #include <globalsearch/macros.h>
-#include <globalsearch/structure.h>
-#include <globalsearch/tracker.h>
-#include <globalsearch/queueinterfaces/remote.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/slottedwaitcondition.h>
+#include <globalsearch/structure.h>
+#include <globalsearch/tracker.h>
+
+#ifdef ENABLE_SSH
+#include <globalsearch/queueinterfaces/remote.h>
 #include <globalsearch/sshmanager.h>
+#endif // ENABLE_SSH
 
 #include <QtCore/QDir>
 #include <QtConcurrentRun>
@@ -69,9 +72,11 @@ namespace GAPC {
     delete m_queue;
     m_queue = 0;
 
+#ifdef ENABLE_SSH
     // Stop SSHManager
     delete m_ssh;
     m_ssh = 0;
+#endif // ENABLE_SSH
 
     // Wait for save to finish
     while (savePending) {
@@ -245,6 +250,7 @@ namespace GAPC {
 
     m_dialog->readSettings(filename);
 
+#ifdef ENABLE_SSH
     // Create SSHConnection if we are running remotely
     if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
@@ -309,6 +315,7 @@ namespace GAPC {
         break;
       } // end forever
     }
+#endif // ENABLE_SSH
 
     debug(tr("Resuming %1 session in '%2' (%3) readOnly = %4")
           .arg(m_idString)
@@ -451,6 +458,7 @@ optimizations. If so, safely ignore this message.")
                "can begin (The option is on the 'Optimization Settings' tab)."));
     };
 
+#ifdef ENABLE_SSH
     // Create the SSHManager if running remotely
     if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
@@ -510,6 +518,7 @@ optimizations. If so, safely ignore this message.")
         break;
       } // end forever
     }
+#endif // ENABLE_SSH
 
     // Here we go!
     debug("Starting optimization.");

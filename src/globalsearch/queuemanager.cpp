@@ -1,7 +1,7 @@
 /**********************************************************************
   QueueManager - Generic queue manager to track running structures
 
-  Copyright (C) 2011 by David C. Lonie
+  Copyright (C) 2010-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include <QtCore/QTimer>
 
 // A couple helper functions/classes -- disable doxygen parsing:
-/// @cond
+/// \cond
 namespace {
   class removeFromTrackerWhenScopeEnds
   {
@@ -50,7 +50,7 @@ namespace {
     t->unlock();
     return b; }
 }
-/// @endcond
+/// \endcond
 
 namespace GlobalSearch {
 
@@ -71,10 +71,6 @@ namespace GlobalSearch {
   {
     m_isDestroying = true;
     this->disconnect();
-
-    // Prevent the check functions from running again
-    m_checkRunningMutex.lock();
-    m_checkPopulationMutex.lock();
 
     // Wait for handler trackers to empty.
     QList<Tracker*> trackers;
@@ -196,11 +192,6 @@ namespace GlobalSearch {
 
   void QueueManager::checkPopulation()
   {
-    // Return if already checking
-    if (!m_checkPopulationMutex.tryLock()) {
-      return;
-    }
-
     // Count jobs
     uint running = 0;
     uint optimized = 0;
@@ -297,7 +288,6 @@ namespace GlobalSearch {
 
     m_newStructureTracker.unlock();
     m_tracker->unlock();
-    m_checkPopulationMutex.unlock();
     return;
   }
 
@@ -308,11 +298,6 @@ namespace GlobalSearch {
                "Attempting to run QueueManager::checkRunning "
                "from a thread other than the QM thread. "
                );
-
-    // Return if mutex is already locked
-    if (!m_checkRunningMutex.tryLock()) {
-      return;
-    }
 
     // Get list of running structures
     QList<Structure*> runningStructures = getAllRunningStructures();
@@ -386,7 +371,6 @@ namespace GlobalSearch {
       }
     }
 
-    m_checkRunningMutex.unlock();
     return;
   }
 
@@ -400,6 +384,8 @@ namespace GlobalSearch {
                       &QueueManager::handleInProcessStructure_, s);
   }
 
+  // Doxygen skip:
+  /// @cond
   void QueueManager::handleInProcessStructure_(Structure *s)
   {
     Q_ASSERT(trackerContainsStructure(s, &m_inProcessTracker));
@@ -432,6 +418,7 @@ namespace GlobalSearch {
 
     return;
   }
+  /// @endcond
 
   void QueueManager::handleOptimizedStructure(Structure *s)
   {
@@ -443,6 +430,8 @@ namespace GlobalSearch {
                       &QueueManager::handleOptimizedStructure_, s);
   }
 
+  // Doxygen skip:
+  /// @cond
   void QueueManager::handleOptimizedStructure_(Structure *s)
   {
     Q_ASSERT(trackerContainsStructure(s, &m_newlyOptimizedTracker));
@@ -461,6 +450,7 @@ namespace GlobalSearch {
     m_runningTracker.remove(s);
     m_runningTracker.unlock();
   }
+  /// @endcond
 
   void QueueManager::handleStepOptimizedStructure(Structure *s)
   {
@@ -470,6 +460,8 @@ namespace GlobalSearch {
                       &QueueManager::handleStepOptimizedStructure_, s);
   }
 
+  // Doxygen skip:
+  /// @cond
   void QueueManager::handleStepOptimizedStructure_(Structure *s)
   {
     Q_ASSERT(trackerContainsStructure(s, &m_stepOptimizedTracker));
@@ -509,6 +501,7 @@ namespace GlobalSearch {
       emit structureFinished(s);
     }
   }
+  /// @endcond
 
   void QueueManager::handleWaitingForOptimizationStructure(Structure *s)
   {
@@ -535,6 +528,8 @@ namespace GlobalSearch {
                       &QueueManager::handleErrorStructure_, s);
   }
 
+  // Doxygen skip:
+  /// @cond
   void QueueManager::handleErrorStructure_(Structure *s)
   {
     Q_ASSERT(trackerContainsStructure(s, &m_errorTracker));
@@ -581,6 +576,7 @@ namespace GlobalSearch {
       return;
     }
   }
+  /// @endcond
 
   void QueueManager::handleSubmittedStructure(Structure *s)
   {
@@ -592,6 +588,8 @@ namespace GlobalSearch {
                       &QueueManager::handleSubmittedStructure_, s);
   }
 
+  // Doxygen skip:
+  /// @cond
   void QueueManager::handleSubmittedStructure_(Structure *s)
   {
     Q_ASSERT(trackerContainsStructure(s, &m_submittedTracker));
@@ -626,6 +624,7 @@ namespace GlobalSearch {
       break;
     }
   }
+  /// @endcond
 
   void QueueManager::handleKilledStructure(Structure *s)
   {
@@ -637,6 +636,8 @@ namespace GlobalSearch {
                       &QueueManager::handleKilledStructure_, s);
   }
 
+  // Doxygen skip:
+  /// @cond
   void QueueManager::handleKilledStructure_(Structure *s)
   {
     Q_ASSERT(trackerContainsStructure(s, &m_newlyKilledTracker));
@@ -657,6 +658,7 @@ namespace GlobalSearch {
     m_runningTracker.remove(s);
     m_runningTracker.unlock();
   }
+  /// @endcond
 
   void QueueManager::handleRemovedStructure(Structure *s)
   {
@@ -673,6 +675,8 @@ namespace GlobalSearch {
                       &QueueManager::handleDuplicateStructure_, s);
   }
 
+  // Doxygen skip:
+  /// @cond
   void QueueManager::handleDuplicateStructure_(Structure *s)
   {
     Q_ASSERT(trackerContainsStructure(s, &m_newDuplicateTracker));
@@ -690,6 +694,7 @@ namespace GlobalSearch {
     m_runningTracker.remove(s);
     m_runningTracker.unlock();
   }
+  /// @endcond
 
   void QueueManager::handleRestartStructure(Structure *s)
   {
@@ -701,6 +706,8 @@ namespace GlobalSearch {
                       &QueueManager::handleRestartStructure_, s);
   }
 
+  // Doxygen skip:
+  /// @cond
   void QueueManager::handleRestartStructure_(Structure *s)
   {
     Q_ASSERT(trackerContainsStructure(s, &m_restartTracker));
@@ -734,6 +741,7 @@ namespace GlobalSearch {
     emit structureUpdated(s);
     return;
   }
+  /// @endcond
 
   void QueueManager::killStructure(Structure *s) {
     // End job if currently running
@@ -766,6 +774,8 @@ namespace GlobalSearch {
                       s, optStep);
   }
 
+  // Doxygen skip:
+  /// @cond
   void QueueManager::addStructureToSubmissionQueue_(Structure *s, int optStep)
   {
     Q_ASSERT(trackerContainsStructure(s, &m_newSubmissionTracker));
@@ -792,6 +802,7 @@ namespace GlobalSearch {
 
     emit structureUpdated(s);
   }
+  /// @endcond
 
   void QueueManager::startJob()
   {
@@ -921,6 +932,8 @@ namespace GlobalSearch {
     QtConcurrent::run(this, &QueueManager::unlockForNaming_);
   }
 
+  // Doxygen skip:
+  /// @cond
   void QueueManager::unlockForNaming_()
   {
     Structure *s;
@@ -944,6 +957,7 @@ namespace GlobalSearch {
 
     emit structureStarted(s);
   }
+  /// @endcond
 
   void QueueManager::appendToJobStartTracker(Structure *s)
   {
