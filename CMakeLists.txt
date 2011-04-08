@@ -3,7 +3,7 @@ project(XtalOpt)
 cmake_minimum_required(VERSION 2.6)
 set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
 
-set(QT_MIN_VERSION "4.5.0")
+set(QT_MIN_VERSION "4.6.0")
 find_package(Qt4 REQUIRED)
 find_package(OpenBabel2 REQUIRED)
 find_package(Avogadro REQUIRED)
