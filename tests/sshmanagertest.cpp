@@ -2,7 +2,7 @@
   SSHManager - SSHManagerTest class provides unit testing for the
   SSHManager class
 
-  Copyright (C) 2010 David C. Lonie
+  Copyright (C) 2010-2011 David C. Lonie
 
   XtalOpt is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of

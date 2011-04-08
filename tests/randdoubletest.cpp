@@ -5,7 +5,7 @@
   that it knows about. Black regions have few hits, while lighter
   regions have hits. The lighter the pixel, the more hits it has.
 
-  Copyright (C) 2010 David C. Lonie
+  Copyright (C) 2010-2011 David C. Lonie
 
   XtalOpt is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of

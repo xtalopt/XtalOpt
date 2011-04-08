@@ -1,7 +1,7 @@
 /**********************************************************************
   RandomDockGAMESS - Tools to interface with GAMESS remotely
 
-  Copyright (C) 2009 by David C. Lonie
+  Copyright (C) 2009-2011 by David C. Lonie
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
