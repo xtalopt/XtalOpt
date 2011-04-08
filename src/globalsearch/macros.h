@@ -24,17 +24,16 @@
 // Create a pointer of type QSettings *settings that points to either:
 // 1) The default application QSettings object, or
 // 2) A QSettings object that writes to "f"
-#define SETTINGS(f) QSettings *settings, pQS, rQS (f, QSettings::IniFormat); settings = (QString(f).isEmpty()) ? &pQS : &rQS;
+#define SETTINGS(f)                                             \
+  QSettings *settings, pQS, rQS (f, QSettings::IniFormat);      \
+  settings = (QString(f).isEmpty()) ? &pQS : &rQS;
 
 // If string f is non-empty, write the file immediately with sync(),
 // otherwise, let the system decide when to write to file
 #define DESTROY_SETTINGS(f) settings->sync();
 
-// This function will return a random seed to initialize srand
-// http://stackoverflow.com/questions/322938
-unsigned long GLOBALSEARCH_GETRANDOMSEED();
-
-#define INIT_RANDOM_GENERATOR()
+// Random number generation
+#define INIT_RANDOM_GENERATOR() // Does nothing right now
 #define RANDDOUBLE() ( GlobalSearch::GSRandom::instance()->getRandomDouble() )
 #define RANDUINT() ( GlobalSearch::GSRandom::instance()->getRandomUInt() )
 
@@ -42,18 +41,18 @@ unsigned long GLOBALSEARCH_GETRANDOMSEED();
 #ifdef WIN32
 
 // Legacy windows functions with underscore prefix
-#define	GS_ISNAN(a) _isnan(a)
-#define	GS_ISINF(a) _isinf(a)
-#define	GS_SLEEP(a) _sleep(a*1000) // arg in seconds
-#define	GS_MSLEEP(a) _sleep(a) // arg in milliseconds
+#define	GS_ISNAN(a) std::_isnan(a)
+#define	GS_ISINF(a) std::_isinf(a)
+#define	GS_SLEEP(a) Sleep(static_cast<unsigned long int>((a)*1000)) // arg in seconds
+#define	GS_MSLEEP(a) Sleep(static_cast<unsigned long int>(a)) // arg in milliseconds
 
 #else // def WIN32
 
 // Legacy windows functions have underscore prefix
-#define GS_ISNAN(a) isnan(a)
-#define	GS_ISINF(a) isinf(a)
+#define GS_ISNAN(a) std::isnan(a)
+#define	GS_ISINF(a) std::isinf(a)
 #define	GS_SLEEP(a) sleep(a) // arg in seconds
-#define	GS_MSLEEP(a) usleep(a*1000) // arg in milliseconds
+#define	GS_MSLEEP(a) usleep((a)*1000) // arg in milliseconds
 
 #endif // WIN32
 
