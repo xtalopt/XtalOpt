@@ -213,7 +213,7 @@ namespace GlobalSearch {
   protected:
     /// Look up hash for mapping jobID's to processes.
     /// Key: PID, Value: QProcess handle
-    QHash<Q_PID, LocalQueueProcess*> m_processes;
+    QHash<unsigned long, LocalQueueProcess*> m_processes;
 
   };
 }

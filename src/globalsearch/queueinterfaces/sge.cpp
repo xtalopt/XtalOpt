@@ -399,8 +399,9 @@ namespace GlobalSearch {
 
     queueMutex.lockForRead();
     // Limit queries to once per second
+    
     if (m_queueTimeStamp.isValid() &&
-        m_queueTimeStamp.msecsTo(QDateTime::currentDateTime())
+        m_queueTimeStamp.time().msecsTo(QTime::currentTime())
         <= 1000) {
       // If the cache is valid, return it
       QStringList ret (m_queueData);
@@ -420,7 +421,7 @@ namespace GlobalSearch {
     // oldTimeStamp from earlier. If they don't match, another thread
     // has already updated the queueData, so tail-recurse this
     // function and try again.
-    if (m_queueTimeStamp.msecsTo(oldTimeStamp) != 0) {
+    if (m_queueTimeStamp.time().msecsTo(oldTimeStamp.time()) != 0) {
       queueLocker.unlock();
       return this->getQueueList();
     }

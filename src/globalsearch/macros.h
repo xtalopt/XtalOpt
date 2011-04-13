@@ -21,6 +21,11 @@
 
 #include <cstdlib>
 
+#ifdef WIN32
+// For Sleep
+#include <windows.h>
+#endif
+
 // Create a pointer of type QSettings *settings that points to either:
 // 1) The default application QSettings object, or
 // 2) A QSettings object that writes to "f"
@@ -41,7 +46,7 @@
 #ifdef WIN32
 
 // Legacy windows functions with underscore prefix
-#define	GS_ISNAN(a) std::_isnan(a)
+#define	GS_ISNAN(a) _isnan(a)
 #define	GS_ISINF(a) std::_isinf(a)
 #define	GS_SLEEP(a) Sleep(static_cast<unsigned long int>((a)*1000)) // arg in seconds
 #define	GS_MSLEEP(a) Sleep(static_cast<unsigned long int>(a)) // arg in milliseconds

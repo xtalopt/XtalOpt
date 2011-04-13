@@ -631,6 +631,9 @@ namespace GlobalSearch {
              "No current template contains file",
              filename.toStdString().c_str());
     }
+    // Shouldn't be reached, but otherwise MSVC complains:
+    Q_ASSERT(false);
+    return *(new QHash<QString, QStringList>());
   }
 
   const QHash<QString, QStringList> &
@@ -648,6 +651,9 @@ namespace GlobalSearch {
              "No current template contains file",
              filename.toStdString().c_str());
     }
+    // Shouldn't be reached, but otherwise MSVC complains:
+    Q_ASSERT(false);
+    return *(new QHash<QString, QStringList>());
   }
 
   void Optimizer::fixTemplateLengths()
