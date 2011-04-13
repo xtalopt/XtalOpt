@@ -28,6 +28,11 @@
 #include <QtCore/QString>
 #include <QtCore/QTextStream>
 
+#ifdef WIN32
+// For extracting PIDs
+#include <windows.h>
+#endif
+
 namespace GlobalSearch {
 
   LocalQueueInterface::LocalQueueInterface(OptBase *parent,
@@ -44,7 +49,7 @@ namespace GlobalSearch {
 
   LocalQueueInterface::~LocalQueueInterface()
   {
-    for (QHash<Q_PID, LocalQueueProcess*>::iterator
+    for (QHash<unsigned long, LocalQueueProcess*>::iterator
            it = m_processes.begin(),
            it_end = m_processes.end();
          it != it_end; ++it) {
@@ -170,15 +175,15 @@ namespace GlobalSearch {
     }
 
     proc->start(command);
-    Q_PID pid = proc->pid();
+
+#ifdef WIN32
+    unsigned long pid = proc->pid()->dwProcessId;
+#else // WIN32
+    unsigned long pid = proc->pid();
+#endif // WIN32
 
     s->startOptTimer();
     s->setJobID(pid);
-
-    qDebug() << "Job started for structure"
-             << s->getIDString()
-             << "with PID="
-             << pid;
 
     m_processes.insert(pid, proc);
 
@@ -189,7 +194,7 @@ namespace GlobalSearch {
   {
     QWriteLocker wLocker (s->lock());
 
-    Q_PID pid = static_cast<Q_PID>(s->getJobID());
+    unsigned long pid = static_cast<unsigned long>(s->getJobID());
 
     if (pid == 0) {
       // The job is not running, so just return
@@ -218,7 +223,7 @@ namespace GlobalSearch {
     QReadLocker wlocker (s->lock());
 
     // Look-up process instance
-    Q_PID pid = static_cast<Q_PID>(s->getJobID());
+    unsigned long pid = static_cast<unsigned long>(s->getJobID());
 
     // If jobID = 0 and structure is not in "Submitted" state, return an error.
     if (!pid && s->getStatus() != Structure::Submitted) {

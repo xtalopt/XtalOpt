@@ -252,8 +252,9 @@ namespace XtalOpt {
     if (ui_combo_optimizers->currentIndex() == XtalOpt::OT_VASP) {
       VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
       if (!vopt->POTCARInfoIsUpToDate(xtalopt->comp.keys())) {
-        if (generateVASP_POTCAR_info());
-        vopt->buildPOTCARs();
+        if (generateVASP_POTCAR_info()) {
+          vopt->buildPOTCARs();
+        }
       }
     }
 
