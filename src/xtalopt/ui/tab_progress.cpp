@@ -613,14 +613,11 @@ namespace XtalOpt {
       return;
     }
 
-    QWriteLocker locker (m_context_xtal->lock());
-
     // QueueManager will handle mutex locking
     m_opt->queue()->killStructure(m_context_xtal);
 
     // Clear context xtal pointer
     emit finishedBackgroundProcessing();
-    locker.unlock();
     newInfoUpdate(m_context_xtal);
     m_context_xtal = 0;
   }
