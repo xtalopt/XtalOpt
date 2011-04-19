@@ -729,6 +729,16 @@ namespace XtalOpt {
     if (gamma_min ==    gamma_max)      gamma = gamma_min;
     xtal->rescaleCell(a, b, c, alpha, beta, gamma);
 
+    // Reject the structure if using VASP and the determinant of the
+    // cell matrix is negative (otherwise VASP complains about a
+    // "negative triple product")
+    if (qobject_cast<VASPOptimizer*>(m_optimizer) != 0 &&
+        xtal->OBUnitCell()->GetCellMatrix().determinant() <= 0.0) {
+      qDebug() << "Rejecting structure" << xtal->getIDString()
+               << ": using VASP negative triple product.";
+      return false;
+    }
+
     // Ensure that all angles are between 60 and 120:
     xtal->fixAngles();
 
