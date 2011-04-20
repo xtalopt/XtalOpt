@@ -433,10 +433,21 @@ namespace GlobalSearch {
     QReadWriteLock &queueMutex = const_cast<QReadWriteLock&> (m_queueMutex);
 
     queueMutex.lockForRead();
+
     // Limit queries to once per second
     if (m_queueTimeStamp.isValid() &&
-        m_queueTimeStamp.time().msecsTo(QTime::currentTime())
-        <= 1000) {
+        // QDateTime::msecsTo is not implemented until Qt 4.7
+#if QT_VERSION >= 0x040700
+        m_queueTimeStamp.msecsTo(QDateTime::currentDateTime())
+        <= 1000
+#else
+        // Check if day is the same. If not, refresh. Otherwise check
+        // msecsTo current time
+        (m_queueTimeStamp.date() == QDate::currentDate() &&
+         m_queueTimeStamp.time().msecsTo(QTime::currentTime())
+         <= 1000)
+#endif // QT_VERSION >= 4.7
+        ) {
       // If the cache is valid, return it
       QStringList ret (m_queueData);
       queueMutex.unlock();
