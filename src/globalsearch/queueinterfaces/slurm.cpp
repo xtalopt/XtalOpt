@@ -314,7 +314,7 @@ namespace GlobalSearch {
     unsigned int curJobID = 0;
     bool ok;
     for (int i = 0; i < queueData.size(); ++i) {
-      entryList = queueData[i].split(QRegExp("//s+"),
+      entryList = queueData[i].split(QRegExp("\\s+"),
                                      QString::SkipEmptyParts);
       // Should be 8 entries or so, but we really only need the first five
       if (entryList.size() > 5) {
