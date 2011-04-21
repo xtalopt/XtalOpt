@@ -325,8 +325,10 @@ namespace XtalOpt {
   {
     // Copy the current files into a new entry at the end of the opt step list
     if (m_opt->optimizer()->getIDString() == "VASP" &&
-        m_opt->optimizer()->getData("POTCAR info").toStringList().isEmpty()) {
-      QMessageBox::information(m_dialog, "POTCAR info missing!", "You need to specify POTCAR information before adding more steps!");
+        m_opt->optimizer()->getData("POTCAR info").toList().isEmpty()) {
+      QMessageBox::information(m_dialog, "POTCAR info missing!",
+                               "You need to specify POTCAR information "
+                               "before adding more steps!");
       generateVASP_POTCAR_info();
     }
 
@@ -348,11 +350,13 @@ namespace XtalOpt {
   {
     int currentOptStep = ui_list_optStep->currentRow();
 
-    if (m_opt->optimizer()->getIDString() == "VASP") {
-      QStringList sl = m_opt->optimizer()->getData("POTCAR info").toStringList();
+    if (VASPOptimizer *vasp = qobject_cast<VASPOptimizer*>
+        (m_opt->optimizer())) {
+      QList<QVariant> sl = vasp->getData("POTCAR info").toList();
+      Q_ASSERT(sl.size() >= currentOptStep + 1);
       sl.removeAt(currentOptStep);
-      m_opt->optimizer()->setData("POTCAR info", sl);
-      qobject_cast<VASPOptimizer*>(m_opt->optimizer())->buildPOTCARs();
+      vasp->setData("POTCAR info", sl);
+      vasp->buildPOTCARs();
     }
 
     GlobalSearch::AbstractEditTab::removeCurrentOptStep();
