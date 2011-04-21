@@ -279,15 +279,17 @@ namespace GlobalSearch {
                                 const QString &templateData);
 
     /**
-     * Remove an optimization step from a filename's templates.
+     * Removes all template entries for the given optstep.
      *
-     * @param filename Filename of interest
+     * @note This function will remove the template for the current
+     * Optimizer and QueueInterface, but will not modify any "data"
+     * entries in the Optimizer.
+     *
      * @param optStepIndex Optimization step index to remove
      *
      * @return True if successful, false otherwise.
      */
-    virtual bool removeTemplate(const QString &filename,
-                                int optStepIndex);
+    virtual bool removeAllTemplatesForOptStep(int optStepIndex);
 
     /**
      * Set a generic data entry.
