@@ -590,14 +590,27 @@ namespace GlobalSearch {
     return true;
   }
 
-  bool Optimizer::removeTemplate(const QString &filename, int optStepIndex)
+  bool Optimizer::removeAllTemplatesForOptStep(int optStepIndex)
   {
-    Q_ASSERT(m_templates.contains(filename) ||
-             m_QITemplates.contains(filename));
     Q_ASSERT(optStepIndex >= 0 &&
              optStepIndex < getNumberOfOptSteps());
 
-    resolveTemplateHash(filename)[filename].removeAt(optStepIndex);
+    // Remove the indicated optStep from each template
+    QList<QString> templateKeys = m_templates.keys();
+    QList<QString> QITemplateKeys = m_QITemplates.keys();
+    for (QStringList::const_iterator
+           it = templateKeys.constBegin(),
+           it_end = templateKeys.constEnd();
+         it != it_end; ++it) {
+      m_templates[*it].removeAt(optStepIndex);
+    }
+    for (QStringList::const_iterator
+           it = QITemplateKeys.constBegin(),
+           it_end = QITemplateKeys.constEnd();
+         it != it_end; ++it) {
+      m_QITemplates[*it].removeAt(optStepIndex);
+    }
+
     return true;
   }
 

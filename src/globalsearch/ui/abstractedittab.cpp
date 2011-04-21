@@ -439,16 +439,7 @@ namespace GlobalSearch {
     const int currentOptStep = ui_list_optStep->currentRow();
     Q_ASSERT(currentOptStep >= 0 && currentOptStep < maxSteps);
 
-    // Remove the current optStep from each template
-    //  Optimizer templates
-    const QStringList templates = getTemplateNames();
-    for (QStringList::const_iterator
-           it = templates.constBegin(),
-           it_end = templates.constEnd();
-         it != it_end;
-         ++it) {
-      m_opt->optimizer()->removeTemplate(*it, currentOptStep);
-    }
+    m_opt->optimizer()->removeAllTemplatesForOptStep(currentOptStep);
 
     populateOptStepList();
   }
