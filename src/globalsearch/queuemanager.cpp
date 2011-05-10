@@ -557,6 +557,7 @@ namespace GlobalSearch {
         emit structureUpdated(s);
         return;
       case OptBase::FA_KillIt:
+        locker.unlock();
         killStructure(s);
         emit structureUpdated(s);
         return;
