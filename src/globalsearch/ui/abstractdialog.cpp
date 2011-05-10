@@ -195,6 +195,11 @@ namespace GlobalSearch {
     // Refresh dialog and settings
     writeSettings();
     stopProgressUpdate();
+
+    // Emit session started signal
+    if (!m_opt->readOnly) {
+      m_opt->emitSessionStarted();
+    }
   }
 
   void AbstractDialog::updateStatus_(int opt, int run, int fail) {
