@@ -147,6 +147,7 @@ namespace GAPC {
 
     QReadLocker locker (pc->lock());
 
+    // Check that no two atoms are too close together
     double shortest = 0;
     if (pc->getShortestInteratomicDistance(shortest)) {
       if (shortest < minIAD) {
@@ -154,6 +155,12 @@ namespace GAPC {
                  << shortest << " < " << minIAD;
         return false;
       }
+    }
+
+    // Check that the cluster hasn't already exploded
+    if (!pc->checkForExplosion(explodeLimit)) {
+      qDebug() << "Discarding structure: Explosion detected!";
+      return false;
     }
 
     return true;
@@ -171,7 +178,6 @@ namespace GAPC {
     QReadLocker locker (pc->lock());
 
     // Explode check
-    QList<double> dists;
     if (!pc->checkForExplosion(explodeLimit)) {
       qDebug() << "Cluster " << pc->getIDString() << " exploded!";
       switch (explodeAction) {
