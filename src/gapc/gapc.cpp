@@ -369,6 +369,7 @@ optimizations. If so, safely ignore this message.")
       locker.relock();
       pc->setStatus(state);
       pc->setOptTimerEnd(endtime);
+      pc->generateDefaultHistogram();
       pc->enableAutoHistogramGeneration(true);
       locker.unlock();
       loadedStructures.append(qobject_cast<Structure*>(pc));
