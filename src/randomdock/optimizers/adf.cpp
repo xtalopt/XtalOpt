@@ -55,4 +55,25 @@ namespace RandomDock {
     readSettings(filename);
   }
 
+  bool ADFOptimizer::checkForSuccessfulOutput(GlobalSearch::Structure *s,
+                                              bool *success)
+  {
+    int ec;
+    *success = false;
+
+    // Check that the output does not contain:
+    // "ERROR: GEOMETRY DID NOT CONVERGE"
+    if (!m_opt->queueInterface()->grepFile
+        (s, "ERROR: GEOMETRY DID NOT CONVERGE",
+         m_completionFilename, 0, &ec)) {
+      return false;
+    }
+    // ec 1: No match, successful execution
+    if (ec == 1) {
+      *success = true;
+      return true;
+    }
+    return true;
+  }
+
 } // end namespace RandomDock

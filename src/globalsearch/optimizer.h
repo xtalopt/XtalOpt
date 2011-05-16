@@ -123,7 +123,7 @@ namespace GlobalSearch {
      *
      * @return True if the test encountered no errors, false otherwise.
      */
-    bool checkIfOutputFileExists(Structure *s, bool *exists);
+    virtual bool checkIfOutputFileExists(Structure *s, bool *exists);
 
     /**
      * Check m_completionFilename for any of the m_completionStrings
@@ -137,7 +137,7 @@ namespace GlobalSearch {
      *
      * @return True if the test encountered no errors, false otherwise.
      */
-    bool checkForSuccessfulOutput(Structure *s, bool *success);
+    virtual bool checkForSuccessfulOutput(Structure *s, bool *success);
 
     /**
      * Copy the files from the Structure's remote path to the local
@@ -209,12 +209,12 @@ namespace GlobalSearch {
      * @return All filenames that the optimizer can store templates
      * for.
      */
-    QStringList getTemplateNames() {return m_templates.keys();};
+    virtual QStringList getTemplateNames() {return m_templates.keys();};
 
     /**
      * @return All strings that identify valid generic data sets.
      */
-    QStringList getDataIdentifiers() {return m_data.keys();};
+    virtual QStringList getDataIdentifiers() {return m_data.keys();};
 
     /**
      * @return A user customizable string that is used in template
@@ -423,7 +423,7 @@ namespace GlobalSearch {
      * Automatically connected to m_opt's queueInterfaceChanged
      * signal. Should not need to be called directly.
      */
-    void updateQueueInterface();
+    virtual void updateQueueInterface();
 
   protected:
     /**
@@ -489,7 +489,7 @@ namespace GlobalSearch {
      * If a template list has too few entries, empty strings are
      * appended.
      */
-    void fixTemplateLengths();
+    virtual void fixTemplateLengths();
 
     /**
      * Stores all template data for this optimizer. Key is the
