@@ -18,6 +18,10 @@
 
 #include <globalsearch/optimizer.h>
 
+namespace GlobalSearch {
+  class Structure;
+}
+
 namespace RandomDock {
 
   class ADFOptimizer : public GlobalSearch::Optimizer
@@ -25,7 +29,11 @@ namespace RandomDock {
     Q_OBJECT
 
    public:
-    explicit ADFOptimizer(GlobalSearch::OptBase *parent, const QString &filename = "");
+    explicit ADFOptimizer(GlobalSearch::OptBase *parent,
+                          const QString &filename = "");
+
+    bool checkForSuccessfulOutput(GlobalSearch::Structure *s,
+                                  bool *success);
 
   };
 

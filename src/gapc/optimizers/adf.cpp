@@ -40,7 +40,8 @@ namespace GAPC {
     // Setup for completion values
     m_completionFilename = "job.adfout";
     m_completionStrings.clear();
-    m_completionStrings.append("GEOMETRY CONVERGED");
+    // m_completionStrings is not used -- see checkForSuccessfulOutput
+    // reimplementation for details.
 
     // Set output filenames to try to read data from
     m_outputFilenames.append(m_completionFilename);
@@ -55,6 +56,27 @@ namespace GAPC {
     m_stderrFilename = "job.adferr";
 
     readSettings(filename);
+  }
+
+  bool ADFOptimizer::checkForSuccessfulOutput(Structure *s,
+                                              bool *success)
+  {
+    int ec;
+    *success = false;
+
+    // Check that the output does not contain:
+    // "ERROR: GEOMETRY DID NOT CONVERGE"
+    if (!m_opt->queueInterface()->grepFile
+        (s, "ERROR: GEOMETRY DID NOT CONVERGE",
+         m_completionFilename, 0, &ec)) {
+      return false;
+    }
+    // ec 1: No match, successful execution
+    if (ec == 1) {
+      *success = true;
+      return true;
+    }
+    return true;
   }
 
 } // end namespace GAPC
