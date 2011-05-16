@@ -150,6 +150,10 @@ namespace GAPC {
     settings->setValue("randw_minWalk",     gapc->randw_minWalk);
     settings->setValue("randw_maxWalk",     gapc->randw_maxWalk);
 
+    // Anisotropic Expansion
+    settings->setValue("p_aniso",           gapc->p_aniso);
+    settings->setValue("aniso_amp",         gapc->aniso_amp);
+
     settings->endGroup();
 
     DESTROY_SETTINGS(filename);
