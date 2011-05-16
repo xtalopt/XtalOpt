@@ -61,19 +61,32 @@ namespace RandomDock {
     int ec;
     *success = false;
 
-    // Check that the output does not contain:
-    // "ERROR: GEOMETRY DID NOT CONVERGE"
+    // Check that the output contains:
+    // "GEOMETRY CONVERGED"
+    // but not
+    // "ERROR: STOP GEOMETRY ITERATIONS"
+    // ADF will print both when SCF fails to converge.
     if (!m_opt->queueInterface()->grepFile
-        (s, "ERROR: GEOMETRY DID NOT CONVERGE",
-         m_completionFilename, 0, &ec)) {
+        (s, "GEOMETRY CONVERGED", m_completionFilename, 0, &ec)
+        || ec == 2) {
       return false;
     }
-    // ec 1: No match, successful execution
-    if (ec == 1) {
-      *success = true;
+    // ec 0: Match found
+    if (ec == 0) {
+      if (!m_opt->queueInterface()->grepFile
+          (s, "ERROR: STOP GEOMETRY ITERATIONS",
+           m_completionFilename, 0, &ec) || ec == 2) {
+        return false;
+      }
+      // ec 1: No match, successful execution
+      if (ec == 1) {
+        *success = true;
+        return true;
+      }
+      // Check ran correctly, but no successful output found. Return
+      // false, success is still false from initializaion.
       return true;
     }
-    return true;
   }
 
 } // end namespace RandomDock
