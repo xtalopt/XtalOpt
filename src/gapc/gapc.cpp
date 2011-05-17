@@ -182,6 +182,7 @@ namespace GAPC {
       qDebug() << "Cluster " << pc->getIDString() << " exploded!";
       switch (explodeAction) {
       case EA_Kill:
+	locker.unlock();
         m_queue->killStructure(pc);
         return;
       case EA_Randomize:
