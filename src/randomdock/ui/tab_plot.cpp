@@ -53,6 +53,8 @@ namespace RandomDock {
             this, SLOT(highlightStructure(GlobalSearch::Structure*)));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(populateStructureList()));
+    connect(m_opt, SIGNAL(readOnlySessionStarted()),
+            this, SLOT(populateStructureList()));
     connect(m_dialog->getGLWidget(), SIGNAL(mouseRelease(QMouseEvent*)),
             this, SLOT(updatePlot()));
 
