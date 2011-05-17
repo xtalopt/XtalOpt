@@ -132,7 +132,16 @@ namespace XtalOpt {
     if (limitRunningJobs && runningJobLimit == 0) {
       error(tr("Warning: the number of running jobs is currently set to 0."
                "\n\nYou will need to increase this value before the search "
-               "can begin (The option is on the 'Optimization Settings' tab)."));
+               "can begin (The option is on the 'Search Settings' tab)."));
+    };
+
+    // Warn user if contStructs is 0
+    if (contStructs == 0) {
+      error(tr("Warning: the number of continuous structures is "
+               "currently set to 0."
+               "\n\nYou will need to increase this value before the search "
+               "can move past the first generation (The option is on the "
+               "'Search Settings' tab)."));
     };
 
     // VASP checks:

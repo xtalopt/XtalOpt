@@ -467,6 +467,15 @@ optimizations. If so, safely ignore this message.")
                "can begin (The option is on the 'Optimization Settings' tab)."));
     };
 
+    // Warn user if contStructs is 0
+    if (contStructs == 0) {
+      error(tr("Warning: the number of continuous structures is "
+               "currently set to 0."
+               "\n\nYou will need to increase this value before the search "
+               "can move past the first generation (The option is on the "
+               "'Optimization Settings' tab)."));
+    };
+
 #ifdef ENABLE_SSH
     // Create the SSHManager if running remotely
     if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
