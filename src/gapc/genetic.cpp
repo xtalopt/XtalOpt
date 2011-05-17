@@ -23,7 +23,8 @@
 #include <vector>
 
 // Debugging:
-#define DUMP_STRUCTURES
+//#define DUMP_STRUCTURES
+#undef DUMP_STRUCTURES
 
 using namespace std;
 using namespace OpenBabel;
@@ -167,7 +168,9 @@ namespace GAPC {
 #endif
     for (int i = 0; i < atomList1.size(); i++) {
       coordsList1.append(*(atomList1.at(i)->pos()));
+#ifdef DUMP_STRUCTURES
       ans1.append(atomList1.at(i)->atomicNumber());
+#endif
     }
     pc1->lock()->unlock();
 
@@ -179,7 +182,9 @@ namespace GAPC {
 #endif
     for (int i = 0; i < atomList2.size(); i++) {
       coordsList2.append(*(atomList2.at(i)->pos()));
+#ifdef DUMP_STRUCTURES
       ans2.append(atomList2.at(i)->atomicNumber());
+#endif
     }
     pc2->lock()->unlock();
 
