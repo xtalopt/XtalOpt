@@ -403,7 +403,8 @@ namespace GAPC {
 
 
     // Twist the twisters randomly around the z axis
-    rotationDeg = minimumRotation + (RANDDOUBLE() * (360.0 - minimumRotation) );
+    rotationDeg = minimumRotation +
+      (RANDDOUBLE() * (360.0 - (2.0 * minimumRotation) ) );
 
     twisters_pos = rotateCoordinates(twisters_pos,
                                      createRotationMatrix(0,
