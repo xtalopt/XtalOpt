@@ -59,7 +59,8 @@ namespace XtalOpt {
       ,
       QI_PBS,
       QI_SGE,
-      QI_SLURM
+      QI_SLURM,
+      QI_LSF
 #endif // ENABLE_SSH
     };
 
