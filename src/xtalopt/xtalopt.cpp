@@ -1254,11 +1254,6 @@ namespace XtalOpt {
 
       readOnly = !resume;
       qDebug() << "Read only? " << readOnly;
-
-      // Start search if needed
-      if (!readOnly) {
-	emit sessionStarted();
-      }
     }
 
     return true;
