@@ -77,6 +77,10 @@ namespace GlobalSearch {
             this, SLOT(updateGUI()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(lockGUI()));
+    connect(m_opt, SIGNAL(readOnlySessionStarted()),
+            this, SLOT(updateGUI()));
+    connect(m_opt, SIGNAL(readOnlySessionStarted()),
+            this, SLOT(lockGUI()));
     connect(m_opt->queue(), SIGNAL(newStatusOverview(int,int,int)),
             this, SLOT(updateStatus(int,int,int)));
     connect(this, SIGNAL(sig_updateStatus(int,int,int)),
@@ -139,6 +143,8 @@ namespace GlobalSearch {
     emit tabsDisconnectGUI();
     disconnect(m_opt, SIGNAL(sessionStarted()),
                this, SLOT(updateGUI()));
+    disconnect(m_opt, SIGNAL(readOnlySessionStarted()),
+               this, SLOT(updateGUI()));
     disconnect(this, SIGNAL(sig_updateStatus(int,int,int)),
                this, SLOT(updateStatus_(int,int,int)));
   }
@@ -196,10 +202,11 @@ namespace GlobalSearch {
     writeSettings();
     stopProgressUpdate();
 
-    // Emit session started signal
-    if (!m_opt->readOnly) {
+    // Emit session started signals
+    if (m_opt->readOnly)
+      m_opt->emitReadOnlySessionStarted();
+    else
       m_opt->emitSessionStarted();
-    }
   }
 
   void AbstractDialog::updateStatus_(int opt, int run, int fail) {

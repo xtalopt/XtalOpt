@@ -52,6 +52,8 @@ namespace GAPC {
             this, SLOT(highlightPC(GlobalSearch::Structure*)));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(populatePCList()));
+    connect(m_opt, SIGNAL(readOnlySessionStarted()),
+            this, SLOT(populatePCList()));
     connect(m_dialog->getGLWidget(), SIGNAL(mouseRelease(QMouseEvent*)),
             this, SLOT(updatePlot()));
 

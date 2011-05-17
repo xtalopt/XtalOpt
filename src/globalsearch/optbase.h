@@ -301,6 +301,8 @@ for (ind = 0; ind < probs.size(); ind++)
      * Emitted when a session is starting or being loaded.
      * @sa sessionStarted
      * @sa emitSessionStarted
+     * @sa readOnlySessionStarted
+     * @sa emitReadOnlySessionStarted
      * @sa startingSession
      * @sa emitStartingSession
      */
@@ -310,10 +312,23 @@ for (ind = 0; ind < probs.size(); ind++)
      * Emitted when a session finishes starting or loading.
      * @sa sessionStarted
      * @sa emitSessionStarted
+     * @sa readOnlySessionStarted
+     * @sa emitReadOnlySessionStarted
      * @sa startingSession
      * @sa emitStartingSession
      */
     void sessionStarted();
+
+    /**
+     * Emitted when a read-only session finishes loading.
+     * @sa sessionStarted
+     * @sa emitSessionStarted
+     * @sa readOnlySessionStarted
+     * @sa emitReadOnlySessionStarted
+     * @sa startingSession
+     * @sa emitStartingSession
+     */
+    void readOnlySessionStarted();
 
     /**
      * Emitted when the current QueueInterface changes
@@ -459,11 +474,22 @@ for (ind = 0; ind < probs.size(); ind++)
     /**
      * Emits the sessionStarted signal.
      * @sa sessionStarted
-     * @sa emitSessionStarted
+     * @sa readOnlySessionStarted
+     * @sa emitReadOnlySessionStarted
      * @sa startingSession
      * @sa emitStartingSession
      */
     void emitSessionStarted() {emit sessionStarted();};
+
+    /**
+     * Emits the readOnlySessionStarted signal.
+     * @sa sessionStarted
+     * @sa emitSessionStarted
+     * @sa readOnlySessionStarted
+     * @sa startingSession
+     * @sa emitStartingSession
+     */
+    void emitReadOnlySessionStarted() {emit readOnlySessionStarted();};
 
     /**
      * Emits the startingSession signal.
