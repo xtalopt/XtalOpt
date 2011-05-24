@@ -42,6 +42,7 @@ namespace XtalOpt {
     int getCurrentStructure();
 
    signals:
+    void testStarting();
     void newMessage(const QString &);
     void status();
     void sig_updateProgressDialog();
