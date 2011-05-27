@@ -49,6 +49,8 @@ namespace XtalOpt {
             this, SLOT(highlightXtal(GlobalSearch::Structure*)));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(populateXtalList()));
+    connect(m_opt, SIGNAL(readOnlySessionStarted()),
+            this, SLOT(populateXtalList()));
     connect(m_dialog->getGLWidget(), SIGNAL(mouseRelease(QMouseEvent*)),
             this, SLOT(updatePlot()));
 
