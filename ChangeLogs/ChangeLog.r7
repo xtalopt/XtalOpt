@@ -1,0 +1,18 @@
+* Enhancements / New features:
+** Support for the SLURM queue interface added
+** Added warning if Continuous Structures is set to zero at session start
+** Disable relevant user-interface components in ReadOnly mode
+
+* Bug fixes:
+** Fixed freeze when structures are killed for excessive optimization failures
+** Fixed freeze when structures are killed using progress table context menu
+** Fixed bug that cleared all POTCAR information when removing optimization steps
+** Fixed bug that stopped XtalOpt's internal queue from updating when the date changes
+*** Only affected certain Qt versions
+** Reject structures with a negative cell matrix determinant when using VASP
+*** VASP will refuse to handle these
+** Various fixes to ease building on win32 platforms
+
+* Documentation:
+
+* Maintenance:
