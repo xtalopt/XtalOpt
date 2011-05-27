@@ -35,6 +35,12 @@ namespace XtalOpt {
     m_opt(p),
     m_dialog(qobject_cast<XtalOptDialog*>(p->dialog()))
   {
+    connect(this, SIGNAL(testStarting()),
+            m_dialog, SLOT(lockGUI()),
+            Qt::BlockingQueuedConnection);
+    connect(this, SIGNAL(testStarting()),
+            m_dialog, SLOT(disconnectGUI()),
+            Qt::BlockingQueuedConnection);
   }
 
   XtalOptTest::~XtalOptTest()
@@ -45,8 +51,7 @@ namespace XtalOpt {
 
   void XtalOptTest::start()
   {
-    m_dialog->disconnectGUI();
-    m_dialog->lockGUI();
+    emit testStarting();
 
     // Prompt user for number of runs and structures
     gatherData();
