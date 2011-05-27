@@ -14,6 +14,7 @@ namespace XtalOpt {
   - \ref qisetup
     - \ref remotepbs
     - \ref remotesge
+    - \ref remoteslurm
     - \ref localqi
   - \ref files
   - \ref search-set
@@ -244,11 +245,12 @@ castep xtal
 
 @section qisetup Queue setup
 
-XtalOpt currently supports using the \ref remotepbs "PBS" and \ref
-remotesge "SGE" queuing systems on remote SSH-accessible clusters, as
-well as an internal \ref localqi "local" queue that manages
-calculations on the user's workstation. Each queueing interface is
-detailed in its own section below.
+XtalOpt currently supports using the \ref remotepbs "PBS", \ref
+remotesge "SGE", and \ref remoteslurm "SLURM" queuing systems on
+remote SSH-accessible clusters, as well as an internal \ref localqi
+"local" queue that manages calculations on the user's
+workstation. Each queueing interface is detailed in its own section
+below.
 
 @subsection remotepbs Using a remote PBS cluster
 \image html opt-set-pbs.png
@@ -376,6 +378,46 @@ about MPI, executable locations, etc. Perhaps the easiest method to
 find the correct SGE script is to run some trial submissions by hand,
 and then replace the structure/search specific information with the
 appropriate keywords once a working script has been generated.
+
+For more details on optimization schemes, see \ref optschemes.
+
+\ref files "Skip to next section."
+
+@subsection remoteslurm Using a remote SLURM cluster
+\image html opt-set-slurm.png
+\image latex opt-set-slurm.png width=\textwidth
+
+Select "SLURM" from the list of Queues, and then click the "Configure..."
+button. A new window will prompt for:
+  - host: The hostname of the SGE cluster's head node
+  - user: The username used to log into the cluster
+  - Working directory (Server): A directory that is readable/writable
+      by "user" on the cluster, used when performing optimizations.
+  - Working directory (Local): A directory that is readable/writable
+      by the current user on the local computer. This is where the
+      final structures and resume files are written.
+  - Description: Used for the %%description% keyword in input templates.
+  - Path to sbatch: Where to find the sbatch executable on the remote
+      cluster. Note that if sbatch is in the cluster's $PATH, setting
+      this to just 'sbatch' will work.
+  - Path to scancel: Where to find the scancel executable on the remote
+      cluster. Note that if scancel is in the cluster's $PATH, setting
+      this to just 'scancel' will work.
+  - Path to squeue: Where to find the squeue executable on the remote
+      cluster. Note that if squeue is in the cluster's $PATH, setting
+      this to just 'squeue' will work.
+
+@todo Get template for job.slurm scripts
+
+A new template, "job.slurm" is added to the list of available
+templates. This is the job submission script for SLURM. It may take
+some experimentation to get jobs to submit successfully, and you may
+need to contact the mantainers of the cluster for assistance or
+information about MPI, executable locations, etc. Perhaps the easiest
+method to find the correct SLURM script is to run some trial
+submissions by hand, and then replace the structure/search specific
+information with the appropriate keywords once a working script has
+been generated.
 
 For more details on optimization schemes, see \ref optschemes.
 
