@@ -26,6 +26,8 @@ set( globalsearch_SRCS
      sshconnection.cpp
      sshmanager.cpp
      queueinterfaces/remote.cpp
+     queueinterfaces/lsf.cpp
+     queueinterfaces/lsfdialog.cpp
      queueinterfaces/pbs.cpp
      queueinterfaces/pbsdialog.cpp
      queueinterfaces/sge.cpp
@@ -42,6 +44,7 @@ set( globalsearch_UIS
 if (ENABLE_SSH)
 set( globalsearch_UIS
      ${globalsearch_UIS}
+     queueinterfaces/lsfdialog.ui
      queueinterfaces/pbsdialog.ui
      queueinterfaces/sgedialog.ui
      queueinterfaces/slurmdialog.ui
