@@ -30,6 +30,8 @@ set( globalsearch_SRCS
      queueinterfaces/pbsdialog.cpp
      queueinterfaces/sge.cpp
      queueinterfaces/sgedialog.cpp
+     queueinterfaces/slurm.cpp
+     queueinterfaces/slurmdialog.cpp
 )
 endif()
 
@@ -42,6 +44,7 @@ set( globalsearch_UIS
      ${globalsearch_UIS}
      queueinterfaces/pbsdialog.ui
      queueinterfaces/sgedialog.ui
+     queueinterfaces/slurmdialog.ui
 )
 endif()
 

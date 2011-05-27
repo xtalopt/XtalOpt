@@ -27,6 +27,7 @@
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/queueinterfaces/sge.h>
+#include <globalsearch/queueinterfaces/slurm.h>
 
 #include <QtCore/QSettings>
 
@@ -65,7 +66,7 @@ namespace XtalOpt {
 
     // Fill m_optimizers in order of XtalOpt::QueueInterfaces
     m_queueInterfaces.clear();
-    const unsigned int numQIs = 3;
+    const unsigned int numQIs = 4;
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
       case XtalOpt::QI_LOCAL:
@@ -77,6 +78,9 @@ namespace XtalOpt {
         break;
       case XtalOpt::QI_SGE:
         m_queueInterfaces.append(new SgeQueueInterface (m_opt));
+        break;
+      case XtalOpt::QI_SLURM:
+        m_queueInterfaces.append(new SlurmQueueInterface (m_opt));
         break;
 #endif // ENABLE_SSH
       }
