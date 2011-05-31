@@ -95,7 +95,7 @@ CONTCAR, and OUTCAR.
 
 On the next tab we choose GULP for the local optimizer and enter a template
 for GULP to use. Select "GULP" as the "Optimizer" and
-"GULP .gin" as "Template". Next, fill out the text field on the
+"xtal.gin" as "Template". Next, fill out the text field on the
 right with the following template:
 \code
 opti conj conp
@@ -121,7 +121,7 @@ Alternatively, one can load the scheme file distributed with the
 source code under samples/gulp-TiO-xtalopt.scheme. If the source code
 is not available, the scheme file can be obtained by clicking the
 "Original Format" link at the bottom of the page <a
-href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/gulp-xtalopt.scheme">
+href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/gulp-TiO-xtalopt.scheme">
 here</a>.
 
 For more details on optimization schemes, see \ref optschemes.
