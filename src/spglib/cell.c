@@ -6,6 +6,8 @@
 #include "cell.h"
 #include "mathfunc.h"
 
+#include "debug.h"
+
 Cell * cel_alloc_cell( const int size )
 {
     Cell *cell;
@@ -22,12 +24,12 @@ Cell * cel_alloc_cell( const int size )
     
     if ( size > 0 ) {
       if ((cell->types = (int *) malloc(sizeof(int) * size)) == NULL) {
-        fprintf(stderr, "spglib: Memory of cell could not be allocated.");
+        warning_print("spglib: Memory of cell could not be allocated.");
         exit(1);
       }
       if ((cell->position =
 	   (double (*)[3]) malloc(sizeof(double[3]) * size)) == NULL) {
-        fprintf(stderr, "spglib: Memory of cell could not be allocated.");
+        warning_print("spglib: Memory of cell could not be allocated.");
         exit(1);
       }
     }
@@ -57,6 +59,18 @@ void cel_set_cell( Cell * cell,
     }
     cell->types[i] = types[i];
   }
+}
+
+Cell * cel_copy_cell( SPGCONST Cell * cell )
+{
+  Cell * cell_new;
+  
+  cell_new = cel_alloc_cell( cell->size );
+  cel_set_cell( cell_new,
+		cell->lattice,
+		cell->position,
+		cell->types );
+  return cell_new;
 }
 
 int cel_is_overlap( const double a[3],

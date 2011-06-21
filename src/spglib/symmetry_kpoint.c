@@ -490,7 +490,8 @@ static int get_ir_triplets( int triplets[][3],
 
   /* Memory space check */
   if ( num_ir * num_grid < max_num_triplets ) {
-    fprintf(stderr, "spglib: More memory space for triplets is required.");
+    warning_print("spglib: More memory space for triplets is required ");
+    warning_print("(line %d, %s).\n", __LINE__, __FILE__);
     goto err;
   }
 
@@ -747,7 +748,10 @@ static int get_ir_triplets_with_q( int triplets_with_q[][3],
       }
     }
     if ( ! found ) {
-      fprintf(stderr, "spglib: Unexpected behavior in get_ir_triplets_with_q.\n");
+      warning_print("spglib: Unexpected behavior in get_ir_triplets_with_q ");
+      warning_print("(line %d, %s).\n", __LINE__, __FILE__);
+      num_triplets_with_q = 0;
+      break;
     }
   }
 
