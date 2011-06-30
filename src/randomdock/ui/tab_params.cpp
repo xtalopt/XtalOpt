@@ -58,6 +58,8 @@ namespace RandomDock {
             this, SLOT(updateOptimizationInfo()));
     connect(ui.cb_cluster, SIGNAL(toggled(bool)),
             this, SLOT(updateOptimizationInfo()));
+    connect(ui.cb_strictHBonds, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
 
     initialize();
   }
@@ -83,6 +85,7 @@ namespace RandomDock {
     settings->setValue("radius_max",            randomdock->radius_max);
     settings->setValue("radius_auto",           randomdock->radius_auto);
     settings->setValue("cluster_mode",          randomdock->cluster_mode);
+    settings->setValue("strictHBonds",          randomdock->strictHBonds);
 
     settings->endGroup();
     DESTROY_SETTINGS(filename);
@@ -104,6 +107,7 @@ namespace RandomDock {
     ui.spin_radius_max->setValue(       settings->value("radius_max",           100).toDouble());
     ui.cb_radius_auto->setChecked(      settings->value("radius_auto",          true).toBool());
     ui.cb_cluster->setChecked(          settings->value("cluster_mode",         false).toBool());
+    ui.cb_strictHBonds->setChecked(     settings->value("strictHBonds",         false).toBool());
 
     settings->endGroup();
 
@@ -184,6 +188,7 @@ namespace RandomDock {
     randomdock->radius_max      = ui.spin_radius_max->value();
     randomdock->radius_auto     = ui.cb_radius_auto->isChecked();
     randomdock->cluster_mode    = ui.cb_cluster->isChecked();
+    randomdock->strictHBonds    = ui.cb_strictHBonds->isChecked();
   }
 
 }

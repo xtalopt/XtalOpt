@@ -49,7 +49,8 @@ namespace RandomDock {
   RandomDock::RandomDock(RandomDockDialog *parent) :
     OptBase(parent),
     substrate(0),
-    m_initWC(new SlottedWaitCondition (this))
+    m_initWC(new SlottedWaitCondition (this)),
+    strictHBonds(false)
   {
     m_idString = "RandomDock";
     m_schemaVersion = 2;
@@ -257,6 +258,39 @@ namespace RandomDock {
     m_dialog->saveSession();
   }
 
+  static inline bool isHBondAcceptor(int atomicNum)
+  {
+    if (atomicNum == 9 || // Flourine
+        atomicNum == 8 || // Oxygen
+        atomicNum == 7 )  // Nitrogen
+      return true;
+    return false;
+  }
+
+  static inline bool isHBond(Atom *satom, int an, QList<int> nbrsANs)
+  {
+    // Check that either atom is a hydrogen bondable H
+    if (satom->isHydrogen() &&
+        isHBondAcceptor(an)) {
+      QList<unsigned long> snbrs = satom->neighbors();
+      for (int i = 0; i < snbrs.size(); ++i) {
+        if (isHBondAcceptor(satom->molecule()->
+                            atomById(snbrs[i])->atomicNumber())) {
+          return true;
+        }
+      }
+    }
+    if (an == 1 && isHBondAcceptor(satom->atomicNumber())) {
+      for (int i = 0; i < nbrsANs.size(); ++i) {
+        if (isHBondAcceptor(nbrsANs[i])) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+
   Scene* RandomDock::generateRandomScene() {
     INIT_RANDOM_GENERATOR();
     // Here we build a scene by extracting coordinates of the atoms
@@ -326,6 +360,7 @@ namespace RandomDock {
     }
 
     // Pick and add matrix elements
+    QList< QList<int> > neighborAtomicNums;
     for (uint i = 0; i < numMatrixMol; i++) {
       // Add random conformers of matrix molecule in random locations,
       // orientations
@@ -337,6 +372,7 @@ namespace RandomDock {
       mat = matrixList.at(ind);
 
       atomicNums.clear();
+      neighborAtomicNums.clear();
       positions.clear();
       idMap.clear();
 
@@ -350,6 +386,11 @@ namespace RandomDock {
       for (int j = 0; j < atomList.size(); j++) {
         atomicNums.append(atomList.at(j)->atomicNumber());
         positions.append( *(atomList.at(j)->pos()));
+        QList<unsigned long> nbrs = atomList.at(j)->neighbors();
+        neighborAtomicNums.append(QList<int>());
+        for (int ni = 0; ni < nbrs.size(); ++ni)
+          neighborAtomicNums.last().append
+            (mat->atomById(nbrs[ni])->atomicNumber());
       }
 
       mat->lock()->unlock();
@@ -391,27 +432,42 @@ namespace RandomDock {
       RandomDock::randomlyDisplaceCoordinates(positions, r_min, r_max);
 
       // Check interatomic distances
+      bool ok = true;
       double shortest, distance;
       shortest = -1;
       for (uint mi = 0; mi < mat->numAtoms(); mi++) {
         for (uint si = 0; si < scene->numAtoms(); si++) {
           distance = abs((
-                          *(scene->atoms().at(si)->pos()) -
-                          positions.at(mi)
-                          ).norm()
+                           *(scene->atoms().at(si)->pos()) -
+                           positions.at(mi)
+                           ).norm()
                          );
+          // Go ahead and bail if the atoms are too close
+          if (distance < IAD_min) {
+            ok = false;
+            break;
+          }
+          // Screen for H bonds -- function is static inline above
+          if (this->strictHBonds &&
+              !isHBond(scene->atoms().at(si), atomicNums.at(mi),
+                       neighborAtomicNums.at(mi))) {
+            continue;
+          }
+          // Check distances
           if (shortest < 0)
             shortest = distance; // initialize...
-          else {
-            if (distance < shortest) shortest = distance;
-          }
+          else if (distance < shortest)
+            shortest = distance; // update
         }
+        if (!ok)
+          break;
       }
-      if (shortest > IAD_max || shortest < IAD_min) {
+      if (!ok || shortest > IAD_max || shortest < IAD_min) {
         qDebug() << "Bad IAD: "  << shortest;
         i--;
         continue;
       }
+
       // If IAD checks out, add the atoms to the scene
       for (int j = 0; j < positions.size(); j++) {
         atom = scene->addAtom();
