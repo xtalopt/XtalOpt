@@ -40,7 +40,7 @@ namespace RandomDock {
     // Setup for completion values
     m_completionFilename = "job.out";
     m_completionStrings.clear();
-    m_completionStrings.append("     GEOMETRY OPTIMISED");
+    m_completionStrings.append("          FINAL HEAT OF FORMATION =");
 
     // Set output filenames to try to read data from
     m_outputFilenames.append(m_completionFilename);
