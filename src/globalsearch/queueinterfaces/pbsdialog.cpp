@@ -57,6 +57,7 @@ namespace GlobalSearch {
     ui->edit_locpath->blockSignals(true);
     ui->edit_username->blockSignals(true);
     ui->spin_port->blockSignals(true);
+    ui->spin_interval->blockSignals(true);
 
     ui->edit_description->setText(m_opt->description);
     ui->edit_host->setText(m_opt->host);
@@ -67,6 +68,7 @@ namespace GlobalSearch {
     ui->edit_locpath->setText(m_opt->filePath);
     ui->edit_username->setText(m_opt->username);
     ui->spin_port->setValue(m_opt->port);
+    ui->spin_interval->setValue(m_pbs->m_interval);
 
     ui->edit_description->blockSignals(false);
     ui->edit_host->blockSignals(false);
@@ -77,6 +79,7 @@ namespace GlobalSearch {
     ui->edit_locpath->blockSignals(false);
     ui->edit_username->blockSignals(false);
     ui->spin_port->blockSignals(false);
+    ui->spin_interval->blockSignals(false);
   }
 
   void PbsConfigDialog::accept()
@@ -90,6 +93,8 @@ namespace GlobalSearch {
     m_opt->filePath = ui->edit_locpath->text().trimmed();
     m_opt->username = ui->edit_username->text().trimmed();
     m_opt->port = ui->spin_port->value();
+    // Use setter for interval -- mutex must be locked.
+    m_pbs->setInterval(ui->spin_interval->value());
     QDialog::accepted();
     close();
   }

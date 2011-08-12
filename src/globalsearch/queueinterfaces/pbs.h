@@ -54,6 +54,7 @@ namespace GlobalSearch {
     bool startJob(Structure *s);
     bool stopJob(Structure *s);
     QueueInterface::QueueStatus getStatus(Structure *s) const;
+    void setInterval(const int sec);
 
   protected:
     // Fetches the queue from the server
@@ -68,6 +69,8 @@ namespace GlobalSearch {
     QString m_qstat;
     QString m_qsub;
     QString m_qdel;
+    // Refresh interval for queue data
+    int m_interval;
   };
 }
 

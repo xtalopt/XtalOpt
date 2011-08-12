@@ -37,7 +37,8 @@ namespace GlobalSearch {
     RemoteQueueInterface(parent, settingsFile),
     m_qstat("qstat"),
     m_qsub("qsub"),
-    m_qdel("qdel")
+    m_qdel("qdel"),
+    m_interval(1)
   {
     m_idString = "PBS";
     m_templates.append("job.pbs");
@@ -163,6 +164,7 @@ namespace GlobalSearch {
     m_qsub  = settings->value("qsub",  "qsub").toString();
     m_qstat = settings->value("qstat", "qstat").toString();
     m_qdel  = settings->value("qdel",  "qdel").toString();
+    this->setInterval(settings->value("interval", 1).toInt());
 
     settings->endGroup();
     settings->endGroup();
@@ -201,6 +203,7 @@ namespace GlobalSearch {
     settings->setValue("qsub",  m_qsub);
     settings->setValue("qstat", m_qstat);
     settings->setValue("qdel",  m_qdel);
+    settings->setValue("interval",  m_interval);
 
     settings->endGroup();
     settings->endGroup();
@@ -427,6 +430,13 @@ namespace GlobalSearch {
     }
   }
 
+  void PbsQueueInterface::setInterval(const int sec)
+  {
+    m_queueMutex.lockForWrite();
+    m_interval = sec;
+    m_queueMutex.unlock();
+  }
+
   QStringList PbsQueueInterface::getQueueList() const
   {
     // recast queue mutex as mutable for safe access:
@@ -439,13 +449,13 @@ namespace GlobalSearch {
         // QDateTime::msecsTo is not implemented until Qt 4.7
 #if QT_VERSION >= 0x040700
         m_queueTimeStamp.msecsTo(QDateTime::currentDateTime())
-        <= 1000
+        <= 1000*m_interval
 #else
         // Check if day is the same. If not, refresh. Otherwise check
         // msecsTo current time
         (m_queueTimeStamp.date() == QDate::currentDate() &&
          m_queueTimeStamp.time().msecsTo(QTime::currentTime())
-         <= 1000)
+         <= 1000*m_interval)
 #endif // QT_VERSION >= 4.7
         ) {
       // If the cache is valid, return it
