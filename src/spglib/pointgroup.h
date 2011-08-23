@@ -5,7 +5,18 @@
 #define __pointgroup_H__
 
 #include "symmetry.h"
-#include "bravais.h"
+
+typedef enum {
+  NONE,
+  TRICLI,
+  MONOCLI,
+  ORTHO,
+  TETRA,
+  RHOMB,
+  TRIGO,
+  HEXA,
+  CUBIC,
+} Holohedry;
 
 typedef enum {
   LAUE1,
@@ -24,10 +35,12 @@ typedef enum {
 typedef struct {
   char symbol[6];
   Holohedry holohedry;
+  Laue laue;
   int transform_mat[3][3];
 } Pointgroup;
 
-Pointgroup ptg_get_pointgroup( const Symmetry * symmetry );
-Pointgroup ptg_get_symmetry_pointgroup( Symmetry * symmetry );
-
+int ptg_get_pointgroup_number( const Symmetry * symmetry );
+Pointgroup ptg_get_pointgroup( const int pointgroup_number );
+void ptg_get_transformation_matrix( Pointgroup * pointgroup,
+				    const Symmetry * symmetry );
 #endif
