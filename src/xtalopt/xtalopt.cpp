@@ -462,11 +462,15 @@ namespace XtalOpt {
               .arg(locpath_s));
       }
     }
+    xtal->moveToThread(m_tracker->thread());
+    xtal->setupConnections();
     xtal->setFileName(locpath_s);
     xtal->setRempath(rempath_s);
     xtal->setCurrentOptStep(1);
+    xtal->fixAngles();
     xtal->findSpaceGroup(tol_spg);
     xtalLocker.unlock();
+    xtal->update();
     m_queue->unlockForNaming(xtal);
     xtalInitMutex->unlock();
   }
@@ -1179,6 +1183,8 @@ namespace XtalOpt {
 
       xtal = new Xtal();
       QWriteLocker locker (xtal->lock());
+      xtal->moveToThread(m_tracker->thread());
+      xtal->setupConnections();
       // Add empty atoms to xtal, updateXtal will populate it
       for (int j = 0; j < keys.size(); j++) {
         for (uint k = 0; k < comp.value(keys.at(j)); k++)
