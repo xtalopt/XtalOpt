@@ -741,8 +741,18 @@ namespace XtalOpt {
               xtal->getVolume() > vol_max ) {
       // I don't want to initialize a random number generator here, so
       // just use the modulus of the current volume as a random float.
-      double newvol = fabs(fmod(xtal->getVolume(), 1)) * (vol_max - vol_min) + vol_min;
-      qDebug() << "XtalOpt::checkXtal: Rescaling volume from " << xtal->getVolume() << " to " << newvol;
+      double newvol = fabs(fmod(xtal->getVolume(), 1)) *
+          (vol_max - vol_min) + vol_min;
+      // If the user has set vol_min to 0, we can end up with a null
+      // volume. Fix this here. This is just to keep things stable
+      // numerically during the rescaling -- it's unlikely that other
+      // cells with small, nonzero volumes will pass the other checks
+      // so long as other limits are reasonable.
+      if (fabs(newvol) < 1.0) {
+        newvol = (vol_max - vol_min)*0.5 + vol_min;
+      }
+      qDebug() << "XtalOpt::checkXtal: Rescaling volume from "
+               << xtal->getVolume() << " to " << newvol;
       xtal->setVolume(newvol);
     }
 
@@ -764,6 +774,19 @@ namespace XtalOpt {
         xtal->OBUnitCell()->GetCellMatrix().determinant() <= 0.0) {
       qDebug() << "Rejecting structure" << xtal->getIDString()
                << ": using VASP negative triple product.";
+      return false;
+    }
+
+    // Before fixing angles, make sure that the current cell
+    // parameters are realistic
+    if (GS_IS_NAN_OR_INF(xtal->getA()) || fabs(xtal->getA()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getB()) || fabs(xtal->getB()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getC()) || fabs(xtal->getC()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getAlpha()) || fabs(xtal->getAlpha()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getBeta())  || fabs(xtal->getBeta())  < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getGamma()) || fabs(xtal->getGamma()) < 1e-8 ) {
+      qDebug() << "XtalOpt::checkXtal: A cell parameter is either 0, nan, or "
+                  "inf. Discarding.";
       return false;
     }
 
