@@ -26,7 +26,7 @@
 
 #include <QtGui/QDialog>
 
-#include "ui_dialog.h"
+namespace Ui {class XtalOptDialog;};
 
 namespace XtalOpt {
   class Xtal;
@@ -62,7 +62,7 @@ namespace XtalOpt {
   signals:
 
   private:
-    Ui::XtalOptDialog ui;
+    Ui::XtalOptDialog *ui;
 
     TabInit *m_tab_init;
     TabEdit *m_tab_edit;
