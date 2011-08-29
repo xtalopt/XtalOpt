@@ -51,6 +51,7 @@ foreach (test ${tests})
     ${QT_QTTEST_LIBRARY}
     xtalopt_static
     spglib
+    XtalComp
     avogadro
     globalsearch)
   if (ENABLE_SSH)

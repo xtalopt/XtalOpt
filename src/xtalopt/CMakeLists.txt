@@ -29,8 +29,9 @@ set( xtalopt_UIS
 
 process_plugin(xtalopt "${xtalopt_SRCS}" "${xtalopt_UIS}")
 
-add_dependencies(xtalopt globalsearch spglib)
+add_dependencies(xtalopt globalsearch XtalComp spglib)
 
 target_link_libraries( xtalopt
- 		       globalsearch
- 		       spglib)
+                       globalsearch
+                       XtalComp
+                       spglib)
