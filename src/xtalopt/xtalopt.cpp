@@ -1035,8 +1035,12 @@ namespace XtalOpt {
     return str;
   }
 
-  bool XtalOpt::load(const QString &filename)
+  bool XtalOpt::load(const QString &filename, const bool forceReadOnly)
   {
+    if (forceReadOnly) {
+      readOnly = true;
+    }
+
     // Attempt to open state file
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -1101,11 +1105,15 @@ namespace XtalOpt {
     newFileBase.remove("xtalopt.state.tmp");
     newFileBase.remove("xtalopt.state");
 
+    // TODO For some reason, the local view of "this" is not changed
+    // when the settings are loaded in the following line. The tabs
+    // are loading the settings and setting the variables in their
+    // scope, but it isn't changing it here. Caching issue maybe?
     m_dialog->readSettings(filename);
 
 #ifdef ENABLE_SSH
     // Create SSHConnection if we are running remotely
-    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
+    if (!forceReadOnly && qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
       for (;;) {
         try {

@@ -77,7 +77,7 @@ namespace XtalOpt {
     bool checkXtal(Xtal *xtal);
     QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp();
-    bool load(const QString & filename);
+    bool load(const QString & filename, const bool forceReadOnly = false);
 
     uint numInitial;                    // Number of initial structures
 
