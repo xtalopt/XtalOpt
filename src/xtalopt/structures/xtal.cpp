@@ -692,6 +692,14 @@ namespace XtalOpt {
   }
 
   void Xtal::findSpaceGroup(double prec) {
+    // Check that the precision is reasonable
+    if (prec < 1e-5) {
+      qWarning() << "Xtal::findSpaceGroup called with a precision of "
+                 << prec << ". This is likely an error. Resetting prec to "
+                 << 0.05 << ".";
+      prec = 0.05;
+    }
+
     // reset space group to 0 so we can exit if needed
     m_spgNumber = 0;
     m_spgSymbol = "Unknown";
