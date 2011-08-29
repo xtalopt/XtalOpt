@@ -146,17 +146,18 @@ namespace XtalOpt {
 
     // VASP checks:
     if (m_optimizer->getIDString() == "VASP") {
-      // Is the POTCAR generated? If not, warn user in log and launch generator.
-      // Every POTCAR will be identical in this case!
+      // Is the POTCAR generated? If not, warn user in log and launch
+      // generator. Every POTCAR will be identical in this case!
       QList<uint> oldcomp, atomicNums = comp.keys();
       QList<QVariant> oldcomp_ = m_optimizer->getData("Composition").toList();
       for (int i = 0; i < oldcomp_.size(); i++)
         oldcomp.append(oldcomp_.at(i).toUInt());
       qSort(atomicNums);
-      if (m_optimizer->getData("POTCAR info").toList().isEmpty() || // No info at all!
+      if (m_optimizer->getData("POTCAR info").toList().isEmpty() || // No info
           oldcomp != atomicNums // Composition has changed!
           ) {
-        error("Using VASP and POTCAR is empty. Please select the pseudopotentials before continuing.");
+        error("Using VASP and POTCAR is empty. Please select the "
+              "pseudopotentials before continuing.");
         return;
       }
 
@@ -179,9 +180,9 @@ namespace XtalOpt {
           case SSHConnection::SSH_UNKNOWN_ERROR:
           default:
             err = "There was a problem connection to the ssh server at "
-              + username + "@" + host + ":" + QString::number(port) + ". "
-              + "Please check that all provided information is correct, "
-              + "and attempt to log in outside of Avogadro before trying again.";
+                + username + "@" + host + ":" + QString::number(port) + ". "
+                "Please check that all provided information is correct, and "
+                "attempt to log in outside of Avogadro before trying again.";
             error(err);
             return;
           case SSHConnection::SSH_UNKNOWN_HOST_ERROR: {
@@ -265,20 +266,24 @@ namespace XtalOpt {
       }
       QString parents =tr("Seeded: %1", "1 is a filename").arg(filename);
       initializeAndAddXtal(xtal, 1, parents);
-      debug(tr("XtalOpt::StartOptimization: Loaded seed: %1", "1 is a filename").arg(filename));
-      m_dialog->updateProgressLabel(tr("%1 structures generated (%2 kept, %3 rejected)...").arg(i + failed).arg(i).arg(failed));
+      debug(tr("XtalOpt::StartOptimization: Loaded seed: %1",
+               "1 is a filename").arg(filename));
+      m_dialog->updateProgressLabel(
+            tr("%1 structures generated (%2 kept, %3 rejected)...")
+            .arg(i + failed).arg(i).arg(failed));
       newXtalCount++;
     }
 
     // Generation loop...
     for (uint i = newXtalCount; i < numInitial; i++) {
       // Update progress bar
-      m_dialog->updateProgressMaximum( (i == 0)
-                                        ? 0
-                                        : int(progCount / static_cast<double>(i)) * numInitial );
+      m_dialog->updateProgressMaximum(
+            (i == 0) ? 0 : int(progCount/static_cast<double>(i))*numInitial);
       m_dialog->updateProgressValue(progCount);
       progCount++;
-      m_dialog->updateProgressLabel(tr("%1 structures generated (%2 kept, %3 rejected)...").arg(i + failed).arg(i).arg(failed));
+      m_dialog->updateProgressLabel(
+            tr("%1 structures generated (%2 kept, %3 rejected)...")
+            .arg(i + failed).arg(i).arg(failed));
 
       // Generate/Check xtal
       xtal = generateRandomXtal(1, i+1);
@@ -295,7 +300,8 @@ namespace XtalOpt {
     }
 
     // Wait for all structures to appear in tracker
-    m_dialog->updateProgressLabel(tr("Waiting for structures to initialize..."));
+    m_dialog->updateProgressLabel(
+          tr("Waiting for structures to initialize..."));
     m_dialog->updateProgressMinimum(0);
     m_dialog->updateProgressMinimum(newXtalCount);
 
@@ -305,9 +311,9 @@ namespace XtalOpt {
     m_initWC->prewaitLock();
     do {
       m_dialog->updateProgressValue(m_tracker->size());
-      m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
-                                    .arg(m_tracker->size())
-                                    .arg(newXtalCount));
+      m_dialog->updateProgressLabel(
+            tr("Waiting for structures to initialize (%1 of %2)...")
+            .arg(m_tracker->size()).arg(newXtalCount));
       // Don't block here forever -- there is a race condition where
       // the final newStructureAdded signal may be emitted while the
       // WC is not waiting. Since this is just trivial GUI updating
@@ -327,7 +333,8 @@ namespace XtalOpt {
     emit sessionStarted();
   }
 
-  Structure* XtalOpt::replaceWithRandom(Structure *s, const QString & reason) {
+  Structure* XtalOpt::replaceWithRandom(Structure *s, const QString & reason)
+  {
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
     QWriteLocker locker1 (oldXtal->lock());
 
@@ -403,7 +410,8 @@ namespace XtalOpt {
       for (uint i = 0; i < q; i++) {
         if (!xtal->addAtomRandomly(atomicNum, IAD)) {
           xtal->deleteLater();
-          debug("XtalOpt::generateRandomXtal: Failed to add atoms with specified interatomic distance.");
+          debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                "specified interatomic distance.");
           return 0;
         }
       }
@@ -419,7 +427,9 @@ namespace XtalOpt {
     return xtal;
   }
 
-  void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation, const QString &parents) {
+  void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation,
+                                     const QString &parents)
+    {
     xtalInitMutex->lock();
     QList<Structure*> allStructures = m_queue->lockForNaming();
     Structure *structure;
@@ -447,8 +457,8 @@ namespace XtalOpt {
     QDir dir (locpath_s);
     if (!dir.exists()) {
       if (!dir.mkpath(locpath_s)) {
-        error(tr("XtalOpt::initializeAndAddXtal: Cannot write to path: %1 (path creation failure)",
-                 "1 is a file path.")
+        error(tr("XtalOpt::initializeAndAddXtal: Cannot write to path: %1 "
+                 "(path creation failure)", "1 is a file path.")
               .arg(locpath_s));
       }
     }
@@ -555,7 +565,8 @@ namespace XtalOpt {
 
           // Perform operation
           double percent1;
-          xtal = XtalOptGenetic::crossover(xtal1, xtal2, cross_minimumContribution, percent1);
+          xtal = XtalOptGenetic::crossover(
+                xtal1, xtal2, cross_minimumContribution, percent1);
 
           // Lock parents and get info from them
           xtal1->lock()->lockForRead();
@@ -625,7 +636,8 @@ namespace XtalOpt {
 
           Xtal *xtal1 = xtals.at(ind);
           double stdev=0;
-          xtal = XtalOptGenetic::permustrain(xtals.at(ind), perm_strainStdev_max, perm_ex, stdev);
+          xtal = XtalOptGenetic::permustrain(
+                xtals.at(ind), perm_strainStdev_max, perm_ex, stdev);
 
           // Lock parent and extract info
           xtal1->lock()->lockForRead();
@@ -643,7 +655,8 @@ namespace XtalOpt {
           continue;
         }
         default:
-          warning("XtalOpt::generateSingleOffspring: Attempt to use an invalid operator.");
+          warning("XtalOpt::generateSingleOffspring: Attempt to use an "
+                  "invalid operator.");
         }
       }
       if (attemptCount >= 1000) {
@@ -654,7 +667,8 @@ namespace XtalOpt {
         case OP_Permustrain: opStr = "permustrain"; break;
         default:             opStr = "(unknown)"; break;
         }
-        warning(tr("Unable to perform operation %1 after 1000 tries. Reselecting operator...").arg(opStr));
+        warning(tr("Unable to perform operation %1 after 1000 tries. "
+                   "Reselecting operator...").arg(opStr));
       }
     }
     initializeAndAddXtal(xtal, gen, parents);
@@ -696,7 +710,8 @@ namespace XtalOpt {
             (a_max * b_max * c_max) < vol_min ||
             vol_min > vol_max)
           )) {
-      warning("XtalOptRand::checkLimits error: Illogical Volume limits. (Also check min/max volumes based on cell lengths)");
+      warning("XtalOptRand::checkLimits error: Illogical Volume limits. "
+              "(Also check min/max volumes based on cell lengths)");
       return false;
     }
     return true;
@@ -785,7 +800,8 @@ namespace XtalOpt {
     return true;
   }
 
-  QString XtalOpt::interpretTemplate(const QString & templateString, Structure* structure)
+  QString XtalOpt::interpretTemplate(const QString & templateString,
+                                     Structure* structure)
   {
     QStringList list = templateString.split("%");
     QString line;
@@ -1020,12 +1036,12 @@ namespace XtalOpt {
       return false;
     }
 
-    bool stateFileIsValid =
-      settings->value("xtalopt/saveSuccessful", false).toBool();
+    bool stateFileIsValid = settings->value("xtalopt/saveSuccessful",
+                                            false).toBool();
     if (!stateFileIsValid) {
-      error("XtalOpt::load(): File "+file.fileName()+" is incomplete, "
-            "corrupt, or invalid. (Try " + file.fileName() +
-            ".old if it exists)");
+      error("XtalOpt::load(): File " + file.fileName() +
+            " is incomplete, corrupt, or invalid. (Try "
+            + file.fileName() + ".old if it exists)");
       return false;
     }
 
@@ -1041,8 +1057,10 @@ namespace XtalOpt {
     xtalDirs.removeAll("..");
     for (int i = 0; i < xtalDirs.size(); i++) {
       // old versions of xtalopt used xtal.state, so still check for it.
-      if (!QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/structure.state") &&
-          !QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/xtal.state") ) {
+      if (!QFile::exists(dataPath + "/" + xtalDirs.at(i)
+                         + "/structure.state") &&
+          !QFile::exists(dataPath + "/" + xtalDirs.at(i)
+                         + "/xtal.state") ) {
           xtalDirs.removeAt(i);
           i--;
       }
@@ -1223,7 +1241,7 @@ namespace XtalOpt {
     m_dialog->updateProgressMinimum(0);
     m_dialog->updateProgressValue(0);
     m_dialog->updateProgressMaximum(loadedStructures.size());
-    m_dialog->updateProgressLabel("Updating  structure indices...");
+    m_dialog->updateProgressLabel("Updating structure indices...");
 
     // Reassign indices (shouldn't always be necessary, but just in case...)
     for (int i = 0; i < loadedStructures.size(); i++) {

@@ -274,7 +274,6 @@ namespace XtalOpt {
     return OBUnitCell();
   }
 
-
   bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom) {
     INIT_RANDOM_GENERATOR();
     Q_UNUSED(maxIAD);
