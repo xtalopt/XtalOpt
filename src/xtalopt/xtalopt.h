@@ -130,7 +130,8 @@ namespace XtalOpt {
     void resetDuplicates();
     void checkForDuplicates();
 
-   private:
+   protected:
+    friend class XtalOptUnitTest;
     void resetDuplicates_();
     void checkForDuplicates_();
     void generateNewStructure_();

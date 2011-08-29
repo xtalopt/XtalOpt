@@ -1180,7 +1180,8 @@ namespace XtalOpt {
 
     debug(tr("Resuming XtalOpt session in '%1' (%2) readOnly = %3")
           .arg(filename)
-          .arg(m_optimizer->getIDString())
+          .arg((m_optimizer) ? m_optimizer->getIDString()
+                             : "No set optimizer")
           .arg( (readOnly) ? "true" : "false"));
 
     // Xtals

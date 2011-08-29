@@ -22,11 +22,12 @@ link_directories(
   ${OPENBABEL2_LIBRARY_DIRS}
 )
 
-set( tests
+set(tests
   optbase
   structure
   spglib
   randdouble
+  xtaloptunit
 )
 
 if (ENABLE_SSH)
