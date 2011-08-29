@@ -20,7 +20,9 @@
 
 #include <QtCore/QDebug>
 #include <QtCore/QDateTime>
+#include <QtCore/QMutex>
 #include <QtCore/QTextStream>
+#include <QtCore/QVector>
 
 #define EV_TO_KCAL_PER_MOL 23.060538
 
@@ -87,6 +89,11 @@ namespace XtalOpt {
     // Use this's cell
     Eigen::Matrix3d getCellMatrixInStandardOrientation() const;
 
+    // Randomly skew the lattice and translate the coordinates. Coordinates
+    // may be reflected, but the structures should be energetically
+    // equivalent
+    Xtal * getRandomRepresentation() const;
+
     // Conversion convenience
     OpenBabel::vector3 fracToCart(const OpenBabel::vector3 & fracCoords) const {
       return cell()->FractionalToCartesian(fracCoords);}
@@ -151,6 +158,13 @@ namespace XtalOpt {
      * output, see the OpenBabel::OBConversion documentation.
      */
     static Xtal* POSCARToXtal(QFile *file);
+
+    // For random representation generation
+    static void generateValidCOBs();
+    static QVector<Eigen::Matrix3d> m_transformationMatrices;
+    static QVector<Eigen::Matrix3d> m_mixMatrices;
+    // Ensure that only one thread generates the COB vectors
+    static QMutex m_validCOBsGenMutex;
 
    signals:
     void dimensionsChanged();

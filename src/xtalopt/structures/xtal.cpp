@@ -71,6 +71,9 @@ namespace XtalOpt {
   // Actual constructor:
   void Xtal::ctor(QObject *parent)
   {
+    if (!m_mixMatrices.size()) {
+      generateValidCOBs();
+    }
     m_spgNumber = 231;
     this->setOBUnitCell(new OpenBabel::OBUnitCell);
     // Openbabel seems to be fond of making unfounded assumptions that
@@ -1269,6 +1272,115 @@ namespace XtalOpt {
                    x3*y1*z2 - x3*y2*z1) / denom;
 
     return newMat;
+  }
+
+  // Initialize static members for COB list generation
+  QMutex Xtal::m_validCOBsGenMutex;
+  QVector<Eigen::Matrix3d> Xtal::m_transformationMatrices;
+  QVector<Eigen::Matrix3d> Xtal::m_mixMatrices;
+
+  static inline bool COBIsValid(const Eigen::Matrix3d &cob)
+  {
+    // determinant must be +/- 1
+    if (fabs(fabs(cob.determinant()) - 1.0) < 1e-4)
+      return false;
+
+    return true;
+  }
+
+  void Xtal::generateValidCOBs()
+  {
+    m_validCOBsGenMutex.lock();
+
+    // Has another instance beat us to the punch?
+    if (m_mixMatrices.size()) {
+      m_validCOBsGenMutex.unlock();
+      return;
+    }
+
+    Eigen::Matrix3d tmpMat;
+
+    m_transformationMatrices.clear();
+    m_transformationMatrices.reserve(32);
+    m_mixMatrices.clear();
+    m_mixMatrices.reserve(8);
+
+    // Build list of transformation matrices
+    // First build list of 90 degree rotations
+    tmpMat <<  1, 0, 0,   0, 1, 0,   0, 0, 1; m_transformationMatrices<<tmpMat;
+    tmpMat <<  1, 0, 0,   0, 0, 1,   0, 1, 0; m_transformationMatrices<<tmpMat;
+    tmpMat <<  0, 1, 0,   1, 0, 0,   0, 0, 1; m_transformationMatrices<<tmpMat;
+    tmpMat <<  0, 0, 1,   0, 1, 0,   1, 0, 0; m_transformationMatrices<<tmpMat;
+    for (unsigned short int i = 0; i < 4; ++i) {
+      // Now apply all possible reflections to 90 rotations
+      tmpMat <<-1, 0, 0,   0, 1, 0,   0, 0, 1;
+      m_transformationMatrices << (tmpMat * m_transformationMatrices[i]);
+      tmpMat << 1, 0, 0,   0,-1, 0,   0, 0, 1;
+      m_transformationMatrices << (tmpMat * m_transformationMatrices[i]);
+      tmpMat << 1, 0, 0,   0, 1, 0,   0, 0,-1;
+      m_transformationMatrices << (tmpMat * m_transformationMatrices[i]);
+      tmpMat <<-1, 0, 0,   0,-1, 0,   0, 0, 1;
+      m_transformationMatrices << (tmpMat * m_transformationMatrices[i]);
+      tmpMat <<-1, 0, 0,   0, 1, 0,   0, 0,-1;
+      m_transformationMatrices << (tmpMat * m_transformationMatrices[i]);
+      tmpMat << 1, 0, 0,   0,-1, 0,   0, 0,-1;
+      m_transformationMatrices << (tmpMat * m_transformationMatrices[i]);
+      tmpMat <<-1, 0, 0,   0,-1, 0,   0, 0,-1;
+      m_transformationMatrices << (tmpMat * m_transformationMatrices[i]);
+    }
+
+    // Now build list of mix matrices
+    // Identity
+    tmpMat <<  1, 0, 0,   0, 1, 0,   0, 0, 1; m_mixMatrices.append(tmpMat);
+    // Upper triangular mixes
+    tmpMat <<  1, 1, 0,   0, 1, 0,   0, 0, 1; m_mixMatrices.append(tmpMat);
+    tmpMat <<  1, 1, 1,   0, 1, 0,   0, 0, 1; m_mixMatrices.append(tmpMat);
+    tmpMat <<  1, 1, 0,   0, 1, 1,   0, 0, 1; m_mixMatrices.append(tmpMat);
+    tmpMat <<  1, 1, 1,   0, 1, 1,   0, 0, 1; m_mixMatrices.append(tmpMat);
+    tmpMat <<  1, 0, 1,   0, 1, 0,   0, 0, 1; m_mixMatrices.append(tmpMat);
+    tmpMat <<  1, 0, 1,   0, 1, 1,   0, 0, 1; m_mixMatrices.append(tmpMat);
+    tmpMat <<  1, 0, 0,   0, 1, 1,   0, 0, 1; m_mixMatrices.append(tmpMat);
+
+    m_validCOBsGenMutex.unlock();
+  }
+
+  Xtal * Xtal::getRandomRepresentation() const
+  {
+    // Cache volume for later sanity checks
+    const double origVolume = cell()->GetCellVolume();
+
+    // Randomly select a mix matrix to create a new cell matrix by
+    // taking a linear combination of the current cell vectors
+    const Eigen::Matrix3d &mix
+      (m_mixMatrices[RANDUINT() % m_mixMatrices.size()]);
+
+    // Build new Xtal with the new basis
+    Xtal *nxtal = new Xtal (this->parent());
+    nxtal->setCellInfo(Eigen2OB(mix) * this->cell()->GetCellMatrix());
+
+    Q_ASSERT_X(StableComp::eq(origVolume, nxtal->cell()->GetCellVolume()),
+               Q_FUNC_INFO, "Randomized cell volume not "
+               "equal to original structure.");
+
+    // Generate a random translation (i.e. between 0 and 1)
+    const double maxTranslation = getA() + getB() + getC();
+    const Eigen::Vector3d randTranslation
+      (RANDDOUBLE() * maxTranslation,
+       RANDDOUBLE() * maxTranslation,
+       RANDDOUBLE() * maxTranslation);
+
+    // Add atoms
+    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
+           it_end = m_atomList.constEnd(); it != it_end; ++it) {
+      Atom * atom = nxtal->addAtom();
+      atom->setAtomicNumber((*it)->atomicNumber());
+      atom->setPos( (*(*it)->pos()) + randTranslation);
+    }
+
+    // rotate and wrap:
+    nxtal->rotateCellAndCoordsToStandardOrientation();
+    nxtal->wrapAtomsToCell();
+    return nxtal;
   }
 
   Xtal* Xtal::POSCARToXtal(const QString &poscar)
