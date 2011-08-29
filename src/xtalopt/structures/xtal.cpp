@@ -842,7 +842,7 @@ namespace XtalOpt {
         pos.x() = sl.at(0).toDouble();
         pos.y() = sl.at(1).toDouble();
         pos.z() = sl.at(2).toDouble();
-        atom->setPos(pos);
+        atom->setPos(xtal->fracToCart(pos));
       }
     }
 
