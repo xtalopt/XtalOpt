@@ -20,18 +20,29 @@
 #include <avogadro/atom.h>
 
 #include <globalsearch/macros.h>
+#include <globalsearch/obeigenconv.h>
+#include <globalsearch/stablecomparison.h>
 
 #include <openbabel/generic.h>
 #include <openbabel/forcefield.h>
+
+extern "C" {
+#include <spglib/spglib.h>
+}
+
+#include <Eigen/LU>
 
 #include <QtCore/QFile>
 #include <QtCore/QDebug>
 #include <QtCore/QRegExp>
 #include <QtCore/QStringList>
 
-extern "C" {
-#include <spglib/spglib.h>
-}
+#define DEBUG_MATRIX(m) printf("| %9.5f %9.5f %9.5f |\n"        \
+                               "| %9.5f %9.5f %9.5f |\n"        \
+                               "| %9.5f %9.5f %9.5f |\n",       \
+                               (m)(0,0), (m)(0,1), (m)(0,2),    \
+                               (m)(1,0), (m)(1,1), (m)(1,2),    \
+                               (m)(2,0), (m)(2,1), (m)(2,2))
 
 using namespace std;
 using namespace OpenBabel;
@@ -200,71 +211,355 @@ namespace XtalOpt {
       atomList.at(i)->setPos(fracToCart(fracCoordsList.at(i)));
   }
 
-  bool Xtal::fixAngles(int attempts) {
-    //qDebug() << "Xtal::fixAngles(" << attempts << ") called.";
-    vector<vector3> vs = cell()->GetCellVectors();
-    vector<vector3> vs_orig = cell()->GetCellVectors();
-    //qDebug() << "V0" << vs_orig[0].x() << vs_orig[0].y() << vs_orig[0].z();
-    //qDebug() << "V1" << vs_orig[1].x() << vs_orig[1].y() << vs_orig[1].z();
-    //qDebug() << "V2" << vs_orig[2].x() << vs_orig[2].y() << vs_orig[2].z();
+  bool Xtal::niggliReduce(const unsigned int iterations)
+  {
+    // Cache volume for later sanity checks
+    const double origVolume = cell()->GetCellVolume();
 
-    int attempt=0, totalChanges=0, changes=0, limit=0;
-    while (true) {
-      attempt++;
-      changes = 0;
-      if (attempt > attempts) {
-        qWarning() << "Xtal::fixAngles: Maximum attempts to fix angles reached. Bailing.";
-        return false;
+    // Grab lattice vectors
+    const std::vector<OpenBabel::vector3> obvecs = cell()->GetCellVectors();
+    const Eigen::Vector3d v1 (OB2Eigen(obvecs[0]));
+    const Eigen::Vector3d v2 (OB2Eigen(obvecs[1]));
+    const Eigen::Vector3d v3 (OB2Eigen(obvecs[2]));
+
+    // Compute characteristic (step 0)
+    double A    = v1.squaredNorm();
+    double B    = v2.squaredNorm();
+    double C    = v3.squaredNorm();
+    double xi   = 2*v2.dot(v3);
+    double eta  = 2*v1.dot(v3);
+    double zeta = 2*v1.dot(v2);
+
+    // Return value
+    bool ret = false;
+
+    // comparison tolerance
+    double tol = STABLE_COMP_TOL * pow(this->getVolume(), 1.0/3.0);
+
+    // Initialize change of basis matrices:
+    //
+    // Although the reduction algorithm produces quantities directly
+    // relatible to a,b,c,alpha,beta,gamma, we will calculate a change
+    // of basis matrix to use instead, and discard A, B, C, xi, eta,
+    // zeta. By multiplying the change of basis matrix against the
+    // current cell matrix, we avoid the problem of handling the
+    // orientation matrix already present in the cell. The inverse of
+    // this matrix can also be used later to convert the atomic
+    // positions.
+    // tmpMat is used to build other matrices
+    Eigen::Matrix3d tmpMat;
+
+    // Cache static matrices:
+
+    // Swap x,y (Used in Step 1). Negatives ensure proper sign of final
+    // determinant.
+    tmpMat << 0,-1,0, -1,0,0, 0,0,-1;
+    const Eigen::Matrix3d C1(tmpMat);
+    // Swap y,z (Used in Step 2). Negatives ensure proper sign of final
+    // determinant
+    tmpMat << -1,0,0, 0,0,-1, 0,-1,0;
+    const Eigen::Matrix3d C2(tmpMat);
+    // For step 8:
+    tmpMat << 1,0,1, 0,1,1, 0,0,1;
+    const Eigen::Matrix3d C8(tmpMat);
+
+    // initial change of basis matrix
+    tmpMat << 1,0,0, 0,1,0, 0,0,1;
+    Eigen::Matrix3d cob(tmpMat);
+
+    // Enable debugging output here:
+//#define NIGGLI_DEBUG(step) qDebug() << iter << step << A << B << C << xi << eta << zeta << cob.determinant(); \
+//std::cout << cob << std::endl;
+#define NIGGLI_DEBUG(step)
+
+    unsigned int iter;
+    for (iter = 0; iter < iterations; ++iter) {
+      Q_ASSERT(fabs(cob.determinant() - 1.0) < 1e-5);
+      // Step 1:
+      if (
+          StableComp::gt(A, B, tol)
+          || (
+              StableComp::eq(A, B, tol)
+              &&
+              StableComp::gt(fabs(xi), fabs(eta), tol)
+              )
+          ) {
+        cob *= C1;
+        qSwap(A, B);
+        qSwap(xi, eta);
+        NIGGLI_DEBUG(1);
+        ++iter;
       }
-      for (unsigned int i = 0; i < vs.size(); i++) {
-        for (unsigned int j = 0; j < vs.size(); j++) {
-          if (i != j) {
-            limit = 0;
-            while (limit < 20
-                   &&
-                   (vectorAngle(vs[i],vs[j]) < 60
-                    ||
-                    vectorAngle(vs[i],vs[j]) > 120)
-                   &&
-                   (vs[i].length() >= vs[j].length())
-                   ) {
-              //qDebug() << "Attempt " << limit << vectorAngle(vs[i], vs[j]);
-              //qDebug() << "Vi " << vs[i].x() << vs[i].y() << vs[i].z();
-              //qDebug() << "Vj " << vs[j].x() << vs[j].y() << vs[j].z();
-              double nproj = fabs(dot(vs[i],vs[j])/vs[j].length());
-              int sign = (dot(vs[i],vs[j]) > 0) ? 1 : -1;
-              vs[i] = vs[i] - ceil(nproj/vs[j].length()) * sign * vs[j];
-              changes++;
-              totalChanges++;
-              limit++;
-            }
-            if (limit >= 20) {
-              qWarning() << "Xtal::fixAngles: Maximum vector iteration reached. Bailing.";
-              qWarning() << vectorAngle(vs[i],vs[j]);
-              qWarning() << i << j;
-              return false;
-            }
-          }
+
+      // Step 2:
+      if (
+          StableComp::gt(B, C, tol)
+          || (
+              StableComp::eq(B, C, tol)
+              &&
+              StableComp::gt(fabs(eta), fabs(zeta), tol)
+              )
+          ) {
+        cob *= C2;
+        qSwap(B, C);
+        qSwap(eta, zeta);
+        NIGGLI_DEBUG(2);
+        continue;
+      }
+
+      // Step 3:
+      // Use exact comparisons in steps 3 and 4.
+      if (xi*eta*zeta > 0) {
+        // Update change of basis matrix:
+        tmpMat <<
+           StableComp::sign(xi),0,0,
+           0,StableComp::sign(eta),0,
+           0,0,StableComp::sign(zeta);
+        cob *= tmpMat;
+
+        // Update characteristic
+        xi   = fabs(xi);
+        eta  = fabs(eta);
+        zeta = fabs(zeta);
+        NIGGLI_DEBUG(3);
+        ++iter;
+      }
+
+      // Step 4:
+      // Use exact comparisons for steps 3 and 4
+      else { // either step 3 or 4 should run
+        // Update change of basis matrix:
+        double *p = NULL;
+        double i = 1;
+        double j = 1;
+        double k = 1;
+        if (xi > 0) {
+          i = -1;
         }
+        else if (!(xi < 0)) {
+          p = &i;
+        }
+        if (eta > 0) {
+          j = -1;
+        }
+        else if (!(eta < 0)) {
+          p = &j;
+        }
+        if (zeta > 0) {
+          k = -1;
+        }
+        else if (!(zeta < 0)) {
+          p = &k;
+        }
+        if (i*j*k < 0) {
+          if (!p) {
+            std::cerr << "XtalComp warning: one of the input structures "
+                         "contains a lattice that is confusing the Niggli "
+                         "reduction algorithm. Try making a small perturbation "
+                         "(approx. 2 orders of magnitude smaller than the "
+                         "tolerance) to the input lattices and try again. The "
+                         "results of this comparison should not be relied upon."
+                         "\n";
+            return false;
+          }
+          *p = -1;
+        }
+        tmpMat <<i,0,0, 0,j,0, 0,0,k;
+        cob *= tmpMat;
+
+        // Update characteristic
+        xi   = -fabs(xi);
+        eta  = -fabs(eta);
+        zeta = -fabs(zeta);
+        NIGGLI_DEBUG(4);
+        ++iter;
       }
-      if (changes == 0) break;
+
+      // Step 5:
+      if (StableComp::gt(fabs(xi), B, tol)
+          || (StableComp::eq(xi, B, tol)
+              && StableComp::lt(2*eta, zeta, tol)
+              )
+          || (StableComp::eq(xi, -B, tol)
+              && StableComp::lt(zeta, 0, tol)
+              )
+          ) {
+        double signXi = StableComp::sign(xi);
+        // Update change of basis matrix:
+        tmpMat << 1,0,0, 0,1,-signXi, 0,0,1;
+        cob *= tmpMat;
+
+        // Update characteristic
+        C    = B + C - xi*signXi;
+        eta  = eta - zeta*signXi;
+        xi   = xi -   2*B*signXi;
+        NIGGLI_DEBUG(5);
+        continue;
+      }
+
+      // Step 6:
+      if (StableComp::gt(fabs(eta), A, tol)
+          || (StableComp::eq(eta, A, tol)
+              && StableComp::lt(2*xi, zeta, tol)
+              )
+          || (StableComp::eq(eta, -A, tol)
+              && StableComp::lt(zeta, 0, tol)
+              )
+          ) {
+        double signEta = StableComp::sign(eta);
+        // Update change of basis matrix:
+        tmpMat << 1,0,-signEta, 0,1,0, 0,0,1;
+        cob *= tmpMat;
+
+        // Update characteristic
+        C    = A + C - eta*signEta;
+        xi   = xi - zeta*signEta;
+        eta  = eta - 2*A*signEta;
+        NIGGLI_DEBUG(6);
+        continue;
+      }
+
+      // Step 7:
+      if (StableComp::gt(fabs(zeta), A, tol)
+          || (StableComp::eq(zeta, A, tol)
+              && StableComp::lt(2*xi, eta, tol)
+              )
+          || (StableComp::eq(zeta, -A, tol)
+              && StableComp::lt(eta, 0, tol)
+              )
+          ) {
+        double signZeta = StableComp::sign(zeta);
+        // Update change of basis matrix:
+        tmpMat << 1,-signZeta,0, 0,1,0, 0,0,1;
+        cob *= tmpMat;
+
+        // Update characteristic
+        B    = A + B - zeta*signZeta;
+        xi   = xi - eta*signZeta;
+        zeta = zeta - 2*A*signZeta;
+        NIGGLI_DEBUG(7);
+        continue;
+      }
+
+      // Step 8:
+      double sumAllButC = A + B + xi + eta + zeta;
+      if (StableComp::lt(sumAllButC, 0, tol)
+          || (StableComp::eq(sumAllButC, 0, tol)
+              && StableComp::gt(2*(A+eta)+zeta, 0, tol)
+              )
+          ) {
+        // Update change of basis matrix:
+        cob *= C8;
+
+        // Update characteristic
+        C    = sumAllButC + C;
+        xi = 2*B + xi + zeta;
+        eta  = 2*A + eta + zeta;
+        NIGGLI_DEBUG(8);
+        continue;
+      }
+
+      // Done!
+      NIGGLI_DEBUG(999);
+      ret = true;
+      break;
     }
 
-    if (totalChanges == 0) {
+    // No change, already reduced. Just return.
+    if (iter == 0) {
       return true;
     }
 
-    double newVolume = fabs(dot(vs[0],cross(vs[1],vs[2])));
-    if (getVolume() - newVolume > 1e-8){
-      qWarning() << "Volume before ("
-                 << getVolume()
-                 << ") and after ("
-                 << newVolume
-                 << ") Xtal::fixAngles() doesn't match -- not updating cell.";
+    // iterations exceeded
+    if (!ret) {
       return false;
     }
-    setCellInfo(vs[0], vs[1], vs[2]);
+
+    Q_ASSERT_X(cob.determinant() == 1, Q_FUNC_INFO,
+               "Determinant of change of basis matrix must be 1.");
+
+    // Update cell
+    setCellInfo( Eigen2OB(cob).transpose() * cell()->GetCellMatrix());
+
+    // Check that volume has not changed
+    Q_ASSERT_X(StableComp::eq(origVolume, cell()->GetCellVolume(), tol),
+               Q_FUNC_INFO, "Cell volume changed during Niggli reduction.");
+
+    // Rotate and wrap
+    rotateCellAndCoordsToStandardOrientation();
     wrapAtomsToCell();
+    return true;
+  }
+
+  bool Xtal::isNiggliReduced() const
+  {
+    // cache params
+    double a     = getA();
+    double b     = getB();
+    double c     = getC();
+    double alpha = getAlpha();
+    double beta  = getBeta();
+    double gamma = getGamma();
+
+    return Xtal::isNiggliReduced(a, b, c, alpha, beta, gamma);
+  }
+
+  bool Xtal::isNiggliReduced(const double a, const double b, const double c,
+                             const double alpha, const double beta, const double gamma)
+  {
+    // Calculate characteristic
+    double A    = a*a;
+    double B    = b*b;
+    double C    = c*c;
+    double xi   = 2*b*c*cos(alpha * DEG_TO_RAD);
+    double eta  = 2*a*c*cos(beta * DEG_TO_RAD);
+    double zeta = 2*a*b*cos(gamma * DEG_TO_RAD);
+
+    // comparison tolerance
+    double tol = STABLE_COMP_TOL * ( (a + b + c) * (1.0 / 3.0) );
+
+    // First check the Buerger conditions. Taken from: Gruber B.. Acta
+    // Cryst. A. 1973;29(4):433-440. Available at:
+    // http://scripts.iucr.org/cgi-bin/paper?S0567739473001063
+    // [Accessed December 15, 2010].
+    if (StableComp::gt(A, B, tol) || StableComp::gt(B, C, tol)) return false;
+    if (StableComp::eq(A, B, tol) && StableComp::gt(fabs(xi), fabs(eta), tol)) return false;
+    if (StableComp::eq(B, C, tol) && StableComp::gt(fabs(eta), fabs(zeta), tol)) return false;
+    if ( !(StableComp::gt(xi, 0.0, tol) &&
+           StableComp::gt(eta, 0.0, tol) &&
+           StableComp::gt(zeta, 0.0, tol))
+         &&
+         !(StableComp::leq(zeta, 0.0, tol) &&
+           StableComp::leq(zeta, 0.0, tol) &&
+           StableComp::leq(zeta, 0.0, tol)) ) return false;
+
+    // Check against Niggli conditions (taken from Gruber 1973). The
+    // logic of the second comparison is reversed from the paper to
+    // simplify the algorithm.
+    if (StableComp::eq(xi,    B, tol) && StableComp::gt (zeta, 2*eta,  tol)) return false;
+    if (StableComp::eq(eta,   A, tol) && StableComp::gt (zeta, 2*xi,   tol)) return false;
+    if (StableComp::eq(zeta,  A, tol) && StableComp::gt (eta,  2*xi,   tol)) return false;
+    if (StableComp::eq(xi,   -B, tol) && StableComp::neq(zeta, 0,      tol)) return false;
+    if (StableComp::eq(eta,  -A, tol) && StableComp::neq(zeta, 0,      tol)) return false;
+    if (StableComp::eq(zeta, -A, tol) && StableComp::neq(eta,  0,      tol)) return false;
+
+    if (StableComp::eq(xi+eta+zeta+A+B, 0, tol)
+        && StableComp::gt(2*(A+eta)+zeta,  0, tol)) return false;
+
+    // all good!
+    return true;
+  }
+
+  bool Xtal::fixAngles(int attempts)
+  {
+    // Perform niggli reduction
+    if (!niggliReduce(attempts)) {
+      qDebug() << "Unable to perform cell reduction on Xtal " << getIDString()
+               << "( " << getA() << getB() << getC()
+               << getAlpha() << getBeta() << getGamma() << " )";
+      return false;
+    }
+
     findSpaceGroup();
     return true;
   }
@@ -791,6 +1086,137 @@ namespace XtalOpt {
     out << " };\n";
     out << "int num_atom = " << numAtoms() << ";\n";
     qDebug() << t;
+  }
+
+  bool Xtal::rotateCellToStandardOrientation()
+  {
+    // Get correct matrix
+    Eigen::Matrix3d newMat
+      (getCellMatrixInStandardOrientation());
+
+    // check that the matrix is valid
+    if (newMat.isZero()) {
+      const OpenBabel::matrix3x3 mat = cell()->GetCellMatrix();
+      qDebug() << "Cannot rotate cell to std orientation:\n"
+               << QString("%L1 %L2 %L3\n%L4 %L5 %L6\n%L7 %L8 %L9")
+        .arg(mat(0,0), -9, 'g').arg(mat(0,1), -9, 'g').arg(mat(0,2), -9, 'g')
+        .arg(mat(1,0), -9, 'g').arg(mat(1,1), -9, 'g').arg(mat(1,2), -9, 'g')
+        .arg(mat(2,0), -9, 'g').arg(mat(2,1), -9, 'g').arg(mat(2,2), -9, 'g');
+      return false;
+    }
+
+    // Set the rotated basis
+    setCellInfo(Eigen2OB(newMat));
+
+    return true;
+  }
+
+  bool Xtal::rotateCellAndCoordsToStandardOrientation()
+  {
+    // Cache fractional coordinates
+    QList<Eigen::Vector3d> fcoords;
+    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
+           it_end = m_atomList.constEnd(); it != it_end; ++it) {
+      fcoords.append( cartToFrac(*(*it)->pos()));
+    }
+
+    if (!rotateCellToStandardOrientation()) {
+      return false;
+    }
+
+    // Reset coords
+    Q_ASSERT(this->m_atomList.size() == fcoords.size());
+    for (int i = 0; i < m_atomList.size(); ++i) {
+      this->atom(i)->setPos(this->fracToCart(fcoords[i]));
+    }
+
+    return true;
+  }
+
+  Eigen::Matrix3d Xtal::getCellMatrixInStandardOrientation() const
+  {
+    // Cell matrix as row vectors
+    const OpenBabel::matrix3x3 origRowMat = cell()->GetCellMatrix();
+    return getCellMatrixInStandardOrientation(OB2Eigen(origRowMat));
+  }
+
+  Eigen::Matrix3d Xtal::getCellMatrixInStandardOrientation
+  (const Eigen::Matrix3d &origRowMat)
+  {
+    // Extract vector components:
+    const double &x1 = origRowMat(0,0);
+    const double &y1 = origRowMat(0,1);
+    const double &z1 = origRowMat(0,2);
+
+    const double &x2 = origRowMat(1,0);
+    const double &y2 = origRowMat(1,1);
+    const double &z2 = origRowMat(1,2);
+
+    const double &x3 = origRowMat(2,0);
+    const double &y3 = origRowMat(2,1);
+    const double &z3 = origRowMat(2,2);
+
+    // Cache some frequently used values:
+    // Length of v1
+    const double L1 = sqrt(x1*x1 + y1*y1 + z1*z1);
+    // Squared norm of v1's yz projection
+    const double sqrdnorm1yz = y1*y1 + z1*z1;
+    // Squared norm of v2's yz projection
+    const double sqrdnorm2yz = y2*y2 + z2*z2;
+    // Determinant of v1 and v2's projections in yz plane
+    const double detv1v2yz = y2*z1 - y1*z2;
+    // Scalar product of v1 and v2's projections in yz plane
+    const double dotv1v2yz = y1*y2 + z1*z2;
+
+    // Used for denominators, since we want to check that they are
+    // sufficiently far from 0 to keep things reasonable:
+    double denom;
+    const double DENOM_TOL = 1e-5;
+
+    // Create target matrix, fill with zeros
+    Eigen::Matrix3d newMat (Eigen::Matrix3d::Zero());
+
+    // Set components of new v1:
+    newMat(0,0) = L1;
+
+    // Set components of new v2:
+    denom = L1;
+    if (fabs(denom) < DENOM_TOL) {
+      return Eigen::Matrix3d::Zero();
+    };
+    newMat(1,0) = (x1*x2 + y1*y2 + z1*z2) / denom;
+
+    newMat(1,1) = sqrt(x2*x2 * sqrdnorm1yz +
+                       detv1v2yz*detv1v2yz -
+                       2*x1*x2*dotv1v2yz +
+                       x1*x1*sqrdnorm2yz) / denom;
+
+    // Set components of new v3
+    // denom is still L1
+    Q_ASSERT(denom == L1);
+    newMat(2,0) = (x1*x3 + y1*y3 + z1*z3) / denom;
+
+    denom = L1*L1 * newMat(1,1);
+    if (fabs(denom) < DENOM_TOL) {
+      return Eigen::Matrix3d::Zero();
+    };
+    newMat(2,1) = (x1*x1*(y2*y3 + z2*z3) +
+                   x2*(x3*sqrdnorm1yz -
+                       x1*(y1*y3 + z1*z3)
+                       ) +
+                   detv1v2yz*(y3*z1 - y1*z3) -
+                   x1*x3*dotv1v2yz) / denom;
+
+    denom = L1 * newMat(1,1);
+    if (fabs(denom) < DENOM_TOL) {
+      return Eigen::Matrix3d::Zero();
+    };
+    // Numerator is determinant of original cell:
+    newMat(2,2) = (x1*y2*z3 - x1*y3*z2 +
+                   x2*y3*z1 - x2*y1*z3 +
+                   x3*y1*z2 - x3*y2*z1) / denom;
+
+    return newMat;
   }
 
   Xtal* Xtal::POSCARToXtal(const QString &poscar)

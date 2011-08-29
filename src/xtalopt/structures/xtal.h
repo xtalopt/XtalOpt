@@ -74,6 +74,19 @@ namespace XtalOpt {
     // Debugging
     void getSpglibFormat() const;
 
+    // Rotate the cell vectors (and atomic coordinates in the second
+    // function) so that v1 is parallel to x and v2 is in the xy plane
+    bool rotateCellToStandardOrientation();
+    bool rotateCellAndCoordsToStandardOrientation();
+
+    // Calculate the matrix used in the above function. Matrix has row vectors.
+    // If the current cell cannot be rotated in a numerically stable
+    // manner, this will return Eigen::Matrix3d::Zeros;
+    // Use matrix @a m
+    static Eigen::Matrix3d getCellMatrixInStandardOrientation(const Eigen::Matrix3d &m);
+    // Use this's cell
+    Eigen::Matrix3d getCellMatrixInStandardOrientation() const;
+
     // Conversion convenience
     OpenBabel::vector3 fracToCart(const OpenBabel::vector3 & fracCoords) const {
       return cell()->FractionalToCartesian(fracCoords);}
@@ -96,6 +109,27 @@ namespace XtalOpt {
     uint getSpaceGroupNumber();
     QString getSpaceGroupSymbol();
     QString getHTMLSpaceGroupSymbol();
+
+    // Reduce cell. See member function fixAngles()
+    // Returns true if successful, false otherwise
+    // Angles are in degrees. Algorithm is based on Grosse-Kunstleve
+    // RW, Sauter NK, Adams PD. Numerically stable algorithms for the
+    // computation of reduced unit cells. Acta Crystallographica Section A
+    // Foundations of Crystallography. 2003;60(1):1-6. Available at:
+    // http://scripts.iucr.org/cgi-bin/paper?S010876730302186X [Accessed
+    // November 24, 2010].
+    bool niggliReduce(const unsigned int iterations = 100);
+    static bool isNiggliReduced(const double a, const double b, const double c,
+                                const double alpha, const double beta,
+                                const double gamma);
+    bool isNiggliReduced() const;
+
+    bool operator==(const Xtal &other) const;
+    bool operator!=(const Xtal &other) const {return !operator==(other);};
+
+    // Tolerances in angstrom and degree:
+    bool compareCoordinates(const Xtal &other, const double tol = 0.1,
+                            const double angleTol = 2.0) const;
 
     // Testing use only
     /**
@@ -137,7 +171,7 @@ namespace XtalOpt {
     void rescaleCell(double a, double b, double c, double alpha, double beta, double gamma);
 
     // Self-correction
-    bool fixAngles(int attempts = 20);
+    bool fixAngles(int attempts = 100);
     void wrapAtomsToCell();
 
     // Spacegroup
