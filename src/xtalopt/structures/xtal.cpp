@@ -30,6 +30,8 @@ extern "C" {
 #include <spglib/spglib.h>
 }
 
+#include <xtalcomp/xtalcomp.h>
+
 #include <Eigen/LU>
 
 #include <QtCore/QFile>
@@ -562,6 +564,56 @@ namespace XtalOpt {
 
     findSpaceGroup();
     return true;
+  }
+
+  bool Xtal::operator==(const Xtal &o) const
+  {
+    // Compare coordinates using the default tolerance
+    if (!compareCoordinates(o))
+      return false;
+
+    return true;
+  }
+
+  bool Xtal::compareCoordinates(const Xtal &other, const double lengthTol,
+                                const double angleTol) const
+  {
+    // Cell matrices as row vectors
+    const OpenBabel::matrix3x3 thisCellOB (this->cell()->GetCellMatrix());
+    const OpenBabel::matrix3x3 otherCellOB (other.cell()->GetCellMatrix());
+    XcMatrix thisCell (thisCellOB(0,0), thisCellOB(0,1), thisCellOB(0,2),
+                       thisCellOB(1,0), thisCellOB(1,1), thisCellOB(1,2),
+                       thisCellOB(2,0), thisCellOB(2,1), thisCellOB(2,2));
+    XcMatrix otherCell(otherCellOB(0,0), otherCellOB(0,1), otherCellOB(0,2),
+                       otherCellOB(1,0), otherCellOB(1,1), otherCellOB(1,2),
+                       otherCellOB(2,0), otherCellOB(2,1), otherCellOB(2,2));
+
+    // vectors of fractional coordinates and atomic numbers
+    std::vector<XcVector> thisCoords;
+    std::vector<XcVector> otherCoords;
+    std::vector<unsigned int> thisTypes;
+    std::vector<unsigned int> otherTypes;
+    thisCoords.reserve(this->numAtoms());
+    thisTypes.reserve(this->numAtoms());
+    otherCoords.reserve(other.numAtoms());
+    otherTypes.reserve(other.numAtoms());
+    Eigen::Vector3d pos;
+    for (QList<Atom*>::const_iterator it = this->m_atomList.constBegin(),
+           it_end = this->m_atomList.constEnd(); it != it_end; ++it) {
+      pos = this->cartToFrac(*(*it)->pos());
+      thisCoords.push_back(XcVector(pos.x(), pos.y(), pos.z()));
+      thisTypes.push_back((*it)->atomicNumber());
+    }
+    for (QList<Atom*>::const_iterator it = other.m_atomList.constBegin(),
+           it_end = other.m_atomList.constEnd(); it != it_end; ++it) {
+      pos = other.cartToFrac(*(*it)->pos());
+      otherCoords.push_back(XcVector(pos.x(), pos.y(), pos.z()));
+      otherTypes.push_back((*it)->atomicNumber());
+    }
+
+    return XtalComp::compare(thisCell,  thisTypes,  thisCoords,
+                             otherCell, otherTypes, otherCoords,
+                             NULL, lengthTol, angleTol);
   }
 
   OpenBabel::OBUnitCell* Xtal::cell() const
