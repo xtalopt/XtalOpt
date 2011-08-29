@@ -1,6 +1,7 @@
 INCLUDE_DIRECTORIES(${XtalOpt_BINARY_DIR}/src/xtalopt)
 
 set( xtalopt_SRCS
+     debug.cpp
      extension.cpp
      xtalopt.cpp
      genetic.cpp
