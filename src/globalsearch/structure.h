@@ -86,11 +86,11 @@ namespace GlobalSearch {
     Structure& operator=(const Avogadro::Molecule& other);
 
     /**
-     * Only update the structure's atoms, bonds, and residue information
-     * from other.
+     * Only update this structure's atoms, bonds, and residue information
+     * from \a other.
      * @sa operator=
      */
-    Structure& copyStructure(const Structure *other);
+    Structure& copyStructure(const Structure &other);
 
     /**
      * Enum containing possible optimization statuses.

@@ -47,7 +47,7 @@ namespace XtalOpt {
     Xtal *xtal = qobject_cast<Xtal*>(structure);
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
-    xtal->wrapAtomsToCell();
+    xtal->fixAngles();
     xtal->findSpaceGroup(xtalopt->tol_spg);
     return true;
   }

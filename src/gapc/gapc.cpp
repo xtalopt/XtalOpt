@@ -197,8 +197,11 @@ namespace GAPC {
     }
   }
 
-  bool OptGAPC::load(const QString &filename)
-  {
+  bool OptGAPC::load(const QString &filename, const bool forceReadOnly) {
+    if (forceReadOnly) {
+      readOnly = true;
+    }
+
     // Attempt to open state file
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -259,7 +262,8 @@ namespace GAPC {
 
 #ifdef ENABLE_SSH
     // Create SSHConnection if we are running remotely
-    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
+    if (!forceReadOnly &&
+        qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
       for (;;) {
         try {

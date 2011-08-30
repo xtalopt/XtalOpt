@@ -77,7 +77,7 @@ namespace XtalOpt {
     bool checkXtal(Xtal *xtal);
     QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp();
-    bool load(const QString & filename);
+    bool load(const QString & filename, const bool forceReadOnly = false);
 
     uint numInitial;                    // Number of initial structures
 
@@ -109,8 +109,8 @@ namespace XtalOpt {
       vol_min,		vol_max,        vol_fixed,
       shortestInteratomicDistance;
 
-    double tol_enthalpy;        	// Duplicate matching tolerances
-    double tol_volume;
+    double tol_xcLength;        	// Duplicate matching tolerances
+    double tol_xcAngle;
     double tol_spg;
 
     bool using_fixed_volume;
@@ -127,10 +127,13 @@ namespace XtalOpt {
     void initializeAndAddXtal(Xtal *xtal,
                               unsigned int generation,
                               const QString &parents);
+    void resetSpacegroups();
     void resetDuplicates();
     void checkForDuplicates();
 
-   private:
+   protected:
+    friend class XtalOptUnitTest;
+    void resetSpacegroups_();
     void resetDuplicates_();
     void checkForDuplicates_();
     void generateNewStructure_();

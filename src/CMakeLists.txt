@@ -16,6 +16,7 @@ add_subdirectory(globalsearch)
 
 if (ENABLE_XTALOPT)
    add_subdirectory(spglib)
+   add_subdirectory(xtalcomp)
    add_subdirectory(xtalopt)
 endif (ENABLE_XTALOPT)
 
