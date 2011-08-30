@@ -153,7 +153,7 @@ void XtalTest::rotateToStdOrientationTest()
   ROTTEST_GET_ORIG_INFO;                              \
   QVERIFY(xtal.rotateCellToStandardOrientation());    \
   ROTTEST_GET_NEW_INFO;                               \
-  //ROTTEST_DEBUG_INFO;                               \
+  /*ROTTEST_DEBUG_INFO;*/                             \
   ROTTEST_VERIFY_INFO
 #define ROTTEST_DEBUG_INFO                          \
   qDebug() << newVolume << origVolume << endl       \

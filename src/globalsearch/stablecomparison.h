@@ -85,7 +85,7 @@ namespace Avogadro {
     inline double round(double v,
                  int dec)
     {
-      const double shift = pow(10,dec);
+      const double shift = pow(10.0,dec);
       const double shifted = v * shift;
       return floor(shifted+0.5) / shift;
     }
