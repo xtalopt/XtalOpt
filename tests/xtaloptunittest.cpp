@@ -63,7 +63,7 @@ namespace XtalOpt {
 
   void XtalOptUnitTest::constructDialog()
   {
-    m_dialog = new XtalOptDialog;
+    m_dialog = new XtalOptDialog(0,0,0,false);
     QVERIFY(m_dialog != 0);
   }
 

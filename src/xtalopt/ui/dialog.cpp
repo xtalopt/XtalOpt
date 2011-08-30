@@ -46,7 +46,8 @@ namespace XtalOpt {
 
   XtalOptDialog::XtalOptDialog( GLWidget *glWidget,
                                 QWidget *parent,
-                                Qt::WindowFlags f ) :
+                                Qt::WindowFlags f,
+                                bool interactive) :
     AbstractDialog( glWidget, parent, f )
   {
     ui = new Ui::XtalOptDialog;
@@ -92,7 +93,8 @@ namespace XtalOpt {
     initialize();
 
     QSettings settings;
-    if (settings.value("xtalopt/showTutorialLink", true).toBool()) {
+    if (interactive &&
+        settings.value("xtalopt/showTutorialLink", true).toBool()) {
       showTutorialDialog();
     }
   }

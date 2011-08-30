@@ -45,9 +45,11 @@ namespace XtalOpt {
     Q_OBJECT
 
   public:
+    // Setting interactive to false will disable the tutorial popup
     explicit XtalOptDialog( Avogadro::GLWidget *glWidget = 0,
                             QWidget *parent = 0,
-                            Qt::WindowFlags f = 0 );
+                            Qt::WindowFlags f = 0,
+                            bool interactive = true);
     virtual ~XtalOptDialog();
 
     void setMolecule(Avogadro::Molecule *molecule);
