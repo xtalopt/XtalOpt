@@ -4,7 +4,8 @@
 #ifndef __spg_database_H__
 #define __spg_database_H__
 
-#include "bravais.h"
+#include "lattice.h"
+#include "pointgroup.h"
 
 typedef struct {
   int number;
@@ -13,10 +14,12 @@ typedef struct {
   char international[32];
   char international_full[20];
   char international_short[11];
-  Centering centering;
+  Holohedry holohedry;
 } SpacegroupType;
 
-void spgdb_get_operation( int operation[13], const int index );
+int spgdb_get_operation( int rot[3][3],
+			 double trans[3],
+			 const int index );
 void spgdb_get_operation_index( int indices[2], const int hall_number );
 SpacegroupType spgdb_get_spacegroup_type( int index );
 

@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "mathfunc.h"
 
+#include "debug.h"
+
 double mat_get_determinant_d3(SPGCONST double a[3][3])
 {
   return a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
@@ -12,7 +14,7 @@ double mat_get_determinant_d3(SPGCONST double a[3][3])
     + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
 }
 
-double mat_get_determinant_i3(SPGCONST int a[3][3])
+int mat_get_determinant_i3(SPGCONST int a[3][3])
 {
   return a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
     + a[0][1] * (a[1][2] * a[2][0] - a[1][0] * a[2][2])
@@ -149,6 +151,21 @@ void mat_multiply_matrix_di3(double m[3][3],
   mat_copy_matrix_d3(m, c);
 }
 
+void mat_multiply_matrix_id3( double m[3][3],
+			      SPGCONST int a[3][3],
+			      SPGCONST double b[3][3])
+{
+  int i, j;                   /* a_ij */
+  double c[3][3];
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      c[i][j] =
+	a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
+    }
+  }
+  mat_copy_matrix_d3(m, c);
+}
+
 void mat_multiply_matrix_vector_i3(int v[3],
 				   SPGCONST int a[3][3],
 				   const int b[3])
@@ -238,7 +255,8 @@ int mat_inverse_matrix_d3(double m[3][3],
   double c[3][3];
   det = mat_get_determinant_d3(a);
   if (mat_Dabs(det) < precision) {
-    fprintf(stderr, "spglib: No inverse matrix\n");
+    warning_print("spglib: No inverse matrix (det=%f)\n", det);
+    debug_print("No inverse matrix\n");
     return 0;
   }
 
@@ -263,7 +281,8 @@ int mat_get_similar_matrix_d3(double m[3][3],
 {
   double c[3][3];
   if (!mat_inverse_matrix_d3(c, b, precision)) {
-    fprintf(stderr, "spglib: No similar matrix due to 0 determinant.\n");
+    warning_print("spglib: No similar matrix due to 0 determinant.\n");
+    debug_print("No similar matrix due to 0 determinant.\n");
     return 0;
   }
   mat_multiply_matrix_d3(m, a, b);
@@ -335,9 +354,9 @@ int mat_Nint(const double a)
     return (int) (a + 0.5);
 }
 
-double mat_Dmod1(const double a, const double prec)
+double mat_Dmod1(const double a)
 {
-  if (a < -prec)
+  if (a < 0.0)
     return a + 1.0 - (int) a;
   else
     return a - (int) a;
@@ -348,18 +367,23 @@ MatINT * mat_alloc_MatINT(const int size)
   MatINT *matint;
   matint = malloc( sizeof( MatINT ) );
   matint->size = size;
-  if ( ( matint->mat = malloc( sizeof(int[3][3]) * size) )
-       == NULL ) {
-    fprintf(stderr, "spglib: Memory could not be allocated.");
-    exit(1);
+  if ( size > 0 ) {
+    if ( ( matint->mat = malloc( sizeof(int[3][3]) * size) )
+	 == NULL ) {
+      warning_print("spglib: Memory could not be allocated ");
+      warning_print("(MatINT, line %d, %s).\n", __LINE__, __FILE__);
+      exit(1);
+    }
   }
   return matint;
 }
 
 void mat_free_MatINT( MatINT * matint )
 {
-  free( matint->mat );
-  matint->mat = NULL;
+  if ( matint->size > 0 ) {
+    free( matint->mat );
+    matint->mat = NULL;
+  }
   free( matint );
   matint = NULL;
 }
@@ -369,20 +393,37 @@ VecDBL * mat_alloc_VecDBL( const int size )
   VecDBL *vecdbl;
   vecdbl = malloc( sizeof( VecDBL ) );
   vecdbl->size = size;
-  if ( ( vecdbl->vec = malloc( sizeof(double[3]) * size) )
-       == NULL ) {
-    fprintf(stderr, "spglib: Memory could not be allocated.");
-    exit(1);
+  if ( size > 0 ) {
+    if ( ( vecdbl->vec = malloc( sizeof(double[3]) * size) )
+	 == NULL ) {
+      warning_print("spglib: Memory could not be allocated ");
+      warning_print("(VecDBL, line %d, %s).\n", __LINE__, __FILE__);
+      exit(1);
+    }
   }
   return vecdbl;
 }
 
 void mat_free_VecDBL( VecDBL * vecdbl )
 {
-  free( vecdbl->vec );
-  vecdbl->vec = NULL;
+  if ( vecdbl->size > 0 ) {
+    free( vecdbl->vec );
+    vecdbl->vec = NULL;
+  }
   free( vecdbl );
   vecdbl = NULL;
 }
 
 
+int mat_is_int_matrix( SPGCONST double mat[3][3], double symprec )
+{
+  int i,j ;
+  for ( i = 0; i < 3; i++ ) {
+    for ( j = 0; j < 3; j++ ) {
+      if ( mat_Dabs( mat_Nint( mat[i][j] ) - mat[i][j] ) > symprec ) {
+	return 0;
+      }
+    }
+  }
+  return 1;
+}
