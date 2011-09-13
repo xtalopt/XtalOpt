@@ -365,10 +365,10 @@ double mat_Dmod1(const double a)
 MatINT * mat_alloc_MatINT(const int size)
 {
   MatINT *matint;
-  matint = malloc( sizeof( MatINT ) );
+  matint = (MatINT*) malloc( sizeof( MatINT ) );
   matint->size = size;
   if ( size > 0 ) {
-    if ( ( matint->mat = malloc( sizeof(int[3][3]) * size) )
+    if ( ( matint->mat = (int (*)[3][3]) malloc( sizeof(int[3][3]) * size) )
 	 == NULL ) {
       warning_print("spglib: Memory could not be allocated ");
       warning_print("(MatINT, line %d, %s).\n", __LINE__, __FILE__);
@@ -391,10 +391,10 @@ void mat_free_MatINT( MatINT * matint )
 VecDBL * mat_alloc_VecDBL( const int size )
 {
   VecDBL *vecdbl;
-  vecdbl = malloc( sizeof( VecDBL ) );
+  vecdbl = (VecDBL*) malloc( sizeof( VecDBL ) );
   vecdbl->size = size;
   if ( size > 0 ) {
-    if ( ( vecdbl->vec = malloc( sizeof(double[3]) * size) )
+    if ( ( vecdbl->vec = (double (*)[3]) malloc( sizeof(double[3]) * size) )
 	 == NULL ) {
       warning_print("spglib: Memory could not be allocated ");
       warning_print("(VecDBL, line %d, %s).\n", __LINE__, __FILE__);

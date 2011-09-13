@@ -14,6 +14,7 @@
 #define REDUCE_RATE 0.95
 
 static int trim_cell( Cell * primitive,
+		      int * mapping_table,
 		      SPGCONST Cell * cell,
 		      const double symprec );
 static int set_primitive_positions( Cell * primitive,
@@ -23,15 +24,16 @@ static int set_primitive_positions( Cell * primitive,
 static VecDBL * get_positions_primitive( SPGCONST Cell * cell,
 					 SPGCONST double prim_lat[3][3] );
 static int get_overlap_table( int ** table,
-			      const Cell *cell,
+			      const int cell_size,
 			      SPGCONST Cell *primitive,
 			      const VecDBL * position,
 			      const double symprec );
-static void free_table( int ** table, const int size );
-static int ** allocate_table( const int size );
+static void free_overlap_table( int ** table, const int size );
+static int ** allocate_overlap_table( const int size );
 static Cell * get_cell_with_smallest_lattice( SPGCONST Cell * cell,
 					      const double symprec );
-static Cell * get_primitive( SPGCONST Cell * cell,
+static Cell * get_primitive( int * mapping_table,
+			     SPGCONST Cell * cell,
 			     const VecDBL * pure_trans,
 			     const double symprec );
 static int get_primitive_lattice_vectors_iterative( double prim_lattice[3][3],
@@ -44,30 +46,28 @@ static int get_primitive_lattice_vectors( double prim_lattice[3][3],
 					  const double symprec );
 static VecDBL * get_translation_candidates( const VecDBL * pure_trans );
 
-static double tolerance;
-
-Cell * prm_get_primitive( SPGCONST Cell * cell,
+Cell * prm_get_primitive( int * mapping_table,
+			  SPGCONST Cell * cell,
 			  const VecDBL *pure_trans,
 			  const double symprec )
 {
+  int i;
   Cell *primitive;
 
   /* If primitive could not be found, primitive->size = -1 is returned. */
   /* If cell is already primitive cell, */
   /* primitive cell with smallest lattice is returned. */
+
   if ( pure_trans->size > 1 ) {
-    primitive = get_primitive( cell, pure_trans, symprec );
+    primitive = get_primitive( mapping_table, cell, pure_trans, symprec );
   } else {
     primitive =  get_cell_with_smallest_lattice( cell, symprec );
-    tolerance = symprec;
+    for ( i = 0; i < cell->size; i++ ) {
+      mapping_table[i] = i;
+    }
   }
 
   return primitive;
-}
-
-double prm_get_tolerance( void )
-{
-  return tolerance;
 }
 
 static Cell * get_cell_with_smallest_lattice( SPGCONST Cell * cell,
@@ -100,7 +100,8 @@ static Cell * get_cell_with_smallest_lattice( SPGCONST Cell * cell,
 }
 
 /* If primitive could not be found, primitive->size = -1 is returned. */
-static Cell * get_primitive( SPGCONST Cell * cell,
+static Cell * get_primitive( int * mapping_table,
+			     SPGCONST Cell * cell,
 			     const VecDBL * pure_trans,
 			     const double symprec )
 {
@@ -108,12 +109,17 @@ static Cell * get_primitive( SPGCONST Cell * cell,
   double prim_lattice[3][3];
   Cell * primitive;
 
+  /* Primitive lattice vectors are searched. */
+  /* To be consistent, sometimes tolerance is decreased iteratively. */
+  /* The descreased tolerance is stored in 'static double tolerance'. */
   multi = get_primitive_lattice_vectors_iterative( prim_lattice,
 						   cell,
 						   pure_trans,
 						   symprec );
-  if ( ! multi  ) { goto not_found; }
-  
+  if ( ! multi  ) {
+    goto not_found;
+  }
+
   primitive = cel_alloc_cell( cell->size / multi );
 
   if ( ! lat_smallest_lattice_vector( primitive->lattice,
@@ -124,7 +130,7 @@ static Cell * get_primitive( SPGCONST Cell * cell,
   }
 
   /* Fit atoms into new primitive cell */
-  if ( ! trim_cell( primitive, cell, symprec ) ) {
+  if ( ! trim_cell( primitive, mapping_table, cell, symprec ) ) {
     cel_free_cell( primitive );
     goto not_found;
   }
@@ -150,14 +156,15 @@ static Cell * get_primitive( SPGCONST Cell * cell,
 
 
 static int trim_cell( Cell * primitive,
+		      int * mapping_table,
 		      SPGCONST Cell * cell,
 		      const double symprec )
 {
-  int ratio;
+  int ratio, i, count;
   VecDBL * position;
-  int **table;
+  int **overlap_table;
 
-  table = allocate_table( cell->size );
+  overlap_table = allocate_overlap_table( cell->size );
   ratio = cell->size / primitive->size;
 
   /* Get reduced positions of atoms in original cell with respect to */
@@ -165,25 +172,42 @@ static int trim_cell( Cell * primitive,
   position = get_positions_primitive( cell, primitive->lattice );
 
   /* Create overlapping table */
-  if ( ! get_overlap_table( table, cell, primitive,
-			    position, symprec ) ) { goto err; }
+  if ( ! get_overlap_table( overlap_table,
+			    cell->size,
+			    primitive,
+			    position,
+			    symprec ) ) { goto err; }
 
- 
+  /* cell to primitive cell mapping table */
+  count = 0;
+  for ( i = 0; i < cell->size; i++ ) {
+    if ( overlap_table[i][0] == i ) {
+      mapping_table[i] = count;
+      count++;
+    } else {
+      mapping_table[i] = mapping_table[ overlap_table[i][0] ];
+    }
+  }
+
   /* Copy positions. Positions of overlapped atoms are averaged. */
-  if ( ! set_primitive_positions( primitive, position, cell, table ) )
+  if ( ! set_primitive_positions( primitive,
+				  position,
+				  cell,
+				  overlap_table ) )
     { goto err; }
 
   debug_print("Trimed position\n");
-  debug_print_vectors_with_label(primitive->position, primitive->types,
-				 primitive->size);
+  debug_print_vectors_with_label( primitive->position,
+				  primitive->types,
+				  primitive->size );
   
   mat_free_VecDBL( position );
-  free_table( table, cell->size );
+  free_overlap_table( overlap_table, cell->size );
   return 1;
 
  err:
   mat_free_VecDBL( position );
-  free_table( table, cell->size );
+  free_overlap_table( overlap_table, cell->size );
   return 0;
 }
 
@@ -193,28 +217,32 @@ static int set_primitive_positions( Cell * primitive,
 				    int * const * table )
 {
   int i, j, k, ratio, count;
-  int *check_table = (int*)malloc(cell->size * sizeof(int));
+  int *is_equivalent = (int*)malloc(cell->size * sizeof(int));
 
   ratio = cell->size / primitive->size;
-
-  
-  for (i = 0; i < cell->size; i++) { check_table[i] = 0; }
+  for (i = 0; i < cell->size; i++) {
+    is_equivalent[i] = 0;
+  }
 
   /* Copy positions. Positions of overlapped atoms are averaged. */
   count = 0;
-  for (i = 0; i < cell->size; i++)
+  for ( i = 0; i < cell->size; i++ )
 
-    if (!check_table[i]) {
+    if ( ! is_equivalent[i] ) {
+
       debug_print("Trimming... i=%d count=%d\n", i, count);
       primitive->types[count] = cell->types[i];
 
-      for (j = 0; j < 3; j++) {
+      for ( j = 0; j < 3; j++ ) {
 	primitive->position[count][j] = 0;
       }
 
-      for (j = 0; j < ratio; j++) {	/* overlap atoms */
-        if (table[i][j] < 0)
+      for ( j = 0; j < ratio; j++ ) {	/* overlap atoms */
+        if ( table[i][j] < 0 ) { /* check if table is correctly bulit. */
           break;
+	}
+
+	is_equivalent[table[i][j]] = 1;
 
 	for (k = 0; k < 3; k++) {
 
@@ -238,7 +266,7 @@ static int set_primitive_positions( Cell * primitive,
 	      position->vec[table[i][j]][k];
 	  }
 	}
-	check_table[table[i][j]] = 1;
+	
       }
 
       for (j = 0; j < 3; j++) {	/* take average and reduce */
@@ -253,8 +281,8 @@ static int set_primitive_positions( Cell * primitive,
       count++;
     }
 
-  free(check_table);
-  check_table = NULL;
+  free(is_equivalent);
+  is_equivalent = NULL;
 
   debug_print("Count: %d Size of cell: %d Size of primitive: %d\n", count, cell->size, primitive->size);
   if ( ! ( count == primitive->size ) ) {
@@ -298,8 +326,8 @@ static VecDBL * get_positions_primitive( SPGCONST Cell * cell,
   return position;
 }
 
-static int get_overlap_table( int **table,
-			      const Cell *cell,
+static int get_overlap_table( int **overlap_table,
+			      const int cell_size,
 			      SPGCONST Cell *primitive,
 			      const VecDBL * position,
 			      const double symprec )
@@ -308,7 +336,8 @@ static int get_overlap_table( int **table,
   int count_error=0, old_count_error=0;
   double trim_tolerance, tol_adjust;
 
-  ratio = cell->size / primitive->size;
+  ratio = cell_size / primitive->size;
+  
   trim_tolerance = symprec;
   tol_adjust = trim_tolerance/2.0;
 
@@ -318,19 +347,21 @@ static int get_overlap_table( int **table,
   for ( attempt = 0; attempt < 1000; attempt++ ) {
     is_found = 1;
     debug_print("Trim attempt %d: tolerance=%f\n",attempt+1,trim_tolerance);
-    for (i = 0; i < cell->size; i++) {
-      for (j = 0; j < cell->size; j++) {
-        table[i][j] = -1;
+
+    /* Each value of -1 has to be overwritten by 0 or positive numbers. */
+    for (i = 0; i < cell_size; i++) {
+      for (j = 0; j < cell_size; j++) {
+        overlap_table[i][j] = -1;
       }
     }
 
-    for (i = 0; i < cell->size; i++) {
+    for (i = 0; i < cell_size; i++) {
 
       count = 0;
-      for (j = 0; j < cell->size; j++) {
+      for (j = 0; j < cell_size; j++) {
         if ( cel_is_overlap( position->vec[i], position->vec[j],
 			     primitive->lattice, trim_tolerance ) ) {
-          table[i][count] = j;
+          overlap_table[i][count] = j;
           count++;
         }
       }
@@ -377,7 +408,7 @@ static int get_overlap_table( int **table,
   return 0;
 }
 
-static void free_table( int **table, const int size )
+static void free_overlap_table( int **table, const int size )
 {
   int i;
   for ( i = 0; i < size; i++ ) {
@@ -388,7 +419,7 @@ static void free_table( int **table, const int size )
   table = NULL;
 }
 
-static int ** allocate_table( const int size )
+static int ** allocate_overlap_table( const int size )
 {
   int i;
   int **table = (int**)malloc(size * sizeof(int*));
@@ -405,6 +436,7 @@ static int get_primitive_lattice_vectors_iterative( double prim_lattice[3][3],
 						    const double symprec )
 {
   int i, multi, attempt;
+  double tolerance;
   VecDBL * vectors, * pure_trans_reduced, *tmp_vec;
 
   tolerance = symprec;
@@ -425,8 +457,8 @@ static int get_primitive_lattice_vectors_iterative( double prim_lattice[3][3],
 
       mat_free_VecDBL( vectors );
       mat_free_VecDBL( pure_trans_reduced );
-      goto found;
 
+      goto found;
     } else {
 
       tmp_vec = mat_alloc_VecDBL( multi );
@@ -437,7 +469,8 @@ static int get_primitive_lattice_vectors_iterative( double prim_lattice[3][3],
       pure_trans_reduced = sym_reduce_pure_translation( cell,
 							tmp_vec,
 							tolerance );
-      debug_print("Tolerance is reduced to %f (%d), size = %d\n", tolerance, attempt, pure_trans_reduced->size);
+      debug_print("Tolerance is reduced to %f (%d), size = %d\n",
+		  tolerance, attempt, pure_trans_reduced->size);
 
       mat_free_VecDBL( tmp_vec );
       mat_free_VecDBL( vectors );
@@ -450,7 +483,11 @@ static int get_primitive_lattice_vectors_iterative( double prim_lattice[3][3],
   return 0;
 
  found:
-  warning_print("spglib: Tolerance to find primitive lattice vectors was changed to %f ", tolerance);
+#ifdef SPGWARNING
+  if ( attempt > 0 ) {
+    printf("spglib: Tolerance to find primitive lattice vectors was changed to %f ", tolerance);
+  }
+#endif
   return multi;
 }
 

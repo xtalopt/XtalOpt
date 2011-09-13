@@ -2,6 +2,7 @@
 /* Copyright (C) 2010 Atsushi Togo */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "cell.h"
 #include "hall_symbol.h"
@@ -41,18 +42,18 @@ Spacegroup spa_get_spacegroup( SPGCONST Cell * cell,
 			       const double symprec )
 {
   Cell *primitive;
+  int *mapping_table;
   Spacegroup spacegroup;
   VecDBL *pure_trans;
-  double tolerance;
 
   pure_trans = sym_get_pure_translation( cell, symprec );
-  primitive = prm_get_primitive( cell, pure_trans, symprec );
-  /* In some case, tolerance (symprec) to find primitive lattice is reduced. */
-  /* The reduced tolerance should be used to find symmetry operations. */
-  tolerance = prm_get_tolerance();
+  mapping_table = (int*) malloc( sizeof(int) * cell->size );
+  primitive = prm_get_primitive( mapping_table, cell, pure_trans, symprec );
+  free( mapping_table );
+  mapping_table = NULL;
   
-  if ( primitive->size > -1 ) {
-    spacegroup = get_spacegroup( primitive, tolerance );
+  if ( primitive->size > 0 ) {
+    spacegroup = get_spacegroup( primitive, symprec );
   } else {
     spacegroup.number = 0;
     warning_print("spglib: Space group could not be found ");
@@ -192,7 +193,7 @@ static int get_hall_number( double origin_shift[3],
 					   symprec );
       if ( hall_number > 0 ) {
 	sym_free_symmetry( sym_reduced );
-	warning_print("spglib: Tolerance to find Hall symbol was changed to %f ", tolerance);
+	warning_print("spglib: Tolerance to find Hall symbol was changed to %f\n", tolerance);
 	goto ret;
       }
     }
