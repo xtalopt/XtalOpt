@@ -8471,6 +8471,14 @@ int spgdb_get_operation( int rot[3][3],
 {
   int i, j, r, t, degit;
 
+  /* A space group operation is compressed using ternary numerical system for */
+  /* rotation and duodecimal system for translation. This is achieved because */
+  /* each element of rotation matrix can have only one of {-1,0,1}, and */
+  /* the translation can have one of {0,2,3,4,6,8,9,10} divided by */
+  /* 12. Therefore 3^9 * 12^3 = 34012224 different values can map space */
+  /* group operations. In principle, octal numerical system can be used */
+  /* for translation, but duodecimal system is more convenient. */
+
   r = symmetry_operations[index] % 19683; /* 19683 = 3**9 */
   degit = 6561; /* 6561 = 3**8 */
   for ( i = 0; i < 3; i++ ) {

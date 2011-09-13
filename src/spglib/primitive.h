@@ -8,9 +8,8 @@
 #include "cell.h"
 #include "mathfunc.h"
 
-Cell * prm_get_primitive( SPGCONST Cell * cell,
+Cell * prm_get_primitive( int * mapping_table,
+			  SPGCONST Cell * cell,
 			  const VecDBL *pure_trans,
 			  const double symprec );
-double prm_get_tolerance( void );
-
 #endif

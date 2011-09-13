@@ -8,11 +8,6 @@
 
 typedef struct {
   int size;
-  double (*mat)[3][3];
-} MatDBL;
-
-typedef struct {
-  int size;
   int (*mat)[3][3];
 } MatINT;
 
@@ -20,11 +15,6 @@ typedef struct {
   int size;
   double (*vec)[3];
 } VecDBL;
-
-typedef struct {
-  int size;
-  int (*vec)[3];
-} VecINT;
 
 double mat_get_determinant_d3(SPGCONST double a[3][3]);
 int mat_get_determinant_i3(SPGCONST int a[3][3]);
