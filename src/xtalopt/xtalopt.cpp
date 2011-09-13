@@ -45,6 +45,7 @@
 #include <QtCore/QFileInfo>
 #include <QtCore/QReadWriteLock>
 #include <QtCore/QtConcurrentRun>
+#include <QtCore/QtConcurrentMap>
 
 #define ANGSTROM_TO_BOHR 1.889725989
 
@@ -146,17 +147,18 @@ namespace XtalOpt {
 
     // VASP checks:
     if (m_optimizer->getIDString() == "VASP") {
-      // Is the POTCAR generated? If not, warn user in log and launch generator.
-      // Every POTCAR will be identical in this case!
+      // Is the POTCAR generated? If not, warn user in log and launch
+      // generator. Every POTCAR will be identical in this case!
       QList<uint> oldcomp, atomicNums = comp.keys();
       QList<QVariant> oldcomp_ = m_optimizer->getData("Composition").toList();
       for (int i = 0; i < oldcomp_.size(); i++)
         oldcomp.append(oldcomp_.at(i).toUInt());
       qSort(atomicNums);
-      if (m_optimizer->getData("POTCAR info").toList().isEmpty() || // No info at all!
+      if (m_optimizer->getData("POTCAR info").toList().isEmpty() || // No info
           oldcomp != atomicNums // Composition has changed!
           ) {
-        error("Using VASP and POTCAR is empty. Please select the pseudopotentials before continuing.");
+        error("Using VASP and POTCAR is empty. Please select the "
+              "pseudopotentials before continuing.");
         return;
       }
 
@@ -179,9 +181,9 @@ namespace XtalOpt {
           case SSHConnection::SSH_UNKNOWN_ERROR:
           default:
             err = "There was a problem connection to the ssh server at "
-              + username + "@" + host + ":" + QString::number(port) + ". "
-              + "Please check that all provided information is correct, "
-              + "and attempt to log in outside of Avogadro before trying again.";
+                + username + "@" + host + ":" + QString::number(port) + ". "
+                "Please check that all provided information is correct, and "
+                "attempt to log in outside of Avogadro before trying again.";
             error(err);
             return;
           case SSHConnection::SSH_UNKNOWN_HOST_ERROR: {
@@ -265,20 +267,24 @@ namespace XtalOpt {
       }
       QString parents =tr("Seeded: %1", "1 is a filename").arg(filename);
       initializeAndAddXtal(xtal, 1, parents);
-      debug(tr("XtalOpt::StartOptimization: Loaded seed: %1", "1 is a filename").arg(filename));
-      m_dialog->updateProgressLabel(tr("%1 structures generated (%2 kept, %3 rejected)...").arg(i + failed).arg(i).arg(failed));
+      debug(tr("XtalOpt::StartOptimization: Loaded seed: %1",
+               "1 is a filename").arg(filename));
+      m_dialog->updateProgressLabel(
+            tr("%1 structures generated (%2 kept, %3 rejected)...")
+            .arg(i + failed).arg(i).arg(failed));
       newXtalCount++;
     }
 
     // Generation loop...
     for (uint i = newXtalCount; i < numInitial; i++) {
       // Update progress bar
-      m_dialog->updateProgressMaximum( (i == 0)
-                                        ? 0
-                                        : int(progCount / static_cast<double>(i)) * numInitial );
+      m_dialog->updateProgressMaximum(
+            (i == 0) ? 0 : int(progCount/static_cast<double>(i))*numInitial);
       m_dialog->updateProgressValue(progCount);
       progCount++;
-      m_dialog->updateProgressLabel(tr("%1 structures generated (%2 kept, %3 rejected)...").arg(i + failed).arg(i).arg(failed));
+      m_dialog->updateProgressLabel(
+            tr("%1 structures generated (%2 kept, %3 rejected)...")
+            .arg(i + failed).arg(i).arg(failed));
 
       // Generate/Check xtal
       xtal = generateRandomXtal(1, i+1);
@@ -295,7 +301,8 @@ namespace XtalOpt {
     }
 
     // Wait for all structures to appear in tracker
-    m_dialog->updateProgressLabel(tr("Waiting for structures to initialize..."));
+    m_dialog->updateProgressLabel(
+          tr("Waiting for structures to initialize..."));
     m_dialog->updateProgressMinimum(0);
     m_dialog->updateProgressMinimum(newXtalCount);
 
@@ -305,9 +312,9 @@ namespace XtalOpt {
     m_initWC->prewaitLock();
     do {
       m_dialog->updateProgressValue(m_tracker->size());
-      m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
-                                    .arg(m_tracker->size())
-                                    .arg(newXtalCount));
+      m_dialog->updateProgressLabel(
+            tr("Waiting for structures to initialize (%1 of %2)...")
+            .arg(m_tracker->size()).arg(newXtalCount));
       // Don't block here forever -- there is a race condition where
       // the final newStructureAdded signal may be emitted while the
       // WC is not waiting. Since this is just trivial GUI updating
@@ -327,7 +334,8 @@ namespace XtalOpt {
     emit sessionStarted();
   }
 
-  Structure* XtalOpt::replaceWithRandom(Structure *s, const QString & reason) {
+  Structure* XtalOpt::replaceWithRandom(Structure *s, const QString & reason)
+  {
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
     QWriteLocker locker1 (oldXtal->lock());
 
@@ -403,7 +411,8 @@ namespace XtalOpt {
       for (uint i = 0; i < q; i++) {
         if (!xtal->addAtomRandomly(atomicNum, IAD)) {
           xtal->deleteLater();
-          debug("XtalOpt::generateRandomXtal: Failed to add atoms with specified interatomic distance.");
+          debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                "specified interatomic distance.");
           return 0;
         }
       }
@@ -419,7 +428,9 @@ namespace XtalOpt {
     return xtal;
   }
 
-  void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation, const QString &parents) {
+  void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation,
+                                     const QString &parents)
+    {
     xtalInitMutex->lock();
     QList<Structure*> allStructures = m_queue->lockForNaming();
     Structure *structure;
@@ -447,16 +458,20 @@ namespace XtalOpt {
     QDir dir (locpath_s);
     if (!dir.exists()) {
       if (!dir.mkpath(locpath_s)) {
-        error(tr("XtalOpt::initializeAndAddXtal: Cannot write to path: %1 (path creation failure)",
-                 "1 is a file path.")
+        error(tr("XtalOpt::initializeAndAddXtal: Cannot write to path: %1 "
+                 "(path creation failure)", "1 is a file path.")
               .arg(locpath_s));
       }
     }
+    xtal->moveToThread(m_tracker->thread());
+    xtal->setupConnections();
     xtal->setFileName(locpath_s);
     xtal->setRempath(rempath_s);
     xtal->setCurrentOptStep(1);
+    xtal->fixAngles();
     xtal->findSpaceGroup(tol_spg);
     xtalLocker.unlock();
+    xtal->update();
     m_queue->unlockForNaming(xtal);
     xtalInitMutex->unlock();
   }
@@ -555,7 +570,8 @@ namespace XtalOpt {
 
           // Perform operation
           double percent1;
-          xtal = XtalOptGenetic::crossover(xtal1, xtal2, cross_minimumContribution, percent1);
+          xtal = XtalOptGenetic::crossover(
+                xtal1, xtal2, cross_minimumContribution, percent1);
 
           // Lock parents and get info from them
           xtal1->lock()->lockForRead();
@@ -625,7 +641,8 @@ namespace XtalOpt {
 
           Xtal *xtal1 = xtals.at(ind);
           double stdev=0;
-          xtal = XtalOptGenetic::permustrain(xtals.at(ind), perm_strainStdev_max, perm_ex, stdev);
+          xtal = XtalOptGenetic::permustrain(
+                xtals.at(ind), perm_strainStdev_max, perm_ex, stdev);
 
           // Lock parent and extract info
           xtal1->lock()->lockForRead();
@@ -643,7 +660,8 @@ namespace XtalOpt {
           continue;
         }
         default:
-          warning("XtalOpt::generateSingleOffspring: Attempt to use an invalid operator.");
+          warning("XtalOpt::generateSingleOffspring: Attempt to use an "
+                  "invalid operator.");
         }
       }
       if (attemptCount >= 1000) {
@@ -654,7 +672,8 @@ namespace XtalOpt {
         case OP_Permustrain: opStr = "permustrain"; break;
         default:             opStr = "(unknown)"; break;
         }
-        warning(tr("Unable to perform operation %1 after 1000 tries. Reselecting operator...").arg(opStr));
+        warning(tr("Unable to perform operation %1 after 1000 tries. "
+                   "Reselecting operator...").arg(opStr));
       }
     }
     initializeAndAddXtal(xtal, gen, parents);
@@ -696,7 +715,8 @@ namespace XtalOpt {
             (a_max * b_max * c_max) < vol_min ||
             vol_min > vol_max)
           )) {
-      warning("XtalOptRand::checkLimits error: Illogical Volume limits. (Also check min/max volumes based on cell lengths)");
+      warning("XtalOptRand::checkLimits error: Illogical Volume limits. "
+              "(Also check min/max volumes based on cell lengths)");
       return false;
     }
     return true;
@@ -722,8 +742,18 @@ namespace XtalOpt {
               xtal->getVolume() > vol_max ) {
       // I don't want to initialize a random number generator here, so
       // just use the modulus of the current volume as a random float.
-      double newvol = fabs(fmod(xtal->getVolume(), 1)) * (vol_max - vol_min) + vol_min;
-      qDebug() << "XtalOpt::checkXtal: Rescaling volume from " << xtal->getVolume() << " to " << newvol;
+      double newvol = fabs(fmod(xtal->getVolume(), 1)) *
+          (vol_max - vol_min) + vol_min;
+      // If the user has set vol_min to 0, we can end up with a null
+      // volume. Fix this here. This is just to keep things stable
+      // numerically during the rescaling -- it's unlikely that other
+      // cells with small, nonzero volumes will pass the other checks
+      // so long as other limits are reasonable.
+      if (fabs(newvol) < 1.0) {
+        newvol = (vol_max - vol_min)*0.5 + vol_min;
+      }
+      qDebug() << "XtalOpt::checkXtal: Rescaling volume from "
+               << xtal->getVolume() << " to " << newvol;
       xtal->setVolume(newvol);
     }
 
@@ -745,6 +775,19 @@ namespace XtalOpt {
         xtal->OBUnitCell()->GetCellMatrix().determinant() <= 0.0) {
       qDebug() << "Rejecting structure" << xtal->getIDString()
                << ": using VASP negative triple product.";
+      return false;
+    }
+
+    // Before fixing angles, make sure that the current cell
+    // parameters are realistic
+    if (GS_IS_NAN_OR_INF(xtal->getA()) || fabs(xtal->getA()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getB()) || fabs(xtal->getB()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getC()) || fabs(xtal->getC()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getAlpha()) || fabs(xtal->getAlpha()) < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getBeta())  || fabs(xtal->getBeta())  < 1e-8 ||
+        GS_IS_NAN_OR_INF(xtal->getGamma()) || fabs(xtal->getGamma()) < 1e-8 ) {
+      qDebug() << "XtalOpt::checkXtal: A cell parameter is either 0, nan, or "
+                  "inf. Discarding.";
       return false;
     }
 
@@ -785,7 +828,8 @@ namespace XtalOpt {
     return true;
   }
 
-  QString XtalOpt::interpretTemplate(const QString & templateString, Structure* structure)
+  QString XtalOpt::interpretTemplate(const QString & templateString,
+                                     Structure* structure)
   {
     QStringList list = templateString.split("%");
     QString line;
@@ -992,8 +1036,12 @@ namespace XtalOpt {
     return str;
   }
 
-  bool XtalOpt::load(const QString &filename)
+  bool XtalOpt::load(const QString &filename, const bool forceReadOnly)
   {
+    if (forceReadOnly) {
+      readOnly = true;
+    }
+
     // Attempt to open state file
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -1020,12 +1068,12 @@ namespace XtalOpt {
       return false;
     }
 
-    bool stateFileIsValid =
-      settings->value("xtalopt/saveSuccessful", false).toBool();
+    bool stateFileIsValid = settings->value("xtalopt/saveSuccessful",
+                                            false).toBool();
     if (!stateFileIsValid) {
-      error("XtalOpt::load(): File "+file.fileName()+" is incomplete, "
-            "corrupt, or invalid. (Try " + file.fileName() +
-            ".old if it exists)");
+      error("XtalOpt::load(): File " + file.fileName() +
+            " is incomplete, corrupt, or invalid. (Try "
+            + file.fileName() + ".old if it exists)");
       return false;
     }
 
@@ -1041,8 +1089,10 @@ namespace XtalOpt {
     xtalDirs.removeAll("..");
     for (int i = 0; i < xtalDirs.size(); i++) {
       // old versions of xtalopt used xtal.state, so still check for it.
-      if (!QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/structure.state") &&
-          !QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/xtal.state") ) {
+      if (!QFile::exists(dataPath + "/" + xtalDirs.at(i)
+                         + "/structure.state") &&
+          !QFile::exists(dataPath + "/" + xtalDirs.at(i)
+                         + "/xtal.state") ) {
           xtalDirs.removeAt(i);
           i--;
       }
@@ -1056,11 +1106,15 @@ namespace XtalOpt {
     newFileBase.remove("xtalopt.state.tmp");
     newFileBase.remove("xtalopt.state");
 
+    // TODO For some reason, the local view of "this" is not changed
+    // when the settings are loaded in the following line. The tabs
+    // are loading the settings and setting the variables in their
+    // scope, but it isn't changing it here. Caching issue maybe?
     m_dialog->readSettings(filename);
 
 #ifdef ENABLE_SSH
     // Create SSHConnection if we are running remotely
-    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
+    if (!forceReadOnly && qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       QString pw = "";
       for (;;) {
         try {
@@ -1127,7 +1181,8 @@ namespace XtalOpt {
 
     debug(tr("Resuming XtalOpt session in '%1' (%2) readOnly = %3")
           .arg(filename)
-          .arg(m_optimizer->getIDString())
+          .arg((m_optimizer) ? m_optimizer->getIDString()
+                             : "No set optimizer")
           .arg( (readOnly) ? "true" : "false"));
 
     // Xtals
@@ -1161,6 +1216,8 @@ namespace XtalOpt {
 
       xtal = new Xtal();
       QWriteLocker locker (xtal->lock());
+      xtal->moveToThread(m_tracker->thread());
+      xtal->setupConnections();
       // Add empty atoms to xtal, updateXtal will populate it
       for (int j = 0; j < keys.size(); j++) {
         for (uint k = 0; k < comp.value(keys.at(j)); k++)
@@ -1223,7 +1280,7 @@ namespace XtalOpt {
     m_dialog->updateProgressMinimum(0);
     m_dialog->updateProgressValue(0);
     m_dialog->updateProgressMaximum(loadedStructures.size());
-    m_dialog->updateProgressLabel("Updating  structure indices...");
+    m_dialog->updateProgressLabel("Updating structure indices...");
 
     // Reassign indices (shouldn't always be necessary, but just in case...)
     for (int i = 0; i < loadedStructures.size(); i++) {
@@ -1268,6 +1325,24 @@ namespace XtalOpt {
     return true;
   }
 
+  void XtalOpt::resetSpacegroups() {
+    if (isStarting) {
+      return;
+    }
+    QtConcurrent::run(this, &XtalOpt::resetSpacegroups_);
+  }
+
+  void XtalOpt::resetSpacegroups_() {
+    const QList<Structure*> structures = *(m_tracker->list());
+    for (QList<Structure*>::const_iterator it = structures.constBegin(),
+         it_end = structures.constEnd(); it != it_end; ++it)
+    {
+      (*it)->lock()->lockForWrite();
+      qobject_cast<Xtal*>(*it)->findSpaceGroup(tol_spg);
+      (*it)->lock()->unlock();
+    }
+  }
+
   void XtalOpt::resetDuplicates() {
     if (isStarting) {
       return;
@@ -1281,12 +1356,46 @@ namespace XtalOpt {
     for (int i = 0; i < structures->size(); i++) {
       xtal = qobject_cast<Xtal*>(structures->at(i));
       xtal->lock()->lockForWrite();
-      xtal->findSpaceGroup(tol_spg);
       if (xtal->getStatus() == Xtal::Duplicate)
         xtal->setStatus(Xtal::Optimized);
+      xtal->structureChanged(); // Reset cached comparisons
       xtal->lock()->unlock();
     }
     checkForDuplicates();
+  }
+
+  // Helper struct for the map below
+  struct dupCheckStruct
+  {
+    Xtal *i, *j;
+    double tol_len, tol_ang;
+  };
+
+  void checkIfDups(dupCheckStruct & st)
+  {
+    Xtal *kickXtal, *keepXtal;
+    st.i->lock()->lockForRead();
+    st.j->lock()->lockForRead();
+    if (st.i->compareCoordinates(*st.j, st.tol_len, st.tol_ang)) {
+      // Mark the newest xtal as a duplicate of the oldest. This keeps the
+      // lowest-energy plot trace accurate.
+      if (st.i->getIndex() > st.j->getIndex()) {
+        kickXtal = st.i;
+        keepXtal = st.j;
+      }
+      else {
+        kickXtal = st.j;
+        keepXtal = st.i;
+      }
+      kickXtal->lock()->unlock();
+      kickXtal->lock()->lockForWrite();
+      kickXtal->setStatus(Xtal::Duplicate);
+      kickXtal->setDuplicateString(QString("%1x%2")
+                                   .arg(keepXtal->getGeneration())
+                                   .arg(keepXtal->getIDNumber()));
+    }
+    st.i->lock()->unlock();
+    st.j->lock()->unlock();
   }
 
   void XtalOpt::checkForDuplicates() {
@@ -1297,84 +1406,56 @@ namespace XtalOpt {
   }
 
   void XtalOpt::checkForDuplicates_() {
-    QHash<QString, double> limits;
-    limits.insert("enthalpy", tol_enthalpy);
-    limits.insert("volume", tol_volume);
-
-    QList<QString> keys = limits.keys();
-    QList<QHash<QString, QVariant> > fps;
-    QList<Xtal::State> states;
-
     m_tracker->lockForRead();
     const QList<Structure*> *structures = m_tracker->list();
-
-    Xtal *xtal=0, *xtal_i=0, *xtal_j=0;
+    QList<Xtal*> xtals;
+    Xtal *xtal;
     for (int i = 0; i < structures->size(); i++) {
       xtal = qobject_cast<Xtal*>(structures->at(i));
-      xtal->lock()->lockForRead();
-      fps.append(xtal->getFingerprint());
-      states.append(xtal->getStatus());
-      xtal->lock()->unlock();
+      xtals.append(xtal);
     }
     m_tracker->unlock();
 
-    // Iterate over all xtals
-    const QHash<QString, QVariant> *fp_i, *fp_j;
-    QString key;
-    for (int i = 0; i < fps.size(); i++) {
-      if ( states.at(i) != Xtal::Optimized ) continue;
-      fp_i = &fps.at(i);
-      // skip unknown spacegroups
-      if (fp_i->value("spacegroup").toUInt() == 0) continue;
-      for (int j = i+1; j < fps.size(); j++) {
-        if (states.at(j) != Xtal::Optimized ) continue;
-        fp_j = &fps.at(j);
-        // skip unknown spacegroups
-        if (fp_j->value("spacegroup").toUInt() == 0) continue;
-        // If xtals do not have the same spacegroup number, break
-        if (fp_i->value("spacegroup").toUInt() != fp_j->value("spacegroup").toUInt()) {
+    // Build helper structs
+    QList<dupCheckStruct> sts;
+    dupCheckStruct st;
+    for (QList<Xtal*>::iterator xi = xtals.begin();
+         xi != xtals.end(); xi++) {
+      (*xi)->lock()->lockForRead();
+      if ((*xi)->getStatus() == Xtal::Duplicate) {
+        (*xi)->lock()->unlock();
+        continue;
+      }
+
+      for (QList<Xtal*>::iterator xj = xi + 1;
+           xj != xtals.end(); xj++) {
+        (*xj)->lock()->lockForRead();
+        if ((*xj)->getStatus() == Xtal::Duplicate) {
+          (*xj)->lock()->unlock();
           continue;
         }
-        // Check limits
-        bool match = true;
-        for (int k = 0; k < keys.size(); k++) {
-          key = keys.at(k);
-          // If values do not match, skip to next pair of xtals.
-          if (fabs(fp_i->value(key).toDouble() - fp_j->value(key).toDouble() )
-              > limits.value(key)) {
-            match = false;
-            break;
-          }
+        if (((*xi)->hasChangedSinceDupChecked() ||
+             (*xj)->hasChangedSinceDupChecked()) &&
+            // Perform a course enthalpy screening to cut down on number of
+            // comparisons
+            fabs((*xi)->getEnthalpy() - (*xj)->getEnthalpy()) < 1.0)
+        {
+          st.i = (*xi);
+          st.j = (*xj);
+          st.tol_len = this->tol_xcLength;
+          st.tol_ang = this->tol_xcAngle;
+          sts.append(st);
         }
-        if (!match) continue;
-        // If we get here, all the fingerprint values match,
-        // and we have a duplicate. Mark the xtal with the
-        // highest enthalpy as a duplicate of the other.
-        xtal_i = qobject_cast<Xtal*>(structures->at(i));
-        xtal_j = qobject_cast<Xtal*>(structures->at(j));
-        if (fp_i->value("enthalpy").toDouble() > fp_j->value("enthalpy").toDouble()) {
-          xtal_i->lock()->lockForWrite();
-          xtal_j->lock()->lockForRead();
-          xtal_i->setStatus(Xtal::Duplicate);
-          xtal_i->setDuplicateString(QString("%1x%2")
-                                     .arg(xtal_j->getGeneration())
-                                     .arg(xtal_j->getIDNumber()));
-          xtal_i->lock()->unlock();
-          xtal_j->lock()->unlock();
-          break; // If xtals->at(i) is now a duplicate, don't bother comparing it anymore
-        }
-        else {
-          xtal_j->lock()->lockForWrite();
-          xtal_i->lock()->lockForRead();
-          xtal_j->setStatus(Xtal::Duplicate);
-          xtal_j->setDuplicateString(QString("%1x%2")
-                                     .arg(xtal_i->getGeneration())
-                                     .arg(xtal_i->getIDNumber()));
-          xtal_j->lock()->unlock();
-          xtal_i->lock()->unlock();
-        }
+        (*xj)->lock()->unlock();
       }
+      // Nothing else should be setting this, so just update under a
+      // read lock
+      (*xi)->setChangedSinceDupChecked(false);
+      (*xi)->lock()->unlock();
     }
+
+    QtConcurrent::blockingMap(sts, checkIfDups);
+
     emit refreshAllStructureInfo();
   }
 

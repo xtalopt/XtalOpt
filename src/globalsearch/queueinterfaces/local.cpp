@@ -273,9 +273,10 @@ namespace GlobalSearch {
     case LocalQueueProcess::Finished:
       // Was the run successful?
       if (proc->exitCode() != 0) {
-        m_opt->warning(tr("%1: Structure %2, PID=%3 failed. QProcess error code: 4")
-                       .arg(Q_FUNC_INFO).arg(s->getIDString())
-                       .arg(pid).arg(proc->error()));
+        m_opt->warning(tr("%1: Structure %2, PID=%3 failed. QProcess error "
+                          "code: %4. Process exit code: %5")
+                       .arg(Q_FUNC_INFO).arg(s->getIDString()).arg(pid)
+                       .arg(proc->error()).arg(proc->exitCode()));
         return QueueInterface::Error;
       }
       bool success;

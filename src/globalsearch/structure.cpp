@@ -192,7 +192,7 @@ namespace GlobalSearch {
 
   Structure& Structure::operator=(const Structure& other)
   {
-    Molecule::operator=(other);
+    copyStructure(other);
 
     // Set properties
     m_histogramGenerationPending = other.m_histogramGenerationPending;
@@ -222,9 +222,15 @@ namespace GlobalSearch {
     return *this;
   }
 
-  Structure& Structure::copyStructure(const Structure *other)
+  Structure& Structure::copyStructure(const Structure &other)
   {
-    Molecule::operator=(*other);
+    Molecule::operator=(other);
+
+    if (other.OBUnitCell()) {
+      OpenBabel::OBUnitCell *cell = new OpenBabel::OBUnitCell(*other.OBUnitCell());
+      setOBUnitCell(cell);
+    }
+
     return *this;
   }
 

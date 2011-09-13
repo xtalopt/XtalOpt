@@ -2,6 +2,10 @@
 
 include(${QT_USE_FILE})
 
+# define TESTDATADIR for tests that need input files
+cmake_policy(SET CMP0005 NEW) # needed for line below (escapes value)
+add_definitions( -DTESTDATADIR="${CMAKE_SOURCE_DIR}/tests/sampledata/")
+
 # Ensure the XtalOpt include directory is always first
 get_directory_property(tmp_include_dirs INCLUDE_DIRECTORIES)
 set_directory_properties(PROPERTIES INCLUDE_DIRECTORIES
@@ -18,11 +22,13 @@ link_directories(
   ${OPENBABEL2_LIBRARY_DIRS}
 )
 
-set( tests
+set(tests
   optbase
   structure
   spglib
   randdouble
+  xtal
+  xtaloptunit
 )
 
 if (ENABLE_SSH)
@@ -47,6 +53,7 @@ foreach (test ${tests})
     ${QT_QTTEST_LIBRARY}
     xtalopt_static
     spglib
+    XtalComp
     avogadro
     globalsearch)
   if (ENABLE_SSH)

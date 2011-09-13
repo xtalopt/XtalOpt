@@ -61,14 +61,16 @@ namespace XtalOpt {
             this, SLOT(updateOptimizationInfo()));
 
     // Duplicate tolerances
-    connect(ui.spin_tol_enthalpy, SIGNAL(editingFinished()),
+    connect(ui.spin_tol_xcLength, SIGNAL(editingFinished()),
             this, SLOT(updateOptimizationInfo()));
-    connect(ui.spin_tol_volume, SIGNAL(editingFinished()),
+    connect(ui.spin_tol_xcAngle, SIGNAL(editingFinished()),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.spin_tol_spg, SIGNAL(editingFinished()),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.push_dup_reset, SIGNAL(clicked()),
             m_opt, SLOT(resetDuplicates()));
+    connect(ui.push_spg_reset, SIGNAL(clicked()),
+            m_opt, SLOT(resetSpacegroups()));
 
     // Crossover
     connect(ui.spin_p_cross, SIGNAL(valueChanged(int)),
@@ -131,8 +133,8 @@ namespace XtalOpt {
     settings->setValue("opt/failAction",        xtalopt->failAction);
 
     // Duplicates
-    settings->setValue("tol/enthalpy",          xtalopt->tol_enthalpy);
-    settings->setValue("tol/volume",            xtalopt->tol_volume);
+    settings->setValue("tol/xtalcomp/length",   xtalopt->tol_xcLength);
+    settings->setValue("tol/xtalcomp/angle",    xtalopt->tol_xcAngle);
     settings->setValue("tol/spg",               xtalopt->tol_spg);
 
     // Crossover
@@ -179,8 +181,8 @@ namespace XtalOpt {
     ui.combo_failAction->setCurrentIndex(settings->value("opt/failAction",      XtalOpt::FA_Randomize).toUInt()    );
 
     // Duplicates
-    ui.spin_tol_enthalpy->setValue(     settings->value("tol/enthalpy",         0.005).toDouble());
-    ui.spin_tol_volume->setValue(       settings->value("tol/volume",           1.0).toDouble());
+    ui.spin_tol_xcLength->setValue(     settings->value("tol/xtalcomp/length",  0.1).toDouble());
+    ui.spin_tol_xcAngle->setValue(      settings->value("tol/xtalcomp/angle", 2.0).toDouble());
     ui.spin_tol_spg->setValue(          settings->value("tol/spg",              0.05).toDouble());
 
     // Crossover
@@ -230,8 +232,8 @@ namespace XtalOpt {
     ui.combo_failAction->setCurrentIndex(xtalopt->failAction);
 
     // Duplicates
-    ui.spin_tol_enthalpy->setValue(     xtalopt->tol_enthalpy);
-    ui.spin_tol_volume->setValue(       xtalopt->tol_volume);
+    ui.spin_tol_xcLength->setValue(     xtalopt->tol_xcLength);
+    ui.spin_tol_xcAngle->setValue(      xtalopt->tol_xcAngle);
     ui.spin_tol_spg->setValue(          xtalopt->tol_spg);
 
     // Crossover
@@ -304,8 +306,8 @@ namespace XtalOpt {
     xtalopt->failAction		= XtalOpt::FailActions(ui.combo_failAction->currentIndex());
 
     // Duplicates
-    xtalopt->tol_enthalpy         = ui.spin_tol_enthalpy->value();
-    xtalopt->tol_volume           = ui.spin_tol_volume->value();
+    xtalopt->tol_xcLength         = ui.spin_tol_xcLength->value();
+    xtalopt->tol_xcAngle          = ui.spin_tol_xcAngle->value();
     xtalopt->tol_spg              = ui.spin_tol_spg->value();
 
     // Crossover

@@ -1,0 +1,368 @@
+********************************************************************************
+*                       GENERAL UTILITY LATTICE PROGRAM                        *
+*                                 Julian Gale                                  *
+*                      Nanochemistry Research Institute                        *
+*             Curtin University of Technology, Western Australia               *
+********************************************************************************
+* Version = 3.4.9 * Last modified =  23rd October 2009                         *
+********************************************************************************
+*  optimise     - perform optimisation run                                     *
+*  conp         - constant pressure calculation                                *
+*  conjugate    - use conjugate gradients minimiser                            *
+********************************************************************************
+
+  Job Started  at 17:12.21 16th December   2010                               
+
+  Number of CPUs =     1
+
+
+  Total number of configurations input =   1
+
+********************************************************************************
+*  Input for Configuration =   1                                               *
+********************************************************************************
+
+  Formula = Ti4O8                                                       
+
+  Number of irreducible atoms/shells =      12
+
+
+  Total number atoms/shells =      12
+
+  Dimensionality = 3               :  Bulk   
+
+
+
+  Cartesian lattice vectors (Angstroms) :
+
+        2.819690    0.000000    0.000000
+        0.298027    5.119443    0.000000
+        0.672818    0.561103    8.414717
+
+  Cell parameters (Angstroms/Degrees):
+
+  a =       2.8197    alpha =  85.9382
+  b =       5.1281    beta  =  85.4386
+  c =       8.4602    gamma =  86.6683
+
+  Initial cell volume =         121.468469 Angs**3
+
+  Temperature of configuration =  0.000     K 
+
+  Pressure of configuration =         0.000 GPa 
+
+  Fractional coordinates of asymmetric unit :
+
+--------------------------------------------------------------------------------
+   No.  Atomic       x           y          z         Charge      Occupancy
+        Label      (Frac)      (Frac)     (Frac)        (e)         (Frac)  
+--------------------------------------------------------------------------------
+      1 Ti    c    0.939408    0.270048    0.151642      2.1960    1.000000    
+      2 Ti    c    0.011594 *  0.890403 *  0.500000 *    2.1960    1.000000    
+      3 Ti    c    0.400108 *  0.445202 *  0.250000 *    2.1960    1.000000    
+      4 Ti    c    0.332483 *  0.781728 *  0.098358 *    2.1960    1.000000    
+      5 O     c    0.411701 *  0.335605 *  0.750000 *   -1.0980    1.000000    
+      6 O     c    0.479326 *  0.999080 *  0.901642 *   -1.0980    1.000000    
+      7 O     c    0.344077 *  0.672130 *  0.598357 *   -1.0980    1.000000    
+      8 O     c    0.467733 *  0.108677 *  0.401642 *   -1.0980    1.000000    
+      9 O     c    0.000000 *  0.000000 *  0.000000 *   -1.0980    1.000000    
+     10 O     c    0.860808 *  0.620356 *  0.348357 *   -1.0980    1.000000    
+     11 O     c    0.951002 *  0.160450 *  0.651642 *   -1.0980    1.000000    
+     12 O     c    0.872400 *  0.510759 *  0.848358 *   -1.0980    1.000000    
+--------------------------------------------------------------------------------
+
+
+
+********************************************************************************
+*  General input information                                                   *
+********************************************************************************
+
+  Species output for all configurations : 
+
+--------------------------------------------------------------------------------
+  Species    Type    Atomic    Atomic    Charge       Radii (Angs)     Library
+                     Number     Mass       (e)     Cova   Ionic  VDW   Symbol
+--------------------------------------------------------------------------------
+    Ti       Core       22      47.88     2.1960   1.470  0.000  2.190          
+    O        Core        8      16.00    -1.0980   0.730  0.000  1.360          
+--------------------------------------------------------------------------------
+
+
+  Lattice summation method               =    Ewald
+  Accuracy factor for lattice sums       =    8.000
+
+
+  Time limit = Infinity
+
+  Maximum range for interatomic potentials =    100000.000000 Angstroms
+
+  General interatomic potentials :
+
+--------------------------------------------------------------------------------
+Atom  Types   Potential         A         B         C         D     Cutoffs(Ang)
+  1     2                                                            Min    Max 
+--------------------------------------------------------------------------------
+Ti   c Ti   c Buckingham    0.311E+05 0.154     5.25     0.00       0.000 15.000
+O    c O    c Buckingham    0.118E+05 0.234     30.2     0.00       0.000 15.000
+O    c Ti   c Buckingham    0.170E+05 0.194     12.6     0.00       0.000 15.000
+Ti   c Ti   c Lennard 12  6  1.00      0.00     0.00      0.00      0.000 15.000
+O    c O    c Lennard 12  6  1.00      0.00     0.00      0.00      0.000 15.000
+O    c Ti   c Lennard 12  6  1.00      0.00     0.00      0.00      0.000 15.000
+--------------------------------------------------------------------------------
+
+********************************************************************************
+*  Output for configuration   1                                                *
+********************************************************************************
+
+
+  Components of energy : 
+
+--------------------------------------------------------------------------------
+  Interatomic potentials     =          44.80479862 eV
+  Monopole - monopole (real) =           6.97961778 eV
+  Monopole - monopole (recip)=         -16.01706793 eV
+  Monopole - monopole (total)=          -9.03745015 eV
+--------------------------------------------------------------------------------
+  Total lattice energy       =          35.76734847 eV
+--------------------------------------------------------------------------------
+  Total lattice energy       =            3451.0024 kJ/(mole unit cells)
+--------------------------------------------------------------------------------
+
+
+  Number of variables =     39
+
+  Maximum number of calculations  =          1000
+  Maximum Hessian update interval =            10
+  Maximum step size               =   1.000000000
+  Maximum parameter tolerance     =   0.000010000
+  Maximum function  tolerance     =   0.000010000
+  Maximum gradient  tolerance     =   0.001000000
+  Maximum gradient  component     =   0.010000000
+
+  Symmetry not applied to optimisation
+
+  Cell parameters to be optimised using strains
+
+  Conjugate gradient optimiser to be used
+
+  Minimiser to switch to BFGS with exact hessian
+  When gradient norm is less than     0.500000
+
+  Start of bulk optimisation :
+
+  Cycle:      0 Energy:        35.767348  Gnorm:     26.538552  CPU:    0.013
+  Cycle:      1 Energy:       -91.756873  Gnorm:     24.143267  CPU:    0.043
+  Cycle:      2 Energy:      -122.681125  Gnorm:      5.863859  CPU:    0.067
+  Cycle:      3 Energy:      -135.641278  Gnorm:      4.545303  CPU:    0.087
+  Cycle:      4 Energy:      -143.213401  Gnorm:      2.334481  CPU:    0.100
+  Cycle:      5 Energy:      -145.908662  Gnorm:      1.676845  CPU:    0.113
+  Cycle:      6 Energy:      -147.392814  Gnorm:      1.364549  CPU:    0.130
+  Cycle:      7 Energy:      -148.659864  Gnorm:      0.951853  CPU:    0.147
+  Cycle:      8 Energy:      -149.467924  Gnorm:      0.782876  CPU:    0.163
+  Cycle:      9 Energy:      -149.788199  Gnorm:      0.585310  CPU:    0.177
+  Cycle:     10 Energy:      -149.991369  Gnorm:      0.511160  CPU:    0.193
+  Cycle:     11 Energy:      -150.292494  Gnorm:      0.514804  CPU:    0.210
+  Cycle:     12 Energy:      -150.663918  Gnorm:      0.578645  CPU:    0.227
+  Cycle:     13 Energy:      -151.040198  Gnorm:      0.519134  CPU:    0.240
+  Cycle:     14 Energy:      -151.187417  Gnorm:      0.407955  CPU:    0.253
+  ** Hessian calculated **
+  Cycle:     15 Energy:      -151.717507  Gnorm:      0.481202  CPU:    0.287
+  ** Hessian calculated **
+  Cycle:     16 Energy:      -152.031967  Gnorm:      0.583089  CPU:    0.317
+  ** Hessian calculated **
+  Cycle:     17 Energy:      -152.406149  Gnorm:      0.343502  CPU:    0.343
+  Cycle:     18 Energy:      -152.633465  Gnorm:      0.407780  CPU:    0.363
+  Cycle:     19 Energy:      -152.786015  Gnorm:      0.357235  CPU:    0.373
+  Cycle:     20 Energy:      -152.944808  Gnorm:      0.337033  CPU:    0.387
+  Cycle:     21 Energy:      -153.109248  Gnorm:      0.246513  CPU:    0.403
+  Cycle:     22 Energy:      -153.222901  Gnorm:      0.261720  CPU:    0.417
+  Cycle:     23 Energy:      -153.403940  Gnorm:      0.406723  CPU:    0.433
+  Cycle:     24 Energy:      -153.788114  Gnorm:      0.656402  CPU:    0.453
+  Cycle:     25 Energy:      -153.985766  Gnorm:      0.679276  CPU:    0.467
+  Cycle:     26 Energy:      -154.426279  Gnorm:      0.386589  CPU:    0.480
+  ** Hessian calculated **
+  Cycle:     27 Energy:      -154.826734  Gnorm:      0.363191  CPU:    0.507
+  ** Hessian calculated **
+  Cycle:     28 Energy:      -154.962522  Gnorm:      0.232931  CPU:    0.537
+  Cycle:     29 Energy:      -155.012961  Gnorm:      0.151529  CPU:    0.553
+  Cycle:     30 Energy:      -155.070493  Gnorm:      0.218875  CPU:    0.567
+  ** Hessian calculated **
+  Cycle:     31 Energy:      -155.111097  Gnorm:      0.131473  CPU:    0.593
+  Cycle:     32 Energy:      -155.127617  Gnorm:      0.133358  CPU:    0.607
+  Cycle:     33 Energy:      -155.151211  Gnorm:      0.142256  CPU:    0.627
+  Cycle:     34 Energy:      -155.196267  Gnorm:      0.199399  CPU:    0.643
+  Cycle:     35 Energy:      -155.286625  Gnorm:      0.195731  CPU:    0.663
+  Cycle:     36 Energy:      -155.340765  Gnorm:      0.179659  CPU:    0.677
+  Cycle:     37 Energy:      -155.383170  Gnorm:      0.170243  CPU:    0.697
+  Cycle:     38 Energy:      -155.447384  Gnorm:      0.218885  CPU:    0.713
+  Cycle:     39 Energy:      -155.522408  Gnorm:      0.232207  CPU:    0.733
+  Cycle:     40 Energy:      -155.563600  Gnorm:      0.211853  CPU:    0.747
+  ** Hessian calculated **
+  Cycle:     41 Energy:      -155.690485  Gnorm:      0.146700  CPU:    0.773
+  Cycle:     42 Energy:      -155.744176  Gnorm:      0.061955  CPU:    0.793
+  Cycle:     43 Energy:      -155.750202  Gnorm:      0.028721  CPU:    0.810
+  Cycle:     44 Energy:      -155.751518  Gnorm:      0.014199  CPU:    0.827
+  Cycle:     45 Energy:      -155.751628  Gnorm:      0.011329  CPU:    0.840
+  Cycle:     46 Energy:      -155.751779  Gnorm:      0.013293  CPU:    0.873
+  Cycle:     47 Energy:      -155.751779  Gnorm:      0.013293  CPU:    0.890
+  Cycle:     48 Energy:      -155.751779  Gnorm:      0.013293  CPU:    0.900
+  ** Hessian calculated **
+  Cycle:     49 Energy:      -155.751989  Gnorm:      0.007927  CPU:    0.930
+  Cycle:     50 Energy:      -155.752068  Gnorm:      0.006833  CPU:    0.947
+  Cycle:     51 Energy:      -155.752163  Gnorm:      0.008921  CPU:    0.963
+  Cycle:     52 Energy:      -155.752294  Gnorm:      0.008030  CPU:    0.983
+  Cycle:     53 Energy:      -155.752479  Gnorm:      0.012675  CPU:    1.000
+  Cycle:     54 Energy:      -155.752919  Gnorm:      0.019319  CPU:    1.023
+  Cycle:     55 Energy:      -155.753361  Gnorm:      0.029409  CPU:    1.043
+  Cycle:     56 Energy:      -155.753761  Gnorm:      0.041506  CPU:    1.060
+  Cycle:     57 Energy:      -155.753939  Gnorm:      0.046618  CPU:    1.077
+  Cycle:     58 Energy:      -155.754597  Gnorm:      0.057985  CPU:    1.097
+  ** Hessian calculated **
+  Cycle:     59 Energy:      -155.759293  Gnorm:      0.047109  CPU:    1.123
+  Cycle:     60 Energy:      -155.763167  Gnorm:      0.044916  CPU:    1.137
+  Cycle:     61 Energy:      -155.766169  Gnorm:      0.038285  CPU:    1.157
+  Cycle:     62 Energy:      -155.769987  Gnorm:      0.045513  CPU:    1.173
+  Cycle:     63 Energy:      -155.775913  Gnorm:      0.075523  CPU:    1.193
+  Cycle:     64 Energy:      -155.787595  Gnorm:      0.087961  CPU:    1.213
+  Cycle:     65 Energy:      -155.790704  Gnorm:      0.104448  CPU:    1.230
+  Cycle:     66 Energy:      -155.796033  Gnorm:      0.123098  CPU:    1.247
+  Cycle:     67 Energy:      -155.802961  Gnorm:      0.150410  CPU:    1.267
+  Cycle:     68 Energy:      -155.811122  Gnorm:      0.188982  CPU:    1.287
+  ** Hessian calculated **
+  Cycle:     69 Energy:      -155.891006  Gnorm:      0.178951  CPU:    1.317
+  Cycle:     70 Energy:      -155.967569  Gnorm:      0.206687  CPU:    1.337
+  Cycle:     71 Energy:      -156.039477  Gnorm:      0.219750  CPU:    1.353
+  Cycle:     72 Energy:      -156.137547  Gnorm:      0.341716  CPU:    1.373
+  Cycle:     73 Energy:      -156.273480  Gnorm:      0.422124  CPU:    1.393
+  Cycle:     74 Energy:      -156.459337  Gnorm:      0.415716  CPU:    1.413
+  Cycle:     75 Energy:      -156.723467  Gnorm:      0.425727  CPU:    1.427
+  Cycle:     76 Energy:      -156.915464  Gnorm:      0.360700  CPU:    1.443
+  Cycle:     77 Energy:      -157.111018  Gnorm:      0.350376  CPU:    1.463
+  Cycle:     78 Energy:      -157.212847  Gnorm:      0.302078  CPU:    1.477
+  ** Hessian calculated **
+  Cycle:     79 Energy:      -157.296717  Gnorm:      0.197989  CPU:    1.503
+  Cycle:     80 Energy:      -157.362729  Gnorm:      0.186635  CPU:    1.523
+  Cycle:     81 Energy:      -157.412885  Gnorm:      0.107425  CPU:    1.543
+  Cycle:     82 Energy:      -157.441828  Gnorm:      0.139078  CPU:    1.557
+  Cycle:     83 Energy:      -157.490107  Gnorm:      0.214189  CPU:    1.577
+  Cycle:     84 Energy:      -157.649798  Gnorm:      0.453672  CPU:    1.597
+  Cycle:     85 Energy:      -157.733290  Gnorm:      0.549810  CPU:    1.613
+  Cycle:     86 Energy:      -157.828045  Gnorm:      0.517831  CPU:    1.630
+  Cycle:     87 Energy:      -158.033534  Gnorm:      0.273598  CPU:    1.647
+  Cycle:     88 Energy:      -158.159410  Gnorm:      0.309601  CPU:    1.663
+  ** Hessian calculated **
+  Cycle:     89 Energy:      -158.354198  Gnorm:      0.194892  CPU:    1.693
+  Cycle:     90 Energy:      -158.408204  Gnorm:      0.045617  CPU:    1.713
+  Cycle:     91 Energy:      -158.411334  Gnorm:      0.020054  CPU:    1.730
+  Cycle:     92 Energy:      -158.411943  Gnorm:      0.005929  CPU:    1.743
+  Cycle:     93 Energy:      -158.412021  Gnorm:      0.001268  CPU:    1.760
+  Cycle:     94 Energy:      -158.412024  Gnorm:      0.000782  CPU:    1.773
+
+
+  **** Optimisation achieved ****
+
+
+  Final energy =    -158.41202521 eV
+  Final Gnorm  =       0.00030898
+
+  Components of energy : 
+
+--------------------------------------------------------------------------------
+  Interatomic potentials     =          11.73599396 eV
+  Monopole - monopole (real) =         -64.16835599 eV
+  Monopole - monopole (recip)=        -105.97966318 eV
+  Monopole - monopole (total)=        -170.14801917 eV
+--------------------------------------------------------------------------------
+  Total lattice energy       =        -158.41202521 eV
+--------------------------------------------------------------------------------
+  Total lattice energy       =          -15284.3389 kJ/(mole unit cells)
+--------------------------------------------------------------------------------
+
+  Final fractional coordinates of atoms :
+
+--------------------------------------------------------------------------------
+   No.  Atomic        x           y          z          Radius
+        Label       (Frac)      (Frac)     (Frac)       (Angs) 
+--------------------------------------------------------------------------------
+     1  Ti    c     0.939408    0.270048    0.151642    0.000000
+     2  Ti    c     0.439406    0.770064    0.651641    0.000000
+     3  Ti    c     0.939400    0.270059    0.651644    0.000000
+     4  Ti    c     0.439405    0.770050    0.151648    0.000000
+     5  O     c     0.439397    0.432506    0.814093    0.000000
+     6  O     c     0.614491    0.932509    0.814103    0.000000
+     7  O     c     0.264307    0.607603    0.489203    0.000000
+     8  O     c     0.114486    0.107591    0.314104    0.000000
+     9  O     c     0.939410    0.932497    0.989187    0.000000
+    10  O     c     0.939419    0.607589    0.314093    0.000000
+    11  O     c     0.439403    0.107596    0.489185    0.000000
+    12  O     c     0.764277    0.432492    0.989207    0.000000
+--------------------------------------------------------------------------------
+
+  Final Cartesian lattice vectors (Angstroms) :
+
+        4.732715   -0.164668    0.914460
+        0.201253    4.815702   -0.174487
+        3.825521    0.044760    5.646893
+
+
+  Final cell parameters and derivatives :
+
+--------------------------------------------------------------------------------
+       a            4.823064 Angstrom     dE/de1(xx)     0.002958 eV/strain
+       b            4.823063 Angstrom     dE/de2(yy)     0.002099 eV/strain
+       c            6.820851 Angstrom     dE/de3(zz)     0.005997 eV/strain
+       alpha       89.999763 Degrees      dE/de4(yz)     0.001074 eV/strain
+       beta        45.000954 Degrees      dE/de5(xz)    -0.002152 eV/strain
+       gamma       90.000200 Degrees      dE/de6(xy)    -0.001181 eV/strain
+--------------------------------------------------------------------------------
+
+  Primitive cell volume =           112.195824 Angs**3
+
+  Density of cell =      4.729088 g/cm**3
+
+  Non-primitive cell volume =           112.195824 Angs**3
+
+
+  Final internal derivatives :
+
+--------------------------------------------------------------------------------
+   No.  Atomic          x             y             z           Radius
+        Label          (eV)          (eV)          (eV)        (eV/Angs)
+--------------------------------------------------------------------------------
+      1 Ti    c       0.000000      0.000000      0.000000      0.000000
+      2 Ti    c      -0.004368      0.003664     -0.002596      0.000000
+      3 Ti    c       0.000147      0.001273      0.000006      0.000000
+      4 Ti    c       0.000671     -0.001341      0.000666      0.000000
+      5 O     c       0.000559     -0.000137      0.000449      0.000000
+      6 O     c      -0.000728     -0.000120     -0.000791      0.000000
+      7 O     c       0.001952      0.001319      0.003322      0.000000
+      8 O     c       0.000739      0.001338     -0.000116      0.000000
+      9 O     c       0.000044     -0.000763     -0.001226      0.000000
+     10 O     c       0.002797     -0.001544     -0.000738      0.000000
+     11 O     c      -0.000101     -0.002053      0.000463      0.000000
+     12 O     c      -0.002332     -0.001300     -0.000543      0.000000
+--------------------------------------------------------------------------------
+  Maximum abs         0.004368      0.003664      0.003322      0.000000
+--------------------------------------------------------------------------------
+
+
+  Time to end of optimisation =       1.7899 seconds
+
+
+  Peak dynamic memory used =       0.50 MB 
+
+
+  Timing analysis for GULP :
+
+--------------------------------------------------------------------------------
+  Task / Subroutine                                          Time (Seconds)
+--------------------------------------------------------------------------------
+  Calculation of reciprocal space energy and derivatives          0.0733
+  Calculation of real space energy and derivatives                1.6999
+--------------------------------------------------------------------------------
+  Total CPU time                                                  1.7899
+--------------------------------------------------------------------------------
+
+
+  Job Finished at 17:12.23 16th December   2010                               
+
