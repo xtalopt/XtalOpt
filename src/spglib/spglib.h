@@ -1,4 +1,4 @@
-/* spglib.h */
+/* spglib.h version 1.0.7 */
 /* Copyright (C) 2008 Atsushi Togo */
 
 #ifndef __spglib_H__
@@ -57,6 +57,35 @@
   ------------------------------------------------------------------
  */
 
+typedef struct {
+  int spacegroup_number;
+  char international_symbol[11];
+  char hall_symbol[17];
+  double transformation_matrix[3][3]; /* bravais_lattice = T * original_lattice */
+  double origin_shift[3]; /* Origin shift in Bravais lattice */
+  int n_operations; /* Symmetry operations from database */
+  int (*rotations)[3][3];
+  double (*translations)[3];
+  int n_atoms;
+  int *wyckoffs; /* Wyckoff letters */
+  int *equivalent_atoms;
+} SpglibDataset;
+
+typedef struct {
+  int size;
+  int (*triplets)[3];
+  int *weights;
+  int mesh[3];
+  int (*mesh_points)[3];
+} SpglibTriplets;
+
+SpglibDataset * spg_get_dataset( SPGCONST double lattice[3][3],
+				 SPGCONST double position[][3],
+				 const int types[],
+				 const int num_atom,
+				 const double symprec );
+
+void spg_free_dataset( SpglibDataset *dataset );
 
 /* Find symmetry operations. The operations are stored in */
 /* ``rotatiion`` and ``translation``. The number of operations is */
@@ -206,28 +235,38 @@ int spg_get_stabilized_reciprocal_mesh( int grid_point[][3],
 
 /* Irreducible triplets of k-points are searched under conservation of */
 /* :math:``\mathbf{k}_1 + \mathbf{k}_2 + \mathbf{k}_3 = \mathbf{G}``. */
-int spg_get_triplets_reciprocal_mesh( int triplets[][3],
-				      int weight_triplets[],
-				      int grid_point[][3],
-				      const int num_triplets,
-				      const int mesh[3],
-				      const int is_time_reversal,
-				      SPGCONST double lattice[3][3],
-				      const int num_rot,
-				      SPGCONST int rotations[][3][3],
-				      const double symprec );
+/* Don't forget to free memory space of triplets using spg_free_triplets */
+SpglibTriplets * spg_get_triplets_reciprocal_mesh( const int mesh[3],
+						   const int is_time_reversal,
+						   SPGCONST double lattice[3][3],
+						   const int num_rot,
+						   SPGCONST int rotations[][3][3],
+						   const double symprec );
 
-int spg_get_triplets_reciprocal_mesh_with_q( int triplets_with_q[][3],
-					     int weight_triplets_with_q[],
-					     const int fixed_grid_number,
-					     const int num_triplets,
-					     SPGCONST int triplets[][3],
-					     const int weight_triplets[],
-					     const int mesh[3],
-					     const int is_time_reversal,
-					     SPGCONST double lattice[3][3],
-					     const int num_rot,
-					     SPGCONST int rotations[][3][3],
-					     const double symprec );
+void spg_free_triplets( SpglibTriplets * triplets );
+
+int spg_get_triplets_reciprocal_mesh_at_q( int weights[],
+					   int grid_points[][3],
+					   int third_q[],
+					   const int grid_point,
+					   const int mesh[3],
+					   const int is_time_reversal,
+					   SPGCONST double lattice[3][3],
+					   const int num_rot,
+					   SPGCONST int rotations[][3][3],
+					   const double symprec );
+
+int spg_extract_triplets_reciprocal_mesh_at_q( int triplets_at_q[][3],
+					       int weight_triplets_at_q[],
+					       const int fixed_grid_number,
+					       const int num_triplets,
+					       SPGCONST int triplets[][3],
+					       const int weight_triplets[],
+					       const int mesh[3],
+					       const int is_time_reversal,
+					       SPGCONST double lattice[3][3],
+					       const int num_rot,
+					       SPGCONST int rotations[][3][3],
+					       const double symprec );
 
 #endif
