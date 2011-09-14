@@ -1,0 +1,10 @@
+* Enhancements / New features:
+** Use the XtalComp algorithm for duplicate matching
+** Ability to limit remote queue polling frequency
+
+* Bug fixes:
+
+* Documentation:
+
+* Maintenance:
+** Update spglib to version 1.0.8
