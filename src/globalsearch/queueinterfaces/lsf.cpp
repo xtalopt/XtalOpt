@@ -231,7 +231,7 @@ namespace GlobalSearch {
     QStringList list = stdout_str.split(QRegExp("<|>"));
     bool ok;
     unsigned int jobID;
-    if (list.size() <= 2) {
+    if (list.size() >= 2) {
       jobID = list.at(1).toUInt(&ok);
     }
     else {
