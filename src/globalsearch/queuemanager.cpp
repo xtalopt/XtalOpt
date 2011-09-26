@@ -926,7 +926,7 @@ namespace GlobalSearch {
     Q_ASSERT_X(m_requestedStructures >= 0, Q_FUNC_INFO,
                "The requested structures counter has become negative.");
 
-    qDebug() << "New structure accepted (" << s->getIDString() << ")";
+    qDebug() << "New structure received (" << s->getIDString() << ")";
 
     m_newStructureTracker.unlock();
     m_tracker->unlock();
@@ -952,6 +952,7 @@ namespace GlobalSearch {
     s->lock()->unlock();
 
     m_tracker->append(s);
+    qDebug() << "New structure accepted (" << s->getIDString() << ")";
 
     m_newStructureTracker.unlock();
     m_tracker->unlock();
