@@ -468,7 +468,16 @@ namespace XtalOpt {
     xtal->setFileName(locpath_s);
     xtal->setRempath(rempath_s);
     xtal->setCurrentOptStep(1);
-    xtal->fixAngles();
+    // If none of the cell parameters are fixed, perform a normalization on
+    // the lattice (currently a Niggli reduction)
+    if (fabs(a_min     - a_max)     > 0.01 &&
+        fabs(b_min     - b_max)     > 0.01 &&
+        fabs(c_min     - c_max)     > 0.01 &&
+        fabs(alpha_min - alpha_max) > 0.01 &&
+        fabs(beta_min  - beta_max)  > 0.01 &&
+        fabs(gamma_min - gamma_max) > 0.01) {
+      xtal->fixAngles();
+    }
     xtal->findSpaceGroup(tol_spg);
     xtalLocker.unlock();
     xtal->update();
@@ -760,12 +769,12 @@ namespace XtalOpt {
     // Scale to any fixed parameters
     double a, b, c, alpha, beta, gamma;
     a = b = c = alpha = beta = gamma = 0;
-    if (a_min == a_max) a = a_min;
-    if (b_min == b_max) b = b_min;
-    if (c_min == c_max) c = c_min;
-    if (alpha_min ==    alpha_max)      alpha = alpha_min;
-    if (beta_min ==     beta_max)       beta = beta_min;
-    if (gamma_min ==    gamma_max)      gamma = gamma_min;
+    if (fabs(a_min - a_max) < 0.01) a = a_min;
+    if (fabs(b_min - b_max) < 0.01) b = b_min;
+    if (fabs(c_min - c_max) < 0.01) c = c_min;
+    if (fabs(alpha_min - alpha_max) < 0.01) alpha = alpha_min;
+    if (fabs(beta_min -  beta_max)  < 0.01)  beta = beta_min;
+    if (fabs(gamma_min - gamma_max) < 0.01) gamma = gamma_min;
     xtal->rescaleCell(a, b, c, alpha, beta, gamma);
 
     // Reject the structure if using VASP and the determinant of the
@@ -791,8 +800,10 @@ namespace XtalOpt {
       return false;
     }
 
-    // Ensure that all angles are between 60 and 120:
-    xtal->fixAngles();
+    // If no cell parameters are fixed, normalize lattice
+    if (fabs(a + b + c + alpha + beta + gamma) < 1e-8) {
+      xtal->fixAngles();
+    }
 
     // Check lattice
     if ( ( !a     && ( xtal->getA() < a_min         || xtal->getA() > a_max         ) ) ||

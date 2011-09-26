@@ -111,9 +111,14 @@ namespace XtalOpt {
     qDeleteAll(fracCoordsList);
   }
 
-  void Xtal::rescaleCell(double a, double b, double c, double alpha, double beta, double gamma) {
+  void Xtal::rescaleCell(double a, double b, double c,
+                         double alpha, double beta, double gamma)
+  {
+    if (!a && !b && !c && !alpha && !beta && !gamma) {
+      return;
+    }
 
-    if (!a && !b && !c && !alpha && !beta && !gamma) return;
+    this->rotateCellAndCoordsToStandardOrientation();
 
     // Store position of atoms in fractional units
     QList<Atom*> atomList       = atoms();
