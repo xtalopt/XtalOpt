@@ -258,8 +258,7 @@ namespace XtalOpt {
       filename = seedList.at(i);
       Xtal *xtal = new Xtal;
       xtal->setFileName(filename);
-      if ( !m_optimizer->read(xtal, filename) ) {
-        xtal->deleteLater();
+      if ( !m_optimizer->read(xtal, filename) || (xtal == 0) ) {
         m_tracker->lockForWrite();
         m_tracker->deleteAllStructures();
         m_tracker->unlock();
@@ -267,7 +266,6 @@ namespace XtalOpt {
         return;
       }
       QString parents =tr("Seeded: %1", "1 is a filename").arg(filename);
-      xtal->moveToThread(m_tracker->thread());
       initializeAndAddXtal(xtal, 1, parents);
       debug(tr("XtalOpt::StartOptimization: Loaded seed: %1",
                "1 is a filename").arg(filename));
@@ -427,7 +425,6 @@ namespace XtalOpt {
     xtal->setStatus(Xtal::WaitingForOptimization);
 
     // Set up xtal data
-    xtal->moveToThread(m_tracker->thread());
     return xtal;
   }
 
@@ -449,6 +446,7 @@ namespace XtalOpt {
     }
 
     QWriteLocker xtalLocker (xtal->lock());
+    xtal->moveToThread(m_queueThread);
     xtal->setIDNumber(id);
     xtal->setGeneration(generation);
     xtal->setParents(parents);
@@ -465,6 +463,7 @@ namespace XtalOpt {
               .arg(locpath_s));
       }
     }
+    xtal->moveToThread(m_tracker->thread());
     xtal->setupConnections();
     xtal->setFileName(locpath_s);
     xtal->setRempath(rempath_s);
@@ -506,7 +505,6 @@ namespace XtalOpt {
         if (xtal) xtal->deleteLater();
         xtal = generateRandomXtal(1, 0);
       }
-      xtal->moveToThread(m_tracker->thread());
       initializeAndAddXtal(xtal, 1, xtal->getParents());
       return;
     }
@@ -583,7 +581,6 @@ namespace XtalOpt {
           double percent1;
           xtal = XtalOptGenetic::crossover(
                 xtal1, xtal2, cross_minimumContribution, percent1);
-          xtal->moveToThread(m_tracker->thread());
 
           // Lock parents and get info from them
           xtal1->lock()->lockForRead();
@@ -627,7 +624,6 @@ namespace XtalOpt {
                                           strip_per2,
                                           stdev,
                                           amplitude);
-          xtal->moveToThread(m_tracker->thread());
 
           // Lock parent and extract info
           xtal1->lock()->lockForRead();
@@ -656,7 +652,6 @@ namespace XtalOpt {
           double stdev=0;
           xtal = XtalOptGenetic::permustrain(
                 xtals.at(ind), perm_strainStdev_max, perm_ex, stdev);
-          xtal->moveToThread(m_tracker->thread());
 
           // Lock parent and extract info
           xtal1->lock()->lockForRead();
@@ -1232,6 +1227,7 @@ namespace XtalOpt {
 
       xtal = new Xtal();
       QWriteLocker locker (xtal->lock());
+      xtal->moveToThread(m_tracker->thread());
       xtal->setupConnections();
       // Add empty atoms to xtal, updateXtal will populate it
       for (int j = 0; j < keys.size(); j++) {
@@ -1249,7 +1245,6 @@ namespace XtalOpt {
       }
       QDateTime endtime = xtal->getOptTimerEnd();
 
-      xtal->moveToThread(m_tracker->thread());
       locker.unlock();
 
       if (!m_optimizer->load(xtal)) {
