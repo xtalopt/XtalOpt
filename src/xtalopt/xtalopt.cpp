@@ -537,7 +537,7 @@ namespace XtalOpt {
     while (!checkXtal(xtal)) {
       // First delete any previous failed structure in xtal
       if (xtal) {
-        delete xtal;
+        xtal->deleteLater();
         xtal = 0;
       }
 
@@ -558,7 +558,7 @@ namespace XtalOpt {
       while (attemptCount < 1000 && !checkXtal(xtal)) {
         attemptCount++;
         if (xtal) {
-          delete xtal;
+          xtal->deleteLater();
           xtal = 0;
         }
 
