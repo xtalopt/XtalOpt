@@ -493,38 +493,46 @@ namespace XtalOpt {
     }
 
     QTableWidgetItem *item = ui.table_list->itemAt(p);
-    if (!item) {
-      m_context_mutex->unlock();
-      return;
+    bool xtalIsSelected = true;
+    int index = -1;
+    if (item == NULL) {
+      xtalIsSelected = false;
+    }
+    else {
+      index = item->row();
     }
 
-    int index = item->row();
-
+    // Used to determine available options:
     bool canGenerateOffspring =
         (this->m_opt->queue()->getAllOptimizedStructures().size() >= 3);
 
     qDebug() << "Context menu at row " << index;
 
     // Set m_context_xtal after locking to avoid threading issues.
-    Xtal* xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
+    Xtal *xtal = NULL;
+    if (index != -1) {
+      xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
+    }
 
-    xtal->lock()->lockForRead();
+    bool isKilled = false;
+    if (xtal != NULL) {
+      xtal->lock()->lockForRead();
+      m_context_xtal = xtal;
 
-    m_context_xtal = xtal;
+      Xtal::State state = m_context_xtal->getStatus();
+      isKilled = (state == Xtal::Killed || state == Xtal::Removed);
 
-    Xtal::State state = m_context_xtal->getStatus();
+      xtal->lock()->unlock();
+    }
 
     QMenu menu;
     QAction *a_restart  = menu.addAction("&Restart job");
     QAction *a_kill	= menu.addAction("&Kill structure");
     QAction *a_unkill	= menu.addAction("Un&kill structure");
-    QAction *a_resetFail= menu.addAction("Reset &failure count");
+    QAction *a_resetFail = menu.addAction("Reset &failure count");
     menu.addSeparator();
-    QAction *a_randomize= menu.addAction("Replace with &new random structure");
-    QAction *a_offspring = NULL;
-    if (canGenerateOffspring) {
-      a_offspring= menu.addAction("Replace with new &offspring");
-    }
+    QAction *a_randomize = menu.addAction("Replace with &new random structure");
+    QAction *a_offspring = menu.addAction("Replace with new &offspring");
     menu.addSeparator();
     QAction *a_injectSeed= menu.addAction("Inject &seed structure");
     menu.addSeparator();
@@ -538,16 +546,15 @@ namespace XtalOpt {
             this, SLOT(resetFailureCountProgress()));
     connect(a_randomize, SIGNAL(triggered()),
             this, SLOT(randomizeStructureProgress()));
-    if (canGenerateOffspring) {
-      connect(a_offspring, SIGNAL(triggered()),
-              this, SLOT(replaceWithOffspringProgress()));
-    }
+    connect(a_offspring, SIGNAL(triggered()),
+            this, SLOT(replaceWithOffspringProgress()));
     connect(a_injectSeed, SIGNAL(triggered()),
             this, SLOT(injectStructureProgress()));
     connect(a_clipPOSCAR, SIGNAL(triggered()), this,
             SLOT(clipPOSCARProgress()));
 
-    if (state == Xtal::Killed || state == Xtal::Removed) {
+    // Disable / hide illogical operations
+    if (isKilled) {
       a_kill->setVisible(false);
       a_restart->setVisible(false);
     }
@@ -555,7 +562,21 @@ namespace XtalOpt {
       a_unkill->setVisible(false);
     }
 
-    m_context_xtal->lock()->unlock();
+    if (!canGenerateOffspring) {
+      a_offspring->setDisabled(true);
+    }
+
+    if (!xtalIsSelected) {
+      a_restart->setEnabled(false);
+      a_kill->setEnabled(false);
+      a_unkill->setEnabled(false);
+      a_resetFail->setEnabled(false);
+      a_randomize->setEnabled(false);
+      a_offspring->setEnabled(false);
+      a_injectSeed->setEnabled(true);
+      a_clipPOSCAR->setEnabled(false);
+    }
+
     QAction *selection = menu.exec(QCursor::pos());
 
     if (selection == 0) {
