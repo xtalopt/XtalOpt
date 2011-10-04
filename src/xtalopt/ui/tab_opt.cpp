@@ -345,7 +345,8 @@ namespace XtalOpt {
     QFileDialog dialog (m_dialog,
                         QString("Select structure file to use as seed"),
                         filename,
-                        "VASP files (CONTCAR, POSCAR);;GULP files (*.got);;All Files (*)");
+                        "Common formats (*POSCAR *CONTCAR *.got *.cml *cif"
+                        " *.out);;All Files (*)");
     dialog.selectFile(filename);
     dialog.setFileMode(QFileDialog::ExistingFile);
     if (dialog.exec())

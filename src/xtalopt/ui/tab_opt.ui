@@ -280,6 +280,11 @@ is a good value here.</string>
             <string>replace with random.</string>
            </property>
           </item>
+          <item>
+           <property name="text">
+            <string>replace with new offspring.</string>
+           </property>
+          </item>
          </widget>
         </item>
        </layout>
