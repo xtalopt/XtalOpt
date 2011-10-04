@@ -80,7 +80,9 @@ namespace GlobalSearch {
       /// Kill the structure
       FA_KillIt,
       /// Replace the failing structure with a new random one
-      FA_Randomize
+      FA_Randomize,
+      /// Replace with a new offspring structure
+      FA_NewOffspring
     };
 
     /**

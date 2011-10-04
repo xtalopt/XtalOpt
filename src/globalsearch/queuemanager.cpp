@@ -567,6 +567,12 @@ namespace GlobalSearch {
         m_opt->replaceWithRandom(s, tr("excessive failures"));
         s->setStatus(Structure::Restart);
         emit structureUpdated(s);
+      case OptBase::FA_NewOffspring:
+        s->setStatus(Structure::Empty);
+        locker.unlock();
+        m_opt->replaceWithOffspring(s, tr("excessive failures"));
+        s->setStatus(Structure::Restart);
+        emit structureUpdated(s);
         return;
       }
     }
