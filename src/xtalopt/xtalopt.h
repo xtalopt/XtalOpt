@@ -71,12 +71,13 @@ namespace XtalOpt {
     };
 
     Xtal* generateRandomXtal(uint generation, uint id);
+    bool addSeed(const QString & filename);
     GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
                                                const QString & reason = "");
     GlobalSearch::Structure* replaceWithOffspring(GlobalSearch::Structure *s,
                                                   const QString &reason = "");
     bool checkLimits();
-    bool checkXtal(Xtal *xtal);
+    bool checkXtal(Xtal *xtal, QString * err = NULL);
     QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp();
     bool load(const QString & filename, const bool forceReadOnly = false);

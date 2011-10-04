@@ -780,15 +780,58 @@ namespace XtalOpt {
     return true;
   }
 
-  bool XtalOpt::checkXtal(Xtal *xtal) {
+  bool XtalOpt::checkXtal(Xtal *xtal, QString * err) {
     if (!xtal) {
+      if (err != NULL) {
+        *err = "Xtal pointer is NULL.";
+      }
       return false;
     }
 
     // Lock xtal
     QWriteLocker locker (xtal->lock());
 
-    if (xtal->getStatus() == Xtal::Empty) return false;
+    if (xtal->getStatus() == Xtal::Empty) {
+      if (err != NULL) {
+        *err = "Xtal status is empty.";
+      }
+      return false;
+    }
+
+    // Check composition
+    QList<unsigned int> atomTypes = comp.keys();
+    QList<unsigned int> atomCounts;
+#if QT_VERSION >= 0x040700
+    atomCounts.reserve(atomTypes.size());
+#endif // QT_VERSION
+    for (int i = 0; i < atomTypes.size(); ++i) {
+      atomCounts.append(0);
+    }
+    // Count atoms of each type
+    for (int i = 0; i < xtal->numAtoms(); ++i) {
+      int typeIndex = atomTypes.indexOf(
+            static_cast<unsigned int>(xtal->atom(i)->atomicNumber()));
+      // Type not found:
+      if (typeIndex == -1) {
+        qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
+        if (err != NULL) {
+          *err = "Bad composition.";
+        }
+        return false;
+      }
+      ++atomCounts[typeIndex];
+    }
+    // Check counts
+    for (int i = 0; i < atomTypes.size(); ++i) {
+      if (atomCounts[i] != comp[atomTypes[i]]) {
+        // Incorrect count:
+        qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
+        if (err != NULL) {
+          *err = "Bad composition.";
+        }
+        return false;
+      }
+    }
 
     // Check volume
     if (using_fixed_volume) {
@@ -833,6 +876,10 @@ namespace XtalOpt {
         xtal->OBUnitCell()->GetCellMatrix().determinant() <= 0.0) {
       qDebug() << "Rejecting structure" << xtal->getIDString()
                << ": using VASP negative triple product.";
+      if (err != NULL) {
+        *err = "Unit cell matrix cannot have a negative triple product "
+            "when using VASP.";
+      }
       return false;
     }
 
@@ -846,6 +893,9 @@ namespace XtalOpt {
         GS_IS_NAN_OR_INF(xtal->getGamma()) || fabs(xtal->getGamma()) < 1e-8 ) {
       qDebug() << "XtalOpt::checkXtal: A cell parameter is either 0, nan, or "
                   "inf. Discarding.";
+      if (err != NULL) {
+        *err = "A cell parameter is too small (<10^-8) or not a number.";
+      }
       return false;
     }
 
@@ -866,6 +916,10 @@ namespace XtalOpt {
                << "Alpha: " << alpha_min << " " << xtal->getAlpha() << " " << alpha_max << endl
                << "Beta:  " << beta_min  << " " << xtal->getBeta()  << " " << beta_max << endl
                << "Gamma: " << gamma_min << " " << xtal->getGamma() << " " << gamma_max;
+      if (err != NULL) {
+        *err = "The unit cell parameters do not fall within the specified "
+            "limits.";
+      }
       return false;
     }
 
@@ -877,12 +931,18 @@ namespace XtalOpt {
           qDebug() << "Discarding structure -- Bad IAD ("
                    << distance << " < "
                    << shortestInteratomicDistance << ")";
+          if (err != NULL) {
+            *err = "Two atoms are too close together.";
+          }
           return false;
         }
       }
     }
 
     // Xtal is OK!
+    if (err != NULL) {
+      *err = "";
+    }
     return true;
   }
 
