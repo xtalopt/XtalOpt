@@ -256,23 +256,12 @@ namespace XtalOpt {
     // Load seeds...
     for (int i = 0; i < seedList.size(); i++) {
       filename = seedList.at(i);
-      Xtal *xtal = new Xtal;
-      xtal->setFileName(filename);
-      if ( !m_optimizer->read(xtal, filename) || (xtal == 0) ) {
-        m_tracker->lockForWrite();
-        m_tracker->deleteAllStructures();
-        m_tracker->unlock();
-        error(tr("Error loading seed %1").arg(filename));
-        return;
+      if (this->addSeed(filename)) {
+        m_dialog->updateProgressLabel(
+              tr("%1 structures generated (%2 kept, %3 rejected)...")
+              .arg(i + failed).arg(i).arg(failed));
+        newXtalCount++;
       }
-      QString parents =tr("Seeded: %1", "1 is a filename").arg(filename);
-      initializeAndAddXtal(xtal, 1, parents);
-      debug(tr("XtalOpt::StartOptimization: Loaded seed: %1",
-               "1 is a filename").arg(filename));
-      m_dialog->updateProgressLabel(
-            tr("%1 structures generated (%2 kept, %3 rejected)...")
-            .arg(i + failed).arg(i).arg(failed));
-      newXtalCount++;
     }
 
     // Generation loop...
@@ -332,6 +321,34 @@ namespace XtalOpt {
 
     m_dialog->saveSession();
     emit sessionStarted();
+  }
+
+  bool XtalOpt::addSeed(const QString &filename)
+  {
+    QString err;
+    Xtal *xtal = new Xtal;
+    xtal->setFileName(filename);
+    xtal->setStatus(Xtal::WaitingForOptimization);
+    // Create atoms
+    for (QHash<unsigned int, unsigned int>::const_iterator
+         it = comp.constBegin(), it_end = comp.constEnd();
+         it != it_end; ++it) {
+      for (int i = 0; i < it.value(); ++i) {
+        xtal->addAtom();
+      }
+    }
+    xtal->moveToThread(m_queue->thread());
+    if ( !m_optimizer->read(xtal, filename) || !this->checkXtal(xtal, &err)) {
+      error(tr("Error loading seed %1\n\n%2").arg(filename).arg(err));
+      xtal->deleteLater();
+      return false;
+    }
+    QString parents =tr("Seeded: %1", "1 is a filename").arg(filename);
+    this->m_queue->addManualStructureRequest(1);
+    initializeAndAddXtal(xtal, 1, parents);
+    debug(tr("XtalOpt::addSeed: Loaded seed: %1",
+             "1 is a filename").arg(filename));
+    return true;
   }
 
   Structure* XtalOpt::replaceWithRandom(Structure *s, const QString & reason)
