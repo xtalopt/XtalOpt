@@ -499,6 +499,9 @@ namespace XtalOpt {
 
     int index = item->row();
 
+    bool canGenerateOffspring =
+        (this->m_opt->queue()->getAllOptimizedStructures().size() >= 3);
+
     qDebug() << "Context menu at row " << index;
 
     // Set m_context_xtal after locking to avoid threading issues.
@@ -517,6 +520,10 @@ namespace XtalOpt {
     QAction *a_resetFail= menu.addAction("Reset &failure count");
     menu.addSeparator();
     QAction *a_randomize= menu.addAction("Replace with &new random structure");
+    QAction *a_offspring = NULL;
+    if (canGenerateOffspring) {
+      a_offspring= menu.addAction("Replace with new &offspring");
+    }
     menu.addSeparator();
     QAction *a_clipPOSCAR= menu.addAction("&Copy POSCAR to clipboard");
 
@@ -524,9 +531,16 @@ namespace XtalOpt {
     connect(a_restart, SIGNAL(triggered()), this, SLOT(restartJobProgress()));
     connect(a_kill, SIGNAL(triggered()), this, SLOT(killXtalProgress()));
     connect(a_unkill, SIGNAL(triggered()), this, SLOT(unkillXtalProgress()));
-    connect(a_resetFail, SIGNAL(triggered()), this, SLOT(resetFailureCountProgress()));
-    connect(a_randomize, SIGNAL(triggered()), this, SLOT(randomizeStructureProgress()));
-    connect(a_clipPOSCAR, SIGNAL(triggered()), this, SLOT(clipPOSCARProgress()));
+    connect(a_resetFail, SIGNAL(triggered()),
+            this, SLOT(resetFailureCountProgress()));
+    connect(a_randomize, SIGNAL(triggered()),
+            this, SLOT(randomizeStructureProgress()));
+    if (canGenerateOffspring) {
+      connect(a_offspring, SIGNAL(triggered()),
+              this, SLOT(replaceWithOffspringProgress()));
+    }
+    connect(a_clipPOSCAR, SIGNAL(triggered()), this,
+            SLOT(clipPOSCARProgress()));
 
     if (state == Xtal::Killed || state == Xtal::Removed) {
       a_kill->setVisible(false);
@@ -550,6 +564,9 @@ namespace XtalOpt {
     a_kill->disconnect();
     a_unkill->disconnect();
     a_resetFail->disconnect();
+    if (canGenerateOffspring) {
+      a_offspring->disconnect();
+    }
     a_randomize->disconnect();
 
     m_context_mutex->unlock();
@@ -699,6 +716,36 @@ namespace XtalOpt {
     }
 
     m_opt->replaceWithRandom(m_context_xtal, "manual");
+
+    // Restart job:
+    newInfoUpdate(m_context_xtal);
+    restartJobProgress_(1);
+    // above function handles background processing signal
+  }
+
+  void TabProgress::replaceWithOffspringProgress()
+  {
+    emit startingBackgroundProcessing();
+    QtConcurrent::run(this, &TabProgress::replaceWithOffspringProgress_);
+  }
+
+  void TabProgress::replaceWithOffspringProgress_()
+  {
+    if (!m_context_xtal) {
+      emit finishedBackgroundProcessing();
+      return;
+    }
+
+    // End job if currently running
+    if (m_context_xtal->getJobID()) {
+      m_opt->queueInterface()->stopJob(m_context_xtal);
+    }
+
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    Q_ASSERT_X(xtalopt != NULL, Q_FUNC_INFO, "m_opt is not an instance of "
+               "XtalOpt.");
+
+    xtalopt->replaceWithOffspring(m_context_xtal, "manual");
 
     // Restart job:
     newInfoUpdate(m_context_xtal);
