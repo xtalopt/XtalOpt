@@ -379,7 +379,51 @@ namespace XtalOpt {
     return qobject_cast<Structure*>(oldXtal);
   }
 
-  Xtal* XtalOpt::generateRandomXtal(uint generation, uint id) {
+  Structure* XtalOpt::replaceWithOffspring(Structure *s,
+                                           const QString & reason)
+  {
+    // Generate/Check new xtal
+    Xtal *xtal = 0;
+    while (!checkXtal(xtal)) {
+      if (xtal) {
+        xtal->deleteLater();
+        xtal = NULL;
+      }
+      xtal = generateNewXtal();
+    }
+
+    Xtal *oldXtal = qobject_cast<Xtal*>(s);
+    // Copy info over
+    QWriteLocker locker1 (oldXtal->lock());
+    QWriteLocker locker2 (xtal->lock());
+    oldXtal->setOBUnitCell(new OpenBabel::OBUnitCell);
+    oldXtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
+    oldXtal->resetEnergy();
+    oldXtal->resetEnthalpy();
+    oldXtal->resetFailCount();
+    oldXtal->setPV(0);
+    oldXtal->setCurrentOptStep(1);
+    if (!reason.isEmpty()) {
+      QString parents = xtal->getParents();
+      parents += " (" + reason + ")";
+      oldXtal->setParents(parents);
+    }
+
+    Q_ASSERT_X(xtal->numAtoms() == oldXtal->numAtoms(), Q_FUNC_INFO,
+               "Number of atoms don't match. Cannot copy.");
+
+    for (uint i = 0; i < xtal->numAtoms(); ++i) {
+      (*oldXtal->atom(i)) = (*xtal->atom(i));
+    }
+    oldXtal->findSpaceGroup(tol_spg);
+
+    // Delete random xtal
+    xtal->deleteLater();
+    return static_cast<Structure*>(oldXtal);
+  }
+
+  Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
+  {
     INIT_RANDOM_GENERATOR();
     // Set cell parameters
     double a            = RANDDOUBLE() * (a_max-a_min) + a_min;
@@ -484,7 +528,13 @@ namespace XtalOpt {
 
   void XtalOpt::generateNewStructure_()
   {
-    INIT_RANDOM_GENERATOR();
+    Xtal *newXtal = generateNewXtal();
+    initializeAndAddXtal(newXtal, newXtal->getGeneration(),
+                         newXtal->getParents());
+  }
+
+  Xtal* XtalOpt::generateNewXtal()
+  {
     // Get all optimized structures
     QList<Structure*> structures = m_queue->getAllOptimizedStructures();
 
@@ -496,37 +546,44 @@ namespace XtalOpt {
         if (xtal) xtal->deleteLater();
         xtal = generateRandomXtal(1, 0);
       }
-      initializeAndAddXtal(xtal, 1, xtal->getParents());
-      return;
+      xtal->setParents(xtal->getParents() + " (too few optimized structures "
+                       "to generate offspring)");
+      return xtal;
     }
 
     // Sort structure list
     Structure::sortByEnthalpy(&structures);
 
     // Trim list
-    // Remove all but (n_consider + 1). The "+ 1" will be removed
+    // Remove all but (popSize + 1). The "+ 1" will be removed
     // during probability generation.
-    while ( static_cast<uint>(structures.size()) > popSize + 1 )
+    while ( static_cast<uint>(structures.size()) > popSize + 1 ) {
       structures.removeLast();
+    }
 
     // Make list of weighted probabilities based on enthalpy values
     QList<double> probs = getProbabilityList(structures);
 
+    // Cast Structures into Xtals
     QList<Xtal*> xtals;
-    for (int i = 0; i < structures.size(); i++)
+#if QT_VERSION >= 0x040700
+    xtals.reserve(structures.size());
+#endif // QT_VERSION
+    for (int i = 0; i < structures.size(); ++i) {
       xtals.append(qobject_cast<Xtal*>(structures.at(i)));
+    }
 
     // Initialize loop vars
     double r;
     unsigned int gen;
     QString parents;
-    Xtal *xtal = 0;
+    Xtal *xtal = NULL;
 
     // Perform operation until xtal is valid:
     while (!checkXtal(xtal)) {
       // First delete any previous failed structure in xtal
       if (xtal) {
-        delete xtal;
+        xtal->deleteLater();
         xtal = 0;
       }
 
@@ -676,8 +733,9 @@ namespace XtalOpt {
                    "Reselecting operator...").arg(opStr));
       }
     }
-    initializeAndAddXtal(xtal, gen, parents);
-    return;
+    xtal->setGeneration(gen);
+    xtal->setParents(parents);
+    return xtal;
   }
 
   bool XtalOpt::checkLimits() {

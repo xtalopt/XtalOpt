@@ -85,20 +85,38 @@ namespace GlobalSearch {
 
     /**
      * @return An ID string that uniquely identifies this OptBase.
-     */    QString getIDString() {
-      return m_idString;};
+     */
+    QString getIDString() {return m_idString;}
 
     /**
      * Replace the Structure with an appropriate random Structure.
      *
      * @param s The Structure to be replaced. This pointer remains
-     * valid -- the structure it points will be modified.
+     * valid -- the structure it points to will be modified.
      * @param reason Reason for replacing. This will appear in the
      * Structure::getParents() string. (Optional)
      *
      * @return The pointer to the structure (same as s).
      */
-    virtual Structure* replaceWithRandom(Structure *s, const QString & reason = "") {return 0;};
+    virtual Structure* replaceWithRandom(Structure *s,
+                                         const QString & reason = "")
+    {return 0;}
+
+    /**
+     * Replace the Structure with a new offspring. This only makes sense if
+     * the search method uses offspring (e.g. a GA). The default
+     * implementation of this method calls replaceWithRandom().
+     *
+     * @param s The Structure to be replaced. This pointer remains
+     * valid -- the structure it points to will be modified.
+     * @param reason Reason for replacing. This will appear in the
+     * Structure::getParents() string. (Optional)
+     *
+     * @return The pointer to the structure (same as s).
+     */
+    virtual Structure* replaceWithOffspring(Structure *s,
+                                            const QString & reason = "")
+    {return replaceWithRandom(s, reason);}
 
     /**
      * Before starting an optimization, this function will check the

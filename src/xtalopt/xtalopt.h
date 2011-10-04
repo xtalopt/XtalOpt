@@ -73,6 +73,8 @@ namespace XtalOpt {
     Xtal* generateRandomXtal(uint generation, uint id);
     GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
                                                const QString & reason = "");
+    GlobalSearch::Structure* replaceWithOffspring(GlobalSearch::Structure *s,
+                                                  const QString &reason = "");
     bool checkLimits();
     bool checkXtal(Xtal *xtal);
     QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);
@@ -124,6 +126,7 @@ namespace XtalOpt {
   public slots:
     void startSearch();
     void generateNewStructure();
+    Xtal* generateNewXtal();
     void initializeAndAddXtal(Xtal *xtal,
                               unsigned int generation,
                               const QString &parents);
