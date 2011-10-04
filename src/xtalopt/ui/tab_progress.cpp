@@ -22,6 +22,7 @@
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
+#include <QtGui/QFileDialog>
 #include <QtCore/QTimer>
 #include <QtCore/QSettings>
 #include <QtCore/QMutexLocker>
@@ -525,6 +526,8 @@ namespace XtalOpt {
       a_offspring= menu.addAction("Replace with new &offspring");
     }
     menu.addSeparator();
+    QAction *a_injectSeed= menu.addAction("Inject &seed structure");
+    menu.addSeparator();
     QAction *a_clipPOSCAR= menu.addAction("&Copy POSCAR to clipboard");
 
     // Connect actions
@@ -539,6 +542,8 @@ namespace XtalOpt {
       connect(a_offspring, SIGNAL(triggered()),
               this, SLOT(replaceWithOffspringProgress()));
     }
+    connect(a_injectSeed, SIGNAL(triggered()),
+            this, SLOT(injectStructureProgress()));
     connect(a_clipPOSCAR, SIGNAL(triggered()), this,
             SLOT(clipPOSCARProgress()));
 
@@ -552,7 +557,6 @@ namespace XtalOpt {
 
     m_context_xtal->lock()->unlock();
     QAction *selection = menu.exec(QCursor::pos());
-    qDebug() << selection;
 
     if (selection == 0) {
       m_context_xtal = 0;
@@ -567,6 +571,7 @@ namespace XtalOpt {
     if (canGenerateOffspring) {
       a_offspring->disconnect();
     }
+    a_injectSeed->disconnect();
     a_randomize->disconnect();
 
     m_context_mutex->unlock();
@@ -751,6 +756,41 @@ namespace XtalOpt {
     newInfoUpdate(m_context_xtal);
     restartJobProgress_(1);
     // above function handles background processing signal
+  }
+
+  void TabProgress::injectStructureProgress()
+  {
+    // It doesn't matter what xtal was selected
+    m_context_xtal = NULL;
+
+    // Prompt for filename
+    QSettings settings; // Already set up in avogadro/src/main.cpp
+    QString filename = settings.value("xtalopt/opt/seedPath",
+                                      m_opt->filePath).toString();
+
+    // Launch file dialog
+    QFileDialog dialog (m_dialog,
+                        QString("Select structure file to use as seed"),
+                        filename,
+                        "Common formats (*POSCAR *CONTCAR *.got *.cml *cif"
+                        " *.out);;All Files (*)");
+    dialog.selectFile(filename);
+    dialog.setFileMode(QFileDialog::ExistingFile);
+    if (dialog.exec())
+      filename = dialog.selectedFiles().first();
+    else { return;} // User cancel file selection.
+
+    settings.setValue("xtalopt/opt/seedPath", filename);
+
+    // Load in background
+    QtConcurrent::run(this, &TabProgress::injectStructureProgress_,
+                      filename);
+  }
+
+  void TabProgress::injectStructureProgress_(const QString & filename)
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    xtalopt->addSeed(filename);
   }
 
   void TabProgress::clipPOSCARProgress()
