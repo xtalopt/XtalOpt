@@ -132,6 +132,9 @@ namespace GlobalSearch {
     ui_progbar->setVisible(false);
     readSettings();
 
+    // Disable the save button until a session begins
+    ui_push_save->setEnabled(false);
+
   }
 
   AbstractDialog::~AbstractDialog()
@@ -152,6 +155,8 @@ namespace GlobalSearch {
   void AbstractDialog::lockGUI() {
     ui_push_resume->setDisabled(true);
     ui_push_begin->setDisabled(true);
+    // This function is called when a session begins. Enable saves:
+    ui_push_save->setEnabled(true);
     emit tabsLockGUI();
   }
 
