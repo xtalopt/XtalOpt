@@ -38,6 +38,12 @@ namespace GlobalSearch {
 namespace XtalOpt {
   class XtalOptDialog;
 
+  struct XtalCompositionStruct
+  {
+    double minRadius;
+    unsigned int quantity;
+  };
+
   class XtalOpt : public GlobalSearch::OptBase
   {
     Q_OBJECT
@@ -110,16 +116,16 @@ namespace XtalOpt {
       beta_min,         beta_max,
       gamma_min,	gamma_max,
       vol_min,		vol_max,        vol_fixed,
-      shortestInteratomicDistance;
+      scaleFactor;
 
     double tol_xcLength;        	// Duplicate matching tolerances
     double tol_xcAngle;
     double tol_spg;
 
     bool using_fixed_volume;
-    bool using_shortestInteratomicDistance;
+    bool using_interatomicDistanceLimit;
 
-    QHash<uint, uint> comp;
+    QHash<uint, XtalCompositionStruct> comp;
     QStringList seedList;
 
     QMutex *xtalInitMutex;

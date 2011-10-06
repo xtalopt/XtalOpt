@@ -680,10 +680,14 @@ namespace GlobalSearch {
     QList<Atom *> atomList = atoms();
     if (atomList.size() < 2) return false;
 
-    QList<Atom *>::const_iterator at_i;
+#if QT_VERSION >= 0x040700
+    list->reserve(atomList.size());
+#endif // QT_VERSION
+
     double shortest;
-    for (at_i = atomList.begin(); at_i != atomList.end(); at_i++) {
-      getNearestNeighborDistance((*at_i), shortest);
+    for (QList<Atom*>::const_iterator it = atomList.constBegin(),
+         it_end = atomList.constEnd(); it != it_end; ++it) {
+      getNearestNeighborDistance((*it), shortest);
       list->append(shortest);
     }
     return true;

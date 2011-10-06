@@ -29,6 +29,8 @@
 class QFile;
 
 namespace XtalOpt {
+  class XtalCompositionStruct;
+
   class Xtal : public GlobalSearch::Structure
   {
     Q_OBJECT
@@ -42,6 +44,8 @@ namespace XtalOpt {
 
     // Virtuals from structure
     bool getShortestInteratomicDistance(double & shortest) const;
+    bool getSquaredAtomicDistancesToPoint(const Eigen::Vector3d &coord,
+                                          QVector<double> *distances);
     bool getNearestNeighborDistance(const double x, const double y, const double z,
                                     double & shortest) const;
     bool getIADHistogram(QList<double> * distance,
@@ -53,6 +57,18 @@ namespace XtalOpt {
                          double maxIAD = 0.0,
                          int maxAttempts = 100.0,
                          Avogadro::Atom **atom = 0); //maxIAD is not used.
+    // Uses the minRadius constraints in @a limits to restrict atom placement
+    bool addAtomRandomly(unsigned int atomicNumber,
+                         const QHash<unsigned int, XtalCompositionStruct> & limits,
+                         int maxAttempts = 100.0,
+                         Avogadro::Atom **atom = 0);
+    // Use the minRadius constraints in @a limits to check the interatomic
+    // distances in the xtal. atom1 and atom2 are overwritten with the indexes
+    // of the first set of offending atom, if any, that are found. The bad IAD
+    // is written to IAD if a double pointer is provided.
+    bool checkInteratomicDistances(const QHash<unsigned int, XtalCompositionStruct> &limits,
+                                   int *atom1 = NULL, int *atom2 = NULL,
+                                   double *IAD = NULL);
     QHash<QString, QVariant> getFingerprint();
     virtual QString getResultsEntry() const;
     virtual QString getResultsHeader() const {

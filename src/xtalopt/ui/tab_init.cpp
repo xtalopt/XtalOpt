@@ -20,6 +20,10 @@
 
 #include <QtCore/QSettings>
 
+#include <QtGui/QHeaderView>
+#include <QtGui/QTableWidget>
+#include <QtGui/QTableWidgetItem>
+
 #include "dialog.h"
 
 namespace XtalOpt {
@@ -68,10 +72,13 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.cb_fixedVolume, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_shortestInteratomicDistance, SIGNAL(editingFinished()),
+    connect(ui.spin_scaleFactor, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.cb_shortestInteratomicDistance, SIGNAL(toggled(bool)),
+    connect(ui.cb_interatomicDistanceLimit, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
+
+    QHeaderView *horizontal = ui.table_comp->horizontalHeader();
+    horizontal->setResizeMode(QHeaderView::ResizeToContents);
 
     initialize();
   }
@@ -88,27 +95,28 @@ namespace XtalOpt {
 
     settings->beginGroup("xtalopt/init/");
 
-    const int VERSION = 1;
-    settings->setValue("version",          VERSION);
+    const int VERSION = 2;
+    settings->setValue("version",VERSION);
 
-    settings->setValue("limits/a/min",				xtalopt->a_min);
-    settings->setValue("limits/b/min",            		xtalopt->b_min);
-    settings->setValue("limits/c/min",            		xtalopt->c_min);
-    settings->setValue("limits/a/max",            		xtalopt->a_max);
-    settings->setValue("limits/b/max",            		xtalopt->b_max);
-    settings->setValue("limits/c/max",            		xtalopt->c_max);
-    settings->setValue("limits/alpha/min",			xtalopt->alpha_min);
-    settings->setValue("limits/beta/min",			xtalopt->beta_min);
-    settings->setValue("limits/gamma/min",			xtalopt->gamma_min);
-    settings->setValue("limits/alpha/max",			xtalopt->alpha_max);
-    settings->setValue("limits/beta/max",			xtalopt->beta_max);
-    settings->setValue("limits/gamma/max",			xtalopt->gamma_max);
-    settings->setValue("limits/volume/min",			xtalopt->vol_min);
-    settings->setValue("limits/volume/max",			xtalopt->vol_max);
-    settings->setValue("limits/volume/fixed",			xtalopt->vol_fixed);
-    settings->setValue("limits/shortestInteratomicDistance",	xtalopt->shortestInteratomicDistance);
-    settings->setValue("using/fixedVolume",			xtalopt->using_fixed_volume);
-    settings->setValue("using/shortestInteratomicDistance",	xtalopt->using_shortestInteratomicDistance);
+    settings->setValue("limits/a/min",        xtalopt->a_min);
+    settings->setValue("limits/b/min",        xtalopt->b_min);
+    settings->setValue("limits/c/min",        xtalopt->c_min);
+    settings->setValue("limits/a/max",        xtalopt->a_max);
+    settings->setValue("limits/b/max",        xtalopt->b_max);
+    settings->setValue("limits/c/max",        xtalopt->c_max);
+    settings->setValue("limits/alpha/min",    xtalopt->alpha_min);
+    settings->setValue("limits/beta/min",     xtalopt->beta_min);
+    settings->setValue("limits/gamma/min",    xtalopt->gamma_min);
+    settings->setValue("limits/alpha/max",    xtalopt->alpha_max);
+    settings->setValue("limits/beta/max",     xtalopt->beta_max);
+    settings->setValue("limits/gamma/max",    xtalopt->gamma_max);
+    settings->setValue("limits/volume/min",   xtalopt->vol_min);
+    settings->setValue("limits/volume/max",   xtalopt->vol_max);
+    settings->setValue("limits/volume/fixed", xtalopt->vol_fixed);
+    settings->setValue("limits/scaleFactor",  xtalopt->scaleFactor);
+    settings->setValue("using/fixedVolume",   xtalopt->using_fixed_volume);
+    settings->setValue("using/interatomicDistanceLimit",
+                       xtalopt->using_interatomicDistanceLimit);
 
     // Composition
     // We only want to save POTCAR info and Composition to the resume
@@ -121,7 +129,10 @@ namespace XtalOpt {
       for (int i = 0; i < keys.size(); i++) {
         settings->setArrayIndex(i);
         settings->setValue("atomicNumber", keys.at(i));
-        settings->setValue("quantity", xtalopt->comp.value(keys.at(i)));
+        settings->setValue("quantity",
+                           xtalopt->comp.value(keys.at(i)).quantity);
+        settings->setValue("minRadius",
+                           xtalopt->comp.value(keys.at(i)).minRadius);
       }
       settings->endArray();
     }
@@ -155,21 +166,24 @@ namespace XtalOpt {
     ui.spin_vol_min->setValue(		settings->value("limits/volume/min",	1).toDouble()   );
     ui.spin_vol_max->setValue(		settings->value("limits/volume/max",	100000).toDouble());
     ui.spin_fixedVolume->setValue(	settings->value("limits/volume/fixed",	500).toDouble()	);
-    ui.spin_shortestInteratomicDistance->setValue(	settings->value("limits/shortestInteratomicDistance",1).toDouble());
+    ui.spin_scaleFactor->setValue(	settings->value("limits/scaleFactor",0.5).toDouble());
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
-    ui.cb_shortestInteratomicDistance->setChecked(	settings->value("using/shortestInteratomicDistance",false).toBool());
+    ui.cb_interatomicDistanceLimit->setChecked(	settings->value("using/interatomicDistanceLimit",false).toBool());
 
     // Composition
     if (!filename.isEmpty()) {
       int size = settings->beginReadArray("composition");
-      xtalopt->comp = QHash<uint,uint> ();
+      xtalopt->comp = QHash<uint,XtalCompositionStruct> ();
       for (int i = 0; i < size; i++) {
         settings->setArrayIndex(i);
-        uint atomicNum, quant;
+        uint atomicNum, quantity;
+        XtalCompositionStruct entry;
         atomicNum = settings->value("atomicNumber").toUInt();
-        quant = settings->value("quantity").toUInt();
-        xtalopt->comp.insert(atomicNum, quant);
+        quantity = settings->value("quantity").toUInt();
+        entry.quantity = quantity;
+        xtalopt->comp.insert(atomicNum, entry);
       }
+      this->updateMinRadii();
       settings->endArray();
     }
 
@@ -179,6 +193,9 @@ namespace XtalOpt {
     switch (loadedVersion) {
     case 0:
     case 1:
+      ui.cb_interatomicDistanceLimit->setChecked(
+            settings->value("using/shortestInteratomicDistance",false).toBool());
+    case 2:
     default:
       break;
     }
@@ -191,24 +208,25 @@ namespace XtalOpt {
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
-    ui.spin_a_min->setValue(				xtalopt->a_min);
-    ui.spin_b_min->setValue(				xtalopt->b_min);
-    ui.spin_c_min->setValue(				xtalopt->c_min);
-    ui.spin_a_max->setValue(				xtalopt->a_max);
-    ui.spin_b_max->setValue(				xtalopt->b_max);
-    ui.spin_c_max->setValue(				xtalopt->c_max);
-    ui.spin_alpha_min->setValue(			xtalopt->alpha_min);
-    ui.spin_beta_min->setValue(				xtalopt->beta_min);
-    ui.spin_gamma_min->setValue(			xtalopt->gamma_min);
-    ui.spin_alpha_max->setValue(			xtalopt->alpha_max);
-    ui.spin_beta_max->setValue(				xtalopt->beta_max);
-    ui.spin_gamma_max->setValue(			xtalopt->gamma_max);
-    ui.spin_vol_min->setValue(				xtalopt->vol_min);
-    ui.spin_vol_max->setValue(				xtalopt->vol_max);
-    ui.spin_fixedVolume->setValue(			xtalopt->vol_fixed);
-    ui.spin_shortestInteratomicDistance->setValue(	xtalopt->shortestInteratomicDistance);
-    ui.cb_fixedVolume->setChecked(			xtalopt->using_fixed_volume);
-    ui.cb_shortestInteratomicDistance->setChecked(	xtalopt->using_shortestInteratomicDistance);
+    ui.spin_a_min->setValue(       xtalopt->a_min);
+    ui.spin_b_min->setValue(       xtalopt->b_min);
+    ui.spin_c_min->setValue(       xtalopt->c_min);
+    ui.spin_a_max->setValue(       xtalopt->a_max);
+    ui.spin_b_max->setValue(       xtalopt->b_max);
+    ui.spin_c_max->setValue(       xtalopt->c_max);
+    ui.spin_alpha_min->setValue(   xtalopt->alpha_min);
+    ui.spin_beta_min->setValue(    xtalopt->beta_min);
+    ui.spin_gamma_min->setValue(   xtalopt->gamma_min);
+    ui.spin_alpha_max->setValue(   xtalopt->alpha_max);
+    ui.spin_beta_max->setValue(    xtalopt->beta_max);
+    ui.spin_gamma_max->setValue(   xtalopt->gamma_max);
+    ui.spin_vol_min->setValue(     xtalopt->vol_min);
+    ui.spin_vol_max->setValue(     xtalopt->vol_max);
+    ui.spin_fixedVolume->setValue( xtalopt->vol_fixed);
+    ui.spin_scaleFactor->setValue( xtalopt->scaleFactor);
+    ui.cb_fixedVolume->setChecked( xtalopt->using_fixed_volume);
+    ui.cb_interatomicDistanceLimit->setChecked(
+          xtalopt->using_interatomicDistanceLimit);
     updateComposition();
   }
 
@@ -221,32 +239,35 @@ namespace XtalOpt {
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
-    QHash<uint, uint> comp;
+    QHash<uint, XtalCompositionStruct> comp;
     QString symbol;
-    uint atomicNum;
-    uint quantity;
+    unsigned int atomicNum;
+    unsigned int quantity;
     QStringList symbolList;
     QStringList quantityList;
 
     // Parse numbers between letters
-    symbolList		= str.split(QRegExp("[0-9]"), QString::SkipEmptyParts);
+    symbolList = str.split(QRegExp("[0-9]"), QString::SkipEmptyParts);
     // Parse letters between numbers
-    quantityList        = str.split(QRegExp("[A-Z,a-z]"), QString::SkipEmptyParts);
+    quantityList = str.split(QRegExp("[A-Z,a-z]"), QString::SkipEmptyParts);
 
     xtalopt->testingMode = (str.contains("testingMode")) ? true : false;
 
     // Use the shorter of the lists for the length
-    uint length = (symbolList.size() < quantityList.size()) ? symbolList.size() : quantityList.size();
+    unsigned int length = (symbolList.size() < quantityList.size())
+        ? symbolList.size() : quantityList.size();
 
     if ( length == 0 ) {
-      ui.list_composition->clear();
       xtalopt->comp.clear();
+      this->updateCompositionTable();
       return;
     }
 
     // Build hash
     for (uint i = 0; i < length; i++){
       symbol    = symbolList.at(i);
+      atomicNum = OpenBabel::etab.GetAtomicNum(
+            symbol.trimmed().toStdString().c_str());
       quantity	= quantityList.at(i).toUInt();
 
       if (symbol.contains("nRunsStart")) {
@@ -261,30 +282,63 @@ namespace XtalOpt {
         xtalopt->test_nStructs = quantity;
         continue;
       }
-      atomicNum = OpenBabel::etab.GetAtomicNum(symbol.trimmed().toStdString().c_str());
 
       // Validate symbol
       if (!atomicNum) continue; // Invalid symbol entered
 
       // Add to hash
-      if (!comp.keys().contains(atomicNum)) comp[atomicNum] = 0; // initialize if needed
-      comp[atomicNum] += quantity;
+      if (!comp.keys().contains(atomicNum)) {
+        XtalCompositionStruct entry;
+        entry.quantity = 0;
+        entry.minRadius = 0.0;
+        comp[atomicNum] = entry; // initialize if needed
+      }
+
+      comp[atomicNum].quantity += quantity;
     }
 
-    // Dump hash into list
-    ui.list_composition->clear();
-    QList<uint> keys = comp.keys();
-    qSort(keys);
-    QString line ("%1=%2 x %3");
-    for (int i = 0; i < keys.size(); i++) {
-      atomicNum = keys.at(i);
-      quantity  = comp[atomicNum];
-      symbol	= OpenBabel::etab.GetSymbol(atomicNum);
-      new QListWidgetItem(line.arg(atomicNum,3).arg(symbol,2).arg(quantity), ui.list_composition);
-    }
-
-    // Save hash
     xtalopt->comp = comp;
+
+    this->updateMinRadii();
+    this->updateCompositionTable();
+  }
+
+  void TabInit::updateCompositionTable()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    QList<unsigned int> keys = xtalopt->comp.keys();
+    qSort(keys);
+
+    // Adjust table size:
+    int numRows = keys.size();
+    ui.table_comp->setRowCount(numRows);
+
+    for (int i = 0; i < numRows; i++) {
+      unsigned int atomicNum = keys.at(i);
+
+      QString symbol	= QString(OpenBabel::etab.GetSymbol(atomicNum));
+      unsigned int quantity  = xtalopt->comp[atomicNum].quantity;
+      double mass	= OpenBabel::etab.GetMass(atomicNum);
+      double minRadius = xtalopt->comp[atomicNum].minRadius;
+
+      QTableWidgetItem *symbolItem =
+          new QTableWidgetItem(symbol);
+      QTableWidgetItem *atomicNumItem =
+          new QTableWidgetItem(QString::number(atomicNum));
+      QTableWidgetItem *quantityItem =
+          new QTableWidgetItem(QString::number(quantity));
+      QTableWidgetItem *massItem =
+          new QTableWidgetItem(QString::number(mass));
+      QTableWidgetItem *minRadiusItem =
+          new QTableWidgetItem(QString::number(minRadius));
+
+      ui.table_comp->setItem(i, CC_SYMBOL, symbolItem);
+      ui.table_comp->setItem(i, CC_ATOMICNUM, atomicNumItem);
+      ui.table_comp->setItem(i, CC_QUANTITY, quantityItem);
+      ui.table_comp->setItem(i, CC_MASS, massItem);
+      ui.table_comp->setItem(i, CC_MINRADIUS, minRadiusItem);
+    }
   }
 
   void TabInit::updateComposition()
@@ -296,7 +350,7 @@ namespace XtalOpt {
     QString tmp;
     QTextStream str (&tmp);
     for (int i = 0; i < keys.size(); i++) {
-      uint q = xtalopt->comp.value(keys.at(i));
+      uint q = xtalopt->comp.value(keys.at(i)).quantity;
       str << OpenBabel::etab.GetSymbol(keys.at(i)) << q << " ";
     }
     if (xtalopt->testingMode) {
@@ -341,7 +395,26 @@ namespace XtalOpt {
     xtalopt->using_fixed_volume = ui.cb_fixedVolume->isChecked();
     xtalopt->vol_fixed	= ui.spin_fixedVolume->value();
 
-    xtalopt->using_shortestInteratomicDistance       = ui.cb_shortestInteratomicDistance->isChecked();
-    xtalopt->shortestInteratomicDistance		= ui.spin_shortestInteratomicDistance->value();
+    xtalopt->using_interatomicDistanceLimit =
+        ui.cb_interatomicDistanceLimit->isChecked();
+
+    if (xtalopt->scaleFactor != ui.spin_scaleFactor->value()) {
+      xtalopt->scaleFactor = ui.spin_scaleFactor->value();
+      this->updateMinRadii();
+      this->updateCompositionTable();
+    }
   }
+
+  void TabInit::updateMinRadii()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    for (QHash<unsigned int, XtalCompositionStruct>::iterator
+         it = xtalopt->comp.begin(), it_end = xtalopt->comp.end();
+         it != it_end; ++it) {
+      it.value().minRadius = xtalopt->scaleFactor *
+          OpenBabel::etab.GetCovalentRad(it.key());
+    }
+  }
+
 }
