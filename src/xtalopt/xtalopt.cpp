@@ -400,6 +400,17 @@ namespace XtalOpt {
 
     // Populate crystal
     QList<uint> atomicNums = comp.keys();
+    // Sort atomic number by decreasing minimum radius. Adding the "larger"
+    // atoms first encourages a more even (and ordered) distribution
+    for (int i = 0; i < atomicNums.size()-1; ++i) {
+      for (int j = i + 1; j < atomicNums.size(); ++j) {
+        if (this->comp.value(atomicNums[i]).minRadius <
+            this->comp.value(atomicNums[j]).minRadius) {
+          atomicNums.swap(i,j);
+        }
+      }
+    }
+
     unsigned int atomicNum;
     unsigned int q;
     for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
