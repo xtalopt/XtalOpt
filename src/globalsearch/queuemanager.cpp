@@ -142,6 +142,13 @@ namespace GlobalSearch {
             this, SLOT(addStructureToSubmissionQueue(GlobalSearch::Structure *)),
             Qt::QueuedConnection);
 
+    // Work around bug in Qt 4.6.3:
+#if QT_VERSION == 0x040603
+    connect(this, SIGNAL(newStructureQueued()),
+            this, SLOT(unlockForNaming_()),
+            Qt::QueuedConnection);
+#endif // QT_VERSION == 4.6.3
+
     QTimer::singleShot(0, this, SLOT(checkLoop()));
   }
 
@@ -930,7 +937,11 @@ namespace GlobalSearch {
 
     m_newStructureTracker.unlock();
     m_tracker->unlock();
+#if QT_VERSION == 0x040603
+    emit newStructureQueued();
+#else // QT_VERSION == 4.6.3
     QtConcurrent::run(this, &QueueManager::unlockForNaming_);
+#endif // QT_VERSION == 4.6.3
   }
 
   // Doxygen skip:
