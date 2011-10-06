@@ -33,6 +33,15 @@ namespace XtalOpt {
     explicit TabInit( XtalOptDialog *parent, XtalOpt *p );
     virtual ~TabInit();
 
+    enum CompositionColumns
+    {
+      CC_SYMBOL = 0,
+      CC_ATOMICNUM,
+      CC_QUANTITY,
+      CC_MASS,
+      CC_MINRADIUS
+    };
+
   public slots:
     void lockGUI();
     void readSettings(const QString &filename = "");
@@ -40,7 +49,9 @@ namespace XtalOpt {
     void updateGUI();
     void getComposition(const QString & str);
     void updateComposition();
+    void updateCompositionTable();
     void updateDimensions();
+    void updateMinRadii();
 
   signals:
 

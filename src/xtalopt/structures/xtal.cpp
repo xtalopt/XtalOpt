@@ -15,6 +15,8 @@
 
 #include <xtalopt/structures/xtal.h>
 
+#include <xtalopt/xtalopt.h>
+
 #include <avogadro/primitive.h>
 #include <avogadro/molecule.h>
 #include <avogadro/atom.h>
@@ -672,6 +674,163 @@ namespace XtalOpt {
     return true;
   }
 
+  bool Xtal::addAtomRandomly(
+      unsigned int atomicNumber,
+      const QHash<unsigned int, XtalCompositionStruct> & limits,
+      int maxAttempts, Avogadro::Atom **atom)
+  {
+    Eigen::Vector3d cartCoords;
+    bool success;
+
+    // For first atom, add to 0, 0, 0
+    if (numAtoms() == 0) {
+      cartCoords = Eigen::Vector3d (0,0,0);
+    }
+    else {
+      unsigned int i = 0;
+      vector3 fracCoords;
+
+      // Cache the minimum radius for the new atom
+      const double newMinRadius = limits.value(atomicNumber).minRadius;
+
+      // Compute a cut off distance -- atoms farther away than this value
+      // will abort the check early.
+      double maxCheckDistance = 0.0;
+      for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
+           it = limits.constBegin(), it_end = limits.constEnd(); it != it_end;
+           ++it) {
+        if (it.value().minRadius > maxCheckDistance) {
+          maxCheckDistance = it.value().minRadius;
+        }
+      }
+      maxCheckDistance += newMinRadius;
+      const double maxCheckDistSquared = maxCheckDistance*maxCheckDistance;
+
+      do {
+        // Reset sentinal
+        success = true;
+
+        // Generate fractional coordinates
+        fracCoords.Set(RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+
+        // Convert to cartesian coordinates and store
+        cartCoords = Eigen::Vector3d(this->fracToCart(fracCoords).AsArray());
+
+        // Compare distance to each atom in xtal with minimum radii
+        QVector<double> squaredDists;
+        this->getSquaredAtomicDistancesToPoint(cartCoords, &squaredDists);
+        Q_ASSERT_X(squaredDists.size() == this->numAtoms(), Q_FUNC_INFO,
+                   "Size of distance list does not match number of atoms.");
+
+        for (int dist_ind = 0; dist_ind < squaredDists.size(); ++dist_ind) {
+          const double &curDistSquared = squaredDists[dist_ind];
+          // Save a bit of time if distance is huge...
+          if (curDistSquared > maxCheckDistSquared) {
+            continue;
+          }
+          // Compare distance to minimum:
+          const double minDist = newMinRadius + limits.value(
+                this->atom(dist_ind)->atomicNumber()).minRadius;
+          const double minDistSquared = minDist * minDist;
+
+          if (curDistSquared < minDistSquared) {
+            success = false;
+            break;
+          }
+        }
+
+      } while (++i < maxAttempts && !success);
+
+      if (i >= maxAttempts) return false;
+    }
+    Atom *atm = addAtom();
+    atom = &atm;
+    (*atom)->setPos(cartCoords);
+    (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
+    return true;
+  }
+
+  bool Xtal::checkInteratomicDistances(
+      const QHash<unsigned int, XtalCompositionStruct> &limits,
+      int *atom1, int *atom2, double *IAD)
+  {
+      // Compute a cut off distance -- atoms farther away than this value
+      // will abort the check early.
+      double maxCheckDistance = 0.0;
+      for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
+           it = limits.constBegin(), it_end = limits.constEnd(); it != it_end;
+           ++it) {
+        if (it.value().minRadius > maxCheckDistance) {
+          maxCheckDistance = it.value().minRadius;
+        }
+      }
+      maxCheckDistance += maxCheckDistance;
+      const double maxCheckDistSquared = maxCheckDistance*maxCheckDistance;
+
+      // Iterate through all of the atoms in the molecule for "a1"
+      for (QList<Atom*>::const_iterator a1 = m_atomList.constBegin(),
+           a1_end = m_atomList.constEnd(); a1 != a1_end; ++a1) {
+
+        // Get list of minimum squared distances between each atom and a1
+        QVector<double> squaredDists;
+        this->getSquaredAtomicDistancesToPoint(*(*a1)->pos(), &squaredDists);
+        Q_ASSERT_X(squaredDists.size() == this->numAtoms(), Q_FUNC_INFO,
+                   "Size of distance list does not match number of atoms.");
+
+        // Cache the minimum radius of a1
+        const double minA1Radius =
+            limits.value((*a1)->atomicNumber()).minRadius;
+
+        // Iterate through each distance
+        for (int i = 0; i < squaredDists.size(); ++i) {
+
+          // Grab the atom pointer at i, a2
+          Atom *a2 = this->atom(i);
+
+          // If a1 and a2 are the same, skip the comparison
+          if (*a1 == a2) {
+            continue;
+          }
+
+          // Cache the squared distance between a1 and a2
+          const double &curDistSquared = squaredDists[i];
+
+          // Skip comparison if the current distance exceeds the cutoff
+          if (curDistSquared > maxCheckDistSquared) {
+            continue;
+          }
+
+          // Calculate the minimum distance for the atom pair
+          const double minDist = limits.value(a2->atomicNumber()).minRadius
+              + minA1Radius;
+          const double minDistSquared = minDist * minDist;
+
+          // If the distance is too small, set atom1/atom2 and return false
+          if (curDistSquared < minDistSquared) {
+            if (atom1 != NULL && atom2 != NULL) {
+              *atom1 = m_atomList.indexOf(*a1);
+              *atom2 = m_atomList.indexOf(a2);
+              if (IAD != NULL) {
+                *IAD = sqrt(curDistSquared);
+              }
+            }
+            return false;
+          }
+
+          // Atom a2 is ok with respect to a1
+        }
+        // Atom a1 is ok will all a2
+      }
+      // all distances check out -- return true.
+      if (atom1 != NULL && atom2 != NULL) {
+        *atom1 = *atom2 = -1;
+        if (IAD != NULL) {
+          *IAD = 0.0;
+        }
+      }
+      return true;
+  }
+
   bool Xtal::getShortestInteratomicDistance(double & shortest) const {
     QList<Atom*> atomList = atoms();
     if (atomList.size() <= 1) return false; // Need at least two atoms!
@@ -725,20 +884,65 @@ namespace XtalOpt {
     return true;
   }
 
+  bool Xtal::getSquaredAtomicDistancesToPoint(const Eigen::Vector3d &coord,
+                                              QVector<double> *distances)
+  {
+    int atmCount = this->numAtoms();
+    if (atmCount < 1) {
+      return false;
+    }
+
+    // Allocate memory
+    distances->resize(atmCount);
+
+    // Create list of all translation vectors to build a 3x3x3 supercell
+    //  First get OB matrix, extract vectors, then convert to Eigen::Vector3d's
+    matrix3x3 obcellMatrix = cell()->GetCellMatrix();
+    const Eigen::Vector3d u1 (obcellMatrix.GetRow(0).AsArray());
+    const Eigen::Vector3d u2 (obcellMatrix.GetRow(1).AsArray());
+    const Eigen::Vector3d u3 (obcellMatrix.GetRow(2).AsArray());
+    //  Find all combinations of unit cell vectors to get wrapped neighbors
+    QVector<Vector3d> uVecs;
+    uVecs.clear();
+    uVecs.reserve(27);
+    short s_1, s_2, s_3; // will be -1, 0, +1 multipliers
+    for (s_1 = -1; s_1 <= 1; ++s_1) {
+      for (s_2 = -1; s_2 <= 1; ++s_2) {
+        for (s_3 = -1; s_3 <= 1; ++s_3) {
+          uVecs.append(s_1*u1 + s_2*u2 + s_3*u3);
+        }
+      }
+    }
+
+    for (int i = 0; i < atmCount; ++i) {
+      const Eigen::Vector3d *pos = (this->atom(i)->pos());
+      double shortest = DBL_MAX;
+      for (QVector<Vector3d>::const_iterator it = uVecs.constBegin(),
+           it_end = uVecs.constEnd(); it != it_end; ++it) {
+        register double current = ((*it + *pos) - coord).squaredNorm();
+        if (current < shortest) {
+          shortest = current;
+        }
+      }
+      (*distances)[i] = shortest;
+    }
+
+    return true;
+  }
+
+
   bool Xtal::getNearestNeighborDistance(const double x,
                                         const double y,
                                         const double z,
                                         double & shortest) const {
-    QList<Atom*> atomList = atoms();
-    if (atomList.size() < 1) return false; // Need at least one atom!
-    QList<Vector3d> atomPositions;
-    for (int i = 0; i < atomList.size(); i++)
-      atomPositions.push_back(*(atomList.at(i)->pos()));
+    if (this->numAtoms() < 1) {
+      return false; // Need at least one atom!
+    }
 
     // Initialize vars
     //  Atomic Positions
     Vector3d v1 (x, y, z);
-    Vector3d v2 = atomPositions.at(0);
+    const Vector3d *v2 = this->atom(0)->pos();
     //  Unit Cell Vectors
     //  First get OB matrix, extract vectors, then convert to Eigen::Vector3d's
     matrix3x3 obcellMatrix = cell()->GetCellMatrix();
@@ -759,18 +963,19 @@ namespace XtalOpt {
       }
     }
 
-    shortest = fabs((v1-v2).norm());
+    shortest = fabs((v1 - (*v2) ).norm());
+
     double distance;
 
     // Find shortest distance
-    for (int j = 0; j < atomList.size(); j++) {
-      v2 = atomPositions.at(j);
+    for (int j = 0; j < this->numAtoms(); j++) {
+      v2 = this->atom(j)->pos();
       // Intercell
-      distance = fabs((v1-v2).norm());
+      distance = fabs((v1 - (*v2)).norm());
       if (distance < shortest) shortest = distance;
       // Intracell
       for (int vecInd = 0; vecInd < uVecs.size(); vecInd++) {
-        distance = fabs(((v2+uVecs.at(vecInd))-v1).norm());
+        distance = fabs((((*v2)+uVecs.at(vecInd)) - v1).norm());
         if (distance < shortest) shortest = distance;
       }
     }
