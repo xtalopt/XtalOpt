@@ -334,10 +334,10 @@ namespace XtalOpt {
     xtal->setFileName(filename);
     xtal->setStatus(Xtal::WaitingForOptimization);
     // Create atoms
-    for (QHash<unsigned int, unsigned int>::const_iterator
+    for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
          it = comp.constBegin(), it_end = comp.constEnd();
          it != it_end; ++it) {
-      for (int i = 0; i < it.value(); ++i) {
+      for (int i = 0; i < it.value().quantity; ++i) {
         xtal->addAtom();
       }
     }
@@ -861,7 +861,7 @@ namespace XtalOpt {
     }
     // Check counts
     for (int i = 0; i < atomTypes.size(); ++i) {
-      if (atomCounts[i] != comp[atomTypes[i]]) {
+      if (atomCounts[i] != comp[atomTypes[i]].quantity) {
         // Incorrect count:
         qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
         if (err != NULL) {
