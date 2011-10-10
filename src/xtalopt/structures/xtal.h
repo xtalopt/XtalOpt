@@ -207,22 +207,21 @@ namespace XtalOpt {
       cell()->SetData(m);};
     void setCellInfo(const OpenBabel::vector3 &v1, const OpenBabel::vector3 &v2, const OpenBabel::vector3 &v3) {
       cell()->SetData(v1, v2, v3);};
-    void setVolume(double Volume);
+    virtual void setVolume(double Volume);
     // rescale cell can be used to "fix" any cell parameter at a particular value.
     // Simply pass the fixed values and use "0" for any non-fixed parameters.
     // Volume will be preserved.
-    void rescaleCell(double a, double b, double c, double alpha, double beta, double gamma);
+    virtual void rescaleCell(double a, double b, double c,
+                             double alpha, double beta, double gamma);
 
     // Self-correction
     bool fixAngles(int attempts = 100);
     void wrapAtomsToCell();
 
     // Spacegroup
-    void findSpaceGroup(double prec = 0.05);
+    virtual void findSpaceGroup(double prec = 0.05);
 
-   private slots:
-
-   private:
+   protected:
     void ctor(QObject *parent=0);
     OpenBabel::OBUnitCell* cell() const;
     uint m_spgNumber;

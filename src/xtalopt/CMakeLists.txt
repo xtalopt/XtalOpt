@@ -5,6 +5,9 @@ set( xtalopt_SRCS
      extension.cpp
      xtalopt.cpp
      genetic.cpp
+     structures/molecularxtal.cpp
+     structures/submolecule.cpp
+     structures/submoleculesource.cpp
      structures/xtal.cpp
      optimizers/xtaloptoptimizer.cpp
      optimizers/vasp.cpp

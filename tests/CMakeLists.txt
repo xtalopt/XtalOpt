@@ -23,9 +23,12 @@ link_directories(
 )
 
 set(tests
+  molecularxtal
   optbase
   structure
   spglib
+  submolecule
+  submoleculesource
   randdouble
   xtal
   xtaloptunit

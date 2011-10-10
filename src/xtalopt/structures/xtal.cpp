@@ -124,9 +124,9 @@ namespace XtalOpt {
 
     // Store position of atoms in fractional units
     QList<Atom*> atomList       = atoms();
-    QList<Vector3d*> fracCoordsList;
+    QList<Vector3d> fracCoordsList;
     for (int i = 0; i < atomList.size(); i++)
-      fracCoordsList.append(cartToFrac(atomList.at(i)->pos()));
+      fracCoordsList.append(cartToFrac(*atomList.at(i)->pos()));
 
     double nA = getA();
     double nB = getB();
