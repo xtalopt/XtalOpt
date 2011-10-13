@@ -414,6 +414,10 @@ namespace XtalOpt {
          it != it_end; ++it) {
       it.value().minRadius = xtalopt->scaleFactor *
           OpenBabel::etab.GetCovalentRad(it.key());
+      // Ensure that all minimum radii are > 0.25 (esp. H!)
+      if (it.value().minRadius < 0.25) {
+        it.value().minRadius = 0.25;
+      }
     }
   }
 
