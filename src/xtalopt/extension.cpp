@@ -20,10 +20,12 @@
 
 #include <globalsearch/macros.h>
 
-#include <avogadro/primitive.h>
-#include <avogadro/molecule.h>
 #include <avogadro/atom.h>
 #include <avogadro/glwidget.h>
+#include <avogadro/molecule.h>
+#include <avogadro/primitive.h>
+#include <avogadro/tool.h>
+#include <avogadro/toolgroup.h>
 
 #include <openbabel/generic.h>
 #include <openbabel/mol.h>
@@ -113,6 +115,13 @@ namespace XtalOpt {
     }
 
     emit moleculeChanged(xtal, Extension::DeleteOld);
+
+    // If the draw tool is currently selected, switch to navigate
+    Avogadro::Tool *currentTool =
+        GLWidget::current()->toolGroup()->activeTool();
+    if (currentTool->identifier().compare("Draw") == 0) {
+      GLWidget::current()->toolGroup()->setActiveTool("Navigate");
+    }
   }
 
   QUndoCommand* XtalOptExtension::performAction( QAction *, GLWidget *widget )
