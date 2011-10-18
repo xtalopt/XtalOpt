@@ -112,11 +112,11 @@ namespace XtalOpt {
       a_min,            a_max,		// Limits for lattice
       b_min,            b_max,
       c_min,            c_max,
-      alpha_min,	alpha_max,
+      alpha_min,        alpha_max,
       beta_min,         beta_max,
-      gamma_min,	gamma_max,
-      vol_min,		vol_max,        vol_fixed,
-      scaleFactor;
+      gamma_min,        gamma_max,
+      vol_min, vol_max, vol_fixed,
+      scaleFactor, minRadius;
 
     double tol_xcLength;        	// Duplicate matching tolerances
     double tol_xcAngle;
