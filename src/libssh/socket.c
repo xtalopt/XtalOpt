@@ -694,7 +694,8 @@ void ssh_execute_command(const char *command, socket_t in, socket_t out){
   dup2(out,2);
   close(in);
   close(out);
-  execve(args[0],(char * const *)args,(char * const *)environ);
+  // XtalOpt change: This should enable compilation on mac.
+  execvp(args[0],(char * const *)args);
   exit(1);
 }
 
