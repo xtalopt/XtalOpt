@@ -200,6 +200,17 @@ m_queue->unlockForNaming(newStructure);
     void appendToJobStartTracker(Structure *s);
 
     /**
+     * Add a structure request. This must be called every time a structure is
+     * added via unlockForNaming(), and must be called first. This will not
+     * actually request the structure, it is only used for internal
+     * bookkeeping.
+     *
+     * @note The mutex of m_tracker is locked while incrementing the request
+     * counter.
+     */
+    void addManualStructureRequest(int requests = 1);
+
+    /**
      * @return All Structures in m_runningTracker
      */
     QList<Structure*> getAllRunningStructures();

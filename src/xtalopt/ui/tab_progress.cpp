@@ -22,6 +22,7 @@
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
+#include <QtGui/QFileDialog>
 #include <QtCore/QTimer>
 #include <QtCore/QSettings>
 #include <QtCore/QMutexLocker>
@@ -492,31 +493,48 @@ namespace XtalOpt {
     }
 
     QTableWidgetItem *item = ui.table_list->itemAt(p);
-    if (!item) {
-      m_context_mutex->unlock();
-      return;
+    bool xtalIsSelected = true;
+    int index = -1;
+    if (item == NULL) {
+      xtalIsSelected = false;
+    }
+    else {
+      index = item->row();
     }
 
-    int index = item->row();
+    // Used to determine available options:
+    bool canGenerateOffspring =
+        (this->m_opt->queue()->getAllOptimizedStructures().size() >= 3);
 
     qDebug() << "Context menu at row " << index;
 
     // Set m_context_xtal after locking to avoid threading issues.
-    Xtal* xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
+    Xtal *xtal = NULL;
+    if (index != -1) {
+      xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
+    }
 
-    xtal->lock()->lockForRead();
+    bool isKilled = false;
+    if (xtal != NULL) {
+      xtal->lock()->lockForRead();
+      m_context_xtal = xtal;
 
-    m_context_xtal = xtal;
+      Xtal::State state = m_context_xtal->getStatus();
+      isKilled = (state == Xtal::Killed || state == Xtal::Removed);
 
-    Xtal::State state = m_context_xtal->getStatus();
+      xtal->lock()->unlock();
+    }
 
     QMenu menu;
     QAction *a_restart  = menu.addAction("&Restart job");
     QAction *a_kill	= menu.addAction("&Kill structure");
     QAction *a_unkill	= menu.addAction("Un&kill structure");
-    QAction *a_resetFail= menu.addAction("Reset &failure count");
+    QAction *a_resetFail = menu.addAction("Reset &failure count");
     menu.addSeparator();
-    QAction *a_randomize= menu.addAction("Replace with &new random structure");
+    QAction *a_randomize = menu.addAction("Replace with &new random structure");
+    QAction *a_offspring = menu.addAction("Replace with new &offspring");
+    menu.addSeparator();
+    QAction *a_injectSeed= menu.addAction("Inject &seed structure");
     menu.addSeparator();
     QAction *a_clipPOSCAR= menu.addAction("&Copy POSCAR to clipboard");
 
@@ -524,11 +542,19 @@ namespace XtalOpt {
     connect(a_restart, SIGNAL(triggered()), this, SLOT(restartJobProgress()));
     connect(a_kill, SIGNAL(triggered()), this, SLOT(killXtalProgress()));
     connect(a_unkill, SIGNAL(triggered()), this, SLOT(unkillXtalProgress()));
-    connect(a_resetFail, SIGNAL(triggered()), this, SLOT(resetFailureCountProgress()));
-    connect(a_randomize, SIGNAL(triggered()), this, SLOT(randomizeStructureProgress()));
-    connect(a_clipPOSCAR, SIGNAL(triggered()), this, SLOT(clipPOSCARProgress()));
+    connect(a_resetFail, SIGNAL(triggered()),
+            this, SLOT(resetFailureCountProgress()));
+    connect(a_randomize, SIGNAL(triggered()),
+            this, SLOT(randomizeStructureProgress()));
+    connect(a_offspring, SIGNAL(triggered()),
+            this, SLOT(replaceWithOffspringProgress()));
+    connect(a_injectSeed, SIGNAL(triggered()),
+            this, SLOT(injectStructureProgress()));
+    connect(a_clipPOSCAR, SIGNAL(triggered()), this,
+            SLOT(clipPOSCARProgress()));
 
-    if (state == Xtal::Killed || state == Xtal::Removed) {
+    // Disable / hide illogical operations
+    if (isKilled) {
       a_kill->setVisible(false);
       a_restart->setVisible(false);
     }
@@ -536,9 +562,22 @@ namespace XtalOpt {
       a_unkill->setVisible(false);
     }
 
-    m_context_xtal->lock()->unlock();
+    if (!canGenerateOffspring) {
+      a_offspring->setDisabled(true);
+    }
+
+    if (!xtalIsSelected) {
+      a_restart->setEnabled(false);
+      a_kill->setEnabled(false);
+      a_unkill->setEnabled(false);
+      a_resetFail->setEnabled(false);
+      a_randomize->setEnabled(false);
+      a_offspring->setEnabled(false);
+      a_injectSeed->setEnabled(true);
+      a_clipPOSCAR->setEnabled(false);
+    }
+
     QAction *selection = menu.exec(QCursor::pos());
-    qDebug() << selection;
 
     if (selection == 0) {
       m_context_xtal = 0;
@@ -550,6 +589,10 @@ namespace XtalOpt {
     a_kill->disconnect();
     a_unkill->disconnect();
     a_resetFail->disconnect();
+    if (canGenerateOffspring) {
+      a_offspring->disconnect();
+    }
+    a_injectSeed->disconnect();
     a_randomize->disconnect();
 
     m_context_mutex->unlock();
@@ -704,6 +747,71 @@ namespace XtalOpt {
     newInfoUpdate(m_context_xtal);
     restartJobProgress_(1);
     // above function handles background processing signal
+  }
+
+  void TabProgress::replaceWithOffspringProgress()
+  {
+    emit startingBackgroundProcessing();
+    QtConcurrent::run(this, &TabProgress::replaceWithOffspringProgress_);
+  }
+
+  void TabProgress::replaceWithOffspringProgress_()
+  {
+    if (!m_context_xtal) {
+      emit finishedBackgroundProcessing();
+      return;
+    }
+
+    // End job if currently running
+    if (m_context_xtal->getJobID()) {
+      m_opt->queueInterface()->stopJob(m_context_xtal);
+    }
+
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    Q_ASSERT_X(xtalopt != NULL, Q_FUNC_INFO, "m_opt is not an instance of "
+               "XtalOpt.");
+
+    xtalopt->replaceWithOffspring(m_context_xtal, "manual");
+
+    // Restart job:
+    newInfoUpdate(m_context_xtal);
+    restartJobProgress_(1);
+    // above function handles background processing signal
+  }
+
+  void TabProgress::injectStructureProgress()
+  {
+    // It doesn't matter what xtal was selected
+    m_context_xtal = NULL;
+
+    // Prompt for filename
+    QSettings settings; // Already set up in avogadro/src/main.cpp
+    QString filename = settings.value("xtalopt/opt/seedPath",
+                                      m_opt->filePath).toString();
+
+    // Launch file dialog
+    QFileDialog dialog (m_dialog,
+                        QString("Select structure file to use as seed"),
+                        filename,
+                        "Common formats (*POSCAR *CONTCAR *.got *.cml *cif"
+                        " *.out);;All Files (*)");
+    dialog.selectFile(filename);
+    dialog.setFileMode(QFileDialog::ExistingFile);
+    if (dialog.exec())
+      filename = dialog.selectedFiles().first();
+    else { return;} // User cancel file selection.
+
+    settings.setValue("xtalopt/opt/seedPath", filename);
+
+    // Load in background
+    QtConcurrent::run(this, &TabProgress::injectStructureProgress_,
+                      filename);
+  }
+
+  void TabProgress::injectStructureProgress_(const QString & filename)
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    xtalopt->addSeed(filename);
   }
 
   void TabProgress::clipPOSCARProgress()

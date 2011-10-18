@@ -255,7 +255,7 @@ namespace GlobalSearch {
     m_jobStartTracker.unlock();
 
     // Generate requests
-    m_tracker->lockForRead();
+    m_tracker->lockForWrite(); // Write lock for m_requestedStructures var
     m_newStructureTracker.lockForRead();
 
     // Avoid convience function calls here, as occaisional deadlocks
@@ -565,6 +565,12 @@ namespace GlobalSearch {
         s->setStatus(Structure::Empty);
         locker.unlock();
         m_opt->replaceWithRandom(s, tr("excessive failures"));
+        s->setStatus(Structure::Restart);
+        emit structureUpdated(s);
+      case OptBase::FA_NewOffspring:
+        s->setStatus(Structure::Empty);
+        locker.unlock();
+        m_opt->replaceWithOffspring(s, tr("excessive failures"));
         s->setStatus(Structure::Restart);
         emit structureUpdated(s);
         return;
@@ -908,8 +914,8 @@ namespace GlobalSearch {
 
     // Discard structure if we're shutting down
     if (m_isDestroying) {
-      m_tracker->unlock();
       --m_requestedStructures;
+      m_tracker->unlock();
       return;
     }
 
@@ -959,6 +965,13 @@ namespace GlobalSearch {
     emit structureStarted(s);
   }
   /// @endcond
+
+  void QueueManager::addManualStructureRequest(int requests)
+  {
+    m_tracker->lockForWrite();
+    m_requestedStructures += requests;
+    m_tracker->unlock();
+  }
 
   void QueueManager::appendToJobStartTracker(Structure *s)
   {
