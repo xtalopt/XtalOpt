@@ -481,7 +481,7 @@ able to create offspring that meet this restriction.</string>
          <string> * radii</string>
         </property>
         <property name="decimals">
-         <number>5</number>
+         <number>2</number>
         </property>
         <property name="maximum">
          <double>1.000000000000000</double>
@@ -494,7 +494,7 @@ able to create offspring that meet this restriction.</string>
         </property>
        </widget>
       </item>
-      <item row="13" column="3">
+      <item row="14" column="3">
        <spacer name="verticalSpacer_2">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
@@ -540,9 +540,61 @@ able to create offspring that meet this restriction.</string>
           <property name="text">
            <string>Scale factor:</string>
           </property>
+          <property name="buddy">
+           <cstring>spin_scaleFactor</cstring>
+          </property>
          </widget>
         </item>
        </layout>
+      </item>
+      <item row="13" column="0" colspan="2">
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_9">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Minimum radius:</string>
+          </property>
+          <property name="buddy">
+           <cstring>spin_minRadius</cstring>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="13" column="3">
+       <widget class="QDoubleSpinBox" name="spin_minRadius">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="suffix">
+         <string> Å</string>
+        </property>
+        <property name="decimals">
+         <number>2</number>
+        </property>
+        <property name="singleStep">
+         <double>0.050000000000000</double>
+        </property>
+        <property name="value">
+         <double>0.250000000000000</double>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
@@ -567,7 +619,10 @@ able to create offspring that meet this restriction.</string>
   <tabstop>spin_vol_max</tabstop>
   <tabstop>cb_fixedVolume</tabstop>
   <tabstop>spin_fixedVolume</tabstop>
+  <tabstop>cb_interatomicDistanceLimit</tabstop>
   <tabstop>spin_scaleFactor</tabstop>
+  <tabstop>spin_minRadius</tabstop>
+  <tabstop>table_comp</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -664,6 +719,38 @@ able to create offspring that meet this restriction.</string>
     <hint type="destinationlabel">
      <x>720</x>
      <y>276</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_interatomicDistanceLimit</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_9</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>537</x>
+     <y>265</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>701</x>
+     <y>303</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_interatomicDistanceLimit</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spin_minRadius</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>511</x>
+     <y>277</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>846</x>
+     <y>301</y>
     </hint>
    </hints>
   </connection>

@@ -74,6 +74,8 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.spin_scaleFactor, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
+    connect(ui.spin_minRadius, SIGNAL(valueChanged(double)),
+            this, SLOT(updateDimensions()));
     connect(ui.cb_interatomicDistanceLimit, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
 
@@ -114,6 +116,7 @@ namespace XtalOpt {
     settings->setValue("limits/volume/max",   xtalopt->vol_max);
     settings->setValue("limits/volume/fixed", xtalopt->vol_fixed);
     settings->setValue("limits/scaleFactor",  xtalopt->scaleFactor);
+    settings->setValue("limits/minRadius",    xtalopt->minRadius);
     settings->setValue("using/fixedVolume",   xtalopt->using_fixed_volume);
     settings->setValue("using/interatomicDistanceLimit",
                        xtalopt->using_interatomicDistanceLimit);
@@ -167,6 +170,7 @@ namespace XtalOpt {
     ui.spin_vol_max->setValue(		settings->value("limits/volume/max",	100000).toDouble());
     ui.spin_fixedVolume->setValue(	settings->value("limits/volume/fixed",	500).toDouble()	);
     ui.spin_scaleFactor->setValue(	settings->value("limits/scaleFactor",0.5).toDouble());
+    ui.spin_minRadius->setValue(	  settings->value("limits/minRadius",0.25).toDouble());
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
     ui.cb_interatomicDistanceLimit->setChecked(	settings->value("using/interatomicDistanceLimit",false).toBool());
 
@@ -224,6 +228,7 @@ namespace XtalOpt {
     ui.spin_vol_max->setValue(     xtalopt->vol_max);
     ui.spin_fixedVolume->setValue( xtalopt->vol_fixed);
     ui.spin_scaleFactor->setValue( xtalopt->scaleFactor);
+    ui.spin_minRadius->setValue(   xtalopt->minRadius);
     ui.cb_fixedVolume->setChecked( xtalopt->using_fixed_volume);
     ui.cb_interatomicDistanceLimit->setChecked(
           xtalopt->using_interatomicDistanceLimit);
@@ -398,8 +403,10 @@ namespace XtalOpt {
     xtalopt->using_interatomicDistanceLimit =
         ui.cb_interatomicDistanceLimit->isChecked();
 
-    if (xtalopt->scaleFactor != ui.spin_scaleFactor->value()) {
+    if (xtalopt->scaleFactor != ui.spin_scaleFactor->value() ||
+        xtalopt->minRadius   != ui.spin_minRadius->value()) {
       xtalopt->scaleFactor = ui.spin_scaleFactor->value();
+      xtalopt->minRadius = ui.spin_minRadius->value();
       this->updateMinRadii();
       this->updateCompositionTable();
     }
@@ -415,8 +422,8 @@ namespace XtalOpt {
       it.value().minRadius = xtalopt->scaleFactor *
           OpenBabel::etab.GetCovalentRad(it.key());
       // Ensure that all minimum radii are > 0.25 (esp. H!)
-      if (it.value().minRadius < 0.25) {
-        it.value().minRadius = 0.25;
+      if (it.value().minRadius < xtalopt->minRadius) {
+        it.value().minRadius = xtalopt->minRadius;
       }
     }
   }
