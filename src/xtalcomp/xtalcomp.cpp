@@ -729,7 +729,7 @@ void XtalComp::findCandidateTransforms()
 #endif
               // Verify that this is a pure rot/ref matrix (allow a rather
               // large fudge factor here -- the vectors may not match exactly)
-              assert(fabs(fabs(R.determinant()) - 1.0) < .1);
+              //assert(fabs(fabs(R.determinant()) - 1.0) < .1);
             }
           }
         }
