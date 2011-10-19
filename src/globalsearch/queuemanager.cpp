@@ -759,18 +759,15 @@ namespace GlobalSearch {
 
   void QueueManager::killStructure(Structure *s) {
     // End job if currently running
+    s->lock()->lockForWrite();
+    s->stopOptTimer();
     if ( s->getStatus() != Structure::Optimized ) {
-      s->lock()->lockForWrite();
-      s->stopOptTimer();
       s->setStatus(Structure::Killed);
-      s->lock()->unlock();
     }
     else {
-      s->lock()->lockForWrite();
-      s->stopOptTimer();
       s->setStatus(Structure::Removed);
-      s->lock()->unlock();
     }
+    s->lock()->unlock();
     stopJob(s);
     emit structureKilled(s);
   }
@@ -845,6 +842,9 @@ namespace GlobalSearch {
 
   void QueueManager::stopJob(Structure *s)
   {
+    m_jobStartTracker.lockForWrite();
+    m_jobStartTracker.remove(s);
+    m_jobStartTracker.unlock();
     m_opt->queueInterface()->stopJob(s);
   }
 
