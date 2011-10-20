@@ -334,10 +334,10 @@ namespace XtalOpt {
     xtal->setFileName(filename);
     xtal->setStatus(Xtal::WaitingForOptimization);
     // Create atoms
-    for (QHash<unsigned int, unsigned int>::const_iterator
+    for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
          it = comp.constBegin(), it_end = comp.constEnd();
          it != it_end; ++it) {
-      for (int i = 0; i < it.value(); ++i) {
+      for (int i = 0; i < it.value().quantity; ++i) {
         xtal->addAtom();
       }
     }
@@ -465,16 +465,24 @@ namespace XtalOpt {
 
     // Populate crystal
     QList<uint> atomicNums = comp.keys();
-    uint atomicNum;
-    uint q;
+    // Sort atomic number by decreasing minimum radius. Adding the "larger"
+    // atoms first encourages a more even (and ordered) distribution
+    for (int i = 0; i < atomicNums.size()-1; ++i) {
+      for (int j = i + 1; j < atomicNums.size(); ++j) {
+        if (this->comp.value(atomicNums[i]).minRadius <
+            this->comp.value(atomicNums[j]).minRadius) {
+          atomicNums.swap(i,j);
+        }
+      }
+    }
+
+    unsigned int atomicNum;
+    unsigned int q;
     for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
       atomicNum = atomicNums.at(num_idx);
-      q = comp.value(atomicNum);
-      double IAD = (using_shortestInteratomicDistance)
-                ? shortestInteratomicDistance
-                : -1.0;
+      q = comp.value(atomicNum).quantity;
       for (uint i = 0; i < q; i++) {
-        if (!xtal->addAtomRandomly(atomicNum, IAD)) {
+        if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
           xtal->deleteLater();
           debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
                 "specified interatomic distance.");
@@ -853,7 +861,7 @@ namespace XtalOpt {
     }
     // Check counts
     for (int i = 0; i < atomTypes.size(); ++i) {
-      if (atomCounts[i] != comp[atomTypes[i]]) {
+      if (atomCounts[i] != comp[atomTypes[i]].quantity) {
         // Incorrect count:
         qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
         if (err != NULL) {
@@ -956,18 +964,23 @@ namespace XtalOpt {
     }
 
     // Check interatomic distances
-    if (using_shortestInteratomicDistance) {
-      double distance = 0;
-      if (xtal->getShortestInteratomicDistance(distance)) {
-        if (distance < shortestInteratomicDistance) {
-          qDebug() << "Discarding structure -- Bad IAD ("
-                   << distance << " < "
-                   << shortestInteratomicDistance << ")";
-          if (err != NULL) {
-            *err = "Two atoms are too close together.";
-          }
-          return false;
+    if (using_interatomicDistanceLimit) {
+      int atom1, atom2;
+      double IAD;
+      if (!xtal->checkInteratomicDistances(this->comp, &atom1, &atom2, &IAD)){
+        Atom *a1 = xtal->atom(atom1);
+        Atom *a2 = xtal->atom(atom2);
+        const double minIAD =
+            this->comp.value(a1->atomicNumber()).minRadius +
+            this->comp.value(a2->atomicNumber()).minRadius;
+
+        qDebug() << "Discarding structure -- Bad IAD ("
+                 << IAD << " < "
+                 << minIAD << ")";
+        if (err != NULL) {
+          *err = "Two atoms are too close together.";
         }
+        return false;
       }
     }
 
@@ -1370,7 +1383,8 @@ namespace XtalOpt {
       xtal->setupConnections();
       // Add empty atoms to xtal, updateXtal will populate it
       for (int j = 0; j < keys.size(); j++) {
-        for (uint k = 0; k < comp.value(keys.at(j)); k++)
+        unsigned int quantity = comp.value(keys.at(j)).quantity;
+        for (uint k = 0; k < quantity; k++)
           xtal->addAtom();
       }
       xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
