@@ -169,6 +169,11 @@ m_queue->unlockForNaming(newStructure);
      */
     void newStatusOverview(int optimized, int running, int failing);
 
+    // Work around for Qt 4.6.3
+#if QT_VERSION == 0x040603
+    void newStructureQueued();
+#endif // QT_VERSION == 4.6.3
+
    public slots:
     /**
      * Reset all trackers in trackerList
@@ -460,7 +465,14 @@ m_queue->unlockForNaming(newStructure);
     /// @cond
     void addStructureToSubmissionQueue_(Structure *s, int optStep);
     void startJob_(Structure *s);
+
+#if QT_VERSION == 0x040603
+  protected slots:
+#endif // QT_VERSION == 4.6.3
     void unlockForNaming_();
+#if QT_VERSION == 0x040603
+  protected:
+#endif // QT_VERSION == 4.6.3
     /// @endcond
 
     // Trackers for above handlers
