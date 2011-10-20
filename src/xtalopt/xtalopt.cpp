@@ -90,10 +90,14 @@ namespace XtalOpt {
 #endif // ENABLE_SSH
 
     // Wait for save to finish
-    while (savePending) {
-      qDebug() << "Spinning on save before destroying XtalOpt...";
+    unsigned int timeout = 30;
+    while (timeout > 0 && savePending) {
+      qDebug() << "Spinning on save before destroying XtalOpt ("
+               << timeout << "seconds until timeout).";
+      timeout--;
       GS_SLEEP(1);
     };
+
     savePending = true;
 
     // Clean up various members
