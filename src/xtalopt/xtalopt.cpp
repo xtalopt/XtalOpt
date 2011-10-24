@@ -57,7 +57,8 @@ namespace XtalOpt {
 
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
     OptBase(parent),
-    m_initWC(new SlottedWaitCondition (this))
+    m_initWC(new SlottedWaitCondition (this)),
+    m_isMolecular(false)
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";

@@ -129,6 +129,8 @@ namespace XtalOpt {
     QHash<uint, XtalCompositionStruct> comp;
     QStringList seedList;
 
+    bool isMolecularXtalSearch() {return m_isMolecular;}
+
     QMutex *xtalInitMutex;
 
   public slots:
@@ -141,6 +143,15 @@ namespace XtalOpt {
     void resetSpacegroups();
     void resetDuplicates();
     void checkForDuplicates();
+    void setMolecularXtalSearch(bool b)
+    {
+      if (m_isMolecular == b) return;
+      m_isMolecular = b;
+      emit isMolecularXtalSearchChanged(b);
+    }
+
+  Q_SIGNALS:
+    void isMolecularXtalSearchChanged(bool);
 
    protected:
     friend class XtalOptUnitTest;
@@ -153,6 +164,7 @@ namespace XtalOpt {
     QString getTemplateKeywordHelp_xtalopt();
 
     GlobalSearch::SlottedWaitCondition *m_initWC;
+    bool m_isMolecular;
   };
 
 } // end namespace XtalOpt
