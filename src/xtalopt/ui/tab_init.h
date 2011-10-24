@@ -21,6 +21,8 @@
 
 #include "ui_tab_init.h"
 
+class QTableWidgetItem;
+
 namespace XtalOpt {
   class XtalOptDialog;
   class XtalOpt;
@@ -38,13 +40,19 @@ namespace XtalOpt {
       CT_Molecular
     };
 
-    enum CompositionColumns
+    enum CompositionColumn
     {
       CC_SYMBOL = 0,
       CC_ATOMICNUM,
       CC_QUANTITY,
       CC_MASS,
       CC_MINRADIUS
+    };
+
+    enum MXtalCompositionColumn
+    {
+      MC_QUANTITY = 0,
+      MC_FILENAME
     };
 
   public slots:
@@ -58,6 +66,14 @@ namespace XtalOpt {
     void updateCompositionTable();
     void updateDimensions();
     void updateMinRadii();
+
+    void updateTables();
+
+    void addSubMolecule();
+    void removeSubMolecule();
+
+    void updateMXtalCompositionTable();
+    void updateCompFromMComp();
 
   signals:
 

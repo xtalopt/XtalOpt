@@ -17,8 +17,8 @@
    <string/>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="2" column="0">
-    <widget class="QGroupBox" name="groupBox_2">
+   <item row="3" column="0">
+    <widget class="QGroupBox" name="gb_comp">
      <property name="title">
       <string>Composition</string>
      </property>
@@ -59,6 +59,9 @@ etc.</string>
         <property name="editTriggers">
          <set>QAbstractItemView::NoEditTriggers</set>
         </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectRows</enum>
+        </property>
         <property name="sortingEnabled">
          <bool>true</bool>
         </property>
@@ -98,7 +101,7 @@ etc.</string>
      </layout>
     </widget>
    </item>
-   <item row="1" column="1" rowspan="2">
+   <item row="1" column="1" rowspan="3">
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>Unit Cell Parameters</string>
@@ -604,7 +607,10 @@ able to create offspring that meet this restriction.</string>
      <item>
       <widget class="QLabel" name="label_12">
        <property name="text">
-        <string>Crystal type:</string>
+        <string>Crystal &amp;type:</string>
+       </property>
+       <property name="buddy">
+        <cstring>combo_type</cstring>
        </property>
       </widget>
      </item>
@@ -623,6 +629,69 @@ able to create offspring that meet this restriction.</string>
       </widget>
      </item>
     </layout>
+   </item>
+   <item row="2" column="0">
+    <widget class="QGroupBox" name="gb_mcomp">
+     <property name="title">
+      <string>Molecular Composition</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QTableWidget" name="table_mcomp">
+        <property name="editTriggers">
+         <set>QAbstractItemView::NoEditTriggers</set>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectRows</enum>
+        </property>
+        <attribute name="horizontalHeaderStretchLastSection">
+         <bool>true</bool>
+        </attribute>
+        <column>
+         <property name="text">
+          <string>Quantity</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Filename</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_5">
+        <item>
+         <widget class="QPushButton" name="push_add">
+          <property name="text">
+           <string>&amp;Add</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="push_remove">
+          <property name="text">
+           <string>&amp;Remove</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
    </item>
   </layout>
  </widget>
