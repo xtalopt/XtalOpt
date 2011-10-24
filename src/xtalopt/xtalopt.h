@@ -36,11 +36,18 @@ namespace GlobalSearch {
 }
 
 namespace XtalOpt {
+  class SubMoleculeSource;
   class XtalOptDialog;
 
   struct XtalCompositionStruct
   {
     double minRadius;
+    unsigned int quantity;
+  };
+
+  struct MolecularCompStruct
+  {
+    SubMoleculeSource *source;
     unsigned int quantity;
   };
 
@@ -127,6 +134,7 @@ namespace XtalOpt {
     bool using_interatomicDistanceLimit;
 
     QHash<uint, XtalCompositionStruct> comp;
+    QList<MolecularCompStruct> mcomp;
     QStringList seedList;
 
     bool isMolecularXtalSearch() {return m_isMolecular;}
