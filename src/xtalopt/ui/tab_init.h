@@ -33,6 +33,11 @@ namespace XtalOpt {
     explicit TabInit( XtalOptDialog *parent, XtalOpt *p );
     virtual ~TabInit();
 
+    enum CrystalType {
+      CT_Ionic = 0,
+      CT_Molecular
+    };
+
     enum CompositionColumns
     {
       CC_SYMBOL = 0,
@@ -49,6 +54,7 @@ namespace XtalOpt {
     void updateGUI();
     void getComposition(const QString & str);
     void updateComposition();
+    void updateCrystalType();
     void updateCompositionTable();
     void updateDimensions();
     void updateMinRadii();

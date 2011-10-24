@@ -33,6 +33,10 @@ namespace XtalOpt {
   {
     ui.setupUi(m_tab_widget);
 
+    // crystal type
+    connect(ui.combo_type, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateCrystalType()));
+
     // composition connections
     connect(ui.edit_composition, SIGNAL(textChanged(QString)),
             this, SLOT(getComposition(QString)));
@@ -100,6 +104,8 @@ namespace XtalOpt {
     const int VERSION = 2;
     settings->setValue("version",VERSION);
 
+    settings->setValue("isMolecularXtalSearch",
+                       xtalopt->isMolecularXtalSearch());
     settings->setValue("limits/a/min",        xtalopt->a_min);
     settings->setValue("limits/b/min",        xtalopt->b_min);
     settings->setValue("limits/c/min",        xtalopt->c_min);
@@ -154,6 +160,12 @@ namespace XtalOpt {
     settings->beginGroup("xtalopt/init/");
     int loadedVersion = settings->value("version", 0).toInt();
 
+    if (settings->value("isMolecularXtalSearch", false).toBool()) {
+      ui.combo_type->setCurrentIndex(CT_Molecular);
+    }
+    else {
+      ui.combo_type->setCurrentIndex(CT_Ionic);
+    }
     ui.spin_a_min->setValue(		settings->value("limits/a/min",		3).toDouble()   );
     ui.spin_b_min->setValue(		settings->value("limits/b/min",		3).toDouble()   );
     ui.spin_c_min->setValue(		settings->value("limits/c/min",		3).toDouble()   );
@@ -306,6 +318,24 @@ namespace XtalOpt {
 
     this->updateMinRadii();
     this->updateCompositionTable();
+  }
+
+  void TabInit::updateCrystalType()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    switch(static_cast<CrystalType>(ui.combo_type->currentIndex()))
+    {
+    default:
+    case CT_Ionic:
+      xtalopt->setMolecularXtalSearch(false);
+      break;
+    case CT_Molecular:
+      xtalopt->setMolecularXtalSearch(true);
+      break;
+    }
+
+    return;
   }
 
   void TabInit::updateCompositionTable()
