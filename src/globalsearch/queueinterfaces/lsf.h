@@ -68,6 +68,8 @@ namespace GlobalSearch {
     QString m_bjobs;
     QString m_bsub;
     QString m_bkill;
+    // Clean remote directories when a job is stopped?
+    bool m_cleanRemoteOnStop;
   };
 }
 

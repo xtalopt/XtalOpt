@@ -38,7 +38,8 @@ namespace GlobalSearch {
     m_qstat("qstat"),
     m_qsub("qsub"),
     m_qdel("qdel"),
-    m_interval(1)
+    m_interval(1),
+    m_cleanRemoteOnStop(false)
   {
     m_idString = "SGE";
     m_templates.append("job.sh");
@@ -165,6 +166,8 @@ namespace GlobalSearch {
     m_qstat = settings->value("qstat", "qstat").toString();
     m_qdel  = settings->value("qdel",  "qdel").toString();
     this->setInterval(settings->value("interval", 1).toInt());
+    m_cleanRemoteOnStop = settings->value("cleanRemoteOnStop", false).toBool();
+
 
     settings->endGroup();
     settings->endGroup();
@@ -204,6 +207,7 @@ namespace GlobalSearch {
     settings->setValue("qstat", m_qstat);
     settings->setValue("qdel",  m_qdel);
     settings->setValue("interval",  m_interval);
+    settings->setValue("cleanRemoteOnStop", m_cleanRemoteOnStop);
 
     settings->endGroup();
     settings->endGroup();
@@ -270,30 +274,29 @@ namespace GlobalSearch {
 
     // jobid has not been set, cannot delete!
     if (s->getJobID() == 0) {
+      if (m_cleanRemoteOnStop) {
+        this->cleanRemoteDirectory(s, ssh);
+      }
       m_opt->ssh()->unlockConnection(ssh);
       return true;
     }
 
-    // TODO Allow a path to be added here if needed
     const QString command = m_qdel + " " + QString::number(s->getJobID());
 
     // Execute
     QString stdout_str;
     QString stderr_str;
     int ec;
+    bool ret = true;
     if (!ssh->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
-      // Most likely job is already gone from queue. Set jobID to 0.
-      m_opt->warning(tr("Error executing %1 (this can likely be ignored): %2")
-                     .arg(command).arg(stderr_str));
-      s->setJobID(0);
-      m_opt->ssh()->unlockConnection(ssh);
-      return false;
+      // Most likely job is already gone from queue.
+      ret = false;
     }
 
     s->setJobID(0);
     s->stopOptTimer();
     m_opt->ssh()->unlockConnection(ssh);
-    return true;
+    return ret;
   }
 
   QueueInterface::QueueStatus SgeQueueInterface::getStatus(Structure *s) const
