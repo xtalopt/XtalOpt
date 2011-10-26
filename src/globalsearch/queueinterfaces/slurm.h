@@ -71,6 +71,8 @@ namespace GlobalSearch {
     QString m_scancel;
     // Refresh interval for queue data
     int m_interval;
+    // Clean remote directories when a job is stopped?
+    bool m_cleanRemoteOnStop;
   };
 }
 

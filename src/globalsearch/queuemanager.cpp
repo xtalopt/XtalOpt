@@ -349,7 +349,11 @@ namespace GlobalSearch {
         handleStepOptimizedStructure(structure);
         break;
       case Structure::Optimized:
-        handleOptimizedStructure(structure);
+        // Shouldn't happen -- this is called by handleStepOptimizedStructure
+        // when needed. There is a race condition between the check* functions
+        // -- The structure may be removed from the list of running structures
+        // by checkPopulation before checkRunning is called.
+        //handleOptimizedStructure(structure);
         break;
       case Structure::Error:
         handleErrorStructure(structure);
@@ -456,6 +460,8 @@ namespace GlobalSearch {
     m_runningTracker.lockForWrite();
     m_runningTracker.remove(s);
     m_runningTracker.unlock();
+
+    emit structureFinished(s);
   }
   /// @endcond
 
@@ -501,11 +507,8 @@ namespace GlobalSearch {
     // Otherwise, it's done
     else {
       s->setStatus(Structure::Optimized);
-      m_runningTracker.lockForWrite();
-      m_runningTracker.remove(s);
-      m_runningTracker.unlock();
       locker.unlock();
-      emit structureFinished(s);
+      handleOptimizedStructure(s);
     }
   }
   /// @endcond
