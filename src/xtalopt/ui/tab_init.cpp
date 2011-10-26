@@ -335,8 +335,11 @@ namespace XtalOpt {
           new QTableWidgetItem(QString::number(quantity));
       QTableWidgetItem *massItem =
           new QTableWidgetItem(QString::number(mass));
-      QTableWidgetItem *minRadiusItem =
-          new QTableWidgetItem(QString::number(minRadius));
+      QTableWidgetItem *minRadiusItem;
+      if (xtalopt->using_interatomicDistanceLimit)
+        minRadiusItem = new QTableWidgetItem(QString::number(minRadius));
+      else
+        minRadiusItem = new QTableWidgetItem(tr("n/a"));
 
       ui.table_comp->setItem(i, CC_SYMBOL, symbolItem);
       ui.table_comp->setItem(i, CC_ATOMICNUM, atomicNumItem);
@@ -400,13 +403,14 @@ namespace XtalOpt {
     xtalopt->using_fixed_volume = ui.cb_fixedVolume->isChecked();
     xtalopt->vol_fixed	= ui.spin_fixedVolume->value();
 
-    xtalopt->using_interatomicDistanceLimit =
-        ui.cb_interatomicDistanceLimit->isChecked();
-
     if (xtalopt->scaleFactor != ui.spin_scaleFactor->value() ||
-        xtalopt->minRadius   != ui.spin_minRadius->value()) {
+        xtalopt->minRadius   != ui.spin_minRadius->value() ||
+        xtalopt->using_interatomicDistanceLimit !=
+        ui.cb_interatomicDistanceLimit->isChecked()) {
       xtalopt->scaleFactor = ui.spin_scaleFactor->value();
       xtalopt->minRadius = ui.spin_minRadius->value();
+      xtalopt->using_interatomicDistanceLimit =
+          ui.cb_interatomicDistanceLimit->isChecked();
       this->updateMinRadii();
       this->updateCompositionTable();
     }
@@ -427,5 +431,4 @@ namespace XtalOpt {
       }
     }
   }
-
 }
