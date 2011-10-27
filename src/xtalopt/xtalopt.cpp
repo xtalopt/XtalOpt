@@ -368,7 +368,23 @@ namespace XtalOpt {
 
   Structure* XtalOpt::replaceWithRandom(Structure *s, const QString & reason)
   {
-    Xtal *oldXtal = qobject_cast<Xtal*>(s);
+    if (this->isMolecularXtalSearch()) {
+      MolecularXtal *mxtal =  qobject_cast<MolecularXtal*>(s);
+      return static_cast<Structure*>(
+            this->replaceWithRandomMXtal(mxtal, reason));
+    }
+    else {
+      Xtal *xtal =  qobject_cast<Xtal*>(s);
+      return static_cast<Structure*>(
+            this->replaceWithRandomXtal(xtal, reason));
+    }
+    // Shouldn't happen, but some compilers aren't that bright...
+    return NULL;
+  }
+
+  Xtal* XtalOpt::replaceWithRandomXtal(Xtal *oldXtal,
+                                       const QString & reason)
+  {
     QWriteLocker locker1 (oldXtal->lock());
 
     // Generate/Check new xtal
@@ -408,7 +424,47 @@ namespace XtalOpt {
 
     // Delete random xtal
     xtal->deleteLater();
-    return qobject_cast<Structure*>(oldXtal);
+    return oldXtal;
+  }
+
+  MolecularXtal* XtalOpt::replaceWithRandomMXtal(MolecularXtal *oldMXtal,
+                                                 const QString & reason)
+  {
+    QWriteLocker locker1 (oldMXtal->lock());
+
+    // Generate/Check new mxtal
+    MolecularXtal *mxtal = NULL;
+    while (!checkXtal(mxtal)) {
+      if (mxtal) {
+        delete mxtal;
+        mxtal = NULL;
+      }
+      mxtal = generateRandomMXtal(0, 0);
+    }
+
+    // Copy info over
+    QWriteLocker locker2 (mxtal->lock());
+    //! @todo Verify that this assignment doesn't do anything unsual.
+    oldMXtal->copyStructure(*mxtal);
+    oldMXtal->resetEnergy();
+    oldMXtal->resetEnthalpy();
+    oldMXtal->setPV(0);
+    oldMXtal->setCurrentOptStep(1);
+    QString parents = "Randomly generated";
+    if (!reason.isEmpty())
+      parents += " (" + reason + ")";
+    oldMXtal->setParents(parents);
+    oldMXtal->findSpaceGroup(tol_spg);
+    oldMXtal->resetFailCount();
+
+    // Flag for preoptimization
+    if (this->usePreopt) {
+      oldMXtal->setNeedsPreoptimization(true);
+    }
+
+    // Delete random xtal
+    mxtal->deleteLater();
+    return oldMXtal;
   }
 
   Structure* XtalOpt::replaceWithOffspring(Structure *s,

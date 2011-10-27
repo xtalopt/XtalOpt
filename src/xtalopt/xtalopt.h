@@ -88,8 +88,14 @@ namespace XtalOpt {
     Xtal* generateRandomXtal(uint generation, uint id);
     MolecularXtal* generateRandomMXtal(uint generation, uint id);
     bool addSeed(const QString & filename);
+
     GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
                                                const QString & reason = "");
+    Xtal* replaceWithRandomXtal(Xtal *s,
+                                const QString & reason = "");
+    MolecularXtal* replaceWithRandomMXtal(MolecularXtal *s,
+                                          const QString & reason = "");
+
     GlobalSearch::Structure* replaceWithOffspring(GlobalSearch::Structure *s,
                                                   const QString &reason = "");
     bool checkLimits();
