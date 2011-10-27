@@ -85,6 +85,12 @@ namespace XtalOpt {
       OP_Permustrain
     };
 
+    enum MXtalOperator {
+      MXOP_Crossover = 0,
+      MXOP_Reconf,
+      MXOP_Swirl
+    };
+
     Xtal* generateRandomXtal(uint generation, uint id);
     MolecularXtal* generateRandomMXtal(uint generation, uint id);
     bool addSeed(const QString & filename);
@@ -179,6 +185,7 @@ namespace XtalOpt {
     void initializeSMSProgressUpdate(int finished, int total);
     void generateNewStructure();
     Xtal* generateNewXtal();
+    MolecularXtal* generateNewMXtal();
     void initializeAndAddXtal(Xtal *xtal,
                               unsigned int generation,
                               const QString &parents);

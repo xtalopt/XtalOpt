@@ -26,6 +26,8 @@
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
 
+#include <xtalopt/mxtaloptgenetic.h>
+
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
@@ -766,9 +768,16 @@ namespace XtalOpt {
 
   void XtalOpt::generateNewStructure_()
   {
-    Xtal *newXtal = generateNewXtal();
-    initializeAndAddXtal(newXtal, newXtal->getGeneration(),
-                         newXtal->getParents());
+    if (this->isMolecularXtalSearch()) {
+      MolecularXtal *newMXtal = generateNewMXtal();
+      initializeAndAddXtal(newMXtal, newMXtal->getGeneration(),
+                           newMXtal->getParents());
+    }
+    else {
+      Xtal *newXtal = generateNewXtal();
+      initializeAndAddXtal(newXtal, newXtal->getGeneration(),
+                           newXtal->getParents());
+    }
   }
 
   Xtal* XtalOpt::generateNewXtal()
@@ -974,6 +983,165 @@ namespace XtalOpt {
     xtal->setGeneration(gen);
     xtal->setParents(parents);
     return xtal;
+  }
+
+  MolecularXtal* XtalOpt::generateNewMXtal()
+  {
+    // Get all optimized structures
+    QList<Structure*> structures = m_queue->getAllOptimizedStructures();
+
+    // Check to see if there are enough optimized structure to perform
+    // genetic operations
+    if (structures.size() < 3) {
+      MolecularXtal *mxtal = 0;
+      while (!checkXtal(mxtal)) {
+        if (mxtal) {
+          mxtal->deleteLater();
+          mxtal = NULL;
+        }
+        mxtal = generateRandomMXtal(1, 0);
+      }
+      mxtal->setParents(mxtal->getParents() + " (too few optimized structures "
+                       "to generate offspring)");
+      return mxtal;
+    }
+
+#warning Remove when operator GUI is setup // TODO
+    mga_p_cross = 34;
+    mga_cross_minimumContribution = .25;
+    // - Reconf
+    mga_p_reconf = 33;
+    mga_reconf_minSubMolsToReplace = 1;
+    mga_reconf_maxSubMolsToReplace = 3;
+    mga_reconf_minStrain = 0.0;
+    mga_reconf_maxStrain = 0.5;
+    // - Swirl
+    mga_p_swirl = 33;
+    mga_swirl_minSubMolsToRotate = 1;
+    mga_swirl_maxSubMolsToRotate = 3;
+    mga_swirl_minRotationDegree = 30;
+    mga_swirl_fracInPlane = 0.5;
+    mga_swirl_minStrain = 0.0;
+    mga_swirl_maxStrain = 0.5;
+
+    // Sort structure list
+    Structure::sortByEnthalpy(&structures);
+
+    // Trim list
+    // Remove all but (popSize + 1). The "+ 1" will be removed
+    // during probability generation.
+    while ( static_cast<uint>(structures.size()) > popSize + 1 ) {
+      structures.removeLast();
+    }
+
+    // Make list of weighted probabilities based on enthalpy values
+    QList<double> probs = getProbabilityList(structures);
+
+    // Cast Structures into MXtals
+    QList<MolecularXtal*> mxtals;
+#if QT_VERSION >= 0x040700
+    mxtals.reserve(structures.size());
+#endif // QT_VERSION
+    for (int i = 0; i < structures.size(); ++i) {
+      mxtals.append(qobject_cast<MolecularXtal*>(structures.at(i)));
+    }
+
+    // Initialize loop vars
+    double r;
+    unsigned int gen;
+    MolecularXtal *mxtal = NULL;
+
+    // Perform operation until xtal is valid:
+    while (!checkXtal(mxtal)) {
+      // First delete any previous failed structure in xtal
+      if (mxtal) {
+        mxtal->deleteLater();
+        mxtal = NULL;
+      }
+
+      // Decide operator:
+      r = RANDDOUBLE();
+      MXtalOperator op;
+      if (r < mga_p_cross/100.0)
+        op = MXOP_Crossover;
+      else if (r < (mga_p_cross + mga_p_reconf)/100.0)
+        op = MXOP_Reconf;
+      else // if (r < (mga_p_cross + mga_p_reconf + mga_p_swirl)/100.0
+        op = MXOP_Swirl;
+
+      // Try 1000 times to get a good structure from the selected
+      // operation. If not possible, send a warning to the log and
+      // start anew.
+      int attemptCount = 0;
+      while (attemptCount < 1000 && !checkXtal(mxtal)) {
+        attemptCount++;
+        if (mxtal) {
+          delete mxtal;
+          mxtal = NULL;
+        }
+
+        // Select two potential parents
+        int ind1, ind2;
+        MolecularXtal *parent1=0, *parent2=0;
+        // Select structures
+        double r1 = RANDDOUBLE();
+        double r2 = RANDDOUBLE();
+        for (ind1 = 0; ind1 < probs.size(); ind1++)
+          if (r1 < probs.at(ind1)) break;
+        for (ind2 = 0; ind2 < probs.size(); ind2++)
+          if (r2 < probs.at(ind2)) break;
+
+        parent1 = mxtals.at(ind1);
+        parent2 = mxtals.at(ind2);
+
+        // Operation specific set up:
+        switch (op) {
+        case MXOP_Crossover:
+          mxtal = MXtalOptGenetic::crossover(parent1, parent2, this);
+          break;
+        case MXOP_Reconf:
+          mxtal = MXtalOptGenetic::reconf(parent1, this);
+          break;
+        case MXOP_Swirl:
+          mxtal = MXtalOptGenetic::swirl(parent1, this);
+          break;
+        default:
+          qWarning() << "Unknown genetic operation, enum code:" << op;
+          mxtal = NULL;
+          continue;
+        }
+
+        // Assign id
+        int gen = mxtal->getGeneration();
+        int id = 0;
+        for (QList<MolecularXtal*>::const_iterator it = mxtals.constBegin(),
+             it_end = mxtals.constEnd(); it != it_end; ++it) {
+          (*it)->lock()->lockForRead();
+          const int curGen = (*it)->getGeneration();
+          const int curId = (*it)->getIDNumber();
+          (*it)->lock()->unlock();
+          if (curGen == gen &&
+              curId  >= id) {
+            id = curId + 1;
+          }
+        }
+        mxtal->setIDNumber(id);
+
+      }
+      if (attemptCount >= 1000) {
+        QString opStr;
+        switch (op) {
+        case MXOP_Crossover: opStr = "crossover"; break;
+        case MXOP_Reconf:    opStr = "reconf"; break;
+        case MXOP_Swirl:     opStr = "swirl"; break;
+        default:             opStr = "(unknown)"; break;
+        }
+        warning(tr("Unable to perform operation %1 after 1000 tries. "
+                   "Reselecting operator...").arg(opStr));
+      }
+    }
+
+    return mxtal;
   }
 
   bool XtalOpt::checkLimits() {
