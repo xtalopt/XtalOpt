@@ -15,8 +15,10 @@
 
 #include <xtalopt/xtalopt.h>
 
-#include <xtalopt/structures/xtal.h>
+#include <xtalopt/structures/molecularxtal.h>
+#include <xtalopt/structures/submolecule.h>
 #include <xtalopt/structures/submoleculesource.h>
+#include <xtalopt/structures/xtal.h>
 #include <xtalopt/optimizers/vasp.h>
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/pwscf.h>
@@ -508,6 +510,85 @@ namespace XtalOpt {
 
     // Set up xtal data
     return xtal;
+  }
+
+  MolecularXtal* XtalOpt::generateRandomMXtal(uint generation, uint id)
+  {
+    INIT_RANDOM_GENERATOR();
+    // Set cell parameters
+    double a      = RANDDOUBLE() * (a_max-a_min) + a_min;
+    double b      = RANDDOUBLE() * (b_max-b_min) + b_min;
+    double c      = RANDDOUBLE() * (c_max-c_min) + c_min;
+    double alpha  = RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
+    double beta   = RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
+    double gamma  = RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
+
+    // Create crystal
+    MolecularXtal *mxtal	= new MolecularXtal(a, b, c, alpha, beta, gamma);
+    QWriteLocker locker (mxtal->lock());
+
+    mxtal->setStatus(MolecularXtal::Empty);
+
+    if (using_fixed_volume) {
+      mxtal->setVolume(vol_fixed);
+    }
+
+    // Populate crystal
+    //  Calculate maximum translation (cell diagonal length)
+    const std::vector<OpenBabel::vector3> obvecs =
+        mxtal->OBUnitCell()->GetCellVectors();
+    Q_ASSERT(obvecs.size() == 3);
+    const OpenBabel::vector3 obcellDiagonal = obvecs[0]+obvecs[1]+obvecs[2];
+    const double unitCellDiagonal = obcellDiagonal.length();
+
+    Eigen::Matrix3d rowVectors;
+    rowVectors.row(0) = Eigen::Vector3d(obvecs[0].AsArray());
+    rowVectors.row(1) = Eigen::Vector3d(obvecs[1].AsArray());
+    rowVectors.row(2) = Eigen::Vector3d(obvecs[2].AsArray());
+
+    for (QList<MolecularCompStruct>::const_iterator
+         it = mcomp.constBegin(), it_end = mcomp.constEnd();
+         it != it_end; ++it) {
+      for (int i = 0; i < it->quantity; ++i) {
+        SubMolecule * sub = it->source->getRandomSubMolecule();
+        QList<Atom*> sAtoms = sub->atoms();
+        // Attempt to add submolecule using various translations
+        //! @todo There needs to be a limit on the number of iterations here
+        while (true) { // Use break to pop out of this loop
+          Eigen::Vector3d trans (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          trans = mxtal->fracToCart(trans);
+          sub->setCenter(trans);
+
+          // Compare the distances between the atoms in sub with the atoms in
+          // mxtal. If they meet the minimum radius restrictions, add sub.
+          if (this->using_interatomicDistanceLimit) {
+            int atom1, atom2;
+            double IAD;
+            if (mxtal->checkInteratomicDistances(
+                  this->comp, sAtoms, &atom1, &atom2, &IAD)) {
+              mxtal->addSubMolecule(sub);
+              break;
+            }
+            else /* mxtal->checkInteratomicDistances(...) */ {
+              qDebug() << "Cannot add submolecule; bad IAD:" << IAD;
+            }
+          }
+          // If we aren't using interatomic distance limits, just add sub.
+          else /* (!this->using_interatomicDistanceLimit) */ {
+            mxtal->addSubMolecule(sub);
+            break;
+          }
+        } // end while(true)
+      } // end for quantity
+    } // end for source
+
+    // Set up geneology info
+    mxtal->setGeneration(generation);
+    mxtal->setIDNumber(id);
+    mxtal->setParents("Randomly generated");
+    mxtal->setStatus(MolecularXtal::WaitingForOptimization);
+
+    return mxtal;
   }
 
   void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation,

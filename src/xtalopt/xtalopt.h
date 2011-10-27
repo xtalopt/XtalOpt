@@ -36,6 +36,7 @@ namespace GlobalSearch {
 }
 
 namespace XtalOpt {
+  class MolecularXtal;
   class SubMoleculeSource;
   class XtalOptDialog;
 
@@ -85,6 +86,7 @@ namespace XtalOpt {
     };
 
     Xtal* generateRandomXtal(uint generation, uint id);
+    MolecularXtal* generateRandomMXtal(uint generation, uint id);
     bool addSeed(const QString & filename);
     GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
                                                const QString & reason = "");
