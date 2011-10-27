@@ -187,7 +187,7 @@ namespace XtalOpt {
     }
 #endif // ENABLE_SSH
 
-    // Generate conformers for submolecules, if needed
+    // Molecular search prep
     if (this->isMolecularXtalSearch()) {
       // Reassign source ids now that list is final
       for (int i = 0; i < this->mcomp.size(); ++i) {
@@ -230,19 +230,20 @@ namespace XtalOpt {
     int failed = 0;
     uint progCount = 0;
     QString filename;
-    Xtal *xtal = 0;
     // Use new xtal count in case "addXtal" falls behind so that we
     // don't duplicate structures when switching from seeds -> random.
     uint newXtalCount=0;
 
     // Load seeds...
-    for (int i = 0; i < seedList.size(); i++) {
-      filename = seedList.at(i);
-      if (this->addSeed(filename)) {
-        m_dialog->updateProgressLabel(
-              tr("%1 structures generated (%2 kept, %3 rejected)...")
-              .arg(i + failed).arg(i).arg(failed));
-        newXtalCount++;
+    if (!this->isMolecularXtalSearch()) {
+      for (int i = 0; i < seedList.size(); i++) {
+        filename = seedList.at(i);
+        if (this->addSeed(filename)) {
+          m_dialog->updateProgressLabel(
+                tr("%1 structures generated (%2 kept, %3 rejected)...")
+                .arg(i + failed).arg(i).arg(failed));
+          newXtalCount++;
+        }
       }
     }
 
@@ -258,16 +259,33 @@ namespace XtalOpt {
             .arg(i + failed).arg(i).arg(failed));
 
       // Generate/Check xtal
-      xtal = generateRandomXtal(1, i+1);
-      if (!checkXtal(xtal)) {
-        delete xtal;
-        i--;
-        failed++;
+      if (this->isMolecularXtalSearch()) {
+        MolecularXtal *mxtal = NULL;
+        mxtal = generateRandomMXtal(1, i+1);
+        if (!checkXtal(mxtal)) {
+          delete mxtal;
+          i--;
+          failed++;
+        }
+        else {
+          mxtal->findSpaceGroup(tol_spg);
+          initializeAndAddXtal(mxtal, 1, mxtal->getParents());
+          newXtalCount++;
+        }
       }
       else {
-        xtal->findSpaceGroup(tol_spg);
-        initializeAndAddXtal(xtal, 1, xtal->getParents());
-        newXtalCount++;
+        Xtal *xtal;
+        xtal = generateRandomXtal(1, i+1);
+        if (!checkXtal(xtal)) {
+          delete xtal;
+          i--;
+          failed++;
+        }
+        else {
+          xtal->findSpaceGroup(tol_spg);
+          initializeAndAddXtal(xtal, 1, xtal->getParents());
+          newXtalCount++;
+        }
       }
     }
 
@@ -1706,7 +1724,8 @@ namespace XtalOpt {
         xtalStateFileName = dataPath + "/" + xtalDirs.at(i) + "/xtal.state";
       }
 
-      xtal = new Xtal();
+      xtal = (this->isMolecularXtalSearch())
+          ? new MolecularXtal() : new Xtal();
       QWriteLocker locker (xtal->lock());
       xtal->moveToThread(m_tracker->thread());
       xtal->setupConnections();
