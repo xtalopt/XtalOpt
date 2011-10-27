@@ -831,6 +831,83 @@ namespace XtalOpt {
       return true;
   }
 
+  bool Xtal::checkInteratomicDistances(
+      const QHash<unsigned int, XtalCompositionStruct> &limits,
+      const QList<Atom *> atoms, int *atom1, int *atom2, double *IAD)
+  {
+    // Compute a cut off distance -- atoms farther away than this value
+    // will abort the check early.
+    double maxCheckDistance = 0.0;
+    for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
+         it = limits.constBegin(), it_end = limits.constEnd(); it != it_end;
+         ++it) {
+      if (it.value().minRadius > maxCheckDistance) {
+        maxCheckDistance = it.value().minRadius;
+      }
+    }
+    maxCheckDistance += maxCheckDistance;
+    const double maxCheckDistSquared = maxCheckDistance*maxCheckDistance;
+
+    // Iterate through all of the atoms in the list for "a1"
+    for (QList<Atom*>::const_iterator a1 = atoms.constBegin(),
+         a1_end = atoms.constEnd(); a1 != a1_end; ++a1) {
+
+      // Get list of minimum squared distances between each atom and a1
+      QVector<double> squaredDists;
+      this->getSquaredAtomicDistancesToPoint(*(*a1)->pos(), &squaredDists);
+      Q_ASSERT_X(squaredDists.size() == this->numAtoms(), Q_FUNC_INFO,
+                 "Size of distance list does not match number of atoms.");
+
+      // Cache the minimum radius of a1
+      const double minA1Radius =
+          limits.value((*a1)->atomicNumber()).minRadius;
+
+      // Iterate through each distance
+      for (int i = 0; i < squaredDists.size(); ++i) {
+
+        // Grab the atom pointer at i, a2
+        Atom *a2 = this->atom(i);
+
+        // Cache the squared distance between a1 and a2
+        const double &curDistSquared = squaredDists[i];
+
+        // Skip comparison if the current distance exceeds the cutoff
+        if (curDistSquared > maxCheckDistSquared) {
+          continue;
+        }
+
+        // Calculate the minimum distance for the atom pair
+        const double minDist = limits.value(a2->atomicNumber()).minRadius
+            + minA1Radius;
+        const double minDistSquared = minDist * minDist;
+
+        // If the distance is too small, set atom1/atom2 and return false
+        if (curDistSquared < minDistSquared) {
+          if (atom1 != NULL && atom2 != NULL) {
+            *atom1 = atoms.indexOf(*a1);
+            *atom2 = m_atomList.indexOf(a2);
+            if (IAD != NULL) {
+              *IAD = sqrt(curDistSquared);
+            }
+          }
+          return false;
+        }
+
+        // Atom a2 is ok with respect to a1
+      }
+      // Atom a1 is ok will all a2
+    }
+    // all distances check out -- return true.
+    if (atom1 != NULL && atom2 != NULL) {
+      *atom1 = *atom2 = -1;
+      if (IAD != NULL) {
+        *IAD = 0.0;
+      }
+    }
+    return true;
+  }
+
+
   bool Xtal::getShortestInteratomicDistance(double & shortest) const {
     QList<Atom*> atomList = atoms();
     if (atomList.size() <= 1) return false; // Need at least two atoms!

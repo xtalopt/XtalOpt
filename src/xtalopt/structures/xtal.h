@@ -69,6 +69,13 @@ namespace XtalOpt {
     bool checkInteratomicDistances(const QHash<unsigned int, XtalCompositionStruct> &limits,
                                    int *atom1 = NULL, int *atom2 = NULL,
                                    double *IAD = NULL);
+    // Same as above, but check the atoms in "atoms" against those in "this".
+    // atom1 is the index into "atoms", atom2 is the index into this->m_atomList
+    // (use Xtal::atom(atom2) to snag a pointer to it).
+    bool checkInteratomicDistances(const QHash<unsigned int, XtalCompositionStruct> &limits,
+                                   const QList<Avogadro::Atom*> atoms,
+                                   int *atom1 = NULL, int *atom2 = NULL,
+                                   double *IAD = NULL);
     QHash<QString, QVariant> getFingerprint();
     virtual QString getResultsEntry() const;
     virtual QString getResultsHeader() const {
