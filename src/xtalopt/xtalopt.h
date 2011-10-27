@@ -143,6 +143,8 @@ namespace XtalOpt {
 
   public slots:
     void startSearch();
+    bool initializeSubMoleculeSources(bool notify);
+    void initializeSMSProgressUpdate(int finished, int total);
     void generateNewStructure();
     Xtal* generateNewXtal();
     void initializeAndAddXtal(Xtal *xtal,
@@ -173,6 +175,8 @@ namespace XtalOpt {
 
     GlobalSearch::SlottedWaitCondition *m_initWC;
     bool m_isMolecular;
+    // Used for progress updates during initializeSubMoleculeSource
+    int m_currentSubMolSourceProgress;
   };
 
 } // end namespace XtalOpt

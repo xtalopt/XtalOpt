@@ -16,6 +16,7 @@
 #include <xtalopt/xtalopt.h>
 
 #include <xtalopt/structures/xtal.h>
+#include <xtalopt/structures/submoleculesource.h>
 #include <xtalopt/optimizers/vasp.h>
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/pwscf.h>
@@ -58,7 +59,8 @@ namespace XtalOpt {
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
     OptBase(parent),
     m_initWC(new SlottedWaitCondition (this)),
-    m_isMolecular(false)
+    m_isMolecular(false),
+    m_currentSubMolSourceProgress(-1)
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";
@@ -181,6 +183,29 @@ namespace XtalOpt {
     }
 #endif // ENABLE_SSH
 
+    // Generate conformers for submolecules, if needed
+    if (this->isMolecularXtalSearch()) {
+      // Reassign source ids now that list is final
+      for (int i = 0; i < this->mcomp.size(); ++i) {
+        mcomp[i].source->setSourceId(i);
+      }
+
+      // Generate conformers for submolecules, if needed
+      bool notify = m_dialog->startProgressUpdate("Generating conformers...",
+                                                  0, 100);
+      if (!this->initializeSubMoleculeSources(notify)) {
+        error("Error generating submolecule conformers. Aborting.");
+        if (notify)
+          m_dialog->stopProgressUpdate();
+        return;
+      }
+
+      if (notify) {
+        m_dialog->updateProgressValue(100);
+        m_dialog->stopProgressUpdate();
+      }
+    }
+
     // Here we go!
     debug("Starting optimization.");
     emit startingSession();
@@ -274,6 +299,41 @@ namespace XtalOpt {
 
     m_dialog->saveSession();
     emit sessionStarted();
+  }
+
+  bool XtalOpt::initializeSubMoleculeSources(bool notify)
+  {
+    m_currentSubMolSourceProgress = 0;
+    for (QList<MolecularCompStruct>::const_iterator
+         it = this->mcomp.constBegin(), it_end = this->mcomp.constEnd();
+         it != it_end; ++it) {
+      if (notify)
+        this->connect(it->source, SIGNAL(conformerGenerated(int,int)),
+                      SLOT(initializeSMSProgressUpdate(int,int)),
+                      Qt::BlockingQueuedConnection);
+      it->source->setMaxConformers(this->maxConf);
+      it->source->findAndSetConformers();
+      if (notify)
+        disconnect(it->source, SIGNAL(conformerGenerated(int,int)),
+                   this, SLOT(initializeSMSProgressUpdate(int,int)));
+
+      ++m_currentSubMolSourceProgress;
+    }
+    m_currentSubMolSourceProgress = -1;
+
+    return true;
+  }
+
+  void XtalOpt::initializeSMSProgressUpdate(int finished, int total)
+  {
+    // Total number of conformers assuming all sources generate "total"
+    int allConfCount = total * this->mcomp.size();
+    // Account for all sources already processed
+    int alreadyDone = total * (m_currentSubMolSourceProgress);
+    // Calculate percent completed
+    int percent = 100 * (alreadyDone + finished) / allConfCount;
+    // Update progress bar:
+    m_dialog->updateProgressValue(percent);
   }
 
   bool XtalOpt::addSeed(const QString &filename)
