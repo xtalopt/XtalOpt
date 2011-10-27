@@ -98,6 +98,11 @@ namespace XtalOpt {
 
     GlobalSearch::Structure* replaceWithOffspring(GlobalSearch::Structure *s,
                                                   const QString &reason = "");
+    Xtal* replaceWithOffspringXtal(Xtal *s,
+                                   const QString &reason = "");
+    MolecularXtal* replaceWithOffspringMXtal(MolecularXtal *s,
+                                             const QString &reason = "");
+
     bool checkLimits();
     bool checkXtal(Xtal *xtal, QString * err = NULL);
     QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);

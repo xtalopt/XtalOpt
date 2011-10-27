@@ -470,6 +470,22 @@ namespace XtalOpt {
   Structure* XtalOpt::replaceWithOffspring(Structure *s,
                                            const QString & reason)
   {
+    if (this->isMolecularXtalSearch()) {
+      MolecularXtal *mxtal =  qobject_cast<MolecularXtal*>(s);
+      return static_cast<Structure*>(
+            this->replaceWithOffspringMXtal(mxtal, reason));
+    }
+    else {
+      Xtal *xtal =  qobject_cast<Xtal*>(s);
+      return static_cast<Structure*>(
+            this->replaceWithOffspringXtal(xtal, reason));
+    }
+    // Shouldn't happen, but some compilers aren't that bright...
+    return NULL;
+  }
+
+  Xtal* XtalOpt::replaceWithOffspringXtal(Xtal *oldXtal, const QString &reason)
+  {
     // Generate/Check new xtal
     Xtal *xtal = 0;
     while (!checkXtal(xtal)) {
@@ -480,7 +496,6 @@ namespace XtalOpt {
       xtal = generateNewXtal();
     }
 
-    Xtal *oldXtal = qobject_cast<Xtal*>(s);
     // Copy info over
     QWriteLocker locker1 (oldXtal->lock());
     QWriteLocker locker2 (xtal->lock());
@@ -507,7 +522,46 @@ namespace XtalOpt {
 
     // Delete random xtal
     xtal->deleteLater();
-    return static_cast<Structure*>(oldXtal);
+    return oldXtal;
+  }
+
+  MolecularXtal* XtalOpt::replaceWithOffspringMXtal(
+      MolecularXtal *oldMXtal, const QString &reason)
+  {
+    // Generate/Check new mxtal
+    MolecularXtal *mxtal = NULL;
+    while (!checkXtal(mxtal)) {
+      if (mxtal) {
+        mxtal->deleteLater();
+        mxtal = NULL;
+      }
+      mxtal = generateNewMXtal();
+    }
+
+    // Copy info over
+    QWriteLocker locker (oldMXtal->lock());
+    QWriteLocker locker2 (mxtal->lock());
+    //! @todo Verify that this assignment doesn't do anything unusual.
+    oldMXtal->copyStructure(*mxtal);
+    oldMXtal->resetEnergy();
+    oldMXtal->resetEnthalpy();
+    oldMXtal->setPV(0);
+    oldMXtal->setCurrentOptStep(1);
+    QString parents = mxtal->getParents();
+    if (!reason.isEmpty())
+      parents += " (" + reason + ")";
+    oldMXtal->setParents(parents);
+    oldMXtal->findSpaceGroup(tol_spg);
+    oldMXtal->resetFailCount();
+
+    // Flag for preoptimization
+    if (this->usePreopt) {
+      oldMXtal->setNeedsPreoptimization(true);
+    }
+
+    // Delete offspring mxtal
+    mxtal->deleteLater();
+    return oldMXtal;
   }
 
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
