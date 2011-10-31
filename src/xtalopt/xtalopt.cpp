@@ -42,6 +42,8 @@
 #include <globalsearch/queueinterfaces/remote.h>
 #endif // ENABLE_SSH
 
+#include <avogadro/bond.h>
+
 #include <QtCore/QDir>
 #include <QtCore/QList>
 #include <QtCore/QFile>
@@ -1509,6 +1511,37 @@ namespace XtalOpt {
         rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
       }
     }
+    else if (line == "gulpConnect") {
+      QList<Bond*> bonds = xtal->bonds();
+      const char *singleBond = "single";
+      const char *doubleBond = "double";
+      const char *tripleBond = "triple";
+      const char *bondOrder = NULL;
+      for (QList<Bond*>::const_iterator it = bonds.constBegin(),
+           it_end = bonds.constEnd(); it != it_end; ++it) {
+        switch ((*it)->order()) {
+        case 1:
+          bondOrder = singleBond;
+          break;
+        case 2:
+          bondOrder = doubleBond;
+          break;
+        case 3:
+          bondOrder = tripleBond;
+          break;
+        default:
+          this->warning("Unrecognized bond order (" +
+                        QString::number((*it)->order()) + ")");
+          bondOrder = NULL;
+          break;
+        }
+
+        rep += QString("connect %1 %2 %3\n")
+            .arg((*it)->beginAtom()->index() + 1)
+            .arg((*it)->endAtom()->index() + 1)
+            .arg((bondOrder) ? QString(bondOrder) : "unrecognized");
+      }
+    }
     else if (line == "POSCAR") {
       // Comment line -- set to composition then filename
       // Construct composition
@@ -1587,6 +1620,7 @@ namespace XtalOpt {
       << "%cellVector1Bohr% -- First cell vector in Bohr\n"
       << "%cellVector2Bohr% -- Second cell vector in Bohr\n"
       << "%cellVector3Bohr% -- Third cell vector in Bohr\n"
+      << "%gulpConnect% -- bonding information for GULP\n"
       << "%a% -- Lattice parameter A\n"
       << "%b% -- Lattice parameter B\n"
       << "%c% -- Lattice parameter C\n"

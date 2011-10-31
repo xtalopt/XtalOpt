@@ -18,8 +18,14 @@
 
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/optimizers/gulp.h>
+#include <xtalopt/structures/molecularxtal.h>
+#include <xtalopt/structures/submolecule.h>
+#include <xtalopt/structures/submoleculesource.h>
 
 #include <globalsearch/macros.h>
+
+#include <avogadro/atom.h>
+#include <avogadro/bond.h>
 
 #include <QtCore/QDebug>
 #include <QtCore/QString>
@@ -53,6 +59,8 @@ namespace XtalOpt {
     void constructXtalOpt();
     void setOptimizer();
 
+    void interpretKeyword();
+
     void loadTest();
     void checkForDuplicatesTest();
     void stepwiseCheckForDuplicatesTest();
@@ -78,6 +86,77 @@ namespace XtalOpt {
   {
     m_opt->setOptimizer(new GULPOptimizer(m_opt));
     QVERIFY(m_opt->optimizer() != 0);
+  }
+
+  inline Avogadro::Atom* addAtomToMol(Avogadro::Molecule *mol, int atomicNum,
+                                      double x, double y, double z)
+  {
+    Avogadro::Atom *atom = mol->addAtom();
+    atom->setAtomicNumber(atomicNum);
+    atom->setPos(Eigen::Vector3d(x, y, z));
+    return atom;
+  }
+
+  inline Avogadro::Bond* addBondToMol(Avogadro::Molecule *mol, int order,
+                                      Avogadro::Atom *beg, Avogadro::Atom *end)
+  {
+    Avogadro::Bond *bond= mol->addBond();
+    bond->setOrder(order);
+    bond->setBegin(beg);
+    bond->setEnd(end);
+    return bond;
+  }
+
+  void XtalOptUnitTest::interpretKeyword()
+  {
+    if (m_dialog == NULL)
+      this->constructDialog();
+    if (m_opt == NULL)
+      this->constructXtalOpt();
+
+    // Build a crystal with two urea submolecules
+    SubMoleculeSource source;
+    Avogadro::Atom *o1 = addAtomToMol(
+          &source, 8, -0.413635,  1.669913,  0.187877);
+    Avogadro::Atom *n2 = addAtomToMol(
+          &source, 7, -1.127519, -0.495405,  0.000588);
+    Avogadro::Atom *n3 = addAtomToMol(
+          &source, 7,  1.227310,  0.092854, -0.046085);
+    Avogadro::Atom *c4 = addAtomToMol(
+          &source, 6, -0.118994,  0.480821,  0.054038);
+    Avogadro::Atom *h5 = addAtomToMol(
+          &source, 1, -0.917626, -1.456549, -0.106245);
+    Avogadro::Atom *h6 = addAtomToMol(
+          &source, 1, -2.075843, -0.219289,  0.071139);
+    Avogadro::Atom *h7 = addAtomToMol(
+          &source, 1,  1.936521,  0.782862, -0.007714);
+    Avogadro::Atom *h8 = addAtomToMol(
+          &source, 1,  1.489787, -0.855207, -0.153599);
+
+    addBondToMol(&source, 2, o1, c4);
+    addBondToMol(&source, 1, c4, n2);
+    addBondToMol(&source, 1, c4, n3);
+    addBondToMol(&source, 1, n2, h5);
+    addBondToMol(&source, 1, n2, h6);
+    addBondToMol(&source, 1, n3, h7);
+    addBondToMol(&source, 1, n3, h8);
+
+    MolecularXtal mxtal (6, 6, 6, 90, 90, 90);
+    SubMolecule *sub = source.getSubMolecule();
+    sub->translate(-sub->center());
+    mxtal.addSubMolecule(sub);
+
+    sub = source.getSubMolecule();
+    sub->translate(-sub->center());
+    sub->translate(0.0, 0.0, 3.0);
+    mxtal.addSubMolecule(sub);
+
+    qDebug() << "\n" << m_opt->interpretTemplate("%gulpConnect%", &mxtal);
+
+#define VERIFYKEYWORD(key, value)                 \
+  QVERIFY(m_opt->interpretTemplate(key, s)        \
+  .compare(QString(value) + "\n") == 0)
+
   }
 
   void XtalOptUnitTest::loadTest()
