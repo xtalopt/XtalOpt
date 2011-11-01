@@ -19,8 +19,10 @@
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
+#include <globalsearch/queueinterfaces/remote.h>
 #include <globalsearch/structure.h>
 
+#include <QtCore/QDateTime>
 #include <QtCore/QDebug>
 #include <QtCore/QtConcurrentRun>
 #include <QtCore/QTimer>
@@ -60,7 +62,8 @@ namespace GlobalSearch {
     m_thread(thread),
     m_tracker(opt->tracker()),
     m_requestedStructures(0),
-    m_isDestroying(false)
+    m_isDestroying(false),
+    m_lastSubmissionTimeStamp(new QDateTime (QDateTime::currentDateTime()))
   {
     // Thread connections
     connect(m_thread, SIGNAL(started()),
@@ -107,6 +110,8 @@ namespace GlobalSearch {
         GS_SLEEP(1);
         --timeout;
     }
+
+    delete m_lastSubmissionTimeStamp;
   }
 
   void QueueManager::moveToQMThread()
@@ -249,15 +254,38 @@ namespace GlobalSearch {
     // Submit any jobs if needed
     m_jobStartTracker.lockForWrite();
     int pending = m_jobStartTracker.list()->size();
-    while (pending != 0 &&
-           (
-            !m_opt->limitRunningJobs ||
-            submitted < m_opt->runningJobLimit
-            )
-           ) {
-      startJob();
-      submitted++;
-      pending--;
+    if (pending != 0 &&
+        (
+          !m_opt->limitRunningJobs ||
+          submitted < m_opt->runningJobLimit
+          )) {
+      // Submit a single throttled job (1 submission per 3-8 seconds) if using
+      // a remote queue interface. Interval is randomly chosen each iteration.
+      // This prevents hammering the pbs server from multiple XtalOpt instances
+      // if there is a problem with the queue.
+      if (qobject_cast<RemoteQueueInterface*>
+          (m_opt->queueInterface()) != NULL) {
+        if (m_lastSubmissionTimeStamp->secsTo(QDateTime::currentDateTime())
+            >= 3 + (6 * RANDDOUBLE())) {
+          startJob();
+          ++submitted;
+          --pending;
+          *m_lastSubmissionTimeStamp = QDateTime::currentDateTime();
+        }
+      }
+      else {
+        // Local job submission doesn't need to be throttled
+        while (pending != 0 &&
+               (
+                 !m_opt->limitRunningJobs ||
+                 submitted < m_opt->runningJobLimit
+                 )
+               ) {
+          startJob();
+          ++submitted;
+          --pending;
+        }
+      }
     }
     m_jobStartTracker.unlock();
 
