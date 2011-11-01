@@ -18,6 +18,8 @@
 
 #include <globalsearch/tracker.h>
 
+class QDateTime;
+
 namespace GlobalSearch {
   class OptBase;
   class Structure;
@@ -501,6 +503,9 @@ m_queue->unlockForNaming(newStructure);
 
     /// Boolean set to true while the destructor is running.
     bool m_isDestroying;
+
+    /// Used to throttle job submissions
+    QDateTime *m_lastSubmissionTimeStamp;
  };
 
 } // end namespace GlobalSearch
