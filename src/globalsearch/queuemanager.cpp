@@ -836,6 +836,8 @@ namespace GlobalSearch {
 
     // Perform writing
     m_opt->queueInterface()->writeInputFiles(s);
+    emit structureUpdated(s); // for optimizer lookup table, created during
+                              // input file creation.
 
     m_jobStartTracker.lockForWrite();
     m_jobStartTracker.append(s);
@@ -844,8 +846,6 @@ namespace GlobalSearch {
     m_runningTracker.lockForWrite();
     m_runningTracker.append(s);
     m_runningTracker.unlock();
-
-    emit structureUpdated(s);
   }
   /// @endcond
 

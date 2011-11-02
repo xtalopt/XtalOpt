@@ -25,6 +25,7 @@
 
 #include <QtCore/QDebug>
 #include <QtCore/QDateTime>
+#include <QtCore/QHash>
 #include <QtCore/QTextStream>
 
 #include <vector>
@@ -341,6 +342,24 @@ namespace GlobalSearch {
      * @sa OptBase::save
      */
     virtual QString getResultsEntry() const;
+
+    /** @return a lookup table for mapping atoms indices between
+     * structure index (value) and the optimizer index (key).
+     */
+    QHash<int, int> * getOptimizerLookupTable()
+    {
+      return &m_optimizerLookup;
+    }
+
+    /** Reset the optimizer lookup table to set the optimizer indicies
+     * to the structure indices.
+     */
+    void resetOptimizerLookupTable()
+    {
+      m_optimizerLookup.clear();
+      for (int i = 0; i < m_atomList.size(); ++i)
+        m_optimizerLookup.insert(i,i);
+    }
 
     /** Find the smallest separation between all atoms in the
      * Structure.
@@ -1098,6 +1117,10 @@ namespace GlobalSearch {
     QList<double> m_histEnergies;
     QList<QList<Eigen::Vector3d> > m_histCoords;
     QList<Eigen::Matrix3d> m_histCells;
+
+    // Map <Structure atom index, optimizer atom index>
+    QHash<int, int> m_optimizerLookup;
+
     // End doxygen skip:
     /// \endcond
   };

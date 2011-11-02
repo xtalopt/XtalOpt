@@ -36,6 +36,8 @@ extern "C" {
 
 #include <Eigen/LU>
 
+#include <QtAlgorithms>
+
 #include <QtCore/QFile>
 #include <QtCore/QDebug>
 #include <QtCore/QRegExp>
@@ -1170,24 +1172,30 @@ namespace XtalOpt {
     return true;
   }
 
-  QList<Vector3d> Xtal::getAtomCoordsFrac() const {
-    QList<Vector3d> list;
-    // Sort by symbols
-    QList<QString> symbols = getSymbols();
-    QString symbol_ref;
-    QString symbol_cur;
-    QList<Atom*>::const_iterator it;
-    for (int i = 0; i < symbols.size(); i++) {
-      symbol_ref = symbols.at(i);
-      for (it  = m_atomList.begin();
-           it != m_atomList.end();
-           it++) {
-        symbol_cur = QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()));
-        if (symbol_cur == symbol_ref) {
-          list.append( *(cartToFrac((*it)->pos())));
-        }
+  // Compare the symbols of two atoms to see which comes first alphabetically
+  bool atomicSymbolSortLessThan(Atom *a1, Atom *a2)
+  {
+    // We know that the symbol is between 1-3 symbols long, so we can limit
+    // the tests
+    const char *s1 = OpenBabel::etab.GetSymbol(a1->atomicNumber());
+    const char *s2 = OpenBabel::etab.GetSymbol(a2->atomicNumber());
+    int ls1 = tolower(s1[0]);
+    int ls2 = tolower(s2[0]);
+    if (ls1 == ls2) {
+      ls1 = tolower(s1[1]);
+      ls2 = tolower(s2[1]);
+      if (ls1 == ls2 && ls1 * ls2 != 0) {
+        ls1 = tolower(s1[2]);
+        ls2 = tolower(s2[2]);
       }
     }
+    return (ls1 < ls2);
+  }
+
+  QList<Atom*> Xtal::getAtomsSortedBySymbol() const
+  {
+    QList<Atom*> list = m_atomList;
+    qSort(list.begin(), list.end(), atomicSymbolSortLessThan);
     return list;
   }
 

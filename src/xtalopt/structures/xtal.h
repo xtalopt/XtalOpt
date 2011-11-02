@@ -133,7 +133,7 @@ namespace XtalOpt {
     Eigen::Vector3d* cartToFrac(const Eigen::Vector3d* cartCoords) const;
 
     // Convenience retreval
-    QList<Eigen::Vector3d> getAtomCoordsFrac() const;
+    QList<Avogadro::Atom*> getAtomsSortedBySymbol() const;
 
     // Spacegroup
     uint getSpaceGroupNumber();

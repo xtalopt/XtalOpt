@@ -685,9 +685,6 @@ namespace XtalOpt {
   {
     SETTINGS(filename);
 
-<<<<<<< HEAD
-    settings->beginWriteArray("submolecules");
-=======
     if (this->m_optimizerLookup.isEmpty()) {
       settings->setValue("molecularxtal/mxtalIsValid", false);
       return; // Cannot serialize yet
@@ -695,7 +692,6 @@ namespace XtalOpt {
     settings->setValue("molecularxtal/mxtalIsValid", true);
 
     settings->beginWriteArray("molecularxtal/submolecules");
->>>>>>> 902ab7c... f structures
     for (int i = 0; i < this->numSubMolecules(); ++i) {
       settings->setArrayIndex(i);
 
@@ -706,34 +702,24 @@ namespace XtalOpt {
       const QList<Atom*> atoms = sub->atoms();
       const QList<Bond*> bonds = sub->bonds();
 
-      // Write atom ids
+      // Write atom optimizer indicies using m_optimizerLookup table
       settings->beginWriteArray("atoms");
       for (int j = 0; j < atoms.size(); ++j) {
         settings->setArrayIndex(j);
-<<<<<<< HEAD
-        settings->setValue("ind",static_cast<unsigned long long>(
-                             atoms.at(j)->index()));
-=======
         settings->setValue("ind", static_cast<int>(atoms.at(j)->index()));
->>>>>>> 902ab7c... f structures
       }
       settings->endArray();
 
-      // Write bond ids
+      // Write bond ids using m_optimizerLookup table
       settings->beginWriteArray("bonds");
       for (int j = 0; j < bonds.size(); ++j) {
         settings->setArrayIndex(j);
-<<<<<<< HEAD
-        settings->setValue("ind",static_cast<unsigned long long>(
-                             bonds.at(j)->index()));
-=======
         Bond *curbond = bonds[j];
         int begIndex = static_cast<int>(curbond->beginAtom()->index());
         int endIndex = static_cast<int>(curbond->endAtom()->index());
         settings->setValue("begInd", begIndex);
         settings->setValue("endInd", endIndex);
         settings->setValue("order", static_cast<int>(curbond->order()));
->>>>>>> 902ab7c... f structures
       }
       settings->endArray();
     }

@@ -763,6 +763,7 @@ namespace XtalOpt {
     xtal->setFileName(locpath_s);
     xtal->setRempath(rempath_s);
     xtal->setCurrentOptStep(1);
+    xtal->resetOptimizerLookupTable();
     // If none of the cell parameters are fixed, perform a normalization on
     // the lattice (currently a Niggli reduction)
     if (fabs(a_min     - a_max)     > 0.01 &&
@@ -1388,8 +1389,12 @@ namespace XtalOpt {
     Xtal *xtal = qobject_cast<Xtal*>(structure);
     for (int line_ind = 0; line_ind < list.size(); line_ind++) {
       origLine = line = list.at(line_ind);
-      interpretKeyword_base(line, structure);
+      // Try XtalOpt first:
       interpretKeyword(line, structure);
+      // If no match, try OptBase:
+      if (line == origLine) {
+        interpretKeyword_base(line, structure);
+      }
       if (line != origLine) { // Line was a keyword
         list.replace(line_ind, line);
       }
@@ -1404,6 +1409,7 @@ namespace XtalOpt {
   {
     QString rep = "";
     Xtal *xtal = qobject_cast<Xtal*>(structure);
+    MolecularXtal *mxtal = qobject_cast<MolecularXtal*>(xtal);
 
     // Xtal specific keywords
     if (line == "a")                    rep += QString::number(xtal->getA());
@@ -1418,6 +1424,9 @@ namespace XtalOpt {
     else if (line == "volume")          rep += QString::number(xtal->getVolume());
     else if (line == "coordsFrac") {
       QList<Atom*> atoms = structure->atoms();
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
       QList<Atom*>::const_iterator it;
       for (it  = atoms.begin();
            it != atoms.end();
@@ -1427,10 +1436,14 @@ namespace XtalOpt {
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
         rep += QString::number(coords.z()) + "\n";
+        lut->insert(++optIndex, (*it)->index());
       }
     }
     else if (line == "coordsFracId") {
       QList<Atom*> atoms = structure->atoms();
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
       QList<Atom*>::const_iterator it;
       for (it  = atoms.begin();
            it != atoms.end();
@@ -1441,6 +1454,7 @@ namespace XtalOpt {
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
         rep += QString::number(coords.z()) + "\n";
+        lut->insert(++optIndex, (*it)->index());
       }
     }
     else if (line == "gulpFracShell") {
@@ -1574,12 +1588,18 @@ namespace XtalOpt {
       // Use fractional coordinates:
       rep += "Direct\n";
       // Coordinates of each atom (sorted alphabetically by symbol)
-      QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
-      for (int i = 0; i < coords.size(); i++) {
+      QList<Atom*> atoms = xtal->getAtomsSortedBySymbol();
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
+      Eigen::Vector3d vec;
+      for (int i = 0; i < atoms.size(); i++) {
+        vec = xtal->cartToFrac(*atoms[i]->pos());
         rep += QString("  %1 %2 %3\n")
-          .arg(coords[i].x(), 12, 'f', 8)
-          .arg(coords[i].y(), 12, 'f', 8)
-          .arg(coords[i].z(), 12, 'f', 8);
+          .arg(vec.x(), 12, 'f', 8)
+          .arg(vec.y(), 12, 'f', 8)
+          .arg(vec.z(), 12, 'f', 8);
+        lut->insert(i, atoms[i]->index());
       }
     } // End %POSCAR%
 

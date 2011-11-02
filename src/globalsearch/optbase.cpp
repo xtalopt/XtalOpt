@@ -370,6 +370,9 @@ namespace GlobalSearch {
     if (line == "coords") {
       QList<Avogadro::Atom*> atoms = structure->atoms();
       QList<Avogadro::Atom*>::const_iterator it;
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
       const Eigen::Vector3d *vec;
       for (it  = atoms.begin();
            it != atoms.end();
@@ -379,12 +382,16 @@ namespace GlobalSearch {
         rep += QString::number(vec->x()) + " ";
         rep += QString::number(vec->y()) + " ";
         rep += QString::number(vec->z()) + "\n";
+        lut->insert(++optIndex, (*it)->index());
       }
     }
     else if (line == "coordsInternalFlags") {
       QList<Avogadro::Atom*> atoms = structure->atoms();
       QList<Avogadro::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
@@ -393,12 +400,16 @@ namespace GlobalSearch {
         rep += QString::number(vec->x()) + " 1 ";
         rep += QString::number(vec->y()) + " 1 ";
         rep += QString::number(vec->z()) + " 1\n";
+        lut->insert(++optIndex, (*it)->index());
       }
     }
     else if (line == "coordsSuffixFlags") {
       QList<Avogadro::Atom*> atoms = structure->atoms();
       QList<Avogadro::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
@@ -407,12 +418,16 @@ namespace GlobalSearch {
         rep += QString::number(vec->x()) + " ";
         rep += QString::number(vec->y()) + " ";
         rep += QString::number(vec->z()) + " 1 1 1\n";
+        lut->insert(++optIndex, (*it)->index());
       }
     }
     else if (line == "coordsId") {
       QList<Avogadro::Atom*> atoms = structure->atoms();
       QList<Avogadro::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
@@ -422,6 +437,7 @@ namespace GlobalSearch {
         rep += QString::number(vec->x()) + " ";
         rep += QString::number(vec->y()) + " ";
         rep += QString::number(vec->z()) + "\n";
+        lut->insert(++optIndex, (*it)->index());
       }
     }
     else if (line == "numAtoms")	rep += QString::number(structure->numAtoms());
