@@ -280,9 +280,6 @@ namespace GlobalSearch {
   QHash<QString, QString>
   Optimizer::getInterpretedTemplates(Structure *structure)
   {
-    // Stop any running jobs associated with this structure
-    m_opt->queueInterface()->stopJob(structure);
-
     // Lock
     QReadLocker locker (structure->lock());
 
@@ -294,9 +291,6 @@ namespace GlobalSearch {
                                     "number of known OptSteps (%2, limit %3).")
                .arg(structure->getIDString()).arg(optStep)
                .arg(m_opt->optimizer()->getNumberOfOptSteps()).toStdString().c_str());
-
-    // Unlock for optimizer calls
-    locker.unlock();
 
     // Build hash
     QHash<QString, QString> hash;
@@ -492,13 +486,6 @@ namespace GlobalSearch {
     QList<unsigned int> atomicNums;
     QList<Eigen::Vector3d> coords;
     Eigen::Matrix3d cellMat = Eigen::Matrix3d::Zero();
-
-    // Ensure that there are the correct number of atoms in the
-    // structure
-    while (structure->numAtoms() < obmol.NumAtoms())
-      structure->addAtom();
-    while (structure->numAtoms() > obmol.NumAtoms())
-      structure->removeAtom(structure->atoms().last());
 
     // Atomic data
     FOR_ATOMS_OF_MOL(atm, obmol) {
