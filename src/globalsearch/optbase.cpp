@@ -377,7 +377,7 @@ namespace GlobalSearch {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        rep += QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()))+ " ";
         vec = (*it)->pos();
         rep += QString::number(vec->x()) + " ";
         rep += QString::number(vec->y()) + " ";
@@ -395,7 +395,7 @@ namespace GlobalSearch {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        rep += QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()))+ " ";
         vec = (*it)->pos();
         rep += QString::number(vec->x()) + " 1 ";
         rep += QString::number(vec->y()) + " 1 ";
@@ -413,7 +413,7 @@ namespace GlobalSearch {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        rep += QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()))+ " ";
         vec = (*it)->pos();
         rep += QString::number(vec->x()) + " ";
         rep += QString::number(vec->y()) + " ";
@@ -431,7 +431,7 @@ namespace GlobalSearch {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        rep += QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()))+ " ";
         rep += QString::number((*it)->atomicNumber()) + " ";
         vec = (*it)->pos();
         rep += QString::number(vec->x()) + " ";
