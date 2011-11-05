@@ -195,7 +195,7 @@ namespace GlobalSearch {
 
   Structure& Structure::operator=(const Structure& other)
   {
-    copyStructure(other);
+    this->copyStructure(other);
 
     // Set properties
     m_histogramGenerationPending = other.m_histogramGenerationPending;
@@ -221,7 +221,7 @@ namespace GlobalSearch {
 
   Structure& Structure::operator=(const Avogadro::Molecule &mol)
   {
-    Molecule::operator=(mol);
+    this->copyStructure(mol);
     return *this;
   }
 
