@@ -1427,16 +1427,38 @@ namespace XtalOpt {
       int optIndex = -1;
       QHash<int, int> *lut = structure->getOptimizerLookupTable();
       lut->clear();
-      QList<Atom*>::const_iterator it;
-      for (it  = atoms.begin();
-           it != atoms.end();
-           it++) {
-        const Eigen::Vector3d coords = xtal->cartToFrac(*((*it)->pos()));
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+      // If this is a molecularxtal, use the coherent coordinates of each
+      // submolecule
+      QVector<Eigen::Vector3d> cohVecs;
+      if (mxtal != NULL) {
+        atoms.clear();
+#if QT_VERSION > 0x040700
+        atoms.reserve(mxtal->numAtoms());
+#endif
+        cohVecs.resize(mxtal->numAtoms());
+        QVector<Eigen::Vector3d> subVecs;
+        subVecs.reserve(mxtal->numAtoms());
+        for (int i = 0; i < mxtal->numSubMolecules(); ++i) {
+          SubMolecule *sub = mxtal->subMolecule(i);
+          subVecs = sub->getCoherentCoordinates();
+          Q_ASSERT_X(subVecs.size() == sub->numAtoms(), Q_FUNC_INFO,
+                     "sub->getCoherentCoordinates() did not return the "
+                     "correct number of vectors.");
+          qCopy(subVecs.constBegin(), subVecs.constEnd(),
+                cohVecs.begin() + atoms.size());
+          atoms.append(sub->atoms());
+        }
+      }
+      for (int i = 0; i < atoms.size(); ++i) {
+        Atom *atom = atoms[i];
+        const Eigen::Vector3d coords = (mxtal == NULL)
+            ? xtal->cartToFrac(*atom->pos())
+            : mxtal->cartToFrac(cohVecs.at(i));
+        rep += QString(OpenBabel::etab.GetSymbol(atom->atomicNumber())) + " ";
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
         rep += QString::number(coords.z()) + "\n";
-        lut->insert(++optIndex, (*it)->index());
+        lut->insert(++optIndex, atom->index());
       }
     }
     else if (line == "coordsFracId") {
@@ -1444,17 +1466,39 @@ namespace XtalOpt {
       int optIndex = -1;
       QHash<int, int> *lut = structure->getOptimizerLookupTable();
       lut->clear();
-      QList<Atom*>::const_iterator it;
-      for (it  = atoms.begin();
-           it != atoms.end();
-           it++) {
-        const Eigen::Vector3d coords = xtal->cartToFrac(*(*it)->pos());
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
-        rep += QString::number((*it)->atomicNumber()) + " ";
+      // If this is a molecularxtal, use the coherent coordinates of each
+      // submolecule
+      QVector<Eigen::Vector3d> cohVecs;
+      if (mxtal != NULL) {
+        atoms.clear();
+#if QT_VERSION > 0x040700
+        atoms.reserve(mxtal->numAtoms());
+#endif
+        cohVecs.resize(mxtal->numAtoms());
+        QVector<Eigen::Vector3d> subVecs;
+        subVecs.reserve(mxtal->numAtoms());
+        for (int i = 0; i < mxtal->numSubMolecules(); ++i) {
+          SubMolecule *sub = mxtal->subMolecule(i);
+          subVecs = sub->getCoherentCoordinates();
+          Q_ASSERT_X(subVecs.size() == sub->numAtoms(), Q_FUNC_INFO,
+                     "sub->getCoherentCoordinates() did not return the "
+                     "correct number of vectors.");
+          qCopy(subVecs.constBegin(), subVecs.constEnd(),
+                cohVecs.begin() + atoms.size());
+          atoms.append(sub->atoms());
+        }
+      }
+      for (int i = 0; i < atoms.size(); ++i) {
+        Atom *atom = atoms[i];
+        const Eigen::Vector3d coords = (mxtal == NULL)
+            ? xtal->cartToFrac(*atom->pos())
+            : mxtal->cartToFrac(cohVecs.at(i));
+        rep += QString(OpenBabel::etab.GetSymbol(atom->atomicNumber())) +" ";
+        rep += QString::number(atom->atomicNumber()) + " ";
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
         rep += QString::number(coords.z()) + "\n";
-        lut->insert(++optIndex, (*it)->index());
+        lut->insert(++optIndex, atom->index());
       }
     }
     else if (line == "gulpFracShell") {
