@@ -64,7 +64,8 @@ namespace XtalOpt {
       OT_VASP = 0,
       OT_GULP,
       OT_PWscf,
-      OT_CASTEP
+      OT_CASTEP,
+      OT_MOPAC
     };
 
     enum QueueInterfaces {

@@ -1600,6 +1600,46 @@ namespace XtalOpt {
             .arg((bondOrder) ? QString(bondOrder) : "unrecognized");
       }
     }
+    else if (line == "mopacCoordsAndCell") {
+      std::vector<OpenBabel::vector3> obVecs =
+          xtal->OBUnitCell()->GetCellVectors();
+      const Eigen::Vector3d *firstAtomPos = NULL;
+      Eigen::Vector3d v1 (obVecs.at(0).AsArray());
+      Eigen::Vector3d v2 (obVecs.at(1).AsArray());
+      Eigen::Vector3d v3 (obVecs.at(2).AsArray());
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
+      for (int i = 0; i < xtal->numAtoms(); ++i) {
+        Atom *atom = xtal->atom(i);
+        lut->insert(++optIndex, atom->index());
+
+        const Eigen::Vector3d *tmpVec = atom->pos();
+        if (firstAtomPos == NULL)
+          firstAtomPos = tmpVec;
+        rep += QString("%1  %2  %3  %4\n").arg(atom->atomicNumber(), 3)
+            .arg(tmpVec->x(), 12, 'f', 8)
+            .arg(tmpVec->y(), 12, 'f', 8)
+            .arg(tmpVec->z(), 12, 'f', 8);
+      }
+      if (firstAtomPos != NULL) {
+        v1 += *firstAtomPos;
+        v2 += *firstAtomPos;
+        v3 += *firstAtomPos;
+        rep += QString("Tv  %1  %2  %3\n"
+                       "Tv  %4  %5  %6\n"
+                       "Tv  %7  %8  %9\n")
+            .arg(v1.x(), 12, 'f', 8)
+            .arg(v1.y(), 12, 'f', 8)
+            .arg(v1.z(), 12, 'f', 8)
+            .arg(v2.x(), 12, 'f', 8)
+            .arg(v2.y(), 12, 'f', 8)
+            .arg(v2.z(), 12, 'f', 8)
+            .arg(v3.x(), 12, 'f', 8)
+            .arg(v3.y(), 12, 'f', 8)
+            .arg(v3.z(), 12, 'f', 8);
+      }
+    }
     else if (line == "POSCAR") {
       // Comment line -- set to composition then filename
       // Construct composition
@@ -1670,6 +1710,7 @@ namespace XtalOpt {
     out
       << "Crystal specific information:\n"
       << "%POSCAR% -- VASP poscar generator\n"
+      << "%mopacCoordsAndCell% -- MOPAC atom and unit cell specification\n"
       << "%coordsFrac% -- fractional coordinate data\n\t[symbol] [x] [y] [z]\n"
       << "%coordsFracId% -- fractional coordinate data with atomic number\n\t[symbol] [atomic number] [x] [y] [z]\n"
       << "%gulpFracShell% -- fractional coordinates for use in GULP core/shell calculations:\n"

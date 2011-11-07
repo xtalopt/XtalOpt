@@ -173,7 +173,7 @@ namespace GlobalSearch {
                                  + "/" + m_opt->optimizer()->stderrFilename());
     }
 
-    proc->start(command);
+    proc->start(command,m_opt->optimizer()->localRunArgs());
 
 #ifdef WIN32
     unsigned long pid = proc->pid()->dwProcessId;

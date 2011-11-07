@@ -16,10 +16,11 @@
 
 #include <xtalopt/ui/tab_edit.h>
 
-#include <xtalopt/optimizers/vasp.h>
-#include <xtalopt/optimizers/gulp.h>
-#include <xtalopt/optimizers/pwscf.h>
 #include <xtalopt/optimizers/castep.h>
+#include <xtalopt/optimizers/gulp.h>
+#include <xtalopt/optimizers/mopac.h>
+#include <xtalopt/optimizers/pwscf.h>
+#include <xtalopt/optimizers/vasp.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/xtalopt.h>
 
@@ -48,7 +49,7 @@ namespace XtalOpt {
   {
     // Fill m_optimizers in order of XtalOpt::OptTypes
     m_optimizers.clear();
-    const unsigned int numOptimizers = 4;
+    const unsigned int numOptimizers = 5;
     for (unsigned int i = 0; i < numOptimizers; ++i) {
       switch (i) {
       case XtalOpt::OT_VASP:
@@ -62,6 +63,9 @@ namespace XtalOpt {
         break;
       case XtalOpt::OT_CASTEP:
         m_optimizers.append(new CASTEPOptimizer (m_opt));
+        break;
+      case XtalOpt::OT_MOPAC:
+        m_optimizers.append(new MopacOptimizer (m_opt));
         break;
       }
     }
