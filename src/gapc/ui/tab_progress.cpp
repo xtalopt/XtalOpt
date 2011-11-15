@@ -329,6 +329,12 @@ namespace GAPC {
       }
       break;
     }
+    case ProtectedCluster::Preoptimizing:
+      ui.table_list->item(i, Status)->setText(tr("Preoptimizing: %1%")
+                                              .arg(QString::number(pc->getPreOptProgress()))
+                                              );
+      brush.setColor(Qt::green);
+      break;
     case ProtectedCluster::Submitted:
       ui.table_list->item(i, Status)->setText(tr("Job submitted (%1 of %2)")
                                               .arg(QString::number(pc->getCurrentOptStep()))

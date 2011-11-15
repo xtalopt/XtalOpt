@@ -20,7 +20,8 @@
 
 namespace XtalOpt {
   class SubMolecule;
-
+  class MolecularXtalOptimizer;
+  class MolecularXtalOptimizerPrivate;
   class MolecularXtal : public Xtal
   {
     Q_OBJECT
@@ -67,6 +68,21 @@ namespace XtalOpt {
     //! in.
     bool checkAtomToBondDistances(double minDistance);
 
+    int getPreOptProgress() const
+    {
+      return (this->m_status == Preoptimizing && m_preOptStepCount != 0)
+          ? (100 * m_preOptStep) / m_preOptStepCount : -1;
+    }
+    MolecularXtalOptimizer *getPreoptimizer() {return m_mxtalOpt;}
+    const MolecularXtalOptimizer *getPreoptimizer() const {return m_mxtalOpt;}
+
+    bool needsPreoptimization() const {return m_needsPreOpt;}
+    bool isPreoptimizing() const;
+
+    // no set function -- m_mxtalOpt is set automatically when the calcs are
+    // setup in MolecularXtalOptimizer
+    MolecularXtalOptimizer * getOptimizer() const {return m_mxtalOpt;}
+
     friend class MolecularXtalOptimizer;
     friend class MolecularXtalOptimizerPrivate;
 
@@ -97,8 +113,17 @@ namespace XtalOpt {
     void readMolecularXtalSettings(const QString &filename);
     void writeMolecularXtalSettings(const QString &filename) const;
 
+    void setPreOptStepCount(int i) {m_preOptStepCount = i;}
+    void setPreOptStep(int i) {m_preOptStep = i;}
+    void setNeedsPreoptimization(bool b) {m_needsPreOpt = b;}
+    void abortPreoptimization() const;
+
   protected:
     QList<SubMolecule*> m_subMolecules;
+    int m_preOptStepCount;
+    int m_preOptStep;
+    bool m_needsPreOpt;
+    MolecularXtalOptimizer *m_mxtalOpt;
 
   };
 

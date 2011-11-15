@@ -87,6 +87,13 @@ namespace GlobalSearch {
     trackers.append(&m_restartTracker);
     trackers.append(&m_newSubmissionTracker);
 
+    // abort any preoptimizations
+    foreach (Structure *s, *m_preOptTracker.list()) {
+      s->lock()->lockForWrite();
+      s->abortPreoptimization();
+      s->lock()->unlock();
+    }
+
     // Used to break wait loops if they take too long
     unsigned int timeout;
 
@@ -142,11 +149,6 @@ namespace GlobalSearch {
     connect(this, SIGNAL(structureFinished(GlobalSearch::Structure *)),
             this, SIGNAL(structureUpdated(GlobalSearch::Structure *)));
 
-    // internal connections
-    connect(this, SIGNAL(structureStarted(GlobalSearch::Structure *)),
-            this, SLOT(addStructureToSubmissionQueue(GlobalSearch::Structure *)),
-            Qt::QueuedConnection);
-
     // Work around bug in Qt 4.6.3:
 #if QT_VERSION == 0x040603
     connect(this, SIGNAL(newStructureQueued()),
@@ -161,6 +163,8 @@ namespace GlobalSearch {
   {
     QList<Tracker*> trackers;
     trackers.append(m_tracker);
+    trackers.append(&m_needPreOptTracker);
+    trackers.append(&m_preOptTracker);
     trackers.append(&m_jobStartTracker);
     trackers.append(&m_runningTracker);
     trackers.append(&m_newStructureTracker);
@@ -221,7 +225,24 @@ namespace GlobalSearch {
       structure->lock()->lockForRead();
       state = structure->getStatus();
       if (structure->getFailCount() != 0) fail++;
+      bool needsPreOpt = structure->needsPreoptimization();
       structure->lock()->unlock();
+      // Check for structures that need preoptimization
+      if ( needsPreOpt ) {
+        m_jobStartTracker.lockForWrite();
+        m_jobStartTracker.remove(structure);
+        m_jobStartTracker.unlock();
+        m_needPreOptTracker.lockForWrite();
+        m_needPreOptTracker.append(structure);
+        m_needPreOptTracker.unlock();
+      }
+      // Check for structures that are preoptimizating
+      if ( state == Structure::Preoptimizing ) {
+        m_preOptTracker.lockForWrite();
+        m_preOptTracker.append(structure);
+        m_preOptTracker.unlock();
+        ++submitted;
+      }
       // Count submitted structures
       if ( state == Structure::Submitted ||
            state == Structure::InProcess ){
@@ -234,7 +255,8 @@ namespace GlobalSearch {
       if ( state != Structure::Optimized &&
            state != Structure::Duplicate &&
            state != Structure::Killed &&
-           state != Structure::Removed ) {
+           state != Structure::Removed  &&
+           state != Structure::Preoptimizing ){
         running++;
         m_runningTracker.lockForWrite();
         m_runningTracker.append(structure);
@@ -250,6 +272,18 @@ namespace GlobalSearch {
       }
     }
     emit newStatusOverview(optimized, running, fail);
+
+    // Start a preoptimizations if needed
+    m_needPreOptTracker.lockForWrite();
+    m_preOptTracker.lockForWrite();
+    int needPreOpt = m_needPreOptTracker.size();
+    int preOpting  = m_preOptTracker.size();
+    m_preOptTracker.unlock();
+    m_needPreOptTracker.unlock();
+    if (needPreOpt != 0 && // Structures need preopt and
+        preOpting == 0 ){     // no preopts running
+      startPreoptimization();
+    }
 
     // Submit any jobs if needed
     m_jobStartTracker.lockForWrite();
@@ -334,8 +368,10 @@ namespace GlobalSearch {
                "from a thread other than the QM thread. "
                );
 
-    // Get list of running structures
+    // Get list of running and preoptimizing structures
     QList<Structure*> runningStructures = getAllRunningStructures();
+    runningStructures.append(*m_preOptTracker.list());
+
 
     // iterate over all structures and handle each based on its status
     for (QList<Structure*>::iterator
@@ -406,6 +442,9 @@ namespace GlobalSearch {
         break;
       case Structure::Empty:
         handleEmptyStructure(structure);
+        break;
+      case Structure::Preoptimizing:
+        handlePreoptimizingStructure(structure);
         break;
       }
     }
@@ -549,6 +588,11 @@ namespace GlobalSearch {
   void QueueManager::handleEmptyStructure(Structure *s)
   {
     // Nothing to do but wait (this should never actually happen...)
+  }
+
+  void QueueManager::handlePreoptimizingStructure(Structure *s)
+  {
+    // Nothing to do but wait
   }
 
   void QueueManager::handleUpdatingStructure(Structure *s)
@@ -806,6 +850,18 @@ namespace GlobalSearch {
     emit structureKilled(s);
   }
 
+  void QueueManager::senderHasFinishedPreoptimization()
+  {
+    Structure *s = qobject_cast<Structure*>(this->sender());
+    if (s == NULL) {
+      qWarning() << Q_FUNC_INFO << "called with non-structure sender.";
+      return;
+    }
+
+    m_preOptTracker.remove(s);
+    this->addStructureToSubmissionQueue(s, 0);
+  }
+
   void QueueManager::addStructureToSubmissionQueue(Structure *s,
                                                    int optStep)
   {
@@ -849,10 +905,59 @@ namespace GlobalSearch {
   }
   /// @endcond
 
+  void QueueManager::startPreoptimization()
+  {
+    Structure *s;
+    m_needPreOptTracker.lockForWrite();
+    m_preOptTracker.lockForWrite();
+    if (!m_needPreOptTracker.popFirst(s)) {
+      m_preOptTracker.unlock();
+      m_needPreOptTracker.unlock();
+      return;
+    }
+    s->lock()->lockForWrite();
+
+    // Revalidate assumptions
+    if (!s->needsPreoptimization()) {
+      s->lock()->unlock();
+      m_preOptTracker.unlock();
+      m_needPreOptTracker.unlock();
+      return;
+    }
+
+    s->setStatus(Structure::Preoptimizing);
+    m_preOptTracker.append(s);
+
+    s->lock()->unlock();
+    m_preOptTracker.unlock();
+    m_needPreOptTracker.unlock();
+
+
+    this->connect(s, SIGNAL(preoptimizationFinished()),
+                  SLOT(senderHasFinishedPreoptimization()));
+
+    m_opt->preoptimizeStructure(s);
+  }
+
   void QueueManager::startJob()
   {
     Structure *s;
     if (!m_jobStartTracker.popFirst(s)) {
+      return;
+    }
+
+    s->lock()->lockForRead();
+    bool needsPreOpt = s->needsPreoptimization();
+    s->lock()->unlock();
+
+    if (needsPreOpt) {
+      // This shouldn't happen. If it does, just queue the job for
+      // preoptimization instead.
+      qDebug() << "Trying to skip preoptimization??";
+      m_opt->printBackTrace();
+      this->m_preOptTracker.lockForWrite();
+      this->m_preOptTracker.append(s);
+      this->m_preOptTracker.unlock();
       return;
     }
 
@@ -876,7 +981,18 @@ namespace GlobalSearch {
 
   void QueueManager::stopJob(Structure *s)
   {
+    s->lock()->lockForRead();
+    if (s->isPreoptimizing()) {
+      s->abortPreoptimization();
+    }
+    s->lock()->unlock();
     m_opt->queueInterface()->stopJob(s);
+  }
+
+  QList<Structure*> QueueManager::getAllPreoptimizingStructures()
+  {
+    QReadLocker locker (m_preOptTracker.rwLock()); Q_UNUSED(locker);
+    return *m_preOptTracker.list();
   }
 
   QList<Structure*> QueueManager::getAllRunningStructures()
@@ -997,13 +1113,26 @@ namespace GlobalSearch {
     // Update structure
     s->lock()->lockForWrite();
     s->setStatus(Structure::WaitingForOptimization);
+    bool needsPreOpt = s->needsPreoptimization();
     s->lock()->unlock();
 
+    if (needsPreOpt) {
+      m_needPreOptTracker.lockForWrite();
+      m_needPreOptTracker.append(s);
+    }
+
     m_tracker->append(s);
+
+    if (needsPreOpt) {
+      m_needPreOptTracker.unlock();
+    }
 
     m_newStructureTracker.unlock();
     m_tracker->unlock();
 
+    if (!needsPreOpt) {
+      this->addStructureToSubmissionQueue(s);
+    }
     emit structureStarted(s);
   }
   /// @endcond

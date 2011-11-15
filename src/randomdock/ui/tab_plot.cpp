@@ -463,6 +463,7 @@ namespace RandomDock {
       case Scene::InProcess:
       case Scene::Empty:
       case Scene::Restart:
+      case Scene::Preoptimizing:
       case Scene::Updating:
         s.append(" (p)");
         break;

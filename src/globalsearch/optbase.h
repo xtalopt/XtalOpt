@@ -311,6 +311,9 @@ for (ind = 0; ind < probs.size(); ind++)
     /// This is locked when generating a backtrace.
     QMutex *backTraceMutex;
 
+    /// True if a preoptimization should be used.
+    bool usePreopt;
+
     /// True if there is a save requested or in progress
     bool savePending;
 
@@ -462,6 +465,13 @@ for (ind = 0; ind < probs.size(); ind++)
      * @sa QueueManager
      */
     virtual void generateNewStructure() {};
+
+    /**
+     * Perform a background preoptimization on Structure @a s. This may not be
+     * implemented for all search types, and does nothing by default.
+     * @param s the Structure to preoptimize.
+     */
+    virtual void preoptimizeStructure(Structure *s) {}
 
     /**
      * Prints a debug message to the terminal and emits

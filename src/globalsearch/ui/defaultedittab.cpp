@@ -27,6 +27,7 @@ namespace GlobalSearch {
   {
     ui->setupUi(m_tab_widget);
 
+    ui_cb_preopt             = ui->cb_preopt;
     ui_combo_queueInterfaces = ui->combo_queueInterfaces;
     ui_combo_optimizers      = ui->combo_optimizers;
     ui_combo_templates       = ui->combo_templates;
@@ -40,11 +41,17 @@ namespace GlobalSearch {
     ui_push_help             = ui->push_help;
     ui_push_loadScheme       = ui->push_loadScheme;
     ui_push_optimizerConfig  = ui->push_optimizerConfig;
+    ui_push_preoptConfig     = ui->push_preoptConfig;
     ui_push_queueInterfaceConfig
                              = ui->push_queueInterfaceConfig;
     ui_push_remove           = ui->push_remove;
     ui_push_saveScheme       = ui->push_saveScheme;
     ui_edit_edit             = ui->edit_edit;
+
+    // don't show the preopt cb/pushbutton by default. setVisible in
+    // subclasses if needed.
+    ui_cb_preopt->setVisible(false);
+    ui_push_preoptConfig->setVisible(false);
   }
 
   DefaultEditTab::~DefaultEditTab()

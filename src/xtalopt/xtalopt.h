@@ -150,6 +150,15 @@ namespace XtalOpt {
     double tol_xcAngle;
     double tol_spg;
 
+    // Molecular xtal preoptimizer params
+    double mpo_econv;             //! Convergence
+    int mpo_maxSteps;             //! Max steps
+    int mpo_sCUpdateInterval;     //! SuperCell update interval in steps
+    int mpo_cutoffUpdateInterval; //! Cutoff update interval (-1 updates only with SC)
+    double mpo_vdwCut;            //! Van der Waals cutoff distance (A)
+    double mpo_eleCut;            //! electrostatic cutoff distance (A)
+    bool mpo_debug;               //! Print extra debugging info to terminal
+
     // MXtalOptGenetic params
     // - Crossover
     int mga_p_cross;                      //! [0, 100]
@@ -185,6 +194,8 @@ namespace XtalOpt {
     bool initializeSubMoleculeSources(bool notify);
     void initializeSMSProgressUpdate(int finished, int total);
     void generateNewStructure();
+    void preoptimizeStructure(GlobalSearch::Structure *s);
+    void preoptimizeMXtal(MolecularXtal *mxtal);
     Xtal* generateNewXtal();
     MolecularXtal* generateNewMXtal();
     void initializeAndAddXtal(Xtal *xtal,

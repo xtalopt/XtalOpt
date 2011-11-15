@@ -154,6 +154,7 @@ namespace XtalOpt {
     }
 
     QList<Structure*> running = m_opt->queue()->getAllRunningStructures();
+    running.append(m_opt->queue()->getAllPreoptimizingStructures());
 
     for (QList<Structure*>::iterator
            it = running.begin(),
@@ -364,6 +365,16 @@ namespace XtalOpt {
         .arg(QString::number(xtal->getCurrentOptStep()))
         .arg(QString::number(totalOptSteps));
       e.brush.setColor(Qt::cyan);
+      break;
+    case Xtal::Preoptimizing:
+      if (xtal->getPreOptProgress() > 0) {
+        e.status = tr("Preoptimizing: %1%")
+            .arg(QString::number(xtal->getPreOptProgress()));
+      }
+      else {
+        e.status = tr("Initializing preoptimization...");
+      }
+      e.brush.setColor(Qt::green);
       break;
     case Xtal::Restart:
       e.status = "Restarting job...";

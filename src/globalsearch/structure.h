@@ -138,7 +138,9 @@ namespace GlobalSearch {
       Duplicate,
       /** The Structure is about to restart it's current optimization
        * step. */
-      Restart
+      Restart,
+      /** The Structure is undergoing a preoptimization step. */
+      Preoptimizing
     };
 
     /** @return Whether or not the "best" offspring (an optimized mutation)
@@ -283,6 +285,17 @@ namespace GlobalSearch {
      * @sa setCurrentOptStep
      */
     uint getCurrentOptStep() {return m_currentOptStep;};
+
+    /** @return true if running, false otherwise. */
+    virtual bool isPreoptimizing() const {return false;}
+
+    /** @return The percentage completion of the preoptimization step.
+      * -1 if @a this is not Preoptimizing.
+      */
+    virtual int getPreOptProgress() const {return -1;}
+
+    /** @return Whether or not @a this needs to be preoptimized. */
+    virtual bool needsPreoptimization() const {return false;}
 
     /** @return The number of times this Structure has failed the
      * current optimization step.
@@ -637,7 +650,9 @@ namespace GlobalSearch {
      */
     static void sortAndRankByEnthalpy(QList<Structure*> *structures);
 
-   signals:
+  signals:
+    void preoptimizationStarted();
+    void preoptimizationFinished();
 
    public slots:
 
@@ -1068,6 +1083,31 @@ namespace GlobalSearch {
      * @sa getOptElapsed
      */
     void setOptTimerEnd(const QDateTime &d) {m_optEnd = d;};
+
+
+    /** @param b Whether or not @a this needs to be preoptimized. */
+    virtual void setNeedsPreoptimization(bool b)
+    {
+      Q_UNUSED(b);
+      qWarning() << "Preoptimization is not implemented for all structure "
+                    "types. Call to Structure::setNeedsPreoptimization "
+                    "ignored.";
+    }
+
+    /** Abort the preoptimization running on this structure. */
+    virtual void abortPreoptimization() const {};
+
+    /** Emits the preoptimizationStarted signal */
+    void emitPreoptimizationStarted()
+    {
+      emit preoptimizationStarted();
+    }
+
+    /** Emits the preoptimizationFinished signal */
+    void emitPreoptimizationFinished()
+    {
+      emit preoptimizationFinished();
+    }
 
     /** Load data into Structure.
      * @attention Do not use this function in new code, as it has been

@@ -16,6 +16,7 @@
 #include <xtalopt/structures/molecularxtal.h>
 
 #include <xtalopt/structures/submolecule.h>
+#include <xtalopt/molecularxtaloptimizer.h>
 
 #include <globalsearch/macros.h>
 #include <globalsearch/obeigenconv.h>
@@ -34,7 +35,11 @@ using namespace Avogadro;
 namespace XtalOpt {
 
   MolecularXtal::MolecularXtal(QObject *parent) :
-    Xtal(parent)
+    Xtal(parent),
+    m_preOptStepCount(0),
+    m_preOptStep(0),
+    m_needsPreOpt(false),
+    m_mxtalOpt(NULL)
   {
   }
 
@@ -390,6 +395,11 @@ namespace XtalOpt {
     return;
   }
 
+  bool MolecularXtal::isPreoptimizing() const
+  {
+    return (m_mxtalOpt == NULL) ? false : m_mxtalOpt->isRunning();
+  }
+
   void MolecularXtal::setVolume(double Volume)
   {
     // Get scaling factor
@@ -726,6 +736,12 @@ namespace XtalOpt {
     settings->endArray();
   }
 
-
+  void MolecularXtal::abortPreoptimization() const
+  {
+    if (m_mxtalOpt != NULL) {
+      m_mxtalOpt->abort();
+      m_mxtalOpt->waitForFinished();
+    }
+  }
 
 } // end namespace XtalOpt

@@ -255,6 +255,7 @@ namespace GlobalSearch {
     settings->setValue("failCount", getFailCount());
     settings->setValue("startTime", getOptTimerStart().toString());
     settings->setValue("endTime", getOptTimerEnd().toString());
+    settings->setValue("needsPreoptimization", needsPreoptimization());
     settings->setValue("hasBestOffspring", hasBestOffspring());
 
     // History
@@ -358,6 +359,7 @@ namespace GlobalSearch {
       setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));
       setOptTimerEnd(   QDateTime::fromString(settings->value("endTime",   "").toString()));
 
+      setNeedsPreoptimization(settings->value("needsPreoptimization", true).toBool());
       setHasBestOffspring(settings->value("hasBestOffspring", false).toBool());
 
       // History
@@ -707,6 +709,9 @@ namespace GlobalSearch {
     case Submitted:
     case Restart:
       status = "In progress";
+      break;
+    case Preoptimizing:
+      status = "Preoptimizing";
       break;
     default:
       status = "Unknown";

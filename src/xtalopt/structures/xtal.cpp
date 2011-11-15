@@ -1275,6 +1275,9 @@ namespace XtalOpt {
     case Error:
       status = "Error";
       break;
+    case Preoptimizing:
+      status = "Preoptimizing";
+      break;
     case StepOptimized:
     case WaitingForOptimization:
     case InProcess:

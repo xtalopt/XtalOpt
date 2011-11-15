@@ -226,6 +226,9 @@ namespace XtalOpt {
       case Xtal::Error:
         out << "Error";
         break;
+      case Xtal::Preoptimizing:
+        out << "Preoptimizing";
+        break;
       case Xtal::StepOptimized:
       case Xtal::WaitingForOptimization:
       case Xtal::InProcess:

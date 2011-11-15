@@ -60,6 +60,7 @@ namespace GlobalSearch {
     sOBMutex(new QMutex),
     stateFileMutex(new QMutex),
     backTraceMutex(new QMutex),
+    usePreopt(false),
     savePending(false),
     readOnly(false),
     testingMode(false),

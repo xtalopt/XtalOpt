@@ -25,6 +25,7 @@
 #include <xtalopt/optimizers/castep.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
+#include <xtalopt/molecularxtaloptimizer.h>
 
 #include <xtalopt/mxtaloptgenetic.h>
 
@@ -725,7 +726,9 @@ namespace XtalOpt {
 
   void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation,
                                      const QString &parents)
-    {
+  {
+    MolecularXtal *mxtal = qobject_cast<MolecularXtal*>(xtal);
+
     xtalInitMutex->lock();
     QList<Structure*> allStructures = m_queue->lockForNaming();
     Structure *structure;
@@ -775,10 +778,19 @@ namespace XtalOpt {
       xtal->fixAngles();
     }
     xtal->findSpaceGroup(tol_spg);
+
+    // If this is a molecular xtal, flag it for preoptimization
+    if (mxtal != NULL) {
+      if (this->usePreopt) {
+        mxtal->setNeedsPreoptimization(true);
+      }
+    }
+
     xtalLocker.unlock();
     xtal->update();
     m_queue->unlockForNaming(xtal);
     xtalInitMutex->unlock();
+
   }
 
   void XtalOpt::generateNewStructure()
@@ -799,6 +811,70 @@ namespace XtalOpt {
       initializeAndAddXtal(newXtal, newXtal->getGeneration(),
                            newXtal->getParents());
     }
+  }
+
+  void XtalOpt::preoptimizeStructure(Structure *s)
+  {
+    if (s == NULL) {
+      qWarning() << Q_FUNC_INFO << "NULL argument.";
+      return;
+    }
+
+    MolecularXtal *mxtal = qobject_cast<MolecularXtal*>(s);
+    if (mxtal == NULL) {
+      qWarning() << "No preoptimization method implemented for"
+                 << s->metaObject()->className();
+      return;
+    }
+
+    QtConcurrent::run(this, &XtalOpt::preoptimizeMXtal, mxtal);
+  }
+
+  void XtalOpt::preoptimizeMXtal(MolecularXtal *mxtal)
+  {
+    QWriteLocker locker (mxtal->lock());
+
+    if (!mxtal->needsPreoptimization())
+      return;
+
+    mxtal->emitPreoptimizationStarted();
+
+    mxtal->setNeedsPreoptimization(false);
+
+    mxtal->wrapAtomsToCell();
+
+    // Rough preoptimization
+    MolecularXtalOptimizer mxtalOpt (this, sOBMutex);
+    mxtalOpt.setDebug(this->mpo_debug);
+    mxtalOpt.setMXtal(mxtal);
+    mxtalOpt.setEnergyConvergence(this->mpo_econv);
+    mxtalOpt.setNumberOfGeometrySteps(this->mpo_maxSteps);
+    mxtalOpt.setSuperCellUpdateInterval(this->mpo_sCUpdateInterval);
+    mxtalOpt.setVDWCutoff(this->mpo_vdwCut);
+    mxtalOpt.setElectrostaticCutoff(this->mpo_eleCut);
+    mxtalOpt.setCutoffUpdateInterval(this->mpo_cutoffUpdateInterval);
+    mxtalOpt.setup();
+
+    mxtal->startOptTimer();
+    locker.unlock();
+    mxtalOpt.run();
+    locker.relock();
+    mxtal->stopOptTimer();
+
+    mxtal->setStatus(MolecularXtal::Updating);
+
+    if (mxtalOpt.isConverged() || mxtalOpt.reachedStepLimit()) {
+      mxtalOpt.updateMXtalCoords();
+      mxtal->wrapAtomsToCell();
+    }
+    else {
+      qWarning() << "Preoptimization failed for" << mxtal->getIDString()
+                 << ". Continuing with full optimization.";
+    }
+
+    mxtalOpt.releaseMXtal(); // Under writelock on mxtal->lock(), ok to call
+
+    mxtal->emitPreoptimizationFinished();
   }
 
   Xtal* XtalOpt::generateNewXtal()

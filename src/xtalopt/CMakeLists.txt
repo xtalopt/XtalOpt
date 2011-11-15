@@ -21,6 +21,7 @@ set( xtalopt_SRCS
      submoleculeranker.cpp
      testing/xtalopttest.cpp
      ui/dialog.cpp
+     ui/mxtalpreoptconfigdialog.cpp
      ui/tab_edit.cpp
      ui/tab_init.cpp
      ui/tab_log.cpp
@@ -33,6 +34,7 @@ set( xtalopt_SRCS
 
 set( xtalopt_UIS
      ui/dialog.ui
+     ui/mxtalpreoptconfigdialog.ui
      ui/tab_init.ui
      ui/tab_log.ui
      ui/tab_opt.ui

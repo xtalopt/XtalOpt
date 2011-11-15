@@ -23,6 +23,7 @@
 #include <QtCore/QString>
 #include <QtCore/QStringList>
 
+class QCheckBox;
 class QComboBox;
 class QLineEdit;
 class QListWidget;
@@ -181,6 +182,8 @@ namespace GlobalSearch {
     QList<QueueInterface*> m_queueInterfaces;
 
     /// Cached GUI pointer. This is set in DefaultEditTab
+    QCheckBox     *ui_cb_preopt;
+    /// Cached GUI pointer. This is set in DefaultEditTab
     QComboBox     *ui_combo_queueInterfaces;
     /// Cached GUI pointer. This is set in DefaultEditTab
     QComboBox     *ui_combo_optimizers;
@@ -206,6 +209,8 @@ namespace GlobalSearch {
     QPushButton   *ui_push_loadScheme;
     /// Cached GUI pointer. This is set in DefaultEditTab
     QPushButton   *ui_push_optimizerConfig;
+    /// Cached GUI pointer. This is set in DefaultEditTab
+    QPushButton   *ui_push_preoptConfig;
     /// Cached GUI pointer. This is set in DefaultEditTab
     QPushButton   *ui_push_queueInterfaceConfig;
     /// Cached GUI pointer. This is set in DefaultEditTab
