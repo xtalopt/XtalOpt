@@ -1447,6 +1447,17 @@ namespace XtalOpt {
         }
         return false;
       }
+      // If this is a molecularxtal, also check that all atoms are
+      // sufficiently far from each bond:
+      if (MolecularXtal *mxtal = qobject_cast<MolecularXtal*>(xtal)) {
+        if (!mxtal->checkAtomToBondDistances(0.25)) {
+          qDebug() << "Discarding structure -- an atom is too close to a bond.";
+          if (err != NULL) {
+            *err = "A non-bonded atom is too close to a bond.";
+          }
+          return false;
+        }
+      }
     }
 
     // Xtal is OK!
