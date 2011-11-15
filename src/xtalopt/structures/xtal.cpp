@@ -1195,9 +1195,12 @@ namespace XtalOpt {
     case InProcess:
     case Empty:
     case Updating:
+    case Restart:
     case Submitted:
-    default:
       status = "In progress";
+      break;
+    default:
+      status = "Unknown";
       break;
     }
     return QString("%1 %2 %3 %4 %5 %6")

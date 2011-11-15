@@ -269,6 +269,8 @@ namespace GlobalSearch {
       return QueueInterface::Pending;
     case LocalQueueProcess::Running:
       return QueueInterface::Running;
+    case LocalQueueProcess::Error:
+      return QueueInterface::Error;
     case LocalQueueProcess::Finished:
       // Was the run successful?
       if (proc->exitCode() != 0) {

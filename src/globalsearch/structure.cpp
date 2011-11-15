@@ -662,8 +662,11 @@ namespace GlobalSearch {
     case Empty:
     case Updating:
     case Submitted:
-    default:
+    case Restart:
       status = "In progress";
+      break;
+    default:
+      status = "Unknown";
       break;
     }
     return QString("%1 %2 %3 %4 %5")

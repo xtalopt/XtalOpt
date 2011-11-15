@@ -232,6 +232,7 @@ namespace XtalOpt {
       case Xtal::Empty:
       case Xtal::Updating:
       case Xtal::Submitted:
+      case Xtal::Restart:
       default:
         out << "In progress";
         break;
