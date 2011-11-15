@@ -29,6 +29,8 @@
 
 #include <QtCore/QDir>
 #include <QtCore/QFile>
+#include <QtCore/QString>
+#include <QtCore/QStringList>
 
 namespace GlobalSearch {
 
@@ -329,27 +331,15 @@ namespace GlobalSearch {
 
     // Determine status if structure is in the queue
     QString status;
-    QStringList entryList;
-    unsigned int curJobID = 0;
-    bool ok;
-    for (int i = 0; i < queueData.size(); i++) {
-      entryList = queueData.at(i).split(".");
-      if (entryList.size()) {
-        curJobID = entryList.first().toUInt(&ok);
-        if (!ok) {
-          continue;
-        }
+    int i = queueData.indexOf(QRegExp("^" + QString::number(jobID)+ ".*"));
+    if (i != -1) {
+      QStringList entryList = queueData.at(i).split(QRegExp("\\s+"));
+      if (entryList.size() < 10) {
+        m_opt->debug(QString("Skipping shot qstat entry; need at least 10"
+                             "fields: %1").arg(queueData.at(i)));
       }
       else {
-        continue;
-      }
-      if (curJobID == jobID) {
-        entryList = queueData.at(i).split(QRegExp("\\s+"));
-        if (entryList.size() < 5) {
-          continue;
-        }
-        status = entryList.at(4);
-        break;
+        status = entryList.at(9);
       }
     }
 
@@ -503,7 +493,7 @@ namespace GlobalSearch {
       return ret;
     }
 
-    QString command = m_qstat + " | grep " + m_opt->username;
+    QString command = m_qstat + " -u " + m_opt->username;
 
     // Execute
     QString stdout_str;
