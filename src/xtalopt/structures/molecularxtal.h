@@ -67,6 +67,9 @@ namespace XtalOpt {
     //! in.
     bool checkAtomToBondDistances(double minDistance);
 
+    friend class MolecularXtalOptimizer;
+    friend class MolecularXtalOptimizerPrivate;
+
   public slots:
     // Reimplementations act on molecule centers rather than atomic positions
     virtual void setVolume(double Volume);

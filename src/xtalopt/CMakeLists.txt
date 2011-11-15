@@ -7,6 +7,7 @@ set( xtalopt_SRCS
      holefinder.cpp
      mxtaloptgenetic.cpp
      molecularxtalmutator.cpp
+     molecularxtaloptimizer.cpp
      optimizers/castep.cpp
      optimizers/gulp.cpp
      optimizers/mopac.cpp

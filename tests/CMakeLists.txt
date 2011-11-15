@@ -26,6 +26,7 @@ set(tests
   holefinder
   molecularxtal
   molecularxtalmutator
+  molecularxtaloptimizer
   mxtaloptgenetic
   optbase
   submoleculeranker
