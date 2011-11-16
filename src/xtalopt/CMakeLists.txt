@@ -5,15 +5,17 @@ set( xtalopt_SRCS
      extension.cpp
      xtalopt.cpp
      genetic.cpp
+     mxtaloptgenetic.cpp
+     optimizers/castep.cpp
+     optimizers/gulp.cpp
+     optimizers/mopac.cpp
+     optimizers/pwscf.cpp
+     optimizers/vasp.cpp
+     optimizers/xtaloptoptimizer.cpp
      structures/molecularxtal.cpp
      structures/submolecule.cpp
      structures/submoleculesource.cpp
      structures/xtal.cpp
-     optimizers/xtaloptoptimizer.cpp
-     optimizers/vasp.cpp
-     optimizers/gulp.cpp
-     optimizers/pwscf.cpp
-     optimizers/castep.cpp
      submoleculeranker.cpp
      testing/xtalopttest.cpp
      ui/dialog.cpp

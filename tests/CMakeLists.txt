@@ -24,6 +24,7 @@ link_directories(
 
 set(tests
   molecularxtal
+  mxtaloptgenetic
   optbase
   submoleculeranker
   structure

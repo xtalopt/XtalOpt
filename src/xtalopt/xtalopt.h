@@ -130,6 +130,25 @@ namespace XtalOpt {
     double tol_xcAngle;
     double tol_spg;
 
+    // MXtalOptGenetic params
+    // - Crossover
+    int mga_p_cross;                      //! [0, 100]
+    double mga_cross_minimumContribution; //! [0.0, 50.0]
+    // - Reconf
+    int mga_p_reconf;                     //! [0, 100]
+    int mga_reconf_minSubMolsToReplace;   //! [0, sum(i, mcomp[i].quantity)]
+    int mga_reconf_maxSubMolsToReplace;   //! [0, sum(i, mcomp[i].quantity)]
+    double mga_reconf_minStrain;          //! [0, 1]
+    double mga_reconf_maxStrain;          //! [0, 1]
+    // - Swirl
+    int mga_p_swirl;                      //! [0, 100]
+    int mga_swirl_minSubMolsToRotate;     //! [0, sum(i, mcomp[i].quantity)]
+    int mga_swirl_maxSubMolsToRotate;     //! [0, sum(i, mcomp[i].quantity)]
+    int mga_swirl_minRotationDegree;      //! [0, 180]
+    double mga_swirl_fracInPlane;         //! [0, 1]
+    double mga_swirl_minStrain;           //! [0, 1]
+    double mga_swirl_maxStrain;           //! [0, 1]
+
     bool using_fixed_volume;
     bool using_interatomicDistanceLimit;
 
