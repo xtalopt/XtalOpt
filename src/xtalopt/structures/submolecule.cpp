@@ -423,7 +423,7 @@ namespace XtalOpt {
       const double maxDist = (
             OpenBabel::etab.GetCovalentRad((*it)->beginAtom()->atomicNumber()) +
             OpenBabel::etab.GetCovalentRad((*it)->endAtom()->atomicNumber()))
-          * 1.2; // fudge factor
+          * 2.0; // fudge factor
       const double maxDistSquared = maxDist * maxDist;
 
       // Shorten bond vec if needed

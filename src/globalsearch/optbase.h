@@ -130,6 +130,21 @@ namespace GlobalSearch {
     virtual bool checkLimits() = 0;
 
     /**
+     * Perform any post-optimization checks that need to be performed when a
+     * structure enters the Structure::StepOptimized state.
+     * @param s Structure to check
+     * @param err If non-NULL, will be overwritten with an explaination of
+     * why the check failed.
+     * @return True if structure passes, false otherwise.
+     */
+    virtual bool checkStepOptimizedStructure(Structure *s, QString *err = NULL)
+    {
+      Q_UNUSED(s);
+      Q_UNUSED(err);
+      return true;
+    }
+
+    /**
      * Generate a probability list using the enthalpies of a
      * collection of structures.
      *

@@ -556,6 +556,17 @@ namespace GlobalSearch {
 
     s->stopOptTimer();
 
+    QString err;
+    if (!m_opt->checkStepOptimizedStructure(s, &err)) {
+      // Structure failed a post optimization step:
+      m_opt->warning(QString("Structure %1 failed a post-optimization step: %2")
+                     .arg(s->getIDString())
+                     .arg(err));
+      s->setStatus(Structure::Error);
+      emit structureUpdated(s);
+      return;
+    }
+
     // update optstep and relaunch if necessary
     if (s->getCurrentOptStep()
         < static_cast<unsigned int>(m_opt->optimizer()->getNumberOfOptSteps())) {

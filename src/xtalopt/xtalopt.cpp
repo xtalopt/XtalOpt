@@ -1467,6 +1467,32 @@ namespace XtalOpt {
     return true;
   }
 
+  bool XtalOpt::checkStepOptimizedStructure(Structure *s, QString *err)
+  {
+    if (s == NULL) {
+      if (err != NULL) {
+        *err = "NULL pointer give for structure.";
+      }
+      return false;
+    }
+    // Only currently implemented for molecular xtals:
+    MolecularXtal *mxtal = qobject_cast<MolecularXtal*>(s);
+
+    if (mxtal == NULL) {
+      return true;
+    }
+
+    // Check continuity of submolecular units
+    if (!mxtal->verifySubMolecules()) {
+      if (err != NULL) {
+        *err = "Molecular Xtal exploded (unreasonable bonds post-optimization)";
+      }
+      return false;
+    }
+
+    return true;
+  }
+
   QString XtalOpt::interpretTemplate(const QString & templateString,
                                      Structure* structure)
   {
