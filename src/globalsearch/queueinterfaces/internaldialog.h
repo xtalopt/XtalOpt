@@ -1,5 +1,5 @@
 /**********************************************************************
-  LocalQueueInterfaceConfigDialog
+  InternalQueueInterfaceConfigDialog
 
   Copyright (C) 2010 by David C. Lonie
 
@@ -15,8 +15,8 @@
 
 // Don't document this:
 /// @cond
-#ifndef LOCALQUEUEINTERFACECONFIGDIALOG_H
-#define LOCALQUEUEINTERFACECONFIGDIALOG_H
+#ifndef INTERNALQUEUEINTERFACECONFIGDIALOG_H
+#define INTERNALQUEUEINTERFACECONFIGDIALOG_H
 
 #include <QtGui/QDialog>
 
@@ -25,16 +25,16 @@ class QLineEdit;
 namespace GlobalSearch {
   class AbstractDialog;
   class OptBase;
-  class LocalQueueInterface;
+  class InternalQueueInterface;
 
-  // Basic input dialog for local QueueInterfaces
-  class LocalQueueInterfaceConfigDialog : public QDialog
+  // Basic input dialog for Internal QueueInterfaces
+  class InternalQueueInterfaceConfigDialog : public QDialog
   {
     Q_OBJECT;
   public:
-    LocalQueueInterfaceConfigDialog(AbstractDialog *parent,
+    InternalQueueInterfaceConfigDialog(AbstractDialog *parent,
                                     OptBase *opt,
-                                    LocalQueueInterface *qi);
+                                    InternalQueueInterface *qi);
 
   public slots:
     void accept();
@@ -43,7 +43,7 @@ namespace GlobalSearch {
 
   protected:
     OptBase *m_opt;
-    LocalQueueInterface *m_queueInterface;
+    InternalQueueInterface *m_queueInterface;
     QLineEdit *m_edit_workdir;
     QLineEdit *m_edit_description;
 

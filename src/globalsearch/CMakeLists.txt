@@ -16,8 +16,9 @@ set( globalsearch_SRCS
      ui/abstractedittab.cpp
      ui/defaultedittab.cpp
      queueinterface.cpp
+     queueinterfaces/internal.cpp
+     queueinterfaces/internaldialog.cpp
      queueinterfaces/local.cpp
-     queueinterfaces/localdialog.cpp
 )
 
 if (ENABLE_SSH)

@@ -1,5 +1,5 @@
 /**********************************************************************
-  LocalQueueInterfaceConfigDialog
+  InternalQueueInterfaceConfigDialog
 
   Copyright (C) 2011 by David C. Lonie
 
@@ -16,10 +16,10 @@
 // Don't document this:
 /// @cond
 
-#include <globalsearch/queueinterfaces/localdialog.h>
+#include <globalsearch/queueinterfaces/internaldialog.h>
 
 #include <globalsearch/optbase.h>
-#include <globalsearch/queueinterfaces/local.h>
+#include <globalsearch/queueinterfaces/internal.h>
 #include <globalsearch/ui/abstractdialog.h>
 
 #include <QtGui/QDialog>
@@ -34,8 +34,8 @@
 
 namespace GlobalSearch {
 
-  LocalQueueInterfaceConfigDialog::LocalQueueInterfaceConfigDialog
-  (AbstractDialog *parent, OptBase *opt, LocalQueueInterface *o)
+  InternalQueueInterfaceConfigDialog::InternalQueueInterfaceConfigDialog
+  (AbstractDialog *parent, OptBase *opt, InternalQueueInterface *o)
     : QDialog(parent),
       m_opt(opt),
       m_queueInterface(o),
@@ -86,7 +86,7 @@ namespace GlobalSearch {
             this, SLOT(reject()));
   }
 
-  void LocalQueueInterfaceConfigDialog::accept()
+  void InternalQueueInterfaceConfigDialog::accept()
   {
     m_opt->filePath = m_edit_workdir->text().trimmed();
     m_opt->description = m_edit_description->text().trimmed();
@@ -94,14 +94,14 @@ namespace GlobalSearch {
     this->close();
   }
 
-  void LocalQueueInterfaceConfigDialog::reject()
+  void InternalQueueInterfaceConfigDialog::reject()
   {
     updateGUI();
     QDialog::reject();
     this->close();
   }
 
-  void LocalQueueInterfaceConfigDialog::updateGUI()
+  void InternalQueueInterfaceConfigDialog::updateGUI()
   {
     m_edit_workdir->setText(m_opt->filePath);
     m_edit_description->setText(m_opt->description);

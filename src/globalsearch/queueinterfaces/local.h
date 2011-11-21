@@ -1,5 +1,5 @@
 /**********************************************************************
-  LocalQueueInterface - Interface for running jobs locally.
+  LocalQueueInterface - Abstract interface for running jobs locally.
 
   Copyright (C) 2011 by David C. Lonie
 
@@ -17,37 +17,8 @@
 #define LOCALQUEUEINTERFACE_H
 
 #include <globalsearch/queueinterface.h>
-#include <globalsearch/macros.h>
-
-#include <QtCore/QProcess>
 
 namespace GlobalSearch {
-  class LocalQueueInterfaceConfigDialog;
-
-  /// @cond
-  // Since QProcess doesn't support polling at all (e.g. the only way
-  // to track its progress is to monitor signals), this class provides
-  // a basic polling wrapper.
-  class LocalQueueProcess : public QProcess
-  { Q_OBJECT;
-  public:
-    enum Status {NotStarted = 0, Running, Finished, Error};
-  LocalQueueProcess(QObject *parent) :
-    QProcess(parent), m_status(NotStarted)
-    {
-      connect(this, SIGNAL(started()), this, SLOT(setRunning()));
-      connect(this, SIGNAL(finished(int, QProcess::ExitStatus)),
-              this, SLOT(setFinished()));
-      connect(this, SIGNAL(error(QProcess::ProcessError)),
-              this, SLOT(setFinished()));}
-  public slots:
-    void setRunning() {m_status = Running;};
-    void setFinished() {m_status = Finished;};
-    Status status() {return m_status;};
-  private:
-    Status m_status;
-  };
-  /// @endcond
 
   /**
    * @class LocalQueueInterface local.h <globalsearch/local.h>
@@ -61,8 +32,6 @@ namespace GlobalSearch {
     Q_OBJECT;
 
   public:
-    friend class LocalQueueInterfaceConfigDialog;
-
     /**
      * Constructor
      *
@@ -76,18 +45,6 @@ namespace GlobalSearch {
      * Destructor
      */
     virtual ~LocalQueueInterface();
-
-    /**
-     * Check that all mandatory internal variables are set. Check this
-     * before starting a search.
-     *
-     * @param err String to be overwritten with an error message
-     *
-     * @return true if all variables are initialized, false
-     * otherwise. If false, \a err will be overwritten with a
-     * user-friendly error message.
-     */
-    virtual bool isReadyToSearch(QString *err);
 
   public slots:
 
@@ -105,28 +62,6 @@ namespace GlobalSearch {
      */
     virtual bool writeFiles(Structure *s,
                             const QHash<QString, QString> &files) const;
-
-    /**
-     * Start a job for Structure \a s.
-     *
-     * @note Ensure that writeFiles is called before attempting to
-     * start the job.
-     *
-     * @return True on success, false otherwise.
-     */
-    virtual bool startJob(Structure *s);
-
-    /**
-     * Stop any currently running jobs for Structure \a s.
-     *
-     * @return True on success, false otherwise.
-     */
-    virtual bool stopJob(Structure *s);
-
-    /**
-     * @return The queue status of Structure \a s.
-     */
-    virtual QueueInterface::QueueStatus getStatus(Structure *s) const;
 
     /**
      * Perform any work needed before calling Optimizer::update. This
@@ -201,20 +136,6 @@ namespace GlobalSearch {
                           QStringList *matches = 0,
                           int *exitcode = 0,
                           const bool caseSensitive = true) const;
-
-    /**
-     * @return The configuration dialog for this QueueInterface, if it
-     * exists, otherwise 0.
-     * @sa hasDialog()
-     * @ingroup dialog
-     */
-    virtual QDialog* dialog();
-
-  protected:
-    /// Look up hash for mapping jobID's to processes.
-    /// Key: PID, Value: QProcess handle
-    QHash<unsigned long, LocalQueueProcess*> m_processes;
-
   };
 }
 

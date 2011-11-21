@@ -69,7 +69,7 @@ namespace XtalOpt {
     };
 
     enum QueueInterfaces {
-      QI_LOCAL = 0
+      QI_INTERNAL = 0
 #ifdef ENABLE_SSH
       ,
       QI_PBS,

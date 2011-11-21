@@ -17,7 +17,6 @@
 
 #include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
-#include <globalsearch/queueinterfaces/localdialog.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/structure.h>
 
@@ -28,80 +27,21 @@
 #include <QtCore/QString>
 #include <QtCore/QTextStream>
 
-#ifdef WIN32
-// For extracting PIDs
-#include <windows.h>
-#endif
-
 namespace GlobalSearch {
 
   LocalQueueInterface::LocalQueueInterface(OptBase *parent,
                                            const QString &settingFile) :
     QueueInterface(parent)
   {
-    // Needed for LocalQueueProcess:
-    qRegisterMetaType<QProcess::ExitStatus>("QProcess::ExitStatus");
-    qRegisterMetaType<QProcess::ProcessError>("QProcess::ProcessError");
-
     m_idString = "Local";
-    m_hasDialog = true;
+    m_hasDialog = false;
   }
 
   LocalQueueInterface::~LocalQueueInterface()
   {
-    for (QHash<unsigned long, LocalQueueProcess*>::iterator
-           it = m_processes.begin(),
-           it_end = m_processes.end();
-         it != it_end; ++it) {
-      if ((*it) && ((*it)->state() == QProcess::Running)) {
-        // Give each process 5 seconds to do any cleanup needed, then
-        // kill it.
-        (*it)->terminate();
-        (*it)->waitForFinished(5000);
-        (*it)->kill();
-      }
-    }
   }
 
-  bool LocalQueueInterface::isReadyToSearch(QString *str)
-  {
-    // Is a working directory specified?
-    if (m_opt->filePath.isEmpty()) {
-      *str = tr("Local working directory is not set. Check your Queue "
-                "configuration.");
-      return false;
-    }
-
-    // Can we write to the working directory?
-    QDir workingdir (m_opt->filePath);
-    bool writable = true;
-    if (!workingdir.exists()) {
-      if (!workingdir.mkpath(m_opt->filePath)) {
-        writable = false;
-      }
-    }
-    else {
-      // If the path exists, attempt to open a small test file for writing
-      QString filename = m_opt->filePath + QString("queuetest-")
-        + QString::number(RANDUINT());
-      QFile file (filename);
-      if (!file.open(QFile::ReadWrite)) {
-        writable = false;
-      }
-      file.remove();
-    }
-    if (!writable) {
-      *str = tr("Cannot write to working directory '%1'.\n\nPlease "
-                "change the permissions on this directory or use "
-                "a different one.").arg(m_opt->filePath);
-      return false;
-    }
-
-    *str = "";
-    return true;
-  }
-
-  bool LocalQueueInterface::writeFiles
+ bool LocalQueueInterface::writeFiles
   (Structure *s, const QHash<QString, QString> &fileHash) const
   {
     // Create file objects
@@ -140,162 +80,6 @@ namespace GlobalSearch {
     qDeleteAll(streams);
     qDeleteAll(files);
     return true;
-  }
-
-  bool LocalQueueInterface::startJob(Structure *s)
-  {
-    if (s->getJobID() != 0) {
-      m_opt->warning(tr("LocalQueueInterface::startJob: Attempting to start "
-                        "job for structure %1, but a JobID is already set (%2)."
-                        ).arg(s->getIDString()).arg(s->getJobID()));
-      return false;
-    }
-    // TODO the corresponding function in Optimizer should prepend a
-    // path for e.g. windows
-    QString command = m_opt->optimizer()->localRunCommand();
-
-#ifdef WIN32
-    command = "cmd.exe /C \"" + command + "\"";
-#endif // WIN32
-
-    LocalQueueProcess *proc = new LocalQueueProcess(this);
-    proc->setWorkingDirectory(s->fileName());
-    if (!m_opt->optimizer()->stdinFilename().isEmpty()) {
-      proc->setStandardInputFile(s->fileName()
-                                 + "/" + m_opt->optimizer()->stdinFilename());
-    }
-    if (!m_opt->optimizer()->stdoutFilename().isEmpty()) {
-      proc->setStandardOutputFile(s->fileName()
-                                  + "/" + m_opt->optimizer()->stdoutFilename());
-    }
-    if (!m_opt->optimizer()->stderrFilename().isEmpty()) {
-      proc->setStandardErrorFile(s->fileName()
-                                 + "/" + m_opt->optimizer()->stderrFilename());
-    }
-
-    proc->start(command,m_opt->optimizer()->localRunArgs());
-
-#ifdef WIN32
-    unsigned long pid = proc->pid()->dwProcessId;
-#else // WIN32
-    unsigned long pid = proc->pid();
-#endif // WIN32
-
-    s->startOptTimer();
-    s->setJobID(pid);
-
-    m_processes.insert(pid, proc);
-
-    return true;
-  }
-
-  bool LocalQueueInterface::stopJob(Structure *s)
-  {
-    QWriteLocker wLocker (s->lock());
-
-    unsigned long pid = static_cast<unsigned long>(s->getJobID());
-
-    if (pid == 0) {
-      // The job is not running, so just return
-      return true;
-    }
-
-    // Look-up process instance
-    LocalQueueProcess *proc = m_processes.value(pid, 0);
-    if (!proc) {
-      // No process is associated with this JobID.
-      return true;
-    }
-
-    // Kill job
-    proc->kill();
-    s->setJobID(0);
-    s->stopOptTimer();
-    m_processes.remove(pid);
-    return true;
-  }
-
-  QueueInterface::QueueStatus
-  LocalQueueInterface::getStatus(Structure *s) const
-  {
-    // lock Structure
-    QReadLocker wlocker (s->lock());
-
-    // Look-up process instance
-    unsigned long pid = static_cast<unsigned long>(s->getJobID());
-
-    // If jobID = 0 and structure is not in "Submitted" state, return an error.
-    if (!pid && s->getStatus() != Structure::Submitted) {
-      return QueueInterface::Error;
-    }
-
-    // Look-up process instance
-    LocalQueueProcess *proc = m_processes.value(pid, 0);
-
-    // If structure is submitted, check if it's process is in the
-    // lookup table. If not, check if the completion file has been
-    // written.
-    //
-    // If the completion file exists, then the job finished before the
-    // queue checks could see it, and the function will continue on to
-    // the status checks below.
-    //
-    // Is the structure in Submitted state?
-    if (s->getStatus() == Structure::Submitted) {
-      // If the process isn't in the table
-      if (pid == 0 || proc == 0) {
-        // Is the output file exist absent?
-        bool exists;
-        m_opt->optimizer()->checkIfOutputFileExists(s, &exists);
-        if (!exists) {
-          // The output file does not exist -- the job is still
-          // pending.
-          return QueueInterface::Pending;
-        }
-      }
-      // The job is either running or finished
-      return QueueInterface::Started;
-    }
-
-    // If the process is not in the table, return an error
-    if (!proc) {
-      return QueueInterface::Error;
-    }
-
-    // Note that this is not part of QProcess - status() is defined in
-    // LocalQueueProcess
-    switch (proc->status()) {
-    case LocalQueueProcess::NotStarted:
-      return QueueInterface::Pending;
-    case LocalQueueProcess::Running:
-      return QueueInterface::Running;
-    case LocalQueueProcess::Error:
-      return QueueInterface::Error;
-    case LocalQueueProcess::Finished:
-      // Was the run successful?
-      if (proc->exitCode() != 0) {
-        m_opt->warning(tr("%1: Structure %2, PID=%3 failed. QProcess error "
-                          "code: %4. Process exit code: %5 errStr: %6\n"
-                          "stdout:\n%7\nstderr:\n%8")
-                       .arg(Q_FUNC_INFO).arg(s->getIDString()).arg(pid)
-                       .arg(proc->error()).arg(proc->exitCode())
-                       .arg(proc->errorString())
-                       .arg(QString(proc->readAllStandardOutput()))
-                       .arg(QString(proc->readAllStandardError())));
-        return QueueInterface::Error;
-      }
-      bool success;
-      m_opt->optimizer()->checkForSuccessfulOutput(s, &success);
-      if (success) {
-        return QueueInterface::Success;
-      }
-      else {
-        return QueueInterface::Error;
-      }
-    default:
-    // Shouldn't reach this point...
-    return QueueInterface::Unknown;
-    }
   }
 
   bool LocalQueueInterface::prepareForStructureUpdate(Structure *s) const
@@ -374,19 +158,4 @@ namespace GlobalSearch {
 
     return true;
   }
-
-  QDialog* LocalQueueInterface::dialog()
-  {
-    if (!m_dialog) {
-      m_dialog = new LocalQueueInterfaceConfigDialog (m_opt->dialog(),
-                                                      m_opt,
-                                                      this);
-    }
-    LocalQueueInterfaceConfigDialog *d =
-      qobject_cast<LocalQueueInterfaceConfigDialog*>(m_dialog);
-    d->updateGUI();
-
-    return d;
-  }
-
 }

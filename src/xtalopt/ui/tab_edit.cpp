@@ -26,8 +26,8 @@
 #include <xtalopt/xtalopt.h>
 
 #include <globalsearch/macros.h>
+#include <globalsearch/queueinterfaces/internal.h>
 #include <globalsearch/queueinterfaces/loadleveler.h>
-#include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/lsf.h>
 #include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/queueinterfaces/sge.h>
@@ -80,8 +80,8 @@ namespace XtalOpt {
     const unsigned int numQIs = 6;
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
-      case XtalOpt::QI_LOCAL:
-        m_queueInterfaces.append(new LocalQueueInterface (m_opt));
+      case XtalOpt::QI_INTERNAL:
+        m_queueInterfaces.append(new InternalQueueInterface (m_opt));
         break;
 #ifdef ENABLE_SSH
       case XtalOpt::QI_PBS:
@@ -302,7 +302,7 @@ namespace XtalOpt {
           break;
         default:
         case XtalOpt::OT_GULP:
-          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_LOCAL);
+          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_INTERNAL);
           break;
         }
 #endif // ENABLE_SSH
