@@ -19,8 +19,10 @@
 #include <xtalopt/optimizers/castep.h>
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/mopac.h>
+#include <xtalopt/optimizers/openbabeloptimizer.h>
 #include <xtalopt/optimizers/pwscf.h>
 #include <xtalopt/optimizers/vasp.h>
+#include <xtalopt/queueinterfaces/openbabel.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/ui/mxtalpreoptconfigdialog.h>
 #include <xtalopt/xtalopt.h>
@@ -54,7 +56,7 @@ namespace XtalOpt {
 
     // Fill m_optimizers in order of XtalOpt::OptTypes
     m_optimizers.clear();
-    const unsigned int numOptimizers = 5;
+    const unsigned int numOptimizers = 6;
     for (unsigned int i = 0; i < numOptimizers; ++i) {
       switch (i) {
       case XtalOpt::OT_VASP:
@@ -72,12 +74,21 @@ namespace XtalOpt {
       case XtalOpt::OT_MOPAC:
         m_optimizers.append(new MopacOptimizer (m_opt));
         break;
+      case XtalOpt::OT_OPENBABEL:
+        m_optimizers.append(new OpenBabelOptimizer (m_opt));
+        break;
       }
     }
 
     // Fill m_optimizers in order of XtalOpt::QueueInterfaces
     m_queueInterfaces.clear();
-    const unsigned int numQIs = 6;
+
+#ifdef ENABLE_SSH
+    const unsigned int numQIs = 7;
+#else
+    const unsigned int numQIs = 2;
+#endif
+
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
       case XtalOpt::QI_INTERNAL:
@@ -103,6 +114,10 @@ namespace XtalOpt {
         // Don't forget to modify numQIs above, or additions here won't matter!
         //
 #endif // ENABLE_SSH
+      case XtalOpt::QI_OPENBABEL:
+        if (xtalopt->isMolecularXtalSearch)
+          m_queueInterfaces.append(new OpenBabelQueueInterface (m_opt));
+        break;
       }
     }
 
@@ -346,6 +361,17 @@ namespace XtalOpt {
     }
 
     QStringList filenames = getTemplateNames();
+    if (filenames.isEmpty()) {
+      ui_list_edit->setVisible(false);
+      ui_edit_edit->setVisible(false);
+
+      if (m_opt->optimizer()->getNumberOfOptSteps() !=
+          ui_list_optStep->count()) {
+        this->populateOptStepList();
+      }
+      return;
+    }
+
     int templateInd = ui_combo_templates->currentIndex();
     QString templateName = ui_combo_templates->currentText();
     Q_ASSERT(templateInd >= 0 && templateInd < filenames.size());

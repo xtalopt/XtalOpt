@@ -822,7 +822,9 @@ namespace GlobalSearch {
     addStructureToSubmissionQueue(s);
   }
 
-  void QueueManager::updateStructure(Structure *s) {
+  void QueueManager::updateStructure(Structure *s)
+  {
+    this->stopJob(s);
     s->lock()->lockForWrite();
     s->stopOptTimer();
     s->resetFailCount();

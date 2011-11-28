@@ -11,9 +11,12 @@ set( xtalopt_SRCS
      optimizers/castep.cpp
      optimizers/gulp.cpp
      optimizers/mopac.cpp
+     optimizers/openbabeloptimizer.cpp
      optimizers/pwscf.cpp
      optimizers/vasp.cpp
      optimizers/xtaloptoptimizer.cpp
+     queueinterfaces/openbabel.cpp
+     queueinterfaces/openbabeldialog.cpp
      structures/molecularxtal.cpp
      structures/submolecule.cpp
      structures/submoleculesource.cpp

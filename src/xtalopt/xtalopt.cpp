@@ -23,6 +23,7 @@
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/pwscf.h>
 #include <xtalopt/optimizers/castep.h>
+#include <xtalopt/optimizers/openbabeloptimizer.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
 #include <xtalopt/molecularxtaloptimizer.h>
@@ -129,6 +130,19 @@ namespace XtalOpt {
     if (comp.isEmpty()) {
       error("Cannot create structures. Composition is not set.");
       return;
+    }
+
+    // If using the openbabel optimizer/queueinterface, warn the user that
+    // these are intended for testing only, and that the results will be
+    // neither useful nor reliable
+    if (qobject_cast<OpenBabelOptimizer*>(m_optimizer) != NULL ||
+        qobject_cast<OpenBabelQueueInterface*>(m_queueInterface) != NULL) {
+      error(tr("The OpenBabel queue and OpenBabel optimizer are used for "
+               "testing the XtalOpt algorithm only, and any structures "
+               "obtained while using them are unlikely to be meaningful.\n\n"
+               "Switch to another optimizer and/or queue if you are "
+               "interested in finding quality structures.\n\n"
+               "You have been warned!"));
     }
 
     // Are the selected queueinterface and optimizer happy?

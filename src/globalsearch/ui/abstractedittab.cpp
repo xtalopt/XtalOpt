@@ -349,6 +349,16 @@ namespace GlobalSearch {
   void AbstractEditTab::saveCurrentTemplate()
   {
     QStringList filenames = getTemplateNames();
+    if (filenames.isEmpty()) {
+      ui_list_edit->setVisible(false);
+      ui_edit_edit->setVisible(false);
+
+      if (m_opt->optimizer()->getNumberOfOptSteps() !=
+          ui_list_optStep->count()) {
+        this->populateOptStepList();
+      }
+      return;
+    }
     int templateInd = ui_combo_templates->currentIndex();
     QString templateName = ui_combo_templates->currentText();
     Q_ASSERT(templateInd >= 0 && templateInd < filenames.size());

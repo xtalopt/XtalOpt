@@ -65,7 +65,8 @@ namespace XtalOpt {
       OT_GULP,
       OT_PWscf,
       OT_CASTEP,
-      OT_MOPAC
+      OT_MOPAC,
+      OT_OPENBABEL
     };
 
     enum QueueInterfaces {
@@ -78,6 +79,8 @@ namespace XtalOpt {
       QI_LSF,
       QI_LOADLEVELER
 #endif // ENABLE_SSH
+      ,
+      QI_OPENBABEL
     };
 
     enum Operators {
