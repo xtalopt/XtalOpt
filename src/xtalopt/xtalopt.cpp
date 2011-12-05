@@ -1117,24 +1117,6 @@ namespace XtalOpt {
       return mxtal;
     }
 
-#warning Remove when operator GUI is setup // TODO
-    mga_p_cross = 34;
-    mga_cross_minimumContribution = .25;
-    // - Reconf
-    mga_p_reconf = 33;
-    mga_reconf_minSubMolsToReplace = 1;
-    mga_reconf_maxSubMolsToReplace = 3;
-    mga_reconf_minStrain = 0.0;
-    mga_reconf_maxStrain = 0.5;
-    // - Swirl
-    mga_p_swirl = 33;
-    mga_swirl_minSubMolsToRotate = 1;
-    mga_swirl_maxSubMolsToRotate = 3;
-    mga_swirl_minRotationDegree = 30;
-    mga_swirl_fracInPlane = 0.5;
-    mga_swirl_minStrain = 0.0;
-    mga_swirl_maxStrain = 0.5;
-
     // Sort structure list
     Structure::sortByEnthalpy(&structures);
 
