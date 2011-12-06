@@ -1055,6 +1055,20 @@ namespace XtalOpt {
         rep += QString::number(coords.z()) + "\n";
       }
     }
+    else if (line == "gulpFracShell") {
+      QList<Atom*> atoms = structure->atoms();
+      QList<Atom*>::const_iterator it;
+      for (it  = atoms.begin();
+           it != atoms.end();
+           it++) {
+        const Eigen::Vector3d coords = xtal->cartToFrac(*((*it)->pos()));
+        const char *symbol = OpenBabel::etab.GetSymbol((*it)->atomicNumber());
+        rep += QString("%1 core %2 %3 %4\n")
+            .arg(symbol).arg(coords.x()).arg(coords.y()).arg(coords.z());
+        rep += QString("%1 shel %2 %3 %4\n")
+            .arg(symbol).arg(coords.x()).arg(coords.y()).arg(coords.z());
+        }
+    }
     else if (line == "cellMatrixAngstrom") {
       matrix3x3 m = xtal->OBUnitCell()->GetCellMatrix();
       for (int i = 0; i < 3; i++) {
@@ -1175,6 +1189,10 @@ namespace XtalOpt {
       << "%POSCAR% -- VASP poscar generator\n"
       << "%coordsFrac% -- fractional coordinate data\n\t[symbol] [x] [y] [z]\n"
       << "%coordsFracId% -- fractional coordinate data with atomic number\n\t[symbol] [atomic number] [x] [y] [z]\n"
+      << "%gulpFracShell% -- fractional coordinates for use in GULP core/shell calculations:\n"
+         "\tBoth of the following are printed for each atom:\n"
+         "\t[symbol] core [x] [y] [z]\n"
+         "\t[symbol] shell [x] [y] [z]\n"
       << "%cellMatrixAngstrom% -- Cell matrix in Angstrom\n"
       << "%cellVector1Angstrom% -- First cell vector in Angstrom\n"
       << "%cellVector2Angstrom% -- Second cell vector in Angstrom\n"
