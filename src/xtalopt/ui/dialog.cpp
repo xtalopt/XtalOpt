@@ -103,10 +103,8 @@ namespace XtalOpt {
   {
     this->hide();
 
-    m_opt->tracker()->lockForRead();
     writeSettings();
     saveSession();
-    m_opt->tracker()->unlock();
     // m_opt is deleted by ~AbstractDialog
   }
 

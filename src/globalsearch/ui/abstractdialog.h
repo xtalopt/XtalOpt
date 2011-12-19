@@ -179,7 +179,7 @@ namespace GlobalSearch {
      * @param filename Optional filename to hold resume information
      */
     virtual void writeSettings(const QString &filename = "") {
-      emit tabsWriteSettings(filename);};
+      reemitTabsWriteSettings(filename);};
 
     /**
      * Read persistant settings or resume information. If the filename
@@ -189,8 +189,10 @@ namespace GlobalSearch {
      * @note This call is passed on to all tabs.
      * @param filename Optional filename to holding resume information
      */
-    virtual void readSettings(const QString &filename = "") {
-      emit tabsReadSettings(filename);};
+    virtual void readSettings(const QString &filename = "")
+    {
+      this->reemitTabsReadSettings(filename);
+    };
 
     /**
      * Saves resume information to a state file in OptBase::filePath.
@@ -426,21 +428,7 @@ namespace GlobalSearch {
     void tabsLockGUI();
 
     /**
-     * Emitted when tabs should run their writeSettings function
-     * @param filename Optional state file to write to
-     * @sa writeSettings
-     */
-    void tabsWriteSettings(const QString &filename);
-
-    /**
-     * Emitted when tabs should run their lockGUI function
-     * @param filename Optional state file to read from
-     * @sa readSettings
-     */
-    void tabsReadSettings(const QString &filename);
-
-    /**
-     * Emitted when tabs should run their lockGUI function
+     * Emitted when tabs should run their updateGUI function
      */
     void tabsUpdateGUI();
 

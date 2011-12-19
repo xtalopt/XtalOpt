@@ -22,6 +22,8 @@
 #include <globalsearch/queueinterfaces/remote.h>
 #include <globalsearch/structure.h>
 
+#include <QtGui/QApplication>
+
 #include <QtCore/QDateTime>
 #include <QtCore/QDebug>
 #include <QtCore/QtConcurrentRun>
@@ -106,9 +108,14 @@ namespace GlobalSearch {
       while (timeout > 0 && (*it)->size()) {
         qDebug() << "Spinning on QueueManager handler trackers to empty...";
         GS_SLEEP(1);
+        QApplication::processEvents(QEventLoop::AllEvents, 500);
         --timeout;
       }
     }
+
+    qDebug() << "Clearing QueueManager event loop...";
+    QApplication::processEvents(QEventLoop::AllEvents);
+    qDebug() << "QueueManager event loop cleared.";
 
     // Wait for m_requestedStructures to == 0
     timeout = 15;

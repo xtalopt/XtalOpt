@@ -27,6 +27,7 @@
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
 #include <xtalopt/molecularxtaloptimizer.h>
+#include <xtalopt/queueinterfaces/openbabel.h>
 
 #include <xtalopt/molecularxtalmutator.h>
 #include <xtalopt/mxtaloptgenetic.h>
@@ -46,6 +47,8 @@
 #endif // ENABLE_SSH
 
 #include <avogadro/bond.h>
+
+#include <QtGui/QApplication>
 
 #include <QtCore/QDir>
 #include <QtCore/QList>
@@ -87,6 +90,8 @@ namespace XtalOpt {
 
   XtalOpt::~XtalOpt()
   {
+    m_isDestroying = true;
+
     // Send abort signal to mutators
     m_mutatorsMutex.lock();
     foreach (MolecularXtalMutator *mutator, m_mutators) {
@@ -98,22 +103,12 @@ namespace XtalOpt {
     }
     m_mutatorsMutex.unlock();
 
-    // Stop queuemanager thread
-    if (m_queueThread->isRunning()) {
-      m_queueThread->disconnect();
-      m_queueThread->quit();
-      m_queueThread->wait();
+    // Openbabel needs a bit of extra time to clean up its threads.
+    OpenBabelQueueInterface *obqi = qobject_cast<OpenBabelQueueInterface*>
+        (m_queueInterface);
+    if (obqi != NULL) {
+      obqi->prepareForDestroy();
     }
-
-    // Delete queuemanager
-    delete m_queue;
-    m_queue = 0;
-
-#ifdef ENABLE_SSH
-    // Stop SSHManager
-    delete m_ssh;
-    m_ssh = 0;
-#endif // ENABLE_SSH
 
     // Wait for save to finish
     unsigned int timeout = 30;
@@ -122,9 +117,31 @@ namespace XtalOpt {
                << timeout << "seconds until timeout).";
       timeout--;
       GS_SLEEP(1);
+      QApplication::processEvents(QEventLoop::AllEvents, 500);
     };
 
+    qDebug() << "Waiting for main event loop to clear...";
+    QApplication::processEvents(QEventLoop::AllEvents);
+    qDebug() << "Main event loop cleared.";
+
     savePending = true;
+
+    // Stop queuemanager thread
+    if (m_queueThread->isRunning()) {
+      m_queueThread->disconnect();
+      m_queueThread->quit();
+      m_queueThread->wait();
+    }
+
+    // Delete queuemanager
+    m_queue->deleteLater();
+    m_queue = 0;
+
+#ifdef ENABLE_SSH
+    // Stop SSHManager
+    m_ssh->deleteLater();
+    m_ssh = 0;
+#endif // ENABLE_SSH
 
     // Clean up various members
     m_initWC->deleteLater();
@@ -773,7 +790,6 @@ namespace XtalOpt {
     }
 
     QWriteLocker xtalLocker (xtal->lock());
-    xtal->moveToThread(m_queueThread);
     xtal->setIDNumber(id);
     xtal->setGeneration(generation);
     xtal->setParents(parents);
@@ -824,6 +840,9 @@ namespace XtalOpt {
 
   void XtalOpt::generateNewStructure()
   {
+    if (m_isDestroying)
+      return;
+
     // Generate in background thread:
     QtConcurrent::run(this, &XtalOpt::generateNewStructure_);
   }
@@ -832,6 +851,8 @@ namespace XtalOpt {
   {
     if (this->isMolecularXtalSearch()) {
       MolecularXtal *newMXtal = generateNewMXtal();
+      if (newMXtal == NULL || m_isDestroying)
+        return;
       initializeAndAddXtal(newMXtal, newMXtal->getGeneration(),
                            newMXtal->getParents());
     }
@@ -1200,6 +1221,10 @@ namespace XtalOpt {
         // *lot* of memory for these large supercells.
         QMutexLocker limitLocker (&m_mxtalMutationLimiter);
 
+        // Bail out early if we're destroying the process
+        if (m_isDestroying)
+          return NULL;
+
         MolecularXtalMutator mutator (parentMXtal, this->sOBMutex);
         m_mutatorsMutex.lock();
         m_mutators.append(&mutator);
@@ -1482,6 +1507,19 @@ namespace XtalOpt {
         *err = "A cell parameter is too small (<10^-8) or not a number.";
       }
       return false;
+    }
+    // Also check atom positions
+    foreach (const Atom *atom, xtal->atoms()) {
+      if (GS_IS_NAN_OR_INF(atom->pos()->x()) ||
+          GS_IS_NAN_OR_INF(atom->pos()->y()) ||
+          GS_IS_NAN_OR_INF(atom->pos()->z()) ) {
+        qDebug() << "XtalOpt::checkXtal: A coordinate is either nan or "
+                    "inf. Discarding.";
+        if (err != NULL) {
+          *err = "A coordinate is infinite or not a number.";
+        }
+        return false;
+      }
     }
 
     // If no cell parameters are fixed, normalize lattice
@@ -2007,10 +2045,26 @@ namespace XtalOpt {
     newFileBase.remove("xtalopt.state.tmp");
     newFileBase.remove("xtalopt.state");
 
-    // TODO For some reason, the local view of "this" is not changed
-    // when the settings are loaded in the following line. The tabs
-    // are loading the settings and setting the variables in their
-    // scope, but it isn't changing it here. Caching issue maybe?
+    // Is this a molecular search? Check the setting here, see note above --
+    // The ivars of this aren't always updated immediately
+    bool isMolSearch =
+        settings->value("xtalopt/init/isMolecularXtalSearch", false).toBool();
+
+    debug(tr("Resuming %1 XtalOpt session in '%2' (%3) readOnly = %4")
+          .arg((isMolSearch) ? "molecular" : "ionic")
+          .arg(filename)
+          .arg((m_optimizer) ? m_optimizer->getIDString()
+                             : "No set optimizer")
+          .arg( (readOnly) ? "true" : "false"));
+
+    // Load submoleculesources for molecular searches before reading other
+    // settings. Otherwise Bad Things(TM) will happen, like VASP POTCARs
+    // getting clear.
+    if (isMolSearch) {
+      this->readSubMoleculeSources(filename);
+    }
+
+    // Read settings
     m_dialog->readSettings(filename);
 
 #ifdef ENABLE_SSH
@@ -2022,12 +2076,6 @@ namespace XtalOpt {
       }
     }
 #endif // ENABLE_SSH
-
-    debug(tr("Resuming XtalOpt session in '%1' (%2) readOnly = %3")
-          .arg(filename)
-          .arg((m_optimizer) ? m_optimizer->getIDString()
-                             : "No set optimizer")
-          .arg( (readOnly) ? "true" : "false"));
 
     // Xtals
     // Initialize progress bar:
@@ -2041,11 +2089,23 @@ namespace XtalOpt {
       clearJobIDs = true;
     }
     // Load xtals
-    Xtal* xtal;
+    unsigned int numAtoms = 0;
+    if (this->isMolecularXtalSearch()) {
+      foreach (const MolecularCompStruct cur, this->mcomp) {
+        numAtoms += cur.quantity * cur.source->numAtoms();
+      }
+    }
+    else {
+      foreach (int key, this->comp.keys()) {
+        numAtoms += comp.value(key).quantity;
+      }
+    }
     QList<uint> keys = comp.keys();
     QList<Structure*> loadedStructures;
     QString xtalStateFileName;
     for (int i = 0; i < xtalDirs.size(); i++) {
+      Xtal *xtal = NULL;
+      MolecularXtal *mxtal = NULL;
       m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...")
                                     .arg(i+1).arg(xtalDirs.size()));
       m_dialog->updateProgressValue(i);
@@ -2058,16 +2118,18 @@ namespace XtalOpt {
         xtalStateFileName = dataPath + "/" + xtalDirs.at(i) + "/xtal.state";
       }
 
-      xtal = (this->isMolecularXtalSearch())
-          ? new MolecularXtal() : new Xtal();
+      if (this->isMolecularXtalSearch()) {
+        xtal = mxtal = new MolecularXtal();
+      }
+      else {
+        xtal = new Xtal();
+      }
       QWriteLocker locker (xtal->lock());
       xtal->moveToThread(m_tracker->thread());
       xtal->setupConnections();
       // Add empty atoms to xtal, updateXtal will populate it
-      for (int j = 0; j < keys.size(); j++) {
-        unsigned int quantity = comp.value(keys.at(j)).quantity;
-        for (uint k = 0; k < quantity; k++)
-          xtal->addAtom();
+      for (int j = 0; j < numAtoms; j++) {
+        xtal->addAtom();
       }
       xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
       xtal->readSettings(xtalStateFileName);
@@ -2089,6 +2151,8 @@ namespace XtalOpt {
                  "safely ignore this message.")
               .arg(m_optimizer->getIDString())
               .arg(xtal->fileName()));
+        xtal->deleteLater();
+        xtal = mxtal = NULL;
         continue;
       }
 
@@ -2098,6 +2162,19 @@ namespace XtalOpt {
       xtal->setOptTimerEnd(endtime);
       if (clearJobIDs) {
         xtal->setJobID(0);
+      }
+      if (mxtal != NULL) {
+        mxtal->readMolecularXtalSettings(xtalStateFileName);
+        if (mxtal->numSubMolecules() == 0) {
+          error(tr("Error, molecular subunit data not found in "
+                   "%1.\n\nThis could be a result of resuming a structure "
+                   "that has not yet done any local optimizations. If so, "
+                   "safely ignore this message.")
+                .arg(filename));
+          mxtal->deleteLater();
+          xtal = mxtal = NULL;
+          continue;
+        }
       }
       locker.unlock();
       loadedStructures.append(qobject_cast<Structure*>(xtal));
@@ -2169,6 +2246,54 @@ namespace XtalOpt {
     }
 
     return true;
+  }
+
+  void XtalOpt::readSubMoleculeSources(const QString &filename)
+  {
+    if (filename.isEmpty()) {
+      return;
+    }
+
+    SETTINGS(filename);
+
+    settings->beginGroup("xtalopt");
+    this->mcomp.clear();
+    int numSubMolSources = settings->beginReadArray("subMoleculeSources");
+    for (int i = 0; i < numSubMolSources; ++i) {
+      settings->setArrayIndex(i);
+      MolecularCompStruct cur;
+      cur.source = new SubMoleculeSource ();
+      cur.quantity = settings->value("quantity").toUInt();
+      settings->beginGroup("source");
+      cur.source->readFromSettings(settings);
+      settings->endGroup();
+      mcomp.append(cur);
+    }
+    settings->endArray();
+    settings->endGroup();
+  }
+
+  void XtalOpt::writeSubMoleculeSources(const QString &filename)
+  {
+    if (filename.isEmpty()) {
+      return;
+    }
+
+    SETTINGS(filename);
+
+    int numSubMolSources = this->mcomp.size();
+
+    settings->beginGroup("xtalopt");
+    settings->beginWriteArray("subMoleculeSources", numSubMolSources);
+    for (int i = 0; i < numSubMolSources; ++i) {
+      settings->setArrayIndex(i);
+      settings->setValue("quantity", mcomp[i].quantity);
+      settings->beginGroup("source");
+      mcomp[i].source->writeToSettings(settings);
+      settings->endGroup();
+    }
+    settings->endArray();
+    settings->endGroup();
   }
 
   void XtalOpt::resetSpacegroups() {

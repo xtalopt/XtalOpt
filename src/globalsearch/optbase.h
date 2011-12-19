@@ -193,6 +193,11 @@ for (ind = 0; ind < probs.size(); ind++)
     virtual bool save(const QString & filename = "", bool notify = false);
 
     /**
+     * Override with any saving operations that derived classes need.
+     */
+    virtual bool postSave(const QString &filename) {Q_UNUSED(filename);}
+
+    /**
      * Load a search session from the specified filename.
      *
      * @param filename State file to resume.
@@ -694,6 +699,9 @@ for (ind = 0; ind < probs.size(); ind++)
 
     /// Current version of save/resume schema
     unsigned int m_schemaVersion;
+
+    // Set true in destructors
+    bool m_isDestroying;
 
   };
 

@@ -28,10 +28,13 @@ class MolecularXtal;
 
 class OpenBabelQueueInterface : public GlobalSearch::LocalQueueInterface
 {
+  Q_OBJECT
 public:
   explicit OpenBabelQueueInterface(GlobalSearch::OptBase *parent,
                                    const QString &settingsFile = "");
   virtual ~OpenBabelQueueInterface();
+
+  void prepareForDestroy(); // stop running new jobs and abort running ones
 
   virtual bool writeInputFiles(GlobalSearch::Structure *s) const;
 

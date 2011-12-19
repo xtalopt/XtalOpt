@@ -54,14 +54,6 @@ namespace GlobalSearch {
 
   void AbstractDialog::initialize()
   {
-    // Connections
-    connect(this, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(reemitTabsReadSettings(const QString &)),
-            Qt::DirectConnection);
-    // Leave this as an autoconnection to prevent deadlocks on shutdown
-    connect(this, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(reemitTabsWriteSettings(const QString &)));
-
     connect(ui_push_begin, SIGNAL(clicked()),
             this, SLOT(startSearch()));
     connect(ui_push_save, SIGNAL(clicked()),

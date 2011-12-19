@@ -68,13 +68,11 @@ namespace GlobalSearch {
     test_nRunsEnd(100),
     test_nStructs(600),
     cutoff(-1),
-    m_schemaVersion(1)
+    m_schemaVersion(1),
+    m_isDestroying(false)
   {
     // Connections
     connect(this, SIGNAL(sessionStarted()),
-            m_queueThread, SLOT(start()),
-            Qt::DirectConnection);
-    connect(this, SIGNAL(startingSession()),
             m_queueThread, SLOT(start()),
             Qt::DirectConnection);
     connect(this, SIGNAL(startingSession()),
@@ -101,6 +99,8 @@ namespace GlobalSearch {
 
   OptBase::~OptBase()
   {
+    m_isDestroying = true;
+
     delete m_queue;
     m_queue = 0;
 
@@ -228,7 +228,6 @@ namespace GlobalSearch {
       savePending = false;
       return false;
     }
-    QReadLocker trackerLocker (m_tracker->rwLock());
     QMutexLocker locker (stateFileMutex);
     QString filename;
     if (stateFilename.isEmpty()) {
@@ -267,6 +266,7 @@ namespace GlobalSearch {
     m_dialog->writeSettings(filename);
 
     // Loop over structures and save them
+    QReadLocker trackerLocker (m_tracker->rwLock());
     QList<Structure*> *structures = m_tracker->list();
 
     QString structureStateFileName;
@@ -328,6 +328,9 @@ namespace GlobalSearch {
         m_dialog->stopProgressUpdate();
       }
     }
+
+    // Allow derived classes to do their own saving
+    this->postSave(filename);
 
     // Mark operation successful
     settings->setValue(m_idString.toLower() + "/saveSuccessful", true);

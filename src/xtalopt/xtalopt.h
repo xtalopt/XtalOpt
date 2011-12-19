@@ -121,6 +121,14 @@ namespace XtalOpt {
     QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp();
     bool load(const QString & filename, const bool forceReadOnly = false);
+    bool postSave(const QString &filename)
+    {
+      this->writeSubMoleculeSources(filename);
+      return true;
+    }
+
+    void readSubMoleculeSources(const QString &filename);
+    void writeSubMoleculeSources(const QString &filename);
 
     uint numInitial;                    // Number of initial structures
 

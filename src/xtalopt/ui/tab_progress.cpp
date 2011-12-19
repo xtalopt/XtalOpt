@@ -229,6 +229,12 @@ namespace XtalOpt {
 
   void TabProgress::updateAllInfo()
   {
+    QtConcurrent::run(this, &TabProgress::updateAllInfo_);
+    return;
+  }
+
+  void TabProgress::updateAllInfo_()
+  {
     if (!m_update_all_mutex->tryLock()) {
       qDebug() << "Killing extra TabProgress::updateAllInfo() call";
       return;

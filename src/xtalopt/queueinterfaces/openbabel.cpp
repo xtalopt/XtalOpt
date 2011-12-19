@@ -52,6 +52,17 @@ OpenBabelQueueInterface::OpenBabelQueueInterface(OptBase *parent,
 
 OpenBabelQueueInterface::~OpenBabelQueueInterface()
 {
+  this->prepareForDestroy();
+
+  delete m_queueMutex;
+  m_queue = NULL;
+
+  delete m_queue;
+  m_queue = NULL;
+}
+
+void OpenBabelQueueInterface::prepareForDestroy()
+{
   // Prevent new jobs from starting
   m_isDestroying = true;
 
@@ -63,12 +74,6 @@ OpenBabelQueueInterface::~OpenBabelQueueInterface()
        it_end = toStop.constEnd(); it != it_end; ++it) {
     this->stopJob(*it);
   }
-
-  delete m_queueMutex;
-  m_queue = NULL;
-
-  delete m_queue;
-  m_queue = NULL;
 }
 
 bool OpenBabelQueueInterface::writeInputFiles(Structure *s) const
