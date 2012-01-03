@@ -875,7 +875,7 @@ namespace GlobalSearch {
     return freq;
   }
 
-  QList<QVariant> reduceNNHistChunks(QList<QVariant> &final, const QList<int> &tmp)
+  void reduceNNHistChunks(QList<QVariant> &final, const QList<int> &tmp)
   {
     if (final.size() != tmp.size()) {
       final.clear();
@@ -891,7 +891,7 @@ namespace GlobalSearch {
         final.replace(i, d);
       }
     }
-    return final;
+    return;
   }
 
   bool Structure::generateIADHistogram(QList<QVariant> * distance,
