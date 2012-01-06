@@ -476,7 +476,7 @@ namespace GlobalSearch {
       m_PV = enthalpy - energy;
     }
     m_enthalpy = enthalpy;
-    setEnergy(energy / KCAL_PER_MOL_TO_EV);
+    setEnergy(energy * EV_TO_KJ_PER_MOL);
 
     // Update cell if necessary
     if (!cell.isZero()) {
@@ -530,7 +530,7 @@ namespace GlobalSearch {
       m_PV = enthalpy - energy;
     }
     m_enthalpy = enthalpy;
-    setEnergy(energy / KCAL_PER_MOL_TO_EV);
+    setEnergy(energy * EV_TO_KJ_PER_MOL);
 
     // Update cell if necessary
     if (!cell.isZero()) {
