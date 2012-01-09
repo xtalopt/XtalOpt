@@ -18,7 +18,6 @@
 
 #include <QtTest/QtTest>
 
-#define KCAL_PER_MOL_TO_EV 0.0433641224
 #define APPROX_EQ(a, b) (fabs((a) - (b)) < 1e-6)
 
 using namespace OpenBabel;
@@ -83,11 +82,11 @@ void StructureTest::enthalpyFallBack()
   Structure s;
   s.addAtom();
 
-  s.setEnergy(1.0 / KCAL_PER_MOL_TO_EV);
+  s.setEnergy(1.0 * EV_TO_KJ_PER_MOL);
   qDebug() << s.getEnthalpy();
   QVERIFY(APPROX_EQ(s.getEnthalpy(), 1.0));
 
-  s.setEnergy(-1.0 / KCAL_PER_MOL_TO_EV);
+  s.setEnergy(-1.0 * EV_TO_KJ_PER_MOL);
   QVERIFY(APPROX_EQ(s.getEnthalpy(), -1.0));
 
   s.setEnthalpy(3.0);

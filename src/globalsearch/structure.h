@@ -29,7 +29,9 @@
 
 #include <vector>
 
-#define EV_TO_KCAL_PER_MOL 23.060538
+// source: http://en.wikipedia.org/wiki/Electronvolt
+#define EV_TO_KJ_PER_MOL 96.4853365
+#define KJ_PER_MOL_TO_EV 0.0103642692
 
 namespace GlobalSearch {
 
@@ -165,7 +167,7 @@ namespace GlobalSearch {
      * @sa setEnergy
      * @sa getEnergy
      */
-    double getEnergy()	const {return energy(0)/EV_TO_KCAL_PER_MOL;};
+    double getEnergy()	const {return energy(0) * KJ_PER_MOL_TO_EV;};
 
     /** Return the enthalpy value of the first conformer in eV.
      *
