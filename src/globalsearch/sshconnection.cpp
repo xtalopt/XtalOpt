@@ -451,6 +451,11 @@ namespace GlobalSearch {
                                        const QString & remotepath)
   {
     QMutexLocker locker (&m_lock);
+    if (localpath.trimmed().isEmpty() || remotepath.trimmed().isEmpty()) {
+      qWarning() << QString("Refusing to copy to/from empty path: '%1' to '%2'")
+                    .arg(localpath, remotepath);
+      return false;
+    }
     return _copyFileToServer(localpath, remotepath);
   }
 
@@ -516,6 +521,11 @@ namespace GlobalSearch {
                                          const QString & localpath)
   {
     QMutexLocker locker (&m_lock);
+    if (localpath.trimmed().isEmpty() || remotepath.trimmed().isEmpty()) {
+      qWarning() << QString("Refusing to copy to/from empty path: '%2' to '%1'")
+                    .arg(localpath, remotepath);
+      return false;
+    }
     return _copyFileFromServer(remotepath, localpath);
   }
 
@@ -579,6 +589,11 @@ namespace GlobalSearch {
                                      QString &contents)
   {
     QMutexLocker locker (&m_lock);
+    if (filename.trimmed().isEmpty()) {
+      qWarning() << QString("Refusing to read empty filename: '%1'")
+                    .arg(filename);
+      return false;
+    }
     return _readRemoteFile(filename, contents);
   }
 
@@ -628,6 +643,11 @@ namespace GlobalSearch {
   bool SSHConnection::removeRemoteFile(const QString &filename)
   {
     QMutexLocker locker (&m_lock);
+    if (filename.trimmed().isEmpty()) {
+      qWarning() << QString("Refusing to remove empty filename: '%1'")
+                    .arg(filename);
+      return false;
+    }
     return _removeRemoteFile(filename);
   }
 
@@ -660,6 +680,11 @@ namespace GlobalSearch {
                                             const QString & remote)
   {
     QMutexLocker locker (&m_lock);
+    if (local.trimmed().isEmpty() || remote.trimmed().isEmpty()) {
+      qWarning() << QString("Refusing to copy to/from empty path: '%1' to '%2'")
+                    .arg(local, remote);
+      return false;
+    }
     return _copyDirectoryToServer(local, remote);
   }
 
@@ -732,6 +757,11 @@ namespace GlobalSearch {
                                               const QString & local)
   {
     QMutexLocker locker (&m_lock);
+    if (local.trimmed().isEmpty() || remote.trimmed().isEmpty()) {
+      qWarning() << QString("Refusing to copy to/from empty path: '%2' to '%1'")
+                    .arg(local, remote);
+      return false;
+    }
     return _copyDirectoryFromServer(remote, local);
   }
 
@@ -815,6 +845,11 @@ namespace GlobalSearch {
                                                   QStringList & contents)
   {
     QMutexLocker locker (&m_lock);
+    if (path.trimmed().isEmpty()) {
+      qWarning() << QString("Refusing to read empty path contents: '%1'")
+                    .arg(path);
+      return false;
+    }
     return _readRemoteDirectoryContents(path, contents);
   }
 
@@ -887,6 +922,11 @@ namespace GlobalSearch {
                                             bool onlyDeleteContents)
   {
     QMutexLocker locker (&m_lock);
+    if (path.trimmed().isEmpty()) {
+      qWarning() << QString("Refusing to remove empty path: '%1'")
+                    .arg(path);
+      return false;
+    }
     return _removeRemoteDirectory(path, onlyDeleteContents);
   }
 
