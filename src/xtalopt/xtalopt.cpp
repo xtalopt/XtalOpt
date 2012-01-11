@@ -2342,7 +2342,7 @@ namespace XtalOpt {
     double tol_len, tol_ang;
   };
 
-  void checkIfDups(dupCheckStruct & st)
+  void checkIfDupXtals(dupCheckStruct & st)
   {
     Xtal *kickXtal, *keepXtal;
     st.i->lock()->lockForRead();
@@ -2367,6 +2367,37 @@ namespace XtalOpt {
     }
     st.i->lock()->unlock();
     st.j->lock()->unlock();
+  }
+
+  void checkIfDupMXtals(dupCheckStruct & st)
+  {
+    MolecularXtal *kickXtal;
+    MolecularXtal *keepXtal;
+    MolecularXtal *mx_i = static_cast<MolecularXtal*>(st.i);
+    MolecularXtal *mx_j = static_cast<MolecularXtal*>(st.j);
+
+    mx_i->lock()->lockForRead();
+    mx_j->lock()->lockForRead();
+    if (mx_i->compareCoordinates(*mx_j, st.tol_len, st.tol_ang)) {
+      // Mark the newest mxtal as a duplicate of the oldest. This keeps the
+      // lowest-energy plot trace accurate.
+      if (mx_i->getIndex() > mx_j->getIndex()) {
+        kickXtal = mx_i;
+        keepXtal = mx_j;
+      }
+      else {
+        kickXtal = mx_j;
+        keepXtal = mx_i;
+      }
+      kickXtal->lock()->unlock();
+      kickXtal->lock()->lockForWrite();
+      kickXtal->setStatus(Xtal::Duplicate);
+      kickXtal->setDuplicateString(QString("%1x%2")
+                                   .arg(keepXtal->getGeneration())
+                                   .arg(keepXtal->getIDNumber()));
+    }
+    mx_i->lock()->unlock();
+    mx_j->lock()->unlock();
   }
 
   void XtalOpt::checkForDuplicates() {
@@ -2425,7 +2456,10 @@ namespace XtalOpt {
       (*xi)->lock()->unlock();
     }
 
-    QtConcurrent::blockingMap(sts, checkIfDups);
+    if (this->isMolecularXtalSearch())
+      QtConcurrent::blockingMap(sts, checkIfDupMXtals);
+    else
+      QtConcurrent::blockingMap(sts, checkIfDupXtals);
 
     emit refreshAllStructureInfo();
   }
