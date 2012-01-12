@@ -57,6 +57,7 @@ namespace GlobalSearch {
     ui->edit_locpath->blockSignals(true);
     ui->edit_username->blockSignals(true);
     ui->spin_port->blockSignals(true);
+    ui->cb_cleanRemoteOnStop->blockSignals(true);
 
     ui->edit_description->setText(m_opt->description);
     ui->edit_host->setText(m_opt->host);
@@ -67,6 +68,7 @@ namespace GlobalSearch {
     ui->edit_locpath->setText(m_opt->filePath);
     ui->edit_username->setText(m_opt->username);
     ui->spin_port->setValue(m_opt->port);
+    ui->cb_cleanRemoteOnStop->setChecked(m_lsf->m_cleanRemoteOnStop);
 
     ui->edit_description->blockSignals(false);
     ui->edit_host->blockSignals(false);
@@ -77,6 +79,7 @@ namespace GlobalSearch {
     ui->edit_locpath->blockSignals(false);
     ui->edit_username->blockSignals(false);
     ui->spin_port->blockSignals(false);
+    ui->cb_cleanRemoteOnStop->blockSignals(false);
   }
 
   void LsfConfigDialog::accept()
@@ -90,6 +93,7 @@ namespace GlobalSearch {
     m_opt->filePath = ui->edit_locpath->text().trimmed();
     m_opt->username = ui->edit_username->text().trimmed();
     m_opt->port = ui->spin_port->value();
+    m_lsf->m_cleanRemoteOnStop = ui->cb_cleanRemoteOnStop->isChecked();
     QDialog::accepted();
     close();
   }
