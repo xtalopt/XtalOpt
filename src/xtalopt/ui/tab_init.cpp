@@ -100,6 +100,8 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.cb_interatomicDistanceLimit, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
+    connect(ui.spin_maxConf, SIGNAL(valueChanged(int)),
+            this, SLOT(updateDimensions()));
 
     QHeaderView *horizontal = ui.table_comp->horizontalHeader();
     horizontal->setResizeMode(QHeaderView::ResizeToContents);
@@ -144,6 +146,7 @@ namespace XtalOpt {
     settings->setValue("using/fixedVolume",   xtalopt->using_fixed_volume);
     settings->setValue("using/interatomicDistanceLimit",
                        xtalopt->using_interatomicDistanceLimit);
+    settings->setValue("limits/maxConf",    xtalopt->maxConf);
 
     // Composition
     // We only want to save POTCAR info and Composition to the resume
@@ -203,6 +206,7 @@ namespace XtalOpt {
     ui.spin_minRadius->setValue(	  settings->value("limits/minRadius",0.25).toDouble());
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
     ui.cb_interatomicDistanceLimit->setChecked(	settings->value("using/interatomicDistanceLimit",false).toBool());
+    ui.spin_maxConf->setValue(      settings->value("limits/maxConf",20).toInt());
 
     // Composition
     if (!filename.isEmpty()) {
@@ -273,6 +277,7 @@ namespace XtalOpt {
     ui.cb_fixedVolume->setChecked( xtalopt->using_fixed_volume);
     ui.cb_interatomicDistanceLimit->setChecked(
           xtalopt->using_interatomicDistanceLimit);
+    ui.spin_maxConf->setValue(     xtalopt->maxConf);
     updateComposition();
     updateTables();
   }
@@ -465,6 +470,8 @@ namespace XtalOpt {
     xtalopt->using_fixed_volume = ui.cb_fixedVolume->isChecked();
     xtalopt->vol_fixed	= ui.spin_fixedVolume->value();
 
+    xtalopt->maxConf		= ui.spin_maxConf->value();
+
     if (xtalopt->scaleFactor != ui.spin_scaleFactor->value() ||
         xtalopt->minRadius   != ui.spin_minRadius->value() ||
         xtalopt->using_interatomicDistanceLimit !=
@@ -473,6 +480,8 @@ namespace XtalOpt {
       xtalopt->minRadius = ui.spin_minRadius->value();
       xtalopt->using_interatomicDistanceLimit =
           ui.cb_interatomicDistanceLimit->isChecked();
+
+
       this->updateTables();
     }
   }
