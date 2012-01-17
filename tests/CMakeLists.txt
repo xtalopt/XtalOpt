@@ -25,6 +25,7 @@ link_directories(
 set(tests
   molecularxtal
   optbase
+  submoleculeranker
   structure
   spglib
   submolecule

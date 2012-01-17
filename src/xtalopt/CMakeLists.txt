@@ -14,6 +14,7 @@ set( xtalopt_SRCS
      optimizers/gulp.cpp
      optimizers/pwscf.cpp
      optimizers/castep.cpp
+     submoleculeranker.cpp
      testing/xtalopttest.cpp
      ui/dialog.cpp
      ui/tab_init.cpp
