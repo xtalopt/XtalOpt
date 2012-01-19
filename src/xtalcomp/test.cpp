@@ -14,6 +14,7 @@
 
 #include "xtalcomp.h"
 
+#include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -328,6 +329,63 @@ bool allOfTheAbove()
   return true;
 }
 
+bool hexagonalCellTest()
+{
+  XcMatrix cell1 (3.8398, 0.0, 0.0, -1.9199, 3.32536, 0.0, 0.0, 0.0, 5.93459);
+
+  std::vector<XcVector> pos1;
+  pos1.reserve(12);
+  pos1.push_back(XcVector( 0.33333,  0.66667,  0.56072));
+  pos1.push_back(XcVector( 0.66667,  0.33333,  0.43928));
+  pos1.push_back(XcVector( 0.66667,  0.33333,  0.06072));
+  pos1.push_back(XcVector( 0.33333,  0.66667,  0.93928));
+  pos1.push_back(XcVector( 0.16448,  0.83552,  0.25000));
+  pos1.push_back(XcVector( 0.83552,  0.16448,  0.75000));
+  pos1.push_back(XcVector( 0.00000,  0.00000,  0.00000));
+  pos1.push_back(XcVector( 0.00000,  0.00000,  0.50000));
+  pos1.push_back(XcVector( 0.16448,  0.32896,  0.25000));
+  pos1.push_back(XcVector( 0.83552,  0.67104,  0.75000));
+  pos1.push_back(XcVector( 0.67104,  0.83552,  0.25000));
+  pos1.push_back(XcVector( 0.32896,  0.16448,  0.75000));
+
+  std::vector<unsigned int> types1;
+  types1.reserve(12);
+  types1.push_back(1);
+  types1.push_back(1);
+  types1.push_back(1);
+  types1.push_back(1);
+  types1.push_back(2);
+  types1.push_back(2);
+  types1.push_back(2);
+  types1.push_back(2);
+  types1.push_back(3);
+  types1.push_back(3);
+  types1.push_back(3);
+  types1.push_back(3);
+
+  XcMatrix cell2 (cell1);
+  std::vector<XcVector> pos2 (pos1);
+  std::swap(pos2[4], pos2[8]);
+  std::swap(pos2[5], pos2[9]);
+  std::vector<unsigned int> types2 (types1);
+
+  bool match = XtalComp::compare(cell1, types1, pos1,
+                                 cell2, types2, pos2,
+                                 NULL, 0.05, 0.25);
+  if (!match)
+    return false;
+
+  // Displace an atom, ensure that comparison fails.
+  pos2[0] += XcVector(0.5,0,0);
+  match = XtalComp::compare(cell1, types1, pos1,
+                            cell2, types2, pos2,
+                            NULL, 0.05, 0.25);
+  if (match)
+    return false;
+
+  return true;
+}
+
 int main()
 {
   int failures = 0;
@@ -340,6 +398,7 @@ int main()
   runTest(&simpleUniformTranslation, "Simple Random Noise (max = 0.005 A)",
           successes, failures);
   runTest(&allOfTheAbove, "All of the above test", successes, failures);
+  runTest(&hexagonalCellTest, "Hexagonal cell test", successes, failures);
 
   return failures;
 }

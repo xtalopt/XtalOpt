@@ -21,6 +21,7 @@
 #include <assert.h>
 #include <iostream>
 #include <limits.h>
+#include <cmath>
 #include <stddef.h>
 #include <stdio.h>
 
@@ -457,10 +458,22 @@ void XtalComp::buildSuperLfCCoordList2()
   const double diagSqNorm = (v1+v2+v3).squaredNorm();
   const double normTol = 1e-4;
 
+  bool diagonalSameLengthAsVector =
+      (fabs(diagSqNorm - v1SqNorm) < normTol ||
+       fabs(diagSqNorm - v2SqNorm) < normTol ||
+       fabs(diagSqNorm - v3SqNorm) < normTol );
+
+  // We also need to build 3x3x3 for hexagonal cells
+  bool cellIsHexagonal =
+      ((fabs(v1SqNorm - v2SqNorm) < normTol &&
+        fabs(compAngle(v1, v2) - 60.0) < m_angletol) ||
+       (fabs(v1SqNorm - v3SqNorm) < normTol &&
+        fabs(compAngle(v1, v3) - 60.0) < m_angletol) ||
+       (fabs(v2SqNorm - v3SqNorm) < normTol &&
+        fabs(compAngle(v2, v3) - 60.0) < m_angletol));
+
   // 3x3x3 case:
-  if (fabs(diagSqNorm - v1SqNorm) < normTol ||
-      fabs(diagSqNorm - v2SqNorm) < normTol ||
-      fabs(diagSqNorm - v3SqNorm) < normTol ){
+  if (diagonalSameLengthAsVector || cellIsHexagonal) {
     const XcVector v4 (v1  + v2); // 1 1 0
     const XcVector v5 (v4  + v2); // 1 2 0
     const XcVector v6 (v1  + v3); // 1 0 1
