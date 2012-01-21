@@ -25,6 +25,7 @@ link_directories(
 set(tests
   holefinder
   molecularxtal
+  molecularxtalmutator
   mxtaloptgenetic
   optbase
   submoleculeranker
