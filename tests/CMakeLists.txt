@@ -23,6 +23,7 @@ link_directories(
 )
 
 set(tests
+  holefinder
   molecularxtal
   mxtaloptgenetic
   optbase
