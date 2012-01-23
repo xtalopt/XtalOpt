@@ -28,6 +28,7 @@
 #include <xtalopt/genetic.h>
 #include <xtalopt/molecularxtaloptimizer.h>
 
+#include <xtalopt/molecularxtalmutator.h>
 #include <xtalopt/mxtaloptgenetic.h>
 
 #include <globalsearch/optbase.h>
@@ -66,6 +67,9 @@ namespace XtalOpt {
 
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
     OptBase(parent),
+    mga_warnedNoStrainOnFixedCell(false),
+    mga_warnedNoVolumeSamplesOnFixedCell(false),
+    mga_warnedNoVolumeSamplesOnFixedVolume(false),
     m_initWC(new SlottedWaitCondition (this)),
     m_isMolecular(false),
     m_currentSubMolSourceProgress(-1)
@@ -83,6 +87,17 @@ namespace XtalOpt {
 
   XtalOpt::~XtalOpt()
   {
+    // Send abort signal to mutators
+    m_mutatorsMutex.lock();
+    foreach (MolecularXtalMutator *mutator, m_mutators) {
+      mutator->abort();
+      while (!mutator->waitForFinished(500)) {
+        qDebug() << "Waiting for mutator to abort...";
+        QApplication::processEvents(QEventLoop::AllEvents, 500);
+      }
+    }
+    m_mutatorsMutex.unlock();
+
     // Stop queuemanager thread
     if (m_queueThread->isRunning()) {
       m_queueThread->disconnect();
@@ -1140,8 +1155,6 @@ namespace XtalOpt {
     }
 
     // Initialize loop vars
-    double r;
-    unsigned int gen;
     MolecularXtal *mxtal = NULL;
 
     // Perform operation until xtal is valid:
@@ -1152,54 +1165,121 @@ namespace XtalOpt {
         mxtal = NULL;
       }
 
-      // Decide operator:
-      r = RANDDOUBLE();
-      MXtalOperator op;
-      if (r < mga_p_cross/100.0)
-        op = MXOP_Crossover;
-      else if (r < (mga_p_cross + mga_p_reconf)/100.0)
-        op = MXOP_Reconf;
-      else // if (r < (mga_p_cross + mga_p_reconf + mga_p_swirl)/100.0
-        op = MXOP_Swirl;
-
-      // Try 1000 times to get a good structure from the selected
-      // operation. If not possible, send a warning to the log and
-      // start anew.
+      // Try 5 times to get a good structure from the selected
+      // operation. If not possible, send a warning to the log and continue
+      // trying
       int attemptCount = 0;
-      while (attemptCount < 1000 && !checkXtal(mxtal)) {
+      while (attemptCount < 5 && !checkXtal(mxtal)) {
         attemptCount++;
         if (mxtal) {
           delete mxtal;
           mxtal = NULL;
         }
 
-        // Select two potential parents
-        int ind1, ind2;
-        MolecularXtal *parent1=0, *parent2=0;
+        // Select parent
+        int ind;
+        MolecularXtal *parentMXtal = NULL;
         // Select structures
-        double r1 = RANDDOUBLE();
-        double r2 = RANDDOUBLE();
-        for (ind1 = 0; ind1 < probs.size(); ind1++)
-          if (r1 < probs.at(ind1)) break;
-        for (ind2 = 0; ind2 < probs.size(); ind2++)
-          if (r2 < probs.at(ind2)) break;
+        double r = RANDDOUBLE();
+        for (ind = 0; ind < probs.size(); ind++)
+          if (r < probs.at(ind)) break;
 
-        parent1 = mxtals.at(ind1);
-        parent2 = mxtals.at(ind2);
+        parentMXtal  = mxtals.at(ind);
 
-        // Operation specific set up:
-        switch (op) {
-        case MXOP_Crossover:
-          mxtal = MXtalOptGenetic::crossover(parent1, parent2, this);
-          break;
-        case MXOP_Reconf:
-          mxtal = MXtalOptGenetic::reconf(parent1, this);
-          break;
-        case MXOP_Swirl:
-          mxtal = MXtalOptGenetic::swirl(parent1, this);
-          break;
-        default:
-          qWarning() << "Unknown genetic operation, enum code:" << op;
+        // Determine if the cell is fixed
+        bool cellIsFixed = false;
+        if (fabs(a_min     - a_max)     < 0.01 ||
+            fabs(b_min     - b_max)     < 0.01 ||
+            fabs(c_min     - c_max)     < 0.01 ||
+            fabs(alpha_min - alpha_max) < 0.01 ||
+            fabs(beta_min  - beta_max)  < 0.01 ||
+            fabs(gamma_min - gamma_max) < 0.01)
+          cellIsFixed = true;
+
+        // Only allow one mutation at a time. The forcefields can consume a
+        // *lot* of memory for these large supercells.
+        QMutexLocker limitLocker (&m_mxtalMutationLimiter);
+
+        MolecularXtalMutator mutator (parentMXtal, this->sOBMutex);
+        m_mutatorsMutex.lock();
+        m_mutators.append(&mutator);
+        m_mutatorsMutex.unlock();
+
+        mutator.setDebug(true);
+        if (!cellIsFixed)
+          mutator.setNumberOfStrains(this->mga_numLatticeSamples);
+        else {
+          if (this->mga_numLatticeSamples != 0 ||
+              !this->mga_warnedNoStrainOnFixedCell) {
+            this->warning("Refusing to mutate lattice, at least one cell "
+                          "parameter is fixed.");
+            this->mga_warnedNoStrainOnFixedCell = true;
+          }
+          mutator.setNumberOfStrains(0);
+        }
+        mutator.setStrainSigmaRange(this->mga_strainMin,
+                                    this->mga_strainMax);
+        mutator.setNumMovers(this->mga_numMovers);
+        mutator.setNumDisplacements(this->mga_numDisplacements);
+        mutator.setRotationResolution(this->mga_rotResDeg * DEG_TO_RAD);
+        if (cellIsFixed || this->using_fixed_volume) {
+          if (this->mga_numVolSamples != 0) {
+            if (cellIsFixed && !this->mga_warnedNoVolumeSamplesOnFixedCell) {
+              this->warning("Refusing to mutate cell volume, at least one cell "
+                            "parameter is fixed.");
+              this->mga_warnedNoVolumeSamplesOnFixedCell = true;
+            }
+            if (this->using_fixed_volume &&
+                !this->mga_warnedNoVolumeSamplesOnFixedVolume) {
+              this->warning("Refusing to mutate cell volume, volume is fixed.");
+              this->mga_warnedNoVolumeSamplesOnFixedVolume = true;
+            }
+          }
+          mutator.setNumberOfVolumeSamples(0);
+        }
+        else {
+          mutator.setNumberOfVolumeSamples(this->mga_numVolSamples);
+          mutator.setMinimumVolumeFraction(this->mga_volMinFrac);
+          mutator.setMaximumVolumeFraction(this->mga_volMaxFrac);
+        }
+
+        // Attempt to make the best mutation possible if it hasn't been done
+        // yet
+        if (!parentMXtal->hasBestOffspring()) {
+          mutator.setCreateBest(true);
+          parentMXtal->setHasBestOffspring(true);
+        }
+
+        // Setup progress bar
+        bool notify = m_dialog->startProgressUpdate(
+              tr("Mutating structure %1...").arg(parentMXtal->getIDString()),
+              0, 100);
+        if (notify) {
+          connect(&mutator, SIGNAL(progressUpdate(int)),
+                  m_dialog, SLOT(updateProgressValue(int)),
+                  Qt::DirectConnection); // slot handles threading internally
+        }
+
+        mutator.mutate();
+        if (notify) {
+          mutator.disconnect(m_dialog);
+          m_dialog->stopProgressUpdate();
+        }
+
+        m_mutatorsMutex.lock();
+        m_mutators.removeOne(&mutator);
+        m_mutatorsMutex.unlock();
+
+        // We're exiting if the mutator has aborted
+        if (mutator.isAborted() || m_isDestroying)
+          return NULL;
+
+        mxtal = mutator.getOffspring();
+
+        // If the offspring is identical to the parent, retry:
+        if (*mxtal == *parentMXtal) {
+          this->warning("Offspring mxtal is identical to parent. Retrying.");
+          delete mxtal;
           mxtal = NULL;
           continue;
         }
@@ -1219,9 +1299,9 @@ namespace XtalOpt {
           }
         }
         mxtal->setIDNumber(id);
-
       }
-      if (attemptCount >= 1000) {
+      if (attemptCount >= 5) {
+#if 0 // old operators...
         QString opStr;
         switch (op) {
         case MXOP_Crossover: opStr = "crossover"; break;
@@ -1231,6 +1311,12 @@ namespace XtalOpt {
         }
         warning(tr("Unable to perform operation %1 after 1000 tries. "
                    "Reselecting operator...").arg(opStr));
+#endif
+        this->warning("Five failed attempts to create offspring logged."
+                      " Check/loosen the system constraints.");
+        if (this->using_interatomicDistanceLimit && this->usePreopt)
+          this->warning("Note: Interatomic distance contraints are usually "
+                        "unnecessary when using a preoptimization step.");
       }
     }
 

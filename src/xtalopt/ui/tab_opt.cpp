@@ -103,38 +103,24 @@ namespace XtalOpt {
     connect(ui.spin_perm_ex, SIGNAL(valueChanged(int)),
             this, SLOT(updateIonicSearchParams()));
 
-    // Crossover - Molecular
-    connect(ui.spin_mga_p_cross, SIGNAL(valueChanged(int)),
+    // Mutation - Molecular
+    connect(ui.spin_mga_latticeSamples, SIGNAL(valueChanged(int)),
             this, SLOT(updateMolecularSearchParams()));
-    connect(ui.spin_mga_cross_minimumContribution, SIGNAL(valueChanged(int)),
+    connect(ui.spin_mga_strainMin, SIGNAL(valueChanged(double)),
             this, SLOT(updateMolecularSearchParams()));
-
-    // Reconf - Molecular
-    connect(ui.spin_mga_p_reconf, SIGNAL(valueChanged(int)),
+    connect(ui.spin_mga_strainMax, SIGNAL(valueChanged(double)),
             this, SLOT(updateMolecularSearchParams()));
-    connect(ui.spin_mga_reconf_minSubMolsToReplace, SIGNAL(valueChanged(int)),
+    connect(ui.spin_mga_numMovers, SIGNAL(valueChanged(int)),
             this, SLOT(updateMolecularSearchParams()));
-    connect(ui.spin_mga_reconf_maxSubMolsToReplace, SIGNAL(valueChanged(int)),
+    connect(ui.spin_mga_numDisplacements, SIGNAL(valueChanged(int)),
             this, SLOT(updateMolecularSearchParams()));
-    connect(ui.spin_mga_reconf_minStrain, SIGNAL(valueChanged(double)),
+    connect(ui.spin_mga_rotResDeg, SIGNAL(valueChanged(int)),
             this, SLOT(updateMolecularSearchParams()));
-    connect(ui.spin_mga_reconf_maxStrain, SIGNAL(valueChanged(double)),
+    connect(ui.spin_mga_numVolSamples, SIGNAL(valueChanged(int)),
             this, SLOT(updateMolecularSearchParams()));
-
-    // Swirl - Molecular
-    connect(ui.spin_mga_p_swirl, SIGNAL(valueChanged(int)),
+    connect(ui.spin_mga_volMinFrac, SIGNAL(valueChanged(double)),
             this, SLOT(updateMolecularSearchParams()));
-    connect(ui.spin_mga_swirl_minStrain, SIGNAL(valueChanged(double)),
-            this, SLOT(updateMolecularSearchParams()));
-    connect(ui.spin_mga_swirl_maxStrain, SIGNAL(valueChanged(double)),
-            this, SLOT(updateMolecularSearchParams()));
-    connect(ui.spin_mga_swirl_minSubMolsToRotate, SIGNAL(valueChanged(int)),
-            this, SLOT(updateMolecularSearchParams()));
-    connect(ui.spin_mga_swirl_maxSubMolsToRotate, SIGNAL(valueChanged(int)),
-            this, SLOT(updateMolecularSearchParams()));
-    connect(ui.spin_mga_swirl_minRotationDegree, SIGNAL(valueChanged(int)),
-            this, SLOT(updateMolecularSearchParams()));
-    connect(ui.spin_mga_swirl_percentInPlane, SIGNAL(valueChanged(int)),
+    connect(ui.spin_mga_volMaxFrac, SIGNAL(valueChanged(double)),
             this, SLOT(updateMolecularSearchParams()));
 
     initialize();
@@ -190,36 +176,25 @@ namespace XtalOpt {
     settings->setValue("opt/perm_strainStdev_max",xtalopt->perm_strainStdev_max);
     settings->setValue("opt/perm_ex",           xtalopt->perm_ex);
 
-    // Crossover - molecular
-    settings->setValue("mxtalopt/mga_p_cross", xtalopt->mga_p_cross);
-    settings->setValue("mxtalopt/mga_cross_minimumContribution",
-                       xtalopt->mga_cross_minimumContribution);
-
-    // reconf - molecular
-    settings->setValue("mxtalopt/mga_p_reconf", xtalopt->mga_p_reconf);
-    settings->setValue("mxtalopt/mga_reconf_minSubMolsToReplace",
-                       xtalopt->mga_reconf_minSubMolsToReplace);
-    settings->setValue("mxtalopt/mga_reconf_maxSubMolsToReplace",
-                       xtalopt->mga_reconf_maxSubMolsToReplace);
-    settings->setValue("mxtalopt/mga_reconf_minStrain",
-                       xtalopt->mga_reconf_minStrain);
-    settings->setValue("mxtalopt/mga_reconf_maxStrain",
-                       xtalopt->mga_reconf_maxStrain);
-
     // swirl - molecular
-    settings->setValue("mxtalopt/mga_p_swirl", xtalopt->mga_p_swirl);
-    settings->setValue("mxtalopt/mga_swirl_minSubMolsToRotate",
-                       xtalopt->mga_swirl_minSubMolsToRotate);
-    settings->setValue("mxtalopt/mga_swirl_maxSubMolsToRotate",
-                       xtalopt->mga_swirl_maxSubMolsToRotate);
-    settings->setValue("mxtalopt/mga_swirl_minRotationDegree",
-                       xtalopt->mga_swirl_minRotationDegree);
-    settings->setValue("mxtalopt/mga_swirl_fracInPlane",
-                       xtalopt->mga_swirl_fracInPlane);
-    settings->setValue("mxtalopt/mga_swirl_minStrain",
-                       xtalopt->mga_swirl_minStrain);
-    settings->setValue("mxtalopt/mga_swirl_maxStrain",
-                       xtalopt->mga_swirl_maxStrain);
+    settings->setValue("mxtalopt/mga_latticeSamples",
+                       xtalopt->mga_numLatticeSamples);
+    settings->setValue("mxtalopt/mga_stainMin",
+                       xtalopt->mga_strainMin);
+    settings->setValue("mxtalopt/mga_strainMax",
+                       xtalopt->mga_strainMax);
+    settings->setValue("mxtalopt/mga_numMovers",
+                       xtalopt->mga_numMovers);
+    settings->setValue("mxtalopt/mga_numDisplacements",
+                       xtalopt->mga_numDisplacements);
+    settings->setValue("mxtalopt/mga_rotResDeg",
+                       xtalopt->mga_rotResDeg);
+    settings->setValue("mxtalopt/mga_numVolSamples",
+                       xtalopt->mga_numVolSamples);
+    settings->setValue("mxtalopt/mga_volMinFrac",
+                       xtalopt->mga_volMinFrac);
+    settings->setValue("mxtalopt/mga_volMaxFrac",
+                       xtalopt->mga_volMaxFrac);
 
     settings->endGroup();
 
@@ -269,39 +244,25 @@ namespace XtalOpt {
     ui.spin_perm_strainStdev_max->setValue(settings->value("opt/perm_strainStdev_max",0.5).toDouble());
     ui.spin_perm_ex->setValue(          settings->value("opt/perm_ex",          4).toUInt()     );
 
-    // Crossover - Molecular
-    ui.spin_mga_p_cross->setValue(
-          settings->value("mxtalopt/mga_p_cross", 25).toInt());
-    ui.spin_mga_cross_minimumContribution->setValue(
-          settings->value("mxtalopt/mga_cross_minimumContribution", 25).toDouble());
-
-    // Reconf - Molecular
-    ui.spin_mga_p_reconf->setValue(
-          settings->value("mxtalopt/mga_p_reconf", 25).toInt());
-    ui.spin_mga_reconf_minStrain->setValue(
-          settings->value("mxtalopt/mga_reconf_minStrain", 0.0).toDouble());
-    ui.spin_mga_reconf_maxStrain->setValue(
-          settings->value("mxtalopt/mga_reconf_maxStrain", 0.5).toDouble());
-    ui.spin_mga_reconf_minSubMolsToReplace->setValue(
-          settings->value("mxtalopt/mga_reconf_minSubMolsToReplace", 1).toInt());
-    ui.spin_mga_reconf_maxSubMolsToReplace->setValue(
-          settings->value("mxtalopt/mga_reconf_maxSubMolsToReplace", 5).toInt());
-
-    // Swirl - Molecular
-    ui.spin_mga_p_swirl->setValue(
-          settings->value("mxtalopt/mga_p_swirl", 50).toInt());
-    ui.spin_mga_swirl_minStrain->setValue(
-          settings->value("mxtalopt/mga_swirl_minStrain", 0.0).toDouble());
-    ui.spin_mga_swirl_maxStrain->setValue(
-          settings->value("mxtalopt/mga_swirl_maxStrain", 0.5).toDouble());
-    ui.spin_mga_swirl_minSubMolsToRotate->setValue(
-          settings->value("mxtalopt/mga_swirl_minSubMolsToRotate", 1).toInt());
-    ui.spin_mga_swirl_maxSubMolsToRotate->setValue(
-          settings->value("mxtalopt/mga_swirl_maxSubMolsToRotate", 5).toInt());
-    ui.spin_mga_swirl_minRotationDegree->setValue(
-          settings->value("mxtalopt/mga_swirl_minRotationDegree", 30).toInt());
-    ui.spin_mga_swirl_percentInPlane->setValue(
-          settings->value("mxtalopt/mga_swirl_percentInPlane", 75).toInt());
+    // Mutation - Molecular
+    ui.spin_mga_latticeSamples->setValue(
+          settings->value("mxtalopt/mga_latticeSamples", 10).toInt());
+    ui.spin_mga_strainMin->setValue(
+          settings->value("mxtalopt/mga_stainMin", 0.0).toDouble());
+    ui.spin_mga_strainMax->setValue(
+          settings->value("mxtalopt/mga_strainMax", 0.5).toDouble());
+    ui.spin_mga_numMovers->setValue(
+          settings->value("mxtalopt/mga_numMovers", 2).toInt());
+    ui.spin_mga_numDisplacements->setValue(
+          settings->value("mxtalopt/mga_numDisplacements", 20).toInt());
+    ui.spin_mga_rotResDeg->setValue(
+          settings->value("mxtalopt/mga_rotResDeg", 30).toInt());
+    ui.spin_mga_numVolSamples->setValue(
+          settings->value("mxtalopt/mga_numVolSamples", 5).toInt());
+    ui.spin_mga_volMinFrac->setValue(
+          settings->value("mxtalopt/mga_volMinFrac", 0.9).toDouble());
+    ui.spin_mga_volMaxFrac->setValue(
+          settings->value("mxtalopt/mga_volMaxFrac", 1.1).toDouble());
 
     settings->endGroup();
 
@@ -370,32 +331,15 @@ namespace XtalOpt {
     ui.spin_perm_ex->setValue(  xtalopt->perm_ex);
 
     // Crossover - Molecular
-    ui.spin_mga_p_cross->setValue(xtalopt->mga_p_cross);
-    ui.spin_cross_minimumContribution->setValue(
-          xtalopt->mga_cross_minimumContribution);
-
-    // Reconf - Molecular
-    ui.spin_mga_p_reconf->setValue(xtalopt->mga_p_reconf);
-    ui.spin_mga_reconf_minStrain->setValue(xtalopt->mga_reconf_minStrain);
-    ui.spin_mga_reconf_maxStrain->setValue(xtalopt->mga_reconf_maxStrain);
-    ui.spin_mga_reconf_minSubMolsToReplace->setValue(
-          xtalopt->mga_reconf_minSubMolsToReplace);
-    ui.spin_mga_reconf_maxSubMolsToReplace->setValue(
-          xtalopt->mga_reconf_maxSubMolsToReplace);
-
-    // Swirl - Molecular
-    ui.spin_mga_p_swirl->setValue(xtalopt->mga_p_swirl);
-    ui.spin_mga_swirl_minStrain->setValue(xtalopt->mga_swirl_minStrain);
-    ui.spin_mga_swirl_maxStrain->setValue(xtalopt->mga_swirl_maxStrain);
-    ui.spin_mga_swirl_minSubMolsToRotate->setValue(
-          xtalopt->mga_swirl_minSubMolsToRotate);
-    ui.spin_mga_swirl_maxSubMolsToRotate->setValue(
-          xtalopt->mga_swirl_maxSubMolsToRotate);
-    ui.spin_mga_swirl_minRotationDegree->setValue(
-          xtalopt->mga_swirl_minRotationDegree);
-    ui.spin_mga_swirl_percentInPlane->setValue(
-          static_cast<int>(xtalopt->mga_swirl_fracInPlane * 100));
-
+    ui.spin_mga_latticeSamples->setValue(xtalopt->mga_numLatticeSamples);
+    ui.spin_mga_strainMin->setValue(xtalopt->mga_strainMin);
+    ui.spin_mga_strainMax->setValue(xtalopt->mga_strainMax);
+    ui.spin_mga_numMovers->setValue(xtalopt->mga_numMovers);
+    ui.spin_mga_numDisplacements->setValue(xtalopt->mga_numDisplacements);
+    ui.spin_mga_rotResDeg->setValue(xtalopt->mga_rotResDeg);
+    ui.spin_mga_numVolSamples->setValue(xtalopt->mga_numVolSamples);
+    ui.spin_mga_volMinFrac->setValue(xtalopt->mga_volMinFrac);
+    ui.spin_mga_volMaxFrac->setValue(xtalopt->mga_volMaxFrac);
   }
 
   void TabOpt::lockGUI()
@@ -479,59 +423,16 @@ namespace XtalOpt {
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
-    // See if the "percent new..." spin boxes caused this change.
-    if (sender() == ui.spin_mga_p_cross ||
-        sender() == ui.spin_mga_p_reconf) {
-      xtalopt->mga_p_cross  = ui.spin_mga_p_cross->value();
-      xtalopt->mga_p_reconf = ui.spin_mga_p_reconf->value();
-      xtalopt->mga_p_swirl  = 100 - (xtalopt->mga_p_cross +
-                                     xtalopt->mga_p_reconf);
-      ui.spin_mga_p_swirl->blockSignals(true);
-      ui.spin_mga_p_swirl->setValue(xtalopt->mga_p_swirl);
-      ui.spin_mga_p_swirl->blockSignals(false);
-    }
-    else if (sender() == ui.spin_mga_p_swirl) {
-      xtalopt->mga_p_swirl  = ui.spin_mga_p_swirl->value();
-      xtalopt->mga_p_reconf = ui.spin_mga_p_reconf->value();
-      xtalopt->mga_p_cross  = 100 - (xtalopt->mga_p_swirl +
-                                     xtalopt->mga_p_reconf);
-      ui.spin_mga_p_cross->blockSignals(true);
-      ui.spin_mga_p_cross->setValue(xtalopt->mga_p_cross);
-      ui.spin_mga_p_cross->blockSignals(false);
-    }
-    else {
-      xtalopt->mga_p_swirl  = ui.spin_mga_p_swirl->value();
-      xtalopt->mga_p_reconf = ui.spin_mga_p_reconf->value();
-      xtalopt->mga_p_cross  = ui.spin_mga_p_cross->value();
-    }
-
-    // Crossover
-    xtalopt->mga_cross_minimumContribution =
-        ui.spin_mga_cross_minimumContribution->value();
-
-    // Reconf
-    xtalopt->mga_reconf_minStrain =
-        ui.spin_mga_reconf_minStrain->value();
-    xtalopt->mga_reconf_maxStrain =
-        ui.spin_mga_reconf_maxStrain->value();
-    xtalopt->mga_reconf_minSubMolsToReplace =
-        ui.spin_mga_reconf_minSubMolsToReplace->value();
-    xtalopt->mga_reconf_maxSubMolsToReplace =
-        ui.spin_mga_reconf_maxSubMolsToReplace->value();
-
-    // Swirl
-    xtalopt->mga_swirl_minStrain =
-        ui.spin_mga_swirl_minStrain->value();
-    xtalopt->mga_swirl_maxStrain =
-        ui.spin_mga_swirl_maxStrain->value();
-    xtalopt->mga_swirl_minSubMolsToRotate =
-        ui.spin_mga_swirl_minSubMolsToRotate->value();
-    xtalopt->mga_swirl_maxSubMolsToRotate =
-        ui.spin_mga_swirl_maxSubMolsToRotate->value();
-    xtalopt->mga_swirl_minRotationDegree =
-        ui.spin_mga_swirl_minRotationDegree->value();
-    xtalopt->mga_swirl_fracInPlane =
-        static_cast<double>(ui.spin_mga_swirl_percentInPlane->value()) / 100.0;
+    // Mutation
+    xtalopt->mga_numLatticeSamples = ui.spin_mga_latticeSamples->value();
+    xtalopt->mga_strainMin = ui.spin_mga_strainMin->value();
+    xtalopt->mga_strainMax = ui.spin_mga_strainMax->value();
+    xtalopt->mga_numMovers = ui.spin_mga_numMovers->value();
+    xtalopt->mga_numDisplacements = ui.spin_mga_numDisplacements->value();
+    xtalopt->mga_rotResDeg = ui.spin_mga_rotResDeg->value();
+    xtalopt->mga_numVolSamples = ui.spin_mga_numVolSamples->value();
+    xtalopt->mga_volMinFrac = ui.spin_mga_volMinFrac->value();
+    xtalopt->mga_volMaxFrac = ui.spin_mga_volMaxFrac->value();
   }
 
   void TabOpt::addSeed(QListWidgetItem *item) {

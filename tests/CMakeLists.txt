@@ -27,7 +27,7 @@ set(tests
   molecularxtal
   molecularxtalmutator
   molecularxtaloptimizer
-  mxtaloptgenetic
+  #mxtaloptgenetic
   optbase
   submoleculeranker
   structure

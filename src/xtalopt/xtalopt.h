@@ -37,6 +37,7 @@ namespace GlobalSearch {
 
 namespace XtalOpt {
   class MolecularXtal;
+  class MolecularXtalMutator;
   class SubMoleculeSource;
   class XtalOptDialog;
 
@@ -165,23 +166,21 @@ namespace XtalOpt {
     bool mpo_debug;               //! Print extra debugging info to terminal
 
     // MXtalOptGenetic params
-    // - Crossover
-    int mga_p_cross;                      //! [0, 100]
-    double mga_cross_minimumContribution; //! [0.0, 50.0]
-    // - Reconf
-    int mga_p_reconf;                     //! [0, 100]
-    int mga_reconf_minSubMolsToReplace;   //! [0, sum(i, mcomp[i].quantity)]
-    int mga_reconf_maxSubMolsToReplace;   //! [0, sum(i, mcomp[i].quantity)]
-    double mga_reconf_minStrain;          //! [0, 1]
-    double mga_reconf_maxStrain;          //! [0, 1]
-    // - Swirl
-    int mga_p_swirl;                      //! [0, 100]
-    int mga_swirl_minSubMolsToRotate;     //! [0, sum(i, mcomp[i].quantity)]
-    int mga_swirl_maxSubMolsToRotate;     //! [0, sum(i, mcomp[i].quantity)]
-    int mga_swirl_minRotationDegree;      //! [0, 180]
-    double mga_swirl_fracInPlane;         //! [0, 1]
-    double mga_swirl_minStrain;           //! [0, 1]
-    double mga_swirl_maxStrain;           //! [0, 1]
+    int maxConf; //! The maximum number of conformations per submolecule
+    // - Mutation
+    int mga_numLatticeSamples;    //! [0, 99]
+    double mga_strainMin;      //! [0.0, 1.0]
+    double mga_strainMax;      //! [0.0, 1.0]
+    int mga_numMovers;         //! [0, 99]
+    int mga_numDisplacements;  //! [0, 99]
+    int mga_rotResDeg;         //! [0, 360]
+    int mga_numVolSamples;     //! [0, 99]
+    double mga_volMinFrac;     //! [0.5, 2.0]
+    double mga_volMaxFrac;     //! [0.5, 2.0]
+    // Warnings for ignored mutation parameters
+    bool mga_warnedNoStrainOnFixedCell;
+    bool mga_warnedNoVolumeSamplesOnFixedCell;
+    bool mga_warnedNoVolumeSamplesOnFixedVolume;
 
     bool using_fixed_volume;
     bool using_interatomicDistanceLimit;
@@ -233,6 +232,11 @@ namespace XtalOpt {
     bool m_isMolecular;
     // Used for progress updates during initializeSubMoleculeSource
     int m_currentSubMolSourceProgress;
+
+    // Keep track of running mutators
+    QList<MolecularXtalMutator*> m_mutators;
+    QMutex m_mutatorsMutex;
+    QMutex m_mxtalMutationLimiter;
   };
 
 } // end namespace XtalOpt

@@ -5,7 +5,7 @@ set( xtalopt_SRCS
      extension.cpp
      genetic.cpp
      holefinder.cpp
-     mxtaloptgenetic.cpp
+     #mxtaloptgenetic.cpp
      molecularxtalmutator.cpp
      molecularxtaloptimizer.cpp
      optimizers/castep.cpp
