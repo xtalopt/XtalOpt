@@ -482,6 +482,10 @@ namespace GlobalSearch {
     }
     m_opt->sOBMutex->unlock();
 
+    // Empty molecule?
+    if (obmol.NumAtoms() == 0)
+      return false;
+
     // Extract data from obmol and update structure
     double energy=0.0;
     double enthalpy=0.0;
