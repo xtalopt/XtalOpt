@@ -248,7 +248,9 @@ void SSHConnectionTest::execute()
 
 void SSHConnectionTest::executeLargeOutput()
 {
-  QString command = QString("for i in `seq 0 %1`;do echo 000; done")
+  // Don't use seq to generate the loop vars -- it's not available in some
+  // chroot jails.
+  QString command = QString("for i in {0..%1};do echo 000; done")
     .arg(SSH_BUFFER_SIZE);
 
   QString refout;

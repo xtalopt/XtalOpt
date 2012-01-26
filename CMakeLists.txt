@@ -14,6 +14,7 @@ include_directories( ${CMAKE_CURRENT_BINARY_DIR}
 		     ${XtalOpt_SOURCE_DIR}/src/)
 
 link_directories(${OPENBABEL2_LIBRARIES_DIRS})
+include(MacroEnsureVersion)
 
 option( BUILD_TESTS
  	"Whether to compile the test suite as well as the main code."
@@ -29,6 +30,22 @@ option( ENABLE_SSH
 
 if (ENABLE_SSH)
   add_definitions(-DENABLE_SSH)
+
+  # Pull in libssh
+  set(LibSSH_FIND_VERSION ON)
+  set(LibSSH_MIN_VERSION "0.4.8")
+  find_package(LibSSH REQUIRED)
+  if(NOT LIBSSH_FOUND)
+    message(FATAL_ERROR "libssh not found!")
+  endif()
+  macro_ensure_version(${LibSSH_MIN_VERSION} ${LibSSH_VERSION}
+                       LIBSSH_VERSION_OK)
+  if (NOT LIBSSH_VERSION_OK)
+    message(FATAL_ERROR
+    "libssh too old! Installed version is ${LibSSH_VERSION}, need at least "
+    "libssh ${LibSSH_MIN_VERSION}")
+  endif()
+  include_directories(${LIBSS_INCLUDE_DIRS})
 endif()
 
 # This is a modified version of the avogadro_plugin function that produces
