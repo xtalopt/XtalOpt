@@ -64,8 +64,7 @@ target_link_libraries( globalsearch
 		       ${OPENBABEL2_LIBRARIES})
 
 if (ENABLE_SSH)
-  add_dependencies(globalsearch ssh_static)
-  target_link_libraries(globalsearch ssh_static)
+  target_link_libraries(globalsearch ${LIBSSH_LIBRARIES})
 endif()
 
 # This is needed for backtraces

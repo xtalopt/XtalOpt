@@ -57,7 +57,7 @@ foreach (test ${tests})
     avogadro
     globalsearch)
   if (ENABLE_SSH)
-    target_link_libraries(${test}test ssh_static)
+    target_link_libraries(${test}test ${LIBSSH_LIBRARIES})
   endif()
   add_test(${test}Test ${CMAKE_BINARY_DIR}/tests/${test}test)
   set_property(SOURCE ${test_SRCS} PROPERTY LABELS globalsearch)
