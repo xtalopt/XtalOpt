@@ -239,9 +239,12 @@ namespace GlobalSearch {
     QString oldfilename = filename + ".old";
 
     if (notify) {
-      m_dialog->startProgressUpdate(tr("Saving: Writing %1...")
-                                    .arg(filename),
-                                    0, 0);
+      if (!m_dialog->startProgressUpdate(tr("Saving: Writing %1...")
+                                         .arg(filename),
+                                         0, 0)) {
+        // The progress bar is already in use -- disable notifications
+        notify = false;
+      }
     }
 
     // Copy .state -> .state.old

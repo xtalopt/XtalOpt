@@ -246,16 +246,15 @@ namespace GlobalSearch {
      * @param text Label text describing the operation
      * @param min Minimum progress value
      * @param max Maximum progress value
+     * @return False if the progress bar is already in use, true otherwise.
      */
-    void startProgressUpdate(const QString & text, int min, int max) {
-      emit sig_startProgressUpdate(text,min,max);};
+    bool startProgressUpdate(const QString & text, int min, int max);
 
     /**
      * Reset and hide progress bar and label. Also frees the
      * associated mutex, allowing other processes to use it.
      */
-    void stopProgressUpdate() {
-      emit sig_stopProgressUpdate();};
+    void stopProgressUpdate();
 
     /**
      * @param min The minimum value for the progress bar.
