@@ -175,6 +175,19 @@ namespace XtalOpt {
      */
     static Xtal* POSCARToXtal(QFile *file);
 
+    // Find the shortest equivalent vector accounting for translational
+    // symmetry
+    void shortenCartesianVector(Eigen::Vector3d *cartVec)
+    {
+      *cartVec = this->cartToFrac(*cartVec);
+      this->shortenFractionalVector(cartVec);
+      *cartVec = this->fracToCart(*cartVec);
+    }
+
+    // Find the shortest equivalent vector accounting for translational
+    // symmetry. Makes all components of fracVec between [-0.5, 0.5].
+    static void shortenFractionalVector(Eigen::Vector3d *fracVec);
+
     // For random representation generation
     static void generateValidCOBs();
     static QVector<Eigen::Matrix3d> m_transformationMatrices;

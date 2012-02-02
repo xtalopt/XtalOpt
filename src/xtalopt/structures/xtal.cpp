@@ -1658,4 +1658,14 @@ namespace XtalOpt {
     return POSCARToXtal(poscar);
   }
 
+  void Xtal::shortenFractionalVector(Eigen::Vector3d *fracVec)
+  {
+    while (fracVec->x() >  0.5) --fracVec->x();
+    while (fracVec->x() < -0.5) ++fracVec->x();
+    while (fracVec->y() >  0.5) --fracVec->y();
+    while (fracVec->y() < -0.5) ++fracVec->y();
+    while (fracVec->z() >  0.5) --fracVec->z();
+    while (fracVec->z() < -0.5) ++fracVec->z();
+  }
+
 } // end namespace XtalOpt
