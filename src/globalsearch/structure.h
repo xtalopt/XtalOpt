@@ -140,6 +140,11 @@ namespace GlobalSearch {
       Restart
     };
 
+    /** @return Whether or not the "best" offspring (an optimized mutation)
+     * has been generated for this structure.
+     */
+    bool hasBestOffspring() const {return m_hasBestOffspring;}
+
     /** Whether the Structure has an enthalpy value set.
      * @return true if enthalpy has been set, false otherwise
      * @sa setEnthalpy
@@ -836,6 +841,14 @@ namespace GlobalSearch {
        */
     virtual unsigned int sizeOfHistory() {return m_histEnergies.size();};
 
+    /** @param b Whether or not the "best" offspring (an optimized mutation)
+     * has been generated for this structure.
+     */
+    void setHasBestOffspring(bool b = true)
+    {
+      m_hasBestOffspring = b;
+    }
+
     /** Set the enthalpy of the Structure.
      * @param enthalpy The Structure's enthalpy
      * @sa getEnthalpy
@@ -1070,6 +1083,7 @@ namespace GlobalSearch {
     /// \cond
     bool m_hasEnthalpy, m_updatedSinceDupChecked;
     bool m_histogramGenerationPending;
+    bool m_hasBestOffspring;
     uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount;
     QString m_parents, m_dupString, m_rempath;
     double m_enthalpy, m_PV;

@@ -44,6 +44,7 @@ namespace GlobalSearch {
     m_hasEnthalpy(false),
     m_updatedSinceDupChecked(true),
     m_histogramGenerationPending(false),
+    m_hasBestOffspring(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -62,6 +63,7 @@ namespace GlobalSearch {
     Molecule(other),
     m_histogramGenerationPending(false),
     m_updatedSinceDupChecked(true),
+    m_hasBestOffspring(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -78,6 +80,7 @@ namespace GlobalSearch {
     Molecule(other),
     m_histogramGenerationPending(false),
     m_updatedSinceDupChecked(true),
+    m_hasBestOffspring(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -252,6 +255,7 @@ namespace GlobalSearch {
     settings->setValue("failCount", getFailCount());
     settings->setValue("startTime", getOptTimerStart().toString());
     settings->setValue("endTime", getOptTimerEnd().toString());
+    settings->setValue("hasBestOffspring", hasBestOffspring());
 
     // History
     settings->beginGroup("history");
@@ -342,6 +346,8 @@ namespace GlobalSearch {
 
       setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));
       setOptTimerEnd(   QDateTime::fromString(settings->value("endTime",   "").toString()));
+
+      setHasBestOffspring(settings->value("hasBestOffspring", false).toBool());
 
     // History
     settings->beginGroup("history");
