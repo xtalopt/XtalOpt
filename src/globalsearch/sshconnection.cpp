@@ -79,7 +79,7 @@ namespace GlobalSearch {
       return false;
     }
 
-    // Set a three timeout, check every 50 ms for new data.
+    // Set a three second timeout, check every 50 ms for new data.
     int bytesAvail;
     int timeout = 3000;
     do {
@@ -409,13 +409,32 @@ namespace GlobalSearch {
 
     // Read output
     char buffer[SSH_BUFFER_SIZE];
-    int len;
-    while ((len = channel_read(channel, buffer, sizeof(buffer), 0)) > 0) {
-      ossout.write(buffer,len);
+    int bytesAvail;
+    // Wait three seconds for output
+    int timeout = 3000;
+    do {
+      bytesAvail = channel_poll(channel, 0);
+      if (bytesAvail == 0) {
+        GS_MSLEEP(50);
+        timeout -= 50;
+      }
+    }
+    while (timeout > 0 && bytesAvail == 0);
+
+    if (bytesAvail == SSH_ERROR) {
+      qWarning() << "Poll returns error:" << ssh_get_error(m_session);
+      channel_close(channel);
+      channel_free(channel);
+      END;
+      return false;
+    }
+
+    while ((bytesAvail = channel_read(channel, buffer, sizeof(buffer), 0)) > 0) {
+      ossout.write(buffer,bytesAvail);
     }
     stdout_str = QString(ossout.str().c_str());
-    while ((len = channel_read(channel, buffer, sizeof(buffer), 1)) > 0) {
-      osserr.write(buffer,len);
+    while ((bytesAvail = channel_read(channel, buffer, sizeof(buffer), 1)) > 0) {
+      osserr.write(buffer,bytesAvail);
     }
     stderr_str = QString(osserr.str().c_str());
 
