@@ -509,6 +509,8 @@ namespace XtalOpt {
       return;
     }
 
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
     QTableWidgetItem *item = ui.table_list->itemAt(p);
     bool xtalIsSelected = true;
     int index = -1;
@@ -592,6 +594,9 @@ namespace XtalOpt {
       a_offspring->setEnabled(false);
       a_injectSeed->setEnabled(true);
       a_clipPOSCAR->setEnabled(false);
+    }
+    if (xtalopt->isMolecularXtalSearch()) {
+      a_injectSeed->setVisible(false);
     }
 
     QAction *selection = menu.exec(QCursor::pos());
