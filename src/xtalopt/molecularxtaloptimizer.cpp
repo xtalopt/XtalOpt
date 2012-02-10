@@ -640,8 +640,19 @@ bool MolecularXtalOptimizerPrivate::updateSuperCell()
     return false;
   }
 
-  // Force an update of the cutoffs
-  this->updateCutoffsIfNeeded(true);
+  // Force an update of the cutoffs and reset the search direction
+  ff->ConjugateGradientsInitialize(this->numSteps - this->currentStep,
+                                   this->conv);
+  this->lastcutoffUpdate = this->currentStep;
+
+  DEBUGOUT("updateSuperCell")
+      QString("Cutoffs updated, direction reset. step %1: vdw=%2 (%3 pairs), "
+              "ele=%4 (%5 pairs)")
+      .arg(this->currentStep)
+      .arg(ff->GetVDWCutOff())
+      .arg(ff->GetNumVDWPairs())
+      .arg(ff->GetElectrostaticCutOff())
+      .arg(ff->GetNumElectrostaticPairs());
 
   return true;
 }

@@ -38,8 +38,12 @@ public Q_SLOTS:
   // Enable/disable debugging
   void setDebug(bool b);
 
+  ///////////////////////////////
   // Set parameters for mutations
-  void setCreateBest(bool b); // Ignore probabilities and always pick best mutations
+  //   Ignore probabilities and always pick best mutations
+  void setCreateBest(bool b);
+  //   Reset to a supercell from the best atoms before mutation
+  void setStartWithSuperCell(bool b);
   void setMaximumNumberOfCandidates(unsigned int num);
   void setNumberOfStrains(unsigned int strains);
   void setStrainSigmaRange(double min, double max);
@@ -60,6 +64,7 @@ public Q_SLOTS:
 public:
   // Retrieve mutation parameters
   bool createBest() const;
+  bool startWithSuperCell() const;
   unsigned int maximumNumberOfCandidates() const;
   unsigned int numberOfStrains() const;
   void strainSigmaRange(double range[2]) const;

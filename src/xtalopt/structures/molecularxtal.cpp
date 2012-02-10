@@ -46,7 +46,11 @@ namespace XtalOpt {
   MolecularXtal::MolecularXtal(double A, double B, double C,
                                double Alpha, double Beta, double Gamma,
                                QObject *parent) :
-    Xtal(A, B, C, Alpha, Beta, Gamma, parent)
+    Xtal(A, B, C, Alpha, Beta, Gamma, parent),
+    m_preOptStepCount(0),
+    m_preOptStep(0),
+    m_needsPreOpt(false),
+    m_mxtalOpt(NULL)
   {
   }
 
@@ -742,6 +746,12 @@ namespace XtalOpt {
       m_mxtalOpt->abort();
       m_mxtalOpt->waitForFinished();
     }
+  }
+
+  void MolecularXtal::makeCoherent()
+  {
+    foreach (SubMolecule *sub, m_subMolecules)
+      sub->makeCoherent();
   }
 
 } // end namespace XtalOpt

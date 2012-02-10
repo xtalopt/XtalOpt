@@ -16,6 +16,7 @@
 #include "molecularxtalmutator.h"
 
 #include <xtalopt/holefinder.h>
+#include <xtalopt/molecularxtalsupercellgenerator.h>
 #include <xtalopt/structures/molecularxtal.h>
 #include <xtalopt/structures/submolecule.h>
 #include <xtalopt/submoleculeranker.h>
@@ -58,6 +59,7 @@ struct Transform_t
 union ScanVar_t
 {
   double real;
+  int integer;
   Transform_t transform;
   double matrix3x3[9]; // row-major
 };
@@ -65,6 +67,7 @@ union ScanVar_t
 enum ScanVarType
 {
   REAL = 0,
+  INTEGER,
   TRANSFORM,
   MATRIX3x3
 };
@@ -89,6 +92,7 @@ public:
       parentEnergy(0.0),
       offspringEnergy(0.0),
       createBest(false),
+      startWithSuperCell(false),
       numCandidates(10),
       numStrains(10),
       numMovers(2),
@@ -115,7 +119,7 @@ public:
   // Helper methods
   //
   // Used to cache structure data during scans
-  void copyCellAndCoords(MolecularXtal *from, MolecularXtal *to);
+  void copyCellAndCoords(const MolecularXtal *from, MolecularXtal *to);
   void cacheWorkingMXtal();
   void restoreWorkingMXtal();
   /// Probability calculators -- input energies must be sorted low->high
@@ -154,6 +158,7 @@ public:
   //
   // Scan rotations of SubMolecule sub around axis with angular resolution
   // res (in radian)
+  void rankSuperCells(const QVector<MolecularXtal*> &supercells, const QVector<SubMolecule *> &ignoredSubMols);
   void sampleStrains();
   void sampleDisplacements(SubMolecule *sub, unsigned int numDisplacements);
   void scanRotations(SubMolecule *sub, const Eigen::Vector3d &axis,
@@ -211,6 +216,7 @@ public:
 
   // Mutation parameters
   bool createBest;
+  bool startWithSuperCell;
   unsigned int numCandidates;
   unsigned int numStrains;
   double strainSigmaRange[2];
@@ -261,6 +267,12 @@ void MolecularXtalMutator::setCreateBest(bool b)
 {
   Q_D(MolecularXtalMutator);
   d->createBest = b;
+}
+
+void MolecularXtalMutator::setStartWithSuperCell(bool b)
+{
+  Q_D(MolecularXtalMutator);
+  d->startWithSuperCell = b;
 }
 
 void MolecularXtalMutator::setMaximumNumberOfCandidates(unsigned int num)
@@ -361,6 +373,74 @@ bool MolecularXtalMutator::mutate()
 
   if (d->checkForAbort())
     return false;
+
+  // Generate supercells if needed
+  if (d->startWithSuperCell) {
+    // Evaluate energies of each submolecule for ranking
+    QVector<double> submolEnergies = d->ranker->evaluate();
+
+    // Setup generator
+    MolecularXtalSuperCellGenerator sCGenerator;
+    sCGenerator.setDebug(true);
+    sCGenerator.setMXtal(d->workingMXtal);
+    sCGenerator.setSubMolecularEnergies(submolEnergies);
+
+    // Generate supercells
+    const QVector<MolecularXtal*> &supercells = sCGenerator.getSuperCells();
+    const QVector<int> &unassignedSubMolIndices =
+        sCGenerator.getUnassignedSubMolecules();
+
+    // update progress maximum
+    d->numMutationSteps += supercells.size();
+
+    // Convert indices to pointers
+    QVector<SubMolecule *> unassignedSubMols;
+    unassignedSubMols.reserve(unassignedSubMolIndices.size());
+    foreach (int ind, unassignedSubMolIndices)
+      unassignedSubMols.push_back(d->workingMXtal.subMolecule(ind));
+
+    // Evaluate supercell energies
+    d->rankSuperCells(supercells, unassignedSubMols);
+    Q_ASSERT(d->scanType == INTEGER);
+    DDEBUGOUT("mutate") "Generated" << d->scanMap.size() << "supercells:";
+    d->trimHighEnergyScanData();
+    DDEBUGOUT("mutate") "Trimmed to" << d->scanMap.size() << "supercells";
+    QList<double> supercellEnergies (d->scanMap.keys());
+    ProbabilityVector supercellProbs =
+        d->getProbabilitiesLow(supercellEnergies);
+    DDEBUGOUT("mutate") "Supercell energies:" << supercellEnergies;
+    DDEBUGOUT("mutate") "Supercell Probabilities:" << supercellProbs;
+
+    // Select supercell from distribution
+    int selectedSupercell = 0;
+    if (!d->createBest)
+      selectedSupercell = d->getRandomIndex(supercellProbs);
+    DDEBUGOUT("mutate") "Selected supercell:" << selectedSupercell;
+
+    // Apply selected supercell
+    ScanMap::const_iterator supercellIt = d->scanMap.constBegin();
+    for (int i = 0; i < selectedSupercell; ++i) ++supercellIt;
+    int supercellInd = supercellIt.value().integer;
+    MolecularXtal *supercell = supercells.at(supercellInd);
+    d->copyCellAndCoords(supercell, &d->workingMXtal);
+    QString supercellType = supercell->property("supercellType").toString();
+    d->workingMXtal.setProperty("supercellType", supercellType);
+    DDEBUGOUT("mutate") "Selected" << supercellType;
+
+    d->workingMXtal.wrapAtomsToCell();
+    d->workingMXtal.makeCoherent();
+    d->ranker->updateGeometry();
+
+    // Increase the number of movers by the number of unassigned submolecules
+    d->numMovers += unassignedSubMolIndices.size();
+  }
+
+  // Debugging
+  double supercellEnergy = 0.0;
+  if (d->startWithSuperCell && d->debug) {
+    supercellEnergy = d->ranker->evaluateTotalEnergy();
+    DDEBUGOUT("mutate") "SuperCell energy: " << supercellEnergy;
+  }
 
   if (d->numStrains > 0) {
     // Sample strains
@@ -640,6 +720,12 @@ bool MolecularXtalMutator::createBest() const
   return d->createBest;
 }
 
+bool MolecularXtalMutator::startWithSuperCell() const
+{
+  Q_D(const MolecularXtalMutator);
+  return d->startWithSuperCell;
+}
+
 unsigned int MolecularXtalMutator::maximumNumberOfCandidates() const
 {
   Q_D(const MolecularXtalMutator);
@@ -758,8 +844,8 @@ MolecularXtalMutatorPrivate::~MolecularXtalMutatorPrivate()
   this->ranker = NULL;
 }
 
-inline void MolecularXtalMutatorPrivate::copyCellAndCoords(MolecularXtal *from,
-                                                           MolecularXtal *to)
+inline void MolecularXtalMutatorPrivate::copyCellAndCoords(
+    const MolecularXtal *from, MolecularXtal *to)
 {
   Q_ASSERT(from->numAtoms() == to->numAtoms());
 
@@ -827,6 +913,7 @@ ProbabilityVector MolecularXtalMutatorPrivate::getProbabilitiesHigh(
       probs << prob;
       prob += dprob;
     }
+    return probs;
   }
   double sum = 0.0;
   for (int i = 0; i < numEnergies; ++i) {
@@ -882,6 +969,7 @@ ProbabilityVector MolecularXtalMutatorPrivate::getProbabilitiesLow(
       probs << prob;
       prob += dprob;
     }
+    return probs;
   }
   double sum = 0.0;
   for (int i = 0; i < numEnergies; ++i) {
@@ -954,8 +1042,22 @@ MolecularXtalMutatorPrivate::generateRandomVoightMatrix(double sigma)
 // remove all entries with an energy higher than the average energy
 void MolecularXtalMutatorPrivate::trimHighEnergyScanData()
 {
-  if (this->scanMap.size() < 3)
+  if (this->scanMap.size() < 2)
     return;
+
+  // If there are two energies, check if there is an order of magnitude
+  // difference between them. If so, kick out the highest.
+  if (this->scanMap.size() == 2) {
+    double low = this->scanMap.begin().key();
+    double high = (++this->scanMap.begin()).key();
+    double ratio = high / low;
+    if ((low > 0.0 && ratio > 10.0) ||
+        (high < 0.0 && ratio < 0.1) ||
+        ratio < 0) {
+      this->scanMap.erase(this->scanMap.end() - 1);
+    }
+    return;
+  }
 
   // If there is no spread to the energies, just return.
   if (fabs(this->scanMap.begin().key() - (this->scanMap.end()-1).key())
@@ -983,8 +1085,8 @@ void MolecularXtalMutatorPrivate::trimHighEnergyScanData()
   if (eraser == this->scanMap.begin()) {
     DEBUGOUT("trimHighEnergyScanData") "Trimming would result in empty list; "
         << "Aborting. Lowest energy" << this->scanMap.begin().key()
-        << "Cutoff energy" << eraser.key();
-    return;
+        << "Cutoff energy" << eraser.key() << "Making return list length 1.";
+    ++eraser;
   }
 
   while (eraser != this->scanMap.end()) {
@@ -995,8 +1097,22 @@ void MolecularXtalMutatorPrivate::trimHighEnergyScanData()
 // remove all entries with an energy lower than the average energy
 void MolecularXtalMutatorPrivate::trimLowEnergyScanData()
 {
-  if (this->scanMap.size() < 3)
+  if (this->scanMap.size() < 2)
     return;
+
+  // If there are two energies, check if there is an order of magnitude
+  // difference between them. If so, kick out the highest.
+  if (this->scanMap.size() == 2) {
+    double low = this->scanMap.begin().key();
+    double high = (++this->scanMap.begin()).key();
+    double ratio = high / low;
+    if ((low > 0.0 && ratio > 10.0) ||
+        (high < 0.0 && ratio < 0.1) ||
+        ratio < 0) {
+      this->scanMap.erase(this->scanMap.begin());
+    }
+    return;
+  }
 
   // If there is no spread to the energies, just return.
   if (fabs(this->scanMap.begin().key() - (this->scanMap.end()-1).key())
@@ -1037,7 +1153,38 @@ void MolecularXtalMutatorPrivate::rankSubMolecules(
     if (omit.contains(submol))
       continue;
 
-    this->rankMap.insert(this->ranker->evaluateInter(submol), submol);
+    this->rankMap.insert(this->ranker->evaluateInter(submol)
+                         / static_cast<double>(submol->numAtoms()), submol);
+  }
+}
+
+void MolecularXtalMutatorPrivate::rankSuperCells(
+    const QVector<MolecularXtal *> &supercells,
+    const QVector<SubMolecule*> &ignoredSubMols)
+{
+  Q_ASSERT(this->ranker->mxtal() == &workingMXtal);
+
+  // Initialize scan data
+  this->scanMap.clear();
+  this->scanType = INTEGER;
+
+  // Loop through supercells
+  for (int i = 0; i < supercells.size(); ++i) {
+    this->emitNextStep();
+
+    MolecularXtal *supercell = supercells[i];
+    this->cacheWorkingMXtal();
+    this->copyCellAndCoords(supercell, &this->workingMXtal);
+    this->workingMXtal.wrapAtomsToCell();
+    this->workingMXtal.makeCoherent();
+    this->ranker->updateGeometry();
+    double energy = this->ranker->evaluateTotalEnergy(ignoredSubMols, true);
+    ScanVar_t scanVar;
+    scanVar.integer = i;
+    this->scanMap.insert(energy, scanVar);
+
+    // Restore original structure
+    this->restoreWorkingMXtal();
   }
 }
 
@@ -1263,11 +1410,15 @@ void MolecularXtalMutatorPrivate::prepareOffspring()
 
   this->offspring.setGeneration(this->parentMXtal->getGeneration() + 1);
   this->offspring.setParents(
-        QString("Mutation: %1, %2 movers, stability factor: %L3 %L4")
+        QString("Mutation: %1, %2 movers (-DE=%L3)%L4%L5")
         .arg(this->parentMXtal->getIDString())
         .arg(this->numMovers)
         .arg((this->parentEnergy - this->offspringEnergy))
-        .arg((this->createBest) ? "(Best)" : ""));
+        .arg((this->createBest) ? " (Best)" : "")
+        .arg((this->startWithSuperCell)
+             ? " (Supercell " +
+               this->workingMXtal.property("supercellType").toString() + ")"
+             : ""));
   this->offspring.setStatus(MolecularXtal::WaitingForOptimization);
 }
 

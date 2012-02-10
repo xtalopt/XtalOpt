@@ -1749,14 +1749,45 @@ namespace XtalOpt {
     return POSCARToXtal(poscar);
   }
 
+  void Xtal::shortenCartesianVector(Eigen::Vector3d *cartVec)
+  {
+    Eigen::Matrix3d cartMat = OB2Eigen(this->cell()->GetCellMatrix());
+    cartMat.transposeInPlace();
+    this->shortenCartesianVector(cartVec, cartMat);
+  }
+
+  void Xtal::shortenCartesianVector(Eigen::Vector3d *cartVec,
+                                    const Eigen::Matrix3d &cellColMatrix)
+  {
+    Eigen::Vector3d aTrans;
+    Eigen::Vector3d bTrans;
+    Eigen::Vector3d curImage;
+    Eigen::Vector3d shortestImage;
+    double minLengthSq = numeric_limits<double>::max();
+
+    for (int a = -1; a <= 1; ++a) {
+      aTrans = cellColMatrix.col(0) * a;
+      for (int b = -1; b <= 1; ++b) {
+        bTrans = cellColMatrix.col(1) * b;
+        for (int c = -1; c <= 1; ++c) {
+          curImage = aTrans + bTrans + (c * cellColMatrix.col(2));
+          double curLengthSq = (curImage + *cartVec).squaredNorm();
+          if (curLengthSq < minLengthSq) {
+            minLengthSq = curLengthSq;
+            shortestImage = curImage;
+          }
+        }
+      }
+    }
+
+    *cartVec += shortestImage;
+  }
+
   void Xtal::shortenFractionalVector(Eigen::Vector3d *fracVec)
   {
-    while (fracVec->x() >  0.5) --fracVec->x();
-    while (fracVec->x() < -0.5) ++fracVec->x();
-    while (fracVec->y() >  0.5) --fracVec->y();
-    while (fracVec->y() < -0.5) ++fracVec->y();
-    while (fracVec->z() >  0.5) --fracVec->z();
-    while (fracVec->z() < -0.5) ++fracVec->z();
+    *fracVec = this->fracToCart(*fracVec);
+    this->shortenCartesianVector(fracVec);
+    *fracVec = this->cartToFrac(*fracVec);
   }
 
 } // end namespace XtalOpt

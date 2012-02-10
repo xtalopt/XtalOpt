@@ -1275,6 +1275,10 @@ namespace XtalOpt {
           parentMXtal->setHasBestOffspring(true);
         }
 
+        // Build a supercell to begin with or not
+        bool startWithSuperCell = (RANDDOUBLE() < 0.5);
+        mutator.setStartWithSuperCell(startWithSuperCell);
+
         // Setup progress bar
         bool notify = m_dialog->startProgressUpdate(
               tr("Mutating structure %1...").arg(parentMXtal->getIDString()),
@@ -2066,6 +2070,8 @@ namespace XtalOpt {
 
     // Read settings
     m_dialog->readSettings(filename);
+
+    QApplication::processEvents(QEventLoop::AllEvents);
 
 #ifdef ENABLE_SSH
     // Create the SSHManager if running remotely

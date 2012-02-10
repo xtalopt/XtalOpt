@@ -230,7 +230,6 @@ namespace XtalOpt {
 
     // Create cartesian and fractionalization matrices
     const Eigen::Matrix3d cart (cellRowMatrix.transpose());
-    const Eigen::Matrix3d frac (cart.inverse());
 
     // Here we go! perform a breadth-first search for all of the atoms in
     // the submolecule, starting with "start". Iterate through each bond
@@ -285,9 +284,7 @@ namespace XtalOpt {
             retVec[curIndex];
 
         // Shorten the bond vector
-        bondVector = frac * bondVector;
-        MolecularXtal::shortenFractionalVector(&bondVector);
-        bondVector = cart * bondVector;
+        MolecularXtal::shortenCartesianVector(&bondVector, cart);
 
         // Store new position
         retVec[bondedIndex] = retVec[curIndex] + bondVector;
@@ -406,10 +403,8 @@ namespace XtalOpt {
 
     // Setup cartesian and fractionalization matrix
     Eigen::Matrix3d cart;
-    Eigen::Matrix3d frac;
     if (hasTranslations) {
       cart = cellRowMatrix.transpose();
-      frac = cart.inverse();
     }
 
     // Iterate through all bonds, checking end - begin distances, including
@@ -428,9 +423,7 @@ namespace XtalOpt {
 
       // Shorten bond vec if needed
       if (hasTranslations) {
-        bondVec = frac * bondVec;
-        MolecularXtal::shortenFractionalVector(&bondVec);
-        bondVec = cart * bondVec;
+        MolecularXtal::shortenCartesianVector(&bondVec, cart);
       }
 
       if (bondVec.squaredNorm() > maxDistSquared) {

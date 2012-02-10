@@ -115,7 +115,7 @@ namespace XtalOpt {
         //
 #endif // ENABLE_SSH
       case XtalOpt::QI_OPENBABEL:
-        if (xtalopt->isMolecularXtalSearch)
+        if (xtalopt->isMolecularXtalSearch())
           m_queueInterfaces.append(new OpenBabelQueueInterface (m_opt));
         break;
       }

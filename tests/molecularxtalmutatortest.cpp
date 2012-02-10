@@ -65,12 +65,16 @@ private slots:
 
   void testMMFF94CreateBest();
   void testUFFCreateBest();
+
+  void testMMFF94StartWithSuperCell();
+  void testUFFStartWithSuperCell();
 };
 
 void MolecularXtalMutatorTest::initTestCase()
 {
   Molecule *urea = MoleculeFile::readMolecule(TESTDATADIR "/cmls/urea.cml");
   m_ureaSource = new SubMoleculeSource (urea);
+  m_ureaSource->setSourceId(0);
   delete urea;
   urea = NULL;
 
@@ -111,6 +115,7 @@ void MolecularXtalMutatorTest::initTestCase()
   bf2.addBond(b, f2);
 
   SubMoleculeSource bf2Source (&bf2);
+  bf2Source.setSourceId(0);
   m_parentUFF = new MolecularXtal (10.0, 10.0, 10.0, 90.0, 90.0, 90.0);
 
   sub = bf2Source.getSubMolecule();
@@ -119,6 +124,9 @@ void MolecularXtalMutatorTest::initTestCase()
   sub = bf2Source.getSubMolecule();
   m_parentUFF->addSubMolecule(sub);
   sub->translateFrac(0.5, 0.5, 0.5);
+
+  m_offspringMMFF94 = NULL;
+  m_offspringUFF = NULL;
 }
 
 void MolecularXtalMutatorTest::cleanupTestCase()
@@ -156,11 +164,11 @@ void MolecularXtalMutatorTest::testMMFF94()
   MolecularXtalMutator mutator (m_parentMMFF94);
 
   mutator.setDebug(true);
-  mutator.setNumberOfStrains(10);
+  mutator.setNumberOfStrains(3);
   mutator.setStrainSigmaRange(0.0, 0.5);
-  mutator.setNumMovers(2);
-  mutator.setNumDisplacements(10);
-  mutator.setRotationResolution(30.0 * DEG_TO_RAD);
+  mutator.setNumMovers(1);
+  mutator.setNumDisplacements(2);
+  mutator.setRotationResolution(90.0 * DEG_TO_RAD);
 
   mutator.mutate();
 
@@ -172,7 +180,7 @@ void MolecularXtalMutatorTest::testUFF()
   MolecularXtalMutator mutator (m_parentUFF);
 
   mutator.setDebug(true);
-  mutator.setNumberOfStrains(5);
+  mutator.setNumberOfStrains(3);
   mutator.setStrainSigmaRange(0.0, 0.5);
   mutator.setNumMovers(1);
   mutator.setNumDisplacements(2);
@@ -189,11 +197,11 @@ void MolecularXtalMutatorTest::testMMFF94CreateBest()
 
   mutator.setDebug(true);
   mutator.setCreateBest(true);
-  mutator.setNumberOfStrains(10);
+  mutator.setNumberOfStrains(3);
   mutator.setStrainSigmaRange(0.0, 0.5);
-  mutator.setNumMovers(2);
-  mutator.setNumDisplacements(10);
-  mutator.setRotationResolution(30.0 * DEG_TO_RAD);
+  mutator.setNumMovers(1);
+  mutator.setNumDisplacements(2);
+  mutator.setRotationResolution(90.0 * DEG_TO_RAD);
 
   mutator.mutate();
 }
@@ -204,13 +212,51 @@ void MolecularXtalMutatorTest::testUFFCreateBest()
 
   mutator.setDebug(true);
   mutator.setCreateBest(true);
-  mutator.setNumberOfStrains(5);
+  mutator.setNumberOfStrains(3);
   mutator.setStrainSigmaRange(0.0, 0.5);
   mutator.setNumMovers(1);
   mutator.setNumDisplacements(2);
   mutator.setRotationResolution(90.0 * DEG_TO_RAD);
 
   mutator.mutate();
+}
+
+void MolecularXtalMutatorTest::testMMFF94StartWithSuperCell()
+{
+  MolecularXtalMutator mutator (m_parentMMFF94);
+
+  mutator.setDebug(true);
+  mutator.setStartWithSuperCell(true);
+  mutator.setNumberOfStrains(3);
+  mutator.setStrainSigmaRange(0.0, 0.5);
+  mutator.setNumMovers(1);
+  mutator.setNumDisplacements(2);
+  mutator.setRotationResolution(90.0 * DEG_TO_RAD);
+
+  mutator.mutate();
+
+//  MolecularXtal *offspring = mutator.getOffspring();
+//  Avogadro::MoleculeFile::writeMolecule(offspring,
+//                                        "/tmp/supercellMMFF94.cml");
+}
+
+void MolecularXtalMutatorTest::testUFFStartWithSuperCell()
+{
+  MolecularXtalMutator mutator (m_parentUFF);
+
+  mutator.setDebug(true);
+  mutator.setStartWithSuperCell(true);
+  mutator.setNumberOfStrains(3);
+  mutator.setStrainSigmaRange(0.0, 0.5);
+  mutator.setNumMovers(1);
+  mutator.setNumDisplacements(2);
+  mutator.setRotationResolution(90.0 * DEG_TO_RAD);
+
+  mutator.mutate();
+
+//  MolecularXtal *offspring = mutator.getOffspring();
+//  Avogadro::MoleculeFile::writeMolecule(offspring,
+//                                    "/tmp/supercellUFF.cml");
 }
 
 QTEST_MAIN(MolecularXtalMutatorTest)

@@ -118,6 +118,8 @@ namespace XtalOpt {
     void setNeedsPreoptimization(bool b) {m_needsPreOpt = b;}
     void abortPreoptimization() const;
 
+    void makeCoherent();
+
   protected:
     QList<SubMolecule*> m_subMolecules;
     int m_preOptStepCount;

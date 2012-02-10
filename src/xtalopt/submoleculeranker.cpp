@@ -90,6 +90,9 @@ public:
   bool addSubMoleculeInterIntra(const SubMolecule *submol);
   bool addSubMoleculeInter(const SubMolecule *submol);
   bool addSubMoleculeIntra(const SubMolecule *submol);
+  bool removeSubMoleculeInterIntra(const SubMolecule *submol);
+  bool removeSubMoleculeInter(const SubMolecule *submol);
+  bool removeSubMoleculeIntra(const SubMolecule *submol);
   bool addOriginalCellInterIntra();
   bool addOriginalCellInter();
   bool addOriginalCellIntra();
@@ -274,37 +277,115 @@ double SubMoleculeRanker::evaluateIntra(const SubMolecule *subMol)
   return energy;
 }
 
-double SubMoleculeRanker::evaluateTotalEnergy()
+double SubMoleculeRanker::evaluateTotalEnergy(
+    const QVector<SubMolecule *> &submols, bool ignore)
 {
   Q_D(SubMoleculeRanker);
   d->cacheInteractions();
   d->clearInteractions();
-  d->addOriginalCellInterIntra();
-  const double energy = d->evaluateEnergy();
+  double energy;
+
+  // Are we limited to only certain submolecules?
+  if (submols.size() == 0) {
+    if (ignore) {
+      d->addOriginalCellInterIntra();
+      energy = d->evaluateEnergy();
+    }
+    else {
+      energy = 0.0; // No interactions specified!
+    }
+  }
+  // Set up specific interactions
+  else {
+    if (ignore) {
+      d->addOriginalCellInterIntra();
+      foreach (const SubMolecule *sub, submols) {
+        d->removeSubMoleculeInterIntra(sub);
+      }
+    }
+    else {
+      foreach (const SubMolecule *sub, submols) {
+        d->addSubMoleculeInterIntra(sub);
+      }
+    }
+    energy = d->evaluateEnergy();
+  }
   d->restoreInteractions();
   DDEBUGOUT("evaluateTotalEnergy") "Energy:" << energy;
   return energy;
 }
 
-double SubMoleculeRanker::evaluateTotalEnergyInter()
+double SubMoleculeRanker::evaluateTotalEnergyInter(
+    const QVector<SubMolecule *> &submols, bool ignore)
 {
   Q_D(SubMoleculeRanker);
   d->cacheInteractions();
   d->clearInteractions();
-  d->addOriginalCellInter();
-  const double energy = d->evaluateEnergy();
+  double energy;
+
+  // Are we limited to only certain submolecules?
+  if (submols.size() == 0) {
+    if (ignore) {
+      d->addOriginalCellInter();
+      energy = d->evaluateEnergy();
+    }
+    else {
+      energy = 0.0; // No interactions specified!
+    }
+  }
+  // Set up specific interactions
+  else {
+    if (ignore) {
+      d->addOriginalCellInter();
+      foreach (const SubMolecule *sub, submols) {
+        d->removeSubMoleculeInter(sub);
+      }
+    }
+    else {
+      foreach (const SubMolecule *sub, submols) {
+        d->addSubMoleculeInter(sub);
+      }
+    }
+    energy = d->evaluateEnergy();
+  }
   d->restoreInteractions();
   DDEBUGOUT("evaluateTotalEnergyInter") "Energy:" << energy;
   return energy;
 }
 
-double SubMoleculeRanker::evaluateTotalEnergyIntra()
+double SubMoleculeRanker::evaluateTotalEnergyIntra(
+    const QVector<SubMolecule *> &submols, bool ignore)
 {
   Q_D(SubMoleculeRanker);
   d->cacheInteractions();
   d->clearInteractions();
-  d->addOriginalCellIntra();
-  const double energy = d->evaluateEnergy();
+  double energy;
+
+  // Are we limited to only certain submolecules?
+  if (submols.size() == 0) {
+    if (ignore) {
+      d->addOriginalCellIntra();
+      energy = d->evaluateEnergy();
+    }
+    else {
+      energy = 0.0; // No interactions specified!
+    }
+  }
+  // Set up specific interactions
+  else {
+    if (ignore) {
+      d->addOriginalCellIntra();
+      foreach (const SubMolecule *sub, submols) {
+        d->removeSubMoleculeIntra(sub);
+      }
+    }
+    else {
+      foreach (const SubMolecule *sub, submols) {
+        d->addSubMoleculeIntra(sub);
+      }
+    }
+    energy = d->evaluateEnergy();
+  }
   d->restoreInteractions();
   DDEBUGOUT("evaluateTotalEnergyIntra") "Energy:" << energy;
   return energy;
@@ -661,6 +742,8 @@ void SubMoleculeRankerPrivate::restoreInteractions()
 
 bool SubMoleculeRankerPrivate::addSubMoleculeInterIntra(const SubMolecule *submol)
 {
+  Q_ASSERT(this->mxtal->subMolecules().contains(
+             const_cast<SubMolecule *>(submol)));
   // Grab list of obmol ids
   QVector<unsigned long> obmolIds;
   obmolIds.reserve(submol->numAtoms());
@@ -683,6 +766,8 @@ bool SubMoleculeRankerPrivate::addSubMoleculeInterIntra(const SubMolecule *submo
 
 bool SubMoleculeRankerPrivate::addSubMoleculeInter(const SubMolecule *submol)
 {
+  Q_ASSERT(this->mxtal->subMolecules().contains(
+             const_cast<SubMolecule *>(submol)));
   // Grab list of obmol ids
   QVector<unsigned long> obmolIds;
   obmolIds.reserve(submol->numAtoms());
@@ -704,6 +789,8 @@ bool SubMoleculeRankerPrivate::addSubMoleculeInter(const SubMolecule *submol)
 
 bool SubMoleculeRankerPrivate::addSubMoleculeIntra(const SubMolecule *submol)
 {
+  Q_ASSERT(this->mxtal->subMolecules().contains(
+             const_cast<SubMolecule *>(submol)));
   // Grab list of obmol ids
   QVector<unsigned long> obmolIds;
   obmolIds.reserve(submol->numAtoms());
@@ -718,6 +805,79 @@ bool SubMoleculeRankerPrivate::addSubMoleculeIntra(const SubMolecule *submol)
       return false;
     }
     this->intraGroup.SetBitOn(id+1);
+  }
+
+  return this->updateInteractions();
+}
+
+bool SubMoleculeRankerPrivate::removeSubMoleculeInterIntra(
+    const SubMolecule *submol)
+{
+  Q_ASSERT(this->mxtal->subMolecules().contains(
+             const_cast<SubMolecule *>(submol)));
+  // Grab list of obmol ids
+  QVector<unsigned long> obmolIds;
+  obmolIds.reserve(submol->numAtoms());
+  foreach (const Avogadro::Atom *atom, submol->atoms()) {
+    obmolIds.push_back(mxtal2OBMol.value(atom->id(), -1));
+  }
+
+  // Create bitplanes for the submolecule of interest
+  foreach (unsigned long id, obmolIds) {
+    if (id == static_cast<unsigned long>(-1)) {
+      qWarning() << "Bad id. Cannot set submolecule.";
+      return false;
+    }
+    this->intraGroup.SetBitOff(id+1);
+    this->interGroup.SetBitOff(id+1);
+  }
+
+  return this->updateInteractions();
+}
+
+bool SubMoleculeRankerPrivate::removeSubMoleculeInter(
+    const SubMolecule *submol)
+{
+  Q_ASSERT(this->mxtal->subMolecules().contains(
+             const_cast<SubMolecule *>(submol)));
+  // Grab list of obmol ids
+  QVector<unsigned long> obmolIds;
+  obmolIds.reserve(submol->numAtoms());
+  foreach (const Avogadro::Atom *atom, submol->atoms()) {
+    obmolIds.push_back(mxtal2OBMol.value(atom->id(), -1));
+  }
+
+  // Create bitplanes for the submolecule of interest
+  foreach (unsigned long id, obmolIds) {
+    if (id == static_cast<unsigned long>(-1)) {
+      qWarning() << "Bad id. Cannot set submolecule.";
+      return false;
+    }
+    this->interGroup.SetBitOff(id+1);
+  }
+
+  return this->updateInteractions();
+}
+
+bool SubMoleculeRankerPrivate::removeSubMoleculeIntra(
+    const SubMolecule *submol)
+{
+  Q_ASSERT(this->mxtal->subMolecules().contains(
+             const_cast<SubMolecule *>(submol)));
+  // Grab list of obmol ids
+  QVector<unsigned long> obmolIds;
+  obmolIds.reserve(submol->numAtoms());
+  foreach (const Avogadro::Atom *atom, submol->atoms()) {
+    obmolIds.push_back(mxtal2OBMol.value(atom->id(), -1));
+  }
+
+  // Create bitplanes for the submolecule of interest
+  foreach (unsigned long id, obmolIds) {
+    if (id == static_cast<unsigned long>(-1)) {
+      qWarning() << "Bad id. Cannot set submolecule.";
+      return false;
+    }
+    this->intraGroup.SetBitOff(id+1);
   }
 
   return this->updateInteractions();

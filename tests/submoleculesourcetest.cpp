@@ -277,8 +277,8 @@ void SubMoleculeSourceTest::findAndSetConformers_sys()
   m_sysConfSource->findAndSetConformers();
 
   QVERIFY(m_sysConfSource->numConformers() == 8);
-  QVERIFY(fabs(m_sysConfSource->energy(0) - 34.1626) < 1.0);
-  QVERIFY(fabs(m_sysConfSource->energy(7) - 38.9444) < 1.0);
+  QVERIFY(fabs(m_sysConfSource->energy(0) - 34.9393) < 1.0);
+  QVERIFY(fabs(m_sysConfSource->energy(7) - 40.2857) < 1.0);
 
   // Verify that all are sorted:
   for (unsigned int i = 0; i < m_sysConfSource->numConformers() - 1; ++i) {

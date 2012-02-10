@@ -108,7 +108,7 @@ void MolecularXtalOptimizerTest::benchmark()
   MolecularXtalOptimizer opt;
   opt.setMXtal(&mxtal);
   opt.setEnergyConvergence(1e-10); // We don't want to converge here
-  opt.setNumberOfGeometrySteps(100);
+  opt.setNumberOfGeometrySteps(50);
   opt.setSuperCellUpdateInterval(20);
 
   mxtal.wrapAtomsToCell();
@@ -207,8 +207,9 @@ void MolecularXtalOptimizerTest::ureaOptimization()
   QVERIFY(mxtalOpt.isConverged());
   // Expected energy in kJ/mol, remember that OB calculates kcal/mol if
   // comparing optimizer output!
-  const double expectedEnergy = -946.248105;
-  QVERIFY(fabs(mxtal.energy() - expectedEnergy) < 1e-3);
+  const double actualEnergy = mxtal.energy();
+  const double expectedEnergy = -994.373442;
+  QVERIFY(fabs(actualEnergy - expectedEnergy) < 1e-3);
 
 //  MoleculeFile::writeMolecule(&mxtal, "/tmp/urea-02-optimized.cml", "cml", "p", NULL);
 

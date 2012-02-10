@@ -19,6 +19,8 @@
 
 #include <QtCore/QObject>
 
+#include <QtCore/QVector> // needed for default arg
+
 class QMutex;
 
 namespace XtalOpt
@@ -72,10 +74,20 @@ public:
   double evaluateIntra(const SubMolecule *subMol);
 
   // Calculate total energy of system (intramolecular terms for original cell,
-  // intermolecular terms between original cell and all atoms + images
-  double evaluateTotalEnergy();
-  double evaluateTotalEnergyInter();
-  double evaluateTotalEnergyIntra();
+  // intermolecular terms between original cell and all atoms + images.
+  // If an argument is provided, only the energy terms for the submolecules
+  // indicated will be calculated. The "ignore" flag (default = true)
+  // specifies whether the indicated submolecules are meant to be ignored in
+  // the calcs (true) or the only ones considered (false)
+  double evaluateTotalEnergy(
+      const QVector<SubMolecule*> &submols = QVector<SubMolecule*>(),
+      bool ignore = true);
+  double evaluateTotalEnergyInter(
+      const QVector<SubMolecule*> &submols = QVector<SubMolecule*>(),
+      bool ignore = true);
+  double evaluateTotalEnergyIntra(
+      const QVector<SubMolecule*> &submols = QVector<SubMolecule*>(),
+      bool ignore = true);
 
 protected:
   SubMoleculeRankerPrivate * const d_ptr;

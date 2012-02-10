@@ -184,16 +184,13 @@ namespace XtalOpt {
 
     // Find the shortest equivalent vector accounting for translational
     // symmetry
-    void shortenCartesianVector(Eigen::Vector3d *cartVec)
-    {
-      *cartVec = this->cartToFrac(*cartVec);
-      this->shortenFractionalVector(cartVec);
-      *cartVec = this->fracToCart(*cartVec);
-    }
+    void shortenCartesianVector(Eigen::Vector3d *cartVec);
+    static void shortenCartesianVector(Eigen::Vector3d *cartVec,
+                                       const Eigen::Matrix3d &cellColMatrix);
 
     // Find the shortest equivalent vector accounting for translational
-    // symmetry. Makes all components of fracVec between [-0.5, 0.5].
-    static void shortenFractionalVector(Eigen::Vector3d *fracVec);
+    // symmetry.
+    void shortenFractionalVector(Eigen::Vector3d *fracVec);
 
     // For random representation generation
     static void generateValidCOBs();
