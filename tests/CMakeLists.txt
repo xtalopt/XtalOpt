@@ -27,6 +27,7 @@ set(tests
   molecularxtal
   molecularxtalmutator
   molecularxtaloptimizer
+  molecularxtalsupercellgenerator
   #mxtaloptgenetic
   optbase
   submoleculeranker

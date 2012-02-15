@@ -8,6 +8,7 @@ set( xtalopt_SRCS
      #mxtaloptgenetic.cpp
      molecularxtalmutator.cpp
      molecularxtaloptimizer.cpp
+     molecularxtalsupercellgenerator.cpp
      optimizers/castep.cpp
      optimizers/gulp.cpp
      optimizers/mopac.cpp
@@ -32,7 +33,6 @@ set( xtalopt_SRCS
      ui/tab_plot.cpp
      ui/tab_progress.cpp
      xtalopt.cpp
-
 )
 
 set( xtalopt_UIS
