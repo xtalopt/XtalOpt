@@ -24,6 +24,7 @@
 #include <xtalopt/xtalopt.h>
 
 #include <globalsearch/macros.h>
+#include <globalsearch/queueinterfaces/loadleveler.h>
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/lsf.h>
 #include <globalsearch/queueinterfaces/pbs.h>
@@ -67,7 +68,7 @@ namespace XtalOpt {
 
     // Fill m_optimizers in order of XtalOpt::QueueInterfaces
     m_queueInterfaces.clear();
-    const unsigned int numQIs = 5;
+    const unsigned int numQIs = 6;
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
       case XtalOpt::QI_LOCAL:
@@ -85,6 +86,9 @@ namespace XtalOpt {
         break;
       case XtalOpt::QI_LSF:
         m_queueInterfaces.append(new LsfQueueInterface (m_opt));
+        break;
+      case XtalOpt::QI_LOADLEVELER:
+        m_queueInterfaces.append(new LoadLevelerQueueInterface (m_opt));
         break;
         //
         // Don't forget to modify numQIs above, or additions here won't matter!

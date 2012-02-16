@@ -34,6 +34,7 @@ set(tests
 if (ENABLE_SSH)
 set( tests
   ${tests}
+  loadleveler
   sshconnection
   sshmanager
 )

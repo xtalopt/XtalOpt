@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LoadLevelerConfigDialog</class>
+ <widget class="QDialog" name="LoadLevelerConfigDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>528</width>
+    <height>296</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="windowTitle">
+   <string>LoadLeveler Queue Configuration</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0">
+    <widget class="QLabel" name="label_18">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Host:</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_host</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QLineEdit" name="edit_host">
+     <property name="toolTip">
+      <string>Address of host. Can use IP or host name.</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="3">
+    <widget class="QSpinBox" name="spin_port">
+     <property name="prefix">
+      <string>SSH Port </string>
+     </property>
+     <property name="maximum">
+      <number>99999</number>
+     </property>
+     <property name="value">
+      <number>22</number>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_19">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>User:</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_username</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_username">
+     <property name="toolTip">
+      <string>Username on above host.</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="2">
+    <widget class="QLabel" name="label_20">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Working directory (Server):</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_rempath</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_rempath">
+     <property name="toolTip">
+      <string>Path on remote host to use during optimizations. Do not use wildcard characters or BASH-specific characters (e.g. '~' in place of /home/user).</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="label_21">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Working directory (Local):</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_locpath</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_locpath">
+     <property name="toolTip">
+      <string>Local path to store files</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QLabel" name="label_launch">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Command used to submit jobs to the PBS queue. Usually qsub.</string>
+     </property>
+     <property name="text">
+      <string>Path to llsubmit:</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_llsubmit</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_llsubmit">
+     <property name="toolTip">
+      <string>Command used to submit jobs to the PBS queue. Usually qsub.</string>
+     </property>
+     <property name="text">
+      <string>llsubmit</string>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QLabel" name="label_qdel">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Command used to delete jobs from the queue. Usually qdel.</string>
+     </property>
+     <property name="text">
+      <string>Path to llcancel:</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_llcancel</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QLabel" name="label_check">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Command used to check the PBS queue. Use qstat.</string>
+     </property>
+     <property name="text">
+      <string>Path to llq:</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_llq</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_llcancel">
+     <property name="toolTip">
+      <string>Command used to delete jobs from the queue. Usually qdel.</string>
+     </property>
+     <property name="text">
+      <string>llcancel</string>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_llq">
+     <property name="toolTip">
+      <string>Command used to check the PBS queue. Use qstat.</string>
+     </property>
+     <property name="text">
+      <string>llq</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Description:</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_description</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_description">
+     <property name="toolTip">
+      <string>Short description of optimization (used as %description% template keyword in input templates).</string>
+     </property>
+    </widget>
+   </item>
+   <item row="12" column="3">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+   <item row="10" column="3">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="8" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Queue refresh interval:</string>
+     </property>
+     <property name="buddy">
+      <cstring>spin_interval</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="2" colspan="2">
+    <widget class="QSpinBox" name="spin_interval">
+     <property name="suffix">
+      <string> sec</string>
+     </property>
+     <property name="minimum">
+      <number>1</number>
+     </property>
+     <property name="maximum">
+      <number>99999</number>
+     </property>
+    </widget>
+   </item>
+   <item row="9" column="0" colspan="4">
+    <widget class="QCheckBox" name="cb_cleanRemoteOnStop">
+     <property name="text">
+      <string>Clean remote directories when finished</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>edit_host</tabstop>
+  <tabstop>spin_port</tabstop>
+  <tabstop>edit_username</tabstop>
+  <tabstop>edit_rempath</tabstop>
+  <tabstop>edit_locpath</tabstop>
+  <tabstop>edit_description</tabstop>
+  <tabstop>edit_llsubmit</tabstop>
+  <tabstop>edit_llcancel</tabstop>
+  <tabstop>edit_llq</tabstop>
+  <tabstop>spin_interval</tabstop>
+  <tabstop>buttonBox</tabstop>
+ </tabstops>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>LoadLevelerConfigDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>523</x>
+     <y>241</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>LoadLevelerConfigDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>523</x>
+     <y>241</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
