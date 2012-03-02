@@ -44,6 +44,7 @@ LoadLevelerQueueInterface::LoadLevelerQueueInterface(
   m_cleanRemoteOnStop(false)
 {
   m_idString = "LoadLeveler";
+  m_templates.clear();
   m_templates.append("job.ll");
   m_hasDialog = true;
 
@@ -222,7 +223,7 @@ bool LoadLevelerQueueInterface::startJob(Structure *s)
   QWriteLocker wlocker (s->lock());
 
   QString command = "cd \"" + s->getRempath() + "\" && " +
-      m_llsubmit + " job.pbs";
+      m_llsubmit + " job.ll";
 
   QString stdout_str;
   QString stderr_str;
