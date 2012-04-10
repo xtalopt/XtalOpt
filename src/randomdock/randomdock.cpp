@@ -508,7 +508,7 @@ namespace RandomDock {
 
     // Copy info over
     QWriteLocker locker2 (scene->lock());
-    oldScene->copyStructure(scene);
+    oldScene->copyStructure(*scene);
     oldScene->resetEnergy();
     oldScene->resetEnthalpy();
     oldScene->setPV(0);
