@@ -20,6 +20,7 @@
 #include <QtCore/QSettings>
 
 #include <cstdlib>
+#include <unistd.h> // For sleep on GCC >= 4.7
 
 #ifdef WIN32
 // For Sleep
