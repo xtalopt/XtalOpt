@@ -1,0 +1,15 @@
+[examplesearch]
+edit\version=1
+edit\description=df
+edit\localpath=/tmp/examplesearch
+edit\remote\host=
+edit\remote\port=22
+edit\remote\username=
+edit\remote\rempath=
+edit\optimizer=mopac
+edit\queueInterface=local
+optimizer\MOPAC\job.mop_list=PM6\n\n\n%coords%\n
+optimizer\MOPAC\user1=
+optimizer\MOPAC\user2=
+optimizer\MOPAC\user3=
+optimizer\MOPAC\user4=

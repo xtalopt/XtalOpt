@@ -1,3 +1,6 @@
+option( ENABLE_EXAMPLESEARCH
+	"Build the examplesearch extension"
+	OFF )
 option( ENABLE_XTALOPT
 	"Build the XtalOpt extension"
 	ON )
@@ -9,6 +12,10 @@ option( ENABLE_GAPC
 	OFF )
 
 add_subdirectory(globalsearch)
+
+if (ENABLE_EXAMPLESEARCH)
+   add_subdirectory(examplesearch)
+endif (ENABLE_EXAMPLESEARCH)
 
 if (ENABLE_XTALOPT)
    add_subdirectory(spglib)

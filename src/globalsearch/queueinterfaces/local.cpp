@@ -152,11 +152,10 @@ namespace GlobalSearch {
     }
     // TODO the corresponding function in Optimizer should prepend a
     // path for e.g. windows
-    QString command = "\"" + m_opt->optimizer()->localRunCommand()
-      + "\"";
+    QString command = m_opt->optimizer()->localRunCommand();
 
 #ifdef WIN32
-    command = "cmd.exe /C " + command;
+    command = "cmd.exe /C \"" + command + "\"";
 #endif // WIN32
 
     LocalQueueProcess *proc = new LocalQueueProcess(this);
@@ -274,9 +273,13 @@ namespace GlobalSearch {
       // Was the run successful?
       if (proc->exitCode() != 0) {
         m_opt->warning(tr("%1: Structure %2, PID=%3 failed. QProcess error "
-                          "code: %4. Process exit code: %5")
+                          "code: %4. Process exit code: %5 errStr: %6\n"
+                          "stdout:\n%7\nstderr:\n%8")
                        .arg(Q_FUNC_INFO).arg(s->getIDString()).arg(pid)
-                       .arg(proc->error()).arg(proc->exitCode()));
+                       .arg(proc->error()).arg(proc->exitCode())
+                       .arg(proc->errorString())
+                       .arg(QString(proc->readAllStandardOutput()))
+                       .arg(QString(proc->readAllStandardError())));
         return QueueInterface::Error;
       }
       bool success;
