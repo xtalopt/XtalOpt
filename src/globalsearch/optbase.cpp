@@ -72,11 +72,14 @@ namespace GlobalSearch {
             m_queueThread, SLOT(start()),
             Qt::DirectConnection);
     connect(this, SIGNAL(startingSession()),
-            this, SLOT(setIsStartingTrue()));
+            this, SLOT(setIsStartingTrue()),
+            Qt::DirectConnection);
     connect(this, SIGNAL(sessionStarted()),
-            this, SLOT(setIsStartingFalse()));
+            this, SLOT(setIsStartingFalse()),
+            Qt::DirectConnection);
     connect(this, SIGNAL(readOnlySessionStarted()),
-            this, SLOT(setIsStartingFalse()));
+            this, SLOT(setIsStartingFalse()),
+            Qt::DirectConnection);
     connect(this, SIGNAL(needBoolean(const QString&, bool*)),
             this, SLOT(promptForBoolean(const QString&, bool*)),
             Qt::BlockingQueuedConnection); // Wait until slot returns
