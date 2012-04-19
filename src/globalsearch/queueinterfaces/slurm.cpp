@@ -205,13 +205,8 @@ namespace GlobalSearch {
   {
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
+    if (ssh == NULL) {
+      m_opt->warning(tr("Cannot connect to ssh server"));
       return false;
     }
 
@@ -255,13 +250,8 @@ namespace GlobalSearch {
   {
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
+    if (ssh == NULL) {
+      m_opt->warning(tr("Cannot connect to ssh server"));
       return false;
     }
 
@@ -504,13 +494,8 @@ namespace GlobalSearch {
     // Get SSH connection
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
-    if (!ssh->reconnectIfNeeded()) {
-      m_opt->warning(tr("Cannot connect to ssh server %1@%2:%3")
-                     .arg(ssh->getUser())
-                     .arg(ssh->getHost())
-                     .arg(ssh->getPort())
-                     );
-      m_opt->ssh()->unlockConnection(ssh);
+    if (ssh == NULL) {
+      m_opt->warning(tr("Cannot connect to ssh server"));
       queueTimeStamp = QDateTime::currentDateTime();
       queueData.clear();
       queueData << "CommError";
