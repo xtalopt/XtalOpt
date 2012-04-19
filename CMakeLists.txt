@@ -28,24 +28,34 @@ option( ENABLE_SSH
  	"Enable SSH. Only the local queue interface will be available if disabled."
  	ON )
 
-if (ENABLE_SSH)
-  add_definitions(-DENABLE_SSH)
+option( USE_CLI_SSH
+ 	"Use command line ssh/scp commands for remote communication. Use this if on linux/mac and Kerberos authentication is needed."
+ 	OFF )
 
+if(ENABLE_SSH)
+  add_definitions(-DENABLE_SSH)
+  message(STATUS "SSH Enabled")
   # Pull in libssh
-  set(LibSSH_FIND_VERSION ON)
-  set(LibSSH_MIN_VERSION "0.4.8")
-  find_package(LibSSH REQUIRED)
-  if(NOT LIBSSH_FOUND)
-    message(FATAL_ERROR "libssh not found!")
-  endif()
-  macro_ensure_version(${LibSSH_MIN_VERSION} ${LibSSH_VERSION}
-                       LIBSSH_VERSION_OK)
-  if (NOT LIBSSH_VERSION_OK)
-    message(FATAL_ERROR
-    "libssh too old! Installed version is ${LibSSH_VERSION}, need at least "
-    "libssh ${LibSSH_MIN_VERSION}")
-  endif()
-  include_directories(${LIBSS_INCLUDE_DIRS})
+  if(USE_CLI_SSH)
+    add_definitions(-DUSE_CLI_SSH)
+    message(STATUS "Using command-line SSH interface")
+  else(USE_CLI_SSH)
+    message(STATUS "Using libssh SSH interface")
+    set(LibSSH_FIND_VERSION ON)
+    set(LibSSH_MIN_VERSION "0.4.8")
+    find_package(LibSSH REQUIRED)
+    if(NOT LIBSSH_FOUND)
+      message(FATAL_ERROR "libssh not found!")
+    endif()
+    macro_ensure_version(${LibSSH_MIN_VERSION} ${LibSSH_VERSION}
+                         LIBSSH_VERSION_OK)
+    if(NOT LIBSSH_VERSION_OK)
+      message(FATAL_ERROR
+      "libssh too old! Installed version is ${LibSSH_VERSION}, need at least "
+      "libssh ${LibSSH_MIN_VERSION}")
+    endif()
+    include_directories(${LIBSS_INCLUDE_DIRS})
+  endif(USE_CLI_SSH)
 endif()
 
 # This is a modified version of the avogadro_plugin function that produces

@@ -445,6 +445,13 @@ for (ind = 0; ind < probs.size(); ind++)
      */
     virtual void reset();
 
+#ifdef ENABLE_SSH
+    /**
+     * Creates ssh connections to the remote cluster.
+     */
+    virtual bool createSSHConnections();
+#endif // ENABLE_SSH
+
     /**
      * Begin the search.
      */
@@ -604,6 +611,22 @@ for (ind = 0; ind < probs.size(); ind++)
     void setClipboard_(const QString &text) const;
     /// \endcond
 
+#ifdef ENABLE_SSH
+#ifndef USE_CLI_SSH
+    /**
+     * Create ssh connections using the libssh backend.
+     */
+    bool createSSHConnections_libssh();
+
+#else // not USE_CLI_SSH
+
+    /**
+     * Create ssh connections using a commandline ssh backend.
+     */
+    bool createSSHConnections_cli();
+
+#endif // not USE_CLI_SSH
+#endif // ENABLE_SSH
   protected:
     /// String that uniquely identifies the derived OptBase
     /// @sa getIDString

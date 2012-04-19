@@ -12,20 +12,23 @@
   limitations under the License.
  ***********************************************************************/
 
-#ifndef SSHCONNECTION_H
-#define SSHCONNECTION_H
+#ifndef SSHCONNECTIONCLI_H
+#define SSHCONNECTIONCLI_H
 
 #ifdef ENABLE_SSH
 
-#include <QtCore/QObject>
+#include <globalsearch/sshconnection.h>
+
 #include <QtCore/QString>
+#include <QtCore/QStringList>
 
 namespace GlobalSearch {
   class OptBase;
   class SSHManager;
+  class SSHManagerCLI;
 
   /**
-   * @class SSHConnection sshconnection.h <globalsearch/sshconnection.h>
+   * @class SSHConnectionCLI sshconnection_cli.h <globalsearch/sshconnection_cli.h>
    *
    * @brief A class to handle command execution and sftp transactions
    * on an ssh server.
@@ -34,58 +37,24 @@ namespace GlobalSearch {
    *
    * @author David C. Lonie
    */
-  class SSHConnection : public QObject
+  class SSHConnectionCLI : public SSHConnection
   {
     Q_OBJECT
 
   public:
-    /// Exceptions
-    enum SSHConnectionException {
-      /// An error connecting to the host has occurred
-      SSH_CONNECTION_ERROR = 1,
-      /// The host is unknown or has changed its key.
-      /// The key can be retrieved through SSHManager::getServerKey()
-      /// and accepted via SSHManager::validateServerKey()
-      SSH_UNKNOWN_HOST_ERROR,
-      /// A bad password was given and public key auth is not set up
-      SSH_BAD_PASSWORD_ERROR,
-      /// An unknown error has occurred
-      SSH_UNKNOWN_ERROR
-    };
-
     /**
      * Constructor.
      *
      * @param parent The OptBase parent
      */
-    explicit SSHConnection(SSHManager *parent = 0);
+    explicit SSHConnectionCLI(SSHManagerCLI *parent = 0);
 
     /**
      * Destructor.
      */
-    virtual ~SSHConnection();
-
-    /// @return The currently set username
-    QString getUser() {return m_user;};
-    /// @return The currently set hostname
-    QString getHost() {return m_host;};
-    /// @return The currently set port
-    int getPort() {return m_port;};
+    virtual ~SSHConnectionCLI();
 
   public slots:
-    /**
-     * Set the login details for this connections
-     *
-     * @param host Hostname
-     * @param user Username
-     * @param pass Password
-     * @param port Port
-     */
-    virtual void setLoginDetails(const QString &host,
-                                 const QString &user = "",
-                                 const QString &pass = "",
-                                 int port = 22);
-
     /**
      * Execute an arbitrary command on the connected host.
      *
@@ -96,10 +65,10 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    virtual bool execute(const QString &command,
-                         QString &stdout_str,
-                         QString &stderr_str,
-                         int &exitcode) = 0;
+    bool execute(const QString &command,
+                 QString &stdout_str,
+                 QString &stderr_str,
+                 int &exitcode);
 
     /**
      * Copy a file to the remote host
@@ -109,8 +78,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    virtual bool copyFileToServer(const QString & localpath,
-                                  const QString & remotepath) = 0;
+    bool copyFileToServer(const QString & localpath,
+                          const QString & remotepath);
 
     /**
      * Copy a file from the remote host
@@ -120,8 +89,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    virtual bool copyFileFromServer(const QString & remotepath,
-                                    const QString & localpath) = 0;
+    bool copyFileFromServer(const QString & remotepath,
+                            const QString & localpath);
 
     /**
      * Obtain a QString object contain the contents of a remote text
@@ -132,8 +101,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    virtual bool readRemoteFile(const QString &filename,
-                                QString &contents) = 0;
+    bool readRemoteFile(const QString &filename,
+                        QString &contents);
 
     /**
      * Delete a file from the remote host
@@ -142,7 +111,7 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    virtual bool removeRemoteFile(const QString &filename) = 0;
+    bool removeRemoteFile(const QString &filename);
 
     /**
      * Copy a directory to the remote host
@@ -152,8 +121,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    virtual bool copyDirectoryToServer(const QString & localpath,
-                                       const QString & remotepath) = 0;
+    bool copyDirectoryToServer(const QString & localpath,
+                               const QString & remotepath);
 
     /**
      * Copy a directory from the remote host
@@ -163,8 +132,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    virtual bool copyDirectoryFromServer(const QString & remotepath,
-                                         const QString & localpath) = 0;
+    bool copyDirectoryFromServer(const QString & remotepath,
+                                 const QString & localpath);
 
     /**
      * List the contents of a remote directory
@@ -174,8 +143,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    virtual bool readRemoteDirectoryContents(const QString & remotepath,
-                                             QStringList & contents) = 0;
+    bool readRemoteDirectoryContents(const QString & remotepath,
+                                     QStringList & contents);
 
     /**
      * Recursively delete a directory and its contents.
@@ -186,14 +155,28 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    virtual bool removeRemoteDirectory(const QString & remotepath,
-                                       bool onlyDeleteContents = false) = 0;
+    bool removeRemoteDirectory(const QString & remotepath,
+                               bool onlyDeleteContents = false);
 
   protected:
-    QString m_host;
-    QString m_user;
-    QString m_pass;
-    int m_port;
+    bool executeSSH(const QString &command,
+                    const QStringList &args = QStringList(),
+                    QString *stdout_str = NULL,
+                    QString *stderr_str = NULL,
+                    int *ec = NULL);
+    bool executeSCPTo(const QString &source,
+                      const QString &dest,
+                      const QStringList &args = QStringList(),
+                      QString *stdout_str = NULL,
+                      QString *stderr_str = NULL,
+                      int *ec = NULL);
+    bool executeSCPFrom(const QString &source,
+                        const QString &dest,
+                        const QStringList &args = QStringList(),
+                        QString *stdout_str = NULL,
+                        QString *stderr_str = NULL,
+                        int *ec = NULL);
+
   };
 
 } // end namespace GlobalSearch

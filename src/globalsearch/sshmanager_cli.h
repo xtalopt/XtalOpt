@@ -12,29 +12,27 @@
   limitations under the License.
  ***********************************************************************/
 
-#ifndef SSHMANAGER_H
-#define SSHMANAGER_H
+#ifndef SSHMANAGERCLI_H
+#define SSHMANAGERCLI_H
 
 #ifdef ENABLE_SSH
 
-#include <globalsearch/sshconnection.h>
+#include <globalsearch/sshmanager.h>
 
-#include <QtCore/QHash>
-#include <QtCore/QObject>
-#include <QtCore/QMutex>
-#include <QtCore/QSemaphore>
+class QSemaphore;
 
 namespace GlobalSearch {
   class OptBase;
+  class SSHConnectionCLI;
 
   /**
-   * @class SSHManager sshmanager.h <globalsearch/sshmanager.h>
+   * @class SSHManagerCLI sshmanager_cli.h <globalsearch/sshmanager_cli.h>
    *
-   * @brief A class to manage multiple SSHConnection objects.
+   * @brief A class to manage SSHConnectionCLI objects.
    *
    * @author David C. Lonie
    */
-  class SSHManager : public QObject
+  class SSHManagerCLI : public SSHManager
   {
     Q_OBJECT
 
@@ -42,55 +40,42 @@ namespace GlobalSearch {
     /**
      * Constructor.
      *
-     * @param connections The maximum number of simultaneous connections.
      * @param parent The OptBase parent
      */
-    explicit SSHManager(OptBase *parent = 0);
+    explicit SSHManagerCLI(unsigned int connections = 5,
+                           OptBase *parent = 0);
 
     /**
      * Destructor.
      */
-    virtual ~SSHManager();
+    virtual ~SSHManagerCLI();
 
     /**
      * Create connections to the specifed host. If the connections
      * cannot be made, an SSHConnection::SSHConnectionException will
      * be thrown.
      */
-    virtual void makeConnections(const QString &host,
-                                 const QString &user = "",
-                                 const QString &pass = "",
-                                 unsigned int port = 22);
+    void makeConnections(const QString &host,
+                         const QString &user,
+                         const QString &pass,
+                         unsigned int port);
 
-    /// Get the currently set user name
-    QString getUser() {return m_user;};
-
-    /// Get the currently set hostname
-    QString getHost() {return m_host;};
-
-    /// Get the currently set port
-    int getPort() {return m_port;};
-
-  public slots:
+    public slots:
     /**
      * Returns a free connection from the pool and locks it.
      * @sa unlockConnection
      */
-    virtual SSHConnection *getFreeConnection() = 0;
+    SSHConnection *getFreeConnection();
 
     /**
      * Call this when finished with a connection so other threads can
      * use it.
      */
-    virtual void unlockConnection(SSHConnection* ssh) = 0;
+    void unlockConnection(SSHConnection* ssh);
 
   protected:
-    /// Hostname
-    QString m_host;
-    /// Username
-    QString m_user;
-    /// Port
-    unsigned int m_port;
+    SSHConnectionCLI *m_conn;
+    QSemaphore *m_semaphore;
   };
 
 } // end namespace GlobalSearch

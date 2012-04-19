@@ -35,10 +35,22 @@ if (ENABLE_SSH)
 set( tests
   ${tests}
   loadleveler
-  sshconnection
-  sshmanager
 )
-endif()
+if (USE_CLI_SSH)
+set( tests
+  ${tests}
+  sshconnection_cli
+  sshmanager_cli
+)
+else (USE_CLI_SSH)
+set( tests
+  ${tests}
+  sshconnection_libssh
+  sshmanager_libssh
+)
+endif (USE_CLI_SSH)
+
+endif(ENABLE_SSH)
 
 foreach (test ${tests})
   message(STATUS "Test:  ${test}")
