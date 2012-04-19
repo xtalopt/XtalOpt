@@ -17,10 +17,9 @@
 
 #ifdef ENABLE_SSH
 
-#define LIBSSH_STATIC
 extern "C" {
-#include <libssh/libssh/libssh.h>
-#include <libssh/libssh/sftp.h>
+#include <libssh/libssh.h>
+#include <libssh/sftp.h>
 }
 
 #include <globalsearch/optbase.h>

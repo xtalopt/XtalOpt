@@ -11,10 +11,6 @@ option( ENABLE_GAPC
 	"Build the evolutionary cluster search extension"
 	OFF )
 
-if (ENABLE_SSH)
-  add_subdirectory(libssh)
-endif()
-
 add_subdirectory(globalsearch)
 
 if (ENABLE_EXAMPLESEARCH)
