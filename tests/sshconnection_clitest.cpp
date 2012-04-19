@@ -15,7 +15,7 @@
   02110-1301, USA.
  **********************************************************************/
 
-#include <globalsearch/sshconnection_libssh.h>
+#include <globalsearch/sshconnection_cli.h>
 
 #include <QString>
 #include <QtTest/QtTest>
@@ -23,12 +23,12 @@
 
 using namespace GlobalSearch;
 
-class SSHConnectionTest : public QObject
+class SSHConnectionCLITest : public QObject
 {
   Q_OBJECT
 
   private:
-  SSHConnectionLibSSH *conn;
+  SSHConnectionCLI *conn;
   QTemporaryFile m_localTempFile;
   QString m_remoteFileName;
   QString m_localNewFileName;
@@ -71,14 +71,14 @@ class SSHConnectionTest : public QObject
   void cleanup();
 
   // Tests
-  void isValid();
-  void isConnected1();
-  void disconnectSession();
-  void isConnected2();
-  void reconnectSession();
+//  void isValid();
+//  void isConnected1();
+//  void disconnectSession();
+//  void isConnected2();
+//  void reconnectSession();
 
   void execute();
-  void executeLargeOutput();
+//  void executeLargeOutput();
 
   void copyFileToServer();
   void readRemoteFile();
@@ -93,7 +93,7 @@ class SSHConnectionTest : public QObject
   void largeFileCopyBenchmark();
 };
 
-void SSHConnectionTest::initTestCase()
+void SSHConnectionCLITest::initTestCase()
 {
   // Write local file for later manipulation
   m_fileContents = "This is a test file.\n\nIt has text in it.";
@@ -151,9 +151,9 @@ void SSHConnectionTest::initTestCase()
     // combo. Do not commit any changes here! (considering using
     // /etc/hosts to map "testserver" to a real server with a
     // chroot-jailed acct/pw = "test")
-    conn = new SSHConnectionLibSSH();
+    conn = new SSHConnectionCLI();
     conn->setLoginDetails("testserver", "test", "test");
-    conn->connectSession();
+//    conn->connectSession();
   }
   catch (SSHConnection::SSHConnectionException) {
     conn = 0;
@@ -161,7 +161,7 @@ void SSHConnectionTest::initTestCase()
   }
 }
 
-void SSHConnectionTest::cleanupTestCase()
+void SSHConnectionCLITest::cleanupTestCase()
 {
   QFile::remove(m_localTempFile.fileName());
   QFile::remove(m_localNewFileName);
@@ -181,50 +181,23 @@ void SSHConnectionTest::cleanupTestCase()
   conn = 0;
 }
 
-void SSHConnectionTest::init()
+void SSHConnectionCLITest::init()
 {
 }
 
-void SSHConnectionTest::cleanup()
+void SSHConnectionCLITest::cleanup()
 {
 }
 
-void SSHConnectionTest::isValid()
-{
-  QVERIFY2(conn->isValid(), "The SSHConnection is not valid.");
-}
-
-void SSHConnectionTest::isConnected1()
-{
-  QVERIFY(conn->isConnected());
-}
-
-void SSHConnectionTest::disconnectSession()
-{
-  conn->disconnectSession();
-}
-
-void SSHConnectionTest::isConnected2()
-{
-  qDebug() << "Ignore the following warning about a failed connection \
--- the connection is not expected to be active here.";
-  QCOMPARE(conn->isConnected(), false);
-}
-
-void SSHConnectionTest::reconnectSession()
-{
-  QVERIFY(conn->reconnectSession(false));
-}
-
-void SSHConnectionTest::execute()
+void SSHConnectionCLITest::execute()
 {
   QString command = "expr 2 + 4";
   QString stdout_str, stderr_str;
   int ec;
 
-  // Execute the command 200 times.
+  // Execute the command 10 times.
   QBENCHMARK_ONCE {
-    for (int i = 1; i <= 200; i++) {
+    for (int i = 1; i <= 10; i++) {
       QVERIFY2(conn->execute(command, stdout_str, stderr_str, ec),
                QString("Execution of \'"
                        + command
@@ -246,40 +219,7 @@ void SSHConnectionTest::execute()
   }
 }
 
-void SSHConnectionTest::executeLargeOutput()
-{
-  // Don't use seq to generate the loop vars -- it's not available in some
-  // chroot jails.
-  QString command = QString("for i in {0..%1};do echo 000; done")
-    .arg(LIBSSH_BUFFER_SIZE);
-
-  QString refout;
-  for (int i = 0; i <= LIBSSH_BUFFER_SIZE; i++) {
-    refout += "000\n";
-  }
-
-  QString stdout_str, stderr_str;
-  int ec;
-
-  QVERIFY2(conn->execute(command, stdout_str, stderr_str, ec),
-           QString("Execution of \'"
-                   + command
-                   + " failed."
-                   ).toStdString().c_str()
-               );
-
-  QCOMPARE(ec, 0);
-  QCOMPARE(stdout_str, refout);
-  QVERIFY2(stderr_str.isEmpty(),
-           QString("Execution of \'"
-                   + command
-                   + "\' produced an error: "
-                   + stderr_str
-                   ).toStdString().c_str()
-           );
-}
-
-  void SSHConnectionTest::copyFileToServer()
+void SSHConnectionCLITest::copyFileToServer()
 {
   QVERIFY2(conn->copyFileToServer(m_localTempFile.fileName(),
                                   m_remoteFileName),
@@ -287,7 +227,7 @@ void SSHConnectionTest::executeLargeOutput()
            );
 }
 
-void SSHConnectionTest::readRemoteFile()
+void SSHConnectionCLITest::readRemoteFile()
 {
   QString fileContents;
   QVERIFY2(conn->readRemoteFile(m_remoteFileName, fileContents),
@@ -295,7 +235,7 @@ void SSHConnectionTest::readRemoteFile()
   QCOMPARE(fileContents, m_fileContents);
 }
 
-void SSHConnectionTest::copyFileFromServer()
+void SSHConnectionCLITest::copyFileFromServer()
 {
   QVERIFY2(conn->copyFileFromServer(m_remoteFileName,
                                     m_localNewFileName),
@@ -310,13 +250,13 @@ void SSHConnectionTest::copyFileFromServer()
   m_localTempFile.close();
 }
 
-void SSHConnectionTest::removeRemoteFile()
+void SSHConnectionCLITest::removeRemoteFile()
 {
   QVERIFY2(conn->removeRemoteFile(m_remoteFileName),
            "Error removing remote file.");
 }
 
-void SSHConnectionTest::copyDirectoryToServer()
+void SSHConnectionCLITest::copyDirectoryToServer()
 {
   QVERIFY2(conn->copyDirectoryToServer(m_localTempDir.path(),
                                        m_remoteDir),
@@ -330,7 +270,7 @@ void SSHConnectionTest::copyDirectoryToServer()
   QCOMPARE(cont2, m_testfile2Contents);
 }
 
-void SSHConnectionTest::readRemoteDirectoryContents()
+void SSHConnectionCLITest::readRemoteDirectoryContents()
 {
   QStringList contents;
   QVERIFY(conn->readRemoteDirectoryContents(m_remoteDir,
@@ -340,7 +280,7 @@ void SSHConnectionTest::readRemoteDirectoryContents()
   QCOMPARE(contents, m_dirLayout);
 }
 
-void SSHConnectionTest::copyDirectoryFromServer()
+void SSHConnectionCLITest::copyDirectoryFromServer()
 {
   QVERIFY2(conn->copyDirectoryFromServer(m_remoteDir,
                                          m_localNewDir),
@@ -357,13 +297,13 @@ void SSHConnectionTest::copyDirectoryFromServer()
   QCOMPARE(cont2, m_testfile2Contents);
 }
 
-void SSHConnectionTest::removeRemoteDirectory()
+void SSHConnectionCLITest::removeRemoteDirectory()
 {
   QVERIFY2(conn->removeRemoteDirectory(m_remoteDir),
            "Error removing remote directory.");
 }
 
-void SSHConnectionTest::largeFileCopyBenchmark()
+void SSHConnectionCLITest::largeFileCopyBenchmark()
 {
   QBENCHMARK {
     conn->copyFileToServer(m_largeTempFile.fileName(), ".sshlargetest");
@@ -380,6 +320,6 @@ void SSHConnectionTest::largeFileCopyBenchmark()
   m_largeTempFile.close();
 }
 
-QTEST_MAIN(SSHConnectionTest)
+QTEST_MAIN(SSHConnectionCLITest)
 
-#include "moc_sshconnectiontest.cxx"
+#include "moc_sshconnection_clitest.cxx"

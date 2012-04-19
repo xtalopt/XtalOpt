@@ -24,7 +24,11 @@
 #include <globalsearch/queueinterfaces/pbs.h>
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
+#ifdef USE_CLI_SSH
+#include <globalsearch/sshmanager_cli.h>
+#else // USE_CLI_SSH
 #include <globalsearch/sshmanager_libssh.h>
+#endif // USE_CLI_SSH
 #endif // ENABLE_SSH
 #include <globalsearch/structure.h>
 #include <globalsearch/ui/abstractdialog.h>
@@ -586,6 +590,11 @@ namespace GlobalSearch {
 
   bool OptBase::createSSHConnections_cli()
   {
+    // Since we rely on public key auth here, it's much easier to set up:
+    SSHManagerCLI *cliSSHManager = new SSHManagerCLI(5, this);
+    cliSSHManager->makeConnections(host, username, "", port);
+    m_ssh = cliSSHManager;
+    return true;
   }
 
 #endif // not USE_CLI_SSH

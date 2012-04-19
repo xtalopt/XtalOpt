@@ -21,12 +21,23 @@ set( globalsearch_SRCS
 )
 
 if (ENABLE_SSH)
+if (NOT USE_CLI_SSH)
+set( globalsearch_SRCS
+     ${globalsearch_SRCS}
+     sshconnection_libssh.cpp
+     sshmanager_libssh.cpp
+)
+else (NOT USE_CLI_SSH)
+set( globalsearch_SRCS
+     ${globalsearch_SRCS}
+     sshconnection_cli.cpp
+     sshmanager_cli.cpp
+)
+endif (NOT USE_CLI_SSH)
 set( globalsearch_SRCS
      ${globalsearch_SRCS}
      sshconnection.cpp
-     sshconnection_libssh.cpp
      sshmanager.cpp
-     sshmanager_libssh.cpp
      queueinterfaces/remote.cpp
      queueinterfaces/loadleveler.cpp
      queueinterfaces/loadlevelerdialog.cpp
@@ -62,13 +73,12 @@ qt4_wrap_cpp(moc_files ${hdr_list})
 qt4_wrap_ui(globalsearch_UIS_H ${globalsearch_UIS})
 add_library(globalsearch STATIC ${globalsearch_SRCS} ${globalsearch_UIS} ${moc_files})
 target_link_libraries( globalsearch
-		       ${LIBSSH_LINK_LIBRARIES}
 		       ${LINK_LIBS}
 		       ${QT_QTCORE_LIBRARY}
 		       ${QT_QTGUI_LIBRARY}
 		       ${OPENBABEL2_LIBRARIES})
 
-if (ENABLE_SSH)
+if (ENABLE_SSH AND NOT USE_CLI_SSH)
   target_link_libraries(globalsearch ${LIBSSH_LIBRARIES})
 endif()
 
