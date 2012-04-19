@@ -15,7 +15,7 @@
   02110-1301, USA.
  **********************************************************************/
 
-#include <globalsearch/sshmanager.h>
+#include <globalsearch/sshmanager_libssh.h>
 
 #include <QString>
 #include <QtTest/QtTest>
@@ -103,7 +103,7 @@ void SSHManagerTest::initTestCase()
   testfile2.close();
 
   // Open ssh connection
-  manager = new SSHManager(NUM_CONN);
+  manager = new SSHManagerLibSSH(NUM_CONN);
   try {
     // Ensure that the following points to a real server, acct, and pw
     // combo. Do not commit any changes here! (considering using

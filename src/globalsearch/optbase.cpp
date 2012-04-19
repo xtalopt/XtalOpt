@@ -24,6 +24,7 @@
 #include <globalsearch/queueinterfaces/pbs.h>
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
+#include <globalsearch/sshmanager_libssh.h>
 #endif // ENABLE_SSH
 #include <globalsearch/structure.h>
 #include <globalsearch/ui/abstractdialog.h>
@@ -49,7 +50,7 @@ namespace GlobalSearch {
     m_queueInterface(0), // This will be set when the GUI is initialized
     m_optimizer(0),      // This will be set when the GUI is initialized
 #ifdef ENABLE_SSH
-    m_ssh(new SSHManager (5, this)),
+    m_ssh(NULL),
 #endif // ENABLE_SSH
     m_idString("Generic"),
     sOBMutex(new QMutex),
@@ -121,6 +122,17 @@ namespace GlobalSearch {
     m_tracker->unlock();
     m_queue->reset();
   }
+
+#ifdef ENABLE_SSH
+  bool OptBase::createSSHConnections()
+  {
+#ifdef USE_CLI_SSH
+    return this->createSSHConnections_cli();
+#else // USE_CLI_SSH
+    return this->createSSHConnections_libssh();
+#endif // USE_CLI_SSH
+  }
+#endif // ENABLE_SSH
 
   void OptBase::printBackTrace() {
     backTraceMutex->lock();
@@ -502,6 +514,82 @@ namespace GlobalSearch {
     }
   }
   /// @endcond
+
+#ifdef ENABLE_SSH
+#ifndef USE_CLI_SSH
+
+  bool OptBase::createSSHConnections_libssh()
+  {
+    delete m_ssh;
+    SSHManagerLibSSH *libsshManager = new SSHManagerLibSSH(5, this);
+    m_ssh = libsshManager;
+    QString pw = "";
+    for (;;) {
+      try {
+        libsshManager->makeConnections(host, username, pw, port);
+      }
+      catch (SSHConnection::SSHConnectionException e) {
+        QString err;
+        switch (e) {
+        case SSHConnection::SSH_CONNECTION_ERROR:
+        case SSHConnection::SSH_UNKNOWN_ERROR:
+        default:
+          err = "There was a problem connection to the ssh server at "
+              + username + "@" + host + ":" + QString::number(port) + ". "
+              "Please check that all provided information is correct, and "
+              "attempt to log in outside of Avogadro before trying again.";
+          error(err);
+          return false;
+        case SSHConnection::SSH_UNKNOWN_HOST_ERROR: {
+          // The host is not known, or has changed its key.
+          // Ask user if this is ok.
+          err = "The host "
+            + host + ":" + QString::number(port)
+            + " either has an unknown key, or has changed it's key:\n"
+            + libsshManager->getServerKeyHash() + "\n"
+            + "Would you like to trust the specified host?";
+          bool ok;
+          // This is a BlockingQueuedConnection, which blocks until
+          // the slot returns.
+          emit needBoolean(err, &ok);
+          if (!ok) { // user cancels
+            return false;
+          }
+          libsshManager->validateServerKey();
+          continue;
+        } // end case
+        case SSHConnection::SSH_BAD_PASSWORD_ERROR: {
+          // Chances are that the pubkey auth was attempted but failed,
+          // so just prompt user for password.
+          err = "Please enter a password for "
+            + username + "@" + host + ":" + QString::number(port)
+            + ":";
+          bool ok;
+          QString newPassword;
+          // This is a BlockingQueuedConnection, which blocks until
+          // the slot returns.
+          emit needPassword(err, &newPassword, &ok);
+          if (!ok) { // user cancels
+            return false;
+          }
+          pw = newPassword;
+          continue;
+        } // end case
+        } // end switch
+      } // end catch
+      break;
+    } // end forever
+    return true;
+  }
+
+#else // not USE_CLI_SSH
+
+  bool OptBase::createSSHConnections_cli()
+  {
+  }
+
+#endif // not USE_CLI_SSH
+#endif // ENABLE_SSH
 
   void OptBase::warning(const QString & s) {
     qWarning() << "Warning: " << s;

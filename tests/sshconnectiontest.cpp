@@ -15,7 +15,7 @@
   02110-1301, USA.
  **********************************************************************/
 
-#include <globalsearch/sshconnection.h>
+#include <globalsearch/sshconnection_libssh.h>
 
 #include <QString>
 #include <QtTest/QtTest>
@@ -28,7 +28,7 @@ class SSHConnectionTest : public QObject
   Q_OBJECT
 
   private:
-  SSHConnection *conn;
+  SSHConnectionLibSSH *conn;
   QTemporaryFile m_localTempFile;
   QString m_remoteFileName;
   QString m_localNewFileName;
@@ -151,7 +151,7 @@ void SSHConnectionTest::initTestCase()
     // combo. Do not commit any changes here! (considering using
     // /etc/hosts to map "testserver" to a real server with a
     // chroot-jailed acct/pw = "test")
-    conn = new SSHConnection();
+    conn = new SSHConnectionLibSSH();
     conn->setLoginDetails("testserver", "test", "test");
     conn->connectSession();
   }
@@ -251,10 +251,10 @@ void SSHConnectionTest::executeLargeOutput()
   // Don't use seq to generate the loop vars -- it's not available in some
   // chroot jails.
   QString command = QString("for i in {0..%1};do echo 000; done")
-    .arg(SSH_BUFFER_SIZE);
+    .arg(LIBSSH_BUFFER_SIZE);
 
   QString refout;
-  for (int i = 0; i <= SSH_BUFFER_SIZE; i++) {
+  for (int i = 0; i <= LIBSSH_BUFFER_SIZE; i++) {
     refout += "000\n";
   }
 

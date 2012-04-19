@@ -1,7 +1,7 @@
 /**********************************************************************
   SSHConnection - Connection to an ssh server for execution, sftp, etc.
 
-  Copyright (C) 2010-2011 by David C. Lonie
+  Copyright (C) 2010-2012 by David C. Lonie
 
   This source code is released under the New BSD License, (the "License").
 
@@ -17,20 +17,12 @@
 
 #ifdef ENABLE_SSH
 
-extern "C" {
-#include <libssh/libssh.h>
-#include <libssh/sftp.h>
-}
-
-#include <globalsearch/optbase.h>
-
 #include <QtCore/QObject>
 #include <QtCore/QString>
-#include <QtCore/QMutex>
-
-#define SSH_BUFFER_SIZE 20480
 
 namespace GlobalSearch {
+  class OptBase;
+  class SSHManager;
 
   /**
    * @class SSHConnection sshconnection.h <globalsearch/sshconnection.h>
@@ -89,16 +81,10 @@ namespace GlobalSearch {
      * @param pass Password
      * @param port Port
      */
-    void setLoginDetails(const QString &host,
-                         const QString &user = "",
-                         const QString &pass = "",
-                         int port = 22);
-
-    /// Flag whether this connection is in use or not.
-    void setUsed(bool b) {m_inUse = b;};
-
-    /// @return True if this connection is in use.
-    bool inUse() {return m_inUse;};
+    virtual void setLoginDetails(const QString &host,
+                                 const QString &user = "",
+                                 const QString &pass = "",
+                                 int port = 22);
 
     /**
      * Execute an arbitrary command on the connected host.
@@ -110,10 +96,10 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    bool execute(const QString &command,
-                 QString &stdout_str,
-                 QString &stderr_str,
-                 int &exitcode);
+    virtual bool execute(const QString &command,
+                         QString &stdout_str,
+                         QString &stderr_str,
+                         int &exitcode) = 0;
 
     /**
      * Copy a file to the remote host
@@ -123,8 +109,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    bool copyFileToServer(const QString & localpath,
-                          const QString & remotepath);
+    virtual bool copyFileToServer(const QString & localpath,
+                                  const QString & remotepath) = 0;
 
     /**
      * Copy a file from the remote host
@@ -134,8 +120,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    bool copyFileFromServer(const QString & remotepath,
-                            const QString & localpath);
+    virtual bool copyFileFromServer(const QString & remotepath,
+                                    const QString & localpath) = 0;
 
     /**
      * Obtain a QString object contain the contents of a remote text
@@ -146,8 +132,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    bool readRemoteFile(const QString &filename,
-                        QString &contents);
+    virtual bool readRemoteFile(const QString &filename,
+                                QString &contents) = 0;
 
     /**
      * Delete a file from the remote host
@@ -156,7 +142,7 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    bool removeRemoteFile(const QString &filename);
+    virtual bool removeRemoteFile(const QString &filename) = 0;
 
     /**
      * Copy a directory to the remote host
@@ -166,8 +152,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    bool copyDirectoryToServer(const QString & localpath,
-                               const QString & remotepath);
+    virtual bool copyDirectoryToServer(const QString & localpath,
+                                       const QString & remotepath) = 0;
 
     /**
      * Copy a directory from the remote host
@@ -177,8 +163,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    bool copyDirectoryFromServer(const QString & remotepath,
-                                 const QString & localpath);
+    virtual bool copyDirectoryFromServer(const QString & remotepath,
+                                         const QString & localpath) = 0;
 
     /**
      * List the contents of a remote directory
@@ -188,8 +174,8 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    bool readRemoteDirectoryContents(const QString & remotepath,
-                                     QStringList & contents);
+    virtual bool readRemoteDirectoryContents(const QString & remotepath,
+                                             QStringList & contents) = 0;
 
     /**
      * Recursively delete a directory and its contents.
@@ -200,106 +186,14 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    bool removeRemoteDirectory(const QString & remotepath,
-                               bool onlyDeleteContents = false);
-
-
-    /// @return True if the session is valid
-    bool isValid() {return m_isValid;};
-
-    /// @return True if the session is connected
-    bool isConnected();
-
-    /**
-     * Attempts to create a connection to the remote server. If \a
-     * throwExceptions is true, one of the
-     * GlobalSearch::SSHConnection::SSHConnectionException exceptions
-     * will be thrown on errors. Otherwise, the function will return
-     * false on errors.
-     *
-     * @return True on success.
-     */
-    bool connectSession(bool throwExceptions = false);
-
-    /**
-     * Disconnect and connect this session.
-     *
-     * @sa disconnectSession
-     * @sa connectSession
-     */
-    bool reconnectSession(bool throwExceptions = false);
-
-    /**
-     * Terminate the current connection to the remote host.
-     *
-     * @return True on success.
-     */
-    bool disconnectSession();
-
-    /**
-     * Similar to reconnectSession, but calls isConnected first and
-     * only reconects if needed.
-     *
-     * @return True if no errors.
-     */
-    bool reconnectIfNeeded() {if (!isConnected()) return reconnectSession(false);
-      return true;};
-
-    /**
-     * Add the passed host's key to the local host's knownhosts cache.
-     *
-     * @param host Hostname of server
-     * @param port Port of SSH server
-     *
-     * @return True on success.
-     */
-    static bool addKeyToKnownHosts(const QString &host, unsigned int port = 22);
-
-  signals:
-    /**
-     * Emitted when a host is not recognized
-     *
-     * @param hexa Hex data representing the server.
-     */
-    void unknownHostKey(const QString &hexa);
+    virtual bool removeRemoteDirectory(const QString & remotepath,
+                                       bool onlyDeleteContents = false) = 0;
 
   protected:
-    // Disable doxygen parsing
-    /// \cond
-    sftp_session _openSFTP();
-    bool _execute(const QString &command,
-                  QString &stdout_err,
-                  QString &stderr_err,
-                  int &exitcode);
-    bool _copyFileToServer(const QString & localpath,
-                           const QString & remotepath);
-    bool _copyFileFromServer(const QString & remotepath,
-                             const QString & localpath);
-    bool _readRemoteFile(const QString &filename,
-                         QString &contents);
-    bool _removeRemoteFile(const QString &filename);
-    bool _copyDirectoryToServer(const QString & localpath,
-                                const QString & remotepath);
-    bool _copyDirectoryFromServer(const QString & remotepath,
-                                  const QString & localpath);
-    bool _readRemoteDirectoryContents(const QString & remotepath,
-                                      QStringList & contents);
-    bool _removeRemoteDirectory(const QString & remotepath,
-                                bool onlyDeleteContents = false);
-
-    ssh_session m_session;
-    ssh_channel m_shell;
-
     QString m_host;
     QString m_user;
     QString m_pass;
     int m_port;
-    bool m_isValid;
-    bool m_inUse;
-    QMutex m_lock;
-
-    // Resume doxygen parsing
-    /// \endcond
   };
 
 } // end namespace GlobalSearch

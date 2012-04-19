@@ -24,7 +24,9 @@ if (ENABLE_SSH)
 set( globalsearch_SRCS
      ${globalsearch_SRCS}
      sshconnection.cpp
+     sshconnection_libssh.cpp
      sshmanager.cpp
+     sshmanager_libssh.cpp
      queueinterfaces/remote.cpp
      queueinterfaces/loadleveler.cpp
      queueinterfaces/loadlevelerdialog.cpp
