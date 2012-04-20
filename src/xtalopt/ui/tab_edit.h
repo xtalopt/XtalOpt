@@ -34,11 +34,15 @@ namespace XtalOpt {
     virtual ~TabEdit();
 
   public slots:
+    virtual void updateGUI();
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
     void updateEditWidget();
     void appendOptStep();
     void removeCurrentOptStep();
+
+    void setPreoptimization(bool b);
+    void showPreoptimizationConfigDialog();
 
   protected slots:
     // Returns false if user cancels

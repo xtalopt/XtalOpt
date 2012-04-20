@@ -38,7 +38,9 @@ namespace XtalOpt {
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
     void updateGUI();
-    void updateOptimizationInfo();
+    void updateSearchParams();
+    void updateIonicSearchParams();
+    void updateMolecularSearchParams();
     void addSeed(QListWidgetItem *item = NULL);
     void removeSeed();
     void updateSeeds();

@@ -22,7 +22,7 @@
 #include <gapc/ui/dialog.h>
 
 #include <globalsearch/macros.h>
-#include <globalsearch/queueinterfaces/local.h>
+#include <globalsearch/queueinterfaces/internal.h>
 
 #ifdef ENABLE_SSH
 #include <globalsearch/queueinterfaces/pbs.h>
@@ -58,7 +58,7 @@ namespace GAPC {
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
       case OptGAPC::QI_LOCAL:
-        m_queueInterfaces.append(new LocalQueueInterface (m_opt));
+        m_queueInterfaces.append(new InternalQueueInterface (m_opt));
         break;
 #ifdef ENABLE_SSH
       case OptGAPC::QI_PBS:

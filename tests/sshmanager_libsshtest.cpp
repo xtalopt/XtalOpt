@@ -25,7 +25,7 @@
 
 using namespace GlobalSearch;
 
-class SSHManagerCLITest : public QObject
+class SSHManagerLibSSHTest : public QObject
 {
   Q_OBJECT
 
@@ -70,7 +70,7 @@ class SSHManagerCLITest : public QObject
   void copyThreads();
 };
 
-void SSHManagerCLITest::initTestCase()
+void SSHManagerLibSSHTest::initTestCase()
 {
   // Create a local directory structure:
   // [tmp path]/sshtesttmp/
@@ -116,7 +116,7 @@ void SSHManagerCLITest::initTestCase()
   }
 }
 
-void SSHManagerCLITest::cleanupTestCase()
+void SSHManagerLibSSHTest::cleanupTestCase()
 {
   QFile::remove(m_localTempDir.path() + "/testfile1");
   QFile::remove(m_localTempDir.path() + "/newdir/testfile2");
@@ -131,16 +131,16 @@ void SSHManagerCLITest::cleanupTestCase()
   manager = 0;
 }
 
-void SSHManagerCLITest::init()
+void SSHManagerLibSSHTest::init()
 {
 }
 
-void SSHManagerCLITest::cleanup()
+void SSHManagerLibSSHTest::cleanup()
 {
 }
 
 
-void SSHManagerCLITest::lockAllAndExecute()
+void SSHManagerLibSSHTest::lockAllAndExecute()
 {
   QList<SSHConnection*> list;
 
@@ -188,7 +188,7 @@ private:
   QString from, to;
 };
 
-void SSHManagerCLITest::copyThreads()
+void SSHManagerLibSSHTest::copyThreads()
 {
   QList<CopyThread*> list;
   for (int i = 0; i < NUM_CONN*20; ++i) {

@@ -114,6 +114,7 @@ namespace XtalOpt {
     GlobalSearch::Tracker m_infoUpdateTracker;
 
     void updateInfo_();
+    void updateAllInfo_();
     void restartJobProgress_(int incar);
     void killXtalProgress_();
     void unkillXtalProgress_();

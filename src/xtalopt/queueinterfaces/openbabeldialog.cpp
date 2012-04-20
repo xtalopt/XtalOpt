@@ -1,5 +1,5 @@
 /**********************************************************************
-  LocalQueueInterfaceConfigDialog
+  OpenBabelQueueInterfaceConfigDialog
 
   Copyright (C) 2011 by David C. Lonie
 
@@ -16,10 +16,11 @@
 // Don't document this:
 /// @cond
 
-#include <globalsearch/queueinterfaces/localdialog.h>
+#include <xtalopt/queueinterfaces/openbabeldialog.h>
+
+#include <xtalopt/queueinterfaces/openbabel.h>
 
 #include <globalsearch/optbase.h>
-#include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/ui/abstractdialog.h>
 
 #include <QtGui/QDialog>
@@ -32,10 +33,12 @@
 
 #include <QtCore/QObject>
 
-namespace GlobalSearch {
+using namespace GlobalSearch;
 
-  LocalQueueInterfaceConfigDialog::LocalQueueInterfaceConfigDialog
-  (AbstractDialog *parent, OptBase *opt, LocalQueueInterface *o)
+namespace XtalOpt {
+
+  OpenBabelQueueInterfaceConfigDialog::OpenBabelQueueInterfaceConfigDialog
+  (AbstractDialog *parent, OptBase *opt, OpenBabelQueueInterface *o)
     : QDialog(parent),
       m_opt(opt),
       m_queueInterface(o),
@@ -86,7 +89,7 @@ namespace GlobalSearch {
             this, SLOT(reject()));
   }
 
-  void LocalQueueInterfaceConfigDialog::accept()
+  void OpenBabelQueueInterfaceConfigDialog::accept()
   {
     m_opt->filePath = m_edit_workdir->text().trimmed();
     m_opt->description = m_edit_description->text().trimmed();
@@ -94,19 +97,19 @@ namespace GlobalSearch {
     this->close();
   }
 
-  void LocalQueueInterfaceConfigDialog::reject()
+  void OpenBabelQueueInterfaceConfigDialog::reject()
   {
     updateGUI();
     QDialog::reject();
     this->close();
   }
 
-  void LocalQueueInterfaceConfigDialog::updateGUI()
+  void OpenBabelQueueInterfaceConfigDialog::updateGUI()
   {
     m_edit_workdir->setText(m_opt->filePath);
     m_edit_description->setText(m_opt->description);
   }
 
-} // end namespace GlobalSearch
+} // end namespace XtalOpt
 
 /// @endcond

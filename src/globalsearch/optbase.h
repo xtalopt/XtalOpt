@@ -130,6 +130,21 @@ namespace GlobalSearch {
     virtual bool checkLimits() = 0;
 
     /**
+     * Perform any post-optimization checks that need to be performed when a
+     * structure enters the Structure::StepOptimized state.
+     * @param s Structure to check
+     * @param err If non-NULL, will be overwritten with an explaination of
+     * why the check failed.
+     * @return True if structure passes, false otherwise.
+     */
+    virtual bool checkStepOptimizedStructure(Structure *s, QString *err = NULL)
+    {
+      Q_UNUSED(s);
+      Q_UNUSED(err);
+      return true;
+    }
+
+    /**
      * Generate a probability list using the enthalpies of a
      * collection of structures.
      *
@@ -176,6 +191,11 @@ for (ind = 0; ind < probs.size(); ind++)
      * @return True if successful, false otherwise.
      */
     virtual bool save(const QString & filename = "", bool notify = false);
+
+    /**
+     * Override with any saving operations that derived classes need.
+     */
+    virtual bool postSave(const QString &filename) {Q_UNUSED(filename);}
 
     /**
      * Load a search session from the specified filename.
@@ -310,6 +330,9 @@ for (ind = 0; ind < probs.size(); ind++)
 
     /// This is locked when generating a backtrace.
     QMutex *backTraceMutex;
+
+    /// True if a preoptimization should be used.
+    bool usePreopt;
 
     /// True if there is a save requested or in progress
     bool savePending;
@@ -462,6 +485,13 @@ for (ind = 0; ind < probs.size(); ind++)
      * @sa QueueManager
      */
     virtual void generateNewStructure() {};
+
+    /**
+     * Perform a background preoptimization on Structure @a s. This may not be
+     * implemented for all search types, and does nothing by default.
+     * @param s the Structure to preoptimize.
+     */
+    virtual void preoptimizeStructure(Structure *s) {}
 
     /**
      * Prints a debug message to the terminal and emits
@@ -669,6 +699,9 @@ for (ind = 0; ind < probs.size(); ind++)
 
     /// Current version of save/resume schema
     unsigned int m_schemaVersion;
+
+    // Set true in destructors
+    bool m_isDestroying;
 
   };
 

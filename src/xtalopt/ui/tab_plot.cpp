@@ -644,6 +644,7 @@ namespace XtalOpt {
       case Xtal::Empty:
       case Xtal::Restart:
       case Xtal::Updating:
+      case Xtal::Preoptimizing:
         s.append(" (p)");
         break;
       case Xtal::Error:

@@ -218,6 +218,11 @@ m_queue->unlockForNaming(newStructure);
     void addManualStructureRequest(int requests = 1);
 
     /**
+     * @return All Structures in preOptTracker
+     */
+    QList<Structure*> getAllPreoptimizingStructures();
+
+    /**
      * @return All Structures in m_runningTracker
      */
     QList<Structure*> getAllRunningStructures();
@@ -262,6 +267,12 @@ m_queue->unlockForNaming(newStructure);
      * run checkPopulation and checkRunning regularly.
      */
     void checkLoop();
+
+    /**
+     * Add the emitter of the signal that triggers this slot to the
+     * submission queue
+     */
+    void senderHasFinishedPreoptimization();
 
     /**
      * Writes the input files for the optimization process and queues
@@ -322,6 +333,17 @@ m_queue->unlockForNaming(newStructure);
      * @sa prepareStructureForNextOptStep
      */
     void updateStructure(Structure *s);
+
+    /**
+     * Submits the first Structure in m_needsPreOptTracker for
+     * preoptimization. This should not be called directly, the queuemanager
+     * will call this as appropriate.
+     *
+     * @sa Structure::setNeedsPreoptimization()
+     * @sa Structure::needsPreoptimization()
+     * @sa OptBase::preoptimizeStructure()
+     */
+    void startPreoptimization();
 
     /**
      * Submits the first Structure in m_jobStartTracker for
@@ -400,6 +422,13 @@ m_queue->unlockForNaming(newStructure);
      * @param s Structure of interest
      */
     void handleEmptyStructure(Structure *s);
+
+    /**
+     * Perform actions on the Preoptimizing Structure \a s.
+     *
+     * @param s Structure of interest
+     */
+    void handlePreoptimizingStructure(Structure *s);
 
     /**
      * Perform actions on the Updating Structure \a s.
@@ -490,6 +519,10 @@ m_queue->unlockForNaming(newStructure);
     Tracker m_newSubmissionTracker;
     /// @endcond
 
+    /// Tracks structures that need preoptimization
+    Tracker m_needPreOptTracker;
+    /// Tracks which structures are currently preoptimizing
+    Tracker m_preOptTracker;
     /// Tracks which structures are currently running
     Tracker m_runningTracker;
     /// Tracks which structures are queued to be submitted

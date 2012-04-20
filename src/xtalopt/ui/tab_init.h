@@ -21,6 +21,8 @@
 
 #include "ui_tab_init.h"
 
+class QTableWidgetItem;
+
 namespace XtalOpt {
   class XtalOptDialog;
   class XtalOpt;
@@ -33,13 +35,24 @@ namespace XtalOpt {
     explicit TabInit( XtalOptDialog *parent, XtalOpt *p );
     virtual ~TabInit();
 
-    enum CompositionColumns
+    enum CrystalType {
+      CT_Ionic = 0,
+      CT_Molecular
+    };
+
+    enum CompositionColumn
     {
       CC_SYMBOL = 0,
       CC_ATOMICNUM,
       CC_QUANTITY,
       CC_MASS,
       CC_MINRADIUS
+    };
+
+    enum MXtalCompositionColumn
+    {
+      MC_QUANTITY = 0,
+      MC_FILENAME
     };
 
   public slots:
@@ -49,9 +62,18 @@ namespace XtalOpt {
     void updateGUI();
     void getComposition(const QString & str);
     void updateComposition();
+    void updateCrystalType();
     void updateCompositionTable();
     void updateDimensions();
     void updateMinRadii();
+
+    void updateTables();
+
+    void addSubMolecule();
+    void removeSubMolecule();
+
+    void updateMXtalCompositionTable();
+    void updateCompFromMComp();
 
   signals:
 

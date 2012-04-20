@@ -154,6 +154,7 @@ namespace XtalOpt {
     }
 
     QList<Structure*> running = m_opt->queue()->getAllRunningStructures();
+    running.append(m_opt->queue()->getAllPreoptimizingStructures());
 
     for (QList<Structure*>::iterator
            it = running.begin(),
@@ -227,6 +228,12 @@ namespace XtalOpt {
   }
 
   void TabProgress::updateAllInfo()
+  {
+    QtConcurrent::run(this, &TabProgress::updateAllInfo_);
+    return;
+  }
+
+  void TabProgress::updateAllInfo_()
   {
     if (!m_update_all_mutex->tryLock()) {
       qDebug() << "Killing extra TabProgress::updateAllInfo() call";
@@ -365,6 +372,16 @@ namespace XtalOpt {
         .arg(QString::number(totalOptSteps));
       e.brush.setColor(Qt::cyan);
       break;
+    case Xtal::Preoptimizing:
+      if (xtal->getPreOptProgress() > 0) {
+        e.status = tr("Preoptimizing: %1%")
+            .arg(QString::number(xtal->getPreOptProgress()));
+      }
+      else {
+        e.status = tr("Initializing preoptimization...");
+      }
+      e.brush.setColor(Qt::green);
+      break;
     case Xtal::Restart:
       e.status = "Restarting job...";
       e.brush.setColor(Qt::cyan);
@@ -492,6 +509,8 @@ namespace XtalOpt {
       return;
     }
 
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
     QTableWidgetItem *item = ui.table_list->itemAt(p);
     bool xtalIsSelected = true;
     int index = -1;
@@ -575,6 +594,9 @@ namespace XtalOpt {
       a_offspring->setEnabled(false);
       a_injectSeed->setEnabled(true);
       a_clipPOSCAR->setEnabled(false);
+    }
+    if (xtalopt->isMolecularXtalSearch()) {
+      a_injectSeed->setVisible(false);
     }
 
     QAction *selection = menu.exec(QCursor::pos());

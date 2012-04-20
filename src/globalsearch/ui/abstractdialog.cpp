@@ -54,14 +54,6 @@ namespace GlobalSearch {
 
   void AbstractDialog::initialize()
   {
-    // Connections
-    connect(this, SIGNAL(tabsReadSettings(const QString &)),
-            this, SLOT(reemitTabsReadSettings(const QString &)),
-            Qt::DirectConnection);
-    // Leave this as an autoconnection to prevent deadlocks on shutdown
-    connect(this, SIGNAL(tabsWriteSettings(const QString &)),
-            this, SLOT(reemitTabsWriteSettings(const QString &)));
-
     connect(ui_push_begin, SIGNAL(clicked()),
             this, SLOT(startSearch()));
     connect(ui_push_save, SIGNAL(clicked()),
@@ -172,6 +164,20 @@ namespace GlobalSearch {
     emit tabsUpdateGUI();
   }
 
+  bool AbstractDialog::startProgressUpdate(const QString &text, int min, int max)
+  {
+    if (!this->progMutex->tryLock())
+      return false;
+    emit sig_startProgressUpdate(text,min,max);
+    return true;
+  }
+
+  void AbstractDialog::stopProgressUpdate()
+  {
+    emit sig_stopProgressUpdate();
+    this->progMutex->unlock();
+  }
+
   void AbstractDialog::resumeSession()
   {
     QString filename;
@@ -194,18 +200,20 @@ namespace GlobalSearch {
   void AbstractDialog::resumeSession_(const QString &filename)
   {
     m_opt->emitStartingSession();
-    startProgressUpdate(tr("Resuming session..."), 0, 0);
+    bool notify = startProgressUpdate(tr("Resuming session..."), 0, 0);
     m_opt->tracker()->lockForWrite();
     m_opt->tracker()->deleteAllStructures();
     m_opt->tracker()->unlock();
     if (!m_opt->load(filename)) {
-      stopProgressUpdate();
+      if (notify)
+        stopProgressUpdate();
       m_opt->isStarting = false;
       return;
     }
     // Refresh dialog and settings
     writeSettings();
-    stopProgressUpdate();
+    if (notify)
+      stopProgressUpdate();
 
     // Emit session started signals
     if (m_opt->readOnly)
@@ -221,7 +229,6 @@ namespace GlobalSearch {
   }
 
   void AbstractDialog::startProgressUpdate_(const QString & text, int min, int max) {
-    //progMutex->lock();
     ui_progbar->reset();
     ui_progbar->setRange(min, max);
     ui_progbar->setValue(min);
@@ -238,7 +245,6 @@ namespace GlobalSearch {
     ui_progbar->setVisible(false);
     ui_label_prog->setVisible(false);
     progTimer->stop();
-    //progMutex->unlock();
     repaintProgressBar();
   }
 

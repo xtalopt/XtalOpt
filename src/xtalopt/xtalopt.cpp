@@ -15,13 +15,22 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <xtalopt/structures/molecularxtal.h>
+#include <xtalopt/structures/submolecule.h>
+#include <xtalopt/structures/submoleculesource.h>
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/optimizers/vasp.h>
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/pwscf.h>
 #include <xtalopt/optimizers/castep.h>
+#include <xtalopt/optimizers/openbabeloptimizer.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
+#include <xtalopt/molecularxtaloptimizer.h>
+#include <xtalopt/queueinterfaces/openbabel.h>
+
+#include <xtalopt/molecularxtalmutator.h>
+#include <xtalopt/mxtaloptgenetic.h>
 
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
@@ -36,6 +45,10 @@
 #include <globalsearch/sshmanager.h>
 #include <globalsearch/queueinterfaces/remote.h>
 #endif // ENABLE_SSH
+
+#include <avogadro/bond.h>
+
+#include <QtGui/QApplication>
 
 #include <QtCore/QDir>
 #include <QtCore/QList>
@@ -57,7 +70,12 @@ namespace XtalOpt {
 
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
     OptBase(parent),
-    m_initWC(new SlottedWaitCondition (this))
+    mga_warnedNoStrainOnFixedCell(false),
+    mga_warnedNoVolumeSamplesOnFixedCell(false),
+    mga_warnedNoVolumeSamplesOnFixedVolume(false),
+    m_initWC(new SlottedWaitCondition (this)),
+    m_isMolecular(false),
+    m_currentSubMolSourceProgress(-1)
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";
@@ -72,22 +90,25 @@ namespace XtalOpt {
 
   XtalOpt::~XtalOpt()
   {
-    // Stop queuemanager thread
-    if (m_queueThread->isRunning()) {
-      m_queueThread->disconnect();
-      m_queueThread->quit();
-      m_queueThread->wait();
+    m_isDestroying = true;
+
+    // Send abort signal to mutators
+    m_mutatorsMutex.lock();
+    foreach (MolecularXtalMutator *mutator, m_mutators) {
+      mutator->abort();
+      while (!mutator->waitForFinished(500)) {
+        qDebug() << "Waiting for mutator to abort...";
+        QApplication::processEvents(QEventLoop::AllEvents, 500);
+      }
     }
+    m_mutatorsMutex.unlock();
 
-    // Delete queuemanager
-    delete m_queue;
-    m_queue = 0;
-
-#ifdef ENABLE_SSH
-    // Stop SSHManager
-    delete m_ssh;
-    m_ssh = 0;
-#endif // ENABLE_SSH
+    // Openbabel needs a bit of extra time to clean up its threads.
+    OpenBabelQueueInterface *obqi = qobject_cast<OpenBabelQueueInterface*>
+        (m_queueInterface);
+    if (obqi != NULL) {
+      obqi->prepareForDestroy();
+    }
 
     // Wait for save to finish
     unsigned int timeout = 30;
@@ -96,9 +117,31 @@ namespace XtalOpt {
                << timeout << "seconds until timeout).";
       timeout--;
       GS_SLEEP(1);
+      QApplication::processEvents(QEventLoop::AllEvents, 500);
     };
 
+    qDebug() << "Waiting for main event loop to clear...";
+    QApplication::processEvents(QEventLoop::AllEvents);
+    qDebug() << "Main event loop cleared.";
+
     savePending = true;
+
+    // Stop queuemanager thread
+    if (m_queueThread->isRunning()) {
+      m_queueThread->disconnect();
+      m_queueThread->quit();
+      m_queueThread->wait();
+    }
+
+    // Delete queuemanager
+    m_queue->deleteLater();
+    m_queue = 0;
+
+#ifdef ENABLE_SSH
+    // Stop SSHManager
+    m_ssh->deleteLater();
+    m_ssh = 0;
+#endif // ENABLE_SSH
 
     // Clean up various members
     m_initWC->deleteLater();
@@ -119,6 +162,19 @@ namespace XtalOpt {
     if (comp.isEmpty()) {
       error("Cannot create structures. Composition is not set.");
       return;
+    }
+
+    // If using the openbabel optimizer/queueinterface, warn the user that
+    // these are intended for testing only, and that the results will be
+    // neither useful nor reliable
+    if (qobject_cast<OpenBabelOptimizer*>(m_optimizer) != NULL ||
+        qobject_cast<OpenBabelQueueInterface*>(m_queueInterface) != NULL) {
+      error(tr("The OpenBabel queue and OpenBabel optimizer are used for "
+               "testing the XtalOpt algorithm only, and any structures "
+               "obtained while using them are unlikely to be meaningful.\n\n"
+               "Switch to another optimizer and/or queue if you are "
+               "interested in finding quality structures.\n\n"
+               "You have been warned!"));
     }
 
     // Are the selected queueinterface and optimizer happy?
@@ -180,6 +236,29 @@ namespace XtalOpt {
     }
 #endif // ENABLE_SSH
 
+    // Molecular search prep
+    if (this->isMolecularXtalSearch()) {
+      // Reassign source ids now that list is final
+      for (int i = 0; i < this->mcomp.size(); ++i) {
+        mcomp[i].source->setSourceId(i);
+      }
+
+      // Generate conformers for submolecules, if needed
+      bool notify = m_dialog->startProgressUpdate("Generating conformers...",
+                                                  0, 100);
+      if (!this->initializeSubMoleculeSources(notify)) {
+        error("Error generating submolecule conformers. Aborting.");
+        if (notify)
+          m_dialog->stopProgressUpdate();
+        return;
+      }
+
+      if (notify) {
+        m_dialog->updateProgressValue(100);
+        m_dialog->stopProgressUpdate();
+      }
+    }
+
     // Here we go!
     debug("Starting optimization.");
     emit startingSession();
@@ -200,19 +279,20 @@ namespace XtalOpt {
     int failed = 0;
     uint progCount = 0;
     QString filename;
-    Xtal *xtal = 0;
     // Use new xtal count in case "addXtal" falls behind so that we
     // don't duplicate structures when switching from seeds -> random.
     uint newXtalCount=0;
 
     // Load seeds...
-    for (int i = 0; i < seedList.size(); i++) {
-      filename = seedList.at(i);
-      if (this->addSeed(filename)) {
-        m_dialog->updateProgressLabel(
-              tr("%1 structures generated (%2 kept, %3 rejected)...")
-              .arg(i + failed).arg(i).arg(failed));
-        newXtalCount++;
+    if (!this->isMolecularXtalSearch()) {
+      for (int i = 0; i < seedList.size(); i++) {
+        filename = seedList.at(i);
+        if (this->addSeed(filename)) {
+          m_dialog->updateProgressLabel(
+                tr("%1 structures generated (%2 kept, %3 rejected)...")
+                .arg(i + failed).arg(i).arg(failed));
+          newXtalCount++;
+        }
       }
     }
 
@@ -228,16 +308,33 @@ namespace XtalOpt {
             .arg(i + failed).arg(i).arg(failed));
 
       // Generate/Check xtal
-      xtal = generateRandomXtal(1, i+1);
-      if (!checkXtal(xtal)) {
-        delete xtal;
-        i--;
-        failed++;
+      if (this->isMolecularXtalSearch()) {
+        MolecularXtal *mxtal = NULL;
+        mxtal = generateRandomMXtal(1, i+1);
+        if (!checkXtal(mxtal)) {
+          delete mxtal;
+          i--;
+          failed++;
+        }
+        else {
+          mxtal->findSpaceGroup(tol_spg);
+          initializeAndAddXtal(mxtal, 1, mxtal->getParents());
+          newXtalCount++;
+        }
       }
       else {
-        xtal->findSpaceGroup(tol_spg);
-        initializeAndAddXtal(xtal, 1, xtal->getParents());
-        newXtalCount++;
+        Xtal *xtal;
+        xtal = generateRandomXtal(1, i+1);
+        if (!checkXtal(xtal)) {
+          delete xtal;
+          i--;
+          failed++;
+        }
+        else {
+          xtal->findSpaceGroup(tol_spg);
+          initializeAndAddXtal(xtal, 1, xtal->getParents());
+          newXtalCount++;
+        }
       }
     }
 
@@ -275,6 +372,41 @@ namespace XtalOpt {
     emit sessionStarted();
   }
 
+  bool XtalOpt::initializeSubMoleculeSources(bool notify)
+  {
+    m_currentSubMolSourceProgress = 0;
+    for (QList<MolecularCompStruct>::const_iterator
+         it = this->mcomp.constBegin(), it_end = this->mcomp.constEnd();
+         it != it_end; ++it) {
+      if (notify)
+        this->connect(it->source, SIGNAL(conformerGenerated(int,int)),
+                      SLOT(initializeSMSProgressUpdate(int,int)),
+                      Qt::BlockingQueuedConnection);
+      it->source->setMaxConformers(this->maxConf);
+      it->source->findAndSetConformers();
+      if (notify)
+        disconnect(it->source, SIGNAL(conformerGenerated(int,int)),
+                   this, SLOT(initializeSMSProgressUpdate(int,int)));
+
+      ++m_currentSubMolSourceProgress;
+    }
+    m_currentSubMolSourceProgress = -1;
+
+    return true;
+  }
+
+  void XtalOpt::initializeSMSProgressUpdate(int finished, int total)
+  {
+    // Total number of conformers assuming all sources generate "total"
+    int allConfCount = total * this->mcomp.size();
+    // Account for all sources already processed
+    int alreadyDone = total * (m_currentSubMolSourceProgress);
+    // Calculate percent completed
+    int percent = 100 * (alreadyDone + finished) / allConfCount;
+    // Update progress bar:
+    m_dialog->updateProgressValue(percent);
+  }
+
   bool XtalOpt::addSeed(const QString &filename)
   {
     QString err;
@@ -305,7 +437,23 @@ namespace XtalOpt {
 
   Structure* XtalOpt::replaceWithRandom(Structure *s, const QString & reason)
   {
-    Xtal *oldXtal = qobject_cast<Xtal*>(s);
+    if (this->isMolecularXtalSearch()) {
+      MolecularXtal *mxtal =  qobject_cast<MolecularXtal*>(s);
+      return static_cast<Structure*>(
+            this->replaceWithRandomMXtal(mxtal, reason));
+    }
+    else {
+      Xtal *xtal =  qobject_cast<Xtal*>(s);
+      return static_cast<Structure*>(
+            this->replaceWithRandomXtal(xtal, reason));
+    }
+    // Shouldn't happen, but some compilers aren't that bright...
+    return NULL;
+  }
+
+  Xtal* XtalOpt::replaceWithRandomXtal(Xtal *oldXtal,
+                                       const QString & reason)
+  {
     QWriteLocker locker1 (oldXtal->lock());
 
     // Generate/Check new xtal
@@ -345,11 +493,67 @@ namespace XtalOpt {
 
     // Delete random xtal
     xtal->deleteLater();
-    return qobject_cast<Structure*>(oldXtal);
+    return oldXtal;
+  }
+
+  MolecularXtal* XtalOpt::replaceWithRandomMXtal(MolecularXtal *oldMXtal,
+                                                 const QString & reason)
+  {
+    QWriteLocker locker1 (oldMXtal->lock());
+
+    // Generate/Check new mxtal
+    MolecularXtal *mxtal = NULL;
+    while (!checkXtal(mxtal)) {
+      if (mxtal) {
+        delete mxtal;
+        mxtal = NULL;
+      }
+      mxtal = generateRandomMXtal(0, 0);
+    }
+
+    // Copy info over
+    QWriteLocker locker2 (mxtal->lock());
+    //! @todo Verify that this assignment doesn't do anything unsual.
+    oldMXtal->copyStructure(*mxtal);
+    oldMXtal->resetEnergy();
+    oldMXtal->resetEnthalpy();
+    oldMXtal->setPV(0);
+    oldMXtal->setCurrentOptStep(1);
+    QString parents = "Randomly generated";
+    if (!reason.isEmpty())
+      parents += " (" + reason + ")";
+    oldMXtal->setParents(parents);
+    oldMXtal->findSpaceGroup(tol_spg);
+    oldMXtal->resetFailCount();
+
+    // Flag for preoptimization
+    if (this->usePreopt) {
+      oldMXtal->setNeedsPreoptimization(true);
+    }
+
+    // Delete random xtal
+    mxtal->deleteLater();
+    return oldMXtal;
   }
 
   Structure* XtalOpt::replaceWithOffspring(Structure *s,
                                            const QString & reason)
+  {
+    if (this->isMolecularXtalSearch()) {
+      MolecularXtal *mxtal =  qobject_cast<MolecularXtal*>(s);
+      return static_cast<Structure*>(
+            this->replaceWithOffspringMXtal(mxtal, reason));
+    }
+    else {
+      Xtal *xtal =  qobject_cast<Xtal*>(s);
+      return static_cast<Structure*>(
+            this->replaceWithOffspringXtal(xtal, reason));
+    }
+    // Shouldn't happen, but some compilers aren't that bright...
+    return NULL;
+  }
+
+  Xtal* XtalOpt::replaceWithOffspringXtal(Xtal *oldXtal, const QString &reason)
   {
     // Generate/Check new xtal
     Xtal *xtal = 0;
@@ -361,7 +565,6 @@ namespace XtalOpt {
       xtal = generateNewXtal();
     }
 
-    Xtal *oldXtal = qobject_cast<Xtal*>(s);
     // Copy info over
     QWriteLocker locker1 (oldXtal->lock());
     QWriteLocker locker2 (xtal->lock());
@@ -388,7 +591,46 @@ namespace XtalOpt {
 
     // Delete random xtal
     xtal->deleteLater();
-    return static_cast<Structure*>(oldXtal);
+    return oldXtal;
+  }
+
+  MolecularXtal* XtalOpt::replaceWithOffspringMXtal(
+      MolecularXtal *oldMXtal, const QString &reason)
+  {
+    // Generate/Check new mxtal
+    MolecularXtal *mxtal = NULL;
+    while (!checkXtal(mxtal)) {
+      if (mxtal) {
+        mxtal->deleteLater();
+        mxtal = NULL;
+      }
+      mxtal = generateNewMXtal();
+    }
+
+    // Copy info over
+    QWriteLocker locker (oldMXtal->lock());
+    QWriteLocker locker2 (mxtal->lock());
+    //! @todo Verify that this assignment doesn't do anything unusual.
+    oldMXtal->copyStructure(*mxtal);
+    oldMXtal->resetEnergy();
+    oldMXtal->resetEnthalpy();
+    oldMXtal->setPV(0);
+    oldMXtal->setCurrentOptStep(1);
+    QString parents = mxtal->getParents();
+    if (!reason.isEmpty())
+      parents += " (" + reason + ")";
+    oldMXtal->setParents(parents);
+    oldMXtal->findSpaceGroup(tol_spg);
+    oldMXtal->resetFailCount();
+
+    // Flag for preoptimization
+    if (this->usePreopt) {
+      oldMXtal->setNeedsPreoptimization(true);
+    }
+
+    // Delete offspring mxtal
+    mxtal->deleteLater();
+    return oldMXtal;
   }
 
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
@@ -449,9 +691,90 @@ namespace XtalOpt {
     return xtal;
   }
 
+  MolecularXtal* XtalOpt::generateRandomMXtal(uint generation, uint id)
+  {
+    INIT_RANDOM_GENERATOR();
+    // Set cell parameters
+    double a      = RANDDOUBLE() * (a_max-a_min) + a_min;
+    double b      = RANDDOUBLE() * (b_max-b_min) + b_min;
+    double c      = RANDDOUBLE() * (c_max-c_min) + c_min;
+    double alpha  = RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
+    double beta   = RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
+    double gamma  = RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
+
+    // Create crystal
+    MolecularXtal *mxtal	= new MolecularXtal(a, b, c, alpha, beta, gamma);
+    QWriteLocker locker (mxtal->lock());
+
+    mxtal->setStatus(MolecularXtal::Empty);
+
+    if (using_fixed_volume) {
+      mxtal->setVolume(vol_fixed);
+    }
+
+    // Populate crystal
+    //  Calculate maximum translation (cell diagonal length)
+    const std::vector<OpenBabel::vector3> obvecs =
+        mxtal->OBUnitCell()->GetCellVectors();
+    Q_ASSERT(obvecs.size() == 3);
+    const OpenBabel::vector3 obcellDiagonal = obvecs[0]+obvecs[1]+obvecs[2];
+    const double unitCellDiagonal = obcellDiagonal.length();
+
+    Eigen::Matrix3d rowVectors;
+    rowVectors.row(0) = Eigen::Vector3d(obvecs[0].AsArray());
+    rowVectors.row(1) = Eigen::Vector3d(obvecs[1].AsArray());
+    rowVectors.row(2) = Eigen::Vector3d(obvecs[2].AsArray());
+
+    for (QList<MolecularCompStruct>::const_iterator
+         it = mcomp.constBegin(), it_end = mcomp.constEnd();
+         it != it_end; ++it) {
+      for (int i = 0; i < it->quantity; ++i) {
+        SubMolecule * sub = it->source->getRandomSubMolecule();
+        QList<Atom*> sAtoms = sub->atoms();
+        // Attempt to add submolecule using various translations
+        //! @todo There needs to be a limit on the number of iterations here
+        while (true) { // Use break to pop out of this loop
+          Eigen::Vector3d trans (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          trans = mxtal->fracToCart(trans);
+          sub->setCenter(trans);
+
+          // Compare the distances between the atoms in sub with the atoms in
+          // mxtal. If they meet the minimum radius restrictions, add sub.
+          if (this->using_interatomicDistanceLimit) {
+            int atom1, atom2;
+            double IAD;
+            if (mxtal->checkInteratomicDistances(
+                  this->comp, sAtoms, &atom1, &atom2, &IAD)) {
+              mxtal->addSubMolecule(sub);
+              break;
+            }
+            else /* mxtal->checkInteratomicDistances(...) */ {
+              qDebug() << "Cannot add submolecule; bad IAD:" << IAD;
+            }
+          }
+          // If we aren't using interatomic distance limits, just add sub.
+          else /* (!this->using_interatomicDistanceLimit) */ {
+            mxtal->addSubMolecule(sub);
+            break;
+          }
+        } // end while(true)
+      } // end for quantity
+    } // end for source
+
+    // Set up geneology info
+    mxtal->setGeneration(generation);
+    mxtal->setIDNumber(id);
+    mxtal->setParents("Randomly generated");
+    mxtal->setStatus(MolecularXtal::WaitingForOptimization);
+
+    return mxtal;
+  }
+
   void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation,
                                      const QString &parents)
-    {
+  {
+    MolecularXtal *mxtal = qobject_cast<MolecularXtal*>(xtal);
+
     xtalInitMutex->lock();
     QList<Structure*> allStructures = m_queue->lockForNaming();
     Structure *structure;
@@ -467,7 +790,6 @@ namespace XtalOpt {
     }
 
     QWriteLocker xtalLocker (xtal->lock());
-    xtal->moveToThread(m_queueThread);
     xtal->setIDNumber(id);
     xtal->setGeneration(generation);
     xtal->setParents(parents);
@@ -489,6 +811,7 @@ namespace XtalOpt {
     xtal->setFileName(locpath_s);
     xtal->setRempath(rempath_s);
     xtal->setCurrentOptStep(1);
+    xtal->resetOptimizerLookupTable();
     // If none of the cell parameters are fixed, perform a normalization on
     // the lattice (currently a Niggli reduction)
     if (fabs(a_min     - a_max)     > 0.01 &&
@@ -500,23 +823,108 @@ namespace XtalOpt {
       xtal->fixAngles();
     }
     xtal->findSpaceGroup(tol_spg);
+
+    // If this is a molecular xtal, flag it for preoptimization
+    if (mxtal != NULL) {
+      if (this->usePreopt) {
+        mxtal->setNeedsPreoptimization(true);
+      }
+    }
+
     xtalLocker.unlock();
     xtal->update();
     m_queue->unlockForNaming(xtal);
     xtalInitMutex->unlock();
+
   }
 
   void XtalOpt::generateNewStructure()
   {
+    if (m_isDestroying)
+      return;
+
     // Generate in background thread:
     QtConcurrent::run(this, &XtalOpt::generateNewStructure_);
   }
 
   void XtalOpt::generateNewStructure_()
   {
-    Xtal *newXtal = generateNewXtal();
-    initializeAndAddXtal(newXtal, newXtal->getGeneration(),
-                         newXtal->getParents());
+    if (this->isMolecularXtalSearch()) {
+      MolecularXtal *newMXtal = generateNewMXtal();
+      if (newMXtal == NULL || m_isDestroying)
+        return;
+      initializeAndAddXtal(newMXtal, newMXtal->getGeneration(),
+                           newMXtal->getParents());
+    }
+    else {
+      Xtal *newXtal = generateNewXtal();
+      initializeAndAddXtal(newXtal, newXtal->getGeneration(),
+                           newXtal->getParents());
+    }
+  }
+
+  void XtalOpt::preoptimizeStructure(Structure *s)
+  {
+    if (s == NULL) {
+      qWarning() << Q_FUNC_INFO << "NULL argument.";
+      return;
+    }
+
+    MolecularXtal *mxtal = qobject_cast<MolecularXtal*>(s);
+    if (mxtal == NULL) {
+      qWarning() << "No preoptimization method implemented for"
+                 << s->metaObject()->className();
+      return;
+    }
+
+    QtConcurrent::run(this, &XtalOpt::preoptimizeMXtal, mxtal);
+  }
+
+  void XtalOpt::preoptimizeMXtal(MolecularXtal *mxtal)
+  {
+    QWriteLocker locker (mxtal->lock());
+
+    if (!mxtal->needsPreoptimization())
+      return;
+
+    mxtal->emitPreoptimizationStarted();
+
+    mxtal->setNeedsPreoptimization(false);
+
+    mxtal->wrapAtomsToCell();
+
+    // Rough preoptimization
+    MolecularXtalOptimizer mxtalOpt (this, sOBMutex);
+    mxtalOpt.setDebug(this->mpo_debug);
+    mxtalOpt.setMXtal(mxtal);
+    mxtalOpt.setEnergyConvergence(this->mpo_econv);
+    mxtalOpt.setNumberOfGeometrySteps(this->mpo_maxSteps);
+    mxtalOpt.setSuperCellUpdateInterval(this->mpo_sCUpdateInterval);
+    mxtalOpt.setVDWCutoff(this->mpo_vdwCut);
+    mxtalOpt.setElectrostaticCutoff(this->mpo_eleCut);
+    mxtalOpt.setCutoffUpdateInterval(this->mpo_cutoffUpdateInterval);
+    mxtalOpt.setup();
+
+    mxtal->startOptTimer();
+    locker.unlock();
+    mxtalOpt.run();
+    locker.relock();
+    mxtal->stopOptTimer();
+
+    mxtal->setStatus(MolecularXtal::Updating);
+
+    if (mxtalOpt.isConverged() || mxtalOpt.reachedStepLimit()) {
+      mxtalOpt.updateMXtalCoords();
+      mxtal->wrapAtomsToCell();
+    }
+    else {
+      qWarning() << "Preoptimization failed for" << mxtal->getIDString()
+                 << ". Continuing with full optimization.";
+    }
+
+    mxtalOpt.releaseMXtal(); // Under writelock on mxtal->lock(), ok to call
+
+    mxtal->emitPreoptimizationFinished();
   }
 
   Xtal* XtalOpt::generateNewXtal()
@@ -724,6 +1132,226 @@ namespace XtalOpt {
     return xtal;
   }
 
+  MolecularXtal* XtalOpt::generateNewMXtal()
+  {
+    // Get all optimized structures
+    QList<Structure*> structures = m_queue->getAllOptimizedStructures();
+
+    // Check to see if there are enough optimized structure to perform
+    // genetic operations
+    if (structures.size() < 3) {
+      MolecularXtal *mxtal = 0;
+      while (!checkXtal(mxtal)) {
+        if (mxtal) {
+          mxtal->deleteLater();
+          mxtal = NULL;
+        }
+        mxtal = generateRandomMXtal(1, 0);
+      }
+      mxtal->setParents(mxtal->getParents() + " (too few optimized structures "
+                       "to generate offspring)");
+      return mxtal;
+    }
+
+    // Sort structure list
+    Structure::sortByEnthalpy(&structures);
+
+    // Trim list
+    // Remove all but (popSize + 1). The "+ 1" will be removed
+    // during probability generation.
+    while ( static_cast<uint>(structures.size()) > popSize + 1 ) {
+      structures.removeLast();
+    }
+
+    // Make list of weighted probabilities based on enthalpy values
+    QList<double> probs = getProbabilityList(structures);
+
+    // Cast Structures into MXtals
+    QList<MolecularXtal*> mxtals;
+#if QT_VERSION >= 0x040700
+    mxtals.reserve(structures.size());
+#endif // QT_VERSION
+    for (int i = 0; i < structures.size(); ++i) {
+      mxtals.append(qobject_cast<MolecularXtal*>(structures.at(i)));
+    }
+
+    // Initialize loop vars
+    MolecularXtal *mxtal = NULL;
+
+    // Perform operation until xtal is valid:
+    while (!checkXtal(mxtal)) {
+      // First delete any previous failed structure in xtal
+      if (mxtal) {
+        mxtal->deleteLater();
+        mxtal = NULL;
+      }
+
+      // Try 5 times to get a good structure from the selected
+      // operation. If not possible, send a warning to the log and continue
+      // trying
+      int attemptCount = 0;
+      while (attemptCount < 5 && !checkXtal(mxtal)) {
+        attemptCount++;
+        if (mxtal) {
+          delete mxtal;
+          mxtal = NULL;
+        }
+
+        // Select parent
+        int ind;
+        MolecularXtal *parentMXtal = NULL;
+        // Select structures
+        double r = RANDDOUBLE();
+        for (ind = 0; ind < probs.size(); ind++)
+          if (r < probs.at(ind)) break;
+
+        parentMXtal  = mxtals.at(ind);
+
+        // Determine if the cell is fixed
+        bool cellIsFixed = false;
+        if (fabs(a_min     - a_max)     < 0.01 ||
+            fabs(b_min     - b_max)     < 0.01 ||
+            fabs(c_min     - c_max)     < 0.01 ||
+            fabs(alpha_min - alpha_max) < 0.01 ||
+            fabs(beta_min  - beta_max)  < 0.01 ||
+            fabs(gamma_min - gamma_max) < 0.01)
+          cellIsFixed = true;
+
+        // Only allow one mutation at a time. The forcefields can consume a
+        // *lot* of memory for these large supercells.
+        QMutexLocker limitLocker (&m_mxtalMutationLimiter);
+
+        // Bail out early if we're destroying the process
+        if (m_isDestroying)
+          return NULL;
+
+        MolecularXtalMutator mutator (parentMXtal, this->sOBMutex);
+        m_mutatorsMutex.lock();
+        m_mutators.append(&mutator);
+        m_mutatorsMutex.unlock();
+
+        mutator.setDebug(true);
+        if (!cellIsFixed)
+          mutator.setNumberOfStrains(this->mga_numLatticeSamples);
+        else {
+          if (this->mga_numLatticeSamples != 0 ||
+              !this->mga_warnedNoStrainOnFixedCell) {
+            this->warning("Refusing to mutate lattice, at least one cell "
+                          "parameter is fixed.");
+            this->mga_warnedNoStrainOnFixedCell = true;
+          }
+          mutator.setNumberOfStrains(0);
+        }
+        mutator.setStrainSigmaRange(this->mga_strainMin,
+                                    this->mga_strainMax);
+        mutator.setNumMovers(this->mga_numMovers);
+        mutator.setNumDisplacements(this->mga_numDisplacements);
+        mutator.setRotationResolution(this->mga_rotResDeg * DEG_TO_RAD);
+        if (cellIsFixed || this->using_fixed_volume) {
+          if (this->mga_numVolSamples != 0) {
+            if (cellIsFixed && !this->mga_warnedNoVolumeSamplesOnFixedCell) {
+              this->warning("Refusing to mutate cell volume, at least one cell "
+                            "parameter is fixed.");
+              this->mga_warnedNoVolumeSamplesOnFixedCell = true;
+            }
+            if (this->using_fixed_volume &&
+                !this->mga_warnedNoVolumeSamplesOnFixedVolume) {
+              this->warning("Refusing to mutate cell volume, volume is fixed.");
+              this->mga_warnedNoVolumeSamplesOnFixedVolume = true;
+            }
+          }
+          mutator.setNumberOfVolumeSamples(0);
+        }
+        else {
+          mutator.setNumberOfVolumeSamples(this->mga_numVolSamples);
+          mutator.setMinimumVolumeFraction(this->mga_volMinFrac);
+          mutator.setMaximumVolumeFraction(this->mga_volMaxFrac);
+        }
+
+        // Attempt to make the best mutation possible if it hasn't been done
+        // yet
+        if (!parentMXtal->hasBestOffspring()) {
+          mutator.setCreateBest(true);
+          parentMXtal->setHasBestOffspring(true);
+        }
+
+        // Build a supercell to begin with or not
+        bool startWithSuperCell = (RANDDOUBLE() < 0.5);
+        mutator.setStartWithSuperCell(startWithSuperCell);
+
+        // Setup progress bar
+        bool notify = m_dialog->startProgressUpdate(
+              tr("Mutating structure %1...").arg(parentMXtal->getIDString()),
+              0, 100);
+        if (notify) {
+          connect(&mutator, SIGNAL(progressUpdate(int)),
+                  m_dialog, SLOT(updateProgressValue(int)),
+                  Qt::DirectConnection); // slot handles threading internally
+        }
+
+        mutator.mutate();
+        if (notify) {
+          mutator.disconnect(m_dialog);
+          m_dialog->stopProgressUpdate();
+        }
+
+        m_mutatorsMutex.lock();
+        m_mutators.removeOne(&mutator);
+        m_mutatorsMutex.unlock();
+
+        // We're exiting if the mutator has aborted
+        if (mutator.isAborted() || m_isDestroying)
+          return NULL;
+
+        mxtal = mutator.getOffspring();
+
+        // If the offspring is identical to the parent, retry:
+        if (*mxtal == *parentMXtal) {
+          this->warning("Offspring mxtal is identical to parent. Retrying.");
+          delete mxtal;
+          mxtal = NULL;
+          continue;
+        }
+
+        // Assign id
+        int gen = mxtal->getGeneration();
+        int id = 0;
+        for (QList<MolecularXtal*>::const_iterator it = mxtals.constBegin(),
+             it_end = mxtals.constEnd(); it != it_end; ++it) {
+          (*it)->lock()->lockForRead();
+          const int curGen = (*it)->getGeneration();
+          const int curId = (*it)->getIDNumber();
+          (*it)->lock()->unlock();
+          if (curGen == gen &&
+              curId  >= id) {
+            id = curId + 1;
+          }
+        }
+        mxtal->setIDNumber(id);
+      }
+      if (attemptCount >= 5) {
+#if 0 // old operators...
+        QString opStr;
+        switch (op) {
+        case MXOP_Crossover: opStr = "crossover"; break;
+        case MXOP_Reconf:    opStr = "reconf"; break;
+        case MXOP_Swirl:     opStr = "swirl"; break;
+        default:             opStr = "(unknown)"; break;
+        }
+        warning(tr("Unable to perform operation %1 after 1000 tries. "
+                   "Reselecting operator...").arg(opStr));
+#endif
+        this->warning("Five failed attempts to create offspring logged."
+                      " Check/loosen the system constraints.");
+        if (this->using_interatomicDistanceLimit && this->usePreopt)
+          this->warning("Note: Interatomic distance contraints are usually "
+                        "unnecessary when using a preoptimization step.");
+      }
+    }
+
+    return mxtal;
+  }
+
   bool XtalOpt::checkLimits() {
     if (a_min > a_max) {
       warning("XtalOptRand::checkLimits error: Illogical A limits.");
@@ -884,6 +1512,19 @@ namespace XtalOpt {
       }
       return false;
     }
+    // Also check atom positions
+    foreach (const Atom *atom, xtal->atoms()) {
+      if (GS_IS_NAN_OR_INF(atom->pos()->x()) ||
+          GS_IS_NAN_OR_INF(atom->pos()->y()) ||
+          GS_IS_NAN_OR_INF(atom->pos()->z()) ) {
+        qDebug() << "XtalOpt::checkXtal: A coordinate is either nan or "
+                    "inf. Discarding.";
+        if (err != NULL) {
+          *err = "A coordinate is infinite or not a number.";
+        }
+        return false;
+      }
+    }
 
     // If no cell parameters are fixed, normalize lattice
     if (fabs(a + b + c + alpha + beta + gamma) < 1e-8) {
@@ -930,12 +1571,49 @@ namespace XtalOpt {
         }
         return false;
       }
+      // If this is a molecularxtal, also check that all atoms are
+      // sufficiently far from each bond:
+      if (MolecularXtal *mxtal = qobject_cast<MolecularXtal*>(xtal)) {
+        if (!mxtal->checkAtomToBondDistances(0.25)) {
+          qDebug() << "Discarding structure -- an atom is too close to a bond.";
+          if (err != NULL) {
+            *err = "A non-bonded atom is too close to a bond.";
+          }
+          return false;
+        }
+      }
     }
 
     // Xtal is OK!
     if (err != NULL) {
       *err = "";
     }
+    return true;
+  }
+
+  bool XtalOpt::checkStepOptimizedStructure(Structure *s, QString *err)
+  {
+    if (s == NULL) {
+      if (err != NULL) {
+        *err = "NULL pointer give for structure.";
+      }
+      return false;
+    }
+    // Only currently implemented for molecular xtals:
+    MolecularXtal *mxtal = qobject_cast<MolecularXtal*>(s);
+
+    if (mxtal == NULL) {
+      return true;
+    }
+
+    // Check continuity of submolecular units
+    if (!mxtal->verifySubMolecules()) {
+      if (err != NULL) {
+        *err = "Molecular Xtal exploded (unreasonable bonds post-optimization)";
+      }
+      return false;
+    }
+
     return true;
   }
 
@@ -948,8 +1626,12 @@ namespace XtalOpt {
     Xtal *xtal = qobject_cast<Xtal*>(structure);
     for (int line_ind = 0; line_ind < list.size(); line_ind++) {
       origLine = line = list.at(line_ind);
-      interpretKeyword_base(line, structure);
+      // Try XtalOpt first:
       interpretKeyword(line, structure);
+      // If no match, try OptBase:
+      if (line == origLine) {
+        interpretKeyword_base(line, structure);
+      }
       if (line != origLine) { // Line was a keyword
         list.replace(line_ind, line);
       }
@@ -964,6 +1646,7 @@ namespace XtalOpt {
   {
     QString rep = "";
     Xtal *xtal = qobject_cast<Xtal*>(structure);
+    MolecularXtal *mxtal = qobject_cast<MolecularXtal*>(xtal);
 
     // Xtal specific keywords
     if (line == "a")                    rep += QString::number(xtal->getA());
@@ -978,29 +1661,81 @@ namespace XtalOpt {
     else if (line == "volume")          rep += QString::number(xtal->getVolume());
     else if (line == "coordsFrac") {
       QList<Atom*> atoms = structure->atoms();
-      QList<Atom*>::const_iterator it;
-      for (it  = atoms.begin();
-           it != atoms.end();
-           it++) {
-        const Eigen::Vector3d coords = xtal->cartToFrac(*((*it)->pos()));
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
+      // If this is a molecularxtal, use the coherent coordinates of each
+      // submolecule
+      QVector<Eigen::Vector3d> cohVecs;
+      if (mxtal != NULL) {
+        atoms.clear();
+#if QT_VERSION > 0x040700
+        atoms.reserve(mxtal->numAtoms());
+#endif
+        cohVecs.resize(mxtal->numAtoms());
+        QVector<Eigen::Vector3d> subVecs;
+        subVecs.reserve(mxtal->numAtoms());
+        for (int i = 0; i < mxtal->numSubMolecules(); ++i) {
+          SubMolecule *sub = mxtal->subMolecule(i);
+          subVecs = sub->getCoherentCoordinates();
+          Q_ASSERT_X(subVecs.size() == sub->numAtoms(), Q_FUNC_INFO,
+                     "sub->getCoherentCoordinates() did not return the "
+                     "correct number of vectors.");
+          qCopy(subVecs.constBegin(), subVecs.constEnd(),
+                cohVecs.begin() + atoms.size());
+          atoms.append(sub->atoms());
+        }
+      }
+      for (int i = 0; i < atoms.size(); ++i) {
+        Atom *atom = atoms[i];
+        const Eigen::Vector3d coords = (mxtal == NULL)
+            ? xtal->cartToFrac(*atom->pos())
+            : mxtal->cartToFrac(cohVecs.at(i));
+        rep += QString(OpenBabel::etab.GetSymbol(atom->atomicNumber())) + " ";
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
         rep += QString::number(coords.z()) + "\n";
+        lut->insert(++optIndex, atom->index());
       }
     }
     else if (line == "coordsFracId") {
       QList<Atom*> atoms = structure->atoms();
-      QList<Atom*>::const_iterator it;
-      for (it  = atoms.begin();
-           it != atoms.end();
-           it++) {
-        const Eigen::Vector3d coords = xtal->cartToFrac(*(*it)->pos());
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
-        rep += QString::number((*it)->atomicNumber()) + " ";
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
+      // If this is a molecularxtal, use the coherent coordinates of each
+      // submolecule
+      QVector<Eigen::Vector3d> cohVecs;
+      if (mxtal != NULL) {
+        atoms.clear();
+#if QT_VERSION > 0x040700
+        atoms.reserve(mxtal->numAtoms());
+#endif
+        cohVecs.resize(mxtal->numAtoms());
+        QVector<Eigen::Vector3d> subVecs;
+        subVecs.reserve(mxtal->numAtoms());
+        for (int i = 0; i < mxtal->numSubMolecules(); ++i) {
+          SubMolecule *sub = mxtal->subMolecule(i);
+          subVecs = sub->getCoherentCoordinates();
+          Q_ASSERT_X(subVecs.size() == sub->numAtoms(), Q_FUNC_INFO,
+                     "sub->getCoherentCoordinates() did not return the "
+                     "correct number of vectors.");
+          qCopy(subVecs.constBegin(), subVecs.constEnd(),
+                cohVecs.begin() + atoms.size());
+          atoms.append(sub->atoms());
+        }
+      }
+      for (int i = 0; i < atoms.size(); ++i) {
+        Atom *atom = atoms[i];
+        const Eigen::Vector3d coords = (mxtal == NULL)
+            ? xtal->cartToFrac(*atom->pos())
+            : mxtal->cartToFrac(cohVecs.at(i));
+        rep += QString(OpenBabel::etab.GetSymbol(atom->atomicNumber())) +" ";
+        rep += QString::number(atom->atomicNumber()) + " ";
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
         rep += QString::number(coords.z()) + "\n";
+        lut->insert(++optIndex, atom->index());
       }
     }
     else if (line == "gulpFracShell") {
@@ -1071,6 +1806,77 @@ namespace XtalOpt {
         rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
       }
     }
+    else if (line == "gulpConnect") {
+      QList<Bond*> bonds = xtal->bonds();
+      const char *singleBond = "single";
+      const char *doubleBond = "double";
+      const char *tripleBond = "triple";
+      const char *bondOrder = NULL;
+      for (QList<Bond*>::const_iterator it = bonds.constBegin(),
+           it_end = bonds.constEnd(); it != it_end; ++it) {
+        switch ((*it)->order()) {
+        case 1:
+          bondOrder = singleBond;
+          break;
+        case 2:
+          bondOrder = doubleBond;
+          break;
+        case 3:
+          bondOrder = tripleBond;
+          break;
+        default:
+          this->warning("Unrecognized bond order (" +
+                        QString::number((*it)->order()) + ")");
+          bondOrder = NULL;
+          break;
+        }
+
+        rep += QString("connect %1 %2 %3\n")
+            .arg((*it)->beginAtom()->index() + 1)
+            .arg((*it)->endAtom()->index() + 1)
+            .arg((bondOrder) ? QString(bondOrder) : "unrecognized");
+      }
+    }
+    else if (line == "mopacCoordsAndCell") {
+      std::vector<OpenBabel::vector3> obVecs =
+          xtal->OBUnitCell()->GetCellVectors();
+      const Eigen::Vector3d *firstAtomPos = NULL;
+      Eigen::Vector3d v1 (obVecs.at(0).AsArray());
+      Eigen::Vector3d v2 (obVecs.at(1).AsArray());
+      Eigen::Vector3d v3 (obVecs.at(2).AsArray());
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
+      for (int i = 0; i < xtal->numAtoms(); ++i) {
+        Atom *atom = xtal->atom(i);
+        lut->insert(++optIndex, atom->index());
+
+        const Eigen::Vector3d *tmpVec = atom->pos();
+        if (firstAtomPos == NULL)
+          firstAtomPos = tmpVec;
+        rep += QString("%1  %2  %3  %4\n").arg(atom->atomicNumber(), 3)
+            .arg(tmpVec->x(), 12, 'f', 8)
+            .arg(tmpVec->y(), 12, 'f', 8)
+            .arg(tmpVec->z(), 12, 'f', 8);
+      }
+      if (firstAtomPos != NULL) {
+        v1 += *firstAtomPos;
+        v2 += *firstAtomPos;
+        v3 += *firstAtomPos;
+        rep += QString("Tv  %1  %2  %3\n"
+                       "Tv  %4  %5  %6\n"
+                       "Tv  %7  %8  %9\n")
+            .arg(v1.x(), 12, 'f', 8)
+            .arg(v1.y(), 12, 'f', 8)
+            .arg(v1.z(), 12, 'f', 8)
+            .arg(v2.x(), 12, 'f', 8)
+            .arg(v2.y(), 12, 'f', 8)
+            .arg(v2.z(), 12, 'f', 8)
+            .arg(v3.x(), 12, 'f', 8)
+            .arg(v3.y(), 12, 'f', 8)
+            .arg(v3.z(), 12, 'f', 8);
+      }
+    }
     else if (line == "POSCAR") {
       // Comment line -- set to composition then filename
       // Construct composition
@@ -1103,12 +1909,18 @@ namespace XtalOpt {
       // Use fractional coordinates:
       rep += "Direct\n";
       // Coordinates of each atom (sorted alphabetically by symbol)
-      QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
-      for (int i = 0; i < coords.size(); i++) {
+      QList<Atom*> atoms = xtal->getAtomsSortedBySymbol();
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
+      Eigen::Vector3d vec;
+      for (int i = 0; i < atoms.size(); i++) {
+        vec = xtal->cartToFrac(*atoms[i]->pos());
         rep += QString("  %1 %2 %3\n")
-          .arg(coords[i].x(), 12, 'f', 8)
-          .arg(coords[i].y(), 12, 'f', 8)
-          .arg(coords[i].z(), 12, 'f', 8);
+          .arg(vec.x(), 12, 'f', 8)
+          .arg(vec.y(), 12, 'f', 8)
+          .arg(vec.z(), 12, 'f', 8);
+        lut->insert(i, atoms[i]->index());
       }
     } // End %POSCAR%
 
@@ -1135,6 +1947,7 @@ namespace XtalOpt {
     out
       << "Crystal specific information:\n"
       << "%POSCAR% -- VASP poscar generator\n"
+      << "%mopacCoordsAndCell% -- MOPAC atom and unit cell specification\n"
       << "%coordsFrac% -- fractional coordinate data\n\t[symbol] [x] [y] [z]\n"
       << "%coordsFracId% -- fractional coordinate data with atomic number\n\t[symbol] [atomic number] [x] [y] [z]\n"
       << "%gulpFracShell% -- fractional coordinates for use in GULP core/shell calculations:\n"
@@ -1149,6 +1962,7 @@ namespace XtalOpt {
       << "%cellVector1Bohr% -- First cell vector in Bohr\n"
       << "%cellVector2Bohr% -- Second cell vector in Bohr\n"
       << "%cellVector3Bohr% -- Third cell vector in Bohr\n"
+      << "%gulpConnect% -- bonding information for GULP\n"
       << "%a% -- Lattice parameter A\n"
       << "%b% -- Lattice parameter B\n"
       << "%c% -- Lattice parameter C\n"
@@ -1235,11 +2049,29 @@ namespace XtalOpt {
     newFileBase.remove("xtalopt.state.tmp");
     newFileBase.remove("xtalopt.state");
 
-    // TODO For some reason, the local view of "this" is not changed
-    // when the settings are loaded in the following line. The tabs
-    // are loading the settings and setting the variables in their
-    // scope, but it isn't changing it here. Caching issue maybe?
+    // Is this a molecular search? Check the setting here, see note above --
+    // The ivars of this aren't always updated immediately
+    bool isMolSearch =
+        settings->value("xtalopt/init/isMolecularXtalSearch", false).toBool();
+
+    debug(tr("Resuming %1 XtalOpt session in '%2' (%3) readOnly = %4")
+          .arg((isMolSearch) ? "molecular" : "ionic")
+          .arg(filename)
+          .arg((m_optimizer) ? m_optimizer->getIDString()
+                             : "No set optimizer")
+          .arg( (readOnly) ? "true" : "false"));
+
+    // Load submoleculesources for molecular searches before reading other
+    // settings. Otherwise Bad Things(TM) will happen, like VASP POTCARs
+    // getting clear.
+    if (isMolSearch) {
+      this->readSubMoleculeSources(filename);
+    }
+
+    // Read settings
     m_dialog->readSettings(filename);
+
+    QApplication::processEvents(QEventLoop::AllEvents);
 
 #ifdef ENABLE_SSH
     // Create the SSHManager if running remotely
@@ -1250,12 +2082,6 @@ namespace XtalOpt {
       }
     }
 #endif // ENABLE_SSH
-
-    debug(tr("Resuming XtalOpt session in '%1' (%2) readOnly = %3")
-          .arg(filename)
-          .arg((m_optimizer) ? m_optimizer->getIDString()
-                             : "No set optimizer")
-          .arg( (readOnly) ? "true" : "false"));
 
     // Xtals
     // Initialize progress bar:
@@ -1269,11 +2095,23 @@ namespace XtalOpt {
       clearJobIDs = true;
     }
     // Load xtals
-    Xtal* xtal;
+    unsigned int numAtoms = 0;
+    if (this->isMolecularXtalSearch()) {
+      foreach (const MolecularCompStruct cur, this->mcomp) {
+        numAtoms += cur.quantity * cur.source->numAtoms();
+      }
+    }
+    else {
+      foreach (int key, this->comp.keys()) {
+        numAtoms += comp.value(key).quantity;
+      }
+    }
     QList<uint> keys = comp.keys();
     QList<Structure*> loadedStructures;
     QString xtalStateFileName;
     for (int i = 0; i < xtalDirs.size(); i++) {
+      Xtal *xtal = NULL;
+      MolecularXtal *mxtal = NULL;
       m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...")
                                     .arg(i+1).arg(xtalDirs.size()));
       m_dialog->updateProgressValue(i);
@@ -1286,15 +2124,18 @@ namespace XtalOpt {
         xtalStateFileName = dataPath + "/" + xtalDirs.at(i) + "/xtal.state";
       }
 
-      xtal = new Xtal();
+      if (this->isMolecularXtalSearch()) {
+        xtal = mxtal = new MolecularXtal();
+      }
+      else {
+        xtal = new Xtal();
+      }
       QWriteLocker locker (xtal->lock());
       xtal->moveToThread(m_tracker->thread());
       xtal->setupConnections();
       // Add empty atoms to xtal, updateXtal will populate it
-      for (int j = 0; j < keys.size(); j++) {
-        unsigned int quantity = comp.value(keys.at(j)).quantity;
-        for (uint k = 0; k < quantity; k++)
-          xtal->addAtom();
+      for (int j = 0; j < numAtoms; j++) {
+        xtal->addAtom();
       }
       xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
       xtal->readSettings(xtalStateFileName);
@@ -1316,6 +2157,8 @@ namespace XtalOpt {
                  "safely ignore this message.")
               .arg(m_optimizer->getIDString())
               .arg(xtal->fileName()));
+        xtal->deleteLater();
+        xtal = mxtal = NULL;
         continue;
       }
 
@@ -1325,6 +2168,19 @@ namespace XtalOpt {
       xtal->setOptTimerEnd(endtime);
       if (clearJobIDs) {
         xtal->setJobID(0);
+      }
+      if (mxtal != NULL) {
+        mxtal->readMolecularXtalSettings(xtalStateFileName);
+        if (mxtal->numSubMolecules() == 0) {
+          error(tr("Error, molecular subunit data not found in "
+                   "%1.\n\nThis could be a result of resuming a structure "
+                   "that has not yet done any local optimizations. If so, "
+                   "safely ignore this message.")
+                .arg(filename));
+          mxtal->deleteLater();
+          xtal = mxtal = NULL;
+          continue;
+        }
       }
       locker.unlock();
       loadedStructures.append(qobject_cast<Structure*>(xtal));
@@ -1398,6 +2254,54 @@ namespace XtalOpt {
     return true;
   }
 
+  void XtalOpt::readSubMoleculeSources(const QString &filename)
+  {
+    if (filename.isEmpty()) {
+      return;
+    }
+
+    SETTINGS(filename);
+
+    settings->beginGroup("xtalopt");
+    this->mcomp.clear();
+    int numSubMolSources = settings->beginReadArray("subMoleculeSources");
+    for (int i = 0; i < numSubMolSources; ++i) {
+      settings->setArrayIndex(i);
+      MolecularCompStruct cur;
+      cur.source = new SubMoleculeSource ();
+      cur.quantity = settings->value("quantity").toUInt();
+      settings->beginGroup("source");
+      cur.source->readFromSettings(settings);
+      settings->endGroup();
+      mcomp.append(cur);
+    }
+    settings->endArray();
+    settings->endGroup();
+  }
+
+  void XtalOpt::writeSubMoleculeSources(const QString &filename)
+  {
+    if (filename.isEmpty()) {
+      return;
+    }
+
+    SETTINGS(filename);
+
+    int numSubMolSources = this->mcomp.size();
+
+    settings->beginGroup("xtalopt");
+    settings->beginWriteArray("subMoleculeSources", numSubMolSources);
+    for (int i = 0; i < numSubMolSources; ++i) {
+      settings->setArrayIndex(i);
+      settings->setValue("quantity", mcomp[i].quantity);
+      settings->beginGroup("source");
+      mcomp[i].source->writeToSettings(settings);
+      settings->endGroup();
+    }
+    settings->endArray();
+    settings->endGroup();
+  }
+
   void XtalOpt::resetSpacegroups() {
     if (isStarting) {
       return;
@@ -1444,7 +2348,7 @@ namespace XtalOpt {
     double tol_len, tol_ang;
   };
 
-  void checkIfDups(dupCheckStruct & st)
+  void checkIfDupXtals(dupCheckStruct & st)
   {
     Xtal *kickXtal, *keepXtal;
     st.i->lock()->lockForRead();
@@ -1469,6 +2373,37 @@ namespace XtalOpt {
     }
     st.i->lock()->unlock();
     st.j->lock()->unlock();
+  }
+
+  void checkIfDupMXtals(dupCheckStruct & st)
+  {
+    MolecularXtal *kickXtal;
+    MolecularXtal *keepXtal;
+    MolecularXtal *mx_i = static_cast<MolecularXtal*>(st.i);
+    MolecularXtal *mx_j = static_cast<MolecularXtal*>(st.j);
+
+    mx_i->lock()->lockForRead();
+    mx_j->lock()->lockForRead();
+    if (mx_i->compareCoordinates(*mx_j, st.tol_len, st.tol_ang)) {
+      // Mark the newest mxtal as a duplicate of the oldest. This keeps the
+      // lowest-energy plot trace accurate.
+      if (mx_i->getIndex() > mx_j->getIndex()) {
+        kickXtal = mx_i;
+        keepXtal = mx_j;
+      }
+      else {
+        kickXtal = mx_j;
+        keepXtal = mx_i;
+      }
+      kickXtal->lock()->unlock();
+      kickXtal->lock()->lockForWrite();
+      kickXtal->setStatus(Xtal::Duplicate);
+      kickXtal->setDuplicateString(QString("%1x%2")
+                                   .arg(keepXtal->getGeneration())
+                                   .arg(keepXtal->getIDNumber()));
+    }
+    mx_i->lock()->unlock();
+    mx_j->lock()->unlock();
   }
 
   void XtalOpt::checkForDuplicates() {
@@ -1527,7 +2462,10 @@ namespace XtalOpt {
       (*xi)->lock()->unlock();
     }
 
-    QtConcurrent::blockingMap(sts, checkIfDups);
+    if (this->isMolecularXtalSearch())
+      QtConcurrent::blockingMap(sts, checkIfDupMXtals);
+    else
+      QtConcurrent::blockingMap(sts, checkIfDupXtals);
 
     emit refreshAllStructureInfo();
   }

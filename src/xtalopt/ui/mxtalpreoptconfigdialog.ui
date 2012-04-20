@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MXtalPreoptConfigDialog</class>
+ <widget class="QDialog" name="MXtalPreoptConfigDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Preoptimization settings</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="1" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Energy convergence (kcal/mol):</string>
+     </property>
+     <property name="buddy">
+      <cstring>spin_econv</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QSpinBox" name="spin_maxSteps">
+     <property name="suffix">
+      <string> steps</string>
+     </property>
+     <property name="maximum">
+      <number>2500</number>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Max steps:</string>
+     </property>
+     <property name="buddy">
+      <cstring>spin_maxSteps</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="16" column="0" colspan="2">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+   <item row="10" column="0">
+    <widget class="QLabel" name="label_6">
+     <property name="text">
+      <string>Electrostatic cutoff (Å):</string>
+     </property>
+     <property name="buddy">
+      <cstring>spin_eleCut</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QSpinBox" name="spin_sCUpdateInterval">
+     <property name="suffix">
+      <string> steps</string>
+     </property>
+     <property name="maximum">
+      <number>20</number>
+     </property>
+    </widget>
+   </item>
+   <item row="9" column="0">
+    <widget class="QLabel" name="label_5">
+     <property name="text">
+      <string>van der Waals cutoff:</string>
+     </property>
+     <property name="buddy">
+      <cstring>spin_vdwCut</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QSpinBox" name="spin_econv">
+     <property name="suffix">
+      <string/>
+     </property>
+     <property name="prefix">
+      <string>1e</string>
+     </property>
+     <property name="minimum">
+      <number>-8</number>
+     </property>
+     <property name="maximum">
+      <number>2</number>
+     </property>
+    </widget>
+   </item>
+   <item row="9" column="1">
+    <widget class="QDoubleSpinBox" name="spin_vdwCut">
+     <property name="suffix">
+      <string> Å</string>
+     </property>
+     <property name="maximum">
+      <double>50.000000000000000</double>
+     </property>
+    </widget>
+   </item>
+   <item row="11" column="1">
+    <widget class="QSpinBox" name="spin_cutoffUpdateInterval">
+     <property name="suffix">
+      <string> steps</string>
+     </property>
+     <property name="maximum">
+      <number>20</number>
+     </property>
+    </widget>
+   </item>
+   <item row="12" column="0">
+    <widget class="QCheckBox" name="cb_updateWithSc">
+     <property name="text">
+      <string>Update cutoffs only with supercell update</string>
+     </property>
+    </widget>
+   </item>
+   <item row="11" column="0">
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>Cutoff update interval:</string>
+     </property>
+     <property name="buddy">
+      <cstring>spin_cutoffUpdateInterval</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="10" column="1">
+    <widget class="QDoubleSpinBox" name="spin_eleCut">
+     <property name="prefix">
+      <string/>
+     </property>
+     <property name="suffix">
+      <string> Å</string>
+     </property>
+     <property name="maximum">
+      <double>50.000000000000000</double>
+     </property>
+    </widget>
+   </item>
+   <item row="13" column="0">
+    <widget class="Line" name="line_3">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="Line" name="line">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="14" column="0">
+    <widget class="QCheckBox" name="cb_debug">
+     <property name="text">
+      <string>Verbose debugging (to terminal)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="Line" name="line_2">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>Supercell update interval:</string>
+     </property>
+     <property name="buddy">
+      <cstring>spin_sCUpdateInterval</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="15" column="0" colspan="2">
+    <widget class="QLabel" name="label_warning">
+     <property name="text">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;font color=&quot;red&quot;&gt;Changes will only apply to new structures.&lt;/font&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>spin_econv</tabstop>
+  <tabstop>spin_maxSteps</tabstop>
+  <tabstop>spin_sCUpdateInterval</tabstop>
+  <tabstop>spin_vdwCut</tabstop>
+  <tabstop>spin_eleCut</tabstop>
+  <tabstop>spin_cutoffUpdateInterval</tabstop>
+  <tabstop>cb_updateWithSc</tabstop>
+  <tabstop>cb_debug</tabstop>
+  <tabstop>buttonBox</tabstop>
+ </tabstops>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>MXtalPreoptConfigDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>222</x>
+     <y>281</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>MXtalPreoptConfigDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>290</x>
+     <y>287</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_updateWithSc</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spin_cutoffUpdateInterval</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>245</x>
+     <y>181</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>359</x>
+     <y>165</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_updateWithSc</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_4</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>157</x>
+     <y>185</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>116</x>
+     <y>162</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spin_econv</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>label_warning</receiver>
+   <slot>show()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>325</x>
+     <y>23</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>337</x>
+     <y>258</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spin_maxSteps</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>label_warning</receiver>
+   <slot>show()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>362</x>
+     <y>41</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>374</x>
+     <y>244</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spin_sCUpdateInterval</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>label_warning</receiver>
+   <slot>show()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>301</x>
+     <y>70</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>290</x>
+     <y>249</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spin_vdwCut</sender>
+   <signal>valueChanged(double)</signal>
+   <receiver>label_warning</receiver>
+   <slot>show()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>315</x>
+     <y>104</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>309</x>
+     <y>257</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spin_eleCut</sender>
+   <signal>valueChanged(double)</signal>
+   <receiver>label_warning</receiver>
+   <slot>show()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>383</x>
+     <y>131</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>389</x>
+     <y>249</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spin_cutoffUpdateInterval</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>label_warning</receiver>
+   <slot>show()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>324</x>
+     <y>163</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>320</x>
+     <y>236</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_updateWithSc</sender>
+   <signal>clicked()</signal>
+   <receiver>label_warning</receiver>
+   <slot>show()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>65</x>
+     <y>187</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>68</x>
+     <y>246</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_debug</sender>
+   <signal>clicked()</signal>
+   <receiver>label_warning</receiver>
+   <slot>show()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>48</x>
+     <y>214</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>44</x>
+     <y>242</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

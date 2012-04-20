@@ -16,16 +16,20 @@
 
 #include <xtalopt/ui/tab_edit.h>
 
-#include <xtalopt/optimizers/vasp.h>
-#include <xtalopt/optimizers/gulp.h>
-#include <xtalopt/optimizers/pwscf.h>
 #include <xtalopt/optimizers/castep.h>
+#include <xtalopt/optimizers/gulp.h>
+#include <xtalopt/optimizers/mopac.h>
+#include <xtalopt/optimizers/openbabeloptimizer.h>
+#include <xtalopt/optimizers/pwscf.h>
+#include <xtalopt/optimizers/vasp.h>
+#include <xtalopt/queueinterfaces/openbabel.h>
 #include <xtalopt/ui/dialog.h>
+#include <xtalopt/ui/mxtalpreoptconfigdialog.h>
 #include <xtalopt/xtalopt.h>
 
 #include <globalsearch/macros.h>
+#include <globalsearch/queueinterfaces/internal.h>
 #include <globalsearch/queueinterfaces/loadleveler.h>
-#include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/lsf.h>
 #include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/queueinterfaces/sge.h>
@@ -33,10 +37,12 @@
 
 #include <QtCore/QSettings>
 
+#include <QtGui/QCheckBox>
 #include <QtGui/QComboBox>
 #include <QtGui/QFont>
 #include <QtGui/QFileDialog>
 #include <QtGui/QListWidgetItem>
+#include <QtGui/QPushButton>
 #include <QtGui/QTextEdit>
 
 using namespace GlobalSearch;
@@ -46,9 +52,11 @@ namespace XtalOpt {
   TabEdit::TabEdit( XtalOptDialog *parent, XtalOpt *p ) :
     DefaultEditTab(parent, p)
   {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
     // Fill m_optimizers in order of XtalOpt::OptTypes
     m_optimizers.clear();
-    const unsigned int numOptimizers = 4;
+    const unsigned int numOptimizers = 6;
     for (unsigned int i = 0; i < numOptimizers; ++i) {
       switch (i) {
       case XtalOpt::OT_VASP:
@@ -63,16 +71,28 @@ namespace XtalOpt {
       case XtalOpt::OT_CASTEP:
         m_optimizers.append(new CASTEPOptimizer (m_opt));
         break;
+      case XtalOpt::OT_MOPAC:
+        m_optimizers.append(new MopacOptimizer (m_opt));
+        break;
+      case XtalOpt::OT_OPENBABEL:
+        m_optimizers.append(new OpenBabelOptimizer (m_opt));
+        break;
       }
     }
 
     // Fill m_optimizers in order of XtalOpt::QueueInterfaces
     m_queueInterfaces.clear();
-    const unsigned int numQIs = 6;
+
+#ifdef ENABLE_SSH
+    const unsigned int numQIs = 7;
+#else
+    const unsigned int numQIs = 2;
+#endif
+
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
-      case XtalOpt::QI_LOCAL:
-        m_queueInterfaces.append(new LocalQueueInterface (m_opt));
+      case XtalOpt::QI_INTERNAL:
+        m_queueInterfaces.append(new InternalQueueInterface (m_opt));
         break;
 #ifdef ENABLE_SSH
       case XtalOpt::QI_PBS:
@@ -94,6 +114,10 @@ namespace XtalOpt {
         // Don't forget to modify numQIs above, or additions here won't matter!
         //
 #endif // ENABLE_SSH
+      case XtalOpt::QI_OPENBABEL:
+        if (xtalopt->isMolecularXtalSearch())
+          m_queueInterfaces.append(new OpenBabelQueueInterface (m_opt));
+        break;
       }
     }
 
@@ -102,6 +126,19 @@ namespace XtalOpt {
 
     DefaultEditTab::initialize();
 
+    // Preopt stuff is only shown for molecular searches
+    this->ui_cb_preopt->setVisible(xtalopt->isMolecularXtalSearch());
+    this->ui_push_preoptConfig->setVisible(xtalopt->isMolecularXtalSearch());
+
+    connect(xtalopt, SIGNAL(isMolecularXtalSearchChanged(bool)),
+            this->ui_cb_preopt, SLOT(setVisible(bool)));
+    connect(xtalopt, SIGNAL(isMolecularXtalSearchChanged(bool)),
+            this->ui_push_preoptConfig, SLOT(setVisible(bool)));
+    connect(this->ui_cb_preopt, SIGNAL(clicked(bool)),
+            this, SLOT(setPreoptimization(bool)));
+    connect(this->ui_push_preoptConfig, SIGNAL(clicked()),
+            this, SLOT(showPreoptimizationConfigDialog()));
+
     populateTemplates();
   }
 
@@ -109,8 +146,19 @@ namespace XtalOpt {
   {
   }
 
-  void TabEdit::writeSettings(const QString &filename) {
+  void TabEdit::updateGUI()
+  {
+    ui_cb_preopt->blockSignals(true);
+    ui_cb_preopt->setChecked(m_opt->usePreopt);
+    ui_cb_preopt->blockSignals(false);
+
+    this->AbstractEditTab::updateGUI();
+  }
+
+  void TabEdit::writeSettings(const QString &filename)
+  {
     SETTINGS(filename);
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
     settings->beginGroup("xtalopt/edit");
     const int VERSION = 2;
@@ -126,7 +174,22 @@ namespace XtalOpt {
     settings->setValue("optimizer", m_opt->optimizer()->getIDString().toLower());
     settings->setValue("queueInterface", m_opt->queueInterface()->getIDString().toLower());
 
-    settings->endGroup();
+    settings->beginGroup("preopt");
+    settings->beginGroup("mxtal");
+
+    settings->setValue("enabled",              xtalopt->usePreopt);
+    settings->setValue("econv",                xtalopt->mpo_econv);
+    settings->setValue("maxSteps",             xtalopt->mpo_maxSteps);
+    settings->setValue("scUpdateInterval",     xtalopt->mpo_sCUpdateInterval);
+    settings->setValue("cutoffUpdateInterval", xtalopt->mpo_cutoffUpdateInterval);
+    settings->setValue("vdwCut",               xtalopt->mpo_vdwCut);
+    settings->setValue("eleCut",               xtalopt->mpo_eleCut);
+    settings->setValue("debug",                xtalopt->mpo_debug);
+
+    settings->endGroup(); // mxtal
+    settings->endGroup(); // preopt
+
+    settings->endGroup(); // xtalopt/edit
     m_opt->optimizer()->writeSettings(filename);
 
     DESTROY_SETTINGS(filename);
@@ -197,7 +260,22 @@ namespace XtalOpt {
       }
     }
 
-    settings->endGroup();
+    settings->beginGroup("preopt");
+    settings->beginGroup("mxtal");
+
+    xtalopt->usePreopt                = settings->value("enabled", true).toBool();
+    xtalopt->mpo_econv                = settings->value("econv", 1e-4).toDouble();
+    xtalopt->mpo_maxSteps             = settings->value("maxSteps", 200).toInt();
+    xtalopt->mpo_sCUpdateInterval     = settings->value("scUpdateInterval", 10).toInt();
+    xtalopt->mpo_cutoffUpdateInterval = settings->value("cutoffUpdateInterval", -1).toDouble();
+    xtalopt->mpo_vdwCut               = settings->value("vdwCut", 7.0).toDouble();
+    xtalopt->mpo_eleCut               = settings->value("eleCut", 7.0).toDouble();
+    xtalopt->mpo_debug                = settings->value("debug", false).toBool();
+
+    settings->endGroup(); // mxtal
+    settings->endGroup(); // preopt
+
+    settings->endGroup(); // xtalopt/edit
 
     // Update config data
     switch (loadedVersion) {
@@ -239,7 +317,7 @@ namespace XtalOpt {
           break;
         default:
         case XtalOpt::OT_GULP:
-          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_LOCAL);
+          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_INTERNAL);
           break;
         }
 #endif // ENABLE_SSH
@@ -283,6 +361,17 @@ namespace XtalOpt {
     }
 
     QStringList filenames = getTemplateNames();
+    if (filenames.isEmpty()) {
+      ui_list_edit->setVisible(false);
+      ui_edit_edit->setVisible(false);
+
+      if (m_opt->optimizer()->getNumberOfOptSteps() !=
+          ui_list_optStep->count()) {
+        this->populateOptStepList();
+      }
+      return;
+    }
+
     int templateInd = ui_combo_templates->currentIndex();
     QString templateName = ui_combo_templates->currentText();
     Q_ASSERT(templateInd >= 0 && templateInd < filenames.size());
@@ -377,6 +466,17 @@ namespace XtalOpt {
     GlobalSearch::AbstractEditTab::removeCurrentOptStep();
 
     populateOptStepList();
+  }
+
+  void TabEdit::setPreoptimization(bool b)
+  {
+    m_opt->usePreopt = b;
+  }
+
+  void TabEdit::showPreoptimizationConfigDialog()
+  {
+    MXtalPreoptConfigDialog dialog (qobject_cast<XtalOpt*>(m_opt), m_opt->dialog());
+    dialog.exec();
   }
 
   void TabEdit::changePOTCAR(QListWidgetItem *item)

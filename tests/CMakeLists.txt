@@ -23,9 +23,18 @@ link_directories(
 )
 
 set(tests
+  holefinder
+  molecularxtal
+  molecularxtalmutator
+  molecularxtaloptimizer
+  molecularxtalsupercellgenerator
+  #mxtaloptgenetic
   optbase
+  submoleculeranker
   structure
   spglib
+  submolecule
+  submoleculesource
   randdouble
   xtal
   xtaloptunit

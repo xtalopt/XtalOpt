@@ -25,6 +25,7 @@
 
 #include <QtCore/QDebug>
 #include <QtCore/QDateTime>
+#include <QtCore/QHash>
 #include <QtCore/QTextStream>
 
 #include <vector>
@@ -92,7 +93,7 @@ namespace GlobalSearch {
      * from \a other.
      * @sa operator=
      */
-    Structure& copyStructure(const Structure &other);
+    virtual Structure& copyStructure(const Structure &other);
 
     /**
      * Enum containing possible optimization statuses.
@@ -137,8 +138,15 @@ namespace GlobalSearch {
       Duplicate,
       /** The Structure is about to restart it's current optimization
        * step. */
-      Restart
+      Restart,
+      /** The Structure is undergoing a preoptimization step. */
+      Preoptimizing
     };
+
+    /** @return Whether or not the "best" offspring (an optimized mutation)
+     * has been generated for this structure.
+     */
+    bool hasBestOffspring() const {return m_hasBestOffspring;}
 
     /** Whether the Structure has an enthalpy value set.
      * @return true if enthalpy has been set, false otherwise
@@ -278,6 +286,17 @@ namespace GlobalSearch {
      */
     uint getCurrentOptStep() {return m_currentOptStep;};
 
+    /** @return true if running, false otherwise. */
+    virtual bool isPreoptimizing() const {return false;}
+
+    /** @return The percentage completion of the preoptimization step.
+      * -1 if @a this is not Preoptimizing.
+      */
+    virtual int getPreOptProgress() const {return -1;}
+
+    /** @return Whether or not @a this needs to be preoptimized. */
+    virtual bool needsPreoptimization() const {return false;}
+
     /** @return The number of times this Structure has failed the
      * current optimization step.
      * @sa setFailCount
@@ -336,6 +355,24 @@ namespace GlobalSearch {
      * @sa OptBase::save
      */
     virtual QString getResultsEntry() const;
+
+    /** @return a lookup table for mapping atoms indices between
+     * structure index (value) and the optimizer index (key).
+     */
+    QHash<int, int> * getOptimizerLookupTable()
+    {
+      return &m_optimizerLookup;
+    }
+
+    /** Reset the optimizer lookup table to set the optimizer indicies
+     * to the structure indices.
+     */
+    void resetOptimizerLookupTable()
+    {
+      m_optimizerLookup.clear();
+      for (int i = 0; i < m_atomList.size(); ++i)
+        m_optimizerLookup.insert(i,i);
+    }
 
     /** Find the smallest separation between all atoms in the
      * Structure.
@@ -613,7 +650,9 @@ namespace GlobalSearch {
      */
     static void sortAndRankByEnthalpy(QList<Structure*> *structures);
 
-   signals:
+  signals:
+    void preoptimizationStarted();
+    void preoptimizationFinished();
 
    public slots:
 
@@ -836,6 +875,14 @@ namespace GlobalSearch {
        */
     virtual unsigned int sizeOfHistory() {return m_histEnergies.size();};
 
+    /** @param b Whether or not the "best" offspring (an optimized mutation)
+     * has been generated for this structure.
+     */
+    void setHasBestOffspring(bool b = true)
+    {
+      m_hasBestOffspring = b;
+    }
+
     /** Set the enthalpy of the Structure.
      * @param enthalpy The Structure's enthalpy
      * @sa getEnthalpy
@@ -1037,6 +1084,31 @@ namespace GlobalSearch {
      */
     void setOptTimerEnd(const QDateTime &d) {m_optEnd = d;};
 
+
+    /** @param b Whether or not @a this needs to be preoptimized. */
+    virtual void setNeedsPreoptimization(bool b)
+    {
+      Q_UNUSED(b);
+      qWarning() << "Preoptimization is not implemented for all structure "
+                    "types. Call to Structure::setNeedsPreoptimization "
+                    "ignored.";
+    }
+
+    /** Abort the preoptimization running on this structure. */
+    virtual void abortPreoptimization() const {};
+
+    /** Emits the preoptimizationStarted signal */
+    void emitPreoptimizationStarted()
+    {
+      emit preoptimizationStarted();
+    }
+
+    /** Emits the preoptimizationFinished signal */
+    void emitPreoptimizationFinished()
+    {
+      emit preoptimizationFinished();
+    }
+
     /** Load data into Structure.
      * @attention Do not use this function in new code, as it has been
      * replaced by readSettings. Old code should be rewritten to use
@@ -1070,6 +1142,7 @@ namespace GlobalSearch {
     /// \cond
     bool m_hasEnthalpy, m_updatedSinceDupChecked;
     bool m_histogramGenerationPending;
+    bool m_hasBestOffspring;
     uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount;
     QString m_parents, m_dupString, m_rempath;
     double m_enthalpy, m_PV;
@@ -1084,6 +1157,10 @@ namespace GlobalSearch {
     QList<double> m_histEnergies;
     QList<QList<Eigen::Vector3d> > m_histCoords;
     QList<Eigen::Matrix3d> m_histCells;
+
+    // Map <Structure atom index, optimizer atom index>
+    QHash<int, int> m_optimizerLookup;
+
     // End doxygen skip:
     /// \endcond
   };

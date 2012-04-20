@@ -16,22 +16,44 @@
 
 #include <xtalopt/ui/tab_init.h>
 
+#include <xtalopt/structures/submoleculesource.h>
 #include <xtalopt/xtalopt.h>
+
+#include <avogadro/molecule.h>
+#include <avogadro/moleculefile.h>
 
 #include <QtCore/QSettings>
 
+#include <QtGui/QFileDialog>
 #include <QtGui/QHeaderView>
+#include <QtGui/QInputDialog>
+#include <QtGui/QMessageBox>
 #include <QtGui/QTableWidget>
 #include <QtGui/QTableWidgetItem>
 
 #include "dialog.h"
+
+using namespace Avogadro;
 
 namespace XtalOpt {
 
   TabInit::TabInit( XtalOptDialog *parent, XtalOpt *p ) :
     AbstractTab(parent, p)
   {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
     ui.setupUi(m_tab_widget);
+
+    // xtalopt connections
+    connect(xtalopt, SIGNAL(isMolecularXtalSearchChanged(bool)),
+            this, SLOT(updateGUI()));
+
+    // crystal type
+    connect(ui.combo_type, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateCrystalType()));
+
+    // molecular composition settings
+    this->connect(ui.push_add, SIGNAL(clicked()), SLOT(addSubMolecule()));
+    this->connect(ui.push_remove, SIGNAL(clicked()), SLOT(removeSubMolecule()));
 
     // composition connections
     connect(ui.edit_composition, SIGNAL(textChanged(QString)),
@@ -78,6 +100,8 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.cb_interatomicDistanceLimit, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
+    connect(ui.spin_maxConf, SIGNAL(valueChanged(int)),
+            this, SLOT(updateDimensions()));
 
     QHeaderView *horizontal = ui.table_comp->horizontalHeader();
     horizontal->setResizeMode(QHeaderView::ResizeToContents);
@@ -100,6 +124,8 @@ namespace XtalOpt {
     const int VERSION = 2;
     settings->setValue("version",VERSION);
 
+    settings->setValue("isMolecularXtalSearch",
+                       xtalopt->isMolecularXtalSearch());
     settings->setValue("limits/a/min",        xtalopt->a_min);
     settings->setValue("limits/b/min",        xtalopt->b_min);
     settings->setValue("limits/c/min",        xtalopt->c_min);
@@ -120,6 +146,7 @@ namespace XtalOpt {
     settings->setValue("using/fixedVolume",   xtalopt->using_fixed_volume);
     settings->setValue("using/interatomicDistanceLimit",
                        xtalopt->using_interatomicDistanceLimit);
+    settings->setValue("limits/maxConf",    xtalopt->maxConf);
 
     // Composition
     // We only want to save POTCAR info and Composition to the resume
@@ -154,6 +181,12 @@ namespace XtalOpt {
     settings->beginGroup("xtalopt/init/");
     int loadedVersion = settings->value("version", 0).toInt();
 
+    if (settings->value("isMolecularXtalSearch", false).toBool()) {
+      ui.combo_type->setCurrentIndex(CT_Molecular);
+    }
+    else {
+      ui.combo_type->setCurrentIndex(CT_Ionic);
+    }
     ui.spin_a_min->setValue(		settings->value("limits/a/min",		3).toDouble()   );
     ui.spin_b_min->setValue(		settings->value("limits/b/min",		3).toDouble()   );
     ui.spin_c_min->setValue(		settings->value("limits/c/min",		3).toDouble()   );
@@ -173,6 +206,7 @@ namespace XtalOpt {
     ui.spin_minRadius->setValue(	  settings->value("limits/minRadius",0.25).toDouble());
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
     ui.cb_interatomicDistanceLimit->setChecked(	settings->value("using/interatomicDistanceLimit",false).toBool());
+    ui.spin_maxConf->setValue(      settings->value("limits/maxConf",20).toInt());
 
     // Composition
     if (!filename.isEmpty()) {
@@ -212,6 +246,17 @@ namespace XtalOpt {
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
+    if (xtalopt->isMolecularXtalSearch()) {
+      ui.combo_type->setCurrentIndex(CT_Molecular);
+      ui.gb_comp->setDisabled(true);
+      ui.gb_mcomp->show();
+    }
+    else {
+      ui.combo_type->setCurrentIndex(CT_Ionic);
+      ui.gb_comp->setEnabled(true);
+      ui.gb_mcomp->hide();
+    }
+
     ui.spin_a_min->setValue(       xtalopt->a_min);
     ui.spin_b_min->setValue(       xtalopt->b_min);
     ui.spin_c_min->setValue(       xtalopt->c_min);
@@ -232,12 +277,17 @@ namespace XtalOpt {
     ui.cb_fixedVolume->setChecked( xtalopt->using_fixed_volume);
     ui.cb_interatomicDistanceLimit->setChecked(
           xtalopt->using_interatomicDistanceLimit);
+    ui.spin_maxConf->setValue(     xtalopt->maxConf);
     updateComposition();
+    updateTables();
   }
 
   void TabInit::lockGUI()
   {
+    ui.combo_type->setDisabled(true);
     ui.edit_composition->setDisabled(true);
+    ui.push_add->setDisabled(true);
+    ui.push_remove->setDisabled(true);
   }
 
   void TabInit::getComposition(const QString &str)
@@ -304,8 +354,25 @@ namespace XtalOpt {
 
     xtalopt->comp = comp;
 
-    this->updateMinRadii();
-    this->updateCompositionTable();
+    this->updateTables();
+  }
+
+  void TabInit::updateCrystalType()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    switch(static_cast<CrystalType>(ui.combo_type->currentIndex()))
+    {
+    default:
+    case CT_Ionic:
+      xtalopt->setMolecularXtalSearch(false);
+      break;
+    case CT_Molecular:
+      xtalopt->setMolecularXtalSearch(true);
+      break;
+    }
+
+    return;
   }
 
   void TabInit::updateCompositionTable()
@@ -403,6 +470,8 @@ namespace XtalOpt {
     xtalopt->using_fixed_volume = ui.cb_fixedVolume->isChecked();
     xtalopt->vol_fixed	= ui.spin_fixedVolume->value();
 
+    xtalopt->maxConf		= ui.spin_maxConf->value();
+
     if (xtalopt->scaleFactor != ui.spin_scaleFactor->value() ||
         xtalopt->minRadius   != ui.spin_minRadius->value() ||
         xtalopt->using_interatomicDistanceLimit !=
@@ -411,8 +480,9 @@ namespace XtalOpt {
       xtalopt->minRadius = ui.spin_minRadius->value();
       xtalopt->using_interatomicDistanceLimit =
           ui.cb_interatomicDistanceLimit->isChecked();
-      this->updateMinRadii();
-      this->updateCompositionTable();
+
+
+      this->updateTables();
     }
   }
 
@@ -428,6 +498,142 @@ namespace XtalOpt {
       // Ensure that all minimum radii are > 0.25 (esp. H!)
       if (it.value().minRadius < xtalopt->minRadius) {
         it.value().minRadius = xtalopt->minRadius;
+      }
+    }
+  }
+
+  void TabInit::updateTables()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    if (xtalopt->isMolecularXtalSearch()) {
+      this->updateMXtalCompositionTable();
+      this->updateCompFromMComp();
+    }
+    this->updateMinRadii();
+    this->updateCompositionTable();
+  }
+
+  void TabInit::addSubMolecule()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    Q_ASSERT(xtalopt->isMolecularXtalSearch());
+    SETTINGS("");
+    bool ok;
+    QString err;
+
+    // Ask for molecule filename
+    QString submolDir = settings->value("submolDir").toString();
+    QString filename = QFileDialog::getOpenFileName(
+          m_dialog, tr("Add Molecule..."), submolDir);
+
+    // If user cancels:
+    if (filename.isEmpty()) {
+      return;
+    }
+
+    // store directory for next time
+    settings->setValue("submolDir", filename);
+
+    // Attempt to read molecule:
+    Molecule *mol = MoleculeFile::readMolecule(filename, QString(), QString(),
+                                               &err);
+
+    // Bad molecule; show error and return
+    if (!mol) {
+      if (!err.isEmpty()) {
+        err.prepend(tr("\n\nThe returned error is:\n\t"));
+      }
+      else {
+        err.clear();
+      }
+      QMessageBox::warning(m_dialog, tr("Cannot load molecule!"),
+                           tr("The file '%1' cannot be opened.%2")
+                           .arg(filename).arg(err));
+      return;
+    }
+
+    // Ask for quantity
+    int quantity = QInputDialog::getInt(
+          m_dialog, tr("Specify Quantity"), tr("How many of this molecule "
+                                               "(%1) per unit cell?")
+          .arg(mol->fileName()), 1, 1, 9999, 1, &ok);
+
+    // User cancels:
+    if (!ok) {
+      return;
+    }
+
+    // Add entry to mcomp
+    MolecularCompStruct entry;
+    entry.source = new SubMoleculeSource (mol, m_opt);
+    entry.source->setSourceId(xtalopt->mcomp.size()); // next unique id
+    entry.quantity = quantity;
+    xtalopt->mcomp.append(entry);
+
+    // Update GUI
+    this->updateTables();
+  }
+
+  void TabInit::removeSubMolecule()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    Q_ASSERT(xtalopt->isMolecularXtalSearch());
+    int index = ui.table_mcomp->currentRow();
+
+    if (index < 0 || index >= xtalopt->mcomp.size()) {
+      qDebug() << "Submolecule index out of range: " << index << "out of"
+               << xtalopt->mcomp.size();
+      return;
+    }
+
+    xtalopt->mcomp.at(index).source->deleteLater();
+    xtalopt->mcomp.removeAt(index);
+    this->updateTables();
+  }
+
+  void TabInit::updateMXtalCompositionTable()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    // Adjust table size:
+    int numRows = xtalopt->mcomp.size();
+    ui.table_mcomp->setRowCount(numRows);
+
+    for (int i = 0; i < numRows; i++) {
+      SubMoleculeSource *source = xtalopt->mcomp.at(i).source;
+      unsigned int quantity = xtalopt->mcomp.at(i).quantity;
+
+      QTableWidgetItem *quantityItem =
+          new QTableWidgetItem(QString::number(quantity));
+      QTableWidgetItem *filenameItem =
+          new QTableWidgetItem(source->name());
+
+      ui.table_mcomp->setItem(i, MC_QUANTITY, quantityItem);
+      ui.table_mcomp->setItem(i, MC_FILENAME, filenameItem);
+    }
+  }
+
+  void TabInit::updateCompFromMComp()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    Q_ASSERT(xtalopt->isMolecularXtalSearch());
+
+    int numSubMolecules = xtalopt->mcomp.size();
+    xtalopt->comp.clear();
+
+    for (int i = 0; i < numSubMolecules; i++) {
+      SubMoleculeSource *source = xtalopt->mcomp.at(i).source;
+      unsigned int quantity = xtalopt->mcomp.at(i).quantity;
+
+      QList<Atom*> atoms = source->atoms();
+      for (QList<Atom*>::const_iterator it = atoms.constBegin(),
+           it_end = atoms.constEnd(); it != it_end; ++it) {
+        if (!xtalopt->comp.contains((*it)->atomicNumber())) {
+          XtalCompositionStruct newStruct;
+          newStruct.quantity = 0;
+          xtalopt->comp.insert((*it)->atomicNumber(), newStruct);
+        }
+        xtalopt->comp[(*it)->atomicNumber()].quantity += quantity;
       }
     }
   }

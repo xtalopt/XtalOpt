@@ -60,6 +60,7 @@ namespace GlobalSearch {
     sOBMutex(new QMutex),
     stateFileMutex(new QMutex),
     backTraceMutex(new QMutex),
+    usePreopt(false),
     savePending(false),
     readOnly(false),
     testingMode(false),
@@ -67,13 +68,11 @@ namespace GlobalSearch {
     test_nRunsEnd(100),
     test_nStructs(600),
     cutoff(-1),
-    m_schemaVersion(1)
+    m_schemaVersion(1),
+    m_isDestroying(false)
   {
     // Connections
     connect(this, SIGNAL(sessionStarted()),
-            m_queueThread, SLOT(start()),
-            Qt::DirectConnection);
-    connect(this, SIGNAL(startingSession()),
             m_queueThread, SLOT(start()),
             Qt::DirectConnection);
     connect(this, SIGNAL(startingSession()),
@@ -100,6 +99,8 @@ namespace GlobalSearch {
 
   OptBase::~OptBase()
   {
+    m_isDestroying = true;
+
     delete m_queue;
     m_queue = 0;
 
@@ -227,7 +228,6 @@ namespace GlobalSearch {
       savePending = false;
       return false;
     }
-    QReadLocker trackerLocker (m_tracker->rwLock());
     QMutexLocker locker (stateFileMutex);
     QString filename;
     if (stateFilename.isEmpty()) {
@@ -239,9 +239,12 @@ namespace GlobalSearch {
     QString oldfilename = filename + ".old";
 
     if (notify) {
-      m_dialog->startProgressUpdate(tr("Saving: Writing %1...")
-                                    .arg(filename),
-                                    0, 0);
+      if (!m_dialog->startProgressUpdate(tr("Saving: Writing %1...")
+                                         .arg(filename),
+                                         0, 0)) {
+        // The progress bar is already in use -- disable notifications
+        notify = false;
+      }
     }
 
     // Copy .state -> .state.old
@@ -263,6 +266,7 @@ namespace GlobalSearch {
     m_dialog->writeSettings(filename);
 
     // Loop over structures and save them
+    QReadLocker trackerLocker (m_tracker->rwLock());
     QList<Structure*> *structures = m_tracker->list();
 
     QString structureStateFileName;
@@ -325,6 +329,9 @@ namespace GlobalSearch {
       }
     }
 
+    // Allow derived classes to do their own saving
+    this->postSave(filename);
+
     // Mark operation successful
     settings->setValue(m_idString.toLower() + "/saveSuccessful", true);
     DESTROY_SETTINGS(filename);
@@ -367,58 +374,74 @@ namespace GlobalSearch {
     if (line == "coords") {
       QList<Avogadro::Atom*> atoms = structure->atoms();
       QList<Avogadro::Atom*>::const_iterator it;
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
       const Eigen::Vector3d *vec;
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        rep += QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()))+ " ";
         vec = (*it)->pos();
         rep += QString::number(vec->x()) + " ";
         rep += QString::number(vec->y()) + " ";
         rep += QString::number(vec->z()) + "\n";
+        lut->insert(++optIndex, (*it)->index());
       }
     }
     else if (line == "coordsInternalFlags") {
       QList<Avogadro::Atom*> atoms = structure->atoms();
       QList<Avogadro::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        rep += QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()))+ " ";
         vec = (*it)->pos();
         rep += QString::number(vec->x()) + " 1 ";
         rep += QString::number(vec->y()) + " 1 ";
         rep += QString::number(vec->z()) + " 1\n";
+        lut->insert(++optIndex, (*it)->index());
       }
     }
     else if (line == "coordsSuffixFlags") {
       QList<Avogadro::Atom*> atoms = structure->atoms();
       QList<Avogadro::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        rep += QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()))+ " ";
         vec = (*it)->pos();
         rep += QString::number(vec->x()) + " ";
         rep += QString::number(vec->y()) + " ";
         rep += QString::number(vec->z()) + " 1 1 1\n";
+        lut->insert(++optIndex, (*it)->index());
       }
     }
     else if (line == "coordsId") {
       QList<Avogadro::Atom*> atoms = structure->atoms();
       QList<Avogadro::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
+      int optIndex = -1;
+      QHash<int, int> *lut = structure->getOptimizerLookupTable();
+      lut->clear();
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        rep += QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()))+ " ";
         rep += QString::number((*it)->atomicNumber()) + " ";
         vec = (*it)->pos();
         rep += QString::number(vec->x()) + " ";
         rep += QString::number(vec->y()) + " ";
         rep += QString::number(vec->z()) + "\n";
+        lut->insert(++optIndex, (*it)->index());
       }
     }
     else if (line == "numAtoms")	rep += QString::number(structure->numAtoms());

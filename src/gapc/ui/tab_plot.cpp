@@ -470,6 +470,7 @@ namespace GAPC {
       case ProtectedCluster::Empty:
       case ProtectedCluster::Restart:
       case ProtectedCluster::Updating:
+      case ProtectedCluster::Preoptimizing:
         s.append(" (p)");
         break;
       case ProtectedCluster::Error:

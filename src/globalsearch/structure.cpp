@@ -44,6 +44,7 @@ namespace GlobalSearch {
     m_hasEnthalpy(false),
     m_updatedSinceDupChecked(true),
     m_histogramGenerationPending(false),
+    m_hasBestOffspring(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -62,6 +63,7 @@ namespace GlobalSearch {
     Molecule(other),
     m_histogramGenerationPending(false),
     m_updatedSinceDupChecked(true),
+    m_hasBestOffspring(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -78,6 +80,7 @@ namespace GlobalSearch {
     Molecule(other),
     m_histogramGenerationPending(false),
     m_updatedSinceDupChecked(true),
+    m_hasBestOffspring(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -192,7 +195,7 @@ namespace GlobalSearch {
 
   Structure& Structure::operator=(const Structure& other)
   {
-    copyStructure(other);
+    this->copyStructure(other);
 
     // Set properties
     m_histogramGenerationPending = other.m_histogramGenerationPending;
@@ -218,7 +221,7 @@ namespace GlobalSearch {
 
   Structure& Structure::operator=(const Avogadro::Molecule &mol)
   {
-    Molecule::operator=(mol);
+    this->copyStructure(mol);
     return *this;
   }
 
@@ -252,6 +255,8 @@ namespace GlobalSearch {
     settings->setValue("failCount", getFailCount());
     settings->setValue("startTime", getOptTimerStart().toString());
     settings->setValue("endTime", getOptTimerEnd().toString());
+    settings->setValue("needsPreoptimization", needsPreoptimization());
+    settings->setValue("hasBestOffspring", hasBestOffspring());
 
     // History
     settings->beginGroup("history");
@@ -319,6 +324,17 @@ namespace GlobalSearch {
     settings->endArray();
 
     settings->endGroup(); // history
+
+    // Optimizer index lookup table
+    settings->beginWriteArray("optimizerLookup");
+    QList<int> optKeys = m_optimizerLookup.keys();
+    for (int i = 0; i < optKeys.size(); ++i) {
+      settings->setArrayIndex(i);
+      settings->setValue("key", optKeys.at(i));
+      settings->setValue("value", m_optimizerLookup.value(optKeys.at(i)));
+    }
+    settings->endArray();
+
     settings->endGroup(); // structure
     DESTROY_SETTINGS(filename);
   }
@@ -343,84 +359,103 @@ namespace GlobalSearch {
       setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));
       setOptTimerEnd(   QDateTime::fromString(settings->value("endTime",   "").toString()));
 
-    // History
-    settings->beginGroup("history");
-    //  Atomic nums
-    int size, size2;
-    size = settings->beginReadArray("atomicNums");
-    m_histAtomicNums.clear();
-    for (int i = 0; i < size; i++) {
-      settings->setArrayIndex(i);
-      size2 = settings->beginReadArray(QString("atomicNums-%1").arg(i));
-      QList<unsigned int> cur;
-      for (int j = 0; j < size2; j++) {
-        settings->setArrayIndex(j);
-        cur.append(settings->value("value").toUInt());
+      setNeedsPreoptimization(settings->value("needsPreoptimization", true).toBool());
+      setHasBestOffspring(settings->value("hasBestOffspring", false).toBool());
+
+      // History
+      settings->beginGroup("history");
+      //  Atomic nums
+      int size, size2;
+      size = settings->beginReadArray("atomicNums");
+      m_histAtomicNums.clear();
+      for (int i = 0; i < size; i++) {
+        settings->setArrayIndex(i);
+        size2 = settings->beginReadArray(QString("atomicNums-%1").arg(i));
+        QList<unsigned int> cur;
+        for (int j = 0; j < size2; j++) {
+          settings->setArrayIndex(j);
+          cur.append(settings->value("value").toUInt());
+        }
+        settings->endArray();
+        m_histAtomicNums.append(cur);
       }
       settings->endArray();
-      m_histAtomicNums.append(cur);
-    }
-    settings->endArray();
 
-    //  Coords
-    size = settings->beginReadArray("coords");
-    m_histCoords.clear();
-    for (int i = 0; i < size; i++) {
-      settings->setArrayIndex(i);
-      size2 = settings->beginReadArray(QString("coords-%1").arg(i));
-      QList<Eigen::Vector3d> cur;
-      for (int j = 0; j < size2; j++) {
-        settings->setArrayIndex(j);
-        double x = settings->value("x").toDouble();
-        double y = settings->value("y").toDouble();
-        double z = settings->value("z").toDouble();
-        cur.append(Eigen::Vector3d(x, y, z));
+      //  Coords
+      size = settings->beginReadArray("coords");
+      m_histCoords.clear();
+      for (int i = 0; i < size; i++) {
+        settings->setArrayIndex(i);
+        size2 = settings->beginReadArray(QString("coords-%1").arg(i));
+        QList<Eigen::Vector3d> cur;
+        for (int j = 0; j < size2; j++) {
+          settings->setArrayIndex(j);
+          double x = settings->value("x").toDouble();
+          double y = settings->value("y").toDouble();
+          double z = settings->value("z").toDouble();
+          cur.append(Eigen::Vector3d(x, y, z));
         }
+        settings->endArray();
+        m_histCoords.append(cur);
+      }
       settings->endArray();
-      m_histCoords.append(cur);
-    }
-    settings->endArray();
 
-    //  Energies
-    size = settings->beginReadArray("energies");
-    m_histEnergies.clear();
-    for (int i = 0; i < size; i++) {
-      settings->setArrayIndex(i);
-      m_histEnergies.append(settings->value("value").toDouble());
-    }
-    settings->endArray();
+      //  Energies
+      size = settings->beginReadArray("energies");
+      m_histEnergies.clear();
+      for (int i = 0; i < size; i++) {
+        settings->setArrayIndex(i);
+        m_histEnergies.append(settings->value("value").toDouble());
+      }
+      settings->endArray();
 
-    //  Enthalpies
-    size = settings->beginReadArray("enthalpies");
-    m_histEnthalpies.clear();
-    for (int i = 0; i < size; i++) {
-      settings->setArrayIndex(i);
-      m_histEnthalpies.append(settings->value("value").toDouble());
-    }
-    settings->endArray();
+      //  Enthalpies
+      size = settings->beginReadArray("enthalpies");
+      m_histEnthalpies.clear();
+      for (int i = 0; i < size; i++) {
+        settings->setArrayIndex(i);
+        m_histEnthalpies.append(settings->value("value").toDouble());
+      }
+      settings->endArray();
 
-    //  Cells
-    size = settings->beginReadArray("cells");
-    m_histCells.clear();
-    for (int i = 0; i < size; i++) {
-      settings->setArrayIndex(i);
-      Eigen::Matrix3d cur;
-      cur(0, 0) = settings->value("00").toDouble();
-      cur(0, 1) = settings->value("01").toDouble();
-      cur(0, 2) = settings->value("02").toDouble();
-      cur(1, 0) = settings->value("10").toDouble();
-      cur(1, 1) = settings->value("11").toDouble();
-      cur(1, 2) = settings->value("12").toDouble();
-      cur(2, 0) = settings->value("20").toDouble();
-      cur(2, 1) = settings->value("21").toDouble();
-      cur(2, 2) = settings->value("22").toDouble();
-      m_histCells.append(cur);
-    }
-    settings->endArray();
+      //  Cells
+      size = settings->beginReadArray("cells");
+      m_histCells.clear();
+      for (int i = 0; i < size; i++) {
+        settings->setArrayIndex(i);
+        Eigen::Matrix3d cur;
+        cur(0, 0) = settings->value("00").toDouble();
+        cur(0, 1) = settings->value("01").toDouble();
+        cur(0, 2) = settings->value("02").toDouble();
+        cur(1, 0) = settings->value("10").toDouble();
+        cur(1, 1) = settings->value("11").toDouble();
+        cur(1, 2) = settings->value("12").toDouble();
+        cur(2, 0) = settings->value("20").toDouble();
+        cur(2, 1) = settings->value("21").toDouble();
+        cur(2, 2) = settings->value("22").toDouble();
+        m_histCells.append(cur);
+      }
+      settings->endArray();
 
-    settings->endGroup(); // history
+      settings->endGroup(); // history
 
-    }
+      // Optimizer index lookup table
+      size = settings->beginReadArray("optimizerLookup");
+      m_optimizerLookup.clear();
+      for (int i = 0; i < size; ++i) {
+        settings->setArrayIndex(i);
+        int key = settings->value("key", -1).toInt();
+        int value = settings->value("value", -1).toInt();
+        if (key < 0 || value < 0) {
+          qDebug() << "Missing key (" << key << ") value (" << value << ")"
+                      "pair for structure" << this->getIDString();
+          continue;
+        }
+        m_optimizerLookup.insert(key, value);
+      }
+      settings->endArray();
+
+    } // end if version >= 1
     settings->endGroup();
 
     // Update config data
@@ -459,11 +494,16 @@ namespace GlobalSearch {
                "Lengths of atomicNums and coords must match numAtoms().");
 
     // Update atoms
-    Atom *atom;
-    for (int i = 0; i < numAtoms(); i++) {
-      atom = atoms().at(i);
-      atom->setAtomicNumber(atomicNums.at(i));
-      atom->setPos(coords.at(i));
+    Atom *atm;
+    bool useLUT = !m_optimizerLookup.isEmpty();
+    for (int optIndex = 0; optIndex < numAtoms(); ++optIndex) {
+      int atomIndex = optIndex;
+      if (useLUT) {
+        atomIndex = m_optimizerLookup.value(optIndex);
+      }
+      atm = atom(atomIndex);
+      atm->setAtomicNumber(atomicNums.at(optIndex));
+      atm->setPos(coords.at(optIndex));
     }
 
     // Update energy/enthalpy
@@ -513,11 +553,16 @@ namespace GlobalSearch {
     m_histCells.append(cell);
 
     // Update atoms
-    Atom *atom;
-    for (int i = 0; i < numAtoms(); i++) {
-      atom = atoms().at(i);
-      atom->setAtomicNumber(atomicNums.at(i));
-      atom->setPos(coords.at(i));
+    Atom *atm;
+    bool useLUT = !m_optimizerLookup.isEmpty();
+    for (int optIndex = 0; optIndex < numAtoms(); ++optIndex) {
+      int atomIndex = optIndex;
+      if (useLUT) {
+        atomIndex = m_optimizerLookup.value(optIndex);
+      }
+      atm = atom(atomIndex);
+      atm->setAtomicNumber(atomicNums.at(optIndex));
+      atm->setPos(coords.at(optIndex));
     }
 
     // Update energy/enthalpy
@@ -662,8 +707,14 @@ namespace GlobalSearch {
     case Empty:
     case Updating:
     case Submitted:
-    default:
+    case Restart:
       status = "In progress";
+      break;
+    case Preoptimizing:
+      status = "Preoptimizing";
+      break;
+    default:
+      status = "Unknown";
       break;
     }
     return QString("%1 %2 %3 %4 %5")

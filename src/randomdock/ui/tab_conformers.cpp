@@ -178,7 +178,8 @@ namespace RandomDock {
 
   void TabConformers::generateConformers_(Structure *mol)
   {
-    m_dialog->startProgressUpdate("Preparing conformer search...", 0, 0);
+    bool notify = m_dialog->startProgressUpdate("Preparing conformer search...",
+                                                0, 0);
     QWriteLocker locker (mol->lock());
     QMutexLocker fflocker (&m_ffMutex);
 
@@ -186,17 +187,20 @@ namespace RandomDock {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Problem setting up forcefield '%1'.")
                             .arg(ui.combo_opt->currentText().trimmed()));
-      m_dialog->stopProgressUpdate();
+      if (notify)
+        m_dialog->stopProgressUpdate();
       ui.push_generate->setEnabled(true);
       return;
     }
 
-    m_dialog->updateProgressLabel("Preparing forcefield...");
+    if (notify)
+      m_dialog->updateProgressLabel("Preparing forcefield...");
     OpenBabel::OBForceField *ff = m_ff->MakeNewInstance();
     ff->SetLogFile(&std::cout);
     ff->SetLogLevel(OBFF_LOGLVL_NONE);
 
-    m_dialog->updateProgressLabel("Setting up molecule with forcefield...");
+    if (notify)
+      m_dialog->updateProgressLabel("Setting up molecule with forcefield...");
     OpenBabel::OBMol obmol = mol->OBMol();
 
     // Explicitly set the energy, otherwise the ff may crash due to OB bug
@@ -210,20 +214,23 @@ namespace RandomDock {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Problem setting up forcefield '%1'.")
                             .arg(ui.combo_opt->currentText().trimmed()));
-      m_dialog->stopProgressUpdate();
+      if (notify)
+        m_dialog->stopProgressUpdate();
       ui.push_generate->setEnabled(true);
       return;
     }
     if (!ff->Setup(obmol)) {
       QMessageBox::warning( m_dialog, tr( "Avogadro" ),
                             tr( "Cannot set up the force field for this molecule." ));
-      m_dialog->stopProgressUpdate();
+      if (notify)
+        m_dialog->stopProgressUpdate();
       ui.push_generate->setEnabled(true);
       return;
     }
 
     // Pre-optimize
-    m_dialog->updateProgressLabel("Pre-optimizing molecule...");
+    if (notify)
+      m_dialog->updateProgressLabel("Pre-optimizing molecule...");
     ff->ConjugateGradients(1000);
 
     // Prepare progress step variable
@@ -231,23 +238,29 @@ namespace RandomDock {
 
     // Systematic search:
     if (ui.cb_allConformers->isChecked()) {
-      m_dialog->updateProgressLabel(tr("Performing systematic rotor search..."));
+      if (notify)
+        m_dialog->updateProgressLabel(tr("Performing systematic rotor search..."));
       // Only search if there is more than one conformer possible.
       if (int n = ff->SystematicRotorSearchInitialize(2500) > 1) {
-        m_dialog->updateProgressMaximum(2*n);
+        if (notify)
+          m_dialog->updateProgressMaximum(2*n);
         while (ff->SystematicRotorSearchNextConformer(500)) {
-          m_dialog->updateProgressValue(++step);
+          if (notify)
+            m_dialog->updateProgressValue(++step);
         }
       }
     }
     // Random conformer search
     else {
       int n = ui.spin_nConformers->value();
-      m_dialog->updateProgressLabel(tr("Performing random rotor search..."));
+      if (notify)
+        m_dialog->updateProgressLabel(tr("Performing random rotor search..."));
       ff->RandomRotorSearchInitialize(n, 2500);
-      m_dialog->updateProgressMaximum(2*n);
+      if (notify)
+        m_dialog->updateProgressMaximum(2*n);
       while (ff->RandomRotorSearchNextConformer(500)) {
-        m_dialog->updateProgressValue(++step);
+        if (notify)
+          m_dialog->updateProgressValue(++step);
       }
     }
     obmol = mol->OBMol();
@@ -259,7 +272,8 @@ namespace RandomDock {
     std::vector<double> energies;
 
     for (int i = 0; i < obmol.NumConformers(); i++) {
-      m_dialog->updateProgressValue(++step);
+      if (notify)
+        m_dialog->updateProgressValue(++step);
       double *coordPtr = obmol.GetConformer(i);
       conformer.clear();
       foreach (Atom *atom, mol->atoms()) {
@@ -276,7 +290,8 @@ namespace RandomDock {
     delete ff;
     emit conformersChanged();
     emit conformerGenerationDone();
-    m_dialog->stopProgressUpdate();
+    if (notify)
+      m_dialog->stopProgressUpdate();
   }
 
   void TabConformers::selectStructure(const QString & text)

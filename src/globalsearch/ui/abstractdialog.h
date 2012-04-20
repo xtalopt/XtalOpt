@@ -179,7 +179,7 @@ namespace GlobalSearch {
      * @param filename Optional filename to hold resume information
      */
     virtual void writeSettings(const QString &filename = "") {
-      emit tabsWriteSettings(filename);};
+      reemitTabsWriteSettings(filename);};
 
     /**
      * Read persistant settings or resume information. If the filename
@@ -189,8 +189,10 @@ namespace GlobalSearch {
      * @note This call is passed on to all tabs.
      * @param filename Optional filename to holding resume information
      */
-    virtual void readSettings(const QString &filename = "") {
-      emit tabsReadSettings(filename);};
+    virtual void readSettings(const QString &filename = "")
+    {
+      this->reemitTabsReadSettings(filename);
+    };
 
     /**
      * Saves resume information to a state file in OptBase::filePath.
@@ -246,16 +248,15 @@ namespace GlobalSearch {
      * @param text Label text describing the operation
      * @param min Minimum progress value
      * @param max Maximum progress value
+     * @return False if the progress bar is already in use, true otherwise.
      */
-    void startProgressUpdate(const QString & text, int min, int max) {
-      emit sig_startProgressUpdate(text,min,max);};
+    bool startProgressUpdate(const QString & text, int min, int max);
 
     /**
      * Reset and hide progress bar and label. Also frees the
      * associated mutex, allowing other processes to use it.
      */
-    void stopProgressUpdate() {
-      emit sig_stopProgressUpdate();};
+    void stopProgressUpdate();
 
     /**
      * @param min The minimum value for the progress bar.
@@ -427,21 +428,7 @@ namespace GlobalSearch {
     void tabsLockGUI();
 
     /**
-     * Emitted when tabs should run their writeSettings function
-     * @param filename Optional state file to write to
-     * @sa writeSettings
-     */
-    void tabsWriteSettings(const QString &filename);
-
-    /**
-     * Emitted when tabs should run their lockGUI function
-     * @param filename Optional state file to read from
-     * @sa readSettings
-     */
-    void tabsReadSettings(const QString &filename);
-
-    /**
-     * Emitted when tabs should run their lockGUI function
+     * Emitted when tabs should run their updateGUI function
      */
     void tabsUpdateGUI();
 

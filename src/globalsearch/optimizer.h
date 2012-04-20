@@ -333,6 +333,23 @@ namespace GlobalSearch {
      *
      * Details given in m_localRunCommand.
      *
+     * @sa localRunArgs
+     * @sa stdinFilename
+     * @sa stdoutFilename
+     * @sa stderrFilename
+     * @sa m_localRunCommand
+     * @sa m_localRunArgs
+     * @sa m_stdinFilename
+     * @sa m_stdoutFilename
+     * @sa m_stderrFilename
+     */
+    QString localRunCommand() const {return m_localRunCommand;};
+
+    /**
+     * Command line arguments used in local execution
+     *
+     * Details given in m_localRunCommand.
+     *
      * @sa stdinFilename
      * @sa stdoutFilename
      * @sa stderrFilename
@@ -341,7 +358,7 @@ namespace GlobalSearch {
      * @sa m_stdoutFilename
      * @sa m_stderrFilename
      */
-    QString localRunCommand() const {return m_localRunCommand;};
+    QStringList localRunArgs() const {return m_localRunArgs;};
 
     /**
      * Filename for standard input
@@ -531,26 +548,29 @@ namespace GlobalSearch {
      *
      * VASP-esque: $ vasp
      *  Runs in working directory reading from predefined input
-     *  filenames (ie. POSCAR). Set m_localRunCommand="vasp", and
+     *  filenames (ie. POSCAR). Set m_localRunCommand="vasp",
+     *   m_localRunArgs empty, and
      *  m_stdinFilename=m_stdoutFilename=m_stderrFilename="";
      *
      * GULP-esque: $ gulp < job.gin 1>job.got 2>job.err
      *
      *  Runs in working directory using redirection to specify
      *  input/output. Set m_localRunCommand="gulp",
+     *  m_localRunArgs empty,
      *  m_stdinFilename="job.gin", m_stdoutFilename="job.got",
      *  m_stderrFilename="job.err".
      *
      * MOPAC-esque: $ mopac job
      *
      *  Runs in working directory, specifying either an input filename
-     *  or a base name. In both cases, put the entire command line
-     *  into m_localRunCommand, ="mopac job",
+     *  or a base name. Put the executable name (and path, if needed)
+     *  into m_localRunCommand="mopac", and args into m_localRunArgs[0]="job",
      *  m_stdinFilename=m_stdoutFilename=m_stderrFilename=""
      *
      * Stdin/out/err is not used (="") by default.
      *
      * @sa localRunCommand
+     * @sa localRunArgs
      * @sa stdinFilename
      * @sa stdoutFilename
      * @sa stderrFilename
@@ -559,6 +579,21 @@ namespace GlobalSearch {
      * @sa m_stderrFilename
      */
     QString m_localRunCommand;
+
+    /**
+     * Filename for standard input
+     *
+     * Details given in m_localRunCommand.
+     *
+     * @sa localRunCommand
+     * @sa stdinFilename
+     * @sa stdoutFilename
+     * @sa stderrFilename
+     * @sa m_localRunCommand
+     * @sa m_stdoutFilename
+     * @sa m_stderrFilename
+     */
+    QStringList m_localRunArgs;
 
     /**
      * Filename for standard input

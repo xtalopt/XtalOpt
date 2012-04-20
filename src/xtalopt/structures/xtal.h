@@ -69,6 +69,13 @@ namespace XtalOpt {
     bool checkInteratomicDistances(const QHash<unsigned int, XtalCompositionStruct> &limits,
                                    int *atom1 = NULL, int *atom2 = NULL,
                                    double *IAD = NULL);
+    // Same as above, but check the atoms in "atoms" against those in "this".
+    // atom1 is the index into "atoms", atom2 is the index into this->m_atomList
+    // (use Xtal::atom(atom2) to snag a pointer to it).
+    bool checkInteratomicDistances(const QHash<unsigned int, XtalCompositionStruct> &limits,
+                                   const QList<Avogadro::Atom*> atoms,
+                                   int *atom1 = NULL, int *atom2 = NULL,
+                                   double *IAD = NULL);
     QHash<QString, QVariant> getFingerprint();
     virtual QString getResultsEntry() const;
     virtual QString getResultsHeader() const {
@@ -126,7 +133,7 @@ namespace XtalOpt {
     Eigen::Vector3d* cartToFrac(const Eigen::Vector3d* cartCoords) const;
 
     // Convenience retreval
-    QList<Eigen::Vector3d> getAtomCoordsFrac() const;
+    QList<Avogadro::Atom*> getAtomsSortedBySymbol() const;
 
     // Spacegroup
     uint getSpaceGroupNumber();
@@ -175,6 +182,16 @@ namespace XtalOpt {
      */
     static Xtal* POSCARToXtal(QFile *file);
 
+    // Find the shortest equivalent vector accounting for translational
+    // symmetry
+    void shortenCartesianVector(Eigen::Vector3d *cartVec);
+    static void shortenCartesianVector(Eigen::Vector3d *cartVec,
+                                       const Eigen::Matrix3d &cellColMatrix);
+
+    // Find the shortest equivalent vector accounting for translational
+    // symmetry.
+    void shortenFractionalVector(Eigen::Vector3d *fracVec);
+
     // For random representation generation
     static void generateValidCOBs();
     static QVector<Eigen::Matrix3d> m_transformationMatrices;
@@ -194,22 +211,21 @@ namespace XtalOpt {
       cell()->SetData(m);};
     void setCellInfo(const OpenBabel::vector3 &v1, const OpenBabel::vector3 &v2, const OpenBabel::vector3 &v3) {
       cell()->SetData(v1, v2, v3);};
-    void setVolume(double Volume);
+    virtual void setVolume(double Volume);
     // rescale cell can be used to "fix" any cell parameter at a particular value.
     // Simply pass the fixed values and use "0" for any non-fixed parameters.
     // Volume will be preserved.
-    void rescaleCell(double a, double b, double c, double alpha, double beta, double gamma);
+    virtual void rescaleCell(double a, double b, double c,
+                             double alpha, double beta, double gamma);
 
     // Self-correction
     bool fixAngles(int attempts = 100);
     void wrapAtomsToCell();
 
     // Spacegroup
-    void findSpaceGroup(double prec = 0.05);
+    virtual void findSpaceGroup(double prec = 0.05);
 
-   private slots:
-
-   private:
+   protected:
     void ctor(QObject *parent=0);
     OpenBabel::OBUnitCell* cell() const;
     uint m_spgNumber;

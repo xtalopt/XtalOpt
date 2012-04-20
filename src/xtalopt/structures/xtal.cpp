@@ -36,6 +36,8 @@ extern "C" {
 
 #include <Eigen/LU>
 
+#include <QtAlgorithms>
+
 #include <QtCore/QFile>
 #include <QtCore/QDebug>
 #include <QtCore/QRegExp>
@@ -124,9 +126,9 @@ namespace XtalOpt {
 
     // Store position of atoms in fractional units
     QList<Atom*> atomList       = atoms();
-    QList<Vector3d*> fracCoordsList;
+    QList<Vector3d> fracCoordsList;
     for (int i = 0; i < atomList.size(); i++)
-      fracCoordsList.append(cartToFrac(atomList.at(i)->pos()));
+      fracCoordsList.append(cartToFrac(*atomList.at(i)->pos()));
 
     double nA = getA();
     double nB = getB();
@@ -831,6 +833,83 @@ namespace XtalOpt {
       return true;
   }
 
+  bool Xtal::checkInteratomicDistances(
+      const QHash<unsigned int, XtalCompositionStruct> &limits,
+      const QList<Atom *> atoms, int *atom1, int *atom2, double *IAD)
+  {
+    // Compute a cut off distance -- atoms farther away than this value
+    // will abort the check early.
+    double maxCheckDistance = 0.0;
+    for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
+         it = limits.constBegin(), it_end = limits.constEnd(); it != it_end;
+         ++it) {
+      if (it.value().minRadius > maxCheckDistance) {
+        maxCheckDistance = it.value().minRadius;
+      }
+    }
+    maxCheckDistance += maxCheckDistance;
+    const double maxCheckDistSquared = maxCheckDistance*maxCheckDistance;
+
+    // Iterate through all of the atoms in the list for "a1"
+    for (QList<Atom*>::const_iterator a1 = atoms.constBegin(),
+         a1_end = atoms.constEnd(); a1 != a1_end; ++a1) {
+
+      // Get list of minimum squared distances between each atom and a1
+      QVector<double> squaredDists;
+      this->getSquaredAtomicDistancesToPoint(*(*a1)->pos(), &squaredDists);
+      Q_ASSERT_X(squaredDists.size() == this->numAtoms(), Q_FUNC_INFO,
+                 "Size of distance list does not match number of atoms.");
+
+      // Cache the minimum radius of a1
+      const double minA1Radius =
+          limits.value((*a1)->atomicNumber()).minRadius;
+
+      // Iterate through each distance
+      for (int i = 0; i < squaredDists.size(); ++i) {
+
+        // Grab the atom pointer at i, a2
+        Atom *a2 = this->atom(i);
+
+        // Cache the squared distance between a1 and a2
+        const double &curDistSquared = squaredDists[i];
+
+        // Skip comparison if the current distance exceeds the cutoff
+        if (curDistSquared > maxCheckDistSquared) {
+          continue;
+        }
+
+        // Calculate the minimum distance for the atom pair
+        const double minDist = limits.value(a2->atomicNumber()).minRadius
+            + minA1Radius;
+        const double minDistSquared = minDist * minDist;
+
+        // If the distance is too small, set atom1/atom2 and return false
+        if (curDistSquared < minDistSquared) {
+          if (atom1 != NULL && atom2 != NULL) {
+            *atom1 = atoms.indexOf(*a1);
+            *atom2 = m_atomList.indexOf(a2);
+            if (IAD != NULL) {
+              *IAD = sqrt(curDistSquared);
+            }
+          }
+          return false;
+        }
+
+        // Atom a2 is ok with respect to a1
+      }
+      // Atom a1 is ok will all a2
+    }
+    // all distances check out -- return true.
+    if (atom1 != NULL && atom2 != NULL) {
+      *atom1 = *atom2 = -1;
+      if (IAD != NULL) {
+        *IAD = 0.0;
+      }
+    }
+    return true;
+  }
+
+
   bool Xtal::getShortestInteratomicDistance(double & shortest) const {
     QList<Atom*> atomList = atoms();
     if (atomList.size() <= 1) return false; // Need at least two atoms!
@@ -1093,24 +1172,30 @@ namespace XtalOpt {
     return true;
   }
 
-  QList<Vector3d> Xtal::getAtomCoordsFrac() const {
-    QList<Vector3d> list;
-    // Sort by symbols
-    QList<QString> symbols = getSymbols();
-    QString symbol_ref;
-    QString symbol_cur;
-    QList<Atom*>::const_iterator it;
-    for (int i = 0; i < symbols.size(); i++) {
-      symbol_ref = symbols.at(i);
-      for (it  = m_atomList.begin();
-           it != m_atomList.end();
-           it++) {
-        symbol_cur = QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()));
-        if (symbol_cur == symbol_ref) {
-          list.append( *(cartToFrac((*it)->pos())));
-        }
+  // Compare the symbols of two atoms to see which comes first alphabetically
+  bool atomicSymbolSortLessThan(Atom *a1, Atom *a2)
+  {
+    // We know that the symbol is between 1-3 symbols long, so we can limit
+    // the tests
+    const char *s1 = OpenBabel::etab.GetSymbol(a1->atomicNumber());
+    const char *s2 = OpenBabel::etab.GetSymbol(a2->atomicNumber());
+    int ls1 = tolower(s1[0]);
+    int ls2 = tolower(s2[0]);
+    if (ls1 == ls2) {
+      ls1 = tolower(s1[1]);
+      ls2 = tolower(s2[1]);
+      if (ls1 == ls2 && ls1 * ls2 != 0) {
+        ls1 = tolower(s1[2]);
+        ls2 = tolower(s2[2]);
       }
     }
+    return (ls1 < ls2);
+  }
+
+  QList<Atom*> Xtal::getAtomsSortedBySymbol() const
+  {
+    QList<Atom*> list = m_atomList;
+    qSort(list.begin(), list.end(), atomicSymbolSortLessThan);
     return list;
   }
 
@@ -1190,14 +1275,20 @@ namespace XtalOpt {
     case Error:
       status = "Error";
       break;
+    case Preoptimizing:
+      status = "Preoptimizing";
+      break;
     case StepOptimized:
     case WaitingForOptimization:
     case InProcess:
     case Empty:
     case Updating:
+    case Restart:
     case Submitted:
-    default:
       status = "In progress";
+      break;
+    default:
+      status = "Unknown";
       break;
     }
     return QString("%1 %2 %3 %4 %5 %6")
@@ -1656,6 +1747,47 @@ namespace XtalOpt {
     poscar = file->readAll();
     file->close();
     return POSCARToXtal(poscar);
+  }
+
+  void Xtal::shortenCartesianVector(Eigen::Vector3d *cartVec)
+  {
+    Eigen::Matrix3d cartMat = OB2Eigen(this->cell()->GetCellMatrix());
+    cartMat.transposeInPlace();
+    this->shortenCartesianVector(cartVec, cartMat);
+  }
+
+  void Xtal::shortenCartesianVector(Eigen::Vector3d *cartVec,
+                                    const Eigen::Matrix3d &cellColMatrix)
+  {
+    Eigen::Vector3d aTrans;
+    Eigen::Vector3d bTrans;
+    Eigen::Vector3d curImage;
+    Eigen::Vector3d shortestImage;
+    double minLengthSq = numeric_limits<double>::max();
+
+    for (int a = -1; a <= 1; ++a) {
+      aTrans = cellColMatrix.col(0) * a;
+      for (int b = -1; b <= 1; ++b) {
+        bTrans = cellColMatrix.col(1) * b;
+        for (int c = -1; c <= 1; ++c) {
+          curImage = aTrans + bTrans + (c * cellColMatrix.col(2));
+          double curLengthSq = (curImage + *cartVec).squaredNorm();
+          if (curLengthSq < minLengthSq) {
+            minLengthSq = curLengthSq;
+            shortestImage = curImage;
+          }
+        }
+      }
+    }
+
+    *cartVec += shortestImage;
+  }
+
+  void Xtal::shortenFractionalVector(Eigen::Vector3d *fracVec)
+  {
+    *fracVec = this->fracToCart(*fracVec);
+    this->shortenCartesianVector(fracVec);
+    *fracVec = this->cartToFrac(*fracVec);
   }
 
 } // end namespace XtalOpt

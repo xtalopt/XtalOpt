@@ -350,6 +350,11 @@ namespace RandomDock {
         .arg(QString::number(totalOptSteps));
       e.brush.setColor(Qt::cyan);
       break;
+    case Scene::Preoptimizing:
+      e.status = tr("Preoptimizing: %1%")
+        .arg(QString::number(scene->getPreOptProgress()));
+      e.brush.setColor(Qt::green);
+      break;
     case Scene::Restart:
       e.status = "Restarting job...";
       e.brush.setColor(Qt::cyan);
