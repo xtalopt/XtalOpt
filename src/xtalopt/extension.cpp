@@ -51,6 +51,8 @@ namespace XtalOpt {
 
     action = new QAction(this);
     action->setText(tr("&XtalOpt"));
+    action->setIcon(
+          QIcon(QString::fromUtf8(":/xtalopt/images/xtalopt-logo.png")));
     m_actions.append(action);
   }
 

@@ -19,6 +19,10 @@
   <property name="windowTitle">
    <string>XtalOpt</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="../xtalopt.qrc">
+    <normaloff>:/xtalopt/icons/images/xtalopt-logo.png</normaloff>:/xtalopt/icons/images/xtalopt-logo.png</iconset>
+  </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="4" column="8">
     <widget class="QPushButton" name="pushButton">
@@ -203,7 +207,9 @@
   <tabstop>push_begin</tabstop>
   <tabstop>pushButton</tabstop>
  </tabstops>
- <resources/>
+ <resources>
+  <include location="../xtalopt.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>pushButton</sender>
