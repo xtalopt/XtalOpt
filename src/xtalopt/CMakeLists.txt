@@ -45,7 +45,9 @@ set( xtalopt_UIS
      ui/tab_progress.ui
 )
 
-process_plugin(xtalopt "${xtalopt_SRCS}" "${xtalopt_UIS}")
+set( xtalopt_RCS xtalopt.qrc )
+
+process_plugin(xtalopt "${xtalopt_SRCS}" "${xtalopt_UIS}" "${xtalopt_RCS}")
 
 add_dependencies(xtalopt globalsearch XtalComp spglib)
 
