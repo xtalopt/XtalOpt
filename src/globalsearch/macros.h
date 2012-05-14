@@ -20,14 +20,18 @@
 #include <QtCore/QSettings>
 
 #include <cstdlib>
-#include <unistd.h> // For sleep on GCC >= 4.7
 
 #ifdef WIN32
+// Don't pull in winsock api (needed for libssh)
+#define _WINSOCKAPI_
 // For Sleep
 #include <windows.h>
 // For _finite
 #include <float.h>
-#endif
+#else // WIN32
+// For sleep on GCC >= 4.7
+#include <unistd.h>
+#endif // WIN32
 
 // Create a pointer of type QSettings *settings that points to either:
 // 1) The default application QSettings object, or

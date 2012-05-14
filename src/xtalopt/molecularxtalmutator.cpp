@@ -697,7 +697,7 @@ bool MolecularXtalMutator::mutate()
 
   d->emitNextStep();
 
-  if (fabs(d->currentStep - d->numMutationSteps) > 1e-5) {
+  if (d->currentStep != d->numMutationSteps) {
     DDEBUGOUT("mutate") "Not all steps taken? taken, total:"
         << d->currentStep << d->numMutationSteps;
   }

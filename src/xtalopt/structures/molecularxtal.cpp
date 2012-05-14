@@ -91,7 +91,9 @@ namespace XtalOpt {
       this->m_subMolecules[i] = NULL;
     }
     m_subMolecules.clear();
+#if QT_VERSION > 0x040700
     m_subMolecules.reserve(otherMXtal->m_subMolecules.size());
+#endif // QT > 4.7.0
 
     // Copy the submolecules from other to this
     for (QList<SubMolecule*>::const_iterator
@@ -101,14 +103,18 @@ namespace XtalOpt {
       SubMolecule *sub = new SubMolecule ();
       sub->m_sourceId = (*it)->m_sourceId;
       sub->m_mxtal = this;
+#if QT_VERSION > 0x040700
       sub->m_atoms.reserve((*it)->m_atoms.size());
+#endif // QT > 4.7.0
 
       for (QList<Atom*>::const_iterator ait = (*it)->m_atoms.constBegin(),
            ait_end = (*it)->m_atoms.constEnd(); ait != ait_end; ++ait) {
         sub->m_atoms.append(this->atomById((*ait)->id()));
       }
 
-      sub->m_bonds.reserve((*it)->m_bonds.size());
+#if QT_VERSION > 0x040700
+	  sub->m_bonds.reserve((*it)->m_bonds.size());
+#endif // QT > 4.7.0
       for (QList<Bond*>::const_iterator bit = (*it)->m_bonds.constBegin(),
            bit_end = (*it)->m_bonds.constEnd(); bit != bit_end; ++bit) {
         sub->m_bonds.append(this->bondById((*bit)->id()));

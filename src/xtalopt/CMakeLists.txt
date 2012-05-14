@@ -54,4 +54,6 @@ add_dependencies(xtalopt globalsearch XtalComp spglib)
 target_link_libraries( xtalopt
                        globalsearch
                        XtalComp
-                       spglib)
+                       spglib 
+                       ${LIBSSH_LIBRARIES}
+                       )

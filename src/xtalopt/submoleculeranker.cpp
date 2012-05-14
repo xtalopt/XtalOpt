@@ -914,6 +914,7 @@ bool SubMoleculeRankerPrivate::cleanup()
   constraints.Clear();
   delete ff;
   ff = NULL;
+  return true;
 }
 
 }

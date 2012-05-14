@@ -29,7 +29,7 @@
 class QFile;
 
 namespace XtalOpt {
-  class XtalCompositionStruct;
+  struct XtalCompositionStruct;
 
   class Xtal : public GlobalSearch::Structure
   {

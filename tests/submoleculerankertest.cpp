@@ -27,6 +27,9 @@
 
 #include <QtTest/QtTest>
 
+#define USE_MATH_DEFINES
+#include <cmath>
+
 using namespace Avogadro;
 using namespace XtalOpt;
 

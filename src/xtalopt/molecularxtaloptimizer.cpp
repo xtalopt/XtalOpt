@@ -694,6 +694,7 @@ bool MolecularXtalOptimizerPrivate::cleanup()
   this->releaseMXtal();
   converged = false;
   exceededSteps = false;
+  return true;
 }
 
 void MolecularXtalOptimizerPrivate::releaseMXtal()

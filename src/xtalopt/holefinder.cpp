@@ -24,7 +24,7 @@
 
 #include <Eigen/LU> // For MatrixBase::inverse();
 
-#include <cmath>
+#define M_PI 3.14159265358979323846
 #include <limits>
 
 #define DEBUGOUT(_funcnam_) \
@@ -508,6 +508,8 @@ void HoleFinderPrivate::resizeHoles()
   }
   for (QVector<Hole>::iterator it = this->holes.begin(),
        it_end = this->holes.end(); it != it_end; ++it) {
+// This is needed for windows, which seems to define a max() macro
+#undef max
     it->radiusSquared = std::numeric_limits<double>::max();
     for (QVector<Eigen::Vector3d>::const_iterator
          pit = this->points.constBegin(),
