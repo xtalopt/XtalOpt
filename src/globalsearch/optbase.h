@@ -195,7 +195,11 @@ for (ind = 0; ind < probs.size(); ind++)
     /**
      * Override with any saving operations that derived classes need.
      */
-    virtual bool postSave(const QString &filename) {Q_UNUSED(filename);}
+    virtual bool postSave(const QString &filename) 
+    {
+      Q_UNUSED(filename);
+      return true;
+    }
 
     /**
      * Load a search session from the specified filename.

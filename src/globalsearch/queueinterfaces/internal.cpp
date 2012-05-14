@@ -29,6 +29,8 @@
 #include <QtCore/QTextStream>
 
 #ifdef WIN32
+// Don't pull in winsock api (needed for libssh)
+#define _WINSOCKAPI_
 // For extracting PIDs
 #include <windows.h>
 #endif

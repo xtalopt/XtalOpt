@@ -535,7 +535,7 @@ namespace XtalOpt {
       return;
     }
 
-    m_mxtal == NULL;
+    m_mxtal = NULL;
     this->m_dummyParent->clear();
 
     // Create lists of pointers

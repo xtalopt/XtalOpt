@@ -54,7 +54,8 @@ if(ENABLE_SSH)
       "libssh too old! Installed version is ${LibSSH_VERSION}, need at least "
       "libssh ${LibSSH_MIN_VERSION}")
     endif()
-    include_directories(${LIBSS_INCLUDE_DIRS})
+    message(STATUS "LibSSH found: ${LibSSH_VERSION} ${LIBSSH_INCLUDE_DIRS} ${LIBSSH_LIBRARIES}")
+    include_directories(${LIBSSH_INCLUDE_DIRS})
   endif(USE_CLI_SSH)
 endif()
 
@@ -94,6 +95,10 @@ if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC"  )
 endif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
+# USING_DYNAMIC_LIBS needs to be defined for OpenBabel to properly export some symbols
+if (MSVC)
+  add_definitions(-DUSING_DYNAMIC_LIBS)
+endif (MSVC)
 
 add_subdirectory(src)
 

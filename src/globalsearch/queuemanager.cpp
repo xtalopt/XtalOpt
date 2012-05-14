@@ -300,6 +300,7 @@ namespace GlobalSearch {
           !m_opt->limitRunningJobs ||
           submitted < m_opt->runningJobLimit
           )) {
+#ifdef ENABLE_SSH
       // Submit a single throttled job (1 submission per 3-8 seconds) if using
       // a remote queue interface. Interval is randomly chosen each iteration.
       // This prevents hammering the pbs server from multiple XtalOpt instances
@@ -314,7 +315,9 @@ namespace GlobalSearch {
           *m_lastSubmissionTimeStamp = QDateTime::currentDateTime();
         }
       }
-      else {
+	  else
+#endif // ENABLE_SSH
+      {
         // Local job submission doesn't need to be throttled
         while (pending != 0 &&
                (
