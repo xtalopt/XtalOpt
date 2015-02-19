@@ -28,6 +28,7 @@
 #ifdef ENABLE_SSH
 #include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/queueinterfaces/sge.h>
+#include <globalsearch/queueinterfaces/slurm.h>
 #endif // ENABLE_SSH
 
 #include <QtGui/QComboBox>
@@ -64,7 +65,7 @@ namespace RandomDock {
 
     // Fill m_optimizers in order of RandomDock::QueueInterfaces
     m_queueInterfaces.clear();
-    const unsigned int numQIs = 3;
+    const unsigned int numQIs = 4;
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
       case RandomDock::QI_LOCAL:
@@ -76,6 +77,9 @@ namespace RandomDock {
         break;
       case RandomDock::QI_SGE:
         m_queueInterfaces.append(new SgeQueueInterface (m_opt));
+        break;
+      case RandomDock::QI_SLURM:
+        m_queueInterfaces.append(new SlurmQueueInterface (m_opt));
         break;
 #endif // ENABLE_SSH
       }

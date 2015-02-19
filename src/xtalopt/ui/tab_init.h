@@ -52,6 +52,13 @@ namespace XtalOpt {
     void updateCompositionTable();
     void updateDimensions();
     void updateMinRadii();
+    void updateNumDivisions();
+    void updateA();
+    void updateB();
+    void updateC();
+    void writeA();
+    void writeB();
+    void writeC();
 
   signals:
 

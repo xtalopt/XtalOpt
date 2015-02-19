@@ -1,0 +1,2 @@
+/usr/bin/ar cr libXtalComp.a  CMakeFiles/XtalComp.dir/xtalcomp.cpp.o CMakeFiles/XtalComp.dir/xctransform.cpp.o
+/usr/bin/ranlib libXtalComp.a

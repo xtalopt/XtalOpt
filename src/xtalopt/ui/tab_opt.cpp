@@ -38,6 +38,7 @@ namespace XtalOpt {
     // Initial generation
     connect(ui.spin_numInitial, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
+
     // Seeds
     connect(ui.push_addSeed, SIGNAL(clicked()),
             this, SLOT(addSeed()));
@@ -58,6 +59,8 @@ namespace XtalOpt {
     connect(ui.spin_failLimit, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.combo_failAction, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_cutoff, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
 
     // Duplicate tolerances
@@ -131,6 +134,7 @@ namespace XtalOpt {
     settings->setValue("opt/runningJobLimit",   xtalopt->runningJobLimit);
     settings->setValue("opt/failLimit",         xtalopt->failLimit);
     settings->setValue("opt/failAction",        xtalopt->failAction);
+    settings->setValue("opt/cutoff",            xtalopt->cutoff);
 
     // Duplicates
     settings->setValue("tol/xtalcomp/length",   xtalopt->tol_xcLength);
@@ -179,6 +183,7 @@ namespace XtalOpt {
     ui.spin_runningJobLimit->setValue(  settings->value("opt/runningJobLimit",  1).toUInt()    );
     ui.spin_failLimit->setValue(        settings->value("opt/failLimit",        2).toUInt()    );
     ui.combo_failAction->setCurrentIndex(settings->value("opt/failAction",      XtalOpt::FA_Randomize).toUInt()    );
+    ui.spin_cutoff->setValue(           settings->value("opt/cutoff",           100).toInt()    );
 
     // Duplicates
     ui.spin_tol_xcLength->setValue(     settings->value("tol/xtalcomp/length",  0.1).toDouble());
@@ -230,6 +235,7 @@ namespace XtalOpt {
     ui.spin_runningJobLimit->setValue(  xtalopt->runningJobLimit);
     ui.spin_failLimit->setValue(        xtalopt->failLimit);
     ui.combo_failAction->setCurrentIndex(xtalopt->failAction);
+    ui.spin_cutoff->setValue(           xtalopt->cutoff);
 
     // Duplicates
     ui.spin_tol_xcLength->setValue(     xtalopt->tol_xcLength);
@@ -304,6 +310,7 @@ namespace XtalOpt {
     xtalopt->limitRunningJobs	= ui.cb_limitRunningJobs->isChecked();
     xtalopt->failLimit		= ui.spin_failLimit->value();
     xtalopt->failAction		= XtalOpt::FailActions(ui.combo_failAction->currentIndex());
+    xtalopt->cutoff              = ui.spin_cutoff->value();
 
     // Duplicates
     xtalopt->tol_xcLength         = ui.spin_tol_xcLength->value();

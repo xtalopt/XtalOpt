@@ -20,6 +20,7 @@
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/pwscf.h>
 #include <xtalopt/optimizers/castep.h>
+#include <xtalopt/optimizers/siesta.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
 
@@ -36,6 +37,10 @@
 #include <globalsearch/sshmanager.h>
 #include <globalsearch/queueinterfaces/remote.h>
 #endif // ENABLE_SSH
+
+#include <openbabel/generic.h>
+
+#include <Eigen/LU>
 
 #include <QtCore/QDir>
 #include <QtCore/QList>
@@ -392,7 +397,7 @@ namespace XtalOpt {
   }
 
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
-  {
+  { 
     INIT_RANDOM_GENERATOR();
     // Set cell parameters
     double a            = RANDDOUBLE() * (a_max-a_min) + a_min;
@@ -426,19 +431,81 @@ namespace XtalOpt {
 
     unsigned int atomicNum;
     unsigned int q;
-    for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
-      atomicNum = atomicNums.at(num_idx);
-      q = comp.value(atomicNum).quantity;
-      for (uint i = 0; i < q; i++) {
-        if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
-          xtal->deleteLater();
-          debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                "specified interatomic distance.");
-          return 0;
-        }
-      }
-    }
+    
+    qDebug() << "Xtal has divisions =" << divisions;
 
+    if (using_mitosis){
+        //  Unit Cell Vectors
+        int A = ax;
+        int B = bx;
+        int C = cx;
+
+        a = a / A; 
+        b = b / B; 
+        c = c / C; 
+        
+        xtal->setCellInfo(a,
+                b,
+                c,
+                xtal->getAlpha(),
+                xtal->getBeta(),
+                xtal->getGamma());
+        qDebug() << "Xtal cell dimensions are decreasing from a =" << A*a << "b =" << B*b << "c =" << C*c <<
+                "to a =" << a << "b =" << b << "c =" << c;
+
+        for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+            atomicNum = atomicNums.at(num_idx);
+            q = comp.value(atomicNum).quantity;
+            if (using_mitosis){
+                q = q / divisions;
+                for (uint i = 0; i < q; i++) {
+                    if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+                        xtal->deleteLater();
+                        debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                            "specified interatomic distance.");
+                        return 0;
+                    }
+                }
+            } 
+        }
+
+        if (!xtal->fillSuperCell(A, B, C, xtal)) {
+            xtal->deleteLater();
+            debug("XtalOpt::generateRandomXtal: Failed to add atoms.");
+            return 0;
+        }
+
+        for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+            atomicNum = atomicNums.at(num_idx);
+            q = comp.value(atomicNum).quantity;
+            if (using_mitosis){
+                q = q % divisions;
+                for (uint i = 0; i < q; i++) {
+                    if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+                        xtal->deleteLater();
+                        debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                            "specified interatomic distance.");
+                        return 0;
+                    }
+                }
+            } 
+        }
+
+    } else {
+        for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+            atomicNum = atomicNums.at(num_idx);
+            q = comp.value(atomicNum).quantity;
+            for (uint i = 0; i < q; i++) {
+                if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+                    xtal->deleteLater();
+                    debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                        "specified interatomic distance.");
+                    return 0;
+                }
+            }
+        }
+    }  
+ 
     // Set up geneology info
     xtal->setGeneration(generation);
     xtal->setIDNumber(id);
@@ -976,6 +1043,8 @@ namespace XtalOpt {
     else if (line == "betaDeg")         rep += QString::number(xtal->getBeta());
     else if (line == "gammaDeg")        rep += QString::number(xtal->getGamma());
     else if (line == "volume")          rep += QString::number(xtal->getVolume());
+    else if (line == "block")           rep += QString("\%block");
+    else if (line == "endblock")        rep += QString("\%endblock");
     else if (line == "coordsFrac") {
       QList<Atom*> atoms = structure->atoms();
       QList<Atom*>::const_iterator it;
@@ -987,6 +1056,37 @@ namespace XtalOpt {
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
         rep += QString::number(coords.z()) + "\n";
+      }
+    }
+    else if (line == "chemicalSpeciesLabel") {
+      QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
+      QList<QString> symbol = xtal->getSymbols();
+      for (int i = 0; i < atomCounts.size(); i++) {
+        rep += " ";  
+        rep += QString::number(i+1) + " ";  
+        rep += QString::number(atomCounts.at(i)) + " ";
+        rep += symbol.at(i) + "\n";
+      }
+    }
+    else if (line == "atomicCoordsAndAtomicSpecies") {
+      QList<Atom*> atoms = xtal->atoms();
+      QList<Atom*>::const_iterator it;
+      QList<QString> symbol = xtal->getSymbols();
+      for (it  = atoms.begin();
+           it != atoms.end();
+           it++) {
+        const Eigen::Vector3d coords = xtal->cartToFrac(*(*it)->pos());
+        QString currAtom = static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber()));
+        int i = symbol.indexOf(currAtom)+1;
+        rep += " ";
+        QString inp;
+        inp.sprintf("%4.8f", coords.x());  
+        rep += inp + "\t";
+        inp.sprintf("%4.8f", coords.y());  
+        rep += inp + "\t";
+        inp.sprintf("%4.8f", coords.z());  
+        rep += inp + "\t";
+        rep += QString::number(i) + "\n";
       }
     }
     else if (line == "coordsFracId") {
@@ -1020,8 +1120,11 @@ namespace XtalOpt {
     else if (line == "cellMatrixAngstrom") {
       matrix3x3 m = xtal->OBUnitCell()->GetCellMatrix();
       for (int i = 0; i < 3; i++) {
+        rep += " ";  
         for (int j = 0; j < 3; j++) {
-          rep += QString::number(m.Get(i,j)) + "\t";
+          QString inp;
+          inp.sprintf("%4.8f", m.Get(i,j));
+          rep += inp + "\t";
         }
         rep += "\n";
       }
@@ -1170,6 +1273,8 @@ namespace XtalOpt {
     if (forceReadOnly) {
       readOnly = true;
     }
+    
+    loaded = true;
 
     // Attempt to open state file
     QFile file (filename);
@@ -1240,16 +1345,6 @@ namespace XtalOpt {
     // are loading the settings and setting the variables in their
     // scope, but it isn't changing it here. Caching issue maybe?
     m_dialog->readSettings(filename);
-
-#ifdef ENABLE_SSH
-    // Create the SSHManager if running remotely
-    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
-      if (!this->createSSHConnections()) {
-        error(tr("Could not create ssh connections."));
-        return false;
-      }
-    }
-#endif // ENABLE_SSH
 
     debug(tr("Resuming XtalOpt session in '%1' (%2) readOnly = %3")
           .arg(filename)
@@ -1394,6 +1489,19 @@ namespace XtalOpt {
       readOnly = !resume;
       qDebug() << "Read only? " << readOnly;
     }
+
+    #ifdef ENABLE_SSH
+        // Create the SSHManager if running remotely
+    if (!readOnly) {
+        if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
+            if (!this->createSSHConnections()) {
+                error(tr("Could not create ssh connections."));
+            return false;
+            }
+        }
+    }
+    #endif // ENABLE_SSH
+
 
     return true;
   }

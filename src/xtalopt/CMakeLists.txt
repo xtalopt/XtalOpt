@@ -11,6 +11,7 @@ set( xtalopt_SRCS
      optimizers/gulp.cpp
      optimizers/pwscf.cpp
      optimizers/castep.cpp
+     optimizers/siesta.cpp
      testing/xtalopttest.cpp
      ui/dialog.cpp
      ui/tab_init.cpp

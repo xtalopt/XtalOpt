@@ -14,8 +14,11 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0" colspan="5">
+   <item row="0" column="0" colspan="8">
     <widget class="QTableWidget" name="table_list">
+     <property name="sortingEnabled">
+      <bool>true</bool>
+     </property>
      <property name="contextMenuPolicy">
       <enum>Qt::CustomContextMenu</enum>
      </property>
@@ -127,13 +130,34 @@
      </property>
      <property name="sizeHint" stdset="0">
       <size>
-       <width>40</width>
+       <width>5</width>
        <height>20</height>
       </size>
      </property>
     </spacer>
    </item>
-   <item row="2" column="4">
+    <item row="2" column="4">
+    <widget class="QPushButton" name="push_print">
+     <property name="text">
+      <string>Pri&amp;nt File</string>
+     </property>
+    </widget>
+   </item>
+  <item row="2" column="5">
+    <widget class="QPushButton" name="push_clear">
+     <property name="text">
+      <string>Remov&amp;e Extra Files</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="6">
+    <widget class="QPushButton" name="push_rank">
+     <property name="text">
+      <string>Ran&amp;k all</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="7">
     <widget class="QPushButton" name="push_refreshAll">
      <property name="text">
       <string>Refresh &amp;all</string>
@@ -144,7 +168,7 @@
  </widget>
  <tabstops>
   <tabstop>table_list</tabstop>
-  <tabstop>push_refresh</tabstop>
+  <tabstop>push_clear</tabstop>
   <tabstop>spin_period</tabstop>
  </tabstops>
  <resources/>
