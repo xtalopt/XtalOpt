@@ -32,6 +32,10 @@ namespace XtalOpt {
     AbstractTab(parent, p)
   {
     ui.setupUi(m_tab_widget);
+    
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    xtalopt->loaded =   false;
 
     // composition connections
     connect(ui.edit_composition, SIGNAL(textChanged(QString)),
@@ -130,7 +134,6 @@ namespace XtalOpt {
     settings->setValue("using/fixedVolume",   xtalopt->using_fixed_volume);
     settings->setValue("using/mitosis",      xtalopt->using_mitosis);
     settings->setValue("limits/divisions",      xtalopt->divisions);
-    settings->setValue("limits/index/divisions",      ui.combo_divisions->findText(QString::number(xtalopt->divisions)));
     settings->setValue("limits/ax",      xtalopt->ax);
     settings->setValue("limits/bx",      xtalopt->bx);
     settings->setValue("limits/cx",      xtalopt->cx);
@@ -338,8 +341,8 @@ namespace XtalOpt {
     xtalopt->comp = comp;
 
     this->updateMinRadii();
-    this->updateNumDivisions();
     this->updateCompositionTable();
+    this->updateNumDivisions();
   }
 
   void TabInit::updateCompositionTable()
@@ -438,6 +441,7 @@ namespace XtalOpt {
     xtalopt->vol_fixed	= ui.spin_fixedVolume->value();
     xtalopt->using_mitosis = ui.cb_mitosis->isChecked();
     xtalopt->divisions = ui.combo_divisions->currentText().toInt();
+    
 
     if (xtalopt->scaleFactor != ui.spin_scaleFactor->value() ||
         xtalopt->minRadius   != ui.spin_minRadius->value() ||
