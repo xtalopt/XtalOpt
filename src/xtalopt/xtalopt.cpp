@@ -469,6 +469,8 @@ namespace XtalOpt {
             } 
         }
 
+        initializeSubXtal(xtal, 1, xtal->getParents());
+
         if (!xtal->fillSuperCell(A, B, C, xtal)) {
             xtal->deleteLater();
             debug("XtalOpt::generateRandomXtal: Failed to add atoms.");
@@ -514,6 +516,99 @@ namespace XtalOpt {
 
     // Set up xtal data
     return xtal;
+  }
+
+  void XtalOpt::initializeSubXtal(Xtal *xtal, uint generation,
+                                     const QString &parents)
+    {
+    xtalInitMutex->lock();
+    QList<Structure*> allStructures = m_queue->lockForNaming();
+    Structure *structure;
+    uint id = 1;
+    for (int j = 0; j < allStructures.size(); j++) {
+      structure = allStructures.at(j);
+      structure->lock()->lockForRead();
+      if (structure->getGeneration() == generation &&
+          structure->getIDNumber() >= id) {
+        id = structure->getIDNumber() + 1;
+      }
+      structure->lock()->unlock();
+    }
+
+    //QWriteLocker xtalLocker (xtal->lock());
+    //xtal->moveToThread(m_queueThread);
+  //  xtal->setIDNumber(id);
+  //  xtal->setGeneration(generation);
+  //  xtal->setParents(parents);
+    QString id_s, gen_s, locpath_s, rempath_s;
+    id_s.sprintf("%05d",id);
+    gen_s.sprintf("%05d",generation);
+    locpath_s = filePath;
+    rempath_s = rempath;
+    QDir dir (locpath_s);
+    if (!dir.exists()) {
+      if (!dir.mkpath(locpath_s)) {
+        error(tr("XtalOpt::initializeSubXtal: Cannot write to path: %1 "
+                 "(path creation failure)", "1 is a file path.")
+              .arg(locpath_s));
+      }
+    }
+    QFile rem_subcell, loc_subcell;
+    rem_subcell.setFileName(rempath_s + "/" + gen_s + "x" + id_s + "-poscar");
+    loc_subcell.setFileName(locpath_s + "/" + gen_s + "x" + id_s + "-poscar");
+    
+    if (!loc_subcell.open(QIODevice::WriteOnly)) {
+                    error("XtalOpt::initializeSubXtal(): Error opening file "+loc_subcell.fileName()+" for writing...");
+    }
+    
+    QTextStream out;
+    out.setDevice(&loc_subcell);
+
+    QStringList symbols = xtal->getSymbols();
+    QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
+    Q_ASSERT_X(symbols.size() == atomCounts.size(), Q_FUNC_INFO,
+               "xtal->getSymbols is not the same size as xtal->getNumberOfAtomsAlpha.");
+    for (unsigned int i = 0; i < symbols.size(); i++) {
+      out << QString("%1%2").arg(symbols[i]).arg(atomCounts[i]);
+    }
+    out << " ";
+    out << xtal->fileName();
+    out << "\n";
+    // Scaling factor. Just 1.0
+    out << QString::number(1.0);
+    out << "\n";
+    // Unit Cell Vectors
+    std::vector< vector3 > vecs = xtal->OBUnitCell()->GetCellVectors();
+    for (uint i = 0; i < vecs.size(); i++) {
+      out << QString("  %1 %2 %3\n")
+        .arg(vecs[i].x(), 12, 'f', 8)
+        .arg(vecs[i].y(), 12, 'f', 8)
+        .arg(vecs[i].z(), 12, 'f', 8);
+    }
+    // Number of each type of atom (sorted alphabetically by symbol)
+    for (int i = 0; i < atomCounts.size(); i++) {
+      out << QString::number(atomCounts.at(i)) + " ";
+    }
+    out << "\n";
+    // Use fractional coordinates:
+    out << "Direct\n";
+    // Coordinates of each atom (sorted alphabetically by symbol)
+    QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
+    for (int i = 0; i < coords.size(); i++) {
+      out << QString("  %1 %2 %3\n")
+        .arg(coords[i].x(), 12, 'f', 8)
+        .arg(coords[i].y(), 12, 'f', 8)
+        .arg(coords[i].z(), 12, 'f', 8);
+    }
+    out << endl;
+ //   out.close();
+ //   xtalLocker.unlock();
+    m_queue->unlockForNaming(xtal);
+    xtalInitMutex->unlock();
+
+//    QString command = "obabel -iVASP \"" + filePath + "/" + gen_s + "x" + id_s + "-poscar\" -ocif -O \"" + filePath + "/" + gen_s + "x" + id_s + "-subcell.cif\"";
+//    system(qPrintable(command));
+    //QFile::remove(filePath + "/" + gen_s + "x" + id_s + "-poscar");
   }
 
   void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation,

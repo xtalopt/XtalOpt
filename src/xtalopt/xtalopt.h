@@ -148,6 +148,9 @@ namespace XtalOpt {
     void initializeAndAddXtal(Xtal *xtal,
                               unsigned int generation,
                               const QString &parents);
+    void initializeSubXtal(Xtal *xtal,
+                              unsigned int generation,
+                              const QString &parents);
     void resetSpacegroups();
     void resetDuplicates();
     void checkForDuplicates();

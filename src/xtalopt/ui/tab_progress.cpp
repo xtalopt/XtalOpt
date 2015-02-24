@@ -974,7 +974,7 @@ namespace XtalOpt {
     QFile file;
     file.setFileName(m_opt->filePath + "/run-results.txt");
     if (!file.open(QIODevice::WriteOnly)) {
-        m_opt->error("XtalOptTest::writeDataFile(): Error opening file "+file.fileName()+" for writing...");
+        m_opt->error("TabProgress::printFile(): Error opening file "+file.fileName()+" for writing...");
     }
     QTextStream out;
     out.setDevice(&file);
