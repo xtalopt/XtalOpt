@@ -313,6 +313,9 @@ namespace XtalOpt {
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
     QWriteLocker locker1 (oldXtal->lock());
 
+    uint generation, id;
+    generation = s->getGeneration();
+    id = s->getIDNumber();
     // Generate/Check new xtal
     Xtal *xtal = 0;
     while (!checkXtal(xtal)) {
@@ -321,7 +324,7 @@ namespace XtalOpt {
         xtal = 0;
       }
 
-      xtal = generateRandomXtal(0, 0);
+      xtal = generateRandomXtal(generation, id);
     }
 
     // Copy info over
@@ -469,7 +472,7 @@ namespace XtalOpt {
             } 
         }
 
-        initializeSubXtal(xtal, 1, xtal->getParents());
+        initializeSubXtal(xtal, generation, id);
 
         if (!xtal->fillSuperCell(A, B, C, xtal)) {
             xtal->deleteLater();
@@ -519,11 +522,10 @@ namespace XtalOpt {
   }
 
   void XtalOpt::initializeSubXtal(Xtal *xtal, uint generation,
-                                     const QString &parents)
+                                     uint id)
     {
     xtalInitMutex->lock();
-    QList<Structure*> allStructures = m_queue->lockForNaming();
-    Structure *structure;
+  /*  Structure *structure;
     uint id = 1;
     for (int j = 0; j < allStructures.size(); j++) {
       structure = allStructures.at(j);
@@ -534,17 +536,11 @@ namespace XtalOpt {
       }
       structure->lock()->unlock();
     }
-
-    //QWriteLocker xtalLocker (xtal->lock());
-    //xtal->moveToThread(m_queueThread);
-  //  xtal->setIDNumber(id);
-  //  xtal->setGeneration(generation);
-  //  xtal->setParents(parents);
-    QString id_s, gen_s, locpath_s, rempath_s;
+*/
+    QString id_s, gen_s, locpath_s;
     id_s.sprintf("%05d",id);
     gen_s.sprintf("%05d",generation);
-    locpath_s = filePath;
-    rempath_s = rempath;
+    locpath_s = filePath + "/subcells";
     QDir dir (locpath_s);
     if (!dir.exists()) {
       if (!dir.mkpath(locpath_s)) {
@@ -553,9 +549,8 @@ namespace XtalOpt {
               .arg(locpath_s));
       }
     }
-    QFile rem_subcell, loc_subcell;
-    rem_subcell.setFileName(rempath_s + "/" + gen_s + "x" + id_s + "-poscar");
-    loc_subcell.setFileName(locpath_s + "/" + gen_s + "x" + id_s + "-poscar");
+    QFile loc_subcell;
+    loc_subcell.setFileName(locpath_s + "/" + gen_s + "x" + id_s + ".cml");
     
     if (!loc_subcell.open(QIODevice::WriteOnly)) {
                     error("XtalOpt::initializeSubXtal(): Error opening file "+loc_subcell.fileName()+" for writing...");
@@ -564,6 +559,7 @@ namespace XtalOpt {
     QTextStream out;
     out.setDevice(&loc_subcell);
 
+    /*
     QStringList symbols = xtal->getSymbols();
     QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
     Q_ASSERT_X(symbols.size() == atomCounts.size(), Q_FUNC_INFO,
@@ -601,14 +597,57 @@ namespace XtalOpt {
         .arg(coords[i].z(), 12, 'f', 8);
     }
     out << endl;
- //   out.close();
- //   xtalLocker.unlock();
-    m_queue->unlockForNaming(xtal);
-    xtalInitMutex->unlock();
+*/
+ 
+// Print the subcells as .cml files    
+    QStringList symbols = xtal->getSymbols();
+    QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
+    out << "<molecule>\n";
+    out << "\t<crystal>\n";
 
-//    QString command = "obabel -iVASP \"" + filePath + "/" + gen_s + "x" + id_s + "-poscar\" -ocif -O \"" + filePath + "/" + gen_s + "x" + id_s + "-subcell.cif\"";
-//    system(qPrintable(command));
-    //QFile::remove(filePath + "/" + gen_s + "x" + id_s + "-poscar");
+    // Unit Cell Vectors
+    std::vector< vector3 > vecs = xtal->OBUnitCell()->GetCellVectors();
+      out << QString("\t\t<scalar title=\"a\" units=\"units:angstrom\">%1</scalar>\n")
+        .arg(vecs[0].x(), 12);
+      out << QString("\t\t<scalar title=\"b\" units=\"units:angstrom\">%1</scalar>\n")
+        .arg(vecs[1].y(), 12, 'f', 8);
+      out << QString("\t\t<scalar title=\"c\" units=\"units:angstrom\">%1</scalar>\n")
+        .arg(vecs[2].z(), 12, 'f', 8);
+    
+    // Unit Cell Angles
+    out << QString("\t\t<scalar title=\"alpha\" units=\"units:degree\">%1</scalar>\n")
+      .arg(xtal->OBUnitCell()->GetAlpha(), 12, 'f', 8);
+    out << QString("\t\t<scalar title=\"beta\" units=\"units:degree\">%1</scalar>\n")
+      .arg(xtal->OBUnitCell()->GetBeta(), 12, 'f', 8);
+    out << QString("\t\t<scalar title=\"gamma\" units=\"units:degree\">%1</scalar>\n")
+      .arg(xtal->OBUnitCell()->GetGamma(), 12, 'f', 8);
+ 
+    out << "\t</crystal>\n";
+    out << "\t<atomArray>\n";
+
+    int symbolCount = 0; 
+    int j = 1;
+    // Coordinates of each atom (sorted alphabetically by symbol)
+    QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
+    for (int i = 0; i < coords.size(); i++) {
+      if (j > atomCounts[symbolCount]) {
+          symbolCount++;
+          j = 0;
+      }
+      j++;
+      out << QString("\t\t<atom id=\"a%1\" elementType=\"%2\" xFract=\"%3\" yFract=\"%4\" zFract=\"%5\"/>\n")
+        .arg(i+1)
+        .arg(symbols[symbolCount])
+        .arg(coords[i].x(), 12, 'f', 8)
+        .arg(coords[i].y(), 12, 'f', 8)
+        .arg(coords[i].z(), 12, 'f', 8);
+    }
+    
+    out << "\t</atomArray>\n";
+    out << "</molecule>\n";
+    out << endl;
+
+    xtalInitMutex->unlock();
   }
 
   void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation,

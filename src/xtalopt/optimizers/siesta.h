@@ -14,7 +14,7 @@
  ***********************************************************************/
 
 #ifndef SIESTAOPTIMIZER_H
-#define SIETSAOPTIMIZER_H
+#define SIESTAOPTIMIZER_H
 
 #include <xtalopt/optimizers/xtaloptoptimizer.h>
 
