@@ -86,6 +86,8 @@ namespace XtalOpt {
             this, SLOT(writeB()));
     connect(ui.combo_c, SIGNAL(activated(int)),
             this, SLOT(writeC()));
+    connect(ui.cb_subcellPrint, SIGNAL(toggled(bool)),
+            this, SLOT(updateDimensions()));
     connect(ui.spin_scaleFactor, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
     connect(ui.spin_minRadius, SIGNAL(valueChanged(double)),
@@ -133,6 +135,7 @@ namespace XtalOpt {
     settings->setValue("limits/minRadius",    xtalopt->minRadius);
     settings->setValue("using/fixedVolume",   xtalopt->using_fixed_volume);
     settings->setValue("using/mitosis",      xtalopt->using_mitosis);
+    settings->setValue("using/subcellPrint",      xtalopt->using_subcellPrint);
     settings->setValue("limits/divisions",      xtalopt->divisions);
     settings->setValue("limits/ax",      xtalopt->ax);
     settings->setValue("limits/bx",      xtalopt->bx);
@@ -193,6 +196,7 @@ namespace XtalOpt {
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
     ui.cb_interatomicDistanceLimit->setChecked( settings->value("using/interatomicDistanceLimit",false).toBool());
     ui.cb_mitosis->setChecked(      settings->value("using/mitosis",       false).toBool()     ); 
+    ui.cb_mitosis->setChecked(      settings->value("using/subcellPrint",       false).toBool()     ); 
     xtalopt->divisions = settings->value("limits/divisions").toInt();
     xtalopt->ax = settings->value("limits/ax").toInt();
     xtalopt->bx = settings->value("limits/bx").toInt();
@@ -256,6 +260,7 @@ namespace XtalOpt {
     ui.spin_minRadius->setValue(   xtalopt->minRadius);
     ui.cb_fixedVolume->setChecked( xtalopt->using_fixed_volume);
     ui.cb_mitosis->setChecked( xtalopt->using_mitosis);
+    ui.cb_subcellPrint->setChecked( xtalopt->using_subcellPrint);
     ui.combo_divisions->setItemText(ui.combo_divisions->currentIndex(), QString::number(xtalopt->divisions));
     ui.combo_a->setItemText(ui.combo_a->currentIndex(), QString::number(xtalopt->ax));
     ui.combo_b->setItemText(ui.combo_b->currentIndex(), QString::number(xtalopt->bx));
@@ -441,6 +446,7 @@ namespace XtalOpt {
     xtalopt->vol_fixed	= ui.spin_fixedVolume->value();
     xtalopt->using_mitosis = ui.cb_mitosis->isChecked();
     xtalopt->divisions = ui.combo_divisions->currentText().toInt();
+    xtalopt->using_subcellPrint = ui.cb_subcellPrint->isChecked();
     
 
     if (xtalopt->scaleFactor != ui.spin_scaleFactor->value() ||

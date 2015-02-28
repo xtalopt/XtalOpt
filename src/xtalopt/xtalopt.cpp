@@ -472,7 +472,7 @@ namespace XtalOpt {
             } 
         }
 
-        initializeSubXtal(xtal, generation, id);
+        if (using_subcellPrint) printSubXtal(xtal, generation, id);
 
         if (!xtal->fillSuperCell(A, B, C, xtal)) {
             xtal->deleteLater();
@@ -521,22 +521,11 @@ namespace XtalOpt {
     return xtal;
   }
 
-  void XtalOpt::initializeSubXtal(Xtal *xtal, uint generation,
+  void XtalOpt::printSubXtal(Xtal *xtal, uint generation,
                                      uint id)
     {
     xtalInitMutex->lock();
-  /*  Structure *structure;
-    uint id = 1;
-    for (int j = 0; j < allStructures.size(); j++) {
-      structure = allStructures.at(j);
-      structure->lock()->lockForRead();
-      if (structure->getGeneration() == generation &&
-          structure->getIDNumber() >= id) {
-        id = structure->getIDNumber() + 1;
-      }
-      structure->lock()->unlock();
-    }
-*/
+    
     QString id_s, gen_s, locpath_s;
     id_s.sprintf("%05d",id);
     gen_s.sprintf("%05d",generation);

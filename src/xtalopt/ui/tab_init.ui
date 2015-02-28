@@ -907,6 +907,22 @@ able to create offspring that meet this restriction.</string>
        <cstring>spin_c_min</cstring>
       </property>
      </widget>
+     <widget class="QCheckBox" name="cb_subcellPrint">
+      <property name="geometry">
+       <rect>
+        <x>72</x>
+        <y>393</y>
+        <width>121</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Exports the subcells for each randomly generated structure. .cml files are exported to the subdirectory 'subcells/'</string>
+      </property>
+      <property name="text">
+       <string>Export subcells?</string>
+      </property>
+     </widget>
     </widget>
    </item>
   </layout>

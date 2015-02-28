@@ -135,6 +135,7 @@ namespace XtalOpt {
     bool using_fixed_volume;
     bool using_interatomicDistanceLimit;
     bool using_mitosis;
+    bool using_subcellPrint;
 
     QHash<uint, XtalCompositionStruct> comp;
     QStringList seedList;
@@ -148,7 +149,7 @@ namespace XtalOpt {
     void initializeAndAddXtal(Xtal *xtal,
                               unsigned int generation,
                               const QString &parents);
-    void initializeSubXtal(Xtal *xtal,
+    void printSubXtal(Xtal *xtal,
                               unsigned int generation,
                               uint id);
     void resetSpacegroups();
