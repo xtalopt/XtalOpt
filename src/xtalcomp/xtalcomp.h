@@ -20,6 +20,8 @@
 #include "xctransform.h"
 #include "xcvector.h"
 
+#include <map>
+#include <utility>
 #include <vector>
 
 class XtalComp
@@ -71,6 +73,9 @@ class XtalComp
 
   virtual ~XtalComp();
 
+  // Internal type: See m_duplicatedAtoms for description.
+  typedef std::map<size_t, std::pair<size_t, size_t> > DuplicateMap;
+
  protected:
   class ReducedXtal;
 
@@ -106,16 +111,26 @@ class XtalComp
   unsigned int m_lfAtomType;
   unsigned int m_lfAtomCount;
 
+  // Duplicated Atoms: made to prevent duplicate atoms produced by the
+  // expandedFractionalCoordinates() function from being matched.
+  // The vector is appended when duplicates are made, and it is used
+  // in compareCurrent() when a match is made.
+  // The key is the index of the original atom in rx1, and the value is the
+  // start and end indicies of the duplicated atoms.
+  // Thus, if the original atom (rx1[key]) is matched to an rx2 atom, all rx1
+  // atoms in the range specified in the pair need to indicate that they have
+  // already been matched as well.
+  DuplicateMap m_duplicatedAtoms;
+
   // Supercell of lfAtoms in xtal2
   void buildSuperLfCCoordList2();
   std::vector<XcVector> m_superLfCCoordList2;
   void findCandidateTransforms();
 
   // Add atoms around cell boundaries for stability during comparisons
-  static void expandFractionalCoordinates(std::vector<unsigned int> *types,
-                                          std::vector<XcVector> *fcoords,
-                                          const XcMatrix &cmat, // needed for tol calc
-                                          const double tol);
+  static void expandFractionalCoordinates(
+          std::vector<unsigned int> *types, std::vector<XcVector> *fcoords,
+          DuplicateMap *duplicateAtoms, const XcMatrix &cmat, const double tol);
 
   // Reference vectors:
   XcVector m_refVec1;
