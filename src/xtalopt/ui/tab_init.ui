@@ -564,6 +564,9 @@ etc.</string>
         <height>18</height>
        </rect>
       </property>
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use to generate structures with high local order. &lt;/p&gt;&lt;p&gt;Creates a subcell filled with X formula units, then replicates said subcell. The number of replications is defiend by &amp;quot;# of Divisions&amp;quot; and the direction in which it is replicated is based upon the number in a, b, and c. &lt;/p&gt;&lt;p&gt;&amp;quot;# of Divisions&amp;quot; populates a list with the possible numbers of subcells based upon the stoichiometry entered. This allows for indivisable &amp;quot;odd&amp;quot; stoichiometries. For example, Na&lt;span style=&quot; vertical-align:sub;&quot;&gt;3&lt;/span&gt;H&lt;span style=&quot; vertical-align:sub;&quot;&gt;11&lt;/span&gt; will allow &amp;quot;# of Divisions&amp;quot; of 3. It will replicate the subcell, containing NaH&lt;span style=&quot; vertical-align:sub;&quot;&gt;3&lt;/span&gt;, three times. To correct for the stoichiometry, the program will insert 2 H randomly in the cell.&lt;/p&gt;&lt;p&gt;a, b, and c are dependent on &amp;quot;# of Divisions&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
       <property name="text">
        <string>Mitosis</string>
       </property>
@@ -910,7 +913,7 @@ able to create offspring that meet this restriction.</string>
      <widget class="QCheckBox" name="cb_subcellPrint">
       <property name="geometry">
        <rect>
-        <x>72</x>
+        <x>70</x>
         <y>393</y>
         <width>121</width>
         <height>20</height>

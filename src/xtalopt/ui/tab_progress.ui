@@ -16,9 +16,6 @@
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0" colspan="8">
     <widget class="QTableWidget" name="table_list">
-     <property name="sortingEnabled">
-      <bool>true</bool>
-     </property>
      <property name="contextMenuPolicy">
       <enum>Qt::CustomContextMenu</enum>
      </property>
@@ -33,6 +30,9 @@
      </property>
      <property name="selectionBehavior">
       <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <property name="sortingEnabled">
+      <bool>true</bool>
      </property>
      <attribute name="horizontalHeaderStretchLastSection">
       <bool>true</bool>
@@ -136,15 +136,21 @@
      </property>
     </spacer>
    </item>
-    <item row="2" column="4">
+   <item row="2" column="4">
     <widget class="QPushButton" name="push_print">
+     <property name="toolTip">
+      <string>Generates a run-results.txt file that lists all of the information about each structure in order of generation and structure number (As compared to the results.txt file which ranks the structures).</string>
+     </property>
      <property name="text">
-      <string>Pri&amp;nt File</string>
+      <string>Pri&amp;nt Results File</string>
      </property>
     </widget>
    </item>
-  <item row="2" column="5">
+   <item row="2" column="5">
     <widget class="QPushButton" name="push_clear">
+     <property name="toolTip">
+      <string>This button is used for VASP runs. It removes any extranneous files in each subdirectory in order to reduce disk usage.</string>
+     </property>
      <property name="text">
       <string>Remov&amp;e Extra Files</string>
      </property>
@@ -152,6 +158,9 @@
    </item>
    <item row="2" column="6">
     <widget class="QPushButton" name="push_rank">
+     <property name="toolTip">
+      <string>Ranks all currently optimized structures and exports them to a subdirectory (Ranked) in two forms: POSCAR and .cif. Each can be found in separate directories.</string>
+     </property>
      <property name="text">
       <string>Ran&amp;k all</string>
      </property>
