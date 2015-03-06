@@ -30,7 +30,7 @@ option( ENABLE_SSH
 
 option( USE_CLI_SSH
  	"Use command line ssh/scp commands for remote communication. Use this if on linux/mac and Kerberos authentication is needed."
- 	ON )
+ 	OFF )
 
 if(ENABLE_SSH)
   add_definitions(-DENABLE_SSH)
