@@ -83,7 +83,7 @@ namespace XtalOpt {
 
     connect(ui.edit_formula_units, SIGNAL(editingFinished()),
             this, SLOT(updateFormulaUnits()));
-    
+
     QHeaderView *horizontal = ui.table_comp->horizontalHeader();
     horizontal->setResizeMode(QHeaderView::ResizeToContents);
 
@@ -124,8 +124,8 @@ namespace XtalOpt {
     settings->setValue("limits/minRadius",    xtalopt->minRadius);
     settings->setValue("using/fixedVolume",   xtalopt->using_fixed_volume);
     settings->setValue("using/interatomicDistanceLimit",
-                       xtalopt->using_interatomicDistanceLimit); 
- 
+                       xtalopt->using_interatomicDistanceLimit);
+
     // Composition
     // We only want to save POTCAR info and Composition to the resume
     // file, not the main config file, so only dump the data here if
@@ -145,7 +145,7 @@ namespace XtalOpt {
       settings->endArray();
     }
 
-    // Formula Units List 
+    // Formula Units List
 
     if (!filename.isEmpty() && filename.contains("xtalopt.state")) {
       settings->beginWriteArray("Formula_Units");
@@ -154,7 +154,7 @@ namespace XtalOpt {
         settings->setArrayIndex(i);
         settings->setValue("FU", tempFormulaUnitsList.at(i));
       }
-      settings->endArray(); 
+      settings->endArray();
     }
 
     settings->endGroup();
@@ -189,8 +189,8 @@ namespace XtalOpt {
     ui.spin_scaleFactor->setValue(	settings->value("limits/scaleFactor",0.5).toDouble());
     ui.spin_minRadius->setValue(        settings->value("limits/minRadius",0.25).toDouble());
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
-    ui.cb_interatomicDistanceLimit->setChecked(	settings->value("using/interatomicDistanceLimit",false).toBool());  
-    
+    ui.cb_interatomicDistanceLimit->setChecked(	settings->value("using/interatomicDistanceLimit",false).toBool());
+
     // Composition
     if (!filename.isEmpty()) {
       int size = settings->beginReadArray("composition");
@@ -220,7 +220,7 @@ namespace XtalOpt {
         formulaUnits.append(",");
       }
       ui.edit_formula_units->setText(formulaUnits);
-      updateFormulaUnits(); 
+      updateFormulaUnits();
       settings->endArray();
     }
 
@@ -322,7 +322,7 @@ namespace XtalOpt {
           i = 1;
           for (int k = 0; k < symbolList.size(); ++k) {
             quantityList[k] = QString::number(quantityList.at(k).toUInt() / numberOfFormulaUnits);
-          }  
+          }
         }
       }
     }
@@ -441,7 +441,7 @@ namespace XtalOpt {
     if (ui.spin_beta_min->value()       > ui.spin_beta_max->value())	ui.spin_beta_max->setValue(     ui.spin_beta_min->value());
     if (ui.spin_gamma_min->value()      > ui.spin_gamma_max->value())	ui.spin_gamma_max->setValue(	ui.spin_gamma_min->value());
     if (ui.spin_vol_min->value()        > ui.spin_vol_max->value())	ui.spin_vol_max->setValue(	ui.spin_vol_min->value());
-    
+
     // Assign variables
     xtalopt->a_min		= ui.spin_a_min->value();
     xtalopt->b_min		= ui.spin_b_min->value();
@@ -500,15 +500,15 @@ namespace XtalOpt {
     QTextStream string (&tmp);
     QList<bool> series;
     QStringList tempFormulaUnitsList;
-    
+
     // Split up values separated by commas
     tempFormulaUnitsList = ui.edit_formula_units->text().split(",", QString::SkipEmptyParts);
 
     // Fix to correct crashing when there is a hyphen at the beginning
     if (!tempFormulaUnitsList.isEmpty()) {
       tempFormulaUnitsList[0].prepend(" ");
-    }  
- 
+    }
+
     // Check for values that begin, are between, or end hyphens
     int i = 0, j = 0;
     bool isNumeric;
@@ -531,14 +531,14 @@ namespace XtalOpt {
           }
         }
       }
-    } 
+    }
 
     // Remove leading zeros
     for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
       while (tempFormulaUnitsList.at(i).trimmed().startsWith("0")) {
         tempFormulaUnitsList[i].remove(0,1);
       }
-    }    
+    }
 
     // Check that each QString may be converted to an unsigned int. Discard it if it cannot.
     for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
@@ -555,7 +555,7 @@ namespace XtalOpt {
         tempFormulaUnitsList.removeAt(i);
       }
     }
- 
+
     // If nothing valid was entered, return 1
     if ( tempFormulaUnitsList.size() == 0 ) {
       xtalopt->formulaUnitsList.append(1);
@@ -563,7 +563,7 @@ namespace XtalOpt {
       ui.edit_formula_units->setText(tmp.trimmed());
       return;
     }
-    
+
     // Remove duplicates from the tempFormulaUnitsList
     for (int i = 0; i < tempFormulaUnitsList.size() - 1; i++) {
       for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
@@ -573,22 +573,22 @@ namespace XtalOpt {
         }
       }
     }
-    
+
     // Sort from smallest value to greatest value
     for (int i = 0; i < tempFormulaUnitsList.size() - 1; i++) {
       for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
         if (tempFormulaUnitsList.at(i).toUInt() > tempFormulaUnitsList.at(j).toUInt()) {
           tempFormulaUnitsList.swap(i,j);
-        }   
+        }
       }
     }
-    
+
     // Populate series with false
     series.clear();
     for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
       series.append(false);
     }
-    
+
     // Check for series to hyphenate
     for (int i = 0; i < tempFormulaUnitsList.size() - 2; i++) {
       if ( (tempFormulaUnitsList.at(i).toUInt() + 1 == tempFormulaUnitsList.at(i + 1).toUInt()) && (tempFormulaUnitsList.at(i + 1).toUInt() + 1 == tempFormulaUnitsList.at(i + 2).toUInt()) ) {
@@ -597,7 +597,7 @@ namespace XtalOpt {
         series.replace(i + 2, true);
       }
     }
-    
+
     // Create the text stream to put back into the UI
     for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
       if (series.at(i) == false) {
@@ -624,21 +624,21 @@ namespace XtalOpt {
         i = i + seriesLength - 1;
       }
     }
-    
+
     //Create the UInt formulaUnitsList
     QList<uint> formulaUnitsList;
     formulaUnitsList.clear();
     for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
       formulaUnitsList.append(tempFormulaUnitsList.at(i).toUInt());
     }
-    
+
     xtalopt->minFU = formulaUnitsList.at(0);
     xtalopt->maxFU = formulaUnitsList.at(formulaUnitsList.size() - 1);
     xtalopt->formulaUnitsList = formulaUnitsList;
 
     // Update UI
     ui.edit_formula_units->setText(tmp.trimmed());
-    
+
   }
 
 }

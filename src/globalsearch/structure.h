@@ -851,7 +851,7 @@ namespace GlobalSearch {
     /** Set the PV term of the Structure's enthalpy (see getPV()).
      * @param pv The PV term
      * @sa getPV
-     */   
+     */
 
     void setPV(double pv) {m_PV = pv;};
 

@@ -72,7 +72,7 @@ namespace GlobalSearch {
 
   bool SSHConnectionCLI::copyDirectoryFromServer(const QString &remotepath,
                                                  const QString &localpath)
-  { 
+  {
      // This extra step is performed so that the SCP overwrites the local
     // directory with the remote directory instead of erroneously placing a
     // copy of the remote directory inside local directory. PSA

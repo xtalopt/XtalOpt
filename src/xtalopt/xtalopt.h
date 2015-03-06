@@ -78,7 +78,7 @@ namespace XtalOpt {
     };
 
     Xtal* generateRandomXtal(uint generation, uint id);
-      
+
     //Identical to the previous generateRandomXtal except the number of formula units has been determined elsewhere
     Xtal* generateRandomXtal(uint generation, uint id, uint FU);
     bool addSeed(const QString & filename);
@@ -137,13 +137,13 @@ namespace XtalOpt {
     bool using_fixed_volume;
     bool using_interatomicDistanceLimit;
     bool using_mitosis;
-    bool using_FU_crossovers; 
-    bool using_one_pool;  
-    
-    // Generate a new formula unit. 
+    bool using_FU_crossovers;
+    bool using_one_pool;
+
+    // Generate a new formula unit.
     int  FU;
     QList<uint> formulaUnitsList;
-   
+
     QHash<uint, XtalCompositionStruct> comp;
     QStringList seedList;
 
@@ -159,7 +159,7 @@ namespace XtalOpt {
                             bool firstCall);
     void initializeAndAddXtal(Xtal *xtal,
                               unsigned int generation,
-                              const QString &parents); 
+                              const QString &parents);
     bool onTheFormulaUnitsList(uint FU);
     void resetSpacegroups();
     void resetDuplicates();

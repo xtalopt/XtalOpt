@@ -179,7 +179,7 @@ namespace XtalOpt {
     QList<uint> xtalCounts	=  xtal1->getNumberOfAtomsAlpha();
     QList<Atom*> atomList1      =  xtal1->atoms();
     QList<Vector3d> fracCoordsList1;
-     
+
     for (int i = 0; i < atomList1.size(); i++)
       fracCoordsList1.append(xtal1->cartToFrac(*(atomList1.at(i)->pos())));
     xtal1->lock()->unlock();
@@ -348,7 +348,7 @@ namespace XtalOpt {
     nxtal->setStatus(Xtal::WaitingForOptimization);
     return nxtal;
   }
-  
+
   // Crossover designed specifically for crossing over different formula units
   Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution, double &percent1, double &percent2, const QList<uint> formulaUnitsList, QHash<uint, XtalCompositionStruct> comp) {
 
@@ -515,7 +515,7 @@ namespace XtalOpt {
     for (int i = 0; i < xtalCounts1.size(); i++) {
       empiricalFormulaList.append(xtalCounts1.at(i) / xtal1FU);
     }
-     
+
     for (int i = 0; i < atomList1.size(); i++)
       fracCoordsList1.append(xtal1->cartToFrac(*(atomList1.at(i)->pos())));
     xtal1->lock()->unlock();
@@ -564,13 +564,13 @@ namespace XtalOpt {
       fracCoordsList1[i][1] = fmod(fracCoordsList1[i][1]+100, 1);
       fracCoordsList1[i][2] = fmod(fracCoordsList1[i][2]+100, 1);
     }
-   
+
     for (int i = 0; i < fracCoordsList2.size(); i++) {
       fracCoordsList2[i][0] = fmod(fracCoordsList2[i][0]+100, 1);
       fracCoordsList2[i][1] = fmod(fracCoordsList2[i][1]+100, 1);
       fracCoordsList2[i][2] = fmod(fracCoordsList2[i][2]+100, 1);
     }
-    
+
     // Find the largest component of each lattice vector and
     // invert that vector (multiply all components by -1) if
     // the largest component is negative. This is to avoid adding
@@ -593,7 +593,7 @@ namespace XtalOpt {
       uint largestIndex = 0;
       for (uint col = 0; col < 3; col++) {
         if (fabs(cell2(row,col)) > fabs(cell2(row,largestIndex)))
-          largestIndex = col; 
+          largestIndex = col;
       }
       if (fabs(cell2(row,largestIndex)) != cell2(row,largestIndex)) {
         for (uint col = 0; col < 3; col++) {
@@ -617,12 +617,12 @@ namespace XtalOpt {
                  cell2(row,col) * cutVal2);
         // qDebug() << "dims at row " << QString::number(row) << " and column " << QString::number(col) << " in the new cell is " << QString::number(dims.Get(row,col));
       }
-    } 
+    }
     // Build offspring
     Xtal *nxtal = new Xtal();
     nxtal->setCellInfo(dims.GetRow(0), dims.GetRow(1), dims.GetRow(2));
     QWriteLocker nxtalLocker (nxtal->lock());
- 
+
     // Cut xtals and populate new one.
     QList<Vector3d> tempFracCoordsList1;
     for (int i = 0; i < fracCoordsList1.size(); i++) {
@@ -635,7 +635,7 @@ namespace XtalOpt {
         newAtom->setPos(nxtal->fracToCart(tempFracCoordsList1.at(i)));
       }
     }
-    
+
     QList<Vector3d> tempFracCoordsList2;
     for (int i = 0; i < fracCoordsList2.size(); i++) {
       tempFracCoordsList2 = fracCoordsList2;
@@ -650,7 +650,7 @@ namespace XtalOpt {
         newAtom->setPos(nxtal->fracToCart(tempFracCoordsList2.at(i)));
       }
     }
-    
+
     // Check composition of nxtal
     QList<int> deltas;
     QList<QString> nxtalAtoms	=  nxtal->getSymbols();
@@ -666,21 +666,21 @@ namespace XtalOpt {
         }
       }
     }
-  
+
     // Correct the ratios so that we end up with a correct composition
     QList<uint> targetXtalCounts = nxtalCounts;
- 
+
     // Replace zeros with ones since we know there will be at least 1 atom of
     // each type. We don't want to divide by zero by accident later...
     for (int i = 0; i < targetXtalCounts.size(); i++)
       if (targetXtalCounts.at(i) == 0) targetXtalCounts[i] = 1;
-    
+
     // Find the index with the smallest xtalCount in empiricalFormulaList
     uint smallestCountIndex = 0;
-    for (int i = 1; i < empiricalFormulaList.size(); i++) { 
+    for (int i = 1; i < empiricalFormulaList.size(); i++) {
       if (empiricalFormulaList.at(i) < empiricalFormulaList.at(i - 1)) smallestCountIndex = i;
     }
- 
+
     // Make sure the smallest number of atoms in the new xtal is a multiple
     // of the smallest number of atoms in the empirical formula. If not,
     // decide randomly whether to increase or decrease to reach a valid
@@ -695,7 +695,7 @@ namespace XtalOpt {
     // Add or subtract atoms from targetXtalCounts until the proper ratios
     // have been reached.
     for (int i = 0; i < empiricalFormulaList.size(); i++) {
-      double desiredRatio = static_cast<double>(empiricalFormulaList.at(i)) / 
+      double desiredRatio = static_cast<double>(empiricalFormulaList.at(i)) /
       static_cast<double>(empiricalFormulaList.at(smallestCountIndex));
       double actualRatio  = static_cast<double>(targetXtalCounts.at(i)) /
       static_cast<double>(targetXtalCounts.at(smallestCountIndex));
@@ -703,20 +703,20 @@ namespace XtalOpt {
         if (desiredRatio < actualRatio) {
           // Need to decrease the numerator
           targetXtalCounts[i] = targetXtalCounts.at(i) - 1;
-          actualRatio = static_cast<double>(targetXtalCounts.at(i)) / 
+          actualRatio = static_cast<double>(targetXtalCounts.at(i)) /
           static_cast<double>(targetXtalCounts.at(smallestCountIndex));
         }
         else if (desiredRatio > actualRatio) {
-          // Need to increase the numerator 
+          // Need to increase the numerator
           targetXtalCounts[i] = targetXtalCounts.at(i) + 1;
-          actualRatio = static_cast<double>(targetXtalCounts.at(i)) / 
+          actualRatio = static_cast<double>(targetXtalCounts.at(i)) /
           static_cast<double>(targetXtalCounts.at(smallestCountIndex));
         }
       }
     }
-     
+
     bool onTheList = false;
-    while (!onTheList) {   
+    while (!onTheList) {
       // Count the number of formula units
       QList<uint> xtalCounts = targetXtalCounts;
       unsigned int minimumQuantityOfAtomType = xtalCounts.at(0);
@@ -739,10 +739,10 @@ namespace XtalOpt {
           i = 1;
         }
       }
-   
+
       // Check to make sure numberOfFormulaUnits is on the list
       for (int i = 0; i < formulaUnitsList.size(); i++) {
-        if (numberOfFormulaUnits == formulaUnitsList.at(i)) onTheList = true;   
+        if (numberOfFormulaUnits == formulaUnitsList.at(i)) onTheList = true;
       }
 
       // If it is not on the list, find the closest FU on the list and make that
@@ -760,17 +760,17 @@ namespace XtalOpt {
             shortestDistance = numberOfFormulaUnits - formulaUnitsList.at(i);
           }
         }
-        
+
         // Shortest distance is positive if we want to decrease and negative if we want to increase
         uint closestFU = numberOfFormulaUnits - shortestDistance;
-        
+
         // Adjust all the targetXtalCounts to make the closest number of formula units
         for (int i = 0; i < targetXtalCounts.size(); i++) {
           targetXtalCounts[i] = (targetXtalCounts.at(i) / numberOfFormulaUnits) * closestFU;
         }
       }
     }
-   
+
     // And targetXtalCounts should now have the correct desired counts for each
     // atom to produce the closest FU that is on the list!
 
@@ -804,7 +804,7 @@ namespace XtalOpt {
         }
       }
       while (delta > 0) { //qDebug() << "Too few " << xtalAtoms.at(i) << "!";
-        
+
         // For FUcrossover, we will try to add the atom randomly at first
         // If it fails we will try the traditional method
         if(nxtal->addAtomRandomly(OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()), comp)) {
@@ -817,7 +817,7 @@ namespace XtalOpt {
         // X is the total number of atoms of that species in the parent.
         //
         // First, pick the parent. 50/50 chance for each:
-         
+
         uint parent;
         if (RANDDOUBLE() < 0.5) parent = 1;
         else parent = 2;
@@ -826,11 +826,11 @@ namespace XtalOpt {
             if (
                 // if atom at j is the type that needs to be added,
                 ( atomList1.at(j)->atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
-               
+
                 &&
                 // and atom is in the discarded region of the cut,
                 ( fracCoordsList1.at(j)[0] > cutVal1 )
-              
+
                 &&
                 // and the odds favor it, add the atom to nxtal
                 ( RANDDOUBLE() < 1.0/static_cast<double>(targetXtalCounts.at(i)) )
@@ -841,18 +841,18 @@ namespace XtalOpt {
               delta--;
               break;
             }
-          } 
+          }
         }
         else if (parent == 2) {
           for (int j = 0; j < fracCoordsList2.size(); j++) { // size may be different for different parents
             if (
                 // if atom at j is the type that needs to be added,
                 ( atomList2.at(j)->atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
-               
+
                 &&
                 // and atom is in the discarded region of the cut,
                 ( fracCoordsList2.at(j)[0] > cutVal2 )
-              
+
                 &&
                 // and the odds favor it, add the atom to nxtal
                 ( RANDDOUBLE() < 1.0/static_cast<double>(targetXtalCounts.at(i)) )
@@ -866,18 +866,18 @@ namespace XtalOpt {
               delta--;
               break;
             }
-          } 
+          }
         }
       }
     }
-    
+
     QList<Vector3d> nFracCoordsList;
     QList<Atom*> nAtomList      = nxtal->atoms();
     for (int i = 0; i < nAtomList.size(); i++) {
       nFracCoordsList.append(nxtal->cartToFrac(*(nAtomList.at(i)->pos())));
       // qDebug() << nAtomList.at(i)->atomicNumber() << " " << nFracCoordsList.at(i)[0] << " " << nFracCoordsList.at(i)[1] << " " << nFracCoordsList.at(i)[2];
     }
- 
+
     // Done!
     nxtal->wrapAtomsToCell();
     nxtal->setStatus(Xtal::WaitingForOptimization);

@@ -51,7 +51,7 @@ namespace XtalOpt {
     void updateCompositionTable();
     void updateDimensions();
     void updateMinRadii();
-    void updateFormulaUnits();   
+    void updateFormulaUnits();
 
   signals:
 

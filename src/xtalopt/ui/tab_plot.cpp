@@ -117,7 +117,7 @@ namespace XtalOpt {
     settings->setValue("labelType",       ui.combo_labelType->currentIndex());
     settings->setValue("plotType",        ui.combo_plotType->currentIndex());
     settings->endGroup();
- 
+
     DESTROY_SETTINGS(filename);
   }
 
@@ -835,7 +835,7 @@ namespace XtalOpt {
     // Fix to correct crashing when there is a hyphen at the beginning
     if (!tempFormulaUnitsList.isEmpty()) {
       tempFormulaUnitsList[0].prepend(" ");
-    }  
+    }
 
     // Check for values that begin, are between, or end hyphens
     int i = 0, j = 0;
@@ -859,14 +859,14 @@ namespace XtalOpt {
           }
         }
       }
-    } 
+    }
 
     // Remove leading zeros
     for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
       while (tempFormulaUnitsList.at(i).trimmed().startsWith("0")) {
         tempFormulaUnitsList[i].remove(0,1);
       }
-    }    
+    }
 
     // Check that each QString may be converted to an unsigned int. Discard it if it cannot.
     for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
@@ -883,7 +883,7 @@ namespace XtalOpt {
         tempFormulaUnitsList.removeAt(i);
       }
     }
- 
+
     // If nothing valid was entered, return 1
     if ( tempFormulaUnitsList.size() == 0 ) {
       formulaUnitsList.append(1);
@@ -891,7 +891,7 @@ namespace XtalOpt {
       ui.edit_showSpecifiedFU->setText(tmp.trimmed());
       return;
     }
-    
+
     // Remove duplicates from the tempFormulaUnitsList
     for (int i = 0; i < tempFormulaUnitsList.size() - 1; i++) {
       for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
@@ -901,22 +901,22 @@ namespace XtalOpt {
         }
       }
     }
-    
+
     // Sort from smallest value to greatest value
     for (int i = 0; i < tempFormulaUnitsList.size() - 1; i++) {
       for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
         if (tempFormulaUnitsList.at(i).toUInt() > tempFormulaUnitsList.at(j).toUInt()) {
           tempFormulaUnitsList.swap(i,j);
-        }   
+        }
       }
     }
-    
+
     // Populate series with false
     series.clear();
     for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
       series.append(false);
     }
-    
+
     // Check for series to hyphenate
     for (int i = 0; i < tempFormulaUnitsList.size() - 2; i++) {
       if ( (tempFormulaUnitsList.at(i).toUInt() + 1 == tempFormulaUnitsList.at(i + 1).toUInt()) && (tempFormulaUnitsList.at(i + 1).toUInt() + 1 == tempFormulaUnitsList.at(i + 2).toUInt()) ) {
@@ -925,7 +925,7 @@ namespace XtalOpt {
         series.replace(i + 2, true);
       }
     }
-    
+
     // Create the text stream to put back into the UI
     for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
       if (series.at(i) == false) {
@@ -952,14 +952,14 @@ namespace XtalOpt {
         i = i + seriesLength - 1;
       }
     }
-    
+
     //Create the UInt formulaUnitsList
     QList<uint> temp_UInt_FormulaUnitsList;
     temp_UInt_FormulaUnitsList.clear();
     for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
       temp_UInt_FormulaUnitsList.append(tempFormulaUnitsList.at(i).toUInt());
     }
-    
+
     formulaUnitsList = temp_UInt_FormulaUnitsList;
 
     // Update UI

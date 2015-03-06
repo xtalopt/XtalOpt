@@ -16,7 +16,7 @@ typedef struct {
 } Triplets;
 
 int kpt_get_irreducible_kpoints( int map[],
-				 SPGCONST double kpoints[][3], 
+				 SPGCONST double kpoints[][3],
 				 const int num_kpoint,
 				 SPGCONST double lattice[3][3],
 				 const Symmetry * symmetry,

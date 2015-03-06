@@ -214,7 +214,7 @@ namespace XtalOpt {
       e.enthalpy = xtal->getEnthalpy() / static_cast<double>(xtal->getFormulaUnits()); //PSA Enthalpy per atom
     else
       e.enthalpy = 0.0;
- 
+
     xtal->lock()->unlock();
 
     ui.table_list->blockSignals(false);
