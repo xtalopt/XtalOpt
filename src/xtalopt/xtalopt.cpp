@@ -1151,7 +1151,8 @@ namespace XtalOpt {
 
     QList<Atom*> oneFUatoms = myXtal->atoms();
 
-    //  First get OB matrix, extract vectors, then convert to Eigen::Vector3d's
+    // Credit for the next 37 lines of this function goes to Zack Falls!
+    // First get OB matrix, extract vectors, then convert to Eigen::Vector3d's
     matrix3x3 obcellMatrix = myXtal->OBUnitCell()->GetCellMatrix();
     OpenBabel::vector3 obU1 = obcellMatrix.GetRow(0);
     OpenBabel::vector3 obU2 = obcellMatrix.GetRow(1);
@@ -1438,9 +1439,9 @@ namespace XtalOpt {
     // Scale to any fixed parameters
     double a, b, c, alpha, beta, gamma;
     a = b = c = alpha = beta = gamma = 0;
-    if (fabs(a_min - a_max) < 0.01) a = a_min; //PSA
-    if (fabs(b_min - b_max) < 0.01) b = b_min; //PSA
-    if (fabs(c_min - c_max) < 0.01) c = c_min; //PSA
+    if (fabs(a_min - a_max) < 0.01) a = a_min;
+    if (fabs(b_min - b_max) < 0.01) b = b_min;
+    if (fabs(c_min - c_max) < 0.01) c = c_min;
     if (fabs(alpha_min - alpha_max) < 0.01) alpha = alpha_min;
     if (fabs(beta_min -  beta_max)  < 0.01)  beta = beta_min;
     if (fabs(gamma_min - gamma_max) < 0.01) gamma = gamma_min;
