@@ -286,7 +286,13 @@ namespace GlobalSearch {
      */
     uint getFailCount() { return m_failCount;};
 
-    /** @return The time that the current optimization step started.
+    //return the number of formula units
+    uint getFormulaUnits() const;
+
+    //returns the number of structures of each formula unit up to the user-specified maximum formula units. numberOfEachFormulaUnit.at(n) is the number of structures with formula units n.
+    QList<uint> countStructuresOfEachFormulaUnit(QList<Structure*> *structures, int maxFU);
+
+     /** @return The time that the current optimization step started.
      * @sa getOptTimerEnd
      * @sa startOptTimer
      * @sa stopOptTimer
@@ -845,7 +851,8 @@ namespace GlobalSearch {
     /** Set the PV term of the Structure's enthalpy (see getPV()).
      * @param pv The PV term
      * @sa getPV
-     */
+     */   
+
     void setPV(double pv) {m_PV = pv;};
 
     /** Reset the Structure's enthalpy and PV term to zero and clear

@@ -511,7 +511,7 @@ namespace GlobalSearch {
     m_histEnergies.append(energy);
     m_histEnthalpies.append(enthalpy);
     m_histCells.append(cell);
-
+    
     // Update atoms
     Atom *atom;
     for (int i = 0; i < numAtoms(); i++) {
@@ -594,7 +594,7 @@ namespace GlobalSearch {
     double IAD = -1;
     int i = 0;
     vector3 coords;
-
+ 
     // For first atom, add to 0, 0, 0
     if (numAtoms() == 0) {
       coords = vector3 (0,0,0);
@@ -1185,10 +1185,9 @@ namespace GlobalSearch {
     return fp;
   }
 
-  void Structure::sortByEnthalpy(QList<Structure*> *structures)
-  {
+  void Structure::sortByEnthalpy(QList<Structure*> *structures) 
+  { 
     uint numStructs = structures->size();
-
     if (numStructs <= 1) return;
 
     // Simple selection sort
@@ -1196,10 +1195,11 @@ namespace GlobalSearch {
     for (uint i = 0; i < numStructs-1; i++) {
       structure_i = structures->at(i);
       structure_i->lock()->lockForRead();
+      
       for (uint j = i+1; j < numStructs; j++) {
         structure_j = structures->at(j);
         structure_j->lock()->lockForRead();
-        if (structure_j->getEnthalpy() < structure_i->getEnthalpy()) {
+        if (structure_j->getEnthalpy() / static_cast<double>(structure_j->numAtoms()) < structure_i->getEnthalpy() / static_cast<double>(structure_i->numAtoms())) { //PSA Enthalpy per atom
           structures->swap(i,j);
           tmp = structure_i;
           structure_i = structure_j;
@@ -1231,19 +1231,22 @@ namespace GlobalSearch {
 
     QList<Structure*> rstructures;
 
-    // Copy structures to a temporary list (don't modify input list!)
-    for (uint i = 0; i < numStructs; i++)
-      rstructures.append(structures.at(i));
+  
 
+    // Copy structures to a temporary list (don't modify input list!)
+   	 for (uint i = 0; i < numStructs; i++)
+      rstructures.append(structures.at(i));
+    
     // Simple selection sort
     Structure *structure_i=0, *structure_j=0, *tmp=0;
     for (uint i = 0; i < numStructs-1; i++) {
       structure_i = rstructures.at(i);
       structure_i->lock()->lockForRead();
+      
       for (uint j = i+1; j < numStructs; j++) {
         structure_j = rstructures.at(j);
         structure_j->lock()->lockForRead();
-        if (structure_j->getEnthalpy() < structure_i->getEnthalpy()) {
+        if (structure_j->getEnthalpy() / static_cast<double>(structure_j->numAtoms()) < structure_i->getEnthalpy() / static_cast<double>(structure_i->numAtoms())) { //PSA Enthalpy per atom
           rstructures.swap(i,j);
           tmp = structure_i;
           structure_i = structure_j;
@@ -1261,7 +1264,51 @@ namespace GlobalSearch {
   {
     sortByEnthalpy(structures);
     rankInPlace(*structures);
+  }  
+ 
+  //PSA. Returns Formula Units.
+  uint Structure::getFormulaUnits() const
+  { QList<uint> xtalCounts = getNumberOfAtomsAlpha();
+    unsigned int minimumQuantityOfAtomType = xtalCounts.at(0);
+      for (int i = 1; i < xtalCounts.size(); ++i) {
+        if (minimumQuantityOfAtomType > xtalCounts.at(i)){
+          minimumQuantityOfAtomType = xtalCounts.at(i);
+        }
+      }
+      unsigned int numberOfFormulaUnits = 1;
+      bool formulaUnitsFound;
+      for (int i = minimumQuantityOfAtomType; i > 1; i--){
+        formulaUnitsFound = true;
+        for (int j = 0; j < xtalCounts.size(); ++j) {
+          if(xtalCounts.at(j) % i != 0){
+            formulaUnitsFound = false;
+          }
+        }
+        if(formulaUnitsFound == true) {
+          numberOfFormulaUnits = i;
+          i = 1;
+        }
+      }
+  return numberOfFormulaUnits;
   }
-
-
+  
+  //Returns the number of structures of each formula unit up to the user-specified maximum formula units numberOfEachFormulaUnit.at(n) is the number of structures with formula units n.
+  QList<uint> Structure::countStructuresOfEachFormulaUnit(QList<Structure*> *structures, int maxFU) 
+  { QList<uint> numberOfEachFormulaUnit;
+    uint numStructs = structures->size();
+    Structure *structure_j = 0;
+    for (int i = 0; i <= maxFU; i++) {
+      int numbers = 0;
+      for (uint j = 0; j < numStructs; j++) {
+        structure_j = structures->at(j);
+        structure_j->lock()->lockForRead();
+        if (structure_j->getFormulaUnits() == i) {
+          numbers += 1;
+        }
+        structure_j->lock()->unlock();
+      }
+      numberOfEachFormulaUnit.append(numbers);       
+    }
+    return numberOfEachFormulaUnit;
+  } 
 } // end namespace GlobalSearch

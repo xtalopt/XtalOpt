@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>920</width>
-    <height>453</height>
+    <height>509</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -28,6 +28,12 @@
         <property name="toolTip">
          <string>Type the composition of the crystal here,
 
+Use only empirical formulas. It will be reduced 
+to its empirical formula otherwise.
+
+You may change formula units in the &quot;Formula
+Units&quot; section on this page.
+
 Examples:
 ti1o2
 Ti1O2
@@ -47,7 +53,7 @@ etc.</string>
          </sizepolicy>
         </property>
         <property name="text">
-         <string>&amp;Cell composition:</string>
+         <string>&amp;Empirical Formula:</string>
         </property>
         <property name="buddy">
          <cstring>edit_composition</cstring>
@@ -98,12 +104,32 @@ etc.</string>
      </layout>
     </widget>
    </item>
+   <item row="2" column="1">
+    <spacer name="verticalSpacer_2">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
    <item row="0" column="1">
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>Unit Cell Parameters</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
+      <item row="1" column="2" rowspan="8">
+       <widget class="Line" name="line">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
       <item row="2" column="0">
        <widget class="QLabel" name="label_3">
         <property name="text">
@@ -215,38 +241,6 @@ etc.</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="3">
-       <widget class="QDoubleSpinBox" name="spin_b_max">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>9999.989999999999782</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>10.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="3">
-       <widget class="QDoubleSpinBox" name="spin_c_max">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>9999.989999999999782</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>10.000000000000000</double>
-        </property>
-       </widget>
-      </item>
       <item row="4" column="3">
        <widget class="QDoubleSpinBox" name="spin_alpha_max">
         <property name="decimals">
@@ -263,6 +257,22 @@ etc.</string>
         </property>
        </widget>
       </item>
+      <item row="2" column="3">
+       <widget class="QDoubleSpinBox" name="spin_b_max">
+        <property name="decimals">
+         <number>5</number>
+        </property>
+        <property name="maximum">
+         <double>9999.989999999999782</double>
+        </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
+        <property name="value">
+         <double>10.000000000000000</double>
+        </property>
+       </widget>
+      </item>
       <item row="0" column="1">
        <widget class="QLabel" name="label_6">
         <property name="sizePolicy">
@@ -276,6 +286,22 @@ etc.</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="3">
+       <widget class="QDoubleSpinBox" name="spin_c_max">
+        <property name="decimals">
+         <number>5</number>
+        </property>
+        <property name="maximum">
+         <double>9999.989999999999782</double>
+        </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
+        <property name="value">
+         <double>10.000000000000000</double>
         </property>
        </widget>
       </item>
@@ -305,8 +331,8 @@ etc.</string>
          <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Sans Serif'; font-size:10pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Volume (Å&lt;span style=&quot; vertical-align:super;&quot;&gt;3&lt;/span&gt;):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Sans Serif'; font-size:10pt;&quot;&gt;Volume (Å&lt;/span&gt;&lt;span style=&quot; font-family:'Sans Serif'; font-size:10pt; vertical-align:super;&quot;&gt;3&lt;/span&gt;&lt;span style=&quot; font-family:'Sans Serif'; font-size:10pt;&quot;&gt;/FU&lt;/span&gt;&lt;span style=&quot; font-family:'Sans Serif'; font-size:10pt;&quot;&gt;):&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="buddy">
          <cstring>spin_vol_min</cstring>
@@ -315,22 +341,6 @@ p, li { white-space: pre-wrap; }
       </item>
       <item row="5" column="1">
        <widget class="QDoubleSpinBox" name="spin_beta_min">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>180.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>60.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="1">
-       <widget class="QDoubleSpinBox" name="spin_gamma_min">
         <property name="decimals">
          <number>5</number>
         </property>
@@ -358,6 +368,22 @@ p, li { white-space: pre-wrap; }
         </property>
         <property name="value">
          <double>0.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QDoubleSpinBox" name="spin_gamma_min">
+        <property name="decimals">
+         <number>5</number>
+        </property>
+        <property name="maximum">
+         <double>180.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
+        <property name="value">
+         <double>60.000000000000000</double>
         </property>
        </widget>
       </item>
@@ -409,6 +435,16 @@ p, li { white-space: pre-wrap; }
         </property>
        </widget>
       </item>
+      <item row="10" column="0" colspan="2">
+       <widget class="QCheckBox" name="cb_fixedVolume">
+        <property name="toolTip">
+         <string>Use this to specify a starting volume for the structure before optimizing.</string>
+        </property>
+        <property name="text">
+         <string>Fixed Volume (Å3/FU):</string>
+        </property>
+       </widget>
+      </item>
       <item row="6" column="0">
        <widget class="QLabel" name="label_11">
         <property name="text">
@@ -416,13 +452,6 @@ p, li { white-space: pre-wrap; }
         </property>
         <property name="buddy">
          <cstring>spin_gamma_min</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="2" rowspan="8">
-       <widget class="Line" name="line">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
         </property>
        </widget>
       </item>
@@ -448,13 +477,22 @@ p, li { white-space: pre-wrap; }
         </property>
        </widget>
       </item>
-      <item row="10" column="0" colspan="2">
-       <widget class="QCheckBox" name="cb_fixedVolume">
-        <property name="toolTip">
-         <string>Use this to specify a starting volume for the structure before optimizing.</string>
+      <item row="13" column="3">
+       <widget class="QDoubleSpinBox" name="spin_minRadius">
+        <property name="enabled">
+         <bool>false</bool>
         </property>
-        <property name="text">
-         <string>Fixed volume:</string>
+        <property name="suffix">
+         <string> Å</string>
+        </property>
+        <property name="decimals">
+         <number>2</number>
+        </property>
+        <property name="singleStep">
+         <double>0.050000000000000</double>
+        </property>
+        <property name="value">
+         <double>0.250000000000000</double>
         </property>
        </widget>
       </item>
@@ -493,19 +531,6 @@ able to create offspring that meet this restriction.</string>
          <double>0.500000000000000</double>
         </property>
        </widget>
-      </item>
-      <item row="14" column="3">
-       <spacer name="verticalSpacer_2">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
       </item>
       <item row="12" column="0" colspan="2">
        <layout class="QHBoxLayout" name="horizontalLayout">
@@ -577,22 +602,29 @@ able to create offspring that meet this restriction.</string>
         </item>
        </layout>
       </item>
-      <item row="13" column="3">
-       <widget class="QDoubleSpinBox" name="spin_minRadius">
-        <property name="enabled">
-         <bool>false</bool>
+      <item row="16" column="3">
+       <widget class="QLabel" name="label_13">
+        <property name="text">
+         <string>Formula Units</string>
         </property>
-        <property name="suffix">
-         <string> Å</string>
+       </widget>
+      </item>
+      <item row="17" column="0" colspan="2">
+       <layout class="QHBoxLayout" name="horizontalLayout_3"/>
+      </item>
+      <item row="18" column="3">
+       <widget class="QLineEdit" name="edit_formula_units">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
-        <property name="decimals">
-         <number>2</number>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the numbers of formula units separated by commas and hyphens to be searched here. The text box will be updated with the program's interpretation of your input after exiting the box or pressing return.&lt;/p&gt;&lt;p&gt;Examples:&lt;/p&gt;&lt;p&gt;1 , 3&lt;/p&gt;&lt;p&gt;1 - 4&lt;/p&gt;&lt;p&gt;1 - 3, 5, 7 - 9&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
-        <property name="singleStep">
-         <double>0.050000000000000</double>
-        </property>
-        <property name="value">
-         <double>0.250000000000000</double>
+        <property name="text">
+         <string>1</string>
         </property>
        </widget>
       </item>

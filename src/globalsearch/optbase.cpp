@@ -160,8 +160,8 @@ namespace GlobalSearch {
     last = structures.last();
     first->lock()->lockForRead();
     last->lock()->lockForRead();
-    double lowest = first->getEnthalpy();
-    double highest = last->getEnthalpy();;
+    double lowest = first->getEnthalpy() / static_cast<double>(first->numAtoms()); //PSA Enthalpy per atom
+    double highest = last->getEnthalpy() / static_cast<double>(last->numAtoms());; //PSA Enthalpy per atom
     double spread = highest - lowest;
     last->lock()->unlock();
     first->lock()->unlock();
@@ -183,7 +183,7 @@ namespace GlobalSearch {
     for (int i = 0; i < structures.size(); i++) {
       s = structures.at(i);
       s->lock()->lockForRead();
-      probs.append( ( s->getEnthalpy() - lowest ) / spread);
+      probs.append( ( (s->getEnthalpy() / static_cast<double>(s->numAtoms())) - lowest ) / spread); //PSA Enthalpy per atom
       s->lock()->unlock();
     }
     // Subtract each value from one, and find the sum of the resulting list

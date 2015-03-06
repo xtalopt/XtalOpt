@@ -308,6 +308,8 @@ namespace XtalOpt {
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
     QWriteLocker locker1 (oldXtal->lock());
 
+    uint FU = s->getFormulaUnits();
+
     // Generate/Check new xtal
     Xtal *xtal = 0;
     while (!checkXtal(xtal)) {
@@ -316,7 +318,7 @@ namespace XtalOpt {
         xtal = 0;
       }
 
-      xtal = generateRandomXtal(0, 0);
+      xtal = generateRandomXtal(0, 0, FU);
     }
 
     // Copy info over
@@ -351,6 +353,8 @@ namespace XtalOpt {
   Structure* XtalOpt::replaceWithOffspring(Structure *s,
                                            const QString & reason)
   {
+
+    uint FU = s->getFormulaUnits();
     // Generate/Check new xtal
     Xtal *xtal = 0;
     while (!checkXtal(xtal)) {
@@ -358,7 +362,14 @@ namespace XtalOpt {
         xtal->deleteLater();
         xtal = NULL;
       }
-      xtal = generateNewXtal();
+      xtal = generateNewXtal(FU);
+    }
+
+    // Just return xtal if the formula units are not equivalent.
+    // This should theoretically not occur since generateNewXtal(FU) forces
+    // xtal to have the correct FU.
+    if (xtal->getFormulaUnits() != s->getFormulaUnits()) {
+      return xtal;
     }
 
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
@@ -391,10 +402,22 @@ namespace XtalOpt {
     return static_cast<Structure*>(oldXtal);
   }
 
-  Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
+  Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
   {
     INIT_RANDOM_GENERATOR();
-    // Set cell parameters
+
+    static_cast<double>(FU);
+
+    // Adjust max and min constraints depending on the formula unit
+    // may delete this later
+    /*new_a_max = FU * a_max;
+    new_b_max = FU * b_max;
+    new_c_max = FU * c_max;
+    new_a_min = FU * a_min;
+    new_b_min = FU * b_min;
+    new_c_min = FU * c_min; */
+
+   // Set cell parameters
     double a            = RANDDOUBLE() * (a_max-a_min) + a_min;
     double b            = RANDDOUBLE() * (b_max-b_min) + b_min;
     double c            = RANDDOUBLE() * (c_max-c_min) + c_min;
@@ -409,7 +432,7 @@ namespace XtalOpt {
     xtal->setStatus(Xtal::Empty);
 
     if (using_fixed_volume)
-      xtal->setVolume(vol_fixed);
+      xtal->setVolume(vol_fixed * FU);
 
     // Populate crystal
     QList<uint> atomicNums = comp.keys();
@@ -423,12 +446,11 @@ namespace XtalOpt {
         }
       }
     }
-
     unsigned int atomicNum;
     unsigned int q;
     for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
       atomicNum = atomicNums.at(num_idx);
-      q = comp.value(atomicNum).quantity;
+      q = comp.value(atomicNum).quantity * FU; //PSA
       for (uint i = 0; i < q; i++) {
         if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
           xtal->deleteLater();
@@ -447,6 +469,35 @@ namespace XtalOpt {
 
     // Set up xtal data
     return xtal;
+  }
+
+  // Overloaded version of generateRandomXtal(uint generation, uint id, uint FU) without FU specified
+  Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
+  {
+    // Just in case the formulaUnitsList is empty for some reason...
+    if (formulaUnitsList.isEmpty() == true) {
+      formulaUnitsList.append(1);
+    }
+
+    INIT_RANDOM_GENERATOR();
+    QList<uint> tempFormulaUnitsList = formulaUnitsList;
+    if (using_mitosis && !using_one_pool) {
+      // Remove formula units on the list for which there is a smaller multiple that may be used to create a super cell.
+      for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
+        for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
+          if (tempFormulaUnitsList.at(j) % tempFormulaUnitsList.at(i) == 0) {
+            tempFormulaUnitsList.removeAt(j);
+            j--;
+          }
+        }
+      }
+    }
+
+    // We will assume modulo bias will be small since formula unit ranges are typically small. Pick random formula units.
+    uint randomListIndex = rand()%int(tempFormulaUnitsList.size()); //PSA alter FU
+    uint FU = tempFormulaUnitsList.at(randomListIndex);
+
+    return generateRandomXtal(generation, id, FU);
   }
 
   void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation,
@@ -519,18 +570,69 @@ namespace XtalOpt {
                          newXtal->getParents());
   }
 
-  Xtal* XtalOpt::generateNewXtal()
+  // Identical to the previous generateNewXtal() function except the number formula units to use have been specified
+  Xtal* XtalOpt::generateNewXtal(uint FU)
   {
     // Get all optimized structures
     QList<Structure*> structures = m_queue->getAllOptimizedStructures();
 
+    for (int i = 0; i < structures.size(); i++) {
+      if (!onTheFormulaUnitsList(structures.at(i)->getFormulaUnits())) {
+        structures.removeAt(i);
+        i--;
+      }
+    }
+
+    // If we are NOT using one pool. FU == 0 implies that we are using one pool
+    if (!using_one_pool) {
+      // Remove all structures that do not have formula units of FU
+      for (int i = 0; i < structures.size(); i++) {
+        if (structures.at(i)->getFormulaUnits() != FU) {
+          structures.removeAt(i);
+          i--;
+        }
+      }
+    }
     // Check to see if there are enough optimized structure to perform
     // genetic operations
     if (structures.size() < 3) {
       Xtal *xtal = 0;
+
+      // Check to see if a supercell should be formed by mitosis
+      if (using_mitosis && FU != 0) {
+        QList<Structure*> tempStructures = m_queue->getAllOptimizedStructures();
+        Structure* structure;
+        QList<uint> numberOfEachFormulaUnit = structure->countStructuresOfEachFormulaUnit(&tempStructures, maxFU);
+
+        // The number of formula units to use to make the super cell must be a multiple of the larger formula unit, and there must be as many at least five optimized structures. If there aren't, then generate more.
+        for (int i = FU - 1; 0 < i; i--) {
+          if (FU % i == 0 && numberOfEachFormulaUnit.at(i) >= 5 && onTheFormulaUnitsList(i) == true) {
+            while (!checkXtal(xtal)) {
+              if (xtal) {
+                delete xtal;
+                xtal = 0;
+              }
+            xtal = generateSuperCell(i, FU, 0, true);
+            }
+            return xtal;
+          }
+
+          // Generates more of a particular formula unit if everything checks except that there aren't enough parent structures. Must be on the formulaUnitsList.
+          if (FU % i == 0 && numberOfEachFormulaUnit.at(i) < 5 && onTheFormulaUnitsList(i) == true) {
+            xtal = generateNewXtal(i);
+            QString parents = xtal->getParents();
+            parents = parents + tr(" for mitosis to make %1 FU xtals").arg(QString::number(FU));
+            xtal->setParents(parents);
+            return xtal;
+          }
+        }
+      }
+
+      // If a supercell cannot be formed or if using_mitosis == false
       while (!checkXtal(xtal)) {
         if (xtal) xtal->deleteLater();
-        xtal = generateRandomXtal(1, 0);
+        if (!using_one_pool) xtal = generateRandomXtal(1, 0, FU);
+        else if (using_one_pool) xtal = generateRandomXtal(1, 0);
       }
       xtal->setParents(xtal->getParents() + " (too few optimized structures "
                        "to generate offspring)");
@@ -543,11 +645,19 @@ namespace XtalOpt {
     // Trim list
     // Remove all but (popSize + 1). The "+ 1" will be removed
     // during probability generation.
-    while ( static_cast<uint>(structures.size()) > popSize + 1 ) {
+    if (!using_one_pool) {
+      while ( static_cast<uint>(structures.size()) > popSize + 1 ) {
+        structures.removeLast();
+      }
+    }
+    else if (using_one_pool) {
+      while ( static_cast<uint>(structures.size()) > popSize * static_cast<uint>(formulaUnitsList.size()) + 1) {
       structures.removeLast();
+      }
     }
 
-    // Make list of weighted probabilities based on enthalpy values
+    // Make list of weighted probabilities based on enthalpy per formula unit
+    // values
     QList<double> probs = getProbabilityList(structures);
 
     // Cast Structures into Xtals
@@ -575,6 +685,56 @@ namespace XtalOpt {
 
       // Decide operator:
       r = RANDDOUBLE();
+
+      Xtal *selectedXtal = 0;
+      int selectedXtalIndex = 0;
+      bool selectedXtalExists = false;
+      // We will just perform mitosis if:
+      // 1: using_one_pool is enabled and
+      // 2: the xtal selected can produce an FU on the list through mitosis and
+      // 3: the probability succeeds
+
+      if (using_one_pool) {
+        double random = RANDDOUBLE();
+        for (selectedXtalIndex = 0; selectedXtalIndex < probs.size();
+             selectedXtalIndex++)
+          if (random < probs.at(selectedXtalIndex)) break;
+        selectedXtal = xtals.at(selectedXtalIndex);
+        selectedXtalExists = true;
+       // Find candidate formula units to be created through mitosis
+        QList<uint> possibleMitosisFU_index;
+        for (int i = 0; i < formulaUnitsList.size(); i++) {
+          if (formulaUnitsList.at(i) % selectedXtal->getFormulaUnits() == 0 &&
+                formulaUnitsList.at(i) != selectedXtal->getFormulaUnits()) {
+            possibleMitosisFU_index.append(i);
+          }
+        }
+
+        // If no FU's may be created by mitosis, just continue
+        if (!possibleMitosisFU_index.isEmpty()) {
+          //qDebug() << "possibleMitosisFU_index is not empty!";
+          // If the probability fails, delete xtal and continue
+          if (r <= chance_of_mitosis/100.0) {
+            // Select an index randomly from the possibleMitosisFU_index
+            uint randomListIndex = rand()%int(possibleMitosisFU_index.size());
+            uint selectedIndex = possibleMitosisFU_index.at(randomListIndex);
+            // Use that selected index to choose the formula units
+            uint formulaUnits = formulaUnitsList.at(selectedIndex);
+            // Perform mitosis
+            while (!checkXtal(xtal)) {
+              if (xtal) {
+                delete xtal;
+                xtal = 0;
+              }
+
+              xtal = generateSuperCell(selectedXtal->getFormulaUnits(),
+                                         formulaUnits, selectedXtal, true);
+            }
+            return xtal;
+          }
+        }
+      }
+
       Operators op;
       if (r < p_cross/100.0)
         op = OP_Crossover;
@@ -593,28 +753,103 @@ namespace XtalOpt {
           delete xtal;
           xtal = 0;
         }
-
         // Operation specific set up:
         switch (op) {
         case OP_Crossover: {
+
           int ind1, ind2;
           Xtal *xtal1=0, *xtal2=0;
           // Select structures
           ind1 = ind2 = 0;
           double r1 = RANDDOUBLE();
           double r2 = RANDDOUBLE();
-          for (ind1 = 0; ind1 < probs.size(); ind1++)
-            if (r1 < probs.at(ind1)) break;
-          for (ind2 = 0; ind2 < probs.size(); ind2++)
-            if (r2 < probs.at(ind2)) break;
-
-          xtal1 = xtals.at(ind1);
-          xtal2 = xtals.at(ind2);
-
-          // Perform operation
           double percent1;
-          xtal = XtalOptGenetic::crossover(
-                xtal1, xtal2, cross_minimumContribution, percent1);
+          double percent2;
+
+          // If FU crossovers have been enabled, generate a new breeding pool
+          // that includes multiple different formula units then run the
+          // alternative crossover function
+          bool enoughStructures = true;
+          if (using_FU_crossovers) {
+            // Get all optimized structures
+            QList<Structure*> tempStructures = m_queue->getAllOptimizedStructures();
+
+            // Trim all the structures that aren't of the allowed generation or
+            // greater
+            for (int i = 0; i < tempStructures.size(); i++) {
+              if (tempStructures.at(i)->getGeneration() < FU_crossovers_generation) {
+                tempStructures.removeAt(i);
+                i--;
+              }
+            }
+
+            // Only continue if there are at least 3 of the allowed generation or greater
+            if (tempStructures.size() < 3) enoughStructures = false;
+            if (enoughStructures) {
+
+              // Sort structure list
+              Structure::sortByEnthalpy(&tempStructures);
+
+              // Trim list
+              // Remove all but (popSize + 1). The "+ 1" will be removed
+              // during probability generation.
+              while ( static_cast<uint>(tempStructures.size()) > popSize + 1 ) {
+                tempStructures.removeLast();
+              }
+
+              // Make list of weighted probabilities based on enthalpy values
+              QList<double> probs = getProbabilityList(tempStructures);
+
+              // Cast Structures into Xtals
+              QList<Xtal*> tempXtals;
+#if QT_VERSION >= 0x040700
+              tempXtals.reserve(structures.size());
+#endif // QT_VERSION
+              for (int i = 0; i < tempStructures.size(); ++i) {
+                tempXtals.append(qobject_cast<Xtal*>(tempStructures.at(i)));
+              }
+
+              for (ind1 = 0; ind1 < probs.size(); ind1++)
+                if (r1 < probs.at(ind1)) break;
+              for (ind2 = 0; ind2 < probs.size(); ind2++)
+                if (r2 < probs.at(ind2)) break;
+
+              xtal1 = tempXtals.at(ind1);
+              xtal2 = tempXtals.at(ind2);
+
+              // Perform operation
+              xtal = XtalOptGenetic::FUcrossover(
+                    xtal1, xtal2, cross_minimumContribution, percent1, percent2,
+                    formulaUnitsList, this->comp);
+            }
+          }
+
+          if (!using_FU_crossovers || !enoughStructures) {
+            if (!selectedXtalExists) {
+              for (ind1 = 0; ind1 < probs.size(); ind1++)
+                if (r1 < probs.at(ind1)) break;
+              xtal1 = xtals.at(ind1);
+            }
+            else if (selectedXtalExists) {
+              xtal1 = xtals.at(selectedXtalIndex);
+            }
+            for (ind2 = 0; ind2 < probs.size(); ind2++)
+              if (r2 < probs.at(ind2)) break;
+            xtal2 = xtals.at(ind2);
+
+            // Make sure they have the same formula units. If they don't,
+            // then try again for xtal2
+            while (xtal1->getFormulaUnits() != xtal2->getFormulaUnits()) {
+              r2 = RANDDOUBLE();
+              for (ind2 = 0; ind2 < probs.size(); ind2++)
+                if (r2 < probs.at(ind2)) break;
+              xtal2 = xtals.at(ind2);
+            }
+
+            // Perform operation
+            xtal = XtalOptGenetic::crossover(
+                  xtal1, xtal2, cross_minimumContribution, percent1);
+          }
 
           // Lock parents and get info from them
           xtal1->lock()->lockForRead();
@@ -637,16 +872,29 @@ namespace XtalOpt {
             .arg(gen2)
             .arg(id2)
             .arg(100.0 - percent1, 0, 'f', 0);
+
+          if (using_FU_crossovers && enoughStructures) parents = tr("FU Crossover: %1x%2 (%3%) + %4x%5 (%6%)")
+            .arg(gen1)
+            .arg(id1)
+            .arg(percent1, 0, 'f', 0)
+            .arg(gen2)
+            .arg(id2)
+            .arg(percent2, 0, 'f', 0);
           continue;
         }
         case OP_Stripple: {
-          // Pick a parent
-          int ind;
-          double r = RANDDOUBLE();
-          for (ind = 0; ind < probs.size(); ind++)
-            if (r < probs.at(ind)) break;
-          Xtal *xtal1 = xtals.at(ind);
-
+          Xtal *xtal1 = 0;
+          if (!selectedXtalExists) {
+            // Pick a parent
+            int ind;
+            double r = RANDDOUBLE();
+            for (ind = 0; ind < probs.size(); ind++)
+              if (r < probs.at(ind)) break;
+            xtal1 = xtals.at(ind);
+          }
+          else if (selectedXtalExists) {
+            xtal1 = xtals.at(selectedXtalIndex);
+          }
           // Perform stripple
           double amplitude=0, stdev=0;
           xtal = XtalOptGenetic::stripple(xtal1,
@@ -679,13 +927,18 @@ namespace XtalOpt {
         case OP_Permustrain: {
           int ind;
           double r = RANDDOUBLE();
-          for (ind = 0; ind < probs.size(); ind++)
-            if (r < probs.at(ind)) break;
-
-          Xtal *xtal1 = xtals.at(ind);
+          Xtal *xtal1 = 0;
+          if (!selectedXtalExists) {
+            for (ind = 0; ind < probs.size(); ind++)
+              if (r < probs.at(ind)) break;
+            xtal1 = xtals.at(ind);
+          }
+          else if (selectedXtalExists) {
+            xtal1 = xtals.at(selectedXtalIndex);
+          }
           double stdev=0;
           xtal = XtalOptGenetic::permustrain(
-                xtals.at(ind), perm_strainStdev_max, perm_ex, stdev);
+                xtal1, perm_strainStdev_max, perm_ex, stdev);
 
           // Lock parent and extract info
           xtal1->lock()->lockForRead();
@@ -724,6 +977,319 @@ namespace XtalOpt {
     return xtal;
   }
 
+  // Overloaded function of generateNewXtal(uint FU)
+  Xtal* XtalOpt::generateNewXtal()
+  {
+        // Just in case the formulaUnitsList is empty for some reason...
+    if (formulaUnitsList.isEmpty() == true) {
+      formulaUnitsList.append(1);
+    }
+
+    // Inputing a formula unit of 0 implies using all formula units when
+    // generating the probability list.
+    if (using_one_pool) {
+      return generateNewXtal(0);
+    }
+
+    // Get all structures to count numbers of each formula unit
+    QList<Structure*> allStructures = m_queue->getAllStructures();
+
+    // Count number of each formula unit
+    Structure *structure;
+    QList<uint> numberOfEachFormulaUnit = structure->countStructuresOfEachFormulaUnit(&allStructures, maxFU);
+
+    // If there are not yet at least 5 of any one FU, make more of that FU
+    // Will generate smaller FU's first
+    for (int i = minFU; i <= maxFU; ++i) {
+      if ( (numberOfEachFormulaUnit.at(i) < 5) && (onTheFormulaUnitsList(i) == true)) {
+        uint FU = i;
+        return generateNewXtal(FU);
+      }
+    }
+
+    // Find the formula unit with the smallest number of total structures.
+    uint smallest = numberOfEachFormulaUnit.at(minFU);
+    for (int i = minFU; i <= maxFU; ++i) {
+      if ( (numberOfEachFormulaUnit.at(i) < smallest) && (onTheFormulaUnitsList(i) == true)) {
+        smallest = numberOfEachFormulaUnit.at(i);
+      }
+    }
+
+    // Pick the formula unit with the smallest number of optimized structures. If there are two or more formula units that have the smallest number of optimized structures, pick the smallest
+    uint FU;
+    for (int i = minFU; i <= maxFU; i++) {
+      if ( (numberOfEachFormulaUnit.at(i) == smallest) && (onTheFormulaUnitsList(i) == true)) {
+        FU = i;
+        break;
+      }
+    }
+
+    return generateNewXtal(FU);
+  }
+
+  Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU, Xtal *myXtal,
+                                   bool firstCall) {
+
+    // If (myXtal == 0), select an xtal from the probability list
+    if (firstCall == true) {
+      Xtal *xtal = NULL;
+      if (myXtal == 0) {
+        // Get all optimized structures
+        QList<Structure*> structures = m_queue->getAllOptimizedStructures();
+
+        // Remove all structures that do not have formula units of FU
+        for (int i = 0; i < structures.size(); i++) {
+          if (structures.at(i)->getFormulaUnits() != initialFU) {
+            structures.removeAt(i);
+            i--;
+          }
+        }
+
+        // Sort structure list
+        Structure::sortByEnthalpy(&structures);
+
+        // Trim list
+        // Remove all but (popSize + 1). The "+ 1" will be removed
+        // during probability generation.
+        while ( static_cast<uint>(structures.size()) > popSize + 1 ) {
+          structures.removeLast();
+        }
+
+        // Make list of weighted probabilities based on enthalpy values
+        QList<double> probs = getProbabilityList(structures);
+
+        // Cast Structures into Xtals
+        QList<Xtal*> xtals;
+#if QT_VERSION >= 0x040700
+        xtals.reserve(structures.size());
+#endif // QT_VERSION
+        for (int i = 0; i < structures.size(); ++i) {
+          xtals.append(qobject_cast<Xtal*>(structures.at(i)));
+        }
+
+        // Initialize loop vars
+        double r;
+
+        // Pick a parent for generating the super cell
+        int ind;
+        r = RANDDOUBLE();
+        for (ind = 0; ind < probs.size(); ind++)
+          if (r < probs.at(ind)) break;
+        xtal = xtals.at(ind);
+      }
+
+      // If it is the first call, and the parent is already known,
+      // transfer the parent over to xtal and set myXtal = 0 just for
+      // ease later in function.
+      if (myXtal != 0) {
+        xtal = myXtal;
+        myXtal = 0;
+      }
+
+      unsigned int gen;
+      QString parents;
+
+      // lock parent xtal for reading
+      QReadLocker locker (xtal->lock());
+
+      // Copy info over from parent to new xtal
+      myXtal = new Xtal;
+      myXtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
+      QWriteLocker nxtalLocker (myXtal->lock());
+      QList<Atom*> atoms = xtal->atoms();
+      for (int i = 0; i < atoms.size(); i++) {
+        Atom* atom = myXtal->addAtom();
+        atom->setAtomicNumber(atoms.at(i)->atomicNumber());
+        atom->setPos(atoms.at(i)->pos());
+      }
+
+      // Lock parent and extract info
+      xtal->lock()->lockForRead();
+      uint gen1 = xtal->getGeneration();
+      uint id1 = xtal->getIDNumber();
+      xtal->lock()->unlock();
+
+      // Determine generation number
+      parents = tr("%1x%2 mitosis followed by ")
+        .arg(gen1)
+        .arg(id1);
+      myXtal->setParents(parents);
+      myXtal->setGeneration(1);
+    }
+
+    // Find the largest prime number multiple. We will expand
+    // upon the shortest length with this number. We will perform
+    // the other duplications through recursion of this whole function.
+
+    uint numberOfDuplicates = finalFU / initialFU;
+    for (int i = 2; i < numberOfDuplicates; i++) {
+      if (numberOfDuplicates % i == 0) {
+        numberOfDuplicates = numberOfDuplicates / i;
+        i = 2;
+      }
+    }
+
+    // a, b, and c are the number of duplicates in the A, B, and C direction, respectively.
+    uint a = 1;
+    uint b = 1;
+    uint c = 1;
+
+    // Find the shortest length. We will expand upon this length.
+    double A = myXtal->getA();
+    double B = myXtal->getB();
+    double C = myXtal->getC();
+
+    if (A <= B && A <= C) {
+      a = numberOfDuplicates;
+    }
+    else if (B <= A && B <= C) {
+      b = numberOfDuplicates;
+    }
+    else if (C <= A && C <= B) {
+      c = numberOfDuplicates;
+    }
+
+    QList<Atom*> oneFUatoms = myXtal->atoms();
+
+    //  First get OB matrix, extract vectors, then convert to Eigen::Vector3d's
+    matrix3x3 obcellMatrix = myXtal->OBUnitCell()->GetCellMatrix();
+    OpenBabel::vector3 obU1 = obcellMatrix.GetRow(0);
+    OpenBabel::vector3 obU2 = obcellMatrix.GetRow(1);
+    OpenBabel::vector3 obU3 = obcellMatrix.GetRow(2);
+    // Scale cell
+    myXtal->setCellInfo(a * A,
+                        b * B,
+                        c * C,
+                        myXtal->getAlpha(),
+                        myXtal->getBeta(),
+                        myXtal->getGamma());
+    //qDebug() << "Xtal cell dimensions are increasing from a=" << A << "b=" << B << "c=" << C << "to a=" << a*A << "b=" << b*B << "c=" << c*C;
+    a--;
+    b--;
+    c--;
+
+    for (int i = 0; i <= a; i++) {
+      for (int j = 0; j <= b; j++) {
+        for (int k = 0; k <= c; k++) {
+          if (i == 0 && j == 0 && k == 0) continue;
+          Eigen::Vector3d uVecs(
+                  obU1.x() * i + obU2.x() * j + obU3.x() * k,
+                  obU1.y() * i + obU2.y() * j + obU3.y() * k,
+                  obU1.z() * i + obU2.z() * j + obU3.z() * k);
+          // Add the atoms in
+          foreach(Atom *atom, oneFUatoms) {
+              Atom *newAtom = myXtal->addAtom();
+              *newAtom = *atom;
+              newAtom->setPos((*atom->pos())+uVecs);
+              newAtom->setAtomicNumber(atom->atomicNumber());
+              //qDebug() << "Added atom at a=" << i << " b=" << j << " c=" << k << " with atomic number " << newAtom->atomicNumber() << "and position " << *newAtom->pos();
+
+          }
+        }
+      }
+    }
+
+    // Recursively perform mitosis until the final FU is reached
+    if (myXtal->getFormulaUnits() != finalFU) {
+      return generateSuperCell(myXtal->getFormulaUnits(), finalFU, myXtal,
+                                 false);
+      }
+
+    // Perform genetic operation immediately after mitosis
+    else {
+    INIT_RANDOM_GENERATOR();
+
+    Xtal* xtal = 0;
+
+    // Perform operation until xtal is valid:
+    while (!checkXtal(xtal)) {
+      // First delete any previous failed structure in xtal
+      if (xtal) {
+        delete xtal;
+        xtal = myXtal;
+      }
+
+      // Decide operator:
+      double r = RANDDOUBLE();
+      Operators op;
+
+      // We will not use crossovers for supercells
+      if (r < p_cross/100.0) {
+        if (r < 0.5) op = OP_Stripple;
+        else op = OP_Permustrain;
+      }
+      else if (r < (p_cross + p_strip)/100.0)
+        op = OP_Stripple;
+      else
+        op = OP_Permustrain;
+
+      // Try 1000 times to get a good structure from the selected
+      // operation. If not possible, send a warning to the log and
+      // start anew.
+      int attemptCount = 0;
+      while (attemptCount < 1000 && !checkXtal(xtal)) {
+        attemptCount++;
+        if (xtal) {
+          xtal->deleteLater();
+          xtal = myXtal;
+        }
+
+        // Operation specific set up:
+        switch (op) {
+        case OP_Stripple: {
+
+          // Perform stripple
+          double amplitude=0, stdev=0;
+          xtal = XtalOptGenetic::stripple(myXtal,
+                                          strip_strainStdev_min,
+                                          strip_strainStdev_max,
+                                          strip_amp_min,
+                                          strip_amp_max,
+                                          strip_per1,
+                                          strip_per2,
+                                          stdev,
+                                          amplitude);
+
+          QString parents = myXtal->getParents() + tr("Stripple: stdev=%1 amp=%2 waves=%3,%4")
+            .arg(stdev, 0, 'f', 5)
+            .arg(amplitude, 0, 'f', 5)
+            .arg(strip_per1)
+            .arg(strip_per2);
+          xtal->setParents(parents);
+          continue;
+        }
+        case OP_Permustrain: {
+          double stdev=0;
+          xtal = XtalOptGenetic::permustrain(
+                myXtal, perm_strainStdev_max, perm_ex, stdev);
+
+          QString parents = myXtal->getParents() + tr("Permustrain: stdev=%1 exch=%2")
+            .arg(stdev, 0, 'f', 5)
+            .arg(perm_ex);
+          xtal->setParents(parents);
+          continue;
+        }
+        default:
+          warning("XtalOpt::generateSingleOffspring: Attempt to use an "
+                  "invalid operator.");
+        }
+      }
+      if (attemptCount >= 1000) {
+        QString opStr;
+        switch (op) {
+        case OP_Stripple:    opStr = "stripple"; break;
+        case OP_Permustrain: opStr = "permustrain"; break;
+        default:             opStr = "(unknown)"; break;
+        }
+        warning(tr("Unable to perform operation %1 after 1000 tries. "
+                   "Reselecting operator...").arg(opStr));
+      }
+    }
+      xtal->setGeneration(1);
+      return xtal;
+    }
+  }
+
   bool XtalOpt::checkLimits() {
     if (a_min > a_max) {
       warning("XtalOptRand::checkLimits error: Illogical A limits.");
@@ -749,20 +1315,29 @@ namespace XtalOpt {
       warning("XtalOptRand::checkLimits error: Illogical Gamma limits.");
       return false;
     }
-    if (
-        ( using_fixed_volume &&
-          ( (a_min * b_min * c_min) > vol_fixed ||
-            (a_max * b_max * c_max) < vol_fixed )
-          ) ||
-        ( !using_fixed_volume &&
-          ( (a_min * b_min * c_min) > vol_max ||
-            (a_max * b_max * c_max) < vol_min ||
-            vol_min > vol_max)
-          )) {
-      warning("XtalOptRand::checkLimits error: Illogical Volume limits. "
-              "(Also check min/max volumes based on cell lengths)");
-      return false;
+
+    // Check to make sure at least one formula unit can be made with
+    // the specified lengths and volume constraints
+    bool anyFails = false;
+    for (int i = 0; i < formulaUnitsList.size(); i++) {
+      if (
+          ( using_fixed_volume &&
+            ( (a_min * b_min * c_min) > (vol_fixed * static_cast<double>(formulaUnitsList.at(i))) ||
+              (a_max * b_max * c_max) < (vol_fixed * static_cast<double>(formulaUnitsList.at(i))) )
+            ) ||
+          ( !using_fixed_volume &&
+            ( (a_min * b_min * c_min) > (vol_max * static_cast<double>(formulaUnitsList.at(i))) ||
+              (a_max * b_max * c_max) < (vol_min * static_cast<double>(formulaUnitsList.at(i))) ||
+              vol_min > vol_max)
+            )) {
+      warning(tr("XtalOptRand::checkLimits error: Illogical Volume limits for %1 FU. "
+              "(Also check min/max volumes based on cell lengths)").arg(QString::number(formulaUnitsList.at(i))));
+        anyFails = true;
+      }
     }
+
+    if (anyFails == true) return false;
+
     return true;
   }
 
@@ -807,9 +1382,10 @@ namespace XtalOpt {
       }
       ++atomCounts[typeIndex];
     }
-    // Check counts
+
+    // Check counts. Adjust for formula units.
     for (int i = 0; i < atomTypes.size(); ++i) {
-      if (atomCounts[i] != comp[atomTypes[i]].quantity) {
+      if (atomCounts[i] != comp[atomTypes[i]].quantity * xtal->getFormulaUnits()) { //PSA
         // Incorrect count:
         qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
         if (err != NULL) {
@@ -819,37 +1395,52 @@ namespace XtalOpt {
       }
     }
 
+    // Adjust max and min constraints depending on the formula unit
+    /* May delete this later
+    new_a_max = static_cast<double>(xtal->getFormulaUnits()) * a_max;
+    new_b_max = static_cast<double>(xtal->getFormulaUnits()) * b_max;
+    new_c_max = static_cast<double>(xtal->getFormulaUnits()) * c_max;
+    new_a_min = static_cast<double>(xtal->getFormulaUnits()) * a_min;
+    new_b_min = static_cast<double>(xtal->getFormulaUnits()) * b_min;
+    new_c_min = static_cast<double>(xtal->getFormulaUnits()) * c_min;
+    */
+
+    new_vol_max = static_cast<double>(xtal->getFormulaUnits()) * vol_max;
+    new_vol_min = static_cast<double>(xtal->getFormulaUnits()) * vol_min;
+
     // Check volume
     if (using_fixed_volume) {
       locker.unlock();
-      xtal->setVolume(vol_fixed);
+      xtal->setVolume(vol_fixed * static_cast<double>(xtal->getFormulaUnits()));
       locker.relock();
     }
-    else if ( xtal->getVolume() < vol_min ||
-              xtal->getVolume() > vol_max ) {
+    else if ( xtal->getVolume() < new_vol_min || //PSA
+              xtal->getVolume() > new_vol_max) { //PSA
       // I don't want to initialize a random number generator here, so
       // just use the modulus of the current volume as a random float.
       double newvol = fabs(fmod(xtal->getVolume(), 1)) *
-          (vol_max - vol_min) + vol_min;
+          (new_vol_max - new_vol_min) + new_vol_min;
       // If the user has set vol_min to 0, we can end up with a null
       // volume. Fix this here. This is just to keep things stable
       // numerically during the rescaling -- it's unlikely that other
       // cells with small, nonzero volumes will pass the other checks
       // so long as other limits are reasonable.
       if (fabs(newvol) < 1.0) {
-        newvol = (vol_max - vol_min)*0.5 + vol_min;
+        newvol = (new_vol_max - new_vol_min)*0.5 + new_vol_min; //PSA;
       }
       qDebug() << "XtalOpt::checkXtal: Rescaling volume from "
                << xtal->getVolume() << " to " << newvol;
       xtal->setVolume(newvol);
     }
 
+
+
     // Scale to any fixed parameters
     double a, b, c, alpha, beta, gamma;
     a = b = c = alpha = beta = gamma = 0;
-    if (fabs(a_min - a_max) < 0.01) a = a_min;
-    if (fabs(b_min - b_max) < 0.01) b = b_min;
-    if (fabs(c_min - c_max) < 0.01) c = c_min;
+    if (fabs(a_min - a_max) < 0.01) a = a_min; //PSA
+    if (fabs(b_min - b_max) < 0.01) b = b_min; //PSA
+    if (fabs(c_min - c_max) < 0.01) c = c_min; //PSA
     if (fabs(alpha_min - alpha_max) < 0.01) alpha = alpha_min;
     if (fabs(beta_min -  beta_max)  < 0.01)  beta = beta_min;
     if (fabs(gamma_min - gamma_max) < 0.01) gamma = gamma_min;
@@ -936,6 +1527,7 @@ namespace XtalOpt {
     if (err != NULL) {
       *err = "";
     }
+
     return true;
   }
 
@@ -1396,6 +1988,15 @@ namespace XtalOpt {
     }
 
     return true;
+  }
+
+  bool XtalOpt::onTheFormulaUnitsList(uint FU) {
+     for (int i = 0; i < formulaUnitsList.size(); i++) {
+       if (FU == formulaUnitsList.at(i)) {
+         return true;
+       }
+     }
+     return false;
   }
 
   void XtalOpt::resetSpacegroups() {

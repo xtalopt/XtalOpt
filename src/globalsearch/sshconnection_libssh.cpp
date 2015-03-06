@@ -176,6 +176,7 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
   // Create session
   m_session = ssh_new();
   if (!m_session) {
+    qWarning() << "!m_session"; //PSA ERROR
     if (throwExceptions) {
       throw SSH_UNKNOWN_ERROR;
     }

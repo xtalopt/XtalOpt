@@ -188,7 +188,7 @@ namespace XtalOpt {
     // Add the new row
     ui.table_list->insertRow(index);
     // Columns: once for each column in ProgressColumns:
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < 10; i++) {
       ui.table_list->setItem(index, i, new QTableWidgetItem());
     }
 
@@ -208,11 +208,13 @@ namespace XtalOpt {
     e.brush   = QBrush (Qt::white);
     e.spg     = QString::number( xtal->getSpaceGroupNumber()) + ": "
       + xtal->getSpaceGroupSymbol();
+    e.FU = xtal->getFormulaUnits();
 
     if (xtal->hasEnthalpy() || xtal->getEnergy() != 0)
-      e.enthalpy = xtal->getEnthalpy();
+      e.enthalpy = xtal->getEnthalpy() / static_cast<double>(xtal->getFormulaUnits()); //PSA Enthalpy per atom
     else
       e.enthalpy = 0.0;
+ 
     xtal->lock()->unlock();
 
     ui.table_list->blockSignals(false);
@@ -310,9 +312,10 @@ namespace XtalOpt {
     e.volume  = xtal->getVolume();
     e.spg     = QString::number( xtal->getSpaceGroupNumber()) + ": "
       + xtal->getSpaceGroupSymbol();
+    e.FU = xtal->getFormulaUnits();
 
     if (xtal->hasEnthalpy() || xtal->getEnergy() != 0)
-      e.enthalpy = xtal->getEnthalpy();
+      e.enthalpy = xtal->getEnthalpy() / static_cast<double>(xtal->getFormulaUnits()); //PSA Enthalpy per atom
     else
       e.enthalpy = 0.0;
 
@@ -425,6 +428,7 @@ namespace XtalOpt {
     ui.table_list->item(row, Volume)->setText(QString::number(e.volume,'f',2));
     ui.table_list->item(row, Status)->setText(e.status);
     ui.table_list->item(row, Status)->setBackground(e.brush);
+    ui.table_list->item(row, FU)->setText(QString::number(e.FU));
 
     if (e.jobID)
       ui.table_list->item(row, JobID)->setText(QString::number(e.jobID));

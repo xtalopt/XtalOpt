@@ -78,6 +78,9 @@ namespace XtalOpt {
     };
 
     Xtal* generateRandomXtal(uint generation, uint id);
+      
+    //Identical to the previous generateRandomXtal except the number of formula units has been determined elsewhere
+    Xtal* generateRandomXtal(uint generation, uint id, uint FU);
     bool addSeed(const QString & filename);
     GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
                                                const QString & reason = "");
@@ -92,6 +95,9 @@ namespace XtalOpt {
     uint numInitial;                    // Number of initial structures
 
     uint popSize;                       // Population size
+
+    uint FU_crossovers_generation;      // Generation to begin crossovers between different formula units
+    uint chance_of_mitosis;             // Chance of performing mitosis after "using one pool?" has been checked
 
     uint p_cross;                       // Percentage of new structures by crossover
     uint p_strip;	                // Percentage of new structures by stripple
@@ -113,11 +119,16 @@ namespace XtalOpt {
       a_min,            a_max,		// Limits for lattice
       b_min,            b_max,
       c_min,            c_max,
+      new_a_min,        new_a_max,      //new_min and new_max are formula unit corrected
+      new_b_min,        new_b_max,
+      new_c_min,        new_c_max,
       alpha_min,        alpha_max,
       beta_min,         beta_max,
       gamma_min,        gamma_max,
       vol_min, vol_max, vol_fixed,
-      scaleFactor, minRadius;
+      new_vol_min,      new_vol_max,
+      scaleFactor, minRadius,
+      minFU,            maxFU;
 
     double tol_xcLength;        	// Duplicate matching tolerances
     double tol_xcAngle;
@@ -125,7 +136,14 @@ namespace XtalOpt {
 
     bool using_fixed_volume;
     bool using_interatomicDistanceLimit;
-
+    bool using_mitosis;
+    bool using_FU_crossovers; 
+    bool using_one_pool;  
+    
+    // Generate a new formula unit. 
+    int  FU;
+    QList<uint> formulaUnitsList;
+   
     QHash<uint, XtalCompositionStruct> comp;
     QStringList seedList;
 
@@ -135,9 +153,14 @@ namespace XtalOpt {
     void startSearch();
     void generateNewStructure();
     Xtal* generateNewXtal();
+    // Identical to generateNewXtal() except the number of formula units has been specified already
+    Xtal* generateNewXtal(uint FU);
+    Xtal* generateSuperCell(uint initialFU, uint finalFU, Xtal *xtal,
+                            bool firstCall);
     void initializeAndAddXtal(Xtal *xtal,
                               unsigned int generation,
-                              const QString &parents);
+                              const QString &parents); 
+    bool onTheFormulaUnitsList(uint FU);
     void resetSpacegroups();
     void resetDuplicates();
     void checkForDuplicates();

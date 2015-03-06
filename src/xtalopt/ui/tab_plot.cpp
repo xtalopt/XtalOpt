@@ -75,6 +75,10 @@ namespace XtalOpt {
             this, SLOT(updatePlot()));
     connect(ui.cb_showIncompletes, SIGNAL(toggled(bool)),
             this, SLOT(updatePlot()));
+    connect(ui.cb_showSpecifiedFU, SIGNAL(toggled(bool)),
+            this, SLOT(updatePlot()));
+    connect(ui.edit_showSpecifiedFU, SIGNAL(editingFinished()),
+            this, SLOT(updatePlotFormulaUnits()));
     connect(ui.plot_plot, SIGNAL(pointClicked(double, double)),
             this, SLOT(selectMoleculeFromPlot(double, double)));
     connect(m_opt, SIGNAL(refreshAllStructureInfo()),
@@ -113,7 +117,7 @@ namespace XtalOpt {
     settings->setValue("labelType",       ui.combo_labelType->currentIndex());
     settings->setValue("plotType",        ui.combo_plotType->currentIndex());
     settings->endGroup();
-
+ 
     DESTROY_SETTINGS(filename);
   }
 
@@ -243,6 +247,7 @@ namespace XtalOpt {
     bool labelPoints		= ui.cb_labelPoints->isChecked();
     bool showDuplicates		= ui.cb_showDuplicates->isChecked();
     bool showIncompletes        = ui.cb_showIncompletes->isChecked();
+    bool showSpecifiedFU        = ui.cb_showSpecifiedFU->isChecked();
     LabelTypes labelType	= LabelTypes(ui.combo_labelType->currentIndex());
     PlotAxes xAxis		= PlotAxes(ui.combo_xAxis->currentIndex());
     PlotAxes yAxis              = PlotAxes(ui.combo_yAxis->currentIndex());
@@ -253,7 +258,8 @@ namespace XtalOpt {
     unsigned int lastGoodTraceIndex = 0; // Used to trim points from end
     if (xAxis == Structure_T &&
         (yAxis == Energy_T ||
-         yAxis == Enthalpy_T)) {
+         yAxis == Enthalpy_T ||
+         yAxis == Enthalpy_per_FU_T)) { //PSA Enthalpy per atom
       traceObject = new PlotObject(Qt::gray, PlotObject::Lines, 1);
     }
 
@@ -266,7 +272,19 @@ namespace XtalOpt {
       x = y = 0;
       xtal = qobject_cast<Xtal*>(structures[i]);
       QReadLocker xtalLocker (xtal->lock());
-      // Don't plot removed structures or those who have not completed their first INCAR.
+      // Don't plot removed structures or those who have not completed their first INCAR. Also only plot specified formula units if box is checked.
+      if (showSpecifiedFU) {
+        bool inTheList = false;
+        for (int i = 0; i < formulaUnitsList.size(); i++) {
+          if (formulaUnitsList.at(i) == xtal->getFormulaUnits()) {
+            inTheList = true;
+          }
+        }
+        if (inTheList == false) {
+          continue;
+        }
+      }
+
       if ((xtal->getStatus() != Xtal::Optimized && !showIncompletes)) {
         if  (!(xtal->getStatus() == Xtal::Duplicate && showDuplicates)) {
           continue;
@@ -292,6 +310,9 @@ namespace XtalOpt {
         }
         else if (yAxis == Enthalpy_T) {
           currentE = xtal->getEnthalpy();
+        }
+        else if (yAxis == Enthalpy_per_FU_T) {
+          currentE = xtal->getEnthalpy() / static_cast<double>(xtal->getFormulaUnits()); //PSA Enthalpy per atom
         }
 
         // Update minimum if needed
@@ -329,6 +350,14 @@ namespace XtalOpt {
           switch (j) {
           case 0:       x = xtal->getEnthalpy(); break;
           default:      y = xtal->getEnthalpy(); break;
+          }
+          break;
+        case Enthalpy_per_FU_T:
+          // Skip xtals that don't have enthalpy/energy set
+          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy()) continue; //PSA Enthalpy per atom
+          switch (j) {
+          case 0:       x = xtal->getEnthalpy() / static_cast<double>(xtal->getFormulaUnits()); break;
+          default:      y = xtal->getEnthalpy() / static_cast<double>(xtal->getFormulaUnits()); break;
           }
           break;
         case Energy_T:
@@ -388,6 +417,13 @@ namespace XtalOpt {
           case 0:       x = xtal->getVolume(); break;
           default:      y = xtal->getVolume(); break;
           }
+          break;
+        case Formula_Units_T:
+          switch (j) {
+          case 0:       x = xtal->getFormulaUnits(); break;
+          default:      y = xtal->getFormulaUnits(); break;
+          }
+          break;
         }
       }
       if (traceObject) {
@@ -424,6 +460,9 @@ namespace XtalOpt {
         case Structure_L:
           pp->setLabel(QString::number(i));
           break;
+        case Formula_Units_L:
+          pp->setLabel(QString::number(xtal->getFormulaUnits()));
+          break;
         }
       }
     }
@@ -453,6 +492,13 @@ namespace XtalOpt {
         break;
       case Enthalpy_T:
         label = tr("Enthalpy (eV)");
+        switch (j) {
+        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
+        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
+        }
+        break;
+      case Enthalpy_per_FU_T: //PSA Enthalpy per atom
+        label = tr("Enthalpy per FU (eV)");
         switch (j) {
         case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
         default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
@@ -516,6 +562,13 @@ namespace XtalOpt {
         break;
       case Volume_T:
         label = tr("Volume");
+        switch (j) {
+        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
+        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
+        }
+        break;
+      case Formula_Units_T:
+        label = tr("Formula Units");
         switch (j) {
         case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
         default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
@@ -765,6 +818,153 @@ namespace XtalOpt {
     if (ui.combo_plotType->currentIndex() == DistHist_PT) {
       refreshPlot();
     }
+  }
+
+  // Almost identical to the updateFormulaUnits() function in tab_init.cpp. It functions in the same way.
+  void TabPlot::updatePlotFormulaUnits()
+  {
+    QString tmp;
+    QStringList tmp2;
+    QTextStream string (&tmp);
+    QList<bool> series;
+    QStringList tempFormulaUnitsList;
+
+    // Split up values separated by commas
+    tempFormulaUnitsList = ui.edit_showSpecifiedFU->text().split(",", QString::SkipEmptyParts);
+
+    // Fix to correct crashing when there is a hyphen at the beginning
+    if (!tempFormulaUnitsList.isEmpty()) {
+      tempFormulaUnitsList[0].prepend(" ");
+    }  
+
+    // Check for values that begin, are between, or end hyphens
+    int i = 0, j = 0;
+    bool isNumeric;
+    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
+      tmp2 = tempFormulaUnitsList.at(i).split("-", QString::SkipEmptyParts);
+      if (tmp2.at(0) != tempFormulaUnitsList.at(i)) {
+        tmp2.at(0).toUInt(&isNumeric);
+        if (isNumeric == true) {
+          tmp2.at(1).toUInt(&isNumeric);
+          if (isNumeric == true) {
+            uint smaller = tmp2.at(0).toUInt();
+            uint larger = tmp2.at(1).toUInt();
+            if (larger < smaller) {
+              smaller = tmp2.at(1).toUInt();
+              larger = tmp2.at(0).toUInt();
+            }
+            for (j = smaller; j <= larger; j++) {
+              tempFormulaUnitsList.append(QString::number(j));
+            }
+          }
+        }
+      }
+    } 
+
+    // Remove leading zeros
+    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
+      while (tempFormulaUnitsList.at(i).trimmed().startsWith("0")) {
+        tempFormulaUnitsList[i].remove(0,1);
+      }
+    }    
+
+    // Check that each QString may be converted to an unsigned int. Discard it if it cannot.
+    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
+      tempFormulaUnitsList.at(i).toUInt(&isNumeric);
+      if (isNumeric == false) {
+        tempFormulaUnitsList.removeAt(i);
+        i--;
+      }
+    }
+
+    // Remove all numbers greater than 100
+    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
+      if (tempFormulaUnitsList.at(i).toUInt() > 100) {
+        tempFormulaUnitsList.removeAt(i);
+      }
+    }
+ 
+    // If nothing valid was entered, return 1
+    if ( tempFormulaUnitsList.size() == 0 ) {
+      formulaUnitsList.append(1);
+      string << "1";
+      ui.edit_showSpecifiedFU->setText(tmp.trimmed());
+      return;
+    }
+    
+    // Remove duplicates from the tempFormulaUnitsList
+    for (int i = 0; i < tempFormulaUnitsList.size() - 1; i++) {
+      for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
+        if (tempFormulaUnitsList.at(i) == tempFormulaUnitsList.at(j)) {
+          tempFormulaUnitsList.removeAt(j);
+          j--;
+        }
+      }
+    }
+    
+    // Sort from smallest value to greatest value
+    for (int i = 0; i < tempFormulaUnitsList.size() - 1; i++) {
+      for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
+        if (tempFormulaUnitsList.at(i).toUInt() > tempFormulaUnitsList.at(j).toUInt()) {
+          tempFormulaUnitsList.swap(i,j);
+        }   
+      }
+    }
+    
+    // Populate series with false
+    series.clear();
+    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
+      series.append(false);
+    }
+    
+    // Check for series to hyphenate
+    for (int i = 0; i < tempFormulaUnitsList.size() - 2; i++) {
+      if ( (tempFormulaUnitsList.at(i).toUInt() + 1 == tempFormulaUnitsList.at(i + 1).toUInt()) && (tempFormulaUnitsList.at(i + 1).toUInt() + 1 == tempFormulaUnitsList.at(i + 2).toUInt()) ) {
+        series.replace(i, true);
+        series.replace(i + 1, true);
+        series.replace(i + 2, true);
+      }
+    }
+    
+    // Create the text stream to put back into the UI
+    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
+      if (series.at(i) == false) {
+        if (i + 1 == tempFormulaUnitsList.size()) {
+          string << tempFormulaUnitsList.at(i).trimmed();
+        }
+        else if (i + 1 != tempFormulaUnitsList.size()) {
+          string << tempFormulaUnitsList.at(i).trimmed() << ", ";
+        }
+      }
+      else if (series.at(i) == true) {
+        uint seriesLength = 1;
+        int j = i + 1;
+        while ( (j != tempFormulaUnitsList.size()) && (series.at(j) == true) && ( tempFormulaUnitsList.at(j - 1).toUInt() + 1 == tempFormulaUnitsList.at(j).toUInt() ) ) {
+          seriesLength += 1;
+          j++;
+        }
+        if (i + seriesLength == tempFormulaUnitsList.size()) {
+          string << tempFormulaUnitsList.at(i).trimmed() << " - " << tempFormulaUnitsList.at(j - 1).trimmed();
+        }
+        else if (i + seriesLength != tempFormulaUnitsList.size()) {
+          string << tempFormulaUnitsList.at(i).trimmed() << " - " << tempFormulaUnitsList.at(j - 1).trimmed() << ", ";
+        }
+        i = i + seriesLength - 1;
+      }
+    }
+    
+    //Create the UInt formulaUnitsList
+    QList<uint> temp_UInt_FormulaUnitsList;
+    temp_UInt_FormulaUnitsList.clear();
+    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
+      temp_UInt_FormulaUnitsList.append(tempFormulaUnitsList.at(i).toUInt());
+    }
+    
+    formulaUnitsList = temp_UInt_FormulaUnitsList;
+
+    // Update UI
+    ui.edit_showSpecifiedFU->setText(tmp.trimmed());
+    refreshPlot();
   }
 }
 

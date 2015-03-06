@@ -72,11 +72,12 @@ namespace XtalOpt {
     QHash<QString, QVariant> getFingerprint();
     virtual QString getResultsEntry() const;
     virtual QString getResultsHeader() const {
-      return QString("%1 %2 %3 %4 %5 %6")
+      return QString("%1 %2 %3 %4 %5 %6 %7")
         .arg("Rank", 6)
         .arg("Gen", 6)
         .arg("ID", 6)
-        .arg("Enthalpy", 10)
+        .arg("Enthalpy/FU", 13)
+        .arg("FU", 6)
         .arg("SpaceGroup", 10)
         .arg("Status", 11);};
 
