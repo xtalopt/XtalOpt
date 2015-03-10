@@ -645,15 +645,8 @@ namespace XtalOpt {
     // Trim list
     // Remove all but (popSize + 1). The "+ 1" will be removed
     // during probability generation.
-    if (!using_one_pool) {
-      while ( static_cast<uint>(structures.size()) > popSize + 1 ) {
-        structures.removeLast();
-      }
-    }
-    else if (using_one_pool) {
-      while ( static_cast<uint>(structures.size()) > popSize * static_cast<uint>(formulaUnitsList.size()) + 1) {
+    while ( static_cast<uint>(structures.size()) > popSize + 1 ) {
       structures.removeLast();
-      }
     }
 
     // Make list of weighted probabilities based on enthalpy per formula unit
