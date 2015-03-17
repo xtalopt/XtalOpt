@@ -56,7 +56,8 @@ namespace XtalOpt {
       OT_VASP = 0,
       OT_GULP,
       OT_PWscf,
-      OT_CASTEP
+      OT_CASTEP,
+      OT_SIESTA     
     };
 
     enum QueueInterfaces {
@@ -91,6 +92,8 @@ namespace XtalOpt {
     QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp();
     bool load(const QString & filename, const bool forceReadOnly = false);
+    
+    bool loaded;
 
     uint numInitial;                    // Number of initial structures
 
@@ -130,19 +133,28 @@ namespace XtalOpt {
       scaleFactor, minRadius,
       minFU,            maxFU;
 
+    int 
+        divisions,                   // Number of divisions for mitosis
+        ax,                          // Number of divisions for cell vector 'a'
+        bx,                          // Number of divisions for cell vector 'b'
+        cx;                          // Number of divisions for cell vector 'c'
+
     double tol_xcLength;        	// Duplicate matching tolerances
     double tol_xcAngle;
     double tol_spg;
 
     bool using_fixed_volume;
     bool using_interatomicDistanceLimit;
-    bool using_mitosis;
+    bool using_mitotic_growth;
     bool using_FU_crossovers;
     bool using_one_pool;
 
     // Generate a new formula unit.
     int  FU;
     QList<uint> formulaUnitsList;
+    
+    bool using_mitosis;
+    bool using_subcellPrint;
 
     QHash<uint, XtalCompositionStruct> comp;
     QStringList seedList;
@@ -161,6 +173,9 @@ namespace XtalOpt {
                               unsigned int generation,
                               const QString &parents);
     bool onTheFormulaUnitsList(uint FU);
+    void printSubXtal(Xtal *xtal,
+                              unsigned int generation,
+                              uint id);
     void resetSpacegroups();
     void resetDuplicates();
     void checkForDuplicates();

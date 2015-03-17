@@ -142,6 +142,13 @@ The matrix radius coordinate limits will be ignored, and the IAD range above wil
      </property>
     </widget>
    </item>
+   <item row="8" column="0">
+    <widget class="QCheckBox" name="cb_build2DNetwork">
+     <property name="text">
+      <string>Build 2D Network</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <tabstops>

@@ -38,6 +38,7 @@ namespace XtalOpt {
     // Initial generation
     connect(ui.spin_numInitial, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
+
     // Seeds
     connect(ui.push_addSeed, SIGNAL(clicked()),
             this, SLOT(addSeed()));
@@ -59,11 +60,13 @@ namespace XtalOpt {
             this, SLOT(updateOptimizationInfo()));
     connect(ui.combo_failAction, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_cutoff, SIGNAL(valueChanged(int)),
+            this, SLOT(updateOptimizationInfo()));
     connect(ui.cb_using_FU_crossovers, SIGNAL(toggled(bool)),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.spin_FU_crossovers_generation, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
-    connect(ui.cb_using_mitosis, SIGNAL(toggled(bool)),
+    connect(ui.cb_using_mitotic_growth, SIGNAL(toggled(bool)),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.cb_using_one_pool, SIGNAL(toggled(bool)),
             this, SLOT(updateOptimizationInfo()));
@@ -141,7 +144,8 @@ namespace XtalOpt {
     settings->setValue("opt/runningJobLimit",   xtalopt->runningJobLimit);
     settings->setValue("opt/failLimit",         xtalopt->failLimit);
     settings->setValue("opt/failAction",        xtalopt->failAction);
-    settings->setValue("opt/using_mitosis", xtalopt->using_mitosis);
+    settings->setValue("opt/cutoff",            xtalopt->cutoff);
+    settings->setValue("opt/using_mitotic_growth", xtalopt->using_mitotic_growth);
     settings->setValue("opt/using_FU_crossovers", xtalopt->using_FU_crossovers);
     settings->setValue("opt/FU_crossovers_generation", xtalopt->FU_crossovers_generation);
     settings->setValue("opt/using_one_pool", xtalopt->using_one_pool);
@@ -194,7 +198,8 @@ namespace XtalOpt {
     ui.spin_runningJobLimit->setValue(  settings->value("opt/runningJobLimit",  1).toUInt()    );
     ui.spin_failLimit->setValue(        settings->value("opt/failLimit",        2).toUInt()    );
     ui.combo_failAction->setCurrentIndex(settings->value("opt/failAction",      XtalOpt::FA_Randomize).toUInt()    );
-    ui.cb_using_mitosis->setChecked(settings->value("opt/using_mitosis",false).toBool());
+    ui.spin_cutoff->setValue(           settings->value("opt/cutoff",           100).toInt()    );
+    ui.cb_using_mitotic_growth->setChecked(settings->value("opt/using_mitotic_growth",false).toBool());
     ui.cb_using_FU_crossovers->setChecked(settings->value("opt/using_FU_crossovers",false).toBool());
     ui.spin_FU_crossovers_generation->setValue( settings->value("opt/FU_crossovers_generation",4).toUInt());
     ui.cb_using_one_pool->setChecked(settings->value("opt/using_one_pool",false).toBool());
@@ -250,7 +255,8 @@ namespace XtalOpt {
     ui.spin_runningJobLimit->setValue(  xtalopt->runningJobLimit);
     ui.spin_failLimit->setValue(        xtalopt->failLimit);
     ui.combo_failAction->setCurrentIndex(xtalopt->failAction);
-    ui.cb_using_mitosis->setChecked(xtalopt->using_mitosis);
+    ui.spin_cutoff->setValue(           xtalopt->cutoff);
+    ui.cb_using_mitotic_growth->setChecked(xtalopt->using_mitotic_growth);
     ui.cb_using_FU_crossovers->setChecked(xtalopt->using_FU_crossovers);
     ui.spin_FU_crossovers_generation->setValue(  xtalopt->FU_crossovers_generation);
     ui.cb_using_one_pool->setChecked(   xtalopt->using_one_pool);
@@ -329,7 +335,8 @@ namespace XtalOpt {
     xtalopt->limitRunningJobs	= ui.cb_limitRunningJobs->isChecked();
     xtalopt->failLimit		= ui.spin_failLimit->value();
     xtalopt->failAction		= XtalOpt::FailActions(ui.combo_failAction->currentIndex());
-    xtalopt->using_mitosis = ui.cb_using_mitosis->isChecked();
+    xtalopt->cutoff              = ui.spin_cutoff->value();
+    xtalopt->using_mitotic_growth = ui.cb_using_mitotic_growth->isChecked();
     xtalopt->using_FU_crossovers = ui.cb_using_FU_crossovers->isChecked();
     xtalopt->FU_crossovers_generation = ui.spin_FU_crossovers_generation->value();
     xtalopt->using_one_pool = ui.cb_using_one_pool->isChecked();

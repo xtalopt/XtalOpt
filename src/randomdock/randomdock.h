@@ -57,6 +57,7 @@ namespace RandomDock {
 #ifdef ENABLE_SSH
       ,
       QI_PBS,
+      QI_SLURM,
       QI_SGE
 #endif // ENABLE_SSH
     };
@@ -73,6 +74,8 @@ namespace RandomDock {
     static void centerCoordinatesAtOrigin(QList<Eigen::Vector3d> & coords);
     static void randomlyRotateCoordinates(QList<Eigen::Vector3d> & coords);
     static void randomlyDisplaceCoordinates(QList<Eigen::Vector3d> & coords, double radiusMin, double radiusMax);
+    static void DRotateCoordinates(QList<Eigen::Vector3d> & coords);
+    static void DDisplaceCoordinates(QList<Eigen::Vector3d> & coords, double radiusMin, double radiusMax);
 
     QString substrateFile;	// Filename of the substrate
     Substrate *substrate;	// Pointer to the substrate
@@ -87,6 +90,7 @@ namespace RandomDock {
     bool radius_auto;		// Whether to automatically calculate the matrix radius
     bool cluster_mode;
     bool strictHBonds;
+    bool build2DNetwork;    // Make a 2D Network keeping the Z-coordinate constant
 
     QMutex *sceneInitMutex;
 

@@ -41,6 +41,7 @@ namespace XtalOpt {
       CC_MASS,
       CC_MINRADIUS
     };
+
   public slots:
     void lockGUI();
     void readSettings(const QString &filename = "");
@@ -52,6 +53,13 @@ namespace XtalOpt {
     void updateDimensions();
     void updateMinRadii();
     void updateFormulaUnits();
+    void updateNumDivisions();
+    void updateA();
+    void updateB();
+    void updateC();
+    void writeA();
+    void writeB();
+    void writeC();
 
   signals:
 
