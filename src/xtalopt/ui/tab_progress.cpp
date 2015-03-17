@@ -854,13 +854,13 @@ namespace XtalOpt {
 
   void TabProgress::updateRank()
   {
-     Optimizer* opti = m_opt->optimizer(); 
-   QString filePath = m_opt->filePath;
+     Optimizer* opti = m_opt->optimizer();
+     QString filePath = m_opt->filePath;
       QDir dir(filePath+"/ranked");
       QDir cifDir(filePath+"/ranked/CIF");
       QDir contDir(filePath+"/ranked/CONTCAR");
       QDir gotDir(filePath+"/ranked/GOT");
-     
+
    if(dir.exists()) {
        if(cifDir.exists()) {
             Q_FOREACH(QFileInfo info, cifDir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
@@ -910,7 +910,7 @@ namespace XtalOpt {
             contDir.mkpath(".");
         } else if (opti->getIDString() == "GULP") {
             gotDir.mkpath(".");
-        }   
+        }
     } else {
         dir.mkpath(".");
         cifDir.mkpath(".");
@@ -925,7 +925,7 @@ namespace XtalOpt {
    QFile results (filePath+"/results.txt");
       if(!results.open(QIODevice::ReadOnly)) {
           return;
-      } 
+      }
     qint64 pos = 56;
       QString line = results.readLine();
     QTextStream in(&results);
@@ -937,7 +937,7 @@ namespace XtalOpt {
         id=id_s.toInt();
         gen_s.sprintf("%05d", gen);
         id_s.sprintf("%05d", id);
-        
+
         if (opti->getIDString() == "VASP") {
             QFile file (filePath+"/" +gen_s+ "x" +id_s+ "/CONTCAR");
             QFile potFile (filePath+"/" +gen_s+ "x" +id_s+ "/POTCAR");
@@ -1003,7 +1003,7 @@ namespace XtalOpt {
             << id_s.sprintf("%u", id) << "\t"
             << enthalpy.sprintf("%.4f", en) << "\t"
             << xtal->getSpaceGroupNumber() << ": " << space << "\t\t";
-      
+
         // Status:
         switch (xtal->getStatus()) {
             case Xtal::Optimized:
@@ -1029,13 +1029,13 @@ namespace XtalOpt {
                 out << "In progress";
                 break;
         }
-        
+
         // Parentage:
         out << "\t" << xtal->getParents();
         xtal->lock()->unlock();
         out << endl;
     }
-    m_opt->tracker()->unlock(); 
+    m_opt->tracker()->unlock();
   }
 
 
@@ -1047,7 +1047,7 @@ namespace XtalOpt {
     QFile results (filePath+"/results.txt");
     if(!results.open(QIODevice::ReadOnly)) {
         return;
-    } 
+    }
     qint64 pos = 56;
     QString line = results.readLine();
     QTextStream in(&results);

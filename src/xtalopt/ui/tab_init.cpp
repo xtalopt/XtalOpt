@@ -32,7 +32,7 @@ namespace XtalOpt {
     AbstractTab(parent, p)
   {
     ui.setupUi(m_tab_widget);
-    
+
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
     xtalopt->loaded =   false;
@@ -212,8 +212,8 @@ namespace XtalOpt {
     ui.spin_minRadius->setValue(    settings->value("limits/minRadius",0.25).toDouble());
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
     ui.cb_interatomicDistanceLimit->setChecked( settings->value("using/interatomicDistanceLimit",false).toBool());
-    ui.cb_mitosis->setChecked(      settings->value("using/mitosis",       false).toBool()     ); 
-    ui.cb_mitosis->setChecked(      settings->value("using/subcellPrint",       false).toBool()     ); 
+    ui.cb_mitosis->setChecked(      settings->value("using/mitosis",       false).toBool()     );
+    ui.cb_mitosis->setChecked(      settings->value("using/subcellPrint",       false).toBool()     );
     xtalopt->divisions = settings->value("limits/divisions").toInt();
     xtalopt->ax = settings->value("limits/ax").toInt();
     xtalopt->bx = settings->value("limits/bx").toInt();
@@ -306,11 +306,6 @@ namespace XtalOpt {
   void TabInit::lockGUI()
   {
     ui.edit_composition->setDisabled(true);
-    ui.cb_mitosis->setDisabled(true);
-    ui.combo_divisions->setDisabled(true);
-    ui.combo_a->setDisabled(true);
-    ui.combo_b->setDisabled(true);
-    ui.combo_c->setDisabled(true);
   }
 
   void TabInit::getComposition(const QString &str)
@@ -506,7 +501,7 @@ namespace XtalOpt {
     xtalopt->using_mitosis = ui.cb_mitosis->isChecked();
     xtalopt->divisions = ui.combo_divisions->currentText().toInt();
     xtalopt->using_subcellPrint = ui.cb_subcellPrint->isChecked();
-    
+
 
     if (xtalopt->scaleFactor != ui.spin_scaleFactor->value() ||
         xtalopt->minRadius   != ui.spin_minRadius->value() ||
@@ -685,6 +680,8 @@ namespace XtalOpt {
     // Update UI
     ui.edit_formula_units->setText(tmp.trimmed());
 
+    // Update the nubmer of divisions
+    this->updateNumDivisions();
   }
 
   // Determine the possible number of divisions for mitosis and update combobox with options
@@ -695,7 +692,9 @@ namespace XtalOpt {
     int counter = 0;
     QList<QString> divisions;
     QList<uint> atomicNums = xtalopt->comp.keys();
-    
+    size_t smallestFormulaUnit = xtalopt->formulaUnitsList[0];
+    if (xtalopt->formulaUnitsList.isEmpty()) smallestFormulaUnit = 1;
+
     if (ui.cb_mitosis->isChecked()){
         divisions.clear();
         ui.combo_divisions->clear();
@@ -704,11 +703,16 @@ namespace XtalOpt {
         } else {
         for (int j = 1000; j >= 1; --j) {
             for (int i = 0; i <= atomicNums.size()-1; ++i) {
-                if (xtalopt->comp.value(atomicNums[i]).quantity % j > 0) {
-                    if (xtalopt->comp.value(atomicNums[i]).quantity == 1) {
+                if ((xtalopt->comp.value(atomicNums[i]).quantity *
+                     smallestFormulaUnit) % j > 0) {
+                    if ((xtalopt->comp.value(atomicNums[i]).quantity *
+                         smallestFormulaUnit) == 1) {
                         counter = 0;
                         break;
-                    } else if (xtalopt->comp.value(atomicNums[i]).quantity / j > 0 && xtalopt->comp.value(atomicNums[i]).quantity % j <= 5) {
+                    } else if ((xtalopt->comp.value(atomicNums[i]).quantity *
+                                smallestFormulaUnit) / j > 0 &&
+                               (xtalopt->comp.value(atomicNums[i]).quantity *
+                                smallestFormulaUnit) % j <= 5) {
                         counter++;
                     } else {
                         counter = 0;
@@ -733,7 +737,7 @@ namespace XtalOpt {
         ui.combo_c->clear();
     }
     this->updateDimensions();
-    this->updateA(); 
+    this->updateA();
   }
 
   // Determine and update the number of divisions occurring in cell vector 'a' direction
@@ -743,9 +747,9 @@ namespace XtalOpt {
 
     QList<QString> a;
     ui.combo_a->clear();
-    
+
     this->updateDimensions();
-    
+
     if (xtalopt->using_mitosis && xtalopt->divisions!=0){
       if (xtalopt->loaded==true) {
         ui.combo_a->insertItem(0, QString::number(xtalopt->ax));
@@ -756,7 +760,7 @@ namespace XtalOpt {
             if (divide % i == 0) {
                 a.append(QString::number(i));
             }
-        } 
+        }
         ui.combo_a->insertItems(0, a);
         this->writeA();
       }
@@ -766,7 +770,7 @@ namespace XtalOpt {
   void TabInit::writeA()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-    
+
     xtalopt->ax = ui.combo_a->currentText().toInt();
     this->updateB();
   }
@@ -802,7 +806,7 @@ namespace XtalOpt {
   void TabInit::writeB()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-    
+
     xtalopt->bx = ui.combo_b->currentText().toInt();
     this->updateC();
   }
@@ -827,7 +831,7 @@ namespace XtalOpt {
 
         c.append(QString::number(diff));
         ui.combo_c->insertItems(0, c);
-        
+
         this->writeC();
     }
     }
@@ -836,7 +840,7 @@ namespace XtalOpt {
   void TabInit::writeC()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-    
+
     xtalopt->cx = ui.combo_c->currentText().toInt();
   }
 

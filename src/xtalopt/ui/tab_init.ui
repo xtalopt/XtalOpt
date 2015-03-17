@@ -604,13 +604,13 @@
        <string>Use this to limit the shortest interatomic distance between
 atoms. This ensures that atoms aren't overlapping.
 
-The value specified here is multiplied by each atom's covalent 
+The value specified here is multiplied by each atom's covalent
 radius, and the sum of the scaled radii are used to enforce a
 minimum atomic separation between atoms.
 
 The default recommended value is 0.5. This ensures that atoms will not be unphysically close (which may prevent
 certain optimization codes from working). Using a higher value
-is acceptable while creating random structures in the first 
+is acceptable while creating random structures in the first
 generation, but may prevent the crossover operator from being
 able to create offspring that meet this restriction.</string>
       </property>

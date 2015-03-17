@@ -433,13 +433,13 @@ namespace XtalOpt {
       if (traceObject) {
         lastGoodTraceIndex = traceObject->points().size() - 1;
       }
-           
-      if (xtal->getStatus() == Xtal::Duplicate) {  
+
+      if (xtal->getStatus() == Xtal::Duplicate) {
           pp = d_plotObject->addPoint(x,y);
       } else {
           pp = m_plotObject->addPoint(x,y);
-      } 
-     
+      }
+
       // Store index for later lookup
       pp->setCustomData(i);
       // Set point label if requested
