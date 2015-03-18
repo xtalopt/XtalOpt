@@ -874,7 +874,7 @@ namespace XtalOpt {
             cifDir.rmdir(".");
         }
         if(gotDir.exists()) {
-            Q_FOREACH(QFileInfo info, contDir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
+            Q_FOREACH(QFileInfo info, gotDir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
                 if (info.isDir()) {
                     gotDir.remove(info.absoluteFilePath());
                 }
@@ -882,7 +882,7 @@ namespace XtalOpt {
                     QFile::remove(info.absoluteFilePath());
                 }
             }
-            contDir.rmdir(".");
+            gotDir.rmdir(".");
         }
         if(contDir.exists()) {
             Q_FOREACH(QFileInfo info, contDir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
@@ -926,13 +926,16 @@ namespace XtalOpt {
       if(!results.open(QIODevice::ReadOnly)) {
           return;
       }
-    qint64 pos = 56;
-      QString line = results.readLine();
-    QTextStream in(&results);
+
+    // Skip over the first line in the results.txt file
+    QString line = results.readLine();
     while (!results.atEnd()) {
-        in >> rank >> gen_s >> id_s;
-        in.seek(pos);
-        pos += 55;
+        line  = results.readLine();
+        rank  = line.split(QRegExp("\\s"), QString::SkipEmptyParts)[0];
+        gen_s = line.split(QRegExp("\\s"), QString::SkipEmptyParts)[1];
+        id_s  = line.split(QRegExp("\\s"), QString::SkipEmptyParts)[2];
+        // qDebug() << "rank, gen_s, id_s is" << ", " << rank << ", " << gen_s
+        // << ", " << id_s;
         gen=gen_s.toInt();
         id=id_s.toInt();
         gen_s.sprintf("%05d", gen);
@@ -987,21 +990,24 @@ namespace XtalOpt {
     Xtal *xtal;
 
     // Print the data to the file:
-    out << "Index\tGen\tID\tEnthalpy\tSpaceGroup\t\tStatus\t\tParentage\n";
+    out << "Index\tGen\tID\tEnthalpy/FU\tFU\tSpaceGroup\t\tStatus\t\tParentage\n";
     for (int i = 0; i < structures->size(); i++) {
         xtal = qobject_cast<Xtal*>(structures->at(i));
         if (!xtal) continue; // In case there was a problem copying.
         xtal->lock()->lockForRead();
-        QString gen_s, id_s, enthalpy, space;
+        QString gen_s, id_s, enthalpy, formulaUnits, space;
         int gen = xtal->getGeneration();
         int id = xtal->getIDNumber();
-        double en = xtal->getEnthalpy();
+        double en = xtal->getEnthalpy() / static_cast<double>(
+                                            xtal->getFormulaUnits());
+        int FU = xtal->getFormulaUnits();
         space = xtal->getSpaceGroupSymbol();
         space = space.leftJustified(10, ' ');
         out << i << "\t"
             << gen_s.sprintf("%u", gen) << "\t"
             << id_s.sprintf("%u", id) << "\t"
             << enthalpy.sprintf("%.4f", en) << "\t"
+            << formulaUnits.sprintf("%u", FU) << "\t"
             << xtal->getSpaceGroupNumber() << ": " << space << "\t\t";
 
         // Status:
