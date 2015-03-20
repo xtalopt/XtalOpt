@@ -1,5 +1,0 @@
-/home/z/src/xtalopt/src/src/xtalcomp/CMakeFiles/XtalComp.dir
-/home/z/src/xtalopt/src/src/globalsearch/CMakeFiles/globalsearch.dir
-/home/z/src/xtalopt/src/src/randomdock/CMakeFiles/randomdock.dir
-/home/z/src/xtalopt/src/src/spglib/CMakeFiles/spglib.dir
-/home/z/src/xtalopt/src/src/xtalopt/CMakeFiles/xtalopt.dir

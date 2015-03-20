@@ -850,13 +850,13 @@ namespace XtalOpt {
 
   void TabProgress::updateRank()
   {
-     Optimizer* opti = m_opt->optimizer(); 
-   QString filePath = m_opt->filePath;
+     Optimizer* opti = m_opt->optimizer();
+     QString filePath = m_opt->filePath;
       QDir dir(filePath+"/ranked");
       QDir cifDir(filePath+"/ranked/CIF");
       QDir contDir(filePath+"/ranked/CONTCAR");
       QDir gotDir(filePath+"/ranked/GOT");
-     
+
    if(dir.exists()) {
        if(cifDir.exists()) {
             Q_FOREACH(QFileInfo info, cifDir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
@@ -870,7 +870,7 @@ namespace XtalOpt {
             cifDir.rmdir(".");
         }
         if(gotDir.exists()) {
-            Q_FOREACH(QFileInfo info, contDir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
+            Q_FOREACH(QFileInfo info, gotDir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
                 if (info.isDir()) {
                     gotDir.remove(info.absoluteFilePath());
                 }
@@ -878,7 +878,7 @@ namespace XtalOpt {
                     QFile::remove(info.absoluteFilePath());
                 }
             }
-            contDir.rmdir(".");
+            gotDir.rmdir(".");
         }
         if(contDir.exists()) {
             Q_FOREACH(QFileInfo info, contDir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
@@ -906,7 +906,7 @@ namespace XtalOpt {
             contDir.mkpath(".");
         } else if (opti->getIDString() == "GULP") {
             gotDir.mkpath(".");
-        }   
+        }
     } else {
         dir.mkpath(".");
         cifDir.mkpath(".");
@@ -917,33 +917,42 @@ namespace XtalOpt {
         }
     }
    int gen, id;
-   QString space, stat, pathName, rank, gen_s, id_s, enthalpy;
+   QString space, status, pathName, gen_s, id_s, enthalpy;
    QFile results (filePath+"/results.txt");
       if(!results.open(QIODevice::ReadOnly)) {
           return;
-      } 
-    qint64 pos = 56;
+      }
       QString line = results.readLine();
-    QTextStream in(&results);
-    while (!results.atEnd()) {
-        in >> rank >> gen_s >> id_s;
-        in.seek(pos);
-        pos += 55;
+      size_t rank = 0;
+      while (!results.atEnd()) {
+        line   = results.readLine();
+        gen_s  = line.split(QRegExp("\\s"), QString::SkipEmptyParts)[1];
+        id_s   = line.split(QRegExp("\\s"), QString::SkipEmptyParts)[2];
+        status = line.split(QRegExp("\\s"), QString::SkipEmptyParts)[5];
+
+        // Skip over duplicates
+        if (status == "Duplicate") continue;
+        rank++;
         gen=gen_s.toInt();
         id=id_s.toInt();
         gen_s.sprintf("%05d", gen);
         id_s.sprintf("%05d", id);
-        
+
         if (opti->getIDString() == "VASP") {
             QFile file (filePath+"/" +gen_s+ "x" +id_s+ "/CONTCAR");
             QFile potFile (filePath+"/" +gen_s+ "x" +id_s+ "/POTCAR");
-            QFile newFile (filePath+"/ranked/CONTCAR/" + rank + "-"+gen_s+"x"+id_s);
+            QFile newFile (filePath+"/ranked/CONTCAR/" + QString::number(rank) +
+                           "-"+gen_s+"x"+id_s);
             if(file.exists()) {
                 if(potFile.exists()) {
                     file.copy(newFile.fileName());
                     file.close();
                     newFile.close();
-                    QString command = "obabel -iVASP \""+filePath+"\"/\""+gen_s+"\"x\""+id_s+"\"/CONTCAR -ocif -O \""+filePath+"\"/ranked/CIF/\""+rank+"\"-\""+gen_s+"\"x\""+id_s+"\".cif";
+                    QString command = "obabel -iVASP \""+filePath+"\"/\""+gen_s+
+                                      "\"x\""+id_s+"\"/CONTCAR -ocif -O \""
+                                      +filePath+"\"/ranked/CIF/\""+
+                                      QString::number(rank)+"\"-\""+gen_s+
+                                      "\"x\""+id_s+"\".cif";
                     system(qPrintable(command));
                 } else {
                     QFile tempFile (filePath+"/CONTCAR");
@@ -951,19 +960,26 @@ namespace XtalOpt {
                     file.close();
                     newFile.close();
                     tempFile.close();
-                    QString command = "obabel -iVASP \""+filePath+"\"/CONTCAR -ocif -O \""+filePath+"\"/ranked/CIF/\""+rank+"\"-\""+gen_s+"\"x\""+id_s+"\".cif";
+                    QString command = "obabel -iVASP \""+filePath+
+                                      "\"/CONTCAR -ocif -O \""+filePath+
+                                      "\"/ranked/CIF/\""+QString::number(rank)+
+                                      "\"-\""+gen_s+"\"x\""+id_s+"\".cif";
                     system(qPrintable(command));
                     QFile::remove(filePath+"/CONTCAR");
                 }
             }
         } else if (opti->getIDString() == "GULP") {
             QFile file (filePath+"/" +gen_s+ "x" +id_s+ "/xtal.got");
-            QFile newFile (filePath+"/ranked/GOT/" + rank + "-"+gen_s+"x"+id_s+".got");
+            QFile newFile (filePath+"/ranked/GOT/" + QString::number(rank) +
+                           "-"+gen_s+"x"+id_s+".got");
             if(file.exists()) {
                     file.copy(newFile.fileName());
                     file.close();
                     newFile.close();
-                    QString command = "obabel -igot \""+filePath+"\"/\""+gen_s+"\"x\""+id_s+"\"/xtal.got -ocif -O \""+filePath+"\"/ranked/CIF/\""+rank+"\"-\""+gen_s+"\"x\""+id_s+"\".cif";
+                    QString command = "obabel -igot \""+filePath+"\"/\""+gen_s+
+                    "\"x\""+id_s+"\"/xtal.got -ocif -O \""+filePath+
+                    "\"/ranked/CIF/\""+QString::number(rank)+"\"-\""+gen_s+
+                    "\"x\""+id_s+"\".cif";
                     system(qPrintable(command));
             }
         }
@@ -999,7 +1015,7 @@ namespace XtalOpt {
             << id_s.sprintf("%u", id) << "\t"
             << enthalpy.sprintf("%.4f", en) << "\t"
             << xtal->getSpaceGroupNumber() << ": " << space << "\t\t";
-      
+
         // Status:
         switch (xtal->getStatus()) {
             case Xtal::Optimized:
@@ -1025,13 +1041,13 @@ namespace XtalOpt {
                 out << "In progress";
                 break;
         }
-        
+
         // Parentage:
         out << "\t" << xtal->getParents();
         xtal->lock()->unlock();
         out << endl;
     }
-    m_opt->tracker()->unlock(); 
+    m_opt->tracker()->unlock();
   }
 
 
@@ -1043,7 +1059,7 @@ namespace XtalOpt {
     QFile results (filePath+"/results.txt");
     if(!results.open(QIODevice::ReadOnly)) {
         return;
-    } 
+    }
     qint64 pos = 56;
     QString line = results.readLine();
     QTextStream in(&results);
