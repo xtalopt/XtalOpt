@@ -1048,19 +1048,18 @@ namespace XtalOpt {
   void TabProgress::clearFiles()
   {
     int gen, id;
-    QString space, stat, pathName, rank, gen_s, id_s, enthalpy;
+    QString stat, gen_s, id_s;
     QString filePath = m_opt->filePath;
     QFile results (filePath+"/results.txt");
-    if(!results.open(QIODevice::ReadOnly)) {
-        return;
-    }
-    qint64 pos = 56;
+    if(!results.open(QIODevice::ReadOnly)) return;
+
+    // Skip over the first line in the results.txt file
     QString line = results.readLine();
-    QTextStream in(&results);
     while (!results.atEnd()) {
-        in >> rank >> gen_s >> id_s >> enthalpy >> space >> stat;
-        in.seek(pos);
-        pos += 55;
+        line  = results.readLine();
+        gen_s = line.split(QRegExp("\\s"), QString::SkipEmptyParts)[1];
+        id_s  = line.split(QRegExp("\\s"), QString::SkipEmptyParts)[2];
+        stat  = line.split(QRegExp("\\s"), QString::SkipEmptyParts)[6];
         gen=gen_s.toInt();
         id=id_s.toInt();
         gen_s.sprintf("%05d", gen);

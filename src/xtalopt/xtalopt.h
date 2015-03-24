@@ -167,8 +167,11 @@ namespace XtalOpt {
     Xtal* generateNewXtal();
     // Identical to generateNewXtal() except the number of formula units has been specified already
     Xtal* generateNewXtal(uint FU);
+    // firstCall should be true if it is the first call of the function
+    // mutate should be true if you wish to perform a stripple/permustrain
+    // on the xtal immediately after generating the supercell.
     Xtal* generateSuperCell(uint initialFU, uint finalFU, Xtal *xtal,
-                            bool firstCall);
+                            bool firstCall, bool mutate);
     void initializeAndAddXtal(Xtal *xtal,
                               unsigned int generation,
                               const QString &parents);

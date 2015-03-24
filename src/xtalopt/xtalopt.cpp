@@ -794,7 +794,7 @@ namespace XtalOpt {
                 delete xtal;
                 xtal = 0;
               }
-            xtal = generateSuperCell(i, FU, 0, true);
+            xtal = generateSuperCell(i, FU, 0, true, true);
             }
             return xtal;
           }
@@ -903,7 +903,7 @@ namespace XtalOpt {
               }
 
               xtal = generateSuperCell(selectedXtal->getFormulaUnits(),
-                                         formulaUnits, selectedXtal, true);
+                                        formulaUnits, selectedXtal, true, true);
             }
             return xtal;
           }
@@ -1203,7 +1203,7 @@ namespace XtalOpt {
   }
 
   Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU, Xtal *myXtal,
-                                   bool firstCall) {
+                                   bool firstCall, bool mutate) {
 
     // If (myXtal == 0), select an xtal from the probability list
     if (firstCall == true) {
@@ -1368,101 +1368,106 @@ namespace XtalOpt {
     // Recursively perform mitosis until the final FU is reached
     if (myXtal->getFormulaUnits() != finalFU) {
       return generateSuperCell(myXtal->getFormulaUnits(), finalFU, myXtal,
-                                 false);
+                                 false, mutate);
       }
 
     // Perform genetic operation immediately after mitosis
     else {
-    INIT_RANDOM_GENERATOR();
+      if (mutate) {
+        INIT_RANDOM_GENERATOR();
+        Xtal* xtal = 0;
 
-    Xtal* xtal = 0;
+        // Perform operation until xtal is valid:
+        while (!checkXtal(xtal)) {
+          // First delete any previous failed structure in xtal
+          if (xtal) {
+            delete xtal;
+            xtal = myXtal;
+          }
 
-    // Perform operation until xtal is valid:
-    while (!checkXtal(xtal)) {
-      // First delete any previous failed structure in xtal
-      if (xtal) {
-        delete xtal;
-        xtal = myXtal;
+          // Decide operator:
+          double r = RANDDOUBLE();
+          Operators op;
+
+          // We will not use crossovers for supercells
+          if (r < p_cross/100.0) {
+            if (r < 0.5) op = OP_Stripple;
+            else op = OP_Permustrain;
+          }
+          else if (r < (p_cross + p_strip)/100.0)
+            op = OP_Stripple;
+          else
+            op = OP_Permustrain;
+
+          // Try 1000 times to get a good structure from the selected
+          // operation. If not possible, send a warning to the log and
+          // start anew.
+          int attemptCount = 0;
+          while (attemptCount < 1000 && !checkXtal(xtal)) {
+            attemptCount++;
+            if (xtal) {
+              xtal->deleteLater();
+              xtal = myXtal;
+            }
+
+            // Operation specific set up:
+            switch (op) {
+            case OP_Stripple: {
+
+              // Perform stripple
+              double amplitude=0, stdev=0;
+              xtal = XtalOptGenetic::stripple(myXtal,
+                                              strip_strainStdev_min,
+                                              strip_strainStdev_max,
+                                              strip_amp_min,
+                                              strip_amp_max,
+                                              strip_per1,
+                                              strip_per2,
+                                              stdev,
+                                              amplitude);
+
+              QString parents = myXtal->getParents() + tr("Stripple: stdev=%1 amp=%2 waves=%3,%4")
+                .arg(stdev, 0, 'f', 5)
+                .arg(amplitude, 0, 'f', 5)
+                .arg(strip_per1)
+                .arg(strip_per2);
+              xtal->setParents(parents);
+              continue;
+            }
+            case OP_Permustrain: {
+              double stdev=0;
+              xtal = XtalOptGenetic::permustrain(
+                    myXtal, perm_strainStdev_max, perm_ex, stdev);
+
+              QString parents = myXtal->getParents() + tr("Permustrain: stdev=%1 exch=%2")
+                .arg(stdev, 0, 'f', 5)
+                .arg(perm_ex);
+              xtal->setParents(parents);
+              continue;
+            }
+            default:
+              warning("XtalOpt::generateSingleOffspring: Attempt to use an "
+                      "invalid operator.");
+            }
+          }
+          if (attemptCount >= 1000) {
+            QString opStr;
+            switch (op) {
+            case OP_Stripple:    opStr = "stripple"; break;
+            case OP_Permustrain: opStr = "permustrain"; break;
+            default:             opStr = "(unknown)"; break;
+            }
+            warning(tr("Unable to perform operation %1 after 1000 tries. "
+                       "Reselecting operator...").arg(opStr));
+          }
+        }
+        xtal->setGeneration(1);
+        return xtal;
       }
-
-      // Decide operator:
-      double r = RANDDOUBLE();
-      Operators op;
-
-      // We will not use crossovers for supercells
-      if (r < p_cross/100.0) {
-        if (r < 0.5) op = OP_Stripple;
-        else op = OP_Permustrain;
+      else {
+        myXtal->setGeneration(1);
+        return myXtal;
       }
-      else if (r < (p_cross + p_strip)/100.0)
-        op = OP_Stripple;
-      else
-        op = OP_Permustrain;
-
-      // Try 1000 times to get a good structure from the selected
-      // operation. If not possible, send a warning to the log and
-      // start anew.
-      int attemptCount = 0;
-      while (attemptCount < 1000 && !checkXtal(xtal)) {
-        attemptCount++;
-        if (xtal) {
-          xtal->deleteLater();
-          xtal = myXtal;
-        }
-
-        // Operation specific set up:
-        switch (op) {
-        case OP_Stripple: {
-
-          // Perform stripple
-          double amplitude=0, stdev=0;
-          xtal = XtalOptGenetic::stripple(myXtal,
-                                          strip_strainStdev_min,
-                                          strip_strainStdev_max,
-                                          strip_amp_min,
-                                          strip_amp_max,
-                                          strip_per1,
-                                          strip_per2,
-                                          stdev,
-                                          amplitude);
-
-          QString parents = myXtal->getParents() + tr("Stripple: stdev=%1 amp=%2 waves=%3,%4")
-            .arg(stdev, 0, 'f', 5)
-            .arg(amplitude, 0, 'f', 5)
-            .arg(strip_per1)
-            .arg(strip_per2);
-          xtal->setParents(parents);
-          continue;
-        }
-        case OP_Permustrain: {
-          double stdev=0;
-          xtal = XtalOptGenetic::permustrain(
-                myXtal, perm_strainStdev_max, perm_ex, stdev);
-
-          QString parents = myXtal->getParents() + tr("Permustrain: stdev=%1 exch=%2")
-            .arg(stdev, 0, 'f', 5)
-            .arg(perm_ex);
-          xtal->setParents(parents);
-          continue;
-        }
-        default:
-          warning("XtalOpt::generateSingleOffspring: Attempt to use an "
-                  "invalid operator.");
-        }
-      }
-      if (attemptCount >= 1000) {
-        QString opStr;
-        switch (op) {
-        case OP_Stripple:    opStr = "stripple"; break;
-        case OP_Permustrain: opStr = "permustrain"; break;
-        default:             opStr = "(unknown)"; break;
-        }
-        warning(tr("Unable to perform operation %1 after 1000 tries. "
-                   "Reselecting operator...").arg(opStr));
-      }
-    }
-      xtal->setGeneration(1);
-      return xtal;
     }
   }
 
@@ -2248,6 +2253,13 @@ namespace XtalOpt {
     double tol_len, tol_ang;
   };
 
+  // Helper Supercell Check Struct
+  struct supCheckStruct
+  {
+    Xtal *i, *j;
+    double tol_len, tol_ang;
+  };
+
   void checkIfDups(dupCheckStruct & st)
   {
     Xtal *kickXtal, *keepXtal;
@@ -2275,6 +2287,57 @@ namespace XtalOpt {
     st.j->lock()->unlock();
   }
 
+  void checkIfSups(supCheckStruct & st)
+  {
+
+    XtalOpt *xtalopt;
+    Xtal *smallerFormulaUnitXtal, *largerFormulaUnitXtal;
+    st.i->lock()->lockForRead();
+    st.j->lock()->lockForRead();
+
+    // Determine the larger formula unit structure and the smaller formula unit
+    // structure.
+    if (st.i->getFormulaUnits() > st.j->getFormulaUnits()) {
+      largerFormulaUnitXtal = st.i;
+      smallerFormulaUnitXtal = st.j;
+    }
+    else {
+      largerFormulaUnitXtal = st.j;
+      smallerFormulaUnitXtal = st.i;
+    }
+
+    // We're going to create a temporary xtal that is an expanded version
+    // of the smaller formula unit xtal AND has the same  formula units of
+    // the larger formula unit xtal. They will then be compared with xtalcomp.
+    Xtal *tempXtal;
+    tempXtal = xtalopt->generateSuperCell(
+                                 smallerFormulaUnitXtal->getFormulaUnits(),
+                                 largerFormulaUnitXtal->getFormulaUnits(),
+                                 smallerFormulaUnitXtal, true, false);
+
+    if (tempXtal->compareCoordinates(*largerFormulaUnitXtal, st.tol_len,
+                                     st.tol_ang)) {
+      // We're going to label the larger formula unit structure a supercell
+      // of the smaller. The smaller structure is more fundamental and should
+      // remain in the gene pool.
+      largerFormulaUnitXtal->lock()->unlock();
+      largerFormulaUnitXtal->lock()->lockForWrite();
+      largerFormulaUnitXtal->setStatus(Xtal::Duplicate);
+      // If the smaller formula unit xtal is already a duplicate, make the
+      // supercell a supercell the structure that the smaller formula unit
+      // duplicate points to.
+      if (smallerFormulaUnitXtal->getStatus() == Xtal::Duplicate)
+        largerFormulaUnitXtal->setDuplicateString(
+                    smallerFormulaUnitXtal->getDuplicateString()+": Supercell");
+      // Otherwise, just make it a supercell of the smaller formula unit xtal
+      else largerFormulaUnitXtal->setDuplicateString(QString("%1x%2: Supercell")
+                                   .arg(smallerFormulaUnitXtal->getGeneration())
+                                   .arg(smallerFormulaUnitXtal->getIDNumber()));
+    }
+    st.i->lock()->unlock();
+    st.j->lock()->unlock();
+  }
+
   void XtalOpt::checkForDuplicates() {
     if (isStarting) {
       return;
@@ -2294,8 +2357,11 @@ namespace XtalOpt {
     m_tracker->unlock();
 
     // Build helper structs
-    QList<dupCheckStruct> sts;
-    dupCheckStruct st;
+    QList<dupCheckStruct> dupSts;
+    dupCheckStruct dupSt;
+    QList<supCheckStruct> supSts;
+    supCheckStruct supSt;
+
     for (QList<Xtal*>::iterator xi = xtals.begin();
          xi != xtals.end(); xi++) {
       (*xi)->lock()->lockForRead();
@@ -2315,13 +2381,38 @@ namespace XtalOpt {
              (*xj)->hasChangedSinceDupChecked()) &&
             // Perform a course enthalpy screening to cut down on number of
             // comparisons
-            fabs((*xi)->getEnthalpy() - (*xj)->getEnthalpy()) < 1.0)
+            fabs(((*xi)->getEnthalpy() /
+                 static_cast<double>((*xi)->getFormulaUnits())) -
+                 ((*xj)->getEnthalpy() /
+                 static_cast<double>((*xj)->getFormulaUnits()))) < 1.0 &&
+            // Screen out options that CANNOT be supercells
+
+            (((*xi)->getFormulaUnits() % (*xj)->getFormulaUnits() == 0) ||
+             ((*xj)->getFormulaUnits() % (*xi)->getFormulaUnits() == 0)))
         {
-          st.i = (*xi);
-          st.j = (*xj);
-          st.tol_len = this->tol_xcLength;
-          st.tol_ang = this->tol_xcAngle;
-          sts.append(st);
+          // Append the duplicate structs list
+          if ((*xi)->getFormulaUnits() == (*xj)->getFormulaUnits()) {
+            dupSt.i = (*xi);
+            dupSt.j = (*xj);
+            dupSt.tol_len = this->tol_xcLength;
+            dupSt.tol_ang = this->tol_xcAngle;
+            dupSts.append(dupSt);
+          }
+          // Append the supercell structs list. One has to be a formula unit
+          // multiple of the other to be a candidate supercell. In addition,
+          // their formula units cannot equal.
+          else if ((((*xi)->getFormulaUnits() % (*xj)->getFormulaUnits() == 0)
+                     ||
+                    ((*xj)->getFormulaUnits() % (*xi)->getFormulaUnits() == 0))
+                     &&
+                    ((*xj)->getFormulaUnits() != (*xi)->getFormulaUnits())) {
+
+            supSt.i = (*xi);
+            supSt.j = (*xj);
+            supSt.tol_len = this->tol_xcLength;
+            supSt.tol_ang = this->tol_xcAngle;
+            supSts.append(supSt);
+          }
         }
         (*xj)->lock()->unlock();
       }
@@ -2331,7 +2422,62 @@ namespace XtalOpt {
       (*xi)->lock()->unlock();
     }
 
-    QtConcurrent::blockingMap(sts, checkIfDups);
+    // If a supercell is matched as a duplicate in the checkIfDups function,
+    // it is okay because it will be overwritten with the checkIfSups function
+    // following it.
+    QtConcurrent::blockingMap(dupSts, checkIfDups);
+
+    // Tried to run this concurrently. Would freeze upon resuming for some
+    // reason, though...
+    for (size_t i = 0; i < supSts.size(); i++) checkIfSups(supSts[i]);
+
+    // The purpose of this next section is to just make the duplicate strings
+    // more clean and orderly. It does not affect which ones are duplicates.
+
+    for (size_t i = 0; i < xtals.size(); i++) {
+      xtals.at(i)->lock()->lockForRead();
+      // Make all duplicates of a newly discovered supercell be labelled as
+      // supercells as well.
+      // Logic goes as follows: if i and j are both duplicates, i is a supercell
+      // and j is not, and j is a duplicate of i, then j should have the same
+      // duplicate string as i.
+      if (xtals.at(i)->getStatus() == Xtal::Duplicate &&
+          xtals.at(i)->getDuplicateString().contains("Supercell")) {
+        for (size_t j = 0; j < xtals.size(); j++) {
+          xtals.at(j)->lock()->lockForRead();
+          if (xtals.at(j)->getStatus() == Xtal::Duplicate &&
+              xtals.at(j)->getDuplicateString() == QString("%1x%2")
+                                            .arg(xtals.at(i)->getGeneration())
+                                            .arg(xtals.at(i)->getIDNumber())) {
+            xtals.at(j)->lock()->unlock();
+            xtals.at(j)->lock()->lockForWrite();
+            xtals.at(j)->setDuplicateString(xtals.at(i)->getDuplicateString());
+          }
+          xtals.at(j)->lock()->unlock();
+        }
+      }
+      // If xtals.at(i) is a duplicate and is NOT a supercell, then check
+      // to see if there exists an xtals.at(j) that is a duplicate of
+      // this duplicate (i. e., a chain duplicate). If there is, set
+      // the duplicate string of xtals.at(j) to be same as xtals.at(i).
+      else if (xtals.at(i)->getStatus() == Xtal::Duplicate &&
+              !xtals.at(i)->getDuplicateString().contains("Supercell")) {
+        for (size_t j = 0; j < xtals.size(); j++) {
+          xtals.at(j)->lock()->lockForRead();
+          if (i != j &&
+              xtals.at(j)->getStatus() == Xtal::Duplicate &&
+              xtals.at(j)->getDuplicateString() == QString("%1x%2")
+                                            .arg(xtals.at(i)->getGeneration())
+                                            .arg(xtals.at(i)->getIDNumber())) {
+            xtals.at(j)->lock()->unlock();
+            xtals.at(j)->lock()->lockForWrite();
+            xtals.at(j)->setDuplicateString(xtals.at(i)->getDuplicateString());
+          }
+          xtals.at(j)->lock()->unlock();
+        }
+      }
+      xtals.at(i)->lock()->unlock();
+    }
 
     emit refreshAllStructureInfo();
   }
