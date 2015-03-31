@@ -400,7 +400,7 @@ namespace XtalOpt {
   }
 
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
-  { 
+  {
     INIT_RANDOM_GENERATOR();
     // Set cell parameters
     double a            = RANDDOUBLE() * (a_max-a_min) + a_min;
@@ -434,7 +434,7 @@ namespace XtalOpt {
 
     unsigned int atomicNum;
     unsigned int q;
-    
+
     qDebug() << "Xtal has divisions =" << divisions;
 
     if (using_mitosis){
@@ -443,10 +443,10 @@ namespace XtalOpt {
         int B = bx;
         int C = cx;
 
-        a = a / A; 
-        b = b / B; 
-        c = c / C; 
-        
+        a = a / A;
+        b = b / B;
+        c = c / C;
+
         xtal->setCellInfo(a,
                 b,
                 c,
@@ -469,7 +469,7 @@ namespace XtalOpt {
                         return 0;
                     }
                 }
-            } 
+            }
         }
 
         if (using_subcellPrint) printSubXtal(xtal, generation, id);
@@ -493,7 +493,7 @@ namespace XtalOpt {
                         return 0;
                     }
                 }
-            } 
+            }
         }
 
     } else {
@@ -509,12 +509,13 @@ namespace XtalOpt {
                 }
             }
         }
-    }  
- 
+    }
+
     // Set up geneology info
     xtal->setGeneration(generation);
     xtal->setIDNumber(id);
     xtal->setParents("Randomly generated");
+    if (using_mitosis) xtal->setParents(xtal->getParents()+" through mitosis");
     xtal->setStatus(Xtal::WaitingForOptimization);
 
     // Set up xtal data
@@ -525,7 +526,7 @@ namespace XtalOpt {
                                      uint id)
     {
     xtalInitMutex->lock();
-    
+
     QString id_s, gen_s, locpath_s;
     id_s.sprintf("%05d",id);
     gen_s.sprintf("%05d",generation);
@@ -540,11 +541,11 @@ namespace XtalOpt {
     }
     QFile loc_subcell;
     loc_subcell.setFileName(locpath_s + "/" + gen_s + "x" + id_s + ".cml");
-    
+
     if (!loc_subcell.open(QIODevice::WriteOnly)) {
                     error("XtalOpt::initializeSubXtal(): Error opening file "+loc_subcell.fileName()+" for writing...");
     }
-    
+
     QTextStream out;
     out.setDevice(&loc_subcell);
 
@@ -587,8 +588,8 @@ namespace XtalOpt {
     }
     out << endl;
 */
- 
-// Print the subcells as .cml files    
+
+// Print the subcells as .cml files
     QStringList symbols = xtal->getSymbols();
     QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
     out << "<molecule>\n";
@@ -602,7 +603,7 @@ namespace XtalOpt {
         .arg(vecs[1].y(), 12, 'f', 8);
       out << QString("\t\t<scalar title=\"c\" units=\"units:angstrom\">%1</scalar>\n")
         .arg(vecs[2].z(), 12, 'f', 8);
-    
+
     // Unit Cell Angles
     out << QString("\t\t<scalar title=\"alpha\" units=\"units:degree\">%1</scalar>\n")
       .arg(xtal->OBUnitCell()->GetAlpha(), 12, 'f', 8);
@@ -610,11 +611,11 @@ namespace XtalOpt {
       .arg(xtal->OBUnitCell()->GetBeta(), 12, 'f', 8);
     out << QString("\t\t<scalar title=\"gamma\" units=\"units:degree\">%1</scalar>\n")
       .arg(xtal->OBUnitCell()->GetGamma(), 12, 'f', 8);
- 
+
     out << "\t</crystal>\n";
     out << "\t<atomArray>\n";
 
-    int symbolCount = 0; 
+    int symbolCount = 0;
     int j = 1;
     // Coordinates of each atom (sorted alphabetically by symbol)
     QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
@@ -631,7 +632,7 @@ namespace XtalOpt {
         .arg(coords[i].y(), 12, 'f', 8)
         .arg(coords[i].z(), 12, 'f', 8);
     }
-    
+
     out << "\t</atomArray>\n";
     out << "</molecule>\n";
     out << endl;
@@ -1185,8 +1186,8 @@ namespace XtalOpt {
       QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
       QList<QString> symbol = xtal->getSymbols();
       for (int i = 0; i < atomCounts.size(); i++) {
-        rep += " ";  
-        rep += QString::number(i+1) + " ";  
+        rep += " ";
+        rep += QString::number(i+1) + " ";
         rep += QString::number(atomCounts.at(i)) + " ";
         rep += symbol.at(i) + "\n";
       }
@@ -1203,11 +1204,11 @@ namespace XtalOpt {
         int i = symbol.indexOf(currAtom)+1;
         rep += " ";
         QString inp;
-        inp.sprintf("%4.8f", coords.x());  
+        inp.sprintf("%4.8f", coords.x());
         rep += inp + "\t";
-        inp.sprintf("%4.8f", coords.y());  
+        inp.sprintf("%4.8f", coords.y());
         rep += inp + "\t";
-        inp.sprintf("%4.8f", coords.z());  
+        inp.sprintf("%4.8f", coords.z());
         rep += inp + "\t";
         rep += QString::number(i) + "\n";
       }
@@ -1243,7 +1244,7 @@ namespace XtalOpt {
     else if (line == "cellMatrixAngstrom") {
       matrix3x3 m = xtal->OBUnitCell()->GetCellMatrix();
       for (int i = 0; i < 3; i++) {
-        rep += " ";  
+        rep += " ";
         for (int j = 0; j < 3; j++) {
           QString inp;
           inp.sprintf("%4.8f", m.Get(i,j));
@@ -1396,7 +1397,7 @@ namespace XtalOpt {
     if (forceReadOnly) {
       readOnly = true;
     }
-    
+
     loaded = true;
 
     // Attempt to open state file
