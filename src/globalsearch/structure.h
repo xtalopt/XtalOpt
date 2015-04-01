@@ -286,7 +286,9 @@ namespace GlobalSearch {
      */
     uint getFailCount() { return m_failCount;};
 
-    //return the number of formula units
+    // return the number of formula units. If m_formulaUnits has been set,
+    // it will return m_formula units. If it hasn't been set, it will calculate
+    // the number of formula units with the formula-unit-finding algorithm.
     uint getFormulaUnits() const;
 
     //returns the number of structures of each formula unit up to the user-specified maximum formula units. numberOfEachFormulaUnit.at(n) is the number of structures with formula units n.
@@ -883,6 +885,12 @@ namespace GlobalSearch {
      */
     void setRank(uint rank) {m_rank = rank;};
 
+    /** Set the Structure's formula units.
+     * @param formulaUnits The Structure's formula units.
+     * @sa getFormulaUnits
+     */
+    void setFormulaUnits(uint formulaUnits) {m_formulaUnits = formulaUnits;};
+
     /** Set the Job ID of the current optimization process.
      * @param id The current optimization process's Job ID.
      * @sa getJobID
@@ -1077,7 +1085,8 @@ namespace GlobalSearch {
     /// \cond
     bool m_hasEnthalpy, m_updatedSinceDupChecked;
     bool m_histogramGenerationPending;
-    uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount;
+    uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
+         m_currentOptStep, m_failCount;
     QString m_parents, m_dupString, m_rempath;
     double m_enthalpy, m_PV;
     State m_status;

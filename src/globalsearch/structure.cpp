@@ -47,6 +47,7 @@ namespace GlobalSearch {
     m_generation(0),
     m_id(0),
     m_rank(0),
+    m_formulaUnits(0),
     m_jobID(0),
     m_PV(0),
     m_optStart(QDateTime()),
@@ -65,6 +66,7 @@ namespace GlobalSearch {
     m_generation(0),
     m_id(0),
     m_rank(0),
+    m_formulaUnits(0),
     m_jobID(0),
     m_PV(0),
     m_optStart(QDateTime()),
@@ -81,6 +83,7 @@ namespace GlobalSearch {
     m_generation(0),
     m_id(0),
     m_rank(0),
+    m_formulaUnits(0),
     m_jobID(0),
     m_PV(0),
     m_optStart(QDateTime()),
@@ -244,6 +247,7 @@ namespace GlobalSearch {
     settings->setValue("id", getIDNumber());
     settings->setValue("index", getIndex());
     settings->setValue("rank", getRank());
+    settings->setValue("formulaUnits", getFormulaUnits());
     settings->setValue("jobID", getJobID());
     settings->setValue("currentOptStep", getCurrentOptStep());
     settings->setValue("parents", getParents());
@@ -333,6 +337,7 @@ namespace GlobalSearch {
       setIDNumber(       settings->value("id",             0).toInt());
       setIndex(          settings->value("index",          0).toInt());
       setRank(           settings->value("rank",           0).toInt());
+      setFormulaUnits(   settings->value("formulaUnits",   0).toInt());
       setJobID(          settings->value("jobID",          0).toInt());
       setCurrentOptStep( settings->value("currentOptStep", 0).toInt());
       setFailCount(      settings->value("failCount",      0).toInt());
@@ -1268,14 +1273,21 @@ namespace GlobalSearch {
 
   //PSA. Returns Formula Units.
   uint Structure::getFormulaUnits() const
-  { QList<uint> xtalCounts = getNumberOfAtomsAlpha();
+  {
+    // m_formulaUnits is set with Structure::setFormulaUnits()
+    // If it hasn't been set yet, it is 0
+    if (m_formulaUnits != 0) return m_formulaUnits;
+
+    // If m_formulaUnits isn't set yet, proceed through the algorithm to find
+    // the number of formula units
+    QList<uint> xtalCounts = getNumberOfAtomsAlpha();
     unsigned int minimumQuantityOfAtomType = xtalCounts.at(0);
       for (int i = 1; i < xtalCounts.size(); ++i) {
         if (minimumQuantityOfAtomType > xtalCounts.at(i)){
           minimumQuantityOfAtomType = xtalCounts.at(i);
         }
       }
-      unsigned int numberOfFormulaUnits = 1;
+      unsigned int formulaUnits = 1;
       bool formulaUnitsFound;
       for (int i = minimumQuantityOfAtomType; i > 1; i--){
         formulaUnitsFound = true;
@@ -1285,11 +1297,11 @@ namespace GlobalSearch {
           }
         }
         if(formulaUnitsFound == true) {
-          numberOfFormulaUnits = i;
+          formulaUnits = i;
           i = 1;
         }
       }
-  return numberOfFormulaUnits;
+  return formulaUnits;
   }
 
   //Returns the number of structures of each formula unit up to the user-specified maximum formula units numberOfEachFormulaUnit.at(n) is the number of structures with formula units n.

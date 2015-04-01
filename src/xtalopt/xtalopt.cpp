@@ -342,6 +342,7 @@ namespace XtalOpt {
     if (!reason.isEmpty())
       parents += " (" + reason + ")";
     oldXtal->setParents(parents);
+    oldXtal->setFormulaUnits(oldXtal->getFormulaUnits());
 
     Atom *atom1, *atom2;
     for (uint i = 0; i < xtal->numAtoms(); i++) {
@@ -529,6 +530,7 @@ namespace XtalOpt {
     xtal->setGeneration(generation);
     xtal->setIDNumber(id);
     xtal->setParents("Randomly generated");
+    xtal->setFormulaUnits(FU);
     xtal->setStatus(Xtal::WaitingForOptimization);
 
     // Set up xtal data
@@ -704,6 +706,11 @@ namespace XtalOpt {
     xtal->setIDNumber(id);
     xtal->setGeneration(generation);
     xtal->setParents(parents);
+
+    // If the formula units haven't been set yet, Structure::getFormulaUnits()
+    // finds the formula units with a formula-unit-finding algorithm. Setting
+    // the formula units allows Structure::getFormulaUnits() to run faster.
+    xtal->setFormulaUnits(xtal->getFormulaUnits());
     QString id_s, gen_s, locpath_s, rempath_s;
     id_s.sprintf("%05d",xtal->getIDNumber());
     gen_s.sprintf("%05d",xtal->getGeneration());
@@ -2365,7 +2372,7 @@ namespace XtalOpt {
     for (QList<Xtal*>::iterator xi = xtals.begin();
          xi != xtals.end(); xi++) {
       (*xi)->lock()->lockForRead();
-      if ((*xi)->getStatus() == Xtal::Duplicate) {
+      if ((*xi)->getStatus() != Xtal::Optimized) {
         (*xi)->lock()->unlock();
         continue;
       }
@@ -2373,7 +2380,7 @@ namespace XtalOpt {
       for (QList<Xtal*>::iterator xj = xi + 1;
            xj != xtals.end(); xj++) {
         (*xj)->lock()->lockForRead();
-        if ((*xj)->getStatus() == Xtal::Duplicate) {
+        if ((*xj)->getStatus() != Xtal::Optimized) {
           (*xj)->lock()->unlock();
           continue;
         }
