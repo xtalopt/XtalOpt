@@ -190,6 +190,9 @@ namespace XtalOpt {
     void checkForDuplicates_();
     void generateNewStructure_();
 
+    Xtal* selectXtalFromProbabilityList(
+                               QList<GlobalSearch::Structure*> structures,
+                               uint FU = 0);
     void interpretKeyword(QString &keyword, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp_xtalopt();
 

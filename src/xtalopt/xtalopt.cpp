@@ -828,29 +828,6 @@ namespace XtalOpt {
       return xtal;
     }
 
-    // Sort structure list
-    Structure::sortByEnthalpy(&structures);
-
-    // Trim list
-    // Remove all but (popSize + 1). The "+ 1" will be removed
-    // during probability generation.
-    while ( static_cast<uint>(structures.size()) > popSize + 1 ) {
-      structures.removeLast();
-    }
-
-    // Make list of weighted probabilities based on enthalpy per formula unit
-    // values
-    QList<double> probs = getProbabilityList(structures);
-
-    // Cast Structures into Xtals
-    QList<Xtal*> xtals;
-#if QT_VERSION >= 0x040700
-    xtals.reserve(structures.size());
-#endif // QT_VERSION
-    for (int i = 0; i < structures.size(); ++i) {
-      xtals.append(qobject_cast<Xtal*>(structures.at(i)));
-    }
-
     // Initialize loop vars
     double r;
     unsigned int gen;
@@ -865,24 +842,16 @@ namespace XtalOpt {
         xtal = 0;
       }
 
+      Xtal *selectedXtal = selectXtalFromProbabilityList(structures, FU);
+
       // Decide operator:
       r = RANDDOUBLE();
 
-      Xtal *selectedXtal = 0;
-      int selectedXtalIndex = 0;
-      bool selectedXtalExists = false;
-      // We will just perform mitosis if:
+      // We will perform mitosis if:
       // 1: using_one_pool is enabled and
       // 2: the xtal selected can produce an FU on the list through mitosis and
       // 3: the probability succeeds
-
       if (using_one_pool) {
-        double random = RANDDOUBLE();
-        for (selectedXtalIndex = 0; selectedXtalIndex < probs.size();
-             selectedXtalIndex++)
-          if (random < probs.at(selectedXtalIndex)) break;
-        selectedXtal = xtals.at(selectedXtalIndex);
-        selectedXtalExists = true;
        // Find candidate formula units to be created through mitosis
         QList<uint> possibleMitosisFU_index;
         for (int i = 0; i < formulaUnitsList.size(); i++) {
@@ -903,16 +872,17 @@ namespace XtalOpt {
             // Use that selected index to choose the formula units
             uint formulaUnits = formulaUnitsList.at(selectedIndex);
             // Perform mitosis
-            while (!checkXtal(xtal)) {
-              if (xtal) {
-                delete xtal;
-                xtal = 0;
+            Xtal *nxtal = NULL;
+            while (!checkXtal(nxtal)) {
+              if (nxtal) {
+                delete nxtal;
+                nxtal = 0;
               }
 
-              xtal = generateSuperCell(selectedXtal->getFormulaUnits(),
+              nxtal = generateSuperCell(selectedXtal->getFormulaUnits(),
                                         formulaUnits, selectedXtal, true, true);
             }
-            return xtal;
+            return nxtal;
           }
         }
       }
@@ -939,12 +909,8 @@ namespace XtalOpt {
         // Operation specific set up:
         switch (op) {
         case OP_Crossover: {
-          int ind1, ind2;
           Xtal *xtal1=0, *xtal2=0;
           // Select structures
-          ind1 = ind2 = 0;
-          double r1 = RANDDOUBLE();
-          double r2 = RANDDOUBLE();
           double percent1;
           double percent2;
 
@@ -954,7 +920,8 @@ namespace XtalOpt {
           bool enoughStructures = true;
           if (using_FU_crossovers) {
             // Get all optimized structures
-            QList<Structure*> tempStructures = m_queue->getAllOptimizedStructures();
+            QList<Structure*> tempStructures =
+                                           m_queue->getAllOptimizedStructures();
 
             // Trim all the structures that aren't of the allowed generation or
             // greater
@@ -969,35 +936,8 @@ namespace XtalOpt {
             if (tempStructures.size() < 3) enoughStructures = false;
             if (enoughStructures) {
 
-              // Sort structure list
-              Structure::sortByEnthalpy(&tempStructures);
-
-              // Trim list
-              // Remove all but (popSize + 1). The "+ 1" will be removed
-              // during probability generation.
-              while ( static_cast<uint>(tempStructures.size()) > popSize + 1 ) {
-                tempStructures.removeLast();
-              }
-
-              // Make list of weighted probabilities based on enthalpy values
-              QList<double> probs = getProbabilityList(tempStructures);
-
-              // Cast Structures into Xtals
-              QList<Xtal*> tempXtals;
-#if QT_VERSION >= 0x040700
-              tempXtals.reserve(structures.size());
-#endif // QT_VERSION
-              for (int i = 0; i < tempStructures.size(); ++i) {
-                tempXtals.append(qobject_cast<Xtal*>(tempStructures.at(i)));
-              }
-
-              for (ind1 = 0; ind1 < probs.size(); ind1++)
-                if (r1 < probs.at(ind1)) break;
-              for (ind2 = 0; ind2 < probs.size(); ind2++)
-                if (r2 < probs.at(ind2)) break;
-
-              xtal1 = tempXtals.at(ind1);
-              xtal2 = tempXtals.at(ind2);
+              xtal1 = selectXtalFromProbabilityList(tempStructures);
+              xtal2 = selectXtalFromProbabilityList(tempStructures);
 
               // Perform operation
               xtal = XtalOptGenetic::FUcrossover(
@@ -1007,26 +947,9 @@ namespace XtalOpt {
           }
 
           if (!using_FU_crossovers || !enoughStructures) {
-            if (!selectedXtalExists) {
-              for (ind1 = 0; ind1 < probs.size(); ind1++)
-                if (r1 < probs.at(ind1)) break;
-              xtal1 = xtals.at(ind1);
-            }
-            else if (selectedXtalExists) {
-              xtal1 = xtals.at(selectedXtalIndex);
-            }
-            for (ind2 = 0; ind2 < probs.size(); ind2++)
-              if (r2 < probs.at(ind2)) break;
-            xtal2 = xtals.at(ind2);
-
-            // Make sure they have the same formula units. If they don't,
-            // then try again for xtal2
-            while (xtal1->getFormulaUnits() != xtal2->getFormulaUnits()) {
-              r2 = RANDDOUBLE();
-              for (ind2 = 0; ind2 < probs.size(); ind2++)
-                if (r2 < probs.at(ind2)) break;
-              xtal2 = xtals.at(ind2);
-            }
+            xtal1 = selectedXtal;
+            xtal2 = selectXtalFromProbabilityList(structures,
+                                                  xtal1->getFormulaUnits());
 
             // Perform operation
             xtal = XtalOptGenetic::crossover(
@@ -1065,21 +988,10 @@ namespace XtalOpt {
           continue;
         }
         case OP_Stripple: {
-          Xtal *xtal1 = 0;
-          if (!selectedXtalExists) {
-            // Pick a parent
-            int ind;
-            double r = RANDDOUBLE();
-            for (ind = 0; ind < probs.size(); ind++)
-              if (r < probs.at(ind)) break;
-            xtal1 = xtals.at(ind);
-          }
-          else if (selectedXtalExists) {
-            xtal1 = xtals.at(selectedXtalIndex);
-          }
+
           // Perform stripple
           double amplitude=0, stdev=0;
-          xtal = XtalOptGenetic::stripple(xtal1,
+          xtal = XtalOptGenetic::stripple(selectedXtal,
                                           strip_strainStdev_min,
                                           strip_strainStdev_max,
                                           strip_amp_min,
@@ -1090,10 +1002,10 @@ namespace XtalOpt {
                                           amplitude);
 
           // Lock parent and extract info
-          xtal1->lock()->lockForRead();
-          uint gen1 = xtal1->getGeneration();
-          uint id1 = xtal1->getIDNumber();
-          xtal1->lock()->unlock();
+          selectedXtal->lock()->lockForRead();
+          uint gen1 = selectedXtal->getGeneration();
+          uint id1 = selectedXtal->getIDNumber();
+          selectedXtal->lock()->unlock();
 
           // Determine generation number
           gen = gen1 + 1;
@@ -1107,26 +1019,16 @@ namespace XtalOpt {
           continue;
         }
         case OP_Permustrain: {
-          int ind;
-          double r = RANDDOUBLE();
-          Xtal *xtal1 = 0;
-          if (!selectedXtalExists) {
-            for (ind = 0; ind < probs.size(); ind++)
-              if (r < probs.at(ind)) break;
-            xtal1 = xtals.at(ind);
-          }
-          else if (selectedXtalExists) {
-            xtal1 = xtals.at(selectedXtalIndex);
-          }
+
           double stdev=0;
           xtal = XtalOptGenetic::permustrain(
-                xtal1, perm_strainStdev_max, perm_ex, stdev);
+                selectedXtal, perm_strainStdev_max, perm_ex, stdev);
 
           // Lock parent and extract info
-          xtal1->lock()->lockForRead();
-          uint gen1 = xtal1->getGeneration();
-          uint id1 = xtal1->getIDNumber();
-          xtal1->lock()->unlock();
+          selectedXtal->lock()->lockForRead();
+          uint gen1 = selectedXtal->getGeneration();
+          uint id1 = selectedXtal->getIDNumber();
+          selectedXtal->lock()->unlock();
 
           // Determine generation number
           gen = gen1 + 1;
@@ -1216,54 +1118,13 @@ namespace XtalOpt {
     if (firstCall == true) {
       Xtal *xtal = NULL;
       if (myXtal == 0) {
-        // Get all optimized structures
         QList<Structure*> structures = m_queue->getAllOptimizedStructures();
-
-        // Remove all structures that do not have formula units of FU
-        for (int i = 0; i < structures.size(); i++) {
-          if (structures.at(i)->getFormulaUnits() != initialFU) {
-            structures.removeAt(i);
-            i--;
-          }
-        }
-
-        // Sort structure list
-        Structure::sortByEnthalpy(&structures);
-
-        // Trim list
-        // Remove all but (popSize + 1). The "+ 1" will be removed
-        // during probability generation.
-        while ( static_cast<uint>(structures.size()) > popSize + 1 ) {
-          structures.removeLast();
-        }
-
-        // Make list of weighted probabilities based on enthalpy values
-        QList<double> probs = getProbabilityList(structures);
-
-        // Cast Structures into Xtals
-        QList<Xtal*> xtals;
-#if QT_VERSION >= 0x040700
-        xtals.reserve(structures.size());
-#endif // QT_VERSION
-        for (int i = 0; i < structures.size(); ++i) {
-          xtals.append(qobject_cast<Xtal*>(structures.at(i)));
-        }
-
-        // Initialize loop vars
-        double r;
-
-        // Pick a parent for generating the super cell
-        int ind;
-        r = RANDDOUBLE();
-        for (ind = 0; ind < probs.size(); ind++)
-          if (r < probs.at(ind)) break;
-        xtal = xtals.at(ind);
+        xtal = selectXtalFromProbabilityList(structures, initialFU);
       }
-
       // If it is the first call, and the parent is already known,
       // transfer the parent over to xtal and set myXtal = 0 just for
       // ease later in function.
-      if (myXtal != 0) {
+      else if (myXtal != 0) {
         xtal = myXtal;
         myXtal = 0;
       }
@@ -1296,7 +1157,7 @@ namespace XtalOpt {
         .arg(gen1)
         .arg(id1);
       myXtal->setParents(parents);
-      myXtal->setGeneration(1);
+      myXtal->setGeneration(xtal->getGeneration() + 1);
     }
 
     // Find the largest prime number multiple. We will expand
@@ -1468,14 +1329,74 @@ namespace XtalOpt {
                        "Reselecting operator...").arg(opStr));
           }
         }
-        xtal->setGeneration(1);
+        xtal->setGeneration(myXtal->getGeneration());
+        // xtal and myXtal were both dynamically allocated. We should delete
+        // myXtal since we no longer need it.
+        myXtal->deleteLater();
+        myXtal = 0;
         return xtal;
       }
       else {
-        myXtal->setGeneration(1);
         return myXtal;
       }
     }
+  }
+
+  Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
+                                               uint FU) {
+    INIT_RANDOM_GENERATOR();
+
+    // Remove all structures that have an FU that ISN'T on the list
+    for (size_t i = 0; i < structures.size(); i++) {
+      if (!onTheFormulaUnitsList(structures.at(i)->getFormulaUnits())) {
+        structures.removeAt(i);
+        i--;
+      }
+    }
+
+    if (FU != 0) {
+      // Remove all structures that do not have formula units of FU
+      for (int i = 0; i < structures.size(); i++) {
+        if (structures.at(i)->getFormulaUnits() != FU) {
+          structures.removeAt(i);
+          i--;
+        }
+      }
+    }
+
+    // Sort structure list
+    Structure::sortByEnthalpy(&structures);
+
+    // Trim list
+    // Remove all but (popSize + 1). The "+ 1" will be removed
+    // during probability generation.
+    while ( static_cast<uint>(structures.size()) > popSize + 1 ) {
+      structures.removeLast();
+    }
+
+    // Make list of weighted probabilities based on enthalpy values
+    QList<double> probs = getProbabilityList(structures);
+
+    // Cast Structures into Xtals
+    QList<Xtal*> xtals;
+#if QT_VERSION >= 0x040700
+    xtals.reserve(structures.size());
+#endif // QT_VERSION
+    for (int i = 0; i < structures.size(); ++i) {
+      xtals.append(qobject_cast<Xtal*>(structures.at(i)));
+    }
+
+    // Initialize loop vars
+    double r;
+    Xtal *xtal = NULL;
+
+    // Pick a parent
+    int ind;
+    r = RANDDOUBLE();
+    for (ind = 0; ind < probs.size(); ind++)
+      if (r < probs.at(ind)) break;
+    xtal = xtals.at(ind);
+    return xtal;
   }
 
   bool XtalOpt::checkLimits() {
@@ -2341,6 +2262,8 @@ namespace XtalOpt {
                                    .arg(smallerFormulaUnitXtal->getGeneration())
                                    .arg(smallerFormulaUnitXtal->getIDNumber()));
     }
+    tempXtal->deleteLater();
+    tempXtal = 0;
     st.i->lock()->unlock();
     st.j->lock()->unlock();
   }
