@@ -562,6 +562,194 @@ namespace XtalOpt {
     return true;
   }
 
+  bool Xtal::isPrimitive(const double cartTol) {
+
+    // Cache fractional coordinates and atomic nums
+    QList<Eigen::Vector3d> fcoords;
+    QList<unsigned int> atomicNums;
+    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
+           it_end = m_atomList.constEnd(); it != it_end; ++it) {
+      fcoords.append( cartToFrac(*(*it)->pos()));
+      atomicNums.append((*it)->atomicNumber());
+    }
+    size_t originalFCoordsSize = fcoords.size();
+
+    // Get unit cell
+    matrix3x3 obcell = this->OBUnitCell()->GetCellMatrix();
+    // Convert to Eigen:
+    Eigen::Matrix3d cellMatrix = Eigen::Matrix3d::Zero();
+    for (int row = 0; row < 3; row++) {
+      for (int col = 0; col < 3; col++) {
+        cellMatrix(row,col) = obcell.Get(row, col);
+      }
+    }
+
+    unsigned int spg = reduceToPrimitive(&fcoords, &atomicNums,
+                                         &cellMatrix, cartTol);
+
+    if (originalFCoordsSize == fcoords.size()) return true;
+    else return false;
+  }
+
+
+  bool Xtal::reduceToPrimitive(const double cartTol) {
+
+    // Cache fractional coordinates and atomic nums
+    QList<Eigen::Vector3d> fcoords;
+    QList<unsigned int> atomicNums;
+    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
+           it_end = m_atomList.constEnd(); it != it_end; ++it) {
+      fcoords.append( cartToFrac(*(*it)->pos()));
+      atomicNums.append((*it)->atomicNumber());
+    }
+
+    // Get unit cell
+    matrix3x3 obcell = this->OBUnitCell()->GetCellMatrix();
+    // Convert to Eigen:
+    Eigen::Matrix3d cellMatrix = Eigen::Matrix3d::Zero();
+    for (int row = 0; row < 3; row++) {
+      for (int col = 0; col < 3; col++) {
+        cellMatrix(row,col) = obcell.Get(row, col);
+      }
+    }
+
+    unsigned int spg = reduceToPrimitive(&fcoords, &atomicNums,
+                                         &cellMatrix, cartTol);
+
+    // spg == 0 implies that reduceToPrimitive() failed
+    if (spg == 0) return false;
+
+    setCellInfo(Eigen2OB(cellMatrix));
+
+    // Remove all atoms to simplify the change
+    QList<Atom*> atomList = this->atoms();
+    for (size_t i = 0; i < atomList.size(); i++)
+                                            this->removeAtom(atomList.at(i));
+
+    // Add the atoms in
+    for (size_t i = 0; i < fcoords.size(); i++) {
+        Atom* newAtom = this->addAtom();
+        newAtom->setAtomicNumber(atomicNums.at(i));
+        newAtom->setPos(fracToCart(fcoords.at(i)));
+    }
+
+    Q_ASSERT(fcoords.size() == atomicNums.size());
+    Q_ASSERT(this->m_atomList.size() == fcoords.size());
+    this->setFormulaUnits(0);
+
+    return true;
+  }
+
+  unsigned int Xtal::reduceToPrimitive(QList<Eigen::Vector3d> *fcoords,
+                                       QList<unsigned int> *atomicNums,
+                                       Eigen::Matrix3d *cellMatrix,
+                                       const double cartTol)
+  {
+    Q_ASSERT(fcoords->size() == atomicNums->size());
+
+    const int numAtoms = fcoords->size();
+
+    if (numAtoms < 1) {
+      qWarning() << "Cannot determine spacegroup of empty cell.";
+      return 0;
+    }
+
+    // Spglib expects column vecs, so fill with transpose
+    double lattice[3][3] = {
+      {(*cellMatrix)(0,0), (*cellMatrix)(1,0), (*cellMatrix)(2,0)},
+      {(*cellMatrix)(0,1), (*cellMatrix)(1,1), (*cellMatrix)(2,1)},
+      {(*cellMatrix)(0,2), (*cellMatrix)(1,2), (*cellMatrix)(2,2)}
+    };
+
+    // Build position list. Include space for 4*numAtoms for the
+    // cell refinement
+    double (*positions)[3] = new double[4*numAtoms][3];
+    int *types = new int[4*numAtoms];
+    const Eigen::Vector3d * fracCoord;
+    for (int i = 0; i < numAtoms; ++i) {
+      fracCoord         = &(*fcoords)[i];
+      types[i]          = (*atomicNums)[i];
+      positions[i][0]   = fracCoord->x();
+      positions[i][1]   = fracCoord->y();
+      positions[i][2]   = fracCoord->z();
+    }
+
+    // find spacegroup for return value
+    char symbol[21];
+    int spg = spg_get_international(symbol,
+                                    lattice,
+                                    positions,
+                                    types,
+                                    numAtoms,
+                                    cartTol);
+
+    // Refine the structure
+    int numBravaisAtoms =
+      spg_refine_cell(lattice, positions, types,
+                      numAtoms, cartTol);
+
+    // if spglib cannot refine the cell, return 0.
+    if (numBravaisAtoms <= 0) {
+      return 0;
+    }
+
+    // Find primitive cell. This updates lattice, positions, types
+    // to primitive
+    int numPrimitiveAtoms =
+      spg_find_primitive(lattice, positions, types,
+                         numBravaisAtoms, cartTol);
+
+    // If the cell was already a primitive cell, reset
+    // numPrimitiveAtoms.
+    if (numPrimitiveAtoms == 0) {
+      numPrimitiveAtoms = numBravaisAtoms;
+    }
+
+    // Bail if everything failed
+    if (numPrimitiveAtoms <= 0) {
+      return 0;
+    }
+
+    // Update passed objects
+    // convert col vecs to row vecs
+    (*cellMatrix)(0, 0) =  lattice[0][0];
+    (*cellMatrix)(0, 1) =  lattice[1][0];
+    (*cellMatrix)(0, 2) =  lattice[2][0];
+    (*cellMatrix)(1, 0) =  lattice[0][1];
+    (*cellMatrix)(1, 1) =  lattice[1][1];
+    (*cellMatrix)(1, 2) =  lattice[2][1];
+    (*cellMatrix)(2, 0) =  lattice[0][2];
+    (*cellMatrix)(2, 1) =  lattice[1][2];
+    (*cellMatrix)(2, 2) =  lattice[2][2];
+
+    // Trim
+    while (fcoords->size() > numPrimitiveAtoms) {
+      fcoords->removeLast();
+      atomicNums->removeLast();
+    }
+    while (fcoords->size() < numPrimitiveAtoms) {
+      fcoords->append(Eigen::Vector3d());
+      atomicNums->append(0);
+    }
+
+    // Update
+    Q_ASSERT(fcoords->size() == atomicNums->size());
+    Q_ASSERT(fcoords->size() == numPrimitiveAtoms);
+    for (int i = 0; i < numPrimitiveAtoms; ++i) {
+      (*atomicNums)[i]  = types[i];
+      (*fcoords)[i] = Eigen::Vector3d (positions[i]);
+    }
+
+    delete [] positions;
+    delete [] types;
+
+    if (spg > 230 || spg < 0) {
+      spg = 0;
+    }
+
+    return static_cast<unsigned int>(spg);
+  }
+
   bool Xtal::fixAngles(int attempts)
   {
     // Perform niggli reduction

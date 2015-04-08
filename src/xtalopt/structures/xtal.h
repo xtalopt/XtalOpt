@@ -152,6 +152,11 @@ namespace XtalOpt {
                                 const double gamma);
     bool isNiggliReduced() const;
 
+    // Checks to see if an xtal is primitive or not. If a primitive reduction
+    // results in a smaller FU xtal, the function returns true
+    bool isPrimitive(const double cartTol = 0.05);
+    bool reduceToPrimitive(const double cartTol = 0.05);
+
     bool operator==(const Xtal &other) const;
     bool operator!=(const Xtal &other) const {return !operator==(other);};
 
@@ -215,6 +220,14 @@ namespace XtalOpt {
    private slots:
 
    private:
+    // This function is called by the public overloaded function:
+    // bool reduceToPrimitive(const double cartTol = 0.05)
+    // It was obtained from David Lonie's identical reduceToPrimitive() function
+    // in his crystallography extension of Avogadro.
+    unsigned int reduceToPrimitive(QList<Eigen::Vector3d> *fcoords,
+                                   QList<unsigned int> *atomicNums,
+                                   Eigen::Matrix3d *cellMatrix,
+                                   const double cartTol = 0.05);
     void ctor(QObject *parent=0);
     OpenBabel::OBUnitCell* cell() const;
     uint m_spgNumber;

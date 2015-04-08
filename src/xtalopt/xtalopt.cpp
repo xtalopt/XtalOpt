@@ -1069,6 +1069,60 @@ namespace XtalOpt {
       formulaUnitsList.append(1);
     }
 
+    // Check to see if there are any structures that need to be primitive
+    // checked. If there are, then generate and return one.
+    QList<Structure*> optimizedStructures =
+                                           m_queue->getAllOptimizedStructures();
+    Xtal *testXtal;
+    for (size_t i = 0; i < optimizedStructures.size(); i++) {
+      // generateNewXtal() runs concurrently. We don't want to make more than
+      // one primitive xtal of a given xtal, so try to write for lock. If it
+      // can't be done, then just continue to the next one.
+      if (!optimizedStructures.at(i)->lock()->tryLockForWrite()) continue;
+      // If the structure has been supercell checked, we don't need to check
+      // it again. If it hasn't been duplicate checked, yet, let it be
+      // duplicate checked first (so we don't check unnecessary structures).
+      if (!optimizedStructures.at(i)->wasPrimitiveChecked() &&
+          !optimizedStructures.at(i)->hasChangedSinceDupChecked()) {
+        testXtal = qobject_cast<Xtal*>(optimizedStructures.at(i));
+        // If testXtal is found to not be primitive, make a new xtal that is
+        // the primitive of testXtal.
+        if (!testXtal->isPrimitive(tol_spg)) {
+          testXtal->setPrimitiveChecked(true);
+          Xtal* nxtal = new Xtal();
+          // Copy cell over from testXtal to nxtal
+          nxtal->setCellInfo(testXtal->OBUnitCell()->GetCellMatrix());
+          Atom* newAtom;
+          // Add the atoms in...
+          for (size_t i = 0; i < testXtal->numAtoms(); i++) {
+            newAtom = nxtal->addAtom();
+            newAtom->setAtomicNumber(testXtal->atom(i)->atomicNumber());
+            newAtom->setPos(testXtal->atom(i)->pos());
+          }
+          // Reduce it to primitive...
+          nxtal->reduceToPrimitive(tol_spg);
+          uint gen = testXtal->getGeneration() + 1;
+          QString parents = tr("Primitive of %1x%2")
+            .arg(testXtal->getGeneration())
+            .arg(testXtal->getIDNumber());
+          nxtal->setGeneration(gen);
+          nxtal->setParents(parents);
+          nxtal->setFormulaUnits(nxtal->getFormulaUnits());
+          nxtal->setEnthalpy(testXtal->getEnthalpy() *
+                             nxtal->getFormulaUnits() /
+                             testXtal->getFormulaUnits());
+          nxtal->setEnergy(testXtal->getEnergy() *
+                           nxtal->getFormulaUnits() /
+                           testXtal->getFormulaUnits());
+          nxtal->setPrimitiveChecked(true);
+          nxtal->setStatus(Xtal::Optimized);
+          testXtal->lock()->unlock();
+          return nxtal;
+        }
+        testXtal->setPrimitiveChecked(true);
+      }
+      optimizedStructures.at(i)->lock()->unlock();
+    }
     // Inputing a formula unit of 0 implies using all formula units when
     // generating the probability list.
     if (using_one_pool) {
@@ -2037,6 +2091,9 @@ namespace XtalOpt {
 
       locker.unlock();
 
+      // Skip over the next parts if it is a primitive xtal of another xtal
+      if (xtal->getParents().contains("Primitive")) continue;
+
       if (!m_optimizer->load(xtal)) {
         error(tr("Error, no (or not appropriate for %1) xtal data in "
                  "%2.\n\nThis could be a result of resuming a structure "
@@ -2366,6 +2423,24 @@ namespace XtalOpt {
 
     for (size_t i = 0; i < xtals.size(); i++) {
       xtals.at(i)->lock()->lockForRead();
+      // Loop through all the primitive xtals and make sure that
+      // the xtal that they came from is labelled as a supercell
+      if (xtals.at(i)->getParents().contains("Primitive")) {
+        for (size_t j = 0; j < xtals.size(); j++) {
+          xtals.at(j)->lock()->lockForRead();
+          if (xtals.at(j)->getStatus() != Xtal::Duplicate &&
+              xtals.at(i)->getParents() == tr("Primitive of %1x%2")
+                                            .arg((xtals.at(j))->getGeneration())
+                                            .arg(xtals.at(j)->getIDNumber())) {
+            xtals.at(j)->setStatus(Xtal::Duplicate);
+            xtals.at(j)->setDuplicateString(QString("%1x%2: Supercell")
+                                            .arg(xtals.at(i)->getGeneration())
+                                            .arg(xtals.at(i)->getIDNumber()));
+          }
+          xtals.at(j)->lock()->unlock();
+        }
+      }
+
       // Make all duplicates of a newly discovered supercell be labelled as
       // supercells as well.
       // Logic goes as follows: if i and j are both duplicates, i is a supercell

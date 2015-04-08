@@ -593,6 +593,15 @@ namespace GlobalSearch {
      */
     bool hasChangedSinceDupChecked() {return m_updatedSinceDupChecked;};
 
+    /**
+     * Structure tracks if it has been primitive-checked or not. Primitive
+     * checking involves running the primitive reduction function to see if
+     * a smaller FU primitive structure can be made.
+     *
+     * @sa setPrimitiveChecked()
+     */
+    bool wasPrimitiveChecked() {return m_primitiveChecked;};
+
     /** Sort the listed structures by their enthalpies
      *
      * @param structures List of structures to sort
@@ -1002,6 +1011,15 @@ namespace GlobalSearch {
      */
     void setChangedSinceDupChecked(bool b) {m_updatedSinceDupChecked = b;};
 
+    /**
+     * Structure tracks if it has been primitive-checked or not. Primitive
+     * checking involves running the primitive reduction function to see if
+     * a smaller FU primitive structure can be made.
+     *
+     * @sa wasPrimitiveChecked()
+     */
+    void setPrimitiveChecked(bool b) {m_primitiveChecked = b;};
+
     /** Record the current time as when the current optimization
      * process started.
      *
@@ -1083,7 +1101,7 @@ namespace GlobalSearch {
   protected:
     // skip Doxygen parsing
     /// \cond
-    bool m_hasEnthalpy, m_updatedSinceDupChecked;
+    bool m_hasEnthalpy, m_updatedSinceDupChecked, m_primitiveChecked;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
          m_currentOptStep, m_failCount;

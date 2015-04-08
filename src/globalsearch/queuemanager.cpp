@@ -828,9 +828,11 @@ namespace GlobalSearch {
 
     // Update structure
     s->lock()->lockForWrite();
-    s->setStatus(Structure::WaitingForOptimization);
-    if (optStep != 0) {
-      s->setCurrentOptStep(optStep);
+    if (s->getStatus() != Structure::Optimized) {
+      s->setStatus(Structure::WaitingForOptimization);
+      if (optStep != 0) {
+        s->setCurrentOptStep(optStep);
+      }
     }
     s->lock()->unlock();
 
@@ -996,7 +998,8 @@ namespace GlobalSearch {
 
     // Update structure
     s->lock()->lockForWrite();
-    s->setStatus(Structure::WaitingForOptimization);
+    if (s->getStatus() != Structure::Optimized)
+      s->setStatus(Structure::WaitingForOptimization);
     s->lock()->unlock();
 
     m_tracker->append(s);
@@ -1004,7 +1007,9 @@ namespace GlobalSearch {
     m_newStructureTracker.unlock();
     m_tracker->unlock();
 
-    emit structureStarted(s);
+    if (s->getStatus() != Structure::Optimized)
+      emit structureStarted(s);
+    else if (s->getStatus() == Structure::Optimized) emit structureFinished(s);
   }
   /// @endcond
 
