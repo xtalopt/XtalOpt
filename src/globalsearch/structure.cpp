@@ -64,11 +64,11 @@ namespace GlobalSearch {
 
   Structure::Structure(const Structure &other) :
     Molecule(other),
-    m_histogramGenerationPending(false),
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
     m_isPrimitiveReduction(false),
     m_isSupercell(false),
+    m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -84,11 +84,11 @@ namespace GlobalSearch {
 
   Structure::Structure(const Avogadro::Molecule &other) :
     Molecule(other),
-    m_histogramGenerationPending(false),
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
     m_isPrimitiveReduction(false),
     m_isSupercell(false),
+    m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -207,14 +207,15 @@ namespace GlobalSearch {
     copyStructure(other);
 
     // Set properties
-    m_histogramGenerationPending = other.m_histogramGenerationPending;
     m_hasEnthalpy                = other.m_hasEnthalpy;
+    m_primitiveChecked           = other.m_primitiveChecked;
+    m_isPrimitiveReduction       = other.m_isPrimitiveReduction;
+    m_isSupercell                = other.m_isSupercell;
+    m_histogramGenerationPending = other.m_histogramGenerationPending;
     m_generation                 = other.m_generation;
     m_id                         = other.m_id;
     m_rank                       = other.m_rank;
     m_formulaUnits               = other.m_formulaUnits;
-    m_isPrimitiveReduction       = other.m_isPrimitiveReduction;
-    m_isSupercell                = other.m_isSupercell;
     m_jobID                      = other.m_jobID;
     m_currentOptStep             = other.m_currentOptStep;
     m_failCount                  = other.m_failCount;
