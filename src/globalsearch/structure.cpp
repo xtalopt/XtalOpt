@@ -44,6 +44,8 @@ namespace GlobalSearch {
     m_hasEnthalpy(false),
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
+    m_isPrimitiveReduction(false),
+    m_isSupercell(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -65,6 +67,8 @@ namespace GlobalSearch {
     m_histogramGenerationPending(false),
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
+    m_isPrimitiveReduction(false),
+    m_isSupercell(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -83,6 +87,8 @@ namespace GlobalSearch {
     m_histogramGenerationPending(false),
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
+    m_isPrimitiveReduction(false),
+    m_isSupercell(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
@@ -206,6 +212,9 @@ namespace GlobalSearch {
     m_generation                 = other.m_generation;
     m_id                         = other.m_id;
     m_rank                       = other.m_rank;
+    m_formulaUnits               = other.m_formulaUnits;
+    m_isPrimitiveReduction       = other.m_isPrimitiveReduction;
+    m_isSupercell                = other.m_isSupercell;
     m_jobID                      = other.m_jobID;
     m_currentOptStep             = other.m_currentOptStep;
     m_failCount                  = other.m_failCount;
@@ -251,6 +260,7 @@ namespace GlobalSearch {
     settings->setValue("index", getIndex());
     settings->setValue("rank", getRank());
     settings->setValue("formulaUnits", getFormulaUnits());
+    settings->setValue("isPrimitiveReduction", isPrimitiveReduction());
     settings->setValue("jobID", getJobID());
     settings->setValue("currentOptStep", getCurrentOptStep());
     settings->setValue("parents", getParents());
@@ -341,6 +351,8 @@ namespace GlobalSearch {
       setIndex(          settings->value("index",          0).toInt());
       setRank(           settings->value("rank",           0).toInt());
       setFormulaUnits(   settings->value("formulaUnits",   0).toInt());
+      setIsPrimitiveReduction(
+                   settings->value("isPrimitiveReduction", 0).toBool());
       setJobID(          settings->value("jobID",          0).toInt());
       setCurrentOptStep( settings->value("currentOptStep", 0).toInt());
       setFailCount(      settings->value("failCount",      0).toInt());
@@ -1304,7 +1316,7 @@ namespace GlobalSearch {
           i = 1;
         }
       }
-  return formulaUnits;
+    return formulaUnits;
   }
 
   //Returns the number of structures of each formula unit up to the user-specified maximum formula units numberOfEachFormulaUnit.at(n) is the number of structures with formula units n.

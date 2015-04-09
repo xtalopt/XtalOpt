@@ -1115,6 +1115,7 @@ namespace XtalOpt {
                            nxtal->getFormulaUnits() /
                            testXtal->getFormulaUnits());
           nxtal->setPrimitiveChecked(true);
+          nxtal->setIsPrimitiveReduction(true);
           nxtal->setStatus(Xtal::Optimized);
           testXtal->lock()->unlock();
           return nxtal;
@@ -2092,7 +2093,7 @@ namespace XtalOpt {
       locker.unlock();
 
       // Skip over the next parts if it is a primitive xtal of another xtal
-      if (xtal->getParents().contains("Primitive")) continue;
+      if (xtal->isPrimitiveReduction()) continue;
 
       if (!m_optimizer->load(xtal)) {
         error(tr("Error, no (or not appropriate for %1) xtal data in "
@@ -2225,6 +2226,7 @@ namespace XtalOpt {
       xtal->lock()->lockForWrite();
       if (xtal->getStatus() == Xtal::Duplicate)
         xtal->setStatus(Xtal::Optimized);
+      if (xtal->isSupercell()) xtal->setIsSupercell(false);
       xtal->structureChanged(); // Reset cached comparisons
       xtal->lock()->unlock();
     }
@@ -2308,6 +2310,7 @@ namespace XtalOpt {
       largerFormulaUnitXtal->lock()->unlock();
       largerFormulaUnitXtal->lock()->lockForWrite();
       largerFormulaUnitXtal->setStatus(Xtal::Duplicate);
+      largerFormulaUnitXtal->setIsSupercell(true);
       // If the smaller formula unit xtal is already a duplicate, make the
       // supercell a supercell the structure that the smaller formula unit
       // duplicate points to.
@@ -2425,7 +2428,7 @@ namespace XtalOpt {
       xtals.at(i)->lock()->lockForRead();
       // Loop through all the primitive xtals and make sure that
       // the xtal that they came from is labelled as a supercell
-      if (xtals.at(i)->getParents().contains("Primitive")) {
+      if (xtals.at(i)->isPrimitiveReduction()) {
         for (size_t j = 0; j < xtals.size(); j++) {
           xtals.at(j)->lock()->lockForRead();
           if (xtals.at(j)->getStatus() != Xtal::Duplicate &&
@@ -2433,6 +2436,7 @@ namespace XtalOpt {
                                             .arg((xtals.at(j))->getGeneration())
                                             .arg(xtals.at(j)->getIDNumber())) {
             xtals.at(j)->setStatus(Xtal::Duplicate);
+            xtals.at(j)->setIsSupercell(true);
             xtals.at(j)->setDuplicateString(QString("%1x%2: Supercell")
                                             .arg(xtals.at(i)->getGeneration())
                                             .arg(xtals.at(i)->getIDNumber()));
@@ -2447,7 +2451,7 @@ namespace XtalOpt {
       // and j is not, and j is a duplicate of i, then j should have the same
       // duplicate string as i.
       if (xtals.at(i)->getStatus() == Xtal::Duplicate &&
-          xtals.at(i)->getDuplicateString().contains("Supercell")) {
+          xtals.at(i)->isSupercell()) {
         for (size_t j = 0; j < xtals.size(); j++) {
           xtals.at(j)->lock()->lockForRead();
           if (xtals.at(j)->getStatus() == Xtal::Duplicate &&
@@ -2466,7 +2470,7 @@ namespace XtalOpt {
       // this duplicate (i. e., a chain duplicate). If there is, set
       // the duplicate string of xtals.at(j) to be same as xtals.at(i).
       else if (xtals.at(i)->getStatus() == Xtal::Duplicate &&
-              !xtals.at(i)->getDuplicateString().contains("Supercell")) {
+              !xtals.at(i)->isSupercell()) {
         for (size_t j = 0; j < xtals.size(); j++) {
           xtals.at(j)->lock()->lockForRead();
           if (i != j &&

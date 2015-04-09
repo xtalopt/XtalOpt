@@ -593,14 +593,28 @@ namespace GlobalSearch {
      */
     bool hasChangedSinceDupChecked() {return m_updatedSinceDupChecked;};
 
-    /**
-     * Structure tracks if it has been primitive-checked or not. Primitive
+    /** Structure tracks if it has been primitive-checked or not. Primitive
      * checking involves running the primitive reduction function to see if
      * a smaller FU primitive structure can be made.
      *
      * @sa setPrimitiveChecked()
      */
     bool wasPrimitiveChecked() {return m_primitiveChecked;};
+
+    /** If the structure was created by primitive reduction, then it does
+     * not proceed through the optimizer. This bool indicates if it was created
+     * by primitive reduction.
+     *
+     * @sa setIsPrimitiveReduction()
+     */
+    bool isPrimitiveReduction() {return m_isPrimitiveReduction;};
+
+    /** If the structure is found to be a supercell, set m_isSupercell to be
+     * true.
+     *
+     * @sa setIsSupercell()
+     */
+    bool isSupercell() {return m_isSupercell;};
 
     /** Sort the listed structures by their enthalpies
      *
@@ -1020,6 +1034,20 @@ namespace GlobalSearch {
      */
     void setPrimitiveChecked(bool b) {m_primitiveChecked = b;};
 
+    /** If the structure was created by primitive reduction, then it does
+     * not proceed through the optimizer. This bool indicates if it was created
+     * by primitive reduction.
+     *
+     * @sa isPrimitiveReduction()
+     */
+    void setIsPrimitiveReduction(bool b) {m_isPrimitiveReduction = b;};
+
+    /** If the structure is found to be a supercell, set this to be true.
+     *
+     * @sa isSupercell()
+     */
+    void setIsSupercell(bool b) {m_isSupercell = b;};
+
     /** Record the current time as when the current optimization
      * process started.
      *
@@ -1101,7 +1129,8 @@ namespace GlobalSearch {
   protected:
     // skip Doxygen parsing
     /// \cond
-    bool m_hasEnthalpy, m_updatedSinceDupChecked, m_primitiveChecked;
+    bool m_hasEnthalpy, m_updatedSinceDupChecked, m_primitiveChecked,
+         m_isPrimitiveReduction, m_isSupercell;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
          m_currentOptStep, m_failCount;
