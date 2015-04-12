@@ -231,10 +231,12 @@ m_queue->unlockForNaming(newStructure);
     /**
      * @return All Structures in m_tracker with status
      * Structure::Optimized or Structure::Supercell.
+     * Note that duplicates of a supercell at a particular formula unit are
+     * not included. Hence the "OneSupercellCopy."
      * This function was chosen because of its usefulness in some parts of
      * the program.
      */
-    QList<Structure*> getAllOptimizedAndSupercellStructures();
+    QList<Structure*> getAllOptimizedStructuresAndOneSupercellCopyOfEachFormulaUnit();
 
     /**
      * @return All Structures in m_tracker with status

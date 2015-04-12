@@ -768,8 +768,10 @@ namespace XtalOpt {
     if (!using_one_pool) {
 
       // We want to include supercell structures so that each individual formula
-      // unit can build off of supercells in their own gene pool.
-      structures = m_queue->getAllOptimizedAndSupercellStructures();
+      // unit can build off of supercells in their own gene pool. One supercell
+      // may be a duplicate of another supercell, though, and we don't want to
+      // include duplicate supercells. This function fixes that for us.
+      structures = m_queue->getAllOptimizedStructuresAndOneSupercellCopyOfEachFormulaUnit();
 
       // Remove all structures that do not have formula units of FU
       for (size_t i = 0; i < structures.size(); i++) {

@@ -947,7 +947,7 @@ namespace GlobalSearch {
     return list;
   }
 
-  QList<Structure*> QueueManager::getAllOptimizedAndSupercellStructures()
+  QList<Structure*> QueueManager::getAllOptimizedStructuresAndOneSupercellCopyOfEachFormulaUnit()
   {
     QList<Structure*> list;
     m_tracker->lockForRead();
@@ -955,9 +955,19 @@ namespace GlobalSearch {
     for (int i = 0; i < m_tracker->list()->size(); i++) {
       s = m_tracker->list()->at(i);
       s->lock()->lockForRead();
-      if (s->getStatus() == Structure::Optimized ||
-          s->getStatus() == Structure::Supercell)
+      if (s->getStatus() == Structure::Optimized)
         list.append(s);
+      else if (s->getStatus() == Structure::Supercell) {
+        // We only want to add one copy of each supercell for each formula
+        // unit. So do not add the supercell s if there is already one present.
+        for (size_t j = 0; j < list.size(); j++) {
+          if (list.at(j)->getStatus() == Structure::Supercell &&
+              list.at(j)->getSupercellString() == s->getSupercellString() &&
+              list.at(j)->getFormulaUnits() == s->getFormulaUnits())
+            break;
+          else if (j == list.size() - 1) list.append(s);
+        }
+      }
       s->lock()->unlock();
     }
     m_tracker->unlock();
