@@ -1421,6 +1421,9 @@ namespace XtalOpt {
     case Duplicate:
       status = "Duplicate";
       break;
+    case Supercell:
+      status = "Supercell";
+      break;
     case Error:
       status = "Error";
       break;

@@ -135,6 +135,10 @@ namespace GlobalSearch {
        * another. The other structure's information can be found in
        * getDuplicateString(). */
       Duplicate,
+      /** The Structure has been found to be a supercell of
+       * another. The other structure's information can be found in
+       * getSupercellString(). */
+      Supercell,
       /** The Structure is about to restart it's current optimization
        * step. */
       Restart
@@ -255,6 +259,12 @@ namespace GlobalSearch {
      * @sa setDuplicateString
      */
     QString getDuplicateString() const {return m_dupString;};
+
+    /** @return A string naming the Structure that this Structure is a
+     * supercell of.
+     * @sa setSupercellString
+     */
+    QString getSupercellString() const {return m_supString;};
 
     /** @return a string describing the ancestory of the Structure.
      * @sa setParents
@@ -608,13 +618,6 @@ namespace GlobalSearch {
      * @sa setIsPrimitiveReduction()
      */
     bool isPrimitiveReduction() {return m_isPrimitiveReduction;};
-
-    /** If the structure is found to be a supercell, set m_isSupercell to be
-     * true.
-     *
-     * @sa setIsSupercell()
-     */
-    bool isSupercell() {return m_isSupercell;};
 
     /** Sort the listed structures by their enthalpies
      *
@@ -1015,6 +1018,12 @@ namespace GlobalSearch {
      */
     void setDuplicateString(const QString & s) {m_dupString = s;};
 
+    /** @param s A string naming the Structure that this Structure is a
+     * supercell of.
+     * @sa getSupercellString
+     */
+    void setSupercellString(const QString & s) {m_supString = s;};
+
     /**
      * Structure can track if it has changed since it was last checked
      * in a duplicate finding routine. This is useful for cutting down
@@ -1041,12 +1050,6 @@ namespace GlobalSearch {
      * @sa isPrimitiveReduction()
      */
     void setIsPrimitiveReduction(bool b) {m_isPrimitiveReduction = b;};
-
-    /** If the structure is found to be a supercell, set this to be true.
-     *
-     * @sa isSupercell()
-     */
-    void setIsSupercell(bool b) {m_isSupercell = b;};
 
     /** Record the current time as when the current optimization
      * process started.
@@ -1130,11 +1133,11 @@ namespace GlobalSearch {
     // skip Doxygen parsing
     /// \cond
     bool m_hasEnthalpy, m_updatedSinceDupChecked, m_primitiveChecked,
-         m_isPrimitiveReduction, m_isSupercell;
+         m_isPrimitiveReduction;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
          m_currentOptStep, m_failCount;
-    QString m_parents, m_dupString, m_rempath;
+    QString m_parents, m_dupString, m_supString, m_rempath;
     double m_enthalpy, m_PV;
     State m_status;
     QDateTime m_optStart, m_optEnd;

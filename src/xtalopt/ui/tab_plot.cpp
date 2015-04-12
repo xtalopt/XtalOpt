@@ -37,7 +37,8 @@ namespace XtalOpt {
     AbstractTab(parent, p),
     m_plot_mutex(new QReadWriteLock()),
     m_plotObject(0),
-    d_plotObject(0)
+    d_plotObject(0),
+    s_plotObject(0)
   {
     ui.setupUi(m_tab_widget);
 
@@ -242,6 +243,7 @@ namespace XtalOpt {
 
     m_plotObject = new PlotObject (Qt::blue, PlotObject::Points, 4, PlotObject::Triangle);
     d_plotObject = new PlotObject (Qt::darkGreen, PlotObject::Points, 4, PlotObject::Square);
+    s_plotObject = new PlotObject (QColor(204,102,0,255), PlotObject::Points, 4, PlotObject::Square);
 
     double x, y;
     int ind;
@@ -290,12 +292,16 @@ namespace XtalOpt {
       }
 
       if ((xtal->getStatus() != Xtal::Optimized && !showIncompletes)) {
-        if  (!(xtal->getStatus() == Xtal::Duplicate && showDuplicates)) {
+        if  (!((xtal->getStatus() == Xtal::Duplicate ||
+                xtal->getStatus() == Xtal::Supercell) &&
+                showDuplicates)) {
           continue;
         }
       }
 
-      if  (xtal->getStatus() == Xtal::Duplicate && !showDuplicates) {
+      if  ((xtal->getStatus() == Xtal::Duplicate ||
+            xtal->getStatus() == Xtal::Supercell) &&
+            !showDuplicates) {
         continue;
       }
 
@@ -436,6 +442,8 @@ namespace XtalOpt {
 
       if (xtal->getStatus() == Xtal::Duplicate) {
           pp = d_plotObject->addPoint(x,y);
+      } else if (xtal->getStatus() == Xtal::Supercell) {
+          pp = s_plotObject->addPoint(x,y);
       } else {
           pp = m_plotObject->addPoint(x,y);
       }
@@ -589,6 +597,7 @@ namespace XtalOpt {
 
     ui.plot_plot->addPlotObject(m_plotObject);
     ui.plot_plot->addPlotObject(d_plotObject);
+    ui.plot_plot->addPlotObject(s_plotObject);
     if (traceObject) {
       int numPoints = traceObject->points().size();
       for (int i = numPoints - 1;
@@ -632,6 +641,25 @@ namespace XtalOpt {
                               oldDataRect.top(), // These are backwards from intuition,
                               oldDataRect.bottom()); // but that's how Qt works...
     }
+
+    // Do not scale if s_plotObject is empty.
+    // If we have one point, set limits to something appropriate:
+    if (s_plotObject->points().size() == 1) {
+      double x = s_plotObject->points().at(0)->x();
+      double y = s_plotObject->points().at(0)->y();
+      ui.plot_plot->setDefaultLimits(x-1, x+1, y+1, y-1);
+    }
+    // For multiple points, let plotwidget handle it.
+    else if (s_plotObject->points().size() >= 2) {
+      // run scaleLimits to set the default limits, but then set the
+      // limits to the previous region
+      ui.plot_plot->scaleLimits();
+      ui.plot_plot->setLimits(oldDataRect.left(),
+                              oldDataRect.right(),
+                              oldDataRect.top(), // These are backwards from intuition,
+                              oldDataRect.bottom()); // but that's how Qt works...
+    }
+
  }
 
   void TabPlot::plotDistHist()
@@ -778,7 +806,18 @@ namespace XtalOpt {
         distance = cur;
       }
     }
-   selectMoleculeFromPlot(pt);
+    foreach ( PlotPoint *pp, s_plotObject->points() ) {
+      refPt = ui.plot_plot->mapToWidget(pp->position()).toPoint();
+      dx = refPt.x() - cx;
+      dy = refPt.y() - cy;
+      // Squared distance. Don't bother with sqrts here:
+      cur = dx*dx + dy*dy;
+      if ( cur < distance ) {
+        pt = pp;
+        distance = cur;
+      }
+    }
+    selectMoleculeFromPlot(pt);
   }
 
   void TabPlot::selectMoleculeFromPlot(PlotPoint *pp)

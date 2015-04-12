@@ -762,34 +762,18 @@ namespace XtalOpt {
   // Identical to the previous generateNewXtal() function except the number formula units to use have been specified
   Xtal* XtalOpt::generateNewXtal(uint FU)
   {
-    // Get all optimized structures
-    QList<Structure*> structures = m_queue->getAllStructures();
-
-    // Remove all structures that are not on the formula units list...
-    for (size_t i = 0; i < structures.size(); i++) {
-      if (!onTheFormulaUnitsList(structures.at(i)->getFormulaUnits())) {
-        structures.removeAt(i);
-        i--;
-      }
-    }
+    QList<Structure*> structures;
 
     // If we are NOT using one pool. FU == 0 implies that we are using one pool
     if (!using_one_pool) {
+
+      // We want to include supercell structures so that each individual formula
+      // unit can build off of supercells in their own gene pool.
+      structures = m_queue->getAllOptimizedAndSupercellStructures();
+
       // Remove all structures that do not have formula units of FU
       for (size_t i = 0; i < structures.size(); i++) {
         if (structures.at(i)->getFormulaUnits() != FU) {
-          structures.removeAt(i);
-          i--;
-        }
-      }
-      // Performing a separate loop to not complicate the different
-      // combinations of removing structures for different reasons...
-      // This removes all structures that are not optimized and also
-      // not supercells. We want to keep the supercells while not
-      // using one pool.
-      for (size_t i = 0; i < structures.size(); i++) {
-        if (structures.at(i)->getStatus() != Structure::Optimized &&
-            !structures.at(i)->isSupercell()) {
           structures.removeAt(i);
           i--;
         }
@@ -798,11 +782,14 @@ namespace XtalOpt {
 
     // Just remove non-optimized structures if using_one_pool
     else if (using_one_pool) {
-      for (size_t i = 0; i < structures.size(); i++) {
-        if (structures.at(i)->getStatus() != Structure::Optimized) {
-          structures.removeAt(i);
-          i--;
-        }
+      structures = m_queue->getAllOptimizedStructures();
+    }
+
+    // Remove all structures that are not on the formula units list...
+    for (size_t i = 0; i < structures.size(); i++) {
+      if (!onTheFormulaUnitsList(structures.at(i)->getFormulaUnits())) {
+        structures.removeAt(i);
+        i--;
       }
     }
 
@@ -1103,7 +1090,7 @@ namespace XtalOpt {
       // one primitive xtal of a given xtal, so try to write for lock. If it
       // can't be done, then just continue to the next one.
       if (!optimizedStructures.at(i)->lock()->tryLockForWrite()) continue;
-      // If the structure has been supercell checked, we don't need to check
+      // If the structure has been primitive checked, we don't need to check
       // it again. If it hasn't been duplicate checked, yet, let it be
       // duplicate checked first (so we don't check unnecessary structures).
       if (!optimizedStructures.at(i)->wasPrimitiveChecked() &&
@@ -2116,6 +2103,9 @@ namespace XtalOpt {
 
       locker.unlock();
 
+      // Indicate that we are resetting the duplicate checking.
+      xtal->structureChanged();
+
       // Skip over the next parts if it is a primitive xtal of another xtal
       if (xtal->isPrimitiveReduction()) continue;
 
@@ -2248,9 +2238,10 @@ namespace XtalOpt {
     for (int i = 0; i < structures->size(); i++) {
       xtal = qobject_cast<Xtal*>(structures->at(i));
       xtal->lock()->lockForWrite();
-      if (xtal->getStatus() == Xtal::Duplicate)
+      // Let's reset supercells here too
+      if (xtal->getStatus() == Xtal::Duplicate ||
+          xtal->getStatus() == Xtal::Supercell)
         xtal->setStatus(Xtal::Optimized);
-      if (xtal->isSupercell()) xtal->setIsSupercell(false);
       xtal->structureChanged(); // Reset cached comparisons
       xtal->lock()->unlock();
     }
@@ -2333,16 +2324,18 @@ namespace XtalOpt {
       // remain in the gene pool.
       largerFormulaUnitXtal->lock()->unlock();
       largerFormulaUnitXtal->lock()->lockForWrite();
-      largerFormulaUnitXtal->setStatus(Xtal::Duplicate);
-      largerFormulaUnitXtal->setIsSupercell(true);
+      largerFormulaUnitXtal->setStatus(Xtal::Supercell);
       // If the smaller formula unit xtal is already a duplicate, make the
       // supercell a supercell the structure that the smaller formula unit
       // duplicate points to.
       if (smallerFormulaUnitXtal->getStatus() == Xtal::Duplicate)
-        largerFormulaUnitXtal->setDuplicateString(
-                    smallerFormulaUnitXtal->getDuplicateString()+": Supercell");
+        largerFormulaUnitXtal->setSupercellString(
+                    smallerFormulaUnitXtal->getDuplicateString());
+      else if (smallerFormulaUnitXtal->getStatus() == Xtal::Supercell)
+        largerFormulaUnitXtal->setSupercellString(
+                    smallerFormulaUnitXtal->getSupercellString());
       // Otherwise, just make it a supercell of the smaller formula unit xtal
-      else largerFormulaUnitXtal->setDuplicateString(QString("%1x%2: Supercell")
+      else largerFormulaUnitXtal->setSupercellString(QString("%1x%2")
                                    .arg(smallerFormulaUnitXtal->getGeneration())
                                    .arg(smallerFormulaUnitXtal->getIDNumber()));
     }
@@ -2443,6 +2436,7 @@ namespace XtalOpt {
 
     // Tried to run this concurrently. Would freeze upon resuming for some
     // reason, though...
+    // QtConcurrent::blockingMap(supSts, checkIfSups);
     for (size_t i = 0; i < supSts.size(); i++) checkIfSups(supSts[i]);
 
     // The purpose of this next section is to just make the duplicate strings
@@ -2459,9 +2453,8 @@ namespace XtalOpt {
               xtals.at(i)->getParents() == tr("Primitive of %1x%2")
                                             .arg((xtals.at(j))->getGeneration())
                                             .arg(xtals.at(j)->getIDNumber())) {
-            xtals.at(j)->setStatus(Xtal::Duplicate);
-            xtals.at(j)->setIsSupercell(true);
-            xtals.at(j)->setDuplicateString(QString("%1x%2: Supercell")
+            xtals.at(j)->setStatus(Xtal::Supercell);
+            xtals.at(j)->setSupercellString(QString("%1x%2")
                                             .arg(xtals.at(i)->getGeneration())
                                             .arg(xtals.at(i)->getIDNumber()));
           }
@@ -2473,9 +2466,8 @@ namespace XtalOpt {
       // supercells as well.
       // Logic goes as follows: if i and j are both duplicates, i is a supercell
       // and j is not, and j is a duplicate of i, then j should have the same
-      // duplicate string as i.
-      if (xtals.at(i)->getStatus() == Xtal::Duplicate &&
-          xtals.at(i)->isSupercell()) {
+      // supercell string as i.
+      if (xtals.at(i)->getStatus() == Xtal::Supercell) {
         for (size_t j = 0; j < xtals.size(); j++) {
           xtals.at(j)->lock()->lockForRead();
           if (xtals.at(j)->getStatus() == Xtal::Duplicate &&
@@ -2484,17 +2476,17 @@ namespace XtalOpt {
                                             .arg(xtals.at(i)->getIDNumber())) {
             xtals.at(j)->lock()->unlock();
             xtals.at(j)->lock()->lockForWrite();
-            xtals.at(j)->setDuplicateString(xtals.at(i)->getDuplicateString());
+            xtals.at(j)->setStatus(Xtal::Supercell);
+            xtals.at(j)->setSupercellString(xtals.at(i)->getSupercellString());
           }
           xtals.at(j)->lock()->unlock();
         }
       }
-      // If xtals.at(i) is a duplicate and is NOT a supercell, then check
+      // If xtals.at(i) is a duplicate, then check
       // to see if there exists an xtals.at(j) that is a duplicate of
       // this duplicate (i. e., a chain duplicate). If there is, set
       // the duplicate string of xtals.at(j) to be same as xtals.at(i).
-      else if (xtals.at(i)->getStatus() == Xtal::Duplicate &&
-              !xtals.at(i)->isSupercell()) {
+      else if (xtals.at(i)->getStatus() == Xtal::Duplicate) {
         for (size_t j = 0; j < xtals.size(); j++) {
           xtals.at(j)->lock()->lockForRead();
           if (i != j &&

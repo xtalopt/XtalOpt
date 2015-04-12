@@ -391,6 +391,11 @@ namespace XtalOpt {
         .arg(xtal->getDuplicateString());
       e.brush.setColor(Qt::darkGreen);
       break;
+    case Xtal::Supercell:
+      e.status = tr("Supercell of %1")
+        .arg(xtal->getSupercellString());
+      e.brush.setColor(QColor(204,102,0,255));
+      break;
     case Xtal::StepOptimized:
       e.status = "Checking status...";
       e.brush.setColor(Qt::cyan);
@@ -1021,6 +1026,9 @@ namespace XtalOpt {
                 break;
             case Xtal::Duplicate:
                 out << "Duplicate";
+                break;
+            case Xtal::Supercell:
+                out << "Supercell";
                 break;
             case Xtal::Error:
                 out << "Error";

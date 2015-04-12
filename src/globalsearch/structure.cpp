@@ -45,7 +45,6 @@ namespace GlobalSearch {
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
     m_isPrimitiveReduction(false),
-    m_isSupercell(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -67,7 +66,6 @@ namespace GlobalSearch {
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
     m_isPrimitiveReduction(false),
-    m_isSupercell(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -87,7 +85,6 @@ namespace GlobalSearch {
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
     m_isPrimitiveReduction(false),
-    m_isSupercell(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -210,7 +207,6 @@ namespace GlobalSearch {
     m_hasEnthalpy                = other.m_hasEnthalpy;
     m_primitiveChecked           = other.m_primitiveChecked;
     m_isPrimitiveReduction       = other.m_isPrimitiveReduction;
-    m_isSupercell                = other.m_isSupercell;
     m_histogramGenerationPending = other.m_histogramGenerationPending;
     m_generation                 = other.m_generation;
     m_id                         = other.m_id;
@@ -673,6 +669,9 @@ namespace GlobalSearch {
       break;
     case Duplicate:
       status = "Duplicate";
+      break;
+    case Supercell:
+      status = "Supercell";
       break;
     case Error:
       status = "Error";
