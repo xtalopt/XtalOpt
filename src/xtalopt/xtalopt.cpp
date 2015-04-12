@@ -763,9 +763,10 @@ namespace XtalOpt {
   Xtal* XtalOpt::generateNewXtal(uint FU)
   {
     // Get all optimized structures
-    QList<Structure*> structures = m_queue->getAllOptimizedStructures();
+    QList<Structure*> structures = m_queue->getAllStructures();
 
-    for (int i = 0; i < structures.size(); i++) {
+    // Remove all structures that are not on the formula units list...
+    for (size_t i = 0; i < structures.size(); i++) {
       if (!onTheFormulaUnitsList(structures.at(i)->getFormulaUnits())) {
         structures.removeAt(i);
         i--;
@@ -775,13 +776,36 @@ namespace XtalOpt {
     // If we are NOT using one pool. FU == 0 implies that we are using one pool
     if (!using_one_pool) {
       // Remove all structures that do not have formula units of FU
-      for (int i = 0; i < structures.size(); i++) {
+      for (size_t i = 0; i < structures.size(); i++) {
         if (structures.at(i)->getFormulaUnits() != FU) {
           structures.removeAt(i);
           i--;
         }
       }
+      // Performing a separate loop to not complicate the different
+      // combinations of removing structures for different reasons...
+      // This removes all structures that are not optimized and also
+      // not supercells. We want to keep the supercells while not
+      // using one pool.
+      for (size_t i = 0; i < structures.size(); i++) {
+        if (structures.at(i)->getStatus() != Structure::Optimized &&
+            !structures.at(i)->isSupercell()) {
+          structures.removeAt(i);
+          i--;
+        }
+      }
     }
+
+    // Just remove non-optimized structures if using_one_pool
+    else if (using_one_pool) {
+      for (size_t i = 0; i < structures.size(); i++) {
+        if (structures.at(i)->getStatus() != Structure::Optimized) {
+          structures.removeAt(i);
+          i--;
+        }
+      }
+    }
+
     // Check to see if there are enough optimized structure to perform
     // genetic operations
     if (structures.size() < 3) {
