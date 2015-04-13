@@ -37,6 +37,13 @@ namespace XtalOpt {
 
     xtalopt->loaded =   false;
 
+    // Initialize the formula units list...
+    if (xtalopt->formulaUnitsList.isEmpty()) {
+      xtalopt->formulaUnitsList.append(1);
+      xtalopt->minFU = 1;
+      xtalopt->maxFU = 1;
+    }
+
     // composition connections
     connect(ui.edit_composition, SIGNAL(textChanged(QString)),
             this, SLOT(getComposition(QString)));

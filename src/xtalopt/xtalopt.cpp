@@ -658,11 +658,6 @@ namespace XtalOpt {
   // Overloaded version of generateRandomXtal(uint generation, uint id, uint FU) without FU specified
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
   {
-    // Just in case the formulaUnitsList is empty for some reason...
-    if (formulaUnitsList.isEmpty() == true) {
-      formulaUnitsList.append(1);
-    }
-
     INIT_RANDOM_GENERATOR();
     QList<uint> tempFormulaUnitsList = formulaUnitsList;
     if (using_mitotic_growth && !using_one_pool) {
@@ -1077,11 +1072,6 @@ namespace XtalOpt {
   // Overloaded function of generateNewXtal(uint FU)
   Xtal* XtalOpt::generateNewXtal()
   {
-        // Just in case the formulaUnitsList is empty for some reason...
-    if (formulaUnitsList.isEmpty() == true) {
-      formulaUnitsList.append(1);
-    }
-
     // Check to see if there are any structures that need to be primitive
     // checked. If there are, then generate and return one.
     QList<Structure*> optimizedStructures =
