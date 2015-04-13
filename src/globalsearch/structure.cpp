@@ -257,6 +257,7 @@ namespace GlobalSearch {
     settings->setValue("index", getIndex());
     settings->setValue("rank", getRank());
     settings->setValue("formulaUnits", getFormulaUnits());
+    settings->setValue("primitiveChecked", wasPrimitiveChecked());
     settings->setValue("isPrimitiveReduction", isPrimitiveReduction());
     settings->setValue("jobID", getJobID());
     settings->setValue("currentOptStep", getCurrentOptStep());
@@ -348,6 +349,7 @@ namespace GlobalSearch {
       setIndex(          settings->value("index",          0).toInt());
       setRank(           settings->value("rank",           0).toInt());
       setFormulaUnits(   settings->value("formulaUnits",   0).toInt());
+      setPrimitiveChecked(settings->value("primitiveChecked",0).toBool());
       setIsPrimitiveReduction(
                    settings->value("isPrimitiveReduction", 0).toBool());
       setJobID(          settings->value("jobID",          0).toInt());

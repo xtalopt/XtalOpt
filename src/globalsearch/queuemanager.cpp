@@ -947,7 +947,7 @@ namespace GlobalSearch {
     return list;
   }
 
-  QList<Structure*> QueueManager::getAllOptimizedStructuresAndOneSupercellCopyOfEachFormulaUnit()
+  QList<Structure*> QueueManager::getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit()
   {
     QList<Structure*> list;
     m_tracker->lockForRead();

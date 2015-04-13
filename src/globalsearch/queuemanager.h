@@ -236,7 +236,7 @@ m_queue->unlockForNaming(newStructure);
      * This function was chosen because of its usefulness in some parts of
      * the program.
      */
-    QList<Structure*> getAllOptimizedStructuresAndOneSupercellCopyOfEachFormulaUnit();
+    QList<Structure*> getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
 
     /**
      * @return All Structures in m_tracker with status
