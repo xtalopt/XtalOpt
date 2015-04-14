@@ -126,6 +126,15 @@ namespace XtalOpt {
       return;
     }
 
+    if (QFile::exists(filePath + "/xtalopt.state")) {
+      bool proceed;
+      needBoolean(tr("Warning: XtalOpt data is already saved at: %1\
+                     \n\nDo you wish to proceed and overwrite it?")
+                  .arg(filePath),
+                  &proceed);
+      if (!proceed) return;
+    }
+
     // Are the selected queueinterface and optimizer happy?
     QString err;
     if (!m_optimizer->isReadyToSearch(&err)) {
