@@ -32,6 +32,7 @@
 #include <globalsearch/slottedwaitcondition.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/bt.h>
+#include <globalsearch/fileutils.h>
 
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
@@ -126,6 +127,7 @@ namespace XtalOpt {
       return;
     }
 
+    // Check if xtalopt data is already saved at the filePath
     if (QFile::exists(filePath + "/xtalopt.state")) {
       bool proceed;
       needBoolean(tr("Warning: XtalOpt data is already saved at: %1\
@@ -133,6 +135,12 @@ namespace XtalOpt {
                   .arg(filePath),
                   &proceed);
       if (!proceed) return;
+      else {
+        bool result = FileUtils::removeDir(filePath);
+        if (!result) {
+          error(tr("Error removing directory at:\n %1").arg(filePath));
+        }
+      }
     }
 
     // Are the selected queueinterface and optimizer happy?
