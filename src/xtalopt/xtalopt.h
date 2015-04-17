@@ -192,6 +192,12 @@ namespace XtalOpt {
     void resetDuplicates_();
     void checkForDuplicates_();
     void generateNewStructure_();
+    struct supCheckStruct
+    {
+      Xtal *i, *j;
+      double tol_len, tol_ang;
+    };
+    void checkIfSups(supCheckStruct &st);
 
     Xtal* selectXtalFromProbabilityList(
                                QList<GlobalSearch::Structure*> structures,

@@ -1152,10 +1152,19 @@ namespace XtalOpt {
 
     // Get all structures to count numbers of each formula unit
     QList<Structure*> allStructures = m_queue->getAllStructures();
-
-    // Count number of each formula unit
-    Structure *structure;
-    QList<uint> numberOfEachFormulaUnit = structure->countStructuresOfEachFormulaUnit(&allStructures, maxFU);
+    QList<uint> numberOfEachFormulaUnit;
+    // Count the number of structures of each formula unit
+    if (!allStructures.isEmpty()) {
+      numberOfEachFormulaUnit =
+          allStructures.at(0)->countStructuresOfEachFormulaUnit(&allStructures,
+                                                                maxFU);
+    }
+    // Just in case allStructures is empty, we'll append the list to be zeros...
+    else {
+      for (size_t i = 0; i <= maxFU; i++) {
+        numberOfEachFormulaUnit.append(0);
+      }
+    }
 
     // If there are not yet at least 5 of any one FU, make more of that FU
     // Will generate smaller FU's first
@@ -2264,12 +2273,7 @@ namespace XtalOpt {
     double tol_len, tol_ang;
   };
 
-  // Helper Supercell Check Struct
-  struct supCheckStruct
-  {
-    Xtal *i, *j;
-    double tol_len, tol_ang;
-  };
+  // Helper Supercell Check Struct is defined in the header
 
   void checkIfDups(dupCheckStruct & st)
   {
@@ -2298,10 +2302,8 @@ namespace XtalOpt {
     st.j->lock()->unlock();
   }
 
-  void checkIfSups(supCheckStruct & st)
+  void XtalOpt::checkIfSups(supCheckStruct & st)
   {
-
-    XtalOpt *xtalopt;
     Xtal *smallerFormulaUnitXtal, *largerFormulaUnitXtal;
     st.i->lock()->lockForRead();
     st.j->lock()->lockForRead();
@@ -2332,7 +2334,7 @@ namespace XtalOpt {
       atom->setPos(atoms.at(i)->pos());
     }
 
-    Xtal* tempXtal2 = xtalopt->generateSuperCell(
+    Xtal* tempXtal2 = generateSuperCell(
                                  smallerFormulaUnitXtal->getFormulaUnits(),
                                  largerFormulaUnitXtal->getFormulaUnits(),
                                  tempXtal, false, false);
