@@ -815,8 +815,7 @@ namespace XtalOpt {
       // Check to see if a supercell should be formed by mitosis
       if (using_mitotic_growth && FU != 0) {
         QList<Structure*> tempStructures = m_queue->getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
-        Structure* structure;
-        QList<uint> numberOfEachFormulaUnit = structure->countStructuresOfEachFormulaUnit(&tempStructures, maxFU);
+        QList<uint> numberOfEachFormulaUnit = Structure::countStructuresOfEachFormulaUnit(&tempStructures, maxFU);
 
         // The number of formula units to use to make the super cell must be a multiple of the larger formula unit, and there must be as many at least five optimized structures. If there aren't, then generate more.
         for (int i = FU - 1; 0 < i; i--) {
@@ -1152,19 +1151,11 @@ namespace XtalOpt {
 
     // Get all structures to count numbers of each formula unit
     QList<Structure*> allStructures = m_queue->getAllStructures();
-    QList<uint> numberOfEachFormulaUnit;
+
     // Count the number of structures of each formula unit
-    if (!allStructures.isEmpty()) {
-      numberOfEachFormulaUnit =
-          allStructures.at(0)->countStructuresOfEachFormulaUnit(&allStructures,
+    QList<uint> numberOfEachFormulaUnit =
+           Structure::countStructuresOfEachFormulaUnit(&allStructures,
                                                                 maxFU);
-    }
-    // Just in case allStructures is empty, we'll append the list to be zeros...
-    else {
-      for (size_t i = 0; i <= maxFU; i++) {
-        numberOfEachFormulaUnit.append(0);
-      }
-    }
 
     // If there are not yet at least 5 of any one FU, make more of that FU
     // Will generate smaller FU's first
@@ -2102,14 +2093,19 @@ namespace XtalOpt {
       QWriteLocker locker (xtal->lock());
       xtal->moveToThread(m_tracker->thread());
       xtal->setupConnections();
-      // Add empty atoms to xtal, updateXtal will populate it
-      for (int j = 0; j < keys.size(); j++) {
-        unsigned int quantity = comp.value(keys.at(j)).quantity;
-        for (uint k = 0; k < quantity; k++)
-          xtal->addAtom();
-      }
+
       xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
       xtal->readSettings(xtalStateFileName);
+
+      // Add empty atoms to xtal, updateXtal will populate it
+      // We will add atoms to primitive xtals manually
+      if (!xtal->isPrimitiveReduction()) {
+        for (int j = 0; j < keys.size(); j++) {
+          unsigned int quantity = comp.value(keys.at(j)).quantity;
+          for (uint k = 0; k < quantity; k++)
+            xtal->addAtom();
+        }
+      }
 
       // Store current state -- updateXtal will overwrite it.
       Xtal::State state = xtal->getStatus();
@@ -2125,7 +2121,12 @@ namespace XtalOpt {
       xtal->structureChanged();
 
       // Skip over the next parts if it is a primitive xtal of another xtal
-      if (xtal->isPrimitiveReduction()) continue;
+      if (xtal->isPrimitiveReduction()) {
+        // Everything is already set up for a primitive xtal when the
+        // settings are read
+        loadedStructures.append(qobject_cast<Structure*>(xtal));
+        continue;
+      }
 
       if (!m_optimizer->load(xtal)) {
         error(tr("Error, no (or not appropriate for %1) xtal data in "
@@ -2468,8 +2469,7 @@ namespace XtalOpt {
         for (size_t j = 0; j < xtals.size(); j++) {
           if (i == j) continue;
           xtals.at(j)->lock()->lockForRead();
-          if (xtals.at(j)->getStatus() != Xtal::Supercell &&
-              xtals.at(i)->getParents() == tr("Primitive of %1x%2")
+          if (xtals.at(i)->getParents() == tr("Primitive of %1x%2")
                                             .arg((xtals.at(j))->getGeneration())
                                             .arg(xtals.at(j)->getIDNumber())) {
             xtals.at(j)->setStatus(Xtal::Supercell);

@@ -301,8 +301,10 @@ namespace GlobalSearch {
     // the number of formula units with the formula-unit-finding algorithm.
     uint getFormulaUnits() const;
 
-    //returns the number of structures of each formula unit up to the user-specified maximum formula units. numberOfEachFormulaUnit.at(n) is the number of structures with formula units n.
-    QList<uint> countStructuresOfEachFormulaUnit(QList<Structure*> *structures, int maxFU);
+    // returns the number of structures of each formula unit up to the
+    // user-specified maximum formula units. numberOfEachFormulaUnit.at(n)
+    // is the number of structures with formula units n.
+    static QList<uint> countStructuresOfEachFormulaUnit(QList<Structure*> *structures, int maxFU);
 
      /** @return The time that the current optimization step started.
      * @sa getOptTimerEnd
@@ -609,7 +611,7 @@ namespace GlobalSearch {
      *
      * @sa setPrimitiveChecked()
      */
-    bool wasPrimitiveChecked() {return m_primitiveChecked;};
+    bool wasPrimitiveChecked() const {return m_primitiveChecked;};
 
     /** If the structure was created by primitive reduction, then it does
      * not proceed through the optimizer. This bool indicates if it was created
@@ -617,7 +619,7 @@ namespace GlobalSearch {
      *
      * @sa setIsPrimitiveReduction()
      */
-    bool isPrimitiveReduction() {return m_isPrimitiveReduction;};
+    bool isPrimitiveReduction() const {return m_isPrimitiveReduction;};
 
     /** Sort the listed structures by their enthalpies
      *
@@ -1128,6 +1130,24 @@ namespace GlobalSearch {
      * @sa readSettings
      */
     void readStructureSettings(const QString &filename);
+
+    /**
+     * Write data for a primitive structure to a file.
+     * Data includes enthalpy, energy, cell vectors, and atom info
+     * @param filename Filename to write data to.
+     * @sa writeStructureSettings
+     * @sa readStructureSettings
+     */
+    void writePrimitiveSettings(const QString &filename);
+
+    /**
+     * Read data concerning a primitive structure from a file.
+     * Data includes enthalpy, energy, cell vectors, and atom info
+     * @param filename Filename to read data from.
+     * @sa writeSettings
+     * @sa readSettings
+     */
+    void readPrimitiveSettings(const QString &filename);
 
   protected:
     // skip Doxygen parsing

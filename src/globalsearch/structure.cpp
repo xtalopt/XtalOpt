@@ -15,6 +15,7 @@
 
 #include <globalsearch/structure.h>
 #include <globalsearch/macros.h>
+#include <globalsearch/obeigenconv.h>
 
 #include <avogadro/primitive.h>
 #include <avogadro/molecule.h>
@@ -335,6 +336,10 @@ namespace GlobalSearch {
 
     settings->endGroup(); // history
     settings->endGroup(); // structure
+
+    // This will write the enthalpy, energy, cell information, and atom types
+    // and positions for a primitive cell.
+    if (this->isPrimitiveReduction()) writePrimitiveSettings(filename);
     DESTROY_SETTINGS(filename);
   }
 
@@ -460,6 +465,117 @@ namespace GlobalSearch {
     default:
       break;
     }
+    // This will read the enthalpy, energy, cell information, and atom types
+    // and positions for a primitive cell.
+    if (this->isPrimitiveReduction()) readPrimitiveSettings(filename);
+  }
+
+  void Structure::writePrimitiveSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    // May set versions in the future
+    // const int VERSION = 1;
+    settings->beginGroup("structure/primitive");
+    settings->setValue("enthalpy", this->getEnthalpy());
+    settings->setValue("energy",   this->getEnergy());
+
+    // Atomic numbers
+    settings->beginWriteArray("atomicNums");
+    for (size_t i = 0; i < numAtoms(); i++) {
+      settings->setArrayIndex(i);
+      settings->setValue("value", QString::number(atom(i)->atomicNumber()));
+    }
+    settings->endArray();
+
+    // Cartesian coords
+    Vector3d cartCoords;
+    settings->beginWriteArray("coords");
+    for (size_t i = 0; i < numAtoms(); i++) {
+      cartCoords = *(atom(i)->pos());
+      settings->setArrayIndex(i);
+      settings->setValue("x", QString::number(cartCoords[0]));
+      settings->setValue("y", QString::number(cartCoords[1]));
+      settings->setValue("z", QString::number(cartCoords[2]));
+    }
+    settings->endArray();
+
+    // Cell info
+    matrix3x3 obcell = OBUnitCell()->GetCellMatrix();
+    settings->beginGroup("cell");
+    settings->setValue("00", (obcell.Get(0,0)));
+    settings->setValue("01", (obcell.Get(0,1)));
+    settings->setValue("02", (obcell.Get(0,2)));
+    settings->setValue("10", (obcell.Get(1,0)));
+    settings->setValue("11", (obcell.Get(1,1)));
+    settings->setValue("12", (obcell.Get(1,2)));
+    settings->setValue("20", (obcell.Get(2,0)));
+    settings->setValue("21", (obcell.Get(2,1)));
+    settings->setValue("22", (obcell.Get(2,2)));
+    settings->endGroup(); // cell
+    settings->endGroup(); // structure/primitive
+    DESTROY_SETTINGS(filename);
+  }
+
+  void Structure::readPrimitiveSettings(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("structure/primitive");
+    setEnthalpy(settings->value("enthalpy", 0).toDouble());
+    setEnergy(settings->value("energy", 0).toDouble());
+
+    //  Atomic nums
+    size_t size;
+    size = settings->beginReadArray("atomicNums");
+    QList<unsigned int> atomicNums;
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      atomicNums.append(settings->value("value").toUInt());
+    }
+    settings->endArray();
+
+    size = settings->beginReadArray("coords");
+    QList<Vector3d> cartCoords;
+    double x, y, z;
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      x = settings->value("x").toDouble();
+      y = settings->value("y").toDouble();
+      z = settings->value("z").toDouble();
+      cartCoords.append(Eigen::Vector3d(x, y, z));
+    }
+    settings->endArray();
+
+    Eigen::Matrix3d cellMatrix;
+    settings->beginGroup("cell");
+    cellMatrix(0, 0) = settings->value("00").toDouble();
+    cellMatrix(0, 1) = settings->value("01").toDouble();
+    cellMatrix(0, 2) = settings->value("02").toDouble();
+    cellMatrix(1, 0) = settings->value("10").toDouble();
+    cellMatrix(1, 1) = settings->value("11").toDouble();
+    cellMatrix(1, 2) = settings->value("12").toDouble();
+    cellMatrix(2, 0) = settings->value("20").toDouble();
+    cellMatrix(2, 1) = settings->value("21").toDouble();
+    cellMatrix(2, 2) = settings->value("22").toDouble();
+    settings->endGroup();
+
+    // Set the cell info
+    OpenBabel::OBUnitCell *obcell = OBUnitCell();
+    obcell->SetData(Eigen2OB(cellMatrix));
+    setOBUnitCell(obcell);
+
+    // Just in case there were atoms set elsewhere for some reason...
+    QList<Atom*> atomList = atoms();
+    for (size_t i = 0; i < atomList.size(); i++)
+      this->removeAtom(atomList.at(i));
+
+    // Now let's add in the atoms...
+    for (size_t i = 0; i < atomicNums.size(); i++) {
+      Atom* newAtom = this->addAtom();
+      newAtom->setAtomicNumber(atomicNums.at(i));
+      newAtom->setPos(cartCoords.at(i));
+    }
+
+    settings->endGroup();
   }
 
   void Structure::structureChanged()
@@ -1321,9 +1437,12 @@ namespace GlobalSearch {
     return formulaUnits;
   }
 
-  //Returns the number of structures of each formula unit up to the user-specified maximum formula units numberOfEachFormulaUnit.at(n) is the number of structures with formula units n.
+  // Returns the number of structures of each formula unit up to the
+  // user-specified maximum formula units numberOfEachFormulaUnit.at(n) is the
+  // number of structures with formula units n.
   QList<uint> Structure::countStructuresOfEachFormulaUnit(QList<Structure*> *structures, int maxFU)
-  { QList<uint> numberOfEachFormulaUnit;
+  {
+    QList<uint> numberOfEachFormulaUnit;
     uint numStructs = structures->size();
     Structure *structure_j = 0;
     for (int i = 0; i <= maxFU; i++) {
