@@ -47,6 +47,7 @@ namespace GlobalSearch {
     m_primitiveChecked(false),
     m_skippedOptimization(false),
     m_supercellGenerationChecked(false),
+    m_saveSuccessful(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -69,6 +70,7 @@ namespace GlobalSearch {
     m_primitiveChecked(false),
     m_skippedOptimization(false),
     m_supercellGenerationChecked(false),
+    m_saveSuccessful(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -89,6 +91,7 @@ namespace GlobalSearch {
     m_primitiveChecked(false),
     m_skippedOptimization(false),
     m_supercellGenerationChecked(false),
+    m_saveSuccessful(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -343,9 +346,9 @@ namespace GlobalSearch {
     settings->endGroup(); // history
     settings->endGroup(); // structure
 
-    // This will write the enthalpy, energy, cell information, and atom types
-    // and positions for a cell that skipped optimization.
-    if (this->skippedOptimization()) writeCurrentStructureInfo(filename);
+    // This will write the current enthalpy, energy, cell information, atom
+    // types, and atom positions for a cell that skipped optimization
+    writeCurrentStructureInfo(filename);
     DESTROY_SETTINGS(filename);
   }
 
@@ -473,9 +476,9 @@ namespace GlobalSearch {
     default:
       break;
     }
-    // This will read the enthalpy, energy, cell information, and atom types
-    // and positions for the current structure.
-    if (this->skippedOptimization()) readCurrentStructureInfo(filename);
+    // This will read the current enthalpy, energy, cell information, atom
+    // types, and atom positions for the structure.
+    readCurrentStructureInfo(filename);
   }
 
   void Structure::writeCurrentStructureInfo(const QString &filename)
@@ -520,6 +523,7 @@ namespace GlobalSearch {
     settings->setValue("21", (obcell.Get(2,1)));
     settings->setValue("22", (obcell.Get(2,2)));
     settings->endGroup(); // cell
+    settings->setValue("saveSuccessful", true);
     settings->endGroup(); // structure/current
     DESTROY_SETTINGS(filename);
   }
@@ -582,7 +586,7 @@ namespace GlobalSearch {
       newAtom->setAtomicNumber(atomicNums.at(i));
       newAtom->setPos(cartCoords.at(i));
     }
-
+    setSaveSuccessful(settings->value("saveSuccessful", false).toBool());
     settings->endGroup();
   }
 

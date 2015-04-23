@@ -965,6 +965,7 @@ namespace GlobalSearch {
               list.at(j)->getSupercellString() == s->getSupercellString() &&
               list.at(j)->getFormulaUnits() == s->getFormulaUnits())
             break;
+          // Made it to the end of the list and did not find a match!
           else if (j == list.size() - 1) list.append(s);
         }
       }

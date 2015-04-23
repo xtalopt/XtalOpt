@@ -2168,16 +2168,6 @@ namespace XtalOpt {
       xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
       xtal->readSettings(xtalStateFileName);
 
-      // Add empty atoms to xtal, updateXtal will populate it
-      // We will add atoms to primitive xtals manually
-      if (!xtal->skippedOptimization()) {
-        for (int j = 0; j < keys.size(); j++) {
-          unsigned int quantity = comp.value(keys.at(j)).quantity;
-          for (uint k = 0; k < quantity; k++)
-            xtal->addAtom();
-        }
-      }
-
       // Store current state -- updateXtal will overwrite it.
       Xtal::State state = xtal->getStatus();
       // Set state from InProcess -> Restart if needed
@@ -2188,15 +2178,25 @@ namespace XtalOpt {
 
       locker.unlock();
 
-      // Skip over the next parts if it skipped optimization
-      if (xtal->skippedOptimization()) {
-        // Everything is already set up for an xtal that skipped optimization
-        // when the settings are read
+      // If the current settings were saved successfully, then they must
+      // have been loaded successfully as well (and the current enthalpy,
+      // energy, atom types, atom positions, and cell info must be set already)
+      if (xtal->saveSuccessful()) {
+        // Reset state
+        locker.relock();
+        xtal->setStatus(state);
+        xtal->setOptTimerEnd(endtime);
+        if (clearJobIDs) {
+          xtal->setJobID(0);
+        }
+        locker.unlock();
         updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
         loadedStructures.append(qobject_cast<Structure*>(xtal));
         continue;
       }
 
+      // If the save wasn't successful or if we are loading a previous version,
+      // attempt to load the xtal data from the output files
       if (!m_optimizer->load(xtal)) {
         error(tr("Error, no (or not appropriate for %1) xtal data in "
                  "%2.\n\nThis could be a result of resuming a structure "
@@ -2204,6 +2204,7 @@ namespace XtalOpt {
                  "safely ignore this message.")
               .arg(m_optimizer->getIDString())
               .arg(xtal->fileName()));
+        delete xtal;
         continue;
       }
 

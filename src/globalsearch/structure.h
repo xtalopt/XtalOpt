@@ -624,6 +624,10 @@ namespace GlobalSearch {
       return m_supercellGenerationChecked;
     };
 
+    // m_saveSuccessful is the last value set during writeCurrentSettings
+    // This is only needed during a resume
+    bool saveSuccessful() const {return m_saveSuccessful;};
+
     /** If the structure was created by primitive reduction, then it does
      * not proceed through the optimizer. This bool indicates if it was created
      * by primitive reduction.
@@ -1067,6 +1071,10 @@ namespace GlobalSearch {
       m_supercellGenerationChecked = b;
     };
 
+    // False by default. Set to be true only during reading. Only needed
+    // while resuming a run.
+    void setSaveSuccessful(bool b) {m_saveSuccessful = b;};
+
     /** If the structure was created by primitive reduction, then it does
      * not proceed through the optimizer. This bool indicates if it was created
      * by primitive reduction.
@@ -1175,7 +1183,7 @@ namespace GlobalSearch {
     // skip Doxygen parsing
     /// \cond
     bool m_hasEnthalpy, m_updatedSinceDupChecked, m_primitiveChecked,
-         m_skippedOptimization, m_supercellGenerationChecked;
+         m_skippedOptimization, m_supercellGenerationChecked, m_saveSuccessful;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
          m_currentOptStep, m_failCount;
