@@ -74,6 +74,9 @@ namespace XtalOpt {
             this, SLOT(checkForDuplicates()));
     connect(this, SIGNAL(sessionStarted()),
             this, SLOT(resetDuplicates()));
+    connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
+            this, SLOT(updateLowestEnthalpyFUList(GlobalSearch::Structure*)));
+
   }
 
   XtalOpt::~XtalOpt()
@@ -130,8 +133,11 @@ namespace XtalOpt {
     // Check if xtalopt data is already saved at the filePath
     if (QFile::exists(filePath + "/xtalopt.state")) {
       bool proceed;
-      needBoolean(tr("Warning: XtalOpt data is already saved at: %1\
-                     \n\nDo you wish to proceed and overwrite it?")
+      needBoolean(tr("Warning: XtalOpt data is already saved at: %1"
+                     "\nDo you wish to proceed and overwrite it?"
+                     "\n\nIf no, please change the local working directory "
+                     "under Queue configure located in the "
+                     "'Optimization Settings' tab")
                   .arg(filePath),
                   &proceed);
       if (!proceed) return;
@@ -1089,15 +1095,17 @@ namespace XtalOpt {
   Xtal* XtalOpt::generateNewXtal()
   {
     // Check to see if there are any structures that need to be primitive
-    // checked. If there are, then generate and return one.
+    // reduced or if there are supercells that needs to be generated. If
+    // there are, then generate and return one.
     QList<Structure*> optimizedStructures =
                                            m_queue->getAllOptimizedStructures();
     Xtal *testXtal;
     for (size_t i = 0; i < optimizedStructures.size(); i++) {
       // generateNewXtal() runs concurrently. We don't want to make more than
-      // one primitive xtal of a given xtal, so try to write for lock. If it
-      // can't be done, then just continue to the next one.
+      // one primitive/supercell xtal of a given xtal, so try to write for
+      // lock. If it can't be done, then just continue to the next one.
       if (!optimizedStructures.at(i)->lock()->tryLockForWrite()) continue;
+
       // If the structure has been primitive checked, we don't need to check
       // it again. If it hasn't been duplicate checked, yet, let it be
       // duplicate checked first (so we don't check unnecessary structures).
@@ -1108,41 +1116,71 @@ namespace XtalOpt {
         // the primitive of testXtal.
         if (!testXtal->isPrimitive(tol_spg)) {
           testXtal->setPrimitiveChecked(true);
-          Xtal* nxtal = new Xtal();
-          // Copy cell over from testXtal to nxtal
-          nxtal->setCellInfo(testXtal->OBUnitCell()->GetCellMatrix());
-          Atom* newAtom;
-          // Add the atoms in...
-          for (size_t i = 0; i < testXtal->numAtoms(); i++) {
-            newAtom = nxtal->addAtom();
-            newAtom->setAtomicNumber(testXtal->atom(i)->atomicNumber());
-            newAtom->setPos(testXtal->atom(i)->pos());
-          }
-          // Reduce it to primitive...
-          nxtal->reduceToPrimitive(tol_spg);
-          uint gen = testXtal->getGeneration() + 1;
-          QString parents = tr("Primitive of %1x%2")
-            .arg(testXtal->getGeneration())
-            .arg(testXtal->getIDNumber());
-          nxtal->setGeneration(gen);
-          nxtal->setParents(parents);
-          nxtal->setFormulaUnits(nxtal->getFormulaUnits());
-          nxtal->setEnthalpy(testXtal->getEnthalpy() *
-                             nxtal->getFormulaUnits() /
-                             testXtal->getFormulaUnits());
-          nxtal->setEnergy(testXtal->getEnergy() *
-                           nxtal->getFormulaUnits() /
-                           testXtal->getFormulaUnits());
-          nxtal->setPrimitiveChecked(true);
-          nxtal->setIsPrimitiveReduction(true);
-          nxtal->setStatus(Xtal::Optimized);
+          Xtal* nxtal = generatePrimitiveXtal(testXtal);
           testXtal->lock()->unlock();
           return nxtal;
         }
         testXtal->setPrimitiveChecked(true);
       }
+
+      // Now let's check to see if a supercell should be generated from
+      // the optimized structure
+      if (!optimizedStructures.at(i)->wasSupercellGenerationChecked()) {
+        double enthalpyPerFU1 = optimizedStructures.at(i)->getEnthalpy() /
+                                static_cast<double>(
+                                optimizedStructures.at(i)->getFormulaUnits());
+        for (size_t j = 1; j <= maxFU; j++) {
+          if (!onTheFormulaUnitsList(j)) continue;
+          // j represents a formula unit that is being checked.
+          // If optimizedStructures.at(i) can create a supercell with formula
+          // units of j and optimizedStructures.at(i)'s enthalpy/FU is
+          // smaller than the smallest so-far discovered enthalpy/FU at that FU,
+          // and if there is a greater than 1% difference between the two,
+          // build a supercell and add it to the gene pool
+          double enthalpyPerFU2 = lowestEnthalpyFUList.at(j) /
+                                  static_cast<double>(j);
+          if (j != optimizedStructures.at(i)->getFormulaUnits() &&
+              j %  optimizedStructures.at(i)->getFormulaUnits() == 0 &&
+              (enthalpyPerFU1 < enthalpyPerFU2 || enthalpyPerFU2 == 0)) {
+            double fractionalDiff = (enthalpyPerFU1 - enthalpyPerFU2) /
+                                    enthalpyPerFU2;
+            double percentDiff = fabs(fractionalDiff) * 100.000000;
+            if (percentDiff <= 1.000000) continue;
+            else {
+              Xtal* xtal = qobject_cast<Xtal*>(optimizedStructures.at(i));
+              // We may need to create more than one supercell from a given xtal
+              // So only update this if it is generating an xtal with the maxFU
+              if (j == maxFU) xtal->setSupercellGenerationChecked(true);
+              xtal->lock()->unlock();
+              Xtal* nxtal = generateSuperCell(xtal->getFormulaUnits(), j, xtal,
+                                              true, false);
+              xtal->lock()->lockForRead();
+              nxtal->setParents(tr("Supercell generated from %1x%2")
+                .arg(xtal->getGeneration())
+                .arg(xtal->getIDNumber()));
+              nxtal->setFormulaUnits(nxtal->getFormulaUnits());
+              nxtal->setEnthalpy(xtal->getEnthalpy() *
+                       nxtal->getFormulaUnits() /
+                       xtal->getFormulaUnits());
+              nxtal->setEnergy(xtal->getEnergy() *
+                       nxtal->getFormulaUnits() /
+                       xtal->getFormulaUnits());
+              nxtal->setPrimitiveChecked(true);
+              nxtal->setSkippedOptimization(true);
+              nxtal->setStatus(Xtal::Optimized);
+              xtal->lock()->unlock();
+              return nxtal;
+            }
+          }
+        }
+        optimizedStructures.at(i)->setSupercellGenerationChecked(true);
+      }
       optimizedStructures.at(i)->lock()->unlock();
     }
+
+    // Having finished doing primitive reduction and supercell generation
+    // checks, we can now continue!
+
     // Inputing a formula unit of 0 implies using all formula units when
     // generating the probability list.
     if (using_one_pool) {
@@ -1184,6 +1222,39 @@ namespace XtalOpt {
     }
 
     return generateNewXtal(FU);
+  }
+
+  Xtal* XtalOpt::generatePrimitiveXtal(Xtal* xtal)
+  {
+    Xtal* nxtal = new Xtal();
+    // Copy cell over from xtal to nxtal
+    nxtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
+    Atom* newAtom;
+    // Add the atoms in...
+    for (size_t i = 0; i < xtal->numAtoms(); i++) {
+      newAtom = nxtal->addAtom();
+      newAtom->setAtomicNumber(xtal->atom(i)->atomicNumber());
+      newAtom->setPos(xtal->atom(i)->pos());
+    }
+    // Reduce it to primitive...
+    nxtal->reduceToPrimitive(tol_spg);
+    uint gen = xtal->getGeneration() + 1;
+    QString parents = tr("Primitive of %1x%2")
+      .arg(xtal->getGeneration())
+      .arg(xtal->getIDNumber());
+    nxtal->setGeneration(gen);
+    nxtal->setParents(parents);
+    nxtal->setFormulaUnits(nxtal->getFormulaUnits());
+    nxtal->setEnthalpy(xtal->getEnthalpy() *
+                       nxtal->getFormulaUnits() /
+                       xtal->getFormulaUnits());
+    nxtal->setEnergy(xtal->getEnergy() *
+                     nxtal->getFormulaUnits() /
+                     xtal->getFormulaUnits());
+    nxtal->setPrimitiveChecked(true);
+    nxtal->setSkippedOptimization(true);
+    nxtal->setStatus(Xtal::Optimized);
+    return nxtal;
   }
 
   Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU, Xtal *myXtal,
@@ -1232,7 +1303,7 @@ namespace XtalOpt {
         .arg(gen1)
         .arg(id1);
       myXtal->setParents(parents);
-      myXtal->setGeneration(xtal->getGeneration() + 1);
+      myXtal->setGeneration(gen1 + 1);
     }
 
     // Find the largest prime number multiple. We will expand
@@ -2099,7 +2170,7 @@ namespace XtalOpt {
 
       // Add empty atoms to xtal, updateXtal will populate it
       // We will add atoms to primitive xtals manually
-      if (!xtal->isPrimitiveReduction()) {
+      if (!xtal->skippedOptimization()) {
         for (int j = 0; j < keys.size(); j++) {
           unsigned int quantity = comp.value(keys.at(j)).quantity;
           for (uint k = 0; k < quantity; k++)
@@ -2117,13 +2188,11 @@ namespace XtalOpt {
 
       locker.unlock();
 
-      // Indicate that we are resetting the duplicate checking.
-      xtal->structureChanged();
-
-      // Skip over the next parts if it is a primitive xtal of another xtal
-      if (xtal->isPrimitiveReduction()) {
-        // Everything is already set up for a primitive xtal when the
-        // settings are read
+      // Skip over the next parts if it skipped optimization
+      if (xtal->skippedOptimization()) {
+        // Everything is already set up for an xtal that skipped optimization
+        // when the settings are read
+        updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
         loadedStructures.append(qobject_cast<Structure*>(xtal));
         continue;
       }
@@ -2146,6 +2215,7 @@ namespace XtalOpt {
         xtal->setJobID(0);
       }
       locker.unlock();
+      updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
       loadedStructures.append(qobject_cast<Structure*>(xtal));
     }
 
@@ -2465,7 +2535,7 @@ namespace XtalOpt {
     // Label supercells that primitive xtals came from as such
     for (size_t i = 0; i < xtals.size(); i++) {
       xtals.at(i)->lock()->lockForRead();
-      if (xtals.at(i)->isPrimitiveReduction()) {
+      if (xtals.at(i)->skippedOptimization()) {
         for (size_t j = 0; j < xtals.size(); j++) {
           if (i == j) continue;
           xtals.at(j)->lock()->lockForRead();
@@ -2484,6 +2554,23 @@ namespace XtalOpt {
     }
 
     emit refreshAllStructureInfo();
+  }
+
+  void XtalOpt::updateLowestEnthalpyFUList(GlobalSearch::Structure* s)
+  {
+    // Perform this in a background thread
+    QtConcurrent::run(this, &XtalOpt::updateLowestEnthalpyFUList_, s);
+  }
+
+  void XtalOpt::updateLowestEnthalpyFUList_(GlobalSearch::Structure* s) {
+    // Thankfully, the enthalpy appears to get updated before it reaches this
+    // point
+    s->lock()->lockForRead();
+    if (lowestEnthalpyFUList.at(s->getFormulaUnits()) == 0 ||
+        lowestEnthalpyFUList.at(s->getFormulaUnits()) > s->getEnthalpy()) {
+      lowestEnthalpyFUList[s->getFormulaUnits()] = s->getEnthalpy();
+    }
+    s->lock()->unlock();
   }
 
 } // end namespace XtalOpt

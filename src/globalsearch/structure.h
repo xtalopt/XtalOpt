@@ -613,13 +613,24 @@ namespace GlobalSearch {
      */
     bool wasPrimitiveChecked() const {return m_primitiveChecked;};
 
+    /** Structure tracks if it has been supercell-generation checked or not.
+     * Supercell generation checking involves checking to see if a supercell
+     * should be generated from this structure and placed into a higher FU gene
+     * pool.
+     *
+     * @sa setSupercellGenerationChecked()
+     */
+    bool wasSupercellGenerationChecked() const {
+      return m_supercellGenerationChecked;
+    };
+
     /** If the structure was created by primitive reduction, then it does
      * not proceed through the optimizer. This bool indicates if it was created
      * by primitive reduction.
      *
-     * @sa setIsPrimitiveReduction()
+     * @sa setSkippedOptimization()
      */
-    bool isPrimitiveReduction() const {return m_isPrimitiveReduction;};
+    bool skippedOptimization() const {return m_skippedOptimization;};
 
     /** Sort the listed structures by their enthalpies
      *
@@ -1045,13 +1056,24 @@ namespace GlobalSearch {
      */
     void setPrimitiveChecked(bool b) {m_primitiveChecked = b;};
 
+    /** Structure tracks if it has been supercell-generation checked or not.
+     * Supercell generation checking involves checking to see if a supercell
+     * should be generated from this structure and placed into a higher FU gene
+     * pool.
+     *
+     * @sa wasSupercellGenerationChecked()
+     */
+    void setSupercellGenerationChecked(bool b) {
+      m_supercellGenerationChecked = b;
+    };
+
     /** If the structure was created by primitive reduction, then it does
      * not proceed through the optimizer. This bool indicates if it was created
      * by primitive reduction.
      *
-     * @sa isPrimitiveReduction()
+     * @sa skippedOptimization()
      */
-    void setIsPrimitiveReduction(bool b) {m_isPrimitiveReduction = b;};
+    void setSkippedOptimization(bool b) {m_skippedOptimization = b;};
 
     /** Record the current time as when the current optimization
      * process started.
@@ -1138,7 +1160,7 @@ namespace GlobalSearch {
      * @sa writeStructureSettings
      * @sa readStructureSettings
      */
-    void writePrimitiveSettings(const QString &filename);
+    void writeCurrentStructureInfo(const QString &filename);
 
     /**
      * Read data concerning a primitive structure from a file.
@@ -1147,13 +1169,13 @@ namespace GlobalSearch {
      * @sa writeSettings
      * @sa readSettings
      */
-    void readPrimitiveSettings(const QString &filename);
+    void readCurrentStructureInfo(const QString &filename);
 
   protected:
     // skip Doxygen parsing
     /// \cond
     bool m_hasEnthalpy, m_updatedSinceDupChecked, m_primitiveChecked,
-         m_isPrimitiveReduction;
+         m_skippedOptimization, m_supercellGenerationChecked;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
          m_currentOptStep, m_failCount;

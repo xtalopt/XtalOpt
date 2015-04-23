@@ -42,6 +42,10 @@ namespace XtalOpt {
       xtalopt->formulaUnitsList.append(1);
       xtalopt->minFU = 1;
       xtalopt->maxFU = 1;
+      // We need to append this one twice... lowestEnthalpyFUList.at(0) does not
+      // correspond to anything. lowestEnthalpyFUList.at(1) corresponds to 1 FU
+      xtalopt->lowestEnthalpyFUList.append(0);
+      xtalopt->lowestEnthalpyFUList.append(0);
     }
 
     // composition connections
@@ -680,9 +684,14 @@ namespace XtalOpt {
       formulaUnitsList.append(tempFormulaUnitsList.at(i).toUInt());
     }
 
+    // Update minFU, maxFU, and formulaUnitsList
     xtalopt->minFU = formulaUnitsList.at(0);
     xtalopt->maxFU = formulaUnitsList.at(formulaUnitsList.size() - 1);
     xtalopt->formulaUnitsList = formulaUnitsList;
+
+    // Update the size of the lowestEnthalpyFUList
+    while (xtalopt->lowestEnthalpyFUList.size() <= xtalopt->maxFU)
+      xtalopt->lowestEnthalpyFUList.append(0);
 
     // Update UI
     ui.edit_formula_units->setText(tmp.trimmed());

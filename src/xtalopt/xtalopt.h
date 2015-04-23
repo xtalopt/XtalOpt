@@ -152,6 +152,11 @@ namespace XtalOpt {
     // Generate a new formula unit.
     int  FU;
     QList<uint> formulaUnitsList;
+    // List that contains the lowest enthalpy discovered so far at a particular
+    // formula unit. The position on the list is equivalent to the formula unit
+    // being analyzed (i. e., lowestEnthalpyFUList.at(i) is the lowest enthalpy
+    // at an FU of i
+    QList<double> lowestEnthalpyFUList;
 
     bool using_mitosis;
     bool using_subcellPrint;
@@ -175,6 +180,9 @@ namespace XtalOpt {
     // on the xtal immediately after generating the supercell.
     Xtal* generateSuperCell(uint initialFU, uint finalFU, Xtal *xtal,
                             bool setupNewXtal, bool mutate);
+    // Returns a dynamically allocated xtal that has undergone a primitive
+    // reduction of the xtal that was input
+    Xtal* generatePrimitiveXtal(Xtal *xtal);
     void initializeAndAddXtal(Xtal *xtal,
                               unsigned int generation,
                               const QString &parents);
@@ -185,6 +193,7 @@ namespace XtalOpt {
     void resetSpacegroups();
     void resetDuplicates();
     void checkForDuplicates();
+    void updateLowestEnthalpyFUList(GlobalSearch::Structure* s);
 
    protected:
     friend class XtalOptUnitTest;
@@ -192,6 +201,7 @@ namespace XtalOpt {
     void resetDuplicates_();
     void checkForDuplicates_();
     void generateNewStructure_();
+    void updateLowestEnthalpyFUList_(GlobalSearch::Structure* s);
     struct supCheckStruct
     {
       Xtal *i, *j;

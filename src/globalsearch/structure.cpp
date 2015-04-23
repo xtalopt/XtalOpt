@@ -45,7 +45,8 @@ namespace GlobalSearch {
     m_hasEnthalpy(false),
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
-    m_isPrimitiveReduction(false),
+    m_skippedOptimization(false),
+    m_supercellGenerationChecked(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -66,7 +67,8 @@ namespace GlobalSearch {
     Molecule(other),
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
-    m_isPrimitiveReduction(false),
+    m_skippedOptimization(false),
+    m_supercellGenerationChecked(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -85,7 +87,8 @@ namespace GlobalSearch {
     Molecule(other),
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
-    m_isPrimitiveReduction(false),
+    m_skippedOptimization(false),
+    m_supercellGenerationChecked(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -207,7 +210,8 @@ namespace GlobalSearch {
     // Set properties
     m_hasEnthalpy                = other.m_hasEnthalpy;
     m_primitiveChecked           = other.m_primitiveChecked;
-    m_isPrimitiveReduction       = other.m_isPrimitiveReduction;
+    m_skippedOptimization        = other.m_skippedOptimization;
+    m_supercellGenerationChecked = other.m_supercellGenerationChecked;
     m_histogramGenerationPending = other.m_histogramGenerationPending;
     m_generation                 = other.m_generation;
     m_id                         = other.m_id;
@@ -259,7 +263,9 @@ namespace GlobalSearch {
     settings->setValue("rank", getRank());
     settings->setValue("formulaUnits", getFormulaUnits());
     settings->setValue("primitiveChecked", wasPrimitiveChecked());
-    settings->setValue("isPrimitiveReduction", isPrimitiveReduction());
+    settings->setValue("skippedOptimization", skippedOptimization());
+    settings->setValue("supercellGenerationChecked",
+                       wasSupercellGenerationChecked());
     settings->setValue("jobID", getJobID());
     settings->setValue("currentOptStep", getCurrentOptStep());
     settings->setValue("parents", getParents());
@@ -338,8 +344,8 @@ namespace GlobalSearch {
     settings->endGroup(); // structure
 
     // This will write the enthalpy, energy, cell information, and atom types
-    // and positions for a primitive cell.
-    if (this->isPrimitiveReduction()) writePrimitiveSettings(filename);
+    // and positions for a cell that skipped optimization.
+    if (this->skippedOptimization()) writeCurrentStructureInfo(filename);
     DESTROY_SETTINGS(filename);
   }
 
@@ -355,8 +361,10 @@ namespace GlobalSearch {
       setRank(           settings->value("rank",           0).toInt());
       setFormulaUnits(   settings->value("formulaUnits",   0).toInt());
       setPrimitiveChecked(settings->value("primitiveChecked",0).toBool());
-      setIsPrimitiveReduction(
-                   settings->value("isPrimitiveReduction", 0).toBool());
+      setSkippedOptimization(
+                   settings->value("skippedOptimization", 0).toBool());
+      setSupercellGenerationChecked(
+                   settings->value("supercellGenerationChecked", 0).toBool());
       setJobID(          settings->value("jobID",          0).toInt());
       setCurrentOptStep( settings->value("currentOptStep", 0).toInt());
       setFailCount(      settings->value("failCount",      0).toInt());
@@ -466,16 +474,16 @@ namespace GlobalSearch {
       break;
     }
     // This will read the enthalpy, energy, cell information, and atom types
-    // and positions for a primitive cell.
-    if (this->isPrimitiveReduction()) readPrimitiveSettings(filename);
+    // and positions for the current structure.
+    if (this->skippedOptimization()) readCurrentStructureInfo(filename);
   }
 
-  void Structure::writePrimitiveSettings(const QString &filename)
+  void Structure::writeCurrentStructureInfo(const QString &filename)
   {
     SETTINGS(filename);
     // May set versions in the future
     // const int VERSION = 1;
-    settings->beginGroup("structure/primitive");
+    settings->beginGroup("structure/current");
     settings->setValue("enthalpy", this->getEnthalpy());
     settings->setValue("energy",   this->getEnergy());
 
@@ -512,14 +520,14 @@ namespace GlobalSearch {
     settings->setValue("21", (obcell.Get(2,1)));
     settings->setValue("22", (obcell.Get(2,2)));
     settings->endGroup(); // cell
-    settings->endGroup(); // structure/primitive
+    settings->endGroup(); // structure/current
     DESTROY_SETTINGS(filename);
   }
 
-  void Structure::readPrimitiveSettings(const QString &filename)
+  void Structure::readCurrentStructureInfo(const QString &filename)
   {
     SETTINGS(filename);
-    settings->beginGroup("structure/primitive");
+    settings->beginGroup("structure/current");
     setEnthalpy(settings->value("enthalpy", 0).toDouble());
     setEnergy(settings->value("energy", 0).toDouble());
 
