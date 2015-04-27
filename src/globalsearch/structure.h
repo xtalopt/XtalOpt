@@ -624,10 +624,6 @@ namespace GlobalSearch {
       return m_supercellGenerationChecked;
     };
 
-    // m_saveSuccessful is the last value set during writeCurrentSettings
-    // This is only needed during a resume
-    bool saveSuccessful() const {return m_saveSuccessful;};
-
     /** If the structure was created by primitive reduction, then it does
      * not proceed through the optimizer. This bool indicates if it was created
      * by primitive reduction.
@@ -803,11 +799,13 @@ namespace GlobalSearch {
      * If reimplementing this in a derived class, call
      * readStructureSettings(filename) to read inherited data.
      * @param filename Filename to read data from.
+     * @param readCurrentInfo Update the current info of the structure?
      * @sa readStructureSettings
      * @sa writeSettings
      */
-    virtual void readSettings(const QString &filename) {
-      readStructureSettings(filename);};
+    virtual void readSettings(const QString &filename,
+                              const bool readCurrentInfo = false) {
+      readStructureSettings(filename, readCurrentInfo);};
 
     /**
      * Update the coordinates, enthalpy and/or energy, and optionally
@@ -1071,10 +1069,6 @@ namespace GlobalSearch {
       m_supercellGenerationChecked = b;
     };
 
-    // False by default. Set to be true only during reading. Only needed
-    // while resuming a run.
-    void setSaveSuccessful(bool b) {m_saveSuccessful = b;};
-
     /** If the structure was created by primitive reduction, then it does
      * not proceed through the optimizer. This bool indicates if it was created
      * by primitive reduction.
@@ -1156,13 +1150,15 @@ namespace GlobalSearch {
     /**
      * Read data concerning the Structure class from a file.
      * @param filename Filename to read data from.
+     * @param readCurrentInfo Update the current info of the structure?
      * @sa writeSettings
      * @sa readSettings
      */
-    void readStructureSettings(const QString &filename);
+    void readStructureSettings(const QString &filename,
+                               const bool readCurrentInfo = false);
 
     /**
-     * Write data for a primitive structure to a file.
+     * Write current data for a structure to a file.
      * Data includes enthalpy, energy, cell vectors, and atom info
      * @param filename Filename to write data to.
      * @sa writeStructureSettings
@@ -1171,7 +1167,7 @@ namespace GlobalSearch {
     void writeCurrentStructureInfo(const QString &filename);
 
     /**
-     * Read data concerning a primitive structure from a file.
+     * Read current data concerning a structure from a file.
      * Data includes enthalpy, energy, cell vectors, and atom info
      * @param filename Filename to read data from.
      * @sa writeSettings
@@ -1183,7 +1179,7 @@ namespace GlobalSearch {
     // skip Doxygen parsing
     /// \cond
     bool m_hasEnthalpy, m_updatedSinceDupChecked, m_primitiveChecked,
-         m_skippedOptimization, m_supercellGenerationChecked, m_saveSuccessful;
+         m_skippedOptimization, m_supercellGenerationChecked;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
          m_currentOptStep, m_failCount;

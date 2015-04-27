@@ -47,7 +47,6 @@ namespace GlobalSearch {
     m_primitiveChecked(false),
     m_skippedOptimization(false),
     m_supercellGenerationChecked(false),
-    m_saveSuccessful(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -70,7 +69,6 @@ namespace GlobalSearch {
     m_primitiveChecked(false),
     m_skippedOptimization(false),
     m_supercellGenerationChecked(false),
-    m_saveSuccessful(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -91,7 +89,6 @@ namespace GlobalSearch {
     m_primitiveChecked(false),
     m_skippedOptimization(false),
     m_supercellGenerationChecked(false),
-    m_saveSuccessful(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
@@ -257,8 +254,9 @@ namespace GlobalSearch {
   void Structure::writeStructureSettings(const QString &filename)
   {
     SETTINGS(filename);
-    const int VERSION = 2;
+    const int VERSION = 3;
     settings->beginGroup("structure");
+    settings->setValue("saveSuccessful", false);
     settings->setValue("version",     VERSION);
     settings->setValue("generation", getGeneration());
     settings->setValue("id", getIDNumber());
@@ -344,6 +342,7 @@ namespace GlobalSearch {
     settings->endArray();
 
     settings->endGroup(); // history
+    settings->setValue("saveSuccessful", true);
     settings->endGroup(); // structure
 
     // This will write the current enthalpy, energy, cell information, atom
@@ -352,7 +351,8 @@ namespace GlobalSearch {
     DESTROY_SETTINGS(filename);
   }
 
-  void Structure::readStructureSettings(const QString &filename)
+  void Structure::readStructureSettings(const QString &filename,
+                                        const bool readCurrentInfo)
   {
     SETTINGS(filename);
     settings->beginGroup("structure");
@@ -473,12 +473,13 @@ namespace GlobalSearch {
     case 1: // Histories added. Nothing to do, structures loaded will
             // have empty histories
     case 2:
+    case 3:
     default:
       break;
     }
     // This will read the current enthalpy, energy, cell information, atom
     // types, and atom positions for the structure.
-    readCurrentStructureInfo(filename);
+    if (readCurrentInfo) readCurrentStructureInfo(filename);
   }
 
   void Structure::writeCurrentStructureInfo(const QString &filename)
@@ -489,6 +490,7 @@ namespace GlobalSearch {
     settings->beginGroup("structure/current");
     settings->setValue("enthalpy", this->getEnthalpy());
     settings->setValue("energy",   this->getEnergy());
+    settings->setValue("PV",       this->getPV());
 
     // Atomic numbers
     settings->beginWriteArray("atomicNums");
@@ -523,7 +525,6 @@ namespace GlobalSearch {
     settings->setValue("21", (obcell.Get(2,1)));
     settings->setValue("22", (obcell.Get(2,2)));
     settings->endGroup(); // cell
-    settings->setValue("saveSuccessful", true);
     settings->endGroup(); // structure/current
     DESTROY_SETTINGS(filename);
   }
@@ -534,6 +535,7 @@ namespace GlobalSearch {
     settings->beginGroup("structure/current");
     setEnthalpy(settings->value("enthalpy", 0).toDouble());
     setEnergy(settings->value("energy", 0).toDouble());
+    setPV(settings->value("PV", 0).toDouble());
 
     //  Atomic nums
     size_t size;
@@ -586,7 +588,6 @@ namespace GlobalSearch {
       newAtom->setAtomicNumber(atomicNums.at(i));
       newAtom->setPos(cartCoords.at(i));
     }
-    setSaveSuccessful(settings->value("saveSuccessful", false).toBool());
     settings->endGroup();
   }
 

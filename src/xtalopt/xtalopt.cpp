@@ -1164,7 +1164,8 @@ namespace XtalOpt {
                        xtal->getFormulaUnits());
               nxtal->setEnergy(xtal->getEnergy() *
                        nxtal->getFormulaUnits() /
-                       xtal->getFormulaUnits());
+                       xtal->getFormulaUnits() *
+                       EV_TO_KJ_PER_MOL);
               nxtal->setPrimitiveChecked(true);
               nxtal->setSkippedOptimization(true);
               nxtal->setStatus(Xtal::Optimized);
@@ -1250,7 +1251,8 @@ namespace XtalOpt {
                        xtal->getFormulaUnits());
     nxtal->setEnergy(xtal->getEnergy() *
                      nxtal->getFormulaUnits() /
-                     xtal->getFormulaUnits());
+                     xtal->getFormulaUnits() *
+                     EV_TO_KJ_PER_MOL);
     nxtal->setPrimitiveChecked(true);
     nxtal->setSkippedOptimization(true);
     nxtal->setStatus(Xtal::Optimized);
@@ -2080,6 +2082,8 @@ namespace XtalOpt {
       return false;
     }
 
+    DESTROY_SETTINGS(filename);
+
     // Get path and other info for later:
     QFileInfo stateInfo (file);
     // path to resume file
@@ -2156,7 +2160,9 @@ namespace XtalOpt {
       xtal->setupConnections();
 
       xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
-      xtal->readSettings(xtalStateFileName);
+      // The "true" in the second parameter tells it to read current structure
+      // info. This sets current cell info, atom info, enthalpy, energy, & PV
+      xtal->readSettings(xtalStateFileName, true);
 
       // Store current state -- updateXtal will overwrite it.
       Xtal::State state = xtal->getStatus();
@@ -2168,10 +2174,20 @@ namespace XtalOpt {
 
       locker.unlock();
 
-      // If the current settings were saved successfully, then they must
-      // have been loaded successfully as well (and the current enthalpy,
-      // energy, atom types, atom positions, and cell info must be set already)
-      if (xtal->saveSuccessful()) {
+      // If the current settings were saved successfully, then the current
+      // enthalpy,energy, atom types, atom positions, and cell info must be
+      // set already
+      SETTINGS(xtalStateFileName);
+      int version = settings->value("structure/version").toInt();
+      bool saveSuccessful = settings->value("structure/saveSuccessful",
+                                            false).toBool();
+      if (version >= 3) {
+        if (!saveSuccessful) {
+          error(tr("Error, structure.state file was not saved successfully for "
+                   "%1. This structure will be excluded.")
+                .arg(xtal->fileName()));
+          continue;
+        }
         // Reset state
         locker.relock();
         xtal->setStatus(state);
@@ -2179,13 +2195,21 @@ namespace XtalOpt {
         if (clearJobIDs) {
           xtal->setJobID(0);
         }
+        // For some strange reason, setEnergy() does not appear to be
+        // working in readSettings() in structure.cpp (even though all the
+        // others including setEnthalpy() seem to work fine). So we will set it
+        // here.
+        double energy = settings->value("structure/current/energy", 0)
+                                                                    .toDouble();
+        xtal->setEnergy(energy * EV_TO_KJ_PER_MOL);
+        DESTROY_SETTINGS(xtalStateFileName);
         locker.unlock();
         updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
         loadedStructures.append(qobject_cast<Structure*>(xtal));
         continue;
       }
-
-      // If the save wasn't successful or if we are loading a previous version,
+      DESTROY_SETTINGS(xtalStateFileName);
+      // If we are loading a previous version,
       // attempt to load the xtal data from the output files
       if (!m_optimizer->load(xtal)) {
         error(tr("Error, no (or not appropriate for %1) xtal data in "
