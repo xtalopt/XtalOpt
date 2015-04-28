@@ -32,6 +32,7 @@
 #include <globalsearch/slottedwaitcondition.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/bt.h>
+#include <globalsearch/fileutils.h>
 
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
@@ -124,6 +125,25 @@ namespace XtalOpt {
     if (comp.isEmpty()) {
       error("Cannot create structures. Composition is not set.");
       return;
+    }
+
+    // Check if xtalopt data is already saved at the filePath
+    if (QFile::exists(filePath + "/xtalopt.state")) {
+      bool proceed;
+      needBoolean(tr("Warning: XtalOpt data is already saved at: %1"
+                     "\nDo you wish to proceed and overwrite it?"
+                     "\n\nIf no, please change the local working directory "
+                     "under Queue configure located in the "
+                     "'Optimization Settings' tab")
+                  .arg(filePath),
+                  &proceed);
+      if (!proceed) return;
+      else {
+        bool result = FileUtils::removeDir(filePath);
+        if (!result) {
+          error(tr("Error removing directory at:\n %1").arg(filePath));
+        }
+      }
     }
 
     // Are the selected queueinterface and optimizer happy?
@@ -1435,6 +1455,8 @@ namespace XtalOpt {
       return false;
     }
 
+    DESTROY_SETTINGS(filename);
+
     // Get path and other info for later:
     QFileInfo stateInfo (file);
     // path to resume file
@@ -1509,14 +1531,8 @@ namespace XtalOpt {
       QWriteLocker locker (xtal->lock());
       xtal->moveToThread(m_tracker->thread());
       xtal->setupConnections();
-      // Add empty atoms to xtal, updateXtal will populate it
-      for (int j = 0; j < keys.size(); j++) {
-        unsigned int quantity = comp.value(keys.at(j)).quantity;
-        for (uint k = 0; k < quantity; k++)
-          xtal->addAtom();
-      }
       xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
-      xtal->readSettings(xtalStateFileName);
+      xtal->readSettings(xtalStateFileName, true);
 
       // Store current state -- updateXtal will overwrite it.
       Xtal::State state = xtal->getStatus();
@@ -1528,6 +1544,40 @@ namespace XtalOpt {
 
       locker.unlock();
 
+      // If the current settings were saved successfully, then the current
+      // enthalpy,energy, atom types, atom positions, and cell info must be
+      // set already
+      SETTINGS(xtalStateFileName);
+      int version = settings->value("structure/version").toInt();
+      bool saveSuccessful = settings->value("structure/saveSuccessful",
+                                            false).toBool();
+      if (version >= 3) {
+        if (!saveSuccessful) {
+          error(tr("Error, structure.state file was not saved successfully for "
+                   "%1. This structure will be excluded.")
+                .arg(xtal->fileName()));
+          continue;
+        }
+        // Reset state
+        locker.relock();
+        xtal->setStatus(state);
+        xtal->setOptTimerEnd(endtime);
+        if (clearJobIDs) {
+          xtal->setJobID(0);
+        }
+        // For some strange reason, setEnergy() does not appear to be
+        // working in readSettings() in structure.cpp (even though all the
+        // others including setEnthalpy() seem to work fine). So we will set it
+        // here.
+        double energy = settings->value("structure/current/energy", 0)
+                                                                    .toDouble();
+        xtal->setEnergy(energy * EV_TO_KJ_PER_MOL);
+        DESTROY_SETTINGS(xtalStateFileName);
+        locker.unlock();
+        loadedStructures.append(qobject_cast<Structure*>(xtal));
+        continue;
+      }
+      DESTROY_SETTINGS(xtalStateFileName);
       if (!m_optimizer->load(xtal)) {
         error(tr("Error, no (or not appropriate for %1) xtal data in "
                  "%2.\n\nThis could be a result of resuming a structure "
