@@ -800,6 +800,9 @@ namespace GlobalSearch {
      * readStructureSettings(filename) to read inherited data.
      * @param filename Filename to read data from.
      * @param readCurrentInfo Update the current info of the structure?
+     * Note: readCurrentInfo will also set a unit cell. The code may need to
+     * be changed slightly for reading current info for non-periodic structures
+     *
      * @sa readStructureSettings
      * @sa writeSettings
      */
@@ -1151,6 +1154,9 @@ namespace GlobalSearch {
      * Read data concerning the Structure class from a file.
      * @param filename Filename to read data from.
      * @param readCurrentInfo Update the current info of the structure?
+     * Note: this will also set a unit cell. The code may need to be changed
+     * slightly for reading current info for non-periodic structures
+     *
      * @sa writeSettings
      * @sa readSettings
      */

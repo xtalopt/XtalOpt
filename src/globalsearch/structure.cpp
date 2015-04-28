@@ -512,19 +512,25 @@ namespace GlobalSearch {
     }
     settings->endArray();
 
-    // Cell info
-    matrix3x3 obcell = OBUnitCell()->GetCellMatrix();
-    settings->beginGroup("cell");
-    settings->setValue("00", (obcell.Get(0,0)));
-    settings->setValue("01", (obcell.Get(0,1)));
-    settings->setValue("02", (obcell.Get(0,2)));
-    settings->setValue("10", (obcell.Get(1,0)));
-    settings->setValue("11", (obcell.Get(1,1)));
-    settings->setValue("12", (obcell.Get(1,2)));
-    settings->setValue("20", (obcell.Get(2,0)));
-    settings->setValue("21", (obcell.Get(2,1)));
-    settings->setValue("22", (obcell.Get(2,2)));
-    settings->endGroup(); // cell
+    // Check to see if cell info exists before saving it...
+    // This is important for non-periodic structures
+    OpenBabel::OBMol obmol = OBMol();
+    if (obmol.HasData(OBGenericDataType::UnitCell)) {
+      settings->setValue("hasCellInfo", true);
+      // Cell info
+      matrix3x3 obcell = OBUnitCell()->GetCellMatrix();
+      settings->beginGroup("cell");
+      settings->setValue("00", (obcell.Get(0,0)));
+      settings->setValue("01", (obcell.Get(0,1)));
+      settings->setValue("02", (obcell.Get(0,2)));
+      settings->setValue("10", (obcell.Get(1,0)));
+      settings->setValue("11", (obcell.Get(1,1)));
+      settings->setValue("12", (obcell.Get(1,2)));
+      settings->setValue("20", (obcell.Get(2,0)));
+      settings->setValue("21", (obcell.Get(2,1)));
+      settings->setValue("22", (obcell.Get(2,2)));
+      settings->endGroup(); // cell
+    }
     settings->endGroup(); // structure/current
     DESTROY_SETTINGS(filename);
   }
@@ -559,23 +565,25 @@ namespace GlobalSearch {
     }
     settings->endArray();
 
-    Eigen::Matrix3d cellMatrix;
-    settings->beginGroup("cell");
-    cellMatrix(0, 0) = settings->value("00").toDouble();
-    cellMatrix(0, 1) = settings->value("01").toDouble();
-    cellMatrix(0, 2) = settings->value("02").toDouble();
-    cellMatrix(1, 0) = settings->value("10").toDouble();
-    cellMatrix(1, 1) = settings->value("11").toDouble();
-    cellMatrix(1, 2) = settings->value("12").toDouble();
-    cellMatrix(2, 0) = settings->value("20").toDouble();
-    cellMatrix(2, 1) = settings->value("21").toDouble();
-    cellMatrix(2, 2) = settings->value("22").toDouble();
-    settings->endGroup();
+    if (settings->value("hasCellInfo", false).toBool()) {
+      Eigen::Matrix3d cellMatrix;
+      settings->beginGroup("cell");
+      cellMatrix(0, 0) = settings->value("00").toDouble();
+      cellMatrix(0, 1) = settings->value("01").toDouble();
+      cellMatrix(0, 2) = settings->value("02").toDouble();
+      cellMatrix(1, 0) = settings->value("10").toDouble();
+      cellMatrix(1, 1) = settings->value("11").toDouble();
+      cellMatrix(1, 2) = settings->value("12").toDouble();
+      cellMatrix(2, 0) = settings->value("20").toDouble();
+      cellMatrix(2, 1) = settings->value("21").toDouble();
+      cellMatrix(2, 2) = settings->value("22").toDouble();
+      settings->endGroup();
 
-    // Set the cell info
-    OpenBabel::OBUnitCell *obcell = OBUnitCell();
-    obcell->SetData(Eigen2OB(cellMatrix));
-    setOBUnitCell(obcell);
+      // Set the cell info
+      OpenBabel::OBUnitCell *obcell = OBUnitCell();
+      obcell->SetData(Eigen2OB(cellMatrix));
+      setOBUnitCell(obcell);
+    }
 
     // Just in case there were atoms set elsewhere for some reason...
     QList<Atom*> atomList = atoms();
