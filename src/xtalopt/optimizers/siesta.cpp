@@ -108,7 +108,7 @@ namespace XtalOpt {
     }
     return true;
   }
-  
+
   void SIESTAOptimizer::buildPSFs() {
     double enmax = 0;
     m_templates["xtal.psf"].clear();

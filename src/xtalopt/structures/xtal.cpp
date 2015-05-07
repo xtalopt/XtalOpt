@@ -752,7 +752,7 @@ namespace XtalOpt {
 
   bool Xtal::fillSuperCell(int a, int b, int c, Xtal * myXtal) {
       qDebug() << "Xtal has a=" << a << " b=" << b << " c=" << c;
-        
+
       QList<Atom*> oneFUatoms =  atoms();
       matrix3x3 obcellMatrix = myXtal->cell()->GetCellMatrix();
       vector3 obU1 = obcellMatrix.GetRow(0);
@@ -788,7 +788,7 @@ namespace XtalOpt {
                       *newAtom = *atom;
                       newAtom->setPos((*atom->pos())+uVecs);
                       newAtom->setAtomicNumber(atom->atomicNumber());
-                      qDebug() << "Added atom at a=" << i << " b=" << j << " c=" << k << " with atomic number " << newAtom->atomicNumber(); 
+                      qDebug() << "Added atom at a=" << i << " b=" << j << " c=" << k << " with atomic number " << newAtom->atomicNumber();
                   }
               }
           }
