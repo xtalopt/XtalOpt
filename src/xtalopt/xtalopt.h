@@ -28,6 +28,7 @@
 #include <QtCore/QFuture>
 #include <QtCore/QStringList>
 #include <QtCore/QReadWriteLock>
+#include <QtCore/QtConcurrentRun>
 
 #include <QtGui/QInputDialog>
 
@@ -216,6 +217,16 @@ namespace XtalOpt {
     QString getTemplateKeywordHelp_xtalopt();
 
     GlobalSearch::SlottedWaitCondition *m_initWC;
+    // This lock is to prevent multiple threads from generating the same
+    // supercell in XtalOpt::generateNewXtal()
+    QReadWriteLock supercellCheckLock;
+    // This creates a background thread that waits 0.1 seconds before unlocking
+    void waitThenUnlockSupercellCheckLock() {
+      QtConcurrent::run(this, &XtalOpt::waitThenUnlockSupercellCheckLock_);};
+    void waitThenUnlockSupercellCheckLock_() {
+      GS_SLEEP(0.1);
+      supercellCheckLock.unlock();
+    };
   };
 
 } // end namespace XtalOpt

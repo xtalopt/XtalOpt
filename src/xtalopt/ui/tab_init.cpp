@@ -684,6 +684,12 @@ namespace XtalOpt {
       formulaUnitsList.append(tempFormulaUnitsList.at(i).toUInt());
     }
 
+    // Reset the supercell checks
+    QList<GlobalSearch::Structure*> structures (*m_opt->tracker()->list());
+    for (size_t i = 0; i < structures.size(); i++) {
+      structures.at(i)->setSupercellGenerationChecked(false);
+    }
+
     // Update minFU, maxFU, and formulaUnitsList
     xtalopt->minFU = formulaUnitsList.at(0);
     xtalopt->maxFU = formulaUnitsList.at(formulaUnitsList.size() - 1);

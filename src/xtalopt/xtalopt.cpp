@@ -1100,85 +1100,118 @@ namespace XtalOpt {
     QList<Structure*> optimizedStructures =
                                            m_queue->getAllOptimizedStructures();
     Xtal *testXtal;
-    for (size_t i = 0; i < optimizedStructures.size(); i++) {
-      // generateNewXtal() runs concurrently. We don't want to make more than
-      // one primitive/supercell xtal of a given xtal, so try to write for
-      // lock. If it can't be done, then just continue to the next one.
-      if (!optimizedStructures.at(i)->lock()->tryLockForWrite()) continue;
+    if (supercellCheckLock.tryLockForWrite()) {
+      for (size_t i = 0; i < optimizedStructures.size(); i++) {
+        // generateNewXtal() runs concurrently. We don't want to make more than
+        // one primitive/supercell xtal of a given xtal, so try to write for
+        // lock. If it can't be done, then just continue to the next one.
+        if (!optimizedStructures.at(i)->lock()->tryLockForWrite()) continue;
 
-      // If the structure has been primitive checked, we don't need to check
-      // it again. If it hasn't been duplicate checked, yet, let it be
-      // duplicate checked first (so we don't check unnecessary structures).
-      if (!optimizedStructures.at(i)->wasPrimitiveChecked() &&
-          !optimizedStructures.at(i)->hasChangedSinceDupChecked()) {
-        testXtal = qobject_cast<Xtal*>(optimizedStructures.at(i));
-        // If testXtal is found to not be primitive, make a new xtal that is
-        // the primitive of testXtal.
-        if (!testXtal->isPrimitive(tol_spg)) {
+        // If the structure has been primitive checked, we don't need to check
+        // it again. If it hasn't been duplicate checked, yet, let it be
+        // duplicate checked first (so we don't check unnecessary structures).
+        if (!optimizedStructures.at(i)->wasPrimitiveChecked() &&
+            !optimizedStructures.at(i)->hasChangedSinceDupChecked()) {
+          testXtal = qobject_cast<Xtal*>(optimizedStructures.at(i));
+          // If testXtal is found to not be primitive, make a new xtal that is
+          // the primitive of testXtal.
+          if (!testXtal->isPrimitive(tol_spg)) {
+            testXtal->setPrimitiveChecked(true);
+            Xtal* nxtal = generatePrimitiveXtal(testXtal);
+            testXtal->lock()->unlock();
+            // This will continue the structure generation while simultaneously
+            // unlocking supercellCheckLock in 0.1 second
+            // This allows time for the structure to be finished before
+            // checking to see if another supercell could be generated
+            waitThenUnlockSupercellCheckLock();
+            return nxtal;
+          }
           testXtal->setPrimitiveChecked(true);
-          Xtal* nxtal = generatePrimitiveXtal(testXtal);
-          testXtal->lock()->unlock();
-          return nxtal;
         }
-        testXtal->setPrimitiveChecked(true);
-      }
 
-      // Now let's check to see if a supercell should be generated from
-      // the optimized structure
-      if (!optimizedStructures.at(i)->wasSupercellGenerationChecked()) {
-        double enthalpyPerFU1 = optimizedStructures.at(i)->getEnthalpy() /
-                                static_cast<double>(
-                                optimizedStructures.at(i)->getFormulaUnits());
-        for (size_t j = 1; j <= maxFU; j++) {
-          if (!onTheFormulaUnitsList(j)) continue;
-          // j represents a formula unit that is being checked.
-          // If optimizedStructures.at(i) can create a supercell with formula
-          // units of j and optimizedStructures.at(i)'s enthalpy/FU is
-          // smaller than the smallest so-far discovered enthalpy/FU at that FU,
-          // and if there is a greater than 1% difference between the two,
-          // build a supercell and add it to the gene pool
-          double enthalpyPerFU2 = lowestEnthalpyFUList.at(j) /
-                                  static_cast<double>(j);
-          if (j != optimizedStructures.at(i)->getFormulaUnits() &&
-              j %  optimizedStructures.at(i)->getFormulaUnits() == 0 &&
-              (enthalpyPerFU1 < enthalpyPerFU2 || enthalpyPerFU2 == 0)) {
-            double fractionalDiff = (enthalpyPerFU1 - enthalpyPerFU2) /
-                                    enthalpyPerFU2;
-            double percentDiff = fabs(fractionalDiff) * 100.000000;
-            if (percentDiff <= 1.000000) continue;
-            else {
-              Xtal* xtal = qobject_cast<Xtal*>(optimizedStructures.at(i));
-              // We may need to create more than one supercell from a given xtal
-              // So only update this if it is generating an xtal with the maxFU
-              if (j == maxFU) xtal->setSupercellGenerationChecked(true);
-              xtal->lock()->unlock();
-              Xtal* nxtal = generateSuperCell(xtal->getFormulaUnits(), j, xtal,
-                                              true, false);
-              xtal->lock()->lockForRead();
-              nxtal->setParents(tr("Supercell generated from %1x%2")
-                .arg(xtal->getGeneration())
-                .arg(xtal->getIDNumber()));
-              nxtal->setFormulaUnits(nxtal->getFormulaUnits());
-              nxtal->setEnthalpy(xtal->getEnthalpy() *
-                       nxtal->getFormulaUnits() /
-                       xtal->getFormulaUnits());
-              nxtal->setEnergy(xtal->getEnergy() *
-                       nxtal->getFormulaUnits() /
-                       xtal->getFormulaUnits() *
-                       EV_TO_KJ_PER_MOL);
-              nxtal->setPrimitiveChecked(true);
-              nxtal->setSkippedOptimization(true);
-              nxtal->setStatus(Xtal::Optimized);
-              xtal->lock()->unlock();
-              return nxtal;
+        // Now let's check to see if a supercell should be generated from
+        // the optimized structure
+        if (!optimizedStructures.at(i)->wasSupercellGenerationChecked()) {
+          // If the optimized structure's enthalpy is not the lowest enthalpy
+          // of it's formula unit set, set the supercell generation to be
+          // true and just continue to the next structure in the loop.
+          // For some reason, even though the datatypes are all doubles, it
+          // does not appear that we can do a direct comparison between the
+          // lowestEnthalpyFUList and the structure's enthalpy. So, we will
+          // just do a basic percent diff comparison instead. If the difference
+          // is less than 0.001%, then we will assume they are the same
+          uint FU = optimizedStructures.at(i)->getFormulaUnits();
+          double percentDiff = fabs((optimizedStructures.at(i)->getEnthalpy() -
+                                     lowestEnthalpyFUList.at(FU)) /
+                                     lowestEnthalpyFUList.at(FU) * 100.00000);
+          if (percentDiff > 0.001) {
+            optimizedStructures.at(i)->setSupercellGenerationChecked(true);
+            optimizedStructures.at(i)->lock()->unlock();
+            continue;
+          }
+          double enthalpyPerAtom1 = optimizedStructures.at(i)->getEnthalpy() /
+                                    static_cast<double>(
+                                    optimizedStructures.at(i)->numAtoms());
+          uint numAtomsPerFU = optimizedStructures.at(i)->numAtoms() /
+                               optimizedStructures.at(i)->getFormulaUnits();
+          for (size_t j = 1; j <= maxFU; j++) {
+            if (!onTheFormulaUnitsList(j)) continue;
+            // j represents a formula unit that is being checked.
+            // If optimizedStructures.at(i) can create a supercell with formula
+            // units of j and optimizedStructures.at(i)'s enthalpy/atom is
+            // smaller than the smallest so-far discovered enthalpy/atom at that
+            // FU, and if there is a difference greater than 3 meV/atom between
+            // the two, build a supercell and add it to the gene pool
+            double enthalpyPerAtom2 = (lowestEnthalpyFUList.at(j) /
+                                      static_cast<double>(j)) /
+                                      static_cast<double>(numAtomsPerFU);
+            if (j != optimizedStructures.at(i)->getFormulaUnits() &&
+                j %  optimizedStructures.at(i)->getFormulaUnits() == 0 &&
+                (enthalpyPerAtom1 < enthalpyPerAtom2 || enthalpyPerAtom2 == 0)){
+              // enthalpyDiff is in meV
+              double enthalpyDiff = fabs(enthalpyPerAtom1 - enthalpyPerAtom2) *
+                                    1000.0000000;
+              if (enthalpyDiff <= 3.000000) continue;
+              else {
+                Xtal* xtal = qobject_cast<Xtal*>(optimizedStructures.at(i));
+                // We may need to create more than one supercell from a given
+                // xtal, so only update this if it is generating an xtal with
+                // the maxFU
+                if (j == maxFU) xtal->setSupercellGenerationChecked(true);
+                xtal->lock()->unlock();
+                Xtal* nxtal = generateSuperCell(xtal->getFormulaUnits(), j,
+                                                xtal, true, false);
+                xtal->lock()->lockForRead();
+                nxtal->setParents(tr("Supercell generated from %1x%2")
+                  .arg(xtal->getGeneration())
+                  .arg(xtal->getIDNumber()));
+                nxtal->setFormulaUnits(nxtal->getFormulaUnits());
+                nxtal->setEnthalpy(xtal->getEnthalpy() *
+                         nxtal->getFormulaUnits() /
+                         xtal->getFormulaUnits());
+                nxtal->setEnergy(xtal->getEnergy() *
+                         nxtal->getFormulaUnits() /
+                         xtal->getFormulaUnits() *
+                         EV_TO_KJ_PER_MOL);
+                nxtal->setPrimitiveChecked(true);
+                nxtal->setSkippedOptimization(true);
+                nxtal->setStatus(Xtal::Optimized);
+                xtal->lock()->unlock();
+                // This will continue the structure generation while
+                // simultaneously unlocking supercellCheckLock in 0.1 second
+                // This allows time for the structure to be finished before
+                // checking to see if another supercell could be generated
+                waitThenUnlockSupercellCheckLock();
+                return nxtal;
+              }
             }
           }
+          optimizedStructures.at(i)->setSupercellGenerationChecked(true);
         }
-        optimizedStructures.at(i)->setSupercellGenerationChecked(true);
+        optimizedStructures.at(i)->lock()->unlock();
       }
-      optimizedStructures.at(i)->lock()->unlock();
+      supercellCheckLock.unlock();
     }
-
     // Having finished doing primitive reduction and supercell generation
     // checks, we can now continue!
 
