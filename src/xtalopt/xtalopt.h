@@ -227,6 +227,9 @@ namespace XtalOpt {
       GS_SLEEP(0.1);
       supercellCheckLock.unlock();
     };
+   signals:
+    void updateFormulaUnitsListUIText();
+    void updateVolumesToBePerFU(uint FU);
   };
 
 } // end namespace XtalOpt

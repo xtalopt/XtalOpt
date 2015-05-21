@@ -2275,6 +2275,21 @@ namespace XtalOpt {
       locker.unlock();
       updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
       loadedStructures.append(qobject_cast<Structure*>(xtal));
+      // Update the formula unit list. This is for loading older versions
+      // of xtalopt
+      if (i == 0) {
+        maxFU = xtal->getFormulaUnits();
+        minFU = xtal->getFormulaUnits();
+        formulaUnitsList.clear();
+        formulaUnitsList.append(xtal->getFormulaUnits());
+        emit updateFormulaUnitsListUIText();
+        emit updateVolumesToBePerFU(xtal->getFormulaUnits());
+        error("Warning: an XtalOpt run from an older version is being "
+              "loaded.\n\nIf you choose to resume the run, you will not "
+              "be able to load it with the older version any longer.\n\n"
+              "Upon resuming, the formula units will be set to what they were "
+              "in the prior run, and the volumes will be adjusted to be per FU."             );
+      }
     }
 
     m_dialog->updateProgressMinimum(0);
@@ -2635,6 +2650,10 @@ namespace XtalOpt {
     // Thankfully, the enthalpy appears to get updated before it reaches this
     // point
     s->lock()->lockForRead();
+    // This is to prevent segmentation faults...
+    while (lowestEnthalpyFUList.size() - 1 < s->getFormulaUnits()) {
+      lowestEnthalpyFUList.append(0);
+    }
     if (lowestEnthalpyFUList.at(s->getFormulaUnits()) == 0 ||
         lowestEnthalpyFUList.at(s->getFormulaUnits()) > s->getEnthalpy()) {
       lowestEnthalpyFUList[s->getFormulaUnits()] = s->getEnthalpy();

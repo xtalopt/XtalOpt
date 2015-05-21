@@ -110,6 +110,10 @@ namespace XtalOpt {
 
     connect(ui.edit_formula_units, SIGNAL(editingFinished()),
             this, SLOT(updateFormulaUnits()));
+    connect(xtalopt, SIGNAL(updateFormulaUnitsListUIText()),
+            this, SLOT(updateFormulaUnitsListUI()));
+    connect(xtalopt, SIGNAL(updateVolumesToBePerFU(uint)),
+            this, SLOT(adjustVolumesToBePerFU(uint)));
 
     QHeaderView *horizontal = ui.table_comp->horizontalHeader();
     horizontal->setResizeMode(QHeaderView::ResizeToContents);
@@ -704,6 +708,36 @@ namespace XtalOpt {
 
     // Update the nubmer of divisions
     this->updateNumDivisions();
+  }
+
+  // Updates the UI with the contents of xtalopt->formulaUnitsList
+  void TabInit::updateFormulaUnitsListUI()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    QString tmp;
+    QList<uint> formulaUnitsList = xtalopt->formulaUnitsList;
+    for (size_t i = 0; i < formulaUnitsList.size(); i++) {
+      tmp += QString::number(formulaUnitsList.at(i)) + ", ";
+    }
+    ui.edit_formula_units->setText(tmp);
+    updateFormulaUnits();
+  }
+
+  // This is only used when resuming older version of XtalOpt
+  // It adjusts the volumes so that they are per FU instead of just
+  // pure volumes
+  void TabInit::adjustVolumesToBePerFU(uint FU)
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    ui.spin_vol_min->setValue(ui.spin_vol_min->value() /
+      static_cast<double>(FU));
+    ui.spin_vol_max->setValue(ui.spin_vol_max->value() /
+      static_cast<double>(FU));
+    ui.spin_fixedVolume->setValue(ui.spin_fixedVolume->value() /
+      static_cast<double>(FU));
+    xtalopt->vol_min = ui.spin_vol_min->value();
+    xtalopt->vol_max = ui.spin_vol_max->value();
+    xtalopt->vol_fixed = ui.spin_fixedVolume->value();
   }
 
   // Determine the possible number of divisions for mitosis and update combobox with options
