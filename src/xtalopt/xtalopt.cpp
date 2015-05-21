@@ -2412,7 +2412,18 @@ namespace XtalOpt {
     if (st.i->compareCoordinates(*st.j, st.tol_len, st.tol_ang)) {
       // Mark the newest xtal as a duplicate of the oldest. This keeps the
       // lowest-energy plot trace accurate.
-      if (st.i->getIndex() > st.j->getIndex()) {
+      // For some reason, primitive structures do not always update their
+      // indices immediately, and they remain the default "-1". So, if one
+      // of the indices is -1, set that to be the kickXtal
+      if (st.i->getIndex() == -1) {
+        kickXtal = st.i;
+        keepXtal = st.j;
+      }
+      else if (st.j->getIndex() == -1) {
+        kickXtal = st.j;
+        keepXtal = st.i;
+      }
+      else if (st.i->getIndex() > st.j->getIndex()) {
         kickXtal = st.i;
         keepXtal = st.j;
       }
