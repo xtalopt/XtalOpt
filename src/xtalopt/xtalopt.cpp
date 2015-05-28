@@ -1493,6 +1493,7 @@ namespace XtalOpt {
     m_dialog->readSettings(filename);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef ENABLE_SSH
     // Create the SSHManager if running remotely
     if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
@@ -1503,6 +1504,8 @@ namespace XtalOpt {
     }
 #endif // ENABLE_SSH
 =======
+=======
+>>>>>>> d84113ec476d434cfbc1857af6a060ee2143bb7c
     #ifdef ENABLE_SSH
         // Create the SSHManager if running remotely
     if (!readOnly) {
@@ -1514,7 +1517,21 @@ namespace XtalOpt {
         }
     }
     #endif // ENABLE_SSH
+<<<<<<< HEAD
 >>>>>>> b699c7fe1e6129e63bb06e404b0baf0af76f4c2b
+=======
+=======
+#ifdef ENABLE_SSH
+    // Create the SSHManager if running remotely
+    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
+      if (!this->createSSHConnections()) {
+        error(tr("Could not create ssh connections."));
+        return false;
+      }
+    }
+#endif // ENABLE_SSH
+>>>>>>> 56b7b1b08f6446fa5506a284781e5a888d23ba2a
+>>>>>>> d84113ec476d434cfbc1857af6a060ee2143bb7c
 
     debug(tr("Resuming XtalOpt session in '%1' (%2) readOnly = %3")
           .arg(filename)
