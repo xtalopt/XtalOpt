@@ -1492,6 +1492,7 @@ namespace XtalOpt {
     // scope, but it isn't changing it here. Caching issue maybe?
     m_dialog->readSettings(filename);
 
+<<<<<<< HEAD
 #ifdef ENABLE_SSH
     // Create the SSHManager if running remotely
     if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
@@ -1501,6 +1502,19 @@ namespace XtalOpt {
       }
     }
 #endif // ENABLE_SSH
+=======
+    #ifdef ENABLE_SSH
+        // Create the SSHManager if running remotely
+    if (!readOnly) {
+        if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
+            if (!this->createSSHConnections()) {
+                error(tr("Could not create ssh connections."));
+            return false;
+            }
+        }
+    }
+    #endif // ENABLE_SSH
+>>>>>>> b699c7fe1e6129e63bb06e404b0baf0af76f4c2b
 
     debug(tr("Resuming XtalOpt session in '%1' (%2) readOnly = %3")
           .arg(filename)
