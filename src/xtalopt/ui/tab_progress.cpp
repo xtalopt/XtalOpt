@@ -19,6 +19,7 @@
 #include <globalsearch/optimizer.h>
 #include <globalsearch/ui/abstracttab.h>
 #include <globalsearch/optbase.h>
+#include <globalsearch/fileutils.h>
 
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
@@ -857,65 +858,12 @@ namespace XtalOpt {
       QDir contDir(filePath+"/ranked/CONTCAR");
       QDir gotDir(filePath+"/ranked/GOT");
 
-   if(dir.exists()) {
-       if(cifDir.exists()) {
-            Q_FOREACH(QFileInfo info, cifDir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
-                if (info.isDir()) {
-                    cifDir.remove(info.absoluteFilePath());
-                }
-                else {
-                    QFile::remove(info.absoluteFilePath());
-                }
-            }
-            cifDir.rmdir(".");
-        }
-        if(gotDir.exists()) {
-            Q_FOREACH(QFileInfo info, gotDir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
-                if (info.isDir()) {
-                    gotDir.remove(info.absoluteFilePath());
-                }
-                else {
-                    QFile::remove(info.absoluteFilePath());
-                }
-            }
-            gotDir.rmdir(".");
-        }
-        if(contDir.exists()) {
-            Q_FOREACH(QFileInfo info, contDir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
-                if (info.isDir()) {
-                    contDir.remove(info.absoluteFilePath());
-                }
-                else {
-                    QFile::remove(info.absoluteFilePath());
-                }
-            }
-            contDir.rmdir(".");
-        }
-        Q_FOREACH(QFileInfo info, dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
-            if (info.isDir()) {
-                dir.remove(info.absoluteFilePath());
-            }
-            else {
-                QFile::remove(info.absoluteFilePath());
-            }
-        }
-        dir.rmdir(".");
-        dir.mkpath(".");
-        cifDir.mkpath(".");
-        if (opti->getIDString() == "VASP") {
-            contDir.mkpath(".");
-        } else if (opti->getIDString() == "GULP") {
-            gotDir.mkpath(".");
-        }
-    } else {
-        dir.mkpath(".");
-        cifDir.mkpath(".");
-        if (opti->getIDString() == "VASP") {
-            contDir.mkpath(".");
-        } else if (opti->getIDString() == "GULP") {
-            gotDir.mkpath(".");
-        }
-    }
+   if(dir.exists()) FileUtils::removeDir(filePath+"/ranked");
+   dir.mkpath(".");
+   cifDir.mkpath(".");
+   if (opti->getIDString() == "VASP") contDir.mkpath(".");
+   else if (opti->getIDString() == "GULP") gotDir.mkpath(".");
+
    int gen, id;
    QString space, status, pathName, gen_s, id_s, enthalpy;
    QFile results (filePath+"/results.txt");
