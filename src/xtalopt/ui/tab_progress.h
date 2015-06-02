@@ -47,6 +47,7 @@ namespace XtalOpt {
     QString spg;
     QString status;
     QBrush brush;
+    QBrush pen;
   };
 
   class TabProgress : public GlobalSearch::AbstractTab

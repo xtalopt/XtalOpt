@@ -216,6 +216,7 @@ namespace XtalOpt {
     e.volume  = xtal->getVolume();
     e.status  = "Waiting for data...";
     e.brush   = QBrush (Qt::white);
+    e.pen   = QBrush (Qt::black);
     e.spg     = QString::number( xtal->getSpaceGroupNumber()) + ": "
       + xtal->getSpaceGroupSymbol();
 
@@ -310,6 +311,7 @@ namespace XtalOpt {
     XO_Prog_TableEntry e;
     uint totalOptSteps = m_opt->optimizer()->getNumberOfOptSteps();
     e.brush = QBrush (Qt::white);
+    e.pen = QBrush (Qt::black);
 
     QReadLocker xtalLocker (xtal->lock());
     e.elapsed = xtal->getOptElapsed();
@@ -396,6 +398,7 @@ namespace XtalOpt {
     case Xtal::Optimized:
       e.status = "Optimized";
       e.brush.setColor(Qt::blue);
+      e.pen.setColor(Qt::white);
       break;
     case Xtal::WaitingForOptimization:
       e.status = tr("Waiting for Optimization (%1 of %2)")
@@ -435,6 +438,7 @@ namespace XtalOpt {
     ui.table_list->item(row, Volume)->setText(QString::number(e.volume,'f',2));
     ui.table_list->item(row, Status)->setText(e.status);
     ui.table_list->item(row, Status)->setBackground(e.brush);
+    ui.table_list->item(row, Status)->setForeground(e.pen);
 
     if (e.jobID)
       ui.table_list->item(row, JobID)->setText(QString::number(e.jobID));

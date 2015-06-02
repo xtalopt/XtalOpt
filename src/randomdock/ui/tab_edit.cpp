@@ -19,6 +19,7 @@
 #include <randomdock/optimizers/adf.h>
 #include <randomdock/optimizers/gamess.h>
 #include <randomdock/optimizers/mopac.h>
+#include <randomdock/optimizers/gaussian.h>
 #include <randomdock/randomdock.h>
 #include <randomdock/ui/dialog.h>
 
@@ -48,7 +49,7 @@ namespace RandomDock {
   {
     // Fill m_optimizers in order of RandomDock::OptTypes
     m_optimizers.clear();
-    const unsigned int numOptimizers = 3;
+    const unsigned int numOptimizers = 4;
     for (unsigned int i = 0; i < numOptimizers; ++i) {
       switch (i) {
       case RandomDock::OT_GAMESS:
@@ -59,6 +60,9 @@ namespace RandomDock {
         break;
       case RandomDock::OT_MOPAC:
         m_optimizers.append(new MopacOptimizer (m_opt));
+        break;
+      case RandomDock::OT_GAUSSIAN:
+        m_optimizers.append(new GaussianOptimizer (m_opt));
         break;
       }
     }
