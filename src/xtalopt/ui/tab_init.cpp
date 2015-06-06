@@ -44,35 +44,35 @@ namespace XtalOpt {
             this, SLOT(updateComposition()));
 
     // unit cell dimension connections
-    connect(ui.spin_a_min, SIGNAL(editingFinished()),
+    connect(ui.spin_a_min, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_b_min, SIGNAL(editingFinished()),
+    connect(ui.spin_b_min, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_c_min, SIGNAL(editingFinished()),
+    connect(ui.spin_c_min, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_alpha_min, SIGNAL(editingFinished()),
+    connect(ui.spin_alpha_min, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_beta_min, SIGNAL(editingFinished()),
+    connect(ui.spin_beta_min, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_gamma_min, SIGNAL(editingFinished()),
+    connect(ui.spin_gamma_min, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_vol_min, SIGNAL(editingFinished()),
+    connect(ui.spin_vol_min, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_a_max, SIGNAL(editingFinished()),
+    connect(ui.spin_a_max, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_b_max, SIGNAL(editingFinished()),
+    connect(ui.spin_b_max, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_c_max, SIGNAL(editingFinished()),
+    connect(ui.spin_c_max, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_alpha_max, SIGNAL(editingFinished()),
+    connect(ui.spin_alpha_max, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_beta_max, SIGNAL(editingFinished()),
+    connect(ui.spin_beta_max, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_gamma_max, SIGNAL(editingFinished()),
+    connect(ui.spin_gamma_max, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_vol_max, SIGNAL(editingFinished()),
+    connect(ui.spin_vol_max, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_fixedVolume, SIGNAL(editingFinished()),
+    connect(ui.spin_fixedVolume, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
     connect(ui.cb_fixedVolume, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
@@ -424,6 +424,16 @@ namespace XtalOpt {
     if (ui.spin_beta_min->value()       > ui.spin_beta_max->value())	ui.spin_beta_max->setValue(     ui.spin_beta_min->value());
     if (ui.spin_gamma_min->value()      > ui.spin_gamma_max->value())	ui.spin_gamma_max->setValue(	ui.spin_gamma_min->value());
     if (ui.spin_vol_min->value()        > ui.spin_vol_max->value())	ui.spin_vol_max->setValue(	ui.spin_vol_min->value());
+    
+    // Update min and max volume based upon min and max lengths (a,b,c)
+    if ((ui.spin_a_min->value() * ui.spin_c_min->value() * ui.spin_c_min->value()) > ui.spin_vol_min->value()) ui.spin_vol_min->setValue(ui.spin_a_min->value() * ui.spin_c_min->value() * ui.spin_c_min->value());
+    if ((ui.spin_a_max->value() * ui.spin_c_max->value() * ui.spin_c_max->value()) < ui.spin_vol_max->value()) ui.spin_vol_max->setValue(ui.spin_a_max->value() * ui.spin_c_max->value() * ui.spin_c_max->value());
+    
+    // Update fixed volume based upon min and max lengths (a,b,c)
+    if (ui.cb_fixedVolume->isChecked()) {
+        if ((ui.spin_a_min->value() * ui.spin_c_min->value() * ui.spin_c_min->value()) > ui.spin_fixedVolume->value()) (ui.spin_fixedVolume->setValue(ui.spin_a_min->value() * ui.spin_c_min->value() * ui.spin_c_min->value()));
+        if ((ui.spin_a_max->value() * ui.spin_c_max->value() * ui.spin_c_max->value()) < ui.spin_fixedVolume->value()) (ui.spin_fixedVolume->setValue(ui.spin_a_max->value() * ui.spin_c_max->value() * ui.spin_c_max->value()));
+    }
 
     // Assign variables
     xtalopt->a_min		= ui.spin_a_min->value();
