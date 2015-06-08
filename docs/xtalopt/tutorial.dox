@@ -243,6 +243,84 @@ castep xtal
 # CASTEP will create xtal.castep
 \endcode
 
+For more details on optimization schemes, see \ref optschemes.
+
+@subsection siesta-opt SIESTA
+\image html opt-set-siesta.png
+\image latex opt-set-siesta.png width=\textwidth
+
+On the next tab we choose SIESTA for the local optimizer and enter a template
+for SIESTA to use. Select "SIESTA" as the "Optimizer" and
+"xtal.fdf" as "Template". Next, fill out the text field on the
+right with the following template:
+\code
+SystemName  %description%
+SystemLabel %description%-%gen%x%id%
+
+NumberOfAtoms   %numAtoms%
+NumberOfSpecies %numSpecies%
+
+%block% ChemicalSpeciesLabel
+%chemicalSpeciesLabel%
+%endblock% ChemicalSpeciesLabel
+
+LatticeConstant 4.05 Ang
+
+%block% LatticeVectors
+%cellMatrixAngstrom%
+%endblock% LatticeVectors
+
+PAO.BasisType   split
+%block% PAO.Basis
+Ti  0   1.91
+%endblock% PAO.Basis
+
+AtomicCoordinatesFormat Fracitonal
+%block% AtomicCoordinatesAndAtomicSpecies
+%atomicCoordsAndAtomicSpecies%
+%endblock% AtomicCoordinatesAndAtomicSpecies
+
+KGridCutoff 1.0 Ang
+
+XC.functional   GGA
+XC.Authors      PBE
+MD.VariableCell true
+
+DM.Require.Energy.Convergence   true
+\endcode
+
+Alternatively, one can load the scheme file distributed with the
+source code under samples/siesta-TiO-xtalopt.scheme. If the source code
+is not available, the scheme file can be obtained by clicking the
+"Original Format" link at the bottom of the page <a
+href="src/samples/siesta-TiO-xtalopt.scheme">
+here</a>.
+
+Furthermore, one needs to select pseudopotential(s) for the search. 
+These .psf files can be chosen by selecting "xtal.psf" in "Template". 
+This will allow the user to find and choose the proper pseudopotentials for the system. 
+In this example, choose the O.psf and Ti.psf from the samples directory.
+
+For more details on optimization schemes, see \ref optschemes.
+
+Note the "%" surrounding various keywords. These will be replaced by
+the structure-specific data when the optimizer is invoked for each
+structure. Click "Help" to view all of the keywords available. The
+number of optimization steps can be modified with the "Add/Resume"
+buttons. The "user" fields in the lower left corner allow users to
+specify their own keyword/value pairs, which is useful for making
+changes to multiple optimization steps at once. We will only be using
+one optimization step in this tutorial.
+
+XtalOpt expects SIESTA to use the following filenames:
+
+\code
+siesta xtal.fdf
+\endcode
+
+\ref qisetup "Skip to next section."
+
+
 @section qisetup Queue setup
 
 XtalOpt currently supports using the \ref remotepbs "PBS", \ref
