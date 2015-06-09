@@ -11,6 +11,7 @@ namespace XtalOpt {
     - \ref gulp-opt
     - \ref pwscf-opt
     - \ref castep-opt
+    - \ref siesta-opt
   - \ref qisetup
     - \ref remotepbs
     - \ref remotesge

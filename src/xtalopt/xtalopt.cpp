@@ -1208,7 +1208,7 @@ namespace XtalOpt {
       for (int i = 0; i < atomCounts.size(); i++) {
         rep += " ";
         rep += QString::number(i+1) + " ";
-        rep += QString::number(atomCounts.at(i)) + " ";
+        rep += QString::number(OpenBabel::etab.GetAtomicNum(symbol.at(i).toStdString().c_str())) + " ";
         rep += symbol.at(i) + "\n";
       }
     }
