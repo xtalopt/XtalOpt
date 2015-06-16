@@ -426,13 +426,13 @@ namespace XtalOpt {
     if (ui.spin_vol_min->value()        > ui.spin_vol_max->value())	ui.spin_vol_max->setValue(	ui.spin_vol_min->value());
     
     // Update min and max volume based upon min and max lengths (a,b,c)
-    if ((ui.spin_a_min->value() * ui.spin_c_min->value() * ui.spin_c_min->value()) > ui.spin_vol_min->value()) ui.spin_vol_min->setValue(ui.spin_a_min->value() * ui.spin_c_min->value() * ui.spin_c_min->value());
-    if ((ui.spin_a_max->value() * ui.spin_c_max->value() * ui.spin_c_max->value()) < ui.spin_vol_max->value()) ui.spin_vol_max->setValue(ui.spin_a_max->value() * ui.spin_c_max->value() * ui.spin_c_max->value());
+    if ((ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value()) > ui.spin_vol_min->value()) ui.spin_vol_min->setValue(ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value());
+    if ((ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value()) < ui.spin_vol_max->value()) ui.spin_vol_max->setValue(ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value());
     
     // Update fixed volume based upon min and max lengths (a,b,c)
     if (ui.cb_fixedVolume->isChecked()) {
-        if ((ui.spin_a_min->value() * ui.spin_c_min->value() * ui.spin_c_min->value()) > ui.spin_fixedVolume->value()) (ui.spin_fixedVolume->setValue(ui.spin_a_min->value() * ui.spin_c_min->value() * ui.spin_c_min->value()));
-        if ((ui.spin_a_max->value() * ui.spin_c_max->value() * ui.spin_c_max->value()) < ui.spin_fixedVolume->value()) (ui.spin_fixedVolume->setValue(ui.spin_a_max->value() * ui.spin_c_max->value() * ui.spin_c_max->value()));
+        if ((ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value()) > ui.spin_fixedVolume->value()) (ui.spin_fixedVolume->setValue(ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value()));
+        if ((ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value()) < ui.spin_fixedVolume->value()) (ui.spin_fixedVolume->setValue(ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value()));
     }
 
     // Assign variables
