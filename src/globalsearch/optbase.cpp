@@ -265,7 +265,7 @@ namespace GlobalSearch {
     // Loop over structures and save them
     QList<Structure*> *structures = m_tracker->list();
 
-    QString structureStateFileName;
+    QString structureStateFileName, oldStructureStateFileName;
 
     Structure* structure;
     for (int i = 0; i < structures->size(); i++) {
@@ -275,6 +275,37 @@ namespace GlobalSearch {
       // this is "ok" under a read lock because of the savePending logic
       structure->setIndex(i);
       structureStateFileName = structure->fileName() + "/structure.state";
+      oldStructureStateFileName = structureStateFileName + ".old";
+
+      // We are going to write to structure.state.old if one already exists
+      // and is a valid state file. This is done in response to
+      // structure.state files being mysteriously empty on rare occasions...
+      if (QFile::exists(structureStateFileName) ) {
+
+        // Attempt to open state file. We will make sure it is valid
+        QFile file (structureStateFileName);
+        if (!file.open(QIODevice::ReadOnly)) {
+          error("OptBase::save(): Error opening file "
+                + structureStateFileName + " for reading...");
+          return false;
+        }
+
+        // If the state file is empty or if saveSuccessful is false,
+        // stateFileIsValid will be false
+        SETTINGS(structureStateFileName);
+        bool stateFileIsValid = settings->value("structure/saveSuccessful",
+                                                false).toBool();
+        DESTROY_SETTINGS(structureStateFileName);
+
+        // Copy it over if it's a valid state file...
+        if (stateFileIsValid) {
+          if (QFile::exists(oldStructureStateFileName)) {
+            QFile::remove(oldStructureStateFileName);
+          }
+          QFile::copy(structureStateFileName, oldStructureStateFileName);
+        }
+      }
+
       if (notify) {
         m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
                                       .arg(structureStateFileName));

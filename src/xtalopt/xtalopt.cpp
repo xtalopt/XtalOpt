@@ -2221,16 +2221,34 @@ namespace XtalOpt {
       // enthalpy,energy, atom types, atom positions, and cell info must be
       // set already
       SETTINGS(xtalStateFileName);
-      int version = settings->value("structure/version").toInt();
+      int version = settings->value("structure/version", -1).toInt();
       bool saveSuccessful = settings->value("structure/saveSuccessful",
                                             false).toBool();
+
+      QString errorMsg = tr("Error, structure.state file was not saved "
+                            "successfully for %1. This structure will be "
+                            "excluded.").arg(xtal->fileName());
+
+      // version == -1 implies that the save failed.
+      if (version == -1) {
+        error(errorMsg);
+        continue;
+      }
+
       if (version >= 3) {
         if (!saveSuccessful) {
-          error(tr("Error, structure.state file was not saved successfully for "
-                   "%1. This structure will be excluded.")
-                .arg(xtal->fileName()));
-          continue;
+          // Check the structure.state.old file if this was not saved
+          // successfully.
+          DESTROY_SETTINGS(xtalStateFileName);
+          SETTINGS(xtalStateFileName + ".old");
+          if (!settings->value("structure/saveSuccessful",
+                               false).toBool()) {
+            error(errorMsg);
+            continue;
+          }
+          // Otherwise, just continue with the new settings in place
         }
+
         // Reset state
         locker.relock();
         xtal->setStatus(state);
