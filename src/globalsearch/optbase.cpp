@@ -244,15 +244,21 @@ namespace GlobalSearch {
                                     0, 0);
     }
 
+    SETTINGS(filename);
+
     // Copy .state -> .state.old
     if (QFile::exists(filename) ) {
-      if (QFile::exists(oldfilename)) {
-        QFile::remove(oldfilename);
+      // Only copy over if the current state is valid
+      const bool saveSuccessful = settings->value(m_idString.toLower().append(                                                    "/saveSuccessful"),
+                                                  false).toBool();
+      if (saveSuccessful) {
+        if (QFile::exists(oldfilename)) {
+          QFile::remove(oldfilename);
+        }
+        QFile::copy(filename, oldfilename);
       }
-      QFile::copy(filename, oldfilename);
     }
 
-    SETTINGS(filename);
     const int VERSION = m_schemaVersion;
     settings->beginGroup(m_idString.toLower());
     settings->setValue("version",          VERSION);
@@ -291,7 +297,8 @@ namespace GlobalSearch {
         }
 
         // If the state file is empty or if saveSuccessful is false,
-        // stateFileIsValid will be false
+        // stateFileIsValid will be false. This will hopefully not interfere
+        // with the previous SETTINGS() declared by hiding it with scoping.
         SETTINGS(structureStateFileName);
         bool stateFileIsValid = settings->value("structure/saveSuccessful",
                                                 false).toBool();

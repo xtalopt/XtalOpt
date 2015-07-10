@@ -2112,6 +2112,7 @@ namespace XtalOpt {
       error("XtalOpt::load(): File " + file.fileName() +
             " is incomplete, corrupt, or invalid. (Try "
             + file.fileName() + ".old if it exists)");
+      readOnly = true;
       return false;
     }
 
@@ -2184,6 +2185,8 @@ namespace XtalOpt {
     QList<uint> keys = comp.keys();
     QList<Structure*> loadedStructures;
     QString xtalStateFileName;
+    bool errorMsgAlreadyGiven = false;
+
     for (int i = 0; i < xtalDirs.size(); i++) {
       m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...")
                                     .arg(i+1).arg(xtalDirs.size()));
@@ -2225,13 +2228,24 @@ namespace XtalOpt {
       bool saveSuccessful = settings->value("structure/saveSuccessful",
                                             false).toBool();
 
-      QString errorMsg = tr("Error, structure.state file was not saved "
+      // The error message is given by a pop-up
+      QString errorMsg = tr("Some structures were not loaded successfully. "
+                            "These structures will be over-written if the "
+                            "search is resumed."
+                            "\n\nPlease check the log for details. ");
+
+      // The warning message is given in the log
+      QString warningMsg = tr("structure.state file was not saved "
                             "successfully for %1. This structure will be "
                             "excluded.").arg(xtal->fileName());
 
       // version == -1 implies that the save failed.
       if (version == -1) {
-        error(errorMsg);
+        if (!errorMsgAlreadyGiven) {
+          error(errorMsg);
+          errorMsgAlreadyGiven = true;
+        }
+        warning(warningMsg);
         continue;
       }
 
@@ -2243,7 +2257,11 @@ namespace XtalOpt {
           SETTINGS(xtalStateFileName + ".old");
           if (!settings->value("structure/saveSuccessful",
                                false).toBool()) {
-            error(errorMsg);
+            if (!errorMsgAlreadyGiven) {
+              error(errorMsg);
+              errorMsgAlreadyGiven = true;
+            }
+            warning(warningMsg);
             continue;
           }
           // Otherwise, just continue with the new settings in place
@@ -2361,6 +2379,14 @@ namespace XtalOpt {
     }
 
     m_dialog->updateProgressLabel("Done!");
+
+    // If no structures were loaded successfully, enter read-only mode.
+    if (loadedStructures.size() == 0) {
+      error(tr("Critical error! No structures were loaded successfully."
+               "\nEntering read-only mode."));
+      readOnly = true;
+      return false;
+    }
 
     // Check if user wants to resume the search
     if (!readOnly) {
