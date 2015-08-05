@@ -105,9 +105,9 @@ namespace XtalOpt {
   void TabPlot::writeSettings(const QString &filename)
   {
     SETTINGS(filename);
-    const int VERSION = 1;
+    const int version = 1;
     settings->beginGroup("xtalopt/plot/");
-    settings->setValue("version",         VERSION);
+    settings->setValue("version",         version);
     settings->setValue("x_label",         ui.combo_xAxis->currentIndex());
     settings->setValue("y_label",         ui.combo_yAxis->currentIndex());
     settings->setValue("showDuplicates",  ui.cb_showDuplicates->isChecked());

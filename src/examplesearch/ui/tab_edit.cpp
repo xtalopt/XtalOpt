@@ -108,8 +108,8 @@ namespace ExampleSearch {
     SETTINGS(filename);
 
     settings->beginGroup("examplesearch/edit");
-    const int VERSION = 1;
-    settings->setValue("version",          VERSION);
+    const int version = 1;
+    settings->setValue("version",          version);
 
     settings->setValue("description", m_opt->description);
     settings->setValue("localpath", m_opt->filePath);

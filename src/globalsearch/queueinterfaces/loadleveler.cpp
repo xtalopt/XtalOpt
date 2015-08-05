@@ -186,11 +186,11 @@ void LoadLevelerQueueInterface::writeSettings(const QString &filename)
 {
   SETTINGS(filename);
 
-  const int VERSION = 1;
+  const int version = 1;
 
   settings->beginGroup(m_opt->getIDString().toLower());
   settings->beginGroup("queueinterface/loadlevelerqueueinterface");
-  settings->setValue("version", VERSION);
+  settings->setValue("version", version);
   settings->beginGroup("paths");
 
   settings->setValue("llsubmit",  m_llsubmit);
