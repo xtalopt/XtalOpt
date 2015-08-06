@@ -118,8 +118,8 @@ namespace XtalOpt {
     settings->beginGroup("xtalopt/opt/");
 
     // config version
-    const int VERSION = 1;
-    settings->setValue("version",               VERSION);
+    const int version = 1;
+    settings->setValue("version",               version);
 
     // Initial generation
     settings->setValue("opt/numInitial",        xtalopt->numInitial);
