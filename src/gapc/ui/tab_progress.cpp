@@ -99,9 +99,9 @@ namespace GAPC {
   void TabProgress::writeSettings(const QString &filename)
   {
     SETTINGS(filename);
-    const int VERSION = 1;
+    const int version = 1;
     settings->beginGroup("gapc/progress");
-    settings->setValue("version",     VERSION);
+    settings->setValue("version",     version);
     settings->setValue("refreshTime", ui.spin_period->value());
     settings->endGroup();
     DESTROY_SETTINGS(filename);

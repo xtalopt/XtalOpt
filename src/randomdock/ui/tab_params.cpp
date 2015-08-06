@@ -73,8 +73,8 @@ namespace RandomDock {
     SETTINGS(filename);
     RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
     settings->beginGroup("randomdock/params");
-    const int VERSION = 1;
-    settings->setValue("version",     VERSION);
+    const int version = 1;
+    settings->setValue("version",     version);
 
     settings->setValue("runningJobLimit",       randomdock->runningJobLimit);
     settings->setValue("numMatrixMol",          randomdock->numMatrixMol);

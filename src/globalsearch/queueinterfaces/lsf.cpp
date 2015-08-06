@@ -179,11 +179,11 @@ namespace GlobalSearch {
   {
     SETTINGS(filename);
 
-    const int VERSION = 1;
+    const int version = 1;
 
     settings->beginGroup(m_opt->getIDString().toLower());
     settings->beginGroup("queueinterface/lsfqueueinterface");
-    settings->setValue("version", VERSION);
+    settings->setValue("version", version);
     settings->beginGroup("paths");
 
     settings->setValue("bsub",  m_bsub);

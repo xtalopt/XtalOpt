@@ -181,11 +181,11 @@ namespace GlobalSearch {
   {
     SETTINGS(filename);
 
-    const int VERSION = 0;
+    const int version = 0;
 
     settings->beginGroup(m_opt->getIDString().toLower());
     settings->beginGroup("queueinterface/slurmqueueinterface");
-    settings->setValue("version", VERSION);
+    settings->setValue("version", version);
     settings->beginGroup("paths");
 
     settings->setValue("sbatch",  m_sbatch);
