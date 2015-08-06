@@ -110,8 +110,8 @@ namespace RandomDock {
     SETTINGS(filename);
 
     settings->beginGroup("randomdock/plot/");
-    const int VERSION = 1;
-    settings->setValue("version",     VERSION);
+    const int version = 1;
+    settings->setValue("version",     version);
 
     settings->setValue("x_label", ui.combo_xAxis->currentIndex());
     settings->setValue("y_label", ui.combo_yAxis->currentIndex());

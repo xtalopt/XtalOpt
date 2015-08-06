@@ -60,8 +60,8 @@ namespace GAPC {
 
     settings->beginGroup("gapc/init/");
 
-    const int VERSION = 1;
-    settings->setValue("version",          VERSION);
+    const int version = 1;
+    settings->setValue("version",          version);
     settings->setValue("minIAD",           gapc->minIAD);
     settings->setValue("maxIAD",           gapc->maxIAD);
 

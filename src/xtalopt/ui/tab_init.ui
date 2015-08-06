@@ -299,7 +299,7 @@ etc.</string>
        <double>0.100000000000000</double>
       </property>
       <property name="value">
-       <double>3.000000000000000</double>
+       <double>1.000000000000000</double>
       </property>
      </widget>
      <widget class="QLabel" name="label_3">
@@ -382,7 +382,7 @@ etc.</string>
        <double>0.100000000000000</double>
       </property>
       <property name="value">
-       <double>3.000000000000000</double>
+       <double>1.000000000000000</double>
       </property>
      </widget>
      <widget class="QDoubleSpinBox" name="spin_beta_max">
@@ -508,7 +508,7 @@ etc.</string>
        <double>0.100000000000000</double>
       </property>
       <property name="value">
-       <double>3.000000000000000</double>
+       <double>1.000000000000000</double>
       </property>
      </widget>
      <widget class="QDoubleSpinBox" name="spin_alpha_min">

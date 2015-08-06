@@ -238,10 +238,10 @@ namespace GlobalSearch {
   void Structure::writeStructureSettings(const QString &filename)
   {
     SETTINGS(filename);
-    const int VERSION = 3;
+    const int version = 3;
     settings->beginGroup("structure");
     settings->setValue("saveSuccessful", false);
-    settings->setValue("version",     VERSION);
+    settings->setValue("version",     version);
     settings->setValue("generation", getGeneration());
     settings->setValue("id", getIDNumber());
     settings->setValue("index", getIndex());
@@ -460,7 +460,7 @@ namespace GlobalSearch {
   void Structure::writeCurrentStructureInfo(const QString &filename)
   {
     SETTINGS(filename);
-    // const int VERSION = 1;
+    // const int version = 1;
     settings->beginGroup("structure/current");
     settings->setValue("enthalpy", this->getEnthalpy());
     settings->setValue("energy",   this->getEnergy());
