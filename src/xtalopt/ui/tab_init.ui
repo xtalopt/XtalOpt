@@ -112,6 +112,9 @@ etc.</string>
         <height>24</height>
        </rect>
       </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
       <property name="decimals">
        <number>5</number>
       </property>
@@ -133,6 +136,9 @@ etc.</string>
         <width>171</width>
         <height>24</height>
        </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
       </property>
       <property name="decimals">
        <number>5</number>
@@ -188,6 +194,9 @@ etc.</string>
         <height>24</height>
        </rect>
       </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
       <property name="decimals">
        <number>5</number>
       </property>
@@ -210,6 +219,9 @@ etc.</string>
         <height>24</height>
        </rect>
       </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
       <property name="decimals">
        <number>5</number>
       </property>
@@ -231,6 +243,9 @@ etc.</string>
         <width>171</width>
         <height>24</height>
        </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
       </property>
       <property name="decimals">
        <number>5</number>
@@ -291,6 +306,9 @@ etc.</string>
         <width>171</width>
         <height>24</height>
        </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
       </property>
       <property name="decimals">
        <number>5</number>
@@ -375,6 +393,9 @@ etc.</string>
         <height>24</height>
        </rect>
       </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
       <property name="decimals">
        <number>5</number>
       </property>
@@ -393,6 +414,9 @@ etc.</string>
         <width>171</width>
         <height>24</height>
        </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
       </property>
       <property name="decimals">
        <number>5</number>
@@ -416,6 +440,9 @@ etc.</string>
         <height>24</height>
        </rect>
       </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
       <property name="decimals">
        <number>2</number>
       </property>
@@ -437,6 +464,9 @@ etc.</string>
         <width>171</width>
         <height>24</height>
        </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
       </property>
       <property name="decimals">
        <number>2</number>
@@ -501,6 +531,9 @@ etc.</string>
         <height>24</height>
        </rect>
       </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
       <property name="decimals">
        <number>5</number>
       </property>
@@ -519,6 +552,9 @@ etc.</string>
         <width>171</width>
         <height>24</height>
        </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
       </property>
       <property name="decimals">
        <number>5</number>
@@ -541,6 +577,9 @@ etc.</string>
         <width>171</width>
         <height>24</height>
        </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
       </property>
       <property name="decimals">
        <number>5</number>
@@ -582,6 +621,9 @@ etc.</string>
         <width>171</width>
         <height>24</height>
        </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
       </property>
       <property name="decimals">
        <number>5</number>
@@ -926,6 +968,50 @@ able to create offspring that meet this restriction.</string>
        <string>Export subcells?</string>
       </property>
      </widget>
+     <zorder>spin_b_max</zorder>
+     <zorder>spin_gamma_min</zorder>
+     <zorder>label_11</zorder>
+     <zorder>label_7</zorder>
+     <zorder>spin_beta_min</zorder>
+     <zorder>spin_c_max</zorder>
+     <zorder>spin_alpha_max</zorder>
+     <zorder>label_6</zorder>
+     <zorder>label_8</zorder>
+     <zorder>spin_b_min</zorder>
+     <zorder>label_3</zorder>
+     <zorder>label_5</zorder>
+     <zorder>label_2</zorder>
+     <zorder>label_4</zorder>
+     <zorder>spin_a_min</zorder>
+     <zorder>spin_beta_max</zorder>
+     <zorder>spin_vol_max</zorder>
+     <zorder>line</zorder>
+     <zorder>spin_fixedVolume</zorder>
+     <zorder>spin_c_min</zorder>
+     <zorder>spin_alpha_min</zorder>
+     <zorder>spin_gamma_max</zorder>
+     <zorder>cb_mitosis</zorder>
+     <zorder>spin_a_max</zorder>
+     <zorder>spin_scaleFactor</zorder>
+     <zorder>combo_divisions</zorder>
+     <zorder>spin_minRadius</zorder>
+     <zorder>label_12</zorder>
+     <zorder>cb_interatomicDistanceLimit</zorder>
+     <zorder>cb_fixedVolume</zorder>
+     <zorder>label</zorder>
+     <zorder>label_9</zorder>
+     <zorder>line_2</zorder>
+     <zorder>line_3</zorder>
+     <zorder>combo_a</zorder>
+     <zorder>combo_b</zorder>
+     <zorder>combo_c</zorder>
+     <zorder>label_15</zorder>
+     <zorder>label_16</zorder>
+     <zorder>label_17</zorder>
+     <zorder>label_13</zorder>
+     <zorder>label_18</zorder>
+     <zorder>cb_subcellPrint</zorder>
+     <zorder>spin_vol_min</zorder>
     </widget>
    </item>
   </layout>
