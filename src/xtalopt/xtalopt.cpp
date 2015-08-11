@@ -1794,7 +1794,7 @@ namespace XtalOpt {
     for (QList<Xtal*>::iterator xi = xtals.begin();
          xi != xtals.end(); xi++) {
       (*xi)->lock()->lockForRead();
-      if ((*xi)->getStatus() == Xtal::Duplicate) {
+      if ((*xi)->getStatus() != Xtal::Optimized) {
         (*xi)->lock()->unlock();
         continue;
       }
@@ -1802,7 +1802,7 @@ namespace XtalOpt {
       for (QList<Xtal*>::iterator xj = xi + 1;
            xj != xtals.end(); xj++) {
         (*xj)->lock()->lockForRead();
-        if ((*xj)->getStatus() == Xtal::Duplicate) {
+        if ((*xj)->getStatus() != Xtal::Optimized) {
           (*xj)->lock()->unlock();
           continue;
         }

@@ -21,8 +21,8 @@
 
 #include <QtCore/QDebug>
 
-#define START //qDebug() << __PRETTY_FUNCTION__ << " called...";
-#define END //qDebug() << __PRETTY_FUNCTION__ << " finished...";
+#define START //qDebug() << __FUNCTION__ << " called...";
+#define END //qDebug() << __FUNCTION__ << " finished...";
 
 using namespace std;
 
@@ -71,13 +71,16 @@ namespace GlobalSearch {
     QMutexLocker locker (&m_lock);
     START;
 
+    int timeout = 30;
     QList<SSHConnectionLibSSH*>::iterator it;
     for (it =  m_conns.begin(); it != m_conns.end(); it++) {
-      while ((*it)->inUse()) {
+      while ((*it)->inUse() && timeout >= 0) {
         // Wait for connection to become free
         qDebug() << "Spinning while waiting for SSHConnection to free."
-                 << *it;
+                 << *it
+		 << "\nTimeout in" << QString::number(timeout) << "seconds.";
         GS_SLEEP(1);
+	timeout--;
       }
       (*it)->setUsed(true);
       delete (*it);
