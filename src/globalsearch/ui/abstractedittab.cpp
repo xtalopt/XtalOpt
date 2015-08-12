@@ -449,7 +449,7 @@ namespace GlobalSearch {
     SETTINGS("");
     QString oldFilename = settings->value(m_opt->getIDString().toLower() +
                                        "/edit/schemePath/", "").toString();
-    QString filename = QFileDialog::getOpenFileName(NULL,
+    QString filename = QFileDialog::getSaveFileName(NULL,
                             tr("Save Optimization Scheme as..."),
                             oldFilename, "*.scheme;;*.state;;*.*");
 
