@@ -452,20 +452,25 @@ namespace XtalOpt {
     // Get symbol and filename
     QStringList strl = item->text().split(":");
     QString symbol   = strl.at(0).trimmed();
-    QString filename = strl.at(1).trimmed();
 
     QStringList files;
     QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
-    QFileDialog dialog (NULL, QString("Select pot file for atom %1").arg(symbol), path);
-    dialog.selectFile(filename);
-    dialog.setFileMode(QFileDialog::ExistingFile);
-    if (dialog.exec()) {
-      files = dialog.selectedFiles();
-      if (files.size() != 1) { return;} // Only one file per element
-      filename = files.first();
-      settings.setValue("xtalopt/templates/potcarPath", dialog.directory().absolutePath());
-    }
-    else { return;} // User cancel file selection.
+    QString filename = QFileDialog::getOpenFileName(NULL,
+      QString("Select pot file for atom %1").arg(symbol), path);
+
+    // User canceled file selection
+    if (filename.isEmpty()) return;
+
+    QStringList delimited = filename.split("/");
+    QString filePath = "";
+    // We want to chop off the last item...
+    for (size_t i = 0; i < delimited.size() - 1; i++)
+      filePath += (delimited[i] + "/");
+
+    // QFileDialog::getOpenFileName() only allows one selection. So we don't
+    // have to worry about multiple files.
+    settings.setValue("xtalopt/templates/potcarPath", filePath);
+
     // "POTCAR info" is of type
     // QList<QHash<QString, QString> >
     // e.g. a list of hashes containing
@@ -486,20 +491,22 @@ namespace XtalOpt {
     // Get symbol and filename
     QStringList strl = item->text().split(":");
     QString symbol   = strl.at(0).trimmed();
-    QString filename = strl.at(1).trimmed();
 
-    QStringList files;
     QString path = settings.value("xtalopt/templates/psfPath", "").toString();
-    QFileDialog dialog (NULL, QString("Select psf file for atom %1").arg(symbol), path);
-    dialog.selectFile(filename);
-    dialog.setFileMode(QFileDialog::ExistingFile);
-    if (dialog.exec()) {
-      files = dialog.selectedFiles();
-      if (files.size() != 1) { return;} // Only one file per element
-      filename = files.first();
-      settings.setValue("xtalopt/templates/psfPath", dialog.directory().absolutePath());
-    }
-    else { return;} // User cancel file selection.
+    QString filename = QFileDialog::getOpenFileName(NULL,
+      QString("Select psf file for atom %1").arg(symbol), path);
+
+    // User canceled file selection
+    if (filename.isEmpty()) return;
+
+     QStringList delimited = filename.split("/");
+     QString filePath = "";
+     // We want to chop off the last item on the list
+     for (size_t i = 0; i < delimited.size() - 1; i++)
+       filePath += (delimited[i] + "/");
+
+    settings.setValue("xtalopt/templates/psfPath", filePath);
+
     // "PSF info" is of type
     // QList<QHash<QString, QString> >
     // e.g. a list of hashes containing
@@ -527,22 +534,21 @@ namespace XtalOpt {
     for (int i = 0; i < atomicNums.size(); i++)
       symbols.append(OpenBabel::etab.GetSymbol(atomicNums.at(i)));
     qSort(symbols);
-    QStringList files;
     QString filename;
     QVariantHash hash;
     for (int i = 0; i < symbols.size(); i++) {
       QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
-      QFileDialog dialog (NULL, QString("Select pot file for atom %1").arg(symbols.at(i)), path);
-      dialog.selectFile(path + "/" + symbols.at(i));
-      dialog.setFileMode(QFileDialog::ExistingFile);
-      if (dialog.exec()) {
-        files = dialog.selectedFiles();
-        if (files.size() != 1) { // Ask again!
-          i--;
-          continue;
-        }
-        filename = files.first();
-        settings.setValue("xtalopt/templates/potcarPath", dialog.directory().absolutePath());
+      QString filename = QFileDialog::getOpenFileName(NULL,
+        QString("Select pot file for atom %1").arg(symbols.at(i)), path);
+
+      if (!filename.isEmpty()) {
+        QStringList delimited = filename.split("/");
+        QString filePath = "";
+        // We want to chop off the last item...
+        for (size_t i = 0; i < delimited.size() - 1; i++)
+          filePath += (delimited[i] + "/");
+
+        settings.setValue("xtalopt/templates/potcarPath", filePath);
       }
       else {
         // User cancel file selection. Set template selection combo to
@@ -591,21 +597,20 @@ namespace XtalOpt {
       symbols.append(OpenBabel::etab.GetSymbol(atomicNums.at(i)));
      qSort(symbols);
      QStringList files;
-     QString filename;
      QVariantHash hash;
+
      for (int i = 0; i < symbols.size(); i++) {
       QString path = settings.value("xtalopt/templates/psfPath", "").toString();
-      QFileDialog dialog (NULL, QString("Select psf file for atom %1").arg(symbols.at(i)), path);
-      dialog.selectFile(path + "/" + symbols.at(i));
-      dialog.setFileMode(QFileDialog::ExistingFile);
-      if (dialog.exec()) {
-        files = dialog.selectedFiles();
-        if (files.size() != 1) { // Ask again!
-          i--;
-          continue;
-        }
-        filename = files.first();
-        settings.setValue("xtalopt/templates/psfPath", dialog.directory().absolutePath());
+      QString filename = QFileDialog::getOpenFileName(NULL,
+        QString("Select psf file for atom %1").arg(symbols.at(i)), path);
+
+      if (!filename.isEmpty()) {
+        QStringList delimited = filename.split("/");
+        QString filePath = "";
+        // We want to chop off the last item...
+        for (size_t i = 0; i < delimited.size() - 1; i++)
+          filePath += (delimited[i] + "/");
+        settings.setValue("xtalopt/templates/psfPath", filePath);
       }
       else {
         // User cancel file selection. Set template selection combo to
