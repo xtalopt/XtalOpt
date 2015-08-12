@@ -447,6 +447,9 @@ namespace XtalOpt {
 
   void TabEdit::changePOTCAR(QListWidgetItem *item)
   {
+    // If the optimizer isn't VASP, just return...
+    if (m_opt->optimizer()->getIDString() != "VASP") return;
+
     QSettings settings; // Already set up in avogadro/src/main.cpp
 
     // Get symbol and filename
@@ -486,6 +489,9 @@ namespace XtalOpt {
 
   void TabEdit::changePSF(QListWidgetItem *item)
   {
+    // If the optimizer isn't siesta, just return...
+    if (m_opt->optimizer()->getIDString() != "SIESTA") return;
+
     QSettings settings; // Already set up in avogadro/src/main.cpp
 
     // Get symbol and filename
