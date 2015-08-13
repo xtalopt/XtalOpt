@@ -1501,26 +1501,6 @@ namespace XtalOpt {
       }
     }
 #endif // ENABLE_SSH
-    #ifdef ENABLE_SSH
-        // Create the SSHManager if running remotely
-    if (!readOnly) {
-        if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
-            if (!this->createSSHConnections()) {
-                error(tr("Could not create ssh connections."));
-            return false;
-            }
-        }
-    }
-    #endif // ENABLE_SSH
-#ifdef ENABLE_SSH
-    // Create the SSHManager if running remotely
-    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
-      if (!this->createSSHConnections()) {
-        error(tr("Could not create ssh connections."));
-        return false;
-      }
-    }
-#endif // ENABLE_SSH
 
     debug(tr("Resuming XtalOpt session in '%1' (%2) readOnly = %3")
           .arg(filename)
