@@ -365,12 +365,12 @@ bool SSHConnectionLibSSH::_execute(const QString &command,
   channel_send_eof(channel);
   channel_close(channel);
 
-  // 1 second timeout
-  int timeout = 1000;
+  // 5 second timeout
+  int timeout = 5;
   while (channel_get_exit_status(channel) == -1 && timeout >= 0) {
     qDebug() << "Waiting for server to close channel...";
-    GS_SLEEP(50);
-    timeout -= 50;
+    GS_SLEEP(1);
+    timeout--;
   }
 
   exitcode = channel_get_exit_status(channel);
