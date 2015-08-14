@@ -334,15 +334,16 @@ bool SSHConnectionLibSSH::_execute(const QString &command,
   }
   if (channel_open_session(channel) != SSH_OK) {
     if(printWarning) qWarning() << "SSH error: " << ssh_get_error(m_session);
+    channel_free(channel);
     return false;
   }
 
   // Execute command
   int ssh_exit = channel_request_exec(channel, command.toStdString().c_str());
-  channel_send_eof(channel);
 
-  if (ssh_exit == SSH_ERROR) {
+  if (ssh_exit != SSH_OK) {
     channel_close(channel);
+    channel_free(channel);
     return false;
   }
 
@@ -361,9 +362,19 @@ bool SSHConnectionLibSSH::_execute(const QString &command,
   }
   stderr_str = QString(osserr.str().c_str());
 
+  channel_send_eof(channel);
+  channel_close(channel);
+
+  // 1 second timeout
+  int timeout = 1000;
+  while (channel_get_exit_status(channel) == -1 && timeout >= 0) {
+    qDebug() << "Waiting for server to close channel...";
+    GS_SLEEP(50);
+    timeout -= 50;
+  }
+
   exitcode = channel_get_exit_status(channel);
 
-  channel_close(channel);
   channel_free(channel);
   END;
   return true;
@@ -382,7 +393,9 @@ sftp_session SSHConnectionLibSSH::_openSFTP()
   }
   if(sftp_init(sftp) != SSH_OK){
     qWarning() << "error initialising sftp" << endl
-               << ssh_get_error(m_session);
+               << ssh_get_error(m_session) << endl
+               << sftp_get_error(sftp);
+    sftp_free(sftp);
     return 0;
   }
   return sftp;
