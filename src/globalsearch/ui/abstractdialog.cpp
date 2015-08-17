@@ -185,7 +185,6 @@ namespace GlobalSearch {
 
   void AbstractDialog::resumeSession_(const QString &filename)
   {
-    m_opt->emitStartingSession();
     startProgressUpdate(tr("Resuming session..."), 0, 0);
     m_opt->tracker()->lockForWrite();
     m_opt->tracker()->deleteAllStructures();
@@ -195,6 +194,8 @@ namespace GlobalSearch {
       m_opt->isStarting = false;
       return;
     }
+    m_opt->emitStartingSession();
+
     // Refresh dialog and settings
     writeSettings();
     stopProgressUpdate();
