@@ -44,11 +44,11 @@ namespace XtalOpt {
             this, SLOT(updateComposition()));
 
     // unit cell dimension connections
-    connect(ui.spin_a_min, SIGNAL(valueChanged(double)),
+    connect(ui.spin_a_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_b_min, SIGNAL(valueChanged(double)),
+    connect(ui.spin_b_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_c_min, SIGNAL(valueChanged(double)),
+    connect(ui.spin_c_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
     connect(ui.spin_alpha_min, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
@@ -56,21 +56,21 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.spin_gamma_min, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_vol_min, SIGNAL(valueChanged(double)),
+    connect(ui.spin_vol_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_a_max, SIGNAL(valueChanged(double)),
+    connect(ui.spin_a_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_b_max, SIGNAL(valueChanged(double)),
+    connect(ui.spin_b_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_c_max, SIGNAL(valueChanged(double)),
+    connect(ui.spin_c_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_alpha_max, SIGNAL(valueChanged(double)),
+    connect(ui.spin_alpha_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_beta_max, SIGNAL(valueChanged(double)),
+    connect(ui.spin_beta_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
     connect(ui.spin_gamma_max, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_vol_max, SIGNAL(valueChanged(double)),
+    connect(ui.spin_vol_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
     connect(ui.spin_fixedVolume, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
@@ -196,7 +196,7 @@ namespace XtalOpt {
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
     ui.cb_interatomicDistanceLimit->setChecked( settings->value("using/interatomicDistanceLimit",false).toBool());
     ui.cb_mitosis->setChecked(      settings->value("using/mitosis",       false).toBool()     );
-    ui.cb_mitosis->setChecked(      settings->value("using/subcellPrint",       false).toBool()     );
+    ui.cb_subcellPrint->setChecked(      settings->value("using/subcellPrint",       false).toBool()     );
     xtalopt->divisions = settings->value("limits/divisions").toInt();
     xtalopt->ax = settings->value("limits/ax").toInt();
     xtalopt->bx = settings->value("limits/bx").toInt();
