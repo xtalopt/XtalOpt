@@ -106,8 +106,8 @@ namespace ExampleSearch {
   {
     SETTINGS(filename);
     settings->beginGroup("examplesearch/progress");
-    const int VERSION = 1;
-    settings->setValue("version",     VERSION);
+    const int version = 1;
+    settings->setValue("version",     version);
 
     settings->setValue("refreshTime", ui.spin_period->value());
     settings->endGroup();

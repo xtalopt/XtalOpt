@@ -133,8 +133,8 @@ namespace XtalOpt {
 
     settings->beginGroup("xtalopt/init/");
 
-    const int VERSION = 2;
-    settings->setValue("version",VERSION);
+    const int version = 2;
+    settings->setValue("version", version);
 
     settings->setValue("limits/a/min",        xtalopt->a_min);
     settings->setValue("limits/b/min",        xtalopt->b_min);
