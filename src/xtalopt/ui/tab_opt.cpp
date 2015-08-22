@@ -379,22 +379,20 @@ namespace XtalOpt {
     }
 
     // Launch file dialog
-    QFileDialog dialog (m_dialog,
+    QString newFilename = QFileDialog::getOpenFileName(m_dialog,
                         QString("Select structure file to use as seed"),
                         filename,
                         "Common formats (*POSCAR *CONTCAR *.got *.cml *cif"
                         " *.out);;All Files (*)");
-    dialog.selectFile(filename);
-    dialog.setFileMode(QFileDialog::ExistingFile);
-    if (dialog.exec())
-      filename = dialog.selectedFiles().first();
-    else { return;} // User cancel file selection.
 
-    settings.setValue("xtalopt/opt/seedPath", filename);
+    // User canceled
+    if (newFilename.isEmpty()) return;
+
+    settings.setValue("xtalopt/opt/seedPath", newFilename);
 
     // Update text
-    if (replace)	item->setText(filename);
-    else		ui.list_seeds->addItem(filename);
+    if (replace)	item->setText(newFilename);
+    else		ui.list_seeds->addItem(newFilename);
     updateOptimizationInfo();
     updateSeeds();
   }

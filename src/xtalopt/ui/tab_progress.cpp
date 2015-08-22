@@ -809,22 +809,20 @@ namespace XtalOpt {
                                       m_opt->filePath).toString();
 
     // Launch file dialog
-    QFileDialog dialog (m_dialog,
-                        QString("Select structure file to use as seed"),
-                        filename,
-                        "Common formats (*POSCAR *CONTCAR *.got *.cml *cif"
-                        " *.out);;All Files (*)");
-    dialog.selectFile(filename);
-    dialog.setFileMode(QFileDialog::ExistingFile);
-    if (dialog.exec())
-      filename = dialog.selectedFiles().first();
-    else { return;} // User cancel file selection.
+    QString newFilename = QFileDialog::getOpenFileName(m_dialog,
+                            QString("Select structure file to use as seed"),
+                            filename,
+                            "Common formats (*POSCAR *CONTCAR *.got *.cml *cif"
+                            " *.out);;All Files (*)");
 
-    settings.setValue("xtalopt/opt/seedPath", filename);
+    // User canceled selection
+    if (newFilename.isEmpty()) return;
+
+    settings.setValue("xtalopt/opt/seedPath", newFilename);
 
     // Load in background
     QtConcurrent::run(this, &TabProgress::injectStructureProgress_,
-                      filename);
+                      newFilename);
   }
 
   void TabProgress::injectStructureProgress_(const QString & filename)
