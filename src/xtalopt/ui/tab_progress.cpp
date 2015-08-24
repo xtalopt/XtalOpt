@@ -927,9 +927,10 @@ namespace XtalOpt {
                     file.close();
                     newFile.close();
                     QString command = "obabel -igot \""+filePath+"\"/\""+gen_s+
-                    "\"x\""+id_s+"\"/xtal.got -ocif -O \""+filePath+
-                    "\"/ranked/CIF/\""+QString::number(rank)+"\"-\""+gen_s+
-                    "\"x\""+id_s+"\".cif";
+                                      "\"x\""+id_s+"\"/xtal.got -ocif -O \""
+                                      +filePath+"\"/ranked/CIF/\""+
+                                      QString::number(rank)+"\"-\""+gen_s+
+                                      "\"x\""+id_s+"\".cif";
                     system(qPrintable(command));
             }
         }
@@ -1037,13 +1038,14 @@ namespace XtalOpt {
                         } else {
                             dir.remove(info.fileName());
                         }
-                    if (info.fileName()!="CONTCAR" && info.fileName()!="structure.state" && info.fileName()!="OUTCAR" && info.fileName()!="POTCAR") {
+                    }
+                    if (info.fileName()!="CONTCAR" && info.fileName()!="OSZICAR" && info.fileName()!="INCAR" && info.fileName()!="KPOINTS" && info.fileName()!="structure.state" && info.fileName()!="OUTCAR" && info.fileName()!="POTCAR") {
                         dir.remove(info.fileName());
                     }
                 }
             }
         }
     }
-   }
-}
+  }
+
 }
