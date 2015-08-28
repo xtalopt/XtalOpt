@@ -64,6 +64,87 @@ bool SSHConnectionLibSSH::isConnected()
     return false;
   };
 
+#ifdef UNIX  
+  QMutexLocker locker (&m_lock);
+  START;
+
+  // Attempt to execute "echo ok" on the host to test if everything
+  // is working properly
+  const char *command = "echo ok\n";
+  if (channel_write(m_shell, command, sizeof(command)) == SSH_ERROR) {
+    qWarning() << "SSHConnectionLibSSH is not connected: cannot write to shell; "
+               << ssh_get_error(m_session);
+    return false;
+  }
+
+  // Set a three timeout, check every 50 ms for new data.
+  int bytesAvail;
+  int timeout = 3000;
+  do {
+    // Poll for number of bytes available
+    bytesAvail = channel_poll(m_shell, 0);
+    if (bytesAvail == SSH_ERROR) {
+      qWarning() << "SSHConnectionLibSSH::isConnected(): server returns an error; "
+                 << ssh_get_error(m_session);
+      return false;
+    }
+    // Sleep for 50 ms if no data yet.
+    if (bytesAvail <= 0) {
+      GS_MSLEEP(50);
+      timeout -= 50;
+    }
+  }
+  while (timeout >= 0 && bytesAvail <= 0);
+  // Timeout case
+  if (timeout < 0 && bytesAvail == 0) {
+    qWarning() << "SSHConnectionLibSSH::isConnected(): server timeout.";
+    return false;
+  }
+  // Anything else but "3" is an error
+  else if (bytesAvail != 3) {
+    qWarning() << "SSHConnectionLibSSH::isConnected(): server returns a bizarre poll value: "
+               << bytesAvail << "; " << ssh_get_error(m_session);
+    return false;
+  }
+
+  // Read output
+  ostringstream ossout;
+  char buffer[LIBSSH_BUFFER_SIZE];
+  int len;
+  while ((len = channel_read(m_shell,
+                             buffer,
+                             (bytesAvail < LIBSSH_BUFFER_SIZE) ? bytesAvail : LIBSSH_BUFFER_SIZE,
+                             0)) > 0) {
+    ossout.write(buffer,len);
+    // Poll for number of bytes available using a 1 second timeout in case the stack is full.
+    timeout = 1000;
+    do {
+      bytesAvail = channel_poll(m_shell, 0);
+      if (bytesAvail == SSH_ERROR) {
+        qWarning() << "SSHConnectionLibSSH::_isConnected: server returns an error; "
+                   << ssh_get_error(m_session);
+        return false;
+      }
+      if (bytesAvail <= 0) {
+        GS_MSLEEP(50);
+        timeout -= 50;
+      }
+    }
+    while (timeout >= 0 && bytesAvail <= 0);
+  }
+
+  // Test output
+  if (!strcmp(ossout.str().c_str(), "ok")) {
+    qWarning() << "SSH error: 'echo ok' on the host returned: "
+               << ossout.str().c_str();
+    return false;
+  }
+
+  END;
+  return true;
+#endif // UNIX
+
+#ifdef WIN32
   START;
 
   // Attempt to execute "echo ok" on the host to test if everything
@@ -83,7 +164,7 @@ bool SSHConnectionLibSSH::isConnected()
       qWarning() << "In SSHConnectionLibSSH::isConnected(), the command "
          	    "'echo ok' returned with an error of " << stderr_str;
     // if stdout_str is not 4, something bad happened...
-    if (sizeof(stdout_str) != 4) success = false;
+    if (sizeof(stdout_str) != 3) success = false;
     if (!success) {
       GS_MSLEEP(50);
       timeout -= 50;
@@ -96,6 +177,7 @@ bool SSHConnectionLibSSH::isConnected()
   }
   END;
   return true;
+#endif // WIN32
 }
 
 bool SSHConnectionLibSSH::disconnectSession()

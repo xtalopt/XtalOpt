@@ -16,6 +16,8 @@ namespace XtalOpt {
     - \ref remotepbs
     - \ref remotesge
     - \ref remoteslurm
+    - \ref remotelsf
+    - \ref remotell
     - \ref localqi
   - \ref files
   - \ref search-set
@@ -60,7 +62,7 @@ Opt Scheme" button and selecting the "samples/vasp-xtalopt.scheme"
 file that is distributed with the source code. If you do not have a
 copy of the source code, the scheme file can be obtained by clicking
 the "Original Format" link at the bottom of the page <a
-href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/vasp-xtalopt.scheme">
+href="http://xtalopt.github.io/samples/vasp-xtalopt.scheme">
 here</a>.
 
 For more details on optimization schemes, see \ref optschemes.
@@ -122,7 +124,7 @@ Alternatively, one can load the scheme file distributed with the
 source code under samples/gulp-TiO-xtalopt.scheme. If the source code
 is not available, the scheme file can be obtained by clicking the
 "Original Format" link at the bottom of the page <a
-href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/gulp-TiO-xtalopt.scheme">
+href="http://xtalopt.github.io/samples/gulp-TiO-xtalopt.scheme">
 here</a>.
 
 For more details on optimization schemes, see \ref optschemes.
@@ -153,7 +155,7 @@ the source code under the samples/ directory. The scheme that we want
 is named "pwscf-xtalopt.scheme". If the source code is not available,
 the scheme file can be obtained by clicking the "Original Format" link
 at the bottom of the page <a
-href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/pwscf-xtalopt.scheme">
+href="http://xtalopt.github.io/samples/pwscf-xtalopt.scheme">
 here</a>.
 
 For more details on optimization schemes, see \ref optschemes.
@@ -196,9 +198,8 @@ pw.x < xtal.in > xtal.out
 On the next tab, load the optimization scheme that is distributed with
 the source code under the samples/ directory. The scheme that we want
 is named "castep-xtalopt.scheme". If the source code is not available,
-the scheme file can be obtained by clicking the "Original Format" link
-at the bottom of the page <a
-href="http://xtalopt.openmolecules.net/wiki/index.fcgi/browser/samples/castep-xtalopt.scheme">
+the scheme file can be obtained by clicking <a
+href="http://xtalopt.github.io/samples/castep-xtalopt.scheme">
 here</a>.
 
 For more details on optimization schemes, see \ref optschemes.
@@ -294,7 +295,7 @@ Alternatively, one can load the scheme file distributed with the
 source code under samples/siesta-TiO-xtalopt.scheme. If the source code
 is not available, the scheme file can be obtained by clicking the
 "Original Format" link at the bottom of the page <a
-href="src/samples/siesta-TiO-xtalopt.scheme">
+href="http://xtalopt.github.io/samples/siesta-TiO-xtalopt.scheme">
 here</a>.
 
 Furthermore, one needs to select pseudopotential(s) for the search. 
