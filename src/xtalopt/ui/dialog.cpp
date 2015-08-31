@@ -149,7 +149,7 @@ namespace XtalOpt {
   {
     QMessageBox mbox;
     mbox.setText("There is a tutorial available for new XtalOpt users at\n\n"
-                 "http://xtalopt.openmolecules.net/globalsearch/docs/tut-xo.html"
+                 "http://xtalopt.github.io/tut.html"
                  "\n\nWould you like to go there now?");
     mbox.setIcon(QMessageBox::Information);
     QPushButton *yes = mbox.addButton(tr("&Yes"), QMessageBox::YesRole);
@@ -163,7 +163,7 @@ namespace XtalOpt {
 
     if (clicked == yes) {
       QDesktopServices::openUrl
-        (QUrl("http://xtalopt.openmolecules.net/globalsearch/docs/tut-xo.html",
+        (QUrl("http://xtalopt.github.io/tut.html",
               QUrl::TolerantMode));
     }
     else if (clicked == never) {
