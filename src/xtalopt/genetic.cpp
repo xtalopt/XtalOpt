@@ -756,7 +756,9 @@ namespace XtalOpt {
             double randdouble = RANDDOUBLE();
             if (randdouble <= 0.5) shortestDistance = numberOfFormulaUnits - formulaUnitsList.at(i);
           }
-          if (abs(shortestDistance) >  abs(numberOfFormulaUnits - formulaUnitsList.at(i))) {
+          // We convert to int here to prevent an ambiguous abs() call when
+          // compiling with AppleClang
+          if (abs(shortestDistance) > abs((int)(numberOfFormulaUnits - formulaUnitsList.at(i)))) {
             shortestDistance = numberOfFormulaUnits - formulaUnitsList.at(i);
           }
         }
