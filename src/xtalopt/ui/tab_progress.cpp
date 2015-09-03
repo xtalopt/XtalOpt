@@ -56,6 +56,9 @@ namespace XtalOpt {
     QHeaderView *horizontal = ui.table_list->horizontalHeader();
     horizontal->setResizeMode(QHeaderView::ResizeToContents);
 
+    // This will be set to true if the session is readonly
+    ui.table_list->setSortingEnabled(false);
+
     rowTracking = true;
 
     // dialog connections
@@ -100,6 +103,8 @@ namespace XtalOpt {
             this, SLOT(printFile()));
     connect(ui.push_clear, SIGNAL(clicked()),
             this, SLOT(clearFiles()));
+    connect(m_opt, SIGNAL(readOnlySessionStarted()),
+            this, SLOT(setColumnSortingEnabled()));
 
     initialize();
   }

@@ -64,7 +64,7 @@ bool SSHConnectionLibSSH::isConnected()
     return false;
   };
 
-#ifdef UNIX  
+#ifdef UNIX
   QMutexLocker locker (&m_lock);
   START;
 
@@ -164,7 +164,7 @@ bool SSHConnectionLibSSH::isConnected()
       qWarning() << "In SSHConnectionLibSSH::isConnected(), the command "
          	    "'echo ok' returned with an error of " << stderr_str;
     // if stdout_str is not 4, something bad happened...
-    if (sizeof(stdout_str) != 3) success = false;
+    if (sizeof(stdout_str) != 4) success = false;
     if (!success) {
       GS_MSLEEP(50);
       timeout -= 50;
