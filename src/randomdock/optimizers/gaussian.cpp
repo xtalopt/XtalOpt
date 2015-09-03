@@ -38,7 +38,7 @@ namespace RandomDock {
     m_templates.insert("job.com",QStringList(""));
 
     // Setup for completion values
-    m_completionFilename = "job.log";
+    m_completionFilename = "job.out";
     m_completionStrings.clear();
     m_completionStrings.append("Optimization completed.");
 
@@ -50,9 +50,9 @@ namespace RandomDock {
     m_idString = "GAUSSIAN";
 
     // Local execution setup:
-    m_localRunCommand = "g09 job";
-    m_stdinFilename = "";
-    m_stdoutFilename = "";
+    m_localRunCommand = "g09";
+    m_stdinFilename = "job.com";
+    m_stdoutFilename = "job.out";
     m_stderrFilename = "";
 
     readSettings(filename);
