@@ -81,6 +81,7 @@ namespace XtalOpt {
     // Openbabel seems to be fond of making unfounded assumptions that
     // break things. This fixes one of them.
     this->cell()->SetSpaceGroup(0);
+    this->setParentXtal(NULL);
   }
 
   Xtal::~Xtal() {

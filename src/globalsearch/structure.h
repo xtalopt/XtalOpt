@@ -301,6 +301,16 @@ namespace GlobalSearch {
     // the number of formula units with the formula-unit-finding algorithm.
     uint getFormulaUnits() const;
 
+    /** @return The number of duplicate offspring that this structure has
+     * produced through mutations/transformations.
+     */
+    uint getNumDupOffspring() const {return m_numDupOffspring;};
+
+    /** @return The total number of offspring that this structure has produced
+     * through mutations/transformations.
+     */
+    uint getNumTotOffspring() const {return m_numTotOffspring;};
+
     // returns the number of structures of each formula unit up to the
     // user-specified maximum formula units. numberOfEachFormulaUnit.at(n)
     // is the number of structures with formula units n.
@@ -1012,6 +1022,34 @@ namespace GlobalSearch {
      */
     void setFailCount(uint count) {m_failCount = count;};
 
+    /** Set the number of duplicate offspring produced by this structure
+     * @param i The number of duplicate offspring that this structure
+     * has produced
+     */
+    void setNumDupOffspring(uint i) {m_numDupOffspring = i;};
+
+    /** Increment the number of duplicate offspring produced by this structure
+     */
+    void incrementNumDupOffspring() {m_numDupOffspring += 1;};
+
+    /** Decrement the number of duplicate offspring produced by this structure
+     */
+    void decrementNumDupOffspring() {m_numDupOffspring -= 1;};
+
+    /** Set the number of total offspring produced by this structure
+     * @param i The total number of offspring that this structure
+     * has produced
+     */
+    void setNumTotOffspring(uint i) {m_numTotOffspring = i;};
+
+    /** Increment the number of total offspring produced by this structure
+     */
+    void incrementNumTotOffspring() {m_numTotOffspring += 1;};
+
+    /** Decrement the number of total offspring produced by this structure
+     */
+    void decrementNumTotOffspring() {m_numTotOffspring -= 1;};
+
     /** Reset the number of times this Structure has failed the
      * current optimization step.
      *
@@ -1188,7 +1226,8 @@ namespace GlobalSearch {
          m_skippedOptimization, m_supercellGenerationChecked;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
-         m_currentOptStep, m_failCount;
+         m_currentOptStep, m_failCount, m_numDupOffspring,
+         m_numTotOffspring;
     QString m_parents, m_dupString, m_supString, m_rempath;
     double m_enthalpy, m_PV;
     State m_status;

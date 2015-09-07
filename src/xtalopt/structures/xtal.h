@@ -94,6 +94,15 @@ namespace XtalOpt {
     double getGamma()   const {return cell()->GetGamma();};
     double getVolume()  const {return cell()->GetCellVolume();};
 
+    // Parent xtal
+    void setParentXtal(Xtal* parent) {m_parentXtal = parent;};
+    Xtal* getParentXtal() {return m_parentXtal;};
+    bool hasParentXtal()
+    {
+      if(m_parentXtal) return true;
+      else return false;
+    }
+
     // Debugging
     void getSpglibFormat() const;
 
@@ -232,6 +241,9 @@ namespace XtalOpt {
     OpenBabel::OBUnitCell* cell() const;
     uint m_spgNumber;
     QString m_spgSymbol;
+
+    // Keep a pointer to the parent xtal in memory
+    Xtal* m_parentXtal;
   };
 
 } // end namespace XtalOpt

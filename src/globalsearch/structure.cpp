@@ -53,6 +53,8 @@ namespace GlobalSearch {
     m_rank(0),
     m_formulaUnits(0),
     m_jobID(0),
+    m_numDupOffspring(0),
+    m_numTotOffspring(0),
     m_PV(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
@@ -75,6 +77,8 @@ namespace GlobalSearch {
     m_rank(0),
     m_formulaUnits(0),
     m_jobID(0),
+    m_numDupOffspring(0),
+    m_numTotOffspring(0),
     m_PV(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
@@ -96,6 +100,8 @@ namespace GlobalSearch {
     m_formulaUnits(0),
     m_jobID(0),
     m_PV(0),
+    m_numDupOffspring(0),
+    m_numTotOffspring(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1)
@@ -218,6 +224,8 @@ namespace GlobalSearch {
     m_rank                       = other.m_rank;
     m_formulaUnits               = other.m_formulaUnits;
     m_jobID                      = other.m_jobID;
+    m_numDupOffspring            = other.m_numDupOffspring;
+    m_numTotOffspring            = other.m_numTotOffspring;
     m_currentOptStep             = other.m_currentOptStep;
     m_failCount                  = other.m_failCount;
     m_parents                    = other.m_parents;

@@ -83,6 +83,14 @@ namespace XtalOpt {
 
     //Identical to the previous generateRandomXtal except the number of formula units has been determined elsewhere
     Xtal* generateRandomXtal(uint generation, uint id, uint FU);
+    // The H_ indicates that it returns a dynamically allocated xtal.
+    // H stands for 'heap'
+    // mitosisMutation is set just to help with naming the ancestry
+    Xtal* H_getMutatedXtal(QList<GlobalSearch::Structure*>& structures, int FU,
+                           Xtal* preselectedXtal = NULL,
+                           bool includeCrossover = true,
+                           bool includeMitosis = true,
+                           bool mitosisMutation = false);
     bool addSeed(const QString & filename);
     GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
                                                const QString & reason = "");
@@ -227,6 +235,7 @@ namespace XtalOpt {
       GS_SLEEP(0.1);
       supercellCheckLock.unlock();
     };
+
    signals:
     void updateFormulaUnitsListUIText();
     void updateVolumesToBePerFU(uint FU);

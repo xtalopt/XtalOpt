@@ -675,6 +675,15 @@ namespace XtalOpt {
       return;
     }
 
+    // Decrement the parent xtal info
+    if (m_context_xtal->hasParentXtal()) {
+      Xtal* parentXtal = m_context_xtal->getParentXtal();
+      parentXtal->decrementNumTotOffspring();
+      if (m_context_xtal->getStatus() == Xtal::Duplicate ||
+          m_context_xtal->getStatus() == Xtal::Supercell)
+        parentXtal->decrementNumDupOffspring();
+    }
+
     // QueueManager will handle mutex locking
     m_opt->queue()->killStructure(m_context_xtal);
 
@@ -695,6 +704,15 @@ namespace XtalOpt {
     if (!m_context_xtal) {
       emit finishedBackgroundProcessing();
       return;
+    }
+
+    // Increment the parent xtal info
+    // If an xtal is killed that wasn't optimized, it gets replaced with a
+    // random xtal. This will decrement the non-optimized xtals again like it
+    // should.
+    if (m_context_xtal->hasParentXtal()) {
+      Xtal* parentXtal = m_context_xtal->getParentXtal();
+      parentXtal->incrementNumTotOffspring();
     }
 
     QWriteLocker locker (m_context_xtal->lock());

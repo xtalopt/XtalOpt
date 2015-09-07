@@ -333,8 +333,19 @@ namespace XtalOpt {
 
   Structure* XtalOpt::replaceWithRandom(Structure *s, const QString & reason)
   {
+
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
     QWriteLocker locker1 (oldXtal->lock());
+
+    // Decrement the parent xtal that produced this deleted structure
+    if (oldXtal->hasParentXtal()) {
+      Xtal* parentXtal = oldXtal->getParentXtal();
+      parentXtal->decrementNumTotOffspring();
+      if (s->getStatus() == Xtal::Duplicate ||
+          s->getStatus() == Xtal::Supercell)
+        parentXtal->decrementNumDupOffspring();
+      oldXtal->setParentXtal(NULL);
+    }
 
     uint FU = s->getFormulaUnits();
 
@@ -386,6 +397,20 @@ namespace XtalOpt {
                                            const QString & reason)
   {
 
+    Xtal *oldXtal = qobject_cast<Xtal*>(s);
+
+    // Decrement the parent xtal that produced this deleted structure
+    // An xtal that has been killed has already been decremented
+    if (oldXtal->hasParentXtal() &&
+        oldXtal->getStatus() != Xtal::Killed) {
+      Xtal* parentXtal = oldXtal->getParentXtal();
+      parentXtal->decrementNumTotOffspring();
+      if (s->getStatus() == Xtal::Duplicate ||
+          s->getStatus() == Xtal::Supercell)
+        parentXtal->decrementNumDupOffspring();
+      oldXtal->setParentXtal(NULL);
+    }
+
     uint FU = s->getFormulaUnits();
     // Generate/Check new xtal
     Xtal *xtal = 0;
@@ -404,7 +429,6 @@ namespace XtalOpt {
       return xtal;
     }
 
-    Xtal *oldXtal = qobject_cast<Xtal*>(s);
     // Copy info over
     QWriteLocker locker1 (oldXtal->lock());
     QWriteLocker locker2 (xtal->lock());
@@ -420,6 +444,8 @@ namespace XtalOpt {
       parents += " (" + reason + ")";
       oldXtal->setParents(parents);
     }
+
+    oldXtal->setParentXtal(xtal->getParentXtal());
 
     Q_ASSERT_X(xtal->numAtoms() == oldXtal->numAtoms(), Q_FUNC_INFO,
                "Number of atoms don't match. Cannot copy.");
@@ -704,7 +730,7 @@ namespace XtalOpt {
 
   void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation,
                                      const QString &parents)
-    {
+  {
     xtalInitMutex->lock();
     QList<Structure*> allStructures = m_queue->lockForNaming();
     Structure *structure;
@@ -858,236 +884,7 @@ namespace XtalOpt {
       return xtal;
     }
 
-    // Initialize loop vars
-    double r;
-    unsigned int gen;
-    QString parents;
-    Xtal *xtal = NULL;
-
-    // Perform operation until xtal is valid:
-    while (!checkXtal(xtal)) {
-      // First delete any previous failed structure in xtal
-      if (xtal) {
-        xtal->deleteLater();
-        xtal = 0;
-      }
-
-      Xtal *selectedXtal = selectXtalFromProbabilityList(structures, FU);
-
-      // Decide operator:
-      r = RANDDOUBLE();
-
-      // We will perform mitosis if:
-      // 1: using_one_pool is enabled and
-      // 2: the xtal selected can produce an FU on the list through mitosis and
-      // 3: the probability succeeds
-      if (using_one_pool) {
-       // Find candidate formula units to be created through mitosis
-        QList<uint> possibleMitosisFU_index;
-        for (int i = 0; i < formulaUnitsList.size(); i++) {
-          if (formulaUnitsList.at(i) % selectedXtal->getFormulaUnits() == 0 &&
-                formulaUnitsList.at(i) != selectedXtal->getFormulaUnits()) {
-            possibleMitosisFU_index.append(i);
-          }
-        }
-
-        // If no FU's may be created by mitosis, just continue
-        if (!possibleMitosisFU_index.isEmpty()) {
-          //qDebug() << "possibleMitosisFU_index is not empty!";
-          // If the probability fails, delete xtal and continue
-          if (r <= chance_of_mitosis/100.0) {
-            // Select an index randomly from the possibleMitosisFU_index
-            uint randomListIndex = rand()%int(possibleMitosisFU_index.size());
-            uint selectedIndex = possibleMitosisFU_index.at(randomListIndex);
-            // Use that selected index to choose the formula units
-            uint formulaUnits = formulaUnitsList.at(selectedIndex);
-            // Perform mitosis
-            Xtal *nxtal = NULL;
-            while (!checkXtal(nxtal)) {
-              if (nxtal) {
-                delete nxtal;
-                nxtal = 0;
-              }
-
-              nxtal = generateSuperCell(selectedXtal->getFormulaUnits(),
-                                        formulaUnits, selectedXtal, true, true);
-            }
-            return nxtal;
-          }
-        }
-      }
-
-      Operators op;
-      if (r < p_cross/100.0)
-        op = OP_Crossover;
-      else if (r < (p_cross + p_strip)/100.0)
-        op = OP_Stripple;
-      else
-        op = OP_Permustrain;
-
-      // Try 1000 times to get a good structure from the selected
-      // operation. If not possible, send a warning to the log and
-      // start anew.
-      int attemptCount = 0;
-      while (attemptCount < 1000 && !checkXtal(xtal)) {
-        attemptCount++;
-        if (xtal) {
-          delete xtal;
-          xtal = 0;
-        }
-
-        // Operation specific set up:
-        switch (op) {
-        case OP_Crossover: {
-          Xtal *xtal1=0, *xtal2=0;
-          // Select structures
-          double percent1;
-          double percent2;
-
-          // If FU crossovers have been enabled, generate a new breeding pool
-          // that includes multiple different formula units then run the
-          // alternative crossover function
-          bool enoughStructures = true;
-          if (using_FU_crossovers) {
-            // Get all optimized structures
-            QList<Structure*> tempStructures =
-                                           m_queue->getAllOptimizedStructures();
-
-            // Trim all the structures that aren't of the allowed generation or
-            // greater
-            for (int i = 0; i < tempStructures.size(); i++) {
-              if (tempStructures.at(i)->getGeneration() < FU_crossovers_generation) {
-                tempStructures.removeAt(i);
-                i--;
-              }
-            }
-
-            // Only continue if there are at least 3 of the allowed generation or greater
-            if (tempStructures.size() < 3) enoughStructures = false;
-            if (enoughStructures) {
-
-              xtal1 = selectXtalFromProbabilityList(tempStructures);
-              xtal2 = selectXtalFromProbabilityList(tempStructures);
-
-              // Perform operation
-              xtal = XtalOptGenetic::FUcrossover(
-                    xtal1, xtal2, cross_minimumContribution, percent1, percent2,
-                    formulaUnitsList, this->comp);
-            }
-          }
-
-          if (!using_FU_crossovers || !enoughStructures) {
-            xtal1 = selectedXtal;
-            xtal2 = selectXtalFromProbabilityList(structures,
-                                                  xtal1->getFormulaUnits());
-
-            // Perform operation
-            xtal = XtalOptGenetic::crossover(
-                  xtal1, xtal2, cross_minimumContribution, percent1);
-          }
-
-          // Lock parents and get info from them
-          xtal1->lock()->lockForRead();
-          xtal2->lock()->lockForRead();
-          uint gen1 = xtal1->getGeneration();
-          uint gen2 = xtal2->getGeneration();
-          uint id1 = xtal1->getIDNumber();
-          uint id2 = xtal2->getIDNumber();
-          xtal2->lock()->unlock();
-          xtal1->lock()->unlock();
-
-          // Determine generation number
-          gen = ( gen1 >= gen2 ) ?
-            gen1 + 1 :
-            gen2 + 1 ;
-          parents = tr("Crossover: %1x%2 (%3%) + %4x%5 (%6%)")
-            .arg(gen1)
-            .arg(id1)
-            .arg(percent1, 0, 'f', 0)
-            .arg(gen2)
-            .arg(id2)
-            .arg(100.0 - percent1, 0, 'f', 0);
-
-          if (using_FU_crossovers && enoughStructures) parents = tr("FU Crossover: %1x%2 (%3%) + %4x%5 (%6%)")
-            .arg(gen1)
-            .arg(id1)
-            .arg(percent1, 0, 'f', 0)
-            .arg(gen2)
-            .arg(id2)
-            .arg(percent2, 0, 'f', 0);
-          continue;
-        }
-        case OP_Stripple: {
-
-          // Perform stripple
-          double amplitude=0, stdev=0;
-          xtal = XtalOptGenetic::stripple(selectedXtal,
-                                          strip_strainStdev_min,
-                                          strip_strainStdev_max,
-                                          strip_amp_min,
-                                          strip_amp_max,
-                                          strip_per1,
-                                          strip_per2,
-                                          stdev,
-                                          amplitude);
-
-          // Lock parent and extract info
-          selectedXtal->lock()->lockForRead();
-          uint gen1 = selectedXtal->getGeneration();
-          uint id1 = selectedXtal->getIDNumber();
-          selectedXtal->lock()->unlock();
-
-          // Determine generation number
-          gen = gen1 + 1;
-          parents = tr("Stripple: %1x%2 stdev=%3 amp=%4 waves=%5,%6")
-            .arg(gen1)
-            .arg(id1)
-            .arg(stdev, 0, 'f', 5)
-            .arg(amplitude, 0, 'f', 5)
-            .arg(strip_per1)
-            .arg(strip_per2);
-          continue;
-        }
-        case OP_Permustrain: {
-
-          double stdev=0;
-          xtal = XtalOptGenetic::permustrain(
-                selectedXtal, perm_strainStdev_max, perm_ex, stdev);
-
-          // Lock parent and extract info
-          selectedXtal->lock()->lockForRead();
-          uint gen1 = selectedXtal->getGeneration();
-          uint id1 = selectedXtal->getIDNumber();
-          selectedXtal->lock()->unlock();
-
-          // Determine generation number
-          gen = gen1 + 1;
-          parents = tr("Permustrain: %1x%2 stdev=%3 exch=%4")
-            .arg(gen1)
-            .arg(id1)
-            .arg(stdev, 0, 'f', 5)
-            .arg(perm_ex);
-          continue;
-        }
-        default:
-          warning("XtalOpt::generateSingleOffspring: Attempt to use an "
-                  "invalid operator.");
-        }
-      }
-      if (attemptCount >= 1000) {
-        QString opStr;
-        switch (op) {
-        case OP_Crossover:   opStr = "crossover"; break;
-        case OP_Stripple:    opStr = "stripple"; break;
-        case OP_Permustrain: opStr = "permustrain"; break;
-        default:             opStr = "(unknown)"; break;
-        }
-        warning(tr("Unable to perform operation %1 after 1000 tries. "
-                   "Reselecting operator...").arg(opStr));
-      }
-    }
-    xtal->setGeneration(gen);
-    xtal->setParents(parents);
+    Xtal* xtal = H_getMutatedXtal(structures, FU);
     return xtal;
   }
 
@@ -1258,6 +1055,314 @@ namespace XtalOpt {
     return generateNewXtal(FU);
   }
 
+  // preselectedXtal is NULL by default
+  // includeCrossover is true by default
+  // includeMitosis is also true by default
+  Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
+                                  Xtal* preselectedXtal, bool includeCrossover,
+                                  bool includeMitosis, bool mitosisMutation)
+  {
+
+    INIT_RANDOM_GENERATOR();
+
+    // Initialize loop vars
+    double r;
+    unsigned int gen;
+    QString parents;
+    Xtal *xtal = NULL, *selectedXtal = NULL;
+
+    // Perform operation until xtal is valid:
+    while (!checkXtal(xtal)) {
+      // First delete any previous failed structure in xtal
+      if (xtal) {
+        xtal->deleteLater();
+        xtal = 0;
+      }
+
+      // If an xtal hasn't been preselected, select one
+      if (!preselectedXtal)
+        selectedXtal = selectXtalFromProbabilityList(structures, FU);
+      else
+        selectedXtal = preselectedXtal;
+
+      // Decide operator:
+      r = RANDDOUBLE();
+
+      // We will perform mitosis if:
+      // 1: using_one_pool is enabled and
+      // 2: the xtal selected can produce an FU on the list through mitosis and
+      // 3: the probability succeeds
+      if (includeMitosis && using_one_pool) {
+       // Find candidate formula units to be created through mitosis
+        QList<uint> possibleMitosisFU_index;
+        for (int i = 0; i < formulaUnitsList.size(); i++) {
+          if (formulaUnitsList.at(i) % selectedXtal->getFormulaUnits() == 0 &&
+                formulaUnitsList.at(i) != selectedXtal->getFormulaUnits()) {
+            possibleMitosisFU_index.append(i);
+          }
+        }
+
+        // If no FU's may be created by mitosis, just continue
+        if (!possibleMitosisFU_index.isEmpty()) {
+          //qDebug() << "possibleMitosisFU_index is not empty!";
+          // If the probability fails, delete xtal and continue
+          if (r <= chance_of_mitosis/100.0) {
+            // Select an index randomly from the possibleMitosisFU_index
+            uint randomListIndex = rand()%int(possibleMitosisFU_index.size());
+            uint selectedIndex = possibleMitosisFU_index.at(randomListIndex);
+            // Use that selected index to choose the formula units
+            uint formulaUnits = formulaUnitsList.at(selectedIndex);
+            // Perform mitosis
+            Xtal *nxtal = NULL;
+            while (!checkXtal(nxtal)) {
+              if (nxtal) {
+                delete nxtal;
+                nxtal = 0;
+              }
+
+              nxtal = generateSuperCell(selectedXtal->getFormulaUnits(),
+                                        formulaUnits, selectedXtal, true, true);
+            }
+            return nxtal;
+          }
+        }
+      }
+
+      Operators op;
+      // Include the crossover in the selection
+      if (includeCrossover) {
+        if (r < p_cross/100.0)
+          op = OP_Crossover;
+        else if (r < (p_cross + p_strip)/100.0)
+          op = OP_Stripple;
+        else
+          op = OP_Permustrain;
+      }
+      // In some cases (like in generateSuperCell()), we may
+      // not want to perform crossover. Instead, renormalize
+      // the percentages for stripple and permustrain and choose one
+      else {
+        double temp_p_strip = 100.0 * p_strip / (100.0 - p_cross);
+        if (r < temp_p_strip / 100.0)
+          op = OP_Stripple;
+        else
+          op = OP_Permustrain;
+      }
+
+      // Try 1000 times to get a good structure from the selected
+      // operation. If not possible, send a warning to the log and
+      // start anew.
+      int attemptCount = 0;
+      while (attemptCount < 1000 && !checkXtal(xtal)) {
+        attemptCount++;
+        if (xtal) {
+          delete xtal;
+          xtal = 0;
+        }
+
+        // Operation specific set up:
+        switch (op) {
+        case OP_Crossover: {
+          Xtal *xtal1=0, *xtal2=0;
+          // Select structures
+          double percent1;
+          double percent2;
+
+          // If FU crossovers have been enabled, generate a new breeding pool
+          // that includes multiple different formula units then run the
+          // alternative crossover function
+          bool enoughStructures = true;
+          if (using_FU_crossovers) {
+            // Get all optimized structures
+            QList<Structure*> tempStructures =
+                                           m_queue->getAllOptimizedStructures();
+
+            // Trim all the structures that aren't of the allowed generation or
+            // greater
+            for (int i = 0; i < tempStructures.size(); i++) {
+              if (tempStructures.at(i)->getGeneration() < FU_crossovers_generation) {
+                tempStructures.removeAt(i);
+                i--;
+              }
+            }
+
+            // Only continue if there are at least 3 of the allowed generation or greater
+            if (tempStructures.size() < 3) enoughStructures = false;
+            if (enoughStructures) {
+
+              xtal1 = selectXtalFromProbabilityList(tempStructures);
+              xtal2 = selectXtalFromProbabilityList(tempStructures);
+
+              // Perform operation
+              xtal = XtalOptGenetic::FUcrossover(
+                    xtal1, xtal2, cross_minimumContribution, percent1, percent2,
+                    formulaUnitsList, this->comp);
+            }
+          }
+
+          // Perform a regular crossover instead!
+          if (!using_FU_crossovers || !enoughStructures) {
+            xtal1 = selectedXtal;
+            xtal2 = selectXtalFromProbabilityList(structures,
+                                                  xtal1->getFormulaUnits());
+
+            // Perform operation
+            xtal = XtalOptGenetic::crossover(
+                  xtal1, xtal2, cross_minimumContribution, percent1);
+          }
+
+          // Lock parents and get info from them
+          xtal1->lock()->lockForRead();
+          xtal2->lock()->lockForRead();
+          uint gen1 = xtal1->getGeneration();
+          uint gen2 = xtal2->getGeneration();
+          uint id1 = xtal1->getIDNumber();
+          uint id2 = xtal2->getIDNumber();
+          xtal2->lock()->unlock();
+          xtal1->lock()->unlock();
+
+          // We will set the parent xtal of this xtal to be
+          // the parent that contributed the most
+          if (percent1 >= 50.0) xtal->setParentXtal(xtal1);
+          else xtal->setParentXtal(xtal2);
+
+          // Determine generation number
+          gen = ( gen1 >= gen2 ) ?
+            gen1 + 1 :
+            gen2 + 1 ;
+
+          // A regular crossover was performed. So percent2 will
+          // simply be 100.0 - percent1. This may not be the case
+          // for an FU Crossover
+          if (!using_FU_crossovers || !enoughStructures)
+            percent2 = 100.0 - percent1;
+
+          parents = tr("Crossover: %1x%2 (%3%) + %4x%5 (%6%)")
+            .arg(gen1)
+            .arg(id1)
+            .arg(percent1, 0, 'f', 0)
+            .arg(gen2)
+            .arg(id2)
+            .arg(percent2, 0, 'f', 0);
+          // To identify that a formula unit crossover was performed...
+          if (using_FU_crossovers && enoughStructures)
+            parents.prepend("FU ");
+          continue;
+        }
+        case OP_Stripple: {
+
+          // Perform stripple
+          double amplitude=0, stdev=0;
+          xtal = XtalOptGenetic::stripple(selectedXtal,
+                                          strip_strainStdev_min,
+                                          strip_strainStdev_max,
+                                          strip_amp_min,
+                                          strip_amp_max,
+                                          strip_per1,
+                                          strip_per2,
+                                          stdev,
+                                          amplitude);
+
+          // Lock parent and extract info
+          selectedXtal->lock()->lockForRead();
+          uint gen1 = selectedXtal->getGeneration();
+          uint id1 = selectedXtal->getIDNumber();
+
+          // If it's a mitosis mutation, the parent xtal is already set
+          if (!mitosisMutation)
+            xtal->setParentXtal(selectedXtal);
+          selectedXtal->lock()->unlock();
+
+          // Determine generation number
+          gen = gen1 + 1;
+          // A regular mutation is being performed
+          if (!mitosisMutation)
+            parents = tr("Stripple: %1x%2 stdev=%3 amp=%4 waves=%5,%6")
+              .arg(gen1)
+              .arg(id1)
+              .arg(stdev, 0, 'f', 5)
+              .arg(amplitude, 0, 'f', 5)
+              .arg(strip_per1)
+              .arg(strip_per2);
+          // Modified version of setting the parents.
+          // selectedXtal->getParents() should be something like "mitosis of 1x1 followed by "
+          else
+            parents = selectedXtal->getParents() + tr("Stripple: stdev=%1 amp=%2 waves=%3,%4")
+              .arg(stdev, 0, 'f', 5)
+              .arg(amplitude, 0, 'f', 5)
+              .arg(strip_per1)
+              .arg(strip_per2);
+          continue;
+        }
+        case OP_Permustrain: {
+
+          double stdev=0;
+
+          xtal = XtalOptGenetic::permustrain(
+                selectedXtal, perm_strainStdev_max, perm_ex, stdev);
+
+          // Lock parent and extract info
+          selectedXtal->lock()->lockForRead();
+          uint gen1 = selectedXtal->getGeneration();
+          uint id1 = selectedXtal->getIDNumber();
+
+          // If it's a mitosis mutation, the parent xtal is already set
+          if (!mitosisMutation)
+            xtal->setParentXtal(selectedXtal);
+          selectedXtal->lock()->unlock();
+
+          // Determine generation number
+          gen = gen1 + 1;
+          // Set the ancestry like normal...
+          if (!mitosisMutation)
+            parents = tr("Permustrain: %1x%2 stdev=%3 exch=%4")
+              .arg(gen1)
+              .arg(id1)
+              .arg(stdev, 0, 'f', 5)
+              .arg(perm_ex);
+          // selectedXtal->getParents() should be something like "mitosis of 1x1 followed by "
+          // modified settings for ancestry
+          else {
+            parents = selectedXtal->getParents() + tr("Permustrain: stdev=%1 exch=%2")
+              .arg(stdev, 0, 'f', 5)
+              .arg(perm_ex);
+          }
+          continue;
+        }
+        default:
+          warning("XtalOpt::generateSingleOffspring: Attempt to use an "
+                  "invalid operator.");
+        }
+      }
+      if (attemptCount >= 1000) {
+        QString opStr;
+        switch (op) {
+        case OP_Crossover:   opStr = "crossover"; break;
+        case OP_Stripple:    opStr = "stripple"; break;
+        case OP_Permustrain: opStr = "permustrain"; break;
+        default:             opStr = "(unknown)"; break;
+        }
+        warning(tr("Unable to perform operation %1 after 1000 tries. "
+                   "Reselecting operator...").arg(opStr));
+      }
+    }
+
+    xtal->setGeneration(gen);
+    xtal->setParents(parents);
+    Xtal* parentXtal;
+    if (!mitosisMutation)
+      parentXtal = xtal->getParentXtal();
+    else {
+      parentXtal = selectedXtal->getParentXtal();
+      xtal->setParentXtal(parentXtal);
+    }
+    parentXtal->lock()->lockForWrite();
+    parentXtal->incrementNumTotOffspring();
+    parentXtal->lock()->unlock();
+
+    return xtal;
+  }
+
   Xtal* XtalOpt::generatePrimitiveXtal(Xtal* xtal)
   {
     Xtal* nxtal = new Xtal();
@@ -1292,6 +1397,7 @@ namespace XtalOpt {
     return nxtal;
   }
 
+  // If myXtal is NULL, it returns a new dynamically allocated xtal
   Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU, Xtal *myXtal,
                                    bool setupNewXtal, bool mutate) {
 
@@ -1334,9 +1440,14 @@ namespace XtalOpt {
       xtal->lock()->unlock();
 
       // Determine generation number
+      // This parent info will be erased and replaced with a different parent
+      // if we are doing just a supercell generation. If we are doing
+      // a mutation afterwards, the mutation description comes after
+      // "followed by "
       parents = tr("%1x%2 mitosis followed by ")
         .arg(gen1)
         .arg(id1);
+      myXtal->setParentXtal(xtal);
       myXtal->setParents(parents);
       myXtal->setGeneration(gen1 + 1);
     }
@@ -1423,98 +1534,14 @@ namespace XtalOpt {
     // Perform genetic operation immediately after mitosis
     else {
       if (mutate) {
-        INIT_RANDOM_GENERATOR();
-        Xtal* xtal = 0;
-
-        // Perform operation until xtal is valid:
-        while (!checkXtal(xtal)) {
-          // First delete any previous failed structure in xtal
-          if (xtal) {
-            delete xtal;
-            xtal = myXtal;
-          }
-
-          // Decide operator:
-          double r = RANDDOUBLE();
-          Operators op;
-
-          // We will not use crossovers for supercells
-          if (r < p_cross/100.0) {
-            if (r < 0.5) op = OP_Stripple;
-            else op = OP_Permustrain;
-          }
-          else if (r < (p_cross + p_strip)/100.0)
-            op = OP_Stripple;
-          else
-            op = OP_Permustrain;
-
-          // Try 1000 times to get a good structure from the selected
-          // operation. If not possible, send a warning to the log and
-          // start anew.
-          int attemptCount = 0;
-          while (attemptCount < 1000 && !checkXtal(xtal)) {
-            attemptCount++;
-            if (xtal) {
-              xtal->deleteLater();
-              xtal = myXtal;
-            }
-
-            // Operation specific set up:
-            switch (op) {
-            case OP_Stripple: {
-
-              // Perform stripple
-              double amplitude=0, stdev=0;
-              xtal = XtalOptGenetic::stripple(myXtal,
-                                              strip_strainStdev_min,
-                                              strip_strainStdev_max,
-                                              strip_amp_min,
-                                              strip_amp_max,
-                                              strip_per1,
-                                              strip_per2,
-                                              stdev,
-                                              amplitude);
-
-              QString parents = myXtal->getParents() + tr("Stripple: stdev=%1 amp=%2 waves=%3,%4")
-                .arg(stdev, 0, 'f', 5)
-                .arg(amplitude, 0, 'f', 5)
-                .arg(strip_per1)
-                .arg(strip_per2);
-              xtal->setParents(parents);
-              continue;
-            }
-            case OP_Permustrain: {
-              double stdev=0;
-              xtal = XtalOptGenetic::permustrain(
-                    myXtal, perm_strainStdev_max, perm_ex, stdev);
-
-              QString parents = myXtal->getParents() + tr("Permustrain: stdev=%1 exch=%2")
-                .arg(stdev, 0, 'f', 5)
-                .arg(perm_ex);
-              xtal->setParents(parents);
-              continue;
-            }
-            default:
-              warning("XtalOpt::generateSingleOffspring: Attempt to use an "
-                      "invalid operator.");
-            }
-          }
-          if (attemptCount >= 1000) {
-            QString opStr;
-            switch (op) {
-            case OP_Stripple:    opStr = "stripple"; break;
-            case OP_Permustrain: opStr = "permustrain"; break;
-            default:             opStr = "(unknown)"; break;
-            }
-            warning(tr("Unable to perform operation %1 after 1000 tries. "
-                       "Reselecting operator...").arg(opStr));
-          }
-        }
-        xtal->setGeneration(myXtal->getGeneration());
-        // xtal and myXtal were both dynamically allocated. We should delete
-        // myXtal since we no longer need it.
-        myXtal->deleteLater();
-        myXtal = 0;
+        // If xtal is already selected, no structure list is needed for
+        // parameter 1. So we will use an empty list.
+        // Technically, parameter 2 is not needed either.
+        // Parameter 3 is the selected xtal to mutate.
+        // Parameter 4 is includeCrossover and parameter 5 is includeMitosis.
+        // Parameter 6 is mitosisMutation (changes the way the parents are set)
+        QList<Structure*> temp;
+        Xtal* xtal = H_getMutatedXtal(temp, FU, myXtal, false, false, true);
         return xtal;
       }
       else {
@@ -2446,8 +2473,12 @@ namespace XtalOpt {
       xtal->lock()->lockForWrite();
       // Let's reset supercells here too
       if (xtal->getStatus() == Xtal::Duplicate ||
-          xtal->getStatus() == Xtal::Supercell)
+          xtal->getStatus() == Xtal::Supercell) {
         xtal->setStatus(Xtal::Optimized);
+        // Reset the duplicate counting for the parents
+        if (xtal->hasParentXtal())
+          xtal->getParentXtal()->setNumDupOffspring(0);
+      }
       xtal->structureChanged(); // Reset cached comparisons
       xtal->lock()->unlock();
     }
@@ -2468,6 +2499,13 @@ namespace XtalOpt {
     Xtal *kickXtal, *keepXtal;
     st.i->lock()->lockForRead();
     st.j->lock()->lockForRead();
+    // if they are already both duplicates, just return.
+    if (st.i->getStatus() == Xtal::Duplicate &&
+        st.j->getStatus() == Xtal::Duplicate) {
+      st.i->lock()->unlock();
+      st.j->lock()->unlock();
+      return;
+    }
     if (st.i->compareCoordinates(*st.j, st.tol_len, st.tol_ang)) {
       // Mark the newest xtal as a duplicate of the oldest. This keeps the
       // lowest-energy plot trace accurate.
@@ -2490,12 +2528,27 @@ namespace XtalOpt {
         kickXtal = st.j;
         keepXtal = st.i;
       }
+      // If the kickXtal is already a duplicate, just return
+      if (kickXtal->getStatus() == Xtal::Duplicate ||
+          kickXtal->getStatus() == Xtal::Supercell) {
+        kickXtal->lock()->unlock();
+        keepXtal->lock()->unlock();
+        return;
+      }
       kickXtal->lock()->unlock();
       kickXtal->lock()->lockForWrite();
       kickXtal->setStatus(Xtal::Duplicate);
       kickXtal->setDuplicateString(QString("%1x%2")
                                    .arg(keepXtal->getGeneration())
                                    .arg(keepXtal->getIDNumber()));
+
+      // We don't want to increment for xtals that skipped optimization
+      if (kickXtal->hasParentXtal() &&
+          !kickXtal->skippedOptimization()) {
+        Xtal* parentXtal = kickXtal->getParentXtal();
+        parentXtal->incrementNumDupOffspring();
+        qDebug() << "Duplicate: parentXtal->getNumDupOffspring() is now" << parentXtal->getNumDupOffspring() << "\nand parentXtal->getNumTotOffspring() is" << parentXtal->getNumTotOffspring() << "\nfor" << parentXtal->getGeneration() << "x" << parentXtal->getIDNumber();
+      }
     }
     st.i->lock()->unlock();
     st.j->lock()->unlock();
@@ -2518,8 +2571,15 @@ namespace XtalOpt {
       smallerFormulaUnitXtal = st.i;
     }
 
+    // if the larger formula unit xtal is already a supercell, skip over it.
+    if (largerFormulaUnitXtal->getStatus() == Xtal::Supercell) {
+      largerFormulaUnitXtal->lock()->unlock();
+      smallerFormulaUnitXtal->lock()->unlock();
+      return;
+    }
+
     // We're going to create a temporary xtal that is an expanded version
-    // of the smaller formula unit xtal AND has the same  formula units of
+    // of the smaller formula unit xtal AND has the same formula units of
     // the larger formula unit xtal. They will then be compared with xtalcomp.
     Xtal xtalObject;
     Xtal *tempXtal = &xtalObject;
@@ -2540,6 +2600,23 @@ namespace XtalOpt {
 
     if (tempXtal2->compareCoordinates(*largerFormulaUnitXtal, st.tol_len,
                                      st.tol_ang)) {
+
+
+      // Increment the numDupOffspring of the parent xtal if it hasn't been
+      // incremented already
+      // We only increment for xtals that went through an optimization
+      if (largerFormulaUnitXtal->getStatus() != Xtal::Duplicate &&
+          largerFormulaUnitXtal->getStatus() != Xtal::Supercell &&
+          !largerFormulaUnitXtal->skippedOptimization() &&
+          largerFormulaUnitXtal->hasParentXtal()) {
+        Xtal* parentXtal = largerFormulaUnitXtal->getParentXtal();
+        parentXtal->incrementNumDupOffspring();
+        qDebug() << "Supercell: parentXtal->getNumDupOffspring() is now" << parentXtal->getNumDupOffspring() << "\nand parentXtal->getNumTotOffspring() is" << parentXtal->getNumTotOffspring() << "\nfor" << parentXtal->getGeneration() << "x" << parentXtal->getIDNumber();
+      }
+      if (largerFormulaUnitXtal->getStatus() != Xtal::Duplicate &&
+          largerFormulaUnitXtal->getStatus() != Xtal::Supercell &&
+          !largerFormulaUnitXtal->skippedOptimization() &&
+          !largerFormulaUnitXtal->hasParentXtal()) qDebug() << "parentXtal is invalid for " << largerFormulaUnitXtal->getGeneration() << "x" << largerFormulaUnitXtal->getIDNumber();
       // We're going to label the larger formula unit structure a supercell
       // of the smaller. The smaller structure is more fundamental and should
       // remain in the gene pool.
@@ -2559,6 +2636,7 @@ namespace XtalOpt {
       else largerFormulaUnitXtal->setSupercellString(QString("%1x%2")
                                    .arg(smallerFormulaUnitXtal->getGeneration())
                                    .arg(smallerFormulaUnitXtal->getIDNumber()));
+
     }
     tempXtal->deleteLater();
     tempXtal = 0;
@@ -2653,7 +2731,7 @@ namespace XtalOpt {
     // If a supercell is matched as a duplicate in the checkIfDups function,
     // it is okay because it will be overwritten with the checkIfSups function
     // following it.
-    QtConcurrent::blockingMap(dupSts, checkIfDups);
+    for (size_t i = 0; i < dupSts.size(); i++) checkIfDups(dupSts[i]);
 
     // Tried to run this concurrently. Would freeze upon resuming for some
     // reason, though...
@@ -2667,9 +2745,17 @@ namespace XtalOpt {
         for (size_t j = 0; j < xtals.size(); j++) {
           if (i == j) continue;
           xtals.at(j)->lock()->lockForRead();
-          if (xtals.at(i)->getParents() == tr("Primitive of %1x%2")
+          // If the xtal is optimized, a duplicate, or a supercell, overwrite
+          // the previous settings with what it should be for the primitive...
+          if ((xtals.at(i)->getStatus() == Xtal::Optimized ||
+               xtals.at(i)->getStatus() == Xtal::Duplicate ||
+               xtals.at(i)->getStatus() == Xtal::Supercell) &&
+              xtals.at(i)->getParents() == tr("Primitive of %1x%2")
                                             .arg((xtals.at(j))->getGeneration())
                                             .arg(xtals.at(j)->getIDNumber())) {
+            if (xtals.at(j)->getStatus() == Xtal::Duplicate ||
+                xtals.at(j)->getStatus() == Xtal::Supercell)
+              xtals.at(j)->getParentXtal()->decrementNumDupOffspring();
             xtals.at(j)->setStatus(Xtal::Supercell);
             xtals.at(j)->setSupercellString(QString("%1x%2")
                                             .arg(xtals.at(i)->getGeneration())
