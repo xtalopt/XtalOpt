@@ -338,13 +338,13 @@ namespace XtalOpt {
     QWriteLocker locker1 (oldXtal->lock());
 
     // Decrement the parent xtal that produced this deleted structure
-    if (oldXtal->hasParentXtal()) {
-      Xtal* parentXtal = oldXtal->getParentXtal();
+    if (oldXtal->hasParentStructure()) {
+      Xtal* parentXtal = qobject_cast<Xtal*>(oldXtal->getParentStructure());
       parentXtal->decrementNumTotOffspring();
       if (s->getStatus() == Xtal::Duplicate ||
           s->getStatus() == Xtal::Supercell)
         parentXtal->decrementNumDupOffspring();
-      oldXtal->setParentXtal(NULL);
+      oldXtal->setParentStructure(NULL);
     }
 
     uint FU = s->getFormulaUnits();
@@ -401,14 +401,14 @@ namespace XtalOpt {
 
     // Decrement the parent xtal that produced this deleted structure
     // An xtal that has been killed has already been decremented
-    if (oldXtal->hasParentXtal() &&
+    if (oldXtal->hasParentStructure() &&
         oldXtal->getStatus() != Xtal::Killed) {
-      Xtal* parentXtal = oldXtal->getParentXtal();
+      Xtal* parentXtal = qobject_cast<Xtal*>(oldXtal->getParentStructure());
       parentXtal->decrementNumTotOffspring();
       if (s->getStatus() == Xtal::Duplicate ||
           s->getStatus() == Xtal::Supercell)
         parentXtal->decrementNumDupOffspring();
-      oldXtal->setParentXtal(NULL);
+      oldXtal->setParentStructure(NULL);
     }
 
     uint FU = s->getFormulaUnits();
@@ -445,7 +445,7 @@ namespace XtalOpt {
       oldXtal->setParents(parents);
     }
 
-    oldXtal->setParentXtal(xtal->getParentXtal());
+    oldXtal->setParentStructure(xtal->getParentStructure());
 
     Q_ASSERT_X(xtal->numAtoms() == oldXtal->numAtoms(), Q_FUNC_INFO,
                "Number of atoms don't match. Cannot copy.");
@@ -1223,8 +1223,8 @@ namespace XtalOpt {
 
           // We will set the parent xtal of this xtal to be
           // the parent that contributed the most
-          if (percent1 >= 50.0) xtal->setParentXtal(xtal1);
-          else xtal->setParentXtal(xtal2);
+          if (percent1 >= 50.0) xtal->setParentStructure(xtal1);
+          else xtal->setParentStructure(xtal2);
 
           // Determine generation number
           gen = ( gen1 >= gen2 ) ?
@@ -1270,7 +1270,7 @@ namespace XtalOpt {
 
           // If it's a mitosis mutation, the parent xtal is already set
           if (!mitosisMutation)
-            xtal->setParentXtal(selectedXtal);
+            xtal->setParentStructure(selectedXtal);
           selectedXtal->lock()->unlock();
 
           // Determine generation number
@@ -1308,7 +1308,7 @@ namespace XtalOpt {
 
           // If it's a mitosis mutation, the parent xtal is already set
           if (!mitosisMutation)
-            xtal->setParentXtal(selectedXtal);
+            xtal->setParentStructure(selectedXtal);
           selectedXtal->lock()->unlock();
 
           // Determine generation number
@@ -1351,10 +1351,10 @@ namespace XtalOpt {
     xtal->setParents(parents);
     Xtal* parentXtal;
     if (!mitosisMutation)
-      parentXtal = xtal->getParentXtal();
+      parentXtal = qobject_cast<Xtal*>(xtal->getParentStructure());
     else {
-      parentXtal = selectedXtal->getParentXtal();
-      xtal->setParentXtal(parentXtal);
+      parentXtal = qobject_cast<Xtal*>(selectedXtal->getParentStructure());
+      xtal->setParentStructure(parentXtal);
     }
     parentXtal->lock()->lockForWrite();
     parentXtal->incrementNumTotOffspring();
@@ -1447,7 +1447,7 @@ namespace XtalOpt {
       parents = tr("%1x%2 mitosis followed by ")
         .arg(gen1)
         .arg(id1);
-      myXtal->setParentXtal(xtal);
+      myXtal->setParentStructure(xtal);
       myXtal->setParents(parents);
       myXtal->setGeneration(gen1 + 1);
     }
@@ -2251,6 +2251,28 @@ namespace XtalOpt {
       // enthalpy,energy, atom types, atom positions, and cell info must be
       // set already
       SETTINGS(xtalStateFileName);
+
+      // Store the memory address for a parent structure if one exists. Since
+      // this resume loads state files in numerical order, the parent of a
+      // given structure SHOULD have already been loaded.
+      QString parentStructureString =
+        settings->value("structure/parentStructure", "").toString();
+      qDebug() << "parentStructureString is " << parentStructureString;
+      if (!parentStructureString.isEmpty()) {
+        for (size_t i = 0; i < loadedStructures.size(); i++) {
+          QString compare =
+            QString::number(loadedStructures.at(i)->getGeneration()) +
+            "x" +
+            QString::number(loadedStructures.at(i)->getIDNumber());
+          if (parentStructureString == compare) {
+            xtal->setParentStructure(loadedStructures.at(i));
+            xtal->getParentStructure()->incrementNumTotOffspring();
+            qDebug() << "parent structure was loaded!!!!!!!!!!!!!!!!!!";
+            break;
+          }
+        }
+      }
+
       int version = settings->value("structure/version", -1).toInt();
       bool saveSuccessful = settings->value("structure/saveSuccessful",
                                             false).toBool();
@@ -2308,6 +2330,7 @@ namespace XtalOpt {
         double energy = settings->value("structure/current/energy", 0)
                                                                     .toDouble();
         xtal->setEnergy(energy * EV_TO_KJ_PER_MOL);
+
         DESTROY_SETTINGS(xtalStateFileName);
         locker.unlock();
         updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
@@ -2374,6 +2397,8 @@ namespace XtalOpt {
         }
       }
     }
+
+    // Locate and assign memory addresses for parent structures
 
     m_dialog->updateProgressMinimum(0);
     m_dialog->updateProgressValue(0);
@@ -2476,8 +2501,8 @@ namespace XtalOpt {
           xtal->getStatus() == Xtal::Supercell) {
         xtal->setStatus(Xtal::Optimized);
         // Reset the duplicate counting for the parents
-        if (xtal->hasParentXtal())
-          xtal->getParentXtal()->setNumDupOffspring(0);
+        if (xtal->hasParentStructure())
+          xtal->getParentStructure()->setNumDupOffspring(0);
       }
       xtal->structureChanged(); // Reset cached comparisons
       xtal->lock()->unlock();
@@ -2543,9 +2568,9 @@ namespace XtalOpt {
                                    .arg(keepXtal->getIDNumber()));
 
       // We don't want to increment for xtals that skipped optimization
-      if (kickXtal->hasParentXtal() &&
+      if (kickXtal->hasParentStructure() &&
           !kickXtal->skippedOptimization()) {
-        Xtal* parentXtal = kickXtal->getParentXtal();
+        Xtal* parentXtal = qobject_cast<Xtal*>(kickXtal->getParentStructure());
         parentXtal->incrementNumDupOffspring();
         qDebug() << "Duplicate: parentXtal->getNumDupOffspring() is now" << parentXtal->getNumDupOffspring() << "\nand parentXtal->getNumTotOffspring() is" << parentXtal->getNumTotOffspring() << "\nfor" << parentXtal->getGeneration() << "x" << parentXtal->getIDNumber();
       }
@@ -2608,15 +2633,15 @@ namespace XtalOpt {
       if (largerFormulaUnitXtal->getStatus() != Xtal::Duplicate &&
           largerFormulaUnitXtal->getStatus() != Xtal::Supercell &&
           !largerFormulaUnitXtal->skippedOptimization() &&
-          largerFormulaUnitXtal->hasParentXtal()) {
-        Xtal* parentXtal = largerFormulaUnitXtal->getParentXtal();
+          largerFormulaUnitXtal->hasParentStructure()) {
+        Xtal* parentXtal = qobject_cast<Xtal*>(largerFormulaUnitXtal->getParentStructure());
         parentXtal->incrementNumDupOffspring();
         qDebug() << "Supercell: parentXtal->getNumDupOffspring() is now" << parentXtal->getNumDupOffspring() << "\nand parentXtal->getNumTotOffspring() is" << parentXtal->getNumTotOffspring() << "\nfor" << parentXtal->getGeneration() << "x" << parentXtal->getIDNumber();
       }
       if (largerFormulaUnitXtal->getStatus() != Xtal::Duplicate &&
           largerFormulaUnitXtal->getStatus() != Xtal::Supercell &&
           !largerFormulaUnitXtal->skippedOptimization() &&
-          !largerFormulaUnitXtal->hasParentXtal()) qDebug() << "parentXtal is invalid for " << largerFormulaUnitXtal->getGeneration() << "x" << largerFormulaUnitXtal->getIDNumber();
+          !largerFormulaUnitXtal->hasParentStructure()) qDebug() << "parentXtal is invalid for " << largerFormulaUnitXtal->getGeneration() << "x" << largerFormulaUnitXtal->getIDNumber();
       // We're going to label the larger formula unit structure a supercell
       // of the smaller. The smaller structure is more fundamental and should
       // remain in the gene pool.
@@ -2755,7 +2780,7 @@ namespace XtalOpt {
                                             .arg(xtals.at(j)->getIDNumber())) {
             if (xtals.at(j)->getStatus() == Xtal::Duplicate ||
                 xtals.at(j)->getStatus() == Xtal::Supercell)
-              xtals.at(j)->getParentXtal()->decrementNumDupOffspring();
+              xtals.at(j)->getParentStructure()->decrementNumDupOffspring();
             xtals.at(j)->setStatus(Xtal::Supercell);
             xtals.at(j)->setSupercellString(QString("%1x%2")
                                             .arg(xtals.at(i)->getGeneration())

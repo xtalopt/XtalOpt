@@ -676,8 +676,8 @@ namespace XtalOpt {
     }
 
     // Decrement the parent xtal info
-    if (m_context_xtal->hasParentXtal()) {
-      Xtal* parentXtal = m_context_xtal->getParentXtal();
+    if (m_context_xtal->hasParentStructure()) {
+      Xtal* parentXtal = qobject_cast<Xtal*>(m_context_xtal->getParentStructure());
       parentXtal->decrementNumTotOffspring();
       if (m_context_xtal->getStatus() == Xtal::Duplicate ||
           m_context_xtal->getStatus() == Xtal::Supercell)
@@ -710,8 +710,8 @@ namespace XtalOpt {
     // If an xtal is killed that wasn't optimized, it gets replaced with a
     // random xtal. This will decrement the non-optimized xtals again like it
     // should.
-    if (m_context_xtal->hasParentXtal()) {
-      Xtal* parentXtal = m_context_xtal->getParentXtal();
+    if (m_context_xtal->hasParentStructure()) {
+      Xtal* parentXtal = qobject_cast<Xtal*>(m_context_xtal->getParentStructure());
       parentXtal->incrementNumTotOffspring();
     }
 

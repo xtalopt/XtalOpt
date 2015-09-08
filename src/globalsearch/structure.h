@@ -155,6 +155,17 @@ namespace GlobalSearch {
      */
     bool hasEnthalpy()	const {return m_hasEnthalpy;};
 
+    /** Return whether or not this structure has a parent structure saved.
+     * @return Returns true if a parent structure is saved, and false if
+     * a parent structure is not saved.
+     */
+
+    bool hasParentStructure() const
+    {
+      if (m_parentStructure) return true;
+      else return false;
+    }
+
     /** Return the energy value of the first conformer in eV. This is
      * a convenience function.
      *
@@ -310,6 +321,10 @@ namespace GlobalSearch {
      * through mutations/transformations.
      */
     uint getNumTotOffspring() const {return m_numTotOffspring;};
+
+   /** @return A pointer for the parent structure of a given structure
+    */
+    Structure* getParentStructure() const {return m_parentStructure;};
 
     // returns the number of structures of each formula unit up to the
     // user-specified maximum formula units. numberOfEachFormulaUnit.at(n)
@@ -1050,6 +1065,13 @@ namespace GlobalSearch {
      */
     void decrementNumTotOffspring() {m_numTotOffspring -= 1;};
 
+    /** Set the parent structure for this structure
+     */
+    void setParentStructure(Structure* structure)
+    {
+      m_parentStructure = structure;
+    };
+
     /** Reset the number of times this Structure has failed the
      * current optimization step.
      *
@@ -1241,6 +1263,9 @@ namespace GlobalSearch {
     QList<double> m_histEnergies;
     QList<QList<Eigen::Vector3d> > m_histCoords;
     QList<Eigen::Matrix3d> m_histCells;
+
+    // Pointer to parent structure if one is saved.
+    Structure* m_parentStructure;
     // End doxygen skip:
     /// \endcond
   };

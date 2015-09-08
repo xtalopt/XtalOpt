@@ -58,7 +58,8 @@ namespace GlobalSearch {
     m_PV(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
-    m_index(-1)
+    m_index(-1),
+    m_parentStructure(NULL)
   {
     m_currentOptStep = 1;
     setStatus(Empty);
@@ -82,7 +83,8 @@ namespace GlobalSearch {
     m_PV(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
-    m_index(-1)
+    m_index(-1),
+    m_parentStructure(NULL)
   {
     *this = other;
   }
@@ -104,7 +106,8 @@ namespace GlobalSearch {
     m_numTotOffspring(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
-    m_index(-1)
+    m_index(-1),
+    m_parentStructure(NULL)
   {
     *this = other;
   }
@@ -237,6 +240,7 @@ namespace GlobalSearch {
     m_optStart                   = other.m_optStart;
     m_optEnd                     = other.m_optEnd;
     m_index                      = other.m_index;
+    m_parentStructure            = other.m_parentStructure;
 
     return *this;
   }
@@ -283,6 +287,15 @@ namespace GlobalSearch {
     settings->setValue("failCount", getFailCount());
     settings->setValue("startTime", getOptTimerStart().toString());
     settings->setValue("endTime", getOptTimerEnd().toString());
+
+    // Check if a parent structure is saved
+    // This is NOT a variable that can be read in readSettings().
+    if (this->hasParentStructure()) {
+      QString parentStructure =
+        QString::number(m_parentStructure->getGeneration()) + "x" +
+        QString::number(m_parentStructure->getIDNumber());
+      settings->setValue("parentStructure", parentStructure);
+    }
 
     // History
     settings->beginGroup("history");
