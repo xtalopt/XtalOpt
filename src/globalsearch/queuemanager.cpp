@@ -263,6 +263,7 @@ namespace GlobalSearch {
       // a remote queue interface. Interval is randomly chosen each iteration.
       // This prevents hammering the pbs server from multiple XtalOpt instances
       // if there is a problem with the queue.
+#ifdef ENABLE_SSH
       if (qobject_cast<RemoteQueueInterface*>
           (m_opt->queueInterface()) != NULL) {
         if (m_lastSubmissionTimeStamp->secsTo(QDateTime::currentDateTime())
@@ -275,6 +276,7 @@ namespace GlobalSearch {
       }
       else {
         // Local job submission doesn't need to be throttled
+#endif
         while (pending != 0 &&
                (
                  !m_opt->limitRunningJobs ||
@@ -285,7 +287,9 @@ namespace GlobalSearch {
           ++submitted;
           --pending;
         }
+#ifdef ENABLE_SSH
       }
+#endif
     }
     m_jobStartTracker.unlock();
 

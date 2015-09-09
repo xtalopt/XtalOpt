@@ -19,6 +19,7 @@
 #include <randomdock/optimizers/adf.h>
 #include <randomdock/optimizers/gamess.h>
 #include <randomdock/optimizers/mopac.h>
+#include <randomdock/optimizers/gaussian.h>
 #include <randomdock/randomdock.h>
 #include <randomdock/ui/dialog.h>
 
@@ -28,6 +29,7 @@
 #ifdef ENABLE_SSH
 #include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/queueinterfaces/sge.h>
+#include <globalsearch/queueinterfaces/slurm.h>
 #endif // ENABLE_SSH
 
 #include <QtGui/QComboBox>
@@ -47,7 +49,7 @@ namespace RandomDock {
   {
     // Fill m_optimizers in order of RandomDock::OptTypes
     m_optimizers.clear();
-    const unsigned int numOptimizers = 3;
+    const unsigned int numOptimizers = 4;
     for (unsigned int i = 0; i < numOptimizers; ++i) {
       switch (i) {
       case RandomDock::OT_GAMESS:
@@ -59,12 +61,15 @@ namespace RandomDock {
       case RandomDock::OT_MOPAC:
         m_optimizers.append(new MopacOptimizer (m_opt));
         break;
+      case RandomDock::OT_GAUSSIAN:
+        m_optimizers.append(new GaussianOptimizer (m_opt));
+        break;
       }
     }
 
     // Fill m_optimizers in order of RandomDock::QueueInterfaces
     m_queueInterfaces.clear();
-    const unsigned int numQIs = 3;
+    const unsigned int numQIs = 4;
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
       case RandomDock::QI_LOCAL:
@@ -76,6 +81,9 @@ namespace RandomDock {
         break;
       case RandomDock::QI_SGE:
         m_queueInterfaces.append(new SgeQueueInterface (m_opt));
+        break;
+      case RandomDock::QI_SLURM:
+        m_queueInterfaces.append(new SlurmQueueInterface (m_opt));
         break;
 #endif // ENABLE_SSH
       }

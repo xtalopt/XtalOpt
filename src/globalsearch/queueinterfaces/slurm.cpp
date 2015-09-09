@@ -503,17 +503,16 @@ namespace GlobalSearch {
       return ret;
     }
 
-    QString command = m_squeue + " | grep " + m_opt->username;
+    QString command = m_squeue + " -u " + m_opt->username;
 
     // Execute
     QString stdout_str;
     QString stderr_str;
     int ec;
-    // Valid exit codes for grep: (0) matches found, execution successful
-    //                            (1) no matches found, execution successful
-    //                            (2) execution unsuccessful
+    // stdout_str should never be empty for a successful execution
+    // There will always be column info at the beginning if nothing else.
     if (!ssh->execute(command, stdout_str, stderr_str, ec)
-        || (ec != 0 && ec != 1 )
+        || (ec != 0) || (stdout_str.isEmpty())
         ) {
       m_opt->ssh()->unlockConnection(ssh);
       m_opt->warning(tr("Error executing %1: (%2) %3\n\t"

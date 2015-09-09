@@ -73,7 +73,14 @@ namespace GlobalSearch {
   bool SSHConnectionCLI::copyDirectoryFromServer(const QString &remotepath,
                                                  const QString &localpath)
   {
-    return this->executeSCPFrom(remotepath, localpath, QStringList("-r"));
+    // This extra step is performed so that the SCP overwrites the local
+    // directory with the remote directory instead of erroneously placing a
+    // copy of the remote directory inside local directory. PSA
+    //qDebug() << "localpath is" << localpath;
+    QString new_localpath = localpath + "..";
+    //qDebug() << "new_localpath is" << new_localpath;
+    return this->executeSCPFrom(remotepath, new_localpath, QStringList("-r"));
+  //    return this->executeSCPFrom(remotepath, localpath, QStringList("-r"));
   }
 
   bool SSHConnectionCLI::readRemoteDirectoryContents(const QString &remotepath,

@@ -20,6 +20,7 @@
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/pwscf.h>
 #include <xtalopt/optimizers/castep.h>
+#include <xtalopt/optimizers/siesta.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
 
@@ -31,11 +32,16 @@
 #include <globalsearch/slottedwaitcondition.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/bt.h>
+#include <globalsearch/fileutils.h>
 
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
 #include <globalsearch/queueinterfaces/remote.h>
 #endif // ENABLE_SSH
+
+#include <openbabel/generic.h>
+
+#include <Eigen/LU>
 
 #include <QtCore/QDir>
 #include <QtCore/QList>
@@ -119,6 +125,25 @@ namespace XtalOpt {
     if (comp.isEmpty()) {
       error("Cannot create structures. Composition is not set.");
       return;
+    }
+
+    // Check if xtalopt data is already saved at the filePath
+    if (QFile::exists(filePath + "/xtalopt.state")) {
+      bool proceed;
+      needBoolean(tr("Warning: XtalOpt data is already saved at: %1"
+                     "\nDo you wish to proceed and overwrite it?"
+                     "\n\nIf no, please change the local working directory "
+                     "under Queue configure located in the "
+                     "'Optimization Settings' tab")
+                  .arg(filePath),
+                  &proceed);
+      if (!proceed) return;
+      else {
+        bool result = FileUtils::removeDir(filePath);
+        if (!result) {
+          error(tr("Error removing directory at:\n %1").arg(filePath));
+        }
+      }
     }
 
     // Are the selected queueinterface and optimizer happy?
@@ -308,6 +333,9 @@ namespace XtalOpt {
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
     QWriteLocker locker1 (oldXtal->lock());
 
+    uint generation, id;
+    generation = s->getGeneration();
+    id = s->getIDNumber();
     // Generate/Check new xtal
     Xtal *xtal = 0;
     while (!checkXtal(xtal)) {
@@ -316,7 +344,7 @@ namespace XtalOpt {
         xtal = 0;
       }
 
-      xtal = generateRandomXtal(0, 0);
+      xtal = generateRandomXtal(generation, id);
     }
 
     // Copy info over
@@ -426,27 +454,210 @@ namespace XtalOpt {
 
     unsigned int atomicNum;
     unsigned int q;
-    for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
-      atomicNum = atomicNums.at(num_idx);
-      q = comp.value(atomicNum).quantity;
-      for (uint i = 0; i < q; i++) {
-        if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
-          xtal->deleteLater();
-          debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                "specified interatomic distance.");
-          return 0;
+
+    qDebug() << "Xtal has divisions =" << divisions;
+
+    if (using_mitosis){
+        //  Unit Cell Vectors
+        int A = ax;
+        int B = bx;
+        int C = cx;
+
+        a = a / A;
+        b = b / B;
+        c = c / C;
+
+        xtal->setCellInfo(a,
+                b,
+                c,
+                xtal->getAlpha(),
+                xtal->getBeta(),
+                xtal->getGamma());
+        qDebug() << "Xtal cell dimensions are decreasing from a =" << A*a << "b =" << B*b << "c =" << C*c <<
+                "to a =" << a << "b =" << b << "c =" << c;
+
+        for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+            atomicNum = atomicNums.at(num_idx);
+            q = comp.value(atomicNum).quantity;
+            if (using_mitosis){
+                q = q / divisions;
+                for (uint i = 0; i < q; i++) {
+                    if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+                        xtal->deleteLater();
+                        debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                            "specified interatomic distance.");
+                        return 0;
+                    }
+                }
+            }
         }
-      }
+
+        if (using_subcellPrint) printSubXtal(xtal, generation, id);
+
+        if (!xtal->fillSuperCell(A, B, C, xtal)) {
+            xtal->deleteLater();
+            debug("XtalOpt::generateRandomXtal: Failed to add atoms.");
+            return 0;
+        }
+
+        for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+            atomicNum = atomicNums.at(num_idx);
+            q = comp.value(atomicNum).quantity;
+            if (using_mitosis){
+                q = q % divisions;
+                for (uint i = 0; i < q; i++) {
+                    if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+                        xtal->deleteLater();
+                        debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                            "specified interatomic distance.");
+                        return 0;
+                    }
+                }
+            }
+        }
+
+    } else {
+        for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+            atomicNum = atomicNums.at(num_idx);
+            q = comp.value(atomicNum).quantity;
+            for (uint i = 0; i < q; i++) {
+                if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+                    xtal->deleteLater();
+                    debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                        "specified interatomic distance.");
+                    return 0;
+                }
+            }
+        }
     }
 
     // Set up geneology info
     xtal->setGeneration(generation);
     xtal->setIDNumber(id);
     xtal->setParents("Randomly generated");
+    if (using_mitosis) xtal->setParents(xtal->getParents()+" through mitosis");
     xtal->setStatus(Xtal::WaitingForOptimization);
 
     // Set up xtal data
     return xtal;
+  }
+
+  void XtalOpt::printSubXtal(Xtal *xtal, uint generation,
+                                     uint id)
+    {
+    xtalInitMutex->lock();
+
+    QString id_s, gen_s, locpath_s;
+    id_s.sprintf("%05d",id);
+    gen_s.sprintf("%05d",generation);
+    locpath_s = filePath + "/subcells";
+    QDir dir (locpath_s);
+    if (!dir.exists()) {
+      if (!dir.mkpath(locpath_s)) {
+        error(tr("XtalOpt::initializeSubXtal: Cannot write to path: %1 "
+                 "(path creation failure)", "1 is a file path.")
+              .arg(locpath_s));
+      }
+    }
+    QFile loc_subcell;
+    loc_subcell.setFileName(locpath_s + "/" + gen_s + "x" + id_s + ".cml");
+
+    if (!loc_subcell.open(QIODevice::WriteOnly)) {
+                    error("XtalOpt::initializeSubXtal(): Error opening file "+loc_subcell.fileName()+" for writing...");
+    }
+
+    QTextStream out;
+    out.setDevice(&loc_subcell);
+
+    /*
+    QStringList symbols = xtal->getSymbols();
+    QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
+    Q_ASSERT_X(symbols.size() == atomCounts.size(), Q_FUNC_INFO,
+               "xtal->getSymbols is not the same size as xtal->getNumberOfAtomsAlpha.");
+    for (unsigned int i = 0; i < symbols.size(); i++) {
+      out << QString("%1%2").arg(symbols[i]).arg(atomCounts[i]);
+    }
+    out << " ";
+    out << xtal->fileName();
+    out << "\n";
+    // Scaling factor. Just 1.0
+    out << QString::number(1.0);
+    out << "\n";
+    // Unit Cell Vectors
+    std::vector< vector3 > vecs = xtal->OBUnitCell()->GetCellVectors();
+    for (uint i = 0; i < vecs.size(); i++) {
+      out << QString("  %1 %2 %3\n")
+        .arg(vecs[i].x(), 12, 'f', 8)
+        .arg(vecs[i].y(), 12, 'f', 8)
+        .arg(vecs[i].z(), 12, 'f', 8);
+    }
+    // Number of each type of atom (sorted alphabetically by symbol)
+    for (int i = 0; i < atomCounts.size(); i++) {
+      out << QString::number(atomCounts.at(i)) + " ";
+    }
+    out << "\n";
+    // Use fractional coordinates:
+    out << "Direct\n";
+    // Coordinates of each atom (sorted alphabetically by symbol)
+    QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
+    for (int i = 0; i < coords.size(); i++) {
+      out << QString("  %1 %2 %3\n")
+        .arg(coords[i].x(), 12, 'f', 8)
+        .arg(coords[i].y(), 12, 'f', 8)
+        .arg(coords[i].z(), 12, 'f', 8);
+    }
+    out << endl;
+*/
+
+// Print the subcells as .cml files
+    QStringList symbols = xtal->getSymbols();
+    QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
+    out << "<molecule>\n";
+    out << "\t<crystal>\n";
+
+    // Unit Cell Vectors
+    std::vector< vector3 > vecs = xtal->OBUnitCell()->GetCellVectors();
+      out << QString("\t\t<scalar title=\"a\" units=\"units:angstrom\">%1</scalar>\n")
+        .arg(vecs[0].x(), 12);
+      out << QString("\t\t<scalar title=\"b\" units=\"units:angstrom\">%1</scalar>\n")
+        .arg(vecs[1].y(), 12, 'f', 8);
+      out << QString("\t\t<scalar title=\"c\" units=\"units:angstrom\">%1</scalar>\n")
+        .arg(vecs[2].z(), 12, 'f', 8);
+
+    // Unit Cell Angles
+    out << QString("\t\t<scalar title=\"alpha\" units=\"units:degree\">%1</scalar>\n")
+      .arg(xtal->OBUnitCell()->GetAlpha(), 12, 'f', 8);
+    out << QString("\t\t<scalar title=\"beta\" units=\"units:degree\">%1</scalar>\n")
+      .arg(xtal->OBUnitCell()->GetBeta(), 12, 'f', 8);
+    out << QString("\t\t<scalar title=\"gamma\" units=\"units:degree\">%1</scalar>\n")
+      .arg(xtal->OBUnitCell()->GetGamma(), 12, 'f', 8);
+
+    out << "\t</crystal>\n";
+    out << "\t<atomArray>\n";
+
+    int symbolCount = 0;
+    int j = 1;
+    // Coordinates of each atom (sorted alphabetically by symbol)
+    QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
+    for (int i = 0; i < coords.size(); i++) {
+      if (j > atomCounts[symbolCount]) {
+          symbolCount++;
+          j = 0;
+      }
+      j++;
+      out << QString("\t\t<atom id=\"a%1\" elementType=\"%2\" xFract=\"%3\" yFract=\"%4\" zFract=\"%5\"/>\n")
+        .arg(i+1)
+        .arg(symbols[symbolCount])
+        .arg(coords[i].x(), 12, 'f', 8)
+        .arg(coords[i].y(), 12, 'f', 8)
+        .arg(coords[i].z(), 12, 'f', 8);
+    }
+
+    out << "\t</atomArray>\n";
+    out << "</molecule>\n";
+    out << endl;
+
+    xtalInitMutex->unlock();
   }
 
   void XtalOpt::initializeAndAddXtal(Xtal *xtal, uint generation,
@@ -976,6 +1187,8 @@ namespace XtalOpt {
     else if (line == "betaDeg")         rep += QString::number(xtal->getBeta());
     else if (line == "gammaDeg")        rep += QString::number(xtal->getGamma());
     else if (line == "volume")          rep += QString::number(xtal->getVolume());
+    else if (line == "block")           rep += QString("\%block");
+    else if (line == "endblock")        rep += QString("\%endblock");
     else if (line == "coordsFrac") {
       QList<Atom*> atoms = structure->atoms();
       QList<Atom*>::const_iterator it;
@@ -987,6 +1200,37 @@ namespace XtalOpt {
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
         rep += QString::number(coords.z()) + "\n";
+      }
+    }
+    else if (line == "chemicalSpeciesLabel") {
+      QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
+      QList<QString> symbol = xtal->getSymbols();
+      for (int i = 0; i < atomCounts.size(); i++) {
+        rep += " ";
+        rep += QString::number(i+1) + " ";
+        rep += QString::number(OpenBabel::etab.GetAtomicNum(symbol.at(i).toStdString().c_str())) + " ";
+        rep += symbol.at(i) + "\n";
+      }
+    }
+    else if (line == "atomicCoordsAndAtomicSpecies") {
+      QList<Atom*> atoms = xtal->atoms();
+      QList<Atom*>::const_iterator it;
+      QList<QString> symbol = xtal->getSymbols();
+      for (it  = atoms.begin();
+           it != atoms.end();
+           it++) {
+        const Eigen::Vector3d coords = xtal->cartToFrac(*(*it)->pos());
+        QString currAtom = static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber()));
+        int i = symbol.indexOf(currAtom)+1;
+        rep += " ";
+        QString inp;
+        inp.sprintf("%4.8f", coords.x());
+        rep += inp + "\t";
+        inp.sprintf("%4.8f", coords.y());
+        rep += inp + "\t";
+        inp.sprintf("%4.8f", coords.z());
+        rep += inp + "\t";
+        rep += QString::number(i) + "\n";
       }
     }
     else if (line == "coordsFracId") {
@@ -1020,8 +1264,11 @@ namespace XtalOpt {
     else if (line == "cellMatrixAngstrom") {
       matrix3x3 m = xtal->OBUnitCell()->GetCellMatrix();
       for (int i = 0; i < 3; i++) {
+        rep += " ";
         for (int j = 0; j < 3; j++) {
-          rep += QString::number(m.Get(i,j)) + "\t";
+          QString inp;
+          inp.sprintf("%4.8f", m.Get(i,j));
+          rep += inp + "\t";
         }
         rep += "\n";
       }
@@ -1171,6 +1418,8 @@ namespace XtalOpt {
       readOnly = true;
     }
 
+    loaded = true;
+
     // Attempt to open state file
     QFile file (filename);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -1205,6 +1454,8 @@ namespace XtalOpt {
             + file.fileName() + ".old if it exists)");
       return false;
     }
+
+    DESTROY_SETTINGS(filename);
 
     // Get path and other info for later:
     QFileInfo stateInfo (file);
@@ -1290,14 +1541,8 @@ namespace XtalOpt {
       QWriteLocker locker (xtal->lock());
       xtal->moveToThread(m_tracker->thread());
       xtal->setupConnections();
-      // Add empty atoms to xtal, updateXtal will populate it
-      for (int j = 0; j < keys.size(); j++) {
-        unsigned int quantity = comp.value(keys.at(j)).quantity;
-        for (uint k = 0; k < quantity; k++)
-          xtal->addAtom();
-      }
       xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
-      xtal->readSettings(xtalStateFileName);
+      xtal->readSettings(xtalStateFileName, true);
 
       // Store current state -- updateXtal will overwrite it.
       Xtal::State state = xtal->getStatus();
@@ -1309,6 +1554,40 @@ namespace XtalOpt {
 
       locker.unlock();
 
+      // If the current settings were saved successfully, then the current
+      // enthalpy,energy, atom types, atom positions, and cell info must be
+      // set already
+      SETTINGS(xtalStateFileName);
+      int version = settings->value("structure/version").toInt();
+      bool saveSuccessful = settings->value("structure/saveSuccessful",
+                                            false).toBool();
+      if (version >= 3) {
+        if (!saveSuccessful) {
+          error(tr("Error, structure.state file was not saved successfully for "
+                   "%1. This structure will be excluded.")
+                .arg(xtal->fileName()));
+          continue;
+        }
+        // Reset state
+        locker.relock();
+        xtal->setStatus(state);
+        xtal->setOptTimerEnd(endtime);
+        if (clearJobIDs) {
+          xtal->setJobID(0);
+        }
+        // For some strange reason, setEnergy() does not appear to be
+        // working in readSettings() in structure.cpp (even though all the
+        // others including setEnthalpy() seem to work fine). So we will set it
+        // here.
+        double energy = settings->value("structure/current/energy", 0)
+                                                                    .toDouble();
+        xtal->setEnergy(energy * EV_TO_KJ_PER_MOL);
+        DESTROY_SETTINGS(xtalStateFileName);
+        locker.unlock();
+        loadedStructures.append(qobject_cast<Structure*>(xtal));
+        continue;
+      }
+      DESTROY_SETTINGS(xtalStateFileName);
       if (!m_optimizer->load(xtal)) {
         error(tr("Error, no (or not appropriate for %1) xtal data in "
                  "%2.\n\nThis could be a result of resuming a structure "
@@ -1495,7 +1774,7 @@ namespace XtalOpt {
     for (QList<Xtal*>::iterator xi = xtals.begin();
          xi != xtals.end(); xi++) {
       (*xi)->lock()->lockForRead();
-      if ((*xi)->getStatus() == Xtal::Duplicate) {
+      if ((*xi)->getStatus() != Xtal::Optimized) {
         (*xi)->lock()->unlock();
         continue;
       }
@@ -1503,7 +1782,7 @@ namespace XtalOpt {
       for (QList<Xtal*>::iterator xj = xi + 1;
            xj != xtals.end(); xj++) {
         (*xj)->lock()->lockForRead();
-        if ((*xj)->getStatus() == Xtal::Duplicate) {
+        if ((*xj)->getStatus() != Xtal::Optimized) {
           (*xj)->lock()->unlock();
           continue;
         }

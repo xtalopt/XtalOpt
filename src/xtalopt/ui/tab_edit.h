@@ -43,7 +43,9 @@ namespace XtalOpt {
   protected slots:
     // Returns false if user cancels
     bool generateVASP_POTCAR_info();
+    bool generateSIESTA_PSF_info();
     void changePOTCAR(QListWidgetItem *item);
+    void changePSF(QListWidgetItem *item);
   };
 }
 

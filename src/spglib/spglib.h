@@ -18,10 +18,10 @@
     [ a_z, b_z, c_z ] ]
 
   position: Atomic positions (in fractional coordinates)
-  
-  [ [ x1_a, x1_b, x1_c ], 
-    [ x2_a, x2_b, x2_c ], 
-    [ x3_a, x3_b, x3_c ], 
+
+  [ [ x1_a, x1_b, x1_c ],
+    [ x2_a, x2_b, x2_c ],
+    [ x3_a, x3_b, x3_c ],
     ...                   ]
 
   types: Atom types, i.e., species identified by number

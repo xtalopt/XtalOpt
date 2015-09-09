@@ -62,6 +62,10 @@ namespace XtalOpt {
                          const QHash<unsigned int, XtalCompositionStruct> & limits,
                          int maxAttempts = 100.0,
                          Avogadro::Atom **atom = 0);
+
+    // Fills a supercell for the mitosis process
+    bool fillSuperCell(int a, int b, int c, Xtal * myXtal);
+
     // Use the minRadius constraints in @a limits to check the interatomic
     // distances in the xtal. atom1 and atom2 are overwritten with the indexes
     // of the first set of offending atom, if any, that are found. The bad IAD

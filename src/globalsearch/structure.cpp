@@ -15,6 +15,7 @@
 
 #include <globalsearch/structure.h>
 #include <globalsearch/macros.h>
+#include <globalsearch/obeigenconv.h>
 
 #include <avogadro/primitive.h>
 #include <avogadro/molecule.h>
@@ -253,6 +254,10 @@ namespace GlobalSearch {
     settings->setValue("startTime", getOptTimerStart().toString());
     settings->setValue("endTime", getOptTimerEnd().toString());
 
+    // This will write the current enthalpy, energy, cell information, atom
+    // types, and atom positions for a structure
+    writeCurrentStructureInfo(filename);
+
     // History
     settings->beginGroup("history");
     //  Atomic nums
@@ -319,11 +324,14 @@ namespace GlobalSearch {
     settings->endArray();
 
     settings->endGroup(); // history
+    settings->setValue("saveSuccessful", true);
     settings->endGroup(); // structure
+
     DESTROY_SETTINGS(filename);
   }
 
-  void Structure::readStructureSettings(const QString &filename)
+  void Structure::readStructureSettings(const QString &filename,
+                                        const bool readCurrentInfo)
   {
     SETTINGS(filename);
     settings->beginGroup("structure");
@@ -342,6 +350,10 @@ namespace GlobalSearch {
 
       setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));
       setOptTimerEnd(   QDateTime::fromString(settings->value("endTime",   "").toString()));
+
+    // This will read the current enthalpy, energy, cell information, atom
+    // types, and atom positions for the structure.
+    if (readCurrentInfo) readCurrentStructureInfo(filename);
 
     // History
     settings->beginGroup("history");
@@ -438,9 +450,126 @@ namespace GlobalSearch {
     case 1: // Histories added. Nothing to do, structures loaded will
             // have empty histories
     case 2:
+    case 3:
     default:
       break;
     }
+  }
+
+  void Structure::writeCurrentStructureInfo(const QString &filename)
+  {
+    SETTINGS(filename);
+    // const int version = 1;
+    settings->beginGroup("structure/current");
+    settings->setValue("enthalpy", this->getEnthalpy());
+    settings->setValue("energy",   this->getEnergy());
+    settings->setValue("PV",       this->getPV());
+
+    // Atomic numbers
+    settings->beginWriteArray("atomicNums");
+    for (size_t i = 0; i < numAtoms(); i++) {
+      settings->setArrayIndex(i);
+      settings->setValue("value", QString::number(atom(i)->atomicNumber()));
+    }
+    settings->endArray();
+
+    // Cartesian coords
+    Vector3d cartCoords;
+    settings->beginWriteArray("coords");
+    for (size_t i = 0; i < numAtoms(); i++) {
+      cartCoords = *(atom(i)->pos());
+      settings->setArrayIndex(i);
+      settings->setValue("x", QString::number(cartCoords[0]));
+      settings->setValue("y", QString::number(cartCoords[1]));
+      settings->setValue("z", QString::number(cartCoords[2]));
+    }
+    settings->endArray();
+
+    // Check to see if cell info exists before saving it...
+    // This is important for non-periodic structures
+    OpenBabel::OBMol obmol = OBMol();
+    if (obmol.HasData(OBGenericDataType::UnitCell)) {
+      // Cell info
+      settings->setValue("hasCellInfo", true);
+      matrix3x3 obcell = OBUnitCell()->GetCellMatrix();
+      settings->beginGroup("cell");
+      settings->setValue("00", (obcell.Get(0,0)));
+      settings->setValue("01", (obcell.Get(0,1)));
+      settings->setValue("02", (obcell.Get(0,2)));
+      settings->setValue("10", (obcell.Get(1,0)));
+      settings->setValue("11", (obcell.Get(1,1)));
+      settings->setValue("12", (obcell.Get(1,2)));
+      settings->setValue("20", (obcell.Get(2,0)));
+      settings->setValue("21", (obcell.Get(2,1)));
+      settings->setValue("22", (obcell.Get(2,2)));
+      settings->endGroup(); // cell
+    }
+    settings->endGroup(); // structure/current
+    DESTROY_SETTINGS(filename);
+  }
+
+  void Structure::readCurrentStructureInfo(const QString &filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("structure/current");
+    setEnthalpy(settings->value("enthalpy", 0).toDouble());
+    setEnergy(settings->value("energy", 0).toDouble());
+    setPV(settings->value("PV", 0).toDouble());
+
+    //  Atomic nums
+    size_t size;
+    size = settings->beginReadArray("atomicNums");
+    QList<unsigned int> atomicNums;
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      atomicNums.append(settings->value("value").toUInt());
+    }
+    settings->endArray();
+
+    size = settings->beginReadArray("coords");
+    QList<Vector3d> cartCoords;
+    double x, y, z;
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      x = settings->value("x").toDouble();
+      y = settings->value("y").toDouble();
+      z = settings->value("z").toDouble();
+      cartCoords.append(Eigen::Vector3d(x, y, z));
+    }
+    settings->endArray();
+
+    if (settings->value("hasCellInfo", false).toBool()) {
+      Eigen::Matrix3d cellMatrix;
+      settings->beginGroup("cell");
+      cellMatrix(0, 0) = settings->value("00").toDouble();
+      cellMatrix(0, 1) = settings->value("01").toDouble();
+      cellMatrix(0, 2) = settings->value("02").toDouble();
+      cellMatrix(1, 0) = settings->value("10").toDouble();
+      cellMatrix(1, 1) = settings->value("11").toDouble();
+      cellMatrix(1, 2) = settings->value("12").toDouble();
+      cellMatrix(2, 0) = settings->value("20").toDouble();
+      cellMatrix(2, 1) = settings->value("21").toDouble();
+      cellMatrix(2, 2) = settings->value("22").toDouble();
+      settings->endGroup();
+
+      // Set the cell info
+      OpenBabel::OBUnitCell *obcell = OBUnitCell();
+      obcell->SetData(Eigen2OB(cellMatrix));
+      setOBUnitCell(obcell);
+    }
+
+    // Just in case there were atoms set elsewhere for some reason...
+    QList<Atom*> atomList = atoms();
+    for (size_t i = 0; i < atomList.size(); i++)
+      this->removeAtom(atomList.at(i));
+
+    // Now let's add in the atoms...
+    for (size_t i = 0; i < atomicNums.size(); i++) {
+      Atom* newAtom = this->addAtom();
+      newAtom->setAtomicNumber(atomicNums.at(i));
+      newAtom->setPos(cartCoords.at(i));
+    }
+    settings->endGroup();
   }
 
   void Structure::structureChanged()
