@@ -1072,6 +1072,32 @@ namespace GlobalSearch {
       m_parentStructure = structure;
     };
 
+    /** The preferable way to increment a parent's total number of offspring.
+     * Keeps track of whether or not the parent has already been incremented.
+     * Will only increment if the offspring has not skipped optimization.
+     */
+    void incrementParentNumTotOffspring()
+    {
+      if (hasParentStructure() && !m_parentOffspringCountIncremented &&
+          !skippedOptimization()) {
+        m_parentStructure->incrementNumTotOffspring();
+        m_parentOffspringCountIncremented = true;
+      }
+    };
+
+    /** The preferable way to decrement a parent's total number of offspring.
+     * Keeps track of whether or not the parent has already been incremented.
+     * Will only decrement if the offspring has not skipped optimization
+     */
+    void decrementParentNumTotOffspring()
+    {
+      if (hasParentStructure() && m_parentOffspringCountIncremented &&
+          !skippedOptimization()) {
+        m_parentStructure->decrementNumTotOffspring();
+        m_parentOffspringCountIncremented = false;
+      }
+    }
+
     /** Reset the number of times this Structure has failed the
      * current optimization step.
      *
@@ -1266,6 +1292,9 @@ namespace GlobalSearch {
 
     // Pointer to parent structure if one is saved.
     Structure* m_parentStructure;
+
+    // True if the parent offspring count has been incremented
+    bool m_parentOffspringCountIncremented;
     // End doxygen skip:
     /// \endcond
   };

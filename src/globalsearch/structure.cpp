@@ -59,7 +59,8 @@ namespace GlobalSearch {
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
-    m_parentStructure(NULL)
+    m_parentStructure(NULL),
+    m_parentOffspringCountIncremented(false)
   {
     m_currentOptStep = 1;
     setStatus(Empty);
@@ -84,7 +85,8 @@ namespace GlobalSearch {
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
-    m_parentStructure(NULL)
+    m_parentStructure(NULL),
+    m_parentOffspringCountIncremented(false)
   {
     *this = other;
   }
@@ -107,7 +109,8 @@ namespace GlobalSearch {
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
-    m_parentStructure(NULL)
+    m_parentStructure(NULL),
+    m_parentOffspringCountIncremented(false)
   {
     *this = other;
   }
@@ -241,6 +244,7 @@ namespace GlobalSearch {
     m_optEnd                     = other.m_optEnd;
     m_index                      = other.m_index;
     m_parentStructure            = other.m_parentStructure;
+    m_parentOffspringCountIncremented = other.m_parentOffspringCountIncremented;
 
     return *this;
   }
@@ -295,6 +299,8 @@ namespace GlobalSearch {
         QString::number(m_parentStructure->getGeneration()) + "x" +
         QString::number(m_parentStructure->getIDNumber());
       settings->setValue("parentStructure", parentStructure);
+      settings->setValue("parentOffspringCountIncremented",
+                         m_parentOffspringCountIncremented);
     }
 
     // History
@@ -398,6 +404,9 @@ namespace GlobalSearch {
 
       setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));
       setOptTimerEnd(   QDateTime::fromString(settings->value("endTime",   "").toString()));
+
+      m_parentOffspringCountIncremented =
+        settings->value("parentOffspringCountIncremented", false).toBool();
 
     // History
     settings->beginGroup("history");

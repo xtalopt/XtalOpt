@@ -63,7 +63,9 @@ namespace XtalOpt {
 
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
     OptBase(parent),
-    m_initWC(new SlottedWaitCondition (this))
+    m_initWC(new SlottedWaitCondition (this)),
+    using_antiselection(false),
+    antiselection_factor(0.500)
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";
@@ -76,6 +78,8 @@ namespace XtalOpt {
             this, SLOT(resetDuplicates()));
     connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
             this, SLOT(updateLowestEnthalpyFUList(GlobalSearch::Structure*)));
+    connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
+            this, SLOT(_incrementParentNumTotOffspring(GlobalSearch::Structure*)));
 
   }
 
@@ -338,12 +342,12 @@ namespace XtalOpt {
     QWriteLocker locker1 (oldXtal->lock());
 
     // Decrement the parent xtal that produced this deleted structure
-    if (oldXtal->hasParentStructure()) {
+    oldXtal->decrementParentNumTotOffspring();
+    if (oldXtal->hasParentStructure() &&
+        (s->getStatus() == Xtal::Duplicate ||
+        s->getStatus() == Xtal::Supercell)) {
       Xtal* parentXtal = qobject_cast<Xtal*>(oldXtal->getParentStructure());
-      parentXtal->decrementNumTotOffspring();
-      if (s->getStatus() == Xtal::Duplicate ||
-          s->getStatus() == Xtal::Supercell)
-        parentXtal->decrementNumDupOffspring();
+      parentXtal->decrementNumDupOffspring();
       oldXtal->setParentStructure(NULL);
     }
 
@@ -400,14 +404,12 @@ namespace XtalOpt {
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
 
     // Decrement the parent xtal that produced this deleted structure
-    // An xtal that has been killed has already been decremented
+    oldXtal->decrementParentNumTotOffspring();
     if (oldXtal->hasParentStructure() &&
-        oldXtal->getStatus() != Xtal::Killed) {
+        (s->getStatus() == Xtal::Duplicate ||
+        s->getStatus() == Xtal::Supercell)) {
       Xtal* parentXtal = qobject_cast<Xtal*>(oldXtal->getParentStructure());
-      parentXtal->decrementNumTotOffspring();
-      if (s->getStatus() == Xtal::Duplicate ||
-          s->getStatus() == Xtal::Supercell)
-        parentXtal->decrementNumDupOffspring();
+      parentXtal->decrementNumDupOffspring();
       oldXtal->setParentStructure(NULL);
     }
 
@@ -1356,9 +1358,6 @@ namespace XtalOpt {
       parentXtal = qobject_cast<Xtal*>(selectedXtal->getParentStructure());
       xtal->setParentStructure(parentXtal);
     }
-    parentXtal->lock()->lockForWrite();
-    parentXtal->incrementNumTotOffspring();
-    parentXtal->lock()->unlock();
 
     return xtal;
   }
@@ -2801,7 +2800,8 @@ namespace XtalOpt {
     QtConcurrent::run(this, &XtalOpt::updateLowestEnthalpyFUList_, s);
   }
 
-  void XtalOpt::updateLowestEnthalpyFUList_(GlobalSearch::Structure* s) {
+  void XtalOpt::updateLowestEnthalpyFUList_(GlobalSearch::Structure* s)
+  {
     // Thankfully, the enthalpy appears to get updated before it reaches this
     // point
     s->lock()->lockForRead();
@@ -2814,6 +2814,12 @@ namespace XtalOpt {
       lowestEnthalpyFUList[s->getFormulaUnits()] = s->getEnthalpy();
     }
     s->lock()->unlock();
+  }
+
+  // No naming trickery here...
+  void XtalOpt::_incrementParentNumTotOffspring(GlobalSearch::Structure* s)
+  {
+    s->incrementParentNumTotOffspring();
   }
 
 } // end namespace XtalOpt

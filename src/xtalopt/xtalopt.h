@@ -175,6 +175,10 @@ namespace XtalOpt {
 
     QMutex *xtalInitMutex;
 
+    // Antiselection
+    bool using_antiselection;
+    double antiselection_factor;
+
   public slots:
     void startSearch();
     void generateNewStructure();
@@ -203,6 +207,7 @@ namespace XtalOpt {
     void resetDuplicates();
     void checkForDuplicates();
     void updateLowestEnthalpyFUList(GlobalSearch::Structure* s);
+    void _incrementParentNumTotOffspring(GlobalSearch::Structure* s);
 
    protected:
     friend class XtalOptUnitTest;

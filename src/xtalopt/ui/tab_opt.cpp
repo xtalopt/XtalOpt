@@ -115,6 +115,12 @@ namespace XtalOpt {
     connect(ui.spin_perm_ex, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
 
+    // Antiselection
+    connect(ui.cb_antiselection, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_antiselection, SIGNAL(valueChanged(double)),
+            this, SLOT(updateOptimizationInfo()));
+
     initialize();
   }
 
@@ -174,6 +180,10 @@ namespace XtalOpt {
     settings->setValue("opt/perm_strainStdev_max",xtalopt->perm_strainStdev_max);
     settings->setValue("opt/perm_ex",           xtalopt->perm_ex);
 
+    settings->setValue("opt/using_antiselection", xtalopt->using_antiselection);
+    settings->setValue("opt/antiselection_factor",
+                       xtalopt->antiselection_factor);
+
     settings->endGroup();
 
     DESTROY_SETTINGS(filename);
@@ -227,6 +237,12 @@ namespace XtalOpt {
     ui.spin_p_perm->setValue(           settings->value("opt/p_perm",           35).toUInt()     );
     ui.spin_perm_strainStdev_max->setValue(settings->value("opt/perm_strainStdev_max",0.5).toDouble());
     ui.spin_perm_ex->setValue(          settings->value("opt/perm_ex",          4).toUInt()     );
+
+    // Antiselection
+    ui.cb_antiselection->setChecked(settings->value("opt/using_antiselection",
+                                                    false).toBool());
+    ui.spin_antiselection->setValue(settings->value("opt/antiselection_factor",
+                                                    0.500).toDouble());
 
     settings->endGroup();
 
@@ -361,6 +377,11 @@ namespace XtalOpt {
     // Permustrain
     xtalopt->perm_strainStdev_max	= ui.spin_perm_strainStdev_max->value();
     xtalopt->perm_ex              = ui.spin_perm_ex->value();
+
+    // Antiselection
+    xtalopt->using_antiselection = ui.cb_antiselection->isChecked();
+    xtalopt->antiselection_factor = ui.spin_antiselection->value();
+
   }
 
   void TabOpt::addSeed(QListWidgetItem *item) {
