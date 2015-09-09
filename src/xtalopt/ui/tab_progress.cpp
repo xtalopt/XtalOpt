@@ -676,14 +676,7 @@ namespace XtalOpt {
     }
 
     // Decrement the parent xtal info
-    m_context_xtal->decrementParentNumTotOffspring();
-    if (m_context_xtal->hasParentStructure() &&
-        (m_context_xtal->getStatus() == Xtal::Duplicate ||
-        m_context_xtal->getStatus() == Xtal::Supercell)) {
-
-      Xtal* parentXtal = qobject_cast<Xtal*>(m_context_xtal->getParentStructure());
-      parentXtal->decrementNumDupOffspring();
-    }
+    m_context_xtal->decrementParentOffspringCounts();
 
     // QueueManager will handle mutex locking
     m_opt->queue()->killStructure(m_context_xtal);
@@ -707,9 +700,6 @@ namespace XtalOpt {
       return;
     }
 
-    // Increment the parent xtal info
-    m_context_xtal->incrementParentNumTotOffspring();
-
     QWriteLocker locker (m_context_xtal->lock());
     if (m_context_xtal->getStatus() != Xtal::Killed &&
         m_context_xtal->getStatus() != Xtal::Removed ) {
@@ -721,8 +711,12 @@ namespace XtalOpt {
     if (m_context_xtal->getStatus() == Xtal::Killed)
       m_context_xtal->setStatus(Xtal::Error);
     // Set status to Optimized if xtal was previously optimized
-    else if (m_context_xtal->getStatus() == Xtal::Removed)
+    else if (m_context_xtal->getStatus() == Xtal::Removed) {
       m_context_xtal->setStatus(Xtal::Optimized);
+
+      // Increment the parent xtal info
+      m_context_xtal->incrementParentNumTotOffspring();
+    }
 
     // Clear context xtal pointer
     emit finishedBackgroundProcessing();
