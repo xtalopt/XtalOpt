@@ -1,5 +1,6 @@
 include(CheckIncludeFiles)
 INCLUDE_DIRECTORIES(${XtalOpt_BINARY_DIR}/src/globalsearch/)
+INCLUDE_DIRECTORIES(${LIBSSH_INCLUDE_DIRS})
 
 set( globalsearch_SRCS
      optbase.cpp
@@ -18,6 +19,7 @@ set( globalsearch_SRCS
      queueinterface.cpp
      queueinterfaces/local.cpp
      queueinterfaces/localdialog.cpp
+     fileutils.cpp
 )
 
 if (ENABLE_SSH)

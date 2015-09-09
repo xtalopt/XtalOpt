@@ -447,18 +447,18 @@ namespace GlobalSearch {
   void AbstractEditTab::saveScheme()
   {
     SETTINGS("");
-    QString filename = settings->value(m_opt->getIDString().toLower() +
+    QString oldFilename = settings->value(m_opt->getIDString().toLower() +
                                        "/edit/schemePath/", "").toString();
-    QFileDialog dialog (NULL, tr("Save Optimization Scheme as..."),
-                        filename, "*.scheme;;*.state;;*.*");
-    dialog.setAcceptMode(QFileDialog::AcceptSave);
-    dialog.selectFile(m_opt->optimizer()->getIDString() + ".scheme");
-    dialog.setFileMode(QFileDialog::AnyFile);
-    if (dialog.exec())
-      filename = dialog.selectedFiles().first();
-    else { // User cancel file selection.
+    QString filename = QFileDialog::getSaveFileName(NULL,
+                            tr("Save Optimization Scheme as..."),
+                            oldFilename, "*.scheme;;*.state;;*.*");
+
+    // User canceled
+    if (filename.isEmpty()) {
+      DESTROY_SETTINGS("");
       return;
     }
+
     settings->setValue(m_opt->getIDString().toLower() +
                        "/edit/schemePath/", filename);
     DESTROY_SETTINGS("");
@@ -468,17 +468,18 @@ namespace GlobalSearch {
   void AbstractEditTab::loadScheme()
   {
     SETTINGS("");
-    QString filename = settings->value(m_opt->getIDString().toLower() +
-                                       "/edit/schemePath/", "").toString();
-    QFileDialog dialog (NULL, tr("Select Optimization Scheme to load..."),
-                        filename, "*.scheme;;*.state;;*.*");
-    dialog.setAcceptMode(QFileDialog::AcceptOpen);
-    dialog.setFileMode(QFileDialog::ExistingFile);
-    if (dialog.exec())
-      filename = dialog.selectedFiles().first();
-    else { // User cancel file selection.
+    QString oldFilename = settings->value(m_opt->getIDString().toLower() +
+                                         "/edit/schemePath/", "").toString();
+    QString filename = QFileDialog::getOpenFileName(NULL,
+                        tr("Select Optimization Scheme to load..."),
+                        oldFilename, "*.scheme;;*.state;;*.*");
+
+    // User canceled
+    if (filename.isEmpty()) {
+      DESTROY_SETTINGS("");
       return;
     }
+
     settings->setValue(m_opt->getIDString().toLower() +
                        "/edit/schemePath/", filename);
     DESTROY_SETTINGS("");

@@ -175,25 +175,16 @@ namespace GlobalSearch {
   void AbstractDialog::resumeSession()
   {
     QString filename;
-    QFileDialog dialog (NULL,
+    filename = QFileDialog::getOpenFileName(this,
                         QString("Select .state file to resume"),
                         m_opt->filePath,
                         "*.state;;*.*");
-    dialog.selectFile(tr("%1.state")
-                      .arg(m_opt->getIDString().toLower()));
-    dialog.setFileMode(QFileDialog::ExistingFile);
-    if (dialog.exec())
-      filename = dialog.selectedFiles().first();
-    else { // User cancel file selection.
-      return;
-    }
 
-    QtConcurrent::run(this, &AbstractDialog::resumeSession_, filename);
+    if (!filename.isEmpty()) QtConcurrent::run(this, &AbstractDialog::resumeSession_, filename);
   }
 
   void AbstractDialog::resumeSession_(const QString &filename)
   {
-    m_opt->emitStartingSession();
     startProgressUpdate(tr("Resuming session..."), 0, 0);
     m_opt->tracker()->lockForWrite();
     m_opt->tracker()->deleteAllStructures();
@@ -203,6 +194,8 @@ namespace GlobalSearch {
       m_opt->isStarting = false;
       return;
     }
+    m_opt->emitStartingSession();
+
     // Refresh dialog and settings
     writeSettings();
     stopProgressUpdate();

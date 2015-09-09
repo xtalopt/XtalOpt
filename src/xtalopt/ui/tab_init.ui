@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>920</width>
-    <height>453</height>
+    <width>1040</width>
+    <height>686</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,21 +23,6 @@
       <string>Composition</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
-      <item row="0" column="2" colspan="2">
-       <widget class="QLineEdit" name="edit_composition">
-        <property name="toolTip">
-         <string>Type the composition of the crystal here,
-
-Examples:
-ti1o2
-Ti1O2
-TI1O2
-Ti1 O2
-Ti 1 o 2
-etc.</string>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="1">
        <widget class="QLabel" name="label_14">
         <property name="sizePolicy">
@@ -51,6 +36,21 @@ etc.</string>
         </property>
         <property name="buddy">
          <cstring>edit_composition</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2" colspan="2">
+       <widget class="QLineEdit" name="edit_composition">
+        <property name="toolTip">
+         <string>Type the composition of the crystal here,
+
+Examples:
+ti1o2
+Ti1O2
+TI1O2
+Ti1 O2
+Ti 1 o 2
+etc.</string>
         </property>
        </widget>
       </item>
@@ -103,500 +103,915 @@ etc.</string>
      <property name="title">
       <string>Unit Cell Parameters</string>
      </property>
-     <layout class="QGridLayout" name="gridLayout_3">
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>Length B (Å):</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_b_min</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Length C (Å):</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_c_min</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>Angle α (°):</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_alpha_min</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Length A (Å):</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_a_min</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QDoubleSpinBox" name="spin_a_min">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>3.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QDoubleSpinBox" name="spin_b_min">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>3.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QDoubleSpinBox" name="spin_c_min">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>3.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="1">
-       <widget class="QDoubleSpinBox" name="spin_alpha_min">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>180.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>60.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="3">
-       <widget class="QDoubleSpinBox" name="spin_a_max">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>9999.989999999999782</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>10.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="3">
-       <widget class="QDoubleSpinBox" name="spin_b_max">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>9999.989999999999782</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>10.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="3">
-       <widget class="QDoubleSpinBox" name="spin_c_max">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>9999.989999999999782</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>10.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="3">
-       <widget class="QDoubleSpinBox" name="spin_alpha_max">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>180.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>120.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLabel" name="label_6">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>Minimum</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="3">
-       <widget class="QLabel" name="label_7">
-        <property name="text">
-         <string>Maximum</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="0">
-       <widget class="QLabel" name="label_8">
-        <property name="text">
-         <string>Angle β (°):</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_beta_min</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="0">
-       <widget class="QLabel" name="label_10">
-        <property name="text">
-         <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Sans Serif'; font-size:10pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Volume (Å&lt;span style=&quot; vertical-align:super;&quot;&gt;3&lt;/span&gt;):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_vol_min</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="1">
-       <widget class="QDoubleSpinBox" name="spin_beta_min">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>180.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>60.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="1">
-       <widget class="QDoubleSpinBox" name="spin_gamma_min">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>180.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>60.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="1">
-       <widget class="QDoubleSpinBox" name="spin_vol_min">
-        <property name="decimals">
-         <number>2</number>
-        </property>
-        <property name="maximum">
-         <double>1000000.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>1.000000000000000</double>
-        </property>
-        <property name="value">
-         <double>0.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="3">
-       <widget class="QDoubleSpinBox" name="spin_beta_max">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>180.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>120.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="3">
-       <widget class="QDoubleSpinBox" name="spin_vol_max">
-        <property name="decimals">
-         <number>2</number>
-        </property>
-        <property name="maximum">
-         <double>1000000.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>1.000000000000000</double>
-        </property>
-        <property name="value">
-         <double>1000000.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="3">
-       <widget class="QDoubleSpinBox" name="spin_gamma_max">
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>180.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>120.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="0">
-       <widget class="QLabel" name="label_11">
-        <property name="text">
-         <string>Angle γ (°):</string>
-        </property>
-        <property name="buddy">
-         <cstring>spin_gamma_min</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="2" rowspan="8">
-       <widget class="Line" name="line">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="10" column="3">
-       <widget class="QDoubleSpinBox" name="spin_fixedVolume">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="toolTip">
-         <string>Use this to specify a starting volume for the structure before optimizing.</string>
-        </property>
-        <property name="decimals">
-         <number>5</number>
-        </property>
-        <property name="maximum">
-         <double>999999.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="value">
-         <double>500.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="10" column="0" colspan="2">
-       <widget class="QCheckBox" name="cb_fixedVolume">
-        <property name="toolTip">
-         <string>Use this to specify a starting volume for the structure before optimizing.</string>
-        </property>
-        <property name="text">
-         <string>Fixed volume:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="12" column="3">
-       <widget class="QDoubleSpinBox" name="spin_scaleFactor">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="toolTip">
-         <string>Use this to limit the shortest interatomic distance between
+     <widget class="QDoubleSpinBox" name="spin_b_max">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>90</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="maximum">
+       <double>9999.989999999999782</double>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>10.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_gamma_min">
+      <property name="geometry">
+       <rect>
+        <x>121</x>
+        <y>226</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="maximum">
+       <double>180.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>60.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_11">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>226</y>
+        <width>71</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Angle γ (°):</string>
+      </property>
+      <property name="buddy">
+       <cstring>spin_gamma_min</cstring>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_7">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>31</y>
+        <width>71</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Maximum</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_beta_min">
+      <property name="geometry">
+       <rect>
+        <x>121</x>
+        <y>192</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="maximum">
+       <double>180.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>60.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_c_max">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>124</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="maximum">
+       <double>9999.989999999999782</double>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>10.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_alpha_max">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>158</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="maximum">
+       <double>180.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>120.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_6">
+      <property name="geometry">
+       <rect>
+        <x>121</x>
+        <y>31</y>
+        <width>61</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="text">
+       <string>Minimum</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_8">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>192</y>
+        <width>71</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Angle β (°):</string>
+      </property>
+      <property name="buddy">
+       <cstring>spin_beta_min</cstring>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_b_min">
+      <property name="geometry">
+       <rect>
+        <x>121</x>
+        <y>90</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>1.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_3">
+      <property name="geometry">
+       <rect>
+        <x>17</x>
+        <y>90</y>
+        <width>91</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Length B (Å):</string>
+      </property>
+      <property name="buddy">
+       <cstring>spin_b_min</cstring>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_5">
+      <property name="geometry">
+       <rect>
+        <x>16</x>
+        <y>56</y>
+        <width>91</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Length A (Å):</string>
+      </property>
+      <property name="buddy">
+       <cstring>spin_a_min</cstring>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_2">
+      <property name="geometry">
+       <rect>
+        <x>18</x>
+        <y>124</y>
+        <width>91</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Length C (Å):</string>
+      </property>
+      <property name="buddy">
+       <cstring>spin_c_min</cstring>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_4">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>158</y>
+        <width>71</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Angle α (°):</string>
+      </property>
+      <property name="buddy">
+       <cstring>spin_alpha_min</cstring>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_a_min">
+      <property name="geometry">
+       <rect>
+        <x>121</x>
+        <y>56</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>1.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_beta_max">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>192</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="maximum">
+       <double>180.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>120.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_vol_min">
+      <property name="geometry">
+       <rect>
+        <x>121</x>
+        <y>270</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>2</number>
+      </property>
+      <property name="maximum">
+       <double>1000000.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>1.000000000000000</double>
+      </property>
+      <property name="value">
+       <double>0.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_vol_max">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>270</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>2</number>
+      </property>
+      <property name="maximum">
+       <double>1000000.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>1.000000000000000</double>
+      </property>
+      <property name="value">
+       <double>1000000.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="Line" name="line">
+      <property name="geometry">
+       <rect>
+        <x>297</x>
+        <y>56</y>
+        <width>16</width>
+        <height>238</height>
+       </rect>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_fixedVolume">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>321</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Use this to specify a starting volume for the structure before optimizing.</string>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="maximum">
+       <double>999999.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>500.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_c_min">
+      <property name="geometry">
+       <rect>
+        <x>121</x>
+        <y>124</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>1.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_alpha_min">
+      <property name="geometry">
+       <rect>
+        <x>121</x>
+        <y>158</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="maximum">
+       <double>180.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>60.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_gamma_max">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>226</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="maximum">
+       <double>180.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>120.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="cb_mitosis">
+      <property name="geometry">
+       <rect>
+        <x>70</x>
+        <y>365</y>
+        <width>81</width>
+        <height>18</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Causes random structures to generate with high local order. &lt;/p&gt;&lt;p&gt;For randomly generated cells, it creates a subcell filled with X formula units, then replicates said subcell. The number of replications is defiend by &amp;quot;# of Divisions&amp;quot; and the direction in which it is replicated is based upon the number in a, b, and c. &lt;/p&gt;&lt;p&gt;&amp;quot;# of Divisions&amp;quot; populates a list with the possible numbers of subcells based upon the stoichiometry entered. This allows for indivisible &amp;quot;odd&amp;quot; stoichiometries. For example, Na&lt;span style=&quot; vertical-align:sub;&quot;&gt;3&lt;/span&gt;H&lt;span style=&quot; vertical-align:sub;&quot;&gt;11&lt;/span&gt; will allow &amp;quot;# of Divisions&amp;quot; of 3. It will replicate the subcell, containing NaH&lt;span style=&quot; vertical-align:sub;&quot;&gt;3&lt;/span&gt;, three times. To correct for the stoichiometry, the program will insert 2 H randomly in the cell.&lt;/p&gt;&lt;p&gt;a, b, and c are dependent on &amp;quot;# of Divisions&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="text">
+       <string>Mitosis</string>
+      </property>
+      <property name="checked">
+       <bool>false</bool>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_a_max">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>56</y>
+        <width>171</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>5</number>
+      </property>
+      <property name="maximum">
+       <double>9999.989999999999782</double>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>10.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_scaleFactor">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>390</x>
+        <y>431</y>
+        <width>101</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Use this to limit the shortest interatomic distance between
 atoms. This ensures that atoms aren't overlapping.
 
-The value specified here is multiplied by each atom's covalent 
+The value specified here is multiplied by each atom's covalent
 radius, and the sum of the scaled radii are used to enforce a
 minimum atomic separation between atoms.
 
 The default recommended value is 0.5. This ensures that atoms will not be unphysically close (which may prevent
 certain optimization codes from working). Using a higher value
-is acceptable while creating random structures in the first 
+is acceptable while creating random structures in the first
 generation, but may prevent the crossover operator from being
 able to create offspring that meet this restriction.</string>
-        </property>
-        <property name="suffix">
-         <string> * radii</string>
-        </property>
-        <property name="decimals">
-         <number>2</number>
-        </property>
-        <property name="maximum">
-         <double>1.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.050000000000000</double>
-        </property>
-        <property name="value">
-         <double>0.500000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="14" column="3">
-       <spacer name="verticalSpacer_2">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item row="12" column="0" colspan="2">
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <widget class="QCheckBox" name="cb_interatomicDistanceLimit">
-          <property name="toolTip">
-           <string>Use this to limit the shortest interatomic distance between atoms. This ensures that atoms aren't overlapping.</string>
-          </property>
-          <property name="text">
-           <string>Limit interatomic distance?</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <spacer name="horizontalSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QLabel" name="label">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string>Scale factor:</string>
-          </property>
-          <property name="buddy">
-           <cstring>spin_scaleFactor</cstring>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="13" column="0" colspan="2">
-       <layout class="QHBoxLayout" name="horizontalLayout_3">
-        <item>
-         <spacer name="horizontalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QLabel" name="label_9">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string>Minimum radius:</string>
-          </property>
-          <property name="buddy">
-           <cstring>spin_minRadius</cstring>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="13" column="3">
-       <widget class="QDoubleSpinBox" name="spin_minRadius">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="suffix">
-         <string> Å</string>
-        </property>
-        <property name="decimals">
-         <number>2</number>
-        </property>
-        <property name="singleStep">
-         <double>0.050000000000000</double>
-        </property>
-        <property name="value">
-         <double>0.250000000000000</double>
-        </property>
-       </widget>
-      </item>
-     </layout>
+      </property>
+      <property name="suffix">
+       <string> * radii</string>
+      </property>
+      <property name="decimals">
+       <number>2</number>
+      </property>
+      <property name="maximum">
+       <double>1.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>0.050000000000000</double>
+      </property>
+      <property name="value">
+       <double>0.500000000000000</double>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="combo_divisions">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>390</x>
+        <y>360</y>
+        <width>91</width>
+        <height>26</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QDoubleSpinBox" name="spin_minRadius">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>390</x>
+        <y>457</y>
+        <width>101</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="suffix">
+       <string> Å</string>
+      </property>
+      <property name="decimals">
+       <number>2</number>
+      </property>
+      <property name="singleStep">
+       <double>0.050000000000000</double>
+      </property>
+      <property name="value">
+       <double>0.250000000000000</double>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_12">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>280</x>
+        <y>363</y>
+        <width>101</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string># of Divisions:</string>
+      </property>
+      <property name="buddy">
+       <cstring>combo_divisions</cstring>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="cb_interatomicDistanceLimit">
+      <property name="geometry">
+       <rect>
+        <x>70</x>
+        <y>436</y>
+        <width>201</width>
+        <height>18</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Use this to limit the shortest interatomic distance between atoms. This ensures that atoms aren't overlapping.</string>
+      </property>
+      <property name="text">
+       <string>Limit interatomic distance</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="cb_fixedVolume">
+      <property name="geometry">
+       <rect>
+        <x>70</x>
+        <y>324</y>
+        <width>121</width>
+        <height>18</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Use this to specify a starting volume for the structure before optimizing.</string>
+      </property>
+      <property name="text">
+       <string>Fixed volume</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>300</x>
+        <y>435</y>
+        <width>91</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Scale factor:</string>
+      </property>
+      <property name="buddy">
+       <cstring>spin_scaleFactor</cstring>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_9">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>460</y>
+        <width>111</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Minimum radius:</string>
+      </property>
+      <property name="buddy">
+       <cstring>spin_minRadius</cstring>
+      </property>
+     </widget>
+     <widget class="Line" name="line_2">
+      <property name="geometry">
+       <rect>
+        <x>130</x>
+        <y>342</y>
+        <width>301</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+     <widget class="Line" name="line_3">
+      <property name="geometry">
+       <rect>
+        <x>130</x>
+        <y>412</y>
+        <width>301</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="combo_a">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>220</x>
+        <y>390</y>
+        <width>61</width>
+        <height>26</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="combo_b">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>390</y>
+        <width>61</width>
+        <height>26</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="combo_c">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>420</x>
+        <y>390</y>
+        <width>61</width>
+        <height>26</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_15">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>200</x>
+        <y>393</y>
+        <width>16</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>a:</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_16">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>300</x>
+        <y>393</y>
+        <width>16</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>b:</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_17">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>400</x>
+        <y>393</y>
+        <width>16</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>c:</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_13">
+      <property name="geometry">
+       <rect>
+        <x>220</x>
+        <y>324</y>
+        <width>81</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Volume (Å&lt;span style=&quot; vertical-align:super;&quot;&gt;3&lt;/span&gt;):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="buddy">
+       <cstring>spin_c_min</cstring>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_18">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>274</y>
+        <width>81</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Volume (Å&lt;span style=&quot; vertical-align:super;&quot;&gt;3&lt;/span&gt;):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="buddy">
+       <cstring>spin_c_min</cstring>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="cb_subcellPrint">
+      <property name="geometry">
+       <rect>
+        <x>70</x>
+        <y>393</y>
+        <width>121</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Exports the subcells for each randomly generated structure. .cml files are exported to the subdirectory 'subcells/'</string>
+      </property>
+      <property name="text">
+       <string>Export subcells?</string>
+      </property>
+     </widget>
+     <zorder>spin_b_max</zorder>
+     <zorder>spin_gamma_min</zorder>
+     <zorder>label_11</zorder>
+     <zorder>label_7</zorder>
+     <zorder>spin_beta_min</zorder>
+     <zorder>spin_c_max</zorder>
+     <zorder>spin_alpha_max</zorder>
+     <zorder>label_6</zorder>
+     <zorder>label_8</zorder>
+     <zorder>spin_b_min</zorder>
+     <zorder>label_3</zorder>
+     <zorder>label_5</zorder>
+     <zorder>label_2</zorder>
+     <zorder>label_4</zorder>
+     <zorder>spin_a_min</zorder>
+     <zorder>spin_beta_max</zorder>
+     <zorder>spin_vol_max</zorder>
+     <zorder>line</zorder>
+     <zorder>spin_fixedVolume</zorder>
+     <zorder>spin_c_min</zorder>
+     <zorder>spin_alpha_min</zorder>
+     <zorder>spin_gamma_max</zorder>
+     <zorder>cb_mitosis</zorder>
+     <zorder>spin_a_max</zorder>
+     <zorder>spin_scaleFactor</zorder>
+     <zorder>combo_divisions</zorder>
+     <zorder>spin_minRadius</zorder>
+     <zorder>label_12</zorder>
+     <zorder>cb_interatomicDistanceLimit</zorder>
+     <zorder>cb_fixedVolume</zorder>
+     <zorder>label</zorder>
+     <zorder>label_9</zorder>
+     <zorder>line_2</zorder>
+     <zorder>line_3</zorder>
+     <zorder>combo_a</zorder>
+     <zorder>combo_b</zorder>
+     <zorder>combo_c</zorder>
+     <zorder>label_15</zorder>
+     <zorder>label_16</zorder>
+     <zorder>label_17</zorder>
+     <zorder>label_13</zorder>
+     <zorder>label_18</zorder>
+     <zorder>cb_subcellPrint</zorder>
+     <zorder>spin_vol_min</zorder>
     </widget>
    </item>
   </layout>
@@ -617,9 +1032,7 @@ able to create offspring that meet this restriction.</string>
   <tabstop>spin_gamma_max</tabstop>
   <tabstop>spin_vol_min</tabstop>
   <tabstop>spin_vol_max</tabstop>
-  <tabstop>cb_fixedVolume</tabstop>
   <tabstop>spin_fixedVolume</tabstop>
-  <tabstop>cb_interatomicDistanceLimit</tabstop>
   <tabstop>spin_scaleFactor</tabstop>
   <tabstop>spin_minRadius</tabstop>
   <tabstop>table_comp</tabstop>
@@ -633,12 +1046,12 @@ able to create offspring that meet this restriction.</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>647</x>
-     <y>282</y>
+     <x>765</x>
+     <y>384</y>
     </hint>
     <hint type="destinationlabel">
-     <x>908</x>
-     <y>282</y>
+     <x>892</x>
+     <y>414</y>
     </hint>
    </hints>
   </connection>
@@ -649,12 +1062,12 @@ able to create offspring that meet this restriction.</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>768</x>
-     <y>255</y>
+     <x>585</x>
+     <y>326</y>
     </hint>
     <hint type="destinationlabel">
-     <x>908</x>
-     <y>256</y>
+     <x>892</x>
+     <y>329</y>
     </hint>
    </hints>
   </connection>
@@ -665,28 +1078,12 @@ able to create offspring that meet this restriction.</string>
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>768</x>
-     <y>255</y>
+     <x>585</x>
+     <y>326</y>
     </hint>
     <hint type="destinationlabel">
-     <x>768</x>
-     <y>230</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cb_fixedVolume</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>label_10</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>768</x>
-     <y>255</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>616</x>
-     <y>230</y>
+     <x>756</x>
+     <y>293</y>
     </hint>
    </hints>
   </connection>
@@ -697,12 +1094,12 @@ able to create offspring that meet this restriction.</string>
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>768</x>
-     <y>255</y>
+     <x>585</x>
+     <y>326</y>
     </hint>
     <hint type="destinationlabel">
-     <x>908</x>
-     <y>230</y>
+     <x>892</x>
+     <y>293</y>
     </hint>
    </hints>
   </connection>
@@ -713,12 +1110,12 @@ able to create offspring that meet this restriction.</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>541</x>
-     <y>274</y>
+     <x>765</x>
+     <y>384</y>
     </hint>
     <hint type="destinationlabel">
-     <x>720</x>
-     <y>276</y>
+     <x>755</x>
+     <y>413</y>
     </hint>
    </hints>
   </connection>
@@ -729,12 +1126,12 @@ able to create offspring that meet this restriction.</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>537</x>
-     <y>265</y>
+     <x>765</x>
+     <y>384</y>
     </hint>
     <hint type="destinationlabel">
-     <x>701</x>
-     <y>303</y>
+     <x>755</x>
+     <y>447</y>
     </hint>
    </hints>
   </connection>
@@ -745,12 +1142,140 @@ able to create offspring that meet this restriction.</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>511</x>
-     <y>277</y>
+     <x>765</x>
+     <y>384</y>
     </hint>
     <hint type="destinationlabel">
-     <x>846</x>
-     <y>301</y>
+     <x>892</x>
+     <y>448</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_mitosis</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_12</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>532</x>
+     <y>349</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>716</x>
+     <y>349</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_mitosis</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>combo_divisions</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>532</x>
+     <y>349</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>837</x>
+     <y>350</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_mitosis</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_15</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>630</x>
+     <y>373</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>735</x>
+     <y>402</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_mitosis</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_16</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>630</x>
+     <y>373</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>835</x>
+     <y>402</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_mitosis</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_17</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>630</x>
+     <y>373</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>935</x>
+     <y>402</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_mitosis</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>combo_a</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>630</x>
+     <y>373</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>778</x>
+     <y>402</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_mitosis</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>combo_b</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>630</x>
+     <y>373</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>878</x>
+     <y>402</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_mitosis</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>combo_c</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>630</x>
+     <y>373</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>978</x>
+     <y>402</y>
     </hint>
    </hints>
   </connection>

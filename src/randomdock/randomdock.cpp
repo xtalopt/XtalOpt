@@ -378,9 +378,16 @@ namespace RandomDock {
         r_max = radius_max;
       }
 
-      // Rotate, translate positions
-      RandomDock::randomlyRotateCoordinates(positions);
-      RandomDock::randomlyDisplaceCoordinates(positions, r_min, r_max);
+      // Make A 2D network
+      if(build2DNetwork){
+            RandomDock::DRotateCoordinates(positions);
+            RandomDock::DDisplaceCoordinates(positions, r_min, r_max);
+      }
+      else{
+      //Rotate, translate positions
+        RandomDock::randomlyRotateCoordinates(positions);
+        RandomDock::randomlyDisplaceCoordinates(positions, r_min, r_max);
+      }
 
       // Check interatomic distances
       bool ok = true;
@@ -639,5 +646,55 @@ namespace RandomDock {
     for (int i = 0; i < coords.size(); i++)
       coords[i] += t;
   }
+
+  void RandomDock::DRotateCoordinates(QList<Eigen::Vector3d> & coords) {
+    INIT_RANDOM_GENERATOR();
+    // Find center of coordinates:
+    Eigen::Vector3d center (0,0,0);
+    for (int i = 0; i < coords.size(); i++)
+       center += coords.at(i);
+    center /= static_cast<float>(coords.size());
+
+    // Get random angles
+    double theta = RANDDOUBLE() * 2 * 3.14159265;
+
+
+    // Build rotation matrix
+    Eigen::Matrix3d rot;
+    rot <<
+      cos(theta),       -sin(theta),  0,
+      sin(theta),       cos(theta),     0,
+      0,        0,      1;
+
+
+    // Perform operations
+    for (int i = 0; i < coords.size(); i++) {
+      // Center coords
+      coords[i] -= center;
+      coords[i] = rot * coords.at(i);
+    }
+  }
+
+  void RandomDock::DDisplaceCoordinates(QList<Eigen::Vector3d> & coords, double radiusMin, double radiusMax) {
+    INIT_RANDOM_GENERATOR();
+    // Get random 2D coordinates
+    double pi = RANDDOUBLE() * 2 * 3.14159265;
+    double phi = RANDDOUBLE() * 2 * 3.14159265;
+    double dx = cos(phi) * (radiusMax - radiusMin) + radiusMin;
+    double dy = sin(pi) * (radiusMax - radiusMin) + radiusMin;
+
+    // convert to cartesian coordinates
+    double x = dx;
+    double y = dy;
+    double z = 0;
+
+    // Make into vector
+    Eigen::Vector3d t;
+    t << x,y,z;
+
+    // Transform coords
+    for (int i = 0; i < coords.size(); i++)
+      coords[i] += t;
+   }
 
 } // end namespace RandomDock

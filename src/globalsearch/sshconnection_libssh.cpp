@@ -30,8 +30,8 @@ using namespace std;
 
 namespace GlobalSearch {
 
-#define START //qDebug() << __PRETTY_FUNCTION__ << " called...";
-#define END //qDebug() << __PRETTY_FUNCTION__ << " finished...";
+#define START //qDebug() << __FUNCTION__ << " called...";
+#define END //qDebug() << __FUNCTION__ << " finished...";
 
 SSHConnectionLibSSH::SSHConnectionLibSSH(SSHManagerLibSSH *parent)
   : SSHConnection(parent),
@@ -44,7 +44,7 @@ SSHConnectionLibSSH::SSHConnectionLibSSH(SSHManagerLibSSH *parent)
     // block this connection so that a thrown exception won't cause problems
     connect(this, SIGNAL(unknownHostKey(const QString &)),
             parent, SLOT(setServerKey(const QString &)),
-            Qt::BlockingQueuedConnection);
+            Qt::QueuedConnection);
   }
 }
 
@@ -64,6 +64,7 @@ bool SSHConnectionLibSSH::isConnected()
     return false;
   };
 
+#ifdef UNIX
   QMutexLocker locker (&m_lock);
   START;
 
@@ -141,6 +142,42 @@ bool SSHConnectionLibSSH::isConnected()
 
   END;
   return true;
+#endif // UNIX
+
+#ifdef WIN32
+  START;
+
+  // Attempt to execute "echo ok" on the host to test if everything
+  // is working properly
+
+  QString command = "echo ok";
+  QString stdout_str, stderr_str;
+  int exitcode;
+  // Set a timeout of 1 seconds and check every 50 ms. It takes execute a litte
+  // bit of time to work, so 1 second will end up being a few seconds...
+  int timeout = 1000;
+  bool success;
+  bool printWarning = false;
+  do {
+    success = execute(command, stdout_str, stderr_str, exitcode, printWarning);
+    if (stderr_str != "")
+      qWarning() << "In SSHConnectionLibSSH::isConnected(), the command "
+         	    "'echo ok' returned with an error of " << stderr_str;
+    // if stdout_str is not 4, something bad happened...
+    if (sizeof(stdout_str) != 4) success = false;
+    if (!success) {
+      GS_MSLEEP(50);
+      timeout -= 50;
+    }
+  }
+  while (timeout >= 0 && !success);
+  if (timeout < 0 && !success) {
+    qWarning() << "SSHConnectionLibSSH::isConnected() server timeout.";
+    return false;
+  }
+  END;
+  return true;
+#endif // WIN32
 }
 
 bool SSHConnectionLibSSH::disconnectSession()
@@ -356,9 +393,10 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
 bool SSHConnectionLibSSH::execute(const QString &command,
                                   QString &stdout_str,
                                   QString &stderr_str,
-                                  int &exitcode) {
+                                  int &exitcode,
+				  bool printWarning) {
   QMutexLocker locker (&m_lock);
-  return _execute(command, stdout_str, stderr_str, exitcode);
+  return _execute(command, stdout_str, stderr_str, exitcode, printWarning);
 }
 
 // No need to document this:
@@ -366,26 +404,28 @@ bool SSHConnectionLibSSH::execute(const QString &command,
 bool SSHConnectionLibSSH::_execute(const QString &command,
                                    QString &stdout_str,
                                    QString &stderr_str,
-                                   int &exitcode)
+                                   int &exitcode,
+				   bool printWarning)
 {
   START;
   // Open new channel for exec
   ssh_channel channel = channel_new(m_session);
   if (!channel) {
-    qWarning() << "SSH error: " << ssh_get_error(m_session);
+    if(printWarning) qWarning() << "SSH error: " << ssh_get_error(m_session);
     return false;
   }
   if (channel_open_session(channel) != SSH_OK) {
-    qWarning() << "SSH error: " << ssh_get_error(m_session);
+    if(printWarning) qWarning() << "SSH error: " << ssh_get_error(m_session);
+    channel_free(channel);
     return false;
   }
 
   // Execute command
   int ssh_exit = channel_request_exec(channel, command.toStdString().c_str());
-  channel_send_eof(channel);
 
-  if (ssh_exit == SSH_ERROR) {
+  if (ssh_exit != SSH_OK) {
     channel_close(channel);
+    channel_free(channel);
     return false;
   }
 
@@ -404,9 +444,19 @@ bool SSHConnectionLibSSH::_execute(const QString &command,
   }
   stderr_str = QString(osserr.str().c_str());
 
+  channel_send_eof(channel);
+  channel_close(channel);
+
+  // 5 second timeout
+  int timeout = 5;
+  while (channel_get_exit_status(channel) == -1 && timeout >= 0) {
+    qDebug() << "Waiting for server to close channel...";
+    GS_SLEEP(1);
+    timeout--;
+  }
+
   exitcode = channel_get_exit_status(channel);
 
-  channel_close(channel);
   channel_free(channel);
   END;
   return true;
@@ -425,7 +475,9 @@ sftp_session SSHConnectionLibSSH::_openSFTP()
   }
   if(sftp_init(sftp) != SSH_OK){
     qWarning() << "error initialising sftp" << endl
-               << ssh_get_error(m_session);
+               << ssh_get_error(m_session) << endl
+               << sftp_get_error(sftp);
+    sftp_free(sftp);
     return 0;
   }
   return sftp;

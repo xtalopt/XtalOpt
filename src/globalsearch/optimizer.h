@@ -56,6 +56,8 @@ namespace GlobalSearch {
   public:
     friend class OptimizerConfigDialog;
 
+    QHash<QString, QVariant> m_data;
+    QHash<QString, QStringList > m_templates;
     /**
      * Constructor
      *
@@ -467,7 +469,7 @@ namespace GlobalSearch {
      * XtalOpt's VASPOptimizer for an example where it is used to
      * store information about pseudopotentials.
      */
-    QHash<QString, QVariant> m_data;
+    //QHash<QString, QVariant> m_data;
 
     /**
      * Determine which internal template hash contains \a filename and
@@ -496,7 +498,7 @@ namespace GlobalSearch {
      * filename to be written and the value is a list of corresponding
      * templates in order of optimization step.
      */
-    QHash<QString, QStringList > m_templates;
+  //  QHash<QString, QStringList > m_templates;
 
     /**
      * Stores all template data for the current QueueInterface. Key is

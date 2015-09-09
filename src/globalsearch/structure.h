@@ -752,11 +752,14 @@ namespace GlobalSearch {
      * If reimplementing this in a derived class, call
      * readStructureSettings(filename) to read inherited data.
      * @param filename Filename to read data from.
+     * @param readCurrentInfo Update the current info of the structure?
+     *
      * @sa readStructureSettings
      * @sa writeSettings
      */
-    virtual void readSettings(const QString &filename) {
-      readStructureSettings(filename);};
+    virtual void readSettings(const QString &filename,
+                              const bool readCurrentInfo = false) {
+      readStructureSettings(filename, readCurrentInfo);};
 
     /**
      * Update the coordinates, enthalpy and/or energy, and optionally
@@ -1060,10 +1063,30 @@ namespace GlobalSearch {
     /**
      * Read data concerning the Structure class from a file.
      * @param filename Filename to read data from.
+     * @param readCurrentInfo Update the current info of the structure?
      * @sa writeSettings
      * @sa readSettings
      */
-    void readStructureSettings(const QString &filename);
+    void readStructureSettings(const QString &filename,
+                               const bool readCurrentInfo = false);
+
+    /**
+     * Write current data for a structure to structure.state.
+     * Data includes enthalpy, energy, cell vectors, and atom info
+     * @param filename Filename to write data to.
+     * @sa writeStructureSettings
+     * @sa readStructureSettings
+     */
+    void writeCurrentStructureInfo(const QString &filename);
+
+    /**
+     * Read current data concerning a structure from structure.state.
+     * Data includes enthalpy, energy, cell vectors, and atom info
+     * @param filename Filename to read data from.
+     * @sa writeSettings
+     * @sa readSettings
+     */
+    void readCurrentStructureInfo(const QString &filename);
 
   protected:
     // skip Doxygen parsing

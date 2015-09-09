@@ -60,7 +60,8 @@ namespace RandomDock {
             this, SLOT(updateOptimizationInfo()));
     connect(ui.cb_strictHBonds, SIGNAL(toggled(bool)),
             this, SLOT(updateOptimizationInfo()));
-
+    connect(ui.cb_build2DNetwork, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
     initialize();
   }
 
@@ -73,8 +74,8 @@ namespace RandomDock {
     SETTINGS(filename);
     RandomDock *randomdock = qobject_cast<RandomDock*>(m_opt);
     settings->beginGroup("randomdock/params");
-    const int VERSION = 1;
-    settings->setValue("version",     VERSION);
+    const int version = 1;
+    settings->setValue("version",     version);
 
     settings->setValue("runningJobLimit",       randomdock->runningJobLimit);
     settings->setValue("numMatrixMol",          randomdock->numMatrixMol);
@@ -86,6 +87,7 @@ namespace RandomDock {
     settings->setValue("radius_auto",           randomdock->radius_auto);
     settings->setValue("cluster_mode",          randomdock->cluster_mode);
     settings->setValue("strictHBonds",          randomdock->strictHBonds);
+    settings->setValue("build2DNetwork",        randomdock->build2DNetwork);
 
     settings->endGroup();
     DESTROY_SETTINGS(filename);
@@ -108,6 +110,7 @@ namespace RandomDock {
     ui.cb_radius_auto->setChecked(      settings->value("radius_auto",          true).toBool());
     ui.cb_cluster->setChecked(          settings->value("cluster_mode",         false).toBool());
     ui.cb_strictHBonds->setChecked(     settings->value("strictHBonds",         false).toBool());
+    ui.cb_build2DNetwork->setChecked(   settings->value("build2DNetwork",       false).toBool());
 
     settings->endGroup();
 
@@ -189,6 +192,7 @@ namespace RandomDock {
     randomdock->radius_auto     = ui.cb_radius_auto->isChecked();
     randomdock->cluster_mode    = ui.cb_cluster->isChecked();
     randomdock->strictHBonds    = ui.cb_strictHBonds->isChecked();
+    randomdock->build2DNetwork  = ui.cb_build2DNetwork->isChecked();
   }
 
 }

@@ -113,8 +113,8 @@ namespace GAPC {
     settings->beginGroup("gapc/opt/");
 
     // config version
-    const int VERSION = 1;
-    settings->setValue("version",               VERSION);
+    const int version = 1;
+    settings->setValue("version",               version);
 
     // Initial generation
     settings->setValue("numInitial",        gapc->numInitial);

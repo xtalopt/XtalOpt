@@ -56,7 +56,8 @@ namespace XtalOpt {
       OT_VASP = 0,
       OT_GULP,
       OT_PWscf,
-      OT_CASTEP
+      OT_CASTEP,
+      OT_SIESTA
     };
 
     enum QueueInterfaces {
@@ -89,6 +90,8 @@ namespace XtalOpt {
     QString getTemplateKeywordHelp();
     bool load(const QString & filename, const bool forceReadOnly = false);
 
+    bool loaded;
+
     uint numInitial;                    // Number of initial structures
 
     uint popSize;                       // Population size
@@ -119,12 +122,20 @@ namespace XtalOpt {
       vol_min, vol_max, vol_fixed,
       scaleFactor, minRadius;
 
+    int
+        divisions,                  // Number of divisions for mitosis
+        ax,                          // Number of divisions for cell vector 'a'
+        bx,                          // Number of divisions for cell vector 'b'
+        cx;                          // Number of divisions for cell vector 'c'
+
     double tol_xcLength;        	// Duplicate matching tolerances
     double tol_xcAngle;
     double tol_spg;
 
     bool using_fixed_volume;
     bool using_interatomicDistanceLimit;
+    bool using_mitosis;
+    bool using_subcellPrint;
 
     QHash<uint, XtalCompositionStruct> comp;
     QStringList seedList;
@@ -138,6 +149,9 @@ namespace XtalOpt {
     void initializeAndAddXtal(Xtal *xtal,
                               unsigned int generation,
                               const QString &parents);
+    void printSubXtal(Xtal *xtal,
+                              unsigned int generation,
+                              uint id);
     void resetSpacegroups();
     void resetDuplicates();
     void checkForDuplicates();

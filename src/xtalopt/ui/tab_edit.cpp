@@ -20,6 +20,7 @@
 #include <xtalopt/optimizers/gulp.h>
 #include <xtalopt/optimizers/pwscf.h>
 #include <xtalopt/optimizers/castep.h>
+#include <xtalopt/optimizers/siesta.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/xtalopt.h>
 
@@ -30,6 +31,7 @@
 #include <globalsearch/queueinterfaces/pbs.h>
 #include <globalsearch/queueinterfaces/sge.h>
 #include <globalsearch/queueinterfaces/slurm.h>
+#include <globalsearch/queueinterface.h>
 
 #include <QtCore/QSettings>
 
@@ -48,7 +50,7 @@ namespace XtalOpt {
   {
     // Fill m_optimizers in order of XtalOpt::OptTypes
     m_optimizers.clear();
-    const unsigned int numOptimizers = 4;
+    const unsigned int numOptimizers = 5;
     for (unsigned int i = 0; i < numOptimizers; ++i) {
       switch (i) {
       case XtalOpt::OT_VASP:
@@ -63,7 +65,10 @@ namespace XtalOpt {
       case XtalOpt::OT_CASTEP:
         m_optimizers.append(new CASTEPOptimizer (m_opt));
         break;
-      }
+      case XtalOpt::OT_SIESTA:
+        m_optimizers.append(new SIESTAOptimizer (m_opt));
+        break;
+     }
     }
 
     // Fill m_optimizers in order of XtalOpt::QueueInterfaces
@@ -99,6 +104,9 @@ namespace XtalOpt {
 
     connect(ui_list_edit, SIGNAL(itemDoubleClicked(QListWidgetItem*)),
             this, SLOT(changePOTCAR(QListWidgetItem*)));
+    connect(ui_list_edit, SIGNAL(itemDoubleClicked(QListWidgetItem*)),
+            this, SLOT(changePSF(QListWidgetItem*)));
+
 
     DefaultEditTab::initialize();
 
@@ -113,8 +121,8 @@ namespace XtalOpt {
     SETTINGS(filename);
 
     settings->beginGroup("xtalopt/edit");
-    const int VERSION = 2;
-    settings->setValue("version",          VERSION);
+    const int version = 2;
+    settings->setValue("version",          version);
 
     settings->setValue("description", m_opt->description);
     settings->setValue("localpath", m_opt->filePath);
@@ -237,7 +245,15 @@ namespace XtalOpt {
              settings->value
              ("xtalopt/optimizer/CASTEP/job.pbs_list", QStringList("")));
           break;
-        default:
+        case XtalOpt::OT_SIESTA:
+          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_PBS);
+          // Copy over job.pbs
+          settings->setValue
+            ("xtalopt/optimizer/SIESTA/QI/PBS/job.pbs_list",
+             settings->value
+             ("xtalopt/optimizer/SIESTA/job.pbs_list", QStringList("")));
+          break;
+       default:
         case XtalOpt::OT_GULP:
           ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_LOCAL);
           break;
@@ -273,6 +289,14 @@ namespace XtalOpt {
       }
     }
 
+    if (ui_combo_optimizers->currentIndex() == XtalOpt::OT_SIESTA) {
+      SIESTAOptimizer *sopt = qobject_cast<SIESTAOptimizer*>(m_opt->optimizer());
+      if (!sopt->PSFInfoIsUpToDate(xtalopt->comp.keys())) {
+        if (generateSIESTA_PSF_info()) {
+          sopt->buildPSFs();
+        }
+      }
+    }
     updateGUI();
   }
 
@@ -329,7 +353,49 @@ namespace XtalOpt {
                                .arg(symbols.at(i), 2)
                                .arg(potcarInfo.at(optStepIndex).toHash()[symbols.at(i)].toString()));
       }
+    } else if (m_opt->optimizer()->getIDString().compare("SIESTA") == 0 &&
+        templateName.compare("xtal.psf") == 0) {
+
+      if (m_opt->optimizer()->getNumberOfOptSteps() !=
+          ui_list_optStep->count()) {
+        populateOptStepList();
+      }
+
+      int optStepIndex = ui_list_optStep->currentRow();
+      Q_ASSERT(optStepIndex >= 0 &&
+               optStepIndex < m_opt->optimizer()->getNumberOfOptSteps());
+
+      // Display appropriate entry widget.
+      ui_list_edit->setVisible(true);
+      ui_edit_edit->setVisible(false);
+
+      XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+      SIESTAOptimizer *sopt = qobject_cast<SIESTAOptimizer*>(m_opt->optimizer());
+      // Do we need to update the PSFCAR info?
+      if (!sopt->PSFInfoIsUpToDate(xtalopt->comp.keys())) {
+        if (!generateSIESTA_PSF_info()) {
+          return;
+        }
+        sopt->buildPSFs();
+      }
+
+      // Build list in GUI
+      // "PSF info" is of type
+      // QList<QHash<QString, QString> >
+      // e.g. a list of hashes containing
+      // [atomic symbol : pseudopotential file] pairs
+      QVariantList psfInfo = m_opt->optimizer()->getData("PSF info").toList();
+      QList<QString> symbols = psfInfo.at(optStepIndex).toHash().keys();
+      qSort(symbols);
+      ui_list_edit->clear();
+      for (int i = 0; i < symbols.size(); i++) {
+        ui_list_edit->addItem(tr("%1: %2")
+                               .arg(symbols.at(i), 2)
+                               .arg(psfInfo.at(optStepIndex).toHash()[symbols.at(i)].toString()));
+      }
     }
+
     // Default for all templates using text entry
     else {
       AbstractEditTab::updateEditWidget();
@@ -381,25 +447,33 @@ namespace XtalOpt {
 
   void TabEdit::changePOTCAR(QListWidgetItem *item)
   {
+    // If the optimizer isn't VASP, just return...
+    if (m_opt->optimizer()->getIDString() != "VASP") return;
+
     QSettings settings; // Already set up in avogadro/src/main.cpp
 
     // Get symbol and filename
     QStringList strl = item->text().split(":");
     QString symbol   = strl.at(0).trimmed();
-    QString filename = strl.at(1).trimmed();
 
     QStringList files;
     QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
-    QFileDialog dialog (NULL, QString("Select pot file for atom %1").arg(symbol), path);
-    dialog.selectFile(filename);
-    dialog.setFileMode(QFileDialog::ExistingFile);
-    if (dialog.exec()) {
-      files = dialog.selectedFiles();
-      if (files.size() != 1) { return;} // Only one file per element
-      filename = files.first();
-      settings.setValue("xtalopt/templates/potcarPath", dialog.directory().absolutePath());
-    }
-    else { return;} // User cancel file selection.
+    QString filename = QFileDialog::getOpenFileName(NULL,
+      QString("Select pot file for atom %1").arg(symbol), path);
+
+    // User canceled file selection
+    if (filename.isEmpty()) return;
+
+    QStringList delimited = filename.split("/");
+    QString filePath = "";
+    // We want to chop off the last item...
+    for (size_t i = 0; i < delimited.size() - 1; i++)
+      filePath += (delimited[i] + "/");
+
+    // QFileDialog::getOpenFileName() only allows one selection. So we don't
+    // have to worry about multiple files.
+    settings.setValue("xtalopt/templates/potcarPath", filePath);
+
     // "POTCAR info" is of type
     // QList<QHash<QString, QString> >
     // e.g. a list of hashes containing
@@ -413,6 +487,44 @@ namespace XtalOpt {
     updateEditWidget();
   }
 
+  void TabEdit::changePSF(QListWidgetItem *item)
+  {
+    // If the optimizer isn't siesta, just return...
+    if (m_opt->optimizer()->getIDString() != "SIESTA") return;
+
+    QSettings settings; // Already set up in avogadro/src/main.cpp
+
+    // Get symbol and filename
+    QStringList strl = item->text().split(":");
+    QString symbol   = strl.at(0).trimmed();
+
+    QString path = settings.value("xtalopt/templates/psfPath", "").toString();
+    QString filename = QFileDialog::getOpenFileName(NULL,
+      QString("Select psf file for atom %1").arg(symbol), path);
+
+    // User canceled file selection
+    if (filename.isEmpty()) return;
+
+     QStringList delimited = filename.split("/");
+     QString filePath = "";
+     // We want to chop off the last item on the list
+     for (size_t i = 0; i < delimited.size() - 1; i++)
+       filePath += (delimited[i] + "/");
+
+    settings.setValue("xtalopt/templates/psfPath", filePath);
+
+    // "PSF info" is of type
+    // QList<QHash<QString, QString> >
+    // e.g. a list of hashes containing
+    // [atomic symbol : pseudopotential file] pairs
+    QVariantList psfInfo = m_opt->optimizer()->getData("PSF info").toList();
+    QVariantHash hash = psfInfo.at(ui_list_optStep->currentRow()).toHash();
+    hash.insert(symbol,QVariant(filename));
+    psfInfo.replace(ui_list_optStep->currentRow(), hash);
+    m_opt->optimizer()->setData("PSF info", psfInfo);
+    qobject_cast<SIESTAOptimizer*>(m_opt->optimizer())->buildPSFs();
+    updateEditWidget();
+  }
   bool TabEdit::generateVASP_POTCAR_info()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
@@ -428,22 +540,21 @@ namespace XtalOpt {
     for (int i = 0; i < atomicNums.size(); i++)
       symbols.append(OpenBabel::etab.GetSymbol(atomicNums.at(i)));
     qSort(symbols);
-    QStringList files;
     QString filename;
     QVariantHash hash;
     for (int i = 0; i < symbols.size(); i++) {
       QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
-      QFileDialog dialog (NULL, QString("Select pot file for atom %1").arg(symbols.at(i)), path);
-      dialog.selectFile(path + "/" + symbols.at(i));
-      dialog.setFileMode(QFileDialog::ExistingFile);
-      if (dialog.exec()) {
-        files = dialog.selectedFiles();
-        if (files.size() != 1) { // Ask again!
-          i--;
-          continue;
-        }
-        filename = files.first();
-        settings.setValue("xtalopt/templates/potcarPath", dialog.directory().absolutePath());
+      QString filename = QFileDialog::getOpenFileName(NULL,
+        QString("Select pot file for atom %1").arg(symbols.at(i)), path);
+
+      if (!filename.isEmpty()) {
+        QStringList delimited = filename.split("/");
+        QString filePath = "";
+        // We want to chop off the last item...
+        for (size_t i = 0; i < delimited.size() - 1; i++)
+          filePath += (delimited[i] + "/");
+
+        settings.setValue("xtalopt/templates/potcarPath", filePath);
       }
       else {
         // User cancel file selection. Set template selection combo to
@@ -474,5 +585,68 @@ namespace XtalOpt {
 
     updateEditWidget();
     return true;
+  }
+
+  bool TabEdit::generateSIESTA_PSF_info()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    QSettings settings; // Already set up in avogadro/src/main.cpp
+    QString path = settings.value("xtalopt/templates/psfPath", "").toString();
+    QVariantList psfInfo;
+
+    // Generate list of symbols
+    QList<QString> symbols;
+    QList<uint> atomicNums = xtalopt->comp.keys();
+    qSort(atomicNums);
+
+    for (int i = 0; i < atomicNums.size(); i++)
+      symbols.append(OpenBabel::etab.GetSymbol(atomicNums.at(i)));
+     qSort(symbols);
+     QStringList files;
+     QVariantHash hash;
+
+     for (int i = 0; i < symbols.size(); i++) {
+      QString path = settings.value("xtalopt/templates/psfPath", "").toString();
+      QString filename = QFileDialog::getOpenFileName(NULL,
+        QString("Select psf file for atom %1").arg(symbols.at(i)), path);
+
+      if (!filename.isEmpty()) {
+        QStringList delimited = filename.split("/");
+        QString filePath = "";
+        // We want to chop off the last item...
+        for (size_t i = 0; i < delimited.size() - 1; i++)
+          filePath += (delimited[i] + "/");
+        settings.setValue("xtalopt/templates/psfPath", filePath);
+      }
+      else {
+        // User cancel file selection. Set template selection combo to
+        // something else so the list will remain empty and be
+        // detected when the search starts. Ref ticket 79.
+        int curInd = ui_combo_templates->currentIndex();
+        int maxInd = ui_combo_templates->count() - 1;
+        int newInd = (curInd == maxInd) ? 0 : maxInd;
+        ui_combo_templates->setCurrentIndex(newInd);
+        return false;
+      }
+      hash.insert(symbols.at(i), QVariant(filename));
+
+        }
+    for (int i = 0; i < m_opt->optimizer()->getNumberOfOptSteps(); i++) {
+      psfInfo.append(QVariant(hash));
+    }
+
+    // Set composition in optimizer
+    QVariantList toOpt;
+    for (int i = 0; i < atomicNums.size(); i++) {
+      toOpt.append(atomicNums.at(i));
+    }
+    m_opt->optimizer()->setData("Composition", toOpt);
+
+    // Set POTCAR info
+    m_opt->optimizer()->setData("PSF info", QVariant(psfInfo));
+
+    updateEditWidget();
+    return true;
+
   }
 }

@@ -6,6 +6,7 @@ set( randomdock_SRCS
      optimizers/adf.cpp
      optimizers/gamess.cpp
      optimizers/mopac.cpp
+     optimizers/gaussian.cpp
      structures/scene.cpp
      structures/matrix.cpp
      structures/substrate.cpp

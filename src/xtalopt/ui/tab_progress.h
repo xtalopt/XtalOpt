@@ -47,6 +47,7 @@ namespace XtalOpt {
     QString spg;
     QString status;
     QBrush brush;
+    QBrush pen;
   };
 
   class TabProgress : public GlobalSearch::AbstractTab
@@ -95,10 +96,16 @@ namespace XtalOpt {
     void clipPOSCARProgress();
     void enableRowTracking() {rowTracking = true;};
     void disableRowTracking() {rowTracking = false;};
+    void updateRank();
+    void clearFiles();
+    void printFile();
+    // The signal "readOnlySessionStarted()" calls this function.
+    // It enables column sorting when a read-only session is started.
+    void setColumnSortingEnabled() {ui.table_list->setSortingEnabled(true);};
 
-  signals:
+signals:
     void deleteJob(int);
-    void updateStatus(int opt, int run, int queue, int fail);
+    void updateStatus(int opt, int iad, int run, int queue, int fail);
     void infoUpdate();
     void updateTableEntry(int row, const XO_Prog_TableEntry& e);
 

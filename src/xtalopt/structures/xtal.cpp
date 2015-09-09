@@ -750,6 +750,52 @@ namespace XtalOpt {
     return true;
   }
 
+  bool Xtal::fillSuperCell(int a, int b, int c, Xtal * myXtal) {
+      qDebug() << "Xtal has a=" << a << " b=" << b << " c=" << c;
+
+      QList<Atom*> oneFUatoms =  atoms();
+      matrix3x3 obcellMatrix = myXtal->cell()->GetCellMatrix();
+      vector3 obU1 = obcellMatrix.GetRow(0);
+      vector3 obU2 = obcellMatrix.GetRow(1);
+      vector3 obU3 = obcellMatrix.GetRow(2);
+      // Scale cell
+      double A = myXtal->getA();
+      double B = myXtal->getB();
+      double C = myXtal->getC();
+      myXtal->setCellInfo(a * A,
+                  b * B,
+                  c * C,
+                  myXtal->getAlpha(),
+                  myXtal->getBeta(),
+                  myXtal->getGamma());
+      qDebug() << "Xtal cell dimensions are increasing from a=" << A << "b=" << B << "c=" << C <<
+                  "to a=" << a*A << "b=" << b*B << "c=" << c*C;
+      a--;
+      b--;
+      c--;
+
+      for (int i = 0; i <= a; i++) {
+          for (int j = 0; j <= b; j++) {
+              for (int k = 0; k <= c; k++) {
+                  if (i == 0 && j == 0 && k == 0) continue;
+                  Vector3d uVecs(
+                          obU1.x() * i + obU2.x() * j + obU3.x() * k,
+                          obU1.y() * i + obU2.y() * j + obU3.y() * k,
+                          obU1.z() * i + obU2.z() * j + obU3.z() * k);
+                  //Vector3d uVecs(this->getA() * i, this->getB() * j, this-> getC() * k);
+                  foreach(Atom *atom, oneFUatoms) {
+                      Atom *newAtom = myXtal->addAtom();
+                      *newAtom = *atom;
+                      newAtom->setPos((*atom->pos())+uVecs);
+                      newAtom->setAtomicNumber(atom->atomicNumber());
+                      qDebug() << "Added atom at a=" << i << " b=" << j << " c=" << k << " with atomic number " << newAtom->atomicNumber();
+                  }
+              }
+          }
+      }
+      return true;
+  }
+
   bool Xtal::checkInteratomicDistances(
       const QHash<unsigned int, XtalCompositionStruct> &limits,
       int *atom1, int *atom2, double *IAD)

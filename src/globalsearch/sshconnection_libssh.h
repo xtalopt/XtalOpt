@@ -76,13 +76,15 @@ namespace GlobalSearch {
      * @param stdout_str (return) standard output
      * @param stderr_str (return) standard output
      * @param exitcode (return) exit code.
+     * @param printWarning Prints warnings with qWarning() if an error occurs
      *
      * @return True on success.
      */
-    bool execute(const QString &command,
-                 QString &stdout_str,
-                 QString &stderr_str,
-                 int &exitcode);
+    virtual bool execute(const QString &command,
+                         QString &stdout_str,
+                         QString &stderr_str,
+                         int &exitcode,
+		         bool printWarning = true);
 
     /**
      * Copy a file to the remote host
@@ -239,7 +241,8 @@ namespace GlobalSearch {
     bool _execute(const QString &command,
                   QString &stdout_err,
                   QString &stderr_err,
-                  int &exitcode);
+                  int &exitcode,
+		  bool printWarning = true);
     bool _copyFileToServer(const QString & localpath,
                            const QString & remotepath);
     bool _copyFileFromServer(const QString & remotepath,

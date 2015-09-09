@@ -84,8 +84,8 @@ namespace GAPC {
     SETTINGS(filename);
 
     settings->beginGroup("gapc/edit");
-    const int VERSION = 2;
-    settings->setValue("version",          VERSION);
+    const int version = 2;
+    settings->setValue("version",          version);
 
     settings->setValue("description", m_opt->description);
     settings->setValue("localpath", m_opt->filePath);

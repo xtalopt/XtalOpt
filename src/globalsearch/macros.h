@@ -20,14 +20,16 @@
 #include <QtCore/QSettings>
 
 #include <cstdlib>
-#include <unistd.h> // For sleep on GCC >= 4.7
 
 #ifdef WIN32
 // For Sleep
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 // For _finite
 #include <float.h>
-#endif
+#else
+#include <unistd.h> // For sleep on GCC >= 4.7
+#endif // WIN32
 
 // Create a pointer of type QSettings *settings that points to either:
 // 1) The default application QSettings object, or

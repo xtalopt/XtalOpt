@@ -253,9 +253,9 @@ namespace GlobalSearch {
     }
 
     SETTINGS(filename);
-    const int VERSION = m_schemaVersion;
+    const int version = m_schemaVersion;
     settings->beginGroup(m_idString.toLower());
-    settings->setValue("version",          VERSION);
+    settings->setValue("version",          version);
     settings->setValue("saveSuccessful", false);
     settings->endGroup();
 
