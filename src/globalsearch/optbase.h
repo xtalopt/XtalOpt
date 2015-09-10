@@ -154,6 +154,9 @@ for (ind = 0; ind < probs.size(); ind++)
      * @param structures Collection of Structure objects to use. Must
      * be sorted by enthalpy
      *
+     * @param A user-defined antiselection factor. See probability equation
+     * that includes antiselection for details.
+     *
      * @sa Structure::sortByEnthalpy()
      *
      * @note IMPORTANT: \a structures must contain one more structure
@@ -163,7 +166,8 @@ for (ind = 0; ind < probs.size(); ind++)
      *
      * @return
      */
-    static QList<double> getProbabilityList(const QList<Structure*> &structures);
+    static QList<double> getProbabilityList(const QList<Structure*> &structures,
+                                            double antiselectionFactor = 0.0);
 
     /**
      * Save the current search. If filename is omitted, default to

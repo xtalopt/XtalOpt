@@ -1573,7 +1573,9 @@ namespace XtalOpt {
     }
 
     // Make list of weighted probabilities based on enthalpy values
-    QList<double> probs = getProbabilityList(structures);
+    double antiselectionFactor = 0;
+    if (using_antiselection) antiselectionFactor = antiselection_factor;
+    QList<double> probs = getProbabilityList(structures, antiselectionFactor);
 
     // Cast Structures into Xtals
     QList<Xtal*> xtals;
@@ -2256,8 +2258,12 @@ namespace XtalOpt {
             QString::number(loadedStructures.at(i)->getIDNumber());
           // Increment offspring counter
           // If the xtal skipped optimization, we don't want to count it
+          // We also only want to count finished structures...
           if (parentStructureString == compare &&
-              !xtal->skippedOptimization()) {
+              !xtal->skippedOptimization() &&
+              (xtal->getStatus() == Xtal::Duplicate ||
+               xtal->getStatus() == Xtal::Supercell ||
+               xtal->getStatus() == Xtal::Optimized)) {
             xtal->setParentStructure(loadedStructures.at(i));
             xtal->incrementParentNumTotOffspring();
             break;
@@ -2450,9 +2456,8 @@ namespace XtalOpt {
 
   bool XtalOpt::onTheFormulaUnitsList(uint FU) {
      for (int i = 0; i < formulaUnitsList.size(); i++) {
-       if (FU == formulaUnitsList.at(i)) {
+       if (FU == formulaUnitsList.at(i))
          return true;
-       }
      }
      return false;
   }
@@ -2563,12 +2568,12 @@ namespace XtalOpt {
       kickXtal->incrementParentNumDupOffspring();
       if (kickXtal->hasParentStructure()) {
         Structure* parentXtal = kickXtal->getParentStructure();
-        qDebug() << "Duplicate: parentXtal->getNumDupOffspring() is now"
+        /*qDebug() << "Duplicate: parentXtal->getNumDupOffspring() is now"
                    << parentXtal->getNumDupOffspring()
                    << "\nand parentXtal->getNumTotOffspring() is"
                    << parentXtal->getNumTotOffspring() << "\nfor"
                    << parentXtal->getGeneration() << "x"
-                   << parentXtal->getIDNumber();
+                   << parentXtal->getIDNumber();*/
       }
     }
     st.i->lock()->unlock();
@@ -2647,12 +2652,12 @@ namespace XtalOpt {
       largerFormulaUnitXtal->incrementParentNumDupOffspring();
       if (largerFormulaUnitXtal->hasParentStructure()) {
         Structure* parentXtal = largerFormulaUnitXtal->getParentStructure();
-        qDebug() << "Supercell: parentXtal->getNumDupOffspring() is now"
+        /*qDebug() << "Supercell: parentXtal->getNumDupOffspring() is now"
                  << parentXtal->getNumDupOffspring()
                  << "\nand parentXtal->getNumTotOffspring() is"
                  << parentXtal->getNumTotOffspring() << "\nfor"
                  << parentXtal->getGeneration() << "x"
-                 << parentXtal->getIDNumber();
+                 << parentXtal->getIDNumber();*/
       }
     }
     tempXtal->deleteLater();
