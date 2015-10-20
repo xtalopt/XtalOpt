@@ -68,7 +68,8 @@ namespace GlobalSearch {
     bool execute(const QString &command,
                  QString &stdout_str,
                  QString &stderr_str,
-                 int &exitcode);
+                 int &exitcode,
+                 bool printWarning = false);
 
     /**
      * Copy a file to the remote host
