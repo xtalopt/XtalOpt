@@ -19,6 +19,7 @@
 #include "ui_dialog.h"
 
 #include <globalsearch/optimizer.h>
+#include <globalsearch/exceptionhandler.h>
 #include <xtalopt/testing/xtalopttest.h>
 
 #include <xtalopt/ui/tab_init.h>
@@ -101,13 +102,20 @@ namespace XtalOpt {
 
   XtalOptDialog::~XtalOptDialog()
   {
-    this->hide();
+    // Destructors should never throw. This is added just in case...
+    try {
+      this->hide();
 
-    m_opt->tracker()->lockForRead();
-    writeSettings();
-    saveSession();
-    m_opt->tracker()->unlock();
-    // m_opt is deleted by ~AbstractDialog
+      m_opt->tracker()->lockForRead();
+      writeSettings();
+      saveSession();
+      m_opt->tracker()->unlock();
+      // m_opt is deleted by ~AbstractDialog
+    } // end of try{}
+    catch(...) {
+      ExceptionHandler::handleAllExceptions(__FUNCTION__);
+    } // end of catch{}
+
   }
 
   void XtalOptDialog::setMolecule(Molecule *molecule)

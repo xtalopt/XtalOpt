@@ -33,6 +33,7 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/bt.h>
 #include <globalsearch/fileutils.h>
+#include <globalsearch/exceptionhandler.h>
 
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
@@ -85,37 +86,44 @@ namespace XtalOpt {
 
   XtalOpt::~XtalOpt()
   {
-    // Stop queuemanager thread
-    if (m_queueThread->isRunning()) {
-      m_queueThread->disconnect();
-      m_queueThread->quit();
-      m_queueThread->wait();
-    }
+    // Destructors should never throw exceptions. But use a try-catch block
+    // just in case...
+    try {
+      // Stop queuemanager thread
+      if (m_queueThread->isRunning()) {
+        m_queueThread->disconnect();
+        m_queueThread->quit();
+        m_queueThread->wait();
+      }
 
-    // Delete queuemanager
-    delete m_queue;
-    m_queue = 0;
+      // Delete queuemanager
+      delete m_queue;
+      m_queue = 0;
 
 #ifdef ENABLE_SSH
-    // Stop SSHManager
-    delete m_ssh;
-    m_ssh = 0;
+      // Stop SSHManager
+      delete m_ssh;
+      m_ssh = 0;
 #endif // ENABLE_SSH
 
-    // Wait for save to finish
-    unsigned int timeout = 30;
-    while (timeout > 0 && savePending) {
-      qDebug() << "Spinning on save before destroying XtalOpt ("
-               << timeout << "seconds until timeout).";
-      timeout--;
-      GS_SLEEP(1);
-    };
+      // Wait for save to finish
+      unsigned int timeout = 30;
+      while (timeout > 0 && savePending) {
+        qDebug() << "Spinning on save before destroying XtalOpt ("
+                 << timeout << "seconds until timeout).";
+        timeout--;
+        GS_SLEEP(1);
+      };
 
-    savePending = true;
+      savePending = true;
 
-    // Clean up various members
-    m_initWC->deleteLater();
-    m_initWC = 0;
+      // Clean up various members
+      m_initWC->deleteLater();
+      m_initWC = 0;
+    } // end of try{}
+    catch(...) {
+      ExceptionHandler::handleAllExceptions(__FUNCTION__);
+    } // end of catch{}
   }
 
   void XtalOpt::startSearch()

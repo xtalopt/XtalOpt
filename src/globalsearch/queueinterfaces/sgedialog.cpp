@@ -25,6 +25,7 @@
 
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/optbase.h>
+#include <globalsearch/exceptionhandler.h>
 
 #include "ui_sgedialog.h"
 
@@ -43,7 +44,13 @@ namespace GlobalSearch {
 
   SgeConfigDialog::~SgeConfigDialog()
   {
-    delete ui;
+    // Destructors should never throw...
+    try {
+      delete ui;
+    } // end of try{}
+    catch(...) {
+      ExceptionHandler::handleAllExceptions(__FUNCTION__);
+    } // end of catch{}
   }
 
   void SgeConfigDialog::updateGUI()

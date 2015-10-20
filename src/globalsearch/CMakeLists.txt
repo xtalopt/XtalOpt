@@ -20,6 +20,7 @@ set( globalsearch_SRCS
      queueinterfaces/local.cpp
      queueinterfaces/localdialog.cpp
      fileutils.cpp
+     exceptionhandler.cpp
 )
 
 if (ENABLE_SSH)

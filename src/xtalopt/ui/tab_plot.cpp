@@ -19,6 +19,8 @@
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
+#include <globalsearch/exceptionhandler.h>
+
 #include <avogadro/glwidget.h>
 #include <avogadro/primitive.h>
 #include <avogadro/primitivelist.h>
@@ -103,8 +105,14 @@ namespace XtalOpt {
 
   TabPlot::~TabPlot()
   {
-    delete m_plot_mutex;
-    // m_plotObject is deleted by the PlotWidget
+    // Destructors should never throw...
+    try {
+      delete m_plot_mutex;
+      // m_plotObject is deleted by the PlotWidget
+    } // end of try{}
+    catch(...) {
+      ExceptionHandler::handleAllExceptions(__FUNCTION__);
+    } // end of catch{}
   }
 
   void TabPlot::writeSettings(const QString &filename)
