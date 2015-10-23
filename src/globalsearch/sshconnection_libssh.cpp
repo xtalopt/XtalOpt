@@ -71,6 +71,87 @@ bool SSHConnectionLibSSH::isConnected()
     return false;
   };
 
+#ifdef UNIX
+  QMutexLocker locker (&m_lock);
+  START;
+
+  // Attempt to execute "echo ok" on the host to test if everything
+  // is working properly
+  const char *command = "echo ok\n";
+  if (channel_write(m_shell, command, sizeof(command)) == SSH_ERROR) {
+    qWarning() << "SSHConnectionLibSSH is not connected: cannot write to shell; "
+               << ssh_get_error(m_session);
+    return false;
+  }
+
+  // Set a three timeout, check every 50 ms for new data.
+  int bytesAvail;
+  int timeout = 15000;
+  do {
+    // Poll for number of bytes available
+    bytesAvail = channel_poll(m_shell, 0);
+    if (bytesAvail == SSH_ERROR) {
+      qWarning() << "SSHConnectionLibSSH::isConnected(): server returns an error; "
+                 << ssh_get_error(m_session);
+      return false;
+    }
+    // Sleep for 50 ms if no data yet.
+    if (bytesAvail <= 0) {
+      GS_MSLEEP(50);
+      timeout -= 50;
+    }
+  }
+  while (timeout >= 0 && bytesAvail <= 0);
+  // Timeout case
+  if (timeout < 0 && bytesAvail == 0) {
+    qWarning() << "SSHConnectionLibSSH::isConnected(): server timeout.";
+    return false;
+  }
+  // Anything else but "3" is an error
+  else if (bytesAvail != 3) {
+    qWarning() << "SSHConnectionLibSSH::isConnected(): server returns a bizarre poll value: "
+               << bytesAvail << "; " << ssh_get_error(m_session);
+    return false;
+  }
+
+  // Read output
+  ostringstream ossout;
+  char buffer[LIBSSH_BUFFER_SIZE];
+  int len;
+  while ((len = channel_read(m_shell,
+                             buffer,
+                             (bytesAvail < LIBSSH_BUFFER_SIZE) ? bytesAvail : LIBSSH_BUFFER_SIZE,
+                             0)) > 0) {
+    ossout.write(buffer,len);
+    // Poll for number of bytes available using a 1 second timeout in case the stack is full.
+    timeout = 10000;
+    do {
+      bytesAvail = channel_poll(m_shell, 0);
+      if (bytesAvail == SSH_ERROR) {
+        qWarning() << "SSHConnectionLibSSH::_isConnected: server returns an error; "
+                   << ssh_get_error(m_session);
+        return false;
+      }
+      if (bytesAvail <= 0) {
+        GS_MSLEEP(50);
+        timeout -= 50;
+      }
+    }
+    while (timeout >= 0 && bytesAvail <= 0);
+  }
+
+  // Test output
+  if (!strcmp(ossout.str().c_str(), "ok")) {
+    qWarning() << "SSH error: 'echo ok' on the host returned: "
+               << ossout.str().c_str();
+    return false;
+  }
+
+  END;
+  return true;
+#endif // UNIX
+
+#ifdef WIN32
   START;
 
   // Attempt to execute "echo ok" on the host to test if everything
@@ -81,7 +162,7 @@ bool SSHConnectionLibSSH::isConnected()
   int exitcode;
   // Set a timeout of 1 seconds and check every 50 ms. It takes execute a litte
   // bit of time to work, so 1 second will end up being a few seconds...
-  int timeout = 1000;
+  int timeout = 10000;
   bool success;
   bool printWarning = false;
   do {
@@ -103,6 +184,7 @@ bool SSHConnectionLibSSH::isConnected()
   }
   END;
   return true;
+#endif // WIN32
 }
 
 bool SSHConnectionLibSSH::disconnectSession()
@@ -150,7 +232,7 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
   int verbosity = SSH_LOG_NOLOG;
   //int verbosity = SSH_LOG_PROTOCOL;
   //int verbosity = SSH_LOG_PACKET;
-  int timeout = 5; // timeout in sec
+  int timeout = 15; // timeout in sec
 
   ssh_options_set(m_session, SSH_OPTIONS_HOST, m_host.toStdString().c_str());
   ssh_options_set(m_session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);
@@ -373,7 +455,7 @@ bool SSHConnectionLibSSH::_execute(const QString &command,
   channel_close(channel);
 
   // 5 second timeout
-  int timeout = 5;
+  int timeout = 15;
   while (channel_get_exit_status(channel) == -1 && timeout >= 0) {
     qDebug() << "Waiting for server to close channel...";
     GS_SLEEP(1);
@@ -985,7 +1067,7 @@ bool SSHConnectionLibSSH::addKeyToKnownHosts(const QString &host, unsigned int p
 
   // Set options
   int verbosity = SSH_LOG_NOLOG;
-  int timeout = 5; // timeout in sec
+  int timeout = 15; // timeout in sec
 
   ssh_options_set(session, SSH_OPTIONS_HOST, host.toStdString().c_str());
   ssh_options_set(session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);
