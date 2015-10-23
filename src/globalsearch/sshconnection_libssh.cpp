@@ -79,7 +79,7 @@ bool SSHConnectionLibSSH::isConnected()
 
   // Set a three timeout, check every 50 ms for new data.
   int bytesAvail;
-  int timeout = 3000;
+  int timeout = 15000;
   do {
     // Poll for number of bytes available
     bytesAvail = channel_poll(m_shell, 0);
@@ -117,7 +117,7 @@ bool SSHConnectionLibSSH::isConnected()
                              0)) > 0) {
     ossout.write(buffer,len);
     // Poll for number of bytes available using a 1 second timeout in case the stack is full.
-    timeout = 1000;
+    timeout = 10000;
     do {
       bytesAvail = channel_poll(m_shell, 0);
       if (bytesAvail == SSH_ERROR) {
@@ -155,7 +155,7 @@ bool SSHConnectionLibSSH::isConnected()
   int exitcode;
   // Set a timeout of 1 seconds and check every 50 ms. It takes execute a litte
   // bit of time to work, so 1 second will end up being a few seconds...
-  int timeout = 1000;
+  int timeout = 10000;
   bool success;
   bool printWarning = false;
   do {
@@ -225,7 +225,7 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
   int verbosity = SSH_LOG_NOLOG;
   //int verbosity = SSH_LOG_PROTOCOL;
   //int verbosity = SSH_LOG_PACKET;
-  int timeout = 5; // timeout in sec
+  int timeout = 15; // timeout in sec
 
   ssh_options_set(m_session, SSH_OPTIONS_HOST, m_host.toStdString().c_str());
   ssh_options_set(m_session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);
@@ -448,7 +448,7 @@ bool SSHConnectionLibSSH::_execute(const QString &command,
   channel_close(channel);
 
   // 5 second timeout
-  int timeout = 5;
+  int timeout = 15;
   while (channel_get_exit_status(channel) == -1 && timeout >= 0) {
     qDebug() << "Waiting for server to close channel...";
     GS_SLEEP(1);
@@ -1060,7 +1060,7 @@ bool SSHConnectionLibSSH::addKeyToKnownHosts(const QString &host, unsigned int p
 
   // Set options
   int verbosity = SSH_LOG_NOLOG;
-  int timeout = 5; // timeout in sec
+  int timeout = 15; // timeout in sec
 
   ssh_options_set(session, SSH_OPTIONS_HOST, host.toStdString().c_str());
   ssh_options_set(session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);
