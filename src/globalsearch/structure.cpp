@@ -238,9 +238,8 @@ namespace GlobalSearch {
   void Structure::writeStructureSettings(const QString &filename)
   {
     SETTINGS(filename);
-    const int version = 3;
+    const int version = 2;
     settings->beginGroup("structure");
-    settings->setValue("saveSuccessful", false);
     settings->setValue("version",     version);
     settings->setValue("generation", getGeneration());
     settings->setValue("id", getIDNumber());
