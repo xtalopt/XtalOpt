@@ -152,8 +152,8 @@ public:
 
   // Defined at end of file:
   // Niggli reduce, rotate to std orientation, wrap atoms to cell:
-  bool canonicalizeLattice();
-  bool isNiggliReduced() const;
+  bool canonicalizeLattice(double lenTol = 0.01);
+  bool isNiggliReduced(double lenTol = 0.01) const;
   XcMatrix getCellMatrixInStandardOrientation() const;
 
   void frac2Cart(const XcVector &fcoord, XcVector *ccoord) const
@@ -234,8 +234,8 @@ bool XtalComp::compare(const XcMatrix &cellMatrix1,
   ReducedXtal x2 (cellMatrix2, types2, positions2);
 
   // Standardize the lattices
-  if (!x1.canonicalizeLattice() ||
-      !x2.canonicalizeLattice() ){
+  if (!x1.canonicalizeLattice(cartTol) ||
+      !x2.canonicalizeLattice(cartTol) ){
     std::cerr << "XtalComp warning: Failed to canonicalize one of the "
                  "lattices. Returning false without finishing comparison.\n";
     return false;
@@ -1641,7 +1641,7 @@ void swap(double &a, double &b)
   b = t;
 }
 
-bool XtalComp::ReducedXtal::canonicalizeLattice()
+bool XtalComp::ReducedXtal::canonicalizeLattice(double lenTol)
 {
   const unsigned int iterations = 1000;
   // Cache volume for later sanity checks
@@ -1664,8 +1664,10 @@ bool XtalComp::ReducedXtal::canonicalizeLattice()
   bool ret = false;
 
   // comparison tolerance
-  double tol = STABLE_COMP_TOL * pow(origVolume, 1.0/3.0);
-//  const double tol = 1e-5;
+  // This is modified in xtalopt compared to the original xtalcomp
+  // At lenTol == 0.01, the lenTol should be 10^-5 * origVolume^(2/3)
+  double tol = 0.001 * lenTol * pow(origVolume, 2.0/3.0);
+  //  const double tol = 1e-5;
 
   // Initialize change of basis matrices:
   //
@@ -1996,7 +1998,7 @@ XcMatrix XtalComp::ReducedXtal::getCellMatrixInStandardOrientation() const
   return newMat;
 }
 
-bool XtalComp::ReducedXtal::isNiggliReduced() const
+bool XtalComp::ReducedXtal::isNiggliReduced(double lenTol) const
 {
   // Calculate characteristic
   double A    = this->v1().squaredNorm();
@@ -2007,7 +2009,9 @@ bool XtalComp::ReducedXtal::isNiggliReduced() const
   double zeta = 2*this->v1().dot(this->v2());
 
   // comparison tolerance
-  double tol = STABLE_COMP_TOL * ( this->volume() * (1.0 / 3.0) );
+  // This is modified in xtalopt compared to the original xtalcomp
+  // At lenTol == 0.01, the lenTol should be 10^-5 * origVolume^(2/3)
+  double tol = 0.001 * lenTol * pow(this->volume(), 2.0/3.0);
 
   // First check the Buerger conditions. Taken from: Gruber B.. Acta
   // Cryst. A. 1973;29(4):433-440. Available at:

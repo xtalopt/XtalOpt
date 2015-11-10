@@ -224,7 +224,7 @@ namespace XtalOpt {
       atomList.at(i)->setPos(fracToCart(fracCoordsList.at(i)));
   }
 
-  bool Xtal::niggliReduce(const unsigned int iterations)
+  bool Xtal::niggliReduce(double lenTol, const unsigned int iterations)
   {
     // Cache volume for later sanity checks
     const double origVolume = cell()->GetCellVolume();
@@ -247,7 +247,7 @@ namespace XtalOpt {
     bool ret = false;
 
     // comparison tolerance
-    double tol = STABLE_COMP_TOL * pow(this->getVolume(), 1.0/3.0);
+    double tol = 0.001 * lenTol * pow(this->getVolume(), 2.0/3.0);
 
     // Initialize change of basis matrices:
     //
@@ -504,7 +504,7 @@ namespace XtalOpt {
     return true;
   }
 
-  bool Xtal::isNiggliReduced() const
+  bool Xtal::isNiggliReduced(double lenTol) const
   {
     // cache params
     double a     = getA();
@@ -514,11 +514,12 @@ namespace XtalOpt {
     double beta  = getBeta();
     double gamma = getGamma();
 
-    return Xtal::isNiggliReduced(a, b, c, alpha, beta, gamma);
+    return Xtal::isNiggliReduced(a, b, c, alpha, beta, gamma, lenTol);
   }
 
   bool Xtal::isNiggliReduced(const double a, const double b, const double c,
-                             const double alpha, const double beta, const double gamma)
+                             const double alpha, const double beta,
+                             const double gamma, double lenTol)
   {
     // Calculate characteristic
     double A    = a*a;
@@ -529,7 +530,9 @@ namespace XtalOpt {
     double zeta = 2*a*b*cos(gamma * DEG_TO_RAD);
 
     // comparison tolerance
-    double tol = STABLE_COMP_TOL * ( (a + b + c) * (1.0 / 3.0) );
+    // This may not be exactly the same as pow(origVolume, 2.0/3.0), but we'll
+    // say that it's close enough...
+    double tol = 0.001 * lenTol * pow( (a + b + c) / 3.0, 2.0);
 
     // First check the Buerger conditions. Taken from: Gruber B.. Acta
     // Cryst. A. 1973;29(4):433-440. Available at:
