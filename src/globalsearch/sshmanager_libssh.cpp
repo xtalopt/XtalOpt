@@ -22,8 +22,8 @@
 
 #include <QtCore/QDebug>
 
-#define START //qDebug() << __FUNCTION__ << " called...";
-#define END //qDebug() << __FUNCTION__ << " finished...";
+#define START qDebug() << __FUNCTION__ << " called...";
+#define END qDebug() << __FUNCTION__ << " finished...";
 
 using namespace std;
 

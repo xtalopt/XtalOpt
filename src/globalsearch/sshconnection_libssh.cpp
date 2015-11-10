@@ -31,8 +31,8 @@ using namespace std;
 
 namespace GlobalSearch {
 
-#define START //qDebug() << __FUNCTION__ << " called...";
-#define END //qDebug() << __FUNCTION__ << " finished...";
+#define START qDebug() << __FUNCTION__ << " called...";
+#define END qDebug() << __FUNCTION__ << " finished...";
 
 SSHConnectionLibSSH::SSHConnectionLibSSH(SSHManagerLibSSH *parent)
   : SSHConnection(parent),
@@ -71,97 +71,17 @@ bool SSHConnectionLibSSH::isConnected()
     return false;
   };
 
-#ifdef UNIX
-  QMutexLocker locker (&m_lock);
-  START;
-
-  // Attempt to execute "echo ok" on the host to test if everything
-  // is working properly
-  const char *command = "echo ok\n";
-  if (channel_write(m_shell, command, sizeof(command)) == SSH_ERROR) {
-    qWarning() << "SSHConnectionLibSSH is not connected: cannot write to shell; "
-               << ssh_get_error(m_session);
-    return false;
-  }
-
-  // Set a three timeout, check every 50 ms for new data.
-  int bytesAvail;
-  int timeout = 15000;
-  do {
-    // Poll for number of bytes available
-    bytesAvail = channel_poll(m_shell, 0);
-    if (bytesAvail == SSH_ERROR) {
-      qWarning() << "SSHConnectionLibSSH::isConnected(): server returns an error; "
-                 << ssh_get_error(m_session);
-      return false;
-    }
-    // Sleep for 50 ms if no data yet.
-    if (bytesAvail <= 0) {
-      GS_MSLEEP(50);
-      timeout -= 50;
-    }
-  }
-  while (timeout >= 0 && bytesAvail <= 0);
-  // Timeout case
-  if (timeout < 0 && bytesAvail == 0) {
-    qWarning() << "SSHConnectionLibSSH::isConnected(): server timeout.";
-    return false;
-  }
-  // Anything else but "3" is an error
-  else if (bytesAvail != 3) {
-    qWarning() << "SSHConnectionLibSSH::isConnected(): server returns a bizarre poll value: "
-               << bytesAvail << "; " << ssh_get_error(m_session);
-    return false;
-  }
-
-  // Read output
-  ostringstream ossout;
-  char buffer[LIBSSH_BUFFER_SIZE];
-  int len;
-  while ((len = channel_read(m_shell,
-                             buffer,
-                             (bytesAvail < LIBSSH_BUFFER_SIZE) ? bytesAvail : LIBSSH_BUFFER_SIZE,
-                             0)) > 0) {
-    ossout.write(buffer,len);
-    // Poll for number of bytes available using a 1 second timeout in case the stack is full.
-    timeout = 10000;
-    do {
-      bytesAvail = channel_poll(m_shell, 0);
-      if (bytesAvail == SSH_ERROR) {
-        qWarning() << "SSHConnectionLibSSH::_isConnected: server returns an error; "
-                   << ssh_get_error(m_session);
-        return false;
-      }
-      if (bytesAvail <= 0) {
-        GS_MSLEEP(50);
-        timeout -= 50;
-      }
-    }
-    while (timeout >= 0 && bytesAvail <= 0);
-  }
-
-  // Test output
-  if (!strcmp(ossout.str().c_str(), "ok")) {
-    qWarning() << "SSH error: 'echo ok' on the host returned: "
-               << ossout.str().c_str();
-    return false;
-  }
-
-  END;
-  return true;
-#endif // UNIX
-
-#ifdef WIN32
   START;
 
   // Attempt to execute "echo ok" on the host to test if everything
   // is working properly
 
   QString command = "echo ok";
+  QString desiredOutput = "ok\n";
   QString stdout_str, stderr_str;
   int exitcode;
-  // Set a timeout of 1 seconds and check every 50 ms. It takes execute a litte
-  // bit of time to work, so 1 second will end up being a few seconds...
+  // Set a timeout of 10 seconds and check every 50 ms. It takes execute a litte
+  // bit of time to work, so 10 seconds will end up being several more seconds
   int timeout = 10000;
   bool success;
   bool printWarning = false;
@@ -170,8 +90,8 @@ bool SSHConnectionLibSSH::isConnected()
     if (stderr_str != "")
       qWarning() << "In SSHConnectionLibSSH::isConnected(), the command "
          	    "'echo ok' returned with an error of " << stderr_str;
-    // if stdout_str is not 4, something bad happened...
-    if (sizeof(stdout_str) != 4) success = false;
+    // if stdout_str is not "ok\n", something bad happened...
+    if (stdout_str != desiredOutput) success = false;
     if (!success) {
       GS_MSLEEP(50);
       timeout -= 50;
@@ -184,7 +104,6 @@ bool SSHConnectionLibSSH::isConnected()
   }
   END;
   return true;
-#endif // WIN32
 }
 
 bool SSHConnectionLibSSH::disconnectSession()
@@ -415,6 +334,7 @@ bool SSHConnectionLibSSH::_execute(const QString &command,
 				   bool printWarning)
 {
   START;
+  qDebug() << "The following command is being executed:" << command;
   // Open new channel for exec
   ssh_channel channel = channel_new(m_session);
   if (!channel) {
@@ -509,6 +429,7 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString & localpath,
                                             const QString & remotepath)
 {
   START;
+  qDebug() << "copying" << localpath << "to" << remotepath;
 
   sftp_session sftp = _openSFTP();
   if (!sftp) {
@@ -579,6 +500,7 @@ bool SSHConnectionLibSSH::_copyFileFromServer(const QString & remotepath,
                                               const QString & localpath)
 {
   START;
+  qDebug() << "copying" << remotepath << "to" << localpath;
   sftp_session sftp = _openSFTP();
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
@@ -647,6 +569,7 @@ bool SSHConnectionLibSSH::_readRemoteFile(const QString &filename,
                                           QString &contents)
 {
   START;
+  qDebug() << "reading" << filename;
 
   sftp_session sftp = _openSFTP();
   if (!sftp) {
@@ -700,7 +623,7 @@ bool SSHConnectionLibSSH::removeRemoteFile(const QString &filename)
 bool SSHConnectionLibSSH::_removeRemoteFile(const QString &filename)
 {
   START;
-
+  qDebug() << "Removing remote file: " << filename;
   sftp_session sftp = _openSFTP();
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
@@ -738,6 +661,7 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString & local,
                                                  const QString & remote)
 {
   START;
+  qDebug() << "copying" << local << "to" << remote;
 
   // Add trailing slashes:
   QString localpath = local + "/";
@@ -815,6 +739,7 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
                                                    const QString & local)
 {
   START;
+  qDebug() << "copying" << remote << "to" << local;
   // Add trailing slashes:
   QString localpath = local + "/";
   QString remotepath = remote + "/";
@@ -903,7 +828,7 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString & path,
                                                        QStringList & contents)
 {
   START;
-
+  qDebug() << "Reading remote directory contents of:" << path;
   QString remotepath = path + "/";
   sftp_dir dir;
   sftp_attributes file;
@@ -980,6 +905,7 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString & path,
                                                  bool onlyDeleteContents)
 {
   START;
+  qDebug() << "Removing remote directory:" << path;
 
   QString remotepath = path + "/";
   sftp_dir dir;
