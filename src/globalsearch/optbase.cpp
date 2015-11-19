@@ -156,7 +156,7 @@ namespace GlobalSearch {
   }
 
   QList<double> OptBase::getProbabilityList(const QList<Structure*> &structures,
-                                            double antiselectionFactor) {
+                                            int maxDupOffspring) {
     // IMPORTANT: structures must contain one more structure than
     // needed -- the last structure in the list will be removed from
     // the probability list!
@@ -193,47 +193,35 @@ namespace GlobalSearch {
     for (int i = 0; i < structures.size(); i++) {
       s = structures.at(i);
       s->lock()->lockForRead();
-      double numDupOffspring = s->getNumDupOffspring();
-      double numTotOffspring = s->getNumTotOffspring();
-      double ratio;
-      // We will only use antiselection if at least 3 structures have been made
-      // from a given structure
-      if (numTotOffspring <= 2) ratio = 0;
-      else ratio = numDupOffspring / numTotOffspring;
-#ifdef OPTBASE_DEBUG
-      qDebug() << "antiselectionFactor is " << QString::number(antiselectionFactor);
-      qDebug() << "For " << QString::number(s->getGeneration()) << "x"
-               << QString::number(s->getIDNumber())
-               << ":\n  numDupOffspring = " << QString::number(numDupOffspring)
-               << "\n  numTotOffspring = " << QString::number(numTotOffspring);
-      qDebug() << "  antiselection ratio is " << QString::number(ratio);
-      qDebug() << "  s->getEnthalpy/atom is " << QString::number(s->getEnthalpy() / static_cast<double>(s->numAtoms()));
-      qDebug() << "  highest is " << QString::number(highest);
-      qDebug() << "  lowest is " << QString::number(lowest);
-      qDebug() << "  spread is " << QString::number(spread);
-      qDebug() << "  enthalpy ratio is " << QString::number((s->getEnthalpy() / static_cast<double>(s->numAtoms()) - lowest) / spread);
-#endif // OPTBASE_DEBUG
-      probs.append((1.00 - ((s->getEnthalpy() / static_cast<double>(s->numAtoms())) - lowest ) / spread) * (1.00 - (ratio * antiselectionFactor)));
-#ifdef OPTBASE_DEBUG
-      qDebug() << "probs is " << QString::number(probs[i]);
-#endif // OPTBASE_DEBUG
+      // If the numDupOffspring is equal to the maxDupOffspring, remove the
+      // structure from the probability list by setting the probs to be 1
+      // If maxDupOffspring is -1, there is no max
+      int numDupOffspring = s->getNumDupOffspring();
+      if (numDupOffspring >= maxDupOffspring &&
+          maxDupOffspring != -1) {
+        probs.append(1.0);
+        qDebug() << QString::number(s->getGeneration()) << "x" << QString::number(s->getIDNumber()) << "has been removed from the gene pool!";
+      }
+      // lowest and spread are already per atom
+      else probs.append( ( (s->getEnthalpy() / static_cast<double>(s->numAtoms())) - lowest ) / spread);
       s->lock()->unlock();
     }
+    // Subtract each value from one, and find the sum of the resulting list
     // Find the sum of the resulting list
     // We'll end up with:
     // 1  0.7  0.6  0.2  0   --   sum = 2.5
     double sum = 0;
-    for (int i = 0; i < probs.size(); i++)
+    for (int i = 0; i < probs.size(); i++) {
+      probs[i] = 1.0 - probs.at(i);
       sum += probs.at(i);
+    }
     // Normalize with the sum so that the list adds to 1
     // 0.4  0.28  0.24  0.08  0
     for (int i = 0; i < probs.size(); i++){
       probs[i] /= sum;
-#ifdef OPTBASE_DEBUG
       qDebug() << "For " << QString::number(structures.at(i)->getGeneration())
                << "x" << QString::number(structures.at(i)->getIDNumber())
                << ":\n  normalized probs = " << QString::number(probs[i]);
-#endif // OPTBASE_DEBUG
     }
     // Then replace each entry with a cumulative total:
     // 0.4 0.68 0.92 1 1

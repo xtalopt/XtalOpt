@@ -966,17 +966,17 @@ Default: 0.5</string>
        </widget>
       </item>
       <item row="3" column="2">
-       <widget class="QCheckBox" name="cb_antiselection">
+       <widget class="QCheckBox" name="cb_maxDupOffspring">
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If a given xtal has produced many duplicate offspring, then it will be less likely to be chosen for mutation. This improves the efficiency by not selecting xtals that are producing many duplicates.&lt;/p&gt;&lt;p&gt;An alternative to using this would be to increase the strength of the mutations.&lt;/p&gt;&lt;p&gt;The factor on the right is an &amp;quot;impact factor.&amp;quot; 0 indicates that there is no antiselection. 1 indicates that there is the highest antiselection (i. e., if an xtal has ONLY produced duplicates, it will NOT be selected for mutation).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If an xtal has produced a number of duplicate offspring equivalent to the value for the maximum duplicate offspring, it will never be selected for mutation again.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
-         <string>Antiselection?</string>
+         <string>Max Dup Offspring?</string>
         </property>
        </widget>
       </item>
       <item row="3" column="3">
-       <widget class="QDoubleSpinBox" name="spin_antiselection">
+       <widget class="QDoubleSpinBox" name="spin_maxDupOffspring">
         <property name="enabled">
          <bool>false</bool>
         </property>
@@ -987,16 +987,16 @@ Default: 0.5</string>
          <bool>false</bool>
         </property>
         <property name="decimals">
-         <number>3</number>
+         <number>0</number>
         </property>
         <property name="maximum">
-         <double>1.000000000000000</double>
+         <double>10000000.000000000000000</double>
         </property>
         <property name="singleStep">
-         <double>0.010000000000000</double>
+         <double>1.000000000000000</double>
         </property>
         <property name="value">
-         <double>0.500000000000000</double>
+         <double>5.000000000000000</double>
         </property>
        </widget>
       </item>
@@ -1080,9 +1080,9 @@ Default: 0.5</string>
    </hints>
   </connection>
   <connection>
-   <sender>cb_antiselection</sender>
+   <sender>cb_maxDupOffspring</sender>
    <signal>toggled(bool)</signal>
-   <receiver>spin_antiselection</receiver>
+   <receiver>spin_maxDupOffspring</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">

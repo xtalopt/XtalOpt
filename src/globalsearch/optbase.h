@@ -154,8 +154,9 @@ for (ind = 0; ind < probs.size(); ind++)
      * @param structures Collection of Structure objects to use. Must
      * be sorted by enthalpy
      *
-     * @param A user-defined antiselection factor. See probability equation
-     * that includes antiselection for details.
+     * @param maxDupOffspring The maximum number of duplicates a structure is
+     * allowed to produce before it is removed from the gene pool.
+     * If set to -1, the maxDupOffspring is infinity.
      *
      * @sa Structure::sortByEnthalpy()
      *
@@ -167,7 +168,7 @@ for (ind = 0; ind < probs.size(); ind++)
      * @return
      */
     static QList<double> getProbabilityList(const QList<Structure*> &structures,
-                                            double antiselectionFactor = 0.0);
+                                            int maxDupOffspring = -1);
 
     /**
      * Save the current search. If filename is omitted, default to

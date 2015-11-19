@@ -115,10 +115,10 @@ namespace XtalOpt {
     connect(ui.spin_perm_ex, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
 
-    // Antiselection
-    connect(ui.cb_antiselection, SIGNAL(toggled(bool)),
+    // maxDupOffspring
+    connect(ui.cb_maxDupOffspring, SIGNAL(toggled(bool)),
             this, SLOT(updateOptimizationInfo()));
-    connect(ui.spin_antiselection, SIGNAL(valueChanged(double)),
+    connect(ui.spin_maxDupOffspring, SIGNAL(valueChanged(double)),
             this, SLOT(updateOptimizationInfo()));
 
     initialize();
@@ -180,9 +180,9 @@ namespace XtalOpt {
     settings->setValue("opt/perm_strainStdev_max",xtalopt->perm_strainStdev_max);
     settings->setValue("opt/perm_ex",           xtalopt->perm_ex);
 
-    settings->setValue("opt/using_antiselection", xtalopt->using_antiselection);
-    settings->setValue("opt/antiselection_factor",
-                       xtalopt->antiselection_factor);
+    settings->setValue("opt/using_maxDupOffspring", xtalopt->using_maxDupOffspring);
+    settings->setValue("opt/maxDupOffspring",
+                       xtalopt->maxDupOffspring);
 
     settings->endGroup();
 
@@ -238,11 +238,11 @@ namespace XtalOpt {
     ui.spin_perm_strainStdev_max->setValue(settings->value("opt/perm_strainStdev_max",0.5).toDouble());
     ui.spin_perm_ex->setValue(          settings->value("opt/perm_ex",          4).toUInt()     );
 
-    // Antiselection
-    ui.cb_antiselection->setChecked(settings->value("opt/using_antiselection",
-                                                    false).toBool());
-    ui.spin_antiselection->setValue(settings->value("opt/antiselection_factor",
-                                                    0.500).toDouble());
+    // maxDupOffspring
+    ui.cb_maxDupOffspring->setChecked(settings->value(
+                                  "opt/using_maxDupOffspring", false).toBool());
+    ui.spin_maxDupOffspring->setValue(
+                     settings->value("opt/maxDupOffspring", 5).toInt());
 
     settings->endGroup();
 
@@ -378,9 +378,9 @@ namespace XtalOpt {
     xtalopt->perm_strainStdev_max	= ui.spin_perm_strainStdev_max->value();
     xtalopt->perm_ex              = ui.spin_perm_ex->value();
 
-    // Antiselection
-    xtalopt->using_antiselection = ui.cb_antiselection->isChecked();
-    xtalopt->antiselection_factor = ui.spin_antiselection->value();
+    // maxDupOffspring
+    xtalopt->using_maxDupOffspring = ui.cb_maxDupOffspring->isChecked();
+    xtalopt->maxDupOffspring = ui.spin_maxDupOffspring->value();
 
   }
 

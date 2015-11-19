@@ -65,8 +65,8 @@ namespace XtalOpt {
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
     OptBase(parent),
     m_initWC(new SlottedWaitCondition (this)),
-    using_antiselection(false),
-    antiselection_factor(0.500)
+    using_maxDupOffspring(false),
+    maxDupOffspring(5)
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";
@@ -1581,9 +1581,11 @@ namespace XtalOpt {
     }
 
     // Make list of weighted probabilities based on enthalpy values
-    double antiselectionFactor = 0;
-    if (using_antiselection) antiselectionFactor = antiselection_factor;
-    QList<double> probs = getProbabilityList(structures, antiselectionFactor);
+    // Inputting a maxDupOffspring of -1 int getProbabilityList()
+    // makes the maximum number of duplicates unlimited.
+    int temp_maxDupOffspring = -1;
+    if (using_maxDupOffspring) temp_maxDupOffspring = maxDupOffspring;
+    QList<double> probs = getProbabilityList(structures, temp_maxDupOffspring);
 
     // Cast Structures into Xtals
     QList<Xtal*> xtals;

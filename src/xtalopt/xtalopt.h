@@ -176,8 +176,8 @@ namespace XtalOpt {
     QMutex *xtalInitMutex;
 
     // Antiselection
-    bool using_antiselection;
-    double antiselection_factor;
+    bool using_maxDupOffspring;
+    int maxDupOffspring;
 
   public slots:
     void startSearch();
