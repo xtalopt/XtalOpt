@@ -261,6 +261,7 @@ namespace GlobalSearch {
 
     ssh_session m_session;
     ssh_channel m_shell;
+    sftp_session m_sftp;
 
     bool m_isValid;
     bool m_inUse;

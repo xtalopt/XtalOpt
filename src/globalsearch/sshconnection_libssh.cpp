@@ -38,6 +38,7 @@ SSHConnectionLibSSH::SSHConnectionLibSSH(SSHManagerLibSSH *parent)
   : SSHConnection(parent),
     m_session(0),
     m_shell(0),
+    m_sftp(0),
     m_isValid(false),
     m_inUse(false)
 {
@@ -64,7 +65,7 @@ SSHConnectionLibSSH::~SSHConnectionLibSSH()
 
 bool SSHConnectionLibSSH::isConnected()
 {
-  if (!m_session || !m_shell ||
+  if (!m_session || !m_shell || !m_sftp ||
       channel_is_closed(m_shell) || channel_is_eof(m_shell) ) {
     qWarning() << "SSHConnectionLibSSH is not connected: one or more required "
                   "channels are not initialized.";
@@ -110,6 +111,10 @@ bool SSHConnectionLibSSH::disconnectSession()
 {
   QMutexLocker locker (&m_lock);
   START;
+
+  if (m_sftp)
+    sftp_free(m_sftp);
+  m_sftp = 0;
 
   if (m_shell)
     channel_free(m_shell);
@@ -311,6 +316,12 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
     }
   }
 
+  m_sftp = _openSFTP();
+  if (!m_sftp) {
+    qWarning() << "Could not create sftp channel.";
+    return false;
+  }
+
   m_isValid = true;
   END;
   return true;
@@ -431,7 +442,7 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString & localpath,
   START;
   qDebug() << "copying" << localpath << "to" << remotepath;
 
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -441,7 +452,6 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString & localpath,
   ifstream from (localpath.toStdString().c_str());
   if (!from.is_open()) {
     qWarning() << "Error opening file " << localpath << " for reading.";
-    sftp_free(sftp);
     return false;
   }
 
@@ -452,7 +462,6 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString & localpath,
                            0750);
   if (!to) {
     qWarning() << "Error opening file " << remotepath << " for writing.";
-    sftp_free(sftp);
     return false;
   }
 
@@ -468,14 +477,12 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString & localpath,
       qWarning() << "Error writing to " << remotepath;
       from.close();
       sftp_close(to);
-      sftp_free(sftp);
       delete[] buffer;
       return false;
     }
   }
   from.close();
   sftp_close(to);
-  sftp_free(sftp);
   delete[] buffer;
   END;
   return true;
@@ -501,7 +508,7 @@ bool SSHConnectionLibSSH::_copyFileFromServer(const QString & remotepath,
 {
   START;
   qDebug() << "copying" << remotepath << "to" << localpath;
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -514,7 +521,6 @@ bool SSHConnectionLibSSH::_copyFileFromServer(const QString & remotepath,
                              0);
   if(!from){
     qWarning() << "Error opening file " << remotepath << " for reading.";
-    sftp_free(sftp);
     return false;
   }
 
@@ -523,7 +529,6 @@ bool SSHConnectionLibSSH::_copyFileFromServer(const QString & remotepath,
   if (!to.is_open()) {
     qWarning() << "Error opening file " << localpath << " for writing.";
     sftp_close(from);
-    sftp_free(sftp);
     return false;
   }
 
@@ -537,14 +542,12 @@ bool SSHConnectionLibSSH::_copyFileFromServer(const QString & remotepath,
       qWarning() << "Error writing to " << localpath;
       to.close();
       sftp_close(from);
-      sftp_free(sftp);
       delete[] buffer;
       return false;
     }
   }
   to.close();
   sftp_close(from);
-  sftp_free(sftp);
   delete[] buffer;
   END;
   return true;
@@ -571,7 +574,7 @@ bool SSHConnectionLibSSH::_readRemoteFile(const QString &filename,
   START;
   qDebug() << "reading" << filename;
 
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -584,7 +587,6 @@ bool SSHConnectionLibSSH::_readRemoteFile(const QString &filename,
                              0);
   if(!from){
     qWarning() << "Error opening file " << filename << " for reading.";
-    sftp_free(sftp);
     return false;
   }
 
@@ -600,7 +602,6 @@ bool SSHConnectionLibSSH::_readRemoteFile(const QString &filename,
   }
   sftp_close(from);
   contents = QString(oss.str().c_str());
-  sftp_free(sftp);
   delete[] buffer;
   END;
   return true;
@@ -624,7 +625,7 @@ bool SSHConnectionLibSSH::_removeRemoteFile(const QString &filename)
 {
   START;
   qDebug() << "Removing remote file: " << filename;
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -634,11 +635,9 @@ bool SSHConnectionLibSSH::_removeRemoteFile(const QString &filename)
                   filename.toStdString().c_str())
       != 0) {
     qWarning() << "Error removing remote file " << filename;
-    sftp_free(sftp);
     return false;
   }
   END;
-  sftp_free(sftp);
   return true;
 }
 /// @endcond
@@ -680,7 +679,7 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString & local,
                                              QDir::Name);
   QStringList files = locdir.entryList(QDir::Files, QDir::Name);
 
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -700,7 +699,6 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString & local,
                                 remotepath + (*dir))) {
       qWarning() << "Error copying " << localpath + (*dir) << " to "
                  << remotepath + (*dir);
-      sftp_free(sftp);
       return false;
     }
   }
@@ -711,11 +709,9 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString & local,
                            remotepath + (*file))) {
       qWarning() << "Error copying " << localpath + (*file) << " to "
                  << remotepath + (*file);
-      sftp_free(sftp);
       return false;
     }
   }
-  sftp_free(sftp);
   END;
   return true;
 }
@@ -746,7 +742,7 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
 
   sftp_dir dir;
   sftp_attributes file;
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -757,7 +753,6 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
   if (!dir) {
     qWarning() << "Could not open remote directory " << remotepath
                << ":\n\t" << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
 
@@ -765,7 +760,6 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
   QDir locdir;
   if (!locdir.mkpath(localpath)) {
     qWarning() << "Could not create local directory " << localpath;
-    sftp_free(sftp);
     return false;
   }
 
@@ -781,7 +775,6 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
       if (!_copyDirectoryFromServer(remotepath + file->name,
                                     localpath + file->name)) {
         sftp_attributes_free(file);
-        sftp_free(sftp);
         return false;
       }
       break;
@@ -789,7 +782,6 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
       if (!_copyFileFromServer(remotepath + file->name,
                                localpath + file->name)) {
         sftp_attributes_free(file);
-        sftp_free(sftp);
         return false;
       }
       break;
@@ -801,11 +793,9 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
   if ( !sftp_dir_eof(dir) && sftp_closedir(dir) == SSH_ERROR ) {
     qWarning() << "Error copying \'" << remotepath << "\' to \'" << localpath
                << "\': " << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
   END;
-  sftp_free(sftp);
   return true;
 }
 /// @endcond
@@ -834,7 +824,7 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString & path,
   sftp_attributes file;
   contents.clear();
 
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -845,7 +835,6 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString & path,
   if (!dir) {
     qWarning() << "Could not open remote directory " << remotepath
                << ":\n\t" << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
 
@@ -862,7 +851,6 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString & path,
       if (!_readRemoteDirectoryContents(remotepath + file->name,
                                         tmp)) {
         sftp_attributes_free(file);
-        sftp_free(sftp);
         return false;
       }
       contents << tmp;
@@ -878,11 +866,9 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString & path,
   if ( !sftp_dir_eof(dir) && sftp_closedir(dir) == SSH_ERROR ) {
     qWarning() << "Error reading contents of \'" << remotepath
                << "\': " << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
   END;
-  sftp_free(sftp);
   return true;
 }
 /// @endcond
@@ -912,7 +898,7 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString & path,
   sftp_attributes file;
   bool ok = true;
 
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -923,7 +909,6 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString & path,
   if (!dir) {
     qWarning() << "Could not open remote directory " << remotepath
                << ":\n\t" << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
 
@@ -956,13 +941,11 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString & path,
   if ( !sftp_dir_eof(dir) && sftp_closedir(dir) == SSH_ERROR ) {
     qWarning() << "Error reading contents of \'" << remotepath
                << "\': " << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
   if ( !ok ) {
     qWarning() << "Some files could not be removed from "
                << remotepath;
-    sftp_free(sftp);
     return false;
   }
 
@@ -973,11 +956,9 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString & path,
         == SSH_ERROR) {
       qWarning() << "Error removing remote directory " << remotepath
                  << ": " << ssh_get_error(m_session);
-      sftp_free(sftp);
       return false;
     }
   }
-  sftp_free(sftp);
   END;
   return true;
 }
