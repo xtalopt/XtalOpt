@@ -1811,6 +1811,13 @@ namespace XtalOpt {
       return false;
     }
 
+    // Sometimes, all the atom positions are set to 'nan' for an unknown reason
+    // Make sure that the position of the first atom is not nan
+    if (GS_IS_NAN_OR_INF(xtal->atoms().at(0)->pos()->x())) {
+      qDebug() << "Discarding structure -- contains 'nan' atom positions";
+      return false;
+    }
+
     // Check interatomic distances
     if (using_interatomicDistanceLimit) {
       int atom1, atom2;
