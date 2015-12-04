@@ -79,6 +79,7 @@ namespace XtalOpt {
       OP_Permustrain
     };
 
+    Xtal* spgInitXtal(uint generation, uint id, uint FU, uint spg);
     Xtal* generateRandomXtal(uint generation, uint id);
 
     //Identical to the previous generateRandomXtal except the number of formula units has been determined elsewhere

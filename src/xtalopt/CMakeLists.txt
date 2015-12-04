@@ -5,6 +5,7 @@ set( xtalopt_SRCS
      extension.cpp
      xtalopt.cpp
      genetic.cpp
+     spgInit/spgInit.cpp
      structures/xtal.cpp
      optimizers/xtaloptoptimizer.cpp
      optimizers/vasp.cpp
@@ -34,6 +35,11 @@ set( xtalopt_RCS xtalopt.qrc )
 process_plugin(xtalopt "${xtalopt_SRCS}" "${xtalopt_UIS}" "${xtalopt_RCS}")
 
 add_dependencies(xtalopt globalsearch XtalComp spglib)
+
+# Use the C++11 standards
+if(UNIX)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++0x -Wno-sign-compare")
+endif()
 
 target_link_libraries( xtalopt
                        globalsearch

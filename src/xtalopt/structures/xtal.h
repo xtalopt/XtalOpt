@@ -157,6 +157,14 @@ namespace XtalOpt {
     bool isPrimitive(const double cartTol = 0.05);
     bool reduceToPrimitive(const double cartTol = 0.05);
 
+    QList<QString> currentAtomicSymbols();
+    inline void updateMolecule(const QList<QString> &ids,
+                               const QList<Eigen::Vector3d> &coords);
+    void setCurrentFractionalCoords(const QList<QString> &ids,
+                                    const QList<Eigen::Vector3d> &fcoords);
+    void fillUnitCell(uint spg, double cartTol = 0.05);
+    void reduceToAsymmetricUnit(double cartTol = 0.05);
+
     bool operator==(const Xtal &other) const;
     bool operator!=(const Xtal &other) const {return !operator==(other);};
 

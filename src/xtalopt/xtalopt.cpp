@@ -458,19 +458,110 @@ namespace XtalOpt {
     return static_cast<Structure*>(oldXtal);
   }
 
+  Xtal* XtalOpt::spgInitXtal(uint generation, uint id, uint FU, uint spg)
+  {
+    INIT_RANDOM_GENERATOR();
+
+    Xtal* xtal = NULL;
+    while (!checkXtal(xtal)) {
+      qDebug() << "Check failed!";
+      if (xtal) {
+        qDebug() << "Deleting xtal!";
+        delete xtal;
+        qDebug() << "xtal deleted!";
+        xtal = 0;
+      }
+
+      // Set cell parameters
+      double a            = RANDDOUBLE() * (a_max-a_min) + a_min;
+      double b            = RANDDOUBLE() * (b_max-b_min) + b_min;
+      double c            = RANDDOUBLE() * (c_max-c_min) + c_min;
+      double alpha        = 90.0; //RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
+      double beta         = 90.0; //RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
+      double gamma        = 90.0; //RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
+
+      // Create crystal
+      xtal = new Xtal(a, b, c, alpha, beta, gamma);
+      QWriteLocker locker (xtal->lock());
+
+      xtal->setStatus(Xtal::Empty);
+
+      if (using_fixed_volume)
+        xtal->setVolume(vol_fixed * FU);
+
+      // Populate crystal
+      QList<uint> atomicNums = comp.keys();
+      // Sort atomic number by decreasing minimum radius. Adding the "larger"
+      // atoms first encourages a more even (and ordered) distribution
+      for (int i = 0; i < atomicNums.size()-1; ++i) {
+        for (int j = i + 1; j < atomicNums.size(); ++j) {
+          if (this->comp.value(atomicNums[i]).minRadius <
+              this->comp.value(atomicNums[j]).minRadius) {
+            atomicNums.swap(i,j);
+          }
+        }
+      }
+
+      unsigned int atomicNum;
+      unsigned int q;
+
+      atomicNum = atomicNums.at(0);
+      QList<Eigen::Vector3d> fracCoords;
+      fracCoords.append(Eigen::Vector3d(0, 0, 0));
+      fracCoords.append(Eigen::Vector3d(0, 0, 0.5));
+      fracCoords.append(Eigen::Vector3d(RANDDOUBLE(), 0.25, RANDDOUBLE()));
+      fracCoords.append(Eigen::Vector3d(RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE()));
+      for (size_t i = 0; i < fracCoords.size(); i++) {
+        Atom* newAtom = xtal->addAtom();
+        newAtom->setAtomicNumber(atomicNum);
+        newAtom->setPos(xtal->fracToCart(fracCoords.at(i)));
+      }
+
+      xtal->fillUnitCell(spg);
+      if (xtal->getSpaceGroupNumber() != spg) {
+        xtal->setCellInfo(0,0,0,0,0,0);
+        continue;
+      }
+  /*
+      for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+        atomicNum = atomicNums.at(num_idx);
+        q = comp.value(atomicNum).quantity * FU;
+        for (uint i = 0; i < q; i++) {
+          if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+            xtal->deleteLater();
+            debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                  "specified interatomic distance.");
+            return 0;
+          }
+        }
+      }
+  */
+      // Set up geneology info
+      xtal->setGeneration(generation);
+      xtal->setIDNumber(id);
+      xtal->setParents("pnma!");
+      xtal->setFormulaUnits(FU);
+      xtal->setStatus(Xtal::WaitingForOptimization);
+    }
+    // Set up xtal data
+    return xtal;
+  }
+
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
   {
+    return spgInitXtal(generation, id, FU, 62);
+
     INIT_RANDOM_GENERATOR();
 
     static_cast<double>(FU);
 
-   // Set cell parameters
+    // Set cell parameters
     double a            = RANDDOUBLE() * (a_max-a_min) + a_min;
     double b            = RANDDOUBLE() * (b_max-b_min) + b_min;
     double c            = RANDDOUBLE() * (c_max-c_min) + c_min;
-    double alpha        = RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
-    double beta         = RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
-    double gamma        = RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
+    double alpha        = 90.0; //RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
+    double beta         = 90.0; //RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
+    double gamma        = 90.0; //RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
 
     // Create crystal
     Xtal *xtal	= new Xtal(a, b, c, alpha, beta, gamma);
@@ -1705,6 +1796,7 @@ namespace XtalOpt {
     // Check counts. Adjust for formula units.
     for (int i = 0; i < atomTypes.size(); ++i) {
       if (atomCounts[i] != comp[atomTypes[i]].quantity * xtal->getFormulaUnits()) { //PSA
+        qDebug() << "atomCounts[i] is" << QString::number(atomCounts[i]);
         // Incorrect count:
         qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
         if (err != NULL) {
