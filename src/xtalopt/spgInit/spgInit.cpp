@@ -1520,8 +1520,8 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
 
   { // 143
     wyckInfo{'a',1,"0,0,z"},
-    wyckInfo{'b',1,"1/3,2/3,z"},
-    wyckInfo{'c',1,"2/3,1/3,z"},
+    wyckInfo{'b',1,"0.333333,0.666667,z"},
+    wyckInfo{'c',1,"0.666667,0.333333,z"},
     wyckInfo{'d',3,"x,y,z"}
   },
 
@@ -1542,7 +1542,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0,0.5"},
     wyckInfo{'c',2,"0,0,z"},
-    wyckInfo{'d',2,"1/3,2/3,z"},
+    wyckInfo{'d',2,"0.333333,0.666667,z"},
     wyckInfo{'e',3,"0.5,0,0"},
     wyckInfo{'f',3,"0.5,0,0.5"},
     wyckInfo{'g',6,"x,y,z"}
@@ -1560,13 +1560,13 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 149
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0,0.5"},
-    wyckInfo{'c',1,"1/3,2/3,0"},
-    wyckInfo{'d',1,"1/3,2/3,0.5"},
-    wyckInfo{'e',1,"2/3,1/3,0"},
-    wyckInfo{'f',1,"2/3,1/3,0.5"},
+    wyckInfo{'c',1,"0.333333,0.666667,0"},
+    wyckInfo{'d',1,"0.333333,0.666667,0.5"},
+    wyckInfo{'e',1,"0.666667,0.333333,0"},
+    wyckInfo{'f',1,"0.666667,0.333333,0.5"},
     wyckInfo{'g',2,"0,0,z"},
-    wyckInfo{'h',2,"1/3,2/3,z"},
-    wyckInfo{'i',2,"2/3,1/3,z"},
+    wyckInfo{'h',2,"0.333333,0.666667,z"},
+    wyckInfo{'i',2,"0.666667,0.333333,z"},
     wyckInfo{'j',3,"x,-x,0"},
     wyckInfo{'k',3,"x,-x,0.5"},
     wyckInfo{'l',6,"x,y,z"}
@@ -1576,33 +1576,33 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0,0.5"},
     wyckInfo{'c',2,"0,0,z"},
-    wyckInfo{'d',2,"1/3,2/3,z"},
+    wyckInfo{'d',2,"0.333333,0.666667,z"},
     wyckInfo{'e',3,"x,0,0"},
     wyckInfo{'f',3,"x,0,0.5"},
     wyckInfo{'g',6,"x,y,z"}
   },
 
   { // 151
-    wyckInfo{'a',3,"x,-x,1/3"},
-    wyckInfo{'b',3,"x,-x,5/6"},
+    wyckInfo{'a',3,"x,-x,0.333333"},
+    wyckInfo{'b',3,"x,-x,0.833333"},
     wyckInfo{'c',6,"x,y,z"}
   },
 
   { // 152
-    wyckInfo{'a',3,"x,0,1/3"},
-    wyckInfo{'b',3,"x,0,5/6"},
+    wyckInfo{'a',3,"x,0,0.333333"},
+    wyckInfo{'b',3,"x,0,0.833333"},
     wyckInfo{'c',6,"x,y,z"}
   },
 
   { // 153
-    wyckInfo{'a',3,"x,-x,2/3"},
-    wyckInfo{'b',3,"x,-x,1/6"},
+    wyckInfo{'a',3,"x,-x,0.666667"},
+    wyckInfo{'b',3,"x,-x,0.166667"},
     wyckInfo{'c',6,"x,y,z"}
   },
 
   { // 154
-    wyckInfo{'a',3,"x,0,2/3"},
-    wyckInfo{'b',3,"x,0,1/6"},
+    wyckInfo{'a',3,"x,0,0.666667"},
+    wyckInfo{'b',3,"x,0,0.166667"},
     wyckInfo{'c',6,"x,y,z"}
   },
 
@@ -1617,29 +1617,29 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
 
   { // 156
     wyckInfo{'a',1,"0,0,z"},
-    wyckInfo{'b',1,"1/3,2/3,z"},
-    wyckInfo{'c',1,"2/3,1/3,z"},
+    wyckInfo{'b',1,"0.333333,0.666667,z"},
+    wyckInfo{'c',1,"0.666667,0.333333,z"},
     wyckInfo{'d',3,"x,-x,z"},
     wyckInfo{'e',6,"x,y,z"}
   },
 
   { // 157
     wyckInfo{'a',1,"0,0,z"},
-    wyckInfo{'b',2,"1/3,2/3,z"},
+    wyckInfo{'b',2,"0.333333,0.666667,z"},
     wyckInfo{'c',3,"x,0,z"},
     wyckInfo{'d',6,"x,y,z"}
   },
 
   { // 158
     wyckInfo{'a',2,"0,0,z"},
-    wyckInfo{'b',2,"1/3,2/3,z"},
-    wyckInfo{'c',2,"2/3,1/3,z"},
+    wyckInfo{'b',2,"0.333333,0.666667,z"},
+    wyckInfo{'c',2,"0.666667,0.333333,z"},
     wyckInfo{'d',6,"x,y,z"}
   },
 
   { // 159
     wyckInfo{'a',2,"0,0,z"},
-    wyckInfo{'b',2,"1/3,2/3,z"},
+    wyckInfo{'b',2,"0.333333,0.666667,z"},
     wyckInfo{'c',6,"x,y,z"}
   },
 
@@ -1657,12 +1657,12 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 162
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0,0.5"},
-    wyckInfo{'c',2,"1/3,2/3,0"},
-    wyckInfo{'d',2,"1/3,2/3,0.5"},
+    wyckInfo{'c',2,"0.333333,0.666667,0"},
+    wyckInfo{'d',2,"0.333333,0.666667,0.5"},
     wyckInfo{'e',2,"0,0,z"},
     wyckInfo{'f',3,"0.5,0,0"},
     wyckInfo{'g',3,"0.5,0,0.5"},
-    wyckInfo{'h',4,"1/3,2/3,z"},
+    wyckInfo{'h',4,"0.333333,0.666667,z"},
     wyckInfo{'i',6,"x,-x,0"},
     wyckInfo{'j',6,"x,-x,0.5"},
     wyckInfo{'k',6,"x,0,z"},
@@ -1672,10 +1672,10 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 163
     wyckInfo{'a',2,"0,0,0.25"},
     wyckInfo{'b',2,"0,0,0"},
-    wyckInfo{'c',2,"1/3,2/3,0.25"},
-    wyckInfo{'d',2,"2/3,1/3,0.25"},
+    wyckInfo{'c',2,"0.333333,0.666667,0.25"},
+    wyckInfo{'d',2,"0.666667,0.333333,0.25"},
     wyckInfo{'e',4,"0,0,z"},
-    wyckInfo{'f',4,"1/3,2/3,z"},
+    wyckInfo{'f',4,"0.333333,0.666667,z"},
     wyckInfo{'g',6,"0.5,0,0"},
     wyckInfo{'h',6,"x,-x,0.25"},
     wyckInfo{'i',12,"x,y,z"}
@@ -1685,7 +1685,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0,0.5"},
     wyckInfo{'c',2,"0,0,z"},
-    wyckInfo{'d',2,"1/3,2/3,z"},
+    wyckInfo{'d',2,"0.333333,0.666667,z"},
     wyckInfo{'e',3,"0.5,0,0"},
     wyckInfo{'f',3,"0.5,0,0.5"},
     wyckInfo{'g',6,"x,0,0"},
@@ -1698,7 +1698,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'a',2,"0,0,0.25"},
     wyckInfo{'b',2,"0,0,0"},
     wyckInfo{'c',4,"0,0,z"},
-    wyckInfo{'d',4,"1/3,2/3,z"},
+    wyckInfo{'d',4,"0.333333,0.666667,z"},
     wyckInfo{'e',6,"0.5,0,0"},
     wyckInfo{'f',6,"x,0,0.25"},
     wyckInfo{'g',12,"x,y,z"}
@@ -1727,7 +1727,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
 
   { // 168
     wyckInfo{'a',1,"0,0,z"},
-    wyckInfo{'b',2,"1/3,2/3,z"},
+    wyckInfo{'b',2,"0.333333,0.666667,z"},
     wyckInfo{'c',3,"0.5,0,z"},
     wyckInfo{'d',6,"x,y,z"}
   },
@@ -1754,20 +1754,20 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
 
   { // 173
     wyckInfo{'a',2,"0,0,z"},
-    wyckInfo{'b',2,"1/3,2/3,z"},
+    wyckInfo{'b',2,"0.333333,0.666667,z"},
     wyckInfo{'c',6,"x,y,z"}
   },
 
   { // 174
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0,0.5"},
-    wyckInfo{'c',1,"1/3,2/3,0"},
-    wyckInfo{'d',1,"1/3,2/3,0.5"},
-    wyckInfo{'e',1,"2/3,1/3,0"},
-    wyckInfo{'f',1,"2/3,1/3,0.5"},
+    wyckInfo{'c',1,"0.333333,0.666667,0"},
+    wyckInfo{'d',1,"0.333333,0.666667,0.5"},
+    wyckInfo{'e',1,"0.666667,0.333333,0"},
+    wyckInfo{'f',1,"0.666667,0.333333,0.5"},
     wyckInfo{'g',2,"0,0,z"},
-    wyckInfo{'h',2,"1/3,2/3,z"},
-    wyckInfo{'i',2,"2/3,1/3,z"},
+    wyckInfo{'h',2,"0.333333,0.666667,z"},
+    wyckInfo{'i',2,"0.666667,0.333333,z"},
     wyckInfo{'j',3,"x,y,0"},
     wyckInfo{'k',3,"x,y,0.5"},
     wyckInfo{'l',6,"x,y,z"}
@@ -1776,12 +1776,12 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 175
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0,0.5"},
-    wyckInfo{'c',2,"1/3,2/3,0"},
-    wyckInfo{'d',2,"1/3,2/3,0.5"},
+    wyckInfo{'c',2,"0.333333,0.666667,0"},
+    wyckInfo{'d',2,"0.333333,0.666667,0.5"},
     wyckInfo{'e',2,"0,0,z"},
     wyckInfo{'f',3,"0.5,0,0"},
     wyckInfo{'g',3,"0.5,0,0.5"},
-    wyckInfo{'h',4,"1/3,2/3,z"},
+    wyckInfo{'h',4,"0.333333,0.666667,z"},
     wyckInfo{'i',6,"0.5,0,z"},
     wyckInfo{'j',6,"x,y,0"},
     wyckInfo{'k',6,"x,y,0.5"},
@@ -1791,10 +1791,10 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 176
     wyckInfo{'a',2,"0,0,0.25"},
     wyckInfo{'b',2,"0,0,0"},
-    wyckInfo{'c',2,"1/3,2/3,0.25"},
-    wyckInfo{'d',2,"2/3,1/3,0.25"},
+    wyckInfo{'c',2,"0.333333,0.666667,0.25"},
+    wyckInfo{'d',2,"0.666667,0.333333,0.25"},
     wyckInfo{'e',4,"0,0,z"},
-    wyckInfo{'f',4,"1/3,2/3,z"},
+    wyckInfo{'f',4,"0.333333,0.666667,z"},
     wyckInfo{'g',6,"0.5,0,0"},
     wyckInfo{'h',6,"x,y,0.25"},
     wyckInfo{'i',12,"x,y,z"}
@@ -1803,12 +1803,12 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 177
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0,0.5"},
-    wyckInfo{'c',2,"1/3,2/3,0"},
-    wyckInfo{'d',2,"1/3,2/3,0.5"},
+    wyckInfo{'c',2,"0.333333,0.666667,0"},
+    wyckInfo{'d',2,"0.333333,0.666667,0.5"},
     wyckInfo{'e',2,"0,0,z"},
     wyckInfo{'f',3,"0.5,0,0"},
     wyckInfo{'g',3,"0.5,0,0.5"},
-    wyckInfo{'h',4,"1/3,2/3,z"},
+    wyckInfo{'h',4,"0.333333,0.666667,z"},
     wyckInfo{'i',6,"0.5,0,z"},
     wyckInfo{'j',6,"x,0,0"},
     wyckInfo{'k',6,"x,0,0.5"},
@@ -1860,10 +1860,10 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 182
     wyckInfo{'a',2,"0,0,0"},
     wyckInfo{'b',2,"0,0,0.25"},
-    wyckInfo{'c',2,"1/3,2/3,0.25"},
-    wyckInfo{'d',2,"1/3,2/3,0.75"},
+    wyckInfo{'c',2,"0.333333,0.666667,0.25"},
+    wyckInfo{'d',2,"0.333333,0.666667,0.75"},
     wyckInfo{'e',4,"0,0,z"},
-    wyckInfo{'f',4,"1/3,2/3,z"},
+    wyckInfo{'f',4,"0.333333,0.666667,z"},
     wyckInfo{'g',6,"x,0,0"},
     wyckInfo{'h',6,"x,2x,0.25"},
     wyckInfo{'i',12,"x,y,z"}
@@ -1871,7 +1871,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
 
   { // 183
     wyckInfo{'a',1,"0,0,z"},
-    wyckInfo{'b',2,"1/3,2/3,z"},
+    wyckInfo{'b',2,"0.333333,0.666667,z"},
     wyckInfo{'c',3,"0.5,0,z"},
     wyckInfo{'d',6,"x,0,z"},
     wyckInfo{'e',6,"x,-x,z"},
@@ -1880,21 +1880,21 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
 
   { // 184
     wyckInfo{'a',2,"0,0,z"},
-    wyckInfo{'b',4,"1/3,2/3,z"},
+    wyckInfo{'b',4,"0.333333,0.666667,z"},
     wyckInfo{'c',6,"0.5,0,z"},
     wyckInfo{'d',12,"x,y,z"}
   },
 
   { // 185
     wyckInfo{'a',2,"0,0,z"},
-    wyckInfo{'b',4,"1/3,2/3,z"},
+    wyckInfo{'b',4,"0.333333,0.666667,z"},
     wyckInfo{'c',6,"x,0,z"},
     wyckInfo{'d',12,"x,y,z"}
   },
 
   { // 186
     wyckInfo{'a',2,"0,0,z"},
-    wyckInfo{'b',2,"1/3,2/3,z"},
+    wyckInfo{'b',2,"0.333333,0.666667,z"},
     wyckInfo{'c',6,"x,-x,z"},
     wyckInfo{'d',12,"x,y,z"}
   },
@@ -1902,13 +1902,13 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 187
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0,0.5"},
-    wyckInfo{'c',1,"1/3,2/3,0"},
-    wyckInfo{'d',1,"1/3,2/3,0.5"},
-    wyckInfo{'e',1,"2/3,1/3,0"},
-    wyckInfo{'f',1,"2/3,1/3,0.5"},
+    wyckInfo{'c',1,"0.333333,0.666667,0"},
+    wyckInfo{'d',1,"0.333333,0.666667,0.5"},
+    wyckInfo{'e',1,"0.666667,0.333333,0"},
+    wyckInfo{'f',1,"0.666667,0.333333,0.5"},
     wyckInfo{'g',2,"0,0,z"},
-    wyckInfo{'h',2,"1/3,2/3,z"},
-    wyckInfo{'i',2,"2/3,1/3,z"},
+    wyckInfo{'h',2,"0.333333,0.666667,z"},
+    wyckInfo{'i',2,"0.666667,0.333333,z"},
     wyckInfo{'j',3,"x,-x,0"},
     wyckInfo{'k',3,"x,-x,0.5"},
     wyckInfo{'l',6,"x,y,0"},
@@ -1920,13 +1920,13 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 188
     wyckInfo{'a',2,"0,0,0"},
     wyckInfo{'b',2,"0,0,0.25"},
-    wyckInfo{'c',2,"1/3,2/3,0"},
-    wyckInfo{'d',2,"1/3,2/3,0.25"},
-    wyckInfo{'e',2,"2/3,1/3,0"},
-    wyckInfo{'f',2,"2/3,1/3,0.25"},
+    wyckInfo{'c',2,"0.333333,0.666667,0"},
+    wyckInfo{'d',2,"0.333333,0.666667,0.25"},
+    wyckInfo{'e',2,"0.666667,0.333333,0"},
+    wyckInfo{'f',2,"0.666667,0.333333,0.25"},
     wyckInfo{'g',4,"0,0,z"},
-    wyckInfo{'h',4,"1/3,2/3,z"},
-    wyckInfo{'i',4,"2/3,1/3,z"},
+    wyckInfo{'h',4,"0.333333,0.666667,z"},
+    wyckInfo{'i',4,"0.666667,0.333333,z"},
     wyckInfo{'j',6,"x,-x,0"},
     wyckInfo{'k',6,"x,y,0.25"},
     wyckInfo{'l',12,"x,y,z"}
@@ -1935,12 +1935,12 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 189
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0,0.5"},
-    wyckInfo{'c',2,"1/3,2/3,0"},
-    wyckInfo{'d',2,"1/3,2/3,0.5"},
+    wyckInfo{'c',2,"0.333333,0.666667,0"},
+    wyckInfo{'d',2,"0.333333,0.666667,0.5"},
     wyckInfo{'e',2,"0,0,z"},
     wyckInfo{'f',3,"x,0,0"},
     wyckInfo{'g',3,"x,0,0.5"},
-    wyckInfo{'h',4,"1/3,2/3,z"},
+    wyckInfo{'h',4,"0.333333,0.666667,z"},
     wyckInfo{'i',6,"x,0,z"},
     wyckInfo{'j',6,"x,y,0"},
     wyckInfo{'k',6,"x,y,0.5"},
@@ -1950,10 +1950,10 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 190
     wyckInfo{'a',2,"0,0,0"},
     wyckInfo{'b',2,"0,0,0.25"},
-    wyckInfo{'c',2,"1/3,2/3,0.25"},
-    wyckInfo{'d',2,"2/3,1/3,0.25"},
+    wyckInfo{'c',2,"0.333333,0.666667,0.25"},
+    wyckInfo{'d',2,"0.666667,0.333333,0.25"},
     wyckInfo{'e',4,"0,0,z"},
-    wyckInfo{'f',4,"1/3,2/3,z"},
+    wyckInfo{'f',4,"0.333333,0.666667,z"},
     wyckInfo{'g',6,"x,0,0"},
     wyckInfo{'h',6,"x,y,0.25"},
     wyckInfo{'i',12,"x,y,z"}
@@ -1962,12 +1962,12 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 191
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0,0.5"},
-    wyckInfo{'c',2,"1/3,2/3,0"},
-    wyckInfo{'d',2,"1/3,2/3,0.5"},
+    wyckInfo{'c',2,"0.333333,0.666667,0"},
+    wyckInfo{'d',2,"0.333333,0.666667,0.5"},
     wyckInfo{'e',2,"0,0,z"},
     wyckInfo{'f',3,"0.5,0,0"},
     wyckInfo{'g',3,"0.5,0,0.5"},
-    wyckInfo{'h',4,"1/3,2/3,z"},
+    wyckInfo{'h',4,"0.333333,0.666667,z"},
     wyckInfo{'i',6,"0.5,0,z"},
     wyckInfo{'j',6,"x,0,0"},
     wyckInfo{'k',6,"x,0,0.5"},
@@ -1983,12 +1983,12 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 192
     wyckInfo{'a',2,"0,0,0.25"},
     wyckInfo{'b',2,"0,0,0"},
-    wyckInfo{'c',4,"1/3,2/3,0.25"},
-    wyckInfo{'d',4,"1/3,2/3,0"},
+    wyckInfo{'c',4,"0.333333,0.666667,0.25"},
+    wyckInfo{'d',4,"0.333333,0.666667,0"},
     wyckInfo{'e',4,"0,0,z"},
     wyckInfo{'f',6,"0.5,0,0.25"},
     wyckInfo{'g',6,"0.5,0,0"},
-    wyckInfo{'h',8,"1/3,2/3,z"},
+    wyckInfo{'h',8,"0.333333,0.666667,z"},
     wyckInfo{'i',12,"0.5,0,z"},
     wyckInfo{'j',12,"x,0,0.25"},
     wyckInfo{'k',12,"x,2x,0.25"},
@@ -1999,12 +1999,12 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 193
     wyckInfo{'a',2,"0,0,0.25"},
     wyckInfo{'b',2,"0,0,0"},
-    wyckInfo{'c',4,"1/3,2/3,0.25"},
-    wyckInfo{'d',4,"1/3,2/3,0"},
+    wyckInfo{'c',4,"0.333333,0.666667,0.25"},
+    wyckInfo{'d',4,"0.333333,0.666667,0"},
     wyckInfo{'e',4,"0,0,z"},
     wyckInfo{'f',6,"0.5,0,0"},
     wyckInfo{'g',6,"x,0,0.25"},
-    wyckInfo{'h',8,"1/3,2/3,z"},
+    wyckInfo{'h',8,"0.333333,0.666667,z"},
     wyckInfo{'i',12,"x,2x,0"},
     wyckInfo{'j',12,"x,y,0.25"},
     wyckInfo{'k',12,"x,0,z"},
@@ -2014,10 +2014,10 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
   { // 194
     wyckInfo{'a',2,"0,0,0"},
     wyckInfo{'b',2,"0,0,0.25"},
-    wyckInfo{'c',2,"1/3,2/3,0.25"},
-    wyckInfo{'d',2,"1/3,2/3,0.75"},
+    wyckInfo{'c',2,"0.333333,0.666667,0.25"},
+    wyckInfo{'d',2,"0.333333,0.666667,0.75"},
     wyckInfo{'e',4,"0,0,z"},
-    wyckInfo{'f',4,"1/3,2/3,z"},
+    wyckInfo{'f',4,"0.333333,0.666667,z"},
     wyckInfo{'g',6,"0.5,0,0"},
     wyckInfo{'h',6,"x,2x,0.25"},
     wyckInfo{'i',12,"x,0,0"},
