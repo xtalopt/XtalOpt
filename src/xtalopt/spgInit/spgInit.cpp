@@ -15,6 +15,9 @@ using namespace std;
 // This list was obtained by parsing html files at
 // http://www.cryst.ehu.es/cgi-bin/cryst/programs/nph-table?from=getwp
 // on 12/04/15
+
+// For spacegroups with an origin choice, origin choices are all 2
+// For spacegroups with rhombohedral vs. hexagonal, all are hexagonal
 static const vector<wyckoffPositions> wyckoffPositionsDatabase
 {
   { // 0. Not a real space group...
@@ -49,32 +52,32 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'a',2,"x,y,z"}
   },
 
-  { // 5
+  { // 5 - unique axis b
     wyckInfo{'a',2,"0,y,0"},
     wyckInfo{'b',2,"0,y,0.5"},
     wyckInfo{'c',4,"x,y,z"}
   },
 
-  { // 6
+  { // 6 - unique axis b
     wyckInfo{'a',1,"x,0,z"},
     wyckInfo{'b',1,"x,0.5,z"},
     wyckInfo{'c',2,"x,y,z"}
   },
 
-  { // 7
+  { // 7 - unique axis b
     wyckInfo{'a',2,"x,y,z"}
   },
 
-  { // 8
+  { // 8 - unique axis b
     wyckInfo{'a',2,"x,0,z"},
     wyckInfo{'b',4,"x,y,z"}
   },
 
-  { // 9
+  { // 9 - unique axis b
     wyckInfo{'a',4,"x,y,z"}
   },
 
-  { // 10
+  { // 10 - unique axis b
     wyckInfo{'a',1,"0,0,0"},
     wyckInfo{'b',1,"0,0.5,0"},
     wyckInfo{'c',1,"0,0,0.5"},
@@ -92,7 +95,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'o',4,"x,y,z"}
   },
 
-  { // 11
+  { // 11 - unique axis b
     wyckInfo{'a',2,"0,0,0"},
     wyckInfo{'b',2,"0.5,0,0"},
     wyckInfo{'c',2,"0,0,0.5"},
@@ -101,7 +104,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'f',4,"x,y,z"}
   },
 
-  { // 12
+  { // 12 - unique axis b
     wyckInfo{'a',2,"0,0,0"},
     wyckInfo{'b',2,"0,0.5,0"},
     wyckInfo{'c',2,"0,0,0.5"},
@@ -114,7 +117,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'j',8,"x,y,z"}
   },
 
-  { // 13
+  { // 13 - unique axis b
     wyckInfo{'a',2,"0,0,0"},
     wyckInfo{'b',2,"0.5,0.5,0"},
     wyckInfo{'c',2,"0,0.5,0"},
@@ -124,7 +127,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'g',4,"x,y,z"}
   },
 
-  { // 14
+  { // 14 - unique axis b
     wyckInfo{'a',2,"0,0,0"},
     wyckInfo{'b',2,"0.5,0,0"},
     wyckInfo{'c',2,"0,0,0.5"},
@@ -132,7 +135,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'e',4,"x,y,z"}
   },
 
-  { // 15
+  { // 15 - unique axis b
     wyckInfo{'a',4,"0,0,0"},
     wyckInfo{'b',4,"0,0.5,0"},
     wyckInfo{'c',4,"0.25,0.25,0"},
@@ -2473,7 +2476,8 @@ inline vector<uint> SpgInit::getNumOfEachType(vector<uint> atomTypes)
     numOfEachType.push_back(size);
     atomsAlreadyCounted.push_back(atomTypes.at(i));
   }
-  sort(numOfEachType.begin(), numOfEachType.end());
+  // Sort from largest to smallest
+  sort(numOfEachType.begin(), numOfEachType.end(), greater<uint>());
   return numOfEachType;
 }
 
@@ -2494,7 +2498,7 @@ static inline vector<string> split(const string& s, char delim)
 static inline bool isNumber(const string& s)
 {
   std::string::const_iterator it = s.begin();
-  while (it != s.end() && (isdigit(*it) || *it == '-')) ++it;
+  while (it != s.end() && (isdigit(*it) || *it == '-' || *it == '.')) ++it;
   return !s.empty() && it == s.end();
 }
 
@@ -2510,7 +2514,7 @@ inline bool SpgInit::containsUniquePosition(wyckInfo& info)
 
 vector<pair<uint, bool> > SpgInit::getMultiplicityVector(wyckoffPositions& pos)
 {
-  std::vector<pair<uint, bool> > multiplicityVector;
+  vector<pair<uint, bool> > multiplicityVector;
   multiplicityVector.reserve(pos.size());
   for (size_t i = 0; i < pos.size(); i++)
     multiplicityVector.push_back(make_pair(get<1>(pos.at(i)), containsUniquePosition(pos.at(i))));
@@ -2519,13 +2523,13 @@ vector<pair<uint, bool> > SpgInit::getMultiplicityVector(wyckoffPositions& pos)
 
 static bool everyoneFoundAHome(vector<uint> numOfEachType, wyckoffPositions pos)
 {
-  // The "uint" is the multiplicity and the "bool" is whether it is unique or not
+  // The "uint" is the multiplicity and the "bool" is whether it's unique or not
   vector<pair<uint, bool> > multiplicityVector = SpgInit::getMultiplicityVector(pos);
 
 #ifdef SPGINIT_DEBUG
-  cout << "multiplicity vector is:\n";
+  cout << "multiplicity vector is <multiplicity> <unique?>:\n";
   for (size_t i = 0; i < multiplicityVector.size(); i++)
-    cout << multiplicityVector.at(i).first << "\n";
+    cout << multiplicityVector.at(i).first << " " << multiplicityVector.at(i).second << "\n";
 #endif
 
   // Keep track of which wyckoff positions have been used
@@ -2537,9 +2541,13 @@ static bool everyoneFoundAHome(vector<uint> numOfEachType, wyckoffPositions pos)
   // These are arranged from smallest to largest already
   for (size_t i = 0; i < numOfEachType.size(); i++) {
     bool foundAHome = false;
-    for (size_t j = 0; j < multiplicityVector.size(); j++) {
+    // Start with the highest wyckoff letter and work our way down
+    // This will put as many atoms as possible into the general positions
+    // while leaving unique positions for later
+    for (int j = multiplicityVector.size() - 1; j >= 0; j--) {
+      bool unique = multiplicityVector.at(j).second;
       // If it's not unique
-      if (!multiplicityVector.at(j).second &&
+      if (!unique &&
           // Then check to see if it CAN be used
           numOfEachType.at(i) % multiplicityVector.at(j).first == 0) {
         wyckoffPositionUsed[j] = true;
@@ -2547,16 +2555,16 @@ static bool everyoneFoundAHome(vector<uint> numOfEachType, wyckoffPositions pos)
         break;
       }
       // If it IS unique and hasn't been used
-      else if (multiplicityVector.at(j).second && !wyckoffPositionUsed.at(j) &&
+      else if (unique && !wyckoffPositionUsed.at(j) &&
                // Then check to see if they are equivalent
-               numOfEachType.at(j) == multiplicityVector.at(j).first) {
+               numOfEachType.at(i) == multiplicityVector.at(j).first) {
         wyckoffPositionUsed[j] = true;
         foundAHome = true;
         break;
       }
       // Finally, if it is unique and hasn't been used
-      else if (multiplicityVector.at(j).second && !wyckoffPositionUsed.at(j) &&
-               numOfEachType.at(j) % multiplicityVector.at(j).first == 0) {
+      else if (unique && !wyckoffPositionUsed.at(j) &&
+               numOfEachType.at(i) % multiplicityVector.at(j).first == 0) {
         // If it failed the prior test, then this must be a multiple and NOT
         // equivalent (i. e., 4 and 2). Since this is the case, just find a home
         // for the atoms that CAN fit and just proceed to find a home for the
@@ -2568,30 +2576,36 @@ static bool everyoneFoundAHome(vector<uint> numOfEachType, wyckoffPositions pos)
         break;
       }
     }
+#ifdef SPGINIT_DEBUG
+    cout << "wyckoffPositionUsed is:\n";
+    for (size_t i = 0; i < wyckoffPositionUsed.size(); i++)
+      cout << wyckoffPositionUsed[i] << "\n";
+#endif
     if (!foundAHome) return false;
   }
   // If we made it here without returning false, every atom type found a home
   return true;
 }
 
-inline bool SpgInit::isSpgPossible(uint spg, vector<uint> atomTypes)
+bool SpgInit::isSpgPossible(uint spg, vector<uint> atomTypes)
 {
 #ifdef SPGINIT_DEBUG
+  cout << __FUNCTION__ << " called!\n";
   cout << "atomTypes is:\n";
   for (size_t i = 0; i < atomTypes.size(); i++) cout << atomTypes[i] << "\n";
 #endif
+  if (spg < 1 || spg > 230) return false;
 
   wyckoffPositions pos = getWyckoffPositions(spg);
   size_t numAtoms = atomTypes.size();
   vector<uint> numOfEachType = getNumOfEachType(atomTypes);
 
 #ifdef SPGINIT_DEBUG
-  cout << "numAtoms is " << numAtoms;
+  cout << "numAtoms is " << numAtoms << "\n";
   cout << "numOfEachType is:\n";
   for (size_t i = 0; i < numOfEachType.size(); i++)
     cout << numOfEachType.at(i) << "\n";
 #endif
-
   if (!everyoneFoundAHome(numOfEachType, pos)) return false;
 
   return true;

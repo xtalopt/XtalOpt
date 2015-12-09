@@ -24,7 +24,7 @@ class SpgInit {
   static inline std::vector<std::pair<uint, bool> > getMultiplicityVector(wyckoffPositions& pos);
   static inline bool containsUniquePosition(wyckInfo& info);
   static inline std::vector<uint> getNumOfEachType(std::vector<uint> atomTypes);
-  static inline bool isSpgPossible(uint spg, std::vector<uint> atomTypes);
+  static bool isSpgPossible(uint spg, std::vector<uint> atomTypes);
 };
 
 #endif
