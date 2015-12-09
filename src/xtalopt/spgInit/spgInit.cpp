@@ -1,4 +1,9 @@
+
 #include <xtalopt/spgInit/spgInit.h>
+
+// For RANDDOUBLE()
+#include <globalsearch/macros.h>
+
 #include <tuple>
 #include <iostream>
 
@@ -40,7 +45,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'i',2,"x,y,z"}
   },
 
-  { // 3
+  { // 3 - unique axis b
     wyckInfo{'a',1,"0,y,0"},
     wyckInfo{'b',1,"0,y,0.5"},
     wyckInfo{'c',1,"0.5,y,0"},
@@ -48,7 +53,7 @@ static const vector<wyckoffPositions> wyckoffPositionsDatabase
     wyckInfo{'e',2,"x,y,z"}
   },
 
-  { // 4
+  { // 4 - unique axis b
     wyckInfo{'a',2,"x,y,z"}
   },
 
@@ -2495,6 +2500,7 @@ static inline vector<string> split(const string& s, char delim)
 
 // Basic check to see if a string is a number
 // Includes negative numbers
+// If it runs into an "x", "y", or "z", it should return false
 static inline bool isNumber(const string& s)
 {
   std::string::const_iterator it = s.begin();
@@ -2609,4 +2615,263 @@ bool SpgInit::isSpgPossible(uint spg, vector<uint> atomTypes)
   if (!everyoneFoundAHome(numOfEachType, pos)) return false;
 
   return true;
+}
+
+template <typename T>
+inline T getSmallest(T a, T b, T c)
+{
+  if (a <= b && a <= c) return a;
+  else if (b <= a && b <= c) return b;
+  else return c;
+}
+
+template <typename T>
+inline T getLargest(T a, T b, T c)
+{
+  if (a >= b && a >= c) return a;
+  else if (b >= a && b >= c) return b;
+  else return c;
+}
+
+inline double getRandDoubleInRange(double min, double max)
+{
+  // RANDDOUBLE() should generate a random double between 0 and 1
+  return RANDDOUBLE() * (max - min) + min;
+}
+
+latticeStruct SpgInit::generateLatticeForSpg(uint spg,
+                                             latticeStruct& mins,
+                                             latticeStruct& maxes)
+{
+  latticeStruct st;
+  if (spg < 1 || spg > 230) {
+    cout << "Error: " << __FUNCTION__ << " was called for a "
+         << "non-real spacegroup: " << spg << endl;
+    // latticeStruct is initialized to have all "0" values. So just return a
+    // "0" struct
+    return st;
+  }
+
+  // Triclinic!
+  else if (spg == 1 || spg == 2) {
+    // There aren't really any constraints on a triclinic system...
+    st.a     = getRandDoubleInRange(mins.a,     maxes.a);
+    st.b     = getRandDoubleInRange(mins.b,     maxes.b);
+    st.c     = getRandDoubleInRange(mins.c,     maxes.c);
+    st.alpha = getRandDoubleInRange(mins.alpha, maxes.alpha);
+    st.beta  = getRandDoubleInRange(mins.beta,  maxes.beta);
+    st.gamma = getRandDoubleInRange(mins.gamma, maxes.gamma);
+    return st;
+  }
+
+  // Monoclinic!
+  else if (3 <= spg && spg <= 15) {
+    // I am making beta unique here. This may or may not be the right angle
+    // to make unique for the wyckoff positions in the database...
+
+    // First make sure we can make alpha and gamma 90 degrees
+    if (mins.alpha > 90 || maxes.alpha < 90 ||
+        mins.gamma > 90 || maxes.gamma < 90) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains alpha and gamma to be 90 degrees. The "
+           << "input min and max values for the alpha and gamma do not allow "
+           << "this. Please change their min and max values.\n";
+      return st;
+    }
+
+    st.a     = getRandDoubleInRange(mins.a,     maxes.a);
+    st.b     = getRandDoubleInRange(mins.b,     maxes.b);
+    st.c     = getRandDoubleInRange(mins.c,     maxes.c);
+    st.alpha = st.gamma = 90.0;
+    st.beta  = getRandDoubleInRange(mins.beta,  maxes.beta);
+    return st;
+  }
+
+  // Orthorhombic!
+  else if (16 <= spg && spg <= 74) {
+    // For orthorhombic, all angles must be 90 degrees.
+    // Check to see if we can make 90 degree angles
+    if (mins.alpha > 90 || maxes.alpha < 90 ||
+        mins.beta  > 90 || maxes.beta  < 90 ||
+        mins.gamma > 90 || maxes.gamma < 90) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains all the angles to be 90 degrees. The "
+           << "input min and max values for the angles do not allow this. "
+           << "Please change their min and max values.\n";
+      return st;
+    }
+
+    st.a     = getRandDoubleInRange(mins.a,     maxes.a);
+    st.b     = getRandDoubleInRange(mins.b,     maxes.b);
+    st.c     = getRandDoubleInRange(mins.c,     maxes.c);
+    st.alpha = st.beta = st.gamma = 90.0;
+    return st;
+  }
+
+  // Tetragonal!
+  else if (75 <= spg && spg <= 142) {
+    // For tetragonal, all angles must be 90 degrees.
+    // Check to see if we can make 90 degree angles
+    if (mins.alpha > 90 || maxes.alpha < 90 ||
+        mins.beta  > 90 || maxes.beta  < 90 ||
+        mins.gamma > 90 || maxes.gamma < 90) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains all the angles to be 90 degrees. The "
+           << "input min and max values for the angles do not allow this. "
+           << "Please change their min and max values.\n";
+      return st;
+    }
+
+    // a and b need to be able to be the same number
+    // Find the larger min and smaller max of each
+    double largerMin = (mins.a > mins.b) ? mins.a : mins.b;
+    double smallerMax = (maxes.a < maxes.b) ? maxes.a : maxes.b;
+
+    if (largerMin > smallerMax) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains a and b to be equal. The "
+           << "input min and max values for a and b do not allow this. "
+           << "Please change their min and max values.\n";
+      return st;
+    }
+
+    st.a     = st.b = getRandDoubleInRange(largerMin, smallerMax);
+    st.c     = getRandDoubleInRange(mins.c, maxes.c);
+    st.alpha = st.beta = st.gamma = 90.0;
+    return st;
+  }
+
+  // Trigonal!
+  // TODO: we are assuming here that all trigonal crystals can be
+  // represented with hexagonal axes (and we are ignoring rhombohedral axes).
+  // Is this correct?
+  else if (143 <= spg && spg <= 167) {
+    // For trigonal, alpha and beta must be 90 degrees, and gamma must be 120
+    // Check to see if we can make these angles
+    if (mins.alpha > 90 || maxes.alpha < 90 ||
+        mins.beta  > 90 || maxes.beta  < 90) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains alpha and beta to be 90 degrees. The "
+           << "input min and max values for the angles do not allow this. "
+           << "Please change their min and max values.\n";
+      return st;
+    }
+
+    if (mins.gamma > 120 || maxes.gamma < 120) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains gamma to be 120 degrees. The "
+           << "input min and max values for gamma do not allow this. "
+           << "Please change the min and max values.\n";
+      return st;
+    }
+
+    // a and b need to be able to be the same number
+    // Find the larger min and smaller max of each
+    double largerMin = (mins.a > mins.b) ? mins.a : mins.b;
+    double smallerMax = (maxes.a < maxes.b) ? maxes.a : maxes.b;
+
+    if (largerMin > smallerMax) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains a and b to be equal. The "
+           << "input min and max values for a and b do not allow this. "
+           << "Please change their min and max values.\n";
+      return st;
+    }
+
+    st.a     = st.b = getRandDoubleInRange(largerMin, smallerMax);
+    st.c     = getRandDoubleInRange(mins.c, maxes.c);
+    st.alpha = st.beta = 90.0;
+    st.gamma = 120.0;
+    return st;
+  }
+
+  // Hexagonal!
+  // Note that this is identical to trigonal since in trigonal we are using
+  // hexagonal axes.
+  else if (168 <= spg && spg <= 194) {
+    // For hexagonal, alpha and beta must be 90 degrees, and gamma must be 120
+    // Check to see if we can make these angles
+    if (mins.alpha > 90 || maxes.alpha < 90 ||
+        mins.beta  > 90 || maxes.beta  < 90) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains alpha and beta to be 90 degrees. The "
+           << "input min and max values for the angles do not allow this. "
+           << "Please change their min and max values.\n";
+      return st;
+    }
+
+    if (mins.gamma > 120 || maxes.gamma < 120) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains gamma to be 120 degrees. The "
+           << "input min and max values for gamma do not allow this. "
+           << "Please change the min and max values.\n";
+      return st;
+    }
+
+    // a and b need to be able to be the same number
+    // Find the larger min and smaller max of each
+    double largerMin = (mins.a > mins.b) ? mins.a : mins.b;
+    double smallerMax = (maxes.a < maxes.b) ? maxes.a : maxes.b;
+
+    if (largerMin > smallerMax) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains a and b to be equal. The "
+           << "input min and max values for a and b do not allow this. "
+           << "Please change their min and max values.\n";
+      return st;
+    }
+
+    st.a     = st.b = getRandDoubleInRange(largerMin, smallerMax);
+    st.c     = getRandDoubleInRange(mins.c, maxes.c);
+    st.alpha = st.beta = 90.0;
+    st.gamma = 120.0;
+    return st;
+  }
+
+  // Cubic!
+  /*   ______
+      /     /|
+     /_____/ |
+     |     | |
+     |     | /
+     |_____|/
+  */
+  else if (spg >= 195) {
+    // We need to make sure that 90 degrees is an option and that a, b, and c
+    // can be equal. Otherwise, it is impossible to generate this lattice
+    if (mins.alpha > 90 || maxes.alpha < 90 ||
+        mins.beta  > 90 || maxes.beta  < 90 ||
+        mins.gamma > 90 || maxes.gamma < 90) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains all the angles to be 90 degrees. The "
+           << "input min and max values for the angles do not allow this. "
+           << "Please change their min and max values.\n";
+      return st;
+    }
+    // Can a, b, and c be equal?
+    // Find the greatest min value and the smallest max value
+    double largestMin = getLargest<double>(mins.a, mins.b, mins.c);
+    double smallestMax = getSmallest<double>(maxes.a, maxes.b, maxes.c);
+
+    // They can't be equal!
+    if (largestMin > smallestMax) {
+      cout << "Error: " << __FUNCTION__ << " was called for a spacegroup of "
+           << spg << " which constrains a, b, and c to be equal. The "
+           << "input min and max values for a, b, and c do not allow this. "
+           << "Please change their min and max values.\n";
+      return st;
+    }
+
+    // If we made it this far, we can set up the cell!
+    st.alpha = st.beta = st.gamma = 90.0;
+    st.a = st.b = st.c = getRandDoubleInRange(largestMin, smallestMax);
+
+    return st;
+  }
+
+  // We shouldn't get to this point because one of the if statements should have
+  // worked...
+  cout << "Error: " << __FUNCTION__ << " has a problem identifying spg " << spg
+       << "\n";
+  return st;
 }
