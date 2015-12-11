@@ -21,6 +21,8 @@
 #include <tuple>
 #include <utility>
 
+#include <xtalopt/structures/xtal.h>
+
 typedef struct {
   uint atomicNum;
   double x;
@@ -39,14 +41,14 @@ struct latticeStruct {
   latticeStruct() : a(0), b(0), c(0), alpha(0), beta(0), gamma(0) {}
 };
 
-// wyckInfo is a tuple of a char (representing the Wyckoff letter),
+// wyckPos is a tuple of a char (representing the Wyckoff letter),
 // an int (representing the multiplicity), and a string (that contains the first
 // Wyckoff position)
-typedef std::tuple<char, int, std::string> wyckInfo;
+typedef std::tuple<char, int, std::string> wyckPos;
 
 // Each spacegroup has a variable number of wyckoff positions. So each
 // spacegroup will have it's own vector of wyckoff positions.
-typedef std::vector<wyckInfo> wyckoffPositions;
+typedef std::vector<wyckPos> wyckoffPositions;
 
 class SpgInit {
  public:
@@ -100,6 +102,16 @@ class SpgInit {
   static latticeStruct generateLatticeForSpg(uint spg,
                                              const latticeStruct& mins,
                                              const latticeStruct& maxes);
+
+  static bool addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
+                                     uint atomicNum, double minIAD = -1,
+                                     int maxAttempts = 1000);
+
+  static XtalOpt::Xtal* spgInitXtal(uint spg,
+                                    const std::vector<uint>& atomTypes,
+                                    const latticeStruct& latticeMins,
+                                    const latticeStruct& latticeMaxes,
+                                    double minIAD, int maxAttempts);
 };
 
 #endif

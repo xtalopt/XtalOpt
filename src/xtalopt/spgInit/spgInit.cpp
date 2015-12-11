@@ -16,6 +16,9 @@
 #include <xtalopt/spgInit/spgInit.h>
 #include <xtalopt/spgInit/wyckoffDatabase.h>
 
+// For vector3
+#include <openbabel/generic.h>
+
 // For RANDDOUBLE()
 #include <globalsearch/macros.h>
 
@@ -27,6 +30,29 @@
 
 using namespace std;
 
+// Basic split of a string based upon a delimiter.
+static inline vector<string> split(const string& s, char delim)
+{
+  vector<string> elems;
+  stringstream ss(s);
+  string item;
+  while (getline(ss, item, delim)) {
+    elems.push_back(item);
+  }
+  return elems;
+}
+
+// Basic check to see if a string is a number
+// Includes negative numbers
+// If it runs into an "x", "y", or "z", it should return false
+static inline bool isNumber(const string& s)
+{
+  std::string::const_iterator it = s.begin();
+  while (it != s.end() && (isdigit(*it) || *it == '-' || *it == '.')) ++it;
+  return !s.empty() && it == s.end();
+}
+
+
 const wyckoffPositions& SpgInit::getWyckoffPositions(uint spg)
 {
   if (spg < 1 || spg > 230) {
@@ -36,6 +62,139 @@ const wyckoffPositions& SpgInit::getWyckoffPositions(uint spg)
   }
 
   return wyckoffPositionsDatabase.at(spg);
+}
+
+static inline double interpretComponent(const string& component,
+                                        double x, double y, double z)
+{
+  // If it's just a number, just return the float equivalent
+  if (isNumber(component)) return stof(component);
+
+  int i = 0;
+  bool varIsNeg = false;
+
+  double ret = 0;
+
+  // Determine whether it is negative or not
+  if (component.at(i) == '-') {
+    varIsNeg = true;
+    i++;
+  }
+
+  // Determine whether it is x, y, or z
+  switch (component.at(i)) {
+    case 'x':
+      ret = (varIsNeg) ? -1 * x : x;
+      break;
+    case 'y':
+      ret = (varIsNeg) ? -1 * y : y;
+      break;
+    case 'z':
+      ret = (varIsNeg) ? -1 * z : z;
+      break;
+    default:
+      cout << "Error reading string component: " << component
+           << " in interpretComponent()\n";
+      return -1;
+  }
+
+  // If it's just a single variable, return the double for that variable
+  if (component.size() == i + 1) return ret;
+
+  // If not, then we must be adding or subtracting a float to it
+  i++;
+  bool adding = true;
+  if (component.at(i) == '+') adding = true;
+  else if (component.at(i) == '-') adding = false;
+  else {
+    cout << "Error reading string component: " << component
+         << " in interpretComponenet()\n";
+    return -1;
+  }
+
+  // Find the float at the end
+  i++;
+  double f = stof(component.substr(i));
+  ret += (adding) ? f : -1 * f;
+
+  return ret;
+}
+
+bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
+                                     uint atomicNum, double minIAD,
+                                     int maxAttempts)
+{
+
+  // If the position is not a number, there are 3 cases that need to be dealt with:
+  // 1. Just a variable x, y, or z
+  // 2. A negative x, y, or z
+  // 3. a +/- x, y, or z with a float added or subtracted from it
+
+  INIT_RANDOM_GENERATOR();
+  double IAD = -1;
+  int i = 0;
+  OpenBabel::vector3 coords;
+
+  do {
+    // Generate random coordinates in the wyckoff position
+    IAD = -1;
+    double x = RANDDOUBLE();
+    double y = RANDDOUBLE();
+    double z = RANDDOUBLE();
+
+    vector<string> components = split(get<2>(position), ',');
+
+    double newX = interpretComponent(components[0], x, y, z);
+    double newY = interpretComponent(components[1], x, y, z);
+    double newZ = interpretComponent(components[2], x, y, z);
+
+    // interpretComponenet() returns -1 if it failed to read the component
+    if (newX == -1 || newY == -1 || newZ == -1) {
+      cout << "addWyckoffAtomRandomly() failed due to a component not being "
+           << "read successfully!\n";
+      return false;
+    }
+
+    coords.Set(newX, newY, newZ);
+    if (minIAD != -1) {
+      xtal->getNearestNeighborDistance(newX, newY, newZ, IAD);
+    }
+    else { break;};
+    i++;
+  } while (i < maxAttempts && IAD <= minIAD);
+
+  if (i >= maxAttempts) return false;
+
+  Avogadro::Atom* atom = xtal->addAtom();
+  Eigen::Vector3d pos (coords[0],coords[1],coords[2]);
+  atom->setPos(pos);
+  atom->setAtomicNumber(static_cast<int>(atomicNum));
+  return true;
+}
+
+XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
+                                    const vector<uint>& atomTypes,
+                                    const latticeStruct& latticeMins,
+                                    const latticeStruct& latticeMaxes,
+                                    double minIAD, int maxAttempts)
+{
+  // First let's get a lattice...
+  latticeStruct st = generateLatticeForSpg(spg, latticeMins, latticeMaxes);
+
+  // Make sure it's a valid lattice
+  if (st.a == 0 || st.b == 0 || st.c == 0 ||
+      st.alpha == 0 || st.beta == 0 || st.gamma == 0) {
+    cout << "Error in SpgInit::spgInitXtal(): an invalid lattice was "
+         << "generated.\n";
+    return NULL;
+  }
+
+  XtalOpt::Xtal* xtal = new XtalOpt::Xtal(st.a, st.b, st.c,
+                                          st.alpha, st.beta, st.gamma);
+
+  // vector<atomStruct> = assignAtomsToWyckPos(uint spg, );
+
+  return xtal;
 }
 
 vector<atomStruct> SpgInit::generateInitWyckoffs(uint spg,
@@ -62,32 +221,10 @@ static inline vector<uint> getNumOfEachType(const vector<uint> atomTypes)
   return numOfEachType;
 }
 
-// Basic split of a string based upon a delimiter.
-static inline vector<string> split(const string& s, char delim)
-{
-  vector<string> elems;
-  stringstream ss(s);
-  string item;
-  while (getline(ss, item, delim)) {
-    elems.push_back(item);
-  }
-  return elems;
-}
-
-// Basic check to see if a string is a number
-// Includes negative numbers
-// If it runs into an "x", "y", or "z", it should return false
-static inline bool isNumber(const string& s)
-{
-  std::string::const_iterator it = s.begin();
-  while (it != s.end() && (isdigit(*it) || *it == '-' || *it == '.')) ++it;
-  return !s.empty() && it == s.end();
-}
-
 // A unique position is a position that has no x, y, or z in it
-static inline bool containsUniquePosition(const wyckInfo& info)
+static inline bool containsUniquePosition(const wyckPos& pos)
 {
-  vector<string> xyzStrings = split(get<2>(info), ',');
+  vector<string> xyzStrings = split(get<2>(pos), ',');
   assert(xyzStrings.size() == 3);
   for (size_t i = 0; i < xyzStrings.size(); i++)
     if (!isNumber(xyzStrings.at(i))) return false;
@@ -221,6 +358,8 @@ latticeStruct SpgInit::generateLatticeForSpg(uint spg,
                                              const latticeStruct& mins,
                                              const latticeStruct& maxes)
 {
+  INIT_RANDOM_GENERATOR();
+
   latticeStruct st;
   if (spg < 1 || spg > 230) {
     cout << "Error: " << __FUNCTION__ << " was called for a "
