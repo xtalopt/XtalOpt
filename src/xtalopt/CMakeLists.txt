@@ -6,6 +6,7 @@ set( xtalopt_SRCS
      xtalopt.cpp
      genetic.cpp
      spgInit/spgInit.cpp
+     spgInit/spgInitDialog.cpp
      structures/xtal.cpp
      optimizers/xtaloptoptimizer.cpp
      optimizers/vasp.cpp
@@ -28,7 +29,8 @@ set( xtalopt_UIS
      ui/tab_opt.ui
      ui/tab_progress.ui
      ui/tab_plot.ui
-     ui/tab_log.ui)
+     ui/tab_log.ui
+     spgInit/spgInitDialog.ui)
 
 set( xtalopt_RCS xtalopt.qrc )
 

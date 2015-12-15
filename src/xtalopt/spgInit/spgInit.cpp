@@ -26,9 +26,12 @@
 #include <iostream>
 
 // Define this for debug output
-#define SPGINIT_DEBUG
+// #define SPGINIT_DEBUG
 
 using namespace std;
+
+// number of atoms and atomic number
+typedef pair<uint, uint> numAndType;
 
 // Basic split of a string based upon a delimiter.
 static inline vector<string> split(const string& s, char delim)
@@ -52,6 +55,39 @@ static inline bool isNumber(const string& s)
   return !s.empty() && it == s.end();
 }
 
+// A simple function used in the std::sort in the function below
+static bool greaterThan(const pair<uint, uint>& a, const pair<uint, uint>& b) {
+  return a.first > b.first;
+}
+
+static inline vector<numAndType> getNumOfEachType(const vector<uint> atoms)
+{
+  vector<uint> atomsAlreadyCounted;
+  vector<numAndType> numOfEachType;
+  for (size_t i = 0; i < atoms.size(); i++) {
+    size_t size = 0;
+    // If we already counted this one, just continue
+    if (std::find(atomsAlreadyCounted.begin(), atomsAlreadyCounted.end(),
+                  atoms.at(i)) != atomsAlreadyCounted.end()) continue;
+    for (size_t j = 0; j < atoms.size(); j++)
+      if (atoms.at(j) == atoms.at(i)) size++;
+    numOfEachType.push_back(make_pair(size, atoms.at(i)));
+    atomsAlreadyCounted.push_back(atoms.at(i));
+  }
+  // Sort from largest to smallest
+  sort(numOfEachType.begin(), numOfEachType.end(), greaterThan);
+  return numOfEachType;
+}
+
+// A unique position is a position that has no x, y, or z in it
+static inline bool containsUniquePosition(const wyckPos& pos)
+{
+  vector<string> xyzStrings = split(get<2>(pos), ',');
+  assert(xyzStrings.size() == 3);
+  for (size_t i = 0; i < xyzStrings.size(); i++)
+    if (!isNumber(xyzStrings.at(i))) return false;
+  return true;
+}
 
 const wyckoffPositions& SpgInit::getWyckoffPositions(uint spg)
 {
@@ -172,8 +208,89 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
   return true;
 }
 
+// vector<pair<wyckPos, atomic number>>
+// returns an empty vector if the assignment failed
+atomAssignments SpgInit::assignAtomsToWyckPos(uint spg, vector<uint> atoms)
+{
+  // emptyRet is the empty return if the assignment failed
+  atomAssignments emptyRet, ret;
+
+  // vector<pair<atomicNum, num>>
+  vector<numAndType> numOfEachType = getNumOfEachType(atoms);
+
+  // The "uint" is the wyckPos and the "bool" is whether it's unique or not
+  wyckoffPositions wyckVector = getWyckoffPositions(spg);
+
+#ifdef SPGINIT_DEBUG
+  cout << "<multiplicity> <unique?> is:\n";
+  for (size_t i = 0; i < wyckVector.size(); i++)
+    cout << get<1>(wyckVector.at(i)) << " " << containsUniquePosition(wyckVector.at(i)) << "\n";
+#endif
+
+  // Keep track of which wyckoff positions have been used
+  vector<bool> wyckoffPositionUsed;
+  wyckoffPositionUsed.reserve(wyckVector.size());
+  for (size_t i = 0; i < wyckVector.size(); i++)
+    wyckoffPositionUsed.push_back(false);
+
+  // These are arranged from largest to smallest already
+  for (size_t i = 0; i < numOfEachType.size(); i++) {
+    bool foundAHome = false;
+    uint atomicNum = numOfEachType.at(i).second;
+    // Start with the highest wyckoff letter and work our way down
+    // This will put as many atoms as possible into the general positions
+    // while leaving unique positions for later
+    for (int j = wyckVector.size() - 1; j >= 0; j--) {
+      uint multiplicity = get<1>(wyckVector.at(j));
+      bool unique = containsUniquePosition(wyckVector.at(j));
+      // If it's not unique
+      if (!unique &&
+          // Then check to see if it CAN be used
+          numOfEachType.at(i).first % multiplicity == 0) {
+        ret.push_back(make_pair(wyckVector.at(j), atomicNum));
+        wyckoffPositionUsed[j] = true;
+        foundAHome = true;
+        break;
+      }
+      // If it IS unique and hasn't been used
+      else if (unique && !wyckoffPositionUsed.at(j) &&
+               // Then check to see if they are equivalent
+               numOfEachType.at(i).first == multiplicity) {
+        ret.push_back(make_pair(wyckVector.at(j), atomicNum));
+        wyckoffPositionUsed[j] = true;
+        foundAHome = true;
+        break;
+      }
+      // Finally, if it is unique and hasn't been used
+      else if (unique && !wyckoffPositionUsed.at(j) &&
+               numOfEachType.at(i).first % multiplicity == 0)
+      {
+        // If it failed the prior test, then this must be a multiple and NOT
+        // equivalent (i. e., 4 and 2). Since this is the case, just find a home
+        // for the atoms that CAN fit and just proceed to find a home for the
+        // others
+        wyckoffPositionUsed[j] = true;
+        i--;
+        ret.push_back(make_pair(wyckVector.at(j), atomicNum));
+        numOfEachType[j].first -= multiplicity;
+        foundAHome = true;
+        break;
+      }
+    }
+#ifdef SPGINIT_DEBUG
+    cout << "wyckoffPositionUsed is:\n";
+    for (size_t i = 0; i < wyckoffPositionUsed.size(); i++)
+      cout << wyckoffPositionUsed[i] << "\n";
+#endif
+    if (!foundAHome) return emptyRet;
+  }
+  // If we made it here without returning, every atom type found a home
+  return ret;
+
+}
+
 XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
-                                    const vector<uint>& atomTypes,
+                                    const vector<uint>& atoms,
                                     const latticeStruct& latticeMins,
                                     const latticeStruct& latticeMaxes,
                                     double minIAD, int maxAttempts)
@@ -189,10 +306,31 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
     return NULL;
   }
 
+  atomAssignments assignments = assignAtomsToWyckPos(spg, atoms);
+
+  if (assignments.size() == 0) {
+    cout << "Error in SpgInit::spgInitXtal(): atoms were not successfully"
+         << " assigned positions in assignAtomsToWyckPos()\n";
+    return NULL;
+  }
+
   XtalOpt::Xtal* xtal = new XtalOpt::Xtal(st.a, st.b, st.c,
                                           st.alpha, st.beta, st.gamma);
 
-  // vector<atomStruct> = assignAtomsToWyckPos(uint spg, );
+  for (size_t i = 0; i < assignments.size(); i++) {
+    wyckPos pos = assignments.at(i).first;
+    uint atomicNum = assignments.at(i).second;
+    if (!addWyckoffAtomRandomly(xtal, pos, atomicNum,
+                                minIAD, maxAttempts)) {
+      delete xtal;
+      xtal = 0;
+      cout << "In spgInit::spgInitXtal(), failed to add atoms randomly for "
+           << "a spg of " << spg << "\n";
+      return NULL;
+    }
+  }
+
+  xtal->fillUnitCell(spg);
 
   return xtal;
 }
@@ -203,131 +341,18 @@ vector<atomStruct> SpgInit::generateInitWyckoffs(uint spg,
 
 }
 
-static inline vector<uint> getNumOfEachType(const vector<uint> atomTypes)
-{
-  vector<uint> atomsAlreadyCounted, numOfEachType;
-  for (size_t i = 0; i < atomTypes.size(); i++) {
-    size_t size = 0;
-    // If we already counted this one, just continue
-    if (std::find(atomsAlreadyCounted.begin(), atomsAlreadyCounted.end(),
-                  atomTypes.at(i)) != atomsAlreadyCounted.end()) continue;
-    for (size_t j = 0; j < atomTypes.size(); j++)
-      if (atomTypes.at(j) == atomTypes.at(i)) size++;
-    numOfEachType.push_back(size);
-    atomsAlreadyCounted.push_back(atomTypes.at(i));
-  }
-  // Sort from largest to smallest
-  sort(numOfEachType.begin(), numOfEachType.end(), greater<uint>());
-  return numOfEachType;
-}
-
-// A unique position is a position that has no x, y, or z in it
-static inline bool containsUniquePosition(const wyckPos& pos)
-{
-  vector<string> xyzStrings = split(get<2>(pos), ',');
-  assert(xyzStrings.size() == 3);
-  for (size_t i = 0; i < xyzStrings.size(); i++)
-    if (!isNumber(xyzStrings.at(i))) return false;
-  return true;
-}
-
-vector<pair<uint, bool> > getMultiplicityVector(const wyckoffPositions& pos)
-{
-  vector<pair<uint, bool> > multiplicityVector;
-  multiplicityVector.reserve(pos.size());
-  for (size_t i = 0; i < pos.size(); i++)
-    multiplicityVector.push_back(make_pair(get<1>(pos.at(i)), containsUniquePosition(pos.at(i))));
-  return multiplicityVector;
-}
-
-static bool everyoneFoundAHome(const vector<uint> nums,
-                               wyckoffPositions pos)
-{
-  vector<uint> numOfEachType = nums;
-  // The "uint" is the multiplicity and the "bool" is whether it's unique or not
-  vector<pair<uint, bool> > multiplicityVector = getMultiplicityVector(pos);
-
-#ifdef SPGINIT_DEBUG
-  cout << "multiplicity vector is <multiplicity> <unique?>:\n";
-  for (size_t i = 0; i < multiplicityVector.size(); i++)
-    cout << multiplicityVector.at(i).first << " " << multiplicityVector.at(i).second << "\n";
-#endif
-
-  // Keep track of which wyckoff positions have been used
-  vector<bool> wyckoffPositionUsed;
-  wyckoffPositionUsed.reserve(multiplicityVector.size());
-  for (size_t i = 0; i < multiplicityVector.size(); i++)
-    wyckoffPositionUsed.push_back(false);
-
-  // These are arranged from smallest to largest already
-  for (size_t i = 0; i < numOfEachType.size(); i++) {
-    bool foundAHome = false;
-    // Start with the highest wyckoff letter and work our way down
-    // This will put as many atoms as possible into the general positions
-    // while leaving unique positions for later
-    for (int j = multiplicityVector.size() - 1; j >= 0; j--) {
-      bool unique = multiplicityVector.at(j).second;
-      // If it's not unique
-      if (!unique &&
-          // Then check to see if it CAN be used
-          numOfEachType.at(i) % multiplicityVector.at(j).first == 0) {
-        wyckoffPositionUsed[j] = true;
-        foundAHome = true;
-        break;
-      }
-      // If it IS unique and hasn't been used
-      else if (unique && !wyckoffPositionUsed.at(j) &&
-               // Then check to see if they are equivalent
-               numOfEachType.at(i) == multiplicityVector.at(j).first) {
-        wyckoffPositionUsed[j] = true;
-        foundAHome = true;
-        break;
-      }
-      // Finally, if it is unique and hasn't been used
-      else if (unique && !wyckoffPositionUsed.at(j) &&
-               numOfEachType.at(i) % multiplicityVector.at(j).first == 0) {
-        // If it failed the prior test, then this must be a multiple and NOT
-        // equivalent (i. e., 4 and 2). Since this is the case, just find a home
-        // for the atoms that CAN fit and just proceed to find a home for the
-        // others
-        wyckoffPositionUsed[j] = true;
-        i--;
-        numOfEachType[j] -= multiplicityVector.at(j).first;
-        foundAHome = true;
-        break;
-      }
-    }
-#ifdef SPGINIT_DEBUG
-    cout << "wyckoffPositionUsed is:\n";
-    for (size_t i = 0; i < wyckoffPositionUsed.size(); i++)
-      cout << wyckoffPositionUsed[i] << "\n";
-#endif
-    if (!foundAHome) return false;
-  }
-  // If we made it here without returning false, every atom type found a home
-  return true;
-}
-
-bool SpgInit::isSpgPossible(uint spg, const vector<uint> atomTypes)
+bool SpgInit::isSpgPossible(uint spg, const vector<uint>& atoms)
 {
 #ifdef SPGINIT_DEBUG
   cout << __FUNCTION__ << " called!\n";
-  cout << "atomTypes is:\n";
-  for (size_t i = 0; i < atomTypes.size(); i++) cout << atomTypes[i] << "\n";
+  cout << "atoms is:\n";
+  for (size_t i = 0; i < atoms.size(); i++) cout << atoms[i] << "\n";
 #endif
   if (spg < 1 || spg > 230) return false;
 
-  wyckoffPositions pos = getWyckoffPositions(spg);
-  size_t numAtoms = atomTypes.size();
-  vector<uint> numOfEachType = getNumOfEachType(atomTypes);
-
-#ifdef SPGINIT_DEBUG
-  cout << "numAtoms is " << numAtoms << "\n";
-  cout << "numOfEachType is:\n";
-  for (size_t i = 0; i < numOfEachType.size(); i++)
-    cout << numOfEachType.at(i) << "\n";
-#endif
-  if (!everyoneFoundAHome(numOfEachType, pos)) return false;
+  // If assignAtomsToWyckPos() returns an empty vector, the atoms could not
+  // be assigned to produce the spacegroup
+  if (assignAtomsToWyckPos(spg, atoms).size() == 0) return false;
 
   return true;
 }

@@ -50,6 +50,12 @@ typedef std::tuple<char, int, std::string> wyckPos;
 // spacegroup will have it's own vector of wyckoff positions.
 typedef std::vector<wyckPos> wyckoffPositions;
 
+// This assign an atom with a specific atomic number to be placed in a specific
+// wyckoff position
+// The vector is a vector of atom assignments
+typedef std::pair<wyckPos, uint> atomAssignment;
+typedef std::vector<atomAssignment> atomAssignments;
+
 class SpgInit {
  public:
   /*
@@ -82,7 +88,7 @@ class SpgInit {
    * @return True if the spacegroup may be generated. False if it cannot.
    *
    */
-  static bool isSpgPossible(uint spg, const std::vector<uint> atomTypes);
+  static bool isSpgPossible(uint spg, const std::vector<uint>& atomTypes);
 
   /*
    * Generates a latticeStruct (contains a, b, c, alpha, beta, and gamma as
@@ -102,16 +108,60 @@ class SpgInit {
   static latticeStruct generateLatticeForSpg(uint spg,
                                              const latticeStruct& mins,
                                              const latticeStruct& maxes);
-
+  /*
+   * Attempts to add an atom randomly to a wyckoff position of a given xtal.
+   * The position of the atom is constrained by the given wyckoff position.
+   * It will attempt to add an atom randomly to satisfy minIDA for
+   * maxAttempts times, and if it fails, it returns false. If a fixed wyckoff
+   * position is given, it will just add the atom to the fixed wyckoff position.
+   *
+   * @param xtal The xtal for which an atom will be added
+   * @param position The wyckoff position to add the atom to
+   * @param atomicNum The atomic number of the atom to be added
+   * @param minIAD The minimum interatomic distance that the atom needs to be
+   *               from other atoms in the xtal. If -1, there is no min IAD.
+   *               Default is -1.
+   * @param maxAttempts The number of attempts to make to add the atom randomly
+   *                    before the function returns false. Default is 1000.
+   *
+   * @return True if it succeeded, and false if it failed.
+   */
   static bool addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
                                      uint atomicNum, double minIAD = -1,
                                      int maxAttempts = 1000);
-
+  /*
+   * Initialze and return a dynamically allocated xtal with a given spacegroup!
+   * The lattice mins and lattice maxes provide constraints for the lattice
+   * to be generated. The list of atom types tell it which atoms to be added.
+   * Returns NULL if it failed to generate the xtal.
+   *
+   * @param spg The international number for the spacegroup to be generated
+   * @param atomTypes A vector of atomic numbers (one for each atom). So if
+   *                  our system were Ti1O2, it should be {22, 8, 8}
+   * @param latticeMins A latticeStruct that contains the minima for a, b, c,
+   *                    alpha, beta, and gamma.
+   * @param latticeMaxes A latticeStruct that contains the maxima for a, b, c,
+   *                     alpha, beta, and gamma.
+   * @param minIAD The minimum interatomic distance that the atom needs to be
+   *               from other atoms in the xtal. If -1, there is no min IAD.
+   *               Default is -1. Used in addWyckoffAtomRandomly().
+   * @param maxAttempts The number of attempts to make to add the atom randomly
+   *                    before the function returns false. Default is 1000.
+   *                    Used in addWyckoffAtomRandomly().
+   *
+   * @return A dynamically allocated xtal with the given spacegroup, atoms,
+   * and lattice within the provided lattice constraints. Returns NULL
+   * if the function failed to successfully generate the xtal.
+   */
   static XtalOpt::Xtal* spgInitXtal(uint spg,
                                     const std::vector<uint>& atomTypes,
                                     const latticeStruct& latticeMins,
                                     const latticeStruct& latticeMaxes,
-                                    double minIAD, int maxAttempts);
+                                    double minIAD = -1, int maxAttempts = 1000);
+
+  static atomAssignments assignAtomsToWyckPos(uint spg,
+                                              std::vector<uint> atoms);
+
 };
 
 #endif

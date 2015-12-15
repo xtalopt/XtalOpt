@@ -54,6 +54,8 @@
 #include <QtCore/QtConcurrentRun>
 #include <QtCore/QtConcurrentMap>
 
+#include <xtalopt/spgInit/spgInit.h>
+
 #define ANGSTROM_TO_BOHR 1.889725989
 
 using namespace GlobalSearch;
@@ -128,6 +130,33 @@ namespace XtalOpt {
 
   void XtalOpt::startSearch()
   {
+    // Populate crystal
+    QList<uint> atomicNums = comp.keys();
+    // Sort atomic number by decreasing minimum radius. Adding the "larger"
+    // atoms first encourages a more even (and ordered) distribution
+    qDebug() << "atomicNums are:";
+    for (size_t i = 0; i < atomicNums.size(); ++i)
+      qDebug() << QString::number(atomicNums.at(i));
+    for (int i = 0; i < atomicNums.size()-1; ++i) {
+      for (int j = i + 1; j < atomicNums.size(); ++j) {
+        if (this->comp.value(atomicNums[i]).minRadius <
+            this->comp.value(atomicNums[j]).minRadius) {
+          atomicNums.swap(i,j);
+        }
+      }
+    }
+
+    QList<uint> atoms;
+    uint FU = formulaUnitsList.at(formulaUnitsList.size() - 1);
+    for (size_t i = 0; i < atomicNums.size(); i++) {
+      for (size_t j = 0; j < comp.value(atomicNums[i]).quantity * FU; j++) {
+        atoms.push_back(atomicNums[i]);
+      }
+    }
+
+    if (SpgInit::isSpgPossible(53, atoms.toVector().toStdVector())) qDebug() << "True!";
+    else qDebug() << "False!";
+    return;
 
     // Settings checks
     // Check lattice parameters, volume, etc

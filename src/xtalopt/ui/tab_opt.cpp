@@ -30,7 +30,8 @@ using namespace std;
 namespace XtalOpt {
 
   TabOpt::TabOpt( XtalOptDialog *parent, XtalOpt *p ) :
-    AbstractTab(parent, p)
+    AbstractTab(parent, p),
+    m_spgOptions(NULL)
   {
     ui.setupUi(m_tab_widget);
 
@@ -120,6 +121,10 @@ namespace XtalOpt {
             this, SLOT(updateOptimizationInfo()));
     connect(ui.spin_maxDupOffspring, SIGNAL(valueChanged(double)),
             this, SLOT(updateOptimizationInfo()));
+
+    // spgInit
+    connect(ui.push_spgOptions, SIGNAL(clicked()),
+            this, SLOT(openSpgOptions()));
 
     initialize();
   }
@@ -432,6 +437,18 @@ namespace XtalOpt {
     xtalopt->seedList.clear();
     for (int i = 0; i < ui.list_seeds->count(); i++)
       xtalopt->seedList.append(ui.list_seeds->item(i)->text());
+  }
+
+  void TabOpt::openSpgOptions()
+  {
+    if (m_spgOptions) delete m_spgOptions;
+/*
+    if (!m_spgOptions) {
+      m_spgOptions = new SpgInitDialog(qobject_cast<XtalOpt*>(m_opt));
+    }
+*/
+    m_spgOptions = new SpgInitDialog(qobject_cast<XtalOpt*>(m_opt));
+    m_spgOptions->show();
   }
 
 }
