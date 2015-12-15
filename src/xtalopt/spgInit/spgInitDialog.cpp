@@ -37,26 +37,23 @@ namespace XtalOpt {
       QString FUPossible = "";
       // Let's also investigate every formula unit possible!
       for (size_t i = 0; i < FUList.size(); i++) {
-        qDebug() << "Testing for FU" << QString::number(FUList.at(i));
         // Make an atoms list that is adjusted by the formula units
         std::vector<uint> tempAtoms;
         tempAtoms.reserve(atoms.size() * FUList.at(i));
         for (size_t j = 0; j < atoms.size(); j++) {
           for (size_t k = 0; k < FUList.at(i); k++) {
-            qDebug() << "pushing back tempAtoms with " << QString::number(atoms.at(j));
             tempAtoms.push_back(atoms.at(j));
           }
         }
         if (SpgInit::isSpgPossible(spg, tempAtoms)) {
           FUPossible.append(QString::number(FUList.at(i)) + ",");
-          qDebug() << "For spg of " << QString::number(spg) << "and FU of"
-                   << QString::number(FUList.at(i)) << "the spg is possible!";
         }
       }
-      qDebug() << "FUPossible is " << FUPossible;
+
       // Remove the last comma
-      if (FUPossible.at(FUPossible.size() - 1) == ',')
+      if (FUPossible.size() != 0 && FUPossible.at(FUPossible.size() - 1) == ',')
         FUPossible.remove(FUPossible.size() - 1, 1);
+
       // Add the new row
       this->table_list->insertRow(index);
       for (int i = 0; i < 4; i++)
@@ -75,7 +72,6 @@ namespace XtalOpt {
       e.brush = QBrush(Qt::blue);
       setTableEntry(index, e);
 //    emit infoUpdate();
-
     }
 
 /*

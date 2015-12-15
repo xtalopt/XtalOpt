@@ -26,7 +26,7 @@
 #include <iostream>
 
 // Define this for debug output
-// #define SPGINIT_DEBUG
+//#define SPGINIT_DEBUG
 
 using namespace std;
 
@@ -270,9 +270,9 @@ atomAssignments SpgInit::assignAtomsToWyckPos(uint spg, vector<uint> atoms)
         // for the atoms that CAN fit and just proceed to find a home for the
         // others
         wyckoffPositionUsed[j] = true;
-        i--;
         ret.push_back(make_pair(wyckVector.at(j), atomicNum));
-        numOfEachType[j].first -= multiplicity;
+        numOfEachType[i].first -= multiplicity;
+        i--;
         foundAHome = true;
         break;
       }

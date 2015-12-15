@@ -131,6 +131,7 @@ namespace XtalOpt {
 
   TabOpt::~TabOpt()
   {
+    if (m_spgOptions) delete m_spgOptions;
   }
 
   void TabOpt::writeSettings(const QString &filename)
