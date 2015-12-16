@@ -6,15 +6,29 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1130</width>
+    <width>822</width>
     <height>597</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>Spacegroup Options</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0" colspan="2">
+   <item row="2" column="2">
+    <widget class="QPushButton" name="push_deselectAll">
+     <property name="text">
+      <string>Deselect all</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="push_selectAll">
+     <property name="text">
+      <string>Select all</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1" colspan="2">
     <widget class="QTableWidget" name="table_list">
      <property name="contextMenuPolicy">
       <enum>Qt::CustomContextMenu</enum>
@@ -34,8 +48,26 @@
      <property name="sortingEnabled">
       <bool>true</bool>
      </property>
-     <attribute name="horizontalHeaderStretchLastSection">
+     <attribute name="horizontalHeaderVisible">
       <bool>true</bool>
+     </attribute>
+     <attribute name="horizontalHeaderCascadingSectionResizes">
+      <bool>true</bool>
+     </attribute>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>200</number>
+     </attribute>
+     <attribute name="horizontalHeaderHighlightSections">
+      <bool>true</bool>
+     </attribute>
+     <attribute name="horizontalHeaderMinimumSectionSize">
+      <number>100</number>
+     </attribute>
+     <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+      <bool>true</bool>
+     </attribute>
+     <attribute name="horizontalHeaderStretchLastSection">
+      <bool>false</bool>
      </attribute>
      <column>
       <property name="text">
@@ -49,7 +81,7 @@
      </column>
      <column>
       <property name="text">
-       <string>Formula Units Allowed</string>
+       <string>Allow spgInit?</string>
       </property>
      </column>
      <column>
@@ -61,9 +93,6 @@
    </item>
   </layout>
  </widget>
- <tabstops>
-  <tabstop>table_list</tabstop>
- </tabstops>
  <resources/>
  <connections/>
 </ui>

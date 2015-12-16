@@ -18,6 +18,8 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <globalsearch/fileutils.h>
+
 #include <QtCore/QSettings>
 
 #include <QtGui/QHeaderView>
@@ -552,140 +554,15 @@ namespace XtalOpt {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
     QString tmp;
-    QStringList tmp2;
-    QTextStream string (&tmp);
-    QList<bool> series;
-    QStringList tempFormulaUnitsList;
 
-    // Split up values separated by commas
-    tempFormulaUnitsList = ui.edit_formula_units->text().split(",", QString::SkipEmptyParts);
+    QList<uint> formulaUnitsList = FileUtils::parseUIntString(ui.edit_formula_units->text(), tmp);
 
-    // Fix to correct crashing when there is a hyphen at the beginning
-    if (!tempFormulaUnitsList.isEmpty()) {
-      tempFormulaUnitsList[0].prepend(" ");
-    }
-
-    // Check for values that begin, are between, or end hyphens
-    int i = 0, j = 0;
-    bool isNumeric;
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      tmp2 = tempFormulaUnitsList.at(i).split("-", QString::SkipEmptyParts);
-      if (tmp2.at(0) != tempFormulaUnitsList.at(i)) {
-        tmp2.at(0).toUInt(&isNumeric);
-        if (isNumeric == true) {
-          tmp2.at(1).toUInt(&isNumeric);
-          if (isNumeric == true) {
-            uint smaller = tmp2.at(0).toUInt();
-            uint larger = tmp2.at(1).toUInt();
-            if (larger < smaller) {
-              smaller = tmp2.at(1).toUInt();
-              larger = tmp2.at(0).toUInt();
-            }
-            for (j = smaller; j <= larger; j++) {
-              tempFormulaUnitsList.append(QString::number(j));
-            }
-          }
-        }
-      }
-    }
-
-    // Remove leading zeros
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      while (tempFormulaUnitsList.at(i).trimmed().startsWith("0")) {
-        tempFormulaUnitsList[i].remove(0,1);
-      }
-    }
-
-    // Check that each QString may be converted to an unsigned int. Discard it if it cannot.
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      tempFormulaUnitsList.at(i).toUInt(&isNumeric);
-      if (isNumeric == false) {
-        tempFormulaUnitsList.removeAt(i);
-        i--;
-      }
-    }
-
-    // Remove all numbers greater than 100
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      if (tempFormulaUnitsList.at(i).toUInt() > 100) {
-        tempFormulaUnitsList.removeAt(i);
-      }
-    }
-
-    // If nothing valid was entered, return 1
-    if ( tempFormulaUnitsList.size() == 0 ) {
+    // If nothing valid was obtained, return 1
+    if (formulaUnitsList.size() == 0) {
       xtalopt->formulaUnitsList.append(1);
-      string << "1";
+      tmp = "1";
       ui.edit_formula_units->setText(tmp.trimmed());
       return;
-    }
-
-    // Remove duplicates from the tempFormulaUnitsList
-    for (int i = 0; i < tempFormulaUnitsList.size() - 1; i++) {
-      for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
-        if (tempFormulaUnitsList.at(i) == tempFormulaUnitsList.at(j)) {
-          tempFormulaUnitsList.removeAt(j);
-          j--;
-        }
-      }
-    }
-
-    // Sort from smallest value to greatest value
-    for (int i = 0; i < tempFormulaUnitsList.size() - 1; i++) {
-      for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
-        if (tempFormulaUnitsList.at(i).toUInt() > tempFormulaUnitsList.at(j).toUInt()) {
-          tempFormulaUnitsList.swap(i,j);
-        }
-      }
-    }
-
-    // Populate series with false
-    series.clear();
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      series.append(false);
-    }
-
-    // Check for series to hyphenate
-    for (int i = 0; i < tempFormulaUnitsList.size() - 2; i++) {
-      if ( (tempFormulaUnitsList.at(i).toUInt() + 1 == tempFormulaUnitsList.at(i + 1).toUInt()) && (tempFormulaUnitsList.at(i + 1).toUInt() + 1 == tempFormulaUnitsList.at(i + 2).toUInt()) ) {
-        series.replace(i, true);
-        series.replace(i + 1, true);
-        series.replace(i + 2, true);
-      }
-    }
-
-    // Create the text stream to put back into the UI
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      if (series.at(i) == false) {
-        if (i + 1 == tempFormulaUnitsList.size()) {
-          string << tempFormulaUnitsList.at(i).trimmed();
-        }
-        else if (i + 1 != tempFormulaUnitsList.size()) {
-          string << tempFormulaUnitsList.at(i).trimmed() << ", ";
-        }
-      }
-      else if (series.at(i) == true) {
-        uint seriesLength = 1;
-        int j = i + 1;
-        while ( (j != tempFormulaUnitsList.size()) && (series.at(j) == true) && ( tempFormulaUnitsList.at(j - 1).toUInt() + 1 == tempFormulaUnitsList.at(j).toUInt() ) ) {
-          seriesLength += 1;
-          j++;
-        }
-        if (i + seriesLength == tempFormulaUnitsList.size()) {
-          string << tempFormulaUnitsList.at(i).trimmed() << " - " << tempFormulaUnitsList.at(j - 1).trimmed();
-        }
-        else if (i + seriesLength != tempFormulaUnitsList.size()) {
-          string << tempFormulaUnitsList.at(i).trimmed() << " - " << tempFormulaUnitsList.at(j - 1).trimmed() << ", ";
-        }
-        i = i + seriesLength - 1;
-      }
-    }
-
-    //Create the UInt formulaUnitsList
-    QList<uint> formulaUnitsList;
-    formulaUnitsList.clear();
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      formulaUnitsList.append(tempFormulaUnitsList.at(i).toUInt());
     }
 
     // Reset the supercell checks

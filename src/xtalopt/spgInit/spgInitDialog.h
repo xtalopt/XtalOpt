@@ -26,6 +26,8 @@
 #include <QtGui/QDialog>
 #include <QtGui/QBrush>
 
+class QCheckBox;
+
 namespace XtalOpt {
   class XtalOptDialog;
   class XtalOpt;
@@ -54,9 +56,13 @@ namespace XtalOpt {
     explicit SpgInitDialog(XtalOpt* p, QWidget* parent = 0);
     virtual ~SpgInitDialog();
     void setTableEntry(uint row, const Spg_Table_Entry& e);
+   public slots:
+    void selectAll();
+    void deselectAll();
 
    private:
     XtalOpt* m_xtalopt;
+    QList<QCheckBox*> m_checkBoxList;
   };
 }
 

@@ -443,13 +443,21 @@ namespace XtalOpt {
   void TabOpt::openSpgOptions()
   {
     if (m_spgOptions) delete m_spgOptions;
-/*
-    if (!m_spgOptions) {
-      m_spgOptions = new SpgInitDialog(qobject_cast<XtalOpt*>(m_opt));
-    }
-*/
+
+    // Display a message to ask the user to wait while the image is loading...
+    QMessageBox msgBox;
+    msgBox.setText("Calculating possible spacegroups for the given formula units. Please wait...");
+    msgBox.setStandardButtons(QMessageBox::NoButton);
+    msgBox.setWindowModality(Qt::NonModal);
+    msgBox.open();
+    QCoreApplication::processEvents();
+
+    // Open up the SpgInit dialog
     m_spgOptions = new SpgInitDialog(qobject_cast<XtalOpt*>(m_opt));
-    m_spgOptions->show();
+    m_spgOptions->exec();
+
+    // Close the mesage box
+    msgBox.close();
   }
 
 }

@@ -9,16 +9,28 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <globalsearch/fileutils.h>
+
 #include <openbabel/math/spacegroup.h>
 
 namespace XtalOpt {
 
   SpgInitDialog::SpgInitDialog(XtalOpt* p, QWidget* parent) :
     QDialog(parent),
-    m_xtalopt(p)
+    m_xtalopt(p),
+    m_checkBoxList(QList<QCheckBox*>())
   {
+    // Since SpgInitDialog inherits from the qt-created class, Ui::SpgInitDialog
+    // We can just tell it to set up itself
     setupUi(this);
 
+    // Make connections
+    connect(this->push_selectAll, SIGNAL(clicked()),
+            this, SLOT(selectAll()));
+    connect(this->push_deselectAll, SIGNAL(clicked()),
+            this, SLOT(deselectAll()));
+
+    // Get the list of atoms
     QHash<uint, XtalCompositionStruct> comp = m_xtalopt->comp;
 
     QList<uint> atomicNums = comp.keys();
@@ -45,14 +57,19 @@ namespace XtalOpt {
             tempAtoms.push_back(atoms.at(j));
           }
         }
+        // Append each formula unit to the list followed by a comma
         if (SpgInit::isSpgPossible(spg, tempAtoms)) {
           FUPossible.append(QString::number(FUList.at(i)) + ",");
         }
       }
 
-      // Remove the last comma
-      if (FUPossible.size() != 0 && FUPossible.at(FUPossible.size() - 1) == ',')
-        FUPossible.remove(FUPossible.size() - 1, 1);
+      QString result = "";
+      // This returns a list of unsigned integers. It returns empty
+      // if it cannot be made successfully
+      if (FileUtils::parseUIntString(FUPossible, result).size() != 0)
+        FUPossible = result;
+
+      else FUPossible = "";
 
       // Add the new row
       this->table_list->insertRow(index);
@@ -66,41 +83,28 @@ namespace XtalOpt {
         e.HM_spg = QString::fromStdString(OpenBabel::SpaceGroup::GetSpaceGroup(
                                                           spg)->GetHMName());
       else e.HM_spg = "Ia-3d";
+
+      // Add a new checkbox
+      m_checkBoxList.append(new QCheckBox);
+      // Set the checkbox checked if the formula unit is possible
+      if (FUPossible.size() != 0) m_checkBoxList.at(index)->setChecked(true);
+      // If the spacegroup cannot be made, disable the checkbox
+      else m_checkBoxList.at(index)->setEnabled(false);
+
       e.formulaUnitsPossible = FUPossible;
       e.formulaUnitsAllowed = " ";
       e.minNumOfEach = 0;
-      e.brush = QBrush(Qt::blue);
+      e.brush = QBrush(Qt::green);
       setTableEntry(index, e);
-//    emit infoUpdate();
     }
 
-/*
-    QTableWidget* table = new QTableWidget();
-    table->setFixedSize(350,150);
-    table->setWindowTitle("QTableWidget Add CheckBox to Table Cell");
-
-    QPalette* palette = new QPalette();
-    palette->setColor(QPalette::Highlight,Qt::cyan);
-    table->setPalette(*palette);
-
-    table->setRowCount(2);
-    table->setColumnCount(3);
-
-    //Set Header Label Texts Here
-    table->setHorizontalHeaderLabels(QString("HEADER 1;HEADER 2;HEADER 3").split(";"));
-    //Add Table items here
-    table->setItem(0,0,new QTableWidgetItem("ITEM 1_1"));
-    table->setItem(0,1,new QTableWidgetItem("ITEM 1_2"));
-    table->setItem(0,2,new QTableWidgetItem("ITEM 1_3"));
-
-    table->setCellWidget(1,1,new QCheckBox("Checkbox"));
-
-    table->show();
-*/
   }
 
   SpgInitDialog::~SpgInitDialog()
   {
+    // Delete the dynamically allocated checkbox list
+    for (size_t i = 0; i < m_checkBoxList.size(); i++)
+      delete m_checkBoxList.at(i);
   }
 
   void SpgInitDialog::setTableEntry(uint row, const Spg_Table_Entry& e)
@@ -108,22 +112,26 @@ namespace XtalOpt {
     this->table_list->item(row, HM_Spg)->setText(e.HM_spg);
     this->table_list->item(row, FormulaUnitsPossible)->setText(
                                                       e.formulaUnitsPossible);
-    this->table_list->item(row, FormulaUnitsAllowed)->setText(
-                                                      e.formulaUnitsAllowed);
+    this->table_list->setCellWidget(row,FormulaUnitsAllowed, m_checkBoxList.at(row));
+//    this->table_list->item(row, FormulaUnitsAllowed)->setText(
+//                                                      e.formulaUnitsAllowed);
 //    this->table_list->item(row, MinNumOfEach)->setText(
   //                                           QString::number(e.minNumOfEach));
   }
 
-/*
-  QDialog* SpgInitDialog::dialog()
+  void SpgInitDialog::selectAll()
   {
-    if (!m_dialog) {
-      m_dialog = new SpgInitDialog(m_xtalopt);
+    for (size_t i = 0; i < m_checkBoxList.size(); i++) {
+      if (m_checkBoxList.at(i)->isEnabled())
+        m_checkBoxList.at(i)->setChecked(true);
     }
-    SlurmConfigDialog *d = qobject_cast<SlurmConfigDialog*>(m_dialog);
-    d->updateGUI();
-
-    return d;
   }
-*/
+
+  void SpgInitDialog::deselectAll()
+  {
+    for (size_t i = 0; i < m_checkBoxList.size(); i++) {
+      if (m_checkBoxList.at(i)->isEnabled())
+        m_checkBoxList.at(i)->setChecked(false);
+    }
+  }
 }

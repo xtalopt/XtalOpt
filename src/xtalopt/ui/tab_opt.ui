@@ -138,6 +138,12 @@ Default: 20
       </item>
       <item row="2" column="2">
        <widget class="QPushButton" name="push_spgOptions">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Displays a table of spacegroups and each spacegroup that is possible (in accordance with the list of formula units it has been given).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;In addition, it enables the user to select spacegroups to be created when performing space-group initialization.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;This will be reset if the user changes the composition after setting it.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="text">
          <string>Spg Options</string>
         </property>
@@ -1113,6 +1119,22 @@ Default: 0.5</string>
     <hint type="destinationlabel">
      <x>992</x>
      <y>318</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_allowSpgInit</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>push_spgOptions</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>121</x>
+     <y>102</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>273</x>
+     <y>103</y>
     </hint>
    </hints>
   </connection>
