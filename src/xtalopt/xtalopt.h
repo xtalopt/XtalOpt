@@ -45,6 +45,15 @@ namespace XtalOpt {
     unsigned int quantity;
   };
 
+  // comparison of two XtalCompositionStructs
+  static inline bool operator==(const XtalCompositionStruct& lhs,
+                                const XtalCompositionStruct& rhs)
+  {
+    if (lhs.minRadius == rhs.minRadius &&
+        lhs.quantity  == rhs.quantity) return true;
+    else return false;
+  }
+
   class XtalOpt : public GlobalSearch::OptBase
   {
     Q_OBJECT

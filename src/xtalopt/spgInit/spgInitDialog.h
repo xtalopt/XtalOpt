@@ -30,9 +30,7 @@ class QCheckBox;
 class QSpinBox;
 
 namespace XtalOpt {
-  class XtalOptDialog;
   class XtalOpt;
-  class Xtal;
 
   class SpgInitDialog : public QDialog, public Ui::SpgInitDialog
   {
@@ -41,15 +39,13 @@ namespace XtalOpt {
     enum TableColumns {
       HM_Spg = 0,
       FormulaUnitsPossible,
-      FormulaUnitsAllowed,
-      MinNumOfEach
+      CheckBox,
+      SpinBox
     };
 
     struct Spg_Table_Entry {
       QString HM_spg;
       QString formulaUnitsPossible;
-      QString formulaUnitsAllowed;
-      uint minNumOfEach;
       QBrush brush;
     };
 
@@ -57,15 +53,22 @@ namespace XtalOpt {
     explicit SpgInitDialog(XtalOpt* p, QWidget* parent = 0);
     virtual ~SpgInitDialog();
     void setTableEntry(uint row, const Spg_Table_Entry& e);
+    bool isCompositionSame(XtalOpt* p);
 
    public slots:
     void selectAll();
     void deselectAll();
+    void incrementAll();
+    void decrementAll();
+    void updateAll();
 
    private:
     QSpinBox* getNewSpinBox();
+    void setLabel();
 
     XtalOpt* m_xtalopt;
+    QHash<uint, XtalCompositionStruct> m_comp;
+    QList<uint> m_FUList;
     QList<QCheckBox*> m_checkBoxList;
     QList<QSpinBox*> m_spinBoxList;
   };

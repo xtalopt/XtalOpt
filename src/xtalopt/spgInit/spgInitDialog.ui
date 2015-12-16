@@ -21,6 +21,13 @@
      </property>
     </widget>
    </item>
+   <item row="2" column="4">
+    <widget class="QPushButton" name="push_decrementAll">
+     <property name="text">
+      <string>Decrement All</string>
+     </property>
+    </widget>
+   </item>
    <item row="2" column="1">
     <widget class="QPushButton" name="push_selectAll">
      <property name="text">
@@ -28,7 +35,7 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="1" colspan="2">
+   <item row="1" column="1" colspan="4">
     <widget class="QTableWidget" name="table_list">
      <property name="contextMenuPolicy">
       <enum>Qt::CustomContextMenu</enum>
@@ -91,7 +98,30 @@
      </column>
     </widget>
    </item>
+   <item row="2" column="3">
+    <widget class="QPushButton" name="push_incrementAll">
+     <property name="text">
+      <string>Increment All</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2" colspan="2">
+    <widget class="QLabel" name="ui_label">
+     <property name="text">
+      <string>Empty</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
   </layout>
+  <zorder>push_selectAll</zorder>
+  <zorder>push_deselectAll</zorder>
+  <zorder>table_list</zorder>
+  <zorder>push_decrementAll</zorder>
+  <zorder>push_incrementAll</zorder>
+  <zorder>ui_label</zorder>
  </widget>
  <resources/>
  <connections/>

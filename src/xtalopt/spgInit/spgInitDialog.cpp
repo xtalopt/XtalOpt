@@ -19,6 +19,8 @@ namespace XtalOpt {
   SpgInitDialog::SpgInitDialog(XtalOpt* p, QWidget* parent) :
     QDialog(parent),
     m_xtalopt(p),
+    m_comp(p->comp),
+    m_FUList(p->formulaUnitsList),
     m_checkBoxList(QList<QCheckBox*>()),
     m_spinBoxList(QList<QSpinBox*>())
   {
@@ -31,16 +33,20 @@ namespace XtalOpt {
             this, SLOT(selectAll()));
     connect(this->push_deselectAll, SIGNAL(clicked()),
             this, SLOT(deselectAll()));
+    connect(this->push_incrementAll, SIGNAL(clicked()),
+            this, SLOT(incrementAll()));
+    connect(this->push_decrementAll, SIGNAL(clicked()),
+            this, SLOT(decrementAll()));
+
+    // Set the label
+    setLabel();
 
     // Get the list of atoms
-    QHash<uint, XtalCompositionStruct> comp = m_xtalopt->comp;
-
-    QList<uint> atomicNums = comp.keys();
-    QList<uint> FUList = m_xtalopt->formulaUnitsList;
+    QList<uint> atomicNums = m_comp.keys();
 
     QList<uint> atoms;
     for (size_t i = 0; i < atomicNums.size(); i++) {
-      for (size_t j = 0; j < comp.value(atomicNums[i]).quantity; j++) {
+      for (size_t j = 0; j < m_comp.value(atomicNums[i]).quantity; j++) {
         atoms.push_back(atomicNums[i]);
       }
     }
@@ -50,18 +56,18 @@ namespace XtalOpt {
       uint index = spg - 1;
       QString FUPossible = "";
       // Let's also investigate every formula unit possible!
-      for (size_t i = 0; i < FUList.size(); i++) {
+      for (size_t i = 0; i < m_FUList.size(); i++) {
         // Make an atoms list that is adjusted by the formula units
         std::vector<uint> tempAtoms;
-        tempAtoms.reserve(atoms.size() * FUList.at(i));
+        tempAtoms.reserve(atoms.size() * m_FUList.at(i));
         for (size_t j = 0; j < atoms.size(); j++) {
-          for (size_t k = 0; k < FUList.at(i); k++) {
+          for (size_t k = 0; k < m_FUList.at(i); k++) {
             tempAtoms.push_back(atoms.at(j));
           }
         }
         // Append each formula unit to the list followed by a comma
         if (SpgInit::isSpgPossible(spg, tempAtoms)) {
-          FUPossible.append(QString::number(FUList.at(i)) + ",");
+          FUPossible.append(QString::number(m_FUList.at(i)) + ",");
         }
       }
 
@@ -98,10 +104,14 @@ namespace XtalOpt {
       if (FUPossible.size() != 0) m_spinBoxList.at(index)->setEnabled(true);
 
       e.formulaUnitsPossible = FUPossible;
-      e.formulaUnitsAllowed = " ";
-      e.minNumOfEach = 0;
       e.brush = QBrush(Qt::green);
       setTableEntry(index, e);
+
+      // Make connections to the checkboxes and spinboxes in the table
+      connect(this->m_checkBoxList.at(index), SIGNAL(toggled(bool)),
+              this, SLOT(updateAll()));
+      connect(this->m_spinBoxList.at(index), SIGNAL(editingFinished()),
+              this, SLOT(updateAll()));
     }
 
   }
@@ -129,12 +139,8 @@ namespace XtalOpt {
     this->table_list->item(row, HM_Spg)->setText(e.HM_spg);
     this->table_list->item(row, FormulaUnitsPossible)->setText(
                                                       e.formulaUnitsPossible);
-    this->table_list->setCellWidget(row,FormulaUnitsAllowed, m_checkBoxList.at(row));
-    this->table_list->setCellWidget(row, MinNumOfEach, m_spinBoxList.at(row));
-//    this->table_list->item(row, FormulaUnitsAllowed)->setText(
-//                                                      e.formulaUnitsAllowed);
-//    this->table_list->item(row, MinNumOfEach)->setText(
-  //                                           QString::number(e.minNumOfEach));
+    this->table_list->setCellWidget(row, CheckBox, m_checkBoxList.at(row));
+    this->table_list->setCellWidget(row, SpinBox, m_spinBoxList.at(row));
   }
 
   void SpgInitDialog::selectAll()
@@ -153,13 +159,66 @@ namespace XtalOpt {
     }
   }
 
+  void SpgInitDialog::incrementAll()
+  {
+    for (size_t i = 0; i < m_spinBoxList.size(); i++) {
+      if (m_spinBoxList.at(i)->isEnabled())
+        m_spinBoxList.at(i)->setValue(m_spinBoxList.at(i)->value() + 1);
+    }
+  }
+
+  void SpgInitDialog::decrementAll()
+  {
+    for (size_t i = 0; i < m_spinBoxList.size(); i++) {
+      if (m_spinBoxList.at(i)->isEnabled())
+        m_spinBoxList.at(i)->setValue(m_spinBoxList.at(i)->value() - 1);
+    }
+  }
+
   QSpinBox* SpgInitDialog::getNewSpinBox()
   {
     QSpinBox* spinBox = new QSpinBox;
     spinBox->setMinimum(0);
+    spinBox->setMaximum(10000);
     spinBox->setSingleStep(1);
     spinBox->setValue(0);
     spinBox->setEnabled(false);
     return spinBox;
+  }
+
+  void SpgInitDialog::updateAll()
+  {
+    for (size_t i = 0; i < m_checkBoxList.size(); i++) {
+      if (!m_checkBoxList.at(i)->isEnabled() ||
+          !m_checkBoxList.at(i)->isChecked()) {
+        m_spinBoxList.at(i)->setEnabled(false);
+      }
+      else m_spinBoxList.at(i)->setEnabled(true);
+    }
+  }
+
+  bool SpgInitDialog::isCompositionSame(XtalOpt* p)
+  {
+    if (p->comp == m_comp && p->formulaUnitsList == m_FUList) return true;
+    else return false;
+  }
+
+  void SpgInitDialog::setLabel()
+  {
+    QList<uint> atomicNums = m_comp.keys();
+
+    // Just keep the default label if no composition is set
+    if (atomicNums.isEmpty()) return;
+
+    QString label = " ";
+    for (size_t i = 0; i < atomicNums.size(); i++) {
+      QString tmp = QString(OpenBabel::etab.GetSymbol(atomicNums.at(i))) +
+                    QString::number(m_comp.value(atomicNums.at(i)).quantity) +
+                    " ";
+      label.append(tmp);
+    }
+
+    this->ui_label->setText(label);
+
   }
 }
