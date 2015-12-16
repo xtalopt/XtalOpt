@@ -68,7 +68,9 @@ namespace XtalOpt {
     OptBase(parent),
     m_initWC(new SlottedWaitCondition (this)),
     using_maxDupOffspring(false),
-    maxDupOffspring(5)
+    maxDupOffspring(5),
+    using_spgInit(false),
+    minXtalsOfSpgPerFU(QList<int>())
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";

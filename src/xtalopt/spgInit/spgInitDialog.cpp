@@ -139,6 +139,8 @@ namespace XtalOpt {
     this->table_list->item(row, HM_Spg)->setText(e.HM_spg);
     this->table_list->item(row, FormulaUnitsPossible)->setText(
                                                       e.formulaUnitsPossible);
+    // Maybe we'll use a brush in the future...
+    //this->table_list->item(row, FormulaUnitsPossible)->setBackground(e.brush);
     this->table_list->setCellWidget(row, CheckBox, m_checkBoxList.at(row));
     this->table_list->setCellWidget(row, SpinBox, m_spinBoxList.at(row));
   }
@@ -165,6 +167,7 @@ namespace XtalOpt {
       if (m_spinBoxList.at(i)->isEnabled())
         m_spinBoxList.at(i)->setValue(m_spinBoxList.at(i)->value() + 1);
     }
+    updateAll();
   }
 
   void SpgInitDialog::decrementAll()
@@ -173,6 +176,7 @@ namespace XtalOpt {
       if (m_spinBoxList.at(i)->isEnabled())
         m_spinBoxList.at(i)->setValue(m_spinBoxList.at(i)->value() - 1);
     }
+    updateAll();
   }
 
   QSpinBox* SpgInitDialog::getNewSpinBox()
@@ -188,12 +192,19 @@ namespace XtalOpt {
 
   void SpgInitDialog::updateAll()
   {
+    m_xtalopt->minXtalsOfSpgPerFU.clear();
     for (size_t i = 0; i < m_checkBoxList.size(); i++) {
       if (!m_checkBoxList.at(i)->isEnabled() ||
           !m_checkBoxList.at(i)->isChecked()) {
         m_spinBoxList.at(i)->setEnabled(false);
+        // -1 means we cannot use this one...
+        m_xtalopt->minXtalsOfSpgPerFU.append(-1);
       }
-      else m_spinBoxList.at(i)->setEnabled(true);
+      else {
+        m_spinBoxList.at(i)->setEnabled(true);
+        // Append to the minXtalsOfSpgPerFU
+        m_xtalopt->minXtalsOfSpgPerFU.append(m_spinBoxList.at(i)->value());
+      }
     }
   }
 

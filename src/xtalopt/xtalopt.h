@@ -189,6 +189,13 @@ namespace XtalOpt {
     bool using_maxDupOffspring;
     int maxDupOffspring;
 
+    // Spacegroup initialization
+    bool using_spgInit;
+    // If the number is -1, that spg is not allowed
+    // Otherwise, it represents the minimum number of xtals for that spacegroup
+    // per formula unit. The spacegroup it represents is index + 1
+    QList<int> minXtalsOfSpgPerFU;
+
   public slots:
     void startSearch();
     void generateNewStructure();

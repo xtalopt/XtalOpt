@@ -123,6 +123,8 @@ namespace XtalOpt {
             this, SLOT(updateOptimizationInfo()));
 
     // spgInit
+    connect(ui.cb_allowSpgInit, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
     connect(ui.push_spgOptions, SIGNAL(clicked()),
             this, SLOT(openSpgOptions()));
 
@@ -387,6 +389,9 @@ namespace XtalOpt {
     // maxDupOffspring
     xtalopt->using_maxDupOffspring = ui.cb_maxDupOffspring->isChecked();
     xtalopt->maxDupOffspring = ui.spin_maxDupOffspring->value();
+
+    // allowSpgInit
+    xtalopt->using_spgInit = ui.cb_allowSpgInit->isChecked();
 
   }
 
