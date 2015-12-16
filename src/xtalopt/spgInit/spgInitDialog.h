@@ -27,6 +27,7 @@
 #include <QtGui/QBrush>
 
 class QCheckBox;
+class QSpinBox;
 
 namespace XtalOpt {
   class XtalOptDialog;
@@ -56,13 +57,17 @@ namespace XtalOpt {
     explicit SpgInitDialog(XtalOpt* p, QWidget* parent = 0);
     virtual ~SpgInitDialog();
     void setTableEntry(uint row, const Spg_Table_Entry& e);
+
    public slots:
     void selectAll();
     void deselectAll();
 
    private:
+    QSpinBox* getNewSpinBox();
+
     XtalOpt* m_xtalopt;
     QList<QCheckBox*> m_checkBoxList;
+    QList<QSpinBox*> m_spinBoxList;
   };
 }
 

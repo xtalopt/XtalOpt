@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <QCheckBox>
+#include <QSpinBox>
 #include <QtCore/QDebug>
 
 #include "spgInitDialog.h"
@@ -18,7 +19,8 @@ namespace XtalOpt {
   SpgInitDialog::SpgInitDialog(XtalOpt* p, QWidget* parent) :
     QDialog(parent),
     m_xtalopt(p),
-    m_checkBoxList(QList<QCheckBox*>())
+    m_checkBoxList(QList<QCheckBox*>()),
+    m_spinBoxList(QList<QSpinBox*>())
   {
     // Since SpgInitDialog inherits from the qt-created class, Ui::SpgInitDialog
     // We can just tell it to set up itself
@@ -91,6 +93,10 @@ namespace XtalOpt {
       // If the spacegroup cannot be made, disable the checkbox
       else m_checkBoxList.at(index)->setEnabled(false);
 
+      // This starts off disabled...
+      m_spinBoxList.append(getNewSpinBox());
+      if (FUPossible.size() != 0) m_spinBoxList.at(index)->setEnabled(true);
+
       e.formulaUnitsPossible = FUPossible;
       e.formulaUnitsAllowed = " ";
       e.minNumOfEach = 0;
@@ -103,8 +109,19 @@ namespace XtalOpt {
   SpgInitDialog::~SpgInitDialog()
   {
     // Delete the dynamically allocated checkbox list
-    for (size_t i = 0; i < m_checkBoxList.size(); i++)
-      delete m_checkBoxList.at(i);
+    for (size_t i = 0; i < m_checkBoxList.size(); i++) {
+      if (m_checkBoxList.at(i)) {
+        delete m_checkBoxList.at(i);
+        m_checkBoxList[i] = 0;
+      }
+    }
+
+    for (size_t i = 0; i < m_spinBoxList.size(); i++) {
+      if (m_spinBoxList.at(i)) {
+        delete m_spinBoxList.at(i);
+        m_spinBoxList[i] = 0;
+      }
+    }
   }
 
   void SpgInitDialog::setTableEntry(uint row, const Spg_Table_Entry& e)
@@ -113,6 +130,7 @@ namespace XtalOpt {
     this->table_list->item(row, FormulaUnitsPossible)->setText(
                                                       e.formulaUnitsPossible);
     this->table_list->setCellWidget(row,FormulaUnitsAllowed, m_checkBoxList.at(row));
+    this->table_list->setCellWidget(row, MinNumOfEach, m_spinBoxList.at(row));
 //    this->table_list->item(row, FormulaUnitsAllowed)->setText(
 //                                                      e.formulaUnitsAllowed);
 //    this->table_list->item(row, MinNumOfEach)->setText(
@@ -133,5 +151,15 @@ namespace XtalOpt {
       if (m_checkBoxList.at(i)->isEnabled())
         m_checkBoxList.at(i)->setChecked(false);
     }
+  }
+
+  QSpinBox* SpgInitDialog::getNewSpinBox()
+  {
+    QSpinBox* spinBox = new QSpinBox;
+    spinBox->setMinimum(0);
+    spinBox->setSingleStep(1);
+    spinBox->setValue(0);
+    spinBox->setEnabled(false);
+    return spinBox;
   }
 }
