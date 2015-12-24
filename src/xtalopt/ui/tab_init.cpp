@@ -413,6 +413,17 @@ namespace XtalOpt {
       comp[atomicNum].quantity += quantity;
     }
 
+    // If we changed the composition, reset the spacegroup initialization
+    // min xtals per FU to be zero
+    if (xtalopt->comp != comp && xtalopt->minXtalsOfSpgPerFU.size() != 0) {
+      xtalopt->error(tr(
+               "Warning: because the composition have been changed, "
+               "the spacegroups to be generated using spacegroup "
+               "initialization have been reset. Please open the spacegroup "
+               "options to set them again."));
+      xtalopt->minXtalsOfSpgPerFU = QList<int>();
+    }
+
     xtalopt->comp = comp;
 
     this->updateMinRadii();
@@ -574,6 +585,19 @@ namespace XtalOpt {
     // Update minFU, maxFU, and formulaUnitsList
     xtalopt->minFU = formulaUnitsList.at(0);
     xtalopt->maxFU = formulaUnitsList.at(formulaUnitsList.size() - 1);
+
+    // If we changed the formula units, reset the spacegroup initialization
+    // min xtals per FU to be zero
+    if (xtalopt->formulaUnitsList != formulaUnitsList &&
+        xtalopt->minXtalsOfSpgPerFU.size() != 0) {
+      xtalopt->error(tr(
+               "Warning: because the formula units have been changed, "
+               "the spacegroups to be generated using spacegroup "
+               "initialization have been reset. Please open the spacegroup "
+               "options to set them again."));
+      xtalopt->minXtalsOfSpgPerFU = QList<int>();
+    }
+
     xtalopt->formulaUnitsList = formulaUnitsList;
 
     // Update the size of the lowestEnthalpyFUList

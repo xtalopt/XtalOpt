@@ -113,7 +113,8 @@ namespace XtalOpt {
       connect(this->m_spinBoxList.at(index), SIGNAL(editingFinished()),
               this, SLOT(updateAll()));
     }
-
+    // Let's go ahead and save all the values to m_xtalopt
+    updateAll();
   }
 
   SpgInitDialog::~SpgInitDialog()
