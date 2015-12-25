@@ -56,6 +56,10 @@ typedef std::vector<wyckPos> wyckoffPositions;
 typedef std::pair<wyckPos, uint> atomAssignment;
 typedef std::vector<atomAssignment> atomAssignments;
 
+namespace XtalOpt {
+  struct XtalCompositionStruct;
+}
+
 class SpgInit {
  public:
   /*
@@ -129,6 +133,13 @@ class SpgInit {
   static bool addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
                                      uint atomicNum, double minIAD = -1,
                                      int maxAttempts = 1000);
+
+  static bool addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
+                                     uint atomicNum,
+                                     const QHash<unsigned int,
+                                                 XtalOpt::XtalCompositionStruct>& limits,
+                                     int maxAttempts = 1000);
+
   /*
    * Initialze and return a dynamically allocated xtal with a given spacegroup!
    * The lattice mins and lattice maxes provide constraints for the lattice
@@ -158,6 +169,14 @@ class SpgInit {
                                     const latticeStruct& latticeMins,
                                     const latticeStruct& latticeMaxes,
                                     double minIAD = -1, int maxAttempts = 1000);
+
+  static XtalOpt::Xtal* spgInitXtal(uint spg,
+                                    const std::vector<uint>& atomTypes,
+                                    const latticeStruct& latticeMins,
+                                    const latticeStruct& latticeMaxes,
+                                    const QHash<unsigned int,
+                                                 XtalOpt::XtalCompositionStruct>& limits,
+                                    int maxAttempts = 1000);
 
   static atomAssignments assignAtomsToWyckPos(uint spg,
                                               std::vector<uint> atoms);

@@ -24,6 +24,9 @@
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
 
+#include <xtalopt/spgInit/spgInit.h>
+#include <xtalopt/spgInit/spgInitDialog.h>
+
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
@@ -148,17 +151,6 @@ namespace XtalOpt {
       }
     }
 
-    QList<uint> atoms;
-    uint FU = formulaUnitsList.at(formulaUnitsList.size() - 1);
-    for (size_t i = 0; i < atomicNums.size(); i++) {
-      for (size_t j = 0; j < comp.value(atomicNums[i]).quantity * FU; j++) {
-        atoms.push_back(atomicNums[i]);
-      }
-    }
-    for (size_t i = 1; i <= 230; i++)
-      SpgInit::isSpgPossible(i, atoms.toVector().toStdVector());
-    return;
-
     // Settings checks
     // Check lattice parameters, volume, etc
     if (!XtalOpt::checkLimits()) {
@@ -268,12 +260,11 @@ namespace XtalOpt {
 
     // Initalize loop variables
     int failed = 0;
-    uint progCount = 0;
     QString filename;
     Xtal *xtal = 0;
     // Use new xtal count in case "addXtal" falls behind so that we
     // don't duplicate structures when switching from seeds -> random.
-    uint newXtalCount=0;
+    uint newXtalCount = 0;
 
     // Load seeds...
     for (int i = 0; i < seedList.size(); i++) {
@@ -286,28 +277,95 @@ namespace XtalOpt {
       }
     }
 
-    // Generation loop...
-    for (uint i = newXtalCount; i < numInitial; i++) {
-      // Update progress bar
-      m_dialog->updateProgressMaximum(
-            (i == 0) ? 0 : int(progCount/static_cast<double>(i))*numInitial);
-      m_dialog->updateProgressValue(progCount);
-      progCount++;
-      m_dialog->updateProgressLabel(
-            tr("%1 structures generated (%2 kept, %3 rejected)...")
-            .arg(i + failed).arg(i).arg(failed));
+    // Perform a regular random generation
+    if (!using_spgInit) {
+      // Generation loop...
+      while (newXtalCount < numInitial) {
+        updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
 
-      // Generate/Check xtal
-      xtal = generateRandomXtal(1, i+1);
-      if (!checkXtal(xtal)) {
-        delete xtal;
-        i--;
-        failed++;
+        // Generate/Check xtal
+        xtal = generateRandomXtal(1, newXtalCount+1);
+        if (!checkXtal(xtal)) {
+          delete xtal;
+          failed++;
+        }
+        else {
+          xtal->findSpaceGroup(tol_spg);
+          initializeAndAddXtal(xtal, 1, xtal->getParents());
+          newXtalCount++;
+        }
       }
-      else {
-        xtal->findSpaceGroup(tol_spg);
-        initializeAndAddXtal(xtal, 1, xtal->getParents());
-        newXtalCount++;
+    }
+    // Perform a spacegroup initialization generation
+    else {
+      // If minXtalsOfSpgPerFU was never correctly generated, just generate one now
+      if (minXtalsOfSpgPerFU.size() == 0) {
+        for (size_t spg = 1; spg <= 230; spg++)
+          minXtalsOfSpgPerFU.append(0);
+      }
+
+      QList<int> spgStillNeeded = minXtalsOfSpgPerFU;
+
+      // Find the total number of xtals that will be generated
+      // If minXtalsOfSpgPerFU specifies more xtals to be generated than
+      // numInitial, then the total needed will be the sum from
+      // minXtalsOfSpgPerFU
+
+      // Now that minXtalsOfSpgPerFU is set up, proceed!
+      newXtalCount = failed = 0;
+      // Find spacegroups for which we have required a certain number of xtals
+      // per formula unit
+      for (size_t i = 0; i < spgStillNeeded.size(); i++) {
+        while (spgStillNeeded.at(i) > 0) {
+          for (size_t FU_ind = 0; FU_ind < formulaUnitsList.size(); FU_ind++) {
+            uint spg = i + 1;
+            uint FU = formulaUnitsList.at(FU_ind);
+            // If the spacegroup isn't possible for this FU, just continue
+            if (!SpgInit::isSpgPossible(spg, getStdVecOfAtoms(FU))) continue;
+            updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
+
+            // Generate/Check xtal
+            xtal = spgInitXtal(1, newXtalCount + 1, FU, spg);
+            if (!checkXtal(xtal)) {
+              delete xtal;
+              qWarning() << "Failed to generate an xtal with spacegroup of"
+                         << QString::number(spg) << "and FU of" << QString::number(FU);
+              failed++;
+            }
+            else {
+              qDebug() << "Adding xtal with spg of" << QString::number(spg);
+              qDebug() << "newXtalCount is now" << QString::number(newXtalCount + 1);
+              xtal->findSpaceGroup(tol_spg);
+              initializeAndAddXtal(xtal, 1, xtal->getParents());
+              newXtalCount++;
+            }
+          }
+          spgStillNeeded[i]--;
+        }
+      }
+      // If we still haven't generated enough xtals, pick a random FU and spg
+      // to be generated
+      while (newXtalCount < numInitial) {
+        // Randomly select a formula unit
+        uint randomFU = formulaUnitsList.at(rand()%int(formulaUnitsList.size()));
+        // Randomly select a possible spg
+        uint randomSpg = pickRandomSpgFromPossibleOnes();//pickRandomSpgFromPossibleOnes();
+        // If it isn't possible, try again
+        if (!SpgInit::isSpgPossible(randomSpg, getStdVecOfAtoms(randomFU))) continue;
+        // Try it out
+        xtal = spgInitXtal(1, newXtalCount + 1, randomFU, randomSpg);
+        if (!checkXtal(xtal)) {
+          delete xtal;
+          qWarning() << "Failed to generate an xtal with spacegroup of"
+                     << QString::number(randomSpg) << "and FU of" << QString::number(randomFU);
+          failed++;
+        }
+        else {
+          xtal->findSpaceGroup(tol_spg);
+          initializeAndAddXtal(xtal, 1, xtal->getParents());
+          newXtalCount++;
+        }
+        // If we failed, shake it off and try again
       }
     }
 
@@ -493,94 +551,59 @@ namespace XtalOpt {
     INIT_RANDOM_GENERATOR();
 
     Xtal* xtal = NULL;
-    while (!checkXtal(xtal)) {
-      qDebug() << "Check failed!";
+    size_t numAttempts = 0;
+    size_t maxNumAttempts = 10;
+    QString* err = NULL;
+    while (!checkXtal(xtal) && numAttempts <= maxNumAttempts) {
+      numAttempts++;
       if (xtal) {
-        qDebug() << "Deleting xtal!";
         delete xtal;
-        qDebug() << "xtal deleted!";
         xtal = 0;
       }
 
-      // Set cell parameters
-      double a            = RANDDOUBLE() * (a_max-a_min) + a_min;
-      double b            = RANDDOUBLE() * (b_max-b_min) + b_min;
-      double c            = RANDDOUBLE() * (c_max-c_min) + c_min;
-      double alpha        = 90.0; //RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
-      double beta         = 90.0; //RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
-      double gamma        = 90.0; //RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
+      latticeStruct latticeMins, latticeMaxes;
+      setLatticeMinsAndMaxes(latticeMins, latticeMaxes);
 
-      // Create crystal
-      xtal = new Xtal(a, b, c, alpha, beta, gamma);
-      QWriteLocker locker (xtal->lock());
+      xtal = SpgInit::spgInitXtal(spg, getStdVecOfAtoms(FU), latticeMins,
+                                  latticeMaxes, this->comp);
 
-      xtal->setStatus(Xtal::Empty);
-
-      if (using_fixed_volume)
-        xtal->setVolume(vol_fixed * FU);
-
-      // Populate crystal
-      QList<uint> atomicNums = comp.keys();
-      // Sort atomic number by decreasing minimum radius. Adding the "larger"
-      // atoms first encourages a more even (and ordered) distribution
-      for (int i = 0; i < atomicNums.size()-1; ++i) {
-        for (int j = i + 1; j < atomicNums.size(); ++j) {
-          if (this->comp.value(atomicNums[i]).minRadius <
-              this->comp.value(atomicNums[j]).minRadius) {
-            atomicNums.swap(i,j);
-          }
-        }
+      // We need to set these things before checkXtal() is called
+      if (xtal) {
+        xtal->setStatus(Xtal::WaitingForOptimization);
+        if (using_fixed_volume) xtal->setVolume(vol_fixed * FU);
       }
-
-      unsigned int atomicNum;
-      unsigned int q;
-
-      atomicNum = atomicNums.at(0);
-      QList<Eigen::Vector3d> fracCoords;
-      fracCoords.append(Eigen::Vector3d(0, 0, 0));
-      fracCoords.append(Eigen::Vector3d(0, 0, 0.5));
-      fracCoords.append(Eigen::Vector3d(RANDDOUBLE(), 0.25, RANDDOUBLE()));
-      fracCoords.append(Eigen::Vector3d(RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE()));
-      for (size_t i = 0; i < fracCoords.size(); i++) {
-        Atom* newAtom = xtal->addAtom();
-        newAtom->setAtomicNumber(atomicNum);
-        newAtom->setPos(xtal->fracToCart(fracCoords.at(i)));
-      }
-
-      xtal->fillUnitCell(spg);
-      if (xtal->getSpaceGroupNumber() != spg) {
-        xtal->setCellInfo(0,0,0,0,0,0);
-        continue;
-      }
-  /*
-      for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
-        atomicNum = atomicNums.at(num_idx);
-        q = comp.value(atomicNum).quantity * FU;
-        for (uint i = 0; i < q; i++) {
-          if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
-            xtal->deleteLater();
-            debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                  "specified interatomic distance.");
-            return 0;
-          }
-        }
-      }
-  */
-      // Set up geneology info
-      xtal->setGeneration(generation);
-      xtal->setIDNumber(id);
-      xtal->setParents("pnma!");
-      xtal->setFormulaUnits(FU);
-      xtal->setStatus(Xtal::WaitingForOptimization);
     }
+
+    if (numAttempts > maxNumAttempts) {
+      if (xtal) {
+        delete xtal;
+        xtal = 0;
+      }
+      qDebug() << "After" << QString::number(maxNumAttempts)
+               << "attempts, failed to generate an xtal with spg of"
+               << QString::number(spg);
+      return NULL;
+    }
+
+    // Openbabel crashes when you try to retrieve the HM for spg = 230
+    // for some reason...
+    QString HM_spg = "";
+    if (spg != 230)
+      HM_spg = QString::fromStdString(OpenBabel::SpaceGroup::GetSpaceGroup(
+                                                          spg)->GetHMName());
+    else HM_spg = "Ia-3d";
+
     // Set up xtal data
+    xtal->setGeneration(generation);
+    xtal->setIDNumber(id);
+    xtal->setParents(tr("Spg Init: %1 (%2)").arg(spg)
+                                                             .arg(HM_spg));
+    xtal->setFormulaUnits(FU);
     return xtal;
   }
 
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
   {
-    return spgInitXtal(generation, id, FU, 62);
-
     INIT_RANDOM_GENERATOR();
 
     static_cast<double>(FU);
@@ -2957,6 +2980,82 @@ namespace XtalOpt {
   void XtalOpt::_incrementParentNumTotOffspring(GlobalSearch::Structure* s)
   {
     s->incrementParentNumTotOffspring();
+  }
+
+  void XtalOpt::setLatticeMinsAndMaxes(latticeStruct& latticeMins,
+                                       latticeStruct& latticeMaxes)
+  {
+    latticeMins.a = a_min;
+    latticeMins.b = b_min;
+    latticeMins.c = c_min;
+    latticeMins.alpha = alpha_min;
+    latticeMins.beta = beta_min;
+    latticeMins.gamma = gamma_min;
+
+    latticeMaxes.a = a_max;
+    latticeMaxes.b = b_max;
+    latticeMaxes.c = c_max;
+    latticeMaxes.alpha = alpha_max;
+    latticeMaxes.beta = beta_max;
+    latticeMaxes.gamma = gamma_max;
+  }
+
+  QList<uint> XtalOpt::getListOfAtoms(uint FU)
+  {
+    // Populate crystal
+    QList<uint> atomicNums = comp.keys();
+    // Sort atomic number by decreasing minimum radius. Adding the "larger"
+    // atoms first encourages a more even (and ordered) distribution
+    for (int i = 0; i < atomicNums.size()-1; ++i) {
+      for (int j = i + 1; j < atomicNums.size(); ++j) {
+        if (this->comp.value(atomicNums[i]).minRadius <
+            this->comp.value(atomicNums[j]).minRadius) {
+          atomicNums.swap(i,j);
+        }
+      }
+    }
+
+    QList<uint> atoms;
+    for (size_t i = 0; i < atomicNums.size(); i++) {
+      for (size_t j = 0; j < comp.value(atomicNums[i]).quantity * FU; j++) {
+        atoms.push_back(atomicNums[i]);
+      }
+    }
+    return atoms;
+  }
+
+  std::vector<uint> XtalOpt::getStdVecOfAtoms(uint FU)
+  {
+    return getListOfAtoms(FU).toVector().toStdVector();
+  }
+
+  uint XtalOpt::pickRandomSpgFromPossibleOnes()
+  {
+    QList<int> temp = minXtalsOfSpgPerFU;
+    for (size_t i = 0; i < temp.size(); i++) {
+      if (temp.at(i) == -1) {
+        temp.removeAt(i);
+        i--;
+      }
+    }
+
+    // Pick a random index from the edited list
+    size_t idx = rand()%int(temp.size());
+
+    // Return the spacegroup at this index
+    // The index represents the spacegroup of index + 1
+    return idx + 1;
+  }
+
+  void XtalOpt::updateProgressBar(size_t goal, size_t attempted,
+                                  size_t succeeded)
+  {
+    // Update progress bar
+    m_dialog->updateProgressMaximum(goal);
+    m_dialog->updateProgressValue(succeeded);
+    m_dialog->updateProgressLabel(
+              tr("%1 structures generated (%2 kept, %3 rejected)...")
+              .arg(attempted).arg(succeeded).arg(attempted - succeeded));
   }
 
 } // end namespace XtalOpt

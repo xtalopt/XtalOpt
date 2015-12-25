@@ -32,6 +32,9 @@
 
 #include <QtGui/QInputDialog>
 
+// Forward declarations...
+struct latticeStruct;
+
 namespace GlobalSearch {
   class SlottedWaitCondition;
 }
@@ -257,6 +260,15 @@ namespace XtalOpt {
       GS_SLEEP(0.1);
       supercellCheckLock.unlock();
     };
+
+    // Sets a_min, b_min, c_min, ... to the given lattice structs
+    void setLatticeMinsAndMaxes(latticeStruct& latticeMins,
+                                latticeStruct& latticeMaxes);
+    // If composition is Ti1O2, returns {22, 8, 8}
+    QList<uint> getListOfAtoms(uint FU);
+    std::vector<uint> getStdVecOfAtoms(uint FU);
+    uint pickRandomSpgFromPossibleOnes();
+    void updateProgressBar(size_t goal, size_t attempted, size_t succeeded);
 
    signals:
     void updateFormulaUnitsListUIText();

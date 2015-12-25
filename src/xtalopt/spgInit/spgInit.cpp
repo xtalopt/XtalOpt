@@ -16,6 +16,9 @@
 #include <xtalopt/spgInit/spgInit.h>
 #include <xtalopt/spgInit/wyckoffDatabase.h>
 
+// For XtalCompositionStruct
+#include <xtalopt/xtalopt.h>
+
 // For vector3
 #include <openbabel/generic.h>
 
@@ -25,6 +28,9 @@
 #include <tuple>
 #include <iostream>
 
+// Delete this later
+#include <QList>
+
 // Define this for debug output
 //#define SPGINIT_DEBUG
 
@@ -32,6 +38,26 @@ using namespace std;
 
 // number of atoms and atomic number
 typedef pair<uint, uint> numAndType;
+
+static inline void printLatticeInfo(XtalOpt::Xtal* xtal)
+{
+  cout << "a is " << xtal->getA() << "\n";
+  cout << "b is " << xtal->getB() << "\n";
+  cout << "c is " << xtal->getC() << "\n";
+  cout << "alpha is " << xtal->getAlpha() << "\n";
+  cout << "beta is " << xtal->getBeta() << "\n";
+  cout << "gamma is " << xtal->getGamma() << "\n";
+  cout << "volume is " << xtal->getVolume() << "\n";
+}
+
+static inline void printAtomInfo(XtalOpt::Xtal* xtal)
+{
+  cout << "Frac coords info (blank if none):\n";
+  QList<Eigen::Vector3d> fracCoords = xtal->getAtomCoordsFrac();
+  for (size_t i = 0; i < fracCoords.size(); i++) {
+    cout << "  (x,y,z) is (" << fracCoords.at(i)[0] << "," << fracCoords.at(i)[1] << "," << fracCoords.at(i)[2] << ")\n";
+  }
+}
 
 // Basic split of a string based upon a delimiter.
 static inline vector<string> split(const string& s, char delim)
@@ -106,6 +132,11 @@ static inline double interpretComponent(const string& component,
   // If it's just a number, just return the float equivalent
   if (isNumber(component)) return stof(component);
 
+  // If the position is not a number, there are 3 cases that need to be dealt with:
+  // 1. Just a variable x, y, or z
+  // 2. A negative x, y, or z
+  // 3. a +/- x, y, or z with a float added or subtracted from it
+
   int i = 0;
   bool varIsNeg = false;
 
@@ -161,14 +192,16 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
                                      int maxAttempts)
 {
 
-  // If the position is not a number, there are 3 cases that need to be dealt with:
-  // 1. Just a variable x, y, or z
-  // 2. A negative x, y, or z
-  // 3. a +/- x, y, or z with a float added or subtracted from it
-
   INIT_RANDOM_GENERATOR();
   double IAD = -1;
   int i = 0;
+
+  // If this contains a unique position, we only need to try once
+  // Otherwise, we'd be repeatedly trying the same thing...
+  if (containsUniquePosition(position)) {
+    maxAttempts = 1;
+  }
+
   OpenBabel::vector3 coords;
 
   do {
@@ -205,6 +238,124 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
   Eigen::Vector3d pos (coords[0],coords[1],coords[2]);
   atom->setPos(pos);
   atom->setAtomicNumber(static_cast<int>(atomicNum));
+  return true;
+}
+
+bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
+                                     uint atomicNum,
+                                     const QHash<unsigned int,
+                                                 XtalOpt::XtalCompositionStruct>& limits,
+                                     int maxAttempts)
+{
+
+  INIT_RANDOM_GENERATOR();
+  double IAD = -1;
+
+  int i = 0;
+  // If this contains a unique position, we only need to try once
+  // Otherwise, we'd be repeatedly trying the same thing...
+  if (containsUniquePosition(position)) {
+    maxAttempts = 1;
+  }
+
+  Eigen::Vector3d cartCoords;
+  OpenBabel::vector3 fracCoords;
+  bool success = true;
+
+  // Cache the minimum radius for the new atom
+  const double newMinRadius = limits.value(atomicNum).minRadius;
+
+  // Compute a cut off distance -- atoms farther away than this value
+  // will abort the check early.
+  double maxCheckDistance = 0.0;
+  for (QHash<unsigned int, XtalOpt::XtalCompositionStruct>::const_iterator
+       it = limits.constBegin(), it_end = limits.constEnd(); it != it_end;
+       ++it) {
+    if (it.value().minRadius > maxCheckDistance) {
+      maxCheckDistance = it.value().minRadius;
+    }
+  }
+  maxCheckDistance += newMinRadius;
+  const double maxCheckDistSquared = maxCheckDistance*maxCheckDistance;
+
+  do {
+    success = true;
+
+    // Generate random coordinates in the wyckoff position
+    IAD = -1;
+    double x = RANDDOUBLE();
+    double y = RANDDOUBLE();
+    double z = RANDDOUBLE();
+
+    vector<string> components = split(get<2>(position), ',');
+
+    double newX = interpretComponent(components[0], x, y, z);
+    double newY = interpretComponent(components[1], x, y, z);
+    double newZ = interpretComponent(components[2], x, y, z);
+
+#ifdef SPGINIT_DEBUG
+    std::cout << "components is " << get<2>(position) << " and newX, newY, and newZ are " << newX << " " << newY << " " << newZ << "\n";
+#endif
+
+    // interpretComponenet() returns -1 if it failed to read the component
+    if (newX == -1 || newY == -1 || newZ == -1) {
+      cout << "addWyckoffAtomRandomly() failed due to a component not being "
+           << "read successfully!\n";
+      return false;
+    }
+
+    fracCoords.Set(newX, newY, newZ);
+
+    // If this is the first atom in the lattice, then there's no need to
+    // check interatomic distances...
+    //if (xtal->numAtoms() == 0) break;
+
+#ifdef SPGINIT_DEBUG
+    cout << "numAtoms() is << " << xtal->numAtoms() << "\n";
+#endif
+
+    // Convert to cartesian coordinates and store
+    cartCoords = Eigen::Vector3d(xtal->fracToCart(fracCoords).AsArray());
+
+    // Compare distance to each atom in xtal with minimum radii
+    QVector<double> squaredDists;
+    xtal->getSquaredAtomicDistancesToPoint(cartCoords, &squaredDists);
+    Q_ASSERT_X(squaredDists.size() == xtal->numAtoms(), Q_FUNC_INFO,
+               "Size of distance list does not match number of atoms.");
+
+    for (int dist_ind = 0; dist_ind < squaredDists.size(); ++dist_ind) {
+      const double &curDistSquared = squaredDists[dist_ind];
+      // Save a bit of time if distance is huge...
+      if (curDistSquared > maxCheckDistSquared) {
+        continue;
+      }
+      // Compare distance to minimum:
+      const double minDist = newMinRadius + limits.value(
+            xtal->atom(dist_ind)->atomicNumber()).minRadius;
+      const double minDistSquared = minDist * minDist;
+
+      if (curDistSquared < minDistSquared) {
+        success = false;
+        break;
+      }
+    }
+
+    i++;
+  } while (i < maxAttempts && !success);
+
+  if (i >= maxAttempts) return false;
+
+  Avogadro::Atom* atom = xtal->addAtom();
+  Eigen::Vector3d pos (cartCoords[0],cartCoords[1],cartCoords[2]);
+  atom->setPos(pos);
+  atom->setAtomicNumber(static_cast<int>(atomicNum));
+
+#ifdef SPGINIT_DEBUG
+    cout << "After an atom with atomic num " << atomicNum << " was added, the following is the lattice info:\n";
+    printLatticeInfo(xtal);
+    printAtomInfo(xtal);
+#endif
+
   return true;
 }
 
@@ -247,7 +398,12 @@ atomAssignments SpgInit::assignAtomsToWyckPos(uint spg, vector<uint> atoms)
       if (!unique &&
           // Then check to see if it CAN be used
           numOfEachType.at(i).first % multiplicity == 0) {
-        ret.push_back(make_pair(wyckVector.at(j), atomicNum));
+        //cout << "Using wyckVector at " << j << " that has a multiplicity of " << multiplicity << " and the position is " << get<2>(wyckVector.at(j)) << "\n";
+        size_t numNeeded = numOfEachType.at(i).first;
+        while (numNeeded > 0) {
+          ret.push_back(make_pair(wyckVector.at(j), atomicNum));
+          numNeeded -= multiplicity;
+        }
         wyckoffPositionUsed[j] = true;
         foundAHome = true;
         break;
@@ -256,6 +412,7 @@ atomAssignments SpgInit::assignAtomsToWyckPos(uint spg, vector<uint> atoms)
       else if (unique && !wyckoffPositionUsed.at(j) &&
                // Then check to see if they are equivalent
                numOfEachType.at(i).first == multiplicity) {
+        //cout << "Using wyckVector at " << j << " that has a multiplicity of " << multiplicity << " and the position is " << get<2>(wyckVector.at(j)) << "\n";
         ret.push_back(make_pair(wyckVector.at(j), atomicNum));
         wyckoffPositionUsed[j] = true;
         foundAHome = true;
@@ -284,9 +441,15 @@ atomAssignments SpgInit::assignAtomsToWyckPos(uint spg, vector<uint> atoms)
 #endif
     if (!foundAHome) return emptyRet;
   }
+
+#ifdef SPGINIT_DEBUG
+  cout << "ret.size() is " << ret.size() << " and the positions are:\n";
+  for (size_t i = 0; i < ret.size(); i++)
+    cout << "get<2>(ret.at(" << i << ").first) is " << get<2>(ret.at(i).first) << "\n";
+#endif
+
   // If we made it here without returning, every atom type found a home
   return ret;
-
 }
 
 XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
@@ -332,6 +495,61 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
 
   xtal->fillUnitCell(spg);
 
+  return xtal;
+}
+
+XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
+                                    const vector<uint>& atoms,
+                                    const latticeStruct& latticeMins,
+                                    const latticeStruct& latticeMaxes,
+                                    const QHash<unsigned int,
+                                                 XtalOpt::XtalCompositionStruct>& limits,
+                                    int maxAttempts)
+{
+  // First let's get a lattice...
+  latticeStruct st = generateLatticeForSpg(spg, latticeMins, latticeMaxes);
+
+  // Make sure it's a valid lattice
+  if (st.a == 0 || st.b == 0 || st.c == 0 ||
+      st.alpha == 0 || st.beta == 0 || st.gamma == 0) {
+    cout << "Error in SpgInit::spgInitXtal(): an invalid lattice was "
+         << "generated.\n";
+    return NULL;
+  }
+
+  atomAssignments assignments = assignAtomsToWyckPos(spg, atoms);
+
+  if (assignments.size() == 0) {
+    cout << "Error in SpgInit::spgInitXtal(): atoms were not successfully"
+         << " assigned positions in assignAtomsToWyckPos()\n";
+    return NULL;
+  }
+
+  XtalOpt::Xtal* xtal = new XtalOpt::Xtal(st.a, st.b, st.c,
+                                          st.alpha, st.beta, st.gamma);
+
+  for (size_t i = 0; i < assignments.size(); i++) {
+    wyckPos pos = assignments.at(i).first;
+    uint atomicNum = assignments.at(i).second;
+    if (!addWyckoffAtomRandomly(xtal, pos, atomicNum,
+                                limits, maxAttempts)) {
+      delete xtal;
+      xtal = 0;
+      return NULL;
+    }
+  }
+
+  xtal->fillUnitCell(spg);
+
+  // If the correct spacegroup isn't created (happens every once in a while),
+  // delete the xtal and return NULL
+  if (xtal->getSpaceGroupNumber() != spg) {
+    delete xtal;
+    xtal = 0;
+    return NULL;
+  }
+
+  // Otherwise, we succeeded!!
   return xtal;
 }
 
