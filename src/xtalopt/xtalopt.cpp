@@ -333,8 +333,6 @@ namespace XtalOpt {
               failed++;
             }
             else {
-              qDebug() << "Adding xtal with spg of" << QString::number(spg);
-              qDebug() << "newXtalCount is now" << QString::number(newXtalCount + 1);
               xtal->findSpaceGroup(tol_spg);
               initializeAndAddXtal(xtal, 1, xtal->getParents());
               newXtalCount++;

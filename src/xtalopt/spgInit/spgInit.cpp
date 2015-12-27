@@ -132,6 +132,10 @@ static inline double interpretComponent(const string& component,
   // If it's just a number, just return the float equivalent
   if (isNumber(component)) return stof(component);
 
+  // '2x' throws off this alrogithm. Just add it here...
+  // There is no '2y' or '2z', and when '2x' occurs, it is alone...
+  if (component == "2x") return 2 * x;
+
   // If the position is not a number, there are 3 cases that need to be dealt with:
   // 1. Just a variable x, y, or z
   // 2. A negative x, y, or z
