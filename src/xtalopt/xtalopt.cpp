@@ -3027,22 +3027,34 @@ namespace XtalOpt {
     return getListOfAtoms(FU).toVector().toStdVector();
   }
 
+  // minXtalsOfSpgPerFU should already be set up by now
   uint XtalOpt::pickRandomSpgFromPossibleOnes()
   {
-    QList<int> temp = minXtalsOfSpgPerFU;
-    for (size_t i = 0; i < temp.size(); i++) {
-      if (temp.at(i) == -1) {
-        temp.removeAt(i);
-        i--;
-      }
+    if (minXtalsOfSpgPerFU.size() == 0) {
+      qDebug() << "Error! pickRandomSpgFromPossibleOnes() was called before"
+               << "minXtalsOfSpgPerFU was set up!";
+      return 1;
     }
 
-    // Pick a random index from the edited list
-    size_t idx = rand()%int(temp.size());
+    QList<uint> possibleSpgs;
+    for (size_t i = 0; i < minXtalsOfSpgPerFU.size(); i++) {
+      uint spg = i + 1;
+      if (minXtalsOfSpgPerFU.at(i) != -1) possibleSpgs.append(spg);
+    }
+
+    // If they are all impossible, print an error and return 1
+    if (possibleSpgs.size() == 0) {
+      qDebug() << "Error! In pickRandomSpgFromPossibleOnes(), no spacegroups"
+               << "were selected to be allowed! We will be generating a"
+               << "structure with a spacegroup of 1";
+      return 1;
+    }
+
+    // Pick a random index from the list
+    size_t idx = rand()%int(possibleSpgs.size());
 
     // Return the spacegroup at this index
-    // The index represents the spacegroup of index + 1
-    return idx + 1;
+    return possibleSpgs.at(idx);
   }
 
   void XtalOpt::updateProgressBar(size_t goal, size_t attempted,
