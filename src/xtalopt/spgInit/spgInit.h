@@ -52,8 +52,9 @@ typedef std::vector<wyckPos> wyckoffPositions;
 
 // This assign an atom with a specific atomic number to be placed in a specific
 // wyckoff position
-// The vector is a vector of atom assignments
+// 'uint' is the atomic number
 typedef std::pair<wyckPos, uint> atomAssignment;
+// This is a vector of atom assignments
 typedef std::vector<atomAssignment> atomAssignments;
 
 // number of atoms and atomic number

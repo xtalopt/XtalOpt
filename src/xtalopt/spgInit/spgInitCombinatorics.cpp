@@ -1,3 +1,18 @@
+/**********************************************************************
+  SpgInitCombinatorics.cpp - Functions for solving the complicated combinatorics
+                             problems for spacegroup initialization
+
+  Copyright (C) 2015 by Patrick S. Avery
+
+  This program is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation version 2 of the License.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+ ***********************************************************************/
 
 #include <iostream>
 
@@ -6,6 +21,10 @@
 
 using namespace std;
 
+// Define this for debug output
+//#define PRINT_SPG_INIT_COMB_DEBUG
+
+#ifdef PRINT_SPG_INIT_COMB_DEBUG
 static inline void printSingleAtomPossibility(const singleAtomPossibility&
                                               possib)
 {
@@ -22,6 +41,7 @@ static inline void printSingleAtomPossibilities(const singleAtomPossibilities&
     cout << " at i == " << i << ":\n";
     printSingleAtomPossibility(possibs.at(i));
   }
+  cout << "\n\n";
 }
 
 static inline void printSystemPossibility(const systemPossibility& possib)
@@ -40,7 +60,19 @@ static inline void printSystemPossibilities(const systemPossibilities& possib)
   for (size_t i = 0; i < possib.size(); i++) {
     printSystemPossibility(possib.at(i));
   }
+  cout << "\n\n";
 }
+
+static inline void printAtomAssignments(const atomAssignments& assigns)
+{
+  cout << "Printing atom assignments!\n";
+  for (size_t i = 0; i < assigns.size(); i++) {
+    cout << "  atomicNum is '" << assigns.at(i).second << "' and wyckLet is '"
+         << SpgInit::getWyckLet(assigns.at(i).first) << "'.\n";
+  }
+  cout << "\n\n";
+}
+#endif
 
 static inline uint getNumAtomsUsed(const usageTracker& tracker)
 {
@@ -91,6 +123,55 @@ convertToPossibility(const usageTracker& tempTracker)
     }
   }
   return poss;
+}
+
+atomAssignments
+SpgInitCombinatorics::convertSysPossToAtomAssignments(
+                                               const systemPossibility& poss)
+{
+  atomAssignments assignments;
+  for (size_t i = 0; i < poss.size(); i++) {
+    uint atomicNum = poss.at(i).first;
+    const singleAtomPossibility& saPoss = poss.at(i).second;
+    for (size_t j = 0; j < saPoss.size(); j++) {
+      // For atom assignments, the wyckoff position is first and atomic number
+      // is second
+      assignments.push_back(make_pair(saPoss.at(j), atomicNum));
+    }
+  }
+#ifdef PRINT_SPG_INIT_COMB_DEBUG
+  printAtomAssignments(assignments);
+#endif
+  return assignments;
+}
+
+systemPossibility
+SpgInitCombinatorics::convertAtomAssignmentsToSysPoss(
+                                              const atomAssignments& assigns)
+{
+  vector<uint> atomicNumsCounted;
+  systemPossibility sysPoss;
+  for (size_t i = 0; i < assigns.size(); i++) {
+    uint atomicNum = assigns.at(i).second;
+
+    // Check to make sure this one hasn't already been counted
+    bool counted = false;
+    for (size_t j = 0; j < atomicNumsCounted.size(); j++) {
+      if (atomicNum == atomicNumsCounted.at(j)) counted = true;
+    }
+    if (counted) continue;
+
+    // Count all of them of this atomic number
+    singleAtomPossibility saPoss;
+    for (size_t j = 0; j < assigns.size(); j++) {
+      if (assigns.at(j).second == atomicNum) {
+        saPoss.push_back(assigns.at(j).first);
+      }
+    }
+    sysPoss.push_back(make_pair(atomicNum, saPoss));
+    atomicNumsCounted.push_back(atomicNum);
+  }
+  return sysPoss;
 }
 
 static usageTracker createUsageTracker(const wyckoffPositions& wyckVec)
@@ -189,8 +270,8 @@ systemPossibilities joinSingleWithSystem(uint atomicNum,
   // We're going to add a single atom possibilities to all of the system
   // possibilities
   for (size_t i = 0; i < sysPoss.size(); i++) {
-    systemPossibility tempSysPoss = sysPoss.at(i);
     for (size_t j = 0; j < saPoss.size(); j++) {
+      systemPossibility tempSysPoss = sysPoss.at(i);
       // Add this to the system possibility
       tempSysPoss.push_back(make_pair(atomicNum, saPoss.at(j)));
       // Only add it if a unique position is NOT used twice
@@ -201,8 +282,8 @@ systemPossibilities joinSingleWithSystem(uint atomicNum,
   return newSysPossibilities;
 }
 
-void findAllCombinations(singleAtomPossibilities& appendVec,
-                         usageTracker tracker, uint numAtoms)
+static void findAllCombinations(singleAtomPossibilities& appendVec,
+                                usageTracker tracker, uint numAtoms)
 {
   if (numAtoms == 0) return;
 
@@ -237,8 +318,8 @@ void findAllCombinations(singleAtomPossibilities& appendVec,
 }
 
 systemPossibilities
-SpgInitCombinatorics::getSystemPossibilities(uint spg,
-                                             const vector<uint>& atoms)
+SpgInitCombinatorics::getAllSystemPossibilities(uint spg,
+                                                const vector<uint>& atoms)
 {
   vector<numAndType> numOfEachType = SpgInit::getNumOfEachType(atoms);
 
@@ -257,12 +338,108 @@ SpgInitCombinatorics::getSystemPossibilities(uint spg,
     // This appends all possibilities found to 'saPossibilities'
     findAllCombinations(saPossibilities, tracker, numAtoms);
 
+#ifdef PRINT_SPG_INIT_COMB_DEBUG
+    cout << "For atomic num '" << atomicNum << "' calling "
+         << "printSingleAtomPossibilities()\n";
     printSingleAtomPossibilities(saPossibilities);
+#endif
 
     sysPossibilities = joinSingleWithSystem(atomicNum, saPossibilities,
                                             sysPossibilities);
   }
 
+#ifdef PRINT_SPG_INIT_COMB_DEBUG
   printSystemPossibilities(sysPossibilities);
+#endif
+
   return sysPossibilities;
+}
+
+template<typename T>
+static bool vecContains(const vector<T>& vec, const T& element)
+{
+  for (size_t i = 0; i < vec.size(); i++) {
+    if (vec.at(i) == element) return true;
+  }
+  return false;
+}
+
+static uint countNumberOfDifferentWyckLets(const systemPossibility& poss)
+{
+  vector<char> wyckLetterUsed;
+  uint sum = 0;
+  for (size_t i = 0; i < poss.size(); i++) {
+    const singleAtomPossibility& saPoss = poss.at(i).second;
+    for (size_t j = 0; j < saPoss.size(); j++) {
+      char let = SpgInit::getWyckLet(saPoss.at(j));
+      if (!vecContains<char>(wyckLetterUsed, let)) {
+        sum++;
+        wyckLetterUsed.push_back(let);
+      }
+    }
+  }
+  return sum;
+}
+
+systemPossibilities
+SpgInitCombinatorics::getSystemPossibilitiesWithMostWyckLets(
+                                             uint spg,
+                                             const vector<uint>& atoms)
+{
+  systemPossibilities sysPosses = getAllSystemPossibilities(spg, atoms);
+
+  uint maxWyckLetsUsed = 0;
+  // Now find the maximum number of different wyckoff letters used in one
+  for (size_t i = 0; i < sysPosses.size(); i++) {
+    uint numWyckLets = countNumberOfDifferentWyckLets(sysPosses.at(i));
+    if (numWyckLets > maxWyckLetsUsed) {
+      maxWyckLetsUsed = numWyckLets;
+    }
+  }
+
+  // Now create a list of system possibilities that have the maximum number
+  systemPossibilities newSysPossibilities;
+  for (size_t i = 0; i < sysPosses.size(); i++) {
+    uint numWyckLets = countNumberOfDifferentWyckLets(sysPosses.at(i));
+    if (numWyckLets == maxWyckLetsUsed)
+      newSysPossibilities.push_back(sysPosses.at(i));
+  }
+
+  return newSysPossibilities;
+}
+
+// Get a random system possibility from all possible ones
+systemPossibility SpgInitCombinatorics::getRandomSystemPossibility(
+                                             uint spg,
+                                             const vector<uint>& atoms)
+{
+  systemPossibilities temp = getAllSystemPossibilities(spg, atoms);
+  return temp.at(rand() % temp.size());
+}
+
+// Get a random system possibility from the ones with most wyckoff letters
+systemPossibility
+SpgInitCombinatorics::getRandomSystemPossibilityWithMostWyckLets(
+                                             uint spg,
+                                             const vector<uint>& atoms)
+{
+  systemPossibilities temp = getSystemPossibilitiesWithMostWyckLets(spg, atoms);
+  return temp.at(rand() % temp.size());
+}
+
+// Get random atom assignments from all the possible system probabilities
+atomAssignments SpgInitCombinatorics::getRandomAtomAssignments(uint spg,
+                                                const vector<uint>& atoms)
+{
+  return convertSysPossToAtomAssignments(getRandomSystemPossibility(spg, atoms));
+}
+
+// Get random atom assignments from the possibilities with most wyckoff
+// letters
+atomAssignments SpgInitCombinatorics::getRandomAtomAssignmentsWithMostWyckLets(
+                                                uint spg,
+                                                const vector<uint>& atoms)
+{
+  return convertSysPossToAtomAssignments(
+                        getRandomSystemPossibilityWithMostWyckLets(spg, atoms));
 }
