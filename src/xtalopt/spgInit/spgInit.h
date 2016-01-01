@@ -56,12 +56,20 @@ typedef std::vector<wyckPos> wyckoffPositions;
 typedef std::pair<wyckPos, uint> atomAssignment;
 typedef std::vector<atomAssignment> atomAssignments;
 
+// number of atoms and atomic number
+typedef std::pair<uint, uint> numAndType;
+
 namespace XtalOpt {
   struct XtalCompositionStruct;
 }
 
 class SpgInit {
  public:
+
+  static char getWyckLet(const wyckPos& pos) {return std::get<0>(pos);};
+  static uint getMultiplicity(const wyckPos& pos) {return std::get<1>(pos);};
+  static std::string getWyckCoords(const wyckPos& pos) {return std::get<2>(pos);};
+
   /*
    * Obtain the wyckoff positions of a spacegroup from the database
    *
@@ -180,6 +188,11 @@ class SpgInit {
 
   static atomAssignments assignAtomsToWyckPos(uint spg,
                                               std::vector<uint> atoms);
+
+  static std::vector<numAndType> getNumOfEachType(
+                                   const std::vector<uint>& atoms);
+
+  static bool containsUniquePosition(const wyckPos& pos);
 
 };
 

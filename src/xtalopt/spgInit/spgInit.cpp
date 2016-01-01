@@ -28,16 +28,10 @@
 #include <tuple>
 #include <iostream>
 
-// Delete this later
-#include <QList>
-
 // Define this for debug output
 //#define SPGINIT_DEBUG
 
 using namespace std;
-
-// number of atoms and atomic number
-typedef pair<uint, uint> numAndType;
 
 static inline void printLatticeInfo(XtalOpt::Xtal* xtal)
 {
@@ -82,11 +76,37 @@ static inline bool isNumber(const string& s)
 }
 
 // A simple function used in the std::sort in the function below
-static bool greaterThan(const pair<uint, uint>& a, const pair<uint, uint>& b) {
+static inline bool greaterThan(const pair<uint, uint>& a,
+                               const pair<uint, uint>& b)
+{
   return a.first > b.first;
 }
 
-static inline vector<numAndType> getNumOfEachType(const vector<uint> atoms)
+static inline bool numIsEven(int num)
+{
+  if (num % 2 == 0) return true;
+  return false;
+}
+
+static inline bool numIsOdd(int num)
+{
+  return !numIsEven(num);
+}
+
+// Check if all the multiplicities of a spacegroup are even
+static inline bool spgMultsAreAllEven(uint spg)
+{
+  wyckoffPositions wyckVector = SpgInit::getWyckoffPositions(spg);
+  // An error message should already be printed if this returns false
+  if (wyckVector.size() == 0) return false;
+
+  for (size_t i = 0; i < wyckVector.size(); i++) {
+    if (numIsOdd(SpgInit::getMultiplicity(wyckVector.at(i)))) return false;
+  }
+  return true;
+}
+
+vector<numAndType> SpgInit::getNumOfEachType(const vector<uint>& atoms)
 {
   vector<uint> atomsAlreadyCounted;
   vector<numAndType> numOfEachType;
@@ -106,27 +126,17 @@ static inline vector<numAndType> getNumOfEachType(const vector<uint> atoms)
 }
 
 // A unique position is a position that has no x, y, or z in it
-static inline bool containsUniquePosition(const wyckPos& pos)
+bool SpgInit::containsUniquePosition(const wyckPos& pos)
 {
-  vector<string> xyzStrings = split(get<2>(pos), ',');
+  vector<string> xyzStrings = split(getWyckCoords(pos), ',');
   assert(xyzStrings.size() == 3);
   for (size_t i = 0; i < xyzStrings.size(); i++)
     if (!isNumber(xyzStrings.at(i))) return false;
   return true;
 }
 
-const wyckoffPositions& SpgInit::getWyckoffPositions(uint spg)
-{
-  if (spg < 1 || spg > 230) {
-    cout << "Error. getWyckoffPositions() was called for a spacegroup "
-         << "that does not exist! Given spacegroup is " << spg << endl;
-    return wyckoffPositionsDatabase.at(0);
-  }
-
-  return wyckoffPositionsDatabase.at(spg);
-}
-
-static inline double interpretComponent(const string& component,
+// This might be a little bit too long to be inline...
+static double interpretComponent(const string& component,
                                         double x, double y, double z)
 {
   // If it's just a number, just return the float equivalent
@@ -191,6 +201,17 @@ static inline double interpretComponent(const string& component,
   return ret;
 }
 
+const wyckoffPositions& SpgInit::getWyckoffPositions(uint spg)
+{
+  if (spg < 1 || spg > 230) {
+    cout << "Error. getWyckoffPositions() was called for a spacegroup "
+         << "that does not exist! Given spacegroup is " << spg << endl;
+    return wyckoffPositionsDatabase.at(0);
+  }
+
+  return wyckoffPositionsDatabase.at(spg);
+}
+
 bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
                                      uint atomicNum, double minIAD,
                                      int maxAttempts)
@@ -215,7 +236,7 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
     double y = RANDDOUBLE();
     double z = RANDDOUBLE();
 
-    vector<string> components = split(get<2>(position), ',');
+    vector<string> components = split(getWyckCoords(position), ',');
 
     double newX = interpretComponent(components[0], x, y, z);
     double newY = interpretComponent(components[1], x, y, z);
@@ -291,14 +312,14 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
     double y = RANDDOUBLE();
     double z = RANDDOUBLE();
 
-    vector<string> components = split(get<2>(position), ',');
+    vector<string> components = split(getWyckCoords(position), ',');
 
     double newX = interpretComponent(components[0], x, y, z);
     double newY = interpretComponent(components[1], x, y, z);
     double newZ = interpretComponent(components[2], x, y, z);
 
 #ifdef SPGINIT_DEBUG
-    std::cout << "components is " << get<2>(position) << " and newX, newY, and newZ are " << newX << " " << newY << " " << newZ << "\n";
+    std::cout << "components is " << getWyckCoords(position) << " and newX, newY, and newZ are " << newX << " " << newY << " " << newZ << "\n";
 #endif
 
     // interpretComponenet() returns -1 if it failed to read the component
@@ -379,7 +400,7 @@ atomAssignments SpgInit::assignAtomsToWyckPos(uint spg, vector<uint> atoms)
 #ifdef SPGINIT_DEBUG
   cout << "<multiplicity> <unique?> is:\n";
   for (size_t i = 0; i < wyckVector.size(); i++)
-    cout << get<1>(wyckVector.at(i)) << " " << containsUniquePosition(wyckVector.at(i)) << "\n";
+    cout << getMultiplicity(wyckVector.at(i)) << " " << containsUniquePosition(wyckVector.at(i)) << "\n";
 #endif
 
   // Keep track of which wyckoff positions have been used
@@ -396,13 +417,13 @@ atomAssignments SpgInit::assignAtomsToWyckPos(uint spg, vector<uint> atoms)
     // This will put as many atoms as possible into the general positions
     // while leaving unique positions for later
     for (int j = wyckVector.size() - 1; j >= 0; j--) {
-      uint multiplicity = get<1>(wyckVector.at(j));
+      uint multiplicity = getMultiplicity(wyckVector.at(j));
       bool unique = containsUniquePosition(wyckVector.at(j));
       // If it's not unique
       if (!unique &&
           // Then check to see if it CAN be used
           numOfEachType.at(i).first % multiplicity == 0) {
-        //cout << "Using wyckVector at " << j << " that has a multiplicity of " << multiplicity << " and the position is " << get<2>(wyckVector.at(j)) << "\n";
+        //cout << "Using wyckVector at " << j << " that has a multiplicity of " << multiplicity << " and the position is " << getWyckCoords(wyckVector.at(j)) << "\n";
         size_t numNeeded = numOfEachType.at(i).first;
         while (numNeeded > 0) {
           ret.push_back(make_pair(wyckVector.at(j), atomicNum));
@@ -416,7 +437,7 @@ atomAssignments SpgInit::assignAtomsToWyckPos(uint spg, vector<uint> atoms)
       else if (unique && !wyckoffPositionUsed.at(j) &&
                // Then check to see if they are equivalent
                numOfEachType.at(i).first == multiplicity) {
-        //cout << "Using wyckVector at " << j << " that has a multiplicity of " << multiplicity << " and the position is " << get<2>(wyckVector.at(j)) << "\n";
+        //cout << "Using wyckVector at " << j << " that has a multiplicity of " << multiplicity << " and the position is " << getWyckCoords(wyckVector.at(j)) << "\n";
         ret.push_back(make_pair(wyckVector.at(j), atomicNum));
         wyckoffPositionUsed[j] = true;
         foundAHome = true;
@@ -449,7 +470,7 @@ atomAssignments SpgInit::assignAtomsToWyckPos(uint spg, vector<uint> atoms)
 #ifdef SPGINIT_DEBUG
   cout << "ret.size() is " << ret.size() << " and the positions are:\n";
   for (size_t i = 0; i < ret.size(); i++)
-    cout << "get<2>(ret.at(" << i << ").first) is " << get<2>(ret.at(i).first) << "\n";
+    cout << "getWyckCoords(ret.at(" << i << ").first) is " << getWyckCoords(ret.at(i).first) << "\n";
 #endif
 
   // If we made it here without returning, every atom type found a home
