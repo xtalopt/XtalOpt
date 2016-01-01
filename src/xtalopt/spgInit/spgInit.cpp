@@ -14,6 +14,7 @@
  ***********************************************************************/
 
 #include <xtalopt/spgInit/spgInit.h>
+#include <xtalopt/spgInit/spgInitCombinatorics.h>
 #include <xtalopt/spgInit/wyckoffDatabase.h>
 
 // For XtalCompositionStruct
@@ -388,93 +389,11 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
 // returns an empty vector if the assignment failed
 atomAssignments SpgInit::assignAtomsToWyckPos(uint spg, vector<uint> atoms)
 {
-  // emptyRet is the empty return if the assignment failed
-  atomAssignments emptyRet, ret;
-
-  // vector<pair<atomicNum, num>>
-  vector<numAndType> numOfEachType = getNumOfEachType(atoms);
-
-  // The "uint" is the wyckPos and the "bool" is whether it's unique or not
-  wyckoffPositions wyckVector = getWyckoffPositions(spg);
-
-#ifdef SPGINIT_DEBUG
-  cout << "<multiplicity> <unique?> is:\n";
-  for (size_t i = 0; i < wyckVector.size(); i++)
-    cout << getMultiplicity(wyckVector.at(i)) << " " << containsUniquePosition(wyckVector.at(i)) << "\n";
-#endif
-
-  // Keep track of which wyckoff positions have been used
-  vector<bool> wyckoffPositionUsed;
-  wyckoffPositionUsed.reserve(wyckVector.size());
-  for (size_t i = 0; i < wyckVector.size(); i++)
-    wyckoffPositionUsed.push_back(false);
-
-  // These are arranged from largest to smallest already
-  for (size_t i = 0; i < numOfEachType.size(); i++) {
-    bool foundAHome = false;
-    uint atomicNum = numOfEachType.at(i).second;
-    // Start with the highest wyckoff letter and work our way down
-    // This will put as many atoms as possible into the general positions
-    // while leaving unique positions for later
-    for (int j = wyckVector.size() - 1; j >= 0; j--) {
-      uint multiplicity = getMultiplicity(wyckVector.at(j));
-      bool unique = containsUniquePosition(wyckVector.at(j));
-      // If it's not unique
-      if (!unique &&
-          // Then check to see if it CAN be used
-          numOfEachType.at(i).first % multiplicity == 0) {
-        //cout << "Using wyckVector at " << j << " that has a multiplicity of " << multiplicity << " and the position is " << getWyckCoords(wyckVector.at(j)) << "\n";
-        size_t numNeeded = numOfEachType.at(i).first;
-        while (numNeeded > 0) {
-          ret.push_back(make_pair(wyckVector.at(j), atomicNum));
-          numNeeded -= multiplicity;
-        }
-        wyckoffPositionUsed[j] = true;
-        foundAHome = true;
-        break;
-      }
-      // If it IS unique and hasn't been used
-      else if (unique && !wyckoffPositionUsed.at(j) &&
-               // Then check to see if they are equivalent
-               numOfEachType.at(i).first == multiplicity) {
-        //cout << "Using wyckVector at " << j << " that has a multiplicity of " << multiplicity << " and the position is " << getWyckCoords(wyckVector.at(j)) << "\n";
-        ret.push_back(make_pair(wyckVector.at(j), atomicNum));
-        wyckoffPositionUsed[j] = true;
-        foundAHome = true;
-        break;
-      }
-      // Finally, if it is unique and hasn't been used
-      else if (unique && !wyckoffPositionUsed.at(j) &&
-               numOfEachType.at(i).first % multiplicity == 0)
-      {
-        // If it failed the prior test, then this must be a multiple and NOT
-        // equivalent (i. e., 4 and 2). Since this is the case, just find a home
-        // for the atoms that CAN fit and just proceed to find a home for the
-        // others
-        wyckoffPositionUsed[j] = true;
-        ret.push_back(make_pair(wyckVector.at(j), atomicNum));
-        numOfEachType[i].first -= multiplicity;
-        i--;
-        foundAHome = true;
-        break;
-      }
-    }
-#ifdef SPGINIT_DEBUG
-    cout << "wyckoffPositionUsed is:\n";
-    for (size_t i = 0; i < wyckoffPositionUsed.size(); i++)
-      cout << wyckoffPositionUsed[i] << "\n";
-#endif
-    if (!foundAHome) return emptyRet;
-  }
-
-#ifdef SPGINIT_DEBUG
-  cout << "ret.size() is " << ret.size() << " and the positions are:\n";
-  for (size_t i = 0; i < ret.size(); i++)
-    cout << "getWyckCoords(ret.at(" << i << ").first) is " << getWyckCoords(ret.at(i).first) << "\n";
-#endif
-
-  // If we made it here without returning, every atom type found a home
-  return ret;
+  // Not sure which one is better yet...
+  return SpgInitCombinatorics::getRandomAtomAssignments(spg, atoms);
+  // return SpgInitCombinatorics::getRandomAtomAssignmentsWithMostWyckLets(
+  //                                              spg,
+  //                                              atoms);
 }
 
 XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
@@ -593,6 +512,22 @@ bool SpgInit::isSpgPossible(uint spg, const vector<uint>& atoms)
 #endif
   if (spg < 1 || spg > 230) return false;
 
+  // Add in a test here to shorten the time checking if a spg is possible
+  // If a spacegroup contains all even number multiplicities (many do),
+  // and there is an atom with an odd amount, then that spacegroup is not
+  // not possible
+  vector<numAndType> numOfEachType = getNumOfEachType(atoms);
+  bool containsOdd = false;
+  for (size_t i = 0; i < numOfEachType.size(); i++) {
+    if (numIsOdd(numOfEachType.at(i).first)) {
+      containsOdd = true;
+      break;
+    }
+  }
+
+  if (containsOdd && spgMultsAreAllEven(spg)) return false;
+
+  // If the test failed, we must just try to assign atoms and see if it works
   // If assignAtomsToWyckPos() returns an empty vector, the atoms could not
   // be assigned to produce the spacegroup
   if (assignAtomsToWyckPos(spg, atoms).size() == 0) return false;

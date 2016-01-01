@@ -414,6 +414,9 @@ systemPossibility SpgInitCombinatorics::getRandomSystemPossibility(
                                              const vector<uint>& atoms)
 {
   systemPossibilities temp = getAllSystemPossibilities(spg, atoms);
+  // Make sure it isn't empty...
+  // Return an empty sytemPossibility if it is
+  if (temp.size() == 0) return systemPossibility();
   return temp.at(rand() % temp.size());
 }
 
@@ -424,6 +427,9 @@ SpgInitCombinatorics::getRandomSystemPossibilityWithMostWyckLets(
                                              const vector<uint>& atoms)
 {
   systemPossibilities temp = getSystemPossibilitiesWithMostWyckLets(spg, atoms);
+  // Make sure it isn't empty...
+  // Return an empty systemPossibility if it is
+  if (temp.size() == 0) return systemPossibility();
   return temp.at(rand() % temp.size());
 }
 
