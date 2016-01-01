@@ -14,6 +14,32 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+/* You may feel free to skip over this explanation here. But this summarizes the
+   purpose of these functions.
+
+***********************************
+You have a system that consists of rooms, boxes, and balls. There are 230 rooms total. There are many different kinds of boxes and balls.
+
+Each room contains a certain number of boxes. Each box has a certain size and a property called 'uniqueness.' If a box is unique, then there is only one of them. If it is not unique, then there are an infinite number of them you can get. As for the size (unsigned integer), you MUST place exactly a number of balls inside that is equal to the size - no more, no less - and each ball MUST be the same type of ball.
+
+There are many different types of balls. The list will be labelled as a, b, c, d, etc. In the scope of this problem, the size of the ball does not have an impact on whether it will fit in the box or not, so you may assume all balls are the same size.
+
+A list of balls consists of their type, and how many of them there are (so we may have 4 of type a, 6 of type b, etc.). There aren't really any constraints on how many types there may be or how many balls of each type there may be.
+
+Write a function with the following input/output (WITHOUT the use of trial and error methods):
+
+input: list of balls (includes type of ball and number of each type) and room number (will identify how many different boxes there are, what each size is, and whether the box is unique or not).
+
+output: a list of all possible arrangements of the balls so that every ball is placed inside a box. Not every box needs to be filled, but every ball must be inside a box. If the requirements are impossible to satisfy, return an empty list.
+
+***********************************
+
+These functions here solve this problem that I created.
+The 'rooms' are spacegroups, the 'boxes' are Wyckoff positions, and the
+'balls' are atoms. This problem needed to be solved to find all possible
+combinations to put atoms in a given spacegroup.
+*/
+
 #ifndef SPG_INIT_COMBINATORICS_H
 #define SPG_INIT_COMBINATORICS_H
 
