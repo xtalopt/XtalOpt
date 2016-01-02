@@ -221,6 +221,12 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
                                                  XtalOpt::XtalCompositionStruct>& limits,
                                      int maxAttempts)
 {
+#ifdef SPGINIT_DEBUG
+  cout << "At beginning of addWyckoffAtomRandomly(), atom info is:\n";
+  printAtomInfo(xtal);
+  cout << "Attempting to add an atom at position " << getWyckCoords(position)
+       << "\n";
+#endif
 
   INIT_RANDOM_GENERATOR();
   double IAD = -1;
@@ -267,10 +273,6 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
     double newY = interpretComponent(components[1], x, y, z);
     double newZ = interpretComponent(components[2], x, y, z);
 
-#ifdef SPGINIT_DEBUG
-    std::cout << "components is " << getWyckCoords(position) << " and newX, newY, and newZ are " << newX << " " << newY << " " << newZ << "\n";
-#endif
-
     // interpretComponenet() returns -1 if it failed to read the component
     if (newX == -1 || newY == -1 || newZ == -1) {
       cout << "addWyckoffAtomRandomly() failed due to a component not being "
@@ -280,16 +282,12 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
 
     fracCoords.Set(newX, newY, newZ);
 
-    // If this is the first atom in the lattice, then there's no need to
-    // check interatomic distances...
-    //if (xtal->numAtoms() == 0) break;
-
-#ifdef SPGINIT_DEBUG
-    cout << "numAtoms() is << " << xtal->numAtoms() << "\n";
-#endif
-
     // Convert to cartesian coordinates and store
     cartCoords = Eigen::Vector3d(xtal->fracToCart(fracCoords).AsArray());
+
+    // If this is the first atom in the lattice, then there's no need to
+    // check interatomic distances...
+    if (xtal->numAtoms() == 0) break;
 
     // Compare distance to each atom in xtal with minimum radii
     QVector<double> squaredDists;
@@ -317,7 +315,7 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
     i++;
   } while (i < maxAttempts && !success);
 
-  if (i >= maxAttempts) return false;
+  if (i > maxAttempts) return false;
 
   Avogadro::Atom* atom = xtal->addAtom();
   Eigen::Vector3d pos (cartCoords[0],cartCoords[1],cartCoords[2]);
@@ -390,6 +388,10 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
   // If the correct spacegroup isn't created (happens every once in a while),
   // delete the xtal and return NULL
   if (xtal->getSpaceGroupNumber() != spg) {
+#ifdef SPGINIT_DEBUG
+    cout << "Spacegroup num, '" << xtal->getSpaceGroupNumber()
+         << "', isn't correct! It should be '" << spg << "'!\n";
+#endif
     delete xtal;
     xtal = 0;
     return NULL;
@@ -403,8 +405,6 @@ bool SpgInit::isSpgPossible(uint spg, const vector<uint>& atoms)
 {
 #ifdef SPGINIT_DEBUG
   cout << __FUNCTION__ << " called!\n";
-  cout << "atoms is:\n";
-  for (size_t i = 0; i < atoms.size(); i++) cout << atoms[i] << "\n";
 #endif
   if (spg < 1 || spg > 230) return false;
 
