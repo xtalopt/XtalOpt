@@ -1,5 +1,5 @@
 /**********************************************************************
-  SpgInit - Functions for spacegroup initizialization.
+  spgInit.cpp - Functions for spacegroup initizialization.
 
   Copyright (C) 2015 by Patrick S. Avery
 
@@ -34,6 +34,7 @@
 
 using namespace std;
 
+#ifdef SPGINIT_DEBUG
 static inline void printLatticeInfo(XtalOpt::Xtal* xtal)
 {
   cout << "a is " << xtal->getA() << "\n";
@@ -53,6 +54,7 @@ static inline void printAtomInfo(XtalOpt::Xtal* xtal)
     cout << "  (x,y,z) is (" << fracCoords.at(i)[0] << "," << fracCoords.at(i)[1] << "," << fracCoords.at(i)[2] << ")\n";
   }
 }
+#endif
 
 // Basic split of a string based upon a delimiter.
 static inline vector<string> split(const string& s, char delim)
@@ -214,60 +216,6 @@ const wyckoffPositions& SpgInit::getWyckoffPositions(uint spg)
 }
 
 bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
-                                     uint atomicNum, double minIAD,
-                                     int maxAttempts)
-{
-
-  INIT_RANDOM_GENERATOR();
-  double IAD = -1;
-  int i = 0;
-
-  // If this contains a unique position, we only need to try once
-  // Otherwise, we'd be repeatedly trying the same thing...
-  if (containsUniquePosition(position)) {
-    maxAttempts = 1;
-  }
-
-  OpenBabel::vector3 coords;
-
-  do {
-    // Generate random coordinates in the wyckoff position
-    IAD = -1;
-    double x = RANDDOUBLE();
-    double y = RANDDOUBLE();
-    double z = RANDDOUBLE();
-
-    vector<string> components = split(getWyckCoords(position), ',');
-
-    double newX = interpretComponent(components[0], x, y, z);
-    double newY = interpretComponent(components[1], x, y, z);
-    double newZ = interpretComponent(components[2], x, y, z);
-
-    // interpretComponenet() returns -1 if it failed to read the component
-    if (newX == -1 || newY == -1 || newZ == -1) {
-      cout << "addWyckoffAtomRandomly() failed due to a component not being "
-           << "read successfully!\n";
-      return false;
-    }
-
-    coords.Set(newX, newY, newZ);
-    if (minIAD != -1) {
-      xtal->getNearestNeighborDistance(newX, newY, newZ, IAD);
-    }
-    else { break;};
-    i++;
-  } while (i < maxAttempts && IAD <= minIAD);
-
-  if (i >= maxAttempts) return false;
-
-  Avogadro::Atom* atom = xtal->addAtom();
-  Eigen::Vector3d pos (coords[0],coords[1],coords[2]);
-  atom->setPos(pos);
-  atom->setAtomicNumber(static_cast<int>(atomicNum));
-  return true;
-}
-
-bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
                                      uint atomicNum,
                                      const QHash<unsigned int,
                                                  XtalOpt::XtalCompositionStruct>& limits,
@@ -400,52 +348,6 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
                                     const vector<uint>& atoms,
                                     const latticeStruct& latticeMins,
                                     const latticeStruct& latticeMaxes,
-                                    double minIAD, int maxAttempts)
-{
-  // First let's get a lattice...
-  latticeStruct st = generateLatticeForSpg(spg, latticeMins, latticeMaxes);
-
-  // Make sure it's a valid lattice
-  if (st.a == 0 || st.b == 0 || st.c == 0 ||
-      st.alpha == 0 || st.beta == 0 || st.gamma == 0) {
-    cout << "Error in SpgInit::spgInitXtal(): an invalid lattice was "
-         << "generated.\n";
-    return NULL;
-  }
-
-  atomAssignments assignments = assignAtomsToWyckPos(spg, atoms);
-
-  if (assignments.size() == 0) {
-    cout << "Error in SpgInit::spgInitXtal(): atoms were not successfully"
-         << " assigned positions in assignAtomsToWyckPos()\n";
-    return NULL;
-  }
-
-  XtalOpt::Xtal* xtal = new XtalOpt::Xtal(st.a, st.b, st.c,
-                                          st.alpha, st.beta, st.gamma);
-
-  for (size_t i = 0; i < assignments.size(); i++) {
-    wyckPos pos = assignments.at(i).first;
-    uint atomicNum = assignments.at(i).second;
-    if (!addWyckoffAtomRandomly(xtal, pos, atomicNum,
-                                minIAD, maxAttempts)) {
-      delete xtal;
-      xtal = 0;
-      cout << "In spgInit::spgInitXtal(), failed to add atoms randomly for "
-           << "a spg of " << spg << "\n";
-      return NULL;
-    }
-  }
-
-  xtal->fillUnitCell(spg);
-
-  return xtal;
-}
-
-XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
-                                    const vector<uint>& atoms,
-                                    const latticeStruct& latticeMins,
-                                    const latticeStruct& latticeMaxes,
                                     const QHash<unsigned int,
                                                  XtalOpt::XtalCompositionStruct>& limits,
                                     int maxAttempts)
@@ -497,12 +399,6 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
   return xtal;
 }
 
-vector<atomStruct> SpgInit::generateInitWyckoffs(uint spg,
-                                                 const vector<uint> atomTpes)
-{
-
-}
-
 bool SpgInit::isSpgPossible(uint spg, const vector<uint>& atoms)
 {
 #ifdef SPGINIT_DEBUG
@@ -528,9 +424,11 @@ bool SpgInit::isSpgPossible(uint spg, const vector<uint>& atoms)
   if (containsOdd && spgMultsAreAllEven(spg)) return false;
 
   // If the test failed, we must just try to assign atoms and see if it works
-  // If assignAtomsToWyckPos() returns an empty vector, the atoms could not
-  // be assigned to produce the spacegroup
-  if (assignAtomsToWyckPos(spg, atoms).size() == 0) return false;
+  // The third boolean parameter is telling it to find only one combination
+  // This speeds it up significantly
+  if (SpgInitCombinatorics::getSystemPossibilities(spg, atoms,
+                                                   true, false).size() == 0)
+    return false;
 
   return true;
 }

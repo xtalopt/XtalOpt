@@ -1,5 +1,5 @@
 /**********************************************************************
-  SpgInitCombinatorics.cpp - Functions for solving the complicated combinatorics
+  spgInitCombinatorics.cpp - Functions for solving the complicated combinatorics
                              problems for spacegroup initialization
 
   Copyright (C) 2015 by Patrick S. Avery
@@ -23,6 +23,63 @@ using namespace std;
 
 // Define this for debug output
 //#define PRINT_SPG_INIT_COMB_DEBUG
+
+// In here, we keep Wyckoff positions that have the same uniqueness and
+// multiplicity. For now, they can only be non-unique
+// The 'wyckPos' is the wyckoff position
+// The first 'bool' is whether to keep using this position or not
+// The second 'bool' is whether it is unique or not
+// The uint is the number of times it's been used
+class wyckPosTrackingInfo {
+ public:
+  wyckPosTrackingInfo(vector<wyckPos> pos);
+  // This is to see if we should keep checking this one duing
+  bool keepUsing;
+  bool unique;
+  uint numTimesUsed;
+  uint multiplicity;
+
+  wyckPos getRandomWyckPos() const
+  {
+    return positions.at(rand() % positions.size());
+  };
+
+  const wyckPos& getWyckPosAt(uint i) const {return positions.at(i);};
+  size_t getNumPositions() const {return positions.size();};
+ private:
+  // This has more than one if there are identical positions
+  vector<wyckPos> positions;
+};
+
+wyckPosTrackingInfo::wyckPosTrackingInfo(vector<wyckPos> pos) :
+  keepUsing(true),
+  unique(SpgInit::containsUniquePosition(pos.at(0))),
+  numTimesUsed(0),
+  multiplicity(SpgInit::getMultiplicity(pos.at(0))),
+  positions(pos)
+{
+  // We must have a size greater than 0
+  assert(positions.size() > 0);
+}
+
+// This is used in 'findAllCombinations()'
+struct combinationSettings {
+  uint numAtoms;
+  bool findOnlyOne;
+  bool findOnlyNonUnique;
+  combinationSettings() :
+    numAtoms(0),
+    findOnlyOne(false),
+    findOnlyNonUnique(false)
+    {}
+  combinationSettings(uint nAtoms, bool findOne, bool findNonUnique) :
+    numAtoms(nAtoms),
+    findOnlyOne(findOne),
+    findOnlyNonUnique(findNonUnique)
+    {}
+};
+
+typedef std::vector<wyckPosTrackingInfo> usageTracker;
 
 #ifdef PRINT_SPG_INIT_COMB_DEBUG
 static inline void printSingleAtomPossibility(const singleAtomPossibility&
@@ -74,12 +131,20 @@ static inline void printAtomAssignments(const atomAssignments& assigns)
 }
 #endif
 
+template<typename T>
+static bool vecContains(const vector<T>& vec, const T& element)
+{
+  for (size_t i = 0; i < vec.size(); i++) {
+    if (vec.at(i) == element) return true;
+  }
+  return false;
+}
+
 static inline uint getNumAtomsUsed(const usageTracker& tracker)
 {
   size_t sum = 0;
   for (size_t i = 0; i < tracker.size(); i++)
-    sum += (SpgInit::getMultiplicity(tracker.at(i).pos) *
-                                     tracker.at(i).numTimesUsed);
+    sum += ((tracker.at(i).multiplicity) * tracker.at(i).numTimesUsed);
   return sum;
 }
 
@@ -100,14 +165,19 @@ static inline uint getNumAtomsLeft(const usageTracker& tracker, uint numAtoms)
 }
 
 static inline bool positionIsUsable(const wyckPosTrackingInfo& info,
-                                    uint numAtomsLeft)
+                                    uint numAtomsLeft, bool findOnlyNonUnique)
 {
-  size_t multiplicity = SpgInit::getMultiplicity(info.pos);
+  size_t multiplicity = info.multiplicity;
+
+  // If we are only looking for non unique positions and the position is unique,
+  // return false
+  if (findOnlyNonUnique && info.unique) return false;
 
   // If we have a smaller multiplicity than the number of atoms left
   if (multiplicity <= numAtomsLeft && info.keepUsing &&
-      // And if it it is not unique or we are not already using it
-      (!info.unique || info.numTimesUsed == 0))
+      // And if it it is not unique or we are not already using it more than
+      // we can
+      (!info.unique || info.numTimesUsed < info.getNumPositions()))
     // Use it!
     return true;
   return false;
@@ -119,7 +189,11 @@ convertToPossibility(const usageTracker& tempTracker)
   singleAtomPossibility poss;
   for (size_t i = 0; i < tempTracker.size(); i++) {
     for (size_t j = 0; j < tempTracker.at(i).numTimesUsed; j++) {
-      poss.push_back(tempTracker.at(i).pos);
+      // The positions in these objects must all have the same multiplicity
+      // and NOT be unique. So we will just pick one from here at random for now
+      // TODO: come up with a better way to randomly select these in the future.
+      // Preferably, in a different function...
+      poss.push_back(tempTracker.at(i).getRandomWyckPos());
     }
   }
   return poss;
@@ -174,16 +248,56 @@ SpgInitCombinatorics::convertAtomAssignmentsToSysPoss(
   return sysPoss;
 }
 
+// For the purposes of 'groupSimilarWyckPositions()', we need the grouped
+// Wyckoff positions to not be unique and to have the same multiplicity
+static inline bool wyckPositionsAreSimilarAndNotUnique(const wyckPos& wyckPos1,
+                                                       const wyckPos& wyckPos2)
+{
+  if (!SpgInit::containsUniquePosition(wyckPos1) &&
+      !SpgInit::containsUniquePosition(wyckPos2) &&
+      SpgInit::getMultiplicity(wyckPos1) ==
+      SpgInit::getMultiplicity(wyckPos2)) return true;
+  return false;
+}
+
+static vector<vector<wyckPos>> groupSimilarWyckPositions(
+                                               const wyckoffPositions& wyckVec)
+{
+  vector<char> wyckPositionsUsed;
+  vector<vector<wyckPos>> ret;
+  for (size_t i = 0; i < wyckVec.size(); i++) {
+    const wyckPos& pos_i = wyckVec.at(i);
+    char wyckLet = SpgInit::getWyckLet(pos_i);
+    // If we've already used this one, don't include it
+    if (!vecContains<char>(wyckPositionsUsed, wyckLet)) {
+      wyckPositionsUsed.push_back(wyckLet);
+      vector<wyckPos> tempVec;
+      tempVec.push_back(pos_i);
+      // Add on similar positions
+      for (size_t j = i + 1; j < wyckVec.size(); j++) {
+        const wyckPos& pos_j = wyckVec.at(j);
+        char wyckLet_j = SpgInit::getWyckLet(pos_j);
+        // wyckPositionsUsed should not contain the character, but check
+        // just in case
+        if (wyckPositionsAreSimilarAndNotUnique(pos_i, pos_j) &&
+            !vecContains<char>(wyckPositionsUsed, wyckLet_j)) {
+          wyckPositionsUsed.push_back(wyckLet_j);
+          tempVec.push_back(pos_j);
+        }
+      }
+      ret.push_back(tempVec);
+    }
+  }
+  return ret;
+}
+
 static usageTracker createUsageTracker(const wyckoffPositions& wyckVec)
 {
   usageTracker tracker;
   tracker.reserve(wyckVec.size());
-  wyckPosTrackingInfo info;
-  info.keepUsing = true;
-  info.numTimesUsed = 0;
-  for (size_t i = 0; i < wyckVec.size(); i++) {
-    info.pos = wyckVec.at(i);
-    info.unique = SpgInit::containsUniquePosition(info.pos);
+  vector<vector<wyckPos>> similarWyckPos = groupSimilarWyckPositions(wyckVec);
+  for (size_t i = 0; i < similarWyckPos.size(); i++) {
+    wyckPosTrackingInfo info(similarWyckPos.at(i));
     tracker.push_back(info);
   }
   return tracker;
@@ -282,44 +396,92 @@ systemPossibilities joinSingleWithSystem(uint atomicNum,
   return newSysPossibilities;
 }
 
+// This will only throw if "findOnlyOne" is set to be true
+// If that is the case, it may throw a single atom possibility (the possibility
+// that it finds successfully)
+// onlyNonUnique should typically be set to 'true' if findOnlyOne is true unless
+// we are looking for the last atom combination
+// This will ensure that a combination will be found
 static void findAllCombinations(singleAtomPossibilities& appendVec,
-                                usageTracker tracker, uint numAtoms)
+                                usageTracker tracker,
+                                const combinationSettings& sets)
 {
-  if (numAtoms == 0) return;
+  if (sets.numAtoms == 0) return;
 
-  uint numAtomsLeft = getNumAtomsLeft(tracker, numAtoms);
+  uint numAtomsLeft = getNumAtomsLeft(tracker, sets.numAtoms);
   // Returns -1 if no index is available
   int firstAvailableIndex = getFirstAvailableIndex(tracker);
 
   if (firstAvailableIndex == -1) return;
 
   wyckPosTrackingInfo info = tracker.at(firstAvailableIndex);
-  size_t firstMultiplicity = SpgInit::getMultiplicity(info.pos);
+  size_t firstMultiplicity = info.multiplicity;
 
   // Check to see if we can use the first available position ('again', if
   // it has already been used). Find all possible combinations while using it
   // if we can
-  if (positionIsUsable(info, numAtomsLeft)) {
+  if (positionIsUsable(info, numAtomsLeft, sets.findOnlyNonUnique)) {
     usageTracker tempTracker = tracker;
     tempTracker[firstAvailableIndex].numTimesUsed += 1;
 
     // If we have used all the atoms, append this possibility to the vector
-    if (getNumAtomsLeft(tempTracker, numAtoms) == 0)
+    if (getNumAtomsLeft(tempTracker, sets.numAtoms) == 0) {
+      // If we are to only find one, we are done. Easiest way to get out
+      // of here is to throw an exception and catch it on the outside.
+      if (sets.findOnlyOne) throw convertToPossibility(tempTracker);
       appendVec.push_back(convertToPossibility(tempTracker));
+    }
 
     // Otherwise, keep on checking for more possibilities!
-    else findAllCombinations(appendVec, tempTracker, numAtoms);
+    else findAllCombinations(appendVec, tempTracker, sets);
   }
 
   // Find all possible combinations without using this position ('again', if
   // it has already been used).
   tracker[firstAvailableIndex].keepUsing = false;
-  findAllCombinations(appendVec, tracker, numAtoms);
+  findAllCombinations(appendVec, tracker, sets);
+}
+
+static void findOnlyOneCombinationIfPossible(singleAtomPossibilities& appendVec,
+                                             usageTracker tracker,
+                                             const combinationSettings& sets,
+                                             bool finalAtom)
+{
+  // If we use 'findOnlyOne', then findAllCombinations() will throw the
+  // possibility when it is found
+  try {
+    // We will only look at unique possibilities if we are on the final
+    // type of atom. This prevents us from getting accidentally 'stuck'
+    // by filling up unique positions with something that doesn't need
+    // them
+    combinationSettings tempSets = sets;
+    tempSets.findOnlyOne = true;
+    tempSets.findOnlyNonUnique = true;
+    // If the parameter of this function says to only look at non unique
+    // items, then that overrides this
+    if (sets.findOnlyNonUnique); // Do nothing
+    // If we are looking at the final atom, we may use a non unique setup
+    else if (finalAtom) tempSets.findOnlyNonUnique = false;
+    findAllCombinations(appendVec, tracker, tempSets);
+    // If we can't find any, then proceed with the normal algorithm
+    if (appendVec.size() == 0) {
+      tempSets.findOnlyOne = false;
+      tempSets.findOnlyNonUnique = sets.findOnlyNonUnique;
+      findAllCombinations(appendVec, tracker, tempSets);
+    }
+  }
+  // If we caught a possibility, then that's the one we're gonna use!
+  catch (singleAtomPossibility pos) {
+    appendVec.clear();
+    appendVec.push_back(pos);
+  }
 }
 
 systemPossibilities
-SpgInitCombinatorics::getAllSystemPossibilities(uint spg,
-                                                const vector<uint>& atoms)
+SpgInitCombinatorics::getSystemPossibilities(uint spg,
+                                             const vector<uint>& atoms,
+                                             bool findOnlyOne,
+                                             bool findOnlyNonUnique)
 {
   vector<numAndType> numOfEachType = SpgInit::getNumOfEachType(atoms);
 
@@ -335,8 +497,17 @@ SpgInitCombinatorics::getAllSystemPossibilities(uint spg,
     usageTracker tracker = createUsageTracker(spg);
     uint numAtoms = numOfEachType.at(i).first;
 
+    combinationSettings sets(numAtoms, findOnlyOne, findOnlyNonUnique);
+
+    bool last = (i == numOfEachType.size() - 1);
     // This appends all possibilities found to 'saPossibilities'
-    findAllCombinations(saPossibilities, tracker, numAtoms);
+    if (findOnlyOne)
+      findOnlyOneCombinationIfPossible(saPossibilities, tracker, sets, last);
+    else findAllCombinations(saPossibilities, tracker, sets);
+
+    // If we didn't find any single atom possibilities, we won't find any
+    // system possibilities either. Return empty
+    if (saPossibilities.size() == 0) return systemPossibilities();
 
 #ifdef PRINT_SPG_INIT_COMB_DEBUG
     cout << "For atomic num '" << atomicNum << "' calling "
@@ -353,15 +524,6 @@ SpgInitCombinatorics::getAllSystemPossibilities(uint spg,
 #endif
 
   return sysPossibilities;
-}
-
-template<typename T>
-static bool vecContains(const vector<T>& vec, const T& element)
-{
-  for (size_t i = 0; i < vec.size(); i++) {
-    if (vec.at(i) == element) return true;
-  }
-  return false;
 }
 
 static uint countNumberOfDifferentWyckLets(const systemPossibility& poss)
@@ -386,7 +548,7 @@ SpgInitCombinatorics::getSystemPossibilitiesWithMostWyckLets(
                                              uint spg,
                                              const vector<uint>& atoms)
 {
-  systemPossibilities sysPosses = getAllSystemPossibilities(spg, atoms);
+  systemPossibilities sysPosses = getSystemPossibilities(spg, atoms);
 
   uint maxWyckLetsUsed = 0;
   // Now find the maximum number of different wyckoff letters used in one
@@ -413,7 +575,7 @@ systemPossibility SpgInitCombinatorics::getRandomSystemPossibility(
                                              uint spg,
                                              const vector<uint>& atoms)
 {
-  systemPossibilities temp = getAllSystemPossibilities(spg, atoms);
+  systemPossibilities temp = getSystemPossibilities(spg, atoms);
   // Make sure it isn't empty...
   // Return an empty sytemPossibility if it is
   if (temp.size() == 0) return systemPossibility();
@@ -448,4 +610,21 @@ atomAssignments SpgInitCombinatorics::getRandomAtomAssignmentsWithMostWyckLets(
 {
   return convertSysPossToAtomAssignments(
                         getRandomSystemPossibilityWithMostWyckLets(spg, atoms));
+}
+
+atomAssignments SpgInitCombinatorics::getFirstPossibleAtomAssignment(
+                                                    uint spg,
+                                                    const vector<uint>& atoms)
+{
+  // The 'true' is telling getSystemPossibilities() to only find one
+  // There are some circumstances where more than one could be found.
+  // So select one at random if they are.
+  systemPossibilities poss = getSystemPossibilities(spg, atoms, true);
+  uint ind = rand() % poss.size();
+
+#ifdef PRINT_SPG_INIT_COMB_DEBUG
+  printSystemPossibility(poss.at(ind));
+#endif
+
+  return convertSysPossToAtomAssignments(poss.at(ind));
 }

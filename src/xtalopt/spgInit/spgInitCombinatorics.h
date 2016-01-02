@@ -43,19 +43,6 @@ combinations to put atoms in a given spacegroup.
 #ifndef SPG_INIT_COMBINATORICS_H
 #define SPG_INIT_COMBINATORICS_H
 
-// The 'wyckPos' is the wyckoff position
-// The first 'bool' is whether to keep using this position or not
-// The second 'bool' is whether it is unique or not
-// The uint is the number of times it's been used
-struct wyckPosTrackingInfo {
-  wyckPos pos;
-  bool keepUsing;
-  bool unique;
-  uint numTimesUsed;
-};
-
-typedef std::vector<wyckPosTrackingInfo> usageTracker;
-
 // This is a vector of assignments
 // in which to place atoms of a pre-known atomic number may be placed
 // It doesn't mean "single" atom as in one atom, but one type of atom
@@ -74,9 +61,11 @@ class SpgInitCombinatorics {
  public:
   // Returns all system possibilities that satisfty the constraints given
   // by the spacegroup and input atoms
-  static systemPossibilities getAllSystemPossibilities(
+  static systemPossibilities getSystemPossibilities(
                                              uint spg,
-                                             const std::vector<uint>& atoms);
+                                             const std::vector<uint>& atoms,
+                                             bool findOnlyOne = false,
+                                             bool onlyNonUnique = false);
 
   // Return only system possibilities that have the most variety in wyckoff
   // letters
@@ -110,6 +99,13 @@ class SpgInitCombinatorics {
   // Get a random atom assignment from the possibilities with most wyckoff
   // letters
   static atomAssignments getRandomAtomAssignmentsWithMostWyckLets(
+                                                uint spg,
+                                                const std::vector<uint>& atoms);
+
+  // Returns the first atom assignment found
+  // Should not be used to get random atom assignments because it will
+  // always return the same one. It is used for isSpgPossible()
+  static atomAssignments getFirstPossibleAtomAssignment(
                                                 uint spg,
                                                 const std::vector<uint>& atoms);
 };

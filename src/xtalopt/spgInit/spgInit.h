@@ -83,14 +83,6 @@ class SpgInit {
   static const wyckoffPositions& getWyckoffPositions(uint spg);
 
   /*
-   *
-   * Does nothing right now...
-   *
-   */
-  static std::vector<atomStruct> generateInitWyckoffs(
-                                             uint spg,
-                                             const std::vector<uint> atomTypes);
-  /*
    * Used to determine if a spacegroup is possible for a given set of atoms.
    * It is determined by using the multiplicities in the Wyckoff database.
    *
@@ -131,18 +123,16 @@ class SpgInit {
    * @param xtal The xtal for which an atom will be added
    * @param position The wyckoff position to add the atom to
    * @param atomicNum The atomic number of the atom to be added
-   * @param minIAD The minimum interatomic distance that the atom needs to be
-   *               from other atoms in the xtal. If -1, there is no min IAD.
-   *               Default is -1.
+   * @param limits A hash that contains the atomic number for the keys and an
+   *               XtalCompositionStruct for the value. The
+   *               XtalCompositionStruct contains the quantity of this atom and
+   *               the minimum radius of each. This is used to ensure atoms
+   *               are not placed too close to each other.
    * @param maxAttempts The number of attempts to make to add the atom randomly
    *                    before the function returns false. Default is 1000.
    *
    * @return True if it succeeded, and false if it failed.
    */
-  static bool addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
-                                     uint atomicNum, double minIAD = -1,
-                                     int maxAttempts = 1000);
-
   static bool addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
                                      uint atomicNum,
                                      const QHash<unsigned int,
@@ -162,9 +152,11 @@ class SpgInit {
    *                    alpha, beta, and gamma.
    * @param latticeMaxes A latticeStruct that contains the maxima for a, b, c,
    *                     alpha, beta, and gamma.
-   * @param minIAD The minimum interatomic distance that the atom needs to be
-   *               from other atoms in the xtal. If -1, there is no min IAD.
-   *               Default is -1. Used in addWyckoffAtomRandomly().
+   * @param limits A hash that contains the atomic number for the keys and an
+   *               XtalCompositionStruct for the value. The
+   *               XtalCompositionStruct contains the quantity of this atom and
+   *               the minimum radius of each. This is used in
+   *               addWyckoffAtomRandomly().
    * @param maxAttempts The number of attempts to make to add the atom randomly
    *                    before the function returns false. Default is 1000.
    *                    Used in addWyckoffAtomRandomly().
@@ -173,12 +165,6 @@ class SpgInit {
    * and lattice within the provided lattice constraints. Returns NULL
    * if the function failed to successfully generate the xtal.
    */
-  static XtalOpt::Xtal* spgInitXtal(uint spg,
-                                    const std::vector<uint>& atomTypes,
-                                    const latticeStruct& latticeMins,
-                                    const latticeStruct& latticeMaxes,
-                                    double minIAD = -1, int maxAttempts = 1000);
-
   static XtalOpt::Xtal* spgInitXtal(uint spg,
                                     const std::vector<uint>& atomTypes,
                                     const latticeStruct& latticeMins,
