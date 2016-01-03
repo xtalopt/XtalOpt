@@ -568,6 +568,7 @@ namespace XtalOpt {
       // We need to set these things before checkXtal() is called
       if (xtal) {
         xtal->setStatus(Xtal::WaitingForOptimization);
+        xtal->setFormulaUnits(FU);
         if (using_fixed_volume) xtal->setVolume(vol_fixed * FU);
       }
     }
@@ -594,9 +595,7 @@ namespace XtalOpt {
     // Set up xtal data
     xtal->setGeneration(generation);
     xtal->setIDNumber(id);
-    xtal->setParents(tr("Spg Init: %1 (%2)").arg(spg)
-                                                             .arg(HM_spg));
-    xtal->setFormulaUnits(FU);
+    xtal->setParents(tr("Spg Init: %1 (%2)").arg(spg).arg(HM_spg));
     return xtal;
   }
 
@@ -1847,7 +1846,12 @@ namespace XtalOpt {
     // Check counts. Adjust for formula units.
     for (int i = 0; i < atomTypes.size(); ++i) {
       if (atomCounts[i] != comp[atomTypes[i]].quantity * xtal->getFormulaUnits()) { //PSA
-        qDebug() << "atomCounts[i] is" << QString::number(atomCounts[i]);
+        qDebug() << "atomCounts for atomic num "
+                 << QString::number(atomTypes[i]) << "is"
+                 << QString::number(atomCounts[i]) << ". It should be "
+                 << QString::number(comp[atomTypes[i]].quantity * xtal->getFormulaUnits())
+                 << "instead.";
+        qDebug() << "FU is " << QString::number(xtal->getFormulaUnits()) << " and comp[atomTypes[i]].quantity is " << QString::number(comp[atomTypes[i]].quantity);
         // Incorrect count:
         qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
         if (err != NULL) {

@@ -55,9 +55,14 @@ static inline void printLatticeInfo(XtalOpt::Xtal* xtal)
 static inline void printAtomInfo(XtalOpt::Xtal* xtal)
 {
   cout << "Frac coords info (blank if none):\n";
-  QList<Eigen::Vector3d> fracCoords = xtal->getAtomCoordsFrac();
-  for (size_t i = 0; i < fracCoords.size(); i++) {
-    cout << "  (x,y,z) is (" << fracCoords.at(i)[0] << "," << fracCoords.at(i)[1] << "," << fracCoords.at(i)[2] << ")\n";
+  QList<Avogadro::Atom*> atoms = xtal->atoms();
+  QList<Eigen::Vector3d> fracCoords;
+
+  for (size_t i = 0; i < atoms.size(); i++)
+    fracCoords.append(*(xtal->cartToFrac(atoms.at(i)->pos())));
+
+  for (size_t i = 0; i < atoms.size(); i++) {
+    cout << "  For atomic num " <<  atoms.at(i)->atomicNumber() << ", coords are (" << fracCoords.at(i)[0] << "," << fracCoords.at(i)[1] << "," << fracCoords.at(i)[2] << ")\n";
   }
 }
 #endif
@@ -406,7 +411,15 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
     }
   }
 
+#ifdef SPGINIT_DEBUG
+  cout << "\n*********\nBefore fillUnitCell() is called, atom info is:\n";
+  printAtomInfo(xtal);
+#endif
   xtal->fillUnitCell(spg);
+#ifdef SPGINIT_DEBUG
+  cout << "\n*********\nAfter fillUnitCell() is called, atom info is:\n";
+  printAtomInfo(xtal);
+#endif
 
   // If the correct spacegroup isn't created (happens every once in a while),
   // delete the xtal and return NULL
