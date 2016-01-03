@@ -26,11 +26,17 @@
 // For RANDDOUBLE()
 #include <globalsearch/macros.h>
 
+// For FunctionTracker
+#include <globalsearch/utilities/functionTracker.h>
+
 #include <tuple>
 #include <iostream>
 
 // Define this for debug output
 //#define SPGINIT_DEBUG
+
+// Uncomment the right side of this line to output function starts and endings
+#define START_FT //FunctionTracker functionTracker(__FUNCTION__);
 
 using namespace std;
 
@@ -99,6 +105,7 @@ static inline bool numIsOdd(int num)
 // Check if all the multiplicities of a spacegroup are even
 static inline bool spgMultsAreAllEven(uint spg)
 {
+  START_FT;
   wyckoffPositions wyckVector = SpgInit::getWyckoffPositions(spg);
   // An error message should already be printed if this returns false
   if (wyckVector.size() == 0) return false;
@@ -111,6 +118,7 @@ static inline bool spgMultsAreAllEven(uint spg)
 
 vector<numAndType> SpgInit::getNumOfEachType(const vector<uint>& atoms)
 {
+  START_FT;
   vector<uint> atomsAlreadyCounted;
   vector<numAndType> numOfEachType;
   for (size_t i = 0; i < atoms.size(); i++) {
@@ -142,6 +150,7 @@ bool SpgInit::containsUniquePosition(const wyckPos& pos)
 static double interpretComponent(const string& component,
                                         double x, double y, double z)
 {
+  START_FT;
   // If it's just a number, just return the float equivalent
   if (isNumber(component)) return stof(component);
 
@@ -206,6 +215,7 @@ static double interpretComponent(const string& component,
 
 const wyckoffPositions& SpgInit::getWyckoffPositions(uint spg)
 {
+  START_FT;
   if (spg < 1 || spg > 230) {
     cout << "Error. getWyckoffPositions() was called for a spacegroup "
          << "that does not exist! Given spacegroup is " << spg << endl;
@@ -221,6 +231,7 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
                                                  XtalOpt::XtalCompositionStruct>& limits,
                                      int maxAttempts)
 {
+  START_FT;
 #ifdef SPGINIT_DEBUG
   cout << "At beginning of addWyckoffAtomRandomly(), atom info is:\n";
   printAtomInfo(xtal);
@@ -335,6 +346,7 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
 // returns an empty vector if the assignment failed
 atomAssignments SpgInit::assignAtomsToWyckPos(uint spg, vector<uint> atoms)
 {
+  START_FT;
   // Not sure which one is better yet...
   return SpgInitCombinatorics::getRandomAtomAssignments(spg, atoms);
   // return SpgInitCombinatorics::getRandomAtomAssignmentsWithMostWyckLets(
@@ -350,6 +362,7 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
                                                  XtalOpt::XtalCompositionStruct>& limits,
                                     int maxAttempts)
 {
+  START_FT;
   // First let's get a lattice...
   latticeStruct st = generateLatticeForSpg(spg, latticeMins, latticeMaxes);
 
@@ -368,6 +381,16 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
          << " assigned positions in assignAtomsToWyckPos()\n";
     return NULL;
   }
+
+#ifdef SPGINIT_DEBUG
+  cout << "\natomAssignments are the following (atomicNum, wyckLet, wyckPos):"
+       << "\n";
+  for (size_t i = 0; i < assignments.size(); i++)
+    cout << "  " << assignments.at(i).second << ", "
+         << getWyckLet(assignments.at(i).first)
+         << ", " << getWyckCoords(assignments.at(i).first) << "\n";
+  cout << "\n";
+#endif
 
   XtalOpt::Xtal* xtal = new XtalOpt::Xtal(st.a, st.b, st.c,
                                           st.alpha, st.beta, st.gamma);
@@ -403,9 +426,8 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
 
 bool SpgInit::isSpgPossible(uint spg, const vector<uint>& atoms)
 {
-#ifdef SPGINIT_DEBUG
-  cout << __FUNCTION__ << " called!\n";
-#endif
+  START_FT;
+
   if (spg < 1 || spg > 230) return false;
 
   // Add in a test here to shorten the time checking if a spg is possible
@@ -459,6 +481,7 @@ latticeStruct SpgInit::generateLatticeForSpg(uint spg,
                                              const latticeStruct& mins,
                                              const latticeStruct& maxes)
 {
+  START_FT;
   INIT_RANDOM_GENERATOR();
 
   latticeStruct st;

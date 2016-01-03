@@ -20,7 +20,7 @@
 #include <globalsearch/queueinterfaces/localdialog.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/structure.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QDir>
 #include <QtCore/QFile>

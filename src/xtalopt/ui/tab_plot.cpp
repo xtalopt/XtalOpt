@@ -19,7 +19,7 @@
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <avogadro/glwidget.h>
 #include <avogadro/primitive.h>

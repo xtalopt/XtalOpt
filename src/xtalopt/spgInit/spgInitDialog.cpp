@@ -24,7 +24,7 @@
 
 #include <xtalopt/xtalopt.h>
 
-#include <globalsearch/fileutils.h>
+#include <globalsearch/utilities/fileutils.h>
 
 #include <openbabel/math/spacegroup.h>
 

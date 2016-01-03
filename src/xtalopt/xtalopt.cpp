@@ -35,8 +35,8 @@
 #include <globalsearch/slottedwaitcondition.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/bt.h>
-#include <globalsearch/fileutils.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/fileutils.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>

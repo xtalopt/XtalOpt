@@ -16,7 +16,7 @@
 
 #include <globalsearch/sshmanager_cli.h>
 #include <globalsearch/sshconnection_cli.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 namespace GlobalSearch {
 

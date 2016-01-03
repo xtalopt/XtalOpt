@@ -15,7 +15,7 @@
 
 #include <globalsearch/tracker.h>
 #include <globalsearch/structure.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QList>
 #include <QtCore/QDebug>

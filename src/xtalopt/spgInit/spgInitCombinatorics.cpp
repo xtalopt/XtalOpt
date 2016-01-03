@@ -19,6 +19,12 @@
 #include <xtalopt/spgInit/spgInit.h>
 #include <xtalopt/spgInit/spgInitCombinatorics.h>
 
+// For FunctionTracker
+#include <globalsearch/utilities/functionTracker.h>
+
+// Uncomment the right side of this line to output function starts and endings
+#define START_FT //FunctionTracker functionTracker(__FUNCTION__);
+
 using namespace std;
 
 // Define this for debug output
@@ -369,6 +375,7 @@ systemPossibilities joinSingleWithSystem(uint atomicNum,
                                          const singleAtomPossibilities& saPoss,
                                          const systemPossibilities& sysPoss)
 {
+  START_FT;
   systemPossibilities newSysPossibilities;
 
   // If sysPoss is empty, then our job is easy
@@ -406,6 +413,7 @@ static void findAllCombinations(singleAtomPossibilities& appendVec,
                                 usageTracker tracker,
                                 const combinationSettings& sets)
 {
+  START_FT;
   if (sets.numAtoms == 0) return;
 
   uint numAtomsLeft = getNumAtomsLeft(tracker, sets.numAtoms);
@@ -447,6 +455,7 @@ static void findOnlyOneCombinationIfPossible(singleAtomPossibilities& appendVec,
                                              const combinationSettings& sets,
                                              bool finalAtom)
 {
+  START_FT;
   // If we use 'findOnlyOne', then findAllCombinations() will throw the
   // possibility when it is found
   try {
@@ -483,6 +492,7 @@ SpgInitCombinatorics::getSystemPossibilities(uint spg,
                                              bool findOnlyOne,
                                              bool findOnlyNonUnique)
 {
+  START_FT;
   vector<numAndType> numOfEachType = SpgInit::getNumOfEachType(atoms);
 
   systemPossibilities sysPossibilities;
@@ -548,6 +558,7 @@ SpgInitCombinatorics::getSystemPossibilitiesWithMostWyckLets(
                                              uint spg,
                                              const vector<uint>& atoms)
 {
+  START_FT;
   systemPossibilities sysPosses = getSystemPossibilities(spg, atoms);
 
   uint maxWyckLetsUsed = 0;
@@ -575,6 +586,7 @@ systemPossibility SpgInitCombinatorics::getRandomSystemPossibility(
                                              uint spg,
                                              const vector<uint>& atoms)
 {
+  START_FT;
   systemPossibilities temp = getSystemPossibilities(spg, atoms);
   // Make sure it isn't empty...
   // Return an empty sytemPossibility if it is
@@ -588,6 +600,7 @@ SpgInitCombinatorics::getRandomSystemPossibilityWithMostWyckLets(
                                              uint spg,
                                              const vector<uint>& atoms)
 {
+  START_FT;
   systemPossibilities temp = getSystemPossibilitiesWithMostWyckLets(spg, atoms);
   // Make sure it isn't empty...
   // Return an empty systemPossibility if it is
@@ -599,6 +612,7 @@ SpgInitCombinatorics::getRandomSystemPossibilityWithMostWyckLets(
 atomAssignments SpgInitCombinatorics::getRandomAtomAssignments(uint spg,
                                                 const vector<uint>& atoms)
 {
+  START_FT;
   return convertSysPossToAtomAssignments(getRandomSystemPossibility(spg, atoms));
 }
 
@@ -608,6 +622,7 @@ atomAssignments SpgInitCombinatorics::getRandomAtomAssignmentsWithMostWyckLets(
                                                 uint spg,
                                                 const vector<uint>& atoms)
 {
+  START_FT;
   return convertSysPossToAtomAssignments(
                         getRandomSystemPossibilityWithMostWyckLets(spg, atoms));
 }
@@ -616,6 +631,7 @@ atomAssignments SpgInitCombinatorics::getFirstPossibleAtomAssignment(
                                                     uint spg,
                                                     const vector<uint>& atoms)
 {
+  START_FT;
   // The 'true' is telling getSystemPossibilities() to only find one
   // There are some circumstances where more than one could be found.
   // So select one at random if they are.

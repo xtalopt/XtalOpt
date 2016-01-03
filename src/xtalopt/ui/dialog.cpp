@@ -19,7 +19,7 @@
 #include "ui_dialog.h"
 
 #include <globalsearch/optimizer.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 #include <xtalopt/testing/xtalopttest.h>
 
 #include <xtalopt/ui/tab_init.h>

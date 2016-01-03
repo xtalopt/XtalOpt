@@ -18,7 +18,7 @@
 
 #include <globalsearch/sshmanager_libssh.h>
 #include <globalsearch/macros.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QDebug>
 #include <QtCore/QDir>

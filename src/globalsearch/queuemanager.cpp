@@ -21,7 +21,7 @@
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/remote.h>
 #include <globalsearch/structure.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QDateTime>
 #include <QtCore/QDebug>

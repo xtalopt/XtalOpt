@@ -19,8 +19,8 @@
 #include <globalsearch/optimizer.h>
 #include <globalsearch/ui/abstracttab.h>
 #include <globalsearch/optbase.h>
-#include <globalsearch/fileutils.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/fileutils.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>

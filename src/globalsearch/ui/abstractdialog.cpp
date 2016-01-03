@@ -19,7 +19,7 @@
 
 #include <globalsearch/tracker.h>
 #include <globalsearch/queuemanager.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <openbabel/oberror.h>
 

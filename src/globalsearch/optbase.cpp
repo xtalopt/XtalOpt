@@ -22,7 +22,7 @@
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/pbs.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
 #ifdef USE_CLI_SSH

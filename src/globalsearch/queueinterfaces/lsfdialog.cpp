@@ -25,7 +25,7 @@
 
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/optbase.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include "ui_lsfdialog.h"
 

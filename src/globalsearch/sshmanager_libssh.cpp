@@ -18,7 +18,7 @@
 
 #include <globalsearch/macros.h>
 #include <globalsearch/sshconnection_libssh.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QDebug>
 

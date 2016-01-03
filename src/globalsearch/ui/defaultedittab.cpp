@@ -15,7 +15,7 @@
  ***********************************************************************/
 
 #include <globalsearch/ui/defaultedittab.h>
-#include <globalsearch/exceptionhandler.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include "ui_defaultedittab.h"
 
