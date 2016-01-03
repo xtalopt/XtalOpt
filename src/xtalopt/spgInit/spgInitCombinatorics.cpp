@@ -18,6 +18,7 @@
 
 #include <xtalopt/spgInit/spgInit.h>
 #include <xtalopt/spgInit/spgInitCombinatorics.h>
+#include <xtalopt/spgInit/wyckPosTrackingInfo.h>
 
 // For FunctionTracker
 #include <globalsearch/utilities/functionTracker.h>
@@ -29,44 +30,6 @@ using namespace std;
 
 // Define this for debug output
 //#define PRINT_SPG_INIT_COMB_DEBUG
-
-// In here, we keep Wyckoff positions that have the same uniqueness and
-// multiplicity. For now, they can only be non-unique
-// The 'wyckPos' is the wyckoff position
-// The first 'bool' is whether to keep using this position or not
-// The second 'bool' is whether it is unique or not
-// The uint is the number of times it's been used
-class wyckPosTrackingInfo {
- public:
-  wyckPosTrackingInfo(vector<wyckPos> pos);
-  // This is to see if we should keep checking this one duing
-  bool keepUsing;
-  bool unique;
-  uint numTimesUsed;
-  uint multiplicity;
-
-  wyckPos getRandomWyckPos() const
-  {
-    return positions.at(rand() % positions.size());
-  };
-
-  const wyckPos& getWyckPosAt(uint i) const {return positions.at(i);};
-  size_t getNumPositions() const {return positions.size();};
- private:
-  // This has more than one if there are identical positions
-  vector<wyckPos> positions;
-};
-
-wyckPosTrackingInfo::wyckPosTrackingInfo(vector<wyckPos> pos) :
-  keepUsing(true),
-  unique(SpgInit::containsUniquePosition(pos.at(0))),
-  numTimesUsed(0),
-  multiplicity(SpgInit::getMultiplicity(pos.at(0))),
-  positions(pos)
-{
-  // We must have a size greater than 0
-  assert(positions.size() > 0);
-}
 
 // This is used in 'findAllCombinations()'
 struct combinationSettings {
@@ -85,7 +48,7 @@ struct combinationSettings {
     {}
 };
 
-typedef std::vector<wyckPosTrackingInfo> usageTracker;
+typedef std::vector<WyckPosTrackingInfo> usageTracker;
 
 #ifdef PRINT_SPG_INIT_COMB_DEBUG
 static inline void printSingleAtomPossibility(const singleAtomPossibility&
@@ -170,7 +133,7 @@ static inline uint getNumAtomsLeft(const usageTracker& tracker, uint numAtoms)
   return numAtomsLeft;
 }
 
-static inline bool positionIsUsable(const wyckPosTrackingInfo& info,
+static inline bool positionIsUsable(const WyckPosTrackingInfo& info,
                                     uint numAtomsLeft, bool findOnlyNonUnique)
 {
   size_t multiplicity = info.multiplicity;
@@ -303,7 +266,7 @@ static usageTracker createUsageTracker(const wyckoffPositions& wyckVec)
   tracker.reserve(wyckVec.size());
   vector<vector<wyckPos>> similarWyckPos = groupSimilarWyckPositions(wyckVec);
   for (size_t i = 0; i < similarWyckPos.size(); i++) {
-    wyckPosTrackingInfo info(similarWyckPos.at(i));
+    WyckPosTrackingInfo info(similarWyckPos.at(i));
     tracker.push_back(info);
   }
   return tracker;
@@ -422,7 +385,7 @@ static void findAllCombinations(singleAtomPossibilities& appendVec,
 
   if (firstAvailableIndex == -1) return;
 
-  wyckPosTrackingInfo info = tracker.at(firstAvailableIndex);
+  WyckPosTrackingInfo info = tracker.at(firstAvailableIndex);
   size_t firstMultiplicity = info.multiplicity;
 
   // Check to see if we can use the first available position ('again', if

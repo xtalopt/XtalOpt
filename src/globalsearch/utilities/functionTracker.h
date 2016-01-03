@@ -20,6 +20,9 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+#ifndef FUNCTION_TRACKER_H
+#define FUNCTION_TRACKER_H
+
 #include <iostream>
 
 // Define START_FT as such in the files in which you want to use this:
@@ -40,3 +43,5 @@ class FunctionTracker {
  private:
   std::string funcName;
 };
+
+#endif
