@@ -816,6 +816,31 @@ namespace XtalOpt {
     updateMolecule(ids, coords);
   }
 
+  void Xtal::printLatticeInfo()
+  {
+    cout << "a is " << this->getA() << "\n";
+    cout << "b is " << this->getB() << "\n";
+    cout << "c is " << this->getC() << "\n";
+    cout << "alpha is " << this->getAlpha() << "\n";
+    cout << "beta is " << this->getBeta() << "\n";
+    cout << "gamma is " << this->getGamma() << "\n";
+    cout << "volume is " << this->getVolume() << "\n";
+  }
+
+  void Xtal::printAtomInfo()
+  {
+    cout << "Frac coords info (blank if none):\n";
+    QList<Avogadro::Atom*> atoms = this->atoms();
+    QList<Eigen::Vector3d> fracCoords;
+
+    for (size_t i = 0; i < atoms.size(); i++)
+      fracCoords.append(*(cartToFrac(atoms.at(i)->pos())));
+
+    for (size_t i = 0; i < atoms.size(); i++) {
+      cout << "  For atomic num " <<  atoms.at(i)->atomicNumber() << ", coords are (" << fracCoords.at(i)[0] << "," << fracCoords.at(i)[1] << "," << fracCoords.at(i)[2] << ")\n";
+    }
+  }
+
   // Adapted from unitcellextension:
   void Xtal::fillUnitCell(uint spg, double cartTol)
   {

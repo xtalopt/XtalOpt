@@ -32,40 +32,14 @@
 #include <tuple>
 #include <iostream>
 
-// Define this for debug output
+// Define these for debug output
 //#define SPGINIT_DEBUG
+//#define SPGINIT_WYCK_DEBUG
 
 // Uncomment the right side of this line to output function starts and endings
 #define START_FT //FunctionTracker functionTracker(__FUNCTION__);
 
 using namespace std;
-
-#ifdef SPGINIT_DEBUG
-static inline void printLatticeInfo(XtalOpt::Xtal* xtal)
-{
-  cout << "a is " << xtal->getA() << "\n";
-  cout << "b is " << xtal->getB() << "\n";
-  cout << "c is " << xtal->getC() << "\n";
-  cout << "alpha is " << xtal->getAlpha() << "\n";
-  cout << "beta is " << xtal->getBeta() << "\n";
-  cout << "gamma is " << xtal->getGamma() << "\n";
-  cout << "volume is " << xtal->getVolume() << "\n";
-}
-
-static inline void printAtomInfo(XtalOpt::Xtal* xtal)
-{
-  cout << "Frac coords info (blank if none):\n";
-  QList<Avogadro::Atom*> atoms = xtal->atoms();
-  QList<Eigen::Vector3d> fracCoords;
-
-  for (size_t i = 0; i < atoms.size(); i++)
-    fracCoords.append(*(xtal->cartToFrac(atoms.at(i)->pos())));
-
-  for (size_t i = 0; i < atoms.size(); i++) {
-    cout << "  For atomic num " <<  atoms.at(i)->atomicNumber() << ", coords are (" << fracCoords.at(i)[0] << "," << fracCoords.at(i)[1] << "," << fracCoords.at(i)[2] << ")\n";
-  }
-}
-#endif
 
 // Basic split of a string based upon a delimiter.
 static inline vector<string> split(const string& s, char delim)
@@ -237,9 +211,9 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
                                      int maxAttempts)
 {
   START_FT;
-#ifdef SPGINIT_DEBUG
+#ifdef SPGINIT_WYCK_DEBUG
   cout << "At beginning of addWyckoffAtomRandomly(), atom info is:\n";
-  printAtomInfo(xtal);
+  xtal->printAtomInfo();
   cout << "Attempting to add an atom at position " << getWyckCoords(position)
        << "\n";
 #endif
@@ -338,10 +312,10 @@ bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
   atom->setPos(pos);
   atom->setAtomicNumber(static_cast<int>(atomicNum));
 
-#ifdef SPGINIT_DEBUG
+#ifdef SPGINIT_WYCK_DEBUG
     cout << "After an atom with atomic num " << atomicNum << " was added, the following is the lattice info:\n";
-    printLatticeInfo(xtal);
-    printAtomInfo(xtal);
+    xtal->printLatticeInfo();
+    xtal->printAtomInfo();
 #endif
 
   return true;
@@ -413,12 +387,14 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
 
 #ifdef SPGINIT_DEBUG
   cout << "\n*********\nBefore fillUnitCell() is called, atom info is:\n";
-  printAtomInfo(xtal);
+  xtal->printAtomInfo();
+  cout << "*********\n\n";
 #endif
   xtal->fillUnitCell(spg);
 #ifdef SPGINIT_DEBUG
   cout << "\n*********\nAfter fillUnitCell() is called, atom info is:\n";
-  printAtomInfo(xtal);
+  xtal->printAtomInfo();
+  cout << "*********\n\n";
 #endif
 
   // If the correct spacegroup isn't created (happens every once in a while),

@@ -225,6 +225,10 @@ namespace XtalOpt {
     // Spacegroup
     void findSpaceGroup(double prec = 0.05);
 
+    // Printing debug output
+    void printLatticeInfo();
+    void printAtomInfo();
+
    private slots:
 
    private:
