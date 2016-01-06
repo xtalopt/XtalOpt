@@ -16,6 +16,7 @@
 #include <xtalopt/spgInit/spgInit.h>
 #include <xtalopt/spgInit/spgInitCombinatorics.h>
 #include <xtalopt/spgInit/wyckoffDatabase.h>
+#include <xtalopt/spgInit/fillCellDatabase.h>
 
 // For XtalCompositionStruct
 #include <xtalopt/xtalopt.h>
