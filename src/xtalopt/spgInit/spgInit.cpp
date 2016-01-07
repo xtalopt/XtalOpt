@@ -17,6 +17,8 @@
 #include <xtalopt/spgInit/spgInitCombinatorics.h>
 #include <xtalopt/spgInit/wyckoffDatabase.h>
 #include <xtalopt/spgInit/fillCellDatabase.h>
+#include <xtalopt/spgInit/utilityFunctions.h>
+#include <xtalopt/spgInit/xtaloptWrapper.h>
 
 // For XtalCompositionStruct
 #include <xtalopt/xtalopt.h>
@@ -41,46 +43,6 @@
 #define START_FT //FunctionTracker functionTracker(__FUNCTION__);
 
 using namespace std;
-
-// Basic split of a string based upon a delimiter.
-static inline vector<string> split(const string& s, char delim)
-{
-  vector<string> elems;
-  stringstream ss(s);
-  string item;
-  while (getline(ss, item, delim)) {
-    elems.push_back(item);
-  }
-  return elems;
-}
-
-// Basic check to see if a string is a number
-// Includes negative numbers
-// If it runs into an "x", "y", or "z", it should return false
-static inline bool isNumber(const string& s)
-{
-  std::string::const_iterator it = s.begin();
-  while (it != s.end() && (isdigit(*it) || *it == '-' || *it == '.')) ++it;
-  return !s.empty() && it == s.end();
-}
-
-// A simple function used in the std::sort in the function below
-static inline bool greaterThan(const pair<uint, uint>& a,
-                               const pair<uint, uint>& b)
-{
-  return a.first > b.first;
-}
-
-static inline bool numIsEven(int num)
-{
-  if (num % 2 == 0) return true;
-  return false;
-}
-
-static inline bool numIsOdd(int num)
-{
-  return !numIsEven(num);
-}
 
 // Check if all the multiplicities of a spacegroup are even
 static inline bool spgMultsAreAllEven(uint spg)
@@ -127,10 +89,12 @@ bool SpgInit::containsUniquePosition(const wyckPos& pos)
 }
 
 // This might be a little bit too long to be inline...
-static double interpretComponent(const string& component,
-                                        double x, double y, double z)
+// TODO: this function is pretty messy. Organize it better??
+double SpgInit::interpretComponent(const string& component,
+                                   double x, double y, double z)
 {
   START_FT;
+
   // If it's just a number, just return the float equivalent
   if (isNumber(component)) return stof(component);
 
@@ -185,10 +149,35 @@ static double interpretComponent(const string& component,
     return -1;
   }
 
-  // Find the float at the end
   i++;
-  double f = stof(component.substr(i));
-  ret += (adding) ? f : -1 * f;
+
+  // Find the float at the end
+  if (isNumber(component.substr(i))) {
+    double f = stof(component.substr(i));
+    ret += (adding) ? f : -1 * f;
+  }
+  else {
+    switch (component.at(i)) {
+      case 'x':
+        ret += (adding) ? x : -1 * x;
+        break;
+      case 'y':
+        ret += (adding) ? y : -1 * y;
+        break;
+      case 'z':
+        ret += (adding) ? z : -1 * z;
+        break;
+      default:
+        cout << "Error reading string component: " << component
+           << " in interpretComponenet()\n";
+        return -1;
+    }
+    if (component.size() != i + 1) {
+      cout << "Error reading string component: " << component
+           << " in interpretComponenet()\n";
+      return -1;
+    }
+  }
 
   return ret;
 }
@@ -203,6 +192,34 @@ const wyckoffPositions& SpgInit::getWyckoffPositions(uint spg)
   }
 
   return wyckoffPositionsDatabase.at(spg);
+}
+
+const fillCellInfo& SpgInit::getFillCellInfo(uint spg)
+{
+  if (spg < 1 || spg > 230) {
+    cout << "Error. getFillCellInfo() was called for a spacegroup "
+         << "that does not exist! Given spacegroup is " << spg << endl;
+    return fillCellVector.at(0);
+  }
+  return fillCellVector.at(spg);
+}
+
+vector<string> SpgInit::getVectorOfDuplications(uint spg)
+{
+  fillCellInfo fcInfo = getFillCellInfo(spg);
+  string duplicateString = fcInfo.first;
+  vector<string> ret = splitAndRemoveParenthesis(duplicateString);
+  // 0,0,0 should always be the first duplicate -- i. e. identiy
+  ret.insert(ret.begin(),"0,0,0");
+  return ret;
+}
+
+vector<string> SpgInit::getVectorOfFillPositions(uint spg)
+{
+  fillCellInfo fcInfo = getFillCellInfo(spg);
+  string positionsString = fcInfo.second;
+  vector<string> ret = splitAndRemoveParenthesis(positionsString);
+  return ret;
 }
 
 bool SpgInit::addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
@@ -391,16 +408,25 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
   xtal->printAtomInfo();
   cout << "*********\n\n";
 #endif
-  xtal->fillUnitCell(spg);
+  // These next few lines are temporary. I'm in the process of changing from
+  // using "Xtal" to use "Crystal".
+  Crystal c = xtal2Crystal(xtal);
+  delete xtal;
+  c.fillUnitCell(spg);
+  xtal = crystal2Xtal(c);
 #ifdef SPGINIT_DEBUG
   cout << "\n*********\nAfter fillUnitCell() is called, atom info is:\n";
   xtal->printAtomInfo();
   cout << "*********\n\n";
 #endif
 
+  // These next few lines are commented out because some spacegroups overlap
+  // in some of their Wyckoff positions. Thus, there is a chance that we may
+  // produce a higher symmetry spacegroup by accident
+
   // If the correct spacegroup isn't created (happens every once in a while),
   // delete the xtal and return NULL
-  if (xtal->getSpaceGroupNumber() != spg) {
+/*  if (xtal->getSpaceGroupNumber() != spg) {
 #ifdef SPGINIT_DEBUG
     cout << "Spacegroup num, '" << xtal->getSpaceGroupNumber()
          << "', isn't correct! It should be '" << spg << "'!\n";
@@ -409,7 +435,7 @@ XtalOpt::Xtal* SpgInit::spgInitXtal(uint spg,
     xtal = 0;
     return NULL;
   }
-
+*/
   // Otherwise, we succeeded!!
   return xtal;
 }

@@ -18,6 +18,8 @@
 #ifndef FILL_CELL_INFO_H
 #define FILL_CELL_INFO_H
 
+#include <xtalopt/spgInit/spgInit.h>
+
 // This database was obtained by parsing html files at
 // http://www.cryst.ehu.es/cgi-bin/cryst/programs/nph-table?from=getwp
 // on 01/06/16
@@ -33,8 +35,15 @@
 // The second string in the pair is all of the Wyckoff positions
 // for the most general Wyckoff position in the spacegroup
 
-std::vector<std::pair<std::string, std::string>> fillCellInfo =
+// This is the definition of fillCellInfo:
+// typedef std::pair<std::string, std::string> fillCellInfo;
+
+std::vector<fillCellInfo> fillCellVector =
 {
+  { // 0 - not a real spacegroup
+    "",""
+  },
+
   { // 1
     "","(x,y,z)"
   },

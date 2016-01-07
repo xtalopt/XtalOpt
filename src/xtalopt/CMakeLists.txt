@@ -5,6 +5,7 @@ set( xtalopt_SRCS
      extension.cpp
      xtalopt.cpp
      genetic.cpp
+     spgInit/crystal.cpp
      spgInit/spgInitCombinatorics.cpp
      spgInit/spgInit.cpp
      spgInit/spgInitDialog.cpp

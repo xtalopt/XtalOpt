@@ -21,25 +21,9 @@
 #include <tuple>
 #include <utility>
 
+#include "crystal.h"
+
 #include <xtalopt/structures/xtal.h>
-
-typedef struct {
-  uint atomicNum;
-  double x;
-  double y;
-  double z;
-} atomStruct;
-
-struct latticeStruct {
-  double a;
-  double b;
-  double c;
-  double alpha;
-  double beta;
-  double gamma;
-  // Initialize all the values to be 0
-  latticeStruct() : a(0), b(0), c(0), alpha(0), beta(0), gamma(0) {}
-};
 
 // wyckPos is a tuple of a char (representing the Wyckoff letter),
 // an int (representing the multiplicity), and a string (that contains the first
@@ -59,6 +43,8 @@ typedef std::vector<atomAssignment> atomAssignments;
 
 // number of atoms and atomic number
 typedef std::pair<uint, uint> numAndType;
+
+typedef std::pair<std::string, std::string> fillCellInfo;
 
 namespace XtalOpt {
   struct XtalCompositionStruct;
@@ -81,6 +67,15 @@ class SpgInit {
    * empty vector if an invalid spg is entered.
    */
   static const wyckoffPositions& getWyckoffPositions(uint spg);
+
+  static const fillCellInfo& getFillCellInfo(uint spg);
+
+  static std::vector<std::string> getVectorOfDuplications(uint spg);
+
+  static std::vector<std::string> getVectorOfFillPositions(uint spg);
+
+  static double interpretComponent(const std::string& component,
+                                          double x, double y, double z);
 
   /*
    * Used to determine if a spacegroup is possible for a given set of atoms.
