@@ -29,6 +29,7 @@ extern "C" {
 #include <QtCore/QObject>
 #include <QtCore/QString>
 #include <QtCore/QMutex>
+#include <QtCore/QDateTime>
 
 #define LIBSSH_BUFFER_SIZE 20480
 
@@ -178,6 +179,22 @@ namespace GlobalSearch {
     /// @return True if the session is valid
     bool isValid() {return m_isValid;};
 
+    /// @return True if the sftp is connected
+    bool sftpIsConnected();
+
+    /// @return True if the sftp is successfully reconnected
+    bool reconnectSftp();
+
+    /// @return True if the sftp either successfully reconnected or did not
+    // need to reconnect
+    bool reconnectSftpIfNeeded();
+
+    /// @return True if the sftp is successfully disconnected
+    bool disconnectSftp();
+
+    /// @return True if the sftp is successfully connected
+    bool connectSftp();
+
     /// @return True if the session is connected
     bool isConnected();
 
@@ -262,6 +279,9 @@ namespace GlobalSearch {
     ssh_session m_session;
     ssh_channel m_shell;
     sftp_session m_sftp;
+
+    // For determining when to reconnect the sftp session
+    QDateTime m_sftpTimeStamp;
 
     bool m_isValid;
     bool m_inUse;

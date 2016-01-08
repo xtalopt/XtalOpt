@@ -2413,7 +2413,6 @@ namespace XtalOpt {
       // given structure SHOULD have already been loaded.
       QString parentStructureString =
         settings->value("structure/parentStructure", "").toString();
-      qDebug() << "parentStructureString is " << parentStructureString;
       if (!parentStructureString.isEmpty()) {
         for (size_t i = 0; i < loadedStructures.size(); i++) {
           QString compare =
