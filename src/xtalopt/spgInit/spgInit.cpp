@@ -88,13 +88,111 @@ bool SpgInit::containsUniquePosition(const wyckPos& pos)
   return true;
 }
 
+// Returns true on success and false on failure
+bool getNumberInFirstTerm(const string& s, double& result, size_t& len)
+{
+  len = 0;
+  size_t i = 0;
+
+  if (s.size() == 0) {
+    cout << "Error in " << __FUNCTION__ << ": the size is 0\n";
+    return false;
+  }
+
+  bool isNeg = false;
+  if (s.at(i) == '-') {
+    isNeg = true;
+    i++;
+    len++;
+  }
+
+  // If it's just a variable, then the number is 1 or -1
+  if (s.at(i) == 'x' || s.at(i) == 'y' || s.at(i) == 'z') {
+    result = (isNeg) ? -1 : 1;
+    return true;
+  }
+
+  // Find the length of the number
+  size_t j = i;
+  while (j < s.size() && (isDigit(s.at(j)) || s.at(j) == '.')) {
+    len++;
+    j++;
+  }
+
+  if (len == 0) {
+    cout << "Error in " << __FUNCTION__ << ": invalid syntax: " << s << "\n";
+    return false;
+  }
+
+  double ret;
+  // This will throw if it fails to read the number
+  try {
+    ret = stof(s.substr(i, len));
+  }
+  catch (...) {
+    cout << "Error in " << __FUNCTION__ << ": invalid syntax: " << s << "\n";
+    return false;
+  }
+
+  result = (isNeg) ? -1 * ret : ret;
+  return true;
+}
+
 // This might be a little bit too long to be inline...
-// TODO: this function is pretty messy. Organize it better??
 double SpgInit::interpretComponent(const string& component,
                                    double x, double y, double z)
 {
   START_FT;
 
+  if (component.size() == 0) {
+    cout << "Error in SpgInit::interpretComponent(): component is empty!\n";
+    return -1;
+  }
+
+  int i = 0;
+  double result = 0;
+  while (i < component.size()) {
+    // We assume we are adding unless told otherwise
+    if (component.at(i) == '+') i++;
+
+    double numInFront = 0;
+    size_t len = 0;
+    if (!getNumberInFirstTerm(component.substr(i), numInFront, len)) {
+      cout << "Error in " << __FUNCTION__ << " getting number in term.\n";
+      return 0;
+    }
+
+    // Shift i so that it is past the length of the number
+    i += len;
+    // If we reached the end, add it and break
+    if (i >= component.size()) {
+      result += numInFront;
+      break;
+    }
+
+    // Figure out which variable we are dealing with...
+    // or if we are dealing with one at all...
+    switch (component.at(i)) {
+      case 'x':
+        result += numInFront * x;
+        i++;
+        break;
+      case 'y':
+        result += numInFront * y;
+        i++;
+        break;
+      case 'z':
+        result += numInFront * z;
+        i++;
+        break;
+      default:
+        result += numInFront;
+        break;
+    }
+  }
+
+  return result;
+/*
   // If it's just a number, just return the float equivalent
   if (isNumber(component)) return stof(component);
 
@@ -180,6 +278,7 @@ double SpgInit::interpretComponent(const string& component,
   }
 
   return ret;
+*/
 }
 
 const wyckoffPositions& SpgInit::getWyckoffPositions(uint spg)

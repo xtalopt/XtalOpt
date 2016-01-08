@@ -1852,6 +1852,9 @@ namespace XtalOpt {
                  << QString::number(comp[atomTypes[i]].quantity * xtal->getFormulaUnits())
                  << "instead.";
         qDebug() << "FU is " << QString::number(xtal->getFormulaUnits()) << " and comp[atomTypes[i]].quantity is " << QString::number(comp[atomTypes[i]].quantity);
+       /*error(tr("atomCounts for atomic num %1 is %2. It should be %3 instead.\nFU is %4 and comp[atomTypes[i]].quantity is %5. Spg is %6.")
+                 .arg(atomTypes[i]).arg(atomCounts[i]).arg(comp[atomTypes[i]].quantity * xtal->getFormulaUnits())
+                 .arg(xtal->getFormulaUnits()).arg(comp[atomTypes[i]].quantity).arg(xtal->getSpaceGroupNumber()));*/
         // Incorrect count:
         qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
         if (err != NULL) {

@@ -1,16 +1,33 @@
+/**********************************************************************
+  xtaloptWrapper.h - Contains functions that convert between class 'Crystal'
+                     and class 'Xtal'
+
+  Copyright (C) 2016 by Patrick S. Avery
+
+  This program is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation version 2 of the License.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+ ***********************************************************************/
+
+#ifndef XTALOPT_WRAPPER_H
+#define XTALOPT_WRAPPER_H
 
 #include <xtalopt/spgInit/spgInit.h>
 #include <xtalopt/structures/xtal.h>
 #include "crystal.h"
 
-using namespace XtalOpt;
-
 // Returns a dynamically allocated xtal
-Xtal* crystal2Xtal(const Crystal& c)
+XtalOpt::Xtal* crystal2Xtal(const Crystal& c)
 {
   std::vector<atomStruct> atoms = c.getAtoms();
   latticeStruct lat = c.getLattice();
-  Xtal* xtal = new Xtal(lat.a, lat.b, lat.c, lat.alpha, lat.beta, lat.gamma);
+  XtalOpt::Xtal* xtal = new XtalOpt::Xtal(lat.a, lat.b, lat.c,
+                                          lat.alpha, lat.beta, lat.gamma);
   for (size_t i = 0; i < atoms.size(); i++) {
     const atomStruct& as = atoms.at(i);
     Avogadro::Atom* atom = xtal->addAtom();
@@ -23,7 +40,7 @@ Xtal* crystal2Xtal(const Crystal& c)
   return xtal;
 }
 
-Crystal xtal2Crystal(Xtal* xtal)
+Crystal xtal2Crystal(XtalOpt::Xtal* xtal)
 {
   latticeStruct lat(xtal->getA(), xtal->getB(), xtal->getC(),
                     xtal->getAlpha(), xtal->getBeta(), xtal->getGamma());
@@ -40,3 +57,5 @@ Crystal xtal2Crystal(Xtal* xtal)
   Crystal c(atoms, lat);
   return c;
 }
+
+#endif

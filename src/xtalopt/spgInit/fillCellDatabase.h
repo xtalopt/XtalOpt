@@ -733,7 +733,7 @@ std::vector<fillCellInfo> fillCellVector =
   },
 
   { // 173
-    "","(x,y,z)(-y,x-y,z)(-x+y,-x,z)(-x,-y,z+0.5)"
+    "","(x,y,z)(-y,x-y,z)(-x+y,-x,z)(-x,-y,z+0.5)(y,-x+y,z+0.5)(x-y,x,z+0.5)"
   },
 
   { // 174
