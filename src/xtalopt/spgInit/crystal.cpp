@@ -120,9 +120,9 @@ void Crystal::fillUnitCell(uint spg)
       double dupZ = stof(dupComponents.at(2));
 
       // Next, we are going to loop through all fill positions
-      // Skip the first one. It is always just (x,y,z)
-      for (size_t k = 1; k < fpVec.size(); k++) {
-
+      for (size_t k = 0; k < fpVec.size(); k++) {
+        // Skip the first one if we are at j = 0. It is always just (x,y,z)
+        if (j == 0 && k == 0) continue;
         vector<string> fpComponents = split(fpVec.at(k), ',');
 
         double newX = SpgInit::interpretComponent(fpComponents.at(0), x, y, z) + dupX;
