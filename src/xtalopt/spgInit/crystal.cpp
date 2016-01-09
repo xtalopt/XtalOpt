@@ -116,6 +116,8 @@ atomStruct Crystal::getAtomInCartCoords(const atomStruct& as) const
   ret.y = b * sin(gamma) * as.y +
           c * (cos(alpha) - cos(beta) * cos(gamma)) / sin(gamma) * as.z;
   ret.z = c * v / sin(gamma) * as.z;
+  // I want to make sure these are all positive
+  assert(ret.x > 0 && ret.y > 0 && ret.z > 0);
   return ret;
 }
 
