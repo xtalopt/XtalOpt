@@ -62,8 +62,14 @@ class Crystal {
   void removeAtomAt(size_t i);
   void removeAtomsWithSameCoordinates();
   void wrapAtomsToCell();
+  void fillCellWithAtom(uint spg, const atomStruct& as);
   void fillUnitCell(uint spg);
 
+  double getUnitVolume() const;
+  double getVolume() const;
+  atomStruct getAtomInCartCoords(const atomStruct& as) const;
+
+  void printAtomInfo(const atomStruct& as) const;
   void printAtomInfo() const;
   void printLatticeInfo() const;
   void printCrystalInfo() const;

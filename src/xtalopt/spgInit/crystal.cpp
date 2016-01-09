@@ -15,6 +15,8 @@
  ***********************************************************************/
 
 #include <iostream>
+// for sqrt(), sin(), cos(), etc.
+#include <cmath>
 
 #include "crystal.h"
 #include "spgInit.h"
@@ -99,6 +101,78 @@ void Crystal::addAtomIfPositionIsEmpty(atomStruct& as)
   if (positionIsEmpty) addAtom(as);
 }
 
+atomStruct Crystal::getAtomInCartCoords(const atomStruct& as) const
+{
+  atomStruct ret = as;
+  const double& a = m_lattice.a;
+  const double& b = m_lattice.b;
+  const double& c = m_lattice.c;
+  const double alpha = deg2rad(m_lattice.alpha);
+  const double beta = deg2rad(m_lattice.beta);
+  const double gamma = deg2rad(m_lattice.gamma);
+  const double v = getUnitVolume();
+  // We're just gonna do the matrix multiplication by hand...
+  ret.x = a * as.x + b * cos(gamma) * as.y + c * cos(beta) * as.z;
+  ret.y = b * sin(gamma) * as.y +
+          c * (cos(alpha) - cos(beta) * cos(gamma)) / sin(gamma) * as.z;
+  ret.z = c * v / sin(gamma) * as.z;
+  return ret;
+}
+
+double Crystal::getUnitVolume() const
+{
+  const latticeStruct& l = m_lattice;
+  const double alpha = deg2rad(m_lattice.alpha);
+  const double beta = deg2rad(m_lattice.beta);
+  const double gamma = deg2rad(m_lattice.gamma);
+  return sqrt(1.0 -
+              pow(cos(alpha), 2.0) -
+              pow(cos(beta), 2.0) -
+              pow(cos(gamma), 2.0) +
+              2.0 * cos(alpha) * cos(beta) * cos(gamma));
+}
+
+double Crystal::getVolume() const
+{
+  return m_lattice.a * m_lattice.b * m_lattice.c * getUnitVolume();
+}
+
+void Crystal::fillCellWithAtom(uint spg, const atomStruct& as)
+{
+  vector<string> dupVec = SpgInit::getVectorOfDuplications(spg);
+  vector<string> fpVec = SpgInit::getVectorOfFillPositions(spg);
+  cout << "volume is " << getVolume() << "\n";
+  double x = as.x;
+  double y = as.y;
+  double z = as.z;
+  uint atomicNum = as.atomicNum;
+  for (size_t j = 0; j < dupVec.size(); j++) {
+    // First, we are going to set up the duplicate vector components
+
+    vector<string> dupComponents = split(dupVec.at(j), ',');
+
+    // These are all just numbers, so we can just convert them
+    double dupX = stof(dupComponents.at(0));
+    double dupY = stof(dupComponents.at(1));
+    double dupZ = stof(dupComponents.at(2));
+
+    // Next, we are going to loop through all fill positions
+    for (size_t k = 0; k < fpVec.size(); k++) {
+      // Skip the first one if we are at j = 0. It is always just (x,y,z)
+      if (j == 0 && k == 0) continue;
+      vector<string> fpComponents = split(fpVec.at(k), ',');
+
+      double newX = SpgInit::interpretComponent(fpComponents.at(0), x, y, z) + dupX;
+      double newY = SpgInit::interpretComponent(fpComponents.at(1), x, y, z) + dupY;
+      double newZ = SpgInit::interpretComponent(fpComponents.at(2), x, y, z) + dupZ;
+
+      atomStruct newAtom(atomicNum, newX, newY, newZ);
+      addAtomIfPositionIsEmpty(newAtom);
+    }
+  }
+
+}
+
 void Crystal::fillUnitCell(uint spg)
 {
 #ifdef CRYSTAL_DEBUG
@@ -109,57 +183,25 @@ void Crystal::fillUnitCell(uint spg)
   // In case the atoms aren't already wrapped, go ahead and wrap them...
   wrapAtomsToCell();
 
-  vector<string> dupVec = SpgInit::getVectorOfDuplications(spg);
-  vector<string> fpVec = SpgInit::getVectorOfFillPositions(spg);
-
   // Keep a copy of what the atoms were initially
   vector<atomStruct> atoms = getAtoms();
   // Loop through all these atoms!
-  for (size_t i = 0; i < atoms.size(); i++) {
-    // cAtom stands for current atom
-    const atomStruct& cAtom = atoms.at(i);
-    double x = cAtom.x;
-    double y = cAtom.y;
-    double z = cAtom.z;
-    uint atomicNum = cAtom.atomicNum;
-    for (size_t j = 0; j < dupVec.size(); j++) {
-      // First, we are going to set up the duplicate vector components
-
-      vector<string> dupComponents = split(dupVec.at(j), ',');
-
-      // These are all just numbers, so we can just convert them
-      double dupX = stof(dupComponents.at(0));
-      double dupY = stof(dupComponents.at(1));
-      double dupZ = stof(dupComponents.at(2));
-
-      // Next, we are going to loop through all fill positions
-      for (size_t k = 0; k < fpVec.size(); k++) {
-        // Skip the first one if we are at j = 0. It is always just (x,y,z)
-        if (j == 0 && k == 0) continue;
-        vector<string> fpComponents = split(fpVec.at(k), ',');
-
-        double newX = SpgInit::interpretComponent(fpComponents.at(0), x, y, z) + dupX;
-        double newY = SpgInit::interpretComponent(fpComponents.at(1), x, y, z) + dupY;
-        double newZ = SpgInit::interpretComponent(fpComponents.at(2), x, y, z) + dupZ;
-
-        atomStruct newAtom(atomicNum, newX, newY, newZ);
-        addAtomIfPositionIsEmpty(newAtom);
-      }
-    }
-  }
+  for (size_t i = 0; i < atoms.size(); i++) fillCellWithAtom(spg, atoms.at(i));
 #ifdef CRYSTAL_DEBUG
   cout << "Filling is complete! Info is now:\n";
   printCrystalInfo();
 #endif
 }
 
+void Crystal::printAtomInfo(const atomStruct& as) const
+{
+  cout << "  For " << as.atomicNum << ", coords are: ("
+       << as.x << "," << as.y << "," << as.z << ")\n";
+}
+
 void Crystal::printAtomInfo() const
 {
-  for (size_t i = 0; i < m_atoms.size(); i++) {
-    const atomStruct& a = m_atoms.at(i);
-    cout << "  For " << a.atomicNum << ", coords are: ("
-         << a.x << "," << a.y << "," << a.z << ")\n";
-  }
+  for (size_t i = 0; i < m_atoms.size(); i++) printAtomInfo(m_atoms.at(i));
 }
 
 void Crystal::printLatticeInfo() const
