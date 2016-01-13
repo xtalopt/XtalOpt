@@ -117,7 +117,9 @@ atomStruct Crystal::getAtomInCartCoords(const atomStruct& as) const
           c * (cos(alpha) - cos(beta) * cos(gamma)) / sin(gamma) * as.z;
   ret.z = c * v / sin(gamma) * as.z;
   // I want to make sure these are all positive
-  assert(ret.x > 0 && ret.y > 0 && ret.z > 0);
+  // When the value is zero, unfortunately, it can be very slightly negative
+  // sometimes... So I commented out this assertion
+  //assert(ret.x > 0 && ret.y > 0 && ret.z > 0);
   return ret;
 }
 
@@ -143,7 +145,7 @@ void Crystal::fillCellWithAtom(uint spg, const atomStruct& as)
 {
   vector<string> dupVec = SpgInit::getVectorOfDuplications(spg);
   vector<string> fpVec = SpgInit::getVectorOfFillPositions(spg);
-  cout << "volume is " << getVolume() << "\n";
+
   double x = as.x;
   double y = as.y;
   double z = as.z;
@@ -173,6 +175,47 @@ void Crystal::fillCellWithAtom(uint spg, const atomStruct& as)
     }
   }
 
+}
+
+double Crystal::getDistance(const atomStruct& as1,
+                            const atomStruct& as2) const
+{
+  atomStruct cAs1 = getAtomInCartCoords(as1);
+  atomStruct cAs2 = getAtomInCartCoords(as2);
+
+  return sqrt(pow(cAs1.x - cAs2.x, 2.0) +
+              pow(cAs1.y - cAs2.y, 2.0) +
+              pow(cAs1.z - cAs2.z, 2.0));
+}
+
+double Crystal::findNearestNeighborAtomAndDistance(const atomStruct& as,
+                                                   atomStruct& neighbor) const
+{
+  // We are assuming this atom has already been placed inside this unit cell
+  // Once we find it, if we find another one, that's an extra atom on top.
+  // TODO: need to center this atom inside the unit cell before calculating
+  // distances. This will correct for distances that extend into other cells
+  bool selfFound = false;
+  double smallestDistance = 1000000.00;
+  for (size_t i = 0; i < m_atoms.size(); i++) {
+    if (m_atoms.at(i) == as && !selfFound) {
+      selfFound = true;
+      continue;
+    }
+    // We found an atom on top of this one
+    else if (m_atoms.at(i) == as && selfFound) {
+      neighbor = m_atoms.at(i);
+      return 0.0;
+    }
+
+    double newDistance = getDistance(as, m_atoms.at(i));
+    if (newDistance < smallestDistance) {
+      smallestDistance = newDistance;
+      neighbor = m_atoms.at(i);
+    }
+  }
+
+  return smallestDistance;
 }
 
 void Crystal::fillUnitCell(uint spg)

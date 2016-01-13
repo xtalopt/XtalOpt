@@ -31,6 +31,18 @@ struct atomStruct {
     atomicNum(_aNum), x(_x), y(_y), z(_z) {}
 };
 
+// We need a comparison operator for atomStruct...
+inline bool operator==(const atomStruct& lhs,
+                       const atomStruct& rhs)
+{
+  if (lhs.atomicNum == rhs.atomicNum &&
+      lhs.x  == rhs.x &&
+      lhs.y == rhs.y &&
+      lhs.z == rhs.z) return true;
+  else return false;
+}
+
+
 struct latticeStruct {
   double a;
   double b;
@@ -68,6 +80,10 @@ class Crystal {
   double getUnitVolume() const;
   double getVolume() const;
   atomStruct getAtomInCartCoords(const atomStruct& as) const;
+
+  double getDistance(const atomStruct& as1, const atomStruct& as2) const;
+  double findNearestNeighborAtomAndDistance(const atomStruct& as,
+                                            atomStruct& neighbor) const;
 
   void printAtomInfo(const atomStruct& as) const;
   void printAtomInfo() const;
