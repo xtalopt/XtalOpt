@@ -85,6 +85,11 @@ class Crystal {
   double findNearestNeighborAtomAndDistance(const atomStruct& as,
                                             atomStruct& neighbor) const;
 
+  void centerCellAroundAtom(const atomStruct& as);
+  void centerCellAroundAtom(size_t ind);
+
+  size_t getAtomIndexNum(const atomStruct& as) const;
+
   void printAtomInfo(const atomStruct& as) const;
   void printAtomInfo() const;
   void printLatticeInfo() const;

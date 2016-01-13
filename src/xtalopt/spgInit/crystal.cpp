@@ -25,6 +25,8 @@
 using namespace std;
 
 //#define CRYSTAL_DEBUG
+//#define NEAREST_NEIGHBOR_DEBUG
+//#define CENTER_CELL_DEBUG
 
 Crystal::Crystal(vector<atomStruct> a, latticeStruct l) :
   m_atoms(a),
@@ -191,31 +193,83 @@ double Crystal::getDistance(const atomStruct& as1,
 double Crystal::findNearestNeighborAtomAndDistance(const atomStruct& as,
                                                    atomStruct& neighbor) const
 {
-  // We are assuming this atom has already been placed inside this unit cell
-  // Once we find it, if we find another one, that's an extra atom on top.
-  // TODO: need to center this atom inside the unit cell before calculating
-  // distances. This will correct for distances that extend into other cells
-  bool selfFound = false;
-  double smallestDistance = 1000000.00;
-  for (size_t i = 0; i < m_atoms.size(); i++) {
-    if (m_atoms.at(i) == as && !selfFound) {
-      selfFound = true;
-      continue;
-    }
-    // We found an atom on top of this one
-    else if (m_atoms.at(i) == as && selfFound) {
-      neighbor = m_atoms.at(i);
-      return 0.0;
-    }
+  size_t ind = getAtomIndexNum(as);
 
-    double newDistance = getDistance(as, m_atoms.at(i));
+  Crystal tempCrystal = *this;
+
+  // We need to center the cell around this atom so that we don't run into the
+  // problem of missing short distances caused by periodicity
+  tempCrystal.centerCellAroundAtom(ind);
+
+  size_t neighborInd = 0;
+  double smallestDistance = 1000000.00;
+  vector<atomStruct> tempAtoms = tempCrystal.getAtoms();
+  for (size_t i = 0; i < tempAtoms.size(); i++) {
+    if (i == ind) continue;
+    double newDistance = getDistance(tempAtoms.at(ind), tempAtoms.at(i));
     if (newDistance < smallestDistance) {
       smallestDistance = newDistance;
-      neighbor = m_atoms.at(i);
+      neighborInd = i;
     }
   }
 
+  // Set the neighbor
+  neighbor = m_atoms.at(neighborInd);
+
+#ifdef NEAREST_NEIGHBOR_DEBUG
+  cout << "Nearest neighbor is:\n";
+  printAtomInfo(neighbor);
+
+  cout << "distance is: " << smallestDistance << "\n";
+#endif
+
   return smallestDistance;
+}
+
+size_t Crystal::getAtomIndexNum(const atomStruct& as) const
+{
+  for (size_t i = 0; i < m_atoms.size(); i++) {
+    if (m_atoms.at(i) == as) return i;
+  }
+  cout << "Error in " << __FUNCTION__ << ": atom not found!\n";
+  return -1;
+}
+
+void Crystal::centerCellAroundAtom(const atomStruct& as)
+{
+  centerCellAroundAtom(getAtomIndexNum(as));
+}
+
+void Crystal::centerCellAroundAtom(size_t ind)
+{
+  atomStruct& as = m_atoms.at(ind);
+
+#ifdef CENTER_CELL_DEBUG
+  cout << "Atom to be centered:\n";
+  printAtomInfo(as);
+  cout << "Before centering:\n";
+  printAtomInfo();
+#endif
+
+  // Let's find the distances which we must shift the atoms so the one
+  // at ind can be centered
+  double dx, dy, dz;
+  dx = 0.5 - as.x;
+  dy = 0.5 - as.y;
+  dz = 0.5 - as.z;
+
+  for (size_t i = 0; i < m_atoms.size(); i++) {
+    m_atoms[i].x += dx;
+    m_atoms[i].y += dy;
+    m_atoms[i].z += dz;
+  }
+
+  wrapAtomsToCell();
+
+#ifdef CENTER_CELL_DEBUG
+  cout << "After centering:\n";
+  printAtomInfo();
+#endif
 }
 
 void Crystal::fillUnitCell(uint spg)
@@ -266,4 +320,3 @@ void Crystal::printCrystalInfo() const
   printAtomInfo();
   cout << "**** End Crystal Info ****\n\n";
 }
-
