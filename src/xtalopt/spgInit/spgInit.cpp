@@ -13,6 +13,8 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+#include <xtalopt/spgInit/elemInfo.h>
+
 #include <xtalopt/spgInit/spgInit.h>
 #include <xtalopt/spgInit/spgInitCombinatorics.h>
 #include <xtalopt/spgInit/wyckoffDatabase.h>
