@@ -60,7 +60,8 @@ struct latticeStruct {
 // Only use fractional coordinates for now...
 class Crystal {
  public:
-  explicit Crystal(std::vector<atomStruct> a, latticeStruct l);
+  explicit Crystal(std::vector<atomStruct> a, latticeStruct l,
+                   bool usingVdwRad = true);
 
   void setAtoms(std::vector<atomStruct> a) {m_atoms = a;};
   std::vector<atomStruct> getAtoms() const {return m_atoms;};
@@ -72,6 +73,7 @@ class Crystal {
   // Checks to see if an atom is already there. Adds an atom if one is not
   void addAtomIfPositionIsEmpty(atomStruct& as);
   void removeAtomAt(size_t i);
+  void removeAtom(atomStruct& as);
   void removeAtomsWithSameCoordinates();
   void wrapAtomsToCell();
   void fillCellWithAtom(uint spg, const atomStruct& as);
@@ -79,18 +81,33 @@ class Crystal {
 
   double getUnitVolume() const;
   double getVolume() const;
+  void rescaleVolume(double newVolume);
   atomStruct getAtomInCartCoords(const atomStruct& as) const;
 
   double getDistance(const atomStruct& as1, const atomStruct& as2) const;
+
+  // @param as The atomstruct for which to find the nearest neighbor. It should
+  //            already be an atom present in the crystal.
+  // @param neighbor An atomstruct that will be changed to that of the
+  //                 nearest neighbor of as.
   double findNearestNeighborAtomAndDistance(const atomStruct& as,
                                             atomStruct& neighbor) const;
 
   void centerCellAroundAtom(const atomStruct& as);
   void centerCellAroundAtom(size_t ind);
 
+  // IAD is interatomic distance
+  // The radii in elemInfoDatabase.h should already be scaled by the scaling
+  // factor before this is called.
+  double getMinIAD(const atomStruct& as1, const atomStruct& as2) const;
+  // This will be used for all atoms
+  bool areIADsOkay() const;
+  // This will be used for a single atom
+  bool areIADsOkay(const atomStruct& as) const;
+
   size_t getAtomIndexNum(const atomStruct& as) const;
 
-  void printAtomInfo(const atomStruct& as) const;
+  static void printAtomInfo(const atomStruct& as);
   void printAtomInfo() const;
   void printLatticeInfo() const;
   void printCrystalInfo() const;
@@ -98,6 +115,8 @@ class Crystal {
  private:
   std::vector<atomStruct> m_atoms;
   latticeStruct m_lattice;
+  // Are we using vdw or covalent radii? We will use vdw by default
+  bool m_usingVdwRadii;
 };
 
 #endif

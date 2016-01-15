@@ -22,15 +22,20 @@
 #include "spgInit.h"
 #include "utilityFunctions.h"
 
+// For atomic radii and symbols
+#include "elemInfo.h"
+
 using namespace std;
 
 //#define CRYSTAL_DEBUG
 //#define NEAREST_NEIGHBOR_DEBUG
 //#define CENTER_CELL_DEBUG
+#define IAD_DEBUG
 
-Crystal::Crystal(vector<atomStruct> a, latticeStruct l) :
+Crystal::Crystal(vector<atomStruct> a, latticeStruct l, bool usingVdwRad) :
   m_atoms(a),
-  m_lattice(l)
+  m_lattice(l),
+  m_usingVdwRadii(usingVdwRad)
 {
 
 }
@@ -42,6 +47,11 @@ void Crystal::removeAtomAt(size_t i)
                                         << "size is only " << m_atoms.size()
                                         << "!\n";
   else m_atoms.erase(m_atoms.begin() + i);
+}
+
+void Crystal::removeAtom(atomStruct& as)
+{
+  removeAtomAt(getAtomIndexNum(as));
 }
 
 static inline bool atomsHaveSamePosition(const atomStruct& a1,
@@ -141,6 +151,19 @@ double Crystal::getUnitVolume() const
 double Crystal::getVolume() const
 {
   return m_lattice.a * m_lattice.b * m_lattice.c * getUnitVolume();
+}
+
+void Crystal::rescaleVolume(double newVolume)
+{
+  double scalingFactor = pow(newVolume / getVolume(), 1.0/3.0);
+
+  // Since atoms are all in fractional coordinates, we don't have to worry
+  // about their positions changing...
+  m_lattice.a *= scalingFactor;
+  m_lattice.b *= scalingFactor;
+  m_lattice.c *= scalingFactor;
+  // This may put the lattice parameters outside the max and min bounds.
+  // Might want to check up on those
 }
 
 void Crystal::fillCellWithAtom(uint spg, const atomStruct& as)
@@ -292,7 +315,43 @@ void Crystal::fillUnitCell(uint spg)
 #endif
 }
 
-void Crystal::printAtomInfo(const atomStruct& as) const
+// Radii should have already been scaled and set before calling this
+double Crystal::getMinIAD(const atomStruct& as1, const atomStruct& as2) const
+{
+  double rad1 = ElemInfo::getRadius(as1.atomicNum, m_usingVdwRadii);
+  double rad2 = ElemInfo::getRadius(as2.atomicNum, m_usingVdwRadii);
+  return rad1 + rad2;
+}
+
+bool Crystal::areIADsOkay() const
+{
+  // We don't have to check the last atom if we checked all others
+  for (size_t i = 0; i < m_atoms.size() - 1; i++) {
+    if (!areIADsOkay(m_atoms.at(i))) return false;
+  }
+  return true;
+}
+
+bool Crystal::areIADsOkay(const atomStruct& as) const
+{
+  atomStruct neighbor;
+  double dist = findNearestNeighborAtomAndDistance(as, neighbor);
+  double minIAD = getMinIAD(as, neighbor);
+  if (dist < minIAD) {
+#ifdef IAD_DEBUG
+    cout << "In " << __FUNCTION__ << ", minIAD failed!\n";
+    cout << "  The distance is " << dist << " and the minIAD is " << minIAD
+         << "\n";
+    cout << "  Atoms responsible for failure are as follows:\n";
+    printAtomInfo(as);
+    printAtomInfo(neighbor);
+#endif
+    return false;
+  }
+  return true;
+}
+
+void Crystal::printAtomInfo(const atomStruct& as)
 {
   cout << "  For " << as.atomicNum << ", coords are: ("
        << as.x << "," << as.y << "," << as.z << ")\n";

@@ -1,6 +1,6 @@
 /**********************************************************************
-  elemInfoDatabase.h - Contains the database information needed in elemInfo.h
-                       Contains atomic symbol and atomic radii information
+  elemInfo.h - Contains functions for getting atomic radii and atomic symbols
+               and for setting atomic radii
 
   Copyright (C) 2015 - 2016 by Patrick S. Avery
 
@@ -21,63 +21,37 @@
 
 #include <iostream>
 
-namespace ElemInfo {
+class ElemInfo {
+ public:
+  static std::string getAtomicSymbol(uint atomicNum);
 
-  std::string getAtomicSymbol(uint atomicNum)
-  {
-    if (atomicNum == 0 || atomicNum > 117) {
-      std::cout << "Error: Invalid atomicNum, " << atomicNum << ", was entered in "
-           << __FUNCTION__ << "!\n";
-      return 0;
-    }
-    return _atomicSymbols.at(atomicNum);
-  }
+  static uint getAtomicNum(std::string symbol);
 
-  uint getAtomicNum(std::string symbol)
-  {
-    for (uint i = 0; i < _atomicSymbols.size(); i++) {
-      if (_atomicSymbols.at(i) == symbol) return i;
-    }
+  static double getVdwRadius(uint atomicNum);
 
-    std::cout << "Error: Invalid symbol, " << symbol << ", was entered into "
-         << __FUNCTION__ << "!\n";
-    return 0;
-  }
+  static double getCovalentRadius(uint atomicNum);
 
-  double getVdwRadius(uint atomicNum)
-  {
-    if (atomicNum == 0 || atomicNum > 117) {
-      std::cout << "Error: Invalid atomicNum, " << atomicNum << ", was entered in "
-           << __FUNCTION__ << "!\n";
-      return 0;
-    }
-    return _vdwRadii.at(atomicNum);
-  }
-
-  double getCovalentRadius(uint atomicNum)
-  {
-    if (atomicNum == 0 || atomicNum > 117) {
-      std::cout << "Error: Invalid atomicNum, " << atomicNum << ", was entered in "
-           << __FUNCTION__ << "!\n";
-      return 0;
-    }
-    return _covalentRadii.at(atomicNum);
-  }
+  // Applies a specified scaling factor to every radius for both
+  // covalent and vdw radii to the database radii and sets the
+  // static members of this class to be them.
+  // So, if we call applyScalingFactor(0.5) twice, it will still be the
+  // same thing. This will also erase any radius settings induced by
+  // 'setRadius()'
+  static void applyScalingFactor(double sf);
 
   // We allow the user to set a radius here
-  // We will set both radii since we know the user will only be using one of them,
-  // but we don't know which...
-  void setRadius(uint atomicNum, double newRadius)
-  {
-    if (atomicNum == 0 || atomicNum > 117) {
-      std::cout << "Error: Invalid atomicNum, " << atomicNum << ", was entered in "
-           << __FUNCTION__ << "!\n";
-      return;
-    }
-    _covalentRadii[atomicNum] = newRadius;
-    _vdwRadii[atomicNum] = newRadius;
-  }
+  // We will set both radii since we know the user will only be using one of
+  // them, but we don't know which...
+  static void setRadius(uint atomicNum, double newRadius);
 
-} // namespace ElemInfo
+  static double getRadius(uint atomicNum, bool usingVdwRadius);
+
+ private:
+  // Retain a copy of the database pieces here so they may be edited
+  static std::vector<std::string> atomicSymbols;
+  static std::vector<double> covalentRadii;
+  static std::vector<double> vdwRadii;
+
+}; // class ElemInfo
 
 #endif

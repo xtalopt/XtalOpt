@@ -1,6 +1,5 @@
 /**********************************************************************
-  elemInfo.h - Functions for getting information about atomic symbols
-               and atomic radii
+  elemInfoDatabase.h - Database containing info about atomic symbols and radii
 
   Copyright (C) 2015 - 2016 by Patrick S. Avery
 
@@ -20,9 +19,9 @@
 #include <string>
 #include <vector>
 
-namespace ElemInfo {
+namespace ElemInfoDatabase {
   // Atomic symbols
-  std::vector<std::string> _atomicSymbols =
+  static const std::vector<std::string> _atomicSymbols =
   {
     " ",  // 0 -- not a real element...
     "H",  // 1
@@ -144,10 +143,10 @@ namespace ElemInfo {
     "Uus",// 117
   };
 
-  // The following values were obtained from latest version of OpenBabel on GitHub
-  // on 01/14/2016
+  // The following values were obtained from latest version of OpenBabel on
+  // GitHub on 01/14/2016
 
-  std::vector<double> _covalentRadii =
+  static const std::vector<double> _covalentRadii =
   {
     0,    // 0 - not a real element...
     0.31, // 1
@@ -269,10 +268,10 @@ namespace ElemInfo {
     1.6,  // 117
   };
 
-  // The following values were obtained from latest version of OpenBabel on GitHub
-  // on 01/14/2016
+  // The following values were obtained from latest version of OpenBabel on
+  // GitHub on 01/14/2016
 
-  std::vector<double> _vdwRadii =
+  static const std::vector<double> _vdwRadii =
   {
     0,    // 0 - not a real element...
     1.1,  // 1
@@ -393,6 +392,6 @@ namespace ElemInfo {
     2,    // 116
     2,    // 117
   };
-} // namespace ElemInfo
+} // namespace ElemInfoDatabase
 
 #endif
