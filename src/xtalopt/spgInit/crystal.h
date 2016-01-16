@@ -42,7 +42,6 @@ inline bool operator==(const atomStruct& lhs,
   else return false;
 }
 
-
 struct latticeStruct {
   double a;
   double b;
@@ -60,56 +59,245 @@ struct latticeStruct {
 // Only use fractional coordinates for now...
 class Crystal {
  public:
+  /* Constructor.
+   *
+   * @param a The vector of atoms which shall be present in the crystal.
+   * @param l The lattice of the crystal.
+   * @param usingVdwRad Determines whether we will be using van der Waals radii
+   *                    for interatomic distance checks or covalent radii.
+   */
   explicit Crystal(std::vector<atomStruct> a, latticeStruct l,
                    bool usingVdwRad = true);
 
+  /* Set the atoms in this crystal with a new vector of atoms.
+   *
+   * @param a The new vector of atoms.
+   */
   void setAtoms(std::vector<atomStruct> a) {m_atoms = a;};
+
+  /* Get a vector of the atom structs in this crystal.
+   *
+   * @return The atoms in this crystal.
+   */
   std::vector<atomStruct> getAtoms() const {return m_atoms;};
 
+  /* Set the lattice struct for this cell.
+   *
+   * @param l The new lattice.
+   */
   void setLattice(latticeStruct l) {m_lattice = l;};
+
+  /* Get the lattice struct for this cell's lattice.
+   *
+   * @return The lattice struct for this cell.
+   */
   latticeStruct getLattice() const {return m_lattice;};
 
-  void addAtom(atomStruct atom) {m_atoms.push_back(atom);};
-  // Checks to see if an atom is already there. Adds an atom if one is not
-  void addAtomIfPositionIsEmpty(atomStruct& as);
-  void removeAtomAt(size_t i);
-  void removeAtom(atomStruct& as);
-  void removeAtomsWithSameCoordinates();
-  void wrapAtomsToCell();
-  void fillCellWithAtom(uint spg, const atomStruct& as);
-  void fillUnitCell(uint spg);
+  /* Set whether we are using van der Waals radii for interatomic distance
+   * checks. If we are not, we are using covalent radii.
+   *
+   * @param b Whether we are using van der Waals radii or not
+   */
+  void setUsingVdwRadii(bool b) {m_usingVdwRadii = b;};
 
+  /* Are we using van der Waals radii for interatomic distance checks?
+   *
+   * @return True if we are. False if we are not.
+   */
+  bool usingVdwRadii() {return m_usingVdwRadii;};
+
+  /* Adds an atom to this crystal.
+   *
+   * @param atom The atom to be added.
+   */
+  void addAtom(atomStruct atom) {m_atoms.push_back(atom);};
+
+  /* Checks to see if an atom is already at the position given by 'as'. Adds an
+   * atom if one is not.
+   *
+   * @param as The atom to be added.
+   *
+   * @return Returns true if the atom was added. Returns false if the position
+   *         is already occupied.
+   */
+  bool addAtomIfPositionIsEmpty(atomStruct& as);
+
+  /* Removes all atoms at and greater than the index given by 'as'. This assumes
+   * that all new atoms were appended to the end of the vector and that there
+   * are no old atoms beyond this index.
+   *
+   * @param as The first atom to remove (all others after this shall be removed
+               as well).
+   */
+  void removeAllNewAtomsSince(const atomStruct& as);
+
+  /* Removes an atom, as, that is currently a member of the cell.
+   *
+   * @param as The atom to be removed.
+   */
+  void removeAtom(const atomStruct& as);
+
+  /* Removes an atom at index i.
+   *
+   * @param i The index of the atom to be removed.
+   */
+  void removeAtomAt(size_t i);
+
+  /* Removes atoms that lie in the same position. This is convenient for
+   * spg filling functions because there is a chance we will place an atom
+   * on top of another.
+   */
+  void removeAtomsWithSameCoordinates();
+
+  /* Wrap atoms to a unit cell that are located outside the cell.
+   * Since we are using fractional coordinates, this is particularly easy and
+   * is done by adding and subtracting 1.
+   * (-0.5, 0, 0.5), for example, becomes (0.5, 0, 0.5)
+   */
+  void wrapAtomsToCell();
+
+  /* Fill a unit cell with duplications of an atom required by a spacegroup. It
+   * duplicates an atom according to the most general Wyckoff position, and
+   * if it finds that it is placing an atom on top of another, it will not
+   * add that atom (since it is probably a more specific Wyckoff position or
+   * it has already been filled). It will also check interatomic distances,
+   * and if IADs fail, it deletes all the new atoms (including the one in the
+   * parameter) and returns false.
+   *
+   * @param spg The spacegroup for which to duplicate the atom.
+   * @param as The atom which we wish to duplicate (needs to already be
+   *           present in the cell; it won't be added if it isn't present).
+   *
+   * @return true if successful. False if failed due to IAD failures. It
+   *         delete all the atoms in the process (including the one in the
+   *         parameter).
+   */
+  bool fillCellWithAtom(uint spg, const atomStruct& as);
+
+  /* Calls fillCellWithAtom() for every atom that is currently in the cell.
+   *
+   * @return false if any of these return false.
+   */
+  bool fillUnitCell(uint spg);
+
+  /* Get the volume of the cell assuming a, b, and c are all 1. This is
+   * useful for converting atoms to Cartesian coordinates.
+   *
+   * @return The unit volume of the cell.
+   */
   double getUnitVolume() const;
+
+  /* Get the volume of the cell in Angstroms cubed.
+   *
+   * @return The volume of the cell.
+   */
   double getVolume() const;
+
+  /* Scales a, b, and c so that a different volume, 'newVolume', is the volume.
+   *
+   * @param newVolume The new volume to be set.
+   */
   void rescaleVolume(double newVolume);
+
+  /* Get a copy of an atom that has cartesian coordinates instead of fractional.
+   *
+   * @param as The atom of which to receive a copy in cart. coords.
+   *
+   * @return A copy of the atom with x, y, and z being in Angstroms.
+   */
   atomStruct getAtomInCartCoords(const atomStruct& as) const;
 
+  /* Returns the distance in Angstroms between two atoms. Does not take into
+   * account periodicity effects (so please center one of the atoms in the
+   * unit cell before calling this function).
+   *
+   * @param as1 The first atom.
+   * @param as2 The second atom.
+   *
+   * @return The distance in Angstroms between the two atoms.
+   */
   double getDistance(const atomStruct& as1, const atomStruct& as2) const;
 
-  // @param as The atomstruct for which to find the nearest neighbor. It should
-  //            already be an atom present in the crystal.
-  // @param neighbor An atomstruct that will be changed to that of the
-  //                 nearest neighbor of as.
+  /* Find the nearest atom to parameter 'as' and set that neighbor to parameter
+   * 'neighbor'. It also returns the distance between them in Angstroms.
+   * In order to take into account periodicity effects, it creates a temporary
+   * cell in which 'as' is at the center and finds all distances from there.
+   * Note: function may not work if 'as' is closest to itself in another cell...
+   *
+   * @param as The atomstruct for which to find the nearest neighbor. It should
+   *           already be an atom present in the crystal.
+   * @param neighbor An atomstruct that will be set to be to that of the
+   *                 nearest neighbor of as.
+   *
+   * @return Returns the distance in angstroms between the atoms.
+   */
   double findNearestNeighborAtomAndDistance(const atomStruct& as,
                                             atomStruct& neighbor) const;
 
+  /* Shift the cell and wrap the atoms so that an atom is at
+   * the center (i. e. position (0.5, 0.5, 0.5)).
+   *
+   * @param as The atom to be centered. Needs to be an atom present in the cell.
+   */
   void centerCellAroundAtom(const atomStruct& as);
+
+  /* Shift the cell and wrap the atoms so that an atom at index ind is at
+   * the center (i. e. position (0.5, 0.5, 0.5)).
+   *
+   * @param ind The index of the atom to be centered.
+   */
   void centerCellAroundAtom(size_t ind);
 
-  // IAD is interatomic distance
-  // The radii in elemInfoDatabase.h should already be scaled by the scaling
-  // factor before this is called.
+  /* Finds the minimum interatomic distance between two atoms based upon
+   * their atomic number and radii information in the ElemInfo class. Any
+   * modifications to the radii (scaling or setting) should have been made
+   * before this function is called.
+   *
+   * @param as1 The first atom.
+   * @param as2 The second atom.
+   *
+   * @return The minimum interatomic distance between the two atoms.
+   */
   double getMinIAD(const atomStruct& as1, const atomStruct& as2) const;
-  // This will be used for all atoms
+
+  /* Calls areIADsOkay(const atomStruct&) for every atom in the cell.
+   *
+   * @return true if all IADs are okay. False if not.
+   */
   bool areIADsOkay() const;
-  // This will be used for a single atom
+
+  /* Checks to see if an atom has satisfactory interatomic distances (i. e.,
+   * no atoms are too close to this one according to minIAD calculations).
+   *
+   * @param as The atom to check. It needs to be a member of the cell already.
+   *
+   * @return true if IADs are okay. False if not.
+   */
   bool areIADsOkay(const atomStruct& as) const;
 
-  size_t getAtomIndexNum(const atomStruct& as) const;
+  /* Find the index number of an atom in the cell.
+   *
+   * @param as The atom for which to find an index number.
+   *
+   * @return Returns the index number of an atom. If it fails to find the atom,
+   *         it prints an error message and returns -1.
+   */
+  int getAtomIndexNum(const atomStruct& as) const;
 
+  /* For debugging: print the atomic number and coordinates of a specific atom.
+   *
+   * @param as The atom for which to print coords.
+   */
   static void printAtomInfo(const atomStruct& as);
+  /* For debugging: print the atom info for every atom in the cell.
+   */
   void printAtomInfo() const;
+  /* For debugging: print the lattice info of the cell (a, b, c, alpha, beta,
+   * and gamma
+   */
   void printLatticeInfo() const;
+  /* For debugging: print atom info and lattice info of a cell
+   */
   void printCrystalInfo() const;
 
  private:

@@ -54,7 +54,9 @@ Crystal xtal2Crystal(XtalOpt::Xtal* xtal)
     atoms.push_back(as);
   }
 
-  Crystal c(atoms, lat);
+  // Last parameter is false because xtalopt uses covalent radii, not vdw
+  // radii
+  Crystal c(atoms, lat, false);
   return c;
 }
 

@@ -49,9 +49,24 @@ void Crystal::removeAtomAt(size_t i)
   else m_atoms.erase(m_atoms.begin() + i);
 }
 
-void Crystal::removeAtom(atomStruct& as)
+void Crystal::removeAtom(const atomStruct& as)
 {
-  removeAtomAt(getAtomIndexNum(as));
+  int ind = getAtomIndexNum(as);
+  if (ind == -1) {
+    cout << "Error: " << __FUNCTION__ << " was called to remove an atom that "
+         << "is not a member of the cell!\n";
+    return;
+  }
+  removeAtomAt(ind);
+}
+
+void Crystal::removeAllNewAtomsSince(const atomStruct& as)
+{
+  // Since atoms get appended to the vector in order, we assume all indices
+  // including and greater than our current one are new
+  for (size_t i = getAtomIndexNum(as); i < m_atoms.size(); i++) {
+    removeAtomAt(i);
+  }
 }
 
 static inline bool atomsHaveSamePosition(const atomStruct& a1,
@@ -86,7 +101,6 @@ void Crystal::wrapAtomsToCell()
   for (size_t i = 0; i < m_atoms.size(); i++) wrapAtomToCell(m_atoms[i]);
 }
 
-
 void Crystal::removeAtomsWithSameCoordinates()
 {
   for (size_t i = 0; i < m_atoms.size(); i++) {
@@ -99,7 +113,7 @@ void Crystal::removeAtomsWithSameCoordinates()
   }
 }
 
-void Crystal::addAtomIfPositionIsEmpty(atomStruct& as)
+bool Crystal::addAtomIfPositionIsEmpty(atomStruct& as)
 {
   wrapAtomToCell(as);
   bool positionIsEmpty = true;
@@ -110,7 +124,13 @@ void Crystal::addAtomIfPositionIsEmpty(atomStruct& as)
       break;
     }
   }
-  if (positionIsEmpty) addAtom(as);
+
+  if (positionIsEmpty) {
+    addAtom(as);
+    return true;
+  }
+
+  return false;
 }
 
 atomStruct Crystal::getAtomInCartCoords(const atomStruct& as) const
@@ -166,42 +186,6 @@ void Crystal::rescaleVolume(double newVolume)
   // Might want to check up on those
 }
 
-void Crystal::fillCellWithAtom(uint spg, const atomStruct& as)
-{
-  vector<string> dupVec = SpgInit::getVectorOfDuplications(spg);
-  vector<string> fpVec = SpgInit::getVectorOfFillPositions(spg);
-
-  double x = as.x;
-  double y = as.y;
-  double z = as.z;
-  uint atomicNum = as.atomicNum;
-  for (size_t j = 0; j < dupVec.size(); j++) {
-    // First, we are going to set up the duplicate vector components
-
-    vector<string> dupComponents = split(dupVec.at(j), ',');
-
-    // These are all just numbers, so we can just convert them
-    double dupX = stof(dupComponents.at(0));
-    double dupY = stof(dupComponents.at(1));
-    double dupZ = stof(dupComponents.at(2));
-
-    // Next, we are going to loop through all fill positions
-    for (size_t k = 0; k < fpVec.size(); k++) {
-      // Skip the first one if we are at j = 0. It is always just (x,y,z)
-      if (j == 0 && k == 0) continue;
-      vector<string> fpComponents = split(fpVec.at(k), ',');
-
-      double newX = SpgInit::interpretComponent(fpComponents.at(0), x, y, z) + dupX;
-      double newY = SpgInit::interpretComponent(fpComponents.at(1), x, y, z) + dupY;
-      double newZ = SpgInit::interpretComponent(fpComponents.at(2), x, y, z) + dupZ;
-
-      atomStruct newAtom(atomicNum, newX, newY, newZ);
-      addAtomIfPositionIsEmpty(newAtom);
-    }
-  }
-
-}
-
 double Crystal::getDistance(const atomStruct& as1,
                             const atomStruct& as2) const
 {
@@ -216,7 +200,13 @@ double Crystal::getDistance(const atomStruct& as1,
 double Crystal::findNearestNeighborAtomAndDistance(const atomStruct& as,
                                                    atomStruct& neighbor) const
 {
-  size_t ind = getAtomIndexNum(as);
+  int ind = getAtomIndexNum(as);
+
+  if (ind == -1) {
+    cout << "Error: " << __FUNCTION__ << " was called for an atom that is not "
+         << "a member of this cell!\n";
+    return 0;
+  }
 
   Crystal tempCrystal = *this;
 
@@ -249,7 +239,7 @@ double Crystal::findNearestNeighborAtomAndDistance(const atomStruct& as,
   return smallestDistance;
 }
 
-size_t Crystal::getAtomIndexNum(const atomStruct& as) const
+int Crystal::getAtomIndexNum(const atomStruct& as) const
 {
   for (size_t i = 0; i < m_atoms.size(); i++) {
     if (m_atoms.at(i) == as) return i;
@@ -260,7 +250,15 @@ size_t Crystal::getAtomIndexNum(const atomStruct& as) const
 
 void Crystal::centerCellAroundAtom(const atomStruct& as)
 {
-  centerCellAroundAtom(getAtomIndexNum(as));
+  int ind = getAtomIndexNum(as);
+
+  if (ind == -1) {
+    cout << "Error in " << __FUNCTION__ << ": a request was made to fill a "
+         << "cell with an atom that is not a member of the cell!\n";
+    return;
+  }
+
+  centerCellAroundAtom(ind);
 }
 
 void Crystal::centerCellAroundAtom(size_t ind)
@@ -295,7 +293,60 @@ void Crystal::centerCellAroundAtom(size_t ind)
 #endif
 }
 
-void Crystal::fillUnitCell(uint spg)
+bool Crystal::fillCellWithAtom(uint spg, const atomStruct& as)
+{
+  // First, make sure this is an actual atom in the cell
+  if (getAtomIndexNum(as) == -1) {
+    cout << "Error in " << __FUNCTION__ << ": a request was made to fill a "
+         << "cell with an atom that is not a member of the cell!\n";
+    return false;
+  }
+
+  vector<string> dupVec = SpgInit::getVectorOfDuplications(spg);
+  vector<string> fpVec = SpgInit::getVectorOfFillPositions(spg);
+
+  double x = as.x;
+  double y = as.y;
+  double z = as.z;
+  uint atomicNum = as.atomicNum;
+  for (size_t j = 0; j < dupVec.size(); j++) {
+    // First, we are going to set up the duplicate vector components
+
+    vector<string> dupComponents = split(dupVec.at(j), ',');
+
+    // These are all just numbers, so we can just convert them
+    double dupX = stof(dupComponents.at(0));
+    double dupY = stof(dupComponents.at(1));
+    double dupZ = stof(dupComponents.at(2));
+
+    // Next, we are going to loop through all fill positions
+    for (size_t k = 0; k < fpVec.size(); k++) {
+      // Skip the first one if we are at j = 0. It is always just (x,y,z)
+      if (j == 0 && k == 0) continue;
+      vector<string> fpComponents = split(fpVec.at(k), ',');
+
+      double newX = SpgInit::interpretComponent(fpComponents.at(0),
+                                                x, y, z) + dupX;
+      double newY = SpgInit::interpretComponent(fpComponents.at(1),
+                                                x, y, z) + dupY;
+      double newZ = SpgInit::interpretComponent(fpComponents.at(2),
+                                                x, y, z) + dupZ;
+
+      atomStruct newAtom(atomicNum, newX, newY, newZ);
+
+      if (addAtomIfPositionIsEmpty(newAtom)) {
+        // Check IADs. If IADs are not good, clean up and return false.
+        if (!areIADsOkay(newAtom)) {
+          removeAllNewAtomsSince(as);
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
+bool Crystal::fillUnitCell(uint spg)
 {
 #ifdef CRYSTAL_DEBUG
   cout << "Crystall::fillUnitCell() was called for spg = " << spg
@@ -305,14 +356,14 @@ void Crystal::fillUnitCell(uint spg)
   // In case the atoms aren't already wrapped, go ahead and wrap them...
   wrapAtomsToCell();
 
-  // Keep a copy of what the atoms were initially
-  vector<atomStruct> atoms = getAtoms();
   // Loop through all these atoms!
-  for (size_t i = 0; i < atoms.size(); i++) fillCellWithAtom(spg, atoms.at(i));
+  for (size_t i = 0; i < m_atoms.size(); i++)
+    if(!fillCellWithAtom(spg, m_atoms.at(i))) return false;
 #ifdef CRYSTAL_DEBUG
   cout << "Filling is complete! Info is now:\n";
   printCrystalInfo();
 #endif
+  return true;
 }
 
 // Radii should have already been scaled and set before calling this
