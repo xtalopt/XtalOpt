@@ -109,36 +109,33 @@ class SpgInit {
                                              const latticeStruct& mins,
                                              const latticeStruct& maxes);
   /*
-   * Attempts to add an atom randomly to a wyckoff position of a given xtal.
+   * Attempts to add an atom randomly to a wyckoff position of a given crystal.
    * The position of the atom is constrained by the given wyckoff position.
-   * It will attempt to add an atom randomly to satisfy minIDA for
+   * It will attempt to add an atom randomly to satisfy minimum IAD for
    * maxAttempts times, and if it fails, it returns false. If a fixed wyckoff
    * position is given, it will just add the atom to the fixed wyckoff position.
+   * After it adds a Wyckoff atom, it attempts to fill the cell with it
+   * according to the spacegroup. If it fails, it will remove the new Wyckoff
+   * atom and try again.
    *
-   * @param xtal The xtal for which an atom will be added
+   * @param crystal The Crystal object for which an atom will be added
    * @param position The wyckoff position to add the atom to
    * @param atomicNum The atomic number of the atom to be added
-   * @param limits A hash that contains the atomic number for the keys and an
-   *               XtalCompositionStruct for the value. The
-   *               XtalCompositionStruct contains the quantity of this atom and
-   *               the minimum radius of each. This is used to ensure atoms
-   *               are not placed too close to each other.
+   * @param spg The spacegroup which we are creating.
    * @param maxAttempts The number of attempts to make to add the atom randomly
    *                    before the function returns false. Default is 1000.
    *
    * @return True if it succeeded, and false if it failed.
    */
-  static bool addWyckoffAtomRandomly(XtalOpt::Xtal* xtal, wyckPos& position,
-                                     uint atomicNum,
-                                     const QHash<unsigned int,
-                                                 XtalOpt::XtalCompositionStruct>& limits,
+  static bool addWyckoffAtomRandomly(Crystal& crystal, wyckPos& position,
+                                     uint atomicNum, uint spg,
                                      int maxAttempts = 1000);
 
   /*
-   * Initialze and return a dynamically allocated xtal with a given spacegroup!
+   * Initialze and return a Crystal object with a given spacegroup!
    * The lattice mins and lattice maxes provide constraints for the lattice
    * to be generated. The list of atom types tell it which atoms to be added.
-   * Returns NULL if it failed to generate the xtal.
+   * Returns a zero-volume Crystal object if it failed to generate it.
    *
    * @param spg The international number for the spacegroup to be generated
    * @param atomTypes A vector of atomic numbers (one for each atom). So if
@@ -147,26 +144,21 @@ class SpgInit {
    *                    alpha, beta, and gamma.
    * @param latticeMaxes A latticeStruct that contains the maxima for a, b, c,
    *                     alpha, beta, and gamma.
-   * @param limits A hash that contains the atomic number for the keys and an
-   *               XtalCompositionStruct for the value. The
-   *               XtalCompositionStruct contains the quantity of this atom and
-   *               the minimum radius of each. This is used in
-   *               addWyckoffAtomRandomly().
+   * @param minIADScalingFactor A scaling factor used to scale the minIAD
    * @param maxAttempts The number of attempts to make to add the atom randomly
    *                    before the function returns false. Default is 1000.
    *                    Used in addWyckoffAtomRandomly().
    *
-   * @return A dynamically allocated xtal with the given spacegroup, atoms,
-   * and lattice within the provided lattice constraints. Returns NULL
-   * if the function failed to successfully generate the xtal.
+   * @return A Crystal object with the given spacegroup, atoms,
+   * and lattice within the provided lattice constraints. Returns a Crystal
+   * with zero volume if it failed to generate one successfully.
    */
-  static XtalOpt::Xtal* spgInitXtal(uint spg,
-                                    const std::vector<uint>& atomTypes,
-                                    const latticeStruct& latticeMins,
-                                    const latticeStruct& latticeMaxes,
-                                    const QHash<unsigned int,
-                                                 XtalOpt::XtalCompositionStruct>& limits,
-                                    int maxAttempts = 1000);
+  static Crystal spgInitCrystal(uint spg,
+                                const std::vector<uint>& atomTypes,
+                                const latticeStruct& latticeMins,
+                                const latticeStruct& latticeMaxes,
+                                double minIADScalingFactor = 0.5,
+                                int maxAttempts = 1000);
 
   static atomAssignments assignAtomsToWyckPos(uint spg,
                                               std::vector<uint> atoms);

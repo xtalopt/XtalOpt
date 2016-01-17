@@ -93,6 +93,14 @@ void ElemInfo::setRadius(uint atomicNum, double newRadius)
   vdwRadii[atomicNum] = newRadius;
 }
 
+void ElemInfo::setMinRadius(double minRadius)
+{
+  for (size_t i = 1; i < covalentRadii.size(); i++) {
+    if (covalentRadii[i] < minRadius) covalentRadii[i] = minRadius;
+    if (vdwRadii[i] < minRadius) vdwRadii[i] = minRadius;
+  }
+}
+
 double ElemInfo::getRadius(uint atomicNum, bool usingVdwRadius)
 {
   if (usingVdwRadius) return getVdwRadius(atomicNum);

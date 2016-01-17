@@ -24,7 +24,7 @@
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
 
-#include <xtalopt/spgInit/spgInit.h>
+#include <xtalopt/spgInit/xtaloptWrapper.h>
 #include <xtalopt/spgInit/spgInitDialog.h>
 
 #include <globalsearch/optbase.h>
@@ -562,8 +562,10 @@ namespace XtalOpt {
       latticeStruct latticeMins, latticeMaxes;
       setLatticeMinsAndMaxes(latticeMins, latticeMaxes);
 
-      xtal = SpgInit::spgInitXtal(spg, getStdVecOfAtoms(FU), latticeMins,
-                                  latticeMaxes, this->comp);
+      xtal = SpgInitXtalOptWrapper::spgInitXtal(spg, getStdVecOfAtoms(FU),
+                                                latticeMins,
+                                                latticeMaxes,
+                                                this->scaleFactor);
 
       // We need to set these things before checkXtal() is called
       if (xtal) {

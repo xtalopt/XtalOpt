@@ -30,11 +30,11 @@ using namespace std;
 //#define CRYSTAL_DEBUG
 //#define NEAREST_NEIGHBOR_DEBUG
 //#define CENTER_CELL_DEBUG
-#define IAD_DEBUG
+//#define IAD_DEBUG
 
-Crystal::Crystal(vector<atomStruct> a, latticeStruct l, bool usingVdwRad) :
-  m_atoms(a),
+Crystal::Crystal(latticeStruct l, vector<atomStruct> a, bool usingVdwRad) :
   m_lattice(l),
+  m_atoms(a),
   m_usingVdwRadii(usingVdwRad)
 {
 
@@ -42,10 +42,9 @@ Crystal::Crystal(vector<atomStruct> a, latticeStruct l, bool usingVdwRad) :
 
 void Crystal::removeAtomAt(size_t i)
 {
-  if (i - 1 > m_atoms.size()) std::cout << "Error: tried to remove an atom "
-                                        << "at index " << i << " and the "
-                                        << "size is only " << m_atoms.size()
-                                        << "!\n";
+  if (i >= m_atoms.size())
+    std::cout << "Error: tried to remove an atom at index " << i << " and the "
+              << "size is only " << m_atoms.size() << "!\n";
   else m_atoms.erase(m_atoms.begin() + i);
 }
 
@@ -64,8 +63,10 @@ void Crystal::removeAllNewAtomsSince(const atomStruct& as)
 {
   // Since atoms get appended to the vector in order, we assume all indices
   // including and greater than our current one are new
-  for (size_t i = getAtomIndexNum(as); i < m_atoms.size(); i++) {
+  for (size_t i = getAtomIndexNum(as) + 1; i < m_atoms.size(); i++) {
     removeAtomAt(i);
+    // size will keep going down until we stop
+    i--;
   }
 }
 

@@ -66,8 +66,9 @@ class Crystal {
    * @param usingVdwRad Determines whether we will be using van der Waals radii
    *                    for interatomic distance checks or covalent radii.
    */
-  explicit Crystal(std::vector<atomStruct> a, latticeStruct l,
-                   bool usingVdwRad = true);
+  explicit Crystal(latticeStruct l = latticeStruct(),
+                   std::vector<atomStruct> a = std::vector<atomStruct>(),
+                   bool usingVdwRad = false);
 
   /* Set the atoms in this crystal with a new vector of atoms.
    *
@@ -80,6 +81,12 @@ class Crystal {
    * @return The atoms in this crystal.
    */
   std::vector<atomStruct> getAtoms() const {return m_atoms;};
+
+  /* Get the number of atoms in this crystal.
+   *
+   * @return The number of atoms in this crystal.
+   */
+  uint numAtoms() const {return m_atoms.size();};
 
   /* Set the lattice struct for this cell.
    *
@@ -122,12 +129,11 @@ class Crystal {
    */
   bool addAtomIfPositionIsEmpty(atomStruct& as);
 
-  /* Removes all atoms at and greater than the index given by 'as'. This assumes
+  /* Removes all atoms greater than the index given by 'as'. This assumes
    * that all new atoms were appended to the end of the vector and that there
    * are no old atoms beyond this index.
    *
-   * @param as The first atom to remove (all others after this shall be removed
-               as well).
+   * @param as The atom beyond which to remove all atoms.
    */
   void removeAllNewAtomsSince(const atomStruct& as);
 
@@ -161,16 +167,14 @@ class Crystal {
    * if it finds that it is placing an atom on top of another, it will not
    * add that atom (since it is probably a more specific Wyckoff position or
    * it has already been filled). It will also check interatomic distances,
-   * and if IADs fail, it deletes all the new atoms (including the one in the
-   * parameter) and returns false.
+   * and if IADs fail, it deletes all the new atoms and returns false.
    *
    * @param spg The spacegroup for which to duplicate the atom.
    * @param as The atom which we wish to duplicate (needs to already be
    *           present in the cell; it won't be added if it isn't present).
    *
-   * @return true if successful. False if failed due to IAD failures. It
-   *         delete all the atoms in the process (including the one in the
-   *         parameter).
+   * @return true if successful. False if failed due to IAD failures. If false,
+   *         it delete all the new atoms created in the process.
    */
   bool fillCellWithAtom(uint spg, const atomStruct& as);
 
@@ -301,8 +305,8 @@ class Crystal {
   void printCrystalInfo() const;
 
  private:
-  std::vector<atomStruct> m_atoms;
   latticeStruct m_lattice;
+  std::vector<atomStruct> m_atoms;
   // Are we using vdw or covalent radii? We will use vdw by default
   bool m_usingVdwRadii;
 };

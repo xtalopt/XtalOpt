@@ -44,6 +44,9 @@ class ElemInfo {
   // them, but we don't know which...
   static void setRadius(uint atomicNum, double newRadius);
 
+  // Changes all radii to be at least this radius
+  static void setMinRadius(double minRadius);
+
   static double getRadius(uint atomicNum, bool usingVdwRadius);
 
  private:
