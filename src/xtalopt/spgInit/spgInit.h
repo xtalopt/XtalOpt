@@ -23,8 +23,6 @@
 
 #include "crystal.h"
 
-#include <xtalopt/structures/xtal.h>
-
 // wyckPos is a tuple of a char (representing the Wyckoff letter),
 // an int (representing the multiplicity), and a string (that contains the first
 // Wyckoff position)

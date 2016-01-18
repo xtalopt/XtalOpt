@@ -18,7 +18,7 @@
 #ifndef FILL_CELL_INFO_H
 #define FILL_CELL_INFO_H
 
-#include <xtalopt/spgInit/spgInit.h>
+#include "spgInit.h"
 
 // This database was obtained by parsing html files at
 // http://www.cryst.ehu.es/cgi-bin/cryst/programs/nph-table?from=getwp

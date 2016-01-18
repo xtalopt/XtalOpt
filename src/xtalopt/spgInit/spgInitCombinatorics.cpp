@@ -16,12 +16,12 @@
 
 #include <iostream>
 
-#include <xtalopt/spgInit/spgInit.h>
-#include <xtalopt/spgInit/spgInitCombinatorics.h>
-#include <xtalopt/spgInit/wyckPosTrackingInfo.h>
+#include "spgInit.h"
+#include "spgInitCombinatorics.h"
+#include "wyckPosTrackingInfo.h"
 
 // For FunctionTracker
-#include <globalsearch/utilities/functionTracker.h>
+#include "functionTracker.h"
 
 // Uncomment the right side of this line to output function starts and endings
 #define START_FT //FunctionTracker functionTracker(__FUNCTION__);

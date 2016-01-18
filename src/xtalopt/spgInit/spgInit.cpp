@@ -13,22 +13,19 @@
 
  ***********************************************************************/
 
-#include <xtalopt/spgInit/elemInfo.h>
+#include "elemInfo.h"
 
-#include <xtalopt/spgInit/spgInit.h>
-#include <xtalopt/spgInit/spgInitCombinatorics.h>
-#include <xtalopt/spgInit/wyckoffDatabase.h>
-#include <xtalopt/spgInit/fillCellDatabase.h>
-#include <xtalopt/spgInit/utilityFunctions.h>
+#include "spgInit.h"
+#include "spgInitCombinatorics.h"
+#include "wyckoffDatabase.h"
+#include "fillCellDatabase.h"
+#include "utilityFunctions.h"
 
-// For vector3
-#include <openbabel/generic.h>
-
-// For RANDDOUBLE()
-#include <globalsearch/macros.h>
+// For getRandDouble()
+#include "rng.h"
 
 // For FunctionTracker
-#include <globalsearch/utilities/functionTracker.h>
+#include "functionTracker.h"
 
 #include <tuple>
 #include <iostream>
@@ -330,8 +327,6 @@ bool SpgInit::addWyckoffAtomRandomly(Crystal& crystal, wyckPos& position,
        << " at position " << getWyckCoords(position) << "\n";
 #endif
 
-  INIT_RANDOM_GENERATOR();
-
   // If this contains a unique position, we only need to try once
   // Otherwise, we'd be repeatedly trying the same thing...
   if (containsUniquePosition(position)) {
@@ -342,9 +337,10 @@ bool SpgInit::addWyckoffAtomRandomly(Crystal& crystal, wyckPos& position,
   bool success = false;
   do {
     // Generate random coordinates in the wyckoff position
-    double x = RANDDOUBLE();
-    double y = RANDDOUBLE();
-    double z = RANDDOUBLE();
+    // Numbers are between 0 and 1
+    double x = getRandDouble(0,1);
+    double y = getRandDouble(0,1);
+    double z = getRandDouble(0,1);
 
     vector<string> components = split(getWyckCoords(position), ',');
 
@@ -499,18 +495,11 @@ static inline T getLargest(const T& a, const T& b, const T& c)
   else return c;
 }
 
-static inline double getRandDoubleInRange(double min, double max)
-{
-  // RANDDOUBLE() should generate a random double between 0 and 1
-  return RANDDOUBLE() * (max - min) + min;
-}
-
 latticeStruct SpgInit::generateLatticeForSpg(uint spg,
                                              const latticeStruct& mins,
                                              const latticeStruct& maxes)
 {
   START_FT;
-  INIT_RANDOM_GENERATOR();
 
   latticeStruct st;
   if (spg < 1 || spg > 230) {
@@ -524,12 +513,12 @@ latticeStruct SpgInit::generateLatticeForSpg(uint spg,
   // Triclinic!
   else if (spg == 1 || spg == 2) {
     // There aren't really any constraints on a triclinic system...
-    st.a     = getRandDoubleInRange(mins.a,     maxes.a);
-    st.b     = getRandDoubleInRange(mins.b,     maxes.b);
-    st.c     = getRandDoubleInRange(mins.c,     maxes.c);
-    st.alpha = getRandDoubleInRange(mins.alpha, maxes.alpha);
-    st.beta  = getRandDoubleInRange(mins.beta,  maxes.beta);
-    st.gamma = getRandDoubleInRange(mins.gamma, maxes.gamma);
+    st.a     = getRandDouble(mins.a,     maxes.a);
+    st.b     = getRandDouble(mins.b,     maxes.b);
+    st.c     = getRandDouble(mins.c,     maxes.c);
+    st.alpha = getRandDouble(mins.alpha, maxes.alpha);
+    st.beta  = getRandDouble(mins.beta,  maxes.beta);
+    st.gamma = getRandDouble(mins.gamma, maxes.gamma);
     return st;
   }
 
@@ -548,11 +537,11 @@ latticeStruct SpgInit::generateLatticeForSpg(uint spg,
       return st;
     }
 
-    st.a     = getRandDoubleInRange(mins.a,     maxes.a);
-    st.b     = getRandDoubleInRange(mins.b,     maxes.b);
-    st.c     = getRandDoubleInRange(mins.c,     maxes.c);
+    st.a     = getRandDouble(mins.a,     maxes.a);
+    st.b     = getRandDouble(mins.b,     maxes.b);
+    st.c     = getRandDouble(mins.c,     maxes.c);
     st.alpha = st.gamma = 90.0;
-    st.beta  = getRandDoubleInRange(mins.beta,  maxes.beta);
+    st.beta  = getRandDouble(mins.beta,  maxes.beta);
     return st;
   }
 
@@ -570,9 +559,9 @@ latticeStruct SpgInit::generateLatticeForSpg(uint spg,
       return st;
     }
 
-    st.a     = getRandDoubleInRange(mins.a,     maxes.a);
-    st.b     = getRandDoubleInRange(mins.b,     maxes.b);
-    st.c     = getRandDoubleInRange(mins.c,     maxes.c);
+    st.a     = getRandDouble(mins.a,     maxes.a);
+    st.b     = getRandDouble(mins.b,     maxes.b);
+    st.c     = getRandDouble(mins.c,     maxes.c);
     st.alpha = st.beta = st.gamma = 90.0;
     return st;
   }
@@ -604,8 +593,8 @@ latticeStruct SpgInit::generateLatticeForSpg(uint spg,
       return st;
     }
 
-    st.a     = st.b = getRandDoubleInRange(largerMin, smallerMax);
-    st.c     = getRandDoubleInRange(mins.c, maxes.c);
+    st.a     = st.b = getRandDouble(largerMin, smallerMax);
+    st.c     = getRandDouble(mins.c, maxes.c);
     st.alpha = st.beta = st.gamma = 90.0;
     return st;
   }
@@ -647,8 +636,8 @@ latticeStruct SpgInit::generateLatticeForSpg(uint spg,
       return st;
     }
 
-    st.a     = st.b = getRandDoubleInRange(largerMin, smallerMax);
-    st.c     = getRandDoubleInRange(mins.c, maxes.c);
+    st.a     = st.b = getRandDouble(largerMin, smallerMax);
+    st.c     = getRandDouble(mins.c, maxes.c);
     st.alpha = st.beta = 90.0;
     st.gamma = 120.0;
     return st;
@@ -690,8 +679,8 @@ latticeStruct SpgInit::generateLatticeForSpg(uint spg,
       return st;
     }
 
-    st.a     = st.b = getRandDoubleInRange(largerMin, smallerMax);
-    st.c     = getRandDoubleInRange(mins.c, maxes.c);
+    st.a     = st.b = getRandDouble(largerMin, smallerMax);
+    st.c     = getRandDouble(mins.c, maxes.c);
     st.alpha = st.beta = 90.0;
     st.gamma = 120.0;
     return st;
@@ -733,7 +722,7 @@ latticeStruct SpgInit::generateLatticeForSpg(uint spg,
 
     // If we made it this far, we can set up the cell!
     st.alpha = st.beta = st.gamma = 90.0;
-    st.a = st.b = st.c = getRandDoubleInRange(largestMin, smallestMax);
+    st.a = st.b = st.c = getRandDouble(largestMin, smallestMax);
 
     return st;
   }
