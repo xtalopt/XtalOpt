@@ -211,6 +211,12 @@ class Crystal {
    */
   atomStruct getAtomInCartCoords(const atomStruct& as) const;
 
+  /* Calculates and returns the lattice vectors as a 3x3 vector of vectors
+   *
+   * @return The lattice vectors as a 3x3 vector of vectors
+   */
+  std::vector<std::vector<double>> getLatticeVecs() const;
+
   /* Returns the distance in Angstroms between two atoms. Does not take into
    * account periodicity effects (so please center one of the atoms in the
    * unit cell before calling this function).
@@ -297,9 +303,12 @@ class Crystal {
    */
   void printAtomInfo() const;
   /* For debugging: print the lattice info of the cell (a, b, c, alpha, beta,
-   * and gamma
+   * and gamma)
    */
   void printLatticeInfo() const;
+  /* For debugging: print the lattice vectors
+   */
+  void printLatticeVecs() const;
   /* For debugging: print atom info and lattice info of a cell
    */
   void printCrystalInfo() const;

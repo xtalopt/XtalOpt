@@ -169,6 +169,44 @@ double Crystal::getUnitVolume() const
               2.0 * cos(alpha) * cos(beta) * cos(gamma));
 }
 
+vector<vector<double>> Crystal::getLatticeVecs() const
+{
+  // To do this, we are going to use a little "hack" using code
+  // I've already written
+  // For a, we are going to a create a temporary atomStruct object that
+  // has fractional coordinates of (1,0,0). Then, we will convert
+  // the coordinates to Cartesian using another function I wrote.
+  // That will produce an atom whose position is exactly the same as the
+  // first vector. Follow this same logic for the second and third vectors.
+  atomStruct atomA(1, 1, 0, 0);
+  atomStruct atomB(1, 0, 1, 0);
+  atomStruct atomC(1, 0, 0, 1);
+
+  atomA = getAtomInCartCoords(atomA);
+  atomB = getAtomInCartCoords(atomB);
+  atomC = getAtomInCartCoords(atomC);
+
+  vector<vector<double>> ret;
+
+  double vecs[3][3];
+  vecs[0][0] = atomA.x; vecs[0][1] = atomA.y; vecs[0][2] = atomA.z;
+  vecs[1][0] = atomB.x; vecs[1][1] = atomB.y; vecs[1][2] = atomB.z;
+  vecs[2][0] = atomC.x; vecs[2][1] = atomC.y; vecs[2][2] = atomC.z;
+
+  // Sometimes it will express a small number as 1e-8 instead of 0
+  // Express it as 0 instead
+  for (size_t i = 0; i < 3; i++) {
+    for (size_t j = 0; j < 3; j++) {
+      if (vecs[i][j] < 1e-7) vecs[i][j] = 0;
+    }
+  }
+
+  for (size_t i = 0; i < 3; i++)
+    ret.push_back(vector<double>(vecs[i], vecs[i] + 3));
+
+  return ret;
+}
+
 double Crystal::getVolume() const
 {
   return m_lattice.a * m_lattice.b * m_lattice.c * getUnitVolume();
@@ -422,6 +460,18 @@ void Crystal::printLatticeInfo() const
   cout << "alpha: " << m_lattice.alpha << "\n";
   cout << "beta: " << m_lattice.beta << "\n";
   cout << "gamma: " << m_lattice.gamma << "\n";
+}
+
+void Crystal::printLatticeVecs() const
+{
+  vector<vector<double>> vecs = getLatticeVecs();
+  cout << "Lattice vecs are the following:\n";
+  for (size_t i = 0; i < 3; i++) {
+    for (size_t j = 0; j < 3; j++) {
+      cout << vecs[i][j] << " ";
+    }
+    cout << "\n";
+  }
 }
 
 void Crystal::printCrystalInfo() const
