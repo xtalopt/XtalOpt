@@ -258,6 +258,7 @@ namespace GlobalSearch {
     // lock structure
     QWriteLocker locker (s->lock());
 
+    // Log errors if needed
     if (this->m_opt->m_logErrorDirs && (s->getStatus() == Structure::Error ||
                                         s->getStatus() == Structure::Restart)) {
       this->logErrorDirectory(s, ssh);
