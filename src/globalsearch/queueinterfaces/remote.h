@@ -201,6 +201,18 @@ namespace GlobalSearch {
      */
     bool copyRemoteFilesToLocalCache(Structure *structure,
                                      SSHConnection *ssh) const;
+
+    /**
+     * Saves a copy of the error directory that caused this structure to fail.
+     * Saves it in <remote_path>/errorDirs
+     *
+     * @param structure Structure of interest
+     * @param ssh An initialized SSHConnection to use.
+     *
+     * @return True on success, false otherwise
+     */
+    bool logErrorDirectory(Structure *structure,
+                           SSHConnection *ssh) const;
   };
 }
 

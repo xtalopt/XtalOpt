@@ -22,6 +22,7 @@
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/ui/abstractdialog.h>
 
+#include <QtGui/QCheckBox>
 #include <QtGui/QDialog>
 #include <QtGui/QDialogButtonBox>
 #include <QtGui/QHBoxLayout>
@@ -42,54 +43,78 @@ namespace GlobalSearch {
       m_edit_workdir(0),
       m_edit_description(0)
   {
-    QVBoxLayout *vlayout = new QVBoxLayout(this);
+    m_vlayout = new QVBoxLayout(this);
 
     // Create workdir prompt
-    QHBoxLayout *workdir_layout = new QHBoxLayout();
+    m_workdir_layout = new QHBoxLayout();
 
-    QLabel *label = new QLabel
-      (tr("Local working directory:"), this);
-    workdir_layout->addWidget(label);
+    m_label1 = new QLabel(tr("Local working directory:"), this);
+    m_workdir_layout->addWidget(m_label1);
 
     m_edit_workdir = new QLineEdit(this);
-    workdir_layout->addWidget(m_edit_workdir);
+    m_workdir_layout->addWidget(m_edit_workdir);
 
-    vlayout->addItem(workdir_layout);
+    m_vlayout->addItem(m_workdir_layout);
 
     // Create description prompt
-    QHBoxLayout *desc_layout = new QHBoxLayout();
+    m_desc_layout = new QHBoxLayout();
 
-    label = new QLabel
-      (tr("Search description:"), this);
-    desc_layout->addWidget(label);
+    m_label2 = new QLabel(tr("Search description:"), this);
+    m_desc_layout->addWidget(m_label2);
 
     m_edit_description = new QLineEdit(this);
-    desc_layout->addWidget(m_edit_description);
+    m_desc_layout->addWidget(m_edit_description);
 
-    vlayout->addItem(desc_layout);
+    m_vlayout->addItem(m_desc_layout);
+
+    // Add checkbox
+    m_cb_logErrorDirs = new QCheckBox();
+
+    m_cb_logErrorDirs->setText("Log error directories?");
+    m_cb_logErrorDirs->setChecked(m_opt->m_logErrorDirs);
+    QString toolTip = tr("When a job fails or has to restart for any reason,"
+                         "\nif this is checked, it will create a copy of the "
+                         "\nfailed job directory in <localpath>/errorDirs. "
+                         "\nThis can assist in figuring out why a job failed. "
+                         "\nNote that if a job fails twice, the second "
+                         "\nfailure will overwrite the first one.");
+    m_cb_logErrorDirs->setToolTip(toolTip);
+    m_vlayout->addWidget(m_cb_logErrorDirs);
 
     // Add spacer
-    QSpacerItem *spacer = new QSpacerItem
-      (10,10, QSizePolicy::Minimum, QSizePolicy::Expanding);
-    vlayout->addItem(spacer);
+    m_spacer = new QSpacerItem(10,10, QSizePolicy::Minimum, QSizePolicy::Expanding);
+    m_vlayout->addItem(m_spacer);
 
-    QDialogButtonBox *bbox = new QDialogButtonBox(this);
-    bbox->setStandardButtons(QDialogButtonBox::Ok |
-                             QDialogButtonBox::Cancel );
-    vlayout->addWidget(bbox);
+    m_bbox = new QDialogButtonBox(this);
+    m_bbox->setStandardButtons(QDialogButtonBox::Ok |
+                               QDialogButtonBox::Cancel );
+    m_vlayout->addWidget(m_bbox);
 
-    setLayout(vlayout);
+    setLayout(m_vlayout);
 
-    connect(bbox, SIGNAL(accepted()),
+    connect(m_bbox, SIGNAL(accepted()),
             this, SLOT(accept()));
-    connect(bbox, SIGNAL(rejected()),
+    connect(m_bbox, SIGNAL(rejected()),
             this, SLOT(reject()));
+  }
+
+  LocalQueueInterfaceConfigDialog::~LocalQueueInterfaceConfigDialog()
+  {
+    // Delete all child widgets
+    QLayoutItem *child;
+    while ((child = m_vlayout->takeAt(0)) != 0) {
+      delete child->widget();
+      delete child;
+    }
+    // Delete the layout
+    delete m_vlayout;
   }
 
   void LocalQueueInterfaceConfigDialog::accept()
   {
     m_opt->filePath = m_edit_workdir->text().trimmed();
     m_opt->description = m_edit_description->text().trimmed();
+    m_opt->m_logErrorDirs = m_cb_logErrorDirs->isChecked();
     QDialog::accept();
     this->close();
   }
