@@ -258,6 +258,12 @@ namespace GlobalSearch {
     // lock structure
     QWriteLocker locker (s->lock());
 
+    // Log errors if needed
+    if (this->m_opt->m_logErrorDirs && (s->getStatus() == Structure::Error ||
+                                        s->getStatus() == Structure::Restart)) {
+      this->logErrorDirectory(s, ssh);
+    }
+
     // jobid has not been set, cannot delete!
     if (s->getJobID() == 0) {
       if (m_cleanRemoteOnStop) {

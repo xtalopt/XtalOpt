@@ -265,6 +265,27 @@ namespace GlobalSearch {
     return true;
   }
 
+  bool RemoteQueueInterface::logErrorDirectory(Structure *structure,
+                                               SSHConnection *ssh) const
+  {
+    QString path = this->m_opt->filePath;
+
+    // Make the directory and copy the files into it
+#ifdef WIN32
+    path += "\\errorDirs\\";
+#else
+    path += "/errorDirs/";
+#endif
+    path += (QString::number(structure->getGeneration()) + "x" +
+             QString::number(structure->getIDNumber()));
+    if (!ssh->copyDirectoryFromServer(structure->getRempath(), path)) {
+      m_opt->error("Cannot copy from remote directory for Structure "
+                   + structure->getIDString());
+      return false;
+    }
+    return true;
+  }
+
   bool RemoteQueueInterface::copyRemoteFilesToLocalCache(Structure *structure,
                                                          SSHConnection *ssh) const
   {

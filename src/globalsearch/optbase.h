@@ -675,6 +675,10 @@ for (ind = 0; ind < probs.size(); ind++)
     /// Current version of save/resume schema
     unsigned int m_schemaVersion;
 
+   public:
+    /// Log error directories?
+    bool m_logErrorDirs;
+
   };
 
 } // end namespace GlobalSearch

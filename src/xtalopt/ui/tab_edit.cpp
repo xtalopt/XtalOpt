@@ -133,7 +133,7 @@ namespace XtalOpt {
 
     settings->setValue("optimizer", m_opt->optimizer()->getIDString().toLower());
     settings->setValue("queueInterface", m_opt->queueInterface()->getIDString().toLower());
-
+    settings->setValue("logErrorDirs", m_opt->m_logErrorDirs);
     settings->endGroup();
     m_opt->optimizer()->writeSettings(filename);
 
@@ -149,6 +149,8 @@ namespace XtalOpt {
     int loadedVersion = settings->value("version", 0).toInt();
 
     m_opt->port = settings->value("remote/port", 22).toInt();
+
+    m_opt->m_logErrorDirs = settings->value("logErrorDirs", false).toBool();
 
     // Temporary variables to test settings. This prevents empty
     // scheme values from overwriting defaults.

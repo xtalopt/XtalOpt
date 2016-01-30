@@ -70,7 +70,8 @@ namespace GlobalSearch {
     test_nRunsEnd(100),
     test_nStructs(600),
     cutoff(-1),
-    m_schemaVersion(1)
+    m_schemaVersion(1),
+    m_logErrorDirs(false)
   {
     // Connections
     connect(this, SIGNAL(sessionStarted()),

@@ -40,6 +40,7 @@ namespace GlobalSearch {
       m_slurm(p)
   {
     ui->setupUi(this);
+    ui->cb_logErrorDirs->setChecked(m_opt->m_logErrorDirs);
   }
 
   SlurmConfigDialog::~SlurmConfigDialog()
@@ -66,6 +67,7 @@ namespace GlobalSearch {
     ui->spin_port->blockSignals(true);
     ui->spin_interval->blockSignals(true);
     ui->cb_cleanRemoteOnStop->blockSignals(true);
+    ui->cb_logErrorDirs->blockSignals(true);
 
     ui->edit_description->setText(m_opt->description);
     ui->edit_host->setText(m_opt->host);
@@ -78,6 +80,7 @@ namespace GlobalSearch {
     ui->spin_port->setValue(m_opt->port);
     ui->spin_interval->setValue(m_slurm->m_interval);
     ui->cb_cleanRemoteOnStop->setChecked(m_slurm->m_cleanRemoteOnStop);
+    ui->cb_logErrorDirs->setChecked(m_opt->m_logErrorDirs);
 
     ui->edit_description->blockSignals(false);
     ui->edit_host->blockSignals(false);
@@ -90,6 +93,7 @@ namespace GlobalSearch {
     ui->spin_port->blockSignals(false);
     ui->spin_interval->blockSignals(false);
     ui->cb_cleanRemoteOnStop->blockSignals(false);
+    ui->cb_logErrorDirs->blockSignals(false);
   }
 
   void SlurmConfigDialog::accept()
@@ -106,6 +110,7 @@ namespace GlobalSearch {
     // Use setter for interval -- mutex must be locked.
     m_slurm->setInterval(ui->spin_interval->value());
     m_slurm->m_cleanRemoteOnStop = ui->cb_cleanRemoteOnStop->isChecked();
+    m_opt->m_logErrorDirs        = ui->cb_logErrorDirs->isChecked();
     QDialog::accepted();
     close();
   }

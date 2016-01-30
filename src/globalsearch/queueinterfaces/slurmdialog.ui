@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>528</width>
-    <height>376</height>
+    <height>398</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -33,114 +33,6 @@
      </property>
      <property name="buddy">
       <cstring>edit_host</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="2">
-    <widget class="QLineEdit" name="edit_host">
-     <property name="toolTip">
-      <string>Address of host. Can use IP or host name.</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="3">
-    <widget class="QSpinBox" name="spin_port">
-     <property name="prefix">
-      <string>SSH Port </string>
-     </property>
-     <property name="maximum">
-      <number>99999</number>
-     </property>
-     <property name="value">
-      <number>22</number>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_19">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="text">
-      <string>User:</string>
-     </property>
-     <property name="buddy">
-      <cstring>edit_username</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="2" colspan="2">
-    <widget class="QLineEdit" name="edit_username">
-     <property name="toolTip">
-      <string>Username on above host.</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="0" colspan="2">
-    <widget class="QLabel" name="label_20">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="text">
-      <string>Working directory (Server):</string>
-     </property>
-     <property name="buddy">
-      <cstring>edit_rempath</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="2" colspan="2">
-    <widget class="QLineEdit" name="edit_rempath">
-     <property name="toolTip">
-      <string>Path on remote host to use during optimizations. Do not use wildcard characters or BASH-specific characters (e.g. '~' in place of /home/user).</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="0">
-    <widget class="QLabel" name="label_21">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="text">
-      <string>Working directory (Local):</string>
-     </property>
-     <property name="buddy">
-      <cstring>edit_locpath</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="2" colspan="2">
-    <widget class="QLineEdit" name="edit_locpath">
-     <property name="toolTip">
-      <string>Local path to store files</string>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="0">
-    <widget class="QLabel" name="label_launch">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="toolTip">
-      <string>Command used to submit jobs to the SLURM queue. Usually sbatch.</string>
-     </property>
-     <property name="text">
-      <string>Path to sbatch:</string>
-     </property>
-     <property name="buddy">
-      <cstring>edit_sbatch</cstring>
      </property>
     </widget>
    </item>
@@ -192,6 +84,114 @@
      </property>
     </widget>
    </item>
+   <item row="1" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_username">
+     <property name="toolTip">
+      <string>Username on above host.</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="label_21">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Working directory (Local):</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_locpath</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_locpath">
+     <property name="toolTip">
+      <string>Local path to store files</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QLabel" name="label_launch">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Command used to submit jobs to the SLURM queue. Usually sbatch.</string>
+     </property>
+     <property name="text">
+      <string>Path to sbatch:</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_sbatch</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="2">
+    <widget class="QLabel" name="label_20">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Working directory (Server):</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_rempath</cstring>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_rempath">
+     <property name="toolTip">
+      <string>Path on remote host to use during optimizations. Do not use wildcard characters or BASH-specific characters (e.g. '~' in place of /home/user).</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QLineEdit" name="edit_host">
+     <property name="toolTip">
+      <string>Address of host. Can use IP or host name.</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="3">
+    <widget class="QSpinBox" name="spin_port">
+     <property name="prefix">
+      <string>SSH Port </string>
+     </property>
+     <property name="maximum">
+      <number>99999</number>
+     </property>
+     <property name="value">
+      <number>22</number>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_19">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>User:</string>
+     </property>
+     <property name="buddy">
+      <cstring>edit_username</cstring>
+     </property>
+    </widget>
+   </item>
    <item row="6" column="2" colspan="2">
     <widget class="QLineEdit" name="edit_scancel">
      <property name="toolTip">
@@ -212,6 +212,13 @@
      </property>
     </widget>
    </item>
+   <item row="4" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_description">
+     <property name="toolTip">
+      <string>Short description of optimization (used as %description% template keyword in input templates).</string>
+     </property>
+    </widget>
+   </item>
    <item row="4" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
@@ -219,13 +226,6 @@
      </property>
      <property name="buddy">
       <cstring>edit_description</cstring>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="2" colspan="2">
-    <widget class="QLineEdit" name="edit_description">
-     <property name="toolTip">
-      <string>Short description of optimization (used as %description% template keyword in input templates).</string>
      </property>
     </widget>
    </item>
@@ -246,19 +246,6 @@
      </property>
     </widget>
    </item>
-   <item row="10" column="3">
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
    <item row="8" column="2" colspan="2">
     <widget class="QSpinBox" name="spin_interval">
      <property name="minimum">
@@ -276,6 +263,16 @@
     <widget class="QCheckBox" name="cb_cleanRemoteOnStop">
      <property name="text">
       <string>Clean remote directories when finished</string>
+     </property>
+    </widget>
+   </item>
+   <item row="10" column="0" colspan="2">
+    <widget class="QCheckBox" name="cb_logErrorDirs">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Leaves a copy of a directory in which an error occurred in &amp;lt;local_path&amp;gt;/errorDirs.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;This can help when figuring out why an xtal fails when submitted.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Only keeps one copy for each xtal directory (so if an error occurred in 00001x00001 twice, the first error directory would have been overwritten by the second)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Log error directories</string>
      </property>
     </widget>
    </item>
