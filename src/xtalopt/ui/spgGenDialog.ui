@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>SpgInitDialog</class>
- <widget class="QWidget" name="SpgInitDialog">
+ <class>SpgGenDialog</class>
+ <widget class="QWidget" name="SpgGenDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -88,7 +88,7 @@
      </column>
      <column>
       <property name="text">
-       <string>Allow spgInit?</string>
+       <string>Allow spgGen?</string>
       </property>
      </column>
      <column>

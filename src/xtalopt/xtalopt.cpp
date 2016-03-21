@@ -24,8 +24,8 @@
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
 
-#include <xtalopt/spgInit/xtaloptWrapper.h>
-#include <xtalopt/spgInit/spgInitDialog.h>
+#include <spgGen/include/xtaloptWrapper.h>
+#include <xtalopt/ui/spgGenDialog.h>
 
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
@@ -57,7 +57,7 @@
 #include <QtCore/QtConcurrentRun>
 #include <QtCore/QtConcurrentMap>
 
-#include <xtalopt/spgInit/spgInit.h>
+#include <spgGen/include/spgGen.h>
 
 #define ANGSTROM_TO_BOHR 1.889725989
 
@@ -72,7 +72,7 @@ namespace XtalOpt {
     m_initWC(new SlottedWaitCondition (this)),
     using_maxDupOffspring(false),
     maxDupOffspring(5),
-    using_spgInit(false),
+    using_spgGen(false),
     minXtalsOfSpgPerFU(QList<int>())
   {
     xtalInitMutex = new QMutex;
@@ -278,7 +278,7 @@ namespace XtalOpt {
     }
 
     // Perform a regular random generation
-    if (!using_spgInit) {
+    if (!using_spgGen) {
       // Generation loop...
       while (newXtalCount < numInitial) {
         updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
@@ -296,7 +296,7 @@ namespace XtalOpt {
         }
       }
     }
-    // Perform a spacegroup initialization generation
+    // Perform a spacegroup generation generation
     else {
       // If minXtalsOfSpgPerFU was never correctly generated, just generate one now
       if (minXtalsOfSpgPerFU.size() == 0) {
@@ -321,11 +321,11 @@ namespace XtalOpt {
             uint spg = i + 1;
             uint FU = formulaUnitsList.at(FU_ind);
             // If the spacegroup isn't possible for this FU, just continue
-            if (!SpgInit::isSpgPossible(spg, getStdVecOfAtoms(FU))) continue;
+            if (!SpgGen::isSpgPossible(spg, getStdVecOfAtoms(FU))) continue;
             updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
 
             // Generate/Check xtal
-            xtal = spgInitXtal(1, newXtalCount + 1, FU, spg);
+            xtal = spgGenXtal(1, newXtalCount + 1, FU, spg);
             if (!checkXtal(xtal)) {
               delete xtal;
               qWarning() << "Failed to generate an xtal with spacegroup of"
@@ -349,9 +349,9 @@ namespace XtalOpt {
         // Randomly select a possible spg
         uint randomSpg = pickRandomSpgFromPossibleOnes();//pickRandomSpgFromPossibleOnes();
         // If it isn't possible, try again
-        if (!SpgInit::isSpgPossible(randomSpg, getStdVecOfAtoms(randomFU))) continue;
+        if (!SpgGen::isSpgPossible(randomSpg, getStdVecOfAtoms(randomFU))) continue;
         // Try it out
-        xtal = spgInitXtal(1, newXtalCount + 1, randomFU, randomSpg);
+        xtal = spgGenXtal(1, newXtalCount + 1, randomFU, randomSpg);
         if (!checkXtal(xtal)) {
           delete xtal;
           qWarning() << "Failed to generate an xtal with spacegroup of"
@@ -544,43 +544,41 @@ namespace XtalOpt {
     return static_cast<Structure*>(oldXtal);
   }
 
-  Xtal* XtalOpt::spgInitXtal(uint generation, uint id, uint FU, uint spg)
+  Xtal* XtalOpt::spgGenXtal(uint generation, uint id, uint FU, uint spg)
   {
     INIT_RANDOM_GENERATOR();
 
     Xtal* xtal = NULL;
-    size_t numAttempts = 0;
-    size_t maxNumAttempts = 10;
     QString* err = NULL;
-    while (!checkXtal(xtal) && numAttempts <= maxNumAttempts) {
-      numAttempts++;
-      if (xtal) {
-        delete xtal;
-        xtal = 0;
-      }
 
-      latticeStruct latticeMins, latticeMaxes;
-      setLatticeMinsAndMaxes(latticeMins, latticeMaxes);
+    // Let's make the spg input
+    latticeStruct latticeMins, latticeMaxes;
+    setLatticeMinsAndMaxes(latticeMins, latticeMaxes);
 
-      xtal = SpgInitXtalOptWrapper::spgInitXtal(spg, getStdVecOfAtoms(FU),
-                                                latticeMins,
-                                                latticeMaxes,
-                                                this->scaleFactor);
+    // Create the input
+    spgGenInput input(spg, getStdVecOfAtoms(FU), latticeMins, latticeMaxes);
 
-      // We need to set these things before checkXtal() is called
-      if (xtal) {
-        xtal->setStatus(Xtal::WaitingForOptimization);
-        xtal->setFormulaUnits(FU);
-        if (using_fixed_volume) xtal->setVolume(vol_fixed * FU);
-      }
+    // Add various other input options
+    input.IADScalingFactor = scaleFactor;
+    input.minRadius = minRadius;
+    input.minVolume = vol_min;
+    input.maxVolume = vol_max;
+    input.verbosity = 'n';
+
+    xtal = SpgGenXtalOptWrapper::spgGenXtal(input);
+
+    // We need to set these things before checkXtal() is called
+    if (xtal) {
+      xtal->setStatus(Xtal::WaitingForOptimization);
+      xtal->setFormulaUnits(FU);
+      if (using_fixed_volume) xtal->setVolume(vol_fixed * FU);
     }
-
-    if (numAttempts > maxNumAttempts) {
+    else {
       if (xtal) {
         delete xtal;
         xtal = 0;
       }
-      qDebug() << "After" << QString::number(maxNumAttempts)
+      qDebug() << "After" << QString::number(input.maxAttempts)
                << "attempts, failed to generate an xtal with spg of"
                << QString::number(spg);
       return NULL;

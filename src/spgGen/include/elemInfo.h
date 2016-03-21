@@ -21,11 +21,24 @@
 
 #include <iostream>
 
+// For some reason, uint isn't always defined on windows...
+#ifdef _WIN32
+#ifndef UNSIGNEDINT
+#define UNSIGNEDINT
+typedef unsigned int uint;
+#endif
+#endif
+
 class ElemInfo {
  public:
   static std::string getAtomicSymbol(uint atomicNum);
 
   static uint getAtomicNum(std::string symbol);
+
+  // This function will read 'comp' and write the result to 'atoms'
+  // 'atoms' is a vector of atomic numbers. One for each atom.
+  // Returns true if the read was successful and false if it was not
+  static bool readComposition(std::string comp, std::vector<uint>& atoms);
 
   static double getVdwRadius(uint atomicNum);
 

@@ -91,7 +91,7 @@ namespace XtalOpt {
       OP_Permustrain
     };
 
-    Xtal* spgInitXtal(uint generation, uint id, uint FU, uint spg);
+    Xtal* spgGenXtal(uint generation, uint id, uint FU, uint spg);
     Xtal* generateRandomXtal(uint generation, uint id);
 
     //Identical to the previous generateRandomXtal except the number of formula units has been determined elsewhere
@@ -192,8 +192,8 @@ namespace XtalOpt {
     bool using_maxDupOffspring;
     int maxDupOffspring;
 
-    // Spacegroup initialization
-    bool using_spgInit;
+    // Spacegroup generation
+    bool using_spgGen;
     // If the number is -1, that spg is not allowed
     // Otherwise, it represents the minimum number of xtals for that spacegroup
     // per formula unit. The spacegroup it represents is index + 1

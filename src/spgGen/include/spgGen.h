@@ -1,5 +1,5 @@
 /**********************************************************************
-  spgInit.h - Header file for spacegroup initialization functions
+  spgGen.h - Header file for spacegroup initialization functions
 
   Copyright (C) 2015 - 2016 by Patrick S. Avery
 
@@ -13,15 +13,20 @@
 
  ***********************************************************************/
 
-#ifndef SPG_INIT_H
-#define SPG_INIT_H
+#ifndef SPG_GEN_H
+#define SPG_GEN_H
 
-#include <Eigen/LU>
 #include <vector>
 #include <tuple>
 #include <utility>
 
 #include "crystal.h"
+#include "spgGenOptions.h"
+
+// output file name
+extern std::string e_logfilename;
+// verbosity
+extern char e_verbosity;
 
 // wyckPos is a tuple of a char (representing the Wyckoff letter),
 // an int (representing the multiplicity), and a string (that contains the first
@@ -44,11 +49,64 @@ typedef std::pair<uint, uint> numAndType;
 
 typedef std::pair<std::string, std::string> fillCellInfo;
 
-namespace XtalOpt {
-  struct XtalCompositionStruct;
-}
+// Utility struct for creating input for the spgGenCrystal function
+struct spgGenInput {
+  uint spg;
+  std::vector<uint> atoms;
+  latticeStruct latticeMins;
+  latticeStruct latticeMaxes;
+  double IADScalingFactor;
+  double minRadius;
+  std::vector<std::pair<uint, double>> manualAtomicRadii;
+  double minVolume;
+  double maxVolume;
+  std::vector<std::pair<uint, char>> forcedWyckAssignments;
+  char verbosity;
+  int maxAttempts;
+  bool forceMostGeneralWyckPos; // If this is not true, then we are not
+                                // guaranteed to get the right spg
+  // Most basic constructor
+  spgGenInput(uint _spg, const std::vector<uint>& _atoms,
+               const latticeStruct& _lmins,
+               const latticeStruct& _lmaxes) :
+                   spg(_spg),
+                   atoms(_atoms),
+                   latticeMins(_lmins),
+                   latticeMaxes(_lmaxes),
+                   IADScalingFactor(1.0),
+                   minRadius(0.0),
+                   manualAtomicRadii(std::vector<std::pair<uint, double>>()),
+                   minVolume(-1.0),
+                   maxVolume(-1.0),
+                   forcedWyckAssignments(std::vector<std::pair<uint, char>>()),
+                   verbosity('n'),
+                   maxAttempts(100),
+                   forceMostGeneralWyckPos(true) {}
+  // Defining-everything constructor
+  spgGenInput(uint _spg, const std::vector<uint>& _atoms,
+               const latticeStruct& _lmins,
+               const latticeStruct& _lmaxes,
+               double _IADSF, double _minRadius,
+               const std::vector<std::pair<uint, double>>& _mar,
+               double _minVolume, double _maxVolume,
+               std::vector<std::pair<uint, char>> _fwa,
+               char _v, int _maxAttempts, bool _fmgwp) :
+                   spg(_spg),
+                   atoms(_atoms),
+                   latticeMins(_lmins),
+                   latticeMaxes(_lmaxes),
+                   IADScalingFactor(_IADSF),
+                   minRadius(_minRadius),
+                   manualAtomicRadii(_mar),
+                   minVolume(_minVolume),
+                   maxVolume(_maxVolume),
+                   forcedWyckAssignments(_fwa),
+                   verbosity(_v),
+                   maxAttempts(_maxAttempts),
+                   forceMostGeneralWyckPos(_fmgwp) {}
+};
 
-class SpgInit {
+class SpgGen {
  public:
 
   static char getWyckLet(const wyckPos& pos) {return std::get<0>(pos);};
@@ -65,6 +123,8 @@ class SpgInit {
    * empty vector if an invalid spg is entered.
    */
   static const wyckoffPositions& getWyckoffPositions(uint spg);
+
+  static wyckPos getWyckPosFromWyckLet(uint spg, char wyckLet);
 
   static const fillCellInfo& getFillCellInfo(uint spg);
 
@@ -142,29 +202,34 @@ class SpgInit {
    *                    alpha, beta, and gamma.
    * @param latticeMaxes A latticeStruct that contains the maxima for a, b, c,
    *                     alpha, beta, and gamma.
-   * @param minIADScalingFactor A scaling factor used to scale the minIAD
-   * @param maxAttempts The number of attempts to make to add the atom randomly
-   *                    before the function returns false. Default is 1000.
-   *                    Used in addWyckoffAtomRandomly().
+   * @param IADScalingFactor A scaling factor used to scale the IAD
+   * @param minVolume The minimum volume for the crystal to be generated.
+   *                  If set to -1, there is no minimum volume.
+   * @param maxVolume The maximum volume for the crystal to be generated.
+   *                  If set to -1, there is no maximum volume.
+   * @param numAttempts The max number number of attempts to generate a crystal
+   *                    given these conditions. It will still only find all
+   *                    combinations once (that's the most time consuming
+   *                    step). It will randomly pick combinations for every
+   *                    subsequent attempt from the combinations it found
+   *                    originally.
    *
    * @return A Crystal object with the given spacegroup, atoms,
    * and lattice within the provided lattice constraints. Returns a Crystal
    * with zero volume if it failed to generate one successfully.
    */
-  static Crystal spgInitCrystal(uint spg,
-                                const std::vector<uint>& atomTypes,
-                                const latticeStruct& latticeMins,
-                                const latticeStruct& latticeMaxes,
-                                double minIADScalingFactor = 0.5,
-                                int maxAttempts = 1000);
-
-  static atomAssignments assignAtomsToWyckPos(uint spg,
-                                              std::vector<uint> atoms);
+  static Crystal spgGenCrystal(const spgGenInput& input);
 
   static std::vector<numAndType> getNumOfEachType(
                                    const std::vector<uint>& atoms);
 
   static bool containsUniquePosition(const wyckPos& pos);
+
+  static std::string getAtomAssignmentsString(const atomAssignments& a);
+
+  static void printAtomAssignments(const atomAssignments& a);
+
+  static void appendToLogFile(const std::string& text);
 
 };
 

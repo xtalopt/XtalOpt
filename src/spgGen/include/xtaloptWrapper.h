@@ -2,26 +2,24 @@
   xtaloptWrapper.h - Contains functions that convert between class 'Crystal'
                      and class 'Xtal'
 
-  Copyright (C) 2016 by Patrick S. Avery
+  This source code is released under the New BSD License, (the "License").
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation version 2 of the License.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
  ***********************************************************************/
 
 #ifndef XTALOPT_WRAPPER_H
 #define XTALOPT_WRAPPER_H
 
-#include <xtalopt/spgInit/spgInit.h>
+#include "spgGen.h"
 #include <xtalopt/structures/xtal.h>
 #include "crystal.h"
 
-namespace SpgInitXtalOptWrapper {
+namespace SpgGenXtalOptWrapper {
   // Returns a dynamically allocated xtal
   XtalOpt::Xtal* crystal2Xtal(const Crystal& c)
   {
@@ -62,15 +60,9 @@ namespace SpgInitXtalOptWrapper {
   }
 
   // Returns a dynamically allocated xtal
-  XtalOpt::Xtal* spgInitXtal(uint spg, const std::vector<uint>& atomTypes,
-                             const latticeStruct& latticeMins,
-                             const latticeStruct& latticeMaxes,
-                             double minIADScalingFactor = 0.5,
-                             int maxAttempts = 1000)
+  XtalOpt::Xtal* spgGenXtal(const spgGenInput& input)
   {
-    Crystal c = SpgInit::spgInitCrystal(spg, atomTypes, latticeMins,
-                                        latticeMaxes, minIADScalingFactor,
-                                        maxAttempts);
+    Crystal c = SpgGen::spgGenCrystal(input);
     // If the volume is zero, the generation failed
     if (c.getVolume() == 0) return NULL;
     else return crystal2Xtal(c);

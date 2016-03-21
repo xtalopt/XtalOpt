@@ -413,7 +413,7 @@ namespace XtalOpt {
       comp[atomicNum].quantity += quantity;
     }
 
-    // If we changed the composition, reset the spacegroup initialization
+    // If we changed the composition, reset the spacegroup generation
     // min xtals per FU to be zero
     if (xtalopt->comp != comp && xtalopt->minXtalsOfSpgPerFU.size() != 0) {
       xtalopt->error(tr(
@@ -586,7 +586,7 @@ namespace XtalOpt {
     xtalopt->minFU = formulaUnitsList.at(0);
     xtalopt->maxFU = formulaUnitsList.at(formulaUnitsList.size() - 1);
 
-    // If we changed the formula units, reset the spacegroup initialization
+    // If we changed the formula units, reset the spacegroup generation
     // min xtals per FU to be zero
     if (xtalopt->formulaUnitsList != formulaUnitsList &&
         xtalopt->minXtalsOfSpgPerFU.size() != 0) {

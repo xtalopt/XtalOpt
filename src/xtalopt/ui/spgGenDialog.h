@@ -1,27 +1,26 @@
 /**********************************************************************
-  spgInitDialog.h - Contains table for viewing and selecting spacegroups for
-                    spacegroup initialization.
+  spgGenDialog.h - Contains table for viewing and selecting spacegroups for
+                    spacegroup generation.
 
   Copyright (C) 2015 by Patrick Avery
 
-  This library is free software; you can redistribute it and/or modify
-  it under the terms of the GNU Library General Public License as
-  published by the Free Software Foundation; either version 2.1 of the
-  License, or (at your option) any later version.
+  This source code is released under the New BSD License, (the "License").
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public icense for more details.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
  ***********************************************************************/
 
-#ifndef SPG_INIT_DIALOG_H
-#define SPG_INIT_DIALOG_H
+#ifndef SPG_GEN_DIALOG_H
+#define SPG_GEN_DIALOG_H
 
-#include "spgInit.h"
+#include <spgGen/include/spgGen.h>
 
 // Include the qt-generated ui header
-#include "ui_spgInitDialog.h"
+#include "ui_spgGenDialog.h"
 
 #include <QtGui/QDialog>
 #include <QtGui/QBrush>
@@ -31,8 +30,9 @@ class QSpinBox;
 
 namespace XtalOpt {
   class XtalOpt;
+  struct XtalCompositionStruct;
 
-  class SpgInitDialog : public QDialog, public Ui::SpgInitDialog
+  class SpgGenDialog : public QDialog, public Ui::SpgGenDialog
   {
     Q_OBJECT
 
@@ -50,8 +50,8 @@ namespace XtalOpt {
     };
 
    public:
-    explicit SpgInitDialog(XtalOpt* p, QWidget* parent = 0);
-    virtual ~SpgInitDialog();
+    explicit SpgGenDialog(XtalOpt* p, QWidget* parent = 0);
+    virtual ~SpgGenDialog();
     void setTableEntry(uint row, const Spg_Table_Entry& e);
     bool isCompositionSame(XtalOpt* p);
 

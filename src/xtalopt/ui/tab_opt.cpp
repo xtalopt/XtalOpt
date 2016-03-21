@@ -122,8 +122,8 @@ namespace XtalOpt {
     connect(ui.spin_maxDupOffspring, SIGNAL(valueChanged(double)),
             this, SLOT(updateOptimizationInfo()));
 
-    // spgInit
-    connect(ui.cb_allowSpgInit, SIGNAL(toggled(bool)),
+    // spgGen
+    connect(ui.cb_allowSpgGen, SIGNAL(toggled(bool)),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.push_spgOptions, SIGNAL(clicked()),
             this, SLOT(openSpgOptions()));
@@ -390,8 +390,8 @@ namespace XtalOpt {
     xtalopt->using_maxDupOffspring = ui.cb_maxDupOffspring->isChecked();
     xtalopt->maxDupOffspring = ui.spin_maxDupOffspring->value();
 
-    // allowSpgInit
-    xtalopt->using_spgInit = ui.cb_allowSpgInit->isChecked();
+    // allowSpgGen
+    xtalopt->using_spgGen = ui.cb_allowSpgGen->isChecked();
 
   }
 
@@ -467,8 +467,8 @@ namespace XtalOpt {
       msgBox.open();
       QCoreApplication::processEvents();
 
-      // Open up the SpgInit dialog
-      m_spgOptions = new SpgInitDialog(xtalopt);
+      // Open up the SpgGen dialog
+      m_spgOptions = new SpgGenDialog(xtalopt);
 
       // Close the mesage box
       msgBox.close();

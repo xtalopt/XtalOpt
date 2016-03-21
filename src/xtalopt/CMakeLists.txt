@@ -5,11 +5,6 @@ set( xtalopt_SRCS
      extension.cpp
      xtalopt.cpp
      genetic.cpp
-     spgInit/crystal.cpp
-     spgInit/elemInfo.cpp
-     spgInit/spgInitCombinatorics.cpp
-     spgInit/spgInit.cpp
-     spgInit/spgInitDialog.cpp
      structures/xtal.cpp
      optimizers/xtaloptoptimizer.cpp
      optimizers/vasp.cpp
@@ -19,6 +14,7 @@ set( xtalopt_SRCS
      optimizers/siesta.cpp
      testing/xtalopttest.cpp
      ui/dialog.cpp
+     ui/spgGenDialog.cpp
      ui/tab_init.cpp
      ui/tab_edit.cpp
      ui/tab_opt.cpp
@@ -33,13 +29,13 @@ set( xtalopt_UIS
      ui/tab_progress.ui
      ui/tab_plot.ui
      ui/tab_log.ui
-     spgInit/spgInitDialog.ui)
+     ui/spgGenDialog.ui)
 
 set( xtalopt_RCS xtalopt.qrc )
 
 process_plugin(xtalopt "${xtalopt_SRCS}" "${xtalopt_UIS}" "${xtalopt_RCS}")
 
-add_dependencies(xtalopt globalsearch XtalComp spglib)
+add_dependencies(xtalopt globalsearch XtalComp spglib SpgGenerate)
 
 # Use the C++11 standards
 if(UNIX)
@@ -49,4 +45,5 @@ endif()
 target_link_libraries( xtalopt
                        globalsearch
                        XtalComp
-                       spglib)
+                       spglib
+                       SpgGenerate)

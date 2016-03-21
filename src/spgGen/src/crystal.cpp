@@ -15,11 +15,15 @@
  ***********************************************************************/
 
 #include <iostream>
+// For setprecision()
+#include <iomanip>
 // for sqrt(), sin(), cos(), etc.
 #include <cmath>
+// for writing to POSCAR
+#include <fstream>
 
 #include "crystal.h"
-#include "spgInit.h"
+#include "spgGen.h"
 #include "utilityFunctions.h"
 
 // For atomic radii and symbols
@@ -156,6 +160,15 @@ atomStruct Crystal::getAtomInCartCoords(const atomStruct& as) const
   return ret;
 }
 
+vector<uint> Crystal::getVectorOfAtomicNums() const
+{
+  vector<uint> ret;
+  for (size_t i = 0; i < m_atoms.size(); i++) {
+    ret.push_back(m_atoms.at(i).atomicNum);
+  }
+  return ret;
+}
+
 double Crystal::getUnitVolume() const
 {
   const latticeStruct& l = m_lattice;
@@ -197,7 +210,7 @@ vector<vector<double>> Crystal::getLatticeVecs() const
   // Express it as 0 instead
   for (size_t i = 0; i < 3; i++) {
     for (size_t j = 0; j < 3; j++) {
-      if (vecs[i][j] < 1e-7) vecs[i][j] = 0;
+      if (fabs(vecs[i][j]) < 1e-7) vecs[i][j] = 0;
     }
   }
 
@@ -214,6 +227,13 @@ double Crystal::getVolume() const
 
 void Crystal::rescaleVolume(double newVolume)
 {
+  if (newVolume < 0) {
+    cout << "Error! Crystal::rescaleVolume() was called to rescale the volume "
+         << "to be a negative number, " << newVolume << "! Volume will not be "
+         << "rescaled.\n";
+    return;
+  }
+
   double scalingFactor = pow(newVolume / getVolume(), 1.0/3.0);
 
   // Since atoms are all in fractional coordinates, we don't have to worry
@@ -341,8 +361,8 @@ bool Crystal::fillCellWithAtom(uint spg, const atomStruct& as)
     return false;
   }
 
-  vector<string> dupVec = SpgInit::getVectorOfDuplications(spg);
-  vector<string> fpVec = SpgInit::getVectorOfFillPositions(spg);
+  vector<string> dupVec = SpgGen::getVectorOfDuplications(spg);
+  vector<string> fpVec = SpgGen::getVectorOfFillPositions(spg);
 
   double x = as.x;
   double y = as.y;
@@ -364,11 +384,11 @@ bool Crystal::fillCellWithAtom(uint spg, const atomStruct& as)
       if (j == 0 && k == 0) continue;
       vector<string> fpComponents = split(fpVec.at(k), ',');
 
-      double newX = SpgInit::interpretComponent(fpComponents.at(0),
+      double newX = SpgGen::interpretComponent(fpComponents.at(0),
                                                 x, y, z) + dupX;
-      double newY = SpgInit::interpretComponent(fpComponents.at(1),
+      double newY = SpgGen::interpretComponent(fpComponents.at(1),
                                                 x, y, z) + dupY;
-      double newZ = SpgInit::interpretComponent(fpComponents.at(2),
+      double newZ = SpgGen::interpretComponent(fpComponents.at(2),
                                                 x, y, z) + dupZ;
 
       atomStruct newAtom(atomicNum, newX, newY, newZ);
@@ -441,25 +461,119 @@ bool Crystal::areIADsOkay(const atomStruct& as) const
   return true;
 }
 
+/* POSCAR format goes as such:
+ *
+ * Title
+ * Scaling factor
+ * Lattice vector for a
+ * Lattice vector for b
+ * Lattice vector for c
+ * Element Symbols
+ * Number of each element
+ * Cartesian or Direct
+ * Atom coordinates
+ */
+string Crystal::getPOSCARString(const string& title) const
+{
+  stringstream ss;
+
+  // Set up the needed info
+  ss << fixed << setprecision(15);
+  vector<vector<double>> latticeVecs = getLatticeVecs();
+  vector<numAndType> atomCounts =
+                            SpgGen::getNumOfEachType(getVectorOfAtomicNums());
+  vector<string> symbols;
+  for (size_t i = 0; i < atomCounts.size(); i++) {
+    symbols.push_back(ElemInfo::getAtomicSymbol(atomCounts.at(i).second));
+  }
+
+  // Write to the POSCAR!
+  ss << title << "\n"; // Title
+  ss << "1.00000\n"; // Scaling factor
+
+  for (size_t i = 0; i < 3; i++) {  // Lattice vectors
+    for (size_t j = 0; j < 3; j++) {
+      ss << " " << setw(20) << latticeVecs[i][j];
+    }
+    ss << "\n";
+  }
+
+  for (size_t i = 0; i < symbols.size(); i++) { // Symbols
+    ss << "  " << setw(3) << symbols.at(i);
+  }
+  ss << "\n";
+
+  for (size_t i = 0; i < atomCounts.size(); i++) { // Atom counts
+    ss << "  " << setw(3) << atomCounts.at(i).first;
+  }
+  ss << "\n";
+
+  ss << "Direct\n"; // We're just going to use fractional coordinates
+
+  for (size_t i = 0; i < m_atoms.size(); i++) { // Atom coords
+    ss << "  " << m_atoms.at(i).x << "  " << m_atoms.at(i).y << "  "
+      << m_atoms.at(i).z << "\n";
+  }
+
+  // We're done!
+  return ss.str();
+}
+
+void Crystal::writePOSCAR(const string& filename, const string& title) const
+{
+  ofstream f;
+  f.open(filename);
+  if (!f.is_open()) {
+    cout << "Error in " << __FUNCTION__ << ": failed to open '"
+         << filename << "' for writing!\n";
+    return;
+  }
+
+  f << getPOSCARString(title);
+
+  f.close();
+}
+
+string Crystal::getAtomInfoString(const atomStruct& as)
+{
+  stringstream s;
+  s << "  For " << as.atomicNum << ", coords are: ("
+    << as.x << "," << as.y << "," << as.z << ")\n";
+  return s.str();
+}
+
 void Crystal::printAtomInfo(const atomStruct& as)
 {
-  cout << "  For " << as.atomicNum << ", coords are: ("
-       << as.x << "," << as.y << "," << as.z << ")\n";
+  cout << getAtomInfoString(as);
+}
+
+string Crystal::getAtomInfoString() const
+{
+  stringstream s;
+  for (size_t i = 0; i < m_atoms.size(); i++) s << getAtomInfoString(m_atoms.at(i));
+  return s.str();
 }
 
 void Crystal::printAtomInfo() const
 {
-  for (size_t i = 0; i < m_atoms.size(); i++) printAtomInfo(m_atoms.at(i));
+  cout << getAtomInfoString();
+}
+
+string Crystal::getLatticeInfoString() const
+{
+  stringstream s;
+  s << "a: " << m_lattice.a << "\n";
+  s << "b: " << m_lattice.b << "\n";
+  s << "c: " << m_lattice.c << "\n";
+  s << "alpha: " << m_lattice.alpha << "\n";
+  s << "beta: " << m_lattice.beta << "\n";
+  s << "gamma: " << m_lattice.gamma << "\n";
+  return s.str();
 }
 
 void Crystal::printLatticeInfo() const
 {
-  cout << "a: " << m_lattice.a << "\n";
-  cout << "b: " << m_lattice.b << "\n";
-  cout << "c: " << m_lattice.c << "\n";
-  cout << "alpha: " << m_lattice.alpha << "\n";
-  cout << "beta: " << m_lattice.beta << "\n";
-  cout << "gamma: " << m_lattice.gamma << "\n";
+  cout << getLatticeInfoString();
 }
 
 void Crystal::printLatticeVecs() const
@@ -474,10 +588,16 @@ void Crystal::printLatticeVecs() const
   }
 }
 
+string Crystal::getCrystalInfoString() const
+{
+  stringstream s;
+  s << "\n**** Printing Crystal Info ****\n";
+  s << getLatticeInfoString() << getAtomInfoString();
+  s << "**** End Crystal Info ****\n\n";
+  return s.str();
+}
+
 void Crystal::printCrystalInfo() const
 {
-  cout << "\n**** Printing Crystal Info ****\n";
-  printLatticeInfo();
-  printAtomInfo();
-  cout << "**** End Crystal Info ****\n\n";
+  cout << getCrystalInfoString();
 }

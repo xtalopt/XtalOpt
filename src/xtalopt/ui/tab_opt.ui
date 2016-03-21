@@ -27,7 +27,7 @@
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
       <item row="2" column="1">
-       <widget class="QCheckBox" name="cb_allowSpgInit">
+       <widget class="QCheckBox" name="cb_allowSpgGen">
         <property name="text">
          <string>Allow Spg Initialization?</string>
         </property>
@@ -148,7 +148,7 @@ Default: 20
          <bool>false</bool>
         </property>
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Displays a table of spacegroups and each spacegroup that is possible (in accordance with the list of formula units it has been given).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;In addition, it enables the user to select spacegroups to be created when performing space-group initialization.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;This will be reset if the user changes the composition after setting it.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Displays a table of spacegroups and each spacegroup that is possible (in accordance with the list of formula units it has been given).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;In addition, it enables the user to select spacegroups to be created when performing space-group generation.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;This will be reset if the user changes the composition after setting it.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
          <string>Spg Options</string>
@@ -158,7 +158,7 @@ Default: 20
       <item row="1" column="1">
        <widget class="QLabel" name="label_13">
         <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Spacegroup Initialization&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Space-group Generation&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>
@@ -1129,7 +1129,7 @@ Default: 0.5</string>
    </hints>
   </connection>
   <connection>
-   <sender>cb_allowSpgInit</sender>
+   <sender>cb_allowSpgGen</sender>
    <signal>toggled(bool)</signal>
    <receiver>push_spgOptions</receiver>
    <slot>setEnabled(bool)</slot>

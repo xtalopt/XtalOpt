@@ -20,6 +20,14 @@
 #include <cstdlib>
 #include <vector>
 
+// For some reason, uint isn't always defined on windows...
+#ifdef _WIN32
+#ifndef UNSIGNEDINT
+#define UNSIGNEDINT
+typedef unsigned int uint;
+#endif
+#endif
+
 // Keep these as fractional coordinates
 struct atomStruct {
   unsigned int atomicNum;
@@ -81,6 +89,12 @@ class Crystal {
    * @return The atoms in this crystal.
    */
   std::vector<atomStruct> getAtoms() const {return m_atoms;};
+
+  /* Get a vector of atomic numbers: one atomic number for each atom.
+   *
+   * @return The vector of atomic numbers.
+   */
+  std::vector<uint> getVectorOfAtomicNums() const;
 
   /* Get the number of atoms in this crystal.
    *
@@ -294,14 +308,52 @@ class Crystal {
    */
   int getAtomIndexNum(const atomStruct& as) const;
 
+  /* Returns the crystal info as a string that has the format of a POSCAR
+   *
+   * @param title The title that will go on the first line of the POSCAR
+   *
+   * @return The string containing the POSCAR
+   */
+  std::string getPOSCARString(const std::string& title = " ") const;
+
+  /* Writes the crystal info to a POSCAR that has filename of 'filename'
+   *
+   * @param filename The name of the POSCAR file to be written. You may include
+   *                 the path if needed.
+   * @param title The title that will go on the first line of the POSCAR
+   *
+   */
+  void writePOSCAR(const std::string& filename,
+                   const std::string& title = " ") const;
+
+  /* Get a printable string that contains the atom info
+   *
+   * @param as The atom for which to obtain coords.
+   *
+   * @return The printable string that contains the atom info.
+   */
+  static std::string getAtomInfoString(const atomStruct& as);
+
   /* For debugging: print the atomic number and coordinates of a specific atom.
    *
    * @param as The atom for which to print coords.
    */
   static void printAtomInfo(const atomStruct& as);
+
+  /* Get a printable string that contains atom info for all atoms in the cell.
+   *
+   * @return The printable string that contains the info on the atoms.
+   */
+  std::string getAtomInfoString() const;
+
   /* For debugging: print the atom info for every atom in the cell.
    */
   void printAtomInfo() const;
+
+  /*  Get a printable string that contains the lattice info of the cell.
+   */
+  std::string getLatticeInfoString() const;
+
   /* For debugging: print the lattice info of the cell (a, b, c, alpha, beta,
    * and gamma)
    */
@@ -309,6 +361,11 @@ class Crystal {
   /* For debugging: print the lattice vectors
    */
   void printLatticeVecs() const;
+
+  /* Get a printable string that contains atom info and lattice info of a cell
+   */
+  std::string getCrystalInfoString() const;
+
   /* For debugging: print atom info and lattice info of a cell
    */
   void printCrystalInfo() const;

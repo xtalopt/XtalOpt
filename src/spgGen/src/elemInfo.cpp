@@ -15,6 +15,7 @@
  ***********************************************************************/
 
 #include "elemInfo.h"
+#include "utilityFunctions.h"
 
 using namespace std;
 
@@ -42,6 +43,71 @@ uint ElemInfo::getAtomicNum(std::string symbol)
   std::cout << "Error: Invalid symbol, " << symbol << ", was entered into "
        << __FUNCTION__ << "!\n";
   return 0;
+}
+
+// Reads until a number is reached and returns what it read
+string readLetters(string input)
+{
+  string ret;
+  size_t i = 0;
+  while (true) {
+    if (i == input.size()) return ret;
+    if (!isDigit(input.at(i))) ret.push_back(input.at(i));
+    else return ret;
+    i++;
+  }
+}
+
+// Reads until a non-number is reached. Then it returns that number.
+string readNumbers(string input)
+{
+  string ret;
+  size_t i = 0;
+  while (true) {
+    if (i == input.size()) return ret;
+    if (isDigit(input.at(i))) ret.push_back(input.at(i));
+    else return ret;
+    i++;
+  }
+}
+
+bool ElemInfo::readComposition(string comp, vector<uint>& atoms)
+{
+  comp = removeSpacesAndReturns(comp);
+  atoms.clear();
+  while (comp.size() != 0 && !containsOnlySpaces(comp)) {
+
+    // Find the symbol
+    string symbol = readLetters(comp);
+
+    // remove the symbol from the string
+    comp = comp.substr(symbol.size());
+
+    // Find the number
+    string number = readNumbers(comp);
+    // remove the number from the string
+    comp = comp.substr(number.size());
+
+    uint atomicNum = getAtomicNum(symbol);
+
+    if (atomicNum == 0) {
+      cout << "Error in " << __FUNCTION__ << ": invalid atomic symbol\n";
+      atoms.clear();
+      return false;
+    }
+
+    size_t num = stoi(number);
+    if (num == 0) {
+      cout << "Error in " << __FUNCTION__ << ": invalid number read\n";
+      atoms.clear();
+      return false;
+    }
+
+    for (size_t i = 0; i < num; i++) {
+      atoms.push_back(atomicNum);
+    }
+  }
+  return true;
 }
 
 double ElemInfo::getVdwRadius(uint atomicNum)

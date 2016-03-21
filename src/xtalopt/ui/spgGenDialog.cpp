@@ -1,16 +1,16 @@
 /**********************************************************************
-  SpgInitDialog.cpp - The dialog for spacegroup initialization.
+  SpgGenDialog.cpp - The dialog for spacegroup generation.
 
   Copyright (C) 2015 by Patrick S. Avery
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation version 2 of the License.
+  This source code is released under the New BSD License, (the "License").
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
  ***********************************************************************/
 
 #include <vector>
@@ -19,8 +19,8 @@
 #include <QSpinBox>
 #include <QtCore/QDebug>
 
-#include "spgInitDialog.h"
-#include "spgInit.h"
+#include "spgGenDialog.h"
+#include <spgGen/include/spgGen.h>
 
 #include <xtalopt/xtalopt.h>
 
@@ -30,7 +30,7 @@
 
 namespace XtalOpt {
 
-  SpgInitDialog::SpgInitDialog(XtalOpt* p, QWidget* parent) :
+  SpgGenDialog::SpgGenDialog(XtalOpt* p, QWidget* parent) :
     QDialog(parent),
     m_xtalopt(p),
     m_comp(p->comp),
@@ -38,7 +38,7 @@ namespace XtalOpt {
     m_checkBoxList(QList<QCheckBox*>()),
     m_spinBoxList(QList<QSpinBox*>())
   {
-    // Since SpgInitDialog inherits from the qt-created class, Ui::SpgInitDialog
+    // Since SpgGenDialog inherits from the qt-created class, Ui::SpgGenDialog
     // We can just tell it to set up itself
     setupUi(this);
 
@@ -80,7 +80,7 @@ namespace XtalOpt {
           }
         }
         // Append each formula unit to the list followed by a comma
-        if (SpgInit::isSpgPossible(spg, tempAtoms)) {
+        if (SpgGen::isSpgPossible(spg, tempAtoms)) {
           FUPossible.append(QString::number(m_FUList.at(i)) + ",");
         }
       }
@@ -131,7 +131,7 @@ namespace XtalOpt {
     updateAll();
   }
 
-  SpgInitDialog::~SpgInitDialog()
+  SpgGenDialog::~SpgGenDialog()
   {
     // Delete the dynamically allocated checkbox list
     for (size_t i = 0; i < m_checkBoxList.size(); i++) {
@@ -149,7 +149,7 @@ namespace XtalOpt {
     }
   }
 
-  void SpgInitDialog::setTableEntry(uint row, const Spg_Table_Entry& e)
+  void SpgGenDialog::setTableEntry(uint row, const Spg_Table_Entry& e)
   {
     this->table_list->item(row, HM_Spg)->setText(e.HM_spg);
     this->table_list->item(row, FormulaUnitsPossible)->setText(
@@ -160,7 +160,7 @@ namespace XtalOpt {
     this->table_list->setCellWidget(row, SpinBox, m_spinBoxList.at(row));
   }
 
-  void SpgInitDialog::selectAll()
+  void SpgGenDialog::selectAll()
   {
     for (size_t i = 0; i < m_checkBoxList.size(); i++) {
       if (m_checkBoxList.at(i)->isEnabled())
@@ -168,7 +168,7 @@ namespace XtalOpt {
     }
   }
 
-  void SpgInitDialog::deselectAll()
+  void SpgGenDialog::deselectAll()
   {
     for (size_t i = 0; i < m_checkBoxList.size(); i++) {
       if (m_checkBoxList.at(i)->isEnabled())
@@ -176,7 +176,7 @@ namespace XtalOpt {
     }
   }
 
-  void SpgInitDialog::incrementAll()
+  void SpgGenDialog::incrementAll()
   {
     for (size_t i = 0; i < m_spinBoxList.size(); i++) {
       if (m_spinBoxList.at(i)->isEnabled())
@@ -185,7 +185,7 @@ namespace XtalOpt {
     updateAll();
   }
 
-  void SpgInitDialog::decrementAll()
+  void SpgGenDialog::decrementAll()
   {
     for (size_t i = 0; i < m_spinBoxList.size(); i++) {
       if (m_spinBoxList.at(i)->isEnabled())
@@ -194,7 +194,7 @@ namespace XtalOpt {
     updateAll();
   }
 
-  QSpinBox* SpgInitDialog::getNewSpinBox()
+  QSpinBox* SpgGenDialog::getNewSpinBox()
   {
     QSpinBox* spinBox = new QSpinBox;
     spinBox->setMinimum(0);
@@ -205,7 +205,7 @@ namespace XtalOpt {
     return spinBox;
   }
 
-  void SpgInitDialog::updateAll()
+  void SpgGenDialog::updateAll()
   {
     m_xtalopt->minXtalsOfSpgPerFU.clear();
     for (size_t i = 0; i < m_checkBoxList.size(); i++) {
@@ -223,13 +223,13 @@ namespace XtalOpt {
     }
   }
 
-  bool SpgInitDialog::isCompositionSame(XtalOpt* p)
+  bool SpgGenDialog::isCompositionSame(XtalOpt* p)
   {
     if (p->comp == m_comp && p->formulaUnitsList == m_FUList) return true;
     else return false;
   }
 
-  void SpgInitDialog::setLabel()
+  void SpgGenDialog::setLabel()
   {
     QList<uint> atomicNums = m_comp.keys();
 

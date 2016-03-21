@@ -1,6 +1,6 @@
 /**********************************************************************
   wyckPosTrackingInfo.h - Class for tracking Wyckoff position
-                          information. It is used in SpgInitCombinatoric.cpp
+                          information. It is used in SpgGenCombinatoric.cpp
                           for findAllCombinations(). It keeps track of
                           which Wyckoff positions to investigate and
                           other information about them.
@@ -20,7 +20,9 @@
 #ifndef WYCKPOS_TRACKING_INFO_H
 #define WYCKPOS_TRACKING_INFO_H
 
-#include <xtalopt/spgInit/spgInit.h>
+#include <cassert>
+
+#include "spgGen.h"
 
 // In here, we keep Wyckoff positions that have the same uniqueness and
 // multiplicity. For now, they can only be non-unique
@@ -32,16 +34,17 @@ class WyckPosTrackingInfo {
  public:
   WyckPosTrackingInfo(std::vector<wyckPos> pos) :
   keepUsing(true),
-  unique(SpgInit::containsUniquePosition(pos.at(0))),
+  unique(SpgGen::containsUniquePosition(pos.at(0))),
   numTimesUsed(0),
-  multiplicity(SpgInit::getMultiplicity(pos.at(0))),
+  multiplicity(SpgGen::getMultiplicity(pos.at(0))),
   positions(pos)
 {
   // We must have a size greater than 0
   assert(positions.size() > 0);
 };
 
-  // This is to see if we should keep checking this one duing
+  // This is to see if we should keep checking this one during the recursive
+  // function
   bool keepUsing;
   bool unique;
   uint numTimesUsed;
@@ -51,6 +54,8 @@ class WyckPosTrackingInfo {
   {
     return positions.at(rand() % positions.size());
   };
+
+  std::vector<wyckPos> getPositions() const {return positions;};
 
   const wyckPos& getWyckPosAt(uint i) const {return positions.at(i);};
   size_t getNumPositions() const {return positions.size();};

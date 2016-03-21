@@ -19,7 +19,7 @@
 #ifndef WYCKOFF_DATABASE_H
 #define WYCKOFF_DATABASE_H
 
-#include <xtalopt/spgInit/spgInit.h>
+#include "spgGen.h"
 
 // Outer vector is the space group. So there are 230 of them
 // Inner vector depends on the number of wyckoff elements that
