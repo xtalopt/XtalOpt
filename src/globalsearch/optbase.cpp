@@ -42,7 +42,7 @@
 #include <QtGui/QApplication>
 #include <QtGui/QInputDialog>
 
-#define OPTBASE_DEBUG
+//#define OPTBASE_DEBUG
 
 using namespace OpenBabel;
 
@@ -201,7 +201,9 @@ namespace GlobalSearch {
       if (numDupOffspring >= maxDupOffspring &&
           maxDupOffspring != -1) {
         probs.append(1.0);
+#ifdef OPTBASE_DEBUG
         qDebug() << QString::number(s->getGeneration()) << "x" << QString::number(s->getIDNumber()) << "has been removed from the gene pool!";
+#endif
       }
       // lowest and spread are already per atom
       else probs.append( ( (s->getEnthalpy() / static_cast<double>(s->numAtoms())) - lowest ) / spread);
@@ -220,9 +222,11 @@ namespace GlobalSearch {
     // 0.4  0.28  0.24  0.08  0
     for (int i = 0; i < probs.size(); i++){
       probs[i] /= sum;
+#ifdef OPTBASE_DEBUG
       qDebug() << "For " << QString::number(structures.at(i)->getGeneration())
                << "x" << QString::number(structures.at(i)->getIDNumber())
                << ":\n  normalized probs = " << QString::number(probs[i]);
+#endif
     }
     // Then replace each entry with a cumulative total:
     // 0.4 0.68 0.92 1 1
