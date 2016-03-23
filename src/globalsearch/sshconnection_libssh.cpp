@@ -31,8 +31,10 @@ using namespace std;
 
 namespace GlobalSearch {
 
-#define START qDebug() << __FUNCTION__ << " called...";
-#define END qDebug() << __FUNCTION__ << " finished...";
+#define START //qDebug() << __FUNCTION__ << " called...";
+#define END //qDebug() << __FUNCTION__ << " finished...";
+
+//#define SSH_CONNECTION_LIBSSH_DEBUG
 
 SSHConnectionLibSSH::SSHConnectionLibSSH(SSHManagerLibSSH *parent)
   : SSHConnection(parent),
@@ -209,7 +211,9 @@ bool SSHConnectionLibSSH::reconnectSftpIfNeeded()
   // reconnect the sftp every 240 seconds
   int interval = 240;
   if (timeDifference >= interval*1000) {
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
     qDebug() << "timeDifference is " << QString::number(timeDifference);
+#endif
     bool success = reconnectSftp();
     if (!success) {
       qWarning() << "SSHConnectionLibSSH::reconnectSftpIfNeeded():"
@@ -430,7 +434,9 @@ bool SSHConnectionLibSSH::_execute(const QString &command,
 				   bool printWarning)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "The following command is being executed:" << command;
+#endif
   // Open new channel for exec
   ssh_channel channel = channel_new(m_session);
   if (!channel) {
@@ -473,7 +479,9 @@ bool SSHConnectionLibSSH::_execute(const QString &command,
   // 5 second timeout
   int timeout = 15;
   while (channel_get_exit_status(channel) == -1 && timeout >= 0) {
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
     qDebug() << "Waiting for server to close channel...";
+#endif
     GS_SLEEP(1);
     timeout--;
   }
@@ -525,7 +533,9 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString & localpath,
                                             const QString & remotepath)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "copying" << localpath << "to" << remotepath;
+#endif
 
   sftp_session sftp = m_sftp;
   if (!sftp) {
@@ -592,7 +602,9 @@ bool SSHConnectionLibSSH::_copyFileFromServer(const QString & remotepath,
                                               const QString & localpath)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "copying" << remotepath << "to" << localpath;
+#endif
   sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
@@ -657,7 +669,9 @@ bool SSHConnectionLibSSH::_readRemoteFile(const QString &filename,
                                           QString &contents)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "reading" << filename;
+#endif
 
   sftp_session sftp = m_sftp;
   if (!sftp) {
@@ -709,7 +723,9 @@ bool SSHConnectionLibSSH::removeRemoteFile(const QString &filename)
 bool SSHConnectionLibSSH::_removeRemoteFile(const QString &filename)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "Removing remote file: " << filename;
+#endif
   sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
@@ -745,7 +761,9 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString & local,
                                                  const QString & remote)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "copying" << local << "to" << remote;
+#endif
 
   // Add trailing slashes:
   QString localpath = local + "/";
@@ -820,7 +838,9 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
                                                    const QString & local)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "copying" << remote << "to" << local;
+#endif
   // Add trailing slashes:
   QString localpath = local + "/";
   QString remotepath = remote + "/";
@@ -903,7 +923,10 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString & path,
                                                        QStringList & contents)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "Reading remote directory contents of:" << path;
+#endif
+
   QString remotepath = path + "/";
   sftp_dir dir;
   sftp_attributes file;
@@ -976,7 +999,9 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString & path,
                                                  bool onlyDeleteContents)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "Removing remote directory:" << path;
+#endif
 
   QString remotepath = path + "/";
   sftp_dir dir;
