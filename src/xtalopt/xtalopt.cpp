@@ -564,8 +564,31 @@ namespace XtalOpt {
     input.minVolume = vol_min;
     input.maxVolume = vol_max;
     input.verbosity = 'n';
+    // This removes the guarantee that we will generate the right space group,
+    // but we will just check it with spglib
+    input.forceMostGeneralWyckPos = false;
 
-    xtal = SpgGenXtalOptWrapper::spgGenXtal(input);
+    // Let's try this 3 times
+    size_t numAttempts = 0;
+    do {
+      numAttempts++;
+      xtal = SpgGenXtalOptWrapper::spgGenXtal(input);
+      // So that we don't crash the program, make sure the xtal exists
+      // before attempting to get its spacegroup number
+      if (xtal) {
+        // If we succeed, we're done!
+        if (xtal->getSpaceGroupNumber() == spg) break;
+      }
+    } while (numAttempts < 3);
+
+    // Make sure we don't call xtal->getSpaceGroupNumber() until we know that
+    // we have an xtal
+    if (xtal) {
+      if (xtal->getSpaceGroupNumber() != spg) {
+        delete xtal;
+        xtal = 0;
+      }
+    }
 
     // We need to set these things before checkXtal() is called
     if (xtal) {
