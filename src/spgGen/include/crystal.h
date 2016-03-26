@@ -370,6 +370,10 @@ class Crystal {
    */
   void printCrystalInfo() const;
 
+  /* For debugging: print IADs
+   */
+  void printIADs() const;
+
  private:
   latticeStruct m_lattice;
   std::vector<atomStruct> m_atoms;
