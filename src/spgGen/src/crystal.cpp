@@ -444,19 +444,31 @@ bool Crystal::areIADsOkay() const
 
 bool Crystal::areIADsOkay(const atomStruct& as) const
 {
-  atomStruct neighbor;
-  double dist = findNearestNeighborAtomAndDistance(as, neighbor);
-  double minIAD = getMinIAD(as, neighbor);
-  if (dist < minIAD) {
+  Crystal tempCrystal = *this;
+
+  size_t ind = getAtomIndexNum(as);
+
+  // We need to center the cell around this atom so that we don't run into the
+  // problem of missing short distances caused by periodicity
+  tempCrystal.centerCellAroundAtom(ind);
+
+  vector<atomStruct> temp = tempCrystal.getAtoms();
+  for (size_t i = 0; i < temp.size(); i++) {
+    if (i == ind) continue;
+    double minIAD = getMinIAD(temp.at(ind), temp.at(i));
+    double dist = getDistance(temp.at(ind), temp.at(i));
+
+    if (dist < minIAD) {
 #ifdef IAD_DEBUG
-    cout << "In " << __FUNCTION__ << ", minIAD failed!\n";
-    cout << "  The distance is " << dist << " and the minIAD is " << minIAD
-         << "\n";
-    cout << "  Atoms responsible for failure are as follows:\n";
-    printAtomInfo(as);
-    printAtomInfo(neighbor);
+      cout << "In " << __FUNCTION__ << ", minIAD failed!\n";
+      cout << "  The distance is " << dist << " and the minIAD is " << minIAD
+           << "\n";
+      cout << "  Atoms responsible for failure are as follows:\n";
+      printAtomInfo(as);
+      printAtomInfo(neighbor);
 #endif
-    return false;
+      return false;
+    }
   }
   return true;
 }
@@ -600,4 +612,25 @@ string Crystal::getCrystalInfoString() const
 void Crystal::printCrystalInfo() const
 {
   cout << getCrystalInfoString();
+}
+
+void Crystal::printIADs() const
+{
+  vector<atomStruct> atoms = getAtoms();
+  for (size_t i = 0; i < atoms.size(); i++) {
+    cout << "For atom with index " << i << " and atomicNum " << atoms.at(i).atomicNum << ", the following are the neighbors:\n";
+    Crystal tempCrystal = *this;
+
+    // We need to center the cell around this atom so that we don't run into the
+    // problem of missing short distances caused by periodicity
+    tempCrystal.centerCellAroundAtom(i);
+
+    size_t neighborInd = 0;
+    double smallestDistance = 1000000.00;
+    vector<atomStruct> tempAtoms = tempCrystal.getAtoms();
+    for (size_t j = i + 1; j < tempAtoms.size(); j++) {
+      double newDistance = getDistance(tempAtoms.at(i), tempAtoms.at(j));
+      cout << "index " << j << " and atomicNum " << tempAtoms.at(j).atomicNum << ": " << newDistance << "\n";
+    }
+  }
 }
