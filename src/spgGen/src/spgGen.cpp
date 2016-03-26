@@ -359,6 +359,63 @@ getForcedWyckAssignmentsAndNumber(const vector<pair<uint, char>>& forcedWyckAssi
   return forcedWyckAssignmentsAndNumber;
 }
 
+Crystal createValidCrystal(uint spg, const latticeStruct& latticeMins,
+                           const latticeStruct& latticeMaxes,
+                           double minVolume, double maxVolume)
+{
+  Crystal ret;
+  // If we fail to do this 1000 times, return an empty crystal
+  size_t maxAttempts = 1000;
+  size_t numAttempts = 0;
+  bool validCrystal = false;
+  while (maxAttempts > numAttempts && !validCrystal) {
+    numAttempts++;
+
+    // First let's get a lattice...
+    latticeStruct st = SpgGen::generateLatticeForSpg(spg, latticeMins, latticeMaxes);
+    Crystal crystal(st);
+
+    // Make sure it's a valid lattice
+    if (st.a == 0 || st.b == 0 || st.c == 0 ||
+        st.alpha == 0 || st.beta == 0 || st.gamma == 0) {
+      cout << "Error in SpgGen::createValidCrystal(): an invalid lattice was "
+           << "generated.\n";
+      return Crystal();
+    }
+
+    // Rescale the volume of the crystal if necessary
+    if (maxVolume != -1 && crystal.getVolume() > maxVolume)
+      // Pick a random number between the min and max volume and rescale to it
+      crystal.rescaleVolume(getRandDouble(minVolume, maxVolume));
+    else if (minVolume != -1 && crystal.getVolume() < minVolume)
+      crystal.rescaleVolume(getRandDouble(minVolume, maxVolume));
+
+    // After rescaling, check again to make sure a, b, and c are within
+    // the correct limits
+    st = crystal.getLattice();
+    if (latticeMins.a <= st.a && st.a <= latticeMaxes.a &&
+        latticeMins.b <= st.b && st.b <= latticeMaxes.b &&
+        latticeMins.c <= st.c && st.c <= latticeMaxes.c) {
+      ret = crystal;
+      validCrystal = true;
+    }
+    // If the crystal is not valid, we'll try again
+  }
+
+  // If we get to the point without a valid crystal,
+  // we exceeded the max attempts
+  if (!validCrystal) {
+    cerr << "After " << maxAttempts
+         << " attempts, a valid crystal could not be made for "
+         << "spg '" << spg << "' and the given latticeMins, latticeMaxes, "
+         << "minVolume of '" << minVolume << "' and maxVolume of '"
+         << maxVolume << "'\n";
+    cerr << "Aborting this crystal.\n";
+    return Crystal();
+  }
+  return ret;
+}
+
 Crystal SpgGen::spgGenCrystal(const spgGenInput& input)
 {
   START_FT;
@@ -443,23 +500,9 @@ Crystal SpgGen::spgGenCrystal(const spgGenInput& input)
 
   // Begin the attempt loop!
   for (size_t i = 0; i < numAttempts; i++) {
-    // First let's get a lattice...
-    latticeStruct st = generateLatticeForSpg(spg, latticeMins, latticeMaxes);
-    Crystal crystal(st);
 
-    // Make sure it's a valid lattice
-    if (st.a == 0 || st.b == 0 || st.c == 0 ||
-        st.alpha == 0 || st.beta == 0 || st.gamma == 0) {
-      cout << "Error in SpgGen::spgGenXtal(): an invalid lattice was "
-           << "generated.\n";
-      return Crystal();
-    }
-
-    // Rescale the volume of the crystal if necessary
-    if (maxVolume != -1 && crystal.getVolume() > maxVolume)
-      crystal.rescaleVolume(maxVolume);
-    else if (minVolume != -1 && crystal.getVolume() < minVolume)
-      crystal.rescaleVolume(minVolume);
+    Crystal crystal = createValidCrystal(spg, latticeMins, latticeMaxes,
+                                         minVolume, maxVolume);
 
     // Now, let's assign some atoms!
     atomAssignments assignments = SpgGenCombinatorics::getRandomAtomAssignments(possibilities, modifiedForcedWyckVector);
