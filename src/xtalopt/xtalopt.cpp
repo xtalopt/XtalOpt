@@ -311,6 +311,13 @@ namespace XtalOpt {
       // numInitial, then the total needed will be the sum from
       // minXtalsOfSpgPerFU
 
+      size_t numXtalsToBeGenerated = 0;
+      for (size_t i = 0; i < minXtalsOfSpgPerFU.size(); i++) {
+        // The value in the vector is -1 if that spg is to not be used
+        if (minXtalsOfSpgPerFU.at(i) != -1)
+          numXtalsToBeGenerated += minXtalsOfSpgPerFU.at(i);
+      }
+
       // Now that minXtalsOfSpgPerFU is set up, proceed!
       newXtalCount = failed = 0;
       // Find spacegroups for which we have required a certain number of xtals
@@ -322,7 +329,9 @@ namespace XtalOpt {
             uint FU = formulaUnitsList.at(FU_ind);
             // If the spacegroup isn't possible for this FU, just continue
             if (!SpgGen::isSpgPossible(spg, getStdVecOfAtoms(FU))) continue;
-            updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
+            updateProgressBar((numXtalsToBeGenerated - failed > numInitial ?
+                               numXtalsToBeGenerated - failed : numInitial),
+                              newXtalCount + failed, newXtalCount);
 
             // Generate/Check xtal
             xtal = spgGenXtal(1, newXtalCount + 1, FU, spg);
@@ -344,6 +353,9 @@ namespace XtalOpt {
       // If we still haven't generated enough xtals, pick a random FU and spg
       // to be generated
       while (newXtalCount < numInitial) {
+        // Let's keep the progress bar updated
+        updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
+
         // Randomly select a formula unit
         uint randomFU = formulaUnitsList.at(rand()%int(formulaUnitsList.size()));
         // Randomly select a possible spg
@@ -563,6 +575,7 @@ namespace XtalOpt {
     input.minRadius = minRadius;
     input.minVolume = vol_min * static_cast<double>(FU);
     input.maxVolume = vol_max * static_cast<double>(FU);
+    input.maxAttempts = 10;
     input.verbosity = 'n';
     // This removes the guarantee that we will generate the right space group,
     // but we will just check it with spglib
