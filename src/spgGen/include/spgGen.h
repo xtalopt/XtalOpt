@@ -21,7 +21,6 @@
 #include <utility>
 
 #include "crystal.h"
-#include "spgGenOptions.h"
 
 // output file name
 extern std::string e_logfilename;

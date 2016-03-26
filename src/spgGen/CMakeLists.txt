@@ -6,7 +6,6 @@ set(spgGen_SRCS
     src/crystal.cpp
     src/elemInfo.cpp
     src/spgGenCombinatorics.cpp
-    src/spgGenOptions.cpp
     src/spgGen.cpp)
 
 include_directories(${spgGen_SOURCE_DIR}/include)
