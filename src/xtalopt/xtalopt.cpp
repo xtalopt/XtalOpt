@@ -561,8 +561,8 @@ namespace XtalOpt {
     // Add various other input options
     input.IADScalingFactor = scaleFactor;
     input.minRadius = minRadius;
-    input.minVolume = vol_min;
-    input.maxVolume = vol_max;
+    input.minVolume = vol_min * static_cast<double>(FU);
+    input.maxVolume = vol_max * static_cast<double>(FU);
     input.verbosity = 'n';
     // This removes the guarantee that we will generate the right space group,
     // but we will just check it with spglib
@@ -597,10 +597,6 @@ namespace XtalOpt {
       if (using_fixed_volume) xtal->setVolume(vol_fixed * FU);
     }
     else {
-      if (xtal) {
-        delete xtal;
-        xtal = 0;
-      }
       qDebug() << "After" << QString::number(input.maxAttempts)
                << "attempts, failed to generate an xtal with spg of"
                << QString::number(spg);
