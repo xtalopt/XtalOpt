@@ -816,7 +816,7 @@ namespace XtalOpt {
     updateMolecule(ids, coords);
   }
 
-  void Xtal::printLatticeInfo()
+  void Xtal::printLatticeInfo() const
   {
     cout << "a is " << this->getA() << "\n";
     cout << "b is " << this->getB() << "\n";
@@ -827,7 +827,7 @@ namespace XtalOpt {
     cout << "volume is " << this->getVolume() << "\n";
   }
 
-  void Xtal::printAtomInfo()
+  void Xtal::printAtomInfo() const
   {
     cout << "Frac coords info (blank if none):\n";
     QList<Avogadro::Atom*> atoms = this->atoms();
@@ -839,6 +839,12 @@ namespace XtalOpt {
     for (size_t i = 0; i < atoms.size(); i++) {
       cout << "  For atomic num " <<  atoms.at(i)->atomicNumber() << ", coords are (" << fracCoords.at(i)[0] << "," << fracCoords.at(i)[1] << "," << fracCoords.at(i)[2] << ")\n";
     }
+  }
+
+  void Xtal::printXtalInfo() const
+  {
+    printLatticeInfo();
+    printAtomInfo();
   }
 
   // Adapted from unitcellextension:
@@ -2159,5 +2165,4 @@ namespace XtalOpt {
     file->close();
     return POSCARToXtal(poscar);
   }
-
 } // end namespace XtalOpt
