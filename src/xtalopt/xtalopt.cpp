@@ -2295,6 +2295,7 @@ namespace XtalOpt {
     if (forceReadOnly) {
       readOnly = true;
     }
+    else readOnly = false;
 
     loaded = true;
 
