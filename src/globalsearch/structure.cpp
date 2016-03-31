@@ -1467,25 +1467,25 @@ namespace GlobalSearch {
     // the number of formula units
     QList<uint> xtalCounts = getNumberOfAtomsAlpha();
     unsigned int minimumQuantityOfAtomType = xtalCounts.at(0);
-      for (int i = 1; i < xtalCounts.size(); ++i) {
-        if (minimumQuantityOfAtomType > xtalCounts.at(i)){
-          minimumQuantityOfAtomType = xtalCounts.at(i);
+    for (size_t i = 1; i < xtalCounts.size(); ++i) {
+      if (minimumQuantityOfAtomType > xtalCounts.at(i)){
+        minimumQuantityOfAtomType = xtalCounts.at(i);
+      }
+    }
+    unsigned int formulaUnits = 1;
+    bool formulaUnitsFound;
+    for (int i = minimumQuantityOfAtomType; i > 1; i--){
+      formulaUnitsFound = true;
+      for (int j = 0; j < xtalCounts.size(); ++j) {
+        if(xtalCounts.at(j) % i != 0){
+          formulaUnitsFound = false;
         }
       }
-      unsigned int formulaUnits = 1;
-      bool formulaUnitsFound;
-      for (int i = minimumQuantityOfAtomType; i > 1; i--){
-        formulaUnitsFound = true;
-        for (int j = 0; j < xtalCounts.size(); ++j) {
-          if(xtalCounts.at(j) % i != 0){
-            formulaUnitsFound = false;
-          }
-        }
-        if(formulaUnitsFound == true) {
-          formulaUnits = i;
-          i = 1;
-        }
+      if(formulaUnitsFound == true) {
+        formulaUnits = i;
+        i = 1;
       }
+    }
     return formulaUnits;
   }
 
