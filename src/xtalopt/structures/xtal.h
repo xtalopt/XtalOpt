@@ -146,7 +146,7 @@ namespace XtalOpt {
     // Foundations of Crystallography. 2003;60(1):1-6. Available at:
     // http://scripts.iucr.org/cgi-bin/paper?S010876730302186X [Accessed
     // November 24, 2010].
-    bool niggliReduce(double lenTol = 0.01, const unsigned int iterations = 100);
+    bool niggliReduce(const unsigned int iterations = 100, double lenTol = 0.01);
     static bool isNiggliReduced(const double a, const double b, const double c,
                                 const double alpha, const double beta,
                                 const double gamma, double lenTol = 0.01);

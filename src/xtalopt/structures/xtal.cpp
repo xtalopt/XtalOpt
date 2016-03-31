@@ -224,7 +224,7 @@ namespace XtalOpt {
       atomList.at(i)->setPos(fracToCart(fracCoordsList.at(i)));
   }
 
-  bool Xtal::niggliReduce(double lenTol, const unsigned int iterations)
+  bool Xtal::niggliReduce(const unsigned int iterations, double lenTol)
   {
     // Cache volume for later sanity checks
     const double origVolume = cell()->GetCellVolume();
