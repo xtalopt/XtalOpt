@@ -11,6 +11,8 @@ lattice.c
 lattice.h
 mathfunc.c
 mathfunc.h
+niggli.c
+niggli.h
 pointgroup.c
 pointgroup.h
 primitive.c
@@ -26,9 +28,16 @@ spacegroup.h
 spg_database.c
 spg_database.h
 spglib.c
+spglib_f.c
 spglib.h
+spin.c
+spin.h
 symmetry.c
 symmetry.h
+tetrahedron_method.c
+tetrahedron_method.h
+triplet_kpoint.c
+triplet_kpoint.h
 )
 
 add_library(spglib STATIC ${spglib_SRCS})

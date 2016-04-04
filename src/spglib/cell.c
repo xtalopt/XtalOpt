@@ -8,6 +8,7 @@
 
 #include "debug.h"
 
+/* cell->size = 0 is a sign of False */
 Cell * cel_alloc_cell( const int size )
 {
     Cell *cell;
