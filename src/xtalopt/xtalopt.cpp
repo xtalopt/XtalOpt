@@ -1969,6 +1969,22 @@ namespace XtalOpt {
 
     // If no cell parameters are fixed, normalize lattice
     if (fabs(a + b + c + alpha + beta + gamma) < 1e-8) {
+      // If one length is 100x shorter than another, it can sometimes
+      // cause the spglib to crash in this function
+      // If one is 100x shorter than another, discard it
+      double cutoff = 100.0;
+      if (xtal->getA() * cutoff < xtal->getB() ||
+          xtal->getA() * cutoff < xtal->getC() ||
+          xtal->getB() * cutoff < xtal->getA() ||
+          xtal->getB() * cutoff < xtal->getC() ||
+          xtal->getC() * cutoff < xtal->getA() ||
+          xtal->getC() * cutoff < xtal->getB()) {
+        qDebug() << "Error: one of the lengths is more than 100x shorter "
+                 << "than another length. Crystals like these can sometimes "
+                 << "cause spglib to crash the program. Discarding the xtal:";
+        xtal->printXtalInfo();
+        return false;
+      }
       xtal->fixAngles();
     }
 
