@@ -1969,10 +1969,10 @@ namespace XtalOpt {
 
     // If no cell parameters are fixed, normalize lattice
     if (fabs(a + b + c + alpha + beta + gamma) < 1e-8) {
-      // If one length is 100x shorter than another, it can sometimes
+      // If one length is 25x shorter than another, it can sometimes
       // cause the spglib to crash in this function
-      // If one is 100x shorter than another, discard it
-      double cutoff = 100.0;
+      // If one is 25x shorter than another, discard it
+      double cutoff = 25.0;
       if (xtal->getA() * cutoff < xtal->getB() ||
           xtal->getA() * cutoff < xtal->getC() ||
           xtal->getB() * cutoff < xtal->getA() ||
