@@ -1979,12 +1979,26 @@ namespace XtalOpt {
           xtal->getB() * cutoff < xtal->getC() ||
           xtal->getC() * cutoff < xtal->getA() ||
           xtal->getC() * cutoff < xtal->getB()) {
-        qDebug() << "Error: one of the lengths is more than 100x shorter "
+        qDebug() << "Error: one of the lengths is more than 25x shorter "
                  << "than another length. Crystals like these can sometimes "
                  << "cause spglib to crash the program. Discarding the xtal:";
         xtal->printXtalInfo();
         return false;
       }
+      // Check that the angles aren't 25x different than the others as well
+      if (xtal->getAlpha() * cutoff < xtal->getBeta() ||
+          xtal->getAlpha() * cutoff < xtal->getGamma() ||
+          xtal->getBeta()  * cutoff < xtal->getAlpha() ||
+          xtal->getBeta()  * cutoff < xtal->getGamma() ||
+          xtal->getGamma() * cutoff < xtal->getAlpha() ||
+          xtal->getGamma() * cutoff < xtal->getBeta()) {
+        qDebug() << "Error: one of the angles is more than 25x smaller "
+                 << "than another angle. Crystals like these can sometimes "
+                 << "cause spglib to crash the program. Discarding the xtal:";
+        xtal->printXtalInfo();
+        return false;
+      }
+
       xtal->fixAngles();
     }
 
