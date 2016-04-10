@@ -1,24 +1,57 @@
-/* spin.c */
 /* Copyright (C) 2012 Atsushi Togo */
+/* All rights reserved. */
+
+/* This file is part of spglib. */
+
+/* Redistribution and use in source and binary forms, with or without */
+/* modification, are permitted provided that the following conditions */
+/* are met: */
+
+/* * Redistributions of source code must retain the above copyright */
+/*   notice, this list of conditions and the following disclaimer. */
+
+/* * Redistributions in binary form must reproduce the above copyright */
+/*   notice, this list of conditions and the following disclaimer in */
+/*   the documentation and/or other materials provided with the */
+/*   distribution. */
+
+/* * Neither the name of the phonopy project nor the names of its */
+/*   contributors may be used to endorse or promote products derived */
+/*   from this software without specific prior written permission. */
+
+/* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS */
+/* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT */
+/* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS */
+/* FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE */
+/* COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, */
+/* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, */
+/* BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; */
+/* LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER */
+/* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT */
+/* LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN */
+/* ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE */
+/* POSSIBILITY OF SUCH DAMAGE. */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include "mathfunc.h"
 #include "symmetry.h"
 #include "cell.h"
+#include "debug.h"
 
 static Symmetry * get_collinear_operations(SPGCONST Symmetry *sym_nonspin,
 					   SPGCONST Cell *cell,
 					   const double spins[],
 					   const double symprec);
-static void set_equivalent_atoms(int * equiv_atoms,
-				 SPGCONST Symmetry *symmetry,
-				 SPGCONST Cell * cell,
-				 const double symprec);
+static int set_equivalent_atoms(int * equiv_atoms,
+				SPGCONST Symmetry *symmetry,
+				SPGCONST Cell * cell,
+				const double symprec);
 static int * get_mapping_table(SPGCONST Symmetry *symmetry,
 			       SPGCONST Cell * cell,
 			       const double symprec);
 
+/* Return NULL if failed */
 Symmetry * spn_get_collinear_operations(int equiv_atoms[],
 					SPGCONST Symmetry *sym_nonspin,
 					SPGCONST Cell *cell,
@@ -27,14 +60,22 @@ Symmetry * spn_get_collinear_operations(int equiv_atoms[],
 {
   Symmetry *symmetry;
 
-  symmetry = get_collinear_operations(sym_nonspin,
-				      cell,
-				      spins,
-				      symprec);
-  set_equivalent_atoms(equiv_atoms,
-		       symmetry,
-		       cell,
-		       symprec);
+  symmetry = NULL;
+
+  if ((symmetry = get_collinear_operations(sym_nonspin,
+					   cell,
+					   spins,
+					   symprec)) == NULL) {
+    return NULL;
+  }
+
+  if ((set_equivalent_atoms(equiv_atoms,
+			    symmetry,
+			    cell,
+			    symprec)) == 0) {
+    sym_free_symmetry(symmetry);
+    symmetry = NULL;
+  }
 
   return symmetry;
 }
@@ -111,16 +152,21 @@ static Symmetry * get_collinear_operations(SPGCONST Symmetry *sym_nonspin,
   return symmetry;
 }
 
-static void set_equivalent_atoms(int * equiv_atoms,
-				 SPGCONST Symmetry *symmetry,
-				 SPGCONST Cell * cell,
-				 const double symprec)
+/* Return 0 if failed */
+static int set_equivalent_atoms(int * equiv_atoms,
+				SPGCONST Symmetry *symmetry,
+				SPGCONST Cell * cell,
+				const double symprec)
 {
   int i, j, k, is_found;
   double pos[3];
   int *mapping_table;
 
-  mapping_table = get_mapping_table(symmetry, cell, symprec);
+  mapping_table = NULL;
+
+  if ((mapping_table = get_mapping_table(symmetry, cell, symprec)) == NULL) {
+    return 0;
+  }
   
   for (i = 0; i < cell->size; i++) {
     if (mapping_table[i] != i) {
@@ -158,8 +204,14 @@ static void set_equivalent_atoms(int * equiv_atoms,
     }
     equiv_atoms[i] = equiv_atoms[mapping_table[i]];
   }
+
+  free(mapping_table);
+  mapping_table = NULL;
+
+  return 1;
 }
 
+/* Return NULL if failed */
 static int * get_mapping_table(SPGCONST Symmetry *symmetry,
 			       SPGCONST Cell * cell,
 			       const double symprec)
@@ -171,7 +223,12 @@ static int * get_mapping_table(SPGCONST Symmetry *symmetry,
 			  { 0, 1, 0},
 			  { 0, 0, 1}};
 
-  mapping_table = (int*) malloc(sizeof(int) * cell->size);
+  mapping_table = NULL;
+
+  if ((mapping_table = (int*) malloc(sizeof(int) * cell->size)) == NULL) {
+    warning_print("spglib: Memory could not be allocated.");
+    return NULL;
+  }
 
   for (i = 0; i < cell->size; i++) {
     is_found = 0;

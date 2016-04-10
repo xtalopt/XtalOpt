@@ -5,6 +5,8 @@ debug.c
 debug.h
 hall_symbol.c
 hall_symbol.h
+kgrid.c
+kgrid.h
 kpoint.c
 kpoint.h
 lattice.c

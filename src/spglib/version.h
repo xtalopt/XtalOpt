@@ -1,4 +1,4 @@
-/* Copyright (C) 2010 Atsushi Togo */
+/* Copyright (C) 2015 Atsushi Togo */
 /* All rights reserved. */
 
 /* This file is part of spglib. */
@@ -32,27 +32,12 @@
 /* ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE */
 /* POSSIBILITY OF SUCH DAMAGE. */
 
-#ifndef __spg_database_H__
-#define __spg_database_H__
+#ifndef __version_H__
+#define __version_H__
 
-#include "spacegroup.h"
-#include "symmetry.h"
-
-typedef struct {
-  int number;
-  char schoenflies[7];
-  char hall_symbol[17];
-  char international[32];
-  char international_full[20];
-  char international_short[11];
-  char setting[6];
-  Centering centering;
-  int pointgroup_number;
-} SpacegroupType;
-
-int spgdb_get_operation(int rot[3][3], double trans[3], const int hall_number);
-void spgdb_get_operation_index(int indices[2], const int hall_number);
-Symmetry * spgdb_get_spacegroup_operations(const int hall_number);
-SpacegroupType spgdb_get_spacegroup_type(const int hall_number);
+#define SPGLIB_MAJOR_VERSION 1
+#define SPGLIB_MINOR_VERSION 9
+#define SPGLIB_MICRO_VERSION 1
 
 #endif
+
