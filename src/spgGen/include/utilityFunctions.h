@@ -24,11 +24,9 @@
 static inline std::vector<std::string> split(const std::string& s, char delim)
 {
   std::vector<std::string> elems;
-  std::stringstream ss(s);
+  std::istringstream ss(s); // istringstream is faster to use than stringstream
   std::string item;
-  while (getline(ss, item, delim)) {
-    elems.push_back(item);
-  }
+  while (getline(ss, item, delim)) elems.push_back(item);
   return elems;
 }
 
@@ -48,6 +46,15 @@ static void replaceAll(std::string& str,
     str.replace(start_pos, from.length(), to);
     start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
   }
+}
+
+static inline bool hasEnding(const std::string& fullString,
+                             const std::string& ending)
+{
+  if (fullString.length() >= ending.length())
+    return (0 == fullString.compare(fullString.length() - ending.length(),
+                                    ending.length(), ending));
+  else return false;
 }
 
 // Replaces all occurrences of "\n" with "<br>" in a string

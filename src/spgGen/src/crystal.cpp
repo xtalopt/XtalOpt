@@ -39,7 +39,11 @@ using namespace std;
 Crystal::Crystal(latticeStruct l, vector<atomStruct> a, bool usingVdwRad) :
   m_lattice(l),
   m_atoms(a),
-  m_usingVdwRadii(usingVdwRad)
+  m_usingVdwRadii(usingVdwRad),
+  m_unitVolume(-1.0), // These will be cached when the getter is called
+  m_volume(-1.0), // These will be cached when the getter is called
+  m_cartConvMatCached(false),
+  m_cartConvMat{}
 {
 
 }
@@ -86,12 +90,14 @@ static inline bool atomsHaveSamePosition(const atomStruct& a1,
   return false;
 }
 
+// For use in the following function
+static const double MIN_DOUBLE = 1e-5;
+
 // We're assuming we're using fractional coordinates...
 static inline void wrapUnitToCell(double& u)
 {
-  double minD = 0.00001;
   while (u < 0.0) u += 1.0;
-  while (u >= 1.0 || fabs(u - 1.0) < minD) u -= 1.0;
+  while (u >= 1.0 || fabs(u - 1.0) < MIN_DOUBLE) u -= 1.0;
 }
 
 static inline void wrapAtomToCell(atomStruct& as)
@@ -141,18 +147,16 @@ bool Crystal::addAtomIfPositionIsEmpty(atomStruct& as)
 atomStruct Crystal::getAtomInCartCoords(const atomStruct& as) const
 {
   atomStruct ret = as;
-  const double& a = m_lattice.a;
-  const double& b = m_lattice.b;
-  const double& c = m_lattice.c;
-  const double alpha = deg2rad(m_lattice.alpha);
-  const double beta = deg2rad(m_lattice.beta);
-  const double gamma = deg2rad(m_lattice.gamma);
-  const double v = getUnitVolume();
+  // If we don't have the cartesian conversion matrix cached, cache it now
+  if (!m_cartConvMatCached) cacheCartConvMat();
+
   // We're just gonna do the matrix multiplication by hand...
-  ret.x = a * as.x + b * cos(gamma) * as.y + c * cos(beta) * as.z;
-  ret.y = b * sin(gamma) * as.y +
-          c * (cos(alpha) - cos(beta) * cos(gamma)) / sin(gamma) * as.z;
-  ret.z = c * v / sin(gamma) * as.z;
+  // [0] == [0][0]; [1] == [0][1]; [2] == [0][2]
+  // [3] == [1][1]; [4] == [1][2]; [5] == [2][2]
+  ret.x = as.x * m_cartConvMat[0] + as.y * m_cartConvMat[1] + as.z * m_cartConvMat[2];
+  ret.y = as.y * m_cartConvMat[3] + as.z * m_cartConvMat[4];
+  ret.z = as.z * m_cartConvMat[5];
+
   // I want to make sure these are all positive
   // When the value is zero, unfortunately, it can be very slightly negative
   // sometimes... So I commented out this assertion
@@ -171,15 +175,19 @@ vector<uint> Crystal::getVectorOfAtomicNums() const
 
 double Crystal::getUnitVolume() const
 {
-  const latticeStruct& l = m_lattice;
-  const double alpha = deg2rad(m_lattice.alpha);
-  const double beta = deg2rad(m_lattice.beta);
-  const double gamma = deg2rad(m_lattice.gamma);
-  return sqrt(1.0 -
-              pow(cos(alpha), 2.0) -
-              pow(cos(beta), 2.0) -
-              pow(cos(gamma), 2.0) +
-              2.0 * cos(alpha) * cos(beta) * cos(gamma));
+  // If our volume is not cached, calculate and cache it
+  if (m_unitVolume < 0.0) {
+    const latticeStruct& l = m_lattice;
+    const double alpha = deg2rad(m_lattice.alpha);
+    const double beta = deg2rad(m_lattice.beta);
+    const double gamma = deg2rad(m_lattice.gamma);
+    m_unitVolume = sqrt(1.0 -
+                        pow(cos(alpha), 2.0) -
+                        pow(cos(beta), 2.0) -
+                        pow(cos(gamma), 2.0) +
+                        2.0 * cos(alpha) * cos(beta) * cos(gamma));
+  }
+  return m_unitVolume;
 }
 
 vector<vector<double>> Crystal::getLatticeVecs() const
@@ -222,7 +230,30 @@ vector<vector<double>> Crystal::getLatticeVecs() const
 
 double Crystal::getVolume() const
 {
-  return m_lattice.a * m_lattice.b * m_lattice.c * getUnitVolume();
+  // Check to see it is cached first. If not, cache it before returning
+  if (m_volume < 0.0)
+    m_volume = m_lattice.a * m_lattice.b * m_lattice.c * getUnitVolume();
+  return m_volume;
+}
+
+// Cache the cartesian conversion matrix
+// We are skipping [1][0], [2][0], and [2][1] in this matrix
+// And it is in linear form
+void Crystal::cacheCartConvMat() const
+{
+  const double alpha = deg2rad(m_lattice.alpha);
+  const double beta = deg2rad(m_lattice.beta);
+  const double gamma = deg2rad(m_lattice.gamma);
+  const double v = getUnitVolume();
+
+  m_cartConvMat[0] = m_lattice.a;
+  m_cartConvMat[1] = m_lattice.b * cos(gamma);
+  m_cartConvMat[2] = m_lattice.c * cos(beta);
+  m_cartConvMat[3] = m_lattice.b * sin(gamma);
+  m_cartConvMat[4] = m_lattice.c * (cos(alpha) - cos(beta) * cos(gamma)) / sin(gamma);
+  m_cartConvMat[5] = m_lattice.c * v / sin(gamma);
+
+  m_cartConvMatCached = true;
 }
 
 void Crystal::rescaleVolume(double newVolume)
@@ -241,8 +272,9 @@ void Crystal::rescaleVolume(double newVolume)
   m_lattice.a *= scalingFactor;
   m_lattice.b *= scalingFactor;
   m_lattice.c *= scalingFactor;
-  // This may put the lattice parameters outside the max and min bounds.
-  // Might want to check up on those
+
+  // Reset lattice caches
+  resetLatticeCaches();
 }
 
 double Crystal::getDistance(const atomStruct& as1,
@@ -452,7 +484,7 @@ bool Crystal::areIADsOkay(const atomStruct& as) const
   // problem of missing short distances caused by periodicity
   tempCrystal.centerCellAroundAtom(ind);
 
-  vector<atomStruct> temp = tempCrystal.getAtoms();
+  const vector<atomStruct>& temp = tempCrystal.getAtoms();
   for (size_t i = 0; i < temp.size(); i++) {
     if (i == ind) continue;
     double minIAD = getMinIAD(temp.at(ind), temp.at(i));

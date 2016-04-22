@@ -79,16 +79,6 @@ vector<numAndType> SpgGen::getNumOfEachType(const vector<uint>& atoms)
   return numOfEachType;
 }
 
-// A unique position is a position that has no x, y, or z in it
-bool SpgGen::containsUniquePosition(const wyckPos& pos)
-{
-  vector<string> xyzStrings = split(getWyckCoords(pos), ',');
-  assert(xyzStrings.size() == 3);
-  for (size_t i = 0; i < xyzStrings.size(); i++)
-    if (!isNumber(xyzStrings.at(i))) return false;
-  return true;
-}
-
 // Returns true on success and false on failure
 bool getNumberInFirstTerm(const string& s, double& result, size_t& len)
 {
@@ -246,7 +236,7 @@ vector<string> SpgGen::getVectorOfFillPositions(uint spg)
   return ret;
 }
 
-bool SpgGen::addWyckoffAtomRandomly(Crystal& crystal, wyckPos& position,
+bool SpgGen::addWyckoffAtomRandomly(Crystal& crystal, const wyckPos& position,
                                      uint atomicNum, uint spg, int maxAttempts)
 {
   START_FT;
@@ -468,9 +458,6 @@ Crystal SpgGen::spgGenCrystal(const spgGenInput& input)
     return Crystal();
   }
 
-  // Limit the possibilities to be only those that allow the forced Wyckoff
-  // assignments to be satisfied.
-  vector<pair<uint, char>> alreadyUsedForcedWyckAssignments;
   // The tuple is as follows: <atomicNum, wyckLet, numTimesUsed>
   vector<tuple<uint, char, uint>> forcedWyckAssignmentsAndNumber = getForcedWyckAssignmentsAndNumber(forcedWyckAssignments);
 
@@ -530,10 +517,11 @@ Crystal SpgGen::spgGenCrystal(const spgGenInput& input)
 
     bool assignmentsSuccessful = true;
     for (size_t j = 0; j < assignments.size(); j++) {
-      wyckPos pos = assignments.at(j).first;
+      const wyckPos& pos = assignments.at(j).first;
       uint atomicNum = assignments.at(j).second;
       if (!addWyckoffAtomRandomly(crystal, pos, atomicNum, spg)) {
         assignmentsSuccessful = false;
+        break;
       }
     }
 
@@ -554,8 +542,11 @@ Crystal SpgGen::spgGenCrystal(const spgGenInput& input)
   }
 
   // If we made it here, we failed to generate the crystal
-  cout << "After " << numAttempts << " attempts: failed to generate "
-       << "a crystal of spg " << spg << ".\n";
+  stringstream errMsg;
+  errMsg << "After " << numAttempts << " attempts: failed to generate "
+         << "a crystal of spg " << spg << ".\n";
+  if (verbosity != 'n') appendToLogFile(errMsg.str());
+  cerr << errMsg.str();
   return Crystal();
 }
 
