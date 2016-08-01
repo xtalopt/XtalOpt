@@ -42,6 +42,15 @@ namespace XtalOpt {
       CC_MINRADIUS
     };
 
+    enum IADColumns
+    {
+     IC_CENTER = 0,
+     IC_NEIGHBOR = 1,
+     IC_NUMBER = 2,
+     IC_DIST = 3,
+     IC_GEOM = 4
+    };
+
   public slots:
     void lockGUI();
     void readSettings(const QString &filename = "");
@@ -59,6 +68,13 @@ namespace XtalOpt {
     void writeA();
     void writeB();
     void writeC();
+    void updateIAD();
+    //void updateIADTable();
+    void addRow();
+    void removeRow();
+    void removeAll();
+    void getGeom(QList<QString> & geomList, unsigned int numNeighbors);
+    void setGeom(unsigned int & geom, QString strGeom);
 
   signals:
 

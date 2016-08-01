@@ -44,6 +44,12 @@ namespace XtalOpt {
     unsigned int quantity;
   };
 
+  struct IAD {
+    unsigned int number;
+    double dist;
+    unsigned int geom;
+  };
+
   class XtalOpt : public GlobalSearch::OptBase
   {
     Q_OBJECT
@@ -128,6 +134,7 @@ namespace XtalOpt {
         bx,                          // Number of divisions for cell vector 'b'
         cx;                          // Number of divisions for cell vector 'c'
 
+
     double tol_xcLength;        	// Duplicate matching tolerances
     double tol_xcAngle;
     double tol_spg;
@@ -136,8 +143,10 @@ namespace XtalOpt {
     bool using_interatomicDistanceLimit;
     bool using_mitosis;
     bool using_subcellPrint;
+    bool using_customIAD;
 
     QHash<uint, XtalCompositionStruct> comp;
+    QHash<QPair<int, int>, IAD> compIAD;
     QStringList seedList;
 
     QMutex *xtalInitMutex;

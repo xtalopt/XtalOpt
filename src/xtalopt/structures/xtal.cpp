@@ -27,6 +27,7 @@
 
 #include <openbabel/generic.h>
 #include <openbabel/forcefield.h>
+#include <openbabel/builder.h>
 
 extern "C" {
 #include <spglib/spglib.h>
@@ -747,8 +748,129 @@ namespace XtalOpt {
     atom = &atm;
     (*atom)->setPos(cartCoords);
     (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
+
     return true;
   }
+
+//IAD corrected function
+  bool Xtal::addAtomRandomly(
+      unsigned int atomicNumber,
+      const QHash<unsigned int, XtalCompositionStruct> & limits,
+      const QHash<QPair<int, int>, IAD> & limitsIAD,
+      bool useIAD,
+      int maxAttempts, Avogadro::Atom **atom)
+  {
+    Eigen::Vector3d cartCoords;
+    bool success;
+
+    // For first atom, add to 0, 0, 0
+    if (numAtoms() == 0) {
+      cartCoords = Eigen::Vector3d (0,0,0);
+    }
+    else {
+      unsigned int i = 0;
+      vector3 fracCoords;
+
+      // Cache the minimum radius for the new atom
+      const double newMinRadius = limits.value(atomicNumber).minRadius;
+
+      // Compute a cut off distance -- atoms farther away than this value
+      // will abort the check early.
+      double maxCheckDistance = 0.0;
+      for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
+           it = limits.constBegin(), it_end = limits.constEnd(); it != it_end;
+           ++it) {
+        if (it.value().minRadius > maxCheckDistance) {
+          maxCheckDistance = it.value().minRadius;
+        }
+      }
+      maxCheckDistance += newMinRadius;
+      const double maxCheckDistSquared = maxCheckDistance*maxCheckDistance;
+
+      do {
+        // Reset sentinal
+        success = true;
+
+        // Generate fractional coordinates
+        fracCoords.Set(RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+
+        // Convert to cartesian coordinates and store
+        cartCoords = Eigen::Vector3d(this->fracToCart(fracCoords).AsArray());
+
+        // Compare distance to each atom in xtal with minimum radii
+        QVector<double> squaredDists;
+        this->getSquaredAtomicDistancesToPoint(cartCoords, &squaredDists);
+        Q_ASSERT_X(squaredDists.size() == this->numAtoms(), Q_FUNC_INFO,
+                   "Size of distance list does not match number of atoms.");
+
+        for (int dist_ind = 0; dist_ind < squaredDists.size(); ++dist_ind) {
+          const double &curDistSquared = squaredDists[dist_ind];
+          // Save a bit of time if distance is huge...
+          if (curDistSquared > maxCheckDistSquared) {
+            continue;
+          }
+          // Compare distance to minimum:
+          const double minDist = newMinRadius + limits.value(
+                this->atom(dist_ind)->atomicNumber()).minRadius;
+          const double minDistSquared = minDist * minDist;
+
+          if (curDistSquared < minDistSquared) {
+            success = false;
+            break;
+          }
+        }
+
+      } while (++i < maxAttempts && !success);
+
+      if (i >= maxAttempts) return false;
+    }
+    Atom *atm = addAtom();
+    atom = &atm;
+    (*atom)->setPos(cartCoords);
+    (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
+
+    if (useIAD == true) {
+      int neighbor;
+      int number;
+      double dist;
+      int geom;
+
+      for (QHash<QPair<int, int>, IAD>::const_iterator it = limitsIAD.constBegin(), it_end = limitsIAD.constEnd(); it != it_end; it++) {
+        QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+        int first = key.first;
+        if (atomicNumber==first) {
+          neighbor = key.second;
+          number = it.value().number;
+          dist = it.value().dist;
+          geom = it.value().geom;
+        }
+      }
+
+      OpenBabel::OBMol obmol = OBMol();
+      OpenBabel::OBAtom *obatom = obmol.GetAtom((*atom)->index()+1);
+      obatom->SetImplicitValence(number);
+      obmol.SetImplicitValencePerceived();
+      obatom->SetHyb(geom);
+      obmol.SetHybridizationPerceived();
+      obmol.AddHydrogens(obatom); 
+      unsigned int numberAtoms = numAtoms();
+      int j = 0;
+      for (unsigned int i = numberAtoms+1; i <= obmol.NumAtoms(); ++i, ++j) {
+        OpenBabel::OBAtom *obatom2 = obmol.GetAtom(i);
+        double currDist = obatom2->GetDistance(obatom);
+        vector3 v = ((obatom2->GetVector()-obatom->GetVector())*(dist/currDist))+obatom->GetVector();
+        obatom2->SetVector(v);
+        Atom *a;
+        a = addAtom();
+        a->setOBAtom(obatom2);
+        a->setAtomicNumber(neighbor);
+      }
+    }
+
+    return true;
+  }
+
+
 
   bool Xtal::fillSuperCell(int a, int b, int c, Xtal * myXtal) {
       qDebug() << "Xtal has a=" << a << " b=" << b << " c=" << c;

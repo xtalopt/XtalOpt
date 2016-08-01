@@ -518,15 +518,49 @@ namespace XtalOpt {
 
     } else {
         for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+            //To avoid messing up the stoichiometry with the molecule builder
             atomicNum = atomicNums.at(num_idx);
             q = comp.value(atomicNum).quantity;
+    
+            bool addAtom = true;
+            bool useIAD = false;
+            for (QHash<QPair<int, int>, IAD>::const_iterator it = this->compIAD.constBegin(), it_end = this->compIAD.constEnd(); it != it_end; it++) {
+              QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+              int first = key.first;
+              if (atomicNum==first) {
+                useIAD = true;
+                break;
+              }
+            }
+
+            for (QHash<QPair<int, int>, IAD>::const_iterator it = this->compIAD.constBegin(), it_end = this->compIAD.constEnd(); it != it_end; it++) {
+              QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+              int second = key.second;
+              if (atomicNum==second) {
+                addAtom = false;
+                break;
+              }
+            }
+
             for (uint i = 0; i < q; i++) {
-                if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
-                    xtal->deleteLater();
-                    debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+              if (useIAD==true && addAtom==true) {
+                if (!xtal->addAtomRandomly(atomicNum, this->comp, 
+                            this->compIAD, useIAD)) {
+                  xtal->deleteLater();
+                  debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
                         "specified interatomic distance.");
-                    return 0;
+                  return 0;
                 }
+              } else if (useIAD==false && addAtom==true) {
+                if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+                  xtal->deleteLater();
+                  debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                        "specified interatomic distance.");
+                  return 0;
+                }
+              } else {
+                  break;
+              }
             }
         }
     }

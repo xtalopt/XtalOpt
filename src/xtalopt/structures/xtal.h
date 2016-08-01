@@ -30,6 +30,7 @@ class QFile;
 
 namespace XtalOpt {
   class XtalCompositionStruct;
+  class IAD;
 
   class Xtal : public GlobalSearch::Structure
   {
@@ -62,6 +63,13 @@ namespace XtalOpt {
                          const QHash<unsigned int, XtalCompositionStruct> & limits,
                          int maxAttempts = 100.0,
                          Avogadro::Atom **atom = 0);
+    bool addAtomRandomly(unsigned int atomicNumber,
+                         const QHash<unsigned int, XtalCompositionStruct> & limits,
+                         const QHash<QPair<int, int>, IAD> & limitsIAD,
+                         bool useIAD,
+                         int maxAttempts = 100.0,
+                         Avogadro::Atom **atom = 0);
+
 
     // Fills a supercell for the mitosis process
     bool fillSuperCell(int a, int b, int c, Xtal * myXtal);
