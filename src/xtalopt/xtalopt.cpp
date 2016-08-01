@@ -537,8 +537,15 @@ namespace XtalOpt {
               QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
               int second = key.second;
               if (atomicNum==second) {
-                addAtom = false;
-                break;
+                int first = key.first;
+                unsigned int total = comp.value(first).quantity * it->number;
+                if (q - total == 0) {
+                  addAtom = false;
+                  break;
+                } else {
+                  q -= total;
+                  break;
+                }
               }
             }
 

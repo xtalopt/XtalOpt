@@ -665,9 +665,9 @@ namespace XtalOpt {
 
     unsigned int length = ui.table_iad->rowCount();
     if (length == 0) {
-        xtalopt->compIAD.clear();
-      //  this->updateIADTable();
-        return;
+      xtalopt->compIAD.clear();
+      this->updateIADTable();
+      return;
     }
 
     for (uint i = 0; i < length; i++) {
@@ -676,26 +676,42 @@ namespace XtalOpt {
       QString neighbor = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_NEIGHBOR))->currentText();
       int neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
       
+      //Number of neighbors
       unsigned int number = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_NUMBER))->currentText().toUInt();
+      
+      //IAD distance
       double dist = ui.table_iad->item(i, IC_DIST)->text().toDouble();
+      QString strDist = QString::number(dist, 'f', 3);
+      QTableWidgetItem *distItem = new QTableWidgetItem(strDist);
+      ui.table_iad->setItem(i, IC_DIST, distItem);
+     
+      //Do the geometry options need to be changed?
+      if (xtalopt->compIAD[qMakePair<int, int>(centerNum, neighborNum)].number != number) {
+        QList<QString> geomList;
+        this->getGeom(geomList, number);
+      
+        QComboBox* combo_geom = new QComboBox();
+        combo_geom->insertItems(0, geomList);
+        ui.table_iad->setCellWidget(i, IC_GEOM, combo_geom);
+        connect(combo_geom, SIGNAL(currentIndexChanged(int)), 
+            this, SLOT(updateIAD()));
+      }
+
+      //Geometry
       unsigned int geom = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_GEOM))->currentText().toUInt();
       QString strGeom = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_GEOM))->currentText();
       this->setGeom(geom, strGeom);
 
+      //Add to hash...push to xtalopt hash
       compIAD[qMakePair<int, int>(centerNum, neighborNum)].number = number;
       compIAD[qMakePair<int, int>(centerNum, neighborNum)].dist = dist;
-      //compIAD[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
+      compIAD[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
       
       xtalopt->compIAD[qMakePair<int, int>(centerNum, neighborNum)].number = number;
       xtalopt->compIAD[qMakePair<int, int>(centerNum, neighborNum)].dist = dist;
       xtalopt->compIAD[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
     }
   }
-
-  /*void TabInit::updateIADTable()
-  {
-
-  }*/
 
   //Actions for buttons to add/remove rows from the IAD table
   void TabInit::addRow()

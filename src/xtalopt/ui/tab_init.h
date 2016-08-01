@@ -69,7 +69,6 @@ namespace XtalOpt {
     void writeB();
     void writeC();
     void updateIAD();
-    //void updateIADTable();
     void addRow();
     void removeRow();
     void removeAll();
