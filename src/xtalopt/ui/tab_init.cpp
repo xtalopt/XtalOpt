@@ -666,7 +666,7 @@ namespace XtalOpt {
     unsigned int length = ui.table_iad->rowCount();
     if (length == 0) {
       xtalopt->compIAD.clear();
-      this->updateIADTable();
+      //this->updateIADTable();
       return;
     }
 
@@ -874,12 +874,12 @@ namespace XtalOpt {
       geom = 5;
     //Five neighbors
     } else if (strGeom.contains("Trigonal Bipyramidal")) {
-      geom = 4;
-    } else if (strGeom.contains("Square Pyramidal")) {
       geom = 5;
+    } else if (strGeom.contains("Square Pyramidal")) {
+      geom = 6;
     //Six neighbors
     } else if (strGeom.contains("Octahedral")) {
-      geom = 5;
+      geom = 6;
     //Default
     } else {
       geom = 0;
