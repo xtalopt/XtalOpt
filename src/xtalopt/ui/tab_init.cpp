@@ -662,8 +662,24 @@ namespace XtalOpt {
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
-    QHash<QPair<int, int>, IAD> compIAD;
+    QList<unsigned int> keys = xtalopt->comp.keys();
+    qSort(keys);
+    int numKeys = keys.size();
+    
+    QList<QPair<int, int> > keysIAD = xtalopt->compIAD.keys();
+    qSort(keysIAD);
+    int numKeysIAD = keysIAD.size();
+    
+    QList<unsigned int> firstKeysIAD;
+    firstKeysIAD.clear();
+    QList<unsigned int> secondKeysIAD;
+    secondKeysIAD.clear();
+    for (int i = 0; i < numKeysIAD; i++) {
+      firstKeysIAD.append((keysIAD.at(i).first));
+      secondKeysIAD.append((keysIAD.at(i).second));
+    }
 
+    unsigned int numRows = ui.table_comp->rowCount();
     unsigned int length = ui.table_iad->rowCount();
     if (length == 0) {
       xtalopt->compIAD.clear();
@@ -671,21 +687,68 @@ namespace XtalOpt {
       return;
     }
 
-    QList<unsigned int> keys = xtalopt->comp.keys();
-    qSort(keys);
- 
     for (int i = length-1; i >= 0; i--) {
-      QString center = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_CENTER))->currentText();        int centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+      QString center = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_CENTER))->currentText();        
+      int centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
       QString neighbor = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_NEIGHBOR))->currentText();
       int neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
-      
+/*
+      //Update center and neighbor lists
+      QList<QString> centerList;
+      QList<QString> neighborList;
+      for (int j = 0; j < numRows; j++) {
+        unsigned int atomicNum = keys.at(j);
+
+        QString symbol = QString(OpenBabel::etab.GetSymbol(atomicNum));
+        if (atomicNum!=1 && !firstKeysIAD.contains(atomicNum))
+          centerList.append(symbol);
+        if (center != symbol && !firstKeysIAD.contains(atomicNum)) {
+          if (!secondKeysIAD.contains(atomicNum)) {
+            unsigned int q = 0; 
+            for (QHash<QPair<int, int>, IAD>::const_iterator it = xtalopt->compIAD.constBegin(), it_end = xtalopt->compIAD.constEnd(); it != it_end; it++) {
+              unsigned int first = const_cast<QPair<int, int> &>(it.key()).first;
+              unsigned int second = const_cast<QPair<int, int> &>(it.key()).second;
+              if (second == atomicNum)
+                q += (it->number * xtalopt->comp[first].quantity);
+            }
+            if (xtalopt->comp[atomicNum].quantity-q != 0)
+              neighborList.append(symbol);   
+          } else {
+            neighborList.append(symbol);   
+          }
+        }
+      }
+
+      QComboBox* combo_center = new QComboBox();
+      combo_center->insertItems(0, centerList);
+      if (centerList.contains(center)) {
+        combo_center->setCurrentIndex(combo_center->findText(center));
+      }
+      ui.table_iad->setCellWidget(i, IC_CENTER, combo_center);
+      connect(combo_center, SIGNAL(currentIndexChanged(int)), 
+            this, SLOT(updateIAD()));
+
+      QComboBox* combo_neighbor = new QComboBox();
+      combo_neighbor->insertItems(0, neighborList);
+      if (neighborList.contains(neighbor)) {
+        combo_neighbor->setCurrentIndex(combo_neighbor->findText(neighbor));
+      }
+      ui.table_iad->setCellWidget(i, IC_NEIGHBOR, combo_neighbor);
+      connect(combo_neighbor, SIGNAL(currentIndexChanged(int)), 
+            this, SLOT(updateIAD()));
+   
+    if (centerList.isEmpty() || neighborList.isEmpty())
+      return;
+*/
+
+
       if (!keys.contains(centerNum) || !keys.contains(neighborNum)) {
         xtalopt->compIAD.remove(QPair<int, int>(centerNum, neighborNum));
         ui.table_iad->removeRow(i);      
         return;
       }
       
-      //Number of neighbors
+      //Number of neighbors - backward
       unsigned int hiNumber = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_NUMBER))->itemText(0).toUInt();
       unsigned int number = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_NUMBER))->currentText().toUInt();
       QList<QString> numberList;
@@ -742,21 +805,63 @@ namespace XtalOpt {
       this->setGeom(geom, strGeom);
 
       //Add to hash...push to xtalopt hash
-      compIAD[qMakePair<int, int>(centerNum, neighborNum)].number = number;
-      compIAD[qMakePair<int, int>(centerNum, neighborNum)].dist = dist;
-      compIAD[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
-      
       xtalopt->compIAD[qMakePair<int, int>(centerNum, neighborNum)].number = number;
       xtalopt->compIAD[qMakePair<int, int>(centerNum, neighborNum)].dist = dist;
       xtalopt->compIAD[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
     }
   
+    //Go through table again - forward
     for (int i = 0; i < length; i++) {
-      QString center = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_CENTER))->currentText();        int centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+      QString center = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_CENTER))->currentText();        
+      int centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
       QString neighbor = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_NEIGHBOR))->currentText();
       int neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
- 
-      //Number of neighbors
+
+/*      //Update center and neighbor lists
+      QList<QString> centerList;
+      QList<QString> neighborList;
+      for (int j = 0; j < numRows; j++) {
+        unsigned int atomicNum = keys.at(j);
+
+        QString symbol = QString(OpenBabel::etab.GetSymbol(atomicNum));
+        if (atomicNum!=1 && !firstKeysIAD.contains(atomicNum))
+          centerList.append(symbol);
+        if (center != symbol && !firstKeysIAD.contains(atomicNum)) {
+          if (!secondKeysIAD.contains(atomicNum)) {
+            unsigned int q = 0; 
+            for (QHash<QPair<int, int>, IAD>::const_iterator it = xtalopt->compIAD.constBegin(), it_end = xtalopt->compIAD.constEnd(); it != it_end; it++) {
+              unsigned int first = const_cast<QPair<int, int> &>(it.key()).first;
+              unsigned int second = const_cast<QPair<int, int> &>(it.key()).second;
+              if (second == atomicNum)
+                q += (it->number * xtalopt->comp[first].quantity);
+            }
+            if (xtalopt->comp[atomicNum].quantity-q != 0)
+              neighborList.append(symbol);   
+          } else {
+            neighborList.append(symbol);   
+          }
+        }
+      }
+
+      QComboBox* combo_center = new QComboBox();
+      combo_center->insertItems(0, centerList);
+      if (centerList.contains(center)) {
+        combo_center->setCurrentIndex(combo_center->findText(center));
+      }
+      ui.table_iad->setCellWidget(i, IC_CENTER, combo_center);
+      connect(combo_center, SIGNAL(currentIndexChanged(int)), 
+            this, SLOT(updateIAD()));
+
+      QComboBox* combo_neighbor = new QComboBox();
+      combo_neighbor->insertItems(0, neighborList);
+      if (neighborList.contains(neighbor)) {
+        combo_neighbor->setCurrentIndex(combo_neighbor->findText(neighbor));
+      }
+      ui.table_iad->setCellWidget(i, IC_NEIGHBOR, combo_neighbor);
+      connect(combo_neighbor, SIGNAL(currentIndexChanged(int)), 
+            this, SLOT(updateIAD()));
+*/
+      //Number of neighbors - forward
       unsigned int hiNumber = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_NUMBER))->itemText(0).toUInt();
       unsigned int number = qobject_cast<QComboBox*>(ui.table_iad->cellWidget(i, IC_NUMBER))->currentText().toUInt();
       QList<QString> numberList;
@@ -788,8 +893,7 @@ namespace XtalOpt {
                 this, SLOT(updateIAD()));
         //}
       }
-
-      compIAD[qMakePair<int, int>(centerNum, neighborNum)].number = number;
+      
       xtalopt->compIAD[qMakePair<int, int>(centerNum, neighborNum)].number = number;
 
     }
@@ -809,13 +913,13 @@ namespace XtalOpt {
     
     QList<QPair<int, int> > keysIAD = xtalopt->compIAD.keys();
     qSort(keysIAD);
-    int numRowsIAD = keysIAD.size();
+    int numKeysIAD = keysIAD.size();
     
     QList<unsigned int> firstKeysIAD;
     firstKeysIAD.clear();
     QList<unsigned int> secondKeysIAD;
     secondKeysIAD.clear();
-    for (int i = 0; i < numRowsIAD; i++) {
+    for (int i = 0; i < numKeysIAD; i++) {
       firstKeysIAD.append((keysIAD.at(i).first));
       secondKeysIAD.append((keysIAD.at(i).second));
     }
@@ -834,7 +938,7 @@ namespace XtalOpt {
       QString symbol = QString(OpenBabel::etab.GetSymbol(atomicNum));
       if (atomicNum!=1 && !firstKeysIAD.contains(atomicNum))
         centerList.append(symbol);
-      if (!centerList.contains(symbol) && !firstKeysIAD.contains(atomicNum)) {
+      if (centerList.value(0)!=symbol && !firstKeysIAD.contains(atomicNum)) {
         if (!secondKeysIAD.contains(atomicNum)) {
           unsigned int q = 0; 
           for (QHash<QPair<int, int>, IAD>::const_iterator it = xtalopt->compIAD.constBegin(), it_end = xtalopt->compIAD.constEnd(); it != it_end; it++) {
