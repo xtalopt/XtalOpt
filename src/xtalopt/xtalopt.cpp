@@ -533,20 +533,25 @@ namespace XtalOpt {
               }
             }
 
+            unsigned int total = 0;
             for (QHash<QPair<int, int>, IAD>::const_iterator it = this->compIAD.constBegin(), it_end = this->compIAD.constEnd(); it != it_end; it++) {
               QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
               int second = key.second;
               if (atomicNum==second) {
                 int first = key.first;
-                unsigned int total = comp.value(first).quantity * it->number;
-                if (q - total == 0) {
+                unsigned int current = comp.value(first).quantity * it->number;
+                if (q - current == 0) {
                   addAtom = false;
                   break;
                 } else {
-                  q -= total;
-                  break;
+                  total += current;
                 }
               }
+            }
+            if (q == total) {
+              addAtom = false;
+            } else {
+              q -= total;
             }
 
             for (uint i = 0; i < q; i++) {
