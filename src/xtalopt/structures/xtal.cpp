@@ -852,7 +852,7 @@ namespace XtalOpt {
       obmol.SetImplicitValencePerceived();
       obatom->SetHyb(geom);
       obmol.SetHybridizationPerceived();
-      obmol.AddHydrogens(obatom); 
+      obmol.AddHydrogens(obatom);
       unsigned int numberAtoms = numAtoms();
       int j = 0;
       for (unsigned int i = numberAtoms+1; i <= obmol.NumAtoms(); ++i, ++j) {

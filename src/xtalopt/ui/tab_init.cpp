@@ -1007,7 +1007,7 @@ namespace XtalOpt {
     } else if (strGeom.contains("See-Saw")) {
       geom = 5;
     } else if (strGeom.contains("Square Planar")) {
-      geom = 6;
+      geom = 4;
     //Five neighbors
     } else if (strGeom.contains("Trigonal Bipyramidal")) {
       geom = 5;
