@@ -1,4 +1,4 @@
-XtalOpt
+XtalOpt - r9
 =========
 
 XtalOpt searches for the global minimum of a crystal structure's
@@ -20,3 +20,22 @@ http://xtalopt.github.io/tut.html
 #License
 
 GPL v2 or later. See COPYING.
+
+#Authors
+
+All contributors, in alphabetical order:
+
+- Patrick Avery <psavery@buffalo.edu>
+- Zackary Falls <zmfalls@buffalo.edu>
+- David Lonie <loniedavid@gmail.com>
+
+
+=========
+Included sources from various projects are found under:
+
+- src/spglib   http://spglib.sourceforge.net/
+- src/libssh   http://www.libssh.org/
+
+These files, other than some minor modifications for interoperability
+with XtalOpt/libglobalsearch, are the works of the copyright holders
+specified in the source files.

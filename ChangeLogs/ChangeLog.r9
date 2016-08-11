@@ -1,0 +1,33 @@
+* Enhancements / New features:
+** Added support for the LSF and LoadLeveler queuing systems.
+** Added support for the SIESTA program package.
+** Incorporated the XtalComp library for duplicate structure removal (niching).
+** Added the "mitosis" function, which increases the local order of structures in the initial generation by replicating a unit cell to create a supercell for constructing the starting structure.
+** Customizable polling interval for updating remote queue information.
+** Automatic removal of remote working files (optional).
+** Optional removal of unnecessary files for VASP calculations.
+** Option to rank all current structures and export structures to a new subdirectory as .cml, CONTCAR, or .got.
+** New option to replace a failing structure with a new offspring.
+** Ability to “inject” (seed) a structure mid-run.
+** Minimum atomic separation now specified as a fraction of the sum of atomic radii, with a hard minimum.
+** Set a final number of structures to be generated before termination of the search.
+** Changing the minimum and maximum cell vectors now directly influences the minimum and maximum volume for the cell.
+
+* Bug fixes:
+** Numerous misc bug-fixes.
+
+* Documentation:
+** New program website
+   - http://xtalopt.github.io/
+** New landing page for user tutorials
+   - http://xtalopt.github.io/tut.html
+** New landing page for user docs
+   - http://xtalopt.github.io/api/html/annotated.html
+
+* Maintenance:
+** More server-friendly method of fetching queue data.
+** Support for GULP shell/core calculations added.
+** Submission of remote calculations is throttled to ease DRMS load.
+** Fix compilation against Qt 4.6.3 and 4.8.0.
+** Bundled libssh library removed, now an optional dependency.
+** Added option to use command-line ssh/scp interfaces when libssh is unavailable or Kerberos authentication is needed.
