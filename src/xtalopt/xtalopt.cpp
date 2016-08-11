@@ -695,7 +695,7 @@ namespace XtalOpt {
               .arg(locpath_s));
       }
     }
-    xtal->moveToThread(m_tracker->thread());
+//    xtal->moveToThread(m_tracker->thread());
     xtal->setupConnections();
     xtal->setFileName(locpath_s);
     xtal->setRempath(rempath_s);
