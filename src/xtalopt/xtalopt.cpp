@@ -24,8 +24,8 @@
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/genetic.h>
 
-#include <spgGen/include/xtaloptWrapper.h>
-#include <xtalopt/ui/spgGenDialog.h>
+#include <randSpg/include/xtaloptWrapper.h>
+#include <xtalopt/ui/randSpgDialog.h>
 
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
@@ -57,7 +57,9 @@
 #include <QtCore/QtConcurrentRun>
 #include <QtCore/QtConcurrentMap>
 
-#include <spgGen/include/spgGen.h>
+#include <randSpg/include/randSpg.h>
+
+#include <atomic> // For thread-safe types
 
 #define ANGSTROM_TO_BOHR 1.889725989
 
@@ -70,9 +72,7 @@ namespace XtalOpt {
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
     OptBase(parent),
     m_initWC(new SlottedWaitCondition (this)),
-    using_maxDupOffspring(false),
-    maxDupOffspring(5),
-    using_spgGen(false),
+    using_randSpg(false),
     minXtalsOfSpgPerFU(QList<int>())
   {
     xtalInitMutex = new QMutex;
@@ -278,7 +278,7 @@ namespace XtalOpt {
     }
 
     // Perform a regular random generation
-    if (!using_spgGen) {
+    if (!using_randSpg) {
       // Generation loop...
       while (newXtalCount < numInitial) {
         updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
@@ -315,7 +315,7 @@ namespace XtalOpt {
       for (size_t i = 0; i < minXtalsOfSpgPerFU.size(); i++) {
         // The value in the vector is -1 if that spg is to not be used
         if (minXtalsOfSpgPerFU.at(i) != -1)
-          numXtalsToBeGenerated += minXtalsOfSpgPerFU.at(i);
+          numXtalsToBeGenerated += (minXtalsOfSpgPerFU.at(i) * formulaUnitsList.size());
       }
 
       // Now that minXtalsOfSpgPerFU is set up, proceed!
@@ -325,16 +325,22 @@ namespace XtalOpt {
       for (size_t i = 0; i < spgStillNeeded.size(); i++) {
         while (spgStillNeeded.at(i) > 0) {
           for (size_t FU_ind = 0; FU_ind < formulaUnitsList.size(); FU_ind++) {
-            uint spg = i + 1;
-            uint FU = formulaUnitsList.at(FU_ind);
-            // If the spacegroup isn't possible for this FU, just continue
-            if (!SpgGen::isSpgPossible(spg, getStdVecOfAtoms(FU))) continue;
+            // Update the progresss bar
             updateProgressBar((numXtalsToBeGenerated - failed > numInitial ?
                                numXtalsToBeGenerated - failed : numInitial),
                               newXtalCount + failed, newXtalCount);
 
+            uint spg = i + 1;
+            uint FU = formulaUnitsList.at(FU_ind);
+
+            // If the spacegroup isn't possible for this FU, just continue
+            if (!RandSpg::isSpgPossible(spg, getStdVecOfAtoms(FU))) {
+              numXtalsToBeGenerated--;
+              continue;
+            }
+
             // Generate/Check xtal
-            xtal = spgGenXtal(1, newXtalCount + 1, FU, spg);
+            xtal = randSpgXtal(1, newXtalCount + 1, FU, spg);
             if (!checkXtal(xtal)) {
               delete xtal;
               qWarning() << "Failed to generate an xtal with spacegroup of"
@@ -361,9 +367,9 @@ namespace XtalOpt {
         // Randomly select a possible spg
         uint randomSpg = pickRandomSpgFromPossibleOnes();//pickRandomSpgFromPossibleOnes();
         // If it isn't possible, try again
-        if (!SpgGen::isSpgPossible(randomSpg, getStdVecOfAtoms(randomFU))) continue;
+        if (!RandSpg::isSpgPossible(randomSpg, getStdVecOfAtoms(randomFU))) continue;
         // Try it out
-        xtal = spgGenXtal(1, newXtalCount + 1, randomFU, randomSpg);
+        xtal = randSpgXtal(1, newXtalCount + 1, randomFU, randomSpg);
         if (!checkXtal(xtal)) {
           delete xtal;
           qWarning() << "Failed to generate an xtal with spacegroup of"
@@ -427,8 +433,20 @@ namespace XtalOpt {
         xtal->addAtom();
       }
     }
+
+    // We will only display the warning once, so use a static bool for this
+    // Use an atomic bool for thread safety
+    static std::atomic_bool warningAlreadyDisplayed(false);
+    if (!warningAlreadyDisplayed.load()) {
+      warning("XtalOpt no longer check to make sure seed "
+              "xtals obey user-defined constraints (minimum "
+              "interatomic distances, min/max volume, etc.). Be sure "
+              "your seed structures are reasonable.");
+      warningAlreadyDisplayed = true;
+    }
+
     xtal->moveToThread(m_queue->thread());
-    if ( !m_optimizer->read(xtal, filename) || !this->checkXtal(xtal, &err)) {
+    if ( !m_optimizer->read(xtal, filename) || !this->checkComposition(xtal, &err)) {
       error(tr("Error loading seed %1\n\n%2").arg(filename).arg(err));
       xtal->deleteLater();
       return false;
@@ -556,7 +574,7 @@ namespace XtalOpt {
     return static_cast<Structure*>(oldXtal);
   }
 
-  Xtal* XtalOpt::spgGenXtal(uint generation, uint id, uint FU, uint spg)
+  Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg)
   {
     INIT_RANDOM_GENERATOR();
 
@@ -568,7 +586,7 @@ namespace XtalOpt {
     setLatticeMinsAndMaxes(latticeMins, latticeMaxes);
 
     // Create the input
-    spgGenInput input(spg, getStdVecOfAtoms(FU), latticeMins, latticeMaxes);
+    randSpgInput input(spg, getStdVecOfAtoms(FU), latticeMins, latticeMaxes);
 
     // Add various other input options
     input.IADScalingFactor = scaleFactor;
@@ -585,7 +603,7 @@ namespace XtalOpt {
     size_t numAttempts = 0;
     do {
       numAttempts++;
-      xtal = SpgGenXtalOptWrapper::spgGenXtal(input);
+      xtal = RandSpgXtalOptWrapper::randSpgXtal(input);
       // So that we don't crash the program, make sure the xtal exists
       // before attempting to get its spacegroup number
       if (xtal) {
@@ -1753,12 +1771,7 @@ namespace XtalOpt {
       structures.removeLast();
     }
 
-    // Make list of weighted probabilities based on enthalpy values
-    // Inputting a maxDupOffspring of -1 int getProbabilityList()
-    // makes the maximum number of duplicates unlimited.
-    int temp_maxDupOffspring = -1;
-    if (using_maxDupOffspring) temp_maxDupOffspring = maxDupOffspring;
-    QList<double> probs = getProbabilityList(structures, temp_maxDupOffspring);
+    QList<double> probs = getProbabilityList(structures);
 
     // Cast Structures into Xtals
     QList<Xtal*> xtals;
@@ -1833,6 +1846,52 @@ namespace XtalOpt {
     return true;
   }
 
+  bool XtalOpt::checkComposition(Xtal *xtal, QString * err) {
+    // Check composition
+    QList<unsigned int> atomTypes = comp.keys();
+    QList<unsigned int> atomCounts;
+#if QT_VERSION >= 0x040700
+    atomCounts.reserve(atomTypes.size());
+#endif // QT_VERSION
+    for (size_t i = 0; i < atomTypes.size(); ++i) {
+      atomCounts.append(0);
+    }
+
+    // Count atoms of each type
+    for (size_t i = 0; i < xtal->numAtoms(); ++i) {
+      int typeIndex = atomTypes.indexOf(
+            static_cast<unsigned int>(xtal->atom(i)->atomicNumber()));
+      // Type not found:
+      if (typeIndex == -1) {
+        qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
+        if (err != NULL) {
+          *err = "Bad composition.";
+        }
+        return false;
+      }
+      ++atomCounts[typeIndex];
+    }
+
+    // Check counts. Adjust for formula units.
+    for (size_t i = 0; i < atomTypes.size(); ++i) {
+      if (atomCounts[i] != comp[atomTypes[i]].quantity * xtal->getFormulaUnits()) { //PSA
+        qDebug() << "atomCounts for atomic num "
+                 << QString::number(atomTypes[i]) << "is"
+                 << QString::number(atomCounts[i]) << ". It should be "
+                 << QString::number(comp[atomTypes[i]].quantity * xtal->getFormulaUnits())
+                 << "instead.";
+        qDebug() << "FU is " << QString::number(xtal->getFormulaUnits()) << " and comp[atomTypes[i]].quantity is " << QString::number(comp[atomTypes[i]].quantity);
+        // Incorrect count:
+        qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
+        if (err != NULL) {
+          *err = "Bad composition.";
+        }
+        return false;
+      }
+    }
+    return true;
+  }
+
   bool XtalOpt::checkXtal(Xtal *xtal, QString * err) {
     if (!xtal) {
       if (err != NULL) {
@@ -1851,53 +1910,10 @@ namespace XtalOpt {
       return false;
     }
 
-    // Check composition
-    QList<unsigned int> atomTypes = comp.keys();
-    QList<unsigned int> atomCounts;
-#if QT_VERSION >= 0x040700
-    atomCounts.reserve(atomTypes.size());
-#endif // QT_VERSION
-    for (int i = 0; i < atomTypes.size(); ++i) {
-      atomCounts.append(0);
-    }
-    // Count atoms of each type
-    for (int i = 0; i < xtal->numAtoms(); ++i) {
-      int typeIndex = atomTypes.indexOf(
-            static_cast<unsigned int>(xtal->atom(i)->atomicNumber()));
-      // Type not found:
-      if (typeIndex == -1) {
-        qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
-        if (err != NULL) {
-          *err = "Bad composition.";
-        }
-        return false;
-      }
-      ++atomCounts[typeIndex];
-    }
-
-    // Check counts. Adjust for formula units.
-    for (int i = 0; i < atomTypes.size(); ++i) {
-      if (atomCounts[i] != comp[atomTypes[i]].quantity * xtal->getFormulaUnits()) { //PSA
-        qDebug() << "atomCounts for atomic num "
-                 << QString::number(atomTypes[i]) << "is"
-                 << QString::number(atomCounts[i]) << ". It should be "
-                 << QString::number(comp[atomTypes[i]].quantity * xtal->getFormulaUnits())
-                 << "instead.";
-        qDebug() << "FU is " << QString::number(xtal->getFormulaUnits()) << " and comp[atomTypes[i]].quantity is " << QString::number(comp[atomTypes[i]].quantity);
-       /*error(tr("atomCounts for atomic num %1 is %2. It should be %3 instead.\nFU is %4 and comp[atomTypes[i]].quantity is %5. Spg is %6.")
-                 .arg(atomTypes[i]).arg(atomCounts[i]).arg(comp[atomTypes[i]].quantity * xtal->getFormulaUnits())
-                 .arg(xtal->getFormulaUnits()).arg(comp[atomTypes[i]].quantity).arg(xtal->getSpaceGroupNumber()));*/
-        // Incorrect count:
-        qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
-        if (err != NULL) {
-          *err = "Bad composition.";
-        }
-        return false;
-      }
-    }
+    if (!checkComposition(xtal, err))
+      return false;
 
     // Adjust max and min constraints depending on the formula unit
-
     new_vol_max = static_cast<double>(xtal->getFormulaUnits()) * vol_max;
     new_vol_min = static_cast<double>(xtal->getFormulaUnits()) * vol_min;
 

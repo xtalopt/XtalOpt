@@ -49,7 +49,8 @@ namespace RandomDock {
     enum OptTypes {
       OT_GAMESS = 0,
       OT_ADF,
-      OT_MOPAC
+      OT_MOPAC,
+      OT_GAUSSIAN
     };
 
     enum QueueInterfaces {

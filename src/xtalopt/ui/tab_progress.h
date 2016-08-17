@@ -48,6 +48,7 @@ namespace XtalOpt {
     QString spg;
     QString status;
     QBrush brush;
+    QBrush pen;
   };
 
   class TabProgress : public GlobalSearch::AbstractTab
@@ -100,6 +101,9 @@ namespace XtalOpt {
     void updateRank();
     void clearFiles();
     void printFile();
+    // The signal "readOnlySessionStarted()" calls this function.
+    // It enables column sorting when a read-only session is started.
+    void setColumnSortingEnabled() {ui.table_list->setSortingEnabled(true);};
 
 signals:
     void deleteJob(int);

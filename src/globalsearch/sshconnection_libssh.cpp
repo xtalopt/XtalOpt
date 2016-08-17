@@ -153,8 +153,8 @@ bool SSHConnectionLibSSH::reconnectSession(bool throwExceptions)
 bool SSHConnectionLibSSH::sftpIsConnected()
 {
   START;
-  int errno = sftp_get_error(m_sftp);
-  if (errno == 4 || errno == 6 || errno == 7) return false;
+  int err = sftp_get_error(m_sftp);
+  if (err == 4 || err == 6 || err == 7) return false;
   END;
   return true;
 }

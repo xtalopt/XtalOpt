@@ -116,14 +116,8 @@ namespace XtalOpt {
     connect(ui.spin_perm_ex, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
 
-    // maxDupOffspring
-    connect(ui.cb_maxDupOffspring, SIGNAL(toggled(bool)),
-            this, SLOT(updateOptimizationInfo()));
-    connect(ui.spin_maxDupOffspring, SIGNAL(valueChanged(double)),
-            this, SLOT(updateOptimizationInfo()));
-
-    // spgGen
-    connect(ui.cb_allowSpgGen, SIGNAL(toggled(bool)),
+    // randSpg
+    connect(ui.cb_allowRandSpg, SIGNAL(toggled(bool)),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.push_spgOptions, SIGNAL(clicked()),
             this, SLOT(openSpgOptions()));
@@ -188,10 +182,6 @@ namespace XtalOpt {
     settings->setValue("opt/perm_strainStdev_max",xtalopt->perm_strainStdev_max);
     settings->setValue("opt/perm_ex",           xtalopt->perm_ex);
 
-    settings->setValue("opt/using_maxDupOffspring", xtalopt->using_maxDupOffspring);
-    settings->setValue("opt/maxDupOffspring",
-                       xtalopt->maxDupOffspring);
-
     settings->endGroup();
 
     DESTROY_SETTINGS(filename);
@@ -245,12 +235,6 @@ namespace XtalOpt {
     ui.spin_p_perm->setValue(           settings->value("opt/p_perm",           35).toUInt()     );
     ui.spin_perm_strainStdev_max->setValue(settings->value("opt/perm_strainStdev_max",0.5).toDouble());
     ui.spin_perm_ex->setValue(          settings->value("opt/perm_ex",          4).toUInt()     );
-
-    // maxDupOffspring
-    ui.cb_maxDupOffspring->setChecked(settings->value(
-                                  "opt/using_maxDupOffspring", false).toBool());
-    ui.spin_maxDupOffspring->setValue(
-                     settings->value("opt/maxDupOffspring", 5).toInt());
 
     settings->endGroup();
 
@@ -386,12 +370,8 @@ namespace XtalOpt {
     xtalopt->perm_strainStdev_max	= ui.spin_perm_strainStdev_max->value();
     xtalopt->perm_ex              = ui.spin_perm_ex->value();
 
-    // maxDupOffspring
-    xtalopt->using_maxDupOffspring = ui.cb_maxDupOffspring->isChecked();
-    xtalopt->maxDupOffspring = ui.spin_maxDupOffspring->value();
-
-    // allowSpgGen
-    xtalopt->using_spgGen = ui.cb_allowSpgGen->isChecked();
+    // allowRandSpg
+    xtalopt->using_randSpg = ui.cb_allowRandSpg->isChecked();
 
   }
 
@@ -467,8 +447,8 @@ namespace XtalOpt {
       msgBox.open();
       QCoreApplication::processEvents();
 
-      // Open up the SpgGen dialog
-      m_spgOptions = new SpgGenDialog(xtalopt);
+      // Open up the RandSpg dialog
+      m_spgOptions = new RandSpgDialog(xtalopt);
 
       // Close the mesage box
       msgBox.close();

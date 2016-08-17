@@ -91,7 +91,7 @@ namespace XtalOpt {
       OP_Permustrain
     };
 
-    Xtal* spgGenXtal(uint generation, uint id, uint FU, uint spg);
+    Xtal* randSpgXtal(uint generation, uint id, uint FU, uint spg);
     Xtal* generateRandomXtal(uint generation, uint id);
 
     //Identical to the previous generateRandomXtal except the number of formula units has been determined elsewhere
@@ -110,6 +110,7 @@ namespace XtalOpt {
     GlobalSearch::Structure* replaceWithOffspring(GlobalSearch::Structure *s,
                                                   const QString &reason = "");
     bool checkLimits();
+    bool checkComposition(Xtal *xtal, QString * err = NULL);
     bool checkXtal(Xtal *xtal, QString * err = NULL);
     QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp();
@@ -188,12 +189,8 @@ namespace XtalOpt {
 
     QMutex *xtalInitMutex;
 
-    // Antiselection
-    bool using_maxDupOffspring;
-    int maxDupOffspring;
-
     // Spacegroup generation
-    bool using_spgGen;
+    bool using_randSpg;
     // If the number is -1, that spg is not allowed
     // Otherwise, it represents the minimum number of xtals for that spacegroup
     // per formula unit. The spacegroup it represents is index + 1

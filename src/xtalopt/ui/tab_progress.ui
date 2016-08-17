@@ -154,7 +154,7 @@
    <item row="2" column="5">
     <widget class="QPushButton" name="push_clear">
      <property name="toolTip">
-      <string>This button is used for VASP runs. It removes any extranneous files in each subdirectory in order to reduce disk usage.</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This button is used for VASP runs. It removes any extraneous files in each local subdirectory in order to reduce disk usage.&lt;/p&gt;&lt;p&gt;Files kept are structure.state, POTCAR, CONTCAR, and OUTCAR.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Remov&amp;e Extra Files</string>

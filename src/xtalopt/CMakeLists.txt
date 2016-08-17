@@ -14,7 +14,7 @@ set( xtalopt_SRCS
      optimizers/siesta.cpp
      testing/xtalopttest.cpp
      ui/dialog.cpp
-     ui/spgGenDialog.cpp
+     ui/randSpgDialog.cpp
      ui/tab_init.cpp
      ui/tab_edit.cpp
      ui/tab_opt.cpp
@@ -29,13 +29,13 @@ set( xtalopt_UIS
      ui/tab_progress.ui
      ui/tab_plot.ui
      ui/tab_log.ui
-     ui/spgGenDialog.ui)
+     ui/randSpgDialog.ui)
 
 set( xtalopt_RCS xtalopt.qrc )
 
 process_plugin(xtalopt "${xtalopt_SRCS}" "${xtalopt_UIS}" "${xtalopt_RCS}")
 
-add_dependencies(xtalopt globalsearch XtalComp spglib SpgGenerate)
+add_dependencies(xtalopt globalsearch XtalComp spglib RandSpg)
 
 # Use the C++11 standards
 if(UNIX)
@@ -46,4 +46,4 @@ target_link_libraries( xtalopt
                        globalsearch
                        XtalComp
                        spglib
-                       SpgGenerate)
+                       RandSpg)

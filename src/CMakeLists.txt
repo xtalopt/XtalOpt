@@ -18,7 +18,7 @@ if (ENABLE_EXAMPLESEARCH)
 endif (ENABLE_EXAMPLESEARCH)
 
 if (ENABLE_XTALOPT)
-   add_subdirectory(spgGen)
+   add_subdirectory(randSpg)
    add_subdirectory(spglib)
    add_subdirectory(xtalcomp)
    add_subdirectory(xtalopt)

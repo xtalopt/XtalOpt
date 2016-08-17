@@ -85,7 +85,7 @@ function(process_plugin plugin_name src_list)
 
   set_target_properties(${plugin_name} PROPERTIES
                         OUTPUT_NAME ${plugin_name}
-                        PREFIX "")
+                        PREFIX "" SUFFIX ".so")
 endfunction(process_plugin)
 
 # Set -fPIC on x86_64

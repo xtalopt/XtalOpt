@@ -19,7 +19,7 @@
 
 #include <globalsearch/ui/abstracttab.h>
 
-#include "spgGenDialog.h"
+#include "randSpgDialog.h"
 
 #include "ui_tab_opt.h"
 
@@ -49,7 +49,7 @@ namespace XtalOpt {
 
   private:
     Ui::Tab_Opt ui;
-    SpgGenDialog* m_spgOptions;
+    RandSpgDialog* m_spgOptions;
   };
 }
 
