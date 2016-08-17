@@ -64,7 +64,12 @@
      </column>
      <column>
       <property name="text">
-       <string>Enthalpy (eV)</string>
+       <string>H (eV/FU)</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>FU</string>
       </property>
      </column>
      <column>

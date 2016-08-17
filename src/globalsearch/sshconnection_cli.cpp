@@ -35,7 +35,8 @@ namespace GlobalSearch {
   bool SSHConnectionCLI::execute(const QString &command,
                                  QString &stdout_str,
                                  QString &stderr_str,
-                                 int &exitcode)
+                                 int &exitcode,
+                                 bool printWarning)
   {
     return this->executeSSH(command, QStringList(),
                             &stdout_str, &stderr_str, &exitcode);

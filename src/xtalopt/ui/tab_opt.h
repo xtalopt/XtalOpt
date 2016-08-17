@@ -19,6 +19,8 @@
 
 #include <globalsearch/ui/abstracttab.h>
 
+#include "randSpgDialog.h"
+
 #include "ui_tab_opt.h"
 
 namespace XtalOpt {
@@ -42,11 +44,12 @@ namespace XtalOpt {
     void addSeed(QListWidgetItem *item = NULL);
     void removeSeed();
     void updateSeeds();
-
+    void openSpgOptions();
   signals:
 
   private:
     Ui::Tab_Opt ui;
+    RandSpgDialog* m_spgOptions;
   };
 }
 

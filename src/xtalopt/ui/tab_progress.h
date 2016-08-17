@@ -42,6 +42,7 @@ namespace XtalOpt {
     int jobID;
     double enthalpy;
     double volume;
+    int FU;
     QString elapsed;
     QString parents;
     QString spg;
@@ -65,6 +66,7 @@ namespace XtalOpt {
       Status,
       TimeElapsed,
       Enthalpy,
+      FU,
       Volume,
       SpaceGroup,
       Ancestry

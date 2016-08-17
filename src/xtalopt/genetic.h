@@ -28,6 +28,7 @@ namespace XtalOpt {
 
    public:
     static Xtal* crossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution, double &percent1);
+    static Xtal* FUcrossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution, double &percent1, double &percent2, const QList<uint> formulaUnitsList, QHash<uint, XtalCompositionStruct> comp);
     static Xtal* stripple(Xtal* xtal,
                           double sigma_lattice_min, double sigma_lattice_max,
                           double rho_min, double rho_max,

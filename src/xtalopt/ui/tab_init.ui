@@ -32,7 +32,7 @@
          </sizepolicy>
         </property>
         <property name="text">
-         <string>&amp;Cell composition:</string>
+         <string>Empirical Formula:</string>
         </property>
         <property name="buddy">
          <cstring>edit_composition</cstring>
@@ -42,15 +42,7 @@
       <item row="0" column="2" colspan="2">
        <widget class="QLineEdit" name="edit_composition">
         <property name="toolTip">
-         <string>Type the composition of the crystal here,
-
-Examples:
-ti1o2
-Ti1O2
-TI1O2
-Ti1 O2
-Ti 1 o 2
-etc.</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Type the composition of the crystal here,&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Use only empirical formulas. It will be reduced&lt;/p&gt;&lt;p&gt;to its empirical formula otherwise.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;You may change formula units in the &amp;quot;Formula&lt;/p&gt;&lt;p&gt;Units&amp;quot; section on this page.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Examples:&lt;/p&gt;&lt;p&gt;ti1o2&lt;/p&gt;&lt;p&gt;Ti1O2&lt;/p&gt;&lt;p&gt;TI1O2&lt;/p&gt;&lt;p&gt;Ti1 O2&lt;/p&gt;&lt;p&gt;Ti 1 o 2&lt;/p&gt;&lt;p&gt;etc.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>
@@ -923,14 +915,14 @@ able to create offspring that meet this restriction.</string>
      <widget class="QLabel" name="label_13">
       <property name="geometry">
        <rect>
-        <x>220</x>
+        <x>200</x>
         <y>324</y>
-        <width>81</width>
+        <width>111</width>
         <height>20</height>
        </rect>
       </property>
       <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Volume (Å&lt;span style=&quot; vertical-align:super;&quot;&gt;3&lt;/span&gt;):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Volume (Å&lt;span style=&quot; vertical-align:super;&quot;&gt;3&lt;/span&gt;/FU):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
       <property name="buddy">
        <cstring>spin_c_min</cstring>
@@ -939,14 +931,14 @@ able to create offspring that meet this restriction.</string>
      <widget class="QLabel" name="label_18">
       <property name="geometry">
        <rect>
-        <x>20</x>
+        <x>0</x>
         <y>274</y>
-        <width>81</width>
+        <width>111</width>
         <height>20</height>
        </rect>
       </property>
       <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Volume (Å&lt;span style=&quot; vertical-align:super;&quot;&gt;3&lt;/span&gt;):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Volume (Å&lt;span style=&quot; vertical-align:super;&quot;&gt;3&lt;/span&gt;/FU):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
       <property name="buddy">
        <cstring>spin_c_min</cstring>
@@ -968,50 +960,41 @@ able to create offspring that meet this restriction.</string>
        <string>Export subcells?</string>
       </property>
      </widget>
-     <zorder>spin_b_max</zorder>
-     <zorder>spin_gamma_min</zorder>
-     <zorder>label_11</zorder>
-     <zorder>label_7</zorder>
-     <zorder>spin_beta_min</zorder>
-     <zorder>spin_c_max</zorder>
-     <zorder>spin_alpha_max</zorder>
-     <zorder>label_6</zorder>
-     <zorder>label_8</zorder>
-     <zorder>spin_b_min</zorder>
-     <zorder>label_3</zorder>
-     <zorder>label_5</zorder>
-     <zorder>label_2</zorder>
-     <zorder>label_4</zorder>
-     <zorder>spin_a_min</zorder>
-     <zorder>spin_beta_max</zorder>
-     <zorder>spin_vol_max</zorder>
-     <zorder>line</zorder>
-     <zorder>spin_fixedVolume</zorder>
-     <zorder>spin_c_min</zorder>
-     <zorder>spin_alpha_min</zorder>
-     <zorder>spin_gamma_max</zorder>
-     <zorder>cb_mitosis</zorder>
-     <zorder>spin_a_max</zorder>
-     <zorder>spin_scaleFactor</zorder>
-     <zorder>combo_divisions</zorder>
-     <zorder>spin_minRadius</zorder>
-     <zorder>label_12</zorder>
-     <zorder>cb_interatomicDistanceLimit</zorder>
-     <zorder>cb_fixedVolume</zorder>
-     <zorder>label</zorder>
-     <zorder>label_9</zorder>
-     <zorder>line_2</zorder>
-     <zorder>line_3</zorder>
-     <zorder>combo_a</zorder>
-     <zorder>combo_b</zorder>
-     <zorder>combo_c</zorder>
-     <zorder>label_15</zorder>
-     <zorder>label_16</zorder>
-     <zorder>label_17</zorder>
-     <zorder>label_13</zorder>
-     <zorder>label_18</zorder>
-     <zorder>cb_subcellPrint</zorder>
-     <zorder>spin_vol_min</zorder>
+     <widget class="QLabel" name="label_19">
+      <property name="geometry">
+       <rect>
+        <x>379</x>
+        <y>500</y>
+        <width>129</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Formula Units</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="edit_formula_units">
+      <property name="geometry">
+       <rect>
+        <x>379</x>
+        <y>520</y>
+        <width>129</width>
+        <height>27</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the numbers of formula units separated by commas and hyphens to be searched here. The text box will be updated with the program's interpretation of your input after exiting the box or pressing return.&lt;/p&gt;&lt;p&gt;Examples:&lt;/p&gt;&lt;p&gt;1 , 3&lt;/p&gt;&lt;p&gt;1 - 4&lt;/p&gt;&lt;p&gt;1 - 3, 5, 7 - 9&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="text">
+       <string>1</string>
+      </property>
+     </widget>
     </widget>
    </item>
   </layout>

@@ -15,6 +15,7 @@
  ***********************************************************************/
 
 #include <globalsearch/ui/defaultedittab.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include "ui_defaultedittab.h"
 
@@ -49,7 +50,13 @@ namespace GlobalSearch {
 
   DefaultEditTab::~DefaultEditTab()
   {
-    delete ui;
+    // Destructors should never throw...
+    try {
+      delete ui;
+    } // end of try{}
+    catch(...) {
+      ExceptionHandler::handleAllExceptions(__FUNCTION__);
+    } // end of catch{}
   }
 
   void DefaultEditTab::initialize()

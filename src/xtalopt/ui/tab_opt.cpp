@@ -30,7 +30,8 @@ using namespace std;
 namespace XtalOpt {
 
   TabOpt::TabOpt( XtalOptDialog *parent, XtalOpt *p ) :
-    AbstractTab(parent, p)
+    AbstractTab(parent, p),
+    m_spgOptions(NULL)
   {
     ui.setupUi(m_tab_widget);
 
@@ -61,6 +62,16 @@ namespace XtalOpt {
     connect(ui.combo_failAction, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateOptimizationInfo()));
     connect(ui.spin_cutoff, SIGNAL(valueChanged(int)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.cb_using_FU_crossovers, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_FU_crossovers_generation, SIGNAL(valueChanged(int)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.cb_using_mitotic_growth, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.cb_using_one_pool, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_chance_of_mitosis, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
 
     // Duplicate tolerances
@@ -105,11 +116,18 @@ namespace XtalOpt {
     connect(ui.spin_perm_ex, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
 
+    // randSpg
+    connect(ui.cb_allowRandSpg, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.push_spgOptions, SIGNAL(clicked()),
+            this, SLOT(openSpgOptions()));
+
     initialize();
   }
 
   TabOpt::~TabOpt()
   {
+    if (m_spgOptions) delete m_spgOptions;
   }
 
   void TabOpt::writeSettings(const QString &filename)
@@ -135,6 +153,11 @@ namespace XtalOpt {
     settings->setValue("opt/failLimit",         xtalopt->failLimit);
     settings->setValue("opt/failAction",        xtalopt->failAction);
     settings->setValue("opt/cutoff",            xtalopt->cutoff);
+    settings->setValue("opt/using_mitotic_growth", xtalopt->using_mitotic_growth);
+    settings->setValue("opt/using_FU_crossovers", xtalopt->using_FU_crossovers);
+    settings->setValue("opt/FU_crossovers_generation", xtalopt->FU_crossovers_generation);
+    settings->setValue("opt/using_one_pool", xtalopt->using_one_pool);
+    settings->setValue("opt/chance_of_mitosis", xtalopt->chance_of_mitosis);
 
     // Duplicates
     settings->setValue("tol/xtalcomp/length",   xtalopt->tol_xcLength);
@@ -184,6 +207,11 @@ namespace XtalOpt {
     ui.spin_failLimit->setValue(        settings->value("opt/failLimit",        2).toUInt()    );
     ui.combo_failAction->setCurrentIndex(settings->value("opt/failAction",      XtalOpt::FA_Randomize).toUInt()    );
     ui.spin_cutoff->setValue(           settings->value("opt/cutoff",           100).toInt()    );
+    ui.cb_using_mitotic_growth->setChecked(settings->value("opt/using_mitotic_growth",false).toBool());
+    ui.cb_using_FU_crossovers->setChecked(settings->value("opt/using_FU_crossovers",false).toBool());
+    ui.spin_FU_crossovers_generation->setValue( settings->value("opt/FU_crossovers_generation",4).toUInt());
+    ui.cb_using_one_pool->setChecked(settings->value("opt/using_one_pool",false).toBool());
+    ui.spin_chance_of_mitosis->setValue( settings->value("opt/chance_of_mitosis",50).toUInt());
 
     // Duplicates
     ui.spin_tol_xcLength->setValue(     settings->value("tol/xtalcomp/length",  0.1).toDouble());
@@ -236,6 +264,11 @@ namespace XtalOpt {
     ui.spin_failLimit->setValue(        xtalopt->failLimit);
     ui.combo_failAction->setCurrentIndex(xtalopt->failAction);
     ui.spin_cutoff->setValue(           xtalopt->cutoff);
+    ui.cb_using_mitotic_growth->setChecked(xtalopt->using_mitotic_growth);
+    ui.cb_using_FU_crossovers->setChecked(xtalopt->using_FU_crossovers);
+    ui.spin_FU_crossovers_generation->setValue(  xtalopt->FU_crossovers_generation);
+    ui.cb_using_one_pool->setChecked(   xtalopt->using_one_pool);
+    ui.spin_chance_of_mitosis->setValue(xtalopt->chance_of_mitosis);
 
     // Duplicates
     ui.spin_tol_xcLength->setValue(     xtalopt->tol_xcLength);
@@ -311,6 +344,11 @@ namespace XtalOpt {
     xtalopt->failLimit		= ui.spin_failLimit->value();
     xtalopt->failAction		= XtalOpt::FailActions(ui.combo_failAction->currentIndex());
     xtalopt->cutoff              = ui.spin_cutoff->value();
+    xtalopt->using_mitotic_growth = ui.cb_using_mitotic_growth->isChecked();
+    xtalopt->using_FU_crossovers = ui.cb_using_FU_crossovers->isChecked();
+    xtalopt->FU_crossovers_generation = ui.spin_FU_crossovers_generation->value();
+    xtalopt->using_one_pool = ui.cb_using_one_pool->isChecked();
+    xtalopt->chance_of_mitosis = ui.spin_chance_of_mitosis->value();
 
     // Duplicates
     xtalopt->tol_xcLength         = ui.spin_tol_xcLength->value();
@@ -331,6 +369,10 @@ namespace XtalOpt {
     // Permustrain
     xtalopt->perm_strainStdev_max	= ui.spin_perm_strainStdev_max->value();
     xtalopt->perm_ex              = ui.spin_perm_ex->value();
+
+    // allowRandSpg
+    xtalopt->using_randSpg = ui.cb_allowRandSpg->isChecked();
+
   }
 
   void TabOpt::addSeed(QListWidgetItem *item) {
@@ -381,6 +423,39 @@ namespace XtalOpt {
     xtalopt->seedList.clear();
     for (int i = 0; i < ui.list_seeds->count(); i++)
       xtalopt->seedList.append(ui.list_seeds->item(i)->text());
+  }
+
+  void TabOpt::openSpgOptions()
+  {
+    XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    // If m_spgOptions already exists, delete it if the current comp does
+    // not equal the old comp
+    if (m_spgOptions) {
+      if (!m_spgOptions->isCompositionSame(xtalopt)) {
+        delete m_spgOptions;
+        m_spgOptions = NULL;
+      }
+    }
+
+    // If m_spgOptions does not exist or was just deleted, create a new one
+    if (!m_spgOptions) {
+      // Display a message to ask the user to wait while the image is loading...
+      QMessageBox msgBox;
+      msgBox.setText("Calculating possible spacegroups for the given formula units. Please wait...");
+      msgBox.setStandardButtons(QMessageBox::NoButton);
+      msgBox.setWindowModality(Qt::NonModal);
+      msgBox.open();
+      QCoreApplication::processEvents();
+
+      // Open up the RandSpg dialog
+      m_spgOptions = new RandSpgDialog(xtalopt);
+
+      // Close the mesage box
+      msgBox.close();
+    }
+
+    // Display m_spgOptions
+    m_spgOptions->exec();
   }
 
 }

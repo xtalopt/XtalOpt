@@ -18,6 +18,8 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <globalsearch/utilities/fileutils.h>
+
 #include <QtCore/QSettings>
 
 #include <QtGui/QHeaderView>
@@ -37,6 +39,17 @@ namespace XtalOpt {
 
     xtalopt->loaded =   false;
 
+    // Initialize the formula units list...
+    if (xtalopt->formulaUnitsList.isEmpty()) {
+      xtalopt->formulaUnitsList.append(1);
+      xtalopt->minFU = 1;
+      xtalopt->maxFU = 1;
+      // We need to append this one twice... lowestEnthalpyFUList.at(0) does not
+      // correspond to anything. lowestEnthalpyFUList.at(1) corresponds to 1 FU
+      xtalopt->lowestEnthalpyFUList.append(0);
+      xtalopt->lowestEnthalpyFUList.append(0);
+    }
+
     // composition connections
     connect(ui.edit_composition, SIGNAL(textChanged(QString)),
             this, SLOT(getComposition(QString)));
@@ -50,11 +63,11 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.spin_c_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_alpha_min, SIGNAL(valueChanged(double)),
+    connect(ui.spin_alpha_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_beta_min, SIGNAL(valueChanged(double)),
+    connect(ui.spin_beta_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_gamma_min, SIGNAL(valueChanged(double)),
+    connect(ui.spin_gamma_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
     connect(ui.spin_vol_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
@@ -68,11 +81,11 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.spin_beta_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_gamma_max, SIGNAL(valueChanged(double)),
+    connect(ui.spin_gamma_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
     connect(ui.spin_vol_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_fixedVolume, SIGNAL(valueChanged(double)),
+    connect(ui.spin_fixedVolume, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
     connect(ui.cb_fixedVolume, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
@@ -94,6 +107,15 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.cb_interatomicDistanceLimit, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
+
+    // formula unit connections
+
+    connect(ui.edit_formula_units, SIGNAL(editingFinished()),
+            this, SLOT(updateFormulaUnits()));
+    connect(xtalopt, SIGNAL(updateFormulaUnitsListUIText()),
+            this, SLOT(updateFormulaUnitsListUI()));
+    connect(xtalopt, SIGNAL(updateVolumesToBePerFU(uint)),
+            this, SLOT(adjustVolumesToBePerFU(uint)));
 
     QHeaderView *horizontal = ui.table_comp->horizontalHeader();
     horizontal->setResizeMode(QHeaderView::ResizeToContents);
@@ -162,6 +184,18 @@ namespace XtalOpt {
       settings->endArray();
     }
 
+    // Formula Units List
+
+    if (!filename.isEmpty() && filename.contains("xtalopt.state")) {
+      settings->beginWriteArray("Formula_Units");
+      QList<uint> tempFormulaUnitsList = xtalopt->formulaUnitsList;
+      for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
+        settings->setArrayIndex(i);
+        settings->setValue("FU", tempFormulaUnitsList.at(i));
+      }
+      settings->endArray();
+    }
+
     settings->endGroup();
 
     DESTROY_SETTINGS(filename);
@@ -196,7 +230,7 @@ namespace XtalOpt {
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
     ui.cb_interatomicDistanceLimit->setChecked( settings->value("using/interatomicDistanceLimit",false).toBool());
     ui.cb_mitosis->setChecked(      settings->value("using/mitosis",       false).toBool()     );
-    ui.cb_subcellPrint->setChecked(      settings->value("using/subcellPrint",       false).toBool()     );
+    ui.cb_mitosis->setChecked(      settings->value("using/subcellPrint",       false).toBool()     );
     xtalopt->divisions = settings->value("limits/divisions").toInt();
     xtalopt->ax = settings->value("limits/ax").toInt();
     xtalopt->bx = settings->value("limits/bx").toInt();
@@ -217,6 +251,22 @@ namespace XtalOpt {
         xtalopt->comp.insert(atomicNum, entry);
       }
       this->updateMinRadii();
+      settings->endArray();
+    }
+
+    // Formula Units List
+    if (!filename.isEmpty()) {
+      int size = settings->beginReadArray("Formula_Units");
+      QString formulaUnits;
+      formulaUnits.clear();
+      for (int i = 0; i < size; i++) {
+        settings->setArrayIndex(i);
+        uint FU = settings->value("FU").toUInt();
+        formulaUnits.append(QString::number(FU));
+        formulaUnits.append(",");
+      }
+      ui.edit_formula_units->setText(formulaUnits);
+      updateFormulaUnits();
       settings->endArray();
     }
 
@@ -267,18 +317,12 @@ namespace XtalOpt {
     ui.combo_c->setItemText(ui.combo_c->currentIndex(), QString::number(xtalopt->cx));
     ui.cb_interatomicDistanceLimit->setChecked(
           xtalopt->using_interatomicDistanceLimit);
-
     updateComposition();
   }
 
   void TabInit::lockGUI()
   {
     ui.edit_composition->setDisabled(true);
-    ui.cb_mitosis->setDisabled(true);
-    ui.combo_divisions->setDisabled(true);
-    ui.combo_a->setDisabled(true);
-    ui.combo_b->setDisabled(true);
-    ui.combo_c->setDisabled(true);
   }
 
   void TabInit::getComposition(const QString &str)
@@ -307,6 +351,32 @@ namespace XtalOpt {
       xtalopt->comp.clear();
       this->updateCompositionTable();
       return;
+    }
+    // Reduce to empirical formula
+    if (quantityList.size() == symbolList.size()){
+      unsigned int minimumQuantityOfAtomType = quantityList.at(0).toUInt();
+      for (int i = 1; i < symbolList.size(); ++i) {
+        if (minimumQuantityOfAtomType > quantityList.at(i).toUInt()){
+          minimumQuantityOfAtomType = quantityList.at(i).toUInt();
+        }
+      }
+      unsigned int numberOfFormulaUnits = 1;
+      bool formulaUnitsFound;
+      for (int i = minimumQuantityOfAtomType; i > 1; i--){
+        formulaUnitsFound = true;
+        for (int j = 0; j < symbolList.size(); ++j) {
+          if(quantityList.at(j).toUInt() % i != 0){
+            formulaUnitsFound = false;
+          }
+        }
+        if(formulaUnitsFound == true) {
+          numberOfFormulaUnits = i;
+          i = 1;
+          for (int k = 0; k < symbolList.size(); ++k) {
+            quantityList[k] = QString::number(quantityList.at(k).toUInt() / numberOfFormulaUnits);
+          }
+        }
+      }
     }
 
     // Build hash
@@ -341,6 +411,17 @@ namespace XtalOpt {
       }
 
       comp[atomicNum].quantity += quantity;
+    }
+
+    // If we changed the composition, reset the spacegroup generation
+    // min xtals per FU to be zero
+    if (xtalopt->comp != comp && xtalopt->minXtalsOfSpgPerFU.size() != 0) {
+      xtalopt->error(tr(
+               "Warning: because the composition have been changed, "
+               "the spacegroups to be generated using spacegroup "
+               "initialization have been reset. Please open the spacegroup "
+               "options to set them again."));
+      xtalopt->minXtalsOfSpgPerFU = QList<int>();
     }
 
     xtalopt->comp = comp;
@@ -409,23 +490,13 @@ namespace XtalOpt {
           << "nStructs" << xtalopt->test_nStructs << " "
           << "testingMode ";
     }
+
     ui.edit_composition->setText(tmp.trimmed());
   }
 
   void TabInit::updateDimensions()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
-    // Update min and max volume based upon min and max lengths (a,b,c)
-    if ((ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value()) > ui.spin_vol_min->value()) ui.spin_vol_min->setValue(ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value());
-    if ((ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value()) < ui.spin_vol_min->value()) ui.spin_vol_min->setValue(ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value());
-    if ((ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value()) < ui.spin_vol_max->value()) ui.spin_vol_max->setValue(ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value());
-
-    // Update fixed volume based upon min and max lengths (a,b,c)
-    if (ui.cb_fixedVolume->isChecked()) {
-        if ((ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value()) > ui.spin_fixedVolume->value()) (ui.spin_fixedVolume->setValue(ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value()));
-        if ((ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value()) < ui.spin_fixedVolume->value()) (ui.spin_fixedVolume->setValue(ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value()));
-    }
 
     // Check for conflicts -- favor lower value
     if (ui.spin_a_min->value()		> ui.spin_a_max->value())	ui.spin_a_max->setValue(	ui.spin_a_min->value());
@@ -489,8 +560,88 @@ namespace XtalOpt {
     }
   }
 
+  void TabInit::updateFormulaUnits()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
-    // Determine the possible number of divisions for mitosis and update combobox with options
+    QString tmp;
+
+    QList<uint> formulaUnitsList = FileUtils::parseUIntString(ui.edit_formula_units->text(), tmp);
+
+    // If nothing valid was obtained, return 1
+    if (formulaUnitsList.size() == 0) {
+      xtalopt->formulaUnitsList.append(1);
+      tmp = "1";
+      ui.edit_formula_units->setText(tmp.trimmed());
+      return;
+    }
+
+    // Reset the supercell checks
+    QList<GlobalSearch::Structure*> structures (*m_opt->tracker()->list());
+    for (size_t i = 0; i < structures.size(); i++) {
+      structures.at(i)->setSupercellGenerationChecked(false);
+    }
+
+    // Update minFU, maxFU, and formulaUnitsList
+    xtalopt->minFU = formulaUnitsList.at(0);
+    xtalopt->maxFU = formulaUnitsList.at(formulaUnitsList.size() - 1);
+
+    // If we changed the formula units, reset the spacegroup generation
+    // min xtals per FU to be zero
+    if (xtalopt->formulaUnitsList != formulaUnitsList &&
+        xtalopt->minXtalsOfSpgPerFU.size() != 0) {
+      xtalopt->error(tr(
+               "Warning: because the formula units have been changed, "
+               "the spacegroups to be generated using spacegroup "
+               "initialization have been reset. Please open the spacegroup "
+               "options to set them again."));
+      xtalopt->minXtalsOfSpgPerFU = QList<int>();
+    }
+
+    xtalopt->formulaUnitsList = formulaUnitsList;
+
+    // Update the size of the lowestEnthalpyFUList
+    while (xtalopt->lowestEnthalpyFUList.size() <= xtalopt->maxFU)
+      xtalopt->lowestEnthalpyFUList.append(0);
+
+    // Update UI
+    ui.edit_formula_units->setText(tmp.trimmed());
+
+    // Update the nubmer of divisions
+    this->updateNumDivisions();
+  }
+
+  // Updates the UI with the contents of xtalopt->formulaUnitsList
+  void TabInit::updateFormulaUnitsListUI()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    QString tmp;
+    QList<uint> formulaUnitsList = xtalopt->formulaUnitsList;
+    for (size_t i = 0; i < formulaUnitsList.size(); i++) {
+      tmp += QString::number(formulaUnitsList.at(i)) + ", ";
+    }
+    ui.edit_formula_units->setText(tmp);
+    updateFormulaUnits();
+  }
+
+  // This is only used when resuming older version of XtalOpt
+  // It adjusts the volumes so that they are per FU instead of just
+  // pure volumes
+  void TabInit::adjustVolumesToBePerFU(uint FU)
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    ui.spin_vol_min->setValue(ui.spin_vol_min->value() /
+      static_cast<double>(FU));
+    ui.spin_vol_max->setValue(ui.spin_vol_max->value() /
+      static_cast<double>(FU));
+    ui.spin_fixedVolume->setValue(ui.spin_fixedVolume->value() /
+      static_cast<double>(FU));
+    xtalopt->vol_min = ui.spin_vol_min->value();
+    xtalopt->vol_max = ui.spin_vol_max->value();
+    xtalopt->vol_fixed = ui.spin_fixedVolume->value();
+  }
+
+  // Determine the possible number of divisions for mitosis and update combobox with options
   void TabInit::updateNumDivisions()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
@@ -498,6 +649,8 @@ namespace XtalOpt {
     int counter = 0;
     QList<QString> divisions;
     QList<uint> atomicNums = xtalopt->comp.keys();
+    size_t smallestFormulaUnit = xtalopt->formulaUnitsList[0];
+    if (xtalopt->formulaUnitsList.isEmpty()) smallestFormulaUnit = 1;
 
     if (ui.cb_mitosis->isChecked()){
         divisions.clear();
@@ -507,11 +660,16 @@ namespace XtalOpt {
         } else {
         for (int j = 1000; j >= 1; --j) {
             for (int i = 0; i <= atomicNums.size()-1; ++i) {
-                if (xtalopt->comp.value(atomicNums[i]).quantity % j > 0) {
-                    if (xtalopt->comp.value(atomicNums[i]).quantity == 1) {
+                if ((xtalopt->comp.value(atomicNums[i]).quantity *
+                     smallestFormulaUnit) % j > 0) {
+                    if ((xtalopt->comp.value(atomicNums[i]).quantity *
+                         smallestFormulaUnit) == 1) {
                         counter = 0;
                         break;
-                    } else if (xtalopt->comp.value(atomicNums[i]).quantity / j > 0 && xtalopt->comp.value(atomicNums[i]).quantity % j <= 5) {
+                    } else if ((xtalopt->comp.value(atomicNums[i]).quantity *
+                                smallestFormulaUnit) / j > 0 &&
+                               (xtalopt->comp.value(atomicNums[i]).quantity *
+                                smallestFormulaUnit) % j <= 5) {
                         counter++;
                     } else {
                         counter = 0;
@@ -643,6 +801,4 @@ namespace XtalOpt {
     xtalopt->cx = ui.combo_c->currentText().toInt();
   }
 
-
 }
-

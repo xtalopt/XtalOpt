@@ -230,9 +230,25 @@ m_queue->unlockForNaming(newStructure);
 
     /**
      * @return All Structures in m_tracker with status
+     * Structure::Optimized or Structure::Supercell.
+     * Note that duplicates of a supercell at a particular formula unit are
+     * not included. Hence the "OneSupercellCopy."
+     * This function was chosen because of its usefulness in some parts of
+     * the program.
+     */
+    QList<Structure*> getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
+
+    /**
+     * @return All Structures in m_tracker with status
      * Structure::Duplicate.
      */
     QList<Structure*> getAllDuplicateStructures();
+
+    /**
+     * @return All Structures in m_tracker with status
+     * Structure::Supercell.
+     */
+    QList<Structure*> getAllSupercellStructures();
 
     /**
      * @return All Structures in m_tracker and m_startPendingTracker
@@ -444,6 +460,13 @@ m_queue->unlockForNaming(newStructure);
     void handleDuplicateStructure(Structure *s);
 
     /**
+     * Perform actions on the Supercell Structure \a s.
+     *
+     * @param s Structure of interest
+     */
+    void handleSupercellStructure(Structure *s);
+
+    /**
      * Perform actions on the Restart'ing Structure \a s.
      *
      * @param s Structure of interest
@@ -460,6 +483,7 @@ m_queue->unlockForNaming(newStructure);
     void handleSubmittedStructure_(Structure *s);
     void handleKilledStructure_(Structure *s);
     void handleDuplicateStructure_(Structure *s);
+    void handleSupercellStructure_(Structure *s);
     void handleRestartStructure_(Structure *s);
     /// @endcond
 
@@ -486,6 +510,7 @@ m_queue->unlockForNaming(newStructure);
     Tracker m_submittedTracker;
     Tracker m_newlyKilledTracker;
     Tracker m_newDuplicateTracker;
+    Tracker m_newSupercellTracker;
     Tracker m_restartTracker;
     Tracker m_newSubmissionTracker;
     /// @endcond

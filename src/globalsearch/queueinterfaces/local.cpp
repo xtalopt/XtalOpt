@@ -20,6 +20,7 @@
 #include <globalsearch/queueinterfaces/localdialog.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/structure.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QDir>
 #include <QtCore/QFile>
@@ -49,18 +50,24 @@ namespace GlobalSearch {
 
   LocalQueueInterface::~LocalQueueInterface()
   {
-    for (QHash<unsigned long, LocalQueueProcess*>::iterator
-           it = m_processes.begin(),
-           it_end = m_processes.end();
-         it != it_end; ++it) {
-      if ((*it) && ((*it)->state() == QProcess::Running)) {
-        // Give each process 5 seconds to do any cleanup needed, then
-        // kill it.
-        (*it)->terminate();
-        (*it)->waitForFinished(5000);
-        (*it)->kill();
+    // Destructors should never throw...
+    try {
+      for (QHash<unsigned long, LocalQueueProcess*>::iterator
+             it = m_processes.begin(),
+             it_end = m_processes.end();
+           it != it_end; ++it) {
+        if ((*it) && ((*it)->state() == QProcess::Running)) {
+          // Give each process 5 seconds to do any cleanup needed, then
+          // kill it.
+          (*it)->terminate();
+          (*it)->waitForFinished(5000);
+          (*it)->kill();
+        }
       }
-    }
+    } // end of try{}
+    catch(...) {
+      ExceptionHandler::handleAllExceptions(__FUNCTION__);
+    } // end of catch{}
   }
 
   bool LocalQueueInterface::isReadyToSearch(QString *str)
@@ -189,11 +196,44 @@ namespace GlobalSearch {
     return true;
   }
 
+  bool LocalQueueInterface::logErrorDirectory(Structure *s) const
+  {
+    QProcess proc, proc2;
+#ifdef WIN32
+    QString command = "mkdir " + this->m_opt->filePath + "\\errorDirs\\";
+    proc.start(command);
+    // This will wait for, at most, 30 seconds
+    proc.waitForFinished();
+    // Does robocopy come with all windows computers?
+    QString command2 = "robocopy " + s->fileName() + " " +
+                       this->m_opt->filePath + "\\errorDirs\\" +
+                       QString::number(s->getGeneration) + "x" +
+                       QString::number(s->getIDNumber());
+    proc2.start(command2);
+    proc2.waitForFinished();
+#else
+    QString command = "mkdir -p " + this->m_opt->filePath + "/errorDirs/";
+    proc.start(command);
+    // This will wait for, at most, 30 seconds
+    proc.waitForFinished();
+    QString command2 = "cp -r " + s->fileName() + " " +
+                       this->m_opt->filePath + "/errorDirs/";
+    proc2.start(command2);
+    proc2.waitForFinished();
+#endif
+    return true;
+  }
+
   bool LocalQueueInterface::stopJob(Structure *s)
   {
     QWriteLocker wLocker (s->lock());
 
     unsigned long pid = static_cast<unsigned long>(s->getJobID());
+
+    if (this->m_opt->m_logErrorDirs && (s->getStatus() == Structure::Error ||
+                                        s->getStatus() == Structure::Restart)) {
+      logErrorDirectory(s);
+    }
 
     if (pid == 0) {
       // The job is not running, so just return
