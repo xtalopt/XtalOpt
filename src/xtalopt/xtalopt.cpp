@@ -691,77 +691,221 @@ namespace XtalOpt {
     qDebug() << "Xtal has divisions =" << divisions;
 
     if (using_mitosis){
-        //  Unit Cell Vectors
-        int A = ax;
-        int B = bx;
-        int C = cx;
+      //  Unit Cell Vectors
+      int A = ax;
+      int B = bx;
+      int C = cx;
 
-        a = a / A;
-        b = b / B;
-        c = c / C;
+      a = a / A;
+      b = b / B;
+      c = c / C;
 
-        xtal->setCellInfo(a,
-                b,
-                c,
-                xtal->getAlpha(),
-                xtal->getBeta(),
-                xtal->getGamma());
-        qDebug() << "Xtal cell dimensions are decreasing from a =" << A*a << "b =" << B*b << "c =" << C*c <<
-                "to a =" << a << "b =" << b << "c =" << c;
+      xtal->setCellInfo(a,
+              b,
+              c,
+              xtal->getAlpha(),
+              xtal->getBeta(),
+              xtal->getGamma());
+      qDebug() << "Xtal cell dimensions are decreasing from a =" << A*a << "b =" << B*b << "c =" << C*c <<
+              "to a =" << a << "b =" << b << "c =" << c;
 
-        for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
-            atomicNum = atomicNums.at(num_idx);
-            q = comp.value(atomicNum).quantity * FU;
-            if (using_mitosis){
-                q = q / divisions;
-                for (uint i = 0; i < q; i++) {
-                    if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
-                        xtal->deleteLater();
-                        debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                            "specified interatomic distance.");
-                        return 0;
-                    }
-                }
+      for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+        atomicNum = atomicNums.at(num_idx);
+        q = comp.value(atomicNum).quantity * FU;
+        q = q / divisions;
+
+        // Do we use the MolUnit builder?
+        bool addAtom = true;
+        bool useIAD = false;
+        for (QHash<QPair<int, int>, IAD>::const_iterator it = this->compIAD.constBegin(), it_end = this->compIAD.constEnd(); it != it_end; it++) {
+          QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+          int first = key.first;
+          if (atomicNum==first) {
+            useIAD = true;
+            break;
+          }
+        }
+
+        // Do we add Atom or has it already been placed by MolUnit builder
+        unsigned int total = 0;
+        for (QHash<QPair<int, int>, IAD>::const_iterator it = this->compIAD.constBegin(), it_end = this->compIAD.constEnd(); it != it_end; it++) {
+          QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+          int second = key.second;
+          if (atomicNum==second) {
+            int first = key.first;
+            unsigned int current = (comp.value(first).quantity * it->number * FU) / divisions;
+            if (q - current == 0) {
+              addAtom = false;
+              break;
+            } else {
+              total += current;
             }
+          }
         }
 
-        if (using_subcellPrint) printSubXtal(xtal, generation, id);
-
-        if (!xtal->fillSuperCell(A, B, C, xtal)) {
-            xtal->deleteLater();
-            debug("XtalOpt::generateRandomXtal: Failed to add atoms.");
-            return 0;
+        if (q == total) {
+          addAtom = false;
+        } else {
+          q -= total;
         }
 
-        for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
-            atomicNum = atomicNums.at(num_idx);
-            q = comp.value(atomicNum).quantity * FU;
-            if (using_mitosis){
-                q = q % divisions;
-                for (uint i = 0; i < q; i++) {
-                    if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
-                        xtal->deleteLater();
-                        debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                            "specified interatomic distance.");
-                        return 0;
-                    }
-                }
+        // Add atom with MolUnit builder or Randomly
+        for (uint i = 0; i < q; i++) {
+          if (useIAD==true && addAtom==true) {
+            if (!xtal->addAtomRandomly(atomicNum, this->comp,
+                    this->compIAD, useIAD)) {
+              xtal->deleteLater();
+              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                    "specified interatomic distance.");
+              return 0;
             }
+          } else if (useIAD==false && addAtom==true) {
+            if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+              xtal->deleteLater();
+              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                    "specified interatomic distance.");
+              return 0;
+            }
+          } else {
+            break;
+          }
+        }
+      }
+
+      // Print subcell if checked
+      if (using_subcellPrint) printSubXtal(xtal, generation, id);
+
+      // Fill supercell by copying subcell according to parameters
+      if (!xtal->fillSuperCell(A, B, C, xtal)) {
+        xtal->deleteLater();
+        debug("XtalOpt::generateRandomXtal: Failed to add atoms.");
+        return 0;
+      }
+
+      // Randomly place the left over atoms
+      for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+        atomicNum = atomicNums.at(num_idx);
+        q = comp.value(atomicNum).quantity * FU;
+        if (using_mitosis){
+          q = q % divisions;
+                  
+          // Do we use the MolUnit builder?
+          bool addAtom = true;
+          bool useIAD = false;
+            for (QHash<QPair<int, int>, IAD>::const_iterator it = this->compIAD.constBegin(), it_end = this->compIAD.constEnd(); it != it_end; it++) {
+              QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+              int first = key.first;
+              if (atomicNum==first) {
+                useIAD = true;
+                break;
+              }
+            }
+
+        // Do we add Atom or has it already been placed by MolUnit builder
+        unsigned int total = 0;
+        for (QHash<QPair<int, int>, IAD>::const_iterator it = this->compIAD.constBegin(), it_end = this->compIAD.constEnd(); it != it_end; it++) {
+          QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+          int second = key.second;
+          if (atomicNum==second) {
+            int first = key.first;
+            unsigned int current = (comp.value(first).quantity * it->number * FU) % divisions;
+            if (q - current == 0) {
+              addAtom = false;
+              break;
+            } else {
+              total += current;
+            }
+          }
         }
 
+        if (q == total) {
+          addAtom = false;
+        } else {
+          q -= total;
+        }
+
+        // Add atom with MolUnit builder or Randomly
+        for (uint i = 0; i < q; i++) {
+          if (useIAD==true && addAtom==true) {
+            if (!xtal->addAtomRandomly(atomicNum, this->comp,
+                    this->compIAD, useIAD)) {
+              xtal->deleteLater();
+              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                    "specified interatomic distance.");
+              return 0;
+            }
+          } else if (useIAD==false && addAtom==true) {
+            if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+              xtal->deleteLater();
+              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                    "specified interatomic distance.");
+              return 0;
+            }
+          } else {
+            break;
+          }
+        }
+        }
+      }
     } else {
-        for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
-            atomicNum = atomicNums.at(num_idx);
-            q = comp.value(atomicNum).quantity * FU;
-            for (uint i = 0; i < q; i++) {
-                if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
-                    xtal->deleteLater();
-                    debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                        "specified interatomic distance.");
-                    return 0;
-                }
-            }
+      for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+        // To avoid messing up the stoichiometry with the MolUnit builder            
+        atomicNum = atomicNums.at(num_idx);
+        q = comp.value(atomicNum).quantity * FU;
+
+        bool addAtom = true;
+        bool useIAD = false;
+        for (QHash<QPair<int, int>, IAD>::const_iterator it = this->compIAD.constBegin(), it_end = this->compIAD.constEnd(); it != it_end; it++) {
+          QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+          int first = key.first;
+          if (atomicNum==first) {
+            useIAD = true;
+            break;
+          }
         }
+
+        unsigned int total = 0;
+        for (QHash<QPair<int, int>, IAD>::const_iterator it = this->compIAD.constBegin(), it_end = this->compIAD.constEnd(); it != it_end; it++) {
+          QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+          int second = key.second;
+          if (atomicNum==second) {
+            int first = key.first;
+            unsigned int current = comp.value(first).quantity * it->number * FU;
+            if (q - current == 0) {
+              addAtom = false;
+              break;
+            } else {
+              total += current;
+            }
+          }
+        }
+        if (q == total) {
+          addAtom = false;
+        } else {
+          q -= total;
+        }
+
+        for (uint i = 0; i < q; i++) {
+          if (useIAD==true && addAtom==true) {
+            if (!xtal->addAtomRandomly(atomicNum, this->comp,
+                    this->compIAD, useIAD)) {
+              xtal->deleteLater();
+              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                    "specified interatomic distance.");
+              return 0;
+            }
+          } else if (useIAD==false && addAtom==true) {
+            if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+              xtal->deleteLater();
+              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                    "specified interatomic distance.");
+              return 0;
+            }
+          } else {
+            break;
+          }
+        }
+      }
     }
 
     // Set up geneology info
@@ -957,7 +1101,7 @@ namespace XtalOpt {
               .arg(locpath_s));
       }
     }
-    xtal->moveToThread(m_tracker->thread());
+    //xtal->moveToThread(m_tracker->thread());
     xtal->setupConnections();
     xtal->setFileName(locpath_s);
     xtal->setRempath(rempath_s);

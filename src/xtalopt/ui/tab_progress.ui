@@ -16,6 +16,11 @@
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0" colspan="8">
     <widget class="QTableWidget" name="table_list">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
      <property name="contextMenuPolicy">
       <enum>Qt::CustomContextMenu</enum>
      </property>
@@ -97,6 +102,11 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
      <property name="text">
       <string>&amp;Refresh</string>
      </property>
@@ -104,6 +114,11 @@
    </item>
    <item row="2" column="1">
     <widget class="QLabel" name="label_36">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
      <property name="text">
       <string>Refresh &amp;period:</string>
      </property>
@@ -114,6 +129,11 @@
    </item>
    <item row="2" column="2">
     <widget class="QSpinBox" name="spin_period">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
      <property name="suffix">
       <string> seconds</string>
      </property>
@@ -143,6 +163,11 @@
    </item>
    <item row="2" column="4">
     <widget class="QPushButton" name="push_print">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
      <property name="toolTip">
       <string>Generates a run-results.txt file that lists all of the information about each structure in order of generation and structure number (As compared to the results.txt file which ranks the structures).</string>
      </property>
@@ -153,6 +178,11 @@
    </item>
    <item row="2" column="5">
     <widget class="QPushButton" name="push_clear">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
      <property name="toolTip">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This button is used for VASP runs. It removes any extraneous files in each local subdirectory in order to reduce disk usage.&lt;/p&gt;&lt;p&gt;Files kept are structure.state, POTCAR, CONTCAR, and OUTCAR.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
@@ -163,6 +193,11 @@
    </item>
    <item row="2" column="6">
     <widget class="QPushButton" name="push_rank">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
      <property name="toolTip">
       <string>Ranks all currently optimized structures and exports them to a subdirectory (Ranked) in two forms: POSCAR and .cif. Each can be found in separate directories.</string>
      </property>
@@ -173,6 +208,11 @@
    </item>
    <item row="2" column="7">
     <widget class="QPushButton" name="push_refreshAll">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
      <property name="text">
       <string>Refresh &amp;all</string>
      </property>

@@ -48,6 +48,12 @@ namespace XtalOpt {
     unsigned int quantity;
   };
 
+  struct IAD {
+    unsigned int number;
+    double dist;
+    unsigned int geom;
+  };
+
   // comparison of two XtalCompositionStructs
   static inline bool operator==(const XtalCompositionStruct& lhs,
                                 const XtalCompositionStruct& rhs)
@@ -183,8 +189,10 @@ namespace XtalOpt {
 
     bool using_mitosis;
     bool using_subcellPrint;
+    bool using_customIAD;
 
     QHash<uint, XtalCompositionStruct> comp;
+    QHash<QPair<int, int>, IAD> compIAD;    
     QStringList seedList;
 
     QMutex *xtalInitMutex;

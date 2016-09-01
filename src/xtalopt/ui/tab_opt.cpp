@@ -30,8 +30,7 @@ using namespace std;
 namespace XtalOpt {
 
   TabOpt::TabOpt( XtalOptDialog *parent, XtalOpt *p ) :
-    AbstractTab(parent, p),
-    m_spgOptions(NULL)
+    AbstractTab(parent, p)
   {
     ui.setupUi(m_tab_widget);
 
@@ -116,18 +115,11 @@ namespace XtalOpt {
     connect(ui.spin_perm_ex, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
 
-    // randSpg
-    connect(ui.cb_allowRandSpg, SIGNAL(toggled(bool)),
-            this, SLOT(updateOptimizationInfo()));
-    connect(ui.push_spgOptions, SIGNAL(clicked()),
-            this, SLOT(openSpgOptions()));
-
     initialize();
   }
 
   TabOpt::~TabOpt()
   {
-    if (m_spgOptions) delete m_spgOptions;
   }
 
   void TabOpt::writeSettings(const QString &filename)
@@ -369,10 +361,6 @@ namespace XtalOpt {
     // Permustrain
     xtalopt->perm_strainStdev_max	= ui.spin_perm_strainStdev_max->value();
     xtalopt->perm_ex              = ui.spin_perm_ex->value();
-
-    // allowRandSpg
-    xtalopt->using_randSpg = ui.cb_allowRandSpg->isChecked();
-
   }
 
   void TabOpt::addSeed(QListWidgetItem *item) {
@@ -423,39 +411,6 @@ namespace XtalOpt {
     xtalopt->seedList.clear();
     for (int i = 0; i < ui.list_seeds->count(); i++)
       xtalopt->seedList.append(ui.list_seeds->item(i)->text());
-  }
-
-  void TabOpt::openSpgOptions()
-  {
-    XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
-    // If m_spgOptions already exists, delete it if the current comp does
-    // not equal the old comp
-    if (m_spgOptions) {
-      if (!m_spgOptions->isCompositionSame(xtalopt)) {
-        delete m_spgOptions;
-        m_spgOptions = NULL;
-      }
-    }
-
-    // If m_spgOptions does not exist or was just deleted, create a new one
-    if (!m_spgOptions) {
-      // Display a message to ask the user to wait while the image is loading...
-      QMessageBox msgBox;
-      msgBox.setText("Calculating possible spacegroups for the given formula units. Please wait...");
-      msgBox.setStandardButtons(QMessageBox::NoButton);
-      msgBox.setWindowModality(Qt::NonModal);
-      msgBox.open();
-      QCoreApplication::processEvents();
-
-      // Open up the RandSpg dialog
-      m_spgOptions = new RandSpgDialog(xtalopt);
-
-      // Close the mesage box
-      msgBox.close();
-    }
-
-    // Display m_spgOptions
-    m_spgOptions->exec();
   }
 
 }
