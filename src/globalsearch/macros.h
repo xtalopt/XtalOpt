@@ -29,7 +29,7 @@
 #include <float.h>
 #else
 #include <unistd.h> // For sleep on GCC >= 4.7
-#endif // WIN32
+#endif
 
 // Create a pointer of type QSettings *settings that points to either:
 // 1) The default application QSettings object, or

@@ -20,7 +20,13 @@
 
 #include <QtGui/QDialog>
 
+class QCheckBox;
+class QDialogButtonBox;
+class QHBoxLayout;
+class QLabel;
 class QLineEdit;
+class QSpacerItem;
+class QVBoxLayout;
 
 namespace GlobalSearch {
   class AbstractDialog;
@@ -35,6 +41,7 @@ namespace GlobalSearch {
     LocalQueueInterfaceConfigDialog(AbstractDialog *parent,
                                     OptBase *opt,
                                     LocalQueueInterface *qi);
+    ~LocalQueueInterfaceConfigDialog();
 
   public slots:
     void accept();
@@ -44,9 +51,14 @@ namespace GlobalSearch {
   protected:
     OptBase *m_opt;
     LocalQueueInterface *m_queueInterface;
-    QLineEdit *m_edit_workdir;
-    QLineEdit *m_edit_description;
 
+    QCheckBox *m_cb_logErrorDirs;
+    QDialogButtonBox *m_bbox;
+    QHBoxLayout *m_desc_layout, *m_workdir_layout;
+    QLabel *m_label1, *m_label2;
+    QLineEdit *m_edit_workdir, *m_edit_description;
+    QSpacerItem *m_spacer;
+    QVBoxLayout *m_vlayout;
   };
 
 } // end namespace GlobalSearch

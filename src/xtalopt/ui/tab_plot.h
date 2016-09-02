@@ -50,6 +50,7 @@ namespace XtalOpt {
       Structure_T = 0,
       Generation_T,
       Enthalpy_T,
+      Enthalpy_per_FU_T, //PSA Enthalpy per atom
       Energy_T,
       PV_T,
       A_T,
@@ -58,7 +59,8 @@ namespace XtalOpt {
       Alpha_T,
       Beta_T,
       Gamma_A,
-      Volume_T
+      Volume_T,
+      Formula_Units_T
     };
 
     enum PlotType {
@@ -74,7 +76,8 @@ namespace XtalOpt {
       PV_L,
       Volume_L,
       Generation_L,
-      Structure_L
+      Structure_L,
+      Formula_Units_L
     };
 
   public slots:
@@ -93,12 +96,15 @@ namespace XtalOpt {
     void populateXtalList();
     void selectMoleculeFromIndex(int index);
     void highlightXtal(GlobalSearch::Structure *s);
+    void updatePlotFormulaUnits();
 
   private:
     Ui::Tab_Plot ui;
     QReadWriteLock *m_plot_mutex;
     Avogadro::PlotObject *m_plotObject;
     Avogadro::PlotObject *d_plotObject;
+    Avogadro::PlotObject *s_plotObject;
+    QList<uint> formulaUnitsList;
   };
 }
 

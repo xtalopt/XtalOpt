@@ -18,6 +18,7 @@
 
 #include <globalsearch/sshmanager_libssh.h>
 #include <globalsearch/macros.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
@@ -33,10 +34,14 @@ namespace GlobalSearch {
 #define START //qDebug() << __FUNCTION__ << " called...";
 #define END //qDebug() << __FUNCTION__ << " finished...";
 
+//#define SSH_CONNECTION_LIBSSH_DEBUG
+
 SSHConnectionLibSSH::SSHConnectionLibSSH(SSHManagerLibSSH *parent)
   : SSHConnection(parent),
     m_session(0),
     m_shell(0),
+    m_sftp(0),
+    m_sftpTimeStamp(QDateTime::currentDateTime()),
     m_isValid(false),
     m_inUse(false)
 {
@@ -50,111 +55,37 @@ SSHConnectionLibSSH::SSHConnectionLibSSH(SSHManagerLibSSH *parent)
 
 SSHConnectionLibSSH::~SSHConnectionLibSSH()
 {
-  START;
-  disconnectSession();
-  END;
+  // Destructors should never throw...
+  try {
+    START;
+    disconnectSession();
+    END;
+  } // end of try{}
+  catch(...) {
+    ExceptionHandler::handleAllExceptions(__FUNCTION__);
+  } // end of catch{}
 }
 
 bool SSHConnectionLibSSH::isConnected()
 {
-  if (!m_session || !m_shell ||
+  if (!m_session || !m_shell || !m_sftp ||
       channel_is_closed(m_shell) || channel_is_eof(m_shell) ) {
     qWarning() << "SSHConnectionLibSSH is not connected: one or more required "
                   "channels are not initialized.";
     return false;
   };
 
-#ifdef UNIX
-  QMutexLocker locker (&m_lock);
-  START;
-
-  // Attempt to execute "echo ok" on the host to test if everything
-  // is working properly
-  const char *command = "echo ok\n";
-  if (channel_write(m_shell, command, sizeof(command)) == SSH_ERROR) {
-    qWarning() << "SSHConnectionLibSSH is not connected: cannot write to shell; "
-               << ssh_get_error(m_session);
-    return false;
-  }
-
-  // Set a three timeout, check every 50 ms for new data.
-  int bytesAvail;
-  int timeout = 15000;
-  do {
-    // Poll for number of bytes available
-    bytesAvail = channel_poll(m_shell, 0);
-    if (bytesAvail == SSH_ERROR) {
-      qWarning() << "SSHConnectionLibSSH::isConnected(): server returns an error; "
-                 << ssh_get_error(m_session);
-      return false;
-    }
-    // Sleep for 50 ms if no data yet.
-    if (bytesAvail <= 0) {
-      GS_MSLEEP(50);
-      timeout -= 50;
-    }
-  }
-  while (timeout >= 0 && bytesAvail <= 0);
-  // Timeout case
-  if (timeout < 0 && bytesAvail == 0) {
-    qWarning() << "SSHConnectionLibSSH::isConnected(): server timeout.";
-    return false;
-  }
-  // Anything else but "3" is an error
-  else if (bytesAvail != 3) {
-    qWarning() << "SSHConnectionLibSSH::isConnected(): server returns a bizarre poll value: "
-               << bytesAvail << "; " << ssh_get_error(m_session);
-    return false;
-  }
-
-  // Read output
-  ostringstream ossout;
-  char buffer[LIBSSH_BUFFER_SIZE];
-  int len;
-  while ((len = channel_read(m_shell,
-                             buffer,
-                             (bytesAvail < LIBSSH_BUFFER_SIZE) ? bytesAvail : LIBSSH_BUFFER_SIZE,
-                             0)) > 0) {
-    ossout.write(buffer,len);
-    // Poll for number of bytes available using a 1 second timeout in case the stack is full.
-    timeout = 10000;
-    do {
-      bytesAvail = channel_poll(m_shell, 0);
-      if (bytesAvail == SSH_ERROR) {
-        qWarning() << "SSHConnectionLibSSH::_isConnected: server returns an error; "
-                   << ssh_get_error(m_session);
-        return false;
-      }
-      if (bytesAvail <= 0) {
-        GS_MSLEEP(50);
-        timeout -= 50;
-      }
-    }
-    while (timeout >= 0 && bytesAvail <= 0);
-  }
-
-  // Test output
-  if (!strcmp(ossout.str().c_str(), "ok")) {
-    qWarning() << "SSH error: 'echo ok' on the host returned: "
-               << ossout.str().c_str();
-    return false;
-  }
-
-  END;
-  return true;
-#endif // UNIX
-
-#ifdef WIN32
   START;
 
   // Attempt to execute "echo ok" on the host to test if everything
   // is working properly
 
   QString command = "echo ok";
+  QString desiredOutput = "ok\n";
   QString stdout_str, stderr_str;
   int exitcode;
-  // Set a timeout of 1 seconds and check every 50 ms. It takes execute a litte
-  // bit of time to work, so 1 second will end up being a few seconds...
+  // Set a timeout of 10 seconds and check every 50 ms. It takes execute a litte
+  // bit of time to work, so 10 seconds will end up being several more seconds
   int timeout = 10000;
   bool success;
   bool printWarning = false;
@@ -163,8 +94,8 @@ bool SSHConnectionLibSSH::isConnected()
     if (stderr_str != "")
       qWarning() << "In SSHConnectionLibSSH::isConnected(), the command "
          	    "'echo ok' returned with an error of " << stderr_str;
-    // if stdout_str is not 4, something bad happened...
-    if (sizeof(stdout_str) != 4) success = false;
+    // if stdout_str is not "ok\n", something bad happened...
+    if (stdout_str != desiredOutput) success = false;
     if (!success) {
       GS_MSLEEP(50);
       timeout -= 50;
@@ -175,15 +106,27 @@ bool SSHConnectionLibSSH::isConnected()
     qWarning() << "SSHConnectionLibSSH::isConnected() server timeout.";
     return false;
   }
+
+  // New final step: check to see if sftp is still connected. If it is not,
+  // then reconnect it. It will sometimes disconnect...
+  if (!reconnectSftpIfNeeded()) {
+    qWarning() << "In SSHConnectionLibSSH::isConnected(),"
+               << "reconnectSftpIfNeeded() failed. Reconnecting session.";
+    return false;
+  }
+
   END;
   return true;
-#endif // WIN32
 }
 
 bool SSHConnectionLibSSH::disconnectSession()
 {
   QMutexLocker locker (&m_lock);
   START;
+
+  if (m_sftp)
+    sftp_free(m_sftp);
+  m_sftp = 0;
 
   if (m_shell)
     channel_free(m_shell);
@@ -207,6 +150,83 @@ bool SSHConnectionLibSSH::reconnectSession(bool throwExceptions)
   return true;
 }
 
+bool SSHConnectionLibSSH::sftpIsConnected()
+{
+  START;
+  int err = sftp_get_error(m_sftp);
+  if (err == 4 || err == 6 || err == 7) return false;
+  END;
+  return true;
+}
+
+bool SSHConnectionLibSSH::disconnectSftp()
+{
+  START;
+  if (m_sftp)
+    sftp_free(m_sftp);
+  m_sftp = 0;
+  END;
+  return true;
+}
+
+bool SSHConnectionLibSSH::connectSftp()
+{
+  START;
+  m_sftp = _openSFTP();
+  if (!m_sftp) {
+    qWarning() << "Could not create sftp channel.";
+    return false;
+  }
+  END;
+  return true;
+}
+
+bool SSHConnectionLibSSH::reconnectSftp()
+{
+  START;
+  if (!disconnectSftp()) return false;
+  if (!connectSftp()) return false;
+  END;
+  return true;
+}
+
+bool SSHConnectionLibSSH::reconnectSftpIfNeeded()
+{
+  START;
+  // Check to see if the sftp is even connected
+  if (!sftpIsConnected()) {
+    bool success = reconnectSftp();
+    if (!success) {
+      qWarning() << "SSHConnectionLibSSH::reconnectSftpIfNeeded():"
+                 << "reconnectSftp() failed";
+      return false;
+    }
+    // reset time stamp
+    m_sftpTimeStamp = QDateTime::currentDateTime();
+  }
+  // Check to see if 240 seconds have passed since the last reconnection
+  // if it has, reconnect the sftp
+  int timeDifference = m_sftpTimeStamp.msecsTo(QDateTime::currentDateTime());
+
+  // reconnect the sftp every 240 seconds
+  int interval = 240;
+  if (timeDifference >= interval*1000) {
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
+    qDebug() << "timeDifference is " << QString::number(timeDifference);
+#endif
+    bool success = reconnectSftp();
+    if (!success) {
+      qWarning() << "SSHConnectionLibSSH::reconnectSftpIfNeeded():"
+                 << "reconnectSftp() failed.";
+      return false;
+    }
+    // reset time stamp
+    m_sftpTimeStamp = QDateTime::currentDateTime();
+  }
+
+  END;
+  return true;
+}
 bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
 {
   QMutexLocker locker (&m_lock);
@@ -385,6 +405,12 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
     }
   }
 
+  m_sftp = _openSFTP();
+  if (!m_sftp) {
+    qWarning() << "Could not create sftp channel.";
+    return false;
+  }
+
   m_isValid = true;
   END;
   return true;
@@ -408,6 +434,9 @@ bool SSHConnectionLibSSH::_execute(const QString &command,
 				   bool printWarning)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
+  qDebug() << "The following command is being executed:" << command;
+#endif
   // Open new channel for exec
   ssh_channel channel = channel_new(m_session);
   if (!channel) {
@@ -450,7 +479,9 @@ bool SSHConnectionLibSSH::_execute(const QString &command,
   // 5 second timeout
   int timeout = 15;
   while (channel_get_exit_status(channel) == -1 && timeout >= 0) {
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
     qDebug() << "Waiting for server to close channel...";
+#endif
     GS_SLEEP(1);
     timeout--;
   }
@@ -502,8 +533,11 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString & localpath,
                                             const QString & remotepath)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
+  qDebug() << "copying" << localpath << "to" << remotepath;
+#endif
 
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -513,7 +547,6 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString & localpath,
   ifstream from (localpath.toStdString().c_str());
   if (!from.is_open()) {
     qWarning() << "Error opening file " << localpath << " for reading.";
-    sftp_free(sftp);
     return false;
   }
 
@@ -524,7 +557,6 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString & localpath,
                            0750);
   if (!to) {
     qWarning() << "Error opening file " << remotepath << " for writing.";
-    sftp_free(sftp);
     return false;
   }
 
@@ -540,14 +572,12 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString & localpath,
       qWarning() << "Error writing to " << remotepath;
       from.close();
       sftp_close(to);
-      sftp_free(sftp);
       delete[] buffer;
       return false;
     }
   }
   from.close();
   sftp_close(to);
-  sftp_free(sftp);
   delete[] buffer;
   END;
   return true;
@@ -572,7 +602,10 @@ bool SSHConnectionLibSSH::_copyFileFromServer(const QString & remotepath,
                                               const QString & localpath)
 {
   START;
-  sftp_session sftp = _openSFTP();
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
+  qDebug() << "copying" << remotepath << "to" << localpath;
+#endif
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -585,7 +618,6 @@ bool SSHConnectionLibSSH::_copyFileFromServer(const QString & remotepath,
                              0);
   if(!from){
     qWarning() << "Error opening file " << remotepath << " for reading.";
-    sftp_free(sftp);
     return false;
   }
 
@@ -594,7 +626,6 @@ bool SSHConnectionLibSSH::_copyFileFromServer(const QString & remotepath,
   if (!to.is_open()) {
     qWarning() << "Error opening file " << localpath << " for writing.";
     sftp_close(from);
-    sftp_free(sftp);
     return false;
   }
 
@@ -608,14 +639,12 @@ bool SSHConnectionLibSSH::_copyFileFromServer(const QString & remotepath,
       qWarning() << "Error writing to " << localpath;
       to.close();
       sftp_close(from);
-      sftp_free(sftp);
       delete[] buffer;
       return false;
     }
   }
   to.close();
   sftp_close(from);
-  sftp_free(sftp);
   delete[] buffer;
   END;
   return true;
@@ -640,8 +669,11 @@ bool SSHConnectionLibSSH::_readRemoteFile(const QString &filename,
                                           QString &contents)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
+  qDebug() << "reading" << filename;
+#endif
 
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -654,7 +686,6 @@ bool SSHConnectionLibSSH::_readRemoteFile(const QString &filename,
                              0);
   if(!from){
     qWarning() << "Error opening file " << filename << " for reading.";
-    sftp_free(sftp);
     return false;
   }
 
@@ -670,7 +701,6 @@ bool SSHConnectionLibSSH::_readRemoteFile(const QString &filename,
   }
   sftp_close(from);
   contents = QString(oss.str().c_str());
-  sftp_free(sftp);
   delete[] buffer;
   END;
   return true;
@@ -693,8 +723,10 @@ bool SSHConnectionLibSSH::removeRemoteFile(const QString &filename)
 bool SSHConnectionLibSSH::_removeRemoteFile(const QString &filename)
 {
   START;
-
-  sftp_session sftp = _openSFTP();
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
+  qDebug() << "Removing remote file: " << filename;
+#endif
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -704,11 +736,9 @@ bool SSHConnectionLibSSH::_removeRemoteFile(const QString &filename)
                   filename.toStdString().c_str())
       != 0) {
     qWarning() << "Error removing remote file " << filename;
-    sftp_free(sftp);
     return false;
   }
   END;
-  sftp_free(sftp);
   return true;
 }
 /// @endcond
@@ -731,6 +761,9 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString & local,
                                                  const QString & remote)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
+  qDebug() << "copying" << local << "to" << remote;
+#endif
 
   // Add trailing slashes:
   QString localpath = local + "/";
@@ -749,7 +782,7 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString & local,
                                              QDir::Name);
   QStringList files = locdir.entryList(QDir::Files, QDir::Name);
 
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -769,7 +802,6 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString & local,
                                 remotepath + (*dir))) {
       qWarning() << "Error copying " << localpath + (*dir) << " to "
                  << remotepath + (*dir);
-      sftp_free(sftp);
       return false;
     }
   }
@@ -780,11 +812,9 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString & local,
                            remotepath + (*file))) {
       qWarning() << "Error copying " << localpath + (*file) << " to "
                  << remotepath + (*file);
-      sftp_free(sftp);
       return false;
     }
   }
-  sftp_free(sftp);
   END;
   return true;
 }
@@ -808,13 +838,16 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
                                                    const QString & local)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
+  qDebug() << "copying" << remote << "to" << local;
+#endif
   // Add trailing slashes:
   QString localpath = local + "/";
   QString remotepath = remote + "/";
 
   sftp_dir dir;
   sftp_attributes file;
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -825,7 +858,6 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
   if (!dir) {
     qWarning() << "Could not open remote directory " << remotepath
                << ":\n\t" << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
 
@@ -833,7 +865,6 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
   QDir locdir;
   if (!locdir.mkpath(localpath)) {
     qWarning() << "Could not create local directory " << localpath;
-    sftp_free(sftp);
     return false;
   }
 
@@ -849,7 +880,6 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
       if (!_copyDirectoryFromServer(remotepath + file->name,
                                     localpath + file->name)) {
         sftp_attributes_free(file);
-        sftp_free(sftp);
         return false;
       }
       break;
@@ -857,7 +887,6 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
       if (!_copyFileFromServer(remotepath + file->name,
                                localpath + file->name)) {
         sftp_attributes_free(file);
-        sftp_free(sftp);
         return false;
       }
       break;
@@ -869,11 +898,9 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString & remote,
   if ( !sftp_dir_eof(dir) && sftp_closedir(dir) == SSH_ERROR ) {
     qWarning() << "Error copying \'" << remotepath << "\' to \'" << localpath
                << "\': " << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
   END;
-  sftp_free(sftp);
   return true;
 }
 /// @endcond
@@ -896,13 +923,16 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString & path,
                                                        QStringList & contents)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
+  qDebug() << "Reading remote directory contents of:" << path;
+#endif
 
   QString remotepath = path + "/";
   sftp_dir dir;
   sftp_attributes file;
   contents.clear();
 
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -913,7 +943,6 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString & path,
   if (!dir) {
     qWarning() << "Could not open remote directory " << remotepath
                << ":\n\t" << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
 
@@ -930,7 +959,6 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString & path,
       if (!_readRemoteDirectoryContents(remotepath + file->name,
                                         tmp)) {
         sftp_attributes_free(file);
-        sftp_free(sftp);
         return false;
       }
       contents << tmp;
@@ -946,11 +974,9 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString & path,
   if ( !sftp_dir_eof(dir) && sftp_closedir(dir) == SSH_ERROR ) {
     qWarning() << "Error reading contents of \'" << remotepath
                << "\': " << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
   END;
-  sftp_free(sftp);
   return true;
 }
 /// @endcond
@@ -973,13 +999,16 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString & path,
                                                  bool onlyDeleteContents)
 {
   START;
+#ifdef SSH_CONNECTION_LIBSSH_DEBUG
+  qDebug() << "Removing remote directory:" << path;
+#endif
 
   QString remotepath = path + "/";
   sftp_dir dir;
   sftp_attributes file;
   bool ok = true;
 
-  sftp_session sftp = _openSFTP();
+  sftp_session sftp = m_sftp;
   if (!sftp) {
     qWarning() << "Could not create sftp channel.";
     return false;
@@ -990,7 +1019,6 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString & path,
   if (!dir) {
     qWarning() << "Could not open remote directory " << remotepath
                << ":\n\t" << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
 
@@ -1023,13 +1051,11 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString & path,
   if ( !sftp_dir_eof(dir) && sftp_closedir(dir) == SSH_ERROR ) {
     qWarning() << "Error reading contents of \'" << remotepath
                << "\': " << ssh_get_error(m_session);
-    sftp_free(sftp);
     return false;
   }
   if ( !ok ) {
     qWarning() << "Some files could not be removed from "
                << remotepath;
-    sftp_free(sftp);
     return false;
   }
 
@@ -1040,11 +1066,9 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString & path,
         == SSH_ERROR) {
       qWarning() << "Error removing remote directory " << remotepath
                  << ": " << ssh_get_error(m_session);
-      sftp_free(sftp);
       return false;
     }
   }
-  sftp_free(sftp);
   END;
   return true;
 }

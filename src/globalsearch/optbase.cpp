@@ -22,6 +22,7 @@
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/pbs.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
 #ifdef USE_CLI_SSH
@@ -40,6 +41,8 @@
 #include <QtGui/QMessageBox>
 #include <QtGui/QApplication>
 #include <QtGui/QInputDialog>
+
+//#define OPTBASE_DEBUG
 
 using namespace OpenBabel;
 
@@ -67,7 +70,8 @@ namespace GlobalSearch {
     test_nRunsEnd(100),
     test_nStructs(600),
     cutoff(-1),
-    m_schemaVersion(1)
+    m_schemaVersion(1),
+    m_logErrorDirs(false)
   {
     // Connections
     connect(this, SIGNAL(sessionStarted()),
@@ -100,23 +104,29 @@ namespace GlobalSearch {
 
   OptBase::~OptBase()
   {
-    delete m_queue;
-    m_queue = 0;
+    // Destructors should never throw...
+    try {
+      delete m_queue;
+      m_queue = 0;
 
-    if (m_queueThread && m_queueThread->isRunning()) {
-      m_queueThread->wait();
-    }
-    delete m_queueThread;
-    m_queueThread = 0;
+      if (m_queueThread && m_queueThread->isRunning()) {
+        m_queueThread->wait();
+      }
+      delete m_queueThread;
+      m_queueThread = 0;
 
-    delete m_optimizer;
-    m_optimizer = 0;
+      delete m_optimizer;
+      m_optimizer = 0;
 
-    delete m_queueInterface;
-    m_queueInterface = 0;
+      delete m_queueInterface;
+      m_queueInterface = 0;
 
-    delete m_tracker;
-    m_tracker = 0;
+      delete m_tracker;
+      m_tracker = 0;
+    } // end of try{}
+    catch(...) {
+      ExceptionHandler::handleAllExceptions(__FUNCTION__);
+    } // end of catch{}
   }
 
   void OptBase::reset() {
@@ -146,7 +156,8 @@ namespace GlobalSearch {
       qDebug() << l.at(i);
   }
 
-  QList<double> OptBase::getProbabilityList(const QList<Structure*> &structures) {
+  QList<double> OptBase::getProbabilityList(const QList<Structure*> &structures,
+                                            int maxDupOffspring) {
     // IMPORTANT: structures must contain one more structure than
     // needed -- the last structure in the list will be removed from
     // the probability list!
@@ -160,8 +171,8 @@ namespace GlobalSearch {
     last = structures.last();
     first->lock()->lockForRead();
     last->lock()->lockForRead();
-    double lowest = first->getEnthalpy();
-    double highest = last->getEnthalpy();;
+    double lowest = first->getEnthalpy() / static_cast<double>(first->numAtoms()); //PSA Enthalpy per atom
+    double highest = last->getEnthalpy() / static_cast<double>(last->numAtoms());; //PSA Enthalpy per atom
     double spread = highest - lowest;
     last->lock()->unlock();
     first->lock()->unlock();
@@ -183,14 +194,27 @@ namespace GlobalSearch {
     for (int i = 0; i < structures.size(); i++) {
       s = structures.at(i);
       s->lock()->lockForRead();
-      probs.append( ( s->getEnthalpy() - lowest ) / spread);
+      // If the numDupOffspring is equal to the maxDupOffspring, remove the
+      // structure from the probability list by setting the probs to be 1
+      // If maxDupOffspring is -1, there is no max
+      int numDupOffspring = s->getNumDupOffspring();
+      if (numDupOffspring >= maxDupOffspring &&
+          maxDupOffspring != -1) {
+        probs.append(1.0);
+#ifdef OPTBASE_DEBUG
+        qDebug() << QString::number(s->getGeneration()) << "x" << QString::number(s->getIDNumber()) << "has been removed from the gene pool!";
+#endif
+      }
+      // lowest and spread are already per atom
+      else probs.append( ( (s->getEnthalpy() / static_cast<double>(s->numAtoms())) - lowest ) / spread);
       s->lock()->unlock();
     }
     // Subtract each value from one, and find the sum of the resulting list
+    // Find the sum of the resulting list
     // We'll end up with:
     // 1  0.7  0.6  0.2  0   --   sum = 2.5
     double sum = 0;
-    for (int i = 0; i < probs.size(); i++){
+    for (int i = 0; i < probs.size(); i++) {
       probs[i] = 1.0 - probs.at(i);
       sum += probs.at(i);
     }
@@ -198,6 +222,11 @@ namespace GlobalSearch {
     // 0.4  0.28  0.24  0.08  0
     for (int i = 0; i < probs.size(); i++){
       probs[i] /= sum;
+#ifdef OPTBASE_DEBUG
+      qDebug() << "For " << QString::number(structures.at(i)->getGeneration())
+               << "x" << QString::number(structures.at(i)->getIDNumber())
+               << ":\n  normalized probs = " << QString::number(probs[i]);
+#endif
     }
     // Then replace each entry with a cumulative total:
     // 0.4 0.68 0.92 1 1
@@ -244,15 +273,21 @@ namespace GlobalSearch {
                                     0, 0);
     }
 
+    SETTINGS(filename);
+
     // Copy .state -> .state.old
     if (QFile::exists(filename) ) {
-      if (QFile::exists(oldfilename)) {
-        QFile::remove(oldfilename);
+      // Only copy over if the current state is valid
+      const bool saveSuccessful = settings->value(m_idString.toLower().append(                                                    "/saveSuccessful"),
+                                                  false).toBool();
+      if (saveSuccessful) {
+        if (QFile::exists(oldfilename)) {
+          QFile::remove(oldfilename);
+        }
+        QFile::copy(filename, oldfilename);
       }
-      QFile::copy(filename, oldfilename);
     }
 
-    SETTINGS(filename);
     const int version = m_schemaVersion;
     settings->beginGroup(m_idString.toLower());
     settings->setValue("version",          version);
@@ -265,7 +300,7 @@ namespace GlobalSearch {
     // Loop over structures and save them
     QList<Structure*> *structures = m_tracker->list();
 
-    QString structureStateFileName;
+    QString structureStateFileName, oldStructureStateFileName;
 
     Structure* structure;
     for (int i = 0; i < structures->size(); i++) {
@@ -275,6 +310,38 @@ namespace GlobalSearch {
       // this is "ok" under a read lock because of the savePending logic
       structure->setIndex(i);
       structureStateFileName = structure->fileName() + "/structure.state";
+      oldStructureStateFileName = structureStateFileName + ".old";
+
+      // We are going to write to structure.state.old if one already exists
+      // and is a valid state file. This is done in response to
+      // structure.state files being mysteriously empty on rare occasions...
+      if (QFile::exists(structureStateFileName) ) {
+
+        // Attempt to open state file. We will make sure it is valid
+        QFile file (structureStateFileName);
+        if (!file.open(QIODevice::ReadOnly)) {
+          error("OptBase::save(): Error opening file "
+                + structureStateFileName + " for reading...");
+          return false;
+        }
+
+        // If the state file is empty or if saveSuccessful is false,
+        // stateFileIsValid will be false. This will hopefully not interfere
+        // with the previous SETTINGS() declared by hiding it with scoping.
+        SETTINGS(structureStateFileName);
+        bool stateFileIsValid = settings->value("structure/saveSuccessful",
+                                                false).toBool();
+        DESTROY_SETTINGS(structureStateFileName);
+
+        // Copy it over if it's a valid state file...
+        if (stateFileIsValid) {
+          if (QFile::exists(oldStructureStateFileName)) {
+            QFile::remove(oldStructureStateFileName);
+          }
+          QFile::copy(structureStateFileName, oldStructureStateFileName);
+        }
+      }
+
       if (notify) {
         m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
                                       .arg(structureStateFileName));

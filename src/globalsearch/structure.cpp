@@ -44,15 +44,24 @@ namespace GlobalSearch {
     Molecule(parent),
     m_hasEnthalpy(false),
     m_updatedSinceDupChecked(true),
+    m_primitiveChecked(false),
+    m_skippedOptimization(false),
+    m_supercellGenerationChecked(false),
     m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
+    m_formulaUnits(0),
     m_jobID(0),
+    m_numDupOffspring(0),
+    m_numTotOffspring(0),
     m_PV(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
-    m_index(-1)
+    m_index(-1),
+    m_parentStructure(NULL),
+    m_parentOffspringTotCountIncremented(false),
+    m_parentOffspringDupCountIncremented(false)
   {
     m_currentOptStep = 1;
     setStatus(Empty);
@@ -61,32 +70,50 @@ namespace GlobalSearch {
 
   Structure::Structure(const Structure &other) :
     Molecule(other),
-    m_histogramGenerationPending(false),
     m_updatedSinceDupChecked(true),
+    m_primitiveChecked(false),
+    m_skippedOptimization(false),
+    m_supercellGenerationChecked(false),
+    m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
+    m_formulaUnits(0),
     m_jobID(0),
+    m_numDupOffspring(0),
+    m_numTotOffspring(0),
     m_PV(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
-    m_index(-1)
+    m_index(-1),
+    m_parentStructure(NULL),
+    m_parentOffspringTotCountIncremented(false),
+    m_parentOffspringDupCountIncremented(false)
   {
     *this = other;
   }
 
   Structure::Structure(const Avogadro::Molecule &other) :
     Molecule(other),
-    m_histogramGenerationPending(false),
     m_updatedSinceDupChecked(true),
+    m_primitiveChecked(false),
+    m_skippedOptimization(false),
+    m_supercellGenerationChecked(false),
+    m_histogramGenerationPending(false),
     m_generation(0),
     m_id(0),
     m_rank(0),
+    m_formulaUnits(0),
     m_jobID(0),
     m_PV(0),
+    m_numDupOffspring(0),
+    m_numTotOffspring(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
-    m_index(-1)
+    m_index(-1),
+    m_parentStructure(NULL),
+    m_parentOffspringTotCountIncremented(false),
+    m_parentOffspringDupCountIncremented(false)
   {
     *this = other;
   }
@@ -196,12 +223,18 @@ namespace GlobalSearch {
     copyStructure(other);
 
     // Set properties
-    m_histogramGenerationPending = other.m_histogramGenerationPending;
     m_hasEnthalpy                = other.m_hasEnthalpy;
+    m_primitiveChecked           = other.m_primitiveChecked;
+    m_skippedOptimization        = other.m_skippedOptimization;
+    m_supercellGenerationChecked = other.m_supercellGenerationChecked;
+    m_histogramGenerationPending = other.m_histogramGenerationPending;
     m_generation                 = other.m_generation;
     m_id                         = other.m_id;
     m_rank                       = other.m_rank;
+    m_formulaUnits               = other.m_formulaUnits;
     m_jobID                      = other.m_jobID;
+    m_numDupOffspring            = other.m_numDupOffspring;
+    m_numTotOffspring            = other.m_numTotOffspring;
     m_currentOptStep             = other.m_currentOptStep;
     m_failCount                  = other.m_failCount;
     m_parents                    = other.m_parents;
@@ -213,6 +246,11 @@ namespace GlobalSearch {
     m_optStart                   = other.m_optStart;
     m_optEnd                     = other.m_optEnd;
     m_index                      = other.m_index;
+    m_parentStructure            = other.m_parentStructure;
+    m_parentOffspringTotCountIncremented =
+      other.m_parentOffspringTotCountIncremented;
+    m_parentOffspringDupCountIncremented =
+      other.m_parentOffspringDupCountIncremented;
 
     return *this;
   }
@@ -238,13 +276,19 @@ namespace GlobalSearch {
   void Structure::writeStructureSettings(const QString &filename)
   {
     SETTINGS(filename);
-    const int version = 2;
+    const int version = 3;
     settings->beginGroup("structure");
+    settings->setValue("saveSuccessful", false);
     settings->setValue("version",     version);
     settings->setValue("generation", getGeneration());
     settings->setValue("id", getIDNumber());
     settings->setValue("index", getIndex());
     settings->setValue("rank", getRank());
+    settings->setValue("formulaUnits", getFormulaUnits());
+    settings->setValue("primitiveChecked", wasPrimitiveChecked());
+    settings->setValue("skippedOptimization", skippedOptimization());
+    settings->setValue("supercellGenerationChecked",
+                       wasSupercellGenerationChecked());
     settings->setValue("jobID", getJobID());
     settings->setValue("currentOptStep", getCurrentOptStep());
     settings->setValue("parents", getParents());
@@ -254,9 +298,14 @@ namespace GlobalSearch {
     settings->setValue("startTime", getOptTimerStart().toString());
     settings->setValue("endTime", getOptTimerEnd().toString());
 
-    // This will write the current enthalpy, energy, cell information, atom
-    // types, and atom positions for a structure
-    writeCurrentStructureInfo(filename);
+    // Check if a parent structure is saved
+    // This is NOT a variable that can be read in readSettings().
+    if (this->hasParentStructure()) {
+      QString parentStructure =
+        QString::number(m_parentStructure->getGeneration()) + "x" +
+        QString::number(m_parentStructure->getIDNumber());
+      settings->setValue("parentStructure", parentStructure);
+    }
 
     // History
     settings->beginGroup("history");
@@ -327,6 +376,9 @@ namespace GlobalSearch {
     settings->setValue("saveSuccessful", true);
     settings->endGroup(); // structure
 
+    // This will write the current enthalpy, energy, cell information, atom
+    // types, and atom positions for a cell that skipped optimization
+    writeCurrentStructureInfo(filename);
     DESTROY_SETTINGS(filename);
   }
 
@@ -341,6 +393,12 @@ namespace GlobalSearch {
       setIDNumber(       settings->value("id",             0).toInt());
       setIndex(          settings->value("index",          0).toInt());
       setRank(           settings->value("rank",           0).toInt());
+      setFormulaUnits(   settings->value("formulaUnits",   0).toInt());
+      setPrimitiveChecked(settings->value("primitiveChecked",0).toBool());
+      setSkippedOptimization(
+                   settings->value("skippedOptimization", 0).toBool());
+      setSupercellGenerationChecked(
+                   settings->value("supercellGenerationChecked", 0).toBool());
       setJobID(          settings->value("jobID",          0).toInt());
       setCurrentOptStep( settings->value("currentOptStep", 0).toInt());
       setFailCount(      settings->value("failCount",      0).toInt());
@@ -350,10 +408,6 @@ namespace GlobalSearch {
 
       setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));
       setOptTimerEnd(   QDateTime::fromString(settings->value("endTime",   "").toString()));
-
-    // This will read the current enthalpy, energy, cell information, atom
-    // types, and atom positions for the structure.
-    if (readCurrentInfo) readCurrentStructureInfo(filename);
 
     // History
     settings->beginGroup("history");
@@ -454,11 +508,15 @@ namespace GlobalSearch {
     default:
       break;
     }
+    // This will read the current enthalpy, energy, cell information, atom
+    // types, and atom positions for the structure.
+    if (readCurrentInfo) readCurrentStructureInfo(filename);
   }
 
   void Structure::writeCurrentStructureInfo(const QString &filename)
   {
     SETTINGS(filename);
+    // May set versions in the future
     // const int version = 1;
     settings->beginGroup("structure/current");
     settings->setValue("enthalpy", this->getEnthalpy());
@@ -489,8 +547,8 @@ namespace GlobalSearch {
     // This is important for non-periodic structures
     OpenBabel::OBMol obmol = OBMol();
     if (obmol.HasData(OBGenericDataType::UnitCell)) {
-      // Cell info
       settings->setValue("hasCellInfo", true);
+      // Cell info
       matrix3x3 obcell = OBUnitCell()->GetCellMatrix();
       settings->beginGroup("cell");
       settings->setValue("00", (obcell.Get(0,0)));
@@ -781,6 +839,9 @@ namespace GlobalSearch {
       break;
     case Duplicate:
       status = "Duplicate";
+      break;
+    case Supercell:
+      status = "Supercell";
       break;
     case Error:
       status = "Error";
@@ -1317,7 +1378,6 @@ namespace GlobalSearch {
   void Structure::sortByEnthalpy(QList<Structure*> *structures)
   {
     uint numStructs = structures->size();
-
     if (numStructs <= 1) return;
 
     // Simple selection sort
@@ -1325,10 +1385,11 @@ namespace GlobalSearch {
     for (uint i = 0; i < numStructs-1; i++) {
       structure_i = structures->at(i);
       structure_i->lock()->lockForRead();
+
       for (uint j = i+1; j < numStructs; j++) {
         structure_j = structures->at(j);
         structure_j->lock()->lockForRead();
-        if (structure_j->getEnthalpy() < structure_i->getEnthalpy()) {
+        if (structure_j->getEnthalpy() / static_cast<double>(structure_j->numAtoms()) < structure_i->getEnthalpy() / static_cast<double>(structure_i->numAtoms())) { //PSA Enthalpy per atom
           structures->swap(i,j);
           tmp = structure_i;
           structure_i = structure_j;
@@ -1360,8 +1421,10 @@ namespace GlobalSearch {
 
     QList<Structure*> rstructures;
 
+
+
     // Copy structures to a temporary list (don't modify input list!)
-    for (uint i = 0; i < numStructs; i++)
+   	 for (uint i = 0; i < numStructs; i++)
       rstructures.append(structures.at(i));
 
     // Simple selection sort
@@ -1369,10 +1432,11 @@ namespace GlobalSearch {
     for (uint i = 0; i < numStructs-1; i++) {
       structure_i = rstructures.at(i);
       structure_i->lock()->lockForRead();
+
       for (uint j = i+1; j < numStructs; j++) {
         structure_j = rstructures.at(j);
         structure_j->lock()->lockForRead();
-        if (structure_j->getEnthalpy() < structure_i->getEnthalpy()) {
+        if (structure_j->getEnthalpy() / static_cast<double>(structure_j->numAtoms()) < structure_i->getEnthalpy() / static_cast<double>(structure_i->numAtoms())) { //PSA Enthalpy per atom
           rstructures.swap(i,j);
           tmp = structure_i;
           structure_i = structure_j;
@@ -1392,5 +1456,59 @@ namespace GlobalSearch {
     rankInPlace(*structures);
   }
 
+  //PSA. Returns Formula Units.
+  uint Structure::getFormulaUnits() const
+  {
+    // m_formulaUnits is set with Structure::setFormulaUnits()
+    // If it hasn't been set yet, it is 0
+    if (m_formulaUnits != 0) return m_formulaUnits;
 
+    // If m_formulaUnits isn't set yet, proceed through the algorithm to find
+    // the number of formula units
+    QList<uint> xtalCounts = getNumberOfAtomsAlpha();
+    unsigned int minimumQuantityOfAtomType = xtalCounts.at(0);
+    for (size_t i = 1; i < xtalCounts.size(); ++i) {
+      if (minimumQuantityOfAtomType > xtalCounts.at(i)){
+        minimumQuantityOfAtomType = xtalCounts.at(i);
+      }
+    }
+    unsigned int formulaUnits = 1;
+    bool formulaUnitsFound;
+    for (int i = minimumQuantityOfAtomType; i > 1; i--){
+      formulaUnitsFound = true;
+      for (int j = 0; j < xtalCounts.size(); ++j) {
+        if(xtalCounts.at(j) % i != 0){
+          formulaUnitsFound = false;
+        }
+      }
+      if(formulaUnitsFound == true) {
+        formulaUnits = i;
+        i = 1;
+      }
+    }
+    return formulaUnits;
+  }
+
+  // Returns the number of structures of each formula unit up to the
+  // user-specified maximum formula units numberOfEachFormulaUnit.at(n) is the
+  // number of structures with formula units n.
+  QList<uint> Structure::countStructuresOfEachFormulaUnit(QList<Structure*> *structures, int maxFU)
+  {
+    QList<uint> numberOfEachFormulaUnit;
+    uint numStructs = structures->size();
+    Structure *structure_j = 0;
+    for (int i = 0; i <= maxFU; i++) {
+      int numbers = 0;
+      for (uint j = 0; j < numStructs; j++) {
+        structure_j = structures->at(j);
+        structure_j->lock()->lockForRead();
+        if (structure_j->getFormulaUnits() == i) {
+          numbers += 1;
+        }
+        structure_j->lock()->unlock();
+      }
+      numberOfEachFormulaUnit.append(numbers);
+    }
+    return numberOfEachFormulaUnit;
+  }
 } // end namespace GlobalSearch

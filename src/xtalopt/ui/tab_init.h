@@ -19,6 +19,8 @@
 
 #include <globalsearch/ui/abstracttab.h>
 
+#include "randSpgDialog.h"
+
 #include "ui_tab_init.h"
 
 namespace XtalOpt {
@@ -42,6 +44,15 @@ namespace XtalOpt {
       CC_MINRADIUS
     };
 
+    enum IADColumns
+    {
+     IC_CENTER = 0,
+     IC_NEIGHBOR = 1,
+     IC_NUMBER = 2,
+     IC_DIST = 3,
+     IC_GEOM = 4
+    };
+
   public slots:
     void lockGUI();
     void readSettings(const QString &filename = "");
@@ -52,6 +63,9 @@ namespace XtalOpt {
     void updateCompositionTable();
     void updateDimensions();
     void updateMinRadii();
+    void updateFormulaUnits();
+    void updateFormulaUnitsListUI();
+    void adjustVolumesToBePerFU(uint FU);
     void updateNumDivisions();
     void updateA();
     void updateB();
@@ -59,11 +73,19 @@ namespace XtalOpt {
     void writeA();
     void writeB();
     void writeC();
-
+    void updateIAD();
+    void addRow();
+    void removeRow();
+    void removeAll();
+    void getGeom(QList<QString> & geomList, unsigned int numNeighbors);
+    void setGeom(unsigned int & geom, QString strGeom);
+    void openSpgOptions();
+    
   signals:
 
   private:
     Ui::Tab_Init ui;
+    RandSpgDialog* m_spgOptions;
   };
 }
 

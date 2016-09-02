@@ -21,6 +21,7 @@
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/remote.h>
 #include <globalsearch/structure.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QDateTime>
 #include <QtCore/QDebug>
@@ -39,9 +40,16 @@ namespace {
                                    GlobalSearch::Tracker *t)
       : m_tracker(t), m_structure(s) {}
     ~removeFromTrackerWhenScopeEnds() {
-      m_tracker->lockForWrite();
-      m_tracker->remove(m_structure);
-      m_tracker->unlock(); }
+      // Destructors should never throw
+      try {
+        m_tracker->lockForWrite();
+        m_tracker->remove(m_structure);
+        m_tracker->unlock();
+      } // end of try{}
+      catch(...) {
+        ExceptionHandler::handleAllExceptions(__FUNCTION__);
+      } // end of catch{}
+    }
   };
 
   // Locks tracker for reading and calls t->contains(s)
@@ -72,46 +80,53 @@ namespace GlobalSearch {
 
   QueueManager::~QueueManager()
   {
-    m_isDestroying = true;
-    this->disconnect();
+    // Destructors should never throw...
+    try {
+      m_isDestroying = true;
+      this->disconnect();
 
-    // Wait for handler trackers to empty.
-    QList<Tracker*> trackers;
-    trackers.append(&m_newlyOptimizedTracker);
-    trackers.append(&m_stepOptimizedTracker);
-    trackers.append(&m_inProcessTracker);
-    trackers.append(&m_errorTracker);
-    trackers.append(&m_submittedTracker);
-    trackers.append(&m_newlyKilledTracker);
-    trackers.append(&m_newDuplicateTracker);
-    trackers.append(&m_restartTracker);
-    trackers.append(&m_newSubmissionTracker);
+      // Wait for handler trackers to empty.
+      QList<Tracker*> trackers;
+      trackers.append(&m_newlyOptimizedTracker);
+      trackers.append(&m_stepOptimizedTracker);
+      trackers.append(&m_inProcessTracker);
+      trackers.append(&m_errorTracker);
+      trackers.append(&m_submittedTracker);
+      trackers.append(&m_newlyKilledTracker);
+      trackers.append(&m_newDuplicateTracker);
+      trackers.append(&m_newSupercellTracker);
+      trackers.append(&m_restartTracker);
+      trackers.append(&m_newSubmissionTracker);
 
-    // Used to break wait loops if they take too long
-    unsigned int timeout;
+      // Used to break wait loops if they take too long
+      unsigned int timeout;
 
-    for (QList<Tracker*>::iterator
-           it = trackers.begin(),
-           it_end = trackers.end();
-         it != it_end;
-         it++) {
-      timeout = 10;
-      while (timeout > 0 && (*it)->size()) {
-        qDebug() << "Spinning on QueueManager handler trackers to empty...";
-        GS_SLEEP(1);
-        --timeout;
+      for (QList<Tracker*>::iterator
+             it = trackers.begin(),
+             it_end = trackers.end();
+           it != it_end;
+           it++) {
+        timeout = 10;
+        while (timeout > 0 && (*it)->size()) {
+          qDebug() << "Spinning on QueueManager handler trackers to empty...";
+          GS_SLEEP(1);
+          --timeout;
+        }
       }
-    }
 
-    // Wait for m_requestedStructures to == 0
-    timeout = 15;
-    while (timeout > 0 && m_requestedStructures > 0) {
-        qDebug() << "Waiting for structure generation threads to finish...";
-        GS_SLEEP(1);
-        --timeout;
-    }
+      // Wait for m_requestedStructures to == 0
+      timeout = 15;
+      while (timeout > 0 && m_requestedStructures > 0) {
+          qDebug() << "Waiting for structure generation threads to finish...";
+          GS_SLEEP(1);
+          --timeout;
+      }
 
-    delete m_lastSubmissionTimeStamp;
+      delete m_lastSubmissionTimeStamp;
+    } // end of try{}
+    catch(...) {
+      ExceptionHandler::handleAllExceptions(__FUNCTION__);
+    } // end of catch{}
   }
 
   void QueueManager::moveToQMThread()
@@ -171,6 +186,7 @@ namespace GlobalSearch {
     trackers.append(&m_submittedTracker);
     trackers.append(&m_newlyKilledTracker);
     trackers.append(&m_newDuplicateTracker);
+    trackers.append(&m_newSupercellTracker);
     trackers.append(&m_restartTracker);
     trackers.append(&m_newSubmissionTracker);
 
@@ -233,6 +249,7 @@ namespace GlobalSearch {
       // Count running jobs and update trackers
       if ( state != Structure::Optimized &&
            state != Structure::Duplicate &&
+           state != Structure::Supercell &&
            state != Structure::Killed &&
            state != Structure::Removed ) {
         running++;
@@ -359,6 +376,7 @@ namespace GlobalSearch {
           m_submittedTracker.contains(structure)      ||
           m_newlyKilledTracker.contains(structure)    ||
           m_newDuplicateTracker.contains(structure)   ||
+          m_newSupercellTracker.contains(structure)   ||
           m_restartTracker.contains(structure)        ||
           m_newSubmissionTracker.contains(structure)) {
         continue;
@@ -407,6 +425,9 @@ namespace GlobalSearch {
         break;
       case Structure::Duplicate:
         handleDuplicateStructure(structure);
+        break;
+      case Structure::Supercell:
+        handleSupercellStructure(structure);
         break;
       case Structure::Empty:
         handleEmptyStructure(structure);
@@ -745,6 +766,38 @@ namespace GlobalSearch {
   }
   /// @endcond
 
+  void QueueManager::handleSupercellStructure(Structure *s)
+  {
+    QWriteLocker locker (m_newSupercellTracker.rwLock());
+    if (!m_newSupercellTracker.append(s)) {
+      return;
+    }
+    QtConcurrent::run(this,
+                      &QueueManager::handleSupercellStructure_, s);
+  }
+
+  // Doxygen skip:
+  /// @cond
+  void QueueManager::handleSupercellStructure_(Structure *s)
+  {
+    Q_ASSERT(trackerContainsStructure(s, &m_newSupercellTracker));
+    removeFromTrackerWhenScopeEnds popper (s, &m_newSupercellTracker);
+
+    if (s->getStatus() != Structure::Supercell) {
+      return;
+    }
+
+    // Ensure that the job is not tying up the queue
+    stopJob(s);
+
+    // Remove from running tracker
+    m_runningTracker.lockForWrite();
+    m_runningTracker.remove(s);
+    m_runningTracker.unlock();
+  }
+  /// @endcond
+
+
   void QueueManager::handleRestartStructure(Structure *s)
   {
     QWriteLocker locker (m_restartTracker.rwLock());
@@ -832,9 +885,11 @@ namespace GlobalSearch {
 
     // Update structure
     s->lock()->lockForWrite();
-    s->setStatus(Structure::WaitingForOptimization);
-    if (optStep != 0) {
-      s->setCurrentOptStep(optStep);
+    if (s->getStatus() != Structure::Optimized) {
+      s->setStatus(Structure::WaitingForOptimization);
+      if (optStep != 0) {
+        s->setCurrentOptStep(optStep);
+      }
     }
     s->lock()->unlock();
 
@@ -910,6 +965,35 @@ namespace GlobalSearch {
     return list;
   }
 
+  QList<Structure*> QueueManager::getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit()
+  {
+    QList<Structure*> list;
+    m_tracker->lockForRead();
+    Structure *s;
+    for (int i = 0; i < m_tracker->list()->size(); i++) {
+      s = m_tracker->list()->at(i);
+      s->lock()->lockForRead();
+      if (s->getStatus() == Structure::Optimized)
+        list.append(s);
+      else if (s->getStatus() == Structure::Supercell) {
+        // We only want to add one copy of each supercell for each formula
+        // unit. So do not add the supercell s if there is already one present.
+        for (size_t j = 0; j < list.size(); j++) {
+          if (list.at(j)->getStatus() == Structure::Supercell &&
+              list.at(j)->getSupercellString() == s->getSupercellString() &&
+              list.at(j)->getFormulaUnits() == s->getFormulaUnits())
+            break;
+          // Made it to the end of the list and did not find a match!
+          else if (j == list.size() - 1) list.append(s);
+        }
+      }
+      s->lock()->unlock();
+    }
+    m_tracker->unlock();
+    return list;
+  }
+
+
   QList<Structure*> QueueManager::getAllDuplicateStructures()
   {
     QList<Structure*> list;
@@ -925,6 +1009,23 @@ namespace GlobalSearch {
     m_tracker->unlock();
     return list;
   }
+
+  QList<Structure*> QueueManager::getAllSupercellStructures()
+  {
+    QList<Structure*> list;
+    m_tracker->lockForRead();
+    Structure *s;
+    for (int i = 0; i < m_tracker->list()->size(); i++) {
+      s = m_tracker->list()->at(i);
+      s->lock()->lockForRead();
+      if (s->getStatus() == Structure::Supercell)
+        list.append(s);
+      s->lock()->unlock();
+    }
+    m_tracker->unlock();
+    return list;
+  }
+
 
   QList<Structure*> QueueManager::getAllStructures()
   {
@@ -1000,7 +1101,8 @@ namespace GlobalSearch {
 
     // Update structure
     s->lock()->lockForWrite();
-    s->setStatus(Structure::WaitingForOptimization);
+    if (s->getStatus() != Structure::Optimized)
+      s->setStatus(Structure::WaitingForOptimization);
     s->lock()->unlock();
 
     m_tracker->append(s);
@@ -1008,7 +1110,9 @@ namespace GlobalSearch {
     m_newStructureTracker.unlock();
     m_tracker->unlock();
 
-    emit structureStarted(s);
+    if (s->getStatus() != Structure::Optimized)
+      emit structureStarted(s);
+    else if (s->getStatus() == Structure::Optimized) emit structureFinished(s);
   }
   /// @endcond
 

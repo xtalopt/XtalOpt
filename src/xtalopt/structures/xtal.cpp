@@ -81,6 +81,7 @@ namespace XtalOpt {
     // Openbabel seems to be fond of making unfounded assumptions that
     // break things. This fixes one of them.
     this->cell()->SetSpaceGroup(0);
+    this->setParentStructure(NULL);
   }
 
   Xtal::~Xtal() {
@@ -223,7 +224,7 @@ namespace XtalOpt {
       atomList.at(i)->setPos(fracToCart(fracCoordsList.at(i)));
   }
 
-  bool Xtal::niggliReduce(const unsigned int iterations)
+  bool Xtal::niggliReduce(const unsigned int iterations, double lenTol)
   {
     // Cache volume for later sanity checks
     const double origVolume = cell()->GetCellVolume();
@@ -246,7 +247,7 @@ namespace XtalOpt {
     bool ret = false;
 
     // comparison tolerance
-    double tol = STABLE_COMP_TOL * pow(this->getVolume(), 1.0/3.0);
+    double tol = 0.001 * lenTol * pow(this->getVolume(), 2.0/3.0);
 
     // Initialize change of basis matrices:
     //
@@ -503,7 +504,7 @@ namespace XtalOpt {
     return true;
   }
 
-  bool Xtal::isNiggliReduced() const
+  bool Xtal::isNiggliReduced(double lenTol) const
   {
     // cache params
     double a     = getA();
@@ -513,11 +514,12 @@ namespace XtalOpt {
     double beta  = getBeta();
     double gamma = getGamma();
 
-    return Xtal::isNiggliReduced(a, b, c, alpha, beta, gamma);
+    return Xtal::isNiggliReduced(a, b, c, alpha, beta, gamma, lenTol);
   }
 
   bool Xtal::isNiggliReduced(const double a, const double b, const double c,
-                             const double alpha, const double beta, const double gamma)
+                             const double alpha, const double beta,
+                             const double gamma, double lenTol)
   {
     // Calculate characteristic
     double A    = a*a;
@@ -528,7 +530,9 @@ namespace XtalOpt {
     double zeta = 2*a*b*cos(gamma * DEG_TO_RAD);
 
     // comparison tolerance
-    double tol = STABLE_COMP_TOL * ( (a + b + c) * (1.0 / 3.0) );
+    // This may not be exactly the same as pow(origVolume, 2.0/3.0), but we'll
+    // say that it's close enough...
+    double tol = 0.001 * lenTol * pow( (a + b + c) / 3.0, 2.0);
 
     // First check the Buerger conditions. Taken from: Gruber B.. Acta
     // Cryst. A. 1973;29(4):433-440. Available at:
@@ -560,6 +564,460 @@ namespace XtalOpt {
 
     // all good!
     return true;
+  }
+
+  bool Xtal::isPrimitive(const double cartTol) {
+
+    // Cache fractional coordinates and atomic nums
+    QList<Eigen::Vector3d> fcoords;
+    QList<unsigned int> atomicNums;
+    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
+           it_end = m_atomList.constEnd(); it != it_end; ++it) {
+      fcoords.append( cartToFrac(*(*it)->pos()));
+      atomicNums.append((*it)->atomicNumber());
+    }
+    size_t originalFCoordsSize = fcoords.size();
+
+    // Get unit cell
+    matrix3x3 obcell = this->OBUnitCell()->GetCellMatrix();
+    // Convert to Eigen:
+    Eigen::Matrix3d cellMatrix = Eigen::Matrix3d::Zero();
+    for (int row = 0; row < 3; row++) {
+      for (int col = 0; col < 3; col++) {
+        cellMatrix(row,col) = obcell.Get(row, col);
+      }
+    }
+
+    unsigned int spg = reduceToPrimitive(&fcoords, &atomicNums,
+                                         &cellMatrix, cartTol);
+
+    if (originalFCoordsSize == fcoords.size()) return true;
+    else return false;
+  }
+
+
+  bool Xtal::reduceToPrimitive(const double cartTol) {
+
+    // Cache fractional coordinates and atomic nums
+    QList<Eigen::Vector3d> fcoords;
+    QList<unsigned int> atomicNums;
+    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
+           it_end = m_atomList.constEnd(); it != it_end; ++it) {
+      fcoords.append( cartToFrac(*(*it)->pos()));
+      atomicNums.append((*it)->atomicNumber());
+    }
+
+    // Get unit cell
+    matrix3x3 obcell = this->OBUnitCell()->GetCellMatrix();
+    // Convert to Eigen:
+    Eigen::Matrix3d cellMatrix = Eigen::Matrix3d::Zero();
+    for (int row = 0; row < 3; row++) {
+      for (int col = 0; col < 3; col++) {
+        cellMatrix(row,col) = obcell.Get(row, col);
+      }
+    }
+
+    unsigned int spg = reduceToPrimitive(&fcoords, &atomicNums,
+                                         &cellMatrix, cartTol);
+
+    // spg == 0 implies that reduceToPrimitive() failed
+    if (spg == 0) return false;
+
+    setCellInfo(Eigen2OB(cellMatrix));
+
+    // Remove all atoms to simplify the change
+    QList<Atom*> atomList = this->atoms();
+    for (size_t i = 0; i < atomList.size(); i++)
+                                            this->removeAtom(atomList.at(i));
+
+    // Add the atoms in
+    for (size_t i = 0; i < fcoords.size(); i++) {
+        Atom* newAtom = this->addAtom();
+        newAtom->setAtomicNumber(atomicNums.at(i));
+        newAtom->setPos(fracToCart(fcoords.at(i)));
+    }
+
+    Q_ASSERT(fcoords.size() == atomicNums.size());
+    Q_ASSERT(this->m_atomList.size() == fcoords.size());
+    this->setFormulaUnits(0);
+
+    return true;
+  }
+
+  unsigned int Xtal::reduceToPrimitive(QList<Eigen::Vector3d> *fcoords,
+                                       QList<unsigned int> *atomicNums,
+                                       Eigen::Matrix3d *cellMatrix,
+                                       const double cartTol)
+  {
+    Q_ASSERT(fcoords->size() == atomicNums->size());
+
+    const int numAtoms = fcoords->size();
+
+    if (numAtoms < 1) {
+      qWarning() << "Cannot determine spacegroup of empty cell.";
+      return 0;
+    }
+
+    // Spglib expects column vecs, so fill with transpose
+    double lattice[3][3] = {
+      {(*cellMatrix)(0,0), (*cellMatrix)(1,0), (*cellMatrix)(2,0)},
+      {(*cellMatrix)(0,1), (*cellMatrix)(1,1), (*cellMatrix)(2,1)},
+      {(*cellMatrix)(0,2), (*cellMatrix)(1,2), (*cellMatrix)(2,2)}
+    };
+
+    // Build position list. Include space for 4*numAtoms for the
+    // cell refinement
+    double (*positions)[3] = new double[4*numAtoms][3];
+    int *types = new int[4*numAtoms];
+    const Eigen::Vector3d * fracCoord;
+    for (int i = 0; i < numAtoms; ++i) {
+      fracCoord         = &(*fcoords)[i];
+      types[i]          = (*atomicNums)[i];
+      positions[i][0]   = fracCoord->x();
+      positions[i][1]   = fracCoord->y();
+      positions[i][2]   = fracCoord->z();
+    }
+
+    // find spacegroup for return value
+    char symbol[21];
+    int spg = spg_get_international(symbol,
+                                    lattice,
+                                    positions,
+                                    types,
+                                    numAtoms,
+                                    cartTol);
+
+    // Refine the structure
+    int numBravaisAtoms =
+      spg_refine_cell(lattice, positions, types,
+                      numAtoms, cartTol);
+
+    // if spglib cannot refine the cell, return 0.
+    if (numBravaisAtoms <= 0) {
+      return 0;
+    }
+
+    // Find primitive cell. This updates lattice, positions, types
+    // to primitive
+    int numPrimitiveAtoms =
+      spg_find_primitive(lattice, positions, types,
+                         numBravaisAtoms, cartTol);
+
+    // If the cell was already a primitive cell, reset
+    // numPrimitiveAtoms.
+    if (numPrimitiveAtoms == 0) {
+      numPrimitiveAtoms = numBravaisAtoms;
+    }
+
+    // Bail if everything failed
+    if (numPrimitiveAtoms <= 0) {
+      return 0;
+    }
+
+    // Update passed objects
+    // convert col vecs to row vecs
+    (*cellMatrix)(0, 0) =  lattice[0][0];
+    (*cellMatrix)(0, 1) =  lattice[1][0];
+    (*cellMatrix)(0, 2) =  lattice[2][0];
+    (*cellMatrix)(1, 0) =  lattice[0][1];
+    (*cellMatrix)(1, 1) =  lattice[1][1];
+    (*cellMatrix)(1, 2) =  lattice[2][1];
+    (*cellMatrix)(2, 0) =  lattice[0][2];
+    (*cellMatrix)(2, 1) =  lattice[1][2];
+    (*cellMatrix)(2, 2) =  lattice[2][2];
+
+    // Trim
+    while (fcoords->size() > numPrimitiveAtoms) {
+      fcoords->removeLast();
+      atomicNums->removeLast();
+    }
+    while (fcoords->size() < numPrimitiveAtoms) {
+      fcoords->append(Eigen::Vector3d());
+      atomicNums->append(0);
+    }
+
+    // Update
+    Q_ASSERT(fcoords->size() == atomicNums->size());
+    Q_ASSERT(fcoords->size() == numPrimitiveAtoms);
+    for (int i = 0; i < numPrimitiveAtoms; ++i) {
+      (*atomicNums)[i]  = types[i];
+      (*fcoords)[i] = Eigen::Vector3d (positions[i]);
+    }
+
+    delete [] positions;
+    delete [] types;
+
+    if (spg > 230 || spg < 0) {
+      spg = 0;
+    }
+
+    return static_cast<unsigned int>(spg);
+  }
+
+  QList<QString> Xtal::currentAtomicSymbols()
+  {
+    QList<QString> result;
+    QList<Avogadro::Atom*> atoms = this->atoms();
+
+    for (QList<Avogadro::Atom*>::const_iterator
+           it = atoms.constBegin(),
+           it_end = atoms.constEnd();
+         it != it_end;
+         ++it) {
+      result <<
+        OpenBabel::etab.GetSymbol((*it)->atomicNumber());
+    }
+    return result;
+  }
+
+  inline void Xtal::updateMolecule(const QList<QString> &ids,
+                                   const QList<Eigen::Vector3d> &coords)
+  {
+    // Remove old atoms
+    // We should lock the xtal before calling this function!
+    //QWriteLocker locker (this->lock());
+    QList<Avogadro::Atom*> atoms = this->atoms();
+    for (QList<Avogadro::Atom*>::iterator
+           it = atoms.begin(),
+           it_end = atoms.end();
+         it != it_end;
+         ++it) {
+      this->removeAtom(*it);
+    }
+
+    // Add new atoms
+    for (int i = 0; i < ids.size(); ++i) {
+      Atom *atom = this->addAtom();
+      atom->setAtomicNumber(OpenBabel::etab.GetAtomicNum
+                            (ids[i].toStdString().c_str()));
+      atom->setPos(coords[i]);
+    }
+  }
+
+  void Xtal::setCurrentFractionalCoords(const QList<QString> &ids,
+                                        const QList<Eigen::Vector3d> &fcoords)
+  {
+    OpenBabel::OBUnitCell *cell = this->cell();
+    QList<Eigen::Vector3d> coords;
+#if QT_VERSION >= 0x040700
+    coords.reserve(fcoords.size());
+#endif
+
+    for (QList<Eigen::Vector3d>::const_iterator
+           it = fcoords.constBegin(),
+           it_end = fcoords.constEnd();
+         it != it_end;
+         ++it) {
+      // Convert to storage cartesian
+      coords.append(OB2Eigen(cell->FractionalToCartesian
+                             (Eigen2OB(*it))));
+    }
+
+    updateMolecule(ids, coords);
+  }
+
+  void Xtal::printLatticeInfo() const
+  {
+    cout << "a is " << this->getA() << "\n";
+    cout << "b is " << this->getB() << "\n";
+    cout << "c is " << this->getC() << "\n";
+    cout << "alpha is " << this->getAlpha() << "\n";
+    cout << "beta is " << this->getBeta() << "\n";
+    cout << "gamma is " << this->getGamma() << "\n";
+    cout << "volume is " << this->getVolume() << "\n";
+  }
+
+  void Xtal::printAtomInfo() const
+  {
+    cout << "Frac coords info (blank if none):\n";
+    QList<Avogadro::Atom*> atoms = this->atoms();
+    QList<Eigen::Vector3d> fracCoords;
+
+    for (size_t i = 0; i < atoms.size(); i++)
+      fracCoords.append(*(cartToFrac(atoms.at(i)->pos())));
+
+    for (size_t i = 0; i < atoms.size(); i++) {
+      cout << "  For atomic num " <<  atoms.at(i)->atomicNumber() << ", coords are (" << fracCoords.at(i)[0] << "," << fracCoords.at(i)[1] << "," << fracCoords.at(i)[2] << ")\n";
+    }
+  }
+
+  void Xtal::printXtalInfo() const
+  {
+    printLatticeInfo();
+    printAtomInfo();
+  }
+
+  // Adapted from unitcellextension:
+  void Xtal::fillUnitCell(uint spg, double cartTol)
+  {
+    const OpenBabel::SpaceGroup *sg = SpaceGroup::GetSpaceGroup(spg);
+    if (!sg)
+      return; // nothing to do
+
+    wrapAtomsToCell();
+
+    QList<Eigen::Vector3d> origFCoords = getAtomCoordsFrac();
+    QList<Eigen::Vector3d> newFCoords;
+
+    QList<QString> origIds = currentAtomicSymbols();
+    QList<QString> newIds;
+
+    // Duplicate tolerance squared
+    const double dupTolSquared = cartTol * cartTol;
+
+    // Non-fatal assert -- if the number of atoms has
+    // changed, just tail-recurse and try again.
+    if (origIds.size() != origFCoords.size()) {
+      return fillUnitCell(spg);
+    }
+
+    const QString *curId;
+    const Eigen::Vector3d *curVec;
+    std::list<OpenBabel::vector3> obxformed;
+    std::list<OpenBabel::vector3>::const_iterator obxit;
+    std::list<OpenBabel::vector3>::const_iterator obxit_end;
+    QList<Eigen::Vector3d> xformed;
+    QList<Eigen::Vector3d>::const_iterator xit, xit_end;
+    QList<Eigen::Vector3d>::const_iterator newit, newit_end;
+    for (int i = 0; i < origIds.size(); ++i) {
+      curId = &origIds[i];
+      curVec = &origFCoords[i];
+
+      // Round off to remove floating point math errors
+      double x = StableComp::round(curVec->x(), 7);
+      double y = StableComp::round(curVec->y(), 7);
+      double z = StableComp::round(curVec->z(), 7);
+
+      // Get tranformed OB vectors
+      obxformed = sg->Transform(OpenBabel::vector3(x,y,z));
+
+      // Convert to Eigen, wrap to cell
+      xformed.clear();
+      Eigen::Vector3d tmp;
+      obxit_end = obxformed.end();
+      for (obxit = obxformed.begin();
+           obxit != obxit_end; ++obxit) {
+        tmp = OB2Eigen(*obxit);
+        // Pseudo-modulus
+        tmp.x() -= static_cast<int>(tmp.x());
+        tmp.y() -= static_cast<int>(tmp.y());
+        tmp.z() -= static_cast<int>(tmp.z());
+        // Correct negative values
+        if (tmp.x() < 0.0) ++tmp.x();
+        if (tmp.y() < 0.0) ++tmp.y();
+        if (tmp.z() < 0.0) ++tmp.z();
+        // Add a fudge factor for cell edges
+        if (tmp.x() >= 1.0 - 1e-6) tmp.x() = 0.0;
+        if (tmp.y() >= 1.0 - 1e-6) tmp.y() = 0.0;
+        if (tmp.z() >= 1.0 - 1e-6) tmp.z() = 0.0;
+        xformed.append(tmp);
+      }
+
+      // Check all xformed vectors against the coords
+      // already added. if they match, skip this atom.
+      bool duplicate;
+      xit_end = xformed.constEnd();
+      for (xit = xformed.constBegin();
+           xit != xit_end; ++xit) {
+        newit_end = newFCoords.constEnd();
+        duplicate = false;
+        for (newit = newFCoords.constBegin();
+             newit != newit_end; ++newit) {
+          if (fabs((*newit - *xit).squaredNorm())
+              < dupTolSquared) {
+            duplicate = true;
+            break;
+          }
+        }
+
+        if (duplicate) {
+          continue;
+        }
+
+        // Add transformed atom
+        newFCoords.append(*xit);
+        newIds.append(*curId);
+      }
+    }
+
+    setCurrentFractionalCoords(newIds, newFCoords);
+  }
+
+  // Inverse of fillUnitCell()
+  void Xtal::reduceToAsymmetricUnit(double cartTol)
+  {
+    OpenBabel::OBUnitCell *cell = this->cell();
+    if (!cell)
+      return;
+    const OpenBabel::SpaceGroup *sg = cell->GetSpaceGroup();
+    if (!sg)
+      return; // nothing to do
+
+    wrapAtomsToCell();
+
+    QList<Eigen::Vector3d> FCoords = getAtomCoordsFrac();
+    QList<QString> Ids = currentAtomicSymbols();
+
+    // Duplicate tolerance squared
+    const double dupTolSquared = cartTol*cartTol;
+
+    // Non-fatal assert -- if the number of atoms has
+    // changed, just tail-recurse and try again.
+    if (Ids.size() != FCoords.size()) {
+      return reduceToAsymmetricUnit();
+    }
+
+    const Eigen::Vector3d *curVec;
+    std::list<OpenBabel::vector3> obxformed;
+    std::list<OpenBabel::vector3>::const_iterator obxit;
+    std::list<OpenBabel::vector3>::const_iterator obxit_end;
+    QList<Eigen::Vector3d> xformed;
+    QList<Eigen::Vector3d>::const_iterator xit, xit_end;
+
+    // This loop modifies Ids and Fcoords, but only by removing
+    // atoms for j > i.
+    for (int i = 0; i < Ids.size(); ++i) {
+      // Get tranformed OB vectors
+      curVec = &FCoords[i];
+      obxformed = sg->Transform(Eigen2OB(*curVec));
+
+      // Convert to Eigen, wrap to cell
+      xformed.clear();
+      Eigen::Vector3d tmp;
+      obxit_end = obxformed.end();
+      for (obxit = obxformed.begin();
+           obxit != obxit_end; ++obxit) {
+        tmp = OB2Eigen(*obxit);
+        // Pseudo-modulus
+        tmp.x() -= static_cast<int>(tmp.x());
+        tmp.y() -= static_cast<int>(tmp.y());
+        tmp.z() -= static_cast<int>(tmp.z());
+        // Correct negative values
+        if (tmp.x() < 0.0) ++tmp.x();
+        if (tmp.y() < 0.0) ++tmp.y();
+        if (tmp.z() < 0.0) ++tmp.z();
+        // Add a fudge factor for cell edges
+        if (tmp.x() >= 1.0 - 1e-6) tmp.x() = 0.0;
+        if (tmp.y() >= 1.0 - 1e-6) tmp.y() = 0.0;
+        if (tmp.z() >= 1.0 - 1e-6) tmp.z() = 0.0;
+        xformed.append(tmp);
+      }
+
+      // Check which of the remaining atoms are equivalent to the current
+      // atom and remove them.
+      xit_end = xformed.constEnd();
+      for (xit = xformed.constBegin();
+           xit != xit_end; ++xit) {
+        for (int j = i + 1; j < Ids.size(); j++) {
+          if ((FCoords[j] - *xit).squaredNorm() < dupTolSquared) {
+            FCoords.removeAt(j);
+            Ids.removeAt(j);
+          }
+        }
+      }
+    }
+
+    setCurrentFractionalCoords(Ids, FCoords);
   }
 
   bool Xtal::fixAngles(int attempts)
@@ -747,6 +1205,124 @@ namespace XtalOpt {
     atom = &atm;
     (*atom)->setPos(cartCoords);
     (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
+    return true;
+  }
+
+  //IAD corrected function
+  bool Xtal::addAtomRandomly(
+      unsigned int atomicNumber,
+      const QHash<unsigned int, XtalCompositionStruct> & limits,
+      const QHash<QPair<int, int>, IAD> & limitsIAD,
+      bool useIAD,
+      int maxAttempts, Avogadro::Atom **atom)
+  {
+    Eigen::Vector3d cartCoords;
+    bool success;
+
+    // For first atom, add to 0, 0, 0
+    if (numAtoms() == 0) {
+      cartCoords = Eigen::Vector3d (0,0,0);
+    }
+    else {
+      unsigned int i = 0;
+      vector3 fracCoords;
+
+      // Cache the minimum radius for the new atom
+      const double newMinRadius = limits.value(atomicNumber).minRadius;
+
+      // Compute a cut off distance -- atoms farther away than this value
+      // will abort the check early.
+      double maxCheckDistance = 0.0;
+      for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
+           it = limits.constBegin(), it_end = limits.constEnd(); it != it_end;
+           ++it) {
+        if (it.value().minRadius > maxCheckDistance) {
+          maxCheckDistance = it.value().minRadius;
+        }
+      }
+      maxCheckDistance += newMinRadius;
+      const double maxCheckDistSquared = maxCheckDistance*maxCheckDistance;
+
+      do {
+        // Reset sentinal
+        success = true;
+
+        // Generate fractional coordinates
+        fracCoords.Set(RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+
+        // Convert to cartesian coordinates and store
+        cartCoords = Eigen::Vector3d(this->fracToCart(fracCoords).AsArray());
+
+        // Compare distance to each atom in xtal with minimum radii
+        QVector<double> squaredDists;
+        this->getSquaredAtomicDistancesToPoint(cartCoords, &squaredDists);
+        Q_ASSERT_X(squaredDists.size() == this->numAtoms(), Q_FUNC_INFO,
+                   "Size of distance list does not match number of atoms.");
+
+        for (int dist_ind = 0; dist_ind < squaredDists.size(); ++dist_ind) {
+          const double &curDistSquared = squaredDists[dist_ind];
+          // Save a bit of time if distance is huge...
+          if (curDistSquared > maxCheckDistSquared) {
+            continue;
+          }
+          // Compare distance to minimum:
+          const double minDist = newMinRadius + limits.value(
+                this->atom(dist_ind)->atomicNumber()).minRadius;
+          const double minDistSquared = minDist * minDist;
+
+          if (curDistSquared < minDistSquared) {
+            success = false;
+            break;
+          }
+        }
+
+      } while (++i < maxAttempts && !success);
+
+      if (i >= maxAttempts) return false;
+    }
+    Atom *atm = addAtom();
+    atom = &atm;
+    (*atom)->setPos(cartCoords);
+    (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
+
+    if (useIAD == true) {
+      int neighbor;
+      int number;
+      double dist;
+      int geom;
+
+      for (QHash<QPair<int, int>, IAD>::const_iterator it = limitsIAD.constBegin(), it_end = limitsIAD.constEnd(); it != it_end; it++) {
+        QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+        int first = key.first;
+        if (atomicNumber==first) {
+          neighbor = key.second;
+          number = it.value().number;
+          dist = it.value().dist;
+          geom = it.value().geom;
+        }
+      }
+
+      OpenBabel::OBMol obmol = OBMol();
+      OpenBabel::OBAtom *obatom = obmol.GetAtom((*atom)->index()+1);
+      obatom->SetImplicitValence(number);
+      obmol.SetImplicitValencePerceived();
+      obatom->SetHyb(geom);
+      obmol.SetHybridizationPerceived();
+      obmol.AddHydrogens(obatom);
+      unsigned int numberAtoms = numAtoms();
+      int j = 0;
+      for (unsigned int i = numberAtoms+1; i <= obmol.NumAtoms(); ++i, ++j) {
+        OpenBabel::OBAtom *obatom2 = obmol.GetAtom(i);
+        double currDist = obatom2->GetDistance(obatom);
+        vector3 v = ((obatom2->GetVector()-obatom->GetVector())*(dist/currDist))+obatom->GetVector();
+        obatom2->SetVector(v);
+        Atom *a;
+        a = addAtom();
+        a->setOBAtom(obatom2);
+        a->setAtomicNumber(neighbor);
+      }
+    }
+
     return true;
   }
 
@@ -1233,6 +1809,9 @@ namespace XtalOpt {
     case Duplicate:
       status = "Duplicate";
       break;
+    case Supercell:
+      status = "Supercell";
+      break;
     case Error:
       status = "Error";
       break;
@@ -1246,11 +1825,12 @@ namespace XtalOpt {
       status = "In progress";
       break;
     }
-    return QString("%1 %2 %3 %4 %5 %6")
+    return QString("%1 %2 %3 %4 %5 %6 %7")
       .arg(getRank(), 6)
       .arg(getGeneration(), 6)
       .arg(getIDNumber(), 6)
-      .arg(getEnthalpy(), 10)
+      .arg(getEnthalpy() / static_cast<double>(getFormulaUnits()), 13)
+      .arg(getFormulaUnits(), 6)
       .arg(m_spgSymbol, 10)
       .arg(status, 11);
   };
@@ -1703,5 +2283,4 @@ namespace XtalOpt {
     file->close();
     return POSCARToXtal(poscar);
   }
-
 } // end namespace XtalOpt
