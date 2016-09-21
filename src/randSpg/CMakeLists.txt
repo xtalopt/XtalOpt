@@ -13,9 +13,11 @@ include_directories(${randSpg_SOURCE_DIR}/include)
 add_library (RandSpg ${randSpg_SRCS})
 
 # C++11 is required. MSVC should not need a flag
-#if(UNIX)
-#    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-#endif(UNIX)
+# If we are using APPLE, we have to use c++11 flags when we
+# first execute cmake
+if(UNIX AND NOT APPLE)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+endif(UNIX AND NOT APPLE)
 
 option(BUILD_RELEASE
        "Whether to compile with optimizations or not"
