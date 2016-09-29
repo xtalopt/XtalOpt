@@ -659,9 +659,9 @@ namespace XtalOpt {
     double a            = RANDDOUBLE() * (a_max-a_min) + a_min;
     double b            = RANDDOUBLE() * (b_max-b_min) + b_min;
     double c            = RANDDOUBLE() * (c_max-c_min) + c_min;
-    double alpha        = 90.0; //RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
-    double beta         = 90.0; //RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
-    double gamma        = 90.0; //RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
+    double alpha        = RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
+    double beta         = RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
+    double gamma        = RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
 
     // Create crystal
     Xtal *xtal	= new Xtal(a, b, c, alpha, beta, gamma);
