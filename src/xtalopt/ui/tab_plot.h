@@ -50,7 +50,7 @@ namespace XtalOpt {
       Structure_T = 0,
       Generation_T,
       Enthalpy_T,
-      Enthalpy_per_FU_T, //PSA Enthalpy per atom
+      Enthalpy_per_FU_T,
       Energy_T,
       PV_T,
       A_T,
@@ -60,6 +60,7 @@ namespace XtalOpt {
       Beta_T,
       Gamma_A,
       Volume_T,
+      Volume_per_FU_T,
       Formula_Units_T
     };
 
