@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>968</width>
+    <width>1062</width>
     <height>584</height>
    </rect>
   </property>
@@ -754,7 +754,7 @@ is a good value here.</string>
       <string>Formula Unit Options</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_7">
-      <item row="1" column="0">
+      <item row="0" column="0">
        <widget class="QCheckBox" name="cb_using_mitotic_growth">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -775,10 +775,10 @@ is a good value here.</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="1">
-       <widget class="QLabel" name="label_11">
+      <item row="4" column="0">
+       <widget class="QCheckBox" name="cb_using_one_pool">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -789,17 +789,68 @@ is a good value here.</string>
          </font>
         </property>
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If &amp;quot;Use one gene pool?&amp;quot; is checked, then this is the chance of the xtal chosen from the probability list to undergo mitosis to become one of the possible formula units on the list (defined by the user in the Structure Limits tab).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Mitosis will only be used to create formula units that are multiples of the formula units of the original structure.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;If there is more than one formula unit that can be made, there is an equal probability of generating each of the formula units.&lt;/p&gt;&lt;p&gt;Note: does not affect &amp;quot;Allow initial mitosis;&amp;quot; that is for the initial generation, whereas this is for later generations while using one gene pool.&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Default value: 50%&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This will cause the search to focus on the formula units that have produced the most stable xtals. The weighted probability list will be based upon the enthalpy / FU of structures of every different formula units on the list.&lt;/p&gt;&lt;p&gt;If unchecked, all the evolutionary operations (except the formula unit crossover, which is completely random) will generate structures to create equal amounts of every type of formula unit.&lt;/p&gt;&lt;p&gt;It may be preferable to check this later in the run rather than earlier because, due to the complexity of larger formula unit xtals, stable structures of the larger formula unit xtals may not have been discovered yet.&lt;/p&gt;&lt;p&gt;The pool size of the new enthalpy per formula unit weighted structures list is equal to the pool size per FU specified above.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
-         <string>Chance of later mitosis:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         <string>Use one gene pool?</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="2">
+      <item row="1" column="0">
+       <widget class="QCheckBox" name="cb_using_FU_crossovers">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allows crossovers between different formula units. The resulting cell structure will be rounded to the nearest formula unit on the list (i. e. atoms will be removed/added randomly until it reaches the closest number of formula units on the list).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Allow FU Crossovers</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1" colspan="2">
+       <widget class="QSpinBox" name="spin_FU_crossovers_generation">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>21</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose which generation to allow crossovers between formula units to begin at. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="prefix">
+         <string>Allow at Generation: </string>
+        </property>
+        <property name="minimum">
+         <number>1</number>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="2">
        <widget class="QSpinBox" name="spin_chance_of_mitosis">
         <property name="enabled">
          <bool>false</bool>
@@ -835,10 +886,10 @@ is a good value here.</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="0">
-       <widget class="QCheckBox" name="cb_using_one_pool">
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_11">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -849,64 +900,13 @@ is a good value here.</string>
          </font>
         </property>
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This will cause the search to focus on the formula units that have produced the most stable xtals. The weighted probability list will be based upon the enthalpy / FU of structures of every different formula units on the list.&lt;/p&gt;&lt;p&gt;If unchecked, all the evolutionary operations (except the formula unit crossover, which is completely random) will generate structures to create equal amounts of every type of formula unit.&lt;/p&gt;&lt;p&gt;It may be preferable to check this later in the run rather than earlier because, due to the complexity of larger formula unit xtals, stable structures of the larger formula unit xtals may not have been discovered yet.&lt;/p&gt;&lt;p&gt;The pool size of the new enthalpy per formula unit weighted structures list is equal to the pool size per FU specified above.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If &amp;quot;Use one gene pool?&amp;quot; is checked, then this is the chance of the xtal chosen from the probability list to undergo mitosis to become one of the possible formula units on the list (defined by the user in the Structure Limits tab).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Mitosis will only be used to create formula units that are multiples of the formula units of the original structure.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;If there is more than one formula unit that can be made, there is an equal probability of generating each of the formula units.&lt;/p&gt;&lt;p&gt;Note: does not affect &amp;quot;Allow initial mitosis;&amp;quot; that is for the initial generation, whereas this is for later generations while using one gene pool.&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Default value: 50%&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
-         <string>Use one gene pool?</string>
+         <string>  Chance of later mitosis:</string>
         </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QCheckBox" name="cb_using_FU_crossovers">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>11</pointsize>
-         </font>
-        </property>
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allows crossovers between different formula units. The resulting cell structure will be rounded to the nearest formula unit on the list (i. e. atoms will be removed/added randomly until it reaches the closest number of formula units on the list).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>Allow FU Crossovers</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1" colspan="2">
-       <widget class="QSpinBox" name="spin_FU_crossovers_generation">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>150</width>
-          <height>21</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>11</pointsize>
-         </font>
-        </property>
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose which generation to allow crossovers between formula units to begin at. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="prefix">
-         <string>Allow at Generation: </string>
-        </property>
-        <property name="minimum">
-         <number>1</number>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
         </property>
        </widget>
       </item>
@@ -1695,6 +1695,17 @@ Default: 4</string>
   <tabstop>spin_runningJobLimit</tabstop>
   <tabstop>spin_failLimit</tabstop>
   <tabstop>combo_failAction</tabstop>
+  <tabstop>spin_cutoff</tabstop>
+  <tabstop>cb_using_mitotic_growth</tabstop>
+  <tabstop>cb_using_FU_crossovers</tabstop>
+  <tabstop>spin_FU_crossovers_generation</tabstop>
+  <tabstop>cb_using_one_pool</tabstop>
+  <tabstop>spin_chance_of_mitosis</tabstop>
+  <tabstop>spin_tol_spg</tabstop>
+  <tabstop>push_spg_reset</tabstop>
+  <tabstop>spin_tol_xcLength</tabstop>
+  <tabstop>spin_tol_xcAngle</tabstop>
+  <tabstop>push_dup_reset</tabstop>
   <tabstop>spin_p_cross</tabstop>
   <tabstop>spin_cross_minimumContribution</tabstop>
   <tabstop>spin_p_strip</tabstop>

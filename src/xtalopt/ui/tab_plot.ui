@@ -522,7 +522,18 @@
   </customwidget>
  </customwidgets>
  <tabstops>
+  <tabstop>combo_plotType</tabstop>
+  <tabstop>combo_yAxis</tabstop>
+  <tabstop>combo_xAxis</tabstop>
+  <tabstop>cb_showDuplicates</tabstop>
+  <tabstop>cb_showIncompletes</tabstop>
+  <tabstop>cb_labelPoints</tabstop>
+  <tabstop>combo_labelType</tabstop>
+  <tabstop>cb_showSpecifiedFU</tabstop>
+  <tabstop>edit_showSpecifiedFU</tabstop>
+  <tabstop>combo_distHistXtal</tabstop>
   <tabstop>push_refresh</tabstop>
+  <tabstop>pushButton</tabstop>
  </tabstops>
  <resources/>
  <connections>

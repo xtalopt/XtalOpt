@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>784</width>
+    <width>946</width>
     <height>565</height>
    </rect>
   </property>
@@ -1483,15 +1483,40 @@ able to create offspring that meet this restriction.</string>
  </widget>
  <tabstops>
   <tabstop>edit_composition</tabstop>
-  <tabstop>spin_a_min</tabstop>
-  <tabstop>spin_b_min</tabstop>
-  <tabstop>spin_c_min</tabstop>
-  <tabstop>spin_alpha_min</tabstop>
-  <tabstop>spin_beta_min</tabstop>
-  <tabstop>spin_gamma_min</tabstop>
-  <tabstop>spin_vol_min</tabstop>
+  <tabstop>edit_formula_units</tabstop>
+  <tabstop>cb_useIAD</tabstop>
+  <tabstop>table_iad</tabstop>
+  <tabstop>pushButton_addIAD</tabstop>
+  <tabstop>pushButton_removeIAD</tabstop>
+  <tabstop>pushButton_removeAllIAD</tabstop>
+  <tabstop>cb_interatomicDistanceLimit</tabstop>
   <tabstop>spin_scaleFactor</tabstop>
   <tabstop>spin_minRadius</tabstop>
+  <tabstop>spin_a_min</tabstop>
+  <tabstop>spin_a_max</tabstop>
+  <tabstop>spin_b_min</tabstop>
+  <tabstop>spin_b_max</tabstop>
+  <tabstop>spin_c_min</tabstop>
+  <tabstop>spin_c_max</tabstop>
+  <tabstop>spin_alpha_min</tabstop>
+  <tabstop>spin_alpha_max</tabstop>
+  <tabstop>spin_beta_min</tabstop>
+  <tabstop>spin_beta_max</tabstop>
+  <tabstop>spin_gamma_min</tabstop>
+  <tabstop>spin_gamma_max</tabstop>
+  <tabstop>spin_vol_min</tabstop>
+  <tabstop>spin_vol_max</tabstop>
+  <tabstop>cb_fixedVolume</tabstop>
+  <tabstop>spin_fixedVolume</tabstop>
+  <tabstop>cb_allowRandSpg</tabstop>
+  <tabstop>push_spgOptions</tabstop>
+  <tabstop>cb_mitosis</tabstop>
+  <tabstop>combo_divisions</tabstop>
+  <tabstop>combo_a</tabstop>
+  <tabstop>combo_b</tabstop>
+  <tabstop>combo_c</tabstop>
+  <tabstop>cb_subcellPrint</tabstop>
+  <tabstop>table_comp</tabstop>
  </tabstops>
  <resources/>
  <connections>
