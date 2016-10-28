@@ -827,7 +827,8 @@ namespace XtalOpt {
                             QString("Select structure file to use as seed"),
                             filename,
                             "Common formats (*POSCAR *CONTCAR *.got *.cml *cif"
-                            " *.out);;All Files (*)");
+                            " *.out);;All Files (*)",
+                            0, QFileDialog::DontUseNativeDialog);
 
     // User canceled selection
     if (newFilename.isEmpty()) return;
