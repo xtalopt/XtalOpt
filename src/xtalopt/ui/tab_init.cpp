@@ -847,6 +847,8 @@ namespace XtalOpt {
 
     QHash<QPair<int, int>, MolUnit> compMolUnit;
     compMolUnit.clear();
+      
+    xtalopt->compMolUnit.clear();
 
     unsigned int numRows = ui.table_comp->rowCount();
     unsigned int numRowsMolUnit = ui.table_molUnit->rowCount();
@@ -993,6 +995,9 @@ namespace XtalOpt {
       QList<QString> neighborList;
 
       this->getCentersAndNeighbors(centerList, centerNum, neighborList, neighborNum);
+
+      if (centerList.isEmpty() || neighborList.isEmpty())
+        return;
 
       for(int k = 0; k < neighborList.size(); k++) {
         int n = OpenBabel::etab.GetAtomicNum(neighborList.at(k).trimmed().toStdString().c_str());
@@ -1152,6 +1157,8 @@ namespace XtalOpt {
 
     if(xtalopt->compMolUnit.contains(qMakePair<int, int>(centerNum, neighborNum))) {
       neighborList.removeAt(0);
+      if (centerList.isEmpty() || neighborList.isEmpty())
+        return;
       neighbor = neighborList.at(0);
       neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
     }
@@ -1324,7 +1331,8 @@ namespace XtalOpt {
 
       if (qComp > qMolUnit) {
         centerList.append(symbol);
-        neighborList.append(symbol);
+        if (qComp > 1)
+          neighborList.append(symbol);
       }
     }
   }
