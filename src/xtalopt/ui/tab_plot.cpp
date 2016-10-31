@@ -436,6 +436,14 @@ namespace XtalOpt {
           default:      y = xtal->getVolume(); break;
           }
           break;
+        case Volume_per_FU_T:
+          switch (j) {
+          case 0:       x = xtal->getVolume() /
+                            static_cast<double>(xtal->getFormulaUnits()); break;
+          default:      y = xtal->getVolume() /
+                            static_cast<double>(xtal->getFormulaUnits()); break;
+          }
+          break;
         case Formula_Units_T:
           switch (j) {
           case 0:       x = xtal->getFormulaUnits(); break;
@@ -588,6 +596,13 @@ namespace XtalOpt {
         break;
       case Volume_T:
         label = tr("Volume");
+        switch (j) {
+        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
+        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
+        }
+        break;
+      case Volume_per_FU_T:
+        label = tr("Volume per FU");
         switch (j) {
         case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
         default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;

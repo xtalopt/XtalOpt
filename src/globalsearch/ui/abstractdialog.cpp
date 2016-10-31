@@ -185,7 +185,7 @@ namespace GlobalSearch {
     filename = QFileDialog::getOpenFileName(this,
                         QString("Select .state file to resume"),
                         m_opt->filePath,
-                        "*.state;;*.*");
+                        "*.state;;*.*", 0, QFileDialog::DontUseNativeDialog);
 
     if (!filename.isEmpty()) QtConcurrent::run(this, &AbstractDialog::resumeSession_, filename);
   }

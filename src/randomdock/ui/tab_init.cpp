@@ -102,7 +102,8 @@ namespace RandomDock {
       filename = QFileDialog::getOpenFileName(m_dialog,
                                               tr("Select molecule file to use for the substrate"),
                                               path,
-                                              tr("All files (*)"));
+                                              tr("All files (*)"),
+                                              0, QFileDialog::DontUseNativeDialog);
 
       // User cancels
       if (filename.isNull()) {
@@ -160,7 +161,8 @@ namespace RandomDock {
       filename = QFileDialog::getOpenFileName(m_dialog,
                                               tr("Select molecule file to add as a matrix element"),
                                               path,
-                                              tr("All files (*)"));
+                                              tr("All files (*)"),
+                                              0, QFileDialog::DontUseNativeDialog);
 
       // User cancels
       if (filename.isNull()) {
