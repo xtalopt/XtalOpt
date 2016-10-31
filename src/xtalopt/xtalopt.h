@@ -48,8 +48,9 @@ namespace XtalOpt {
     unsigned int quantity;
   };
 
-  struct IAD {
-    unsigned int number;
+  struct MolUnit {
+    unsigned int numCenters;
+    unsigned int numNeighbors;
     double dist;
     unsigned int geom;
   };
@@ -189,10 +190,10 @@ namespace XtalOpt {
 
     bool using_mitosis;
     bool using_subcellPrint;
-    bool using_customIAD;
+    bool using_molUnit;
 
     QHash<uint, XtalCompositionStruct> comp;
-    QHash<QPair<int, int>, IAD> compIAD;    
+    QHash<QPair<int, int>, MolUnit> compMolUnit;    
     QStringList seedList;
 
     QMutex *xtalInitMutex;

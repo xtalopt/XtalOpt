@@ -1208,12 +1208,13 @@ namespace XtalOpt {
     return true;
   }
 
-  //IAD corrected function
+  //MolUnit corrected function
   bool Xtal::addAtomRandomly(
       unsigned int atomicNumber,
+      unsigned int neighbor,
       const QHash<unsigned int, XtalCompositionStruct> & limits,
-      const QHash<QPair<int, int>, IAD> & limitsIAD,
-      bool useIAD,
+      const QHash<QPair<int, int>, MolUnit> & limitsMolUnit,
+      bool useMolUnit,
       int maxAttempts, Avogadro::Atom **atom)
   {
     Eigen::Vector3d cartCoords;
@@ -1284,32 +1285,40 @@ namespace XtalOpt {
     atom = &atm;
     (*atom)->setPos(cartCoords);
     (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
-
-    if (useIAD == true) {
-      int neighbor;
-      int number;
+  
+    qDebug() << "Xtal has MolUnit center" << atomicNumber;
+    
+    if (useMolUnit == true) {
+      int numNeighbors;
       double dist;
       int geom;
 
-      for (QHash<QPair<int, int>, IAD>::const_iterator it = limitsIAD.constBegin(), it_end = limitsIAD.constEnd(); it != it_end; it++) {
+      for (QHash<QPair<int, int>, MolUnit>::const_iterator it = limitsMolUnit.constBegin(), it_end = limitsMolUnit.constEnd(); it != it_end; it++) {
         QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
-        int first = key.first;
-        if (atomicNumber==first) {
-          neighbor = key.second;
-          number = it.value().number;
-          dist = it.value().dist;
+        if (atomicNumber == key.first && neighbor == key.second) {
+          numNeighbors = it.value().numNeighbors;
           geom = it.value().geom;
+          dist = it.value().dist;
         }
       }
 
+      qDebug() << "Neighbors =" << neighbor;
+      qDebug() << "numNeighbors =" << numNeighbors;
+      
       OpenBabel::OBMol obmol = OBMol();
       OpenBabel::OBAtom *obatom = obmol.GetAtom((*atom)->index()+1);
-      obatom->SetImplicitValence(number);
+      obatom->SetAtomicNum(6);
+      obatom->SetImplicitValence(numNeighbors);
       obmol.SetImplicitValencePerceived();
       obatom->SetHyb(geom);
       obmol.SetHybridizationPerceived();
       obmol.AddHydrogens(obatom);
       unsigned int numberAtoms = numAtoms();
+
+      qDebug() << "numAtoms =" << numberAtoms;
+      qDebug() << "numAtoms for obmol =" << obmol.NumAtoms();
+      qDebug() << "distance =" << dist;
+      
       int j = 0;
       for (unsigned int i = numberAtoms+1; i <= obmol.NumAtoms(); ++i, ++j) {
         OpenBabel::OBAtom *obatom2 = obmol.GetAtom(i);

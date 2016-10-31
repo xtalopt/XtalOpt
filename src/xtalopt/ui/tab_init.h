@@ -47,10 +47,11 @@ namespace XtalOpt {
     enum IADColumns
     {
      IC_CENTER = 0,
-     IC_NEIGHBOR = 1,
-     IC_NUMBER = 2,
-     IC_DIST = 3,
-     IC_GEOM = 4
+     IC_NUMCENTERS = 1,
+     IC_NEIGHBOR = 2,
+     IC_NUMNEIGHBORS = 3,
+     IC_GEOM = 4,
+     IC_DIST = 5
     };
 
   public slots:
@@ -77,6 +78,10 @@ namespace XtalOpt {
     void addRow();
     void removeRow();
     void removeAll();
+    void getCentersAndNeighbors(QList<QString> & centerList, int centerNum, 
+            QList<QString> & neighborList, int neighborNum);
+    void getNumCenters(int centerNum, int neighborNum, QList<QString> & numCentersList); 
+    void getNumNeighbors(int centerNum, int neighborNum, QList<QString> & numNeighborsList); 
     void getGeom(QList<QString> & geomList, unsigned int numNeighbors);
     void setGeom(unsigned int & geom, QString strGeom);
     void openSpgOptions();

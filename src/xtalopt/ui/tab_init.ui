@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>784</width>
+    <width>926</width>
     <height>563</height>
    </rect>
   </property>
@@ -34,35 +34,20 @@
      <property name="title">
       <string>Composition</string>
      </property>
-     <layout class="QGridLayout" name="gridLayout_2">
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="edit_formula_units">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>11</pointsize>
-         </font>
-        </property>
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the numbers of formula units separated by commas and hyphens to be searched here. The text box will be updated with the program's interpretation of your input after exiting the box or pressing return.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Examples:&lt;/p&gt;&lt;p&gt;1 , 3&lt;/p&gt;&lt;p&gt;1 - 4&lt;/p&gt;&lt;p&gt;1 - 3, 5, 7 - 9&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>1</string>
-        </property>
-       </widget>
-      </item>
+     <layout class="QGridLayout" name="gridLayout_6">
       <item row="0" column="0">
        <widget class="QLabel" name="label_14">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>18</height>
+         </size>
         </property>
         <property name="font">
          <font>
@@ -82,31 +67,48 @@
       </item>
       <item row="0" column="1">
        <widget class="QLineEdit" name="edit_composition">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>18</height>
+         </size>
+        </property>
+        <property name="baseSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
         <property name="font">
          <font>
           <pointsize>11</pointsize>
          </font>
         </property>
         <property name="toolTip">
-         <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'.SF NS Text'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Type the composition of the crystal here. Use only empirical formulas. It will be reduced to its empirical formula otherwise.&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;You may change formula units in the &amp;quot;Formula Units&amp;quot; section on this page.&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Examples:&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;ti1o2&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Ti1O2&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;TI1O2&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Ti1 O2&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Ti 1 o 2&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;etc.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Type the composition of the crystal here. Use only empirical formulas. It will be reduced to its empirical formula otherwise.&lt;/p&gt;&lt;p&gt;You may change formula units in the &amp;quot;Formula Units&amp;quot; section on this page.&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Examples:&lt;/p&gt;&lt;p&gt;ti1o2&lt;/p&gt;&lt;p&gt;Ti1O2&lt;/p&gt;&lt;p&gt;TI1O2&lt;/p&gt;&lt;p&gt;Ti1 O2&lt;/p&gt;&lt;p&gt;Ti 1 o 2&lt;/p&gt;&lt;p&gt;etc.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label_19">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>18</height>
+         </size>
+        </property>
         <property name="font">
          <font>
           <pointsize>11</pointsize>
@@ -117,6 +119,42 @@ p, li { white-space: pre-wrap; }
         </property>
         <property name="alignment">
          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="buddy">
+         <cstring>edit_formula_units</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="edit_formula_units">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>18</height>
+         </size>
+        </property>
+        <property name="baseSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the numbers of formula units separated by commas and hyphens to be searched here. The text box will be updated with the program's interpretation of your input after exiting the box or pressing return.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Examples:&lt;/p&gt;&lt;p&gt;1 , 3&lt;/p&gt;&lt;p&gt;1 - 4&lt;/p&gt;&lt;p&gt;1 - 3, 5, 7 - 9&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>1</string>
         </property>
        </widget>
       </item>
@@ -156,6 +194,15 @@ p, li { white-space: pre-wrap; }
         </attribute>
         <attribute name="horizontalHeaderStretchLastSection">
          <bool>true</bool>
+        </attribute>
+        <attribute name="verticalHeaderVisible">
+         <bool>false</bool>
+        </attribute>
+        <attribute name="verticalHeaderDefaultSectionSize">
+         <number>18</number>
+        </attribute>
+        <attribute name="verticalHeaderMinimumSectionSize">
+         <number>18</number>
         </attribute>
         <column>
          <property name="text">
@@ -902,8 +949,8 @@ p, li { white-space: pre-wrap; }
       <string>Interatomic Distances</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
-      <item row="0" column="0" colspan="2">
-       <widget class="QCheckBox" name="cb_useIAD">
+      <item row="0" column="0">
+       <widget class="QCheckBox" name="cb_useMolUnit">
         <property name="font">
          <font>
           <pointsize>11</pointsize>
@@ -917,8 +964,99 @@ p, li { white-space: pre-wrap; }
         </property>
        </widget>
       </item>
-      <item row="5" column="1">
-       <widget class="QPushButton" name="pushButton_addIAD">
+      <item row="1" column="0" colspan="5">
+       <widget class="QTableWidget" name="table_molUnit">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Center: Choose the atom type to be the center of the 'molecular unit'&lt;/p&gt;&lt;p&gt;#: Number of center atoms to coordinate the neighbor atoms&lt;/p&gt;&lt;p&gt;Neighbor: Choose the atom type to coordinate to the center atom&lt;/p&gt;&lt;p&gt;#: Number of neighbor atoms to coordinate to the center atom&lt;/p&gt;&lt;p&gt;Geometry: How to orient the neighbor around the center atom&lt;/p&gt;&lt;p&gt;Distance: Distance to place each neighbor atom from the center atom&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <attribute name="horizontalHeaderCascadingSectionResizes">
+         <bool>true</bool>
+        </attribute>
+        <attribute name="horizontalHeaderDefaultSectionSize">
+         <number>70</number>
+        </attribute>
+        <attribute name="horizontalHeaderMinimumSectionSize">
+         <number>70</number>
+        </attribute>
+        <attribute name="horizontalHeaderStretchLastSection">
+         <bool>true</bool>
+        </attribute>
+        <attribute name="verticalHeaderVisible">
+         <bool>false</bool>
+        </attribute>
+        <attribute name="verticalHeaderDefaultSectionSize">
+         <number>18</number>
+        </attribute>
+        <attribute name="verticalHeaderMinimumSectionSize">
+         <number>18</number>
+        </attribute>
+        <column>
+         <property name="text">
+          <string>Center</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>#</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Neighbor</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>#</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Geometry</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Distance</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="2" column="1">
+       <widget class="QPushButton" name="pushButton_addMolUnit">
         <property name="enabled">
          <bool>false</bool>
         </property>
@@ -935,8 +1073,8 @@ p, li { white-space: pre-wrap; }
         </property>
        </widget>
       </item>
-      <item row="5" column="2" colspan="2">
-       <widget class="QPushButton" name="pushButton_removeIAD">
+      <item row="2" column="2" colspan="2">
+       <widget class="QPushButton" name="pushButton_removeMolUnit">
         <property name="enabled">
          <bool>false</bool>
         </property>
@@ -953,8 +1091,8 @@ p, li { white-space: pre-wrap; }
         </property>
        </widget>
       </item>
-      <item row="5" column="4">
-       <widget class="QPushButton" name="pushButton_removeAllIAD">
+      <item row="2" column="4">
+       <widget class="QPushButton" name="pushButton_removeAllMolUnit">
         <property name="enabled">
          <bool>false</bool>
         </property>
@@ -971,8 +1109,20 @@ p, li { white-space: pre-wrap; }
         </property>
        </widget>
       </item>
-      <item row="6" column="0">
+      <item row="3" column="0">
        <widget class="QCheckBox" name="cb_interatomicDistanceLimit">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>18</height>
+         </size>
+        </property>
         <property name="font">
          <font>
           <pointsize>11</pointsize>
@@ -986,10 +1136,16 @@ p, li { white-space: pre-wrap; }
         </property>
        </widget>
       </item>
-      <item row="6" column="1" colspan="2">
+      <item row="3" column="1" colspan="2">
        <widget class="QLabel" name="label">
         <property name="enabled">
          <bool>false</bool>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="font">
          <font>
@@ -1007,10 +1163,22 @@ p, li { white-space: pre-wrap; }
         </property>
        </widget>
       </item>
-      <item row="6" column="3" colspan="2">
+      <item row="3" column="3" colspan="2">
        <widget class="QDoubleSpinBox" name="spin_scaleFactor">
         <property name="enabled">
          <bool>false</bool>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>18</height>
+         </size>
         </property>
         <property name="font">
          <font>
@@ -1048,10 +1216,49 @@ able to create offspring that meet this restriction.</string>
         </property>
        </widget>
       </item>
-      <item row="7" column="3" colspan="2">
+      <item row="4" column="1" colspan="2">
+       <widget class="QLabel" name="label_9">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Minimum radius:</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="buddy">
+         <cstring>spin_minRadius</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="3" colspan="2">
        <widget class="QDoubleSpinBox" name="spin_minRadius">
         <property name="enabled">
          <bool>false</bool>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>18</height>
+         </size>
         </property>
         <property name="font">
          <font>
@@ -1072,104 +1279,6 @@ able to create offspring that meet this restriction.</string>
         </property>
        </widget>
       </item>
-      <item row="7" column="1" colspan="2">
-       <widget class="QLabel" name="label_9">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>11</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Minimum radius:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-        <property name="buddy">
-         <cstring>spin_minRadius</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="0">
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item row="1" column="0" colspan="5">
-       <widget class="QTableWidget" name="table_iad">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>11</pointsize>
-         </font>
-        </property>
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Center: Choose the atom type to be the center of the 'molecular unit'&lt;/p&gt;&lt;p&gt;Neighbor: Choose the atom type to coordinate to the center atom&lt;/p&gt;&lt;p&gt;#: Number of neighbor atoms to coordinate to the center atom&lt;/p&gt;&lt;p&gt;Distance: Distance to place each neighbor atom from the center atom&lt;/p&gt;&lt;p&gt;Geometry: How to orient the neighbor around the center atom&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <attribute name="horizontalHeaderCascadingSectionResizes">
-         <bool>true</bool>
-        </attribute>
-        <attribute name="horizontalHeaderDefaultSectionSize">
-         <number>75</number>
-        </attribute>
-        <attribute name="horizontalHeaderMinimumSectionSize">
-         <number>75</number>
-        </attribute>
-        <attribute name="horizontalHeaderStretchLastSection">
-         <bool>true</bool>
-        </attribute>
-        <column>
-         <property name="text">
-          <string>Center</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Neighbor</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>#</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Distance</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Geometry</string>
-         </property>
-        </column>
-       </widget>
-      </item>
      </layout>
     </widget>
    </item>
@@ -1178,7 +1287,7 @@ able to create offspring that meet this restriction.</string>
      <property name="title">
       <string>Space-group Generation</string>
      </property>
-     <layout class="QGridLayout" name="gridLayout_10">
+     <layout class="QGridLayout" name="gridLayout_2">
       <item row="0" column="0">
        <widget class="QCheckBox" name="cb_allowRandSpg">
         <property name="font">
@@ -1477,15 +1586,40 @@ able to create offspring that meet this restriction.</string>
  </widget>
  <tabstops>
   <tabstop>edit_composition</tabstop>
+  <tabstop>edit_formula_units</tabstop>
+  <tabstop>table_comp</tabstop>
   <tabstop>spin_a_min</tabstop>
+  <tabstop>spin_a_max</tabstop>
   <tabstop>spin_b_min</tabstop>
+  <tabstop>spin_b_max</tabstop>
   <tabstop>spin_c_min</tabstop>
+  <tabstop>spin_c_max</tabstop>
   <tabstop>spin_alpha_min</tabstop>
+  <tabstop>spin_alpha_max</tabstop>
   <tabstop>spin_beta_min</tabstop>
+  <tabstop>spin_beta_max</tabstop>
   <tabstop>spin_gamma_min</tabstop>
+  <tabstop>spin_gamma_max</tabstop>
   <tabstop>spin_vol_min</tabstop>
+  <tabstop>spin_vol_max</tabstop>
+  <tabstop>cb_fixedVolume</tabstop>
+  <tabstop>spin_fixedVolume</tabstop>
+  <tabstop>cb_useMolUnit</tabstop>
+  <tabstop>table_molUnit</tabstop>
+  <tabstop>pushButton_addMolUnit</tabstop>
+  <tabstop>pushButton_removeMolUnit</tabstop>
+  <tabstop>pushButton_removeAllMolUnit</tabstop>
+  <tabstop>cb_interatomicDistanceLimit</tabstop>
   <tabstop>spin_scaleFactor</tabstop>
   <tabstop>spin_minRadius</tabstop>
+  <tabstop>cb_allowRandSpg</tabstop>
+  <tabstop>push_spgOptions</tabstop>
+  <tabstop>cb_mitosis</tabstop>
+  <tabstop>combo_divisions</tabstop>
+  <tabstop>combo_a</tabstop>
+  <tabstop>combo_b</tabstop>
+  <tabstop>combo_c</tabstop>
+  <tabstop>cb_subcellPrint</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -1730,9 +1864,9 @@ able to create offspring that meet this restriction.</string>
    </hints>
   </connection>
   <connection>
-   <sender>cb_useIAD</sender>
+   <sender>cb_useMolUnit</sender>
    <signal>toggled(bool)</signal>
-   <receiver>table_iad</receiver>
+   <receiver>table_molUnit</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -1746,9 +1880,9 @@ able to create offspring that meet this restriction.</string>
    </hints>
   </connection>
   <connection>
-   <sender>cb_useIAD</sender>
+   <sender>cb_useMolUnit</sender>
    <signal>toggled(bool)</signal>
-   <receiver>pushButton_addIAD</receiver>
+   <receiver>pushButton_addMolUnit</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -1762,9 +1896,9 @@ able to create offspring that meet this restriction.</string>
    </hints>
   </connection>
   <connection>
-   <sender>cb_useIAD</sender>
+   <sender>cb_useMolUnit</sender>
    <signal>toggled(bool)</signal>
-   <receiver>pushButton_removeAllIAD</receiver>
+   <receiver>pushButton_removeAllMolUnit</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -1778,9 +1912,9 @@ able to create offspring that meet this restriction.</string>
    </hints>
   </connection>
   <connection>
-   <sender>cb_useIAD</sender>
+   <sender>cb_useMolUnit</sender>
    <signal>toggled(bool)</signal>
-   <receiver>pushButton_removeIAD</receiver>
+   <receiver>pushButton_removeMolUnit</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -1794,7 +1928,7 @@ able to create offspring that meet this restriction.</string>
    </hints>
   </connection>
   <connection>
-   <sender>cb_useIAD</sender>
+   <sender>cb_useMolUnit</sender>
    <signal>toggled(bool)</signal>
    <receiver>cb_allowRandSpg</receiver>
    <slot>setDisabled(bool)</slot>
@@ -1812,7 +1946,7 @@ able to create offspring that meet this restriction.</string>
   <connection>
    <sender>cb_allowRandSpg</sender>
    <signal>toggled(bool)</signal>
-   <receiver>cb_useIAD</receiver>
+   <receiver>cb_useMolUnit</receiver>
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
