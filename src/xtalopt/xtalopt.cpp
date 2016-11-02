@@ -706,6 +706,20 @@ namespace XtalOpt {
               xtal->getBeta(),
               xtal->getGamma());
 
+      //First check for "no center" MolUnits
+      for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
+        QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+        if (key.first == 0) {
+          if (!xtal->addAtomRandomly(key.first, 1, this->comp,
+                  this->compMolUnit, true)) {
+            xtal->deleteLater();
+            debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                  "specified interatomic distance.");
+            return 0;
+          }
+        }
+      }
+
       for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
         atomicNum = atomicNums.at(num_idx);
         qRand = comp.value(atomicNum).quantity * FU;
@@ -847,10 +861,28 @@ namespace XtalOpt {
 
     //Mitosis = False  
     } else {
+
+      //First check for "no center" MolUnits
+      for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
+        QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+        if (key.first == 0) {
+          if (!xtal->addAtomRandomly(key.first, 1, this->comp,
+                  this->compMolUnit, true)) {
+            xtal->deleteLater();
+            debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                  "specified interatomic distance.");
+            return 0;
+          }
+        }
+      }
+
       for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
         // To avoid messing up the stoichiometry with the MolUnit builder            
         atomicNum = atomicNums.at(num_idx);
         qRand = comp.value(atomicNum).quantity * FU;
+
+        if (atomicNum == 0)
+          continue;
 
         bool addAtom = true;
         bool useMolUnit = false;

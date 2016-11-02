@@ -1234,14 +1234,19 @@ namespace XtalOpt {
       // Compute a cut off distance -- atoms farther away than this value
       // will abort the check early.
       double maxCheckDistance = 0.0;
-      for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
-           it = limits.constBegin(), it_end = limits.constEnd(); it != it_end;
-           ++it) {
-        if (it.value().minRadius > maxCheckDistance) {
-          maxCheckDistance = it.value().minRadius;
+      if (atomicNumber == 0)
+          maxCheckDistance = 1;
+      else {
+        for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
+             it = limits.constBegin(), it_end = limits.constEnd(); it != it_end;
+             ++it) {
+          if (it.value().minRadius > maxCheckDistance) {
+            maxCheckDistance = it.value().minRadius;
+          }
         }
       }
-      maxCheckDistance += newMinRadius;
+      if (atomicNumber != 0)
+        maxCheckDistance += newMinRadius;
       const double maxCheckDistSquared = maxCheckDistance*maxCheckDistance;
 
       do {
@@ -1330,6 +1335,8 @@ namespace XtalOpt {
         a->setOBAtom(obatom2);
         a->setAtomicNumber(neighbor);
       }
+      if (atomicNumber == 0)
+          removeAtom(*atom);
     }
 
     return true;

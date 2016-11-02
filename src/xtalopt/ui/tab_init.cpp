@@ -860,7 +860,11 @@ namespace XtalOpt {
     //Build table - forward
     for (int i = 0; i < numRowsMolUnit; i++) {
       QString center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
-      int centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+      int centerNum;
+      if (center == "None")
+        centerNum = 0;
+      else
+        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
       QString neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
       int neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
 
@@ -900,7 +904,10 @@ namespace XtalOpt {
             this, SLOT(updateIAD()));
 
       center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
-      centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+      if (center == "None")
+        centerNum = 0;
+      else
+        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
       neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
       neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
 
@@ -986,7 +993,11 @@ namespace XtalOpt {
     //Go through table again - backward
     for (int i = numRowsMolUnit-1; i >= 0; i--) {
       QString center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
-      int centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+      int centerNum;
+      if (center == "None")
+        centerNum = 0;
+      else
+        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
       QString neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
       int neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
 
@@ -1025,8 +1036,11 @@ namespace XtalOpt {
       connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
-      center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
-      centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+      center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();      
+      if (center == "None")
+        centerNum = 0;
+      else
+        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
       neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
       neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
 
@@ -1151,7 +1165,10 @@ namespace XtalOpt {
       return;
 
     QString center = centerList.at(0);
-    centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+    if (center == "None")
+      centerNum = 0;
+    else 
+      centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
     QString neighbor = neighborList.at(0);
     neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
 
@@ -1335,6 +1352,9 @@ namespace XtalOpt {
           neighborList.append(symbol);
       }
     }
+    
+    centerList.append("None");
+
   }
 
 
@@ -1342,7 +1362,6 @@ namespace XtalOpt {
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
     
-//    int numNeighbors = 0;
     int q = 0;
 
     for (QHash<QPair<int, int>, MolUnit>::const_iterator it = xtalopt->compMolUnit.constBegin(), it_end = xtalopt->compMolUnit.constEnd(); it != it_end; it++) {
@@ -1350,8 +1369,6 @@ namespace XtalOpt {
         q += it->numCenters;
       if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().second == centerNum)
         q += it->numNeighbors * it->numCenters;
-//      if (it.key() == QPair<int, int>(centerNum, neighborNum))
-//        numNeighbors = it->numCenters * it->numNeighbors;
     }
 
     int numCenters = xtalopt->comp[centerNum].quantity - q;
@@ -1359,6 +1376,9 @@ namespace XtalOpt {
     if (centerNum == neighborNum)
       numCenters /= 2;
 
+    if (centerNum == 0)
+      numCenters = 6;
+    
     if (numCenters == 0)
       return;
 
