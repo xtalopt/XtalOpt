@@ -188,6 +188,7 @@ namespace XtalOpt {
     settings->setValue("limits/cx",      xtalopt->cx);
     settings->setValue("using/interatomicDistanceLimit",
                        xtalopt->using_interatomicDistanceLimit);
+    settings->setValue("using/molUnit",      xtalopt->using_molUnit);
 
     // Composition
     // We only want to save POTCAR info and Composition to the resume
@@ -208,8 +209,29 @@ namespace XtalOpt {
       settings->endArray();
     }
 
-    // Formula Units List
+    // MoUnit composition
+    if (!filename.isEmpty() && filename.contains("xtalopt.state") && xtalopt->using_molUnit == true) {
+      settings->beginWriteArray("compMolUnit");
+      unsigned int numRowsMolUnit = ui.table_molUnit->rowCount();
+      for (int i = 0; i < numRowsMolUnit; i++) {
+        settings->setArrayIndex(i);
+        settings->setValue("center", 
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText());
+        settings->setValue("number_of_centers",
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText());
+        settings->setValue("neighbor",
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText());
+        settings->setValue("number_of_neighbors",
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText());
+        settings->setValue("geometry",
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText());
+        settings->setValue("distance",
+                           ui.table_molUnit->item(i, IC_DIST)->text());
+      }
+      settings->endArray();
+    }
 
+    // Formula Units List
     if (!filename.isEmpty() && filename.contains("xtalopt.state")) {
       settings->beginWriteArray("Formula_Units");
       QList<uint> tempFormulaUnitsList = xtalopt->formulaUnitsList;
@@ -254,7 +276,8 @@ namespace XtalOpt {
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
     ui.cb_interatomicDistanceLimit->setChecked( settings->value("using/interatomicDistanceLimit",false).toBool());
     ui.cb_mitosis->setChecked(      settings->value("using/mitosis",       false).toBool()     );
-    ui.cb_mitosis->setChecked(      settings->value("using/subcellPrint",       false).toBool()     );
+    ui.cb_subcellPrint->setChecked(      settings->value("using/subcellPrint",       false).toBool()     );
+    ui.cb_useMolUnit->setChecked(      settings->value("using/molUnit",       false).toBool()     );
     xtalopt->divisions = settings->value("limits/divisions").toInt();
     xtalopt->ax = settings->value("limits/ax").toInt();
     xtalopt->bx = settings->value("limits/bx").toInt();
@@ -276,6 +299,77 @@ namespace XtalOpt {
       }
       this->updateMinRadii();
       settings->endArray();
+    }
+
+    if (!filename.isEmpty() && ui.cb_useMolUnit->isChecked() == true) {
+        int size = settings->beginReadArray("compMolUnit");
+        xtalopt->compMolUnit = QHash<QPair<int, int>, MolUnit> ();
+        for (int i = 0; i < size; i++) {
+          settings->setArrayIndex(i);
+          int centerNum, numCenters, neighborNum, numNeighbors;
+          unsigned int geom;
+          double dist;
+          MolUnit entry;
+          
+          QString center = settings->value("center").toString();
+          centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+          QString strNumCenters = settings->value("number_of_centers").toString();
+          numCenters = strNumCenters.toInt();
+          QString neighbor = settings->value("neighbor").toString();
+          neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+          QString strNumNeighbors = settings->value("number_of_neighbors").toString();
+          numNeighbors = strNumNeighbors.toInt();
+          QString strGeom = settings->value("geometry").toString();
+          this->setGeom(geom, strGeom);
+          dist = settings->value("distance").toDouble();
+          QString strDist = QString::number(dist, 'f', 3);          
+          entry.numCenters = numCenters;
+          entry.numNeighbors = numNeighbors;
+          entry.geom = geom;
+          entry.dist = dist;
+
+          xtalopt->compMolUnit.insert(qMakePair<int, int>(centerNum, neighborNum), entry);
+
+          ui.table_molUnit->insertRow(i);
+  
+          QComboBox* combo_center = new QComboBox();
+          combo_center->insertItem(0, center);
+          ui.table_molUnit->setCellWidget(i, IC_CENTER, combo_center);
+          connect(combo_center, SIGNAL(currentIndexChanged(int)),
+                  this, SLOT(updateIAD()));
+  
+          QComboBox* combo_numCenters = new QComboBox();
+          combo_numCenters->insertItem(0, strNumCenters);
+          ui.table_molUnit->setCellWidget(i, IC_NUMCENTERS, combo_numCenters);
+          connect(combo_numCenters, SIGNAL(currentIndexChanged(int)),
+                  this, SLOT(updateIAD()));
+  
+          QComboBox* combo_neighbor = new QComboBox();
+          combo_neighbor->insertItem(0, neighbor);
+          ui.table_molUnit->setCellWidget(i, IC_NEIGHBOR, combo_neighbor);
+          connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
+                  this, SLOT(updateIAD()));
+  
+          QComboBox* combo_numNeighbors = new QComboBox();
+          combo_numNeighbors->insertItem(0, strNumNeighbors);
+          ui.table_molUnit->setCellWidget(i, IC_NUMNEIGHBORS, combo_numNeighbors);
+          connect(combo_numNeighbors, SIGNAL(currentIndexChanged(int)),
+                  this, SLOT(updateIAD()));
+  
+          QComboBox* combo_geom = new QComboBox();
+          combo_geom->insertItem(0, strGeom);
+          ui.table_molUnit->setCellWidget(i, IC_GEOM, combo_geom);
+          connect(combo_geom, SIGNAL(currentIndexChanged(int)),
+                  this, SLOT(updateIAD()));
+  
+          QTableWidgetItem *distItem = new QTableWidgetItem(strDist);
+          ui.table_molUnit->setItem(i, IC_DIST, distItem);
+          connect(ui.table_molUnit, SIGNAL(itemChanged(QTableWidgetItem *)),
+                this, SLOT(updateIAD()));
+
+        }
+        this->updateIAD();
+        settings->endArray();
     }
 
     // Formula Units List
