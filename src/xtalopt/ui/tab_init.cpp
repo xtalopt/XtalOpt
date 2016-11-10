@@ -444,6 +444,19 @@ namespace XtalOpt {
   void TabInit::lockGUI()
   {
     ui.edit_composition->setDisabled(true);
+    ui.cb_useMolUnit->setDisabled(true);
+    ui.table_molUnit->setDisabled(true);
+    ui.pushButton_addMolUnit->setDisabled(true);
+    ui.pushButton_removeMolUnit->setDisabled(true);
+    ui.pushButton_removeAllMolUnit->setDisabled(true);
+    ui.cb_allowRandSpg->setDisabled(true);
+    ui.push_spgOptions->setDisabled(true);
+    ui.cb_mitosis->setDisabled(true);
+    ui.combo_divisions->setDisabled(true);
+    ui.combo_a->setDisabled(true);
+    ui.combo_b->setDisabled(true);
+    ui.combo_c->setDisabled(true);
+    ui.cb_subcellPrint->setDisabled(true);
   }
 
   void TabInit::getComposition(const QString &str)
