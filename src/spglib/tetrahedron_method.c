@@ -261,7 +261,7 @@ void thm_get_relative_grid_address(int relative_grid_address[24][4][3],
   int i, j, k, main_diag_index;
 
   main_diag_index = get_main_diagonal(rec_lattice);
- 
+
   for (i = 0; i < 24; i++) {
     for (j = 0; j < 4; j++) {
       for (k = 0; k < 3; k++) {
@@ -275,7 +275,7 @@ void thm_get_relative_grid_address(int relative_grid_address[24][4][3],
 void thm_get_all_relative_grid_address(int relative_grid_address[4][24][4][3])
 {
   int i, j, k, main_diag_index;
-  
+
   for (main_diag_index = 0; main_diag_index < 4; main_diag_index++) {
     for (i = 0; i < 24; i++) {
       for (j = 0; j < 4; j++) {
@@ -428,7 +428,7 @@ static int sort_omegas(double v[4])
   double w[4];
 
   i = 0;
-  
+
   if (v[0] > v[1]) {
     w[0] = v[1];
     w[1] = v[0];
@@ -644,7 +644,7 @@ static double _n(const int i,
   case 4:
     return _n_4();
   }
-  
+
   warning_print("******* Warning *******\n");
   warning_print(" n is something wrong. \n");
   warning_print("******* Warning *******\n");
@@ -669,7 +669,7 @@ static double _g(const int i,
   case 4:
     return _g_4();
   }
-  
+
   warning_print("******* Warning *******\n");
   warning_print(" g is something wrong. \n");
   warning_print("******* Warning *******\n");
@@ -706,7 +706,7 @@ static double _n_2(const double omega,
 	  _f(2, 0, omega, vertices_omegas) *
 	  _f(1, 2, omega, vertices_omegas));
 }
-            
+
 /* omega2 < omega < omega3 */
 static double _n_3(const double omega,
 		   const double vertices_omegas[4])
@@ -987,7 +987,7 @@ static double _I_22(const double omega,
 	   _f(2, 1, omega, vertices_omegas) *
 	   _f(1, 3, omega, vertices_omegas))) / 3;
 }
-            
+
 static double _I_23(const double omega,
 		    const double vertices_omegas[4])
 {

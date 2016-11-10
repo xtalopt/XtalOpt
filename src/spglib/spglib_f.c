@@ -142,7 +142,7 @@ void spg_get_schoenflies_(int *spacegroup,
 {
   char symbol_c[7];
   int i, length;
-    
+
   *spacegroup = spg_get_schoenflies(symbol_c, lattice, position, types,
 				    *num_atom, *symprec);
   if (*spacegroup > 0) {

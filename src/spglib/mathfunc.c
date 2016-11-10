@@ -428,7 +428,7 @@ MatINT * mat_alloc_MatINT(const int size)
   MatINT *matint;
 
   matint = NULL;
-  
+
   if ((matint = (MatINT*) malloc(sizeof(MatINT))) == NULL) {
     warning_print("spglib: Memory could not be allocated.");
     return NULL;

@@ -203,7 +203,7 @@ static NiggliParams * initialize(const double *lattice_, const double eps_)
     p = NULL;
     return NULL;
   }
-  
+
   memcpy(p->lattice, lattice_, sizeof(double) * 9);
 
   return p;
@@ -225,7 +225,7 @@ static int reset(NiggliParams *p)
   double *lat_tmp;
 
   lat_tmp = NULL;
-  
+
   if ((lat_tmp = multiply_matrices(p->lattice, p->tmat)) == NULL) {return 0;}
   memcpy(p->lattice, lat_tmp, sizeof(double) * 9);
   free(lat_tmp);
@@ -420,7 +420,7 @@ static double * get_transpose(const double *M)
       M_T[i * 3 + j] = M[j * 3 + i];
     }
   }
-  
+
   return M_T;
 }
 
@@ -460,6 +460,6 @@ static double * multiply_matrices(const double *L, const double *R)
       }
     }
   }
-  
+
   return M;
 }

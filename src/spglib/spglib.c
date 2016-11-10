@@ -287,7 +287,7 @@ void spg_free_dataset(SpglibDataset *dataset)
   strcpy(dataset->international_symbol, "");
   strcpy(dataset->hall_symbol, "");
   strcpy(dataset->setting, "");
-  
+
   free(dataset);
   dataset = NULL;
 }
@@ -601,7 +601,7 @@ SpglibSpacegroupType spg_get_spacegroup_type(const int hall_number)
   strcpy(spglibtype.international, spgtype.international);
   strcpy(spglibtype.international_full, spgtype.international_full);
   strcpy(spglibtype.international_short, spgtype.international_short);
-  
+
   return spglibtype;
 }
 
@@ -883,7 +883,7 @@ int spg_niggli_reduce(double lattice[3][3], const double symprec)
 {
   int i, j, succeeded;
   double vals[9];
-  
+
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       vals[i * 3 + j] = lattice[i][j];
@@ -1082,7 +1082,7 @@ static int set_dataset(SpglibDataset * dataset,
     goto err;
   }
 
-  if ((bravais = ref_get_Wyckoff_positions(dataset->wyckoffs, 
+  if ((bravais = ref_get_Wyckoff_positions(dataset->wyckoffs,
 					   dataset->equivalent_atoms,
 					   primitive,
 					   cell,
@@ -1113,7 +1113,7 @@ static int set_dataset(SpglibDataset * dataset,
     mat_copy_vector_d3(dataset->std_positions[i], bravais->position[i]);
     dataset->std_types[i] = bravais->types[i];
   }
-  
+
   cel_free_cell(bravais);
   sym_free_symmetry(symmetry);
 
@@ -1177,7 +1177,7 @@ static int get_symmetry_from_dataset(int rotation[][3][3],
 			     symprec)) == NULL) {
     return 0;
   }
-  
+
   if (dataset->n_operations > max_size) {
     fprintf(stderr,
 	    "spglib: Indicated max size(=%d) is less than number ", max_size);
@@ -1191,7 +1191,7 @@ static int get_symmetry_from_dataset(int rotation[][3][3],
     mat_copy_matrix_i3(rotation[i], dataset->rotations[i]);
     mat_copy_vector_d3(translation[i], dataset->translations[i]);
   }
-  
+
  ret:
   spg_free_dataset(dataset);
   return num_sym;
@@ -1259,7 +1259,7 @@ static int get_symmetry_with_collinear_spin(int rotation[][3][3],
   }
 
   sym_free_symmetry(sym_nonspin);
-  
+
   if (symmetry->size > max_size) {
     fprintf(stderr, "spglib: Indicated max size(=%d) is less than number ",
 	    max_size);
@@ -1413,7 +1413,7 @@ static int standardize_cell(double lattice[3][3],
   }
 
   spg_free_dataset(dataset);
-  
+
   return n_std_atoms;
 }
 
@@ -1458,7 +1458,7 @@ static int get_standardized_cell(double lattice[3][3],
     spg_free_dataset(dataset);
     goto err;
   }
-  
+
   cel_set_cell(cell, lattice, position, types);
   std_cell = spa_transform_to_primitive(cell,
 					dataset->transformation_matrix,
@@ -1692,7 +1692,7 @@ static int get_stabilized_reciprocal_mesh(int grid_address[][3],
 {
   MatINT *rot_real;
   int i, num_ir;
-  
+
   rot_real = NULL;
 
   if ((rot_real = mat_alloc_MatINT(num_rot)) == NULL) {

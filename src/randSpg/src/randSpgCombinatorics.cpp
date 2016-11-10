@@ -720,7 +720,7 @@ string RandSpgCombinatorics::getVerbosePossibilitiesString(const systemPossibili
       s << "    For atomicNum: " << sinPos.atomicNum << "\n";
       for (size_t k = 0; k < sinPos.assigns.size(); k++) {
         const similarWyckPosAndNumToChoose& simPos = sinPos.assigns[k];
-        s << "      We will choose " << simPos.numToChoose 
+        s << "      We will choose " << simPos.numToChoose
           << " of the following positions:\n        { ";
         for (size_t l = 0; l < simPos.choosablePositions.size(); l++) {
           s << RandSpg::getWyckLet(simPos.choosablePositions[l]) << " ";

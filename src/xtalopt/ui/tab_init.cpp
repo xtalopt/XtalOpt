@@ -90,7 +90,7 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.cb_fixedVolume, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
-    
+
     // Mitosis
     connect(ui.cb_mitosis, SIGNAL(toggled(bool)),
             this, SLOT(updateNumDivisions()));
@@ -104,7 +104,7 @@ namespace XtalOpt {
             this, SLOT(writeC()));
     connect(ui.cb_subcellPrint, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
-    
+
     // Interatomic Distances
     connect(ui.spin_scaleFactor, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
@@ -112,7 +112,7 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.cb_interatomicDistanceLimit, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
-    
+
     // MolUnit builder
     connect(ui.cb_useMolUnit, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
@@ -215,7 +215,7 @@ namespace XtalOpt {
       unsigned int numRowsMolUnit = ui.table_molUnit->rowCount();
       for (int i = 0; i < numRowsMolUnit; i++) {
         settings->setArrayIndex(i);
-        settings->setValue("center", 
+        settings->setValue("center",
                            qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText());
         settings->setValue("number_of_centers",
                            qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText());
@@ -310,7 +310,7 @@ namespace XtalOpt {
           unsigned int geom;
           double dist;
           MolUnit entry;
-          
+
           QString center = settings->value("center").toString();
           centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
           QString strNumCenters = settings->value("number_of_centers").toString();
@@ -322,7 +322,7 @@ namespace XtalOpt {
           QString strGeom = settings->value("geometry").toString();
           this->setGeom(geom, strGeom);
           dist = settings->value("distance").toDouble();
-          QString strDist = QString::number(dist, 'f', 3);          
+          QString strDist = QString::number(dist, 'f', 3);
           entry.numCenters = numCenters;
           entry.numNeighbors = numNeighbors;
           entry.geom = geom;
@@ -331,37 +331,37 @@ namespace XtalOpt {
           xtalopt->compMolUnit.insert(qMakePair<int, int>(centerNum, neighborNum), entry);
 
           ui.table_molUnit->insertRow(i);
-  
+
           QComboBox* combo_center = new QComboBox();
           combo_center->insertItem(0, center);
           ui.table_molUnit->setCellWidget(i, IC_CENTER, combo_center);
           connect(combo_center, SIGNAL(currentIndexChanged(int)),
                   this, SLOT(updateIAD()));
-  
+
           QComboBox* combo_numCenters = new QComboBox();
           combo_numCenters->insertItem(0, strNumCenters);
           ui.table_molUnit->setCellWidget(i, IC_NUMCENTERS, combo_numCenters);
           connect(combo_numCenters, SIGNAL(currentIndexChanged(int)),
                   this, SLOT(updateIAD()));
-  
+
           QComboBox* combo_neighbor = new QComboBox();
           combo_neighbor->insertItem(0, neighbor);
           ui.table_molUnit->setCellWidget(i, IC_NEIGHBOR, combo_neighbor);
           connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
                   this, SLOT(updateIAD()));
-  
+
           QComboBox* combo_numNeighbors = new QComboBox();
           combo_numNeighbors->insertItem(0, strNumNeighbors);
           ui.table_molUnit->setCellWidget(i, IC_NUMNEIGHBORS, combo_numNeighbors);
           connect(combo_numNeighbors, SIGNAL(currentIndexChanged(int)),
                   this, SLOT(updateIAD()));
-  
+
           QComboBox* combo_geom = new QComboBox();
           combo_geom->insertItem(0, strGeom);
           ui.table_molUnit->setCellWidget(i, IC_GEOM, combo_geom);
           connect(combo_geom, SIGNAL(currentIndexChanged(int)),
                   this, SLOT(updateIAD()));
-  
+
           QTableWidgetItem *distItem = new QTableWidgetItem(strDist);
           ui.table_molUnit->setItem(i, IC_DIST, distItem);
           connect(ui.table_molUnit, SIGNAL(itemChanged(QTableWidgetItem *)),
@@ -649,7 +649,7 @@ namespace XtalOpt {
 
     xtalopt->using_fixed_volume = ui.cb_fixedVolume->isChecked();
     xtalopt->vol_fixed	= ui.spin_fixedVolume->value();
-    
+
     // Allow mitosis
     xtalopt->using_mitosis = ui.cb_mitosis->isChecked();
     xtalopt->divisions = ui.combo_divisions->currentText().toInt();
@@ -661,7 +661,7 @@ namespace XtalOpt {
     // Allow RandSpg
     xtalopt->using_randSpg = ui.cb_allowRandSpg->isChecked();
     if (xtalopt->using_molUnit == false)
-       this->removeAll(); 
+       this->removeAll();
 
     if (xtalopt->scaleFactor != ui.spin_scaleFactor->value() ||
         xtalopt->minRadius   != ui.spin_minRadius->value() ||
@@ -936,12 +936,12 @@ namespace XtalOpt {
   void TabInit::updateIAD()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-    
+
     disconnect(ui.table_molUnit, 0, 0, 0);
 
     QHash<QPair<int, int>, MolUnit> compMolUnit;
     compMolUnit.clear();
-      
+
     xtalopt->compMolUnit.clear();
 
     unsigned int numRows = ui.table_comp->rowCount();
@@ -1005,7 +1005,7 @@ namespace XtalOpt {
       neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
       neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
 
-      //Number of Centers 
+      //Number of Centers
       unsigned int numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
       QList<QString> numCentersList;
 
@@ -1024,7 +1024,7 @@ namespace XtalOpt {
         return;
 
       numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
-      
+
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numCenters = numCenters;
 
       //Number of Neighbors
@@ -1045,7 +1045,7 @@ namespace XtalOpt {
         return;
 
       numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText().toUInt();
-      
+
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numNeighbors = numNeighbors;
 
       //Geometry
@@ -1067,7 +1067,7 @@ namespace XtalOpt {
       geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText().toUInt();
       strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText();
       this->setGeom(geom, strGeom);
-      
+
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
 
       //MolUnit distance
@@ -1130,7 +1130,7 @@ namespace XtalOpt {
       connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
-      center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();      
+      center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
       if (center == "None")
         centerNum = 0;
       else
@@ -1138,7 +1138,7 @@ namespace XtalOpt {
       neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
       neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
 
-      //Number of Centers 
+      //Number of Centers
       unsigned int numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
       QList<QString> numCentersList;
 
@@ -1154,7 +1154,7 @@ namespace XtalOpt {
             this, SLOT(updateIAD()));
 
       numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
-      
+
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numCenters = numCenters;
 
       //Number of Neighbors
@@ -1172,7 +1172,7 @@ namespace XtalOpt {
             this, SLOT(updateIAD()));
 
       numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText().toUInt();
-      
+
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numNeighbors = numNeighbors;
 
       //Geometry
@@ -1194,7 +1194,7 @@ namespace XtalOpt {
       geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText().toUInt();
       strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText();
       this->setGeom(geom, strGeom);
-      
+
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
 
       //MolUnit distance
@@ -1261,7 +1261,7 @@ namespace XtalOpt {
     QString center = centerList.at(0);
     if (center == "None")
       centerNum = 0;
-    else 
+    else
       centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
     QString neighbor = neighborList.at(0);
     neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
@@ -1294,7 +1294,7 @@ namespace XtalOpt {
     numNeighborsList.clear();
 
     this->getNumNeighbors(centerNum, neighborNum, numNeighborsList);
- 
+
     if (numNeighborsList.isEmpty())
       return;
 
@@ -1358,10 +1358,10 @@ namespace XtalOpt {
 
     connect(ui.table_molUnit, SIGNAL(itemSelectionChanged()),
           this, SLOT(updateIAD()));
- 
+
     //Update the global hash
     xtalopt->compMolUnit = compMolUnit;
-   
+
     this->updateIAD();
   }
 
@@ -1395,15 +1395,15 @@ namespace XtalOpt {
     this->updateIAD();
   }
 
-  void TabInit::getCentersAndNeighbors(QList<QString> & centerList, int centerNum, 
+  void TabInit::getCentersAndNeighbors(QList<QString> & centerList, int centerNum,
           QList<QString> & neighborList, int neighborNum)
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-   
+
     QList<unsigned int> keys = xtalopt->comp.keys();
     qSort(keys);
     int numKeys = keys.size();
- 
+
     QList<QPair<int, int> > keysMolUnit = xtalopt->compMolUnit.keys();
     qSort(keysMolUnit);
     int numKeysMolUnit = keysMolUnit.size();
@@ -1412,7 +1412,7 @@ namespace XtalOpt {
     firstKeys.clear();
     QList<unsigned int> secondKeys;
     secondKeys.clear();
-    
+
     for (int j = 0; j < numKeysMolUnit; j++) {
       firstKeys.append((keysMolUnit.at(j).first));
       secondKeys.append((keysMolUnit.at(j).second));
@@ -1446,7 +1446,7 @@ namespace XtalOpt {
           neighborList.append(symbol);
       }
     }
-    
+
     centerList.append("None");
 
   }
@@ -1455,7 +1455,7 @@ namespace XtalOpt {
   void TabInit::getNumCenters(int centerNum, int neighborNum, QList<QString> & numCentersList)
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-    
+
     int q = 0;
 
     for (QHash<QPair<int, int>, MolUnit>::const_iterator it = xtalopt->compMolUnit.constBegin(), it_end = xtalopt->compMolUnit.constEnd(); it != it_end; it++) {
@@ -1472,7 +1472,7 @@ namespace XtalOpt {
 
     if (centerNum == 0)
       numCenters = 6;
-    
+
     if (numCenters == 0)
       return;
 
@@ -1484,15 +1484,15 @@ namespace XtalOpt {
   void TabInit::getNumNeighbors(int centerNum, int neighborNum, QList<QString> & numNeighborsList)
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-   
-    int numCenters = 0; 
+
+    int numCenters = 0;
     int q = 0;
     bool divide = false;
 
     for (QHash<QPair<int, int>, MolUnit>::const_iterator it = xtalopt->compMolUnit.constBegin(), it_end = xtalopt->compMolUnit.constEnd(); it != it_end; it++) {
       if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().first == neighborNum)
         q += it->numCenters;
-      if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().second == neighborNum) 
+      if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().second == neighborNum)
         q += it->numNeighbors * it->numCenters;
       if (it.key() == QPair<int, int>(centerNum, neighborNum)) {
         numCenters = it->numCenters;

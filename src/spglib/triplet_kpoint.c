@@ -95,7 +95,7 @@ static int get_ir_triplets_at_q(int map_triplets[],
   }
 
   /* Search irreducible q-points (map_q) with a stabilizer */
-  /* q */  
+  /* q */
   grid_point_to_address_double(address_double0, grid_point, mesh, is_shift);
   for (i = 0; i < 3; i++) {
     stabilizer_q[0][i] =
@@ -152,7 +152,7 @@ static int get_ir_triplets_at_q(int map_triplets[],
   for (i = 0; i < num_grid; i++) {
     map_triplets[i] = map_triplets[map_q[i]];
   }
-  
+
   free(third_q);
   third_q = NULL;
   free(ir_grid_points);
@@ -185,7 +185,7 @@ static int get_BZ_triplets_at_q(int triplets[][3],
       num_ir++;
     }
   }
- 
+
 #pragma omp parallel for private(j, k, bz_address, bz_address_double)
   for (i = 0; i < num_ir; i++) {
     for (j = 0; j < 3; j++) {
@@ -212,7 +212,7 @@ static int get_BZ_triplets_at_q(int triplets[][3],
   }
 
   free(ir_grid_points);
-  
+
   return num_ir;
 }
 
@@ -233,7 +233,7 @@ static int get_third_q_of_triplets_at_q(int bz_address[3][3],
     }
     delta_g[i] /= mesh[i];
   }
-  
+
   for (i = 0; i < KPT_NUM_BZ_SEARCH_SPACE; i++) {
     for (j = 0; j < 3; j++) {
       bz_address_double[j] = (bz_address[q_index][j] +

@@ -128,7 +128,7 @@ static VecDBL * get_exact_positions(int * wyckoffs,
 	}
       }
     }
-    
+
     /* No equivalent atom was found. */
     indep_atoms[num_indep_atoms] = i;
     num_indep_atoms++;
@@ -183,7 +183,7 @@ static void get_exact_location(double position[3],
       sum_rot[i][j] = 0;
     }
   }
-  
+
   for (i = 0; i < conv_sym->size; i++) {
     mat_multiply_matrix_vector_id3(pos,
 				   conv_sym->rot[i],
@@ -197,7 +197,7 @@ static void get_exact_location(double position[3],
 		       bravais_lattice,
 		       symprec)) {
       for (j = 0; j < 3; j++) {
-	sum_trans[j] += conv_sym->trans[i][j] - 
+	sum_trans[j] += conv_sym->trans[i][j] -
 	  mat_Nint(pos[j] - position[j]);
 	for (k = 0; k < 3; k++) {
 	  sum_rot[j][k] += conv_sym->rot[i][j][k];

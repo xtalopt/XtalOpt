@@ -218,7 +218,7 @@ int kpt_get_irreducible_reciprocal_mesh(int grid_address[][3],
 				  mesh,
 				  is_shift,
 				  rot_reciprocal);
-  
+
   return num_ir;
 }
 
@@ -237,7 +237,7 @@ int kpt_get_stabilized_reciprocal_mesh(int grid_address[][3],
 
   rot_reciprocal = NULL;
   rot_reciprocal_q = NULL;
-  
+
   rot_reciprocal = get_point_group_reciprocal(rotations, is_time_reversal);
   tolerance = 0.01 / (mesh[0] + mesh[1] + mesh[2]);
   rot_reciprocal_q = get_point_group_reciprocal_with_q(rot_reciprocal,
@@ -348,7 +348,7 @@ static MatINT *get_point_group_reciprocal(const MatINT * rotations,
   rot_reciprocal = NULL;
   rot_return = NULL;
   unique_rot = NULL;
-  
+
   if (is_time_reversal) {
     if ((rot_reciprocal = mat_alloc_MatINT(rotations->size * 2)) == NULL) {
       return NULL;
@@ -371,7 +371,7 @@ static MatINT *get_point_group_reciprocal(const MatINT * rotations,
 
   for (i = 0; i < rotations->size; i++) {
     mat_transpose_matrix_i3(rot_reciprocal->mat[i], rotations->mat[i]);
-    
+
     if (is_time_reversal) {
       mat_multiply_matrix_i3(rot_reciprocal->mat[rotations->size+i],
 			     inversion,
@@ -443,15 +443,15 @@ static MatINT *get_point_group_reciprocal_with_q(const MatINT * rot_reciprocal,
 	  diff[l] = q_rot[l] - qpoints[k][l];
 	  diff[l] -= mat_Nint(diff[l]);
 	}
-	
-	if (mat_Dabs(diff[0]) < symprec && 
+
+	if (mat_Dabs(diff[0]) < symprec &&
 	    mat_Dabs(diff[1]) < symprec &&
 	    mat_Dabs(diff[2]) < symprec) {
 	  is_all_ok = 1;
 	  break;
 	}
       }
-      
+
       if (! is_all_ok) {
 	break;
       }
@@ -466,7 +466,7 @@ static MatINT *get_point_group_reciprocal_with_q(const MatINT * rot_reciprocal,
   if ((rot_reciprocal_q = mat_alloc_MatINT(num_rot)) != NULL) {
     for (i = 0; i < num_rot; i++) {
       mat_copy_matrix_i3(rot_reciprocal_q->mat[i],
-			 rot_reciprocal->mat[ir_rot[i]]);  
+			 rot_reciprocal->mat[ir_rot[i]]);
     }
   }
 
@@ -525,7 +525,7 @@ static int get_ir_reciprocal_mesh(int grid_address[][3],
       num_ir++;
     }
   }
-  
+
   return num_ir;
 }
 
@@ -551,7 +551,7 @@ static int relocate_BZ_grid_address(int bz_grid_address[][3],
   for (i = 0; i < bzmesh[0] * bzmesh[1] * bzmesh[2]; i++) {
     bz_map[i] = -1;
   }
-  
+
   boundary_num_gp = 0;
   total_num_gp = mesh[0] * mesh[1] * mesh[2];
 
@@ -560,7 +560,7 @@ static int relocate_BZ_grid_address(int bz_grid_address[][3],
   for (i = 0; i < total_num_gp; i++) {
     for (j = 0; j < KPT_NUM_BZ_SEARCH_SPACE; j++) {
       for (k = 0; k < 3; k++) {
-	q_vector[k] = 
+	q_vector[k] =
 	  ((grid_address[i][k] + kpt_bz_search_space[j][k] * mesh[k]) * 2 +
 	   is_shift[k]) / ((double)mesh[k]) / 2;
       }
@@ -583,9 +583,9 @@ static int relocate_BZ_grid_address(int bz_grid_address[][3],
 	} else {
 	  gp = boundary_num_gp + total_num_gp;
 	}
-	
+
 	for (k = 0; k < 3; k++) {
-	  bz_grid_address[gp][k] = 
+	  bz_grid_address[gp][k] =
 	    grid_address[i][k] + kpt_bz_search_space[j][k] * mesh[k];
 	  bz_address_double[k] = bz_grid_address[gp][k] * 2 + is_shift[k];
 	}
@@ -607,7 +607,7 @@ static double get_tolerance_for_BZ_reduction(SPGCONST double rec_lattice[3][3],
   int i, j;
   double tolerance;
   double length[3];
-  
+
   for (i = 0; i < 3; i++) {
     length[i] = 0;
     for (j = 0; j < 3; j++) {
@@ -622,6 +622,6 @@ static double get_tolerance_for_BZ_reduction(SPGCONST double rec_lattice[3][3],
     }
   }
   tolerance *= 0.01;
-  
+
   return tolerance;
 }

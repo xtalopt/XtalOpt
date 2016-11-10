@@ -68,7 +68,7 @@ Cell * cel_alloc_cell(const int size)
 {
   Cell *cell;
   int i, j;
-  
+
   cell = NULL;
 
   if ((cell = (Cell*) malloc(sizeof(Cell))) == NULL) {
@@ -82,7 +82,7 @@ Cell * cel_alloc_cell(const int size)
     }
   }
   cell->size = size;
-  
+
   if (size > 0) {
     if ((cell->types = (int *) malloc(sizeof(int) * size)) == NULL) {
       warning_print("spglib: Memory could not be allocated.");
@@ -136,7 +136,7 @@ Cell * cel_copy_cell(SPGCONST Cell * cell)
   Cell * cell_new;
 
   cell_new = NULL;
-  
+
   if ((cell_new = cel_alloc_cell(cell->size)) == NULL) {
     return NULL;
   }
@@ -283,7 +283,7 @@ static void set_positions(Cell * trimmed_cell,
 	trimmed_cell->position[j][l] += position->vec[i][l];
       }
     }
-	
+
   }
 
   multi = position->size / trimmed_cell->size;
@@ -345,7 +345,7 @@ static int * get_overlap_table(const VecDBL * position,
   if ((overlap_table = (int*)malloc(sizeof(int) * cell_size)) == NULL) {
     return NULL;
   }
-  
+
   for (attempt = 0; attempt < 100; attempt++) {
     for (i = 0; i < cell_size; i++) {
       overlap_table[i] = -1;

@@ -799,7 +799,7 @@ namespace XtalOpt {
         qRand = comp.value(atomicNum).quantity * FU;
         if (using_mitosis){
           qRand = qRand % divisions;
-                  
+
           // Do we use the MolUnit builder?
           bool addAtom = true;
           bool useMolUnit = false;
@@ -859,7 +859,7 @@ namespace XtalOpt {
         }
       }
 
-    //Mitosis = False  
+    //Mitosis = False
     } else {
 
       //First check for "no center" MolUnits
@@ -877,7 +877,7 @@ namespace XtalOpt {
       }
 
       for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
-        // To avoid messing up the stoichiometry with the MolUnit builder            
+        // To avoid messing up the stoichiometry with the MolUnit builder
         atomicNum = atomicNums.at(num_idx);
         qRand = comp.value(atomicNum).quantity * FU;
 
@@ -886,7 +886,7 @@ namespace XtalOpt {
 
         bool addAtom = true;
         bool useMolUnit = false;
-        
+
         for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
           QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
           if (atomicNum == key.first) {
@@ -945,7 +945,7 @@ namespace XtalOpt {
                   return 0;
                 }
               }
-            } 
+            }
           }
         }
 

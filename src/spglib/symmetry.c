@@ -47,7 +47,7 @@
 #define PI 3.14159265358979323846
 /* Tolerance of angle between lattice vectors in degrees */
 /* Negative value invokes converter from symprec. */
-static double angle_tolerance = -1.0; 
+static double angle_tolerance = -1.0;
 
 static int relative_axes[][3] = {
   { 1, 0, 0},
@@ -160,7 +160,7 @@ Symmetry * sym_alloc_symmetry(const int size)
     free(symmetry);
     symmetry = NULL;
     return NULL;
-  } 
+  }
 
   return symmetry;
 }
@@ -235,7 +235,7 @@ VecDBL * sym_reduce_pure_translation(SPGCONST Cell * cell,
   symmetry = NULL;
   symmetry_reduced = NULL;
   pure_trans_reduced = NULL;
-  
+
   multi = pure_trans->size;
 
   if ((symmetry = sym_alloc_symmetry(multi)) == NULL) {
@@ -259,12 +259,12 @@ VecDBL * sym_reduce_pure_translation(SPGCONST Cell * cell,
     sym_free_symmetry(symmetry_reduced);
     return NULL;
   }
-  
+
   for (i = 0; i < multi; i++) {
     mat_copy_vector_d3(pure_trans_reduced->vec[i], symmetry_reduced->trans[i]);
   }
   sym_free_symmetry(symmetry_reduced);
-  
+
   return pure_trans_reduced;
 }
 
@@ -341,7 +341,7 @@ static Symmetry * reduce_operation(SPGCONST Cell * primitive,
     mat_free_MatINT(rot);
     return NULL;
   }
-  
+
   num_sym = 0;
   for (i = 0; i < point_symmetry.size; i++) {
     for (j = 0; j < symmetry->size; j++) {
@@ -497,7 +497,7 @@ static VecDBL * get_translation(SPGCONST int rot[3][3],
  ret:
   free(is_found);
   is_found = NULL;
-  
+
   return trans;
 }
 
@@ -546,7 +546,7 @@ static int is_overlap_all_atoms(const double trans[3],
   double pos_rot[3], d_frac[3], d[3];
 
   symprec2 = symprec * symprec;
-  
+
   for (i = 0; i < cell->size; i++) {
     if (is_identity) { /* Identity matrix is treated as special for speed-up. */
       for (j = 0; j < 3; j++) {
@@ -600,11 +600,11 @@ static int get_index_with_least_atoms(const Cell *cell)
     warning_print("spglib: Memory could not be allocated ");
     return -1;
   }
-  
+
   for (i = 0; i < cell->size; i++) {
     mapping[i] = 0;
   }
-  
+
   for (i = 0; i < cell->size; i++) {
     for (j = 0; j < cell->size; j++) {
       if (cell->types[i] == cell->types[j]) {
@@ -613,7 +613,7 @@ static int get_index_with_least_atoms(const Cell *cell)
       }
     }
   }
-  
+
   min = mapping[0];
   min_index = 0;
   for (i = 0; i < cell->size; i++) {
@@ -643,7 +643,7 @@ get_space_group_operations(SPGCONST PointSymmetry *lattice_sym,
 
   trans = NULL;
   symmetry = NULL;
-  
+
   if ((trans = (VecDBL**) malloc(sizeof(VecDBL*) * lattice_sym->size))
       == NULL) {
     warning_print("spglib: Memory could not be allocated ");
@@ -727,7 +727,7 @@ static PointSymmetry get_lattice_symmetry(SPGCONST double cell_lattice[3][3],
 	}
 	mat_multiply_matrix_di3(lattice, min_lattice, axes);
 	mat_get_metric(metric, lattice);
-	
+
 	if (is_identity_metric(metric, metric_orig, symprec)) {
 	  if (num_sym > 47) {
 	    warning_print("spglib: Too many lattice symmetries was found.\n");
@@ -747,7 +747,7 @@ static PointSymmetry get_lattice_symmetry(SPGCONST double cell_lattice[3][3],
   return transform_pointsymmetry(&lattice_sym,
 				 cell_lattice,
 				 min_lattice);
-  
+
  err:
   return lattice_sym;
 }
@@ -770,7 +770,7 @@ static int is_identity_metric(SPGCONST double metric_rotated[3][3],
       goto fail;
     }
   }
-  
+
   for (i = 0; i < 3; i++) {
     j = elem_sets[i][0];
     k = elem_sets[i][1];

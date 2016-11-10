@@ -906,7 +906,7 @@ static int trigo_generators[][3][9] =
     {  -1, 0, 0, 0, -1, 0, 0, 0, -1, },
   },
 };
-  
+
 static double rhombo_h_VSpU[][3][9] =
 {
   { /* 1 */
@@ -1574,7 +1574,7 @@ static int find_hall_symbol(double origin_shift[3],
 			     symprec)) {goto found;}
     return 0;
   }
-  
+
   /* ORTHO, IT: 16-74, Hall: 108-348 */
   if (108 <= hall_number && hall_number <= 348) {
     if (is_hall_symbol_ortho(origin_shift,
@@ -1952,7 +1952,7 @@ static int is_hall_symbol_monocli(double shift[3],
 			 symprec)) {return 1;}
     }
   }
-  
+
   return 0;
 }
 
@@ -2044,8 +2044,8 @@ static int get_translations(double trans[3][3],
 {
   int i, j;
   int is_found;
-  static SPGCONST int zero[3][3] = { { 0, 0, 0 }, 
-				     { 0, 0, 0 }, 
+  static SPGCONST int zero[3][3] = { { 0, 0, 0 },
+				     { 0, 0, 0 },
 				     { 0, 0, 0 }, };
 
   for (i = 0; i < 3; i++) {
@@ -2215,7 +2215,7 @@ static int set_dw(double dw[3],
 
   /* Not found */
   return 0;
-  
+
  found:
   return 1;
 }

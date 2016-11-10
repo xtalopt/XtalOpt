@@ -1290,9 +1290,9 @@ namespace XtalOpt {
     atom = &atm;
     (*atom)->setPos(cartCoords);
     (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
-  
+
     qDebug() << "Xtal has MolUnit center" << atomicNumber;
-    
+
     if (useMolUnit == true) {
       int numNeighbors;
       double dist;
@@ -1309,7 +1309,7 @@ namespace XtalOpt {
 
       qDebug() << "Neighbors =" << neighbor;
       qDebug() << "numNeighbors =" << numNeighbors;
-      
+
       OpenBabel::OBMol obmol = OBMol();
       OpenBabel::OBAtom *obatom = obmol.GetAtom((*atom)->index()+1);
       obatom->SetAtomicNum(6);
@@ -1323,7 +1323,7 @@ namespace XtalOpt {
       qDebug() << "numAtoms =" << numberAtoms;
       qDebug() << "numAtoms for obmol =" << obmol.NumAtoms();
       qDebug() << "distance =" << dist;
-      
+
       int j = 0;
       for (unsigned int i = numberAtoms+1; i <= obmol.NumAtoms(); ++i, ++j) {
         OpenBabel::OBAtom *obatom2 = obmol.GetAtom(i);

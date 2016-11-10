@@ -78,14 +78,14 @@ namespace XtalOpt {
     void addRow();
     void removeRow();
     void removeAll();
-    void getCentersAndNeighbors(QList<QString> & centerList, int centerNum, 
+    void getCentersAndNeighbors(QList<QString> & centerList, int centerNum,
             QList<QString> & neighborList, int neighborNum);
-    void getNumCenters(int centerNum, int neighborNum, QList<QString> & numCentersList); 
-    void getNumNeighbors(int centerNum, int neighborNum, QList<QString> & numNeighborsList); 
+    void getNumCenters(int centerNum, int neighborNum, QList<QString> & numCentersList);
+    void getNumNeighbors(int centerNum, int neighborNum, QList<QString> & numNeighborsList);
     void getGeom(QList<QString> & geomList, unsigned int numNeighbors);
     void setGeom(unsigned int & geom, QString strGeom);
     void openSpgOptions();
-    
+
   signals:
 
   private:

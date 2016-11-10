@@ -192,7 +192,7 @@ static Cell * get_cell_with_smallest_lattice(SPGCONST Cell * cell,
   Cell * smallest_cell;
 
   debug_print("get_cell_with_smallest_lattice:\n");
-  
+
   smallest_cell = NULL;
 
   if (!lat_smallest_lattice_vector(min_lat,
@@ -294,7 +294,7 @@ static int get_primitive_lattice_vectors_iterative(double prim_lattice[3][3],
   for (i = 0; i < pure_trans->size; i++) {
     mat_copy_vector_d3(pure_trans_reduced->vec[i], pure_trans->vec[i]);
   }
-  
+
   for (attempt = 0; attempt < 100; attempt++) {
     multi = pure_trans_reduced->size;
 
@@ -421,7 +421,7 @@ static int get_primitive_lattice_vectors(double prim_lattice[3][3],
   }
   mat_multiply_matrix_d3(prim_lattice, cell->lattice, relative_lattice);
 
-  return 1;  
+  return 1;
 }
 
 static VecDBL * get_translation_candidates(const VecDBL * pure_trans)
@@ -436,7 +436,7 @@ static VecDBL * get_translation_candidates(const VecDBL * pure_trans)
     return NULL;
   }
 
-  /* store pure translations in original cell */ 
+  /* store pure translations in original cell */
   /* as trial primitive lattice vectors */
   for (i = 0; i < multi - 1; i++) {
     mat_copy_vector_d3(vectors->vec[i], pure_trans->vec[i + 1]);

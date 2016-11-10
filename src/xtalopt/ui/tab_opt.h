@@ -32,7 +32,7 @@ namespace XtalOpt {
   public:
     explicit TabOpt( XtalOptDialog *parent, XtalOpt *p );
     virtual ~TabOpt();
-  
+
   public slots:
     void lockGUI();
     void readSettings(const QString &filename = "");
@@ -42,7 +42,7 @@ namespace XtalOpt {
     void addSeed(QListWidgetItem *item = NULL);
     void removeSeed();
     void updateSeeds();
-  
+
   signals:
 
   private:

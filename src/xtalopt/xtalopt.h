@@ -193,7 +193,7 @@ namespace XtalOpt {
     bool using_molUnit;
 
     QHash<uint, XtalCompositionStruct> comp;
-    QHash<QPair<int, int>, MolUnit> compMolUnit;    
+    QHash<QPair<int, int>, MolUnit> compMolUnit;
     QStringList seedList;
 
     QMutex *xtalInitMutex;
