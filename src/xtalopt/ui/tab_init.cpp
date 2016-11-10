@@ -735,11 +735,16 @@ namespace XtalOpt {
     // min xtals per FU to be zero
     if (xtalopt->formulaUnitsList != formulaUnitsList &&
         xtalopt->minXtalsOfSpgPerFU.size() != 0) {
-      xtalopt->error(tr(
-               "Warning: because the formula units have been changed, "
-               "the spacegroups to be generated using spacegroup "
-               "initialization have been reset. Please open the spacegroup "
-               "options to set them again."));
+      // We're assuming that if the composition is enabled, the run has not
+      // yet begun. This is probably a valid assumption (unless we allow the
+      // composition to be changed during the run in the future)
+      if (ui.edit_composition->isEnabled()) {
+        xtalopt->error(tr(
+                 "Warning: because the formula units have been changed, "
+                 "the spacegroups to be generated using spacegroup "
+                 "initialization have been reset. Please open the spacegroup "
+                 "options to set them again."));
+      }
       xtalopt->minXtalsOfSpgPerFU = QList<int>();
     }
 
