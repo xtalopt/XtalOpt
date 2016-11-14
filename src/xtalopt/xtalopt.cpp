@@ -686,7 +686,10 @@ namespace XtalOpt {
     }
 
     unsigned int atomicNum;
-    unsigned int qRand;
+    int qRand;
+    int qTotal;
+    int qRandPre;
+    int qRandPost;
 
     //Mitosis = True
     if (using_mitosis){
@@ -722,8 +725,9 @@ namespace XtalOpt {
 
       for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
         atomicNum = atomicNums.at(num_idx);
-        qRand = comp.value(atomicNum).quantity * FU;
-        qRand = qRand / divisions;
+        qTotal = comp.value(atomicNum).quantity * FU;
+//        qRandPre = comp.value(atomicNum).quantity * FU / divisions;
+        qDebug() << atomicNum << "initial qRand =" << qTotal;
 
         // Do we use the MolUnit builder?
         bool addAtom = true;
@@ -738,47 +742,60 @@ namespace XtalOpt {
         }
 
         // Do we add Atom or has it already been placed by MolUnit builder
-        int total = 0;
+        unsigned int qCenter = 0;
+        unsigned int qNeighbor = 0;
         for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
           QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
-          int second = key.second;
-          if (atomicNum==second) {
-            int first = key.first;
-            int current = (it->numCenters * it->numNeighbors * FU) / divisions;
-            if (qRand - current == 0) {
-              addAtom = false;
-              break;
-            } else {
-              total += current;
-            }
+          if (atomicNum == key.first) {
+            qCenter += it->numCenters * FU;
+          }
+          if (atomicNum == key.second) {
+            qNeighbor += it->numCenters * it->numNeighbors * FU;
           }
         }
 
-        if (qRand == total) {
+        if (qCenter / divisions == 0)
+          useMolUnit = false;
+
+        if (qTotal == qCenter + qNeighbor) {
           addAtom = false;
+          qRandPre = 0;
         } else {
-          qRand -= total;
+          qRandPre = (qTotal - (qCenter + qNeighbor)) / divisions;
         }
 
-        // Add atom with MolUnit builder or Randomly
-        for (uint i = 0; i < qRand; i++) {
-          if (useMolUnit==true && addAtom==true) {
-            if (!xtal->addAtomRandomly(atomicNum, 1, this->comp,
-                    this->compMolUnit, useMolUnit)) {
-              xtal->deleteLater();
-              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                    "specified interatomic distance.");
-              return 0;
-            }
-          } else if (useMolUnit==false && addAtom==true) {
+        qDebug() << atomicNum << "using MolUnit builder" << useMolUnit;
+        qDebug() << atomicNum << "atoms as MolUnit centers =" << qCenter;
+        qDebug() << atomicNum << "atoms as MolUnit neighbors =" << qNeighbor;
+        qDebug() << atomicNum << "adding atoms randomly" << addAtom;
+        qDebug() << atomicNum << "atoms added randomly =" << qRandPre;
+
+        //Initial atom placement
+        for (uint i = 0; i < qRandPre; i++) {
+          if (addAtom == true) {
             if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
               xtal->deleteLater();
               debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
                     "specified interatomic distance.");
               return 0;
             }
-          } else {
-            break;
+          }
+        }
+
+        // Add atom with MolUnit builder or Randomly
+        if (useMolUnit == true) {
+          for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
+            QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+            if (atomicNum == key.first) {
+              for (int i = 0; i < it->numCenters * FU / divisions; i++) {
+                if (!xtal->addAtomRandomly(atomicNum, key.second, this->comp, this->compMolUnit, useMolUnit)) {
+                  xtal->deleteLater();
+                  debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                        "specified interatomic distance.");
+                  return 0;
+                }
+              }
+            }
           }
         }
       }
@@ -793,69 +810,85 @@ namespace XtalOpt {
         return 0;
       }
 
+
       // Randomly place the left over atoms
       for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
         atomicNum = atomicNums.at(num_idx);
-        qRand = comp.value(atomicNum).quantity * FU;
-        if (using_mitosis){
-          qRand = qRand % divisions;
+        qTotal = (comp.value(atomicNum).quantity * FU);
+//        qRandPre = qTotal / divisions;
+//        qRandPost -= qRandPre * divisions;
+        qDebug() << atomicNum << "final qRand =" << qTotal;
 
-          // Do we use the MolUnit builder?
-          bool addAtom = true;
-          bool useMolUnit = false;
-            for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
-              QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
-              int first = key.first;
-              if (atomicNum==first) {
-                useMolUnit = true;
-                break;
-              }
-            }
-
-        // Do we add Atom or has it already been placed by MolUnit builder
-        unsigned int total = 0;
+        // Do we use the MolUnit builder?
+        bool addAtom = true;
+        bool useMolUnit = false;
         for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
           QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
-          int second = key.second;
-          if (atomicNum==second) {
-            int first = key.first;
-            unsigned int current = (it->numCenters * it->numNeighbors * FU) % divisions;
-            if (qRand - current == 0) {
-              addAtom = false;
-              break;
-            } else {
-              total += current;
-            }
+          int first = key.first;
+          if (atomicNum==first) {
+            useMolUnit = true;
+            break;
           }
         }
 
-        if (qRand == total) {
-          addAtom = false;
-        } else {
-          qRand -= total;
+        // Do we add Atom or has it already been placed by MolUnit builder
+        unsigned int qCenter = 0;
+        unsigned int qNeighbor = 0;
+        for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
+          QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+          if (atomicNum == key.first) {
+            qCenter += it->numCenters * FU;
+          }
+          if (atomicNum == key.second) {
+            qNeighbor += it->numCenters * it->numNeighbors * FU;
+          }
         }
 
-        // Add atom with MolUnit builder or Randomly
-        for (uint i = 0; i < qRand; i++) {
-          if (useMolUnit==true && addAtom==true) {
-            if (!xtal->addAtomRandomly(atomicNum, 1, this->comp,
-                    this->compMolUnit, useMolUnit)) {
-              xtal->deleteLater();
-              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                    "specified interatomic distance.");
-              return 0;
-            }
-          } else if (useMolUnit==false && addAtom==true) {
+        if (qTotal == qCenter + qNeighbor) {
+          addAtom = false;
+          qRandPost = 0;
+        } else {
+          qRandPre = (qTotal - (qCenter + qNeighbor)) / divisions;
+          qRandPost = qTotal - (qCenter + qNeighbor) - (qRandPre * divisions);
+        }
+
+        if (qCenter / divisions > 0)
+          qCenter -= (qCenter / divisions) * divisions;
+
+
+        qDebug() << atomicNum << "using MolUnit builder" << useMolUnit;
+        qDebug() << atomicNum << "atoms as MolUnit centers =" << qCenter;
+        qDebug() << atomicNum << "atoms as MolUnit neighbors =" << qNeighbor;
+        qDebug() << atomicNum << "adding atoms randomly" << addAtom;
+        qDebug() << atomicNum << "atoms added randomly =" << qRandPost;
+
+        //Initial atom placement
+        for (uint i = 0; i < qRandPost; i++) {
+          if (addAtom == true) {
             if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
               xtal->deleteLater();
               debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
                     "specified interatomic distance.");
               return 0;
             }
-          } else {
-            break;
           }
         }
+
+        // Add atom with MolUnit builder or Randomly
+        if (useMolUnit == true) {
+          for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
+            QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
+            if (atomicNum == key.first) {
+              for (int i = 0; i < it->numCenters * FU % divisions; i++) {
+                if (!xtal->addAtomRandomly(atomicNum, key.second, this->comp, this->compMolUnit, useMolUnit)) {
+                  xtal->deleteLater();
+                  debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                        "specified interatomic distance.");
+                  return 0;
+                }
+              }
+            }
+          }
         }
       }
 
@@ -914,11 +947,13 @@ namespace XtalOpt {
           qRand -= qCenter + qNeighbor;
         }
 
+/*
         qDebug() << atomicNum << "using MolUnit builder" << useMolUnit;
         qDebug() << atomicNum << "atoms as MolUnit centers =" << qCenter;
         qDebug() << atomicNum << "atoms as MolUnit neighbors =" << qNeighbor;
         qDebug() << atomicNum << "adding atoms randomly" << addAtom;
         qDebug() << atomicNum << "atoms added randomly =" << qRand;
+*/
 
         //Initial atom placement
         for (uint i = 0; i < qRand; i++) {
@@ -937,7 +972,7 @@ namespace XtalOpt {
           for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
             QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
             if (atomicNum == key.first) {
-              for (int i = 0; i < it->numCenters; i++) {
+              for (int i = 0; i < it->numCenters * FU; i++) {
                 if (!xtal->addAtomRandomly(atomicNum, key.second, this->comp, this->compMolUnit, useMolUnit)) {
                   xtal->deleteLater();
                   debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
@@ -948,21 +983,6 @@ namespace XtalOpt {
             }
           }
         }
-
-
-        /*
-        for (uint i = 0; i < qCenter; i++) {
-          if (useMolUnit == true) {
-            if (!xtal->addAtomRandomly(atomicNum, this->comp,
-                    this->compMolUnit, useMolUnit)) {
-              xtal->deleteLater();
-              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                    "specified interatomic distance.");
-              return 0;
-            }
-          }
-        }
-        */
       }
     }
 
