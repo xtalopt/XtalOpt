@@ -451,7 +451,8 @@ namespace GlobalSearch {
                                        "/edit/schemePath/", "").toString();
     QString filename = QFileDialog::getSaveFileName(NULL,
                             tr("Save Optimization Scheme as..."),
-                            oldFilename, "*.scheme;;*.state;;*.*");
+                            oldFilename, "*.scheme;;*.state;;*.*",
+                            NULL, QFileDialog::DontUseNativeDialog);
 
     // User canceled
     if (filename.isEmpty()) {
