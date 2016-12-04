@@ -570,6 +570,8 @@ namespace XtalOpt {
 
     this->updateMinRadii();
     this->updateCompositionTable();
+    // Just start over on molecular units
+    this->removeAll();
     this->updateNumDivisions();
   }
 
