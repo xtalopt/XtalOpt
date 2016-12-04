@@ -139,6 +139,14 @@ namespace XtalOpt {
     connect(ui.push_spgOptions, SIGNAL(clicked()),
             this, SLOT(openSpgOptions()));
 
+    // MolUnit, RandSpg, and Mitosis enabling/disabling of each other
+    connect(ui.cb_useMolUnit, SIGNAL(toggled(bool)),
+            this, SLOT(updateInitOptions()));
+    connect(ui.cb_allowRandSpg, SIGNAL(toggled(bool)),
+            this, SLOT(updateInitOptions()));
+    connect(ui.cb_mitosis, SIGNAL(toggled(bool)),
+            this, SLOT(updateInitOptions()));
+
 
     QHeaderView *horizontal = ui.table_comp->horizontalHeader();
     horizontal->setResizeMode(QHeaderView::ResizeToContents);
@@ -772,6 +780,34 @@ namespace XtalOpt {
     }
     ui.edit_formula_units->setText(tmp);
     updateFormulaUnits();
+  }
+
+  // Updates the UI by disabling/enabling options for initialization
+  void TabInit::updateInitOptions()
+  {
+    // We can't use molUnit or mitosis in conjunction with randSpg
+    if (ui.cb_useMolUnit->isChecked() || ui.cb_mitosis->isChecked()) {
+      ui.cb_allowRandSpg->setChecked(false);
+      ui.cb_allowRandSpg->setEnabled(false);
+    }
+    else {
+      ui.cb_allowRandSpg->setEnabled(true);
+    }
+    // We can't use molUnit or mitosis in conjunction with randSpg
+    if (ui.cb_allowRandSpg->isChecked()) {
+      // Disable all molUnit stuff
+      ui.cb_useMolUnit->setChecked(false);
+      ui.cb_useMolUnit->setEnabled(false);
+
+      // Disable all mitosis stuff
+      ui.cb_mitosis->setChecked(false);
+      ui.cb_mitosis->setEnabled(false);
+    }
+    else {
+      ui.cb_useMolUnit->setEnabled(true);
+      ui.cb_mitosis->setEnabled(true);
+    }
+    updateDimensions();
   }
 
   // This is only used when resuming older version of XtalOpt

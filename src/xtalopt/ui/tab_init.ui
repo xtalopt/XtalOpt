@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>926</width>
+    <width>946</width>
     <height>563</height>
    </rect>
   </property>
@@ -1553,6 +1553,9 @@ able to create offspring that meet this restriction.</string>
       </item>
       <item row="3" column="0" colspan="3">
        <widget class="QCheckBox" name="cb_subcellPrint">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="font">
          <font>
           <pointsize>11</pointsize>
@@ -1972,6 +1975,22 @@ able to create offspring that meet this restriction.</string>
     <hint type="destinationlabel">
      <x>686</x>
      <y>397</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_mitosis</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>cb_subcellPrint</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>635</x>
+     <y>419</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>635</x>
+     <y>513</y>
     </hint>
    </hints>
   </connection>

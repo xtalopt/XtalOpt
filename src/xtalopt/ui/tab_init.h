@@ -66,6 +66,7 @@ namespace XtalOpt {
     void updateMinRadii();
     void updateFormulaUnits();
     void updateFormulaUnitsListUI();
+    void updateInitOptions();
     void adjustVolumesToBePerFU(uint FU);
     void updateNumDivisions();
     void updateA();
