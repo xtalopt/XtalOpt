@@ -1294,9 +1294,9 @@ namespace XtalOpt {
     qDebug() << "Xtal has MolUnit center" << atomicNumber;
 
     if (useMolUnit == true) {
-      int numNeighbors;
-      double dist;
-      int geom;
+      int numNeighbors = 0;
+      double dist = 0.0;
+      int geom = 0;
 
       for (QHash<QPair<int, int>, MolUnit>::const_iterator it = limitsMolUnit.constBegin(), it_end = limitsMolUnit.constEnd(); it != it_end; it++) {
         QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());

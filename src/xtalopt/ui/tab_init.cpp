@@ -56,6 +56,8 @@ namespace XtalOpt {
             this, SLOT(getComposition(QString)));
     connect(ui.edit_composition, SIGNAL(editingFinished()),
             this, SLOT(updateComposition()));
+    connect(ui.edit_composition, SIGNAL(editingFinished()),
+            this, SLOT(removeAll()));
 
     // Unit cell
     connect(ui.spin_a_min, SIGNAL(editingFinished()),
@@ -571,7 +573,7 @@ namespace XtalOpt {
     this->updateMinRadii();
     this->updateCompositionTable();
     // Just start over on molecular units
-    this->removeAll();
+//    this->removeAll();
     this->updateNumDivisions();
   }
 
@@ -1498,7 +1500,7 @@ namespace XtalOpt {
 
       if (qComp > qMolUnit) {
         centerList.append(symbol);
-        if (qComp > 1)
+        if (qComp - qMolUnit >= 1)
           neighborList.append(symbol);
       }
     }
@@ -1531,7 +1533,7 @@ namespace XtalOpt {
 
     if (numCenters == 0)
       return;
-
+    
     for (int i = numCenters; i > 0; i--) {
       numCentersList.append(QString::number(i));
     }

@@ -719,18 +719,22 @@ namespace XtalOpt {
       for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
         QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
         if (key.first == 0) {
-          if (!xtal->addAtomRandomly(key.first, 1, this->comp,
-                  this->compMolUnit, true)) {
-            xtal->deleteLater();
-            debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                  "specified interatomic distance.");
-            return 0;
+          for (int i = 0; i < it->numCenters * FU / divisions; i++) {
+            if (!xtal->addAtomRandomly(key.first, key.second, this->comp,
+                    this->compMolUnit, true)) {
+              xtal->deleteLater();
+              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                    "specified interatomic distance.");
+              return 0;
+            }
           }
         }
       }
 
       for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
         atomicNum = atomicNums.at(num_idx);
+        if (atomicNum ==0)
+          continue;
         qTotal = comp.value(atomicNum).quantity * FU;
 //        qRandPre = comp.value(atomicNum).quantity * FU / divisions;
         qDebug() << atomicNum << "initial qRand =" << qTotal;
@@ -905,12 +909,14 @@ namespace XtalOpt {
       for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
         QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
         if (key.first == 0) {
-          if (!xtal->addAtomRandomly(key.first, 1, this->comp,
-                  this->compMolUnit, true)) {
-            xtal->deleteLater();
-            debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                  "specified interatomic distance.");
-            return 0;
+          for (int i = 0; i < it->numCenters * FU; i++) {
+            if (!xtal->addAtomRandomly(key.first, key.second, this->comp,
+                    this->compMolUnit, true)) {
+              xtal->deleteLater();
+              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                    "specified interatomic distance.");
+              return 0;
+            }
           }
         }
       }
