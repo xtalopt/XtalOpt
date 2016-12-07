@@ -56,8 +56,6 @@ namespace XtalOpt {
             this, SLOT(getComposition(QString)));
     connect(ui.edit_composition, SIGNAL(editingFinished()),
             this, SLOT(updateComposition()));
-    connect(ui.edit_composition, SIGNAL(editingFinished()),
-            this, SLOT(removeAll()));
 
     // Unit cell
     connect(ui.spin_a_min, SIGNAL(editingFinished()),
@@ -209,6 +207,8 @@ namespace XtalOpt {
       settings->beginWriteArray("composition");
       QList<uint> keys = xtalopt->comp.keys();
       for (int i = 0; i < keys.size(); i++) {
+        if (keys.at(i) == 0)
+          continue;
         settings->setArrayIndex(i);
         settings->setValue("atomicNumber", keys.at(i));
         settings->setValue("quantity",
@@ -303,6 +303,8 @@ namespace XtalOpt {
         uint atomicNum, quantity;
         XtalCompositionStruct entry;
         atomicNum = settings->value("atomicNumber").toUInt();
+        if (atomicNum == 0)
+          continue;
         quantity = settings->value("quantity").toUInt();
         entry.quantity = quantity;
         xtalopt->comp.insert(atomicNum, entry);
@@ -545,6 +547,7 @@ namespace XtalOpt {
 
       // Validate symbol
       if (!atomicNum) continue; // Invalid symbol entered
+      if (atomicNum == 0) continue;
 
       // Add to hash
       if (!comp.keys().contains(atomicNum)) {
@@ -572,8 +575,6 @@ namespace XtalOpt {
 
     this->updateMinRadii();
     this->updateCompositionTable();
-    // Just start over on molecular units
-//    this->removeAll();
     this->updateNumDivisions();
   }
 
@@ -627,6 +628,7 @@ namespace XtalOpt {
     QString tmp;
     QTextStream str (&tmp);
     for (int i = 0; i < keys.size(); i++) {
+      if (keys.at(i) == 0) continue;
       uint q = xtalopt->comp.value(keys.at(i)).quantity;
       str << OpenBabel::etab.GetSymbol(keys.at(i)) << q << " ";
     }
