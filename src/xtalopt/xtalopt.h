@@ -118,6 +118,7 @@ namespace XtalOpt {
                                                   const QString &reason = "");
     bool checkLimits();
     bool checkComposition(Xtal *xtal, QString * err = NULL);
+    bool checkLattice(Xtal *xtal, QString * err = NULL);
     bool checkXtal(Xtal *xtal, QString * err = NULL);
     QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp();

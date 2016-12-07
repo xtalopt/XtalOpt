@@ -653,18 +653,24 @@ namespace XtalOpt {
   {
     INIT_RANDOM_GENERATOR();
 
-    static_cast<double>(FU);
-
     // Set cell parameters
-    double a            = RANDDOUBLE() * (a_max-a_min) + a_min;
-    double b            = RANDDOUBLE() * (b_max-b_min) + b_min;
-    double c            = RANDDOUBLE() * (c_max-c_min) + c_min;
-    double alpha        = RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
-    double beta         = RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
-    double gamma        = RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
+    double a, b, c, alpha, beta, gamma;
 
-    // Create crystal
-    Xtal *xtal	= new Xtal(a, b, c, alpha, beta, gamma);
+    // Create a valid crystal first
+    Xtal *xtal = NULL;
+    do {
+      delete xtal;
+      xtal = NULL;
+      a            = RANDDOUBLE() * (a_max-a_min) + a_min;
+      b            = RANDDOUBLE() * (b_max-b_min) + b_min;
+      c            = RANDDOUBLE() * (c_max-c_min) + c_min;
+      alpha        = RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
+      beta         = RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
+      gamma        = RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
+      xtal = new Xtal(a, b, c, alpha, beta, gamma);
+      xtal->setFormulaUnits(FU);
+    } while (!checkLattice(xtal));
+
     QWriteLocker locker (xtal->lock());
 
     xtal->setStatus(Xtal::Empty);
@@ -2114,36 +2120,16 @@ namespace XtalOpt {
     return true;
   }
 
-  bool XtalOpt::checkXtal(Xtal *xtal, QString * err) {
-    if (!xtal) {
-      if (err != NULL) {
-        *err = "Xtal pointer is NULL.";
-      }
-      return false;
-    }
-
-    // Lock xtal
-    QWriteLocker locker (xtal->lock());
-
-    if (xtal->getStatus() == Xtal::Empty) {
-      if (err != NULL) {
-        *err = "Xtal status is empty.";
-      }
-      return false;
-    }
-
-    if (!checkComposition(xtal, err))
-      return false;
-
+  // Xtal should be write-locked before calling this function
+  bool XtalOpt::checkLattice(Xtal *xtal, QString * err)
+  {
     // Adjust max and min constraints depending on the formula unit
     new_vol_max = static_cast<double>(xtal->getFormulaUnits()) * vol_max;
     new_vol_min = static_cast<double>(xtal->getFormulaUnits()) * vol_min;
 
     // Check volume
     if (using_fixed_volume) {
-      locker.unlock();
       xtal->setVolume(vol_fixed * static_cast<double>(xtal->getFormulaUnits()));
-      locker.relock();
     }
     else if ( xtal->getVolume() < new_vol_min || //PSA
               xtal->getVolume() > new_vol_max) { //PSA
@@ -2260,6 +2246,34 @@ namespace XtalOpt {
       }
       return false;
     }
+
+    // We made it!
+    return true;
+  }
+
+  bool XtalOpt::checkXtal(Xtal *xtal, QString * err) {
+    if (!xtal) {
+      if (err != NULL) {
+        *err = "Xtal pointer is NULL.";
+      }
+      return false;
+    }
+
+    // Lock xtal
+    QWriteLocker locker (xtal->lock());
+
+    if (xtal->getStatus() == Xtal::Empty) {
+      if (err != NULL) {
+        *err = "Xtal status is empty.";
+      }
+      return false;
+    }
+
+    if (!checkComposition(xtal, err))
+      return false;
+
+    if (!checkLattice(xtal, err))
+      return false;
 
     // Sometimes, all the atom positions are set to 'nan' for an unknown reason
     // Make sure that the position of the first atom is not nan
