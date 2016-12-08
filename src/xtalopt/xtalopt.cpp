@@ -678,6 +678,11 @@ namespace XtalOpt {
     if (using_fixed_volume)
       xtal->setVolume(vol_fixed * FU);
 
+    // In case we rescaled the cell, update a, b, and c
+    a = xtal->getA();
+    b = xtal->getB();
+    c = xtal->getC();
+
     // Populate crystal
     QList<uint> atomicNums = comp.keys();
     // Sort atomic number by decreasing minimum radius. Adding the "larger"
