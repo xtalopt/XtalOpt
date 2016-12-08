@@ -1908,8 +1908,10 @@ namespace XtalOpt {
     int num = numAtoms();
 
     // if no unit cell or atoms, exit
-    if (!cell() || num == 0) {
-      qWarning() << "Xtal::findSpaceGroup( " << prec << " ) called on atom with no cell or atoms!";
+    if (num == 0)
+      return;
+    else if (!cell()) {
+      qWarning() << "Xtal::findSpaceGroup( " << prec << " ) called on an xtal with no cell!";
       return;
     }
 
