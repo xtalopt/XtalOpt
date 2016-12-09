@@ -741,8 +741,6 @@ namespace XtalOpt {
         if (atomicNum ==0)
           continue;
         qTotal = comp.value(atomicNum).quantity * FU;
-//        qRandPre = comp.value(atomicNum).quantity * FU / divisions;
-        qDebug() << atomicNum << "initial qRand =" << qTotal;
 
         // Do we use the MolUnit builder?
         bool addAtom = true;
@@ -778,12 +776,6 @@ namespace XtalOpt {
         } else {
           qRandPre = (qTotal - (qCenter + qNeighbor)) / divisions;
         }
-
-        qDebug() << atomicNum << "using MolUnit builder" << useMolUnit;
-        qDebug() << atomicNum << "atoms as MolUnit centers =" << qCenter;
-        qDebug() << atomicNum << "atoms as MolUnit neighbors =" << qNeighbor;
-        qDebug() << atomicNum << "adding atoms randomly" << addAtom;
-        qDebug() << atomicNum << "atoms added randomly =" << qRandPre;
 
         //Initial atom placement
         for (uint i = 0; i < qRandPre; i++) {
@@ -830,9 +822,6 @@ namespace XtalOpt {
       for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
         atomicNum = atomicNums.at(num_idx);
         qTotal = (comp.value(atomicNum).quantity * FU);
-//        qRandPre = qTotal / divisions;
-//        qRandPost -= qRandPre * divisions;
-        qDebug() << atomicNum << "final qRand =" << qTotal;
 
         // Do we use the MolUnit builder?
         bool addAtom = true;
@@ -869,13 +858,6 @@ namespace XtalOpt {
 
         if (qCenter / divisions > 0)
           qCenter -= (qCenter / divisions) * divisions;
-
-
-        qDebug() << atomicNum << "using MolUnit builder" << useMolUnit;
-        qDebug() << atomicNum << "atoms as MolUnit centers =" << qCenter;
-        qDebug() << atomicNum << "atoms as MolUnit neighbors =" << qNeighbor;
-        qDebug() << atomicNum << "adding atoms randomly" << addAtom;
-        qDebug() << atomicNum << "atoms added randomly =" << qRandPost;
 
         //Initial atom placement
         for (uint i = 0; i < qRandPost; i++) {
@@ -963,14 +945,6 @@ namespace XtalOpt {
         } else {
           qRand -= qCenter + qNeighbor;
         }
-
-/*
-        qDebug() << atomicNum << "using MolUnit builder" << useMolUnit;
-        qDebug() << atomicNum << "atoms as MolUnit centers =" << qCenter;
-        qDebug() << atomicNum << "atoms as MolUnit neighbors =" << qNeighbor;
-        qDebug() << atomicNum << "adding atoms randomly" << addAtom;
-        qDebug() << atomicNum << "atoms added randomly =" << qRand;
-*/
 
         //Initial atom placement
         for (uint i = 0; i < qRand; i++) {
@@ -1535,7 +1509,6 @@ namespace XtalOpt {
 
         // If no FU's may be created by mitosis, just continue
         if (!possibleMitosisFU_index.isEmpty()) {
-          //qDebug() << "possibleMitosisFU_index is not empty!";
           // If the probability fails, delete xtal and continue
           if (r <= chance_of_mitosis/100.0) {
             // Select an index randomly from the possibleMitosisFU_index
@@ -1927,7 +1900,6 @@ namespace XtalOpt {
                         myXtal->getAlpha(),
                         myXtal->getBeta(),
                         myXtal->getGamma());
-    //qDebug() << "Xtal cell dimensions are increasing from a=" << A << "b=" << B << "c=" << C << "to a=" << a*A << "b=" << b*B << "c=" << c*C;
     a--;
     b--;
     c--;
@@ -1946,8 +1918,6 @@ namespace XtalOpt {
               *newAtom = *atom;
               newAtom->setPos((*atom->pos())+uVecs);
               newAtom->setAtomicNumber(atom->atomicNumber());
-              //qDebug() << "Added atom at a=" << i << " b=" << j << " c=" << k << " with atomic number " << newAtom->atomicNumber() << "and position " << *newAtom->pos();
-
           }
         }
       }
@@ -2156,8 +2126,8 @@ namespace XtalOpt {
       if (fabs(newvol) < 1.0) {
         newvol = (new_vol_max - new_vol_min)*0.5 + new_vol_min; //PSA;
       }
-      qDebug() << "XtalOpt::checkXtal: Rescaling volume from "
-               << xtal->getVolume() << " to " << newvol;
+      //qDebug() << "XtalOpt::checkXtal: Rescaling volume from "
+      //         << xtal->getVolume() << " to " << newvol;
       xtal->setVolume(newvol);
     }
 

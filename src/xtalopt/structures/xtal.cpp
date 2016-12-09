@@ -1291,8 +1291,6 @@ namespace XtalOpt {
     (*atom)->setPos(cartCoords);
     (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
 
-    qDebug() << "Xtal has MolUnit center" << atomicNumber;
-
     if (useMolUnit == true) {
       int numNeighbors = 0;
       double dist = 0.0;
@@ -1307,9 +1305,6 @@ namespace XtalOpt {
         }
       }
 
-      qDebug() << "Neighbors =" << neighbor;
-      qDebug() << "numNeighbors =" << numNeighbors;
-
       OpenBabel::OBMol obmol = OBMol();
       OpenBabel::OBAtom *obatom = obmol.GetAtom((*atom)->index()+1);
       obatom->SetAtomicNum(6);
@@ -1319,10 +1314,6 @@ namespace XtalOpt {
       obmol.SetHybridizationPerceived();
       obmol.AddHydrogens(obatom);
       unsigned int numberAtoms = numAtoms();
-
-      qDebug() << "numAtoms =" << numberAtoms;
-      qDebug() << "numAtoms for obmol =" << obmol.NumAtoms();
-      qDebug() << "distance =" << dist;
 
       int j = 0;
       for (unsigned int i = numberAtoms+1; i <= obmol.NumAtoms(); ++i, ++j) {
@@ -1343,7 +1334,7 @@ namespace XtalOpt {
   }
 
   bool Xtal::fillSuperCell(int a, int b, int c, Xtal * myXtal) {
-      qDebug() << "Xtal has a=" << a << " b=" << b << " c=" << c;
+      //qDebug() << "Xtal has a=" << a << " b=" << b << " c=" << c;
 
       QList<Atom*> oneFUatoms =  atoms();
       matrix3x3 obcellMatrix = myXtal->cell()->GetCellMatrix();
@@ -1360,8 +1351,8 @@ namespace XtalOpt {
                   myXtal->getAlpha(),
                   myXtal->getBeta(),
                   myXtal->getGamma());
-      qDebug() << "Xtal cell dimensions are increasing from a=" << A << "b=" << B << "c=" << C <<
-                  "to a=" << a*A << "b=" << b*B << "c=" << c*C;
+      //qDebug() << "Xtal cell dimensions are increasing from a=" << A << "b=" << B << "c=" << C <<
+      //            "to a=" << a*A << "b=" << b*B << "c=" << c*C;
       a--;
       b--;
       c--;
@@ -1380,7 +1371,7 @@ namespace XtalOpt {
                       *newAtom = *atom;
                       newAtom->setPos((*atom->pos())+uVecs);
                       newAtom->setAtomicNumber(atom->atomicNumber());
-                      qDebug() << "Added atom at a=" << i << " b=" << j << " c=" << k << " with atomic number " << newAtom->atomicNumber();
+                      //qDebug() << "Added atom at a=" << i << " b=" << j << " c=" << k << " with atomic number " << newAtom->atomicNumber();
                   }
               }
           }
