@@ -1137,6 +1137,7 @@ namespace XtalOpt {
       const QHash<unsigned int, XtalCompositionStruct> & limits,
       int maxAttempts, Avogadro::Atom **atom)
   {
+    INIT_RANDOM_GENERATOR();
     Eigen::Vector3d cartCoords;
     bool success;
 
@@ -1217,6 +1218,7 @@ namespace XtalOpt {
       bool useMolUnit,
       int maxAttempts, Avogadro::Atom **atom)
   {
+    INIT_RANDOM_GENERATOR();
     Eigen::Vector3d cartCoords;
     bool success;
 

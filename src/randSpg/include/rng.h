@@ -24,7 +24,8 @@
 static inline double getRandDouble(double min, double max)
 {
   // This one may not be thread-safe. thread_local is not supported in msvc2013
-  std::mt19937 generator(std::random_device{}());
+  std::random_device rd;
+  std::mt19937 generator(rd());
   std::uniform_real_distribution<double> distribution(min, max);
   return distribution(generator);
 }
@@ -32,7 +33,8 @@ static inline double getRandDouble(double min, double max)
 static inline int getRandInt(int min, int max)
 {
   // This one may not be thread-safe. thread_local is not supported in msvc2013
-  std::mt19937 generator(std::random_device{}());
+  std::random_device rd;
+  std::mt19937 generator(rd());
   std::uniform_int_distribution<int> distribution(min, max);
   return distribution(generator);
 }

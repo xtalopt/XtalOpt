@@ -33,7 +33,11 @@ set( xtalopt_UIS
 
 set( xtalopt_RCS xtalopt.qrc )
 
-process_plugin(xtalopt "${xtalopt_SRCS}" "${xtalopt_UIS}" "${xtalopt_RCS}")
+if(MSVC)
+  avogadro_plugin(xtalopt "${xtalopt_SRCS}" "${xtalopt_UIS}" "${xtalopt_RCS}")
+else(MSVC)
+  process_plugin(xtalopt "${xtalopt_SRCS}" "${xtalopt_UIS}" "${xtalopt_RCS}")
+endif(MSVC)
 
 add_dependencies(xtalopt globalsearch XtalComp spglib RandSpg)
 

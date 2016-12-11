@@ -410,6 +410,12 @@ Crystal RandSpg::randSpgCrystal(const randSpgInput& input)
 {
   START_FT;
 
+  // We need to call this initialization function with visual studio 2010
+  // and earlier
+#if (defined(_MSC_VER) && _MSC_VER <= 1600)
+  initWyckoffPositionsDatabase();
+#endif
+
   // Convenience: so we don't have to say 'input.<option>' for every call
   uint spg                                                      = input.spg;
   const vector<uint>& atoms                                     = input.atoms;
@@ -558,6 +564,12 @@ Crystal RandSpg::randSpgCrystal(const randSpgInput& input)
 bool RandSpg::isSpgPossible(uint spg, const vector<uint>& atoms)
 {
   START_FT;
+
+  // We need to call this initialization function with visual studio 2010
+  // and earlier
+#if (defined(_MSC_VER) && _MSC_VER <= 1600)
+  initWyckoffPositionsDatabase();
+#endif
 
   if (spg < 1 || spg > 230) return false;
 

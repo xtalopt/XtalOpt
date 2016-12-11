@@ -207,7 +207,7 @@ namespace GlobalSearch {
     // Does robocopy come with all windows computers?
     QString command2 = "robocopy " + s->fileName() + " " +
                        this->m_opt->filePath + "\\errorDirs\\" +
-                       QString::number(s->getGeneration) + "x" +
+                       QString::number(s->getGeneration()) + "x" +
                        QString::number(s->getIDNumber());
     proc2.start(command2);
     proc2.waitForFinished();

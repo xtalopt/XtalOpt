@@ -19,7 +19,12 @@ endif (ENABLE_EXAMPLESEARCH)
 
 if (ENABLE_XTALOPT)
    add_subdirectory(randSpg)
-   add_subdirectory(spglib)
+   # If we are using MSVC, we should be nesting xtalopt within Avogadro,
+   # so spglib will already have been built (it is part of the Avogadro
+   # package already).
+   if(NOT MSVC)
+     add_subdirectory(spglib)
+   endif(NOT MSVC)
    add_subdirectory(xtalcomp)
    add_subdirectory(xtalopt)
 endif (ENABLE_XTALOPT)

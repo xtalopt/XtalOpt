@@ -59,8 +59,6 @@
 
 #include <randSpg/include/randSpg.h>
 
-#include <atomic> // For thread-safe types
-
 #define ANGSTROM_TO_BOHR 1.889725989
 
 using namespace GlobalSearch;
@@ -436,8 +434,8 @@ namespace XtalOpt {
 
     // We will only display the warning once, so use a static bool for this
     // Use an atomic bool for thread safety
-    static std::atomic_bool warningAlreadyDisplayed(false);
-    if (!warningAlreadyDisplayed.load()) {
+    static bool warningAlreadyDisplayed = false;
+    if (!warningAlreadyDisplayed) {
       warning("XtalOpt no longer check to make sure seed "
               "xtals obey user-defined constraints (minimum "
               "interatomic distances, min/max volume, etc.). Be sure "

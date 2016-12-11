@@ -21,7 +21,13 @@
 
 namespace ElemInfoDatabase {
   // Atomic symbols
+#if (defined(_MSC_VER) && _MSC_VER <= 1600)
+  // Visual studio 2010 and earlier can't initialize vectors as easily
+  static const char* _tmp_atomicSymbols[] =
+#else
+  // This is default
   static const std::vector<std::string> _atomicSymbols =
+#endif
   {
     " ",  // 0 -- not a real element...
     "H",  // 1
@@ -142,11 +148,20 @@ namespace ElemInfoDatabase {
     "Lv", // 116
     "Uus",// 117
   };
+#if (defined(_MSC_VER) && _MSC_VER <= 1600)
+  // Visual studio 2010 and earlier can't initialize vectors as easily
+  static const std::vector<std::string> _atomicSymbols(_tmp_atomicSymbols, std::end(_tmp_atomicSymbols));
+#endif
 
   // The following values were obtained from latest version of OpenBabel on
   // GitHub on 01/14/2016
 
+#if (defined(_MSC_VER) && _MSC_VER <= 1600)
+  // Visual studio 2010 and earlier can't initialize vectors as easily
+  static const double _tmp_covalentRadii[] =
+#else
   static const std::vector<double> _covalentRadii =
+#endif
   {
     0,    // 0 - not a real element...
     0.31, // 1
@@ -267,11 +282,20 @@ namespace ElemInfoDatabase {
     1.6,  // 116
     1.6,  // 117
   };
+#if (defined(_MSC_VER) && _MSC_VER <= 1600)
+  // Visual studio 2010 and earlier can't initialize vectors as easily
+  static const std::vector<double> _covalentRadii(_tmp_covalentRadii, std::end(_tmp_covalentRadii));
+#endif
 
   // The following values were obtained from latest version of OpenBabel on
   // GitHub on 01/14/2016
 
+#if (defined(_MSC_VER) && _MSC_VER <= 1600)
+  // Visual studio 2010 and earlier can't initialize vectors as easily
+  static const double _tmp_vdwRadii[] =
+#else
   static const std::vector<double> _vdwRadii =
+#endif
   {
     0,    // 0 - not a real element...
     1.1,  // 1
@@ -392,6 +416,10 @@ namespace ElemInfoDatabase {
     2,    // 116
     2,    // 117
   };
+#if (defined(_MSC_VER) && _MSC_VER <= 1600)
+  // Visual studio 2010 and earlier can't initialize vectors as easily
+  static const std::vector<double> _vdwRadii(_tmp_vdwRadii, std::end(_tmp_vdwRadii));
+#endif
 } // namespace ElemInfoDatabase
 
 #endif

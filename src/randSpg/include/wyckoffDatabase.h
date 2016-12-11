@@ -35,7 +35,2909 @@
 
 // For spacegroups with an origin choice, origin choices are all 2
 // For spacegroups with rhombohedral vs. hexagonal, all are hexagonal
-static const std::vector<wyckoffPositions> wyckoffPositionsDatabase
+
+// If we are using visual studio 2010, we need a special function for
+// initialization.
+#if (defined(_MSC_VER) && _MSC_VER <= 1600)
+static std::vector<wyckoffPositions> wyckoffPositionsDatabase;
+
+static void initWyckoffPositionsDatabase()
+{
+  // Check to see if we have already initialized. If we have, just return
+  if (wyckoffPositionsDatabase.size() == 231)
+    return;
+
+  wyckoffPositionsDatabase.clear();
+  { // 0. Not a real space group...
+    wyckoffPositions tmpPos;
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 1
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 2
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',1,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',1,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('e',1,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('f',1,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('g',1,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('h',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('i',2,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 3 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,y,0",false));
+    tmpPos.push_back(wyckPos('b',1,"0,y,0.5",false));
+    tmpPos.push_back(wyckPos('c',1,"0.5,y,0",false));
+    tmpPos.push_back(wyckPos('d',1,"0.5,y,0.5",false));
+    tmpPos.push_back(wyckPos('e',2,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 4 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 5 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,y,0",false));
+    tmpPos.push_back(wyckPos('b',2,"0,y,0.5",false));
+    tmpPos.push_back(wyckPos('c',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 6 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"x,0,z",false));
+    tmpPos.push_back(wyckPos('b',1,"x,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',2,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 7 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 8 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"x,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 9 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 10 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',1,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('e',1,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('f',1,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('g',1,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('h',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('i',2,"0,y,0",false));
+    tmpPos.push_back(wyckPos('j',2,"0.5,y,0",false));
+    tmpPos.push_back(wyckPos('k',2,"0,y,0.5",false));
+    tmpPos.push_back(wyckPos('l',2,"0.5,y,0.5",false));
+    tmpPos.push_back(wyckPos('m',2,"x,0,z",false));
+    tmpPos.push_back(wyckPos('n',2,"x,0.5,z",false));
+    tmpPos.push_back(wyckPos('o',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 11 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',2,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"x,0.25,z",false));
+    tmpPos.push_back(wyckPos('f',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 12 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('f',4,"0.25,0.25,0.5",true));
+    tmpPos.push_back(wyckPos('g',4,"0,y,0",false));
+    tmpPos.push_back(wyckPos('h',4,"0,y,0.5",false));
+    tmpPos.push_back(wyckPos('i',4,"x,0,z",false));
+    tmpPos.push_back(wyckPos('j',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 13 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('e',2,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('f',2,"0.5,y,0.25",false));
+    tmpPos.push_back(wyckPos('g',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 14 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',2,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 15 - unique axis b
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0.25,0.25,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('f',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 16
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('c',1,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',1,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('f',1,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('g',1,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('h',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('i',2,"x,0,0",false));
+    tmpPos.push_back(wyckPos('j',2,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('k',2,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('l',2,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('m',2,"0,y,0",false));
+    tmpPos.push_back(wyckPos('n',2,"0,y,0.5",false));
+    tmpPos.push_back(wyckPos('o',2,"0.5,y,0",false));
+    tmpPos.push_back(wyckPos('p',2,"0.5,y,0.5",false));
+    tmpPos.push_back(wyckPos('q',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('r',2,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('s',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('t',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('u',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 17
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"x,0,0",false));
+    tmpPos.push_back(wyckPos('b',2,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('c',2,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('d',2,"0.5,y,0.25",false));
+    tmpPos.push_back(wyckPos('e',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 18
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 19
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 20
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"x,0,0",false));
+    tmpPos.push_back(wyckPos('b',4,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('c',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 21
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',4,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('g',4,"0,y,0",false));
+    tmpPos.push_back(wyckPos('h',4,"0,y,0.5",false));
+    tmpPos.push_back(wyckPos('i',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('j',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('k',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('l',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 22
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',4,"0.25,0.25,0.75",true));
+    tmpPos.push_back(wyckPos('e',8,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',8,"0,y,0",false));
+    tmpPos.push_back(wyckPos('g',8,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',8,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('i',8,"0.25,y,0.25",false));
+    tmpPos.push_back(wyckPos('j',8,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('k',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 23
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',4,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',4,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('g',4,"0,y,0",false));
+    tmpPos.push_back(wyckPos('h',4,"0.5,y,0",false));
+    tmpPos.push_back(wyckPos('i',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('j',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('k',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 24
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('b',4,"0.25,y,0",false));
+    tmpPos.push_back(wyckPos('c',4,"0,0.25,z",false));
+    tmpPos.push_back(wyckPos('d',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 25
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',1,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',1,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('d',1,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('e',2,"x,0,z",false));
+    tmpPos.push_back(wyckPos('f',2,"x,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',2,"0,y,z",false));
+    tmpPos.push_back(wyckPos('h',2,"0.5,y,z",false));
+    tmpPos.push_back(wyckPos('i',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 26
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,y,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.5,y,z",false));
+    tmpPos.push_back(wyckPos('c',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 27
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',2,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('d',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('e',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 28
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',2,"0.25,y,z",false));
+    tmpPos.push_back(wyckPos('d',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 29
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 30
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('c',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 31
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,y,z",false));
+    tmpPos.push_back(wyckPos('b',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 32
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 33
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 34
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 35
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('d',4,"x,0,z",false));
+    tmpPos.push_back(wyckPos('e',4,"0,y,z",false));
+    tmpPos.push_back(wyckPos('f',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 36
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,y,z",false));
+    tmpPos.push_back(wyckPos('b',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 37
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('d',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 38
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('c',4,"x,0,z",false));
+    tmpPos.push_back(wyckPos('d',4,"0,y,z",false));
+    tmpPos.push_back(wyckPos('e',4,"0.5,y,z",false));
+    tmpPos.push_back(wyckPos('f',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 39
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('c',4,"x,0.25,z",false));
+    tmpPos.push_back(wyckPos('d',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 40
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0.25,y,z",false));
+    tmpPos.push_back(wyckPos('c',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 41
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 42
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',8,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('c',8,"0,y,z",false));
+    tmpPos.push_back(wyckPos('d',8,"x,0,z",false));
+    tmpPos.push_back(wyckPos('e',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 43
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 44
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',4,"x,0,z",false));
+    tmpPos.push_back(wyckPos('d',4,"0,y,z",false));
+    tmpPos.push_back(wyckPos('e',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 45
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 46
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0.25,y,z",false));
+    tmpPos.push_back(wyckPos('c',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 47
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('c',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',1,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',1,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('f',1,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('g',1,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('h',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('i',2,"x,0,0",false));
+    tmpPos.push_back(wyckPos('j',2,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('k',2,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('l',2,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('m',2,"0,y,0",false));
+    tmpPos.push_back(wyckPos('n',2,"0,y,0.5",false));
+    tmpPos.push_back(wyckPos('o',2,"0.5,y,0",false));
+    tmpPos.push_back(wyckPos('p',2,"0.5,y,0.5",false));
+    tmpPos.push_back(wyckPos('q',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('r',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('s',2,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('t',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('u',4,"0,y,z",false));
+    tmpPos.push_back(wyckPos('v',4,"0.5,y,z",false));
+    tmpPos.push_back(wyckPos('w',4,"x,0,z",false));
+    tmpPos.push_back(wyckPos('x',4,"x,0.5,z",false));
+    tmpPos.push_back(wyckPos('y',4,"x,y,0",false));
+    tmpPos.push_back(wyckPos('z',4,"x,y,0.5",false));
+    tmpPos.push_back(wyckPos('A',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 48
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0.75,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('c',2,"0.25,0.25,0.75",true));
+    tmpPos.push_back(wyckPos('d',2,"0.25,0.75,0.25",true));
+    tmpPos.push_back(wyckPos('e',4,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('f',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('g',4,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('h',4,"x,0.25,0.75",false));
+    tmpPos.push_back(wyckPos('i',4,"0.25,y,0.25",false));
+    tmpPos.push_back(wyckPos('j',4,"0.75,y,0.25",false));
+    tmpPos.push_back(wyckPos('k',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('l',4,"0.25,0.75,z",false));
+    tmpPos.push_back(wyckPos('m',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 49
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('f',2,"0.5,0,0.25",true));
+    tmpPos.push_back(wyckPos('g',2,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('h',2,"0.5,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('i',4,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('j',4,"x,0.5,0.25",false));
+    tmpPos.push_back(wyckPos('k',4,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('l',4,"0.5,y,0.25",false));
+    tmpPos.push_back(wyckPos('m',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('n',4,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('o',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('p',4,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('q',4,"x,y,0",false));
+    tmpPos.push_back(wyckPos('r',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 50
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.75,0.25,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0.75,0.25,0.5",true));
+    tmpPos.push_back(wyckPos('d',2,"0.25,0.25,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('f',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('g',4,"x,0.25,0",false));
+    tmpPos.push_back(wyckPos('h',4,"x,0.25,0.5",false));
+    tmpPos.push_back(wyckPos('i',4,"0.25,y,0",false));
+    tmpPos.push_back(wyckPos('j',4,"0.25,y,0.5",false));
+    tmpPos.push_back(wyckPos('k',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('l',4,"0.25,0.75,z",false));
+    tmpPos.push_back(wyckPos('m',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 51
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0.25,0,z",false));
+    tmpPos.push_back(wyckPos('f',2,"0.25,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',4,"0,y,0",false));
+    tmpPos.push_back(wyckPos('h',4,"0,y,0.5",false));
+    tmpPos.push_back(wyckPos('i',4,"x,0,z",false));
+    tmpPos.push_back(wyckPos('j',4,"x,0.5,z",false));
+    tmpPos.push_back(wyckPos('k',4,"0.25,y,z",false));
+    tmpPos.push_back(wyckPos('l',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 52
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0,z",false));
+    tmpPos.push_back(wyckPos('d',4,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('e',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 53
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',4,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',4,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('g',4,"0.25,y,0.25",false));
+    tmpPos.push_back(wyckPos('h',4,"0,y,z",false));
+    tmpPos.push_back(wyckPos('i',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 54
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('d',4,"0.25,0,z",false));
+    tmpPos.push_back(wyckPos('e',4,"0.25,0.5,z",false));
+    tmpPos.push_back(wyckPos('f',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 55
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',4,"x,y,0",false));
+    tmpPos.push_back(wyckPos('h',4,"x,y,0.5",false));
+    tmpPos.push_back(wyckPos('i',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 56
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('d',4,"0.25,0.75,z",false));
+    tmpPos.push_back(wyckPos('e',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 57
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('c',4,"x,0.25,0",false));
+    tmpPos.push_back(wyckPos('d',4,"x,y,0.25",false));
+    tmpPos.push_back(wyckPos('e',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 58
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',4,"x,y,0",false));
+    tmpPos.push_back(wyckPos('h',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 59
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.25,0.75,z",false));
+    tmpPos.push_back(wyckPos('c',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"0.25,y,z",false));
+    tmpPos.push_back(wyckPos('f',4,"x,0.25,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 60
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('d',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 61
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 62
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"x,0.25,z",false));
+    tmpPos.push_back(wyckPos('d',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 63
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('d',8,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('e',8,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',8,"0,y,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,y,0.25",false));
+    tmpPos.push_back(wyckPos('h',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 64
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('c',8,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('d',8,"x,0,0",false));
+    tmpPos.push_back(wyckPos('e',8,"0.25,y,0.25",false));
+    tmpPos.push_back(wyckPos('f',8,"0,y,z",false));
+    tmpPos.push_back(wyckPos('g',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 65
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('f',4,"0.25,0.25,0.5",true));
+    tmpPos.push_back(wyckPos('g',4,"x,0,0",false));
+    tmpPos.push_back(wyckPos('h',4,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('i',4,"0,y,0",false));
+    tmpPos.push_back(wyckPos('j',4,"0,y,0.5",false));
+    tmpPos.push_back(wyckPos('k',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('l',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('m',8,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('n',8,"0,y,z",false));
+    tmpPos.push_back(wyckPos('o',8,"x,0,z",false));
+    tmpPos.push_back(wyckPos('p',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('q',8,"x,y,0.5",false));
+    tmpPos.push_back(wyckPos('r',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 66
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',4,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('f',4,"0.25,0.75,0",true));
+    tmpPos.push_back(wyckPos('g',8,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('h',8,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('i',8,"0,0,z",false));
+    tmpPos.push_back(wyckPos('j',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('k',8,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('l',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('m',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 67
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0.25,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.25,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('f',4,"0.25,0.25,0.5",true));
+    tmpPos.push_back(wyckPos('g',4,"0,0.25,z",false));
+    tmpPos.push_back(wyckPos('h',8,"x,0,0",false));
+    tmpPos.push_back(wyckPos('i',8,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('j',8,"0.25,y,0",false));
+    tmpPos.push_back(wyckPos('k',8,"0.25,y,0.5",false));
+    tmpPos.push_back(wyckPos('l',8,"0.25,0,z",false));
+    tmpPos.push_back(wyckPos('m',8,"0,y,z",false));
+    tmpPos.push_back(wyckPos('n',8,"x,0.25,z",false));
+    tmpPos.push_back(wyckPos('o',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 68
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0.25,0.75",true));
+    tmpPos.push_back(wyckPos('c',8,"0.25,0.75,0",true));
+    tmpPos.push_back(wyckPos('d',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('e',8,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('f',8,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('g',8,"0,0.25,z",false));
+    tmpPos.push_back(wyckPos('h',8,"0.25,0,z",false));
+    tmpPos.push_back(wyckPos('i',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 69
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"0,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',8,"0.25,0,0.25",true));
+    tmpPos.push_back(wyckPos('e',8,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('f',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('g',8,"x,0,0",false));
+    tmpPos.push_back(wyckPos('h',8,"0,y,0",false));
+    tmpPos.push_back(wyckPos('i',8,"0,0,z",false));
+    tmpPos.push_back(wyckPos('j',16,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('k',16,"0.25,y,0.25",false));
+    tmpPos.push_back(wyckPos('l',16,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('m',16,"0,y,z",false));
+    tmpPos.push_back(wyckPos('n',16,"x,0,z",false));
+    tmpPos.push_back(wyckPos('o',16,"x,y,0",false));
+    tmpPos.push_back(wyckPos('p',32,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 70
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0.125,0.125,0.125",true));
+    tmpPos.push_back(wyckPos('b',8,"0.125,0.125,0.625",true));
+    tmpPos.push_back(wyckPos('c',16,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',16,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',16,"x,0.125,0.125",false));
+    tmpPos.push_back(wyckPos('f',16,"0.125,y,0.125",false));
+    tmpPos.push_back(wyckPos('g',16,"0.125,0.125,z",false));
+    tmpPos.push_back(wyckPos('h',32,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 71
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',4,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('g',4,"0,y,0",false));
+    tmpPos.push_back(wyckPos('h',4,"0,y,0.5",false));
+    tmpPos.push_back(wyckPos('i',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('j',4,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('k',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('l',8,"0,y,z",false));
+    tmpPos.push_back(wyckPos('m',8,"x,0,z",false));
+    tmpPos.push_back(wyckPos('n',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('o',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 72
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',4,"0.5,0,0.25",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('e',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('f',8,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('g',8,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('h',8,"0,0,z",false));
+    tmpPos.push_back(wyckPos('i',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('j',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('k',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 73
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('c',8,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('d',8,"0.25,y,0",false));
+    tmpPos.push_back(wyckPos('e',8,"0,0.25,z",false));
+    tmpPos.push_back(wyckPos('f',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 74
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',4,"0.25,0.25,0.75",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0.25,z",false));
+    tmpPos.push_back(wyckPos('f',8,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',8,"0.25,y,0.25",false));
+    tmpPos.push_back(wyckPos('h',8,"0,y,z",false));
+    tmpPos.push_back(wyckPos('i',8,"x,0.25,z",false));
+    tmpPos.push_back(wyckPos('j',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 75
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',1,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('d',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 76
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 77
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('d',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 78
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 79
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 80
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 81
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',1,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('h',4,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 82
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.75",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 83
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',1,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('f',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('g',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('j',4,"x,y,0",false));
+    tmpPos.push_back(wyckPos('k',4,"x,y,0.5",false));
+    tmpPos.push_back(wyckPos('l',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 84
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('f',2,"0.5,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('g',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',4,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('j',4,"x,y,0",false));
+    tmpPos.push_back(wyckPos('k',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 85
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.25,0.75,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.25,0.75,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('d',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('f',4,"0.25,0.75,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 86
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0.25,0.25,0.75",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"0.75,0.25,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 87
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('g',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('h',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('i',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 88
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0.25,0.125",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0.25,0.625",true));
+    tmpPos.push_back(wyckPos('c',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',8,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',8,"0,0.25,z",false));
+    tmpPos.push_back(wyckPos('f',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 89
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',1,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('f',2,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('g',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('j',4,"x,x,0",false));
+    tmpPos.push_back(wyckPos('k',4,"x,x,0.5",false));
+    tmpPos.push_back(wyckPos('l',4,"x,0,0",false));
+    tmpPos.push_back(wyckPos('m',4,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('n',4,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('o',4,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('p',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 90
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('d',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('e',4,"x,x,0",false));
+    tmpPos.push_back(wyckPos('f',4,"x,x,0.5",false));
+    tmpPos.push_back(wyckPos('g',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 91
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,y,0",false));
+    tmpPos.push_back(wyckPos('b',4,"0.5,y,0",false));
+    tmpPos.push_back(wyckPos('c',4,"x,x,0.375",false));
+    tmpPos.push_back(wyckPos('d',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 92
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"x,x,0",false));
+    tmpPos.push_back(wyckPos('b',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 93
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('f',2,"0.5,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('g',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',4,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('j',4,"x,0,0",false));
+    tmpPos.push_back(wyckPos('k',4,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('l',4,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('m',4,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('n',4,"x,x,0.25",false));
+    tmpPos.push_back(wyckPos('o',4,"x,x,0.75",false));
+    tmpPos.push_back(wyckPos('p',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 94
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('e',4,"x,x,0",false));
+    tmpPos.push_back(wyckPos('f',4,"x,x,0.5",false));
+    tmpPos.push_back(wyckPos('g',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 95
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,y,0",false));
+    tmpPos.push_back(wyckPos('b',4,"0.5,y,0",false));
+    tmpPos.push_back(wyckPos('c',4,"x,x,0.625",false));
+    tmpPos.push_back(wyckPos('d',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 96
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"x,x,0",false));
+    tmpPos.push_back(wyckPos('b',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 97
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,x,0",false));
+    tmpPos.push_back(wyckPos('h',8,"x,0,0",false));
+    tmpPos.push_back(wyckPos('i',8,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('j',8,"x,x+0.5,0.25",false));
+    tmpPos.push_back(wyckPos('k',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 98
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',8,"x,x,0",false));
+    tmpPos.push_back(wyckPos('e',8,"-x,x,0",false));
+    tmpPos.push_back(wyckPos('f',8,"x,0.25,0.125",false));
+    tmpPos.push_back(wyckPos('g',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 99
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',1,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',2,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('d',4,"x,x,z",false));
+    tmpPos.push_back(wyckPos('e',4,"x,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"x,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 100
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('c',4,"x,x+0.5,z",false));
+    tmpPos.push_back(wyckPos('d',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 101
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('d',4,"x,x,z",false));
+    tmpPos.push_back(wyckPos('e',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 102
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',4,"x,x,z",false));
+    tmpPos.push_back(wyckPos('d',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 103
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('d',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 104
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 105
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('d',4,"x,0,z",false));
+    tmpPos.push_back(wyckPos('e',4,"x,0.5,z",false));
+    tmpPos.push_back(wyckPos('f',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 106
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 107
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',8,"x,x,z",false));
+    tmpPos.push_back(wyckPos('d',8,"x,0,z",false));
+    tmpPos.push_back(wyckPos('e',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 108
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('c',8,"x,x+0.5,z",false));
+    tmpPos.push_back(wyckPos('d',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 109
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',8,"0,y,z",false));
+    tmpPos.push_back(wyckPos('c',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 110
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 111
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',1,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',2,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('f',2,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('g',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',4,"x,0,0",false));
+    tmpPos.push_back(wyckPos('j',4,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('k',4,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('l',4,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('m',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('n',4,"x,x,z",false));
+    tmpPos.push_back(wyckPos('o',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 112
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0,0.25",true));
+    tmpPos.push_back(wyckPos('c',2,"0.5,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('f',2,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('g',4,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('h',4,"0.5,y,0.25",false));
+    tmpPos.push_back(wyckPos('i',4,"x,0.5,0.25",false));
+    tmpPos.push_back(wyckPos('j',4,"0,y,0.25",false));
+    tmpPos.push_back(wyckPos('k',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('l',4,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('m',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('n',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 113
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('d',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('e',4,"x,x+0.5,z",false));
+    tmpPos.push_back(wyckPos('f',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 114
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('e',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 115
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('d',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',2,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('h',4,"x,x,0",false));
+    tmpPos.push_back(wyckPos('i',4,"x,x,0.5",false));
+    tmpPos.push_back(wyckPos('j',4,"x,0,z",false));
+    tmpPos.push_back(wyckPos('k',4,"x,0.5,z",false));
+    tmpPos.push_back(wyckPos('l',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 116
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',4,"x,x,0.25",false));
+    tmpPos.push_back(wyckPos('f',4,"x,x,0.75",false));
+    tmpPos.push_back(wyckPos('g',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',4,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('j',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 117
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',4,"x,x+0.5,0",false));
+    tmpPos.push_back(wyckPos('h',4,"x,x+0.5,0.5",false));
+    tmpPos.push_back(wyckPos('i',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 118
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.75",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"x,-x+0.5,0.25",false));
+    tmpPos.push_back(wyckPos('g',4,"x,x+0.5,0.25",false));
+    tmpPos.push_back(wyckPos('h',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',8,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 119
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.75",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,x,0",false));
+    tmpPos.push_back(wyckPos('h',8,"x,x+0.5,0.25",false));
+    tmpPos.push_back(wyckPos('i',8,"x,0,z",false));
+    tmpPos.push_back(wyckPos('j',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 120
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',8,"x,x,0.25",false));
+    tmpPos.push_back(wyckPos('f',8,"0,0,z",false));
+    tmpPos.push_back(wyckPos('g',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('h',8,"x,x+0.5,0",false));
+    tmpPos.push_back(wyckPos('i',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 121
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',8,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',8,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('h',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',8,"x,x,z",false));
+    tmpPos.push_back(wyckPos('j',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 122
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',8,"x,0.25,0.125",false));
+    tmpPos.push_back(wyckPos('e',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 123
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',1,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('f',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('g',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',2,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('j',4,"x,x,0",false));
+    tmpPos.push_back(wyckPos('k',4,"x,x,0.5",false));
+    tmpPos.push_back(wyckPos('l',4,"x,0,0",false));
+    tmpPos.push_back(wyckPos('m',4,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('n',4,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('o',4,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('p',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('q',8,"x,y,0.5",false));
+    tmpPos.push_back(wyckPos('r',8,"x,x,z",false));
+    tmpPos.push_back(wyckPos('s',8,"x,0,z",false));
+    tmpPos.push_back(wyckPos('t',8,"x,0.5,z",false));
+    tmpPos.push_back(wyckPos('u',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 124
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0.5,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('d',2,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('f',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('g',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',4,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('j',8,"x,x,0.25",false));
+    tmpPos.push_back(wyckPos('k',8,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('l',8,"x,0.5,0.25",false));
+    tmpPos.push_back(wyckPos('m',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('n',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 125
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.25,0.25,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0.75,0.25,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.75,0.25,0.5",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('f',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('g',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('h',4,"0.75,0.25,z",false));
+    tmpPos.push_back(wyckPos('i',8,"x,x,0",false));
+    tmpPos.push_back(wyckPos('j',8,"x,x,0.5",false));
+    tmpPos.push_back(wyckPos('k',8,"x,0.25,0",false));
+    tmpPos.push_back(wyckPos('l',8,"x,0.25,0.5",false));
+    tmpPos.push_back(wyckPos('m',8,"x,-x,z",false));
+    tmpPos.push_back(wyckPos('n',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 126
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0.25,0.25,0.75",true));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.75,0.75",true));
+    tmpPos.push_back(wyckPos('d',4,"0.25,0.75,0",true));
+    tmpPos.push_back(wyckPos('e',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('f',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('g',8,"0.25,0.75,z",false));
+    tmpPos.push_back(wyckPos('h',8,"x,x,0.25",false));
+    tmpPos.push_back(wyckPos('i',8,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('j',8,"x,0.75,0.25",false));
+    tmpPos.push_back(wyckPos('k',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 127
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',4,"x,x+0.5,0",false));
+    tmpPos.push_back(wyckPos('h',4,"x,x+0.5,0.5",false));
+    tmpPos.push_back(wyckPos('i',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('j',8,"x,y,0.5",false));
+    tmpPos.push_back(wyckPos('k',8,"x,x+0.5,z",false));
+    tmpPos.push_back(wyckPos('l',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 128
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,x+0.5,0.25",false));
+    tmpPos.push_back(wyckPos('h',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('i',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 129
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.75,0.25,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.75,0.25,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('d',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('f',4,"0.75,0.25,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,-x,0",false));
+    tmpPos.push_back(wyckPos('h',8,"x,-x,0.5",false));
+    tmpPos.push_back(wyckPos('i',8,"0.25,y,z",false));
+    tmpPos.push_back(wyckPos('j',8,"x,x,z",false));
+    tmpPos.push_back(wyckPos('k',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 130
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0.75,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('b',4,"0.75,0.25,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('d',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('e',8,"0.75,0.25,z",false));
+    tmpPos.push_back(wyckPos('f',8,"x,-x,0.25",false));
+    tmpPos.push_back(wyckPos('g',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 131
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('f',2,"0.5,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('g',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',4,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',4,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('j',4,"x,0,0",false));
+    tmpPos.push_back(wyckPos('k',4,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('l',4,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('m',4,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('n',8,"x,x,0.25",false));
+    tmpPos.push_back(wyckPos('o',8,"0,y,z",false));
+    tmpPos.push_back(wyckPos('p',8,"0.5,y,z",false));
+    tmpPos.push_back(wyckPos('q',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('r',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 132
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('c',2,"0.5,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.5,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('f',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('g',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',4,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',4,"x,x,0",false));
+    tmpPos.push_back(wyckPos('j',4,"x,x,0.5",false));
+    tmpPos.push_back(wyckPos('k',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('l',8,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('m',8,"x,0.5,0.25",false));
+    tmpPos.push_back(wyckPos('n',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('o',8,"x,x,z",false));
+    tmpPos.push_back(wyckPos('p',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 133
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.75,0.25,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',4,"0.75,0.25,0.75",true));
+    tmpPos.push_back(wyckPos('e',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('f',8,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('g',8,"0.75,0.25,z",false));
+    tmpPos.push_back(wyckPos('h',8,"x,0.25,0",false));
+    tmpPos.push_back(wyckPos('i',8,"x,0.25,0.5",false));
+    tmpPos.push_back(wyckPos('j',8,"x,x,0.25",false));
+    tmpPos.push_back(wyckPos('k',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 134
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.25,0.75,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0.75,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',4,"0.25,0.25,0",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('f',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('g',4,"0.75,0.25,z",false));
+    tmpPos.push_back(wyckPos('h',8,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('i',8,"x,0.25,0.75",false));
+    tmpPos.push_back(wyckPos('j',8,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('k',8,"x,x,0",false));
+    tmpPos.push_back(wyckPos('l',8,"x,x,0.5",false));
+    tmpPos.push_back(wyckPos('m',8,"x,-x,z",false));
+    tmpPos.push_back(wyckPos('n',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 135
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('e',8,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,x+0.5,0.25",false));
+    tmpPos.push_back(wyckPos('h',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('i',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 136
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"x,x,0",false));
+    tmpPos.push_back(wyckPos('g',4,"x,-x,0",false));
+    tmpPos.push_back(wyckPos('h',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('i',8,"x,y,0",false));
+    tmpPos.push_back(wyckPos('j',8,"x,x,z",false));
+    tmpPos.push_back(wyckPos('k',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 137
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.75,0.25,0.75",true));
+    tmpPos.push_back(wyckPos('b',2,"0.75,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('c',4,"0.75,0.25,z",false));
+    tmpPos.push_back(wyckPos('d',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('e',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('f',8,"x,-x,0.25",false));
+    tmpPos.push_back(wyckPos('g',8,"0.25,y,z",false));
+    tmpPos.push_back(wyckPos('h',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 138
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0.75,0.25,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.75,0.25,0.75",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('e',4,"0.25,0.25,z",false));
+    tmpPos.push_back(wyckPos('f',8,"0.75,0.25,z",false));
+    tmpPos.push_back(wyckPos('g',8,"x,-x,0.5",false));
+    tmpPos.push_back(wyckPos('h',8,"x,-x,0",false));
+    tmpPos.push_back(wyckPos('i',8,"x,x,z",false));
+    tmpPos.push_back(wyckPos('j',16,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 139
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('g',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('h',8,"x,x,0",false));
+    tmpPos.push_back(wyckPos('i',8,"x,0,0",false));
+    tmpPos.push_back(wyckPos('j',8,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('k',16,"x,x+0.5,0.25",false));
+    tmpPos.push_back(wyckPos('l',16,"x,y,0",false));
+    tmpPos.push_back(wyckPos('m',16,"x,x,z",false));
+    tmpPos.push_back(wyckPos('n',16,"0,y,z",false));
+    tmpPos.push_back(wyckPos('o',32,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 140
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0.5,0.25",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',4,"0,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('f',8,"0,0,z",false));
+    tmpPos.push_back(wyckPos('g',8,"0,0.5,z",false));
+    tmpPos.push_back(wyckPos('h',8,"x,x+0.5,0",false));
+    tmpPos.push_back(wyckPos('i',16,"x,x,0.25",false));
+    tmpPos.push_back(wyckPos('j',16,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('k',16,"x,y,0",false));
+    tmpPos.push_back(wyckPos('l',16,"x,x+0.5,z",false));
+    tmpPos.push_back(wyckPos('m',32,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 141
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0.75,0.125",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0.25,0.375",true));
+    tmpPos.push_back(wyckPos('c',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',8,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',8,"0,0.25,z",false));
+    tmpPos.push_back(wyckPos('f',16,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',16,"x,x+0.25,0.875",false));
+    tmpPos.push_back(wyckPos('h',16,"0,y,z",false));
+    tmpPos.push_back(wyckPos('i',32,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 142
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0,0.25,0.375",true));
+    tmpPos.push_back(wyckPos('b',8,"0,0.25,0.125",true));
+    tmpPos.push_back(wyckPos('c',16,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',16,"0,0.25,z",false));
+    tmpPos.push_back(wyckPos('e',16,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('f',16,"x,x+0.25,0.125",false));
+    tmpPos.push_back(wyckPos('g',32,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 143
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',1,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('c',1,"0.666667,0.333333,z",false));
+    tmpPos.push_back(wyckPos('d',3,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 144
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 145
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 146
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',9,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 147
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('e',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('f',3,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('g',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 148
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',3,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',6,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',9,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',9,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('f',18,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 149
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',1,"0.333333,0.666667,0",true));
+    tmpPos.push_back(wyckPos('d',1,"0.333333,0.666667,0.5",true));
+    tmpPos.push_back(wyckPos('e',1,"0.666667,0.333333,0",true));
+    tmpPos.push_back(wyckPos('f',1,"0.666667,0.333333,0.5",true));
+    tmpPos.push_back(wyckPos('g',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('i',2,"0.666667,0.333333,z",false));
+    tmpPos.push_back(wyckPos('j',3,"x,-x,0",false));
+    tmpPos.push_back(wyckPos('k',3,"x,-x,0.5",false));
+    tmpPos.push_back(wyckPos('l',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 150
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('e',3,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',3,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('g',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 151
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"x,-x,0.333333",false));
+    tmpPos.push_back(wyckPos('b',3,"x,-x,0.833333",false));
+    tmpPos.push_back(wyckPos('c',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 152
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"x,0,0.333333",false));
+    tmpPos.push_back(wyckPos('b',3,"x,0,0.833333",false));
+    tmpPos.push_back(wyckPos('c',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 153
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"x,-x,0.666667",false));
+    tmpPos.push_back(wyckPos('b',3,"x,-x,0.166667",false));
+    tmpPos.push_back(wyckPos('c',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 154
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"x,0,0.666667",false));
+    tmpPos.push_back(wyckPos('b',3,"x,0,0.166667",false));
+    tmpPos.push_back(wyckPos('c',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 155
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',3,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',6,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',9,"x,0,0",false));
+    tmpPos.push_back(wyckPos('e',9,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('f',18,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 156
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',1,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('c',1,"0.666667,0.333333,z",false));
+    tmpPos.push_back(wyckPos('d',3,"x,-x,z",false));
+    tmpPos.push_back(wyckPos('e',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 157
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('c',3,"x,0,z",false));
+    tmpPos.push_back(wyckPos('d',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 158
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('c',2,"0.666667,0.333333,z",false));
+    tmpPos.push_back(wyckPos('d',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 159
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('c',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 160
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',9,"x,-x,z",false));
+    tmpPos.push_back(wyckPos('c',18,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 161
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',6,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',18,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 162
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0.333333,0.666667,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.333333,0.666667,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('g',3,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('h',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('i',6,"x,-x,0",false));
+    tmpPos.push_back(wyckPos('j',6,"x,-x,0.5",false));
+    tmpPos.push_back(wyckPos('k',6,"x,0,z",false));
+    tmpPos.push_back(wyckPos('l',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 163
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0.333333,0.666667,0.25",true));
+    tmpPos.push_back(wyckPos('d',2,"0.666667,0.333333,0.25",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('g',6,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('h',6,"x,-x,0.25",false));
+    tmpPos.push_back(wyckPos('i',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 164
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('e',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('f',3,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('g',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('h',6,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('i',6,"x,-x,z",false));
+    tmpPos.push_back(wyckPos('j',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 165
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('e',6,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('f',6,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('g',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 166
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',3,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',6,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',9,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',9,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('f',18,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',18,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('h',18,"x,-x,z",false));
+    tmpPos.push_back(wyckPos('i',36,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 167
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',6,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',6,"0,0,0",true));
+    tmpPos.push_back(wyckPos('c',12,"0,0,z",false));
+    tmpPos.push_back(wyckPos('d',18,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('e',18,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('f',36,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 168
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('c',3,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('d',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 169
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 170
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 171
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',3,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 172
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',3,"0.5,0.5,z",false));
+    tmpPos.push_back(wyckPos('c',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 173
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('c',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 174
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',1,"0.333333,0.666667,0",true));
+    tmpPos.push_back(wyckPos('d',1,"0.333333,0.666667,0.5",true));
+    tmpPos.push_back(wyckPos('e',1,"0.666667,0.333333,0",true));
+    tmpPos.push_back(wyckPos('f',1,"0.666667,0.333333,0.5",true));
+    tmpPos.push_back(wyckPos('g',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('i',2,"0.666667,0.333333,z",false));
+    tmpPos.push_back(wyckPos('j',3,"x,y,0",false));
+    tmpPos.push_back(wyckPos('k',3,"x,y,0.5",false));
+    tmpPos.push_back(wyckPos('l',6,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 175
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0.333333,0.666667,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.333333,0.666667,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('g',3,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('h',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('i',6,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('j',6,"x,y,0",false));
+    tmpPos.push_back(wyckPos('k',6,"x,y,0.5",false));
+    tmpPos.push_back(wyckPos('l',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 176
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('c',2,"0.333333,0.666667,0.25",true));
+    tmpPos.push_back(wyckPos('d',2,"0.666667,0.333333,0.25",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('g',6,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('h',6,"x,y,0.25",false));
+    tmpPos.push_back(wyckPos('i',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 177
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0.333333,0.666667,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.333333,0.666667,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('g',3,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('h',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('i',6,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('j',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('k',6,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('l',6,"x,-x,0",false));
+    tmpPos.push_back(wyckPos('m',6,"x,-x,0.5",false));
+    tmpPos.push_back(wyckPos('n',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 178
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('b',6,"x,2x,0.25",false));
+    tmpPos.push_back(wyckPos('c',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 179
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('b',6,"x,2x,0.75",false));
+    tmpPos.push_back(wyckPos('c',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 180
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',3,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('d',3,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',6,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',6,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('g',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('h',6,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('i',6,"x,2x,0",false));
+    tmpPos.push_back(wyckPos('j',6,"x,2x,0.5",false));
+    tmpPos.push_back(wyckPos('k',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 181
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',3,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',3,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('d',3,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',6,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',6,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('g',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('h',6,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('i',6,"x,2x,0",false));
+    tmpPos.push_back(wyckPos('j',6,"x,2x,0.5",false));
+    tmpPos.push_back(wyckPos('k',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 182
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('c',2,"0.333333,0.666667,0.25",true));
+    tmpPos.push_back(wyckPos('d',2,"0.333333,0.666667,0.75",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('g',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('h',6,"x,2x,0.25",false));
+    tmpPos.push_back(wyckPos('i',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 183
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('c',3,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('d',6,"x,0,z",false));
+    tmpPos.push_back(wyckPos('e',6,"x,-x,z",false));
+    tmpPos.push_back(wyckPos('f',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 184
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('c',6,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('d',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 185
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('c',6,"x,0,z",false));
+    tmpPos.push_back(wyckPos('d',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 186
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('b',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('c',6,"x,-x,z",false));
+    tmpPos.push_back(wyckPos('d',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 187
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',1,"0.333333,0.666667,0",true));
+    tmpPos.push_back(wyckPos('d',1,"0.333333,0.666667,0.5",true));
+    tmpPos.push_back(wyckPos('e',1,"0.666667,0.333333,0",true));
+    tmpPos.push_back(wyckPos('f',1,"0.666667,0.333333,0.5",true));
+    tmpPos.push_back(wyckPos('g',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',2,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('i',2,"0.666667,0.333333,z",false));
+    tmpPos.push_back(wyckPos('j',3,"x,-x,0",false));
+    tmpPos.push_back(wyckPos('k',3,"x,-x,0.5",false));
+    tmpPos.push_back(wyckPos('l',6,"x,y,0",false));
+    tmpPos.push_back(wyckPos('m',6,"x,y,0.5",false));
+    tmpPos.push_back(wyckPos('n',6,"x,-x,z",false));
+    tmpPos.push_back(wyckPos('o',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 188
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('c',2,"0.333333,0.666667,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.333333,0.666667,0.25",true));
+    tmpPos.push_back(wyckPos('e',2,"0.666667,0.333333,0",true));
+    tmpPos.push_back(wyckPos('f',2,"0.666667,0.333333,0.25",true));
+    tmpPos.push_back(wyckPos('g',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('h',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('i',4,"0.666667,0.333333,z",false));
+    tmpPos.push_back(wyckPos('j',6,"x,-x,0",false));
+    tmpPos.push_back(wyckPos('k',6,"x,y,0.25",false));
+    tmpPos.push_back(wyckPos('l',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 189
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0.333333,0.666667,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.333333,0.666667,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',3,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',3,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('h',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('i',6,"x,0,z",false));
+    tmpPos.push_back(wyckPos('j',6,"x,y,0",false));
+    tmpPos.push_back(wyckPos('k',6,"x,y,0.5",false));
+    tmpPos.push_back(wyckPos('l',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 190
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('c',2,"0.333333,0.666667,0.25",true));
+    tmpPos.push_back(wyckPos('d',2,"0.666667,0.333333,0.25",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('g',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('h',6,"x,y,0.25",false));
+    tmpPos.push_back(wyckPos('i',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 191
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0,0,0.5",true));
+    tmpPos.push_back(wyckPos('c',2,"0.333333,0.666667,0",true));
+    tmpPos.push_back(wyckPos('d',2,"0.333333,0.666667,0.5",true));
+    tmpPos.push_back(wyckPos('e',2,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('g',3,"0.5,0,0.5",true));
+    tmpPos.push_back(wyckPos('h',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('i',6,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('j',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('k',6,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('l',6,"x,2x,0",false));
+    tmpPos.push_back(wyckPos('m',6,"x,2x,0.5",false));
+    tmpPos.push_back(wyckPos('n',12,"x,0,z",false));
+    tmpPos.push_back(wyckPos('o',12,"x,2x,z",false));
+    tmpPos.push_back(wyckPos('p',12,"x,y,0",false));
+    tmpPos.push_back(wyckPos('q',12,"x,y,0.5",false));
+    tmpPos.push_back(wyckPos('r',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 192
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0.333333,0.666667,0.25",true));
+    tmpPos.push_back(wyckPos('d',4,"0.333333,0.666667,0",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',6,"0.5,0,0.25",true));
+    tmpPos.push_back(wyckPos('g',6,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('h',8,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('i',12,"0.5,0,z",false));
+    tmpPos.push_back(wyckPos('j',12,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('k',12,"x,2x,0.25",false));
+    tmpPos.push_back(wyckPos('l',12,"x,y,0",false));
+    tmpPos.push_back(wyckPos('m',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 193
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0.333333,0.666667,0.25",true));
+    tmpPos.push_back(wyckPos('d',4,"0.333333,0.666667,0",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',6,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('g',6,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('h',8,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('i',12,"x,2x,0",false));
+    tmpPos.push_back(wyckPos('j',12,"x,y,0.25",false));
+    tmpPos.push_back(wyckPos('k',12,"x,0,z",false));
+    tmpPos.push_back(wyckPos('l',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 194
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',2,"0,0,0.25",true));
+    tmpPos.push_back(wyckPos('c',2,"0.333333,0.666667,0.25",true));
+    tmpPos.push_back(wyckPos('d',2,"0.333333,0.666667,0.75",true));
+    tmpPos.push_back(wyckPos('e',4,"0,0,z",false));
+    tmpPos.push_back(wyckPos('f',4,"0.333333,0.666667,z",false));
+    tmpPos.push_back(wyckPos('g',6,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('h',6,"x,2x,0.25",false));
+    tmpPos.push_back(wyckPos('i',12,"x,0,0",false));
+    tmpPos.push_back(wyckPos('j',12,"x,y,0.25",false));
+    tmpPos.push_back(wyckPos('k',12,"x,2x,z",false));
+    tmpPos.push_back(wyckPos('l',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 195
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',3,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('d',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('e',4,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',6,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('h',6,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('i',6,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('j',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 196
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',4,"0.75,0.75,0.75",true));
+    tmpPos.push_back(wyckPos('e',16,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',24,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',24,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('h',48,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 197
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',6,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('d',12,"x,0,0",false));
+    tmpPos.push_back(wyckPos('e',12,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('f',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 198
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"x,x,x",false));
+    tmpPos.push_back(wyckPos('b',12,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 199
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('b',12,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('c',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 200
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',3,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('d',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('e',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',6,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('g',6,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('h',6,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('i',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('j',12,"0,y,z",false));
+    tmpPos.push_back(wyckPos('k',12,"0.5,y,z",false));
+    tmpPos.push_back(wyckPos('l',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 201
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('d',6,"0.25,0.75,0.75",true));
+    tmpPos.push_back(wyckPos('e',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',12,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('g',12,"x,0.75,0.25",false));
+    tmpPos.push_back(wyckPos('h',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 202
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',24,"0,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('e',24,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',32,"x,x,x",false));
+    tmpPos.push_back(wyckPos('g',48,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('h',48,"0,y,z",false));
+    tmpPos.push_back(wyckPos('i',96,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 203
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0.125,0.125,0.125",true));
+    tmpPos.push_back(wyckPos('b',8,"0.625,0.625,0.625",true));
+    tmpPos.push_back(wyckPos('c',16,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',16,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',32,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',48,"x,0.125,0.125",false));
+    tmpPos.push_back(wyckPos('g',96,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 204
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',6,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',12,"x,0,0",false));
+    tmpPos.push_back(wyckPos('e',12,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('f',16,"x,x,x",false));
+    tmpPos.push_back(wyckPos('g',24,"0,y,z",false));
+    tmpPos.push_back(wyckPos('h',48,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 205
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('d',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 206
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('c',16,"x,x,x",false));
+    tmpPos.push_back(wyckPos('d',24,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('e',48,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 207
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',3,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('d',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('e',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',6,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('g',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('h',12,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('i',12,"0,y,y",false));
+    tmpPos.push_back(wyckPos('j',12,"0.5,y,y",false));
+    tmpPos.push_back(wyckPos('k',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 208
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('c',4,"0.75,0.75,0.75",true));
+    tmpPos.push_back(wyckPos('d',6,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',6,"0.25,0,0.5",true));
+    tmpPos.push_back(wyckPos('f',6,"0.25,0.5,0",true));
+    tmpPos.push_back(wyckPos('g',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('h',12,"x,0,0",false));
+    tmpPos.push_back(wyckPos('i',12,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('j',12,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('k',12,"0.25,y,-y+0.5",false));
+    tmpPos.push_back(wyckPos('l',12,"0.25,y,y+0.5",false));
+    tmpPos.push_back(wyckPos('m',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 209
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',24,"0,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('e',24,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',32,"x,x,x",false));
+    tmpPos.push_back(wyckPos('g',48,"0,y,y",false));
+    tmpPos.push_back(wyckPos('h',48,"0.5,y,y",false));
+    tmpPos.push_back(wyckPos('i',48,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('j',96,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 210
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',8,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',16,"0.125,0.125,0.125",true));
+    tmpPos.push_back(wyckPos('d',16,"0.625,0.625,0.625",true));
+    tmpPos.push_back(wyckPos('e',32,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',48,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',48,"0.125,y,-y+0.25",false));
+    tmpPos.push_back(wyckPos('h',96,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 211
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',6,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',12,"0.25,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',12,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',16,"x,x,x",false));
+    tmpPos.push_back(wyckPos('g',24,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('h',24,"0,y,y",false));
+    tmpPos.push_back(wyckPos('i',24,"0.25,y,-y+0.5",false));
+    tmpPos.push_back(wyckPos('j',48,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 212
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0.125,0.125,0.125",true));
+    tmpPos.push_back(wyckPos('b',4,"0.625,0.625,0.625",true));
+    tmpPos.push_back(wyckPos('c',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('d',12,"0.125,y,-y+0.25",false));
+    tmpPos.push_back(wyckPos('e',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 213
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0.375,0.375,0.375",true));
+    tmpPos.push_back(wyckPos('b',4,"0.875,0.875,0.875",true));
+    tmpPos.push_back(wyckPos('c',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('d',12,"0.125,y,y+0.25",false));
+    tmpPos.push_back(wyckPos('e',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 214
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0.125,0.125,0.125",true));
+    tmpPos.push_back(wyckPos('b',8,"0.875,0.875,0.875",true));
+    tmpPos.push_back(wyckPos('c',12,"0.125,0,0.25",true));
+    tmpPos.push_back(wyckPos('d',12,"0.625,0,0.25",true));
+    tmpPos.push_back(wyckPos('e',16,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',24,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('g',24,"0.125,y,y+0.25",false));
+    tmpPos.push_back(wyckPos('h',24,"0.125,y,-y+0.25",false));
+    tmpPos.push_back(wyckPos('i',48,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 215
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',3,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('d',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('e',4,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',6,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('h',12,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('i',12,"x,x,z",false));
+    tmpPos.push_back(wyckPos('j',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 216
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',4,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',4,"0.75,0.75,0.75",true));
+    tmpPos.push_back(wyckPos('e',16,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',24,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',24,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('h',48,"x,x,z",false));
+    tmpPos.push_back(wyckPos('i',96,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 217
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',6,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('d',12,"0.25,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',12,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',24,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('g',24,"x,x,z",false));
+    tmpPos.push_back(wyckPos('h',48,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 218
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',6,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',6,"0.25,0.5,0",true));
+    tmpPos.push_back(wyckPos('d',6,"0.25,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',12,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',12,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('h',12,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('i',24,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 219
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('c',24,"0,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',24,"0.25,0,0",true));
+    tmpPos.push_back(wyckPos('e',32,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',48,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',48,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('h',96,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 220
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',12,"0.375,0,0.25",true));
+    tmpPos.push_back(wyckPos('b',12,"0.875,0,0.25",true));
+    tmpPos.push_back(wyckPos('c',16,"x,x,x",false));
+    tmpPos.push_back(wyckPos('d',24,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('e',48,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 221
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',1,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',1,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',3,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('d',3,"0.5,0,0",true));
+    tmpPos.push_back(wyckPos('e',6,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',6,"x,0.5,0.5",false));
+    tmpPos.push_back(wyckPos('g',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('h',12,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('i',12,"0,y,y",false));
+    tmpPos.push_back(wyckPos('j',12,"0.5,y,y",false));
+    tmpPos.push_back(wyckPos('k',24,"0,y,z",false));
+    tmpPos.push_back(wyckPos('l',24,"0.5,y,z",false));
+    tmpPos.push_back(wyckPos('m',24,"x,x,z",false));
+    tmpPos.push_back(wyckPos('n',48,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 222
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('b',6,"0.75,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('c',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',12,"0,0.75,0.25",true));
+    tmpPos.push_back(wyckPos('e',12,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('f',16,"x,x,x",false));
+    tmpPos.push_back(wyckPos('g',24,"x,0.75,0.25",false));
+    tmpPos.push_back(wyckPos('h',24,"0.25,y,y",false));
+    tmpPos.push_back(wyckPos('i',48,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 223
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',6,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',6,"0.25,0,0.5",true));
+    tmpPos.push_back(wyckPos('d',6,"0.25,0.5,0",true));
+    tmpPos.push_back(wyckPos('e',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('f',12,"x,0,0",false));
+    tmpPos.push_back(wyckPos('g',12,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('h',12,"x,0.5,0",false));
+    tmpPos.push_back(wyckPos('i',16,"x,x,x",false));
+    tmpPos.push_back(wyckPos('j',24,"0.25,y,y+0.5",false));
+    tmpPos.push_back(wyckPos('k',24,"0,y,z",false));
+    tmpPos.push_back(wyckPos('l',48,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 224
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('b',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('c',4,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('d',6,"0.25,0.75,0.75",true));
+    tmpPos.push_back(wyckPos('e',8,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',12,"0.5,0.25,0.75",true));
+    tmpPos.push_back(wyckPos('g',12,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('h',24,"x,0.25,0.75",false));
+    tmpPos.push_back(wyckPos('i',24,"0.5,y,y+0.5",false));
+    tmpPos.push_back(wyckPos('j',24,"0.5,y,-y",false));
+    tmpPos.push_back(wyckPos('k',24,"x,x,z",false));
+    tmpPos.push_back(wyckPos('l',48,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 225
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',4,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',4,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',24,"0,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('e',24,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',32,"x,x,x",false));
+    tmpPos.push_back(wyckPos('g',48,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('h',48,"0,y,y",false));
+    tmpPos.push_back(wyckPos('i',48,"0.5,y,y",false));
+    tmpPos.push_back(wyckPos('j',96,"0,y,z",false));
+    tmpPos.push_back(wyckPos('k',96,"x,x,z",false));
+    tmpPos.push_back(wyckPos('l',192,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 226
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('b',8,"0,0,0",true));
+    tmpPos.push_back(wyckPos('c',24,"0.25,0,0",true));
+    tmpPos.push_back(wyckPos('d',24,"0,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('e',48,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',48,"x,0.25,0.25",false));
+    tmpPos.push_back(wyckPos('g',64,"x,x,x",false));
+    tmpPos.push_back(wyckPos('h',96,"0.25,y,y",false));
+    tmpPos.push_back(wyckPos('i',96,"0,y,z",false));
+    tmpPos.push_back(wyckPos('j',192,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 227
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',8,"0.125,0.125,0.125",true));
+    tmpPos.push_back(wyckPos('b',8,"0.375,0.375,0.375",true));
+    tmpPos.push_back(wyckPos('c',16,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',16,"0.5,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('e',32,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',48,"x,0.125,0.125",false));
+    tmpPos.push_back(wyckPos('g',96,"x,x,z",false));
+    tmpPos.push_back(wyckPos('h',96,"0,y,-y",false));
+    tmpPos.push_back(wyckPos('i',192,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 228
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',16,"0.125,0.125,0.125",true));
+    tmpPos.push_back(wyckPos('b',32,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('c',32,"0,0,0",true));
+    tmpPos.push_back(wyckPos('d',48,"0.875,0.125,0.125",true));
+    tmpPos.push_back(wyckPos('e',64,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',96,"x,0.125,0.125",false));
+    tmpPos.push_back(wyckPos('g',96,"0.25,y,-y",false));
+    tmpPos.push_back(wyckPos('h',192,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 229
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',2,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',6,"0,0.5,0.5",true));
+    tmpPos.push_back(wyckPos('c',8,"0.25,0.25,0.25",true));
+    tmpPos.push_back(wyckPos('d',12,"0.25,0,0.5",true));
+    tmpPos.push_back(wyckPos('e',12,"x,0,0",false));
+    tmpPos.push_back(wyckPos('f',16,"x,x,x",false));
+    tmpPos.push_back(wyckPos('g',24,"x,0,0.5",false));
+    tmpPos.push_back(wyckPos('h',24,"0,y,y",false));
+    tmpPos.push_back(wyckPos('i',48,"0.25,y,-y+0.5",false));
+    tmpPos.push_back(wyckPos('j',48,"0,y,z",false));
+    tmpPos.push_back(wyckPos('k',48,"x,x,z",false));
+    tmpPos.push_back(wyckPos('l',96,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+
+  { // 230
+    wyckoffPositions tmpPos;
+    tmpPos.push_back(wyckPos('a',16,"0,0,0",true));
+    tmpPos.push_back(wyckPos('b',16,"0.125,0.125,0.125",true));
+    tmpPos.push_back(wyckPos('c',24,"0.125,0,0.25",true));
+    tmpPos.push_back(wyckPos('d',24,"0.375,0,0.25",true));
+    tmpPos.push_back(wyckPos('e',32,"x,x,x",false));
+    tmpPos.push_back(wyckPos('f',48,"x,0,0.25",false));
+    tmpPos.push_back(wyckPos('g',48,"0.125,y,-y+0.25",false));
+    tmpPos.push_back(wyckPos('h',96,"x,y,z",false));
+    wyckoffPositionsDatabase.push_back(tmpPos);
+  }
+};
+
+// If we aren't using visual studio 2010, this will work
+#else
+static const std::vector<wyckoffPositions> wyckoffPositionsDatabase =
 {
   { // 0. Not a real space group...
 
@@ -2463,5 +5365,5 @@ static const std::vector<wyckoffPositions> wyckoffPositionsDatabase
   }
 
 };
-
-#endif
+#endif // _MSC_VER
+#endif // Header guard

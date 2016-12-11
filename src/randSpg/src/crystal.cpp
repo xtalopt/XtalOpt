@@ -42,8 +42,8 @@ Crystal::Crystal(latticeStruct l, vector<atomStruct> a, bool usingVdwRad) :
   m_unitVolume(-1.0), // These will be cached when the getter is called
   m_volume(-1.0), // These will be cached when the getter is called
   m_usingVdwRadii(usingVdwRad),
-  m_cartConvMatCached(false),
-  m_cartConvMat{}
+  m_cartConvMatCached(false)
+  // We'll just let the last one initialize to its default value
 {
 
 }
