@@ -14,6 +14,9 @@
 
 #include <globalsearch/random.h>
 
+#include <limits>
+#include <random>
+
 #include <cstdlib>
 #include <ctime>
 
@@ -66,20 +69,19 @@ namespace GlobalSearch {
 
   double GSRandom::getRandomDouble()
   {
-    while (m_seedLock) {};
-    m_seedLock = true;
-    double d = rand() / (double)RAND_MAX;
-    m_seedLock = false;
-    return d;
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_real_distribution<double> distribution(0.0, 1.0);
+    return distribution(generator);
   }
 
   unsigned int GSRandom::getRandomUInt()
   {
-    while (m_seedLock) {};
-    m_seedLock = true;
-    unsigned int i = rand();
-    m_seedLock = false;
-    return i;
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<unsigned int>
+      distribution(0, std::numeric_limits<unsigned int>::max());
+    return distribution(generator);
   }
 
 }
