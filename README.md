@@ -34,6 +34,7 @@ All contributors, in alphabetical order:
 Included sources from various projects are found under:
 
 - src/spglib   http://spglib.sourceforge.net/
+- src/randSpg  http://xtalopt.openmolecules.net/randSpg/randSpg.html
 - src/libssh   http://www.libssh.org/
 
 These files, other than some minor modifications for interoperability
