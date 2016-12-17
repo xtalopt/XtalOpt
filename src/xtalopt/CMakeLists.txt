@@ -2,7 +2,6 @@ INCLUDE_DIRECTORIES(${XtalOpt_BINARY_DIR}/src/xtalopt)
 
 set( xtalopt_SRCS
      debug.cpp
-     extension.cpp
      xtalopt.cpp
      genetic.cpp
      structures/xtal.cpp
@@ -33,17 +32,19 @@ set( xtalopt_UIS
 
 set( xtalopt_RCS xtalopt.qrc )
 
-process_plugin(xtalopt "${xtalopt_SRCS}" "${xtalopt_UIS}" "${xtalopt_RCS}")
-
-add_dependencies(xtalopt globalsearch XtalComp spglib RandSpg)
-
 # Use the C++11 standards
 if(UNIX)
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++0x -Wno-sign-compare")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++0x -Wno-sign-compare")
 endif()
 
-target_link_libraries( xtalopt
-                       globalsearch
-                       XtalComp
-                       spglib
-                       RandSpg)
+string(REPLACE ".cpp" ".h" hdr_list "${xtalopt_SRCS}")
+# Process MOC files
+qt4_wrap_cpp(moc_files ${hdr_list})
+# Process the UI file for this plugin
+qt4_wrap_ui(plugin_UIS_H ${xtalopt_UIS})
+# Add resources
+qt4_add_resources(plugin_RC_SRCS ${xtalopt_RCS})
+add_executable(xtalopt main.cpp "${xtalopt_SRCS}" "${plugin_UIS_H}"
+                       "${plugin_RC_SRCS}" "${moc_files}")
+
+target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg avogadro)
