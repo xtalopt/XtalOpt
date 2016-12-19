@@ -33,11 +33,10 @@
 #include <QtCore/QtConcurrentRun>
 
 using namespace std;
-using namespace Avogadro;
 
 namespace GlobalSearch {
 
-  AbstractDialog::AbstractDialog( GLWidget *glWidget,
+  AbstractDialog::AbstractDialog( QGLWidget *glWidget,
                                   QWidget *parent,
                                   Qt::WindowFlags f ) :
     QDialog( parent, f ),

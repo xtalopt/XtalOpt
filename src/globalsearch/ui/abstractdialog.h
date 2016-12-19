@@ -21,6 +21,7 @@
 #include <globalsearch/optimizer.h>
 #include <globalsearch/optbase.h>
 
+#include <QtOpenGL/QGLWidget>
 #include <QtGui/QProgressBar>
 #include <QtGui/QMessageBox>
 #include <QtGui/QTabWidget>
@@ -30,7 +31,6 @@
 #include <QtCore/QTimer>
 
 namespace Avogadro {
-  class GLWidget;
   class Molecule;
 }
 
@@ -107,11 +107,11 @@ namespace GlobalSearch {
      * When deriving, be sure to call initialize() after initializing
      * m_opt and ui.
      * @sa initialize
-     * @param glWidget The GLwidget from the Avogadro instance
+     * @param glWidget The GLwidget
      * @param parent Parent object
      * @param f Window flags
      */
-    explicit AbstractDialog( Avogadro::GLWidget *glWidget = 0,
+    explicit AbstractDialog( QGLWidget *glWidget = 0,
                              QWidget *parent = 0,
                              Qt::WindowFlags f = 0 );
 
@@ -139,9 +139,9 @@ namespace GlobalSearch {
     virtual ~AbstractDialog();
 
     /**
-     * @return The GLWidget of the main Avogadro window.
+     * @return The GLWidget
      */
-    Avogadro::GLWidget* getGLWidget() {return m_glWidget;};
+    QGLWidget* getGLWidget() {return m_glWidget;};
 
     /**
      * @return The associated OptBase derived class.
@@ -171,7 +171,7 @@ namespace GlobalSearch {
 
     /**
      * Write persistant settings or resume information. If the
-     * filename is omitted, settings are written to the Avogadro
+     * filename is omitted, settings are written to the
      * configuration file. Otherwise, they are written to the provided
      * file.
      *
@@ -183,7 +183,7 @@ namespace GlobalSearch {
 
     /**
      * Read persistant settings or resume information. If the filename
-     * is omitted, settings are read from the Avogadro configuration
+     * is omitted, settings are read from the configuration
      * file. Otherwise, they are read from the provided file.
      *
      * @note This call is passed on to all tabs.
@@ -225,11 +225,11 @@ namespace GlobalSearch {
       emit sig_updateStatus(opt,run,fail);};
 
     /**
-     * Update the cached Avogadro::GLWidget pointer
+     * Update the cached QGLWidget pointer
      *
-     * @param w The Avogadro GLWidget
+     * @param w The QGLWidget
      */
-    void setGLWidget(Avogadro::GLWidget *w) {m_glWidget = w;};
+    void setGLWidget(QGLWidget *w) {m_glWidget = w;};
 
     /**
      * @name Progressbar functions
@@ -540,9 +540,9 @@ namespace GlobalSearch {
     Avogadro::Molecule *m_molecule;
 
     /**
-     * Cached pointer to the Avogadro GLWidget.
+     * Cached pointer to the QGLWidget.
      */
-    Avogadro::GLWidget *m_glWidget;
+    QGLWidget *m_glWidget;
 
     /**
      * Mutex governing progress bar usage.

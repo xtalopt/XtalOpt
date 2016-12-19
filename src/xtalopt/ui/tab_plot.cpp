@@ -31,9 +31,11 @@
 #include <float.h>
 
 using namespace GlobalSearch;
-using namespace Avogadro;
 
 namespace XtalOpt {
+
+  using Avogadro::PlotObject;
+  using Avogadro::PlotWidget;
 
   TabPlot::TabPlot( XtalOptDialog *parent, XtalOpt *p ) :
     AbstractTab(parent, p),
@@ -703,32 +705,15 @@ namespace XtalOpt {
     }
     Xtal* xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(ind));
 
-    // Determine selected atoms, if any
-    QList<Primitive*> selected = m_dialog->getGLWidget()->selectedPrimitives().subList(Primitive::AtomType);
-
     // Get histogram
     // If no atoms selected...
-    if (selected.size() == 0) {
-      xtal->lock()->lockForRead();
-      xtal->getIADHistogram(&d, &f, 0, 15, .1);
-      xtal->lock()->unlock();
-    }
-    // If atoms are selected:
-    else {
-      xtal->lock()->lockForRead();
-      for (int i = 0; i < selected.size(); i++) {
-        xtal->getIADHistogram(&d, &f_temp, 0, 15, .1, qobject_cast<Atom*>(selected.at(i)));
-        if (f.isEmpty()) {
-          f = f_temp;
-        }
-        else {
-          for (int j = 0; j < f.size(); j++) {
-            f[j] += f_temp[j];
-          }
-        }
-      }
-      xtal->lock()->unlock();
-    }
+    xtal->lock()->lockForRead();
+    xtal->getIADHistogram(&d, &f, 0, 15, .1);
+    xtal->lock()->unlock();
+
+    // Selected atom histogram section removed due to removal of
+    // dependence on Avogadro. A new strategy will need to be used
+    // to add it back in in the future (in case someone wants it)
 
     // Populate plot object
     for (int i = 0; i < d.size(); i++) {

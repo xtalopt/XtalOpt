@@ -40,12 +40,11 @@
 #include <QtGui/QMessageBox>
 
 using namespace GlobalSearch;
-using namespace Avogadro;
 using namespace std;
 
 namespace XtalOpt {
 
-  XtalOptDialog::XtalOptDialog( GLWidget *glWidget,
+  XtalOptDialog::XtalOptDialog( QGLWidget *glWidget,
                                 QWidget *parent,
                                 Qt::WindowFlags f,
                                 bool interactive) :
@@ -118,7 +117,7 @@ namespace XtalOpt {
 
   }
 
-  void XtalOptDialog::setMolecule(Molecule *molecule)
+  void XtalOptDialog::setMolecule(Avogadro::Molecule *molecule)
   {
     if (m_molecule == molecule || !molecule) {
       return;
