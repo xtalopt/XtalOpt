@@ -74,6 +74,20 @@ namespace XtalOpt
                            double alpha, double beta, double gamma);
 
     /**
+     * Get the cell matrix as column vectors.
+     *
+     * @return The 3x3 cell matrix in column vector form.
+     */
+    Matrix3 cellMatrix() const { return m_cellMatrix; };
+
+    /**
+     * Get the cell matrix as row vectors.
+     *
+     * @return The 3x3 cell matrix in row vector form.
+     */
+    Matrix3 cellMatrixRowVecs() const { return m_cellMatrix.transpose(); };
+
+    /**
      * Set the A vector.
      *
      * @param v The vector with which to set A.
@@ -119,7 +133,7 @@ namespace XtalOpt
     double beta() const { return angleDegrees(aVector(), cVector()); };
 
     /* Returns the angle (degrees) between A and B */
-    double gamma() const { return angleDegrees(aVector(), cVector()); };
+    double gamma() const { return angleDegrees(aVector(), bVector()); };
 
     /* Returns the volume of the unit cell in Angstroms cubed */
     double volume() const;
@@ -243,10 +257,10 @@ namespace XtalOpt
   void UnitCell::setCellParameters(double a, double b, double c,
                                    double alpha, double beta, double gamma)
   {
-    const double cosAlpha = std::cos(alpha);
-    const double cosBeta  = std::cos(beta);
-    const double cosGamma = std::cos(gamma);
-    const double sinGamma = std::sin(gamma);
+    const double cosAlpha = std::cos(alpha * DEG2RAD);
+    const double cosBeta  = std::cos(beta * DEG2RAD);
+    const double cosGamma = std::cos(gamma * DEG2RAD);
+    const double sinGamma = std::sin(gamma * DEG2RAD);
 
     m_cellMatrix(0, 0) = a;
     m_cellMatrix(1, 0) = 0.0;
@@ -312,7 +326,7 @@ namespace XtalOpt
     return Vector3(x, y, z);
   }
 
-  inline double UnitCell::distance(const Vector3 &v1, const Vector3 &v2) const
+  inline double UnitCell::distance(const Vector3& v1, const Vector3& v2) const
   {
     return std::fabs(minimumImage(v1 - v2).norm());
   }
