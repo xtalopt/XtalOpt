@@ -226,7 +226,7 @@ namespace GlobalSearch {
 
   bool LocalQueueInterface::stopJob(Structure *s)
   {
-    QWriteLocker wLocker (s->lock());
+    QWriteLocker wLocker (&s->lock());
 
     unsigned long pid = static_cast<unsigned long>(s->getJobID());
 
@@ -259,7 +259,7 @@ namespace GlobalSearch {
   LocalQueueInterface::getStatus(Structure *s) const
   {
     // lock Structure
-    QReadLocker wlocker (s->lock());
+    QReadLocker wlocker (&s->lock());
 
     // Look-up process instance
     unsigned long pid = static_cast<unsigned long>(s->getJobID());

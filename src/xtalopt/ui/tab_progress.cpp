@@ -214,7 +214,7 @@ namespace XtalOpt {
     m_infoUpdateTracker.unlock();
     locker.unlock();
     XO_Prog_TableEntry e;
-    xtal->lock()->lockForRead();
+    xtal->lock().lockForRead();
     e.elapsed = xtal->getOptElapsed();
     e.gen     = xtal->getGeneration();
     e.id      = xtal->getIDNumber();
@@ -232,7 +232,7 @@ namespace XtalOpt {
     else
       e.enthalpy = 0.0;
 
-    xtal->lock()->unlock();
+    xtal->lock().unlock();
 
     ui.table_list->blockSignals(false);
 
@@ -320,7 +320,7 @@ namespace XtalOpt {
     uint totalOptSteps = m_opt->optimizer()->getNumberOfOptSteps();
     e.brush = QBrush (Qt::white);
 
-    QReadLocker xtalLocker (xtal->lock());
+    QReadLocker xtalLocker (&xtal->lock());
     e.elapsed = xtal->getOptElapsed();
     e.gen     = xtal->getGeneration();
     e.id      = xtal->getIDNumber();
@@ -477,10 +477,10 @@ namespace XtalOpt {
   void TabProgress::highlightXtal(Structure *s)
   {
     Xtal *xtal = qobject_cast<Xtal*>(s);
-    xtal->lock()->lockForRead();
+    xtal->lock().lockForRead();
     int gen = xtal->getGeneration();
     int id  = xtal->getIDNumber();
-    xtal->lock()->unlock();
+    xtal->lock().unlock();
     for (int row = 0; row < ui.table_list->rowCount(); row++) {
       if (ui.table_list->item(row, Gen)->text().toInt() == gen &&
           ui.table_list->item(row, Mol)->text().toInt() == id) {
@@ -542,13 +542,13 @@ namespace XtalOpt {
 
     bool isKilled = false;
     if (xtal != NULL) {
-      xtal->lock()->lockForRead();
+      xtal->lock().lockForRead();
       m_context_xtal = xtal;
 
       Xtal::State state = m_context_xtal->getStatus();
       isKilled = (state == Xtal::Killed || state == Xtal::Removed);
 
-      xtal->lock()->unlock();
+      xtal->lock().unlock();
     }
 
     QMenu menu;
@@ -629,11 +629,11 @@ namespace XtalOpt {
     if (!m_context_xtal) return;
 
     // Get info from xtal
-    m_context_xtal->lock()->lockForRead();
+    m_context_xtal->lock().lockForRead();
     int gen = m_context_xtal->getGeneration();
     int id = m_context_xtal->getIDNumber();
     int optstep = m_context_xtal->getCurrentOptStep();
-    m_context_xtal->lock()->unlock();
+    m_context_xtal->lock().unlock();
 
     // Choose which OptStep to use
     bool ok;
@@ -657,7 +657,7 @@ namespace XtalOpt {
 
   void TabProgress::restartJobProgress_(int optStep)
   {
-    QWriteLocker locker (m_context_xtal->lock());
+    QWriteLocker locker (&m_context_xtal->lock());
     m_context_xtal->setCurrentOptStep(optStep);
 
     m_context_xtal->setStatus(Xtal::Restart);
@@ -707,7 +707,7 @@ namespace XtalOpt {
       return;
     }
 
-    QWriteLocker locker (m_context_xtal->lock());
+    QWriteLocker locker (&m_context_xtal->lock());
     if (m_context_xtal->getStatus() != Xtal::Killed &&
         m_context_xtal->getStatus() != Xtal::Removed ) {
       emit finishedBackgroundProcessing();
@@ -745,7 +745,7 @@ namespace XtalOpt {
       return;
     }
 
-    QWriteLocker locker (m_context_xtal->lock());
+    QWriteLocker locker (&m_context_xtal->lock());
 
     m_context_xtal->resetFailCount();
 
@@ -858,7 +858,7 @@ namespace XtalOpt {
       emit finishedBackgroundProcessing();
       return;
     }
-    QReadLocker locker (m_context_xtal->lock());
+    QReadLocker locker (&m_context_xtal->lock());
 
     QString poscar = qobject_cast<XtalOpt*>(m_opt)->
       interpretTemplate("%POSCAR%", m_context_xtal);
@@ -961,7 +961,7 @@ namespace XtalOpt {
     for (int i = 0; i < structures->size(); i++) {
         xtal = qobject_cast<Xtal*>(structures->at(i));
         if (!xtal) continue; // In case there was a problem copying.
-        xtal->lock()->lockForRead();
+        xtal->lock().lockForRead();
         QString gen_s, id_s, enthalpy, formulaUnits, space;
         int gen = xtal->getGeneration();
         int id = xtal->getIDNumber();
@@ -1008,7 +1008,7 @@ namespace XtalOpt {
 
         // Parentage:
         out << "\t" << xtal->getParents();
-        xtal->lock()->unlock();
+        xtal->lock().unlock();
         out << endl;
     }
     m_opt->tracker()->unlock();

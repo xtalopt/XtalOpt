@@ -61,7 +61,6 @@ namespace GlobalSearch {
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
-    m_lock(QReadWriteLock()),
     m_parentStructure(NULL),
     m_parentOffspringTotCountIncremented(false),
     m_parentOffspringDupCountIncremented(false)
@@ -90,7 +89,6 @@ namespace GlobalSearch {
     m_PV(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
-    m_lock(other.m_lock),
     m_index(-1),
     m_parentStructure(NULL),
     m_parentOffspringTotCountIncremented(false),
@@ -118,7 +116,6 @@ namespace GlobalSearch {
     m_numTotOffspring(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
-    m_lock(QReadWriteLock()),
     m_index(-1),
     m_parentStructure(NULL),
     m_parentOffspringTotCountIncremented(false),
@@ -1394,20 +1391,20 @@ namespace GlobalSearch {
     Structure *structure_i=0, *structure_j=0, *tmp=0;
     for (uint i = 0; i < numStructs-1; i++) {
       structure_i = structures->at(i);
-      structure_i->lock()->lockForRead();
+      structure_i->lock().lockForRead();
 
       for (uint j = i+1; j < numStructs; j++) {
         structure_j = structures->at(j);
-        structure_j->lock()->lockForRead();
+        structure_j->lock().lockForRead();
         if (structure_j->getEnthalpy() / static_cast<double>(structure_j->numAtoms()) < structure_i->getEnthalpy() / static_cast<double>(structure_i->numAtoms())) { //PSA Enthalpy per atom
           structures->swap(i,j);
           tmp = structure_i;
           structure_i = structure_j;
           structure_j = tmp;
         }
-        structure_j->lock()->unlock();
+        structure_j->lock().unlock();
       }
-      structure_i->lock()->unlock();
+      structure_i->lock().unlock();
     }
   }
 
@@ -1417,9 +1414,9 @@ namespace GlobalSearch {
     Structure *s;
     for (uint i = 0; i < structures.size(); i++) {
       s = structures.at(i);
-      s->lock()->lockForWrite();
+      s->lock().lockForWrite();
       s->setRank(i+1);
-      s->lock()->unlock();
+      s->lock().unlock();
     }
   }
 
@@ -1441,20 +1438,20 @@ namespace GlobalSearch {
     Structure *structure_i=0, *structure_j=0, *tmp=0;
     for (uint i = 0; i < numStructs-1; i++) {
       structure_i = rstructures.at(i);
-      structure_i->lock()->lockForRead();
+      structure_i->lock().lockForRead();
 
       for (uint j = i+1; j < numStructs; j++) {
         structure_j = rstructures.at(j);
-        structure_j->lock()->lockForRead();
+        structure_j->lock().lockForRead();
         if (structure_j->getEnthalpy() / static_cast<double>(structure_j->numAtoms()) < structure_i->getEnthalpy() / static_cast<double>(structure_i->numAtoms())) { //PSA Enthalpy per atom
           rstructures.swap(i,j);
           tmp = structure_i;
           structure_i = structure_j;
           structure_j = tmp;
         }
-        structure_j->lock()->unlock();
+        structure_j->lock().unlock();
       }
-      structure_i->lock()->unlock();
+      structure_i->lock().unlock();
     }
 
     rankInPlace(rstructures);
@@ -1511,11 +1508,11 @@ namespace GlobalSearch {
       int numbers = 0;
       for (uint j = 0; j < numStructs; j++) {
         structure_j = structures->at(j);
-        structure_j->lock()->lockForRead();
+        structure_j->lock().lockForRead();
         if (structure_j->getFormulaUnits() == i) {
           numbers += 1;
         }
-        structure_j->lock()->unlock();
+        structure_j->lock().unlock();
       }
       numberOfEachFormulaUnit.append(numbers);
     }

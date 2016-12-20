@@ -54,12 +54,12 @@ Structure *structure;
 uint id = 1;
 for (int j = 0; j < allStructures.size(); j++) {
   structure = allStructures.at(j);
-  structure->lock()->lockForRead();
+  structure->lock().lockForRead();
   if (structure->getGeneration() == generation &&
       structure->getIDNumber() >= id) {
     id = structure->getIDNumber() + 1;
   }
-  structure->lock()->unlock();
+  structure->lock().unlock();
 }
 
 // Assign data to structure (created elsewhere)

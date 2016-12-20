@@ -98,7 +98,7 @@ namespace GlobalSearch {
     Structure *s = 0;
     for (int i = 0; i < m_list.size(); i++) {
       s = m_list.at(i);
-      s->lock()->lockForWrite();
+      s->lock().lockForWrite();
       s->deleteLater();
     }
     m_list.clear();

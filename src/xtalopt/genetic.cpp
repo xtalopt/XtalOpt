@@ -173,7 +173,7 @@ namespace XtalOpt {
     }
 
     // Get lists of atoms and fractional coordinates
-    xtal1->lock()->lockForRead();
+    xtal1->lock().lockForRead();
     // Save composition for checks later
     QList<QString> xtalAtoms	=  xtal1->getSymbols();
     QList<uint> xtalCounts	=  xtal1->getNumberOfAtomsAlpha();
@@ -182,14 +182,14 @@ namespace XtalOpt {
 
     for (int i = 0; i < atomList1.size(); i++)
       fracCoordsList1.append(xtal1->cartToFrac(*(atomList1.at(i)->pos())));
-    xtal1->lock()->unlock();
+    xtal1->lock().unlock();
 
-    xtal2->lock()->lockForRead();
+    xtal2->lock().lockForRead();
     QList<Atom*> atomList2      = xtal2->atoms();
     QList<Vector3d> fracCoordsList2;
     for (int i = 0; i < atomList2.size(); i++)
       fracCoordsList2.append(xtal2->cartToFrac(*(atomList2.at(i)->pos())));
-    xtal2->lock()->unlock();
+    xtal2->lock().unlock();
 
     // Transform (reflect / rot)
     cell1 *= xform1;
@@ -242,7 +242,7 @@ namespace XtalOpt {
     // Build offspring
     Xtal *nxtal = new Xtal();
     nxtal->setCellInfo(dims.GetRow(0), dims.GetRow(1), dims.GetRow(2));
-    QWriteLocker nxtalLocker (nxtal->lock());
+    QWriteLocker nxtalLocker (&nxtal->lock());
 
     // Cut xtals and populate new one.
     for (int i = 0; i < fracCoordsList1.size(); i++) {
@@ -501,7 +501,7 @@ namespace XtalOpt {
     }
 
     // Get lists of atoms and fractional coordinates
-    xtal1->lock()->lockForRead();
+    xtal1->lock().lockForRead();
     // Save composition for checks later
     QList<QString> xtalAtoms	=  xtal1->getSymbols();
     QList<uint> xtalCounts1	=  xtal1->getNumberOfAtomsAlpha();
@@ -518,15 +518,15 @@ namespace XtalOpt {
 
     for (int i = 0; i < atomList1.size(); i++)
       fracCoordsList1.append(xtal1->cartToFrac(*(atomList1.at(i)->pos())));
-    xtal1->lock()->unlock();
+    xtal1->lock().unlock();
 
-    xtal2->lock()->lockForRead();
+    xtal2->lock().lockForRead();
     QList<Atom*> atomList2      = xtal2->atoms();
     QList<Vector3d> fracCoordsList2;
     //qDebug() << "xtal2FU is " << QString::number(xtal2->getFormulaUnits());
     for (int i = 0; i < atomList2.size(); i++)
       fracCoordsList2.append(xtal2->cartToFrac(*(atomList2.at(i)->pos())));
-    xtal2->lock()->unlock();
+    xtal2->lock().unlock();
 
     // Will NOT transform (reflect / rot) the unit cell in FUcrossover
     cell1 *= xform1;
@@ -621,7 +621,7 @@ namespace XtalOpt {
     // Build offspring
     Xtal *nxtal = new Xtal();
     nxtal->setCellInfo(dims.GetRow(0), dims.GetRow(1), dims.GetRow(2));
-    QWriteLocker nxtalLocker (nxtal->lock());
+    QWriteLocker nxtalLocker (&nxtal->lock());
 
     // Cut xtals and populate new one.
     QList<Vector3d> tempFracCoordsList1;
@@ -898,7 +898,7 @@ namespace XtalOpt {
     Xtal *nxtal = new Xtal;
     nxtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
 
-    QReadLocker locker (xtal->lock());
+    QReadLocker locker (&xtal->lock());
     Atom *atm;
     for (uint i = 0; i < xtal->numAtoms(); i++) {
       atm = nxtal->addAtom();
@@ -944,12 +944,12 @@ namespace XtalOpt {
   Xtal* XtalOptGenetic::permustrain(Xtal* xtal, double sigma_lattice_max, uint exchanges, double &sigma_lattice) {
     INIT_RANDOM_GENERATOR();
     // lock parent xtal for reading
-    QReadLocker locker (xtal->lock());
+    QReadLocker locker (&xtal->lock());
 
     // Copy info over from parent to new xtal
     Xtal *nxtal = new Xtal;
     nxtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
-    QWriteLocker nxtalLocker (nxtal->lock());
+    QWriteLocker nxtalLocker (&nxtal->lock());
     QList<Atom*> atoms = xtal->atoms();
     for (int i = 0; i < atoms.size(); i++) {
       Atom* atom = nxtal->addAtom();

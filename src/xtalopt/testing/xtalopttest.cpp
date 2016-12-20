@@ -145,9 +145,9 @@ namespace XtalOpt {
     Xtal* xtal = 0;
     for (int i = 0; i < structures->size(); i++) {
       xtal = qobject_cast<Xtal*>(structures->at(i));
-      xtal->lock()->lockForRead();
+      xtal->lock().lockForRead();
       Xtal::State state = xtal->getStatus();
-      xtal->lock()->unlock();
+      xtal->lock().unlock();
       if (state == Xtal::Optimized ||
           state == Xtal::Killed ||
           state == Xtal::Duplicate ||
@@ -166,9 +166,9 @@ namespace XtalOpt {
     Xtal* xtal = 0;
     for (int i = 0; i < structures->size(); i++) {
       xtal = qobject_cast<Xtal*>(structures->at(i));
-      xtal->lock()->lockForRead();
+      xtal->lock().lockForRead();
       Xtal::State state = xtal->getStatus();
-      xtal->lock()->unlock();
+      xtal->lock().unlock();
       if (state == Xtal::InProcess ||
           state == Xtal::Optimized ||
           state == Xtal::Submitted ||
@@ -205,7 +205,7 @@ namespace XtalOpt {
     for (int i = 0; i < structures->size(); i++) {
       xtal = qobject_cast<Xtal*>(structures->at(i));
       if (!xtal) continue; // In case there was a problem copying.
-      xtal->lock()->lockForRead();
+      xtal->lock().lockForRead();
       out << i << "\t"
           << xtal->getGeneration() << "\t"
           << xtal->getIDNumber() << "\t"
@@ -238,7 +238,7 @@ namespace XtalOpt {
       }
       // Parentage:
       out << "\t" << xtal->getParents();
-      xtal->lock()->unlock();
+      xtal->lock().unlock();
       out << endl;
     }
     m_opt->tracker()->unlock();

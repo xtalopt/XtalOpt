@@ -207,7 +207,7 @@ namespace GlobalSearch {
       return false;
     }
 
-    QWriteLocker wlocker (s->lock());
+    QWriteLocker wlocker (&s->lock());
 
     QString command = "cd \"" + s->getRempath() + "\" && " +
       m_bsub + "< job.lsf";
@@ -257,7 +257,7 @@ namespace GlobalSearch {
     }
 
     // lock structure
-    QWriteLocker locker (s->lock());
+    QWriteLocker locker (&s->lock());
 
     // Log errors if needed
     if (this->m_opt->m_logErrorDirs && (s->getStatus() == Structure::Error ||
@@ -295,7 +295,7 @@ namespace GlobalSearch {
   QueueInterface::QueueStatus LsfQueueInterface::getStatus(Structure *s) const
   {
     // lock structure
-    QWriteLocker locker (s->lock());
+    QWriteLocker locker (&s->lock());
     QStringList queueData = getQueueList();
     unsigned int jobID = static_cast<unsigned int>(s->getJobID());
 

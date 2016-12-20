@@ -169,13 +169,13 @@ namespace GlobalSearch {
     Structure *s=0, *first=0, *last=0;
     first = structures.first();
     last = structures.last();
-    first->lock()->lockForRead();
-    last->lock()->lockForRead();
+    first->lock().lockForRead();
+    last->lock().lockForRead();
     double lowest = first->getEnthalpy() / static_cast<double>(first->numAtoms()); //PSA Enthalpy per atom
     double highest = last->getEnthalpy() / static_cast<double>(last->numAtoms());; //PSA Enthalpy per atom
     double spread = highest - lowest;
-    last->lock()->unlock();
-    first->lock()->unlock();
+    last->lock().unlock();
+    first->lock().unlock();
     // If all structures are at the same enthalpy, lets save some time...
     if (spread <= 1e-5) {
       double dprob = 1.0/static_cast<double>(structures.size()-1);
@@ -193,7 +193,7 @@ namespace GlobalSearch {
     // 0   0.3  0.4  0.8  1
     for (int i = 0; i < structures.size(); i++) {
       s = structures.at(i);
-      s->lock()->lockForRead();
+      s->lock().lockForRead();
       // If the numDupOffspring is equal to the maxDupOffspring, remove the
       // structure from the probability list by setting the probs to be 1
       // If maxDupOffspring is -1, there is no max
@@ -207,7 +207,7 @@ namespace GlobalSearch {
       }
       // lowest and spread are already per atom
       else probs.append( ( (s->getEnthalpy() / static_cast<double>(s->numAtoms())) - lowest ) / spread);
-      s->lock()->unlock();
+      s->lock().unlock();
     }
     // Subtract each value from one, and find the sum of the resulting list
     // Find the sum of the resulting list
@@ -305,7 +305,7 @@ namespace GlobalSearch {
     Structure* structure;
     for (int i = 0; i < structures->size(); i++) {
       structure = structures->at(i);
-      structure->lock()->lockForRead();
+      structure->lock().lockForRead();
       // Set index here -- this is the only time these are written, so
       // this is "ok" under a read lock because of the savePending logic
       structure->setIndex(i);
@@ -347,7 +347,7 @@ namespace GlobalSearch {
                                       .arg(structureStateFileName));
       }
       structure->writeSettings(structureStateFileName);
-      structure->lock()->unlock();
+      structure->lock().unlock();
     }
 
     /////////////////////////
@@ -384,9 +384,9 @@ namespace GlobalSearch {
     for (int i = 0; i < sortedStructures.size(); i++) {
       structure = sortedStructures.at(i);
       if (!structure) continue; // In case there was a problem copying.
-      structure->lock()->lockForRead();
+      structure->lock().lockForRead();
       out << structure->getResultsEntry() << endl;
-      structure->lock()->unlock();
+      structure->lock().unlock();
       if (notify) {
         m_dialog->stopProgressUpdate();
       }

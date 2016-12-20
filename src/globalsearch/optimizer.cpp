@@ -284,7 +284,7 @@ namespace GlobalSearch {
     m_opt->queueInterface()->stopJob(structure);
 
     // Lock
-    QReadLocker locker (structure->lock());
+    QReadLocker locker (&structure->lock());
 
     // Check optstep info
     int optStep = structure->getCurrentOptStep();
@@ -393,7 +393,7 @@ namespace GlobalSearch {
   bool Optimizer::update(Structure *structure)
   {
     // lock structure
-    QWriteLocker locker (structure->lock());
+    QWriteLocker locker (&structure->lock());
 
     structure->stopOptTimer();
 
@@ -429,7 +429,7 @@ namespace GlobalSearch {
 
   bool Optimizer::load(Structure *structure)
   {
-    QWriteLocker locker (structure->lock());
+    QWriteLocker locker (&structure->lock());
 
     // Try to read all files in outputFileNames
     bool ok = false;

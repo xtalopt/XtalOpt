@@ -463,7 +463,7 @@ namespace XtalOpt {
   {
 
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
-    QWriteLocker locker1 (oldXtal->lock());
+    QWriteLocker locker1 (&oldXtal->lock());
 
     // Decrement the parent xtal that produced this deleted structure
     oldXtal->decrementParentOffspringCounts();
@@ -488,7 +488,7 @@ namespace XtalOpt {
     }
 
     // Copy info over
-    QWriteLocker locker2 (xtal->lock());
+    QWriteLocker locker2 (&xtal->lock());
     oldXtal->clear();
     oldXtal->setOBUnitCell(new OpenBabel::OBUnitCell);
     oldXtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
@@ -544,8 +544,8 @@ namespace XtalOpt {
     }
 
     // Copy info over
-    QWriteLocker locker1 (oldXtal->lock());
-    QWriteLocker locker2 (xtal->lock());
+    QWriteLocker locker1 (&oldXtal->lock());
+    QWriteLocker locker2 (&xtal->lock());
     oldXtal->setOBUnitCell(new OpenBabel::OBUnitCell);
     oldXtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
     oldXtal->resetEnergy();
@@ -671,7 +671,7 @@ namespace XtalOpt {
       xtal->setFormulaUnits(FU);
     } while (!checkLattice(xtal));
 
-    QWriteLocker locker (xtal->lock());
+    QWriteLocker locker (&xtal->lock());
 
     xtal->setStatus(Xtal::Empty);
 
@@ -1139,15 +1139,15 @@ namespace XtalOpt {
     uint id = 1;
     for (int j = 0; j < allStructures.size(); j++) {
       structure = allStructures.at(j);
-      structure->lock()->lockForRead();
+      structure->lock().lockForRead();
       if (structure->getGeneration() == generation &&
           structure->getIDNumber() >= id) {
         id = structure->getIDNumber() + 1;
       }
-      structure->lock()->unlock();
+      structure->lock().unlock();
     }
 
-    QWriteLocker xtalLocker (xtal->lock());
+    QWriteLocker xtalLocker (&xtal->lock());
     xtal->moveToThread(m_queueThread);
     xtal->setIDNumber(id);
     xtal->setGeneration(generation);
@@ -1304,7 +1304,7 @@ namespace XtalOpt {
         // generateNewXtal() runs concurrently. We don't want to make more than
         // one primitive/supercell xtal of a given xtal, so try to write for
         // lock. If it can't be done, then just continue to the next one.
-        if (!optimizedStructures.at(i)->lock()->tryLockForWrite()) continue;
+        if (!optimizedStructures.at(i)->lock().tryLockForWrite()) continue;
 
         // If the structure has been primitive checked, we don't need to check
         // it again. If it hasn't been duplicate checked, yet, let it be
@@ -1317,7 +1317,7 @@ namespace XtalOpt {
           if (!testXtal->isPrimitive(tol_spg)) {
             testXtal->setPrimitiveChecked(true);
             Xtal* nxtal = generatePrimitiveXtal(testXtal);
-            testXtal->lock()->unlock();
+            testXtal->lock().unlock();
             // This will continue the structure generation while simultaneously
             // unlocking supercellCheckLock in 0.1 second
             // This allows time for the structure to be finished before
@@ -1345,7 +1345,7 @@ namespace XtalOpt {
                                      lowestEnthalpyFUList.at(FU) * 100.00000);
           if (percentDiff > 0.001) {
             optimizedStructures.at(i)->setSupercellGenerationChecked(true);
-            optimizedStructures.at(i)->lock()->unlock();
+            optimizedStructures.at(i)->lock().unlock();
             continue;
           }
           double enthalpyPerAtom1 = optimizedStructures.at(i)->getEnthalpy() /
@@ -1377,10 +1377,10 @@ namespace XtalOpt {
                 // xtal, so only update this if it is generating an xtal with
                 // the maxFU
                 if (j == maxFU) xtal->setSupercellGenerationChecked(true);
-                xtal->lock()->unlock();
+                xtal->lock().unlock();
                 Xtal* nxtal = generateSuperCell(xtal->getFormulaUnits(), j,
                                                 xtal, true, false);
-                xtal->lock()->lockForRead();
+                xtal->lock().lockForRead();
                 nxtal->setParents(tr("Supercell generated from %1x%2")
                   .arg(xtal->getGeneration())
                   .arg(xtal->getIDNumber()));
@@ -1398,7 +1398,7 @@ namespace XtalOpt {
                 nxtal->setPrimitiveChecked(true);
                 nxtal->setSkippedOptimization(true);
                 nxtal->setStatus(Xtal::Optimized);
-                xtal->lock()->unlock();
+                xtal->lock().unlock();
                 // This will continue the structure generation while
                 // simultaneously unlocking supercellCheckLock in 0.1 second
                 // This allows time for the structure to be finished before
@@ -1410,7 +1410,7 @@ namespace XtalOpt {
           }
           optimizedStructures.at(i)->setSupercellGenerationChecked(true);
         }
-        optimizedStructures.at(i)->lock()->unlock();
+        optimizedStructures.at(i)->lock().unlock();
       }
       supercellCheckLock.unlock();
     }
@@ -1616,14 +1616,14 @@ namespace XtalOpt {
           }
 
           // Lock parents and get info from them
-          xtal1->lock()->lockForRead();
-          xtal2->lock()->lockForRead();
+          xtal1->lock().lockForRead();
+          xtal2->lock().lockForRead();
           uint gen1 = xtal1->getGeneration();
           uint gen2 = xtal2->getGeneration();
           uint id1 = xtal1->getIDNumber();
           uint id2 = xtal2->getIDNumber();
-          xtal2->lock()->unlock();
-          xtal1->lock()->unlock();
+          xtal2->lock().unlock();
+          xtal1->lock().unlock();
 
           // We will set the parent xtal of this xtal to be
           // the parent that contributed the most
@@ -1668,14 +1668,14 @@ namespace XtalOpt {
                                           amplitude);
 
           // Lock parent and extract info
-          selectedXtal->lock()->lockForRead();
+          selectedXtal->lock().lockForRead();
           uint gen1 = selectedXtal->getGeneration();
           uint id1 = selectedXtal->getIDNumber();
 
           // If it's a mitosis mutation, the parent xtal is already set
           if (!mitosisMutation)
             xtal->setParentStructure(selectedXtal);
-          selectedXtal->lock()->unlock();
+          selectedXtal->lock().unlock();
 
           // Determine generation number
           gen = gen1 + 1;
@@ -1706,14 +1706,14 @@ namespace XtalOpt {
                 selectedXtal, perm_strainStdev_max, perm_ex, stdev);
 
           // Lock parent and extract info
-          selectedXtal->lock()->lockForRead();
+          selectedXtal->lock().lockForRead();
           uint gen1 = selectedXtal->getGeneration();
           uint id1 = selectedXtal->getIDNumber();
 
           // If it's a mitosis mutation, the parent xtal is already set
           if (!mitosisMutation)
             xtal->setParentStructure(selectedXtal);
-          selectedXtal->lock()->unlock();
+          selectedXtal->lock().unlock();
 
           // Determine generation number
           gen = gen1 + 1;
@@ -1821,12 +1821,12 @@ namespace XtalOpt {
       QString parents;
 
       // lock parent xtal for reading
-      QReadLocker locker (xtal->lock());
+      QReadLocker locker (&xtal->lock());
 
       // Copy info over from parent to new xtal
       myXtal = new Xtal;
       myXtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
-      QWriteLocker nxtalLocker (myXtal->lock());
+      QWriteLocker nxtalLocker (&myXtal->lock());
       QList<Atom*> atoms = xtal->atoms();
       for (int i = 0; i < atoms.size(); i++) {
         Atom* atom = myXtal->addAtom();
@@ -1835,10 +1835,10 @@ namespace XtalOpt {
       }
 
       // Lock parent and extract info
-      xtal->lock()->lockForRead();
+      xtal->lock().lockForRead();
       uint gen1 = xtal->getGeneration();
       uint id1 = xtal->getIDNumber();
-      xtal->lock()->unlock();
+      xtal->lock().unlock();
 
       // Determine generation number
       // This parent info will be erased and replaced with a different parent
@@ -2241,7 +2241,7 @@ namespace XtalOpt {
     }
 
     // Lock xtal
-    QWriteLocker locker (xtal->lock());
+    QWriteLocker locker (&xtal->lock());
 
     if (xtal->getStatus() == Xtal::Empty) {
       if (err != NULL) {
@@ -2683,7 +2683,7 @@ namespace XtalOpt {
       }
 
       xtal = new Xtal();
-      QWriteLocker locker (xtal->lock());
+      QWriteLocker locker (&xtal->lock());
       xtal->moveToThread(m_tracker->thread());
       xtal->setupConnections();
 
@@ -2936,9 +2936,9 @@ namespace XtalOpt {
     for (QList<Structure*>::const_iterator it = structures.constBegin(),
          it_end = structures.constEnd(); it != it_end; ++it)
     {
-      (*it)->lock()->lockForWrite();
+      (*it)->lock().lockForWrite();
       qobject_cast<Xtal*>(*it)->findSpaceGroup(tol_spg);
-      (*it)->lock()->unlock();
+      (*it)->lock().unlock();
     }
   }
 
@@ -2954,7 +2954,7 @@ namespace XtalOpt {
     Xtal *xtal = 0;
     for (int i = 0; i < structures->size(); i++) {
       xtal = qobject_cast<Xtal*>(structures->at(i));
-      xtal->lock()->lockForWrite();
+      xtal->lock().lockForWrite();
       // Let's reset supercells here too
       if (xtal->getStatus() == Xtal::Duplicate ||
           xtal->getStatus() == Xtal::Supercell) {
@@ -2964,7 +2964,7 @@ namespace XtalOpt {
         xtal->decrementParentNumDupOffspring();
       }
       xtal->structureChanged(); // Reset cached comparisons
-      xtal->lock()->unlock();
+      xtal->lock().unlock();
     }
     checkForDuplicates();
   }
@@ -2981,13 +2981,13 @@ namespace XtalOpt {
   void checkIfDups(dupCheckStruct & st)
   {
     Xtal *kickXtal, *keepXtal;
-    st.i->lock()->lockForRead();
-    st.j->lock()->lockForRead();
+    st.i->lock().lockForRead();
+    st.j->lock().lockForRead();
     // if they are already both duplicates, just return.
     if (st.i->getStatus() == Xtal::Duplicate &&
         st.j->getStatus() == Xtal::Duplicate) {
-      st.i->lock()->unlock();
-      st.j->lock()->unlock();
+      st.i->lock().unlock();
+      st.j->lock().unlock();
       return;
     }
     if (st.i->compareCoordinates(*st.j, st.tol_len, st.tol_ang)) {
@@ -3015,12 +3015,12 @@ namespace XtalOpt {
       // If the kickXtal is already a duplicate, just return
       if (kickXtal->getStatus() == Xtal::Duplicate ||
           kickXtal->getStatus() == Xtal::Supercell) {
-        kickXtal->lock()->unlock();
-        keepXtal->lock()->unlock();
+        kickXtal->lock().unlock();
+        keepXtal->lock().unlock();
         return;
       }
-      kickXtal->lock()->unlock();
-      kickXtal->lock()->lockForWrite();
+      kickXtal->lock().unlock();
+      kickXtal->lock().lockForWrite();
       kickXtal->setStatus(Xtal::Duplicate);
       kickXtal->setDuplicateString(QString("%1x%2")
                                    .arg(keepXtal->getGeneration())
@@ -3038,15 +3038,15 @@ namespace XtalOpt {
                    << parentXtal->getIDNumber();*/
       }
     }
-    st.i->lock()->unlock();
-    st.j->lock()->unlock();
+    st.i->lock().unlock();
+    st.j->lock().unlock();
   }
 
   void XtalOpt::checkIfSups(supCheckStruct & st)
   {
     Xtal *smallerFormulaUnitXtal, *largerFormulaUnitXtal;
-    st.i->lock()->lockForRead();
-    st.j->lock()->lockForRead();
+    st.i->lock().lockForRead();
+    st.j->lock().lockForRead();
 
     // Determine the larger formula unit structure and the smaller formula unit
     // structure.
@@ -3061,8 +3061,8 @@ namespace XtalOpt {
 
     // if the larger formula unit xtal is already a supercell, skip over it.
     if (largerFormulaUnitXtal->getStatus() == Xtal::Supercell) {
-      largerFormulaUnitXtal->lock()->unlock();
-      smallerFormulaUnitXtal->lock()->unlock();
+      largerFormulaUnitXtal->lock().unlock();
+      smallerFormulaUnitXtal->lock().unlock();
       return;
     }
 
@@ -3092,8 +3092,8 @@ namespace XtalOpt {
       // We're going to label the larger formula unit structure a supercell
       // of the smaller. The smaller structure is more fundamental and should
       // remain in the gene pool.
-      largerFormulaUnitXtal->lock()->unlock();
-      largerFormulaUnitXtal->lock()->lockForWrite();
+      largerFormulaUnitXtal->lock().unlock();
+      largerFormulaUnitXtal->lock().lockForWrite();
       largerFormulaUnitXtal->setStatus(Xtal::Supercell);
       // If the smaller formula unit xtal is already a duplicate, make the
       // supercell a supercell the structure that the smaller formula unit
@@ -3124,8 +3124,8 @@ namespace XtalOpt {
     }
     tempXtal->deleteLater();
     tempXtal = 0;
-    st.i->lock()->unlock();
-    st.j->lock()->unlock();
+    st.i->lock().unlock();
+    st.j->lock().unlock();
   }
 
   void XtalOpt::checkForDuplicates() {
@@ -3154,17 +3154,17 @@ namespace XtalOpt {
 
     for (QList<Xtal*>::iterator xi = xtals.begin();
          xi != xtals.end(); xi++) {
-      (*xi)->lock()->lockForRead();
+      (*xi)->lock().lockForRead();
       if ((*xi)->getStatus() != Xtal::Optimized) {
-        (*xi)->lock()->unlock();
+        (*xi)->lock().unlock();
         continue;
       }
 
       for (QList<Xtal*>::iterator xj = xi + 1;
            xj != xtals.end(); xj++) {
-        (*xj)->lock()->lockForRead();
+        (*xj)->lock().lockForRead();
         if ((*xj)->getStatus() != Xtal::Optimized) {
-          (*xj)->lock()->unlock();
+          (*xj)->lock().unlock();
           continue;
         }
         if (((*xi)->hasChangedSinceDupChecked() ||
@@ -3204,12 +3204,12 @@ namespace XtalOpt {
             supSts.append(supSt);
           }
         }
-        (*xj)->lock()->unlock();
+        (*xj)->lock().unlock();
       }
       // Nothing else should be setting this, so just update under a
       // read lock
       (*xi)->setChangedSinceDupChecked(false);
-      (*xi)->lock()->unlock();
+      (*xi)->lock().unlock();
     }
 
     // If a supercell is matched as a duplicate in the checkIfDups function,
@@ -3224,11 +3224,11 @@ namespace XtalOpt {
 
     // Label supercells that primitive xtals came from as such
     for (size_t i = 0; i < xtals.size(); i++) {
-      xtals.at(i)->lock()->lockForRead();
+      xtals.at(i)->lock().lockForRead();
       if (xtals.at(i)->skippedOptimization()) {
         for (size_t j = 0; j < xtals.size(); j++) {
           if (i == j) continue;
-          xtals.at(j)->lock()->lockForRead();
+          xtals.at(j)->lock().lockForRead();
           // If the xtal is optimized, a duplicate, or a supercell, overwrite
           // the previous settings with what it should be for the primitive...
           if ((xtals.at(i)->getStatus() == Xtal::Optimized ||
@@ -3245,10 +3245,10 @@ namespace XtalOpt {
                                             .arg(xtals.at(i)->getGeneration())
                                             .arg(xtals.at(i)->getIDNumber()));
           }
-          xtals.at(j)->lock()->unlock();
+          xtals.at(j)->lock().unlock();
         }
       }
-      xtals.at(i)->lock()->unlock();
+      xtals.at(i)->lock().unlock();
     }
 
     emit refreshAllStructureInfo();
@@ -3264,7 +3264,7 @@ namespace XtalOpt {
   {
     // Thankfully, the enthalpy appears to get updated before it reaches this
     // point
-    s->lock()->lockForRead();
+    s->lock().lockForRead();
     // This is to prevent segmentation faults...
     while (lowestEnthalpyFUList.size() - 1 < s->getFormulaUnits()) {
       lowestEnthalpyFUList.append(0);
@@ -3273,7 +3273,7 @@ namespace XtalOpt {
         lowestEnthalpyFUList.at(s->getFormulaUnits()) > s->getEnthalpy()) {
       lowestEnthalpyFUList[s->getFormulaUnits()] = s->getEnthalpy();
     }
-    s->lock()->unlock();
+    s->lock().unlock();
   }
 
   // No naming trickery here...

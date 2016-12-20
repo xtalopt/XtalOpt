@@ -234,10 +234,10 @@ namespace GlobalSearch {
     int fail=0;
     for (int i = 0; i < structures.size(); ++i) {
       structure = structures.at(i);
-      structure->lock()->lockForRead();
+      structure->lock().lockForRead();
       state = structure->getStatus();
       if (structure->getFailCount() != 0) fail++;
-      structure->lock()->unlock();
+      structure->lock().unlock();
       // Count submitted structures
       if ( state == Structure::Submitted ||
            state == Structure::InProcess ){
@@ -383,9 +383,9 @@ namespace GlobalSearch {
       }
 
       // Lookup status
-      structure->lock()->lockForRead();
+      structure->lock().lockForRead();
       Structure::State status = structure->getStatus();
-      structure->lock()->unlock();
+      structure->lock().unlock();
 
       // Check status
       switch (status) {
@@ -473,9 +473,9 @@ namespace GlobalSearch {
       updateStructure(s);
       break;
     case QueueInterface::Error:
-      s->lock()->lockForWrite();
+      s->lock().lockForWrite();
       s->setStatus(Structure::Error);
-      s->lock()->unlock();
+      s->lock().unlock();
       emit structureUpdated(s);
       break;
     }
@@ -533,7 +533,7 @@ namespace GlobalSearch {
     Q_ASSERT(trackerContainsStructure(s, &m_stepOptimizedTracker));
     removeFromTrackerWhenScopeEnds popper (s, &m_stepOptimizedTracker);
 
-    QWriteLocker locker (s->lock());
+    QWriteLocker locker (&s->lock());
 
     // Validate assumptions
     if (s->getStatus() != Structure::StepOptimized) {
@@ -605,7 +605,7 @@ namespace GlobalSearch {
     stopJob(s);
 
     // Lock for writing
-    QWriteLocker locker (s->lock());
+    QWriteLocker locker (&s->lock());
 
     s->addFailure();
 
@@ -675,15 +675,15 @@ namespace GlobalSearch {
     case QueueInterface::Success:
     case QueueInterface::Started:
       // Update the structure as "InProcess"
-      s->lock()->lockForWrite();
+      s->lock().lockForWrite();
       s->setStatus(Structure::InProcess);
-      s->lock()->unlock();
+      s->lock().unlock();
       emit structureUpdated(s);
       break;
     case QueueInterface::Error:
-      s->lock()->lockForWrite();
+      s->lock().lockForWrite();
       s->setStatus(Structure::Restart);
-      s->lock()->unlock();
+      s->lock().unlock();
       emit structureUpdated(s);
       break;
     case QueueInterface::CommunicationError:
@@ -825,21 +825,21 @@ namespace GlobalSearch {
   }
 
   void QueueManager::updateStructure(Structure *s) {
-    s->lock()->lockForWrite();
+    s->lock().lockForWrite();
     s->stopOptTimer();
     s->resetFailCount();
     s->setStatus(Structure::Updating);
-    s->lock()->unlock();
+    s->lock().unlock();
     if (!m_opt->optimizer()->update(s)) {
-      s->lock()->lockForWrite();
+      s->lock().lockForWrite();
       s->setStatus(Structure::Error);
-      s->lock()->unlock();
+      s->lock().unlock();
       emit structureUpdated(s);
       return;
     }
-    s->lock()->lockForWrite();
+    s->lock().lockForWrite();
     s->setStatus(Structure::StepOptimized);
-    s->lock()->unlock();
+    s->lock().unlock();
     emit structureUpdated(s);
     return;
   }
@@ -848,16 +848,16 @@ namespace GlobalSearch {
   void QueueManager::killStructure(Structure *s) {
     // End job if currently running
     if ( s->getStatus() != Structure::Optimized ) {
-      s->lock()->lockForWrite();
+      s->lock().lockForWrite();
       s->stopOptTimer();
       s->setStatus(Structure::Killed);
-      s->lock()->unlock();
+      s->lock().unlock();
     }
     else {
-      s->lock()->lockForWrite();
+      s->lock().lockForWrite();
       s->stopOptTimer();
       s->setStatus(Structure::Removed);
-      s->lock()->unlock();
+      s->lock().unlock();
     }
     stopJob(s);
     emit structureKilled(s);
@@ -884,14 +884,14 @@ namespace GlobalSearch {
     removeFromTrackerWhenScopeEnds popper (s, &m_newSubmissionTracker);
 
     // Update structure
-    s->lock()->lockForWrite();
+    s->lock().lockForWrite();
     if (s->getStatus() != Structure::Optimized) {
       s->setStatus(Structure::WaitingForOptimization);
       if (optStep != 0) {
         s->setCurrentOptStep(optStep);
       }
     }
-    s->lock()->unlock();
+    s->lock().unlock();
 
     // Perform writing
     m_opt->queueInterface()->writeInputFiles(s);
@@ -916,19 +916,19 @@ namespace GlobalSearch {
     }
 
     if (!m_opt->queueInterface()->startJob(s)) {
-      s->lock()->lockForWrite();
+      s->lock().lockForWrite();
       m_opt->warning(tr("QueueManager::startJob_: Job did not start "
                         "successfully for structure %1-%2.")
                      .arg(s->getIDString())
                      .arg(s->getCurrentOptStep()));
       s->setStatus(Structure::Error);
-      s->lock()->unlock();
+      s->lock().unlock();
       return;
     }
 
-    s->lock()->lockForWrite();
+    s->lock().lockForWrite();
     s->setStatus(Structure::Submitted);
-    s->lock()->unlock();
+    s->lock().unlock();
 
     emit structureSubmitted(s);
   }
@@ -956,10 +956,10 @@ namespace GlobalSearch {
     Structure *s;
     for (int i = 0; i < m_tracker->list()->size(); i++) {
       s = m_tracker->list()->at(i);
-      s->lock()->lockForRead();
+      s->lock().lockForRead();
       if (s->getStatus() == Structure::Optimized)
         list.append(s);
-      s->lock()->unlock();
+      s->lock().unlock();
     }
     m_tracker->unlock();
     return list;
@@ -972,7 +972,7 @@ namespace GlobalSearch {
     Structure *s;
     for (int i = 0; i < m_tracker->list()->size(); i++) {
       s = m_tracker->list()->at(i);
-      s->lock()->lockForRead();
+      s->lock().lockForRead();
       if (s->getStatus() == Structure::Optimized)
         list.append(s);
       else if (s->getStatus() == Structure::Supercell) {
@@ -987,7 +987,7 @@ namespace GlobalSearch {
           else if (j == list.size() - 1) list.append(s);
         }
       }
-      s->lock()->unlock();
+      s->lock().unlock();
     }
     m_tracker->unlock();
     return list;
@@ -1001,10 +1001,10 @@ namespace GlobalSearch {
     Structure *s;
     for (int i = 0; i < m_tracker->list()->size(); i++) {
       s = m_tracker->list()->at(i);
-      s->lock()->lockForRead();
+      s->lock().lockForRead();
       if (s->getStatus() == Structure::Duplicate)
         list.append(s);
-      s->lock()->unlock();
+      s->lock().unlock();
     }
     m_tracker->unlock();
     return list;
@@ -1017,10 +1017,10 @@ namespace GlobalSearch {
     Structure *s;
     for (int i = 0; i < m_tracker->list()->size(); i++) {
       s = m_tracker->list()->at(i);
-      s->lock()->lockForRead();
+      s->lock().lockForRead();
       if (s->getStatus() == Structure::Supercell)
         list.append(s);
-      s->lock()->unlock();
+      s->lock().unlock();
     }
     m_tracker->unlock();
     return list;
@@ -1100,10 +1100,10 @@ namespace GlobalSearch {
     }
 
     // Update structure
-    s->lock()->lockForWrite();
+    s->lock().lockForWrite();
     if (s->getStatus() != Structure::Optimized)
       s->setStatus(Structure::WaitingForOptimization);
-    s->lock()->unlock();
+    s->lock().unlock();
 
     m_tracker->append(s);
 

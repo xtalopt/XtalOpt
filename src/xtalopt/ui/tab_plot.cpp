@@ -707,9 +707,9 @@ namespace XtalOpt {
 
     // Get histogram
     // If no atoms selected...
-    xtal->lock()->lockForRead();
+    xtal->lock().lockForRead();
     xtal->getIADHistogram(&d, &f, 0, 15, .1);
-    xtal->lock()->unlock();
+    xtal->lock().unlock();
 
     // Selected atom histogram section removed due to removal of
     // dependence on Avogadro. A new strategy will need to be used
@@ -855,18 +855,18 @@ namespace XtalOpt {
     if (!m_plotObject)
       return;
     QReadLocker plotLocker (m_plot_mutex);
-    xtal->lock()->lockForRead();
+    xtal->lock().lockForRead();
     uint gen = xtal->getGeneration();
     uint id  = xtal->getIDNumber();
-    xtal->lock()->unlock();
+    xtal->lock().unlock();
     int ind;
     Xtal *txtal;
     for (int i = 0; i < m_opt->tracker()->size(); i++) {
       txtal = qobject_cast<Xtal*>(m_opt->tracker()->at(i));
-      txtal->lock()->lockForRead();
+      txtal->lock().lockForRead();
       uint tgen = txtal->getGeneration();
       uint tid = txtal->getIDNumber();
-      txtal->lock()->unlock();
+      txtal->lock().unlock();
       if ( tgen == gen &&
            tid == id ) {
         ind = i;

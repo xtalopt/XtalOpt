@@ -215,7 +215,7 @@ bool LoadLevelerQueueInterface::startJob(Structure *s)
     return false;
   }
 
-  QWriteLocker wlocker (s->lock());
+  QWriteLocker wlocker (&s->lock());
 
   QString command = "cd \"" + s->getRempath() + "\" && " +
       m_llsubmit + " job.ll";
@@ -258,7 +258,7 @@ bool LoadLevelerQueueInterface::stopJob(Structure *s)
   }
 
   // lock structure
-  QWriteLocker locker (s->lock());
+  QWriteLocker locker (&s->lock());
 
   // Log errors if needed
   if (this->m_opt->m_logErrorDirs && (s->getStatus() == Structure::Error ||
@@ -296,7 +296,7 @@ bool LoadLevelerQueueInterface::stopJob(Structure *s)
 QueueInterface::QueueStatus LoadLevelerQueueInterface::getStatus(Structure *s) const
 {
   // lock structure
-  QWriteLocker locker (s->lock());
+  QWriteLocker locker (&s->lock());
   QStringList queueData = getQueueList();
   unsigned int jobID = static_cast<unsigned int>(s->getJobID());
 
