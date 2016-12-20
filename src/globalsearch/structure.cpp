@@ -55,10 +55,13 @@ namespace GlobalSearch {
     m_jobID(0),
     m_numDupOffspring(0),
     m_numTotOffspring(0),
+    m_energy(0),
+    m_enthalpy(0),
     m_PV(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
+    m_lock(QReadWriteLock()),
     m_parentStructure(NULL),
     m_parentOffspringTotCountIncremented(false),
     m_parentOffspringDupCountIncremented(false)
@@ -82,9 +85,12 @@ namespace GlobalSearch {
     m_jobID(0),
     m_numDupOffspring(0),
     m_numTotOffspring(0),
+    m_energy(0),
+    m_enthalpy(0),
     m_PV(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
+    m_lock(other.m_lock),
     m_index(-1),
     m_parentStructure(NULL),
     m_parentOffspringTotCountIncremented(false),
@@ -105,11 +111,14 @@ namespace GlobalSearch {
     m_rank(0),
     m_formulaUnits(0),
     m_jobID(0),
+    m_energy(0),
+    m_enthalpy(0),
     m_PV(0),
     m_numDupOffspring(0),
     m_numTotOffspring(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
+    m_lock(QReadWriteLock()),
     m_index(-1),
     m_parentStructure(NULL),
     m_parentOffspringTotCountIncremented(false),
@@ -240,6 +249,7 @@ namespace GlobalSearch {
     m_parents                    = other.m_parents;
     m_dupString                  = other.m_dupString;
     m_rempath                    = other.m_rempath;
+    m_energy                     = other.m_energy;
     m_enthalpy                   = other.m_enthalpy;
     m_PV                         = other.m_PV;
     m_status                     = other.m_status;
@@ -663,7 +673,7 @@ namespace GlobalSearch {
       m_PV = enthalpy - energy;
     }
     m_enthalpy = enthalpy;
-    setEnergy(energy * EV_TO_KJ_PER_MOL);
+    m_energy = energy;
 
     // Update cell if necessary
     if (!cell.isZero()) {
@@ -717,7 +727,7 @@ namespace GlobalSearch {
       m_PV = enthalpy - energy;
     }
     m_enthalpy = enthalpy;
-    setEnergy(energy * EV_TO_KJ_PER_MOL);
+    m_energy = energy;
 
     // Update cell if necessary
     if (!cell.isZero()) {

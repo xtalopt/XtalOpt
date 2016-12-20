@@ -23,6 +23,7 @@
 #include <openbabel/mol.h>
 #include <openbabel/generic.h>
 
+#include <QReadWriteLock>
 #include <QtCore/QDebug>
 #include <QtCore/QDateTime>
 #include <QtCore/QTextStream>
@@ -86,6 +87,7 @@ namespace GlobalSearch {
      * @sa copyStructure
      */
     Structure& operator=(const Avogadro::Molecule& other);
+
 
     /**
      * Only update this structure's atoms, bonds, and residue information
@@ -166,15 +168,9 @@ namespace GlobalSearch {
       else return false;
     }
 
-    /** Return the energy value of the first conformer in eV. This is
-     * a convenience function.
+    /** Return the energy value of the structure in eV.
      *
-     * @note The energies of the other conformers are still available
-     * using energy(int). Be aware that energy(int) returns
-     * kcal/mol. The multiplicative factor EV_TO_KCAL_PER_MOL has been
-     * defined to aid conversion.
-     *
-     * @return The energy of the first conformer in eV.
+     * @return The energy of the structure in eV.
      * @sa setEnthalpy
      * @sa hasEnthalpy
      * @sa setPV
@@ -182,15 +178,15 @@ namespace GlobalSearch {
      * @sa setEnergy
      * @sa getEnergy
      */
-    double getEnergy()	const {return energy(0) * KJ_PER_MOL_TO_EV;};
+    double getEnergy() const { return m_energy; };
 
-    /** Return the enthalpy value of the first conformer in eV.
+    /** Return the enthalpy value of the structure in eV.
      *
      * @note If the enthalpy is not set but the energy is set, this
      * function assumes that the system is at zero-pressure and
      * returns the energy.
      *
-     * @return The enthalpy of the first conformer in eV.
+     * @return The enthalpy of the structure in eV.
      * @sa setEnthalpy
      * @sa hasEnthalpy
      * @sa setPV
@@ -264,6 +260,12 @@ namespace GlobalSearch {
      * @sa getIDString
      */
     int getIndex() const {return m_index;};
+
+    /**
+     * Provides locking. Should be used before reading or writing to the
+     * structure.
+     */
+    QReadWriteLock& lock() { return m_lock; };
 
     /** @return A string naming the Structure that this Structure is a
      * duplicate of.
@@ -913,6 +915,12 @@ namespace GlobalSearch {
        */
     virtual unsigned int sizeOfHistory() {return m_histEnergies.size();};
 
+    /** Set the energy in eV.
+     * @param energy The Structure's energy in eV.
+     * @sa getEnergy
+     */
+    void setEnergy(double energy) { m_energy = energy; };
+
     /** Set the enthalpy of the Structure.
      * @param enthalpy The Structure's enthalpy
      * @sa getEnthalpy
@@ -940,7 +948,7 @@ namespace GlobalSearch {
      * @sa setEnergy
      * @sa getEnergy
      */
-    void resetEnergy() {std::vector<double> E; E.push_back(0); setEnergies(E);};
+    void resetEnergy() { m_energy = 0.0; };
 
     /** Determine and set the energy using a forcefield method from
      * OpenBabel.
@@ -1291,11 +1299,12 @@ namespace GlobalSearch {
          m_currentOptStep, m_failCount, m_numDupOffspring,
          m_numTotOffspring;
     QString m_parents, m_dupString, m_supString, m_rempath;
-    double m_enthalpy, m_PV;
+    double m_energy, m_enthalpy, m_PV;
     State m_status;
     QDateTime m_optStart, m_optEnd;
     int m_index;
     QList<QVariant> m_histogramDist, m_histogramFreq;
+    QReadWriteLock m_lock;
 
     // History
     QList<QList<unsigned int> > m_histAtomicNums;
