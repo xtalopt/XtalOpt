@@ -18,7 +18,7 @@ set( xtalopt_SRCS
      ui/tab_edit.cpp
      ui/tab_opt.cpp
      ui/tab_progress.cpp
-     ui/tab_plot.cpp
+     #ui/tab_plot.cpp
      ui/tab_log.cpp)
 
 set( xtalopt_UIS
@@ -26,7 +26,7 @@ set( xtalopt_UIS
      ui/tab_init.ui
      ui/tab_opt.ui
      ui/tab_progress.ui
-     ui/tab_plot.ui
+     #ui/tab_plot.ui
      ui/tab_log.ui
      ui/randSpgDialog.ui)
 

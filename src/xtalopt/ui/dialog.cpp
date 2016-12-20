@@ -26,7 +26,7 @@
 #include <xtalopt/ui/tab_edit.h>
 #include <xtalopt/ui/tab_opt.h>
 #include <xtalopt/ui/tab_progress.h>
-#include <xtalopt/ui/tab_plot.h>
+//#include <xtalopt/ui/tab_plot.h>
 #include <xtalopt/ui/tab_log.h>
 
 #include <openbabel/oberror.h>
@@ -72,7 +72,7 @@ namespace XtalOpt {
     m_tab_edit          = new TabEdit(this, xtalopt);
     m_tab_opt           = new TabOpt(this, xtalopt);
     m_tab_progress      = new TabProgress(this, xtalopt);
-    m_tab_plot          = new TabPlot(this, xtalopt);
+    //m_tab_plot          = new TabPlot(this, xtalopt);
     m_tab_log           = new TabLog(this, xtalopt);
 
     // Populate tab widget
@@ -85,8 +85,8 @@ namespace XtalOpt {
                      tr("&Search Settings"));
     ui->tabs->addTab(m_tab_progress->getTabWidget(),
                      tr("&Progress"));
-    ui->tabs->addTab(m_tab_plot->getTabWidget(),
-                     tr("&Plot"));
+    //ui->tabs->addTab(m_tab_plot->getTabWidget(),
+    //                 tr("&Plot"));
     ui->tabs->addTab(m_tab_log->getTabWidget(),
                      tr("&Log"));
 
