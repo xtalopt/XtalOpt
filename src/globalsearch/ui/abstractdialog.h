@@ -537,7 +537,7 @@ namespace GlobalSearch {
     /**
      * The molecule object in the main Avogadro window.
      */
-    Avogadro::Molecule *m_molecule;
+    GlobalSearch::Molecule *m_molecule;
 
     /**
      * Cached pointer to the QGLWidget.

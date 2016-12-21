@@ -17,9 +17,7 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/obeigenconv.h>
 
-#include <avogadro/primitive.h>
-#include <avogadro/molecule.h>
-#include <avogadro/atom.h>
+#include <globalsearch/structure/molecule.h>
 
 #include <openbabel/generic.h>
 #include <openbabel/forcefield.h>
@@ -97,7 +95,7 @@ namespace GlobalSearch {
     *this = other;
   }
 
-  Structure::Structure(const Avogadro::Molecule &other) :
+  Structure::Structure(const GlobalSearch::Molecule &other) :
     Molecule(other),
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
@@ -246,6 +244,7 @@ namespace GlobalSearch {
     m_parents                    = other.m_parents;
     m_dupString                  = other.m_dupString;
     m_rempath                    = other.m_rempath;
+    m_fileName                   = other.m_fileName;
     m_energy                     = other.m_energy;
     m_enthalpy                   = other.m_enthalpy;
     m_PV                         = other.m_PV;
@@ -262,7 +261,7 @@ namespace GlobalSearch {
     return *this;
   }
 
-  Structure& Structure::operator=(const Avogadro::Molecule &mol)
+  Structure& Structure::operator=(const GlobalSearch::Molecule &mol)
   {
     Molecule::operator=(mol);
     return *this;
@@ -300,6 +299,7 @@ namespace GlobalSearch {
     settings->setValue("currentOptStep", getCurrentOptStep());
     settings->setValue("parents", getParents());
     settings->setValue("rempath", getRempath());
+    settings->setValue("fileName", getFileName());
     settings->setValue("status", int(getStatus()));
     settings->setValue("failCount", getFailCount());
     settings->setValue("startTime", getOptTimerStart().toString());
@@ -411,6 +411,7 @@ namespace GlobalSearch {
       setFailCount(      settings->value("failCount",      0).toInt());
       setParents(        settings->value("parents",        "").toString());
       setRempath(        settings->value("rempath",        "").toString());
+      setFileName(       settings->value("fileName",       "").toString());
       setStatus(   State(settings->value("status",         -1).toInt()));
 
       setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));
@@ -942,7 +943,7 @@ namespace GlobalSearch {
     return true;
   }
 
-  bool Structure::getNearestNeighborDistance(const Avogadro::Atom *atom,
+  bool Structure::getNearestNeighborDistance(const GlobalSearch::Atom *atom,
                                              double & shortest) const
   {
     const Eigen::Vector3d *position = atom->pos();
@@ -976,7 +977,7 @@ namespace GlobalSearch {
     return neighbors;
   }
 
-  QList<Atom*> Structure::getNeighbors(const Avogadro::Atom *atom,
+  QList<Atom*> Structure::getNeighbors(const GlobalSearch::Atom *atom,
                                        const double cutoff,
                                        QList<double> *distances) const
   {
@@ -1022,7 +1023,7 @@ namespace GlobalSearch {
                                        double min,
                                        double max,
                                        double step,
-                                       Avogadro::Atom *atom) const
+                                       GlobalSearch::Atom *atom) const
   {
     QList<QVariant> distv, freqv;
     if (!generateIADHistogram(&distv, &freqv, min, max, step, atom)) {
@@ -1094,7 +1095,7 @@ namespace GlobalSearch {
   bool Structure::generateIADHistogram(QList<QVariant> * distance,
                                        QList<QVariant> * frequency,
                                        double min, double max, double step,
-                                       Avogadro::Atom *atom) const
+                                       GlobalSearch::Atom *atom) const
   {
     distance->clear();
     frequency->clear();

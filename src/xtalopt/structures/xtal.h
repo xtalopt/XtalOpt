@@ -52,24 +52,24 @@ namespace XtalOpt {
     bool getIADHistogram(QList<double> * distance,
                          QList<double> * frequency,
                          double min, double max, double step,
-                         Avogadro::Atom *atom = 0) const;
+                         GlobalSearch::Atom *atom = 0) const;
     bool addAtomRandomly(uint atomicNumber,
                          double minIAD = 0.0,
                          double maxIAD = 0.0,
                          int maxAttempts = 100.0,
-                         Avogadro::Atom **atom = 0); //maxIAD is not used.
+                         GlobalSearch::Atom **atom = 0); //maxIAD is not used.
     // Uses the minRadius constraints in @a limits to restrict atom placement
     bool addAtomRandomly(unsigned int atomicNumber,
                          const QHash<unsigned int, XtalCompositionStruct> & limits,
                          int maxAttempts = 100.0,
-                         Avogadro::Atom **atom = 0);
+                         GlobalSearch::Atom **atom = 0);
     bool addAtomRandomly(unsigned int atomicNumber,
                          unsigned int neighbor,
                          const QHash<unsigned int, XtalCompositionStruct> & limits,
                          const QHash<QPair<int, int>, MolUnit> & limitsMolUnit,
                          bool useMolUnit,
                          int maxAttempts = 100.0,
-                         Avogadro::Atom **atom = 0);
+                         GlobalSearch::Atom **atom = 0);
 
 
     // Fills a supercell for the mitosis process

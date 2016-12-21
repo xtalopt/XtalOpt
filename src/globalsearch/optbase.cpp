@@ -432,8 +432,8 @@ namespace GlobalSearch {
 
     // Structure specific data
     if (line == "coords") {
-      QList<Avogadro::Atom*> atoms = structure->atoms();
-      QList<Avogadro::Atom*>::const_iterator it;
+      QList<GlobalSearch::Atom*> atoms = structure->atoms();
+      QList<GlobalSearch::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
       for (it  = atoms.begin();
            it != atoms.end();
@@ -446,8 +446,8 @@ namespace GlobalSearch {
       }
     }
     else if (line == "coordsInternalFlags") {
-      QList<Avogadro::Atom*> atoms = structure->atoms();
-      QList<Avogadro::Atom*>::const_iterator it;
+      QList<GlobalSearch::Atom*> atoms = structure->atoms();
+      QList<GlobalSearch::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
       for (it  = atoms.begin();
            it != atoms.end();
@@ -460,8 +460,8 @@ namespace GlobalSearch {
       }
     }
     else if (line == "coordsSuffixFlags") {
-      QList<Avogadro::Atom*> atoms = structure->atoms();
-      QList<Avogadro::Atom*>::const_iterator it;
+      QList<GlobalSearch::Atom*> atoms = structure->atoms();
+      QList<GlobalSearch::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
       for (it  = atoms.begin();
            it != atoms.end();
@@ -474,8 +474,8 @@ namespace GlobalSearch {
       }
     }
     else if (line == "coordsId") {
-      QList<Avogadro::Atom*> atoms = structure->atoms();
-      QList<Avogadro::Atom*>::const_iterator it;
+      QList<GlobalSearch::Atom*> atoms = structure->atoms();
+      QList<GlobalSearch::Atom*>::const_iterator it;
       const Eigen::Vector3d *vec;
       for (it  = atoms.begin();
            it != atoms.end();

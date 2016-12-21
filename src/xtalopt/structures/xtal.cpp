@@ -757,9 +757,9 @@ namespace XtalOpt {
   QList<QString> Xtal::currentAtomicSymbols()
   {
     QList<QString> result;
-    QList<Avogadro::Atom*> atoms = this->atoms();
+    QList<GlobalSearch::Atom*> atoms = this->atoms();
 
-    for (QList<Avogadro::Atom*>::const_iterator
+    for (QList<GlobalSearch::Atom*>::const_iterator
            it = atoms.constBegin(),
            it_end = atoms.constEnd();
          it != it_end;
@@ -776,8 +776,8 @@ namespace XtalOpt {
     // Remove old atoms
     // We should lock the xtal before calling this function!
     //QWriteLocker locker (this->lock());
-    QList<Avogadro::Atom*> atoms = this->atoms();
-    for (QList<Avogadro::Atom*>::iterator
+    QList<GlobalSearch::Atom*> atoms = this->atoms();
+    for (QList<GlobalSearch::Atom*>::iterator
            it = atoms.begin(),
            it_end = atoms.end();
          it != it_end;
@@ -830,7 +830,7 @@ namespace XtalOpt {
   void Xtal::printAtomInfo() const
   {
     cout << "Frac coords info (blank if none):\n";
-    QList<Avogadro::Atom*> atoms = this->atoms();
+    QList<GlobalSearch::Atom*> atoms = this->atoms();
     QList<Eigen::Vector3d> fracCoords;
 
     for (size_t i = 0; i < atoms.size(); i++)
@@ -1135,7 +1135,7 @@ namespace XtalOpt {
   bool Xtal::addAtomRandomly(
       unsigned int atomicNumber,
       const QHash<unsigned int, XtalCompositionStruct> & limits,
-      int maxAttempts, Avogadro::Atom **atom)
+      int maxAttempts, GlobalSearch::Atom **atom)
   {
     Eigen::Vector3d cartCoords;
     bool success;
@@ -1215,7 +1215,7 @@ namespace XtalOpt {
       const QHash<unsigned int, XtalCompositionStruct> & limits,
       const QHash<QPair<int, int>, MolUnit> & limitsMolUnit,
       bool useMolUnit,
-      int maxAttempts, Avogadro::Atom **atom)
+      int maxAttempts, GlobalSearch::Atom **atom)
   {
     Eigen::Vector3d cartCoords;
     bool success;

@@ -52,7 +52,7 @@ namespace XtalOpt {
                             bool interactive = true);
     virtual ~XtalOptDialog();
 
-    void setMolecule(Avogadro::Molecule *molecule);
+    void setMolecule(GlobalSearch::Molecule *molecule);
 
   public slots:
     void saveSession();

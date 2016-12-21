@@ -32,7 +32,7 @@ namespace XtalOptDebug
 {
   void dumpCML(const XtalOpt::Xtal *xtal, const QString &filename)
   {
-    Avogadro::MoleculeFile::writeMolecule(xtal, filename + ".cml");
+    GlobalSearch::MoleculeFile::writeMolecule(xtal, filename + ".cml");
   }
 
   void dumpPseudoPwscfOut(const XtalOpt::Xtal *xtal, const QString &filename)

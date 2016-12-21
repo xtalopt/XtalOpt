@@ -16,8 +16,7 @@
 #ifndef STRUCTURE_H
 #define STRUCTURE_H
 
-#include <avogadro/molecule.h>
-#include <avogadro/atom.h>
+#include <globalsearch/structures/molecule.h>
 
 #include <openbabel/math/vector3.h>
 #include <openbabel/mol.h>
@@ -42,11 +41,11 @@ namespace GlobalSearch {
    * @author David C. Lonie
    *
    * The Structure class provides a generic data object for storing
-   * information about a molecule. It derives from Avogadro::Molecule,
+   * information about a molecule. It derives from GlobalSearch::Molecule,
    * adding new functionality to help with common tasks during a
    * global structure search.
    */
-  class Structure : public Avogadro::Molecule
+  class Structure : public GlobalSearch::Molecule
   {
     Q_OBJECT
 
@@ -67,7 +66,7 @@ namespace GlobalSearch {
     /**
      * Explicit copy constructor for Molecules.
      */
-    Structure(const Avogadro::Molecule &other);
+    Structure(const GlobalSearch::Molecule &other);
 
     /**
      * Destructor.
@@ -86,7 +85,7 @@ namespace GlobalSearch {
      * specific information copied from \a other.
      * @sa copyStructure
      */
-    Structure& operator=(const Avogadro::Molecule& other);
+    Structure& operator=(const GlobalSearch::Molecule& other);
 
 
     /**
@@ -290,6 +289,11 @@ namespace GlobalSearch {
      */
     QString getRempath() const {return m_rempath;};
 
+    /** @return The file name.
+     * @sa setFilename
+     */
+    QString fileName() const { return m_fileName; };
+
     /** @return The current status of the Structure.
      * @sa setStatus
      * @sa State
@@ -446,14 +450,14 @@ namespace GlobalSearch {
      * @sa getNearestNeighborHistogram
      * @sa getNeighbors
      */
-    virtual bool getNearestNeighborDistance(const Avogadro::Atom *atom,
+    virtual bool getNearestNeighborDistance(const GlobalSearch::Atom *atom,
                                             double & shortest) const;
 
     /**
      * @return a list of all atoms within \a cutoff of
      * (\a x,\a y,\a z) and, optionally, their \a distances.
      */
-    QList<Avogadro::Atom*> getNeighbors (const double x,
+    QList<GlobalSearch::Atom*> getNeighbors (const double x,
                                          const double y,
                                          const double z,
                                          const double cutoff,
@@ -465,7 +469,7 @@ namespace GlobalSearch {
      * @return a list of all atoms within \a cutoff of \a atom and,
      *  optionally, their \a distances.
      */
-    QList<Avogadro::Atom*> getNeighbors (const Avogadro::Atom *atom,
+    QList<GlobalSearch::Atom*> getNeighbors (const GlobalSearch::Atom *atom,
                                          const double cutoff,
                                          QList<double> *distances = 0) const;
 
@@ -520,7 +524,7 @@ namespace GlobalSearch {
                                       double min = 0.0,
                                       double max = 10.0,
                                       double step = 0.01,
-                                      Avogadro::Atom *atom = 0) const;
+                                      GlobalSearch::Atom *atom = 0) const;
 
     /** Generate data for a histogram of the distances between all
      * atoms, or between one atom and all others.
@@ -559,7 +563,7 @@ namespace GlobalSearch {
                                       double min = 0.0,
                                       double max = 10.0,
                                       double step = 0.01,
-                                      Avogadro::Atom *atom = 0) const;
+                                      GlobalSearch::Atom *atom = 0) const;
 
     /** Add an atom to a random position in the Structure. If no other
      * atoms exist in the Structure, the new atom is placed at
@@ -584,7 +588,7 @@ namespace GlobalSearch {
                                  double minIAD = 0.0,
                                  double maxIAD = 0.0,
                                  int maxAttempts = 1000,
-                                 Avogadro::Atom **atom = 0);
+                                 GlobalSearch::Atom **atom = 0);
 
     /** @return An alphabetized list of the atomic symbols for the
      * atomic species present in the Structure.
@@ -1026,6 +1030,11 @@ namespace GlobalSearch {
      */
     void setRempath(const QString & p) {m_rempath = p;};
 
+    /** @param p The file name.
+     * @sa fileName
+     */
+    void setFileName(const QString& p) { m_fileName = p; };
+
     /** @param status The current status of the Structure.
      * @sa getStatus
      * @sa State
@@ -1298,7 +1307,7 @@ namespace GlobalSearch {
     uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
          m_currentOptStep, m_failCount, m_numDupOffspring,
          m_numTotOffspring;
-    QString m_parents, m_dupString, m_supString, m_rempath;
+    QString m_parents, m_dupString, m_supString, m_rempath, m_fileName;
     double m_energy, m_enthalpy, m_PV;
     State m_status;
     QDateTime m_optStart, m_optEnd;

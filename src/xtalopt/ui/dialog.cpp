@@ -117,7 +117,7 @@ namespace XtalOpt {
 
   }
 
-  void XtalOptDialog::setMolecule(Avogadro::Molecule *molecule)
+  void XtalOptDialog::setMolecule(GlobalSearch::Molecule *molecule)
   {
     if (m_molecule == molecule || !molecule) {
       return;

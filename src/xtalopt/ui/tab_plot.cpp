@@ -287,7 +287,7 @@ namespace XtalOpt {
       }
       x = y = 0;
       xtal = qobject_cast<Xtal*>(structures[i]);
-      QReadLocker xtalLocker (xtal->lock());
+      QReadLocker xtalLocker (&xtal->lock());
       // Don't plot removed structures or those who have not completed their first INCAR. Also only plot specified formula units if box is checked.
       if (showSpecifiedFU) {
         bool inTheList = false;
