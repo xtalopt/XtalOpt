@@ -144,8 +144,8 @@ namespace XtalOpt {
     //
     //  Now populate the matrices:
     //
-    Eigen::Matrix3d xform1 = Eigen::Matrix3d::Zero();
-    Eigen::Matrix3d xform2 = Eigen::Matrix3d::Zero();
+    Matrix3 xform1 = Matrix3::Zero();
+    Matrix3 xform2 = Matrix3::Zero();
     for (int i = 0; i < 3; i++) {
       double r1 = RANDDOUBLE() - 0.5;
       double r2 = RANDDOUBLE() - 0.5;
@@ -163,8 +163,8 @@ namespace XtalOpt {
     matrix3x3 obcell1 = xtal1->OBUnitCell()->GetCellMatrix();
     matrix3x3 obcell2 = xtal2->OBUnitCell()->GetCellMatrix();
     // Convert to Eigen:
-    Eigen::Matrix3d cell1 = Eigen::Matrix3d::Zero();
-    Eigen::Matrix3d cell2 = Eigen::Matrix3d::Zero();
+    Matrix3 cell1 = Matrix3::Zero();
+    Matrix3 cell2 = Matrix3::Zero();
     for (int row = 0; row < 3; row++) {
       for (int col = 0; col < 3; col++) {
         cell1(row,col) = obcell1.Get(row, col);
@@ -178,23 +178,23 @@ namespace XtalOpt {
     QList<QString> xtalAtoms	=  xtal1->getSymbols();
     QList<uint> xtalCounts	=  xtal1->getNumberOfAtomsAlpha();
     QList<Atom*> atomList1      =  xtal1->atoms();
-    QList<Vector3d> fracCoordsList1;
+    QList<Vector3> fracCoordsList1;
 
     for (int i = 0; i < atomList1.size(); i++)
-      fracCoordsList1.append(xtal1->cartToFrac(*(atomList1.at(i)->pos())));
+      fracCoordsList1.append(xtal1->cartToFrac(*(atomList1.at(i).pos())));
     xtal1->lock().unlock();
 
     xtal2->lock().lockForRead();
     QList<Atom*> atomList2      = xtal2->atoms();
-    QList<Vector3d> fracCoordsList2;
+    QList<Vector3> fracCoordsList2;
     for (int i = 0; i < atomList2.size(); i++)
-      fracCoordsList2.append(xtal2->cartToFrac(*(atomList2.at(i)->pos())));
+      fracCoordsList2.append(xtal2->cartToFrac(*(atomList2.at(i).pos())));
     xtal2->lock().unlock();
 
     // Transform (reflect / rot)
     cell1 *= xform1;
     cell2 *= xform2;
-    // Eigen::Vector3d is a column vector, so transpose before and
+    // Vector3 is a column vector, so transpose before and
     // after transforming them.
     for (int i = 0; i < fracCoordsList1.size(); i++) {
       fracCoordsList1[i] = (fracCoordsList1[i].transpose() *
@@ -248,12 +248,12 @@ namespace XtalOpt {
     for (int i = 0; i < fracCoordsList1.size(); i++) {
       if ( fracCoordsList1.at(i)[0] <= cutVal ) {
         Atom* newAtom = nxtal->addAtom();
-        newAtom->setAtomicNumber(atomList1.at(i)->atomicNumber());
+        newAtom->setAtomicNumber(atomList1.at(i).atomicNumber());
         newAtom->setPos(nxtal->fracToCart(fracCoordsList1.at(i)));
       }
       if ( fracCoordsList2.at(i)[0] > cutVal ) {
         Atom* newAtom = nxtal->addAtom();
-        newAtom->setAtomicNumber(atomList2.at(i)->atomicNumber());
+        newAtom->setAtomicNumber(atomList2.at(i).atomicNumber());
         newAtom->setPos(nxtal->fracToCart(fracCoordsList2.at(i)));
       }
     }
@@ -291,7 +291,7 @@ namespace XtalOpt {
         // X is the total number of that atom type in nxtal.
         QList<Atom*> atomList = nxtal->atoms();
         for (int j = 0; j < atomList.size(); j++) {
-          if (atomList.at(j)->atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str())) {
+          if (atomList.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str())) {
             // atom at j is the type that needs to be deleted.
             if (RANDDOUBLE() < 1.0/static_cast<double>(nxtalCounts.at(i))) {
               // If the odds are right, delete the atom and break loop to recheck condition.
@@ -315,9 +315,9 @@ namespace XtalOpt {
           if (
               // if atom at j is the type that needs to be added,
               (
-               ( parent == 1 && atomList1.at(j)->atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
+               ( parent == 1 && atomList1.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
                ||
-               ( parent == 2 && atomList2.at(j)->atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
+               ( parent == 2 && atomList2.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
               )
               &&
               // and atom is in the discarded region of the cut,
@@ -331,7 +331,7 @@ namespace XtalOpt {
               ( RANDDOUBLE() < 1.0/static_cast<double>(xtalCounts.at(i)) )
               ) {
             Atom* newAtom = nxtal->addAtom();
-            newAtom->setAtomicNumber(atomList1.at(j)->atomicNumber());
+            newAtom->setAtomicNumber(atomList1.at(j).atomicNumber());
             if ( parent == 1)
               newAtom->setPos(nxtal->fracToCart(fracCoordsList1.at(j)));
             else // ( parent == 2)
@@ -470,8 +470,8 @@ namespace XtalOpt {
     //
     //  Now populate the matrices:
     //
-    Eigen::Matrix3d xform1 = Eigen::Matrix3d::Zero();
-    Eigen::Matrix3d xform2 = Eigen::Matrix3d::Zero();
+    Matrix3 xform1 = Matrix3::Zero();
+    Matrix3 xform2 = Matrix3::Zero();
     for (int i = 0; i < 3; i++) {
       double r1 = RANDDOUBLE() - 0.5;
       double r2 = RANDDOUBLE() - 0.5;
@@ -489,8 +489,8 @@ namespace XtalOpt {
     matrix3x3 obcell1 = xtal1->OBUnitCell()->GetCellMatrix();
     matrix3x3 obcell2 = xtal2->OBUnitCell()->GetCellMatrix();
     // Convert to Eigen:
-    Eigen::Matrix3d cell1 = Eigen::Matrix3d::Zero();
-    Eigen::Matrix3d cell2 = Eigen::Matrix3d::Zero();
+    Matrix3 cell1 = Matrix3::Zero();
+    Matrix3 cell2 = Matrix3::Zero();
     for (int row = 0; row < 3; row++) {
       for (int col = 0; col < 3; col++) {
         cell1(row,col) = obcell1.Get(row, col);
@@ -507,7 +507,7 @@ namespace XtalOpt {
     QList<uint> xtalCounts1	=  xtal1->getNumberOfAtomsAlpha();
     QList<Atom*> atomList1      =  xtal1->atoms();
     uint xtal1FU                =  xtal1->getFormulaUnits();
-    QList<Vector3d> fracCoordsList1;
+    QList<Vector3> fracCoordsList1;
     //qDebug() << "xtal1FU is " << QString::number(xtal1FU);
 
     // Obtain empirical formula
@@ -517,21 +517,21 @@ namespace XtalOpt {
     }
 
     for (int i = 0; i < atomList1.size(); i++)
-      fracCoordsList1.append(xtal1->cartToFrac(*(atomList1.at(i)->pos())));
+      fracCoordsList1.append(xtal1->cartToFrac(*(atomList1.at(i).pos())));
     xtal1->lock().unlock();
 
     xtal2->lock().lockForRead();
     QList<Atom*> atomList2      = xtal2->atoms();
-    QList<Vector3d> fracCoordsList2;
+    QList<Vector3> fracCoordsList2;
     //qDebug() << "xtal2FU is " << QString::number(xtal2->getFormulaUnits());
     for (int i = 0; i < atomList2.size(); i++)
-      fracCoordsList2.append(xtal2->cartToFrac(*(atomList2.at(i)->pos())));
+      fracCoordsList2.append(xtal2->cartToFrac(*(atomList2.at(i).pos())));
     xtal2->lock().unlock();
 
     // Will NOT transform (reflect / rot) the unit cell in FUcrossover
     cell1 *= xform1;
     cell2 *= xform2;
-    // Eigen::Vector3d is a column vector, so transpose before and
+    // Vector3 is a column vector, so transpose before and
     // after transforming them.
     for (int i = 0; i < fracCoordsList1.size(); i++) {
       fracCoordsList1[i] = (fracCoordsList1[i].transpose() *
@@ -624,24 +624,24 @@ namespace XtalOpt {
     QWriteLocker nxtalLocker (&nxtal->lock());
 
     // Cut xtals and populate new one.
-    QList<Vector3d> tempFracCoordsList1;
+    QList<Vector3> tempFracCoordsList1;
     for (int i = 0; i < fracCoordsList1.size(); i++) {
       tempFracCoordsList1 = fracCoordsList1;
       if ( fracCoordsList1.at(i)[0] <= cutVal1 ) {
         Atom* newAtom = nxtal->addAtom();
-        newAtom->setAtomicNumber(atomList1.at(i)->atomicNumber());
+        newAtom->setAtomicNumber(atomList1.at(i).atomicNumber());
         // Correct for atom position distortion across the cutVal axis
         tempFracCoordsList1[i][0] = (xtal1->getA() / nxtal->getA()) * fracCoordsList1.at(i)[0];
         newAtom->setPos(nxtal->fracToCart(tempFracCoordsList1.at(i)));
       }
     }
 
-    QList<Vector3d> tempFracCoordsList2;
+    QList<Vector3> tempFracCoordsList2;
     for (int i = 0; i < fracCoordsList2.size(); i++) {
       tempFracCoordsList2 = fracCoordsList2;
       if ( fracCoordsList2.at(i)[0] <= cutVal2 ) {
         Atom* newAtom = nxtal->addAtom();
-        newAtom->setAtomicNumber(atomList2.at(i)->atomicNumber());
+        newAtom->setAtomicNumber(atomList2.at(i).atomicNumber());
         // Correct for atom position distortion across the cutVal axis
         tempFracCoordsList2[i][0] = (xtal2->getA() / nxtal->getA()) * fracCoordsList2.at(i)[0];
         // Reflect these atoms to the other side of the xtal via the plane
@@ -794,7 +794,7 @@ namespace XtalOpt {
         // X is the total number of that atom type in nxtal.
         QList<Atom*> atomList = nxtal->atoms();
         for (int j = 0; j < atomList.size(); j++) {
-          if (atomList.at(j)->atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str())) {
+          if (atomList.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str())) {
             // atom at j is the type that needs to be deleted.
             if (RANDDOUBLE() < 1.0/static_cast<double>(nxtalCounts.at(i))) {
               // If the odds are right, delete the atom and break loop to recheck condition.
@@ -827,7 +827,7 @@ namespace XtalOpt {
           for (int j = 0; j < fracCoordsList1.size(); j++) { // size may be different for different parents
             if (
                 // if atom at j is the type that needs to be added,
-                ( atomList1.at(j)->atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
+                ( atomList1.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
 
                 &&
                 // and atom is in the discarded region of the cut,
@@ -838,7 +838,7 @@ namespace XtalOpt {
                 ( RANDDOUBLE() < 1.0/static_cast<double>(targetXtalCounts.at(i)) )
                 ) {
               Atom* newAtom = nxtal->addAtom();
-              newAtom->setAtomicNumber(atomList1.at(j)->atomicNumber());
+              newAtom->setAtomicNumber(atomList1.at(j).atomicNumber());
               newAtom->setPos(nxtal->fracToCart(fracCoordsList1.at(j)));
               delta--;
               break;
@@ -849,7 +849,7 @@ namespace XtalOpt {
           for (int j = 0; j < fracCoordsList2.size(); j++) { // size may be different for different parents
             if (
                 // if atom at j is the type that needs to be added,
-                ( atomList2.at(j)->atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
+                ( atomList2.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
 
                 &&
                 // and atom is in the discarded region of the cut,
@@ -860,9 +860,9 @@ namespace XtalOpt {
                 ( RANDDOUBLE() < 1.0/static_cast<double>(targetXtalCounts.at(i)) )
                 ) {
               Atom* newAtom = nxtal->addAtom();
-              newAtom->setAtomicNumber(atomList2.at(j)->atomicNumber());
+              newAtom->setAtomicNumber(atomList2.at(j).atomicNumber());
               // Reflect across plane perpendicular to cutVal axis
-              QList<Vector3d> tempFracCoordsList2 = fracCoordsList2;
+              QList<Vector3> tempFracCoordsList2 = fracCoordsList2;
               tempFracCoordsList2[j][0] = 1 - fracCoordsList2.at(j)[0];
               newAtom->setPos(nxtal->fracToCart(tempFracCoordsList2.at(j)));
               delta--;
@@ -873,11 +873,11 @@ namespace XtalOpt {
       }
     }
 
-    QList<Vector3d> nFracCoordsList;
+    QList<Vector3> nFracCoordsList;
     QList<Atom*> nAtomList      = nxtal->atoms();
     for (int i = 0; i < nAtomList.size(); i++) {
-      nFracCoordsList.append(nxtal->cartToFrac(*(nAtomList.at(i)->pos())));
-      // qDebug() << nAtomList.at(i)->atomicNumber() << " " << nFracCoordsList.at(i)[0] << " " << nFracCoordsList.at(i)[1] << " " << nFracCoordsList.at(i)[2];
+      nFracCoordsList.append(nxtal->cartToFrac(*(nAtomList.at(i).pos())));
+      // qDebug() << nAtomList.at(i).atomicNumber() << " " << nFracCoordsList.at(i)[0] << " " << nFracCoordsList.at(i)[1] << " " << nFracCoordsList.at(i)[2];
     }
 
     // Done!
@@ -902,8 +902,8 @@ namespace XtalOpt {
     Atom *atm;
     for (uint i = 0; i < xtal->numAtoms(); i++) {
       atm = nxtal->addAtom();
-      atm->setAtomicNumber(xtal->atom(i)->atomicNumber());
-      atm->setPos(xtal->atom(i)->pos());
+      atm->setAtomicNumber(xtal->atom(i).atomicNumber());
+      atm->setPos(xtal->atom(i).pos());
     }
 
     sigma_lattice = 0;
@@ -953,8 +953,8 @@ namespace XtalOpt {
     QList<Atom*> atoms = xtal->atoms();
     for (int i = 0; i < atoms.size(); i++) {
       Atom* atom = nxtal->addAtom();
-      atom->setAtomicNumber(atoms.at(i)->atomicNumber());
-      atom->setPos(atoms.at(i)->pos());
+      atom->setAtomicNumber(atoms.at(i).atomicNumber());
+      atom->setPos(atoms.at(i).pos());
     }
 
     // Perform lattice strain
@@ -987,7 +987,7 @@ namespace XtalOpt {
       // Generate some indicies
       uint index1 = 0, index2 = 0;
       // Make sure we're swapping different atom types
-      while (atoms.at(index1)->atomicNumber() == atoms.at(index2)->atomicNumber()) {
+      while (atoms.at(index1).atomicNumber() == atoms.at(index2).atomicNumber()) {
         index1 = index2 = 0;
         while (index1 == index2) {
           index1 = static_cast<uint>(RANDDOUBLE() * atoms.size());
@@ -995,8 +995,8 @@ namespace XtalOpt {
         }
       }
       // Swap the atoms
-      const Vector3d tmp = *(atoms.at(index1)->pos());
-      atoms.at(index1)->setPos(*(atoms.at(index2)->pos()));
+      const Vector3 tmp = *(atoms.at(index1).pos());
+      atoms.at(index1)->setPos(*(atoms.at(index2).pos()));
       atoms.at(index2)->setPos(tmp);
     }
     return;
@@ -1040,9 +1040,9 @@ namespace XtalOpt {
 
     // Store fractional coordinates
     QList<Atom*> atomList       = xtal->atoms();
-    QList<Vector3d> fracCoordsList;
+    QList<Vector3> fracCoordsList;
     for (int i = 0; i < atomList.size(); i++)
-      fracCoordsList.append(xtal->cartToFrac(*(atomList.at(i)->pos())));
+      fracCoordsList.append(xtal->cartToFrac(*(atomList.at(i).pos())));
 
     // Apply strain
     xtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix() * strainM);
@@ -1084,12 +1084,12 @@ namespace XtalOpt {
     }
 
     QList<Atom*> atoms = xtal->atoms();
-    QList<Vector3d> fracCoordsList;
+    QList<Vector3> fracCoordsList;
 
     for (int i = 0; i < atoms.size(); i++)
-      fracCoordsList.append(xtal->cartToFrac(*(atoms.at(i)->pos())));
+      fracCoordsList.append(xtal->cartToFrac(*(atoms.at(i).pos())));
 
-    Vector3d v;
+    Vector3 v;
     double shift;
     for (int i = 0; i < fracCoordsList.size(); i++) {
       v = fracCoordsList.at(i);

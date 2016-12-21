@@ -20,6 +20,7 @@
 
 #include <globalsearch/optimizer.h>
 #include <globalsearch/optbase.h>
+#include <globalsearch/structures/molecule.h>
 
 #include <QtOpenGL/QGLWidget>
 #include <QtGui/QProgressBar>

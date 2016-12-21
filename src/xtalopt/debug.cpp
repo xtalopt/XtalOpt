@@ -52,7 +52,7 @@ namespace XtalOptDebug
 
     // Set cell matrix
     out << "CELL_PARAMETERS (alat)" << endl;
-    const Eigen::Matrix3d m (OB2Eigen(xtal->OBUnitCell()->GetCellMatrix()));
+    const Matrix3 m (OB2Eigen(xtal->OBUnitCell()->GetCellMatrix()));
     out << m(0,0) << " " << m(0,1) << " " << m(0,2) << endl;
     out << m(1,0) << " " << m(1,1) << " " << m(1,2) << endl;
     out << m(2,0) << " " << m(2,1) << " " << m(2,2) << endl;
@@ -61,11 +61,11 @@ namespace XtalOptDebug
     // Atomic positions
     out << "ATOMIC_POSITIONS (crystal)" << endl;
     const QList<Atom*> atoms (xtal->atoms());
-    Eigen::Vector3d fcoord;
+    Vector3 fcoord;
     for (QList<Atom*>::const_iterator it = atoms.constBegin(),
            it_end = atoms.constEnd(); it != it_end; ++it) {
-      fcoord = xtal->cartToFrac(*(*it)->pos());
-      out << etab.GetSymbol((*it)->atomicNumber()) << " "
+      fcoord = xtal->cartToFrac(*(*it).pos());
+      out << etab.GetSymbol((*it).atomicNumber()) << " "
           << fcoord.x() << " "
           << fcoord.y() << " "
           << fcoord.z() << endl;

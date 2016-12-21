@@ -432,60 +432,56 @@ namespace GlobalSearch {
 
     // Structure specific data
     if (line == "coords") {
-      QList<GlobalSearch::Atom*> atoms = structure->atoms();
-      QList<GlobalSearch::Atom*>::const_iterator it;
-      const Eigen::Vector3d *vec;
+      std::vector<GlobalSearch::Atom>& atoms = structure->atoms();
+      std::vector<GlobalSearch::Atom>::const_iterator it;
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
-        vec = (*it)->pos();
-        rep += QString::number(vec->x()) + " ";
-        rep += QString::number(vec->y()) + " ";
-        rep += QString::number(vec->z()) + "\n";
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
+        const Vector3& vec = (*it).pos();
+        rep += QString::number(vec.x()) + " ";
+        rep += QString::number(vec.y()) + " ";
+        rep += QString::number(vec.z()) + "\n";
       }
     }
     else if (line == "coordsInternalFlags") {
-      QList<GlobalSearch::Atom*> atoms = structure->atoms();
-      QList<GlobalSearch::Atom*>::const_iterator it;
-      const Eigen::Vector3d *vec;
+      std::vector<GlobalSearch::Atom>& atoms = structure->atoms();
+      std::vector<GlobalSearch::Atom>::const_iterator it;
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
-        vec = (*it)->pos();
-        rep += QString::number(vec->x()) + " 1 ";
-        rep += QString::number(vec->y()) + " 1 ";
-        rep += QString::number(vec->z()) + " 1\n";
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
+        const Vector3& vec = (*it).pos();
+        rep += QString::number(vec.x()) + " 1 ";
+        rep += QString::number(vec.y()) + " 1 ";
+        rep += QString::number(vec.z()) + " 1\n";
       }
     }
     else if (line == "coordsSuffixFlags") {
-      QList<GlobalSearch::Atom*> atoms = structure->atoms();
-      QList<GlobalSearch::Atom*>::const_iterator it;
-      const Eigen::Vector3d *vec;
+      std::vector<GlobalSearch::Atom>& atoms = structure->atoms();
+      std::vector<GlobalSearch::Atom>::const_iterator it;
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
-        vec = (*it)->pos();
-        rep += QString::number(vec->x()) + " ";
-        rep += QString::number(vec->y()) + " ";
-        rep += QString::number(vec->z()) + " 1 1 1\n";
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
+        const Vector3& vec = (*it).pos();
+        rep += QString::number(vec.x()) + " ";
+        rep += QString::number(vec.y()) + " ";
+        rep += QString::number(vec.z()) + " 1 1 1\n";
       }
     }
     else if (line == "coordsId") {
-      QList<GlobalSearch::Atom*> atoms = structure->atoms();
-      QList<GlobalSearch::Atom*>::const_iterator it;
-      const Eigen::Vector3d *vec;
+      std::vector<GlobalSearch::Atom>& atoms = structure->atoms();
+      std::vector<GlobalSearch::Atom>::const_iterator it;
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
-        rep += QString::number((*it)->atomicNumber()) + " ";
-        vec = (*it)->pos();
-        rep += QString::number(vec->x()) + " ";
-        rep += QString::number(vec->y()) + " ";
-        rep += QString::number(vec->z()) + "\n";
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
+        rep += QString::number((*it).atomicNumber()) + " ";
+        const Vector3& vec = (*it).pos();
+        rep += QString::number(vec.x()) + " ";
+        rep += QString::number(vec.y()) + " ";
+        rep += QString::number(vec.z()) + "\n";
       }
     }
     else if (line == "numAtoms")	rep += QString::number(structure->numAtoms());

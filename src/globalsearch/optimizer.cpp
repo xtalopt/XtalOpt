@@ -486,19 +486,19 @@ namespace GlobalSearch {
     double energy=0.0;
     double enthalpy=0.0;
     QList<unsigned int> atomicNums;
-    QList<Eigen::Vector3d> coords;
-    Eigen::Matrix3d cellMat = Eigen::Matrix3d::Zero();
+    QList<Vector3> coords;
+    Matrix3 cellMat = Matrix3::Zero();
 
     // Ensure that there are the correct number of atoms in the
     // structure
     while (structure->numAtoms() < obmol.NumAtoms())
       structure->addAtom();
     while (structure->numAtoms() > obmol.NumAtoms())
-      structure->removeAtom(structure->atoms().last());
+      structure->removeAtom(structure->atoms().back());
 
     // Atomic data
     FOR_ATOMS_OF_MOL(atm, obmol) {
-      coords.append(Eigen::Vector3d(atm->x(), atm->y(), atm->z()));
+      coords.append(Vector3(atm->x(), atm->y(), atm->z()));
       atomicNums.append(atm->GetAtomicNum());
     }
 

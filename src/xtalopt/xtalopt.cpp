@@ -506,8 +506,8 @@ namespace XtalOpt {
     for (uint i = 0; i < xtal->numAtoms(); i++) {
       atom1 = oldXtal->addAtom();
       atom2 = xtal->atom(i);
-      atom1->setPos(atom2->pos());
-      atom1->setAtomicNumber(atom2->atomicNumber());
+      atom1->setPos(atom2.pos());
+      atom1->setAtomicNumber(atom2.atomicNumber());
     }
     oldXtal->findSpaceGroup(tol_spg);
     oldXtal->resetFailCount();
@@ -1045,7 +1045,7 @@ namespace XtalOpt {
     // Use fractional coordinates:
     out << "Direct\n";
     // Coordinates of each atom (sorted alphabetically by symbol)
-    QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
+    QList<Vector3> coords = xtal->getAtomCoordsFrac();
     for (int i = 0; i < coords.size(); i++) {
       out << QString("  %1 %2 %3\n")
         .arg(coords[i].x(), 12, 'f', 8)
@@ -1084,7 +1084,7 @@ namespace XtalOpt {
     int symbolCount = 0;
     int j = 1;
     // Coordinates of each atom (sorted alphabetically by symbol)
-    QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
+    QList<Vector3> coords = xtal->getAtomCoordsFrac();
     for (int i = 0; i < coords.size(); i++) {
       if (j > atomCounts[symbolCount]) {
           symbolCount++;
@@ -1773,8 +1773,8 @@ namespace XtalOpt {
     // Add the atoms in...
     for (size_t i = 0; i < xtal->numAtoms(); i++) {
       newAtom = nxtal->addAtom();
-      newAtom->setAtomicNumber(xtal->atom(i)->atomicNumber());
-      newAtom->setPos(xtal->atom(i)->pos());
+      newAtom->setAtomicNumber(xtal->atom(i).atomicNumber());
+      newAtom->setPos(xtal->atom(i).pos());
     }
     // Reduce it to primitive...
     nxtal->reduceToPrimitive(tol_spg);
@@ -1830,8 +1830,8 @@ namespace XtalOpt {
       QList<Atom*> atoms = xtal->atoms();
       for (int i = 0; i < atoms.size(); i++) {
         Atom* atom = myXtal->addAtom();
-        atom->setAtomicNumber(atoms.at(i)->atomicNumber());
-        atom->setPos(atoms.at(i)->pos());
+        atom->setAtomicNumber(atoms.at(i).atomicNumber());
+        atom->setPos(atoms.at(i).pos());
       }
 
       // Lock parent and extract info
@@ -1888,7 +1888,7 @@ namespace XtalOpt {
     QList<Atom*> oneFUatoms = myXtal->atoms();
 
     // Credit for the next 37 lines of this function goes to Zack Falls!
-    // First get OB matrix, extract vectors, then convert to Eigen::Vector3d's
+    // First get OB matrix, extract vectors, then convert to Vector3's
     matrix3x3 obcellMatrix = myXtal->OBUnitCell()->GetCellMatrix();
     OpenBabel::vector3 obU1 = obcellMatrix.GetRow(0);
     OpenBabel::vector3 obU2 = obcellMatrix.GetRow(1);
@@ -1908,7 +1908,7 @@ namespace XtalOpt {
       for (int j = 0; j <= b; j++) {
         for (int k = 0; k <= c; k++) {
           if (i == 0 && j == 0 && k == 0) continue;
-          Eigen::Vector3d uVecs(
+          Vector3 uVecs(
                   obU1.x() * i + obU2.x() * j + obU3.x() * k,
                   obU1.y() * i + obU2.y() * j + obU3.y() * k,
                   obU1.z() * i + obU2.z() * j + obU3.z() * k);
@@ -1916,8 +1916,8 @@ namespace XtalOpt {
           foreach(Atom *atom, oneFUatoms) {
               Atom *newAtom = myXtal->addAtom();
               *newAtom = *atom;
-              newAtom->setPos((*atom->pos())+uVecs);
-              newAtom->setAtomicNumber(atom->atomicNumber());
+              newAtom->setPos((*atom.pos())+uVecs);
+              newAtom->setAtomicNumber(atom.atomicNumber());
           }
         }
       }
@@ -2069,7 +2069,7 @@ namespace XtalOpt {
     // Count atoms of each type
     for (size_t i = 0; i < xtal->numAtoms(); ++i) {
       int typeIndex = atomTypes.indexOf(
-            static_cast<unsigned int>(xtal->atom(i)->atomicNumber()));
+            static_cast<unsigned int>(xtal->atom(i).atomicNumber()));
       // Type not found:
       if (typeIndex == -1) {
         qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
@@ -2258,7 +2258,7 @@ namespace XtalOpt {
 
     // Sometimes, all the atom positions are set to 'nan' for an unknown reason
     // Make sure that the position of the first atom is not nan
-    if (GS_IS_NAN_OR_INF(xtal->atoms().at(0)->pos()->x())) {
+    if (GS_IS_NAN_OR_INF(xtal->atoms().at(0).pos()->x())) {
       qDebug() << "Discarding structure -- contains 'nan' atom positions";
       return false;
     }
@@ -2271,8 +2271,8 @@ namespace XtalOpt {
         Atom *a1 = xtal->atom(atom1);
         Atom *a2 = xtal->atom(atom2);
         const double minIAD =
-            this->comp.value(a1->atomicNumber()).minRadius +
-            this->comp.value(a2->atomicNumber()).minRadius;
+            this->comp.value(a1.atomicNumber()).minRadius +
+            this->comp.value(a2.atomicNumber()).minRadius;
 
         qDebug() << "Discarding structure -- Bad IAD ("
                  << IAD << " < "
@@ -2336,8 +2336,8 @@ namespace XtalOpt {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        const Eigen::Vector3d coords = xtal->cartToFrac(*((*it)->pos()));
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
+        const Vector3 coords = xtal->cartToFrac(*((*it).pos()));
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
         rep += QString::number(coords.z()) + "\n";
@@ -2360,8 +2360,8 @@ namespace XtalOpt {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        const Eigen::Vector3d coords = xtal->cartToFrac(*(*it)->pos());
-        QString currAtom = static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber()));
+        const Vector3 coords = xtal->cartToFrac(*(*it).pos());
+        QString currAtom = static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber()));
         int i = symbol.indexOf(currAtom)+1;
         rep += " ";
         QString inp;
@@ -2380,9 +2380,9 @@ namespace XtalOpt {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        const Eigen::Vector3d coords = xtal->cartToFrac(*(*it)->pos());
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it)->atomicNumber())) + " ";
-        rep += QString::number((*it)->atomicNumber()) + " ";
+        const Vector3 coords = xtal->cartToFrac(*(*it).pos());
+        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
+        rep += QString::number((*it).atomicNumber()) + " ";
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
         rep += QString::number(coords.z()) + "\n";
@@ -2394,8 +2394,8 @@ namespace XtalOpt {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        const Eigen::Vector3d coords = xtal->cartToFrac(*((*it)->pos()));
-        const char *symbol = OpenBabel::etab.GetSymbol((*it)->atomicNumber());
+        const Vector3 coords = xtal->cartToFrac(*((*it).pos()));
+        const char *symbol = OpenBabel::etab.GetSymbol((*it).atomicNumber());
         rep += QString("%1 core %2 %3 %4\n")
             .arg(symbol).arg(coords.x()).arg(coords.y()).arg(coords.z());
         rep += QString("%1 shel %2 %3 %4\n")
@@ -2491,7 +2491,7 @@ namespace XtalOpt {
       // Use fractional coordinates:
       rep += "Direct\n";
       // Coordinates of each atom (sorted alphabetically by symbol)
-      QList<Eigen::Vector3d> coords = xtal->getAtomCoordsFrac();
+      QList<Vector3> coords = xtal->getAtomCoordsFrac();
       for (int i = 0; i < coords.size(); i++) {
         rep += QString("  %1 %2 %3\n")
           .arg(coords[i].x(), 12, 'f', 8)
@@ -3077,8 +3077,8 @@ namespace XtalOpt {
     QList<Atom*> atoms = smallerFormulaUnitXtal->atoms();
     for (size_t i = 0; i < atoms.size(); i++) {
       Atom* atom = tempXtal->addAtom();
-      atom->setAtomicNumber(atoms.at(i)->atomicNumber());
-      atom->setPos(atoms.at(i)->pos());
+      atom->setAtomicNumber(atoms.at(i).atomicNumber());
+      atom->setPos(atoms.at(i).pos());
     }
 
     Xtal* tempXtal2 = generateSuperCell(

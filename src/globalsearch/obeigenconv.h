@@ -27,16 +27,16 @@
 
 namespace Avogadro {
 
-  inline Eigen::Matrix3d OB2Eigen(const OpenBabel::matrix3x3 &obm)
+  inline Matrix3 OB2Eigen(const OpenBabel::matrix3x3 &obm)
   {
-    Eigen::Matrix3d mat;
+    Matrix3 mat;
     mat(0,0)=obm.Get(0,0);mat(0,1)=obm.Get(0,1);mat(0,2)=obm.Get(0,2);
     mat(1,0)=obm.Get(1,0);mat(1,1)=obm.Get(1,1);mat(1,2)=obm.Get(1,2);
     mat(2,0)=obm.Get(2,0);mat(2,1)=obm.Get(2,1);mat(2,2)=obm.Get(2,2);
     return mat;
   }
 
-  inline OpenBabel::matrix3x3 Eigen2OB(const Eigen::Matrix3d &mat)
+  inline OpenBabel::matrix3x3 Eigen2OB(const Matrix3 &mat)
   {
     OpenBabel::matrix3x3 obm;
     obm.Set(0,0,mat(0,0));obm.Set(0,1,mat(0,1));obm.Set(0,2,mat(0,2));
@@ -45,13 +45,13 @@ namespace Avogadro {
     return obm;
   }
 
-  inline Eigen::Vector3d OB2Eigen(const OpenBabel::vector3 &obv)
+  inline Vector3 OB2Eigen(const OpenBabel::vector3 &obv)
   {
-    Eigen::Vector3d vec (obv.x(), obv.y(), obv.z());
+    Vector3 vec (obv.x(), obv.y(), obv.z());
     return vec;
   }
 
-  inline OpenBabel::vector3 Eigen2OB(const Eigen::Vector3d &vec)
+  inline OpenBabel::vector3 Eigen2OB(const Vector3 &vec)
   {
     OpenBabel::vector3 obv (vec.x(), vec.y(), vec.z());
     return obv;

@@ -45,7 +45,7 @@ namespace XtalOpt {
 
     // Virtuals from structure
     bool getShortestInteratomicDistance(double & shortest) const;
-    bool getSquaredAtomicDistancesToPoint(const Eigen::Vector3d &coord,
+    bool getSquaredAtomicDistancesToPoint(const Vector3 &coord,
                                           QVector<double> *distances);
     bool getNearestNeighborDistance(const double x, const double y, const double z,
                                     double & shortest) const;
@@ -113,11 +113,11 @@ namespace XtalOpt {
 
     // Calculate the matrix used in the above function. Matrix has row vectors.
     // If the current cell cannot be rotated in a numerically stable
-    // manner, this will return Eigen::Matrix3d::Zeros;
+    // manner, this will return Matrix3::Zeros;
     // Use matrix @a m
-    static Eigen::Matrix3d getCellMatrixInStandardOrientation(const Eigen::Matrix3d &m);
+    static Matrix3 getCellMatrixInStandardOrientation(const Matrix3 &m);
     // Use this's cell
-    Eigen::Matrix3d getCellMatrixInStandardOrientation() const;
+    Matrix3 getCellMatrixInStandardOrientation() const;
 
     // Randomly skew the lattice and translate the coordinates. Coordinates
     // may be reflected, but the structures should be energetically
@@ -129,18 +129,18 @@ namespace XtalOpt {
       return cell()->FractionalToCartesian(fracCoords);}
     OpenBabel::vector3* fracToCart(const OpenBabel::vector3* fracCoords) const {
       return new OpenBabel::vector3 (cell()->FractionalToCartesian(*fracCoords));}
-    Eigen::Vector3d fracToCart(const Eigen::Vector3d & fracCoords) const;
-    Eigen::Vector3d* fracToCart(const Eigen::Vector3d* fracCoords) const;
+    Vector3 fracToCart(const Vector3 & fracCoords) const;
+    Vector3* fracToCart(const Vector3* fracCoords) const;
 
     OpenBabel::vector3 cartToFrac(const OpenBabel::vector3 & cartCoords) const {
       return cell()->CartesianToFractional(cartCoords);}
     OpenBabel::vector3* cartToFrac(const OpenBabel::vector3* cartCoords) const {
       return new OpenBabel::vector3 (cell()->CartesianToFractional(*cartCoords));}
-    Eigen::Vector3d cartToFrac(const Eigen::Vector3d & cartCoords) const;
-    Eigen::Vector3d* cartToFrac(const Eigen::Vector3d* cartCoords) const;
+    Vector3 cartToFrac(const Vector3 & cartCoords) const;
+    Vector3* cartToFrac(const Vector3* cartCoords) const;
 
     // Convenience retreval
-    QList<Eigen::Vector3d> getAtomCoordsFrac() const;
+    QList<Vector3> getAtomCoordsFrac() const;
 
     // Spacegroup
     uint getSpaceGroupNumber();
@@ -168,9 +168,9 @@ namespace XtalOpt {
 
     QList<QString> currentAtomicSymbols();
     inline void updateMolecule(const QList<QString> &ids,
-                               const QList<Eigen::Vector3d> &coords);
+                               const QList<Vector3> &coords);
     void setCurrentFractionalCoords(const QList<QString> &ids,
-                                    const QList<Eigen::Vector3d> &fcoords);
+                                    const QList<Vector3> &fcoords);
     void fillUnitCell(uint spg, double cartTol = 0.05);
     void reduceToAsymmetricUnit(double cartTol = 0.05);
 
@@ -204,8 +204,8 @@ namespace XtalOpt {
 
     // For random representation generation
     static void generateValidCOBs();
-    static QVector<Eigen::Matrix3d> m_transformationMatrices;
-    static QVector<Eigen::Matrix3d> m_mixMatrices;
+    static QVector<Matrix3> m_transformationMatrices;
+    static QVector<Matrix3> m_mixMatrices;
     // Ensure that only one thread generates the COB vectors
     static QMutex m_validCOBsGenMutex;
 
@@ -246,9 +246,9 @@ namespace XtalOpt {
     // bool reduceToPrimitive(const double cartTol = 0.05)
     // It was obtained from David Lonie's identical reduceToPrimitive() function
     // in his crystallography extension of Avogadro.
-    unsigned int reduceToPrimitive(QList<Eigen::Vector3d> *fcoords,
+    unsigned int reduceToPrimitive(QList<Vector3> *fcoords,
                                    QList<unsigned int> *atomicNums,
-                                   Eigen::Matrix3d *cellMatrix,
+                                   Matrix3 *cellMatrix,
                                    const double cartTol = 0.05);
     void ctor(QObject *parent=0);
     OpenBabel::OBUnitCell* cell() const;

@@ -45,7 +45,7 @@ namespace GlobalSearch {
    * adding new functionality to help with common tasks during a
    * global structure search.
    */
-  class Structure : public GlobalSearch::Molecule
+  class Structure : public QObject, public GlobalSearch::Molecule
   {
     Q_OBJECT
 
@@ -76,24 +76,14 @@ namespace GlobalSearch {
     /**
      * Assignment operator. Makes a new structure with all Structure
      * specific information copied from \a other.
-     * @sa copyStructure
      */
     Structure& operator=(const Structure& other);
 
     /**
      * Assignment operator. Makes a new structure with all Molecule
      * specific information copied from \a other.
-     * @sa copyStructure
      */
     Structure& operator=(const GlobalSearch::Molecule& other);
-
-
-    /**
-     * Only update this structure's atoms, bonds, and residue information
-     * from \a other.
-     * @sa operator=
-     */
-    Structure& copyStructure(const Structure &other);
 
     /**
      * Enum containing possible optimization statuses.
@@ -450,18 +440,18 @@ namespace GlobalSearch {
      * @sa getNearestNeighborHistogram
      * @sa getNeighbors
      */
-    virtual bool getNearestNeighborDistance(const GlobalSearch::Atom *atom,
+    virtual bool getNearestNeighborDistance(const GlobalSearch::Atom& atom,
                                             double & shortest) const;
 
     /**
      * @return a list of all atoms within \a cutoff of
      * (\a x,\a y,\a z) and, optionally, their \a distances.
      */
-    QList<GlobalSearch::Atom*> getNeighbors (const double x,
-                                         const double y,
-                                         const double z,
-                                         const double cutoff,
-                                         QList<double> *distances = 0) const;
+    QList<GlobalSearch::Atom> getNeighbors (const double x,
+                                            const double y,
+                                            const double z,
+                                            const double cutoff,
+                                            QList<double> *distances = 0) const;
 
     /**
      * @overload
@@ -469,9 +459,9 @@ namespace GlobalSearch {
      * @return a list of all atoms within \a cutoff of \a atom and,
      *  optionally, their \a distances.
      */
-    QList<GlobalSearch::Atom*> getNeighbors (const GlobalSearch::Atom *atom,
-                                         const double cutoff,
-                                         QList<double> *distances = 0) const;
+    QList<GlobalSearch::Atom> getNeighbors (const GlobalSearch::Atom& atom,
+                                            const double cutoff,
+                                            QList<double> *distances = 0) const;
 
     /** Get the default histogram data.
      */
@@ -524,7 +514,7 @@ namespace GlobalSearch {
                                       double min = 0.0,
                                       double max = 10.0,
                                       double step = 0.01,
-                                      GlobalSearch::Atom *atom = 0) const;
+                                      const GlobalSearch::Atom& atom = Atom()) const;
 
     /** Generate data for a histogram of the distances between all
      * atoms, or between one atom and all others.
@@ -563,7 +553,7 @@ namespace GlobalSearch {
                                       double min = 0.0,
                                       double max = 10.0,
                                       double step = 0.01,
-                                      GlobalSearch::Atom *atom = 0) const;
+                                      const GlobalSearch::Atom& atom = Atom()) const;
 
     /** Add an atom to a random position in the Structure. If no other
      * atoms exist in the Structure, the new atom is placed at
@@ -581,14 +571,11 @@ namespace GlobalSearch {
      * omit for no limit)
      *
      * @param maxAttempts Maximum number of tries before giving up.
-     *
-     * @param atom Returns a pointer to the new atom.
      */
     virtual bool addAtomRandomly(uint atomicNumber,
                                  double minIAD = 0.0,
                                  double maxIAD = 0.0,
-                                 int maxAttempts = 1000,
-                                 GlobalSearch::Atom **atom = 0);
+                                 int maxAttempts = 1000);
 
     /** @return An alphabetized list of the atomic symbols for the
      * atomic species present in the Structure.
@@ -853,10 +840,10 @@ namespace GlobalSearch {
      * @param cell Matrix of cell vectors (row vectors)
      */
     virtual void updateAndSkipHistory(const QList<unsigned int> &atomicNums,
-                                      const QList<Eigen::Vector3d> &coords,
+                                      const QList<Vector3> &coords,
                                       const double energy = 0,
                                       const double enthalpy = 0,
-                                      const Eigen::Matrix3d &cell = Eigen::Matrix3d::Zero());
+                                      const Matrix3 &cell = Matrix3::Zero());
 
     /**
      * Update the coordinates, enthalpy and/or energy, and optionally
@@ -870,10 +857,10 @@ namespace GlobalSearch {
      * @param cell Matrix of cell vectors (row vectors)
      */
     virtual void updateAndAddToHistory(const QList<unsigned int> &atomicNums,
-                                       const QList<Eigen::Vector3d> &coords,
+                                       const QList<Vector3> &coords,
                                        const double energy = 0,
                                        const double enthalpy = 0,
-                                       const Eigen::Matrix3d &cell = Eigen::Matrix3d::Zero());
+                                       const Matrix3 &cell = Matrix3::Zero());
 
     /**
      * @param index Index of entry to remove from structure's history.
@@ -904,15 +891,15 @@ namespace GlobalSearch {
      * cell vectors (row vectors). Can be zero if this is not needed.
      *
      * @note If the system is not periodic, the cell matrix will be a
-     * zero matrix. Use Eigen::Matrix3d::isZero() to test for a valid
+     * zero matrix. Use Matrix3::isZero() to test for a valid
      * cell.
      */
     virtual void retrieveHistoryEntry(unsigned int index,
                                       QList<unsigned int> *atomicNums,
-                                      QList<Eigen::Vector3d> *coords,
+                                      QList<Vector3> *coords,
                                       double *energy,
                                       double *enthalpy,
-                                      Eigen::Matrix3d *cell);
+                                      Matrix3 *cell);
 
       /**
        * @return Number of history entries available
@@ -953,12 +940,6 @@ namespace GlobalSearch {
      * @sa getEnergy
      */
     void resetEnergy() { m_energy = 0.0; };
-
-    /** Determine and set the energy using a forcefield method from
-     * OpenBabel.
-     * @param ff A string identifying the forcefield to use (default: UFF).
-     */
-    void setOBEnergy(const QString &ff = QString("UFF"));
 
     /** Set the Structure's energetic ranking.
      * @param rank The Structure's energetic ranking.
@@ -1319,8 +1300,8 @@ namespace GlobalSearch {
     QList<QList<unsigned int> > m_histAtomicNums;
     QList<double> m_histEnthalpies;
     QList<double> m_histEnergies;
-    QList<QList<Eigen::Vector3d> > m_histCoords;
-    QList<Eigen::Matrix3d> m_histCells;
+    QList<QList<Vector3> > m_histCoords;
+    QList<Matrix3> m_histCells;
 
     // Pointer to parent structure if one is saved.
     Structure* m_parentStructure;

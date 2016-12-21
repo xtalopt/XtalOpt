@@ -17,7 +17,7 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/obeigenconv.h>
 
-#include <globalsearch/structure/molecule.h>
+#include <globalsearch/structures/molecule.h>
 
 #include <openbabel/generic.h>
 #include <openbabel/forcefield.h>
@@ -39,7 +39,7 @@ using namespace std;
 namespace GlobalSearch {
 
   Structure::Structure(QObject *parent) :
-    Molecule(parent),
+    Molecule(),
     m_hasEnthalpy(false),
     m_updatedSinceDupChecked(true),
     m_primitiveChecked(false),
@@ -224,7 +224,7 @@ namespace GlobalSearch {
 
   Structure& Structure::operator=(const Structure& other)
   {
-    copyStructure(other);
+    Molecule::operator=(other);
 
     // Set properties
     m_hasEnthalpy                = other.m_hasEnthalpy;
@@ -267,18 +267,6 @@ namespace GlobalSearch {
     return *this;
   }
 
-  Structure& Structure::copyStructure(const Structure &other)
-  {
-    Molecule::operator=(other);
-
-    if (other.OBUnitCell()) {
-      OpenBabel::OBUnitCell *cell = new OpenBabel::OBUnitCell(*other.OBUnitCell());
-      setOBUnitCell(cell);
-    }
-
-    return *this;
-  }
-
   void Structure::writeStructureSettings(const QString &filename)
   {
     SETTINGS(filename);
@@ -299,7 +287,7 @@ namespace GlobalSearch {
     settings->setValue("currentOptStep", getCurrentOptStep());
     settings->setValue("parents", getParents());
     settings->setValue("rempath", getRempath());
-    settings->setValue("fileName", getFileName());
+    settings->setValue("fileName", fileName());
     settings->setValue("status", int(getStatus()));
     settings->setValue("failCount", getFailCount());
     settings->setValue("startTime", getOptTimerStart().toString());
@@ -334,7 +322,7 @@ namespace GlobalSearch {
     settings->beginWriteArray("coords");
     for (int i = 0; i < m_histCoords.size(); i++) {
       settings->setArrayIndex(i);
-      const QList<Eigen::Vector3d> *ptr = &(m_histCoords.at(i));
+      const QList<Vector3> *ptr = &(m_histCoords.at(i));
       settings->beginWriteArray(QString("coords-%1").arg(i));
       for (int j = 0; j < ptr->size(); j++) {
         settings->setArrayIndex(j);
@@ -366,7 +354,7 @@ namespace GlobalSearch {
     settings->beginWriteArray("cells");
     for (int i = 0; i < m_histCells.size(); i++) {
       settings->setArrayIndex(i);
-      const Eigen::Matrix3d *ptr = &m_histCells.at(i);
+      const Matrix3 *ptr = &m_histCells.at(i);
       settings->setValue("00", (*ptr)(0, 0));
       settings->setValue("01", (*ptr)(0, 1));
       settings->setValue("02", (*ptr)(0, 2));
@@ -442,13 +430,13 @@ namespace GlobalSearch {
     for (int i = 0; i < size; i++) {
       settings->setArrayIndex(i);
       size2 = settings->beginReadArray(QString("coords-%1").arg(i));
-      QList<Eigen::Vector3d> cur;
+      QList<Vector3> cur;
       for (int j = 0; j < size2; j++) {
         settings->setArrayIndex(j);
         double x = settings->value("x").toDouble();
         double y = settings->value("y").toDouble();
         double z = settings->value("z").toDouble();
-        cur.append(Eigen::Vector3d(x, y, z));
+        cur.append(Vector3(x, y, z));
         }
       settings->endArray();
       m_histCoords.append(cur);
@@ -478,7 +466,7 @@ namespace GlobalSearch {
     m_histCells.clear();
     for (int i = 0; i < size; i++) {
       settings->setArrayIndex(i);
-      Eigen::Matrix3d cur;
+      Matrix3 cur;
       cur(0, 0) = settings->value("00").toDouble();
       cur(0, 1) = settings->value("01").toDouble();
       cur(0, 2) = settings->value("02").toDouble();
@@ -535,15 +523,15 @@ namespace GlobalSearch {
     settings->beginWriteArray("atomicNums");
     for (size_t i = 0; i < numAtoms(); i++) {
       settings->setArrayIndex(i);
-      settings->setValue("value", QString::number(atom(i)->atomicNumber()));
+      settings->setValue("value", QString::number(atom(i).atomicNumber()));
     }
     settings->endArray();
 
     // Cartesian coords
-    Vector3d cartCoords;
+    Vector3 cartCoords;
     settings->beginWriteArray("coords");
     for (size_t i = 0; i < numAtoms(); i++) {
-      cartCoords = *(atom(i)->pos());
+      cartCoords = atom(i).pos();
       settings->setArrayIndex(i);
       settings->setValue("x", QString::number(cartCoords[0]));
       settings->setValue("y", QString::number(cartCoords[1]));
@@ -553,21 +541,20 @@ namespace GlobalSearch {
 
     // Check to see if cell info exists before saving it...
     // This is important for non-periodic structures
-    OpenBabel::OBMol obmol = OBMol();
-    if (obmol.HasData(OBGenericDataType::UnitCell)) {
+    if (hasUnitCell()) {
       settings->setValue("hasCellInfo", true);
       // Cell info
-      matrix3x3 obcell = OBUnitCell()->GetCellMatrix();
+      Matrix3 uc = unitCell().cellMatrix();
       settings->beginGroup("cell");
-      settings->setValue("00", (obcell.Get(0,0)));
-      settings->setValue("01", (obcell.Get(0,1)));
-      settings->setValue("02", (obcell.Get(0,2)));
-      settings->setValue("10", (obcell.Get(1,0)));
-      settings->setValue("11", (obcell.Get(1,1)));
-      settings->setValue("12", (obcell.Get(1,2)));
-      settings->setValue("20", (obcell.Get(2,0)));
-      settings->setValue("21", (obcell.Get(2,1)));
-      settings->setValue("22", (obcell.Get(2,2)));
+      settings->setValue("00", (uc(0,0)));
+      settings->setValue("01", (uc(0,1)));
+      settings->setValue("02", (uc(0,2)));
+      settings->setValue("10", (uc(1,0)));
+      settings->setValue("11", (uc(1,1)));
+      settings->setValue("12", (uc(1,2)));
+      settings->setValue("20", (uc(2,0)));
+      settings->setValue("21", (uc(2,1)));
+      settings->setValue("22", (uc(2,2)));
       settings->endGroup(); // cell
     }
     settings->endGroup(); // structure/current
@@ -593,19 +580,19 @@ namespace GlobalSearch {
     settings->endArray();
 
     size = settings->beginReadArray("coords");
-    QList<Vector3d> cartCoords;
+    QList<Vector3> cartCoords;
     double x, y, z;
     for (int i = 0; i < size; i++) {
       settings->setArrayIndex(i);
       x = settings->value("x").toDouble();
       y = settings->value("y").toDouble();
       z = settings->value("z").toDouble();
-      cartCoords.append(Eigen::Vector3d(x, y, z));
+      cartCoords.append(Vector3(x, y, z));
     }
     settings->endArray();
 
     if (settings->value("hasCellInfo", false).toBool()) {
-      Eigen::Matrix3d cellMatrix;
+      Matrix3 cellMatrix;
       settings->beginGroup("cell");
       cellMatrix(0, 0) = settings->value("00").toDouble();
       cellMatrix(0, 1) = settings->value("01").toDouble();
@@ -619,21 +606,17 @@ namespace GlobalSearch {
       settings->endGroup();
 
       // Set the cell info
-      OpenBabel::OBUnitCell *obcell = OBUnitCell();
-      obcell->SetData(Eigen2OB(cellMatrix));
-      setOBUnitCell(obcell);
+      unitCell().setCellMatrix(cellMatrix);
     }
 
     // Just in case there were atoms set elsewhere for some reason...
-    QList<Atom*> atomList = atoms();
-    for (size_t i = 0; i < atomList.size(); i++)
-      this->removeAtom(atomList.at(i));
+    clearAtoms();
 
     // Now let's add in the atoms...
     for (size_t i = 0; i < atomicNums.size(); i++) {
-      Atom* newAtom = this->addAtom();
-      newAtom->setAtomicNumber(atomicNums.at(i));
-      newAtom->setPos(cartCoords.at(i));
+      Atom& newAtom = addAtom();
+      newAtom.setAtomicNumber(atomicNums.at(i));
+      newAtom.setPos(cartCoords.at(i));
     }
     settings->endGroup();
   }
@@ -644,21 +627,21 @@ namespace GlobalSearch {
   }
 
   void Structure::updateAndSkipHistory(const QList<unsigned int> &atomicNums,
-                                       const QList<Eigen::Vector3d> &coords,
+                                       const QList<Vector3> &coords,
                                        const double energy,
                                        const double enthalpy,
-                                       const Eigen::Matrix3d &cell)
+                                       const Matrix3& cell)
   {
     Q_ASSERT_X(atomicNums.size() == coords.size() && coords.size() == numAtoms(),
                Q_FUNC_INFO,
                "Lengths of atomicNums and coords must match numAtoms().");
 
     // Update atoms
-    Atom *atom;
+    Atom atom;
     for (int i = 0; i < numAtoms(); i++) {
-      atom = atoms().at(i);
-      atom->setAtomicNumber(atomicNums.at(i));
-      atom->setPos(coords.at(i));
+      atom = atoms()[i];
+      atom.setAtomicNumber(atomicNums.at(i));
+      atom.setPos(coords.at(i));
     }
 
     // Update energy/enthalpy
@@ -674,27 +657,16 @@ namespace GlobalSearch {
     m_energy = energy;
 
     // Update cell if necessary
-    if (!cell.isZero()) {
-      OpenBabel::matrix3x3 obmat;
-      for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-          obmat.Set(i,j,cell(i,j));
-        }
-      }
-      OpenBabel::OBUnitCell *obcell = OBUnitCell();
-      obcell->SetData(obmat);
-      setOBUnitCell(obcell);
-    }
+    if (!cell.isZero())
+      unitCell().setCellMatrix(cell);
 
-    emit moleculeChanged();
-    update();
   }
 
   void Structure::updateAndAddToHistory(const QList<unsigned int> &atomicNums,
-                                        const QList<Eigen::Vector3d> &coords,
+                                        const QList<Vector3> &coords,
                                         const double energy,
                                         const double enthalpy,
-                                        const Eigen::Matrix3d &cell)
+                                        const Matrix3& cell)
   {
     Q_ASSERT_X(atomicNums.size() == coords.size() && coords.size() == numAtoms(),
                Q_FUNC_INFO,
@@ -708,11 +680,11 @@ namespace GlobalSearch {
     m_histCells.append(cell);
 
     // Update atoms
-    Atom *atom;
+    Atom atom;
     for (int i = 0; i < numAtoms(); i++) {
       atom = atoms().at(i);
-      atom->setAtomicNumber(atomicNums.at(i));
-      atom->setPos(coords.at(i));
+      atom.setAtomicNumber(atomicNums.at(i));
+      atom.setPos(coords.at(i));
     }
 
     // Update energy/enthalpy
@@ -728,20 +700,9 @@ namespace GlobalSearch {
     m_energy = energy;
 
     // Update cell if necessary
-    if (!cell.isZero()) {
-      OpenBabel::matrix3x3 obmat;
-      for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-          obmat.Set(i,j,cell(i,j));
-        }
-      }
-      OpenBabel::OBUnitCell *obcell = OBUnitCell();
-      obcell->SetData(obmat);
-      setOBUnitCell(obcell);
-    }
+    if (!cell.isZero())
+      unitCell().setCellMatrix(cell);
 
-    emit moleculeChanged();
-    update();
   }
 
   void Structure::deleteFromHistory(unsigned int index) {
@@ -757,10 +718,10 @@ namespace GlobalSearch {
 
   void Structure::retrieveHistoryEntry(unsigned int index,
                                        QList<unsigned int> *atomicNums,
-                                       QList<Eigen::Vector3d> *coords,
+                                       QList<Vector3> *coords,
                                        double *energy,
                                        double *enthalpy,
-                                       Eigen::Matrix3d *cell)
+                                       Matrix3 *cell)
   {
     Q_ASSERT_X(index <= sizeOfHistory() - 1, Q_FUNC_INFO,
                "Requested history index greater than the number of available entries.");
@@ -783,26 +744,31 @@ namespace GlobalSearch {
 
   }
 
-  bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom)
+  bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts)
   {
     INIT_RANDOM_GENERATOR();
     double IAD = -1;
     int i = 0;
-    vector3 coords;
+    Vector3 coords;
 
     // For first atom, add to 0, 0, 0
     if (numAtoms() == 0) {
-      coords = vector3 (0,0,0);
+      coords = Vector3(0,0,0);
     }
     else {
       do {
         // Generate random coordinates
         IAD = -1;
-        double x = RANDDOUBLE() * radius() + maxIAD;
-        double y = RANDDOUBLE() * radius() + maxIAD;
-        double z = RANDDOUBLE() * radius() + maxIAD;
+        double x = RANDDOUBLE();
+        double y = RANDDOUBLE();
+        double z = RANDDOUBLE();
+        coords = Vector3(x,y,z);
 
-        coords.Set(x,y,z);
+        coords = unitCell().toCartesian(coords);
+        coords[0] += maxIAD;
+        coords[1] += maxIAD;
+        coords[2] += maxIAD;
+
         if (minIAD != -1) {
           getNearestNeighborDistance(x, y, z, IAD);
         }
@@ -813,25 +779,10 @@ namespace GlobalSearch {
       if (i >= maxAttempts) return false;
     }
 
-    Atom *atm = addAtom();
-    atom = &atm;
-    Eigen::Vector3d pos (coords[0],coords[1],coords[2]);
-    (*atom)->setPos(pos);
-    (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
+    Atom atom = addAtom();
+    atom.setPos(coords);
+    atom.setAtomicNumber(atomicNumber);
     return true;
-  }
-
-  void Structure::setOBEnergy(const QString &ff) {
-    OBForceField* pFF = OBForceField::FindForceField(ff.toStdString().c_str());
-    if (!pFF) return;
-    OpenBabel::OBMol obmol = OBMol();
-    if (!pFF->Setup(obmol)) {
-      qWarning() << "Structure::setOBEnergy: could not setup force field " << ff << ".";
-      return;
-    }
-    std::vector<double> E;
-    E.push_back(pFF->Energy());
-    setEnergies(E);
   }
 
   QString Structure::getResultsEntry() const
@@ -875,7 +826,7 @@ namespace GlobalSearch {
   bool Structure::getNearestNeighborDistances(QList<double> * list) const
   {
     list->clear();
-    QList<Atom *> atomList = atoms();
+    const std::vector<Atom>& atomList = atoms();
     if (atomList.size() < 2) return false;
 
 #if QT_VERSION >= 0x040700
@@ -883,8 +834,8 @@ namespace GlobalSearch {
 #endif // QT_VERSION
 
     double shortest;
-    for (QList<Atom*>::const_iterator it = atomList.constBegin(),
-         it_end = atomList.constEnd(); it != it_end; ++it) {
+    for (std::vector<Atom>::const_iterator it = atomList.begin(),
+         it_end = atomList.end(); it != it_end; ++it) {
       getNearestNeighborDistance((*it), shortest);
       list->append(shortest);
     }
@@ -893,14 +844,15 @@ namespace GlobalSearch {
 
   bool Structure::getShortestInteratomicDistance(double & shortest) const
   {
-    QList<Atom*> atomList = atoms();
-    if (atomList.size() <= 1) return false; // Need at least two atoms!
-    QList<Vector3d> atomPositions;
+    const std::vector<Atom>& atomList = atoms();
+    if (atomList.size() <= 1)
+      return false; // Need at least two atoms!
+    QList<Vector3> atomPositions;
     for (int i = 0; i < atomList.size(); i++)
-      atomPositions.push_back(*(atomList.at(i)->pos()));
+      atomPositions.push_back(atomList.at(i).pos());
 
-    Vector3d v1= atomPositions.at(0);
-    Vector3d v2= atomPositions.at(1);
+    Vector3 v1 = atomPositions.at(0);
+    Vector3 v2 = atomPositions.at(1);
     shortest = abs((v1-v2).norm());
     double distance;
 
@@ -922,14 +874,14 @@ namespace GlobalSearch {
                                              const double z,
                                              double & shortest) const
   {
-    QList<Atom*> atomList = atoms();
+    const std::vector<Atom>& atomList = atoms();
     if (atomList.size() < 2) return false; // Need at least two atoms!
-    QList<Vector3d> atomPositions;
+    QList<Vector3> atomPositions;
     for (int i = 0; i < atomList.size(); i++)
-      atomPositions.push_back(*(atomList.at(i)->pos()));
+      atomPositions.push_back(atomList.at(i).pos());
 
-    Vector3d v1 (x, y, z);
-    Vector3d v2 = atomPositions.at(0);
+    Vector3 v1 (x, y, z);
+    Vector3 v2 = atomPositions.at(0);
     shortest = fabs((v1-v2).norm());
     double distance;
 
@@ -943,30 +895,31 @@ namespace GlobalSearch {
     return true;
   }
 
-  bool Structure::getNearestNeighborDistance(const GlobalSearch::Atom *atom,
+  bool Structure::getNearestNeighborDistance(const GlobalSearch::Atom& atom,
                                              double & shortest) const
   {
-    const Eigen::Vector3d *position = atom->pos();
-    return getNearestNeighborDistance(position->x(),
-                                      position->y(),
-                                      position->z(), shortest);
+    Vector3 position = atom.pos();
+    return getNearestNeighborDistance(position.x(),
+                                      position.y(),
+                                      position.z(), shortest);
   }
 
-  QList<Atom*> Structure::getNeighbors(const double x,
+  QList<Atom> Structure::getNeighbors(const double x,
                                        const double y,
                                        const double z,
                                        const double cutoff,
                                        QList<double> *distances) const
   {
-    QList<Atom*> neighbors;
+    QList<Atom> neighbors;
     if (distances) {
       distances->clear();
     }
-    Eigen::Vector3d vec (x,y,z);
+    Vector3 vec (x,y,z);
     double cutoffSquared = cutoff*cutoff;
-    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
-           it_end = m_atomList.constEnd(); it != it_end; ++it) {
-      double distSq = ((*(*it)->pos()) - vec).squaredNorm();
+    const std::vector<Atom>& atomList = atoms();
+    for (std::vector<Atom>::const_iterator it = atomList.begin(),
+           it_end = atomList.end(); it != it_end; ++it) {
+      double distSq = ((*it).pos() - vec).squaredNorm();
       if (distSq <= cutoffSquared) {
         neighbors << *it;
         if (distances) {
@@ -977,14 +930,14 @@ namespace GlobalSearch {
     return neighbors;
   }
 
-  QList<Atom*> Structure::getNeighbors(const GlobalSearch::Atom *atom,
-                                       const double cutoff,
-                                       QList<double> *distances) const
+  QList<Atom> Structure::getNeighbors(const GlobalSearch::Atom& atom,
+                                      const double cutoff,
+                                      QList<double> *distances) const
   {
-    const Eigen::Vector3d *position = atom->pos();
-    return getNeighbors(position->x(),
-                        position->y(),
-                        position->z(), cutoff, distances);
+    Vector3 position = atom.pos();
+    return getNeighbors(position.x(),
+                        position.y(),
+                        position.z(), cutoff, distances);
   }
 
   void Structure::requestHistogramGeneration()
@@ -1023,7 +976,7 @@ namespace GlobalSearch {
                                        double min,
                                        double max,
                                        double step,
-                                       GlobalSearch::Atom *atom) const
+                                       const GlobalSearch::Atom& atom) const
   {
     QList<QVariant> distv, freqv;
     if (!generateIADHistogram(&distv, &freqv, min, max, step, atom)) {
@@ -1044,7 +997,7 @@ namespace GlobalSearch {
   struct NNHistMap {
     int i;
     double halfstep;
-    QList<Vector3d> *atomPositions;
+    QList<Vector3> *atomPositions;
     QList<QVariant> *dist;
   };
 
@@ -1054,8 +1007,8 @@ namespace GlobalSearch {
   // Returns the frequencies for this chunk
   QList<int> calcNNHistChunk(const NNHistMap &m)
   {
-    const Vector3d *v1 = &(m.atomPositions->at(m.i));
-    const Vector3d *v2;
+    const Vector3 *v1 = &(m.atomPositions->at(m.i));
+    const Vector3 *v2;
     QList<int> freq;
     double diff;
     for (int ind = 0; ind < m.dist->size(); ind++) {
@@ -1095,7 +1048,7 @@ namespace GlobalSearch {
   bool Structure::generateIADHistogram(QList<QVariant> * distance,
                                        QList<QVariant> * frequency,
                                        double min, double max, double step,
-                                       GlobalSearch::Atom *atom) const
+                                       const GlobalSearch::Atom& atom) const
   {
     distance->clear();
     frequency->clear();
@@ -1118,18 +1071,18 @@ namespace GlobalSearch {
       val += step;
     } while (val < max);
 
-    QList<Atom*> atomList = atoms();
-    QList<Vector3d> atomPositions;
+    const std::vector<Atom>& atomList = atoms();
+    QList<Vector3> atomPositions;
     for (int i = 0; i < atomList.size(); i++)
-      atomPositions.push_back(*(atomList.at(i)->pos()));
+      atomPositions.push_back(atomList.at(i).pos());
 
-    Vector3d v1= atomPositions.at(0);
-    Vector3d v2= atomPositions.at(1);
+    Vector3 v1= atomPositions.at(0);
+    Vector3 v2= atomPositions.at(1);
     double diff;
 
     // build histogram
     // Loop over all atoms -- use map-reduce
-    if (atom == 0) {
+    if (atom.atomicNumber() == 0) {
       QList<NNHistMap> ml;
       for (int i = 0; i < atomList.size(); i++) {
         NNHistMap m;
@@ -1140,7 +1093,7 @@ namespace GlobalSearch {
     }
     // Or, just the one requested
     else {
-      v1 = *atom->pos();
+      v1 = atom.pos();
       for (int j = 0; j < atomList.size(); j++) {
         if (atomList.at(j) == atom) continue;
         v2 = atomPositions.at(j);
@@ -1276,12 +1229,12 @@ namespace GlobalSearch {
 
   QList<QString> Structure::getSymbols() const {
     QList<QString> list;
-    for (QList<Atom*>::const_iterator
-           it = m_atomList.begin(),
-           it_end = m_atomList.end();
+    for (std::vector<Atom>::const_iterator
+           it = atoms().begin(),
+           it_end = atoms().end();
          it != it_end;
          ++it) {
-      QString symbol = QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()));
+      QString symbol = QString(OpenBabel::etab.GetSymbol((*it).atomicNumber()));
       if (!list.contains(symbol)) {
         list.append(symbol);
       }
@@ -1296,12 +1249,12 @@ namespace GlobalSearch {
     for (int i = 0; i < symbols.size(); i++)
       list.append(0);
     int ind;
-    for (QList<Atom*>::const_iterator
-           it = m_atomList.begin(),
-           it_end = m_atomList.end();
+    for (std::vector<Atom>::const_iterator
+           it = atoms().begin(),
+           it_end = atoms().end();
          it != it_end;
          ++it) {
-      QString symbol = QString(OpenBabel::etab.GetSymbol((*it)->atomicNumber()));
+      QString symbol = QString(OpenBabel::etab.GetSymbol((*it).atomicNumber()));
       Q_ASSERT_X(symbols.contains(symbol), Q_FUNC_INFO,
                  "getNumberOfAtomsAlpha found a symbol not in getSymbols.");
       ind = symbols.indexOf(symbol);
