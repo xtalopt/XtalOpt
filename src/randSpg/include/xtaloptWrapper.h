@@ -29,12 +29,12 @@ namespace RandSpgXtalOptWrapper {
                                             lat.alpha, lat.beta, lat.gamma);
     for (size_t i = 0; i < atoms.size(); i++) {
       const atomStruct& as = atoms.at(i);
-      Avogadro::Atom* atom = xtal->addAtom();
+      GlobalSearch::Atom& atom = xtal->addAtom();
       // Need to convert these coordinates to cartesian...
-      Eigen::Vector3d pos(as.x,as.y,as.z);
+      Vector3 pos(as.x,as.y,as.z);
       pos = xtal->fracToCart(pos);
-      atom->setPos(pos);
-      atom->setAtomicNumber(static_cast<int>(as.atomicNum));
+      atom.setPos(pos);
+      atom.setAtomicNumber(as.atomicNum);
     }
     return xtal;
   }
@@ -44,11 +44,11 @@ namespace RandSpgXtalOptWrapper {
     latticeStruct lat(xtal->getA(), xtal->getB(), xtal->getC(),
                       xtal->getAlpha(), xtal->getBeta(), xtal->getGamma());
     std::vector<atomStruct> atoms;
-    QList<Avogadro::Atom*> xAtoms = xtal->atoms();
+    std::vector<GlobalSearch::Atom> xAtoms = xtal->atoms();
 
     for (size_t i = 0; i < xAtoms.size(); i++) {
-      unsigned int atomicNum = xAtoms.at(i)->atomicNumber();
-      Eigen::Vector3d fracCoords = *(xtal->cartToFrac(xAtoms.at(i)->pos()));
+      unsigned int atomicNum = xAtoms.at(i).atomicNumber();
+      Vector3 fracCoords = xtal->cartToFrac(xAtoms.at(i).pos());
       atomStruct as(atomicNum, fracCoords[0], fracCoords[1], fracCoords[2]);
       atoms.push_back(as);
     }

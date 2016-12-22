@@ -398,8 +398,8 @@ namespace XtalOpt {
           break;
         case A_T:
           switch (j) {
-          case 0:       x = xtal->getA(); break;
-          default:      y = xtal->getA(); break;
+          case 0:       x = xtal.a(); break;
+          default:      y = xtal.a(); break;
           }
           break;
         case B_T:

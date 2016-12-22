@@ -77,7 +77,6 @@ namespace XtalOpt {
       generateValidCOBs();
     }
     m_spgNumber = 231;
-    this->setOBUnitCell(new OpenBabel::OBUnitCell);
     // Openbabel seems to be fond of making unfounded assumptions that
     // break things. This fixes one of them.
     this->cell()->SetSpaceGroup(0);
@@ -99,12 +98,12 @@ namespace XtalOpt {
       fracCoordsList.append(cartToFrac(atomList.at(i).pos()));
 
     // Scale cell
-    setCellInfo(factor * cell()->GetA(),
-                factor * cell()->GetB(),
-                factor * cell()->GetC(),
-                cell()->GetAlpha(),
-                cell()->GetBeta(),
-                cell()->GetGamma());
+    setCellInfo(factor * getA(),
+                factor * getB(),
+                factor * getC(),
+                getAlpha(),
+                getBeta(),
+                getGamma());
 
     // Recalculate coordinates:
     for (int i = 0; i < atomList.size(); i++)
@@ -230,10 +229,9 @@ namespace XtalOpt {
     const double origVolume = cell()->GetCellVolume();
 
     // Grab lattice vectors
-    const std::vector<OpenBabel::vector3> obvecs = cell()->GetCellVectors();
-    const Vector3 v1 (OB2Eigen(obvecs[0]));
-    const Vector3 v2 (OB2Eigen(obvecs[1]));
-    const Vector3 v3 (OB2Eigen(obvecs[2]));
+    const Vector3 v1 (unitCell().aVector());
+    const Vector3 v2 (unitCell().bVector());
+    const Vector3 v3 (unitCell().cVector());
 
     // Compute characteristic (step 0)
     double A    = v1.squaredNorm();
@@ -818,7 +816,7 @@ namespace XtalOpt {
 
   void Xtal::printLatticeInfo() const
   {
-    cout << "a is " << this->getA() << "\n";
+    cout << "a is " << this.a() << "\n";
     cout << "b is " << this->getB() << "\n";
     cout << "c is " << this->getC() << "\n";
     cout << "alpha is " << this->getAlpha() << "\n";
@@ -1084,11 +1082,6 @@ namespace XtalOpt {
                              NULL, lengthTol, angleTol);
   }
 
-  OpenBabel::OBUnitCell* Xtal::cell() const
-  {
-    return OBUnitCell();
-  }
-
   bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom) {
     INIT_RANDOM_GENERATOR();
     Q_UNUSED(maxIAD);
@@ -1342,7 +1335,7 @@ namespace XtalOpt {
       vector3 obU2 = obcellMatrix.GetRow(1);
       vector3 obU3 = obcellMatrix.GetRow(2);
       // Scale cell
-      double A = myXtal->getA();
+      double A = myXtal.a();
       double B = myXtal->getB();
       double C = myXtal->getC();
       myXtal->setCellInfo(a * A,
@@ -1365,7 +1358,7 @@ namespace XtalOpt {
                           obU1.x() * i + obU2.x() * j + obU3.x() * k,
                           obU1.y() * i + obU2.y() * j + obU3.y() * k,
                           obU1.z() * i + obU2.z() * j + obU3.z() * k);
-                  //Vector3 uVecs(this->getA() * i, this->getB() * j, this-> getC() * k);
+                  //Vector3 uVecs(this.a() * i, this->getB() * j, this-> getC() * k);
                   foreach(Atom *atom, oneFUatoms) {
                       Atom *newAtom = myXtal->addAtom();
                       *newAtom = *atom;
@@ -1741,34 +1734,6 @@ namespace XtalOpt {
       }
     }
     return list;
-  }
-
-  Vector3 Xtal::fracToCart(const Vector3 & fracCoords) const {
-    OpenBabel::vector3 obfrac (fracCoords.x(), fracCoords.y(), fracCoords.z());
-    OpenBabel::vector3 obcart = cell()->FractionalToCartesian(obfrac);
-    Vector3 cartCoords (obcart.x(), obcart.y(), obcart.z());
-    return cartCoords;
-  }
-
-  Vector3 *Xtal::fracToCart(const Vector3 *fracCoords) const {
-    OpenBabel::vector3 obfrac (fracCoords->x(), fracCoords->y(), fracCoords->z());
-    OpenBabel::vector3 obcart = cell()->FractionalToCartesian(obfrac);
-    Vector3 *cartCoords = new Vector3 (obcart.x(), obcart.y(), obcart.z());
-    return cartCoords;
-  }
-
-  Vector3 Xtal::cartToFrac(const Vector3 & cartCoords) const {
-    OpenBabel::vector3 obcart (cartCoords.x(), cartCoords.y(), cartCoords.z());
-    OpenBabel::vector3 obfrac = cell()->CartesianToFractional(obcart);
-    Vector3 fracCoords (obfrac.x(), obfrac.y(), obfrac.z());
-    return fracCoords;
-  }
-
-  Vector3 *Xtal::cartToFrac(const Vector3 *cartCoords) const {
-    OpenBabel::vector3 obcart (cartCoords->x(), cartCoords->y(), cartCoords->z());
-    OpenBabel::vector3 obfrac = cell()->CartesianToFractional(obcart);
-    Vector3 *fracCoords = new Vector3 (obfrac.x(), obfrac.y(), obfrac.z());
-    return fracCoords;
   }
 
   void Xtal::wrapAtomsToCell() {

@@ -631,7 +631,7 @@ namespace XtalOpt {
         Atom* newAtom = nxtal->addAtom();
         newAtom->setAtomicNumber(atomList1.at(i).atomicNumber());
         // Correct for atom position distortion across the cutVal axis
-        tempFracCoordsList1[i][0] = (xtal1->getA() / nxtal->getA()) * fracCoordsList1.at(i)[0];
+        tempFracCoordsList1[i][0] = (xtal1.a() / nxtal.a()) * fracCoordsList1.at(i)[0];
         newAtom->setPos(nxtal->fracToCart(tempFracCoordsList1.at(i)));
       }
     }
@@ -643,7 +643,7 @@ namespace XtalOpt {
         Atom* newAtom = nxtal->addAtom();
         newAtom->setAtomicNumber(atomList2.at(i).atomicNumber());
         // Correct for atom position distortion across the cutVal axis
-        tempFracCoordsList2[i][0] = (xtal2->getA() / nxtal->getA()) * fracCoordsList2.at(i)[0];
+        tempFracCoordsList2[i][0] = (xtal2.a() / nxtal.a()) * fracCoordsList2.at(i)[0];
         // Reflect these atoms to the other side of the xtal via the plane
         // perpendicular to the cutVal axis
         tempFracCoordsList2[i][0] = 1 - fracCoordsList2.at(i)[0];

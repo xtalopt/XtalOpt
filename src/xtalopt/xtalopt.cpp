@@ -490,7 +490,6 @@ namespace XtalOpt {
     // Copy info over
     QWriteLocker locker2 (&xtal->lock());
     oldXtal->clear();
-    oldXtal->setOBUnitCell(new OpenBabel::OBUnitCell);
     oldXtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
     oldXtal->resetEnergy();
     oldXtal->resetEnthalpy();
@@ -679,7 +678,7 @@ namespace XtalOpt {
       xtal->setVolume(vol_fixed * FU);
 
     // In case we rescaled the cell, update a, b, and c
-    a = xtal->getA();
+    a = xtal.a();
     b = xtal->getB();
     c = xtal->getC();
 
@@ -1871,7 +1870,7 @@ namespace XtalOpt {
     uint c = 1;
 
     // Find the shortest length. We will expand upon this length.
-    double A = myXtal->getA();
+    double A = myXtal.a();
     double B = myXtal->getB();
     double C = myXtal->getC();
 
@@ -2158,7 +2157,7 @@ namespace XtalOpt {
 
     // Before fixing angles, make sure that the current cell
     // parameters are realistic
-    if (GS_IS_NAN_OR_INF(xtal->getA()) || fabs(xtal->getA()) < 1e-8 ||
+    if (GS_IS_NAN_OR_INF(xtal.a()) || fabs(xtal.a()) < 1e-8 ||
         GS_IS_NAN_OR_INF(xtal->getB()) || fabs(xtal->getB()) < 1e-8 ||
         GS_IS_NAN_OR_INF(xtal->getC()) || fabs(xtal->getC()) < 1e-8 ||
         GS_IS_NAN_OR_INF(xtal->getAlpha()) || fabs(xtal->getAlpha()) < 1e-8 ||
@@ -2178,11 +2177,11 @@ namespace XtalOpt {
       // cause the spglib to crash in this function
       // If one is 25x shorter than another, discard it
       double cutoff = 25.0;
-      if (xtal->getA() * cutoff < xtal->getB() ||
-          xtal->getA() * cutoff < xtal->getC() ||
-          xtal->getB() * cutoff < xtal->getA() ||
+      if (xtal.a() * cutoff < xtal->getB() ||
+          xtal.a() * cutoff < xtal->getC() ||
+          xtal->getB() * cutoff < xtal.a() ||
           xtal->getB() * cutoff < xtal->getC() ||
-          xtal->getC() * cutoff < xtal->getA() ||
+          xtal->getC() * cutoff < xtal.a() ||
           xtal->getC() * cutoff < xtal->getB()) {
         qDebug() << "Error: one of the lengths is more than 25x shorter "
                  << "than another length. Crystals like these can sometimes "
@@ -2208,14 +2207,14 @@ namespace XtalOpt {
     }
 
     // Check lattice
-    if ( ( !a     && ( xtal->getA() < a_min         || xtal->getA() > a_max         ) ) ||
+    if ( ( !a     && ( xtal.a() < a_min         || xtal.a() > a_max         ) ) ||
          ( !b     && ( xtal->getB() < b_min         || xtal->getB() > b_max         ) ) ||
          ( !c     && ( xtal->getC() < c_min         || xtal->getC() > c_max         ) ) ||
          ( !alpha && ( xtal->getAlpha() < alpha_min || xtal->getAlpha() > alpha_max ) ) ||
          ( !beta  && ( xtal->getBeta()  < beta_min  || xtal->getBeta()  > beta_max  ) ) ||
          ( !gamma && ( xtal->getGamma() < gamma_min || xtal->getGamma() > gamma_max ) ) )  {
       qDebug() << "Discarding structure -- Bad lattice:" <<endl
-               << "A:     " << a_min << " " << xtal->getA() << " " << a_max << endl
+               << "A:     " << a_min << " " << xtal.a() << " " << a_max << endl
                << "B:     " << b_min << " " << xtal->getB() << " " << b_max << endl
                << "C:     " << c_min << " " << xtal->getC() << " " << c_max << endl
                << "Alpha: " << alpha_min << " " << xtal->getAlpha() << " " << alpha_max << endl
@@ -2318,7 +2317,7 @@ namespace XtalOpt {
     Xtal *xtal = qobject_cast<Xtal*>(structure);
 
     // Xtal specific keywords
-    if (line == "a")                    rep += QString::number(xtal->getA());
+    if (line == "a")                    rep += QString::number(xtal.a());
     else if (line == "b")               rep += QString::number(xtal->getB());
     else if (line == "c")               rep += QString::number(xtal->getC());
     else if (line == "alphaRad")        rep += QString::number(xtal->getAlpha() * DEG_TO_RAD);

@@ -17,23 +17,17 @@
 #include <xtalopt/structures/xtal.h>
 
 #include <globalsearch/obeigenconv.h>
-
-#include <avogadro/moleculefile.h>
+#include <globalsearch/structures/molecule.h>
 
 #include <openbabel/data.h> // for etab
 
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
 
-using namespace Avogadro;
 using namespace OpenBabel;
 
 namespace XtalOptDebug
 {
-  void dumpCML(const XtalOpt::Xtal *xtal, const QString &filename)
-  {
-    GlobalSearch::MoleculeFile::writeMolecule(xtal, filename + ".cml");
-  }
 
   void dumpPseudoPwscfOut(const XtalOpt::Xtal *xtal, const QString &filename)
   {
@@ -52,7 +46,7 @@ namespace XtalOptDebug
 
     // Set cell matrix
     out << "CELL_PARAMETERS (alat)" << endl;
-    const Matrix3 m (OB2Eigen(xtal->OBUnitCell()->GetCellMatrix()));
+    const Matrix3 m (xtal->unitCell().cellMatrix());
     out << m(0,0) << " " << m(0,1) << " " << m(0,2) << endl;
     out << m(1,0) << " " << m(1,1) << " " << m(1,2) << endl;
     out << m(2,0) << " " << m(2,1) << " " << m(2,2) << endl;
@@ -60,11 +54,11 @@ namespace XtalOptDebug
 
     // Atomic positions
     out << "ATOMIC_POSITIONS (crystal)" << endl;
-    const QList<Atom*> atoms (xtal->atoms());
+    const std::vector<GlobalSearch::Atom> atoms(xtal->atoms());
     Vector3 fcoord;
-    for (QList<Atom*>::const_iterator it = atoms.constBegin(),
-           it_end = atoms.constEnd(); it != it_end; ++it) {
-      fcoord = xtal->cartToFrac(*(*it).pos());
+    for (std::vector<GlobalSearch::Atom>::const_iterator it = atoms.begin(),
+           it_end = atoms.end(); it != it_end; ++it) {
+      fcoord = xtal->cartToFrac((*it).pos());
       out << etab.GetSymbol((*it).atomicNumber()) << " "
           << fcoord.x() << " "
           << fcoord.y() << " "

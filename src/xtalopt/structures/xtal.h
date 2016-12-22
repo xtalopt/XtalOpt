@@ -94,14 +94,14 @@ namespace XtalOpt {
         .arg("SpaceGroup", 10)
         .arg("Status", 11);};
 
-    // Cell paramters
-    double getA()       const {return cell()->GetA();};
-    double getB()       const {return cell()->GetB();};
-    double getC()       const {return cell()->GetC();};
-    double getAlpha()   const {return cell()->GetAlpha();};
-    double getBeta()    const {return cell()->GetBeta();};
-    double getGamma()   const {return cell()->GetGamma();};
-    double getVolume()  const {return cell()->GetCellVolume();};
+    // Convencience functions for cell parameters
+    double getA()       const { return unitCell().a(); };
+    double getB()       const { return unitCell().b(); };
+    double getC()       const { return unitCell().c(); };
+    double getAlpha()   const { return unitCell().alpha(); };
+    double getBeta()    const { return unitCell().beta(); };
+    double getGamma()   const { return unitCell().gamma(); };
+    double getVolume()  const { return unitCell().volume(); };
 
     // Debugging
     void getSpglibFormat() const;
@@ -125,19 +125,8 @@ namespace XtalOpt {
     Xtal * getRandomRepresentation() const;
 
     // Conversion convenience
-    OpenBabel::vector3 fracToCart(const OpenBabel::vector3 & fracCoords) const {
-      return cell()->FractionalToCartesian(fracCoords);}
-    OpenBabel::vector3* fracToCart(const OpenBabel::vector3* fracCoords) const {
-      return new OpenBabel::vector3 (cell()->FractionalToCartesian(*fracCoords));}
-    Vector3 fracToCart(const Vector3 & fracCoords) const;
-    Vector3* fracToCart(const Vector3* fracCoords) const;
-
-    OpenBabel::vector3 cartToFrac(const OpenBabel::vector3 & cartCoords) const {
-      return cell()->CartesianToFractional(cartCoords);}
-    OpenBabel::vector3* cartToFrac(const OpenBabel::vector3* cartCoords) const {
-      return new OpenBabel::vector3 (cell()->CartesianToFractional(*cartCoords));}
-    Vector3 cartToFrac(const Vector3 & cartCoords) const;
-    Vector3* cartToFrac(const Vector3* cartCoords) const;
+    Vector3 fracToCart(const Vector3& v) const;
+    Vector3 cartToFrac(const Vector3& v) const;
 
     // Convenience retreval
     QList<Vector3> getAtomCoordsFrac() const;
@@ -214,13 +203,11 @@ namespace XtalOpt {
 
    public slots:
     // Cell data
-    void setCellInfo(double A, double B, double C,
-                     double Alpha, double Beta, double Gamma) {
-      cell()->SetData(A,B,C,Alpha,Beta,Gamma);};
-    void setCellInfo(const OpenBabel::matrix3x3 &m) {
-      cell()->SetData(m);};
-    void setCellInfo(const OpenBabel::vector3 &v1, const OpenBabel::vector3 &v2, const OpenBabel::vector3 &v3) {
-      cell()->SetData(v1, v2, v3);};
+    void setCellInfo(double a, double b, double c,
+                     double alpha, double beta, double gamma);
+    void setCellInfo(const Matrix3& m) { unitCell().setCellMatrix(m); };
+    void setCellInfo(const Vector3& a, const Vector3& b,
+                     const Vector3& c);
     void setVolume(double Volume);
     // rescale cell can be used to "fix" any cell parameter at a particular value.
     // Simply pass the fixed values and use "0" for any non-fixed parameters.
@@ -251,11 +238,32 @@ namespace XtalOpt {
                                    Matrix3 *cellMatrix,
                                    const double cartTol = 0.05);
     void ctor(QObject *parent=0);
-    OpenBabel::OBUnitCell* cell() const;
     uint m_spgNumber;
     QString m_spgSymbol;
 
   };
+
+  inline Vector3 Xtal::fracToCart(const Vector3& v) const
+  {
+    return unitCell().toCartesian(v);
+  }
+
+  inline Vector3 Xtal::cartToFrac(const Vector3& v) const
+  {
+    return unitCell().toFractional(v);
+  }
+
+  inline void Xtal::setCellInfo(double a, double b, double c,
+                                double alpha, double beta, double gamma)
+  {
+    unitCell().setCellParameters(a, b, c, alpha, beta, gamma);
+  }
+
+  inline void Xtal::setCellInfo(const Vector3& a, const Vector3& b,
+                                const Vector3& c)
+  {
+    unitCell().setCellVectors(a, b, c);
+  }
 
 } // end namespace XtalOpt
 

@@ -24,9 +24,6 @@ namespace XtalOpt {
 namespace XtalOptDebug
 {
 
-  // The .cml extension is automatically added to description
-  void dumpCML(const XtalOpt::Xtal *xtal, const QString &filename);
-
   void dumpPseudoPwscfOut(const XtalOpt::Xtal *xtal, const QString &filename);
 
 }
