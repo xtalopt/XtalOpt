@@ -56,20 +56,17 @@ namespace XtalOpt {
     bool addAtomRandomly(uint atomicNumber,
                          double minIAD = 0.0,
                          double maxIAD = 0.0,
-                         int maxAttempts = 100.0,
-                         GlobalSearch::Atom **atom = 0); //maxIAD is not used.
+                         int maxAttempts = 100.0); //maxIAD is not used.
     // Uses the minRadius constraints in @a limits to restrict atom placement
     bool addAtomRandomly(unsigned int atomicNumber,
                          const QHash<unsigned int, XtalCompositionStruct> & limits,
-                         int maxAttempts = 100.0,
-                         GlobalSearch::Atom **atom = 0);
+                         int maxAttempts = 100.0);
     bool addAtomRandomly(unsigned int atomicNumber,
                          unsigned int neighbor,
                          const QHash<unsigned int, XtalCompositionStruct> & limits,
                          const QHash<QPair<int, int>, MolUnit> & limitsMolUnit,
                          bool useMolUnit,
-                         int maxAttempts = 100.0,
-                         GlobalSearch::Atom **atom = 0);
+                         int maxAttempts = 100.0);
 
 
     // Fills a supercell for the mitosis process
@@ -160,8 +157,6 @@ namespace XtalOpt {
                                const QList<Vector3> &coords);
     void setCurrentFractionalCoords(const QList<QString> &ids,
                                     const QList<Vector3> &fcoords);
-    void fillUnitCell(uint spg, double cartTol = 0.05);
-    void reduceToAsymmetricUnit(double cartTol = 0.05);
 
     bool operator==(const Xtal &other) const;
     bool operator!=(const Xtal &other) const {return !operator==(other);};
@@ -238,7 +233,7 @@ namespace XtalOpt {
                                    Matrix3 *cellMatrix,
                                    const double cartTol = 0.05);
     void ctor(QObject *parent=0);
-    uint m_spgNumber;
+    unsigned short m_spgNumber;
     QString m_spgSymbol;
 
   };

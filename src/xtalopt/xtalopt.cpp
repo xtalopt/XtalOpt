@@ -65,7 +65,6 @@
 
 using namespace GlobalSearch;
 using namespace OpenBabel;
-using namespace Avogadro;
 
 namespace XtalOpt {
 
@@ -490,7 +489,7 @@ namespace XtalOpt {
     // Copy info over
     QWriteLocker locker2 (&xtal->lock());
     oldXtal->clear();
-    oldXtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
+    oldXtal->setCellInfo(xtal->unitCell().cellMatrix());
     oldXtal->resetEnergy();
     oldXtal->resetEnthalpy();
     oldXtal->setPV(0);
@@ -501,12 +500,11 @@ namespace XtalOpt {
     oldXtal->setParents(parents);
     oldXtal->setFormulaUnits(oldXtal->getFormulaUnits());
 
-    Atom *atom1, *atom2;
     for (uint i = 0; i < xtal->numAtoms(); i++) {
-      atom1 = oldXtal->addAtom();
-      atom2 = xtal->atom(i);
-      atom1->setPos(atom2.pos());
-      atom1->setAtomicNumber(atom2.atomicNumber());
+      Atom& atom1 = oldXtal->addAtom();
+      Atom& atom2 = xtal->atom(i);
+      atom1.setPos(atom2.pos());
+      atom1.setAtomicNumber(atom2.atomicNumber());
     }
     oldXtal->findSpaceGroup(tol_spg);
     oldXtal->resetFailCount();
@@ -545,8 +543,7 @@ namespace XtalOpt {
     // Copy info over
     QWriteLocker locker1 (&oldXtal->lock());
     QWriteLocker locker2 (&xtal->lock());
-    oldXtal->setOBUnitCell(new OpenBabel::OBUnitCell);
-    oldXtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
+    oldXtal->setCellInfo(xtal->unitCell().cellMatrix());
     oldXtal->resetEnergy();
     oldXtal->resetEnthalpy();
     oldXtal->resetFailCount();
@@ -564,7 +561,7 @@ namespace XtalOpt {
                "Number of atoms don't match. Cannot copy.");
 
     for (uint i = 0; i < xtal->numAtoms(); ++i) {
-      (*oldXtal->atom(i)) = (*xtal->atom(i));
+      oldXtal->atom(i) = xtal->atom(i);
     }
     oldXtal->findSpaceGroup(tol_spg);
 
@@ -678,7 +675,7 @@ namespace XtalOpt {
       xtal->setVolume(vol_fixed * FU);
 
     // In case we rescaled the cell, update a, b, and c
-    a = xtal.a();
+    a = xtal->getA();
     b = xtal->getB();
     c = xtal->getC();
 
@@ -1061,21 +1058,20 @@ namespace XtalOpt {
     out << "\t<crystal>\n";
 
     // Unit Cell Vectors
-    std::vector< vector3 > vecs = xtal->OBUnitCell()->GetCellVectors();
       out << QString("\t\t<scalar title=\"a\" units=\"units:angstrom\">%1</scalar>\n")
-        .arg(vecs[0].x(), 12);
+        .arg(xtal->unitCell().aVector().x(), 12);
       out << QString("\t\t<scalar title=\"b\" units=\"units:angstrom\">%1</scalar>\n")
-        .arg(vecs[1].y(), 12, 'f', 8);
+        .arg(xtal->unitCell().bVector().y(), 12, 'f', 8);
       out << QString("\t\t<scalar title=\"c\" units=\"units:angstrom\">%1</scalar>\n")
-        .arg(vecs[2].z(), 12, 'f', 8);
+        .arg(xtal->unitCell().cVector().z(), 12, 'f', 8);
 
     // Unit Cell Angles
     out << QString("\t\t<scalar title=\"alpha\" units=\"units:degree\">%1</scalar>\n")
-      .arg(xtal->OBUnitCell()->GetAlpha(), 12, 'f', 8);
+      .arg(xtal->getAlpha(), 12, 'f', 8);
     out << QString("\t\t<scalar title=\"beta\" units=\"units:degree\">%1</scalar>\n")
-      .arg(xtal->OBUnitCell()->GetBeta(), 12, 'f', 8);
+      .arg(xtal->getBeta(), 12, 'f', 8);
     out << QString("\t\t<scalar title=\"gamma\" units=\"units:degree\">%1</scalar>\n")
-      .arg(xtal->OBUnitCell()->GetGamma(), 12, 'f', 8);
+      .arg(xtal->getGamma(), 12, 'f', 8);
 
     out << "\t</crystal>\n";
     out << "\t<atomArray>\n";
@@ -1186,7 +1182,6 @@ namespace XtalOpt {
     }
     xtal->findSpaceGroup(tol_spg);
     xtalLocker.unlock();
-    xtal->update();
     m_queue->unlockForNaming(xtal);
     xtalInitMutex->unlock();
   }
@@ -1767,13 +1762,12 @@ namespace XtalOpt {
   {
     Xtal* nxtal = new Xtal();
     // Copy cell over from xtal to nxtal
-    nxtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
-    Atom* newAtom;
+    nxtal->setCellInfo(xtal->unitCell().cellMatrix());
     // Add the atoms in...
     for (size_t i = 0; i < xtal->numAtoms(); i++) {
-      newAtom = nxtal->addAtom();
-      newAtom->setAtomicNumber(xtal->atom(i).atomicNumber());
-      newAtom->setPos(xtal->atom(i).pos());
+      Atom& newAtom = nxtal->addAtom();
+      newAtom.setAtomicNumber(xtal->atom(i).atomicNumber());
+      newAtom.setPos(xtal->atom(i).pos());
     }
     // Reduce it to primitive...
     nxtal->reduceToPrimitive(tol_spg);
@@ -1824,13 +1818,13 @@ namespace XtalOpt {
 
       // Copy info over from parent to new xtal
       myXtal = new Xtal;
-      myXtal->setCellInfo(xtal->OBUnitCell()->GetCellMatrix());
+      myXtal->setCellInfo(xtal->unitCell().cellMatrix());
       QWriteLocker nxtalLocker (&myXtal->lock());
-      QList<Atom*> atoms = xtal->atoms();
+      const std::vector<Atom>& atoms = xtal->atoms();
       for (int i = 0; i < atoms.size(); i++) {
-        Atom* atom = myXtal->addAtom();
-        atom->setAtomicNumber(atoms.at(i).atomicNumber());
-        atom->setPos(atoms.at(i).pos());
+        Atom& atom = myXtal->addAtom();
+        atom.setAtomicNumber(atoms.at(i).atomicNumber());
+        atom.setPos(atoms.at(i).pos());
       }
 
       // Lock parent and extract info
@@ -1870,7 +1864,7 @@ namespace XtalOpt {
     uint c = 1;
 
     // Find the shortest length. We will expand upon this length.
-    double A = myXtal.a();
+    double A = myXtal->getA();
     double B = myXtal->getB();
     double C = myXtal->getC();
 
@@ -1884,14 +1878,13 @@ namespace XtalOpt {
       c = numberOfDuplicates;
     }
 
-    QList<Atom*> oneFUatoms = myXtal->atoms();
+    const std::vector<Atom>& oneFUatoms = myXtal->atoms();
 
-    // Credit for the next 37 lines of this function goes to Zack Falls!
-    // First get OB matrix, extract vectors, then convert to Vector3's
-    matrix3x3 obcellMatrix = myXtal->OBUnitCell()->GetCellMatrix();
-    OpenBabel::vector3 obU1 = obcellMatrix.GetRow(0);
-    OpenBabel::vector3 obU2 = obcellMatrix.GetRow(1);
-    OpenBabel::vector3 obU3 = obcellMatrix.GetRow(2);
+    // First get the matrix, extract vectors, then convert to Vector3's
+    Matrix3 cellMatrix = myXtal->unitCell().cellMatrix();
+    Vector3 aVec = myXtal->unitCell().aVector();
+    Vector3 bVec = myXtal->unitCell().bVector();
+    Vector3 cVec = myXtal->unitCell().cVector();
     // Scale cell
     myXtal->setCellInfo(a * A,
                         b * B,
@@ -1908,15 +1901,14 @@ namespace XtalOpt {
         for (int k = 0; k <= c; k++) {
           if (i == 0 && j == 0 && k == 0) continue;
           Vector3 uVecs(
-                  obU1.x() * i + obU2.x() * j + obU3.x() * k,
-                  obU1.y() * i + obU2.y() * j + obU3.y() * k,
-                  obU1.z() * i + obU2.z() * j + obU3.z() * k);
+                  aVec.x() * i + bVec.x() * j + cVec.x() * k,
+                  aVec.y() * i + bVec.y() * j + cVec.y() * k,
+                  aVec.z() * i + bVec.z() * j + cVec.z() * k);
           // Add the atoms in
-          foreach(Atom *atom, oneFUatoms) {
-              Atom *newAtom = myXtal->addAtom();
-              *newAtom = *atom;
-              newAtom->setPos((*atom.pos())+uVecs);
-              newAtom->setAtomicNumber(atom.atomicNumber());
+          foreach(const Atom& atom, oneFUatoms) {
+              Atom& newAtom = myXtal->addAtom();
+              newAtom.setPos(atom.pos() + uVecs);
+              newAtom.setAtomicNumber(atom.atomicNumber());
           }
         }
       }
@@ -2145,7 +2137,7 @@ namespace XtalOpt {
     // cell matrix is negative (otherwise VASP complains about a
     // "negative triple product")
     if (qobject_cast<VASPOptimizer*>(m_optimizer) != 0 &&
-        xtal->OBUnitCell()->GetCellMatrix().determinant() <= 0.0) {
+        xtal->unitCell().cellMatrix().determinant() <= 0.0) {
       qDebug() << "Rejecting structure" << xtal->getIDString()
                << ": using VASP negative triple product.";
       if (err != NULL) {
@@ -2157,7 +2149,7 @@ namespace XtalOpt {
 
     // Before fixing angles, make sure that the current cell
     // parameters are realistic
-    if (GS_IS_NAN_OR_INF(xtal.a()) || fabs(xtal.a()) < 1e-8 ||
+    if (GS_IS_NAN_OR_INF(xtal->getA()) || fabs(xtal->getA()) < 1e-8 ||
         GS_IS_NAN_OR_INF(xtal->getB()) || fabs(xtal->getB()) < 1e-8 ||
         GS_IS_NAN_OR_INF(xtal->getC()) || fabs(xtal->getC()) < 1e-8 ||
         GS_IS_NAN_OR_INF(xtal->getAlpha()) || fabs(xtal->getAlpha()) < 1e-8 ||
@@ -2177,11 +2169,11 @@ namespace XtalOpt {
       // cause the spglib to crash in this function
       // If one is 25x shorter than another, discard it
       double cutoff = 25.0;
-      if (xtal.a() * cutoff < xtal->getB() ||
-          xtal.a() * cutoff < xtal->getC() ||
-          xtal->getB() * cutoff < xtal.a() ||
+      if (xtal->getA() * cutoff < xtal->getB() ||
+          xtal->getA() * cutoff < xtal->getC() ||
+          xtal->getB() * cutoff < xtal->getA() ||
           xtal->getB() * cutoff < xtal->getC() ||
-          xtal->getC() * cutoff < xtal.a() ||
+          xtal->getC() * cutoff < xtal->getA() ||
           xtal->getC() * cutoff < xtal->getB()) {
         qDebug() << "Error: one of the lengths is more than 25x shorter "
                  << "than another length. Crystals like these can sometimes "
@@ -2207,14 +2199,14 @@ namespace XtalOpt {
     }
 
     // Check lattice
-    if ( ( !a     && ( xtal.a() < a_min         || xtal.a() > a_max         ) ) ||
+    if ( ( !a     && ( xtal->getA() < a_min         || xtal->getA() > a_max         ) ) ||
          ( !b     && ( xtal->getB() < b_min         || xtal->getB() > b_max         ) ) ||
          ( !c     && ( xtal->getC() < c_min         || xtal->getC() > c_max         ) ) ||
          ( !alpha && ( xtal->getAlpha() < alpha_min || xtal->getAlpha() > alpha_max ) ) ||
          ( !beta  && ( xtal->getBeta()  < beta_min  || xtal->getBeta()  > beta_max  ) ) ||
          ( !gamma && ( xtal->getGamma() < gamma_min || xtal->getGamma() > gamma_max ) ) )  {
       qDebug() << "Discarding structure -- Bad lattice:" <<endl
-               << "A:     " << a_min << " " << xtal.a() << " " << a_max << endl
+               << "A:     " << a_min << " " << xtal->getA() << " " << a_max << endl
                << "B:     " << b_min << " " << xtal->getB() << " " << b_max << endl
                << "C:     " << c_min << " " << xtal->getC() << " " << c_max << endl
                << "Alpha: " << alpha_min << " " << xtal->getAlpha() << " " << alpha_max << endl
@@ -2257,7 +2249,7 @@ namespace XtalOpt {
 
     // Sometimes, all the atom positions are set to 'nan' for an unknown reason
     // Make sure that the position of the first atom is not nan
-    if (GS_IS_NAN_OR_INF(xtal->atoms().at(0).pos()->x())) {
+    if (GS_IS_NAN_OR_INF(xtal->atoms().at(0).pos().x())) {
       qDebug() << "Discarding structure -- contains 'nan' atom positions";
       return false;
     }
@@ -2267,8 +2259,8 @@ namespace XtalOpt {
       int atom1, atom2;
       double IAD;
       if (!xtal->checkInteratomicDistances(this->comp, &atom1, &atom2, &IAD)){
-        Atom *a1 = xtal->atom(atom1);
-        Atom *a2 = xtal->atom(atom2);
+        Atom& a1 = xtal->atom(atom1);
+        Atom& a2 = xtal->atom(atom2);
         const double minIAD =
             this->comp.value(a1.atomicNumber()).minRadius +
             this->comp.value(a2.atomicNumber()).minRadius;
@@ -2317,7 +2309,7 @@ namespace XtalOpt {
     Xtal *xtal = qobject_cast<Xtal*>(structure);
 
     // Xtal specific keywords
-    if (line == "a")                    rep += QString::number(xtal.a());
+    if (line == "a")                    rep += QString::number(xtal->getA());
     else if (line == "b")               rep += QString::number(xtal->getB());
     else if (line == "c")               rep += QString::number(xtal->getC());
     else if (line == "alphaRad")        rep += QString::number(xtal->getAlpha() * DEG_TO_RAD);
@@ -2330,12 +2322,12 @@ namespace XtalOpt {
     else if (line == "block")           rep += QString("\%block");
     else if (line == "endblock")        rep += QString("\%endblock");
     else if (line == "coordsFrac") {
-      QList<Atom*> atoms = structure->atoms();
-      QList<Atom*>::const_iterator it;
+      const std::vector<Atom>& atoms = structure->atoms();
+      std::vector<Atom>::const_iterator it;
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        const Vector3 coords = xtal->cartToFrac(*((*it).pos()));
+        const Vector3 coords = xtal->cartToFrac((*it).pos());
         rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
@@ -2353,13 +2345,13 @@ namespace XtalOpt {
       }
     }
     else if (line == "atomicCoordsAndAtomicSpecies") {
-      QList<Atom*> atoms = xtal->atoms();
-      QList<Atom*>::const_iterator it;
+      const std::vector<Atom>& atoms = xtal->atoms();
+      std::vector<Atom>::const_iterator it;
       QList<QString> symbol = xtal->getSymbols();
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        const Vector3 coords = xtal->cartToFrac(*(*it).pos());
+        const Vector3 coords = xtal->cartToFrac((*it).pos());
         QString currAtom = static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber()));
         int i = symbol.indexOf(currAtom)+1;
         rep += " ";
@@ -2374,12 +2366,12 @@ namespace XtalOpt {
       }
     }
     else if (line == "coordsFracId") {
-      QList<Atom*> atoms = structure->atoms();
-      QList<Atom*>::const_iterator it;
+      const std::vector<Atom>& atoms = structure->atoms();
+      std::vector<Atom>::const_iterator it;
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        const Vector3 coords = xtal->cartToFrac(*(*it).pos());
+        const Vector3 coords = xtal->cartToFrac((*it).pos());
         rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
         rep += QString::number((*it).atomicNumber()) + " ";
         rep += QString::number(coords.x()) + " ";
@@ -2388,12 +2380,12 @@ namespace XtalOpt {
       }
     }
     else if (line == "gulpFracShell") {
-      QList<Atom*> atoms = structure->atoms();
-      QList<Atom*>::const_iterator it;
+      const std::vector<Atom>& atoms = structure->atoms();
+      std::vector<Atom>::const_iterator it;
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        const Vector3 coords = xtal->cartToFrac(*((*it).pos()));
+        const Vector3 coords = xtal->cartToFrac((*it).pos());
         const char *symbol = OpenBabel::etab.GetSymbol((*it).atomicNumber());
         rep += QString("%1 core %2 %3 %4\n")
             .arg(symbol).arg(coords.x()).arg(coords.y()).arg(coords.z());
@@ -2402,58 +2394,58 @@ namespace XtalOpt {
         }
     }
     else if (line == "cellMatrixAngstrom") {
-      matrix3x3 m = xtal->OBUnitCell()->GetCellMatrix();
+      Matrix3 m = xtal->unitCell().cellMatrix();
       for (int i = 0; i < 3; i++) {
         rep += " ";
         for (int j = 0; j < 3; j++) {
           QString inp;
-          inp.sprintf("%4.8f", m.Get(i,j));
+          inp.sprintf("%4.8f", m(i,j));
           rep += inp + "\t";
         }
         rep += "\n";
       }
     }
     else if (line == "cellVector1Angstrom") {
-      vector3 v = xtal->OBUnitCell()->GetCellVectors()[0];
+      Vector3 v = xtal->unitCell().aVector();
       for (int i = 0; i < 3; i++) {
         rep += QString::number(v[i]) + "\t";
       }
     }
     else if (line == "cellVector2Angstrom") {
-      vector3 v = xtal->OBUnitCell()->GetCellVectors()[1];
+      Vector3 v = xtal->unitCell().bVector();
       for (int i = 0; i < 3; i++) {
         rep += QString::number(v[i]) + "\t";
       }
     }
     else if (line == "cellVector3Angstrom") {
-      vector3 v = xtal->OBUnitCell()->GetCellVectors()[2];
+      Vector3 v = xtal->unitCell().cVector();
       for (int i = 0; i < 3; i++) {
         rep += QString::number(v[i]) + "\t";
       }
     }
     else if (line == "cellMatrixBohr") {
-      matrix3x3 m = xtal->OBUnitCell()->GetCellMatrix();
+      Matrix3 m = xtal->unitCell().cellMatrix();
       for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-          rep += QString::number(m.Get(i,j) * ANGSTROM_TO_BOHR) + "\t";
+          rep += QString::number(m(i,j) * ANGSTROM_TO_BOHR) + "\t";
         }
         rep += "\n";
       }
     }
     else if (line == "cellVector1Bohr") {
-      vector3 v = xtal->OBUnitCell()->GetCellVectors()[0];
+      Vector3 v = xtal->unitCell().aVector();
       for (int i = 0; i < 3; i++) {
         rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
       }
     }
     else if (line == "cellVector2Bohr") {
-      vector3 v = xtal->OBUnitCell()->GetCellVectors()[1];
+      Vector3 v = xtal->unitCell().bVector();
       for (int i = 0; i < 3; i++) {
         rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
       }
     }
     else if (line == "cellVector3Bohr") {
-      vector3 v = xtal->OBUnitCell()->GetCellVectors()[2];
+      Vector3 v = xtal->unitCell().cVector();
       for (int i = 0; i < 3; i++) {
         rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
       }
@@ -2475,12 +2467,11 @@ namespace XtalOpt {
       rep += QString::number(1.0);
       rep += "\n";
       // Unit Cell Vectors
-      std::vector< vector3 > vecs = xtal->OBUnitCell()->GetCellVectors();
-      for (uint i = 0; i < vecs.size(); i++) {
+      for (uint i = 0; i < 3; i++) {
         rep += QString("  %1 %2 %3\n")
-          .arg(vecs[i].x(), 12, 'f', 8)
-          .arg(vecs[i].y(), 12, 'f', 8)
-          .arg(vecs[i].z(), 12, 'f', 8);
+          .arg(xtal->unitCell().aVector().x(), 12, 'f', 8)
+          .arg(xtal->unitCell().bVector().y(), 12, 'f', 8)
+          .arg(xtal->unitCell().cVector().z(), 12, 'f', 8);
       }
       // Number of each type of atom (sorted alphabetically by symbol)
       for (int i = 0; i < atomCounts.size(); i++) {
@@ -3071,13 +3062,13 @@ namespace XtalOpt {
     Xtal xtalObject;
     Xtal *tempXtal = &xtalObject;
     tempXtal->setCellInfo(
-                        smallerFormulaUnitXtal->OBUnitCell()->GetCellMatrix());
+                        smallerFormulaUnitXtal->unitCell().cellMatrix());
 
-    QList<Atom*> atoms = smallerFormulaUnitXtal->atoms();
+    const std::vector<Atom>& atoms = smallerFormulaUnitXtal->atoms();
     for (size_t i = 0; i < atoms.size(); i++) {
-      Atom* atom = tempXtal->addAtom();
-      atom->setAtomicNumber(atoms.at(i).atomicNumber());
-      atom->setPos(atoms.at(i).pos());
+      Atom& atom = tempXtal->addAtom();
+      atom.setAtomicNumber(atoms.at(i).atomicNumber());
+      atom.setPos(atoms.at(i).pos());
     }
 
     Xtal* tempXtal2 = generateSuperCell(

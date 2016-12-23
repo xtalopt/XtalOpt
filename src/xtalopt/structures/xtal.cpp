@@ -50,8 +50,8 @@ extern "C" {
 
 using namespace std;
 using namespace OpenBabel;
-using namespace Avogadro;
 using namespace Eigen;
+using namespace GlobalSearch;
 
 namespace XtalOpt {
 
@@ -77,9 +77,6 @@ namespace XtalOpt {
       generateValidCOBs();
     }
     m_spgNumber = 231;
-    // Openbabel seems to be fond of making unfounded assumptions that
-    // break things. This fixes one of them.
-    this->cell()->SetSpaceGroup(0);
     this->setParentStructure(NULL);
   }
 
@@ -89,11 +86,11 @@ namespace XtalOpt {
   void Xtal::setVolume(double  Volume) {
 
     // Get scaling factor
-    double factor = pow(Volume/cell()->GetCellVolume(), 1.0/3.0); // Cube root
+    double factor = pow(Volume/getVolume(), 1.0/3.0); // Cube root
 
     // Store position of atoms in fractional units
-    QList<Atom*> atomList       = atoms();
-    QList<Vector3*> fracCoordsList;
+    std::vector<Atom>& atomList       = atoms();
+    QList<Vector3> fracCoordsList;
     for (int i = 0; i < atomList.size(); i++)
       fracCoordsList.append(cartToFrac(atomList.at(i).pos()));
 
@@ -107,10 +104,8 @@ namespace XtalOpt {
 
     // Recalculate coordinates:
     for (int i = 0; i < atomList.size(); i++)
-      atomList.at(i)->setPos(fracToCart(*(fracCoordsList.at(i))));
+      atomList.at(i).setPos(fracToCart(fracCoordsList.at(i)));
 
-    // Free memory
-    qDeleteAll(fracCoordsList);
   }
 
   void Xtal::rescaleCell(double a, double b, double c,
@@ -123,8 +118,8 @@ namespace XtalOpt {
     this->rotateCellAndCoordsToStandardOrientation();
 
     // Store position of atoms in fractional units
-    QList<Atom*> atomList       = atoms();
-    QList<Vector3*> fracCoordsList;
+    std::vector<Atom>& atomList       = atoms();
+    QList<Vector3> fracCoordsList;
     for (int i = 0; i < atomList.size(); i++)
       fracCoordsList.append(cartToFrac(atomList.at(i).pos()));
 
@@ -220,13 +215,13 @@ namespace XtalOpt {
 
     // Recalculate coordinates:
     for (int i = 0; i < atomList.size(); i++)
-      atomList.at(i)->setPos(fracToCart(fracCoordsList.at(i)));
+      atomList.at(i).setPos(fracToCart(fracCoordsList.at(i)));
   }
 
   bool Xtal::niggliReduce(const unsigned int iterations, double lenTol)
   {
     // Cache volume for later sanity checks
-    const double origVolume = cell()->GetCellVolume();
+    const double origVolume = getVolume();
 
     // Grab lattice vectors
     const Vector3 v1 (unitCell().aVector());
@@ -490,10 +485,10 @@ namespace XtalOpt {
                "Determinant of change of basis matrix must be 1.");
 
     // Update cell
-    setCellInfo( Eigen2OB(cob).transpose() * cell()->GetCellMatrix());
+    setCellInfo(cob.transpose() * unitCell().cellMatrix());
 
     // Check that volume has not changed
-    Q_ASSERT_X(StableComp::eq(origVolume, cell()->GetCellVolume(), tol),
+    Q_ASSERT_X(StableComp::eq(origVolume, getVolume(), tol),
                Q_FUNC_INFO, "Cell volume changed during Niggli reduction.");
 
     // Rotate and wrap
@@ -569,22 +564,15 @@ namespace XtalOpt {
     // Cache fractional coordinates and atomic nums
     QList<Vector3> fcoords;
     QList<unsigned int> atomicNums;
-    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
-           it_end = m_atomList.constEnd(); it != it_end; ++it) {
-      fcoords.append( cartToFrac(*(*it).pos()));
+    for (std::vector<Atom>::const_iterator it = atoms().begin(),
+           it_end = atoms().end(); it != it_end; ++it) {
+      fcoords.append( cartToFrac((*it).pos()));
       atomicNums.append((*it).atomicNumber());
     }
     size_t originalFCoordsSize = fcoords.size();
 
     // Get unit cell
-    matrix3x3 obcell = this->OBUnitCell()->GetCellMatrix();
-    // Convert to Eigen:
-    Matrix3 cellMatrix = Matrix3::Zero();
-    for (int row = 0; row < 3; row++) {
-      for (int col = 0; col < 3; col++) {
-        cellMatrix(row,col) = obcell.Get(row, col);
-      }
-    }
+    Matrix3 cellMatrix = this->unitCell().cellMatrix();
 
     unsigned int spg = reduceToPrimitive(&fcoords, &atomicNums,
                                          &cellMatrix, cartTol);
@@ -599,21 +587,14 @@ namespace XtalOpt {
     // Cache fractional coordinates and atomic nums
     QList<Vector3> fcoords;
     QList<unsigned int> atomicNums;
-    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
-           it_end = m_atomList.constEnd(); it != it_end; ++it) {
-      fcoords.append( cartToFrac(*(*it).pos()));
+    for (std::vector<Atom>::const_iterator it = atoms().begin(),
+           it_end = atoms().end(); it != it_end; ++it) {
+      fcoords.append( cartToFrac((*it).pos()));
       atomicNums.append((*it).atomicNumber());
     }
 
     // Get unit cell
-    matrix3x3 obcell = this->OBUnitCell()->GetCellMatrix();
-    // Convert to Eigen:
-    Matrix3 cellMatrix = Matrix3::Zero();
-    for (int row = 0; row < 3; row++) {
-      for (int col = 0; col < 3; col++) {
-        cellMatrix(row,col) = obcell.Get(row, col);
-      }
-    }
+    Matrix3 cellMatrix = this->unitCell().cellMatrix();
 
     unsigned int spg = reduceToPrimitive(&fcoords, &atomicNums,
                                          &cellMatrix, cartTol);
@@ -621,18 +602,18 @@ namespace XtalOpt {
     // spg == 0 implies that reduceToPrimitive() failed
     if (spg == 0) return false;
 
-    setCellInfo(Eigen2OB(cellMatrix));
+    setCellInfo(cellMatrix);
 
     // Remove all atoms to simplify the change
-    QList<Atom*> atomList = this->atoms();
+    std::vector<Atom>& atomList = this->atoms();
     for (size_t i = 0; i < atomList.size(); i++)
                                             this->removeAtom(atomList.at(i));
 
     // Add the atoms in
     for (size_t i = 0; i < fcoords.size(); i++) {
-        Atom* newAtom = this->addAtom();
-        newAtom->setAtomicNumber(atomicNums.at(i));
-        newAtom->setPos(fracToCart(fcoords.at(i)));
+        Atom newAtom = this->addAtom();
+        newAtom.setAtomicNumber(atomicNums.at(i));
+        newAtom.setPos(fracToCart(fcoords.at(i)));
     }
 
     Q_ASSERT(fcoords.size() == atomicNums.size());
@@ -755,11 +736,11 @@ namespace XtalOpt {
   QList<QString> Xtal::currentAtomicSymbols()
   {
     QList<QString> result;
-    QList<GlobalSearch::Atom*> atoms = this->atoms();
+    std::vector<Atom>& atoms = this->atoms();
 
-    for (QList<GlobalSearch::Atom*>::const_iterator
-           it = atoms.constBegin(),
-           it_end = atoms.constEnd();
+    for (std::vector<Atom>::const_iterator
+           it = atoms.begin(),
+           it_end = atoms.end();
          it != it_end;
          ++it) {
       result <<
@@ -774,8 +755,8 @@ namespace XtalOpt {
     // Remove old atoms
     // We should lock the xtal before calling this function!
     //QWriteLocker locker (this->lock());
-    QList<GlobalSearch::Atom*> atoms = this->atoms();
-    for (QList<GlobalSearch::Atom*>::iterator
+    std::vector<Atom>& atoms = this->atoms();
+    for (std::vector<Atom>::iterator
            it = atoms.begin(),
            it_end = atoms.end();
          it != it_end;
@@ -785,17 +766,16 @@ namespace XtalOpt {
 
     // Add new atoms
     for (int i = 0; i < ids.size(); ++i) {
-      Atom *atom = this->addAtom();
-      atom->setAtomicNumber(OpenBabel::etab.GetAtomicNum
-                            (ids[i].toStdString().c_str()));
-      atom->setPos(coords[i]);
+      Atom& atom = this->addAtom();
+      atom.setAtomicNumber(OpenBabel::etab.GetAtomicNum
+                           (ids[i].toStdString().c_str()));
+      atom.setPos(coords[i]);
     }
   }
 
   void Xtal::setCurrentFractionalCoords(const QList<QString> &ids,
                                         const QList<Vector3> &fcoords)
   {
-    OpenBabel::OBUnitCell *cell = this->cell();
     QList<Vector3> coords;
 #if QT_VERSION >= 0x040700
     coords.reserve(fcoords.size());
@@ -807,8 +787,7 @@ namespace XtalOpt {
          it != it_end;
          ++it) {
       // Convert to storage cartesian
-      coords.append(OB2Eigen(cell->FractionalToCartesian
-                             (Eigen2OB(*it))));
+      coords.append(cartToFrac(*it));
     }
 
     updateMolecule(ids, coords);
@@ -816,7 +795,7 @@ namespace XtalOpt {
 
   void Xtal::printLatticeInfo() const
   {
-    cout << "a is " << this.a() << "\n";
+    cout << "a is " << this->getA() << "\n";
     cout << "b is " << this->getB() << "\n";
     cout << "c is " << this->getC() << "\n";
     cout << "alpha is " << this->getAlpha() << "\n";
@@ -828,11 +807,11 @@ namespace XtalOpt {
   void Xtal::printAtomInfo() const
   {
     cout << "Frac coords info (blank if none):\n";
-    QList<GlobalSearch::Atom*> atoms = this->atoms();
+    const std::vector<Atom>& atoms = this->atoms();
     QList<Vector3> fracCoords;
 
     for (size_t i = 0; i < atoms.size(); i++)
-      fracCoords.append(*(cartToFrac(atoms.at(i).pos())));
+      fracCoords.append(cartToFrac(atoms.at(i).pos()));
 
     for (size_t i = 0; i < atoms.size(); i++) {
       cout << "  For atomic num " <<  atoms.at(i).atomicNumber() << ", coords are (" << fracCoords.at(i)[0] << "," << fracCoords.at(i)[1] << "," << fracCoords.at(i)[2] << ")\n";
@@ -843,179 +822,6 @@ namespace XtalOpt {
   {
     printLatticeInfo();
     printAtomInfo();
-  }
-
-  // Adapted from unitcellextension:
-  void Xtal::fillUnitCell(uint spg, double cartTol)
-  {
-    const OpenBabel::SpaceGroup *sg = SpaceGroup::GetSpaceGroup(spg);
-    if (!sg)
-      return; // nothing to do
-
-    wrapAtomsToCell();
-
-    QList<Vector3> origFCoords = getAtomCoordsFrac();
-    QList<Vector3> newFCoords;
-
-    QList<QString> origIds = currentAtomicSymbols();
-    QList<QString> newIds;
-
-    // Duplicate tolerance squared
-    const double dupTolSquared = cartTol * cartTol;
-
-    // Non-fatal assert -- if the number of atoms has
-    // changed, just tail-recurse and try again.
-    if (origIds.size() != origFCoords.size()) {
-      return fillUnitCell(spg);
-    }
-
-    const QString *curId;
-    const Vector3 *curVec;
-    std::list<OpenBabel::vector3> obxformed;
-    std::list<OpenBabel::vector3>::const_iterator obxit;
-    std::list<OpenBabel::vector3>::const_iterator obxit_end;
-    QList<Vector3> xformed;
-    QList<Vector3>::const_iterator xit, xit_end;
-    QList<Vector3>::const_iterator newit, newit_end;
-    for (int i = 0; i < origIds.size(); ++i) {
-      curId = &origIds[i];
-      curVec = &origFCoords[i];
-
-      // Round off to remove floating point math errors
-      double x = StableComp::round(curVec->x(), 7);
-      double y = StableComp::round(curVec->y(), 7);
-      double z = StableComp::round(curVec->z(), 7);
-
-      // Get tranformed OB vectors
-      obxformed = sg->Transform(OpenBabel::vector3(x,y,z));
-
-      // Convert to Eigen, wrap to cell
-      xformed.clear();
-      Vector3 tmp;
-      obxit_end = obxformed.end();
-      for (obxit = obxformed.begin();
-           obxit != obxit_end; ++obxit) {
-        tmp = OB2Eigen(*obxit);
-        // Pseudo-modulus
-        tmp.x() -= static_cast<int>(tmp.x());
-        tmp.y() -= static_cast<int>(tmp.y());
-        tmp.z() -= static_cast<int>(tmp.z());
-        // Correct negative values
-        if (tmp.x() < 0.0) ++tmp.x();
-        if (tmp.y() < 0.0) ++tmp.y();
-        if (tmp.z() < 0.0) ++tmp.z();
-        // Add a fudge factor for cell edges
-        if (tmp.x() >= 1.0 - 1e-6) tmp.x() = 0.0;
-        if (tmp.y() >= 1.0 - 1e-6) tmp.y() = 0.0;
-        if (tmp.z() >= 1.0 - 1e-6) tmp.z() = 0.0;
-        xformed.append(tmp);
-      }
-
-      // Check all xformed vectors against the coords
-      // already added. if they match, skip this atom.
-      bool duplicate;
-      xit_end = xformed.constEnd();
-      for (xit = xformed.constBegin();
-           xit != xit_end; ++xit) {
-        newit_end = newFCoords.constEnd();
-        duplicate = false;
-        for (newit = newFCoords.constBegin();
-             newit != newit_end; ++newit) {
-          if (fabs((*newit - *xit).squaredNorm())
-              < dupTolSquared) {
-            duplicate = true;
-            break;
-          }
-        }
-
-        if (duplicate) {
-          continue;
-        }
-
-        // Add transformed atom
-        newFCoords.append(*xit);
-        newIds.append(*curId);
-      }
-    }
-
-    setCurrentFractionalCoords(newIds, newFCoords);
-  }
-
-  // Inverse of fillUnitCell()
-  void Xtal::reduceToAsymmetricUnit(double cartTol)
-  {
-    OpenBabel::OBUnitCell *cell = this->cell();
-    if (!cell)
-      return;
-    const OpenBabel::SpaceGroup *sg = cell->GetSpaceGroup();
-    if (!sg)
-      return; // nothing to do
-
-    wrapAtomsToCell();
-
-    QList<Vector3> FCoords = getAtomCoordsFrac();
-    QList<QString> Ids = currentAtomicSymbols();
-
-    // Duplicate tolerance squared
-    const double dupTolSquared = cartTol*cartTol;
-
-    // Non-fatal assert -- if the number of atoms has
-    // changed, just tail-recurse and try again.
-    if (Ids.size() != FCoords.size()) {
-      return reduceToAsymmetricUnit();
-    }
-
-    const Vector3 *curVec;
-    std::list<OpenBabel::vector3> obxformed;
-    std::list<OpenBabel::vector3>::const_iterator obxit;
-    std::list<OpenBabel::vector3>::const_iterator obxit_end;
-    QList<Vector3> xformed;
-    QList<Vector3>::const_iterator xit, xit_end;
-
-    // This loop modifies Ids and Fcoords, but only by removing
-    // atoms for j > i.
-    for (int i = 0; i < Ids.size(); ++i) {
-      // Get tranformed OB vectors
-      curVec = &FCoords[i];
-      obxformed = sg->Transform(Eigen2OB(*curVec));
-
-      // Convert to Eigen, wrap to cell
-      xformed.clear();
-      Vector3 tmp;
-      obxit_end = obxformed.end();
-      for (obxit = obxformed.begin();
-           obxit != obxit_end; ++obxit) {
-        tmp = OB2Eigen(*obxit);
-        // Pseudo-modulus
-        tmp.x() -= static_cast<int>(tmp.x());
-        tmp.y() -= static_cast<int>(tmp.y());
-        tmp.z() -= static_cast<int>(tmp.z());
-        // Correct negative values
-        if (tmp.x() < 0.0) ++tmp.x();
-        if (tmp.y() < 0.0) ++tmp.y();
-        if (tmp.z() < 0.0) ++tmp.z();
-        // Add a fudge factor for cell edges
-        if (tmp.x() >= 1.0 - 1e-6) tmp.x() = 0.0;
-        if (tmp.y() >= 1.0 - 1e-6) tmp.y() = 0.0;
-        if (tmp.z() >= 1.0 - 1e-6) tmp.z() = 0.0;
-        xformed.append(tmp);
-      }
-
-      // Check which of the remaining atoms are equivalent to the current
-      // atom and remove them.
-      xit_end = xformed.constEnd();
-      for (xit = xformed.constBegin();
-           xit != xit_end; ++xit) {
-        for (int j = i + 1; j < Ids.size(); j++) {
-          if ((FCoords[j] - *xit).squaredNorm() < dupTolSquared) {
-            FCoords.removeAt(j);
-            Ids.removeAt(j);
-          }
-        }
-      }
-    }
-
-    setCurrentFractionalCoords(Ids, FCoords);
   }
 
   bool Xtal::fixAngles(int attempts)
@@ -1045,8 +851,8 @@ namespace XtalOpt {
                                 const double angleTol) const
   {
     // Cell matrices as row vectors
-    const OpenBabel::matrix3x3 thisCellOB (this->cell()->GetCellMatrix());
-    const OpenBabel::matrix3x3 otherCellOB (other.cell()->GetCellMatrix());
+    const Matrix3 thisCellOB (unitCell().cellMatrix());
+    const Matrix3 otherCellOB (other.unitCell().cellMatrix());
     XcMatrix thisCell (thisCellOB(0,0), thisCellOB(0,1), thisCellOB(0,2),
                        thisCellOB(1,0), thisCellOB(1,1), thisCellOB(1,2),
                        thisCellOB(2,0), thisCellOB(2,1), thisCellOB(2,2));
@@ -1064,15 +870,15 @@ namespace XtalOpt {
     otherCoords.reserve(other.numAtoms());
     otherTypes.reserve(other.numAtoms());
     Vector3 pos;
-    for (QList<Atom*>::const_iterator it = this->m_atomList.constBegin(),
-           it_end = this->m_atomList.constEnd(); it != it_end; ++it) {
-      pos = this->cartToFrac(*(*it).pos());
+    for (std::vector<Atom>::const_iterator it = this->atoms().begin(),
+           it_end = this->atoms().end(); it != it_end; ++it) {
+      pos = this->cartToFrac((*it).pos());
       thisCoords.push_back(XcVector(pos.x(), pos.y(), pos.z()));
       thisTypes.push_back((*it).atomicNumber());
     }
-    for (QList<Atom*>::const_iterator it = other.m_atomList.constBegin(),
-           it_end = other.m_atomList.constEnd(); it != it_end; ++it) {
-      pos = other.cartToFrac(*(*it).pos());
+    for (std::vector<Atom>::const_iterator it = other.atoms().begin(),
+           it_end = other.atoms().end(); it != it_end; ++it) {
+      pos = other.cartToFrac((*it).pos());
       otherCoords.push_back(XcVector(pos.x(), pos.y(), pos.z()));
       otherTypes.push_back((*it).atomicNumber());
     }
@@ -1082,17 +888,17 @@ namespace XtalOpt {
                              NULL, lengthTol, angleTol);
   }
 
-  bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts, Atom **atom) {
+  bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts) {
     INIT_RANDOM_GENERATOR();
     Q_UNUSED(maxIAD);
 
     double IAD = -1;
     int i = 0;
-    vector3 cartCoords;
+    Vector3 cartCoords;
 
     // For first atom, add to 0, 0, 0
     if (numAtoms() == 0) {
-      cartCoords = vector3 (0,0,0);
+      cartCoords = Vector3 (0,0,0);
     }
     else {
       do {
@@ -1103,7 +909,7 @@ namespace XtalOpt {
         double z = RANDDOUBLE();
 
         // Convert to cartesian coordinates and store
-        vector3 fracCoords (x,y,z);
+        Vector3 fracCoords (x,y,z);
         cartCoords = fracToCart(fracCoords);
         if (minIAD != -1) {
           getNearestNeighborDistance(cartCoords[0],
@@ -1117,18 +923,16 @@ namespace XtalOpt {
 
       if (i >= maxAttempts) return false;
     }
-    Atom *atm = addAtom();
-    atom = &atm;
-    Vector3 pos (cartCoords[0],cartCoords[1],cartCoords[2]);
-    (*atom)->setPos(pos);
-    (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
+    Atom& atm = addAtom();
+    atm.setPos(cartCoords);
+    atm.setAtomicNumber(atomicNumber);
     return true;
   }
 
   bool Xtal::addAtomRandomly(
       unsigned int atomicNumber,
       const QHash<unsigned int, XtalCompositionStruct> & limits,
-      int maxAttempts, GlobalSearch::Atom **atom)
+      int maxAttempts)
   {
     Vector3 cartCoords;
     bool success;
@@ -1139,7 +943,7 @@ namespace XtalOpt {
     }
     else {
       unsigned int i = 0;
-      vector3 fracCoords;
+      Vector3 fracCoords;
 
       // Cache the minimum radius for the new atom
       const double newMinRadius = limits.value(atomicNumber).minRadius;
@@ -1162,10 +966,10 @@ namespace XtalOpt {
         success = true;
 
         // Generate fractional coordinates
-        fracCoords.Set(RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        fracCoords = Vector3(RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
 
         // Convert to cartesian coordinates and store
-        cartCoords = Vector3(this->fracToCart(fracCoords).AsArray());
+        cartCoords = Vector3(this->fracToCart(fracCoords));
 
         // Compare distance to each atom in xtal with minimum radii
         QVector<double> squaredDists;
@@ -1194,13 +998,12 @@ namespace XtalOpt {
 
       if (i >= maxAttempts) return false;
     }
-    Atom *atm = addAtom();
-    atom = &atm;
-    (*atom)->setPos(cartCoords);
-    (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
+    Atom& atom = addAtom();
+    atom.setPos(cartCoords);
+    atom.setAtomicNumber(atomicNumber);
     return true;
   }
-
+/*
   //MolUnit corrected function
   bool Xtal::addAtomRandomly(
       unsigned int atomicNumber,
@@ -1208,7 +1011,7 @@ namespace XtalOpt {
       const QHash<unsigned int, XtalCompositionStruct> & limits,
       const QHash<QPair<int, int>, MolUnit> & limitsMolUnit,
       bool useMolUnit,
-      int maxAttempts, GlobalSearch::Atom **atom)
+      int maxAttempts)
   {
     Vector3 cartCoords;
     bool success;
@@ -1219,7 +1022,7 @@ namespace XtalOpt {
     }
     else {
       unsigned int i = 0;
-      vector3 fracCoords;
+      Vector3 fracCoords;
 
       // Cache the minimum radius for the new atom
       const double newMinRadius = limits.value(atomicNumber).minRadius;
@@ -1279,10 +1082,9 @@ namespace XtalOpt {
 
       if (i >= maxAttempts) return false;
     }
-    Atom *atm = addAtom();
-    atom = &atm;
-    (*atom)->setPos(cartCoords);
-    (*atom)->setAtomicNumber(static_cast<int>(atomicNumber));
+    Atom& atom = addAtom();
+    atom.setPos(cartCoords);
+    atom.setAtomicNumber(static_cast<int>(atomicNumber));
 
     if (useMolUnit == true) {
       int numNeighbors = 0;
@@ -1312,7 +1114,7 @@ namespace XtalOpt {
       for (unsigned int i = numberAtoms+1; i <= obmol.NumAtoms(); ++i, ++j) {
         OpenBabel::OBAtom *obatom2 = obmol.GetAtom(i);
         double currDist = obatom2->GetDistance(obatom);
-        vector3 v = ((obatom2->GetVector()-obatom->GetVector())*(dist/currDist))+obatom->GetVector();
+        Vector3 v = ((obatom2->GetVector()-obatom->GetVector())*(dist/currDist))+obatom->GetVector();
         obatom2->SetVector(v);
         Atom *a;
         a = addAtom();
@@ -1325,17 +1127,16 @@ namespace XtalOpt {
 
     return true;
   }
-
+*/
   bool Xtal::fillSuperCell(int a, int b, int c, Xtal * myXtal) {
       //qDebug() << "Xtal has a=" << a << " b=" << b << " c=" << c;
 
-      QList<Atom*> oneFUatoms =  atoms();
-      matrix3x3 obcellMatrix = myXtal->cell()->GetCellMatrix();
-      vector3 obU1 = obcellMatrix.GetRow(0);
-      vector3 obU2 = obcellMatrix.GetRow(1);
-      vector3 obU3 = obcellMatrix.GetRow(2);
+      std::vector<Atom>& oneFUatoms =  atoms();
+      Vector3 aVec = myXtal->unitCell().aVector();
+      Vector3 bVec = myXtal->unitCell().bVector();
+      Vector3 cVec = myXtal->unitCell().cVector();
       // Scale cell
-      double A = myXtal.a();
+      double A = myXtal->getA();
       double B = myXtal->getB();
       double C = myXtal->getC();
       myXtal->setCellInfo(a * A,
@@ -1355,15 +1156,14 @@ namespace XtalOpt {
               for (int k = 0; k <= c; k++) {
                   if (i == 0 && j == 0 && k == 0) continue;
                   Vector3 uVecs(
-                          obU1.x() * i + obU2.x() * j + obU3.x() * k,
-                          obU1.y() * i + obU2.y() * j + obU3.y() * k,
-                          obU1.z() * i + obU2.z() * j + obU3.z() * k);
-                  //Vector3 uVecs(this.a() * i, this->getB() * j, this-> getC() * k);
-                  foreach(Atom *atom, oneFUatoms) {
-                      Atom *newAtom = myXtal->addAtom();
-                      *newAtom = *atom;
-                      newAtom->setPos((*atom.pos())+uVecs);
-                      newAtom->setAtomicNumber(atom.atomicNumber());
+                          aVec.x() * i + bVec.x() * j + cVec.x() * k,
+                          aVec.y() * i + bVec.y() * j + cVec.y() * k,
+                          aVec.z() * i + bVec.z() * j + cVec.z() * k);
+                  //Vector3 uVecs(this->getA() * i, this->getB() * j, this-> getC() * k);
+                  foreach(const Atom& atom, oneFUatoms) {
+                      Atom newAtom = myXtal->addAtom();
+                      newAtom.setPos(atom.pos()+uVecs);
+                      newAtom.setAtomicNumber(atom.atomicNumber());
                       //qDebug() << "Added atom at a=" << i << " b=" << j << " c=" << k << " with atomic number " << newAtom.atomicNumber();
                   }
               }
@@ -1390,12 +1190,12 @@ namespace XtalOpt {
       const double maxCheckDistSquared = maxCheckDistance*maxCheckDistance;
 
       // Iterate through all of the atoms in the molecule for "a1"
-      for (QList<Atom*>::const_iterator a1 = m_atomList.constBegin(),
-           a1_end = m_atomList.constEnd(); a1 != a1_end; ++a1) {
+      for (std::vector<Atom>::const_iterator a1 = atoms().begin(),
+           a1_end = atoms().end(); a1 != a1_end; ++a1) {
 
         // Get list of minimum squared distances between each atom and a1
         QVector<double> squaredDists;
-        this->getSquaredAtomicDistancesToPoint(*(*a1).pos(), &squaredDists);
+        this->getSquaredAtomicDistancesToPoint((*a1).pos(), &squaredDists);
         Q_ASSERT_X(squaredDists.size() == this->numAtoms(), Q_FUNC_INFO,
                    "Size of distance list does not match number of atoms.");
 
@@ -1406,8 +1206,8 @@ namespace XtalOpt {
         // Iterate through each distance
         for (int i = 0; i < squaredDists.size(); ++i) {
 
-          // Grab the atom pointer at i, a2
-          Atom *a2 = this->atom(i);
+          // Grab the atom at i, a2
+          Atom& a2 = this->atom(i);
 
           // If a1 and a2 are the same, skip the comparison
           if (*a1 == a2) {
@@ -1430,8 +1230,8 @@ namespace XtalOpt {
           // If the distance is too small, set atom1/atom2 and return false
           if (curDistSquared < minDistSquared) {
             if (atom1 != NULL && atom2 != NULL) {
-              *atom1 = m_atomList.indexOf(*a1);
-              *atom2 = m_atomList.indexOf(a2);
+              *atom1 = atomIndex(*a1);
+              *atom2 = atomIndex(a2);
               if (IAD != NULL) {
                 *IAD = sqrt(curDistSquared);
               }
@@ -1454,25 +1254,22 @@ namespace XtalOpt {
   }
 
   bool Xtal::getShortestInteratomicDistance(double & shortest) const {
-    QList<Atom*> atomList = atoms();
+    const std::vector<Atom>& atomList = atoms();
     if (atomList.size() <= 1) return false; // Need at least two atoms!
     QList<Vector3> atomPositions;
     for (int i = 0; i < atomList.size(); i++)
-      atomPositions.push_back(*(atomList.at(i).pos()));
+      atomPositions.push_back(atomList.at(i).pos());
 
     // Initialize vars
     //  Atomic Positions
-    Vector3 v1= atomPositions.at(0);
-    Vector3 v2= atomPositions.at(1);
+    Vector3 v1 = atomPositions.at(0);
+    Vector3 v2 = atomPositions.at(1);
     //  Unit Cell Vectors
     //  First get OB matrix, extract vectors, then convert to Vector3's
-    matrix3x3 obcellMatrix = cell()->GetCellMatrix();
-    vector3 obU1 = obcellMatrix.GetRow(0);
-    vector3 obU2 = obcellMatrix.GetRow(1);
-    vector3 obU3 = obcellMatrix.GetRow(2);
-    Vector3 u1 (obU1.x(), obU1.y(), obU1.z());
-    Vector3 u2 (obU2.x(), obU2.y(), obU2.z());
-    Vector3 u3 (obU3.x(), obU3.y(), obU3.z());
+    Matrix3 cellMatrix = unitCell().cellMatrix();
+    Vector3 u1 = cellMatrix.row(0);
+    Vector3 u2 = cellMatrix.row(1);
+    Vector3 u3 = cellMatrix.row(2);
     //  Find all combinations of unit cell vectors to get wrapped neighbors
     QList<Vector3> uVecs;
     int s_1, s_2, s_3; // will be -1, 0, +1 multipliers
@@ -1519,11 +1316,10 @@ namespace XtalOpt {
 
     // Create list of all translation vectors to build a 3x3x3 supercell
     //  First get OB matrix, extract vectors, then convert to Vector3's
-    matrix3x3 obcellMatrix = cell()->GetCellMatrix();
-    const Vector3 u1 (obcellMatrix.GetRow(0).AsArray());
-    const Vector3 u2 (obcellMatrix.GetRow(1).AsArray());
-    const Vector3 u3 (obcellMatrix.GetRow(2).AsArray());
-    //  Find all combinations of unit cell vectors to get wrapped neighbors
+    const Vector3 aVec (unitCell().aVector());
+    const Vector3 bVec (unitCell().bVector());
+    const Vector3 cVec (unitCell().cVector());
+    //  Find all combinaget wrapped neighbors
     QVector<Vector3> uVecs;
     uVecs.clear();
     uVecs.reserve(27);
@@ -1531,17 +1327,17 @@ namespace XtalOpt {
     for (s_1 = -1; s_1 <= 1; ++s_1) {
       for (s_2 = -1; s_2 <= 1; ++s_2) {
         for (s_3 = -1; s_3 <= 1; ++s_3) {
-          uVecs.append(s_1*u1 + s_2*u2 + s_3*u3);
+          uVecs.append(s_1*aVec + s_2*bVec + s_3*cVec);
         }
       }
     }
 
     for (int i = 0; i < atmCount; ++i) {
-      const Vector3 *pos = (this->atom(i).pos());
+      const Vector3 pos = this->atom(i).pos();
       double shortest = DBL_MAX;
       for (QVector<Vector3>::const_iterator it = uVecs.constBegin(),
            it_end = uVecs.constEnd(); it != it_end; ++it) {
-        register double current = ((*it + *pos) - coord).squaredNorm();
+        register double current = ((*it + pos) - coord).squaredNorm();
         if (current < shortest) {
           shortest = current;
         }
@@ -1564,40 +1360,35 @@ namespace XtalOpt {
     // Initialize vars
     //  Atomic Positions
     Vector3 v1 (x, y, z);
-    const Vector3 *v2 = this->atom(0).pos();
+
     //  Unit Cell Vectors
-    //  First get OB matrix, extract vectors, then convert to Vector3's
-    matrix3x3 obcellMatrix = cell()->GetCellMatrix();
-    vector3 obU1 = obcellMatrix.GetRow(0);
-    vector3 obU2 = obcellMatrix.GetRow(1);
-    vector3 obU3 = obcellMatrix.GetRow(2);
-    Vector3 u1 (obU1.x(), obU1.y(), obU1.z());
-    Vector3 u2 (obU2.x(), obU2.y(), obU2.z());
-    Vector3 u3 (obU3.x(), obU3.y(), obU3.z());
+    Vector3 aVec = unitCell().aVector();
+    Vector3 bVec = unitCell().bVector();
+    Vector3 cVec = unitCell().cVector();
     //  Find all combinations of unit cell vectors to get wrapped neighbors
     QList<Vector3> uVecs;
     int s_1, s_2, s_3; // will be -1, 0, +1 multipliers
     for (s_1 = -1; s_1 <= 1; s_1++) {
       for (s_2 = -1; s_2 <= 1; s_2++) {
         for (s_3 = -1; s_3 <= 1; s_3++) {
-          uVecs.append(s_1*u1 + s_2*u2 + s_3*u3);
+          uVecs.append(s_1*aVec + s_2*bVec + s_3*cVec);
         }
       }
     }
 
-    shortest = fabs((v1 - (*v2) ).norm());
+    shortest = fabs((v1 - atom(0).pos()).norm());
 
     double distance;
 
     // Find shortest distance
     for (int j = 0; j < this->numAtoms(); j++) {
-      v2 = this->atom(j).pos();
+      const Vector3& v2 = atom(j).pos();
       // Intercell
-      distance = fabs((v1 - (*v2)).norm());
+      distance = fabs((v1 - v2).norm());
       if (distance < shortest) shortest = distance;
       // Intracell
       for (int vecInd = 0; vecInd < uVecs.size(); vecInd++) {
-        distance = fabs((((*v2)+uVecs.at(vecInd)) - v1).norm());
+        distance = fabs(((v2 + uVecs.at(vecInd)) - v1).norm());
         if (distance < shortest) shortest = distance;
       }
     }
@@ -1628,24 +1419,21 @@ namespace XtalOpt {
       val += step;
     } while (val < max);
 
-    QList<Atom*> atomList = atoms();
+    const std::vector<Atom>& atomList = atoms();
     QList<Vector3> atomPositions;
     for (int i = 0; i < atomList.size(); i++)
-      atomPositions.push_back(*(atomList.at(i).pos()));
+      atomPositions.push_back(atomList.at(i).pos());
 
     // Initialize vars
     //  Atomic Positions
-    Vector3 v1= atomPositions.at(0);
-    Vector3 v2= atomPositions.at(1);
+    Vector3 v1 = atomPositions.at(0);
+    Vector3 v2 = atomPositions.at(1);
     //  Unit Cell Vectors
     //  First get OB matrix, extract vectors, then convert to Vector3's
-    matrix3x3 obcellMatrix = cell()->GetCellMatrix();
-    vector3 obU1 = obcellMatrix.GetRow(0);
-    vector3 obU2 = obcellMatrix.GetRow(1);
-    vector3 obU3 = obcellMatrix.GetRow(2);
-    Vector3 u1 (obU1.x(), obU1.y(), obU1.z());
-    Vector3 u2 (obU2.x(), obU2.y(), obU2.z());
-    Vector3 u3 (obU3.x(), obU3.y(), obU3.z());
+    Matrix3 cellMatrix = unitCell().cellMatrix();
+    Vector3 u1 = cellMatrix.row(0);
+    Vector3 u2 = cellMatrix.row(1);
+    Vector3 u3 = cellMatrix.row(2);
     //  Find all combinations of unit cell vectors to get wrapped neighbors
     QList<Vector3> uVecs;
     int s_1, s_2, s_3; // will be -1, 0, +1 multipliers
@@ -1688,7 +1476,7 @@ namespace XtalOpt {
     }
     // Or, just the one requested
     else {
-      v1 = *atom.pos();
+      v1 = atom->pos();
       for (int j = 0; j < atomList.size(); j++) {
         v2 = atomPositions.at(j);
         // Intercell
@@ -1721,15 +1509,15 @@ namespace XtalOpt {
     QList<QString> symbols = getSymbols();
     QString symbol_ref;
     QString symbol_cur;
-    QList<Atom*>::const_iterator it;
+    std::vector<Atom>::const_iterator it;
     for (int i = 0; i < symbols.size(); i++) {
       symbol_ref = symbols.at(i);
-      for (it  = m_atomList.begin();
-           it != m_atomList.end();
+      for (it  = atoms().begin();
+           it != atoms().end();
            it++) {
         symbol_cur = QString(OpenBabel::etab.GetSymbol((*it).atomicNumber()));
         if (symbol_cur == symbol_ref) {
-          list.append( *(cartToFrac((*it).pos())));
+          list.append(cartToFrac((*it).pos()));
         }
       }
     }
@@ -1739,10 +1527,10 @@ namespace XtalOpt {
   void Xtal::wrapAtomsToCell() {
     //qDebug() << "Xtal::wrapAtomsToCell() called";
     // Store position of atoms in fractional units
-    QList<Atom*> atomList       = atoms();
+    std::vector<Atom>& atomList       = atoms();
     QList<Vector3> fracCoordsList;
     for (int i = 0; i < atomList.size(); i++)
-      fracCoordsList.append(cartToFrac(*(atomList.at(i).pos())));
+      fracCoordsList.append(cartToFrac(atomList.at(i).pos()));
 
     // wrap fractional coordinates to [0,1)
     for (int i = 0; i < fracCoordsList.size(); i++) {
@@ -1755,7 +1543,7 @@ namespace XtalOpt {
     Vector3 cartCoord;
     for (int i = 0; i < atomList.size(); i++) {
       cartCoord = fracToCart(fracCoordsList.at(i));
-      atomList.at(i)->setPos(cartCoord);
+      atomList.at(i).setPos(cartCoord);
     }
   }
 
@@ -1866,29 +1654,28 @@ namespace XtalOpt {
     // if no unit cell or atoms, exit
     if (num == 0)
       return;
-    else if (!cell()) {
+    else if (!hasUnitCell()) {
       qWarning() << "Xtal::findSpaceGroup( " << prec << " ) called on an xtal with no cell!";
       return;
     }
 
     // get lattice matrix
-    std::vector<OpenBabel::vector3> vecs = cell()->GetCellVectors();
-    vector3 obU1 = vecs[0];
-    vector3 obU2 = vecs[1];
-    vector3 obU3 = vecs[2];
+    Vector3 aVec = unitCell().aVector();
+    Vector3 bVec = unitCell().bVector();
+    Vector3 cVec = unitCell().cVector();
     double lattice[3][3] = {
-      {obU1.x(), obU2.x(), obU3.x()},
-      {obU1.y(), obU2.y(), obU3.y()},
-      {obU1.z(), obU2.z(), obU3.z()}
+      {aVec.x(), bVec.x(), cVec.x()},
+      {aVec.y(), bVec.y(), cVec.y()},
+      {aVec.z(), bVec.z(), cVec.z()}
     };
 
     // Get atom info
     double (*positions)[3] = new double[num][3];
     int *types = new int[num];
-    QList<Atom*> atomList = atoms();
+    std::vector<Atom>& atomList = atoms();
     Vector3 fracCoords;
     for (int i = 0; i < atomList.size(); i++) {
-      fracCoords        = cartToFrac(*(atomList.at(i).pos()));
+      fracCoords        = cartToFrac(atomList.at(i).pos());
       types[i]          = atomList.at(i).atomicNumber();
       positions[i][0]   = fracCoords.x();
       positions[i][1]   = fracCoords.y();
@@ -1906,9 +1693,6 @@ namespace XtalOpt {
     delete [] positions;
     delete [] types;
 
-    // Update the OBUnitCell object.
-    cell()->SetSpaceGroup(m_spgNumber);
-
     // Fail if m_spgNumber is still 0
     if (m_spgNumber == 0) {
       return;
@@ -1921,26 +1705,25 @@ namespace XtalOpt {
   }
 
   void Xtal::getSpglibFormat() const {
-    std::vector<OpenBabel::vector3> vecs = cell()->GetCellVectors();
-    vector3 obU1 = vecs[0];
-    vector3 obU2 = vecs[1];
-    vector3 obU3 = vecs[2];
+    Vector3 aVec = unitCell().aVector();
+    Vector3 bVec = unitCell().bVector();
+    Vector3 cVec = unitCell().cVector();
 
     QString t;
     QTextStream out (&t);
 
     out << "double lattice[3][3] = {\n"
-        << "  {" << obU1.x() << ", " << obU2.x() << ", " << obU3.x() << "},\n"
-        << "  {" << obU1.y() << ", " << obU2.y() << ", " << obU3.y() << "},\n"
-        << "  {" << obU1.z() << ", " << obU2.z() << ", " << obU3.z() << "}};\n\n";
+        << "  {" << aVec.x() << ", " << bVec.x() << ", " << cVec.x() << "},\n"
+        << "  {" << aVec.y() << ", " << bVec.y() << ", " << cVec.y() << "},\n"
+        << "  {" << aVec.z() << ", " << bVec.z() << ", " << cVec.z() << "}};\n\n";
 
     out << "double position[][3] = {";
     for (unsigned int i = 0; i < numAtoms(); i++) {
       if (i == 0 || i != numAtoms()-1) out << ",";
       out << "\n";
-      out << "  {" << atom(i).pos()->x() << ", "
-          << atom(i).pos()->y() << ", "
-          << atom(i).pos()->z() << "}";
+      out << "  {" << atom(i).pos().x() << ", "
+          << atom(i).pos().y() << ", "
+          << atom(i).pos().z() << "}";
     }
     out << "};\n\n";
     out << "int types[] = { ";
@@ -1961,7 +1744,7 @@ namespace XtalOpt {
 
     // check that the matrix is valid
     if (newMat.isZero()) {
-      const OpenBabel::matrix3x3 mat = cell()->GetCellMatrix();
+      const Matrix3 mat = unitCell().cellMatrix();
       qDebug() << "Cannot rotate cell to std orientation:\n"
                << QString("%L1 %L2 %L3\n%L4 %L5 %L6\n%L7 %L8 %L9")
         .arg(mat(0,0), -9, 'g').arg(mat(0,1), -9, 'g').arg(mat(0,2), -9, 'g')
@@ -1971,7 +1754,7 @@ namespace XtalOpt {
     }
 
     // Set the rotated basis
-    setCellInfo(Eigen2OB(newMat));
+    setCellInfo(newMat);
 
     return true;
   }
@@ -1980,9 +1763,9 @@ namespace XtalOpt {
   {
     // Cache fractional coordinates
     QList<Vector3> fcoords;
-    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
-           it_end = m_atomList.constEnd(); it != it_end; ++it) {
-      fcoords.append( cartToFrac(*(*it).pos()));
+    for (std::vector<Atom>::const_iterator it = atoms().begin(),
+           it_end = atoms().end(); it != it_end; ++it) {
+      fcoords.append(cartToFrac(it->pos()));
     }
 
     if (!rotateCellToStandardOrientation()) {
@@ -1991,8 +1774,8 @@ namespace XtalOpt {
 
     // Reset coords
     Q_ASSERT(this->m_atomList.size() == fcoords.size());
-    for (int i = 0; i < m_atomList.size(); ++i) {
-      this->atom(i)->setPos(this->fracToCart(fcoords[i]));
+    for (int i = 0; i < atoms().size(); ++i) {
+      this->atom(i).setPos(this->fracToCart(fcoords[i]));
     }
 
     return true;
@@ -2001,8 +1784,7 @@ namespace XtalOpt {
   Matrix3 Xtal::getCellMatrixInStandardOrientation() const
   {
     // Cell matrix as row vectors
-    const OpenBabel::matrix3x3 origRowMat = cell()->GetCellMatrix();
-    return getCellMatrixInStandardOrientation(OB2Eigen(origRowMat));
+    return getCellMatrixInStandardOrientation(unitCell().cellMatrix());
   }
 
   Matrix3 Xtal::getCellMatrixInStandardOrientation
@@ -2157,7 +1939,7 @@ namespace XtalOpt {
   Xtal * Xtal::getRandomRepresentation() const
   {
     // Cache volume for later sanity checks
-    const double origVolume = cell()->GetCellVolume();
+    const double origVolume = getVolume();
 
     // Randomly select a mix matrix to create a new cell matrix by
     // taking a linear combination of the current cell vectors
@@ -2166,9 +1948,9 @@ namespace XtalOpt {
 
     // Build new Xtal with the new basis
     Xtal *nxtal = new Xtal (this->parent());
-    nxtal->setCellInfo(Eigen2OB(mix) * this->cell()->GetCellMatrix());
+    nxtal->setCellInfo(mix * unitCell().cellMatrix());
 
-    Q_ASSERT_X(StableComp::eq(origVolume, nxtal->cell()->GetCellVolume()),
+    Q_ASSERT_X(StableComp::eq(origVolume, nxtal->getVolume()),
                Q_FUNC_INFO, "Randomized cell volume not "
                "equal to original structure.");
 
@@ -2180,11 +1962,11 @@ namespace XtalOpt {
        RANDDOUBLE() * maxTranslation);
 
     // Add atoms
-    for (QList<Atom*>::const_iterator it = m_atomList.constBegin(),
-           it_end = m_atomList.constEnd(); it != it_end; ++it) {
-      Atom * atom = nxtal->addAtom();
-      atom->setAtomicNumber((*it).atomicNumber());
-      atom->setPos( (*(*it).pos()) + randTranslation);
+    for (std::vector<Atom>::const_iterator it = atoms().begin(),
+           it_end = atoms().end(); it != it_end; ++it) {
+      Atom& atom = nxtal->addAtom();
+      atom.setAtomicNumber((*it).atomicNumber());
+      atom.setPos((*it).pos() + randTranslation);
     }
 
     // rotate and wrap:
@@ -2197,7 +1979,7 @@ namespace XtalOpt {
   {
     QTextStream ps (&const_cast<QString &>(poscar));
     QStringList sl;
-    vector3 v1, v2, v3, pos;
+    Vector3 v1, v2, v3, pos;
     Xtal *xtal = new Xtal;
 
     ps.readLine(); // title
@@ -2229,20 +2011,20 @@ namespace XtalOpt {
     // TODO this will assume fractional coordinates. VASP can use cartesian!
     ps.readLine(); // direct or cartesian
     // Atom coords begin
-    Atom *atom;
+    Atom atom;
     for (unsigned int i = 0; i < numAtomTypes; i++) {
       for (unsigned int j = 0; j < atomCounts.at(i); j++) {
         // Actual identity of the atoms doesn't matter for the symmetry
         // test. Just use (i+1) as the atomic number.
         atom = xtal->addAtom();
-        atom->setAtomicNumber(i+1);
+        atom.setAtomicNumber(i+1);
         // Get coords
         sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // coords
         Vector3 pos;
         pos.x() = sl.at(0).toDouble();
         pos.y() = sl.at(1).toDouble();
         pos.z() = sl.at(2).toDouble();
-        atom->setPos(xtal->fracToCart(pos));
+        atom.setPos(xtal->fracToCart(pos));
       }
     }
 

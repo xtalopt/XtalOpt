@@ -23,7 +23,7 @@
 
 #define STABLE_COMP_TOL 1e-5
 
-namespace Avogadro {
+namespace GlobalSearch {
   namespace StableComp {
 
     inline bool lt(double v1,
