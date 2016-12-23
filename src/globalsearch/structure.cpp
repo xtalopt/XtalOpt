@@ -1,5 +1,5 @@
 /**********************************************************************
-  Structure - Wrapper for Avogadro's molecule class
+  Structure - Wrapper for the molecule class
 
   Copyright (C) 2009-2011 by David C. Lonie
 
@@ -15,7 +15,6 @@
 
 #include <globalsearch/structure.h>
 #include <globalsearch/macros.h>
-#include <globalsearch/obeigenconv.h>
 
 #include <globalsearch/structures/molecule.h>
 
@@ -31,7 +30,6 @@
 
 #define KCAL_PER_MOL_TO_EV 0.043364122
 
-using namespace Avogadro;
 using namespace OpenBabel;
 using namespace Eigen;
 using namespace std;

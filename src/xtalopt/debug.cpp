@@ -16,7 +16,6 @@
 
 #include <xtalopt/structures/xtal.h>
 
-#include <globalsearch/obeigenconv.h>
 #include <globalsearch/structures/molecule.h>
 
 #include <openbabel/data.h> // for etab

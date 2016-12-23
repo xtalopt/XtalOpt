@@ -47,4 +47,4 @@ qt4_add_resources(plugin_RC_SRCS ${xtalopt_RCS})
 add_executable(xtalopt main.cpp "${xtalopt_SRCS}" "${plugin_UIS_H}"
                        "${plugin_RC_SRCS}" "${moc_files}")
 
-target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg avogadro)
+target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg)

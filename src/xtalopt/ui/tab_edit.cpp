@@ -452,7 +452,7 @@ namespace XtalOpt {
     // If the optimizer isn't VASP, just return...
     if (m_opt->optimizer()->getIDString() != "VASP") return;
 
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+    QSettings settings;
 
     // Get symbol and filename
     QStringList strl = item->text().split(":");
@@ -495,7 +495,7 @@ namespace XtalOpt {
     // If the optimizer isn't siesta, just return...
     if (m_opt->optimizer()->getIDString() != "SIESTA") return;
 
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+    QSettings settings;
 
     // Get symbol and filename
     QStringList strl = item->text().split(":");
@@ -532,7 +532,7 @@ namespace XtalOpt {
   bool TabEdit::generateVASP_POTCAR_info()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+    QSettings settings;
     QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
     QVariantList potcarInfo;
 
@@ -595,7 +595,7 @@ namespace XtalOpt {
   bool TabEdit::generateSIESTA_PSF_info()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+    QSettings settings;
     QString path = settings.value("xtalopt/templates/psfPath", "").toString();
     QVariantList psfInfo;
 

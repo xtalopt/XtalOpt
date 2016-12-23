@@ -5,12 +5,14 @@ set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
 
 set(QT_MIN_VERSION "4.6.0")
 find_package(Qt4 REQUIRED)
+find_package(Eigen2 REQUIRED)
 find_package(OpenBabel2 REQUIRED)
-find_package(Avogadro REQUIRED)
 
-include(${Avogadro_USE_FILE})
+include(${QT_USE_FILE})
+
 include_directories( ${CMAKE_CURRENT_BINARY_DIR}
 		     ${OPENBABEL2_INCLUDE_DIR}
+                     ${EIGEN2_INCLUDE_DIR}
 		     ${XtalOpt_SOURCE_DIR}/src/)
 
 link_directories(${OPENBABEL2_LIBRARIES_DIRS})
@@ -75,13 +77,11 @@ function(process_plugin plugin_name src_list)
   if(BUILD_TESTS)
     add_library(${plugin_name}_static STATIC ${src_list} ${plugin_UIS_H}
                 ${plugin_RC_SRCS} ${moc_files})
-    target_link_libraries(${plugin_name}_static avogadro)
+    target_link_libraries(${plugin_name}_static)
   endif(BUILD_TESTS)
   add_library(${plugin_name} SHARED ${src_list} ${plugin_UIS_H}
               ${plugin_RC_SRCS} ${moc_files})
-  target_link_libraries(${plugin_name} avogadro)
-
-  install(TARGETS ${plugin_name} DESTINATION "${Avogadro_PLUGIN_DIR}/contrib")
+  target_link_libraries(${plugin_name})
 
   set_target_properties(${plugin_name} PROPERTIES
                         OUTPUT_NAME ${plugin_name}

@@ -19,8 +19,6 @@
 
 #include <globalsearch/ui/abstractdialog.h>
 
-#include <avogadro/molecule.h>
-#include <avogadro/glwidget.h>
 #include <QtCore/QMutex>
 #include <QtCore/QTimer>
 

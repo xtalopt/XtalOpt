@@ -18,7 +18,6 @@
 
 #include <globalsearch/structures/molecule.h>
 
-#include <openbabel/math/vector3.h>
 #include <openbabel/mol.h>
 #include <openbabel/generic.h>
 

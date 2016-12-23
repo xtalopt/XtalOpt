@@ -17,12 +17,7 @@
 
 #include <xtalopt/xtalopt.h>
 
-#include <avogadro/primitive.h>
-#include <avogadro/molecule.h>
-#include <avogadro/atom.h>
-
 #include <globalsearch/macros.h>
-#include <globalsearch/obeigenconv.h>
 #include <globalsearch/stablecomparison.h>
 
 #include <openbabel/generic.h>
@@ -851,14 +846,14 @@ namespace XtalOpt {
                                 const double angleTol) const
   {
     // Cell matrices as row vectors
-    const Matrix3 thisCellOB (unitCell().cellMatrix());
-    const Matrix3 otherCellOB (other.unitCell().cellMatrix());
-    XcMatrix thisCell (thisCellOB(0,0), thisCellOB(0,1), thisCellOB(0,2),
-                       thisCellOB(1,0), thisCellOB(1,1), thisCellOB(1,2),
-                       thisCellOB(2,0), thisCellOB(2,1), thisCellOB(2,2));
-    XcMatrix otherCell(otherCellOB(0,0), otherCellOB(0,1), otherCellOB(0,2),
-                       otherCellOB(1,0), otherCellOB(1,1), otherCellOB(1,2),
-                       otherCellOB(2,0), otherCellOB(2,1), otherCellOB(2,2));
+    const Matrix3 thisCell(unitCell().cellMatrix());
+    const Matrix3 otherCell(other.unitCell().cellMatrix());
+    XcMatrix thisCellXc(thisCell(0,0), thisCell(0,1), thisCell(0,2),
+                        thisCell(1,0), thisCell(1,1), thisCell(1,2),
+                        thisCell(2,0), thisCell(2,1), thisCell(2,2));
+    XcMatrix otherCellXc(otherCell(0,0), otherCell(0,1), otherCell(0,2),
+                         otherCell(1,0), otherCell(1,1), otherCell(1,2),
+                         otherCell(2,0), otherCell(2,1), otherCell(2,2));
 
     // vectors of fractional coordinates and atomic numbers
     std::vector<XcVector> thisCoords;
@@ -883,8 +878,8 @@ namespace XtalOpt {
       otherTypes.push_back((*it).atomicNumber());
     }
 
-    return XtalComp::compare(thisCell,  thisTypes,  thisCoords,
-                             otherCell, otherTypes, otherCoords,
+    return XtalComp::compare(thisCellXc,  thisTypes,  thisCoords,
+                             otherCellXc, otherTypes, otherCoords,
                              NULL, lengthTol, angleTol);
   }
 
@@ -1272,7 +1267,6 @@ namespace XtalOpt {
     Vector3 v1 = atomPositions.at(0);
     Vector3 v2 = atomPositions.at(1);
     //  Unit Cell Vectors
-    //  First get OB matrix, extract vectors, then convert to Vector3's
     Matrix3 cellMatrix = unitCell().cellMatrix();
     Vector3 u1 = cellMatrix.row(0);
     Vector3 u2 = cellMatrix.row(1);
@@ -1322,7 +1316,6 @@ namespace XtalOpt {
     distances->resize(atmCount);
 
     // Create list of all translation vectors to build a 3x3x3 supercell
-    //  First get OB matrix, extract vectors, then convert to Vector3's
     const Vector3 aVec (unitCell().aVector());
     const Vector3 bVec (unitCell().bVector());
     const Vector3 cVec (unitCell().cVector());
@@ -1436,7 +1429,6 @@ namespace XtalOpt {
     Vector3 v1 = atomPositions.at(0);
     Vector3 v2 = atomPositions.at(1);
     //  Unit Cell Vectors
-    //  First get OB matrix, extract vectors, then convert to Vector3's
     Matrix3 cellMatrix = unitCell().cellMatrix();
     Vector3 u1 = cellMatrix.row(0);
     Vector3 u2 = cellMatrix.row(1);

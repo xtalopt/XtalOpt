@@ -171,8 +171,7 @@ namespace XtalOpt {
      * a generic Xtal object.
      *
      * \note The atom types will not be correct here -- this function
-     * should only be used in testing. To actually read in a QM
-     * output, see the OpenBabel::OBConversion documentation.
+     * should only be used in testing.
      */
     static Xtal* POSCARToXtal(const QString &poscar);
 
@@ -181,8 +180,7 @@ namespace XtalOpt {
      * create a generic Xtal object.
      *
      * \note The atom types will not be correct here -- this function
-     * should only be used in testing. To actually read in a QM
-     * output, see the OpenBabel::OBConversion documentation.
+     * should only be used in testing.
      */
     static Xtal* POSCARToXtal(QFile *file);
 
@@ -226,8 +224,6 @@ namespace XtalOpt {
    private:
     // This function is called by the public overloaded function:
     // bool reduceToPrimitive(const double cartTol = 0.05)
-    // It was obtained from David Lonie's identical reduceToPrimitive() function
-    // in his crystallography extension of Avogadro.
     unsigned int reduceToPrimitive(QList<Vector3> *fcoords,
                                    QList<unsigned int> *atomicNums,
                                    Matrix3 *cellMatrix,

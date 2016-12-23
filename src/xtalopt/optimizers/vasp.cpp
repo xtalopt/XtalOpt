@@ -24,9 +24,6 @@
 #include <QtCore/QString>
 #include <QtCore/QSettings>
 
-#include <avogadro/molecule.h>
-#include <avogadro/atom.h>
-
 #include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
 

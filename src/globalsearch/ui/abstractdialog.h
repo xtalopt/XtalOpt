@@ -31,10 +31,6 @@
 #include <QtCore/QMutex>
 #include <QtCore/QTimer>
 
-namespace Avogadro {
-  class Molecule;
-}
-
 namespace GlobalSearch {
 
   /**
@@ -536,7 +532,7 @@ namespace GlobalSearch {
     OptBase *m_opt;
 
     /**
-     * The molecule object in the main Avogadro window.
+     * The molecule object that is selected.
      */
     GlobalSearch::Molecule *m_molecule;
 

@@ -365,7 +365,7 @@ namespace XtalOpt {
 
   void TabOpt::addSeed(QListWidgetItem *item) {
     //qDebug() << "TabOpt::addSeed( " << item << " ) called";
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+    QSettings settings;
     QString filename ("");
     bool replace = false;
     if (item) replace = true;

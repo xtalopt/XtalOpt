@@ -818,7 +818,7 @@ namespace XtalOpt {
     m_context_xtal = NULL;
 
     // Prompt for filename
-    QSettings settings; // Already set up in avogadro/src/main.cpp
+    QSettings settings;
     QString filename = settings.value("xtalopt/opt/seedPath",
                                       m_opt->filePath).toString();
 
