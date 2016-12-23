@@ -1003,7 +1003,7 @@ namespace XtalOpt {
     atom.setAtomicNumber(atomicNumber);
     return true;
   }
-/*
+
   //MolUnit corrected function
   bool Xtal::addAtomRandomly(
       unsigned int atomicNumber,
@@ -1013,6 +1013,13 @@ namespace XtalOpt {
       bool useMolUnit,
       int maxAttempts)
   {
+    // THIS IS CURRENTLY BROKEN. It just adds an atom randomly using the
+    // regular addAtomRandomly() method.
+    // It is broken because of the removal of XtalOpt dependence on
+    // Avogadro and OpenBabel. We need to add functions to do this ourselves.
+    return addAtomRandomly(atomicNumber, limits, maxAttempts);
+  }
+/*  FIX ME PLEASE!!!!!!!!
     Vector3 cartCoords;
     bool success;
 
