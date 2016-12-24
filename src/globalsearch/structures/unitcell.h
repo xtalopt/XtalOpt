@@ -1,12 +1,25 @@
+/**********************************************************************
+  Unit Cell - a basic unit cell class.
 
+  Copyright (C) 2016 by Patrick S. Avery
+
+  This source code is released under the New BSD License, (the "License").
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+ ***********************************************************************/
 
 #ifndef GLOBALSEARCH_UNIT_CELL_H
 #define GLOBALSEARCH_UNIT_CELL_H
 
 #include <cmath>
 
-#include "matrix.h"
-#include "vector.h"
+#include <globalsearch/matrix.h>
+#include <globalsearch/vector.h>
 
 static const double PI = 3.14159265359;
 static const double DEG2RAD = PI / 180.0;
@@ -61,7 +74,8 @@ namespace GlobalSearch
     /**
      * This uses cell parameters to create the cell matrix.
      * The A vector will lie along the x-axis. The B vector will lie in
-     * the positive y region of the x-y plane. The C vector will then be constrained.
+     * the positive y region of the x-y plane. The C vector will then be
+     * constrained.
      *
      * @param a The length (Angstroms) of vector A.
      * @param b The length (Angstroms) of vector B.
