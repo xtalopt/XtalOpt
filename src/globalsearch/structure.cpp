@@ -14,12 +14,10 @@
  ***********************************************************************/
 
 #include <globalsearch/structure.h>
+
+#include <globalsearch/eleminfo.h>
 #include <globalsearch/macros.h>
-
 #include <globalsearch/structures/molecule.h>
-
-#include <openbabel/generic.h>
-#include <openbabel/forcefield.h>
 
 #include <QtCore/QFile>
 #include <QtCore/QDebug>
@@ -30,7 +28,6 @@
 
 #define KCAL_PER_MOL_TO_EV 0.043364122
 
-using namespace OpenBabel;
 using namespace Eigen;
 using namespace std;
 
@@ -1232,7 +1229,7 @@ namespace GlobalSearch {
            it_end = atoms().end();
          it != it_end;
          ++it) {
-      QString symbol = QString(OpenBabel::etab.GetSymbol((*it).atomicNumber()));
+      QString symbol = ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
       if (!list.contains(symbol)) {
         list.append(symbol);
       }
@@ -1252,7 +1249,7 @@ namespace GlobalSearch {
            it_end = atoms().end();
          it != it_end;
          ++it) {
-      QString symbol = QString(OpenBabel::etab.GetSymbol((*it).atomicNumber()));
+      QString symbol = ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
       Q_ASSERT_X(symbols.contains(symbol), Q_FUNC_INFO,
                  "getNumberOfAtomsAlpha found a symbol not in getSymbols.");
       ind = symbols.indexOf(symbol);

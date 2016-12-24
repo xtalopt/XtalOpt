@@ -24,6 +24,7 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <globalsearch/eleminfo.h>
 #include <globalsearch/utilities/fileutils.h>
 
 #include <openbabel/math/spacegroup.h>
@@ -238,9 +239,9 @@ namespace XtalOpt {
 
     QString label = " ";
     for (size_t i = 0; i < atomicNums.size(); i++) {
-      QString tmp = QString(OpenBabel::etab.GetSymbol(atomicNums.at(i))) +
-                    QString::number(m_comp.value(atomicNums.at(i)).quantity) +
-                    " ";
+      QString tmp = QString(ElemInfo::getAtomicSymbol(atomicNums.at(i)).c_str())
+                    + QString::number(m_comp.value(atomicNums.at(i)).quantity)
+                    + " ";
       label.append(tmp);
     }
 

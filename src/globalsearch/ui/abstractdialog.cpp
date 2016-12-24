@@ -21,8 +21,6 @@
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/utilities/exceptionhandler.h>
 
-#include <openbabel/oberror.h>
-
 #include <QtGui/QApplication>
 #include <QtGui/QLabel>
 #include <QtGui/QFileDialog>
@@ -43,10 +41,6 @@ namespace GlobalSearch {
     m_opt(0),
     m_glWidget(glWidget)
   {
-    // Turn off OB error logging. This helps prevent threading
-    // problems, as the error log is implemented as a singleton.
-    OpenBabel::obErrorLog.StopLogging();
-
     // Initialize vars, connections, etc
     progMutex = new QMutex;
     progTimer = new QTimer;

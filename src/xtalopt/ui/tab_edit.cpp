@@ -24,6 +24,7 @@
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/xtalopt.h>
 
+#include <globalsearch/eleminfo.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/queueinterfaces/loadleveler.h>
 #include <globalsearch/queueinterfaces/local.h>
@@ -542,7 +543,7 @@ namespace XtalOpt {
     qSort(atomicNums);
 
     for (int i = 0; i < atomicNums.size(); i++)
-      symbols.append(OpenBabel::etab.GetSymbol(atomicNums.at(i)));
+      symbols.append(ElemInfo::getAtomicSymbol(atomicNums.at(i)).c_str());
     qSort(symbols);
     QString filename;
     QVariantHash hash;
@@ -605,7 +606,7 @@ namespace XtalOpt {
     qSort(atomicNums);
 
     for (int i = 0; i < atomicNums.size(); i++)
-      symbols.append(OpenBabel::etab.GetSymbol(atomicNums.at(i)));
+      symbols.append(ElemInfo::getAtomicSymbol(atomicNums.at(i)).c_str());
      qSort(symbols);
      QStringList files;
      QVariantHash hash;

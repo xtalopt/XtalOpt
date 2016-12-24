@@ -5,6 +5,7 @@ INCLUDE_DIRECTORIES(${LIBSSH_INCLUDE_DIRS})
 set( globalsearch_SRCS
      optbase.cpp
      queuemanager.cpp
+     eleminfo.cpp
      structure.cpp
      tracker.cpp
      optimizer.cpp

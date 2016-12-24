@@ -18,6 +18,7 @@
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/ui/dialog.h>
 
+#include <globalsearch/eleminfo.h>
 #include <globalsearch/macros.h>
 
 #include <openbabel/obiter.h>
@@ -281,7 +282,8 @@ namespace XtalOpt {
         // X is the total number of that atom type in nxtal.
         const std::vector<Atom>& atomList = nxtal->atoms();
         for (int j = 0; j < atomList.size(); j++) {
-          if (atomList.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str())) {
+          if (atomList.at(j).atomicNumber() ==
+              ElemInfo::getAtomicNum(xtalAtoms.at(i).toStdString())) {
             // atom at j is the type that needs to be deleted.
             if (RANDDOUBLE() < 1.0/static_cast<double>(nxtalCounts.at(i))) {
               // If the odds are right, delete the atom and break loop to recheck condition.
@@ -305,9 +307,11 @@ namespace XtalOpt {
           if (
               // if atom at j is the type that needs to be added,
               (
-               ( parent == 1 && atomList1.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
+               (parent == 1 && atomList1.at(j).atomicNumber() ==
+                    ElemInfo::getAtomicNum(xtalAtoms.at(i).toStdString()))
                ||
-               ( parent == 2 && atomList2.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
+               (parent == 2 && atomList2.at(j).atomicNumber() ==
+                    ElemInfo::getAtomicNum(xtalAtoms.at(i).toStdString()))
               )
               &&
               // and atom is in the discarded region of the cut,
@@ -771,7 +775,8 @@ namespace XtalOpt {
         // X is the total number of that atom type in nxtal.
         const std::vector<Atom>& atomList = nxtal->atoms();
         for (int j = 0; j < atomList.size(); j++) {
-          if (atomList.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str())) {
+          if (atomList.at(j).atomicNumber() ==
+                  ElemInfo::getAtomicNum(xtalAtoms.at(i).toStdString())) {
             // atom at j is the type that needs to be deleted.
             if (RANDDOUBLE() < 1.0/static_cast<double>(nxtalCounts.at(i))) {
               // If the odds are right, delete the atom and break loop to recheck condition.
@@ -786,7 +791,8 @@ namespace XtalOpt {
 
         // For FUcrossover, we will try to add the atom randomly at first
         // If it fails we will try the traditional method
-        if(nxtal->addAtomRandomly(OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()), comp)) {
+        if(nxtal->addAtomRandomly(
+               ElemInfo::getAtomicNum(xtalAtoms.at(i).toStdString()), comp)) {
         delta--;
         break;
         }
@@ -804,7 +810,8 @@ namespace XtalOpt {
           for (int j = 0; j < fracCoordsList1.size(); j++) { // size may be different for different parents
             if (
                 // if atom at j is the type that needs to be added,
-                ( atomList1.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
+                (atomList1.at(j).atomicNumber() ==
+                     ElemInfo::getAtomicNum(xtalAtoms.at(i).toStdString()))
 
                 &&
                 // and atom is in the discarded region of the cut,
@@ -826,7 +833,8 @@ namespace XtalOpt {
           for (int j = 0; j < fracCoordsList2.size(); j++) { // size may be different for different parents
             if (
                 // if atom at j is the type that needs to be added,
-                ( atomList2.at(j).atomicNumber() == OpenBabel::etab.GetAtomicNum(xtalAtoms.at(i).toStdString().c_str()))
+                (atomList2.at(j).atomicNumber() ==
+                     ElemInfo::getAtomicNum(xtalAtoms.at(i).toStdString()))
 
                 &&
                 // and atom is in the discarded region of the cut,

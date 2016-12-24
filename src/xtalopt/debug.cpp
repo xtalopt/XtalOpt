@@ -16,14 +16,11 @@
 
 #include <xtalopt/structures/xtal.h>
 
+#include <globalsearch/eleminfo.h>
 #include <globalsearch/structures/molecule.h>
-
-#include <openbabel/data.h> // for etab
 
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
-
-using namespace OpenBabel;
 
 namespace XtalOptDebug
 {
@@ -58,7 +55,8 @@ namespace XtalOptDebug
     for (std::vector<GlobalSearch::Atom>::const_iterator it = atoms.begin(),
            it_end = atoms.end(); it != it_end; ++it) {
       fcoord = xtal->cartToFrac((*it).pos());
-      out << etab.GetSymbol((*it).atomicNumber()) << " "
+      out << QString(ElemInfo::getAtomicSymbol(it->atomicNumber()).c_str())
+          << " "
           << fcoord.x() << " "
           << fcoord.y() << " "
           << fcoord.z() << endl;

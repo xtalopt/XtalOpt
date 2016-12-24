@@ -18,9 +18,6 @@
 
 #include <globalsearch/structures/molecule.h>
 
-#include <openbabel/mol.h>
-#include <openbabel/generic.h>
-
 #include <QReadWriteLock>
 #include <QtCore/QDebug>
 #include <QtCore/QDateTime>

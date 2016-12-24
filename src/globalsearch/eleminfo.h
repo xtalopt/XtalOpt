@@ -17,7 +17,7 @@
 #ifndef ELEM_INFO_H
 #define ELEM_INFO_H
 
-#include "elemInfoDatabase.h"
+#include <globalsearch/eleminfodatabase.h>
 
 #include <iostream>
 
@@ -34,6 +34,8 @@ typedef unsigned int uint;
 class ElemInfo {
  public:
   static std::string getAtomicSymbol(uint atomicNum);
+
+  static double getAtomicMass(uint atomicNum);
 
   static uint getAtomicNum(std::string symbol);
 
@@ -67,6 +69,7 @@ class ElemInfo {
  private:
   // Retain a copy of the database pieces here so they may be edited
   static std::vector<std::string> atomicSymbols;
+  static std::vector<double> masses;
   static std::vector<double> covalentRadii;
   static std::vector<double> vdwRadii;
 

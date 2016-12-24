@@ -16,6 +16,7 @@
 #include <globalsearch/optbase.h>
 
 #include <globalsearch/bt.h>
+#include <globalsearch/eleminfo.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queuemanager.h>
@@ -43,8 +44,6 @@
 #include <QtGui/QInputDialog>
 
 //#define OPTBASE_DEBUG
-
-using namespace OpenBabel;
 
 namespace GlobalSearch {
 
@@ -437,7 +436,8 @@ namespace GlobalSearch {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
+        rep += (QString(ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str())
+                + " ");
         const Vector3& vec = (*it).pos();
         rep += QString::number(vec.x()) + " ";
         rep += QString::number(vec.y()) + " ";
@@ -450,7 +450,8 @@ namespace GlobalSearch {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
+        rep += (QString(ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str())
+                + " ");
         const Vector3& vec = (*it).pos();
         rep += QString::number(vec.x()) + " 1 ";
         rep += QString::number(vec.y()) + " 1 ";
@@ -463,7 +464,8 @@ namespace GlobalSearch {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
+        rep += (QString(ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str())
+                + " ");
         const Vector3& vec = (*it).pos();
         rep += QString::number(vec.x()) + " ";
         rep += QString::number(vec.y()) + " ";
@@ -476,7 +478,8 @@ namespace GlobalSearch {
       for (it  = atoms.begin();
            it != atoms.end();
            it++) {
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
+        rep += (QString(ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str())
+                + " ");
         rep += QString::number((*it).atomicNumber()) + " ";
         const Vector3& vec = (*it).pos();
         rep += QString::number(vec.x()) + " ";

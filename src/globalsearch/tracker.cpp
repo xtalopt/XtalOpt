@@ -21,7 +21,6 @@
 #include <QtCore/QDebug>
 #include <QtCore/QReadWriteLock>
 
-using namespace OpenBabel;
 using namespace Eigen;
 using namespace std;
 

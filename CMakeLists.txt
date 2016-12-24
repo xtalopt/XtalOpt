@@ -94,6 +94,11 @@ if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC"  )
 endif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
+# Require c++0x
+if(UNIX)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++0x"  )
+endif(UNIX)
+
 add_subdirectory(src)
 
 if(BUILD_TESTS)

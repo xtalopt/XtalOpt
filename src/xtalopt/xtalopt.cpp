@@ -22,11 +22,12 @@
 #include <xtalopt/optimizers/castep.h>
 #include <xtalopt/optimizers/siesta.h>
 #include <xtalopt/ui/dialog.h>
+#include <xtalopt/ui/randSpgDialog.h>
 #include <xtalopt/genetic.h>
 
 #include <randSpg/include/xtaloptWrapper.h>
-#include <xtalopt/ui/randSpgDialog.h>
 
+#include <globalsearch/eleminfo.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
@@ -2328,7 +2329,8 @@ namespace XtalOpt {
            it != atoms.end();
            it++) {
         const Vector3 coords = xtal->cartToFrac((*it).pos());
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
+        rep += (QString(ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str())
+                + " ");
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
         rep += QString::number(coords.z()) + "\n";
@@ -2352,7 +2354,8 @@ namespace XtalOpt {
            it != atoms.end();
            it++) {
         const Vector3 coords = xtal->cartToFrac((*it).pos());
-        QString currAtom = static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber()));
+        QString currAtom =
+            ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
         int i = symbol.indexOf(currAtom)+1;
         rep += " ";
         QString inp;
@@ -2372,7 +2375,7 @@ namespace XtalOpt {
            it != atoms.end();
            it++) {
         const Vector3 coords = xtal->cartToFrac((*it).pos());
-        rep += static_cast<QString>(OpenBabel::etab.GetSymbol((*it).atomicNumber())) + " ";
+        rep += (QString(ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str())                + " ");
         rep += QString::number((*it).atomicNumber()) + " ";
         rep += QString::number(coords.x()) + " ";
         rep += QString::number(coords.y()) + " ";
@@ -2386,7 +2389,8 @@ namespace XtalOpt {
            it != atoms.end();
            it++) {
         const Vector3 coords = xtal->cartToFrac((*it).pos());
-        const char *symbol = OpenBabel::etab.GetSymbol((*it).atomicNumber());
+        const char *symbol =
+          ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
         rep += QString("%1 core %2 %3 %4\n")
             .arg(symbol).arg(coords.x()).arg(coords.y()).arg(coords.z());
         rep += QString("%1 shel %2 %3 %4\n")

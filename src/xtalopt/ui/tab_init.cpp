@@ -18,6 +18,7 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <globalsearch/eleminfo.h>
 #include <globalsearch/utilities/fileutils.h>
 
 #include <QtCore/QSettings>
@@ -324,11 +325,12 @@ namespace XtalOpt {
           MolUnit entry;
 
           QString center = settings->value("center").toString();
-          centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+          centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
           QString strNumCenters = settings->value("number_of_centers").toString();
           numCenters = strNumCenters.toInt();
           QString neighbor = settings->value("neighbor").toString();
-          neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+          neighborNum = ElemInfo::getAtomicNum(
+                            neighbor.trimmed().toStdString());
           QString strNumNeighbors = settings->value("number_of_neighbors").toString();
           numNeighbors = strNumNeighbors.toInt();
           QString strGeom = settings->value("geometry").toString();
@@ -528,8 +530,7 @@ namespace XtalOpt {
     // Build hash
     for (uint i = 0; i < length; i++){
       symbol    = symbolList.at(i);
-      atomicNum = OpenBabel::etab.GetAtomicNum(
-            symbol.trimmed().toStdString().c_str());
+      atomicNum = ElemInfo::getAtomicNum(symbol.trimmed().toStdString());
       quantity	= quantityList.at(i).toUInt();
 
       if (symbol.contains("nRunsStart")) {
@@ -592,9 +593,9 @@ namespace XtalOpt {
     for (int i = 0; i < numRows; i++) {
       unsigned int atomicNum = keys.at(i);
 
-      QString symbol	= QString(OpenBabel::etab.GetSymbol(atomicNum));
+      QString symbol	= ElemInfo::getAtomicSymbol(atomicNum).c_str();
       unsigned int quantity  = xtalopt->comp[atomicNum].quantity;
-      double mass	= OpenBabel::etab.GetMass(atomicNum);
+      double mass	= ElemInfo::getAtomicMass(atomicNum);
       double minRadius = xtalopt->comp[atomicNum].minRadius;
 
       QTableWidgetItem *symbolItem =
@@ -630,7 +631,7 @@ namespace XtalOpt {
     for (int i = 0; i < keys.size(); i++) {
       if (keys.at(i) == 0) continue;
       uint q = xtalopt->comp.value(keys.at(i)).quantity;
-      str << OpenBabel::etab.GetSymbol(keys.at(i)) << q << " ";
+      str << ElemInfo::getAtomicSymbol(keys.at(i)).c_str() << q << " ";
     }
     if (xtalopt->testingMode) {
       str << "nRunsStart" << xtalopt->test_nRunsStart << " "
@@ -711,7 +712,7 @@ namespace XtalOpt {
          it = xtalopt->comp.begin(), it_end = xtalopt->comp.end();
          it != it_end; ++it) {
       it.value().minRadius = xtalopt->scaleFactor *
-          OpenBabel::etab.GetCovalentRad(it.key());
+          ElemInfo::getCovalentRadius(it.key());
       // Ensure that all minimum radii are > 0.25 (esp. H!)
       if (it.value().minRadius < xtalopt->minRadius) {
         it.value().minRadius = xtalopt->minRadius;
@@ -1018,9 +1019,10 @@ namespace XtalOpt {
       if (center == "None")
         centerNum = 0;
       else
-        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+        centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
       QString neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
-      int neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+      int neighborNum =
+          ElemInfo::getAtomicNum(neighbor.trimmed().toStdString());
 
       //Update center and neighbor lists
       QList<QString> centerList;
@@ -1032,7 +1034,8 @@ namespace XtalOpt {
         return;
 
       for(int k = 0; k < neighborList.size(); k++) {
-        int n = OpenBabel::etab.GetAtomicNum(neighborList.at(k).trimmed().toStdString().c_str());
+        int n =
+            ElemInfo::getAtomicNum(neighborList.at(k).trimmed().toStdString());
         if(xtalopt->compMolUnit.contains(qMakePair<int,int>(centerNum, n)) && n != neighborNum) {
           neighborList.removeAt(k);
           k--;
@@ -1061,9 +1064,9 @@ namespace XtalOpt {
       if (center == "None")
         centerNum = 0;
       else
-        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+        centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
       neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
-      neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+      neighborNum = ElemInfo::getAtomicNum(neighbor.trimmed().toStdString());
 
       //Number of Centers
       unsigned int numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
@@ -1151,9 +1154,10 @@ namespace XtalOpt {
       if (center == "None")
         centerNum = 0;
       else
-        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+        centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
       QString neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
-      int neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+      int neighborNum =
+          ElemInfo::getAtomicNum(neighbor.trimmed().toStdString());
 
       //Update center and neighbor lists
       QList<QString> centerList;
@@ -1165,7 +1169,8 @@ namespace XtalOpt {
         return;
 
       for(int k = 0; k < neighborList.size(); k++) {
-        int n = OpenBabel::etab.GetAtomicNum(neighborList.at(k).trimmed().toStdString().c_str());
+        int n =
+          ElemInfo::getAtomicNum(neighborList.at(k).trimmed().toStdString());
         if(xtalopt->compMolUnit.contains(qMakePair<int,int>(centerNum, n)) && n != neighborNum) {
           neighborList.removeAt(k);
           k--;
@@ -1194,9 +1199,9 @@ namespace XtalOpt {
       if (center == "None")
         centerNum = 0;
       else
-        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+        centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
       neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
-      neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+      neighborNum = ElemInfo::getAtomicNum(neighbor.trimmed().toStdString());
 
       //Number of Centers
       unsigned int numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
@@ -1322,16 +1327,16 @@ namespace XtalOpt {
     if (center == "None")
       centerNum = 0;
     else
-      centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+      centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
     QString neighbor = neighborList.at(0);
-    neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+    neighborNum = ElemInfo::getAtomicNum(neighbor.trimmed().toStdString());
 
     if(xtalopt->compMolUnit.contains(qMakePair<int, int>(centerNum, neighborNum))) {
       neighborList.removeAt(0);
       if (centerList.isEmpty() || neighborList.isEmpty())
         return;
       neighbor = neighborList.at(0);
-      neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+      neighborNum = ElemInfo::getAtomicNum(neighbor.trimmed().toStdString());
     }
 
     //Number of Centers
@@ -1372,7 +1377,8 @@ namespace XtalOpt {
     compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
 
     //Distance
-    double distNum = OpenBabel::etab.GetCovalentRad(centerNum) + OpenBabel::etab.GetCovalentRad(neighborNum);
+    double distNum = ElemInfo::getCovalentRadius(centerNum) +
+                     ElemInfo::getCovalentRadius(neighborNum);
     QString dist = QString::number(distNum, 'f', 3);
 
     compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].dist = distNum;
@@ -1480,7 +1486,7 @@ namespace XtalOpt {
 
     for (int j = 0; j < numKeys; j++) {
       unsigned int atomicNum = keys.at(j);
-      QString symbol = QString(OpenBabel::etab.GetSymbol(atomicNum));
+      QString symbol = QString(ElemInfo::getAtomicSymbol((atomicNum)).c_str());
       unsigned int qComp = xtalopt->comp[atomicNum].quantity;
 
       //Add center atom to list
@@ -1535,7 +1541,7 @@ namespace XtalOpt {
 
     if (numCenters == 0)
       return;
-    
+
     for (int i = numCenters; i > 0; i--) {
       numCentersList.append(QString::number(i));
     }
