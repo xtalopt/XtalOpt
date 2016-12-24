@@ -22,9 +22,6 @@
 #include <QtCore/QString>
 #include <QtCore/QSemaphore>
 
-#include <openbabel/obconversion.h>
-#include <openbabel/mol.h>
-
 using namespace GlobalSearch;
 
 namespace XtalOpt {

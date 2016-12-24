@@ -59,7 +59,6 @@ namespace GlobalSearch {
     m_ssh(NULL),
 #endif // ENABLE_SSH
     m_idString("Generic"),
-    sOBMutex(new QMutex),
     stateFileMutex(new QMutex),
     backTraceMutex(new QMutex),
     savePending(false),

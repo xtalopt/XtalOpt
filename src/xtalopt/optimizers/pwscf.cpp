@@ -15,9 +15,6 @@
 
 #include <xtalopt/optimizers/pwscf.h>
 
-#include <openbabel/obconversion.h>
-#include <openbabel/mol.h>
-
 #include <QtCore/QDir>
 #include <QtCore/QString>
 #include <QtCore/QDebug>

@@ -304,11 +304,6 @@ for (ind = 0; ind < probs.size(); ind++)
     /// optimization
     QString rempath;
 
-    /// Much of OpenBabel is not written with thread safety in
-    /// mind. This mutex should be locked whenever non-static
-    /// OpenBabel functions are called.
-    QMutex *sOBMutex;
-
     /// This should be locked whenever the state file (resume file) is
     /// being written
     QMutex *stateFileMutex;

@@ -44,10 +44,6 @@
 #include <globalsearch/queueinterfaces/remote.h>
 #endif // ENABLE_SSH
 
-#include <openbabel/generic.h>
-
-#include <Eigen/LU>
-
 #include <QtCore/QDir>
 #include <QtCore/QList>
 #include <QtCore/QFile>
@@ -65,7 +61,6 @@
 #define ANGSTROM_TO_BOHR 1.889725989
 
 using namespace GlobalSearch;
-using namespace OpenBabel;
 
 namespace XtalOpt {
 
@@ -631,13 +626,7 @@ namespace XtalOpt {
       return NULL;
     }
 
-    // Openbabel crashes when you try to retrieve the HM for spg = 230
-    // for some reason...
-    QString HM_spg = "";
-    if (spg != 230)
-      HM_spg = QString::fromStdString(OpenBabel::SpaceGroup::GetSpaceGroup(
-                                                          spg)->GetHMName());
-    else HM_spg = "Ia-3d";
+    QString HM_spg = Xtal::getHMName(spg);
 
     // Set up xtal data
     xtal->setGeneration(generation);

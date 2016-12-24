@@ -793,8 +793,8 @@ namespace GlobalSearch {
 
     /**
      * Write supplementary data about this Structure to a file. All
-     * data that is not stored in the OpenBabel-readable optimizer
-     * output file should be written here.
+     * data that is not stored in the readable optimizer output file
+     * should be written here.
      *
      * If reimplementing this in a derived class, call
      * writeStructureSettings(filename) to write inherited data.
@@ -807,8 +807,8 @@ namespace GlobalSearch {
 
     /**
      * Read supplementary data about this Structure from a file. All
-     * data that is not stored in the OpenBabel-readable optimizer
-     * output file should be read here.
+     * data that is not stored in the readable optimizer output file
+     * should be read here.
      *
      * If reimplementing this in a derived class, call
      * readStructureSettings(filename) to read inherited data.

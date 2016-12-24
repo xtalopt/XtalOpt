@@ -17,14 +17,10 @@
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/xtalopt.h>
 
-
 #include <QtCore/QDir>
 #include <QtCore/QDebug>
 #include <QtCore/QString>
 #include <QtCore/QSettings>
-
-#include <openbabel/obconversion.h>
-#include <openbabel/mol.h>
 
 using namespace GlobalSearch;
 

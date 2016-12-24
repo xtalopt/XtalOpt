@@ -21,14 +21,11 @@
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/macros.h>
 
-#include <openbabel/obiter.h>
-
 #include <QtCore/QDebug>
 
 using namespace std;
 using namespace Eigen;
 using namespace GlobalSearch;
-using namespace OpenBabel;
 
 namespace XtalOpt {
 

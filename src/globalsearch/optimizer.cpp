@@ -15,14 +15,12 @@
 
 #include <globalsearch/optimizer.h>
 
+#include <globalsearch/formats/formats.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizerdialog.h>
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/structure.h>
-
-#include <openbabel/obconversion.h>
-#include <openbabel/mol.h>
 
 #include <Eigen/Core>
 
@@ -33,8 +31,6 @@
 #include <QtCore/QString>
 
 #define KCAL_PER_MOL_TO_EV 0.043364122
-
-using namespace OpenBabel;
 
 namespace GlobalSearch {
 
@@ -457,76 +453,9 @@ namespace GlobalSearch {
     }
     file.close();
 
-    // Read in OBMol
-    //
-    // OpenBabel::OBConversion;:ReadFile calls a singleton error class
-    // that is not thread safe. Hence sOBMutex is necessary.
-    m_opt->sOBMutex->lock();
-    OBConversion conv;
-    OBFormat* inFormat = conv.FormatFromExt(QString(QFile::encodeName(filename.trimmed())).toAscii());
-
-    if ( !inFormat || !conv.SetInFormat( inFormat ) ) {
-      m_opt->warning(tr("Optimizer::read: Error setting openbabel format for file %1")
-                 .arg(filename));
-      m_opt->sOBMutex->unlock();
+    if (!Formats::read(structure, filename)) {
+      qDebug() << "Failed to read the output file!";
       return false;
-    }
-
-    OBMol obmol;
-    if (!conv.ReadFile( &obmol, QString(QFile::encodeName(filename)).toStdString())) {
-      m_opt->error(tr("Cannot update structure %1 from file \n%2")
-                   .arg(structure->getIDString())
-                   .arg(QString(QFile::encodeName(filename))));
-      m_opt->sOBMutex->unlock();
-      return false;
-    }
-    m_opt->sOBMutex->unlock();
-
-    // Extract data from obmol and update structure
-    double energy=0.0;
-    double enthalpy=0.0;
-    QList<unsigned int> atomicNums;
-    QList<Vector3> coords;
-    Matrix3 cellMat = Matrix3::Zero();
-
-    // Ensure that there are the correct number of atoms in the
-    // structure
-    while (structure->numAtoms() < obmol.NumAtoms())
-      structure->addAtom();
-    while (structure->numAtoms() > obmol.NumAtoms())
-      structure->removeAtom(structure->atoms().back());
-
-    // Atomic data
-    FOR_ATOMS_OF_MOL(atm, obmol) {
-      coords.append(Vector3(atm->x(), atm->y(), atm->z()));
-      atomicNums.append(atm->GetAtomicNum());
-    }
-
-    // energy/enthalpy
-    if (obmol.HasData("Enthalpy (kcal/mol)")) {
-      enthalpy = QString(obmol.GetData("Enthalpy (kcal/mol)")->GetValue().c_str()
-                         ).toDouble() * KCAL_PER_MOL_TO_EV;
-    }
-    // Convert energy to eV (GlobalSearch::Molecule expects kcal/mol, but
-    // the updateAnd*History functions below want eV)
-    energy = obmol.GetEnergy() * KCAL_PER_MOL_TO_EV;
-
-    // Cell
-    OBUnitCell *cell = static_cast<OBUnitCell*>(obmol.GetData(OBGenericDataType::UnitCell));
-
-    if (cell != NULL) {
-      for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-          cellMat(i,j) = cell->GetCellMatrix().Get(i,j);
-        }
-      }
-    }
-
-    if (m_opt->isStarting) {
-      structure->updateAndSkipHistory(atomicNums, coords, energy, enthalpy, cellMat);
-    }
-    else {
-      structure->updateAndAddToHistory(atomicNums, coords, energy, enthalpy, cellMat);
     }
 
     return true;

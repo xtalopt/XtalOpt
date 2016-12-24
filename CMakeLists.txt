@@ -6,16 +6,13 @@ set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
 set(QT_MIN_VERSION "4.6.0")
 find_package(Qt4 REQUIRED)
 find_package(Eigen2 REQUIRED)
-find_package(OpenBabel2 REQUIRED)
 
 include(${QT_USE_FILE})
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR}
-		     ${OPENBABEL2_INCLUDE_DIR}
                      ${EIGEN2_INCLUDE_DIR}
 		     ${XtalOpt_SOURCE_DIR}/src/)
 
-link_directories(${OPENBABEL2_LIBRARIES_DIRS})
 include(MacroEnsureVersion)
 
 option( BUILD_TESTS

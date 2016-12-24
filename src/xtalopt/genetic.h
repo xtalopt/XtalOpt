@@ -18,8 +18,6 @@
 
 #include <xtalopt/structures/xtal.h>
 
-#include <openbabel/rand.h>
-
 namespace XtalOpt {
 
   class XtalOptGenetic : public QObject

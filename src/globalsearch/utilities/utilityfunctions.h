@@ -157,16 +157,16 @@ static inline bool isDigit(char d)
   return true;
 }
 
-static const double PI = 3.14159265;
+static const double _PI = 3.14159265;
 
 inline double deg2rad(double a)
 {
-  return a * PI / 180.0;
+  return a * _PI / 180.0;
 }
 
 inline double rad2deg(double a)
 {
-  return a * 180.0 / PI;
+  return a * 180.0 / _PI;
 }
 
 inline bool containsOnlySpaces(const std::string& str)
@@ -220,7 +220,7 @@ inline bool caseInsensitiveCompareC(unsigned char a, unsigned char b)
 }
 
 // Case insensitive comparison of strings
-bool caseInsensitiveCompare(std::string const& a, std::string const& b)
+inline bool caseInsensitiveCompare(std::string const& a, std::string const& b)
 {
   if (a.size() == b.size())
     return std::equal(b.begin(), b.end(), a.begin(), caseInsensitiveCompareC);
@@ -228,6 +228,13 @@ bool caseInsensitiveCompare(std::string const& a, std::string const& b)
     return false;
 }
 
-// Case insensitive string comparison
+inline std::string getFileExt(const std::string& s)
+{
+  size_t i = s.rfind('.', s.length());
+  if (i != std::string::npos)
+    return (s.substr(i + 1, s.length() - i));
+  else
+    return("");
+}
 
 #endif

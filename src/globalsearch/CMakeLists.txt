@@ -22,6 +22,8 @@ set( globalsearch_SRCS
      queueinterfaces/localdialog.cpp
      utilities/fileutils.cpp
      utilities/exceptionhandler.cpp
+     formats/formats.cpp
+     formats/gulpformat.cpp
 )
 
 if (ENABLE_SSH)
@@ -79,8 +81,7 @@ add_library(globalsearch STATIC ${globalsearch_SRCS} ${globalsearch_UIS} ${moc_f
 target_link_libraries( globalsearch
 		       ${LINK_LIBS}
 		       ${QT_QTCORE_LIBRARY}
-		       ${QT_QTGUI_LIBRARY}
-		       ${OPENBABEL2_LIBRARIES})
+		       ${QT_QTGUI_LIBRARY})
 
 if (ENABLE_SSH AND NOT USE_CLI_SSH)
   target_link_libraries(globalsearch ${LIBSSH_LIBRARIES})

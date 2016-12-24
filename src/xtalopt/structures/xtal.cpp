@@ -18,11 +18,9 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <globalsearch/eleminfo.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/stablecomparison.h>
-
-#include <openbabel/generic.h>
-#include <openbabel/forcefield.h>
 
 extern "C" {
 #include <spglib/spglib.h>
@@ -30,12 +28,12 @@ extern "C" {
 
 #include <xtalcomp/xtalcomp.h>
 
-#include <Eigen/LU>
-
 #include <QtCore/QFile>
 #include <QtCore/QDebug>
 #include <QtCore/QRegExp>
 #include <QtCore/QStringList>
+
+#include <cfloat> // For DBL_MAX
 
 #define DEBUG_MATRIX(m) printf("| %9.5f %9.5f %9.5f |\n"        \
                                "| %9.5f %9.5f %9.5f |\n"        \
@@ -45,7 +43,6 @@ extern "C" {
                                (m)(2,0), (m)(2,1), (m)(2,2))
 
 using namespace std;
-using namespace OpenBabel;
 using namespace Eigen;
 using namespace GlobalSearch;
 
@@ -740,7 +737,7 @@ namespace XtalOpt {
          it != it_end;
          ++it) {
       result <<
-        OpenBabel::etab.GetSymbol((*it).atomicNumber());
+        ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
     }
     return result;
   }
@@ -763,8 +760,7 @@ namespace XtalOpt {
     // Add new atoms
     for (int i = 0; i < ids.size(); ++i) {
       Atom& atom = this->addAtom();
-      atom.setAtomicNumber(OpenBabel::etab.GetAtomicNum
-                           (ids[i].toStdString().c_str()));
+      atom.setAtomicNumber(ElemInfo::getAtomicNum(ids[i].toStdString()));
       atom.setPos(coords[i]);
     }
   }
@@ -1515,7 +1511,7 @@ namespace XtalOpt {
       for (it  = atoms().begin();
            it != atoms().end();
            it++) {
-        symbol_cur = QString(OpenBabel::etab.GetSymbol((*it).atomicNumber()));
+        symbol_cur = ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
         if (symbol_cur == symbol_ref) {
           list.append(cartToFrac((*it).pos()));
         }

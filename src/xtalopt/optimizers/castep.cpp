@@ -15,15 +15,11 @@
 
 #include <xtalopt/optimizers/castep.h>
 
-#include <openbabel/obconversion.h>
-#include <openbabel/mol.h>
-
 #include <QtCore/QDir>
 #include <QtCore/QString>
 #include <QtCore/QDebug>
 
 using namespace std;
-using namespace OpenBabel;
 
 namespace XtalOpt {
 

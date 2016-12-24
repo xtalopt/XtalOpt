@@ -21,9 +21,6 @@
 
 #include <QtCore/QFile>
 
-#include <openbabel/obconversion.h>
-#include <openbabel/mol.h>
-
 using namespace GlobalSearch;
 
 namespace XtalOpt {
