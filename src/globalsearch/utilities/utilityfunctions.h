@@ -213,4 +213,21 @@ static std::string reduce(const std::string& str,
   return result;
 }
 
+// Case insensitive comparison of characters
+inline bool caseInsensitiveCompareC(unsigned char a, unsigned char b)
+{
+  return std::tolower(a) == std::tolower(b);
+}
+
+// Case insensitive comparison of strings
+bool caseInsensitiveCompare(std::string const& a, std::string const& b)
+{
+  if (a.size() == b.size())
+    return std::equal(b.begin(), b.end(), a.begin(), caseInsensitiveCompareC);
+  else
+    return false;
+}
+
+// Case insensitive string comparison
+
 #endif

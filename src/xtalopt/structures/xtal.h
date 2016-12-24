@@ -133,6 +133,10 @@ namespace XtalOpt {
     QString getSpaceGroupSymbol();
     QString getHTMLSpaceGroupSymbol();
 
+    // Static function for getting a Hermann-Mauguin name from a spg number
+    static QString getHMName(unsigned short spg);
+
+
     // Reduce cell. See member function fixAngles()
     // Returns true if successful, false otherwise
     // Angles are in degrees. Algorithm is based on Grosse-Kunstleve

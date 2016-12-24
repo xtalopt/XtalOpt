@@ -13,6 +13,7 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+#include <xtalopt/structures/spghmnames.h>
 #include <xtalopt/structures/xtal.h>
 
 #include <xtalopt/xtalopt.h>
@@ -1634,6 +1635,16 @@ namespace XtalOpt {
     }
 
     return s;
+  }
+
+  QString Xtal::getHMName(unsigned short spg)
+  {
+    if (spg == 0 || spg > 230) {
+      qDebug() << "Error in " << __FUNCTION__ << ": an invalid "
+               << "spg number of " << spg << " was entered!";
+      return QString();
+    }
+    return QString::fromStdString(_HMNames[spg]);
   }
 
   void Xtal::findSpaceGroup(double prec) {

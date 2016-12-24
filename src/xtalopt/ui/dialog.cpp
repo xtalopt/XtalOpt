@@ -29,8 +29,6 @@
 //#include <xtalopt/ui/tab_plot.h>
 #include <xtalopt/ui/tab_log.h>
 
-#include <openbabel/oberror.h>
-
 #include <QtCore/QSettings>
 #include <QtCore/QtConcurrentRun>
 #include <QtCore/QUrl>

@@ -50,11 +50,10 @@ double ElemInfo::getAtomicMass(uint atomicNum)
 uint ElemInfo::getAtomicNum(std::string symbol)
 {
   for (uint i = 0; i < atomicSymbols.size(); i++) {
-    if (atomicSymbols[i] == symbol) return i;
+    if (caseInsensitiveCompare(atomicSymbols[i], symbol))
+      return i;
   }
 
-  std::cout << "Error: Invalid symbol, " << symbol << ", was entered into "
-       << __FUNCTION__ << "!\n";
   return 0;
 }
 

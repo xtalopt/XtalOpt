@@ -27,8 +27,6 @@
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/utilities/fileutils.h>
 
-#include <openbabel/math/spacegroup.h>
-
 namespace XtalOpt {
 
   RandSpgDialog::RandSpgDialog(XtalOpt* p, QWidget* parent) :
@@ -100,12 +98,7 @@ namespace XtalOpt {
         this->table_list->setItem(index, i, new QTableWidgetItem());
       Spg_Table_Entry e;
 
-      // Openbabel crashes when you try to retrieve the HM for spg = 230
-      // for some reason...
-      if (spg != 230)
-        e.HM_spg = QString::fromStdString(OpenBabel::SpaceGroup::GetSpaceGroup(
-                                                          spg)->GetHMName());
-      else e.HM_spg = "Ia-3d";
+      e.HM_spg = Xtal::getHMName(spg);
 
       // Add a new checkbox
       m_checkBoxList.append(new QCheckBox);
