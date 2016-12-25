@@ -36,7 +36,7 @@ namespace GlobalSearch
      * @param pos The 3-dimensional Cartesian coordinates in Angstroms.
      *            Default is (0, 0, 0).
      */
-    explicit Atom(unsigned char atomicNum = 0,
+    explicit Atom(unsigned short atomicNum = 0,
                   const Vector3& pos = Vector3(0.0, 0.0, 0.0));
 
     /* Copy constructor. Just copies the data. */
@@ -54,7 +54,7 @@ namespace GlobalSearch
      *
      * @param num The atomic number.
      */
-    void setAtomicNumber(unsigned char num) { m_atomicNumber = num; };
+    void setAtomicNumber(unsigned short num) { m_atomicNumber = num; };
 
     /**
      * Set the position of the atom using Cartesian coordinates in Angstroms.
@@ -68,7 +68,7 @@ namespace GlobalSearch
      *
      * @return The atomic number of the atom.
      */
-    unsigned char atomicNumber() const { return m_atomicNumber; };
+    unsigned short atomicNumber() const { return m_atomicNumber; };
 
     /**
      * Get the position of the atom in 3-dimensional Cartesian coordinates
@@ -79,11 +79,11 @@ namespace GlobalSearch
     Vector3 pos() const { return m_pos; };
 
    private:
-    unsigned char m_atomicNumber;
+    unsigned short m_atomicNumber;
     Vector3 m_pos;
   };
 
-  inline Atom::Atom(unsigned char atomicNum, const Vector3& pos)
+  inline Atom::Atom(unsigned short atomicNum, const Vector3& pos)
     : m_atomicNumber(atomicNum),
       m_pos(pos)
   {

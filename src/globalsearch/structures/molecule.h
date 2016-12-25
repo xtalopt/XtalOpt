@@ -63,7 +63,7 @@ namespace GlobalSearch
      *
      * @return A reference to the atom just created.
      */
-    Atom& addAtom(unsigned char atomicNum = 0,
+    Atom& addAtom(unsigned short atomicNum = 0,
                   const Vector3& pos = Vector3(0.0, 0.0, 0.0));
 
     /**
@@ -152,7 +152,7 @@ namespace GlobalSearch
      *
      * @return The vector of atomic numbers of the molecule.
      */
-    std::vector<unsigned char> atomicNumbers() const;
+    std::vector<unsigned short> atomicNumbers() const;
 
     /**
      * Returns the atomic number of the atom at index @p ind. An assertion
@@ -162,7 +162,7 @@ namespace GlobalSearch
      *
      * @return The atomic number of the atom at index @p.
      */
-    unsigned char atomicNumber(size_t ind) const;
+    unsigned short atomicNumber(size_t ind) const;
 
     /**
      * Do we have a unit cell? Returns true if the unit cell is valid.
@@ -223,7 +223,7 @@ namespace GlobalSearch
     return *this;
   }
 
-  inline Atom& Molecule::addAtom(unsigned char atomicNum, const Vector3& pos)
+  inline Atom& Molecule::addAtom(unsigned short atomicNum, const Vector3& pos)
   {
     m_atoms.push_back(Atom(atomicNum, pos));
     return m_atoms.back();
@@ -268,15 +268,15 @@ namespace GlobalSearch
     return -1;
   }
 
-  inline std::vector<unsigned char> Molecule::atomicNumbers() const
+  inline std::vector<unsigned short> Molecule::atomicNumbers() const
   {
-    std::vector<unsigned char> atomicNums;
+    std::vector<unsigned short> atomicNums;
     for (size_t i = 0; i < m_atoms.size(); ++i)
       atomicNums.push_back(m_atoms[i].atomicNumber());
     return atomicNums;
   }
 
-  inline unsigned char Molecule::atomicNumber(size_t ind) const
+  inline unsigned short Molecule::atomicNumber(size_t ind) const
   {
     assert(ind < m_atoms.size());
     return m_atoms[ind].atomicNumber();
