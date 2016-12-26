@@ -217,9 +217,9 @@ namespace XtalOpt {
     const double origVolume = getVolume();
 
     // Grab lattice vectors
-    const Vector3 v1 (unitCell().aVector());
-    const Vector3 v2 (unitCell().bVector());
-    const Vector3 v3 (unitCell().cVector());
+    const Vector3& v1 = unitCell().aVector();
+    const Vector3& v2 = unitCell().bVector();
+    const Vector3& v3 = unitCell().cVector();
 
     // Compute characteristic (step 0)
     double A    = v1.squaredNorm();
@@ -477,8 +477,8 @@ namespace XtalOpt {
     Q_ASSERT_X(cob.determinant() == 1, Q_FUNC_INFO,
                "Determinant of change of basis matrix must be 1.");
 
-    // Update cell
-    setCellInfo(cob.transpose() * unitCell().cellMatrix());
+    // Update cell. This order is necessary for column vectors.
+    setCellInfo(unitCell().cellMatrix() * cob);
 
     // Check that volume has not changed
     Q_ASSERT_X(StableComp::eq(origVolume, getVolume(), tol),
@@ -794,6 +794,14 @@ namespace XtalOpt {
     cout << "beta is " << this->getBeta() << "\n";
     cout << "gamma is " << this->getGamma() << "\n";
     cout << "volume is " << this->getVolume() << "\n";
+
+    cout << "cellMatrix is (row vectors):\n";
+    for (size_t i = 0; i < 3; ++i) {
+      for (size_t j = 0; j < 3; ++j) {
+        cout << unitCell().cellMatrix()(j, i) << "  ";
+      }
+      cout << "\n";
+    }
   }
 
   void Xtal::printAtomInfo() const
@@ -1593,7 +1601,7 @@ namespace XtalOpt {
 
 
   uint Xtal::getSpaceGroupNumber() {
-    if (m_spgNumber > 230)
+    if (m_spgNumber > 230 || m_spgNumber < 1)
       findSpaceGroup();
     return m_spgNumber;
   }
@@ -1665,14 +1673,12 @@ namespace XtalOpt {
       return;
     }
 
-    // get lattice matrix
-    Vector3 aVec = unitCell().aVector();
-    Vector3 bVec = unitCell().bVector();
-    Vector3 cVec = unitCell().cVector();
+    // Get lattice matrix. Spglib expects column vectors.
+    const Matrix3& cell = unitCell().cellMatrix();
     double lattice[3][3] = {
-      {aVec.x(), bVec.x(), cVec.x()},
-      {aVec.y(), bVec.y(), cVec.y()},
-      {aVec.z(), bVec.z(), cVec.z()}
+      {cell(0, 0), cell(0, 1), cell(0, 2)},
+      {cell(1, 0), cell(1, 1), cell(1, 2)},
+      {cell(2, 0), cell(2, 1), cell(2, 2)}
     };
 
     // Get atom info
@@ -1789,7 +1795,7 @@ namespace XtalOpt {
 
   Matrix3 Xtal::getCellMatrixInStandardOrientation() const
   {
-    // Cell matrix as row vectors
+    // Cell matrix as column vectors
     return getCellMatrixInStandardOrientation(unitCell().cellMatrix());
   }
 
@@ -1798,15 +1804,15 @@ namespace XtalOpt {
   {
     // Extract vector components:
     const double &x1 = origRowMat(0,0);
-    const double &y1 = origRowMat(0,1);
-    const double &z1 = origRowMat(0,2);
+    const double &y1 = origRowMat(1,0);
+    const double &z1 = origRowMat(2,0);
 
-    const double &x2 = origRowMat(1,0);
+    const double &x2 = origRowMat(0,1);
     const double &y2 = origRowMat(1,1);
-    const double &z2 = origRowMat(1,2);
+    const double &z2 = origRowMat(2,1);
 
-    const double &x3 = origRowMat(2,0);
-    const double &y3 = origRowMat(2,1);
+    const double &x3 = origRowMat(0,2);
+    const double &y3 = origRowMat(1,2);
     const double &z3 = origRowMat(2,2);
 
     // Cache some frequently used values:
@@ -1869,7 +1875,8 @@ namespace XtalOpt {
                    x2*y3*z1 - x2*y1*z3 +
                    x3*y1*z2 - x3*y2*z1) / denom;
 
-    return newMat;
+    // Transpose is needed with column vectors
+    return newMat.transpose();
   }
 
   // Initialize static members for COB list generation

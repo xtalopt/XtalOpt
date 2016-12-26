@@ -4,7 +4,7 @@
 
 int main(int argc, char* argv[])
 {
- // Set up groups for QSettings
+  // Set up groups for QSettings
   QCoreApplication::setOrganizationName("XtalOpt");
   QCoreApplication::setOrganizationDomain("xtalopt.github.io");
   QCoreApplication::setApplicationName("XtalOpt");
