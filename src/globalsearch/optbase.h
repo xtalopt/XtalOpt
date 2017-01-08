@@ -154,10 +154,6 @@ for (ind = 0; ind < probs.size(); ind++)
      * @param structures Collection of Structure objects to use. Must
      * be sorted by enthalpy
      *
-     * @param maxDupOffspring The maximum number of duplicates a structure is
-     * allowed to produce before it is removed from the gene pool.
-     * If set to -1, the maxDupOffspring is infinity.
-     *
      * @sa Structure::sortByEnthalpy()
      *
      * @note IMPORTANT: \a structures must contain one more structure
@@ -167,8 +163,8 @@ for (ind = 0; ind < probs.size(); ind++)
      *
      * @return
      */
-    static QList<double> getProbabilityList(const QList<Structure*> &structures,
-                                            int maxDupOffspring = -1);
+    static QList<double> getProbabilityList(
+                             const QList<Structure*> &structures);
 
     /**
      * Save the current search. If filename is omitted, default to

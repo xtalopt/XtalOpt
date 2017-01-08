@@ -154,8 +154,8 @@ namespace GlobalSearch {
       qDebug() << l.at(i);
   }
 
-  QList<double> OptBase::getProbabilityList(const QList<Structure*> &structures,
-                                            int maxDupOffspring) {
+  QList<double> OptBase::getProbabilityList(
+                             const QList<Structure*> &structures) {
     // IMPORTANT: structures must contain one more structure than
     // needed -- the last structure in the list will be removed from
     // the probability list!
@@ -169,8 +169,10 @@ namespace GlobalSearch {
     last = structures.last();
     first->lock().lockForRead();
     last->lock().lockForRead();
-    double lowest = first->getEnthalpy() / static_cast<double>(first->numAtoms()); //PSA Enthalpy per atom
-    double highest = last->getEnthalpy() / static_cast<double>(last->numAtoms());; //PSA Enthalpy per atom
+    double lowest = first->getEnthalpy() /
+                    static_cast<double>(first->numAtoms());
+    double highest = last->getEnthalpy() /
+                    static_cast<double>(last->numAtoms());
     double spread = highest - lowest;
     last->lock().unlock();
     first->lock().unlock();
@@ -192,19 +194,7 @@ namespace GlobalSearch {
     for (int i = 0; i < structures.size(); i++) {
       s = structures.at(i);
       s->lock().lockForRead();
-      // If the numDupOffspring is equal to the maxDupOffspring, remove the
-      // structure from the probability list by setting the probs to be 1
-      // If maxDupOffspring is -1, there is no max
-      int numDupOffspring = s->getNumDupOffspring();
-      if (numDupOffspring >= maxDupOffspring &&
-          maxDupOffspring != -1) {
-        probs.append(1.0);
-#ifdef OPTBASE_DEBUG
-        qDebug() << QString::number(s->getGeneration()) << "x" << QString::number(s->getIDNumber()) << "has been removed from the gene pool!";
-#endif
-      }
-      // lowest and spread are already per atom
-      else probs.append( ( (s->getEnthalpy() / static_cast<double>(s->numAtoms())) - lowest ) / spread);
+      probs.append( ( (s->getEnthalpy() / static_cast<double>(s->numAtoms())) - lowest ) / spread);
       s->lock().unlock();
     }
     // Subtract each value from one, and find the sum of the resulting list

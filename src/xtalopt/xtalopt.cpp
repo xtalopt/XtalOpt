@@ -81,8 +81,6 @@ namespace XtalOpt {
             this, SLOT(resetDuplicates()));
     connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
             this, SLOT(updateLowestEnthalpyFUList(GlobalSearch::Structure*)));
-    connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
-            this, SLOT(_incrementParentNumTotOffspring(GlobalSearch::Structure*)));
 
   }
 
@@ -460,9 +458,6 @@ namespace XtalOpt {
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
     QWriteLocker locker1 (&oldXtal->lock());
 
-    // Decrement the parent xtal that produced this deleted structure
-    oldXtal->decrementParentOffspringCounts();
-
     // Randomly generated xtals do not have parent structures
     oldXtal->setParentStructure(NULL);
 
@@ -514,9 +509,6 @@ namespace XtalOpt {
                                            const QString & reason)
   {
     Xtal *oldXtal = qobject_cast<Xtal*>(s);
-
-    // Decrement the parent xtal that produced this deleted structure
-    oldXtal->decrementParentOffspringCounts();
 
     uint FU = s->getFormulaUnits();
     // Generate/Check new xtal
@@ -2703,7 +2695,6 @@ namespace XtalOpt {
             QString::number(loadedStructures.at(i)->getGeneration()) +
             "x" +
             QString::number(loadedStructures.at(i)->getIDNumber());
-          // Increment offspring counter
           // If the xtal skipped optimization, we don't want to count it
           // We also only want to count finished structures...
           if (parentStructureString == compare &&
@@ -2712,7 +2703,6 @@ namespace XtalOpt {
                xtal->getStatus() == Xtal::Supercell ||
                xtal->getStatus() == Xtal::Optimized)) {
             xtal->setParentStructure(loadedStructures.at(i));
-            xtal->incrementParentNumTotOffspring();
             break;
           }
         }
@@ -2944,9 +2934,6 @@ namespace XtalOpt {
       if (xtal->getStatus() == Xtal::Duplicate ||
           xtal->getStatus() == Xtal::Supercell) {
         xtal->setStatus(Xtal::Optimized);
-        // Reset the duplicate counting for the parents
-        // If the xtal does not have a parent, this skip over it automatically
-        xtal->decrementParentNumDupOffspring();
       }
       xtal->structureChanged(); // Reset cached comparisons
       xtal->lock().unlock();
@@ -3011,8 +2998,6 @@ namespace XtalOpt {
                                    .arg(keepXtal->getGeneration())
                                    .arg(keepXtal->getIDNumber()));
 
-      // Increment the offspring duplicate counter for the parent
-      kickXtal->incrementParentNumDupOffspring();
       if (kickXtal->hasParentStructure()) {
         Structure* parentXtal = kickXtal->getParentStructure();
         /*qDebug() << "Duplicate: parentXtal->getNumDupOffspring() is now"
@@ -3094,9 +3079,6 @@ namespace XtalOpt {
                                    .arg(smallerFormulaUnitXtal->getGeneration())
                                    .arg(smallerFormulaUnitXtal->getIDNumber()));
 
-      // Increment the numDupOffspring of the parent xtal if it hasn't been
-      // incremented already
-      largerFormulaUnitXtal->incrementParentNumDupOffspring();
       if (largerFormulaUnitXtal->hasParentStructure()) {
         Structure* parentXtal = largerFormulaUnitXtal->getParentStructure();
         /*qDebug() << "Supercell: parentXtal->getNumDupOffspring() is now"
@@ -3222,9 +3204,6 @@ namespace XtalOpt {
               xtals.at(i)->getParents() == tr("Primitive of %1x%2")
                                             .arg((xtals.at(j))->getGeneration())
                                             .arg(xtals.at(j)->getIDNumber())) {
-            // Just in case the parent's numDupOffspring was incremented...
-            // Will not decrement if it did not increment
-            xtals.at(j)->decrementParentNumDupOffspring();
             xtals.at(j)->setStatus(Xtal::Supercell);
             xtals.at(j)->setSupercellString(QString("%1x%2")
                                             .arg(xtals.at(i)->getGeneration())
@@ -3259,12 +3238,6 @@ namespace XtalOpt {
       lowestEnthalpyFUList[s->getFormulaUnits()] = s->getEnthalpy();
     }
     s->lock().unlock();
-  }
-
-  // No naming trickery here...
-  void XtalOpt::_incrementParentNumTotOffspring(GlobalSearch::Structure* s)
-  {
-    s->incrementParentNumTotOffspring();
   }
 
   void XtalOpt::setLatticeMinsAndMaxes(latticeStruct& latticeMins,

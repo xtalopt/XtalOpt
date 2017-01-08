@@ -46,17 +46,13 @@ namespace GlobalSearch {
     m_rank(0),
     m_formulaUnits(0),
     m_jobID(0),
-    m_numDupOffspring(0),
-    m_numTotOffspring(0),
     m_energy(0),
     m_enthalpy(0),
     m_PV(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
-    m_parentStructure(NULL),
-    m_parentOffspringTotCountIncremented(false),
-    m_parentOffspringDupCountIncremented(false)
+    m_parentStructure(NULL)
   {
     m_currentOptStep = 1;
     setStatus(Empty);
@@ -75,17 +71,13 @@ namespace GlobalSearch {
     m_rank(0),
     m_formulaUnits(0),
     m_jobID(0),
-    m_numDupOffspring(0),
-    m_numTotOffspring(0),
     m_energy(0),
     m_enthalpy(0),
     m_PV(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
-    m_parentStructure(NULL),
-    m_parentOffspringTotCountIncremented(false),
-    m_parentOffspringDupCountIncremented(false)
+    m_parentStructure(NULL)
   {
     *this = other;
   }
@@ -105,14 +97,10 @@ namespace GlobalSearch {
     m_energy(0),
     m_enthalpy(0),
     m_PV(0),
-    m_numDupOffspring(0),
-    m_numTotOffspring(0),
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
-    m_parentStructure(NULL),
-    m_parentOffspringTotCountIncremented(false),
-    m_parentOffspringDupCountIncremented(false)
+    m_parentStructure(NULL)
   {
     *this = other;
   }
@@ -149,8 +137,6 @@ namespace GlobalSearch {
     m_rank                       = other.m_rank;
     m_formulaUnits               = other.m_formulaUnits;
     m_jobID                      = other.m_jobID;
-    m_numDupOffspring            = other.m_numDupOffspring;
-    m_numTotOffspring            = other.m_numTotOffspring;
     m_currentOptStep             = other.m_currentOptStep;
     m_failCount                  = other.m_failCount;
     m_parents                    = other.m_parents;
@@ -165,10 +151,6 @@ namespace GlobalSearch {
     m_optEnd                     = other.m_optEnd;
     m_index                      = other.m_index;
     m_parentStructure            = other.m_parentStructure;
-    m_parentOffspringTotCountIncremented =
-      other.m_parentOffspringTotCountIncremented;
-    m_parentOffspringDupCountIncremented =
-      other.m_parentOffspringDupCountIncremented;
 
     return *this;
   }
@@ -580,7 +562,8 @@ namespace GlobalSearch {
                                         const double enthalpy,
                                         const Matrix3& cell)
   {
-    Q_ASSERT_X(atomicNums.size() == coords.size() && coords.size() == numAtoms(),
+    Q_ASSERT_X(atomicNums.size() == coords.size() &&
+               coords.size() == numAtoms(),
                Q_FUNC_INFO,
                "Lengths of atomicNums and coords must match numAtoms().");
 
@@ -592,9 +575,8 @@ namespace GlobalSearch {
     m_histCells.append(cell);
 
     // Update atoms
-    Atom atom;
     for (int i = 0; i < numAtoms(); i++) {
-      atom = atoms().at(i);
+      Atom& atom = atoms()[i];
       atom.setAtomicNumber(atomicNums.at(i));
       atom.setPos(coords.at(i));
     }
@@ -614,6 +596,8 @@ namespace GlobalSearch {
     // Update cell if necessary
     if (!cell.isZero())
       unitCell().setCellMatrix(cell);
+
+
 
   }
 

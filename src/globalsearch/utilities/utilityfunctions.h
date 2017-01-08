@@ -20,13 +20,25 @@
 #include <sstream>
 #include <algorithm>
 
+inline bool containsOnlySpaces(const std::string& str)
+{
+  if (str.find_first_not_of(' ') != std::string::npos) return false;
+  return true;
+}
+
 // Basic split of a string based upon a delimiter.
-static inline std::vector<std::string> split(const std::string& s, char delim)
+static inline std::vector<std::string> split(const std::string& s, char delim,
+                                             bool skipEmpty = true)
 {
   std::vector<std::string> elems;
   std::istringstream ss(s); // istringstream is faster to use than stringstream
   std::string item;
-  while (getline(ss, item, delim)) elems.push_back(item);
+  while (getline(ss, item, delim)) {
+    if (!skipEmpty)
+      elems.push_back(item);
+    else if (!containsOnlySpaces(item))
+      elems.push_back(item);
+  }
   return elems;
 }
 
@@ -167,12 +179,6 @@ inline double deg2rad(double a)
 inline double rad2deg(double a)
 {
   return a * 180.0 / _PI;
-}
-
-inline bool containsOnlySpaces(const std::string& str)
-{
-  if (str.find_first_not_of(' ') != std::string::npos) return false;
-  return true;
 }
 
 // Returns a string with leading and trailing whitespace removed

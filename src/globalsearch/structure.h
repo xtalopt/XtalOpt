@@ -304,16 +304,6 @@ namespace GlobalSearch {
     // the number of formula units with the formula-unit-finding algorithm.
     uint getFormulaUnits() const;
 
-    /** @return The number of duplicate offspring that this structure has
-     * produced through mutations/transformations.
-     */
-    uint getNumDupOffspring() const {return m_numDupOffspring;};
-
-    /** @return The total number of offspring that this structure has produced
-     * through mutations/transformations.
-     */
-    uint getNumTotOffspring() const {return m_numTotOffspring;};
-
    /** @return A pointer for the parent structure of a given structure
     */
     Structure* getParentStructure() const {return m_parentStructure;};
@@ -1038,74 +1028,6 @@ namespace GlobalSearch {
       m_parentStructure = structure;
     };
 
-    /** The preferable way to increment a parent's total number of offspring.
-     * Keeps track of whether or not the parent has already been incremented.
-     * Will only increment if the offspring has not skipped optimization and
-     * was not already incremented.
-     */
-    void incrementParentNumTotOffspring()
-    {
-      if (hasParentStructure() && !m_parentOffspringTotCountIncremented &&
-          !skippedOptimization()) {
-        m_parentStructure->incrementNumTotOffspring();
-        m_parentOffspringTotCountIncremented = true;
-      }
-    };
-
-    /** The preferable way to increment a parent's number of duplicate
-     * offspring. Keeps track of whether or not the parent has already been
-     * incremented. Will only increment if the offspring has not skipped
-     * optimization and was not already incremented.
-     */
-    void incrementParentNumDupOffspring()
-    {
-      if (hasParentStructure() && !m_parentOffspringDupCountIncremented &&
-          !skippedOptimization() &&
-          (getStatus() == Structure::Duplicate ||
-           getStatus() == Structure::Supercell)) {
-        m_parentStructure->incrementNumDupOffspring();
-        m_parentOffspringDupCountIncremented = true;
-      }
-    };
-
-    /** The preferable way to decrement a parent's total number of offspring.
-     * Keeps track of whether or not the parent has already been incremented.
-     * Will only decrement if the offspring has not skipped optimization and
-     * was incremented at some point.
-     */
-    void decrementParentNumTotOffspring()
-    {
-      if (hasParentStructure() && m_parentOffspringTotCountIncremented &&
-          !skippedOptimization()) {
-        m_parentStructure->decrementNumTotOffspring();
-        m_parentOffspringTotCountIncremented = false;
-      }
-    }
-
-    /** The preferable way to decrement a parent's number of duplicate
-     * offspring. Keeps track of whether or not the parent has already been
-     * incremented. Will only decrement if the offspring has not skipped
-     * optimization and was incremented at some point.
-     */
-    void decrementParentNumDupOffspring()
-    {
-      if (hasParentStructure() && m_parentOffspringDupCountIncremented &&
-          !skippedOptimization()) {
-        m_parentStructure->decrementNumDupOffspring();
-        m_parentOffspringDupCountIncremented = false;
-      }
-    }
-
-    /** Decrements both the total counter and the duplicate counter for
-     * the parent. Will not decrement if the parent has already been
-     * decremented.
-     */
-    void decrementParentOffspringCounts()
-    {
-      decrementParentNumTotOffspring();
-      decrementParentNumDupOffspring();
-    }
-
     /** Reset the number of times this Structure has failed the
      * current optimization step.
      *
@@ -1282,8 +1204,7 @@ namespace GlobalSearch {
          m_skippedOptimization, m_supercellGenerationChecked;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
-         m_currentOptStep, m_failCount, m_numDupOffspring,
-         m_numTotOffspring;
+         m_currentOptStep, m_failCount;
     QString m_parents, m_dupString, m_supString, m_rempath, m_fileName;
     double m_energy, m_enthalpy, m_PV;
     State m_status;
@@ -1302,40 +1223,9 @@ namespace GlobalSearch {
     // Pointer to parent structure if one is saved.
     Structure* m_parentStructure;
 
-    // True if the parent offspring count has been incremented
-    bool m_parentOffspringTotCountIncremented,
-         m_parentOffspringDupCountIncremented;
     // End doxygen skip:
     /// \endcond
 
-   private:
-    /** Set the number of duplicate offspring produced by this structure
-     * @param i The number of duplicate offspring that this structure
-     * has produced
-     */
-    void setNumDupOffspring(uint i) {m_numDupOffspring = i;};
-
-    /** Increment the number of duplicate offspring produced by this structure
-     */
-    void incrementNumDupOffspring() {m_numDupOffspring += 1;};
-
-    /** Decrement the number of duplicate offspring produced by this structure
-     */
-    void decrementNumDupOffspring() {m_numDupOffspring -= 1;};
-
-    /** Set the number of total offspring produced by this structure
-     * @param i The total number of offspring that this structure
-     * has produced
-     */
-    void setNumTotOffspring(uint i) {m_numTotOffspring = i;};
-
-    /** Increment the number of total offspring produced by this structure
-     */
-    void incrementNumTotOffspring() {m_numTotOffspring += 1;};
-
-    /** Decrement the number of total offspring produced by this structure
-     */
-    void decrementNumTotOffspring() {m_numTotOffspring -= 1;};
   };
 
 } // end namespace GlobalSearch

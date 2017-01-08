@@ -682,9 +682,6 @@ namespace XtalOpt {
       return;
     }
 
-    // Decrement the parent xtal info
-    m_context_xtal->decrementParentOffspringCounts();
-
     // QueueManager will handle mutex locking
     m_opt->queue()->killStructure(m_context_xtal);
 
@@ -721,8 +718,6 @@ namespace XtalOpt {
     else if (m_context_xtal->getStatus() == Xtal::Removed) {
       m_context_xtal->setStatus(Xtal::Optimized);
 
-      // Increment the parent xtal info
-      m_context_xtal->incrementParentNumTotOffspring();
     }
 
     // Clear context xtal pointer

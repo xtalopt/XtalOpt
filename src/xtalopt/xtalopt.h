@@ -238,7 +238,6 @@ namespace XtalOpt {
     void resetDuplicates();
     void checkForDuplicates();
     void updateLowestEnthalpyFUList(GlobalSearch::Structure* s);
-    void _incrementParentNumTotOffspring(GlobalSearch::Structure* s);
 
    protected:
     friend class XtalOptUnitTest;
