@@ -2454,11 +2454,9 @@ namespace XtalOpt {
       // Unit Cell Vectors
       for (uint i = 0; i < 3; i++) {
         rep += QString("  %1 %2 %3\n")
-          // Since we need row vector format (and we have column
-          // vector format), we need to access cell matrix elements like this.
-          .arg(xtal->unitCell().cellMatrix()(0, i), 12, 'f', 8)
-          .arg(xtal->unitCell().cellMatrix()(1, i), 12, 'f', 8)
-          .arg(xtal->unitCell().cellMatrix()(2, i), 12, 'f', 8);
+          .arg(xtal->unitCell().cellMatrix()(i, 0), 12, 'f', 8)
+          .arg(xtal->unitCell().cellMatrix()(i, 1), 12, 'f', 8)
+          .arg(xtal->unitCell().cellMatrix()(i, 2), 12, 'f', 8);
       }
       // Number of each type of atom (sorted alphabetically by symbol)
       for (int i = 0; i < atomCounts.size(); i++) {

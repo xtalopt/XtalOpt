@@ -110,9 +110,9 @@ namespace GlobalSearch {
                      << line.c_str();
             return false;
           }
-          cellMatrix(0, i) = atof(lineSplit[0].c_str());
-          cellMatrix(1, i) = atof(lineSplit[1].c_str());
-          cellMatrix(2, i) = atof(lineSplit[2].c_str());
+          cellMatrix(i, 0) = atof(lineSplit[0].c_str());
+          cellMatrix(i, 1) = atof(lineSplit[1].c_str());
+          cellMatrix(i, 2) = atof(lineSplit[2].c_str());
         }
         cellFound = true;
       }

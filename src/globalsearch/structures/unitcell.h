@@ -45,7 +45,8 @@ namespace GlobalSearch
     /**
      * Constructor. This uses cell parameters to create the cell matrix.
      * The A vector will lie along the x-axis. The B vector will lie in
-     * the positive y region of the x-y plane. The C vector will then be constrained.
+     * the positive y region of the x-y plane. The C vector will then be
+     * constrained.
      *
      * @param a The length (Angstroms) of vector A.
      * @param b The length (Angstroms) of vector B.
@@ -88,46 +89,46 @@ namespace GlobalSearch
                            double alpha, double beta, double gamma);
 
     /**
-     * Set the cell matrix as column vectors.
+     * Set the cell matrix as row vectors.
      *
-     * @param mat The 3x3 cell matrix to be set in column vector form.
+     * @param mat The 3x3 cell matrix to be set in row vector form.
      */
     void setCellMatrix(const Matrix3& mat) { m_cellMatrix = mat; };
-
-    /**
-     * Get the cell matrix as column vectors.
-     *
-     * @return The 3x3 cell matrix in column vector form.
-     */
-    Matrix3 cellMatrix() const { return m_cellMatrix; };
 
     /**
      * Get the cell matrix as row vectors.
      *
      * @return The 3x3 cell matrix in row vector form.
      */
-    Matrix3 cellMatrixRowVecs() const { return m_cellMatrix.transpose(); };
+    Matrix3 cellMatrix() const { return m_cellMatrix; };
+
+    /**
+     * Get the cell matrix as column vectors.
+     *
+     * @return The 3x3 cell matrix in column vector form.
+     */
+    Matrix3 cellMatrixColForm() const { return m_cellMatrix.transpose(); };
 
     /**
      * Set the A vector.
      *
      * @param v The vector with which to set A.
      */
-    void setAVector(const Vector3& v) { m_cellMatrix.col(0) = v; };
+    void setAVector(const Vector3& v) { m_cellMatrix.row(0) = v; };
 
     /**
      * Set the B vector.
      *
      * @param v The vector with which to set B.
      */
-    void setBVector(const Vector3& v) { m_cellMatrix.col(1) = v; };
+    void setBVector(const Vector3& v) { m_cellMatrix.row(1) = v; };
 
     /**
      * Set the C vector.
      *
      * @param v The vector with which to set C.
      */
-    void setCVector(const Vector3& v) { m_cellMatrix.col(2) = v; };
+    void setCVector(const Vector3& v) { m_cellMatrix.row(2) = v; };
 
     /**
      * Set the cell vectors - a, b, and c.
@@ -139,22 +140,22 @@ namespace GlobalSearch
     void setCellVectors(const Vector3& a, const Vector3& b, const Vector3& c);
 
     /* Returns the A vector */
-    Vector3 aVector() const { return m_cellMatrix.col(0); };
+    Vector3 aVector() const { return m_cellMatrix.row(0); };
 
     /* Returns the B vector */
-    Vector3 bVector() const { return m_cellMatrix.col(1); };
+    Vector3 bVector() const { return m_cellMatrix.row(1); };
 
     /* Returns the C vector */
-    Vector3 cVector() const { return m_cellMatrix.col(2); };
+    Vector3 cVector() const { return m_cellMatrix.row(2); };
 
     /* Returns the length of A in Angstroms */
-    double a() const { return m_cellMatrix.col(0).norm(); };
+    double a() const { return m_cellMatrix.row(0).norm(); };
 
     /* Returns the length of B in Angstroms */
-    double b() const { return m_cellMatrix.col(1).norm(); };
+    double b() const { return m_cellMatrix.row(1).norm(); };
 
     /* Returns the length of C in Angstroms */
-    double c() const { return m_cellMatrix.col(2).norm(); };
+    double c() const { return m_cellMatrix.row(2).norm(); };
 
     /* Returns the angle (degrees) between B and C */
     double alpha() const { return angleDegrees(bVector(), cVector()); };
@@ -301,15 +302,15 @@ namespace GlobalSearch
     const double sinGamma = std::sin(gamma * DEG2RAD);
 
     m_cellMatrix(0, 0) = a;
-    m_cellMatrix(1, 0) = 0.0;
-    m_cellMatrix(2, 0) = 0.0;
+    m_cellMatrix(0, 1) = 0.0;
+    m_cellMatrix(0, 2) = 0.0;
 
-    m_cellMatrix(0, 1) = b * cosGamma;
+    m_cellMatrix(1, 0) = b * cosGamma;
     m_cellMatrix(1, 1) = b * sinGamma;
-    m_cellMatrix(2, 1) = 0.0;
+    m_cellMatrix(1, 2) = 0.0;
 
-    m_cellMatrix(0, 2) = c * cosBeta;
-    m_cellMatrix(1, 2) = c * (cosAlpha - cosBeta * cosGamma) / sinGamma;
+    m_cellMatrix(2, 0) = c * cosBeta;
+    m_cellMatrix(2, 1) = c * (cosAlpha - cosBeta * cosGamma) / sinGamma;
     m_cellMatrix(2, 2) = (c / sinGamma) * std::sqrt(
           1.0 - ((cosAlpha * cosAlpha) +
                  (cosBeta * cosBeta) +
@@ -332,12 +333,12 @@ namespace GlobalSearch
 
   inline Vector3 UnitCell::toCartesian(const Vector3& frac) const
   {
-    return m_cellMatrix * frac;
+    return m_cellMatrix.transpose() * frac;
   }
 
   inline Vector3 UnitCell::toFractional(const Vector3& cart) const
   {
-    return m_cellMatrix.inverse() * cart;
+    return m_cellMatrix.transpose().inverse() * cart;
   }
 
   inline Vector3 UnitCell::wrapCartesian(const Vector3& cart) const

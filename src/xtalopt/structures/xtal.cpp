@@ -478,7 +478,7 @@ namespace XtalOpt {
                "Determinant of change of basis matrix must be 1.");
 
     // Update cell. This order is necessary for column vectors.
-    setCellInfo(unitCell().cellMatrix() * cob);
+    setCellInfo(cob.transpose() * unitCell().cellMatrix());
 
     // Check that volume has not changed
     Q_ASSERT_X(StableComp::eq(origVolume, getVolume(), tol),
@@ -798,7 +798,7 @@ namespace XtalOpt {
     cout << "cellMatrix is (row vectors):\n";
     for (size_t i = 0; i < 3; ++i) {
       for (size_t j = 0; j < 3; ++j) {
-        cout << unitCell().cellMatrix()(j, i) << "  ";
+        cout << unitCell().cellMatrix()(i, j) << "  ";
       }
       cout << "\n";
     }
@@ -1804,15 +1804,15 @@ namespace XtalOpt {
   {
     // Extract vector components:
     const double &x1 = origRowMat(0,0);
-    const double &y1 = origRowMat(1,0);
-    const double &z1 = origRowMat(2,0);
+    const double &y1 = origRowMat(0,1);
+    const double &z1 = origRowMat(0,2);
 
-    const double &x2 = origRowMat(0,1);
+    const double &x2 = origRowMat(1,0);
     const double &y2 = origRowMat(1,1);
-    const double &z2 = origRowMat(2,1);
+    const double &z2 = origRowMat(1,2);
 
-    const double &x3 = origRowMat(0,2);
-    const double &y3 = origRowMat(1,2);
+    const double &x3 = origRowMat(2,0);
+    const double &y3 = origRowMat(2,1);
     const double &z3 = origRowMat(2,2);
 
     // Cache some frequently used values:
@@ -1875,8 +1875,7 @@ namespace XtalOpt {
                    x2*y3*z1 - x2*y1*z3 +
                    x3*y1*z2 - x3*y2*z1) / denom;
 
-    // Transpose is needed with column vectors
-    return newMat.transpose();
+    return newMat;
   }
 
   // Initialize static members for COB list generation
