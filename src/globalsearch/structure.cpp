@@ -675,7 +675,7 @@ namespace GlobalSearch {
       if (i >= maxAttempts) return false;
     }
 
-    Atom atom = addAtom();
+    Atom& atom = addAtom();
     atom.setPos(coords);
     atom.setAtomicNumber(atomicNumber);
     return true;

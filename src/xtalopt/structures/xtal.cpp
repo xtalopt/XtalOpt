@@ -1166,7 +1166,7 @@ namespace XtalOpt {
                           aVec.z() * i + bVec.z() * j + cVec.z() * k);
                   //Vector3 uVecs(this->getA() * i, this->getB() * j, this-> getC() * k);
                   foreach(const Atom& atom, oneFUatoms) {
-                      Atom newAtom = myXtal->addAtom();
+                      Atom& newAtom = myXtal->addAtom();
                       newAtom.setPos(atom.pos()+uVecs);
                       newAtom.setAtomicNumber(atom.atomicNumber());
                       //qDebug() << "Added atom at a=" << i << " b=" << j << " c=" << k << " with atomic number " << newAtom.atomicNumber();
@@ -2021,12 +2021,11 @@ namespace XtalOpt {
     // TODO this will assume fractional coordinates. VASP can use cartesian!
     ps.readLine(); // direct or cartesian
     // Atom coords begin
-    Atom atom;
     for (unsigned int i = 0; i < numAtomTypes; i++) {
       for (unsigned int j = 0; j < atomCounts.at(i); j++) {
         // Actual identity of the atoms doesn't matter for the symmetry
         // test. Just use (i+1) as the atomic number.
-        atom = xtal->addAtom();
+        Atom& atom = xtal->addAtom();
         atom.setAtomicNumber(i+1);
         // Get coords
         sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // coords

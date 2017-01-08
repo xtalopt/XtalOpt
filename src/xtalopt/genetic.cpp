@@ -818,7 +818,7 @@ namespace XtalOpt {
                 // and the odds favor it, add the atom to nxtal
                 ( RANDDOUBLE() < 1.0/static_cast<double>(targetXtalCounts.at(i)) )
                 ) {
-              Atom newAtom = nxtal->addAtom();
+              Atom& newAtom = nxtal->addAtom();
               newAtom.setAtomicNumber(atomList1.at(j).atomicNumber());
               newAtom.setPos(nxtal->fracToCart(fracCoordsList1.at(j)));
               delta--;
