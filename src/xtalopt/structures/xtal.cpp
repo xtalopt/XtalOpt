@@ -582,7 +582,7 @@ namespace XtalOpt {
     QList<unsigned int> atomicNums;
     for (std::vector<Atom>::const_iterator it = atoms().begin(),
            it_end = atoms().end(); it != it_end; ++it) {
-      fcoords.append( cartToFrac((*it).pos()));
+      fcoords.append(cartToFrac((*it).pos()));
       atomicNums.append((*it).atomicNumber());
     }
 
@@ -598,15 +598,13 @@ namespace XtalOpt {
     setCellInfo(cellMatrix);
 
     // Remove all atoms to simplify the change
-    std::vector<Atom>& atomList = this->atoms();
-    for (size_t i = 0; i < atomList.size(); i++)
-                                            this->removeAtom(atomList.at(i));
+    clearAtoms();
 
     // Add the atoms in
     for (size_t i = 0; i < fcoords.size(); i++) {
-        Atom newAtom = this->addAtom();
-        newAtom.setAtomicNumber(atomicNums.at(i));
-        newAtom.setPos(fracToCart(fcoords.at(i)));
+      Atom& newAtom = this->addAtom();
+      newAtom.setAtomicNumber(atomicNums.at(i));
+      newAtom.setPos(fracToCart(fcoords.at(i)));
     }
 
     Q_ASSERT(fcoords.size() == atomicNums.size());
