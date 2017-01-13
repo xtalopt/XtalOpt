@@ -2236,6 +2236,19 @@ namespace XtalOpt {
       return false;
     }
 
+    // Never accept the structure if two atoms are basically on top of one
+    // another
+    for (size_t i = 0; i < xtal->numAtoms(); ++i) {
+      for (size_t j = i + 1; j < xtal->numAtoms(); ++j) {
+        if (fuzzyCompare(xtal->atom(i).pos(), xtal->atom(j).pos())) {
+          qDebug() << "Discarding structure -- two atoms are basically on "
+                   << "top of one another. This can confuse some "
+                   << "optimizers.";
+          return false;
+        }
+      }
+    }
+
     // Check interatomic distances
     if (using_interatomicDistanceLimit) {
       int atom1, atom2;

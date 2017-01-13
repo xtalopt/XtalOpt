@@ -32,6 +32,9 @@ namespace XtalOpt {
   class XtalCompositionStruct;
   class MolUnit;
 
+  using GlobalSearch::Vector3;
+  using GlobalSearch::Matrix3;
+
   class Xtal : public GlobalSearch::Structure
   {
     Q_OBJECT
@@ -203,7 +206,8 @@ namespace XtalOpt {
     void setCellInfo(double a, double b, double c,
                      double alpha, double beta, double gamma);
     void setCellInfo(const Matrix3& m) { unitCell().setCellMatrix(m); };
-    void setCellInfo(const Vector3& a, const Vector3& b,
+    void setCellInfo(const Vector3& a,
+                     const Vector3& b,
                      const Vector3& c);
     void setVolume(double Volume);
     // rescale cell can be used to "fix" any cell parameter at a particular value.

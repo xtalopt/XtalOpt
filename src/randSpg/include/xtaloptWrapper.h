@@ -31,7 +31,7 @@ namespace RandSpgXtalOptWrapper {
       const atomStruct& as = atoms.at(i);
       GlobalSearch::Atom& atom = xtal->addAtom();
       // Need to convert these coordinates to cartesian...
-      Vector3 pos(as.x,as.y,as.z);
+      GlobalSearch::Vector3 pos(as.x,as.y,as.z);
       pos = xtal->fracToCart(pos);
       atom.setPos(pos);
       atom.setAtomicNumber(as.atomicNum);
@@ -48,7 +48,7 @@ namespace RandSpgXtalOptWrapper {
 
     for (size_t i = 0; i < xAtoms.size(); i++) {
       unsigned int atomicNum = xAtoms.at(i).atomicNumber();
-      Vector3 fracCoords = xtal->cartToFrac(xAtoms.at(i).pos());
+      GlobalSearch::Vector3 fracCoords = xtal->cartToFrac(xAtoms.at(i).pos());
       atomStruct as(atomicNum, fracCoords[0], fracCoords[1], fracCoords[2]);
       atoms.push_back(as);
     }

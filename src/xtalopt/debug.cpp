@@ -22,9 +22,11 @@
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
 
+using GlobalSearch::Vector3;
+using GlobalSearch::Matrix3;
+
 namespace XtalOptDebug
 {
-
   void dumpPseudoPwscfOut(const XtalOpt::Xtal *xtal, const QString &filename)
   {
     QFile file (filename + ".out");
