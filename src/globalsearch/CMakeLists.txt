@@ -24,6 +24,7 @@ set( globalsearch_SRCS
      utilities/exceptionhandler.cpp
      formats/formats.cpp
      formats/gulpformat.cpp
+     formats/vaspformat.cpp
 )
 
 if (ENABLE_SSH)

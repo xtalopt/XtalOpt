@@ -16,9 +16,10 @@
 #ifndef UTILITY_FUNCTIONS_H
 #define UTILITY_FUNCTIONS_H
 
+#include <algorithm>
 #include <set>
 #include <sstream>
-#include <algorithm>
+#include <vector>
 
 inline bool containsOnlySpaces(const std::string& str)
 {
@@ -124,11 +125,27 @@ splitAndRemoveParenthesis(const std::string& s)
 // If it runs into an "x", "y", or "z", it should return false
 static inline bool isNumber(const std::string& s)
 {
+  // Make sure there is at most one period first
+  if (std::count(s.begin(), s.end(), '.') > 1)
+    return false;
   std::string::const_iterator it = s.begin();
   while (it != s.end() && (isdigit(*it) ||
          (*it == '-' && it == s.begin()) || // Hyphen must be at beginning
          *it == '.')) ++it;
   return !s.empty() && it == s.end();
+}
+
+// Basic check to see if a string is an integer
+// Includes positive and negative numbers
+static inline bool isInteger(const std::string& s)
+{
+  if (s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+')))
+    return false ;
+
+  char* p;
+  strtol(s.c_str(), &p, 10) ;
+
+  return (*p == 0) ;
 }
 
 static inline bool contains(const std::string& s, char c)
@@ -241,6 +258,28 @@ inline std::string getFileExt(const std::string& s)
     return (s.substr(i + 1, s.length() - i));
   else
     return("");
+}
+
+// Reads a line in reverse from the ifstream and sets the ifstream to
+// be at the position where it ended.
+static std::istream& reverseGetline(std::istream& in, std::string& line)
+{
+  line.clear();
+  // First check to see if we are at EOF. If we are, move back one character.
+  if (in.peek() == EOF) {
+    in.clear();
+    in.seekg(-1, std::ios::cur);
+  }
+  // If in.tellg() becomes negative, we know we are at the end
+  while (in.tellg() >= 0) {
+    char c = in.peek();
+    in.seekg(-1, std::ios::cur);
+    if (c != '\n')
+      line.insert(line.begin(), c);
+    else
+      break;
+  }
+  return in;
 }
 
 #endif

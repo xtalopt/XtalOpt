@@ -12,8 +12,9 @@
   limitations under the License.
  ***********************************************************************/
 
-#include <globalsearch/eleminfo.h>
 #include <globalsearch/formats/gulpformat.h>
+
+#include <globalsearch/eleminfo.h>
 #include <globalsearch/utilities/utilityfunctions.h>
 #include <globalsearch/structure.h>
 
@@ -25,7 +26,7 @@
 namespace GlobalSearch {
 
   // We are passing by copy on purpose so we can sort...
-  static bool sameAtomicNums(std::vector<unsigned int> a,
+/*  static bool sameAtomicNums(std::vector<unsigned int> a,
                              std::vector<unsigned short> b)
   {
     if (a.size() != b.size())
@@ -38,9 +39,17 @@ namespace GlobalSearch {
     }
     return true;
   }
+*/
 
   bool GulpFormat::read(Structure* s, const QString& filename)
   {
+    std::ifstream ifs(filename.toStdString());
+    if (!ifs) {
+      qDebug() << "Error: GULP output, " << filename << ", could not "
+               << "be opened!";
+      return false;
+    }
+
     bool coordsFound = false, energyFound = false, cellFound = false;
 
     QList<unsigned int> atomicNums;
@@ -49,7 +58,6 @@ namespace GlobalSearch {
     double enthalpy = 0;
     Matrix3 cellMatrix = Matrix3::Zero();
 
-    std::ifstream ifs(filename.toStdString());
     std::string line;
     std::vector<std::string> lineSplit;
     while (getline(ifs, line)) {
@@ -139,12 +147,6 @@ namespace GlobalSearch {
                                 atof(lineSplit[4].c_str()),
                                 atof(lineSplit[5].c_str())));
           getline(ifs, line);
-        }
-        // Now, let's make sure we have the correct number of each atomic number
-        if (!sameAtomicNums(atomicNums.toVector().toStdVector(),
-                            s->atomicNumbers())) {
-          qDebug() << "Error: atomic numbers do not match in GULP output!";
-          return false;
         }
         coordsFound = true;
       }

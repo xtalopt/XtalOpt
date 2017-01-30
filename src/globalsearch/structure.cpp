@@ -526,7 +526,8 @@ namespace GlobalSearch {
                                        const double enthalpy,
                                        const Matrix3& cell)
   {
-    Q_ASSERT_X(atomicNums.size() == coords.size() && coords.size() == numAtoms(),
+    Q_ASSERT_X(atomicNums.size() == coords.size() &&
+               coords.size() == numAtoms(),
                Q_FUNC_INFO,
                "Lengths of atomicNums and coords must match numAtoms().");
 
@@ -562,8 +563,7 @@ namespace GlobalSearch {
                                         const double enthalpy,
                                         const Matrix3& cell)
   {
-    Q_ASSERT_X(atomicNums.size() == coords.size() &&
-               coords.size() == numAtoms(),
+    Q_ASSERT_X(atomicNums.size() == coords.size(),
                Q_FUNC_INFO,
                "Lengths of atomicNums and coords must match numAtoms().");
 
@@ -574,12 +574,10 @@ namespace GlobalSearch {
     m_histEnthalpies.append(enthalpy);
     m_histCells.append(cell);
 
-    // Update atoms
-    for (int i = 0; i < numAtoms(); i++) {
-      Atom& atom = atoms()[i];
-      atom.setAtomicNumber(atomicNums.at(i));
-      atom.setPos(coords.at(i));
-    }
+    // Reset atoms
+    clearAtoms();
+    for (int i = 0; i < atomicNums.size(), i < coords.size(); ++i)
+      addAtom(atomicNums[i], coords[i]);
 
     // Update energy/enthalpy
     if (fabs(enthalpy) < 1e-6) {
@@ -596,9 +594,6 @@ namespace GlobalSearch {
     // Update cell if necessary
     if (!cell.isZero())
       unitCell().setCellMatrix(cell);
-
-
-
   }
 
   void Structure::deleteFromHistory(unsigned int index) {

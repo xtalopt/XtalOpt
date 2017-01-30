@@ -418,14 +418,6 @@ namespace XtalOpt {
     Xtal *xtal = new Xtal;
     xtal->setFileName(filename);
     xtal->setStatus(Xtal::WaitingForOptimization);
-    // Create atoms
-    for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
-         it = comp.constBegin(), it_end = comp.constEnd();
-         it != it_end; ++it) {
-      for (int i = 0; i < it.value().quantity; ++i) {
-        xtal->addAtom();
-      }
-    }
 
     // We will only display the warning once, so use a static bool for this
     // Use an atomic bool for thread safety

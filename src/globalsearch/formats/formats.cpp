@@ -13,10 +13,11 @@
  ***********************************************************************/
 
 #include <globalsearch/structure.h>
+#include <globalsearch/utilities/utilityfunctions.h>
 
 #include <globalsearch/formats/formats.h>
 #include <globalsearch/formats/gulpformat.h>
-#include <globalsearch/utilities/utilityfunctions.h>
+#include <globalsearch/formats/vaspformat.h>
 
 #include <QtCore/QDebug>
 #include <QtCore/QString>
@@ -31,7 +32,8 @@ using std::vector;
 // The list of possible formats
 static const vector<string> _formats =
 {
-  "GULP"
+  "GULP",
+  "VASP"
 };
 
 // The map of the formats and their extensions
@@ -45,6 +47,11 @@ namespace GlobalSearch {
 
   QString Formats::detectFormat(const QString& filename)
   {
+    // First, check for POSCAR or CONTCAR at the end of the filename. If it
+    // exists, then the it is VASP format.
+    if (filename.endsWith("POSCAR") || filename.endsWith("CONTCAR"))
+      return "VASP";
+    // Otherwise, find the extension.
     string ext = getFileExt(filename.toStdString());
     for (size_t i = 0; i < _formatExtensions.size(); ++i) {
       if (caseInsensitiveCompare(_formatExtensions[i].first, ext))
@@ -68,6 +75,9 @@ namespace GlobalSearch {
     // List the formats here
     if (format == QString("GULP"))
       return GulpFormat::read(s, filename);
+
+    if (format == QString("VASP"))
+      return VaspFormat::read(s, filename);
 
     qDebug() << "An invalid format, " << format << ", entered into "
              << "Format::read() !";
