@@ -128,6 +128,12 @@ namespace XtalOpt {
 
   void XtalOpt::startSearch()
   {
+    // Don't start multiple runs at the same time...
+    static std::atomic_bool isStarting(false);
+    if (isStarting.load())
+      return;
+    isStarting = true;
+
     // Populate crystal
     QList<uint> atomicNums = comp.keys();
     // Sort atomic number by decreasing minimum radius. Adding the "larger"
@@ -148,12 +154,14 @@ namespace XtalOpt {
     // Check lattice parameters, volume, etc
     if (!XtalOpt::checkLimits()) {
       error("Cannot create structures. Check log for details.");
+      isStarting = false;
       return;
     }
 
     // Do we have a composition?
     if (comp.isEmpty()) {
       error("Cannot create structures. Composition is not set.");
+      isStarting = false;
       return;
     }
 
@@ -167,7 +175,10 @@ namespace XtalOpt {
                      "'Optimization Settings' tab")
                   .arg(filePath),
                   &proceed);
-      if (!proceed) return;
+      if (!proceed) {
+        isStarting = false;
+        return;
+      }
       else {
         bool result = FileUtils::removeDir(filePath);
         if (!result) {
@@ -180,11 +191,13 @@ namespace XtalOpt {
     QString err;
     if (!m_optimizer->isReadyToSearch(&err)) {
       error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
+      isStarting = false;
       return;
     }
 
     if (!m_queueInterface->isReadyToSearch(&err)) {
       error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
+      isStarting = false;
       return;
     }
 
@@ -218,6 +231,7 @@ namespace XtalOpt {
           ) {
         error("Using VASP and POTCAR is empty. Please select the "
               "pseudopotentials before continuing.");
+        isStarting = false;
         return;
       }
 
@@ -230,6 +244,7 @@ namespace XtalOpt {
     if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       if (!this->createSSHConnections()) {
         error(tr("Could not create ssh connections."));
+        isStarting = false;
         return;
       }
     }
