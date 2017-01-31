@@ -608,7 +608,7 @@ namespace XtalOpt {
     }
 
     Q_ASSERT(fcoords.size() == atomicNums.size());
-    Q_ASSERT(this->m_atomList.size() == fcoords.size());
+    Q_ASSERT(this->atoms().size() == fcoords.size());
     this->setFormulaUnits(0);
 
     return true;
@@ -1783,7 +1783,7 @@ namespace XtalOpt {
     }
 
     // Reset coords
-    Q_ASSERT(this->m_atomList.size() == fcoords.size());
+    Q_ASSERT(this->atoms().size() == fcoords.size());
     for (int i = 0; i < atoms().size(); ++i) {
       this->atom(i).setPos(this->fracToCart(fcoords[i]));
     }
