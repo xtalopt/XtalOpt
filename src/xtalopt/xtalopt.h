@@ -33,8 +33,10 @@
 #include <QtGui/QInputDialog>
 
 // Convenience...
-static const double DEG_TO_RAD = 3.14159265359 / 180.0;
-static const double RAD_TO_DEG = 180.0 / 3.14159265359;
+//static const double DEG_TO_RAD = 3.14159265359 / 180.0;
+static const double DEG_TO_RAD = 3.14159265358979323846 / 180.0;
+//static const double RAD_TO_DEG = 180.0 / 3.14159265359;
+static const double RAD_TO_DEG = 180.0 / 3.14159265358979323846;
 
 // Forward declarations...
 struct latticeStruct;

@@ -1015,9 +1015,10 @@ namespace XtalOpt {
     // regular addAtomRandomly() method.
     // It is broken because of the removal of XtalOpt dependence on
     // Avogadro and OpenBabel. We need to add functions to do this ourselves.
-    return addAtomRandomly(atomicNumber, limits, maxAttempts);
-  }
-/*  FIX ME PLEASE!!!!!!!!
+
+  //    return addAtomRandomly(atomicNumber, limits, maxAttempts);
+  //}
+    // FIX ME PLEASE!!!!!!!!
     Vector3 cartCoords;
     bool success;
 
@@ -1055,10 +1056,10 @@ namespace XtalOpt {
         success = true;
 
         // Generate fractional coordinates
-        fracCoords.Set(RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        fracCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
 
         // Convert to cartesian coordinates and store
-        cartCoords = Vector3(this->fracToCart(fracCoords).AsArray());
+        cartCoords = fracToCart(fracCoords);
 
         // Compare distance to each atom in xtal with minimum radii
         QVector<double> squaredDists;
@@ -1105,34 +1106,396 @@ namespace XtalOpt {
         }
       }
 
-      OpenBabel::OBMol obmol = OBMol();
-      OpenBabel::OBAtom *obatom = obmol.GetAtom((*atom)->index()+1);
-      obatom->SetAtomicNum(6);
-      obatom->SetImplicitValence(numNeighbors);
-      obmol.SetImplicitValencePerceived();
-      obatom->SetHyb(geom);
-      obmol.SetHybridizationPerceived();
-      obmol.AddHydrogens(obatom);
-      unsigned int numberAtoms = numAtoms();
+      // ***Mightn pot need tempMol...might be able to use just the atom
+      // Add temp Molecule to build molUnit and add previously created Atom (center atom) 
+      // then add the neighbor atoms to the xtal
+      Molecule tempMol = Molecule();
+      tempMol.addAtom(static_cast<int>(atomicNumber), cartCoords);
 
-      int j = 0;
-      for (unsigned int i = numberAtoms+1; i <= obmol.NumAtoms(); ++i, ++j) {
-        OpenBabel::OBAtom *obatom2 = obmol.GetAtom(i);
-        double currDist = obatom2->GetDistance(obatom);
-        Vector3 v = ((obatom2->GetVector()-obatom->GetVector())*(dist/currDist))+obatom->GetVector();
-        obatom2->SetVector(v);
-        Atom *a;
-        a = addAtom();
-        a->setOBAtom(obatom2);
-        a->setAtomicNumber(neighbor);
+      // Use params (valence, hybridization, atomic numbers, number of neighbors, etc.) to build molUnit
+      if (!molUnitBuilder(tempMol, neighbor, numNeighbors, dist, geom)) {
+        return false;
       }
-      if (atomicNumber == 0)
-          removeAtom(*atom);
     }
-
     return true;
   }
-*/
+
+
+  bool Xtal::molUnitBuilder(Molecule& tempMol, unsigned int atomicNum, int valence, double dist, int hyb) {
+    // Work only in Cartesian Coords...ceonvert for random
+    // Extract data from center atom in tempMol
+    Atom& a1 = tempMol.atom(0);
+    Vector3 a1Coords = a1.pos();
+
+    // Generate fractional coordinates
+    // Convert to cartesian coordinates and store
+    Vector3 tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+
+    // Vector of the new bond and normalize
+    Vector3 bond1 = a1Coords - tempCoords;
+    bond1.normalize();
+
+    // Determine valence (numNeighbors) and hyb (geom)
+    if (valence >= 1) {
+      // Easy...only linear possible
+      bond1 *= dist;
+      Atom& a2 = addAtom(atomicNum, (a1Coords - bond1));
+    } 
+    
+    if (valence == 1) {
+      return true;
+
+    } else if (valence == 2) {
+      // Linear
+      if (hyb == 1) {
+        // Add 2nd neighbor directly across from a2
+        Atom& a3 = addAtom(atomicNum, (a1Coords + bond1));
+      
+      // Bent  
+      } else if (hyb == 2) {
+        // Normalize bond1
+        bond1.normalize();
+        // Generate new random fractional coordinates and convert
+        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        // Make sure the new vector is acceptable
+        while (angle < 45.0 || angle > 135.0) {
+          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        }
+        // Get new vector for manipulation
+        Vector3 v1 = bond1.cross(tempCoords);
+        Vector3 v2 = bond1.cross(v1);
+        v2.normalize();
+        // Rotate 120 degrees
+        Vector3 bond2 = bond1 - v2 * tan(60.0 * DEG_TO_RAD);
+        bond2.normalize();
+        bond2 *= dist;
+        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+      }
+
+    } else if (valence == 3) {
+      // Normalize bond1
+      bond1.normalize();
+      // Trigonal planar
+      if (hyb == 2) {
+        // 2nd Neighbor 
+        // Same as Bent
+        // Generate new random fractional coordinates and convert
+        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        // Make sure the new vector is acceptable
+        while (angle < 45.0 || angle > 135.0) {
+          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        }
+        // Get new vector for manipulation
+        Vector3 v1 = bond1.cross(tempCoords);
+        Vector3 v2 = bond1.cross(v1);
+        v2.normalize();
+        // Rotate to 120 degrees from bond 1
+        Vector3 bond2 = bond1 - v2 * tan(60.0 * DEG_TO_RAD);
+        bond2.normalize();
+        bond2 *= dist;
+        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+       
+        // 3rd Neighbor
+        // rotate in opposite direction
+        Vector3 bond3 = bond1 - v2 * tan(120.0 * DEG_TO_RAD);
+        bond3.normalize();
+        bond3 *= dist;
+        Atom& a4 = addAtom(atomicNum, (a1Coords + bond3));
+      
+      // Trigonal Pyramidal
+      } else if (hyb == 3) {
+        // 2nd Neighbor 
+        // Generate new random fractional coordinates and convert
+        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        // Make sure the new vector is acceptable
+        while (angle < 45.0 || angle > 135.0) {
+          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        }
+        // Get new vector for manipulation
+        Vector3 v1 = bond1.cross(tempCoords);
+        Vector3 v2 = bond1.cross(v1);
+        v2.normalize();
+        // Rotate to 109.5 degrees from bond 1
+        Vector3 bond2 = bond1 - v2 * tan(70.5 * DEG_TO_RAD);
+        bond2.normalize();
+        bond2 *= dist;
+        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+       
+        // 3rd Neighbor
+        bond1.normalize();
+        bond2.normalize();
+        // vector in plane with bonds 1 & 2
+        v1 = bond1 - bond2;
+        v1.normalize();
+        // vector perpendicular to bonds 1 & 2
+        v2 = bond1.cross(bond2);
+        v2.normalize();
+        // make bond 109.5 degrees from bond 1 & 2
+        Vector3 bond3 = v2 + v1 * tan((70.5 / 2) * DEG_TO_RAD);
+        bond3.normalize();
+        bond3 *= dist;
+        Atom& a4 = addAtom(atomicNum, (a1Coords + bond3));
+
+      // T-Shaped
+      } else if (hyb == 4) {
+        // 2nd Neighbor 
+        // Generate new random fractional coordinates and convert
+        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        // Make sure the new vector is acceptable
+        while (angle < 45.0 || angle > 135.0) {
+          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        }
+        // Get new vector perpendicular to the plane
+        Vector3 v1 = bond1.cross(tempCoords);
+        v1.normalize();
+        Vector3 bond2 = v1 * dist;
+        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+        
+        // 3rd Neighbor 
+        // Add atom across from previous
+        Atom& a4 = addAtom(atomicNum, (a1Coords - bond2));
+                
+      }
+    } else if (valence == 4) {
+      // Normalize bond1
+      bond1.normalize();
+      // Tetrahedral
+      if (hyb == 3) {
+        // 2nd Neighbor 
+        // Generate new random fractional coordinates and convert
+        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        // Make sure the new vector is acceptable
+        while (angle < 45.0 || angle > 135.0) {
+          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        }
+        // Get new vector for manipulation
+        Vector3 v1 = bond1.cross(tempCoords);
+        Vector3 v2 = bond1.cross(v1);
+        v2.normalize();
+        // Rotate to 109.5 degrees from bond 1
+        Vector3 bond2 = bond1 - v2 * tan(70.5 * DEG_TO_RAD);
+        bond2.normalize();
+        bond2 *= dist;
+        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+       
+        // 3rd Neighbor 
+        bond1.normalize();
+        bond2.normalize();
+        // vector in plane with bonds 1 & 2
+        v1 = bond1 - bond2;
+        v1.normalize();
+        // vector perpendicular to bonds 1 & 2
+        v2 = bond1.cross(bond2);
+        v2.normalize();
+        // make bond 109.5 degrees from bond 1 & 2
+        Vector3 bond3 = v2 + v1 * tan((70.5 / 2) * DEG_TO_RAD);
+        bond3.normalize();
+        bond3 *= dist;
+        Atom& a4 = addAtom(atomicNum, (a1Coords + bond3));
+
+        // 4th Neighbor 
+        // make bond 109.5 degrees from bond 1, 2 & 3
+        Vector3 bond4 = -v2 + v1 * tan((70.5 / 2) * DEG_TO_RAD);
+        bond4.normalize();
+        bond4 *= dist;
+        Atom& a5 = addAtom(atomicNum, (a1Coords + bond4)); 
+      
+      // Square Planar
+      } else if (hyb == 4) {
+        // 2nd Neighbor 
+        bond1 *= dist;
+        Atom& a3 = addAtom(atomicNum, (a1Coords + bond1));
+ 
+        // 3rd Neighbor
+        // Generate new random fractional coordinates and convert
+        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        // Make sure the new vector is acceptable
+        while (angle < 45.0 || angle > 135.0) {
+          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        }
+        // Get new vector perpendicular to the plane
+        Vector3 v1 = bond1.cross(tempCoords);
+        v1.normalize();
+        Vector3 bond2 = v1 * dist;
+        Atom& a4 = addAtom(atomicNum, (a1Coords + bond2));
+       
+        // 4th Neighbor
+        // Add atom across from previous
+        Atom& a5 = addAtom(atomicNum, (a1Coords - bond2));
+  
+      // See-saw
+      } else if (hyb == 5) {
+        // 2nd Neighbor
+        // Same as Bent
+        // Generate new random fractional coordinates and convert
+        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        // Make sure the new vector is acceptable
+        while (angle < 45.0 || angle > 135.0) {
+          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        }
+        // Get new vector for manipulation
+        Vector3 v1 = bond1.cross(tempCoords);
+        Vector3 v2 = bond1.cross(v1);
+        v2.normalize();
+        // Rotate to 120 degrees from bond 1
+        Vector3 bond2 = bond1 - v2 * tan(60.0 * DEG_TO_RAD);
+        bond2.normalize();
+        bond2 *= dist;
+        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+      
+        // 3rd Neighbor
+        // Get a vector perpendicular to bond 1 & 2
+        bond1.normalize();
+        bond2.normalize();
+        Vector3 bond3 = bond1.cross(bond2);
+        bond3.normalize();
+        bond3 *= dist;
+        Atom& a4 = addAtom(atomicNum, (a1Coords + bond3));
+
+        // 4th Neighbor
+        //Add the 4th neighbor across fro mthe previous
+        Atom& a5 = addAtom(atomicNum, (a1Coords - bond3));
+      }
+    } else if (valence == 5) {
+      // Normalize bond1
+      bond1.normalize();
+
+      // Trigonal Bipyramidal
+      if (hyb == 5) {
+        // 2nd neighbor
+        // Same as Bent -- 120 degrees
+        // Generate new random fractional coordinates and convert
+        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        // Make sure the new vector is acceptable
+        while (angle < 45.0 || angle > 135.0) {
+          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        }
+        // Get new vector for manipulation
+        Vector3 v1 = bond1.cross(tempCoords);
+        Vector3 v2 = bond1.cross(v1);
+        v2.normalize();
+        // Rotate to 120 degrees from bond 1
+        Vector3 bond2 = bond1 - v2 * tan(60.0 * DEG_TO_RAD);
+        bond2.normalize();
+        bond2 *= dist;
+        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+
+        // 3rd Neighbor
+        // Rotate to 120 degrees from bond 1 the other way
+        Vector3 bond3 = bond1 - v2 * tan(120.0 * DEG_TO_RAD);
+        bond3.normalize();
+        bond3 *= dist;
+        Atom& a4 = addAtom(atomicNum, (a1Coords + bond3));
+ 
+        // 4th Neighbor
+        // Get a vector perpendicular to bond 1 & 2
+        bond1.normalize();
+        bond2.normalize();
+        Vector3 bond4 = bond1.cross(bond2);
+        bond4.normalize();
+        bond4 *= dist;
+        Atom& a5 = addAtom(atomicNum, (a1Coords + bond4));
+
+        // 5th Neighbor
+        // Add across from the previous
+        Atom& a6 = addAtom(atomicNum, (a1Coords - bond4));
+
+      // Square Pyramidal
+      } else if (hyb == 6) {
+        // 2nd Neighbor 
+        // Add directly across from a2
+        bond1 *= dist;
+        Atom& a3 = addAtom(atomicNum, (a1Coords + bond1));
+ 
+        // 3rd Neighbor
+        // 90 degrees from atoms 2 & 3
+        // Generate new random fractional coordinates and convert
+        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        // Make sure the new vector is acceptable
+        while (angle < 45.0 || angle > 135.0) {
+          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        }
+        // Get new vector perpendicular to the plane
+        Vector3 bond2 = bond1.cross(tempCoords);
+        bond2.normalize();
+        bond2 *= dist;
+        Atom& a4 = addAtom(atomicNum, (a1Coords + bond2));
+        
+        // 4th Neighbor
+        // Add atom across from previous
+        Atom& a5 = addAtom(atomicNum, (a1Coords - bond2));
+ 
+        // 5th Neighbor
+        // Another vector perpendicular to the plane
+        Vector3 bond3 = bond1.cross(bond2);
+        bond3.normalize();
+        bond3 *= dist;
+        Atom& a6 = addAtom(atomicNum, (a1Coords + bond3));
+      }
+    } else if (valence == 6) {
+      // Normalize bond1
+      bond1.normalize();
+   
+      // Octahedral
+      if (hyb == 6) {
+        // 2nd Neighbor 
+        // Add directly across from a2
+        bond1 *= dist;
+        Atom& a3 = addAtom(atomicNum, (a1Coords + bond1));
+ 
+        // 3rd Neighbor
+        // 90 degrees from atoms 2 & 3
+        // Generate new random fractional coordinates and convert
+        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        // Make sure the new vector is acceptable
+        while (angle < 45.0 || angle > 135.0) {
+          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
+        }
+        // Get new vector perpendicular to the plane
+        Vector3 bond2 = bond1.cross(tempCoords);
+        bond2.normalize();
+        bond2 *= dist;
+        Atom& a4 = addAtom(atomicNum, (a1Coords + bond2));
+        
+        // 4th Neighbor
+        // Add atom across from previous
+        Atom& a5 = addAtom(atomicNum, (a1Coords - bond2));
+ 
+        // 5th Neighbor
+        // Another vector perpendicular to the plane
+        Vector3 bond3 = bond1.cross(bond2);
+        bond3.normalize();
+        bond3 *= dist;
+        Atom& a6 = addAtom(atomicNum, (a1Coords + bond3));
+
+        // 6th Neighbor
+        // Across from previous
+        Atom& a7 = addAtom(atomicNum, (a1Coords - bond3));
+      }
+    }
+    return true;
+  }
+
   bool Xtal::fillSuperCell(int a, int b, int c, Xtal * myXtal) {
       //qDebug() << "Xtal has a=" << a << " b=" << b << " c=" << c;
 

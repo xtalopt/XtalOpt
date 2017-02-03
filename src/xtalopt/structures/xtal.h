@@ -71,6 +71,8 @@ namespace XtalOpt {
                          bool useMolUnit,
                          int maxAttempts = 100.0);
 
+    // Build molUnit given a tempMolecule with a center atom defined
+    bool molUnitBuilder(Molecule& tempMol, unsigned int atomicNum, int valence, double dist, int hyb);
 
     // Fills a supercell for the mitosis process
     bool fillSuperCell(int a, int b, int c, Xtal * myXtal);
