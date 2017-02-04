@@ -1486,7 +1486,10 @@ namespace XtalOpt {
 
     for (int j = 0; j < numKeys; j++) {
       unsigned int atomicNum = keys.at(j);
-      QString symbol = QString(ElemInfo::getAtomicSymbol((atomicNum)).c_str());
+      QString symbol;
+      if (atomicNum != 0) {
+        symbol = QString(ElemInfo::getAtomicSymbol((atomicNum)).c_str());
+      }
       unsigned int qComp = xtalopt->comp[atomicNum].quantity;
 
       //Add center atom to list

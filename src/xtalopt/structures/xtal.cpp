@@ -1088,9 +1088,12 @@ namespace XtalOpt {
 
       if (i >= maxAttempts) return false;
     }
-    Atom& atom = addAtom();
-    atom.setPos(cartCoords);
-    atom.setAtomicNumber(static_cast<int>(atomicNumber));
+    // Protect against incorrect stoichiometry when using "None" center
+    if (static_cast<int>(atomicNumber) != 0) {
+      Atom& atom = addAtom();
+      atom.setPos(cartCoords);
+      atom.setAtomicNumber(static_cast<int>(atomicNumber));
+    }
 
     if (useMolUnit == true) {
       int numNeighbors = 0;
@@ -1106,29 +1109,18 @@ namespace XtalOpt {
         }
       }
 
-      // ***Mightn pot need tempMol...might be able to use just the atom
-      // Add temp Molecule to build molUnit and add previously created Atom (center atom) 
-      // then add the neighbor atoms to the xtal
-      Molecule tempMol = Molecule();
-      tempMol.addAtom(static_cast<int>(atomicNumber), cartCoords);
-
       // Use params (valence, hybridization, atomic numbers, number of neighbors, etc.) to build molUnit
-      if (!molUnitBuilder(tempMol, neighbor, numNeighbors, dist, geom)) {
+      if (!molUnitBuilder(cartCoords, neighbor, numNeighbors, dist, geom)) {
         return false;
       }
+
     }
     return true;
   }
 
 
-  bool Xtal::molUnitBuilder(Molecule& tempMol, unsigned int atomicNum, int valence, double dist, int hyb) {
-    // Work only in Cartesian Coords...ceonvert for random
-    // Extract data from center atom in tempMol
-    Atom& a1 = tempMol.atom(0);
-    Vector3 a1Coords = a1.pos();
-
+  bool Xtal::molUnitBuilder(Vector3 a1Coords, unsigned int atomicNum, int valence, double dist, int hyb) {
     // Generate fractional coordinates
-    // Convert to cartesian coordinates and store
     Vector3 tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
 
     // Vector of the new bond and normalize
@@ -1155,7 +1147,7 @@ namespace XtalOpt {
       } else if (hyb == 2) {
         // Normalize bond1
         bond1.normalize();
-        // Generate new random fractional coordinates and convert
+        // Generate new random coordinates
         tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
@@ -1181,7 +1173,7 @@ namespace XtalOpt {
       if (hyb == 2) {
         // 2nd Neighbor 
         // Same as Bent
-        // Generate new random fractional coordinates and convert
+        // Generate new random coordinates
         tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
@@ -1209,7 +1201,7 @@ namespace XtalOpt {
       // Trigonal Pyramidal
       } else if (hyb == 3) {
         // 2nd Neighbor 
-        // Generate new random fractional coordinates and convert
+        // Generate new random coordinates
         tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
@@ -1245,7 +1237,7 @@ namespace XtalOpt {
       // T-Shaped
       } else if (hyb == 4) {
         // 2nd Neighbor 
-        // Generate new random fractional coordinates and convert
+        // Generate new random coordinates 
         tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
@@ -1270,7 +1262,7 @@ namespace XtalOpt {
       // Tetrahedral
       if (hyb == 3) {
         // 2nd Neighbor 
-        // Generate new random fractional coordinates and convert
+        // Generate new random coordinates
         tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
@@ -1317,7 +1309,7 @@ namespace XtalOpt {
         Atom& a3 = addAtom(atomicNum, (a1Coords + bond1));
  
         // 3rd Neighbor
-        // Generate new random fractional coordinates and convert
+        // Generate new random coordinates
         tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
@@ -1339,7 +1331,7 @@ namespace XtalOpt {
       } else if (hyb == 5) {
         // 2nd Neighbor
         // Same as Bent
-        // Generate new random fractional coordinates and convert
+        // Generate new random coordinates
         tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
@@ -1378,7 +1370,7 @@ namespace XtalOpt {
       if (hyb == 5) {
         // 2nd neighbor
         // Same as Bent -- 120 degrees
-        // Generate new random fractional coordinates and convert
+        // Generate new random coordinates
         tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
@@ -1425,7 +1417,7 @@ namespace XtalOpt {
  
         // 3rd Neighbor
         // 90 degrees from atoms 2 & 3
-        // Generate new random fractional coordinates and convert
+        // Generate new random coordinates
         tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
@@ -1463,7 +1455,7 @@ namespace XtalOpt {
  
         // 3rd Neighbor
         // 90 degrees from atoms 2 & 3
-        // Generate new random fractional coordinates and convert
+        // Generate new random coordinates
         tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable

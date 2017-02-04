@@ -542,8 +542,11 @@ namespace XtalOpt {
     QList<uint> atomicNums = xtalopt->comp.keys();
     qSort(atomicNums);
 
-    for (int i = 0; i < atomicNums.size(); i++)
-      symbols.append(ElemInfo::getAtomicSymbol(atomicNums.at(i)).c_str());
+    for (int i = 0; i < atomicNums.size(); i++) {
+      if (atomicNums.at(i) != 0) {
+        symbols.append(ElemInfo::getAtomicSymbol(atomicNums.at(i)).c_str());
+      }
+    }
     qSort(symbols);
     QString filename;
     QVariantHash hash;
@@ -605,8 +608,11 @@ namespace XtalOpt {
     QList<uint> atomicNums = xtalopt->comp.keys();
     qSort(atomicNums);
 
-    for (int i = 0; i < atomicNums.size(); i++)
-      symbols.append(ElemInfo::getAtomicSymbol(atomicNums.at(i)).c_str());
+    for (int i = 0; i < atomicNums.size(); i++) {
+      if (atomicNums.at(i) != 0) {
+        symbols.append(ElemInfo::getAtomicSymbol(atomicNums.at(i)).c_str());
+      }
+    } 
      qSort(symbols);
      QStringList files;
      QVariantHash hash;
