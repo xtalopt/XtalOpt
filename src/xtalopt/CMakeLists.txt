@@ -1,5 +1,8 @@
 INCLUDE_DIRECTORIES(${XtalOpt_BINARY_DIR}/src/xtalopt)
 
+find_package(Qwt REQUIRED)
+include_directories(${QWT_INCLUDE_DIRS})
+
 set( xtalopt_SRCS
      debug.cpp
      xtalopt.cpp
@@ -18,7 +21,8 @@ set( xtalopt_SRCS
      ui/tab_edit.cpp
      ui/tab_opt.cpp
      ui/tab_progress.cpp
-     #ui/tab_plot.cpp
+     ui/tab_plot.cpp
+     ui/xtalopt_plot.cpp
      ui/tab_log.cpp)
 
 set( xtalopt_UIS
@@ -26,7 +30,7 @@ set( xtalopt_UIS
      ui/tab_init.ui
      ui/tab_opt.ui
      ui/tab_progress.ui
-     #ui/tab_plot.ui
+     ui/tab_plot.ui
      ui/tab_log.ui
      ui/randSpgDialog.ui)
 
@@ -34,7 +38,7 @@ set( xtalopt_RCS xtalopt.qrc )
 
 # Use the C++11 standards
 if(UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++0x -Wno-sign-compare")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++0x -Wno-sign-compare")
 endif()
 
 string(REPLACE ".cpp" ".h" hdr_list "${xtalopt_SRCS}")
@@ -47,4 +51,5 @@ qt4_add_resources(plugin_RC_SRCS ${xtalopt_RCS})
 add_executable(xtalopt main.cpp "${xtalopt_SRCS}" "${plugin_UIS_H}"
                        "${plugin_RC_SRCS}" "${moc_files}")
 
-target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg)
+target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg
+                      "${QWT_LIBRARIES}")

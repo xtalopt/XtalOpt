@@ -27,10 +27,6 @@ namespace GlobalSearch {
   class Structure;
 }
 
-namespace Avogadro {
-  class PlotPoint;
-}
-
 namespace XtalOpt {
   class XtalOptDialog;
   class XtalOpt;
@@ -39,8 +35,6 @@ namespace XtalOpt {
   class TabPlot : public GlobalSearch::AbstractTab
   {
     Q_OBJECT;
-    // Workaround for Qt's ignorance of namespaces in signals/slots
-    typedef Avogadro::PlotPoint PlotPoint;
 
   public:
     explicit TabPlot( XtalOptDialog *parent, XtalOpt *p );
@@ -82,14 +76,11 @@ namespace XtalOpt {
     };
 
   public slots:
+    void selectXtal(QwtPlotMarker* pm);
     void readSettings(const QString &filename = "");
     void writeSettings(const QString &filename = "");
     void updateGUI();
     void disconnectGUI();
-    // PlotPoint is typedef'd to Avogadro::PlotPoint above
-    void lockClearAndSelectPoint(PlotPoint *pp);
-    void selectMoleculeFromPlot(double x, double y);
-    void selectMoleculeFromPlot(PlotPoint *pp);
     void refreshPlot();
     void updatePlot();
     void plotTrends();
@@ -100,12 +91,14 @@ namespace XtalOpt {
     void updatePlotFormulaUnits();
 
   private:
+
+    QwtPlotMarker* addXtalToPlot(Xtal* xtal, double x, double y);
+    void plotTrace(double x1, double y1, double x2, double y2);
+
     Ui::Tab_Plot ui;
-    QReadWriteLock *m_plot_mutex;
-    Avogadro::PlotObject *m_plotObject;
-    Avogadro::PlotObject *d_plotObject;
-    Avogadro::PlotObject *s_plotObject;
-    QList<uint> formulaUnitsList;
+    QReadWriteLock* m_plot_mutex;
+    QMap<QwtPlotMarker*, Xtal*> m_marker_xtal_map;
+    QList<uint> m_formulaUnitsList;
   };
 }
 

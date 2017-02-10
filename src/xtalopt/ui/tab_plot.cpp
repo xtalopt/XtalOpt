@@ -15,18 +15,18 @@
  ***********************************************************************/
 
 #include <xtalopt/ui/tab_plot.h>
+#include <xtalopt/ui/xtalopt_plot.h>
 
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
 #include <globalsearch/utilities/exceptionhandler.h>
-
-#include <avogadro/glwidget.h>
-#include <avogadro/primitive.h>
-#include <avogadro/primitivelist.h>
+#include <globalsearch/utilities/fileutils.h>
 
 #include <QtCore/QSettings>
 #include <QtCore/QReadWriteLock>
+
+#include <qwt_scale_engine.h>
 
 #include <float.h>
 
@@ -34,23 +34,18 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-  using Avogadro::PlotObject;
-  using Avogadro::PlotWidget;
-
   TabPlot::TabPlot( XtalOptDialog *parent, XtalOpt *p ) :
     AbstractTab(parent, p),
-    m_plot_mutex(new QReadWriteLock()),
-    m_plotObject(0),
-    d_plotObject(0),
-    s_plotObject(0)
+    m_plot_mutex(new QReadWriteLock())
   {
     ui.setupUi(m_tab_widget);
 
-    // Plot setup
-    ui.plot_plot->setAntialiasing(true);
-    ui.plot_plot->setBackgroundColor(Qt::white);
-    ui.plot_plot->setForegroundColor(Qt::black);
-    updatePlot();
+    // Change the margins on the plot for autoscaling
+    ui.plot->axisScaleEngine(QwtPlot::yLeft)->setMargins(0.1, 0.1);
+    ui.plot->axisScaleEngine(QwtPlot::xBottom)->setMargins(1.0, 1.0);
+
+    // We will have a default value of 1 in this list
+    m_formulaUnitsList.append(1);
 
     // dialog connections
     connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
@@ -59,8 +54,6 @@ namespace XtalOpt {
             this, SLOT(populateXtalList()));
     connect(m_opt, SIGNAL(readOnlySessionStarted()),
             this, SLOT(populateXtalList()));
-    connect(m_dialog->getGLWidget(), SIGNAL(mouseRelease(QMouseEvent*)),
-            this, SLOT(updatePlot()));
 
     // Plot connections
     connect(ui.push_refresh, SIGNAL(clicked()),
@@ -87,10 +80,10 @@ namespace XtalOpt {
             this, SLOT(updatePlot()));
     connect(ui.edit_showSpecifiedFU, SIGNAL(editingFinished()),
             this, SLOT(updatePlotFormulaUnits()));
-    connect(ui.plot_plot, SIGNAL(pointClicked(double, double)),
-            this, SLOT(selectMoleculeFromPlot(double, double)));
+    connect(ui.plot, SIGNAL(selectedMarkerChanged(QwtPlotMarker*)),
+            this, SLOT(selectXtal(QwtPlotMarker*)));
     connect(m_opt, SIGNAL(refreshAllStructureInfo()),
-            this, SLOT(refreshPlot()));
+            this, SLOT(updatePlot()));
     connect(m_opt, SIGNAL(refreshAllStructureInfo()),
             this, SLOT(populateXtalList()));
     connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
@@ -110,7 +103,6 @@ namespace XtalOpt {
     // Destructors should never throw...
     try {
       delete m_plot_mutex;
-      // m_plotObject is deleted by the PlotWidget
     } // end of try{}
     catch(...) {
       ExceptionHandler::handleAllExceptions(__FUNCTION__);
@@ -140,13 +132,20 @@ namespace XtalOpt {
     SETTINGS(filename);
     settings->beginGroup("xtalopt/plot/");
     int loadedVersion = settings->value("version", 0).toInt();
-    ui.combo_xAxis->setCurrentIndex( settings->value("x_label", Structure_T).toInt());
-    ui.combo_yAxis->setCurrentIndex( settings->value("y_label", Enthalpy_per_FU_T).toInt());
-    ui.cb_showDuplicates->setChecked( settings->value("showDuplicates", false).toBool());
-    ui.cb_showIncompletes->setChecked( settings->value("showIncompletes", false).toBool());
-    ui.cb_labelPoints->setChecked( settings->value("labelPoints", false).toBool());
-    ui.combo_labelType->setCurrentIndex( settings->value("labelType", Symbol_L).toInt());
-    ui.combo_plotType->setCurrentIndex( settings->value("plotType", Trend_PT).toInt());
+    ui.combo_xAxis->setCurrentIndex(settings->value("x_label",
+                                                     Structure_T).toInt());
+    ui.combo_yAxis->setCurrentIndex(settings->value("y_label",
+                                                    Enthalpy_per_FU_T).toInt());
+    ui.cb_showDuplicates->setChecked(settings->value("showDuplicates",
+                                                     false).toBool());
+    ui.cb_showIncompletes->setChecked(settings->value("showIncompletes",
+                                                      false).toBool());
+    ui.cb_labelPoints->setChecked(settings->value("labelPoints",
+                                                  false).toBool());
+    ui.combo_labelType->setCurrentIndex(settings->value("labelType",
+                                                        Symbol_L).toInt());
+    ui.combo_plotType->setCurrentIndex(settings->value("plotType",
+                                                       Trend_PT).toInt());
     settings->endGroup();
 
     // Update config data
@@ -184,50 +183,31 @@ namespace XtalOpt {
     ui.combo_labelType->disconnect();
     ui.cb_showDuplicates->disconnect();
     ui.cb_showIncompletes->disconnect();
-    ui.plot_plot->disconnect();
     this->disconnect();
     disconnect(m_dialog, 0, this, 0);
     disconnect(m_opt, 0, this, 0);
   }
 
-  void TabPlot::lockClearAndSelectPoint(PlotPoint *pp)
-  {
-    m_plot_mutex->lockForRead();
-    ui.plot_plot->clearAndSelectPoint(pp);
-    m_plot_mutex->unlock();
-  }
-
   void TabPlot::refreshPlot()
   {
-    // Reset connections
-    ui.plot_plot->disconnect(this);
-
-    // Set up plot object
+    // Reset axis scales and then update
+    ui.plot->setAxisAutoScale(QwtPlot::yLeft);
+    ui.plot->setAxisAutoScale(QwtPlot::xBottom);
     updatePlot();
-
-    // Reset limits and connections.
-    if (ui.combo_plotType->currentIndex() != DistHist_PT) {
-      ui.plot_plot->scaleLimits();
-      connect(ui.plot_plot, SIGNAL(pointClicked(double, double)),
-              this, SLOT(selectMoleculeFromPlot(double, double)));
-    }
   }
 
   void TabPlot::updatePlot()
   {
     updateGUI();
-    if (!m_opt) return;
+    if (!m_opt)
+      return;
 
     // Make sure we have structures!
-    if (m_opt->tracker()->size() == 0) {
+    if (m_opt->tracker()->size() == 0)
       return;
-    }
 
     // Lock plot mutex
     m_plot_mutex->lockForWrite();
-
-    // Turn off updates
-    ui.plot_plot->blockSignals(true);
 
     switch (ui.combo_plotType->currentIndex()) {
     case Trend_PT:
@@ -238,61 +218,56 @@ namespace XtalOpt {
       break;
     }
 
-    ui.plot_plot->blockSignals(false);
-
     m_plot_mutex->unlock();
   }
 
   void TabPlot::plotTrends()
   {
-    // Store current limits for later
-    QRectF oldDataRect = ui.plot_plot->dataRect();
+    // Don't replot while we are updating
+    ui.plot->setAutoReplot(false);
 
-    // Clear old data...
-    ui.plot_plot->resetPlot();
+    // Store the selected xtal
+    Xtal* selectedXtal = m_marker_xtal_map[ui.plot->selectedMarker()];
 
-    m_plotObject = new PlotObject (Qt::blue, PlotObject::Points, 4, PlotObject::Triangle);
-    d_plotObject = new PlotObject (Qt::darkGreen, PlotObject::Points, 4, PlotObject::Square);
-    s_plotObject = new PlotObject (QColor(204,102,0,255), PlotObject::Points, 4, PlotObject::Square);
+    // There may be a faster way to do this that doesn't include deleting
+    // and making the whole plot over again, but for now, this works. We
+    // just delete the whole plot and make it over again...
+    m_marker_xtal_map.clear();
+    ui.plot->clearAll();
 
     double x, y;
     int ind;
-    Xtal* xtal;
-    PlotPoint *pp;
-    // Load config settings:
-    bool labelPoints		= ui.cb_labelPoints->isChecked();
-    bool showDuplicates		= ui.cb_showDuplicates->isChecked();
-    bool showIncompletes        = ui.cb_showIncompletes->isChecked();
-    bool showSpecifiedFU        = ui.cb_showSpecifiedFU->isChecked();
-    LabelTypes labelType	= LabelTypes(ui.combo_labelType->currentIndex());
-    PlotAxes xAxis		= PlotAxes(ui.combo_xAxis->currentIndex());
-    PlotAxes yAxis              = PlotAxes(ui.combo_yAxis->currentIndex());
-
-    // For minimum-energy traces
+    Xtal* xtal = NULL;
     double minE = DBL_MAX;
-    PlotObject *traceObject = 0;
-    unsigned int lastGoodTraceIndex = 0; // Used to trim points from end
+    size_t lastTraceStructure = 0;
+    bool performTrace = false;
+    // Load config settings:
+    bool labelPoints	 = ui.cb_labelPoints->isChecked();
+    bool showDuplicates	 = ui.cb_showDuplicates->isChecked();
+    bool showIncompletes = ui.cb_showIncompletes->isChecked();
+    bool showSpecifiedFU = ui.cb_showSpecifiedFU->isChecked();
+    LabelTypes labelType = LabelTypes(ui.combo_labelType->currentIndex());
+    PlotAxes xAxis	 = PlotAxes(ui.combo_xAxis->currentIndex());
+    PlotAxes yAxis       = PlotAxes(ui.combo_yAxis->currentIndex());
+
     if (xAxis == Structure_T &&
         (yAxis == Energy_T ||
          yAxis == Enthalpy_T ||
-         yAxis == Enthalpy_per_FU_T)) { //PSA Enthalpy per atom
-      traceObject = new PlotObject(Qt::gray, PlotObject::Lines, 1);
+         yAxis == Enthalpy_per_FU_T)) {
+      performTrace = true;
     }
 
     const QList<Structure*> structures (*m_opt->tracker()->list());
     for (int i = 0; i < structures.size(); i++) {
-      // Always put a trace point in for each structure index
-      if (traceObject && minE != DBL_MAX) {
-        traceObject->addPoint(i+1, minE);
-      }
       x = y = 0;
       xtal = qobject_cast<Xtal*>(structures[i]);
       QReadLocker xtalLocker (&xtal->lock());
-      // Don't plot removed structures or those who have not completed their first INCAR. Also only plot specified formula units if box is checked.
+      // Don't plot removed structures or those who have not completed their
+      // first INCAR. Also only plot specified formula units if box is checked.
       if (showSpecifiedFU) {
         bool inTheList = false;
-        for (int i = 0; i < formulaUnitsList.size(); i++) {
-          if (formulaUnitsList.at(i) == xtal->getFormulaUnits()) {
+        for (int i = 0; i < m_formulaUnitsList.size(); i++) {
+          if (m_formulaUnitsList.at(i) == xtal->getFormulaUnits()) {
             inTheList = true;
           }
         }
@@ -309,39 +284,10 @@ namespace XtalOpt {
         }
       }
 
-      if  ((xtal->getStatus() == Xtal::Duplicate ||
-            xtal->getStatus() == Xtal::Supercell) &&
-            !showDuplicates) {
-        continue;
-      }
-
       if (xtal->getStatus() == Xtal::Killed ||
           xtal->getStatus() == Xtal::Removed ||
           fabs(xtal->getEnthalpy()) <= 1e-50) {
         continue;
-      }
-
-      // Update trace
-      if (traceObject) {
-        // Get current value
-        double currentE;
-        if (yAxis == Energy_T) {
-          currentE = xtal->getEnergy();
-        }
-        else if (yAxis == Enthalpy_T) {
-          currentE = xtal->getEnthalpy();
-        }
-        else if (yAxis == Enthalpy_per_FU_T) {
-          currentE = xtal->getEnthalpy() / static_cast<double>(xtal->getFormulaUnits()); //PSA Enthalpy per atom
-        }
-
-        // Update minimum if needed
-        if (minE > currentE) {
-          minE = currentE;
-        }
-        // The two points ensure that the lines between points are
-        // correct.
-        traceObject->addPoint(i+1, minE);
       }
 
       // Get X/Y data
@@ -374,10 +320,12 @@ namespace XtalOpt {
           break;
         case Enthalpy_per_FU_T:
           // Skip xtals that don't have enthalpy/energy set
-          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy()) continue; //PSA Enthalpy per atom
+          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy()) continue;
           switch (j) {
-          case 0:       x = xtal->getEnthalpy() / static_cast<double>(xtal->getFormulaUnits()); break;
-          default:      y = xtal->getEnthalpy() / static_cast<double>(xtal->getFormulaUnits()); break;
+          case 0:       x = xtal->getEnthalpy() /
+                            static_cast<double>(xtal->getFormulaUnits()); break;
+          default:      y = xtal->getEnthalpy() /
+                            static_cast<double>(xtal->getFormulaUnits()); break;
           }
           break;
         case Energy_T:
@@ -398,8 +346,8 @@ namespace XtalOpt {
           break;
         case A_T:
           switch (j) {
-          case 0:       x = xtal.a(); break;
-          default:      y = xtal.a(); break;
+          case 0:       x = xtal->getA(); break;
+          default:      y = xtal->getA(); break;
           }
           break;
         case B_T:
@@ -454,52 +402,63 @@ namespace XtalOpt {
           break;
         }
       }
-      if (traceObject) {
-        lastGoodTraceIndex = traceObject->points().size() - 1;
+
+      QwtPlotMarker* pm = addXtalToPlot(xtal, x, y);
+
+      // See if we should draw another line for the trace
+      // This trace assumes the xtals will be ordered based on structure number
+      if (performTrace) {
+        if (lastTraceStructure == 0) {
+          lastTraceStructure = i + 1;
+          minE = y;
+        }
+        else if (y < minE) {
+          plotTrace(lastTraceStructure, minE, i + 1, y);
+          lastTraceStructure = i + 1;
+          minE = y;
+        }
+        else {
+          ui.plot->addHorizontalPlotLine(lastTraceStructure, i + 1, minE);
+        }
       }
 
-      if (xtal->getStatus() == Xtal::Duplicate) {
-          pp = d_plotObject->addPoint(x,y);
-      } else if (xtal->getStatus() == Xtal::Supercell) {
-          pp = s_plotObject->addPoint(x,y);
-      } else {
-          pp = m_plotObject->addPoint(x,y);
-      }
-
-      // Store index for later lookup
-      pp->setCustomData(i);
       // Set point label if requested
+      QString s;
       if (labelPoints) {
         switch (labelType) {
         case Number_L:
-          pp->setLabel(QString::number(xtal->getSpaceGroupNumber()));
+          s = QString::number(xtal->getSpaceGroupNumber());
           break;
         case Symbol_L:
         default:
-          pp->setLabel(xtal->getSpaceGroupSymbol());
+          s = xtal->getSpaceGroupSymbol();
           break;
         case Enthalpy_L:
-          pp->setLabel(QString::number(xtal->getEnthalpy(), 'g', 5));
+          s = QString::number(xtal->getEnthalpy(), 'g', 5);
           break;
         case Energy_L:
-          pp->setLabel(QString::number(xtal->getEnergy(), 'g', 5));
+          s = QString::number(xtal->getEnergy(), 'g', 5);
           break;
         case PV_L:
-          pp->setLabel(QString::number(xtal->getPV(), 'g', 5));
+          s = QString::number(xtal->getPV(), 'g', 5);
           break;
         case Volume_L:
-          pp->setLabel(QString::number(xtal->getVolume(), 'g', 5));
+          s = QString::number(xtal->getVolume(), 'g', 5);
           break;
         case Generation_L:
-          pp->setLabel(QString::number(xtal->getGeneration()));
+          s = QString::number(xtal->getGeneration());
           break;
         case Structure_L:
-          pp->setLabel(QString::number(i));
+          s = QString::number(i);
           break;
         case Formula_Units_L:
-          pp->setLabel(QString::number(xtal->getFormulaUnits()));
+          s = QString::number(xtal->getFormulaUnits());
           break;
         }
+        QwtText text(s);
+        text.setColor(Qt::black);
+        pm->setLabel(text);
+        pm->setLabelAlignment(Qt::AlignBottom);
       }
     }
 
@@ -514,186 +473,69 @@ namespace XtalOpt {
       switch (ind) {
       case Structure_T:
         label = tr("Structure");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case Generation_T:
         label = tr("Generation");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case Enthalpy_T:
         label = tr("Enthalpy (eV)");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case Enthalpy_per_FU_T: //PSA Enthalpy per atom
         label = tr("Enthalpy per FU (eV)");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case Energy_T:
         label = tr("Energy (eV)");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case PV_T:
         label = tr("Enthalpy PV term (eV)");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case A_T:
         label = tr("A");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case B_T:
         label = tr("B");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case C_T:
         label = tr("C");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case Alpha_T:
         label = "<HTML>&alpha;</HTML>";
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case Beta_T:
         label = "<HTML>&beta;</HTML>";
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case Gamma_A:
         label = "<HTML>&gamma;</HTML>";
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case Volume_T:
         label = tr("Volume");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case Volume_per_FU_T:
         label = tr("Volume per FU");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       case Formula_Units_T:
         label = tr("Formula Units");
-        switch (j) {
-        case 0:         ui.plot_plot->axis(PlotWidget::BottomAxis)->setLabel(label); break;
-        default:        ui.plot_plot->axis(PlotWidget::LeftAxis)->setLabel(label); break;
-        }
         break;
       }
+      if (j == 0)
+       ui.plot->setXTitle(label);
+      else
+       ui.plot->setYTitle(label);
     }
 
-    ui.plot_plot->addPlotObject(m_plotObject);
-    ui.plot_plot->addPlotObject(d_plotObject);
-    ui.plot_plot->addPlotObject(s_plotObject);
-    if (traceObject) {
-      int numPoints = traceObject->points().size();
-      for (int i = numPoints - 1;
-           (i > lastGoodTraceIndex && i >= 0); --i) {
-        traceObject->removePoint(i);
-      }
-      ui.plot_plot->addPlotObject(traceObject);
-    }
+    // If the selected xtal still exists, select that one. This function
+    // doesn't do anything if NULL is passed to it.
+    ui.plot->selectMarker(m_marker_xtal_map.key(selectedXtal));
 
-    // Do not scale if m_plotObject is empty.
-    // If we have one point, set limits to something appropriate:
-    if (m_plotObject->points().size() == 1) {
-      double x = m_plotObject->points().at(0)->x();
-      double y = m_plotObject->points().at(0)->y();
-      ui.plot_plot->setDefaultLimits(x-1, x+1, y+1, y-1);
-    }
-    // For multiple points, let plotwidget handle it.
-    else if (m_plotObject->points().size() >= 2) {
-      // run scaleLimits to set the default limits, but then set the
-      // limits to the previous region
-      ui.plot_plot->scaleLimits();
-      ui.plot_plot->setLimits(oldDataRect.left(),
-                              oldDataRect.right(),
-                              oldDataRect.top(), // These are backwards from intuition,
-                              oldDataRect.bottom()); // but that's how Qt works...
-    }
-    // Do not scale if d_plotObject is empty.
-    // If we have one point, set limits to something appropriate:
-    if (d_plotObject->points().size() == 1) {
-      double x = d_plotObject->points().at(0)->x();
-      double y = d_plotObject->points().at(0)->y();
-      ui.plot_plot->setDefaultLimits(x-1, x+1, y+1, y-1);
-    }
-    // For multiple points, let plotwidget handle it.
-    else if (d_plotObject->points().size() >= 2) {
-      // run scaleLimits to set the default limits, but then set the
-      // limits to the previous region
-      ui.plot_plot->scaleLimits();
-      ui.plot_plot->setLimits(oldDataRect.left(),
-                              oldDataRect.right(),
-                              oldDataRect.top(), // These are backwards from intuition,
-                              oldDataRect.bottom()); // but that's how Qt works...
-    }
-
-    // Do not scale if s_plotObject is empty.
-    // If we have one point, set limits to something appropriate:
-    if (s_plotObject->points().size() == 1) {
-      double x = s_plotObject->points().at(0)->x();
-      double y = s_plotObject->points().at(0)->y();
-      ui.plot_plot->setDefaultLimits(x-1, x+1, y+1, y-1);
-    }
-    // For multiple points, let plotwidget handle it.
-    else if (s_plotObject->points().size() >= 2) {
-      // run scaleLimits to set the default limits, but then set the
-      // limits to the previous region
-      ui.plot_plot->scaleLimits();
-      ui.plot_plot->setLimits(oldDataRect.left(),
-                              oldDataRect.right(),
-                              oldDataRect.top(), // These are backwards from intuition,
-                              oldDataRect.bottom()); // but that's how Qt works...
-    }
-
- }
+    ui.plot->setAutoReplot(true);
+    ui.plot->replot();
+  }
 
   void TabPlot::plotDistHist()
   {
-    // Clear old data...
-    ui.plot_plot->resetPlot();
-
+/*
     // Initialize vars
-    m_plotObject = new PlotObject (Qt::red, PlotObject::Bars);
+    m_plotObject = new PlotObject(Qt::red, PlotObject::Bars);
     double x, y;
     PlotPoint *pp;
     QList<double> d, f, f_temp;
@@ -730,6 +572,37 @@ namespace XtalOpt {
     // Set default limits
     ui.plot_plot->scaleLimits();
     ui.plot_plot->setDefaultLimits(0, 8, 0, ui.plot_plot->dataRect().bottom());
+*/
+  }
+
+  QwtPlotMarker* TabPlot::addXtalToPlot(Xtal* xtal, double x, double y)
+  {
+    QwtPlotMarker* pm = NULL;
+    if (xtal->getStatus() == Xtal::Duplicate) {
+      // Dark Green Square
+      pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Rect, QBrush(Qt::darkGreen),
+                                QPen(Qt::darkGreen));
+    }
+    else if (xtal->getStatus() == Xtal::Supercell) {
+      // Orange Square
+      pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Rect, QColor(204,102,0,255),
+                                QColor(204,102,0,255));
+    }
+    else {
+      // Blue Triangle
+      pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Triangle, QBrush(Qt::blue),
+                                QPen(Qt::blue));
+    }
+
+    m_marker_xtal_map[pm] = xtal;
+    return pm;
+  }
+
+  void TabPlot::plotTrace(double x1, double y1,
+                          double x2, double y2)
+  {
+    ui.plot->addHorizontalPlotLine(x1, x2, y1);
+    ui.plot->addVerticalPlotLine(x2, y1, y2);
   }
 
   /// @todo move this to a background thread
@@ -777,63 +650,19 @@ namespace XtalOpt {
       }
       ui.combo_distHistXtal->addItem(s);
     }
-    if (ind == -1) ind = 0;
+    if (ind == -1)
+      ind = 0;
     ui.combo_distHistXtal->setCurrentIndex(ind);
     ui.combo_distHistXtal->blockSignals(false);
   }
 
-  void TabPlot::selectMoleculeFromPlot(double x, double y)
+  void TabPlot::selectXtal(QwtPlotMarker* pm)
   {
-    PlotPoint* pt = NULL;
-    unsigned int distance = UINT_MAX;
-    unsigned int cur;
-    QPoint clickedPt = ui.plot_plot->mapToWidget(QPointF(x,y)).toPoint();
-    int cx = clickedPt.x();
-    int cy = clickedPt.y();
-    QPoint refPt;
-    int dx, dy;
-    foreach ( PlotPoint *pp, m_plotObject->points() ) {
-      refPt = ui.plot_plot->mapToWidget(pp->position()).toPoint();
-      dx = refPt.x() - cx;
-      dy = refPt.y() - cy;
-      // Squared distance. Don't bother with sqrts here:
-      cur = dx*dx + dy*dy;
-      if ( cur < distance ) {
-        pt = pp;
-        distance = cur;
-      }
-    }
-    foreach ( PlotPoint *pp, d_plotObject->points() ) {
-      refPt = ui.plot_plot->mapToWidget(pp->position()).toPoint();
-      dx = refPt.x() - cx;
-      dy = refPt.y() - cy;
-      // Squared distance. Don't bother with sqrts here:
-      cur = dx*dx + dy*dy;
-      if ( cur < distance ) {
-        pt = pp;
-        distance = cur;
-      }
-    }
-    foreach ( PlotPoint *pp, s_plotObject->points() ) {
-      refPt = ui.plot_plot->mapToWidget(pp->position()).toPoint();
-      dx = refPt.x() - cx;
-      dy = refPt.y() - cy;
-      // Squared distance. Don't bother with sqrts here:
-      cur = dx*dx + dy*dy;
-      if ( cur < distance ) {
-        pt = pp;
-        distance = cur;
-      }
-    }
-    selectMoleculeFromPlot(pt);
-  }
+    Xtal* xtal = m_marker_xtal_map[pm];
+    if (!xtal)
+      return;
 
-  void TabPlot::selectMoleculeFromPlot(PlotPoint *pp)
-  {
-    if (!pp) return;
-    int index = pp->customData().toInt();
-    selectMoleculeFromIndex(index);
-    lockClearAndSelectPoint(pp);
+    emit moleculeChanged(xtal);
   }
 
   void TabPlot::selectMoleculeFromIndex(int index)
@@ -847,210 +676,34 @@ namespace XtalOpt {
     emit moleculeChanged(m_opt->tracker()->at(index));
   }
 
-  void TabPlot::highlightXtal(Structure *s)
+  void TabPlot::highlightXtal(Structure* s)
   {
-    Xtal *xtal = qobject_cast<Xtal*>(s);
+    Xtal* xtal = qobject_cast<Xtal*>(s);
 
-    // Bail out if there is no plotobject in memory
-    if (!m_plotObject)
-      return;
-    QReadLocker plotLocker (m_plot_mutex);
-    xtal->lock().lockForRead();
-    uint gen = xtal->getGeneration();
-    uint id  = xtal->getIDNumber();
-    xtal->lock().unlock();
-    int ind;
-    Xtal *txtal;
-    for (int i = 0; i < m_opt->tracker()->size(); i++) {
-      txtal = qobject_cast<Xtal*>(m_opt->tracker()->at(i));
-      txtal->lock().lockForRead();
-      uint tgen = txtal->getGeneration();
-      uint tid = txtal->getIDNumber();
-      txtal->lock().unlock();
-      if ( tgen == gen &&
-           tid == id ) {
-        ind = i;
-        break;
-      }
-    }
-
-    if (ui.combo_plotType->currentIndex() == Trend_PT) {
-      PlotPoint* pp;
-      bool found = false;
-      QList<PlotPoint*> *points = new QList<PlotPoint*>(m_plotObject->points());
-      for (int i = 0; i < points->size(); i++) {
-        pp = points->at(i);
-        if (pp->customData().toInt() == ind) {
-          ui.plot_plot->blockSignals(true);
-          ui.plot_plot->clearAndSelectPoint(pp);
-          ui.plot_plot->blockSignals(false);
-          found = true;
-          break;
-        }
-      }
-      delete points;
-      if (!found) {
-        // If not found, clear selection
-        ui.plot_plot->blockSignals(true);
-        ui.plot_plot->clearSelection();
-        ui.plot_plot->blockSignals(false);
-      }
-    }
-    // Update structure combo
-    plotLocker.unlock();
-    ui.combo_distHistXtal->blockSignals(true);
-    ui.combo_distHistXtal->setCurrentIndex(ind);
-    ui.combo_distHistXtal->blockSignals(false);
-    if (ui.combo_plotType->currentIndex() == DistHist_PT) {
-      refreshPlot();
-    }
+    ui.plot->selectMarker(m_marker_xtal_map.key(xtal));
   }
 
-  // Almost identical to the updateFormulaUnits() function in tab_init.cpp. It functions in the same way.
+  // Almost identical to the updateFormulaUnits() function in tab_init.cpp.
+  // It functions in the same way.
   void TabPlot::updatePlotFormulaUnits()
   {
+    m_formulaUnitsList.clear();
     QString tmp;
-    QStringList tmp2;
-    QTextStream string (&tmp);
-    QList<bool> series;
-    QStringList tempFormulaUnitsList;
-
-    // Split up values separated by commas
-    tempFormulaUnitsList = ui.edit_showSpecifiedFU->text().split(",", QString::SkipEmptyParts);
-
-    // Fix to correct crashing when there is a hyphen at the beginning
-    if (!tempFormulaUnitsList.isEmpty()) {
-      tempFormulaUnitsList[0].prepend(" ");
-    }
-
-    // Check for values that begin, are between, or end hyphens
-    int i = 0, j = 0;
-    bool isNumeric;
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      tmp2 = tempFormulaUnitsList.at(i).split("-", QString::SkipEmptyParts);
-      if (tmp2.at(0) != tempFormulaUnitsList.at(i)) {
-        tmp2.at(0).toUInt(&isNumeric);
-        if (isNumeric == true) {
-          tmp2.at(1).toUInt(&isNumeric);
-          if (isNumeric == true) {
-            uint smaller = tmp2.at(0).toUInt();
-            uint larger = tmp2.at(1).toUInt();
-            if (larger < smaller) {
-              smaller = tmp2.at(1).toUInt();
-              larger = tmp2.at(0).toUInt();
-            }
-            for (j = smaller; j <= larger; j++) {
-              tempFormulaUnitsList.append(QString::number(j));
-            }
-          }
-        }
-      }
-    }
-
-    // Remove leading zeros
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      while (tempFormulaUnitsList.at(i).trimmed().startsWith("0")) {
-        tempFormulaUnitsList[i].remove(0,1);
-      }
-    }
-
-    // Check that each QString may be converted to an unsigned int. Discard it if it cannot.
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      tempFormulaUnitsList.at(i).toUInt(&isNumeric);
-      if (isNumeric == false) {
-        tempFormulaUnitsList.removeAt(i);
-        i--;
-      }
-    }
-
-    // Remove all numbers greater than 100
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      if (tempFormulaUnitsList.at(i).toUInt() > 100) {
-        tempFormulaUnitsList.removeAt(i);
-      }
-    }
+    QList<unsigned int> tempFormulaUnitsList =
+        FileUtils::parseUIntString(ui.edit_showSpecifiedFU->text(), tmp);
 
     // If nothing valid was entered, return 1
-    if ( tempFormulaUnitsList.size() == 0 ) {
-      formulaUnitsList.append(1);
-      string << "1";
+    if (tempFormulaUnitsList.size() == 0) {
+      m_formulaUnitsList.append(1);
+      tmp = "1";
       ui.edit_showSpecifiedFU->setText(tmp.trimmed());
       return;
     }
 
-    // Remove duplicates from the tempFormulaUnitsList
-    for (int i = 0; i < tempFormulaUnitsList.size() - 1; i++) {
-      for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
-        if (tempFormulaUnitsList.at(i) == tempFormulaUnitsList.at(j)) {
-          tempFormulaUnitsList.removeAt(j);
-          j--;
-        }
-      }
-    }
-
-    // Sort from smallest value to greatest value
-    for (int i = 0; i < tempFormulaUnitsList.size() - 1; i++) {
-      for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
-        if (tempFormulaUnitsList.at(i).toUInt() > tempFormulaUnitsList.at(j).toUInt()) {
-          tempFormulaUnitsList.swap(i,j);
-        }
-      }
-    }
-
-    // Populate series with false
-    series.clear();
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      series.append(false);
-    }
-
-    // Check for series to hyphenate
-    for (int i = 0; i < tempFormulaUnitsList.size() - 2; i++) {
-      if ( (tempFormulaUnitsList.at(i).toUInt() + 1 == tempFormulaUnitsList.at(i + 1).toUInt()) && (tempFormulaUnitsList.at(i + 1).toUInt() + 1 == tempFormulaUnitsList.at(i + 2).toUInt()) ) {
-        series.replace(i, true);
-        series.replace(i + 1, true);
-        series.replace(i + 2, true);
-      }
-    }
-
-    // Create the text stream to put back into the UI
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      if (series.at(i) == false) {
-        if (i + 1 == tempFormulaUnitsList.size()) {
-          string << tempFormulaUnitsList.at(i).trimmed();
-        }
-        else if (i + 1 != tempFormulaUnitsList.size()) {
-          string << tempFormulaUnitsList.at(i).trimmed() << ", ";
-        }
-      }
-      else if (series.at(i) == true) {
-        uint seriesLength = 1;
-        int j = i + 1;
-        while ( (j != tempFormulaUnitsList.size()) && (series.at(j) == true) && ( tempFormulaUnitsList.at(j - 1).toUInt() + 1 == tempFormulaUnitsList.at(j).toUInt() ) ) {
-          seriesLength += 1;
-          j++;
-        }
-        if (i + seriesLength == tempFormulaUnitsList.size()) {
-          string << tempFormulaUnitsList.at(i).trimmed() << " - " << tempFormulaUnitsList.at(j - 1).trimmed();
-        }
-        else if (i + seriesLength != tempFormulaUnitsList.size()) {
-          string << tempFormulaUnitsList.at(i).trimmed() << " - " << tempFormulaUnitsList.at(j - 1).trimmed() << ", ";
-        }
-        i = i + seriesLength - 1;
-      }
-    }
-
-    //Create the UInt formulaUnitsList
-    QList<uint> temp_UInt_FormulaUnitsList;
-    temp_UInt_FormulaUnitsList.clear();
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      temp_UInt_FormulaUnitsList.append(tempFormulaUnitsList.at(i).toUInt());
-    }
-
-    formulaUnitsList = temp_UInt_FormulaUnitsList;
+    m_formulaUnitsList = tempFormulaUnitsList;
 
     // Update UI
     ui.edit_showSpecifiedFU->setText(tmp.trimmed());
     refreshPlot();
   }
 }
-
