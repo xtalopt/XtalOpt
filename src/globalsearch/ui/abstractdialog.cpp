@@ -21,25 +21,23 @@
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/utilities/exceptionhandler.h>
 
-#include <QtGui/QApplication>
-#include <QtGui/QLabel>
-#include <QtGui/QFileDialog>
-#include <QtGui/QPushButton>
-#include <QtGui/QMessageBox>
+#include <QtWidgets/QApplication>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QFileDialog>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QMessageBox>
 
 #include <QtCore/QSettings>
-#include <QtCore/QtConcurrentRun>
+#include <QtConcurrent/QtConcurrentRun>
 
 using namespace std;
 
 namespace GlobalSearch {
 
-  AbstractDialog::AbstractDialog( QGLWidget *glWidget,
-                                  QWidget *parent,
+  AbstractDialog::AbstractDialog( QWidget *parent,
                                   Qt::WindowFlags f ) :
     QDialog( parent, f ),
-    m_opt(0),
-    m_glWidget(glWidget)
+    m_opt(0)
   {
     // Initialize vars, connections, etc
     progMutex = new QMutex;

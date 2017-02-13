@@ -26,7 +26,7 @@
 
 #include <QtGui/QAction>
 #include <QtGui/QWidget>
-#include <QtGui/QMessageBox>
+#include <QtWidgets/QMessageBox>
 
 using namespace std;
 using namespace OpenBabel;

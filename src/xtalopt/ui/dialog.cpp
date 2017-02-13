@@ -30,23 +30,22 @@
 #include <xtalopt/ui/tab_log.h>
 
 #include <QtCore/QSettings>
-#include <QtCore/QtConcurrentRun>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QtCore/QUrl>
 
 #include <QtGui/QDesktopServices>
-#include <QtGui/QFileDialog>
-#include <QtGui/QMessageBox>
+#include <QtWidgets/QFileDialog>
+#include <QtWidgets/QMessageBox>
 
 using namespace GlobalSearch;
 using namespace std;
 
 namespace XtalOpt {
 
-  XtalOptDialog::XtalOptDialog( QGLWidget *glWidget,
-                                QWidget *parent,
+  XtalOptDialog::XtalOptDialog( QWidget *parent,
                                 Qt::WindowFlags f,
                                 bool interactive) :
-    AbstractDialog( glWidget, parent, f )
+    AbstractDialog( parent, f )
   {
     ui = new Ui::XtalOptDialog;
     ui->setupUi(this);

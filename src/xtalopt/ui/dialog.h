@@ -22,7 +22,7 @@
 #include <QtCore/QMutex>
 #include <QtCore/QTimer>
 
-#include <QtGui/QDialog>
+#include <QtWidgets/QDialog>
 
 namespace Ui {class XtalOptDialog;};
 
@@ -44,8 +44,7 @@ namespace XtalOpt {
 
   public:
     // Setting interactive to false will disable the tutorial popup
-    explicit XtalOptDialog( QGLWidget *glWidget = 0,
-                            QWidget *parent = 0,
+    explicit XtalOptDialog( QWidget *parent = 0,
                             Qt::WindowFlags f = 0,
                             bool interactive = true);
     virtual ~XtalOptDialog();

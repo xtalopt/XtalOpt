@@ -39,9 +39,9 @@
 #include <QtCore/QThread>
 
 #include <QtGui/QClipboard>
-#include <QtGui/QMessageBox>
-#include <QtGui/QApplication>
-#include <QtGui/QInputDialog>
+#include <QtWidgets/QMessageBox>
+#include <QtWidgets/QApplication>
+#include <QtWidgets/QInputDialog>
 
 //#define OPTBASE_DEBUG
 

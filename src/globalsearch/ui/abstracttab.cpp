@@ -19,7 +19,7 @@
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/optbase.h>
 
-#include <QtGui/QApplication>
+#include <QtWidgets/QApplication>
 
 #include <QtCore/QThread>
 

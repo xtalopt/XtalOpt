@@ -32,9 +32,9 @@
 #include <globalsearch/queueinterfaces/loadleveler.h>
 #endif // ENABLE_SSH
 
-#include <QtGui/QComboBox>
+#include <QtWidgets/QComboBox>
 #include <QtGui/QFont>
-#include <QtGui/QFileDialog>
+#include <QtWidgets/QFileDialog>
 
 #include <QtCore/QSettings>
 

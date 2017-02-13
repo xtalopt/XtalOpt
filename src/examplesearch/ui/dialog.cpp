@@ -26,10 +26,10 @@
 
 #include <QtCore/QTimer>
 #include <QtCore/QSettings>
-#include <QtCore/QtConcurrentRun>
+#include <QtConcurrent/QtConcurrentRun>
 
-#include <QtGui/QFileDialog>
-#include <QtGui/QMessageBox>
+#include <QtWidgets/QFileDialog>
+#include <QtWidgets/QMessageBox>
 #include <QtGui/QProgressDialog>
 
 using namespace std;

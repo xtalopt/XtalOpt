@@ -76,13 +76,13 @@ endif()
 
 
 string(REPLACE ".cpp" ".h" hdr_list "${globalsearch_SRCS}")
-qt4_wrap_cpp(moc_files ${hdr_list})
-qt4_wrap_ui(globalsearch_UIS_H ${globalsearch_UIS})
+qt5_wrap_cpp(moc_files ${hdr_list})
+qt5_wrap_ui(globalsearch_UIS_H ${globalsearch_UIS})
 add_library(globalsearch STATIC ${globalsearch_SRCS} ${globalsearch_UIS} ${moc_files})
 target_link_libraries( globalsearch
 		       ${LINK_LIBS}
-		       ${QT_QTCORE_LIBRARY}
-		       ${QT_QTGUI_LIBRARY})
+                       Qt5::Concurrent
+                       Qt5::Widgets)
 
 if (ENABLE_SSH AND NOT USE_CLI_SSH)
   target_link_libraries(globalsearch ${LIBSSH_LIBRARIES})

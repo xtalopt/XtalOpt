@@ -26,10 +26,10 @@
 #include <QtCore/QTimer>
 #include <QtCore/QSettings>
 #include <QtCore/QMutexLocker>
-#include <QtCore/QtConcurrentRun>
+#include <QtConcurrent/QtConcurrentRun>
 
 #include <QtGui/QMenu>
-#include <QtGui/QInputDialog>
+#include <QtWidgets/QInputDialog>
 
 using namespace std;
 using namespace Avogadro;

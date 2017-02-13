@@ -25,16 +25,16 @@
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
-#include <QtGui/QFileDialog>
+#include <QtWidgets/QFileDialog>
 #include <QtCore/QTimer>
 #include <QtCore/QSettings>
 #include <QtCore/QMutexLocker>
-#include <QtCore/QtConcurrentRun>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 
-#include <QtGui/QMenu>
-#include <QtGui/QInputDialog>
+#include <QtWidgets/QMenu>
+#include <QtWidgets/QInputDialog>
 
 using namespace GlobalSearch;
 
@@ -55,7 +55,7 @@ namespace XtalOpt {
     ui.setupUi(m_tab_widget);
 
     QHeaderView *horizontal = ui.table_list->horizontalHeader();
-    horizontal->setResizeMode(QHeaderView::ResizeToContents);
+    horizontal->setSectionResizeMode(QHeaderView::ResizeToContents);
 
     rowTracking = true;
 

@@ -22,7 +22,7 @@
 // Include the qt-generated ui header
 #include "ui_randSpgDialog.h"
 
-#include <QtGui/QDialog>
+#include <QtWidgets/QDialog>
 #include <QtGui/QBrush>
 
 class QCheckBox;

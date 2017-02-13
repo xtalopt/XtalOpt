@@ -18,7 +18,7 @@
 #ifndef OPTIMIZERDIALOG_H
 #define OPTIMIZERDIALOG_H
 
-#include <QtGui/QDialog>
+#include <QtWidgets/QDialog>
 
 class QLineEdit;
 

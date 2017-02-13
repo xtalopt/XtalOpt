@@ -28,9 +28,9 @@
 #include <QtCore/QFuture>
 #include <QtCore/QStringList>
 #include <QtCore/QReadWriteLock>
-#include <QtCore/QtConcurrentRun>
+#include <QtConcurrent/QtConcurrentRun>
 
-#include <QtGui/QInputDialog>
+#include <QtWidgets/QInputDialog>
 
 // Convenience...
 //static const double DEG_TO_RAD = 3.14159265359 / 180.0;

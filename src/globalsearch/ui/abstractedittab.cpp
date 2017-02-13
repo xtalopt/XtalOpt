@@ -20,13 +20,13 @@
 #include <globalsearch/optbase.h>
 #include <globalsearch/ui/abstractdialog.h>
 
-#include <QtGui/QComboBox>
-#include <QtGui/QDialog>
-#include <QtGui/QFileDialog>
-#include <QtGui/QLineEdit>
-#include <QtGui/QListWidget>
-#include <QtGui/QPushButton>
-#include <QtGui/QTextEdit>
+#include <QtWidgets/QComboBox>
+#include <QtWidgets/QDialog>
+#include <QtWidgets/QFileDialog>
+#include <QtWidgets/QLineEdit>
+#include <QtWidgets/QListWidget>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QTextEdit>
 
 #include <QtCore/QDebug>
 

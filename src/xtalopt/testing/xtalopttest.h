@@ -20,7 +20,7 @@
 
 #include <QtCore/QDebug>
 
-#include <QtGui/QProgressDialog>
+#include <QtWidgets/QProgressDialog>
 
 namespace XtalOpt {
 

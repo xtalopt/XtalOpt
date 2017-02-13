@@ -1,13 +1,12 @@
 project(XtalOpt)
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.11)
 set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
 
-set(QT_MIN_VERSION "4.6.0")
-find_package(Qt4 REQUIRED)
+find_package(Qt5 COMPONENTS Concurrent Widgets REQUIRED)
 find_package(Eigen3 REQUIRED)
 
-include(${QT_USE_FILE})
+include_directories(${Qt5Widgets_INCLUDE_DIRS})
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR}
                      ${EIGEN3_INCLUDE_DIR}
@@ -61,14 +60,14 @@ endif()
 # a SHARED library instead of a MODULE
 function(process_plugin plugin_name src_list)
   string(REPLACE ".cpp" ".h" hdr_list "${src_list}")
-  qt4_wrap_cpp(moc_files ${hdr_list})
+  qt5_wrap_cpp(moc_files ${hdr_list})
   if(NOT "${ARGV2}" STREQUAL "")
     # Process the UI file for this plugin
-    qt4_wrap_ui(plugin_UIS_H ${ARGV2})
+    qt5_wrap_ui(plugin_UIS_H ${ARGV2})
   endif(NOT "${ARGV2}" STREQUAL "")
   if(NOT "${ARGV3}" STREQUAL "")
     # Process the RC file and add it to the plugin
-    qt4_add_resources(plugin_RC_SRCS ${ARGV3})
+    qt5_add_resources(plugin_RC_SRCS ${ARGV3})
   endif(NOT "${ARGV3}" STREQUAL "")
   # Build static lib for linking to tests
   if(BUILD_TESTS)

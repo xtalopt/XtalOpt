@@ -18,7 +18,7 @@
 #ifndef LOCALQUEUEINTERFACECONFIGDIALOG_H
 #define LOCALQUEUEINTERFACECONFIGDIALOG_H
 
-#include <QtGui/QDialog>
+#include <QtWidgets/QDialog>
 
 class QCheckBox;
 class QDialogButtonBox;

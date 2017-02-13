@@ -36,11 +36,11 @@
 
 #include <QtCore/QSettings>
 
-#include <QtGui/QComboBox>
+#include <QtWidgets/QComboBox>
 #include <QtGui/QFont>
-#include <QtGui/QFileDialog>
-#include <QtGui/QListWidgetItem>
-#include <QtGui/QTextEdit>
+#include <QtWidgets/QFileDialog>
+#include <QtWidgets/QListWidgetItem>
+#include <QtWidgets/QTextEdit>
 
 using namespace GlobalSearch;
 

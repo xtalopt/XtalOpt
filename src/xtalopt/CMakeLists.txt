@@ -43,11 +43,11 @@ endif()
 
 string(REPLACE ".cpp" ".h" hdr_list "${xtalopt_SRCS}")
 # Process MOC files
-qt4_wrap_cpp(moc_files ${hdr_list})
+qt5_wrap_cpp(moc_files ${hdr_list})
 # Process the UI file for this plugin
-qt4_wrap_ui(plugin_UIS_H ${xtalopt_UIS})
+qt5_wrap_ui(plugin_UIS_H ${xtalopt_UIS})
 # Add resources
-qt4_add_resources(plugin_RC_SRCS ${xtalopt_RCS})
+qt5_add_resources(plugin_RC_SRCS ${xtalopt_RCS})
 add_executable(xtalopt main.cpp "${xtalopt_SRCS}" "${plugin_UIS_H}"
                        "${plugin_RC_SRCS}" "${moc_files}")
 

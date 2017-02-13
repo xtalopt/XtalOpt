@@ -19,7 +19,6 @@ namespace XtalOpt {
 
     canvas()->setFocusPolicy(Qt::StrongFocus);
     canvas()->setCursor(Qt::PointingHandCursor);
-    canvas()->setFocusIndicator(QwtPlotCanvas::ItemFocusIndicator);
 
     setCanvasBackground(backgroundColor);
     replot();
@@ -44,7 +43,7 @@ namespace XtalOpt {
                                            const QBrush& brush,
                                            const QPen& pen, const QSize& size)
   {
-    QwtSymbol sym = QwtSymbol(symbol, brush, pen, size);
+    QwtSymbol* sym = new QwtSymbol(symbol, brush, pen, size);
     QwtPlotMarker* plotMarker = new QwtPlotMarker();
     plotMarker->setSymbol(sym);
     plotMarker->setValue(p);
@@ -67,7 +66,7 @@ namespace XtalOpt {
     yData[0] = y;
     yData[1] = y;
 
-    curve->setData(xData, yData, 2);
+    curve->setSamples(xData, yData, 2);
     curve->attach(this);
 
     m_curveList.append(curve);
@@ -86,7 +85,7 @@ namespace XtalOpt {
     yData[0] = yMin;
     yData[1] = yMax;
 
-    curve->setData(xData, yData, 2);
+    curve->setSamples(xData, yData, 2);
     curve->attach(this);
 
     m_curveList.append(curve);
@@ -223,16 +222,19 @@ namespace XtalOpt {
 
   void XtalOptPlot::highlightMarker(QwtPlotMarker* m)
   {
-    QwtSymbol newSymbol = m->symbol();
-    newSymbol.setBrush(Qt::white);
-    m->setSymbol(newSymbol);
+    // Copy over everything from the whole symbol except the brush color
+    QwtSymbol* sym = new QwtSymbol(m->symbol()->style(), QBrush(Qt::white),
+                                   m->symbol()->pen(), m->symbol()->size());
+    m->setSymbol(sym);
   }
 
   void XtalOptPlot::dehighlightMarker(QwtPlotMarker* m)
   {
-    QwtSymbol newSymbol = m->symbol();
-    newSymbol.setBrush(newSymbol.pen().color());
-    m->setSymbol(newSymbol);
+    // Copy over everything from the whole symbol except the brush color
+    QwtSymbol* sym = new QwtSymbol(m->symbol()->style(),
+                                   QBrush(m->symbol()->pen().color()),
+                                   m->symbol()->pen(), m->symbol()->size());
+    m->setSymbol(sym);
   }
 
   void XtalOptPlot::deselectCurrent()

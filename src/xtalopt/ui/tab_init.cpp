@@ -23,9 +23,9 @@
 
 #include <QtCore/QSettings>
 
-#include <QtGui/QHeaderView>
-#include <QtGui/QTableWidget>
-#include <QtGui/QTableWidgetItem>
+#include <QtWidgets/QHeaderView>
+#include <QtWidgets/QTableWidget>
+#include <QtWidgets/QTableWidgetItem>
 
 #include "dialog.h"
 
@@ -150,7 +150,7 @@ namespace XtalOpt {
 
 
     QHeaderView *horizontal = ui.table_comp->horizontalHeader();
-    horizontal->setResizeMode(QHeaderView::ResizeToContents);
+    horizontal->setSectionResizeMode(QHeaderView::ResizeToContents);
 
     initialize();
   }

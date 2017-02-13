@@ -22,7 +22,7 @@
 //Doxygen should ignore this file:
 /// @cond
 
-#include <QtGui/QDialog>
+#include <QtWidgets/QDialog>
 
 namespace Ui {
   class LsfConfigDialog;

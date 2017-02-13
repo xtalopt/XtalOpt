@@ -25,8 +25,8 @@
 
 #include <QtCore/QSettings>
 
-#include <QtGui/QFileDialog>
-#include <QtGui/QMessageBox>
+#include <QtWidgets/QFileDialog>
+#include <QtWidgets/QMessageBox>
 
 using namespace std;
 using namespace Avogadro;

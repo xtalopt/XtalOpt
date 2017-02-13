@@ -25,7 +25,7 @@
 
 #include <QtCore/QDateTime>
 #include <QtCore/QDebug>
-#include <QtCore/QtConcurrentRun>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QtCore/QTimer>
 
 // A couple helper functions/classes -- disable doxygen parsing:

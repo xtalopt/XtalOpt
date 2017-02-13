@@ -22,11 +22,10 @@
 #include <globalsearch/optbase.h>
 #include <globalsearch/structures/molecule.h>
 
-#include <QtOpenGL/QGLWidget>
-#include <QtGui/QProgressBar>
-#include <QtGui/QMessageBox>
-#include <QtGui/QTabWidget>
-#include <QtGui/QDialog>
+#include <QtWidgets/QProgressBar>
+#include <QtWidgets/QMessageBox>
+#include <QtWidgets/QTabWidget>
+#include <QtWidgets/QDialog>
 
 #include <QtCore/QMutex>
 #include <QtCore/QTimer>
@@ -104,12 +103,10 @@ namespace GlobalSearch {
      * When deriving, be sure to call initialize() after initializing
      * m_opt and ui.
      * @sa initialize
-     * @param glWidget The GLwidget
      * @param parent Parent object
      * @param f Window flags
      */
-    explicit AbstractDialog( QGLWidget *glWidget = 0,
-                             QWidget *parent = 0,
+    explicit AbstractDialog( QWidget *parent = 0,
                              Qt::WindowFlags f = 0 );
 
     /**
@@ -135,10 +132,6 @@ namespace GlobalSearch {
      */
     virtual ~AbstractDialog();
 
-    /**
-     * @return The GLWidget
-     */
-    QGLWidget* getGLWidget() {return m_glWidget;};
 
     /**
      * @return The associated OptBase derived class.
@@ -220,13 +213,6 @@ namespace GlobalSearch {
      */
     void updateStatus(int opt, int run, int fail) {
       emit sig_updateStatus(opt,run,fail);};
-
-    /**
-     * Update the cached QGLWidget pointer
-     *
-     * @param w The QGLWidget
-     */
-    void setGLWidget(QGLWidget *w) {m_glWidget = w;};
 
     /**
      * @name Progressbar functions
@@ -535,11 +521,6 @@ namespace GlobalSearch {
      * The molecule object that is selected.
      */
     GlobalSearch::Molecule *m_molecule;
-
-    /**
-     * Cached pointer to the QGLWidget.
-     */
-    QGLWidget *m_glWidget;
 
     /**
      * Mutex governing progress bar usage.

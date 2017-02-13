@@ -21,10 +21,10 @@
 #include <QtCore/QDebug>
 #include <QtCore/QFile>
 #include <QtCore/QTimer>
-#include <QtCore/QtConcurrentRun>
+#include <QtConcurrent/QtConcurrentRun>
 
-#include <QtGui/QInputDialog>
-#include <QtGui/QProgressDialog>
+#include <QtWidgets/QInputDialog>
+#include <QtWidgets/QProgressDialog>
 
 using namespace GlobalSearch;
 

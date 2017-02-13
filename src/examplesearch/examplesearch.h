@@ -24,7 +24,7 @@
 #include <QtCore/QStringList>
 #include <QtCore/QReadWriteLock>
 
-#include <QtGui/QInputDialog>
+#include <QtWidgets/QInputDialog>
 
 namespace GlobalSearch {
   class SlottedWaitCondition;
