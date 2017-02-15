@@ -48,8 +48,8 @@ qt5_wrap_cpp(moc_files ${hdr_list})
 qt5_wrap_ui(plugin_UIS_H ${xtalopt_UIS})
 # Add resources
 qt5_add_resources(plugin_RC_SRCS ${xtalopt_RCS})
-add_executable(xtalopt main.cpp "${xtalopt_SRCS}" "${plugin_UIS_H}"
-                       "${plugin_RC_SRCS}" "${moc_files}")
+add_executable(xtalopt main.cpp ${xtalopt_SRCS} ${plugin_UIS_H}
+                       ${plugin_RC_SRCS} ${moc_files})
 
 target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg
                       "${QWT_LIBRARIES}")
