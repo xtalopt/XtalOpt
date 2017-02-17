@@ -15,7 +15,6 @@
 
 #include <globalsearch/tracker.h>
 #include <globalsearch/structure.h>
-#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QList>
 #include <QtCore/QDebug>
@@ -33,13 +32,7 @@ namespace GlobalSearch {
 
   Tracker::~Tracker()
   {
-    // Destructors should never throw... This is added just in case...
-    try {
-      lockForWrite();
-    } // end of try{}
-    catch(...) {
-      ExceptionHandler::handleAllExceptions(__FUNCTION__);
-    } // end of catch{}
+    lockForWrite();
   }
 
   bool Tracker::append(QList<Structure*> s) {

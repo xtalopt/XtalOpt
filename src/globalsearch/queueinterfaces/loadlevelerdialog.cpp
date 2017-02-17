@@ -25,7 +25,6 @@
 
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/optbase.h>
-#include <globalsearch/utilities/exceptionhandler.h>
 
 #include "ui_loadlevelerdialog.h"
 
@@ -44,13 +43,7 @@ namespace GlobalSearch {
 
   LoadLevelerConfigDialog::~LoadLevelerConfigDialog()
   {
-    // Destructors should never throw...
-    try {
-      delete ui;
-    } // end of try{}
-    catch(...) {
-      ExceptionHandler::handleAllExceptions(__FUNCTION__);
-    } // end of catch{}
+    delete ui;
   }
 
   void LoadLevelerConfigDialog::updateGUI()

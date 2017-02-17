@@ -20,7 +20,6 @@
 #include <globalsearch/queueinterfaces/localdialog.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/structure.h>
-#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QDir>
 #include <QtCore/QFile>
@@ -50,24 +49,18 @@ namespace GlobalSearch {
 
   LocalQueueInterface::~LocalQueueInterface()
   {
-    // Destructors should never throw...
-    try {
-      for (QHash<unsigned long, LocalQueueProcess*>::iterator
-             it = m_processes.begin(),
-             it_end = m_processes.end();
-           it != it_end; ++it) {
-        if ((*it) && ((*it)->state() == QProcess::Running)) {
-          // Give each process 5 seconds to do any cleanup needed, then
-          // kill it.
-          (*it)->terminate();
-          (*it)->waitForFinished(5000);
-          (*it)->kill();
-        }
+    for (QHash<unsigned long, LocalQueueProcess*>::iterator
+           it = m_processes.begin(),
+           it_end = m_processes.end();
+         it != it_end; ++it) {
+      if ((*it) && ((*it)->state() == QProcess::Running)) {
+        // Give each process 5 seconds to do any cleanup needed, then
+        // kill it.
+        (*it)->terminate();
+        (*it)->waitForFinished(5000);
+        (*it)->kill();
       }
-    } // end of try{}
-    catch(...) {
-      ExceptionHandler::handleAllExceptions(__FUNCTION__);
-    } // end of catch{}
+    }
   }
 
   bool LocalQueueInterface::isReadyToSearch(QString *str)

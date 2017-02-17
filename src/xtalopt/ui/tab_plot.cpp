@@ -20,7 +20,6 @@
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
-#include <globalsearch/utilities/exceptionhandler.h>
 #include <globalsearch/utilities/fileutils.h>
 
 #include <QtCore/QSettings>
@@ -100,13 +99,7 @@ namespace XtalOpt {
 
   TabPlot::~TabPlot()
   {
-    // Destructors should never throw...
-    try {
-      delete m_plot_mutex;
-    } // end of try{}
-    catch(...) {
-      ExceptionHandler::handleAllExceptions(__FUNCTION__);
-    } // end of catch{}
+    delete m_plot_mutex;
   }
 
   void TabPlot::writeSettings(const QString &filename)

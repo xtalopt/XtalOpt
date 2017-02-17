@@ -20,7 +20,6 @@
 #include <globalsearch/ui/abstracttab.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/utilities/fileutils.h>
-#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
@@ -107,17 +106,11 @@ namespace XtalOpt {
 
   TabProgress::~TabProgress()
   {
-    // Destructors should never throw...
-    try {
-      delete m_mutex;
-      delete m_update_mutex;
-      delete m_update_all_mutex;
-      delete m_context_mutex;
-      delete m_timer;
-    } // end of try{}
-    catch(...) {
-      ExceptionHandler::handleAllExceptions(__FUNCTION__);
-    } // end of catch{}
+    delete m_mutex;
+    delete m_update_mutex;
+    delete m_update_all_mutex;
+    delete m_context_mutex;
+    delete m_timer;
   }
 
   void TabProgress::writeSettings(const QString &filename)

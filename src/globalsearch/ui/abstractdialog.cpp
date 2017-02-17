@@ -19,7 +19,6 @@
 
 #include <globalsearch/tracker.h>
 #include <globalsearch/queuemanager.h>
-#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QLabel>
@@ -131,13 +130,7 @@ namespace GlobalSearch {
 
   AbstractDialog::~AbstractDialog()
   {
-    // Destructors should never throw exceptions...
-    try {
-      delete m_opt;
-    } // end of try{}
-    catch(...) {
-      ExceptionHandler::handleAllExceptions(__FUNCTION__);
-    } // end of catch{}
+    delete m_opt;
   }
 
   void AbstractDialog::disconnectGUI() {

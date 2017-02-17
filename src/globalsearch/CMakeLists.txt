@@ -21,7 +21,6 @@ set( globalsearch_SRCS
      queueinterfaces/local.cpp
      queueinterfaces/localdialog.cpp
      utilities/fileutils.cpp
-     utilities/exceptionhandler.cpp
      formats/formats.cpp
      formats/gulpformat.cpp
      formats/vaspformat.cpp

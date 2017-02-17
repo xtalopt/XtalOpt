@@ -18,7 +18,6 @@
 
 #include <globalsearch/macros.h>
 #include <globalsearch/sshconnection_libssh.h>
-#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QDebug>
 
@@ -69,33 +68,26 @@ namespace GlobalSearch {
 
   SSHManagerLibSSH::~SSHManagerLibSSH()
   {
-    // Destructors should never throw. This is added just in case...
-    try {
-      QMutexLocker locker (&m_lock);
-      START;
+    QMutexLocker locker (&m_lock);
+    START;
 
-      int timeout = 30;
-      QList<SSHConnectionLibSSH*>::iterator it;
-      for (it =  m_conns.begin(); it != m_conns.end(); it++) {
-        while ((*it)->inUse() && timeout >= 0) {
-          // Wait for connection to become free
-          qDebug() << "Spinning while waiting for SSHConnection to free."
-                   << *it
-  		 << "\nTimeout in" << QString::number(timeout) << "seconds.";
-          GS_SLEEP(1);
-  	timeout--;
-        }
-        (*it)->setUsed(true);
-        delete (*it);
-        (*it) = 0;
+    int timeout = 30;
+    QList<SSHConnectionLibSSH*>::iterator it;
+    for (it =  m_conns.begin(); it != m_conns.end(); it++) {
+      while ((*it)->inUse() && timeout >= 0) {
+        // Wait for connection to become free
+        qDebug() << "Spinning while waiting for SSHConnection to free."
+                 << *it
+      	 << "\nTimeout in" << QString::number(timeout) << "seconds.";
+        GS_SLEEP(1);
+      timeout--;
       }
+      (*it)->setUsed(true);
+      delete (*it);
+      (*it) = 0;
+    }
 
-      END;
-    } // end of try{}
-    catch(...) {
-      ExceptionHandler::handleAllExceptions(__FUNCTION__);
-    } // end of catch{}
-
+    END;
   }
 
   SSHConnection* SSHManagerLibSSH::getFreeConnection()

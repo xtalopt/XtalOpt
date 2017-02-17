@@ -16,7 +16,6 @@
 
 #include <globalsearch/sshmanager_cli.h>
 #include <globalsearch/sshconnection_cli.h>
-#include <globalsearch/utilities/exceptionhandler.h>
 
 namespace GlobalSearch {
 
@@ -30,14 +29,8 @@ namespace GlobalSearch {
 
   SSHManagerCLI::~SSHManagerCLI()
   {
-    // Destructors should never throw...
-    try {
-      delete m_conn;
-      delete m_semaphore;
-    } // end of try{}
-    catch(...) {
-      ExceptionHandler::handleAllExceptions(__FUNCTION__);
-    } // end of catch{}
+    delete m_conn;
+    delete m_semaphore;
   }
 
   void SSHManagerCLI::makeConnections(const QString &host,

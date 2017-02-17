@@ -23,7 +23,6 @@
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/pbs.h>
-#include <globalsearch/utilities/exceptionhandler.h>
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
 #ifdef USE_CLI_SSH
@@ -102,29 +101,23 @@ namespace GlobalSearch {
 
   OptBase::~OptBase()
   {
-    // Destructors should never throw...
-    try {
-      delete m_queue;
-      m_queue = 0;
+    delete m_queue;
+    m_queue = 0;
 
-      if (m_queueThread && m_queueThread->isRunning()) {
-        m_queueThread->wait();
-      }
-      delete m_queueThread;
-      m_queueThread = 0;
+    if (m_queueThread && m_queueThread->isRunning()) {
+      m_queueThread->wait();
+    }
+    delete m_queueThread;
+    m_queueThread = 0;
 
-      delete m_optimizer;
-      m_optimizer = 0;
+    delete m_optimizer;
+    m_optimizer = 0;
 
-      delete m_queueInterface;
-      m_queueInterface = 0;
+    delete m_queueInterface;
+    m_queueInterface = 0;
 
-      delete m_tracker;
-      m_tracker = 0;
-    } // end of try{}
-    catch(...) {
-      ExceptionHandler::handleAllExceptions(__FUNCTION__);
-    } // end of catch{}
+    delete m_tracker;
+    m_tracker = 0;
   }
 
   void OptBase::reset() {

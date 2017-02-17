@@ -18,7 +18,6 @@
 
 #include <globalsearch/sshmanager_libssh.h>
 #include <globalsearch/macros.h>
-#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
@@ -55,15 +54,9 @@ SSHConnectionLibSSH::SSHConnectionLibSSH(SSHManagerLibSSH *parent)
 
 SSHConnectionLibSSH::~SSHConnectionLibSSH()
 {
-  // Destructors should never throw...
-  try {
-    START;
-    disconnectSession();
-    END;
-  } // end of try{}
-  catch(...) {
-    ExceptionHandler::handleAllExceptions(__FUNCTION__);
-  } // end of catch{}
+  START;
+  disconnectSession();
+  END;
 }
 
 bool SSHConnectionLibSSH::isConnected()
