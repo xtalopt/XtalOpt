@@ -3,6 +3,10 @@ project(XtalOpt)
 cmake_minimum_required(VERSION 2.8.11)
 set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
 
+# C++11 is required
+include(MacroUseCXX11)
+use_cxx11()
+
 find_package(Qt5 COMPONENTS Concurrent Widgets REQUIRED)
 find_package(Eigen3 REQUIRED)
 
@@ -89,11 +93,6 @@ if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC"  )
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC"  )
 endif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-
-# Require c++0x
-if(UNIX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++0x"  )
-endif(UNIX)
 
 add_subdirectory(src)
 
