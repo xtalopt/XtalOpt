@@ -60,6 +60,11 @@ namespace GlobalSearch {
     Structure(const Structure &other);
 
     /**
+     * Move constructor. Calls the move assignment operator.
+     */
+    Structure(Structure&& other) noexcept;
+
+    /**
      * Explicit copy constructor for Molecules.
      */
     Structure(const GlobalSearch::Molecule &other);
@@ -74,6 +79,11 @@ namespace GlobalSearch {
      * specific information copied from \a other.
      */
     Structure& operator=(const Structure& other);
+
+    /**
+     * Move assignment operator.
+     */
+    Structure& operator=(Structure&& other) noexcept;
 
     /**
      * Assignment operator. Makes a new structure with all Molecule

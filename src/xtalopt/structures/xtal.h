@@ -44,6 +44,19 @@ namespace XtalOpt {
     Xtal(double A, double B, double C,
          double Alpha, double Beta, double Gamma,
          QObject *parent = 0);
+
+    /* Copy constructor */
+    Xtal(const Xtal& other);
+
+    /* Move constructor */
+    Xtal(Xtal&& other) noexcept;
+
+    /* Assignment operator */
+    Xtal& operator=(const Xtal& other);
+
+    /* Move assignment operator */
+    Xtal& operator=(Xtal&& other) noexcept;
+
     virtual ~Xtal();
 
     // Virtuals from structure
@@ -238,7 +251,7 @@ namespace XtalOpt {
                                    QList<unsigned int> *atomicNums,
                                    Matrix3 *cellMatrix,
                                    const double cartTol = 0.05);
-    void ctor(QObject *parent=0);
+    void ctor();
     unsigned short m_spgNumber;
     QString m_spgSymbol;
 

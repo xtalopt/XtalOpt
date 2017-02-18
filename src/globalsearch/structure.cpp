@@ -82,6 +82,11 @@ namespace GlobalSearch {
     *this = other;
   }
 
+  Structure::Structure(Structure&& other) noexcept
+  {
+    *this = std::move(other);
+  }
+
   Structure::Structure(const GlobalSearch::Molecule &other) :
     Molecule(other),
     m_updatedSinceDupChecked(true),
@@ -124,33 +129,72 @@ namespace GlobalSearch {
 
   Structure& Structure::operator=(const Structure& other)
   {
-    Molecule::operator=(other);
+    if (this != &other) {
+      Molecule::operator=(other);
 
-    // Set properties
-    m_hasEnthalpy                = other.m_hasEnthalpy;
-    m_primitiveChecked           = other.m_primitiveChecked;
-    m_skippedOptimization        = other.m_skippedOptimization;
-    m_supercellGenerationChecked = other.m_supercellGenerationChecked;
-    m_histogramGenerationPending = other.m_histogramGenerationPending;
-    m_generation                 = other.m_generation;
-    m_id                         = other.m_id;
-    m_rank                       = other.m_rank;
-    m_formulaUnits               = other.m_formulaUnits;
-    m_jobID                      = other.m_jobID;
-    m_currentOptStep             = other.m_currentOptStep;
-    m_failCount                  = other.m_failCount;
-    m_parents                    = other.m_parents;
-    m_dupString                  = other.m_dupString;
-    m_rempath                    = other.m_rempath;
-    m_fileName                   = other.m_fileName;
-    m_energy                     = other.m_energy;
-    m_enthalpy                   = other.m_enthalpy;
-    m_PV                         = other.m_PV;
-    m_status                     = other.m_status;
-    m_optStart                   = other.m_optStart;
-    m_optEnd                     = other.m_optEnd;
-    m_index                      = other.m_index;
-    m_parentStructure            = other.m_parentStructure;
+      // Set properties
+      m_hasEnthalpy                = other.m_hasEnthalpy;
+      m_primitiveChecked           = other.m_primitiveChecked;
+      m_skippedOptimization        = other.m_skippedOptimization;
+      m_supercellGenerationChecked = other.m_supercellGenerationChecked;
+      m_histogramGenerationPending = other.m_histogramGenerationPending;
+      m_generation                 = other.m_generation;
+      m_id                         = other.m_id;
+      m_rank                       = other.m_rank;
+      m_formulaUnits               = other.m_formulaUnits;
+      m_jobID                      = other.m_jobID;
+      m_currentOptStep             = other.m_currentOptStep;
+      m_failCount                  = other.m_failCount;
+      m_parents                    = other.m_parents;
+      m_dupString                  = other.m_dupString;
+      m_rempath                    = other.m_rempath;
+      m_fileName                   = other.m_fileName;
+      m_energy                     = other.m_energy;
+      m_enthalpy                   = other.m_enthalpy;
+      m_PV                         = other.m_PV;
+      m_status                     = other.m_status;
+      m_optStart                   = other.m_optStart;
+      m_optEnd                     = other.m_optEnd;
+      m_index                      = other.m_index;
+      m_parentStructure            = other.m_parentStructure;
+    }
+
+    return *this;
+  }
+
+  Structure& Structure::operator=(Structure&& other) noexcept
+  {
+    if (this != &other) {
+      Molecule::operator=(std::move(other));
+
+      // Set properties
+      m_hasEnthalpy                = std::move(other.m_hasEnthalpy);
+      m_primitiveChecked           = std::move(other.m_primitiveChecked);
+      m_skippedOptimization        = std::move(other.m_skippedOptimization);
+      m_supercellGenerationChecked = std::move(other.m_supercellGenerationChecked);
+      m_histogramGenerationPending = std::move(other.m_histogramGenerationPending);
+      m_generation                 = std::move(other.m_generation);
+      m_id                         = std::move(other.m_id);
+      m_rank                       = std::move(other.m_rank);
+      m_formulaUnits               = std::move(other.m_formulaUnits);
+      m_jobID                      = std::move(other.m_jobID);
+      m_currentOptStep             = std::move(other.m_currentOptStep);
+      m_failCount                  = std::move(other.m_failCount);
+      m_parents                    = std::move(other.m_parents);
+      m_dupString                  = std::move(other.m_dupString);
+      m_rempath                    = std::move(other.m_rempath);
+      m_fileName                   = std::move(other.m_fileName);
+      m_energy                     = std::move(other.m_energy);
+      m_enthalpy                   = std::move(other.m_enthalpy);
+      m_PV                         = std::move(other.m_PV);
+      m_status                     = std::move(other.m_status);
+      m_optStart                   = std::move(other.m_optStart);
+      m_optEnd                     = std::move(other.m_optEnd);
+      m_index                      = std::move(other.m_index);
+      m_parentStructure            = std::move(other.m_parentStructure);
+
+      other.m_parentStructure = nullptr;
+    }
 
     return *this;
   }

@@ -42,8 +42,14 @@ namespace GlobalSearch
     /* Copy constructor. Just copies the data. */
     Atom(const Atom& other);
 
+    /* Move constructor. Just call std::move() on the data. */
+    Atom(Atom&& other) noexcept;
+
     /* Assignment operator. Just copies the data. */
     Atom& operator=(const Atom& other);
+
+    /* Move assignment operator. Just call std::move() on the data. */
+    Atom& operator=(Atom&& other) noexcept;
 
     /* Comparison operator. Just compares the data. */
     bool operator==(const Atom& other) const;
@@ -95,10 +101,27 @@ namespace GlobalSearch
   {
   }
 
+  inline Atom::Atom(Atom&& other) noexcept
+    : m_atomicNumber(std::move(other.m_atomicNumber)),
+      m_pos(std::move(other.m_pos))
+  {
+  }
+
   inline Atom& Atom::operator=(const Atom& other)
   {
-    m_atomicNumber = other.m_atomicNumber;
-    m_pos = other.m_pos;
+    if (this != &other) {
+      m_atomicNumber = other.m_atomicNumber;
+      m_pos = other.m_pos;
+    }
+    return *this;
+  }
+
+  inline Atom& Atom::operator=(Atom&& other) noexcept
+  {
+    if (this != &other) {
+      m_atomicNumber = std::move(other.m_atomicNumber);
+      m_pos = std::move(other.m_pos);
+    }
     return *this;
   }
 

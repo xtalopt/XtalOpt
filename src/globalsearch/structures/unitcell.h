@@ -61,8 +61,14 @@ namespace GlobalSearch
     /* Copy constructor. Just copies the data. */
     UnitCell(const UnitCell& other);
 
+    /* Copy constructor. Calls std::move() on the data. */
+    UnitCell(UnitCell&& other) noexcept;
+
     /* Assignment operator. Just copies the data. */
     UnitCell& operator=(const UnitCell& other);
+
+    /* Move assignment operator. Calls std::move() on the data. */
+    UnitCell& operator=(UnitCell&& other) noexcept;
 
     /**
      * Checks whether the cell is valid or not. If the volume is zero, the
@@ -284,9 +290,24 @@ namespace GlobalSearch
   {
   }
 
+  inline UnitCell::UnitCell(UnitCell&& other) noexcept
+    : m_cellMatrix(std::move(other.m_cellMatrix))
+  {
+  }
+
   inline UnitCell& UnitCell::operator=(const UnitCell& other)
   {
-    m_cellMatrix = other.m_cellMatrix;
+    if (this != &other) {
+      m_cellMatrix = other.m_cellMatrix;
+    }
+    return *this;
+  }
+
+  inline UnitCell& UnitCell::operator=(UnitCell&& other) noexcept
+  {
+    if (this != &other) {
+      m_cellMatrix = std::move(other.m_cellMatrix);
+    }
     return *this;
   }
 

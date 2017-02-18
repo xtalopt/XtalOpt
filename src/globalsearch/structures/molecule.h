@@ -49,8 +49,14 @@ namespace GlobalSearch
     /* Copy constructor. Just copies the data. */
     Molecule(const Molecule& other);
 
+    /* Move constructor. Calls std::move() on the data. */
+    Molecule(Molecule&& other) noexcept;
+
     /* Assignment operator. Just copies the data. */
     Molecule& operator=(const Molecule& other);
+
+    /* Move assignment operator. Just calls std::move() on the data. */
+    Molecule& operator=(Molecule&& other) noexcept;
 
     /**
      * Add an atom. A reference to the newly added atom is returned and
@@ -216,10 +222,27 @@ namespace GlobalSearch
   {
   }
 
+  inline Molecule::Molecule(Molecule&& other) noexcept
+    : m_atoms(std::move(other.m_atoms)),
+      m_unitCell(std::move(other.m_unitCell))
+  {
+  }
+
   inline Molecule& Molecule::operator=(const Molecule& other)
   {
-    m_atoms = other.m_atoms;
-    m_unitCell = other.m_unitCell;
+    if (this != &other) {
+      m_atoms = other.m_atoms;
+      m_unitCell = other.m_unitCell;
+    }
+    return *this;
+  }
+
+  inline Molecule& Molecule::operator=(Molecule&& other) noexcept
+  {
+    if (this != &other) {
+      m_atoms = std::move(other.m_atoms);
+      m_unitCell = std::move(other.m_unitCell);
+    }
     return *this;
   }
 
