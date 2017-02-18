@@ -39,7 +39,7 @@ namespace XtalOpt {
     void writeSettings(const QString &filename = "");
     void updateGUI();
     void updateOptimizationInfo();
-    void addSeed(QListWidgetItem *item = NULL);
+    void addSeed(QListWidgetItem *item = nullptr);
     void removeSeed();
     void updateSeeds();
 

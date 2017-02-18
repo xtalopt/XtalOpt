@@ -79,7 +79,7 @@ namespace GlobalSearch {
     // Copy to remote
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
-    if (ssh == NULL) {
+    if (ssh == nullptr) {
       m_opt->warning(tr("Cannot connect to ssh server."));
       return false;
     }
@@ -114,7 +114,7 @@ namespace GlobalSearch {
   {
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
-    if (ssh == NULL) {
+    if (ssh == nullptr) {
       m_opt->warning(tr("Cannot connect to ssh server"));
       return false;
     }
@@ -134,7 +134,7 @@ namespace GlobalSearch {
   {
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
-    if (ssh == NULL) {
+    if (ssh == nullptr) {
       m_opt->warning(tr("Cannot connect to ssh server"));
       return false;
     }
@@ -175,7 +175,7 @@ namespace GlobalSearch {
   {
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
-    if (ssh == NULL) {
+    if (ssh == nullptr) {
       m_opt->warning(tr("Cannot connect to ssh server"));
       return false;
     }
@@ -202,7 +202,7 @@ namespace GlobalSearch {
     // transfer back the matches.
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
-    if (ssh == NULL) {
+    if (ssh == nullptr) {
       m_opt->warning(tr("Cannot connect to ssh server"));
       return false;
     }

@@ -11,7 +11,7 @@ namespace XtalOpt {
   XtalOptPlot::XtalOptPlot(QWidget *parent, const QColor& backgroundColor):
       QwtPlot(parent),
       m_markerList(QList<QwtPlotMarker*>()),
-      m_selectedMarker(NULL),
+      m_selectedMarker(nullptr),
       m_magnifier(canvas()),
       m_panner(canvas())
   {
@@ -145,7 +145,7 @@ namespace XtalOpt {
   {
     if (i >= m_markerList.size()) {
       qDebug() << "Error: plotMarker() was called with an invalid index!";
-      return NULL;
+      return nullptr;
     }
     return m_markerList[i];
   }
@@ -194,7 +194,7 @@ namespace XtalOpt {
   // Select the point at a position.
   void XtalOptPlot::select(const QPoint& pos)
   {
-    QwtPlotMarker* selection = NULL;
+    QwtPlotMarker* selection = nullptr;
 
     // Must be within 10 pixels at least
     double dist = 10.0;
@@ -243,7 +243,7 @@ namespace XtalOpt {
       return;
 
     dehighlightMarker(m_selectedMarker);
-    m_selectedMarker = NULL;
+    m_selectedMarker = nullptr;
     emit selectedMarkerChanged(m_selectedMarker);
     autoRefresh();
   }
@@ -274,7 +274,7 @@ namespace XtalOpt {
     if (!m_selectedMarker)
       return;
 
-    QwtPlotMarker* selection = NULL;
+    QwtPlotMarker* selection = nullptr;
 
     double dist = 1e300;
 

@@ -297,7 +297,7 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
   int method;
 
   // Try to authenticate
-  rc = ssh_userauth_none(m_session, NULL);
+  rc = ssh_userauth_none(m_session, nullptr);
   if (rc == SSH_AUTH_ERROR) {
     qWarning() << "SSH error: " << ssh_get_error(m_session);
     if (throwExceptions) {

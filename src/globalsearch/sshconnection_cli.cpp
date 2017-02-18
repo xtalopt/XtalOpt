@@ -173,11 +173,11 @@ namespace GlobalSearch {
       return false;
     }
 
-    if (stdout_str != NULL)
+    if (stdout_str != nullptr)
       *stdout_str = QString(proc.readAllStandardOutput());
-    if (stderr_str != NULL)
+    if (stderr_str != nullptr)
       *stderr_str = QString(proc.readAllStandardError());
-    if (ec != NULL)
+    if (ec != nullptr)
       *ec = proc.exitCode();
 
     proc.close();
@@ -239,11 +239,11 @@ namespace GlobalSearch {
       return false;
     }
 
-    if (stdout_str != NULL)
+    if (stdout_str != nullptr)
       *stdout_str = QString(proc.readAllStandardOutput());
-    if (stderr_str != NULL)
+    if (stderr_str != nullptr)
       *stderr_str = QString(proc.readAllStandardError());
-    if (ec != NULL)
+    if (ec != nullptr)
       *ec = proc.exitCode();
 
     proc.close();
@@ -305,11 +305,11 @@ namespace GlobalSearch {
       return false;
     }
 
-    if (stdout_str != NULL)
+    if (stdout_str != nullptr)
       *stdout_str = QString(proc.readAllStandardOutput());
-    if (stderr_str != NULL)
+    if (stderr_str != nullptr)
       *stderr_str = QString(proc.readAllStandardError());
-    if (ec != NULL)
+    if (ec != nullptr)
       *ec = proc.exitCode();
 
     proc.close();

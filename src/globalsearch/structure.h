@@ -478,7 +478,7 @@ namespace GlobalSearch {
      *
      * If the parameter atom is specified, the resulting data will
      * represent the distance distribution between that atom and all
-     * others. If omitted (or NULL), a histogram of all interatomic
+     * others. If omitted (or nullptr), a histogram of all interatomic
      * distances is calculated.
      *
      * Useful for estimating the coordination number of an atom from
@@ -517,7 +517,7 @@ namespace GlobalSearch {
      *
      * If the parameter atom is specified, the resulting data will
      * represent the distance distribution between that atom and all
-     * others. If omitted (or NULL), a histogram of all interatomic
+     * others. If omitted (or nullptr), a histogram of all interatomic
      * distances is calculated.
      *
      * Useful for estimating the coordination number of an atom from
@@ -560,10 +560,10 @@ namespace GlobalSearch {
      *
      * @param atomicNumber Atomic number of atom to add.
      *
-     * @param minIAD Smallest interatomic distance allowed (NULL or
+     * @param minIAD Smallest interatomic distance allowed (nullptr or
      * omit for no limit)
      *
-     * @param maxIAD Largest interatomic distance allowed (NULL or
+     * @param maxIAD Largest interatomic distance allowed (nullptr or
      * omit for no limit)
      *
      * @param maxAttempts Maximum number of tries before giving up.

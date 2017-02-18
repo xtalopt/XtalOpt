@@ -285,7 +285,7 @@ namespace GlobalSearch {
     /// Whether this QueueInterface has a configuration dialog.
     bool m_hasDialog;
 
-    /// Pointer to configuration dialog (may be NULL)
+    /// Pointer to configuration dialog (may be nullptr)
     QDialog *m_dialog;
 
   };

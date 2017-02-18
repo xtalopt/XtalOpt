@@ -514,7 +514,7 @@ namespace XtalOpt {
     QTableWidgetItem *item = ui.table_list->itemAt(p);
     bool xtalIsSelected = true;
     int index = -1;
-    if (item == NULL) {
+    if (item == nullptr) {
       xtalIsSelected = false;
     }
     else {
@@ -528,13 +528,13 @@ namespace XtalOpt {
     qDebug() << "Context menu at row " << index;
 
     // Set m_context_xtal after locking to avoid threading issues.
-    Xtal *xtal = NULL;
+    Xtal *xtal = nullptr;
     if (index != -1) {
       xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
     }
 
     bool isKilled = false;
-    if (xtal != NULL) {
+    if (xtal != nullptr) {
       xtal->lock().lockForRead();
       m_context_xtal = xtal;
 
@@ -789,7 +789,7 @@ namespace XtalOpt {
     }
 
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-    Q_ASSERT_X(xtalopt != NULL, Q_FUNC_INFO, "m_opt is not an instance of "
+    Q_ASSERT_X(xtalopt != nullptr, Q_FUNC_INFO, "m_opt is not an instance of "
                "XtalOpt.");
 
     xtalopt->replaceWithOffspring(m_context_xtal, "manual");
@@ -803,7 +803,7 @@ namespace XtalOpt {
   void TabProgress::injectStructureProgress()
   {
     // It doesn't matter what xtal was selected
-    m_context_xtal = NULL;
+    m_context_xtal = nullptr;
 
     // Prompt for filename
     QSettings settings;

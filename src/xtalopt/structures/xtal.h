@@ -95,8 +95,8 @@ namespace XtalOpt {
     // of the first set of offending atom, if any, that are found. The bad IAD
     // is written to IAD if a double pointer is provided.
     bool checkInteratomicDistances(const QHash<unsigned int, XtalCompositionStruct> &limits,
-                                   int *atom1 = NULL, int *atom2 = NULL,
-                                   double *IAD = NULL);
+                                   int *atom1 = nullptr, int *atom2 = nullptr,
+                                   double *IAD = nullptr);
     QHash<QString, QVariant> getFingerprint();
     virtual QString getResultsEntry() const;
     virtual QString getResultsHeader() const {

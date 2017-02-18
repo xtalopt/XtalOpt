@@ -55,7 +55,7 @@ namespace GlobalSearch {
     m_queueInterface(0), // This will be set when the GUI is initialized
     m_optimizer(0),      // This will be set when the GUI is initialized
 #ifdef ENABLE_SSH
-    m_ssh(NULL),
+    m_ssh(nullptr),
 #endif // ENABLE_SSH
     m_idString("Generic"),
     stateFileMutex(new QMutex),

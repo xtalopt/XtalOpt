@@ -14,7 +14,7 @@ namespace XtalOpt {
   {
     Q_OBJECT
    public:
-    XtalOptPlot(QWidget *parent = NULL,
+    XtalOptPlot(QWidget *parent = nullptr,
                 const QColor& backgroundColor = Qt::white);
     virtual ~XtalOptPlot();
 

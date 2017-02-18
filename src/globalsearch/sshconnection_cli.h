@@ -162,21 +162,21 @@ namespace GlobalSearch {
   protected:
     bool executeSSH(const QString &command,
                     const QStringList &args = QStringList(),
-                    QString *stdout_str = NULL,
-                    QString *stderr_str = NULL,
-                    int *ec = NULL);
+                    QString *stdout_str = nullptr,
+                    QString *stderr_str = nullptr,
+                    int *ec = nullptr);
     bool executeSCPTo(const QString &source,
                       const QString &dest,
                       const QStringList &args = QStringList(),
-                      QString *stdout_str = NULL,
-                      QString *stderr_str = NULL,
-                      int *ec = NULL);
+                      QString *stdout_str = nullptr,
+                      QString *stderr_str = nullptr,
+                      int *ec = nullptr);
     bool executeSCPFrom(const QString &source,
                         const QString &dest,
                         const QStringList &args = QStringList(),
-                        QString *stdout_str = NULL,
-                        QString *stderr_str = NULL,
-                        int *ec = NULL);
+                        QString *stdout_str = nullptr,
+                        QString *stderr_str = nullptr,
+                        int *ec = nullptr);
 
   };
 

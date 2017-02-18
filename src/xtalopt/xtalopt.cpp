@@ -458,7 +458,7 @@ namespace XtalOpt {
     QWriteLocker locker1 (&oldXtal->lock());
 
     // Randomly generated xtals do not have parent structures
-    oldXtal->setParentStructure(NULL);
+    oldXtal->setParentStructure(nullptr);
 
     uint FU = s->getFormulaUnits();
 
@@ -515,7 +515,7 @@ namespace XtalOpt {
     while (!checkXtal(xtal)) {
       if (xtal) {
         xtal->deleteLater();
-        xtal = NULL;
+        xtal = nullptr;
       }
       xtal = generateNewXtal(FU);
     }
@@ -561,8 +561,8 @@ namespace XtalOpt {
   {
     INIT_RANDOM_GENERATOR();
 
-    Xtal* xtal = NULL;
-    QString* err = NULL;
+    Xtal* xtal = nullptr;
+    QString* err = nullptr;
 
     // Let's make the spg input
     latticeStruct latticeMins, latticeMaxes;
@@ -614,7 +614,7 @@ namespace XtalOpt {
       qDebug() << "After" << QString::number(input.maxAttempts)
                << "attempts, failed to generate an xtal with spg of"
                << QString::number(spg);
-      return NULL;
+      return nullptr;
     }
 
     QString HM_spg = Xtal::getHMName(spg);
@@ -634,10 +634,10 @@ namespace XtalOpt {
     double a, b, c, alpha, beta, gamma;
 
     // Create a valid crystal first
-    Xtal *xtal = NULL;
+    Xtal *xtal = nullptr;
     do {
       delete xtal;
-      xtal = NULL;
+      xtal = nullptr;
       a            = RANDDOUBLE() * (a_max-a_min) + a_min;
       b            = RANDDOUBLE() * (b_max-b_min) + b_min;
       c            = RANDDOUBLE() * (c_max-c_min) + c_min;
@@ -1361,7 +1361,7 @@ namespace XtalOpt {
                   .arg(xtal->getIDNumber()));
                 // We only want to perform offspring tracking for mutated
                 // offspring.
-                nxtal->setParentStructure(NULL);
+                nxtal->setParentStructure(nullptr);
                 nxtal->setFormulaUnits(nxtal->getFormulaUnits());
                 nxtal->setEnthalpy(xtal->getEnthalpy() *
                          nxtal->getFormulaUnits() /
@@ -1435,7 +1435,7 @@ namespace XtalOpt {
     return generateNewXtal(FU);
   }
 
-  // preselectedXtal is NULL by default
+  // preselectedXtal is nullptr by default
   // includeCrossover is true by default
   // includeMitosis is also true by default
   Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
@@ -1449,7 +1449,7 @@ namespace XtalOpt {
     double r;
     unsigned int gen;
     QString parents;
-    Xtal *xtal = NULL, *selectedXtal = NULL;
+    Xtal *xtal = nullptr, *selectedXtal = nullptr;
 
     // Perform operation until xtal is valid:
     while (!checkXtal(xtal)) {
@@ -1492,7 +1492,7 @@ namespace XtalOpt {
             // Use that selected index to choose the formula units
             uint formulaUnits = formulaUnitsList.at(selectedIndex);
             // Perform mitosis
-            Xtal *nxtal = NULL;
+            Xtal *nxtal = nullptr;
             while (!checkXtal(nxtal)) {
               if (nxtal) {
                 delete nxtal;
@@ -1772,13 +1772,13 @@ namespace XtalOpt {
     return nxtal;
   }
 
-  // If myXtal is NULL, it returns a new dynamically allocated xtal
+  // If myXtal is nullptr, it returns a new dynamically allocated xtal
   Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU, Xtal *myXtal,
                                    bool setupNewXtal, bool mutate) {
 
     // If (myXtal == 0), select an xtal from the probability list
     if (setupNewXtal == true) {
-      Xtal *xtal = NULL;
+      Xtal *xtal = nullptr;
       if (myXtal == 0) {
         QList<Structure*> structures = m_queue->getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
         xtal = selectXtalFromProbabilityList(structures, initialFU);
@@ -1965,7 +1965,7 @@ namespace XtalOpt {
 
     // Initialize loop vars
     double r;
-    Xtal *xtal = NULL;
+    Xtal *xtal = nullptr;
 
     // Pick a parent
     int ind;
@@ -2045,7 +2045,7 @@ namespace XtalOpt {
       // Type not found:
       if (typeIndex == -1) {
         qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
-        if (err != NULL) {
+        if (err != nullptr) {
           *err = "Bad composition.";
         }
         return false;
@@ -2064,7 +2064,7 @@ namespace XtalOpt {
         qDebug() << "FU is " << QString::number(xtal->getFormulaUnits()) << " and comp[atomTypes[i]].quantity is " << QString::number(comp[atomTypes[i]].quantity);
         // Incorrect count:
         qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
-        if (err != NULL) {
+        if (err != nullptr) {
           *err = "Bad composition.";
         }
         return false;
@@ -2121,7 +2121,7 @@ namespace XtalOpt {
         xtal->unitCell().cellMatrix().determinant() <= 0.0) {
       qDebug() << "Rejecting structure" << xtal->getIDString()
                << ": using VASP negative triple product.";
-      if (err != NULL) {
+      if (err != nullptr) {
         *err = "Unit cell matrix cannot have a negative triple product "
             "when using VASP.";
       }
@@ -2138,7 +2138,7 @@ namespace XtalOpt {
         GS_IS_NAN_OR_INF(xtal->getGamma()) || fabs(xtal->getGamma()) < 1e-8 ) {
       qDebug() << "XtalOpt::checkXtal: A cell parameter is either 0, nan, or "
                   "inf. Discarding.";
-      if (err != NULL) {
+      if (err != nullptr) {
         *err = "A cell parameter is too small (<10^-8) or not a number.";
       }
       return false;
@@ -2193,7 +2193,7 @@ namespace XtalOpt {
                << "Alpha: " << alpha_min << " " << xtal->getAlpha() << " " << alpha_max << endl
                << "Beta:  " << beta_min  << " " << xtal->getBeta()  << " " << beta_max << endl
                << "Gamma: " << gamma_min << " " << xtal->getGamma() << " " << gamma_max;
-      if (err != NULL) {
+      if (err != nullptr) {
         *err = "The unit cell parameters do not fall within the specified "
             "limits.";
       }
@@ -2206,8 +2206,8 @@ namespace XtalOpt {
 
   bool XtalOpt::checkXtal(Xtal *xtal, QString * err) {
     if (!xtal) {
-      if (err != NULL) {
-        *err = "Xtal pointer is NULL.";
+      if (err != nullptr) {
+        *err = "Xtal pointer is nullptr.";
       }
       return false;
     }
@@ -2216,7 +2216,7 @@ namespace XtalOpt {
     QWriteLocker locker (&xtal->lock());
 
     if (xtal->getStatus() == Xtal::Empty) {
-      if (err != NULL) {
+      if (err != nullptr) {
         *err = "Xtal status is empty.";
       }
       return false;
@@ -2262,7 +2262,7 @@ namespace XtalOpt {
         qDebug() << "Discarding structure -- Bad IAD ("
                  << IAD << " < "
                  << minIAD << ")";
-        if (err != NULL) {
+        if (err != nullptr) {
           *err = "Two atoms are too close together.";
         }
         return false;
@@ -2270,7 +2270,7 @@ namespace XtalOpt {
     }
 
     // Xtal is OK!
-    if (err != NULL) {
+    if (err != nullptr) {
       *err = "";
     }
     return true;

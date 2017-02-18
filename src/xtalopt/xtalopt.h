@@ -113,7 +113,7 @@ namespace XtalOpt {
     // H stands for 'heap'
     // mitosisMutation is set just to help with naming the ancestry
     Xtal* H_getMutatedXtal(QList<GlobalSearch::Structure*>& structures, int FU,
-                           Xtal* preselectedXtal = NULL,
+                           Xtal* preselectedXtal = nullptr,
                            bool includeCrossover = true,
                            bool includeMitosis = true,
                            bool mitosisMutation = false);
@@ -123,9 +123,9 @@ namespace XtalOpt {
     GlobalSearch::Structure* replaceWithOffspring(GlobalSearch::Structure *s,
                                                   const QString &reason = "");
     bool checkLimits();
-    bool checkComposition(Xtal *xtal, QString * err = NULL);
-    bool checkLattice(Xtal *xtal, QString * err = NULL);
-    bool checkXtal(Xtal *xtal, QString * err = NULL);
+    bool checkComposition(Xtal *xtal, QString * err = nullptr);
+    bool checkLattice(Xtal *xtal, QString * err = nullptr);
+    bool checkXtal(Xtal *xtal, QString * err = nullptr);
     QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);
     QString getTemplateKeywordHelp();
     bool load(const QString & filename, const bool forceReadOnly = false);

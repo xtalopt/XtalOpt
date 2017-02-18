@@ -269,7 +269,7 @@ namespace GlobalSearch {
       // if there is a problem with the queue.
 #ifdef ENABLE_SSH
       if (qobject_cast<RemoteQueueInterface*>
-          (m_opt->queueInterface()) != NULL) {
+          (m_opt->queueInterface()) != nullptr) {
         if (m_lastSubmissionTimeStamp->secsTo(QDateTime::currentDateTime())
             >= 3 + (6 * RANDDOUBLE())) {
           startJob();

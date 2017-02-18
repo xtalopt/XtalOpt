@@ -202,7 +202,7 @@ namespace GlobalSearch {
   {
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
-    if (ssh == NULL) {
+    if (ssh == nullptr) {
       m_opt->warning(tr("Cannot connect to ssh server"));
       return false;
     }
@@ -251,7 +251,7 @@ namespace GlobalSearch {
   {
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
-    if (ssh == NULL) {
+    if (ssh == nullptr) {
       m_opt->warning(tr("Cannot connect to ssh server"));
       return false;
     }
@@ -472,7 +472,7 @@ namespace GlobalSearch {
     // Get SSH connection
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
-    if (ssh == NULL) {
+    if (ssh == nullptr) {
       m_opt->warning(tr("Cannot connect to ssh server"));
       queueTimeStamp = QDateTime::currentDateTime();
       queueData.clear();

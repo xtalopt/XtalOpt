@@ -52,7 +52,7 @@ namespace GlobalSearch {
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
-    m_parentStructure(NULL)
+    m_parentStructure(nullptr)
   {
     m_currentOptStep = 1;
     setStatus(Empty);
@@ -77,7 +77,7 @@ namespace GlobalSearch {
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
-    m_parentStructure(NULL)
+    m_parentStructure(nullptr)
   {
     *this = other;
   }
@@ -105,7 +105,7 @@ namespace GlobalSearch {
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
-    m_parentStructure(NULL)
+    m_parentStructure(nullptr)
   {
     *this = other;
   }
@@ -661,19 +661,19 @@ namespace GlobalSearch {
     Q_ASSERT_X(index <= sizeOfHistory() - 1, Q_FUNC_INFO,
                "Requested history index greater than the number of available entries.");
 
-    if (atomicNums != NULL) {
+    if (atomicNums != nullptr) {
       *atomicNums = m_histAtomicNums.at(index);
     }
-    if (coords != NULL) {
+    if (coords != nullptr) {
       *coords = m_histCoords.at(index);
     }
-    if (energy != NULL) {
+    if (energy != nullptr) {
       *energy = m_histEnergies.at(index);
     }
-    if (enthalpy != NULL) {
+    if (enthalpy != nullptr) {
       *enthalpy = m_histEnthalpies.at(index);
     }
-    if (cell != NULL) {
+    if (cell != nullptr) {
       *cell = m_histCells.at(index);
     }
 

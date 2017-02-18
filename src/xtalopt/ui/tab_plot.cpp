@@ -230,7 +230,7 @@ namespace XtalOpt {
 
     double x, y;
     int ind;
-    Xtal* xtal = NULL;
+    Xtal* xtal = nullptr;
     double minE = DBL_MAX;
     size_t lastTraceStructure = 0;
     bool performTrace = false;
@@ -517,7 +517,7 @@ namespace XtalOpt {
     }
 
     // If the selected xtal still exists, select that one. This function
-    // doesn't do anything if NULL is passed to it.
+    // doesn't do anything if nullptr is passed to it.
     ui.plot->selectMarker(m_marker_xtal_map.key(selectedXtal));
 
     ui.plot->setAutoReplot(true);
@@ -570,7 +570,7 @@ namespace XtalOpt {
 
   QwtPlotMarker* TabPlot::addXtalToPlot(Xtal* xtal, double x, double y)
   {
-    QwtPlotMarker* pm = NULL;
+    QwtPlotMarker* pm = nullptr;
     if (xtal->getStatus() == Xtal::Duplicate) {
       // Dark Green Square
       pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Rect, QBrush(Qt::darkGreen),

@@ -71,7 +71,7 @@ namespace XtalOpt {
     if (!m_mixMatrices.size()) {
       generateValidCOBs();
     }
-    this->setParentStructure(NULL);
+    this->setParentStructure(nullptr);
   }
 
   Xtal::Xtal(const Xtal& other)
@@ -368,7 +368,7 @@ namespace XtalOpt {
       // Use exact comparisons for steps 3 and 4
       else { // either step 3 or 4 should run
         // Update change of basis matrix:
-        double *p = NULL;
+        double *p = nullptr;
         double i = 1;
         double j = 1;
         double k = 1;
@@ -923,7 +923,7 @@ namespace XtalOpt {
 
     return XtalComp::compare(thisCellXc,  thisTypes,  thisCoords,
                              otherCellXc, otherTypes, otherCoords,
-                             NULL, lengthTol, angleTol);
+                             nullptr, lengthTol, angleTol);
   }
 
   bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts) {
@@ -1629,10 +1629,10 @@ namespace XtalOpt {
 
           // If the distance is too small, set atom1/atom2 and return false
           if (curDistSquared < minDistSquared) {
-            if (atom1 != NULL && atom2 != NULL) {
+            if (atom1 != nullptr && atom2 != nullptr) {
               *atom1 = atomIndex(*a1);
               *atom2 = atomIndex(a2);
-              if (IAD != NULL) {
+              if (IAD != nullptr) {
                 *IAD = sqrt(curDistSquared);
               }
             }
@@ -1644,9 +1644,9 @@ namespace XtalOpt {
         // Atom a1 is ok will all a2
       }
       // all distances check out -- return true.
-      if (atom1 != NULL && atom2 != NULL) {
+      if (atom1 != nullptr && atom2 != nullptr) {
         *atom1 = *atom2 = -1;
-        if (IAD != NULL) {
+        if (IAD != nullptr) {
           *IAD = 0.0;
         }
       }

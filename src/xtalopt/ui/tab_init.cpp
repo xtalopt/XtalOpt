@@ -33,7 +33,7 @@ namespace XtalOpt {
 
   TabInit::TabInit( XtalOptDialog *parent, XtalOpt *p ) :
     AbstractTab(parent, p),
-    m_spgOptions(NULL)
+    m_spgOptions(nullptr)
   {
     ui.setupUi(m_tab_widget);
 
@@ -1664,7 +1664,7 @@ namespace XtalOpt {
     if (m_spgOptions) {
       if (!m_spgOptions->isCompositionSame(xtalopt)) {
         delete m_spgOptions;
-        m_spgOptions = NULL;
+        m_spgOptions = nullptr;
       }
     }
 

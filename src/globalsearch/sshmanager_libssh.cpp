@@ -111,7 +111,7 @@ namespace GlobalSearch {
                         .arg((*it)->getUser())
                         .arg((*it)->getHost())
                         .arg((*it)->getPort());
-          return NULL;
+          return nullptr;
         }
         END;
         return (*it);
