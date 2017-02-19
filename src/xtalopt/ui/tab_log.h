@@ -31,7 +31,7 @@ namespace XtalOpt {
 
   public:
     explicit TabLog( XtalOptDialog *parent, XtalOpt *p );
-    virtual ~TabLog();
+    virtual ~TabLog() override;
 
   public slots:
     void disconnectGUI();

@@ -97,7 +97,7 @@ slottedWC->postwaitUnlock();
     /**
      * Destructor.
      */
-    virtual ~SlottedWaitCondition();
+    virtual ~SlottedWaitCondition() override;
 
     /**
      * @return A pointer to the internal mutex, m_mutex.

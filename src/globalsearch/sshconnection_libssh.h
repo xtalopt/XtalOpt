@@ -61,7 +61,7 @@ namespace GlobalSearch {
     /**
      * Destructor.
      */
-    virtual ~SSHConnectionLibSSH();
+    virtual ~SSHConnectionLibSSH() override;
 
   public slots:
     /// Flag whether this connection is in use or not.
@@ -85,7 +85,7 @@ namespace GlobalSearch {
                          QString &stdout_str,
                          QString &stderr_str,
                          int &exitcode,
-		         bool printWarning = true);
+		         bool printWarning = true) override;
 
     /**
      * Copy a file to the remote host

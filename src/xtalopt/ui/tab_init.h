@@ -33,7 +33,7 @@ namespace XtalOpt {
 
   public:
     explicit TabInit( XtalOptDialog *parent, XtalOpt *p );
-    virtual ~TabInit();
+    virtual ~TabInit() override;
 
     enum CompositionColumns
     {

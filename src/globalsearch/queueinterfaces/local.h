@@ -75,7 +75,7 @@ namespace GlobalSearch {
     /**
      * Destructor
      */
-    virtual ~LocalQueueInterface();
+    virtual ~LocalQueueInterface() override;
 
     /**
      * Check that all mandatory internal variables are set. Check this
@@ -87,7 +87,7 @@ namespace GlobalSearch {
      * otherwise. If false, \a err will be overwritten with a
      * user-friendly error message.
      */
-    virtual bool isReadyToSearch(QString *err);
+    virtual bool isReadyToSearch(QString *err) override;
 
   public slots:
 
@@ -104,7 +104,8 @@ namespace GlobalSearch {
      * @return True on success, false otherwise.
      */
     virtual bool writeFiles(Structure *s,
-                            const QHash<QString, QString> &files) const;
+                            const QHash<QString,
+                                        QString> &files) const override;
 
     /**
      * Saves a copy of the error directory that caused this structure to fail.
@@ -124,19 +125,19 @@ namespace GlobalSearch {
      *
      * @return True on success, false otherwise.
      */
-    virtual bool startJob(Structure *s);
+    virtual bool startJob(Structure *s) override;
 
     /**
      * Stop any currently running jobs for Structure \a s.
      *
      * @return True on success, false otherwise.
      */
-    virtual bool stopJob(Structure *s);
+    virtual bool stopJob(Structure *s) override;
 
     /**
      * @return The queue status of Structure \a s.
      */
-    virtual QueueInterface::QueueStatus getStatus(Structure *s) const;
+    virtual QueueInterface::QueueStatus getStatus(Structure *s) const override;
 
     /**
      * Perform any work needed before calling Optimizer::update. This
@@ -148,7 +149,7 @@ namespace GlobalSearch {
      *
      * @return True on success, false otherwise.
      */
-    virtual bool prepareForStructureUpdate(Structure *s) const;
+    virtual bool prepareForStructureUpdate(Structure *s) const override;
 
     /**
      * Check if the file \a filename exists in the working directory
@@ -163,7 +164,7 @@ namespace GlobalSearch {
      */
     virtual bool checkIfFileExists(Structure *s,
                                    const QString &filename,
-                                   bool *exists);
+                                   bool *exists) override;
 
     /**
      * Retrieve the contents of the file \a filename for Structure \a
@@ -173,7 +174,7 @@ namespace GlobalSearch {
      */
     virtual bool fetchFile(Structure *s,
                            const QString &filename,
-                           QString *contents) const;
+                           QString *contents) const override;
 
     /**
      * Grep through the file \a filename for Structure \a s's working
@@ -210,7 +211,7 @@ namespace GlobalSearch {
                           const QString &filename,
                           QStringList *matches = 0,
                           int *exitcode = 0,
-                          const bool caseSensitive = true) const;
+                          const bool caseSensitive = true) const override;
 
     /**
      * @return The configuration dialog for this QueueInterface, if it
@@ -218,7 +219,7 @@ namespace GlobalSearch {
      * @sa hasDialog()
      * @ingroup dialog
      */
-    virtual QDialog* dialog();
+    virtual QDialog* dialog() override;
 
   protected:
     /// Look up hash for mapping jobID's to processes.

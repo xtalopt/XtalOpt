@@ -47,7 +47,7 @@ namespace XtalOpt {
     explicit XtalOptDialog( QWidget *parent = 0,
                             Qt::WindowFlags f = 0,
                             bool interactive = true);
-    virtual ~XtalOptDialog();
+    virtual ~XtalOptDialog() override;
 
     void setMolecule(GlobalSearch::Molecule *molecule);
 

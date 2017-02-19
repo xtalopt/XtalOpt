@@ -16,9 +16,9 @@ namespace XtalOpt {
    public:
     XtalOptPlot(QWidget *parent = nullptr,
                 const QColor& backgroundColor = Qt::white);
-    virtual ~XtalOptPlot();
+    virtual ~XtalOptPlot() override;
 
-    virtual bool eventFilter(QObject* object, QEvent* e);
+    virtual bool eventFilter(QObject* object, QEvent* e) override;
 
     QwtPlotMarker* addPlotPoint(double x = 0.0, double y = 0.0,
                                 QwtSymbol::Style symbol = QwtSymbol::Ellipse,

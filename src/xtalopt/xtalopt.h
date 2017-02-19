@@ -76,7 +76,7 @@ namespace XtalOpt {
 
    public:
     explicit XtalOpt(XtalOptDialog *parent);
-    virtual ~XtalOpt();
+    virtual ~XtalOpt() override;
 
     enum OptTypes {
       OT_VASP = 0,

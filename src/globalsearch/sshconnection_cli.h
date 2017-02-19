@@ -52,7 +52,7 @@ namespace GlobalSearch {
     /**
      * Destructor.
      */
-    virtual ~SSHConnectionCLI();
+    virtual ~SSHConnectionCLI() override;
 
   public slots:
     /**

@@ -35,9 +35,9 @@ namespace XtalOpt {
   public:
     explicit XtalOptOptimizer(GlobalSearch::OptBase *parent,
                               const QString &filename = "");
-    virtual ~XtalOptOptimizer();
+    virtual ~XtalOptOptimizer() override;
 
-    virtual bool read(GlobalSearch::Structure *structure, const QString & filename);
+    virtual bool read(GlobalSearch::Structure *structure, const QString & filename) override;
 
   };
 

@@ -70,7 +70,7 @@ namespace GlobalSearch {
     /**
      * Destructor
      */
-    virtual ~Optimizer();
+    virtual ~Optimizer() override;
 
     /**
      * Read optimizer data from file (.scheme or .state). If called

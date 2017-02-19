@@ -58,18 +58,18 @@ namespace GlobalSearch {
     /**
      * Destructor
      */
-    virtual ~AbstractEditTab();
+    virtual ~AbstractEditTab() override;
 
   public slots:
     /**
      * Lock GUI elements that shouldn't change once the search begins.
      */
-    virtual void lockGUI();
+    virtual void lockGUI() override;
 
     /**
      * Force a refresh of the GUI elements using the internal state.
      */
-    virtual void updateGUI();
+    virtual void updateGUI() override;
 
     /**
      * Display the currently selected template in the text editor.
@@ -142,7 +142,7 @@ namespace GlobalSearch {
     /**
      * Create connections and initialize GUI.
      */
-    virtual void initialize();
+    virtual void initialize() override;
 
     /**
      * Refresh the "userX" line edits.
@@ -159,7 +159,7 @@ namespace GlobalSearch {
      * Determine the currently selected Optimizer and emit
      * optimizerChanged if it differs from the current one.
      */
-    virtual void updateOptimizer();\
+    virtual void updateOptimizer();
 
     /**
      * Launch the QueueInterface configuration dialog.

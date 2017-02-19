@@ -65,7 +65,7 @@ namespace GlobalSearch {
     /**
      * Destructor
      */
-    virtual ~OptBase();
+    virtual ~OptBase() override;
 
     /**
      * Actions to take when a structure has failed optimization too

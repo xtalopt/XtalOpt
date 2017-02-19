@@ -48,7 +48,7 @@ namespace GlobalSearch {
     /**
      * Destructor.
      */
-    virtual ~SSHManagerCLI();
+    virtual ~SSHManagerCLI() override;
 
     /**
      * Create connections to the specifed host. If the connections

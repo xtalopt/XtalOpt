@@ -38,7 +38,7 @@ namespace XtalOpt {
 
   public:
     explicit TabPlot( XtalOptDialog *parent, XtalOpt *p );
-    virtual ~TabPlot();
+    virtual ~TabPlot() override;
 
     enum PlotAxes {
       Structure_T = 0,

@@ -56,7 +56,7 @@ namespace GlobalSearch {
     /**
      * Destructor.
      */
-    virtual ~Tracker();
+    virtual ~Tracker() override;
 
     /**
      * Sets a read lock on the Tracker's mutex.

@@ -31,7 +31,7 @@ namespace XtalOpt {
 
   public:
     explicit TabEdit( XtalOptDialog *parent, XtalOpt *p );
-    virtual ~TabEdit();
+    virtual ~TabEdit() override;
 
   public slots:
     void readSettings(const QString &filename = "");

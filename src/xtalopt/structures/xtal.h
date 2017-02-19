@@ -57,7 +57,7 @@ namespace XtalOpt {
     /* Move assignment operator */
     Xtal& operator=(Xtal&& other) noexcept;
 
-    virtual ~Xtal();
+    virtual ~Xtal() override;
 
     // Virtuals from structure
     bool getShortestInteratomicDistance(double & shortest) const;
@@ -98,8 +98,8 @@ namespace XtalOpt {
                                    int *atom1 = nullptr, int *atom2 = nullptr,
                                    double *IAD = nullptr);
     QHash<QString, QVariant> getFingerprint();
-    virtual QString getResultsEntry() const;
-    virtual QString getResultsHeader() const {
+    virtual QString getResultsEntry() const override;
+    virtual QString getResultsHeader() const override {
       return QString("%1 %2 %3 %4 %5 %6 %7")
         .arg("Rank", 6)
         .arg("Gen", 6)

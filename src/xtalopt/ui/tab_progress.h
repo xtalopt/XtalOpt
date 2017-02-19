@@ -57,7 +57,7 @@ namespace XtalOpt {
 
   public:
     explicit TabProgress( XtalOptDialog *parent, XtalOpt *p );
-    virtual ~TabProgress();
+    virtual ~TabProgress() override;
 
     enum ProgressColumns {
       Gen = 0,

@@ -51,13 +51,13 @@ namespace GlobalSearch {
     /**
      * Destructor
      */
-    virtual ~DefaultEditTab();
+    virtual ~DefaultEditTab() override;
 
   protected slots:
     /**
      * Set up the GUI pointers and call AbstractEditTab::initialize()
      */
-    virtual void initialize();
+    virtual void initialize() override;
 
   private:
     Ui::DefaultEditTab *ui;

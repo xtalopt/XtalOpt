@@ -30,7 +30,7 @@ namespace XtalOpt {
 
    public:
     XtalOptTest(XtalOpt *p, QObject *parent = 0);
-    virtual ~XtalOptTest();
+    virtual ~XtalOptTest() override;
 
     void start();
     void gatherData();

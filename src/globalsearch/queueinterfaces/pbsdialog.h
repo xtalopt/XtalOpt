@@ -42,7 +42,7 @@ namespace GlobalSearch {
     explicit PbsConfigDialog(AbstractDialog *parent,
                              OptBase *o,
                              PbsQueueInterface *p);
-    virtual ~PbsConfigDialog();
+    virtual ~PbsConfigDialog() override;
 
   public slots:
     void updateGUI();

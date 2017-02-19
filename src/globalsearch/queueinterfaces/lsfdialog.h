@@ -42,7 +42,7 @@ namespace GlobalSearch {
     explicit LsfConfigDialog(AbstractDialog *parent,
                              OptBase *o,
                              LsfQueueInterface *p);
-    virtual ~LsfConfigDialog();
+    virtual ~LsfConfigDialog() override;
 
   public slots:
     void updateGUI();

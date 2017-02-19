@@ -51,7 +51,7 @@ namespace XtalOpt {
 
    public:
     explicit RandSpgDialog(XtalOpt* p, QWidget* parent = 0);
-    virtual ~RandSpgDialog();
+    virtual ~RandSpgDialog() override;
     void setTableEntry(uint row, const Spg_Table_Entry& e);
     bool isCompositionSame(XtalOpt* p);
 

@@ -56,7 +56,7 @@ namespace GlobalSearch {
     /**
      * Destructor
      */
-    virtual ~QueueInterface() {};
+    virtual ~QueueInterface() override {};
 
     /**
      * Possible status for running jobs

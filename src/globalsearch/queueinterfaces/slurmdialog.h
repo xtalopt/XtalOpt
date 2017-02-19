@@ -42,7 +42,7 @@ namespace GlobalSearch {
     explicit SlurmConfigDialog(AbstractDialog *parent,
                              OptBase *o,
                              SlurmQueueInterface *p);
-    virtual ~SlurmConfigDialog();
+    virtual ~SlurmConfigDialog() override;
 
   public slots:
     void updateGUI();

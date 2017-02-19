@@ -42,7 +42,7 @@ namespace GlobalSearch {
     explicit SgeConfigDialog(AbstractDialog *parent,
                              OptBase *o,
                              SgeQueueInterface *p);
-    virtual ~SgeConfigDialog();
+    virtual ~SgeConfigDialog() override;
 
   public slots:
     void updateGUI();

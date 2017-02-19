@@ -40,9 +40,9 @@ namespace GlobalSearch {
     explicit SgeQueueInterface(OptBase *parent,
                                const QString &settingsFile = "");
 
-    virtual ~SgeQueueInterface();
+    virtual ~SgeQueueInterface() override;
 
-    virtual bool isReadyToSearch(QString *str);
+    virtual bool isReadyToSearch(QString *str) override;
 
     QDialog* dialog();
 

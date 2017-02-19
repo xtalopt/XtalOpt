@@ -42,7 +42,7 @@ namespace GlobalSearch {
     explicit LoadLevelerConfigDialog(AbstractDialog *parent,
                              OptBase *o,
                              LoadLevelerQueueInterface *p);
-    virtual ~LoadLevelerConfigDialog();
+    virtual ~LoadLevelerConfigDialog() override;
 
   public slots:
     void updateGUI();

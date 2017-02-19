@@ -72,7 +72,7 @@ namespace GlobalSearch {
     /**
      * Destructor.
      */
-    virtual ~Structure();
+    virtual ~Structure() override;
 
     /**
      * Assignment operator. Makes a new structure with all Structure

@@ -50,7 +50,7 @@ namespace GlobalSearch {
     /**
      * Destructor.
      */
-    virtual ~SSHManager();
+    virtual ~SSHManager() override;
 
     /**
      * Create connections to the specifed host. If the connections

@@ -58,7 +58,7 @@ namespace GlobalSearch {
     /**
      * Destructor
      */
-    virtual ~AbstractTab();
+    virtual ~AbstractTab() override;
 
     /**
      * @return The widget for this tab.

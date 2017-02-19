@@ -40,9 +40,9 @@ namespace GlobalSearch {
     explicit PbsQueueInterface(OptBase *parent,
                                const QString &settingsFile = "");
 
-    virtual ~PbsQueueInterface();
+    virtual ~PbsQueueInterface() override;
 
-    virtual bool isReadyToSearch(QString *str);
+    virtual bool isReadyToSearch(QString *str) override;
 
     QDialog* dialog();
 

@@ -40,9 +40,9 @@ namespace GlobalSearch {
     explicit SlurmQueueInterface(OptBase *parent,
                                  const QString &settingsFile = "");
 
-    virtual ~SlurmQueueInterface();
+    virtual ~SlurmQueueInterface() override;
 
-    virtual bool isReadyToSearch(QString *str);
+    virtual bool isReadyToSearch(QString *str) override;
 
     QDialog* dialog();
 

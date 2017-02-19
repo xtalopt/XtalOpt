@@ -31,7 +31,7 @@ namespace XtalOpt {
 
   public:
     explicit TabOpt( XtalOptDialog *parent, XtalOpt *p );
-    virtual ~TabOpt();
+    virtual ~TabOpt() override;
 
   public slots:
     void lockGUI();

@@ -47,7 +47,7 @@ namespace GlobalSearch {
     /**
      * Destructor
      */
-    virtual ~RemoteQueueInterface();
+    virtual ~RemoteQueueInterface() override;
 
   public slots:
 
@@ -67,7 +67,8 @@ namespace GlobalSearch {
      * @return True on success, false otherwise.
      */
     virtual bool writeFiles(Structure *s,
-                            const QHash<QString, QString> &files) const;
+                            const QHash<QString,
+                                        QString> &files) const override;
 
     /**
      * Start a job for Structure \a s.
@@ -77,19 +78,20 @@ namespace GlobalSearch {
      *
      * @return True on success, false otherwise.
      */
-    virtual bool startJob(Structure *s) =0;
+    virtual bool startJob(Structure *s) override =0;
 
     /**
      * Stop any currently running jobs for Structure \a s.
      *
      * @return True on success, false otherwise.
      */
-    virtual bool stopJob(Structure *s) =0;
+    virtual bool stopJob(Structure *s) override =0;
 
     /**
      * @return The queue status of Structure \a s.
      */
-    virtual QueueInterface::QueueStatus getStatus(Structure *s) const =0;
+    virtual QueueInterface::QueueStatus
+      getStatus(Structure *s) const override=0;
 
     /**
      * Perform any work needed before calling Optimizer::update. This
@@ -101,7 +103,7 @@ namespace GlobalSearch {
      *
      * @return True on success, false otherwise.
      */
-    virtual bool prepareForStructureUpdate(Structure *s) const;
+    virtual bool prepareForStructureUpdate(Structure *s) const override;
 
     /**
      * Check if the file \a filename exists in the working directory
@@ -116,7 +118,7 @@ namespace GlobalSearch {
      */
     virtual bool checkIfFileExists(Structure *s,
                                    const QString &filename,
-                                   bool *exists);
+                                   bool *exists) override;
     /**
      * Retrieve the contents of the file \a filename for Structure \a
      * s as a QString \a contents.
@@ -125,7 +127,7 @@ namespace GlobalSearch {
      */
     virtual bool fetchFile(Structure *s,
                            const QString &filename,
-                           QString *contents) const;
+                           QString *contents) const override;
 
     /**
      * Grep through the file \a filename for Structure \a s's working
@@ -162,7 +164,7 @@ namespace GlobalSearch {
                           const QString &filename,
                           QStringList *matches = 0,
                           int *exitcode = 0,
-                          const bool caseSensitive = true) const;
+                          const bool caseSensitive = true) const override;
 
   protected:
     /**

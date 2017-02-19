@@ -63,7 +63,7 @@ namespace GlobalSearch {
     /**
      * Destructor.
      */
-    virtual ~SSHConnection();
+    virtual ~SSHConnection() override;
 
     /// @return The currently set username
     QString getUser() {return m_user;};

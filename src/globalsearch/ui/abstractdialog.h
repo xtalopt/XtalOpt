@@ -130,7 +130,7 @@ namespace GlobalSearch {
 @endverbatim
      * in the derived destructor.
      */
-    virtual ~AbstractDialog();
+    virtual ~AbstractDialog() override;
 
 
     /**
@@ -168,8 +168,8 @@ namespace GlobalSearch {
      * @note This call is passed on to all tabs.
      * @param filename Optional filename to hold resume information
      */
-    virtual void writeSettings(const QString &filename = "") {
-      emit tabsWriteSettings(filename);};
+    virtual void writeSettings(const QString &filename = "")
+      { emit tabsWriteSettings(filename); };
 
     /**
      * Read persistant settings or resume information. If the filename
@@ -179,8 +179,8 @@ namespace GlobalSearch {
      * @note This call is passed on to all tabs.
      * @param filename Optional filename to holding resume information
      */
-    virtual void readSettings(const QString &filename = "") {
-      emit tabsReadSettings(filename);};
+    virtual void readSettings(const QString &filename = "")
+      { emit tabsReadSettings(filename); };
 
     /**
      * Saves resume information to a state file in OptBase::filePath.
@@ -201,7 +201,7 @@ namespace GlobalSearch {
   }
 @endverbatim
      */
-    virtual void saveSession() =0;
+    virtual void saveSession() = 0;
 
     /**
      * Update the GUI with how many Structures are optimized, running,

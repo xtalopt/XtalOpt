@@ -40,9 +40,9 @@ namespace GlobalSearch {
     explicit LsfQueueInterface(OptBase *parent,
                                const QString &settingsFile = "");
 
-    virtual ~LsfQueueInterface();
+    virtual ~LsfQueueInterface() override;
 
-    virtual bool isReadyToSearch(QString *str);
+    virtual bool isReadyToSearch(QString *str) override;
 
     QDialog* dialog();
 
