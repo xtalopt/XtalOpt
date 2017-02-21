@@ -10,7 +10,8 @@ namespace XtalOpt {
 
   XtalOptPlot::XtalOptPlot(QWidget *parent, const QColor& backgroundColor):
       QwtPlot(parent),
-      m_markerList(QList<QwtPlotMarker*>()),
+      m_markerList(std::vector<std::unique_ptr<QwtPlotMarker>>()),
+      m_curveList(std::vector<std::unique_ptr<QwtPlotCurve>>()),
       m_selectedMarker(nullptr),
       m_magnifier(canvas()),
       m_panner(canvas())
@@ -22,12 +23,6 @@ namespace XtalOpt {
 
     setCanvasBackground(backgroundColor);
     replot();
-  }
-
-  XtalOptPlot::~XtalOptPlot()
-  {
-    clearPlotMarkers();
-    clearPlotCurves();
   }
 
   QwtPlotMarker* XtalOptPlot::addPlotPoint(double x, double y,
@@ -43,20 +38,19 @@ namespace XtalOpt {
                                            const QBrush& brush,
                                            const QPen& pen, const QSize& size)
   {
-    QwtSymbol* sym = new QwtSymbol(symbol, brush, pen, size);
-    QwtPlotMarker* plotMarker = new QwtPlotMarker();
-    plotMarker->setSymbol(sym);
+    std::unique_ptr<QwtPlotMarker> plotMarker(new QwtPlotMarker());
+    plotMarker->setSymbol(new QwtSymbol(symbol, brush, pen, size));
     plotMarker->setValue(p);
     plotMarker->setItemAttribute(QwtPlotItem::AutoScale, true);
     plotMarker->attach(this);
-    m_markerList.append(plotMarker);
+    m_markerList.push_back(std::move(plotMarker));
     autoRefresh();
-    return plotMarker;
+    return m_markerList[m_markerList.size() - 1].get();
   }
 
   void XtalOptPlot::addHorizontalPlotLine(double xMin, double xMax, double y)
   {
-    QwtPlotCurve* curve = new QwtPlotCurve();
+    std::unique_ptr<QwtPlotCurve> curve(new QwtPlotCurve());
     curve->setStyle(QwtPlotCurve::Lines);
 
     double xData[2];
@@ -69,13 +63,13 @@ namespace XtalOpt {
     curve->setSamples(xData, yData, 2);
     curve->attach(this);
 
-    m_curveList.append(curve);
+    m_curveList.push_back(std::move(curve));
     autoRefresh();
   }
 
   void XtalOptPlot::addVerticalPlotLine(double x, double yMin, double yMax)
   {
-    QwtPlotCurve* curve = new QwtPlotCurve();
+    std::unique_ptr<QwtPlotCurve> curve(new QwtPlotCurve());
     curve->setStyle(QwtPlotCurve::Lines);
 
     double xData[2];
@@ -88,7 +82,7 @@ namespace XtalOpt {
     curve->setSamples(xData, yData, 2);
     curve->attach(this);
 
-    m_curveList.append(curve);
+    m_curveList.push_back(std::move(curve));
     autoRefresh();
   }
 
@@ -97,7 +91,6 @@ namespace XtalOpt {
     deselectCurrent();
     for (size_t i = 0; i < m_markerList.size(); ++i)
       m_markerList[i]->detach();
-    qDeleteAll(m_markerList);
     m_markerList.clear();
   }
 
@@ -105,7 +98,6 @@ namespace XtalOpt {
   {
     for (size_t i = 0; i < m_curveList.size(); ++i)
       m_curveList[i]->detach();
-    qDeleteAll(m_curveList);
     m_curveList.clear();
   }
 
@@ -122,18 +114,17 @@ namespace XtalOpt {
       return;
     }
 
-    if (m_markerList[i] == m_selectedMarker)
+    if (m_markerList[i].get() == m_selectedMarker)
       deselectCurrent();
 
     m_markerList[i]->detach();
-    delete m_markerList[i];
-    m_markerList.removeAt(i);
+    m_markerList.erase(m_markerList.begin() + i);
   }
 
   void XtalOptPlot::removePlotMarker(QwtPlotMarker* pm)
   {
     for (size_t i = 0; i < m_markerList.size(); ++i) {
-      if (pm == m_markerList[i]) {
+      if (pm == m_markerList[i].get()) {
         removePlotMarker(i);
         return;
       }
@@ -147,7 +138,7 @@ namespace XtalOpt {
       qDebug() << "Error: plotMarker() was called with an invalid index!";
       return nullptr;
     }
-    return m_markerList[i];
+    return m_markerList[i].get();
   }
 
   bool XtalOptPlot::eventFilter(QObject *object, QEvent *e)

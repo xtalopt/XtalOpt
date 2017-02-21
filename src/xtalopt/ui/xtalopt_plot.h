@@ -5,6 +5,8 @@
 #include <qwt_plot_panner.h>
 #include <qwt_symbol.h>
 
+#include <memory>
+
 #ifndef XTALOPT_XTALOPT_PLOT_H
 #define XTALOPT_XTALOPT_PLOT_H
 
@@ -16,7 +18,6 @@ namespace XtalOpt {
    public:
     XtalOptPlot(QWidget *parent = nullptr,
                 const QColor& backgroundColor = Qt::white);
-    virtual ~XtalOptPlot() override;
 
     virtual bool eventFilter(QObject* object, QEvent* e) override;
 
@@ -41,7 +42,8 @@ namespace XtalOpt {
     void removePlotMarker(QwtPlotMarker* pm);
 
     QwtPlotMarker* plotMarker(size_t i);
-    QList<QwtPlotMarker*>& plotMarkers() { return m_markerList; };
+    std::vector<std::unique_ptr<QwtPlotMarker>>& plotMarkers()
+      { return m_markerList; };
 
     void setXTitle(const QString& text) { setAxisTitle(xBottom, text); };
     void setYTitle(const QString& text) { setAxisTitle(yLeft, text); };
@@ -67,8 +69,8 @@ namespace XtalOpt {
     // 3 == right
     void shiftMarkerCursor(int direction);
 
-    QList<QwtPlotMarker*> m_markerList;
-    QList<QwtPlotCurve*> m_curveList;
+    std::vector<std::unique_ptr<QwtPlotMarker>> m_markerList;
+    std::vector<std::unique_ptr<QwtPlotCurve>> m_curveList;
     QwtPlotMarker* m_selectedMarker;
     QwtPlotMagnifier m_magnifier;
     QwtPlotPanner m_panner;
