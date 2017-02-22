@@ -151,6 +151,7 @@ namespace XtalOpt {
       if (state == Xtal::Optimized ||
           state == Xtal::Killed ||
           state == Xtal::Duplicate ||
+          state == Xtal::Supercell ||
           state == Xtal::Removed)
         done++;
     }
@@ -175,6 +176,7 @@ namespace XtalOpt {
           state == Xtal::Killed ||
           state == Xtal::Restart ||
           state == Xtal::Duplicate ||
+          state == Xtal::Supercell ||
           state == Xtal::Removed)
         n++;
     }
@@ -223,6 +225,9 @@ namespace XtalOpt {
       case Xtal::Duplicate:
         out << "Duplicate";
         break;
+      case Xtal::Supercell:
+        out << "Supercell";
+        break;
       case Xtal::Error:
         out << "Error";
         break;
@@ -260,6 +265,7 @@ namespace XtalOpt {
     int secondsElapsed = -QDateTime::currentDateTime().secsTo(m_begin);
     double secondsPerStructure = secondsElapsed/double(totalStructures);
     int remaining = int((totalNumberStructures - totalStructures) * secondsPerStructure);
+    remaining /= m_opt->runningJobLimit;
     int h = int(remaining / 3600);
     remaining -= h*3600;
     int m = int(remaining / 60);
@@ -269,7 +275,7 @@ namespace XtalOpt {
       .arg(QString::number(h), 2, '0')
       .arg(QString::number(m), 2, '0')
       .arg(QString::number(s), 2, '0');
-    QString finishedAt = m_begin.addSecs(int(totalNumberStructures * secondsPerStructure)).toString("ddd, MMM dd hh:mm:ss");
+    QString finishedAt = m_begin.addSecs(int((totalNumberStructures * secondsPerStructure)/m_opt->runningJobLimit)).toString("ddd, MMM dd hh:mm:ss");
 
     qDebug() << "";
     for (int i = 0; i < 2; i++) {
