@@ -6,6 +6,8 @@
 
 #include <qwt_plot_canvas.h>
 
+#include <globalsearch/utilities/makeunique.h>
+
 namespace XtalOpt {
 
   XtalOptPlot::XtalOptPlot(QWidget *parent, const QColor& backgroundColor):
@@ -38,7 +40,7 @@ namespace XtalOpt {
                                            const QBrush& brush,
                                            const QPen& pen, const QSize& size)
   {
-    std::unique_ptr<QwtPlotMarker> plotMarker(new QwtPlotMarker());
+    auto plotMarker(make_unique<QwtPlotMarker>());
     plotMarker->setSymbol(new QwtSymbol(symbol, brush, pen, size));
     plotMarker->setValue(p);
     plotMarker->setItemAttribute(QwtPlotItem::AutoScale, true);
@@ -50,7 +52,7 @@ namespace XtalOpt {
 
   void XtalOptPlot::addHorizontalPlotLine(double xMin, double xMax, double y)
   {
-    std::unique_ptr<QwtPlotCurve> curve(new QwtPlotCurve());
+    auto curve(make_unique<QwtPlotCurve>());
     curve->setStyle(QwtPlotCurve::Lines);
 
     double xData[2];
@@ -69,7 +71,7 @@ namespace XtalOpt {
 
   void XtalOptPlot::addVerticalPlotLine(double x, double yMin, double yMax)
   {
-    std::unique_ptr<QwtPlotCurve> curve(new QwtPlotCurve());
+    auto curve(make_unique<QwtPlotCurve>());
     curve->setStyle(QwtPlotCurve::Lines);
 
     double xData[2];

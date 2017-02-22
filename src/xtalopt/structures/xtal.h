@@ -251,7 +251,6 @@ namespace XtalOpt {
                                    QList<unsigned int> *atomicNums,
                                    Matrix3 *cellMatrix,
                                    const double cartTol = 0.05);
-    void ctor();
     unsigned short m_spgNumber;
     QString m_spgSymbol;
 

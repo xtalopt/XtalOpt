@@ -51,7 +51,6 @@ namespace XtalOpt {
   Xtal::Xtal(QObject *parent) :
     Structure(parent)
   {
-    ctor();
   }
 
   Xtal::Xtal(double A, double B, double C,
@@ -61,17 +60,7 @@ namespace XtalOpt {
       m_spgNumber(231),
       m_spgSymbol("")
   {
-    ctor();
     setCellInfo(A, B, C, Alpha, Beta, Gamma);
-  }
-
-  // Actual constructor:
-  void Xtal::ctor()
-  {
-    if (!m_mixMatrices.size()) {
-      generateValidCOBs();
-    }
-    this->setParentStructure(nullptr);
   }
 
   Xtal::Xtal(const Xtal& other)
@@ -2343,6 +2332,7 @@ namespace XtalOpt {
 
   Xtal * Xtal::getRandomRepresentation() const
   {
+    generateValidCOBs();
     // Cache volume for later sanity checks
     const double origVolume = getVolume();
 
