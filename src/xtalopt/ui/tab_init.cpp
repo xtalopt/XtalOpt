@@ -1529,9 +1529,9 @@ namespace XtalOpt {
 
     for (QHash<QPair<int, int>, MolUnit>::const_iterator it = xtalopt->compMolUnit.constBegin(), it_end = xtalopt->compMolUnit.constEnd(); it != it_end; it++) {
       if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().first == centerNum)
-        q += it->numCenters;
+        q += it->numCenters * xtalopt->minFU;
       if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().second == centerNum)
-        q += it->numNeighbors * it->numCenters;
+        q += it->numNeighbors;
     }
 
     int numCenters = xtalopt->comp[centerNum].quantity - q;
@@ -1544,6 +1544,8 @@ namespace XtalOpt {
 
     if (numCenters == 0)
       return;
+
+    numCenters *= xtalopt->minFU;
 
     for (int i = numCenters; i > 0; i--) {
       numCentersList.append(QString::number(i));
@@ -1571,7 +1573,7 @@ namespace XtalOpt {
       }
     }
 
-    int numNeighbors = xtalopt->comp[neighborNum].quantity - q;
+    int numNeighbors = xtalopt->comp[neighborNum].quantity * xtalopt->minFU - q;
 
     if (divide == true)
       numNeighbors = numNeighbors / numCenters;

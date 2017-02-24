@@ -41,6 +41,8 @@ namespace GlobalSearch {
     // Initialize vars, connections, etc
     progMutex = new QMutex;
     progTimer = new QTimer;
+    
+    setWindowFlags(Qt::Window);
   }
 
   void AbstractDialog::initialize()

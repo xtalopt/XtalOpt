@@ -107,7 +107,7 @@ namespace GlobalSearch {
      * @param f Window flags
      */
     explicit AbstractDialog( QWidget *parent = 0,
-                             Qt::WindowFlags f = 0 );
+            Qt::WindowFlags f = Qt::Window );
 
     /**
      * Connect m_opt and the ui to the dialog. Call this in the

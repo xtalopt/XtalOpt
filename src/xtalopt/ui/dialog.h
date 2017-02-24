@@ -45,7 +45,7 @@ namespace XtalOpt {
   public:
     // Setting interactive to false will disable the tutorial popup
     explicit XtalOptDialog( QWidget *parent = 0,
-                            Qt::WindowFlags f = 0,
+                            Qt::WindowFlags f = Qt::Window,
                             bool interactive = true);
     virtual ~XtalOptDialog() override;
 

@@ -46,6 +46,7 @@ namespace XtalOpt {
                                 bool interactive) :
     AbstractDialog( parent, f )
   {
+    setWindowFlags(Qt::Window);
     ui = new Ui::XtalOptDialog;
     ui->setupUi(this);
     ui_push_begin   = ui->push_begin;

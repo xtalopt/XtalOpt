@@ -701,7 +701,7 @@ namespace XtalOpt {
       for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
         QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
         if (key.first == 0) {
-          for (int i = 0; i < it->numCenters * FU / divisions; i++) {
+          for (int i = 0; i < it->numCenters / divisions; i++) {
             if (!xtal->addAtomRandomly(key.first, key.second, this->comp,
                     this->compMolUnit, true)) {
               xtal->deleteLater();
@@ -737,10 +737,10 @@ namespace XtalOpt {
         for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
           QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
           if (atomicNum == key.first) {
-            qCenter += it->numCenters * FU;
+            qCenter += it->numCenters;
           }
           if (atomicNum == key.second) {
-            qNeighbor += it->numCenters * it->numNeighbors * FU;
+            qNeighbor += it->numCenters * it->numNeighbors;
           }
         }
 
@@ -771,7 +771,7 @@ namespace XtalOpt {
           for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
             QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
             if (atomicNum == key.first) {
-              for (int i = 0; i < it->numCenters * FU / divisions; i++) {
+              for (int i = 0; i < it->numCenters/ divisions; i++) {
                 if (!xtal->addAtomRandomly(atomicNum, key.second, this->comp, this->compMolUnit, useMolUnit)) {
                   xtal->deleteLater();
                   debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
@@ -818,10 +818,10 @@ namespace XtalOpt {
         for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
           QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
           if (atomicNum == key.first) {
-            qCenter += it->numCenters * FU;
+            qCenter += it->numCenters;
           }
           if (atomicNum == key.second) {
-            qNeighbor += it->numCenters * it->numNeighbors * FU;
+            qNeighbor += it->numCenters * it->numNeighbors;
           }
         }
 
@@ -853,7 +853,7 @@ namespace XtalOpt {
           for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
             QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
             if (atomicNum == key.first) {
-              for (int i = 0; i < it->numCenters * FU % divisions; i++) {
+              for (int i = 0; i < it->numCenters % divisions; i++) {
                 if (!xtal->addAtomRandomly(atomicNum, key.second, this->comp, this->compMolUnit, useMolUnit)) {
                   xtal->deleteLater();
                   debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
@@ -873,7 +873,7 @@ namespace XtalOpt {
       for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
         QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
         if (key.first == 0) {
-          for (int i = 0; i < it->numCenters * FU; i++) {
+          for (int i = 0; i < it->numCenters; i++) {
             if (!xtal->addAtomRandomly(key.first, key.second, this->comp,
                     this->compMolUnit, true)) {
               xtal->deleteLater();
@@ -909,10 +909,10 @@ namespace XtalOpt {
         for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
           QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
           if (atomicNum == key.first) {
-            qCenter += it->numCenters * FU;
+            qCenter += it->numCenters;
           }
           if (atomicNum == key.second) {
-            qNeighbor += it->numCenters * it->numNeighbors * FU;
+            qNeighbor += it->numCenters * it->numNeighbors;
           }
         }
 
@@ -940,7 +940,7 @@ namespace XtalOpt {
           for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
             QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
             if (atomicNum == key.first) {
-              for (int i = 0; i < it->numCenters * FU; i++) {
+              for (int i = 0; i < it->numCenters; i++) {
                 if (!xtal->addAtomRandomly(atomicNum, key.second, this->comp, this->compMolUnit, useMolUnit)) {
                   xtal->deleteLater();
                   debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
