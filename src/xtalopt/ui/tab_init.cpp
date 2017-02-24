@@ -711,8 +711,8 @@ namespace XtalOpt {
     for (QHash<unsigned int, XtalCompositionStruct>::iterator
          it = xtalopt->comp.begin(), it_end = xtalopt->comp.end();
          it != it_end; ++it) {
-      it.value().minRadius = xtalopt->scaleFactor *
-          ElemInfo::getCovalentRadius(it.key());
+      if (it.key != 0)
+        it.value().minRadius = xtalopt->scaleFactor * ElemInfo::getCovalentRadius(it.key());
       // Ensure that all minimum radii are > 0.25 (esp. H!)
       if (it.value().minRadius < xtalopt->minRadius) {
         it.value().minRadius = xtalopt->minRadius;
