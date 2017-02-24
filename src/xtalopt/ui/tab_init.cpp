@@ -1490,7 +1490,7 @@ namespace XtalOpt {
       if (atomicNum != 0) {
         symbol = QString(ElemInfo::getAtomicSymbol((atomicNum)).c_str());
       }
-      unsigned int qComp = xtalopt->comp[atomicNum].quantity;
+      unsigned int qComp = xtalopt->comp[atomicNum].quantity * xtalopt->minFU;
 
       //Add center atom to list
       unsigned int qMolUnit = 0;
@@ -1515,8 +1515,10 @@ namespace XtalOpt {
           neighborList.append(symbol);
       }
     }
-
-    centerList.append("None");
+    
+    if (numKeys == 1)
+      centerList.prepend("None");
+    else centerList.append("None");
 
   }
 
@@ -1529,12 +1531,12 @@ namespace XtalOpt {
 
     for (QHash<QPair<int, int>, MolUnit>::const_iterator it = xtalopt->compMolUnit.constBegin(), it_end = xtalopt->compMolUnit.constEnd(); it != it_end; it++) {
       if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().first == centerNum)
-        q += it->numCenters * xtalopt->minFU;
+        q += it->numCenters;
       if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().second == centerNum)
         q += it->numNeighbors;
     }
 
-    int numCenters = xtalopt->comp[centerNum].quantity - q;
+    int numCenters = xtalopt->comp[centerNum].quantity * xtalopt->minFU - q;
 
     if (centerNum == neighborNum)
       numCenters /= 2;
@@ -1544,8 +1546,6 @@ namespace XtalOpt {
 
     if (numCenters == 0)
       return;
-
-    numCenters *= xtalopt->minFU;
 
     for (int i = numCenters; i > 0; i--) {
       numCentersList.append(QString::number(i));
