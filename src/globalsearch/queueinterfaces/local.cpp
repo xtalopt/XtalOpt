@@ -158,7 +158,7 @@ namespace GlobalSearch {
     command = "cmd.exe /C \"" + command + "\"";
 #endif // WIN32
 
-    LocalQueueProcess *proc = new LocalQueueProcess(this);
+    LocalQueueProcess *proc = new LocalQueueProcess(nullptr);
     proc->setWorkingDirectory(s->fileName());
     if (!m_opt->optimizer()->stdinFilename().isEmpty()) {
       proc->setStandardInputFile(s->fileName()
