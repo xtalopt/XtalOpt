@@ -588,10 +588,16 @@ namespace XtalOpt {
 
     // Adjust table size:
     int numRows = keys.size();
+    
+    for (int i = 0; i < numRows; i++) {
+      if (keys.at(i) == 0) numRows--;
+    } 
     ui.table_comp->setRowCount(numRows);
 
     for (int i = 0; i < numRows; i++) {
       unsigned int atomicNum = keys.at(i);
+    
+      if (atomicNum == 0) continue;
 
       QString symbol	= ElemInfo::getAtomicSymbol(atomicNum).c_str();
       unsigned int quantity  = xtalopt->comp[atomicNum].quantity;
@@ -711,8 +717,8 @@ namespace XtalOpt {
     for (QHash<unsigned int, XtalCompositionStruct>::iterator
          it = xtalopt->comp.begin(), it_end = xtalopt->comp.end();
          it != it_end; ++it) {
-      if (it.key() != 0)
-        it.value().minRadius = xtalopt->scaleFactor * ElemInfo::getCovalentRadius(it.key());
+      if (it.key() == 0) continue;
+      it.value().minRadius = xtalopt->scaleFactor * ElemInfo::getCovalentRadius(it.key());
       // Ensure that all minimum radii are > 0.25 (esp. H!)
       if (it.value().minRadius < xtalopt->minRadius) {
         it.value().minRadius = xtalopt->minRadius;
@@ -1377,8 +1383,9 @@ namespace XtalOpt {
     compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
 
     //Distance
-    double distNum = ElemInfo::getCovalentRadius(centerNum) +
-                     ElemInfo::getCovalentRadius(neighborNum);
+    double distNum = 1.0;
+    if (centerNum != 0) 
+        distNum = ElemInfo::getCovalentRadius(centerNum) + ElemInfo::getCovalentRadius(neighborNum);
     QString dist = QString::number(distNum, 'f', 3);
 
     compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].dist = distNum;
