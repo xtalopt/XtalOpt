@@ -66,9 +66,7 @@ namespace GlobalSearch {
     m_isDestroying(false),
     m_lastSubmissionTimeStamp(new QDateTime (QDateTime::currentDateTime()))
   {
-    // Thread connections
-    connect(m_thread, SIGNAL(started()),
-            this, SLOT(moveToQMThread()));
+    moveToQMThread();
   }
 
   QueueManager::~QueueManager()
