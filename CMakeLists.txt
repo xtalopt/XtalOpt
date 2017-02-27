@@ -2,8 +2,9 @@ project(XtalOpt)
 
 cmake_minimum_required(VERSION 2.8.11)
 set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
-# Install xtalopt exe in /usr/local/bin
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY /usr/local/bin)
+
+# Place xtalopt.exe in build dir
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # C++11 is required
 include(MacroUseCXX11)
