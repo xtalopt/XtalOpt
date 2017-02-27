@@ -584,14 +584,11 @@ namespace XtalOpt {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
     QList<unsigned int> keys = xtalopt->comp.keys();
+    keys.removeAll(0);
     qSort(keys);
 
     // Adjust table size:
     int numRows = keys.size();
-    
-    for (int i = 0; i < numRows; i++) {
-      if (keys.at(i) == 0) numRows--;
-    } 
     ui.table_comp->setRowCount(numRows);
 
     for (int i = 0; i < numRows; i++) {
