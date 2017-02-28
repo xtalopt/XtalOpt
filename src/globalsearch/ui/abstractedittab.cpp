@@ -325,10 +325,8 @@ namespace GlobalSearch {
     }
 
     int optStepIndex = ui_list_optStep->currentRow();
-    if (optStepIndex < 0 ||
-        optStepIndex >= m_opt->optimizer()->getNumberOfOptSteps()) {
-      return;
-    }
+    Q_ASSERT(optStepIndex >= 0 &&
+             optStepIndex < m_opt->optimizer()->getNumberOfOptSteps());
 
     // Display appropriate entry widget. Only text entry is supported
     // by default, reimplement this function in the derived class if

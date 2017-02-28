@@ -197,6 +197,9 @@ namespace XtalOpt {
       }
       appendTemplate("POTCAR", POTCAR);
     }
+    // BUG FIX - m_templates["POTCAR"] must at least have an empty string in it
+    if (m_templates["POTCAR"].isEmpty())
+      m_templates["POTCAR"] = QStringList("");
   }
 
 } // end namespace XtalOpt
