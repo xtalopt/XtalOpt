@@ -15,8 +15,6 @@
 #ifndef GLOBALSEARCHMACROS_H
 #define GLOBALSEARCHMACROS_H
 
-#include <globalsearch/random.h>
-
 #include <QtCore/QSettings>
 
 #include <cstdlib>
@@ -41,11 +39,6 @@
 // If string f is non-empty, write the file immediately with sync(),
 // otherwise, let the system decide when to write to file
 #define DESTROY_SETTINGS(f) settings->sync();
-
-// Random number generation
-#define INIT_RANDOM_GENERATOR() // Does nothing right now
-#define RANDDOUBLE() ( GlobalSearch::GSRandom::instance()->getRandomDouble() )
-#define RANDUINT() ( GlobalSearch::GSRandom::instance()->getRandomUInt() )
 
 // Platform specific defines
 #ifdef WIN32

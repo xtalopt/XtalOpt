@@ -20,6 +20,7 @@
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/remote.h>
+#include <globalsearch/random.h>
 #include <globalsearch/structure.h>
 
 #include <QtCore/QDateTime>
@@ -269,7 +270,7 @@ namespace GlobalSearch {
       if (qobject_cast<RemoteQueueInterface*>
           (m_opt->queueInterface()) != nullptr) {
         if (m_lastSubmissionTimeStamp->secsTo(QDateTime::currentDateTime())
-            >= 3 + (6 * RANDDOUBLE())) {
+            >= 3 + (6 * getRandDouble())) {
           startJob();
           ++submitted;
           --pending;

@@ -12,7 +12,6 @@ set( globalsearch_SRCS
      optimizerdialog.cpp
      bt.cpp
      slottedwaitcondition.cpp
-     random.cpp
      ui/abstractdialog.cpp
      ui/abstracttab.cpp
      ui/abstractedittab.cpp

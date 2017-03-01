@@ -17,7 +17,6 @@
 
 #include <globalsearch/bt.h>
 #include <globalsearch/eleminfo.h>
-#include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/queueinterface.h>
@@ -95,8 +94,6 @@ namespace GlobalSearch {
     connect(this, SIGNAL(sig_setClipboard(const QString&)),
             this, SLOT(setClipboard_(const QString&)),
             Qt::QueuedConnection);
-
-    INIT_RANDOM_GENERATOR();
   }
 
   OptBase::~OptBase()

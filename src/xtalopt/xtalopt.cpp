@@ -33,8 +33,8 @@
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/random.h>
 #include <globalsearch/slottedwaitcondition.h>
-#include <globalsearch/macros.h>
 #include <globalsearch/bt.h>
 #include <globalsearch/utilities/fileutils.h>
 
@@ -559,8 +559,6 @@ namespace XtalOpt {
 
   Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg)
   {
-    INIT_RANDOM_GENERATOR();
-
     Xtal* xtal = nullptr;
     QString* err = nullptr;
 
@@ -628,8 +626,6 @@ namespace XtalOpt {
 
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
   {
-    INIT_RANDOM_GENERATOR();
-
     // Set cell parameters
     double a, b, c, alpha, beta, gamma;
 
@@ -638,12 +634,12 @@ namespace XtalOpt {
     do {
       delete xtal;
       xtal = nullptr;
-      a            = RANDDOUBLE() * (a_max-a_min) + a_min;
-      b            = RANDDOUBLE() * (b_max-b_min) + b_min;
-      c            = RANDDOUBLE() * (c_max-c_min) + c_min;
-      alpha        = RANDDOUBLE() * (alpha_max - alpha_min) + alpha_min;
-      beta         = RANDDOUBLE() * (beta_max  - beta_min ) + beta_min;
-      gamma        = RANDDOUBLE() * (gamma_max - gamma_min) + gamma_min;
+      a            = getRandDouble() * (a_max-a_min) + a_min;
+      b            = getRandDouble() * (b_max-b_min) + b_min;
+      c            = getRandDouble() * (c_max-c_min) + c_min;
+      alpha        = getRandDouble() * (alpha_max - alpha_min) + alpha_min;
+      beta         = getRandDouble() * (beta_max  - beta_min ) + beta_min;
+      gamma        = getRandDouble() * (gamma_max - gamma_min) + gamma_min;
       xtal = new Xtal(a, b, c, alpha, beta, gamma);
       xtal->setFormulaUnits(FU);
     } while (!checkLattice(xtal));
@@ -1085,7 +1081,6 @@ namespace XtalOpt {
   // Overloaded version of generateRandomXtal(uint generation, uint id, uint FU) without FU specified
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
   {
-    INIT_RANDOM_GENERATOR();
     QList<uint> tempFormulaUnitsList = formulaUnitsList;
     if (using_mitotic_growth && !using_one_pool) {
       // Remove formula units on the list for which there is a smaller multiple that may be used to create a super cell.
@@ -1442,9 +1437,6 @@ namespace XtalOpt {
                                   Xtal* preselectedXtal, bool includeCrossover,
                                   bool includeMitosis, bool mitosisMutation)
   {
-
-    INIT_RANDOM_GENERATOR();
-
     // Initialize loop vars
     double r;
     unsigned int gen;
@@ -1466,7 +1458,7 @@ namespace XtalOpt {
         selectedXtal = preselectedXtal;
 
       // Decide operator:
-      r = RANDDOUBLE();
+      r = getRandDouble();
 
       // We will perform mitosis if:
       // 1: using_one_pool is enabled and
@@ -1922,8 +1914,6 @@ namespace XtalOpt {
 
   Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
                                                uint FU) {
-    INIT_RANDOM_GENERATOR();
-
     // Remove all structures that have an FU that ISN'T on the list
     for (size_t i = 0; i < structures.size(); i++) {
       if (!onTheFormulaUnitsList(structures.at(i)->getFormulaUnits())) {
@@ -1969,7 +1959,7 @@ namespace XtalOpt {
 
     // Pick a parent
     int ind;
-    r = RANDDOUBLE();
+    r = getRandDouble();
     for (ind = 0; ind < probs.size(); ind++)
       if (r < probs.at(ind)) break;
     xtal = xtals.at(ind);

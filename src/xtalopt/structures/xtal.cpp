@@ -19,7 +19,7 @@
 #include <xtalopt/xtalopt.h>
 
 #include <globalsearch/eleminfo.h>
-#include <globalsearch/macros.h>
+#include <globalsearch/random.h>
 #include <globalsearch/stablecomparison.h>
 
 extern "C" {
@@ -916,7 +916,6 @@ namespace XtalOpt {
   }
 
   bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts) {
-    INIT_RANDOM_GENERATOR();
     Q_UNUSED(maxIAD);
 
     double IAD = -1;
@@ -931,9 +930,9 @@ namespace XtalOpt {
       do {
         // Generate fractional coordinates
         IAD = -1;
-        double x = RANDDOUBLE();
-        double y = RANDDOUBLE();
-        double z = RANDDOUBLE();
+        double x = getRandDouble();
+        double y = getRandDouble();
+        double z = getRandDouble();
 
         // Convert to cartesian coordinates and store
         Vector3 fracCoords (x,y,z);
@@ -993,7 +992,7 @@ namespace XtalOpt {
         success = true;
 
         // Generate fractional coordinates
-        fracCoords = Vector3(RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        fracCoords = Vector3(getRandDouble(), getRandDouble(), getRandDouble());
 
         // Convert to cartesian coordinates and store
         cartCoords = Vector3(this->fracToCart(fracCoords));
@@ -1085,7 +1084,7 @@ namespace XtalOpt {
         success = true;
 
         // Generate fractional coordinates
-        fracCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        fracCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
 
         // Convert to cartesian coordinates and store
         cartCoords = fracToCart(fracCoords);
@@ -1150,7 +1149,7 @@ namespace XtalOpt {
 
   bool Xtal::molUnitBuilder(Vector3 a1Coords, unsigned int atomicNum, int valence, double dist, int hyb) {
     // Generate fractional coordinates
-    Vector3 tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+    Vector3 tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
 
     // Vector of the new bond and normalize
     Vector3 bond1 = a1Coords - tempCoords;
@@ -1177,11 +1176,11 @@ namespace XtalOpt {
         // Normalize bond1
         bond1.normalize();
         // Generate new random coordinates
-        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
         while (angle < 45.0 || angle > 135.0) {
-          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
           angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         }
         // Get new vector for manipulation
@@ -1203,11 +1202,11 @@ namespace XtalOpt {
         // 2nd Neighbor
         // Same as Bent
         // Generate new random coordinates
-        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
         while (angle < 45.0 || angle > 135.0) {
-          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
           angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         }
         // Get new vector for manipulation
@@ -1231,11 +1230,11 @@ namespace XtalOpt {
       } else if (hyb == 3) {
         // 2nd Neighbor
         // Generate new random coordinates
-        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
         while (angle < 45.0 || angle > 135.0) {
-          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
           angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         }
         // Get new vector for manipulation
@@ -1267,11 +1266,11 @@ namespace XtalOpt {
       } else if (hyb == 4) {
         // 2nd Neighbor
         // Generate new random coordinates
-        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
         while (angle < 45.0 || angle > 135.0) {
-          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
           angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         }
         // Get new vector perpendicular to the plane
@@ -1292,11 +1291,11 @@ namespace XtalOpt {
       if (hyb == 3) {
         // 2nd Neighbor
         // Generate new random coordinates
-        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
         while (angle < 45.0 || angle > 135.0) {
-          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
           angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         }
         // Get new vector for manipulation
@@ -1339,11 +1338,11 @@ namespace XtalOpt {
 
         // 3rd Neighbor
         // Generate new random coordinates
-        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
         while (angle < 45.0 || angle > 135.0) {
-          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
           angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         }
         // Get new vector perpendicular to the plane
@@ -1361,11 +1360,11 @@ namespace XtalOpt {
         // 2nd Neighbor
         // Same as Bent
         // Generate new random coordinates
-        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
         while (angle < 45.0 || angle > 135.0) {
-          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
           angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         }
         // Get new vector for manipulation
@@ -1400,11 +1399,11 @@ namespace XtalOpt {
         // 2nd neighbor
         // Same as Bent -- 120 degrees
         // Generate new random coordinates
-        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
         while (angle < 45.0 || angle > 135.0) {
-          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
           angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         }
         // Get new vector for manipulation
@@ -1447,11 +1446,11 @@ namespace XtalOpt {
         // 3rd Neighbor
         // 90 degrees from atoms 2 & 3
         // Generate new random coordinates
-        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
         while (angle < 45.0 || angle > 135.0) {
-          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
           angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         }
         // Get new vector perpendicular to the plane
@@ -1485,11 +1484,11 @@ namespace XtalOpt {
         // 3rd Neighbor
         // 90 degrees from atoms 2 & 3
         // Generate new random coordinates
-        tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+        tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
         double angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         // Make sure the new vector is acceptable
         while (angle < 45.0 || angle > 135.0) {
-          tempCoords = Vector3 (RANDDOUBLE(), RANDDOUBLE(), RANDDOUBLE());
+          tempCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
           angle = fabs(acos(bond1.dot(tempCoords)) * RAD_TO_DEG);
         }
         // Get new vector perpendicular to the plane
@@ -2339,7 +2338,7 @@ namespace XtalOpt {
     // Randomly select a mix matrix to create a new cell matrix by
     // taking a linear combination of the current cell vectors
     const Matrix3 &mix
-      (m_mixMatrices[RANDUINT() % m_mixMatrices.size()]);
+      (m_mixMatrices[getRandUInt() % m_mixMatrices.size()]);
 
     // Build new Xtal with the new basis
     Xtal *nxtal = new Xtal (this->parent());
@@ -2352,9 +2351,9 @@ namespace XtalOpt {
     // Generate a random translation (i.e. between 0 and 1)
     const double maxTranslation = getA() + getB() + getC();
     const Vector3 randTranslation
-      (RANDDOUBLE() * maxTranslation,
-       RANDDOUBLE() * maxTranslation,
-       RANDDOUBLE() * maxTranslation);
+      (getRandDouble() * maxTranslation,
+       getRandDouble() * maxTranslation,
+       getRandDouble() * maxTranslation);
 
     // Add atoms
     for (std::vector<Atom>::const_iterator it = atoms().begin(),

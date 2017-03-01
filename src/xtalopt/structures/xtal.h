@@ -32,8 +32,8 @@ namespace XtalOpt {
   class XtalCompositionStruct;
   class MolUnit;
 
-  using GlobalSearch::Vector3;
   using GlobalSearch::Matrix3;
+  using GlobalSearch::Vector3;
 
   class Xtal : public GlobalSearch::Structure
   {

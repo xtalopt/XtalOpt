@@ -15,10 +15,10 @@
 
 #include <globalsearch/queueinterfaces/local.h>
 
-#include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterfaces/localdialog.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/random.h>
 #include <globalsearch/structure.h>
 
 #include <QtCore/QDir>
@@ -83,7 +83,7 @@ namespace GlobalSearch {
     else {
       // If the path exists, attempt to open a small test file for writing
       QString filename = m_opt->filePath + QString("queuetest-")
-        + QString::number(RANDUINT());
+        + QString::number(getRandUInt());
       QFile file (filename);
       if (!file.open(QFile::ReadWrite)) {
         writable = false;

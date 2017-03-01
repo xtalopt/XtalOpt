@@ -19,7 +19,7 @@
 #include <xtalopt/ui/dialog.h>
 
 #include <globalsearch/eleminfo.h>
-#include <globalsearch/macros.h>
+#include <globalsearch/random.h>
 
 #include <QtCore/QDebug>
 
@@ -31,23 +31,22 @@ namespace XtalOpt {
 
   Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution, double &percent1) {
 
-    INIT_RANDOM_GENERATOR();
     //
     // Random Assignments
     //
     // Where to slice in fractional units
-    double cutVal = ((100.0-(2.0*minimumContribution) ) * RANDDOUBLE() + minimumContribution) / 100.0;
+    double cutVal = ((100.0-(2.0*minimumContribution) ) * getRandDouble() + minimumContribution) / 100.0;
     percent1 = cutVal * 100.0;
     // Shift values = s_n_m:
     //  n = xtal (1,2)
     //  m = axes (1 = a_ch; 2,3 = secondary axes)
     double s_1_1, s_1_2, s_1_3, s_2_1, s_2_2, s_2_3;
-    s_1_1 = RANDDOUBLE();
-    s_2_1 = RANDDOUBLE();
-    s_1_2 = RANDDOUBLE();
-    s_2_2 = RANDDOUBLE();
-    s_1_3 = RANDDOUBLE();
-    s_2_3 = RANDDOUBLE();
+    s_1_1 = getRandDouble();
+    s_2_1 = getRandDouble();
+    s_1_2 = getRandDouble();
+    s_2_2 = getRandDouble();
+    s_1_3 = getRandDouble();
+    s_2_3 = getRandDouble();
     //
     // Transformation matrixes
     //
@@ -75,11 +74,11 @@ namespace XtalOpt {
     // should do the trick.
     //
     QList<int> list1;
-    list1.append(static_cast<int>(floor(RANDDOUBLE()*3)));
+    list1.append(static_cast<int>(floor(getRandDouble()*3)));
     if (list1.at(0) == 3) list1[0] = 2;
     switch (list1.at(0)) {
     case 0:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list1.append(1);
         list1.append(2);
       } else {
@@ -88,7 +87,7 @@ namespace XtalOpt {
       }
       break;
     case 1:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list1.append(0);
         list1.append(2);
       } else {
@@ -97,7 +96,7 @@ namespace XtalOpt {
       }
       break;
     case 2:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list1.append(0);
         list1.append(1);
       } else {
@@ -108,11 +107,11 @@ namespace XtalOpt {
     }
 
     QList<int> list2;
-    list2.append(static_cast<int>(floor(RANDDOUBLE()*3)));
+    list2.append(static_cast<int>(floor(getRandDouble()*3)));
     if (list2.at(0) == 3) list2[0] = 2;
     switch (list2.at(0)) {
     case 0:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list2.append(1);
         list2.append(2);
       } else {
@@ -121,7 +120,7 @@ namespace XtalOpt {
       }
       break;
     case 1:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list2.append(0);
         list2.append(2);
       } else {
@@ -130,7 +129,7 @@ namespace XtalOpt {
       }
       break;
     case 2:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list2.append(0);
         list2.append(1);
       } else {
@@ -145,8 +144,8 @@ namespace XtalOpt {
     Matrix3 xform1 = Matrix3::Zero();
     Matrix3 xform2 = Matrix3::Zero();
     for (int i = 0; i < 3; i++) {
-      double r1 = RANDDOUBLE() - 0.5;
-      double r2 = RANDDOUBLE() - 0.5;
+      double r1 = getRandDouble() - 0.5;
+      double r2 = getRandDouble() - 0.5;
       int s1 = int(r1/fabs(r1));
       int s2 = int(r2/fabs(r2));
       if (list1.at(i) == 0)             xform1.block(0, i, 3, 1) << s1, 0, 0;
@@ -218,7 +217,7 @@ namespace XtalOpt {
     //
     // Average cell matricies
     // Randomly weight the parameters of the two parents
-    double weight = RANDDOUBLE();
+    double weight = getRandDouble();
     Matrix3 dims;
     for (uint row = 0; row < 3; row++) {
       for (uint col = 0; col < 3; col++) {
@@ -282,7 +281,7 @@ namespace XtalOpt {
           if (atomList.at(j).atomicNumber() ==
               ElemInfo::getAtomicNum(xtalAtoms.at(i).toStdString())) {
             // atom at j is the type that needs to be deleted.
-            if (RANDDOUBLE() < 1.0/static_cast<double>(nxtalCounts.at(i))) {
+            if (getRandDouble() < 1.0/static_cast<double>(nxtalCounts.at(i))) {
               // If the odds are right, delete the atom and break loop to recheck condition.
               nxtal->removeAtom(atomList.at(j)); // removeAtom(Atom*) takes care of deleting pointer.
               delta++;
@@ -298,7 +297,7 @@ namespace XtalOpt {
         //
         // First, pick the parent. 50/50 chance for each:
         uint parent;
-        if (RANDDOUBLE() < 0.5) parent = 1;
+        if (getRandDouble() < 0.5) parent = 1;
         else parent = 2;
         for (int j = 0; j < fracCoordsList1.size(); j++) { // size should be the same for both parents
           if (
@@ -319,7 +318,7 @@ namespace XtalOpt {
                )
               &&
               // and the odds favor it, add the atom to nxtal
-              ( RANDDOUBLE() < 1.0/static_cast<double>(xtalCounts.at(i)) )
+              ( getRandDouble() < 1.0/static_cast<double>(xtalCounts.at(i)) )
               ) {
             Atom& newAtom = nxtal->addAtom();
             newAtom.setAtomicNumber(atomList1.at(j).atomicNumber());
@@ -343,7 +342,6 @@ namespace XtalOpt {
   // Crossover designed specifically for crossing over different formula units
   Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution, double &percent1, double &percent2, const QList<uint> formulaUnitsList, QHash<uint, XtalCompositionStruct> comp) {
 
-    INIT_RANDOM_GENERATOR();
     //
     // Random Assignments
     //
@@ -351,8 +349,8 @@ namespace XtalOpt {
     // between the minimum contribution and 100% as opposed to being between
     // the minimum contribution and 100% - minimum contribution in the regular
     // crossover function
-    double cutVal1 = ((100.0 - minimumContribution) * RANDDOUBLE() + minimumContribution) / 100.0;
-    double cutVal2 = ((100.0 - minimumContribution) * RANDDOUBLE() + minimumContribution) / 100.0;
+    double cutVal1 = ((100.0 - minimumContribution) * getRandDouble() + minimumContribution) / 100.0;
+    double cutVal2 = ((100.0 - minimumContribution) * getRandDouble() + minimumContribution) / 100.0;
     percent1 = cutVal1 * 100.0;
     percent2 = cutVal2 * 100.0;
     //qDebug() << "cutVal1 is " << QString::number(cutVal1);
@@ -361,12 +359,12 @@ namespace XtalOpt {
     //  n = xtal (1,2)
     //  m = axes (1 = a_ch; 2,3 = secondary axes)
     double s_1_1, s_1_2, s_1_3, s_2_1, s_2_2, s_2_3;
-    s_1_1 = RANDDOUBLE();
-    s_2_1 = RANDDOUBLE();
-    s_1_2 = RANDDOUBLE();
-    s_2_2 = RANDDOUBLE();
-    s_1_3 = RANDDOUBLE();
-    s_2_3 = RANDDOUBLE();
+    s_1_1 = getRandDouble();
+    s_2_1 = getRandDouble();
+    s_1_2 = getRandDouble();
+    s_2_2 = getRandDouble();
+    s_1_3 = getRandDouble();
+    s_2_3 = getRandDouble();
     //
     // Transformation matrixes
     //
@@ -394,11 +392,11 @@ namespace XtalOpt {
     // should do the trick.
     //
     QList<int> list1;
-    list1.append(static_cast<int>(floor(RANDDOUBLE()*3)));
+    list1.append(static_cast<int>(floor(getRandDouble()*3)));
     if (list1.at(0) == 3) list1[0] = 2;
     switch (list1.at(0)) {
     case 0:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list1.append(1);
         list1.append(2);
       } else {
@@ -407,7 +405,7 @@ namespace XtalOpt {
       }
       break;
     case 1:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list1.append(0);
         list1.append(2);
       } else {
@@ -416,7 +414,7 @@ namespace XtalOpt {
       }
       break;
     case 2:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list1.append(0);
         list1.append(1);
       } else {
@@ -427,11 +425,11 @@ namespace XtalOpt {
     }
 
     QList<int> list2;
-    list2.append(static_cast<int>(floor(RANDDOUBLE()*3)));
+    list2.append(static_cast<int>(floor(getRandDouble()*3)));
     if (list2.at(0) == 3) list2[0] = 2;
     switch (list2.at(0)) {
     case 0:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list2.append(1);
         list2.append(2);
       } else {
@@ -440,7 +438,7 @@ namespace XtalOpt {
       }
       break;
     case 1:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list2.append(0);
         list2.append(2);
       } else {
@@ -449,7 +447,7 @@ namespace XtalOpt {
       }
       break;
     case 2:
-      if (RANDDOUBLE() > 0.5) {
+      if (getRandDouble() > 0.5) {
         list2.append(0);
         list2.append(1);
       } else {
@@ -464,8 +462,8 @@ namespace XtalOpt {
     Matrix3 xform1 = Matrix3::Zero();
     Matrix3 xform2 = Matrix3::Zero();
     for (int i = 0; i < 3; i++) {
-      double r1 = RANDDOUBLE() - 0.5;
-      double r2 = RANDDOUBLE() - 0.5;
+      double r1 = getRandDouble() - 0.5;
+      double r2 = getRandDouble() - 0.5;
       int s1 = int(r1/fabs(r1));
       int s2 = int(r2/fabs(r2));
       if (list1.at(i) == 0)             xform1.block(0, i, 3, 1) << s1, 0, 0;
@@ -586,7 +584,7 @@ namespace XtalOpt {
     //
     // Average cell matricies
     // The weight the parameters of the two parents matches the cutVal
-    double weight = RANDDOUBLE();
+    double weight = getRandDouble();
     Matrix3 dims;
     for (uint row = 0; row < 3; row++) {
       for (uint col = 0; col < 3; col++) {
@@ -663,7 +661,7 @@ namespace XtalOpt {
     // of the smallest number of atoms in the empirical formula. If not,
     // decide randomly whether to increase or decrease to reach a valid
     // number of atoms.
-    double rand = RANDDOUBLE();
+    double rand = getRandDouble();
     while (targetXtalCounts.at(smallestCountIndex) % (empiricalFormulaList.at(smallestCountIndex)) != 0) {
       if (rand <= 0.5) targetXtalCounts[smallestCountIndex] = targetXtalCounts.at(smallestCountIndex) - 1;
       if (targetXtalCounts.at(smallestCountIndex) == 0) rand = 1;
@@ -731,7 +729,7 @@ namespace XtalOpt {
         for (int i = 1; i < formulaUnitsList.size(); i++) {
           int newDistance = numberOfFormulaUnits - formulaUnitsList.at(i);
           if (abs(shortestDistance) == abs(newDistance)) {
-            double randdouble = RANDDOUBLE();
+            double randdouble = getRandDouble();
             if (randdouble <= 0.5) shortestDistance = numberOfFormulaUnits - formulaUnitsList.at(i);
           }
           // We convert to int here to prevent an ambiguous abs() call when
@@ -775,7 +773,7 @@ namespace XtalOpt {
           if (atomList.at(j).atomicNumber() ==
                   ElemInfo::getAtomicNum(xtalAtoms.at(i).toStdString())) {
             // atom at j is the type that needs to be deleted.
-            if (RANDDOUBLE() < 1.0/static_cast<double>(nxtalCounts.at(i))) {
+            if (getRandDouble() < 1.0/static_cast<double>(nxtalCounts.at(i))) {
               // If the odds are right, delete the atom and break loop to recheck condition.
               nxtal->removeAtom(atomList.at(j)); // removeAtom(Atom*) takes care of deleting pointer.
               delta++;
@@ -801,7 +799,7 @@ namespace XtalOpt {
         // First, pick the parent. 50/50 chance for each:
 
         uint parent;
-        if (RANDDOUBLE() < 0.5) parent = 1;
+        if (getRandDouble() < 0.5) parent = 1;
         else parent = 2;
         if (parent == 1) {
           for (int j = 0; j < fracCoordsList1.size(); j++) { // size may be different for different parents
@@ -816,7 +814,7 @@ namespace XtalOpt {
 
                 &&
                 // and the odds favor it, add the atom to nxtal
-                ( RANDDOUBLE() < 1.0/static_cast<double>(targetXtalCounts.at(i)) )
+                ( getRandDouble() < 1.0/static_cast<double>(targetXtalCounts.at(i)) )
                 ) {
               Atom& newAtom = nxtal->addAtom();
               newAtom.setAtomicNumber(atomList1.at(j).atomicNumber());
@@ -839,7 +837,7 @@ namespace XtalOpt {
 
                 &&
                 // and the odds favor it, add the atom to nxtal
-                ( RANDDOUBLE() < 1.0/static_cast<double>(targetXtalCounts.at(i)) )
+                ( getRandDouble() < 1.0/static_cast<double>(targetXtalCounts.at(i)) )
                 ) {
               Atom& newAtom = nxtal->addAtom();
               newAtom.setAtomicNumber(atomList2.at(j).atomicNumber());
@@ -874,7 +872,6 @@ namespace XtalOpt {
                                  uint eta, uint mu,
                                  double &sigma_lattice,
                                  double &rho) {
-    INIT_RANDOM_GENERATOR();
 
     // lock parent xtal and copy into return xtal
     Xtal *nxtal = new Xtal;
@@ -893,16 +890,16 @@ namespace XtalOpt {
     // Note that this will repeat until EITHER sigma OR rho is greater
     // than its respective minimum value, not both
     do {
-      sigma_lattice = RANDDOUBLE();
+      sigma_lattice = getRandDouble();
       sigma_lattice *= sigma_lattice_max;
-      rho = RANDDOUBLE();
+      rho = getRandDouble();
       rho *= rho_max;
       // If values are fixed (min==max), check to see if they need to
       // be set manually, since it is unlikely that the above
       // randomization will produce an acceptable value. Randomize
       // which parameter to check to avoid biasing setting one value
       // over the other.
-      double r = RANDDOUBLE();
+      double r = getRandDouble();
       if (r < 0.5 &&
           sigma_lattice_min == sigma_lattice_max &&
           rho < rho_min) {
@@ -923,7 +920,6 @@ namespace XtalOpt {
   }
 
   Xtal* XtalOptGenetic::permustrain(Xtal* xtal, double sigma_lattice_max, uint exchanges, double &sigma_lattice) {
-    INIT_RANDOM_GENERATOR();
     // lock parent xtal for reading
     QReadLocker locker (&xtal->lock());
 
@@ -939,7 +935,7 @@ namespace XtalOpt {
     }
 
     // Perform lattice strain
-    sigma_lattice = sigma_lattice_max * RANDDOUBLE();
+    sigma_lattice = sigma_lattice_max * getRandDouble();
     XtalOptGenetic::strain(nxtal, sigma_lattice);
     XtalOptGenetic::exchange(nxtal, exchanges);
 
@@ -951,7 +947,6 @@ namespace XtalOpt {
   }
 
   void XtalOptGenetic::exchange(Xtal *xtal, uint exchanges) {
-    INIT_RANDOM_GENERATOR();
     // Check that there is more than 1 atom type present.
     // If not, print a warning and return input xtal:
     if (xtal->getSymbols().size() <= 1) {
@@ -971,8 +966,8 @@ namespace XtalOpt {
       while (atoms.at(index1).atomicNumber() == atoms.at(index2).atomicNumber()) {
         index1 = index2 = 0;
         while (index1 == index2) {
-          index1 = static_cast<uint>(RANDDOUBLE() * atoms.size());
-          index2 = static_cast<uint>(RANDDOUBLE() * atoms.size());
+          index1 = static_cast<uint>(getRandDouble() * atoms.size());
+          index2 = static_cast<uint>(getRandDouble() * atoms.size());
         }
       }
       // Swap the atoms
@@ -984,7 +979,6 @@ namespace XtalOpt {
   }
 
   void XtalOptGenetic::strain(Xtal *xtal, double sigma_lattice) {
-    INIT_RANDOM_GENERATOR();
     // Build Voight strain matrix
     double volume = xtal->getVolume();
     Matrix3 strainM;
@@ -1000,8 +994,8 @@ namespace XtalOpt {
         // mu = 0, sigma = sigma_lattice
         double z;
         while (true) {
-          double u1 = RANDDOUBLE();
-          double u2 = 1.0 - RANDDOUBLE();
+          double u1 = getRandDouble();
+          double u2 = 1.0 - getRandDouble();
           if (u2 == 0.0) continue; // happens a _lot_ with MSVC...
           z = NV_MAGICCONST*(u1-0.5)/u2;
           double zz = z*z/4.0;
@@ -1038,14 +1032,13 @@ namespace XtalOpt {
   }
 
   void XtalOptGenetic::ripple(Xtal* xtal, double rho, uint eta, uint mu) {
-    INIT_RANDOM_GENERATOR();
-    double phase1 = RANDDOUBLE() * 2 * M_PI;
-    double phase2 = RANDDOUBLE() * 2 * M_PI;
+    double phase1 = getRandDouble() * 2 * M_PI;
+    double phase2 = getRandDouble() * 2 * M_PI;
 
     // Get random direction to shift atoms (x=0, y=1, z=2)
     int shiftAxis = 3, axis1, axis2;
     while (shiftAxis == 3)
-      shiftAxis = static_cast<uint>(RANDDOUBLE() * 3);
+      shiftAxis = static_cast<uint>(getRandDouble() * 3);
     switch (shiftAxis) {
     case 0:
       axis1 = 1;

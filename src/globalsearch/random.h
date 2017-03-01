@@ -1,7 +1,8 @@
 /**********************************************************************
-  GSRandom -- A singleton randomnumber generator
+  random.h - Provides a function to generate random doubles/ints between a
+             min and a max value
 
-  Copyright (C) 2010-2011 by David C. Lonie
+  Copyright (C) 2016 by Patrick S. Avery
 
   This source code is released under the New BSD License, (the "License").
 
@@ -10,49 +11,37 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
+
  ***********************************************************************/
 
-#ifndef GLOBALSEARCHRANDOM_H
-#define GLOBALSEARCHRANDOM_H
+#ifndef GLOBALSEARCH_RANDOM_H
+#define GLOBALSEARCH_RANDOM_H
+
+#include <random>
 
 namespace GlobalSearch {
-
-  /**
-   * @class GSRandom random.h <globalsearch/random.h>
-   *
-   * @brief This class implements a thread-safe, cross-platform
-   * singleton random number generator.
-   *
-   * Direct use of this class is
-   * discouraged.  Rather, use the RANDDOUBLE(), etc macros in
-   * globalsearch/macros.h.
-   *
-   * @author David C. Lonie
-   */
-  class GSRandom
+  // Creating a new distribution each time is supposedly very fast...
+  static inline double getRandDouble(double min = 0.0, double max = 1.0)
   {
-  public:
-    /// @return the global GSRandom instance
-    static GSRandom* instance();
+    std::mt19937 generator(std::random_device{}());
+    std::uniform_real_distribution<double> distribution(min, max);
+    return distribution(generator);
+  }
 
-    /// @return a random floating point number between zero and one
-    double getRandomDouble();
-    /// @return a random unsigned integer
-    unsigned int getRandomUInt();
+  static inline int getRandInt(int min = INT_MIN, int max = INT_MAX)
+  {
+    std::mt19937 generator(std::random_device{}());
+    std::uniform_int_distribution<int> distribution(min, max);
+    return distribution(generator);
+  }
 
-  protected:
-    /// Constructor
-    GSRandom();
-    /// Disabled copy constructor
-    GSRandom(const GSRandom&) {};
-    /// Disabled assignment operator
-    GSRandom& operator= (const GSRandom&) {};
-  private:
-    /// Global instances
-    static GSRandom* m_instance;
-    /// Internal use only
-    bool m_seedLock;
-  };
+  static inline unsigned int getRandUInt(unsigned int min = 0,
+                                         unsigned int max = UINT_MAX)
+  {
+    std::mt19937 generator(std::random_device{}());
+    std::uniform_int_distribution<unsigned int> distribution(min, max);
+    return distribution(generator);
+  }
 }
 
 #endif

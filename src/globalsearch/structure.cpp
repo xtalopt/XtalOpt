@@ -17,6 +17,7 @@
 
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/macros.h>
+#include <globalsearch/random.h>
 #include <globalsearch/structures/molecule.h>
 
 #include <QtCore/QFile>
@@ -681,7 +682,6 @@ namespace GlobalSearch {
 
   bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts)
   {
-    INIT_RANDOM_GENERATOR();
     double IAD = -1;
     int i = 0;
     Vector3 coords;
@@ -694,9 +694,9 @@ namespace GlobalSearch {
       do {
         // Generate random coordinates
         IAD = -1;
-        double x = RANDDOUBLE();
-        double y = RANDDOUBLE();
-        double z = RANDDOUBLE();
+        double x = getRandDouble();
+        double y = getRandDouble();
+        double z = getRandDouble();
         coords = Vector3(x,y,z);
 
         coords = unitCell().toCartesian(coords);
