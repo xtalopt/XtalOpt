@@ -118,17 +118,21 @@ namespace XtalOpt {
                            bool includeMitosis = true,
                            bool mitosisMutation = false);
     bool addSeed(const QString & filename);
-    GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
-                                               const QString & reason = "");
-    GlobalSearch::Structure* replaceWithOffspring(GlobalSearch::Structure *s,
-                                                  const QString &reason = "");
-    bool checkLimits();
+    GlobalSearch::Structure* replaceWithRandom(
+      GlobalSearch::Structure *s,
+      const QString & reason = "") override;
+    GlobalSearch::Structure* replaceWithOffspring(
+      GlobalSearch::Structure *s,
+      const QString &reason = "") override;
+    bool checkLimits() override;
     bool checkComposition(Xtal *xtal, QString * err = nullptr);
     bool checkLattice(Xtal *xtal, QString * err = nullptr);
     bool checkXtal(Xtal *xtal, QString * err = nullptr);
-    QString interpretTemplate(const QString & templateString, GlobalSearch::Structure* structure);
-    QString getTemplateKeywordHelp();
-    bool load(const QString & filename, const bool forceReadOnly = false);
+    QString interpretTemplate(const QString & templateString,
+                              GlobalSearch::Structure* structure) override;
+    QString getTemplateKeywordHelp() override;
+    bool load(const QString & filename,
+              const bool forceReadOnly = false) override;
 
     bool loaded;
 
@@ -213,8 +217,8 @@ namespace XtalOpt {
     QList<int> minXtalsOfSpgPerFU;
 
   public slots:
-    void startSearch();
-    void generateNewStructure();
+    void startSearch() override;
+    void generateNewStructure() override;
     Xtal* generateNewXtal();
     // Identical to generateNewXtal() except the number of formula units has been specified already
     Xtal* generateNewXtal(uint FU);

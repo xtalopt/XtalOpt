@@ -96,7 +96,7 @@ namespace GlobalSearch {
      * @return True on success.
      */
     bool copyFileToServer(const QString & localpath,
-                          const QString & remotepath);
+                          const QString & remotepath) override;
 
     /**
      * Copy a file from the remote host
@@ -107,7 +107,7 @@ namespace GlobalSearch {
      * @return True on success.
      */
     bool copyFileFromServer(const QString & remotepath,
-                            const QString & localpath);
+                            const QString & localpath) override;
 
     /**
      * Obtain a QString object contain the contents of a remote text
@@ -119,7 +119,7 @@ namespace GlobalSearch {
      * @return True on success.
      */
     bool readRemoteFile(const QString &filename,
-                        QString &contents);
+                        QString &contents) override;
 
     /**
      * Delete a file from the remote host
@@ -128,7 +128,7 @@ namespace GlobalSearch {
      *
      * @return True on success.
      */
-    bool removeRemoteFile(const QString &filename);
+    bool removeRemoteFile(const QString &filename) override;
 
     /**
      * Copy a directory to the remote host
@@ -139,7 +139,7 @@ namespace GlobalSearch {
      * @return True on success.
      */
     bool copyDirectoryToServer(const QString & localpath,
-                               const QString & remotepath);
+                               const QString & remotepath) override;
 
     /**
      * Copy a directory from the remote host
@@ -150,7 +150,7 @@ namespace GlobalSearch {
      * @return True on success.
      */
     bool copyDirectoryFromServer(const QString & remotepath,
-                                 const QString & localpath);
+                                 const QString & localpath) override;
 
     /**
      * List the contents of a remote directory
@@ -161,7 +161,7 @@ namespace GlobalSearch {
      * @return True on success.
      */
     bool readRemoteDirectoryContents(const QString & remotepath,
-                                     QStringList & contents);
+                                     QStringList & contents) override;
 
     /**
      * Recursively delete a directory and its contents.
@@ -173,7 +173,7 @@ namespace GlobalSearch {
      * @return True on success.
      */
     bool removeRemoteDirectory(const QString & remotepath,
-                               bool onlyDeleteContents = false);
+                               bool onlyDeleteContents = false) override;
 
 
     /// @return True if the session is valid

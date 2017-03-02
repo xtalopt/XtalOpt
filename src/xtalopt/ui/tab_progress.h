@@ -73,9 +73,9 @@ namespace XtalOpt {
     };
 
   public slots:
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void disconnectGUI();
+    void readSettings(const QString &filename = "") override;
+    void writeSettings(const QString &filename = "") override;
+    void disconnectGUI() override;
     void addNewEntry();
     void newInfoUpdate(GlobalSearch::Structure *);
     void updateInfo();

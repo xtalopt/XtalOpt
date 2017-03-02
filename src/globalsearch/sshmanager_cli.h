@@ -58,7 +58,7 @@ namespace GlobalSearch {
     void makeConnections(const QString &host,
                          const QString &user,
                          const QString &pass,
-                         unsigned int port);
+                         unsigned int port) override;
 
     public slots:
     /**

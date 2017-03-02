@@ -48,8 +48,8 @@ namespace GlobalSearch {
     void updateGUI();
 
   protected slots:
-    void accept();
-    void reject();
+    void accept() override;
+    void reject() override;
 
   protected:
     OptBase *m_opt;

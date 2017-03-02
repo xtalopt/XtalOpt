@@ -77,10 +77,10 @@ namespace XtalOpt {
 
   public slots:
     void selectXtal(QwtPlotMarker* pm);
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void updateGUI();
-    void disconnectGUI();
+    void readSettings(const QString &filename = "") override;
+    void writeSettings(const QString &filename = "") override;
+    void updateGUI() override;
+    void disconnectGUI() override;
     void refreshPlot();
     void updatePlot();
     void plotTrends();

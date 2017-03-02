@@ -44,8 +44,8 @@ namespace GlobalSearch {
     ~LocalQueueInterfaceConfigDialog();
 
   public slots:
-    void accept();
-    void reject();
+    void accept() override;
+    void reject() override;
     void updateGUI();
 
   protected:

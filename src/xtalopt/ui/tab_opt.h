@@ -34,10 +34,10 @@ namespace XtalOpt {
     virtual ~TabOpt() override;
 
   public slots:
-    void lockGUI();
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void updateGUI();
+    void lockGUI() override;
+    void readSettings(const QString &filename = "") override;
+    void writeSettings(const QString &filename = "") override;
+    void updateGUI() override;
     void updateOptimizationInfo();
     void addSeed(QListWidgetItem *item = nullptr);
     void removeSeed();

@@ -63,7 +63,7 @@ namespace GlobalSearch {
     void makeConnections(const QString &host,
                          const QString &user = "",
                          const QString &pass = "",
-                         unsigned int port = 22);
+                         unsigned int port = 22) override;
 
     /**
      * @return Whether the connection has been made successfully.
@@ -75,13 +75,13 @@ namespace GlobalSearch {
      * Returns a free connection from the pool and locks it.
      * @sa unlockConnection
      */
-    SSHConnection *getFreeConnection();
+    SSHConnection *getFreeConnection() override;
 
     /**
      * Call this when finished with a connection so other threads can
      * use it.
      */
-    void unlockConnection(SSHConnection* ssh);
+    void unlockConnection(SSHConnection* ssh) override;
 
     /**
      * Retreive the public key from the server. This is set when a

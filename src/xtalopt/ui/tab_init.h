@@ -55,10 +55,10 @@ namespace XtalOpt {
     };
 
   public slots:
-    void lockGUI();
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void updateGUI();
+    void lockGUI() override;
+    void readSettings(const QString &filename = "") override;
+    void writeSettings(const QString &filename = "") override;
+    void updateGUI() override;
     void getComposition(const QString & str);
     void updateComposition();
     void updateCompositionTable();

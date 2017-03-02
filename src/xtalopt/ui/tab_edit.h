@@ -34,11 +34,11 @@ namespace XtalOpt {
     virtual ~TabEdit() override;
 
   public slots:
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void updateEditWidget();
-    void appendOptStep();
-    void removeCurrentOptStep();
+    void readSettings(const QString &filename = "") override;
+    void writeSettings(const QString &filename = "") override;
+    void updateEditWidget() override;
+    void appendOptStep() override;
+    void removeCurrentOptStep() override;
 
   protected slots:
     // Returns false if user cancels

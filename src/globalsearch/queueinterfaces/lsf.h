@@ -44,16 +44,16 @@ namespace GlobalSearch {
 
     virtual bool isReadyToSearch(QString *str) override;
 
-    QDialog* dialog();
+    QDialog* dialog() override;
 
     friend class LsfConfigDialog;
 
   public slots:
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    bool startJob(Structure *s);
-    bool stopJob(Structure *s);
-    QueueInterface::QueueStatus getStatus(Structure *s) const;
+    void readSettings(const QString &filename = "") override;
+    void writeSettings(const QString &filename = "") override;
+    bool startJob(Structure *s) override;
+    bool stopJob(Structure *s) override;
+    QueueInterface::QueueStatus getStatus(Structure *s) const override;
 
   protected:
     // Fetches the queue from the server

@@ -34,7 +34,7 @@ namespace XtalOpt {
     virtual ~TabLog() override;
 
   public slots:
-    void disconnectGUI();
+    void disconnectGUI() override;
     void newLog(const QString & info);
 
   signals:

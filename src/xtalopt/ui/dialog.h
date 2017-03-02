@@ -52,11 +52,11 @@ namespace XtalOpt {
     void setMolecule(GlobalSearch::Molecule *molecule);
 
   public slots:
-    void saveSession();
+    void saveSession() override;
     void showTutorialDialog() const;
 
   private slots:
-    void startSearch();
+    void startSearch() override;
 
   signals:
 

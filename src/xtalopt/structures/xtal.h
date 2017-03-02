@@ -60,11 +60,13 @@ namespace XtalOpt {
     virtual ~Xtal() override;
 
     // Virtuals from structure
-    bool getShortestInteratomicDistance(double & shortest) const;
+    bool getShortestInteratomicDistance(double & shortest) const override;
     bool getSquaredAtomicDistancesToPoint(const Vector3 &coord,
                                           QVector<double> *distances);
-    bool getNearestNeighborDistance(const double x, const double y, const double z,
-                                    double & shortest) const;
+    bool getNearestNeighborDistance(const double x,
+                                    const double y,
+                                    const double z,
+                                    double & shortest) const override;
     bool getIADHistogram(QList<double> * distance,
                          QList<double> * frequency,
                          double min, double max, double step,
@@ -72,7 +74,7 @@ namespace XtalOpt {
     bool addAtomRandomly(uint atomicNumber,
                          double minIAD = 0.0,
                          double maxIAD = 0.0,
-                         int maxAttempts = 100.0); //maxIAD is not used.
+                         int maxAttempts = 100.0) override;//maxIAD is not used.
     // Uses the minRadius constraints in @a limits to restrict atom placement
     bool addAtomRandomly(unsigned int atomicNumber,
                          const QHash<unsigned int, XtalCompositionStruct> & limits,
