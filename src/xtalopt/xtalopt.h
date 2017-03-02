@@ -273,7 +273,7 @@ namespace XtalOpt {
     void waitThenUnlockSupercellCheckLock() {
       QtConcurrent::run(this, &XtalOpt::waitThenUnlockSupercellCheckLock_);};
     void waitThenUnlockSupercellCheckLock_() {
-      GS_SLEEP(0.1);
+      GS_MSLEEP(100);
       supercellCheckLock.unlock();
     };
 
