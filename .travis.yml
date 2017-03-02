@@ -7,8 +7,8 @@ matrix:
   include:
     - compiler: gcc
       env:
-#    - compiler: clang
-#
+    - compiler: clang
+      env:
 
 branches:
   only:

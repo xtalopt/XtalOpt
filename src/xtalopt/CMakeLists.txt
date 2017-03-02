@@ -36,10 +36,12 @@ set( xtalopt_UIS
 
 set( xtalopt_RCS xtalopt.qrc )
 
-# Use the C++11 standards
+# Get rid of a few annoying warnings (the second one shows up
+# on some clang compilers with Eigen3)
 if(UNIX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++0x -Wno-sign-compare")
-endif()
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -Wno-sign-compare -Wno-deprecated-register")
+endif(UNIX)
 
 string(REPLACE ".cpp" ".h" hdr_list "${xtalopt_SRCS}")
 # Process MOC files
