@@ -36,12 +36,14 @@ set( xtalopt_UIS
 
 set( xtalopt_RCS xtalopt.qrc )
 
-# Get rid of a few annoying warnings (the second one shows up
-# on some clang compilers with Eigen3)
+# Get rid of a few annoying warnings
 if(UNIX)
-  set(CMAKE_CXX_FLAGS
-      "${CMAKE_CXX_FLAGS} -Wno-sign-compare -Wno-deprecated-register")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-sign-compare")
 endif(UNIX)
+# This one shows up on some clang compilers with Eigen3
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-register")
+endif()
 
 string(REPLACE ".cpp" ".h" hdr_list "${xtalopt_SRCS}")
 # Process MOC files
