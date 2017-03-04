@@ -1,3 +1,11 @@
+
+#ifndef XTALOPT_XTALOPT_PLOT_H
+#define XTALOPT_XTALOPT_PLOT_H
+
+#ifdef _WIN32
+#define QWT_DLL
+#endif
+
 #include <qwt_plot.h>
 #include <qwt_plot_curve.h>
 #include <qwt_plot_magnifier.h>
@@ -6,9 +14,6 @@
 #include <qwt_symbol.h>
 
 #include <memory>
-
-#ifndef XTALOPT_XTALOPT_PLOT_H
-#define XTALOPT_XTALOPT_PLOT_H
 
 namespace XtalOpt {
 

@@ -7,15 +7,40 @@
 #  LIBSSH_DEFINITIONS - Compiler switches required for using LibSSH
 #
 #  Copyright (c) 2009 Andreas Schneider <mail@cynapses.org>
+#  Copyright (c) 2017 Patrick Avery (creation of _libssh_check_version macro)
 #
 #  Redistribution and use is allowed according to the terms of the New
 #  BSD license.
 #  For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 #
 
+MACRO(_libssh_check_version)
+  file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/libssh.h LIBSSH_VERSION_MAJOR
+    REGEX "#define[ ]+LIBSSH_VERSION_MAJOR[ ]+[0-9]+")
+  # Older versions of libssh like libssh-0.2 have LIBSSH_VERSION but not LIBSSH_VERSION_MAJOR
+  if (LIBSSH_VERSION_MAJOR)
+    string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_MAJOR ${LIBSSH_VERSION_MAJOR})
+          file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/libssh.h LIBSSH_VERSION_MINOR
+         REGEX "#define[ ]+LIBSSH_VERSION_MINOR[ ]+[0-9]+")
+          string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_MINOR ${LIBSSH_VERSION_MINOR})
+          file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/libssh.h LIBSSH_VERSION_PATCH
+         REGEX "#define[ ]+LIBSSH_VERSION_MICRO[ ]+[0-9]+")
+  	string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_PATCH ${LIBSSH_VERSION_PATCH})
+
+          set(LibSSH_VERSION ${LIBSSH_VERSION_MAJOR}.${LIBSSH_VERSION_MINOR}.${LIBSSH_VERSION_PATCH})
+
+          include(FindPackageVersionCheck)
+          find_package_version_check(LibSSH DEFAULT_MSG)
+  else (LIBSSH_VERSION_MAJOR)
+    message(STATUS "LIBSSH_VERSION_MAJOR not found in ${LIBSSH_INCLUDE_DIRS}/libssh/libssh.h, assuming libssh is too old")
+    set(LIBSSH_FOUND FALSE)
+  endif (LIBSSH_VERSION_MAJOR)
+ENDMACRO(_libssh_check_version)
+
 if (LIBSSH_LIBRARIES AND LIBSSH_INCLUDE_DIRS)
   # in cache already
   set(LIBSSH_FOUND TRUE)
+  _libssh_check_version()
 else (LIBSSH_LIBRARIES AND LIBSSH_INCLUDE_DIRS)
 
   find_path(LIBSSH_INCLUDE_DIR
@@ -29,7 +54,7 @@ else (LIBSSH_LIBRARIES AND LIBSSH_INCLUDE_DIRS)
       ${CMAKE_INCLUDE_PATH}
       ${CMAKE_INSTALL_PREFIX}/include
   )
-  
+
   find_library(SSH_LIBRARY
     NAMES
       ssh
@@ -60,26 +85,7 @@ else (LIBSSH_LIBRARIES AND LIBSSH_INCLUDE_DIRS)
     set(LIBSSH_FOUND TRUE)
 
     if (LibSSH_FIND_VERSION)
-      file(STRINGS ${LIBSSH_INCLUDE_DIR}/libssh/libssh.h LIBSSH_VERSION_MAJOR
-        REGEX "#define[ ]+LIBSSH_VERSION_MAJOR[ ]+[0-9]+")
-      # Older versions of libssh like libssh-0.2 have LIBSSH_VERSION but not LIBSSH_VERSION_MAJOR
-      if (LIBSSH_VERSION_MAJOR)
-        string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_MAJOR ${LIBSSH_VERSION_MAJOR})
-	      file(STRINGS ${LIBSSH_INCLUDE_DIR}/libssh/libssh.h LIBSSH_VERSION_MINOR
-             REGEX "#define[ ]+LIBSSH_VERSION_MINOR[ ]+[0-9]+")
-	      string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_MINOR ${LIBSSH_VERSION_MINOR})
-	      file(STRINGS ${LIBSSH_INCLUDE_DIR}/libssh/libssh.h LIBSSH_VERSION_PATCH
-             REGEX "#define[ ]+LIBSSH_VERSION_MICRO[ ]+[0-9]+")
-      	string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_PATCH ${LIBSSH_VERSION_PATCH})
-
-	      set(LibSSH_VERSION ${LIBSSH_VERSION_MAJOR}.${LIBSSH_VERSION_MINOR}.${LIBSSH_VERSION_PATCH})
-
-	      include(FindPackageVersionCheck)
-	      find_package_version_check(LibSSH DEFAULT_MSG)
-      else (LIBSSH_VERSION_MAJOR)
-        message(STATUS "LIBSSH_VERSION_MAJOR not found in ${LIBSSH_INCLUDE_DIR}/libssh/libssh.h, assuming libssh is too old")
-        set(LIBSSH_FOUND FALSE)
-      endif (LIBSSH_VERSION_MAJOR)
+      _libssh_check_version()
     endif (LibSSH_FIND_VERSION)
   endif (SSH_FOUND)
 

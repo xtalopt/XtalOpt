@@ -10,6 +10,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 include(MacroUseCXX11)
 use_cxx11()
 
+set(CMAKE_AUTOMOC ON)
+
 find_package(Qt5 COMPONENTS Concurrent Widgets REQUIRED)
 find_package(Eigen3 REQUIRED)
 
@@ -62,34 +64,6 @@ if(ENABLE_SSH)
     include_directories(${LIBSS_INCLUDE_DIRS})
   endif(USE_CLI_SSH)
 endif()
-
-# This is a modified version of the avogadro_plugin function that produces
-# a SHARED library instead of a MODULE
-function(process_plugin plugin_name src_list)
-  string(REPLACE ".cpp" ".h" hdr_list "${src_list}")
-  qt5_wrap_cpp(moc_files ${hdr_list})
-  if(NOT "${ARGV2}" STREQUAL "")
-    # Process the UI file for this plugin
-    qt5_wrap_ui(plugin_UIS_H ${ARGV2})
-  endif(NOT "${ARGV2}" STREQUAL "")
-  if(NOT "${ARGV3}" STREQUAL "")
-    # Process the RC file and add it to the plugin
-    qt5_add_resources(plugin_RC_SRCS ${ARGV3})
-  endif(NOT "${ARGV3}" STREQUAL "")
-  # Build static lib for linking to tests
-  if(BUILD_TESTS)
-    add_library(${plugin_name}_static STATIC ${src_list} ${plugin_UIS_H}
-                ${plugin_RC_SRCS} ${moc_files})
-    target_link_libraries(${plugin_name}_static)
-  endif(BUILD_TESTS)
-  add_library(${plugin_name} SHARED ${src_list} ${plugin_UIS_H}
-              ${plugin_RC_SRCS} ${moc_files})
-  target_link_libraries(${plugin_name})
-
-  set_target_properties(${plugin_name} PROPERTIES
-                        OUTPUT_NAME ${plugin_name}
-                        PREFIX "" SUFFIX ".so")
-endfunction(process_plugin)
 
 # Set -fPIC on x86_64
 if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")

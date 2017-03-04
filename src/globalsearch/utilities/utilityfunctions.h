@@ -17,6 +17,7 @@
 #define UTILITY_FUNCTIONS_H
 
 #include <algorithm>
+#include <cctype>
 #include <set>
 #include <sstream>
 #include <vector>

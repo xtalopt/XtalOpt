@@ -13,6 +13,8 @@
   GNU General Public License for more details.
  ***********************************************************************/
 
+#include <xtalopt/xtalopt.h>
+
 #include <xtalopt/genetic.h>
 
 #include <xtalopt/structures/xtal.h>

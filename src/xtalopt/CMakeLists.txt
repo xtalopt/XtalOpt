@@ -36,7 +36,9 @@ set( xtalopt_UIS
 
 set( xtalopt_RCS xtalopt.qrc )
 
-# Get rid of a few annoying warnings
+# Get rid of a few annoying warnings. In the future, we can perhaps
+# clean up the warnings rather than ignore them... except for the
+# Clang one. That one is caused by Eigen.
 if(UNIX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-sign-compare")
 endif(UNIX)
@@ -44,13 +46,13 @@ endif(UNIX)
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-register")
 endif()
+if(MSVC)
+  # Ignore sign comparison warning
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4018")
+endif(MSVC)
 
-string(REPLACE ".cpp" ".h" hdr_list "${xtalopt_SRCS}")
-# Process MOC files
-qt5_wrap_cpp(moc_files ${hdr_list})
-# Process the UI file for this plugin
-qt5_wrap_ui(plugin_UIS_H ${xtalopt_UIS})
 # Add resources
+qt5_wrap_ui(plugin_UIS_H ${xtalopt_UIS})
 qt5_add_resources(plugin_RC_SRCS ${xtalopt_RCS})
 add_executable(xtalopt main.cpp ${xtalopt_SRCS} ${plugin_UIS_H}
                        ${plugin_RC_SRCS} ${moc_files})

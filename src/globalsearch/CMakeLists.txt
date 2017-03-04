@@ -73,9 +73,6 @@ set( globalsearch_UIS
 )
 endif()
 
-
-string(REPLACE ".cpp" ".h" hdr_list "${globalsearch_SRCS}")
-qt5_wrap_cpp(moc_files ${hdr_list})
 qt5_wrap_ui(globalsearch_UIS_H ${globalsearch_UIS})
 add_library(globalsearch STATIC ${globalsearch_SRCS} ${globalsearch_UIS} ${moc_files})
 target_link_libraries( globalsearch
@@ -93,7 +90,9 @@ if(HAVE_EXECINFO_H)
   add_definitions(-D_HAVE_EXECINFO_H_)
 endif()
 
-# Get rid of a few annoying warnings
+# Get rid of a few annoying warnings. In the future, we can probably
+# just try to fix the warnings rather than suppress them... except
+# for the clang one. That is caused by Eigen.
 if(UNIX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-sign-compare")
 endif(UNIX)
@@ -101,4 +100,7 @@ endif(UNIX)
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-register")
 endif()
-
+if(MSVC)
+  # Ignore sign comparison warning
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4018")
+endif(MSVC)
