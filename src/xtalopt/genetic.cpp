@@ -31,6 +31,8 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
+  const double PI = 3.141592653589793;
+
   Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution, double &percent1) {
 
     //
@@ -1034,8 +1036,8 @@ namespace XtalOpt {
   }
 
   void XtalOptGenetic::ripple(Xtal* xtal, double rho, uint eta, uint mu) {
-    double phase1 = getRandDouble() * 2 * M_PI;
-    double phase2 = getRandDouble() * 2 * M_PI;
+    double phase1 = getRandDouble() * 2 * PI;
+    double phase2 = getRandDouble() * 2 * PI;
 
     // Get random direction to shift atoms (x=0, y=1, z=2)
     int shiftAxis = 3, axis1, axis2;
@@ -1071,10 +1073,10 @@ namespace XtalOpt {
       v = fracCoordsList.at(i);
       shift = rho*
         cos(
-            2*M_PI*eta*v[axis1] + phase1
+            2*PI*eta*v[axis1] + phase1
             )*
         cos(
-            2*M_PI*mu*v[axis2] + phase2
+            2*PI*mu*v[axis2] + phase2
             );
       //qDebug() << "Before: " << v.x() << " " << v.y() << " " << v.z();
       v[shiftAxis] += shift;
