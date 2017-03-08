@@ -62,45 +62,20 @@ SSHConnectionLibSSH::~SSHConnectionLibSSH()
 bool SSHConnectionLibSSH::isConnected()
 {
   if (!m_session || !m_shell || !m_sftp ||
-      channel_is_closed(m_shell) || channel_is_eof(m_shell) ) {
+      channel_is_closed(m_shell) || channel_is_eof(m_shell)) {
     qWarning() << "SSHConnectionLibSSH is not connected: one or more required "
                   "channels are not initialized.";
     return false;
   };
 
-  START;
-
-  // Attempt to execute "echo ok" on the host to test if everything
-  // is working properly
-
-  QString command = "echo ok";
-  QString desiredOutput = "ok\n";
-  QString stdout_str, stderr_str;
-  int exitcode;
-  // Set a timeout of 10 seconds and check every 50 ms. It takes execute a litte
-  // bit of time to work, so 10 seconds will end up being several more seconds
-  int timeout = 10000;
-  bool success;
-  bool printWarning = false;
-  do {
-    success = execute(command, stdout_str, stderr_str, exitcode, printWarning);
-    if (stderr_str != "")
-      qWarning() << "In SSHConnectionLibSSH::isConnected(), the command "
-         	    "'echo ok' returned with an error of " << stderr_str;
-    // if stdout_str is not "ok\n", something bad happened...
-    if (stdout_str != desiredOutput) success = false;
-    if (!success) {
-      GS_MSLEEP(50);
-      timeout -= 50;
-    }
-  }
-  while (timeout >= 0 && !success);
-  if (timeout < 0 && !success) {
-    qWarning() << "SSHConnectionLibSSH::isConnected() server timeout.";
+  if (!ssh_is_connected(m_session)) {
+    qWarning() << "SSHConnectionLibSSH is not connected.";
     return false;
   }
 
-  // New final step: check to see if sftp is still connected. If it is not,
+  START;
+
+  // Check to see if sftp is still connected. If it is not,
   // then reconnect it. It will sometimes disconnect...
   if (!reconnectSftpIfNeeded()) {
     qWarning() << "In SSHConnectionLibSSH::isConnected(),"
@@ -199,10 +174,10 @@ bool SSHConnectionLibSSH::reconnectSftpIfNeeded()
   }
   // Check to see if 240 seconds have passed since the last reconnection
   // if it has, reconnect the sftp
-  int timeDifference = m_sftpTimeStamp.msecsTo(QDateTime::currentDateTime());
+  auto timeDifference = m_sftpTimeStamp.msecsTo(QDateTime::currentDateTime());
 
   // reconnect the sftp every 240 seconds
-  int interval = 240;
+  auto interval = 240;
   if (timeDifference >= interval*1000) {
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
     qDebug() << "timeDifference is " << QString::number(timeDifference);
@@ -220,6 +195,7 @@ bool SSHConnectionLibSSH::reconnectSftpIfNeeded()
   END;
   return true;
 }
+
 bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
 {
   QMutexLocker locker (&m_lock);
