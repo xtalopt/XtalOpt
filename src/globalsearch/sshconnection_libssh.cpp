@@ -47,8 +47,7 @@ SSHConnectionLibSSH::SSHConnectionLibSSH(SSHManagerLibSSH *parent)
   if (parent) {
     // block this connection so that a thrown exception won't cause problems
     connect(this, SIGNAL(unknownHostKey(const QString &)),
-            parent, SLOT(setServerKey(const QString &)),
-            Qt::QueuedConnection);
+            parent, SLOT(setServerKey(const QString &)));
   }
 }
 
@@ -245,12 +244,20 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
   case SSH_SERVER_FOUND_OTHER:
   case SSH_SERVER_FILE_NOT_FOUND:
   case SSH_SERVER_NOT_KNOWN: {
-    int hlen;
+    size_t hlen;
     unsigned char *hash = 0;
-    char *hexa;
-    hlen = ssh_get_pubkey_hash(m_session, &hash);
+    ssh_key key;
+    ssh_get_publickey(m_session, &key);
+    ssh_get_publickey_hash(key, SSH_PUBLICKEY_HASH_SHA1, &hash, &hlen);
+
+    char* hexa;
     hexa = ssh_get_hexa(hash, hlen);
     emit unknownHostKey(QString(hexa));
+
+    // Cleanup time
+    ssh_clean_pubkey_hash(&hash);
+    ssh_key_free(key);
+
     if (throwExceptions) {
       throw SSH_UNKNOWN_HOST_ERROR;
     }
