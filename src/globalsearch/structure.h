@@ -23,6 +23,7 @@
 #include <QtCore/QDateTime>
 #include <QtCore/QTextStream>
 
+#include <atomic>
 #include <vector>
 
 // source: http://en.wikipedia.org/wiki/Electronvolt
@@ -1210,8 +1211,10 @@ namespace GlobalSearch {
   protected:
     // skip Doxygen parsing
     /// \cond
-    bool m_hasEnthalpy, m_updatedSinceDupChecked, m_primitiveChecked,
-         m_skippedOptimization, m_supercellGenerationChecked;
+    bool m_hasEnthalpy;
+    std::atomic_bool m_updatedSinceDupChecked;
+    bool m_primitiveChecked, m_skippedOptimization,
+         m_supercellGenerationChecked;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
          m_currentOptStep, m_failCount;
