@@ -287,6 +287,9 @@ namespace XtalOpt {
     void updateProgressBar(size_t goal, size_t attempted, size_t succeeded);
 
    signals:
+    void updatePlot();
+    void enablePlotUpdate();
+    void disablePlotUpdate();
     void updateFormulaUnitsListUIText();
     void updateVolumesToBePerFU(uint FU);
   };

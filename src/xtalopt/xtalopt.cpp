@@ -55,8 +55,6 @@
 
 #include <randSpg/include/randSpg.h>
 
-#include <atomic> // For thread-safe types
-
 #define ANGSTROM_TO_BOHR 1.889725989
 
 using namespace GlobalSearch;
@@ -120,9 +118,7 @@ namespace XtalOpt {
 
   void XtalOpt::startSearch()
   {
-    // Don't start multiple runs at the same time...
-    static std::atomic_bool isStarting(false);
-    if (isStarting.load())
+    if (isStarting)
       return;
     isStarting = true;
 
@@ -2855,6 +2851,7 @@ namespace XtalOpt {
     filePath = newFilePath;
 
     Structure *s= 0;
+    emit disablePlotUpdate();
     for (int i = 0; i < loadedStructures.size(); i++) {
       s = loadedStructures.at(i);
       m_dialog->updateProgressValue(i);
@@ -2864,6 +2861,9 @@ namespace XtalOpt {
       if (s->getStatus() == Structure::WaitingForOptimization)
         m_queue->appendToJobStartTracker(s);
     }
+
+    emit enablePlotUpdate();
+    emit updatePlot();
 
     m_dialog->updateProgressLabel("Done!");
 

@@ -17,6 +17,8 @@
 #ifndef TAB_PLOT_H
 #define TAB_PLOT_H
 
+#include <atomic>
+
 #include <globalsearch/ui/abstracttab.h>
 
 #include "ui_tab_plot.h"
@@ -81,11 +83,12 @@ namespace XtalOpt {
     void writeSettings(const QString &filename = "") override;
     void updateGUI() override;
     void disconnectGUI() override;
+    void enablePlotUpdate() { m_enablePlotUpdate = true; };
+    void disablePlotUpdate() { m_enablePlotUpdate = false; };
     void refreshPlot();
     void updatePlot();
     void plotTrends();
     void plotDistHist();
-    void populateXtalList();
     void selectMoleculeFromIndex(int index);
     void highlightXtal(GlobalSearch::Structure *s);
     void updatePlotFormulaUnits();
@@ -94,6 +97,8 @@ namespace XtalOpt {
 
     QwtPlotMarker* addXtalToPlot(Xtal* xtal, double x, double y);
     void plotTrace(double x1, double y1, double x2, double y2);
+
+    std::atomic_bool m_enablePlotUpdate;
 
     Ui::Tab_Plot ui;
     QReadWriteLock* m_plot_mutex;

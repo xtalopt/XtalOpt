@@ -35,6 +35,7 @@ namespace XtalOpt {
 
   TabPlot::TabPlot( XtalOptDialog *parent, XtalOpt *p ) :
     AbstractTab(parent, p),
+    m_enablePlotUpdate(true),
     m_plot_mutex(new QReadWriteLock())
   {
     ui.setupUi(m_tab_widget);
@@ -49,10 +50,6 @@ namespace XtalOpt {
     // dialog connections
     connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
             this, SLOT(highlightXtal(GlobalSearch::Structure*)));
-    connect(m_opt, SIGNAL(sessionStarted()),
-            this, SLOT(populateXtalList()));
-    connect(m_opt, SIGNAL(readOnlySessionStarted()),
-            this, SLOT(populateXtalList()));
 
     // Plot connections
     connect(ui.push_refresh, SIGNAL(clicked()),
@@ -83,15 +80,17 @@ namespace XtalOpt {
             this, SLOT(selectXtal(QwtPlotMarker*)));
     connect(m_opt, SIGNAL(refreshAllStructureInfo()),
             this, SLOT(updatePlot()));
-    connect(m_opt, SIGNAL(refreshAllStructureInfo()),
-            this, SLOT(populateXtalList()));
-    connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
-            this, SLOT(populateXtalList()));
-    connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
-            this, SLOT(populateXtalList()));
     connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
             this, SLOT(updatePlot()));
     connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
+            this, SLOT(updatePlot()));
+
+    // Enable/disable updating the plot?
+    connect(m_opt, SIGNAL(disablePlotUpdate()),
+            this, SLOT(disablePlotUpdate()));
+    connect(m_opt, SIGNAL(enablePlotUpdate()),
+            this, SLOT(enablePlotUpdate()));
+    connect(m_opt, SIGNAL(updatePlot()),
             this, SLOT(updatePlot()));
 
     initialize();
@@ -191,6 +190,10 @@ namespace XtalOpt {
 
   void TabPlot::updatePlot()
   {
+    // If we have disabled plot updating, just return.
+    if (!m_enablePlotUpdate)
+      return;
+
     updateGUI();
     if (!m_opt)
       return;
@@ -596,57 +599,6 @@ namespace XtalOpt {
   {
     ui.plot->addHorizontalPlotLine(x1, x2, y1);
     ui.plot->addVerticalPlotLine(x2, y1, y2);
-  }
-
-  /// @todo move this to a background thread
-  void TabPlot::populateXtalList()
-  {
-    int ind = ui.combo_distHistXtal->currentIndex();
-    ui.combo_distHistXtal->blockSignals(true);
-    ui.combo_distHistXtal->clear();
-
-    const QList<Structure*> structures (*m_opt->tracker()->list());
-    Xtal *xtal;
-    QString s;
-    for (int i = 0; i < structures.size(); i++) {
-      xtal = qobject_cast<Xtal*>(structures.at(i));
-      s.clear();
-      // index:
-      s.append(QString::number(i) + ": ");
-      // generation and xtal ID:
-      s.append(xtal->getIDString());
-      // disposition
-      switch (xtal->getStatus()) {
-      case Xtal::Optimized:
-        s.append(" (o)");
-        break;
-      case Xtal::StepOptimized:
-      case Xtal::WaitingForOptimization:
-      case Xtal::Submitted:
-      case Xtal::InProcess:
-      case Xtal::Empty:
-      case Xtal::Restart:
-      case Xtal::Updating:
-        s.append(" (p)");
-        break;
-      case Xtal::Error:
-        s.append(" (e)");
-        break;
-      case Xtal::Killed:
-      case Xtal::Removed:
-        s.append(" (k)");
-        break;
-      case Xtal::Duplicate:
-        s.append(" (d)");
-        break;
-      default: break;
-      }
-      ui.combo_distHistXtal->addItem(s);
-    }
-    if (ind == -1)
-      ind = 0;
-    ui.combo_distHistXtal->setCurrentIndex(ind);
-    ui.combo_distHistXtal->blockSignals(false);
   }
 
   void TabPlot::selectXtal(QwtPlotMarker* pm)
