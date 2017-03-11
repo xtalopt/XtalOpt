@@ -55,7 +55,7 @@
 
 #include <randSpg/include/randSpg.h>
 
-#include <atomic>
+#include <mutex>
 
 #define ANGSTROM_TO_BOHR 1.889725989
 
@@ -120,10 +120,12 @@ namespace XtalOpt {
 
   void XtalOpt::startSearch()
   {
-    std::atomic_bool local_isStarting(false);
-    if (local_isStarting)
+    // Let's make sure it doesn't glitch if the user presses "Begin"
+    // too many times in a row.
+    static std::mutex startMutex;
+    std::unique_lock<std::mutex> startLock(startMutex, std::defer_lock_t());
+    if (!startLock.try_lock())
       return;
-    local_isStarting = true;
 
     // Populate crystal
     QList<uint> atomicNums = comp.keys();
@@ -145,14 +147,12 @@ namespace XtalOpt {
     // Check lattice parameters, volume, etc
     if (!XtalOpt::checkLimits()) {
       error("Cannot create structures. Check log for details.");
-      local_isStarting = false;
       return;
     }
 
     // Do we have a composition?
     if (comp.isEmpty()) {
       error("Cannot create structures. Composition is not set.");
-      local_isStarting = false;
       return;
     }
 
@@ -167,7 +167,6 @@ namespace XtalOpt {
                   .arg(filePath),
                   &proceed);
       if (!proceed) {
-        local_isStarting = false;
         return;
       }
       else {
@@ -182,13 +181,11 @@ namespace XtalOpt {
     QString err;
     if (!m_optimizer->isReadyToSearch(&err)) {
       error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
-      local_isStarting = false;
       return;
     }
 
     if (!m_queueInterface->isReadyToSearch(&err)) {
       error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
-      local_isStarting = false;
       return;
     }
 
@@ -222,7 +219,6 @@ namespace XtalOpt {
           ) {
         error("Using VASP and POTCAR is empty. Please select the "
               "pseudopotentials before continuing.");
-        local_isStarting = false;
         return;
       }
 
@@ -235,7 +231,6 @@ namespace XtalOpt {
     if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       if (!this->createSSHConnections()) {
         error(tr("Could not create ssh connections."));
-        local_isStarting = false;
         return;
       }
     }
