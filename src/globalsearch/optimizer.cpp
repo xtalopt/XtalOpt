@@ -465,7 +465,12 @@ namespace GlobalSearch {
     if (m_templates.isEmpty())
       return 0;
     else
-      return m_templates.values().first().size();
+      return std::max_element(m_templates.cbegin(), m_templates.cend(),
+                              [](const QStringList& lhs,
+                                 const QStringList& rhs)
+                              {
+                                return lhs.size() < rhs.size();
+                              })->size();
   }
 
   bool Optimizer::setTemplate(const QString &filename,
