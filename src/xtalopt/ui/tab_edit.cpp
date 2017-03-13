@@ -407,24 +407,6 @@ namespace XtalOpt {
 
   void TabEdit::appendOptStep()
   {
-    // Copy the current files into a new entry at the end of the opt step list
-    if (m_opt->optimizer()->getIDString() == "VASP" &&
-        m_opt->optimizer()->getData("POTCAR info").toList().isEmpty()) {
-      QMessageBox::information(m_dialog, "POTCAR info missing!",
-                               "You need to specify POTCAR information "
-                               "before adding more steps!");
-      generateVASP_POTCAR_info();
-    }
-
-    // Rebuild POTCARs if needed
-    if (m_opt->optimizer()->getIDString() == "VASP") {
-      int currentOptStep = ui_list_optStep->currentRow();
-      QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
-      potcarInfo.append(potcarInfo.at(currentOptStep));
-      m_opt->optimizer()->setData("POTCAR info", potcarInfo);
-      qobject_cast<VASPOptimizer*>(m_opt->optimizer())->buildPOTCARs();
-    }
-
     AbstractEditTab::appendOptStep();
 
     populateOptStepList();
@@ -432,18 +414,7 @@ namespace XtalOpt {
 
   void TabEdit::removeCurrentOptStep()
   {
-    int currentOptStep = ui_list_optStep->currentRow();
-
-    if (VASPOptimizer *vasp = qobject_cast<VASPOptimizer*>
-        (m_opt->optimizer())) {
-      QList<QVariant> sl = vasp->getData("POTCAR info").toList();
-      Q_ASSERT(sl.size() >= currentOptStep + 1);
-      sl.removeAt(currentOptStep);
-      vasp->setData("POTCAR info", sl);
-      vasp->buildPOTCARs();
-    }
-
-    GlobalSearch::AbstractEditTab::removeCurrentOptStep();
+    AbstractEditTab::removeCurrentOptStep();
 
     populateOptStepList();
   }
@@ -612,7 +583,7 @@ namespace XtalOpt {
       if (atomicNums.at(i) != 0) {
         symbols.append(ElemInfo::getAtomicSymbol(atomicNums.at(i)).c_str());
       }
-    } 
+    }
      qSort(symbols);
      QStringList files;
      QVariantHash hash;

@@ -152,10 +152,20 @@ namespace XtalOpt {
     // Sort the composition
     qSort(atomicNums);
     qSort(oldcomp);
-    if (getData("POTCAR info").toList().size() != getNumberOfOptSteps() ||
-        oldcomp != atomicNums
-        ) {
+
+    if (getData("POTCAR info").toList().size() == 0 || oldcomp != atomicNums)
       return false;
+
+    if (getData("POTCAR info").toList().size() != getNumberOfOptSteps()) {
+      // Add or take away POTCAR info items to match the number of opt steps.
+      QVariantList potcarInfo = getData("POTCAR info").toList();
+      // potcarInfo.size() must be greater than 0 here. The previous if
+      // statement would have caused a return if potcarInfo.size() was 0.
+      while (potcarInfo.size() < getNumberOfOptSteps())
+        potcarInfo.append(potcarInfo[0]);
+      while (potcarInfo.size() > getNumberOfOptSteps())
+        potcarInfo.pop_back();
+      setData("POTCAR info", potcarInfo);
     }
     return true;
   }
