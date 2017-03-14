@@ -59,3 +59,17 @@ add_executable(xtalopt main.cpp ${xtalopt_SRCS} ${plugin_UIS_H}
 
 target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg
                       "${QWT_LIBRARIES}")
+
+# Install instructions
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  if(UNIX AND NOT APPLE)
+    set(CMAKE_INSTALL_PREFIX "$ENV{HOME}" CACHE PATH
+        "default install path" FORCE)
+  endif()
+endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+
+if(UNIX AND NOT APPLE)
+  install(TARGETS xtalopt
+    RUNTIME DESTINATION bin
+  )
+endif()
