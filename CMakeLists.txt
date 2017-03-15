@@ -10,6 +10,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 include(MacroUseCXX11)
 use_cxx11()
 
+# Use CPACK
+include(CPack)
+
+# Automoc
 set(CMAKE_AUTOMOC ON)
 
 find_package(Qt5 COMPONENTS Concurrent Widgets REQUIRED)
@@ -38,6 +42,24 @@ option( ENABLE_SSH
 option( USE_CLI_SSH
  	"Use command line ssh/scp commands for remote communication. Use this if on linux/mac and Kerberos authentication is needed."
  	OFF )
+
+option( ENABLE_RPATH
+        "Enable rpath support on Linux and Mac. This will automatically be turned on if BUILD_INDEPENDENT_PACKAGE is true"
+        ON )
+
+option( INSTALL_DEPENDENCIES
+        "Attempt to automatically find and install non-system dependencies to CMAKE_INSTALL_PREFIX/lib. This will automatically be turned on if BUILD_INDEPENDENT_PACKAGE is true"
+        OFF )
+
+option ( BUILD_INDEPENDENT_PACKAGE
+         "Builds an independent package to be distributed. This will automatically switch on ENABLE_RPATH and INSTALL_DEPENDENCIES"
+         OFF )
+
+if(BUILD_INDEPENDENT_PACKAGE)
+  set(ENABLE_RPATH ON)
+  set(INSTALL_DEPENDENCIES ON)
+endif(BUILD_INDEPENDENT_PACKAGE)
+
 
 if(ENABLE_SSH)
   add_definitions(-DENABLE_SSH)
