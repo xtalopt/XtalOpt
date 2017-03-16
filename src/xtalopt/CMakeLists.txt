@@ -96,14 +96,20 @@ if(NOT APPLE)
   install(FILES
           ${CMAKE_SOURCE_DIR}/README.md
           ${CMAKE_SOURCE_DIR}/COPYING
-          DESTINATION ${CMAKE_INSTALL_PREFIX})
+          DESTINATION .)
   install(DIRECTORY
           ${CMAKE_SOURCE_DIR}/ChangeLogs
           ${CMAKE_SOURCE_DIR}/samples
-          DESTINATION ${CMAKE_INSTALL_PREFIX})
+          DESTINATION .)
 endif()
 
-if(INSTALL_DEPENDENCIES)
+if(INSTALL_DEPENDENCIES AND
+   NOT EXISTS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/xtalopt")
+  message("-- warning: INSTALL_DEPENDENCIES was set before xtalopt was built")
+  message("-- warning: Please run CMAKE again after xtalopt is built in order to install the dependencies")
+endif()
+
+if(INSTALL_DEPENDENCIES AND EXISTS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/xtalopt")
   # We need to tell Windows (and UNIX if there are any dependencies
   # that are not in the path) exactly where to search for dynamically linked
   # libraries
@@ -122,18 +128,13 @@ if(INSTALL_DEPENDENCIES)
   get_filename_component(QtCore_location "${QtCore_location}" DIRECTORY)
   set(DEP_SEARCH_DIRS "${DEP_SEARCH_DIRS}" "${QtCore_location}/../bin")
 
-  set(ExeLocation "${CMAKE_INSTALL_PREFIX}/bin/xtalopt")
-  set(LibLocation "${CMAKE_INSTALL_PREFIX}/lib")
+  set(ExeLocation "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/xtalopt")
+  set(LibLocation "lib")
   if(WIN32)
     set(ExeLocation "${ExeLocation}.exe")
-    set(LibLocation "${CMAKE_INSTALL_PREFIX}/bin")
+    set(LibLocation "bin")
   endif(WIN32)
 
-  install(CODE
-          "
-          include(${CMAKE_SOURCE_DIR}/cmake/modules/InstallDependencies.cmake)
-          InstallDependencies(\"${ExeLocation}\"
-                              \"${LibLocation}\"
-                              \"${DEP_SEARCH_DIRS}\")
-          ")
-endif(INSTALL_DEPENDENCIES)
+  include(MacroInstallDependencies)
+  InstallDependencies("${ExeLocation}" "${LibLocation}" "${DEP_SEARCH_DIRS}")
+endif()

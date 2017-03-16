@@ -17,38 +17,37 @@ endfunction()
 # function if you wish to change the dependencies that get installed
 # DepsearchDirs is a list of directories in which to search for the
 # dependencies (in case they may not be found automatically)
-function(InstallDependencies ExeLocation TargetLocation DepSearchDirs)
+macro(InstallDependencies ExeLocation TargetLocation DepSearchDirs)
   get_filename_component(exe_name "${ExeLocation}" NAME)
-  message("-- Installing dependencies for ${exe_name} to ${TargetLocation}")
+  message("-- Locating dependencies for ${exe_name}")
 
   # First, get the list of dependencies
   include(GetPrerequisites)
   set(exclude_system 1)
   set(recurse 1)
-  get_prerequisites("${ExeLocation}" prereq_var exclude_system
+  get_prerequisites("${ExeLocation}" prereqs exclude_system
                     recurse exepath "${DepSearchDirs}")
   # Next, loop through each dependency. In case they are sym links, follow
-  # the sym link to the original file, and then copy that and rename it to the
-  # dependency name. E.g., install libQt5Core.so.5.5.1 and rename it to
+  # the sym link to the original file, and then install that and rename it to
+  # the dependency name. E.g., install libQt5Core.so.5.5.1 and rename it to
   # libQt5Core.so.5
-  foreach(loop_var ${prereq_var})
-    # On Windows, loop through each DepSearchDir to try to find each .dll file
+  foreach(prereq ${prereqs})
+    # First, loop through each DepSearchDir to try to see if we can find it
     foreach(dir ${DepSearchDirs})
-      if(EXISTS "${dir}/${loop_var}")
-        set(loop_var "${dir}/${loop_var}")
+      if(EXISTS "${dir}/${prereq}")
+        # Set the absolute file path if we do
+        set(prereq "${dir}/${prereq}")
         break()
       endif()
     endforeach()
 
-    get_filename_component(bareVarFilename "${loop_var}" NAME)
-    get_filename_component(realfile "${loop_var}" REALPATH)
+    get_filename_component(bareVarFilename "${prereq}" NAME)
+    get_filename_component(realfile "${prereq}" REALPATH)
     get_filename_component(bareRealFilename "${realfile}" NAME)
-    message("-- Installing ${bareVarFilename}")
 
-    file(COPY "${realfile}" DESTINATION "${TargetLocation}"
-         NO_SOURCE_PERMISSIONS)
-    file(RENAME "${TargetLocation}/${bareRealFilename}"
-                "${TargetLocation}/${bareVarFilename}")
+    install(FILES "${realfile}"
+            DESTINATION ${TargetLocation}
+            RENAME ${bareVarFilename})
   endforeach()
-  message("-- Finished dependency installation for ${exe_name}")
-endfunction()
+  message("-- Finished locating dependencies for ${exe_name}")
+endmacro()
