@@ -25,16 +25,12 @@ set( xtalopt_SRCS
      ui/xtalopt_plot.cpp
      ui/tab_log.cpp)
 
-set( xtalopt_UIS
-     ui/dialog.ui
-     ui/tab_init.ui
-     ui/tab_opt.ui
-     ui/tab_progress.ui
-     ui/tab_plot.ui
-     ui/tab_log.ui
-     ui/randSpgDialog.ui)
-
 set( xtalopt_RCS xtalopt.qrc )
+
+# This is so the executable will have an icon
+if(MSVC)
+  set (xtalopt_RCS ${xtalopt_RCS} xtalopt.rc)
+endif(MSVC)
 
 # Get rid of a few annoying warnings. In the future, we can perhaps
 # clean up the warnings rather than ignore them... except for the
@@ -63,16 +59,12 @@ if(UNIX AND ENABLE_RPATH)
   endif()
 endif()
 
-# Add resources
-qt5_wrap_ui(plugin_UIS_H ${xtalopt_UIS})
-qt5_add_resources(plugin_RC_SRCS ${xtalopt_RCS})
-
 if(WIN32)
-  add_executable(xtalopt WIN32 main.cpp ${xtalopt_SRCS} ${plugin_UIS_H}
-                 ${plugin_RC_SRCS} ${moc_files})
+  add_executable(xtalopt WIN32 main.cpp ${xtalopt_SRCS}
+                 ${xtalopt_RCS} ${moc_files})
 else()
-  add_executable(xtalopt main.cpp ${xtalopt_SRCS} ${plugin_UIS_H}
-                 ${plugin_RC_SRCS} ${moc_files})
+  add_executable(xtalopt main.cpp ${xtalopt_SRCS}
+                 ${xtalopt_RCS} ${moc_files})
 endif()
 
 target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg
@@ -103,12 +95,18 @@ if(NOT APPLE)
           DESTINATION .)
 endif()
 
+set(ExeLocation "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/xtalopt")
+set(LibLocation "lib")
+if(WIN32)
+  set(ExeLocation "${ExeLocation}.exe")
+  set(LibLocation "bin")
+endif(WIN32)
+
 # If XtalOpt hasn't been built yet and INSTALL_DEPENDENCIES has
 # been set, print a warning to the user. It isn't really a problem,
 # but cmake will be run again afterwards so that we can find its
 # dependencies. Just let the user know this.
-if(INSTALL_DEPENDENCIES AND
-   NOT EXISTS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/xtalopt")
+if(INSTALL_DEPENDENCIES AND NOT EXISTS "${ExeLocation}")
   message("-- warning: INSTALL_DEPENDENCIES was set before xtalopt was built")
   message("-- warning: CMake will be automatically called again after xtalopt is built in order to install the dependencies")
   add_custom_command(TARGET xtalopt
@@ -120,7 +118,7 @@ if(INSTALL_DEPENDENCIES AND
                      COMMAND "${CMAKE_COMMAND}" "${CMAKE_SOURCE_DIR}" POST_BUILD)
 endif()
 
-if(INSTALL_DEPENDENCIES AND EXISTS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/xtalopt")
+if(INSTALL_DEPENDENCIES AND EXISTS "${ExeLocation}")
   # We need to tell Windows (and UNIX if there are any dependencies
   # that are not in the path) exactly where to search for dynamically linked
   # libraries
@@ -138,13 +136,6 @@ if(INSTALL_DEPENDENCIES AND EXISTS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/xtalopt")
   get_target_property(QtCore_location Qt5::Core LOCATION)
   get_filename_component(QtCore_location "${QtCore_location}" DIRECTORY)
   set(DEP_SEARCH_DIRS "${DEP_SEARCH_DIRS}" "${QtCore_location}/../bin")
-
-  set(ExeLocation "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/xtalopt")
-  set(LibLocation "lib")
-  if(WIN32)
-    set(ExeLocation "${ExeLocation}.exe")
-    set(LibLocation "bin")
-  endif(WIN32)
 
   include(MacroInstallDependencies)
   InstallDependencies("${ExeLocation}" "${LibLocation}" "${DEP_SEARCH_DIRS}")

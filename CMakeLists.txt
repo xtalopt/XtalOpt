@@ -19,8 +19,10 @@ use_cxx11()
 # Use CPACK
 include(XtalOptCPack)
 
-# Automoc
+# Automoc, AutoUIC, and AutoRCC
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
 
 find_package(Qt5 COMPONENTS Concurrent Widgets REQUIRED)
 find_package(Eigen3 REQUIRED)

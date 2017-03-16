@@ -58,23 +58,7 @@ set( globalsearch_SRCS
 )
 endif()
 
-set( globalsearch_UIS
-     ui/defaultedittab.ui
-)
-
-if (ENABLE_SSH)
-set( globalsearch_UIS
-     ${globalsearch_UIS}
-     queueinterfaces/loadlevelerdialog.ui
-     queueinterfaces/lsfdialog.ui
-     queueinterfaces/pbsdialog.ui
-     queueinterfaces/sgedialog.ui
-     queueinterfaces/slurmdialog.ui
-)
-endif()
-
-qt5_wrap_ui(globalsearch_UIS_H ${globalsearch_UIS})
-add_library(globalsearch STATIC ${globalsearch_SRCS} ${globalsearch_UIS} ${moc_files})
+add_library(globalsearch STATIC ${globalsearch_SRCS} ${moc_files})
 target_link_libraries( globalsearch
 		       ${LINK_LIBS}
                        Qt5::Concurrent

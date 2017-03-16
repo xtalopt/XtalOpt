@@ -16,6 +16,16 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY "XtalOpt")
 set(CPACK_PACKAGE_VENDOR "Zurek Lab")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING")
 set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
-set(CPACK_CREATE_DESKTOP_LINKS "XtalOpt")
+set(CPACK_CREATE_DESKTOP_LINKS "xtalopt")
+set(CPACK_PACKAGE_EXECUTABLES "xtalopt" "XtalOpt")
+
+# NSIS stuff
+set(CPACK_NSIS_HELP_LINK "https:\\\\xtalopt.github.io")
+set(CPACK_NSIS_URL_INFO_ABOUT "https:\\\\xtalopt.github.io")
+set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\xtalopt.exe")
+set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/src/xtalopt/images\\\\xtalopt-logo.ico")
+set(CPACK_PACKAGE_ICON  "${CMAKE_SOURCE_DIR}/src/xtalopt/images\\\\xtalopt-logo.png")
+set(CPACK_NSIS_MODIFY_PATH ON)
 
 include(CPack)
+include(InstallRequiredSystemLibraries)
