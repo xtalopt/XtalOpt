@@ -103,10 +103,21 @@ if(NOT APPLE)
           DESTINATION .)
 endif()
 
+# If XtalOpt hasn't been built yet and INSTALL_DEPENDENCIES has
+# been set, print a warning to the user. It isn't really a problem,
+# but cmake will be run again afterwards so that we can find its
+# dependencies. Just let the user know this.
 if(INSTALL_DEPENDENCIES AND
    NOT EXISTS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/xtalopt")
   message("-- warning: INSTALL_DEPENDENCIES was set before xtalopt was built")
-  message("-- warning: Please run CMAKE again after xtalopt is built in order to install the dependencies")
+  message("-- warning: CMake will be automatically called again after xtalopt is built in order to install the dependencies")
+  add_custom_command(TARGET xtalopt
+                     COMMAND "${CMAKE_COMMAND}" -E cmake_echo_color
+                     "-- Re-running cmake to locate xtalopt dependencies"
+                     POST_BUILD)
+  add_custom_command(TARGET xtalopt
+                     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+                     COMMAND "${CMAKE_COMMAND}" "${CMAKE_SOURCE_DIR}" POST_BUILD)
 endif()
 
 if(INSTALL_DEPENDENCIES AND EXISTS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/xtalopt")
