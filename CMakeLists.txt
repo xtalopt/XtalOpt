@@ -1,6 +1,12 @@
+cmake_minimum_required(VERSION 2.8.11)
 project(XtalOpt)
 
-cmake_minimum_required(VERSION 2.8.11)
+set(XtalOpt_VERSION_MAJOR 11)
+set(XtalOpt_VERSION_MINOR 0)
+set(XtalOpt_VERSION_PATCH 0)
+set(XtalOpt_VERSION "${XtalOpt_VERSION_MAJOR}.${XtalOpt_VERSION_MINOR}")
+set(XtalOpt_VERSION_FULL "${XtalOpt_VERSION}.${XtalOpt_VERSION_PATCH}")
+
 set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
 
 # Place xtalopt.exe in build dir
@@ -11,7 +17,7 @@ include(MacroUseCXX11)
 use_cxx11()
 
 # Use CPACK
-include(CPack)
+include(XtalOptCPack)
 
 # Automoc
 set(CMAKE_AUTOMOC ON)
