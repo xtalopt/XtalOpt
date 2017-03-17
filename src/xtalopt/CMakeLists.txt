@@ -55,8 +55,8 @@ if(UNIX AND ENABLE_RPATH)
   set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 
-add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp ${xtalopt_SRCS}
-               ${xtalopt_RCS} ${moc_files})
+add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp 
+               ${xtalopt_SRCS} ${xtalopt_RCS})
 
 target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg
                       "${QWT_LIBRARIES}")
@@ -77,26 +77,45 @@ install(TARGETS xtalopt
   RUNTIME DESTINATION bin
 )
 
-set(extra_files_destination ".")
+set(adjusted_install_prefix ".")
 if(APPLE)
-  set(extra_files_destination "./xtalopt.app/Contents")
+  set(adjusted_install_prefix "./xtalopt.app/Contents")
 endif(APPLE)
 
 install(FILES
         ${CMAKE_SOURCE_DIR}/README.md
         ${CMAKE_SOURCE_DIR}/COPYING
-        DESTINATION "${extra_files_destination}")
+        DESTINATION "${adjusted_install_prefix}")
 install(DIRECTORY
         ${CMAKE_SOURCE_DIR}/ChangeLogs
         ${CMAKE_SOURCE_DIR}/samples
-        DESTINATION "${extra_files_destination}")
+        DESTINATION "${adjusted_install_prefix}")
 
 # Get all dependencies and perform the "bundle" for Mac OSX
-if(APPLE)
+if(APPLE) 
+  # Install the icon to the resources directory
+  install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/images/xtalopt-logo.icns"
+          DESTINATION "${adjusted_install_prefix}/Resources")
+  # Set the icon file in the plist
+  set(MACOSX_BUNDLE_ICON_FILE "xtalopt-logo.icns")
+
+  # I'm not sure why cmake doesn't bundle cocoa for us, but since
+  # it doesn't, we need to install it ourselves...
+  include(MacroInstallCocoa)
+  InstallCocoa("${CMAKE_INSTALL_PREFIX}/xtalopt.app/Contents/plugins" 
+               QT_PLUGINS)
+
+  # We need to write a qt.conf file that points to the plugins
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/qt.conf"
+       "[Paths]\nPlugins = plugins\n")
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/qt.conf"
+          DESTINATION "${adjusted_install_prefix}/Resources")
+
+  # Time to fix up the application bundle!
   set(APPS "\${CMAKE_INSTALL_PREFIX}/xtalopt.app")
-  INSTALL(CODE "
+  install(CODE "
      include(BundleUtilities)
-     fixup_bundle(\"${APPS}\"   \"\"   \"\")
+     fixup_bundle(\"${APPS}\"   \"${QT_PLUGINS}\"   \"\")
      " COMPONENT Runtime)
 endif()
 
