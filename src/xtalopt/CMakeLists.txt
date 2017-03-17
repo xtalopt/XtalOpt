@@ -49,30 +49,21 @@ endif(MSVC)
 
 # Set up RPATH if we need to. This is necessary for a stand-alone package.
 if(UNIX AND ENABLE_RPATH)
-  if (APPLE)
-    # No instructions yet...
-  else()
-    set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib${LIB_SUFFIX}")
-    set(CMAKE_SKIP_BUILD_RPATH FALSE)
-    set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-  endif()
+  set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib${LIB_SUFFIX}")
+  set(CMAKE_SKIP_BUILD_RPATH FALSE)
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 
-if(WIN32)
-  add_executable(xtalopt WIN32 main.cpp ${xtalopt_SRCS}
-                 ${xtalopt_RCS} ${moc_files})
-else()
-  add_executable(xtalopt main.cpp ${xtalopt_SRCS}
-                 ${xtalopt_RCS} ${moc_files})
-endif()
+add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp ${xtalopt_SRCS}
+               ${xtalopt_RCS} ${moc_files})
 
 target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg
                       "${QWT_LIBRARIES}")
 
 # Install instructions
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  if(UNIX AND NOT APPLE)
+  if(UNIX)
     set(CMAKE_INSTALL_PREFIX "$ENV{HOME}" CACHE PATH
         "default install path" FORCE)
   elseif(WIN32)
@@ -81,18 +72,32 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   endif()
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
-if(NOT APPLE)
-  install(TARGETS xtalopt
-    RUNTIME DESTINATION bin
-  )
-  install(FILES
-          ${CMAKE_SOURCE_DIR}/README.md
-          ${CMAKE_SOURCE_DIR}/COPYING
-          DESTINATION .)
-  install(DIRECTORY
-          ${CMAKE_SOURCE_DIR}/ChangeLogs
-          ${CMAKE_SOURCE_DIR}/samples
-          DESTINATION .)
+install(TARGETS xtalopt
+  BUNDLE DESTINATION . 
+  RUNTIME DESTINATION bin
+)
+
+set(extra_files_destination ".")
+if(APPLE)
+  set(extra_files_destination "./xtalopt.app/Contents")
+endif(APPLE)
+
+install(FILES
+        ${CMAKE_SOURCE_DIR}/README.md
+        ${CMAKE_SOURCE_DIR}/COPYING
+        DESTINATION "${extra_files_destination}")
+install(DIRECTORY
+        ${CMAKE_SOURCE_DIR}/ChangeLogs
+        ${CMAKE_SOURCE_DIR}/samples
+        DESTINATION "${extra_files_destination}")
+
+# Get all dependencies and perform the "bundle" for Mac OSX
+if(APPLE)
+  set(APPS "\${CMAKE_INSTALL_PREFIX}/xtalopt.app")
+  INSTALL(CODE "
+     include(BundleUtilities)
+     fixup_bundle(\"${APPS}\"   \"\"   \"\")
+     " COMPONENT Runtime)
 endif()
 
 set(ExeLocation "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/xtalopt")
@@ -106,7 +111,8 @@ endif(WIN32)
 # been set, print a warning to the user. It isn't really a problem,
 # but cmake will be run again afterwards so that we can find its
 # dependencies. Just let the user know this.
-if(INSTALL_DEPENDENCIES AND NOT EXISTS "${ExeLocation}")
+if(INSTALL_DEPENDENCIES AND NOT EXISTS "${ExeLocation}"
+   AND NOT APPLE)
   message("-- warning: INSTALL_DEPENDENCIES was set before xtalopt was built")
   message("-- warning: CMake will be automatically called again after xtalopt is built in order to install the dependencies")
   add_custom_command(TARGET xtalopt
@@ -118,7 +124,7 @@ if(INSTALL_DEPENDENCIES AND NOT EXISTS "${ExeLocation}")
                      COMMAND "${CMAKE_COMMAND}" "${CMAKE_SOURCE_DIR}" POST_BUILD)
 endif()
 
-if(INSTALL_DEPENDENCIES AND EXISTS "${ExeLocation}")
+if(INSTALL_DEPENDENCIES AND EXISTS "${ExeLocation}" AND NOT APPLE)
   # We need to tell Windows (and UNIX if there are any dependencies
   # that are not in the path) exactly where to search for dynamically linked
   # libraries
