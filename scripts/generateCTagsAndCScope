@@ -1,0 +1,25 @@
+# Written by Patrick Avery - 2017
+# Run this in the root directory of XtalOpt
+# It will generate a ctags file (.ctags) and a cscope out file (.cscope.out)
+# You may need to change your ctags and cscope executable to look at
+# .ctags and .cscope.out instead of the defaults.
+
+ctags -R -f .ctags --exclude=build --exclude=spglib --exclude=.git \
+                   --exclude=randomdock --exclude=gapc
+find . -type f \
+  \( \
+  -not -path "*build*"      -a \
+  -not -path "*spglib*"     -a \
+  -not -path "*.git*"       -a \
+  -not -path "*randomdock*" -a \
+  -not -path "*gapc"        -a \
+    \( \
+      -iname "*.h"          -o \
+      -iname  "*.cpp"       -o \
+      -iname "*.c"          -o \
+      -iname "*.cxx"        -o \
+      -iname "*.hpp"           \
+    \) \
+  \) >> .cscope.files
+
+cscope -bR -i.cscope.files -f .cscope.out
