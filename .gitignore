@@ -1,3 +1,4 @@
 build
 .ctags
 .cscope.out
+.cscope.files
