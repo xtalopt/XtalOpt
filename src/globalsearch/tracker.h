@@ -16,13 +16,12 @@
 #ifndef TRACKER_H
 #define TRACKER_H
 
-#include <globalsearch/structure.h>
-
-#include <QtCore/QDebug>
+#include <QObject>
 #include <QtCore/QList>
 #include <QtCore/QReadWriteLock>
 
 namespace GlobalSearch {
+  class Structure;
 
   /**
    * @class Tracker tracker.h <globalsearch/tracker.h>

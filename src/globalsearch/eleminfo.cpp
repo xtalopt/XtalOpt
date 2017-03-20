@@ -18,6 +18,7 @@
 #include <globalsearch/utilities/utilityfunctions.h>
 
 #include <algorithm>
+#include <iostream>
 
 using namespace std;
 

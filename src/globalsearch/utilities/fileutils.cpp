@@ -3,6 +3,7 @@
 #include <QFileInfo>
 #include <QFileInfoList>
 #include <QTextStream>
+#include <QString>
 
 #include "fileutils.h"
 

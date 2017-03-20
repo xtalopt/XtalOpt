@@ -1,7 +1,7 @@
 #ifndef FILEUTILS_H
 #define FILEUTILS_H
 
-#include <QString>
+class QString;
 
 // Obtained from:
 // http://john.nachtimwald.com/2010/06/08/qt-remove-directory-and-its-contents/

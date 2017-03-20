@@ -16,6 +16,7 @@
 #include <globalsearch/queueinterface.h>
 
 #include <globalsearch/structure.h>
+#include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/structure.h>
 

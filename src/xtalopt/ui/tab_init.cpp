@@ -21,6 +21,7 @@
 
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/structure.h>
 #include <globalsearch/utilities/fileutils.h>
 
 #include <QtCore/QSettings>

@@ -23,6 +23,7 @@
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/queueinterfaces/pbs.h>
 #ifdef ENABLE_SSH
+#include <globalsearch/sshconnection.h>
 #include <globalsearch/sshmanager.h>
 #ifdef USE_CLI_SSH
 #include <globalsearch/sshmanager_cli.h>
@@ -35,6 +36,7 @@
 
 #include <QtCore/QFile>
 #include <QtCore/QThread>
+#include <QDebug>
 
 #include <QtGui/QClipboard>
 #include <QtWidgets/QMessageBox>

@@ -16,17 +16,17 @@
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 
-#include <globalsearch/optbase.h>
-#include <globalsearch/queueinterface.h>
-
 #include <QtCore/QHash>
 #include <QtCore/QObject>
 #include <QtCore/QVariant>
 #include <QtCore/QStringList>
 
+class QDialog;
+
 namespace GlobalSearch {
-  class Structure;
+  class OptBase;
   class OptimizerConfigDialog;
+  class Structure;
 
   /**
    * @class Optimizer optimizer.h <globalsearch/optimizer.h>

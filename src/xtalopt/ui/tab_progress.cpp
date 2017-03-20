@@ -17,6 +17,7 @@
 #include <xtalopt/ui/tab_progress.h>
 
 #include <globalsearch/optimizer.h>
+#include <globalsearch/queueinterface.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/tracker.h>
 #include <globalsearch/ui/abstracttab.h>

@@ -17,17 +17,23 @@
 
 #include <globalsearch/ui/abstractdialog.h>
 
-#include <globalsearch/tracker.h>
+#include <globalsearch/optbase.h>
+#include <globalsearch/optimizer.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/structure.h>
+#include <globalsearch/tracker.h>
 
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QMessageBox>
+#include <QProgressBar>
 
 #include <QtCore/QSettings>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QTabWidget>
+#include <QTimer>
 
 using namespace std;
 
@@ -41,7 +47,7 @@ namespace GlobalSearch {
     // Initialize vars, connections, etc
     progMutex = new QMutex;
     progTimer = new QTimer;
-    
+
     setWindowFlags(Qt::Window);
   }
 

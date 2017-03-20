@@ -19,12 +19,13 @@
 #include <globalsearch/structures/molecule.h>
 
 #include <QReadWriteLock>
-#include <QtCore/QDebug>
+#include <QObject>
 #include <QtCore/QDateTime>
-#include <QtCore/QTextStream>
 
 #include <atomic>
 #include <vector>
+
+class QTextStream;
 
 // source: http://en.wikipedia.org/wiki/Electronvolt
 #define EV_TO_KJ_PER_MOL 96.4853365

@@ -27,7 +27,7 @@ class QFile;
 
 namespace XtalOpt {
   struct XtalCompositionStruct;
-  class MolUnit;
+  struct MolUnit;
 
   using GlobalSearch::Matrix3;
   using GlobalSearch::Vector3;

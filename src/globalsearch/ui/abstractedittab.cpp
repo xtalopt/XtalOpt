@@ -18,7 +18,9 @@
 
 #include <globalsearch/macros.h>
 #include <globalsearch/optbase.h>
+#include <globalsearch/optimizer.h>
 #include <globalsearch/ui/abstractdialog.h>
+#include <globalsearch/queueinterface.h>
 
 #include <QtWidgets/QComboBox>
 #include <QtWidgets/QDialog>

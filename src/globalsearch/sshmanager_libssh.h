@@ -19,8 +19,6 @@
 
 #include <globalsearch/sshmanager.h>
 
-#include <QtCore/QHash>
-#include <QtCore/QObject>
 #include <QtCore/QMutex>
 #include <QtCore/QSemaphore>
 

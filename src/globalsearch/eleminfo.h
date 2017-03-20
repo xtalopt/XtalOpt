@@ -19,8 +19,6 @@
 
 #include <globalsearch/eleminfodatabase.h>
 
-#include <iostream>
-
 // For some reason, uint isn't always defined on windows...
 #ifdef _WIN32
 #ifndef UNSIGNEDINT

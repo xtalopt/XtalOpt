@@ -17,15 +17,11 @@
 
 #ifdef ENABLE_SSH
 
-#include <globalsearch/sshconnection.h>
-
-#include <QtCore/QHash>
 #include <QtCore/QObject>
-#include <QtCore/QMutex>
-#include <QtCore/QSemaphore>
 
 namespace GlobalSearch {
   class OptBase;
+  class SSHConnection;
 
   /**
    * @class SSHManager sshmanager.h <globalsearch/sshmanager.h>

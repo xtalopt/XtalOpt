@@ -19,6 +19,7 @@
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/structures/molecule.h>
 
+#include <QDebug>
 #include <QtCore/QFile>
 #include <QString>
 #include <QtCore/QTextStream>

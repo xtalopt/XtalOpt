@@ -34,6 +34,7 @@ extern "C" {
 #include <QtCore/QStringList>
 
 #include <cfloat> // For DBL_MAX
+#include <iostream>
 
 #define DEBUG_MATRIX(m) printf("| %9.5f %9.5f %9.5f |\n"        \
                                "| %9.5f %9.5f %9.5f |\n"        \

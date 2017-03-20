@@ -27,7 +27,8 @@
 #endif // WIN32
 
 #include <QtCore/QObject>
-#include <QtCore/QMutex>
+
+class QMutex;
 
 namespace GlobalSearch {
   class Structure;

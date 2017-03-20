@@ -18,19 +18,18 @@
 #ifndef ABSTRACTDIALOG_H
 #define ABSTRACTDIALOG_H
 
-#include <globalsearch/optimizer.h>
-#include <globalsearch/optbase.h>
-#include <globalsearch/structures/molecule.h>
-
-#include <QtWidgets/QProgressBar>
 #include <QtWidgets/QMessageBox>
-#include <QtWidgets/QTabWidget>
 #include <QtWidgets/QDialog>
 
-#include <QtCore/QMutex>
-#include <QtCore/QTimer>
+class QMutex;
+class QProgressBar;
+class QTabWidget;
+class QTimer;
 
 namespace GlobalSearch {
+  class OptBase;
+  class Molecule;
+  class Structure;
 
   /**
    * @class AbstractDialog abstractdialog.h <globalsearch/ui/abstractdialog.h>

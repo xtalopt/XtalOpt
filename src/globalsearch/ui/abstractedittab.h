@@ -20,7 +20,6 @@
 #include <globalsearch/ui/abstracttab.h>
 
 #include <QtCore/QList>
-#include <QtCore/QString>
 #include <QtCore/QStringList>
 
 class QComboBox;

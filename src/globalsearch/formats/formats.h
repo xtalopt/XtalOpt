@@ -12,9 +12,6 @@
   limitations under the License.
  ***********************************************************************/
 
-#include <globalsearch/structure.h>
-
-#include <QtCore/QDebug>
 #include <QtCore/QString>
 
 namespace GlobalSearch {

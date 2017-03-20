@@ -24,16 +24,13 @@ extern "C" {
 
 #include <globalsearch/sshconnection.h>
 
-#include <globalsearch/sshmanager_libssh.h>
-
-#include <QtCore/QObject>
-#include <QtCore/QString>
 #include <QtCore/QMutex>
 #include <QtCore/QDateTime>
 
 #define LIBSSH_BUFFER_SIZE 20480
 
 namespace GlobalSearch {
+  class SSHManagerLibSSH;
 
   /**
    * @class SSHConnectionLibSSH sshconnection_libssh.h <globalsearch/sshconnection_libssh.h>

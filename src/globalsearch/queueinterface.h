@@ -18,6 +18,7 @@
 
 #include <globalsearch/optbase.h>
 
+#include <QObject>
 #include <QtCore/QHash>
 #include <QtCore/QStringList>
 

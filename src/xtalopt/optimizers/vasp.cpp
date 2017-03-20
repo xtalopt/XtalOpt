@@ -17,6 +17,7 @@
 #include <xtalopt/structures/xtal.h>
 
 #include <globalsearch/macros.h>
+#include <globalsearch/queueinterface.h>
 #include <globalsearch/sshmanager.h>
 
 #include <QtCore/QDir>
