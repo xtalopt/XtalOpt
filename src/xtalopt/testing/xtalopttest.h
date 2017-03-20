@@ -16,13 +16,15 @@
 #ifndef XTALOPTTEST_H
 #define XTALOPTTEST_H
 
-#include <xtalopt/xtalopt.h>
+#include <QObject>
+#include <QtCore/QDateTime>
 
-#include <QtCore/QDebug>
-
-#include <QtWidgets/QProgressDialog>
+class QProgressDialog;
 
 namespace XtalOpt {
+
+  class XtalOpt;
+  class XtalOptDialog;
 
   class XtalOptTest : public QObject
   {

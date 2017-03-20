@@ -18,10 +18,7 @@
 
 #include <globalsearch/structure.h>
 
-#include <QtCore/QDebug>
-#include <QtCore/QDateTime>
 #include <QtCore/QMutex>
-#include <QtCore/QTextStream>
 #include <QtCore/QVector>
 
 #define EV_TO_KCAL_PER_MOL 23.060538
@@ -29,7 +26,7 @@
 class QFile;
 
 namespace XtalOpt {
-  class XtalCompositionStruct;
+  struct XtalCompositionStruct;
   class MolUnit;
 
   using GlobalSearch::Matrix3;

@@ -16,21 +16,11 @@
 #ifndef XTALOPT_H
 #define XTALOPT_H
 
-#include <xtalopt/structures/xtal.h>
-#include <xtalopt/genetic.h>
-
 #include <globalsearch/optbase.h>
-#include <globalsearch/queuemanager.h>
 #include <globalsearch/macros.h>
 
-#include <QtCore/QDebug>
-#include <QtCore/QMutex>
-#include <QtCore/QFuture>
-#include <QtCore/QStringList>
 #include <QtCore/QReadWriteLock>
 #include <QtConcurrent/QtConcurrentRun>
-
-#include <QtWidgets/QInputDialog>
 
 // Convenience...
 //static const double DEG_TO_RAD = 3.14159265359 / 180.0;
@@ -46,6 +36,7 @@ namespace GlobalSearch {
 }
 
 namespace XtalOpt {
+  class Xtal;
   class XtalOptDialog;
 
   struct XtalCompositionStruct

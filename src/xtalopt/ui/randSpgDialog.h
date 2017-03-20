@@ -17,8 +17,6 @@
 #ifndef RAND_SPG_DIALOG_H
 #define RAND_SPG_DIALOG_H
 
-#include <randSpg/include/randSpg.h>
-
 // Include the qt-generated ui header
 #include "ui_randSpgDialog.h"
 

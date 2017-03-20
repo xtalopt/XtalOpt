@@ -17,9 +17,11 @@
 #include <xtalopt/ui/tab_plot.h>
 #include <xtalopt/ui/xtalopt_plot.h>
 
+#include <xtalopt/structures/xtal.h>
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
+#include <globalsearch/queuemanager.h>
 #include <globalsearch/utilities/fileutils.h>
 
 #include <QtCore/QSettings>

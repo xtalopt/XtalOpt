@@ -16,7 +16,10 @@
 #include "xtalopttest.h"
 
 #include <xtalopt/xtalopt.h>
+#include <xtalopt/structures/xtal.h>
 #include <xtalopt/ui/dialog.h>
+
+#include <globalsearch/queuemanager.h>
 
 #include <QtCore/QDebug>
 #include <QtCore/QFile>

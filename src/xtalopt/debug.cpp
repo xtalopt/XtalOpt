@@ -20,6 +20,7 @@
 #include <globalsearch/structures/molecule.h>
 
 #include <QtCore/QFile>
+#include <QString>
 #include <QtCore/QTextStream>
 
 using GlobalSearch::Vector3;

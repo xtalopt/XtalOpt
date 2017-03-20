@@ -19,6 +19,7 @@
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
+#include <QDateTime>
 #include <QtCore/QSettings>
 
 using namespace std;

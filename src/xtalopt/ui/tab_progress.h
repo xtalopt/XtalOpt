@@ -19,8 +19,8 @@
 
 #include "ui_tab_progress.h"
 
-#include <globalsearch/tracker.h>
 #include <globalsearch/ui/abstracttab.h>
+#include <globalsearch/tracker.h>
 
 #include <QtGui/QBrush>
 

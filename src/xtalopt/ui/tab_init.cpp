@@ -15,10 +15,12 @@
  ***********************************************************************/
 
 #include <xtalopt/ui/tab_init.h>
+#include <xtalopt/ui/randSpgDialog.h>
 
 #include <xtalopt/xtalopt.h>
 
 #include <globalsearch/eleminfo.h>
+#include <globalsearch/queuemanager.h>
 #include <globalsearch/utilities/fileutils.h>
 
 #include <QtCore/QSettings>
@@ -593,7 +595,7 @@ namespace XtalOpt {
 
     for (int i = 0; i < numRows; i++) {
       unsigned int atomicNum = keys.at(i);
-    
+
       if (atomicNum == 0) continue;
 
       QString symbol	= ElemInfo::getAtomicSymbol(atomicNum).c_str();
@@ -1381,7 +1383,7 @@ namespace XtalOpt {
 
     //Distance
     double distNum = 1.0;
-    if (centerNum != 0) 
+    if (centerNum != 0)
         distNum = ElemInfo::getCovalentRadius(centerNum) + ElemInfo::getCovalentRadius(neighborNum);
     QString dist = QString::number(distNum, 'f', 3);
 
@@ -1519,7 +1521,7 @@ namespace XtalOpt {
           neighborList.append(symbol);
       }
     }
-    
+
     if (numKeys == 1)
       centerList.prepend("None");
     else centerList.append("None");

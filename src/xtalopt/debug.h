@@ -15,7 +15,7 @@
 #ifndef XTALOPTDEBUG_H
 #define XTALOPTDEBUG_H
 
-#include <QtCore/QString>
+class QString;
 
 namespace XtalOpt {
   class Xtal;

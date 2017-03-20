@@ -19,11 +19,10 @@
 
 #include <globalsearch/ui/abstracttab.h>
 
-#include "randSpgDialog.h"
-
 #include "ui_tab_init.h"
 
 namespace XtalOpt {
+  class RandSpgDialog;
   class XtalOptDialog;
   class XtalOpt;
 

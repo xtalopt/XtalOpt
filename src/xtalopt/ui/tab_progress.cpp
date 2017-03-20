@@ -17,10 +17,13 @@
 #include <xtalopt/ui/tab_progress.h>
 
 #include <globalsearch/optimizer.h>
+#include <globalsearch/queuemanager.h>
+#include <globalsearch/tracker.h>
 #include <globalsearch/ui/abstracttab.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/utilities/fileutils.h>
 
+#include <xtalopt/structures/xtal.h>
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 

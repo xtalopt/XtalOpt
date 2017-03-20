@@ -16,9 +16,11 @@
 #ifndef XTALOPTGENETIC_H
 #define XTALOPTGENETIC_H
 
-#include <xtalopt/structures/xtal.h>
+#include <QObject>
 
 namespace XtalOpt {
+  class Xtal;
+  struct XtalCompositionStruct;
 
   class XtalOptGenetic : public QObject
   {

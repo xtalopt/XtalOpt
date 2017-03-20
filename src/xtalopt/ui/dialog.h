@@ -19,10 +19,7 @@
 
 #include <globalsearch/ui/abstractdialog.h>
 
-#include <QtCore/QMutex>
-#include <QtCore/QTimer>
-
-#include <QtWidgets/QDialog>
+#include <QObject>
 
 namespace Ui {class XtalOptDialog;};
 

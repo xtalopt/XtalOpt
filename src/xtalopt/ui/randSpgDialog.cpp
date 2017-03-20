@@ -22,6 +22,7 @@
 #include "randSpgDialog.h"
 #include <randSpg/include/randSpg.h>
 
+#include <xtalopt/structures/xtal.h>
 #include <xtalopt/xtalopt.h>
 
 #include <globalsearch/eleminfo.h>
