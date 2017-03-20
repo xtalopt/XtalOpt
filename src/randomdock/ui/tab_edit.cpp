@@ -32,11 +32,11 @@
 #include <globalsearch/queueinterfaces/slurm.h>
 #endif // ENABLE_SSH
 
-#include <QtGui/QComboBox>
-#include <QtGui/QFont>
-#include <QtGui/QFileDialog>
+#include <QComboBox>
+#include <QFont>
+#include <QFileDialog>
 
-#include <QtCore/QSettings>
+#include <QSettings>
 
 using namespace GlobalSearch;
 using namespace Avogadro;

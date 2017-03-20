@@ -27,8 +27,8 @@
 #include <avogadro/primitive.h>
 #include <avogadro/primitivelist.h>
 
-#include <QtCore/QSettings>
-#include <QtCore/QReadWriteLock>
+#include <QSettings>
+#include <QReadWriteLock>
 
 using namespace std;
 using namespace Avogadro;

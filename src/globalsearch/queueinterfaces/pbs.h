@@ -25,10 +25,10 @@
 #include <globalsearch/queueinterfaces/pbsdialog.h>
 #include <globalsearch/queueinterfaces/remote.h>
 
-#include <QtCore/QDateTime>
-#include <QtCore/QReadWriteLock>
-#include <QtCore/QString>
-#include <QtCore/QStringList>
+#include <QDateTime>
+#include <QReadWriteLock>
+#include <QString>
+#include <QStringList>
 
 namespace GlobalSearch {
 

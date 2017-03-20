@@ -16,10 +16,10 @@
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 
-#include <QtCore/QHash>
-#include <QtCore/QObject>
-#include <QtCore/QVariant>
-#include <QtCore/QStringList>
+#include <QHash>
+#include <QObject>
+#include <QVariant>
+#include <QStringList>
 
 class QDialog;
 

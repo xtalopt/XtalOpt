@@ -19,7 +19,7 @@
 
 #include <globalsearch/optbase.h>
 
-#include <QtCore/QFile>
+#include <QFile>
 
 using namespace GlobalSearch;
 

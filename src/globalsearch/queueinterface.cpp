@@ -20,8 +20,8 @@
 #include <globalsearch/optimizer.h>
 #include <globalsearch/structure.h>
 
-#include <QtCore/QString>
-#include <QtCore/QStringList>
+#include <QString>
+#include <QStringList>
 
 
 namespace GlobalSearch {

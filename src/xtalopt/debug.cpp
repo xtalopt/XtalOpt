@@ -20,9 +20,9 @@
 #include <globalsearch/structures/molecule.h>
 
 #include <QDebug>
-#include <QtCore/QFile>
+#include <QFile>
 #include <QString>
-#include <QtCore/QTextStream>
+#include <QTextStream>
 
 using GlobalSearch::Vector3;
 using GlobalSearch::Matrix3;

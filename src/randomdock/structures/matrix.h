@@ -19,8 +19,8 @@
 
 #include <globalsearch/structure.h>
 
-#include <QtCore/QDateTime>
-#include <QtCore/QTextStream>
+#include <QDateTime>
+#include <QTextStream>
 
 namespace RandomDock {
 

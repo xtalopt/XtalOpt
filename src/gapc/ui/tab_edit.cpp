@@ -29,7 +29,7 @@
 #include <globalsearch/queueinterfaces/sge.h>
 #endif // ENABLE_SSH
 
-#include <QtGui/QComboBox>
+#include <QComboBox>
 
 using namespace GlobalSearch;
 using namespace std;

@@ -20,12 +20,12 @@
 #include <globalsearch/random.h>
 #include <globalsearch/structures/molecule.h>
 
-#include <QtCore/QFile>
-#include <QtCore/QDebug>
-#include <QtCore/QTimer>
-#include <QtCore/QRegExp>
-#include <QtCore/QStringList>
-#include <QtConcurrent/QtConcurrentMap>
+#include <QFile>
+#include <QDebug>
+#include <QTimer>
+#include <QRegExp>
+#include <QStringList>
+#include <QtConcurrentMap>
 
 #define KCAL_PER_MOL_TO_EV 0.043364122
 

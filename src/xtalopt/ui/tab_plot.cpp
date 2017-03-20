@@ -24,8 +24,8 @@
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/utilities/fileutils.h>
 
-#include <QtCore/QSettings>
-#include <QtCore/QReadWriteLock>
+#include <QSettings>
+#include <QReadWriteLock>
 
 #include <qwt_scale_engine.h>
 

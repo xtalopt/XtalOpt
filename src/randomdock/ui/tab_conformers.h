@@ -21,7 +21,7 @@
 
 #include "ui_tab_conformers.h"
 
-#include <QtCore/QMutex>
+#include <QMutex>
 
 namespace GlobalSearch {
   class Structure;

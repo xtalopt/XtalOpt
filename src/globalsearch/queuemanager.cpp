@@ -23,10 +23,10 @@
 #include <globalsearch/random.h>
 #include <globalsearch/structure.h>
 
-#include <QtCore/QDateTime>
-#include <QtCore/QDebug>
-#include <QtConcurrent/QtConcurrentRun>
-#include <QtCore/QTimer>
+#include <QDateTime>
+#include <QDebug>
+#include <QtConcurrentRun>
+#include <QTimer>
 
 // A couple helper functions/classes -- disable doxygen parsing:
 /// \cond

@@ -17,10 +17,10 @@
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/xtalopt.h>
 
-#include <QtCore/QDir>
-#include <QtCore/QDebug>
-#include <QtCore/QString>
-#include <QtCore/QSettings>
+#include <QDir>
+#include <QDebug>
+#include <QString>
+#include <QSettings>
 
 using namespace GlobalSearch;
 

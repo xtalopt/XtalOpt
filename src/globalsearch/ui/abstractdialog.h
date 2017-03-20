@@ -18,8 +18,8 @@
 #ifndef ABSTRACTDIALOG_H
 #define ABSTRACTDIALOG_H
 
-#include <QtWidgets/QMessageBox>
-#include <QtWidgets/QDialog>
+#include <QMessageBox>
+#include <QDialog>
 
 class QMutex;
 class QProgressBar;

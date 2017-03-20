@@ -24,11 +24,11 @@
 
 #include <Eigen/Core>
 
-#include <QtCore/QDebug>
-#include <QtCore/QDir>
-#include <QtCore/QReadLocker>
-#include <QtCore/QSettings>
-#include <QtCore/QString>
+#include <QDebug>
+#include <QDir>
+#include <QReadLocker>
+#include <QSettings>
+#include <QString>
 
 #define KCAL_PER_MOL_TO_EV 0.043364122
 

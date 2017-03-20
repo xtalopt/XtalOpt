@@ -32,7 +32,7 @@
 #include <globalsearch/sshmanager.h>
 #endif // ENABLE_SSH
 
-#include <QtCore/QDir>
+#include <QDir>
 #include <QtConcurrentRun>
 #include <QtConcurrentMap>
 

@@ -19,8 +19,8 @@
 
 #include <globalsearch/sshmanager.h>
 
-#include <QtCore/QMutex>
-#include <QtCore/QSemaphore>
+#include <QMutex>
+#include <QSemaphore>
 
 namespace GlobalSearch {
   class OptBase;

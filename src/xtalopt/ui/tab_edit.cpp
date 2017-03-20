@@ -34,13 +34,13 @@
 #include <globalsearch/queueinterfaces/slurm.h>
 #include <globalsearch/queueinterface.h>
 
-#include <QtCore/QSettings>
+#include <QSettings>
 
-#include <QtWidgets/QComboBox>
-#include <QtGui/QFont>
-#include <QtWidgets/QFileDialog>
-#include <QtWidgets/QListWidgetItem>
-#include <QtWidgets/QTextEdit>
+#include <QComboBox>
+#include <QFont>
+#include <QFileDialog>
+#include <QListWidgetItem>
+#include <QTextEdit>
 
 using namespace GlobalSearch;
 

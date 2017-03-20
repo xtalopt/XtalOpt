@@ -18,7 +18,7 @@
 
 #include <globalsearch/optimizer.h>
 
-#include <QtCore/QObject>
+#include <QObject>
 
 namespace GlobalSearch {
   class OptBase;

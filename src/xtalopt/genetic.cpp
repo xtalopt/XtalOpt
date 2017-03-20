@@ -23,7 +23,7 @@
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/random.h>
 
-#include <QtCore/QDebug>
+#include <QDebug>
 
 using namespace std;
 using namespace Eigen;

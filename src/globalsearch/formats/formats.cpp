@@ -19,8 +19,8 @@
 #include <globalsearch/formats/gulpformat.h>
 #include <globalsearch/formats/vaspformat.h>
 
-#include <QtCore/QDebug>
-#include <QtCore/QString>
+#include <QDebug>
+#include <QString>
 
 #include <map>
 

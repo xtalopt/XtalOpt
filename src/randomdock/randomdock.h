@@ -20,11 +20,11 @@
 
 #include <Eigen/Geometry>
 
-#include <QtCore/QDebug>
-#include <QtCore/QStringList>
-#include <QtCore/QReadWriteLock>
+#include <QDebug>
+#include <QStringList>
+#include <QReadWriteLock>
 
-#include <QtGui/QInputDialog>
+#include <QInputDialog>
 
 namespace GlobalSearch {
   class SlottedWaitCondition;

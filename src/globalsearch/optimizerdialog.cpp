@@ -22,14 +22,14 @@
 #include <globalsearch/optimizer.h>
 #include <globalsearch/ui/abstractdialog.h>
 
-#include <QtWidgets/QDialog>
-#include <QtWidgets/QDialogButtonBox>
-#include <QtWidgets/QSpacerItem>
-#include <QtWidgets/QLabel>
-#include <QtWidgets/QLineEdit>
-#include <QtWidgets/QVBoxLayout>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QSpacerItem>
+#include <QLabel>
+#include <QLineEdit>
+#include <QVBoxLayout>
 
-#include <QtCore/QObject>
+#include <QObject>
 
 namespace GlobalSearch {
 

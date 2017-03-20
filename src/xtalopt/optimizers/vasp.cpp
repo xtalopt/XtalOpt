@@ -20,10 +20,10 @@
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/sshmanager.h>
 
-#include <QtCore/QDir>
-#include <QtCore/QDebug>
-#include <QtCore/QString>
-#include <QtCore/QSettings>
+#include <QDir>
+#include <QDebug>
+#include <QString>
+#include <QSettings>
 
 using namespace GlobalSearch;
 

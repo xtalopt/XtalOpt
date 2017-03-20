@@ -20,8 +20,8 @@
 #include <examplesearch/examplesearch.h>
 #include <globalsearch/macros.h>
 
-#include <QtCore/QSettings>
-#include <QtCore/QDateTime>
+#include <QSettings>
+#include <QDateTime>
 
 using namespace std;
 using namespace Avogadro;

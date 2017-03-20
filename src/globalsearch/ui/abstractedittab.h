@@ -19,8 +19,8 @@
 
 #include <globalsearch/ui/abstracttab.h>
 
-#include <QtCore/QList>
-#include <QtCore/QStringList>
+#include <QList>
+#include <QStringList>
 
 class QComboBox;
 class QLineEdit;

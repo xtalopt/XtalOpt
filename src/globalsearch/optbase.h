@@ -26,7 +26,7 @@
 #endif // NOMINMAX
 #endif // WIN32
 
-#include <QtCore/QObject>
+#include <QObject>
 
 class QMutex;
 

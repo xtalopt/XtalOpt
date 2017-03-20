@@ -20,7 +20,7 @@
 
 #include <QReadWriteLock>
 #include <QObject>
-#include <QtCore/QDateTime>
+#include <QDateTime>
 
 #include <atomic>
 #include <vector>

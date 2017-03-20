@@ -32,11 +32,11 @@
 #include <globalsearch/queueinterfaces/loadleveler.h>
 #endif // ENABLE_SSH
 
-#include <QtWidgets/QComboBox>
-#include <QtGui/QFont>
-#include <QtWidgets/QFileDialog>
+#include <QComboBox>
+#include <QFont>
+#include <QFileDialog>
 
-#include <QtCore/QSettings>
+#include <QSettings>
 
 using namespace GlobalSearch;
 using namespace Avogadro;

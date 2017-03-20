@@ -24,8 +24,8 @@ extern "C" {
 
 #include <globalsearch/sshconnection.h>
 
-#include <QtCore/QMutex>
-#include <QtCore/QDateTime>
+#include <QMutex>
+#include <QDateTime>
 
 #define LIBSSH_BUFFER_SIZE 20480
 

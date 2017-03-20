@@ -21,8 +21,8 @@
 #include <globalsearch/sshconnection.h>
 #include <globalsearch/structure.h>
 
-#include <QtCore/QFile>
-#include <QtCore/QTextStream>
+#include <QFile>
+#include <QTextStream>
 
 namespace GlobalSearch {
 

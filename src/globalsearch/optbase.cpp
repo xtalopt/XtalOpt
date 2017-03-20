@@ -34,14 +34,14 @@
 #include <globalsearch/structure.h>
 #include <globalsearch/ui/abstractdialog.h>
 
-#include <QtCore/QFile>
-#include <QtCore/QThread>
+#include <QFile>
+#include <QThread>
 #include <QDebug>
 
-#include <QtGui/QClipboard>
-#include <QtWidgets/QMessageBox>
-#include <QtWidgets/QApplication>
-#include <QtWidgets/QInputDialog>
+#include <QClipboard>
+#include <QMessageBox>
+#include <QApplication>
+#include <QInputDialog>
 
 //#define OPTBASE_DEBUG
 

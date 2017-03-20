@@ -21,9 +21,9 @@
 
 #include <openbabel/mol.h>
 
-#include <QtCore/QDebug>
+#include <QDebug>
 
-#include <QtGui/QProgressDialog>
+#include <QProgressDialog>
 
 using namespace std;
 using namespace Avogadro;

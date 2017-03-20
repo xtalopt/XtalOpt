@@ -10,10 +10,10 @@
 // http://lists.trolltech.com/qt-interest/2006-07/thread00444-0.html
 // I owe the author my eternal gratitude.
 
-#include <QtCore/QObject>
-#include <QtCore/QString>
-#include <QtCore/QStringList>
-#include <QtCore/QRegExp>
+#include <QObject>
+#include <QString>
+#include <QStringList>
+#include <QRegExp>
 
 #ifdef _HAVE_EXECINFO_H_
 #include <execinfo.h>

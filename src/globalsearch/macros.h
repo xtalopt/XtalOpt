@@ -15,7 +15,7 @@
 #ifndef GLOBALSEARCHMACROS_H
 #define GLOBALSEARCHMACROS_H
 
-#include <QtCore/QSettings>
+#include <QSettings>
 
 #include <cstdlib>
 

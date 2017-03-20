@@ -22,7 +22,7 @@
 #include <globalsearch/ui/abstracttab.h>
 #include <globalsearch/tracker.h>
 
-#include <QtGui/QBrush>
+#include <QBrush>
 
 class QTimer;
 class QMutex;

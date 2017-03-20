@@ -17,8 +17,8 @@
 #define TRACKER_H
 
 #include <QObject>
-#include <QtCore/QList>
-#include <QtCore/QReadWriteLock>
+#include <QList>
+#include <QReadWriteLock>
 
 namespace GlobalSearch {
   class Structure;

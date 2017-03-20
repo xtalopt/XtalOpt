@@ -21,12 +21,12 @@
 #include <globalsearch/random.h>
 #include <globalsearch/structure.h>
 
-#include <QtCore/QDir>
-#include <QtCore/QFile>
-#include <QtCore/QHash>
-#include <QtCore/QProcess>
-#include <QtCore/QString>
-#include <QtCore/QTextStream>
+#include <QDir>
+#include <QFile>
+#include <QHash>
+#include <QProcess>
+#include <QString>
+#include <QTextStream>
 
 #ifdef WIN32
 // For extracting PIDs

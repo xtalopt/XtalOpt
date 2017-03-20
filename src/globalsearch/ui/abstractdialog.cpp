@@ -23,15 +23,15 @@
 #include <globalsearch/structure.h>
 #include <globalsearch/tracker.h>
 
-#include <QtWidgets/QApplication>
-#include <QtWidgets/QLabel>
-#include <QtWidgets/QFileDialog>
-#include <QtWidgets/QPushButton>
-#include <QtWidgets/QMessageBox>
+#include <QApplication>
+#include <QLabel>
+#include <QFileDialog>
+#include <QPushButton>
+#include <QMessageBox>
 #include <QProgressBar>
 
-#include <QtCore/QSettings>
-#include <QtConcurrent/QtConcurrentRun>
+#include <QSettings>
+#include <QtConcurrentRun>
 #include <QTabWidget>
 #include <QTimer>
 

@@ -29,10 +29,10 @@
 #include <avogadro/atom.h>
 #include <avogadro/molecule.h>
 
-#include <QtCore/QSettings>
-#include <QtCore/QtConcurrentRun>
+#include <QSettings>
+#include <QtConcurrentRun>
 
-#include <QtGui/QMessageBox>
+#include <QMessageBox>
 
 using namespace std;
 using namespace Avogadro;

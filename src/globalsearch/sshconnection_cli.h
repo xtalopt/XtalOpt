@@ -19,8 +19,8 @@
 
 #include <globalsearch/sshconnection.h>
 
-#include <QtCore/QString>
-#include <QtCore/QStringList>
+#include <QString>
+#include <QStringList>
 
 namespace GlobalSearch {
   class OptBase;

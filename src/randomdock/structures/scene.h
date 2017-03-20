@@ -18,7 +18,7 @@
 
 #include <globalsearch/structure.h>
 
-#include <QtCore/QDebug>
+#include <QDebug>
 
 namespace RandomDock {
   class Scene : public GlobalSearch::Structure

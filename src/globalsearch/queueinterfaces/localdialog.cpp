@@ -22,16 +22,16 @@
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/ui/abstractdialog.h>
 
-#include <QtWidgets/QCheckBox>
-#include <QtWidgets/QDialog>
-#include <QtWidgets/QDialogButtonBox>
-#include <QtWidgets/QHBoxLayout>
-#include <QtWidgets/QLabel>
-#include <QtWidgets/QLineEdit>
-#include <QtWidgets/QSpacerItem>
-#include <QtWidgets/QVBoxLayout>
+#include <QCheckBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QSpacerItem>
+#include <QVBoxLayout>
 
-#include <QtCore/QObject>
+#include <QObject>
 
 namespace GlobalSearch {
 

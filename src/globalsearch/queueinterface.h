@@ -19,8 +19,8 @@
 #include <globalsearch/optbase.h>
 
 #include <QObject>
-#include <QtCore/QHash>
-#include <QtCore/QStringList>
+#include <QHash>
+#include <QStringList>
 
 class QDialog;
 

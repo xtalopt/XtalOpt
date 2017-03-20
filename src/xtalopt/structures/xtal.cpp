@@ -28,10 +28,10 @@ extern "C" {
 
 #include <xtalcomp/xtalcomp.h>
 
-#include <QtCore/QFile>
-#include <QtCore/QDebug>
-#include <QtCore/QRegExp>
-#include <QtCore/QStringList>
+#include <QFile>
+#include <QDebug>
+#include <QRegExp>
+#include <QStringList>
 
 #include <cfloat> // For DBL_MAX
 #include <iostream>

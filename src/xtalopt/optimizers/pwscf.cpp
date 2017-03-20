@@ -15,9 +15,9 @@
 
 #include <xtalopt/optimizers/pwscf.h>
 
-#include <QtCore/QDir>
-#include <QtCore/QString>
-#include <QtCore/QDebug>
+#include <QDir>
+#include <QString>
+#include <QDebug>
 
 using namespace GlobalSearch;
 

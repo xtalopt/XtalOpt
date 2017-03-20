@@ -36,10 +36,10 @@
 
 #include <openbabel/mol.h>
 
-#include <QtCore/QDir>
-#include <QtCore/QFile>
-#include <QtCore/QStringList>
-#include <QtCore/QThread>
+#include <QDir>
+#include <QFile>
+#include <QStringList>
+#include <QThread>
 
 using namespace std;
 using namespace Avogadro;

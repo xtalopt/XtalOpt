@@ -19,7 +19,7 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/sshconnection_libssh.h>
 
-#include <QtCore/QDebug>
+#include <QDebug>
 
 #define START //qDebug() << __FUNCTION__ << " called...";
 #define END //qDebug() << __FUNCTION__ << " finished...";

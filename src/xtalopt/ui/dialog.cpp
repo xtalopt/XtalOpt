@@ -30,13 +30,13 @@
 #include <xtalopt/ui/tab_plot.h>
 #include <xtalopt/ui/tab_log.h>
 
-#include <QtCore/QSettings>
-#include <QtConcurrent/QtConcurrentRun>
-#include <QtCore/QUrl>
+#include <QSettings>
+#include <QtConcurrentRun>
+#include <QUrl>
 
-#include <QtGui/QDesktopServices>
-#include <QtWidgets/QFileDialog>
-#include <QtWidgets/QMessageBox>
+#include <QDesktopServices>
+#include <QFileDialog>
+#include <QMessageBox>
 
 using namespace GlobalSearch;
 using namespace std;

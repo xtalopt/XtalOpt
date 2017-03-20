@@ -24,11 +24,11 @@
 #include <globalsearch/structure.h>
 #include <globalsearch/utilities/fileutils.h>
 
-#include <QtCore/QSettings>
+#include <QSettings>
 
-#include <QtWidgets/QHeaderView>
-#include <QtWidgets/QTableWidget>
-#include <QtWidgets/QTableWidgetItem>
+#include <QHeaderView>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 
 #include "dialog.h"
 

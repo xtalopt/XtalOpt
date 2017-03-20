@@ -20,11 +20,11 @@
 
 #include <avogadro/extension.h>
 
-#include <QtCore/QObject>
-#include <QtCore/QList>
-#include <QtCore/QString>
+#include <QObject>
+#include <QList>
+#include <QString>
 
-#include <QtGui/QUndoCommand>
+#include <QUndoCommand>
 
 namespace RandomDock {
 

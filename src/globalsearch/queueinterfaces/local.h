@@ -19,7 +19,7 @@
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/macros.h>
 
-#include <QtCore/QProcess>
+#include <QProcess>
 
 namespace GlobalSearch {
   class LocalQueueInterfaceConfigDialog;

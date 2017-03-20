@@ -17,7 +17,7 @@
 #ifndef ABSTRACTTAB_H
 #define ABSTRACTTAB_H
 
-#include <QtCore/QObject>
+#include <QObject>
 
 namespace GlobalSearch {
   class AbstractDialog;

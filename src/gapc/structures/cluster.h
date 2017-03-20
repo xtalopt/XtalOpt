@@ -18,8 +18,8 @@
 
 #include <globalsearch/structure.h>
 
-#include <QtCore/QVariant>
-#include <QtCore/QHash>
+#include <QVariant>
+#include <QHash>
 
 namespace GAPC {
   class Cluster : public GlobalSearch::Structure

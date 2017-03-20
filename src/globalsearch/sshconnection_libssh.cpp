@@ -19,8 +19,8 @@
 #include <globalsearch/sshmanager_libssh.h>
 #include <globalsearch/macros.h>
 
-#include <QtCore/QDebug>
-#include <QtCore/QDir>
+#include <QDebug>
+#include <QDir>
 
 #include <fstream>
 #include <sstream>

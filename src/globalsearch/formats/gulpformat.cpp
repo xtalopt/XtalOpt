@@ -20,8 +20,8 @@
 
 #include <fstream>
 
-#include <QtCore/QDebug>
-#include <QtCore/QString>
+#include <QDebug>
+#include <QString>
 
 namespace GlobalSearch {
 

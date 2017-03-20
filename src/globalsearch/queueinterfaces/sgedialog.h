@@ -22,7 +22,7 @@
 //Doxygen should ignore this file:
 /// @cond
 
-#include <QtWidgets/QDialog>
+#include <QDialog>
 
 namespace Ui {
   class SgeConfigDialog;

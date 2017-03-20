@@ -24,10 +24,10 @@
 
 #include <avogadro/moleculefile.h>
 
-#include <QtCore/QSettings>
+#include <QSettings>
 
-#include <QtGui/QFileDialog>
-#include <QtGui/QMessageBox>
+#include <QFileDialog>
+#include <QMessageBox>
 
 using namespace std;
 using namespace Avogadro;

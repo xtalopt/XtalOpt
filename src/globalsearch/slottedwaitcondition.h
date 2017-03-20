@@ -16,9 +16,9 @@
 #ifndef SLOTTEDWAITCONDITION_H
 #define SLOTTEDWAITCONDITION_H
 
-#include <QtCore/QObject>
-#include <QtCore/QMutex>
-#include <QtCore/QWaitCondition>
+#include <QObject>
+#include <QMutex>
+#include <QWaitCondition>
 
 namespace GlobalSearch {
 

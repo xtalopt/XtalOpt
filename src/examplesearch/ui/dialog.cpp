@@ -24,13 +24,13 @@
 
 #include <globalsearch/macros.h>
 
-#include <QtCore/QTimer>
-#include <QtCore/QSettings>
-#include <QtConcurrent/QtConcurrentRun>
+#include <QTimer>
+#include <QSettings>
+#include <QtConcurrentRun>
 
-#include <QtWidgets/QFileDialog>
-#include <QtWidgets/QMessageBox>
-#include <QtGui/QProgressDialog>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QProgressDialog>
 
 using namespace std;
 using namespace Avogadro;

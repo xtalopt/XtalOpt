@@ -17,7 +17,7 @@
 #define XTALOPTTEST_H
 
 #include <QObject>
-#include <QtCore/QDateTime>
+#include <QDateTime>
 
 class QProgressDialog;
 

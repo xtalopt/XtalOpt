@@ -18,8 +18,8 @@
 
 #include <globalsearch/sshmanager_cli.h>
 
-#include <QtCore/QDebug>
-#include <QtCore/QProcess>
+#include <QDebug>
+#include <QProcess>
 
 namespace GlobalSearch {
 

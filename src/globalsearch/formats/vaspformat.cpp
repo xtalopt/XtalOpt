@@ -23,8 +23,8 @@
 #include <iomanip>
 #include <iostream>
 
-#include <QtCore/QDebug>
-#include <QtCore/QString>
+#include <QDebug>
+#include <QString>
 
 using std::getline;
 using std::string;

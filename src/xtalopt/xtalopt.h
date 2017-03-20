@@ -19,8 +19,8 @@
 #include <globalsearch/optbase.h>
 #include <globalsearch/macros.h>
 
-#include <QtCore/QReadWriteLock>
-#include <QtConcurrent/QtConcurrentRun>
+#include <QReadWriteLock>
+#include <QtConcurrentRun>
 
 // Convenience...
 //static const double DEG_TO_RAD = 3.14159265359 / 180.0;

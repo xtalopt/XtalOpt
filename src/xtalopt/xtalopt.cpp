@@ -43,15 +43,15 @@
 #include <globalsearch/queueinterfaces/remote.h>
 #endif // ENABLE_SSH
 
-#include <QtCore/QDir>
-#include <QtCore/QList>
-#include <QtCore/QFile>
-#include <QtCore/QDebug>
-#include <QtCore/QTimer>
-#include <QtCore/QFileInfo>
-#include <QtCore/QReadWriteLock>
-#include <QtConcurrent/QtConcurrentRun>
-#include <QtConcurrent/QtConcurrentMap>
+#include <QDir>
+#include <QList>
+#include <QFile>
+#include <QDebug>
+#include <QTimer>
+#include <QFileInfo>
+#include <QReadWriteLock>
+#include <QtConcurrentRun>
+#include <QtConcurrentMap>
 
 #include <randSpg/include/randSpg.h>
 

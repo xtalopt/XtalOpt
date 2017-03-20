@@ -21,13 +21,13 @@
 
 #include <globalsearch/queuemanager.h>
 
-#include <QtCore/QDebug>
-#include <QtCore/QFile>
-#include <QtCore/QTimer>
-#include <QtConcurrent/QtConcurrentRun>
+#include <QDebug>
+#include <QFile>
+#include <QTimer>
+#include <QtConcurrentRun>
 
-#include <QtWidgets/QInputDialog>
-#include <QtWidgets/QProgressDialog>
+#include <QInputDialog>
+#include <QProgressDialog>
 
 using namespace GlobalSearch;
 

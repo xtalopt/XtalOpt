@@ -17,8 +17,8 @@
 
 #ifdef ENABLE_SSH
 
-#include <QtCore/QObject>
-#include <QtCore/QString>
+#include <QObject>
+#include <QString>
 
 namespace GlobalSearch {
   class OptBase;

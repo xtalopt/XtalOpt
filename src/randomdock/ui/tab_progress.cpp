@@ -24,13 +24,13 @@
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/macros.h>
 
-#include <QtCore/QTimer>
-#include <QtCore/QSettings>
-#include <QtCore/QMutexLocker>
-#include <QtCore/QtConcurrentRun>
+#include <QTimer>
+#include <QSettings>
+#include <QMutexLocker>
+#include <QtConcurrentRun>
 
-#include <QtGui/QMenu>
-#include <QtGui/QInputDialog>
+#include <QMenu>
+#include <QInputDialog>
 
 using namespace std;
 using namespace Avogadro;

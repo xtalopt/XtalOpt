@@ -16,9 +16,9 @@
 #include <globalsearch/tracker.h>
 #include <globalsearch/structure.h>
 
-#include <QtCore/QList>
-#include <QtCore/QDebug>
-#include <QtCore/QReadWriteLock>
+#include <QList>
+#include <QDebug>
+#include <QReadWriteLock>
 
 using namespace Eigen;
 using namespace std;

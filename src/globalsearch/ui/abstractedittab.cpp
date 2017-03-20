@@ -22,15 +22,15 @@
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/queueinterface.h>
 
-#include <QtWidgets/QComboBox>
-#include <QtWidgets/QDialog>
-#include <QtWidgets/QFileDialog>
-#include <QtWidgets/QLineEdit>
-#include <QtWidgets/QListWidget>
-#include <QtWidgets/QPushButton>
-#include <QtWidgets/QTextEdit>
+#include <QComboBox>
+#include <QDialog>
+#include <QFileDialog>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QPushButton>
+#include <QTextEdit>
 
-#include <QtCore/QDebug>
+#include <QDebug>
 
 namespace GlobalSearch {
 

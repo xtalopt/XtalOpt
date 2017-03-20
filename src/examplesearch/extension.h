@@ -18,9 +18,9 @@
 
 #include <avogadro/extension.h>
 
-#include <QtCore/QObject>
-#include <QtCore/QList>
-#include <QtCore/QString>
+#include <QObject>
+#include <QList>
+#include <QString>
 
 class QUndoCommand;
 

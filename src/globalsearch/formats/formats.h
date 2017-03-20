@@ -12,7 +12,7 @@
   limitations under the License.
  ***********************************************************************/
 
-#include <QtCore/QString>
+#include <QString>
 
 namespace GlobalSearch {
 

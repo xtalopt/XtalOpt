@@ -18,8 +18,8 @@
 
 #include <globalsearch/structure.h>
 
-#include <QtCore/QMutex>
-#include <QtCore/QVector>
+#include <QMutex>
+#include <QVector>
 
 #define EV_TO_KCAL_PER_MOL 23.060538
 

@@ -28,10 +28,10 @@
 #include <globalsearch/sshmanager.h>
 #include <globalsearch/structure.h>
 
-#include <QtCore/QDir>
-#include <QtCore/QFile>
-#include <QtCore/QString>
-#include <QtCore/QStringList>
+#include <QDir>
+#include <QFile>
+#include <QString>
+#include <QStringList>
 
 namespace GlobalSearch {
 

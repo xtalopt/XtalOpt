@@ -28,16 +28,16 @@
 #include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
 
-#include <QtWidgets/QFileDialog>
-#include <QtCore/QTimer>
-#include <QtCore/QSettings>
-#include <QtCore/QMutexLocker>
-#include <QtConcurrent/QtConcurrentRun>
-#include <QtCore/QDir>
-#include <QtCore/QFile>
+#include <QFileDialog>
+#include <QTimer>
+#include <QSettings>
+#include <QMutexLocker>
+#include <QtConcurrentRun>
+#include <QDir>
+#include <QFile>
 
-#include <QtWidgets/QMenu>
-#include <QtWidgets/QInputDialog>
+#include <QMenu>
+#include <QInputDialog>
 
 using namespace GlobalSearch;
 

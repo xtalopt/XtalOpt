@@ -19,9 +19,9 @@
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/optbase.h>
 
-#include <QtWidgets/QApplication>
+#include <QApplication>
 
-#include <QtCore/QThread>
+#include <QThread>
 
 namespace GlobalSearch {
 

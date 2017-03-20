@@ -17,7 +17,7 @@
 
 #include <QCheckBox>
 #include <QSpinBox>
-#include <QtCore/QDebug>
+#include <QDebug>
 
 #include "randSpgDialog.h"
 #include <randSpg/include/randSpg.h>
