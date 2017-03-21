@@ -86,7 +86,7 @@ string readNumbers(string input)
 
 bool ElemInfo::readComposition(string comp, vector<uint>& atoms)
 {
-  comp = removeSpacesAndReturns(comp);
+  comp = removeSpaces(comp);
   atoms.clear();
   while (comp.size() != 0 && !containsOnlySpaces(comp)) {
 

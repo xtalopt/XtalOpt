@@ -1,7 +1,7 @@
 /**********************************************************************
-  utilityFunctions.h - Various utility functions for randSpg
+  utilityFunctions.h - Various utility functions
 
-  Copyright (C) 2015 - 2016 by Patrick S. Avery
+  Copyright (C) 2015 - 2017 by Patrick S. Avery
 
   This source code is released under the New BSD License, (the "License").
 
@@ -18,30 +18,18 @@
 
 #include <algorithm>
 #include <cctype>
+#include <regex>
 #include <set>
 #include <sstream>
 #include <vector>
 
 inline bool containsOnlySpaces(const std::string& str)
 {
-  if (str.find_first_not_of(' ') != std::string::npos) return false;
-  return true;
-}
-
-// Basic split of a string based upon a delimiter.
-static inline std::vector<std::string> split(const std::string& s, char delim,
-                                             bool skipEmpty = true)
-{
-  std::vector<std::string> elems;
-  std::istringstream ss(s); // istringstream is faster to use than stringstream
-  std::string item;
-  while (getline(ss, item, delim)) {
-    if (!skipEmpty)
-      elems.push_back(item);
-    else if (!containsOnlySpaces(item))
-      elems.push_back(item);
-  }
-  return elems;
+  return std::all_of(str.begin(), str.end(),
+                     [](char c)
+                     {
+                       return std::isspace(static_cast<unsigned char>(c));
+                     });
 }
 
 // Used to replace ')' with ' ', for instance
@@ -79,20 +67,19 @@ static inline std::string useHTMLReturns(const std::string& str)
   return ret;
 }
 
-static inline std::string removeSpacesAndReturns(const std::string& str)
+static inline std::string removeSpaces(std::string str)
 {
-  std::string ret = str;
-  ret.erase(std::remove(ret.begin(), ret.end(), '\n'), ret.end());
-  ret.erase(std::remove(ret.begin(), ret.end(), '\r'), ret.end());
-  ret.erase(std::remove(ret.begin(), ret.end(), ' '), ret.end());
-  return ret;
+  str.erase(std::remove_if(str.begin(), str.end(),
+                           [](char c)
+                           {
+                             return std::isspace(static_cast<unsigned char>(c));
+                           }), str.end());
+  return str;
 }
 
 static inline void removeEmptyStrings(std::vector<std::string>& v)
 {
-  for (size_t i = 0; i < v.size(); i++) {
-    if (v[i].size() == 0) v.erase(v.begin() + i);
-  }
+  v.erase(std::remove_if(v.begin(), v.end(), containsOnlySpaces), v.end());
 }
 
 template <typename T>
@@ -107,18 +94,6 @@ static inline std::vector<T> removeDuplicates(const std::vector<T>& v)
 static inline void removeChar(std::string& s, char c)
 {
   s.erase(std::remove(s.begin(), s.end(), c), s.end());
-}
-
-// Used to change something like "(0,0,0)(0.5,0,0)" to {"0,0,0","0.5,0,0"}
-static inline std::vector<std::string>
-splitAndRemoveParenthesis(const std::string& s)
-{
-  std::vector<std::string> ret = split(s, '(');
-  // Remove any empty strings
-  removeEmptyStrings(ret);
-  // Remove all other parenthesis
-  for (size_t i = 0; i < ret.size(); i++) removeChar(ret[i], ')');
-  return ret;
 }
 
 // Basic check to see if a string is a number
@@ -281,6 +256,47 @@ static std::istream& reverseGetline(std::istream& in, std::string& line)
       break;
   }
   return in;
+}
+
+// Basic split of a string based upon a delimiter.
+static inline std::vector<std::string> split(const std::string& s, char delim,
+                                             bool skipEmpty = true)
+{
+  std::vector<std::string> elems;
+  std::istringstream ss(s); // istringstream is faster to use than stringstream
+  std::string item;
+  while (getline(ss, item, delim)) {
+    if (!skipEmpty)
+      elems.push_back(item);
+    else if (!containsOnlySpaces(item))
+      elems.push_back(item);
+  }
+  return elems;
+}
+
+static inline std::vector<std::string> reSplit(const std::string& s,
+                                               const std::string& regex,
+                                               bool skipEmpty = true)
+{
+  std::regex re(regex);
+  std::sregex_token_iterator first(s.begin(), s.end(), re, -1),
+                             last;
+  std::vector<std::string> ret({first, last});
+  if (skipEmpty)
+    removeEmptyStrings(ret);
+  return ret;
+}
+
+// Used to change something like "(0,0,0)(0.5,0,0)" to {"0,0,0","0.5,0,0"}
+static inline std::vector<std::string>
+splitAndRemoveParenthesis(const std::string& s)
+{
+  std::vector<std::string> ret = split(s, '(');
+  // Remove any empty strings
+  removeEmptyStrings(ret);
+  // Remove all other parenthesis
+  for (size_t i = 0; i < ret.size(); i++) removeChar(ret[i], ')');
+  return ret;
 }
 
 #endif
