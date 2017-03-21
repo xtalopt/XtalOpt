@@ -1213,7 +1213,7 @@ namespace XtalOpt {
       // Check to see if a supercell should be formed by mitosis
       if (using_mitotic_growth && FU != 0) {
         QList<Structure*> tempStructures = m_queue->getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
-        QList<uint> numberOfEachFormulaUnit = Structure::countStructuresOfEachFormulaUnit(&tempStructures, maxFU);
+        QList<uint> numberOfEachFormulaUnit = Structure::countStructuresOfEachFormulaUnit(&tempStructures, maxFU());
 
         // The number of formula units to use to make the super cell must be a multiple of the larger formula unit, and there must be as many at least five optimized structures. If there aren't, then generate more.
         for (int i = FU - 1; 0 < i; i--) {
@@ -1317,7 +1317,7 @@ namespace XtalOpt {
                                     optimizedStructures.at(i)->numAtoms());
           uint numAtomsPerFU = optimizedStructures.at(i)->numAtoms() /
                                optimizedStructures.at(i)->getFormulaUnits();
-          for (size_t j = 1; j <= maxFU; j++) {
+          for (size_t j = 1; j <= maxFU(); j++) {
             if (!onTheFormulaUnitsList(j)) continue;
             // j represents a formula unit that is being checked.
             // If optimizedStructures.at(i) can create a supercell with formula
@@ -1340,7 +1340,7 @@ namespace XtalOpt {
                 // We may need to create more than one supercell from a given
                 // xtal, so only update this if it is generating an xtal with
                 // the maxFU
-                if (j == maxFU) xtal->setSupercellGenerationChecked(true);
+                if (j == maxFU()) xtal->setSupercellGenerationChecked(true);
                 xtal->lock().unlock();
                 Xtal* nxtal = generateSuperCell(xtal->getFormulaUnits(), j,
                                                 xtal, true, false);
@@ -1393,29 +1393,31 @@ namespace XtalOpt {
     // Count the number of structures of each formula unit
     QList<uint> numberOfEachFormulaUnit =
            Structure::countStructuresOfEachFormulaUnit(&allStructures,
-                                                                maxFU);
+                                                       maxFU());
 
     // If there are not yet at least 5 of any one FU, make more of that FU
     // Will generate smaller FU's first
-    for (int i = minFU; i <= maxFU; ++i) {
-      if ( (numberOfEachFormulaUnit.at(i) < 5) && (onTheFormulaUnitsList(i) == true)) {
+    for (uint i = minFU(); i <= maxFU(); ++i) {
+      if ( (numberOfEachFormulaUnit.at(i) < 5) && (onTheFormulaUnitsList(i))) {
         uint FU = i;
         return generateNewXtal(FU);
       }
     }
 
     // Find the formula unit with the smallest number of total structures.
-    uint smallest = numberOfEachFormulaUnit.at(minFU);
-    for (int i = minFU; i <= maxFU; ++i) {
-      if ( (numberOfEachFormulaUnit.at(i) < smallest) && (onTheFormulaUnitsList(i) == true)) {
+    uint smallest = numberOfEachFormulaUnit.at(minFU());
+    for (uint i = minFU(); i <= maxFU(); ++i) {
+      if ( (numberOfEachFormulaUnit.at(i) < smallest) &&
+           (onTheFormulaUnitsList(i))) {
         smallest = numberOfEachFormulaUnit.at(i);
       }
     }
 
     // Pick the formula unit with the smallest number of optimized structures. If there are two or more formula units that have the smallest number of optimized structures, pick the smallest
     uint FU;
-    for (int i = minFU; i <= maxFU; i++) {
-      if ( (numberOfEachFormulaUnit.at(i) == smallest) && (onTheFormulaUnitsList(i) == true)) {
+    for (uint i = minFU(); i <= maxFU(); i++) {
+      if ( (numberOfEachFormulaUnit.at(i) == smallest) &&
+           (onTheFormulaUnitsList(i))) {
         FU = i;
         break;
       }
@@ -2793,8 +2795,6 @@ namespace XtalOpt {
       // Update the formula unit list. This is for loading older versions
       // of xtalopt
       if (i == 0) {
-        maxFU = xtal->getFormulaUnits();
-        minFU = xtal->getFormulaUnits();
         formulaUnitsList.clear();
         formulaUnitsList.append(xtal->getFormulaUnits());
         emit updateFormulaUnitsListUIText();
@@ -3326,4 +3326,21 @@ namespace XtalOpt {
               .arg(attempted).arg(succeeded).arg(attempted - succeeded));
   }
 
+  uint XtalOpt::minFU()
+  {
+    if (formulaUnitsList.empty())
+      formulaUnitsList.append(1);
+    else
+      qSort(formulaUnitsList);
+    return formulaUnitsList[0];
+  }
+
+  uint XtalOpt::maxFU()
+  {
+    if (formulaUnitsList.empty())
+      formulaUnitsList.append(1);
+    else
+      qSort(formulaUnitsList);
+    return formulaUnitsList[formulaUnitsList.size() - 1];
+  }
 } // end namespace XtalOpt

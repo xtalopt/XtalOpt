@@ -162,8 +162,7 @@ namespace XtalOpt {
       gamma_min,        gamma_max,
       vol_min, vol_max, vol_fixed,
       new_vol_min,      new_vol_max,
-      scaleFactor, minRadius,
-      minFU,            maxFU;
+      scaleFactor,      minRadius;
 
     int
         divisions,                   // Number of divisions for mitosis
@@ -228,6 +227,8 @@ namespace XtalOpt {
                               unsigned int generation,
                               const QString &parents);
     bool onTheFormulaUnitsList(uint FU);
+    uint minFU();
+    uint maxFU();
     void printSubXtal(Xtal *xtal,
                               unsigned int generation,
                               uint id);
@@ -284,7 +285,6 @@ namespace XtalOpt {
     void updateFormulaUnitsListUIText();
     void updateVolumesToBePerFU(uint FU);
   };
-
 } // end namespace XtalOpt
 
 #endif

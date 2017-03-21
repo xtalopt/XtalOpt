@@ -47,8 +47,6 @@ namespace XtalOpt {
     // Initialize the formula units list...
     if (xtalopt->formulaUnitsList.isEmpty()) {
       xtalopt->formulaUnitsList.append(1);
-      xtalopt->minFU = 1;
-      xtalopt->maxFU = 1;
       // We need to append this one twice... lowestEnthalpyFUList.at(0) does not
       // correspond to anything. lowestEnthalpyFUList.at(1) corresponds to 1 FU
       xtalopt->lowestEnthalpyFUList.append(0);
@@ -748,10 +746,6 @@ namespace XtalOpt {
       structures.at(i)->setSupercellGenerationChecked(false);
     }
 
-    // Update minFU, maxFU, and formulaUnitsList
-    xtalopt->minFU = formulaUnitsList.at(0);
-    xtalopt->maxFU = formulaUnitsList.at(formulaUnitsList.size() - 1);
-
     // If we changed the formula units, reset the spacegroup generation
     // min xtals per FU to be zero
     if (xtalopt->formulaUnitsList != formulaUnitsList &&
@@ -772,7 +766,7 @@ namespace XtalOpt {
     xtalopt->formulaUnitsList = formulaUnitsList;
 
     // Update the size of the lowestEnthalpyFUList
-    while (xtalopt->lowestEnthalpyFUList.size() <= xtalopt->maxFU)
+    while (xtalopt->lowestEnthalpyFUList.size() <= xtalopt->maxFU())
       xtalopt->lowestEnthalpyFUList.append(0);
 
     // Update UI
@@ -1497,7 +1491,7 @@ namespace XtalOpt {
       if (atomicNum != 0) {
         symbol = QString(ElemInfo::getAtomicSymbol((atomicNum)).c_str());
       }
-      unsigned int qComp = xtalopt->comp[atomicNum].quantity * xtalopt->minFU;
+      unsigned int qComp = xtalopt->comp[atomicNum].quantity * xtalopt->minFU();
 
       //Add center atom to list
       unsigned int qMolUnit = 0;
@@ -1543,7 +1537,7 @@ namespace XtalOpt {
         q += it->numNeighbors;
     }
 
-    int numCenters = xtalopt->comp[centerNum].quantity * xtalopt->minFU - q;
+    int numCenters = xtalopt->comp[centerNum].quantity * xtalopt->minFU() - q;
 
     if (centerNum == neighborNum)
       numCenters /= 2;
@@ -1580,7 +1574,8 @@ namespace XtalOpt {
       }
     }
 
-    int numNeighbors = xtalopt->comp[neighborNum].quantity * xtalopt->minFU - q;
+    int numNeighbors = xtalopt->comp[neighborNum].quantity *
+                       xtalopt->minFU() - q;
 
     if (divide == true)
       numNeighbors = numNeighbors / numCenters;
