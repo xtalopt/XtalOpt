@@ -157,7 +157,7 @@ namespace XtalOpt {
     }
 
     // Check if xtalopt data is already saved at the filePath
-    if (QFile::exists(filePath + "/xtalopt.state")) {
+    if (QFile::exists(filePath + "/xtalopt.state") && !testingMode) {
       bool proceed;
       needBoolean(tr("Warning: XtalOpt data is already saved at: %1"
                      "\nDo you wish to proceed and overwrite it?"
