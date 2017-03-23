@@ -249,15 +249,13 @@ namespace XtalOpt {
       qDebug() << "Killing extra TabProgress::updateAllInfo() call";
       return;
     }
-    m_opt->tracker()->lockForRead();
-    m_infoUpdateTracker.lockForWrite();
+    QReadLocker trackerLock(m_opt->tracker()->rwLock());
+    QWriteLocker infoUpdateTrackerLock(m_infoUpdateTracker.rwLock());
     QList<Structure*> *structures = m_opt->tracker()->list();
     for (int i = 0; i < ui.table_list->rowCount(); i++) {
       m_infoUpdateTracker.append(structures->at(i));
       emit infoUpdate();
     }
-    m_infoUpdateTracker.unlock();
-    m_opt->tracker()->unlock();
     m_update_all_mutex->unlock();
   }
 

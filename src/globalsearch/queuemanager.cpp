@@ -1032,16 +1032,17 @@ namespace GlobalSearch {
 
   QList<Structure*> QueueManager::lockForNaming()
   {
-    QList<Structure*> structures = getAllStructures();
-    // prevent compiler from optimizing "structures" out:
-    structures.size();
-
     m_tracker->lockForRead();
-    return structures;
+    m_newStructureTracker.lockForRead();
+    QList<Structure*> list(*m_tracker->list());
+    list.append(*m_newStructureTracker.list());
+
+    return list;
   }
 
   void QueueManager::unlockForNaming(Structure *s)
   {
+    m_newStructureTracker.unlock();
     if (!s) {
       m_tracker->unlock();
       return;
