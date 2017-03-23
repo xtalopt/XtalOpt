@@ -31,7 +31,7 @@
 #include <xtalopt/ui/tab_log.h>
 
 #include <QSettings>
-#include <QtConcurrentRun>
+#include <QtConcurrent>
 #include <QUrl>
 
 #include <QDesktopServices>

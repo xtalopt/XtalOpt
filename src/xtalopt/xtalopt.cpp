@@ -50,8 +50,7 @@
 #include <QTimer>
 #include <QFileInfo>
 #include <QReadWriteLock>
-#include <QtConcurrentRun>
-#include <QtConcurrentMap>
+#include <QtConcurrent>
 
 #include <randSpg/include/randSpg.h>
 
