@@ -951,31 +951,37 @@ namespace GlobalSearch {
     return list;
   }
 
-  QList<Structure*> QueueManager::getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit()
+  QList<Structure*>
+  QueueManager::getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit()
   {
     QList<Structure*> list;
-    m_tracker->lockForRead();
-    Structure *s;
-    for (int i = 0; i < m_tracker->list()->size(); i++) {
-      s = m_tracker->list()->at(i);
-      s->lock().lockForRead();
+    QReadLocker trackerLocker(m_tracker->rwLock());
+    for (int i = 0; i < m_tracker->list()->size(); ++i) {
+      Structure* s = m_tracker->list()->at(i);
+      QReadLocker sLocker(&s->lock());
       if (s->getStatus() == Structure::Optimized)
         list.append(s);
       else if (s->getStatus() == Structure::Supercell) {
         // We only want to add one copy of each supercell for each formula
         // unit. So do not add the supercell s if there is already one present.
-        for (size_t j = 0; j < list.size(); j++) {
-          if (list.at(j)->getStatus() == Structure::Supercell &&
-              list.at(j)->getSupercellString() == s->getSupercellString() &&
-              list.at(j)->getFormulaUnits() == s->getFormulaUnits())
+        for (int j = 0; j < list.size(); ++j) {
+          Structure* s2 = list.at(j);
+          // These should never be equal, but in case they are, continue
+          if (s == s2)
+            continue;
+          QReadLocker s2Locker(&s2->lock());
+          if (s2->getStatus() == Structure::Supercell &&
+              s2->getSupercellString() == s->getSupercellString() &&
+              s2->getFormulaUnits() == s->getFormulaUnits()) {
             break;
+          }
           // Made it to the end of the list and did not find a match!
-          else if (j == list.size() - 1) list.append(s);
+          else if (j == list.size() - 1) {
+            list.append(s);
+          }
         }
       }
-      s->lock().unlock();
     }
-    m_tracker->unlock();
     return list;
   }
 
