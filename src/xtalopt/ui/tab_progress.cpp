@@ -183,13 +183,12 @@ namespace XtalOpt {
   void TabProgress::addNewEntry()
   {
     // Prevent XtalOpt threads from modifying the table
-    QMutexLocker locker (m_mutex);
+    QMutexLocker locker(m_mutex);
 
     // The new entry will be at the end of the table, so determine the index:
     int index = ui.table_list->rowCount();
-    m_opt->tracker()->lockForRead();
+    QReadLocker trackerLocker(m_opt->tracker()->rwLock());
     Xtal *xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
-    m_opt->tracker()->unlock();
     //qDebug() << "TabProgress::addNewEntry() at index " << index;
 
     // Turn off signals
@@ -209,7 +208,7 @@ namespace XtalOpt {
     m_infoUpdateTracker.lockForWrite();
     m_infoUpdateTracker.append(xtal);
     m_infoUpdateTracker.unlock();
-    locker.unlock();
+
     XO_Prog_TableEntry e;
     xtal->lock().lockForRead();
     e.elapsed = xtal->getOptElapsed();
@@ -249,8 +248,8 @@ namespace XtalOpt {
       qDebug() << "Killing extra TabProgress::updateAllInfo() call";
       return;
     }
-    QReadLocker trackerLock(m_opt->tracker()->rwLock());
-    QWriteLocker infoUpdateTrackerLock(m_infoUpdateTracker.rwLock());
+    QReadLocker trackerLocker(m_opt->tracker()->rwLock());
+    QWriteLocker infoUpdateTrackerLocker(m_infoUpdateTracker.rwLock());
     QList<Structure*> *structures = m_opt->tracker()->list();
     for (int i = 0; i < ui.table_list->rowCount(); i++) {
       m_infoUpdateTracker.append(structures->at(i));
@@ -296,9 +295,8 @@ namespace XtalOpt {
     }
     m_infoUpdateTracker.unlock();
 
-    m_opt->tracker()->lockForRead();
+    QReadLocker trackerLocker(m_opt->tracker()->rwLock());
     int i = m_opt->tracker()->list()->indexOf(structure);
-    m_opt->tracker()->unlock();
 
     Xtal *xtal = qobject_cast<Xtal*>(structure);
 
@@ -317,7 +315,7 @@ namespace XtalOpt {
     e.brush = QBrush (Qt::white);
     e.pen = QBrush (Qt::black);
 
-    QReadLocker xtalLocker (&xtal->lock());
+    QReadLocker xtalLocker(&xtal->lock());
     e.elapsed = xtal->getOptElapsed();
     e.gen     = xtal->getGeneration();
     e.id      = xtal->getIDNumber();
@@ -438,7 +436,7 @@ namespace XtalOpt {
   void TabProgress::setTableEntry(int row, const XO_Prog_TableEntry & e)
   {
     // Lock the table
-    QMutexLocker locker (m_mutex);
+    QMutexLocker locker(m_mutex);
 
     ui.table_list->item(row, TimeElapsed)->setText(e.elapsed);
     ui.table_list->item(row, Gen)->setText(QString::number(e.gen));

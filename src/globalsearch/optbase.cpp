@@ -185,9 +185,8 @@ namespace GlobalSearch {
     // 0   0.3  0.4  0.8  1
     for (int i = 0; i < structures.size(); i++) {
       s = structures.at(i);
-      s->lock().lockForRead();
+      QReadLocker(&s->lock());
       probs.append( ( (s->getEnthalpy() / static_cast<double>(s->numAtoms())) - lowest ) / spread);
-      s->lock().unlock();
     }
     // Subtract each value from one, and find the sum of the resulting list
     // Find the sum of the resulting list
@@ -236,8 +235,8 @@ namespace GlobalSearch {
       savePending = false;
       return false;
     }
-    QReadLocker trackerLocker (m_tracker->rwLock());
-    QMutexLocker locker (stateFileMutex);
+    QReadLocker trackerLocker(m_tracker->rwLock());
+    QMutexLocker locker(stateFileMutex);
     QString filename;
     if (stateFilename.isEmpty()) {
       filename = filePath + "/" + m_idString.toLower() + ".state";
@@ -285,7 +284,7 @@ namespace GlobalSearch {
     Structure* structure;
     for (int i = 0; i < structures->size(); i++) {
       structure = structures->at(i);
-      structure->lock().lockForRead();
+      QReadLocker structureLocker(&structure->lock());
       // Set index here -- this is the only time these are written, so
       // this is "ok" under a read lock because of the savePending logic
       structure->setIndex(i);
@@ -327,7 +326,6 @@ namespace GlobalSearch {
                                       .arg(structureStateFileName));
       }
       structure->writeSettings(structureStateFileName);
-      structure->lock().unlock();
     }
 
     /////////////////////////
@@ -364,9 +362,9 @@ namespace GlobalSearch {
     for (int i = 0; i < sortedStructures.size(); i++) {
       structure = sortedStructures.at(i);
       if (!structure) continue; // In case there was a problem copying.
-      structure->lock().lockForRead();
+      QReadLocker structureLocker(&structure->lock());
       out << structure->getResultsEntry() << endl;
-      structure->lock().unlock();
+      structureLocker.unlock();
       if (notify) {
         m_dialog->stopProgressUpdate();
       }

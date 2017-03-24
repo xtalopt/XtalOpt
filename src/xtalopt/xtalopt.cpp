@@ -3068,20 +3068,26 @@ namespace XtalOpt {
   }
 
   void XtalOpt::checkForDuplicates() {
-    if (isStarting) {
+    if (isStarting)
       return;
-    }
+
     QtConcurrent::run(this, &XtalOpt::checkForDuplicates_);
   }
 
   void XtalOpt::checkForDuplicates_() {
+    // Only run this function once at a time. If it is already running,
+    // just return.
+    static std::mutex dupMutex;
+    std::unique_lock<std::mutex> dupLock(dupMutex, std::defer_lock_t());
+    if (!dupLock.try_lock())
+      return;
+
     QReadLocker trackerLocker(m_tracker->rwLock());
     const QList<Structure*>* structures = m_tracker->list();
     QList<Xtal*> xtals;
     xtals.reserve(structures->size());
     std::for_each(structures->begin(), structures->end(),
       [&xtals](Structure* s){ xtals.append(qobject_cast<Xtal*>(s)); });
-    trackerLocker.unlock();
 
     // Build helper structs
     QList<dupCheckStruct> dupSts;

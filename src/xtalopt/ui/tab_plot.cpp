@@ -255,6 +255,7 @@ namespace XtalOpt {
       performTrace = true;
     }
 
+    QReadLocker trackerLocker(m_opt->tracker()->rwLock());
     const QList<Structure*> structures (*m_opt->tracker()->list());
     for (int i = 0; i < structures.size(); i++) {
       x = y = 0;
