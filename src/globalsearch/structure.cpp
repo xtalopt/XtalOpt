@@ -25,7 +25,7 @@
 #include <QTimer>
 #include <QRegExp>
 #include <QStringList>
-#include <QtConcurrentMap>
+#include <QtConcurrent>
 
 #define KCAL_PER_MOL_TO_EV 0.043364122
 

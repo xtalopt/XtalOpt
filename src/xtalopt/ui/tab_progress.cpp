@@ -32,7 +32,7 @@
 #include <QTimer>
 #include <QSettings>
 #include <QMutexLocker>
-#include <QtConcurrentRun>
+#include <QtConcurrent>
 #include <QDir>
 #include <QFile>
 

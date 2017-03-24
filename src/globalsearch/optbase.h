@@ -27,6 +27,7 @@
 #endif // WIN32
 
 #include <QObject>
+#include <QMutex>
 
 class QMutex;
 

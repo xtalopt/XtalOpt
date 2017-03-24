@@ -20,7 +20,7 @@
 #include <globalsearch/macros.h>
 
 #include <QReadWriteLock>
-#include <QtConcurrentRun>
+#include <QtConcurrent>
 
 // Convenience...
 //static const double DEG_TO_RAD = 3.14159265359 / 180.0;

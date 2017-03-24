@@ -24,7 +24,7 @@
 #include <QDebug>
 #include <QFile>
 #include <QTimer>
-#include <QtConcurrentRun>
+#include <QtConcurrent>
 
 #include <QInputDialog>
 #include <QProgressDialog>

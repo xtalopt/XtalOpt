@@ -31,7 +31,7 @@
 #include <QProgressBar>
 
 #include <QSettings>
-#include <QtConcurrentRun>
+#include <QtConcurrent>
 #include <QTabWidget>
 #include <QTimer>
 
