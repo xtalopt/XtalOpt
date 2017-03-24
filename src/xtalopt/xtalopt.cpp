@@ -122,7 +122,7 @@ namespace XtalOpt {
     // Let's make sure it doesn't glitch if the user presses "Begin"
     // too many times in a row.
     static std::mutex startMutex;
-    std::unique_lock<std::mutex> startLock(startMutex, std::defer_lock_t());
+    std::unique_lock<std::mutex> startLock(startMutex, std::defer_lock);
     if (!startLock.try_lock())
       return;
 
@@ -3074,12 +3074,19 @@ namespace XtalOpt {
   }
 
   void XtalOpt::checkForDuplicates_() {
-    // Only run this function once at a time. If it is already running,
-    // just return.
+    // Only run this function with one thread at a time.
     static std::mutex dupMutex;
-    std::unique_lock<std::mutex> dupLock(dupMutex, std::defer_lock_t());
-    if (!dupLock.try_lock())
-      return;
+    std::unique_lock<std::mutex> dupLock(dupMutex, std::defer_lock);
+    if (!dupLock.try_lock()) {
+      // If a thread is already running this function, we can wait. But
+      // we should only have one waiter at any time.
+      static std::mutex waitMutex;
+      std::unique_lock<std::mutex> waitLock(waitMutex, std::defer_lock);
+      if (!waitLock.try_lock())
+        return;
+      else
+        dupLock.lock();
+    }
 
     QReadLocker trackerLocker(m_tracker->rwLock());
     const QList<Structure*>* structures = m_tracker->list();
