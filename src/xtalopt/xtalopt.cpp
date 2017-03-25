@@ -2947,8 +2947,8 @@ namespace XtalOpt {
     if (st.i == st.j)
       return;
     Xtal *kickXtal, *keepXtal;
-    QWriteLocker iLocker(&st.i->lock());
-    QWriteLocker jLocker(&st.j->lock());
+    QReadLocker iLocker(&st.i->lock());
+    QReadLocker jLocker(&st.j->lock());
     // if they are already both duplicates, just return.
     if (st.i->getStatus() == Xtal::Duplicate &&
         st.j->getStatus() == Xtal::Duplicate) {
@@ -2981,6 +2981,9 @@ namespace XtalOpt {
           kickXtal->getStatus() == Xtal::Supercell) {
         return;
       }
+      // Unlock the kickXtal and lock it for writing
+      kickXtal == st.i ? iLocker.unlock() : jLocker.unlock();
+      QWriteLocker kickXtalLocker(&kickXtal->lock());
       kickXtal->setStatus(Xtal::Duplicate);
       kickXtal->setDuplicateString(QString("%1x%2")
                                    .arg(keepXtal->getGeneration())
@@ -2993,8 +2996,8 @@ namespace XtalOpt {
     if (st.i == st.j)
       return;
     Xtal *smallerFormulaUnitXtal, *largerFormulaUnitXtal;
-    QWriteLocker iLocker(&st.i->lock());
-    QWriteLocker jLocker(&st.j->lock());
+    QReadLocker iLocker(&st.i->lock());
+    QReadLocker jLocker(&st.j->lock());
 
     // Determine the larger formula unit structure and the smaller formula unit
     // structure.
@@ -3033,6 +3036,9 @@ namespace XtalOpt {
 
     if (tempXtal2->compareCoordinates(*largerFormulaUnitXtal, st.tol_len,
                                      st.tol_ang)) {
+      // Unlock the larger formula unit xtal and lock it for writing
+      largerFormulaUnitXtal == st.i ? iLocker.unlock() : jLocker.unlock();
+      QWriteLocker largerFUXtalLocker(&largerFormulaUnitXtal->lock());
 
       // We're going to label the larger formula unit structure a supercell
       // of the smaller. The smaller structure is more fundamental and should
