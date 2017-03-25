@@ -32,18 +32,17 @@
 /* ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE */
 /* POSSIBILITY OF SUCH DAMAGE. */
 
-#ifndef __hall_symbol_H__
-#define __hall_symbol_H__
+#ifndef __delaunay_H__
+#define __delaunay_H__
 
-#include "spacegroup.h"
-#include "symmetry.h"
 #include "mathfunc.h"
 
-int hal_match_hall_symbol_db(double origin_shift[3],
-			     SPGCONST double bravais_lattice[3][3],
-			     const int hall_number,
-			     const Centering centering,
-			     const Symmetry *symmetry,
-			     const double symprec);
+int del_delaunay_reduce(double lattice_new[3][3],
+			SPGCONST double lattice[3][3],
+			const double symprec);
+int del_delaunay_reduce_2D(double min_lattice[3][3],
+			   SPGCONST double lattice[3][3],
+			   const int unique_axis,
+			   const double symprec);
 
 #endif

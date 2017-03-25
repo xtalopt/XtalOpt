@@ -1,4 +1,4 @@
-/* Copyright (C) 2010 Atsushi Togo */
+/* Copyright (C) 2016 Atsushi Togo */
 /* All rights reserved. */
 
 /* This file is part of spglib. */
@@ -32,17 +32,9 @@
 /* ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE */
 /* POSSIBILITY OF SUCH DAMAGE. */
 
-#ifndef __lattice_H__
-#define __lattice_H__
+#ifndef __arithmetic_H__
+#define __arithmetic_H__
 
-#include "mathfunc.h"
-
-int lat_smallest_lattice_vector(double lattice_new[3][3],
-				SPGCONST double lattice[3][3],
-				const double symprec);
-int lat_smallest_lattice_vector_2D(double min_lattice[3][3],
-				   SPGCONST double lattice[3][3],
-				   const int unique_axis,
-				   const double symprec);
+int arth_get_symbol(char symbol[7], const int spgroup_number);
 
 #endif

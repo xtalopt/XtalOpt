@@ -35,7 +35,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "lattice.h"
 #include "pointgroup.h"
 #include "symmetry.h"
 #include "mathfunc.h"
@@ -307,7 +306,7 @@ static int rot_axes[][3] = {
   { 1, 1, 0},
   { 0, 1,-1},
   {-1, 0, 1},
-  { 1,-1, 0},
+  { 1,-1, 0}, 
   { 1, 1, 1}, /* 10 */
   {-1, 1, 1},
   { 1,-1, 1},
@@ -376,8 +375,6 @@ static int rot_axes[][3] = {
 
 static int get_pointgroup_number_by_rotations(SPGCONST int rotations[][3][3],
 					      const int num_rotations);
-static PointSymmetry get_pointsymmetry(SPGCONST int rotations[][3][3],
-				       const int num_rotations);
 static int get_pointgroup_number(SPGCONST PointSymmetry * pointsym);
 static int get_pointgroup_class_table(int table[10],
 				      SPGCONST PointSymmetry * pointsym);
@@ -437,17 +434,17 @@ Pointgroup ptg_get_transformation_matrix(int transform_mat[3][3],
       transform_mat[i][j] = 0;
     }
   }
-
+  
   pg_num = get_pointgroup_number_by_rotations(rotations, num_rotations);
-
+  
   if (pg_num > 0) {
     pointgroup = ptg_get_pointgroup(pg_num);
-    pointsym = get_pointsymmetry(rotations, num_rotations);
+    pointsym = ptg_get_pointsymmetry(rotations, num_rotations);
     get_axes(axes, pointgroup.laue, &pointsym);
     set_transformation_matrix(transform_mat, axes);
   } else {
     pointgroup = ptg_get_pointgroup(0);
-  }
+  }    
 
   return pointgroup;
 }
@@ -461,8 +458,12 @@ Pointgroup ptg_get_pointgroup(const int pointgroup_number)
   pointgroup.number = pointgroup_number;
   pointgroup_type = pointgroup_data[pointgroup_number];
   strcpy(pointgroup.symbol, pointgroup_type.symbol);
+  strcpy(pointgroup.schoenflies, pointgroup_type.schoenflies);
   for (i = 0; i < 5; i++) {
     if (pointgroup.symbol[i] == ' ') {pointgroup.symbol[i] = '\0';}
+  }
+  for (i = 0; i < 3; i++) {
+    if (pointgroup.schoenflies[i] == ' ') {pointgroup.schoenflies[i] = '\0';}
   }
   pointgroup.holohedry = pointgroup_type.holohedry;
   pointgroup.laue = pointgroup_type.laue;
@@ -472,17 +473,8 @@ Pointgroup ptg_get_pointgroup(const int pointgroup_number)
   return pointgroup;
 }
 
-static int get_pointgroup_number_by_rotations(SPGCONST int rotations[][3][3],
-					      const int num_rotations)
-{
-  PointSymmetry pointsym;
-
-  pointsym = get_pointsymmetry(rotations, num_rotations);
-  return get_pointgroup_number(&pointsym);
-}
-
-static PointSymmetry get_pointsymmetry(SPGCONST int rotations[][3][3],
-				       const int num_rotations)
+PointSymmetry ptg_get_pointsymmetry(SPGCONST int rotations[][3][3],
+				    const int num_rotations)
 {
   int i, j;
   PointSymmetry pointsym;
@@ -503,6 +495,15 @@ static PointSymmetry get_pointsymmetry(SPGCONST int rotations[][3][3],
   return pointsym;
 }
 
+static int get_pointgroup_number_by_rotations(SPGCONST int rotations[][3][3],
+					      const int num_rotations)
+{
+  PointSymmetry pointsym;
+
+  pointsym = ptg_get_pointsymmetry(rotations, num_rotations);
+  return get_pointgroup_number(&pointsym);
+}
+
 static int get_pointgroup_number(SPGCONST PointSymmetry * pointsym)
 {
   int i, j, pg_num, counter;
@@ -513,7 +514,7 @@ static int get_pointgroup_number(SPGCONST PointSymmetry * pointsym)
 
 
   pg_num = 0;
-
+  
   /* Get list of point symmetry operations */
   if (! get_pointgroup_class_table(table, pointsym)) {
     goto end;
@@ -566,7 +567,7 @@ static int get_pointgroup_class_table(int table[10],
       table[rot_type]++;
     }
   }
-
+  
   return 1;
 
  err:
@@ -620,7 +621,7 @@ static int get_rotation_type(SPGCONST int rot[3][3])
     default:
       rot_type = -1;
       break;
-    }
+    }	
   }
 
   return rot_type;
@@ -696,7 +697,7 @@ static int laue2m(int axes[3],
   /* The second axis */
   num_ortho_axis = get_orthogonal_axis(ortho_axes, prop_rot, 2);
   if (! num_ortho_axis) { goto err; }
-
+  
   min_norm = 8;
   is_found = 0;
   for (i = 0; i < num_ortho_axis; i++) {
@@ -708,7 +709,7 @@ static int laue2m(int axes[3],
     }
   }
   if (! is_found) { goto err; }
-
+  
   /* The third axis */
   min_norm = 8;
   is_found = 0;
@@ -789,7 +790,7 @@ static int laue4m(int axes[3],
   /* The second axis */
   num_ortho_axis = get_orthogonal_axis(ortho_axes, prop_rot, 4);
   if (! num_ortho_axis) { goto err; }
-
+  
   min_norm = 8;
   is_found = 0;
   for (i = 0; i < num_ortho_axis; i++) {
@@ -801,7 +802,7 @@ static int laue4m(int axes[3],
     }
   }
   if (! is_found) { goto err; }
-
+  
   /* The third axis */
   mat_multiply_matrix_vector_i3(axis_vec, prop_rot, rot_axes[axes[0]]);
   is_found = 0;
@@ -923,7 +924,7 @@ static int laue3(int axes[3],
     }
   }
   if (! is_found) { goto err; }
-
+  
   /* The third axis */
   mat_multiply_matrix_vector_i3(axis_vec, prop_rot, rot_axes[axes[0]]);
   is_found = 0;
@@ -1062,7 +1063,7 @@ static int laue_one_axis(int axes[3],
   int ortho_axes[NUM_ROT_AXES];
 
   debug_print("laue_one_axis with rot_order %d\n", rot_order);
-
+  
   for (i = 0; i < pointsym->size; i++) {
     get_proper_rotation(prop_rot, pointsym->rot[i]);
 
@@ -1110,7 +1111,7 @@ static int laue_one_axis(int axes[3],
     }
 
     if (!is_found) { continue; }
-
+    
     set_transformation_matrix(t_mat, tmp_axes);
     det = abs(mat_get_determinant_i3(t_mat));
     if (det < 4) { /* to avoid F-center choice det=4 */
@@ -1194,14 +1195,14 @@ static int get_rotation_axis(SPGCONST int proper_rot[3][3])
       break;
     }
   }
-
+  
  end:
 #ifdef SPGDEBUG
   if (axis == -1) {
     printf("rotation axis cound not found.\n");
   }
 #endif
-
+  
   return axis;
 }
 
@@ -1221,7 +1222,7 @@ static int get_orthogonal_axis(int ortho_axes[],
     mat_multiply_matrix_i3(rot, proper_rot, rot);
     mat_add_matrix_i3(sum_rot, rot, sum_rot);
   }
-
+  
   for (i = 0; i < NUM_ROT_AXES; i++) {
     mat_multiply_matrix_vector_i3(vec, sum_rot, rot_axes[i]);
     if (vec[0] == 0 &&
@@ -1249,7 +1250,7 @@ static void set_transformation_matrix(int tmat[3][3],
 				      const int axes[3])
 {
   int i, j, s[3];
-
+  
   for (i = 0; i < 3; i++) {
     if (axes[i] < NUM_ROT_AXES) {
       s[i] = 1;

@@ -34,64 +34,64 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "lattice.h"
+#include "delaunay.h"
 #include "mathfunc.h"
 
 #include "debug.h"
 
-static int get_Delaunay_reduction(double red_lattice[3][3],
-				  SPGCONST double lattice[3][3],
-				  SPGCONST double symprec);
-static int get_Delaunay_reduction_basis(double basis[4][3],
-					const double symprec);
-static void get_Delaunay_shortest_vectors(double basis[4][3],
+static int delaunay_reduce(double red_lattice[3][3], 
+			   SPGCONST double lattice[3][3],
+			   SPGCONST double symprec);
+static int delaunay_reduce_basis(double basis[4][3],
+				 const double symprec);
+static void get_delaunay_shortest_vectors(double basis[4][3],
 					  const double symprec);
 static void get_exteneded_basis(double basis[4][3],
 				SPGCONST double lattice[3][3]);
-static int get_Delaunay_reduction_2D(double red_lattice[3][3],
-				     SPGCONST double lattice[3][3],
-				     const int unique_axis,
-				     const double symprec);
-static int get_Delaunay_reduction_basis_2D(double basis[3][3],
-					   const double symprec);
-static void get_Delaunay_shortest_vectors_2D(double basis[3][3],
+static int delaunay_reduce_2D(double red_lattice[3][3], 
+			      SPGCONST double lattice[3][3],
+			      const int unique_axis,
+			      const double symprec);
+static int delaunay_reduce_basis_2D(double basis[3][3],
+				    const double symprec);
+static void get_delaunay_shortest_vectors_2D(double basis[3][3],
 					     const double unique_vec[3],
 					     const double symprec);
 static void get_exteneded_basis_2D(double basis[3][3],
 				   SPGCONST double lattice[3][2]);
 
 /* Return 0 if failed */
-int lat_smallest_lattice_vector(double min_lattice[3][3],
-				SPGCONST double lattice[3][3],
-				const double symprec)
+int del_delaunay_reduce(double min_lattice[3][3],
+			SPGCONST double lattice[3][3],
+			const double symprec)
 {
-  debug_print("lat_smallest_lattice_vector (tolerance = %f):\n", symprec);
+  debug_print("del_delaunay_reduce (tolerance = %f):\n", symprec);
 
-  return get_Delaunay_reduction(min_lattice, lattice, symprec);
+  return delaunay_reduce(min_lattice, lattice, symprec);
 }
 
-int lat_smallest_lattice_vector_2D(double min_lattice[3][3],
-				   SPGCONST double lattice[3][3],
-				   const int unique_axis,
-				   const double symprec)
+int del_delaunay_reduce_2D(double min_lattice[3][3],
+			   SPGCONST double lattice[3][3],
+			   const int unique_axis,
+			   const double symprec)
 {
-  debug_print("lat_smallest_lattice_vector_2D:\n");
-  return get_Delaunay_reduction_2D(min_lattice, lattice, unique_axis, symprec);
+  debug_print("del_delaunay_reduce_2D:\n");
+  return delaunay_reduce_2D(min_lattice, lattice, unique_axis, symprec);
 }
 
 /* Delaunay reduction */
 /* Reference can be found in International table A. */
 /* Return 0 if failed */
-static int get_Delaunay_reduction(double red_lattice[3][3],
-				  SPGCONST double lattice[3][3],
-				  const double symprec)
+static int delaunay_reduce(double red_lattice[3][3], 
+			   SPGCONST double lattice[3][3],
+			   const double symprec)
 {
   int i, j;
   double volume, sum;
   double basis[4][3];
 
   get_exteneded_basis(basis, lattice);
-
+  
   sum = 0;
   for (i = 0; i < 4; i++) {
     for (j = 0; j < 3; j++) {
@@ -100,12 +100,12 @@ static int get_Delaunay_reduction(double red_lattice[3][3],
   }
 
   while (1) {
-    if (get_Delaunay_reduction_basis(basis, symprec)) {
+    if (delaunay_reduce_basis(basis, symprec)) {
       break;
     }
   }
 
-  get_Delaunay_shortest_vectors(basis, symprec);
+  get_delaunay_shortest_vectors(basis, symprec);
 
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
@@ -134,19 +134,19 @@ static int get_Delaunay_reduction(double red_lattice[3][3],
   return 0;
 }
 
-static void get_Delaunay_shortest_vectors(double basis[4][3],
+static void get_delaunay_shortest_vectors(double basis[4][3],
 					  const double symprec)
 {
   int i, j;
   double tmpmat[3][3], b[7][3], tmpvec[3];
-
+  
   /* Search in the set {b1, b2, b3, b4, b1+b2, b2+b3, b3+b1} */
   for (i = 0; i < 4; i++) {
     for (j = 0; j < 3; j++) {
       b[i][j] = basis[i][j];
     }
   }
-
+  
   for (i = 0; i < 3; i++) {
     b[4][i] = basis[0][i] + basis[1][i];
   }
@@ -156,7 +156,7 @@ static void get_Delaunay_shortest_vectors(double basis[4][3],
   for (i = 0; i < 3; i++) {
     b[6][i] = basis[2][i] + basis[0][i];
   }
-
+  
   /* Bubble sort */
   for (i = 0; i < 6; i++) {
     for (j = 0; j < 6; j++) {
@@ -185,8 +185,8 @@ static void get_Delaunay_shortest_vectors(double basis[4][3],
   }
 }
 
-static int get_Delaunay_reduction_basis(double basis[4][3],
-					const double symprec)
+static int delaunay_reduce_basis(double basis[4][3],
+				 const double symprec)
 {
   int i, j, k, l;
   double dot_product;
@@ -233,10 +233,10 @@ static void get_exteneded_basis(double basis[4][3],
 }
 
 
-static int get_Delaunay_reduction_2D(double red_lattice[3][3],
-				     SPGCONST double lattice[3][3],
-				     const int unique_axis,
-				     const double symprec)
+static int delaunay_reduce_2D(double red_lattice[3][3], 
+			      SPGCONST double lattice[3][3],
+			      const int unique_axis,
+			      const double symprec)
 {
   int i, j, k;
   double volume;
@@ -257,14 +257,14 @@ static int get_Delaunay_reduction_2D(double red_lattice[3][3],
   }
 
   get_exteneded_basis_2D(basis, lattice_2D);
-
+  
   while (1) {
-    if (get_Delaunay_reduction_basis_2D(basis, symprec)) {
+    if (delaunay_reduce_basis_2D(basis, symprec)) {
       break;
     }
   }
 
-  get_Delaunay_shortest_vectors_2D(basis, unique_vec, symprec);
+  get_delaunay_shortest_vectors_2D(basis, unique_vec, symprec);
 
   k = 0;
   for (i = 0; i < 3; i++) {
@@ -298,8 +298,8 @@ static int get_Delaunay_reduction_2D(double red_lattice[3][3],
   return 0;
 }
 
-static int get_Delaunay_reduction_basis_2D(double basis[3][3],
-					   const double symprec)
+static int delaunay_reduce_basis_2D(double basis[3][3],
+				    const double symprec)
 {
   int i, j, k, l;
   double dot_product;
@@ -330,25 +330,25 @@ static int get_Delaunay_reduction_basis_2D(double basis[3][3],
   return 1;
 }
 
-static void get_Delaunay_shortest_vectors_2D(double basis[3][3],
+static void get_delaunay_shortest_vectors_2D(double basis[3][3],
 					     const double unique_vec[3],
 					     const double symprec)
 {
   int i, j;
   double b[4][3], tmpmat[3][3];
   double tmpvec[3];
-
+  
   /* Search in the set {b1, b2, b3, b1+b2} */
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       b[i][j] = basis[i][j];
     }
   }
-
+  
   for (i = 0; i < 3; i++) {
     b[3][i] = basis[0][i] + basis[1][i];
   }
-
+  
   /* Bubble sort */
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
@@ -364,7 +364,7 @@ static void get_Delaunay_shortest_vectors_2D(double basis[3][3],
     tmpmat[i][0] = b[0][i];
     tmpmat[i][1] = unique_vec[i];
   }
-
+  
   for (i = 1; i < 4; i++) {
     for (j = 0; j < 3; j++) {
       tmpmat[j][2] = b[i][j];
