@@ -1348,6 +1348,9 @@ namespace XtalOpt {
            Structure::countStructuresOfEachFormulaUnit(&allStructures,
                                                        maxFU());
 
+    // No need to keep the tracker locked now
+    trackerLocker.unlock();
+
     // If there are not yet at least 5 of any one FU, make more of that FU
     // Will generate smaller FU's first
     for (uint i = minFU(); i <= maxFU(); ++i) {

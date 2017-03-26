@@ -138,9 +138,10 @@ namespace GlobalSearch {
 
       // Set properties
       m_hasEnthalpy                = other.m_hasEnthalpy;
-      m_primitiveChecked           = other.m_primitiveChecked;
-      m_skippedOptimization        = other.m_skippedOptimization;
-      m_supercellGenerationChecked = false;
+      m_updatedSinceDupChecked     = other.m_updatedSinceDupChecked.load();
+      m_primitiveChecked           = other.m_primitiveChecked.load();
+      m_skippedOptimization        = other.m_skippedOptimization.load();
+      m_supercellGenerationChecked = other.m_supercellGenerationChecked.load();
       m_histogramGenerationPending = other.m_histogramGenerationPending;
       m_generation                 = other.m_generation;
       m_id                         = other.m_id;
@@ -173,9 +174,10 @@ namespace GlobalSearch {
 
       // Set properties
       m_hasEnthalpy                = std::move(other.m_hasEnthalpy);
-      m_primitiveChecked           = std::move(other.m_primitiveChecked);
-      m_skippedOptimization        = std::move(other.m_skippedOptimization);
-      m_supercellGenerationChecked = false;
+      m_updatedSinceDupChecked     = other.m_updatedSinceDupChecked.load();
+      m_primitiveChecked           = other.m_primitiveChecked.load();
+      m_skippedOptimization        = other.m_skippedOptimization.load();
+      m_supercellGenerationChecked = other.m_supercellGenerationChecked.load();
       m_histogramGenerationPending = std::move(other.m_histogramGenerationPending);
       m_generation                 = std::move(other.m_generation);
       m_id                         = std::move(other.m_id);
