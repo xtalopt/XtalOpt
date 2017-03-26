@@ -246,6 +246,7 @@ namespace GlobalSearch {
         m_runningTracker.remove(structure);
       }
     }
+    trackerReadLocker.unlock();
     emit newStatusOverview(optimized, running, fail);
 
     // Submit any jobs if needed
@@ -291,7 +292,6 @@ namespace GlobalSearch {
     jobStartTrackerLocker.unlock();
 
     // Generate requests
-    trackerReadLocker.unlock();
     // Write lock for m_requestedStructures var
     QWriteLocker trackerWriteLocker(m_tracker->rwLock());
     QReadLocker newStructureTrackerLocker(m_newStructureTracker.rwLock());
