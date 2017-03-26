@@ -95,6 +95,15 @@ namespace XtalOpt {
   }
 
   void XtalOptTest::generateRun(int run) {
+    // Stop the check loop
+    m_opt->setIsStartingTrue();
+    // Wait for (hopefully) long enough for the check loop to finish
+#ifdef WIN32
+    _sleep(1000);
+#else
+    sleep(1);
+#endif // _WIN32
+
     int m_currentStructure = 0;
     int m_currentRun = run;
     emit sig_updateProgressDialog();
