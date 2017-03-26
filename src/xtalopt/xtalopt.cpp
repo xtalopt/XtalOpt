@@ -974,53 +974,14 @@ namespace XtalOpt {
     loc_subcell.setFileName(locpath_s + "/" + gen_s + "x" + id_s + ".cml");
 
     if (!loc_subcell.open(QIODevice::WriteOnly)) {
-                    error("XtalOpt::initializeSubXtal(): Error opening file "+loc_subcell.fileName()+" for writing...");
+      error("XtalOpt::initializeSubXtal(): Error opening file " +
+            loc_subcell.fileName()+" for writing...");
     }
 
     QTextStream out;
     out.setDevice(&loc_subcell);
 
-    /*
-    QStringList symbols = xtal->getSymbols();
-    QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
-    Q_ASSERT_X(symbols.size() == atomCounts.size(), Q_FUNC_INFO,
-               "xtal->getSymbols is not the same size as xtal->getNumberOfAtomsAlpha.");
-    for (unsigned int i = 0; i < symbols.size(); i++) {
-      out << QString("%1%2").arg(symbols[i]).arg(atomCounts[i]);
-    }
-    out << " ";
-    out << xtal->fileName();
-    out << "\n";
-    // Scaling factor. Just 1.0
-    out << QString::number(1.0);
-    out << "\n";
-    // Unit Cell Vectors
-    std::vector< vector3 > vecs = xtal->OBUnitCell()->GetCellVectors();
-    for (uint i = 0; i < vecs.size(); i++) {
-      out << QString("  %1 %2 %3\n")
-        .arg(vecs[i].x(), 12, 'f', 8)
-        .arg(vecs[i].y(), 12, 'f', 8)
-        .arg(vecs[i].z(), 12, 'f', 8);
-    }
-    // Number of each type of atom (sorted alphabetically by symbol)
-    for (int i = 0; i < atomCounts.size(); i++) {
-      out << QString::number(atomCounts.at(i)) + " ";
-    }
-    out << "\n";
-    // Use fractional coordinates:
-    out << "Direct\n";
-    // Coordinates of each atom (sorted alphabetically by symbol)
-    QList<Vector3> coords = xtal->getAtomCoordsFrac();
-    for (int i = 0; i < coords.size(); i++) {
-      out << QString("  %1 %2 %3\n")
-        .arg(coords[i].x(), 12, 'f', 8)
-        .arg(coords[i].y(), 12, 'f', 8)
-        .arg(coords[i].z(), 12, 'f', 8);
-    }
-    out << endl;
-*/
-
-// Print the subcells as .cml files
+    // Print the subcells as .cml files
     QStringList symbols = xtal->getSymbols();
     QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
     out << "<molecule>\n";
@@ -1084,8 +1045,10 @@ namespace XtalOpt {
       }
     }
 
-    // We will assume modulo bias will be small since formula unit ranges are typically small. Pick random formula units.
-    uint randomListIndex = rand()%int(tempFormulaUnitsList.size()); //PSA alter FU
+    // We will assume modulo bias will be small since formula unit ranges are
+    // typically small. Pick random formula units.
+    uint randomListIndex = rand()%int(tempFormulaUnitsList.size());
+
     uint FU = tempFormulaUnitsList.at(randomListIndex);
 
     return generateRandomXtal(generation, id, FU);
@@ -1168,6 +1131,8 @@ namespace XtalOpt {
   {
     QList<Structure*> structures;
 
+    QReadLocker trackerLocker(m_tracker->rwLock());
+
     // If we are NOT using one pool. FU == 0 implies that we are using one pool
     if (!using_one_pool) {
 
@@ -1209,15 +1174,19 @@ namespace XtalOpt {
         QList<Structure*> tempStructures = m_queue->getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
         QList<uint> numberOfEachFormulaUnit = Structure::countStructuresOfEachFormulaUnit(&tempStructures, maxFU());
 
-        // The number of formula units to use to make the super cell must be a multiple of the larger formula unit, and there must be as many at least five optimized structures. If there aren't, then generate more.
+        // The number of formula units to use to make the super cell must be a
+        // multiple of the larger formula unit, and there must be as many at
+        // least five optimized structures. If there aren't, then generate more.
         for (int i = FU - 1; 0 < i; i--) {
-          if (FU % i == 0 && numberOfEachFormulaUnit.at(i) >= 5 && onTheFormulaUnitsList(i) == true) {
+          if (FU % i == 0 &&
+              numberOfEachFormulaUnit.at(i) >= 5 &&
+              onTheFormulaUnitsList(i) == true) {
             while (!checkXtal(xtal)) {
               if (xtal) {
                 delete xtal;
                 xtal = 0;
               }
-            xtal = generateSuperCell(i, FU, 0, true, true);
+              xtal = generateSuperCell(i, FU, nullptr, true);
             }
             return xtal;
           }
@@ -1254,29 +1223,23 @@ namespace XtalOpt {
     // Check to see if there are any structures that need to be primitive
     // reduced or if there are supercells that needs to be generated. If
     // there are, then generate and return one.
-
+    QReadLocker trackerLocker(m_tracker->rwLock());
     QList<Structure*> optimizedStructures =
-                                           m_queue->getAllOptimizedStructures();
-    Xtal *testXtal;
-    if (supercellCheckLock.tryLockForWrite()) {
+      m_queue->getAllOptimizedStructures();
+    if (supercellCheckLock.try_lock()) {
       for (size_t i = 0; i < optimizedStructures.size(); i++) {
-        // generateNewXtal() runs concurrently. We don't want to make more than
-        // one primitive/supercell xtal of a given xtal, so try to write for
-        // lock. If it can't be done, then just continue to the next one.
-        if (!optimizedStructures.at(i)->lock().tryLockForWrite()) continue;
-
+        Xtal* testXtal = qobject_cast<Xtal*>(optimizedStructures.at(i));
+        QReadLocker testXtalLocker(&testXtal->lock());
         // If the structure has been primitive checked, we don't need to check
         // it again. If it hasn't been duplicate checked, yet, let it be
         // duplicate checked first (so we don't check unnecessary structures).
-        if (!optimizedStructures.at(i)->wasPrimitiveChecked() &&
-            !optimizedStructures.at(i)->hasChangedSinceDupChecked()) {
-          testXtal = qobject_cast<Xtal*>(optimizedStructures.at(i));
+        if (!testXtal->wasPrimitiveChecked() &&
+            !testXtal->hasChangedSinceDupChecked()) {
           // If testXtal is found to not be primitive, make a new xtal that is
           // the primitive of testXtal.
           if (!testXtal->isPrimitive(tol_spg)) {
             testXtal->setPrimitiveChecked(true);
             Xtal* nxtal = generatePrimitiveXtal(testXtal);
-            testXtal->lock().unlock();
             // This will continue the structure generation while simultaneously
             // unlocking supercellCheckLock in 0.1 second
             // This allows time for the structure to be finished before
@@ -1289,7 +1252,7 @@ namespace XtalOpt {
 
         // Now let's check to see if a supercell should be generated from
         // the optimized structure
-        if (!optimizedStructures.at(i)->wasSupercellGenerationChecked()) {
+        if (!testXtal->wasSupercellGenerationChecked()) {
           // If the optimized structure's enthalpy is not the lowest enthalpy
           // of it's formula unit set, set the supercell generation to be
           // true and just continue to the next structure in the loop.
@@ -1298,20 +1261,18 @@ namespace XtalOpt {
           // lowestEnthalpyFUList and the structure's enthalpy. So, we will
           // just do a basic percent diff comparison instead. If the difference
           // is less than 0.001%, then we will assume they are the same
-          uint FU = optimizedStructures.at(i)->getFormulaUnits();
-          double percentDiff = fabs((optimizedStructures.at(i)->getEnthalpy() -
+          uint FU = testXtal->getFormulaUnits();
+          double percentDiff = fabs((testXtal->getEnthalpy() -
                                      lowestEnthalpyFUList.at(FU)) /
                                      lowestEnthalpyFUList.at(FU) * 100.00000);
           if (percentDiff > 0.001) {
-            optimizedStructures.at(i)->setSupercellGenerationChecked(true);
-            optimizedStructures.at(i)->lock().unlock();
+            testXtal->setSupercellGenerationChecked(true);
             continue;
           }
-          double enthalpyPerAtom1 = optimizedStructures.at(i)->getEnthalpy() /
-                                    static_cast<double>(
-                                    optimizedStructures.at(i)->numAtoms());
-          uint numAtomsPerFU = optimizedStructures.at(i)->numAtoms() /
-                               optimizedStructures.at(i)->getFormulaUnits();
+          double enthalpyPerAtom1 = testXtal->getEnthalpy() /
+                                    static_cast<double>(testXtal->numAtoms());
+          uint numAtomsPerFU = testXtal->numAtoms() /
+                               testXtal->getFormulaUnits();
           for (size_t j = 1; j <= maxFU(); j++) {
             if (!onTheFormulaUnitsList(j)) continue;
             // j represents a formula unit that is being checked.
@@ -1323,41 +1284,39 @@ namespace XtalOpt {
             double enthalpyPerAtom2 = (lowestEnthalpyFUList.at(j) /
                                       static_cast<double>(j)) /
                                       static_cast<double>(numAtomsPerFU);
-            if (j != optimizedStructures.at(i)->getFormulaUnits() &&
-                j %  optimizedStructures.at(i)->getFormulaUnits() == 0 &&
+            if (j != testXtal->getFormulaUnits() &&
+                j %  testXtal->getFormulaUnits() == 0 &&
                 (enthalpyPerAtom1 < enthalpyPerAtom2 || enthalpyPerAtom2 == 0)){
               // enthalpyDiff is in meV
               double enthalpyDiff = fabs(enthalpyPerAtom1 - enthalpyPerAtom2) *
                                     1000.0000000;
-              if (enthalpyDiff <= 3.000000) continue;
+              if (enthalpyDiff <= 3.000000)
+                continue;
               else {
-                Xtal* xtal = qobject_cast<Xtal*>(optimizedStructures.at(i));
                 // We may need to create more than one supercell from a given
                 // xtal, so only update this if it is generating an xtal with
                 // the maxFU
-                if (j == maxFU()) xtal->setSupercellGenerationChecked(true);
-                xtal->lock().unlock();
-                Xtal* nxtal = generateSuperCell(xtal->getFormulaUnits(), j,
-                                                xtal, true, false);
-                xtal->lock().lockForRead();
+                if (j == maxFU())
+                  testXtal->setSupercellGenerationChecked(true);
+                Xtal* nxtal = generateSuperCell(testXtal->getFormulaUnits(), j,
+                                                testXtal, false);
                 nxtal->setParents(tr("Supercell generated from %1x%2")
-                  .arg(xtal->getGeneration())
-                  .arg(xtal->getIDNumber()));
+                  .arg(testXtal->getGeneration())
+                  .arg(testXtal->getIDNumber()));
                 // We only want to perform offspring tracking for mutated
                 // offspring.
                 nxtal->setParentStructure(nullptr);
                 nxtal->setFormulaUnits(nxtal->getFormulaUnits());
-                nxtal->setEnthalpy(xtal->getEnthalpy() *
+                nxtal->setEnthalpy(testXtal->getEnthalpy() *
                          nxtal->getFormulaUnits() /
-                         xtal->getFormulaUnits());
-                nxtal->setEnergy(xtal->getEnergy() *
+                         testXtal->getFormulaUnits());
+                nxtal->setEnergy(testXtal->getEnergy() *
                          nxtal->getFormulaUnits() /
-                         xtal->getFormulaUnits() *
+                         testXtal->getFormulaUnits() *
                          EV_TO_KJ_PER_MOL);
                 nxtal->setPrimitiveChecked(true);
                 nxtal->setSkippedOptimization(true);
                 nxtal->setStatus(Xtal::Optimized);
-                xtal->lock().unlock();
                 // This will continue the structure generation while
                 // simultaneously unlocking supercellCheckLock in 0.1 second
                 // This allows time for the structure to be finished before
@@ -1367,9 +1326,8 @@ namespace XtalOpt {
               }
             }
           }
-          optimizedStructures.at(i)->setSupercellGenerationChecked(true);
+          testXtal->setSupercellGenerationChecked(true);
         }
-        optimizedStructures.at(i)->lock().unlock();
       }
       supercellCheckLock.unlock();
     }
@@ -1483,7 +1441,7 @@ namespace XtalOpt {
               }
 
               nxtal = generateSuperCell(selectedXtal->getFormulaUnits(),
-                                        formulaUnits, selectedXtal, true, true);
+                                        formulaUnits, selectedXtal, true);
             }
             return nxtal;
           }
@@ -1638,7 +1596,7 @@ namespace XtalOpt {
           // Determine generation number
           gen = gen1 + 1;
           // A regular mutation is being performed
-          if (!mitosisMutation)
+          if (!mitosisMutation) {
             parents = tr("Stripple: %1x%2 stdev=%3 amp=%4 waves=%5,%6")
               .arg(gen1)
               .arg(id1)
@@ -1646,14 +1604,16 @@ namespace XtalOpt {
               .arg(amplitude, 0, 'f', 5)
               .arg(strip_per1)
               .arg(strip_per2);
-          // Modified version of setting the parents.
-          // selectedXtal->getParents() should be something like "mitosis of 1x1 followed by "
-          else
-            parents = selectedXtal->getParents() + tr("Stripple: stdev=%1 amp=%2 waves=%3,%4")
+          }
+          // Modified version of setting the parents for mitosis mutation.
+          else {
+            parents = selectedXtal->getParents() +
+                      tr(" followed by Stripple: stdev=%1 amp=%2 waves=%3,%4")
               .arg(stdev, 0, 'f', 5)
               .arg(amplitude, 0, 'f', 5)
               .arg(strip_per1)
               .arg(strip_per2);
+          }
           continue;
         }
         case OP_Permustrain: {
@@ -1676,16 +1636,17 @@ namespace XtalOpt {
           // Determine generation number
           gen = gen1 + 1;
           // Set the ancestry like normal...
-          if (!mitosisMutation)
+          if (!mitosisMutation) {
             parents = tr("Permustrain: %1x%2 stdev=%3 exch=%4")
               .arg(gen1)
               .arg(id1)
               .arg(stdev, 0, 'f', 5)
               .arg(perm_ex);
-          // selectedXtal->getParents() should be something like "mitosis of 1x1 followed by "
-          // modified settings for ancestry
+          }
+          // Modified settings if it is a mitosis mutation
           else {
-            parents = selectedXtal->getParents() + tr("Permustrain: stdev=%1 exch=%2")
+            parents = selectedXtal->getParents()
+                      + tr(" followed by Permustrain: stdev=%1 exch=%2")
               .arg(stdev, 0, 'f', 5)
               .arg(perm_ex);
           }
@@ -1726,13 +1687,12 @@ namespace XtalOpt {
   {
     Xtal* nxtal = new Xtal();
     // Copy cell over from xtal to nxtal
+    QReadLocker xtalLocker(&xtal->lock());
     nxtal->setCellInfo(xtal->unitCell().cellMatrix());
     // Add the atoms in...
-    for (size_t i = 0; i < xtal->numAtoms(); i++) {
-      Atom& newAtom = nxtal->addAtom();
-      newAtom.setAtomicNumber(xtal->atom(i).atomicNumber());
-      newAtom.setPos(xtal->atom(i).pos());
-    }
+    for (const auto& atom: xtal->atoms())
+      nxtal->addAtom(atom.atomicNumber(), atom.pos());
+
     // Reduce it to primitive...
     nxtal->reduceToPrimitive(tol_spg);
     uint gen = xtal->getGeneration() + 1;
@@ -1755,152 +1715,129 @@ namespace XtalOpt {
     return nxtal;
   }
 
-  // If myXtal is nullptr, it returns a new dynamically allocated xtal
-  Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU, Xtal *myXtal,
-                                   bool setupNewXtal, bool mutate) {
+  // This always returns a dynamically allocated xtal
+  // Callers take ownership of the pointer
+  Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU,
+                                   Xtal* parentXtal, bool mutate)
+  {
+    // First perform a sanity check
+    if (finalFU % initialFU != 0) {
+      qDebug() << "Warning:" << __FUNCTION__ << "was called with an impossible"
+               << "ratio of finalFU to initialFU! initialFU is" << initialFU
+               << "and finalFU is" << finalFU
+               << "\nReturning nullptr";
+      return nullptr;
+    }
 
-    // If (myXtal == 0), select an xtal from the probability list
-    if (setupNewXtal == true) {
-      Xtal *xtal = nullptr;
-      if (myXtal == 0) {
-        QList<Structure*> structures = m_queue->getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
-        xtal = selectXtalFromProbabilityList(structures, initialFU);
+    // This is the return xtal
+    Xtal* xtal = new Xtal;
+
+    // Lock the tracker so the parentXtal won't get erased while we are reading
+    // from it
+    QReadLocker trackerLocker(m_tracker->rwLock());
+    if (!parentXtal) {
+      QList<Structure*> structures = m_queue->getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
+      parentXtal = selectXtalFromProbabilityList(structures, initialFU);
+    }
+
+    // Lock the parent xtal for reading
+    QReadLocker parentXtalLocker(&parentXtal->lock());
+
+    // Copy info over from parent to new xtal
+    xtal->setCellInfo(parentXtal->unitCell().cellMatrix());
+    const std::vector<Atom>& atoms = parentXtal->atoms();
+    for (const auto& atom: atoms)
+      xtal->addAtom(atom.atomicNumber(), atom.pos());
+
+    uint gen = parentXtal->getGeneration();
+    QString parents = tr("%1x%2 mitosis")
+      .arg(gen)
+      .arg(parentXtal->getIDNumber());
+    xtal->setParentStructure(parentXtal);
+    xtal->setParents(parents);
+    xtal->setGeneration(gen + 1);
+
+    parentXtalLocker.unlock();
+    trackerLocker.unlock();
+
+    // Done copying over parent xtal stuff
+
+    // Keep performing the supercell generator until we are at the correct FU
+    // Because of the check at the beginning of this function, we should always
+    // end up at finalFU
+    while (xtal->getFormulaUnits() != finalFU) {
+      // Find the largest prime number multiple. We will expand
+      // upon the shortest length with this number.
+      uint numberOfDuplicates = finalFU / xtal->getFormulaUnits();
+      for (int i = 2; i < numberOfDuplicates; ++i) {
+        if (numberOfDuplicates % i == 0) {
+          numberOfDuplicates = numberOfDuplicates / i;
+          i = 2;
+        }
       }
-      // If !setupNewXtal, and the parent is already set,
-      // transfer the parent over to xtal and set myXtal = 0 just for
-      // ease later in function.
-      else if (myXtal != 0) {
-        xtal = myXtal;
-        myXtal = 0;
-      }
 
-      unsigned int gen;
-      QString parents;
+      // a, b, and c are the number of duplicates in the A, B, and C
+      // directions, respectively.
+      uint a = 1;
+      uint b = 1;
+      uint c = 1;
 
-      // lock parent xtal for reading
-      QReadLocker locker(&xtal->lock());
+      // Find the shortest length. We will expand upon this length.
+      double A = xtal->getA();
+      double B = xtal->getB();
+      double C = xtal->getC();
 
-      // Copy info over from parent to new xtal
-      myXtal = new Xtal;
-      myXtal->setCellInfo(xtal->unitCell().cellMatrix());
-      QWriteLocker nxtalLocker(&myXtal->lock());
-      const std::vector<Atom>& atoms = xtal->atoms();
-      for (int i = 0; i < atoms.size(); i++) {
-        Atom& atom = myXtal->addAtom();
-        atom.setAtomicNumber(atoms.at(i).atomicNumber());
-        atom.setPos(atoms.at(i).pos());
-      }
+      if (A <= B && A <= C)
+        a = numberOfDuplicates;
+      else if (B <= A && B <= C)
+        b = numberOfDuplicates;
+      else if (C <= A && C <= B)
+        c = numberOfDuplicates;
 
-      // Lock parent and extract info
-      xtal->lock().lockForRead();
-      uint gen1 = xtal->getGeneration();
-      uint id1 = xtal->getIDNumber();
-      xtal->lock().unlock();
+      // Extract the old vectors
+      const Vector3& oldA = xtal->unitCell().aVector();
+      const Vector3& oldB = xtal->unitCell().bVector();
+      const Vector3& oldC = xtal->unitCell().cVector();
 
-      // Determine generation number
-      // This parent info will be erased and replaced with a different parent
-      // if we are doing just a supercell generation. If we are doing
-      // a mutation afterwards, the mutation description comes after
-      // "followed by "
-      parents = tr("%1x%2 mitosis followed by ")
-        .arg(gen1)
-        .arg(id1);
-      myXtal->setParentStructure(xtal);
-      myXtal->setParents(parents);
-      myXtal->setGeneration(gen1 + 1);
-    }
+      const std::vector<Atom> oldAtoms = xtal->atoms();
 
-    // Find the largest prime number multiple. We will expand
-    // upon the shortest length with this number. We will perform
-    // the other duplications through recursion of this whole function.
+      // Add the extra atoms in
+      for (int ind_a = 0; ind_a < a; ++ind_a) {
+        for (int ind_b = 0; ind_b < b; ++ind_b) {
+          for (int ind_c = 0; ind_c < c; ++ind_c) {
+            if (ind_a == 0 && ind_b == 0 && ind_c == 0)
+              continue;
 
-    uint numberOfDuplicates = finalFU / initialFU;
-    for (int i = 2; i < numberOfDuplicates; i++) {
-      if (numberOfDuplicates % i == 0) {
-        numberOfDuplicates = numberOfDuplicates / i;
-        i = 2;
-      }
-    }
-
-    // a, b, and c are the number of duplicates in the A, B, and C direction, respectively.
-    uint a = 1;
-    uint b = 1;
-    uint c = 1;
-
-    // Find the shortest length. We will expand upon this length.
-    double A = myXtal->getA();
-    double B = myXtal->getB();
-    double C = myXtal->getC();
-
-    if (A <= B && A <= C) {
-      a = numberOfDuplicates;
-    }
-    else if (B <= A && B <= C) {
-      b = numberOfDuplicates;
-    }
-    else if (C <= A && C <= B) {
-      c = numberOfDuplicates;
-    }
-
-    const std::vector<Atom>& oneFUatoms = myXtal->atoms();
-
-    // First get the matrix, extract vectors, then convert to Vector3's
-    Matrix3 cellMatrix = myXtal->unitCell().cellMatrix();
-    Vector3 aVec = myXtal->unitCell().aVector();
-    Vector3 bVec = myXtal->unitCell().bVector();
-    Vector3 cVec = myXtal->unitCell().cVector();
-    // Scale cell
-    myXtal->setCellInfo(a * A,
-                        b * B,
-                        c * C,
-                        myXtal->getAlpha(),
-                        myXtal->getBeta(),
-                        myXtal->getGamma());
-    a--;
-    b--;
-    c--;
-
-    for (int i = 0; i <= a; i++) {
-      for (int j = 0; j <= b; j++) {
-        for (int k = 0; k <= c; k++) {
-          if (i == 0 && j == 0 && k == 0) continue;
-          Vector3 uVecs(
-                  aVec.x() * i + bVec.x() * j + cVec.x() * k,
-                  aVec.y() * i + bVec.y() * j + cVec.y() * k,
-                  aVec.z() * i + bVec.z() * j + cVec.z() * k);
-          // Add the atoms in
-          foreach(const Atom& atom, oneFUatoms) {
-              Atom& newAtom = myXtal->addAtom();
-              newAtom.setPos(atom.pos() + uVecs);
-              newAtom.setAtomicNumber(atom.atomicNumber());
+            Vector3 displacement = ind_a * oldA + ind_b * oldB + ind_c * oldC;
+            for (const auto& atom: oldAtoms)
+              xtal->addAtom(atom.atomicNumber(), atom.pos() + displacement);
           }
         }
       }
+
+      // Scale cell
+      xtal->setCellInfo(a * A, b * B, c * C,
+                        xtal->getAlpha(), xtal->getBeta(), xtal->getGamma());
     }
 
-    // Recursively perform mitosis until the final FU is reached
-    if (myXtal->getFormulaUnits() != finalFU) {
-      return generateSuperCell(myXtal->getFormulaUnits(), finalFU, myXtal,
-                                 false, mutate);
-      }
+    // If we are to do so, mutate the xtal
+    if (mutate) {
+      // If xtal is already selected, no structure list is needed for
+      // parameter 1. So we will use an empty list.
+      // Technically, parameter 2 is not needed either.
+      // Parameter 3 is the selected xtal to mutate.
+      // Parameter 4 is includeCrossover and parameter 5 is includeMitosis.
+      // Parameter 6 is mitosisMutation (changes the way the parents are set)
+      QList<Structure*> temp;
+      Xtal* ret = H_getMutatedXtal(temp, xtal->getFormulaUnits(), xtal,
+                                   false, false, true);
 
-    // Perform genetic operation immediately after mitosis
-    else {
-      if (mutate) {
-        // If xtal is already selected, no structure list is needed for
-        // parameter 1. So we will use an empty list.
-        // Technically, parameter 2 is not needed either.
-        // Parameter 3 is the selected xtal to mutate.
-        // Parameter 4 is includeCrossover and parameter 5 is includeMitosis.
-        // Parameter 6 is mitosisMutation (changes the way the parents are set)
-        QList<Structure*> temp;
-        Xtal* xtal = H_getMutatedXtal(temp, FU, myXtal, false, false, true);
-        return xtal;
-      }
-      else {
-        return myXtal;
-      }
+      // We don't need xtal anymore, so delete it
+      delete xtal;
+      xtal = ret;
     }
+
+    return xtal;
   }
 
   Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
@@ -3014,27 +2951,13 @@ namespace XtalOpt {
     if (largerFormulaUnitXtal->getStatus() == Xtal::Supercell)
       return;
 
-    // We're going to create a temporary xtal that is an expanded version
-    // of the smaller formula unit xtal AND has the same formula units of
-    // the larger formula unit xtal. They will then be compared with xtalcomp.
-    Xtal xtalObject;
-    Xtal *tempXtal = &xtalObject;
-    tempXtal->setCellInfo(
-                        smallerFormulaUnitXtal->unitCell().cellMatrix());
-
-    const std::vector<Atom>& atoms = smallerFormulaUnitXtal->atoms();
-    for (size_t i = 0; i < atoms.size(); i++) {
-      Atom& atom = tempXtal->addAtom();
-      atom.setAtomicNumber(atoms.at(i).atomicNumber());
-      atom.setPos(atoms.at(i).pos());
-    }
-
-    Xtal* tempXtal2 = generateSuperCell(
+    // This temporary xtal will need to be deleted
+    Xtal* tempXtal = generateSuperCell(
                                  smallerFormulaUnitXtal->getFormulaUnits(),
                                  largerFormulaUnitXtal->getFormulaUnits(),
-                                 tempXtal, false, false);
+                                 smallerFormulaUnitXtal, false);
 
-    if (tempXtal2->compareCoordinates(*largerFormulaUnitXtal, st.tol_len,
+    if (tempXtal->compareCoordinates(*largerFormulaUnitXtal, st.tol_len,
                                      st.tol_ang)) {
       // Unlock the larger formula unit xtal and lock it for writing
       largerFormulaUnitXtal == st.i ? iLocker.unlock() : jLocker.unlock();
@@ -3057,19 +2980,8 @@ namespace XtalOpt {
       else largerFormulaUnitXtal->setSupercellString(QString("%1x%2")
                                    .arg(smallerFormulaUnitXtal->getGeneration())
                                    .arg(smallerFormulaUnitXtal->getIDNumber()));
-
-      if (largerFormulaUnitXtal->hasParentStructure()) {
-        Structure* parentXtal = largerFormulaUnitXtal->getParentStructure();
-        /*qDebug() << "Supercell: parentXtal->getNumDupOffspring() is now"
-                 << parentXtal->getNumDupOffspring()
-                 << "\nand parentXtal->getNumTotOffspring() is"
-                 << parentXtal->getNumTotOffspring() << "\nfor"
-                 << parentXtal->getGeneration() << "x"
-                 << parentXtal->getIDNumber();*/
-      }
     }
     tempXtal->deleteLater();
-    tempXtal = 0;
   }
 
   void XtalOpt::checkForDuplicates() {

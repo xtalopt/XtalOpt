@@ -53,6 +53,7 @@ namespace GlobalSearch {
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
+    m_lock(QReadWriteLock::Recursive),
     m_parentStructure(nullptr)
   {
     m_currentOptStep = 1;
@@ -78,6 +79,7 @@ namespace GlobalSearch {
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
+    m_lock(QReadWriteLock::Recursive),
     m_parentStructure(nullptr)
   {
     *this = other;
@@ -106,6 +108,7 @@ namespace GlobalSearch {
     m_optStart(QDateTime()),
     m_optEnd(QDateTime()),
     m_index(-1),
+    m_lock(QReadWriteLock::Recursive),
     m_parentStructure(nullptr)
   {
     *this = other;
@@ -137,7 +140,7 @@ namespace GlobalSearch {
       m_hasEnthalpy                = other.m_hasEnthalpy;
       m_primitiveChecked           = other.m_primitiveChecked;
       m_skippedOptimization        = other.m_skippedOptimization;
-      m_supercellGenerationChecked = other.m_supercellGenerationChecked;
+      m_supercellGenerationChecked = false;
       m_histogramGenerationPending = other.m_histogramGenerationPending;
       m_generation                 = other.m_generation;
       m_id                         = other.m_id;
@@ -172,7 +175,7 @@ namespace GlobalSearch {
       m_hasEnthalpy                = std::move(other.m_hasEnthalpy);
       m_primitiveChecked           = std::move(other.m_primitiveChecked);
       m_skippedOptimization        = std::move(other.m_skippedOptimization);
-      m_supercellGenerationChecked = std::move(other.m_supercellGenerationChecked);
+      m_supercellGenerationChecked = false;
       m_histogramGenerationPending = std::move(other.m_histogramGenerationPending);
       m_generation                 = std::move(other.m_generation);
       m_id                         = std::move(other.m_id);
@@ -1280,20 +1283,18 @@ namespace GlobalSearch {
     Structure *structure_i=0, *structure_j=0, *tmp=0;
     for (uint i = 0; i < numStructs-1; i++) {
       structure_i = structures->at(i);
-      structure_i->lock().lockForRead();
+      QReadLocker iLocker(&structure_i->lock());
 
       for (uint j = i+1; j < numStructs; j++) {
         structure_j = structures->at(j);
-        structure_j->lock().lockForRead();
+        QReadLocker jLocker(&structure_j->lock());
         if (structure_j->getEnthalpy() / static_cast<double>(structure_j->numAtoms()) < structure_i->getEnthalpy() / static_cast<double>(structure_i->numAtoms())) { //PSA Enthalpy per atom
           structures->swap(i,j);
           tmp = structure_i;
           structure_i = structure_j;
           structure_j = tmp;
         }
-        structure_j->lock().unlock();
       }
-      structure_i->lock().unlock();
     }
   }
 
@@ -1303,9 +1304,8 @@ namespace GlobalSearch {
     Structure *s;
     for (uint i = 0; i < structures.size(); i++) {
       s = structures.at(i);
-      s->lock().lockForWrite();
+      QWriteLocker sLocker(&s->lock());
       s->setRank(i+1);
-      s->lock().unlock();
     }
   }
 
@@ -1317,30 +1317,26 @@ namespace GlobalSearch {
 
     QList<Structure*> rstructures;
 
-
-
     // Copy structures to a temporary list (don't modify input list!)
-   	 for (uint i = 0; i < numStructs; i++)
+    for (uint i = 0; i < numStructs; i++)
       rstructures.append(structures.at(i));
 
     // Simple selection sort
     Structure *structure_i=0, *structure_j=0, *tmp=0;
     for (uint i = 0; i < numStructs-1; i++) {
       structure_i = rstructures.at(i);
-      structure_i->lock().lockForRead();
+      QReadLocker iLocker(&structure_i->lock());
 
       for (uint j = i+1; j < numStructs; j++) {
         structure_j = rstructures.at(j);
-        structure_j->lock().lockForRead();
+        QReadLocker jLocker(&structure_j->lock());
         if (structure_j->getEnthalpy() / static_cast<double>(structure_j->numAtoms()) < structure_i->getEnthalpy() / static_cast<double>(structure_i->numAtoms())) { //PSA Enthalpy per atom
           rstructures.swap(i,j);
           tmp = structure_i;
           structure_i = structure_j;
           structure_j = tmp;
         }
-        structure_j->lock().unlock();
       }
-      structure_i->lock().unlock();
     }
 
     rankInPlace(rstructures);
@@ -1397,11 +1393,9 @@ namespace GlobalSearch {
       int numbers = 0;
       for (uint j = 0; j < numStructs; j++) {
         structure_j = structures->at(j);
-        structure_j->lock().lockForRead();
-        if (structure_j->getFormulaUnits() == i) {
+        QReadLocker(&structure_j->lock());
+        if (structure_j->getFormulaUnits() == i)
           numbers += 1;
-        }
-        structure_j->lock().unlock();
       }
       numberOfEachFormulaUnit.append(numbers);
     }

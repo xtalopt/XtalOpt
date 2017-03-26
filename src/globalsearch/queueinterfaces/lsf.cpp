@@ -36,6 +36,7 @@ namespace GlobalSearch {
   LsfQueueInterface::LsfQueueInterface(OptBase *parent,
                                        const QString &settingsFile) :
     RemoteQueueInterface(parent, settingsFile),
+    m_queueMutex(QReadWriteLock::Recursive),
     m_bjobs("bjobs"),
     m_bsub("bsub"),
     m_bkill("bkill"),

@@ -38,7 +38,7 @@ namespace XtalOpt {
   TabPlot::TabPlot( XtalOptDialog *parent, XtalOpt *p ) :
     AbstractTab(parent, p),
     m_enablePlotUpdate(true),
-    m_plot_mutex(new QReadWriteLock())
+    m_plot_mutex(new QReadWriteLock(QReadWriteLock::Recursive))
   {
     ui.setupUi(m_tab_widget);
 

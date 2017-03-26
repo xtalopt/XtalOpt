@@ -1214,8 +1214,8 @@ namespace GlobalSearch {
     /// \cond
     bool m_hasEnthalpy;
     std::atomic_bool m_updatedSinceDupChecked;
-    bool m_primitiveChecked, m_skippedOptimization,
-         m_supercellGenerationChecked;
+    bool m_primitiveChecked, m_skippedOptimization;
+    std::atomic_bool m_supercellGenerationChecked;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
          m_currentOptStep, m_failCount;

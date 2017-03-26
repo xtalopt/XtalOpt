@@ -210,52 +210,46 @@ namespace GlobalSearch {
     uint running = 0;
     uint optimized = 0;
     uint submitted = 0;
-    m_tracker->lockForRead();
+
+    QReadLocker trackerReadLocker(m_tracker->rwLock());
     QList<Structure*> structures = *m_tracker->list();
-    m_tracker->unlock();
 
     // Check to see that the number of running jobs is >= that specified:
-    Structure *structure = 0;
-    Structure::State state;
     int fail=0;
     for (int i = 0; i < structures.size(); ++i) {
-      structure = structures.at(i);
-      structure->lock().lockForRead();
-      state = structure->getStatus();
-      if (structure->getFailCount() != 0) fail++;
-      structure->lock().unlock();
+      Structure* structure = structures.at(i);
+      QReadLocker structureLocker(&structure->lock());
+      Structure::State state = structure->getStatus();
+      if (structure->getFailCount() != 0)
+        ++fail;
+      structureLocker.unlock();
+
+      QWriteLocker runningTrackerLocker(m_runningTracker.rwLock());
       // Count submitted structures
-      if ( state == Structure::Submitted ||
-           state == Structure::InProcess ){
-        m_runningTracker.lockForWrite();
+      if (state == Structure::Submitted ||
+          state == Structure::InProcess) {
         m_runningTracker.append(structure);
-        m_runningTracker.unlock();
-        submitted++;
+        ++submitted;
       }
       // Count running jobs and update trackers
-      if ( state != Structure::Optimized &&
-           state != Structure::Duplicate &&
-           state != Structure::Supercell &&
-           state != Structure::Killed &&
-           state != Structure::Removed ) {
-        running++;
-        m_runningTracker.lockForWrite();
+      if (state != Structure::Optimized &&
+          state != Structure::Duplicate &&
+          state != Structure::Supercell &&
+          state != Structure::Killed &&
+          state != Structure::Removed) {
         m_runningTracker.append(structure);
-        m_runningTracker.unlock();
+        ++running;
       }
       else {
-        if ( state == Structure::Optimized ) {
-          optimized++;
-        }
-        m_runningTracker.lockForWrite();
+        if (state == Structure::Optimized)
+          ++optimized;
         m_runningTracker.remove(structure);
-        m_runningTracker.unlock();
       }
     }
     emit newStatusOverview(optimized, running, fail);
 
     // Submit any jobs if needed
-    m_jobStartTracker.lockForWrite();
+    QWriteLocker jobStartTrackerLocker(m_jobStartTracker.rwLock());
     int pending = m_jobStartTracker.list()->size();
     if (pending != 0 &&
         (
@@ -294,11 +288,13 @@ namespace GlobalSearch {
       }
 #endif
     }
-    m_jobStartTracker.unlock();
+    jobStartTrackerLocker.unlock();
 
     // Generate requests
-    m_tracker->lockForWrite(); // Write lock for m_requestedStructures var
-    m_newStructureTracker.lockForRead();
+    trackerReadLocker.unlock();
+    // Write lock for m_requestedStructures var
+    QWriteLocker trackerWriteLocker(m_tracker->rwLock());
+    QReadLocker newStructureTrackerLocker(m_newStructureTracker.rwLock());
 
     // Avoid convience function calls here, as occaisional deadlocks
     // can occur.
@@ -327,10 +323,6 @@ namespace GlobalSearch {
         qDebug() << "Requested new structure. Total requested: " << m_requestedStructures;
       }
     }
-
-    m_newStructureTracker.unlock();
-    m_tracker->unlock();
-    return;
   }
 
   void QueueManager::checkRunning()

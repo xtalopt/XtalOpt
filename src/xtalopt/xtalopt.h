@@ -19,8 +19,9 @@
 #include <globalsearch/optbase.h>
 #include <globalsearch/macros.h>
 
-#include <QReadWriteLock>
 #include <QtConcurrent>
+
+#include <mutex>
 
 // Convenience...
 //static const double DEG_TO_RAD = 3.14159265359 / 180.0;
@@ -212,14 +213,15 @@ namespace XtalOpt {
     Xtal* generateNewXtal();
     // Identical to generateNewXtal() except the number of formula units has been specified already
     Xtal* generateNewXtal(uint FU);
-    // setupNewXtal should be true if we are setting up a new dynamically
-    // allocated xtal. It copies over cell info and atom positions from xtal.
-    // if xtal == 0, one is selected from the probability list with formula
-    // units of initialFU.
+    // generateSuperCell() returns a dynamically allocated xtal.
+    // The caller takes ownership of the pointer.
+    // Generate a super cell with parentXtal being the parent
+    // if parentXtal is null, one is selected from the probability list with
+    // formula units of initialFU.
     // mutate should be true if you wish to perform a stripple/permustrain
     // on the xtal immediately after generating the supercell.
-    Xtal* generateSuperCell(uint initialFU, uint finalFU, Xtal *xtal,
-                            bool setupNewXtal, bool mutate);
+    Xtal* generateSuperCell(uint initialFU, uint finalFU, Xtal* parentXtal,
+                            bool mutate);
     // Returns a dynamically allocated xtal that has undergone a primitive
     // reduction of the xtal that was input
     Xtal* generatePrimitiveXtal(Xtal *xtal);
@@ -260,7 +262,7 @@ namespace XtalOpt {
     GlobalSearch::SlottedWaitCondition *m_initWC;
     // This lock is to prevent multiple threads from generating the same
     // supercell in XtalOpt::generateNewXtal()
-    QReadWriteLock supercellCheckLock;
+    std::mutex supercellCheckLock;
     // This creates a background thread that waits 0.1 seconds before unlocking
     void waitThenUnlockSupercellCheckLock() {
       QtConcurrent::run(this, &XtalOpt::waitThenUnlockSupercellCheckLock_);};

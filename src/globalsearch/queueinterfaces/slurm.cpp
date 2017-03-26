@@ -36,6 +36,7 @@ namespace GlobalSearch {
   SlurmQueueInterface::SlurmQueueInterface(OptBase *parent,
                                            const QString &settingsFile) :
     RemoteQueueInterface(parent, settingsFile),
+    m_queueMutex(QReadWriteLock::Recursive),
     m_squeue("squeue"),
     m_sbatch("sbatch"),
     m_scancel("scancel"),

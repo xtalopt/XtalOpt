@@ -38,6 +38,7 @@ namespace GlobalSearch {
 LoadLevelerQueueInterface::LoadLevelerQueueInterface(
     OptBase *parent, const QString &settingsFile) :
   RemoteQueueInterface(parent, settingsFile),
+  m_queueMutex(QReadWriteLock::Recursive),
   m_llq("llq"),
   m_llsubmit("llsubmit"),
   m_llcancel("llcancel"),

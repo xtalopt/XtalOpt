@@ -38,6 +38,7 @@ namespace GlobalSearch {
   PbsQueueInterface::PbsQueueInterface(OptBase *parent,
                                        const QString &settingsFile) :
     RemoteQueueInterface(parent, settingsFile),
+    m_queueMutex(QReadWriteLock::Recursive),
     m_qstat("qstat"),
     m_qsub("qsub"),
     m_qdel("qdel"),

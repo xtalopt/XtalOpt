@@ -26,7 +26,8 @@ using namespace std;
 namespace GlobalSearch {
 
   Tracker::Tracker(QObject *parent) :
-    QObject(parent)
+    QObject(parent),
+    m_mutex(QReadWriteLock::Recursive)
   {
   }
 
