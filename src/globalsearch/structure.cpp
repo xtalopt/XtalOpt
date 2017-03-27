@@ -15,6 +15,7 @@
 
 #include <globalsearch/structure.h>
 
+#include <globalsearch/bt.h>
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/random.h>
@@ -45,7 +46,6 @@ namespace GlobalSearch {
     m_generation(0),
     m_id(0),
     m_rank(0),
-    m_formulaUnits(0),
     m_jobID(0),
     m_energy(0),
     m_enthalpy(0),
@@ -71,7 +71,6 @@ namespace GlobalSearch {
     m_generation(0),
     m_id(0),
     m_rank(0),
-    m_formulaUnits(0),
     m_jobID(0),
     m_energy(0),
     m_enthalpy(0),
@@ -100,7 +99,6 @@ namespace GlobalSearch {
     m_generation(0),
     m_id(0),
     m_rank(0),
-    m_formulaUnits(0),
     m_jobID(0),
     m_energy(0),
     m_enthalpy(0),
@@ -146,7 +144,6 @@ namespace GlobalSearch {
       m_generation                 = other.m_generation;
       m_id                         = other.m_id;
       m_rank                       = other.m_rank;
-      m_formulaUnits               = other.m_formulaUnits;
       m_jobID                      = other.m_jobID;
       m_currentOptStep             = other.m_currentOptStep;
       m_failCount                  = other.m_failCount;
@@ -182,7 +179,6 @@ namespace GlobalSearch {
       m_generation                 = std::move(other.m_generation);
       m_id                         = std::move(other.m_id);
       m_rank                       = std::move(other.m_rank);
-      m_formulaUnits               = std::move(other.m_formulaUnits);
       m_jobID                      = std::move(other.m_jobID);
       m_currentOptStep             = std::move(other.m_currentOptStep);
       m_failCount                  = std::move(other.m_failCount);
@@ -222,7 +218,6 @@ namespace GlobalSearch {
     settings->setValue("id", getIDNumber());
     settings->setValue("index", getIndex());
     settings->setValue("rank", getRank());
-    settings->setValue("formulaUnits", getFormulaUnits());
     settings->setValue("primitiveChecked", wasPrimitiveChecked());
     settings->setValue("skippedOptimization", skippedOptimization());
     settings->setValue("supercellGenerationChecked",
@@ -332,7 +327,6 @@ namespace GlobalSearch {
       setIDNumber(       settings->value("id",             0).toInt());
       setIndex(          settings->value("index",          0).toInt());
       setRank(           settings->value("rank",           0).toInt());
-      setFormulaUnits(   settings->value("formulaUnits",   0).toInt());
       setPrimitiveChecked(settings->value("primitiveChecked",0).toBool());
       setSkippedOptimization(
                    settings->value("skippedOptimization", 0).toBool());
@@ -1350,37 +1344,18 @@ namespace GlobalSearch {
     rankInPlace(*structures);
   }
 
-  //PSA. Returns Formula Units.
+  // greatest common divisor
+  uint gcd(uint a, uint b)
+  {
+    return b == 0 ? a : gcd(b, a % b);
+  }
+
   uint Structure::getFormulaUnits() const
   {
-    // m_formulaUnits is set with Structure::setFormulaUnits()
-    // If it hasn't been set yet, it is 0
-    if (m_formulaUnits != 0) return m_formulaUnits;
-
-    // If m_formulaUnits isn't set yet, proceed through the algorithm to find
-    // the number of formula units
-    QList<uint> xtalCounts = getNumberOfAtomsAlpha();
-    unsigned int minimumQuantityOfAtomType = xtalCounts.at(0);
-    for (size_t i = 1; i < xtalCounts.size(); ++i) {
-      if (minimumQuantityOfAtomType > xtalCounts.at(i)){
-        minimumQuantityOfAtomType = xtalCounts.at(i);
-      }
-    }
-    unsigned int formulaUnits = 1;
-    bool formulaUnitsFound;
-    for (int i = minimumQuantityOfAtomType; i > 1; i--){
-      formulaUnitsFound = true;
-      for (int j = 0; j < xtalCounts.size(); ++j) {
-        if(xtalCounts.at(j) % i != 0){
-          formulaUnitsFound = false;
-        }
-      }
-      if(formulaUnitsFound == true) {
-        formulaUnits = i;
-        i = 1;
-      }
-    }
-    return formulaUnits;
+    QList<uint> counts = getNumberOfAtomsAlpha();
+    if (counts.empty())
+      return 0;
+    return std::accumulate(counts.begin(), counts.end(), counts[0], gcd);
   }
 
   // Returns the number of structures of each formula unit up to the

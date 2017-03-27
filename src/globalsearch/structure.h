@@ -311,9 +311,7 @@ namespace GlobalSearch {
      */
     uint getFailCount() { return m_failCount;};
 
-    // return the number of formula units. If m_formulaUnits has been set,
-    // it will return m_formula units. If it hasn't been set, it will calculate
-    // the number of formula units with the formula-unit-finding algorithm.
+    // Calculate and return the number of formula units
     uint getFormulaUnits() const;
 
    /** @return A pointer for the parent structure of a given structure
@@ -945,12 +943,6 @@ namespace GlobalSearch {
      */
     void setRank(uint rank) {m_rank = rank;};
 
-    /** Set the Structure's formula units.
-     * @param formulaUnits The Structure's formula units.
-     * @sa getFormulaUnits
-     */
-    void setFormulaUnits(uint formulaUnits) {m_formulaUnits = formulaUnits;};
-
     /** Set the Job ID of the current optimization process.
      * @param id The current optimization process's Job ID.
      * @sa getJobID
@@ -1216,7 +1208,7 @@ namespace GlobalSearch {
     std::atomic_bool m_updatedSinceDupChecked, m_primitiveChecked,
                      m_skippedOptimization, m_supercellGenerationChecked;
     bool m_histogramGenerationPending;
-    uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
+    uint m_generation, m_id, m_rank, m_jobID,
          m_currentOptStep, m_failCount;
     QString m_parents, m_dupString, m_supString, m_rempath, m_fileName;
     double m_energy, m_enthalpy, m_PV;

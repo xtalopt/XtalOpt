@@ -481,7 +481,6 @@ namespace XtalOpt {
     if (!reason.isEmpty())
       parents += " (" + reason + ")";
     oldXtal->setParents(parents);
-    oldXtal->setFormulaUnits(oldXtal->getFormulaUnits());
 
     for (uint i = 0; i < xtal->numAtoms(); i++) {
       Atom& atom1 = oldXtal->addAtom();
@@ -598,7 +597,6 @@ namespace XtalOpt {
     // We need to set these things before checkXtal() is called
     if (xtal) {
       xtal->setStatus(Xtal::WaitingForOptimization);
-      xtal->setFormulaUnits(FU);
       if (using_fixed_volume) xtal->setVolume(vol_fixed * FU);
     }
     else {
@@ -634,8 +632,7 @@ namespace XtalOpt {
       beta         = getRandDouble() * (beta_max  - beta_min ) + beta_min;
       gamma        = getRandDouble() * (gamma_max - gamma_min) + gamma_min;
       xtal = new Xtal(a, b, c, alpha, beta, gamma);
-      xtal->setFormulaUnits(FU);
-    } while (!checkLattice(xtal));
+    } while (!checkLattice(xtal, FU));
 
     QWriteLocker locker(&xtal->lock());
 
@@ -947,7 +944,6 @@ namespace XtalOpt {
     xtal->setGeneration(generation);
     xtal->setIDNumber(id);
     xtal->setParents("Randomly generated");
-    xtal->setFormulaUnits(FU);
     xtal->setStatus(Xtal::WaitingForOptimization);
 
     // Set up xtal data
@@ -1076,10 +1072,6 @@ namespace XtalOpt {
     xtal->setGeneration(generation);
     xtal->setParents(parents);
 
-    // If the formula units haven't been set yet, Structure::getFormulaUnits()
-    // finds the formula units with a formula-unit-finding algorithm. Setting
-    // the formula units allows Structure::getFormulaUnits() to run faster.
-    xtal->setFormulaUnits(xtal->getFormulaUnits());
     QString id_s, gen_s, locpath_s, rempath_s;
     id_s.sprintf("%05d",xtal->getIDNumber());
     gen_s.sprintf("%05d",xtal->getGeneration());
@@ -1306,7 +1298,6 @@ namespace XtalOpt {
                 // We only want to perform offspring tracking for mutated
                 // offspring.
                 nxtal->setParentStructure(nullptr);
-                nxtal->setFormulaUnits(nxtal->getFormulaUnits());
                 nxtal->setEnthalpy(testXtal->getEnthalpy() *
                          nxtal->getFormulaUnits() /
                          testXtal->getFormulaUnits());
@@ -1421,7 +1412,7 @@ namespace XtalOpt {
         QList<uint> possibleMitosisFU_index;
         for (int i = 0; i < formulaUnitsList.size(); i++) {
           if (formulaUnitsList.at(i) % selectedXtal->getFormulaUnits() == 0 &&
-                formulaUnitsList.at(i) != selectedXtal->getFormulaUnits()) {
+              formulaUnitsList.at(i) != selectedXtal->getFormulaUnits()) {
             possibleMitosisFU_index.append(i);
           }
         }
@@ -1704,7 +1695,6 @@ namespace XtalOpt {
       .arg(xtal->getIDNumber());
     nxtal->setGeneration(gen);
     nxtal->setParents(parents);
-    nxtal->setFormulaUnits(nxtal->getFormulaUnits());
     nxtal->setEnthalpy(xtal->getEnthalpy() *
                        nxtal->getFormulaUnits() /
                        xtal->getFormulaUnits());
@@ -1995,15 +1985,15 @@ namespace XtalOpt {
   }
 
   // Xtal should be write-locked before calling this function
-  bool XtalOpt::checkLattice(Xtal *xtal, QString * err)
+  bool XtalOpt::checkLattice(Xtal *xtal, uint formulaUnits, QString * err)
   {
     // Adjust max and min constraints depending on the formula unit
-    new_vol_max = static_cast<double>(xtal->getFormulaUnits()) * vol_max;
-    new_vol_min = static_cast<double>(xtal->getFormulaUnits()) * vol_min;
+    new_vol_max = static_cast<double>(formulaUnits) * vol_max;
+    new_vol_min = static_cast<double>(formulaUnits) * vol_min;
 
     // Check volume
     if (using_fixed_volume) {
-      xtal->setVolume(vol_fixed * static_cast<double>(xtal->getFormulaUnits()));
+      xtal->setVolume(vol_fixed * static_cast<double>(formulaUnits));
     }
     else if ( xtal->getVolume() < new_vol_min || //PSA
               xtal->getVolume() > new_vol_max) { //PSA
@@ -2146,7 +2136,7 @@ namespace XtalOpt {
     if (!checkComposition(xtal, err))
       return false;
 
-    if (!checkLattice(xtal, err))
+    if (!checkLattice(xtal, xtal->getFormulaUnits(), err))
       return false;
 
     // Sometimes, all the atom positions are set to 'nan' for an unknown reason

@@ -118,7 +118,7 @@ namespace XtalOpt {
       const QString &reason = "") override;
     bool checkLimits() override;
     bool checkComposition(Xtal *xtal, QString * err = nullptr);
-    bool checkLattice(Xtal *xtal, QString * err = nullptr);
+    bool checkLattice(Xtal *xtal, uint formulaUnits, QString * err = nullptr);
     bool checkXtal(Xtal *xtal, QString * err = nullptr);
     QString interpretTemplate(const QString & templateString,
                               GlobalSearch::Structure* structure) override;

@@ -639,7 +639,6 @@ namespace XtalOpt {
 
     Q_ASSERT(fcoords.size() == atomicNums.size());
     Q_ASSERT(this->atoms().size() == fcoords.size());
-    this->setFormulaUnits(0);
 
     return true;
   }
