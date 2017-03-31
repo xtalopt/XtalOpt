@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
 {
   // Loop through command line arguments
   bool noGUI = false;
-  QString inputfile = "xtalopt-cli.in";
+  QString inputfile = "xtalopt.in";
 
   // The names of the argument options go here
   static const QString noGUIArgumentStr = "--no-gui",

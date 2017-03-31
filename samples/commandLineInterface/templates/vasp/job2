@@ -1,0 +1,37 @@
+#!/bin/sh
+#SBATCH --nodes=1
+#SBATCH --tasks-per-node=12
+#SBATCH --account=ezurek
+#SBATCH --qos=supporters
+#SBATCH --cluster=ub-hpc
+#SBATCH --job-name=test-%gen%x%id%-%incar%
+#SBATCH --output=%rempath%/../%gen%x%id%-%incar%.out
+#SBATCH --mail-user=$user$@buffalo.edu
+#SBATCH --time=12:00:00
+#SBATCH --error=job.err
+#SBATCH --mem=48000
+#SBATCH --constraint=IB&CPU-E5645
+
+export SCRATCH_DIR=$SLURM_SUBMIT_DIR
+echo "SLURMTMPDIR is $SLURMTMPDIR"
+export OMP_NUM_THREADS=1
+export I_MPI_PIN=0
+ulimit -s unlimited
+export NNODES=`srun -l hostname | uniq | wc -l`
+export NPROCS=`srun -l hostname | wc -l`
+
+HOSTFILE=hosts.$SLURM_JOB_ID
+srun hostname -s | sort > $HOSTFILE
+
+module use /projects/academic/ezurek/software/projectmodules/
+module load vasp5.4.12
+module list
+which vasp
+
+echo "The number of nodes is $SLURM_NNODES"
+echo "The number of processors per node $SLURM_NTASKS_PER_NODE"
+echo "The number of processors is $NPROCS"
+
+export I_MPI_PMI_LIBRARY=/usr/lib64/libpmi.so
+
+srun --propagate=STACK vasp
