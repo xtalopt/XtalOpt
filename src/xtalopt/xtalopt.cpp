@@ -261,7 +261,8 @@ namespace XtalOpt {
     ///////////////////////////////////////////////
 
     // Set up progress bar
-    //m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
+    if (m_usingGUI)
+      m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
 
     // Initalize loop variables
     int failed = 0;
@@ -275,9 +276,11 @@ namespace XtalOpt {
     for (int i = 0; i < seedList.size(); i++) {
       filename = seedList.at(i);
       if (this->addSeed(filename)) {
-        //m_dialog->updateProgressLabel(
-        //      tr("%1 structures generated (%2 kept, %3 rejected)...")
-        //      .arg(i + failed).arg(i).arg(failed));
+        if (m_usingGUI) {
+          m_dialog->updateProgressLabel(
+                tr("%1 structures generated (%2 kept, %3 rejected)...")
+                .arg(i + failed).arg(i).arg(failed));
+        }
         newXtalCount++;
       }
     }
@@ -391,20 +394,24 @@ namespace XtalOpt {
     }
 
     // Wait for all structures to appear in tracker
-    //m_dialog->updateProgressLabel(
-    //      tr("Waiting for structures to initialize..."));
-    //m_dialog->updateProgressMinimum(0);
-    //m_dialog->updateProgressMinimum(newXtalCount);
+    if (m_usingGUI) {
+      m_dialog->updateProgressLabel(
+            tr("Waiting for structures to initialize..."));
+      m_dialog->updateProgressMinimum(0);
+      m_dialog->updateProgressMinimum(newXtalCount);
+    }
 
     connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             m_initWC, SLOT(wakeAllSlot()));
 
     m_initWC->prewaitLock();
     do {
-      //m_dialog->updateProgressValue(m_tracker->size());
-      //m_dialog->updateProgressLabel(
-      //      tr("Waiting for structures to initialize (%1 of %2)...")
-      //      .arg(m_tracker->size()).arg(newXtalCount));
+      if (m_usingGUI) {
+        m_dialog->updateProgressValue(m_tracker->size());
+        m_dialog->updateProgressLabel(
+              tr("Waiting for structures to initialize (%1 of %2)...")
+              .arg(m_tracker->size()).arg(newXtalCount));
+      }
       // Don't block here forever -- there is a race condition where
       // the final newStructureAdded signal may be emitted while the
       // WC is not waiting. Since this is just trivial GUI updating
@@ -418,7 +425,8 @@ namespace XtalOpt {
     // We're done with m_initWC.
     m_initWC->disconnect();
 
-    //m_dialog->stopProgressUpdate();
+    if (m_usingGUI)
+      m_dialog->stopProgressUpdate();
 
     m_dialog->saveSession();
     emit sessionStarted();
