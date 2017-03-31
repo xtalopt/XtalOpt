@@ -38,17 +38,16 @@ namespace GlobalSearch {
 LoadLevelerQueueInterface::LoadLevelerQueueInterface(
     OptBase *parent, const QString &settingsFile) :
   RemoteQueueInterface(parent, settingsFile),
-  m_queueMutex(QReadWriteLock::Recursive),
-  m_llq("llq"),
-  m_llsubmit("llsubmit"),
-  m_llcancel("llcancel"),
-  m_interval(20),
-  m_cleanRemoteOnStop(false)
+  m_queueMutex(QReadWriteLock::Recursive)
 {
   m_idString = "LoadLeveler";
   m_templates.clear();
   m_templates.append("job.ll");
   m_hasDialog = true;
+
+  m_statusCommand = "llq";
+  m_submitCommand = "llsubmit";
+  m_cancelCommand = "llcancel";
 
   readSettings(settingsFile);
 }
@@ -99,19 +98,19 @@ bool LoadLevelerQueueInterface::isReadyToSearch(QString *str)
     return false;
   }
 
-  if (m_llcancel.isEmpty()) {
+  if (m_cancelCommand.isEmpty()) {
     *str = tr("llcancel command is not set. Check your Queue "
               "configuration.");
     return false;
   }
 
-  if (m_llq.isEmpty()) {
+  if (m_statusCommand.isEmpty()) {
     *str = tr("llq command is not set. Check your Queue "
               "configuration.");
     return false;
   }
 
-  if (m_llsubmit.isEmpty()) {
+  if (m_submitCommand.isEmpty()) {
     *str = tr("llsubmit command is not set. Check your Queue "
               "configuration.");
     return false;
@@ -162,9 +161,9 @@ void LoadLevelerQueueInterface::readSettings(const QString &filename)
   int loadedVersion = settings->value("version", 0).toInt();
   settings->beginGroup("paths");
 
-  m_llsubmit  = settings->value("llsubmit", "llsubmit").toString();
-  m_llq       = settings->value("llq",      "llq").toString();
-  m_llcancel  = settings->value("llcancel", "llcancel").toString();
+  m_submitCommand  = settings->value("llsubmit", "llsubmit").toString();
+  m_statusCommand       = settings->value("llq",      "llq").toString();
+  m_cancelCommand  = settings->value("llcancel", "llcancel").toString();
   this->setInterval(settings->value("interval", 20).toInt());
   m_cleanRemoteOnStop = settings->value("cleanRemoteOnStop", false).toBool();
 
@@ -195,9 +194,9 @@ void LoadLevelerQueueInterface::writeSettings(const QString &filename)
   settings->setValue("version", version);
   settings->beginGroup("paths");
 
-  settings->setValue("llsubmit",  m_llsubmit);
-  settings->setValue("llq", m_llq);
-  settings->setValue("llcancel",  m_llcancel);
+  settings->setValue("llsubmit",  m_submitCommand);
+  settings->setValue("llq", m_statusCommand);
+  settings->setValue("llcancel",  m_cancelCommand);
   settings->setValue("interval",  m_interval);
   settings->setValue("cleanRemoteOnStop", m_cleanRemoteOnStop);
 
@@ -220,7 +219,7 @@ bool LoadLevelerQueueInterface::startJob(Structure *s)
   QWriteLocker wlocker (&s->lock());
 
   QString command = "cd \"" + s->getRempath() + "\" && " +
-      m_llsubmit + " job.ll";
+      m_submitCommand + " job.ll";
 
   QString stdout_str;
   QString stderr_str;
@@ -277,7 +276,7 @@ bool LoadLevelerQueueInterface::stopJob(Structure *s)
     return true;
   }
 
-  const QString command = m_llcancel + " " + QString::number(s->getJobID());
+  const QString command = m_cancelCommand + " " + QString::number(s->getJobID());
 
   // Execute
   QString stdout_str;
@@ -400,7 +399,7 @@ QueueInterface::QueueStatus LoadLevelerQueueInterface::getStatus(Structure *s) c
   }
 }
 
-void LoadLevelerQueueInterface::setInterval(const int sec)
+void LoadLevelerQueueInterface::setInterval(int sec)
 {
   m_queueMutex.lockForWrite();
   m_interval = sec;
@@ -463,7 +462,7 @@ unsigned int LoadLevelerQueueInterface::parseJobId(
   if (!idIsInt) {
     m_opt->warning(tr("Invalid jobID. %1 output:\n%2\n"
                       "Parsed jobid: '%3'' (must be a positive integer).")
-                   .arg(m_llsubmit).arg(submissionOutput)
+                   .arg(m_submitCommand).arg(submissionOutput)
                    .arg(idCapture.cap(1)));
     return 0;
   }
@@ -533,7 +532,7 @@ QStringList LoadLevelerQueueInterface::getQueueList() const
     return ret;
   }
 
-  QString command = m_llq + " -u " + m_opt->username;
+  QString command = m_statusCommand + " -u " + m_opt->username;
 
   // Execute
   QString stdout_str;

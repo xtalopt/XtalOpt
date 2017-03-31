@@ -4,6 +4,7 @@ find_package(Qwt REQUIRED)
 include_directories(${QWT_INCLUDE_DIRS})
 
 set( xtalopt_SRCS
+     cliOptions.cpp
      debug.cpp
      xtalopt.cpp
      genetic.cpp
@@ -55,7 +56,7 @@ if(UNIX AND ENABLE_RPATH)
   set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 
-add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp 
+add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp
                ${xtalopt_SRCS} ${xtalopt_RCS})
 
 target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg
@@ -73,7 +74,7 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
 install(TARGETS xtalopt
-  BUNDLE DESTINATION . 
+  BUNDLE DESTINATION .
   RUNTIME DESTINATION bin
 )
 
@@ -92,7 +93,7 @@ install(DIRECTORY
         DESTINATION "${adjusted_install_prefix}")
 
 # Get all dependencies and perform the "bundle" for Mac OSX
-if(APPLE) 
+if(APPLE)
   # Install the icon to the resources directory
   install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/images/xtalopt-logo.icns"
           DESTINATION "${adjusted_install_prefix}/Resources")
@@ -102,7 +103,7 @@ if(APPLE)
   # I'm not sure why cmake doesn't bundle cocoa for us, but since
   # it doesn't, we need to install it ourselves...
   include(MacroInstallCocoa)
-  InstallCocoa("${CMAKE_INSTALL_PREFIX}/xtalopt.app/Contents/plugins" 
+  InstallCocoa("${CMAKE_INSTALL_PREFIX}/xtalopt.app/Contents/plugins"
                QT_PLUGINS)
 
   # We need to write a qt.conf file that points to the plugins

@@ -33,6 +33,8 @@
 #endif // ENABLE_SSH
 #include <globalsearch/structure.h>
 #include <globalsearch/ui/abstractdialog.h>
+#include <globalsearch/utilities/passwordprompt.h>
+#include <globalsearch/utilities/utilityfunctions.h>
 
 #include <QFile>
 #include <QThread>
@@ -42,6 +44,8 @@
 #include <QMessageBox>
 #include <QApplication>
 #include <QInputDialog>
+
+#include <iostream>
 
 //#define OPTBASE_DEBUG
 
@@ -69,6 +73,7 @@ namespace GlobalSearch {
     test_nStructs(600),
     cutoff(-1),
     m_schemaVersion(1),
+    m_usingGUI(true),
     m_logErrorDirs(false)
   {
     // Connections
@@ -530,19 +535,36 @@ namespace GlobalSearch {
                                   QString *newPassword,
                                   bool *ok)
   {
-    (*newPassword) = QInputDialog::getText(dialog(), "Need password:", message,
-                                           QLineEdit::Password, QString(), ok);
+    if (m_usingGUI) {
+      (*newPassword) = QInputDialog::getText(dialog(), "Need password:", message,
+                                             QLineEdit::Password, QString(), ok);
+    }
+    else {
+      (*newPassword) = PasswordPrompt::getPassword().c_str();
+    }
   };
 
   void OptBase::promptForBoolean(const QString &message,
                                  bool *ok)
   {
-    if (QMessageBox::question(dialog(), m_idString, message,
-                              QMessageBox::Yes | QMessageBox::No)
-        == QMessageBox::Yes) {
-      *ok = true;
-    } else {
-      *ok = false;
+    if (m_usingGUI) {
+      if (QMessageBox::question(dialog(), m_idString, message,
+                                QMessageBox::Yes | QMessageBox::No)
+          == QMessageBox::Yes) {
+        *ok = true;
+      } else {
+        *ok = false;
+      }
+    }
+    else {
+      std::cout << message.toStdString() << "\n[y/N]\n";
+      std::string in;
+      std::getline(std::cin, in);
+      in = trim(in);
+      if (in.size() != 0 && (in[0] == 'y' || in[0] == 'Y'))
+        *ok = true;
+      else
+        *ok = false;
     }
   }
 

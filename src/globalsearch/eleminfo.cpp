@@ -58,68 +58,61 @@ uint ElemInfo::getAtomicNum(std::string symbol)
   return 0;
 }
 
-// Reads until a number is reached and returns what it read
-string readLetters(string input)
+bool ElemInfo::readComposition(string compStr, map<uint, uint>& comp)
 {
-  string ret;
-  size_t i = 0;
-  while (true) {
-    if (i == input.size()) return ret;
-    if (!isDigit(input[i])) ret.push_back(input[i]);
-    else return ret;
-    i++;
+  compStr = removeSpaces(compStr);
+  comp.clear();
+
+  vector<string> symbols   = reSplit(compStr, "[0-9]");
+  vector<string> countsStr = reSplit(compStr, "[A-Za-z]");
+
+  if (symbols.size() != countsStr.size()) {
+    cerr << "Error: invalid composition, " << compStr << ", was entered.\n";
+    cerr << "Every symbol must be followed by a number (i.e., Ti1O2).\n";
+    return false;
   }
-}
 
-// Reads until a non-number is reached. Then it returns that number.
-string readNumbers(string input)
-{
-  string ret;
-  size_t i = 0;
-  while (true) {
-    if (i == input.size()) return ret;
-    if (isDigit(input[i])) ret.push_back(input[i]);
-    else return ret;
-    i++;
+  // Transform the counts vector into an int vector
+  vector<uint> counts(countsStr.size());
+  transform(countsStr.begin(), countsStr.end(), counts.begin(),
+            [](const string& s)
+            {
+              return stoi(s);
+            });
+
+  // Make sure none of the counts are zero
+  if (!none_of(counts.begin(), counts.end(), [](uint a) { return a == 0; })) {
+    cerr << "Error reading numbers in composition, " << compStr << "\n";
+    cerr << "Check your input and try again\n";
+    return false;
   }
-}
 
-bool ElemInfo::readComposition(string comp, vector<uint>& atoms)
-{
-  comp = removeSpaces(comp);
-  atoms.clear();
-  while (comp.size() != 0 && !containsOnlySpaces(comp)) {
-
-    // Find the symbol
-    string symbol = readLetters(comp);
-
-    // remove the symbol from the string
-    comp = comp.substr(symbol.size());
-
-    // Find the number
-    string number = readNumbers(comp);
-    // remove the number from the string
-    comp = comp.substr(number.size());
-
-    uint atomicNum = getAtomicNum(symbol);
-
+  for (size_t i = 0; i < symbols.size(); ++i) {
+    int atomicNum = getAtomicNum(symbols[i]);
     if (atomicNum == 0) {
-      cout << "Error in " << __FUNCTION__ << ": invalid atomic symbol\n";
-      atoms.clear();
+      cerr << "Error: invalid elemental symbol, " << symbols[i]
+           << ", was entered in the composition, " << compStr << "\n"
+           << "Note: every symbol must be followed by a number (i.e., Ti1O2)\n";
       return false;
     }
-
-    size_t num = stoi(number);
-    if (num == 0) {
-      cout << "Error in " << __FUNCTION__ << ": invalid number read\n";
-      atoms.clear();
-      return false;
-    }
-
-    for (size_t i = 0; i < num; i++) {
-      atoms.push_back(atomicNum);
-    }
+    comp[atomicNum] = counts[i];
   }
+
+  return true;
+}
+
+bool ElemInfo::readComposition(const string& comp, vector<uint>& atoms)
+{
+  atoms.clear();
+  map<uint, uint> compMap;
+  if (!readComposition(comp, compMap))
+    return false;
+
+  for (const auto& elem: compMap) {
+    for (uint i = 0; i < elem.second; ++i)
+      atoms.push_back(elem.first);
+  }
+
   return true;
 }
 

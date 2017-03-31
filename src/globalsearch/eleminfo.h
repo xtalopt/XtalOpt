@@ -19,13 +19,7 @@
 
 #include <globalsearch/eleminfodatabase.h>
 
-// For some reason, uint isn't always defined on windows...
-#ifdef _WIN32
-#ifndef UNSIGNEDINT
-#define UNSIGNEDINT
-typedef unsigned int uint;
-#endif
-#endif
+#include <map>
 
 typedef unsigned int uint;
 
@@ -37,10 +31,16 @@ class ElemInfo {
 
   static uint getAtomicNum(std::string symbol);
 
+  // This function will read 'compStr' and write the result to 'comp'
+  // where the keys to comp are the atomic numbers, and the values are
+  // the numbers of each.
+  static bool readComposition(std::string comp, std::map<uint, uint>& map);
+
   // This function will read 'comp' and write the result to 'atoms'
   // 'atoms' is a vector of atomic numbers. One for each atom.
   // Returns true if the read was successful and false if it was not
-  static bool readComposition(std::string comp, std::vector<uint>& atoms);
+  static bool readComposition(const std::string& comp,
+                              std::vector<uint>& atoms);
 
   static double getVdwRadius(uint atomicNum);
 

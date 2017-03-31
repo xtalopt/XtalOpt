@@ -281,5 +281,16 @@ namespace GlobalSearch {
       emit tabsReadSettingsBlockingQueued(filename);
     }
   }
+
+  void AbstractDialog::errorBox_(const QString& s)
+  {
+    if (m_opt->usingGUI()) {
+      QMessageBox::critical(this, "Error", s);
+    }
+    else {
+      qDebug() << "Error: " << s;
+    }
+  }
+
   /// @endcond
 }

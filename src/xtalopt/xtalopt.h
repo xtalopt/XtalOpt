@@ -208,7 +208,7 @@ namespace XtalOpt {
     QList<int> minXtalsOfSpgPerFU;
 
   public slots:
-    void startSearch() override;
+    bool startSearch() override;
     void generateNewStructure() override;
     Xtal* generateNewXtal();
     // Identical to generateNewXtal() except the number of formula units has been specified already
@@ -238,6 +238,9 @@ namespace XtalOpt {
     void resetDuplicates();
     void checkForDuplicates();
     void updateLowestEnthalpyFUList(GlobalSearch::Structure* s);
+
+    // Prints all the options to @p stream
+    void printOptionSettings(QTextStream& stream) const;
 
    protected:
     friend class XtalOptUnitTest;

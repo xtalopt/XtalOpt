@@ -1,0 +1,194 @@
+# Anything to the right of a '#' is a comment
+
+# Initialization settings
+  # Composition settings
+    # Empirical formula
+      empiricalFormula = Ti1O2
+    # Formula Units (may use commas and hyphens)
+      formulaUnits = 2-4
+
+  # Lattice constraints
+    # Lattice length minima and maxima (Angstroms)
+      aMin = 3.0
+      bMin = 3.0
+      cMin = 3.0
+      aMax = 10.0
+      bMax = 10.0
+      cMax = 10.0
+
+    # Lattice angle minima and maxima (Degrees)
+      alphaMin = 60.0
+      betaMin  = 60.0
+      gammaMin = 60.0
+      alphaMax = 120.0
+      betaMax  = 120.0
+      gammaMax = 120.0
+
+    # Volume min and max (Angstroms cubed)
+      volumeMin = 1.0
+      volumeMax = 100000.0
+
+  # Atomic radii
+    # Ensure that atoms are distanced such that their covalent radii do not
+    # overlap.
+      usingInteratomicDistanceLimit = true
+    # Scale all covalent radii by this number
+      radiiScalingFactor = 0.5
+    # Minimum radius for any given atom (Angstroms)
+      minRadius = 0.25
+
+  # Subcell mitosis settings - build subcells first then duplicate to make
+  # the larger cells
+    # Use subcell mitosis?
+      #usingSubcellMitosis = false
+
+    # Print the subcell?
+      #printSubcell = false
+
+    # If using subcell mitosis, specify the number of divisions and the
+    # number of subcells in each direction
+      #mitosisDivisions = 1
+      #mitosisA = 1
+      #mitosisB = 1
+      #mitosisC = 1
+
+  # Initialize molecular units? NOT YET SUPPORTED IN NO-GUI VERSION
+    #usingMolecularUnits = false
+  # Initialize all crystals with symmetry? (space groups are randomly selected)
+    #usingRandSpg = false
+
+# End of initialization settings
+
+# Search settings
+  # Search parameters
+    numInitial = 20
+    popSize = 20
+    limitRunningJobs = true
+    runningJobLimit = 1
+    continuousStructures = 2
+
+  # Multiple formula unit settings
+    # Build smaller formula units first and then larger ones via supercells?
+      usingMitoticGrowth = false
+    # Use the formula unit crossover?
+      usingFormulaUnitCrossovers = false
+      formulaUnitCrossoversGen = 4
+    # Use one gene pool between all the formula units?
+      usingOneGenePool = false
+    # If we are using one gene pool, what is the chance of first building a
+    # supercell before mutating?
+      chanceOfFutureMitosis = 50
+
+  # Mutators
+    # Percent chance of mutators - need to be integers
+      percentChanceStripple = 50
+      percentChancePermustrain = 35
+      percentChanceCrossover = 15
+
+    # Stripple options
+      strippleAmplitudeMin = 0.5
+      strippleAmplitudeMax = 1.0
+      strippleNumWavesAxis1 = 1
+      strippleNumWavesAxis2 = 1
+      strippleStrainStdevMin = 0.5
+      strippleStrainStdevMax = 0.5
+
+    # Permustrain options
+      permustrainNumExchanges = 4
+      permustrainStrainStdevMax = 0.5
+
+    # Crossover options
+      crossoverMinContribution = 25
+
+  # Duplicate matching
+    # Angstroms
+      xtalcompToleranceLength = 0.1
+    # Degrees
+      xtalcompToleranceAngle = 2.0
+
+  # Space group detection tolerance
+    spglibTolerance = 0.05
+
+# End of search settings
+
+# The directory in which to find all the templates
+# (for both the optimizer and the queue interface files)
+  templatesDirectory = ./templates
+
+# Queue interface settings
+  # What type of queue interface? Options are local, pbs, sge, slurm, lsf,
+  # and loadleveler. All are remote except for 'local'.
+    queueInterface = local
+
+  # Where to save the data locally?
+    localWorkingDirectory = ./localWorkingDirectory
+
+  # Copy the jobs that failed into errorDirs in the local working directory
+  # for future analysis?
+    logErrorDirectories = false
+
+  # Number of optimization steps. You must supply templates for every
+  # optimization step. An error message will be printed if you do not.
+    numOptimizationSteps = 1
+
+  # Remote queue interface settings (will be ignored for local runs)
+    host = rush.ccr.buffalo.edu
+    port = 22
+    user = psavery
+
+    # Where to save and submit the jobs on the host?
+      remoteWorkingDirectory = /path/to/dir/xtalopt-runs/test
+
+    # For these, you may specify the location of each command on the remote host
+    # submitCommand for slurm is sbatch, for pbs it is qsub, etc.
+      submitCommand = sbatch
+    # cancelCommand for slurm is scancel, for pbs it is qdel, etc.
+      cancelCommand = scancel
+    # statusCommand for slurm is squeue, for pbs it is qstat, etc.
+      statusCommand = squeue
+
+    # How often do we analyze and/or submit jobs in the queue (in seconds)?
+      queueRefreshInterval = 10
+
+    # Clean the remote directories when finished?
+      cleanRemoteDirs = false
+
+    # Submission script templates (need to be in the templatesDir)
+    # For multiple jobs, comma separation works. Must be equal to the
+    # number of optimization steps
+      jobTemplates = job1, job2, job3
+
+# End of queue interface settings
+
+# Optimizer settings
+  # What type of optimizer are we using? Options are gulp, vasp, pwscf,
+  # castep, and siesta
+    optimizer = gulp
+
+  # Location of the executable (only applicable for local queue interfaces)
+    exeLocation = gulp
+
+  # In these templates, there are special characters used like %a% for the
+  # A vector length. Look up the XtalOpt manual for a complete listing.
+
+  # GULP templates (only for optimizer = gulp)
+    ginTemplates = gin1
+
+  # VASP templates (only for optimizer = vasp)
+    #incarTemplates = incar1, incar2, incar3
+    #kpointsTemplates = kpoints1, kpoints2, kpoints3
+
+    # This POTCAR file will be copied to all the run locations
+      #potcarFile = POTCAR
+
+  # PWSCF templates (only for optimizer = pwscf)
+    #pwscfTemplates = pwscf1, pwscf2, pwscf3
+
+  # CASTEP emplates (only for optimizer = castep)
+    #castepCellTemplates = cell1, cell2, cell3
+    #castepParamTemplates = param1, param2, param3
+
+  # SIESTA templates (only for optimizer = siesta)
+    #fdfTemplates = fdf1, fdf2, fdf3
+
+# End of optimizer settings

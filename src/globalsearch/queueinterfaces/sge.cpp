@@ -36,16 +36,15 @@ namespace GlobalSearch {
   SgeQueueInterface::SgeQueueInterface(OptBase *parent,
                                        const QString &settingsFile) :
     RemoteQueueInterface(parent, settingsFile),
-    m_queueMutex(QReadWriteLock::Recursive),
-    m_qstat("qstat"),
-    m_qsub("qsub"),
-    m_qdel("qdel"),
-    m_interval(1),
-    m_cleanRemoteOnStop(false)
+    m_queueMutex(QReadWriteLock::Recursive)
   {
     m_idString = "SGE";
     m_templates.append("job.sh");
     m_hasDialog = true;
+
+    m_statusCommand = "qstat";
+    m_submitCommand = "qsub";
+    m_cancelCommand = "qdel";
 
     readSettings(settingsFile);
   }
@@ -96,25 +95,25 @@ namespace GlobalSearch {
       return false;
     }
 
-    if (m_qdel.isEmpty()) {
+    if (m_cancelCommand.isEmpty()) {
       *str = tr("qdel command is not set. Check your Queue "
                 "configuration.");
       return false;
     }
 
-    if (m_qdel.isEmpty()) {
+    if (m_cancelCommand.isEmpty()) {
       *str = tr("qdel command is not set. Check your Queue "
                 "configuration.");
       return false;
     }
 
-    if (m_qstat.isEmpty()) {
+    if (m_statusCommand.isEmpty()) {
       *str = tr("qstat command is not set. Check your Queue "
                 "configuration.");
       return false;
     }
 
-    if (m_qsub.isEmpty()) {
+    if (m_submitCommand.isEmpty()) {
       *str = tr("qsub command is not set. Check your Queue "
                 "configuration.");
       return false;
@@ -164,9 +163,9 @@ namespace GlobalSearch {
     int loadedVersion = settings->value("version", 0).toInt();
     settings->beginGroup("paths");
 
-    m_qsub  = settings->value("qsub",  "qsub").toString();
-    m_qstat = settings->value("qstat", "qstat").toString();
-    m_qdel  = settings->value("qdel",  "qdel").toString();
+    m_submitCommand  = settings->value("qsub",  "qsub").toString();
+    m_statusCommand = settings->value("qstat", "qstat").toString();
+    m_cancelCommand  = settings->value("qdel",  "qdel").toString();
     this->setInterval(settings->value("interval", 1).toInt());
     m_cleanRemoteOnStop = settings->value("cleanRemoteOnStop", false).toBool();
 
@@ -182,9 +181,9 @@ namespace GlobalSearch {
     case 0: // Load old stuff from /sys/ block
       settings->beginGroup(m_opt->getIDString().toLower());
       settings->beginGroup("sys");
-      m_qsub = settings->value("queue/qsub", "qsub").toString();
-      m_qstat = settings->value("queue/qstat", "qstat").toString();
-      m_qdel = settings->value("queue/qdel", "qdel").toString();
+      m_submitCommand = settings->value("queue/qsub", "qsub").toString();
+      m_statusCommand = settings->value("queue/qstat", "qstat").toString();
+      m_cancelCommand = settings->value("queue/qdel", "qdel").toString();
       settings->endGroup();
       settings->endGroup();
     case 1:
@@ -205,9 +204,9 @@ namespace GlobalSearch {
     settings->setValue("version", version);
     settings->beginGroup("paths");
 
-    settings->setValue("qsub",  m_qsub);
-    settings->setValue("qstat", m_qstat);
-    settings->setValue("qdel",  m_qdel);
+    settings->setValue("qsub",  m_submitCommand);
+    settings->setValue("qstat", m_statusCommand);
+    settings->setValue("qdel",  m_cancelCommand);
     settings->setValue("interval",  m_interval);
     settings->setValue("cleanRemoteOnStop", m_cleanRemoteOnStop);
 
@@ -230,7 +229,7 @@ namespace GlobalSearch {
     QWriteLocker wlocker (&s->lock());
 
     QString command = "cd \"" + s->getRempath() + "\" && " +
-      m_qsub + " job.sh";
+      m_submitCommand + " job.sh";
 
     QString stdout_str;
     QString stderr_str;
@@ -279,7 +278,7 @@ namespace GlobalSearch {
       return true;
     }
 
-    const QString command = m_qdel + " " + QString::number(s->getJobID());
+    const QString command = m_cancelCommand + " " + QString::number(s->getJobID());
 
     // Execute
     QString stdout_str;
@@ -396,7 +395,7 @@ namespace GlobalSearch {
     return QueueInterface::Unknown;
   }
 
-  void SgeQueueInterface::setInterval(const int sec)
+  void SgeQueueInterface::setInterval(int sec)
   {
     m_queueMutex.lockForWrite();
     m_interval = sec;
@@ -464,7 +463,7 @@ namespace GlobalSearch {
       return ret;
     }
 
-    QString command = m_qstat + " | grep " + m_opt->username;
+    QString command = m_statusCommand + " | grep " + m_opt->username;
 
     // Execute
     QString stdout_str;

@@ -36,15 +36,15 @@ namespace GlobalSearch {
   LsfQueueInterface::LsfQueueInterface(OptBase *parent,
                                        const QString &settingsFile) :
     RemoteQueueInterface(parent, settingsFile),
-    m_queueMutex(QReadWriteLock::Recursive),
-    m_bjobs("bjobs"),
-    m_bsub("bsub"),
-    m_bkill("bkill"),
-    m_cleanRemoteOnStop(false)
+    m_queueMutex(QReadWriteLock::Recursive)
   {
     m_idString = "LSF";
     m_templates.append("job.lsf");
     m_hasDialog = true;
+
+    m_statusCommand = "bjobs";
+    m_submitCommand = "bsub";
+    m_cancelCommand = "bkill";
 
     readSettings(settingsFile);
   }
@@ -95,19 +95,19 @@ namespace GlobalSearch {
       return false;
     }
 
-    if (m_bkill.isEmpty()) {
+    if (m_cancelCommand.isEmpty()) {
       *str = tr("bkill command is not set. Check your Queue "
                 "configuration.");
       return false;
     }
 
-    if (m_bjobs.isEmpty()) {
+    if (m_statusCommand.isEmpty()) {
       *str = tr("bjobs command is not set. Check your Queue "
                 "configuration.");
       return false;
     }
 
-    if (m_bsub.isEmpty()) {
+    if (m_submitCommand.isEmpty()) {
       *str = tr("bsub command is not set. Check your Queue "
                 "configuration.");
       return false;
@@ -157,9 +157,9 @@ namespace GlobalSearch {
     int loadedVersion = settings->value("version", 0).toInt();
     settings->beginGroup("paths");
 
-    m_bsub  = settings->value("bsub",  "bsub").toString();
-    m_bjobs = settings->value("bjobs", "bjobs").toString();
-    m_bkill = settings->value("bkill", "bkill").toString();
+    m_submitCommand  = settings->value("bsub",  "bsub").toString();
+    m_statusCommand = settings->value("bjobs", "bjobs").toString();
+    m_cancelCommand = settings->value("bkill", "bkill").toString();
     m_cleanRemoteOnStop = settings->value("cleanRemoteOnStop", false).toBool();
 
     settings->endGroup();
@@ -188,9 +188,9 @@ namespace GlobalSearch {
     settings->setValue("version", version);
     settings->beginGroup("paths");
 
-    settings->setValue("bsub",  m_bsub);
-    settings->setValue("bjobs", m_bjobs);
-    settings->setValue("bkill", m_bkill);
+    settings->setValue("bsub",  m_submitCommand);
+    settings->setValue("bjobs", m_statusCommand);
+    settings->setValue("bkill", m_cancelCommand);
     settings->setValue("cleanRemoteOnStop", m_cleanRemoteOnStop);
 
     settings->endGroup();
@@ -212,7 +212,7 @@ namespace GlobalSearch {
     QWriteLocker wlocker (&s->lock());
 
     QString command = "cd \"" + s->getRempath() + "\" && " +
-      m_bsub + "< job.lsf";
+      m_submitCommand + "< job.lsf";
 
     QString stdout_str;
     QString stderr_str;
@@ -276,7 +276,7 @@ namespace GlobalSearch {
       return true;
     }
 
-    const QString command = m_bkill + " " + QString::number(s->getJobID());
+    const QString command = m_cancelCommand + " " + QString::number(s->getJobID());
 
     // Execute
     QString stdout_str;
@@ -422,6 +422,13 @@ namespace GlobalSearch {
     }
   }
 
+  void LsfQueueInterface::setInterval(int sec)
+  {
+    m_queueMutex.lockForWrite();
+    m_interval = sec;
+    m_queueMutex.unlock();
+  }
+
   QStringList LsfQueueInterface::getQueueList() const
   {
     // recast queue mutex as mutable for safe access:
@@ -483,7 +490,7 @@ namespace GlobalSearch {
       return ret;
     }
 
-    QString command = m_bjobs + " -u " + m_opt->username;
+    QString command = m_statusCommand + " -u " + m_opt->username;
 
     // Execute
     QString stdout_str;

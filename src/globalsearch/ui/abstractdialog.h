@@ -394,8 +394,7 @@ namespace GlobalSearch {
      * appropriate thread.
      * @sa errorBox
      */
-    void errorBox_(const QString &s) {
-      QMessageBox::critical(this, "Error", s);};
+    void errorBox_(const QString &s);
 
   signals:
     /**

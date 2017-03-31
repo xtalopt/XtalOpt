@@ -18,7 +18,18 @@
 
 #include <algorithm>
 #include <cctype>
+
+// Unfortunately, GCC < 4.9.0 did not include regex, so we have
+// to use the Qt libraries if are using GCC < 4.9.0
+#if defined(__GNUC__) && __GNUC__ < 4 || \
+    (__GNUC__ == 4 && (__GNUC_MINOR__ < 9))
+#define GNUC_LESS_THAN_4_9_0
+#include <QRegExp>
+#include <QStringList>
+#else
 #include <regex>
+#endif
+
 #include <set>
 #include <sstream>
 #include <vector>
@@ -278,6 +289,21 @@ static inline std::vector<std::string> reSplit(const std::string& s,
                                                const std::string& regex,
                                                bool skipEmpty = true)
 {
+// Unfortunately, regex was not defined in GNU until GNU 4.9.0, so if
+// we are les than 4.9.0, we have to use Qt to do the regex operations
+#ifdef GNUC_LESS_THAN_4_9_0
+  QStringList list = QString(s.c_str()).split(
+    QRegExp(regex.c_str()), skipEmpty ?
+                            QString::SkipEmptyParts :
+                            QString::KeepEmptyParts
+  );
+  std::vector<std::string> ret;
+  std::for_each(list.begin(), list.end(), [&ret](const QString& s)
+                                          {
+                                            ret.push_back(s.toStdString());
+                                          });
+  return ret;
+#else
   std::regex re(regex);
   std::sregex_token_iterator first(s.begin(), s.end(), re, -1),
                              last;
@@ -285,6 +311,7 @@ static inline std::vector<std::string> reSplit(const std::string& s,
   if (skipEmpty)
     removeEmptyStrings(ret);
   return ret;
+#endif
 }
 
 // Used to change something like "(0,0,0)(0.5,0,0)" to {"0,0,0","0.5,0,0"}

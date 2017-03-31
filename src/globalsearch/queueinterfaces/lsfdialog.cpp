@@ -62,9 +62,9 @@ namespace GlobalSearch {
 
     ui->edit_description->setText(m_opt->description);
     ui->edit_host->setText(m_opt->host);
-    ui->edit_bkill->setText(m_lsf->m_bkill);
-    ui->edit_bjobs->setText(m_lsf->m_bjobs);
-    ui->edit_bsub->setText(m_lsf->m_bsub);
+    ui->edit_bkill->setText(m_lsf->m_cancelCommand);
+    ui->edit_bjobs->setText(m_lsf->m_statusCommand);
+    ui->edit_bsub->setText(m_lsf->m_submitCommand);
     ui->edit_rempath->setText(m_opt->rempath);
     ui->edit_locpath->setText(m_opt->filePath);
     ui->edit_username->setText(m_opt->username);
@@ -89,9 +89,9 @@ namespace GlobalSearch {
   {
     m_opt->description = ui->edit_description->text().trimmed();
     m_opt->host = ui->edit_host->text().trimmed();
-    m_lsf->m_bkill = ui->edit_bkill->text().trimmed();
-    m_lsf->m_bjobs = ui->edit_bjobs->text().trimmed();
-    m_lsf->m_bsub = ui->edit_bsub->text().trimmed();
+    m_lsf->m_cancelCommand = ui->edit_bkill->text().trimmed();
+    m_lsf->m_statusCommand = ui->edit_bjobs->text().trimmed();
+    m_lsf->m_submitCommand = ui->edit_bsub->text().trimmed();
     m_opt->rempath = ui->edit_rempath->text().trimmed();
     m_opt->filePath = ui->edit_locpath->text().trimmed();
     m_opt->username = ui->edit_username->text().trimmed();

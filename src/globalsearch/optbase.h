@@ -249,6 +249,20 @@ for (ind = 0; ind < probs.size(); ind++)
      */
     SSHManager* ssh() {return m_ssh;};
 
+    /**
+     * Are we using the GUI?
+     *
+     * @return Whether or not we are using the GUI.
+     */
+    bool usingGUI() { return m_usingGUI; }
+
+    /**
+     * Are we using the GUI?
+     *
+     * @param b True if we are using the GUI. False otherwise.
+     */
+    void setUsingGUI(bool b) { m_usingGUI = b; }
+
     /// Whether to impose the running job limit
     bool limitRunningJobs;
 
@@ -453,7 +467,7 @@ for (ind = 0; ind < probs.size(); ind++)
     /**
      * Begin the search.
      */
-    virtual void startSearch() = 0;
+    virtual bool startSearch() = 0;
 
     /**
      * Called when the QueueManager requests more Structures.
@@ -667,6 +681,8 @@ for (ind = 0; ind < probs.size(); ind++)
 
     /// Current version of save/resume schema
     unsigned int m_schemaVersion;
+
+    bool m_usingGUI;
 
    public:
     /// Log error directories?

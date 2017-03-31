@@ -288,7 +288,6 @@ namespace GlobalSearch {
 
     /// Pointer to configuration dialog (may be nullptr)
     QDialog *m_dialog;
-
   };
 }
 

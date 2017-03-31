@@ -64,9 +64,9 @@ namespace GlobalSearch {
 
     ui->edit_description->setText(m_opt->description);
     ui->edit_host->setText(m_opt->host);
-    ui->edit_scancel->setText(m_slurm->m_scancel);
-    ui->edit_squeue->setText(m_slurm->m_squeue);
-    ui->edit_sbatch->setText(m_slurm->m_sbatch);
+    ui->edit_scancel->setText(m_slurm->m_cancelCommand);
+    ui->edit_squeue->setText(m_slurm->m_statusCommand);
+    ui->edit_sbatch->setText(m_slurm->m_submitCommand);
     ui->edit_rempath->setText(m_opt->rempath);
     ui->edit_locpath->setText(m_opt->filePath);
     ui->edit_username->setText(m_opt->username);
@@ -93,9 +93,9 @@ namespace GlobalSearch {
   {
     m_opt->description = ui->edit_description->text().trimmed();
     m_opt->host = ui->edit_host->text().trimmed();
-    m_slurm->m_scancel = ui->edit_scancel->text().trimmed();
-    m_slurm->m_squeue = ui->edit_squeue->text().trimmed();
-    m_slurm->m_sbatch = ui->edit_sbatch->text().trimmed();
+    m_slurm->m_cancelCommand = ui->edit_scancel->text().trimmed();
+    m_slurm->m_statusCommand = ui->edit_squeue->text().trimmed();
+    m_slurm->m_submitCommand = ui->edit_sbatch->text().trimmed();
     m_opt->rempath = ui->edit_rempath->text().trimmed();
     m_opt->filePath = ui->edit_locpath->text().trimmed();
     m_opt->username = ui->edit_username->text().trimmed();

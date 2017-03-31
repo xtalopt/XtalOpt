@@ -55,7 +55,7 @@ namespace GlobalSearch {
     bool startJob(Structure *s) override;
     bool stopJob(Structure *s) override;
     QueueInterface::QueueStatus getStatus(Structure *s) const override;
-    void setInterval(const int sec);
+    void setInterval(int sec) override;
 
   protected:
     // Unit test these:
@@ -70,14 +70,6 @@ namespace GlobalSearch {
     QDateTime m_queueTimeStamp;
     // Locks for m_queueData;
     QReadWriteLock m_queueMutex;
-    // Paths:
-    QString m_llq;
-    QString m_llsubmit;
-    QString m_llcancel;
-    // Refresh interval for queue data
-    int m_interval;
-    // Clean remote directories when a job is stopped?
-    bool m_cleanRemoteOnStop;
   };
 }
 

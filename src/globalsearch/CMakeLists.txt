@@ -20,6 +20,7 @@ set( globalsearch_SRCS
      queueinterfaces/local.cpp
      queueinterfaces/localdialog.cpp
      utilities/fileutils.cpp
+     utilities/passwordprompt.cpp
      structures/unitcell.cpp
      formats/formats.cpp
      formats/gulpformat.cpp

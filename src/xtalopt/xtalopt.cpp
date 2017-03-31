@@ -117,14 +117,14 @@ namespace XtalOpt {
     m_initWC = 0;
   }
 
-  void XtalOpt::startSearch()
+  bool XtalOpt::startSearch()
   {
     // Let's make sure it doesn't glitch if the user presses "Begin"
     // too many times in a row.
     static std::mutex startMutex;
     std::unique_lock<std::mutex> startLock(startMutex, std::defer_lock);
     if (!startLock.try_lock())
-      return;
+      return false;
 
     // Populate crystal
     QList<uint> atomicNums = comp.keys();
@@ -146,27 +146,38 @@ namespace XtalOpt {
     // Check lattice parameters, volume, etc
     if (!XtalOpt::checkLimits()) {
       error("Cannot create structures. Check log for details.");
-      return;
+      return false;
     }
 
     // Do we have a composition?
     if (comp.isEmpty()) {
       error("Cannot create structures. Composition is not set.");
-      return;
+      return false;
     }
 
     // Check if xtalopt data is already saved at the filePath
     if (QFile::exists(filePath + "/xtalopt.state") && !testingMode) {
       bool proceed;
-      needBoolean(tr("Warning: XtalOpt data is already saved at: %1"
-                     "\nDo you wish to proceed and overwrite it?"
-                     "\n\nIf no, please change the local working directory "
-                     "under Queue configure located in the "
-                     "'Optimization Settings' tab")
-                  .arg(filePath),
-                  &proceed);
+      if (m_usingGUI) {
+        promptForBoolean(tr("Warning: XtalOpt data is already saved at: %1"
+                            "\nDo you wish to proceed and overwrite it?"
+                            "\n\nIf no, please change the local working "
+                            "directory under Queue configure located in the "
+                            "'Optimization Settings' tab")
+                    .arg(filePath),
+                    &proceed);
+      }
+      else {
+        promptForBoolean(tr("Warning: XtalOpt data is already saved at: %1"
+                            "\nDo you wish to proceed and overwrite it?"
+                            "\n\nIf no, please change the "
+                            "'localWorkingDirectory' option in the input "
+                            "file")
+                    .arg(filePath),
+                    &proceed);
+      }
       if (!proceed) {
-        return;
+        return false;
       }
       else {
         bool result = FileUtils::removeDir(filePath);
@@ -176,16 +187,15 @@ namespace XtalOpt {
       }
     }
 
-    // Are the selected queueinterface and optimizer happy?
     QString err;
     if (!m_optimizer->isReadyToSearch(&err)) {
       error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
-      return;
+      return false;
     }
 
     if (!m_queueInterface->isReadyToSearch(&err)) {
       error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
-      return;
+      return false;
     }
 
     // Warn user if runningJobLimit is 0
@@ -213,12 +223,14 @@ namespace XtalOpt {
       for (int i = 0; i < oldcomp_.size(); i++)
         oldcomp.append(oldcomp_.at(i).toUInt());
       qSort(atomicNums);
-      if (m_optimizer->getData("POTCAR info").toList().isEmpty() || // No info
-          oldcomp != atomicNums // Composition has changed!
-          ) {
-        error("Using VASP and POTCAR is empty. Please select the "
-              "pseudopotentials before continuing.");
-        return;
+      if (m_usingGUI) {
+        if (m_optimizer->getData("POTCAR info").toList().isEmpty() || // No info
+            oldcomp != atomicNums // Composition has changed!
+            ) {
+          error("Using VASP and POTCAR is empty. Please select the "
+                "pseudopotentials before continuing.");
+          return false;
+        }
       }
 
       // Build up the latest and greatest POTCAR compilation
@@ -230,7 +242,7 @@ namespace XtalOpt {
     if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
       if (!this->createSSHConnections()) {
         error(tr("Could not create ssh connections."));
-        return;
+        return false;
       }
     }
 #endif // ENABLE_SSH
@@ -249,7 +261,7 @@ namespace XtalOpt {
     ///////////////////////////////////////////////
 
     // Set up progress bar
-    m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
+    //m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
 
     // Initalize loop variables
     int failed = 0;
@@ -263,9 +275,9 @@ namespace XtalOpt {
     for (int i = 0; i < seedList.size(); i++) {
       filename = seedList.at(i);
       if (this->addSeed(filename)) {
-        m_dialog->updateProgressLabel(
-              tr("%1 structures generated (%2 kept, %3 rejected)...")
-              .arg(i + failed).arg(i).arg(failed));
+        //m_dialog->updateProgressLabel(
+        //      tr("%1 structures generated (%2 kept, %3 rejected)...")
+        //      .arg(i + failed).arg(i).arg(failed));
         newXtalCount++;
       }
     }
@@ -379,20 +391,20 @@ namespace XtalOpt {
     }
 
     // Wait for all structures to appear in tracker
-    m_dialog->updateProgressLabel(
-          tr("Waiting for structures to initialize..."));
-    m_dialog->updateProgressMinimum(0);
-    m_dialog->updateProgressMinimum(newXtalCount);
+    //m_dialog->updateProgressLabel(
+    //      tr("Waiting for structures to initialize..."));
+    //m_dialog->updateProgressMinimum(0);
+    //m_dialog->updateProgressMinimum(newXtalCount);
 
     connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             m_initWC, SLOT(wakeAllSlot()));
 
     m_initWC->prewaitLock();
     do {
-      m_dialog->updateProgressValue(m_tracker->size());
-      m_dialog->updateProgressLabel(
-            tr("Waiting for structures to initialize (%1 of %2)...")
-            .arg(m_tracker->size()).arg(newXtalCount));
+      //m_dialog->updateProgressValue(m_tracker->size());
+      //m_dialog->updateProgressLabel(
+      //      tr("Waiting for structures to initialize (%1 of %2)...")
+      //      .arg(m_tracker->size()).arg(newXtalCount));
       // Don't block here forever -- there is a race condition where
       // the final newStructureAdded signal may be emitted while the
       // WC is not waiting. Since this is just trivial GUI updating
@@ -406,10 +418,11 @@ namespace XtalOpt {
     // We're done with m_initWC.
     m_initWC->disconnect();
 
-    m_dialog->stopProgressUpdate();
+    //m_dialog->stopProgressUpdate();
 
     m_dialog->saveSession();
     emit sessionStarted();
+    return true;
   }
 
   bool XtalOpt::addSeed(const QString &filename)
@@ -3229,5 +3242,156 @@ namespace XtalOpt {
     else
       qSort(formulaUnitsList);
     return formulaUnitsList[formulaUnitsList.size() - 1];
+  }
+
+  QString toString(bool b)
+  {
+    return b ? "true" : "false";
+  }
+
+  void XtalOpt::printOptionSettings(QTextStream& stream) const
+  {
+    stream << "Initialization settings:\n";
+
+    stream << "\n  Composition: \n";
+    for (const auto& key: comp.keys()) {
+      stream << "    " << ElemInfo::getAtomicSymbol(key).c_str()
+             << comp[key].quantity << "\n";
+    }
+
+    if (using_interatomicDistanceLimit) {
+      stream << "\n  Atomic radii (Angstroms): \n";
+      for (const auto& key: comp.keys()) {
+        stream << "    " << ElemInfo::getAtomicSymbol(key).c_str() << ": "
+               << comp[key].minRadius << "\n";
+      }
+    }
+
+    stream << "\n  Formula Units: \n";
+    for (const auto& elem: formulaUnitsList)
+      stream << "    " << elem << "\n";
+    stream << "\n  aMin: " << a_min << "\n";
+    stream << "  bMin: " << b_min << "\n";
+    stream << "  cMin: " << c_min << "\n";
+    stream << "  aMax: " << a_max << "\n";
+    stream << "  bMax: " << b_max << "\n";
+    stream << "  cMax: " << c_max << "\n";
+
+    stream << "\n  alphaMin: " << alpha_min << "\n";
+    stream << "  betaMin: "  << beta_min << "\n";
+    stream << "  gammaMin: " << gamma_min << "\n";
+    stream << "  alphaMax: " << alpha_max << "\n";
+    stream << "  betaMax: "  << beta_max << "\n";
+    stream << "  gammaMax: " << gamma_max << "\n";
+
+    stream << "\n  volumeMin: " << vol_min << "\n";
+    stream << "  volumeMax: " << vol_max << "\n";
+
+    stream << "\n  usingInteratomicDistanceLimit: "
+           << toString(using_interatomicDistanceLimit) << "\n";
+    if (using_interatomicDistanceLimit) {
+      stream << "  radiiScalingFactor: " << scaleFactor << "\n";
+      stream << "  minRadius: " << minRadius << "\n";
+    }
+
+    stream << "\n  usingSubcellMitosis: " << toString(using_mitosis) << "\n";
+    if (using_mitosis) {
+      stream << "  printSubcell: " << toString(using_subcellPrint) << "\n";
+      stream << "  mitosisDivisions: " << divisions << "\n";
+      stream << "  mitosisA: " << ax << "\n";
+      stream << "  mitosisB: " << bx << "\n";
+      stream << "  mitosisC: " << cx << "\n";
+    }
+
+    stream << "\n  usingMolecularUnits: " << toString(using_molUnit) << "\n";
+    stream << "\n  usingRandSpg: " << toString(using_randSpg) << "\n";
+
+    stream << "\nSearch settings: \n";
+    stream << "  numInitial: " << numInitial << "\n";
+    stream << "  popSize: " << popSize << "\n";
+    stream << "  limitRunningJobs: " << toString(limitRunningJobs) << "\n";
+    if (limitRunningJobs) {
+      stream << "  runningJobLimit: " << runningJobLimit << "\n";
+    }
+    stream << "  continuousStructures: " << contStructs << "\n";
+
+    stream << "\n  usingMitoticGrowth: "
+           << toString(using_mitotic_growth) << "\n";
+    stream << "  usingFormulUnitCrossovers: "
+           << toString(using_FU_crossovers) << "\n";
+    if (using_FU_crossovers) {
+      stream << "  formulaUnitCrossoversGen: "
+             << FU_crossovers_generation << "\n";
+    }
+    stream << "  usingOneGenePool: " << toString(using_one_pool) << "\n";
+    if (using_one_pool)
+      stream << "  chanceOfFutureMitosis: " << chance_of_mitosis << "\n";
+
+    stream << "\n  percentChanceStripple: " << p_strip << "\n";
+    stream << "  percentChancePermutation: " << p_perm << "\n";
+    stream << "  percentChanceCrossover: " << p_cross << "\n";
+
+    stream << "\n  strippleAmplitudeMin: " << strip_amp_min << "\n";
+    stream << "  strippleAmplitudeMax: " << strip_amp_max << "\n";
+    stream << "  strippleNumWavesAxis1: " << strip_per1 << "\n";
+    stream << "  strippleNumWavesAxis2: " << strip_per2 << "\n";
+    stream << "  strippleStrainStdevMin: " << strip_strainStdev_min << "\n";
+    stream << "  strippleStrainStdevMax: " << strip_strainStdev_max << "\n";
+
+    stream << "\n  permustrainNumExchanges: " << perm_ex << "\n";
+    stream << "  permustrainStrainStdevMax: " << perm_strainStdev_max << "\n";
+
+    stream << "\n  crossoverMinContribution: "
+           << cross_minimumContribution << "\n";
+
+    stream << "\n  xtalcompToleranceLength: " << tol_xcLength << "\n";
+    stream << "  xtalcompToleranceAngle: " << tol_xcAngle << "\n";
+
+    stream << "\n  spglibTolerance: " << tol_spg << "\n";
+
+    stream << "\nQueue Interface Settings: \n";
+
+    const GlobalSearch::QueueInterface* queue = m_queueInterface;
+    if (!queue) {
+      stream << "  queueInterface: NONE\n";
+    }
+    else {
+      stream << "  queueInterface: " << queue->getIDString() << "\n";
+      stream << "  localWorkingDirectory: " << filePath << "\n";
+      stream << "  logErrorDirectories: " << toString(m_logErrorDirs) << "\n";
+
+#ifdef ENABLE_SSH
+      if (queue->getIDString().toLower() != "local") {
+        stream << "\n  remoteQueueSettings: \n";
+        stream << "    host: " << host << "\n";
+        stream << "    port: " << port << "\n";
+        stream << "    username: " << username << "\n";
+        stream << "    remoteWorkingDirectory: " << rempath << "\n";
+
+        const GlobalSearch::RemoteQueueInterface* remoteQueue =
+          qobject_cast<const GlobalSearch::RemoteQueueInterface*>(queue);
+
+        stream << "    submitCommand: " << remoteQueue->submitCommand() << "\n";
+        stream << "    cancelCommand: " << remoteQueue->cancelCommand() << "\n";
+        stream << "    statusCommand: " << remoteQueue->statusCommand() << "\n";
+        stream << "    queueRefreshInterval: "
+               << remoteQueue->queueRefreshInterval() << "\n";
+        stream << "    cleanRemoteDirs: "
+               << toString(remoteQueue->cleanRemoteOnStop()) << "\n";
+      }
+#endif
+    }
+
+    stream << "\nOptimizer settings:\n";
+
+    const GlobalSearch::Optimizer* optimizer = m_optimizer;
+    if (!optimizer) {
+      stream << "  optimize: NONE\n";
+    }
+    else {
+      stream << "  optimizer: " << optimizer->getIDString() << "\n";
+      stream << "  numOptimizationSteps: " << optimizer->getNumberOfOptSteps()
+             << "\n";
+    }
   }
 } // end namespace XtalOpt

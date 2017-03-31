@@ -36,16 +36,15 @@ namespace GlobalSearch {
   SlurmQueueInterface::SlurmQueueInterface(OptBase *parent,
                                            const QString &settingsFile) :
     RemoteQueueInterface(parent, settingsFile),
-    m_queueMutex(QReadWriteLock::Recursive),
-    m_squeue("squeue"),
-    m_sbatch("sbatch"),
-    m_scancel("scancel"),
-    m_interval(1),
-    m_cleanRemoteOnStop(false)
+    m_queueMutex(QReadWriteLock::Recursive)
   {
     m_idString = "SLURM";
     m_templates.append("job.slurm");
     m_hasDialog = true;
+
+    m_statusCommand = "squeue";
+    m_submitCommand = "sbatch";
+    m_cancelCommand = "scancel";
 
     readSettings(settingsFile);
   }
@@ -96,19 +95,19 @@ namespace GlobalSearch {
       return false;
     }
 
-    if (m_scancel.isEmpty()) {
+    if (m_cancelCommand.isEmpty()) {
       *str = tr("scancel command is not set. Check your Queue "
                 "configuration.");
       return false;
     }
 
-    if (m_squeue.isEmpty()) {
+    if (m_statusCommand.isEmpty()) {
       *str = tr("squeue command is not set. Check your Queue "
                 "configuration.");
       return false;
     }
 
-    if (m_sbatch.isEmpty()) {
+    if (m_submitCommand.isEmpty()) {
       *str = tr("sbatch command is not set. Check your Queue "
                 "configuration.");
       return false;
@@ -158,9 +157,9 @@ namespace GlobalSearch {
     int loadedVersion = settings->value("version", 0).toInt();
     settings->beginGroup("paths");
 
-    m_sbatch  = settings->value("sbatch",  "sbatch").toString();
-    m_squeue  = settings->value("squeue",  "squeue").toString();
-    m_scancel = settings->value("scancel", "scancel").toString();
+    m_submitCommand  = settings->value("sbatch",  "sbatch").toString();
+    m_statusCommand  = settings->value("squeue",  "squeue").toString();
+    m_cancelCommand = settings->value("scancel", "scancel").toString();
     this->setInterval(settings->value("interval", 1).toInt());
     m_cleanRemoteOnStop = settings->value("cleanRemoteOnStop", false).toBool();
 
@@ -190,9 +189,9 @@ namespace GlobalSearch {
     settings->setValue("version", version);
     settings->beginGroup("paths");
 
-    settings->setValue("sbatch",  m_sbatch);
-    settings->setValue("squeue",  m_squeue);
-    settings->setValue("scancel", m_scancel);
+    settings->setValue("sbatch",  m_submitCommand);
+    settings->setValue("squeue",  m_statusCommand);
+    settings->setValue("scancel", m_cancelCommand);
     settings->setValue("interval",  m_interval);
     settings->setValue("cleanRemoteOnStop",  m_cleanRemoteOnStop);
 
@@ -215,7 +214,7 @@ namespace GlobalSearch {
     QWriteLocker wlocker (&s->lock());
 
     QString command = "cd \"" + s->getRempath() + "\" && " +
-      m_sbatch + " job.slurm";
+      m_submitCommand + " job.slurm";
 
     QString stdout_str;
     QString stderr_str;
@@ -275,7 +274,7 @@ namespace GlobalSearch {
       return true;
     }
 
-    const QString command = m_scancel + " " + QString::number(s->getJobID());
+    const QString command = m_cancelCommand + " " + QString::number(s->getJobID());
 
     // Execute
     QString stdout_str;
@@ -443,7 +442,7 @@ namespace GlobalSearch {
     }
   }
 
-  void SlurmQueueInterface::setInterval(const int sec)
+  void SlurmQueueInterface::setInterval(int sec)
   {
     m_queueMutex.lockForWrite();
     m_interval = sec;
@@ -511,7 +510,7 @@ namespace GlobalSearch {
       return ret;
     }
 
-    QString command = m_squeue + " -u " + m_opt->username;
+    QString command = m_statusCommand + " -u " + m_opt->username;
 
     // Execute
     QString stdout_str;

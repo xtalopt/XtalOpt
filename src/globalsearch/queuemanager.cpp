@@ -523,6 +523,15 @@ namespace GlobalSearch {
     // update optstep and relaunch if necessary
     if (s->getCurrentOptStep()
         < static_cast<unsigned int>(m_opt->optimizer()->getNumberOfOptSteps())) {
+
+      // Print an update to the terminal if we are not using the GUI
+      if (!m_opt->usingGUI()) {
+        qDebug() << "Structure"
+                 << QString::number(s->getGeneration()) + "x" +
+                    QString::number(s->getIDNumber())
+                 << "completed step" << s->getCurrentOptStep();
+      }
+
       s->setCurrentOptStep(s->getCurrentOptStep() + 1);
 
       // Update status
@@ -537,6 +546,13 @@ namespace GlobalSearch {
     }
     // Otherwise, it's done
     else {
+      // Print an update to the terminal if we are not using the GUI
+      if (!m_opt->usingGUI()) {
+        qDebug() << "Structure"
+                 << QString::number(s->getGeneration()) + "x" +
+                    QString::number(s->getIDNumber()) << "is optimized!";
+      }
+
       s->setStatus(Structure::Optimized);
       locker.unlock();
       handleOptimizedStructure(s);
@@ -578,6 +594,12 @@ namespace GlobalSearch {
 
     if (s->getStatus() != Structure::Error) {
       return;
+    }
+
+    if (!m_opt->usingGUI()) {
+      qDebug() << "Structure"
+               << QString::number(s->getGeneration()) + "x" +
+                  QString::number(s->getIDNumber()) << "failed";
     }
 
     stopJob(s);

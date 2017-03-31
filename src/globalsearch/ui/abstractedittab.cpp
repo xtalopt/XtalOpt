@@ -144,7 +144,7 @@ namespace GlobalSearch {
     ui_combo_optimizers->setCurrentIndex(0);
 
     AbstractTab::initialize();
-    updateGUI();
+    //updateGUI();
   }
 
   AbstractEditTab::~AbstractEditTab()

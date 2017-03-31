@@ -124,12 +124,45 @@ namespace GlobalSearch {
 
     QStringList filenames = getTemplateNames();
     for (int i = 0; i < filenames.size(); i++) {
-      m_templates.insert(filenames.at(i),
-                         settings->value(m_opt->getIDString().toLower() +
+      QStringList temp = settings->value(m_opt->getIDString().toLower() +
                                          "/optimizer/" +
                                          getIDString() + "/" +
                                          filenames.at(i) + "_list",
-                                         "").toStringList());
+                                         "").toStringList();
+      temp.removeAll("");
+      if (!temp.empty()) {
+        m_templates.insert(filenames.at(i), temp);
+        continue;
+      }
+
+      // If "temp" is empty, perhaps we have some template filenames to open
+      QStringList templateFileNames =
+        settings->value(m_opt->getIDString().toLower() + "/optimizer/" +
+                        getIDString() + "/" + filenames.at(i) + "_templates",
+                        "").toStringList();
+      templateFileNames.removeAll("");
+      // Loop through the files and see if they exist. If they do, store
+      // the contents in m_templates
+      for (const auto& templateFile : templateFileNames) {
+        QFile file(templateFile);
+        if (!file.exists()) {
+          qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
+                     << "does not exist!";
+          continue;
+        }
+        if (!file.open(QIODevice::ReadOnly)) {
+          qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
+                     << "could not be opened!";
+          continue;
+        }
+        temp.append(file.readAll());
+        file.close();
+      }
+      if (temp.empty()) {
+        qWarning() << "Warning: no templates could be found for filename '"
+                   << filenames[i] << "'";
+      }
+      m_templates.insert(filenames[i], temp);
     }
 
     // QueueInterface templates
@@ -461,7 +494,8 @@ namespace GlobalSearch {
     return true;
   }
 
-  int Optimizer::getNumberOfOptSteps() {
+  int Optimizer::getNumberOfOptSteps() const
+  {
     if (m_templates.isEmpty())
       return 0;
     else

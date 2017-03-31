@@ -63,9 +63,9 @@ namespace GlobalSearch {
 
     ui->edit_description->setText(m_opt->description);
     ui->edit_host->setText(m_opt->host);
-    ui->edit_qdel->setText(m_pbs->m_qdel);
-    ui->edit_qstat->setText(m_pbs->m_qstat);
-    ui->edit_qsub->setText(m_pbs->m_qsub);
+    ui->edit_qdel->setText(m_pbs->m_cancelCommand);
+    ui->edit_qstat->setText(m_pbs->m_statusCommand);
+    ui->edit_qsub->setText(m_pbs->m_submitCommand);
     ui->edit_rempath->setText(m_opt->rempath);
     ui->edit_locpath->setText(m_opt->filePath);
     ui->edit_username->setText(m_opt->username);
@@ -92,9 +92,9 @@ namespace GlobalSearch {
   {
     m_opt->description = ui->edit_description->text().trimmed();
     m_opt->host = ui->edit_host->text().trimmed();
-    m_pbs->m_qdel = ui->edit_qdel->text().trimmed();
-    m_pbs->m_qstat = ui->edit_qstat->text().trimmed();
-    m_pbs->m_qsub = ui->edit_qsub->text().trimmed();
+    m_pbs->m_cancelCommand = ui->edit_qdel->text().trimmed();
+    m_pbs->m_statusCommand = ui->edit_qstat->text().trimmed();
+    m_pbs->m_submitCommand = ui->edit_qsub->text().trimmed();
     m_opt->rempath = ui->edit_rempath->text().trimmed();
     m_opt->filePath = ui->edit_locpath->text().trimmed();
     m_opt->username = ui->edit_username->text().trimmed();

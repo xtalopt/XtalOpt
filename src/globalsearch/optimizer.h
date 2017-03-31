@@ -95,12 +95,12 @@ namespace GlobalSearch {
     /**
      * @return A string identifying the Optimizer
      */
-    virtual QString getIDString() {return m_idString;};
+    virtual QString getIDString() const {return m_idString;};
 
     /**
      * @return The total number of optimization steps
      */
-    virtual int getNumberOfOptSteps();
+    virtual int getNumberOfOptSteps() const;
 
     /**
      * Check that all mandatory internal variables are set. Check this
@@ -211,7 +211,7 @@ namespace GlobalSearch {
      * @return All filenames that the optimizer can store templates
      * for.
      */
-    virtual QStringList getTemplateNames() {return m_templates.keys();};
+    virtual QStringList getTemplateNames() const {return m_templates.keys();};
 
     /**
      * @return All strings that identify valid generic data sets.
@@ -344,6 +344,13 @@ namespace GlobalSearch {
      * @sa m_stderrFilename
      */
     QString localRunCommand() const {return m_localRunCommand;};
+
+    /**
+     * Set the local run command.
+     *
+     * Details given in m_localRunCommand.
+     */
+    void setLocalRunCommand(const QString& s) { m_localRunCommand = s; }
 
     /**
      * Filename for standard input
