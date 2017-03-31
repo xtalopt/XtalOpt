@@ -158,10 +158,6 @@ namespace GlobalSearch {
         temp.append(file.readAll());
         file.close();
       }
-      if (temp.empty()) {
-        qWarning() << "Warning: no templates could be found for filename '"
-                   << filenames[i] << "'";
-      }
       m_templates.insert(filenames[i], temp);
     }
 
