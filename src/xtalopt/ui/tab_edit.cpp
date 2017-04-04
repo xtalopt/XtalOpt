@@ -16,22 +16,13 @@
 
 #include <xtalopt/ui/tab_edit.h>
 
-#include <xtalopt/optimizers/vasp.h>
-#include <xtalopt/optimizers/gulp.h>
-#include <xtalopt/optimizers/pwscf.h>
-#include <xtalopt/optimizers/castep.h>
-#include <xtalopt/optimizers/siesta.h>
+#include <xtalopt/optimizers/optimizers.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/xtalopt.h>
 
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/macros.h>
-#include <globalsearch/queueinterfaces/loadleveler.h>
-#include <globalsearch/queueinterfaces/local.h>
-#include <globalsearch/queueinterfaces/lsf.h>
-#include <globalsearch/queueinterfaces/pbs.h>
-#include <globalsearch/queueinterfaces/sge.h>
-#include <globalsearch/queueinterfaces/slurm.h>
+#include <globalsearch/queueinterfaces/queueinterfaces.h>
 #include <globalsearch/queueinterface.h>
 
 #include <QSettings>

@@ -16,11 +16,7 @@
 #include <xtalopt/xtalopt.h>
 
 #include <xtalopt/structures/xtal.h>
-#include <xtalopt/optimizers/vasp.h>
-#include <xtalopt/optimizers/gulp.h>
-#include <xtalopt/optimizers/pwscf.h>
-#include <xtalopt/optimizers/castep.h>
-#include <xtalopt/optimizers/siesta.h>
+#include <xtalopt/optimizers/optimizers.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/ui/randSpgDialog.h>
 #include <xtalopt/genetic.h>

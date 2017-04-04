@@ -1,7 +1,5 @@
 #include <QApplication>
 
-#include <globalsearch/queueinterfaces/local.h>
-
 #include <xtalopt/cliOptions.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/xtalopt.h>

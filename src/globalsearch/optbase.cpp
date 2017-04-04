@@ -17,11 +17,10 @@
 
 #include <globalsearch/bt.h>
 #include <globalsearch/eleminfo.h>
+#include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/queueinterface.h>
-#include <globalsearch/queueinterfaces/local.h>
-#include <globalsearch/queueinterfaces/pbs.h>
 #ifdef ENABLE_SSH
 #include <globalsearch/sshconnection.h>
 #include <globalsearch/sshmanager.h>
