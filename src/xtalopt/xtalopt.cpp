@@ -2376,43 +2376,7 @@ namespace XtalOpt {
       }
     }
     else if (line == "POSCAR") {
-      // Comment line -- set to composition then filename
-      // Construct composition
-      QStringList symbols = xtal->getSymbols();
-      QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
-      Q_ASSERT_X(symbols.size() == atomCounts.size(), Q_FUNC_INFO,
-                 "xtal->getSymbols is not the same size as xtal->getNumberOfAtomsAlpha.");
-      for (unsigned int i = 0; i < symbols.size(); i++) {
-        rep += QString("%1%2").arg(symbols[i]).arg(atomCounts[i]);
-      }
-      rep += " ";
-      rep += xtal->fileName();
-      rep += "\n";
-      // Scaling factor. Just 1.0
-      rep += QString::number(1.0);
-      rep += "\n";
-      // Unit Cell Vectors
-      for (uint i = 0; i < 3; i++) {
-        rep += QString("  %1 %2 %3\n")
-          .arg(xtal->unitCell().cellMatrix()(i, 0), 12, 'f', 8)
-          .arg(xtal->unitCell().cellMatrix()(i, 1), 12, 'f', 8)
-          .arg(xtal->unitCell().cellMatrix()(i, 2), 12, 'f', 8);
-      }
-      // Number of each type of atom (sorted alphabetically by symbol)
-      for (int i = 0; i < atomCounts.size(); i++) {
-        rep += QString::number(atomCounts.at(i)) + " ";
-      }
-      rep += "\n";
-      // Use fractional coordinates:
-      rep += "Direct\n";
-      // Coordinates of each atom (sorted alphabetically by symbol)
-      QList<Vector3> coords = xtal->getAtomCoordsFrac();
-      for (int i = 0; i < coords.size(); i++) {
-        rep += QString("  %1 %2 %3\n")
-          .arg(coords[i].x(), 12, 'f', 8)
-          .arg(coords[i].y(), 12, 'f', 8)
-          .arg(coords[i].z(), 12, 'f', 8);
-      }
+      rep += xtal->toPOSCAR();
     } // End %POSCAR%
 
     if (!rep.isEmpty()) {

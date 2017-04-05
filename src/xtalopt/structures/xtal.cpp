@@ -2432,4 +2432,54 @@ namespace XtalOpt {
     file->close();
     return POSCARToXtal(poscar);
   }
+
+  QString Xtal::toPOSCAR() const
+  {
+    QString ret;
+
+    // Comment line -- set to composition then filename
+    // Construct composition
+    QStringList symbols = getSymbols();
+    QList<unsigned int> atomCounts = getNumberOfAtomsAlpha();
+    Q_ASSERT_X(symbols.size() == atomCounts.size(), Q_FUNC_INFO,
+               "getSymbols() is not the same size as getNumberOfAtomsAlpha()");
+    for (size_t i = 0; i < symbols.size(); ++i)
+      ret += QString("%1%2").arg(symbols[i]).arg(atomCounts[i]);
+
+    ret += " ";
+    ret += fileName();
+    ret += "\n";
+    // Scaling factor. Just 1.0
+    ret += QString::number(1.0);
+    ret += "\n";
+    // Unit Cell Vectors
+    for (uint i = 0; i < 3; i++) {
+      ret += QString("  %1 %2 %3\n")
+        .arg(unitCell().cellMatrix()(i, 0), 12, 'f', 8)
+        .arg(unitCell().cellMatrix()(i, 1), 12, 'f', 8)
+        .arg(unitCell().cellMatrix()(i, 2), 12, 'f', 8);
+    }
+    // Atomic symbols
+    for (const auto& symbol: symbols)
+      ret += symbol + " ";
+    ret += "\n";
+
+    // Number of each type of atom (sorted alphabetically by symbol)
+    for (const auto& count: atomCounts)
+      ret += QString::number(count) + " ";
+
+    ret += "\n";
+    // Use fractional coordinates:
+    ret += "Direct\n";
+    // Coordinates of each atom (sorted alphabetically by symbol)
+    QList<Vector3> coords = getAtomCoordsFrac();
+    for (const auto& coord: coords) {
+      ret += QString("  %1 %2 %3\n")
+        .arg(coord.x(), 12, 'f', 8)
+        .arg(coord.y(), 12, 'f', 8)
+        .arg(coord.z(), 12, 'f', 8);
+    }
+
+    return ret;
+  }
 } // end namespace XtalOpt

@@ -205,6 +205,13 @@ namespace XtalOpt {
      */
     static Xtal* POSCARToXtal(QFile *file);
 
+    /**
+     * Take the given xtal and write a POSCAR with it. Return the POSCAR
+     * file as a string.
+     * @return The POSCAR as a string.
+     */
+    QString toPOSCAR() const;
+
     // For random representation generation
     static void generateValidCOBs();
     static QVector<Matrix3> m_transformationMatrices;

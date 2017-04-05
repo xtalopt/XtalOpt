@@ -852,8 +852,7 @@ namespace XtalOpt {
     }
     QReadLocker locker (&m_context_xtal->lock());
 
-    QString poscar = qobject_cast<XtalOpt*>(m_opt)->
-      interpretTemplate("%POSCAR%", m_context_xtal);
+    QString poscar = m_context_xtal->toPOSCAR();
 
     m_opt->setClipboard(poscar);
 
