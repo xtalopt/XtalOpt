@@ -155,11 +155,11 @@ namespace XtalOpt {
     if (QFile::exists(filePath + "/xtalopt.state") && !testingMode) {
       bool proceed;
       if (m_usingGUI) {
-        promptForBoolean(tr("Warning: XtalOpt data is already saved at: %1"
-                            "\nDo you wish to proceed and overwrite it?"
-                            "\n\nIf no, please change the local working "
-                            "directory under Queue configure located in the "
-                            "'Optimization Settings' tab")
+        needBoolean(tr("Warning: XtalOpt data is already saved at: %1"
+                       "\nDo you wish to proceed and overwrite it?"
+                       "\n\nIf no, please change the local working "
+                       "directory under Queue configure located in the "
+                       "'Optimization Settings' tab")
                     .arg(filePath),
                     &proceed);
       }
