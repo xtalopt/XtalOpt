@@ -17,6 +17,7 @@
 
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/optimizers/optimizers.h>
+#include <xtalopt/rpc/xtaloptrpc.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/ui/randSpgDialog.h>
 #include <xtalopt/genetic.h>
@@ -33,6 +34,7 @@
 #include <globalsearch/slottedwaitcondition.h>
 #include <globalsearch/bt.h>
 #include <globalsearch/utilities/fileutils.h>
+#include <globalsearch/utilities/makeunique.h>
 
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
@@ -62,7 +64,8 @@ namespace XtalOpt {
     OptBase(parent),
     m_initWC(new SlottedWaitCondition (this)),
     using_randSpg(false),
-    minXtalsOfSpgPerFU(QList<int>())
+    minXtalsOfSpgPerFU(QList<int>()),
+    m_rpcClient(make_unique<XtalOptRpc>())
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";
@@ -76,6 +79,10 @@ namespace XtalOpt {
     connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
             this, SLOT(updateLowestEnthalpyFUList(GlobalSearch::Structure*)));
 
+    if (m_usingGUI) {
+      connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
+              this, SLOT(sendRpcUpdate(GlobalSearch::Structure*)));
+    }
   }
 
   XtalOpt::~XtalOpt()
@@ -3361,5 +3368,15 @@ namespace XtalOpt {
       stream << "  numOptimizationSteps: " << optimizer->getNumberOfOptSteps()
              << "\n";
     }
+  }
+
+  void XtalOpt::sendRpcUpdate(GlobalSearch::Structure* s)
+  {
+    if (!m_rpcClient)
+      return;
+
+    Xtal* xtal = qobject_cast<Xtal*>(s);
+    if (xtal)
+      m_rpcClient->updateDisplayedXtal(*xtal);
   }
 } // end namespace XtalOpt

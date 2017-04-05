@@ -21,6 +21,7 @@
 
 #include <QtConcurrent>
 
+#include <memory>
 #include <mutex>
 
 // Convenience...
@@ -39,6 +40,7 @@ namespace GlobalSearch {
 namespace XtalOpt {
   class Xtal;
   class XtalOptDialog;
+  class XtalOptRpc;
 
   struct XtalCompositionStruct
   {
@@ -207,6 +209,8 @@ namespace XtalOpt {
     // per formula unit. The spacegroup it represents is index + 1
     QList<int> minXtalsOfSpgPerFU;
 
+    std::unique_ptr<XtalOptRpc> m_rpcClient;
+
   public slots:
     bool startSearch() override;
     void generateNewStructure() override;
@@ -241,6 +245,8 @@ namespace XtalOpt {
 
     // Prints all the options to @p stream
     void printOptionSettings(QTextStream& stream) const;
+
+    void sendRpcUpdate(GlobalSearch::Structure* s);
 
    protected:
     friend class XtalOptUnitTest;

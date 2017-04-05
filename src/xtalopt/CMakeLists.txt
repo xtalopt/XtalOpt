@@ -15,6 +15,7 @@ set( xtalopt_SRCS
      optimizers/pwscf.cpp
      optimizers/castep.cpp
      optimizers/siesta.cpp
+     rpc/xtaloptrpc.cpp
      testing/xtalopttest.cpp
      ui/dialog.cpp
      ui/randSpgDialog.cpp

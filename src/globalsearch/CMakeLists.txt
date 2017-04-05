@@ -63,6 +63,7 @@ add_library(globalsearch STATIC ${globalsearch_SRCS} ${moc_files})
 target_link_libraries( globalsearch
 		       ${LINK_LIBS}
                        Qt5::Concurrent
+                       Qt5::Network # Needed for XtalOpt RPC
                        Qt5::Widgets)
 
 if (ENABLE_SSH AND NOT USE_CLI_SSH)

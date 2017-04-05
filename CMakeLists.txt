@@ -24,9 +24,10 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt5 COMPONENTS Concurrent Widgets REQUIRED)
+find_package(Qt5 COMPONENTS Concurrent Network Widgets REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+include_directories(${Qt5Network_INCLUDE_DIRS})
 include_directories(${Qt5Widgets_INCLUDE_DIRS})
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR}
