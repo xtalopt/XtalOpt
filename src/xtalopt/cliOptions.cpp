@@ -462,7 +462,8 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   }
 #endif
 
-  xtalopt.filePath = options.value("localWorkingDirectory", ".");
+  xtalopt.filePath = options.value("localWorkingDirectory",
+                                   "localWorkingDirectory");
   // Make relative paths become absolute paths
   xtalopt.filePath = QDir(xtalopt.filePath).absolutePath();
 
@@ -621,7 +622,7 @@ void XtalOptCLIOptions::printOptions(const QHash<QString, QString>& options,
   qDebug() << output.toUtf8().data();
 
   // Try to write to a log file also
-  QFile file (options["templatesDir"] + "/" + "cliSettings.log");
+  QFile file("xtaloptSettings.log");
   if (file.open(QIODevice::WriteOnly | QIODevice::Text))
     file.write(output.toStdString().c_str());
 }
