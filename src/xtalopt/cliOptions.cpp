@@ -463,6 +463,8 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
 #endif
 
   xtalopt.filePath = options.value("localWorkingDirectory", ".");
+  // Make relative paths become absolute paths
+  xtalopt.filePath = QDir(xtalopt.filePath).absolutePath();
 
   xtalopt.m_logErrorDirs =
     toBool(options.value("logErrorDirectories", "false"));
