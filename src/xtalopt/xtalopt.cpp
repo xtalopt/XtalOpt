@@ -2265,13 +2265,13 @@ namespace XtalOpt {
       }
     }
     else if (line == "chemicalSpeciesLabel") {
-      QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
-      QList<QString> symbol = xtal->getSymbols();
-      for (int i = 0; i < atomCounts.size(); i++) {
+      QList<QString> symbols = xtal->getSymbols();
+      for (int i = 0; i < symbols.size(); i++) {
         rep += " ";
         rep += QString::number(i+1) + " ";
-        rep += QString::number(atomCounts.at(i)) + " ";
-        rep += symbol.at(i) + "\n";
+        rep += QString::number(
+          ElemInfo::getAtomicNum(symbols[i].toStdString())) + " ";
+        rep += symbols[i] + "\n";
       }
     }
     else if (line == "atomicCoordsAndAtomicSpecies") {

@@ -41,7 +41,6 @@ namespace XtalOpt {
     m_completionStrings.append("siesta: Final energy (eV):");
 
     // Set output filenames to try to read data from, e.g.
-    m_outputFilenames.append("BASIS_ENTHALPY");
     m_outputFilenames.append(m_completionFilename);
 
     // Set the name of the optimizer to be returned by getIDString()

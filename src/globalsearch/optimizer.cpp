@@ -482,7 +482,7 @@ namespace GlobalSearch {
     }
     file.close();
 
-    if (!Formats::read(structure, filename)) {
+    if (!Formats::read(structure, filename, m_idString)) {
       qDebug() << "Failed to read the output file!";
       return false;
     }
