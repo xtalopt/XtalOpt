@@ -173,12 +173,21 @@ namespace XtalOpt {
 
   void VASPOptimizer::buildPOTCARs() {
     double enmax = 0;
+
+    int numOptSteps = getNumberOfOptSteps();
+
     m_templates["POTCAR"].clear();
     // "POTCAR info" is of type
     // QList<QHash<QString, QString> >
     // e.g. a list of hashes containing
     // [atomic symbol : pseudopotential file] pairs
+
+    // Make sure this doesn't exceed the number of opt steps
     QVariantList potcarInfo = m_data["POTCAR info"].toList();
+    while (potcarInfo.size() > numOptSteps)
+      potcarInfo.pop_back();
+    setData("POTCAR info", potcarInfo);
+
     for (int optIndex = 0;
          optIndex < potcarInfo.size(); optIndex++) {
       QFile file;
