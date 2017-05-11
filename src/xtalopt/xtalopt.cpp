@@ -2578,6 +2578,9 @@ namespace XtalOpt {
       // info. This sets current cell info, atom info, enthalpy, energy, & PV
       xtal->readSettings(xtalStateFileName, true);
 
+      // Reset it's space group
+      xtal->findSpaceGroup(tol_spg);
+
       // Store current state -- updateXtal will overwrite it.
       Xtal::State state = xtal->getStatus();
       // Set state from InProcess -> Restart if needed
