@@ -56,6 +56,14 @@ class XtalOptCLIOptions {
   static bool isKeyword(const QString& s, QString& csString);
 
   /**
+   * Does this string start with 'potcarFile' or 'psfFile'?
+   *
+   * @param s The string to be check.
+   * @return True if it is a potential file. False otherwise.
+   */
+  static bool isPotFile(const QString& s);
+
+  /**
    * Reads options from a single line and sets it in the options object if
    * and only if the option on that line is a valid keyword.
    *

@@ -110,8 +110,7 @@ static const QStringList keywords =
   "pwscfTemplates",
   "fdfTemplates",
   "incarTemplates",
-  "kpointsTemplates",
-  "potcarFile"
+  "kpointsTemplates"
 };
 
 static const QStringList requiredKeywords =
@@ -161,8 +160,7 @@ static const QHash<QString, QStringList> requiredOptimizerKeywords =
     "vasp",
     {
       "incarTemplates",
-      "kpointsTemplates",
-      "potcarFile"
+      "kpointsTemplates"
     }
   },
 
@@ -199,6 +197,16 @@ bool XtalOptCLIOptions::isKeyword(const QString& s,
   return true;
 }
 
+bool XtalOptCLIOptions::isPotFile(const QString& s)
+{
+  if (s.trimmed().startsWith("potcarfile") ||
+      s.trimmed().startsWith("psffile")) {
+    return true;
+  }
+
+  return false;
+}
+
 void XtalOptCLIOptions::processLine(const QString& tmpLine,
                                     QHash<QString, QString>& options)
 {
@@ -227,8 +235,8 @@ void XtalOptCLIOptions::processLine(const QString& tmpLine,
   }
 
   // Case sensitive key
-  QString csKey;
-  if (!isKeyword(key, csKey)) {
+  QString csKey = key;
+  if (!isKeyword(key, csKey) && !isPotFile(key)) {
     qDebug() << "Warning: ignoring unrecognized option in line '"
              << tmpLine << "'";
     return;
@@ -236,6 +244,7 @@ void XtalOptCLIOptions::processLine(const QString& tmpLine,
 
   options[csKey] = value;
 }
+
 
 bool XtalOptCLIOptions::requiredOptionsSet(const QHash<QString,
                                                        QString>& options)
@@ -553,15 +562,44 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
       return false;
     }
 
-    // For the POTCAR file, let's just add the same thing to every step
-    QFile file(templatesDir + "/" + options["potcarFile"]);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      qDebug() << "Error: could not open file '" << options["potcarFile"]
-               << "' in the templates directory: " << templatesDir;
-      return false;
+    // Generating the POTCAR file requires a little bit more work...
+    // Generate list of symbols
+    QVariantList potcarInfo;
+    QStringList symbols;
+    QList<uint> atomicNums = xtalopt.comp.keys();
+    qSort(atomicNums);
+
+    for (const auto& atomicNum: atomicNums) {
+      if (atomicNum != 0)
+        symbols.append(ElemInfo::getAtomicSymbol(atomicNum).c_str());
     }
+    qSort(symbols);
+    QVariantHash hash;
+    for (const auto& symbol: symbols) {
+      QString filename = options[QString("potcarfile ") + symbol.toLower()];
+      if (filename.isEmpty()) {
+        qDebug() << "Error: no POTCAR file found for atom type:" << symbol;
+        qDebug() << "You must set the POTCAR file in the options like so:";
+        QString tmp = QString("potcarFile ") + symbol + " = /path/to/vasp_potcars/symbol/POTCAR";
+        qDebug() << tmp;
+        return false;
+      }
+
+      hash.insert(symbol, QVariant(filename));
+    }
+
     for (size_t i = 0; i < numOptSteps; ++i)
-      optimizer->appendTemplate("POTCAR", file.readAll());
+      potcarInfo.append(QVariant(hash));
+
+    // Set composition in optimizer
+    QVariantList toOpt;
+    for (const auto& atomicNum: atomicNums)
+      toOpt.append(atomicNum);
+
+    optimizer->setData("Composition", toOpt);
+
+    // Set POTCAR info
+    optimizer->setData("POTCAR info", QVariant(potcarInfo));
   }
   else {
     qDebug() << "Error: unknown optimizer:" << options["optimizer"];
@@ -584,7 +622,8 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   // Let us make sure all the optimization steps have the same number of steps
   QStringList templateNames = optimizer->getTemplateNames();
   for (const auto& templateName: templateNames) {
-    if (optimizer->getTemplate(templateName).size() != numOptSteps) {
+    if (optimizer->getTemplate(templateName).size() != numOptSteps &&
+        templateName != "POTCAR") {
       qDebug() << "Error: template '" << templateName << "' does not"
                << "have the correct number of optimization steps ("
                << numOptSteps << ")!";
@@ -701,8 +740,6 @@ QString convertedTemplateName(const QString& s, const QueueInterface& queue)
     return "INCAR";
   if (s.compare("kpointsTemplates", Qt::CaseInsensitive) == 0)
     return "KPOINTS";
-  if (s.compare("potcarFile", Qt::CaseInsensitive) == 0)
-    return "POTCAR";
 
   if (s.compare("jobTemplates", Qt::CaseInsensitive) == 0) {
     QString id = queue.getIDString();

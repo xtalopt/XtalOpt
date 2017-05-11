@@ -178,8 +178,10 @@
     #incarTemplates = incar1, incar2, incar3
     #kpointsTemplates = kpoints1, kpoints2, kpoints3
 
-    # This POTCAR file will be copied to all the run locations
-      #potcarFile = POTCAR
+    # For each element, you need to specify a separate line for its POTCAR
+    # For example, TiO2 would look like this:
+    #potcarFile Ti = /home/user/vasp_potcars/Ti/POTCAR
+    #potcarFile O = /home/user/vasp_potcars/O/POTCAR
 
   # PWSCF templates (only for optimizer = pwscf)
     #pwscfTemplates = pwscf1, pwscf2, pwscf3
