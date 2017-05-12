@@ -15,7 +15,7 @@
 
 #include "passwordprompt.h"
 
-std::string PasswordPrompt::getPassword()
+std::string PasswordPrompt::getPassword(const std::string& prompt)
 {
 // For Windows
 #ifdef _WIN32
@@ -32,7 +32,7 @@ std::string PasswordPrompt::getPassword()
 #endif
 
   std::string s;
-  std::cout << "Enter password:";
+  std::cout << prompt;
   getline(std::cin, s);
   std::cout << std::endl;
 

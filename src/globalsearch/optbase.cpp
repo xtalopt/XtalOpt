@@ -633,12 +633,19 @@ namespace GlobalSearch {
           // so just prompt user for password.
           err = "Please enter a password for "
             + username + "@" + host + ":" + QString::number(port)
-            + ":";
+            + ": ";
           bool ok;
           QString newPassword;
-          // This is a BlockingQueuedConnection, which blocks until
-          // the slot returns.
-          emit needPassword(err, &newPassword, &ok);
+
+          if (m_usingGUI)
+            // This is a BlockingQueuedConnection, which blocks until
+            // the slot returns.
+            emit needPassword(err, &newPassword, &ok);
+          else {
+            newPassword = PasswordPrompt::getPassword(err.toStdString()).c_str();
+            ok = true;
+          }
+
           if (!ok) { // user cancels
             return false;
           }

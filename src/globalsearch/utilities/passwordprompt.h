@@ -6,7 +6,7 @@
 class PasswordPrompt
 {
  public:
-  static std::string getPassword();
+  static std::string getPassword(const std::string& prompt = "Enter password: ");
 };
 
 #endif // PASSWORD_PROMPT_H
