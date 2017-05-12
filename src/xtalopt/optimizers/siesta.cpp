@@ -113,7 +113,13 @@ namespace XtalOpt {
     // QList<QHash<QString, QString> >
     // e.g. a list of hashes containing
     // [atomic symbol : pseudopotential file] pairs
+
+    // Make sure this doesn't exceed the number of opt steps
+    int numOptSteps = getNumberOfOptSteps();
     QVariantList psfInfo = m_data["PSF info"].toList();
+    while (psfInfo.size() > numOptSteps)
+      psfInfo.pop_back();
+
     for (int optIndex = 0;
          optIndex < psfInfo.size(); optIndex++) {
       QFile file;

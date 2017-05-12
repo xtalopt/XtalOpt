@@ -548,6 +548,46 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
                                *optimizer, *xtalopt.queueInterface())) {
       return false;
     }
+
+    // Generating the PSF files require a little bit more work...
+    // Generate list of symbols
+    QVariantList psfInfo;
+    QStringList symbols;
+    QList<uint> atomicNums = xtalopt.comp.keys();
+    qSort(atomicNums);
+
+    for (const auto& atomicNum: atomicNums) {
+      if (atomicNum != 0)
+        symbols.append(ElemInfo::getAtomicSymbol(atomicNum).c_str());
+    }
+    qSort(symbols);
+    QVariantHash hash;
+    for (const auto& symbol: symbols) {
+      QString filename = options[QString("psffile ") + symbol.toLower()];
+      if (filename.isEmpty()) {
+        qDebug() << "Error: no PSF file found for atom type:" << symbol;
+        qDebug() << "You must set the PSF file in the options like so:";
+        QString tmp = QString("psfFile ") + symbol + " = /path/to/siesta_psfs/symbol.psf";
+        qDebug() << tmp;
+        return false;
+      }
+
+      hash.insert(symbol, QVariant(filename));
+    }
+
+    for (size_t i = 0; i < numOptSteps; ++i)
+      psfInfo.append(QVariant(hash));
+
+    // Set composition in optimizer
+    QVariantList toOpt;
+    for (const auto& atomicNum: atomicNums)
+      toOpt.append(atomicNum);
+
+    optimizer->setData("Composition", toOpt);
+
+    // Set PSF info
+    optimizer->setData("PSF info", QVariant(psfInfo));
+    static_cast<SIESTAOptimizer*>(optimizer.get())->buildPSFs();
   }
   else if (options["optimizer"].toLower() == "vasp") {
     optimizer = make_unique<VASPOptimizer>(&xtalopt);
@@ -600,6 +640,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
 
     // Set POTCAR info
     optimizer->setData("POTCAR info", QVariant(potcarInfo));
+    static_cast<VASPOptimizer*>(optimizer.get())->buildPOTCARs();
   }
   else {
     qDebug() << "Error: unknown optimizer:" << options["optimizer"];
@@ -620,11 +661,22 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
 #endif
 
   // Let us make sure all the optimization steps have the same number of steps
-  QStringList templateNames = optimizer->getTemplateNames();
-  for (const auto& templateName: templateNames) {
+  for (const auto& templateName: optimizer->getTemplateNames()) {
     if (optimizer->getTemplate(templateName).size() != numOptSteps &&
-        templateName != "POTCAR") {
+        templateName != "POTCAR" && templateName != "xtal.psf") {
       qDebug() << "Error: template '" << templateName << "' does not"
+               << "have the correct number of optimization steps ("
+               << numOptSteps << ")!";
+      qDebug() << templateName << " has "
+               << optimizer->getTemplate(templateName).size() << " steps";
+      return false;
+    }
+  }
+
+  // Let us make sure all the QI templates have the same number of steps
+  for (const auto& templateName: optimizer->getQITemplateNames()) {
+    if (optimizer->getTemplate(templateName).size() != numOptSteps) {
+      qDebug() << "Error: QITemplate '" << templateName << "' does not"
                << "have the correct number of optimization steps ("
                << numOptSteps << ")!";
       qDebug() << templateName << " has "

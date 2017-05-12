@@ -1,0 +1,47 @@
+# TiO2 test
+#
+SystemName	TiO2 test
+SystemLabel	TiO2 test
+NumberOfSpecies  %numSpecies%
+NumberOfAtoms    %numAtoms%
+%block% ChemicalSpeciesLabel
+%chemicalSpeciesLabel%
+%endblock% ChemicalSpeciesLabel
+
+PAO.BasisSize  SZ
+Diag.Divide-and-Conquer F
+
+LatticeConstant     1.0 Ang
+%block% LatticeVectors
+%cellMatrixAngstrom%
+%endblock% LatticeParameters
+
+AtomicCoordinatesFormat    Fractional
+
+%block% AtomicCoordinatesAndAtomicSpecies
+%atomicCoordsAndAtomicSpecies%
+%endblock% AtomicCoordinatesAndAtomicSpecies
+
+kgrid_cutoff 15.0 Ang
+
+Solution.Method       diagon
+MeshCutoff             100 Ry
+DM.NumberBroyden       4
+DM.UseSaveDM           T
+DM.MixingWeight        0.1         # New DM amount for next SCF cycle
+DM.Tolerance           1.d-3       # Tolerance in maximum difference
+                                   # between input and output DM
+MaxSCFIterations       20
+
+WriteCoorStep      .true.
+WriteForces        .true.
+HarrisFunctional T
+
+MD.TypeOfRun         Broyden
+MD.Variable-Cell      T
+MD.Target-pressure    0.0 GPa
+MD.Num-CG-steps	     30
+MD.Max-Stress-Tol    2.0 GPa
+
+MD.Broyden.Initial.Inverse.Jacobian 1.0
+MD.Broyden.History.Steps 6

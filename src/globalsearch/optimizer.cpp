@@ -566,13 +566,15 @@ namespace GlobalSearch {
            it = templateKeys.constBegin(),
            it_end = templateKeys.constEnd();
          it != it_end; ++it) {
-      m_templates[*it].removeAt(optStepIndex);
+      if (m_templates[*it].size() > optStepIndex)
+        m_templates[*it].removeAt(optStepIndex);
     }
     for (QStringList::const_iterator
            it = QITemplateKeys.constBegin(),
            it_end = QITemplateKeys.constEnd();
          it != it_end; ++it) {
-      m_QITemplates[*it].removeAt(optStepIndex);
+      if (m_QITemplates[*it].size() > optStepIndex)
+        m_QITemplates[*it].removeAt(optStepIndex);
     }
 
     return true;

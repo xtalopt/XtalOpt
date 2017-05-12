@@ -214,6 +214,12 @@ namespace GlobalSearch {
     virtual QStringList getTemplateNames() const {return m_templates.keys();};
 
     /**
+     * @return All filenames that the optimizer can store QI templates
+     * for.
+     */
+    virtual QStringList getQITemplateNames() const {return m_QITemplates.keys();};
+
+    /**
      * @return All strings that identify valid generic data sets.
      */
     virtual QStringList getDataIdentifiers() {return m_data.keys();};
