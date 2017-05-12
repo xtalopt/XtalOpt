@@ -587,7 +587,9 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
 
     // Set PSF info
     optimizer->setData("PSF info", QVariant(psfInfo));
-    static_cast<SIESTAOptimizer*>(optimizer.get())->buildPSFs();
+
+    // Just so the program doesn't crash, we need an empty version of this
+    optimizer->appendTemplate("xtal.psf", "");
   }
   else if (options["optimizer"].toLower() == "vasp") {
     optimizer = make_unique<VASPOptimizer>(&xtalopt);
@@ -640,7 +642,6 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
 
     // Set POTCAR info
     optimizer->setData("POTCAR info", QVariant(potcarInfo));
-    static_cast<VASPOptimizer*>(optimizer.get())->buildPOTCARs();
   }
   else {
     qDebug() << "Error: unknown optimizer:" << options["optimizer"];

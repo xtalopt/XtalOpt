@@ -332,9 +332,14 @@ namespace GlobalSearch {
            it_end = filenames.constEnd();
          it != it_end;
          it++) {
+      // For debugging template issues
+      //qDebug() << "Templates: *it is" << *it;
+      //qDebug() << "size is" << m_templates.value(*it).size();
+      //qDebug() << "optStep is" << optStep - 1;
       hash.insert((*it), m_opt->interpretTemplate(m_templates.value(*it)
                                                   .at(optStep - 1),
                                                   structure));
+      //qDebug() << "Interpreted template is " << hash[*it];
     }
     // QueueInterface templates
     filenames = m_QITemplates.keys();
@@ -343,9 +348,14 @@ namespace GlobalSearch {
            it_end = filenames.constEnd();
          it != it_end;
          it++) {
+      // For debugging template issues
+      //qDebug() << "QITemplates: *it is" << *it;
+      //qDebug() << "size is" << m_QITemplates.value(*it).size();
+      //qDebug() << "optStep is" << optStep - 1;
       hash.insert((*it), m_opt->interpretTemplate(m_QITemplates.value(*it)
                                                   .at(optStep - 1),
                                                   structure));
+      //qDebug() << "Interpreted QITemplate is " << hash[*it];
     }
 
     return hash;
