@@ -606,6 +606,9 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
     return false;
   }
 
+  // The first opt step should just be a blank one. Remove it.
+  optimizer->removeAllTemplatesForOptStep(0);
+
 #ifdef ENABLE_SSH
   if (remote) {
     // We need to add the job templates if we are remote
@@ -615,9 +618,6 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
     }
   }
 #endif
-
-  // The first opt step should just be a blank one. Remove it.
-  optimizer->removeAllTemplatesForOptStep(0);
 
   // Let us make sure all the optimization steps have the same number of steps
   QStringList templateNames = optimizer->getTemplateNames();
