@@ -41,9 +41,11 @@ XtalOptRpc::XtalOptRpc(QObject* parent,
   connect(&m_socket, static_cast<void(QLocalSocket::*)(QLocalSocket::LocalSocketError)>(&QLocalSocket::error),
           [this](QLocalSocket::LocalSocketError socketError)
           {
-            // If the server wasn't found, it's likely the the user just doesn't have open Avogadro2
-            if (socketError != QLocalSocket::ServerNotFoundError)
-              qDebug() << "XtalOptRpc received a socket error: " << this->m_socket.errorString();
+            // We can use this in the future if we feel that we need to
+            // print out errors that are emitted. Usually they just happen
+            // because the user doesn't have Avogadro2 open, though...
+            //qDebug() << "XtalOptRpc received a socket error: "
+            //         << this->m_socket.errorString();
           });
 
   // We can read data back from the server if we want to
@@ -109,7 +111,49 @@ bool XtalOptRpc::sendMessage(const QJsonObject& message)
 
 void XtalOptRpc::readData()
 {
-  //qDebug() << "Message received from Avogadro2: " << m_socket.readAll();
+  // Read it as a document
+  QDataStream dataStream(m_socket.readAll());
+  QByteArray data;
+
+  // If we have several packets in the datastream (because a lot of messages
+  // were sent to it at once), only read the last one.
+  // If we ever need to read every packet, we may change this in the future.
+  while (!dataStream.atEnd())
+    dataStream >> data;
+
+  QJsonDocument doc = QJsonDocument::fromJson(data);
+
+  if (doc.isNull()) {
+    qDebug() << "In XtalOptRpc: JsonData received from Avogadro2 is null!";
+    qDebug() << "JsonData is as follows:" << data;
+    return;
+  }
+
+  if (!doc.isObject()) {
+    qDebug() << "In XtalOptRpc: JsonData received from Avogadro2 is not"
+             << "an object!";
+    qDebug() << "JsonData is as follows:" << data;
+    return;
+  }
+
+  // Convert to QJson object
+  QJsonObject obj = doc.object();
+
+  // Check to see if there is an error
+  if (obj.contains("error")) {
+    // Should be structured like this, but we can change it in the future
+    // if the response message changes:
+    /**
+     * "error": {
+     *   "code": <int>,
+     *   "message": <string>
+     * }
+     */
+    QJsonObject errorObj = obj["error"].toObject();
+    qDebug() << "Error received from RPC to Avogadro2";
+    qDebug() << "Error code: " << errorObj["code"].toInt();
+    qDebug() << "Error message: " << errorObj["message"].toString();
+  }
 }
 
 } // end namespace XtalOpt
