@@ -87,6 +87,11 @@ class XtalOptRpc : public QObject
    */
   void setIsConnected(bool b) { m_isConnected = b; }
 
+  /**
+   * Reads data from the server. This will be called when m_socket emits readyRead.
+   */
+  void readData();
+
   std::atomic<bool> m_isConnected;
   size_t m_idCounter;
   QLocalSocket m_socket;

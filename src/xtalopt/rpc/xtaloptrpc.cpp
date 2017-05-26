@@ -45,6 +45,10 @@ XtalOptRpc::XtalOptRpc(QObject* parent,
             if (socketError != QLocalSocket::ServerNotFoundError)
               qDebug() << "XtalOptRpc received a socket error: " << this->m_socket.errorString();
           });
+
+  // We can read data back from the server if we want to
+  connect(&m_socket, &QLocalSocket::readyRead,
+          this, &XtalOptRpc::readData);
 }
 
 bool XtalOptRpc::updateDisplayedXtal(const Xtal& xtal)
@@ -101,6 +105,11 @@ bool XtalOptRpc::sendMessage(const QJsonObject& message)
   QDataStream stream(&m_socket);
   stream << document.toJson();
   return true;
+}
+
+void XtalOptRpc::readData()
+{
+  //qDebug() << "Message received from Avogadro2: " << m_socket.readAll();
 }
 
 } // end namespace XtalOpt
