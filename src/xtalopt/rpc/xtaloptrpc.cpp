@@ -36,6 +36,15 @@ XtalOptRpc::XtalOptRpc(QObject* parent,
           [this](){ this->setIsConnected(true); });
   connect(&m_socket, &QLocalSocket::disconnected,
           [this](){ this->setIsConnected(false); });
+
+  // If the local socket produces any errors, let's print them.
+  connect(&m_socket, static_cast<void(QLocalSocket::*)(QLocalSocket::LocalSocketError)>(&QLocalSocket::error),
+          [this](QLocalSocket::LocalSocketError socketError)
+          {
+            // If the server wasn't found, it's likely the the user just doesn't have open Avogadro2
+            if (socketError != QLocalSocket::ServerNotFoundError)
+              qDebug() << "XtalOptRpc received a socket error: " << this->m_socket.errorString();
+          });
 }
 
 bool XtalOptRpc::updateDisplayedXtal(const Xtal& xtal)
