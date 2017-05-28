@@ -16,6 +16,7 @@
 #ifndef XTALOPT_RPC_H
 #define XTALOPT_RPC_H
 
+#include <QLocalSocket>
 #include <QObject>
 #include <QString>
 
@@ -23,7 +24,6 @@
 #include <memory>
 
 class QDataStream;
-class QLocalSocket;
 class QJsonObject;
 
 namespace XtalOpt
