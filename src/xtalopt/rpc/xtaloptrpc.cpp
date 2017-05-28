@@ -17,9 +17,12 @@
 
 #include <xtalopt/structures/xtal.h>
 
+#include <globalsearch/utilities/makeunique.h>
+
 #include <QDataStream>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocalSocket>
 
 namespace XtalOpt {
 
@@ -28,28 +31,31 @@ XtalOptRpc::XtalOptRpc(QObject* parent,
   : QObject(parent),
     m_isConnected(false),
     m_idCounter(0),
-    m_socket(),
+    m_socket(make_unique<QLocalSocket>()),
+    m_dataStream(make_unique<QDataStream>()),
     m_serverName(serverName)
 {
+  m_dataStream->setDevice(m_socket.get());
+  m_dataStream->setVersion(QDataStream::Qt_4_8);
   // Cache whether we are connected or not when we receive the signal
-  connect(&m_socket, &QLocalSocket::connected,
+  connect(m_socket.get(), &QLocalSocket::connected,
           [this](){ this->setIsConnected(true); });
-  connect(&m_socket, &QLocalSocket::disconnected,
+  connect(m_socket.get(), &QLocalSocket::disconnected,
           [this](){ this->setIsConnected(false); });
 
   // If the local socket produces any errors, let's print them.
-  connect(&m_socket, static_cast<void(QLocalSocket::*)(QLocalSocket::LocalSocketError)>(&QLocalSocket::error),
+  connect(m_socket.get(), static_cast<void(QLocalSocket::*)(QLocalSocket::LocalSocketError)>(&QLocalSocket::error),
           [this](QLocalSocket::LocalSocketError socketError)
           {
             // We can use this in the future if we feel that we need to
             // print out errors that are emitted. Usually they just happen
             // because the user doesn't have Avogadro2 open, though...
             //qDebug() << "XtalOptRpc received a socket error: "
-            //         << this->m_socket.errorString();
+            //         << this->m_socket->errorString();
           });
 
   // We can read data back from the server if we want to
-  connect(&m_socket, &QLocalSocket::readyRead,
+  connect(m_socket.get(), &QLocalSocket::readyRead,
           this, &XtalOptRpc::readData);
 }
 
@@ -75,7 +81,7 @@ bool XtalOptRpc::updateDisplayedXtal(const Xtal& xtal)
 
 bool XtalOptRpc::isConnected() const
 {
-  return m_socket.isOpen() && m_isConnected;
+  return m_socket->isOpen() && m_isConnected;
 }
 
 bool XtalOptRpc::reconnectIfNeeded()
@@ -91,10 +97,10 @@ bool XtalOptRpc::connectToServer()
   if (m_serverName.isEmpty())
     return false;
 
-  if (m_socket.isOpen())
-    m_socket.close();
+  if (m_socket->isOpen())
+    m_socket->close();
 
-  m_socket.connectToServer(m_serverName);
+  m_socket->connectToServer(m_serverName);
   return isConnected();
 }
 
@@ -104,28 +110,41 @@ bool XtalOptRpc::sendMessage(const QJsonObject& message)
     return false;
 
   QJsonDocument document(message);
-  QDataStream stream(&m_socket);
-  stream << document.toJson();
+  QByteArray data = document.toJson();
+
+#ifdef _WIN32
+  // Windows can't do QDataStream << QByteArray correctly if the device is a
+  // QLocalSocket because it will send two packets. We need to send the data
+  // manually to prevent issues.
+  QByteArray byteArray;
+  QDataStream stream(&byteArray, QIODevice::WriteOnly);
+  stream << data;
+  m_dataStream->writeRawData(byteArray, byteArray.size());
+#else
+  // Easy way of sending the data.
+  *m_dataStream << data;
+#endif
+
   return true;
 }
 
 void XtalOptRpc::readData()
 {
   // Read it as a document
-  QDataStream dataStream(m_socket.readAll());
   QByteArray data;
 
   // If we have several packets in the datastream (because a lot of messages
   // were sent to it at once), only read the last one.
   // If we ever need to read every packet, we may change this in the future.
-  while (!dataStream.atEnd())
-    dataStream >> data;
+  while (!m_dataStream->atEnd())
+    *m_dataStream >> data;
 
   QJsonDocument doc = QJsonDocument::fromJson(data);
 
   if (doc.isNull()) {
     qDebug() << "In XtalOptRpc: JsonData received from Avogadro2 is null!";
     qDebug() << "JsonData is as follows:" << data;
+    m_dataStream->resetStatus();
     return;
   }
 

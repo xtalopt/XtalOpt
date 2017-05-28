@@ -16,12 +16,14 @@
 #ifndef XTALOPT_RPC_H
 #define XTALOPT_RPC_H
 
-#include <QLocalSocket>
 #include <QObject>
 #include <QString>
 
 #include <atomic>
+#include <memory>
 
+class QDataStream;
+class QLocalSocket;
 class QJsonObject;
 
 namespace XtalOpt
@@ -95,7 +97,8 @@ class XtalOptRpc : public QObject
 
   std::atomic<bool> m_isConnected;
   size_t m_idCounter;
-  QLocalSocket m_socket;
+  std::unique_ptr<QLocalSocket> m_socket;
+  std::unique_ptr<QDataStream> m_dataStream;
   QString m_serverName;
 };
 
