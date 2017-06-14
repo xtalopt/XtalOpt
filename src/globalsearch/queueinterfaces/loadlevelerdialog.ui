@@ -173,6 +173,16 @@
      </property>
     </widget>
    </item>
+   <item row="7" column="2" colspan="2">
+    <widget class="QLineEdit" name="edit_llq">
+     <property name="toolTip">
+      <string>Command used to check the PBS queue. Use qstat.</string>
+     </property>
+     <property name="text">
+      <string>llq</string>
+     </property>
+    </widget>
+   </item>
    <item row="7" column="0">
     <widget class="QLabel" name="label_check">
      <property name="sizePolicy">
@@ -202,16 +212,6 @@
      </property>
     </widget>
    </item>
-   <item row="7" column="2" colspan="2">
-    <widget class="QLineEdit" name="edit_llq">
-     <property name="toolTip">
-      <string>Command used to check the PBS queue. Use qstat.</string>
-     </property>
-     <property name="text">
-      <string>llq</string>
-     </property>
-    </widget>
-   </item>
    <item row="4" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
@@ -229,7 +229,7 @@
      </property>
     </widget>
    </item>
-   <item row="12" column="3">
+   <item row="13" column="3">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -239,7 +239,7 @@
      </property>
     </widget>
    </item>
-   <item row="10" column="3">
+   <item row="11" column="3">
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -282,6 +282,16 @@
     <widget class="QCheckBox" name="cb_cleanRemoteOnStop">
      <property name="text">
       <string>Clean remote directories when finished</string>
+     </property>
+    </widget>
+   </item>
+   <item row="10" column="0">
+    <widget class="QCheckBox" name="cb_logErrorDirs">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Leaves a copy of a directory in which an error occurred in &amp;lt;local_path&amp;gt;/errorDirs.&lt;/p&gt;&lt;p&gt;This can help when figuring out why an xtal fails when submitted.&lt;/p&gt;&lt;p&gt;Only keeps one copy for each xtal directory (so if an error occurred in 00001x00001 twice, the first error directory would have been overwritten by the second)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Log error directories</string>
      </property>
     </widget>
    </item>

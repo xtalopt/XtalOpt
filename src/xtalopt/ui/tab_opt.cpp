@@ -62,6 +62,16 @@ namespace XtalOpt {
             this, SLOT(updateOptimizationInfo()));
     connect(ui.spin_cutoff, SIGNAL(valueChanged(int)),
             this, SLOT(updateOptimizationInfo()));
+    connect(ui.cb_using_FU_crossovers, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_FU_crossovers_generation, SIGNAL(valueChanged(int)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.cb_using_mitotic_growth, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.cb_using_one_pool, SIGNAL(toggled(bool)),
+            this, SLOT(updateOptimizationInfo()));
+    connect(ui.spin_chance_of_mitosis, SIGNAL(valueChanged(int)),
+            this, SLOT(updateOptimizationInfo()));
 
     // Duplicate tolerances
     connect(ui.spin_tol_xcLength, SIGNAL(editingFinished()),
@@ -135,6 +145,11 @@ namespace XtalOpt {
     settings->setValue("opt/failLimit",         xtalopt->failLimit);
     settings->setValue("opt/failAction",        xtalopt->failAction);
     settings->setValue("opt/cutoff",            xtalopt->cutoff);
+    settings->setValue("opt/using_mitotic_growth", xtalopt->using_mitotic_growth);
+    settings->setValue("opt/using_FU_crossovers", xtalopt->using_FU_crossovers);
+    settings->setValue("opt/FU_crossovers_generation", xtalopt->FU_crossovers_generation);
+    settings->setValue("opt/using_one_pool", xtalopt->using_one_pool);
+    settings->setValue("opt/chance_of_mitosis", xtalopt->chance_of_mitosis);
 
     // Duplicates
     settings->setValue("tol/xtalcomp/length",   xtalopt->tol_xcLength);
@@ -184,6 +199,11 @@ namespace XtalOpt {
     ui.spin_failLimit->setValue(        settings->value("opt/failLimit",        2).toUInt()    );
     ui.combo_failAction->setCurrentIndex(settings->value("opt/failAction",      XtalOpt::FA_Randomize).toUInt()    );
     ui.spin_cutoff->setValue(           settings->value("opt/cutoff",           100).toInt()    );
+    ui.cb_using_mitotic_growth->setChecked(settings->value("opt/using_mitotic_growth",false).toBool());
+    ui.cb_using_FU_crossovers->setChecked(settings->value("opt/using_FU_crossovers",false).toBool());
+    ui.spin_FU_crossovers_generation->setValue( settings->value("opt/FU_crossovers_generation",4).toUInt());
+    ui.cb_using_one_pool->setChecked(settings->value("opt/using_one_pool",false).toBool());
+    ui.spin_chance_of_mitosis->setValue( settings->value("opt/chance_of_mitosis",50).toUInt());
 
     // Duplicates
     ui.spin_tol_xcLength->setValue(     settings->value("tol/xtalcomp/length",  0.1).toDouble());
@@ -236,6 +256,11 @@ namespace XtalOpt {
     ui.spin_failLimit->setValue(        xtalopt->failLimit);
     ui.combo_failAction->setCurrentIndex(xtalopt->failAction);
     ui.spin_cutoff->setValue(           xtalopt->cutoff);
+    ui.cb_using_mitotic_growth->setChecked(xtalopt->using_mitotic_growth);
+    ui.cb_using_FU_crossovers->setChecked(xtalopt->using_FU_crossovers);
+    ui.spin_FU_crossovers_generation->setValue(  xtalopt->FU_crossovers_generation);
+    ui.cb_using_one_pool->setChecked(   xtalopt->using_one_pool);
+    ui.spin_chance_of_mitosis->setValue(xtalopt->chance_of_mitosis);
 
     // Duplicates
     ui.spin_tol_xcLength->setValue(     xtalopt->tol_xcLength);
@@ -311,6 +336,11 @@ namespace XtalOpt {
     xtalopt->failLimit		= ui.spin_failLimit->value();
     xtalopt->failAction		= XtalOpt::FailActions(ui.combo_failAction->currentIndex());
     xtalopt->cutoff              = ui.spin_cutoff->value();
+    xtalopt->using_mitotic_growth = ui.cb_using_mitotic_growth->isChecked();
+    xtalopt->using_FU_crossovers = ui.cb_using_FU_crossovers->isChecked();
+    xtalopt->FU_crossovers_generation = ui.spin_FU_crossovers_generation->value();
+    xtalopt->using_one_pool = ui.cb_using_one_pool->isChecked();
+    xtalopt->chance_of_mitosis = ui.spin_chance_of_mitosis->value();
 
     // Duplicates
     xtalopt->tol_xcLength         = ui.spin_tol_xcLength->value();
@@ -353,7 +383,8 @@ namespace XtalOpt {
                         QString("Select structure file to use as seed"),
                         filename,
                         "Common formats (*POSCAR *CONTCAR *.got *.cml *cif"
-                        " *.out);;All Files (*)");
+                        " *.out);;All Files (*)",
+                        0, QFileDialog::DontUseNativeDialog);
 
     // User canceled
     if (newFilename.isEmpty()) return;

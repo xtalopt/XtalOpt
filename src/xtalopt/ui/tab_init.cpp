@@ -18,6 +18,8 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <globalsearch/utilities/fileutils.h>
+
 #include <QtCore/QSettings>
 
 #include <QtGui/QHeaderView>
@@ -29,7 +31,8 @@
 namespace XtalOpt {
 
   TabInit::TabInit( XtalOptDialog *parent, XtalOpt *p ) :
-    AbstractTab(parent, p)
+    AbstractTab(parent, p),
+    m_spgOptions(NULL)
   {
     ui.setupUi(m_tab_widget);
 
@@ -37,24 +40,35 @@ namespace XtalOpt {
 
     xtalopt->loaded =   false;
 
-    // composition connections
+    // Initialize the formula units list...
+    if (xtalopt->formulaUnitsList.isEmpty()) {
+      xtalopt->formulaUnitsList.append(1);
+      xtalopt->minFU = 1;
+      xtalopt->maxFU = 1;
+      // We need to append this one twice... lowestEnthalpyFUList.at(0) does not
+      // correspond to anything. lowestEnthalpyFUList.at(1) corresponds to 1 FU
+      xtalopt->lowestEnthalpyFUList.append(0);
+      xtalopt->lowestEnthalpyFUList.append(0);
+    }
+
+    // Composition
     connect(ui.edit_composition, SIGNAL(textChanged(QString)),
             this, SLOT(getComposition(QString)));
     connect(ui.edit_composition, SIGNAL(editingFinished()),
             this, SLOT(updateComposition()));
 
-    // unit cell dimension connections
+    // Unit cell
     connect(ui.spin_a_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
     connect(ui.spin_b_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
     connect(ui.spin_c_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_alpha_min, SIGNAL(valueChanged(double)),
+    connect(ui.spin_alpha_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_beta_min, SIGNAL(valueChanged(double)),
+    connect(ui.spin_beta_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_gamma_min, SIGNAL(valueChanged(double)),
+    connect(ui.spin_gamma_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
     connect(ui.spin_vol_min, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
@@ -68,14 +82,16 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.spin_beta_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_gamma_max, SIGNAL(valueChanged(double)),
+    connect(ui.spin_gamma_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
     connect(ui.spin_vol_max, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
-    connect(ui.spin_fixedVolume, SIGNAL(valueChanged(double)),
+    connect(ui.spin_fixedVolume, SIGNAL(editingFinished()),
             this, SLOT(updateDimensions()));
     connect(ui.cb_fixedVolume, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
+
+    // Mitosis
     connect(ui.cb_mitosis, SIGNAL(toggled(bool)),
             this, SLOT(updateNumDivisions()));
     connect(ui.combo_divisions, SIGNAL(activated(int)),
@@ -88,12 +104,49 @@ namespace XtalOpt {
             this, SLOT(writeC()));
     connect(ui.cb_subcellPrint, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
+
+    // Interatomic Distances
     connect(ui.spin_scaleFactor, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
     connect(ui.spin_minRadius, SIGNAL(valueChanged(double)),
             this, SLOT(updateDimensions()));
     connect(ui.cb_interatomicDistanceLimit, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
+
+    // MolUnit builder
+    connect(ui.cb_useMolUnit, SIGNAL(toggled(bool)),
+            this, SLOT(updateDimensions()));
+    connect(ui.table_molUnit, SIGNAL(itemSelectionChanged()),
+            this, SLOT(updateIAD()));
+    connect(ui.pushButton_addMolUnit, SIGNAL(clicked(bool)),
+            this, SLOT(addRow()));
+    connect(ui.pushButton_removeMolUnit, SIGNAL(clicked(bool)),
+            this, SLOT(removeRow()));
+    connect(ui.pushButton_removeAllMolUnit, SIGNAL(clicked(bool)),
+            this, SLOT(removeAll()));
+
+    // Formula unit
+    connect(ui.edit_formula_units, SIGNAL(editingFinished()),
+            this, SLOT(updateFormulaUnits()));
+    connect(xtalopt, SIGNAL(updateFormulaUnitsListUIText()),
+            this, SLOT(updateFormulaUnitsListUI()));
+    connect(xtalopt, SIGNAL(updateVolumesToBePerFU(uint)),
+            this, SLOT(adjustVolumesToBePerFU(uint)));
+
+    // randSpg
+    connect(ui.cb_allowRandSpg, SIGNAL(toggled(bool)),
+            this, SLOT(updateDimensions()));
+    connect(ui.push_spgOptions, SIGNAL(clicked()),
+            this, SLOT(openSpgOptions()));
+
+    // MolUnit, RandSpg, and Mitosis enabling/disabling of each other
+    connect(ui.cb_useMolUnit, SIGNAL(toggled(bool)),
+            this, SLOT(updateInitOptions()));
+    connect(ui.cb_allowRandSpg, SIGNAL(toggled(bool)),
+            this, SLOT(updateInitOptions()));
+    connect(ui.cb_mitosis, SIGNAL(toggled(bool)),
+            this, SLOT(updateInitOptions()));
+
 
     QHeaderView *horizontal = ui.table_comp->horizontalHeader();
     horizontal->setResizeMode(QHeaderView::ResizeToContents);
@@ -103,6 +156,7 @@ namespace XtalOpt {
 
   TabInit::~TabInit()
   {
+    if (m_spgOptions) delete m_spgOptions;
   }
 
   void TabInit::writeSettings(const QString &filename)
@@ -142,6 +196,7 @@ namespace XtalOpt {
     settings->setValue("limits/cx",      xtalopt->cx);
     settings->setValue("using/interatomicDistanceLimit",
                        xtalopt->using_interatomicDistanceLimit);
+    settings->setValue("using/molUnit",      xtalopt->using_molUnit);
 
     // Composition
     // We only want to save POTCAR info and Composition to the resume
@@ -152,12 +207,47 @@ namespace XtalOpt {
       settings->beginWriteArray("composition");
       QList<uint> keys = xtalopt->comp.keys();
       for (int i = 0; i < keys.size(); i++) {
+        if (keys.at(i) == 0)
+          continue;
         settings->setArrayIndex(i);
         settings->setValue("atomicNumber", keys.at(i));
         settings->setValue("quantity",
                            xtalopt->comp.value(keys.at(i)).quantity);
         settings->setValue("minRadius",
                            xtalopt->comp.value(keys.at(i)).minRadius);
+      }
+      settings->endArray();
+    }
+
+    // MoUnit composition
+    if (!filename.isEmpty() && filename.contains("xtalopt.state") && xtalopt->using_molUnit == true) {
+      settings->beginWriteArray("compMolUnit");
+      unsigned int numRowsMolUnit = ui.table_molUnit->rowCount();
+      for (int i = 0; i < numRowsMolUnit; i++) {
+        settings->setArrayIndex(i);
+        settings->setValue("center",
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText());
+        settings->setValue("number_of_centers",
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText());
+        settings->setValue("neighbor",
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText());
+        settings->setValue("number_of_neighbors",
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText());
+        settings->setValue("geometry",
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText());
+        settings->setValue("distance",
+                           ui.table_molUnit->item(i, IC_DIST)->text());
+      }
+      settings->endArray();
+    }
+
+    // Formula Units List
+    if (!filename.isEmpty() && filename.contains("xtalopt.state")) {
+      settings->beginWriteArray("Formula_Units");
+      QList<uint> tempFormulaUnitsList = xtalopt->formulaUnitsList;
+      for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
+        settings->setArrayIndex(i);
+        settings->setValue("FU", tempFormulaUnitsList.at(i));
       }
       settings->endArray();
     }
@@ -197,6 +287,7 @@ namespace XtalOpt {
     ui.cb_interatomicDistanceLimit->setChecked( settings->value("using/interatomicDistanceLimit",false).toBool());
     ui.cb_mitosis->setChecked(      settings->value("using/mitosis",       false).toBool()     );
     ui.cb_subcellPrint->setChecked(      settings->value("using/subcellPrint",       false).toBool()     );
+    ui.cb_useMolUnit->setChecked(      settings->value("using/molUnit",       false).toBool()     );
     xtalopt->divisions = settings->value("limits/divisions").toInt();
     xtalopt->ax = settings->value("limits/ax").toInt();
     xtalopt->bx = settings->value("limits/bx").toInt();
@@ -212,11 +303,100 @@ namespace XtalOpt {
         uint atomicNum, quantity;
         XtalCompositionStruct entry;
         atomicNum = settings->value("atomicNumber").toUInt();
+        if (atomicNum == 0)
+          continue;
         quantity = settings->value("quantity").toUInt();
         entry.quantity = quantity;
         xtalopt->comp.insert(atomicNum, entry);
       }
       this->updateMinRadii();
+      settings->endArray();
+    }
+
+    if (!filename.isEmpty() && ui.cb_useMolUnit->isChecked() == true) {
+        int size = settings->beginReadArray("compMolUnit");
+        xtalopt->compMolUnit = QHash<QPair<int, int>, MolUnit> ();
+        for (int i = 0; i < size; i++) {
+          settings->setArrayIndex(i);
+          int centerNum, numCenters, neighborNum, numNeighbors;
+          unsigned int geom;
+          double dist;
+          MolUnit entry;
+
+          QString center = settings->value("center").toString();
+          centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+          QString strNumCenters = settings->value("number_of_centers").toString();
+          numCenters = strNumCenters.toInt();
+          QString neighbor = settings->value("neighbor").toString();
+          neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+          QString strNumNeighbors = settings->value("number_of_neighbors").toString();
+          numNeighbors = strNumNeighbors.toInt();
+          QString strGeom = settings->value("geometry").toString();
+          this->setGeom(geom, strGeom);
+          dist = settings->value("distance").toDouble();
+          QString strDist = QString::number(dist, 'f', 3);
+          entry.numCenters = numCenters;
+          entry.numNeighbors = numNeighbors;
+          entry.geom = geom;
+          entry.dist = dist;
+
+          xtalopt->compMolUnit.insert(qMakePair<int, int>(centerNum, neighborNum), entry);
+
+          ui.table_molUnit->insertRow(i);
+
+          QComboBox* combo_center = new QComboBox();
+          combo_center->insertItem(0, center);
+          ui.table_molUnit->setCellWidget(i, IC_CENTER, combo_center);
+          connect(combo_center, SIGNAL(currentIndexChanged(int)),
+                  this, SLOT(updateIAD()));
+
+          QComboBox* combo_numCenters = new QComboBox();
+          combo_numCenters->insertItem(0, strNumCenters);
+          ui.table_molUnit->setCellWidget(i, IC_NUMCENTERS, combo_numCenters);
+          connect(combo_numCenters, SIGNAL(currentIndexChanged(int)),
+                  this, SLOT(updateIAD()));
+
+          QComboBox* combo_neighbor = new QComboBox();
+          combo_neighbor->insertItem(0, neighbor);
+          ui.table_molUnit->setCellWidget(i, IC_NEIGHBOR, combo_neighbor);
+          connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
+                  this, SLOT(updateIAD()));
+
+          QComboBox* combo_numNeighbors = new QComboBox();
+          combo_numNeighbors->insertItem(0, strNumNeighbors);
+          ui.table_molUnit->setCellWidget(i, IC_NUMNEIGHBORS, combo_numNeighbors);
+          connect(combo_numNeighbors, SIGNAL(currentIndexChanged(int)),
+                  this, SLOT(updateIAD()));
+
+          QComboBox* combo_geom = new QComboBox();
+          combo_geom->insertItem(0, strGeom);
+          ui.table_molUnit->setCellWidget(i, IC_GEOM, combo_geom);
+          connect(combo_geom, SIGNAL(currentIndexChanged(int)),
+                  this, SLOT(updateIAD()));
+
+          QTableWidgetItem *distItem = new QTableWidgetItem(strDist);
+          ui.table_molUnit->setItem(i, IC_DIST, distItem);
+          connect(ui.table_molUnit, SIGNAL(itemChanged(QTableWidgetItem *)),
+                this, SLOT(updateIAD()));
+
+        }
+        this->updateIAD();
+        settings->endArray();
+    }
+
+    // Formula Units List
+    if (!filename.isEmpty()) {
+      int size = settings->beginReadArray("Formula_Units");
+      QString formulaUnits;
+      formulaUnits.clear();
+      for (int i = 0; i < size; i++) {
+        settings->setArrayIndex(i);
+        uint FU = settings->value("FU").toUInt();
+        formulaUnits.append(QString::number(FU));
+        formulaUnits.append(",");
+      }
+      ui.edit_formula_units->setText(formulaUnits);
+      updateFormulaUnits();
       settings->endArray();
     }
 
@@ -267,6 +447,8 @@ namespace XtalOpt {
     ui.combo_c->setItemText(ui.combo_c->currentIndex(), QString::number(xtalopt->cx));
     ui.cb_interatomicDistanceLimit->setChecked(
           xtalopt->using_interatomicDistanceLimit);
+    ui.cb_useMolUnit->setChecked( xtalopt->using_molUnit);
+    ui.cb_allowRandSpg->setChecked( xtalopt->using_randSpg);
 
     updateComposition();
   }
@@ -274,11 +456,19 @@ namespace XtalOpt {
   void TabInit::lockGUI()
   {
     ui.edit_composition->setDisabled(true);
+    ui.cb_useMolUnit->setDisabled(true);
+    ui.table_molUnit->setDisabled(true);
+    ui.pushButton_addMolUnit->setDisabled(true);
+    ui.pushButton_removeMolUnit->setDisabled(true);
+    ui.pushButton_removeAllMolUnit->setDisabled(true);
+    ui.cb_allowRandSpg->setDisabled(true);
+    ui.push_spgOptions->setDisabled(true);
     ui.cb_mitosis->setDisabled(true);
     ui.combo_divisions->setDisabled(true);
     ui.combo_a->setDisabled(true);
     ui.combo_b->setDisabled(true);
     ui.combo_c->setDisabled(true);
+    ui.cb_subcellPrint->setDisabled(true);
   }
 
   void TabInit::getComposition(const QString &str)
@@ -308,6 +498,32 @@ namespace XtalOpt {
       this->updateCompositionTable();
       return;
     }
+    // Reduce to empirical formula
+    if (quantityList.size() == symbolList.size()){
+      unsigned int minimumQuantityOfAtomType = quantityList.at(0).toUInt();
+      for (int i = 1; i < symbolList.size(); ++i) {
+        if (minimumQuantityOfAtomType > quantityList.at(i).toUInt()){
+          minimumQuantityOfAtomType = quantityList.at(i).toUInt();
+        }
+      }
+      unsigned int numberOfFormulaUnits = 1;
+      bool formulaUnitsFound;
+      for (int i = minimumQuantityOfAtomType; i > 1; i--){
+        formulaUnitsFound = true;
+        for (int j = 0; j < symbolList.size(); ++j) {
+          if(quantityList.at(j).toUInt() % i != 0){
+            formulaUnitsFound = false;
+          }
+        }
+        if(formulaUnitsFound == true) {
+          numberOfFormulaUnits = i;
+          i = 1;
+          for (int k = 0; k < symbolList.size(); ++k) {
+            quantityList[k] = QString::number(quantityList.at(k).toUInt() / numberOfFormulaUnits);
+          }
+        }
+      }
+    }
 
     // Build hash
     for (uint i = 0; i < length; i++){
@@ -331,6 +547,7 @@ namespace XtalOpt {
 
       // Validate symbol
       if (!atomicNum) continue; // Invalid symbol entered
+      if (atomicNum == 0) continue;
 
       // Add to hash
       if (!comp.keys().contains(atomicNum)) {
@@ -341,6 +558,17 @@ namespace XtalOpt {
       }
 
       comp[atomicNum].quantity += quantity;
+    }
+
+    // If we changed the composition, reset the spacegroup generation
+    // min xtals per FU to be zero
+    if (xtalopt->comp != comp && xtalopt->minXtalsOfSpgPerFU.size() != 0) {
+      xtalopt->error(tr(
+               "Warning: because the composition have been changed, "
+               "the spacegroups to be generated using spacegroup "
+               "initialization have been reset. Please open the spacegroup "
+               "options to set them again."));
+      xtalopt->minXtalsOfSpgPerFU = QList<int>();
     }
 
     xtalopt->comp = comp;
@@ -400,6 +628,7 @@ namespace XtalOpt {
     QString tmp;
     QTextStream str (&tmp);
     for (int i = 0; i < keys.size(); i++) {
+      if (keys.at(i) == 0) continue;
       uint q = xtalopt->comp.value(keys.at(i)).quantity;
       str << OpenBabel::etab.GetSymbol(keys.at(i)) << q << " ";
     }
@@ -409,23 +638,15 @@ namespace XtalOpt {
           << "nStructs" << xtalopt->test_nStructs << " "
           << "testingMode ";
     }
+
     ui.edit_composition->setText(tmp.trimmed());
+
+    this->updateIAD();
   }
 
   void TabInit::updateDimensions()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
-    // Update min and max volume based upon min and max lengths (a,b,c)
-    if ((ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value()) > ui.spin_vol_min->value()) ui.spin_vol_min->setValue(ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value());
-    if ((ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value()) < ui.spin_vol_min->value()) ui.spin_vol_min->setValue(ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value());
-    if ((ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value()) < ui.spin_vol_max->value()) ui.spin_vol_max->setValue(ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value());
-
-    // Update fixed volume based upon min and max lengths (a,b,c)
-    if (ui.cb_fixedVolume->isChecked()) {
-        if ((ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value()) > ui.spin_fixedVolume->value()) (ui.spin_fixedVolume->setValue(ui.spin_a_min->value() * ui.spin_b_min->value() * ui.spin_c_min->value()));
-        if ((ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value()) < ui.spin_fixedVolume->value()) (ui.spin_fixedVolume->setValue(ui.spin_a_max->value() * ui.spin_b_max->value() * ui.spin_c_max->value()));
-    }
 
     // Check for conflicts -- favor lower value
     if (ui.spin_a_min->value()		> ui.spin_a_max->value())	ui.spin_a_max->setValue(	ui.spin_a_min->value());
@@ -455,10 +676,19 @@ namespace XtalOpt {
 
     xtalopt->using_fixed_volume = ui.cb_fixedVolume->isChecked();
     xtalopt->vol_fixed	= ui.spin_fixedVolume->value();
+
+    // Allow mitosis
     xtalopt->using_mitosis = ui.cb_mitosis->isChecked();
     xtalopt->divisions = ui.combo_divisions->currentText().toInt();
     xtalopt->using_subcellPrint = ui.cb_subcellPrint->isChecked();
 
+    // Allow Molecular units
+    xtalopt->using_molUnit = ui.cb_useMolUnit->isChecked();
+
+    // Allow RandSpg
+    xtalopt->using_randSpg = ui.cb_allowRandSpg->isChecked();
+    if (xtalopt->using_molUnit == false)
+       this->removeAll();
 
     if (xtalopt->scaleFactor != ui.spin_scaleFactor->value() ||
         xtalopt->minRadius   != ui.spin_minRadius->value() ||
@@ -489,8 +719,121 @@ namespace XtalOpt {
     }
   }
 
+  void TabInit::updateFormulaUnits()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
-    // Determine the possible number of divisions for mitosis and update combobox with options
+    QString tmp;
+
+    QList<uint> formulaUnitsList = FileUtils::parseUIntString(ui.edit_formula_units->text(), tmp);
+
+    // If nothing valid was obtained, return 1
+    if (formulaUnitsList.size() == 0) {
+      xtalopt->formulaUnitsList.append(1);
+      tmp = "1";
+      ui.edit_formula_units->setText(tmp.trimmed());
+      return;
+    }
+
+    // Reset the supercell checks
+    QList<GlobalSearch::Structure*> structures (*m_opt->tracker()->list());
+    for (size_t i = 0; i < structures.size(); i++) {
+      structures.at(i)->setSupercellGenerationChecked(false);
+    }
+
+    // Update minFU, maxFU, and formulaUnitsList
+    xtalopt->minFU = formulaUnitsList.at(0);
+    xtalopt->maxFU = formulaUnitsList.at(formulaUnitsList.size() - 1);
+
+    // If we changed the formula units, reset the spacegroup generation
+    // min xtals per FU to be zero
+    if (xtalopt->formulaUnitsList != formulaUnitsList &&
+        xtalopt->minXtalsOfSpgPerFU.size() != 0) {
+      // We're assuming that if the composition is enabled, the run has not
+      // yet begun. This is probably a valid assumption (unless we allow the
+      // composition to be changed during the run in the future)
+      if (ui.edit_composition->isEnabled()) {
+        xtalopt->error(tr(
+                 "Warning: because the formula units have been changed, "
+                 "the spacegroups to be generated using spacegroup "
+                 "initialization have been reset. Please open the spacegroup "
+                 "options to set them again."));
+      }
+      xtalopt->minXtalsOfSpgPerFU = QList<int>();
+    }
+
+    xtalopt->formulaUnitsList = formulaUnitsList;
+
+    // Update the size of the lowestEnthalpyFUList
+    while (xtalopt->lowestEnthalpyFUList.size() <= xtalopt->maxFU)
+      xtalopt->lowestEnthalpyFUList.append(0);
+
+    // Update UI
+    ui.edit_formula_units->setText(tmp.trimmed());
+
+    // Update the nubmer of divisions
+    this->updateNumDivisions();
+  }
+
+  // Updates the UI with the contents of xtalopt->formulaUnitsList
+  void TabInit::updateFormulaUnitsListUI()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    QString tmp;
+    QList<uint> formulaUnitsList = xtalopt->formulaUnitsList;
+    for (size_t i = 0; i < formulaUnitsList.size(); i++) {
+      tmp += QString::number(formulaUnitsList.at(i)) + ", ";
+    }
+    ui.edit_formula_units->setText(tmp);
+    updateFormulaUnits();
+  }
+
+  // Updates the UI by disabling/enabling options for initialization
+  void TabInit::updateInitOptions()
+  {
+    // We can't use molUnit or mitosis in conjunction with randSpg
+    if (ui.cb_useMolUnit->isChecked() || ui.cb_mitosis->isChecked()) {
+      ui.cb_allowRandSpg->setChecked(false);
+      ui.cb_allowRandSpg->setEnabled(false);
+    }
+    else {
+      ui.cb_allowRandSpg->setEnabled(true);
+    }
+    // We can't use molUnit or mitosis in conjunction with randSpg
+    if (ui.cb_allowRandSpg->isChecked()) {
+      // Disable all molUnit stuff
+      ui.cb_useMolUnit->setChecked(false);
+      ui.cb_useMolUnit->setEnabled(false);
+
+      // Disable all mitosis stuff
+      ui.cb_mitosis->setChecked(false);
+      ui.cb_mitosis->setEnabled(false);
+    }
+    else {
+      ui.cb_useMolUnit->setEnabled(true);
+      ui.cb_mitosis->setEnabled(true);
+    }
+    updateDimensions();
+  }
+
+  // This is only used when resuming older version of XtalOpt
+  // It adjusts the volumes so that they are per FU instead of just
+  // pure volumes
+  void TabInit::adjustVolumesToBePerFU(uint FU)
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    ui.spin_vol_min->setValue(ui.spin_vol_min->value() /
+      static_cast<double>(FU));
+    ui.spin_vol_max->setValue(ui.spin_vol_max->value() /
+      static_cast<double>(FU));
+    ui.spin_fixedVolume->setValue(ui.spin_fixedVolume->value() /
+      static_cast<double>(FU));
+    xtalopt->vol_min = ui.spin_vol_min->value();
+    xtalopt->vol_max = ui.spin_vol_max->value();
+    xtalopt->vol_fixed = ui.spin_fixedVolume->value();
+  }
+
+  // Determine the possible number of divisions for mitosis and update combobox with options
   void TabInit::updateNumDivisions()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
@@ -498,6 +841,8 @@ namespace XtalOpt {
     int counter = 0;
     QList<QString> divisions;
     QList<uint> atomicNums = xtalopt->comp.keys();
+    size_t smallestFormulaUnit = xtalopt->formulaUnitsList[0];
+    if (xtalopt->formulaUnitsList.isEmpty()) smallestFormulaUnit = 1;
 
     if (ui.cb_mitosis->isChecked()){
         divisions.clear();
@@ -507,11 +852,16 @@ namespace XtalOpt {
         } else {
         for (int j = 1000; j >= 1; --j) {
             for (int i = 0; i <= atomicNums.size()-1; ++i) {
-                if (xtalopt->comp.value(atomicNums[i]).quantity % j > 0) {
-                    if (xtalopt->comp.value(atomicNums[i]).quantity == 1) {
+                if ((xtalopt->comp.value(atomicNums[i]).quantity *
+                     smallestFormulaUnit) % j > 0) {
+                    if ((xtalopt->comp.value(atomicNums[i]).quantity *
+                         smallestFormulaUnit) == 1) {
                         counter = 0;
                         break;
-                    } else if (xtalopt->comp.value(atomicNums[i]).quantity / j > 0 && xtalopt->comp.value(atomicNums[i]).quantity % j <= 5) {
+                    } else if ((xtalopt->comp.value(atomicNums[i]).quantity *
+                                smallestFormulaUnit) / j > 0 &&
+                               (xtalopt->comp.value(atomicNums[i]).quantity *
+                                smallestFormulaUnit) % j <= 5) {
                         counter++;
                     } else {
                         counter = 0;
@@ -618,7 +968,7 @@ namespace XtalOpt {
     QList<QString> c;
     ui.combo_c->clear();
 
-    if (xtalopt->using_mitosis && xtalopt->divisions!=0){
+    if (xtalopt->using_mitosis && xtalopt->divisions != 0){
       if (xtalopt->loaded==true) {
         ui.combo_c->insertItem(0, QString::number(xtalopt->cx));
         this->writeC();
@@ -632,7 +982,7 @@ namespace XtalOpt {
         ui.combo_c->insertItems(0, c);
 
         this->writeC();
-    }
+      }
     }
   }
 
@@ -643,6 +993,691 @@ namespace XtalOpt {
     xtalopt->cx = ui.combo_c->currentText().toInt();
   }
 
+  void TabInit::updateIAD()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    disconnect(ui.table_molUnit, 0, 0, 0);
+
+    QHash<QPair<int, int>, MolUnit> compMolUnit;
+    compMolUnit.clear();
+
+    xtalopt->compMolUnit.clear();
+
+    unsigned int numRows = ui.table_comp->rowCount();
+    unsigned int numRowsMolUnit = ui.table_molUnit->rowCount();
+    if (numRowsMolUnit == 0) {
+      xtalopt->compMolUnit.clear();
+      return;
+    }
+
+    //Build table - forward
+    for (int i = 0; i < numRowsMolUnit; i++) {
+      QString center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
+      int centerNum;
+      if (center == "None")
+        centerNum = 0;
+      else
+        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+      QString neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
+      int neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+
+      //Update center and neighbor lists
+      QList<QString> centerList;
+      QList<QString> neighborList;
+
+      this->getCentersAndNeighbors(centerList, centerNum, neighborList, neighborNum);
+
+      if (centerList.isEmpty() || neighborList.isEmpty())
+        return;
+
+      for(int k = 0; k < neighborList.size(); k++) {
+        int n = OpenBabel::etab.GetAtomicNum(neighborList.at(k).trimmed().toStdString().c_str());
+        if(xtalopt->compMolUnit.contains(qMakePair<int,int>(centerNum, n)) && n != neighborNum) {
+          neighborList.removeAt(k);
+          k--;
+        }
+      }
+
+      QComboBox* combo_center = new QComboBox();
+      combo_center->insertItems(0, centerList);
+      if (centerList.contains(center)) {
+        combo_center->setCurrentIndex(combo_center->findText(center));
+      }
+      ui.table_molUnit->setCellWidget(i, IC_CENTER, combo_center);
+      connect(combo_center, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+      QComboBox* combo_neighbor = new QComboBox();
+      combo_neighbor->insertItems(0, neighborList);
+      if (neighborList.contains(neighbor)) {
+        combo_neighbor->setCurrentIndex(combo_neighbor->findText(neighbor));
+      }
+      ui.table_molUnit->setCellWidget(i, IC_NEIGHBOR, combo_neighbor);
+      connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+      center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
+      if (center == "None")
+        centerNum = 0;
+      else
+        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+      neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
+      neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+
+      //Number of Centers
+      unsigned int numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
+      QList<QString> numCentersList;
+
+      this->getNumCenters(centerNum, neighborNum, numCentersList);
+
+      QComboBox* combo_numCenters = new QComboBox();
+      combo_numCenters->insertItems(0, numCentersList);
+      if (numCentersList.contains(QString::number(numCenters))) {
+        combo_numCenters->setCurrentIndex(combo_numCenters->findText(QString::number(numCenters)));
+      }
+      ui.table_molUnit->setCellWidget(i, IC_NUMCENTERS, combo_numCenters);
+      connect(combo_numCenters, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+      if (numCentersList.isEmpty())
+        return;
+
+      numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
+
+      compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numCenters = numCenters;
+
+      //Number of Neighbors
+      QList<QString> numNeighborsList;
+      unsigned int numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText().toUInt();
+      this->getNumNeighbors(centerNum, neighborNum, numNeighborsList);
+
+      QComboBox* combo_numNeighbors = new QComboBox();
+      combo_numNeighbors->insertItems(0, numNeighborsList);
+      if (numNeighborsList.contains(QString::number(numNeighbors))) {
+        combo_numNeighbors->setCurrentIndex(combo_numNeighbors->findText(QString::number(numNeighbors)));
+      }
+      ui.table_molUnit->setCellWidget(i, IC_NUMNEIGHBORS, combo_numNeighbors);
+      connect(combo_numNeighbors, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+      if (numNeighborsList.isEmpty())
+        return;
+
+      numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText().toUInt();
+
+      compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numNeighbors = numNeighbors;
+
+      //Geometry
+      unsigned int geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText().toUInt();
+      QString strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText();
+      QList<QString> geomList;
+
+      this->getGeom(geomList, numNeighbors);
+
+      QComboBox* combo_geom = new QComboBox();
+      combo_geom->insertItems(0, geomList);
+      if (geomList.contains(strGeom)) {
+        combo_geom->setCurrentIndex(combo_geom->findText(strGeom));
+      }
+      ui.table_molUnit->setCellWidget(i, IC_GEOM, combo_geom);
+      connect(combo_geom, SIGNAL(currentIndexChanged(int)),
+          this, SLOT(updateIAD()));
+
+      geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText().toUInt();
+      strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText();
+      this->setGeom(geom, strGeom);
+
+      compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
+
+      //MolUnit distance
+      double dist = ui.table_molUnit->item(i, IC_DIST)->text().toDouble();
+      QString strDist = QString::number(dist, 'f', 3);
+      QTableWidgetItem *distItem = new QTableWidgetItem(strDist);
+      ui.table_molUnit->setItem(i, IC_DIST, distItem);
+      dist = ui.table_molUnit->item(i, IC_DIST)->text().toDouble();
+
+      compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].dist = dist;
+
+      //Update the global hash
+      xtalopt->compMolUnit = compMolUnit;
+    }
+
+
+    //Go through table again - backward
+    for (int i = numRowsMolUnit-1; i >= 0; i--) {
+      QString center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
+      int centerNum;
+      if (center == "None")
+        centerNum = 0;
+      else
+        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+      QString neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
+      int neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+
+      //Update center and neighbor lists
+      QList<QString> centerList;
+      QList<QString> neighborList;
+
+      this->getCentersAndNeighbors(centerList, centerNum, neighborList, neighborNum);
+
+      if (centerList.isEmpty() || neighborList.isEmpty())
+        return;
+
+      for(int k = 0; k < neighborList.size(); k++) {
+        int n = OpenBabel::etab.GetAtomicNum(neighborList.at(k).trimmed().toStdString().c_str());
+        if(xtalopt->compMolUnit.contains(qMakePair<int,int>(centerNum, n)) && n != neighborNum) {
+          neighborList.removeAt(k);
+          k--;
+        }
+      }
+
+      QComboBox* combo_center = new QComboBox();
+      combo_center->insertItems(0, centerList);
+      if (centerList.contains(center)) {
+        combo_center->setCurrentIndex(combo_center->findText(center));
+      }
+      ui.table_molUnit->setCellWidget(i, IC_CENTER, combo_center);
+      connect(combo_center, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+      QComboBox* combo_neighbor = new QComboBox();
+      combo_neighbor->insertItems(0, neighborList);
+      if (neighborList.contains(neighbor)) {
+        combo_neighbor->setCurrentIndex(combo_neighbor->findText(neighbor));
+      }
+      ui.table_molUnit->setCellWidget(i, IC_NEIGHBOR, combo_neighbor);
+      connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+      center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
+      if (center == "None")
+        centerNum = 0;
+      else
+        centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+      neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
+      neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+
+      //Number of Centers
+      unsigned int numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
+      QList<QString> numCentersList;
+
+      this->getNumCenters(centerNum, neighborNum, numCentersList);
+
+      QComboBox* combo_numCenters = new QComboBox();
+      combo_numCenters->insertItems(0, numCentersList);
+      if (numCentersList.contains(QString::number(numCenters))) {
+        combo_numCenters->setCurrentIndex(combo_numCenters->findText(QString::number(numCenters)));
+      }
+      ui.table_molUnit->setCellWidget(i, IC_NUMCENTERS, combo_numCenters);
+      connect(combo_numCenters, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+      numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
+
+      compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numCenters = numCenters;
+
+      //Number of Neighbors
+      QList<QString> numNeighborsList;
+      unsigned int numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText().toUInt();
+      this->getNumNeighbors(centerNum, neighborNum, numNeighborsList);
+
+      QComboBox* combo_numNeighbors = new QComboBox();
+      combo_numNeighbors->insertItems(0, numNeighborsList);
+      if (numNeighborsList.contains(QString::number(numNeighbors))) {
+        combo_numNeighbors->setCurrentIndex(combo_numNeighbors->findText(QString::number(numNeighbors)));
+      }
+      ui.table_molUnit->setCellWidget(i, IC_NUMNEIGHBORS, combo_numNeighbors);
+      connect(combo_numNeighbors, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+      numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText().toUInt();
+
+      compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numNeighbors = numNeighbors;
+
+      //Geometry
+      unsigned int geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText().toUInt();
+      QString strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText();
+      QList<QString> geomList;
+
+      this->getGeom(geomList, numNeighbors);
+
+      QComboBox* combo_geom = new QComboBox();
+      combo_geom->insertItems(0, geomList);
+      if (geomList.contains(strGeom)) {
+        combo_geom->setCurrentIndex(combo_geom->findText(strGeom));
+      }
+      ui.table_molUnit->setCellWidget(i, IC_GEOM, combo_geom);
+      connect(combo_geom, SIGNAL(currentIndexChanged(int)),
+          this, SLOT(updateIAD()));
+
+      geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText().toUInt();
+      strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText();
+      this->setGeom(geom, strGeom);
+
+      compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
+
+      //MolUnit distance
+      double dist = ui.table_molUnit->item(i, IC_DIST)->text().toDouble();
+      QString strDist = QString::number(dist, 'f', 3);
+      QTableWidgetItem *distItem = new QTableWidgetItem(strDist);
+      ui.table_molUnit->setItem(i, IC_DIST, distItem);
+      dist = ui.table_molUnit->item(i, IC_DIST)->text().toDouble();
+
+      compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].dist = dist;
+
+      connect(ui.table_molUnit, SIGNAL(itemSelectionChanged()),
+          this, SLOT(updateIAD()));
+
+      //Update the global hash
+      xtalopt->compMolUnit = compMolUnit;
+    }
+
+  }
+
+  //Actions for buttons to add/remove rows from the IAD table
+  void TabInit::addRow()
+  {
+    disconnect(ui.table_molUnit, 0, 0, 0);
+
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    QHash<QPair<int, int>, MolUnit> compMolUnit;
+    compMolUnit.clear();
+
+    QList<unsigned int> keys = xtalopt->comp.keys();
+    qSort(keys);
+    int numKeys = keys.size();
+
+    QList<QPair<int, int> > keysMolUnit = xtalopt->compMolUnit.keys();
+    qSort(keysMolUnit);
+    int numKeysMolUnit = keysMolUnit.size();
+
+    QList<unsigned int> firstKeys;
+    firstKeys.clear();
+    QList<unsigned int> secondKeys;
+    secondKeys.clear();
+    for (int i = 0; i < numKeysMolUnit; i++) {
+      firstKeys.append((keysMolUnit.at(i).first));
+      secondKeys.append((keysMolUnit.at(i).second));
+    }
+
+    if (numKeys==0)
+      return;
+
+    //Center and Neighbor Lists
+    int centerNum = 0;
+    QList<QString> centerList;
+    centerList.clear();
+    int neighborNum = 0;
+    QList<QString> neighborList;
+    neighborList.clear();
+
+    this->getCentersAndNeighbors(centerList, centerNum, neighborList, neighborNum);
+
+    if (centerList.isEmpty() || neighborList.isEmpty())
+      return;
+
+    QString center = centerList.at(0);
+    if (center == "None")
+      centerNum = 0;
+    else
+      centerNum = OpenBabel::etab.GetAtomicNum(center.trimmed().toStdString().c_str());
+    QString neighbor = neighborList.at(0);
+    neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+
+    if(xtalopt->compMolUnit.contains(qMakePair<int, int>(centerNum, neighborNum))) {
+      neighborList.removeAt(0);
+      if (centerList.isEmpty() || neighborList.isEmpty())
+        return;
+      neighbor = neighborList.at(0);
+      neighborNum = OpenBabel::etab.GetAtomicNum(neighbor.trimmed().toStdString().c_str());
+    }
+
+    //Number of Centers
+    int numCenters = 0;
+    QList<QString> numCentersList;
+    numCentersList.clear();
+
+    this->getNumCenters(centerNum, neighborNum, numCentersList);
+
+    if (numCentersList.isEmpty())
+      return;
+
+    numCenters = numCentersList.at(0).toInt();
+
+    compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numCenters = numCenters;
+
+    //Number of Neighbors
+    int numNeighbors = 0;
+    QList<QString> numNeighborsList;
+    numNeighborsList.clear();
+
+    this->getNumNeighbors(centerNum, neighborNum, numNeighborsList);
+
+    if (numNeighborsList.isEmpty())
+      return;
+
+    numNeighbors = numNeighborsList.at(0).toInt();
+
+    compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numNeighbors = numNeighbors;
+
+    //Determine possible geometries for the number of neigbors
+    QList<QString> geomList;
+    geomList.clear();
+
+    this->getGeom(geomList, numNeighbors);
+
+    unsigned int geom = geomList.at(0).toUInt();
+    compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
+
+    //Distance
+    double distNum = OpenBabel::etab.GetCovalentRad(centerNum) + OpenBabel::etab.GetCovalentRad(neighborNum);
+    QString dist = QString::number(distNum, 'f', 3);
+
+    compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].dist = distNum;
+
+    //Build table
+    int row = ui.table_molUnit->rowCount();
+    ui.table_molUnit->insertRow(row);
+
+    QComboBox* combo_center = new QComboBox();
+    combo_center->insertItems(0, centerList);
+    ui.table_molUnit->setCellWidget(row, IC_CENTER, combo_center);
+    connect(combo_center, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+    QComboBox* combo_numCenters = new QComboBox();
+    combo_numCenters->insertItems(0, numCentersList);
+    ui.table_molUnit->setCellWidget(row, IC_NUMCENTERS, combo_numCenters);
+    connect(combo_numCenters, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+    QComboBox* combo_neighbor = new QComboBox();
+    combo_neighbor->insertItems(0, neighborList);
+    ui.table_molUnit->setCellWidget(row, IC_NEIGHBOR, combo_neighbor);
+    connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+    QComboBox* combo_numNeighbors = new QComboBox();
+    combo_numNeighbors->insertItems(0, numNeighborsList);
+    ui.table_molUnit->setCellWidget(row, IC_NUMNEIGHBORS, combo_numNeighbors);
+    connect(combo_numNeighbors, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+    QComboBox* combo_geom = new QComboBox();
+    combo_geom->insertItems(0, geomList);
+    ui.table_molUnit->setCellWidget(row, IC_GEOM, combo_geom);
+    connect(combo_geom, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(updateIAD()));
+
+    QTableWidgetItem *distItem = new QTableWidgetItem(dist);
+    ui.table_molUnit->setItem(row, IC_DIST, distItem);
+    connect(ui.table_molUnit, SIGNAL(itemChanged(QTableWidgetItem *)),
+          this, SLOT(updateIAD()));
+
+    connect(ui.table_molUnit, SIGNAL(itemSelectionChanged()),
+          this, SLOT(updateIAD()));
+
+    //Update the global hash
+    xtalopt->compMolUnit = compMolUnit;
+
+    this->updateIAD();
+  }
+
+  void TabInit::removeRow()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    disconnect(ui.table_molUnit, 0, 0, 0);
+    ui.table_molUnit->removeRow(ui.table_molUnit->currentRow());
+
+    connect(ui.table_molUnit, SIGNAL(itemSelectionChanged()),
+        this, SLOT(updateIAD()));
+
+    this->updateIAD();
+  }
+
+  void TabInit::removeAll()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    xtalopt->compMolUnit.clear();
+
+    int row = ui.table_molUnit->rowCount();
+
+    disconnect(ui.table_molUnit, 0, 0, 0);
+    for (int i = row-1; i >= 0; i--) {
+      ui.table_molUnit->removeRow(i);
+    }
+    connect(ui.table_molUnit, SIGNAL(itemSelectionChanged()),
+        this, SLOT(updateIAD()));
+
+    this->updateIAD();
+  }
+
+  void TabInit::getCentersAndNeighbors(QList<QString> & centerList, int centerNum,
+          QList<QString> & neighborList, int neighborNum)
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    QList<unsigned int> keys = xtalopt->comp.keys();
+    qSort(keys);
+    int numKeys = keys.size();
+
+    QList<QPair<int, int> > keysMolUnit = xtalopt->compMolUnit.keys();
+    qSort(keysMolUnit);
+    int numKeysMolUnit = keysMolUnit.size();
+
+    QList<unsigned int> firstKeys;
+    firstKeys.clear();
+    QList<unsigned int> secondKeys;
+    secondKeys.clear();
+
+    for (int j = 0; j < numKeysMolUnit; j++) {
+      firstKeys.append((keysMolUnit.at(j).first));
+      secondKeys.append((keysMolUnit.at(j).second));
+    }
+
+    for (int j = 0; j < numKeys; j++) {
+      unsigned int atomicNum = keys.at(j);
+      QString symbol = QString(OpenBabel::etab.GetSymbol(atomicNum));
+      unsigned int qComp = xtalopt->comp[atomicNum].quantity;
+
+      //Add center atom to list
+      unsigned int qMolUnit = 0;
+      for (QHash<QPair<int, int>, MolUnit>::const_iterator it = xtalopt->compMolUnit.constBegin(), it_end = xtalopt->compMolUnit.constEnd(); it != it_end; it++) {
+        unsigned int first = const_cast<QPair<int, int> &>(it.key()).first;
+        unsigned int second = const_cast<QPair<int, int> &>(it.key()).second;
+        if (first == atomicNum) {
+          if (centerNum != first || neighborNum != second) {
+            qMolUnit += it->numCenters;
+          }
+        }
+        if (second == atomicNum) {
+          if (centerNum != first || neighborNum != second) {
+            qMolUnit += it->numCenters * it->numNeighbors;
+          }
+        }
+      }
+
+      if (qComp > qMolUnit) {
+        centerList.append(symbol);
+        if (qComp - qMolUnit >= 1)
+          neighborList.append(symbol);
+      }
+    }
+
+    centerList.append("None");
+
+  }
+
+
+  void TabInit::getNumCenters(int centerNum, int neighborNum, QList<QString> & numCentersList)
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    int q = 0;
+
+    for (QHash<QPair<int, int>, MolUnit>::const_iterator it = xtalopt->compMolUnit.constBegin(), it_end = xtalopt->compMolUnit.constEnd(); it != it_end; it++) {
+      if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().first == centerNum)
+        q += it->numCenters;
+      if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().second == centerNum)
+        q += it->numNeighbors * it->numCenters;
+    }
+
+    int numCenters = xtalopt->comp[centerNum].quantity - q;
+
+    if (centerNum == neighborNum)
+      numCenters /= 2;
+
+    if (centerNum == 0)
+      numCenters = 6;
+
+    if (numCenters == 0)
+      return;
+    
+    for (int i = numCenters; i > 0; i--) {
+      numCentersList.append(QString::number(i));
+    }
+  }
+
+  void TabInit::getNumNeighbors(int centerNum, int neighborNum, QList<QString> & numNeighborsList)
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    int numCenters = 0;
+    int q = 0;
+    bool divide = false;
+
+    for (QHash<QPair<int, int>, MolUnit>::const_iterator it = xtalopt->compMolUnit.constBegin(), it_end = xtalopt->compMolUnit.constEnd(); it != it_end; it++) {
+      if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().first == neighborNum)
+        q += it->numCenters;
+      if (it.key() != QPair<int, int>(centerNum, neighborNum) && it.key().second == neighborNum)
+        q += it->numNeighbors * it->numCenters;
+      if (it.key() == QPair<int, int>(centerNum, neighborNum)) {
+        numCenters = it->numCenters;
+        divide = true;
+      if (centerNum == neighborNum)
+          q += it->numCenters;
+      }
+    }
+
+    int numNeighbors = xtalopt->comp[neighborNum].quantity - q;
+
+    if (divide == true)
+      numNeighbors = numNeighbors / numCenters;
+
+    if (numNeighbors == 0) {
+      return;
+    }
+
+    if (numNeighbors > 6)
+      numNeighbors = 6;
+
+    for (int j = numNeighbors; j > 0; j--) {
+      numNeighborsList.append(QString::number(j));
+    }
+  }
+
+  void TabInit::getGeom(QList<QString> & geomList, unsigned int numNeighbors)
+  {
+    geomList.clear();
+    switch (numNeighbors) {
+      case 1:
+        geomList.append("Linear");
+        break;
+      case 2:
+        geomList.append("Linear");
+        geomList.append("Bent");
+        break;
+      case 3:
+        geomList.append("Trigonal Planar");
+        geomList.append("Trigonal Pyramidal");
+        geomList.append("T-Shaped");
+        break;
+      case 4:
+        geomList.append("Tetrahedral");
+        geomList.append("See-Saw");
+        geomList.append("Square Planar");
+        break;
+      case 5:
+        geomList.append("Trigonal Bipyramidal");
+        geomList.append("Square Pyramidal");
+        break;
+      case 6:
+        geomList.append("Octahedral");
+        break;
+      default:
+        break;
+    }
+  }
+
+  void TabInit::setGeom(unsigned int & geom, QString strGeom)
+  {
+    //Two neighbors
+    if (strGeom.contains("Linear")) {
+      geom = 1;
+    } else if (strGeom.contains("Bent")) {
+      geom = 2;
+    //Three neighbors
+    } else if (strGeom.contains("Trigonal Planar")) {
+      geom = 2;
+    } else if (strGeom.contains("Trigonal Pyramidal")) {
+      geom = 3;
+    } else if (strGeom.contains("T-Shaped")) {
+      geom = 4;
+    //Four neighbors
+    } else if (strGeom.contains("Tetrahedral")) {
+      geom = 3;
+    } else if (strGeom.contains("See-Saw")) {
+      geom = 5;
+    } else if (strGeom.contains("Square Planar")) {
+      geom = 4;
+    //Five neighbors
+    } else if (strGeom.contains("Trigonal Bipyramidal")) {
+      geom = 5;
+    } else if (strGeom.contains("Square Pyramidal")) {
+      geom = 6;
+    //Six neighbors
+    } else if (strGeom.contains("Octahedral")) {
+      geom = 6;
+    //Default
+    } else {
+      geom = 0;
+    }
+  }
+
+  void TabInit::openSpgOptions()
+  {
+    XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    // If m_spgOptions already exists, delete it if the current comp does
+    // not equal the old comp
+    if (m_spgOptions) {
+      if (!m_spgOptions->isCompositionSame(xtalopt)) {
+        delete m_spgOptions;
+        m_spgOptions = NULL;
+      }
+    }
+
+    // If m_spgOptions does not exist or was just deleted, create a new one
+    if (!m_spgOptions) {
+      // Display a message to ask the user to wait while the image is loading...
+      QMessageBox msgBox;
+      msgBox.setText("Calculating possible spacegroups for the given formula units. Please wait...");
+      msgBox.setStandardButtons(QMessageBox::NoButton);
+      msgBox.setWindowModality(Qt::NonModal);
+      msgBox.open();
+      QCoreApplication::processEvents();
+
+      // Open up the RandSpg dialog
+      m_spgOptions = new RandSpgDialog(xtalopt);
+
+      // Close the mesage box
+      msgBox.close();
+    }
+
+    // Display m_spgOptions
+    m_spgOptions->exec();
+  }
 
 }
-

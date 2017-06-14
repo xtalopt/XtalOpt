@@ -107,6 +107,16 @@ namespace GlobalSearch {
                             const QHash<QString, QString> &files) const;
 
     /**
+     * Saves a copy of the error directory that caused this structure to fail.
+     * Saves it in <local_path>/errorDirs
+     *
+     * @param structure Structure of interest
+     *
+     * @return True on success, false otherwise
+     */
+    bool logErrorDirectory(Structure *s) const;
+
+    /**
      * Start a job for Structure \a s.
      *
      * @note Ensure that writeFiles is called before attempting to

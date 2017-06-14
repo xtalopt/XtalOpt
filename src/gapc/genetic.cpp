@@ -163,6 +163,7 @@ namespace GAPC {
     QList<uint> atomCounts      = pc1->getNumberOfAtomsAlpha();
     QList<Atom*> atomList1      = pc1->atoms();
     QList<Vector3d> coordsList1;
+
 #ifdef DUMP_STRUCTURES
     QList<int> ans1;
 #endif

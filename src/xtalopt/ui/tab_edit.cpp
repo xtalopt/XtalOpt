@@ -133,7 +133,7 @@ namespace XtalOpt {
 
     settings->setValue("optimizer", m_opt->optimizer()->getIDString().toLower());
     settings->setValue("queueInterface", m_opt->queueInterface()->getIDString().toLower());
-
+    settings->setValue("logErrorDirs", m_opt->m_logErrorDirs);
     settings->endGroup();
     m_opt->optimizer()->writeSettings(filename);
 
@@ -149,6 +149,8 @@ namespace XtalOpt {
     int loadedVersion = settings->value("version", 0).toInt();
 
     m_opt->port = settings->value("remote/port", 22).toInt();
+
+    m_opt->m_logErrorDirs = settings->value("logErrorDirs", false).toBool();
 
     // Temporary variables to test settings. This prevents empty
     // scheme values from overwriting defaults.
@@ -459,7 +461,8 @@ namespace XtalOpt {
     QStringList files;
     QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
     QString filename = QFileDialog::getOpenFileName(NULL,
-      QString("Select pot file for atom %1").arg(symbol), path);
+      QString("Select pot file for atom %1").arg(symbol), path, QString(),
+      0, QFileDialog::DontUseNativeDialog);
 
     // User canceled file selection
     if (filename.isEmpty()) return;
@@ -500,7 +503,8 @@ namespace XtalOpt {
 
     QString path = settings.value("xtalopt/templates/psfPath", "").toString();
     QString filename = QFileDialog::getOpenFileName(NULL,
-      QString("Select psf file for atom %1").arg(symbol), path);
+      QString("Select psf file for atom %1").arg(symbol), path, QString(),
+      0, QFileDialog::DontUseNativeDialog);
 
     // User canceled file selection
     if (filename.isEmpty()) return;
@@ -545,7 +549,8 @@ namespace XtalOpt {
     for (int i = 0; i < symbols.size(); i++) {
       QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
       QString filename = QFileDialog::getOpenFileName(NULL,
-        QString("Select pot file for atom %1").arg(symbols.at(i)), path);
+        QString("Select pot file for atom %1").arg(symbols.at(i)), path, QString(),
+        0, QFileDialog::DontUseNativeDialog);
 
       if (!filename.isEmpty()) {
         QStringList delimited = filename.split("/");
@@ -608,7 +613,8 @@ namespace XtalOpt {
      for (int i = 0; i < symbols.size(); i++) {
       QString path = settings.value("xtalopt/templates/psfPath", "").toString();
       QString filename = QFileDialog::getOpenFileName(NULL,
-        QString("Select psf file for atom %1").arg(symbols.at(i)), path);
+        QString("Select psf file for atom %1").arg(symbols.at(i)), path, QString(),
+        0, QFileDialog::DontUseNativeDialog);
 
       if (!filename.isEmpty()) {
         QStringList delimited = filename.split("/");

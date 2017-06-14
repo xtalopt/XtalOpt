@@ -6,9 +6,15 @@ set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
 set(QT_MIN_VERSION "4.6.0")
 find_package(Qt4 REQUIRED)
 find_package(OpenBabel2 REQUIRED)
-find_package(Avogadro REQUIRED)
 
-include(${Avogadro_USE_FILE})
+# If we are using MSVC, we should probably nest the xtalopt directory
+# in Avogadro as an extension and not build it separately.
+# Just place it in libavogadro/src/extensions/
+if(NOT MSVC)
+  find_package(Avogadro REQUIRED)
+  include(${Avogadro_USE_FILE})
+endif(NOT MSVC)
+
 include_directories( ${CMAKE_CURRENT_BINARY_DIR}
 		     ${OPENBABEL2_INCLUDE_DIR}
 		     ${XtalOpt_SOURCE_DIR}/src/)
@@ -47,14 +53,20 @@ if(ENABLE_SSH)
     if(NOT LIBSSH_FOUND)
       message(FATAL_ERROR "libssh not found!")
     endif()
-    macro_ensure_version(${LibSSH_MIN_VERSION} ${LibSSH_VERSION}
-                         LIBSSH_VERSION_OK)
+    # If we aren't using MSVC, check the LibSSH version
+    if(NOT MSVC)
+      macro_ensure_version(${LibSSH_MIN_VERSION} ${LibSSH_VERSION}
+                           LIBSSH_VERSION_OK)
+    else(NOT MSVC)
+      # If we are using MSVC, let's just assume the version is correct...
+      set(LIBSSH_VERSION_OK ON)
+    endif(NOT MSVC)
     if(NOT LIBSSH_VERSION_OK)
       message(FATAL_ERROR
       "libssh too old! Installed version is ${LibSSH_VERSION}, need at least "
       "libssh ${LibSSH_MIN_VERSION}")
     endif()
-    include_directories(${LIBSS_INCLUDE_DIRS})
+    include_directories(${LIBSSH_INCLUDE_DIRS})
   endif(USE_CLI_SSH)
 endif()
 
@@ -93,7 +105,6 @@ if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC"  )
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC"  )
 endif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-
 
 add_subdirectory(src)
 

@@ -135,6 +135,10 @@ namespace GlobalSearch {
        * another. The other structure's information can be found in
        * getDuplicateString(). */
       Duplicate,
+      /** The Structure has been found to be a supercell of
+       * another. The other structure's information can be found in
+       * getSupercellString(). */
+      Supercell,
       /** The Structure is about to restart it's current optimization
        * step. */
       Restart
@@ -150,6 +154,17 @@ namespace GlobalSearch {
      * @sa getEnergy
      */
     bool hasEnthalpy()	const {return m_hasEnthalpy;};
+
+    /** Return whether or not this structure has a parent structure saved.
+     * @return Returns true if a parent structure is saved, and false if
+     * a parent structure is not saved.
+     */
+
+    bool hasParentStructure() const
+    {
+      if (m_parentStructure) return true;
+      else return false;
+    }
 
     /** Return the energy value of the first conformer in eV. This is
      * a convenience function.
@@ -256,6 +271,12 @@ namespace GlobalSearch {
      */
     QString getDuplicateString() const {return m_dupString;};
 
+    /** @return A string naming the Structure that this Structure is a
+     * supercell of.
+     * @sa setSupercellString
+     */
+    QString getSupercellString() const {return m_supString;};
+
     /** @return a string describing the ancestory of the Structure.
      * @sa setParents
      */
@@ -286,7 +307,31 @@ namespace GlobalSearch {
      */
     uint getFailCount() { return m_failCount;};
 
-    /** @return The time that the current optimization step started.
+    // return the number of formula units. If m_formulaUnits has been set,
+    // it will return m_formula units. If it hasn't been set, it will calculate
+    // the number of formula units with the formula-unit-finding algorithm.
+    uint getFormulaUnits() const;
+
+    /** @return The number of duplicate offspring that this structure has
+     * produced through mutations/transformations.
+     */
+    uint getNumDupOffspring() const {return m_numDupOffspring;};
+
+    /** @return The total number of offspring that this structure has produced
+     * through mutations/transformations.
+     */
+    uint getNumTotOffspring() const {return m_numTotOffspring;};
+
+   /** @return A pointer for the parent structure of a given structure
+    */
+    Structure* getParentStructure() const {return m_parentStructure;};
+
+    // returns the number of structures of each formula unit up to the
+    // user-specified maximum formula units. numberOfEachFormulaUnit.at(n)
+    // is the number of structures with formula units n.
+    static QList<uint> countStructuresOfEachFormulaUnit(QList<Structure*> *structures, int maxFU);
+
+     /** @return The time that the current optimization step started.
      * @sa getOptTimerEnd
      * @sa startOptTimer
      * @sa stopOptTimer
@@ -585,6 +630,33 @@ namespace GlobalSearch {
      */
     bool hasChangedSinceDupChecked() {return m_updatedSinceDupChecked;};
 
+    /** Structure tracks if it has been primitive-checked or not. Primitive
+     * checking involves running the primitive reduction function to see if
+     * a smaller FU primitive structure can be made.
+     *
+     * @sa setPrimitiveChecked()
+     */
+    bool wasPrimitiveChecked() const {return m_primitiveChecked;};
+
+    /** Structure tracks if it has been supercell-generation checked or not.
+     * Supercell generation checking involves checking to see if a supercell
+     * should be generated from this structure and placed into a higher FU gene
+     * pool.
+     *
+     * @sa setSupercellGenerationChecked()
+     */
+    bool wasSupercellGenerationChecked() const {
+      return m_supercellGenerationChecked;
+    };
+
+    /** If the structure was created by primitive reduction, then it does
+     * not proceed through the optimizer. This bool indicates if it was created
+     * by primitive reduction.
+     *
+     * @sa setSkippedOptimization()
+     */
+    bool skippedOptimization() const {return m_skippedOptimization;};
+
     /** Sort the listed structures by their enthalpies
      *
      * @param structures List of structures to sort
@@ -753,6 +825,8 @@ namespace GlobalSearch {
      * readStructureSettings(filename) to read inherited data.
      * @param filename Filename to read data from.
      * @param readCurrentInfo Update the current info of the structure?
+     * Note: readCurrentInfo will also set a unit cell. The code may need to
+     * be changed slightly for reading current info for non-periodic structures
      *
      * @sa readStructureSettings
      * @sa writeSettings
@@ -849,6 +923,7 @@ namespace GlobalSearch {
      * @param pv The PV term
      * @sa getPV
      */
+
     void setPV(double pv) {m_PV = pv;};
 
     /** Reset the Structure's enthalpy and PV term to zero and clear
@@ -878,6 +953,12 @@ namespace GlobalSearch {
      * @sa getRank
      */
     void setRank(uint rank) {m_rank = rank;};
+
+    /** Set the Structure's formula units.
+     * @param formulaUnits The Structure's formula units.
+     * @sa getFormulaUnits
+     */
+    void setFormulaUnits(uint formulaUnits) {m_formulaUnits = formulaUnits;};
 
     /** Set the Job ID of the current optimization process.
      * @param id The current optimization process's Job ID.
@@ -956,6 +1037,81 @@ namespace GlobalSearch {
      */
     void setFailCount(uint count) {m_failCount = count;};
 
+    /** Set the parent structure for this structure
+     */
+    void setParentStructure(Structure* structure)
+    {
+      m_parentStructure = structure;
+    };
+
+    /** The preferable way to increment a parent's total number of offspring.
+     * Keeps track of whether or not the parent has already been incremented.
+     * Will only increment if the offspring has not skipped optimization and
+     * was not already incremented.
+     */
+    void incrementParentNumTotOffspring()
+    {
+      if (hasParentStructure() && !m_parentOffspringTotCountIncremented &&
+          !skippedOptimization()) {
+        m_parentStructure->incrementNumTotOffspring();
+        m_parentOffspringTotCountIncremented = true;
+      }
+    };
+
+    /** The preferable way to increment a parent's number of duplicate
+     * offspring. Keeps track of whether or not the parent has already been
+     * incremented. Will only increment if the offspring has not skipped
+     * optimization and was not already incremented.
+     */
+    void incrementParentNumDupOffspring()
+    {
+      if (hasParentStructure() && !m_parentOffspringDupCountIncremented &&
+          !skippedOptimization() &&
+          (getStatus() == Structure::Duplicate ||
+           getStatus() == Structure::Supercell)) {
+        m_parentStructure->incrementNumDupOffspring();
+        m_parentOffspringDupCountIncremented = true;
+      }
+    };
+
+    /** The preferable way to decrement a parent's total number of offspring.
+     * Keeps track of whether or not the parent has already been incremented.
+     * Will only decrement if the offspring has not skipped optimization and
+     * was incremented at some point.
+     */
+    void decrementParentNumTotOffspring()
+    {
+      if (hasParentStructure() && m_parentOffspringTotCountIncremented &&
+          !skippedOptimization()) {
+        m_parentStructure->decrementNumTotOffspring();
+        m_parentOffspringTotCountIncremented = false;
+      }
+    }
+
+    /** The preferable way to decrement a parent's number of duplicate
+     * offspring. Keeps track of whether or not the parent has already been
+     * incremented. Will only decrement if the offspring has not skipped
+     * optimization and was incremented at some point.
+     */
+    void decrementParentNumDupOffspring()
+    {
+      if (hasParentStructure() && m_parentOffspringDupCountIncremented &&
+          !skippedOptimization()) {
+        m_parentStructure->decrementNumDupOffspring();
+        m_parentOffspringDupCountIncremented = false;
+      }
+    }
+
+    /** Decrements both the total counter and the duplicate counter for
+     * the parent. Will not decrement if the parent has already been
+     * decremented.
+     */
+    void decrementParentOffspringCounts()
+    {
+      decrementParentNumTotOffspring();
+      decrementParentNumDupOffspring();
+    }
+
     /** Reset the number of times this Structure has failed the
      * current optimization step.
      *
@@ -980,6 +1136,12 @@ namespace GlobalSearch {
      */
     void setDuplicateString(const QString & s) {m_dupString = s;};
 
+    /** @param s A string naming the Structure that this Structure is a
+     * supercell of.
+     * @sa getSupercellString
+     */
+    void setSupercellString(const QString & s) {m_supString = s;};
+
     /**
      * Structure can track if it has changed since it was last checked
      * in a duplicate finding routine. This is useful for cutting down
@@ -989,6 +1151,34 @@ namespace GlobalSearch {
      * @sa hasChangedSinceDupChecked()
      */
     void setChangedSinceDupChecked(bool b) {m_updatedSinceDupChecked = b;};
+
+    /**
+     * Structure tracks if it has been primitive-checked or not. Primitive
+     * checking involves running the primitive reduction function to see if
+     * a smaller FU primitive structure can be made.
+     *
+     * @sa wasPrimitiveChecked()
+     */
+    void setPrimitiveChecked(bool b) {m_primitiveChecked = b;};
+
+    /** Structure tracks if it has been supercell-generation checked or not.
+     * Supercell generation checking involves checking to see if a supercell
+     * should be generated from this structure and placed into a higher FU gene
+     * pool.
+     *
+     * @sa wasSupercellGenerationChecked()
+     */
+    void setSupercellGenerationChecked(bool b) {
+      m_supercellGenerationChecked = b;
+    };
+
+    /** If the structure was created by primitive reduction, then it does
+     * not proceed through the optimizer. This bool indicates if it was created
+     * by primitive reduction.
+     *
+     * @sa skippedOptimization()
+     */
+    void setSkippedOptimization(bool b) {m_skippedOptimization = b;};
 
     /** Record the current time as when the current optimization
      * process started.
@@ -1064,6 +1254,9 @@ namespace GlobalSearch {
      * Read data concerning the Structure class from a file.
      * @param filename Filename to read data from.
      * @param readCurrentInfo Update the current info of the structure?
+     * Note: this will also set a unit cell. The code may need to be changed
+     * slightly for reading current info for non-periodic structures
+     *
      * @sa writeSettings
      * @sa readSettings
      */
@@ -1071,7 +1264,7 @@ namespace GlobalSearch {
                                const bool readCurrentInfo = false);
 
     /**
-     * Write current data for a structure to structure.state.
+     * Write current data for a structure to a file.
      * Data includes enthalpy, energy, cell vectors, and atom info
      * @param filename Filename to write data to.
      * @sa writeStructureSettings
@@ -1080,7 +1273,7 @@ namespace GlobalSearch {
     void writeCurrentStructureInfo(const QString &filename);
 
     /**
-     * Read current data concerning a structure from structure.state.
+     * Read current data concerning a structure from a file.
      * Data includes enthalpy, energy, cell vectors, and atom info
      * @param filename Filename to read data from.
      * @sa writeSettings
@@ -1091,10 +1284,13 @@ namespace GlobalSearch {
   protected:
     // skip Doxygen parsing
     /// \cond
-    bool m_hasEnthalpy, m_updatedSinceDupChecked;
+    bool m_hasEnthalpy, m_updatedSinceDupChecked, m_primitiveChecked,
+         m_skippedOptimization, m_supercellGenerationChecked;
     bool m_histogramGenerationPending;
-    uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount;
-    QString m_parents, m_dupString, m_rempath;
+    uint m_generation, m_id, m_rank, m_formulaUnits, m_jobID,
+         m_currentOptStep, m_failCount, m_numDupOffspring,
+         m_numTotOffspring;
+    QString m_parents, m_dupString, m_supString, m_rempath;
     double m_enthalpy, m_PV;
     State m_status;
     QDateTime m_optStart, m_optEnd;
@@ -1107,8 +1303,44 @@ namespace GlobalSearch {
     QList<double> m_histEnergies;
     QList<QList<Eigen::Vector3d> > m_histCoords;
     QList<Eigen::Matrix3d> m_histCells;
+
+    // Pointer to parent structure if one is saved.
+    Structure* m_parentStructure;
+
+    // True if the parent offspring count has been incremented
+    bool m_parentOffspringTotCountIncremented,
+         m_parentOffspringDupCountIncremented;
     // End doxygen skip:
     /// \endcond
+
+   private:
+    /** Set the number of duplicate offspring produced by this structure
+     * @param i The number of duplicate offspring that this structure
+     * has produced
+     */
+    void setNumDupOffspring(uint i) {m_numDupOffspring = i;};
+
+    /** Increment the number of duplicate offspring produced by this structure
+     */
+    void incrementNumDupOffspring() {m_numDupOffspring += 1;};
+
+    /** Decrement the number of duplicate offspring produced by this structure
+     */
+    void decrementNumDupOffspring() {m_numDupOffspring -= 1;};
+
+    /** Set the number of total offspring produced by this structure
+     * @param i The total number of offspring that this structure
+     * has produced
+     */
+    void setNumTotOffspring(uint i) {m_numTotOffspring = i;};
+
+    /** Increment the number of total offspring produced by this structure
+     */
+    void incrementNumTotOffspring() {m_numTotOffspring += 1;};
+
+    /** Decrement the number of total offspring produced by this structure
+     */
+    void decrementNumTotOffspring() {m_numTotOffspring -= 1;};
   };
 
 } // end namespace GlobalSearch

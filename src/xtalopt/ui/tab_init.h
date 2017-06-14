@@ -19,6 +19,8 @@
 
 #include <globalsearch/ui/abstracttab.h>
 
+#include "randSpgDialog.h"
+
 #include "ui_tab_init.h"
 
 namespace XtalOpt {
@@ -42,6 +44,16 @@ namespace XtalOpt {
       CC_MINRADIUS
     };
 
+    enum IADColumns
+    {
+     IC_CENTER = 0,
+     IC_NUMCENTERS = 1,
+     IC_NEIGHBOR = 2,
+     IC_NUMNEIGHBORS = 3,
+     IC_GEOM = 4,
+     IC_DIST = 5
+    };
+
   public slots:
     void lockGUI();
     void readSettings(const QString &filename = "");
@@ -52,6 +64,10 @@ namespace XtalOpt {
     void updateCompositionTable();
     void updateDimensions();
     void updateMinRadii();
+    void updateFormulaUnits();
+    void updateFormulaUnitsListUI();
+    void updateInitOptions();
+    void adjustVolumesToBePerFU(uint FU);
     void updateNumDivisions();
     void updateA();
     void updateB();
@@ -59,11 +75,23 @@ namespace XtalOpt {
     void writeA();
     void writeB();
     void writeC();
+    void updateIAD();
+    void addRow();
+    void removeRow();
+    void removeAll();
+    void getCentersAndNeighbors(QList<QString> & centerList, int centerNum,
+            QList<QString> & neighborList, int neighborNum);
+    void getNumCenters(int centerNum, int neighborNum, QList<QString> & numCentersList);
+    void getNumNeighbors(int centerNum, int neighborNum, QList<QString> & numNeighborsList);
+    void getGeom(QList<QString> & geomList, unsigned int numNeighbors);
+    void setGeom(unsigned int & geom, QString strGeom);
+    void openSpgOptions();
 
   signals:
 
   private:
     Ui::Tab_Init ui;
+    RandSpgDialog* m_spgOptions;
   };
 }
 

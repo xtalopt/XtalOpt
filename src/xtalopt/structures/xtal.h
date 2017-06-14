@@ -30,6 +30,7 @@ class QFile;
 
 namespace XtalOpt {
   class XtalCompositionStruct;
+  class MolUnit;
 
   class Xtal : public GlobalSearch::Structure
   {
@@ -62,6 +63,14 @@ namespace XtalOpt {
                          const QHash<unsigned int, XtalCompositionStruct> & limits,
                          int maxAttempts = 100.0,
                          Avogadro::Atom **atom = 0);
+    bool addAtomRandomly(unsigned int atomicNumber,
+                         unsigned int neighbor,
+                         const QHash<unsigned int, XtalCompositionStruct> & limits,
+                         const QHash<QPair<int, int>, MolUnit> & limitsMolUnit,
+                         bool useMolUnit,
+                         int maxAttempts = 100.0,
+                         Avogadro::Atom **atom = 0);
+
 
     // Fills a supercell for the mitosis process
     bool fillSuperCell(int a, int b, int c, Xtal * myXtal);
@@ -76,11 +85,12 @@ namespace XtalOpt {
     QHash<QString, QVariant> getFingerprint();
     virtual QString getResultsEntry() const;
     virtual QString getResultsHeader() const {
-      return QString("%1 %2 %3 %4 %5 %6")
+      return QString("%1 %2 %3 %4 %5 %6 %7")
         .arg("Rank", 6)
         .arg("Gen", 6)
         .arg("ID", 6)
-        .arg("Enthalpy", 10)
+        .arg("Enthalpy/FU", 13)
+        .arg("FU", 6)
         .arg("SpaceGroup", 10)
         .arg("Status", 11);};
 
@@ -145,11 +155,24 @@ namespace XtalOpt {
     // Foundations of Crystallography. 2003;60(1):1-6. Available at:
     // http://scripts.iucr.org/cgi-bin/paper?S010876730302186X [Accessed
     // November 24, 2010].
-    bool niggliReduce(const unsigned int iterations = 100);
+    bool niggliReduce(const unsigned int iterations = 100, double lenTol = 0.01);
     static bool isNiggliReduced(const double a, const double b, const double c,
                                 const double alpha, const double beta,
-                                const double gamma);
-    bool isNiggliReduced() const;
+                                const double gamma, double lenTol = 0.01);
+    bool isNiggliReduced(double lenTol = 0.01) const;
+
+    // Checks to see if an xtal is primitive or not. If a primitive reduction
+    // results in a smaller FU xtal, the function returns true
+    bool isPrimitive(const double cartTol = 0.05);
+    bool reduceToPrimitive(const double cartTol = 0.05);
+
+    QList<QString> currentAtomicSymbols();
+    inline void updateMolecule(const QList<QString> &ids,
+                               const QList<Eigen::Vector3d> &coords);
+    void setCurrentFractionalCoords(const QList<QString> &ids,
+                                    const QList<Eigen::Vector3d> &fcoords);
+    void fillUnitCell(uint spg, double cartTol = 0.05);
+    void reduceToAsymmetricUnit(double cartTol = 0.05);
 
     bool operator==(const Xtal &other) const;
     bool operator!=(const Xtal &other) const {return !operator==(other);};
@@ -211,13 +234,27 @@ namespace XtalOpt {
     // Spacegroup
     void findSpaceGroup(double prec = 0.05);
 
+    // Printing debug output
+    void printLatticeInfo() const;
+    void printAtomInfo() const;
+    void printXtalInfo() const;
+
    private slots:
 
    private:
+    // This function is called by the public overloaded function:
+    // bool reduceToPrimitive(const double cartTol = 0.05)
+    // It was obtained from David Lonie's identical reduceToPrimitive() function
+    // in his crystallography extension of Avogadro.
+    unsigned int reduceToPrimitive(QList<Eigen::Vector3d> *fcoords,
+                                   QList<unsigned int> *atomicNums,
+                                   Eigen::Matrix3d *cellMatrix,
+                                   const double cartTol = 0.05);
     void ctor(QObject *parent=0);
     OpenBabel::OBUnitCell* cell() const;
     uint m_spgNumber;
     QString m_spgSymbol;
+
   };
 
 } // end namespace XtalOpt

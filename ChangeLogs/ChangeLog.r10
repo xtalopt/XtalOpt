@@ -1,0 +1,13 @@
+* Enhancements / New features:
+**Implementation of RandSpg, an algorithm that generates random crystals with specific spacegroups. This algorithm can optionally be used to create symmetric structures in the initial random generation.
+**Inclusion of variable forumla units within XtalOpt enables the search for cells with multiple numbers of formula units within a single run.
+**A molecular-unit generator that permits users to create single-center molecules in the unit cell during the initial generation step.
+* Bug fixes:
+** Numerous misc bug-fixes.
+
+* Documentation:
+** randSpg program website
+   - http://xtalopt.openmolecules.net/randSpg/randSpg.html
+
+* Maintenance:
+**Mac and Linux Application pre-built for users

@@ -19,6 +19,7 @@
 
 #include <globalsearch/tracker.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include <openbabel/oberror.h>
 
@@ -139,7 +140,13 @@ namespace GlobalSearch {
 
   AbstractDialog::~AbstractDialog()
   {
-    delete m_opt;
+    // Destructors should never throw exceptions...
+    try {
+      delete m_opt;
+    } // end of try{}
+    catch(...) {
+      ExceptionHandler::handleAllExceptions(__FUNCTION__);
+    } // end of catch{}
   }
 
   void AbstractDialog::disconnectGUI() {
@@ -178,7 +185,7 @@ namespace GlobalSearch {
     filename = QFileDialog::getOpenFileName(this,
                         QString("Select .state file to resume"),
                         m_opt->filePath,
-                        "*.state;;*.*");
+                        "*.state;;*.*", 0, QFileDialog::DontUseNativeDialog);
 
     if (!filename.isEmpty()) QtConcurrent::run(this, &AbstractDialog::resumeSession_, filename);
   }

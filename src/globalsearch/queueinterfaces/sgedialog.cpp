@@ -25,6 +25,7 @@
 
 #include <globalsearch/ui/abstractdialog.h>
 #include <globalsearch/optbase.h>
+#include <globalsearch/utilities/exceptionhandler.h>
 
 #include "ui_sgedialog.h"
 
@@ -43,7 +44,13 @@ namespace GlobalSearch {
 
   SgeConfigDialog::~SgeConfigDialog()
   {
-    delete ui;
+    // Destructors should never throw...
+    try {
+      delete ui;
+    } // end of try{}
+    catch(...) {
+      ExceptionHandler::handleAllExceptions(__FUNCTION__);
+    } // end of catch{}
   }
 
   void SgeConfigDialog::updateGUI()
@@ -59,6 +66,7 @@ namespace GlobalSearch {
     ui->spin_port->blockSignals(true);
     ui->spin_interval->blockSignals(true);
     ui->cb_cleanRemoteOnStop->blockSignals(true);
+    ui->cb_logErrorDirs->blockSignals(true);
 
     ui->edit_description->setText(m_opt->description);
     ui->edit_host->setText(m_opt->host);
@@ -71,6 +79,7 @@ namespace GlobalSearch {
     ui->spin_port->setValue(m_opt->port);
     ui->spin_interval->setValue(m_sge->m_interval);
     ui->cb_cleanRemoteOnStop->setChecked(m_sge->m_cleanRemoteOnStop);
+    ui->cb_logErrorDirs->setChecked(m_opt->m_logErrorDirs);
 
     ui->edit_description->blockSignals(false);
     ui->edit_host->blockSignals(false);
@@ -83,6 +92,7 @@ namespace GlobalSearch {
     ui->spin_port->blockSignals(false);
     ui->spin_interval->blockSignals(false);
     ui->cb_cleanRemoteOnStop->blockSignals(false);
+    ui->cb_logErrorDirs->blockSignals(false);
   }
 
   void SgeConfigDialog::accept()
@@ -99,6 +109,7 @@ namespace GlobalSearch {
     // Use setter for interval -- mutex must be locked.
     m_sge->setInterval(ui->spin_interval->value());
     m_sge->m_cleanRemoteOnStop = ui->cb_cleanRemoteOnStop->isChecked();
+    m_opt->m_logErrorDirs = ui->cb_logErrorDirs->isChecked();
     QDialog::accepted();
     close();
   }
