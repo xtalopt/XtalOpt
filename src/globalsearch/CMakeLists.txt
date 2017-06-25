@@ -23,6 +23,7 @@ set( globalsearch_SRCS
      utilities/passwordprompt.cpp
      structures/unitcell.cpp
      formats/formats.cpp
+     formats/castepformat.cpp
      formats/gulpformat.cpp
      formats/pwscfformat.cpp
      formats/siestaformat.cpp

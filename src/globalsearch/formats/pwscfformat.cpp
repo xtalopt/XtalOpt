@@ -113,7 +113,7 @@ namespace GlobalSearch {
             while (!strstr(line.c_str(), "End final coordinates")) {
               lineSplit = split(line, ' ');
               if (lineSplit.size() != 4) {
-                qDebug() << "Error reading atomic positions in PWSCF output.!"
+                qDebug() << "Error reading atomic positions in PWSCF output!"
                          << line.c_str();
                 return false;
               }
@@ -175,7 +175,7 @@ namespace GlobalSearch {
     if (!cellFound)
       qDebug() << "Error: cell info was not found in PWSCF output!";
     if (!coordsFound)
-      qDebug() << "Error: Atom coords not found in PWSCF output!";
+      qDebug() << "Error: atom coords not found in PWSCF output!";
     if (!energyFound)
       qDebug() << "Error: energy not found in PWSCF output!";
     if (!cellFound || !coordsFound || !energyFound)

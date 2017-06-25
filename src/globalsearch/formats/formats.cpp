@@ -16,6 +16,7 @@
 #include <globalsearch/utilities/utilityfunctions.h>
 
 #include <globalsearch/formats/formats.h>
+#include <globalsearch/formats/castepformat.h>
 #include <globalsearch/formats/gulpformat.h>
 #include <globalsearch/formats/pwscfformat.h>
 #include <globalsearch/formats/siestaformat.h>
@@ -34,6 +35,7 @@ using std::vector;
 // The list of possible formats
 static const vector<string> _formats =
 {
+  "CASTEP",
   "GULP",
   "PWSCF",
   "SIESTA",
@@ -43,6 +45,7 @@ static const vector<string> _formats =
 // The map of the formats and their extensions
 static const vector<pair<string, string>> _formatExtensions =
 {
+  make_pair("castep", "CASTEP"),
   make_pair("got", "GULP"),
   make_pair("gout", "GULP")
 };
@@ -77,6 +80,9 @@ namespace GlobalSearch {
                      const QString& format)
   {
     // List the formats here
+    if (format.toUpper() == QString("CASTEP"))
+      return CastepFormat::read(s, filename);
+
     if (format.toUpper() == QString("GULP"))
       return GulpFormat::read(s, filename);
 

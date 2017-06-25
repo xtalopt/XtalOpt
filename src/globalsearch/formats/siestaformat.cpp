@@ -155,7 +155,7 @@ namespace GlobalSearch {
     if (!cellFound)
       qDebug() << "Error: cell info was not found in SIESTA output!";
     if (!coordsFound)
-      qDebug() << "Error: Atom coords not found in SIESTA output!";
+      qDebug() << "Error: atom coords not found in SIESTA output!";
     if (!energyFound)
       qDebug() << "Error: energy not found in SIESTA output!";
     if (!cellFound || !coordsFound || !energyFound)

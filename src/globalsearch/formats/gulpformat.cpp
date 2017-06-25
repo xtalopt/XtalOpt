@@ -170,7 +170,7 @@ namespace GlobalSearch {
     if (!cellFound)
       qDebug() << "Error: cell info was not found in GULP output!";
     if (!coordsFound)
-      qDebug() << "Error: Atom coords not found in GULP output!";
+      qDebug() << "Error: atom coords not found in GULP output!";
     if (!energyFound)
       qDebug() << "Error: energy not found in GULP output!";
     if (!cellFound || !coordsFound || !energyFound)
