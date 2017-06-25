@@ -17,6 +17,7 @@
 
 #include <globalsearch/formats/formats.h>
 #include <globalsearch/formats/gulpformat.h>
+#include <globalsearch/formats/pwscfformat.h>
 #include <globalsearch/formats/siestaformat.h>
 #include <globalsearch/formats/vaspformat.h>
 
@@ -34,8 +35,9 @@ using std::vector;
 static const vector<string> _formats =
 {
   "GULP",
-  "VASP",
-  "SIESTA"
+  "PWSCF",
+  "SIESTA",
+  "VASP"
 };
 
 // The map of the formats and their extensions
@@ -75,13 +77,16 @@ namespace GlobalSearch {
                      const QString& format)
   {
     // List the formats here
-    if (format == QString("GULP"))
+    if (format.toUpper() == QString("GULP"))
       return GulpFormat::read(s, filename);
 
-    if (format == QString("SIESTA"))
+    if (format.toUpper() == QString("PWSCF"))
+      return PwscfFormat::read(s, filename);
+
+    if (format.toUpper() == QString("SIESTA"))
       return SiestaFormat::read(s, filename);
 
-    if (format == QString("VASP"))
+    if (format.toUpper() == QString("VASP"))
       return VaspFormat::read(s, filename);
 
     qDebug() << "An invalid format, " << format << ", entered into "
