@@ -415,6 +415,11 @@ namespace GlobalSearch {
                                              m_completionFilename,
                                              0,
                                              &ec)) {
+        qDebug() << "For structure "
+                 << QString::number(s->getGeneration()) + "x" +
+                    QString::number(s->getIDNumber()) << ":";
+        qDebug() << "The completion string, " << (*it) << ", was not found"
+                 << "in the output file. Job failed.";
         return false;
       }
       if (ec == 0) {
