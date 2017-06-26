@@ -3292,6 +3292,20 @@ namespace XtalOpt {
       stream << "  runningJobLimit: " << runningJobLimit << "\n";
     }
     stream << "  continuousStructures: " << contStructs << "\n";
+    stream << "  jobFailLimit: " << failLimit << "\n";
+    stream << "  jobFailAction: ";
+    if (failAction == FA_DoNothing)
+      stream << "Keep Trying\n";
+    else if (failAction == FA_KillIt)
+      stream << "Kill it\n";
+    else if (failAction == FA_Randomize)
+      stream << "replaceWithRandom\n";
+    else if (failAction == FA_NewOffspring)
+      stream << "replaceWithOffspring\n";
+    else
+      stream << "Unknown fail action\n";
+
+    stream << "  maxNumStructures: " << cutoff << "\n";
 
     stream << "\n  usingMitoticGrowth: "
            << toString(using_mitotic_growth) << "\n";

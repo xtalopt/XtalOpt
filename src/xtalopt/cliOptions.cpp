@@ -67,6 +67,9 @@ static const QStringList keywords =
   "limitRunningJobs",
   "runningJobLimit",
   "continuousStructures",
+  "jobFailLimit",
+  "jobFailAction",
+  "maxNumStructures",
   "usingMitoticGrowth",
   "usingFormulaUnitCrossovers",
   "formulaUnitCrossoversGen",
@@ -379,6 +382,24 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.limitRunningJobs = toBool(options.value("limitRunningJobs", "true"));
   xtalopt.runningJobLimit = options.value("runningJobLimit", "2").toUInt();
   xtalopt.contStructs = options.value("continuousStructures", "3").toUInt();
+  xtalopt.failLimit = options.value("jobFailLimit", "2").toUInt();
+
+  QString failAction = options.value("jobFailAction", "replaceWithRandom");
+  if (failAction.toLower() == "keeptrying")
+    xtalopt.failAction = OptBase::FA_DoNothing;
+  else if (failAction.toLower() == "kill")
+    xtalopt.failAction = OptBase::FA_KillIt;
+  else if (failAction.toLower() == "replacewithrandom")
+    xtalopt.failAction = OptBase::FA_Randomize;
+  else if (failAction.toLower() == "replacewithoffspring")
+    xtalopt.failAction = OptBase::FA_NewOffspring;
+  else {
+    qDebug() << "Warning: unrecognized jobFailAction: " << failAction;
+    qDebug() << "Using default option: replaceWithRandom";
+    xtalopt.failAction = OptBase::FA_Randomize;
+  }
+
+  xtalopt.cutoff = options.value("maxNumStructures", "10000").toUInt();
   xtalopt.using_mitotic_growth =
     toBool(options.value("usingMitoticGrowth", "false"));
   xtalopt.using_FU_crossovers =

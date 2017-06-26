@@ -67,6 +67,15 @@
     runningJobLimit = 1
     continuousStructures = 2
 
+    # Number of failures for a job before we take action
+    jobFailLimit = 2
+    # What to do after a job has failed too many times
+    # Options: keepTrying, kill, replaceWithRandom, replaceWithOffspring
+    jobFailAction = replaceWithRandom
+
+    # Maximum number of structures to be generated
+    maxNumStructures = 10000
+
   # Multiple formula unit settings
     # Build smaller formula units first and then larger ones via supercells?
       usingMitoticGrowth = false
