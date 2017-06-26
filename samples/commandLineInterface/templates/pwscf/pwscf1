@@ -1,0 +1,38 @@
+&CONTROL
+  nstep = 100,
+  etot_conv_thr= 1.0D-3,
+  forc_conv_thr= 1.0D-2,
+  calculation = "vc-relax",
+  pseudo_dir  = "/path/to/pseudos",
+  outdir      = "./tmp",
+/
+&SYSTEM
+  ibrav       = 0,
+  celldm(1)   = 1.0,
+  nat         = %numAtoms%,
+  ntyp        = %numSpecies%,
+  ecutwfc     = 20.D0,
+/
+&ELECTRONS
+  electron_maxstep = 1000,
+  conv_thr    = 1.D-6,
+  mixing_beta = 0.3D0,
+/
+&IONS
+/
+&CELL
+  cell_dynamics = 'bfgs',
+  cell_factor   = 2.0D0,
+  press         = 1.D3,
+  cell_dofree   = 'all',
+/
+ATOMIC_SPECIES
+O  1.0 O.pbe-van_ak.UPF
+CELL_PARAMETERS cubic
+  %cellVector1Bohr%
+  %cellVector2Bohr%
+  %cellVector3Bohr%
+ATOMIC_POSITIONS crystal
+%coordsFrac%
+K_POINTS automatic
+2 2 2 1 1 1

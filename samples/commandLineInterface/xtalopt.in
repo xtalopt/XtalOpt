@@ -166,6 +166,7 @@
     optimizer = gulp
 
   # Location of the executable (only applicable for local queue interfaces)
+  # Note: for castep, you need to put xtal after the name, e.g. "castep xtal"
     exeLocation = gulp
 
   # In these templates, there are special characters used like %a% for the

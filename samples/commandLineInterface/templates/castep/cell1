@@ -1,0 +1,9 @@
+%percent%BLOCK LATTICE_CART
+%cellVector1Angstrom%
+%cellVector2Angstrom%
+%cellVector3Angstrom%
+%percent%ENDBLOCK LATTICE_CART
+
+%percent%BLOCK POSITIONS_FRAC
+%coordsFrac%
+%percent%ENDBLOCK POSITIONS_FRAC
