@@ -155,6 +155,19 @@ class XtalOptCLIOptions {
                                     size_t numOptSteps,
                                     XtalOptOptimizer& optimizer,
                                     GlobalSearch::QueueInterface& queue);
+  /**
+   * Checks the xtalopt settings (@p xtalopt) to see if the mitosis settings
+   * are fine. Returns true if they are. Returns false if they are not.
+   * The following constitute bad mitosis settings:
+   * mitosisA * mitosisB * mitosisC != mitosisDivisions
+   * mitosisDivisions > minFU * smallestNumAtomsOfOneType
+   *
+   * @param xtalopt The XtalOpt object to check.
+   *
+   * @return True if mitosis settings are okay, and false if they are not.
+   */
+  static bool isMitosisOk(XtalOpt& xtalopt);
+
 };
 
 } // end namespace XtalOpt

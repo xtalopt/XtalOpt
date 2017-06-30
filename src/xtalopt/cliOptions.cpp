@@ -373,6 +373,13 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.ax = options.value("mitosisA", "1").toUInt();
   xtalopt.bx = options.value("mitosisB", "1").toUInt();
   xtalopt.cx = options.value("mitosisC", "1").toUInt();
+
+  if (xtalopt.using_mitosis && !isMitosisOk(xtalopt)) {
+    qDebug() << "Error: Invalid numbers entered for mitosis. Please check"
+             << "your input and try again.";
+    return false;
+  }
+
   xtalopt.using_molUnit = toBool(options.value("usingMolcularUnits", "false"));
   xtalopt.using_randSpg = toBool(options.value("usingRandSpg", "false"));
 
@@ -862,6 +869,40 @@ bool XtalOptCLIOptions::addOptimizerTemplates(
     QString text = file.readAll();
     optimizer.appendTemplate(convertedTemplateName(templateName, queue),
                              text);
+  }
+
+  return true;
+}
+
+bool XtalOptCLIOptions::isMitosisOk(XtalOpt& xtalopt)
+{
+  if (xtalopt.ax * xtalopt.bx * xtalopt.cx != xtalopt.divisions) {
+    qDebug() << "Error: mitosisDivisions must equal"
+             << "mitosisA * mitosisB * mitosisC";
+    return false;
+  }
+
+  size_t minNumAtoms = std::min_element(xtalopt.comp.cbegin(),
+                                        xtalopt.comp.cend(),
+                                        [](const XtalCompositionStruct& lhs,
+                                           const XtalCompositionStruct& rhs)
+                                        {
+                                          return lhs.quantity < rhs.quantity;
+                                        })->quantity;
+
+  if (minNumAtoms == 0) {
+    qDebug() << "Error: no atoms were found when checking mitosis!";
+    return false;
+  }
+
+  minNumAtoms *= xtalopt.minFU();
+
+  if (minNumAtoms < xtalopt.divisions) {
+    qDebug() << "Error: mitosisDivisions cannot be greater than the smallest"
+             << "formula unit times the smallest number of atoms of one type";
+    qDebug() << "With the current composition and formula unit, the largest"
+             << "number of divisions possible is:" << minNumAtoms;
+    return false;
   }
 
   return true;
