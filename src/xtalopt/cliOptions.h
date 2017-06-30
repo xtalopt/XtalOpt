@@ -58,10 +58,27 @@ class XtalOptCLIOptions {
   /**
    * Does this string start with 'potcarFile' or 'psfFile'?
    *
-   * @param s The string to be check.
+   * @param s The string to be checked.
    * @return True if it is a potential file. False otherwise.
    */
   static bool isPotFile(const QString& s);
+
+  /**
+   * Does this string start with 'molecularUnits'?
+   *
+   * @param s The string to be checked.
+   * @return True if it is a molecular units line. False otherwise.
+   */
+  static bool isMolecularUnitsLine(const QString& s);
+
+  /**
+   * Does this entry involve multiple lines? Two examples are pot file lines
+   * and molecular units lines.
+   *
+   * @param s The string to be checked.
+   * @return True if it involves multiple lines. False otherwise.
+   */
+  static bool isMultiLineEntry(const QString& s);
 
   /**
    * Reads options from a single line and sets it in the options object if
@@ -168,6 +185,18 @@ class XtalOptCLIOptions {
    */
   static bool isMitosisOk(XtalOpt& xtalopt);
 
+  /**
+   * Reads the molecular unit options from @p options and attempts to set them
+   * to the xtalopt object. Returns true if it succeeds and false if it fails.
+   *
+   * @param options The options to be set read.
+   * @param xtalopt The xtalopt object for which to set the options.
+   *
+   * @return True if the mol units were processed successfully. False if
+   *         the mol units were not.
+   */
+  static bool processMolUnits(const QHash<QString, QString>& options,
+                              XtalOpt& xtalopt);
 };
 
 } // end namespace XtalOpt

@@ -52,8 +52,14 @@
       #mitosisB = 1
       #mitosisC = 1
 
-  # Initialize molecular units? NOT YET SUPPORTED IN NO-GUI VERSION
+  # Initialize molecular units?
     #usingMolecularUnits = false
+    # The geometry type must be valid for the number of neighbors. If
+    # you run an invalid one, it will print to you the ones that are valid.
+    # Molecular Unit entries appear as follows:
+    # <centerAtomicSymbol>, <numCenters>, <neighborAtomicSymbol>, <numNeighbors>, <geometry>, <distance>
+    #molecularUnits 1 = Ti, 1, O, 4, tetrahedral, 1.320
+    #molecularUnits 2 = O, 1, O, 1, linear, 1.000
   # Initialize all crystals with symmetry? (space groups are randomly selected)
     #usingRandSpg = false
 

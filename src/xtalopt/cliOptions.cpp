@@ -60,7 +60,7 @@ static const QStringList keywords =
   "mitosisA",
   "mitosisB",
   "mitosisC",
-  "usingmolecularUnits",
+  "usingMolecularUnits",
   "usingRandSpg",
   "numInitial",
   "popSize",
@@ -210,6 +210,21 @@ bool XtalOptCLIOptions::isPotFile(const QString& s)
   return false;
 }
 
+bool XtalOptCLIOptions::isMolecularUnitsLine(const QString& s)
+{
+  if (s.trimmed().startsWith("molecularunits"))
+    return true;
+
+  return false;
+}
+
+bool XtalOptCLIOptions::isMultiLineEntry(const QString& s)
+{
+  if (isPotFile(s) || isMolecularUnitsLine(s))
+    return true;
+  return false;
+}
+
 void XtalOptCLIOptions::processLine(const QString& tmpLine,
                                     QHash<QString, QString>& options)
 {
@@ -239,7 +254,7 @@ void XtalOptCLIOptions::processLine(const QString& tmpLine,
 
   // Case sensitive key
   QString csKey = key;
-  if (!isKeyword(key, csKey) && !isPotFile(key)) {
+  if (!isKeyword(key, csKey) && !isMultiLineEntry(key)) {
     qDebug() << "Warning: ignoring unrecognized option in line '"
              << tmpLine << "'";
     return;
@@ -373,6 +388,13 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.ax = options.value("mitosisA", "1").toUInt();
   xtalopt.bx = options.value("mitosisB", "1").toUInt();
   xtalopt.cx = options.value("mitosisC", "1").toUInt();
+  xtalopt.using_molUnit = toBool(options.value("usingMolecularUnits", "false"));
+
+  if (xtalopt.using_molUnit && !processMolUnits(options, xtalopt)) {
+    qDebug () << "Error: Invalid settings entered for molecular units."
+              << "Please check your input and try again.";
+    return false;
+  }
 
   if (xtalopt.using_mitosis && !isMitosisOk(xtalopt)) {
     qDebug() << "Error: Invalid numbers entered for mitosis. Please check"
@@ -380,8 +402,15 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
     return false;
   }
 
-  xtalopt.using_molUnit = toBool(options.value("usingMolcularUnits", "false"));
   xtalopt.using_randSpg = toBool(options.value("usingRandSpg", "false"));
+
+  if ((xtalopt.using_randSpg && xtalopt.using_molUnit) ||
+      (xtalopt.using_randSpg && xtalopt.using_mitosis)) {
+    qDebug() << "Error: randSpg cannot be used with molUnit or subcell"
+             << "mitosis. Please turn both of these off if you wish to"
+             << "use randSpg.";
+    return false;
+  }
 
   // Search setings
   xtalopt.numInitial = options.value("numInitial", "20").toUInt();
@@ -903,6 +932,207 @@ bool XtalOptCLIOptions::isMitosisOk(XtalOpt& xtalopt)
     qDebug() << "With the current composition and formula unit, the largest"
              << "number of divisions possible is:" << minNumAtoms;
     return false;
+  }
+
+  return true;
+}
+
+// This was copied and pasted directly from TabInit::setGeom, except
+// that they are all lower-case for case-insensitivity...
+void setGeom(unsigned int& geom, const QString& strGeom)
+{
+  //Two neighbors
+  if (strGeom.contains("linear")) {
+    geom = 1;
+  } else if (strGeom.contains("bent")) {
+    geom = 2;
+  //Three neighbors
+  } else if (strGeom.contains("trigonal planar")) {
+    geom = 2;
+  } else if (strGeom.contains("trigonal pyramidal")) {
+    geom = 3;
+  } else if (strGeom.contains("t-shaped")) {
+    geom = 4;
+  //Four neighbors
+  } else if (strGeom.contains("tetrahedral")) {
+    geom = 3;
+  } else if (strGeom.contains("see-saw")) {
+    geom = 5;
+  } else if (strGeom.contains("square planar")) {
+    geom = 4;
+  //Five neighbors
+  } else if (strGeom.contains("trigonal bipyramidal")) {
+    geom = 5;
+  } else if (strGeom.contains("square pyramidal")) {
+    geom = 6;
+  //Six neighbors
+  } else if (strGeom.contains("octahedral")) {
+    geom = 6;
+  //Default
+  } else {
+    geom = 0;
+  }
+}
+
+bool XtalOptCLIOptions::processMolUnits(const QHash<QString, QString>& options,
+                                        XtalOpt& xtalopt)
+{
+  QHash<QString, unsigned int> atomCounts;
+
+  for (const auto& option: options.keys()) {
+    // Find the molecular units lines
+    if (option.trimmed().toLower().startsWith("molecularunits")) {
+      QStringList splitLine = options[option].split(",",
+                                                    QString::SkipEmptyParts);
+      if (splitLine.size() != 6) {
+        qDebug() << "Error: molecularUnits line must have 6 comma-delimited"
+                 << "items on the right-hand side of the equals sign."
+                 << "\nFaulty option is as follows: "
+                 << option + " = " + options[option];
+        return false;
+      }
+      QString centerSymbol = splitLine[0].trimmed(),
+              neighborSymbol = splitLine[2].trimmed(),
+              geometry = splitLine[4].trimmed();
+      size_t numCenters = splitLine[1].toUInt(),
+             numNeighbors = splitLine[3].toUInt();
+      double distance = splitLine[5].toDouble();
+
+      // Make sure the data is valid
+      unsigned short centerAtomicNum =
+        ElemInfo::getAtomicNum(centerSymbol.toStdString());
+
+      // If the centerSymbol == "None", then 0 is the correct number for it
+      if (centerSymbol.toLower() != "none" && centerAtomicNum == 0) {
+        qDebug() << "Error processing molecularUnits line:"
+                 << "Invalid atomic symbol:" << centerSymbol;
+        qDebug() << "Proper format is as follows: "
+                 << "<centerSymbol>, <numCenters>, <neighborSymbol>,"
+                 << "<numNeighbors>, <geometry>, <distances>";
+        return false;
+      }
+
+      unsigned short neighborAtomicNum =
+        ElemInfo::getAtomicNum(neighborSymbol.toStdString());
+
+      if (neighborAtomicNum == 0) {
+        qDebug() << "Error processing molecularUnits line:"
+                 << "Invalid atomic symbol:" << neighborSymbol;
+        qDebug() << "Proper format is as follows: "
+                 << "<centerSymbol>, <numCenters>, <neighborSymbol>,"
+                 << "<numNeighbors>, <geometry>, <distances>";
+        return false;
+      }
+
+      if (numCenters == 0) {
+        qDebug() << "Error processing molecularUnits line:"
+                 << "numCenters cannot be zero.";
+        return false;
+      }
+
+      switch (numNeighbors) {
+      case 1:
+        if (geometry.toLower() != "linear") {
+          qDebug() << "Error reading molecularUnits:"
+                   << "for numNeighbors ==" << numNeighbors << ", possible"
+                   << "geometries are:"
+                   << "linear.";
+          return false;
+        }
+        break;
+      case 2:
+        if (geometry.toLower() != "linear" && geometry.toLower() != "bent") {
+          qDebug() << "Error reading molecularUnits:"
+                   << "for numNeighbors ==" << numNeighbors << ", possible"
+                   << "geometries are:"
+                   << "linear and bent.";
+          return false;
+        }
+        break;
+      case 3:
+        if (geometry.toLower() != "trigonal planar" &&
+            geometry.toLower() != "trigonal pyramidal" &&
+            geometry.toLower() != "t-shaped") {
+          qDebug() << "Error reading molecularUnits:"
+                   << "for numNeighbors ==" << numNeighbors << ", possible"
+                   << "geometries are:"
+                   << "trigonal planar, trigonal pyramidal, and t-shaped.";
+          return false;
+        }
+        break;
+      case 4:
+        if (geometry.toLower() != "tetrahedral" &&
+            geometry.toLower() != "see-saw" &&
+            geometry.toLower() != "square planar") {
+          qDebug() << "Error reading molecularUnits:"
+                   << "for numNeighbors ==" << numNeighbors << ", possible"
+                   << "geometries are:"
+                   << "tetrahedral, see-saw, and square planar.";
+          return false;
+        }
+        break;
+      case 5:
+        if (geometry.toLower() != "trigonal bipyramidal" &&
+            geometry.toLower() != "square pyramidal") {
+          qDebug() << "Error reading molecularUnits:"
+                   << "for numNeighbors ==" << numNeighbors << ", possible"
+                   << "geometries are:"
+                   << "trigonal bipyramidal and square pyramidal.";
+          return false;
+        }
+        break;
+      case 6:
+        if (geometry.toLower() != "octahedral") {
+          qDebug() << "Error reading molecularUnits:"
+                   << "for numNeighbors ==" << numNeighbors << ", possible"
+                   << "geometries are:"
+                   << "octahedral.";
+          return false;
+        }
+        break;
+      default:
+        qDebug() << "Error reading molecularUnits: invalid numNeighbors"
+                 << "was entered. Valid numbers are 1 - 6";
+        return false;
+      }
+
+      unsigned int geom = 0;
+      setGeom(geom, geometry.toLower());
+
+      // Now make the struct and add it to XtalOpt
+      MolUnit entry;
+      entry.numCenters = numCenters;
+      entry.numNeighbors = numNeighbors;
+      entry.geom = geom;
+      entry.dist = distance;
+
+      xtalopt.compMolUnit.insert(
+        qMakePair<int, int>(centerAtomicNum,
+                            neighborAtomicNum),
+        entry);
+
+      atomCounts[centerSymbol.toLower()] += numCenters;
+      atomCounts[neighborSymbol.toLower()] += (numNeighbors * numCenters);
+    }
+  }
+
+  // Check to see if we exceeded the number of atoms in any cases.
+  for (const auto& countKey: atomCounts.keys()) {
+    if (xtalopt.comp[ElemInfo::getAtomicNum(
+          countKey.toStdString().c_str())].quantity * xtalopt.minFU() <
+        atomCounts[countKey]) {
+      QString elemName = countKey;
+      if (!elemName.isEmpty())
+        elemName[0] = elemName[0].toUpper();
+      qDebug() << "Error reading molecularUnits: for atom"
+               << elemName
+               << "," << "there are more atoms predicted to be generated with"
+               << "the molUnit settings than there are for minFU * numAtoms";
+      qDebug() << "You must make sure that for each atom, minFU * numAtoms is"
+               << "greater than the number of atoms to be generated with"
+               << "MolUnits.";
+      return false;
+    }
   }
 
   return true;
