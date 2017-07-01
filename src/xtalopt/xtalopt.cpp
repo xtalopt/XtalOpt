@@ -3293,7 +3293,18 @@ namespace XtalOpt {
     }
 
     stream << "\n  usingMolecularUnits: " << toString(using_molUnit) << "\n";
+
     stream << "\n  usingRandSpg: " << toString(using_randSpg) << "\n";
+    if (using_randSpg) {
+      stream << "  Space group settings:\n";
+      for (int i = 0; i < minXtalsOfSpgPerFU.size(); ++i) {
+        int num = minXtalsOfSpgPerFU[i];
+        if (num == -1)
+          stream << "    spg " << i + 1 << ": do not generate\n";
+        else if (num > 0)
+          stream << "    spg " << i + 1 << ": generate " << num << "\n";
+      }
+    }
 
     stream << "\nSearch settings: \n";
     stream << "  numInitial: " << numInitial << "\n";

@@ -564,9 +564,10 @@ namespace XtalOpt {
 
     // If we changed the composition, reset the spacegroup generation
     // min xtals per FU to be zero
-    if (xtalopt->comp != comp && xtalopt->minXtalsOfSpgPerFU.size() != 0) {
+    if (xtalopt->comp != comp && xtalopt->minXtalsOfSpgPerFU.size() != 0 &&
+        xtalopt->usingGUI()) {
       xtalopt->error(tr(
-               "Warning: because the composition have been changed, "
+               "Warning: because the composition has been changed, "
                "the spacegroups to be generated using spacegroup "
                "initialization have been reset. Please open the spacegroup "
                "options to set them again."));

@@ -62,6 +62,10 @@
     #molecularUnits 2 = O, 1, O, 1, linear, 1.000
   # Initialize all crystals with symmetry? (space groups are randomly selected)
     #usingRandSpg = false
+    # We can put down a list of space groups to be generated for sure per FU.
+    # You must comma-separate each space group (no hyphens allowed). If you
+    # want more of a single space group, repeat it like 136 below.
+    #forcedSpgsWithRandSpg = 1, 2, 136, 136, 136
 
 # End of initialization settings
 

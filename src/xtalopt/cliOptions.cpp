@@ -62,6 +62,7 @@ static const QStringList keywords =
   "mitosisC",
   "usingMolecularUnits",
   "usingRandSpg",
+  "forcedSpgsWithRandSpg",
   "numInitial",
   "popSize",
   "limitRunningJobs",
@@ -403,6 +404,18 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   }
 
   xtalopt.using_randSpg = toBool(options.value("usingRandSpg", "false"));
+  if (xtalopt.using_randSpg) {
+    // Create the list of space groups for generation
+    for (int spg = 1; spg <= 230; spg++)
+      xtalopt.minXtalsOfSpgPerFU.append(0);
+
+    QStringList list = toList(options.value("forcedSpgsWithRandSpg", ""));
+    for (const auto& item: list) {
+      unsigned int num = item.toUInt();
+      if (num != 0 && num <= 230)
+        ++xtalopt.minXtalsOfSpgPerFU[num - 1];
+    }
+  }
 
   if ((xtalopt.using_randSpg && xtalopt.using_molUnit) ||
       (xtalopt.using_randSpg && xtalopt.using_mitosis)) {
