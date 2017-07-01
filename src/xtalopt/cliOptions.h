@@ -42,6 +42,15 @@ class XtalOptCLIOptions {
    */
   static bool readOptions(const QString& filename, XtalOpt& xtalopt);
 
+  /**
+   * Read runtime options from the runtime file and write them to the @p
+   * xtalopt object. Does nothing if the file does not exist or cannot be
+   * opened. The filename is retrieved by calling XtalOpt::CLIRuntimeFile().
+   *
+   * @param xtalopt The XtalOpt object for which to set the options.
+   */
+  static void readRuntimeOptions(XtalOpt& xtalopt);
+
  private:
   /**
    * Checks to see if s is a valid keyword. If it is, it will then
@@ -117,9 +126,20 @@ class XtalOptCLIOptions {
    *
    * @param options The manual options to be printed.
    * @param xtalopt The XtalOpt object whose settings are to be printed.
+   *
+   * @return False if a critical error has occured. True otherwise.
    */
-  static void printOptions(const QHash<QString, QString>& options,
-                           const XtalOpt& xtalopt);
+  static bool printOptions(const QHash<QString, QString>& options,
+                           XtalOpt& xtalopt);
+
+  /**
+   * Convert a boolean to a QString
+   *
+   * @param s The boolean to be converted.
+   *
+   * @return The QString.
+   */
+  static QString fromBool(bool b);
 
   /**
    * Convert a Qstring to a boolean
@@ -129,15 +149,6 @@ class XtalOptCLIOptions {
    * @return The boolean.
    */
   static bool toBool(const QString& s);
-
-  /**
-   * Convert a boolean to a QString
-   *
-   * @param b The boolean to be converted.
-   *
-   * @return Returns "true" if b and "false" if not b.
-   */
-  static QString toString(bool b);
 
   /**
    * Convert a QString to a QStringList that is split by commas
@@ -197,6 +208,27 @@ class XtalOptCLIOptions {
    */
   static bool processMolUnits(const QHash<QString, QString>& options,
                               XtalOpt& xtalopt);
+
+  /**
+   * Write the initial runtime options file to @param filename.
+   * This file will be read during runtime, and XtalOpt will update
+   * its settings based upon the file. The file name is obtained via
+   * XtalOpt::CLIRuntimeFile().
+   *
+   * @param xtalopt The XtalOpt object whose runtime settings wil be
+   *                written to the file.
+   */
+  static void writeInitialRuntimeFile(XtalOpt& xtalopt);
+
+  /**
+   * Reads and sets runtime options from @p options to @p xtalopt.
+   * This gets called by readRuntimeOptions().
+   *
+   * @param options The options to be set.
+   * @param xtalopt The XtalOpt object for which to set the options.
+   */
+  static void processRuntimeOptions(const QHash<QString, QString>& options,
+                                    XtalOpt& xtalopt);
 };
 
 } // end namespace XtalOpt

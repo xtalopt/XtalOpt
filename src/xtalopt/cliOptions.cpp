@@ -242,13 +242,13 @@ void XtalOptCLIOptions::processLine(const QString& tmpLine,
 
   if (key.isEmpty()) {
     qDebug() << "Warning: invalid line '" << tmpLine
-             << "' was read in input file.";
+             << "' was read in options file.";
     return;
   }
 
   if (value.isEmpty()) {
     qDebug() << "Warning: invalid line '" << tmpLine
-             << "' was read in input file.";
+             << "' was read in options file.";
     return;
   }
 
@@ -752,8 +752,8 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   return true;
 }
 
-void XtalOptCLIOptions::printOptions(const QHash<QString, QString>& options,
-                                     const XtalOpt& xtalopt)
+bool XtalOptCLIOptions::printOptions(const QHash<QString, QString>& options,
+                                     XtalOpt& xtalopt)
 {
   QStringList keys = options.keys();
   qSort(keys);
@@ -770,10 +770,38 @@ void XtalOptCLIOptions::printOptions(const QHash<QString, QString>& options,
   // We need to convert to c string to properly print newlines
   qDebug() << output.toUtf8().data();
 
+  // Let's clean out the directory if old data is here - before we write logs
+  // Check if xtalopt data is already saved at the filePath
+  if (QFile::exists(xtalopt.filePath + QDir::separator() + "xtalopt.state")) {
+    bool proceed;
+    QString msg = QString("Warning: XtalOpt data is already saved at: ") +
+                  xtalopt.filePath +
+                  "\nDo you wish to proceed and overwrite it?"
+                  "\n\nIf no, please change the "
+                  "'localWorkingDirectory' option in the input file";
+
+    xtalopt.promptForBoolean(msg, &proceed);
+    if (!proceed) {
+      return false;
+    }
+    else {
+      bool result = FileUtils::removeDir(xtalopt.filePath);
+      if (!result) {
+        qDebug() << "Error removing directory at" << xtalopt.filePath;
+        return false;
+      }
+    }
+  }
+  // Make the directory if it doesn't exist...
+  if (!QFile::exists(xtalopt.filePath))
+    QDir().mkpath(xtalopt.filePath);
+
   // Try to write to a log file also
-  QFile file("xtaloptSettings.log");
+  QFile file(xtalopt.filePath + QDir::separator() + "xtaloptSettings.log");
   if (file.open(QIODevice::WriteOnly | QIODevice::Text))
     file.write(output.toStdString().c_str());
+
+  return true;
 }
 
 bool XtalOptCLIOptions::readOptions(const QString& filename,
@@ -804,9 +832,20 @@ bool XtalOptCLIOptions::readOptions(const QString& filename,
     return false;
 
   // Print out all options to the terminal and a file
-  printOptions(options, xtalopt);
+  if (!printOptions(options, xtalopt))
+    return false;
+
+  // Write the initial run-time file in the local working directory
+  writeInitialRuntimeFile(xtalopt);
 
   return true;
+}
+
+QString XtalOptCLIOptions::fromBool(bool b)
+{
+  if (b)
+    return "true";
+  return "false";
 }
 
 bool XtalOptCLIOptions::toBool(const QString& s)
@@ -816,13 +855,6 @@ bool XtalOptCLIOptions::toBool(const QString& s)
   if (qs.startsWith("t", Qt::CaseInsensitive) || qs.toInt() != 0)
     return true;
   return false;
-}
-
-QString XtalOptCLIOptions::toString(bool b)
-{
-  if (b)
-    return "true";
-  return "false";
 }
 
 QStringList XtalOptCLIOptions::toList(const QString& s)
@@ -1136,6 +1168,348 @@ bool XtalOptCLIOptions::processMolUnits(const QHash<QString, QString>& options,
   }
 
   return true;
+}
+
+void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
+{
+  // Attempt to open the file. If we can't, just return.
+  QFile file(xtalopt.CLIRuntimeFile());
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    return;
+
+  QString tmpText;
+  for (const auto& e: xtalopt.formulaUnitsList)
+    tmpText += (QString::number(e) + ", ");
+  tmpText.chop(2);
+
+  QString result;
+  FileUtils::parseUIntString(tmpText, result);
+  QString text = "# XtalOpt Run-Time File\n";
+  text += "# Change options here during the CLI run to "
+          "change options in the program\n\n";
+  text += QString("formulaUnits = ") + result + "\n";
+
+  text += "\n# Lattice constraints\n";
+  text += QString("aMin = ") + QString::number(xtalopt.a_min) + "\n";
+  text += QString("bMin = ") + QString::number(xtalopt.b_min) + "\n";
+  text += QString("cMin = ") + QString::number(xtalopt.c_min) + "\n";
+  text += QString("aMax = ") + QString::number(xtalopt.a_max) + "\n";
+  text += QString("bMax = ") + QString::number(xtalopt.b_max) + "\n";
+  text += QString("cMax = ") + QString::number(xtalopt.c_max) + "\n";
+
+  text += QString("alphaMin = ") + QString::number(xtalopt.alpha_min) + "\n";
+  text += QString("betaMin = ") + QString::number(xtalopt.beta_min) + "\n";
+  text += QString("gammaMin = ") + QString::number(xtalopt.gamma_min) + "\n";
+  text += QString("alphaMax = ") + QString::number(xtalopt.alpha_max) + "\n";
+  text += QString("betaMax = ") + QString::number(xtalopt.beta_max) + "\n";
+  text += QString("gammaMax = ") + QString::number(xtalopt.gamma_max) + "\n";
+  text += QString("volumeMin = ") + QString::number(xtalopt.vol_min) + "\n";
+  text += QString("volumeMax = ") + QString::number(xtalopt.vol_max) + "\n";
+  text += QString("usingInteratomicDistanceLimit = ") +
+          fromBool(xtalopt.using_interatomicDistanceLimit) + "\n";
+  text += QString("radiiScalingFactor = ") +
+          QString::number(xtalopt.scaleFactor) + "\n";
+  text += QString("minRadius = ") + QString::number(xtalopt.minRadius) + "\n";
+
+  text += "\n# Optimization Settings\n";
+  text += QString("popSize = ") + QString::number(xtalopt.popSize) + "\n";
+  text += QString("limitRunningJobs = ") +
+          fromBool(xtalopt.limitRunningJobs) + "\n";
+  text += QString("runningJobLimit = ") +
+          QString::number(xtalopt.runningJobLimit) + "\n";
+  text += QString("continuousStructures = ") +
+          QString::number(xtalopt.contStructs) + "\n";
+  text += QString("jobFailLimit = ") +
+          QString::number(xtalopt.failLimit) + "\n";
+  text += QString("jobFailAction = ");
+  if (xtalopt.failAction == OptBase::FA_DoNothing)
+    text += "keepTrying\n";
+  else if (xtalopt.failAction == OptBase::FA_KillIt)
+    text += "kill\n";
+  else if (xtalopt.failAction == OptBase::FA_Randomize)
+    text += "replaceWithRandom\n";
+  else if (xtalopt.failAction == OptBase::FA_NewOffspring)
+    text += "replaceWithOffspring\n";
+  else
+    text += "unknown\n";
+
+  text += QString("maxNumStructures = ") +
+          QString::number(xtalopt.cutoff) + "\n";
+  text += QString("usingMitoticGrowth = ") +
+          fromBool(xtalopt.using_mitotic_growth) + "\n";
+  text += QString("usingFormulaUnitCrossovers = ") +
+          fromBool(xtalopt.using_FU_crossovers) + "\n";
+  text += QString("formulaUnitCrossoversGen = ") +
+          QString::number(xtalopt.FU_crossovers_generation) + "\n";
+  text += QString("usingOneGenePool = ") +
+          fromBool(xtalopt.using_one_pool) + "\n";
+  text += QString("chanceOfFutureMitosis = ") +
+          QString::number(xtalopt.chance_of_mitosis) + "\n";
+
+  text += QString("\n# Mutator Settings\n");
+  text += QString("percentChanceStripple = ") +
+          QString::number(xtalopt.p_strip) + "\n";
+  text += QString("percentChancePermustrain = ") +
+          QString::number(xtalopt.p_perm) + "\n";
+  text += QString("percentChanceCrossover = ") +
+          QString::number(xtalopt.p_cross) + "\n";
+
+  text += QString("strippleAmplitudeMin = ") +
+          QString::number(xtalopt.strip_amp_min) + "\n";
+  text += QString("strippleAmplitudeMax = ") +
+          QString::number(xtalopt.strip_amp_max) + "\n";
+  text += QString("strippleNumWavesAxis1 = ") +
+          QString::number(xtalopt.strip_per1) + "\n";
+  text += QString("strippleNumWavesAxis2 = ") +
+          QString::number(xtalopt.strip_per2) + "\n";
+
+  text += QString("strippleStrainStdevMin = ") +
+          QString::number(xtalopt.strip_strainStdev_min) + "\n";
+  text += QString("strippleStrainStdevMax = ") +
+          QString::number(xtalopt.strip_strainStdev_max) + "\n";
+
+  text += QString("permustrainNumExchanges = ") +
+          QString::number(xtalopt.perm_ex) + "\n";
+  text += QString("permustrainStrainStdevMax = ") +
+          QString::number(xtalopt.perm_strainStdev_max) + "\n";
+  text += QString("crossoverMinContribution = ") +
+          QString::number(xtalopt.cross_minimumContribution) + "\n";
+
+  text += QString("\n# Duplicate Matching and SpgLib Settings\n");
+  text += QString("xtalcompToleranceLength = ") +
+          QString::number(xtalopt.tol_xcLength) + "\n";
+  text += QString("xtalcompToleranceAngle = ") +
+          QString::number(xtalopt.tol_xcAngle) + "\n";
+  text += QString("spglibTolerance = ") +
+          QString::number(xtalopt.tol_spg) + "\n";
+
+  file.write(text.toLocal8Bit().data());
+}
+
+void XtalOptCLIOptions::readRuntimeOptions(XtalOpt& xtalopt)
+{
+  // Attempt to open the file. If we can't, just return.
+  QFile file(xtalopt.CLIRuntimeFile());
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    return;
+
+  // The options QHash
+  QHash<QString, QString> options;
+
+  // Read the file line-by-line
+  while (!file.atEnd()) {
+    QString line = file.readLine();
+    processLine(line, options);
+  }
+
+  processRuntimeOptions(options, xtalopt);
+}
+
+inline bool CICompare(const QString& s1, const QString& s2)
+{
+  return s1.toLower() == s2.toLower();
+}
+
+void XtalOptCLIOptions::processRuntimeOptions(const QHash<QString, QString>& options,
+                                              XtalOpt& xtalopt)
+{
+  for (const auto& option: options.keys()) {
+    if (CICompare("formulaUnits", option)) {
+      QString unused;
+      xtalopt.formulaUnitsList =
+        FileUtils::parseUIntString(options["formulaUnits"], unused);
+      if (xtalopt.formulaUnitsList.isEmpty()) {
+        qDebug() << "Warning: in runtime options, formula units unsuccessfully read."
+                 << "\nSetting formula units to be 1.";
+        xtalopt.formulaUnitsList = {1};
+      }
+    }
+    else if (CICompare("aMin", option)) {
+      xtalopt.a_min = options[option].toFloat();
+    }
+    else if (CICompare("bMin", option)) {
+      xtalopt.b_min = options[option].toFloat();
+    }
+    else if (CICompare("cMin", option)) {
+      xtalopt.c_min = options[option].toFloat();
+    }
+    else if (CICompare("aMax", option)) {
+      xtalopt.a_max = options[option].toFloat();
+    }
+    else if (CICompare("bMax", option)) {
+      xtalopt.b_max = options[option].toFloat();
+    }
+    else if (CICompare("cMax", option)) {
+      xtalopt.c_max = options[option].toFloat();
+    }
+    else if (CICompare("alphaMin", option)) {
+      xtalopt.alpha_min = options[option].toFloat();
+    }
+    else if (CICompare("betaMin", option)) {
+      xtalopt.beta_min  = options[option].toFloat();
+    }
+    else if (CICompare("gammaMin", option)) {
+      xtalopt.gamma_min = options[option].toFloat();
+    }
+    else if (CICompare("alphaMax", option)) {
+      xtalopt.alpha_max = options[option].toFloat();
+    }
+    else if (CICompare("betaMax", option)) {
+      xtalopt.beta_max  = options[option].toFloat();
+    }
+    else if (CICompare("gammaMax", option)) {
+      xtalopt.gamma_max = options[option].toFloat();
+    }
+    else if (CICompare("volumeMin", option)) {
+      xtalopt.vol_min = options[option].toFloat();
+    }
+    else if (CICompare("volumeMax", option)) {
+      xtalopt.vol_max = options[option].toFloat();
+    }
+    else if (CICompare("usingInteratomicDistanceLimit", option)) {
+      xtalopt.using_interatomicDistanceLimit = toBool(options[option]);
+    }
+    else if (CICompare("radiiScalingFactor", option)) {
+      xtalopt.scaleFactor = options[option].toFloat();
+      for (const auto& key: xtalopt.comp.keys()) {
+        xtalopt.comp[key].minRadius = ElemInfo::getCovalentRadius(key) *
+                                      xtalopt.scaleFactor;
+        if (xtalopt.comp[key].minRadius < xtalopt.minRadius)
+          xtalopt.comp[key].minRadius = xtalopt.minRadius;
+      }
+    }
+    else if (CICompare("minRadius", option)) {
+      xtalopt.minRadius = options[option].toFloat();
+      for (const auto& key: xtalopt.comp.keys()) {
+        xtalopt.comp[key].minRadius = ElemInfo::getCovalentRadius(key) *
+                                      xtalopt.scaleFactor;
+        if (xtalopt.comp[key].minRadius < xtalopt.minRadius)
+          xtalopt.comp[key].minRadius = xtalopt.minRadius;
+      }
+    }
+    else if (CICompare("popSize", option)) {
+      xtalopt.popSize = options[option].toUInt();
+    }
+    else if (CICompare("limitRunningJobs", option)) {
+      xtalopt.limitRunningJobs = toBool(options[option]);
+    }
+    else if (CICompare("runningJobLimit", option)) {
+      xtalopt.runningJobLimit = options[option].toUInt();
+    }
+    else if (CICompare("continuousStructures", option)) {
+      xtalopt.contStructs = options[option].toUInt();
+    }
+    else if (CICompare("jobFailLimit", option)) {
+      xtalopt.failLimit = options[option].toUInt();
+    }
+    else if (CICompare("jobFailAction", option)) {
+      QString failAction = options[option];
+      if (failAction.toLower() == "keeptrying")
+        xtalopt.failAction = OptBase::FA_DoNothing;
+      else if (failAction.toLower() == "kill")
+        xtalopt.failAction = OptBase::FA_KillIt;
+      else if (failAction.toLower() == "replacewithrandom")
+        xtalopt.failAction = OptBase::FA_Randomize;
+      else if (failAction.toLower() == "replacewithoffspring")
+        xtalopt.failAction = OptBase::FA_NewOffspring;
+      else {
+        qDebug() << "Warning: unrecognized jobFailAction: " << failAction;
+        qDebug() << "Ignoring change in jobFailAction.";
+      }
+    }
+    else if (CICompare("maxNumStructures", option)) {
+      xtalopt.cutoff = options[option].toUInt();
+    }
+    else if (CICompare("usingMitoticGrowth", option)) {
+      xtalopt.using_mitotic_growth = toBool(options[option]);
+    }
+    else if (CICompare("usingFormulaUnitCrossovers", option)) {
+      xtalopt.using_FU_crossovers = toBool(options[option]);
+    }
+    else if (CICompare("formulaUnitCrossoversGen", option)) {
+      xtalopt.FU_crossovers_generation = options[option].toUInt();
+    }
+    else if (CICompare("usingOneGenePool", option)) {
+      xtalopt.using_one_pool = toBool(options[option]);
+    }
+    else if (CICompare("chanceOfFutureMitosis", option)) {
+      xtalopt.chance_of_mitosis = options[option].toUInt();
+      if (xtalopt.chance_of_mitosis > 100) {
+        qDebug() << "Warning: chanceOfFutureMitosis must not be greater"
+                 << "than 100. Setting chanceOfFutureMitosis to 100";
+        xtalopt.chance_of_mitosis = 100;
+      }
+    }
+    else if (CICompare("percentChanceStripple", option)) {
+      xtalopt.p_strip = options[option].toUInt();
+    }
+    else if (CICompare("percentChancePermustrain", option)) {
+      xtalopt.p_perm  = options[option].toUInt();
+    }
+    else if (CICompare("percentChanceCrossover", option)) {
+      xtalopt.p_cross = options[option].toUInt();
+    }
+    else if (CICompare("strippleAmplitudeMin", option)) {
+      xtalopt.strip_amp_min = options[option].toFloat();
+    }
+    else if (CICompare("strippleAmplitudeMax", option)) {
+      xtalopt.strip_amp_max = options[option].toFloat();
+    }
+    else if (CICompare("strippleNumWavesAxis1", option)) {
+      xtalopt.strip_per1 = options[option].toUInt();
+    }
+    else if (CICompare("strippleNumWavesAxis2", option)) {
+      xtalopt.strip_per2 = options[option].toUInt();
+    }
+    else if (CICompare("strippleStrainStdevMin", option)) {
+      xtalopt.strip_strainStdev_min = options[option].toFloat();
+    }
+    else if (CICompare("strippleStrainStdevMax", option)) {
+      xtalopt.strip_strainStdev_max = options[option].toFloat();
+    }
+    else if (CICompare("permustrainNumExchanges", option)) {
+      xtalopt.perm_ex = options[option].toUInt();
+    }
+    else if (CICompare("permustrainStrainStdevMax", option)) {
+      xtalopt.perm_strainStdev_max = options[option].toFloat();
+    }
+    else if (CICompare("crossoverMinContribution", option)) {
+      xtalopt.cross_minimumContribution = options[option].toUInt();
+      if (xtalopt.cross_minimumContribution < 25) {
+        qDebug() << "Warning: crossover minimum contribution must be"
+                    "at least 25. Setting it to 25.";
+        xtalopt.cross_minimumContribution = 25;
+      }
+      else if (xtalopt.cross_minimumContribution > 50) {
+        qDebug() << "Warning: crossover minimum contribution must not"
+                 << "be greater than 50. Setting it to 50";
+        xtalopt.cross_minimumContribution = 50;
+      }
+    }
+    else if (CICompare("xtalcompToleranceLength", option)) {
+      xtalopt.tol_xcLength = options[option].toFloat();
+    }
+    else if (CICompare("xtalcompToleranceAngle", option)) {
+      xtalopt.tol_xcAngle = options[option].toFloat();
+    }
+    else if (CICompare("spglibTolerance", option)) {
+      xtalopt.tol_spg = options[option].toFloat();
+    }
+    else {
+      qDebug() << "Warning: option," << option << ", is not a valid runtime"
+               << "option! It is being ignored.";
+    }
+  }
+
+  // Sanity checks
+  if (xtalopt.p_strip + xtalopt.p_perm + xtalopt.p_cross != 100) {
+    qDebug() << "Error: percentChanceStripple + percentChancePermustrain"
+             << "+ percentChanceCrossover must equal 100!";
+    qDebug() << "Setting them to default values of 50, 35, 15, respectively";
+    xtalopt.p_strip = 50;
+    xtalopt.p_perm = 35;
+    xtalopt.p_cross = 15;
+  }
 }
 
 } // end namespace XtalOpt

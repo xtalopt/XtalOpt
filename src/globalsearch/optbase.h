@@ -132,6 +132,12 @@ namespace GlobalSearch {
     virtual bool checkLimits() = 0;
 
     /**
+     * In CLI mode, read the runtime file to update options.
+     * If the runtime file is not found, this should do nothing.
+     */
+    virtual void readRuntimeOptions() = 0;
+
+    /**
      * Generate a probability list using the enthalpies of a
      * collection of structures.
      *

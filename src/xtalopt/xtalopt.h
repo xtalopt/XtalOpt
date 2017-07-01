@@ -98,6 +98,8 @@ namespace XtalOpt {
       OP_Permustrain
     };
 
+    virtual void readRuntimeOptions() override;
+
     Xtal* randSpgXtal(uint generation, uint id, uint FU, uint spg);
     Xtal* generateRandomXtal(uint generation, uint id);
 
@@ -242,6 +244,11 @@ namespace XtalOpt {
     void resetDuplicates();
     void checkForDuplicates();
     void updateLowestEnthalpyFUList(GlobalSearch::Structure* s);
+
+    QString CLIRuntimeFile()
+    {
+      return filePath + QDir::separator() + "xtalopt-runtime-options.txt";
+    }
 
     // Prints all the options to @p stream
     void printOptionSettings(QTextStream& stream) const;

@@ -15,6 +15,7 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <xtalopt/cliOptions.h>
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/optimizers/optimizers.h>
 #include <xtalopt/rpc/xtaloptrpc.h>
@@ -159,26 +160,17 @@ namespace XtalOpt {
     }
 
     // Check if xtalopt data is already saved at the filePath
-    if (QFile::exists(filePath + "/xtalopt.state") && !testingMode) {
+    // If we are in no-gui mode, we check it elsewhere
+    if (QFile::exists(filePath + QDir::separator() + "xtalopt.state") &&
+        !testingMode && m_usingGUI) {
       bool proceed;
-      if (m_usingGUI) {
-        needBoolean(tr("Warning: XtalOpt data is already saved at: %1"
-                       "\nDo you wish to proceed and overwrite it?"
-                       "\n\nIf no, please change the local working "
-                       "directory under Queue configure located in the "
-                       "'Optimization Settings' tab")
-                    .arg(filePath),
-                    &proceed);
-      }
-      else {
-        promptForBoolean(tr("Warning: XtalOpt data is already saved at: %1"
-                            "\nDo you wish to proceed and overwrite it?"
-                            "\n\nIf no, please change the "
-                            "'localWorkingDirectory' option in the input "
-                            "file")
-                    .arg(filePath),
-                    &proceed);
-      }
+      needBoolean(tr("Warning: XtalOpt data is already saved at: %1"
+                     "\nDo you wish to proceed and overwrite it?"
+                     "\n\nIf no, please change the local working "
+                     "directory under Queue configure located in the "
+                     "'Optimization Settings' tab")
+                  .arg(filePath),
+                  &proceed);
       if (!proceed) {
         return false;
       }
@@ -203,18 +195,37 @@ namespace XtalOpt {
 
     // Warn user if runningJobLimit is 0
     if (limitRunningJobs && runningJobLimit == 0) {
-      error(tr("Warning: the number of running jobs is currently set to 0."
-               "\n\nYou will need to increase this value before the search "
-               "can begin (The option is on the 'Search Settings' tab)."));
+      if (m_usingGUI) {
+        error(tr("Warning: the number of running jobs is currently set to 0."
+                 "\n\nYou will need to increase this value before the search "
+                 "can begin (The option is on the 'Search Settings' tab)."));
+      }
+      else {
+        warning(tr("Warning: the number of running jobs is currently set to 0."
+                   "\n\nYou will need to increase this value before the "
+                   "search can begin \n(You can change this in the "
+                   "xtalopt-runtime-options.txt file in the local working "
+                   "directory)."));
+      }
     };
 
     // Warn user if contStructs is 0
     if (contStructs == 0) {
-      error(tr("Warning: the number of continuous structures is "
-               "currently set to 0."
-               "\n\nYou will need to increase this value before the search "
-               "can move past the first generation (The option is on the "
-               "'Search Settings' tab)."));
+      if (m_usingGUI) {
+        error(tr("Warning: the number of continuous structures is "
+                 "currently set to 0."
+                 "\n\nYou will need to increase this value before the search "
+                 "can move past the first generation (The option is on the "
+                 "'Search Settings' tab)."));
+      }
+      else {
+        warning(tr("Warning: the number of continuous structures is "
+                   "currently set to 0."
+                   "\n\nYou will need to increase this value before the "
+                   "search can move past the first generation \n(You can "
+                   "change this in the xtalopt-runtime-options.txt file in "
+                   "the local working directory)."));
+      }
     };
 
     // VASP checks:
@@ -3395,5 +3406,10 @@ namespace XtalOpt {
     Xtal* xtal = qobject_cast<Xtal*>(s);
     if (xtal)
       m_rpcClient->updateDisplayedXtal(*xtal);
+  }
+
+  void XtalOpt::readRuntimeOptions()
+  {
+    XtalOptCLIOptions::readRuntimeOptions(*this);
   }
 } // end namespace XtalOpt

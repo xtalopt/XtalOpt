@@ -201,6 +201,10 @@ namespace GlobalSearch {
       checkRunning();
     }
 
+    // Update runtime options by reading a file if we are not using the GUI
+    if (!m_opt->usingGUI())
+      m_opt->readRuntimeOptions();
+
     QTimer::singleShot(1000, this, SLOT(checkLoop()));
   }
 
