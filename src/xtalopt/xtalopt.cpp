@@ -3238,6 +3238,61 @@ namespace XtalOpt {
     return b ? "true" : "false";
   }
 
+  // With the number of neighbors and the geom number, returns the geom string
+  // I think this would be simpler if we had 1 geom number per name. But
+  // unfortunately, that is not the case...
+  QString getGeom(int numNeighbors, int geom)
+  {
+    if (numNeighbors == 1) {
+      if (geom == 1)
+        return "linear";
+      else
+        return "unknown";
+    }
+    if (numNeighbors == 2) {
+      if (geom == 1)
+        return "linear";
+      else if (geom == 2)
+        return "bent";
+      else
+        return "unknown";
+    }
+    if (numNeighbors == 3) {
+      if (geom == 2)
+        return "trigonal planar";
+      else if (geom == 3)
+        return "trigonal pyramidal";
+      else if (geom == 4)
+        return "t-shaped";
+      else
+        return "unknown";
+    }
+    if (numNeighbors == 4) {
+      if (geom == 3)
+        return "tetrahedral";
+      else if (geom == 5)
+        return "see-saw";
+      else if (geom == 4)
+        return "square planar";
+      else
+        return "unknown";
+    }
+    if (numNeighbors == 5) {
+      if (geom == 5)
+        return "trigonal bipyramidal";
+      else if (geom == 6)
+        return "square pyramidal";
+      else
+        return "unknown";
+    }
+    if (numNeighbors == 6) {
+      if (geom == 6)
+        return "octahedral";
+      else
+        return "unknown";
+    }
+  }
+
   void XtalOpt::printOptionSettings(QTextStream& stream) const
   {
     stream << "Initialization settings:\n";
@@ -3293,6 +3348,20 @@ namespace XtalOpt {
     }
 
     stream << "\n  usingMolecularUnits: " << toString(using_molUnit) << "\n";
+    if (using_molUnit) {
+      stream << "  molUnits:\n";
+      stream << "  <center>, <numCenters>, <neighbor>, <numNeighbors>, "
+                "<geometry>, <distance>\n";
+      for (const auto& pair: compMolUnit.keys()) {
+        stream << "    " << ElemInfo::getAtomicSymbol(pair.first).c_str()
+               << ", " << compMolUnit[pair].numCenters
+               << ", " << ElemInfo::getAtomicSymbol(pair.second).c_str()
+               << ", " << compMolUnit[pair].numNeighbors
+               << ", " << getGeom(compMolUnit[pair].numNeighbors,
+                                  compMolUnit[pair].geom)
+               << ", " << compMolUnit[pair].dist << "\n";
+      }
+    }
 
     stream << "\n  usingRandSpg: " << toString(using_randSpg) << "\n";
     if (using_randSpg) {
