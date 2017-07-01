@@ -201,11 +201,12 @@ namespace XtalOpt {
                  "can begin (The option is on the 'Search Settings' tab)."));
       }
       else {
-        warning(tr("Warning: the number of running jobs is currently set to 0."
-                   "\n\nYou will need to increase this value before the "
-                   "search can begin \n(You can change this in the "
-                   "xtalopt-runtime-options.txt file in the local working "
-                   "directory)."));
+        qDebug() << "\nWarning: the number of running jobs is currently set to"
+                 << "0."
+                 << "\nYou will need to increase this value before the"
+                 << "search can begin \n(You can change this in the"
+                 << "xtalopt-runtime-options.txt file in the local working"
+                 << "directory).\n";
       }
     };
 
@@ -219,12 +220,12 @@ namespace XtalOpt {
                  "'Search Settings' tab)."));
       }
       else {
-        warning(tr("Warning: the number of continuous structures is "
-                   "currently set to 0."
-                   "\n\nYou will need to increase this value before the "
-                   "search can move past the first generation \n(You can "
-                   "change this in the xtalopt-runtime-options.txt file in "
-                   "the local working directory)."));
+        qDebug() << "\nWarning: the number of continuous structures is"
+                 << "currently set to 0."
+                 << "\nYou will need to increase this value before the"
+                 << "search can move past the first generation \n(You can"
+                 << "change this in the xtalopt-runtime-options.txt file in"
+                 << "the local working directory).\n";
       }
     };
 
