@@ -934,6 +934,13 @@ namespace GlobalSearch {
     s->setStatus(Structure::Submitted);
     s->lock().unlock();
 
+    if (!m_opt->usingGUI()) {
+      QReadLocker locker(&s->lock());
+      qDebug() << "Structure"
+               << QString::number(s->getGeneration()) + "x" +
+                  QString::number(s->getIDNumber()) << "has been submitted!";
+    }
+
     emit structureSubmitted(s);
   }
 
