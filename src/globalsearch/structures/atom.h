@@ -39,16 +39,27 @@ namespace GlobalSearch
     explicit Atom(unsigned short atomicNum = 0,
                   const Vector3& pos = Vector3(0.0, 0.0, 0.0));
 
-    /* Copy constructor. Just copies the data. */
-    Atom(const Atom& other);
+    /* Default destructor */
+    ~Atom() = default;
 
-    /* Move constructor. Just call std::move() on the data. */
+    /* Default copy constructor */
+    Atom(const Atom& other) = default;
+
+    /**
+     * Move constructor. Unfortunately, we must define it ourselves for it to
+     * be noexcept because Eigen::Matrix does not have a noexcept move
+     * constructor.
+     */
     Atom(Atom&& other) noexcept;
 
-    /* Assignment operator. Just copies the data. */
-    Atom& operator=(const Atom& other);
+    /* Default assignment operator */
+    Atom& operator=(const Atom& other) = default;
 
-    /* Move assignment operator. Just call std::move() on the data. */
+    /**
+     * Move assignment operator. Unfortunately, we must define it ourselves
+     * for it to be noexcept because Eigen::Matrix does not have a noexcept
+     * move assignment operator.
+     */
     Atom& operator=(Atom&& other) noexcept;
 
     /* Comparison operator. Just compares the data. */
@@ -89,15 +100,17 @@ namespace GlobalSearch
     Vector3 m_pos;
   };
 
+  // Make sure the move constructor is noexcept
+  static_assert(std::is_nothrow_move_constructible<Atom>::value,
+                "Atom should be noexcept move contructible.");
+
+  // Make sure the move assignment operator is noexcept
+  static_assert(std::is_nothrow_move_assignable<Atom>::value,
+                "Atom should be noexcept move assignable.");
+
   inline Atom::Atom(unsigned short atomicNum, const Vector3& pos)
     : m_atomicNumber(atomicNum),
       m_pos(pos)
-  {
-  }
-
-  inline Atom::Atom(const Atom& other)
-    : m_atomicNumber(other.m_atomicNumber),
-      m_pos(other.m_pos)
   {
   }
 
@@ -105,15 +118,6 @@ namespace GlobalSearch
     : m_atomicNumber(std::move(other.m_atomicNumber)),
       m_pos(std::move(other.m_pos))
   {
-  }
-
-  inline Atom& Atom::operator=(const Atom& other)
-  {
-    if (this != &other) {
-      m_atomicNumber = other.m_atomicNumber;
-      m_pos = other.m_pos;
-    }
-    return *this;
   }
 
   inline Atom& Atom::operator=(Atom&& other) noexcept
@@ -133,7 +137,6 @@ namespace GlobalSearch
     }
     return false;
   }
-
 }
 
 #endif

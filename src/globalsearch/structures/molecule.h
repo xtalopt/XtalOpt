@@ -46,17 +46,20 @@ namespace GlobalSearch
     explicit Molecule(const std::vector<Atom>& atoms = std::vector<Atom>(),
                       const UnitCell& uc = UnitCell());
 
-    /* Copy constructor. Just copies the data. */
-    Molecule(const Molecule& other);
+    /* Default destructor */
+    ~Molecule() = default;
 
-    /* Move constructor. Calls std::move() on the data. */
-    Molecule(Molecule&& other) noexcept;
+    /* Default copy constructor */
+    Molecule(const Molecule& other) = default;
 
-    /* Assignment operator. Just copies the data. */
-    Molecule& operator=(const Molecule& other);
+    /* Default move constructor. Static assert noexcept later. */
+    Molecule(Molecule&& other) = default;
 
-    /* Move assignment operator. Just calls std::move() on the data. */
-    Molecule& operator=(Molecule&& other) noexcept;
+    /* Default assignment operator */
+    Molecule& operator=(const Molecule& other) = default;
+
+    /* Default move assignment operator. Static assert noexcept later. */
+    Molecule& operator=(Molecule&& other) = default;
 
     /**
      * Add an atom. A reference to the newly added atom is returned and
@@ -209,41 +212,19 @@ namespace GlobalSearch
     UnitCell m_unitCell;
   };
 
+  // Make sure the move constructor is noexcept
+  static_assert(std::is_nothrow_move_constructible<Molecule>::value,
+                "Molecule should be noexcept move constructible.");
+
+  // Make sure the move assignment operator is noexcept
+  static_assert(std::is_nothrow_move_assignable<Molecule>::value,
+                "Molecule should be noexcept move assignable.");
+
   inline Molecule::Molecule(const std::vector<Atom>& atoms,
                             const UnitCell& uc)
     : m_atoms(atoms),
       m_unitCell(uc)
   {
-  }
-
-  inline Molecule::Molecule(const Molecule& other)
-    : m_atoms(other.m_atoms),
-      m_unitCell(other.m_unitCell)
-  {
-  }
-
-  inline Molecule::Molecule(Molecule&& other) noexcept
-    : m_atoms(std::move(other.m_atoms)),
-      m_unitCell(std::move(other.m_unitCell))
-  {
-  }
-
-  inline Molecule& Molecule::operator=(const Molecule& other)
-  {
-    if (this != &other) {
-      m_atoms = other.m_atoms;
-      m_unitCell = other.m_unitCell;
-    }
-    return *this;
-  }
-
-  inline Molecule& Molecule::operator=(Molecule&& other) noexcept
-  {
-    if (this != &other) {
-      m_atoms = std::move(other.m_atoms);
-      m_unitCell = std::move(other.m_unitCell);
-    }
-    return *this;
   }
 
   inline Atom& Molecule::addAtom(unsigned short atomicNum, const Vector3& pos)

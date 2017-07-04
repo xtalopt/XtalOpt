@@ -58,16 +58,27 @@ namespace GlobalSearch
     UnitCell(double a, double b, double c,
              double alpha, double beta, double gamma);
 
-    /* Copy constructor. Just copies the data. */
-    UnitCell(const UnitCell& other);
+    /* Default destructor */
+    ~UnitCell() = default;
 
-    /* Copy constructor. Calls std::move() on the data. */
+    /* Default copy constructor */
+    UnitCell(const UnitCell& other) = default;
+
+    /**
+     * Move constructor. Unfortunately, we must define it ourselves for it to
+     * be noexcept because Eigen::Matrix does not have a noexcept move
+     * constructor.
+     */
     UnitCell(UnitCell&& other) noexcept;
 
-    /* Assignment operator. Just copies the data. */
-    UnitCell& operator=(const UnitCell& other);
+    /* Default assignment operator */
+    UnitCell& operator=(const UnitCell& other) = default;
 
-    /* Move assignment operator. Calls std::move() on the data. */
+    /**
+     * Move assignment operator. Unfortunately, we must define it ourselves
+     * for it to be noexcept because Eigen::Matrix does not have a noexcept
+     * move assignment operator.
+     */
     UnitCell& operator=(UnitCell&& other) noexcept;
 
     /**
@@ -272,6 +283,13 @@ namespace GlobalSearch
     Matrix3 m_cellMatrix;
   };
 
+  // Make sure the move constructor is noexcept
+  static_assert(std::is_nothrow_move_constructible<UnitCell>::value,
+                "UnitCell should be noexcept move constructible.");
+
+  // Make sure the move assignment operator is noexcept
+  static_assert(std::is_nothrow_move_assignable<UnitCell>::value,
+                "UnitCell should be noexcept move assignable.");
 
   inline UnitCell::UnitCell(const Matrix3& m)
     : m_cellMatrix(m)
@@ -285,22 +303,9 @@ namespace GlobalSearch
     setCellParameters(a, b, c, alpha, beta, gamma);
   }
 
-  inline UnitCell::UnitCell(const UnitCell& other)
-    : m_cellMatrix(other.m_cellMatrix)
-  {
-  }
-
   inline UnitCell::UnitCell(UnitCell&& other) noexcept
     : m_cellMatrix(std::move(other.m_cellMatrix))
   {
-  }
-
-  inline UnitCell& UnitCell::operator=(const UnitCell& other)
-  {
-    if (this != &other) {
-      m_cellMatrix = other.m_cellMatrix;
-    }
-    return *this;
   }
 
   inline UnitCell& UnitCell::operator=(UnitCell&& other) noexcept
