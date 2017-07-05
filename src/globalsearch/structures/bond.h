@@ -79,6 +79,17 @@ namespace GlobalSearch
      */
     unsigned short bondOrder() const { return m_bondOrder; }
 
+    /**
+     * Indicate to this bond that the atom index, @p atomInd, has been
+     * removed, so any indices higher than this should be decremented.
+     * Because the index has been removed, all bonds to the removed atom
+     * should have already been deleted. This bond SHOULD NOT have one
+     * of its indices equal to @p atomInd.
+     *
+     * @param atomInd The atom index that has been removed.
+     */
+    void atomIndexRemoved(size_t atomInd);
+
    private:
     size_t m_ind1, m_ind2;
     unsigned short m_bondOrder;
@@ -97,6 +108,14 @@ namespace GlobalSearch
       m_ind2(ind2),
       m_bondOrder(bondOrder)
   {
+  }
+
+  inline void Bond::atomIndexRemoved(size_t atomInd)
+  {
+    if (m_ind1 > atomInd)
+      --m_ind1;
+    if (m_ind2 > atomInd)
+      --m_ind2;
   }
 }
 

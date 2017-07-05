@@ -212,7 +212,7 @@ namespace GlobalSearch
      * @param ind1 The index of the first atom in the bond.
      * @param ind2 The index of the second atom in the bond.
      */
-    void removeBondFromAtoms(size_t ind1, size_t ind2);
+    void removeBondBetweenAtoms(size_t ind1, size_t ind2);
 
     /**
      * Remove all bonds connected to the atom @param ind.
@@ -356,25 +356,6 @@ namespace GlobalSearch
     return m_atoms.back();
   }
 
-  inline bool Molecule::removeAtom(size_t ind)
-  {
-    if (ind >= m_atoms.size())
-      return false;
-    removeBondsFromAtom(ind);
-    m_atoms.erase(m_atoms.begin() + ind);
-    return true;
-  }
-
-  inline bool Molecule::removeAtom(const Atom& atom)
-  {
-    long long index = atomIndex(atom);
-    if (index == -1)
-      return false;
-    else
-      removeAtom(index);
-    return true;
-  }
-
   inline Atom& Molecule::atom(size_t ind)
   {
     assert(ind < m_atoms.size());
@@ -426,30 +407,6 @@ namespace GlobalSearch
     m_bonds.erase(m_bonds.begin() + bondInd);
   }
 
-  inline void Molecule::removeBondFromAtoms(size_t ind1, size_t ind2)
-  {
-    assert(ind1 < m_atoms.size());
-    assert(ind2 < m_atoms.size());
-    for (size_t i = 0; i < m_bonds.size(); ++i) {
-      if ((m_bonds[i].first() == ind1 && m_bonds[i].second() == ind2) ||
-          (m_bonds[i].first() == ind2 && m_bonds[i].second() == ind1)) {
-        removeBond(i);
-        --i;
-      }
-    }
-  }
-
-  inline void Molecule::removeBondsFromAtom(size_t ind)
-  {
-    assert(ind < m_atoms.size());
-    for (size_t i = 0; i < m_bonds.size(); ++i) {
-      if (m_bonds[i].first() == ind || m_bonds[i].second() == ind) {
-        removeBond(i);
-        --i;
-      }
-    }
-  }
-
   inline Bond& Molecule::bond(size_t bondInd)
   {
     assert(bondInd < m_bonds.size());
@@ -460,53 +417,6 @@ namespace GlobalSearch
   {
     assert(bondInd < m_bonds.size());
     return m_bonds[bondInd];
-  }
-
-  inline bool Molecule::isBonded(size_t ind) const
-  {
-    assert(ind < m_atoms.size());
-    for (const auto& bond: m_bonds) {
-      if (bond.first() == ind || bond.second() == ind)
-        return true;
-    }
-    return false;
-  }
-
-  inline bool Molecule::areBonded(size_t ind1, size_t ind2) const
-  {
-    assert(ind1 < m_atoms.size());
-    assert(ind2 < m_atoms.size());
-    for (const auto& bond: m_bonds) {
-      if ((bond.first() == ind1 && bond.second() == ind2) ||
-          (bond.first() == ind2 && bond.second() == ind1)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  inline std::vector<size_t> Molecule::bonds(size_t ind) const
-  {
-    assert(ind < m_atoms.size());
-    std::vector<size_t> ret;
-    for (size_t i = 0; i < m_bonds.size(); ++i) {
-      if (m_bonds[i].first() == ind || m_bonds[i].second() == ind)
-        ret.push_back(i);
-    }
-    return ret;
-  }
-
-  inline std::vector<size_t> Molecule::bondedAtoms(size_t ind) const
-  {
-    assert(ind < m_atoms.size());
-    std::vector<size_t> ret;
-    for (size_t i = 0; i < m_atoms.size(); ++i) {
-      if (ind == i)
-        continue;
-      else if (areBonded(i, ind))
-        ret.push_back(i);
-    }
-    return ret;
   }
 }
 

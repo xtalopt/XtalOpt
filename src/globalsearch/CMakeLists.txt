@@ -21,6 +21,7 @@ set( globalsearch_SRCS
      queueinterfaces/localdialog.cpp
      utilities/fileutils.cpp
      utilities/passwordprompt.cpp
+     structures/molecule.cpp
      structures/unitcell.cpp
      formats/formats.cpp
      formats/castepformat.cpp
