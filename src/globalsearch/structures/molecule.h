@@ -1,7 +1,7 @@
 /**********************************************************************
   Molecule - a basic molecule class.
 
-  Copyright (C) 2016 by Patrick S. Avery
+  Copyright (C) 2016-2017 by Patrick S. Avery
 
   This source code is released under the New BSD License, (the "License").
 
@@ -17,6 +17,7 @@
 #define GLOBALSEARCH_MOLECULE_H
 
 #include <globalsearch/structures/atom.h>
+#include <globalsearch/structures/bond.h>
 #include <globalsearch/structures/unitcell.h>
 
 #include <cassert>
@@ -80,7 +81,7 @@ namespace GlobalSearch
      *
      * @param atoms The atoms to be set in the molecule.
      */
-    void setAtoms(const std::vector<Atom>& atoms) { m_atoms = atoms; };
+    void setAtoms(const std::vector<Atom>& atoms) { m_atoms = atoms; }
 
     /**
      * Remove the atom with index "ind". Returns true on success. Returns
@@ -104,7 +105,7 @@ namespace GlobalSearch
     bool removeAtom(const Atom& atom);
 
     /* Clears all atoms from the molecule */
-    void clearAtoms() { m_atoms.clear(); };
+    void clearAtoms() { m_bonds.clear(); m_atoms.clear(); }
 
     /**
      * Returns the atom at index @p ind. An assertion makes sure that
@@ -131,14 +132,14 @@ namespace GlobalSearch
      *
      * @return A reference to the vector of atoms.
      */
-    std::vector<Atom>& atoms() { return m_atoms; };
+    std::vector<Atom>& atoms() { return m_atoms; }
 
     /**
      * Returns a const reference to the atoms vector.
      *
      * @return A const reference to the vector of atoms.
      */
-    const std::vector<Atom>& atoms() const { return m_atoms; };
+    const std::vector<Atom>& atoms() const { return m_atoms; }
 
     /**
      * Returns the index of the atom @p atom. Returns -1 if it was not found.
@@ -154,7 +155,7 @@ namespace GlobalSearch
      *
      * @return The number of atoms in the molecule.
      */
-    size_t numAtoms() const { return m_atoms.size(); };
+    size_t numAtoms() const { return m_atoms.size(); }
 
     /**
      * Returns a vector of atomic numbers of the molecule.
@@ -172,6 +173,126 @@ namespace GlobalSearch
      * @return The atomic number of the atom at index @p.
      */
     unsigned short atomicNumber(size_t ind) const;
+
+    /**
+     * Does this molecule contain bonds? Returns true if !m_bonds.empty().
+     *
+     * @return Whether or not the molecule contains bonds.
+     */
+    bool hasBonds() const { return !m_bonds.empty(); }
+
+    /**
+     * How many bonds do we have?
+     *
+     * @return The number of bonds in the molecule.
+     */
+    size_t numBonds() const { return m_bonds.size(); }
+
+    /**
+     * Create a bond using the atom indices. Does nothing if the index is
+     * out of range. There is a default bond order of 1.
+     *
+     * @param ind1 The index of the first atom in the bond.
+     * @param ind2 The index of the second atom in the bond.
+     * @param bondOrder The bond order of the bond.
+     */
+    void addBond(size_t ind1, size_t ind2, unsigned short bondOrder = 1);
+
+    /**
+     * Remove the bond at index @p bondInd. Does nothing if out of range.
+     *
+     * @param bondInd The index of the bond to be removed.
+     */
+    void removeBond(size_t bondInd);
+
+    /**
+     * Remove the bond between the two atoms. Does nothing if the atoms are
+     * not bonded or are not in the molecule.
+     *
+     * @param ind1 The index of the first atom in the bond.
+     * @param ind2 The index of the second atom in the bond.
+     */
+    void removeBondFromAtoms(size_t ind1, size_t ind2);
+
+    /**
+     * Remove all bonds connected to the atom @param ind.
+     *
+     * @param ind The index of the atom for which to remove bonds.
+     */
+    void removeBondsFromAtom(size_t ind);
+
+    /**
+     * Get the vector of bonds.
+     *
+     * @return The vector of bonds.
+     */
+    std::vector<Bond>& bonds() { return m_bonds; }
+
+    /**
+     * Get the vector of bonds. Const version.
+     *
+     * @return The vector of bonds.
+     */
+    const std::vector<Bond>& bonds() const { return m_bonds; }
+
+    /**
+     * Get the Bond at index @p bondInd.
+     *
+     * @param bondInd The index for which to get the bond.
+     *
+     * @return A reference to the Bond object.
+     */
+    Bond& bond(size_t bondInd);
+
+    /**
+     * Get the Bond at index @p bondInd. No edits are allowed here.
+     *
+     * @param bondInd The index for which to get the bond.
+     *
+     * @return A const reference to the Bond object.
+     */
+    const Bond& bond(size_t bondInd) const;
+
+    /**
+     * Is the atom at index @p ind bonded?
+     *
+     * @return True if it has at least one bond. False otherwise.
+     */
+    bool isBonded(size_t ind) const;
+
+    /**
+     * Are these two atoms bonded together?
+     *
+     * @param ind1 The index of the first atom.
+     * @param ind2 The index of the second atom.
+     *
+     * @return True if the atoms are bonded together. False otherwise.
+     */
+    bool areBonded(size_t ind1, size_t ind2) const;
+
+    /**
+     * Get the indices of the bonds connected to atom @p ind.
+     *
+     * @param ind The index of the atom for which to get bonds.
+     *
+     * @return The indices of the bonds on the atom.
+     */
+    std::vector<size_t> bonds(size_t ind) const;
+
+    /**
+     * Get the indices of the atoms that are bonded to the atom at index
+     * @p index.
+     *
+     * @param ind The index of the atom for which to get other bonded atoms.
+     *
+     * @return The indices of the atoms bonded to the atom.
+     */
+    std::vector<size_t> bondedAtoms(size_t ind) const;
+
+    /**
+     * Remove all bonds.
+     */
+    void clearBonds() { m_bonds.clear(); }
 
     /**
      * Do we have a unit cell? Returns true if the unit cell is valid.
@@ -203,12 +324,13 @@ namespace GlobalSearch
     const UnitCell& unitCell() const { return m_unitCell; };
 
     /**
-     * Clear the atoms and zero the unit cell.
+     * Clear the bonds and atoms, and zero the unit cell.
      */
-    void clear() { m_atoms.clear(); m_unitCell.clear(); };
+    void clear() { m_bonds.clear(); m_atoms.clear(); m_unitCell.clear(); };
 
    private:
     std::vector<Atom> m_atoms;
+    std::vector<Bond> m_bonds;
     UnitCell m_unitCell;
   };
 
@@ -223,6 +345,7 @@ namespace GlobalSearch
   inline Molecule::Molecule(const std::vector<Atom>& atoms,
                             const UnitCell& uc)
     : m_atoms(atoms),
+      m_bonds(),
       m_unitCell(uc)
   {
   }
@@ -237,13 +360,14 @@ namespace GlobalSearch
   {
     if (ind >= m_atoms.size())
       return false;
+    removeBondsFromAtom(ind);
     m_atoms.erase(m_atoms.begin() + ind);
     return true;
   }
 
   inline bool Molecule::removeAtom(const Atom& atom)
   {
-    size_t index = atomIndex(atom);
+    long long index = atomIndex(atom);
     if (index == -1)
       return false;
     else
@@ -284,6 +408,105 @@ namespace GlobalSearch
   {
     assert(ind < m_atoms.size());
     return m_atoms[ind].atomicNumber();
+  }
+
+  inline void Molecule::addBond(size_t ind1, size_t ind2,
+                                unsigned short bondOrder)
+  {
+    assert(ind1 < m_atoms.size());
+    assert(ind2 < m_atoms.size());
+    // We will only allow one bond at a time between two atoms
+    if (!areBonded(ind1, ind2))
+      m_bonds.push_back(Bond(ind1, ind2, bondOrder));
+  }
+
+  inline void Molecule::removeBond(size_t bondInd)
+  {
+    assert(bondInd < m_bonds.size());
+    m_bonds.erase(m_bonds.begin() + bondInd);
+  }
+
+  inline void Molecule::removeBondFromAtoms(size_t ind1, size_t ind2)
+  {
+    assert(ind1 < m_atoms.size());
+    assert(ind2 < m_atoms.size());
+    for (size_t i = 0; i < m_bonds.size(); ++i) {
+      if ((m_bonds[i].first() == ind1 && m_bonds[i].second() == ind2) ||
+          (m_bonds[i].first() == ind2 && m_bonds[i].second() == ind1)) {
+        removeBond(i);
+        --i;
+      }
+    }
+  }
+
+  inline void Molecule::removeBondsFromAtom(size_t ind)
+  {
+    assert(ind < m_atoms.size());
+    for (size_t i = 0; i < m_bonds.size(); ++i) {
+      if (m_bonds[i].first() == ind || m_bonds[i].second() == ind) {
+        removeBond(i);
+        --i;
+      }
+    }
+  }
+
+  inline Bond& Molecule::bond(size_t bondInd)
+  {
+    assert(bondInd < m_bonds.size());
+    return m_bonds[bondInd];
+  }
+
+  inline const Bond& Molecule::bond(size_t bondInd) const
+  {
+    assert(bondInd < m_bonds.size());
+    return m_bonds[bondInd];
+  }
+
+  inline bool Molecule::isBonded(size_t ind) const
+  {
+    assert(ind < m_atoms.size());
+    for (const auto& bond: m_bonds) {
+      if (bond.first() == ind || bond.second() == ind)
+        return true;
+    }
+    return false;
+  }
+
+  inline bool Molecule::areBonded(size_t ind1, size_t ind2) const
+  {
+    assert(ind1 < m_atoms.size());
+    assert(ind2 < m_atoms.size());
+    for (const auto& bond: m_bonds) {
+      if ((bond.first() == ind1 && bond.second() == ind2) ||
+          (bond.first() == ind2 && bond.second() == ind1)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  inline std::vector<size_t> Molecule::bonds(size_t ind) const
+  {
+    assert(ind < m_atoms.size());
+    std::vector<size_t> ret;
+    for (size_t i = 0; i < m_bonds.size(); ++i) {
+      if (m_bonds[i].first() == ind || m_bonds[i].second() == ind)
+        ret.push_back(i);
+    }
+    return ret;
+  }
+
+  inline std::vector<size_t> Molecule::bondedAtoms(size_t ind) const
+  {
+    assert(ind < m_atoms.size());
+    std::vector<size_t> ret;
+    for (size_t i = 0; i < m_atoms.size(); ++i) {
+      if (ind == i)
+        continue;
+      else if (areBonded(i, ind))
+        ret.push_back(i);
+    }
+    return ret;
   }
 }
 
