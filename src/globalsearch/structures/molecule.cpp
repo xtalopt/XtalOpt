@@ -42,6 +42,25 @@ namespace GlobalSearch
     return true;
   }
 
+  // We pass by copy because we want to edit a copy of newOrder...
+  void Molecule::reorderAtoms(std::vector<size_t> newOrder)
+  {
+    assert(newOrder.size() == m_atoms.size());
+
+    // Only need to do m_atoms.size() - 1 since the last item will
+    // automatically be in place.
+    for (size_t i = 0; i < m_atoms.size() - 1; ++i) {
+      assert(newOrder[i] < m_atoms.size());
+
+      // Keep swapping until the index is in the correct place
+      while (newOrder[i] != i) {
+        size_t newInd = newOrder[i];
+        swapAtoms(i, newInd);
+        std::swap(newOrder[i], newOrder[newInd]);
+      }
+    }
+  }
+
   void Molecule::removeBondBetweenAtoms(size_t ind1, size_t ind2)
   {
     assert(ind1 < m_atoms.size());

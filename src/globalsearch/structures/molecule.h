@@ -77,11 +77,11 @@ namespace GlobalSearch
                   const Vector3& pos = Vector3(0.0, 0.0, 0.0));
 
     /**
-     * Set the atoms in the molecule.
+     * Set the atoms in the molecule. Any bonds will be cleared.
      *
      * @param atoms The atoms to be set in the molecule.
      */
-    void setAtoms(const std::vector<Atom>& atoms) { m_atoms = atoms; }
+    void setAtoms(const std::vector<Atom>& atoms);
 
     /**
      * Remove the atom with index "ind". Returns true on success. Returns
@@ -173,6 +173,26 @@ namespace GlobalSearch
      * @return The atomic number of the atom at index @p.
      */
     unsigned short atomicNumber(size_t ind) const;
+
+    /**
+     * Swap the indices of two atoms. This will also ensure that the atom
+     * indices in the bonds are properly changed.
+     *
+     * @param ind1 The index of the first atom to be swapped.
+     * @param ind2 The index of the second atom to be swapped.
+     */
+    void swapAtoms(size_t ind1, size_t ind2);
+
+    /**
+     * Change the ordering of the atoms. The input, @p newOrder, should
+     * have a size equal to the number of atoms, and every number from
+     * 0 to numAtoms() - 1 should be in the vector. This function will
+     * automatically adjust the bonds as well so that the atoms remain
+     * bonded correctly.
+     *
+     * @param newOrder The new order for the atoms.
+     */
+    void reorderAtoms(std::vector<size_t> newOrder);
 
     /**
      * Does this molecule contain bonds? Returns true if !m_bonds.empty().
@@ -356,6 +376,12 @@ namespace GlobalSearch
     return m_atoms.back();
   }
 
+  inline void Molecule::setAtoms(const std::vector<Atom>& atoms)
+  {
+    m_bonds.clear();
+    m_atoms = atoms;
+  }
+
   inline Atom& Molecule::atom(size_t ind)
   {
     assert(ind < m_atoms.size());
@@ -389,6 +415,15 @@ namespace GlobalSearch
   {
     assert(ind < m_atoms.size());
     return m_atoms[ind].atomicNumber();
+  }
+
+  inline void Molecule::swapAtoms(size_t ind1, size_t ind2)
+  {
+    assert(ind1 < m_atoms.size());
+    assert(ind2 < m_atoms.size());
+    std::swap(m_atoms[ind1], m_atoms[ind2]);
+    for (auto& bond: m_bonds)
+      bond.swapIndices(ind1, ind2);
   }
 
   inline void Molecule::addBond(size_t ind1, size_t ind2,

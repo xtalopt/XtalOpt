@@ -66,6 +66,18 @@ namespace GlobalSearch
     size_t second() const { return m_ind2; }
 
     /**
+     * This function is to be used when swapping atom indices in a molecule.
+     * If this bond contains @p ind1 as one of it's indices, it will swap
+     * it with @p ind2. If this bond contains @p ind2 as one of it's indices,
+     * it will swap it with @p ind1. This function does nothing if the bond
+     * does not contain @p ind1 or @p ind2.
+     *
+     * @param ind1 The index (if it exists) to be swapped with @p ind2.
+     * @param ind2 The index (if it exists) to be swapped with @p ind1.
+     */
+    void swapIndices(size_t ind1, size_t ind2);
+
+    /**
      * Set the bond order. Should be 1, 2, 3, or 4...
      *
      * @param o The bond order.
@@ -108,6 +120,19 @@ namespace GlobalSearch
       m_ind2(ind2),
       m_bondOrder(bondOrder)
   {
+  }
+
+  inline void Bond::swapIndices(size_t ind1, size_t ind2)
+  {
+    if (m_ind1 == ind1)
+      m_ind1 = ind2;
+    else if (m_ind1 == ind2)
+      m_ind1 = ind1;
+
+    if (m_ind2 == ind1)
+      m_ind2 = ind2;
+    else if (m_ind2 == ind2)
+      m_ind2 = ind1;
   }
 
   inline void Bond::atomIndexRemoved(size_t atomInd)
