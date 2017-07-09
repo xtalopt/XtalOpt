@@ -21,6 +21,8 @@
 #include <globalsearch/formats/pwscfformat.h>
 #include <globalsearch/formats/siestaformat.h>
 #include <globalsearch/formats/vaspformat.h>
+#include <globalsearch/formats/xyzformat.h>
+#include <globalsearch/formats/zmatrixformat.h>
 
 #include <QDebug>
 #include <QString>
@@ -39,7 +41,9 @@ static const vector<string> _formats =
   "GULP",
   "PWSCF",
   "SIESTA",
-  "VASP"
+  "VASP",
+  "XYZ",
+  "ZMATRIX"
 };
 
 // The map of the formats and their extensions
@@ -47,7 +51,8 @@ static const vector<pair<string, string>> _formatExtensions =
 {
   make_pair("castep", "CASTEP"),
   make_pair("got", "GULP"),
-  make_pair("gout", "GULP")
+  make_pair("gout", "GULP"),
+  make_pair("xyz", "XYZ")
 };
 
 namespace GlobalSearch {
@@ -94,6 +99,12 @@ namespace GlobalSearch {
 
     if (format.toUpper() == QString("VASP"))
       return VaspFormat::read(s, filename);
+
+    if (format.toUpper() == QString("XYZ"))
+      return XyzFormat::read(s, filename);
+
+    if (format.toUpper() == QString("ZMATRIX"))
+      return ZMatrixFormat::read(s, filename);
 
     qDebug() << "An invalid format, " << format << ", entered into "
              << "Format::read() !";

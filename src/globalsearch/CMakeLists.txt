@@ -29,6 +29,7 @@ set( globalsearch_SRCS
      formats/pwscfformat.cpp
      formats/siestaformat.cpp
      formats/vaspformat.cpp
+     formats/xyzformat.cpp
      formats/zmatrixformat.cpp
 )
 
