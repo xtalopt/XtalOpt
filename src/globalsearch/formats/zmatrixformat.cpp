@@ -377,15 +377,20 @@ namespace GlobalSearch {
       }
     }
 
+    // Now set the atoms!
+    s->setAtoms(atoms);
+    s->perceiveBonds();
+
     /* // DEBUG SECTION
     qDebug() << "atom positions are as follows: ";
     for (const auto& atom: atoms)
       qDebug() << ElemInfo::getAtomicSymbol(atom.atomicNumber()).c_str()
                << atom.pos()[0] << atom.pos()[1] << atom.pos()[2];
-    */
 
-    // Now set the atoms!
-    s->setAtoms(atoms);
+    qDebug() << "Bonds are: "; // TMP
+    for (const auto& bond: s->bonds()) // TMP
+      qDebug() << bond.first() << bond.second(); // TMP
+    */
 
     return true;
   }

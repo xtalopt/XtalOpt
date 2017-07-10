@@ -558,6 +558,26 @@ namespace GlobalSearch {
     settings->endGroup();
   }
 
+  void Structure::perceiveBonds()
+  {
+    clearBonds();
+
+    // The cutoff tolerance to be used
+    double tol = 0.1;
+
+    const auto& atoms = this->atoms();
+    for (size_t i = 0; i < atoms.size(); ++i) {
+      for (size_t j = i + 1; j < atoms.size(); ++j) {
+        const auto& rad1 =
+          ElemInfo::getCovalentRadius(atoms[i].atomicNumber());
+        const auto& rad2 =
+          ElemInfo::getCovalentRadius(atoms[j].atomicNumber());
+        if (distance(atoms[i], atoms[j]) < rad1 + rad2 + tol)
+          addBond(i, j);
+      }
+    }
+  }
+
   void Structure::structureChanged()
   {
     m_updatedSinceDupChecked = true;
@@ -677,6 +697,8 @@ namespace GlobalSearch {
     }
 
   }
+
+
 
   bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD, int maxAttempts)
   {

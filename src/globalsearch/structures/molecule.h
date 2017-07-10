@@ -195,6 +195,18 @@ namespace GlobalSearch
     void reorderAtoms(std::vector<size_t> newOrder);
 
     /**
+     * Get the cartesian distance between two atoms. If we have a valid
+     * unit cell, we will take into account neighboring atom images.
+     * Otherwise, we will just perform a regular distance calculation.
+     *
+     * @param atom1 The first atom.
+     * @param atom2 The second atom.
+     *
+     * @return The distance.
+     */
+    double distance(const Atom& atom1, const Atom& atom2);
+
+    /**
      * Does this molecule contain bonds? Returns true if !m_bonds.empty().
      *
      * @return Whether or not the molecule contains bonds.
@@ -424,6 +436,13 @@ namespace GlobalSearch
     std::swap(m_atoms[ind1], m_atoms[ind2]);
     for (auto& bond: m_bonds)
       bond.swapIndices(ind1, ind2);
+  }
+
+  inline double Molecule::distance(const Atom& atom1, const Atom& atom2)
+  {
+    if (hasUnitCell())
+      return m_unitCell.distance(atom1.pos(), atom2.pos());
+    return abs((atom1.pos() - atom2.pos()).norm());
   }
 
   inline void Molecule::addBond(size_t ind1, size_t ind2,

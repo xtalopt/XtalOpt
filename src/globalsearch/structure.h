@@ -571,6 +571,10 @@ namespace GlobalSearch {
                                  double minIAD = 0.0,
                                  double maxIAD = 0.0,
                                  int maxAttempts = 1000);
+    /**
+     * Use the atoms' covalent radii to automatically generate bonds.
+     */
+    void perceiveBonds();
 
     /** @return An alphabetized list of the atomic symbols for the
      * atomic species present in the Structure.

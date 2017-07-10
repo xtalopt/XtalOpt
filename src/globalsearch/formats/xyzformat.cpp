@@ -112,12 +112,17 @@ namespace GlobalSearch {
       // Otherwise, just keep on going.
     }
     s->setAtoms(atoms);
+    s->perceiveBonds();
 
     /* // DEBUG SECTION
     qDebug() << "Atoms are: "; // TMP
     for (const auto& atom: atoms) // TMP
       qDebug() << ElemInfo::getAtomicSymbol(atom.atomicNumber()).c_str() // TMP
                << atom.pos()[0] << atom.pos()[1] << atom.pos()[2]; // TMP
+
+    qDebug() << "Bonds are: "; // TMP
+    for (const auto& bond: s->bonds()) // TMP
+      qDebug() << bond.first() << bond.second(); // TMP
     */
 
     return true;
