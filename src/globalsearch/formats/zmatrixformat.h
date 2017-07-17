@@ -26,6 +26,11 @@ namespace GlobalSearch {
   /**
    * @class The ZMATRIX format.
    *
+   * Note: if the z-matrix does not contain any dummy atoms, this function
+   * will generate bonds in the structure using the connections in the
+   * z-matrix.
+   * If the z-matrix DOES contain dummy atoms, this function will use
+   * bond perception to generate the bonds.
    */
   class ZMatrixFormat {
    public:

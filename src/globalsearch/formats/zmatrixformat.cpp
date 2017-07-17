@@ -369,9 +369,15 @@ namespace GlobalSearch {
         return false;
     }
 
+    // We are going to use the z-matrix to generate bonding information
+    // unless there are dummy atoms. If there are dummy atoms, we will
+    // use bond perception
+    bool containsDummyAtoms = false;
+
     // Get rid of the dummy atoms
     for (size_t i = 0; i < atoms.size(); ++i) {
       if (atoms[i].atomicNumber() == 0) {
+        containsDummyAtoms = true;
         atoms.erase(atoms.begin() + i);
         --i;
       }
@@ -379,7 +385,27 @@ namespace GlobalSearch {
 
     // Now set the atoms!
     s->setAtoms(atoms);
-    s->perceiveBonds();
+
+    // Let's figure out how we are going to set the bonding information
+    if (containsDummyAtoms) {
+      // Bonding information will not be correct. Just perceive the bonds
+      s->perceiveBonds();
+    }
+    else {
+      // We can use the bonding information from the z-matrix
+      for (size_t i = 1; i < zMat.size(); ++i) {
+        long ind;
+        if (!parseRInd(zMat[i], i, ind)) {
+          // This really should never happen, but just in case...
+          qDebug() << "Error setting bonding information from the z-matrix.";
+          qDebug() << "Using bond perception instead";
+          s->clearBonds();
+          s->perceiveBonds();
+          break;
+        }
+        s->addBond(ind, i);
+      }
+    }
 
     /* // DEBUG SECTION
     qDebug() << "atom positions are as follows: ";
