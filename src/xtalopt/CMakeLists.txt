@@ -164,6 +164,15 @@ if(INSTALL_DEPENDENCIES AND EXISTS "${ExeLocation}" AND NOT APPLE)
   get_filename_component(QtCore_location "${QtCore_location}" DIRECTORY)
   set(DEP_SEARCH_DIRS "${DEP_SEARCH_DIRS}" "${QtCore_location}/../bin")
 
+  # On Windows, make sure that CRT libraries are installed...
+  if (MSVC)
+    set (CMAKE_INSTALL_UCRT_LIBRARIES ON)
+  endif(MSVC)
+
+  # Let's install required system libraries as well...
+  include (InstallRequiredSystemLibraries)
+
+  # Finally, install dependencies that aren't system libraries...
   include(MacroInstallDependencies)
   InstallDependencies("${ExeLocation}" "${LibLocation}" "${DEP_SEARCH_DIRS}")
 endif()
