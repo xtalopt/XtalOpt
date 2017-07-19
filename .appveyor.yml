@@ -4,10 +4,6 @@
 
 version: 1.0.{build}
 
-branches:
-  only:
-    - independent-xtalopt
-
 #---------------------------------#
 #    environment configuration    #
 #---------------------------------#
@@ -43,5 +39,20 @@ init:
 build_script:
   - mkdir build
   - cd build
-  - cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=%Qt5_DIR% -DEIGEN3_INCLUDE_DIR=%EIGEN3_INCLUDE_DIR% -DLIBSSH_INCLUDE_DIRS=%LIBSSH_INCLUDE_DIRS% -DLIBSSH_LIBRARIES=%LIBSSH_LIBRARIES% -DQWT_LIBRARY=%QWT_LIBRARY% -DQWT_INCLUDE_DIR=%QWT_INCLUDE_DIR%
-  - nmake
+  - cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=%Qt5_DIR% -DEIGEN3_INCLUDE_DIR=%EIGEN3_INCLUDE_DIR% -DLIBSSH_INCLUDE_DIRS=%LIBSSH_INCLUDE_DIRS% -DLIBSSH_LIBRARIES=%LIBSSH_LIBRARIES% -DQWT_LIBRARY=%QWT_LIBRARY% -DQWT_INCLUDE_DIR=%QWT_INCLUDE_DIR% -DBUILD_INDEPENDENT_PACKAGE=ON
+  - nmake package
+  - ..\scripts\write-md5.bat
+
+artifacts:
+  - path: build\*-win32.exe
+    name: XtalOpt
+  - path: build\windows-xtalopt.md5
+    name: md5sum
+
+deploy:
+  provider: GitHub
+  auth_token:
+    secure: AxB7eIUrpYxsEDJm8HA558RLyB6/Gt+EZ2g2ysqYB0v+rvvDkS7ArzdW99xbxTM6
+  artifact: XtalOpt, md5sum
+  on:
+    appveyor_repo_tag: true
