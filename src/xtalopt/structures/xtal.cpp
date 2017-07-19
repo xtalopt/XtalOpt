@@ -1518,7 +1518,7 @@ namespace XtalOpt {
   bool Xtal::fillSuperCell(int a, int b, int c, Xtal * myXtal) {
       //qDebug() << "Xtal has a=" << a << " b=" << b << " c=" << c;
 
-      std::vector<Atom>& oneFUatoms =  atoms();
+      std::vector<Atom> oneFUatoms =  atoms();
       Vector3 aVec = myXtal->unitCell().aVector();
       Vector3 bVec = myXtal->unitCell().bVector();
       Vector3 cVec = myXtal->unitCell().cVector();
