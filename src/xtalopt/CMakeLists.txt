@@ -165,8 +165,12 @@ if(INSTALL_DEPENDENCIES AND EXISTS "${ExeLocation}" AND NOT APPLE)
   set(DEP_SEARCH_DIRS "${DEP_SEARCH_DIRS}" "${QtCore_location}/../bin")
 
   # On Windows, make sure that CRT libraries are installed...
-  if (MSVC)
-    set (CMAKE_INSTALL_UCRT_LIBRARIES ON)
+  # Also, we need to install the platforms directory in Qt
+  if(MSVC)
+    set(CMAKE_INSTALL_UCRT_LIBRARIES ON)
+    install(DIRECTORY "${QtCore_location}/../plugins/platforms"
+      DESTINATION bin
+    )
   endif(MSVC)
 
   # Let's install required system libraries as well...
