@@ -129,6 +129,11 @@ namespace XtalOpt {
     bool load(const QString & filename,
               const bool forceReadOnly = false) override;
 
+    // This function will load all the xtals in the data directory in a
+    // read-only fashion so that a plot may be displayed. This is intended
+    // to be used for generating a plot in the CLI mode.
+    bool plotDir(const QDir& dataDir);
+
     bool loaded;
 
     uint numInitial;                    // Number of initial structures
