@@ -46,6 +46,9 @@ namespace XtalOpt {
 
     void setMolecule(GlobalSearch::Molecule *molecule);
 
+    // Set's the plot widget's parent to nullptr and shows the plot widget
+    void beginPlotOnlyMode();
+
   public slots:
     void saveSession() override;
     void showTutorialDialog() const;

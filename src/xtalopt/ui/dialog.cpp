@@ -115,6 +115,16 @@ namespace XtalOpt {
     m_molecule = molecule;
   }
 
+  void XtalOptDialog::beginPlotOnlyMode()
+  {
+    // A QWidget will not display by itself if its parent is not displayed.
+    // Thus, we need to set the parent to nullptr.
+    m_tab_plot->getTabWidget()->setParent(nullptr);
+
+    m_tab_plot->getTabWidget()->setWindowTitle("XtalOpt Plot");
+    m_tab_plot->getTabWidget()->show();
+  }
+
   void XtalOptDialog::saveSession() {
     // Notify if this was user requested.
     bool notify = false;
