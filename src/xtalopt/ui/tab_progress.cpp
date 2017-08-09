@@ -462,7 +462,7 @@ namespace XtalOpt {
   {
     Q_UNUSED(oldrow);
     if (m_opt->isStarting) {
-      qDebug() << "TabProgress::selectMoleculeFromProgress: Not updating widget while session is starting";
+      //qDebug() << "TabProgress::selectMoleculeFromProgress: Not updating widget while session is starting";
       return;
     }
     if ( row == -1 ) return;

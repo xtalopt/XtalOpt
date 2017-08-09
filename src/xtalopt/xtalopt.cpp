@@ -1338,8 +1338,7 @@ namespace XtalOpt {
                          testXtal->getFormulaUnits());
                 nxtal->setEnergy(testXtal->getEnergy() *
                          nxtal->getFormulaUnits() /
-                         testXtal->getFormulaUnits() *
-                         EV_TO_KJ_PER_MOL);
+                         testXtal->getFormulaUnits());
                 nxtal->setPrimitiveChecked(true);
                 nxtal->setSkippedOptimization(true);
                 nxtal->setStatus(Xtal::Optimized);
@@ -1735,8 +1734,7 @@ namespace XtalOpt {
                        xtal->getFormulaUnits());
     nxtal->setEnergy(xtal->getEnergy() *
                      nxtal->getFormulaUnits() /
-                     xtal->getFormulaUnits() *
-                     EV_TO_KJ_PER_MOL);
+                     xtal->getFormulaUnits());
     nxtal->setPrimitiveChecked(true);
     nxtal->setSkippedOptimization(true);
     nxtal->setStatus(Xtal::Optimized);
@@ -2687,7 +2685,7 @@ namespace XtalOpt {
         // here.
         double energy = settings->value("structure/current/energy", 0)
                                                                     .toDouble();
-        xtal->setEnergy(energy * EV_TO_KJ_PER_MOL);
+        xtal->setEnergy(energy);
 
         DESTROY_SETTINGS(xtalStateFileName);
         locker.unlock();
@@ -2801,7 +2799,8 @@ namespace XtalOpt {
     }
 
     // Check if user wants to resume the search
-    if (!readOnly) {
+    // If we are using CLI mode, no prompt is needed...
+    if (!readOnly && m_usingGUI) {
       bool resume;
       needBoolean(tr("Session '%1' (%2) loaded. Would you like to start "
                      "submitting jobs and resume the search? (Answering "
@@ -2811,6 +2810,143 @@ namespace XtalOpt {
 
       readOnly = !resume;
       qDebug() << "Read only? " << readOnly;
+    }
+
+    return true;
+  }
+
+  bool XtalOpt::plotDir(const QDir& dataDir)
+  {
+    qDebug() << "Loading xtals for plotting...";
+
+    QStringList xtalDirs = dataDir.entryList(QStringList(),
+                                             QDir::AllDirs, QDir::Size);
+    xtalDirs.removeAll(".");
+    xtalDirs.removeAll("..");
+    for (int i = 0; i < xtalDirs.size(); ++i) {
+      if (!dataDir.exists(xtalDirs[i] + "/structure.state")) {
+          xtalDirs.removeAt(i);
+          --i;
+      }
+    }
+
+    qDebug() << xtalDirs.size() << "xtals were found!";
+
+    if (xtalDirs.isEmpty()) {
+      qDebug() << "Error: no xtals were found in" << dataDir.absolutePath()
+               << "! Please check your data directory and try again.";
+      return false;
+    }
+
+    // Load xtals
+    QList<Structure*> loadedStructures;
+
+    for (int i = 0; i < xtalDirs.size(); i++) {
+      qDebug() << "Loading xtal" << i + 1 << "...";
+      QString xtalStateFileName = dataDir.absolutePath() + "/" + xtalDirs.at(i)
+                                  + "/structure.state";
+
+      Xtal* xtal = new Xtal();
+
+      xtal->setFileName(dataDir.absolutePath() + "/" + xtalDirs.at(i) + "/");
+      // The "true" in the second parameter tells it to read current structure
+      // info. This sets current cell info, atom info, enthalpy, energy, & PV
+      xtal->readSettings(xtalStateFileName, true);
+
+      // Reset it's space group
+      xtal->findSpaceGroup(tol_spg);
+
+      // Store current state -- updateXtal will overwrite it.
+      Xtal::State state = xtal->getStatus();
+      QDateTime endtime = xtal->getOptTimerEnd();
+
+      // If the current settings were saved successfully, then the current
+      // enthalpy,energy, atom types, atom positions, and cell info must be
+      // set already
+      SETTINGS(xtalStateFileName);
+
+      int version = settings->value("structure/version", -1).toInt();
+      bool saveSuccessful = settings->value("structure/saveSuccessful",
+                                            false).toBool();
+      // version == -1 was the old way to indicate that the save failed...
+      if (version == -1)
+        saveSuccessful = false;
+
+      bool errorMsgAlreadyGiven = false;
+
+      // The error message is given by a pop-up
+      QString errorMsg = tr("Some structures were not loaded successfully. "
+                            "These will be ignored. Check the console for "
+                            "details");
+
+      // The warning message is given in the log
+      QString warningMsg = tr("structure.state file was not saved "
+                            "successfully for %1. This structure will be "
+                            "excluded.").arg(xtal->fileName());
+
+      if (!saveSuccessful) {
+        // Check the structure.state.old file if this was not saved
+        // successfully.
+        DESTROY_SETTINGS(xtalStateFileName);
+        SETTINGS(xtalStateFileName + ".old");
+        if (!settings->value("structure/saveSuccessful",
+                             false).toBool()) {
+          if (!errorMsgAlreadyGiven) {
+            error(errorMsg);
+            errorMsgAlreadyGiven = true;
+          }
+          warning(warningMsg);
+          continue;
+        }
+        // Otherwise, just continue with the new settings in place
+      }
+
+      // Reset state
+      xtal->setStatus(state);
+      xtal->setOptTimerEnd(endtime);
+      // For some strange reason, setEnergy() does not appear to be
+      // working in readSettings() in structure.cpp (even though all the
+      // others including setEnthalpy() seem to work fine). So we will set it
+      // here.
+      double energy = settings->value("structure/current/energy", 0)
+                                                                  .toDouble();
+      xtal->setEnergy(energy);
+
+      DESTROY_SETTINGS(xtalStateFileName);
+      updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
+      loadedStructures.append(qobject_cast<Structure*>(xtal));
+    }
+
+    // Sort Xtals by index values
+    int curpos = 0;
+    for (int i = 0; i < loadedStructures.size(); i++) {
+      for (int j = 0; j < loadedStructures.size(); j++) {
+        if (loadedStructures.at(j)->getIndex() == i) {
+          loadedStructures.swap(j, curpos);
+          curpos++;
+        }
+      }
+    }
+
+    // Reassign indices (shouldn't always be necessary, but just in case...)
+    for (int i = 0; i < loadedStructures.size(); i++)
+      loadedStructures.at(i)->setIndex(i);
+
+    // Append to tracker for the plot
+    qDebug() << "Preparing GUI...";
+    for (int i = 0; i < loadedStructures.size(); i++) {
+      Structure* s = loadedStructures.at(i);
+      m_tracker->append(s);
+      if (s->getStatus() == Structure::WaitingForOptimization)
+        m_queue->appendToJobStartTracker(s);
+    }
+
+    emit updatePlot();
+
+    // If no structures were loaded successfully, warn the user.
+    if (loadedStructures.isEmpty()) {
+      qDebug() << "Error: no structures were loaded successfully!";
+      return false;
     }
 
     return true;

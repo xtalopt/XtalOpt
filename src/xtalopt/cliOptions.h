@@ -51,6 +51,17 @@ class XtalOptCLIOptions {
    */
   static void readRuntimeOptions(XtalOpt& xtalopt);
 
+  /**
+   * Write the initial runtime options file to @param filename.
+   * This file will be read during runtime, and XtalOpt will update
+   * its settings based upon the file. The file name is obtained via
+   * XtalOpt::CLIRuntimeFile().
+   *
+   * @param xtalopt The XtalOpt object whose runtime settings wil be
+   *                written to the file.
+   */
+  static void writeInitialRuntimeFile(XtalOpt& xtalopt);
+
  private:
   /**
    * Checks to see if s is a valid keyword. If it is, it will then
@@ -208,17 +219,6 @@ class XtalOptCLIOptions {
    */
   static bool processMolUnits(const QHash<QString, QString>& options,
                               XtalOpt& xtalopt);
-
-  /**
-   * Write the initial runtime options file to @param filename.
-   * This file will be read during runtime, and XtalOpt will update
-   * its settings based upon the file. The file name is obtained via
-   * XtalOpt::CLIRuntimeFile().
-   *
-   * @param xtalopt The XtalOpt object whose runtime settings wil be
-   *                written to the file.
-   */
-  static void writeInitialRuntimeFile(XtalOpt& xtalopt);
 
   /**
    * Reads and sets runtime options from @p options to @p xtalopt.

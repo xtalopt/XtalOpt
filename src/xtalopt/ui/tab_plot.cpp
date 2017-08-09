@@ -58,12 +58,6 @@ namespace XtalOpt {
             this, SLOT(refreshPlot()));
     connect(ui.combo_yAxis, SIGNAL(currentIndexChanged(int)),
             this, SLOT(refreshPlot()));
-    connect(ui.combo_plotType, SIGNAL(currentIndexChanged(int)),
-            this, SLOT(refreshPlot()));
-    connect(ui.combo_distHistXtal, SIGNAL(currentIndexChanged(int)),
-            this, SLOT(refreshPlot()));
-    connect(ui.combo_distHistXtal, SIGNAL(currentIndexChanged(int)),
-            this, SLOT(selectMoleculeFromIndex(int)));
     connect(ui.cb_labelPoints, SIGNAL(toggled(bool)),
             this, SLOT(updatePlot()));
     connect(ui.combo_labelType, SIGNAL(currentIndexChanged(int)),
@@ -113,7 +107,6 @@ namespace XtalOpt {
     settings->setValue("showIncompletes", ui.cb_showIncompletes->isChecked());
     settings->setValue("labelPoints",     ui.cb_labelPoints->isChecked());
     settings->setValue("labelType",       ui.combo_labelType->currentIndex());
-    settings->setValue("plotType",        ui.combo_plotType->currentIndex());
     settings->endGroup();
 
     DESTROY_SETTINGS(filename);
@@ -136,8 +129,6 @@ namespace XtalOpt {
                                                   false).toBool());
     ui.combo_labelType->setCurrentIndex(settings->value("labelType",
                                                         Symbol_L).toInt());
-    ui.combo_plotType->setCurrentIndex(settings->value("plotType",
-                                                       Trend_PT).toInt());
     settings->endGroup();
 
     // Update config data
@@ -152,25 +143,12 @@ namespace XtalOpt {
 
   void TabPlot::updateGUI()
   {
-    switch (ui.combo_plotType->currentIndex()) {
-    case Trend_PT:
-    default:
-      ui.gb_distance->setEnabled(false);
-      ui.gb_trend->setEnabled(true);
-      break;
-    case DistHist_PT:
-      ui.gb_trend->setEnabled(false);
-      ui.gb_distance->setEnabled(true);
-      break;
-    }
   }
 
   void TabPlot::disconnectGUI() {
     ui.push_refresh->disconnect();
     ui.combo_xAxis->disconnect();
     ui.combo_yAxis->disconnect();
-    ui.combo_plotType->disconnect();
-    ui.combo_distHistXtal->disconnect();
     ui.cb_labelPoints->disconnect();
     ui.combo_labelType->disconnect();
     ui.cb_showDuplicates->disconnect();
@@ -205,14 +183,7 @@ namespace XtalOpt {
     // Lock plot mutex
     m_plot_mutex->lockForWrite();
 
-    switch (ui.combo_plotType->currentIndex()) {
-    case Trend_PT:
-      plotTrends();
-      break;
-    case DistHist_PT:
-      plotDistHist();
-      break;
-    }
+    plotTrends();
 
     m_plot_mutex->unlock();
   }
@@ -273,17 +244,23 @@ namespace XtalOpt {
         }
       }
 
-      if ((xtal->getStatus() != Xtal::Optimized && !showIncompletes)) {
-        if  (!((xtal->getStatus() == Xtal::Duplicate ||
-                xtal->getStatus() == Xtal::Supercell) &&
-                showDuplicates)) {
-          continue;
-        }
+      if (!showDuplicates && (xtal->getStatus() == Xtal::Duplicate ||
+                              xtal->getStatus() == Xtal::Supercell)) {
+        continue;
       }
 
       if (xtal->getStatus() == Xtal::Killed ||
           xtal->getStatus() == Xtal::Removed ||
           fabs(xtal->getEnthalpy()) <= 1e-50) {
+        continue;
+      }
+
+      // If it is anything other than a duplicate, supercell, or optimized
+      // and showIncompletes is false, don't show it
+      if (!showIncompletes &&
+          xtal->getStatus() != Xtal::Duplicate &&
+          xtal->getStatus() != Xtal::Supercell &&
+          xtal->getStatus() != Xtal::Optimized) {
         continue;
       }
 
