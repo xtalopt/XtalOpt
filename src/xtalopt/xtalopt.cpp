@@ -2485,10 +2485,16 @@ namespace XtalOpt {
 
     bool stateFileIsValid = settings->value("xtalopt/saveSuccessful",
                                             false).toBool();
-    if (!stateFileIsValid) {
+    if (!stateFileIsValid && !file.fileName().endsWith(".old")) {
+      warning("XtalOpt::load(): File " + file.fileName() +
+              " is incomplete, corrupt, or invalid. Trying "
+              + file.fileName() + ".old ...");
+      return load(file.fileName() + ".old", false);
+    }
+    else if (!stateFileIsValid && file.fileName().endsWith(".old")) {
       error("XtalOpt::load(): File " + file.fileName() +
-            " is incomplete, corrupt, or invalid. (Try "
-            + file.fileName() + ".old if it exists)");
+            " is incomplete, corrupt, or invalid. Cannot begin run. Please "
+            "check your state file.");
       readOnly = true;
       return false;
     }
