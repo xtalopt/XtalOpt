@@ -2823,6 +2823,7 @@ namespace XtalOpt {
 
   bool XtalOpt::plotDir(const QDir& dataDir)
   {
+    readOnly = true;
     qDebug() << "Loading xtals for plotting...";
 
     QStringList xtalDirs = dataDir.entryList(QStringList(),
@@ -2941,6 +2942,7 @@ namespace XtalOpt {
     // Append to tracker for the plot
     qDebug() << "Preparing GUI...";
     for (int i = 0; i < loadedStructures.size(); i++) {
+      qDebug() << "Loading xtal" << i + 1 << "into the GUI...";
       Structure* s = loadedStructures.at(i);
       m_tracker->append(s);
       if (s->getStatus() == Structure::WaitingForOptimization)

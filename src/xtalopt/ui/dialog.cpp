@@ -117,6 +117,9 @@ namespace XtalOpt {
 
   void XtalOptDialog::beginPlotOnlyMode()
   {
+    // Make sure xtalopt is in readOnly mode
+    m_opt->readOnly = true;
+
     // A QWidget will not display by itself if its parent is not displayed.
     // Thus, we need to set the parent to nullptr.
     m_tab_plot->getTabWidget()->setParent(nullptr);
