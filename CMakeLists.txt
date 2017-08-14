@@ -42,8 +42,6 @@ option( BUILD_TESTS
 
 if(BUILD_TESTS)
   enable_testing()
-  # Some tests have to link to the static XtalOpt library
-  set(BUILD_STATIC_XTALOPT_LIB ON)
 endif(BUILD_TESTS)
 
 option( ENABLE_SSH
