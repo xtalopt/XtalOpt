@@ -21,6 +21,7 @@ install:
 before_script:
  - export CMAKE_FLAGS="$CMAKE_FLAGS -DBUILD_INDEPENDENT_PACKAGE=ON"
  - export CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=install/xtalopt"
+ - export CMAKE_FLAGS="$CMAKE_FLAGS -DBUILD_TESTS=ON"
  - mkdir build
  - cd build
  - mkdir install
@@ -28,6 +29,7 @@ before_script:
 
 script:
  - make -j2 install
+ - make test
  - cd install
  - tar -czvf linux-xtalopt.tgz xtalopt
  - md5sum linux-xtalopt.tgz > linux-xtalopt.md5
