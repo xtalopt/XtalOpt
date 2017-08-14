@@ -99,6 +99,7 @@ void SPGLibTest::idealBCC() {
   atm2.setPos(Eigen::Vector3d(1.5, 1.5, 1.5));
   atm2.setAtomicNumber(1);
 
+  m_xtal->findSpaceGroup();
   QCOMPARE(m_xtal->getSpaceGroupNumber(), 229U);
   QCOMPARE(m_xtal->getSpaceGroupSymbol(), QString("Im-3m"));
   QCOMPARE(m_xtal->getHTMLSpaceGroupSymbol(),
