@@ -18,7 +18,6 @@
 
 #include <xtalopt/cliOptions.h>
 #include <xtalopt/ui/dialog.h>
-#include <xtalopt/ui/tab_plot.h>
 #include <xtalopt/xtalopt.h>
 
 int main(int argc, char* argv[])
