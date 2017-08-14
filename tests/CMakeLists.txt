@@ -19,7 +19,7 @@ link_directories(
 set(tests
 #  optbase
 #  structure
-#  spglib
+  spglib
   randdouble
 #  xtal
 #  xtaloptunit
@@ -51,6 +51,7 @@ foreach (test ${tests})
   set(test_SRCS ${test}test.cpp)
   add_executable(${test}test ${test_SRCS})
   target_link_libraries(${test}test
+    xtalopt_static
     spglib
     XtalComp
     globalsearch
