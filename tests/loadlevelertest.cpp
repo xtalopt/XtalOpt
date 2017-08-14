@@ -110,4 +110,4 @@ void LoadLevelerTest::parseStatus()
 
 QTEST_MAIN(GlobalSearch::LoadLevelerTest)
 
-#include "moc_loadlevelertest.cxx"
+#include "loadlevelertest.moc"

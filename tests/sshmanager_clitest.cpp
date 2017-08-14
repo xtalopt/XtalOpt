@@ -211,4 +211,4 @@ void SSHManagerCLITest::copyThreads()
 
 QTEST_MAIN(SSHManagerCLITest)
 
-#include "moc_sshmanager_clitest.cxx"
+#include "sshmanager_clitest.moc"

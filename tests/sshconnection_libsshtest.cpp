@@ -380,4 +380,4 @@ void SSHConnectionLibSSHTest::largeFileCopyBenchmark()
 
 QTEST_MAIN(SSHConnectionLibSSHTest)
 
-#include "moc_sshconnection_libsshtest.cxx"
+#include "sshconnection_libsshtest.moc"

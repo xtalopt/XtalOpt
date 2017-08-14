@@ -320,4 +320,4 @@ void SSHConnectionCLITest::largeFileCopyBenchmark()
 
 QTEST_MAIN(SSHConnectionCLITest)
 
-#include "moc_sshconnection_clitest.cxx"
+#include "sshconnection_clitest.moc"

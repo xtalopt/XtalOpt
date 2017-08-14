@@ -442,4 +442,4 @@ Direct\n\
 
 QTEST_MAIN(SPGLibTest)
 
-#include "moc_spglibtest.cxx"
+#include "spglibtest.moc"

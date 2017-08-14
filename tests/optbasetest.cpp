@@ -312,4 +312,4 @@ void OptBaseTest::interpretKeyword()
 
 QTEST_MAIN(OptBaseTest)
 
-#include "moc_optbasetest.cxx"
+#include "optbasetest.moc"

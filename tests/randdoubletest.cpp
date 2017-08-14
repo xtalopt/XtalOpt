@@ -239,4 +239,4 @@ void RANDDOUBLETest::generateImageSystem()
 
 QTEST_MAIN(RANDDOUBLETest)
 
-#include "moc_randdoubletest.cxx"
+#include "randdoubletest.moc"

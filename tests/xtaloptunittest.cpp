@@ -164,4 +164,4 @@ namespace XtalOpt {
 
 QTEST_MAIN(XtalOpt::XtalOptUnitTest)
 
-#include "moc_xtaloptunittest.cxx"
+#include "xtaloptunittest.moc"

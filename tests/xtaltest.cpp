@@ -808,4 +808,4 @@ Direct\n\
 
 QTEST_MAIN(XtalTest)
 
-#include "moc_xtaltest.cxx"
+#include "xtaltest.moc"

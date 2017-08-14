@@ -150,4 +150,4 @@ void StructureTest::enthalpyFallBack()
 
 QTEST_MAIN(StructureTest)
 
-#include "moc_structuretest.cxx"
+#include "structuretest.moc"
