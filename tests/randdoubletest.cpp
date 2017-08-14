@@ -20,9 +20,9 @@
 
 #include <openbabel/rand.h>
 
-#include <QtCore/QDebug>
-#include <QtGui/QImage>
-#include <QtTest/QtTest>
+#include <QDebug>
+#include <QImage>
+#include <QtTest>
 
 #include <stdlib.h>
 #include <time.h>

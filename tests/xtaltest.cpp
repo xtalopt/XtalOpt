@@ -23,9 +23,9 @@
 
 #include <Eigen/Geometry>
 
-#include <QtCore/QDebug>
-#include <QtCore/QString>
-#include <QtTest/QtTest>
+#include <QDebug>
+#include <QString>
+#include <QtTest>
 
 #define ASSIGN_PARAMS(a,b,c,alpha,beta,gamma)           \
   if (!xtal) xtal = new Xtal(a,b,c,alpha,beta,gamma);   \

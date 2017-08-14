@@ -16,9 +16,9 @@
 
 #include <xtalopt/xtalopt.h>
 
-#include <QtCore/QDebug>
-#include <QtCore/QString>
-#include <QtTest/QtTest>
+#include <QDebug>
+#include <QString>
+#include <QtTest>
 
 namespace GlobalSearch
 {

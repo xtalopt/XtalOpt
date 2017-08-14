@@ -16,7 +16,7 @@
 #include <globalsearch/sshconnection_cli.h>
 
 #include <QString>
-#include <QtTest/QtTest>
+#include <QtTest>
 #include <QTemporaryFile>
 
 using namespace GlobalSearch;

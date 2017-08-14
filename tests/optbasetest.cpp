@@ -17,7 +17,7 @@
 #include <globalsearch/optimizer.h>
 #include <globalsearch/structure.h>
 
-#include <QtTest/QtTest>
+#include <QtTest>
 
 using namespace Avogadro;
 using namespace GlobalSearch;

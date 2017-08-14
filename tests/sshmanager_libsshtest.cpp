@@ -16,7 +16,7 @@
 #include <globalsearch/sshmanager_libssh.h>
 
 #include <QString>
-#include <QtTest/QtTest>
+#include <QtTest>
 #include <QTemporaryFile>
 
 #define NUM_CONN 5

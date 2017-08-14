@@ -16,9 +16,9 @@
 
 #include <openbabel/math/vector3.h>
 
-#include <QtCore/QDebug>
-#include <QtCore/QString>
-#include <QtTest/QtTest>
+#include <QDebug>
+#include <QString>
+#include <QtTest>
 
 #define FROMPIO_TOL 0.05
 

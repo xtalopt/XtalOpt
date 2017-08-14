@@ -19,9 +19,9 @@
 
 #include <globalsearch/macros.h>
 
-#include <QtCore/QDebug>
-#include <QtCore/QString>
-#include <QtTest/QtTest>
+#include <QDebug>
+#include <QString>
+#include <QtTest>
 
 using namespace GlobalSearch;
 using namespace Avogadro;

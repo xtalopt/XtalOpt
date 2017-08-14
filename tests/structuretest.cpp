@@ -14,7 +14,7 @@
 
 #include <globalsearch/structure.h>
 
-#include <QtTest/QtTest>
+#include <QtTest>
 
 #define APPROX_EQ(a, b) (fabs((a) - (b)) < 1e-6)
 
