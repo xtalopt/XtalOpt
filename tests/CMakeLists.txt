@@ -18,7 +18,7 @@ link_directories(
 
 set(tests
 #  optbase
-#  structure
+  structure
   spglib
   randdouble
 #  xtal

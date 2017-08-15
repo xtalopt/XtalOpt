@@ -18,8 +18,6 @@
 
 #define APPROX_EQ(a, b) (fabs((a) - (b)) < 1e-6)
 
-using namespace OpenBabel;
-using namespace Avogadro;
 using namespace GlobalSearch;
 
 class StructureTest : public QObject
@@ -80,11 +78,11 @@ void StructureTest::enthalpyFallBack()
   Structure s;
   s.addAtom();
 
-  s.setEnergy(1.0 * EV_TO_KJ_PER_MOL);
+  s.setEnergy(1.0);
   qDebug() << s.getEnthalpy();
   QVERIFY(APPROX_EQ(s.getEnthalpy(), 1.0));
 
-  s.setEnergy(-1.0 * EV_TO_KJ_PER_MOL);
+  s.setEnergy(-1.0);
   QVERIFY(APPROX_EQ(s.getEnthalpy(), -1.0));
 
   s.setEnthalpy(3.0);
