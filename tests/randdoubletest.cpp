@@ -1,5 +1,5 @@
 /**********************************************************************
-  RANDDOUBLETest -- Test the random number generator
+  RandDoubleTest -- Test the random number generator
 
   This test will create 1000x1000 images for the random number generators
   that it knows about. Black regions have few hits, while lighter
@@ -7,35 +7,32 @@
 
   Copyright (C) 2010-2011 David C. Lonie
 
-  XtalOpt is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  This source code is released under the New BSD License, (the "License").
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
  **********************************************************************/
 
 #include <globalsearch/macros.h>
+#include <globalsearch/random.h>
 
-#include <openbabel/rand.h>
-
-#include <QtCore/QDebug>
-#include <QtGui/QImage>
-#include <QtTest/QtTest>
+#include <QDebug>
+#include <QImage>
+#include <QtTest>
 
 #include <stdlib.h>
 #include <time.h>
 
-class RANDDOUBLETest : public QObject
+class RandDoubleTest : public QObject
 {
   Q_OBJECT
 
   private:
-  int size;
-  int numPoints;
+  int m_size;
+  int m_numPoints;
 
   private slots:
   /**
@@ -60,52 +57,31 @@ class RANDDOUBLETest : public QObject
 
   // Tests
   void generateImageDefault();
-  void generateImageOBRandom();
   void generateImageSystem();
 };
 
-void RANDDOUBLETest::initTestCase()
+void RandDoubleTest::initTestCase()
 {
-  size = 1e3;
-  numPoints = 1e7;
+  m_size = 1e3;
+  m_numPoints = 1e7;
 }
 
-void RANDDOUBLETest::cleanupTestCase()
-{
-}
-
-void RANDDOUBLETest::init()
+void RandDoubleTest::cleanupTestCase()
 {
 }
 
-void RANDDOUBLETest::cleanup()
+void RandDoubleTest::init()
 {
 }
 
-void RANDDOUBLETest::generateImageDefault()
+void RandDoubleTest::cleanup()
 {
-  INIT_RANDOM_GENERATOR();
+}
 
-  // Create matrix to store hits
-  std::vector<std::vector<unsigned int> > hits;
-  hits.resize(size);
-  for (int i = 0; i < size; i++) {
-    hits[i].resize(size);
-    for (int j = 0; j < size; j++) {
-      hits[i][j] = 0;
-    }
-  }
-
-  // Generate numbers
-  int x,y;
-  QBENCHMARK {
-    for (int i = 0; i < numPoints; i++) {
-      x = (int)(RANDDOUBLE() * size);
-      y = (int)(RANDDOUBLE() * size);
-      hits[x][y]++;
-    }
-  }
-
+void createAndSaveImage(unsigned int size,
+                        std::vector<std::vector<unsigned int>>& hits,
+                        const QString& imageName)
+{
   // Find greatest number of hits
   unsigned int max = 0;
   for (int i = 0; i < size; i++) {
@@ -117,13 +93,11 @@ void RANDDOUBLETest::generateImageDefault()
   }
 
   // Generate image
-  unsigned int normHit;
-  unsigned int rgb;
   QImage im (size, size, QImage::Format_RGB32);
   for (int i = 0; i < size; i++) {
     for (int j = 0; j < size; j++) {
-      normHit = (hits[i][j] * 100) / max;
-      rgb = (normHit * 0xff) / 100;
+      unsigned int normHit = (hits[i][j] * 100) / max;
+      unsigned int rgb = (normHit * 0xff) / 100;
       im.setPixel(i, j,
                   0xff000000 +
                   0x00010000 * rgb +
@@ -131,20 +105,17 @@ void RANDDOUBLETest::generateImageDefault()
                   0x00000001 * rgb );
     }
   }
-  im.save("RANDDOUBLETest-default.png", 0, 100);
+  im.save(imageName, 0, 100);
 }
 
-void RANDDOUBLETest::generateImageOBRandom()
+void RandDoubleTest::generateImageDefault()
 {
-  OpenBabel::OBRandom rand;
-  rand.TimeSeed();
-
   // Create matrix to store hits
   std::vector<std::vector<unsigned int> > hits;
-  hits.resize(size);
-  for (int i = 0; i < size; i++) {
-    hits[i].resize(size);
-    for (int j = 0; j < size; j++) {
+  hits.resize(m_size);
+  for (int i = 0; i < m_size; i++) {
+    hits[i].resize(m_size);
+    for (int j = 0; j < m_size; j++) {
       hits[i][j] = 0;
     }
   }
@@ -152,51 +123,26 @@ void RANDDOUBLETest::generateImageOBRandom()
   // Generate numbers
   int x,y;
   QBENCHMARK {
-    for (int i = 0; i < numPoints; i++) {
-      x = (int)(rand.NextFloat() * size);
-      y = (int)(rand.NextFloat() * size);
+    for (int i = 0; i < m_numPoints; i++) {
+      x = (int)(GlobalSearch::getRandDouble() * m_size);
+      y = (int)(GlobalSearch::getRandDouble() * m_size);
       hits[x][y]++;
     }
   }
 
-  // Find greatest number of hits
-  unsigned int max = 0;
-  for (int i = 0; i < size; i++) {
-    for (int j = 0; j < size; j++) {
-      if (hits[i][j] > max) {
-        max = hits[i][j];
-      }
-    }
-  }
-
-  // Generate image
-  unsigned int normHit;
-  unsigned int rgb;
-  QImage im (size, size, QImage::Format_RGB32);
-  for (int i = 0; i < size; i++) {
-    for (int j = 0; j < size; j++) {
-      normHit = (hits[i][j] * 100) / max;
-      rgb = (normHit * 0xff) / 100;
-      im.setPixel(i, j,
-                  0xff000000 +
-                  0x00010000 * rgb +
-                  0x00000100 * rgb +
-                  0x00000001 * rgb );
-    }
-  }
-  im.save("RANDDOUBLETest-OBRandom.png", 0, 100);
+  createAndSaveImage(m_size, hits, "RandDoubleTest-default.png");
 }
 
-void RANDDOUBLETest::generateImageSystem()
+void RandDoubleTest::generateImageSystem()
 {
   std::srand(time(0));
 
   // Create matrix to store hits
   std::vector<std::vector<unsigned int> > hits;
-  hits.resize(size);
-  for (int i = 0; i < size; i++) {
-    hits[i].resize(size);
-    for (int j = 0; j < size; j++) {
+  hits.resize(m_size);
+  for (int i = 0; i < m_size; i++) {
+    hits[i].resize(m_size);
+    for (int j = 0; j < m_size; j++) {
       hits[i][j] = 0;
     }
   }
@@ -204,41 +150,16 @@ void RANDDOUBLETest::generateImageSystem()
   // Generate numbers
   int x,y;
   QBENCHMARK {
-    for (int i = 0; i < numPoints; i++) {
-      x = (int)((std::rand()/(double)RAND_MAX) * size);
-      y = (int)((std::rand()/(double)RAND_MAX) * size);
+    for (int i = 0; i < m_numPoints; i++) {
+      x = (int)((std::rand()/(double)RAND_MAX) * m_size);
+      y = (int)((std::rand()/(double)RAND_MAX) * m_size);
       hits[x][y]++;
     }
   }
 
-  // Find greatest number of hits
-  unsigned int max = 0;
-  for (int i = 0; i < size; i++) {
-    for (int j = 0; j < size; j++) {
-      if (hits[i][j] > max) {
-        max = hits[i][j];
-      }
-    }
-  }
-
-  // Generate image
-  unsigned int normHit;
-  unsigned int rgb;
-  QImage im (size, size, QImage::Format_RGB32);
-  for (int i = 0; i < size; i++) {
-    for (int j = 0; j < size; j++) {
-      normHit = (hits[i][j] * 100) / max;
-      rgb = (normHit * 0xff) / 100;
-      im.setPixel(i, j,
-                  0xff000000 +
-                  0x00010000 * rgb +
-                  0x00000100 * rgb +
-                  0x00000001 * rgb );
-    }
-  }
-  im.save("RANDDOUBLETest-system.png", 0, 100);
+  createAndSaveImage(m_size, hits, "RandDoubleTest-system.png");
 }
 
-QTEST_MAIN(RANDDOUBLETest)
+QTEST_MAIN(RandDoubleTest)
 
-#include "moc_randdoubletest.cxx"
+#include "randdoubletest.moc"

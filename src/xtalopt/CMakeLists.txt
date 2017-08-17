@@ -57,11 +57,16 @@ if(UNIX AND ENABLE_RPATH)
   set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 
-add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp
-               ${xtalopt_SRCS} ${xtalopt_RCS})
+option(BUILD_STATIC_XTALOPT_LIB
+  "Build a static xtalopt library called xtalopt_static.a?"
+  OFF)
 
-target_link_libraries(xtalopt globalsearch XtalComp spglib RandSpg
+add_library(xtalopt_static STATIC ${xtalopt_SRCS} ${xtalopt_RCS})
+target_link_libraries(xtalopt_static globalsearch XtalComp spglib RandSpg
                       "${QWT_LIBRARIES}")
+
+add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp)
+target_link_libraries(xtalopt xtalopt_static)
 
 # Install instructions
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)

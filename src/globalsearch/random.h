@@ -23,14 +23,14 @@ namespace GlobalSearch {
   // Creating a new distribution each time is supposedly very fast...
   static inline double getRandDouble(double min = 0.0, double max = 1.0)
   {
-    std::mt19937 generator(std::random_device{}());
+    thread_local std::mt19937 generator(std::random_device{}());
     std::uniform_real_distribution<double> distribution(min, max);
     return distribution(generator);
   }
 
   static inline int getRandInt(int min = INT_MIN, int max = INT_MAX)
   {
-    std::mt19937 generator(std::random_device{}());
+    thread_local std::mt19937 generator(std::random_device{}());
     std::uniform_int_distribution<int> distribution(min, max);
     return distribution(generator);
   }
@@ -38,7 +38,7 @@ namespace GlobalSearch {
   static inline unsigned int getRandUInt(unsigned int min = 0,
                                          unsigned int max = UINT_MAX)
   {
-    std::mt19937 generator(std::random_device{}());
+    thread_local std::mt19937 generator(std::random_device{}());
     std::uniform_int_distribution<unsigned int> distribution(min, max);
     return distribution(generator);
   }

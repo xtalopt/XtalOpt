@@ -3,30 +3,24 @@
 
   Copyright (C) 2010 David C. Lonie
 
-  XtalOpt is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  This source code is released under the New BSD License, (the "License").
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
  **********************************************************************/
 
 #include <xtalopt/structures/xtal.h>
 
-#include <openbabel/math/vector3.h>
-
-#include <QtCore/QDebug>
-#include <QtCore/QString>
-#include <QtTest/QtTest>
+#include <QDebug>
+#include <QString>
+#include <QtTest>
 
 #define FROMPIO_TOL 0.05
 
 using namespace XtalOpt;
-using namespace OpenBabel;
-using namespace Avogadro;
 
 class SPGLibTest : public QObject
 {
@@ -96,16 +90,16 @@ void SPGLibTest::idealBCC() {
   m_xtal->setCellInfo(3.0, 3.0, 3.0, 90.0, 90.0, 90.0);
 
   // Build bcc structure
-  Atom *atm;
+  GlobalSearch::Atom& atm1 = m_xtal->addAtom();
 
-  atm = m_xtal->addAtom();
-  atm->setPos(Eigen::Vector3d(0.0, 0.0, 0.0));
-  atm->setAtomicNumber(1);
+  atm1.setPos(Eigen::Vector3d(0.0, 0.0, 0.0));
+  atm1.setAtomicNumber(1);
 
-  atm = m_xtal->addAtom();
-  atm->setPos(Eigen::Vector3d(1.5, 1.5, 1.5));
-  atm->setAtomicNumber(1);
+  GlobalSearch::Atom& atm2 = m_xtal->addAtom();
+  atm2.setPos(Eigen::Vector3d(1.5, 1.5, 1.5));
+  atm2.setAtomicNumber(1);
 
+  m_xtal->findSpaceGroup();
   QCOMPARE(m_xtal->getSpaceGroupNumber(), 229U);
   QCOMPARE(m_xtal->getSpaceGroupSymbol(), QString("Im-3m"));
   QCOMPARE(m_xtal->getHTMLSpaceGroupSymbol(),
@@ -191,7 +185,7 @@ Direct\n\
 
   xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
-  //QEXPECT_FAIL("", "spglib: P1, findsym: Pc", Continue);
+  QEXPECT_FAIL("", "spglib: P1, findsym: Pc", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pc"));
   delete xtal;
 }
@@ -273,7 +267,7 @@ Direct\n\
 
   xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
-  //QEXPECT_FAIL("", "spglib: P1, findsym: Cm", Continue);
+  QEXPECT_FAIL("", "spglib: P1, findsym: Cm", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Cm"));
   delete xtal;
 }
@@ -355,7 +349,7 @@ Direct\n\
 
   xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
-  //QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
+  QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("R3c"));
   delete xtal;
 }
@@ -396,7 +390,7 @@ Direct\n\
 
   xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
   xtal->findSpaceGroup(FROMPIO_TOL);
-  //QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
+  QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
   QCOMPARE(xtal->getSpaceGroupSymbol(), QString("R3c"));
   delete xtal;
 }
@@ -444,4 +438,4 @@ Direct\n\
 
 QTEST_MAIN(SPGLibTest)
 
-#include "moc_spglibtest.cxx"
+#include "spglibtest.moc"

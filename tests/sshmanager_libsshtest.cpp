@@ -4,21 +4,19 @@
 
   Copyright (C) 2010-2011 David C. Lonie
 
-  XtalOpt is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  This source code is released under the New BSD License, (the "License").
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
  **********************************************************************/
 
 #include <globalsearch/sshmanager_libssh.h>
 
 #include <QString>
-#include <QtTest/QtTest>
+#include <QtTest>
 #include <QTemporaryFile>
 
 #define NUM_CONN 5
@@ -213,4 +211,4 @@ void SSHManagerLibSSHTest::copyThreads()
 
 QTEST_MAIN(SSHManagerLibSSHTest)
 
-#include "moc_sshmanager_libsshtest.cxx"
+#include "sshmanager_libsshtest.moc"

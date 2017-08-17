@@ -3,25 +3,21 @@
 
   Copyright (C) 2010 David C. Lonie
 
-  XtalOpt is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  This source code is released under the New BSD License, (the "License").
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
  **********************************************************************/
 
 #include <globalsearch/structure.h>
 
-#include <QtTest/QtTest>
+#include <QtTest>
 
 #define APPROX_EQ(a, b) (fabs((a) - (b)) < 1e-6)
 
-using namespace OpenBabel;
-using namespace Avogadro;
 using namespace GlobalSearch;
 
 class StructureTest : public QObject
@@ -82,11 +78,11 @@ void StructureTest::enthalpyFallBack()
   Structure s;
   s.addAtom();
 
-  s.setEnergy(1.0 * EV_TO_KJ_PER_MOL);
+  s.setEnergy(1.0);
   qDebug() << s.getEnthalpy();
   QVERIFY(APPROX_EQ(s.getEnthalpy(), 1.0));
 
-  s.setEnergy(-1.0 * EV_TO_KJ_PER_MOL);
+  s.setEnergy(-1.0);
   QVERIFY(APPROX_EQ(s.getEnthalpy(), -1.0));
 
   s.setEnthalpy(3.0);
@@ -152,4 +148,4 @@ void StructureTest::enthalpyFallBack()
 
 QTEST_MAIN(StructureTest)
 
-#include "moc_structuretest.cxx"
+#include "structuretest.moc"

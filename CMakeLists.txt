@@ -41,7 +41,7 @@ option( BUILD_TESTS
  	OFF )
 
 if(BUILD_TESTS)
-   enable_testing()
+  enable_testing()
 endif(BUILD_TESTS)
 
 option( ENABLE_SSH
