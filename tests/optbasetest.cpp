@@ -31,7 +31,7 @@ class DummyOptBase : public OptBase
 public:
   DummyOptBase() : OptBase(0) {m_idString = DUMMYNAME;};
 public slots:
-  bool startSearch() override {}
+  bool startSearch() override {return true;}
   bool checkLimits() override {return true;}
   void readRuntimeOptions() override {}
 protected:
