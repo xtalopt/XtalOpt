@@ -40,9 +40,17 @@ build_script:
   - mkdir build
   - cd build
   - cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=%Qt5_DIR% -DEIGEN3_INCLUDE_DIR=%EIGEN3_INCLUDE_DIR% -DLIBSSH_INCLUDE_DIRS=%LIBSSH_INCLUDE_DIRS% -DLIBSSH_LIBRARIES=%LIBSSH_LIBRARIES% -DQWT_LIBRARY=%QWT_LIBRARY% -DQWT_INCLUDE_DIR=%QWT_INCLUDE_DIR% -DBUILD_INDEPENDENT_PACKAGE=ON -DBUILD_TESTS=ON
-  - nmake package
+  - nmake
   - nmake test
-  - ..\scripts\write-md5.bat
+
+after_build:
+  - if %APPVEYOR_REPO_TAG% equ true (
+      echo "Tag detected. Package will be built and md5 will be generated" &&
+      nmake package &&
+      ..\scripts\write-md5.bat)
+    else (
+      echo "Tag not detected. Skipping package building and md5 generation."
+    )
 
 artifacts:
   - path: build\*-win32.exe

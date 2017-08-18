@@ -36,9 +36,16 @@ before_script:
 script:
  - make -j2 install
  - make test
- - cd install
- - tar -czvf linux-xtalopt.tgz xtalopt
- - md5sum linux-xtalopt.tgz > linux-xtalopt.md5
+
+after_success:
+ - if [[ -n "$TRAVIS_TAG" ]] && [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then
+     echo "Tag detected. Zipping installation and creating md5sum." &&
+     cd install &&
+     tar -czvf linux-xtalopt.tgz xtalopt &&
+     md5sum linux-xtalopt.tgz > linux-xtalopt.md5;
+   else
+     echo "Tag not detected. Skipping zip and md5sum.";
+   fi
 
 deploy:
   provider: releases

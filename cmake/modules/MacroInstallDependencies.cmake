@@ -51,3 +51,38 @@ macro(InstallDependencies ExeLocation TargetLocation DepSearchDirs)
   endforeach()
   message("-- Finished locating dependencies for ${exe_name}")
 endmacro()
+
+# Same as above but copies the dependencies instead
+macro(CopyDependencies ExeLocation TargetLocation DepSearchDirs)
+  get_filename_component(exe_name "${ExeLocation}" NAME)
+  message("-- Locating dependencies for ${exe_name}")
+
+  # First, get the list of dependencies
+  include(GetPrerequisites)
+  set(exclude_system 1)
+  set(recurse 1)
+  get_prerequisites("${ExeLocation}" prereqs exclude_system
+                    recurse exepath "${DepSearchDirs}")
+  # Next, loop through each dependency. In case they are sym links, follow
+  # the sym link to the original file, and then install that and rename it to
+  # the dependency name. E.g., install libQt5Core.so.5.5.1 and rename it to
+  # libQt5Core.so.5
+  foreach(prereq ${prereqs})
+    # First, loop through each DepSearchDir to try to see if we can find it
+    foreach(dir ${DepSearchDirs})
+      if(EXISTS "${dir}/${prereq}")
+        # Set the absolute file path if we do
+        set(prereq "${dir}/${prereq}")
+        break()
+      endif()
+    endforeach()
+
+    get_filename_component(bareVarFilename "${prereq}" NAME)
+    get_filename_component(realfile "${prereq}" REALPATH)
+    get_filename_component(bareRealFilename "${realfile}" NAME)
+
+    file(COPY "${realfile}"
+         DESTINATION ${TargetLocation})
+  endforeach()
+  message("-- Finished locating dependencies for ${exe_name}")
+endmacro()
