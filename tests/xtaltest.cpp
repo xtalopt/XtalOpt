@@ -17,9 +17,7 @@
 #include <xtalopt/debug.h>
 
 #include <globalsearch/macros.h>
-#include <globalsearch/obeigenconv.h>
-
-#include <avogadro/moleculefile.h>
+#include <globalsearch/random.h>
 
 #include <Eigen/Geometry>
 
@@ -51,7 +49,6 @@
 
 using namespace XtalOpt;
 using namespace GlobalSearch;
-using namespace Avogadro;
 
 class XtalTest : public QObject
 {
@@ -114,7 +111,7 @@ void XtalTest::cleanup()
 void XtalTest::rotateToStdOrientationTest()
 {
   Xtal xtal;
-  OpenBabel::vector3 v1,v2,v3;
+  Vector3 v1,v2,v3;
   double origVolume, newVolume;
   double origA, newA;
   double origB, newB;
@@ -178,15 +175,15 @@ void XtalTest::rotateToStdOrientationTest()
   ROTTEST_ROT_AND_TEST;
 
   // These cell will need rotation
-  v1.Set(1, -4,  3);
-  v2.Set(0,  5, -8);
-  v3.Set(0,  0, -3);
+  v1 = Vector3(1, -4,  3);
+  v2 = Vector3(0,  5, -8);
+  v3 = Vector3(0,  0, -3);
   xtal.setCellInfo(v1, v2, v3);
   ROTTEST_ROT_AND_TEST;
 
-  v1.Set(1,  3,  6);
-  v2.Set(-4, 5,  1);
-  v3.Set(3, -8, -3);
+  v1 = Vector3(1,  3,  6);
+  v2 = Vector3(-4, 5,  1);
+  v3 = Vector3(3, -8, -3);
   xtal.setCellInfo(v1, v2, v3);
   ROTTEST_ROT_AND_TEST;
 
@@ -195,11 +192,10 @@ void XtalTest::rotateToStdOrientationTest()
 void XtalTest::compareCoordinatesTest_simple()
 {
   Xtal xtal1, xtal2;
-  Atom *atm;
 
   xtal1 = Xtal (2, 2, 2, 90, 90, 90);
-  atm = xtal1.addAtom();
-  atm->setPos(Eigen::Vector3d(0,0,0));
+  Atom& atm = xtal1.addAtom();
+  atm.setPos(Vector3(0,0,0));
   xtal2 = xtal1;
   QVERIFY(xtal1.compareCoordinates(xtal2));
 }
@@ -207,11 +203,10 @@ void XtalTest::compareCoordinatesTest_simple()
 void XtalTest::compareCoordinatesTest_shifted()
 {
   Xtal xtal1, xtal2;
-  Atom *atm;
 
   xtal1 = Xtal (2, 2, 2, 90, 90, 90);
-  atm = xtal1.addAtom();
-  atm->setPos(Eigen::Vector3d(1,1,1));
+  Atom& atm = xtal1.addAtom();
+  atm.setPos(Vector3(1,1,1));
   xtal2 = xtal1;
   QVERIFY(xtal1.compareCoordinates(xtal2));
 }
@@ -219,16 +214,15 @@ void XtalTest::compareCoordinatesTest_shifted()
 void XtalTest::compareCoordinatesTest_huge()
 {
   Xtal xtal1, xtal2;
-  Atom *atm;
 
   xtal1.setCellInfo(20,30,30,60,75.5225,70.5288);
 
   for (double x = 0.0; x < .999; x += 0.333333333333) {
     for (double y = 0.0; y < .999; y += 0.333333333333) {
       for (double z = 0.0; z < .999; z += 0.333333333333) {
-        atm = xtal1.addAtom();
-        atm->setPos(xtal1.fracToCart(Eigen::Vector3d(x,y,z)));
-        atm->setAtomicNumber(static_cast<int>(10*(x + y + z)) % 3);
+        Atom& atm = xtal1.addAtom();
+        atm.setPos(xtal1.fracToCart(Vector3(x,y,z)));
+        atm.setAtomicNumber(static_cast<int>(10*(x + y + z)) % 3);
       }
     }
   }
@@ -245,11 +239,10 @@ void XtalTest::compareCoordinatesTest_huge()
 void XtalTest::equalityOperatorTest_simple()
 {
   Xtal xtal1, xtal2;
-  Atom *atm;
 
   xtal1 = Xtal (2, 2, 2, 90, 90, 90);
-  atm = xtal1.addAtom();
-  atm->setPos(Eigen::Vector3d(0,0,0));
+  Atom& atm = xtal1.addAtom();
+  atm.setPos(Vector3(0,0,0));
   xtal2 = xtal1;
   QVERIFY(xtal1 == xtal2);
   // Change cell size and retest
@@ -260,11 +253,10 @@ void XtalTest::equalityOperatorTest_simple()
 void XtalTest::equalityOperatorTest_shifted()
 {
   Xtal xtal1, xtal2;
-  Atom *atm;
 
   xtal1 = Xtal (2, 2, 2, 90, 90, 90);
-  atm = xtal1.addAtom();
-  atm->setPos(Eigen::Vector3d(1,1,1));
+  Atom& atm = xtal1.addAtom();
+  atm.setPos(Vector3(1,1,1));
   xtal2 = xtal1;
   QVERIFY(xtal1 == xtal2);
   // Change cell size and retest
@@ -275,16 +267,15 @@ void XtalTest::equalityOperatorTest_shifted()
 void XtalTest::equalityOperatorTest_huge()
 {
   Xtal xtal1, xtal2;
-  Atom *atm;
 
   xtal1.setCellInfo(20,30,30,60,75.5225,70.5288);
 
   for (double x = 0.0; x < 0.999; x += 0.333333333333) {
     for (double y = 0.0; y < 0.999; y += 0.333333333333) {
       for (double z = 0.0; z < 0.999; z += 0.333333333333) {
-        atm = xtal1.addAtom();
-        atm->setPos(xtal1.fracToCart(Eigen::Vector3d(x,y,z)));
-        atm->setAtomicNumber(static_cast<int>(10*(x + y + z)) % 3);
+        Atom& atm = xtal1.addAtom();
+        atm.setPos(xtal1.fracToCart(Vector3(x,y,z)));
+        atm.setAtomicNumber(static_cast<int>(10*(x + y + z)) % 3);
       }
     }
   }
@@ -343,17 +334,17 @@ void XtalTest::niggliReduceTest()
   const double maxLength = 30.0;
   const double minAngle  = 45.0;
   const double maxAngle  = 135.0;
-  OpenBabel::matrix3x3 tmp;
   for (unsigned int i = 0; i < 1000; i++) {
-    const double a     = RANDDOUBLE() * (maxLength - minLength) + minLength;
-    const double b     = RANDDOUBLE() * (maxLength - minLength) + minLength;
-    const double c     = RANDDOUBLE() * (maxLength - minLength) + minLength;
-    const double alpha = RANDDOUBLE() * (maxAngle - minAngle) + minAngle;
-    const double beta  = RANDDOUBLE() * (maxAngle - minAngle) + minAngle;
-    const double gamma = RANDDOUBLE() * (maxAngle - minAngle) + minAngle;
+    const double a     = getRandDouble() * (maxLength - minLength) + minLength;
+    const double b     = getRandDouble() * (maxLength - minLength) + minLength;
+    const double c     = getRandDouble() * (maxLength - minLength) + minLength;
+    const double alpha = getRandDouble() * (maxAngle - minAngle) + minAngle;
+    const double beta  = getRandDouble() * (maxAngle - minAngle) + minAngle;
+    const double gamma = getRandDouble() * (maxAngle - minAngle) + minAngle;
     // is the cell valid?
-    tmp.FillOrth(alpha, beta, gamma, a, b, c);
-    if (tmp.determinant() <= 0 || GS_IS_NAN_OR_INF(tmp.determinant())) {
+    UnitCell tmp(alpha, beta, gamma, a, b, c);
+    if (tmp.cellMatrix().determinant() <= 0 ||
+        GS_IS_NAN_OR_INF(tmp.cellMatrix().determinant())) {
       i--;
       continue;
     }
@@ -400,42 +391,40 @@ void XtalTest::fixAnglesTest()
   const double minAngle  = 45.0;
   const double maxAngle  = 135.0;
   QList<CellParam> badParams;
-  OpenBabel::matrix3x3 tmp;
-  Eigen::Vector3d axis;
+  Vector3 axis;
   Eigen::Matrix3d mat;
   for (unsigned int iter = 0; iter < 100; iter++) {
-    const double a     = RANDDOUBLE() * (maxLength - minLength) + minLength;
-    const double b     = RANDDOUBLE() * (maxLength - minLength) + minLength;
-    const double c     = RANDDOUBLE() * (maxLength - minLength) + minLength;
-    const double alpha = RANDDOUBLE() * (maxAngle - minAngle) + minAngle;
-    const double beta  = RANDDOUBLE() * (maxAngle - minAngle) + minAngle;
-    const double gamma = RANDDOUBLE() * (maxAngle - minAngle) + minAngle;
+    const double a     = getRandDouble() * (maxLength - minLength) + minLength;
+    const double b     = getRandDouble() * (maxLength - minLength) + minLength;
+    const double c     = getRandDouble() * (maxLength - minLength) + minLength;
+    const double alpha = getRandDouble() * (maxAngle - minAngle) + minAngle;
+    const double beta  = getRandDouble() * (maxAngle - minAngle) + minAngle;
+    const double gamma = getRandDouble() * (maxAngle - minAngle) + minAngle;
     // is the cell valid?
-    tmp.FillOrth(alpha, beta, gamma, a, b, c);
-    if (tmp.determinant() <= 0 || GS_IS_NAN_OR_INF(tmp.determinant())) {
+    UnitCell tmp(alpha, beta, gamma, a, b, c);
+    if (tmp.cellMatrix().determinant() <= 0 ||
+        GS_IS_NAN_OR_INF(tmp.cellMatrix().determinant())) {
       --iter;
       continue;
     }
 
     // Create random rotation matrix
-    Eigen::AngleAxis<double> t (RANDDOUBLE() * 360.0,
+    Eigen::AngleAxis<double> t (getRandDouble() * 360.0,
                                 axis.setRandom());
 
     // Rotate cell
-    mat = OB2Eigen(tmp);
-    tmp = Eigen2OB(t * mat);
+    tmp.setCellMatrix(t * tmp.cellMatrix());
 
     // Update cell
-    xtal.setCellInfo(tmp);
+    xtal.setUnitCell(tmp);
 
     // Add some atoms
-    Atom *atm;
-    for (int i = 0; i < RANDUINT() % 100; i++) {
-      atm = xtal.addAtom();
-      atm->setPos(xtal.fracToCart(Eigen::Vector3d(RANDDOUBLE(),
-                                                  RANDDOUBLE(),
-                                                  RANDDOUBLE())));
-      atm->setAtomicNumber(RANDUINT() % 5);
+    for (int i = 0; i < getRandUInt() % 100; i++) {
+      Atom& atm = xtal.addAtom();
+      atm.setPos(xtal.fracToCart(Vector3(getRandDouble(),
+                                                  getRandDouble(),
+                                                  getRandDouble())));
+      atm.setAtomicNumber(getRandUInt() % 5);
     }
     if (!xtal.fixAngles()) {
       badParams.push_back(CellParam(a,b,c,alpha,beta,gamma));
@@ -490,11 +479,11 @@ void XtalTest::getRandomRepresentationTest()
     //    P(3) = (2/3)(2/3)              = 4/9
     //
     std::vector<double> lengths (3);
-    lengths[0] = RANDDOUBLE();
-    if (RANDDOUBLE() < 0.3333333) lengths[1] = lengths[0];
-    else lengths[1] = RANDDOUBLE();
-    if (RANDDOUBLE() < 0.3333333) lengths[2] = lengths[1];
-    else lengths[2] = RANDDOUBLE();
+    lengths[0] = getRandDouble();
+    if (getRandDouble() < 0.3333333) lengths[1] = lengths[0];
+    else lengths[1] = getRandDouble();
+    if (getRandDouble() < 0.3333333) lengths[2] = lengths[1];
+    else lengths[2] = getRandDouble();
     //
     // Adjust each length to be between 5->25 angstrom
     //
@@ -512,15 +501,15 @@ void XtalTest::getRandomRepresentationTest()
     //
     double rand;
     std::vector<double> angles (3);
-    angles[0] = RANDDOUBLE();
-    rand = RANDDOUBLE();
+    angles[0] = getRandDouble();
+    rand = getRandDouble();
     if (rand < 0.33333333) angles[1] = angles[0];
     else if (rand < 0.6666666) angles[1] = 0.5; // will convert to 90
-    else angles[1] = RANDDOUBLE();              // degrees later
-    rand = RANDDOUBLE();
+    else angles[1] = getRandDouble();              // degrees later
+    rand = getRandDouble();
     if (rand < 0.33333333) angles[2] = angles[1];
     else if (rand < 0.6666666) angles[2] = 0.5; // will convert to 90
-    else angles[2] = RANDDOUBLE();              // degrees later
+    else angles[2] = getRandDouble();              // degrees later
     //
     // Adjust each angle to lie between 60->120 degrees
     //
@@ -541,11 +530,10 @@ void XtalTest::getRandomRepresentationTest()
     // Randomly add between 50 atoms to the cell. No more than 5
     // atomic species will be present.
     //
-    Atom *atm;
     unsigned int failedAtomAdds = 0;
     unsigned int failedAtomAddsMax = 10;
     for (int j = 0; j < numAtoms; ++j) {
-      unsigned short atomicNum = RANDUINT() % 5 + 1;
+      unsigned short atomicNum = getRandUInt() % 5 + 1;
       if (!xtal.addAtomRandomly(atomicNum, 0.5)) {
         --j;
         ++failedAtomAdds;
@@ -569,8 +557,6 @@ void XtalTest::getRandomRepresentationTest()
     success_msecs += start.msecsTo(end);
 
     if (!match) {
-      MoleculeFile::writeMolecule(&xtal, "Testing/failedComp-ref.cml");
-      MoleculeFile::writeMolecule(nxtal, "Testing/failedComp-comp.cml");
       qDebug() << "Failure on comparison" << i+1 << "(false negative)";
     }
     QVERIFY(match);
@@ -578,11 +564,11 @@ void XtalTest::getRandomRepresentationTest()
     // Signficantly displace an atom of nxtal and ensure that the
     // comparison fails. Displacement is ~1-4 angstrom
     Q_ASSERT(nxtal->numAtoms() > 3);
-    Eigen::Vector3d displacement;
-    displacement.x() = RANDDOUBLE() + 1.0;
-    displacement.y() = RANDDOUBLE() + 1.0;
-    displacement.z() = RANDDOUBLE() + 1.0;
-    nxtal->atom(0)->setPos(*(nxtal->atom(0)->pos()) + displacement);
+    Vector3 displacement;
+    displacement.x() = getRandDouble() + 1.0;
+    displacement.y() = getRandDouble() + 1.0;
+    displacement.z() = getRandDouble() + 1.0;
+    nxtal->atom(0).setPos(nxtal->atom(0).pos() + displacement);
 
     start = QTime::currentTime();
     match = (xtal == *nxtal);
@@ -590,11 +576,8 @@ void XtalTest::getRandomRepresentationTest()
     failure_msecs += start.msecsTo(end);
 
     if (match) {
-      MoleculeFile::writeMolecule(&xtal, "../Testing/failedComp-ref.cml");
-      MoleculeFile::writeMolecule(nxtal, "../Testing/failedComp-comp-disp.cml");
       // Move atom back
-      nxtal->atom(0)->setPos(*(nxtal->atom(0)->pos()) - displacement);
-      MoleculeFile::writeMolecule(nxtal, "../Testing/failedComp-comp-orig.cml");
+      nxtal->atom(0).setPos(nxtal->atom(0).pos() - displacement);
       qDebug() << "Failure on comparison" << i+1 << "(false positive)";
     }
     QVERIFY(!match);
@@ -681,8 +664,8 @@ Direct\n\
 
   // Generate a random representation of each structure by applying
   // each mix and transformation in the Xtal static lists
-  const Eigen::Matrix3d oldCell (OB2Eigen(rutileSeed->OBUnitCell()->GetCellMatrix()));
-  Eigen::Matrix3d newCell;
+  const Matrix3 oldCell = rutileSeed->unitCell().cellMatrix();
+  Matrix3 newCell;
   for (QVector<Eigen::Matrix3d>::const_iterator
          xform = Xtal::m_transformationMatrices.constBegin(),
          xform_end = Xtal::m_transformationMatrices.constEnd();
@@ -694,13 +677,11 @@ Direct\n\
          mix != mix_end; ++mix) {
       newCell = (*mix) * oldCell * xformTranspose;
       rutiles << new Xtal (*rutileSeed);
-      rutiles.last()->OBUnitCell()->SetData(Eigen2OB(newCell));
+      rutiles.last()->setCellInfo(newCell);
       // Transform atoms
-      QList<Atom*> newAtoms = rutiles.last()->atoms();
-      for (QList<Atom*>::const_iterator
-             it = newAtoms.constBegin(), it_end = newAtoms.constEnd();
-           it != it_end; ++it) {
-        (*it)->setPos( (*xform) * (*((*it)->pos())) );
+      std::vector<Atom>& newAtoms = rutiles.last()->atoms();
+      for (auto& atom: newAtoms) {
+        atom.setPos((*xform) * atom.pos());
       }
     }
   }
@@ -709,7 +690,7 @@ Direct\n\
   // random number generator to the same value to ensure consistent
   // results.
   srand(2000);
-  Eigen::Vector3d uTranslation (rand(), rand(), rand());
+  Vector3 uTranslation (rand(), rand(), rand());
   uTranslation.normalize();
   // Now loop through all structures in rutile seeds, creating new
   // xtals with random noise
@@ -719,20 +700,17 @@ Direct\n\
 
   const unsigned int noiselessDups = rutiles.size();
 
-  Eigen::Vector3d curUTranslation; // xtal-specific uniform translation
-  Eigen::Vector3d curNTranslation; // xtal-specific noise translation
-  QList<Atom*> currentAtoms;
+  Vector3 curUTranslation; // xtal-specific uniform translation
+  Vector3 curNTranslation; // xtal-specific noise translation
   for (int i = 0; i < noiselessDups; ++i) {
     rutiles << new Xtal (*rutiles.at(i));
     curUTranslation = uTranslation * i;
-    currentAtoms = rutiles.last()->atoms();
-    for (QList<Atom*>::const_iterator it = currentAtoms.constBegin(),
-           it_end = currentAtoms.constEnd();
-         it != it_end; ++it) {
+    std::vector<Atom>& currentAtoms = rutiles.last()->atoms();
+    for (auto& atom: currentAtoms) {
       curNTranslation << rand(), rand(), rand();
       curNTranslation.normalize();
       curNTranslation *= coordNoiseMax;
-      (*it)->setPos( (*((*it)->pos())) + curUTranslation + curNTranslation);
+      atom.setPos(atom.pos() + curUTranslation + curNTranslation);
     }
   }
 

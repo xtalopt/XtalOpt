@@ -21,7 +21,7 @@ set(tests
   structure
   spglib
   randdouble
-#  xtal
+  xtal
   xtaloptunit
 )
 
