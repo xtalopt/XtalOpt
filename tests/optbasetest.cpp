@@ -19,7 +19,6 @@
 
 #include <QtTest>
 
-using namespace Avogadro;
 using namespace GlobalSearch;
 
 const QString DUMMYNAME    = "Dummy";
@@ -32,10 +31,11 @@ class DummyOptBase : public OptBase
 public:
   DummyOptBase() : OptBase(0) {m_idString = DUMMYNAME;};
 public slots:
-  void startSearch() {};
-  bool checkLimits() {return true;};
+  bool startSearch() override {}
+  bool checkLimits() override {return true;}
+  void readRuntimeOptions() override {}
 protected:
-  void setOptimizer_string(const QString&, const QString&) {};
+  void setOptimizer_string(const QString&, const QString&) {}
 };
 
 // Dummy optimizer for user value keyword checking
@@ -134,6 +134,8 @@ void OptBaseTest::getProbabilityList()
   for (unsigned int listSize = 0; listSize <=2; ++listSize) {
     while (structures.size() < listSize) {
       Structure *s = new Structure;
+      // We need at least one atom for the probability list calculation
+      s->addAtom();
       s->setEnthalpy(++enthalpy);
       structures.append(s);
     }
@@ -143,6 +145,8 @@ void OptBaseTest::getProbabilityList()
   // Fill to 100 structures
   while (structures.size() < static_cast<int>(maxE)) {
     Structure *s = new Structure;
+    // We need at least one atom for the probability list calculation
+    s->addAtom();
     s->setEnthalpy(++enthalpy);
     structures.append(s);
   }
@@ -230,9 +234,9 @@ void OptBaseTest::interpretKeyword()
 
   Structure *s = new Structure;
   for (int i = 0; i < NUMATOMS; ++i) {
-    Atom *a = s->addAtom();
-    a->setAtomicNumber((i % NUMSPECIES) + 1);
-    a->setPos(Eigen::Vector3d(i, i, i));
+    Atom& a = s->addAtom();
+    a.setAtomicNumber((i % NUMSPECIES) + 1);
+    a.setPos(Eigen::Vector3d(i, i, i));
   }
   s->setFileName(FILENAME);
   s->setRempath(REMPATH);
