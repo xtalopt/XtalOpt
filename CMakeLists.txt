@@ -26,6 +26,8 @@ set(CMAKE_AUTORCC ON)
 
 find_package(Qt5 COMPONENTS Concurrent Network Widgets REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(Qwt REQUIRED)
+include_directories(${QWT_INCLUDE_DIRS})
 
 include_directories(${Qt5Network_INCLUDE_DIRS})
 include_directories(${Qt5Widgets_INCLUDE_DIRS})

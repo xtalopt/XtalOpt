@@ -1,8 +1,5 @@
 INCLUDE_DIRECTORIES(${XtalOpt_BINARY_DIR}/src/xtalopt)
 
-find_package(Qwt REQUIRED)
-include_directories(${QWT_INCLUDE_DIRS})
-
 set( xtalopt_SRCS
      cliOptions.cpp
      debug.cpp
