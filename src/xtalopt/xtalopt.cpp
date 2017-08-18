@@ -3263,7 +3263,7 @@ namespace XtalOpt {
     // point
     QReadLocker sLocker(&s->lock());
     // This is to prevent segmentation faults...
-    while (lowestEnthalpyFUList.size() - 1 < s->getFormulaUnits()) {
+    while (lowestEnthalpyFUList.size() < s->getFormulaUnits() + 1) {
       lowestEnthalpyFUList.append(0);
     }
     if (lowestEnthalpyFUList.at(s->getFormulaUnits()) == 0 ||
