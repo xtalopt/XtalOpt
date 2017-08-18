@@ -28,7 +28,7 @@ set(tests
 if (ENABLE_SSH)
 set( tests
   ${tests}
-#  loadleveler
+  loadleveler
 )
 if (USE_CLI_SSH)
 set( tests
