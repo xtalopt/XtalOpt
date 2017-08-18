@@ -2660,8 +2660,9 @@ namespace XtalOpt {
         continue;
       }
 
-      if (version >= 3) {
-        if (!saveSuccessful) {
+      if (version >= 2) {
+        // saveSuccessful wasn't introduced until version 3
+        if (version >= 3 && !saveSuccessful) {
           // Check the structure.state.old file if this was not saved
           // successfully.
           DESTROY_SETTINGS(xtalStateFileName);

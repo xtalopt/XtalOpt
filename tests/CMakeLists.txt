@@ -22,7 +22,7 @@ set(tests
   spglib
   randdouble
 #  xtal
-#  xtaloptunit
+  xtaloptunit
 )
 
 if (ENABLE_SSH)
