@@ -19,6 +19,7 @@
 
 #include <globalsearch/macros.h>
 #include <globalsearch/queuemanager.h>
+#include <globalsearch/random.h>
 #include <globalsearch/structure.h>
 #include <globalsearch/tracker.h>
 
@@ -39,8 +40,12 @@ namespace XtalOpt {
 
   private slots:
     // Called before the first test function is executed.
-    void initTestCase() {
-      m_dialog = 0; m_opt = 0;};
+    void initTestCase()
+    {
+      m_dialog = 0;
+      m_opt = 0;
+      seedMt19937Generator(0);
+    }
     // Called after the last test function is executed.
     void cleanupTestCase() {};
     // Called before each test function is executed.

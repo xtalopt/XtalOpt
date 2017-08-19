@@ -296,6 +296,9 @@ void XtalTest::equalityOperatorTest_huge()
 
 void XtalTest::niggliReduceTest()
 {
+  // Seed the random number generator to ensure similar results each run
+  seedMt19937Generator(0);
+
   double a,b,c,alpha,beta,gamma;
   Xtal *xtal = 0;
 
@@ -384,6 +387,9 @@ struct CellParam
 
 void XtalTest::fixAnglesTest()
 {
+  // Seed the random number generator to ensure similar results each run
+  seedMt19937Generator(0);
+
   double a,b,c,alpha,beta,gamma;
   Xtal xtal;
   const double minLength = 10.0;
@@ -454,6 +460,9 @@ void XtalTest::fixAnglesTest()
 
 void XtalTest::getRandomRepresentationTest()
 {
+  // Seed the random number generator to ensure similar results between tests
+  seedMt19937Generator(0);
+
   // Parameters:
   const int iterations = 2500;
   const int numAtoms   = 50;
@@ -689,7 +698,7 @@ Direct\n\
   // Now a uniform translation to each structure. Initialize the
   // random number generator to the same value to ensure consistent
   // results.
-  srand(2000);
+  srand(0);
   Vector3 uTranslation (rand(), rand(), rand());
   uTranslation.normalize();
   // Now loop through all structures in rutile seeds, creating new
