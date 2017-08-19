@@ -299,7 +299,6 @@ void XtalTest::niggliReduceTest()
   // Seed the random number generator to ensure similar results each run
   seedMt19937Generator(0);
 
-  double a,b,c,alpha,beta,gamma;
   Xtal *xtal = 0;
 
   // Test from Gruber-Krivy 1976
@@ -390,7 +389,6 @@ void XtalTest::fixAnglesTest()
   // Seed the random number generator to ensure similar results each run
   seedMt19937Generator(0);
 
-  double a,b,c,alpha,beta,gamma;
   Xtal xtal;
   const double minLength = 10.0;
   const double maxLength = 30.0;
@@ -444,7 +442,7 @@ void XtalTest::fixAnglesTest()
     printf("%5s %10s %10s %10s %10s %10s %10s\n",
            "num", "a", "b", "c", "alpha", "beta", "gamma");
     for (int i = 0; i < badParams.size(); i++) {
-      printf("%5s %10s %10s %10s %10s %10s %10s\n",
+      printf("%5d %10f %10f %10f %10f %10f %10f\n",
              i+1,
              badParams.at(i).a,
              badParams.at(i).b,
