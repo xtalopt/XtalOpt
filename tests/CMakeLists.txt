@@ -21,14 +21,14 @@ set(tests
   structure
   spglib
   randdouble
-#  xtal
-#  xtaloptunit
+  xtal
+  xtaloptunit
 )
 
 if (ENABLE_SSH)
 set( tests
   ${tests}
-#  loadleveler
+  loadleveler
 )
 if (USE_CLI_SSH)
 set( tests

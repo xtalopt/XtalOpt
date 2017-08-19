@@ -336,7 +336,7 @@ namespace GlobalSearch {
       setFailCount(      settings->value("failCount",      0).toInt());
       setParents(        settings->value("parents",        "").toString());
       setRempath(        settings->value("rempath",        "").toString());
-      setFileName(       settings->value("fileName",       "").toString());
+      setFileName(       settings->value("fileName", m_fileName).toString());
       setStatus(   State(settings->value("status",         -1).toInt()));
 
       setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));

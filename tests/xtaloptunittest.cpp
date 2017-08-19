@@ -18,13 +18,16 @@
 #include <xtalopt/optimizers/gulp.h>
 
 #include <globalsearch/macros.h>
+#include <globalsearch/queuemanager.h>
+#include <globalsearch/random.h>
+#include <globalsearch/structure.h>
+#include <globalsearch/tracker.h>
 
 #include <QDebug>
 #include <QString>
 #include <QtTest>
 
 using namespace GlobalSearch;
-using namespace Avogadro;
 
 namespace XtalOpt {
   class XtalOptUnitTest : public QObject
@@ -37,8 +40,12 @@ namespace XtalOpt {
 
   private slots:
     // Called before the first test function is executed.
-    void initTestCase() {
-      m_dialog = 0; m_opt = 0;};
+    void initTestCase()
+    {
+      m_dialog = 0;
+      m_opt = 0;
+      seedMt19937Generator(0);
+    }
     // Called after the last test function is executed.
     void cleanupTestCase() {};
     // Called before each test function is executed.
@@ -61,7 +68,7 @@ namespace XtalOpt {
 
   void XtalOptUnitTest::constructDialog()
   {
-    m_dialog = new XtalOptDialog(0,0,0,false);
+    m_dialog = new XtalOptDialog(nullptr, nullptr, false);
     QVERIFY(m_dialog != 0);
   }
 
@@ -92,10 +99,10 @@ namespace XtalOpt {
     Structure *s;
     for (int i = 0; i < list->size(); i++) {
       s = list->at(i);
-      s->lock()->lockForWrite();
+      s->lock().lockForWrite();
       s->setStatus(status);
       s->setChangedSinceDupChecked(true);
-      s->lock()->unlock();
+      s->lock().unlock();
     }
   }
 
