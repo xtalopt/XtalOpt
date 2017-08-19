@@ -35,7 +35,7 @@ before_script:
 
 script:
  - make -j2 install
- - make test
+ - ctest --output-on-failure
 
 after_success:
  - if [[ -n "$TRAVIS_TAG" ]] && [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then
