@@ -584,7 +584,8 @@ namespace XtalOpt {
     return static_cast<Structure*>(oldXtal);
   }
 
-  Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg)
+  Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg,
+                             bool checkSpgWithSpglib)
   {
     Xtal* xtal = nullptr;
     QString* err = nullptr;
@@ -601,6 +602,7 @@ namespace XtalOpt {
     input.minRadius = minRadius;
     input.minVolume = vol_min * static_cast<double>(FU);
     input.maxVolume = vol_max * static_cast<double>(FU);
+
     input.maxAttempts = 10;
     input.verbosity = 'n';
     // This removes the guarantee that we will generate the right space group,
@@ -615,15 +617,17 @@ namespace XtalOpt {
       // So that we don't crash the program, make sure the xtal exists
       // before attempting to get its spacegroup number
       if (xtal) {
+        xtal->findSpaceGroup(tol_spg);
         // If we succeed, we're done!
-        if (xtal->getSpaceGroupNumber() == spg) break;
+        if (!checkSpgWithSpglib || xtal->getSpaceGroupNumber() == spg)
+          break;
       }
     } while (numAttempts < 3);
 
     // Make sure we don't call xtal->getSpaceGroupNumber() until we know that
     // we have an xtal
     if (xtal) {
-      if (xtal->getSpaceGroupNumber() != spg) {
+      if (checkSpgWithSpglib && xtal->getSpaceGroupNumber() != spg) {
         delete xtal;
         xtal = 0;
       }
