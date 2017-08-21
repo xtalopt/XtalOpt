@@ -3641,4 +3641,9 @@ namespace XtalOpt {
   {
     XtalOptCLIOptions::readRuntimeOptions(*this);
   }
+
+  void XtalOpt::printHello()
+  {
+    qDebug() << "Hello!!";
+  }
 } // end namespace XtalOpt

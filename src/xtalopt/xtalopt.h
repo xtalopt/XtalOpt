@@ -218,6 +218,8 @@ namespace XtalOpt {
 
     std::unique_ptr<XtalOptRpc> m_rpcClient;
 
+    static void printHello();
+
   public slots:
     bool startSearch() override;
     void generateNewStructure() override;

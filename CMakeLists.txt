@@ -109,3 +109,11 @@ add_subdirectory(src)
 if(BUILD_TESTS)
   add_subdirectory(tests)
 endif(BUILD_TESTS)
+
+option(BUILD_PYTHON_BINDINGS
+ 	"Whether or not to generate Python bindings using pybind11"
+ 	OFF )
+
+if(BUILD_PYTHON_BINDINGS)
+  add_subdirectory(python)
+endif(BUILD_PYTHON_BINDINGS)
