@@ -33,7 +33,7 @@ namespace GlobalSearch {
 
   class PbsQueueInterface : public RemoteQueueInterface
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     explicit PbsQueueInterface(OptBase *parent,

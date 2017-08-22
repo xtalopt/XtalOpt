@@ -25,7 +25,7 @@ namespace XtalOpt {
 
   class TabEdit : public GlobalSearch::DefaultEditTab
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     explicit TabEdit( XtalOptDialog *parent, XtalOpt *p );

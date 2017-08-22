@@ -36,7 +36,7 @@ namespace GAPC {
 
   class TabPlot : public GlobalSearch::AbstractTab
   {
-    Q_OBJECT;
+    Q_OBJECT
     // Workaround for Qt's ignorance of namespaces in signals/slots
     typedef Avogadro::PlotPoint PlotPoint;
 

@@ -73,7 +73,7 @@ slottedWC->postwaitUnlock();
    */
   class SlottedWaitCondition : public QObject, public QWaitCondition
   {
-    Q_OBJECT;
+    Q_OBJECT
   private:
     /**
      * Convenience mutex used internally. See class documentation for

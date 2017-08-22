@@ -28,7 +28,7 @@ namespace GlobalSearch {
   // to track its progress is to monitor signals), this class provides
   // a basic polling wrapper.
   class LocalQueueProcess : public QProcess
-  { Q_OBJECT;
+  { Q_OBJECT
   public:
     enum Status {NotStarted = 0, Running, Finished, Error};
   LocalQueueProcess(QObject *parent) :
@@ -57,7 +57,7 @@ namespace GlobalSearch {
    */
   class LocalQueueInterface : public QueueInterface
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     friend class LocalQueueInterfaceConfigDialog;

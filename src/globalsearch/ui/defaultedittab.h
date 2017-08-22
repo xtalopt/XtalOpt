@@ -34,7 +34,7 @@ namespace GlobalSearch {
    */
   class DefaultEditTab : public GlobalSearch::AbstractEditTab
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     /**

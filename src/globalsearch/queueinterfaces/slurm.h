@@ -33,7 +33,7 @@ namespace GlobalSearch {
 
   class SlurmQueueInterface : public RemoteQueueInterface
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     explicit SlurmQueueInterface(OptBase *parent,

@@ -23,7 +23,7 @@ namespace GAPC {
 
   class TabEdit : public GlobalSearch::DefaultEditTab
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     explicit TabEdit( GAPCDialog *parent, OptGAPC *p );

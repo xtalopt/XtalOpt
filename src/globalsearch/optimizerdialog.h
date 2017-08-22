@@ -29,7 +29,7 @@ namespace GlobalSearch {
   // Basic input dialog needed for all optimizers
   class OptimizerConfigDialog : public QDialog
   {
-    Q_OBJECT;
+    Q_OBJECT
   public:
     OptimizerConfigDialog(AbstractDialog *parent,
                           OptBase *opt, Optimizer *o);

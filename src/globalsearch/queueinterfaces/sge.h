@@ -33,7 +33,7 @@ namespace GlobalSearch {
 
   class SgeQueueInterface : public RemoteQueueInterface
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     explicit SgeQueueInterface(OptBase *parent,

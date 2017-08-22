@@ -31,7 +31,7 @@ namespace GlobalSearch {
    */
   class RemoteQueueInterface : public QueueInterface
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     /**

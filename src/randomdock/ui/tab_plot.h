@@ -40,7 +40,7 @@ namespace RandomDock {
 
   class TabPlot : public GlobalSearch::AbstractTab
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     explicit TabPlot( RandomDockDialog *parent, RandomDock *p );
