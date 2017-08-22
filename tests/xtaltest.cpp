@@ -298,6 +298,7 @@ void XtalTest::niggliReduceTest()
 {
   // Seed the random number generator to ensure similar results each run
   seedMt19937Generator(0);
+  srand(0);
 
   Xtal *xtal = 0;
 
@@ -462,7 +463,7 @@ void XtalTest::getRandomRepresentationTest()
   seedMt19937Generator(0);
 
   // Parameters:
-  const int iterations = 2500;
+  const int iterations = 250;
   const int numAtoms   = 50;
 
   Xtal *nxtal = 0;

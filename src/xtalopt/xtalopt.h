@@ -99,7 +99,8 @@ namespace XtalOpt {
 
     virtual void readRuntimeOptions() override;
 
-    Xtal* randSpgXtal(uint generation, uint id, uint FU, uint spg);
+    Xtal* randSpgXtal(uint generation, uint id, uint FU, uint spg,
+                      bool checkSpgWithSpglib = true);
     Xtal* generateRandomXtal(uint generation, uint id);
 
     //Identical to the previous generateRandomXtal except the number of formula units has been determined elsewhere
@@ -248,6 +249,7 @@ namespace XtalOpt {
     void resetDuplicates();
     void checkForDuplicates();
     void updateLowestEnthalpyFUList(GlobalSearch::Structure* s);
+    uint pickRandomSpgFromPossibleOnes();
 
     QString CLIRuntimeFile()
     {
@@ -258,6 +260,10 @@ namespace XtalOpt {
     void printOptionSettings(QTextStream& stream) const;
 
     void sendRpcUpdate(GlobalSearch::Structure* s);
+
+    // If composition is Ti1O2, returns {22, 8, 8}
+    QList<uint> getListOfAtoms(uint FU);
+    std::vector<uint> getStdVecOfAtoms(uint FU);
 
    protected:
     friend class XtalOptUnitTest;
@@ -294,10 +300,6 @@ namespace XtalOpt {
     // Sets a_min, b_min, c_min, ... to the given lattice structs
     void setLatticeMinsAndMaxes(latticeStruct& latticeMins,
                                 latticeStruct& latticeMaxes);
-    // If composition is Ti1O2, returns {22, 8, 8}
-    QList<uint> getListOfAtoms(uint FU);
-    std::vector<uint> getStdVecOfAtoms(uint FU);
-    uint pickRandomSpgFromPossibleOnes();
     void updateProgressBar(size_t goal, size_t attempted, size_t succeeded);
 
    signals:

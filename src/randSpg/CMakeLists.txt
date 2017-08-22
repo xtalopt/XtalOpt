@@ -23,6 +23,10 @@ option(BUILD_RELEASE
        "Whether to compile with optimizations or not"
        ON)
 
+if(BUILD_TESTS)
+  set(BUILD_RELEASE OFF)
+endif()
+
 # Let's perform some optimizations!
 if (BUILD_RELEASE)
   if(UNIX)
