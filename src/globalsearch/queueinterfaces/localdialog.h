@@ -35,7 +35,7 @@ namespace GlobalSearch {
   // Basic input dialog for local QueueInterfaces
   class LocalQueueInterfaceConfigDialog : public QDialog
   {
-    Q_OBJECT;
+    Q_OBJECT
   public:
     LocalQueueInterfaceConfigDialog(AbstractDialog *parent,
                                     OptBase *opt,

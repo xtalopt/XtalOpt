@@ -23,7 +23,7 @@ namespace RandomDock {
 
   class TabEdit : public GlobalSearch::DefaultEditTab
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     explicit TabEdit( RandomDockDialog *parent, RandomDock *p );

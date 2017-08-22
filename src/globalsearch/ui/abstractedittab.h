@@ -41,7 +41,7 @@ namespace GlobalSearch {
    */
   class AbstractEditTab : public GlobalSearch::AbstractTab
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     /**

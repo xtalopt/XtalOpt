@@ -33,7 +33,7 @@ namespace GlobalSearch {
 
   class LoadLevelerQueueInterface : public RemoteQueueInterface
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     explicit LoadLevelerQueueInterface(OptBase *parent,

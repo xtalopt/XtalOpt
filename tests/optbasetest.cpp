@@ -27,7 +27,7 @@ const QString DESCRIPTION  = "Description";
 // Since this is a pure virtual class, create a dummy derived class
 class DummyOptBase : public OptBase
 {
-  Q_OBJECT;
+  Q_OBJECT
 public:
   DummyOptBase() : OptBase(0) {m_idString = DUMMYNAME;};
 public slots:
@@ -41,7 +41,7 @@ protected:
 // Dummy optimizer for user value keyword checking
 class DummyOptimizer : public Optimizer
 {
-  Q_OBJECT;
+  Q_OBJECT
 public:
   DummyOptimizer(OptBase *p) : Optimizer(p) {};
 };

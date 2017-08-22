@@ -40,7 +40,7 @@ namespace GlobalSearch {
    */
   class QueueInterface : public QObject
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     /**

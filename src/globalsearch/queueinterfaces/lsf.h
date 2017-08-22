@@ -33,7 +33,7 @@ namespace GlobalSearch {
 
   class LsfQueueInterface : public RemoteQueueInterface
   {
-    Q_OBJECT;
+    Q_OBJECT
 
   public:
     explicit LsfQueueInterface(OptBase *parent,
