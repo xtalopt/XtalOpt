@@ -1,9 +1,12 @@
-XtalOpt - r9
+[![Build Status](https://travis-ci.org/xtalopt/XtalOpt.svg?branch=master)](https://travis-ci.org/xtalopt/XtalOpt)
+[![codecov](https://codecov.io/gh/xtalopt/XtalOpt/branch/master/graph/badge.svg)](https://codecov.io/gh/xtalopt/XtalOpt)
+
+XtalOpt
 =========
 
 XtalOpt searches for the global minimum of a crystal structure's
-PES using a evolutionary algorithm. It is implemented as an extension
-to the Avogadro molecular editor and licensed under the GPL v2 or later.
+potential energy surface using an evolutionary algorithm. It is licensed
+with the "New" BSD license.
 
 More information can be found at http://xtalopt.github.io.
 
@@ -19,7 +22,7 @@ http://xtalopt.github.io/tut.html
 
 #License
 
-GPL v2 or later. See COPYING.
+The "New" BSD License. See COPYING.
 
 #Authors
 
@@ -33,8 +36,8 @@ All contributors, in alphabetical order:
 =========
 Included sources from various projects are found under:
 
-- src/spglib   http://spglib.sourceforge.net/
-- src/libssh   http://www.libssh.org/
+- thirdparty/spglib   https://atztogo.github.io/spglib/
+- thirdparty/pugixml  https://pugixml.org/
 
 These files, other than some minor modifications for interoperability
 with XtalOpt/libglobalsearch, are the works of the copyright holders
