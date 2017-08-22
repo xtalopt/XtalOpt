@@ -298,6 +298,7 @@ void XtalTest::niggliReduceTest()
 {
   // Seed the random number generator to ensure similar results each run
   seedMt19937Generator(0);
+  srand(0);
 
   Xtal *xtal = 0;
 

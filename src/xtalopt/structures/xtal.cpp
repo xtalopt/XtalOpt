@@ -2232,7 +2232,7 @@ namespace XtalOpt {
 
     // Set components of new v3
     // denom is still L1
-    Q_ASSERT(denom == L1);
+    //Q_ASSERT(denom == L1);
     newMat(2,0) = (x1*x3 + y1*y3 + z1*z3) / denom;
 
     denom = L1*L1 * newMat(1,1);
