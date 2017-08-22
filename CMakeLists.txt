@@ -66,6 +66,20 @@ option ( BUILD_INDEPENDENT_PACKAGE
          "Builds an independent package to be distributed. This will automatically switch on ENABLE_RPATH and INSTALL_DEPENDENCIES"
          OFF )
 
+# The main packages
+option( ENABLE_EXAMPLESEARCH
+  "Build the examplesearch extension"
+  OFF )
+option( ENABLE_XTALOPT
+  "Build the XtalOpt extension"
+  ON )
+option( ENABLE_RANDOMDOCK
+  "Build the RandomDock extension"
+  OFF )
+option( ENABLE_GAPC
+  "Build the evolutionary cluster search extension"
+  OFF )
+
 if(BUILD_INDEPENDENT_PACKAGE)
   set(ENABLE_RPATH ON)
   set(INSTALL_DEPENDENCIES ON)
@@ -94,7 +108,7 @@ if(ENABLE_SSH)
       "libssh too old! Installed version is ${LibSSH_VERSION}, need at least "
       "libssh ${LibSSH_MIN_VERSION}")
     endif()
-    include_directories(${LIBSS_INCLUDE_DIRS})
+    include_directories(${LIBSSH_INCLUDE_DIRS})
   endif(USE_CLI_SSH)
 endif()
 
@@ -104,6 +118,8 @@ if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC"  )
 endif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
+add_subdirectory(thirdparty)
+include_directories(thirdparty)
 add_subdirectory(src)
 
 if(BUILD_TESTS)
