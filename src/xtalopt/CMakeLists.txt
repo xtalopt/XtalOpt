@@ -54,10 +54,6 @@ if(UNIX AND ENABLE_RPATH)
   set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 
-option(BUILD_STATIC_XTALOPT_LIB
-  "Build a static xtalopt library called xtalopt_static.a?"
-  OFF)
-
 add_library(xtalopt_static STATIC ${xtalopt_SRCS} ${xtalopt_RCS})
 target_link_libraries(xtalopt_static globalsearch XtalComp spglib RandSpg
                       "${QWT_LIBRARIES}")
