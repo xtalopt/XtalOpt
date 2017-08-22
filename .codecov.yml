@@ -14,6 +14,7 @@ coverage:
         threshold: 50%
   ignore:
    - "tests/"
+   - "thirdparty/"
    - "src/examplesearch/"
    - "src/gapc/"
    - "src/randomdock/"
