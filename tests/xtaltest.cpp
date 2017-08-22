@@ -462,7 +462,7 @@ void XtalTest::getRandomRepresentationTest()
   seedMt19937Generator(0);
 
   // Parameters:
-  const int iterations = 2500;
+  const int iterations = 250;
   const int numAtoms   = 50;
 
   Xtal *nxtal = 0;
