@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<molecule xmlns="http://www.xml-cml.org/schema" xmlns:cml="http://www.xml-cml.org/dict/cml" xmlns:units="http://www.xml-cml.org/units/units" xmlns:xsd="http://www.w3c.org/2001/XMLSchema" xmlns:iupac="http://www.iupac.org">
+  <name>TiO2 rutile</name>
+  <crystal>
+    <scalar title="a" units="units:angstrom">2.95812</scalar>
+    <scalar title="b" units="units:angstrom">4.59373</scalar>
+    <scalar title="c" units="units:angstrom">4.59373</scalar>
+    <scalar title="alpha" units="units:degree">90</scalar>
+    <scalar title="beta" units="units:degree">90</scalar>
+    <scalar title="gamma" units="units:degree">90</scalar>
+  </crystal>
+  <atomArray>
+    <atom id="a1" elementType="Ti" xFract="0" yFract="0" zFract="0" />
+    <atom id="a2" elementType="Ti" xFract="0.5" yFract="0.5" zFract="0.5" />
+    <atom id="a3" elementType="O" xFract="0" yFract="0.3053" zFract="0.3053" />
+    <atom id="a4" elementType="O" xFract="-2.46519e-32" yFract="0.6947" zFract="0.6947" />
+    <atom id="a5" elementType="O" xFract="0.5" yFract="0.1947" zFract="0.8053" />
+    <atom id="a6" elementType="O" xFract="0.5" yFract="0.8053" zFract="0.1947" />
+  </atomArray>
+  <bondArray />
+</molecule>
