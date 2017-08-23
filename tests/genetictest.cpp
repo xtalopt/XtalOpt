@@ -21,6 +21,7 @@
 #include <QString>
 #include <QtTest>
 
+#include <fstream>
 #include <memory>
 
 using GlobalSearch::Atom;
@@ -72,21 +73,6 @@ void GeneticTest::cleanup()
 {
 }
 
-const QString rutilePoscar = "\
-O4Ti2 rutile\n\
- 1.00000000\n\
-   2.95812000   0.00000000   0.00000000\n\
-   0.00000000   4.59373000   0.00000000\n\
-   0.00000000   0.00000000   4.59373000\n\
-   4   2\n\
-Direct\n\
-  0.00000000  0.30530000  0.30530000\n\
-  0.00000000  0.69470000  0.69470000\n\
-  0.50000000  0.19470000  0.80530000\n\
-  0.50000000  0.80530000  0.19470000\n\
-  0.00000000  0.00000000  0.00000000\n\
-  0.50000000  0.50000000  0.50000000\n";
-
 // How many atoms appear to have been swapped?
 // Returns the number of swapped atoms
 // If there appear to be changes to atom positions other than a swap
@@ -130,6 +116,14 @@ void GeneticTest::exchange()
 
   // The tolerance for our tests
   double tol = 1.e-6;
+
+  QString rutileFileName = QString(TESTDATADIR) + "/data/rutile.POSCAR";
+  std::ifstream in(rutileFileName.toStdString());
+  QVERIFY(in.is_open());
+
+  std::stringstream buf;
+  buf << in.rdbuf();
+  QString rutilePoscar = buf.str().c_str();
 
   std::unique_ptr<Xtal> xtal(XtalOpt::Xtal::POSCARToXtal(rutilePoscar));
 
