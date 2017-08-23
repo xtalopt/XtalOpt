@@ -17,6 +17,7 @@ link_directories(
 )
 
 set(tests
+  formats
   genetic
   optbase
   structure

@@ -25,6 +25,7 @@ set( globalsearch_SRCS
      structures/unitcell.cpp
      formats/formats.cpp
      formats/castepformat.cpp
+     formats/cmlformat.cpp
      formats/gulpformat.cpp
      formats/pwscfformat.cpp
      formats/siestaformat.cpp

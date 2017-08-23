@@ -17,6 +17,7 @@
 
 #include <globalsearch/formats/formats.h>
 #include <globalsearch/formats/castepformat.h>
+#include <globalsearch/formats/cmlformat.h>
 #include <globalsearch/formats/gulpformat.h>
 #include <globalsearch/formats/pwscfformat.h>
 #include <globalsearch/formats/siestaformat.h>
@@ -27,6 +28,7 @@
 #include <QDebug>
 #include <QString>
 
+#include <fstream>
 #include <map>
 
 using std::make_pair;
@@ -38,6 +40,7 @@ using std::vector;
 static const vector<string> _formats =
 {
   "CASTEP",
+  "CML",
   "GULP",
   "PWSCF",
   "SIESTA",
@@ -50,6 +53,7 @@ static const vector<string> _formats =
 static const vector<pair<string, string>> _formatExtensions =
 {
   make_pair("castep", "CASTEP"),
+  make_pair("cml", "CML"),
   make_pair("got", "GULP"),
   make_pair("gout", "GULP"),
   make_pair("xyz", "XYZ")
@@ -87,6 +91,15 @@ namespace GlobalSearch {
     // List the formats here
     if (format.toUpper() == QString("CASTEP"))
       return CastepFormat::read(s, filename);
+
+    if (format.toUpper() == QString("CML")) {
+      std::ifstream in(filename.toStdString().c_str());
+      if (!in.is_open()) {
+        qDebug() << "Failed to open CML file: " << filename;
+        return false;
+      }
+      return CmlFormat::read(*s, in);
+    }
 
     if (format.toUpper() == QString("GULP"))
       return GulpFormat::read(s, filename);
