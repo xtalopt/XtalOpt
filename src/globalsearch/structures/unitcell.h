@@ -87,7 +87,7 @@ namespace GlobalSearch
      *
      * @return True if the cell is valid. False if it is not.
      */
-    bool isValid() const { return volume() > 1.e8; };
+    bool isValid() const { return volume() > 1.e-8; };
 
     /**
      * This uses cell parameters to create the cell matrix.
