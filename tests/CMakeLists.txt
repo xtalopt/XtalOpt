@@ -17,6 +17,7 @@ link_directories(
 )
 
 set(tests
+  genetic
   optbase
   structure
   spglib

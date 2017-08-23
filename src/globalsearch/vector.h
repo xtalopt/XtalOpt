@@ -22,7 +22,7 @@ namespace GlobalSearch
 {
   typedef Eigen::Matrix<double, 3, 1> Vector3;
 
-  static bool fuzzyCompare(double a1, double a2, double tol = 1e-8)
+  inline bool fuzzyCompare(double a1, double a2, double tol = 1e-8)
   {
     return std::fabs(a1 - a2) < tol;
   }
