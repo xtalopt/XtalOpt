@@ -20,6 +20,7 @@
 #include <globalsearch/utilities/utilityfunctions.h>
 #include <globalsearch/structure.h>
 
+#include <bitset>
 #include <cmath>
 #include <iostream>
 #include <map>
