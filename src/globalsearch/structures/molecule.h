@@ -77,6 +77,16 @@ namespace GlobalSearch
                   const Vector3& pos = Vector3(0.0, 0.0, 0.0));
 
     /**
+     * This function overloads addAtom. This adds a copy of the Atom object
+     * passed to it.
+     *
+     * @param atom A copy of the Atom object to be added.
+     *
+     * @return A reference to the atom just created.
+     */
+    Atom& addAtom(const Atom& atom);
+
+    /**
      * Set the atoms in the molecule. Any bonds will be cleared.
      *
      * @param atoms The atoms to be set in the molecule.
@@ -385,6 +395,12 @@ namespace GlobalSearch
   inline Atom& Molecule::addAtom(unsigned short atomicNum, const Vector3& pos)
   {
     m_atoms.push_back(Atom(atomicNum, pos));
+    return m_atoms.back();
+  }
+
+  inline Atom& Molecule::addAtom(const Atom& atom)
+  {
+    m_atoms.push_back(atom);
     return m_atoms.back();
   }
 
