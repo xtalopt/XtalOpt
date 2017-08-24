@@ -56,7 +56,7 @@ QList<uint> FileUtils::parseUIntString(const QString& s, QString& result)
   }
 
   // Check for values that begin, are between, or end hyphens
-  int i = 0, j = 0;
+  int j = 0;
   bool isNumeric;
   for (int i = 0; i < sList.size(); i++) {
     sList2 = sList.at(i).split("-", QString::SkipEmptyParts);

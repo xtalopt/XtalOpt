@@ -51,25 +51,25 @@ namespace GlobalSearch {
 
   OptBase::OptBase(AbstractDialog *parent) :
     QObject(parent),
+    cutoff(-1),
+    testingMode(false),
+    test_nRunsStart(1),
+    test_nRunsEnd(100),
+    test_nStructs(600),
+    stateFileMutex(new QMutex),
+    backTraceMutex(new QMutex),
+    savePending(false),
+    readOnly(false),
+    m_idString("Generic"),
+#ifdef ENABLE_SSH
+    m_ssh(nullptr),
+#endif // ENABLE_SSH
     m_dialog(parent),
     m_tracker(new Tracker (this)),
     m_queueThread(new QThread),
     m_queue(new QueueManager(m_queueThread, this)),
     m_queueInterface(0), // This will be set when the GUI is initialized
     m_optimizer(0),      // This will be set when the GUI is initialized
-#ifdef ENABLE_SSH
-    m_ssh(nullptr),
-#endif // ENABLE_SSH
-    m_idString("Generic"),
-    stateFileMutex(new QMutex),
-    backTraceMutex(new QMutex),
-    savePending(false),
-    readOnly(false),
-    testingMode(false),
-    test_nRunsStart(1),
-    test_nRunsEnd(100),
-    test_nStructs(600),
-    cutoff(-1),
     m_schemaVersion(1),
     m_usingGUI(true),
     m_logErrorDirs(false)
@@ -540,7 +540,7 @@ namespace GlobalSearch {
     else {
       (*newPassword) = PasswordPrompt::getPassword().c_str();
     }
-  };
+  }
 
   void OptBase::promptForBoolean(const QString &message,
                                  bool *ok)

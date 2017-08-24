@@ -639,7 +639,7 @@ namespace GlobalSearch {
 
     // Reset atoms
     clearAtoms();
-    for (int i = 0; i < atomicNums.size(), i < coords.size(); ++i)
+    for (int i = 0; i < atomicNums.size() && i < coords.size(); ++i)
       addAtom(atomicNums[i], coords[i]);
 
     // Update energy/enthalpy
@@ -776,7 +776,7 @@ namespace GlobalSearch {
       .arg(getIDNumber(), 6)
       .arg(getEnthalpy(), 10)
       .arg(status, 11);
-  };
+  }
 
   bool Structure::getNearestNeighborDistances(QList<double> * list) const
   {

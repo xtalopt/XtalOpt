@@ -32,9 +32,9 @@ namespace GlobalSearch {
                                    OptBase *o,
                                    SgeQueueInterface *p)
     : QDialog(parent),
-      ui(new Ui::SgeConfigDialog),
       m_opt(o),
-      m_sge(p)
+      m_sge(p),
+      ui(new Ui::SgeConfigDialog)
   {
     ui->setupUi(this);
   }

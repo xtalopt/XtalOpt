@@ -32,9 +32,9 @@ namespace GlobalSearch {
                                    OptBase *o,
                                    LsfQueueInterface *p)
     : QDialog(parent),
-      ui(new Ui::LsfConfigDialog),
       m_opt(o),
-      m_lsf(p)
+      m_lsf(p),
+      ui(new Ui::LsfConfigDialog)
   {
     ui->setupUi(this);
   }

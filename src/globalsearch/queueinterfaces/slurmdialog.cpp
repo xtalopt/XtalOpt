@@ -32,9 +32,9 @@ namespace GlobalSearch {
                                        OptBase *o,
                                        SlurmQueueInterface *p)
     : QDialog(parent),
-      ui(new Ui::SlurmConfigDialog),
       m_opt(o),
-      m_slurm(p)
+      m_slurm(p),
+      ui(new Ui::SlurmConfigDialog)
   {
     ui->setupUi(this);
     ui->cb_logErrorDirs->setChecked(m_opt->m_logErrorDirs);

@@ -32,9 +32,9 @@ namespace GlobalSearch {
                                                    OptBase *o,
                                                    LoadLevelerQueueInterface *p)
     : QDialog(parent),
-      ui(new Ui::LoadLevelerConfigDialog),
       m_opt(o),
-      m_ll(p)
+      m_ll(p),
+      ui(new Ui::LoadLevelerConfigDialog)
   {
     ui->setupUi(this);
   }

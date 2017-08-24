@@ -32,9 +32,9 @@ namespace GlobalSearch {
                                    OptBase *o,
                                    PbsQueueInterface *p)
     : QDialog(parent),
-      ui(new Ui::PbsConfigDialog),
       m_opt(o),
-      m_pbs(p)
+      m_pbs(p),
+      ui(new Ui::PbsConfigDialog)
   {
     ui->setupUi(this);
   }

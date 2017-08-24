@@ -186,7 +186,7 @@ inline double rad2deg(double a)
 }
 
 // Returns a string with leading and trailing whitespace removed
-static std::string trim(const std::string& str,
+inline std::string trim(const std::string& str,
                         const std::string& whitespace = " \t")
 {
   const auto strBegin = str.find_first_not_of(whitespace);
@@ -200,7 +200,7 @@ static std::string trim(const std::string& str,
 
 // Returns a 'reduced' string. In a reduced string, every series of repeated
 // spaces is reduced to 1 space
-static std::string reduce(const std::string& str,
+inline std::string reduce(const std::string& str,
                           const std::string& fill = " ",
                           const std::string& whitespace = " \t")
 {
@@ -249,7 +249,7 @@ inline std::string getFileExt(const std::string& s)
 
 // Reads a line in reverse from the ifstream and sets the ifstream to
 // be at the position where it ended.
-static std::istream& reverseGetline(std::istream& in, std::string& line)
+inline std::istream& reverseGetline(std::istream& in, std::string& line)
 {
   line.clear();
   // First check to see if we are at EOF. If we are, move back one character.

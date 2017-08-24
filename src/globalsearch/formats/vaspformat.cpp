@@ -224,7 +224,8 @@ namespace GlobalSearch {
     double energy = 0.0, enthalpy = 0.0;
 
     bool energyFound = getOUTCAREnergy(outcar_ifs, energy);
-    bool enthalpyFound = getOUTCAREnthalpy(outcar_ifs, enthalpy);
+    //bool enthalpyFound = getOUTCAREnthalpy(outcar_ifs, enthalpy);
+    getOUTCAREnthalpy(outcar_ifs, enthalpy);
 
     if (outcar_ifs && !energyFound) {
       qDebug() << "Warning: the energy could not be found in the"
