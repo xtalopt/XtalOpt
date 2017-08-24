@@ -62,10 +62,10 @@ namespace XtalOpt {
 
   XtalOpt::XtalOpt(XtalOptDialog *parent) :
     OptBase(parent),
-    m_initWC(new SlottedWaitCondition (this)),
     using_randSpg(false),
     minXtalsOfSpgPerFU(QList<int>()),
-    m_rpcClient(make_unique<XtalOptRpc>())
+    m_rpcClient(make_unique<XtalOptRpc>()),
+    m_initWC(new SlottedWaitCondition (this))
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";
@@ -588,7 +588,6 @@ namespace XtalOpt {
                              bool checkSpgWithSpglib)
   {
     Xtal* xtal = nullptr;
-    QString* err = nullptr;
 
     // Let's make the spg input
     latticeStruct latticeMins, latticeMaxes;
@@ -2230,7 +2229,6 @@ namespace XtalOpt {
     QStringList list = templateString.split("%");
     QString line;
     QString origLine;
-    Xtal *xtal = qobject_cast<Xtal*>(structure);
     for (int line_ind = 0; line_ind < list.size(); line_ind++) {
       origLine = line = list.at(line_ind);
       interpretKeyword_base(line, structure);
@@ -3440,6 +3438,7 @@ namespace XtalOpt {
       else
         return "unknown";
     }
+    return "unknown";
   }
 
   void XtalOpt::printOptionSettings(QTextStream& stream) const

@@ -1004,7 +1004,7 @@ namespace XtalOpt {
 
     xtalopt->compMolUnit.clear();
 
-    unsigned int numRows = ui.table_comp->rowCount();
+    ui.table_comp->rowCount();
     unsigned int numRowsMolUnit = ui.table_molUnit->rowCount();
     if (numRowsMolUnit == 0) {
       xtalopt->compMolUnit.clear();
@@ -1433,8 +1433,6 @@ namespace XtalOpt {
 
   void TabInit::removeRow()
   {
-    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
     disconnect(ui.table_molUnit, 0, 0, 0);
     ui.table_molUnit->removeRow(ui.table_molUnit->currentRow());
 

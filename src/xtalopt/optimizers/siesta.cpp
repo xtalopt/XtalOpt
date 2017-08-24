@@ -106,7 +106,6 @@ namespace XtalOpt {
   }
 
   void SIESTAOptimizer::buildPSFs() {
-    double enmax = 0;
     m_templates["xtal.psf"].clear();
     // "PSF info" is of type
     // QList<QHash<QString, QString> >

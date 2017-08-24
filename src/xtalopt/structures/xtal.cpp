@@ -296,8 +296,10 @@ namespace XtalOpt {
     Matrix3 cob(tmpMat);
 
     // Enable debugging output here:
-//#define NIGGLI_DEBUG(step) qDebug() << iter << step << A << B << C << xi << eta << zeta << cob.determinant(); \
-//std::cout << cob << std::endl;
+/*
+#define NIGGLI_DEBUG(step) qDebug() << iter << step << A << B << C << xi << eta << zeta << cob.determinant();
+    std::cout << cob << std::endl;
+*/
 #define NIGGLI_DEBUG(step)
 
     unsigned int iter;
@@ -596,8 +598,9 @@ namespace XtalOpt {
     // Get unit cell
     Matrix3 cellMatrix = this->unitCell().cellMatrix();
 
-    unsigned int spg = reduceToPrimitive(&fcoords, &atomicNums,
-                                         &cellMatrix, cartTol);
+    // Returns an unsigned int of the space group (in case we ever need it)
+    reduceToPrimitive(&fcoords, &atomicNums,
+                      &cellMatrix, cartTol);
 
     if (originalFCoordsSize == fcoords.size()) return true;
     else return false;
@@ -1158,7 +1161,7 @@ namespace XtalOpt {
     if (valence >= 1) {
       // Easy...only linear possible
       bond1 *= dist;
-      Atom& a2 = addAtom(atomicNum, (a1Coords - bond1));
+      addAtom(atomicNum, (a1Coords - bond1));
     }
 
     if (valence == 1) {
@@ -1168,7 +1171,7 @@ namespace XtalOpt {
       // Linear
       if (hyb == 1) {
         // Add 2nd neighbor directly across from a2
-        Atom& a3 = addAtom(atomicNum, (a1Coords + bond1));
+        addAtom(atomicNum, (a1Coords + bond1));
 
       // Bent
       } else if (hyb == 2) {
@@ -1190,7 +1193,7 @@ namespace XtalOpt {
         Vector3 bond2 = bond1 - v2 * tan(60.0 * DEG_TO_RAD);
         bond2.normalize();
         bond2 *= dist;
-        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+        addAtom(atomicNum, (a1Coords + bond2));
       }
 
     } else if (valence == 3) {
@@ -1216,14 +1219,14 @@ namespace XtalOpt {
         Vector3 bond2 = bond1 - v2 * tan(60.0 * DEG_TO_RAD);
         bond2.normalize();
         bond2 *= dist;
-        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+        addAtom(atomicNum, (a1Coords + bond2));
 
         // 3rd Neighbor
         // rotate in opposite direction
         Vector3 bond3 = bond1 - v2 * tan(120.0 * DEG_TO_RAD);
         bond3.normalize();
         bond3 *= dist;
-        Atom& a4 = addAtom(atomicNum, (a1Coords + bond3));
+        addAtom(atomicNum, (a1Coords + bond3));
 
       // Trigonal Pyramidal
       } else if (hyb == 3) {
@@ -1244,7 +1247,7 @@ namespace XtalOpt {
         Vector3 bond2 = bond1 - v2 * tan(70.5 * DEG_TO_RAD);
         bond2.normalize();
         bond2 *= dist;
-        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+        addAtom(atomicNum, (a1Coords + bond2));
 
         // 3rd Neighbor
         bond1.normalize();
@@ -1259,7 +1262,7 @@ namespace XtalOpt {
         Vector3 bond3 = v2 + v1 * tan((70.5 / 2) * DEG_TO_RAD);
         bond3.normalize();
         bond3 *= dist;
-        Atom& a4 = addAtom(atomicNum, (a1Coords + bond3));
+        addAtom(atomicNum, (a1Coords + bond3));
 
       // T-Shaped
       } else if (hyb == 4) {
@@ -1276,11 +1279,11 @@ namespace XtalOpt {
         Vector3 v1 = bond1.cross(tempCoords);
         v1.normalize();
         Vector3 bond2 = v1 * dist;
-        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+        addAtom(atomicNum, (a1Coords + bond2));
 
         // 3rd Neighbor
         // Add atom across from previous
-        Atom& a4 = addAtom(atomicNum, (a1Coords - bond2));
+        addAtom(atomicNum, (a1Coords - bond2));
 
       }
     } else if (valence == 4) {
@@ -1305,7 +1308,7 @@ namespace XtalOpt {
         Vector3 bond2 = bond1 - v2 * tan(70.5 * DEG_TO_RAD);
         bond2.normalize();
         bond2 *= dist;
-        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+        addAtom(atomicNum, (a1Coords + bond2));
 
         // 3rd Neighbor
         bond1.normalize();
@@ -1320,20 +1323,20 @@ namespace XtalOpt {
         Vector3 bond3 = v2 + v1 * tan((70.5 / 2) * DEG_TO_RAD);
         bond3.normalize();
         bond3 *= dist;
-        Atom& a4 = addAtom(atomicNum, (a1Coords + bond3));
+        addAtom(atomicNum, (a1Coords + bond3));
 
         // 4th Neighbor
         // make bond 109.5 degrees from bond 1, 2 & 3
         Vector3 bond4 = -v2 + v1 * tan((70.5 / 2) * DEG_TO_RAD);
         bond4.normalize();
         bond4 *= dist;
-        Atom& a5 = addAtom(atomicNum, (a1Coords + bond4));
+        addAtom(atomicNum, (a1Coords + bond4));
 
       // Square Planar
       } else if (hyb == 4) {
         // 2nd Neighbor
         bond1 *= dist;
-        Atom& a3 = addAtom(atomicNum, (a1Coords + bond1));
+        addAtom(atomicNum, (a1Coords + bond1));
 
         // 3rd Neighbor
         // Generate new random coordinates
@@ -1348,11 +1351,11 @@ namespace XtalOpt {
         Vector3 v1 = bond1.cross(tempCoords);
         v1.normalize();
         Vector3 bond2 = v1 * dist;
-        Atom& a4 = addAtom(atomicNum, (a1Coords + bond2));
+        addAtom(atomicNum, (a1Coords + bond2));
 
         // 4th Neighbor
         // Add atom across from previous
-        Atom& a5 = addAtom(atomicNum, (a1Coords - bond2));
+        addAtom(atomicNum, (a1Coords - bond2));
 
       // See-saw
       } else if (hyb == 5) {
@@ -1374,7 +1377,7 @@ namespace XtalOpt {
         Vector3 bond2 = bond1 - v2 * tan(60.0 * DEG_TO_RAD);
         bond2.normalize();
         bond2 *= dist;
-        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+        addAtom(atomicNum, (a1Coords + bond2));
 
         // 3rd Neighbor
         // Get a vector perpendicular to bond 1 & 2
@@ -1383,11 +1386,11 @@ namespace XtalOpt {
         Vector3 bond3 = bond1.cross(bond2);
         bond3.normalize();
         bond3 *= dist;
-        Atom& a4 = addAtom(atomicNum, (a1Coords + bond3));
+        addAtom(atomicNum, (a1Coords + bond3));
 
         // 4th Neighbor
         //Add the 4th neighbor across fro mthe previous
-        Atom& a5 = addAtom(atomicNum, (a1Coords - bond3));
+        addAtom(atomicNum, (a1Coords - bond3));
       }
     } else if (valence == 5) {
       // Normalize bond1
@@ -1413,14 +1416,14 @@ namespace XtalOpt {
         Vector3 bond2 = bond1 - v2 * tan(60.0 * DEG_TO_RAD);
         bond2.normalize();
         bond2 *= dist;
-        Atom& a3 = addAtom(atomicNum, (a1Coords + bond2));
+        addAtom(atomicNum, (a1Coords + bond2));
 
         // 3rd Neighbor
         // Rotate to 120 degrees from bond 1 the other way
         Vector3 bond3 = bond1 - v2 * tan(120.0 * DEG_TO_RAD);
         bond3.normalize();
         bond3 *= dist;
-        Atom& a4 = addAtom(atomicNum, (a1Coords + bond3));
+        addAtom(atomicNum, (a1Coords + bond3));
 
         // 4th Neighbor
         // Get a vector perpendicular to bond 1 & 2
@@ -1429,18 +1432,18 @@ namespace XtalOpt {
         Vector3 bond4 = bond1.cross(bond2);
         bond4.normalize();
         bond4 *= dist;
-        Atom& a5 = addAtom(atomicNum, (a1Coords + bond4));
+        addAtom(atomicNum, (a1Coords + bond4));
 
         // 5th Neighbor
         // Add across from the previous
-        Atom& a6 = addAtom(atomicNum, (a1Coords - bond4));
+        addAtom(atomicNum, (a1Coords - bond4));
 
       // Square Pyramidal
       } else if (hyb == 6) {
         // 2nd Neighbor
         // Add directly across from a2
         bond1 *= dist;
-        Atom& a3 = addAtom(atomicNum, (a1Coords + bond1));
+        addAtom(atomicNum, (a1Coords + bond1));
 
         // 3rd Neighbor
         // 90 degrees from atoms 2 & 3
@@ -1456,18 +1459,18 @@ namespace XtalOpt {
         Vector3 bond2 = bond1.cross(tempCoords);
         bond2.normalize();
         bond2 *= dist;
-        Atom& a4 = addAtom(atomicNum, (a1Coords + bond2));
+        addAtom(atomicNum, (a1Coords + bond2));
 
         // 4th Neighbor
         // Add atom across from previous
-        Atom& a5 = addAtom(atomicNum, (a1Coords - bond2));
+        addAtom(atomicNum, (a1Coords - bond2));
 
         // 5th Neighbor
         // Another vector perpendicular to the plane
         Vector3 bond3 = bond1.cross(bond2);
         bond3.normalize();
         bond3 *= dist;
-        Atom& a6 = addAtom(atomicNum, (a1Coords + bond3));
+        addAtom(atomicNum, (a1Coords + bond3));
       }
     } else if (valence == 6) {
       // Normalize bond1
@@ -1478,7 +1481,7 @@ namespace XtalOpt {
         // 2nd Neighbor
         // Add directly across from a2
         bond1 *= dist;
-        Atom& a3 = addAtom(atomicNum, (a1Coords + bond1));
+        addAtom(atomicNum, (a1Coords + bond1));
 
         // 3rd Neighbor
         // 90 degrees from atoms 2 & 3
@@ -1494,22 +1497,22 @@ namespace XtalOpt {
         Vector3 bond2 = bond1.cross(tempCoords);
         bond2.normalize();
         bond2 *= dist;
-        Atom& a4 = addAtom(atomicNum, (a1Coords + bond2));
+        addAtom(atomicNum, (a1Coords + bond2));
 
         // 4th Neighbor
         // Add atom across from previous
-        Atom& a5 = addAtom(atomicNum, (a1Coords - bond2));
+        addAtom(atomicNum, (a1Coords - bond2));
 
         // 5th Neighbor
         // Another vector perpendicular to the plane
         Vector3 bond3 = bond1.cross(bond2);
         bond3.normalize();
         bond3 *= dist;
-        Atom& a6 = addAtom(atomicNum, (a1Coords + bond3));
+        addAtom(atomicNum, (a1Coords + bond3));
 
         // 6th Neighbor
         // Across from previous
-        Atom& a7 = addAtom(atomicNum, (a1Coords - bond3));
+        addAtom(atomicNum, (a1Coords - bond3));
       }
     }
     return true;
@@ -1977,7 +1980,7 @@ namespace XtalOpt {
       .arg(getFormulaUnits(), 6)
       .arg(m_spgSymbol, 10)
       .arg(status, 11);
-  };
+  }
 
 
   uint Xtal::getSpaceGroupNumber() {

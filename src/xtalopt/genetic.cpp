@@ -587,7 +587,6 @@ namespace XtalOpt {
     //
     // Average cell matricies
     // The weight the parameters of the two parents matches the cutVal
-    double weight = getRandDouble();
     Matrix3 dims;
     for (uint row = 0; row < 3; row++) {
       for (uint col = 0; col < 3; col++) {
