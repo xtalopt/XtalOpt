@@ -89,8 +89,8 @@ void createAndSaveImage(unsigned int size,
 {
   // Find greatest number of hits
   unsigned int max = 0;
-  for (int i = 0; i < size; i++) {
-    for (int j = 0; j < size; j++) {
+  for (unsigned int i = 0; i < size; i++) {
+    for (unsigned int j = 0; j < size; j++) {
       if (hits[i][j] > max) {
         max = hits[i][j];
       }
@@ -99,8 +99,8 @@ void createAndSaveImage(unsigned int size,
 
   // Generate image
   QImage im (size, size, QImage::Format_RGB32);
-  for (int i = 0; i < size; i++) {
-    for (int j = 0; j < size; j++) {
+  for (unsigned int i = 0; i < size; i++) {
+    for (unsigned int j = 0; j < size; j++) {
       unsigned int normHit = (hits[i][j] * 100) / max;
       unsigned int rgb = (normHit * 0xff) / 100;
       im.setPixel(i, j,

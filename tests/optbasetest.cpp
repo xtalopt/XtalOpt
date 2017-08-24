@@ -126,12 +126,11 @@ void OptBaseTest::getProbabilityList()
 {
   const double minE = 1.0;
   const double maxE = 100.0;
-  const double spreadE = maxE - minE;
 
   // Empty / short lists
   double enthalpy = minE - 1.0; // subtract one since we use ++enthalpy first.
   QList<Structure*> structures;
-  for (unsigned int listSize = 0; listSize <=2; ++listSize) {
+  for (int listSize = 0; listSize <=2; ++listSize) {
     while (structures.size() < listSize) {
       Structure *s = new Structure;
       // We need at least one atom for the probability list calculation

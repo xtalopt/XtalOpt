@@ -139,7 +139,7 @@ namespace XtalOpt {
     m_opt->tracker()->reset();
 
     // Set up counter
-    unsigned int nextStructureIndex = 0;
+    int nextStructureIndex = 0;
     QBENCHMARK_ONCE {
       while (m_opt->tracker()->size() != listAll.size()) {
         // Add back 10 structures at a time and recheck duplicates

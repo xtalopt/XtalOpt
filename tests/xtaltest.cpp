@@ -424,7 +424,7 @@ void XtalTest::fixAnglesTest()
     xtal.setUnitCell(tmp);
 
     // Add some atoms
-    for (int i = 0; i < getRandUInt() % 100; i++) {
+    for (unsigned int i = 0; i < getRandUInt() % 100; i++) {
       Atom& atm = xtal.addAtom();
       atm.setPos(xtal.fracToCart(Vector3(getRandDouble(),
                                                   getRandDouble(),
@@ -710,7 +710,7 @@ Direct\n\
 
   Vector3 curUTranslation; // xtal-specific uniform translation
   Vector3 curNTranslation; // xtal-specific noise translation
-  for (int i = 0; i < noiselessDups; ++i) {
+  for (unsigned int i = 0; i < noiselessDups; ++i) {
     rutiles << new Xtal (*rutiles.at(i));
     curUTranslation = uTranslation * i;
     std::vector<Atom>& currentAtoms = rutiles.last()->atoms();

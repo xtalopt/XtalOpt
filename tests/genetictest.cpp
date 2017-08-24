@@ -84,7 +84,7 @@ int numSwaps(const std::vector<Atom>& atoms1,
   if (atoms1.size() != atoms2.size())
     return -1;
 
-  int numSwapped = 0, numStayed = 0;
+  unsigned int numSwapped = 0, numStayed = 0;
   for (size_t i = 0; i < atoms1.size(); ++i) {
     for (size_t j = 0; j < atoms2.size(); ++j) {
 

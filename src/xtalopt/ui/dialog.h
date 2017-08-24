@@ -19,7 +19,9 @@
 
 #include <QObject>
 
-namespace Ui {class XtalOptDialog;};
+namespace Ui {
+  class XtalOptDialog;
+}
 
 namespace XtalOpt {
   class Xtal;
