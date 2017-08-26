@@ -458,7 +458,7 @@ namespace GlobalSearch
   {
     if (hasUnitCell())
       return m_unitCell.distance(atom1.pos(), atom2.pos());
-    return abs((atom1.pos() - atom2.pos()).norm());
+    return fabs((atom1.pos() - atom2.pos()).norm());
   }
 
   inline void Molecule::addBond(size_t ind1, size_t ind2,
