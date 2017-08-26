@@ -70,7 +70,7 @@ foreach (test ${tests})
 endforeach ()
 
 if(WIN32)
-  set(TestsLocation "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tests")
+  set(TestsLocation "${CMAKE_BINARY_DIR}/tests")
   # We have to pick a test that uses all of the dependencies, or we will
   # have to use multiple tests to install all of the dependencies
   set(TestToCheck "spglibtest")
