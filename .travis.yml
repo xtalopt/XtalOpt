@@ -5,9 +5,41 @@ language: cpp
 
 matrix:
   include:
-    - compiler: gcc
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-4.9
       env:
-        - USING_GCC=true
+         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
+         - DO_CODECOV=true
+         - DO_PACKAGE=true
+
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+      env:
+         - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-6
+      env:
+        - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
+
     - compiler: clang
       env:
 
@@ -42,7 +74,7 @@ script:
 after_success:
  # For GCC only: capture coverage info, filter out system, print debug info,
  # and upload to codecov
- - if [[ "$USING_GCC" == "true" ]]; then
+ - if [[ "$DO_CODECOV" == "true" ]]; then
      lcov --directory . --capture --output-file coverage.info &&
      lcov --remove coverage.info '/usr/*' --output-file coverage.info &&
      lcov --list coverage.info &&
@@ -51,7 +83,7 @@ after_success:
    fi
 
  # If this is a tag, then zip the install directory, md5sum it, and upload it
- - if [[ -n "$TRAVIS_TAG" ]] && [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then
+ - if [[ -n "$TRAVIS_TAG" ]] && [[ "$TRAVIS_PULL_REQUEST" == "false" ]] && [["$DO_PACKAGE" == "true"]]; then
      echo "Tag detected. Zipping installation and creating md5sum." &&
      cd install &&
      tar -czvf linux-xtalopt.tgz xtalopt &&
