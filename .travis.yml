@@ -44,6 +44,7 @@ matrix:
       env:
 
 before_install:
+ - eval "${MATRIX_EVAL}"
  - sudo apt-get update -qq
  - wget https://github.com/psavery/qwt/releases/download/6.1.3-2.deb/qwt_6.1.3-2.deb
 
