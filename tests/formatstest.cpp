@@ -12,6 +12,7 @@
   limitations under the License.
  **********************************************************************/
 
+#include <globalsearch/formats/obconvert.h>
 #include <globalsearch/formats/cmlformat.h>
 #include <globalsearch/formats/formats.h>
 #include <globalsearch/structure.h>
@@ -56,6 +57,7 @@ class FormatsTest : public QObject
   // Tests
   void readCml();
   void writeCml();
+  void OBConvert();
 };
 
 void FormatsTest::initTestCase()
@@ -190,6 +192,40 @@ void FormatsTest::writeCml()
   // Initialize an istreamstring with it
   std::istringstream ciss(css.str());
   /**** Caffeine ****/
+  GlobalSearch::Structure caffeine;
+  QVERIFY(GlobalSearch::CmlFormat::read(caffeine, ciss));
+
+  // Our structure should have no unit cell, 24 atoms, and 25 bonds
+  QVERIFY(!caffeine.hasUnitCell());
+  QVERIFY(caffeine.numAtoms() == 24);
+  QVERIFY(caffeine.numBonds() == 25);
+
+  // Caffeine should also have 4 double bonds. Make sure of this.
+  size_t numDoubleBonds = 0;
+  for (const GlobalSearch::Bond& bond: caffeine.bonds()) {
+    if (bond.bondOrder() == 2)
+      ++numDoubleBonds;
+  }
+  QVERIFY(numDoubleBonds == 4);
+}
+
+void FormatsTest::OBConvert()
+{
+  /**** Caffeine ****/
+  QString caffeineFileName = QString(TESTDATADIR) + "/data/caffeine.pdb";
+  QFile file(caffeineFileName);
+  QVERIFY(file.open(QIODevice::ReadOnly));
+  QByteArray caffeinePDBData(file.readAll());
+
+  // First, use OBConvert to convert it to cml
+  QByteArray caffeineCMLData;
+  QVERIFY(GlobalSearch::OBConvert::convertFormat("pdb", "cml",
+                                                 caffeinePDBData,
+                                                 caffeineCMLData));
+
+  std::istringstream ciss(caffeineCMLData.data());
+
+  // Now read it
   GlobalSearch::Structure caffeine;
   QVERIFY(GlobalSearch::CmlFormat::read(caffeine, ciss));
 

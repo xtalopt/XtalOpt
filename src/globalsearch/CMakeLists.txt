@@ -24,6 +24,7 @@ set( globalsearch_SRCS
      structures/molecule.cpp
      structures/unitcell.cpp
      formats/formats.cpp
+     formats/obconvert.cpp
      formats/castepformat.cpp
      formats/cmlformat.cpp
      formats/gulpformat.cpp

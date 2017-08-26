@@ -10,7 +10,7 @@ set(XtalOpt_VERSION_FULL "${XtalOpt_VERSION}.${XtalOpt_VERSION_PATCH}")
 set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
 
 # Place xtalopt.exe in build dir
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # C++11 is required
 include(MacroUseCXX11)
@@ -75,6 +75,14 @@ option( INSTALL_DEPENDENCIES
 option ( BUILD_INDEPENDENT_PACKAGE
          "Builds an independent package to be distributed. This will automatically switch on ENABLE_RPATH and INSTALL_DEPENDENCIES"
          OFF )
+
+option( USE_SYSTEM_OBABEL
+        "Instead of downloading a static obabel, use a system obabel instead? You should set the environment variable OBABEL_EXECUTABLE before running the program if you choose to do this"
+        OFF )
+
+# This will only actually download if USE_SYSTEM_OBABEL is off
+include(DownloadOBabel)
+DownloadObabel()
 
 # The main packages
 option( ENABLE_EXAMPLESEARCH
