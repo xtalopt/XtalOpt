@@ -84,7 +84,6 @@ macro(CopyDependencies ExeLocation TargetLocation DepSearchDirs)
   # Remove them if they are included.
   RemoveUnneededPrereqs(prereqs)
 
-  message(STATUS "Prereqs are ${prereqs}")
   # Next, loop through each dependency. In case they are sym links, follow
   # the sym link to the original file, and then install that and rename it to
   # the dependency name. E.g., install libQt5Core.so.5.5.1 and rename it to
