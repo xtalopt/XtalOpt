@@ -32,9 +32,11 @@ include_directories(${QWT_INCLUDE_DIRS})
 include_directories(${Qt5Network_INCLUDE_DIRS})
 include_directories(${Qt5Widgets_INCLUDE_DIRS})
 
-include_directories( ${CMAKE_CURRENT_BINARY_DIR}
-                     ${EIGEN3_INCLUDE_DIR}
-		     ${XtalOpt_SOURCE_DIR}/src/)
+# Include Eigen3 as a system dir so we can ignore compiler warnings from it
+include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR}
+                    ${XtalOpt_SOURCE_DIR}/src/)
 
 include(MacroEnsureVersion)
 

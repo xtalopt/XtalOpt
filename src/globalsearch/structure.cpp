@@ -808,7 +808,7 @@ namespace GlobalSearch {
 
     Vector3 v1 = atomPositions.at(0);
     Vector3 v2 = atomPositions.at(1);
-    shortest = abs((v1-v2).norm());
+    shortest = std::fabs((v1-v2).norm());
     double distance;
 
     // Find shortest distance
@@ -817,7 +817,7 @@ namespace GlobalSearch {
       for (int j = i+1; j < atomList.size(); j++) {
         v2 = atomPositions.at(j);
         // Intercell
-        distance = abs((v1-v2).norm());
+        distance = std::fabs((v1-v2).norm());
         if (distance < shortest) shortest = distance;
       }
     }
@@ -844,7 +844,7 @@ namespace GlobalSearch {
     for (int j = 0; j < atomList.size(); j++) {
       v2 = atomPositions.at(j);
       // Intercell
-      distance = abs((v1-v2).norm());
+      distance = fabs((v1-v2).norm());
       if (distance < shortest) shortest = distance;
     }
     return true;
