@@ -1,3 +1,19 @@
+# Written by Patrick Avery - 2017
+
+# Important macros:
+#   InstallDependencies automatically finds dependencies for an executable
+#   or shared library that aren't system libraries and installs them to a
+#   specified location
+#
+#   CopyDependencies does the same thing except it copies the dependencies
+#   instead of installing them.
+
+# This function is only necessary because for some reason, VCRUNTIME140.dll is not
+# considered a system library in get_prerequisites()
+macro(RemoveUnneededPrereqs prereqs)
+  list(REMOVE_ITEM prereqs "VCRUNTIME140.dll")
+endmacro()
+
 # This function is called automatically when a user
 # calls GetPrerequisites(). This "intercepts" the file
 # names and changes their type. It is most important for
@@ -63,6 +79,12 @@ macro(CopyDependencies ExeLocation TargetLocation DepSearchDirs)
   set(recurse 1)
   get_prerequisites("${ExeLocation}" prereqs exclude_system
                     recurse exepath "${DepSearchDirs}")
+
+  # For some reason, some system libraries are still sometimes included.
+  # Remove them if they are included.
+  RemoveUnneededPrereqs(prereqs)
+
+  message(STATUS "Prereqs are ${prereqs}")
   # Next, loop through each dependency. In case they are sym links, follow
   # the sym link to the original file, and then install that and rename it to
   # the dependency name. E.g., install libQt5Core.so.5.5.1 and rename it to
