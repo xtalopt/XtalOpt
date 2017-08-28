@@ -141,9 +141,6 @@ namespace XtalOpt {
     Vector3 fracToCart(const Vector3& v) const;
     Vector3 cartToFrac(const Vector3& v) const;
 
-    // Convenience retreval
-    QList<Vector3> getAtomCoordsFrac() const;
-
     // Spacegroup
     uint getSpaceGroupNumber();
     QString getSpaceGroupSymbol();
@@ -184,25 +181,6 @@ namespace XtalOpt {
     // Tolerances in angstrom and degree:
     bool compareCoordinates(const Xtal &other, const double tol = 0.1,
                             const double angleTol = 2.0) const;
-
-    // Testing use only
-    /**
-     * Given a QString containing a POSCAR formatted structure, create
-     * a generic Xtal object.
-     *
-     * \note The atom types will not be correct here -- this function
-     * should only be used in testing.
-     */
-    static Xtal* POSCARToXtal(const QString &poscar);
-
-    /**
-     * Given a QFile handle containing a POSCAR formatted structure,
-     * create a generic Xtal object.
-     *
-     * \note The atom types will not be correct here -- this function
-     * should only be used in testing.
-     */
-    static Xtal* POSCARToXtal(QFile *file);
 
     /**
      * Take the given xtal and write a POSCAR with it. Return the POSCAR

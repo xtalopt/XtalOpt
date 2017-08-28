@@ -15,6 +15,7 @@
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/genetic.h>
 
+#include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/random.h>
 
 #include <QDebug>
@@ -121,21 +122,18 @@ void GeneticTest::exchange()
   std::ifstream in(rutileFileName.toStdString());
   QVERIFY(in.is_open());
 
-  std::stringstream buf;
-  buf << in.rdbuf();
-  QString rutilePoscar = buf.str().c_str();
+  Xtal xtal;
+  QVERIFY(GlobalSearch::PoscarFormat::read(xtal, in));
 
-  std::unique_ptr<Xtal> xtal(XtalOpt::Xtal::POSCARToXtal(rutilePoscar));
-
-  GlobalSearch::UnitCell oldUC = xtal->unitCell();
-  std::vector<Atom> oldAtoms = xtal->atoms();
+  GlobalSearch::UnitCell oldUC = xtal.unitCell();
+  std::vector<Atom> oldAtoms = xtal.atoms();
 
   // Try out one exchange
   size_t numExchanges = 1;
-  XtalOptGenetic::exchange(xtal.get(), numExchanges);
+  XtalOptGenetic::exchange(&xtal, numExchanges);
 
-  GlobalSearch::UnitCell newUC = xtal->unitCell();
-  std::vector<Atom> newAtoms = xtal->atoms();
+  GlobalSearch::UnitCell newUC = xtal.unitCell();
+  std::vector<Atom> newAtoms = xtal.atoms();
 
   // The unit cell should be unchanged
   QVERIFY(GlobalSearch::fuzzyCompare(oldUC.cellMatrix(), newUC.cellMatrix(),
@@ -149,14 +147,16 @@ void GeneticTest::exchange()
   // Now let's swap two atoms. Because we can possibly swap the same atoms
   // twice, we have the possibility of ending up with 0 swaps detected. So
   // the answer must be 0, 2, or 4.
-  xtal.reset(XtalOpt::Xtal::POSCARToXtal(rutilePoscar));
+  in.clear();
+  in.seekg(0, std::ios::beg);
+  QVERIFY(GlobalSearch::PoscarFormat::read(xtal, in));
 
   // Try out two exchanges
   numExchanges = 2;
-  XtalOptGenetic::exchange(xtal.get(), numExchanges);
+  XtalOptGenetic::exchange(&xtal, numExchanges);
 
-  newUC = xtal->unitCell();
-  newAtoms = xtal->atoms();
+  newUC = xtal.unitCell();
+  newAtoms = xtal.atoms();
 
   // The unit cell should be unchanged
   QVERIFY(GlobalSearch::fuzzyCompare(oldUC.cellMatrix(), newUC.cellMatrix(),

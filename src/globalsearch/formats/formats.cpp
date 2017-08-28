@@ -19,6 +19,7 @@
 #include <globalsearch/formats/castepformat.h>
 #include <globalsearch/formats/cmlformat.h>
 #include <globalsearch/formats/gulpformat.h>
+#include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/formats/pwscfformat.h>
 #include <globalsearch/formats/siestaformat.h>
 #include <globalsearch/formats/vaspformat.h>
@@ -42,6 +43,7 @@ static const vector<string> _formats =
   "CASTEP",
   "CML",
   "GULP",
+  "POSCAR",
   "PWSCF",
   "SIESTA",
   "VASP",
@@ -64,9 +66,9 @@ namespace GlobalSearch {
   QString Formats::detectFormat(const QString& filename)
   {
     // First, check for POSCAR or CONTCAR at the end of the filename. If it
-    // exists, then the it is VASP format.
+    // exists, then the it is POSCAR format.
     if (filename.endsWith("POSCAR") || filename.endsWith("CONTCAR"))
-      return "VASP";
+      return "POSCAR";
     // Otherwise, find the extension.
     string ext = getFileExt(filename.toStdString());
     for (size_t i = 0; i < _formatExtensions.size(); ++i) {
@@ -103,6 +105,15 @@ namespace GlobalSearch {
 
     if (format.toUpper() == QString("GULP"))
       return GulpFormat::read(s, filename);
+
+    if (format.toUpper() == QString("POSCAR")) {
+      std::ifstream in(filename.toStdString().c_str());
+      if (!in.is_open()) {
+        qDebug() << "Failed to open POSCAR file: " << filename;
+        return false;
+      }
+      return PoscarFormat::read(*s, in);
+    }
 
     if (format.toUpper() == QString("PWSCF"))
       return PwscfFormat::read(s, filename);

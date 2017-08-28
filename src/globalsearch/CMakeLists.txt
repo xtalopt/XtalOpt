@@ -28,6 +28,7 @@ set( globalsearch_SRCS
      formats/castepformat.cpp
      formats/cmlformat.cpp
      formats/gulpformat.cpp
+     formats/poscarformat.cpp
      formats/pwscfformat.cpp
      formats/siestaformat.cpp
      formats/vaspformat.cpp

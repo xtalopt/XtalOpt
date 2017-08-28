@@ -588,6 +588,11 @@ namespace GlobalSearch {
      */
     QList<uint> getNumberOfAtomsAlpha() const;
 
+    /** @return Fractional atom coordinates. The atoms are ordered in
+     * the same ordering you would get from getSymbols().
+     */
+    QList<Vector3> getAtomCoordsFrac() const;
+
     /** @return A string formated "HH:MM:SS" indicating the amount of
      * time spent in the current optimization step
      *

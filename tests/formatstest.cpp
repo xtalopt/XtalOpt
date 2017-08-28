@@ -14,6 +14,7 @@
 
 #include <globalsearch/formats/obconvert.h>
 #include <globalsearch/formats/cmlformat.h>
+#include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/formats/formats.h>
 #include <globalsearch/structure.h>
 
@@ -55,6 +56,8 @@ class FormatsTest : public QObject
   void cleanup();
 
   // Tests
+  void readPoscar();
+  void writePoscar();
   void readCml();
   void writeCml();
   void OBConvert();
@@ -74,6 +77,78 @@ void FormatsTest::init()
 
 void FormatsTest::cleanup()
 {
+}
+
+void FormatsTest::readPoscar()
+{
+  /**** Rutile ****/
+  QString rutileFileName = QString(TESTDATADIR) + "/data/rutile.POSCAR";
+  GlobalSearch::Structure rutile;
+
+  QVERIFY(GlobalSearch::Formats::read(&rutile, rutileFileName, "POSCAR"));
+
+  // Our structure should have a unit cell, 6 atoms, and no bonds
+  // The unit cell volume should be about 62.423
+  QVERIFY(rutile.hasUnitCell());
+  QVERIFY(rutile.numAtoms() == 6);
+  QVERIFY(rutile.numBonds() == 0);
+  QVERIFY(abs(62.4233 - rutile.unitCell().volume()) < 1.e-5);
+
+  // The sixth atom should be Ti and should have cartesian coordinates of
+  // (1.47906   2.29686   2.29686)
+  double tol = 1.e-5;
+  Vector3 rutileAtom2Pos(1.47906, 2.29686, 2.29686);
+  QVERIFY(rutile.atom(5).atomicNumber() == 22);
+  QVERIFY(GlobalSearch::fuzzyCompare(rutile.atom(5).pos(),
+                                     rutileAtom2Pos, tol));
+
+  // The first atom should be O and should have fractional coordinates of
+  // 0, 0.3053, 0.3053
+  tol = 1.e-5;
+  Vector3 rutileAtom3Ref =
+      rutile.unitCell().toFractional(rutile.atom(0).pos());
+  Vector3 rutileAtom3PosFrac(0.0, 0.3053, 0.3053);
+  QVERIFY(rutile.atom(0).atomicNumber() == 8);
+  QVERIFY(GlobalSearch::fuzzyCompare(rutileAtom3Ref, rutileAtom3PosFrac, tol));
+
+  // Let's set rutile to be used for the write test
+  m_rutile = rutile;
+}
+
+void FormatsTest::writePoscar()
+{
+  // First, write the POSCAR file to a stringstream
+  std::stringstream ss;
+  QVERIFY(GlobalSearch::PoscarFormat::write(m_rutile, ss));
+
+  // Now read from it and run the same tests we tried above
+  /**** Rutile ****/
+  GlobalSearch::Structure rutile;
+  QVERIFY(GlobalSearch::PoscarFormat::read(rutile, ss));
+
+  // Our structure should have a unit cell, 6 atoms, and no bonds
+  // The unit cell volume should be about 62.423
+  QVERIFY(rutile.hasUnitCell());
+  QVERIFY(rutile.numAtoms() == 6);
+  QVERIFY(rutile.numBonds() == 0);
+  QVERIFY(abs(62.4233 - rutile.unitCell().volume()) < 1.e-5);
+
+  // The sixth atom should be Ti and should have cartesian coordinates of
+  // (1.47906   2.29686   2.29686)
+  double tol = 1.e-5;
+  Vector3 rutileAtom2Pos(1.47906, 2.29686, 2.29686);
+  QVERIFY(rutile.atom(5).atomicNumber() == 22);
+  QVERIFY(GlobalSearch::fuzzyCompare(rutile.atom(5).pos(),
+                                     rutileAtom2Pos, tol));
+
+  // The first atom should be O and should have fractional coordinates of
+  // 0, 0.3053, 0.3053
+  tol = 1.e-5;
+  Vector3 rutileAtom3Ref =
+      rutile.unitCell().toFractional(rutile.atom(0).pos());
+  Vector3 rutileAtom3PosFrac(0.0, 0.3053, 0.3053);
+  QVERIFY(rutile.atom(0).atomicNumber() == 8);
+  QVERIFY(GlobalSearch::fuzzyCompare(rutileAtom3Ref, rutileAtom3PosFrac, tol));
 }
 
 void FormatsTest::readCml()
@@ -152,14 +227,11 @@ void FormatsTest::writeCml()
   std::stringstream ss;
   QVERIFY(GlobalSearch::CmlFormat::write(m_rutile, ss));
 
-  // Initialize an istreamstring with it
-  std::istringstream iss(ss.str());
-
   // Now read from it and run the same tests we tried above
 
   /**** Rutile ****/
   GlobalSearch::Structure rutile;
-  QVERIFY(GlobalSearch::CmlFormat::read(rutile, iss));
+  QVERIFY(GlobalSearch::CmlFormat::read(rutile, ss));
 
   // Our structure should have a unit cell, 6 atoms, and no bonds
   // The unit cell volume should be about 62.423
@@ -189,11 +261,9 @@ void FormatsTest::writeCml()
   std::stringstream css;
   QVERIFY(GlobalSearch::CmlFormat::write(m_caffeine, css));
 
-  // Initialize an istreamstring with it
-  std::istringstream ciss(css.str());
   /**** Caffeine ****/
   GlobalSearch::Structure caffeine;
-  QVERIFY(GlobalSearch::CmlFormat::read(caffeine, ciss));
+  QVERIFY(GlobalSearch::CmlFormat::read(caffeine, css));
 
   // Our structure should have no unit cell, 24 atoms, and 25 bonds
   QVERIFY(!caffeine.hasUnitCell());
@@ -223,11 +293,11 @@ void FormatsTest::OBConvert()
                                                  caffeinePDBData,
                                                  caffeineCMLData));
 
-  std::istringstream ciss(caffeineCMLData.data());
+  std::stringstream css(caffeineCMLData.data());
 
   // Now read it
   GlobalSearch::Structure caffeine;
-  QVERIFY(GlobalSearch::CmlFormat::read(caffeine, ciss));
+  QVERIFY(GlobalSearch::CmlFormat::read(caffeine, css));
 
   // Our structure should have no unit cell, 24 atoms, and 25 bonds
   QVERIFY(!caffeine.hasUnitCell());

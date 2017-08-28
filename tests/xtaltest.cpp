@@ -16,6 +16,8 @@
 
 #include <xtalopt/debug.h>
 
+#include <globalsearch/formats/formats.h>
+#include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/random.h>
 
@@ -607,12 +609,13 @@ void XtalTest::getRandomRepresentationTest()
 void XtalTest::equalityVsFingerprintTest()
 {
   // Load rutile POSCAR: (16xTiO2)
-  QString rutilePOSCAR =
-" Ti16 O32 \n\
+  std::stringstream rutilePOSCAR("\
+Ti16 O32 \n\
 1\n\
     6.01724500   0.00000000   0.00000000\n\
     0.00000193   6.35400106   0.00000000\n\
    -0.00000303  -0.00000000  12.70800514\n\
+Ti O  \n\
 16 32 \n\
 Direct\n\
     0.31620100   0.59409200   0.00000000\n\
@@ -662,17 +665,18 @@ Direct\n\
     0.56620200   0.59409200   0.90164300\n\
     0.06620100   0.09409300   0.84835700\n\
     0.06620100   0.59409200   0.40164300\n\
-    0.56620000   0.09409200   0.15164300\n";
+    0.56620000   0.09409200   0.15164300\n");
 
   // This is the niggli reduced rutile structure
-  Xtal * rutileSeed = Xtal::POSCARToXtal(rutilePOSCAR);
+  Xtal rutileSeed;
+  QVERIFY(PoscarFormat::read(rutileSeed, rutilePOSCAR));
 
   // List to store reproductions
   QList<Xtal*> rutiles;
 
   // Generate a random representation of each structure by applying
   // each mix and transformation in the Xtal static lists
-  const Matrix3 oldCell = rutileSeed->unitCell().cellMatrix();
+  const Matrix3 oldCell = rutileSeed.unitCell().cellMatrix();
   Matrix3 newCell;
   for (QVector<Eigen::Matrix3d>::const_iterator
          xform = Xtal::m_transformationMatrices.constBegin(),
@@ -684,7 +688,7 @@ Direct\n\
            mix_end = Xtal::m_mixMatrices.constEnd();
          mix != mix_end; ++mix) {
       newCell = (*mix) * oldCell * xformTranspose;
-      rutiles << new Xtal (*rutileSeed);
+      rutiles << new Xtal(rutileSeed);
       rutiles.last()->setCellInfo(newCell);
       // Transform atoms
       std::vector<Atom>& newAtoms = rutiles.last()->atoms();
@@ -711,7 +715,7 @@ Direct\n\
   Vector3 curUTranslation; // xtal-specific uniform translation
   Vector3 curNTranslation; // xtal-specific noise translation
   for (unsigned int i = 0; i < noiselessDups; ++i) {
-    rutiles << new Xtal (*rutiles.at(i));
+    rutiles << new Xtal(*rutiles.at(i));
     curUTranslation = uTranslation * i;
     std::vector<Atom>& currentAtoms = rutiles.last()->atoms();
     for (auto& atom: currentAtoms) {
@@ -729,8 +733,8 @@ Direct\n\
   // Perform niggli reduction on each structure. This will also wrap
   // atoms to the cell. Calculate the spacegroups first, this more
   // closely resembles the fingerprint method.
-  rutileSeed->findSpaceGroup();
-  QVERIFY(rutileSeed->niggliReduce());
+  rutileSeed.findSpaceGroup();
+  QVERIFY(rutileSeed.niggliReduce());
   for (QList<Xtal*>::iterator it = rutiles.begin(), it_end = rutiles.end();
        it != it_end; ++it) {
     (*it)->findSpaceGroup();
@@ -742,9 +746,9 @@ Direct\n\
   for (QList<Xtal*>::iterator it = rutiles.begin(), it_end = rutiles.end();
        it != it_end; ++it) {
     ++count;
-    bool match = (*rutileSeed == *(*it));
+    bool match = (rutileSeed == *(*it));
     if (!match) {
-      XtalOptDebug::dumpPseudoPwscfOut(rutileSeed, "Testing/seed");
+      XtalOptDebug::dumpPseudoPwscfOut(&rutileSeed, "Testing/seed");
       XtalOptDebug::dumpPseudoPwscfOut((*it), "Testing/gen");
       qDebug() << "Failure on comparison" << count;
     }
@@ -764,7 +768,7 @@ Direct\n\
     ++count;
     // Be generous and assume that the enthalpies match. All
     // transformations preserve volume, so don't check that either.
-    if (rutileSeed->getSpaceGroupNumber() != (*it)->getSpaceGroupNumber()) {
+    if (rutileSeed.getSpaceGroupNumber() != (*it)->getSpaceGroupNumber()) {
       ++failed;
       failures.insert(count, (*it)->getSpaceGroupNumber());
     }
@@ -775,7 +779,7 @@ Direct\n\
     "fingerprint comparison (volume + spg):";
 
   printf("Seeded structure has spacegroup: %d\n",
-         rutileSeed->getSpaceGroupNumber());
+         rutileSeed.getSpaceGroupNumber());
   QList<unsigned int> failureKeys = failures.keys();
   qSort(failureKeys);
   unsigned int entriesInLine = 0;

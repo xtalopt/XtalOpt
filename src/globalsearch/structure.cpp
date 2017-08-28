@@ -1218,6 +1218,27 @@ namespace GlobalSearch {
     return list;
   }
 
+  QList<Vector3> Structure::getAtomCoordsFrac() const {
+    QList<Vector3> list;
+    // Sort by symbols
+    QList<QString> symbols = getSymbols();
+    QString symbol_ref;
+    QString symbol_cur;
+    std::vector<Atom>::const_iterator it;
+    for (int i = 0; i < symbols.size(); i++) {
+      symbol_ref = symbols.at(i);
+      for (it  = atoms().begin();
+           it != atoms().end();
+           it++) {
+        symbol_cur = ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
+        if (symbol_cur == symbol_ref) {
+          list.append(unitCell().toFractional((*it).pos()));
+        }
+      }
+    }
+    return list;
+  }
+
   QString Structure::getOptElapsed() const {
     int secs;
     if (m_optStart.toString() == "") return "0:00:00";

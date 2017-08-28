@@ -18,6 +18,7 @@
 #include <xtalopt/xtalopt.h>
 
 #include <globalsearch/eleminfo.h>
+#include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/random.h>
 #include <globalsearch/stablecomparison.h>
 
@@ -1890,27 +1891,6 @@ namespace XtalOpt {
     return true;
   }
 
-  QList<Vector3> Xtal::getAtomCoordsFrac() const {
-    QList<Vector3> list;
-    // Sort by symbols
-    QList<QString> symbols = getSymbols();
-    QString symbol_ref;
-    QString symbol_cur;
-    std::vector<Atom>::const_iterator it;
-    for (int i = 0; i < symbols.size(); i++) {
-      symbol_ref = symbols.at(i);
-      for (it  = atoms().begin();
-           it != atoms().end();
-           it++) {
-        symbol_cur = ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
-        if (symbol_cur == symbol_ref) {
-          list.append(cartToFrac((*it).pos()));
-        }
-      }
-    }
-    return list;
-  }
-
   void Xtal::wrapAtomsToCell() {
     //qDebug() << "Xtal::wrapAtomsToCell() called";
     // Store position of atoms in fractional units
@@ -2371,117 +2351,11 @@ namespace XtalOpt {
     return nxtal;
   }
 
-  Xtal* Xtal::POSCARToXtal(const QString &poscar)
-  {
-    QTextStream ps (&const_cast<QString &>(poscar));
-    QStringList sl;
-    Vector3 v1, v2, v3, pos;
-    Xtal *xtal = new Xtal;
-
-    ps.readLine(); // title
-    float scale = ps.readLine().toFloat(); // Scale factor
-    sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // v1
-    v1.x() = sl.at(0).toFloat() * scale;
-    v1.y() = sl.at(1).toFloat() * scale;
-    v1.z() = sl.at(2).toFloat() * scale;
-
-    sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // v2
-    v2.x() = sl.at(0).toFloat() * scale;
-    v2.y() = sl.at(1).toFloat() * scale;
-    v2.z() = sl.at(2).toFloat() * scale;
-
-    sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // v3
-    v3.x() = sl.at(0).toFloat() * scale;
-    v3.y() = sl.at(1).toFloat() * scale;
-    v3.z() = sl.at(2).toFloat() * scale;
-
-    xtal->setCellInfo(v1, v2, v3);
-
-    sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // atom types
-    unsigned int numAtomTypes = sl.size();
-    QList<unsigned int> atomCounts;
-    for (int i = 0; i < numAtomTypes; i++) {
-      atomCounts.append(sl.at(i).toUInt());
-    }
-
-    // TODO this will assume fractional coordinates. VASP can use cartesian!
-    ps.readLine(); // direct or cartesian
-    // Atom coords begin
-    for (unsigned int i = 0; i < numAtomTypes; i++) {
-      for (unsigned int j = 0; j < atomCounts.at(i); j++) {
-        // Actual identity of the atoms doesn't matter for the symmetry
-        // test. Just use (i+1) as the atomic number.
-        Atom& atom = xtal->addAtom();
-        atom.setAtomicNumber(i+1);
-        // Get coords
-        sl = ps.readLine().split(QRegExp("\\s+"), QString::SkipEmptyParts); // coords
-        Vector3 pos;
-        pos.x() = sl.at(0).toDouble();
-        pos.y() = sl.at(1).toDouble();
-        pos.z() = sl.at(2).toDouble();
-        atom.setPos(xtal->fracToCart(pos));
-      }
-    }
-
-    return xtal;
-  }
-
-  Xtal* Xtal::POSCARToXtal(QFile *file)
-  {
-    QString poscar;
-    file->open(QFile::ReadOnly);
-    poscar = file->readAll();
-    file->close();
-    return POSCARToXtal(poscar);
-  }
-
+  // Mostly a convenience function...
   QString Xtal::toPOSCAR() const
   {
-    QString ret;
-
-    // Comment line -- set to composition then filename
-    // Construct composition
-    QStringList symbols = getSymbols();
-    QList<unsigned int> atomCounts = getNumberOfAtomsAlpha();
-    Q_ASSERT_X(symbols.size() == atomCounts.size(), Q_FUNC_INFO,
-               "getSymbols() is not the same size as getNumberOfAtomsAlpha()");
-    for (size_t i = 0; i < symbols.size(); ++i)
-      ret += QString("%1%2").arg(symbols[i]).arg(atomCounts[i]);
-
-    ret += " ";
-    ret += fileName();
-    ret += "\n";
-    // Scaling factor. Just 1.0
-    ret += QString::number(1.0);
-    ret += "\n";
-    // Unit Cell Vectors
-    for (uint i = 0; i < 3; i++) {
-      ret += QString("  %1 %2 %3\n")
-        .arg(unitCell().cellMatrix()(i, 0), 12, 'f', 8)
-        .arg(unitCell().cellMatrix()(i, 1), 12, 'f', 8)
-        .arg(unitCell().cellMatrix()(i, 2), 12, 'f', 8);
-    }
-    // Atomic symbols
-    for (const auto& symbol: symbols)
-      ret += symbol + " ";
-    ret += "\n";
-
-    // Number of each type of atom (sorted alphabetically by symbol)
-    for (const auto& count: atomCounts)
-      ret += QString::number(count) + " ";
-
-    ret += "\n";
-    // Use fractional coordinates:
-    ret += "Direct\n";
-    // Coordinates of each atom (sorted alphabetically by symbol)
-    QList<Vector3> coords = getAtomCoordsFrac();
-    for (const auto& coord: coords) {
-      ret += QString("  %1 %2 %3\n")
-        .arg(coord.x(), 12, 'f', 8)
-        .arg(coord.y(), 12, 'f', 8)
-        .arg(coord.z(), 12, 'f', 8);
-    }
-
-    return ret;
+    std::stringstream ss;
+    GlobalSearch::PoscarFormat::write(*this, ss);
+    return ss.str().c_str();
   }
 } // end namespace XtalOpt

@@ -12,7 +12,11 @@
   limitations under the License.
  **********************************************************************/
 
+#include <globalsearch/formats/poscarformat.h>
+
 #include <xtalopt/structures/xtal.h>
+
+#include <sstream>
 
 #include <QDebug>
 #include <QString>
@@ -109,14 +113,14 @@ void SPGLibTest::idealBCC() {
 void SPGLibTest::fromPio1() {
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
-  Xtal *xtal;
 
-  QString poscar = "\
+  std::stringstream poscar("\
 FromPio 1\n\
    1.00000000000000\n\
      6.0566497821097043    0.3795121972298890    0.0416889858265167\n\
      1.1892305190531443    2.6030960258193159   -0.0094870012677909\n\
     -0.5988630056472680   -1.2540077098048823    2.5018934392124548\n\
+  H    He\n\
   18   2\n\
 Direct\n\
   0.3595174582943753  0.5176827568981921  0.0012114976337420\n\
@@ -138,28 +142,28 @@ Direct\n\
   0.0861797032443645  0.7453681950826812  0.5932837305405847\n\
   0.5600355158774711  0.1714650538951173  0.1461758468824457\n\
   0.3424316793489581  0.8742328696958156  0.6616426675432113\n\
-  0.8425094428620844  0.0566577187900324  0.9787883487020472\n";
+  0.8425094428620844  0.0566577187900324  0.9787883487020472\n");
 
-  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
-  xtal->findSpaceGroup(FROMPIO_TOL);
+  Xtal xtal;
+  QVERIFY(GlobalSearch::PoscarFormat::read(xtal, poscar));
+  xtal.findSpaceGroup(FROMPIO_TOL);
   // "spglib finds Ima2 (#46) whereas findsym detects Cmc2_1" with
   // tol=0.05
   QEXPECT_FAIL("", "spglib: P1, findsym: Cmc2_1", Continue);
-  QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Cmc2_1"));
-  delete xtal;
+  QCOMPARE(xtal.getSpaceGroupSymbol(), QString("Cmc2_1"));
 }
 
 void SPGLibTest::fromPio2() {
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
-  Xtal *xtal;
 
-  QString poscar = "\
+  std::stringstream poscar("\
 FromPio 2\n\
    1.00000000000000\n\
      3.7668658779046242   -0.2526363169248627   -0.3909143489813395\n\
      0.4126424943540823    7.5129095763967930   -0.0136225756754529\n\
      0.6901112196345119    0.0603991507863854    7.4962532790130991\n\
+   H   He Li\n\
    4   4  12\n\
 Direct\n\
   0.9525215854179879  0.1735141612887874  0.7435424941602350\n\
@@ -181,26 +185,26 @@ Direct\n\
   0.9287713911515645  0.9298090277507504  0.7716838694177337\n\
   0.9158562604089533  0.4306908021571946  0.7375890681822121\n\
   0.4395130866383787  0.6878349360194402  0.2551439498569619\n\
-  0.9157795264006211  0.1707042360529422  0.4975145053028533\n";
+  0.9157795264006211  0.1707042360529422  0.4975145053028533\n");
 
-  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
-  xtal->findSpaceGroup(FROMPIO_TOL);
+  Xtal xtal;
+  QVERIFY(GlobalSearch::PoscarFormat::read(xtal, poscar));
+  xtal.findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: Pc", Continue);
-  QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pc"));
-  delete xtal;
+  QCOMPARE(xtal.getSpaceGroupSymbol(), QString("Pc"));
 }
 
 void SPGLibTest::fromPio3() {
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
-  Xtal *xtal;
 
-  QString poscar = "\
+  std::stringstream poscar("\
 FromPio\n\
    1.00000000000000\n\
      3.7484850618560537    0.5179527621527573    0.2725676000178477\n\
      2.5954120365612385    7.9478524331504028    0.7065992265067038\n\
      3.1731369922769055    0.0785542643845797    7.7623356251774149\n\
+   H   He Li\n\
    4   4  12\n\
 Direct\n\
   0.4389346288864205  0.1795598238971019  0.7431541681120870\n\
@@ -222,26 +226,26 @@ Direct\n\
   0.7276847343627200  0.9223598206645673  0.7479570915952536\n\
   0.2466458869191910  0.4231569924803437  0.7162315854213671\n\
   0.9781965053169768  0.6649451293532957  0.2314368458367852\n\
-  0.7463983483277447  0.1492850621013686  0.4899991401664211\n";
+  0.7463983483277447  0.1492850621013686  0.4899991401664211\n");
 
-  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
-  xtal->findSpaceGroup(FROMPIO_TOL);
+  Xtal xtal;
+  QVERIFY(GlobalSearch::PoscarFormat::read(xtal, poscar));
+  xtal.findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: Pc", Continue);
-  QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pc"));
-  delete xtal;
+  QCOMPARE(xtal.getSpaceGroupSymbol(), QString("Pc"));
 }
 
 void SPGLibTest::fromPio4() {
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
-  Xtal *xtal;
 
-  QString poscar = "\
+  std::stringstream poscar("\
 FromPio\n\
    1.00000000000000\n\
      3.0399837305035393   -0.2689430591255473    0.3854696358687387\n\
      2.3242680883263844    8.9135745201241541    0.1859370039210433\n\
      0.5019497901415106    1.1955705707455986    9.1769697990207320\n\
+   H   He Li\n\
    4   4  12\n\
 Direct\n\
   0.6365543883399805  0.2168683250241590  0.8349212688156322\n\
@@ -263,26 +267,26 @@ Direct\n\
   0.0915177347389307  0.3099506674339617  0.8313742862297122\n\
   0.7396062065249935  0.2436662766992443  0.6014294689601524\n\
   0.6674747362028992  0.8704642893766082  0.1224072925140652\n\
-  0.7367029916892964  0.5218437165288294  0.3287928749647472\n";
+  0.7367029916892964  0.5218437165288294  0.3287928749647472\n");
 
-  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
-  xtal->findSpaceGroup(FROMPIO_TOL);
+  Xtal xtal;
+  QVERIFY(GlobalSearch::PoscarFormat::read(xtal, poscar));
+  xtal.findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: Cm", Continue);
-  QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Cm"));
-  delete xtal;
+  QCOMPARE(xtal.getSpaceGroupSymbol(), QString("Cm"));
 }
 
 void SPGLibTest::fromPio5() {
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
-  Xtal *xtal;
 
-  QString poscar = "\
+  std::stringstream poscar("\
 FromPio\n\
    1.00000000000000\n\
      3.0862034428882930   -0.0061740449954627    0.0771065378323145\n\
     -0.0055817307757720    8.9378071882876462    1.0714808471957371\n\
     -1.7595384299272794   -1.6712253860455217    8.5174514397732199\n\
+   H   He Li\n\
    4   4  12\n\
 Direct\n\
   0.7547618719861585  0.3709352584036946  0.8230239017554005\n\
@@ -304,26 +308,26 @@ Direct\n\
   0.4382664209869460  0.9691193700624927  0.1822645552220600\n\
   0.0368252033973344  0.0925606680223063  0.4302065522766315\n\
   0.4262835864572549  0.6772099041761191  0.1738038318846121\n\
-  0.2896425582783375  0.2910093076828788  0.9171800811376110\n";
+  0.2896425582783375  0.2910093076828788  0.9171800811376110\n");
 
-  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
-  xtal->findSpaceGroup(FROMPIO_TOL);
+  Xtal xtal;
+  QVERIFY(GlobalSearch::PoscarFormat::read(xtal, poscar));
+  xtal.findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: C2", Continue);
-  QCOMPARE(xtal->getSpaceGroupSymbol(), QString("C2"));
-  delete xtal;
+  QCOMPARE(xtal.getSpaceGroupSymbol(), QString("C2"));
 }
 
 void SPGLibTest::fromPio6() {
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
-  Xtal *xtal;
 
-  QString poscar = "\
+  std::stringstream poscar("\
 FromPio\n\
    1.00000000000000\n\
      4.7942520956467618    1.8132449716985586    1.4056177222130293\n\
      0.9704420851364433    5.2472757220847637   -0.0319252043134948\n\
     -0.7125145139300034   -5.2812187925442569    9.2463501243322401\n\
+   H   He Li\n\
    4   4  12\n\
 Direct\n\
   0.6132393258962139  0.5093212166281099  0.2491032478593813\n\
@@ -345,26 +349,26 @@ Direct\n\
   0.4039661697167156  0.4888687712238313  0.0989622684257531\n\
   0.8429755940861234  0.5800750975794758  0.6445761729598907\n\
   0.8128017616748885  0.5798945619454959  0.8945428636351559\n\
-  0.9040034399388319  0.0189356918567516  0.1140071312905779\n";
+  0.9040034399388319  0.0189356918567516  0.1140071312905779\n");
 
-  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
-  xtal->findSpaceGroup(FROMPIO_TOL);
+  Xtal xtal;
+  QVERIFY(GlobalSearch::PoscarFormat::read(xtal, poscar));
+  xtal.findSpaceGroup(FROMPIO_TOL);
   QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
-  QCOMPARE(xtal->getSpaceGroupSymbol(), QString("R3c"));
-  delete xtal;
+  QCOMPARE(xtal.getSpaceGroupSymbol(), QString("R3c"));
 }
 
 void SPGLibTest::fromPio7() {
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
-  Xtal *xtal;
 
-  QString poscar = "\
+  std::stringstream poscar("\
 FromPio\n\
    1.00000000000000\n\
      5.2386732990927829    0.0620684076961739   -0.8967987333915093\n\
      2.3679063142316981    4.4775818945618298   -1.6088112683742066\n\
      1.7347298504277189   -3.6803835541052039    9.8687247185511779\n\
+   H   He Li\n\
    4   4  12\n\
 Direct\n\
   0.0962798210161998  0.5170843566615981  0.2630526154233745\n\
@@ -386,26 +390,25 @@ Direct\n\
   0.8963222349590436  0.4463498121000720  0.8730004106198560\n\
   0.3662973036906439  0.5373795046009668  0.8731841025308469\n\
   0.3055698460566810  0.5376042224815617  0.1232255686839733\n\
-  0.8055230400371350  0.0074671815226643  0.3731271370795857\n";
+  0.8055230400371350  0.0074671815226643  0.3731271370795857\n");
 
-  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
-  xtal->findSpaceGroup(FROMPIO_TOL);
+  Xtal xtal;
+  QVERIFY(GlobalSearch::PoscarFormat::read(xtal, poscar));
   QEXPECT_FAIL("", "spglib: P1, findsym: R3c", Continue);
-  QCOMPARE(xtal->getSpaceGroupSymbol(), QString("R3c"));
-  delete xtal;
+  QCOMPARE(xtal.getSpaceGroupSymbol(), QString("R3c"));
 }
 
 void SPGLibTest::fromPio8() {
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
-  Xtal *xtal;
 
-  QString poscar = "\
+  std::stringstream poscar("\
 FromPio\n\
    1.00000000000000\n\
      5.2386732990927829    0.0620684076961739   -0.8967987333915093\n\
      2.3679063142316981    4.4775818945618298   -1.6088112683742066\n\
      1.7347298504277189   -3.6803835541052039    9.8687247185511779\n\
+   H   He Li\n\
    4   4  12\n\
 Direct\n\
   0.0962798210161998  0.5170843566615981  0.2630526154233745\n\
@@ -427,13 +430,12 @@ Direct\n\
   0.8963222349590436  0.4463498121000720  0.8730004106198560\n\
   0.3662973036906439  0.5373795046009668  0.8731841025308469\n\
   0.3055698460566810  0.5376042224815617  0.1232255686839733\n\
-  0.8055230400371350  0.0074671815226643  0.3731271370795857\n";
+  0.8055230400371350  0.0074671815226643  0.3731271370795857\n");
 
-  xtal = XtalOpt::Xtal::POSCARToXtal(poscar);
-  xtal->findSpaceGroup(FROMPIO_TOL);
+  Xtal xtal;
+  QVERIFY(GlobalSearch::PoscarFormat::read(xtal, poscar));
   QEXPECT_FAIL("", "spglib: P1, findsym: Pm", Continue);
-  QCOMPARE(xtal->getSpaceGroupSymbol(), QString("Pm"));
-  delete xtal;
+  QCOMPARE(xtal.getSpaceGroupSymbol(), QString("Pm"));
 }
 
 QTEST_MAIN(SPGLibTest)
