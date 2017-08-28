@@ -19,8 +19,8 @@ configuration:
 init:
   - cd
   - cd C:\
-  - appveyor DownloadFile https://github.com/xtalopt/XtalOpt/releases/download/MSVC2015-deps/xtalopt-dependencies-msvc2015.zip
-  - 7z x xtalopt-dependencies-msvc2015.zip > nul
+  - appveyor DownloadFile https://github.com/xtalopt/XtalOpt/releases/download/MSVC-deps/xtalopt-dependencies-msvc2015-32bit.zip
+  - 7z x xtalopt-dependencies-msvc2015-32bit.zip > nul
   - set DEPS=C:\xtalopt-dependencies-msvc2015
 
   - set EIGEN3_INCLUDE_DIR=%DEPS%\eigen_3.3.2-1
