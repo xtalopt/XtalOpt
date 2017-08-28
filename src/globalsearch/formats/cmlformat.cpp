@@ -43,6 +43,10 @@ public:
   CmlFormatPrivate(Structure* s, xml_document& document)
     : m_success(false), m_structure(s), m_structureNode(nullptr)
   {
+    m_structure->clear();
+    m_structure->resetEnergy();
+    m_structure->resetEnthalpy();
+
     // Parse the CML document, and create molecules/elements as necessary.
     m_structureNode = document.child("molecule");
     xml_node cmlNode = document.child("cml");
@@ -56,6 +60,8 @@ public:
         m_success = atoms();
       if (m_success)
         m_success = bonds();
+      if (m_success)
+        m_success = properties();
     } else {
       m_error += "Error, no molecule node found.";
       m_success = false;
@@ -64,9 +70,6 @@ public:
 
   bool unitCell()
   {
-    // Reset the unit cell
-    m_structure->unitCell().setCellParameters(0, 0, 0, 0, 0, 0);
-
     xml_attribute attribute;
     xml_node node;
 
@@ -273,6 +276,83 @@ public:
       // Move on to the next bond node (if there is one).
       node = node.next_sibling("bond");
     }
+
+    return true;
+  }
+
+  bool properties() {
+    bool enthalpyFound = false, energyFound = false;
+    double enthalpy = 0.0, energy = 0.0;
+
+    xml_node propertyList = m_structureNode.child("propertyList");
+
+    // Properties aren't essential. If they don't exist, just return
+    if (!propertyList)
+      return true;
+
+    xml_node property = propertyList.child("property");
+
+    while (property) {
+      // What is the title of our property?
+      xml_attribute title = property.attribute("title");
+      if (title) {
+        // Is this enthalpy?
+        if (std::string(title.value()) == "Enthalpy (eV)") {
+          xml_node scalar = property.child("scalar");
+          if (!scalar) {
+            m_error += "Warning: Enthalpy (eV) exists, but no value!";
+            return false;
+          }
+          enthalpyFound = true;
+          enthalpy = scalar.text().as_float();
+          //std::cout << "Enthalpy is " << enthalpy << "\n";
+        }
+        // Is this energy?
+        else if (std::string(title.value()) == "Energy") {
+          xml_node scalar = property.child("scalar");
+          if (!scalar) {
+            m_error += "Warning: Energy exists, but no value!";
+            return false;
+          }
+          energy = scalar.text().as_float();
+
+          xml_attribute units = scalar.attribute("units");
+
+          if (units) {
+            if (std::string(units.value()) == "kJ/mol") {
+              energy *= KJ_PER_MOL_TO_EV;
+            }
+            else if (std::string(units.value()) == "eV") {
+              // Do nothing...
+            }
+            else {
+              m_error += ("Warning: we do not have a unit conversion for " +
+                          std::string(units.value()) + "yet. Please email " +
+                          "a developer of this program about this.");
+              return false;
+            }
+          }
+          // If there aren't any units, we'll just assume eV...
+
+          energyFound = true;
+          //std::cout << "Energy is " << energy << "\n"; // TMP
+        }
+      }
+      else {
+        // If there is no title, this property node is corrupt.
+        m_error += "Warning: no title found for a property.";
+        return false;
+      }
+
+      // Move on to the next property node (if there is one).
+      property = property.next_sibling("property");
+    }
+    if (energyFound)
+      m_structure->setEnergy(energy);
+    if (enthalpyFound)
+      m_structure->setEnthalpy(enthalpy);
+    if (enthalpyFound && !energyFound)
+      m_structure->setEnergy(enthalpy);
 
     return true;
   }

@@ -190,7 +190,7 @@ namespace GlobalSearch {
      * @sa setEnergy
      * @sa getEnergy
      */
-    double getEnthalpy()const {if (!m_hasEnthalpy) return getEnergy(); return m_enthalpy;};
+    double getEnthalpy() const {if (!m_hasEnthalpy) return getEnergy(); return m_enthalpy;};
 
     /** Returns the value PV term from an enthalpy calculation (H = U
      * + PV) in eV.

@@ -281,7 +281,7 @@ void FormatsTest::writeCml()
 
 void FormatsTest::OBConvert()
 {
-  /**** Caffeine ****/
+  /**** Caffeine PDB ****/
   QString caffeineFileName = QString(TESTDATADIR) + "/data/caffeine.pdb";
   QFile file(caffeineFileName);
   QVERIFY(file.open(QIODevice::ReadOnly));
@@ -311,6 +311,51 @@ void FormatsTest::OBConvert()
       ++numDoubleBonds;
   }
   QVERIFY(numDoubleBonds == 4);
+
+  // We can make sure the energy and enthalpy can be read correctly here
+  /**** Caffeine SDF ****/
+  caffeineFileName = QString(TESTDATADIR) + "/data/caffeine-mmff94.sdf";
+  QFile fileSDF(caffeineFileName);
+  QVERIFY(fileSDF.open(QIODevice::ReadOnly));
+  QByteArray caffeineSDFData(fileSDF.readAll());
+
+  // First, use OBConvert to convert it to cml
+  QByteArray caffeineCMLDataWithEnergy;
+
+  // If we want obabel to print the energy and enthalpy in the
+  // cml output, we HAVE to pass "-xp" to it.
+  QStringList options;
+  options << "-xp";
+
+  QVERIFY(GlobalSearch::OBConvert::convertFormat("sdf", "cml",
+                                                 caffeineSDFData,
+                                                 caffeineCMLDataWithEnergy,
+                                                 options));
+
+  std::stringstream csdfss(caffeineCMLDataWithEnergy.data());
+
+  // Now read it
+  GlobalSearch::Structure caffeineSDF;
+  QVERIFY(GlobalSearch::CmlFormat::read(caffeineSDF, csdfss));
+
+  // Our structure should have no unit cell, 24 atoms, and 25 bonds
+  QVERIFY(!caffeineSDF.hasUnitCell());
+  QVERIFY(caffeineSDF.numAtoms() == 24);
+  QVERIFY(caffeineSDF.numBonds() == 25);
+
+  // Caffeine should also have 4 double bonds. Make sure of this.
+  numDoubleBonds = 0;
+  for (const GlobalSearch::Bond& bond: caffeineSDF.bonds()) {
+    if (bond.bondOrder() == 2)
+      ++numDoubleBonds;
+  }
+  QVERIFY(numDoubleBonds == 4);
+
+  // We should have enthalpy here. It should be -122.350, and energy should
+  // be -122.351.
+  QVERIFY(caffeineSDF.hasEnthalpy());
+  QVERIFY(std::fabs(caffeineSDF.getEnthalpy() - -122.350) < 1.e-5);
+  QVERIFY(std::fabs(caffeineSDF.getEnergy() - -122.351) < 1.e-5);
 }
 
 QTEST_MAIN(FormatsTest)
