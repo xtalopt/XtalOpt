@@ -11,7 +11,7 @@ with the "New" BSD license.
 
 More information can be found at http://xtalopt.github.io.
 
-#Installation
+# Installation
 
 An up-to-date copy of the installation instructions is maintained at:
 
@@ -21,11 +21,11 @@ There is also a tutorial available at:
 
 http://xtalopt.github.io/tut.html
 
-#License
+# License
 
 The "New" BSD License. See COPYING.
 
-#Authors
+# Authors
 
 All contributors, in alphabetical order:
 
