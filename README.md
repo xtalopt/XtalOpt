@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/xtalopt/XtalOpt.svg?branch=master)](https://travis-ci.org/xtalopt/XtalOpt)
+[![Build status](https://ci.appveyor.com/api/projects/status/75v6f50p2evqddld?svg=true)](https://ci.appveyor.com/project/psavery/xtalopt)
 [![codecov](https://codecov.io/gh/xtalopt/XtalOpt/branch/master/graph/badge.svg)](https://codecov.io/gh/xtalopt/XtalOpt)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
