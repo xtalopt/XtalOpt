@@ -61,6 +61,7 @@ class FormatsTest : public QObject
   void readCml();
   void writeCml();
   void OBConvert();
+  void readGulp();
 };
 
 void FormatsTest::initTestCase()
@@ -356,6 +357,47 @@ void FormatsTest::OBConvert()
   QVERIFY(caffeineSDF.hasEnthalpy());
   QVERIFY(std::fabs(caffeineSDF.getEnthalpy() - -122.350) < 1.e-5);
   QVERIFY(std::fabs(caffeineSDF.getEnergy() - -122.351) < 1.e-5);
+}
+
+void FormatsTest::readGulp()
+{
+  /**** Some random GULP output ****/
+  QString gulpFileName =
+    QString(TESTDATADIR) + "/data/optimizerSamples/gulp/xtal.got";
+
+  GlobalSearch::Structure s;
+  GlobalSearch::Formats::read(&s, gulpFileName, "gulp");
+
+  double tol = 1.e-5;
+
+  // b should be 4.3098, gamma should be 102.5730, and the volume should
+  // be 67.7333397.
+  QVERIFY(fabs(s.unitCell().b() - 3.398685) < tol);
+  QVERIFY(fabs(s.unitCell().gamma() - 120.000878) < tol);
+  QVERIFY(fabs(s.unitCell().volume() - 55.508520) < tol);
+
+  // Atom #2 should be Ti and have a fractional position of
+  // 0.499957, 0.999999, 0.500003
+  QVERIFY(s.atom(1).atomicNumber() == 22);
+  QVERIFY(GlobalSearch::fuzzyCompare(
+      s.unitCell().toFractional(s.atom(1).pos()),
+      GlobalSearch::Vector3(0.499957, 0.999999, 0.500003),
+      tol
+    )
+  );
+
+  // Atom #3 should be O and have a fractional position of
+  // 0.624991, 0.250020, 0.874996
+  QVERIFY(s.atom(2).atomicNumber() == 8);
+  QVERIFY(GlobalSearch::fuzzyCompare(
+      s.unitCell().toFractional(s.atom(2).pos()),
+      GlobalSearch::Vector3(0.624991, 0.250020, 0.874996),
+      tol
+    )
+  );
+
+  // Energy should be -78.44239332
+  QVERIFY(fabs(s.getEnergy() - -78.44239332) < tol);
 }
 
 QTEST_MAIN(FormatsTest)
