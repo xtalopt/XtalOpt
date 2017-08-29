@@ -38,8 +38,8 @@ All contributors, in alphabetical order:
 =========
 Included sources from various projects are found under:
 
-- thirdparty/spglib   https://atztogo.github.io/spglib/
-- thirdparty/pugixml  https://pugixml.org/
+- external/spglib   https://atztogo.github.io/spglib/
+- external/pugixml  https://pugixml.org/
 
 These files, other than some minor modifications for interoperability
 with XtalOpt/libglobalsearch, are the works of the copyright holders
