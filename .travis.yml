@@ -98,12 +98,19 @@ after_success:
    fi
 
  # If this is a tag, then zip the install directory, md5sum it, and upload it
- - if [[ -n "$TRAVIS_TAG" ]] && [[ "$TRAVIS_PULL_REQUEST" == "false" ]] && [["$NAME" == "gcc-4"]]; then
-     echo "Tag detected. Installing, zipping installation, and creating md5sum." &&
-     sudo make -j2 install &&
-     cd install &&
-     tar -czvf linux-xtalopt.tgz xtalopt &&
-     md5sum linux-xtalopt.tgz > linux-xtalopt.md5;
+ - if [[ -n "$TRAVIS_TAG" ]] && [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then 
+     if [["$NAME" == "gcc-4"]]; then
+       echo "Tag detected for gcc-4. Installing, zipping installation, and creating md5sum." &&
+       make -j2 install &&
+       cd install &&
+       tar -czvf linux-xtalopt.tgz xtalopt &&
+       md5sum linux-xtalopt.tgz > linux-xtalopt.md5;
+     elif [["$NAME" == "osx"]]; then
+       echo "Tag detected for osx. Installing, zipping installation, and creating md5sum." &&
+       sudo make -j2 install &&
+       cd install &&
+       sudo zip -r osx-xtalopt.zip xtalopt.app
+       md5 osx-xtalopt.zip > osx-xtalopt.md5
    else
      echo "Tag not detected. Skipping zip and md5sum.";
    fi
@@ -113,6 +120,8 @@ deploy:
   file:
     - linux-xtalopt.tgz
     - linux-xtalopt.md5
+    - osx-xtalopt.zip
+    - osx-xtalopt.md5
   skip_cleanup: true
   api_key:
     secure: OV+fiXKG9XW6AHN2p79aFdIiGbkf6ofatJ0QWLzOhtAylrUmKL2rdaQLve64g7DXdzDMuUKXLncXPYdIoPLYau9CvZvejNhGCKH+GDRuUuW1TbivRHEBQvxZCGqH5YGKTRLu8Ip7RNeQo0+3KWT6aed971NVzPV2zgET1okSvDFTJIC+ZyZ6gd2u0WeKPerVgZk9RgF7liIykJnL74mi51IRDslKNNsyXC2fEDwRqCBpO6E2QpxSHnTKmMLy1jdfI+V1bEyqi3Bfc8lRuzbUh5YpxZ0GQlzjWqLosAaIVy07YON3UcPQz6aiXr0PGUXknVLwK2y2Vdo2LV3KGo9o5ahyU2roXThVCyhVRPyYKU+4PdXJPeH3dmOmc25keF9ubWhgvWCExacue7g1ww4cN+yKHAJJOlsHyIaDhS/F72nKad4YVSpLpw0pY29qY8yrEHGYW2YbIP70UL2r70KIBFvsaBBbIrl0N5CnRsmbZkGi0urXgYttfw/ehhgPkDgueONjnGHgqbPSHQ0JpxlOWSy8ghjhYpXTDVaUp54uWZfN7OnqufN5rkCoWA5Q6Qkh8PbiOPNb9IMuzkP1wlxYtVI43vUekeS7+RVtXnowrKb1z/19kCeZrvKuVM18achHwM6uXMbn6IjQLHJqpn21n8tca+6gyWDZGiuYzkceHhQ=
