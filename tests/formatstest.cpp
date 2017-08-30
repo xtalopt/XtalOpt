@@ -61,6 +61,9 @@ class FormatsTest : public QObject
   void readCml();
   void writeCml();
   void OBConvert();
+
+  // Different optimizer formats
+  void readCastep();
   void readGulp();
 };
 
@@ -359,6 +362,53 @@ void FormatsTest::OBConvert()
   QVERIFY(std::fabs(caffeineSDF.getEnergy() - -122.351) < 1.e-5);
 }
 
+void FormatsTest::readCastep()
+{
+  /**** Some random CASTEP output ****/
+  QString fileName =
+    QString(TESTDATADIR) + "/data/optimizerSamples/castep/xtal.castep";
+
+  GlobalSearch::Structure s;
+  GlobalSearch::Formats::read(&s, fileName, "castep");
+
+  double tol = 1.e-5;
+
+  // b should be 2.504900, gamma should be 103.045287, and the volume should
+  // be 8.358635.
+  QVERIFY(fabs(s.unitCell().b() - 2.504900) < tol);
+  QVERIFY(fabs(s.unitCell().gamma() - 103.045287) < tol);
+  QVERIFY(fabs(s.unitCell().volume() - 8.358635) < tol);
+
+  // We should have two atoms
+  QVERIFY(s.numAtoms() == 2);
+
+  // Atom #1 should be H and have a fractional position of
+  // -0.037144, 0.000195, 0.088768
+  QVERIFY(s.atom(0).atomicNumber() == 1);
+  QVERIFY(GlobalSearch::fuzzyCompare(
+      s.unitCell().toFractional(s.atom(0).pos()),
+      GlobalSearch::Vector3(-0.037144, 0.000195, 0.088768),
+      tol
+    )
+  );
+
+  // Atom #2 should be H and have a fractional position of
+  // 0.474430, 0.498679, 0.850082
+  QVERIFY(s.atom(1).atomicNumber() == 1);
+  QVERIFY(GlobalSearch::fuzzyCompare(
+      s.unitCell().toFractional(s.atom(1).pos()),
+      GlobalSearch::Vector3(0.474430, 0.498679, 0.850082),
+      tol
+    )
+  );
+
+  // Energy should be -29.55686228188
+  QVERIFY(fabs(s.getEnergy() - -29.55686228188) < tol);
+
+  // Enthalpy should be -29.5566434
+  QVERIFY(fabs(s.getEnthalpy() - -29.5566434) < tol);
+}
+
 void FormatsTest::readGulp()
 {
   /**** Some random GULP output ****/
@@ -375,6 +425,9 @@ void FormatsTest::readGulp()
   QVERIFY(fabs(s.unitCell().b() - 3.398685) < tol);
   QVERIFY(fabs(s.unitCell().gamma() - 120.000878) < tol);
   QVERIFY(fabs(s.unitCell().volume() - 55.508520) < tol);
+
+  // NumAtoms should be 6
+  QVERIFY(s.numAtoms() == 6);
 
   // Atom #2 should be Ti and have a fractional position of
   // 0.499957, 0.999999, 0.500003
