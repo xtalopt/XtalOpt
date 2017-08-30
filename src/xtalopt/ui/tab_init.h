@@ -43,12 +43,19 @@ namespace XtalOpt {
 
     enum IADColumns
     {
-     IC_CENTER = 0,
-     IC_NUMCENTERS = 1,
-     IC_NEIGHBOR = 2,
-     IC_NUMNEIGHBORS = 3,
-     IC_GEOM = 4,
-     IC_DIST = 5
+      IC_SYMBOL1 = 0,
+      IC_SYMBOL2 = 1,
+      IC_MINIAD = 2,
+    };
+
+    enum MolUnitColumns
+    {
+      MC_CENTER = 0,
+      MC_NUMCENTERS = 1,
+      MC_NEIGHBOR = 2,
+      MC_NUMNEIGHBORS = 3,
+      MC_GEOM = 4,
+      MC_DIST = 5
     };
 
   public slots:
@@ -73,6 +80,7 @@ namespace XtalOpt {
     void writeB();
     void writeC();
     void updateIAD();
+    void updateMinIAD();
     void addRow();
     void removeRow();
     void removeAll();

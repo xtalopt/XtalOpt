@@ -1145,6 +1145,244 @@ namespace XtalOpt {
     return true;
   }
 
+  bool Xtal::moveAtomRandomly(
+      unsigned int atomicNumber,
+      const QHash<unsigned int, XtalCompositionStruct> & limits,
+      int maxAttempts,
+      GlobalSearch::Atom *atom)
+  {
+      Eigen::Vector3d cartCoords;
+      bool success;
+
+      // For first atom, add to 0, 0, 0
+      if (numAtoms() == 0) {
+          cartCoords = Eigen::Vector3d (0,0,0);
+      }
+      else {
+          unsigned int i = 0;
+          Vector3 fracCoords;
+
+          do {
+              // Reset sentinal
+              success = true;
+
+              // Generate fractional coordinates
+              fracCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
+
+              // Convert to cartesian coordinates and store
+              cartCoords = Vector3(this->fracToCart(fracCoords));
+
+             // Compare distance to each atom in xtal with minimum radii
+              QVector<double> squaredDists;
+              this->getSquaredAtomicDistancesToPoint(cartCoords, &squaredDists);
+              Q_ASSERT_X(squaredDists.size() == this->numAtoms(), Q_FUNC_INFO,
+                  "Size of distance list does not match number of atoms.");
+
+              for (int dist_ind = 0; dist_ind < squaredDists.size(); ++dist_ind) {
+          		  // Grab the atom at i, a2
+          		  Atom& a2 = this->atom(i);
+
+          		  // If a1 and a2 are the same, skip the comparison
+          		  if (*atom == a2) {
+            	    continue;
+        		  }
+            	  
+				  double &curDistSquared = squaredDists[dist_ind];
+
+                  double minDist = limits.value((*atom).atomicNumber()).minRadius;
+                  minDist = limits.value(a2.atomicNumber()).minRadius
+              		  + minDist;
+				  double minDistSquared = minDist*minDist;
+
+                      if (curDistSquared < minDistSquared) {
+                          qDebug() <<"XtalOpt::moveAtomRandomlyIAD: Failed to add atoms with "
+                              "specified interatomic distance. Distance too small";
+                          success = false;
+                          break;
+                      }
+                  }
+          } while (++i < maxAttempts && !success);
+   
+      	if (i >= maxAttempts) return false;
+      }
+      qDebug() <<"XtalOpt::moveAtomRandomlyIAD: Success in moving atom";
+      atom->setPos(cartCoords);
+      return true;
+  }
+
+    bool Xtal::addAtomRandomlyIAD(
+        unsigned int atomicNumber,
+        const QHash<unsigned int, XtalCompositionStruct> & limits,
+        const QHash<QPair<int, int>, IAD> &limitsIAD,
+        int maxAttempts)
+    {
+        Eigen::Vector3d cartCoords;
+        bool success;
+
+        // For first atom, add to 0, 0, 0
+        if (numAtoms() == 0) {
+            cartCoords = Eigen::Vector3d (0,0,0);
+        }
+        else {
+            unsigned int i = 0;
+            Vector3 fracCoords;
+
+            do {
+                // Reset sentinal
+                success = true;
+
+                // Generate fractional coordinates
+                fracCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
+
+                // Convert to cartesian coordinates and store
+                cartCoords = Vector3(this->fracToCart(fracCoords));
+
+                // Compare distance to each atom in xtal with minimum radii
+                QVector<double> squaredDists;
+                this->getSquaredAtomicDistancesToPoint(cartCoords, &squaredDists);
+                Q_ASSERT_X(squaredDists.size() == this->numAtoms(), Q_FUNC_INFO,
+                    "Size of distance list does not match number of atoms.");
+
+                for (int dist_ind = 0; dist_ind < squaredDists.size(); ++dist_ind) {
+                    double &curDistSquared = squaredDists[dist_ind];
+                    // Save a bit of time if distance is huge...
+                    // Compare distance to minimum:
+
+                    double minDist = limitsIAD.value(qMakePair<int, int>(atomicNumber, this->atom(dist_ind).atomicNumber())).minIAD;
+                    double minDistSquared = minDist * minDist;
+
+                        if (curDistSquared < minDistSquared) {
+                            qDebug() <<"XtalOpt::addAtomRandomlyIAD: Failed to add atoms with "
+                                "specified interatomic distance. Distance too small";
+                            success = false;
+                            break;
+                        }
+                    }
+            } while (++i < maxAttempts && !success);
+
+           if (i >= maxAttempts) return false;
+        }
+        Atom& atom = addAtom();
+        atom.setPos(cartCoords);
+        atom.setAtomicNumber(static_cast<int>(atomicNumber));
+        return true;
+    }
+
+    bool Xtal::moveAtomRandomlyIAD(
+        unsigned int atomicNumber,
+        const QHash<unsigned int, XtalCompositionStruct> & limits,
+        const QHash<QPair<int, int>, IAD> &limitsIAD,
+        int maxAttempts,
+        GlobalSearch::Atom *atom)
+    {
+        Eigen::Vector3d cartCoords;
+        bool success;
+
+        // For first atom, add to 0, 0, 0
+        if (numAtoms() == 0) {
+            cartCoords = Eigen::Vector3d (0,0,0);
+        }
+        else {
+            unsigned int i = 0;
+            Vector3 fracCoords;
+
+            do {
+                // Reset sentinal
+                success = true;
+
+                // Generate fractional coordinates
+                fracCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
+
+                // Convert to cartesian coordinates and store
+                cartCoords = Vector3(this->fracToCart(fracCoords));
+
+               // Compare distance to each atom in xtal with minimum radii
+                QVector<double> squaredDists;
+                this->getSquaredAtomicDistancesToPoint(cartCoords, &squaredDists);
+                Q_ASSERT_X(squaredDists.size() == this->numAtoms(), Q_FUNC_INFO,
+                    "Size of distance list does not match number of atoms.");
+
+                for (int dist_ind = 0; dist_ind < squaredDists.size(); ++dist_ind) {
+                    double &curDistSquared = squaredDists[dist_ind];
+                    // Save a bit of time if distance is huge...
+                    // Compare distance to minimum:
+
+                    double minDist = limitsIAD.value(qMakePair<int, int>(atomicNumber, this->atom(dist_ind).atomicNumber())).minIAD;
+                    double minDistSquared = minDist*minDist;
+
+                        if (curDistSquared < minDistSquared) {
+                            qDebug() <<"XtalOpt::moveAtomRandomlyIAD: Failed to add atoms with "
+                                "specified interatomic distance. Distance too small";
+                            success = false;
+                            break;
+                        }
+                    }
+            } while (++i < maxAttempts && !success);
+
+            if (i >= maxAttempts) return false;
+        }
+        qDebug() <<"XtalOpt::moveAtomRandomlyIAD: Success in moving atom";
+        atom->setPos(cartCoords);
+        return true;
+    }
+
+  bool Xtal::checkMinIAD(
+      const QHash<QPair<int, int>, IAD> &limitsIAD,
+      int *atom1, int *atom2, double *IAD)
+  {
+      // Iterate through all of the atoms in the molecule for "a1"
+      for (std::vector<Atom>::const_iterator a1 = atoms().begin(),
+                         a1_end = atoms().end(); a1 != a1_end; ++a1) {
+
+        // Get list of minimum squared distances between each atom and a1
+        QVector<double> squaredDists;
+        this->getSquaredAtomicDistancesToPoint(a1->pos(), &squaredDists);
+        Q_ASSERT_X(squaredDists.size() == this->numAtoms(), Q_FUNC_INFO,
+                   "Size of distance list does not match number of atoms.");
+
+        // Iterate through each distance
+        for (int i = 0; i < squaredDists.size(); ++i) {
+
+          // Grab the atom pointer at i, a2
+          Atom a2 = this->atom(i);
+
+          // If a1 and a2 are the same, skip the comparison
+          if (*a1 == a2) {
+            continue;
+          }
+
+          // Cache the squared distance between a1 and a2
+          const double &curDistSquared = squaredDists[i];
+
+          // Calculate the minimum distance for the atom pair
+          const double minDist = limitsIAD.value(qMakePair<int, int>(a1->atomicNumber(), a2.atomicNumber())).minIAD;
+          const double minDistSquared = minDist * minDist;
+
+          // If the distance is too small, set atom1/atom2 and return false
+          if (curDistSquared < minDistSquared) {
+            if (atom1 != NULL && atom2 != NULL) {
+              *atom1 = atomIndex(*a1);
+              *atom2 = atomIndex(a2);
+              if (IAD != NULL) {
+                *IAD = sqrt(curDistSquared);
+              }
+            }
+            return false;
+          }
+
+          // Atom a2 is ok with respect to a1
+        }
+        // Atom a1 is ok with all a2
+      }
+      // all distances check out -- return true.
+      if (atom1 != NULL && atom2 != NULL) {
+        *atom1 = *atom2 = -1;
+        if (IAD != NULL) {
+          *IAD = 0.0;
+        }
+      }
+      return true;
+  }
 
   bool Xtal::molUnitBuilder(Vector3 a1Coords, unsigned int atomicNum, int valence, double dist, int hyb) {
     // Generate fractional coordinates

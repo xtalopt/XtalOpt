@@ -157,12 +157,18 @@ namespace GlobalSearch {
      * @return Returns true if a parent structure is saved, and false if
      * a parent structure is not saved.
      */
-
     bool hasParentStructure() const
     {
       if (m_parentStructure) return true;
       else return false;
     }
+
+    /** Return the number of times the structure has 
+     * had the atoms moved to fix the structure to pass
+     * the IAD check.
+     *@sa setFixCount
+     */
+    int getFixCount() const {return m_fixCount;};
 
     /** Return the energy value of the structure in eV.
      *
@@ -901,6 +907,13 @@ namespace GlobalSearch {
        */
     virtual unsigned int sizeOfHistory() {return m_histEnergies.size();};
 
+    /** Set the number of times the structures has
+     * had the atoms moved to pass the 
+     * IAD check.
+     * @sa getFixCount
+     */
+    void setFixCount(int fixCount) {m_fixCount = fixCount;};
+
     /** Set the energy in eV.
      * @param energy The Structure's energy in eV.
      * @sa getEnergy
@@ -1208,7 +1221,7 @@ namespace GlobalSearch {
                      m_skippedOptimization, m_supercellGenerationChecked;
     bool m_histogramGenerationPending;
     uint m_generation, m_id, m_rank, m_jobID,
-         m_currentOptStep, m_failCount;
+         m_currentOptStep, m_failCount, m_fixCount;
     QString m_parents, m_dupString, m_supString, m_rempath, m_fileName;
     double m_energy, m_enthalpy, m_PV;
     State m_status;

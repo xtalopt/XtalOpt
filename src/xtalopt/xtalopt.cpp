@@ -893,7 +893,20 @@ namespace XtalOpt {
 
     //Mitosis = False
     } else {
-
+      if (using_customIAD){
+          for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+              atomicNum = atomicNums.at(num_idx);
+              int q = comp.value(atomicNum).quantity * FU;
+              for (uint i = 0; i < q; i++) {
+                  if (!xtal->addAtomRandomlyIAD(atomicNum, this->comp, this->interComp, 1000)) {
+                      xtal->deleteLater();
+                      debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+                          "specified custom interatomic distance.");
+                      return 0;
+                  }
+              }
+          }
+      } else {
       //First check for "no center" MolUnits
       for (QHash<QPair<int, int>, MolUnit>::const_iterator it = this->compMolUnit.constBegin(), it_end = this->compMolUnit.constEnd(); it != it_end; it++) {
         QPair<int, int> key = const_cast<QPair<int, int> &>(it.key());
@@ -977,6 +990,7 @@ namespace XtalOpt {
           }
         }
       }
+	  }
     }
 
     // Set up geneology info
@@ -2217,12 +2231,116 @@ namespace XtalOpt {
       }
     }
 
+    if (using_customIAD) {
+      int atom1, atom2;
+      double IAD;
+      if (!xtal->checkMinIAD(this->interComp, &atom1, &atom2, &IAD)){
+        Atom& a1 = xtal->atom(atom1);
+        Atom& a2 = xtal->atom(atom2);
+        const double minIAD =
+            this->interComp.value(qMakePair<int, int>(a1.atomicNumber(), a2.atomicNumber())).minIAD;
+        xtal->setStatus(Xtal::Killed);
+        qDebug() << "Discarding structure -- Bad IAD ("
+                 << IAD << " < "
+                 << minIAD << ")";
+        if (err != NULL) {
+          *err = "Two atoms are too close together (post-optimization).";
+        }
+        return false;
+      }
+    }
+
     // Xtal is OK!
     if (err != nullptr) {
       *err = "";
     }
     return true;
   }
+
+    bool XtalOpt::checkStepOptimizedStructure(Structure *s, QString *err) {
+
+        Xtal *xtal = qobject_cast<Xtal*>(s);
+        uint totalOptSteps = m_optimizer->getNumberOfOptSteps();
+        uint currOptStep = xtal->getCurrentOptStep();
+        uint fixCount = xtal->getFixCount();
+
+        if (xtal == NULL) {
+            return true;
+        }
+
+        //Check post-opt
+        if (using_checkStepOpt){
+            if (using_customIAD) {
+                int atom1, atom2;
+                double IAD;
+                for (int i=0; i < 100; ++i) {
+                    if (!xtal->checkMinIAD(this->interComp, &atom1, &atom2, &IAD)){
+                        Atom& a1 = xtal->atom(atom1);
+                        Atom& a2 = xtal->atom(atom2);
+
+                        if (fixCount < 10) {
+                            int atomicNumber = a2.atomicNumber();
+                            Atom *atom = &a2;
+                            if (xtal->moveAtomRandomlyIAD(atomicNumber, this->comp, this->interComp, 1000, atom)) {
+                                continue;
+                            } else {
+                                const double minIAD =
+                                        this->interComp.value(qMakePair<int, int>(a1.atomicNumber(), atomicNumber)).minIAD;
+                                        s->setStatus(Xtal::Killed);
+
+                                qDebug() << "Discarding structure -- Bad IAD ("
+                                        << IAD << " < "
+                                        << minIAD << ") \n Could not fix the IAD issue.";
+                                return false;
+                            }
+                        } else {
+                            const double minIAD =
+                                    this->interComp.value(qMakePair<int, int>(a1.atomicNumber(), a2.atomicNumber())).minIAD;
+                                    s->setStatus(Xtal::Killed);
+
+                            qDebug() << "Discarding structure -- Bad IAD ("
+                                    << IAD << " < "
+                                    << minIAD << ") \n Exceeded the number of fixes.";
+                            return false;
+                        }
+               		} else {
+                        if (i>0) {
+                            s->setFixCount(fixCount + 1);
+                            s->setCurrentOptStep(0);
+                            break;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                return true;
+            }
+     
+	       if (using_interatomicDistanceLimit) {
+                int atom1, atom2;
+                double IAD;
+                if (!xtal->checkInteratomicDistances(this->comp, &atom1, &atom2, &IAD)){
+                    Atom& a1 = xtal->atom(atom1);
+                    Atom& a2 = xtal->atom(atom2);
+                    const double minIAD =
+                        this->comp.value(a1.atomicNumber()).minRadius +
+                        this->comp.value(a2.atomicNumber()).minRadius;
+
+                    qDebug() << "Discarding structure -- Bad IAD ("
+                         << IAD << " < "
+                         << minIAD << ")";
+                    if (err != NULL) {
+                        *err = "Two atoms are too close together.";
+                    }
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        //If early, don't check structure
+        return true;
+    }
 
   QString XtalOpt::interpretTemplate(const QString & templateString,
                                      Structure* structure)
