@@ -112,6 +112,12 @@ namespace XtalOpt {
             this, SLOT(updateDimensions()));
     connect(ui.cb_interatomicDistanceLimit, SIGNAL(toggled(bool)),
             this, SLOT(updateDimensions()));
+    connect(ui.cb_customIAD, SIGNAL(toggled(bool)),
+            this, SLOT(updateDimensions()));
+    connect(ui.cb_checkStepOpt, SIGNAL(toggled(bool)),
+            this, SLOT(updateDimensions()));
+    connect(ui.table_IAD, SIGNAL(itemSelectionChanged()),
+            this, SLOT(updateMinIAD()));
 
     // MolUnit builder
     connect(ui.cb_useMolUnit, SIGNAL(toggled(bool)),
@@ -197,7 +203,10 @@ namespace XtalOpt {
     settings->setValue("using/interatomicDistanceLimit",
                        xtalopt->using_interatomicDistanceLimit);
     settings->setValue("using/molUnit",      xtalopt->using_molUnit);
-
+    settings->setValue("using/customIAD",
+                        xtalopt->using_customIAD);
+    settings->setValue("using/checkStepOpt",
+                        xtalopt->using_checkStepOpt);
     // Composition
     // We only want to save POTCAR info and Composition to the resume
     // file, not the main config file, so only dump the data here if
@@ -226,19 +235,37 @@ namespace XtalOpt {
       for (int i = 0; i < numRowsMolUnit; i++) {
         settings->setArrayIndex(i);
         settings->setValue("center",
-                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText());
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_CENTER))->currentText());
         settings->setValue("number_of_centers",
-                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText());
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMCENTERS))->currentText());
         settings->setValue("neighbor",
-                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText());
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NEIGHBOR))->currentText());
         settings->setValue("number_of_neighbors",
-                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText());
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMNEIGHBORS))->currentText());
         settings->setValue("geometry",
-                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText());
+                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_GEOM))->currentText());
         settings->setValue("distance",
-                           ui.table_molUnit->item(i, IC_DIST)->text());
+                           ui.table_molUnit->item(i, MC_DIST)->text());
       }
       settings->endArray();
+    }
+
+    // Custom IAD Composition
+    if (xtalopt->using_customIAD==true) {
+        unsigned int length = ui.table_IAD->rowCount();
+        settings->beginWriteArray("customIAD");
+        for (uint i = 0; i < length; i++){
+            settings->setArrayIndex(i);
+            QString symbol1 = ui.table_IAD->item(i, IC_SYMBOL1)->text();
+            int atomicNum1 = ElemInfo::getAtomicNum(symbol1.trimmed().toStdString());
+            QString symbol2 = ui.table_IAD->item(i, IC_SYMBOL2)->text();
+            int atomicNum2 = ElemInfo::getAtomicNum(symbol2.trimmed().toStdString());
+
+            settings->setValue("atomicNumber1",     atomicNum1);
+            settings->setValue("atomicNumber2",     atomicNum2);
+            settings->setValue("minInteratomicDist",     xtalopt->interComp[qMakePair<int, int>(atomicNum1, atomicNum2)].minIAD);
+        }
+        settings->endArray();
     }
 
     // Formula Units List
@@ -285,6 +312,8 @@ namespace XtalOpt {
     ui.spin_minRadius->setValue(    settings->value("limits/minRadius",0.25).toDouble());
     ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
     ui.cb_interatomicDistanceLimit->setChecked( settings->value("using/interatomicDistanceLimit",false).toBool());
+    ui.cb_customIAD->setChecked( settings->value("using/customIAD").toBool());
+    ui.cb_checkStepOpt->setChecked( settings->value("using/checkStepOpt").toBool());
     ui.cb_mitosis->setChecked(      settings->value("using/mitosis",       false).toBool()     );
     ui.cb_subcellPrint->setChecked(      settings->value("using/subcellPrint",       false).toBool()     );
     ui.cb_useMolUnit->setChecked(      settings->value("using/molUnit",       false).toBool()     );
@@ -347,42 +376,61 @@ namespace XtalOpt {
 
           QComboBox* combo_center = new QComboBox();
           combo_center->insertItem(0, center);
-          ui.table_molUnit->setCellWidget(i, IC_CENTER, combo_center);
+          ui.table_molUnit->setCellWidget(i, MC_CENTER, combo_center);
           connect(combo_center, SIGNAL(currentIndexChanged(int)),
                   this, SLOT(updateIAD()));
 
           QComboBox* combo_numCenters = new QComboBox();
           combo_numCenters->insertItem(0, strNumCenters);
-          ui.table_molUnit->setCellWidget(i, IC_NUMCENTERS, combo_numCenters);
+          ui.table_molUnit->setCellWidget(i, MC_NUMCENTERS, combo_numCenters);
           connect(combo_numCenters, SIGNAL(currentIndexChanged(int)),
                   this, SLOT(updateIAD()));
 
           QComboBox* combo_neighbor = new QComboBox();
           combo_neighbor->insertItem(0, neighbor);
-          ui.table_molUnit->setCellWidget(i, IC_NEIGHBOR, combo_neighbor);
+          ui.table_molUnit->setCellWidget(i, MC_NEIGHBOR, combo_neighbor);
           connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
                   this, SLOT(updateIAD()));
 
           QComboBox* combo_numNeighbors = new QComboBox();
           combo_numNeighbors->insertItem(0, strNumNeighbors);
-          ui.table_molUnit->setCellWidget(i, IC_NUMNEIGHBORS, combo_numNeighbors);
+          ui.table_molUnit->setCellWidget(i, MC_NUMNEIGHBORS, combo_numNeighbors);
           connect(combo_numNeighbors, SIGNAL(currentIndexChanged(int)),
                   this, SLOT(updateIAD()));
 
           QComboBox* combo_geom = new QComboBox();
           combo_geom->insertItem(0, strGeom);
-          ui.table_molUnit->setCellWidget(i, IC_GEOM, combo_geom);
+          ui.table_molUnit->setCellWidget(i, MC_GEOM, combo_geom);
           connect(combo_geom, SIGNAL(currentIndexChanged(int)),
                   this, SLOT(updateIAD()));
 
           QTableWidgetItem *distItem = new QTableWidgetItem(strDist);
-          ui.table_molUnit->setItem(i, IC_DIST, distItem);
+          ui.table_molUnit->setItem(i, MC_DIST, distItem);
           connect(ui.table_molUnit, SIGNAL(itemChanged(QTableWidgetItem *)),
                 this, SLOT(updateIAD()));
 
         }
         this->updateIAD();
         settings->endArray();
+    }
+
+    // Custom IAD
+    if (xtalopt->using_customIAD==true) {
+    int size = settings->beginReadArray("customIAD");
+    xtalopt->interComp = QHash<QPair<int, int>, IAD> ();
+    for (int i = 0; i < size; i++){
+        settings->setArrayIndex(i);
+        int atomicNum1, atomicNum2;
+        IAD entry;
+        atomicNum1 = settings->value("atomicNumber1").toInt();
+        atomicNum2 = settings->value("atomicNumber2").toInt();
+        double minInteratomicDist = settings->value("minInteratomicDist").toDouble();
+        entry.minIAD = minInteratomicDist;
+        xtalopt->interComp[qMakePair<int, int>(atomicNum1, atomicNum2)] = entry;
+    }
+    this->updateCompositionTable();
+    this->updateMinIAD();
+    settings->endArray();
     }
 
     // Formula Units List
@@ -448,7 +496,11 @@ namespace XtalOpt {
     ui.combo_c->setItemText(ui.combo_c->currentIndex(), QString::number(xtalopt->cx));
     ui.cb_interatomicDistanceLimit->setChecked(
           xtalopt->using_interatomicDistanceLimit);
-    ui.cb_useMolUnit->setChecked( xtalopt->using_molUnit);
+    ui.cb_customIAD->setChecked(
+          xtalopt->using_customIAD);
+	ui.cb_checkStepOpt->setChecked(
+		  xtalopt->using_checkStepOpt);
+	ui.cb_useMolUnit->setChecked( xtalopt->using_molUnit);
     ui.cb_allowRandSpg->setChecked( xtalopt->using_randSpg);
 
     updateComposition();
@@ -477,8 +529,11 @@ namespace XtalOpt {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
     QHash<uint, XtalCompositionStruct> comp;
+    QHash<QPair<int, int>, IAD> interComp;
     QString symbol;
+    QString symbol2;
     unsigned int atomicNum;
+    unsigned int atomicNum2;
     unsigned int quantity;
     QStringList symbolList;
     QStringList quantityList;
@@ -558,7 +613,27 @@ namespace XtalOpt {
       }
 
       comp[atomicNum].quantity += quantity;
-    }
+    
+      for (uint j = 0; j < length; j++){
+          symbol2    = symbolList.at(j);
+          atomicNum2 = ElemInfo::getAtomicNum(
+              symbol2.trimmed().toStdString().c_str());
+
+          // Add twice to hash (if the two atoms are different)
+          if (!interComp.contains(qMakePair<int, int>(atomicNum, atomicNum2))) {
+              IAD entry;
+              entry.minIAD = ElemInfo::getCovalentRadius(atomicNum) + ElemInfo::getCovalentRadius(atomicNum2);
+              interComp[qMakePair<int, int>(atomicNum, atomicNum2)] = entry;
+          }
+          if (atomicNum!=atomicNum2){
+              if (!interComp.contains(qMakePair<int, int>(atomicNum2, atomicNum))) {
+                  IAD entry;
+                  entry.minIAD = ElemInfo::getCovalentRadius(atomicNum) + ElemInfo::getCovalentRadius(atomicNum2);
+                  interComp[qMakePair<int, int>(atomicNum2, atomicNum)] = entry;
+              }
+          }
+      }
+  	}
 
     // If we changed the composition, reset the spacegroup generation
     // min xtals per FU to be zero
@@ -575,7 +650,8 @@ namespace XtalOpt {
     xtalopt->comp = comp;
 
     this->updateMinRadii();
-    this->updateCompositionTable();
+    this->updateMinIAD();
+	this->updateCompositionTable();
     this->updateNumDivisions();
   }
 
@@ -590,6 +666,12 @@ namespace XtalOpt {
     // Adjust table size:
     int numRows = keys.size();
     ui.table_comp->setRowCount(numRows);
+    int numRows2 = keys.size();
+    
+	for(int j = numRows2-1; j > 0; j--){
+    	numRows2=numRows2+j;
+    }
+    int z = 0;
 
     for (int i = 0; i < numRows; i++) {
       unsigned int atomicNum = keys.at(i);
@@ -620,6 +702,32 @@ namespace XtalOpt {
       ui.table_comp->setItem(i, CC_QUANTITY, quantityItem);
       ui.table_comp->setItem(i, CC_MASS, massItem);
       ui.table_comp->setItem(i, CC_MINRADIUS, minRadiusItem);
+  
+    if (ui.cb_customIAD->isChecked()) {
+        ui.table_IAD->setRowCount(numRows2);
+
+        for (int k = i; k < numRows; k++) {
+            unsigned int atomicNum2 = keys.at(k);
+
+            QString symbol1 = ElemInfo::getAtomicSymbol(atomicNum).c_str();
+            QString symbol2 = ElemInfo::getAtomicSymbol(atomicNum2).c_str();
+
+            QTableWidgetItem *symbol1Item =
+                new QTableWidgetItem(symbol1);
+            QTableWidgetItem *symbol2Item =
+                new QTableWidgetItem(symbol2);
+
+            ui.table_IAD->setItem(z, IC_SYMBOL1, symbol1Item);
+            ui.table_IAD->setItem(z, IC_SYMBOL2, symbol2Item);
+
+            QString minIAD = QString::number(xtalopt->interComp[qMakePair<int, int>(atomicNum, atomicNum2)].minIAD, 'f', 3);
+            QTableWidgetItem *minIADItem =
+                new QTableWidgetItem(minIAD);
+            ui.table_IAD->setItem(z, IC_MINIAD, minIADItem);
+
+            z++;
+        }
+      }
     }
   }
 
@@ -705,6 +813,16 @@ namespace XtalOpt {
       this->updateMinRadii();
       this->updateCompositionTable();
     }
+
+    if (xtalopt->using_customIAD != ui.cb_customIAD->isChecked()) {
+        xtalopt->using_customIAD = ui.cb_customIAD->isChecked();
+        this->updateMinIAD();
+        this->updateCompositionTable();
+    }
+    if (xtalopt->using_checkStepOpt != ui.cb_checkStepOpt->isChecked()) {
+        xtalopt->using_checkStepOpt = ui.cb_checkStepOpt->isChecked();
+    }
+
   }
 
   void TabInit::updateMinRadii()
@@ -720,6 +838,33 @@ namespace XtalOpt {
       if (it.value().minRadius < xtalopt->minRadius) {
         it.value().minRadius = xtalopt->minRadius;
       }
+    }
+  }
+
+  void TabInit::updateMinIAD()
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    QHash<QPair<int, int>, IAD> interComp;
+    unsigned int length = ui.table_IAD->rowCount();
+
+    for (uint i = 0; i < length; i++){
+        QString symbol1 = ui.table_IAD->item(i, IC_SYMBOL1)->text();
+        int atomicNum1 = ElemInfo::getAtomicNum(symbol1.trimmed().toStdString().c_str());
+        QString symbol2 = ui.table_IAD->item(i, IC_SYMBOL2)->text();
+        int atomicNum2 = ElemInfo::getAtomicNum(symbol2.trimmed().toStdString().c_str());
+        QString strMinIAD = ui.table_IAD->item(i, IC_MINIAD)->text();
+        double minIAD = ui.table_IAD->item(i, IC_MINIAD)->text().toDouble();
+           QTableWidgetItem *minIADItem =
+                new QTableWidgetItem(QString::number(minIAD, 'f', 3));
+            ui.table_IAD->setItem(i, IC_MINIAD, minIADItem);
+
+        interComp[qMakePair<int, int>(atomicNum1, atomicNum2)].minIAD = minIAD;
+        xtalopt->interComp[qMakePair<int, int>(atomicNum1, atomicNum2)].minIAD = minIAD;
+
+        if (atomicNum1!=atomicNum2){
+            xtalopt->interComp[qMakePair<int, int>(atomicNum2, atomicNum1)].minIAD = minIAD;
+            interComp[qMakePair<int, int>(atomicNum2, atomicNum1)].minIAD = minIAD;
+        }
     }
   }
 
@@ -1013,13 +1158,13 @@ namespace XtalOpt {
 
     //Build table - forward
     for (int i = 0; i < numRowsMolUnit; i++) {
-      QString center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
+      QString center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_CENTER))->currentText();
       int centerNum;
       if (center == "None")
         centerNum = 0;
       else
         centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
-      QString neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
+      QString neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NEIGHBOR))->currentText();
       int neighborNum =
           ElemInfo::getAtomicNum(neighbor.trimmed().toStdString());
 
@@ -1046,7 +1191,7 @@ namespace XtalOpt {
       if (centerList.contains(center)) {
         combo_center->setCurrentIndex(combo_center->findText(center));
       }
-      ui.table_molUnit->setCellWidget(i, IC_CENTER, combo_center);
+      ui.table_molUnit->setCellWidget(i, MC_CENTER, combo_center);
       connect(combo_center, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
@@ -1055,20 +1200,20 @@ namespace XtalOpt {
       if (neighborList.contains(neighbor)) {
         combo_neighbor->setCurrentIndex(combo_neighbor->findText(neighbor));
       }
-      ui.table_molUnit->setCellWidget(i, IC_NEIGHBOR, combo_neighbor);
+      ui.table_molUnit->setCellWidget(i, MC_NEIGHBOR, combo_neighbor);
       connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
-      center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
+      center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_CENTER))->currentText();
       if (center == "None")
         centerNum = 0;
       else
         centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
-      neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
+      neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NEIGHBOR))->currentText();
       neighborNum = ElemInfo::getAtomicNum(neighbor.trimmed().toStdString());
 
       //Number of Centers
-      unsigned int numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
+      unsigned int numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMCENTERS))->currentText().toUInt();
       QList<QString> numCentersList;
 
       this->getNumCenters(centerNum, neighborNum, numCentersList);
@@ -1078,20 +1223,20 @@ namespace XtalOpt {
       if (numCentersList.contains(QString::number(numCenters))) {
         combo_numCenters->setCurrentIndex(combo_numCenters->findText(QString::number(numCenters)));
       }
-      ui.table_molUnit->setCellWidget(i, IC_NUMCENTERS, combo_numCenters);
+      ui.table_molUnit->setCellWidget(i, MC_NUMCENTERS, combo_numCenters);
       connect(combo_numCenters, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
       if (numCentersList.isEmpty())
         return;
 
-      numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
+      numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMCENTERS))->currentText().toUInt();
 
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numCenters = numCenters;
 
       //Number of Neighbors
       QList<QString> numNeighborsList;
-      unsigned int numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText().toUInt();
+      unsigned int numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMNEIGHBORS))->currentText().toUInt();
       this->getNumNeighbors(centerNum, neighborNum, numNeighborsList);
 
       QComboBox* combo_numNeighbors = new QComboBox();
@@ -1099,20 +1244,20 @@ namespace XtalOpt {
       if (numNeighborsList.contains(QString::number(numNeighbors))) {
         combo_numNeighbors->setCurrentIndex(combo_numNeighbors->findText(QString::number(numNeighbors)));
       }
-      ui.table_molUnit->setCellWidget(i, IC_NUMNEIGHBORS, combo_numNeighbors);
+      ui.table_molUnit->setCellWidget(i, MC_NUMNEIGHBORS, combo_numNeighbors);
       connect(combo_numNeighbors, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
       if (numNeighborsList.isEmpty())
         return;
 
-      numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText().toUInt();
+      numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMNEIGHBORS))->currentText().toUInt();
 
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numNeighbors = numNeighbors;
 
       //Geometry
-      unsigned int geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText().toUInt();
-      QString strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText();
+      unsigned int geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_GEOM))->currentText().toUInt();
+      QString strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_GEOM))->currentText();
       QList<QString> geomList;
 
       this->getGeom(geomList, numNeighbors);
@@ -1122,22 +1267,22 @@ namespace XtalOpt {
       if (geomList.contains(strGeom)) {
         combo_geom->setCurrentIndex(combo_geom->findText(strGeom));
       }
-      ui.table_molUnit->setCellWidget(i, IC_GEOM, combo_geom);
+      ui.table_molUnit->setCellWidget(i, MC_GEOM, combo_geom);
       connect(combo_geom, SIGNAL(currentIndexChanged(int)),
           this, SLOT(updateIAD()));
 
-      geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText().toUInt();
-      strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText();
+      geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_GEOM))->currentText().toUInt();
+      strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_GEOM))->currentText();
       this->setGeom(geom, strGeom);
 
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
 
       //MolUnit distance
-      double dist = ui.table_molUnit->item(i, IC_DIST)->text().toDouble();
+      double dist = ui.table_molUnit->item(i, MC_DIST)->text().toDouble();
       QString strDist = QString::number(dist, 'f', 3);
       QTableWidgetItem *distItem = new QTableWidgetItem(strDist);
-      ui.table_molUnit->setItem(i, IC_DIST, distItem);
-      dist = ui.table_molUnit->item(i, IC_DIST)->text().toDouble();
+      ui.table_molUnit->setItem(i, MC_DIST, distItem);
+      dist = ui.table_molUnit->item(i, MC_DIST)->text().toDouble();
 
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].dist = dist;
 
@@ -1148,13 +1293,13 @@ namespace XtalOpt {
 
     //Go through table again - backward
     for (int i = numRowsMolUnit-1; i >= 0; i--) {
-      QString center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
+      QString center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_CENTER))->currentText();
       int centerNum;
       if (center == "None")
         centerNum = 0;
       else
         centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
-      QString neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
+      QString neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NEIGHBOR))->currentText();
       int neighborNum =
           ElemInfo::getAtomicNum(neighbor.trimmed().toStdString());
 
@@ -1181,7 +1326,7 @@ namespace XtalOpt {
       if (centerList.contains(center)) {
         combo_center->setCurrentIndex(combo_center->findText(center));
       }
-      ui.table_molUnit->setCellWidget(i, IC_CENTER, combo_center);
+      ui.table_molUnit->setCellWidget(i, MC_CENTER, combo_center);
       connect(combo_center, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
@@ -1190,20 +1335,20 @@ namespace XtalOpt {
       if (neighborList.contains(neighbor)) {
         combo_neighbor->setCurrentIndex(combo_neighbor->findText(neighbor));
       }
-      ui.table_molUnit->setCellWidget(i, IC_NEIGHBOR, combo_neighbor);
+      ui.table_molUnit->setCellWidget(i, MC_NEIGHBOR, combo_neighbor);
       connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
-      center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_CENTER))->currentText();
+      center = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_CENTER))->currentText();
       if (center == "None")
         centerNum = 0;
       else
         centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
-      neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NEIGHBOR))->currentText();
+      neighbor = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NEIGHBOR))->currentText();
       neighborNum = ElemInfo::getAtomicNum(neighbor.trimmed().toStdString());
 
       //Number of Centers
-      unsigned int numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
+      unsigned int numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMCENTERS))->currentText().toUInt();
       QList<QString> numCentersList;
 
       this->getNumCenters(centerNum, neighborNum, numCentersList);
@@ -1213,17 +1358,17 @@ namespace XtalOpt {
       if (numCentersList.contains(QString::number(numCenters))) {
         combo_numCenters->setCurrentIndex(combo_numCenters->findText(QString::number(numCenters)));
       }
-      ui.table_molUnit->setCellWidget(i, IC_NUMCENTERS, combo_numCenters);
+      ui.table_molUnit->setCellWidget(i, MC_NUMCENTERS, combo_numCenters);
       connect(combo_numCenters, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
-      numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMCENTERS))->currentText().toUInt();
+      numCenters = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMCENTERS))->currentText().toUInt();
 
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numCenters = numCenters;
 
       //Number of Neighbors
       QList<QString> numNeighborsList;
-      unsigned int numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText().toUInt();
+      unsigned int numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMNEIGHBORS))->currentText().toUInt();
       this->getNumNeighbors(centerNum, neighborNum, numNeighborsList);
 
       QComboBox* combo_numNeighbors = new QComboBox();
@@ -1231,17 +1376,17 @@ namespace XtalOpt {
       if (numNeighborsList.contains(QString::number(numNeighbors))) {
         combo_numNeighbors->setCurrentIndex(combo_numNeighbors->findText(QString::number(numNeighbors)));
       }
-      ui.table_molUnit->setCellWidget(i, IC_NUMNEIGHBORS, combo_numNeighbors);
+      ui.table_molUnit->setCellWidget(i, MC_NUMNEIGHBORS, combo_numNeighbors);
       connect(combo_numNeighbors, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
-      numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_NUMNEIGHBORS))->currentText().toUInt();
+      numNeighbors = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMNEIGHBORS))->currentText().toUInt();
 
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].numNeighbors = numNeighbors;
 
       //Geometry
-      unsigned int geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText().toUInt();
-      QString strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText();
+      unsigned int geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_GEOM))->currentText().toUInt();
+      QString strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_GEOM))->currentText();
       QList<QString> geomList;
 
       this->getGeom(geomList, numNeighbors);
@@ -1251,22 +1396,22 @@ namespace XtalOpt {
       if (geomList.contains(strGeom)) {
         combo_geom->setCurrentIndex(combo_geom->findText(strGeom));
       }
-      ui.table_molUnit->setCellWidget(i, IC_GEOM, combo_geom);
+      ui.table_molUnit->setCellWidget(i, MC_GEOM, combo_geom);
       connect(combo_geom, SIGNAL(currentIndexChanged(int)),
           this, SLOT(updateIAD()));
 
-      geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText().toUInt();
-      strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, IC_GEOM))->currentText();
+      geom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_GEOM))->currentText().toUInt();
+      strGeom = qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_GEOM))->currentText();
       this->setGeom(geom, strGeom);
 
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].geom = geom;
 
       //MolUnit distance
-      double dist = ui.table_molUnit->item(i, IC_DIST)->text().toDouble();
+      double dist = ui.table_molUnit->item(i, MC_DIST)->text().toDouble();
       QString strDist = QString::number(dist, 'f', 3);
       QTableWidgetItem *distItem = new QTableWidgetItem(strDist);
-      ui.table_molUnit->setItem(i, IC_DIST, distItem);
-      dist = ui.table_molUnit->item(i, IC_DIST)->text().toDouble();
+      ui.table_molUnit->setItem(i, MC_DIST, distItem);
+      dist = ui.table_molUnit->item(i, MC_DIST)->text().toDouble();
 
       compMolUnit[qMakePair<int, int>(centerNum, neighborNum)].dist = dist;
 
@@ -1389,36 +1534,36 @@ namespace XtalOpt {
 
     QComboBox* combo_center = new QComboBox();
     combo_center->insertItems(0, centerList);
-    ui.table_molUnit->setCellWidget(row, IC_CENTER, combo_center);
+    ui.table_molUnit->setCellWidget(row, MC_CENTER, combo_center);
     connect(combo_center, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
     QComboBox* combo_numCenters = new QComboBox();
     combo_numCenters->insertItems(0, numCentersList);
-    ui.table_molUnit->setCellWidget(row, IC_NUMCENTERS, combo_numCenters);
+    ui.table_molUnit->setCellWidget(row, MC_NUMCENTERS, combo_numCenters);
     connect(combo_numCenters, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
     QComboBox* combo_neighbor = new QComboBox();
     combo_neighbor->insertItems(0, neighborList);
-    ui.table_molUnit->setCellWidget(row, IC_NEIGHBOR, combo_neighbor);
+    ui.table_molUnit->setCellWidget(row, MC_NEIGHBOR, combo_neighbor);
     connect(combo_neighbor, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
     QComboBox* combo_numNeighbors = new QComboBox();
     combo_numNeighbors->insertItems(0, numNeighborsList);
-    ui.table_molUnit->setCellWidget(row, IC_NUMNEIGHBORS, combo_numNeighbors);
+    ui.table_molUnit->setCellWidget(row, MC_NUMNEIGHBORS, combo_numNeighbors);
     connect(combo_numNeighbors, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
     QComboBox* combo_geom = new QComboBox();
     combo_geom->insertItems(0, geomList);
-    ui.table_molUnit->setCellWidget(row, IC_GEOM, combo_geom);
+    ui.table_molUnit->setCellWidget(row, MC_GEOM, combo_geom);
     connect(combo_geom, SIGNAL(currentIndexChanged(int)),
             this, SLOT(updateIAD()));
 
     QTableWidgetItem *distItem = new QTableWidgetItem(dist);
-    ui.table_molUnit->setItem(row, IC_DIST, distItem);
+    ui.table_molUnit->setItem(row, MC_DIST, distItem);
     connect(ui.table_molUnit, SIGNAL(itemChanged(QTableWidgetItem *)),
           this, SLOT(updateIAD()));
 

@@ -54,6 +54,10 @@ namespace XtalOpt {
     unsigned int geom;
   };
 
+  struct IAD {
+    double minIAD;
+  };
+
   // comparison of two XtalCompositionStructs
   static inline bool operator==(const XtalCompositionStruct& lhs,
                                 const XtalCompositionStruct& rhs)
@@ -120,6 +124,7 @@ namespace XtalOpt {
     GlobalSearch::Structure* replaceWithOffspring(
       GlobalSearch::Structure *s,
       const QString &reason = "") override;
+    bool checkStepOptimizedStructure(GlobalSearch::Structure* s, QString *err = NULL);
     bool checkLimits() override;
     bool checkComposition(Xtal *xtal, QString * err = nullptr);
     bool checkLattice(Xtal *xtal, uint formulaUnits, QString * err = nullptr);
@@ -202,6 +207,10 @@ namespace XtalOpt {
     bool using_mitosis;
     bool using_subcellPrint;
     bool using_molUnit;
+
+    bool using_customIAD;
+    bool using_checkStepOpt;
+    QHash<QPair<int, int>, IAD> interComp;
 
     QHash<uint, XtalCompositionStruct> comp;
     QHash<QPair<int, int>, MolUnit> compMolUnit;
