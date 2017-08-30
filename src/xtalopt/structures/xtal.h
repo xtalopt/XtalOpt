@@ -27,11 +27,11 @@ class QFile;
 namespace XtalOpt {
   struct XtalCompositionStruct;
   struct MolUnit;
+  struct IAD;
 
   using GlobalSearch::Matrix3;
   using GlobalSearch::Vector3;
 
-  class IAD;
   class Xtal : public GlobalSearch::Structure
   {
     Q_OBJECT
