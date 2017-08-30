@@ -53,8 +53,14 @@ macro(DownloadOBabel)
 
   # Only install it if we are not using system obabel
   if(NOT USE_SYSTEM_OBABEL)
+    set(OBABEL_DESINATION "bin")
+    # We need to put it in a slightly different place for apple
+    if(APPLE)
+      set(OBABEL_DESTINATION "xtalopt.app/Contents/bin")
+    endif(APPLE)
+
     install(FILES "${CMAKE_BINARY_DIR}/bin/${OBABEL_NAME}"
-            DESTINATION bin
+            DESTINATION "${OBABEL_DESTINATION}"
             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                         GROUP_READ GROUP_EXECUTE
                         WORLD_READ WORLD_EXECUTE)
