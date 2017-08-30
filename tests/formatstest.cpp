@@ -66,6 +66,7 @@ class FormatsTest : public QObject
   void readCastep();
   void readGulp();
   void readPwscf();
+  void readSiesta();
 };
 
 void FormatsTest::initTestCase()
@@ -504,6 +505,50 @@ void FormatsTest::readPwscf()
 
   // Enthalpy should be -62.9446011092 Rydbergs
   QVERIFY(fabs(s.getEnthalpy() - (-62.9446011092 * RYDBERG_TO_EV)) < tol);
+}
+
+void FormatsTest::readSiesta()
+{
+  /**** Some random SIESTA output ****/
+  QString fileName =
+    QString(TESTDATADIR) + "/data/optimizerSamples/siesta/xtal.out";
+
+  GlobalSearch::Structure s;
+  GlobalSearch::Formats::read(&s, fileName, "siesta");
+
+  double tol = 1.e-4;
+
+  // b should be 3.874763, gamma should be 74.2726, and the volume should
+  // be 75.408578.
+  QVERIFY(fabs(s.unitCell().b() - 3.874763) < tol);
+  QVERIFY(fabs(s.unitCell().gamma() - 74.2726) < tol);
+  QVERIFY(fabs(s.unitCell().volume() - 75.408578) < tol);
+
+  // We should have six atoms
+  QVERIFY(s.numAtoms() == 6);
+
+  // Atom #2 should be Ti and have a fractional position of
+  // 0.40338285, 0.38896410, 0.75921162
+  QVERIFY(s.atom(1).atomicNumber() == 22);
+  QVERIFY(GlobalSearch::fuzzyCompare(
+      s.unitCell().toFractional(s.atom(1).pos()),
+      GlobalSearch::Vector3(0.40338285, 0.38896410, 0.75921162),
+      tol
+    )
+  );
+
+  // Atom #3 should be O and have a fractional position of
+  // 0.38568921, 0.74679127, 0.21473350
+  QVERIFY(s.atom(2).atomicNumber() == 8);
+  QVERIFY(GlobalSearch::fuzzyCompare(
+      s.unitCell().toFractional(s.atom(2).pos()),
+      GlobalSearch::Vector3(0.38568921, 0.74679127, 0.21473350),
+      tol
+    )
+  );
+
+  // Energy should be -2005.342641 eV
+  QVERIFY(fabs(s.getEnergy() - -2005.342641) < tol);
 }
 
 QTEST_MAIN(FormatsTest)
