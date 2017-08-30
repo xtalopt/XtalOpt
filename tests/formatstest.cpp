@@ -67,6 +67,7 @@ class FormatsTest : public QObject
   void readGulp();
   void readPwscf();
   void readSiesta();
+  void readVasp();
 };
 
 void FormatsTest::initTestCase()
@@ -549,6 +550,53 @@ void FormatsTest::readSiesta()
 
   // Energy should be -2005.342641 eV
   QVERIFY(fabs(s.getEnergy() - -2005.342641) < tol);
+}
+
+void FormatsTest::readVasp()
+{
+  /**** Some random VASP output ****/
+  QString fileName =
+    QString(TESTDATADIR) + "/data/optimizerSamples/vasp/CONTCAR";
+
+  GlobalSearch::Structure s;
+  GlobalSearch::Formats::read(&s, fileName, "vasp");
+
+  double tol = 1.e-5;
+
+  // b should be 2.52221, gamma should be 86.32327, and the volume should
+  // be 6.01496.
+  QVERIFY(fabs(s.unitCell().b() - 2.52221) < tol);
+  QVERIFY(fabs(s.unitCell().gamma() - 86.32327) < tol);
+  QVERIFY(fabs(s.unitCell().volume() - 6.01496) < tol);
+
+  // We should have three atoms
+  QVERIFY(s.numAtoms() == 3);
+
+  // Atom #2 should be H and have a fractional position of
+  // 0.9317195263978, 0.20419595775, 0.4923304223199
+  QVERIFY(s.atom(1).atomicNumber() == 1);
+  QVERIFY(GlobalSearch::fuzzyCompare(
+      s.unitCell().toFractional(s.atom(1).pos()),
+      GlobalSearch::Vector3(0.9317195263978, 0.20419595775, 0.4923304223199),
+      tol
+    )
+  );
+
+  // Atom #3 should be O and have a fractional position of
+  // 0.087068957523, -0.1465596214494, 0.1524183445695
+  QVERIFY(s.atom(2).atomicNumber() == 8);
+  QVERIFY(GlobalSearch::fuzzyCompare(
+      s.unitCell().toFractional(s.atom(2).pos()),
+      GlobalSearch::Vector3(0.087068957523, -0.1465596214494, 0.1524183445695),
+      tol
+    )
+  );
+
+  // Energy should be 5.56502673 eV.
+  QVERIFY(fabs(s.getEnergy() - 5.56502673) < tol);
+
+  // Enthalpy should be 43.10746559 eV
+  QVERIFY(fabs(s.getEnthalpy() - 43.10746559) < tol);
 }
 
 QTEST_MAIN(FormatsTest)
