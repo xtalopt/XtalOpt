@@ -65,6 +65,7 @@ class FormatsTest : public QObject
   // Different optimizer formats
   void readCastep();
   void readGulp();
+  void readPwscf();
 };
 
 void FormatsTest::initTestCase()
@@ -451,6 +452,58 @@ void FormatsTest::readGulp()
 
   // Energy should be -78.44239332
   QVERIFY(fabs(s.getEnergy() - -78.44239332) < tol);
+}
+
+void FormatsTest::readPwscf()
+{
+  /**** Some random PWSCF output ****/
+  QString fileName =
+    QString(TESTDATADIR) + "/data/optimizerSamples/pwscf/xtal.out";
+
+  GlobalSearch::Structure s;
+  GlobalSearch::Formats::read(&s, fileName, "pwscf");
+
+  double tol = 1.e-5;
+
+  // b should be 4.13754, gamma should be 75.31465, and the volume should
+  // be 70.0484.
+  QVERIFY(fabs(s.unitCell().b() - 4.13754) < tol);
+  QVERIFY(fabs(s.unitCell().gamma() - 75.31465) < tol);
+  QVERIFY(fabs(s.unitCell().volume() - 70.0484) < tol);
+
+  // We should have two atoms
+  QVERIFY(s.numAtoms() == 2);
+
+  // Atom #1 should be O and have a fractional position of
+  // 0.040806225, 0.100970667, 0.003304159
+  QVERIFY(s.atom(0).atomicNumber() == 8);
+  QVERIFY(GlobalSearch::fuzzyCompare(
+      s.unitCell().toFractional(s.atom(0).pos()),
+      GlobalSearch::Vector3(0.040806225, 0.100970667, 0.003304159),
+      tol
+    )
+  );
+
+  // Atom #2 should be O and have a fractional position of
+  // 0.577212775, 0.316072333, 0.629713841
+  QVERIFY(s.atom(1).atomicNumber() == 8);
+  QVERIFY(GlobalSearch::fuzzyCompare(
+      s.unitCell().toFractional(s.atom(1).pos()),
+      GlobalSearch::Vector3(0.577212775, 0.316072333, 0.629713841),
+      tol
+    )
+  );
+
+  static const double RYDBERG_TO_EV = 13.605698066;
+
+  // We need to reduce the tolerance a little bit for these.
+  tol = 1.e-3;
+
+  // Energy should be -63.35870913 Rydbergs.
+  QVERIFY(fabs(s.getEnergy() - (-63.35870913 * RYDBERG_TO_EV)) < tol);
+
+  // Enthalpy should be -62.9446011092 Rydbergs
+  QVERIFY(fabs(s.getEnthalpy() - (-62.9446011092 * RYDBERG_TO_EV)) < tol);
 }
 
 QTEST_MAIN(FormatsTest)
