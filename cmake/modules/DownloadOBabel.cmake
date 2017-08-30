@@ -53,7 +53,7 @@ macro(DownloadOBabel)
 
   # Only install it if we are not using system obabel
   if(NOT USE_SYSTEM_OBABEL)
-    set(OBABEL_DESINATION "bin")
+    set(OBABEL_DESTINATION "bin")
     # We need to put it in a slightly different place for apple
     if(APPLE)
       set(OBABEL_DESTINATION "xtalopt.app/Contents/bin")
