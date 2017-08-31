@@ -53,10 +53,13 @@ build_script:
   - ctest --output-on-failure
 
 after_build:
-  - if %APPVEYOR_REPO_TAG% equ true if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2017" (
-      echo "Tag detected. Package will be built and md5 will be generated" &&
-      nmake package &&
-      ..\scripts\write-md5.bat)
+  - if %APPVEYOR_REPO_TAG% equ true (
+      if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2017" (
+        echo "Tag and MSVC 2017 detected. Package will be built and md5 will be generated" &&
+        nmake package &&
+        ..\scripts\write-md5.bat
+      )
+    )
     else (
       echo "Tag not detected. Skipping package building and md5 generation."
     )

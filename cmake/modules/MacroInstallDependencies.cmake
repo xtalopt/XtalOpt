@@ -43,6 +43,11 @@ macro(InstallDependencies ExeLocation TargetLocation DepSearchDirs)
   set(recurse 1)
   get_prerequisites("${ExeLocation}" prereqs exclude_system
                     recurse exepath "${DepSearchDirs}")
+
+  # For some reason, some system libraries are still sometimes included.
+  # Remove them if they are included.
+  RemoveUnneededPrereqs(prereqs)
+
   # Next, loop through each dependency. In case they are sym links, follow
   # the sym link to the original file, and then install that and rename it to
   # the dependency name. E.g., install libQt5Core.so.5.5.1 and rename it to
