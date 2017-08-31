@@ -13,8 +13,10 @@ coverage:
       default:
         threshold: 50%
   ignore:
-   - "tests/"
-   - "external/"
-   - "src/examplesearch/"
-   - "src/gapc/"
-   - "src/randomdock/"
+    - "tests/"
+    - "external/"
+    - "src/examplesearch/"
+    - "src/gapc/"
+    - "src/randomdock/"
+    - "src/globalsearch/ui"
+    - "src/xtalopt/ui"
