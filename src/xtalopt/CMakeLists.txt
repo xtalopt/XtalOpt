@@ -24,6 +24,18 @@ set( xtalopt_SRCS
      ui/xtalopt_plot.cpp
      ui/tab_log.cpp)
 
+option(ENABLE_MOLECULAR_XTALOPT
+       "Whether or not to compile the molecular version of XtalOpt"
+       OFF)
+
+if(ENABLE_MOLECULAR_XTALOPT)
+  set(xtalopt_SRCS
+      ${xtalopt_SRCS}
+      ui/molecular/moleculardialog.cpp
+      ui/molecular/tab_molecularinit.cpp
+      ui/molecular/tab_molecularopt.cpp)
+endif()
+
 set( xtalopt_RCS xtalopt.qrc )
 
 # This is so the executable will have an icon
@@ -60,6 +72,11 @@ target_link_libraries(xtalopt_static globalsearch XtalComp spglib RandSpg
 
 add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp)
 target_link_libraries(xtalopt xtalopt_static)
+
+if(ENABLE_MOLECULAR_XTALOPT)
+  add_executable(mxtalopt WIN32 MACOSX_BUNDLE molecularmain.cpp)
+  target_link_libraries(mxtalopt xtalopt_static)
+endif()
 
 # Install instructions
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)

@@ -1,7 +1,7 @@
 /**********************************************************************
-  XtalOpt - Tools for advanced crystal optimization
+  TabMolecularOpt - the tab for molecular optimization options in XtalOpt.
 
-  Copyright (C) 2009-2011 by David Lonie
+  Copyright (C) 2017 by Patrick Avery
 
   This source code is released under the New BSD License, (the "License").
 
@@ -12,37 +12,42 @@
   limitations under the License.
  ***********************************************************************/
 
-#ifndef TAB_LOG_H
-#define TAB_LOG_H
+#ifndef TAB_MOLECULAROPT_H
+#define TAB_MOLECULAROPT_H
 
 #include <globalsearch/ui/abstracttab.h>
 
-#include "ui_tab_log.h"
+#include "ui_tab_molecularopt.h"
 
 namespace GlobalSearch {
   class AbstractDialog;
 }
 
 namespace XtalOpt {
-  class XtalOptDialog;
   class XtalOpt;
 
-  class TabLog : public GlobalSearch::AbstractTab
+  class TabMolecularOpt : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
   public:
-    explicit TabLog(GlobalSearch::AbstractDialog *parent, XtalOpt *p );
-    virtual ~TabLog() override;
+    explicit TabMolecularOpt(GlobalSearch::AbstractDialog *parent, XtalOpt *p );
+    virtual ~TabMolecularOpt() override;
 
   public slots:
-    void disconnectGUI() override;
-    void newLog(const QString & info);
+    void lockGUI() override;
+    void readSettings(const QString &filename = "") override;
+    void writeSettings(const QString &filename = "") override;
+    void updateGUI() override;
+    void updateOptimizationInfo();
+    void addSeed(QListWidgetItem *item = nullptr);
+    void removeSeed();
+    void updateSeeds();
 
   signals:
 
   private:
-    Ui::Tab_Log ui;
+    Ui::TabMolecularOpt ui;
   };
 }
 

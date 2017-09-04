@@ -35,7 +35,7 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-  TabEdit::TabEdit( XtalOptDialog *parent, XtalOpt *p ) :
+  TabEdit::TabEdit( AbstractDialog *parent, XtalOpt *p ) :
     DefaultEditTab(parent, p)
   {
     // Fill m_optimizers in order of XtalOpt::OptTypes

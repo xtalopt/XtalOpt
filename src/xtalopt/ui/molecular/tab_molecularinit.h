@@ -1,7 +1,7 @@
 /**********************************************************************
-  XtalOpt - Tools for advanced crystal optimization
+  TabMolecularInit - the tab for molecular initialization in XtalOpt
 
-  Copyright (C) 2009-2011 by David Lonie
+  Copyright (C) 2017 by Patrick Avery
 
   This source code is released under the New BSD License, (the "License").
 
@@ -12,12 +12,12 @@
   limitations under the License.
  ***********************************************************************/
 
-#ifndef TAB_EDIT_H
-#define TAB_EDIT_H
+#ifndef TAB_MOLECULARINIT_H
+#define TAB_MOLECULARINIT_H
 
-#include <globalsearch/ui/defaultedittab.h>
+#include <globalsearch/ui/abstracttab.h>
 
-class QListWidgetItem;
+#include "ui_tab_molecularinit.h"
 
 namespace GlobalSearch {
   class AbstractDialog;
@@ -25,29 +25,33 @@ namespace GlobalSearch {
 
 namespace XtalOpt {
   class XtalOpt;
-  class XtalOptDialog;
 
-  class TabEdit : public GlobalSearch::DefaultEditTab
+  class TabMolecularInit : public GlobalSearch::AbstractTab
   {
     Q_OBJECT
 
   public:
-    explicit TabEdit(GlobalSearch::AbstractDialog *parent, XtalOpt *p);
-    virtual ~TabEdit() override;
+    explicit TabMolecularInit(GlobalSearch::AbstractDialog *parent,
+                              XtalOpt *p);
+    virtual ~TabMolecularInit() override;
 
   public slots:
+    void lockGUI() override;
     void readSettings(const QString &filename = "") override;
     void writeSettings(const QString &filename = "") override;
-    void updateEditWidget() override;
-    void appendOptStep() override;
-    void removeCurrentOptStep() override;
+    void updateGUI() override;
+    void updateDimensions();
+    void updateMinRadii();
+    void updateFormulaUnits();
+    void updateFormulaUnitsListUI();
+    void updateInitOptions();
+    void adjustVolumesToBePerFU(uint FU);
+    void updateMinIAD();
 
-  protected slots:
-    // Returns false if user cancels
-    bool generateVASP_POTCAR_info();
-    bool generateSIESTA_PSF_info();
-    void changePOTCAR(QListWidgetItem *item);
-    void changePSF(QListWidgetItem *item);
+  signals:
+
+  private:
+    Ui::TabMolecularInit ui;
   };
 }
 

@@ -33,7 +33,7 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-  TabPlot::TabPlot( XtalOptDialog *parent, XtalOpt *p ) :
+  TabPlot::TabPlot( GlobalSearch::AbstractDialog *parent, XtalOpt *p ) :
     AbstractTab(parent, p),
     m_enablePlotUpdate(true),
     m_plot_mutex(new QReadWriteLock(QReadWriteLock::Recursive))

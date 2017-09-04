@@ -41,7 +41,7 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-  TabProgress::TabProgress( XtalOptDialog *parent, XtalOpt *p ) :
+  TabProgress::TabProgress(GlobalSearch::AbstractDialog *parent, XtalOpt *p ) :
     AbstractTab(parent, p),
     m_timer(new QTimer (this)),
     m_mutex(new QMutex),

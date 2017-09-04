@@ -24,11 +24,11 @@
 class QReadWriteLock;
 
 namespace GlobalSearch {
+  class AbstractDialog;
   class Structure;
 }
 
 namespace XtalOpt {
-  class XtalOptDialog;
   class XtalOpt;
   class Xtal;
 
@@ -37,7 +37,7 @@ namespace XtalOpt {
     Q_OBJECT
 
   public:
-    explicit TabPlot( XtalOptDialog *parent, XtalOpt *p );
+    explicit TabPlot( GlobalSearch::AbstractDialog *parent, XtalOpt *p );
     virtual ~TabPlot() override;
 
     enum PlotAxes {

@@ -32,7 +32,7 @@
 
 namespace XtalOpt {
 
-  TabInit::TabInit( XtalOptDialog *parent, XtalOpt *p ) :
+  TabInit::TabInit(GlobalSearch::AbstractDialog *parent, XtalOpt *p ) :
     AbstractTab(parent, p),
     m_spgOptions(nullptr)
   {
@@ -613,7 +613,7 @@ namespace XtalOpt {
       }
 
       comp[atomicNum].quantity += quantity;
-    
+
       for (uint j = 0; j < length; j++){
           symbol2    = symbolList.at(j);
           atomicNum2 = ElemInfo::getAtomicNum(
@@ -667,7 +667,7 @@ namespace XtalOpt {
     int numRows = keys.size();
     ui.table_comp->setRowCount(numRows);
     int numRows2 = keys.size();
-    
+
 	for(int j = numRows2-1; j > 0; j--){
     	numRows2=numRows2+j;
     }
@@ -702,7 +702,7 @@ namespace XtalOpt {
       ui.table_comp->setItem(i, CC_QUANTITY, quantityItem);
       ui.table_comp->setItem(i, CC_MASS, massItem);
       ui.table_comp->setItem(i, CC_MINRADIUS, minRadiusItem);
-  
+
     if (ui.cb_customIAD->isChecked()) {
         ui.table_IAD->setRowCount(numRows2);
 

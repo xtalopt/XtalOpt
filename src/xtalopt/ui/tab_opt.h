@@ -19,8 +19,11 @@
 
 #include "ui_tab_opt.h"
 
+namespace GlobalSearch {
+  class AbstractDialog;
+}
+
 namespace XtalOpt {
-  class XtalOptDialog;
   class XtalOpt;
 
   class TabOpt : public GlobalSearch::AbstractTab
@@ -28,7 +31,7 @@ namespace XtalOpt {
     Q_OBJECT
 
   public:
-    explicit TabOpt( XtalOptDialog *parent, XtalOpt *p );
+    explicit TabOpt( GlobalSearch::AbstractDialog *parent, XtalOpt *p );
     virtual ~TabOpt() override;
 
   public slots:

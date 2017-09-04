@@ -33,12 +33,12 @@ static const double RAD_TO_DEG = 180.0 / 3.14159265358979323846;
 struct latticeStruct;
 
 namespace GlobalSearch {
+  class AbstractDialog;
   class SlottedWaitCondition;
 }
 
 namespace XtalOpt {
   class Xtal;
-  class XtalOptDialog;
   class XtalOptRpc;
 
   struct XtalCompositionStruct
@@ -72,7 +72,7 @@ namespace XtalOpt {
     Q_OBJECT
 
    public:
-    explicit XtalOpt(XtalOptDialog *parent);
+    explicit XtalOpt(GlobalSearch::AbstractDialog *parent);
     virtual ~XtalOpt() override;
 
     enum OptTypes {

@@ -60,7 +60,7 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-  XtalOpt::XtalOpt(XtalOptDialog *parent) :
+  XtalOpt::XtalOpt(GlobalSearch::AbstractDialog *parent) :
     OptBase(parent),
     using_randSpg(false),
     minXtalsOfSpgPerFU(QList<int>()),
@@ -2314,7 +2314,7 @@ namespace XtalOpt {
                 }
                 return true;
             }
-     
+
 	       if (using_interatomicDistanceLimit) {
                 int atom1, atom2;
                 double IAD;

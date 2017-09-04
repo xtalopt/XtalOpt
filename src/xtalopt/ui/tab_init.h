@@ -19,9 +19,12 @@
 
 #include "ui_tab_init.h"
 
+namespace GlobalSearch {
+  class AbstractDialog;
+}
+
 namespace XtalOpt {
   class RandSpgDialog;
-  class XtalOptDialog;
   class XtalOpt;
 
   class TabInit : public GlobalSearch::AbstractTab
@@ -29,7 +32,7 @@ namespace XtalOpt {
     Q_OBJECT
 
   public:
-    explicit TabInit( XtalOptDialog *parent, XtalOpt *p );
+    explicit TabInit(GlobalSearch::AbstractDialog *parent, XtalOpt *p );
     virtual ~TabInit() override;
 
     enum CompositionColumns

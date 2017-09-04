@@ -24,7 +24,7 @@ using namespace std;
 
 namespace XtalOpt {
 
-  TabLog::TabLog( XtalOptDialog *parent, XtalOpt *p ) :
+  TabLog::TabLog(GlobalSearch::AbstractDialog *parent, XtalOpt *p ) :
     AbstractTab(parent, p)
   {
     ui.setupUi(m_tab_widget);

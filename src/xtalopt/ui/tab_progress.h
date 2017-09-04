@@ -26,11 +26,11 @@ class QTimer;
 class QMutex;
 
 namespace GlobalSearch {
+  class AbstractDialog;
   class Structure;
 }
 
 namespace XtalOpt {
-  class XtalOptDialog;
   class XtalOpt;
   class Xtal;
 
@@ -54,7 +54,7 @@ namespace XtalOpt {
     Q_OBJECT
 
   public:
-    explicit TabProgress( XtalOptDialog *parent, XtalOpt *p );
+    explicit TabProgress(GlobalSearch::AbstractDialog *parent, XtalOpt *p );
     virtual ~TabProgress() override;
 
     enum ProgressColumns {
