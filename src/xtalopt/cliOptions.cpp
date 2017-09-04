@@ -383,7 +383,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.vol_max = options.value("volumeMax", "100000.0").toFloat();
 
   // Check for fixed volume
-  if (std::fabs(xtalopt.vol_min - xtalopt.vol_max) < 1.e-5) {
+  if (fabs(xtalopt.vol_min - xtalopt.vol_max) < 1.e-5) {
     xtalopt.using_fixed_volume = true;
     xtalopt.vol_fixed = xtalopt.vol_min;
   }
