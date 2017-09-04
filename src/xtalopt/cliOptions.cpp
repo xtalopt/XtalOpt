@@ -381,6 +381,16 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.gamma_max = options.value("gammaMax", "120.0").toFloat();
   xtalopt.vol_min = options.value("volumeMin", "1.0").toFloat();
   xtalopt.vol_max = options.value("volumeMax", "100000.0").toFloat();
+
+  // Check for fixed volume
+  if (std::fabs(xtalopt.vol_min - xtalopt.vol_max) < 1.e-5) {
+    xtalopt.using_fixed_volume = true;
+    xtalopt.vol_fixed = xtalopt.vol_min;
+  }
+  else {
+    xtalopt.using_fixed_volume = false;
+  }
+
   xtalopt.using_interatomicDistanceLimit =
     toBool(options.value("usingInteratomicDistanceLimit", "true"));
   xtalopt.using_mitosis = toBool(options.value("usingSubcellMitosis", "false"));
