@@ -7,7 +7,7 @@ matrix:
   include:
     - compiler: gcc
       env:
-         - NAME="gcc-4"
+         - NAME="gcc-4.8"
 
     # works on Precise and Trusty
     - compiler: gcc
@@ -18,7 +18,7 @@ matrix:
           packages:
             - g++-5
       env:
-         - NAME="gcc-5"
+         - NAME="gcc-5.4"
          - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
 
     # works on Precise and Trusty
@@ -30,20 +30,20 @@ matrix:
           packages:
             - g++-6
       env:
-        - NAME="gcc-6"
+        - NAME="gcc-6.3"
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
 
     - compiler: clang
       env:
-        - NAME="clang-3"
+        - NAME="clang-3.5"
 
     - os: osx
       osx_image: xcode8
       env:
-        - NAME="osx"
+        - NAME="xcode-8.0"
 
 before_install:
- - if [[ "$NAME" == "osx" ]]; then
+ - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
      brew update;
    else
      eval "${MATRIX_EVAL}" &&
@@ -52,7 +52,7 @@ before_install:
    fi
 
 install:
- - if [[ "$NAME" == "osx" ]]; then
+ - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
      brew upgrade git cmake;
      brew install qt5 qwt libssh eigen;
    else
@@ -64,7 +64,7 @@ install:
 before_script:
  # For Linux, we have to load the travis-ci display to run the tests even
  # though we don't actually need the display...
- - if [[ "$NAME" == "osx" ]]; then
+ - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
      export CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=/usr/local/opt/qt/" &&
      export CMAKE_FLAGS="$CMAKE_FLAGS -DQWT_INCLUDE_DIR=/usr/local/opt/qwt/lib/qwt.framework/Headers";
    else
@@ -88,7 +88,7 @@ script:
 after_success:
  # For GCC only: capture coverage info, filter out system, print debug info,
  # and upload to codecov
- - if [[ "$NAME" == "gcc-4" ]]; then
+ - if [[ "$NAME" == "gcc-4.8" ]]; then
      lcov --directory . --capture --output-file coverage.info &&
      lcov --remove coverage.info '/usr/*' --output-file coverage.info &&
      lcov --list coverage.info &&
@@ -98,13 +98,13 @@ after_success:
 
  # If this is a tag, then zip the install directory, md5sum it, and upload it
  - if [[ -n "$TRAVIS_TAG" ]] && [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then
-     if [[ "$NAME" == "gcc-4" ]]; then
-       echo "Tag detected for gcc-4. Installing, zipping installation, and creating md5sum." &&
+     if [[ "$NAME" == "gcc-4.8" ]]; then
+       echo "Tag detected for gcc-4.8. Installing, zipping installation, and creating md5sum." &&
        make -j2 install &&
        cd install &&
        tar -czvf linux-xtalopt.tgz xtalopt &&
        md5sum linux-xtalopt.tgz > linux-xtalopt.md5;
-     elif [[ "$NAME" == "osx" ]]; then
+     elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
        echo "Tag detected for osx. Installing, zipping installation, and creating md5sum." &&
        sudo make -j2 install &&
        sudo chown -R travis ./install &&
@@ -128,7 +128,7 @@ deploy:
       repo: xtalopt/XtalOpt
       tags: true
       all_branches: true
-      condition: $NAME = "gcc-4"
+      condition: $NAME = "gcc-4.8"
 
   - provider: releases
     file:
@@ -141,4 +141,4 @@ deploy:
       repo: xtalopt/XtalOpt
       tags: true
       all_branches: true
-      condition: $NAME = "osx"
+      condition: $TRAVIS_OS_NAME = "osx"
