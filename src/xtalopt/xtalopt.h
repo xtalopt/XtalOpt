@@ -124,7 +124,8 @@ namespace XtalOpt {
     GlobalSearch::Structure* replaceWithOffspring(
       GlobalSearch::Structure *s,
       const QString &reason = "") override;
-    bool checkStepOptimizedStructure(GlobalSearch::Structure* s, QString *err = NULL);
+    bool checkStepOptimizedStructure(GlobalSearch::Structure* s,
+                                     QString *err = NULL) override;
     bool checkLimits() override;
     bool checkComposition(Xtal *xtal, QString * err = nullptr);
     bool checkLattice(Xtal *xtal, uint formulaUnits, QString * err = nullptr);
