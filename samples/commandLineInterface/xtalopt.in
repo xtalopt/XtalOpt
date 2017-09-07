@@ -30,8 +30,8 @@
 
   # Atomic radii
     # Ensure that atoms are distanced such that their covalent radii do not
-    # overlap.
-      usingInteratomicDistanceLimit = true
+    # overlap. Note, this option and "usingCustomIADs" cannot both be true.
+      usingRadiiInteratomicDistanceLimit = true
     # Scale all covalent radii by this number
       radiiScalingFactor = 0.5
     # Minimum radius for any given atom (Angstroms)
@@ -56,16 +56,30 @@
     #usingMolecularUnits = false
     # The geometry type must be valid for the number of neighbors. If
     # you run an invalid one, it will print to you the ones that are valid.
+
     # Molecular Unit entries appear as follows:
-    # <centerAtomicSymbol>, <numCenters>, <neighborAtomicSymbol>, <numNeighbors>, <geometry>, <distance>
+    # <centerAtomicSymbol>, <numCenters>, <neighborAtomicSymbol>,
+    # <numNeighbors>, <geometry>, <distance>
     #molecularUnits 1 = Ti, 1, O, 4, tetrahedral, 1.320
     #molecularUnits 2 = O, 1, O, 1, linear, 1.000
+
   # Initialize all crystals with symmetry? (space groups are randomly selected)
     #usingRandSpg = false
     # We can put down a list of space groups to be generated for sure per FU.
     # You must comma-separate each space group (no hyphens allowed). If you
     # want more of a single space group, repeat it like 136 below.
     #forcedSpgsWithRandSpg = 1, 2, 136, 136, 136
+
+  # Use custom interatomic distances? Note: this option and
+  # "usingRadiiInteratomicDistanceLimit" cannot both be true.
+  #usingCustomIADs = false
+
+  # Custom IAD entries appear as follows:
+  # customIAD <atomicSymbol1>, <atomicSymbol2>, <minIAD>
+  #customIAD 1 = Ti, O, 1.45
+
+  # Check IADs after optimization?
+  #checkIADPostOptimization = false
 
 # End of initialization settings
 

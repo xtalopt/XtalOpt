@@ -92,6 +92,14 @@ class XtalOptCLIOptions {
   static bool isMolecularUnitsLine(const QString& s);
 
   /**
+   * Does this string start with 'customIAD'?
+   *
+   * @param s The string to be checked.
+   * @return True if it is a custom IAD line. False otherwise.
+   */
+  static bool isCustomIADLine(const QString& s);
+
+  /**
    * Does this entry involve multiple lines? Two examples are pot file lines
    * and molecular units lines.
    *
@@ -219,6 +227,19 @@ class XtalOptCLIOptions {
    */
   static bool processMolUnits(const QHash<QString, QString>& options,
                               XtalOpt& xtalopt);
+
+  /**
+   * Reads the customIAD options from @p options and attempts to set them
+   * to the xtalopt object. Returns true if it succeeds and false if it fails.
+   *
+   * @param options The options to be set read.
+   * @param xtalopt The xtalopt object for which to set the options.
+   *
+   * @return True if the custom IAD options were processed successfully. False
+   *         if the custom IAD options were not.
+   */
+  static bool processCustomIADs(const QHash<QString, QString>& options,
+                                XtalOpt& xtalopt);
 
   /**
    * Reads and sets runtime options from @p options to @p xtalopt.

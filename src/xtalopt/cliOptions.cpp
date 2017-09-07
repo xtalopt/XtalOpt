@@ -51,7 +51,9 @@ static const QStringList keywords =
   "gammaMax",
   "volumeMin",
   "volumeMax",
-  "usingInteratomicDistanceLimit",
+  "usingRadiiInteratomicDistanceLimit",
+  "usingCustomIADs",
+  "checkIADPostOptimization",
   "radiiScalingFactor",
   "minRadius",
   "usingSubcellMitosis",
@@ -219,9 +221,17 @@ bool XtalOptCLIOptions::isMolecularUnitsLine(const QString& s)
   return false;
 }
 
+bool XtalOptCLIOptions::isCustomIADLine(const QString& s)
+{
+  if (s.trimmed().startsWith("customiad"))
+    return true;
+
+  return false;
+}
+
 bool XtalOptCLIOptions::isMultiLineEntry(const QString& s)
 {
-  if (isPotFile(s) || isMolecularUnitsLine(s))
+  if (isPotFile(s) || isMolecularUnitsLine(s) || isCustomIADLine(s))
     return true;
   return false;
 }
@@ -392,7 +402,19 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   }
 
   xtalopt.using_interatomicDistanceLimit =
-    toBool(options.value("usingInteratomicDistanceLimit", "true"));
+    toBool(options.value("usingRadiiInteratomicDistanceLimit", "true"));
+  xtalopt.using_customIAD = toBool(options.value("usingCustomIADs", "false"));
+
+  if (xtalopt.using_interatomicDistanceLimit && xtalopt.using_customIAD) {
+    qDebug() << "Error: usingRadiiInteratomicDistanceLimit (default is true)"
+             << "and usingCustomIADs (default is false) cannot both be set to"
+             << "true.\nPlease set one to false and try again";
+    return false;
+  }
+
+  xtalopt.using_checkStepOpt = toBool(options.value("checkIADPostOptimization",
+                                                    "false"));
+
   xtalopt.using_mitosis = toBool(options.value("usingSubcellMitosis", "false"));
   xtalopt.using_subcellPrint = toBool(options.value("printSubcell", "false"));
   xtalopt.divisions = options.value("mitosisDivisions", "1").toUInt();
@@ -402,8 +424,14 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.using_molUnit = toBool(options.value("usingMolecularUnits", "false"));
 
   if (xtalopt.using_molUnit && !processMolUnits(options, xtalopt)) {
-    qDebug () << "Error: Invalid settings entered for molecular units."
-              << "Please check your input and try again.";
+    qDebug() << "Error: Invalid settings entered for molecular units."
+             << "Please check your input and try again.";
+    return false;
+  }
+
+  if (xtalopt.using_customIAD && !processCustomIADs(options, xtalopt)) {
+    qDebug() << "Error: Invalid settings entered for custom IADs."
+             << "Please check your input and try again.";
     return false;
   }
 
@@ -1193,6 +1221,74 @@ bool XtalOptCLIOptions::processMolUnits(const QHash<QString, QString>& options,
   return true;
 }
 
+bool XtalOptCLIOptions::processCustomIADs(
+    const QHash<QString, QString>& options,
+    XtalOpt& xtalopt)
+{
+  for (const auto& option: options.keys()) {
+    // Find the custom IAD lines
+    if (option.trimmed().toLower().startsWith("customiad")) {
+      QStringList splitLine = options[option].split(",",
+                                                    QString::SkipEmptyParts);
+      if (splitLine.size() != 3) {
+        qDebug() << "Error: customIAD line must have 3 comma-delimited"
+                 << "items on the right-hand side of the equals sign."
+                 << "\nFaulty option is as follows: "
+                 << option + " = " + options[option];
+        qDebug() << "Proper format is as follows: "
+                 << "<firstSymbol>, <secondSymbol>, <minDistance>";
+        return false;
+      }
+      QString firstSymbol = splitLine[0].trimmed(),
+              secondSymbol = splitLine[1].trimmed();
+      double minDist = splitLine[2].toDouble();
+
+      // Make sure the data is valid
+      unsigned short firstAtomicNum =
+        ElemInfo::getAtomicNum(firstSymbol.toStdString());
+
+      // If the atomic number is 0, the symbol is invalid
+      if (firstAtomicNum == 0) {
+        qDebug() << "Error processing customIAD line:"
+                 << "Invalid atomic symbol:" << firstSymbol;
+        qDebug() << "Proper format is as follows: "
+                 << "<firstSymbol>, <secondSymbol>, <minDistance>";
+        return false;
+      }
+
+      unsigned short secondAtomicNum =
+        ElemInfo::getAtomicNum(secondSymbol.toStdString());
+
+      // If the atomic number is 0, the symbol is invalid
+      if (secondAtomicNum == 0) {
+        qDebug() << "Error processing customIAD line:"
+                 << "Invalid atomic symbol:" << secondSymbol;
+        qDebug() << "Proper format is as follows: "
+                 << "<firstSymbol>, <secondSymbol>, <minDistance>";
+        return false;
+      }
+
+      // Now make the struct and add it to XtalOpt
+      IAD entry;
+      entry.minIAD = minDist;
+
+      xtalopt.interComp.insert(
+        qMakePair<int, int>(firstAtomicNum,
+                            secondAtomicNum),
+        entry);
+
+      // We need to make a struct for the other way around for some reason
+      // now... it's not my design...
+      xtalopt.interComp.insert(
+          qMakePair<int, int>(secondAtomicNum,
+                              firstAtomicNum),
+          entry);
+    }
+  }
+
+  return true;
+}
+
 void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
 {
   // Attempt to open the file. If we can't, just return.
@@ -1228,11 +1324,15 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
   text += QString("gammaMax = ") + QString::number(xtalopt.gamma_max) + "\n";
   text += QString("volumeMin = ") + QString::number(xtalopt.vol_min) + "\n";
   text += QString("volumeMax = ") + QString::number(xtalopt.vol_max) + "\n";
-  text += QString("usingInteratomicDistanceLimit = ") +
+  text += QString("usingRadiiInteratomicDistanceLimit = ") +
           fromBool(xtalopt.using_interatomicDistanceLimit) + "\n";
   text += QString("radiiScalingFactor = ") +
           QString::number(xtalopt.scaleFactor) + "\n";
   text += QString("minRadius = ") + QString::number(xtalopt.minRadius) + "\n";
+  text += QString("usingCustomIADs = ") + fromBool(xtalopt.using_customIAD) +
+          "\n";
+  text += QString("checkIADPostOptimization = ") +
+          fromBool(xtalopt.using_checkStepOpt) + "\n";
 
   text += "\n# Optimization Settings\n";
   text += QString("popSize = ") + QString::number(xtalopt.popSize) + "\n";
@@ -1333,8 +1433,9 @@ inline bool CICompare(const QString& s1, const QString& s2)
   return s1.toLower() == s2.toLower();
 }
 
-void XtalOptCLIOptions::processRuntimeOptions(const QHash<QString, QString>& options,
-                                              XtalOpt& xtalopt)
+void XtalOptCLIOptions::processRuntimeOptions(
+                          const QHash<QString, QString>& options,
+                          XtalOpt& xtalopt)
 {
   for (const auto& option: options.keys()) {
     if (CICompare("formulaUnits", option)) {
@@ -1389,7 +1490,7 @@ void XtalOptCLIOptions::processRuntimeOptions(const QHash<QString, QString>& opt
     else if (CICompare("volumeMax", option)) {
       xtalopt.vol_max = options[option].toFloat();
     }
-    else if (CICompare("usingInteratomicDistanceLimit", option)) {
+    else if (CICompare("usingRadiiInteratomicDistanceLimit", option)) {
       xtalopt.using_interatomicDistanceLimit = toBool(options[option]);
     }
     else if (CICompare("radiiScalingFactor", option)) {
@@ -1409,6 +1510,18 @@ void XtalOptCLIOptions::processRuntimeOptions(const QHash<QString, QString>& opt
         if (xtalopt.comp[key].minRadius < xtalopt.minRadius)
           xtalopt.comp[key].minRadius = xtalopt.minRadius;
       }
+    }
+    else if (CICompare("usingCustomIADs", option)) {
+      xtalopt.using_customIAD = toBool(options[option]);
+      if (xtalopt.using_customIAD && xtalopt.using_interatomicDistanceLimit) {
+        qDebug() << "Warning: usingRadiiInteratomicDistanceLimit and"
+                 << "usingCustomIADs cannot both be set to true.\n"
+                 << "Switching off usingCustomIADs";
+        xtalopt.using_customIAD = false;
+      }
+    }
+    else if (CICompare("checkIADPostOptimization", option)) {
+      xtalopt.using_checkStepOpt = toBool(options[option]);
     }
     else if (CICompare("popSize", option)) {
       xtalopt.popSize = options[option].toUInt();
