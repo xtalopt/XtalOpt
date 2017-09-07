@@ -2287,9 +2287,10 @@ namespace XtalOpt {
                                         this->interComp.value(qMakePair<int, int>(a1.atomicNumber(), atomicNumber)).minIAD;
                                         s->setStatus(Xtal::Killed);
 
-                                qDebug() << "Discarding structure -- Bad IAD ("
-                                        << IAD << " < "
-                                        << minIAD << ") \n Could not fix the IAD issue.";
+                                qDebug() << "Custom IAD: Discarding structure"
+                                         << "-- Bad IAD ("
+                                         << IAD << " < "
+                                         << minIAD << ") \n Could not fix the IAD issue.";
                                 return false;
                             }
                         } else {
@@ -2297,9 +2298,10 @@ namespace XtalOpt {
                                     this->interComp.value(qMakePair<int, int>(a1.atomicNumber(), a2.atomicNumber())).minIAD;
                                     s->setStatus(Xtal::Killed);
 
-                            qDebug() << "Discarding structure -- Bad IAD ("
-                                    << IAD << " < "
-                                    << minIAD << ") \n Exceeded the number of fixes.";
+                            qDebug() << "Custom IAD: Discarding structure"
+                                     << "-- Bad IAD ("
+                                     << IAD << " < "
+                                     << minIAD << ") \n Exceeded the number of fixes.";
                             return false;
                         }
                		} else {
