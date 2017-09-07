@@ -194,15 +194,17 @@ namespace GlobalSearch {
                "from a thread other than the QM thread. "
                );
 
+    // Update runtime options by reading a file if we are not using the GUI
+    // This needs to be here first because sometimes, our CLI settings are
+    // over-written from somewhere else when starting.
+    if (!m_opt->usingGUI())
+      m_opt->readRuntimeOptions();
+
     if (!m_opt->readOnly &&
         !m_opt->isStarting ) {
       checkPopulation();
       checkRunning();
     }
-
-    // Update runtime options by reading a file if we are not using the GUI
-    if (!m_opt->usingGUI())
-      m_opt->readRuntimeOptions();
 
     QTimer::singleShot(1000, this, SLOT(checkLoop()));
   }
