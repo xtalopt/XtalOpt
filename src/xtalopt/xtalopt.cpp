@@ -2315,7 +2315,7 @@ namespace XtalOpt {
                 }
                 return true;
             }
-     
+
 	       if (using_interatomicDistanceLimit) {
                 int atom1, atom2;
                 double IAD;
@@ -3598,12 +3598,26 @@ namespace XtalOpt {
     stream << "\n  volumeMin: " << vol_min << "\n";
     stream << "  volumeMax: " << vol_max << "\n";
 
-    stream << "\n  usingInteratomicDistanceLimit: "
+    stream << "\n  usingRadiiInteratomicDistanceLimit: "
            << toString(using_interatomicDistanceLimit) << "\n";
     if (using_interatomicDistanceLimit) {
       stream << "  radiiScalingFactor: " << scaleFactor << "\n";
       stream << "  minRadius: " << minRadius << "\n";
     }
+
+    stream << "\n  usingCustomIADs: " << toString(using_customIAD) << "\n";
+    if (using_customIAD) {
+      stream << "  current customIADs:\n";
+      stream << "  <firstSymbol>, <secondSymbol>, <minIAD>\n";
+      for (const auto& pair: interComp.keys()) {
+        stream << "  " << ElemInfo::getAtomicSymbol(pair.first).c_str() << ", "
+               << ElemInfo::getAtomicSymbol(pair.second).c_str() << ", "
+               << interComp[pair].minIAD << "\n";
+      }
+    }
+
+    stream << "\n  checkIADPostOptimization: " << toString(using_checkStepOpt)
+           << "\n";
 
     stream << "\n  usingSubcellMitosis: " << toString(using_mitosis) << "\n";
     if (using_mitosis) {
