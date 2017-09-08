@@ -87,9 +87,11 @@ namespace XtalOpt {
 
   void XtalOptUnitTest::loadTest()
   {
+    m_opt->tracker()->blockSignals(true);
     QVERIFY(m_opt->load(QString(TESTDATADIR)
                         + "xo-duplicateXtals/xtalopt.state",
                         true));
+    m_opt->tracker()->blockSignals(false);
     QVERIFY(m_opt->tracker()->size() == 203);
   }
 
@@ -164,7 +166,8 @@ namespace XtalOpt {
 
   void XtalOptUnitTest::destroyDialogAndXtalOpt()
   {
-    delete m_dialog; // deletes opt, too
+    delete m_opt;
+    delete m_dialog;
   }
 
 }
