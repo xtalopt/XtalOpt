@@ -1,8 +1,7 @@
 /**********************************************************************
-  molecularmain.cpp - The main() function to be used by molecular
-                      XtalOpt.
+  main.cpp - The main() function to be used by XtalOpt 11.0 and beyond.
 
-  Copyright (C) 2017 by Patrick S. Avery
+  Copyright (C) 2016-2017 by Patrick S. Avery
 
   This source code is released under the New BSD License, (the "License").
 
@@ -17,7 +16,10 @@
 #include <QApplication>
 #include <QCommandLineParser>
 
+#include <globalsearch/utilities/makeunique.h>
+
 #include <xtalopt/cliOptions.h>
+#include <xtalopt/ui/dialog.h>
 #include <xtalopt/ui/molecular/moleculardialog.h>
 #include <xtalopt/xtalopt.h>
 
@@ -26,10 +28,8 @@ int main(int argc, char* argv[])
   // Set up groups for QSettings
   QCoreApplication::setOrganizationName("XtalOpt");
   QCoreApplication::setOrganizationDomain("xtalopt.github.io");
-  QCoreApplication::setApplicationName("MXtalOpt");
+  QCoreApplication::setApplicationName("XtalOpt");
   QCoreApplication::setApplicationVersion("11.0");
-
-  QApplication app(argc, argv);
 
   QCommandLineParser parser;
   parser.setApplicationDescription("XtalOpt: an open-source evolutionary "
@@ -87,7 +87,14 @@ int main(int argc, char* argv[])
   );
   parser.addOption(dataDirOption);
 
-  parser.process(app);
+  // Make a QStringList of the arguments
+  QStringList args;
+  for (int i = 0; i < argc; ++i)
+    args << argv[i];
+
+  // Process the arguments
+  parser.process(args);
+
   bool cliMode = parser.isSet(cliModeOption);
   bool cliResume = parser.isSet(cliResumeOption);
   bool plotMode = parser.isSet(plotModeOption);
@@ -120,15 +127,18 @@ int main(int argc, char* argv[])
     return 1;
   }
 
-  // It would be nice if sometime in the future we didn't have to create
-  // all the dialogs for a run that doesn't use the GUI. However, it is
-  // deeply integrated and hard to do now, so we are going to create
-  // the dialogs anyways
-  XtalOpt::MolecularXtalOptDialog d;
+  // If we are running in CLI mode, we want a QCoreApplication
+  // If we are running in GUI mode, we want a QApplication
+  std::unique_ptr<QCoreApplication> app = (cliMode || cliResume) ?
+      make_unique<QCoreApplication>(argc, argv) :
+      make_unique<QApplication>(argc, argv);
+
+  // XtalOptDialog needs to be destroyed before XtalOpt gets destroyed. So
+  // the ordering here matters.
+  XtalOpt::XtalOpt xtalopt;
+  std::unique_ptr<XtalOpt::MolecularXtalOptDialog> d;
 
   if (cliMode) {
-    XtalOpt::XtalOpt& xtalopt =
-      *qobject_cast<XtalOpt::XtalOpt*>(d.getOptBase());
     xtalopt.setUsingGUI(false);
 
     if (!XtalOpt::XtalOptCLIOptions::readOptions(inputfile, xtalopt))
@@ -138,15 +148,16 @@ int main(int argc, char* argv[])
   }
   // We just want to generate a plot tab and display it...
   else if (plotMode) {
-    XtalOpt::XtalOpt& xtalopt =
-      *qobject_cast<XtalOpt::XtalOpt*>(d.getOptBase());
+    d = std::move(make_unique<XtalOpt::MolecularXtalOptDialog>(nullptr,
+                                                               Qt::Window,
+                                                               true,
+                                                               &xtalopt));
+    xtalopt.setDialog(d.get());
     if (!xtalopt.plotDir(dataDir))
       return 1;
-    d.beginPlotOnlyMode();
+    d->beginPlotOnlyMode();
   }
   else if (cliResume) {
-    XtalOpt::XtalOpt& xtalopt =
-      *qobject_cast<XtalOpt::XtalOpt*>(d.getOptBase());
     xtalopt.setUsingGUI(false);
 
     // Make sure the state file exists
@@ -177,13 +188,17 @@ int main(int argc, char* argv[])
     if (!QFile(xtalopt.CLIRuntimeFile()).exists())
       XtalOpt::XtalOptCLIOptions::writeInitialRuntimeFile(xtalopt);
 
-    xtalopt.emitStartingSession();
-    xtalopt.emitSessionStarted();
+    // Emit that we are starting a session
+    emit xtalopt.sessionStarted();
   }
   // If we are using the GUI, show the dialog...
   else {
-    d.show();
+    d = std::move(make_unique<XtalOpt::MolecularXtalOptDialog>(
+                                                  nullptr, Qt::Window,
+                                                  true, &xtalopt));
+    xtalopt.setDialog(d.get());
+    d->show();
   }
 
-  return app.exec();
+  return app->exec();
 }

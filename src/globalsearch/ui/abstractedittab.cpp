@@ -56,27 +56,27 @@ namespace GlobalSearch {
     ui_edit_edit->setCurrentFont(QFont("Courier"));
 
     // opt connections
-    connect(this, SIGNAL(optimizerChanged(Optimizer*)),
-            m_opt, SLOT(setOptimizer(Optimizer*)),
+    connect(this, SIGNAL(optimizerChanged(const std::string&)),
+            m_opt, SLOT(setOptimizer(const std::string&)),
             Qt::DirectConnection);
-    connect(this, SIGNAL(queueInterfaceChanged(QueueInterface*)),
-            m_opt, SLOT(setQueueInterface(QueueInterface*)),
+    connect(this, SIGNAL(queueInterfaceChanged(const std::string&)),
+            m_opt, SLOT(setQueueInterface(const std::string&)),
             Qt::DirectConnection);
 
     // Dialog connections
-    connect(this, SIGNAL(optimizerChanged(Optimizer*)),
+    connect(this, SIGNAL(optimizerChanged(const std::string&)),
             m_dialog, SIGNAL(tabsUpdateGUI()));
-    connect(this, SIGNAL(queueInterfaceChanged(QueueInterface*)),
+    connect(this, SIGNAL(queueInterfaceChanged(const std::string&)),
             m_dialog, SIGNAL(tabsUpdateGUI()));
 
     // Edit tab connections
-    connect(this, SIGNAL(optimizerChanged(Optimizer*)),
+    connect(this, SIGNAL(optimizerChanged(const std::string&)),
             this, SLOT(populateTemplates()));
-    connect(this, SIGNAL(queueInterfaceChanged(QueueInterface*)),
+    connect(this, SIGNAL(queueInterfaceChanged(const std::string&)),
             this, SLOT(populateTemplates()));
-    connect(this, SIGNAL(optimizerChanged(Optimizer*)),
+    connect(this, SIGNAL(optimizerChanged(const std::string&)),
             this, SLOT(populateOptStepList()));
-    connect(this, SIGNAL(queueInterfaceChanged(QueueInterface*)),
+    connect(this, SIGNAL(queueInterfaceChanged(const std::string&)),
             this, SLOT(populateOptStepList()));
     connect(ui_push_optimizerConfig, SIGNAL(clicked()),
             this, SLOT(configureOptimizer()));
@@ -115,6 +115,7 @@ namespace GlobalSearch {
     unsigned int index;
 
     //  QueueInterfaces
+    ui_combo_queueInterfaces->blockSignals(true);
     ui_combo_queueInterfaces->clear();
     index = 0;
     for (QList<QueueInterface*>::const_iterator
@@ -125,8 +126,10 @@ namespace GlobalSearch {
       ui_combo_queueInterfaces->insertItem(index++,
                                            (*it)->getIDString());
     }
+    ui_combo_queueInterfaces->blockSignals(false);
 
     //  Optimizers
+    ui_combo_optimizers->blockSignals(true);
     ui_combo_optimizers->clear();
     index = 0;
     for (QList<Optimizer*>::const_iterator
@@ -137,12 +140,10 @@ namespace GlobalSearch {
       ui_combo_optimizers->insertItem(index++,
                                       (*it)->getIDString());
     }
-
-    ui_combo_queueInterfaces->setCurrentIndex(0);
-    ui_combo_optimizers->setCurrentIndex(0);
+    ui_combo_optimizers->blockSignals(false);
 
     AbstractTab::initialize();
-    //updateGUI();
+    updateGUI();
   }
 
   AbstractEditTab::~AbstractEditTab()
@@ -230,7 +231,7 @@ namespace GlobalSearch {
       ui_push_queueInterfaceConfig->setEnabled(false);
     }
 
-    emit queueInterfaceChanged(qi);
+    emit queueInterfaceChanged(qi->getIDString().toLower().toStdString());
   }
 
   void AbstractEditTab::updateOptimizer()
@@ -258,7 +259,7 @@ namespace GlobalSearch {
       ui_push_optimizerConfig->setEnabled(false);
     }
 
-    emit optimizerChanged(o);
+    emit optimizerChanged(o->getIDString().toLower().toStdString());
   }
 
   void AbstractEditTab::configureQueueInterface()
@@ -455,14 +456,11 @@ namespace GlobalSearch {
                             nullptr, QFileDialog::DontUseNativeDialog);
 
     // User canceled
-    if (filename.isEmpty()) {
-      DESTROY_SETTINGS("");
+    if (filename.isEmpty())
       return;
-    }
 
     settings->setValue(m_opt->getIDString().toLower() +
                        "/edit/schemePath/", filename);
-    DESTROY_SETTINGS("");
     writeSettings(filename);
   }
 
@@ -477,14 +475,11 @@ namespace GlobalSearch {
                         0, QFileDialog::DontUseNativeDialog);
 
     // User canceled
-    if (filename.isEmpty()) {
-      DESTROY_SETTINGS("");
+    if (filename.isEmpty())
       return;
-    }
 
     settings->setValue(m_opt->getIDString().toLower() +
                        "/edit/schemePath/", filename);
-    DESTROY_SETTINGS("");
     readSettings(filename);
   }
 

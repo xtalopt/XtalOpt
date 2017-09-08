@@ -72,7 +72,7 @@ namespace XtalOpt {
     Q_OBJECT
 
    public:
-    explicit XtalOpt(GlobalSearch::AbstractDialog *parent);
+    explicit XtalOpt(GlobalSearch::AbstractDialog *parent = nullptr);
     virtual ~XtalOpt() override;
 
     enum OptTypes {
@@ -133,8 +133,13 @@ namespace XtalOpt {
     QString interpretTemplate(const QString & templateString,
                               GlobalSearch::Structure* structure) override;
     QString getTemplateKeywordHelp() override;
+
+    bool save(QString filename = "", bool notify = false) override;
     bool load(const QString & filename,
               const bool forceReadOnly = false) override;
+
+    bool readEditSettings(const QString& filename = "");
+    bool readSettings(const QString& filename = "");
 
     // This function will load all the xtals in the data directory in a
     // read-only fashion so that a plot may be displayed. This is intended
@@ -311,6 +316,9 @@ namespace XtalOpt {
     void setLatticeMinsAndMaxes(latticeStruct& latticeMins,
                                 latticeStruct& latticeMaxes);
     void updateProgressBar(size_t goal, size_t attempted, size_t succeeded);
+
+    static void setGeom(unsigned int & geom, QString strGeom);
+    static QString getGeom(int numNeighbors, int geom);
 
    signals:
     void updatePlot();

@@ -44,21 +44,27 @@ namespace XtalOpt {
     for (unsigned int i = 0; i < numOptimizers; ++i) {
       switch (i) {
       case XtalOpt::OT_VASP:
-        m_optimizers.append(new VASPOptimizer (m_opt));
+        m_optimizers.append(p->optimizers()["vasp"].get());
         break;
       case XtalOpt::OT_GULP:
-        m_optimizers.append(new GULPOptimizer (m_opt));
+        m_optimizers.append(p->optimizers()["gulp"].get());
         break;
       case XtalOpt::OT_PWscf:
-        m_optimizers.append(new PWscfOptimizer (m_opt));
+        m_optimizers.append(p->optimizers()["pwscf"].get());
         break;
       case XtalOpt::OT_CASTEP:
-        m_optimizers.append(new CASTEPOptimizer (m_opt));
+        m_optimizers.append(p->optimizers()["castep"].get());
         break;
       case XtalOpt::OT_SIESTA:
-        m_optimizers.append(new SIESTAOptimizer (m_opt));
+        m_optimizers.append(p->optimizers()["siesta"].get());
         break;
      }
+    }
+
+    // Set the correct index
+    if (m_opt->optimizer()) {
+      int optIndex = m_optimizers.indexOf(m_opt->optimizer());
+      ui_combo_optimizers->setCurrentIndex(optIndex);
     }
 
     // Fill m_optimizers in order of XtalOpt::QueueInterfaces
@@ -67,29 +73,35 @@ namespace XtalOpt {
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
       case XtalOpt::QI_LOCAL:
-        m_queueInterfaces.append(new LocalQueueInterface (m_opt));
+        m_queueInterfaces.append(p->queueInterfaces()["local"].get());
         break;
 #ifdef ENABLE_SSH
       case XtalOpt::QI_PBS:
-        m_queueInterfaces.append(new PbsQueueInterface (m_opt));
+        m_queueInterfaces.append(p->queueInterfaces()["pbs"].get());
         break;
       case XtalOpt::QI_SGE:
-        m_queueInterfaces.append(new SgeQueueInterface (m_opt));
+        m_queueInterfaces.append(p->queueInterfaces()["sge"].get());
         break;
       case XtalOpt::QI_SLURM:
-        m_queueInterfaces.append(new SlurmQueueInterface (m_opt));
+        m_queueInterfaces.append(p->queueInterfaces()["slurm"].get());
         break;
       case XtalOpt::QI_LSF:
-        m_queueInterfaces.append(new LsfQueueInterface (m_opt));
+        m_queueInterfaces.append(p->queueInterfaces()["lsf"].get());
         break;
       case XtalOpt::QI_LOADLEVELER:
-        m_queueInterfaces.append(new LoadLevelerQueueInterface (m_opt));
+        m_queueInterfaces.append(p->queueInterfaces()["loadleveler"].get());
         break;
         //
         // Don't forget to modify numQIs above, or additions here won't matter!
         //
 #endif // ENABLE_SSH
       }
+    }
+
+    // Set the queue interface index
+    if (m_opt->queueInterface()) {
+      int qiIndex = m_queueInterfaces.indexOf(m_opt->queueInterface());
+      ui_combo_queueInterfaces->setCurrentIndex(qiIndex);
     }
 
     connect(ui_list_edit, SIGNAL(itemDoubleClicked(QListWidgetItem*)),
@@ -108,171 +120,17 @@ namespace XtalOpt {
   }
 
   void TabEdit::writeSettings(const QString &filename) {
-    SETTINGS(filename);
-
-    settings->beginGroup("xtalopt/edit");
-    const int version = 2;
-    settings->setValue("version",          version);
-
-    settings->setValue("description", m_opt->description);
-    settings->setValue("localpath", m_opt->filePath);
-    settings->setValue("remote/host", m_opt->host);
-    settings->setValue("remote/port", m_opt->port);
-    settings->setValue("remote/username", m_opt->username);
-    settings->setValue("remote/rempath", m_opt->rempath);
-
-    settings->setValue("optimizer", m_opt->optimizer()->getIDString().toLower());
-    settings->setValue("queueInterface", m_opt->queueInterface()->getIDString().toLower());
-    settings->setValue("logErrorDirs", m_opt->m_logErrorDirs);
-    settings->endGroup();
-    m_opt->optimizer()->writeSettings(filename);
-
-    DESTROY_SETTINGS(filename);
   }
 
-  void TabEdit::readSettings(const QString &filename) {
-    SETTINGS(filename);
+  void TabEdit::readSettings(const QString &filename)
+  {
+    updateGUI();
 
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
-    settings->beginGroup("xtalopt/edit");
-    int loadedVersion = settings->value("version", 0).toInt();
-
-    m_opt->port = settings->value("remote/port", 22).toInt();
-
-    m_opt->m_logErrorDirs = settings->value("logErrorDirs", false).toBool();
-
-    // Temporary variables to test settings. This prevents empty
-    // scheme values from overwriting defaults.
-    QString tmpstr;
-
-    tmpstr = settings->value("description", "").toString();
-    if (!tmpstr.isEmpty()) {
-      m_opt->description = tmpstr;
-    }
-
-    tmpstr = settings->value("remote/rempath", "").toString();
-    if (!tmpstr.isEmpty()) {
-      m_opt->rempath = tmpstr;
-    }
-
-    tmpstr = settings->value("localpath", "").toString();
-    if (!tmpstr.isEmpty()) {
-      m_opt->filePath = tmpstr;
-    }
-
-    tmpstr = settings->value("remote/host", "").toString();
-    if (!tmpstr.isEmpty()) {
-      m_opt->host = tmpstr;
-    }
-
-    tmpstr = settings->value("remote/username", "").toString();
-    if (!tmpstr.isEmpty()) {
-      m_opt->username = tmpstr;
-    }
-
-    if (loadedVersion >= 2) {
-      QString optimizer =
-        settings->value("optimizer", "gulp").toString().toLower();
-      for (QList<Optimizer*>::const_iterator
-             it = m_optimizers.constBegin(),
-             it_end = m_optimizers.constEnd();
-           it != it_end; ++it) {
-        if ((*it)->getIDString().toLower().compare(optimizer) == 0) {
-          emit optimizerChanged(*it);
-          break;
-        }
-      }
-
-      QString queueInterface =
-        settings->value("queueInterface", "local").toString().toLower();
-      for (QList<QueueInterface*>::const_iterator
-             it = m_queueInterfaces.constBegin(),
-             it_end = m_queueInterfaces.constEnd();
-           it != it_end; ++it) {
-        if ((*it)->getIDString().toLower().compare(queueInterface) == 0) {
-          emit queueInterfaceChanged(*it);
-          break;
-        }
-      }
-    }
-
-    settings->endGroup();
-
-    // Update config data
-    switch (loadedVersion) {
-    case 0:
-    case 1: // Renamed optType to optimizer, added
-            // queueInterface. Both now use lowercase strings to
-            // identify. Took ownership of variables previously held
-            // by tabsys.
-      {
-#ifdef ENABLE_SSH
-        // Extract optimizer ID
-        ui_combo_optimizers->setCurrentIndex
-          (settings->value("xtalopt/edit/optType", 0).toInt());
-        // Set QueueInterface based on optimizer
-        switch (ui_combo_optimizers->currentIndex()) {
-        case XtalOpt::OT_VASP:
-          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_PBS);
-          // Copy over job.pbs
-          settings->setValue
-            ("xtalopt/optimizer/VASP/QI/PBS/job.pbs_list",
-             settings->value
-             ("xtalopt/optimizer/VASP/job.pbs_list", QStringList("")));
-          break;
-        case XtalOpt::OT_PWscf:
-          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_PBS);
-          // Copy over job.pbs
-          settings->setValue
-            ("xtalopt/optimizer/PWscf/QI/PBS/job.pbs_list",
-             settings->value
-             ("xtalopt/optimizer/PWscf/job.pbs_list", QStringList("")));
-          break;
-        case XtalOpt::OT_CASTEP:
-          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_PBS);
-          // Copy over job.pbs
-          settings->setValue
-            ("xtalopt/optimizer/CASTEP/QI/PBS/job.pbs_list",
-             settings->value
-             ("xtalopt/optimizer/CASTEP/job.pbs_list", QStringList("")));
-          break;
-        case XtalOpt::OT_SIESTA:
-          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_PBS);
-          // Copy over job.pbs
-          settings->setValue
-            ("xtalopt/optimizer/SIESTA/QI/PBS/job.pbs_list",
-             settings->value
-             ("xtalopt/optimizer/SIESTA/job.pbs_list", QStringList("")));
-          break;
-       default:
-        case XtalOpt::OT_GULP:
-          ui_combo_queueInterfaces->setCurrentIndex(XtalOpt::QI_LOCAL);
-          break;
-        }
-#endif // ENABLE_SSH
-
-        // Formerly tab_sys stuff. Read from default settings object:
-        settings->beginGroup("xtalopt/sys/");
-        m_opt->description = settings->value("description", "").toString();
-        m_opt->rempath = settings->value("remote/rempath", "").toString();
-        m_opt->filePath = settings->value("file/path", "").toString();
-        m_opt->host = settings->value("remote/host", "").toString();
-        m_opt->port = settings->value("remote/port", 22).toInt();
-        m_opt->username = settings->value("remote/username", "").toString();
-        m_opt->rempath = settings->value("remote/rempath", "").toString();
-        settings->endGroup(); // "xtalopt/sys"
-      }
-    case 2:
-    default:
-      break;
-    }
-
-    m_opt->optimizer()->readSettings(filename);
-    m_opt->queueInterface()->readSettings(filename);
-
     // Do we need to update the POTCAR info?
-    if (ui_combo_optimizers->currentIndex() == XtalOpt::OT_VASP) {
+    if (ui_combo_optimizers->currentIndex() == XtalOpt::OT_VASP &&
+        !xtalopt->comp.empty()) {
       VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
       if (!vopt->POTCARInfoIsUpToDate(xtalopt->comp.keys())) {
         if (generateVASP_POTCAR_info()) {
@@ -281,7 +139,8 @@ namespace XtalOpt {
       }
     }
 
-    if (ui_combo_optimizers->currentIndex() == XtalOpt::OT_SIESTA) {
+    if (ui_combo_optimizers->currentIndex() == XtalOpt::OT_SIESTA &&
+      !xtalopt->comp.empty()) {
       SIESTAOptimizer *sopt = qobject_cast<SIESTAOptimizer*>(m_opt->optimizer());
       if (!sopt->PSFInfoIsUpToDate(xtalopt->comp.keys())) {
         if (generateSIESTA_PSF_info()) {
@@ -289,6 +148,35 @@ namespace XtalOpt {
         }
       }
     }
+    updateGUI();
+  }
+
+  void TabEdit::loadScheme()
+  {
+    QString filename;
+
+    {
+      SETTINGS("");
+      QString oldFilename = settings->value(m_opt->getIDString().toLower() +
+                                           "/edit/schemePath/", "").toString();
+      filename = QFileDialog::getOpenFileName(nullptr,
+                               tr("Select Optimization Scheme to load..."),
+                               oldFilename, "*.scheme;;*.state;;*.*",
+                               0, QFileDialog::DontUseNativeDialog);
+
+      // User canceled
+      if (filename.isEmpty())
+        return;
+
+      settings->setValue(m_opt->getIDString().toLower() +
+                         "/edit/schemePath/", filename);
+    }
+
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    // We have a special function for reading this tab's settings
+    xtalopt->readEditSettings(filename);
+
     updateGUI();
   }
 

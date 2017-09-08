@@ -128,12 +128,12 @@ namespace GlobalSearch {
     /**
      * Emitted when the Optimizer changes.
      */
-    void optimizerChanged(Optimizer*);
+    void optimizerChanged(const std::string&);
 
     /**
      * Emitted when the QueueInterface changes.
      */
-    void queueInterfaceChanged(QueueInterface*);
+    void queueInterfaceChanged(const std::string&);
 
   protected slots:
     /**

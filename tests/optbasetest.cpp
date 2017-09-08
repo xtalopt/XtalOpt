@@ -16,6 +16,7 @@
 
 #include <globalsearch/optimizer.h>
 #include <globalsearch/structure.h>
+#include <globalsearch/utilities/makeunique.h>
 
 #include <QtTest>
 
@@ -85,7 +86,8 @@ class OptBaseTest : public QObject
 void OptBaseTest::initTestCase()
 {
   m_opt = new DummyOptBase();
-  m_opt->setOptimizer(new DummyOptimizer (m_opt));
+  m_opt->optimizers()["dummy"] = make_unique<DummyOptimizer>(m_opt);
+  m_opt->setOptimizer("dummy");
 }
 
 void OptBaseTest::cleanupTestCase()

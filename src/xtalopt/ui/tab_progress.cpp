@@ -123,25 +123,14 @@ namespace XtalOpt {
     settings->setValue("version",     version);
     settings->setValue("refreshTime", ui.spin_period->value());
     settings->endGroup();
-    DESTROY_SETTINGS(filename);
   }
 
   void TabProgress::readSettings(const QString &filename)
   {
     SETTINGS(filename);
     settings->beginGroup("xtalopt/progress");
-    int loadedVersion = settings->value("version", 0).toInt();
     ui.spin_period->setValue(settings->value("refreshTime", 1).toInt());
     settings->endGroup();
-
-    // Update config data
-    switch (loadedVersion) {
-    case 0:
-    case 1:
-    default:
-      break;
-    }
-
   }
 
   void TabProgress::disconnectGUI()

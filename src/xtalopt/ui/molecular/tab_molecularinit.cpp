@@ -109,113 +109,14 @@ namespace XtalOpt {
 
   void TabMolecularInit::writeSettings(const QString &filename)
   {
-    SETTINGS(filename);
-
-    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
-    settings->beginGroup("xtalopt/init/");
-
-    const int version = 2;
-    settings->setValue("version", version);
-
-    settings->setValue("limits/a/min",        xtalopt->a_min);
-    settings->setValue("limits/b/min",        xtalopt->b_min);
-    settings->setValue("limits/c/min",        xtalopt->c_min);
-    settings->setValue("limits/a/max",        xtalopt->a_max);
-    settings->setValue("limits/b/max",        xtalopt->b_max);
-    settings->setValue("limits/c/max",        xtalopt->c_max);
-    settings->setValue("limits/alpha/min",    xtalopt->alpha_min);
-    settings->setValue("limits/beta/min",     xtalopt->beta_min);
-    settings->setValue("limits/gamma/min",    xtalopt->gamma_min);
-    settings->setValue("limits/alpha/max",    xtalopt->alpha_max);
-    settings->setValue("limits/beta/max",     xtalopt->beta_max);
-    settings->setValue("limits/gamma/max",    xtalopt->gamma_max);
-    settings->setValue("limits/volume/min",   xtalopt->vol_min);
-    settings->setValue("limits/volume/max",   xtalopt->vol_max);
-    settings->setValue("limits/volume/fixed", xtalopt->vol_fixed);
-    settings->setValue("limits/scaleFactor",  xtalopt->scaleFactor);
-    settings->setValue("limits/minRadius",    xtalopt->minRadius);
-    settings->setValue("using/fixedVolume",   xtalopt->using_fixed_volume);
-    settings->setValue("using/interatomicDistanceLimit",
-                       xtalopt->using_interatomicDistanceLimit);
-    settings->setValue("using/checkStepOpt",
-                        xtalopt->using_checkStepOpt);
-
-    // Formula Units List
-    if (!filename.isEmpty() && filename.contains("xtalopt.state")) {
-      settings->beginWriteArray("Formula_Units");
-      QList<uint> tempFormulaUnitsList = xtalopt->formulaUnitsList;
-      for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-        settings->setArrayIndex(i);
-        settings->setValue("FU", tempFormulaUnitsList.at(i));
-      }
-      settings->endArray();
-    }
-
-    settings->endGroup();
-
-    DESTROY_SETTINGS(filename);
   }
 
   void TabMolecularInit::readSettings(const QString &filename)
   {
-    SETTINGS(filename);
+    updateGUI();
 
-    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+    updateFormulaUnitsListUI();
 
-    settings->beginGroup("xtalopt/init/");
-    int loadedVersion = settings->value("version", 0).toInt();
-
-    ui.spin_a_min->setValue(		settings->value("limits/a/min",		3).toDouble()   );
-    ui.spin_b_min->setValue(		settings->value("limits/b/min",		3).toDouble()   );
-    ui.spin_c_min->setValue(		settings->value("limits/c/min",		3).toDouble()   );
-    ui.spin_a_max->setValue(		settings->value("limits/a/max",		10).toDouble()  );
-    ui.spin_b_max->setValue(		settings->value("limits/b/max",		10).toDouble()  );
-    ui.spin_c_max->setValue(		settings->value("limits/c/max",		10).toDouble()  );
-    ui.spin_alpha_min->setValue(	settings->value("limits/alpha/min",	60).toDouble()  );
-    ui.spin_beta_min->setValue(		settings->value("limits/beta/min",	60).toDouble()  );
-    ui.spin_gamma_min->setValue(	settings->value("limits/gamma/min",	60).toDouble()  );
-    ui.spin_alpha_max->setValue(	settings->value("limits/alpha/max",	120).toDouble() );
-    ui.spin_beta_max->setValue(		settings->value("limits/beta/max",	120).toDouble() );
-    ui.spin_gamma_max->setValue(	settings->value("limits/gamma/max",	120).toDouble() );
-    ui.spin_vol_min->setValue(		settings->value("limits/volume/min",	1).toDouble()   );
-    ui.spin_vol_max->setValue(		settings->value("limits/volume/max",	100000).toDouble());
-    ui.spin_fixedVolume->setValue(	settings->value("limits/volume/fixed",	500).toDouble()	);
-    ui.spin_scaleFactor->setValue(	settings->value("limits/scaleFactor",0.5).toDouble());
-    ui.spin_minRadius->setValue(    settings->value("limits/minRadius",0.25).toDouble());
-    ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
-    ui.cb_interatomicDistanceLimit->setChecked( settings->value("using/interatomicDistanceLimit",false).toBool());
-
-    // Formula Units List
-    if (!filename.isEmpty()) {
-      int size = settings->beginReadArray("Formula_Units");
-      QString formulaUnits;
-      formulaUnits.clear();
-      for (int i = 0; i < size; i++) {
-        settings->setArrayIndex(i);
-        uint FU = settings->value("FU").toUInt();
-        formulaUnits.append(QString::number(FU));
-        formulaUnits.append(",");
-      }
-      ui.edit_formula_units->setText(formulaUnits);
-      updateFormulaUnits();
-      settings->endArray();
-    }
-
-    settings->endGroup();
-
-    // Update config data
-    switch (loadedVersion) {
-    case 0:
-    case 1:
-      ui.cb_interatomicDistanceLimit->setChecked(
-            settings->value("using/shortestInteratomicDistance",false).toBool());
-    case 2:
-    default:
-      break;
-    }
-
-    // Enact changesSetup templates
     updateDimensions();
   }
 

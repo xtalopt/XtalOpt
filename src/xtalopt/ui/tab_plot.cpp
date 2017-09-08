@@ -108,8 +108,6 @@ namespace XtalOpt {
     settings->setValue("labelPoints",     ui.cb_labelPoints->isChecked());
     settings->setValue("labelType",       ui.combo_labelType->currentIndex());
     settings->endGroup();
-
-    DESTROY_SETTINGS(filename);
   }
 
   void TabPlot::readSettings(const QString &filename)
@@ -130,15 +128,6 @@ namespace XtalOpt {
     ui.combo_labelType->setCurrentIndex(settings->value("labelType",
                                                         Symbol_L).toInt());
     settings->endGroup();
-
-    // Update config data
-    switch (loadedVersion) {
-    case 0:
-    case 1:
-    default:
-      break;
-    }
-
   }
 
   void TabPlot::updateGUI()

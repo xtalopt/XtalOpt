@@ -33,6 +33,9 @@ namespace XtalOpt {
   {
     ui.setupUi(m_tab_widget);
 
+    // Before we make any connections, let's read the settings
+    readSettings();
+
     // Optimization connections
     // Initial generation
     connect(ui.spin_numInitial, SIGNAL(valueChanged(int)),
@@ -72,65 +75,11 @@ namespace XtalOpt {
 
   void TabMolecularOpt::writeSettings(const QString &filename)
   {
-    SETTINGS(filename);
-
-    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
-    settings->beginGroup("xtalopt/opt/");
-
-    // config version
-    const int version = 1;
-    settings->setValue("version",               version);
-
-    // Initial generation
-    settings->setValue("opt/numInitial",        xtalopt->numInitial);
-
-    // Search parameters
-    settings->setValue("opt/popSize",           xtalopt->popSize);
-    settings->setValue("opt/contStructs",       xtalopt->contStructs);
-    settings->setValue("opt/limitRunningJobs",  xtalopt->limitRunningJobs);
-    settings->setValue("opt/runningJobLimit",   xtalopt->runningJobLimit);
-    settings->setValue("opt/failLimit",         xtalopt->failLimit);
-    settings->setValue("opt/failAction",        xtalopt->failAction);
-    settings->setValue("opt/cutoff",            xtalopt->cutoff);
-
-    settings->endGroup();
-
-    DESTROY_SETTINGS(filename);
   }
 
   void TabMolecularOpt::readSettings(const QString &filename)
   {
-    SETTINGS(filename);
-
-    settings->beginGroup("xtalopt/opt/");
-
-    // Config version
-    int loadedVersion = settings->value("version", 0).toInt();
-
-    // Initial generation
-    ui.spin_numInitial->setValue(       settings->value("opt/numInitial",       20).toInt()     );
-
-    // Search parameters
-    ui.spin_popSize->setValue(          settings->value("opt/popSize",          20).toUInt()    );
-    ui.spin_contStructs->setValue(      settings->value("opt/contStructs",      10).toUInt()    );
-    ui.cb_limitRunningJobs->setChecked( settings->value("opt/limitRunningJobs"  ,false).toBool());
-    ui.spin_runningJobLimit->setValue(  settings->value("opt/runningJobLimit",  1).toUInt()    );
-    ui.spin_failLimit->setValue(        settings->value("opt/failLimit",        2).toUInt()    );
-    ui.combo_failAction->setCurrentIndex(settings->value("opt/failAction",      XtalOpt::FA_Randomize).toUInt()    );
-    ui.spin_cutoff->setValue(           settings->value("opt/cutoff",           100).toInt()    );
-
-    settings->endGroup();
-
-    // Update config data
-    switch (loadedVersion) {
-    case 0:
-    case 1:
-    default:
-      break;
-    }
-
-    updateOptimizationInfo();
+    updateGUI();
   }
 
   void TabMolecularOpt::updateGUI()

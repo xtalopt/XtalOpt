@@ -43,7 +43,8 @@ namespace XtalOpt {
 
   MolecularXtalOptDialog::MolecularXtalOptDialog(QWidget *parent,
                                                  Qt::WindowFlags f,
-                                                 bool interactive) :
+                                                 bool interactive,
+                                                 XtalOpt* xtalopt) :
     AbstractDialog(parent, f)
   {
     setWindowFlags(Qt::Window);
@@ -60,7 +61,10 @@ namespace XtalOpt {
     ui_tabs         = ui->tabs;
 
     // Initialize vars, connections, etc
-    XtalOpt *xtalopt = new XtalOpt (this);
+    if (!xtalopt) {
+      xtalopt = new XtalOpt (this);
+      m_ownsOptBase = true;
+    }
 
     m_opt = xtalopt;
 
@@ -131,13 +135,8 @@ namespace XtalOpt {
   void MolecularXtalOptDialog::saveSession() {
     // Notify if this was user requested.
     bool notify = false;
-    if (sender() == ui->push_save) {
+    if (sender() == ui->push_save)
       notify = true;
-    }
-    if (m_opt->savePending) {
-      return;
-    }
-    m_opt->savePending = true;
     QtConcurrent::run(m_opt,
                       &OptBase::save,
                       QString(""),

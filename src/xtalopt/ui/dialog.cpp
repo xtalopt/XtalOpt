@@ -43,7 +43,8 @@ namespace XtalOpt {
 
   XtalOptDialog::XtalOptDialog( QWidget *parent,
                                 Qt::WindowFlags f,
-                                bool interactive) :
+                                bool interactive,
+                                XtalOpt* xtalopt) :
     AbstractDialog( parent, f )
   {
     setWindowFlags(Qt::Window);
@@ -59,8 +60,10 @@ namespace XtalOpt {
     ui_progbar      = ui->progbar;
     ui_tabs         = ui->tabs;
 
-    // Initialize vars, connections, etc
-    XtalOpt *xtalopt = new XtalOpt (this);
+    if (!xtalopt) {
+      xtalopt = new XtalOpt(this);
+      m_ownsOptBase = true;
+    }
 
     m_opt = xtalopt;
 
@@ -100,11 +103,7 @@ namespace XtalOpt {
   {
     this->hide();
 
-    m_opt->tracker()->lockForRead();
     writeSettings();
-    saveSession();
-    m_opt->tracker()->unlock();
-    // m_opt is deleted by ~AbstractDialog
   }
 
   void XtalOptDialog::setMolecule(GlobalSearch::Molecule *molecule)
@@ -131,17 +130,10 @@ namespace XtalOpt {
   void XtalOptDialog::saveSession() {
     // Notify if this was user requested.
     bool notify = false;
-    if (sender() == ui->push_save) {
+    if (sender() == ui->push_save)
       notify = true;
-    }
-    if (m_opt->savePending) {
-      return;
-    }
-    m_opt->savePending = true;
-    QtConcurrent::run(m_opt,
-                      &OptBase::save,
-                      QString(""),
-                      notify);
+
+    QtConcurrent::run([this, notify](){ this->m_opt->save("", notify); });
   }
 
   void XtalOptDialog::startSearch() {

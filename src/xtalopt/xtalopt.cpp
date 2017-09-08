@@ -28,7 +28,7 @@
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
-#include <globalsearch/queueinterfaces/local.h>
+#include <globalsearch/queueinterfaces/queueinterfaces.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/random.h>
 #include <globalsearch/slottedwaitcondition.h>
@@ -62,6 +62,8 @@ namespace XtalOpt {
 
   XtalOpt::XtalOpt(GlobalSearch::AbstractDialog *parent) :
     OptBase(parent),
+    formulaUnitsList({1}),
+    lowestEnthalpyFUList({0,0}),
     using_randSpg(false),
     minXtalsOfSpgPerFU(QList<int>()),
     m_rpcClient(make_unique<XtalOptRpc>()),
@@ -71,6 +73,27 @@ namespace XtalOpt {
     m_idString = "XtalOpt";
     m_schemaVersion = 2;
 
+    // Let's populate our optimizers and queue interfaces
+    m_optimizers["castep"] = make_unique<CASTEPOptimizer>(this);
+    m_optimizers["gulp"]   = make_unique<GULPOptimizer>(this);
+    m_optimizers["pwscf"]  = make_unique<PWscfOptimizer>(this);
+    m_optimizers["siesta"] = make_unique<SIESTAOptimizer>(this);
+    m_optimizers["vasp"]   = make_unique<VASPOptimizer>(this);
+
+    m_queueInterfaces["local"] = make_unique<LocalQueueInterface>(this);
+
+#ifdef ENABLE_SSH
+    m_queueInterfaces["loadleveler"] =
+        make_unique<LoadLevelerQueueInterface>(this);
+    m_queueInterfaces["lsf"]   = make_unique<LsfQueueInterface>(this);
+    m_queueInterfaces["pbs"]   = make_unique<PbsQueueInterface>(this);
+    m_queueInterfaces["sge"]   = make_unique<SgeQueueInterface>(this);
+    m_queueInterfaces["slurm"] = make_unique<SlurmQueueInterface>(this);
+#endif
+
+    // Read the general settings
+    readSettings();
+
     // Connections
     connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
             this, SLOT(checkForDuplicates()));
@@ -79,7 +102,7 @@ namespace XtalOpt {
     connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
             this, SLOT(updateLowestEnthalpyFUList(GlobalSearch::Structure*)));
 
-    if (m_usingGUI) {
+    if (m_usingGUI && m_dialog) {
       connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
               this, SLOT(sendRpcUpdate(GlobalSearch::Structure*)));
     }
@@ -87,6 +110,19 @@ namespace XtalOpt {
 
   XtalOpt::~XtalOpt()
   {
+    // The dialog should be gone, so make sure everywhere else knows
+    m_dialog = nullptr;
+
+    // Save one last time
+    qDebug() << "Saving XtalOpt settings...";
+
+    // First save the state file
+    save("", false);
+
+    // Then save the config settings
+    QString configFileName = QSettings().fileName();
+    save(configFileName, false);
+
     // Stop queuemanager thread
     if (m_queueThread->isRunning()) {
       m_queueThread->disconnect();
@@ -103,17 +139,6 @@ namespace XtalOpt {
     delete m_ssh;
     m_ssh = 0;
 #endif // ENABLE_SSH
-
-    // Wait for save to finish
-    unsigned int timeout = 30;
-    while (timeout > 0 && savePending) {
-      qDebug() << "Spinning on save before destroying XtalOpt ("
-               << timeout << "seconds until timeout).";
-      timeout--;
-      GS_SLEEP(1);
-    };
-
-    savePending = true;
 
     // Clean up various members
     m_initWC->deleteLater();
@@ -275,7 +300,7 @@ namespace XtalOpt {
     ///////////////////////////////////////////////
 
     // Set up progress bar
-    if (m_usingGUI)
+    if (m_usingGUI && m_dialog)
       m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
 
     // Initalize loop variables
@@ -290,7 +315,7 @@ namespace XtalOpt {
     for (int i = 0; i < seedList.size(); i++) {
       filename = seedList.at(i);
       if (this->addSeed(filename)) {
-        if (m_usingGUI) {
+        if (m_usingGUI && m_dialog) {
           m_dialog->updateProgressLabel(
                 tr("%1 structures generated (%2 kept, %3 rejected)...")
                 .arg(i + failed).arg(i).arg(failed));
@@ -408,7 +433,7 @@ namespace XtalOpt {
     }
 
     // Wait for all structures to appear in tracker
-    if (m_usingGUI) {
+    if (m_usingGUI && m_dialog) {
       m_dialog->updateProgressLabel(
             tr("Waiting for structures to initialize..."));
       m_dialog->updateProgressMinimum(0);
@@ -420,7 +445,7 @@ namespace XtalOpt {
 
     m_initWC->prewaitLock();
     do {
-      if (m_usingGUI) {
+      if (m_usingGUI && m_dialog) {
         m_dialog->updateProgressValue(m_tracker->size());
         m_dialog->updateProgressLabel(
               tr("Waiting for structures to initialize (%1 of %2)...")
@@ -439,11 +464,436 @@ namespace XtalOpt {
     // We're done with m_initWC.
     m_initWC->disconnect();
 
-    if (m_usingGUI)
+    if (m_usingGUI && m_dialog)
       m_dialog->stopProgressUpdate();
 
-    m_dialog->saveSession();
+    if (m_dialog)
+      m_dialog->saveSession();
     emit sessionStarted();
+    return true;
+  }
+
+  bool XtalOpt::save(QString filename, bool notify)
+  {
+    // We will only save once at a time
+    std::unique_lock<std::mutex> saveLock(saveMutex, std::defer_lock);
+    if (!saveLock.try_lock())
+      return false;
+
+    if (filename.isEmpty() && !filePath.isEmpty())
+      filename = filePath + "/" + m_idString.toLower() + ".state";
+
+    bool isStateFile = filename.endsWith(".state");
+
+    // If we have a state file, call the parent save
+    if (isStateFile)
+      OptBase::save(filename, notify);
+
+    SETTINGS(filename);
+    settings->beginGroup("xtalopt/init/");
+
+    const int version = 2;
+    settings->setValue("version", version);
+
+    settings->setValue("limits/a/min",        a_min);
+    settings->setValue("limits/b/min",        b_min);
+    settings->setValue("limits/c/min",        c_min);
+    settings->setValue("limits/a/max",        a_max);
+    settings->setValue("limits/b/max",        b_max);
+    settings->setValue("limits/c/max",        c_max);
+    settings->setValue("limits/alpha/min",    alpha_min);
+    settings->setValue("limits/beta/min",     beta_min);
+    settings->setValue("limits/gamma/min",    gamma_min);
+    settings->setValue("limits/alpha/max",    alpha_max);
+    settings->setValue("limits/beta/max",     beta_max);
+    settings->setValue("limits/gamma/max",    gamma_max);
+    settings->setValue("limits/volume/min",   vol_min);
+    settings->setValue("limits/volume/max",   vol_max);
+    settings->setValue("limits/volume/fixed", vol_fixed);
+    settings->setValue("limits/scaleFactor",  scaleFactor);
+    settings->setValue("limits/minRadius",    minRadius);
+    settings->setValue("using/fixedVolume",   using_fixed_volume);
+    settings->setValue("using/mitosis",       using_mitosis);
+    settings->setValue("using/subcellPrint",  using_subcellPrint);
+    settings->setValue("limits/divisions",    divisions);
+    settings->setValue("limits/ax",           ax);
+    settings->setValue("limits/bx",           bx);
+    settings->setValue("limits/cx",           cx);
+    settings->setValue("using/interatomicDistanceLimit",
+                       using_interatomicDistanceLimit);
+    settings->setValue("using/molUnit",       using_molUnit);
+    settings->setValue("using/customIAD",     using_customIAD);
+    settings->setValue("using/randSpg", using_randSpg);
+    settings->setValue("using/checkStepOpt",  using_checkStepOpt);
+
+    // Composition
+    settings->beginWriteArray("composition");
+    QList<uint> keys = comp.keys();
+    for (int i = 0; i < keys.size(); i++) {
+      if (keys.at(i) == 0)
+        continue;
+      settings->setArrayIndex(i);
+      settings->setValue("atomicNumber", keys.at(i));
+      settings->setValue("quantity",
+                         comp.value(keys.at(i)).quantity);
+      settings->setValue("minRadius",
+                         comp.value(keys.at(i)).minRadius);
+    }
+    settings->endArray();
+
+    // Formula Units List
+    settings->beginWriteArray("Formula_Units");
+    for (int i = 0; i < formulaUnitsList.size(); i++) {
+      settings->setArrayIndex(i);
+      settings->setValue("FU", formulaUnitsList.at(i));
+    }
+    settings->endArray();
+
+    // Mol Unit stuff
+    if (using_molUnit) {
+      settings->beginWriteArray("compMolUnit");
+      size_t ind = 0;
+      for (const auto& pair: compMolUnit.keys()) {
+        settings->setArrayIndex(ind);
+        settings->setValue("center",
+                           ElemInfo::getAtomicSymbol(pair.first).c_str());
+        settings->setValue("number_of_centers", compMolUnit[pair].numCenters);
+        settings->setValue("neighbor",
+                           ElemInfo::getAtomicSymbol(pair.second).c_str());
+        settings->setValue("number_of_neighbors",
+                           compMolUnit[pair].numNeighbors);
+        settings->setValue("geometry",
+                           getGeom(compMolUnit[pair].numNeighbors,
+                                   compMolUnit[pair].geom));
+        settings->setValue("distance", compMolUnit[pair].dist);
+        ++ind;
+      }
+      settings->endArray();
+    }
+
+    // Custom IAD stuff
+    if (using_customIAD) {
+      settings->beginWriteArray("customIAD");
+      size_t ind = 0;
+      for (const auto& pair: interComp.keys()) {
+        settings->setArrayIndex(ind);
+        settings->setValue("atomicNumber1", pair.first);
+        settings->setValue("atomicNumber2", pair.second);
+        settings->setValue("minInteratomicDist",  interComp[pair].minIAD);
+        ++ind;
+      }
+      settings->endArray();
+    }
+
+    settings->endGroup();
+
+    settings->beginGroup("xtalopt/edit");
+    settings->setValue("version",          version);
+
+    settings->setValue("description", description);
+    settings->setValue("localpath", filePath);
+    settings->setValue("remote/host", host);
+    settings->setValue("remote/port", port);
+    settings->setValue("remote/username", username);
+    settings->setValue("remote/rempath", rempath);
+
+    settings->setValue("optimizer", optimizer()->getIDString().toLower());
+    settings->setValue("queueInterface", queueInterface()->getIDString().toLower());
+    settings->setValue("logErrorDirs", m_logErrorDirs);
+    settings->endGroup();
+    optimizer()->writeSettings(filename);
+
+    settings->beginGroup("xtalopt/opt/");
+
+    // Initial generation
+    settings->setValue("opt/numInitial",        numInitial);
+
+    // Search parameters
+    settings->setValue("opt/popSize",           popSize);
+    settings->setValue("opt/contStructs",       contStructs);
+    settings->setValue("opt/limitRunningJobs",  limitRunningJobs);
+    settings->setValue("opt/runningJobLimit",   runningJobLimit);
+    settings->setValue("opt/failLimit",         failLimit);
+    settings->setValue("opt/failAction",        failAction);
+    settings->setValue("opt/cutoff",            cutoff);
+    settings->setValue("opt/using_mitotic_growth", using_mitotic_growth);
+    settings->setValue("opt/using_FU_crossovers", using_FU_crossovers);
+    settings->setValue("opt/FU_crossovers_generation", FU_crossovers_generation);
+    settings->setValue("opt/using_one_pool",    using_one_pool);
+    settings->setValue("opt/chance_of_mitosis", chance_of_mitosis);
+
+    // Duplicates
+    settings->setValue("tol/xtalcomp/length",   tol_xcLength);
+    settings->setValue("tol/xtalcomp/angle",    tol_xcAngle);
+    settings->setValue("tol/spg",               tol_spg);
+
+    // Crossover
+    settings->setValue("opt/p_cross",           p_cross);
+    settings->setValue("opt/cross_minimumContribution",cross_minimumContribution);
+
+    // Stripple
+    settings->setValue("opt/p_strip",           p_strip);
+    settings->setValue("opt/strip_strainStdev_min", strip_strainStdev_min);
+    settings->setValue("opt/strip_strainStdev_max", strip_strainStdev_max);
+    settings->setValue("opt/strip_amp_min",     strip_amp_min);
+    settings->setValue("opt/strip_amp_max",     strip_amp_max);
+    settings->setValue("opt/strip_per1",        strip_per1);
+    settings->setValue("opt/strip_per2",        strip_per2);
+
+    // Permustrain
+    settings->setValue("opt/p_perm",            p_perm);
+    settings->setValue("opt/perm_strainStdev_max", perm_strainStdev_max);
+    settings->setValue("opt/perm_ex",           perm_ex);
+
+    return true;
+  }
+
+  bool XtalOpt::readEditSettings(const QString& filename)
+  {
+    SETTINGS(filename);
+    // Edit tab
+    settings->beginGroup("xtalopt/edit");
+    port = settings->value("remote/port", 22).toInt();
+    m_logErrorDirs = settings->value("logErrorDirs", false).toBool();
+
+    // Temporary variables to test settings. This prevents empty
+    // scheme values from overwriting defaults.
+    QString tmpstr;
+
+    tmpstr = settings->value("description", "").toString();
+    if (!tmpstr.isEmpty()) {
+      description = tmpstr;
+    }
+
+    tmpstr = settings->value("remote/rempath", "").toString();
+    if (!tmpstr.isEmpty()) {
+      rempath = tmpstr;
+    }
+
+    tmpstr = settings->value("localpath", "").toString();
+    if (!tmpstr.isEmpty()) {
+      filePath = tmpstr;
+    }
+
+    tmpstr = settings->value("remote/host", "").toString();
+    if (!tmpstr.isEmpty()) {
+      host = tmpstr;
+    }
+
+    tmpstr = settings->value("remote/username", "").toString();
+    if (!tmpstr.isEmpty()) {
+      username = tmpstr;
+    }
+
+    QString queueInterface =
+        settings->value("queueInterface", "local").toString().toLower();
+
+    setQueueInterface(queueInterface.toStdString());
+
+    this->queueInterface()->readSettings(filename);
+
+    QString optimizerName =
+      settings->value("optimizer", "gulp").toString().toLower();
+
+    setOptimizer(optimizerName.toStdString());
+
+    this->optimizer()->readSettings(filename);
+
+    settings->endGroup();
+    return true;
+  }
+
+  bool XtalOpt::readSettings(const QString &filename)
+  {
+    // Some sections, we only want to load if we are loading a state file
+    bool isStateFile = filename.endsWith(".state");
+
+    SETTINGS(filename);
+
+    settings->beginGroup("xtalopt/init/");
+    int loadedVersion = settings->value("version", 0).toInt();
+
+    a_min = settings->value("limits/a/min", 3).toDouble();
+    b_min = settings->value("limits/b/min", 3).toDouble();
+    c_min = settings->value("limits/c/min", 3).toDouble();
+    a_max = settings->value("limits/a/max", 10).toDouble();
+    b_max = settings->value("limits/b/max", 10).toDouble();
+    c_max = settings->value("limits/c/max", 10).toDouble();
+    alpha_min = settings->value("limits/alpha/min", 60).toDouble();
+    beta_min  = settings->value("limits/beta/min",  60).toDouble();
+    gamma_min = settings->value("limits/gamma/min", 60).toDouble();
+    alpha_max = settings->value("limits/alpha/max", 120).toDouble();
+    beta_max  = settings->value("limits/beta/max",  120).toDouble();
+    gamma_max = settings->value("limits/gamma/max", 120).toDouble();
+    vol_min = settings->value("limits/volume/min",  1).toDouble();
+    vol_max = settings->value("limits/volume/max",  100000).toDouble();
+    vol_fixed = settings->value("limits/volume/fixed",  500).toDouble();
+    scaleFactor = settings->value("limits/scaleFactor",0.5).toDouble();
+    minRadius = settings->value("limits/minRadius",0.25).toDouble();
+    using_fixed_volume = settings->value("using/fixedVolume",  false).toBool();
+    using_interatomicDistanceLimit =
+      settings->value("using/interatomicDistanceLimit",false).toBool();
+    using_customIAD = settings->value("using/customIAD").toBool();
+    using_randSpg = settings->value("using/randSpg").toBool();
+    using_checkStepOpt = settings->value("using/checkStepOpt").toBool();
+
+    using_mitosis = settings->value("using/mitosis", false).toBool();
+    using_subcellPrint = settings->value("using/subcellPrint", false).toBool();
+
+    if (isStateFile) {
+      divisions = settings->value("limits/divisions").toInt();
+      ax = settings->value("limits/ax").toInt();
+      bx = settings->value("limits/bx").toInt();
+      cx = settings->value("limits/cx").toInt();
+    }
+
+    using_molUnit = settings->value("using/molUnit", false).toBool();
+
+    if (isStateFile) {
+      // Composition
+      int size = settings->beginReadArray("composition");
+      comp = QHash<uint,XtalCompositionStruct> ();
+      for (int i = 0; i < size; i++) {
+        settings->setArrayIndex(i);
+        uint atomicNum, quantity;
+        XtalCompositionStruct entry;
+        atomicNum = settings->value("atomicNumber").toUInt();
+        if (atomicNum == 0)
+          continue;
+        quantity = settings->value("quantity").toUInt();
+        entry.quantity = quantity;
+        comp.insert(atomicNum, entry);
+      }
+      settings->endArray();
+    }
+
+    if (using_molUnit && isStateFile) {
+      int size = settings->beginReadArray("compMolUnit");
+      compMolUnit = QHash<QPair<int, int>, MolUnit> ();
+      for (int i = 0; i < size; i++) {
+        settings->setArrayIndex(i);
+        int centerNum, numCenters, neighborNum, numNeighbors;
+        unsigned int geom;
+        double dist;
+        MolUnit entry;
+
+        QString center = settings->value("center").toString();
+        centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
+        QString strNumCenters = settings->value("number_of_centers").toString();
+        numCenters = strNumCenters.toInt();
+        QString neighbor = settings->value("neighbor").toString();
+        neighborNum = ElemInfo::getAtomicNum(
+                          neighbor.trimmed().toStdString());
+        QString strNumNeighbors = settings->value("number_of_neighbors").toString();
+        numNeighbors = strNumNeighbors.toInt();
+        QString strGeom = settings->value("geometry").toString();
+        setGeom(geom, strGeom);
+        dist = settings->value("distance").toDouble();
+        QString strDist = QString::number(dist, 'f', 3);
+        entry.numCenters = numCenters;
+        entry.numNeighbors = numNeighbors;
+        entry.geom = geom;
+        entry.dist = dist;
+
+        compMolUnit.insert(qMakePair<int, int>(centerNum, neighborNum), entry);
+      }
+      settings->endArray();
+    }
+
+    // Custom IAD
+    if (using_customIAD && isStateFile) {
+      int size = settings->beginReadArray("customIAD");
+      interComp = QHash<QPair<int, int>, IAD>();
+      for (int i = 0; i < size; i++) {
+        settings->setArrayIndex(i);
+        int atomicNum1, atomicNum2;
+        IAD entry;
+        atomicNum1 = settings->value("atomicNumber1").toInt();
+        atomicNum2 = settings->value("atomicNumber2").toInt();
+        double minInteratomicDist = settings->value("minInteratomicDist").toDouble();
+        entry.minIAD = minInteratomicDist;
+        interComp[qMakePair<int, int>(atomicNum1, atomicNum2)] = entry;
+      }
+      settings->endArray();
+    }
+
+    // Formula Units List
+    formulaUnitsList.clear();
+    if (isStateFile) {
+      int size = settings->beginReadArray("Formula_Units");
+      for (int i = 0; i < size; i++) {
+        settings->setArrayIndex(i);
+        formulaUnitsList.append(settings->value("FU").toUInt());
+      }
+      settings->endArray();
+    }
+
+    if (formulaUnitsList.isEmpty())
+      formulaUnitsList = {1};
+
+    settings->endGroup();
+
+    using_interatomicDistanceLimit =
+        settings->value("using/shortestInteratomicDistance",false).toBool();
+
+    // We have a separate function for reading the edit settings because
+    // the edit tab may need to call it
+    readEditSettings(filename);
+
+    // Optimization settings tab
+    settings->beginGroup("xtalopt/opt/");
+
+    // Initial generation
+    numInitial = settings->value("opt/numInitial", 20).toInt();
+
+    // Search parameters
+    popSize = settings->value("opt/popSize", 20).toUInt();
+    contStructs = settings->value("opt/contStructs", 10).toUInt();
+    limitRunningJobs = settings->value("opt/limitRunningJobs", false).toBool();
+    runningJobLimit = settings->value("opt/runningJobLimit", 1).toUInt();
+    failLimit = settings->value("opt/failLimit", 2).toUInt();
+
+    failAction = static_cast<OptBase::FailActions>(
+        settings->value("opt/failAction", XtalOpt::FA_Randomize).toUInt());
+    cutoff = settings->value("opt/cutoff", 100).toInt();
+    using_mitotic_growth = settings->value("opt/using_mitotic_growth",
+                                           false).toBool();
+    using_FU_crossovers = settings->value("opt/using_FU_crossovers",
+                                          false).toBool();
+    FU_crossovers_generation = settings->value("opt/FU_crossovers_generation",
+                                               4).toUInt();
+    using_one_pool = settings->value("opt/using_one_pool", false).toBool();
+    chance_of_mitosis = settings->value("opt/chance_of_mitosis", 50).toUInt();
+
+    // Duplicates
+    tol_xcLength = settings->value("tol/xtalcomp/length",  0.1).toDouble();
+    tol_xcAngle = settings->value("tol/xtalcomp/angle", 2.0).toDouble();
+    tol_spg = settings->value("tol/spg", 0.05).toDouble();
+
+    // Crossover
+    p_cross = settings->value("opt/p_cross",  15).toUInt();
+    cross_minimumContribution = settings->value("opt/cross_minimumContribution",
+                                                25).toUInt();
+
+    // Stripple
+    p_strip = settings->value("opt/p_strip", 50).toUInt();
+    strip_strainStdev_min = settings->value("opt/strip_strainStdev_min",
+                                            0.5).toDouble();
+    strip_strainStdev_max = settings->value("opt/strip_strainStdev_max",
+                                            0.5).toDouble();
+    strip_amp_min = settings->value("opt/strip_amp_min", 0.5).toDouble();
+    strip_amp_max = settings->value("opt/strip_amp_max", 1.0).toDouble();
+    strip_per1 = settings->value("opt/strip_per1", 1).toUInt();
+    strip_per2 = settings->value("opt/strip_per2", 1).toUInt();
+
+    // Permustrain
+    p_perm = settings->value("opt/p_perm",           35).toUInt();
+    perm_strainStdev_max = settings->value("opt/perm_strainStdev_max",
+                                           0.5).toDouble();
+    perm_ex = settings->value("opt/perm_ex",          4).toUInt();
+
+    settings->endGroup();
+
     return true;
   }
 
@@ -2259,8 +2709,6 @@ namespace XtalOpt {
     bool XtalOpt::checkStepOptimizedStructure(Structure *s, QString *err) {
 
         Xtal *xtal = qobject_cast<Xtal*>(s);
-        uint totalOptSteps = m_optimizer->getNumberOfOptSteps();
-        uint currOptStep = xtal->getCurrentOptStep();
         uint fixCount = xtal->getFixCount();
 
         if (xtal == NULL) {
@@ -2621,8 +3069,6 @@ namespace XtalOpt {
       return false;
     }
 
-    DESTROY_SETTINGS(filename);
-
     // Get path and other info for later:
     QFileInfo stateInfo (file);
     // path to resume file
@@ -2652,11 +3098,11 @@ namespace XtalOpt {
     newFileBase.remove("xtalopt.state.tmp");
     newFileBase.remove("xtalopt.state");
 
-    // TODO For some reason, the local view of "this" is not changed
-    // when the settings are loaded in the following line. The tabs
-    // are loading the settings and setting the variables in their
-    // scope, but it isn't changing it here. Caching issue maybe?
-    m_dialog->readSettings(filename);
+    readSettings(filename);
+
+    // If we have a dialog, read the settings into the dialog as well
+    if (m_dialog)
+      m_dialog->readSettings(filename);
 
 #ifdef ENABLE_SSH
     // Create the SSHManager if running remotely
@@ -2676,7 +3122,8 @@ namespace XtalOpt {
 
     // Xtals
     // Initialize progress bar:
-    m_dialog->updateProgressMaximum(xtalDirs.size());
+    if (m_dialog)
+      m_dialog->updateProgressMaximum(xtalDirs.size());
     // If a local queue interface was used, all InProcess structures must be
     // Restarted.
     bool restartInProcessStructures = false;
@@ -2693,9 +3140,11 @@ namespace XtalOpt {
     bool errorMsgAlreadyGiven = false;
 
     for (int i = 0; i < xtalDirs.size(); i++) {
-      m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...")
-                                    .arg(i+1).arg(xtalDirs.size()));
-      m_dialog->updateProgressValue(i);
+      if (m_dialog) {
+        m_dialog->updateProgressLabel(tr("Loading structures(%1 of %2)...")
+                                      .arg(i+1).arg(xtalDirs.size()));
+        m_dialog->updateProgressValue(i);
+      }
 
       xtalStateFileName = dataPath + "/" + xtalDirs.at(i) + "/structure.state";
       debug(tr("Loading structure %1").arg(xtalStateFileName));
@@ -2787,7 +3236,6 @@ namespace XtalOpt {
         if (version >= 3 && !saveSuccessful) {
           // Check the structure.state.old file if this was not saved
           // successfully.
-          DESTROY_SETTINGS(xtalStateFileName);
           SETTINGS(xtalStateFileName + ".old");
           if (!settings->value("structure/saveSuccessful",
                                false).toBool()) {
@@ -2816,13 +3264,11 @@ namespace XtalOpt {
                                                                     .toDouble();
         xtal->setEnergy(energy);
 
-        DESTROY_SETTINGS(xtalStateFileName);
         locker.unlock();
         updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
         loadedStructures.append(qobject_cast<Structure*>(xtal));
         continue;
       }
-      DESTROY_SETTINGS(xtalStateFileName);
       // If we are loading a previous version,
       // attempt to load the xtal data from the output files
       if (!m_optimizer->load(xtal)) {
@@ -2861,17 +3307,20 @@ namespace XtalOpt {
       }
     }
 
-    m_dialog->updateProgressMinimum(0);
-    m_dialog->updateProgressValue(0);
-    m_dialog->updateProgressMaximum(loadedStructures.size());
-    m_dialog->updateProgressLabel("Sorting and checking structures...");
+    if (m_dialog) {
+      m_dialog->updateProgressMinimum(0);
+      m_dialog->updateProgressValue(0);
+      m_dialog->updateProgressMaximum(loadedStructures.size());
+      m_dialog->updateProgressLabel("Sorting and checking structures...");
+    }
 
     // Sort Xtals by index values
     int curpos = 0;
     //dialog->stopProgressUpdate();
     //dialog->startProgressUpdate("Sorting xtals...", 0, loadedStructures.size()-1);
     for (int i = 0; i < loadedStructures.size(); i++) {
-      m_dialog->updateProgressValue(i);
+      if (m_dialog)
+        m_dialog->updateProgressValue(i);
       for (int j = 0; j < loadedStructures.size(); j++) {
         //dialog->updateProgressValue(curpos);
         if (loadedStructures.at(j)->getIndex() == i) {
@@ -2883,21 +3332,26 @@ namespace XtalOpt {
 
     // Locate and assign memory addresses for parent structures
 
-    m_dialog->updateProgressMinimum(0);
-    m_dialog->updateProgressValue(0);
-    m_dialog->updateProgressMaximum(loadedStructures.size());
-    m_dialog->updateProgressLabel("Updating structure indices...");
+    if (m_dialog) {
+      m_dialog->updateProgressMinimum(0);
+      m_dialog->updateProgressValue(0);
+      m_dialog->updateProgressMaximum(loadedStructures.size());
+      m_dialog->updateProgressLabel("Updating structure indices...");
+    }
 
     // Reassign indices (shouldn't always be necessary, but just in case...)
     for (int i = 0; i < loadedStructures.size(); i++) {
-      m_dialog->updateProgressValue(i);
+      if (m_dialog)
+        m_dialog->updateProgressValue(i);
       loadedStructures.at(i)->setIndex(i);
     }
 
-    m_dialog->updateProgressMinimum(0);
-    m_dialog->updateProgressValue(0);
-    m_dialog->updateProgressMaximum(loadedStructures.size());
-    m_dialog->updateProgressLabel("Preparing GUI and tracker...");
+    if (m_dialog) {
+      m_dialog->updateProgressMinimum(0);
+      m_dialog->updateProgressValue(0);
+      m_dialog->updateProgressMaximum(loadedStructures.size());
+      m_dialog->updateProgressLabel("Preparing GUI and tracker...");
+    }
 
     // Reset the local file path information in case the files have moved
     filePath = newFilePath;
@@ -2906,7 +3360,8 @@ namespace XtalOpt {
     emit disablePlotUpdate();
     for (int i = 0; i < loadedStructures.size(); i++) {
       s = loadedStructures.at(i);
-      m_dialog->updateProgressValue(i);
+      if (m_dialog)
+        m_dialog->updateProgressValue(i);
       m_tracker->lockForWrite();
       m_tracker->append(s);
       m_tracker->unlock();
@@ -2917,7 +3372,8 @@ namespace XtalOpt {
     emit enablePlotUpdate();
     emit updatePlot();
 
-    m_dialog->updateProgressLabel("Done!");
+    if (m_dialog)
+      m_dialog->updateProgressLabel("Done!");
 
     // If no structures were loaded successfully, enter read-only mode.
     if (loadedStructures.size() == 0) {
@@ -3017,7 +3473,6 @@ namespace XtalOpt {
       if (!saveSuccessful) {
         // Check the structure.state.old file if this was not saved
         // successfully.
-        DESTROY_SETTINGS(xtalStateFileName);
         SETTINGS(xtalStateFileName + ".old");
         if (!settings->value("structure/saveSuccessful",
                              false).toBool()) {
@@ -3042,7 +3497,6 @@ namespace XtalOpt {
                                                                   .toDouble();
       xtal->setEnergy(energy);
 
-      DESTROY_SETTINGS(xtalStateFileName);
       updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
       loadedStructures.append(qobject_cast<Structure*>(xtal));
     }
@@ -3475,11 +3929,13 @@ namespace XtalOpt {
                                   size_t succeeded)
   {
     // Update progress bar
-    m_dialog->updateProgressMaximum(goal);
-    m_dialog->updateProgressValue(succeeded);
-    m_dialog->updateProgressLabel(
-              tr("%1 structures generated (%2 kept, %3 rejected)...")
-              .arg(attempted).arg(succeeded).arg(attempted - succeeded));
+    if (m_dialog) {
+      m_dialog->updateProgressMaximum(goal);
+      m_dialog->updateProgressValue(succeeded);
+      m_dialog->updateProgressLabel(
+                tr("%1 structures generated (%2 kept, %3 rejected)...")
+                .arg(attempted).arg(succeeded).arg(attempted - succeeded));
+    }
   }
 
   uint XtalOpt::minFU()
@@ -3505,10 +3961,45 @@ namespace XtalOpt {
     return b ? "true" : "false";
   }
 
+  void XtalOpt::setGeom(unsigned int & geom, QString strGeom)
+  {
+    //Two neighbors
+    if (strGeom.contains("Linear")) {
+      geom = 1;
+    } else if (strGeom.contains("Bent")) {
+      geom = 2;
+    //Three neighbors
+    } else if (strGeom.contains("Trigonal Planar")) {
+      geom = 2;
+    } else if (strGeom.contains("Trigonal Pyramidal")) {
+      geom = 3;
+    } else if (strGeom.contains("T-Shaped")) {
+      geom = 4;
+    //Four neighbors
+    } else if (strGeom.contains("Tetrahedral")) {
+      geom = 3;
+    } else if (strGeom.contains("See-Saw")) {
+      geom = 5;
+    } else if (strGeom.contains("Square Planar")) {
+      geom = 4;
+    //Five neighbors
+    } else if (strGeom.contains("Trigonal Bipyramidal")) {
+      geom = 5;
+    } else if (strGeom.contains("Square Pyramidal")) {
+      geom = 6;
+    //Six neighbors
+    } else if (strGeom.contains("Octahedral")) {
+      geom = 6;
+    //Default
+    } else {
+      geom = 0;
+    }
+  }
+
   // With the number of neighbors and the geom number, returns the geom string
   // I think this would be simpler if we had 1 geom number per name. But
   // unfortunately, that is not the case...
-  QString getGeom(int numNeighbors, int geom)
+  QString XtalOpt::getGeom(int numNeighbors, int geom)
   {
     if (numNeighbors == 1) {
       if (geom == 1)

@@ -38,12 +38,14 @@
 #include <QThread>
 #include <QDebug>
 
+#include <QtConcurrent>
 #include <QClipboard>
 #include <QMessageBox>
 #include <QApplication>
 #include <QInputDialog>
 
 #include <iostream>
+#include <mutex>
 
 //#define OPTBASE_DEBUG
 
@@ -58,7 +60,6 @@ namespace GlobalSearch {
     test_nStructs(600),
     stateFileMutex(new QMutex),
     backTraceMutex(new QMutex),
-    savePending(false),
     readOnly(false),
     m_idString("Generic"),
 #ifdef ENABLE_SSH
@@ -99,6 +100,16 @@ namespace GlobalSearch {
     connect(this, SIGNAL(sig_setClipboard(const QString&)),
             this, SLOT(setClipboard_(const QString&)),
             Qt::QueuedConnection);
+    connect(m_tracker, &Tracker::newStructureAdded,
+            [this]()
+            {
+              QtConcurrent::run([this](){ this->save("", false); });
+            });
+    connect(m_queue, &QueueManager::structureUpdated,
+            [this]()
+            {
+              QtConcurrent::run([this](){ this->save("", false); });
+            });
   }
 
   OptBase::~OptBase()
@@ -111,12 +122,6 @@ namespace GlobalSearch {
     }
     delete m_queueThread;
     m_queueThread = 0;
-
-    delete m_optimizer;
-    m_optimizer = 0;
-
-    delete m_queueInterface;
-    m_queueInterface = 0;
 
     delete m_tracker;
     m_tracker = 0;
@@ -231,13 +236,11 @@ namespace GlobalSearch {
     return probs;
   }
 
-  bool OptBase::save(const QString &stateFilename, bool notify)
+  bool OptBase::save(QString stateFilename, bool notify)
   {
-    if (isStarting ||
-        readOnly) {
-      savePending = false;
+    if (isStarting || readOnly)
       return false;
-    }
+
     QReadLocker trackerLocker(m_tracker->rwLock());
     QMutexLocker locker(stateFileMutex);
     QString filename;
@@ -249,7 +252,7 @@ namespace GlobalSearch {
     }
     QString oldfilename = filename + ".old";
 
-    if (notify) {
+    if (notify && m_dialog) {
       m_dialog->startProgressUpdate(tr("Saving: Writing %1...")
                                     .arg(filename),
                                     0, 0);
@@ -277,7 +280,8 @@ namespace GlobalSearch {
     settings->endGroup();
 
     // Write/update .state
-    m_dialog->writeSettings(filename);
+    if (m_dialog)
+      m_dialog->writeSettings(filename);
 
     // Loop over structures and save them
     QList<Structure*> *structures = m_tracker->list();
@@ -313,7 +317,6 @@ namespace GlobalSearch {
         SETTINGS(structureStateFileName);
         bool stateFileIsValid = settings->value("structure/saveSuccessful",
                                                 false).toBool();
-        DESTROY_SETTINGS(structureStateFileName);
 
         // Copy it over if it's a valid state file...
         if (stateFileIsValid) {
@@ -324,7 +327,7 @@ namespace GlobalSearch {
         }
       }
 
-      if (notify) {
+      if (notify && m_dialog) {
         m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
                                       .arg(structureStateFileName));
       }
@@ -335,49 +338,49 @@ namespace GlobalSearch {
     // Print results files //
     /////////////////////////
 
-    QFile file (filePath + "/results.txt");
-    QFile oldfile (filePath + "/results_old.txt");
-    if (notify) {
-      m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
-                                    .arg(file.fileName()));
-    }
-    if (oldfile.open(QIODevice::ReadOnly))
-      oldfile.remove();
-    if (file.open(QIODevice::ReadOnly))
-      file.copy(oldfile.fileName());
-    file.close();
-    if (!file.open(QIODevice::WriteOnly)) {
-      error("OptBase::save(): Error opening file "+file.fileName()+" for writing...");
-      savePending = false;
-      return false;
-    }
-    QTextStream out (&file);
+    // Only print the results file if we have a file path
+    if (!filePath.isEmpty()) {
+      QFile file (filePath + "/results.txt");
+      QFile oldfile (filePath + "/results_old.txt");
+      if (notify && m_dialog) {
+        m_dialog->updateProgressLabel(tr("Saving: Writing %1...")
+                                      .arg(file.fileName()));
+      }
+      if (oldfile.open(QIODevice::ReadOnly))
+        oldfile.remove();
+      if (file.open(QIODevice::ReadOnly))
+        file.copy(oldfile.fileName());
+      file.close();
+      if (!file.open(QIODevice::WriteOnly)) {
+        error("OptBase::save(): Error opening file "+file.fileName()+" for writing...");
+        return false;
+      }
+      QTextStream out (&file);
 
-    QList<Structure*> sortedStructures;
+      QList<Structure*> sortedStructures;
 
-    for (int i = 0; i < structures->size(); i++)
-      sortedStructures.append(structures->at(i));
-    if (sortedStructures.size() != 0) {
-      Structure::sortAndRankByEnthalpy(&sortedStructures);
-      out << sortedStructures.first()->getResultsHeader() << endl;
-    }
+      for (int i = 0; i < structures->size(); i++)
+        sortedStructures.append(structures->at(i));
+      if (sortedStructures.size() != 0) {
+        Structure::sortAndRankByEnthalpy(&sortedStructures);
+        out << sortedStructures.first()->getResultsHeader() << endl;
+      }
 
-    for (int i = 0; i < sortedStructures.size(); i++) {
-      structure = sortedStructures.at(i);
-      if (!structure) continue; // In case there was a problem copying.
-      QReadLocker structureLocker(&structure->lock());
-      out << structure->getResultsEntry() << endl;
-      structureLocker.unlock();
-      if (notify) {
-        m_dialog->stopProgressUpdate();
+      for (int i = 0; i < sortedStructures.size(); i++) {
+        structure = sortedStructures.at(i);
+        if (!structure) continue; // In case there was a problem copying.
+        QReadLocker structureLocker(&structure->lock());
+        out << structure->getResultsEntry() << endl;
+        structureLocker.unlock();
+        if (notify && m_dialog) {
+          m_dialog->stopProgressUpdate();
+        }
       }
     }
 
     // Mark operation successful
     settings->setValue(m_idString.toLower() + "/saveSuccessful", true);
-    DESTROY_SETTINGS(filename);
 
-    savePending = false;
     return true;
   }
 
@@ -517,16 +520,28 @@ namespace GlobalSearch {
     return str;
   }
 
-  void OptBase::setOptimizer(Optimizer *o)
+  void OptBase::setOptimizer(const std::string& optName)
   {
-    m_optimizer = o;
-    emit optimizerChanged(o);
+    if (m_optimizers.count(optName) == 0) {
+      qDebug() << "Error in" << __FUNCTION__ << ": unknown optName:"
+               << optName.c_str();
+      return;
+    }
+    m_optimizer = m_optimizers[optName].get();
+    emit optimizerChanged(m_optimizer->getIDString().toLower().toStdString());
   }
 
-  void OptBase::setQueueInterface(QueueInterface *q)
+  void OptBase::setQueueInterface(const std::string& qiName)
   {
-    m_queueInterface = q;
-    emit queueInterfaceChanged(q);
+    if (m_queueInterfaces.count(qiName) == 0) {
+      qDebug() << "Error in" << __FUNCTION__ << ": unknown Queue Interface"
+               << "Name:" << qiName.c_str();
+      return;
+    }
+    m_queueInterface = m_queueInterfaces[qiName].get();
+    emit queueInterfaceChanged(
+      m_queueInterface->getIDString().toLower().toStdString()
+    );
   }
 
   void OptBase::promptForPassword(const QString &message,

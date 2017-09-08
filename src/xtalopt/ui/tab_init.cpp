@@ -38,18 +38,11 @@ namespace XtalOpt {
   {
     ui.setupUi(m_tab_widget);
 
+    readSettings();
+
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
-    xtalopt->loaded =   false;
-
-    // Initialize the formula units list...
-    if (xtalopt->formulaUnitsList.isEmpty()) {
-      xtalopt->formulaUnitsList.append(1);
-      // We need to append this one twice... lowestEnthalpyFUList.at(0) does not
-      // correspond to anything. lowestEnthalpyFUList.at(1) corresponds to 1 FU
-      xtalopt->lowestEnthalpyFUList.append(0);
-      xtalopt->lowestEnthalpyFUList.append(0);
-    }
+    xtalopt->loaded = false;
 
     // Composition
     connect(ui.edit_composition, SIGNAL(textChanged(QString)),
@@ -167,180 +160,17 @@ namespace XtalOpt {
 
   void TabInit::writeSettings(const QString &filename)
   {
-    SETTINGS(filename);
-
-    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
-    settings->beginGroup("xtalopt/init/");
-
-    const int version = 2;
-    settings->setValue("version", version);
-
-    settings->setValue("limits/a/min",        xtalopt->a_min);
-    settings->setValue("limits/b/min",        xtalopt->b_min);
-    settings->setValue("limits/c/min",        xtalopt->c_min);
-    settings->setValue("limits/a/max",        xtalopt->a_max);
-    settings->setValue("limits/b/max",        xtalopt->b_max);
-    settings->setValue("limits/c/max",        xtalopt->c_max);
-    settings->setValue("limits/alpha/min",    xtalopt->alpha_min);
-    settings->setValue("limits/beta/min",     xtalopt->beta_min);
-    settings->setValue("limits/gamma/min",    xtalopt->gamma_min);
-    settings->setValue("limits/alpha/max",    xtalopt->alpha_max);
-    settings->setValue("limits/beta/max",     xtalopt->beta_max);
-    settings->setValue("limits/gamma/max",    xtalopt->gamma_max);
-    settings->setValue("limits/volume/min",   xtalopt->vol_min);
-    settings->setValue("limits/volume/max",   xtalopt->vol_max);
-    settings->setValue("limits/volume/fixed", xtalopt->vol_fixed);
-    settings->setValue("limits/scaleFactor",  xtalopt->scaleFactor);
-    settings->setValue("limits/minRadius",    xtalopt->minRadius);
-    settings->setValue("using/fixedVolume",   xtalopt->using_fixed_volume);
-    settings->setValue("using/mitosis",      xtalopt->using_mitosis);
-    settings->setValue("using/subcellPrint",      xtalopt->using_subcellPrint);
-    settings->setValue("limits/divisions",      xtalopt->divisions);
-    settings->setValue("limits/ax",      xtalopt->ax);
-    settings->setValue("limits/bx",      xtalopt->bx);
-    settings->setValue("limits/cx",      xtalopt->cx);
-    settings->setValue("using/interatomicDistanceLimit",
-                       xtalopt->using_interatomicDistanceLimit);
-    settings->setValue("using/molUnit",      xtalopt->using_molUnit);
-    settings->setValue("using/customIAD",
-                        xtalopt->using_customIAD);
-    settings->setValue("using/checkStepOpt",
-                        xtalopt->using_checkStepOpt);
-    // Composition
-    // We only want to save POTCAR info and Composition to the resume
-    // file, not the main config file, so only dump the data here if
-    // we are given a filename and it contains the string
-    // "xtalopt.state"
-    if (!filename.isEmpty() && filename.contains("xtalopt.state")) {
-      settings->beginWriteArray("composition");
-      QList<uint> keys = xtalopt->comp.keys();
-      for (int i = 0; i < keys.size(); i++) {
-        if (keys.at(i) == 0)
-          continue;
-        settings->setArrayIndex(i);
-        settings->setValue("atomicNumber", keys.at(i));
-        settings->setValue("quantity",
-                           xtalopt->comp.value(keys.at(i)).quantity);
-        settings->setValue("minRadius",
-                           xtalopt->comp.value(keys.at(i)).minRadius);
-      }
-      settings->endArray();
-    }
-
-    // MoUnit composition
-    if (!filename.isEmpty() && filename.contains("xtalopt.state") && xtalopt->using_molUnit == true) {
-      settings->beginWriteArray("compMolUnit");
-      unsigned int numRowsMolUnit = ui.table_molUnit->rowCount();
-      for (int i = 0; i < numRowsMolUnit; i++) {
-        settings->setArrayIndex(i);
-        settings->setValue("center",
-                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_CENTER))->currentText());
-        settings->setValue("number_of_centers",
-                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMCENTERS))->currentText());
-        settings->setValue("neighbor",
-                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NEIGHBOR))->currentText());
-        settings->setValue("number_of_neighbors",
-                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_NUMNEIGHBORS))->currentText());
-        settings->setValue("geometry",
-                           qobject_cast<QComboBox*>(ui.table_molUnit->cellWidget(i, MC_GEOM))->currentText());
-        settings->setValue("distance",
-                           ui.table_molUnit->item(i, MC_DIST)->text());
-      }
-      settings->endArray();
-    }
-
-    // Custom IAD Composition
-    if (xtalopt->using_customIAD==true) {
-        unsigned int length = ui.table_IAD->rowCount();
-        settings->beginWriteArray("customIAD");
-        for (uint i = 0; i < length; i++){
-            settings->setArrayIndex(i);
-            QString symbol1 = ui.table_IAD->item(i, IC_SYMBOL1)->text();
-            int atomicNum1 = ElemInfo::getAtomicNum(symbol1.trimmed().toStdString());
-            QString symbol2 = ui.table_IAD->item(i, IC_SYMBOL2)->text();
-            int atomicNum2 = ElemInfo::getAtomicNum(symbol2.trimmed().toStdString());
-
-            settings->setValue("atomicNumber1",     atomicNum1);
-            settings->setValue("atomicNumber2",     atomicNum2);
-            settings->setValue("minInteratomicDist",     xtalopt->interComp[qMakePair<int, int>(atomicNum1, atomicNum2)].minIAD);
-        }
-        settings->endArray();
-    }
-
-    // Formula Units List
-    if (!filename.isEmpty() && filename.contains("xtalopt.state")) {
-      settings->beginWriteArray("Formula_Units");
-      QList<uint> tempFormulaUnitsList = xtalopt->formulaUnitsList;
-      for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-        settings->setArrayIndex(i);
-        settings->setValue("FU", tempFormulaUnitsList.at(i));
-      }
-      settings->endArray();
-    }
-
-    settings->endGroup();
-
-    DESTROY_SETTINGS(filename);
   }
 
   void TabInit::readSettings(const QString &filename)
   {
+    updateGUI();
+
     SETTINGS(filename);
 
-    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
     settings->beginGroup("xtalopt/init/");
-    int loadedVersion = settings->value("version", 0).toInt();
 
-    ui.spin_a_min->setValue(		settings->value("limits/a/min",		3).toDouble()   );
-    ui.spin_b_min->setValue(		settings->value("limits/b/min",		3).toDouble()   );
-    ui.spin_c_min->setValue(		settings->value("limits/c/min",		3).toDouble()   );
-    ui.spin_a_max->setValue(		settings->value("limits/a/max",		10).toDouble()  );
-    ui.spin_b_max->setValue(		settings->value("limits/b/max",		10).toDouble()  );
-    ui.spin_c_max->setValue(		settings->value("limits/c/max",		10).toDouble()  );
-    ui.spin_alpha_min->setValue(	settings->value("limits/alpha/min",	60).toDouble()  );
-    ui.spin_beta_min->setValue(		settings->value("limits/beta/min",	60).toDouble()  );
-    ui.spin_gamma_min->setValue(	settings->value("limits/gamma/min",	60).toDouble()  );
-    ui.spin_alpha_max->setValue(	settings->value("limits/alpha/max",	120).toDouble() );
-    ui.spin_beta_max->setValue(		settings->value("limits/beta/max",	120).toDouble() );
-    ui.spin_gamma_max->setValue(	settings->value("limits/gamma/max",	120).toDouble() );
-    ui.spin_vol_min->setValue(		settings->value("limits/volume/min",	1).toDouble()   );
-    ui.spin_vol_max->setValue(		settings->value("limits/volume/max",	100000).toDouble());
-    ui.spin_fixedVolume->setValue(	settings->value("limits/volume/fixed",	500).toDouble()	);
-    ui.spin_scaleFactor->setValue(	settings->value("limits/scaleFactor",0.5).toDouble());
-    ui.spin_minRadius->setValue(    settings->value("limits/minRadius",0.25).toDouble());
-    ui.cb_fixedVolume->setChecked(	settings->value("using/fixedVolume",	false).toBool()	);
-    ui.cb_interatomicDistanceLimit->setChecked( settings->value("using/interatomicDistanceLimit",false).toBool());
-    ui.cb_customIAD->setChecked( settings->value("using/customIAD").toBool());
-    ui.cb_checkStepOpt->setChecked( settings->value("using/checkStepOpt").toBool());
-    ui.cb_mitosis->setChecked(      settings->value("using/mitosis",       false).toBool()     );
-    ui.cb_subcellPrint->setChecked(      settings->value("using/subcellPrint",       false).toBool()     );
-    ui.cb_useMolUnit->setChecked(      settings->value("using/molUnit",       false).toBool()     );
-    xtalopt->divisions = settings->value("limits/divisions").toInt();
-    xtalopt->ax = settings->value("limits/ax").toInt();
-    xtalopt->bx = settings->value("limits/bx").toInt();
-    xtalopt->cx = settings->value("limits/cx").toInt();
-    updateNumDivisions();
-
-    // Composition
-    if (!filename.isEmpty()) {
-      int size = settings->beginReadArray("composition");
-      xtalopt->comp = QHash<uint,XtalCompositionStruct> ();
-      for (int i = 0; i < size; i++) {
-        settings->setArrayIndex(i);
-        uint atomicNum, quantity;
-        XtalCompositionStruct entry;
-        atomicNum = settings->value("atomicNumber").toUInt();
-        if (atomicNum == 0)
-          continue;
-        quantity = settings->value("quantity").toUInt();
-        entry.quantity = quantity;
-        xtalopt->comp.insert(atomicNum, entry);
-      }
-      this->updateMinRadii();
-      settings->endArray();
-    }
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
     if (!filename.isEmpty() && ui.cb_useMolUnit->isChecked() == true) {
         int size = settings->beginReadArray("compMolUnit");
@@ -415,52 +245,13 @@ namespace XtalOpt {
     }
 
     // Custom IAD
-    if (xtalopt->using_customIAD==true) {
-    int size = settings->beginReadArray("customIAD");
-    xtalopt->interComp = QHash<QPair<int, int>, IAD> ();
-    for (int i = 0; i < size; i++){
-        settings->setArrayIndex(i);
-        int atomicNum1, atomicNum2;
-        IAD entry;
-        atomicNum1 = settings->value("atomicNumber1").toInt();
-        atomicNum2 = settings->value("atomicNumber2").toInt();
-        double minInteratomicDist = settings->value("minInteratomicDist").toDouble();
-        entry.minIAD = minInteratomicDist;
-        xtalopt->interComp[qMakePair<int, int>(atomicNum1, atomicNum2)] = entry;
-    }
-    this->updateCompositionTable();
-    this->updateMinIAD();
-    settings->endArray();
-    }
+    updateCompositionTable();
+    updateMinIAD();
 
     // Formula Units List
-    if (!filename.isEmpty()) {
-      int size = settings->beginReadArray("Formula_Units");
-      QString formulaUnits;
-      formulaUnits.clear();
-      for (int i = 0; i < size; i++) {
-        settings->setArrayIndex(i);
-        uint FU = settings->value("FU").toUInt();
-        formulaUnits.append(QString::number(FU));
-        formulaUnits.append(",");
-      }
-      ui.edit_formula_units->setText(formulaUnits);
-      updateFormulaUnits();
-      settings->endArray();
-    }
+    updateFormulaUnitsListUI();
 
     settings->endGroup();
-
-    // Update config data
-    switch (loadedVersion) {
-    case 0:
-    case 1:
-      ui.cb_interatomicDistanceLimit->setChecked(
-            settings->value("using/shortestInteratomicDistance",false).toBool());
-    case 2:
-    default:
-      break;
-    }
 
     // Enact changesSetup templates
     updateDimensions();
@@ -488,8 +279,8 @@ namespace XtalOpt {
     ui.spin_scaleFactor->setValue( xtalopt->scaleFactor);
     ui.spin_minRadius->setValue(   xtalopt->minRadius);
     ui.cb_fixedVolume->setChecked( xtalopt->using_fixed_volume);
-    ui.cb_mitosis->setChecked( xtalopt->using_mitosis);
-    ui.cb_subcellPrint->setChecked( xtalopt->using_subcellPrint);
+    ui.cb_mitosis->setChecked(xtalopt->using_mitosis);
+    ui.cb_subcellPrint->setChecked(xtalopt->using_subcellPrint);
     ui.combo_divisions->setItemText(ui.combo_divisions->currentIndex(), QString::number(xtalopt->divisions));
     ui.combo_a->setItemText(ui.combo_a->currentIndex(), QString::number(xtalopt->ax));
     ui.combo_b->setItemText(ui.combo_b->currentIndex(), QString::number(xtalopt->bx));

@@ -514,6 +514,11 @@ namespace GlobalSearch {
     OptBase *m_opt;
 
     /**
+     * Whether or not to delete the Optbase object upon destruction.
+     */
+    bool m_ownsOptBase;
+
+    /**
      * The molecule object that is selected.
      */
     GlobalSearch::Molecule *m_molecule;

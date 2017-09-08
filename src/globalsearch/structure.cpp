@@ -312,7 +312,6 @@ namespace GlobalSearch {
     // This will write the current enthalpy, energy, cell information, atom
     // types, and atom positions for a cell that skipped optimization
     writeCurrentStructureInfo(filename);
-    DESTROY_SETTINGS(filename);
   }
 
   void Structure::readStructureSettings(const QString &filename,
@@ -495,7 +494,6 @@ namespace GlobalSearch {
       settings->endGroup(); // cell
     }
     settings->endGroup(); // structure/current
-    DESTROY_SETTINGS(filename);
   }
 
   void Structure::readCurrentStructureInfo(const QString &filename)

@@ -137,6 +137,8 @@ namespace GlobalSearch {
   QDialog* SlurmQueueInterface::dialog()
   {
     if (!m_dialog) {
+      if (!m_opt->dialog())
+        return nullptr;
       m_dialog = new SlurmConfigDialog (m_opt->dialog(),
                                         m_opt,
                                         this);
@@ -165,8 +167,6 @@ namespace GlobalSearch {
     settings->endGroup();
     settings->endGroup();
     settings->endGroup();
-
-    DESTROY_SETTINGS(filename);
 
     // Update config data
     switch (loadedVersion) {
@@ -197,8 +197,6 @@ namespace GlobalSearch {
     settings->endGroup();
     settings->endGroup();
     settings->endGroup();
-
-    DESTROY_SETTINGS(filename);
   }
 
   bool SlurmQueueInterface::startJob(Structure *s)

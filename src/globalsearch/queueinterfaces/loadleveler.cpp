@@ -140,6 +140,8 @@ bool LoadLevelerQueueInterface::isReadyToSearch(QString *str)
 QDialog* LoadLevelerQueueInterface::dialog()
 {
   if (!m_dialog) {
+    if (!m_opt->dialog())
+      return nullptr;
     m_dialog = new LoadLevelerConfigDialog (m_opt->dialog(),
                                             m_opt,
                                             this);
@@ -169,8 +171,6 @@ void LoadLevelerQueueInterface::readSettings(const QString &filename)
   settings->endGroup();
   settings->endGroup();
   settings->endGroup();
-
-  DESTROY_SETTINGS(filename);
 
   // Update config data
   switch (loadedVersion) {
@@ -202,8 +202,6 @@ void LoadLevelerQueueInterface::writeSettings(const QString &filename)
   settings->endGroup();
   settings->endGroup();
   settings->endGroup();
-
-  DESTROY_SETTINGS(filename);
 }
 
 bool LoadLevelerQueueInterface::startJob(Structure *s)

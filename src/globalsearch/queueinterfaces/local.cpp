@@ -408,6 +408,8 @@ namespace GlobalSearch {
   QDialog* LocalQueueInterface::dialog()
   {
     if (!m_dialog) {
+      if (!m_opt->dialog())
+        return nullptr;
       m_dialog = new LocalQueueInterfaceConfigDialog (m_opt->dialog(),
                                                       m_opt,
                                                       this);

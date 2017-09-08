@@ -81,7 +81,7 @@ namespace XtalOpt {
 
   void XtalOptUnitTest::setOptimizer()
   {
-    m_opt->setOptimizer(new GULPOptimizer(m_opt));
+    m_opt->setOptimizer("gulp");
     QVERIFY(m_opt->optimizer() != 0);
   }
 

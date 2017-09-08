@@ -40,7 +40,8 @@ namespace GlobalSearch {
   AbstractDialog::AbstractDialog( QWidget *parent,
                                   Qt::WindowFlags f ) :
     QDialog( parent, f ),
-    m_opt(0)
+    m_opt(0),
+    m_ownsOptBase(false)
   {
     // Initialize vars, connections, etc
     progMutex = new QMutex;
@@ -66,10 +67,6 @@ namespace GlobalSearch {
     connect(ui_push_resume, SIGNAL(clicked()),
             this, SLOT(resumeSession()));
 
-    connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
-            this, SLOT(saveSession()));
-    connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
-            this, SLOT(saveSession()));
     connect(m_opt, SIGNAL(sessionStarted()),
             this, SLOT(updateGUI()));
     connect(m_opt, SIGNAL(sessionStarted()),
@@ -136,7 +133,8 @@ namespace GlobalSearch {
 
   AbstractDialog::~AbstractDialog()
   {
-    delete m_opt;
+    if (m_ownsOptBase)
+      delete m_opt;
   }
 
   void AbstractDialog::disconnectGUI() {

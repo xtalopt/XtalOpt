@@ -543,40 +543,15 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   // We will use this later
   QString templatesDir = options.value("templatesDirectory", ".");
 
-  unique_ptr<QueueInterface> queue(nullptr);
-
 #ifdef ENABLE_SSH
-  if (options["queueInterface"].toLower() == "loadleveler") {
-    queue = make_unique<LoadLevelerQueueInterface>(&xtalopt);
-  }
-  else if (options["queueInterface"].toLower() == "local") {
-    queue = make_unique<LocalQueueInterface>(&xtalopt);
-  }
-  else if (options["queueInterface"].toLower() == "lsf") {
-    queue = make_unique<LsfQueueInterface>(&xtalopt);
-  }
-  else if (options["queueInterface"].toLower() == "pbs") {
-    queue = make_unique<PbsQueueInterface>(&xtalopt);
-  }
-  else if (options["queueInterface"].toLower() == "sge") {
-    queue = make_unique<SgeQueueInterface>(&xtalopt);
-  }
-  else if (options["queueInterface"].toLower() == "slurm") {
-    queue = make_unique<SlurmQueueInterface>(&xtalopt);
-  }
-  else {
-    qDebug() << "Error: unknown queue interface: " << options["queueInterface"];
-    return false;
-  }
+  xtalopt.setQueueInterface(options["queueInterface"].toLower().toStdString());
 #else
-  if (options["queueInterface"].toLower() == "local") {
-    queue = make_unique<LocalQueueInterface>(&xtalopt);
-  }
-  else {
+  if (options["queueInterface"].toLower() != "local") {
     qDebug() << "Error: SSH is disabled, so only 'local' interface is allowed.";
     qDebug() << "Please use the option 'queueInterface = local'";
     return false;
   }
+  xtalopt.setQueueInterface("local");
 #endif
 
   xtalopt.filePath = options.value("localWorkingDirectory",
@@ -601,7 +576,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
     xtalopt.rempath = options["remoteWorkingDirectory"];
 
     RemoteQueueInterface* remoteQueue =
-      qobject_cast<RemoteQueueInterface*>(queue.get());
+      qobject_cast<RemoteQueueInterface*>(xtalopt.queueInterface());
 
     if (!options["submitCommand"].isEmpty())
       remoteQueue->setSubmitCommand(options["submitCommand"]);
@@ -617,12 +592,11 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   }
 #endif
 
-  xtalopt.setQueueInterface(queue.release());
-
-  std::unique_ptr<XtalOptOptimizer> optimizer(nullptr);
-  if (options["optimizer"].toLower() == "castep") {
-    optimizer = make_unique<CASTEPOptimizer>(&xtalopt);
-
+  QString optimizerName = options["optimizer"].toLower();
+  xtalopt.setOptimizer(optimizerName.toStdString());
+  XtalOptOptimizer* optimizer =
+    static_cast<XtalOptOptimizer*>(xtalopt.optimizer());
+  if (optimizerName == "castep") {
     if (!addOptimizerTemplates("castepCellTemplates", options, numOptSteps,
                                *optimizer, *xtalopt.queueInterface())) {
       return false;
@@ -634,24 +608,18 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
     }
   }
   else if (options["optimizer"].toLower() == "gulp") {
-    optimizer = make_unique<GULPOptimizer>(&xtalopt);
-
     if (!addOptimizerTemplates("ginTemplates", options, numOptSteps,
                                *optimizer, *xtalopt.queueInterface())) {
       return false;
     }
   }
   else if (options["optimizer"].toLower() == "pwscf") {
-    optimizer = make_unique<PWscfOptimizer>(&xtalopt);
-
     if (!addOptimizerTemplates("pwscfTemplates", options, numOptSteps,
                                *optimizer, *xtalopt.queueInterface())) {
       return false;
     }
   }
   else if (options["optimizer"].toLower() == "siesta") {
-    optimizer = make_unique<SIESTAOptimizer>(&xtalopt);
-
     if (!addOptimizerTemplates("fdfTemplates", options, numOptSteps,
                                *optimizer, *xtalopt.queueInterface())) {
       return false;
@@ -700,8 +668,6 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
     optimizer->appendTemplate("xtal.psf", "");
   }
   else if (options["optimizer"].toLower() == "vasp") {
-    optimizer = make_unique<VASPOptimizer>(&xtalopt);
-
     if (!addOptimizerTemplates("incarTemplates", options, numOptSteps,
                                *optimizer, *xtalopt.queueInterface())) {
       return false;
@@ -797,8 +763,6 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   // This will only get used if we are local
   if (!options["exeLocation"].isEmpty())
     optimizer->setLocalRunCommand(options["exeLocation"]);
-
-  xtalopt.setOptimizer(optimizer.release());
 
   return true;
 }

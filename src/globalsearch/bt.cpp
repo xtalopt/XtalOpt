@@ -10,6 +10,7 @@
 // http://lists.trolltech.com/qt-interest/2006-07/thread00444-0.html
 // I owe the author my eternal gratitude.
 
+#include <QDebug>
 #include <QObject>
 #include <QString>
 #include <QStringList>
@@ -110,4 +111,11 @@ QStringList getBackTrace()
                       );
 #endif
 
+}
+
+void printBackTrace()
+{
+  QStringList bt = getBackTrace();
+  for (const auto& item: bt)
+    qDebug() << item;
 }

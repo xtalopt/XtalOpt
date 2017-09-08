@@ -28,6 +28,9 @@
 #include <QObject>
 #include <QMutex>
 
+#include <memory>
+#include <mutex>
+
 class QMutex;
 
 namespace GlobalSearch {
@@ -61,7 +64,7 @@ namespace GlobalSearch {
      *
      * @param parent Dialog window of GUI.
      */
-    explicit OptBase(AbstractDialog *parent);
+    explicit OptBase(AbstractDialog *parent = nullptr);
 
     /**
      * Destructor
@@ -190,15 +193,14 @@ for (ind = 0; ind < probs.size(); ind++)
 
     /**
      * Save the current search. If filename is omitted, default to
-     * m_filePath + "/[search name].state". Must set
-     * OptBase::savePending = true before calling.
+     * m_filePath + "/[search name].state". Will only save once at a time.
      *
      * @param filename Filename to write to. Optional.
      * @param notify Whether to display a user-visible notification
      *
      * @return True if successful, false otherwise.
      */
-    virtual bool save(const QString & filename = "", bool notify = false);
+    virtual bool save(QString filename = "", bool notify = false);
 
     /**
      * Load a search session from the specified filename.
@@ -236,9 +238,14 @@ for (ind = 0; ind < probs.size(); ind++)
       return getTemplateKeywordHelp_base();};
 
     /**
+     * Set the main dialog..
+     */
+    void setDialog(AbstractDialog* d) { m_dialog = d; }
+
+    /**
      * @return A pointer to the main dialog..
      */
-    AbstractDialog* dialog() {return m_dialog;};
+    AbstractDialog* dialog() { return m_dialog; }
 
     /**
      * @return A pointer to the main Structure Tracker.
@@ -258,16 +265,28 @@ for (ind = 0; ind < probs.size(); ind++)
     QueueInterface* queueInterface() {return m_queueInterface;};
 
     /**
+     * @return A reference to our map of queue interfaces.
+     */
+    std::map<std::string, std::unique_ptr<QueueInterface>>& queueInterfaces()
+      { return m_queueInterfaces; }
+
+    /**
      * @return A pointer to the current Optimizer.
      * @sa setOptimizer
      * @sa optimizerChanged
      */
-    Optimizer* optimizer() {return m_optimizer;};
+    Optimizer* optimizer() {return m_optimizer; }
+
+    /**
+     * @return A reference to our map of optimizers.
+     */
+    std::map<std::string, std::unique_ptr<Optimizer>>& optimizers()
+      { return m_optimizers; }
 
     /**
      * @return A pointer to the SSHManager instance.
      */
-    SSHManager* ssh() {return m_ssh;};
+    SSHManager* ssh() { return m_ssh; }
 
     /**
      * Are we using the GUI?
@@ -343,8 +362,8 @@ for (ind = 0; ind < probs.size(); ind++)
     /// This is locked when generating a backtrace.
     QMutex *backTraceMutex;
 
-    /// True if there is a save requested or in progress
-    bool savePending;
+    /// A mutex for saving
+    std::mutex saveMutex;
 
     /// True if a session is starting or being loaded
     bool isStarting;
@@ -391,14 +410,14 @@ for (ind = 0; ind < probs.size(); ind++)
      * @sa setQueueInterface
      * @sa queueInterface
      */
-    void queueInterfaceChanged(QueueInterface*);
+    void queueInterfaceChanged(const std::string& qiName);
 
     /**
      * Emitted when the current Optimizer changed
      * @sa setOptimizer
      * @sa optimizer
      */
-    void optimizerChanged(Optimizer*);
+    void optimizerChanged(const std::string& optName);
 
     /**
      * Emitted when debug(const QString&) is called.
@@ -598,16 +617,17 @@ for (ind = 0; ind < probs.size(); ind++)
      * @sa queueInterfaceChanged
      * @sa queueInterface
      */
-    void setQueueInterface(QueueInterface *q);
+    void setQueueInterface(const std::string& qiName);
 
     /**
      * Update the Optimizer to the one indicated
      *
-     * @param o New Optimizer to use.
+     * @param optName New Optimizer to use. Does nothing if @p optName
+     *                isn't in the m_optimizers map.
      * @sa optimizerChanged
      * @sa optimizer
      */
-    void setOptimizer(Optimizer *o);
+    void setOptimizer(const std::string& optName);
 
     /**
      * Prompt user with a "Yes/No" dialog.
@@ -687,11 +707,17 @@ for (ind = 0; ind < probs.size(); ind++)
     /// @sa queueInterface
     QueueInterface *m_queueInterface;
 
+    // A map of all of our available queue interfaces
+    std::map<std::string, std::unique_ptr<QueueInterface>> m_queueInterfaces;
+
     /// Cache pointer to the current optimizer
     /// @sa optimizerChanged
     /// @sa optimizer
     /// @sa setOptimizer
     Optimizer *m_optimizer;
+
+    // A map of all of our available optimizers
+    std::map<std::string, std::unique_ptr<Optimizer>> m_optimizers;
 
     /// Hidden call to interpretKeyword
     void interpretKeyword_base(QString &keyword, Structure* structure);

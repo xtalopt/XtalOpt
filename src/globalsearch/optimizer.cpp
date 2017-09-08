@@ -93,7 +93,7 @@ namespace GlobalSearch {
     if (m_opt->queueInterface()) {
       updateQueueInterface();
     }
-    connect(m_opt, SIGNAL(queueInterfaceChanged(QueueInterface*)),
+    connect(m_opt, SIGNAL(queueInterfaceChanged(const std::string&)),
             this, SLOT(updateQueueInterface()));
 
     readSettings(filename);
@@ -106,11 +106,8 @@ namespace GlobalSearch {
   void Optimizer::readSettings(const QString &filename)
   {
     // Don't consider default setting,, only schemes and states.
-    if (filename.isEmpty()) {
+    if (filename.isEmpty())
       return;
-    }
-
-    SETTINGS(filename);
 
     readTemplatesFromSettings(filename);
     readUserValuesFromSettings(filename);
@@ -178,8 +175,6 @@ namespace GlobalSearch {
     settings->endGroup();
 
     fixTemplateLengths();
-
-    DESTROY_SETTINGS(filename);
   }
 
   void Optimizer::readUserValuesFromSettings(const QString &filename)
@@ -214,11 +209,8 @@ namespace GlobalSearch {
   void Optimizer::writeSettings(const QString &filename)
   {
     // Don't consider default settings, only schemes and states.
-    if (filename.isEmpty()) {
+    if (filename.isEmpty())
       return;
-    }
-
-    SETTINGS(filename);
 
     writeTemplatesToSettings(filename);
     writeUserValuesToSettings(filename);
@@ -226,8 +218,6 @@ namespace GlobalSearch {
     if (m_opt->queueInterface()) {
       m_opt->queueInterface()->writeSettings(filename);
     }
-
-    DESTROY_SETTINGS(filename);
   }
 
   void Optimizer::writeTemplatesToSettings(const QString &filename)
@@ -257,8 +247,6 @@ namespace GlobalSearch {
                          m_QITemplates.value(*it));
     }
     settings->endGroup();
-
-    DESTROY_SETTINGS(filename);
   }
 
   void Optimizer::writeUserValuesToSettings(const QString &filename)
@@ -363,6 +351,8 @@ namespace GlobalSearch {
   QDialog* Optimizer::dialog()
   {
     if (!m_dialog) {
+      if (!m_opt->dialog())
+        return nullptr;
       m_dialog = new OptimizerConfigDialog (m_opt->dialog(),
                                             m_opt,
                                             this);

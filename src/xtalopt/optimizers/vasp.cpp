@@ -65,16 +65,13 @@ namespace XtalOpt {
     readSettings(filename);
 
     buildPOTCARs();
-
   }
 
   void VASPOptimizer::readSettings(const QString &filename)
   {
     // Don't consider default setting,, only schemes and states.
-    if (filename.isEmpty()) {
+    if (filename.isEmpty())
       return;
-    }
-    SETTINGS(filename);
 
     readTemplatesFromSettings(filename);
     readUserValuesFromSettings(filename);
@@ -111,8 +108,6 @@ namespace XtalOpt {
                          m_QITemplates.value(*it));
     }
     settings->endGroup();
-
-    DESTROY_SETTINGS(filename);
   }
 
   void VASPOptimizer::writeDataToSettings(const QString &filename)

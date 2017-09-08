@@ -43,7 +43,8 @@ namespace XtalOpt {
     // Setting interactive to false will disable the tutorial popup
     explicit XtalOptDialog( QWidget *parent = 0,
                             Qt::WindowFlags f = Qt::Window,
-                            bool interactive = true);
+                            bool interactive = true,
+                            XtalOpt* xtalopt = nullptr);
     virtual ~XtalOptDialog() override;
 
     void setMolecule(GlobalSearch::Molecule *molecule);
