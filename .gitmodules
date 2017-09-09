@@ -1,0 +1,3 @@
+[submodule "external/rdkit"]
+	path = external/rdkit
+	url = https://github.com/rdkit/rdkit

@@ -24,10 +24,6 @@ set( xtalopt_SRCS
      ui/xtalopt_plot.cpp
      ui/tab_log.cpp)
 
-option(ENABLE_MOLECULAR_XTALOPT
-       "Whether or not to compile the molecular version of XtalOpt"
-       OFF)
-
 if(ENABLE_MOLECULAR_XTALOPT)
   set(xtalopt_SRCS
       ${xtalopt_SRCS}

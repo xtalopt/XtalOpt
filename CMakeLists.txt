@@ -88,17 +88,21 @@ DownloadObabel()
 
 # The main packages
 option( ENABLE_EXAMPLESEARCH
-  "Build the examplesearch extension"
+  "Build the examplesearch extension - DOES NOT WORK CURRENTLY"
   OFF )
 option( ENABLE_XTALOPT
   "Build the XtalOpt extension"
   ON )
 option( ENABLE_RANDOMDOCK
-  "Build the RandomDock extension"
+  "Build the RandomDock extension - DOES NOT WORK CURRENTLY"
   OFF )
 option( ENABLE_GAPC
-  "Build the evolutionary cluster search extension"
+  "Build the evolutionary cluster search extension - DOES NOT WORK CURRENTLY"
   OFF )
+
+option(ENABLE_MOLECULAR_XTALOPT
+       "Whether or not to compile the molecular version of XtalOpt"
+       OFF)
 
 if(BUILD_INDEPENDENT_PACKAGE)
   set(ENABLE_RPATH ON)
