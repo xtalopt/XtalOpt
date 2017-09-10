@@ -16,6 +16,10 @@ link_directories(
   ${XtalOpt_BINARY_DIR}/src
 )
 
+if(ENABLE_MOLECULAR)
+  link_directories(${RDKit_LIBRARY_DIRS})
+endif(ENABLE_MOLECULAR)
+
 set(tests
   formats
   genetic
@@ -28,8 +32,15 @@ set(tests
   xtaloptunit
 )
 
+if(ENABLE_MOLECULAR)
+  set(tests
+      ${tests}
+      conformergenerator
+  )
+endif(ENABLE_MOLECULAR)
+
 if (ENABLE_SSH)
-set( tests
+set(tests
   ${tests}
   loadleveler
 )

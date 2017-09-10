@@ -36,6 +36,16 @@ set( globalsearch_SRCS
      formats/zmatrixformat.cpp
 )
 
+if(ENABLE_MOLECULAR)
+  set(globalsearch_SRCS
+      ${globalsearch_SRCS}
+      molecular/conformergenerator.cpp
+  )
+  # We are including RDKit headers as system headers so we don't see the
+  # warnings from it.
+  include_directories(SYSTEM "${RDKit_INCLUDE_DIRS}")
+endif(ENABLE_MOLECULAR)
+
 if (ENABLE_SSH)
 if (NOT USE_CLI_SSH)
 set( globalsearch_SRCS
@@ -69,12 +79,24 @@ set( globalsearch_SRCS
 endif()
 
 add_library(globalsearch STATIC ${globalsearch_SRCS} ${moc_files})
-target_link_libraries( globalsearch
-                       ${LINK_LIBS}
-                       Qt5::Concurrent
-                       Qt5::Network # Needed for XtalOpt RPC
-                       Qt5::Widgets
-                       pugixml)
+
+set(GLOBALSEARCH_LINK_LIBS
+    ${GLOBALSEARCH_LINK_LIBS}
+    Qt5::Concurrent
+    Qt5::Network # Needed for XtalOpt RPC
+    Qt5::Widgets
+    pugixml
+)
+
+if(ENABLE_MOLECULAR)
+  set(GLOBALSEARCH_LINK_LIBS
+      ${GLOBALSEARCH_LINK_LIBS}
+      ${RDKit_LIBRARIES}
+  )
+  link_libraries(${RDKit_LIBRARY_DIRS})
+endif(ENABLE_MOLECULAR)
+
+target_link_libraries(globalsearch ${GLOBALSEARCH_LINK_LIBS})
 
 if (ENABLE_SSH AND NOT USE_CLI_SSH)
   target_link_libraries(globalsearch ${LIBSSH_LIBRARIES})

@@ -55,9 +55,5 @@ ExternalProject_Add(boost
 ExternalProject_Get_Property(boost install_dir)
 set(BOOST_ROOT "${install_dir}" CACHE INTERNAL "")
 
-set(Boost_INCLUDE_DIR "${BOOST_ROOT}/include")
-set(Boost_LIBRARY_DIR "${BOOST_ROOT}/lib")
-
-# Go ahead and add the include directories and the link directory
-include_directories("${Boost_INCLUDE_DIR}")
-link_directories("${Boost_LIBRARY_DIR}")
+set(Boost_INCLUDE_DIRS "${BOOST_ROOT}/include" PARENT_SCOPE)
+set(Boost_LIBRARY_DIRS "${BOOST_ROOT}/lib" PARENT_SCOPE)

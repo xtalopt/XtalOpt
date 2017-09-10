@@ -100,8 +100,12 @@ option( ENABLE_GAPC
   "Build the evolutionary cluster search extension - DOES NOT WORK CURRENTLY"
   OFF )
 
-option(ENABLE_MOLECULAR_XTALOPT
+option(ENABLE_MOLECULAR
        "Whether or not to compile the molecular version of XtalOpt"
+       OFF)
+
+option(RDKIT_STATIC
+       "Whether or not to statically compile RDKit. Does nothing if ENABLE_MOLECULAR is off"
        OFF)
 
 if(BUILD_INDEPENDENT_PACKAGE)

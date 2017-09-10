@@ -6,12 +6,9 @@ if(ENABLE_XTALOPT)
   add_subdirectory(pugixml)
 endif(ENABLE_XTALOPT)
 
-# The following section is a work in progress. We do not want to include
-# it right now.
-#if(ENABLE_MOLECULAR_XTALOPT)
-if(FALSE)
+if(ENABLE_MOLECULAR)
   find_package(RDKit)
-  if(NOT RDKIT_FOUND)
+  if(NOT RDKit_FOUND)
 
     message(STATUS "RDKit not found. Attempting to use RDKit submodule.")
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/rdkit")
@@ -37,9 +34,17 @@ if(FALSE)
     # This will automatically try to find Boost itself
     include(External_rdkit)
 
-  else(NOT RDKIT_FOUND)
+  else(NOT RDKit_FOUND)
+    include(RDKitLibraries)
     message(STATUS "RDKit found.")
-    message(STATUS "RDKit include dirs: ${RDKIT_INCLUDE_DIRS}")
-    message(STATUS "RDKit libraries: ${RDKIT_LIBRARIES}")
-  endif(NOT RDKIT_FOUND)
+    message(STATUS "RDKit include dirs: ${RDKit_INCLUDE_DIRS}")
+
+    set(RDKit_LIBRARY_DIRS "${RDKit_INCLUDE_DIRS}/../lib")
+    message(STATUS "RDKit library dirs: ${RDKit_LIBRARY_DIRS}")
+    message(STATUS "RDKit libraries: ${RDKit_LIBRARIES}")
+    # Propagate the variables up one level
+    set(RDKit_INCLUDE_DIRS "${RDKit_INCLUDE_DIRS}" PARENT_SCOPE)
+    set(RDKit_LIBRARY_DIRS "${RDKit_LIBRARY_DIRS}" PARENT_SCOPE)
+    set(RDKit_LIBRARIES "${RDKit_LIBRARIES}" PARENT_SCOPE)
+  endif(NOT RDKit_FOUND)
 endif()

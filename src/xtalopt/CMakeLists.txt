@@ -24,7 +24,7 @@ set( xtalopt_SRCS
      ui/xtalopt_plot.cpp
      ui/tab_log.cpp)
 
-if(ENABLE_MOLECULAR_XTALOPT)
+if(ENABLE_MOLECULAR)
   set(xtalopt_SRCS
       ${xtalopt_SRCS}
       ui/molecular/moleculardialog.cpp
@@ -62,6 +62,10 @@ if(UNIX AND ENABLE_RPATH)
   set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 
+if(ENABLE_MOLECULAR)
+  link_directories(${RDKit_LIBRARY_DIRS})
+endif(ENABLE_MOLECULAR)
+
 add_library(xtalopt_static STATIC ${xtalopt_SRCS} ${xtalopt_RCS})
 target_link_libraries(xtalopt_static globalsearch XtalComp spglib RandSpg
                       "${QWT_LIBRARIES}")
@@ -69,7 +73,7 @@ target_link_libraries(xtalopt_static globalsearch XtalComp spglib RandSpg
 add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp)
 target_link_libraries(xtalopt xtalopt_static)
 
-if(ENABLE_MOLECULAR_XTALOPT)
+if(ENABLE_MOLECULAR)
   add_executable(mxtalopt WIN32 MACOSX_BUNDLE molecularmain.cpp)
   target_link_libraries(mxtalopt xtalopt_static)
 endif()

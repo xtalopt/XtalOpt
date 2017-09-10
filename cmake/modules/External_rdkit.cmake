@@ -26,55 +26,9 @@ ExternalProject_Add(rdkit
     ${_deps}
 )
 
-# Set the include dir
-set(RDKit_INCLUDE_DIRS "${_source}/Code")
+include(RDKitLibraries)
 
-# If RDKit adds more libraries or we need more than just these,
-# we can add them in later
-set(RDKit_LIBRARIES
-  RDGeneral
-  RDBoost
-  DataStructs
-  RDGeometryLib
-  Alignment
-  EigenSolvers
-  Optimizer
-  ForceField
-  DistGeometry
-  Catalogs
-  GraphMol
-  Depictor
-  SmilesParse
-  FileParsers
-  SubstructMatch
-  ChemReactions
-  ChemTransforms
-  Subgraphs
-  FilterCatalog
-  FragCatalog
-  Descriptors
-  Fingerprints
-  PartialCharges
-  MolTransforms
-  ForceFieldHelpers
-  DistGeomHelpers
-  MolAlign
-  MolChemicalFeatures
-  ShapeHelpers
-  MolCatalog
-  FMCS
-  MolHash
-  MMPA
-  StructChecker
-  ReducedGraphs
-  Trajectory
-  SLNParse
-  SimDivPickers
-  hc
-  InfoTheory
-  ChemicalFeatures
-)
-
-# Go ahead and add the include directories and the link directory
-include_directories(${RDKit_INCLUDE_DIRS})
-link_directories("${_source}/lib")
+# Set the include dirs, library dirs, and libraries in the parent scope
+set(RDKit_INCLUDE_DIRS "${_source}/Code" PARENT_SCOPE)
+set(RDKit_LIBRARY_DIRS "${_source}/lib"  PARENT_SCOPE)
+set(RDKit_LIBRARIES "${RDKit_LIBRARIES}" PARENT_SCOPE)

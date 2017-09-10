@@ -41,6 +41,10 @@
 #include <globalsearch/queueinterfaces/remote.h>
 #endif // ENABLE_SSH
 
+#ifdef ENABLE_MOLECULAR
+#include <globalsearch/molecular/conformergenerator.h>
+#endif // ENABLE_MOLECULAR
+
 #include <QDir>
 #include <QList>
 #include <QFile>
