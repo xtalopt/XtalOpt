@@ -116,6 +116,8 @@ namespace XtalOpt {
 
   void XtalOptDialog::beginPlotOnlyMode()
   {
+    m_tab_progress->blockSignals(true);
+
     // Make sure xtalopt is in readOnly mode
     m_opt->readOnly = true;
 
