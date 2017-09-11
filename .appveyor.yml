@@ -54,8 +54,8 @@ build_script:
 
 after_build:
   - if %APPVEYOR_REPO_TAG% equ true (
-      if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2017" (
-        echo "Tag and MSVC 2017 detected. Package will be built and md5 will be generated" &&
+      if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2015" (
+        echo "Tag and MSVC 2015 detected. Package will be built and md5 will be generated" &&
         nmake package &&
         ..\scripts\write-md5.bat
       )
