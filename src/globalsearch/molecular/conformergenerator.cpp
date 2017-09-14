@@ -65,55 +65,6 @@ static vector<int> getConfIds(const RDKit::ROMol& mol)
 }
 
 /**
- * Optimize a specific conformer using MMFF in RDKit.
- *
- * @param mol The RDKit molecule.
- * @param maxIters The max number of iterations for the optimization.
- * @param mmffVariant The MMFF variant. The default is MMFF94.
- * @param nonBondedThresh From the RDKit docs: "the threshold to be used in
- *                        adding non-bonded terms to the force field. Any
- *                        non-bonded contact whose current distance is greater
- *                        than nonBondedThresh * the minimum value for that
- *                        contact will not be included."
- * @param conormerId The number of the conformer in the molecule to optimize.
- * @param ignoreInterfragInteractions If true, non-bonded terms will not be
- *                                    added between fragments.
- *
- * @return A pair: the minimization result (int) and the calculated energy
- *         (double). The minimization result comes directly from
- *         ForceFields::ForceField::minimize() in RDKit. 0 indicates success,
- *         and 1 indicates that the optimization did not converge in the
- *         max number of iterations.
- */
-static pair<int, double> MMFFOptimizeMolecule(
-                    RDKit::ROMol& mol,
-                    int maxIters = 1000,
-                    const std::string& mmffVariant = "MMFF94",
-                    double nonBondedThresh = 100.0,
-                    int conformerId = -1,
-                    bool ignoreInterfragInteractions = true)
-{
-    int res = -1;
-    double e = -1.0;
-    RDKit::MMFF::MMFFMolProperties mmffMolProperties(mol, mmffVariant);
-    if (mmffMolProperties.isValid()) {
-        ForceFields::ForceField* ff =
-            RDKit::MMFF::constructForceField(mol, &mmffMolProperties,
-                                             nonBondedThresh, conformerId,
-                                             ignoreInterfragInteractions);
-        ff->initialize();
-        res = ff->minimize(maxIters);
-        e = ff->calcEnergy();
-        delete ff;
-    }
-    else {
-        std::cerr << "Error in " << __FUNCTION__ << ": mmffMolProperties "
-                  << "is invalid!";
-    }
-    return std::make_pair(res, e);
-}
-
-/**
  * Calculate the best possible RMSD between two conformers. It starts
  * with a substructure match and then tries to align the molecule with
  * all substructure matches. It matches the logic that GetBestRMS() in the
