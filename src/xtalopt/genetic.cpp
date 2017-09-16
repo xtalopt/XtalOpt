@@ -973,7 +973,7 @@ namespace XtalOpt {
         }
       }
       // Swap the atoms
-      const Vector3& tmp = atoms.at(index1).pos();
+      Vector3 tmp = atoms.at(index1).pos();
       atoms[index1].setPos(atoms.at(index2).pos());
       atoms[index2].setPos(tmp);
     }

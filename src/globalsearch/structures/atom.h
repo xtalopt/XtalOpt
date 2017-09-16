@@ -93,7 +93,15 @@ namespace GlobalSearch
      *
      * @return The 3-dimensional Cartesian position in Angstroms.
      */
-    Vector3 pos() const { return m_pos; };
+    Vector3& pos() { return m_pos; };
+
+    /**
+     * Get the position of the atom in 3-dimensional Cartesian coordinates
+     * in Angstroms.
+     *
+     * @return The 3-dimensional Cartesian position in Angstroms.
+     */
+    const Vector3& pos() const { return m_pos; };
 
    private:
     unsigned short m_atomicNumber;
