@@ -36,6 +36,7 @@ if(ENABLE_MOLECULAR)
   set(tests
       ${tests}
       conformergenerator
+      moltransformations
   )
 endif(ENABLE_MOLECULAR)
 

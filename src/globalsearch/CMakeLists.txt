@@ -40,6 +40,7 @@ if(ENABLE_MOLECULAR)
   set(globalsearch_SRCS
       ${globalsearch_SRCS}
       molecular/conformergenerator.cpp
+      molecular/moltransformations.cpp
   )
   # We are including RDKit headers as system headers so we don't see the
   # warnings from it.

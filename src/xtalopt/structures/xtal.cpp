@@ -1190,7 +1190,7 @@ namespace XtalOpt {
           		  if (*atom == a2) {
             	    continue;
         		  }
-            	  
+
 				  double &curDistSquared = squaredDists[dist_ind];
 
                   double minDist = limits.value((*atom).atomicNumber()).minRadius;
@@ -1206,7 +1206,7 @@ namespace XtalOpt {
                       }
                   }
           } while (++i < maxAttempts && !success);
-   
+
       	if (i >= maxAttempts) return false;
       }
       qDebug() <<"XtalOpt::moveAtomRandomlyIAD: Success in moving atom";
