@@ -17,6 +17,19 @@
 
 namespace GlobalSearch
 {
+  void Molecule::addMolecule(const Molecule& mol)
+  {
+    // First, get an offset for the bond numbering later
+    size_t offset = numAtoms();
+    // Add the new atoms
+    for (const auto& atom: mol.atoms())
+      addAtom(atom);
+    // Add their bonds
+    for (const auto& bond: mol.bonds()) {
+      addBond(bond.first() + offset, bond.second() + offset, bond.bondOrder());
+    }
+  }
+
   bool Molecule::removeAtom(size_t ind)
   {
     if (ind >= m_atoms.size())

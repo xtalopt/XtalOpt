@@ -34,6 +34,7 @@ struct latticeStruct;
 
 namespace GlobalSearch {
   class AbstractDialog;
+  class Molecule;
   class SlottedWaitCondition;
 }
 
@@ -56,6 +57,32 @@ namespace XtalOpt {
 
   struct IAD {
     double minIAD;
+  };
+
+  // A simple minIADs class that uses unordered atomic numbers for
+  // the key and a double for the value. In order to set a value,
+  // you must use set() and not ().
+  class minIADs {
+   public:
+    // Set a specific atomic number pair to have a specific IAD
+    void set(short i, short j, double d)
+    {
+      m_data[std::minmax(i, j)] = d;
+    }
+
+    void clear() { m_data.clear(); }
+
+    // Get the IAD value for a specific atomic number pair, or
+    // 1.e300 if the value does not exist.
+    double operator()(short i, short j) const
+    {
+      if (m_data.count(std::minmax(i, j)) != 1)
+        return 1.e-300;
+      return m_data.at(std::minmax(i, j));
+    }
+
+   private:
+    std::map<std::pair<short, short>, double> m_data;
   };
 
   // comparison of two XtalCompositionStructs
@@ -130,6 +157,21 @@ namespace XtalOpt {
     bool checkComposition(Xtal *xtal, QString * err = nullptr);
     bool checkLattice(Xtal *xtal, uint formulaUnits, QString * err = nullptr);
     bool checkXtal(Xtal *xtal, QString * err = nullptr);
+
+  // Returns true if all IAD checks passed, and false otherwise
+  static bool checkIntramolecularIADs(
+      const GlobalSearch::Molecule& mol,
+      const minIADs& iads,
+      bool ignoreBondedAtoms);
+
+  // These two molecules under comparison should have the same unit cell
+  // Returns true if all IAD checks passed, and false otherwise
+  // Does not check intramolecular IADs.
+  static bool checkIntermolecularIADs(
+      const GlobalSearch::Molecule& mol1,
+      const GlobalSearch::Molecule& mol2,
+      const minIADs& iads);
+
     QString interpretTemplate(const QString & templateString,
                               GlobalSearch::Structure* structure) override;
     QString getTemplateKeywordHelp() override;

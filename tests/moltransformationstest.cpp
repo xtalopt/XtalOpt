@@ -57,6 +57,7 @@ class MolTransformationsTest : public QObject
 
   // Tests
   void getMeanPosition();
+  void setMeanPosition();
   void centerMolecule();
   void rotateMolecule();
   void translateMolecule();
@@ -92,6 +93,21 @@ void MolTransformationsTest::getMeanPosition()
 
   QVERIFY(fuzzyCompare(MolTransformations::getMeanPosition(mol),
                        Vector3(0.33333, 0.33333, 0.33333), m_tol));
+}
+
+void MolTransformationsTest::setMeanPosition()
+{
+  Molecule mol;
+  mol.addAtom(1, Vector3(1, 0, 0));
+  mol.addAtom(1, Vector3(0, 1, 0));
+  mol.addAtom(1, Vector3(0, 0, 1));
+
+  Vector3 newMeanPos(0.50000, 1.26492, -1.75123);
+
+  MolTransformations::setMeanPosition(mol, newMeanPos);
+
+  QVERIFY(fuzzyCompare(MolTransformations::getMeanPosition(mol),
+                       newMeanPos, m_tol));
 }
 
 void MolTransformationsTest::centerMolecule()

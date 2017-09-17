@@ -87,6 +87,14 @@ namespace GlobalSearch
     Atom& addAtom(const Atom& atom);
 
     /**
+     * Add another molecule to this molecule. All atoms will be added, and
+     * bonds of the newly added atoms will be preserved.
+     *
+     * @param mol The molecule to be added.
+     */
+    void addMolecule(const Molecule& mol);
+
+    /**
      * Set the atoms in the molecule. Any bonds will be cleared.
      *
      * @param atoms The atoms to be set in the molecule.
@@ -214,7 +222,7 @@ namespace GlobalSearch
      *
      * @return The distance.
      */
-    double distance(const Atom& atom1, const Atom& atom2);
+    double distance(const Atom& atom1, const Atom& atom2) const;
 
     /**
      * Does this molecule contain bonds? Returns true if !m_bonds.empty().
@@ -454,7 +462,7 @@ namespace GlobalSearch
       bond.swapIndices(ind1, ind2);
   }
 
-  inline double Molecule::distance(const Atom& atom1, const Atom& atom2)
+  inline double Molecule::distance(const Atom& atom1, const Atom& atom2) const
   {
     if (hasUnitCell())
       return m_unitCell.distance(atom1.pos(), atom2.pos());

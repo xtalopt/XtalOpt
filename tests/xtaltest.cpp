@@ -16,7 +16,9 @@
 
 #include <xtalopt/debug.h>
 
+#include <globalsearch/eleminfo.h>
 #include <globalsearch/formats/formats.h>
+#include <globalsearch/formats/cmlformat.h>
 #include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/random.h>
@@ -26,6 +28,8 @@
 #include <QDebug>
 #include <QString>
 #include <QtTest>
+
+#include <fstream>
 
 #define ASSIGN_PARAMS(a,b,c,alpha,beta,gamma)           \
   if (!xtal) xtal = new Xtal(a,b,c,alpha,beta,gamma);   \
@@ -90,6 +94,7 @@ class XtalTest : public QObject
   void niggliReduceTest();
   void fixAnglesTest();
   void getRandomRepresentationTest();
+  void addMoleculeRandomly();
   void equalityVsFingerprintTest();
 };
 
@@ -605,6 +610,66 @@ void XtalTest::getRandomRepresentationTest()
     .arg(failure_msecs) .arg(failure_msecs/static_cast<double>(iterations));
 
 }
+
+#ifdef ENABLE_MOLECULAR
+void XtalTest::addMoleculeRandomly()
+{
+  // Seed the random number generators for consistent testing
+  srand(0);
+  GlobalSearch::seedMt19937Generator(0);
+
+  QString caffeineFileName = QString(TESTDATADIR) + "/data/caffeine.cml";
+  std::ifstream in(caffeineFileName.toStdString());
+  QVERIFY(in.is_open());
+
+  GlobalSearch::Structure s;
+  QVERIFY(GlobalSearch::CmlFormat::read(s, in));
+
+  // Create some reasonable interatomic distance constraints
+  double HRadius = ElemInfo::getCovalentRadius(1) * 1.0;
+  double CRadius = ElemInfo::getCovalentRadius(6) * 1.0;
+  double NRadius = ElemInfo::getCovalentRadius(7) * 1.0;
+  double ORadius = ElemInfo::getCovalentRadius(8) * 1.0;
+
+  minIADs iads;
+  iads.set(1, 1, HRadius * 2.0);
+  iads.set(1, 6, HRadius + CRadius);
+  iads.set(1, 7, HRadius + NRadius);
+  iads.set(1, 8, HRadius + ORadius);
+
+  iads.set(6, 6, CRadius * 2.0);
+  iads.set(6, 7, CRadius + NRadius);
+  iads.set(6, 8, CRadius + ORadius);
+
+  iads.set(7, 7, NRadius * 2.0);
+  iads.set(7, 8, NRadius + ORadius);
+
+  iads.set(8, 8, ORadius * 2.0);
+
+  // Let's give our unit cell some semi-random parameters
+  Xtal xtal;
+  xtal.setCellInfo(10.0, 7.4, 9.3, 60.0, 121.461, 93.294);
+
+  // Now add in the molecule randomly
+  QVERIFY(xtal.addMoleculeRandomly(s, iads));
+
+  // We should have 24 atoms in the xtal, and 25 bonds
+  QVERIFY(xtal.numAtoms() == 24);
+  QVERIFY(xtal.numBonds() == 25);
+
+  // Add in a second copy randomly
+  QVERIFY(xtal.addMoleculeRandomly(s, iads));
+
+  // We should have 48 atoms and 50 bonds
+  QVERIFY(xtal.numAtoms() == 48);
+  QVERIFY(xtal.numBonds() == 50);
+
+  //std::stringstream cmlOutput;
+  //QVERIFY(GlobalSearch::CmlFormat::write(xtal, cmlOutput));
+
+  //qDebug() << "cmlOutput is: " << cmlOutput.str().c_str();
+}
+#endif
 
 void XtalTest::equalityVsFingerprintTest()
 {

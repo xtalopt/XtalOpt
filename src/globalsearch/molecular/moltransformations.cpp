@@ -33,13 +33,13 @@ Vector3 MolTransformations::getMeanPosition(const Molecule& mol)
   return mean;
 }
 
-void MolTransformations::centerMolecule(Molecule& mol)
+void MolTransformations::setMeanPosition(Molecule& mol, const Vector3& pos)
 {
-  // Find the average three-dimensional position
-  Vector3 meanPos = getMeanPosition(mol);
+  // Find the offset
+  Vector3 offset = getMeanPosition(mol) - pos;
 
   // Now shift all the coordinates by that amount
-  translateMolecule(mol, -meanPos);
+  translateMolecule(mol, -offset);
 }
 
 void MolTransformations::rotateMolecule(Molecule& mol, short axis,

@@ -2710,6 +2710,43 @@ namespace XtalOpt {
     return true;
   }
 
+  bool XtalOpt::checkIntramolecularIADs(
+      const GlobalSearch::Molecule& mol,
+      const minIADs& iads,
+      bool ignoreBondedAtoms)
+
+  {
+    for (size_t i = 0; i < mol.numAtoms(); ++i) {
+      for (size_t j = i + 1; j < mol.numAtoms(); ++j) {
+        if (ignoreBondedAtoms && mol.areBonded(i, j))
+          continue;
+
+        double iad = iads(mol.atom(i).atomicNumber(),
+                          mol.atom(j).atomicNumber());
+        if (mol.distance(mol.atom(i), mol.atom(j)) < iad)
+          return false;
+      }
+    }
+    return true;
+  }
+
+  // These two molecules under comparison should have the same unit cell
+  bool XtalOpt::checkIntermolecularIADs(
+      const GlobalSearch::Molecule& mol1,
+      const GlobalSearch::Molecule& mol2,
+      const minIADs& iads)
+  {
+    for (const auto& atom1: mol1.atoms()) {
+      for (const auto& atom2: mol2.atoms()) {
+        double iad = iads(atom1.atomicNumber(),
+                          atom2.atomicNumber());
+        if (mol1.distance(atom1, atom2) < iad)
+          return false;
+      }
+    }
+    return true;
+  }
+
     bool XtalOpt::checkStepOptimizedStructure(Structure *s, QString *err) {
 
         Xtal *xtal = qobject_cast<Xtal*>(s);

@@ -146,6 +146,10 @@ if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC"  )
 endif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
+if(ENABLE_MOLECULAR)
+  add_definitions(-DENABLE_MOLECULAR)
+endif(ENABLE_MOLECULAR)
+
 add_subdirectory(external)
 include_directories(external)
 add_subdirectory(src)

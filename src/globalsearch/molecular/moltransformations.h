@@ -35,12 +35,21 @@ class MolTransformations {
   static Vector3 getMeanPosition(const Molecule& mol);
 
   /**
+   * Set the mean position of the molecule to be at a specific position.
+   *
+   * @param mol The molecule to be centered.
+   * @param pos The position at which the center of the molecule is to be.
+   */
+  static void setMeanPosition(Molecule& mol, const Vector3& pos);
+
+  /**
    * Translate all atoms in the molecule so that the mean atom position will be
    * at the origin.
    *
    * @param mol The molecule to be centered.
    */
-  static void centerMolecule(Molecule& mol);
+  static void centerMolecule(Molecule& mol)
+    { setMeanPosition(mol, Vector3(0.0, 0.0, 0.0)); }
 
   /**
    * Rotate the molecule about one of the principal Cartesian axes.

@@ -22,6 +22,10 @@
 #include <globalsearch/random.h>
 #include <globalsearch/stablecomparison.h>
 
+#ifdef ENABLE_MOLECULAR
+#include <globalsearch/molecular/moltransformations.h>
+#endif
+
 extern "C" {
 #include <spglib/spglib.h>
 }
@@ -1033,6 +1037,59 @@ namespace XtalOpt {
     return true;
   }
 
+#ifdef ENABLE_MOLECULAR
+  bool Xtal::addMoleculeRandomly(
+      GlobalSearch::Molecule& mol,
+      const minIADs& iads,
+      int maxAttempts)
+  {
+    // First, let's make the unit cell of mol match this if it doesn't already
+    mol.setUnitCell(this->unitCell());
+
+    bool success = false;
+    for (int i = 0; i < maxAttempts || maxAttempts == -1; ++i) {
+      // Outer loop, try a random rotation
+      MolTransformations::centerMolecule(mol);
+
+      // Generate a random rotation
+      double thetaX = getRandDouble(0.0, 360.0);
+      double thetaY = getRandDouble(0.0, 360.0);
+      double thetaZ = getRandDouble(0.0, 360.0);
+
+      MolTransformations::rotateMolecule(mol, thetaX, thetaY, thetaZ);
+
+      // If it fails the intramolecular IAD test, try again
+      if (!XtalOpt::checkIntramolecularIADs(mol, iads, true))
+        continue;
+
+      // Now, let's try 100 times to place this molecule into the Xtal
+      for (int j = 0; j < 100; ++j) {
+        // Set a random position within the unit cell
+        double x = getRandDouble();
+        double y = getRandDouble();
+        double z = getRandDouble();
+
+        Vector3 pos(x, y, z);
+
+        pos = unitCell().toCartesian(pos);
+
+        MolTransformations::setMeanPosition(mol, pos);
+
+        // Now check the interatomic distances
+        if (XtalOpt::checkIntermolecularIADs(*this, mol, iads)) {
+          this->addMolecule(mol);
+          success = true;
+          break;
+        }
+      }
+      if (success)
+        break;
+    }
+
+    return success;
+  }
+#endif
+
   //MolUnit corrected function
   bool Xtal::addAtomRandomly(
       unsigned int atomicNumber,
@@ -1088,6 +1145,7 @@ namespace XtalOpt {
 
         // Generate fractional coordinates
         fracCoords = Vector3 (getRandDouble(), getRandDouble(), getRandDouble());
+
 
         // Convert to cartesian coordinates and store
         cartCoords = fracToCart(fracCoords);

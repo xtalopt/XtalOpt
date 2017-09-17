@@ -17,6 +17,8 @@
 
 #include <globalsearch/structure.h>
 
+#include <xtalopt/xtalopt.h>
+
 #include <QMutex>
 #include <QVector>
 
@@ -25,9 +27,6 @@
 class QFile;
 
 namespace XtalOpt {
-  struct XtalCompositionStruct;
-  struct MolUnit;
-  struct IAD;
 
   using GlobalSearch::Matrix3;
   using GlobalSearch::Vector3;
@@ -86,6 +85,13 @@ namespace XtalOpt {
                          const QHash<unsigned int, XtalCompositionStruct> & limits,
                          int maxAttempts = 100.0,
                          GlobalSearch::Atom *atom = 0);
+
+#ifdef ENABLE_MOLECULAR
+    bool addMoleculeRandomly(GlobalSearch::Molecule& mol,
+                             const minIADs& iads = minIADs(),
+                             int maxAttempts = 1000);
+#endif
+
     bool addAtomRandomlyIAD(unsigned int atomicNumber,
                          const QHash<unsigned int, XtalCompositionStruct> & limits,
                          const QHash<QPair<int, int>, IAD> &limitsIAD,
