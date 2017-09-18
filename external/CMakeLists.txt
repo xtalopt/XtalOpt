@@ -7,44 +7,54 @@ if(ENABLE_XTALOPT)
 endif(ENABLE_XTALOPT)
 
 if(ENABLE_MOLECULAR)
-  find_package(RDKit)
-  if(NOT RDKit_FOUND)
 
-    message(STATUS "RDKit not found. Attempting to use RDKit submodule.")
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/rdkit")
-      message(STATUS "RDKit not found, and RDKit submodule is not cloned")
-      message(STATUS "Either install RDKit in your system and add it to your path, or clone the RDKit submodule")
-      message(STATUS "If you wish to use the RDKit submodule, run the following command in the XtalOpt directory: 'git submodule update --init --recursive'")
-      message(FATAL_ERROR "Exiting")
-    endif()
+  # RDKit requires boost, so we must find boost first
+  if(NOT Boost_INCLUDE_DIRS OR NOT Boost_LIBRARY_DIRS)
+    message(STATUS "Boost_INCLUDE_DIRS or Boost_LIBRARIES is not set. Attempting to find Boost with find_package()")
+    find_package(Boost COMPONENTS regex system thread REQUIRED)
+    set(Boost_INCLUDE_DIRS ${Boost_INCLUDE_DIRS} PARENT_SCOPE)
+    set(Boost_LIBRARY_DIRS ${Boost_LIBRARY_DIRS} PARENT_SCOPE)
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} PARENT_SCOPE)
+  else()
+    set(Boost_LIBRARIES
+        boost_regex
+        boost_system
+        boost_thread
+    )
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} PARENT_SCOPE)
+  endif()
 
-    # First, try to find Boost
-    find_package(Boost COMPONENTS regex system thread)
+  message(STATUS "Boost found")
+  message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
+  message(STATUS "Boost library dirs: ${Boost_LIBRARY_DIRS}")
+  message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 
-    # If we haven't found it, we will need to download it as well
-    if(NOT Boost_FOUND)
-      message(STATUS "Boost (for RDKit) not found. Downloading and compiling it separately")
-      include(External_boost)
+  if(NOT RDKit_INCLUDE_DIRS OR NOT RDKit_LIBRARY_DIRS)
+    message(STATUS "RDKit_INCLUDE_DIRS or RDKit_LIBRARY_DIRS is not set. Attempting to find RDKit with find_package()")
+    find_package(RDKit REQUIRED)
+    set(RDKit_INCLUDE_DIRS ${RDKit_INCLUDE_DIRS} PARENT_SCOPE)
+    if(RDKit_CONFIG)
+      get_filename_component(RDKit_LIBRARY_DIRS ${RDKit_CONFIG} DIRECTORY)
+
+      # This might be the case if the config file is in a build directory
+      # Set the library dir to the "lib" directory if it exists
+      if(EXISTS "${RDKit_LIBRARY_DIRS}/lib")
+        set(RDKit_LIBRARY_DIRS "${RDKit_LIBRARY_DIRS}/lib")
+      endif()
+
+      # Otherwise, we'll just assume the library dir is the config dir
     else()
-      message(STATUS "Boost found")
-      message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
-      message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
+      # Let's hope it is one directory up. If it isn't, we'll get linking errors
+      set(RDKit_LIBRARY_DIRS "${RDKit_INCLUDE_DIRS}/../lib")
     endif()
+    set(RDKit_LIBRARY_DIRS ${RDKit_LIBRARY_DIRS} PARENT_SCOPE)
+  endif()
 
-    # This will automatically try to find Boost itself
-    include(External_rdkit)
+  include(RDKitLibraries)
+  set(RDKit_LIBRARIES ${RDKit_LIBRARIES} PARENT_SCOPE)
 
-  else(NOT RDKit_FOUND)
-    include(RDKitLibraries)
-    message(STATUS "RDKit found.")
-    message(STATUS "RDKit include dirs: ${RDKit_INCLUDE_DIRS}")
-
-    set(RDKit_LIBRARY_DIRS "${RDKit_INCLUDE_DIRS}/../lib")
-    message(STATUS "RDKit library dirs: ${RDKit_LIBRARY_DIRS}")
-    message(STATUS "RDKit libraries: ${RDKit_LIBRARIES}")
-    # Propagate the variables up one level
-    set(RDKit_INCLUDE_DIRS "${RDKit_INCLUDE_DIRS}" PARENT_SCOPE)
-    set(RDKit_LIBRARY_DIRS "${RDKit_LIBRARY_DIRS}" PARENT_SCOPE)
-    set(RDKit_LIBRARIES "${RDKit_LIBRARIES}" PARENT_SCOPE)
-  endif(NOT RDKit_FOUND)
+  message(STATUS "RDKit found.")
+  message(STATUS "RDKit include dirs: ${RDKit_INCLUDE_DIRS}")
+  message(STATUS "RDKit library dirs: ${RDKit_LIBRARY_DIRS}")
+  message(STATUS "RDKit libraries: ${RDKit_LIBRARIES}")
 endif()
