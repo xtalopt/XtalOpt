@@ -94,7 +94,11 @@ class XtalTest : public QObject
   void niggliReduceTest();
   void fixAnglesTest();
   void getRandomRepresentationTest();
+
+#ifdef ENABLE_MOLECULAR
   void addMoleculeRandomly();
+#endif
+
   void equalityVsFingerprintTest();
 };
 
