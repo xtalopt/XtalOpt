@@ -21,42 +21,48 @@ init:
   - cd
   - cd C:\
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2015" (
-        echo "Downloading dependencies for Visual Studio 2015" &&
-        appveyor DownloadFile https://github.com/xtalopt/XtalOpt/releases/download/MSVC-deps/xtalopt-dependencies-msvc2015-32bit.zip &&
-        7z x xtalopt-dependencies-msvc2015-32bit.zip > nul &&
-        set "DEPS=C:\xtalopt-dependencies-msvc2015-32bit" &&
-        set "Qt5_DIR=C:\Qt\5.8\msvc2015" &&
+        echo "Downloading dependencies for Visual Studio 2015" &
+        appveyor DownloadFile https://github.com/xtalopt/XtalOpt/releases/download/MSVC-deps/xtalopt-dependencies-msvc2015-32bit.zip &
+        7z x xtalopt-dependencies-msvc2015-32bit.zip > nul &
+        set "DEPS=C:\xtalopt-dependencies-msvc2015-32bit" &
+        set "CMAKE_FLAGS=-DCMAKE_PREFIX_PATH=C:\Qt\5.8\msvc2015" &
         call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\VsDevCmd.bat")
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2017" (
-      echo "Downloading dependncies for Visual Studio 2017" &&
-      appveyor DownloadFile https://github.com/xtalopt/XtalOpt/releases/download/MSVC-deps/xtalopt-dependencies-msvc2017-64bit.zip &&
-      7z x xtalopt-dependencies-msvc2017-64bit.zip > nul &&
-      set "DEPS=C:\xtalopt-dependencies-msvc2017-64bit" &&
-      set "Qt5_DIR=C:\Qt\5.9\msvc2017_64" &&
+      echo "Downloading dependncies for Visual Studio 2017" &
+      appveyor DownloadFile https://github.com/xtalopt/XtalOpt/releases/download/MSVC-deps/xtalopt-dependencies-msvc2017-64bit.zip &
+      7z x xtalopt-dependencies-msvc2017-64bit.zip > nul &
+      set "DEPS=C:\xtalopt-dependencies-msvc2017-64bit" &
+      set "CMAKE_FLAGS=-DCMAKE_PREFIX_PATH=C:\Qt\5.9\msvc2017_64" &
       call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64)
 
-  - set EIGEN3_INCLUDE_DIR=%DEPS%\eigen_3.3.2-1
+  - set CMAKE_FLAGS=%CMAKE_FLAGS% -DEIGEN3_INCLUDE_DIR=%DEPS%\eigen_3.3.2-1
 
-  - set LIBSSH_INCLUDE_DIRS=%DEPS%\libssh_0.7.3-1\include
-  - set LIBSSH_LIBRARIES=%DEPS%\libssh_0.7.3-1\lib\ssh.lib
+  - set CMAKE_FLAGS=%CMAKE_FLAGS% -DLIBSSH_INCLUDE_DIRS=%DEPS%\libssh_0.7.3-1\include
+  - set CMAKE_FLAGS=%CMAKE_FLAGS% -DLIBSSH_LIBRARIES=%DEPS%\libssh_0.7.3-1\lib\ssh.lib
 
-  - set QWT_LIBRARY=%DEPS%\qwt_6.1.3-2\lib\qwt.lib
-  - set QWT_INCLUDE_DIR=%DEPS%\qwt_6.1.3-2\include
+  - set CMAKE_FLAGS=%CMAKE_FLAGS% -DQWT_LIBRARY=%DEPS%\qwt_6.1.3-2\lib\qwt.lib
+  - set CMAKE_FLAGS=%CMAKE_FLAGS% -DQWT_INCLUDE_DIR=%DEPS%\qwt_6.1.3-2\include
+
+  - set CMAKE_FLAGS=%CMAKE_FLAGS% -DCMAKE_BUILD_TYPE=Release
+  - set CMAKE_FLAGS=%CMAKE_FLAGS% -DBUILD_INDEPENDENT_PACKAGE=ON
+  - set CMAKE_FLAGS=%CMAKE_FLAGS% -DBUILD_TESTS=ON
+  - set CMAKE_FLAGS=%CMAKE_FLAGS% -G "NMake Makefiles"
 
   - cd C:\projects\xtalopt
 
 build_script:
   - mkdir build
   - cd build
-  - cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=%Qt5_DIR% -DEIGEN3_INCLUDE_DIR=%EIGEN3_INCLUDE_DIR% -DLIBSSH_INCLUDE_DIRS=%LIBSSH_INCLUDE_DIRS% -DLIBSSH_LIBRARIES=%LIBSSH_LIBRARIES% -DQWT_LIBRARY=%QWT_LIBRARY% -DQWT_INCLUDE_DIR=%QWT_INCLUDE_DIR% -DBUILD_INDEPENDENT_PACKAGE=ON -DBUILD_TESTS=ON
+  - echo %CMAKE_FLAGS%
+  - cmake %CMAKE_FLAGS% ..
   - nmake
   - ctest --output-on-failure
 
 after_build:
   - if %APPVEYOR_REPO_TAG% equ true (
       if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2017" (
-        echo "Tag and MSVC 2017 detected. Package will be built and md5 will be generated" &&
-        nmake package &&
+        echo "Tag and MSVC 2017 detected. Package will be built and md5 will be generated" &
+        nmake package &
         ..\scripts\write-md5.bat
       )
     )
