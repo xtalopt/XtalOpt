@@ -336,6 +336,7 @@ bool ConformerGenerator::generateConformers(
   generateRDKitConformers(pdbIstream, outDir, numConformers, params,
                           maxOptimizationIters,
                           pruneConformersAfterOptimization);
+  return true;
 }
 
 } // end namespace GlobalSearch
