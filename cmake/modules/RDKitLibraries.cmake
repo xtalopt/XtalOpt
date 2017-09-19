@@ -7,7 +7,7 @@
 # we can add them in later
 set(_RDKit_LIBRARIES
   RDGeneral
-  RDBoost
+#  RDBoost
   DataStructs
   RDGeometryLib
   Alignment
@@ -42,7 +42,7 @@ set(_RDKit_LIBRARIES
   StructChecker
   ReducedGraphs
   Trajectory
-  SLNParse
+#  SLNParse
   SimDivPickers
   hc
   InfoTheory
