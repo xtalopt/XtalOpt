@@ -7,7 +7,7 @@ set(XtalOpt_VERSION_PATCH 0)
 set(XtalOpt_VERSION "${XtalOpt_VERSION_MAJOR}.${XtalOpt_VERSION_MINOR}")
 set(XtalOpt_VERSION_FULL "${XtalOpt_VERSION}.${XtalOpt_VERSION_PATCH}")
 
-set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake/modules)
+set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake)
 
 # Place xtalopt.exe in build dir
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
