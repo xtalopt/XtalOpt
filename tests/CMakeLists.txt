@@ -17,7 +17,12 @@ link_directories(
 )
 
 if(ENABLE_MOLECULAR)
+  # We are including these as system libraries so we do not
+  # receive warnings from them
+  include_directories(SYSTEM ${RDKit_INCLUDE_DIRS})
   link_directories(${RDKit_LIBRARY_DIRS})
+  include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+  link_directories(${Boost_LIBRARY_DIRS})
 endif(ENABLE_MOLECULAR)
 
 set(tests
@@ -98,23 +103,6 @@ if(WIN32)
                        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
                        COMMAND "${CMAKE_COMMAND}" "${CMAKE_SOURCE_DIR}" POST_BUILD)
   else()
-    # We need to tell Windows exactly where to search for dynamically linked
-    # libraries
-    # ssh.dll should be in dir(${LIBSSH_LIBRARIES})\..\bin
-    get_filename_component(LIBSSH_DLL_DIR "${LIBSSH_LIBRARIES}" DIRECTORY)
-    set(DEP_SEARCH_DIRS "${DEP_SEARCH_DIRS}" "${LIBSSH_DLL_DIR}/../bin")
-
-    # qwt.dll should be in the same dir as ${QWT_LIBRARIES}
-    get_filename_component(QWT_DLL_DIR "${QWT_LIBRARIES}" DIRECTORY)
-    set(DEP_SEARCH_DIRS "${DEP_SEARCH_DIRS}" "${QWT_DLL_DIR}")
-
-    # All of the Qt dependencies will hopefully be together in the bin of the
-    # root directory. We will need to change this part in the future if they
-    # are not.
-    get_target_property(QtCore_location Qt5::Core LOCATION)
-    get_filename_component(QtCore_location "${QtCore_location}" DIRECTORY)
-    set(DEP_SEARCH_DIRS "${DEP_SEARCH_DIRS}" "${QtCore_location}/../bin")
-
     include(MacroInstallDependencies)
     CopyDependencies("${TestsLocation}/${TestToCheck}.exe" "${TestsLocation}" "${DEP_SEARCH_DIRS}")
   endif()

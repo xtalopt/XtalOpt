@@ -152,6 +152,10 @@ endif(ENABLE_MOLECULAR)
 
 add_subdirectory(external)
 include_directories(external)
+
+# Use this to set the DEP_SEARCH_DIRS variable for searching for dependencies
+include(DepSearchDirs)
+
 add_subdirectory(src)
 
 if(BUILD_TESTS)
