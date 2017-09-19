@@ -42,9 +42,12 @@ if(ENABLE_MOLECULAR)
       molecular/conformergenerator.cpp
       molecular/moltransformations.cpp
   )
-  # We are including RDKit headers as system headers so we don't see the
-  # warnings from it.
-  include_directories(SYSTEM "${RDKit_INCLUDE_DIRS}")
+  # We are including these as system libraries so we do not
+  # receive warnings from them
+  include_directories(SYSTEM ${RDKit_INCLUDE_DIRS})
+  link_directories(${RDKit_LIBRARY_DIRS})
+  include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+  link_directories(${Boost_LIBRARY_DIRS})
 endif(ENABLE_MOLECULAR)
 
 if (ENABLE_SSH)
@@ -94,7 +97,6 @@ if(ENABLE_MOLECULAR)
       ${GLOBALSEARCH_LINK_LIBS}
       ${RDKit_LIBRARIES}
   )
-  link_libraries(${RDKit_LIBRARY_DIRS})
 endif(ENABLE_MOLECULAR)
 
 target_link_libraries(globalsearch ${GLOBALSEARCH_LINK_LIBS})
