@@ -7,7 +7,6 @@ if(ENABLE_XTALOPT)
 endif(ENABLE_XTALOPT)
 
 if(ENABLE_MOLECULAR)
-
   # RDKit requires boost, so we must find boost first
   if(NOT Boost_INCLUDE_DIRS OR NOT Boost_LIBRARY_DIRS)
     message(STATUS "Boost_INCLUDE_DIRS or Boost_LIBRARIES is not set. Attempting to find Boost with find_package()")
@@ -37,5 +36,4 @@ if(ENABLE_MOLECULAR)
   set(RDKit_LIBRARIES ${RDKit_LIBRARIES} PARENT_SCOPE)
 
   message(STATUS "RDKit found.")
-  message(STATUS "RDKit libraries: ${RDKit_LIBRARIES}")
 endif()

@@ -20,9 +20,11 @@ set(_library_search_paths "")
 if(UNIX)
   set(_include_search_paths
       /usr/include/rdkit
+      /usr/local/include/rdkit
   )
   set(_library_search_paths
       /usr/lib
+      /usr/local/lib
   )
 endif(UNIX)
 

@@ -66,19 +66,35 @@ endif (USE_CLI_SSH)
 
 endif(ENABLE_SSH)
 
-foreach (test ${tests})
-  message(STATUS "Test:  ${test}")
-  set(test_SRCS ${test}test.cpp)
-  add_executable(${test}test ${test_SRCS})
-  target_link_libraries(${test}test
+set(_link_libs
     xtalopt_static
     spglib
     XtalComp
     globalsearch
-    Qt5::Test)
-  if (ENABLE_SSH)
-    target_link_libraries(${test}test ${LIBSSH_LIBRARIES})
-  endif()
+    Qt5::Test
+)
+
+if(ENABLE_SSH)
+  set(_link_libs
+      ${_link_libs}
+      ${LIBSSH_LIBRARIES}
+  )
+endif(ENABLE_SSH)
+
+if(ENABLE_MOLECULAR)
+  set(_link_libs
+      ${_link_libs}
+      ${RDKit_LIBRARIES}
+      ${Boost_LIBRARIES}
+  )
+endif(ENABLE_MOLECULAR)
+
+foreach (test ${tests})
+  message(STATUS "Test:  ${test}")
+  set(test_SRCS ${test}test.cpp)
+  add_executable(${test}test ${test_SRCS})
+  target_link_libraries(${test}test ${_link_libs})
+
   add_test(${test}test ${CMAKE_BINARY_DIR}/tests/${test}test)
   set_property(TARGET ${test}test PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
   set_property(SOURCE ${test_SRCS} PROPERTY LABELS globalsearch)
