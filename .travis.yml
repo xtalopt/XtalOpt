@@ -51,7 +51,6 @@ before_install:
      wget https://github.com/xtalopt/xtalopt-dependencies/releases/download/1.0/qwt_6.1.3-2-Ubuntu14.04-gcc4.8.4.deb;
      wget https://github.com/xtalopt/xtalopt-dependencies/releases/download/1.0/rdkit-dev-2017.9.18-Ubuntu14.04-gcc4.8.4.deb;
      wget https://github.com/xtalopt/xtalopt-dependencies/releases/download/1.0/rdkit-runtime-2017.9.18-Ubuntu14.04-gcc4.8.4.deb;
-     wget https://github.com/xtalopt/xtalopt-dependencies/releases/download/1.0/libboost1.62-Ubuntu14.04-gcc4.8.4.deb;
    fi
 
 install:
@@ -60,11 +59,12 @@ install:
      brew install qt5 qwt libssh eigen;
    else
      sudo apt-get install -qq qt5-default libeigen3-dev libssh-dev
-                              libqt5svg5 lcov;
+                              libqt5svg5 lcov libboost-dev libboost-regex-dev
+                              libboost-serialization-dev libboost-thread-dev
+                              libboost-system-dev;
      sudo dpkg -i qwt_6.1.3-2-Ubuntu14.04-gcc4.8.4.deb;
      sudo dpkg -i rdkit-dev-2017.9.18-Ubuntu14.04-gcc4.8.4.deb;
      sudo dpkg -i rdkit-runtime-2017.9.18-Ubuntu14.04-gcc4.8.4.deb;
-     sudo dpkg -i libboost1.62-Ubuntu14.04-gcc4.8.4.deb;
    fi
 
 before_script:
