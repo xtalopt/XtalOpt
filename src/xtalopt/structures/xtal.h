@@ -212,6 +212,14 @@ namespace XtalOpt {
      */
     QString toPOSCAR() const;
 
+    /**
+     * Take the given xtal and write a siesta Z matrix with it (where the
+     * bonds will be kept fix during optimization). Returns the z matrix
+     * as a string.
+     * @return The siesta Z Matrix as a string.
+     */
+    std::string toSiestaZMatrix() const;
+
     // For random representation generation
     static void generateValidCOBs();
     static QVector<Matrix3> m_transformationMatrices;

@@ -3064,8 +3064,14 @@ namespace XtalOpt {
     else if (line == "POSCAR") {
       rep += xtal->toPOSCAR();
     } // End %POSCAR%
+    else if (line == "siestaZMatrix") {
+      rep += xtal->toSiestaZMatrix().c_str();
+    }
 
-    if (!rep.isEmpty()) {
+    if (rep.isEmpty()) {
+      qDebug() << "Warning: keyword not recognized:" << line;
+    }
+    else {
       // Remove any trailing newlines
       rep = rep.replace(QRegExp("\n$"), "");
       line = rep;

@@ -2654,4 +2654,11 @@ namespace XtalOpt {
     GlobalSearch::PoscarFormat::write(*this, ss);
     return ss.str().c_str();
   }
+
+  std::string Xtal::toSiestaZMatrix() const
+  {
+    std::stringstream ss;
+
+    return ss.str();
+  }
 } // end namespace XtalOpt
