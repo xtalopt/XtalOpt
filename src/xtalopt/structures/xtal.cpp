@@ -2022,7 +2022,7 @@ namespace XtalOpt {
       double shortest = DBL_MAX;
       for (QVector<Vector3>::const_iterator it = uVecs.constBegin(),
            it_end = uVecs.constEnd(); it != it_end; ++it) {
-        register double current = ((*it + pos) - coord).squaredNorm();
+        double current = ((*it + pos) - coord).squaredNorm();
         if (current < shortest) {
           shortest = current;
         }
