@@ -2655,9 +2655,48 @@ namespace XtalOpt {
     return ss.str().c_str();
   }
 
+ /**
+  * An excerpt from the SIESTA manual with regard to the molecule z-matrix
+  * form:
+  *
+  * @begin_excerpt
+  *
+  * Nspecies i j k r a t ifr ifa ift
+  * Here the values Nspecies, i, j, k, ifr, ifa, and ift are integers and r, a,
+  * and t are double precision reals.
+  * For most atoms, Nspecies is the species number of the atom, r is distance
+  * to atom number i, a is the angle made by the present atom with atoms j and
+  * i, while t is the torsional angle made by the present atom with atoms k,
+  * j, and i. The values ifr, ifa and ift are integer flags that indicate
+  * whether r, a, and t, respectively, should be varied; 0 for fixed, 1 for
+  * varying.
+  * The first three atoms in a molecule are a special case. Because there are
+  * insufficient atoms defined to specify a distance/angle/torsion, the values
+  * are set differently. For atom 1, r, a, and t, are the Cartesian
+  * coordinates of the atom. For the second atom, r, a, and t are the
+  * coordinates in spherical form of the second atom relative to the first:
+  * first the radius, then the polar angle (angle between the z-axis and the
+  * displacement vector) and then the azimuthal angle (angle between the
+  * x-axis and the projection of the displacement vector on the x-y plane).
+  * Finally, for the third atom, the numbers take their normal form, but the
+  * torsional angle is defined relative to a notional atom 1 unit in the
+  * z-direction above the atom j.
+  *
+  * @end_excerpt
+  *
+  * An example:
+  * %block Zmatrix
+  *
+  * molecule fractional
+  * 1 0 0 0    0.0  0.0  0.0      0 0 0
+  * 2 1 0 0    1.0 90.0 37.743919 1 0 0
+  * 2 1 2 0    1.0  1.0 90.0      1 1 0
+  * %endblock Zmatrix
+  */
   std::string Xtal::toSiestaZMatrix() const
   {
     std::stringstream ss;
+
 
     return ss.str();
   }
