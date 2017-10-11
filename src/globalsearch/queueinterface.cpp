@@ -27,7 +27,9 @@ namespace GlobalSearch {
 
   bool QueueInterface::writeInputFiles(Structure *s) const
   {
-    return writeFiles(s, m_opt->optimizer()->getInterpretedTemplates(s));
+    return writeFiles(
+      s, m_opt->optimizer(s->getCurrentOptStep())->getInterpretedTemplates(s)
+    );
   }
 
 } // end namespace GlobalSearch

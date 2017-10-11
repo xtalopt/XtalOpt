@@ -25,11 +25,14 @@
 #endif // NOMINMAX
 #endif // WIN32
 
+#include <QDebug>
 #include <QObject>
 #include <QMutex>
 
 #include <memory>
 #include <mutex>
+
+#include <globalsearch/bt.h> // TEMPORARY
 
 class QMutex;
 
@@ -87,6 +90,18 @@ namespace GlobalSearch {
       FA_Randomize,
       /// Replace with a new offspring structure
       FA_NewOffspring
+    };
+
+    /**
+     * An enumeration for the various template types.
+     */
+    enum TemplateType {
+      /// A queue interface template
+      TT_QueueInterface = 0,
+      /// An optimizer template
+      TT_Optimizer,
+      /// Unknown template type
+      TT_Unknown
     };
 
     /**
@@ -258,30 +273,46 @@ for (ind = 0; ind < probs.size(); ind++)
     QueueManager* queue() {return m_queue;};
 
     /**
+     * Create a queue interface with a given name.
+     *
+     * Override this function in derived classes to change the allowed
+     * queue interfaces.
+     *
+     * @param queueName The name of the queue interface.
+     *
+     * @return A unique_ptr rvalue with the queue interface pointer stored in
+     *         it. Contains a null pointer if @p queueName is invalid.
+     */
+    virtual std::unique_ptr<QueueInterface>
+    createQueueInterface(const std::string& queueName);
+
+    /**
+     * Create an optimizer with a given name.
+     *
+     * Override this function in derived classes to change the allowed
+     * optimizers.
+     *
+     * @param optName The name of the optimizer.
+     *
+     * @return A unique_ptr rvalue with the optimizer pointer stored in
+     *         it. Contains a null pointer if @p optName is invalid.
+     */
+    virtual std::unique_ptr<Optimizer>
+    createOptimizer(const std::string& optName);
+
+    /**
      * @return A pointer to the associated QueueManager.
      * @sa setQueueInterface
      * @sa queueInterfaceChanged
      */
-    QueueInterface* queueInterface() {return m_queueInterface;};
-
-    /**
-     * @return A reference to our map of queue interfaces.
-     */
-    std::map<std::string, std::unique_ptr<QueueInterface>>& queueInterfaces()
-      { return m_queueInterfaces; }
+    QueueInterface* queueInterface(int optStep) const;
 
     /**
      * @return A pointer to the current Optimizer.
      * @sa setOptimizer
      * @sa optimizerChanged
      */
-    Optimizer* optimizer() {return m_optimizer; }
-
-    /**
-     * @return A reference to our map of optimizers.
-     */
-    std::map<std::string, std::unique_ptr<Optimizer>>& optimizers()
-      { return m_optimizers; }
+    Optimizer* optimizer(int optStep) const;
 
     /**
      * @return A pointer to the SSHManager instance.
@@ -301,6 +332,30 @@ for (ind = 0; ind < probs.size(); ind++)
      * @param b True if we are using the GUI. False otherwise.
      */
     void setUsingGUI(bool b) { m_usingGUI = b; }
+
+    /**
+     * Set the refresh interval for checking remote jobs.
+     *
+     * @param i The interval in seconds
+     */
+    void setQueueRefreshInterval(int i) { m_queueRefreshInterval = i; }
+
+    /**
+     * Get the queue refresh interval for remote jobs in seconds
+     */
+    int queueRefreshInterval() const { return m_queueRefreshInterval; }
+
+    /**
+     * Set whether or not to clean remote directories when a job finishes.
+     *
+     * @b Whether or not to clean remote directories when a job finishes
+     */
+    void setCleanRemoteOnStop(bool b) { m_cleanRemoteOnStop = b; }
+
+    /**
+     * Get whether or not to clean remote directories when a job finishes.
+     */
+    bool cleanRemoteOnStop() const { return m_cleanRemoteOnStop; }
 
     /// Whether to impose the running job limit
     bool limitRunningJobs;
@@ -358,9 +413,6 @@ for (ind = 0; ind < probs.size(); ind++)
     /// This should be locked whenever the state file (resume file) is
     /// being written
     QMutex *stateFileMutex;
-
-    /// This is locked when generating a backtrace.
-    QMutex *backTraceMutex;
 
     /// A mutex for saving
     std::mutex saveMutex;
@@ -607,27 +659,312 @@ for (ind = 0; ind < probs.size(); ind++)
     void setReadOnlyFalse() {readOnly = false;};
 
     /**
-     * Prints a backtrace to the terminal
+     * Get the number of optimization steps for our search.
+     *
+     * @return The number of optimization steps for our search.
      */
-    void printBackTrace();
+    size_t getNumOptSteps() const { return m_numOptSteps; }
+
+    /**
+     * Clear all optimization steps.
+     */
+    void clearOptSteps();
+
+    /**
+     * Append an opt step to the current list of opt steps. If the list of
+     * opt steps is not empty, it will set the new opt step to be the same
+     * as the previous opt step. If the list of opt steps is empty, then
+     * the optimizer and queue interface will be set to nullptr, and the
+     * template maps will be empty.
+     */
+    void appendOptStep();
+
+    /**
+     * Insert an optimization step at @p optStep. If this insertion is on the
+     * end of the list or the list is empty, it will call appendOptStep()
+     * instead.
+     * If the insertion is at the 0 index, the elements at the current 0 index
+     * will be copied to make the inserted element. If the insertion is at
+     * any other index, the element at the @p optStep - 1 index will be used
+     * to make the inserted element.
+     *
+     * @p optStep The index that the new optStep will have after insertion.
+     */
+    void insertOptStep(size_t optStep);
+
+    /**
+     * Remove the opt step at @p optStep.
+     *
+     * @p optStep The optimization step to be removed.
+     */
+    void removeOptStep(size_t optStep);
 
     /**
      * Update the QueueInterface to \a q.
      *
-     * @sa queueInterfaceChanged
+     * @param optStep The optimization step for which to set the QI.
+     * @param qiName The name of the queue interface to use. Does nothing if
+     *               @p qiName isn't in the m_queueInterfaces map.
+     *
      * @sa queueInterface
      */
-    void setQueueInterface(const std::string& qiName);
+    void setQueueInterface(size_t optStep, const std::string& qiName);
+
+    /**
+     * Get a queue interface template for a particular opt step and a
+     * particular file name.
+     *
+     * @param optStep The optimization step for which to get the template.
+     * @param name The name of the file for which to get the template.
+     *
+     * @return The queue interface template. Returns an empty string if
+     *         @p optStep or @p name are invalid.
+     */
+    std::string getQueueInterfaceTemplate(size_t optStep,
+                                          const std::string& name) const;
+    /**
+     * Set the queue interface template for a particular opt step and
+     * file name.
+     *
+     * @param optStep The optimization step for which to set the template.
+     * @param name The file name for which to set the template.
+     * @param temp The template to be set.
+     */
+    void setQueueInterfaceTemplate(size_t optStep,
+                                   const std::string& name,
+                                   const std::string& temp);
 
     /**
      * Update the Optimizer to the one indicated
      *
+     * @param optStep The opt step for which to set the optimizer
      * @param optName New Optimizer to use. Does nothing if @p optName
-     *                isn't in the m_optimizers map.
-     * @sa optimizerChanged
+     *                isn't recognized.
+     *
      * @sa optimizer
      */
-    void setOptimizer(const std::string& optName);
+    void setOptimizer(size_t optStep, const std::string& optName);
+
+   /**
+     * Get an optimizer template for a particular opt step and a
+     * particular file name.
+     *
+     * @param optStep The optimization step for which to get the template.
+     * @param name The name of the file for which to get the template.
+     *
+     * @return The optimization template. Returns an empty string if
+     *         @p optStep or @p name are invalid.
+     */
+    std::string getOptimizerTemplate(size_t optStep,
+                                     const std::string& name) const;
+    /**
+     * Set the optimizer template for a particular opt step and
+     * file name.
+     *
+     * @param optStep The optimization step for which to set the template.
+     * @param name The file name for which to set the template.
+     * @param temp The template to be set.
+     */
+    void setOptimizerTemplate(size_t optStep,
+                              const std::string& name,
+                              const std::string& temp);
+
+    /**
+     * Get the template type, either a queue interface or an optimizer.
+     * This will stop working properly if we ever have a template name that
+     * both a queue interface and an optimizer have. So far that is not the
+     * case. But this will require some re-working if that ever happens.
+     *
+     * @param optStep The optimization step to check.
+     * @param name The name of the template.
+     *
+     * @return An enum. Either TT_QueueInterface if it is a queue interface, or
+     *         TT_Optimizer if it is an optimizer. Returns TT_Unknown if it
+     *         could not be found.
+     */
+    TemplateType getTemplateType(size_t optStep,
+                                 const std::string& name) const;
+
+    /**
+     * A generic getTemplate() function. It uses getTemplateType() to
+     * determine the template type (either queue interface or optimizer), and
+     * then it calls getQueueInterfaceTemplate() or getOptimizerTemplate()
+     * accordingly.
+     *
+     * @param optStep The optimization step from which to obtain the template
+     * @param name The name of the template to obtain
+     *
+     * @return The template
+     */
+    std::string getTemplate(size_t optStep,
+                            const std::string& name) const;
+
+    /**
+     * A generic setTemplate() function. It uses getTemplateType() to
+     * determine the template type (either queue interface or optimizer), and
+     * then it calls setQueueInterfaceTemplate() or setOptimizerTemplate()
+     * accordingly.
+     *
+     * @param optStep The optimization step from which to set the template
+     * @param name The name of the template to set
+     * @param temp The template
+     */
+    void setTemplate(size_t optStep,
+                     const std::string& name,
+                     const std::string& temp);
+
+    /**
+     * Read the queue interface templates from the settings.
+     *
+     * @param optStep The optimization step to be read.
+     * @param filename The filename to be read. If empty, the config file
+     *                 will be used.
+     */
+    void readQueueInterfaceTemplatesFromSettings(size_t optStep,
+                                                 const std::string& filename);
+    /**
+     * Read the optimizer templates from the settings.
+     *
+     * @param optStep The optimization step to be read.
+     * @param filename The filename to be read. If empty, the config file
+     *                 will be used.
+     */
+    void readOptimizerTemplatesFromSettings(size_t optStep,
+                                            const std::string& filename);
+    /**
+     * Read the queue interface and optimizer templates from the settings.
+     *
+     * @param optStep The optimization step to be read.
+     * @param filename The filename to be read. If empty, the config file
+     *                 will be used.
+     */
+    void readTemplatesFromSettings(size_t optStep,
+                                   const std::string& filename);
+
+    /**
+     * Read all templates for every opt step from the settings. Also reads
+     * the number of opt steps.
+     *
+     * @param filename The name of the file to be read. If empty, the
+     *                 config file will be used.
+     */
+    void readAllTemplatesFromSettings(const std::string& filename);
+
+    /**
+     * Write the queue interface templates to the settings.
+     *
+     * @param optStep The optimization step to be written.
+     * @param filename The filename to be written to. If empty, the config file
+     *                 will be used.
+     */
+    void writeQueueInterfaceTemplatesToSettings(size_t optStep,
+                                                const std::string& filename);
+
+    /**
+     * Write the optimizer templates to the settings.
+     *
+     * @param optStep The optimization step to be written.
+     * @param filename The filename to be written to. If empty, the config file
+     *                 will be used.
+     */
+    void writeOptimizerTemplatesToSettings(size_t optStep,
+                                           const std::string& filename);
+
+    /**
+     * Write the queue interface and optimizer templates to the settings.
+     *
+     * @param optStep The optimization step to be written.
+     * @param filename The filename to be written to. If empty, the config file
+     *                 will be used.
+     */
+    void writeTemplatesToSettings(size_t optStep,
+                                  const std::string& filename);
+
+    /**
+     * Write all templates for every opt step to the settings. Also writes
+     * the number of opt steps.
+     *
+     * @param filename The name of the file to be written to. If empty, the
+     *                 config file will be used.
+     */
+    void writeAllTemplatesToSettings(const std::string& filename);
+
+    /**
+     * @param filename Scheme or state file from which to load all
+     * user values (m_user[1-4])
+     */
+    void readUserValuesFromSettings(const std::string& filename = "");
+
+    /**
+     * @param filename Scheme or state file in which to write all
+     * user values (m_user[1-4])
+     */
+    void writeUserValuesToSettings(const std::string& filename = "");
+
+    /**
+     * @return A user customizable string that is used in template
+     * interpretation.
+     */
+    std::string getUser1() { return m_user1; }
+
+    /**
+     * @return A user customizable string that is used in template
+     * interpretation.
+     */
+    std::string getUser2() { return m_user2; }
+
+    /**
+     * @return A user customizable string that is used in template
+     * interpretation.
+     */
+    std::string getUser3() { return m_user3; }
+
+    /**
+     * @return A user customizable string that is used in template
+     * interpretation.
+     */
+    std::string getUser4() { return m_user4; }
+
+    /**
+     * @param s A user customizable string that is used in template
+     * interpretation.
+     */
+    void setUser1(const std::string& s) { m_user1 = s; }
+
+    /**
+     * @param s A user customizable string that is used in template
+     * interpretation.
+     */
+    void setUser2(const std::string& s) { m_user2 = s; }
+
+    /**
+     * @param s A user customizable string that is used in template
+     * interpretation.
+     */
+    void setUser3(const std::string& s) { m_user3 = s; }
+
+    /**
+     * @param s A user customizable string that is used in template
+     * interpretation.
+     */
+    void setUser4(const std::string& s) { m_user4 = s; }
+
+    /**
+     * Are we ready to search (checks that essential variables are set and
+     * that the queue interfaces and optimizers are ready for the search).
+     *
+     * @param err The error message if we are not ready to search.
+     *
+     * @return True if ready to search. False otherwise.
+     */
+    bool isReadyToSearch(QString& err) const;
+
+    /**
+     * Do we have any remote queue interfaces?
+     *
+     * @return True if we do. False if we do not.
+     */
+    bool anyRemoteQueueInterfaces() const;
 
     /**
      * Prompt user with a "Yes/No" dialog.
@@ -703,21 +1040,26 @@ for (ind = 0; ind < probs.size(); ind++)
     /// @sa queue
     QueueManager *m_queue;
 
-    /// Cached pointer to the QueueInterface
-    /// @sa queueInterface
-    QueueInterface *m_queueInterface;
+    /// The number of optimization steps
+    /// Do not change this number directly. Instead, call appendOptStep(),
+    /// insertOptStep(), and removeOptStep().
+    int m_numOptSteps;
 
-    // A map of all of our available queue interfaces
-    std::map<std::string, std::unique_ptr<QueueInterface>> m_queueInterfaces;
+    /// Queue interfaces for particular opt steps
+    std::vector<std::unique_ptr<QueueInterface>> m_queueInterfaceAtOptStep;
 
-    /// Cache pointer to the current optimizer
-    /// @sa optimizerChanged
-    /// @sa optimizer
-    /// @sa setOptimizer
-    Optimizer *m_optimizer;
+    /// Optimizer for particular opt steps
+    std::vector<std::unique_ptr<Optimizer>> m_optimizerAtOptStep;
 
-    // A map of all of our available optimizers
-    std::map<std::string, std::unique_ptr<Optimizer>> m_optimizers;
+    /// A vector of templates for each opt step. Each vector element is a map
+    /// of the template name to its value.
+    typedef std::vector<std::map<std::string, std::string>> fileTemplateType;
+
+    fileTemplateType m_queueInterfaceTemplates;
+
+    fileTemplateType m_optimizerTemplates;
+
+    std::string m_user1, m_user2, m_user3, m_user4;
 
     /// Hidden call to interpretKeyword
     void interpretKeyword_base(QString &keyword, Structure* structure);
@@ -729,6 +1071,12 @@ for (ind = 0; ind < probs.size(); ind++)
     unsigned int m_schemaVersion;
 
     bool m_usingGUI;
+
+    /// The queue refresh interval for remote queue interfaces
+    int m_queueRefreshInterval;
+
+    /// Whether or not to clean remote directories after completion
+    bool m_cleanRemoteOnStop;
 
    public:
     /// Log error directories?

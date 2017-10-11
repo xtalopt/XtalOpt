@@ -35,6 +35,7 @@
 #include <globalsearch/bt.h>
 #include <globalsearch/utilities/fileutils.h>
 #include <globalsearch/utilities/makeunique.h>
+#include <globalsearch/utilities/utilityfunctions.h>
 
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
@@ -75,25 +76,7 @@ namespace XtalOpt {
   {
     xtalInitMutex = new QMutex;
     m_idString = "XtalOpt";
-    m_schemaVersion = 2;
-
-    // Let's populate our optimizers and queue interfaces
-    m_optimizers["castep"] = make_unique<CASTEPOptimizer>(this);
-    m_optimizers["gulp"]   = make_unique<GULPOptimizer>(this);
-    m_optimizers["pwscf"]  = make_unique<PWscfOptimizer>(this);
-    m_optimizers["siesta"] = make_unique<SIESTAOptimizer>(this);
-    m_optimizers["vasp"]   = make_unique<VASPOptimizer>(this);
-
-    m_queueInterfaces["local"] = make_unique<LocalQueueInterface>(this);
-
-#ifdef ENABLE_SSH
-    m_queueInterfaces["loadleveler"] =
-        make_unique<LoadLevelerQueueInterface>(this);
-    m_queueInterfaces["lsf"]   = make_unique<LsfQueueInterface>(this);
-    m_queueInterfaces["pbs"]   = make_unique<PbsQueueInterface>(this);
-    m_queueInterfaces["sge"]   = make_unique<SgeQueueInterface>(this);
-    m_queueInterfaces["slurm"] = make_unique<SlurmQueueInterface>(this);
-#endif
+    m_schemaVersion = 3;
 
     // Read the general settings
     readSettings();
@@ -211,13 +194,8 @@ namespace XtalOpt {
     }
 
     QString err;
-    if (!m_optimizer->isReadyToSearch(&err)) {
-      error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
-      return false;
-    }
-
-    if (!m_queueInterface->isReadyToSearch(&err)) {
-      error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
+    if (!isReadyToSearch(err)) {
+      error(tr("Error: search is not ready to start: ") + err);
       return false;
     }
 
@@ -258,31 +236,33 @@ namespace XtalOpt {
     };
 
     // VASP checks:
-    if (m_optimizer->getIDString() == "VASP") {
-      // Is the POTCAR generated? If not, warn user in log and launch
-      // generator. Every POTCAR will be identical in this case!
-      QList<uint> oldcomp, atomicNums = comp.keys();
-      QList<QVariant> oldcomp_ = m_optimizer->getData("Composition").toList();
-      for (int i = 0; i < oldcomp_.size(); i++)
-        oldcomp.append(oldcomp_.at(i).toUInt());
-      qSort(atomicNums);
-      if (m_usingGUI) {
-        if (m_optimizer->getData("POTCAR info").toList().isEmpty() || // No info
-            oldcomp != atomicNums // Composition has changed!
-            ) {
-          error("Using VASP and POTCAR is empty. Please select the "
-                "pseudopotentials before continuing.");
-          return false;
+    for (size_t i = 0; i < getNumOptSteps(); ++i) {
+      if (optimizer(i)->getIDString() == "VASP") {
+        // Is the POTCAR generated? If not, warn user in log and launch
+        // generator. Every POTCAR will be identical in this case!
+        QList<uint> oldcomp, atomicNums = comp.keys();
+        QList<QVariant> oldcomp_ =
+          optimizer(i)->getData("Composition").toList();
+        for (int i = 0; i < oldcomp_.size(); i++)
+          oldcomp.append(oldcomp_.at(i).toUInt());
+        qSort(atomicNums);
+        if (m_usingGUI) {/*
+          if (optimizer(i)->getData("POTCAR info").toList().isEmpty() ||
+              oldcomp != atomicNums // Composition has changed!
+              ) {
+            error("Using VASP and POTCAR is empty. Please select the "
+                  "pseudopotentials before continuing.");
+            return false;
+          }
+          */
         }
       }
-
-      // Build up the latest and greatest POTCAR compilation
-      qobject_cast<VASPOptimizer*>(m_optimizer)->buildPOTCARs();
     }
 
 #ifdef ENABLE_SSH
     // Create the SSHManager if running remotely
-    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
+    if (anyRemoteQueueInterfaces()) {
+      qDebug() << "Creating SSH connections...";
       if (!this->createSSHConnections()) {
         error(tr("Could not create ssh connections."));
         return false;
@@ -496,8 +476,7 @@ namespace XtalOpt {
     SETTINGS(filename);
     settings->beginGroup("xtalopt/init/");
 
-    const int version = 2;
-    settings->setValue("version", version);
+    settings->setValue("version", m_schemaVersion);
 
     settings->setValue("limits/a/min",        a_min);
     settings->setValue("limits/b/min",        b_min);
@@ -591,21 +570,7 @@ namespace XtalOpt {
 
     settings->endGroup();
 
-    settings->beginGroup("xtalopt/edit");
-    settings->setValue("version",          version);
-
-    settings->setValue("description", description);
-    settings->setValue("localpath", filePath);
-    settings->setValue("remote/host", host);
-    settings->setValue("remote/port", port);
-    settings->setValue("remote/username", username);
-    settings->setValue("remote/rempath", rempath);
-
-    settings->setValue("optimizer", optimizer()->getIDString().toLower());
-    settings->setValue("queueInterface", queueInterface()->getIDString().toLower());
-    settings->setValue("logErrorDirs", m_logErrorDirs);
-    settings->endGroup();
-    optimizer()->writeSettings(filename);
+    writeEditSettings(filename);
 
     settings->beginGroup("xtalopt/opt/");
 
@@ -652,13 +617,68 @@ namespace XtalOpt {
     return true;
   }
 
+  bool XtalOpt::writeEditSettings(const QString& filename)
+  {
+    SETTINGS(filename);
+    settings->beginGroup("xtalopt/edit");
+    settings->setValue("version", m_schemaVersion);
+
+    settings->setValue("description", description);
+    settings->setValue("localpath", filePath);
+    settings->setValue("remote/host", host);
+    settings->setValue("remote/port", port);
+    settings->setValue("remote/username", username);
+    settings->setValue("remote/queueRefreshInterval", queueRefreshInterval());
+    settings->setValue("remote/cleanRemoteOnStop", cleanRemoteOnStop());
+    settings->setValue("remote/rempath", rempath);
+
+    // This will also write the number of opt steps
+    writeAllTemplatesToSettings(filename.toStdString());
+
+    for (size_t i = 0; i < getNumOptSteps(); ++i) {
+      settings->setValue("optimizer/" + QString::number(i),
+                         optimizer(i)->getIDString().toLower());
+      settings->setValue("queueInterface/" + QString::number(i),
+                         queueInterface(i)->getIDString().toLower());
+    }
+    settings->setValue("logErrorDirs", m_logErrorDirs);
+    settings->endGroup();
+
+    writeUserValuesToSettings(filename.toStdString());
+
+    for (size_t i = 0; i < getNumOptSteps(); ++i)
+      optimizer(i)->writeSettings(filename);
+
+    return true;
+  }
+
   bool XtalOpt::readEditSettings(const QString& filename)
   {
     SETTINGS(filename);
+
     // Edit tab
     settings->beginGroup("xtalopt/edit");
     port = settings->value("remote/port", 22).toInt();
     m_logErrorDirs = settings->value("logErrorDirs", false).toBool();
+
+    double loadedVersion = settings->value("version", 0).toInt();
+    // Only scheme version 3 will work currently
+    if (!filename.isEmpty() && loadedVersion != 3) {
+      if (loadedVersion < 3) {
+        error("XtalOpt::readSettings(): Settings in file " + filename +
+              " cannot be opened by this version of XtalOpt due to a "
+              "scheme change. Use a previous version of XtalOpt if "
+              "you wish to load this file.");
+        return false;
+      }
+      if (loadedVersion > 3) {
+        error("XtalOpt::readSettings(): Settings in file " + filename +
+              " cannot be opened by this version of XtalOpt. Please "
+              "visit https://xtalopt.github.io to obtain a "
+              "newer version.");
+        return false;
+      }
+    }
 
     // Temporary variables to test settings. This prevents empty
     // scheme values from overwriting defaults.
@@ -689,19 +709,40 @@ namespace XtalOpt {
       username = tmpstr;
     }
 
-    QString queueInterface =
-        settings->value("queueInterface", "local").toString().toLower();
+    setQueueRefreshInterval(settings->value("remote/queueRefreshInterval", "10").toInt());
 
-    setQueueInterface(queueInterface.toStdString());
+    setCleanRemoteOnStop(
+      settings->value("remote/cleanRemoteOnStop", "false").toBool()
+    );
 
-    this->queueInterface()->readSettings(filename);
+    size_t numOptSteps = settings->value("numOptSteps", "1").toUInt();
 
-    QString optimizerName =
-      settings->value("optimizer", "gulp").toString().toLower();
+    clearOptSteps();
+    for (size_t i = 0; i < numOptSteps; ++i) {
+      appendOptStep();
 
-    setOptimizer(optimizerName.toStdString());
+      QString queueInterface =
+          settings->value("queueInterface/" + QString::number(i),
+                          "local").toString().toLower();
 
-    this->optimizer()->readSettings(filename);
+      setQueueInterface(i, queueInterface.toStdString());
+
+      readQueueInterfaceTemplatesFromSettings(i, filename.toStdString());
+
+      this->queueInterface(i)->readSettings(filename);
+
+      QString optimizerName =
+        settings->value("optimizer/" + QString::number(i),
+                        "gulp").toString().toLower();
+
+      setOptimizer(i, optimizerName.toStdString());
+
+      readOptimizerTemplatesFromSettings(i, filename.toStdString());
+
+      this->optimizer(i)->readSettings(filename);
+    }
+
+    readUserValuesFromSettings(filename.toStdString());
 
     settings->endGroup();
     return true;
@@ -716,6 +757,24 @@ namespace XtalOpt {
 
     settings->beginGroup("xtalopt/init/");
     int loadedVersion = settings->value("version", 0).toInt();
+
+    // Only scheme version 3 will work currently
+    if (!filename.isEmpty() && loadedVersion != 3) {
+      if (loadedVersion < 3) {
+        error("XtalOpt::readSettings(): Settings in file " + filename +
+              " cannot be opened by this version of XtalOpt due to a "
+              "scheme change. Use a previous version of XtalOpt if "
+              "you wish to load this file.");
+        return false;
+      }
+      if (loadedVersion > 3) {
+        error("XtalOpt::readSettings(): Settings in file " + filename +
+              " cannot be opened by this version of XtalOpt. Please "
+              "visit https://xtalopt.github.io to obtain a "
+              "newer version.");
+        return false;
+      }
+    }
 
     a_min = settings->value("limits/a/min", 3).toDouble();
     b_min = settings->value("limits/b/min", 3).toDouble();
@@ -842,7 +901,8 @@ namespace XtalOpt {
 
     // We have a separate function for reading the edit settings because
     // the edit tab may need to call it
-    readEditSettings(filename);
+    if (!readEditSettings(filename))
+      return false;
 
     // Optimization settings tab
     settings->beginGroup("xtalopt/opt/");
@@ -920,7 +980,8 @@ namespace XtalOpt {
     }
 
     xtal->moveToThread(m_queue->thread());
-    if ( !m_optimizer->read(xtal, filename) || !this->checkComposition(xtal, &err)) {
+    if (!optimizer(0)->read(xtal, filename) ||
+        !this->checkComposition(xtal, &err)) {
       error(tr("Error loading seed %1\n\n%2").arg(filename).arg(err));
       xtal->deleteLater();
       return false;
@@ -965,7 +1026,7 @@ namespace XtalOpt {
     oldXtal->resetEnergy();
     oldXtal->resetEnthalpy();
     oldXtal->setPV(0);
-    oldXtal->setCurrentOptStep(1);
+    oldXtal->setCurrentOptStep(0);
     QString parents = "Randomly generated";
     if (!reason.isEmpty())
       parents += " (" + reason + ")";
@@ -1016,7 +1077,7 @@ namespace XtalOpt {
     oldXtal->resetEnthalpy();
     oldXtal->resetFailCount();
     oldXtal->setPV(0);
-    oldXtal->setCurrentOptStep(1);
+    oldXtal->setCurrentOptStep(0);
     if (!reason.isEmpty()) {
       QString parents = xtal->getParents();
       parents += " (" + reason + ")";
@@ -1595,7 +1656,7 @@ namespace XtalOpt {
     xtal->setupConnections();
     xtal->setFileName(locpath_s);
     xtal->setRempath(rempath_s);
-    xtal->setCurrentOptStep(1);
+    xtal->setCurrentOptStep(0);
     // If none of the cell parameters are fixed, perform a normalization on
     // the lattice (currently a Niggli reduction)
     if (fabs(a_min     - a_max)     > 0.01 &&
@@ -2532,13 +2593,11 @@ namespace XtalOpt {
     // Reject the structure if using VASP and the determinant of the
     // cell matrix is negative (otherwise VASP complains about a
     // "negative triple product")
-    if (qobject_cast<VASPOptimizer*>(m_optimizer) != 0 &&
-        xtal->unitCell().cellMatrix().determinant() <= 0.0) {
+    if (xtal->unitCell().cellMatrix().determinant() <= 0.0) {
       qDebug() << "Rejecting structure" << xtal->getIDString()
-               << ": using VASP negative triple product.";
+               << ": determinant of unit cell is negative or zero.";
       if (err != nullptr) {
-        *err = "Unit cell matrix cannot have a negative triple product "
-            "when using VASP.";
+        *err = "Unit cell matrix cannot have a negative or zero determinant.";
       }
       return false;
     }
@@ -3059,6 +3118,58 @@ namespace XtalOpt {
     return str;
   }
 
+  std::unique_ptr<GlobalSearch::QueueInterface>
+  XtalOpt::createQueueInterface(const std::string& queueName)
+  {
+
+    if (caseInsensitiveCompare(queueName, "local"))
+      return make_unique<LocalQueueInterface>(this);
+
+#ifdef ENABLE_SSH
+    if (caseInsensitiveCompare(queueName, "loadleveler"))
+      return make_unique<LoadLevelerQueueInterface>(this);
+
+    if (caseInsensitiveCompare(queueName, "lsf"))
+      return make_unique<LsfQueueInterface>(this);
+
+    if (caseInsensitiveCompare(queueName, "pbs"))
+      return make_unique<PbsQueueInterface>(this);
+
+    if (caseInsensitiveCompare(queueName, "sge"))
+      return make_unique<SgeQueueInterface>(this);
+
+    if (caseInsensitiveCompare(queueName, "slurm"))
+      return make_unique<SlurmQueueInterface>(this);
+#endif
+
+    qDebug() << "Error in" << __FUNCTION__ << ": Unknown queue interface:"
+             << queueName.c_str();
+    return nullptr;
+  }
+
+  std::unique_ptr<GlobalSearch::Optimizer>
+  XtalOpt::createOptimizer(const std::string& optName)
+  {
+    if (caseInsensitiveCompare(optName, "castep"))
+      return make_unique<CASTEPOptimizer>(this);
+
+    if (caseInsensitiveCompare(optName, "gulp"))
+      return make_unique<GULPOptimizer>(this);
+
+    if (caseInsensitiveCompare(optName, "pwscf"))
+      return make_unique<PWscfOptimizer>(this);
+
+    if (caseInsensitiveCompare(optName, "siesta"))
+      return make_unique<SIESTAOptimizer>(this);
+
+    if (caseInsensitiveCompare(optName, "vasp"))
+      return make_unique<VASPOptimizer>(this);
+
+    qDebug() << "Error in" << __FUNCTION__ << ": Unknown optimizer:"
+             << optName.c_str();
+    return nullptr;
+  }
+
   bool XtalOpt::load(const QString &filename, const bool forceReadOnly)
   {
     if (forceReadOnly) {
@@ -3082,16 +3193,23 @@ namespace XtalOpt {
     // Update config data. Be sure to bump m_schemaVersion in ctor if
     // adding updates.
     switch (loadedVersion) {
-    case 0:
-    case 1:
-    case 2: // Tab edit bumped to V2. No change here.
+    case 3:
       break;
     default:
-      error("XtalOpt::load(): Settings in file "+file.fileName()+
-            " cannot be opened by this version of XtalOpt. Please "
-            "visit http://xtalopt.openmolecules.net to obtain a "
-            "newer version.");
-      return false;
+      if (loadedVersion < 3) {
+        error("XtalOpt::load(): Settings in file "+file.fileName()+
+              " cannot be opened by this version of XtalOpt due to a "
+              "scheme change. Use a previous version of XtalOpt if "
+              "you wish to load this file.");
+        return false;
+      }
+      if (loadedVersion > 3) {
+        error("XtalOpt::load(): Settings in file "+file.fileName()+
+              " cannot be opened by this version of XtalOpt. Please "
+              "visit https://xtalopt.github.io to obtain a "
+              "newer version.");
+        return false;
+      }
     }
 
     bool stateFileIsValid = settings->value("xtalopt/saveSuccessful",
@@ -3147,7 +3265,7 @@ namespace XtalOpt {
 
 #ifdef ENABLE_SSH
     // Create the SSHManager if running remotely
-    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
+    if (anyRemoteQueueInterfaces()) {
       if (!this->createSSHConnections()) {
         error(tr("Could not create ssh connections."));
         return false;
@@ -3155,10 +3273,8 @@ namespace XtalOpt {
     }
 #endif // ENABLE_SSH
 
-    debug(tr("Resuming XtalOpt session in '%1' (%2) readOnly = %3")
+    debug(tr("Resuming XtalOpt session in '%1' readOnly = %2")
           .arg(filename)
-          .arg((m_optimizer) ? m_optimizer->getIDString()
-                             : "No set optimizer")
           .arg( (readOnly) ? "true" : "false"));
 
     // Xtals
@@ -3169,7 +3285,7 @@ namespace XtalOpt {
     // Restarted.
     bool restartInProcessStructures = false;
     bool clearJobIDs = false;
-    if (qobject_cast<LocalQueueInterface*>(m_queueInterface)) {
+    if (!anyRemoteQueueInterfaces()) {
       restartInProcessStructures = true;
       clearJobIDs = true;
     }
@@ -3308,18 +3424,6 @@ namespace XtalOpt {
         locker.unlock();
         updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
         loadedStructures.append(qobject_cast<Structure*>(xtal));
-        continue;
-      }
-      // If we are loading a previous version,
-      // attempt to load the xtal data from the output files
-      if (!m_optimizer->load(xtal)) {
-        error(tr("Error, no (or not appropriate for %1) xtal data in "
-                 "%2.\n\nThis could be a result of resuming a structure "
-                 "that has not yet done any local optimizations. If so, "
-                 "safely ignore this message.")
-              .arg(m_optimizer->getIDString())
-              .arg(xtal->fileName()));
-        delete xtal;
         continue;
       }
 
@@ -4248,47 +4352,57 @@ namespace XtalOpt {
 
     stream << "\nQueue Interface Settings: \n";
 
-    const GlobalSearch::QueueInterface* queue = m_queueInterface;
-    if (!queue) {
-      stream << "  queueInterface: NONE\n";
-    }
-    else {
-      stream << "  queueInterface: " << queue->getIDString() << "\n";
-      stream << "  localWorkingDirectory: " << filePath << "\n";
-      stream << "  logErrorDirectories: " << toString(m_logErrorDirs) << "\n";
-
-#ifdef ENABLE_SSH
-      if (queue->getIDString().toLower() != "local") {
-        stream << "\n  remoteQueueSettings: \n";
-        stream << "    host: " << host << "\n";
-        stream << "    port: " << port << "\n";
-        stream << "    username: " << username << "\n";
-        stream << "    remoteWorkingDirectory: " << rempath << "\n";
-
-        const GlobalSearch::RemoteQueueInterface* remoteQueue =
-          qobject_cast<const GlobalSearch::RemoteQueueInterface*>(queue);
-
-        stream << "    submitCommand: " << remoteQueue->submitCommand() << "\n";
-        stream << "    cancelCommand: " << remoteQueue->cancelCommand() << "\n";
-        stream << "    statusCommand: " << remoteQueue->statusCommand() << "\n";
-        stream << "    queueRefreshInterval: "
-               << remoteQueue->queueRefreshInterval() << "\n";
-        stream << "    cleanRemoteDirs: "
-               << toString(remoteQueue->cleanRemoteOnStop()) << "\n";
+    bool anyRemote = false;
+    for (size_t i = 0; i < getNumOptSteps(); ++i) {
+      stream << " OptStep " << i + 1 << ":\n";
+      const GlobalSearch::QueueInterface* queue = queueInterface(i);
+      if (!queue) {
+        stream << "  queueInterface: NONE\n";
       }
+      else {
+        stream << "  queueInterface: " << queue->getIDString() << "\n";
+#ifdef ENABLE_SSH
+        if (queue->getIDString().toLower() != "local") {
+          anyRemote = true;
+
+          const GlobalSearch::RemoteQueueInterface* remoteQueue =
+            qobject_cast<const GlobalSearch::RemoteQueueInterface*>(queue);
+
+          stream << "    submitCommand: " << remoteQueue->submitCommand() << "\n";
+          stream << "    cancelCommand: " << remoteQueue->cancelCommand() << "\n";
+          stream << "    statusCommand: " << remoteQueue->statusCommand() << "\n";
+        }
 #endif
+      }
     }
+
+    if (anyRemote) {
+      stream << "\n  remoteQueueSettings: \n";
+      stream << "    host: " << host << "\n";
+      stream << "    port: " << port << "\n";
+      stream << "    username: " << username << "\n";
+      stream << "    remoteWorkingDirectory: " << rempath << "\n";
+      stream << "    queueRefreshInterval: "
+             << queueRefreshInterval() << "\n";
+      stream << "    cleanRemoteDirs: "
+                 << toString(cleanRemoteOnStop()) << "\n";
+    }
+
+    stream << "\n  localQueueSettings: \n";
+    stream << "  localWorkingDirectory: " << filePath << "\n";
+    stream << "  logErrorDirectories: " << toString(m_logErrorDirs) << "\n";
 
     stream << "\nOptimizer settings:\n";
 
-    const GlobalSearch::Optimizer* optimizer = m_optimizer;
-    if (!optimizer) {
-      stream << "  optimize: NONE\n";
-    }
-    else {
-      stream << "  optimizer: " << optimizer->getIDString() << "\n";
-      stream << "  numOptimizationSteps: " << optimizer->getNumberOfOptSteps()
-             << "\n";
+    for (size_t i = 0; i < getNumOptSteps(); ++i) {
+      stream << " OptStep " << i + 1 << "\n";
+      const GlobalSearch::Optimizer* opt = optimizer(i);
+      if (!opt) {
+        stream << "  optimizer: NONE\n";
+      }
+      else {
+        stream << "  optimizer: " << opt->getIDString() << "\n";
+      }
     }
   }
 

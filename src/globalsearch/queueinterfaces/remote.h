@@ -49,34 +49,6 @@ namespace GlobalSearch {
     virtual ~RemoteQueueInterface() override;
 
     /**
-     * Get the queue refresh interval.
-     *
-     * @return The queue refresh interval in seconds.
-     */
-    virtual int queueRefreshInterval() const { return m_interval; }
-
-    /**
-     * Set the queue refresh interval.
-     *
-     * @i The queue refresh interval in seconds.
-     */
-    virtual void setInterval(int i) { m_interval = i; }
-
-    /**
-     * Clean the remote directories when they finish?
-     *
-     * @return Whether or not to clean the remote directories when they finish.
-     */
-    virtual bool cleanRemoteOnStop() const { return m_cleanRemoteOnStop; }
-
-    /**
-     * Clean the remote directories when they finish?
-     *
-     * @b Whether or not to clean the remote directories when they finish.
-     */
-    virtual void setCleanRemoteOnStop(bool b) { m_cleanRemoteOnStop = b; }
-
-    /**
      * Get the submit command for the queue interface. For example, in slurm,
      * this might be 'sbatch'.
      *
@@ -290,9 +262,6 @@ namespace GlobalSearch {
      */
     bool logErrorDirectory(Structure *structure,
                            SSHConnection *ssh) const;
-
-    int m_interval;
-    bool m_cleanRemoteOnStop;
 
     // Submit command. For example, on slurm, this may be 'sbatch'.
     QString m_submitCommand;

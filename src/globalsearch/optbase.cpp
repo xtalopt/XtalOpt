@@ -59,7 +59,6 @@ namespace GlobalSearch {
     test_nRunsEnd(100),
     test_nStructs(600),
     stateFileMutex(new QMutex),
-    backTraceMutex(new QMutex),
     readOnly(false),
     m_idString("Generic"),
 #ifdef ENABLE_SSH
@@ -69,9 +68,8 @@ namespace GlobalSearch {
     m_tracker(new Tracker (this)),
     m_queueThread(new QThread),
     m_queue(new QueueManager(m_queueThread, this)),
-    m_queueInterface(0), // This will be set when the GUI is initialized
-    m_optimizer(0),      // This will be set when the GUI is initialized
-    m_schemaVersion(1),
+    m_numOptSteps(0),
+    m_schemaVersion(3),
     m_usingGUI(true),
     m_logErrorDirs(false)
   {
@@ -145,14 +143,6 @@ namespace GlobalSearch {
 #endif // USE_CLI_SSH
   }
 #endif // ENABLE_SSH
-
-  void OptBase::printBackTrace() {
-    backTraceMutex->lock();
-    QStringList l = getBackTrace();
-    backTraceMutex->unlock();
-    for (int i = 0; i < l.size();i++)
-      qDebug() << l.at(i);
-  }
 
   QList<double> OptBase::getProbabilityList(
                              const QList<Structure*> &structures) {
@@ -378,6 +368,12 @@ namespace GlobalSearch {
       }
     }
 
+    // Write the user values to the output
+    writeUserValuesToSettings(structureStateFileName.toStdString());
+
+    // Write the template settings to the output file
+    writeAllTemplatesToSettings(structureStateFileName.toStdString());
+
     // Mark operation successful
     settings->setValue(m_idString.toLower() + "/saveSuccessful", true);
 
@@ -407,10 +403,10 @@ namespace GlobalSearch {
   {
     QString rep = "";
     // User data
-    if (line == "user1")                rep += optimizer()->getUser1();
-    else if (line == "user2")           rep += optimizer()->getUser2();
-    else if (line == "user3")           rep += optimizer()->getUser3();
-    else if (line == "user4")           rep += optimizer()->getUser4();
+    if (line == "user1")                rep += getUser1().c_str();
+    else if (line == "user2")           rep += getUser2().c_str();
+    else if (line == "user3")           rep += getUser3().c_str();
+    else if (line == "user4")           rep += getUser4().c_str();
     else if (line == "description")     rep += description;
     else if (line == "percent")         rep += "%";
 
@@ -480,6 +476,18 @@ namespace GlobalSearch {
     else if (line == "id")            	rep += QString::number(structure->getIDNumber());
     else if (line == "incar")         	rep += QString::number(structure->getCurrentOptStep());
     else if (line == "optStep")       	rep += QString::number(structure->getCurrentOptStep());
+    else if (line.startsWith("filecontents:", Qt::CaseInsensitive)) {
+      QString filename = line;
+      filename.remove(0, QString("filecontents:").size());
+      filename = filename.trimmed();
+      // Attempt to open the file
+      QFile file(filename);
+      if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "Error in" << __FUNCTION__ << ": could not open"
+                 << filename;
+      }
+      rep += file.readAll();
+    }
 
     if (!rep.isEmpty()) {
       // Remove any trailing newlines
@@ -520,28 +528,556 @@ namespace GlobalSearch {
     return str;
   }
 
-  void OptBase::setOptimizer(const std::string& optName)
+  std::unique_ptr<QueueInterface>
+  OptBase::createQueueInterface(const std::string& queueName)
   {
-    if (m_optimizers.count(optName) == 0) {
-      qDebug() << "Error in" << __FUNCTION__ << ": unknown optName:"
-               << optName.c_str();
-      return;
-    }
-    m_optimizer = m_optimizers[optName].get();
-    emit optimizerChanged(m_optimizer->getIDString().toLower().toStdString());
+    qDebug() << "Error:" << __FUNCTION__ << "not implemented. It needs to"
+             << "be overridden in a derived class.";
+    return nullptr;
   }
 
-  void OptBase::setQueueInterface(const std::string& qiName)
+  std::unique_ptr<Optimizer>
+  OptBase::createOptimizer(const std::string& optName)
   {
-    if (m_queueInterfaces.count(qiName) == 0) {
-      qDebug() << "Error in" << __FUNCTION__ << ": unknown Queue Interface"
-               << "Name:" << qiName.c_str();
+    qDebug() << "Error:" << __FUNCTION__ << "not implemented. It needs to"
+             << "be overridden in a derived class.";
+    return nullptr;
+  }
+
+  QueueInterface* OptBase::queueInterface(int optStep) const
+  {
+    if (optStep >= getNumOptSteps()) {
+      qDebug() << "Error in" << __FUNCTION__ << ": optStep," << optStep
+               << ", is out of bounds! The number of optimization steps is:"
+               << getNumOptSteps();
+      return nullptr;
+    }
+    return m_queueInterfaceAtOptStep[optStep].get();
+  }
+
+  Optimizer* OptBase::optimizer(int optStep) const
+  {
+    if (optStep >= getNumOptSteps()) {
+      qDebug() << "Error in" << __FUNCTION__ << ": optStep," << optStep
+               << ", is out of bounds! The number of optimization steps is:"
+               << getNumOptSteps();
+      return nullptr;
+    }
+    return m_optimizerAtOptStep[optStep].get();
+  }
+
+  void OptBase::clearOptSteps()
+  {
+    m_queueInterfaceAtOptStep.clear();
+    m_optimizerAtOptStep.clear();
+    m_queueInterfaceTemplates.clear();
+    m_optimizerTemplates.clear();
+    m_numOptSteps = 0;
+  }
+
+  void OptBase::appendOptStep()
+  {
+    // If there are no opt steps, we can't copy previous ones
+    if (m_numOptSteps == 0) {
+      typedef std::map<std::string, std::string> templateMap;
+      m_queueInterfaceAtOptStep.push_back(nullptr);
+      m_optimizerAtOptStep.push_back(nullptr);
+      m_queueInterfaceTemplates.push_back(templateMap());
+      m_optimizerTemplates.push_back(templateMap());
+    }
+    // We will duplicate the most recent opt step otherwise
+    else {
+      m_queueInterfaceAtOptStep.push_back(
+        createQueueInterface(
+          m_queueInterfaceAtOptStep.back()->getIDString().toStdString()
+        )
+      );
+      m_optimizerAtOptStep.push_back(
+        createOptimizer(
+          m_optimizerAtOptStep.back()->getIDString().toStdString()
+        )
+      );
+      m_queueInterfaceTemplates.push_back(m_queueInterfaceTemplates.back());
+      m_optimizerTemplates.push_back(m_optimizerTemplates.back());
+    }
+
+    ++m_numOptSteps;
+  }
+
+  void OptBase::insertOptStep(size_t optStep)
+  {
+    // If we are adding an opt step to the end, just use the append function
+    if (optStep == m_numOptSteps) {
+      appendOptStep();
       return;
     }
-    m_queueInterface = m_queueInterfaces[qiName].get();
-    emit queueInterfaceChanged(
-      m_queueInterface->getIDString().toLower().toStdString()
+
+    if (optStep > m_numOptSteps) {
+      qDebug() << "Error in" << __FUNCTION__ << ": attempting to insert"
+               << "an opt step," << optStep << ", that is greater than"
+               << "the number of opt steps," << m_numOptSteps;
+      return;
+    }
+
+    // We will copy another step. Figure out the index of the one we will copy.
+    // We will copy the one immediately prior to optStep in most cases, but
+    // if optStep is 0, we will copy the first item already present
+    size_t copyInd = (optStep == 0 ? 0 : optStep - 1);
+    m_queueInterfaceAtOptStep.insert(
+      m_queueInterfaceAtOptStep.begin() + optStep,
+      createQueueInterface(
+        m_queueInterfaceAtOptStep[copyInd]->getIDString().toStdString()
+      )
     );
+    m_optimizerAtOptStep.insert(
+      m_optimizerAtOptStep.begin() + optStep,
+      createOptimizer(
+        m_optimizerAtOptStep[copyInd]->getIDString().toStdString()
+      )
+    );
+
+    m_queueInterfaceTemplates.insert(
+      m_queueInterfaceTemplates.begin() + optStep,
+      m_queueInterfaceTemplates[copyInd]
+    );
+
+    m_optimizerTemplates.insert(
+      m_optimizerTemplates.begin() + optStep,
+      m_optimizerTemplates[copyInd]
+    );
+
+    ++m_numOptSteps;
+  }
+
+  void OptBase::removeOptStep(size_t optStep)
+  {
+    if (optStep >= m_numOptSteps) {
+      qDebug() << "Error in" << __FUNCTION__ << ": attempting to remove"
+               << "an opt step," << optStep << ", that is out of bounds.\n"
+               << "The number of opt steps is" << m_numOptSteps;
+      return;
+    }
+
+    m_queueInterfaceAtOptStep.erase(m_queueInterfaceAtOptStep.begin() +
+                                    optStep);
+    m_optimizerAtOptStep.erase(m_optimizerAtOptStep.begin() + optStep);
+
+    m_queueInterfaceTemplates.erase(m_queueInterfaceTemplates.begin() +
+                                    optStep);
+    m_optimizerTemplates.erase(m_optimizerTemplates.begin() + optStep);
+
+    --m_numOptSteps;
+  }
+
+  void OptBase::setQueueInterface(size_t optStep, const std::string& qiName)
+  {
+    if (optStep >= m_numOptSteps) {
+      qDebug() << "Error in" << __FUNCTION__ << ": optStep," << optStep
+               << ", is out of bounds. Number of opt steps is"
+               << m_numOptSteps;
+      return;
+    }
+    m_queueInterfaceAtOptStep[optStep] = createQueueInterface(qiName);
+
+    // We need to populate the templates list with empty templates
+    for (const auto& templateName:
+         m_queueInterfaceAtOptStep[optStep]->getTemplateFileNames()) {
+      setQueueInterfaceTemplate(optStep, templateName.toStdString(), "");
+    }
+  }
+
+  std::string OptBase::getQueueInterfaceTemplate(size_t optStep,
+                                                 const std::string& name) const
+  {
+    if (optStep >= m_numOptSteps) {
+      qDebug() << "Error in" << __FUNCTION__ << ": optStep," << optStep
+               << ", is out of bounds. Number of opt steps is"
+               << m_numOptSteps;
+      return "";
+    }
+    if (m_queueInterfaceTemplates[optStep].count(name) == 0) {
+      qDebug() << "Error in" << __FUNCTION__ << ": invalid key entry"
+               << "Name:" << name.c_str() << ", for opt step:" << optStep;
+      return "";
+    }
+    return m_queueInterfaceTemplates[optStep].at(name);
+  }
+
+  void OptBase::setQueueInterfaceTemplate(size_t optStep,
+                                          const std::string& name,
+                                          const std::string& temp)
+  {
+    if (optStep >= m_numOptSteps) {
+      qDebug() << "Error in" << __FUNCTION__ << ": optStep," << optStep
+               << ", is out of bounds. Number of opt steps is"
+               << m_numOptSteps;
+      return;
+    }
+    m_queueInterfaceTemplates[optStep][name] = temp;
+  }
+
+  void OptBase::setOptimizer(size_t optStep, const std::string& optName)
+  {
+    if (optStep >= m_numOptSteps) {
+      qDebug() << "Error in" << __FUNCTION__ << ": optStep," << optStep
+               << ", is out of bounds. Number of opt steps is"
+               << m_numOptSteps;
+      return;
+    }
+    m_optimizerAtOptStep[optStep] = createOptimizer(optName);
+
+    // We need to populate the templates list with empty templates
+    for (const auto& templateName:
+         m_optimizerAtOptStep[optStep]->getTemplateFileNames()) {
+      setOptimizerTemplate(optStep, templateName.toStdString(), "");
+    }
+  }
+
+  std::string OptBase::getOptimizerTemplate(size_t optStep,
+                                            const std::string& name) const
+  {
+    if (optStep >= m_numOptSteps) {
+      qDebug() << "Error in" << __FUNCTION__ << ": optStep," << optStep
+               << ", is out of bounds. Number of opt steps is"
+               << m_numOptSteps;
+      return "";
+    }
+    if (m_optimizerTemplates[optStep].count(name) == 0) {
+      qDebug() << "Error in" << __FUNCTION__ << ": invalid key entry"
+               << "Name:" << name.c_str() << ", for opt step:" << optStep;
+      return "";
+    }
+    return m_optimizerTemplates[optStep].at(name);
+  }
+
+  void OptBase::setOptimizerTemplate(size_t optStep,
+                                     const std::string& name,
+                                     const std::string& temp)
+  {
+    if (optStep >= m_numOptSteps) {
+      qDebug() << "Error in" << __FUNCTION__ << ": optStep," << optStep
+               << ", is out of bounds. Number of opt steps is"
+               << m_numOptSteps;
+      return;
+    }
+    m_optimizerTemplates[optStep][name] = temp;
+  }
+
+  OptBase::TemplateType OptBase::getTemplateType(size_t optStep,
+                                                 const std::string& name) const
+  {
+    TemplateType ret = TT_Unknown;
+
+    if (optStep >= m_numOptSteps) {
+      qDebug() << "Error in" << __FUNCTION__ << ": optStep," << optStep
+               << ", is out of range! Num opt steps is: " << m_numOptSteps;
+      return ret;
+    }
+
+    if (queueInterface(optStep) &&
+        queueInterface(optStep)->isTemplateFileName(name.c_str())) {
+      if (ret != TT_Unknown) {
+        qDebug() << "Error: in" << __FUNCTION__ << ": template name,"
+                 << name.c_str() << ", in multiple template types!";
+        ret = TT_Unknown;
+        return ret;
+      }
+      ret = TT_QueueInterface;
+    }
+
+    if (optimizer(optStep) &&
+        optimizer(optStep)->isTemplateFileName(name.c_str())) {
+      if (ret != TT_Unknown) {
+        qDebug() << "Error: in" << __FUNCTION__ << ": template name,"
+                 << name.c_str() << ", in multiple template types!";
+        ret = TT_Unknown;
+        return ret;
+      }
+      ret = TT_Optimizer;
+    }
+
+    if (ret == TT_Unknown) {
+      qDebug() << "Error in" << __FUNCTION__ << ": unknown template type: "
+               << name.c_str();
+    }
+
+    return ret;
+  }
+
+  std::string OptBase::getTemplate(size_t optStep,
+                                   const std::string& name) const
+  {
+    TemplateType type = getTemplateType(optStep, name);
+
+    if (type == TT_Unknown)
+      return "";
+
+    if (type == TT_QueueInterface)
+      return getQueueInterfaceTemplate(optStep, name);
+
+    if (type == TT_Optimizer)
+      return getOptimizerTemplate(optStep, name);
+
+    // We should never make it here
+    return "";
+  }
+
+  void OptBase::setTemplate(size_t optStep,
+                            const std::string& name,
+                            const std::string& temp)
+  {
+    TemplateType type = getTemplateType(optStep, name);
+
+    if (type == TT_Unknown)
+      return;
+
+    if (type == TT_QueueInterface)
+      setQueueInterfaceTemplate(optStep, name, temp);
+
+    if (type == TT_Optimizer)
+      setOptimizerTemplate(optStep, name, temp);
+
+    // We should never make it here
+  }
+
+  void OptBase::readQueueInterfaceTemplatesFromSettings(
+                                          size_t optStep,
+                                          const std::string& settingsFile)
+  {
+    QueueInterface* queue = queueInterface(optStep);
+    if (!queue) {
+      qDebug() << "Error in " << __FUNCTION__ << ": queue interface at"
+               << "opt step" << optStep << "does not exist!";
+      return;
+    }
+
+    SETTINGS(settingsFile.c_str());
+
+    settings->beginGroup(getIDString().toLower() +"/edit/queueInterface/" +
+                         QString::number(optStep) + "/" +
+                         queue->getIDString().toLower());
+    QStringList filenames = queue->getTemplateFileNames();
+    for (const auto& filename: filenames) {
+      QString temp = settings->value(filename).toString();
+      setQueueInterfaceTemplate(optStep, filename.toStdString(),
+                                temp.toStdString());
+    }
+    settings->endGroup();
+  }
+
+  void OptBase::readOptimizerTemplatesFromSettings(
+                                            size_t optStep,
+                                            const std::string& settingsFile)
+  {
+    Optimizer* optim = optimizer(optStep);
+    if (!optim) {
+      qDebug() << "Error in " << __FUNCTION__ << ": optimizer at"
+               << "opt step" << optStep << "does not exist!";
+      return;
+    }
+
+    SETTINGS(settingsFile.c_str());
+
+    settings->beginGroup(getIDString().toLower() + "/edit/optimizer/" +
+                         QString::number(optStep) + "/" +
+                         optim->getIDString().toLower());
+    QStringList filenames = optim->getTemplateFileNames();
+    for (const auto& filename: filenames) {
+      QString temp = settings->value(filename).toString();
+
+      setOptimizerTemplate(optStep, filename.toStdString(),
+                           temp.toStdString());
+
+      if (!temp.isEmpty())
+        continue;
+
+      // If "temp" is empty, perhaps we have some template filenames to open
+      QString templateFile =
+        settings->value(filename + "_templates").toString();
+
+      if (templateFile.isEmpty())
+        continue;
+
+      QFile file(templateFile);
+
+      // If the file exists, store it in the templates
+      if (!file.exists()) {
+        qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
+                   << "does not exist!";
+        continue;
+      }
+      if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
+                   << "could not be opened!";
+        continue;
+      }
+
+      setOptimizerTemplate(optStep, filename.toStdString(),
+                           file.readAll().toStdString());
+      file.close();
+    }
+    settings->endGroup();
+  }
+
+  void OptBase::readTemplatesFromSettings(size_t optStep,
+                                          const std::string& filename)
+  {
+    readQueueInterfaceTemplatesFromSettings(optStep, filename);
+    readOptimizerTemplatesFromSettings(optStep, filename);
+  }
+
+  void OptBase::readAllTemplatesFromSettings(const std::string& filename)
+  {
+    SETTINGS(filename.c_str());
+    settings->beginGroup(getIDString().toLower() + "/edit");
+    size_t numOptSteps = settings->value("numOptSteps").toUInt();
+    while (getNumOptSteps() < numOptSteps)
+      appendOptStep();
+
+    for (size_t i = 0; i < getNumOptSteps(); ++i)
+      readTemplatesFromSettings(i, filename);
+    settings->endGroup();
+  }
+
+  void OptBase::writeQueueInterfaceTemplatesToSettings(
+                                           size_t optStep,
+                                           const std::string& settingsFilename)
+  {
+    QueueInterface* queue = queueInterface(optStep);
+    if (!queue) {
+      qDebug() << "Error in " << __FUNCTION__ << ": queue interface at"
+               << "opt step" << optStep << "does not exist!";
+      return;
+    }
+
+    SETTINGS(settingsFilename.c_str());
+    // QueueInterface templates
+    settings->beginGroup(getIDString().toLower() + "/edit/queueInterface/" +
+                         QString::number(optStep) + "/" +
+                         queue->getIDString().toLower());
+
+    QStringList filenames = queue->getTemplateFileNames();
+    for (const auto& filename: filenames) {
+      settings->setValue(
+          filename,
+          getQueueInterfaceTemplate(optStep, filename.toStdString()).c_str()
+      );
+    }
+    settings->endGroup();
+  }
+
+  void OptBase::writeOptimizerTemplatesToSettings(
+                                           size_t optStep,
+                                           const std::string& settingsFilename)
+  {
+    Optimizer* optim = optimizer(optStep);
+    if (!optim) {
+      qDebug() << "Error in " << __FUNCTION__ << ": optimizer at"
+               << "opt step" << optStep << "does not exist!";
+      return;
+    }
+
+    SETTINGS(settingsFilename.c_str());
+    // Optimizer templates
+    settings->beginGroup(getIDString().toLower() + "/edit/optimizer/" +
+                         QString::number(optStep) + "/" +
+                         optim->getIDString().toLower());
+
+    QStringList filenames = optim->getTemplateFileNames();
+    for (const auto& filename: filenames) {
+      settings->setValue(
+          filename,
+          getOptimizerTemplate(optStep, filename.toStdString()).c_str()
+      );
+    }
+    settings->endGroup();
+  }
+
+  void OptBase::writeTemplatesToSettings(size_t optStep,
+                                         const std::string& filename)
+  {
+    writeQueueInterfaceTemplatesToSettings(optStep, filename);
+    writeOptimizerTemplatesToSettings(optStep, filename);
+  }
+
+  void OptBase::writeAllTemplatesToSettings(const std::string& filename)
+  {
+    SETTINGS(filename.c_str());
+    settings->beginGroup(getIDString().toLower() + "/edit");
+    settings->setValue("numOptSteps", QString::number(getNumOptSteps()));
+    for (size_t i = 0; i < getNumOptSteps(); ++i)
+      writeTemplatesToSettings(i, filename);
+    settings->endGroup();
+  }
+
+  void OptBase::readUserValuesFromSettings(const std::string& filename)
+  {
+    SETTINGS(filename.c_str());
+
+    settings->beginGroup(getIDString().toLower() + "/edit");
+    m_user1 = settings->value("/user1", "").toString().toStdString();
+    m_user2 = settings->value("/user2", "").toString().toStdString();
+    m_user3 = settings->value("/user3", "").toString().toStdString();
+    m_user4 = settings->value("/user4", "").toString().toStdString();
+    settings->endGroup();
+  }
+
+  void OptBase::writeUserValuesToSettings(const std::string& filename)
+  {
+    SETTINGS(filename.c_str());
+
+    settings->beginGroup(getIDString().toLower() + "/edit");
+
+    settings->setValue("/user1",
+                       m_user1.c_str());
+    settings->setValue("/user2",
+                       m_user2.c_str());
+    settings->setValue("/user3",
+                       m_user3.c_str());
+    settings->setValue("/user4",
+                       m_user4.c_str());
+
+    settings->endGroup();
+  }
+
+  bool OptBase::isReadyToSearch(QString& err) const
+  {
+    err.clear();
+    if (filePath.isEmpty()) {
+      err += "Local working directory is not set.";
+      return false;
+    }
+
+    for (size_t i = 0; i < getNumOptSteps(); ++i) {
+      if (!queueInterface(i)) {
+        err += "Queue interface at opt step " + QString::number(i + 1) +
+               " is not set!";
+        return false;
+      }
+
+      if (!optimizer(i)) {
+        err += "Optimizer at opt step " + QString::number(i + 1) +
+               " is not set!";
+        return false;
+      }
+
+      if (!queueInterface(i)->isReadyToSearch(&err))
+        return false;
+
+      if (!optimizer(i)->isReadyToSearch(&err))
+        return false;
+    }
+
+    return true;
+  }
+
+  bool OptBase::anyRemoteQueueInterfaces() const
+  {
+    for (size_t i = 0; i < getNumOptSteps(); ++i) {
+      if (queueInterface(i)->getIDString().toLower() != "local")
+        return true;
+    }
+    return false;
   }
 
   void OptBase::promptForPassword(const QString &message,
@@ -549,8 +1085,9 @@ namespace GlobalSearch {
                                   bool *ok)
   {
     if (m_usingGUI) {
-      (*newPassword) = QInputDialog::getText(dialog(), "Need password:", message,
-                                             QLineEdit::Password, QString(), ok);
+      (*newPassword) = QInputDialog::getText(dialog(), "Need password:",
+                                             message, QLineEdit::Password,
+                                             QString(), ok);
     }
     else {
       (*newPassword) = PasswordPrompt::getPassword().c_str();

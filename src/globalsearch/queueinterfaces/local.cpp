@@ -151,7 +151,7 @@ namespace GlobalSearch {
     }
     // TODO the corresponding function in Optimizer should prepend a
     // path for e.g. windows
-    QString command = m_opt->optimizer()->localRunCommand();
+    QString command = getCurrentOptimizer(s)->localRunCommand();
 
 #ifdef WIN32
     command = "cmd.exe /C \"" + command + "\"";
@@ -159,17 +159,17 @@ namespace GlobalSearch {
 
     LocalQueueProcess *proc = new LocalQueueProcess(nullptr);
     proc->setWorkingDirectory(s->fileName());
-    if (!m_opt->optimizer()->stdinFilename().isEmpty()) {
+    if (!getCurrentOptimizer(s)->stdinFilename().isEmpty()) {
       proc->setStandardInputFile(s->fileName()
-                                 + "/" + m_opt->optimizer()->stdinFilename());
+                                 + "/" + getCurrentOptimizer(s)->stdinFilename());
     }
-    if (!m_opt->optimizer()->stdoutFilename().isEmpty()) {
+    if (!getCurrentOptimizer(s)->stdoutFilename().isEmpty()) {
       proc->setStandardOutputFile(s->fileName()
-                                  + "/" + m_opt->optimizer()->stdoutFilename());
+                                  + "/" + getCurrentOptimizer(s)->stdoutFilename());
     }
-    if (!m_opt->optimizer()->stderrFilename().isEmpty()) {
+    if (!getCurrentOptimizer(s)->stderrFilename().isEmpty()) {
       proc->setStandardErrorFile(s->fileName()
-                                 + "/" + m_opt->optimizer()->stderrFilename());
+                                 + "/" + getCurrentOptimizer(s)->stderrFilename());
     }
 
     proc->start(command);
@@ -278,7 +278,7 @@ namespace GlobalSearch {
       if (pid == 0 || proc == 0) {
         // Is the output file exist absent?
         bool exists;
-        m_opt->optimizer()->checkIfOutputFileExists(s, &exists);
+        getCurrentOptimizer(s)->checkIfOutputFileExists(s, &exists);
         if (!exists) {
           // The output file does not exist -- the job is still
           // pending.
@@ -315,7 +315,7 @@ namespace GlobalSearch {
         return QueueInterface::Error;
       }
       bool success;
-      m_opt->optimizer()->checkForSuccessfulOutput(s, &success);
+      getCurrentOptimizer(s)->checkForSuccessfulOutput(s, &success);
       if (success) {
         return QueueInterface::Success;
       }

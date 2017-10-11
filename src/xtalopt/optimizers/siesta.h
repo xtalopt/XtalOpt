@@ -35,11 +35,7 @@ namespace XtalOpt {
                   const QString &filename = "");
 
     QHash<QString, QString>
-      getInterpretedTemplates(GlobalSearch::Structure *structure);
-
-
-    void buildPSFs();
-    bool PSFInfoIsUpToDate(QList<uint> comp);
+      getInterpretedTemplates(GlobalSearch::Structure *structure) override;
   };
 
 } // end namespace XtalOpt

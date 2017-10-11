@@ -55,7 +55,7 @@ namespace GlobalSearch {
     m_lock(QReadWriteLock::Recursive),
     m_parentStructure(nullptr)
   {
-    m_currentOptStep = 1;
+    m_currentOptStep = 0;
     setStatus(Empty);
     resetFailCount();
   }

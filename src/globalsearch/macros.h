@@ -32,9 +32,13 @@
 // Create a pointer of type QSettings *settings that points to either:
 // 1) The default application QSettings object, or
 // 2) A QSettings object that writes to "f"
+// If "f" is empty or it is equal to the config file name, it will be a default
+// application QSettings object. Any other condition produces a QSettings
+// object that writes to "f".
 #define SETTINGS(f)                                             \
   QSettings *settings, pQS, rQS(f, QSettings::IniFormat);      \
-  settings = (QString(f).isEmpty()) ? &pQS : &rQS;
+  settings = (QString(f).isEmpty() || QString(f) == pQS.fileName()) \
+             ? &pQS : &rQS;
 
 // Platform specific defines
 #ifdef WIN32

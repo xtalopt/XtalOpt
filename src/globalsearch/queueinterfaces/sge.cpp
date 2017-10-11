@@ -167,9 +167,6 @@ namespace GlobalSearch {
     m_submitCommand  = settings->value("qsub",  "qsub").toString();
     m_statusCommand = settings->value("qstat", "qstat").toString();
     m_cancelCommand  = settings->value("qdel",  "qdel").toString();
-    this->setInterval(settings->value("interval", 1).toInt());
-    m_cleanRemoteOnStop = settings->value("cleanRemoteOnStop", false).toBool();
-
 
     settings->endGroup();
     settings->endGroup();
@@ -206,8 +203,6 @@ namespace GlobalSearch {
     settings->setValue("qsub",  m_submitCommand);
     settings->setValue("qstat", m_statusCommand);
     settings->setValue("qdel",  m_cancelCommand);
-    settings->setValue("interval",  m_interval);
-    settings->setValue("cleanRemoteOnStop", m_cleanRemoteOnStop);
 
     settings->endGroup();
     settings->endGroup();
@@ -268,7 +263,7 @@ namespace GlobalSearch {
 
     // jobid has not been set, cannot delete!
     if (s->getJobID() == 0) {
-      if (m_cleanRemoteOnStop) {
+      if (m_opt->cleanRemoteOnStop()) {
         this->cleanRemoteDirectory(s, ssh);
       }
       m_opt->ssh()->unlockConnection(ssh);
@@ -342,7 +337,7 @@ namespace GlobalSearch {
       if (status.isEmpty()) {
         // check if the output file is absent
         bool exists;
-        if (!m_opt->optimizer()->checkIfOutputFileExists(s, &exists)) {
+        if (!getCurrentOptimizer(s)->checkIfOutputFileExists(s, &exists)) {
           return QueueInterface::CommunicationError;
         }
         if (!exists) {
@@ -369,7 +364,7 @@ namespace GlobalSearch {
     else { // Entry is missing from queue. Were the output files written?
       locker.unlock();
       bool outputFileExists;
-      if (!m_opt->optimizer()->checkIfOutputFileExists(s, &outputFileExists) ) {
+      if (!getCurrentOptimizer(s)->checkIfOutputFileExists(s, &outputFileExists) ) {
           return QueueInterface::CommunicationError;
       }
       locker.relock();
@@ -377,7 +372,7 @@ namespace GlobalSearch {
       if (outputFileExists) {
         // Did the job finish successfully?
         bool success;
-        if (!m_opt->optimizer()->checkForSuccessfulOutput(s, &success)) {
+        if (!getCurrentOptimizer(s)->checkForSuccessfulOutput(s, &success)) {
           return QueueInterface::CommunicationError;
         }
         if (success) {
@@ -392,13 +387,6 @@ namespace GlobalSearch {
     return QueueInterface::Unknown;
   }
 
-  void SgeQueueInterface::setInterval(int sec)
-  {
-    m_queueMutex.lockForWrite();
-    m_interval = sec;
-    m_queueMutex.unlock();
-  }
-
   QStringList SgeQueueInterface::getQueueList() const
   {
     // recast queue mutex as mutable for safe access:
@@ -411,13 +399,13 @@ namespace GlobalSearch {
         // QDateTime::msecsTo is not implemented until Qt 4.7
 #if QT_VERSION >= 0x040700
         m_queueTimeStamp.msecsTo(QDateTime::currentDateTime())
-        <= 1000*m_interval
+        <= 1000*m_opt->queueRefreshInterval()
 #else
         // Check if day is the same. If not, refresh. Otherwise check
         // msecsTo current time
         (m_queueTimeStamp.date() == QDate::currentDate() &&
          m_queueTimeStamp.time().msecsTo(QTime::currentTime())
-         <= 1000*m_interval)
+         <= 1000*m_opt->queueRefreshInterval())
 #endif // QT_VERSION >= 4.7
         ) {
       // If the cache is valid, return it

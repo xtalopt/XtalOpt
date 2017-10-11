@@ -14,6 +14,7 @@
 
 #include <globalsearch/ui/abstractedittab.h>
 
+#include <globalsearch/bt.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
@@ -56,27 +57,27 @@ namespace GlobalSearch {
     ui_edit_edit->setCurrentFont(QFont("Courier"));
 
     // opt connections
-    connect(this, SIGNAL(optimizerChanged(const std::string&)),
-            m_opt, SLOT(setOptimizer(const std::string&)),
+    connect(this, SIGNAL(optimizerChanged(size_t, const std::string&)),
+            m_opt, SLOT(setOptimizer(size_t, const std::string&)),
             Qt::DirectConnection);
-    connect(this, SIGNAL(queueInterfaceChanged(const std::string&)),
-            m_opt, SLOT(setQueueInterface(const std::string&)),
+    connect(this, SIGNAL(queueInterfaceChanged(size_t, const std::string&)),
+            m_opt, SLOT(setQueueInterface(size_t, const std::string&)),
             Qt::DirectConnection);
 
     // Dialog connections
-    connect(this, SIGNAL(optimizerChanged(const std::string&)),
+    connect(this, SIGNAL(optimizerChanged(size_t, const std::string&)),
             m_dialog, SIGNAL(tabsUpdateGUI()));
-    connect(this, SIGNAL(queueInterfaceChanged(const std::string&)),
+    connect(this, SIGNAL(queueInterfaceChanged(size_t, const std::string&)),
             m_dialog, SIGNAL(tabsUpdateGUI()));
 
     // Edit tab connections
-    connect(this, SIGNAL(optimizerChanged(const std::string&)),
+    connect(this, SIGNAL(optimizerChanged(size_t, const std::string&)),
             this, SLOT(populateTemplates()));
-    connect(this, SIGNAL(queueInterfaceChanged(const std::string&)),
+    connect(this, SIGNAL(queueInterfaceChanged(size_t, const std::string&)),
             this, SLOT(populateTemplates()));
-    connect(this, SIGNAL(optimizerChanged(const std::string&)),
+    connect(this, SIGNAL(optimizerChanged(size_t, const std::string&)),
             this, SLOT(populateOptStepList()));
-    connect(this, SIGNAL(queueInterfaceChanged(const std::string&)),
+    connect(this, SIGNAL(queueInterfaceChanged(size_t, const std::string&)),
             this, SLOT(populateOptStepList()));
     connect(ui_push_optimizerConfig, SIGNAL(clicked()),
             this, SLOT(configureOptimizer()));
@@ -92,6 +93,12 @@ namespace GlobalSearch {
             this, SLOT(appendOptStep()));
     connect(ui_push_remove, SIGNAL(clicked()),
             this, SLOT(removeCurrentOptStep()));
+    connect(ui_list_optStep, SIGNAL(currentRowChanged(int)),
+            this, SLOT(populateTemplates()));
+    connect(ui_list_optStep, SIGNAL(currentRowChanged(int)),
+            this, SLOT(updateGUIQueueInterface()));
+    connect(ui_list_optStep, SIGNAL(currentRowChanged(int)),
+            this, SLOT(updateGUIOptimizer()));
     connect(ui_list_optStep, SIGNAL(currentRowChanged(int)),
             this, SLOT(updateEditWidget()));
     connect(ui_edit_user1, SIGNAL(editingFinished()),
@@ -118,31 +125,28 @@ namespace GlobalSearch {
     ui_combo_queueInterfaces->blockSignals(true);
     ui_combo_queueInterfaces->clear();
     index = 0;
-    for (QList<QueueInterface*>::const_iterator
-           it = m_queueInterfaces.constBegin(),
-           it_end = m_queueInterfaces.constEnd();
-         it != it_end;
-         ++it) {
-      ui_combo_queueInterfaces->insertItem(index++,
-                                           (*it)->getIDString());
-    }
+    for (const auto& qiName: m_queueInterfaces)
+      ui_combo_queueInterfaces->insertItem(index++, qiName);
+
     ui_combo_queueInterfaces->blockSignals(false);
+
+    if (index != 0)
+      ui_combo_queueInterfaces->setCurrentIndex(0);
 
     //  Optimizers
     ui_combo_optimizers->blockSignals(true);
     ui_combo_optimizers->clear();
     index = 0;
-    for (QList<Optimizer*>::const_iterator
-           it = m_optimizers.constBegin(),
-           it_end = m_optimizers.constEnd();
-         it != it_end;
-         ++it) {
-      ui_combo_optimizers->insertItem(index++,
-                                      (*it)->getIDString());
-    }
+    for (const auto& optName: m_optimizers)
+      ui_combo_optimizers->insertItem(index++, optName);
+
     ui_combo_optimizers->blockSignals(false);
 
+    if (index != 0)
+      ui_combo_optimizers->setCurrentIndex(0);
+
     AbstractTab::initialize();
+
     updateGUI();
   }
 
@@ -150,29 +154,26 @@ namespace GlobalSearch {
   {
   }
 
-  void AbstractEditTab::updateGUI()
+  void AbstractEditTab::updateGUIQueueInterface()
   {
     if (!m_isInitialized) {
       return;
     }
-    Q_ASSERT_X(m_queueInterfaces.contains(m_opt->queueInterface()) ||
-               m_opt->queueInterface() == 0, Q_FUNC_INFO,
-               "Current queue interface is unknown to AbstractEditTab.");
-    Q_ASSERT_X(m_optimizers.contains(m_opt->optimizer()) ||
-               m_opt->optimizer() == 0, Q_FUNC_INFO,
-               "Current optimizer is unknown to AbstractEditTab.");
-    Q_ASSERT(m_optimizers.size() == ui_combo_optimizers->count());
+    Q_ASSERT_X(
+      m_queueInterfaces.contains(getCurrentQueueInterface()->getIDString()) ||
+      getCurrentQueueInterface() == 0, Q_FUNC_INFO,
+      "Current queue interface is unknown to AbstractEditTab."
+    );
     Q_ASSERT(m_queueInterfaces.size() == ui_combo_queueInterfaces->count());
 
-    if (m_opt->optimizer()) {
-      int optIndex = m_optimizers.indexOf(m_opt->optimizer());
-      ui_combo_optimizers->setCurrentIndex(optIndex);
-    }
-
-    if (m_opt->queueInterface()) {
-      int qiIndex = m_queueInterfaces.indexOf(m_opt->queueInterface());
+    if (getCurrentQueueInterface()) {
+      int qiIndex = m_queueInterfaces.indexOf(
+                      getCurrentQueueInterface()->getIDString().toLower()
+                    );
+      ui_combo_queueInterfaces->blockSignals(true);
       ui_combo_queueInterfaces->setCurrentIndex(qiIndex);
-      if (m_opt->queueInterface()->hasDialog()) {
+      ui_combo_queueInterfaces->blockSignals(false);
+      if (getCurrentQueueInterface()->hasDialog()) {
         ui_push_queueInterfaceConfig->setEnabled(true);
       } else {
         ui_push_queueInterfaceConfig->setEnabled(false);
@@ -181,16 +182,40 @@ namespace GlobalSearch {
     else {
       ui_push_queueInterfaceConfig->setEnabled(false);
     }
+  }
 
-    populateTemplates();
+  void AbstractEditTab::updateGUIOptimizer()
+  {
+    if (!m_isInitialized) {
+      return;
+    }
+
+    Q_ASSERT_X(m_optimizers.contains(getCurrentOptimizer()->getIDString()) ||
+               getCurrentOptimizer() == 0, Q_FUNC_INFO,
+               "Current optimizer is unknown to AbstractEditTab.");
+    Q_ASSERT(m_optimizers.size() == ui_combo_optimizers->count());
+
+    if (getCurrentOptimizer()) {
+      int optIndex = m_optimizers.indexOf(
+                       getCurrentOptimizer()->getIDString().toLower()
+                     );
+      ui_combo_optimizers->blockSignals(true);
+      ui_combo_optimizers->setCurrentIndex(optIndex);
+      ui_combo_optimizers->blockSignals(false);
+    }
+  }
+
+  void AbstractEditTab::updateGUI()
+  {
+    updateGUIQueueInterface();
+    updateGUIOptimizer();
+
     populateOptStepList();
 
-    updateEditWidget();
-
-    ui_edit_user1->setText(	m_opt->optimizer()->getUser1());
-    ui_edit_user2->setText(	m_opt->optimizer()->getUser2());
-    ui_edit_user3->setText(	m_opt->optimizer()->getUser3());
-    ui_edit_user4->setText(	m_opt->optimizer()->getUser4());
+    ui_edit_user1->setText(m_opt->getUser1().c_str());
+    ui_edit_user2->setText(m_opt->getUser2().c_str());
+    ui_edit_user3->setText(m_opt->getUser3().c_str());
+    ui_edit_user4->setText(m_opt->getUser4().c_str());
   }
 
   void AbstractEditTab::lockGUI()
@@ -208,22 +233,19 @@ namespace GlobalSearch {
 
   void AbstractEditTab::updateQueueInterface()
   {
-    Q_ASSERT_X(m_queueInterfaces.contains(m_opt->queueInterface()) ||
-               m_opt->queueInterface() == 0, Q_FUNC_INFO,
-               "Current queue interface is unknown to AbstractEditTab.");
+    Q_ASSERT_X(
+      m_queueInterfaces.contains(getCurrentQueueInterface()->getIDString()) ||
+      getCurrentQueueInterface() == 0, Q_FUNC_INFO,
+      "Current queue interface is unknown to AbstractEditTab."
+    );
 
     unsigned int newQiIndex = ui_combo_queueInterfaces->currentIndex();
 
+    qDebug() << "newQiIndex is" << newQiIndex;
+
     Q_ASSERT(newQiIndex <= m_queueInterfaces.size() - 1);
 
-    // Check that queueInterface has actually changed
-    if (m_queueInterfaces.indexOf(m_opt->queueInterface()) ==
-        newQiIndex &&
-        m_opt->queueInterface() != 0) {
-      return;
-    }
-
-    QueueInterface *qi = m_queueInterfaces[newQiIndex];
+    QueueInterface *qi = m_opt->queueInterface(getCurrentOptStep());
 
     if (qi->hasDialog()) {
       ui_push_queueInterfaceConfig->setEnabled(true);
@@ -231,27 +253,22 @@ namespace GlobalSearch {
       ui_push_queueInterfaceConfig->setEnabled(false);
     }
 
-    emit queueInterfaceChanged(qi->getIDString().toLower().toStdString());
+    qDebug() << "Emitting queue interface changed";
+    emit queueInterfaceChanged(getCurrentOptStep(),
+                               m_queueInterfaces[newQiIndex].toStdString());
   }
 
   void AbstractEditTab::updateOptimizer()
   {
-    Q_ASSERT_X(m_optimizers.contains(m_opt->optimizer()) ||
-               m_opt->optimizer() == 0, Q_FUNC_INFO,
+    Q_ASSERT_X(m_optimizers.contains(getCurrentOptimizer()->getIDString()) ||
+               getCurrentOptimizer() == 0, Q_FUNC_INFO,
                "Current optimizer is unknown to AbstractEditTab.");
 
     unsigned int newOptimizerIndex = ui_combo_optimizers->currentIndex();
 
     Q_ASSERT(newOptimizerIndex <= m_optimizers.size() - 1);
 
-    // Check that optimizer has actually changed
-    if (m_optimizers.indexOf(m_opt->optimizer()) ==
-        newOptimizerIndex &&
-        m_opt->optimizer() != 0) {
-      return;
-    }
-
-    Optimizer *o = m_optimizers[newOptimizerIndex];
+    Optimizer *o = m_opt->optimizer(getCurrentOptStep());
 
     if (o->hasDialog()) {
       ui_push_optimizerConfig->setEnabled(true);
@@ -259,15 +276,16 @@ namespace GlobalSearch {
       ui_push_optimizerConfig->setEnabled(false);
     }
 
-    emit optimizerChanged(o->getIDString().toLower().toStdString());
+    emit optimizerChanged(getCurrentOptStep(),
+                          m_optimizers[newOptimizerIndex].toStdString());
   }
 
   void AbstractEditTab::configureQueueInterface()
   {
-    Q_ASSERT(m_opt->queueInterface());
-    Q_ASSERT(m_opt->queueInterface()->hasDialog());
+    Q_ASSERT(getCurrentQueueInterface());
+    Q_ASSERT(getCurrentQueueInterface()->hasDialog());
 
-    QDialog *d = m_opt->queueInterface()->dialog();
+    QDialog *d = getCurrentQueueInterface()->dialog();
     Q_ASSERT(d != 0);
 
     d->show();
@@ -276,23 +294,26 @@ namespace GlobalSearch {
 
   void AbstractEditTab::configureOptimizer()
   {
-    Q_ASSERT(m_opt->optimizer());
-    Q_ASSERT(m_opt->optimizer()->hasDialog());
+    Q_ASSERT(getCurrentOptimizer());
+    Q_ASSERT(getCurrentOptimizer()->hasDialog());
 
-    QDialog *d = m_opt->optimizer()->dialog();
+    QDialog *d = getCurrentOptimizer()->dialog();
     Q_ASSERT(d != 0);
 
     d->show();
     d->exec();
   }
 
-  QStringList AbstractEditTab::getTemplateNames()
+  QStringList AbstractEditTab::getTemplateNames(size_t optStep)
   {
     if (!m_isInitialized) {
       return QStringList();
     }
-    QStringList templateNames = m_opt->optimizer()->getTemplateNames();
-    templateNames.append(m_opt->queueInterface()->getTemplateFileNames());
+    QStringList templateNames =
+      getCurrentOptimizer()->getTemplateFileNames();
+    templateNames.append(
+      getCurrentQueueInterface()->getTemplateFileNames()
+    );
     qSort(templateNames);
     return templateNames;
   }
@@ -302,11 +323,26 @@ namespace GlobalSearch {
     if (!m_isInitialized) {
       return;
     }
+
+    QString oldTemplateName = ui_combo_templates->currentText();
+
+    int optStepIndex = getCurrentOptStep();
     ui_combo_templates->blockSignals(true);
     ui_combo_templates->clear();
-    ui_combo_templates->insertItems(0, getTemplateNames());
+    ui_combo_templates->insertItems(0, getTemplateNames(optStepIndex));
+
+    // Let's see if the old template name is in the new set of templates,
+    // and if it is, set that as the current template
+    int newInd = 0;
+    for (size_t i = 0; i < ui_combo_templates->count(); ++i) {
+      if (ui_combo_templates->itemText(i) == oldTemplateName) {
+        newInd = i;
+        break;
+      }
+    }
+
     ui_combo_templates->blockSignals(false);
-    ui_combo_templates->setCurrentIndex(0);
+    ui_combo_templates->setCurrentIndex(newInd);
   }
 
   void AbstractEditTab::updateEditWidget()
@@ -314,20 +350,19 @@ namespace GlobalSearch {
     if (!m_isInitialized) {
       return;
     }
-    QStringList filenames = getTemplateNames();
+    int optStepIndex = getCurrentOptStep();
+    QStringList filenames = getTemplateNames(optStepIndex);
     int templateInd = ui_combo_templates->currentIndex();
     QString templateName = ui_combo_templates->currentText();
     Q_ASSERT(templateInd >= 0 && templateInd < filenames.size());
     Q_ASSERT(templateName.compare(filenames.at(templateInd)) == 0);
 
-    if (m_opt->optimizer()->getNumberOfOptSteps() !=
-        ui_list_optStep->count()) {
+    if (m_opt->getNumOptSteps() != ui_list_optStep->count()) {
       populateOptStepList();
     }
 
-    int optStepIndex = ui_list_optStep->currentRow();
     Q_ASSERT(optStepIndex >= 0 &&
-             optStepIndex < m_opt->optimizer()->getNumberOfOptSteps());
+             optStepIndex < m_opt->getNumOptSteps());
 
     // Display appropriate entry widget. Only text entry is supported
     // by default, reimplement this function in the derived class if
@@ -338,8 +373,9 @@ namespace GlobalSearch {
     ui_edit_edit->setVisible(true);
 
     // Update text edit widget
-    Q_ASSERT(getTemplateNames().contains(templateName));
-    QString text = m_opt->optimizer()->getTemplate(templateName, optStepIndex);
+    Q_ASSERT(getTemplateNames(optStepIndex).contains(templateName));
+    QString text =
+      m_opt->getTemplate(optStepIndex, templateName.toStdString()).c_str();
 
     ui_edit_edit->blockSignals(true);
     ui_edit_edit->setText(text);
@@ -349,37 +385,35 @@ namespace GlobalSearch {
 
   void AbstractEditTab::saveCurrentTemplate()
   {
-    QStringList filenames = getTemplateNames();
+    int optStepIndex = getCurrentOptStep();
+    QStringList filenames = getTemplateNames(optStepIndex);
     int templateInd = ui_combo_templates->currentIndex();
     QString templateName = ui_combo_templates->currentText();
     Q_ASSERT(templateInd >= 0 && templateInd < filenames.size());
     Q_ASSERT(templateName.compare(filenames.at(templateInd)) == 0);
 
-    if (m_opt->optimizer()->getNumberOfOptSteps() !=
-        ui_list_optStep->count()) {
+    if (m_opt->getNumOptSteps() != ui_list_optStep->count())
       populateOptStepList();
-    }
 
-    int optStepIndex = ui_list_optStep->currentRow();
-    Q_ASSERT(optStepIndex >= 0 &&
-             optStepIndex < m_opt->optimizer()->getNumberOfOptSteps());
+    Q_ASSERT(optStepIndex >= 0 && optStepIndex < m_opt->getNumOptSteps());
 
     // Here we only update from the text edit widget. If any templates
     // are using the list input, reimplement this function in the
     // derived class and handle the lists appropriately.
     QString text = ui_edit_edit->document()->toPlainText();
 
-    m_opt->optimizer()->setTemplate(templateName, text, optStepIndex);
+    m_opt->setTemplate(optStepIndex, templateName.toStdString(),
+                       text.toStdString());
 
     ui_edit_edit->setCurrentFont(QFont("Courier"));
   }
 
   void AbstractEditTab::updateUserValues()
   {
-    m_opt->optimizer()->setUser1(ui_edit_user1->text());
-    m_opt->optimizer()->setUser2(ui_edit_user2->text());
-    m_opt->optimizer()->setUser3(ui_edit_user3->text());
-    m_opt->optimizer()->setUser4(ui_edit_user4->text());
+    m_opt->setUser1(ui_edit_user1->text().toStdString());
+    m_opt->setUser2(ui_edit_user2->text().toStdString());
+    m_opt->setUser3(ui_edit_user3->text().toStdString());
+    m_opt->setUser4(ui_edit_user4->text().toStdString());
   }
 
   void AbstractEditTab::populateOptStepList()
@@ -388,47 +422,30 @@ namespace GlobalSearch {
       return;
     }
     ui_list_optStep->blockSignals(true);
-    ui_list_optStep->clear();
 
-    // Just return if either QI or optimizer are missing
-    if (!m_opt->optimizer() || !m_opt->queueInterface()) {
-      ui_list_optStep->blockSignals(false);
-      return;
-    }
+    int currentOptStep = getCurrentOptStep();
+    const int maxSteps = m_opt->getNumOptSteps();
 
-    int currentOptStep = ui_list_optStep->currentRow();
-    const int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
     if (currentOptStep < 0) currentOptStep = 0;
     if (currentOptStep >= maxSteps) currentOptStep = maxSteps - 1;
 
+    ui_list_optStep->clear();
     for (int i = 1; i <= maxSteps; ++i) {
       ui_list_optStep->addItem(tr("Optimization %1").arg(i));
     }
-    ui_list_optStep->blockSignals(false);
 
+    ui_list_optStep->blockSignals(false);
     ui_list_optStep->setCurrentRow(currentOptStep);
   }
 
   void AbstractEditTab::appendOptStep()
   {
     // Reimplement in derived class if Optimizer generic data is needed
-    const int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
-    const int currentOptStep = ui_list_optStep->currentRow();
+    const int maxSteps = m_opt->getNumOptSteps();
+    const int currentOptStep = getCurrentOptStep();
     Q_ASSERT(currentOptStep >= 0 && currentOptStep < maxSteps);
 
-    // Copy the current files into a new entry at the end of the opt step list
-    //  Optimizer templates
-    QStringList templates = getTemplateNames();
-
-    for (QStringList::const_iterator
-           it = templates.constBegin(),
-           it_end = templates.constEnd();
-         it != it_end;
-         ++it) {
-      m_opt->optimizer()->
-        appendTemplate(*it, m_opt->optimizer()->
-                       getTemplate(*it, currentOptStep));
-    }
+    m_opt->appendOptStep();
 
     populateOptStepList();
   }
@@ -436,11 +453,11 @@ namespace GlobalSearch {
   void AbstractEditTab::removeCurrentOptStep()
   {
     // Reimplement in derived class if Optimizer generic data is needed
-    const int maxSteps = m_opt->optimizer()->getNumberOfOptSteps();
-    const int currentOptStep = ui_list_optStep->currentRow();
+    const int maxSteps = m_opt->getNumOptSteps();
+    const int currentOptStep = getCurrentOptStep();
     Q_ASSERT(currentOptStep >= 0 && currentOptStep < maxSteps);
 
-    m_opt->optimizer()->removeAllTemplatesForOptStep(currentOptStep);
+    m_opt->removeOptStep(currentOptStep);
 
     populateOptStepList();
   }

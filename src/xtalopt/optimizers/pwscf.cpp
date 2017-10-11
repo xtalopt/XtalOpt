@@ -29,7 +29,7 @@ namespace XtalOpt {
     // None here!
 
     // Set allowed filenames, e.g.
-    m_templates.insert("xtal.in",QStringList(""));
+    m_templates.append("xtal.in");
 
     // Setup for completion values
     m_completionFilename = "xtal.out";

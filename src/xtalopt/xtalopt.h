@@ -176,10 +176,17 @@ namespace XtalOpt {
                               GlobalSearch::Structure* structure) override;
     QString getTemplateKeywordHelp() override;
 
+    std::unique_ptr<GlobalSearch::QueueInterface>
+    createQueueInterface(const std::string& queueName) override;
+
+    std::unique_ptr<GlobalSearch::Optimizer>
+    createOptimizer(const std::string& optName) override;
+
     bool save(QString filename = "", bool notify = false) override;
     bool load(const QString & filename,
               const bool forceReadOnly = false) override;
 
+    bool writeEditSettings(const QString& filename = "");
     bool readEditSettings(const QString& filename = "");
     bool readSettings(const QString& filename = "");
 

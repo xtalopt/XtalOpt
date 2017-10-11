@@ -34,14 +34,10 @@ namespace XtalOpt {
                   const QString &filename = "");
 
     QHash<QString, QString>
-      getInterpretedTemplates(GlobalSearch::Structure *structure);
+      getInterpretedTemplates(GlobalSearch::Structure *structure) override;
 
-    void readSettings(const QString &filename = "");
-    void writeTemplatesToSettings(const QString &filename = "");
-    void writeDataToSettings(const QString &filename = "");
-
-    void buildPOTCARs();
-    bool POTCARInfoIsUpToDate(QList<uint> comp);
+    void readSettings(const QString &filename = "") override;
+    void writeDataToSettings(const QString &filename = "") override;
   };
 
 } // end namespace XtalOpt

@@ -56,7 +56,6 @@ namespace GlobalSearch {
     friend class OptimizerConfigDialog;
 
     QHash<QString, QVariant> m_data;
-    QHash<QString, QStringList > m_templates;
     /**
      * Constructor
      *
@@ -95,11 +94,6 @@ namespace GlobalSearch {
      * @return A string identifying the Optimizer
      */
     virtual QString getIDString() const {return m_idString;};
-
-    /**
-     * @return The total number of optimization steps
-     */
-    virtual int getNumberOfOptSteps() const;
 
     /**
      * Check that all mandatory internal variables are set. Check this
@@ -178,26 +172,6 @@ namespace GlobalSearch {
     virtual bool read(Structure *structure, const QString & filename);
 
     /**
-     * Return a specified template.
-     *
-     * @param filename Filename of template
-     * @param optStepIndex  Optimization step index of template to retrieve.
-     *
-     * @return The requested template
-     */
-    virtual QString getTemplate(const QString &filename, int optStepIndex);
-
-    /**
-     * Return a list of all templates for a given filename
-     *
-     * @param filename Filename of template
-     *
-     * @return A list of all template matching the given filename, in
-     * order of optimization step.
-     */
-    virtual QStringList getTemplate(const QString &filename);
-
-    /**
      * Get generic data associated with the optimizer.
      *
      * @param identifier QString identifying the data needed.
@@ -206,97 +180,38 @@ namespace GlobalSearch {
      */
     virtual QVariant getData(const QString &identifier);
 
-    /**
-     * @return All filenames that the optimizer can store templates
-     * for.
-     */
-    virtual QStringList getTemplateNames() const {return m_templates.keys();};
+   /**
+    * @return All filenames that the optimizer can store templates
+    * for.
+    */
+    virtual QStringList getTemplateFileNames() const { return m_templates; }
 
     /**
-     * @return All filenames that the optimizer can store QI templates
-     * for.
+     * Check if a name is a template file name.
+     *
+     * @param name The template file name.
+     *
+     * @return True if "name" is a template file name. False otherwise.
      */
-    virtual QStringList getQITemplateNames() const {return m_QITemplates.keys();};
+    bool isTemplateFileName(const char* name) const
+      { return m_templates.contains(name); }
+
+    /**
+     * Get a QHash of the interpreted templates.
+     *
+     * @param s The structure whose templates are to be interpreted.
+     *
+     * @return A QHash of the template filename to its contents.
+     */
+    virtual QHash<QString, QString> getInterpretedTemplates(Structure* s);
+
 
     /**
      * @return All strings that identify valid generic data sets.
      */
     virtual QStringList getDataIdentifiers() {return m_data.keys();};
 
-    /**
-     * @return A user customizable string that is used in template
-     * interpretation.
-     */
-    QString getUser1() {return m_user1;};
-
-    /**
-     * @return A user customizable string that is used in template
-     * interpretation.
-     */
-    QString getUser2() {return m_user2;};
-
-    /**
-     * @return A user customizable string that is used in template
-     * interpretation.
-     */
-    QString getUser3() {return m_user3;};
-
-    /**
-     * @return A user customizable string that is used in template
-     * interpretation.
-     */
-    QString getUser4() {return m_user4;};
-
   public slots:
-    /**
-     * Set the template for the specified filename and optimization step.
-     *
-     * @param filename Filename of template
-     * @param templateData Template string
-     * @param optStepIndex Optimization step (index, starts at 0)
-     *
-     * @return True if successful, false otherwise.
-     */
-    virtual bool setTemplate(const QString &filename,
-                             const QString &templateData,
-                             int optStepIndex);
-
-    /**
-     * Set all templates for the specified filename.
-     *
-     * @param filename Filename of template
-     * @param templateData List of template strings in order of
-     * optimization step
-     *
-     * @return True if successful, false otherwise.
-     */
-    virtual bool setTemplate(const QString &filename,
-                             const QStringList &templateData);
-
-    /**
-     * Add a new optimization step for a given filename.
-     *
-     * @param filename Filename identifying the template
-     * @param templateData Template string of the new optimization
-     * step.
-     *
-     * @return True if successful, false otherwise.
-     */
-    virtual bool appendTemplate(const QString &filename,
-                                const QString &templateData);
-
-    /**
-     * Removes all template entries for the given optstep.
-     *
-     * @note This function will remove the template for the current
-     * Optimizer and QueueInterface, but will not modify any "data"
-     * entries in the Optimizer.
-     *
-     * @param optStepIndex Optimization step index to remove
-     *
-     * @return True if successful, false otherwise.
-     */
-    virtual bool removeAllTemplatesForOptStep(int optStepIndex);
 
     /**
      * Set a generic data entry.
@@ -310,30 +225,6 @@ namespace GlobalSearch {
      */
     virtual bool setData(const QString &identifier,
                          const QVariant &data);
-
-    /**
-     * @param s A user customizable string that is used in template
-     * interpretation.
-     */
-    void setUser1(const QString &s) {m_user1 = s;};
-
-    /**
-     * @param s A user customizable string that is used in template
-     * interpretation.
-     */
-    void setUser2(const QString &s) {m_user2 = s;};
-
-    /**
-     * @param s A user customizable string that is used in template
-     * interpretation.
-     */
-    void setUser3(const QString &s) {m_user3 = s;};
-
-    /**
-     * @param s A user customizable string that is used in template
-     * interpretation.
-     */
-    void setUser4(const QString &s) {m_user4 = s;};
 
     /**
      * Command line used in local execution
@@ -402,17 +293,6 @@ namespace GlobalSearch {
      */
     QString stderrFilename() const {return m_stderrFilename;};
 
-    /**
-     * Interpret all templates in m_templates at the Structure's
-     * current optimization step.
-     *
-     * @param s Structure of interest
-     *
-     * @return A hash containing the interpreted templates, key:
-     * filename, value: file contents
-     */
-    virtual QHash<QString, QString> getInterpretedTemplates(Structure *s);
-
     /// \defgroup dialog Dialog access
 
     /**
@@ -430,39 +310,7 @@ namespace GlobalSearch {
      */
     virtual QDialog* dialog();
 
-  protected slots:
-    /**
-     * Update the m_QITemplates hash.
-     *
-     * Automatically connected to m_opt's queueInterfaceChanged
-     * signal. Should not need to be called directly.
-     */
-    virtual void updateQueueInterface();
-
   protected:
-    /**
-     * @param filename Scheme or state file from which to load all
-     * templates in m_templates
-     */
-    virtual void readTemplatesFromSettings(const QString &filename = "");
-
-    /**
-     * @param filename Scheme or state file in which to write all
-     * templates in m_templates
-     */
-    virtual void writeTemplatesToSettings(const QString &filename = "");
-
-    /**
-     * @param filename Scheme or state file from which to load all
-     * user values (m_user[1-4])
-     */
-    virtual void readUserValuesFromSettings(const QString &filename = "");
-
-    /**
-     * @param filename Scheme or state file in which to write all
-     * user values (m_user[1-4])
-     */
-    virtual void writeUserValuesToSettings(const QString &filename = "");
 
     /**
      * @param filename Scheme or state file from which to load all
@@ -484,40 +332,9 @@ namespace GlobalSearch {
     //QHash<QString, QVariant> m_data;
 
     /**
-     * Determine which internal template hash contains \a filename and
-     * return a reference to the correct hash.
+     * The names of templates that this optimizer utilizes.
      */
-    QHash<QString, QStringList>& resolveTemplateHash(const QString &filename);
-
-    /**
-     * @overload
-     * Determine which internal template hash contains \a filename and
-     * return a reference to the correct hash.
-     */
-    const QHash<QString, QStringList>& resolveTemplateHash(const QString &filename) const;
-
-    /**
-     * Ensure that all template lists in m_templates and m_QITemplates
-     * contain getNumberOfOptSteps() optimization steps.
-     *
-     * If a template list has too few entries, empty strings are
-     * appended.
-     */
-    virtual void fixTemplateLengths();
-
-    /**
-     * Stores all template data for this optimizer. Key is the
-     * filename to be written and the value is a list of corresponding
-     * templates in order of optimization step.
-     */
-  //  QHash<QString, QStringList > m_templates;
-
-    /**
-     * Stores all template data for the current QueueInterface. Key is
-     * the filename to be written and the value is a list of
-     * corresponding templates in order of optimization step.
-     */
-    QHash<QString, QStringList > m_QITemplates;
+    QStringList m_templates;
 
     /**
      * File to check if optimization has complete successfully.
@@ -618,30 +435,6 @@ namespace GlobalSearch {
      * @sa m_stdoutFilename
      */
     QString m_stderrFilename;
-
-    /**
-     * User defined string that is used during template
-     * interpretation.
-     */
-    QString m_user1;
-
-    /**
-     * User defined string that is used during template
-     * interpretation.
-     */
-    QString m_user2;
-
-    /**
-     * User defined string that is used during template
-     * interpretation.
-     */
-    QString m_user3;
-
-    /**
-     * User defined string that is used during template
-     * interpretation.
-     */
-    QString m_user4;
 
     /**
      * Cached pointer to the associated OptBase instance

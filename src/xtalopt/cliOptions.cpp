@@ -543,16 +543,196 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   // We will use this later
   QString templatesDir = options.value("templatesDirectory", ".");
 
+  // Are there any queue interfaces that are remote?
+  bool anyRemote = false;
+
+  size_t numOptSteps = options.value("numOptimizationSteps", "1").toUInt();
+
+  for (size_t i = 0; i < numOptSteps; ++i) {
+
+    xtalopt.appendOptStep();
+
+    QString optInd = QString::number(i + 1);
+
 #ifdef ENABLE_SSH
-  xtalopt.setQueueInterface(options["queueInterface"].toLower().toStdString());
+    xtalopt.setQueueInterface(
+      i, options["queueInterface " + optInd].toLower().toStdString()
+    );
 #else
-  if (options["queueInterface"].toLower() != "local") {
-    qDebug() << "Error: SSH is disabled, so only 'local' interface is allowed.";
-    qDebug() << "Please use the option 'queueInterface = local'";
-    return false;
-  }
-  xtalopt.setQueueInterface("local");
+    if (options["queueInterface " + optInd].toLower() != "local") {
+      qDebug() << "Error: SSH is disabled, so only 'local' interface is"
+               << "allowed.";
+      qDebug() << "Please use the option 'queueInterface <optStep> = local'";
+      return false;
+    }
+    xtalopt.setQueueInterface(i, "local");
 #endif
+
+#ifdef ENABLE_SSH
+
+    bool remote = (options["queueInterface " + optInd].toLower() != "local");
+
+    // We have additional things to set if we are remote
+    if (remote) {
+      anyRemote = true;
+      RemoteQueueInterface* remoteQueue =
+        qobject_cast<RemoteQueueInterface*>(xtalopt.queueInterface(i + 1));
+
+      if (!options["submitCommand " + optInd].isEmpty())
+        remoteQueue->setSubmitCommand(options["submitCommand " + optInd]);
+      if (!options["cancelCommand " + optInd].isEmpty())
+        remoteQueue->setCancelCommand(options["cancelCommand " + optInd]);
+      if (!options["statusCommand " + optInd].isEmpty())
+        remoteQueue->setStatusCommand(options["statusCommand " + optInd]);
+    }
+#endif
+
+    QString optimizerName = options["optimizer " + optInd].toLower();
+    QString queueName = xtalopt.queueInterface(i)->getIDString().toLower();
+    xtalopt.setOptimizer(i, optimizerName.toStdString());
+    XtalOptOptimizer* optimizer =
+      static_cast<XtalOptOptimizer*>(xtalopt.optimizer(i));
+    if (optimizerName == "castep") {
+      if (!addOptimizerTemplate(xtalopt, "castepCellTemplates " + optInd,
+                                queueName, i, options)) {
+        return false;
+      }
+
+      if (!addOptimizerTemplate(xtalopt, "castepCellTemplates " + optInd,
+                                queueName, i, options)) {
+        return false;
+      }
+    }
+    else if (options["optimizer"].toLower() == "gulp") {
+      if (!addOptimizerTemplate(xtalopt, "ginTemplates " + optInd,
+                                queueName, i, options)) {
+        return false;
+      }
+    }
+    else if (options["optimizer"].toLower() == "pwscf") {
+      if (!addOptimizerTemplate(xtalopt, "pwscfTemplates " + optInd,
+                                queueName, i, options)) {
+        return false;
+      }
+    }
+    else if (options["optimizer"].toLower() == "siesta") {
+      if (!addOptimizerTemplate(xtalopt, "fdfTemplates " + optInd,
+                                queueName, i, options)) {
+        return false;
+      }
+
+      // Generating the PSF files require a little bit more work...
+      // Generate list of symbols
+      QVariantList psfInfo;
+      QStringList symbols;
+      QList<uint> atomicNums = xtalopt.comp.keys();
+      qSort(atomicNums);
+
+      for (const auto& atomicNum: atomicNums) {
+        if (atomicNum != 0)
+          symbols.append(ElemInfo::getAtomicSymbol(atomicNum).c_str());
+      }
+      qSort(symbols);
+      QVariantHash hash;
+      for (const auto& symbol: symbols) {
+        QString filename = options["psffile " + symbol.toLower() + " " + optInd];
+        if (filename.isEmpty()) {
+          qDebug() << "Error: no PSF file found for atom type" << symbol
+                   << "and opt step:" << optInd;
+          qDebug() << "You must set the PSF file in the options like so:";
+          QString tmp = "psfFile " + symbol + " " + optInd +
+                        " = /path/to/siesta_psfs/symbol.psf";
+          qDebug() << tmp;
+          return false;
+        }
+
+        hash.insert(symbol, QVariant(filename));
+      }
+
+      psfInfo.append(QVariant(hash));
+
+      // Set composition in optimizer
+      QVariantList toOpt;
+      for (const auto& atomicNum: atomicNums)
+        toOpt.append(atomicNum);
+
+      optimizer->setData("Composition", toOpt);
+
+      // Set PSF info
+      optimizer->setData("PSF info", QVariant(psfInfo));
+    }
+    else if (options["optimizer"].toLower() == "vasp") {
+      if (!addOptimizerTemplate(xtalopt, "incarTemplates " + optInd,
+                                queueName, i, options)) {
+        return false;
+      }
+
+      if (!addOptimizerTemplate(xtalopt, "kpointsTemplates " + optInd,
+                                queueName, i, options)) {
+        return false;
+      }
+
+      // Generating the POTCAR file requires a little bit more work...
+      // Generate list of symbols
+      QVariantList potcarInfo;
+      QStringList symbols;
+      QList<uint> atomicNums = xtalopt.comp.keys();
+      qSort(atomicNums);
+
+      for (const auto& atomicNum: atomicNums) {
+        if (atomicNum != 0)
+          symbols.append(ElemInfo::getAtomicSymbol(atomicNum).c_str());
+      }
+      qSort(symbols);
+      QVariantHash hash;
+      for (const auto& symbol: symbols) {
+        QString filename = options["potcarfile " + symbol.toLower() + " " +
+                                   optInd];
+        if (filename.isEmpty()) {
+          qDebug() << "Error: no POTCAR file found for atom type" << symbol
+                   << "and opt step" << optInd;
+          qDebug() << "You must set the POTCAR file in the options like so:";
+          QString tmp = "potcarFile " + symbol + " " + optInd +
+                        " = /path/to/vasp_potcars/symbol/POTCAR";
+          qDebug() << tmp;
+          return false;
+        }
+
+        hash.insert(symbol, QVariant(filename));
+      }
+
+      potcarInfo.append(QVariant(hash));
+
+      // Set composition in optimizer
+      QVariantList toOpt;
+      for (const auto& atomicNum: atomicNums)
+        toOpt.append(atomicNum);
+
+      optimizer->setData("Composition", toOpt);
+
+      // Set POTCAR info
+      optimizer->setData("POTCAR info", QVariant(potcarInfo));
+    }
+    else {
+      qDebug() << "Error: unknown optimizer:" << options["optimizer"];
+      return false;
+    }
+
+#ifdef ENABLE_SSH
+    if (remote) {
+      // We need to add the job templates if we are remote
+      if (!addOptimizerTemplate(xtalopt, "jobTemplates " + optInd,
+                                queueName, i, options)) {
+        return false;
+      }
+    }
+#endif
+
+    // This will only get used if we are local
+    if (!options["exeLocation"].isEmpty())
+      optimizer->setLocalRunCommand(options["exeLocation"]);
+
+  }
 
   xtalopt.filePath = options.value("localWorkingDirectory",
                                    "localWorkingDirectory");
@@ -562,207 +742,16 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.m_logErrorDirs =
     toBool(options.value("logErrorDirectories", "false"));
 
-  size_t numOptSteps = options.value("numOptimizationSteps", "1").toUInt();
-
-#ifdef ENABLE_SSH
-  bool remote = (options["queueInterface"].toLower() != "local");
-
-  // We have additional things to set if we are remote
-  if (remote) {
+  if (anyRemote) {
+    xtalopt.setQueueRefreshInterval(
+      options.value("queueRefreshInterval", "10").toUInt());
+    xtalopt.setCleanRemoteOnStop(
+      toBool(options.value("cleanRemoteDirs", "false")));
     xtalopt.host = options["host"];
     xtalopt.port = options.value("port", "22").toUInt();
     xtalopt.username = options["user"];
-
     xtalopt.rempath = options["remoteWorkingDirectory"];
-
-    RemoteQueueInterface* remoteQueue =
-      qobject_cast<RemoteQueueInterface*>(xtalopt.queueInterface());
-
-    if (!options["submitCommand"].isEmpty())
-      remoteQueue->setSubmitCommand(options["submitCommand"]);
-    if (!options["cancelCommand"].isEmpty())
-      remoteQueue->setCancelCommand(options["cancelCommand"]);
-    if (!options["statusCommand"].isEmpty())
-      remoteQueue->setStatusCommand(options["statusCommand"]);
-
-    remoteQueue->setInterval(
-      options.value("queueRefreshInterval", "10").toUInt());
-    remoteQueue->setCleanRemoteOnStop(
-      toBool(options.value("cleanRemoteDirs", "false")));
   }
-#endif
-
-  QString optimizerName = options["optimizer"].toLower();
-  xtalopt.setOptimizer(optimizerName.toStdString());
-  XtalOptOptimizer* optimizer =
-    static_cast<XtalOptOptimizer*>(xtalopt.optimizer());
-  if (optimizerName == "castep") {
-    if (!addOptimizerTemplates("castepCellTemplates", options, numOptSteps,
-                               *optimizer, *xtalopt.queueInterface())) {
-      return false;
-    }
-
-    if (!addOptimizerTemplates("castepParamTemplates", options, numOptSteps,
-                               *optimizer, *xtalopt.queueInterface())) {
-      return false;
-    }
-  }
-  else if (options["optimizer"].toLower() == "gulp") {
-    if (!addOptimizerTemplates("ginTemplates", options, numOptSteps,
-                               *optimizer, *xtalopt.queueInterface())) {
-      return false;
-    }
-  }
-  else if (options["optimizer"].toLower() == "pwscf") {
-    if (!addOptimizerTemplates("pwscfTemplates", options, numOptSteps,
-                               *optimizer, *xtalopt.queueInterface())) {
-      return false;
-    }
-  }
-  else if (options["optimizer"].toLower() == "siesta") {
-    if (!addOptimizerTemplates("fdfTemplates", options, numOptSteps,
-                               *optimizer, *xtalopt.queueInterface())) {
-      return false;
-    }
-
-    // Generating the PSF files require a little bit more work...
-    // Generate list of symbols
-    QVariantList psfInfo;
-    QStringList symbols;
-    QList<uint> atomicNums = xtalopt.comp.keys();
-    qSort(atomicNums);
-
-    for (const auto& atomicNum: atomicNums) {
-      if (atomicNum != 0)
-        symbols.append(ElemInfo::getAtomicSymbol(atomicNum).c_str());
-    }
-    qSort(symbols);
-    QVariantHash hash;
-    for (const auto& symbol: symbols) {
-      QString filename = options[QString("psffile ") + symbol.toLower()];
-      if (filename.isEmpty()) {
-        qDebug() << "Error: no PSF file found for atom type:" << symbol;
-        qDebug() << "You must set the PSF file in the options like so:";
-        QString tmp = QString("psfFile ") + symbol + " = /path/to/siesta_psfs/symbol.psf";
-        qDebug() << tmp;
-        return false;
-      }
-
-      hash.insert(symbol, QVariant(filename));
-    }
-
-    for (size_t i = 0; i < numOptSteps; ++i)
-      psfInfo.append(QVariant(hash));
-
-    // Set composition in optimizer
-    QVariantList toOpt;
-    for (const auto& atomicNum: atomicNums)
-      toOpt.append(atomicNum);
-
-    optimizer->setData("Composition", toOpt);
-
-    // Set PSF info
-    optimizer->setData("PSF info", QVariant(psfInfo));
-
-    // Just so the program doesn't crash, we need an empty version of this
-    optimizer->appendTemplate("xtal.psf", "");
-  }
-  else if (options["optimizer"].toLower() == "vasp") {
-    if (!addOptimizerTemplates("incarTemplates", options, numOptSteps,
-                               *optimizer, *xtalopt.queueInterface())) {
-      return false;
-    }
-
-    if (!addOptimizerTemplates("kpointsTemplates", options, numOptSteps,
-                               *optimizer, *xtalopt.queueInterface())) {
-      return false;
-    }
-
-    // Generating the POTCAR file requires a little bit more work...
-    // Generate list of symbols
-    QVariantList potcarInfo;
-    QStringList symbols;
-    QList<uint> atomicNums = xtalopt.comp.keys();
-    qSort(atomicNums);
-
-    for (const auto& atomicNum: atomicNums) {
-      if (atomicNum != 0)
-        symbols.append(ElemInfo::getAtomicSymbol(atomicNum).c_str());
-    }
-    qSort(symbols);
-    QVariantHash hash;
-    for (const auto& symbol: symbols) {
-      QString filename = options[QString("potcarfile ") + symbol.toLower()];
-      if (filename.isEmpty()) {
-        qDebug() << "Error: no POTCAR file found for atom type:" << symbol;
-        qDebug() << "You must set the POTCAR file in the options like so:";
-        QString tmp = QString("potcarFile ") + symbol + " = /path/to/vasp_potcars/symbol/POTCAR";
-        qDebug() << tmp;
-        return false;
-      }
-
-      hash.insert(symbol, QVariant(filename));
-    }
-
-    for (size_t i = 0; i < numOptSteps; ++i)
-      potcarInfo.append(QVariant(hash));
-
-    // Set composition in optimizer
-    QVariantList toOpt;
-    for (const auto& atomicNum: atomicNums)
-      toOpt.append(atomicNum);
-
-    optimizer->setData("Composition", toOpt);
-
-    // Set POTCAR info
-    optimizer->setData("POTCAR info", QVariant(potcarInfo));
-  }
-  else {
-    qDebug() << "Error: unknown optimizer:" << options["optimizer"];
-    return false;
-  }
-
-  // The first opt step should just be a blank one. Remove it.
-  optimizer->removeAllTemplatesForOptStep(0);
-
-#ifdef ENABLE_SSH
-  if (remote) {
-    // We need to add the job templates if we are remote
-    if (!addOptimizerTemplates("jobTemplates", options, numOptSteps,
-                               *optimizer, *xtalopt.queueInterface())) {
-      return false;
-    }
-  }
-#endif
-
-  // Let us make sure all the optimization steps have the same number of steps
-  for (const auto& templateName: optimizer->getTemplateNames()) {
-    if (optimizer->getTemplate(templateName).size() != numOptSteps &&
-        templateName != "POTCAR" && templateName != "xtal.psf") {
-      qDebug() << "Error: template '" << templateName << "' does not"
-               << "have the correct number of optimization steps ("
-               << numOptSteps << ")!";
-      qDebug() << templateName << " has "
-               << optimizer->getTemplate(templateName).size() << " steps";
-      return false;
-    }
-  }
-
-  // Let us make sure all the QI templates have the same number of steps
-  for (const auto& templateName: optimizer->getQITemplateNames()) {
-    if (optimizer->getTemplate(templateName).size() != numOptSteps) {
-      qDebug() << "Error: QITemplate '" << templateName << "' does not"
-               << "have the correct number of optimization steps ("
-               << numOptSteps << ")!";
-      qDebug() << templateName << " has "
-               << optimizer->getTemplate(templateName).size() << " steps";
-      return false;
-    }
-  }
-
-  // This will only get used if we are local
-  if (!options["exeLocation"].isEmpty())
-    optimizer->setLocalRunCommand(options["exeLocation"]);
 
   return true;
 }
@@ -881,7 +870,7 @@ QStringList XtalOptCLIOptions::toList(const QString& s)
 }
 
 // Convert the template names to the name used by the optimizer
-QString convertedTemplateName(const QString& s, const QueueInterface& queue)
+QString convertedTemplateName(const QString& s, const QString& queueName)
 {
   if (s.compare("castepCellTemplates", Qt::CaseInsensitive) == 0)
     return "xtal.cell";
@@ -899,18 +888,17 @@ QString convertedTemplateName(const QString& s, const QueueInterface& queue)
     return "KPOINTS";
 
   if (s.compare("jobTemplates", Qt::CaseInsensitive) == 0) {
-    QString id = queue.getIDString();
-    if (id.compare("LoadLeveler", Qt::CaseInsensitive) == 0)
+    if (queueName.compare("LoadLeveler", Qt::CaseInsensitive) == 0)
       return "job.ll";
-    else if (id.compare("LSF", Qt::CaseInsensitive) == 0)
+    else if (queueName.compare("LSF", Qt::CaseInsensitive) == 0)
       return "job.lsf";
-    else if (id.compare("PBS", Qt::CaseInsensitive) == 0)
+    else if (queueName.compare("PBS", Qt::CaseInsensitive) == 0)
       return "job.pbs";
-    else if (id.compare("SGE", Qt::CaseInsensitive) == 0)
+    else if (queueName.compare("SGE", Qt::CaseInsensitive) == 0)
       return "job.sh";
-    else if (id.compare("SLURM", Qt::CaseInsensitive) == 0)
+    else if (queueName.compare("SLURM", Qt::CaseInsensitive) == 0)
       return "job.slurm";
-    qDebug() << "Unknown queue id:" << id;
+    qDebug() << "Unknown queue id:" << queueName;
     return "job.sh";
   }
 
@@ -919,33 +907,34 @@ QString convertedTemplateName(const QString& s, const QueueInterface& queue)
 }
 
 
-bool XtalOptCLIOptions::addOptimizerTemplates(
+bool XtalOptCLIOptions::addOptimizerTemplate(
+                                    XtalOpt& xtalopt,
                                     const QString& templateName,
-                                    const QHash<QString, QString>& options,
-                                    size_t numOptSteps,
-                                    XtalOptOptimizer& optimizer,
-                                    QueueInterface& queue)
+                                    const QString& queueName,
+                                    size_t optStep,
+                                    const QHash<QString, QString>& options)
 {
-  QStringList filenames = toList(options[templateName]);
-  if (options[templateName].isEmpty() || filenames.size() != numOptSteps) {
-    qDebug() << "Error: the number of " << templateName << " files must be"
-             << "equal to the number of optimization steps.";
+  QString filename = options[templateName];
+  if (filename.isEmpty()) {
+    qDebug() << "Error in" << __FUNCTION__ << ": " << templateName
+             << "is missing!";
     return false;
   }
 
   // Now we have to open the files and read their contents
-  for (const auto& filename: filenames) {
-    QFile file(options.value("templatesDirectory", ".") + "/" + filename);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      qDebug() << "Error: could not open file '" << filename << "' in"
-               << "the templates directory: "
-               << options.value("templatesDirectory", ".");
-      return false;
-    }
-    QString text = file.readAll();
-    optimizer.appendTemplate(convertedTemplateName(templateName, queue),
-                             text);
+  QFile file(options.value("templatesDirectory", ".") + "/" + filename);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qDebug() << "Error: could not open file '" << filename << "' in"
+             << "the templates directory: "
+             << options.value("templatesDirectory", ".");
+    return false;
   }
+  QString text = file.readAll();
+  xtalopt.setTemplate(
+    optStep,
+    convertedTemplateName(templateName, queueName).toStdString(),
+    text.toStdString()
+  );
 
   return true;
 }

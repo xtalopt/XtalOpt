@@ -30,8 +30,8 @@ namespace XtalOpt {
     // None here!
 
     // Set allowed filenames, e.g.
-    m_templates.insert("xtal.param",QStringList(""));
-    m_templates.insert("xtal.cell",QStringList(""));
+    m_templates.append("xtal.param");
+    m_templates.append("xtal.cell");
 
     // Setup for completion values
     m_completionFilename = "xtal.castep";

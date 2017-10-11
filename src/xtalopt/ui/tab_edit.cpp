@@ -44,26 +44,26 @@ namespace XtalOpt {
     for (unsigned int i = 0; i < numOptimizers; ++i) {
       switch (i) {
       case XtalOpt::OT_VASP:
-        m_optimizers.append(p->optimizers()["vasp"].get());
+        m_optimizers.append("vasp");
         break;
       case XtalOpt::OT_GULP:
-        m_optimizers.append(p->optimizers()["gulp"].get());
+        m_optimizers.append("gulp");
         break;
       case XtalOpt::OT_PWscf:
-        m_optimizers.append(p->optimizers()["pwscf"].get());
+        m_optimizers.append("pwscf");
         break;
       case XtalOpt::OT_CASTEP:
-        m_optimizers.append(p->optimizers()["castep"].get());
+        m_optimizers.append("castep");
         break;
       case XtalOpt::OT_SIESTA:
-        m_optimizers.append(p->optimizers()["siesta"].get());
+        m_optimizers.append("siesta");
         break;
      }
     }
 
     // Set the correct index
-    if (m_opt->optimizer()) {
-      int optIndex = m_optimizers.indexOf(m_opt->optimizer());
+    if (m_opt->optimizer(0)) {
+      int optIndex = m_optimizers.indexOf(m_opt->optimizer(0)->getIDString());
       ui_combo_optimizers->setCurrentIndex(optIndex);
     }
 
@@ -73,23 +73,23 @@ namespace XtalOpt {
     for (unsigned int i = 0; i < numQIs; ++i) {
       switch (i) {
       case XtalOpt::QI_LOCAL:
-        m_queueInterfaces.append(p->queueInterfaces()["local"].get());
+        m_queueInterfaces.append("local");
         break;
 #ifdef ENABLE_SSH
       case XtalOpt::QI_PBS:
-        m_queueInterfaces.append(p->queueInterfaces()["pbs"].get());
+        m_queueInterfaces.append("pbs");
         break;
       case XtalOpt::QI_SGE:
-        m_queueInterfaces.append(p->queueInterfaces()["sge"].get());
+        m_queueInterfaces.append("sge");
         break;
       case XtalOpt::QI_SLURM:
-        m_queueInterfaces.append(p->queueInterfaces()["slurm"].get());
+        m_queueInterfaces.append("slurm");
         break;
       case XtalOpt::QI_LSF:
-        m_queueInterfaces.append(p->queueInterfaces()["lsf"].get());
+        m_queueInterfaces.append("lsf");
         break;
       case XtalOpt::QI_LOADLEVELER:
-        m_queueInterfaces.append(p->queueInterfaces()["loadleveler"].get());
+        m_queueInterfaces.append("loadleveler");
         break;
         //
         // Don't forget to modify numQIs above, or additions here won't matter!
@@ -99,8 +99,10 @@ namespace XtalOpt {
     }
 
     // Set the queue interface index
-    if (m_opt->queueInterface()) {
-      int qiIndex = m_queueInterfaces.indexOf(m_opt->queueInterface());
+    if (m_opt->queueInterface(0)) {
+      int qiIndex = m_queueInterfaces.indexOf(
+                      m_opt->queueInterface(0)->getIDString()
+                    );
       ui_combo_queueInterfaces->setCurrentIndex(qiIndex);
     }
 
@@ -119,35 +121,16 @@ namespace XtalOpt {
   {
   }
 
-  void TabEdit::writeSettings(const QString &filename) {
+  void TabEdit::writeSettings(const QString &filename)
+  {
+    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
+
+    // We have a special function for writing edit settings
+    xtalopt->writeEditSettings(filename);
   }
 
   void TabEdit::readSettings(const QString &filename)
   {
-    updateGUI();
-
-    XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
-    // Do we need to update the POTCAR info?
-    if (ui_combo_optimizers->currentIndex() == XtalOpt::OT_VASP &&
-        !xtalopt->comp.empty()) {
-      VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
-      if (!vopt->POTCARInfoIsUpToDate(xtalopt->comp.keys())) {
-        if (generateVASP_POTCAR_info()) {
-          vopt->buildPOTCARs();
-        }
-      }
-    }
-
-    if (ui_combo_optimizers->currentIndex() == XtalOpt::OT_SIESTA &&
-      !xtalopt->comp.empty()) {
-      SIESTAOptimizer *sopt = qobject_cast<SIESTAOptimizer*>(m_opt->optimizer());
-      if (!sopt->PSFInfoIsUpToDate(xtalopt->comp.keys())) {
-        if (generateSIESTA_PSF_info()) {
-          sopt->buildPSFs();
-        }
-      }
-    }
     updateGUI();
   }
 
@@ -186,100 +169,13 @@ namespace XtalOpt {
       return;
     }
 
-    QStringList filenames = getTemplateNames();
+    QStringList filenames = getTemplateNames(getCurrentOptStep());
     int templateInd = ui_combo_templates->currentIndex();
     QString templateName = ui_combo_templates->currentText();
     Q_ASSERT(templateInd >= 0 && templateInd < filenames.size());
     Q_ASSERT(templateName.compare(filenames.at(templateInd)) == 0);
 
-    if (m_opt->optimizer()->getIDString().compare("VASP") == 0 &&
-        templateName.compare("POTCAR") == 0) {
-
-      if (m_opt->optimizer()->getNumberOfOptSteps() !=
-          ui_list_optStep->count()) {
-        populateOptStepList();
-      }
-
-      int optStepIndex = ui_list_optStep->currentRow();
-      Q_ASSERT(optStepIndex >= 0 &&
-               optStepIndex < m_opt->optimizer()->getNumberOfOptSteps());
-
-      // Display appropriate entry widget.
-      ui_list_edit->setVisible(true);
-      ui_edit_edit->setVisible(false);
-
-      XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
-      VASPOptimizer *vopt = qobject_cast<VASPOptimizer*>(m_opt->optimizer());
-      // Do we need to update the POTCAR info?
-      if (!vopt->POTCARInfoIsUpToDate(xtalopt->comp.keys())) {
-        if (!generateVASP_POTCAR_info()) {
-          return;
-        }
-        vopt->buildPOTCARs();
-      }
-
-      // Build list in GUI
-      // "POTCAR info" is of type
-      // QList<QHash<QString, QString> >
-      // e.g. a list of hashes containing
-      // [atomic symbol : pseudopotential file] pairs
-      QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
-      QList<QString> symbols = potcarInfo.at(optStepIndex).toHash().keys();
-      qSort(symbols);
-      ui_list_edit->clear();
-      for (int i = 0; i < symbols.size(); i++) {
-        ui_list_edit->addItem(tr("%1: %2")
-                               .arg(symbols.at(i), 2)
-                               .arg(potcarInfo.at(optStepIndex).toHash()[symbols.at(i)].toString()));
-      }
-    } else if (m_opt->optimizer()->getIDString().compare("SIESTA") == 0 &&
-        templateName.compare("xtal.psf") == 0) {
-
-      if (m_opt->optimizer()->getNumberOfOptSteps() !=
-          ui_list_optStep->count()) {
-        populateOptStepList();
-      }
-
-      int optStepIndex = ui_list_optStep->currentRow();
-      Q_ASSERT(optStepIndex >= 0 &&
-               optStepIndex < m_opt->optimizer()->getNumberOfOptSteps());
-
-      // Display appropriate entry widget.
-      ui_list_edit->setVisible(true);
-      ui_edit_edit->setVisible(false);
-
-      XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
-      SIESTAOptimizer *sopt = qobject_cast<SIESTAOptimizer*>(m_opt->optimizer());
-      // Do we need to update the PSFCAR info?
-      if (!sopt->PSFInfoIsUpToDate(xtalopt->comp.keys())) {
-        if (!generateSIESTA_PSF_info()) {
-          return;
-        }
-        sopt->buildPSFs();
-      }
-
-      // Build list in GUI
-      // "PSF info" is of type
-      // QList<QHash<QString, QString> >
-      // e.g. a list of hashes containing
-      // [atomic symbol : pseudopotential file] pairs
-      QVariantList psfInfo = m_opt->optimizer()->getData("PSF info").toList();
-      QList<QString> symbols = psfInfo.at(optStepIndex).toHash().keys();
-      qSort(symbols);
-      ui_list_edit->clear();
-      for (int i = 0; i < symbols.size(); i++) {
-        ui_list_edit->addItem(tr("%1: %2")
-                               .arg(symbols.at(i), 2)
-                               .arg(psfInfo.at(optStepIndex).toHash()[symbols.at(i)].toString()));
-      }
-    }
-
-    // Default for all templates using text entry
-    else {
-      AbstractEditTab::updateEditWidget();
-    }
+    AbstractEditTab::updateEditWidget();
   }
 
   void TabEdit::appendOptStep()
@@ -299,7 +195,7 @@ namespace XtalOpt {
   void TabEdit::changePOTCAR(QListWidgetItem *item)
   {
     // If the optimizer isn't VASP, just return...
-    if (m_opt->optimizer()->getIDString() != "VASP") return;
+    if (getCurrentOptimizer()->getIDString() != "VASP") return;
 
     QSettings settings;
 
@@ -330,19 +226,19 @@ namespace XtalOpt {
     // QList<QHash<QString, QString> >
     // e.g. a list of hashes containing
     // [atomic symbol : pseudopotential file] pairs
-    QVariantList potcarInfo = m_opt->optimizer()->getData("POTCAR info").toList();
+    QVariantList potcarInfo =
+      getCurrentOptimizer()->getData("POTCAR info").toList();
     QVariantHash hash = potcarInfo.at(ui_list_optStep->currentRow()).toHash();
     hash.insert(symbol,QVariant(filename));
     potcarInfo.replace(ui_list_optStep->currentRow(), hash);
-    m_opt->optimizer()->setData("POTCAR info", potcarInfo);
-    qobject_cast<VASPOptimizer*>(m_opt->optimizer())->buildPOTCARs();
+    getCurrentOptimizer()->setData("POTCAR info", potcarInfo);
     updateEditWidget();
   }
 
   void TabEdit::changePSF(QListWidgetItem *item)
   {
     // If the optimizer isn't siesta, just return...
-    if (m_opt->optimizer()->getIDString() != "SIESTA") return;
+    if (getCurrentOptimizer()->getIDString() != "SIESTA") return;
 
     QSettings settings;
 
@@ -370,14 +266,14 @@ namespace XtalOpt {
     // QList<QHash<QString, QString> >
     // e.g. a list of hashes containing
     // [atomic symbol : pseudopotential file] pairs
-    QVariantList psfInfo = m_opt->optimizer()->getData("PSF info").toList();
+    QVariantList psfInfo = getCurrentOptimizer()->getData("PSF info").toList();
     QVariantHash hash = psfInfo.at(ui_list_optStep->currentRow()).toHash();
     hash.insert(symbol,QVariant(filename));
     psfInfo.replace(ui_list_optStep->currentRow(), hash);
-    m_opt->optimizer()->setData("PSF info", psfInfo);
-    qobject_cast<SIESTAOptimizer*>(m_opt->optimizer())->buildPSFs();
+    getCurrentOptimizer()->setData("PSF info", psfInfo);
     updateEditWidget();
   }
+
   bool TabEdit::generateVASP_POTCAR_info()
   {
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
@@ -426,19 +322,17 @@ namespace XtalOpt {
       hash.insert(symbols.at(i), QVariant(filename));
     }
 
-    for (int i = 0; i < m_opt->optimizer()->getNumberOfOptSteps(); i++) {
-      potcarInfo.append(QVariant(hash));
-    }
+    potcarInfo.append(QVariant(hash));
 
     // Set composition in optimizer
     QVariantList toOpt;
     for (int i = 0; i < atomicNums.size(); i++) {
       toOpt.append(atomicNums.at(i));
     }
-    m_opt->optimizer()->setData("Composition", toOpt);
+    getCurrentOptimizer()->setData("Composition", toOpt);
 
     // Set POTCAR info
-    m_opt->optimizer()->setData("POTCAR info", QVariant(potcarInfo));
+    getCurrentOptimizer()->setData("POTCAR info", QVariant(potcarInfo));
 
     updateEditWidget();
     return true;
@@ -492,19 +386,18 @@ namespace XtalOpt {
       hash.insert(symbols.at(i), QVariant(filename));
 
         }
-    for (int i = 0; i < m_opt->optimizer()->getNumberOfOptSteps(); i++) {
-      psfInfo.append(QVariant(hash));
-    }
+
+    psfInfo.append(QVariant(hash));
 
     // Set composition in optimizer
     QVariantList toOpt;
     for (int i = 0; i < atomicNums.size(); i++) {
       toOpt.append(atomicNums.at(i));
     }
-    m_opt->optimizer()->setData("Composition", toOpt);
+    getCurrentOptimizer()->setData("Composition", toOpt);
 
     // Set POTCAR info
-    m_opt->optimizer()->setData("PSF info", QVariant(psfInfo));
+    getCurrentOptimizer()->setData("PSF info", QVariant(psfInfo));
 
     updateEditWidget();
     return true;

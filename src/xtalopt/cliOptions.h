@@ -181,27 +181,25 @@ class XtalOptCLIOptions {
   static QStringList toList(const QString& s);
 
   /**
-   * Reads the 'templateName' from the options QHash, splits the
-   * list of files into separate files, reads the files and adds the
-   * templates to the optimizers.
+   * Reads the 'templateName' from the options QHash, reads the resulting
+   * file name and sets it into XtalOpt.
    *
+   * @param xtalopt The XtalOpt object for which to set the template.
    * @param templateName The name of the template to add to the optimizer. This
    *                     should be a set option in the options object.
+   * @param queueName The queue name for the current step.
+   * @param optSteps The opt step for which to add the template.
    * @param options The options QHash containing the value for the
    *                template name and the templatesDirectory.
-   * @param numOptSteps The number of optimization steps.
-   * @param optimizer The optimizer for which to add the template.
-   * @param queue The queue (used for 'jobTemplates' to determine queue
-   *              template name).
    *
    * @return True on success and false on failure. An error message will
    *         be printed with qDebug() if it fails.
    */
-  static bool addOptimizerTemplates(const QString& templateName,
-                                    const QHash<QString, QString>& options,
-                                    size_t numOptSteps,
-                                    XtalOptOptimizer& optimizer,
-                                    GlobalSearch::QueueInterface& queue);
+  static bool addOptimizerTemplate(XtalOpt& xtalopt,
+                                   const QString& templateName,
+                                   const QString& queueName,
+                                   size_t optStep,
+                                   const QHash<QString, QString>& options);
   /**
    * Checks the xtalopt settings (@p xtalopt) to see if the mitosis settings
    * are fine. Returns true if they are. Returns false if they are not.

@@ -32,7 +32,7 @@ namespace XtalOpt {
     // None here!
 
     // Set allowed filenames, e.g.
-    m_templates.insert("xtal.gin",QStringList(""));
+    m_templates.append("xtal.gin");
 
     // Setup for completion values
     m_completionFilename = "xtal.got";

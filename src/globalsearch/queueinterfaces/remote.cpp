@@ -27,9 +27,7 @@ namespace GlobalSearch {
 
   RemoteQueueInterface::RemoteQueueInterface(OptBase *parent,
                                              const QString &settingFile) :
-    QueueInterface(parent),
-    m_interval(1),
-    m_cleanRemoteOnStop(false)
+    QueueInterface(parent)
   {
     m_idString = "AbstractRemote";
   }

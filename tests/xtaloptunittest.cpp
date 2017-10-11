@@ -81,8 +81,10 @@ namespace XtalOpt {
 
   void XtalOptUnitTest::setOptimizer()
   {
-    m_opt->setOptimizer("gulp");
-    QVERIFY(m_opt->optimizer() != 0);
+    if (m_opt->getNumOptSteps() == 0)
+      m_opt->appendOptStep();
+    m_opt->setOptimizer(0, "gulp");
+    QVERIFY(m_opt->optimizer(0) != 0);
   }
 
   void XtalOptUnitTest::loadTest()

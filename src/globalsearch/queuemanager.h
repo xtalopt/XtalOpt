@@ -80,7 +80,7 @@ if (!dir.exists()) {
 }
 newStructure->setFileName(locpath_s);
 newStructure->setRempath(rempath_s);
-newStructure->setCurrentOptStep(1);
+newStructure->setCurrentOptStep(0);
 newStructure->findSpaceGroup();
 // unlockForNaming(Structure*) unlocks the naming mutex and
 // begins processing the structure that is passed.
@@ -298,7 +298,7 @@ m_queue->unlockForNaming(newStructure);
      * @param s The Structure to be submitted
      */
     void addStructureToSubmissionQueue(GlobalSearch::Structure *s) {
-      addStructureToSubmissionQueue(s, 0);}
+      addStructureToSubmissionQueue(s, -1);}
 
     /**
      * Move \b this to the QThread specified in the constructor and

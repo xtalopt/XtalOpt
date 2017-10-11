@@ -54,7 +54,6 @@ namespace GlobalSearch {
     bool startJob(Structure *s) override;
     bool stopJob(Structure *s) override;
     QueueInterface::QueueStatus getStatus(Structure *s) const override;
-    void setInterval(int sec) override;
 
   protected:
     // Unit test these:

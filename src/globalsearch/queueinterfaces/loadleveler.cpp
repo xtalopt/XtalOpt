@@ -165,8 +165,6 @@ void LoadLevelerQueueInterface::readSettings(const QString &filename)
   m_submitCommand  = settings->value("llsubmit", "llsubmit").toString();
   m_statusCommand       = settings->value("llq",      "llq").toString();
   m_cancelCommand  = settings->value("llcancel", "llcancel").toString();
-  this->setInterval(settings->value("interval", 20).toInt());
-  m_cleanRemoteOnStop = settings->value("cleanRemoteOnStop", false).toBool();
 
   settings->endGroup();
   settings->endGroup();
@@ -196,8 +194,6 @@ void LoadLevelerQueueInterface::writeSettings(const QString &filename)
   settings->setValue("llsubmit",  m_submitCommand);
   settings->setValue("llq", m_statusCommand);
   settings->setValue("llcancel",  m_cancelCommand);
-  settings->setValue("interval",  m_interval);
-  settings->setValue("cleanRemoteOnStop", m_cleanRemoteOnStop);
 
   settings->endGroup();
   settings->endGroup();
@@ -266,7 +262,7 @@ bool LoadLevelerQueueInterface::stopJob(Structure *s)
 
   // jobid has not been set, cannot delete!
   if (s->getJobID() == 0) {
-    if (m_cleanRemoteOnStop) {
+    if (m_opt->cleanRemoteOnStop()) {
       this->cleanRemoteDirectory(s, ssh);
     }
     m_opt->ssh()->unlockConnection(ssh);
@@ -324,7 +320,7 @@ QueueInterface::QueueStatus LoadLevelerQueueInterface::getStatus(Structure *s) c
     if (status.isEmpty()) {
       // check if the output file is absent
       bool exists;
-      if (!m_opt->optimizer()->checkIfOutputFileExists(s, &exists)) {
+      if (!getCurrentOptimizer(s)->checkIfOutputFileExists(s, &exists)) {
         return QueueInterface::CommunicationError;
       }
       if (!exists) {
@@ -359,7 +355,7 @@ QueueInterface::QueueStatus LoadLevelerQueueInterface::getStatus(Structure *s) c
   else if (status.isEmpty()) { // Entry is missing from queue. Were the output files written?
     locker.unlock();
     bool outputFileExists;
-    if (!m_opt->optimizer()->checkIfOutputFileExists(s, &outputFileExists) ) {
+    if (!getCurrentOptimizer(s)->checkIfOutputFileExists(s, &outputFileExists) ) {
       return QueueInterface::CommunicationError;
     }
     locker.relock();
@@ -367,7 +363,7 @@ QueueInterface::QueueStatus LoadLevelerQueueInterface::getStatus(Structure *s) c
     if (outputFileExists) {
       // Did the job finish successfully?
       bool success;
-      if (!m_opt->optimizer()->checkForSuccessfulOutput(s, &success)) {
+      if (!getCurrentOptimizer(s)->checkForSuccessfulOutput(s, &success)) {
         return QueueInterface::CommunicationError;
       }
       if (success) {
@@ -394,13 +390,6 @@ QueueInterface::QueueStatus LoadLevelerQueueInterface::getStatus(Structure *s) c
                  .arg(status));
     return QueueInterface::Unknown;
   }
-}
-
-void LoadLevelerQueueInterface::setInterval(int sec)
-{
-  m_queueMutex.lockForWrite();
-  m_interval = sec;
-  m_queueMutex.unlock();
 }
 
 QString LoadLevelerQueueInterface::parseStatus(const QStringList &statusList,
@@ -480,13 +469,13 @@ QStringList LoadLevelerQueueInterface::getQueueList() const
       // QDateTime::msecsTo is not implemented until Qt 4.7
     #if QT_VERSION >= 0x040700
       m_queueTimeStamp.msecsTo(QDateTime::currentDateTime())
-      <= 1000*m_interval
+      <= 1000*m_opt->queueRefreshInterval()
     #else
       // Check if day is the same. If not, refresh. Otherwise check
       // msecsTo current time
       (m_queueTimeStamp.date() == QDate::currentDate() &&
        m_queueTimeStamp.time().msecsTo(QTime::currentTime())
-       <= 1000*m_interval)
+       <= 1000*m_opt->queueRefreshInterval())
     #endif // QT_VERSION >= 4.7
       ) {
     // If the cache is valid, return it

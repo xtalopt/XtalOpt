@@ -298,7 +298,7 @@ namespace XtalOpt {
     }
 
     XO_Prog_TableEntry e;
-    uint totalOptSteps = m_opt->optimizer()->getNumberOfOptSteps();
+    uint totalOptSteps = m_opt->getNumOptSteps();
     e.brush = QBrush (Qt::white);
     e.pen = QBrush (Qt::black);
 
@@ -321,19 +321,19 @@ namespace XtalOpt {
     switch (xtal->getStatus()) {
     case Xtal::InProcess: {
       xtalLocker.unlock();
-      QueueInterface::QueueStatus state = m_opt->queueInterface()->getStatus(xtal);
+      QueueInterface::QueueStatus state = m_opt->queueInterface(xtal->getCurrentOptStep())->getStatus(xtal);
       xtalLocker.relock();
       switch (state) {
       case QueueInterface::Running:
         e.status = tr("Running (Opt Step %1 of %2, %3 failures)")
-          .arg(QString::number(xtal->getCurrentOptStep()))
+          .arg(QString::number(xtal->getCurrentOptStep() + 1))
           .arg(QString::number(totalOptSteps))
           .arg(QString::number(xtal->getFailCount()));
         e.brush.setColor(Qt::green);
         break;
       case QueueInterface::Queued:
         e.status = tr("Queued (Opt Step %1 of %2, %3 failures)")
-          .arg(QString::number(xtal->getCurrentOptStep()))
+          .arg(QString::number(xtal->getCurrentOptStep() + 1))
           .arg(QString::number(totalOptSteps))
           .arg(QString::number(xtal->getFailCount()));
         e.brush.setColor(Qt::cyan);
@@ -363,7 +363,7 @@ namespace XtalOpt {
     }
     case Xtal::Submitted:
       e.status = tr("Job submitted (%1 of %2)")
-        .arg(QString::number(xtal->getCurrentOptStep()))
+        .arg(QString::number(xtal->getCurrentOptStep() + 1))
         .arg(QString::number(totalOptSteps));
       e.brush.setColor(Qt::cyan);
       break;
@@ -397,7 +397,7 @@ namespace XtalOpt {
       break;
     case Xtal::WaitingForOptimization:
       e.status = tr("Waiting for Optimization (%1 of %2)")
-        .arg(QString::number(xtal->getCurrentOptStep()))
+        .arg(QString::number(xtal->getCurrentOptStep() + 1))
         .arg(QString::number(totalOptSteps));
       e.brush.setColor(Qt::darkCyan);
       break;
@@ -628,9 +628,11 @@ namespace XtalOpt {
                                        "Select optimization step to restart from:",
                                        optstep,
                                        1,
-                                       m_opt->optimizer()->getNumberOfOptSteps(),
+                                       m_opt->getNumOptSteps(),
                                        1,
                                        &ok);
+    --optStep;
+
     if (!ok) {
       m_context_xtal = 0;
       return;
@@ -750,7 +752,7 @@ namespace XtalOpt {
 
     // End job if currently running
     if (m_context_xtal->getJobID()) {
-      m_opt->queueInterface()->stopJob(m_context_xtal);
+      m_opt->queueInterface(m_context_xtal->getCurrentOptStep())->stopJob(m_context_xtal);
     }
 
     m_opt->replaceWithRandom(m_context_xtal, "manual");
@@ -776,7 +778,7 @@ namespace XtalOpt {
 
     // End job if currently running
     if (m_context_xtal->getJobID()) {
-      m_opt->queueInterface()->stopJob(m_context_xtal);
+      m_opt->queueInterface(m_context_xtal->getCurrentOptStep())->stopJob(m_context_xtal);
     }
 
     XtalOpt *xtalopt = qobject_cast<XtalOpt*>(m_opt);
@@ -851,6 +853,7 @@ namespace XtalOpt {
 
   void TabProgress::updateRank()
   {
+/*
      Optimizer* opti = m_opt->optimizer();
      QString filePath = m_opt->filePath;
       QDir dir(filePath+"/ranked");
@@ -920,6 +923,7 @@ namespace XtalOpt {
             }
         }
     }
+*/
   }
 
   void TabProgress::printFile() {
