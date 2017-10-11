@@ -913,7 +913,7 @@ namespace GlobalSearch {
       }
 
       setOptimizerTemplate(optStep, filename.toStdString(),
-                           file.readAll().toStdString());
+                           QString(file.readAll()).toStdString());
       file.close();
     }
     settings->endGroup();
