@@ -2687,7 +2687,7 @@ namespace XtalOpt {
   * An example:
   * %block Zmatrix
   *
-  * molecule fractional
+  * molecule
   * 1 0 0 0    0.0  0.0  0.0      0 0 0
   * 2 1 0 0    1.0 90.0 37.743919 1 0 0
   * 2 1 2 0    1.0  1.0 90.0      1 1 0
@@ -2697,6 +2697,13 @@ namespace XtalOpt {
   {
     std::stringstream ss;
 
+    ss << "%block Zmatrix\n\n";
+
+    for (const auto& atom: atoms()) {
+
+    }
+
+    ss << "%endblock Zmatrix\n";
 
     return ss.str();
   }
