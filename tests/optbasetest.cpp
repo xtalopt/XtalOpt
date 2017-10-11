@@ -39,10 +39,6 @@ class DummyOptBase : public OptBase
   Q_OBJECT
 public:
   DummyOptBase() : OptBase(0) {m_idString = DUMMYNAME;};
-public slots:
-  bool startSearch() override {return true;}
-  bool checkLimits() override {return true;}
-  void readRuntimeOptions() override {}
 
   // Override this function to allow the creation of the dummy optimizer
   std::unique_ptr<Optimizer>
@@ -55,6 +51,12 @@ public slots:
              << optName.c_str();
     return nullptr;
   }
+
+public slots:
+  bool startSearch() override {return true;}
+  bool checkLimits() override {return true;}
+  void readRuntimeOptions() override {}
+
 protected:
   void setOptimizer_string(const QString&, const QString&) {}
 };
@@ -324,9 +326,7 @@ void OptBaseTest::interpretKeyword()
   VERIFYKEYWORD("%gen%", QString::number(GENERATION));
   VERIFYKEYWORD("%id%", QString::number(IDNUM));
   VERIFYKEYWORD("%optStep%", QString::number(COPTSTEP));
-
 }
-
 
 QTEST_MAIN(OptBaseTest)
 
