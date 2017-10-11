@@ -44,6 +44,16 @@ namespace GlobalSearch {
   {
     m_vlayout = new QVBoxLayout(this);
 
+    m_label0 = new QLabel(tr("Global Queue Interface Settings"), this);
+    QFont font = m_label0->font();
+    font.setBold(true);
+    font.setPointSize(13);
+    m_label0->setFont(font);
+
+    m_top_label_layout = new QHBoxLayout();
+    m_top_label_layout->addWidget(m_label0);
+    m_vlayout->addItem(m_top_label_layout);
+
     // Create workdir prompt
     m_workdir_layout = new QHBoxLayout();
 

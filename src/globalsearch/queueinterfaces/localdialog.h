@@ -53,8 +53,8 @@ namespace GlobalSearch {
 
     QCheckBox *m_cb_logErrorDirs;
     QDialogButtonBox *m_bbox;
-    QHBoxLayout *m_desc_layout, *m_workdir_layout;
-    QLabel *m_label1, *m_label2;
+    QHBoxLayout *m_top_label_layout, *m_desc_layout, *m_workdir_layout;
+    QLabel *m_label0, *m_label1, *m_label2;
     QLineEdit *m_edit_workdir, *m_edit_description;
     QSpacerItem *m_spacer;
     QVBoxLayout *m_vlayout;

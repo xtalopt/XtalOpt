@@ -1,15 +1,19 @@
 [xtalopt]
-edit\description=
-edit\localpath=
+edit\description=test
+edit\localpath=/path/to/dir/
 edit\logErrorDirs=false
 edit\numOptSteps=1
 edit\optimizer\0=gulp
 edit\optimizer\0\gulp\xtal.gin=opti conj conp\nswitch_minimiser bfgs gnorm 0.5\ncell\n  %a% %b% %c% %alphaDeg% %betaDeg% %gammaDeg%\nfrac\n%coordsFrac%\nspecies\nTi 2.196\nO -1.098\nbuck\nTi Ti 31120.1 0.1540 5.25  15\nO  O  11782.7 0.2340 30.22 15\nTi O  16957.5 0.1940 12.59 15\nlennard 12 6\nTi Ti 1 0 15\nO  O  1 0 15\nTi O  1 0 15
 edit\queueInterface\0=local
 edit\remote\cleanRemoteOnStop=false
-edit\remote\host=
+edit\remote\host=rush.ccr.buffalo.edu
 edit\remote\port=22
 edit\remote\queueRefreshInterval=10
-edit\remote\rempath=
-edit\remote\username=
+edit\remote\rempath=/path/to/dir/
+edit\remote\username=name
+edit\user1=
+edit\user2=
+edit\user3=
+edit\user4=
 edit\version=3
