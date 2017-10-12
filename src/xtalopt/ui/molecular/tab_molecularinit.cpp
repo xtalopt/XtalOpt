@@ -29,11 +29,14 @@
 
 #include "moleculardialog.h"
 
+#include "conformergeneratordialog.h"
+
 namespace XtalOpt {
 
   TabMolecularInit::TabMolecularInit(GlobalSearch::AbstractDialog *parent,
                                      XtalOpt *p) :
-    AbstractTab(parent, p)
+    AbstractTab(parent, p),
+    m_confGenDialog(nullptr)
   {
     ui.setupUi(m_tab_widget);
 
@@ -100,11 +103,18 @@ namespace XtalOpt {
     connect(xtalopt, SIGNAL(updateVolumesToBePerFU(uint)),
             this, SLOT(adjustVolumesToBePerFU(uint)));
 
+    // Conformer stuff
+    connect(ui.push_generateConformers, SIGNAL(clicked()),
+            this, SLOT(showConformerGeneratorDialog()));
+    connect(ui.edit_conformerDir, SIGNAL(editingFinished()),
+            this, SLOT(updateConformerDir()));
+
     initialize();
   }
 
   TabMolecularInit::~TabMolecularInit()
   {
+    delete m_confGenDialog;
   }
 
   void TabMolecularInit::writeSettings(const QString &filename)
@@ -144,6 +154,7 @@ namespace XtalOpt {
     ui.cb_fixedVolume->setChecked( xtalopt->using_fixed_volume);
     ui.cb_interatomicDistanceLimit->setChecked(
           xtalopt->using_interatomicDistanceLimit);
+    ui.edit_conformerDir->setText(xtalopt->m_conformerOutDir.c_str());
   }
 
   void TabMolecularInit::lockGUI()
@@ -263,5 +274,22 @@ namespace XtalOpt {
     xtalopt->vol_min = ui.spin_vol_min->value();
     xtalopt->vol_max = ui.spin_vol_max->value();
     xtalopt->vol_fixed = ui.spin_fixedVolume->value();
+  }
+
+  void TabMolecularInit::showConformerGeneratorDialog()
+  {
+    if (!m_confGenDialog) {
+      m_confGenDialog =
+        new GlobalSearch::ConformerGeneratorDialog(this->m_dialog, m_opt);
+      connect(m_confGenDialog, SIGNAL(finished(int)),
+              this, SLOT(updateGUI()));
+    }
+
+    m_confGenDialog->exec();
+  }
+
+  void TabMolecularInit::updateConformerDir()
+  {
+    m_opt->m_conformerOutDir = ui.edit_conformerDir->text().toStdString();
   }
 }

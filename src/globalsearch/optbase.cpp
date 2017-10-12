@@ -34,6 +34,10 @@
 #include <globalsearch/utilities/passwordprompt.h>
 #include <globalsearch/utilities/utilityfunctions.h>
 
+#ifdef ENABLE_MOLECULAR
+#include <globalsearch/molecular/conformergenerator.h>
+#endif // ENABLE_MOLECULAR
+
 #include <QFile>
 #include <QThread>
 #include <QDebug>
@@ -44,6 +48,7 @@
 #include <QApplication>
 #include <QInputDialog>
 
+#include <fstream>
 #include <iostream>
 #include <mutex>
 
@@ -54,6 +59,15 @@ namespace GlobalSearch {
   OptBase::OptBase(AbstractDialog *parent) :
     QObject(parent),
     cutoff(-1),
+#ifdef ENABLE_MOLECULAR
+    m_initialMolFile(""),
+    m_conformerOutDir(""),
+    m_numConformersToGenerate(0),
+    m_rmsdThreshold(0.1),
+    m_maxOptIters(1000),
+    m_mmffOptConfs(false),
+    m_pruneConfsAfterOpt(true),
+#endif // ENABLE_MOLECULAR
     testingMode(false),
     test_nRunsStart(1),
     test_nRunsEnd(100),
@@ -565,6 +579,42 @@ namespace GlobalSearch {
     }
     return m_optimizerAtOptStep[optStep].get();
   }
+
+#ifdef ENABLE_MOLECULAR
+
+  bool OptBase::generateConformers()
+  {
+    // First, try to open the pdb file
+    std::ifstream pdbIstream(m_initialMolFile);
+
+    if (!pdbIstream.is_open()) {
+      std::cerr << "Error: failed to open initial mol file: "
+                << m_initialMolFile << "\n";
+      return false;
+    }
+
+    // Perform a few sanity checks
+    if (m_numConformersToGenerate == 0) {
+      std::cerr << "Error: " << __FUNCTION__ << " was asked to generate 0 "
+                << "conformers.\n";
+      return false;
+    }
+
+    if (m_rmsdThreshold < 0.0) {
+      std::cerr << "Error: rmsd threshold, " << m_rmsdThreshold << " is less "
+                << "than zero!\n";
+      return false;
+    }
+
+    return ConformerGenerator::generateConformers(pdbIstream,
+                                                  m_conformerOutDir,
+                                                  m_numConformersToGenerate,
+                                                  m_maxOptIters,
+                                                  m_rmsdThreshold,
+                                                  m_pruneConfsAfterOpt);
+  }
+
+#endif // ENABLE_MOLECULAR
 
   void OptBase::clearOptSteps()
   {

@@ -27,6 +27,7 @@ set( xtalopt_SRCS
 if(ENABLE_MOLECULAR)
   set(xtalopt_SRCS
       ${xtalopt_SRCS}
+      ui/molecular/conformergeneratordialog.cpp
       ui/molecular/moleculardialog.cpp
       ui/molecular/tab_molecularinit.cpp
       ui/molecular/tab_molecularopt.cpp)

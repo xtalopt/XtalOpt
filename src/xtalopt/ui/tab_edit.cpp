@@ -401,6 +401,5 @@ namespace XtalOpt {
 
     updateEditWidget();
     return true;
-
   }
 }

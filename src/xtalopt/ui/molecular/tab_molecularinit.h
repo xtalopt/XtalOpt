@@ -21,6 +21,7 @@
 
 namespace GlobalSearch {
   class AbstractDialog;
+  class ConformerGeneratorDialog;
 }
 
 namespace XtalOpt {
@@ -48,10 +49,16 @@ namespace XtalOpt {
     void adjustVolumesToBePerFU(uint FU);
     void updateMinIAD();
 
+    // Conformer stuff
+    void showConformerGeneratorDialog();
+    void updateConformerDir();
+
   signals:
 
   private:
     Ui::TabMolecularInit ui;
+
+    GlobalSearch::ConformerGeneratorDialog* m_confGenDialog;
   };
 }
 

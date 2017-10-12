@@ -357,6 +357,40 @@ for (ind = 0; ind < probs.size(); ind++)
      */
     bool cleanRemoteOnStop() const { return m_cleanRemoteOnStop; }
 
+#ifdef ENABLE_MOLECULAR
+
+    /// Generate conformers using the settings set below
+    bool generateConformers();
+
+    /// Conformer generation settings
+
+    /// The initial molecule file (usually pdb) with which to generate
+    /// conformers
+    std::string m_initialMolFile;
+
+    /// The output directory for the conformers (pdb format) and their energies
+    std::string m_conformerOutDir;
+
+    /// The number of conformers to generate
+    size_t m_numConformersToGenerate;
+
+    /// The RMSD threshold to use when pruning conformers (also used for
+    /// pruning conformers after optimization if that is set to true)
+    double m_rmsdThreshold;
+
+    /// The maximum number of optimization iterations (only valid if
+    /// m_mmffOptConfs is true)
+    size_t m_maxOptIters;
+
+    /// Whether or not to use MMFF94 to optimize conformers after generation
+    bool m_mmffOptConfs;
+
+    /// Whether or not to prune conformers again after using MMFF94 to optimize
+    /// them.
+    bool m_pruneConfsAfterOpt;
+
+#endif // ENABLE_MOLECULAR
+
     /// Whether to impose the running job limit
     bool limitRunningJobs;
 

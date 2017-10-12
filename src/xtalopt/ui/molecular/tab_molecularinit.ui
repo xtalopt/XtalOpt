@@ -35,6 +35,16 @@
       <string>Composition</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_6">
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="edit_conformerDir"/>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Conformer Directory:</string>
+        </property>
+       </widget>
+      </item>
       <item row="0" column="0">
        <widget class="QLabel" name="label_19">
         <property name="sizePolicy">
@@ -95,6 +105,13 @@
         </property>
         <property name="text">
          <string>1</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QPushButton" name="push_generateConformers">
+        <property name="text">
+         <string>Generate Conformers...</string>
         </property>
        </widget>
       </item>

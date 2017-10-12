@@ -568,6 +568,21 @@ namespace XtalOpt {
       settings->endArray();
     }
 
+#ifdef ENABLE_MOLECULAR
+
+    // Conformer generation stuff
+    settings->setValue("initialMolFile", m_initialMolFile.c_str());
+    settings->setValue("conformerOutDir", m_conformerOutDir.c_str());
+    settings->setValue("numConformersToGenerate",
+                       static_cast<uint>(m_numConformersToGenerate));
+    settings->setValue("rmsdThreshold", m_rmsdThreshold);
+    settings->setValue("maxOptIters",
+                       static_cast<uint>(m_maxOptIters));
+    settings->setValue("mmffOptConfs", m_mmffOptConfs);
+    settings->setValue("pruneConfsAfterOpt", m_pruneConfsAfterOpt);
+
+#endif // ENABLE_MOLECULAR
+
     settings->endGroup();
 
     writeEditSettings(filename);
@@ -893,6 +908,23 @@ namespace XtalOpt {
 
     if (formulaUnitsList.isEmpty())
       formulaUnitsList = {1};
+
+#ifdef ENABLE_MOLECULAR
+
+    // Conformer generation stuff
+    m_initialMolFile = settings->value("initialMolFile",
+                                       "").toString().toStdString();
+    m_conformerOutDir = settings->value("conformerOutDir",
+                                        "").toString().toStdString();
+    m_numConformersToGenerate =
+      settings->value("numConformersToGenerate", 10).toUInt();
+    m_rmsdThreshold = settings->value("rmsdThreshold", 0.1).toDouble();
+    m_maxOptIters = settings->value("maxOptIters", 1000).toUInt();
+    m_mmffOptConfs = settings->value("mmffOptConfs", true).toBool();
+    m_pruneConfsAfterOpt =
+      settings->value("pruneConfsAfterOpt", true).toBool();
+
+#endif // ENABLE_MOLECULAR
 
     settings->endGroup();
 
