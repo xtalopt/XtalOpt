@@ -42,10 +42,19 @@
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
+     <property name="minimum">
+      <number>1</number>
+     </property>
+     <property name="maximum">
+      <number>100000</number>
+     </property>
+     <property name="value">
+      <number>1000</number>
+     </property>
     </widget>
    </item>
    <item row="5" column="2">
-    <widget class="QLabel" name="label_21">
+    <widget class="QLabel" name="label_maxOptIters">
      <property name="enabled">
       <bool>false</bool>
      </property>
@@ -235,7 +244,7 @@
   <connection>
    <sender>cb_mmffOptConfs</sender>
    <signal>toggled(bool)</signal>
-   <receiver>label_21</receiver>
+   <receiver>label_maxOptIters</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">

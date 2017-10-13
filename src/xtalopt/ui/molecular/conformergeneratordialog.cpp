@@ -66,6 +66,11 @@ namespace GlobalSearch {
     ui->spin_maxOptIters->setValue(m_opt->m_maxOptIters);
     ui->cb_pruneConfsAfterOpt->setChecked(m_opt->m_pruneConfsAfterOpt);
 
+    // Set these enabled or disabled depending on the settings
+    ui->label_maxOptIters->setEnabled(m_opt->m_mmffOptConfs);
+    ui->spin_maxOptIters->setEnabled(m_opt->m_mmffOptConfs);
+    ui->cb_pruneConfsAfterOpt->setEnabled(m_opt->m_mmffOptConfs);
+
     ui->edit_initialMolFile->blockSignals(false);
     ui->edit_conformerOutDir->blockSignals(false);
     ui->spin_numConfs->blockSignals(false);
@@ -77,8 +82,13 @@ namespace GlobalSearch {
 
   void ConformerGeneratorDialog::accept()
   {
+    // We need to end the output directory with '/'
+    QString confOutDir = ui->edit_conformerOutDir->text();
+    if (!confOutDir.endsWith(QDir::separator()))
+      confOutDir.append(QDir::separator());
+
     m_opt->m_initialMolFile = ui->edit_initialMolFile->text().toStdString();
-    m_opt->m_conformerOutDir = ui->edit_conformerOutDir->text().toStdString();
+    m_opt->m_conformerOutDir = confOutDir.toStdString();
     m_opt->m_numConformersToGenerate = ui->spin_numConfs->value();
     m_opt->m_rmsdThreshold = ui->spin_rmsdThreshold->value();
     m_opt->m_mmffOptConfs = ui->cb_mmffOptConfs->isChecked();
@@ -122,6 +132,9 @@ namespace GlobalSearch {
                        this,
                        tr("Select the directory to put the conformers in..."),
                        oldDir);
+
+    if (!newDir.endsWith(QDir::separator()))
+      newDir.append(QDir::separator());
 
     if (!newDir.isEmpty()) {
       m_opt->m_conformerOutDir = newDir.toStdString();
