@@ -733,6 +733,10 @@ namespace XtalOpt {
 
     size_t numOptSteps = settings->value("numOptSteps", "1").toUInt();
 
+    // Let's make sure this is at least 1, or we may have some issues
+    if (numOptSteps == 0)
+      numOptSteps = 1;
+
     clearOptSteps();
     for (size_t i = 0; i < numOptSteps; ++i) {
       appendOptStep();
