@@ -103,8 +103,9 @@ namespace XtalOpt {
     // Save one last time
     qDebug() << "Saving XtalOpt settings...";
 
-    // First save the state file
-    save("", false);
+    // First save the state file (only if we have structures)
+    if (!m_queue->getAllStructures().isEmpty())
+      save("", false);
 
     // Then save the config settings
     QString configFileName = QSettings().fileName();
