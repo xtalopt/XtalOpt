@@ -457,6 +457,10 @@ namespace GlobalSearch {
     const int currentOptStep = getCurrentOptStep();
     Q_ASSERT(currentOptStep >= 0 && currentOptStep < maxSteps);
 
+    // If this is the last opt step, don't do anything
+    if (maxSteps == 1)
+      return;
+
     m_opt->removeOptStep(currentOptStep);
 
     populateOptStepList();
