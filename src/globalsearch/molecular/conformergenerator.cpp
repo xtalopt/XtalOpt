@@ -217,9 +217,11 @@ static void pruneConformers(RDKit::ROMol& mol,
  *                                         conformers have been optimized.
  *                                         The RMSD threshold to be used is
  *                                         in the @p params parameter.
+ *
+ * @return The number of conformers generated, or -1 if an error occurred
  */
 
-static void generateRDKitConformers(
+static long long generateRDKitConformers(
                         std::istream& pdbFile,
                         const std::string& writeDir,
                         uint numConformers,
@@ -298,9 +300,11 @@ static void generateRDKitConformers(
     }
 
     delete mol;
+
+    return ids.size();
 }
 
-bool ConformerGenerator::generateConformers(
+long long ConformerGenerator::generateConformers(
     std::istream& pdbIstream,
     const std::string& outDir,
     size_t numConformers,
@@ -333,10 +337,9 @@ bool ConformerGenerator::generateConformers(
 
   params.pruneRmsThresh = rmsdThreshold;
 
-  generateRDKitConformers(pdbIstream, outDir, numConformers, params,
-                          maxOptimizationIters,
-                          pruneConformersAfterOptimization);
-  return true;
+  return generateRDKitConformers(pdbIstream, outDir, numConformers, params,
+                                 maxOptimizationIters,
+                                 pruneConformersAfterOptimization);
 }
 
 } // end namespace GlobalSearch

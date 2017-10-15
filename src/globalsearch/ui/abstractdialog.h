@@ -304,6 +304,18 @@ namespace GlobalSearch {
       emit newLog("Error: " + s);  errorBox(s);};
 
     /**
+     * Called by OptBase::message. Sends a message to the log tab
+     * and calls messageBox.
+     *
+     * @note Do not use this function, but instead send call
+     * OptBase::message
+     *
+     * @param s The message.
+     */
+    void newMessage(const QString &s) {
+      emit newLog("Message: " + s);  messageBox(s);};
+
+    /**
      * Displays an error box with the indicated message. This function
      * will block the GUI thread until user clicks "Ok".
      *
@@ -313,6 +325,17 @@ namespace GlobalSearch {
      * @param s Error message.
      */
     void errorBox(const QString &s) {emit sig_errorBox(s);};
+
+    /**
+     * Displays a message box with the indicated message. This function
+     * will block the GUI thread until user clicks "Ok".
+     *
+     * @note Do not use this function, but instead send call
+     * OptBase::message
+     *
+     * @param s message.
+     */
+    void messageBox(const QString &s) {emit sig_messageBox(s);};
 
   protected slots:
     /**
@@ -393,6 +416,13 @@ namespace GlobalSearch {
      * @sa errorBox
      */
     void errorBox_(const QString &s);
+
+    /**
+     * Hidden call. Ensures that the GUI is modified from the
+     * appropriate thread.
+     * @sa messageBox
+     */
+    void messageBox_(const QString &s);
 
   signals:
     /**
@@ -501,6 +531,13 @@ namespace GlobalSearch {
      * @sa errorBox
      */
     void sig_errorBox(const QString &);
+
+   /**
+     * Hidden call. Ensures that the GUI is modified from the
+     * appropriate thread.
+     * @sa messageBox
+     */
+    void sig_messageBox(const QString &);
 
   protected:
     /**

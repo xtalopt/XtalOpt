@@ -114,8 +114,11 @@ namespace GlobalSearch {
     connect(m_opt, SIGNAL(errorStatement(const QString &)),
             this, SLOT(newError(const QString &)),
             Qt::QueuedConnection);
-    connect(this, SIGNAL(sig_errorBox(const QString &)),
-            this, SLOT(errorBox_(const QString &)),
+    connect(m_opt, SIGNAL(messageStatement(const QString &)),
+            this, SLOT(newMessage(const QString &)),
+            Qt::QueuedConnection);
+    connect(this, SIGNAL(sig_messageBox(const QString &)),
+            this, SLOT(messageBox_(const QString &)),
             Qt::QueuedConnection);
 
     // Select the first tab by default
@@ -285,6 +288,13 @@ namespace GlobalSearch {
     }
     else {
       qDebug() << "Error: " << s;
+    }
+  }
+
+  void AbstractDialog::messageBox_(const QString& s)
+  {
+    if (m_opt->usingGUI()) {
+      QMessageBox::information(this, "Message", s);
     }
   }
 

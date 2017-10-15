@@ -95,10 +95,17 @@ namespace GlobalSearch {
     m_opt->m_maxOptIters = ui->spin_maxOptIters->value();
     m_opt->m_pruneConfsAfterOpt = ui->cb_pruneConfsAfterOpt->isChecked();
 
-    if (!m_opt->generateConformers()) {
+    long long numConfs = m_opt->generateConformers();
+
+    if (numConfs == -1) {
       m_opt->error(tr("Failed to generate conformers. Check terminal "
                       "output for details\n"));
     }
+
+    // Send a message to the user
+    QString msg = QString::number(numConfs) + " conformers were generated and"
+                  + " placed in " + confOutDir;
+    m_opt->message(msg);
 
     QDialog::accepted();
     close();

@@ -360,7 +360,7 @@ for (ind = 0; ind < probs.size(); ind++)
 #ifdef ENABLE_MOLECULAR
 
     /// Generate conformers using the settings set below
-    bool generateConformers();
+    long long generateConformers();
 
     /// Conformer generation settings
 
@@ -542,6 +542,11 @@ for (ind = 0; ind < probs.size(); ind++)
     void errorStatement(const QString &s);
 
     /**
+     * Emitted when message(const QString&) is called.
+     */
+    void messageStatement(const QString& s);
+
+    /**
      * Prompts user with an "Yes/No" dialog
      *
      * @param message Message to the user.
@@ -638,6 +643,11 @@ for (ind = 0; ind < probs.size(); ind++)
      * @sa errorStatement
      */
     void error(const QString & s);
+
+    /**
+     * Prints a message to the terminal and emits messageStatement
+     */
+    void message(const QString& s);
 
     /**
      * Emits the sessionStarted signal.

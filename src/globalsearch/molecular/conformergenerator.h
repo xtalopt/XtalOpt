@@ -63,13 +63,17 @@ class ConformerGenerator {
    *                                         The RMSD threshold to be used is
    *                                         the same as the @p rmsdThreshold
    *                                         parameter.
+   *
+   * @return The number of conformers that were generated (after pruning),
+   *         or -1 if an error occurred.
    */
-  static bool generateConformers(std::istream& pdbIstream,
-                                 const std::string& outDir,
-                                 size_t numConformers = 1000,
-                                 size_t maxOptimizationIters = 1000,
-                                 double rmsdThreshold = 0.1,
-                                 bool pruneConformersAfterOptimization = true);
+  static long long generateConformers(
+                                std::istream& pdbIstream,
+                                const std::string& outDir,
+                                size_t numConformers = 1000,
+                                size_t maxOptimizationIters = 1000,
+                                double rmsdThreshold = 0.1,
+                                bool pruneConformersAfterOptimization = true);
 };
 
 }

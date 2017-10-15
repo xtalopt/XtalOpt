@@ -582,7 +582,7 @@ namespace GlobalSearch {
 
 #ifdef ENABLE_MOLECULAR
 
-  bool OptBase::generateConformers()
+  long long OptBase::generateConformers()
   {
     // First, try to open the pdb file
     std::ifstream pdbIstream(m_initialMolFile);
@@ -590,20 +590,20 @@ namespace GlobalSearch {
     if (!pdbIstream.is_open()) {
       std::cerr << "Error: failed to open initial mol file: "
                 << m_initialMolFile << "\n";
-      return false;
+      return -1;
     }
 
     // Perform a few sanity checks
     if (m_numConformersToGenerate == 0) {
       std::cerr << "Error: " << __FUNCTION__ << " was asked to generate 0 "
                 << "conformers.\n";
-      return false;
+      return -1;
     }
 
     if (m_rmsdThreshold < 0.0) {
       std::cerr << "Error: rmsd threshold, " << m_rmsdThreshold << " is less "
                 << "than zero!\n";
-      return false;
+      return -1;
     }
 
     return ConformerGenerator::generateConformers(pdbIstream,
@@ -1287,6 +1287,11 @@ namespace GlobalSearch {
   void OptBase::error(const QString & s) {
     qWarning() << "Error: " << s;
     emit errorStatement(s);
+  }
+
+  void OptBase::message(const QString& s) {
+    qDebug() << "Message: " << s;
+    emit messageStatement(s);
   }
 
 } // end namespace GlobalSearch
