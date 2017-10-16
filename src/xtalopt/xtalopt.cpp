@@ -757,6 +757,29 @@ namespace XtalOpt {
       setOptimizer(0, optimizer.toStdString());
       setQueueInterface(0, qi.toStdString());
 
+      // Get the POTCAR stuff if VASP
+      QString potcarTemplate;
+      if (optimizer.toLower() == "vasp") {
+        this->optimizer(0)->readSettings(filename);
+        QVariantList potcarInfo =
+          this->optimizer(0)->getData("POTCAR info").toList();
+        if (!potcarInfo.isEmpty()) {
+          QVariantHash hash = potcarInfo.at(0).toHash();
+
+          QList<uint> atomicNums = comp.keys();
+          QStringList atomicSymbols;
+          for (const auto& atomicNum: atomicNums)
+            atomicSymbols.append(ElemInfo::getAtomicSymbol(atomicNum).c_str());
+          qSort(atomicSymbols);
+
+          // Now get the potcar info and store it
+          for (const auto& atomicSymbol: atomicSymbols) {
+            potcarTemplate += "%filecontents:" +
+                              hash[atomicSymbol].toString() + "%\n";
+          }
+        }
+      }
+
       QStringList optTemplateNames =
         this->optimizer(0)->getTemplateFileNames();
 
@@ -811,6 +834,12 @@ namespace XtalOpt {
                                QString(file.readAll()).toStdString());
           file.close();
         }
+      }
+
+      // If we are using VASP, update the potcar info
+      if (optimizer.toLower() == "vasp") {
+        for (size_t i = 0; i < getNumOptSteps(); ++i)
+          setOptimizerTemplate(i, "POTCAR", potcarTemplate.toStdString());
       }
 
       // Repeat for queue interfaces
@@ -3102,8 +3131,8 @@ namespace XtalOpt {
     else if (line == "betaDeg")         rep += QString::number(xtal->getBeta());
     else if (line == "gammaDeg")        rep += QString::number(xtal->getGamma());
     else if (line == "volume")          rep += QString::number(xtal->getVolume());
-    else if (line == "block")           rep += QString("\%block");
-    else if (line == "endblock")        rep += QString("\%endblock");
+    else if (line == "block")           rep += QString("%block");
+    else if (line == "endblock")        rep += QString("%block");
     else if (line == "coordsFrac") {
       const std::vector<Atom>& atoms = structure->atoms();
       std::vector<Atom>::const_iterator it;

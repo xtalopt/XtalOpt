@@ -209,7 +209,7 @@ namespace GlobalSearch {
   void Structure::writeStructureSettings(const QString &filename)
   {
     SETTINGS(filename);
-    const int version = 3;
+    const int version = 4;
     settings->beginGroup("structure");
     settings->setValue("saveSuccessful", false);
     settings->setValue("version",     version);
@@ -331,7 +331,14 @@ namespace GlobalSearch {
       setSupercellGenerationChecked(
                    settings->value("supercellGenerationChecked", 0).toBool());
       setJobID(          settings->value("jobID",          0).toInt());
+
       setCurrentOptStep( settings->value("currentOptStep", 0).toInt());
+
+      // We changed the indexing to be zero-based instead of one-based in the
+      // latest scheme update.
+      if (loadedVersion < 4 && getCurrentOptStep() != 0)
+        setCurrentOptStep(getCurrentOptStep() - 1);
+
       setFailCount(      settings->value("failCount",      0).toInt());
       setParents(        settings->value("parents",        "").toString());
       setRempath(        settings->value("rempath",        "").toString());
@@ -437,6 +444,7 @@ namespace GlobalSearch {
             // have empty histories
     case 2:
     case 3:
+    case 4:
     default:
       break;
     }
