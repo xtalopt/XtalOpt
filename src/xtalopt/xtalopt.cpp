@@ -677,7 +677,8 @@ namespace XtalOpt {
     port = settings->value("remote/port", 22).toInt();
     m_logErrorDirs = settings->value("logErrorDirs", false).toBool();
 
-    double loadedVersion = settings->value("version", 0).toInt();
+    int loadedVersion = settings->value("version", 0).toInt();
+
     // Only scheme version 3 or less will work currently
     if (!filename.isEmpty() && loadedVersion > 3) {
       error("XtalOpt::readSettings(): Settings in file " + filename +
@@ -716,7 +717,9 @@ namespace XtalOpt {
       username = tmpstr;
     }
 
-    setQueueRefreshInterval(settings->value("remote/queueRefreshInterval", "10").toInt());
+    setQueueRefreshInterval(
+      settings->value("remote/queueRefreshInterval", "10").toInt()
+    );
 
     setCleanRemoteOnStop(
       settings->value("remote/cleanRemoteOnStop", "false").toBool()
@@ -729,16 +732,22 @@ namespace XtalOpt {
 
       QString optimizer = settings->value("edit/optimizer", "").toString();
       if (optimizer.isEmpty()) {
-        qDebug() << "Error: loading settings for older XtalOpt version and"
-                 << "the optimizer is empty!";
-        return false;
+        if (!filename.isEmpty()) {
+          qDebug() << "Error: loading settings for older XtalOpt version and"
+                   << "the optimizer is empty!";
+          return false;
+        }
+        optimizer = "gulp";
       }
 
       QString qi = settings->value("edit/queueInterface", "").toString();
       if (qi.isEmpty()) {
-        qDebug() << "Error: loading settings for older XtalOpt version and"
-                 << "the queue interface is empty!";
-        return false;
+        if (!filename.isEmpty()) {
+          qDebug() << "Error: loading settings for older XtalOpt version and"
+                   << "the queue interface is empty!";
+          return false;
+        }
+        qi = "local";;
       }
 
       clearOptSteps();

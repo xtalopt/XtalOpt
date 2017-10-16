@@ -54,8 +54,8 @@ namespace XtalOpt {
     void cleanup() {};
 
     // Tests
-    void constructDialog();
     void constructXtalOpt();
+    void constructDialog();
     void setOptimizer();
 
     void loadTest();
@@ -66,17 +66,18 @@ namespace XtalOpt {
 
   };
 
-  void XtalOptUnitTest::constructDialog()
-  {
-    m_dialog = new XtalOptDialog(nullptr, nullptr, false);
-    QVERIFY(m_dialog != 0);
-  }
-
   void XtalOptUnitTest::constructXtalOpt()
   {
-    m_opt = new XtalOpt(m_dialog);
+    m_opt = new XtalOpt();
     m_opt->tol_spg = 0.05;
     QVERIFY(m_opt != 0);
+  }
+
+  void XtalOptUnitTest::constructDialog()
+  {
+    m_dialog = new XtalOptDialog(nullptr, Qt::Window, true, m_opt);
+    QVERIFY(m_dialog != 0);
+    m_opt->setDialog(m_dialog);
   }
 
   void XtalOptUnitTest::setOptimizer()
@@ -168,8 +169,8 @@ namespace XtalOpt {
 
   void XtalOptUnitTest::destroyDialogAndXtalOpt()
   {
-    delete m_opt;
     delete m_dialog;
+    delete m_opt;
   }
 
 }
