@@ -678,22 +678,13 @@ namespace XtalOpt {
     m_logErrorDirs = settings->value("logErrorDirs", false).toBool();
 
     double loadedVersion = settings->value("version", 0).toInt();
-    // Only scheme version 3 will work currently
-    if (!filename.isEmpty() && loadedVersion != 3) {
-      if (loadedVersion < 3) {
-        error("XtalOpt::readSettings(): Settings in file " + filename +
-              " cannot be opened by this version of XtalOpt due to a "
-              "scheme change. Use a previous version of XtalOpt if "
-              "you wish to load this file.");
-        return false;
-      }
-      if (loadedVersion > 3) {
-        error("XtalOpt::readSettings(): Settings in file " + filename +
-              " cannot be opened by this version of XtalOpt. Please "
-              "visit https://xtalopt.github.io to obtain a "
-              "newer version.");
-        return false;
-      }
+    // Only scheme version 3 or less will work currently
+    if (!filename.isEmpty() && loadedVersion > 3) {
+      error("XtalOpt::readSettings(): Settings in file " + filename +
+            " cannot be opened by this version of XtalOpt. Please "
+            "visit https://xtalopt.github.io to obtain a "
+            "newer version.");
+      return false;
     }
 
     // Temporary variables to test settings. This prevents empty
@@ -731,38 +722,185 @@ namespace XtalOpt {
       settings->value("remote/cleanRemoteOnStop", "false").toBool()
     );
 
-    size_t numOptSteps = settings->value("numOptSteps", "1").toUInt();
+    // Old load instructions
+    if (loadedVersion < 3) {
+      settings->endGroup();
+      settings->beginGroup("xtalopt");
 
-    // Let's make sure this is at least 1, or we may have some issues
-    if (numOptSteps == 0)
-      numOptSteps = 1;
+      QString optimizer = settings->value("edit/optimizer", "").toString();
+      if (optimizer.isEmpty()) {
+        qDebug() << "Error: loading settings for older XtalOpt version and"
+                 << "the optimizer is empty!";
+        return false;
+      }
 
-    clearOptSteps();
-    for (size_t i = 0; i < numOptSteps; ++i) {
+      QString qi = settings->value("edit/queueInterface", "").toString();
+      if (qi.isEmpty()) {
+        qDebug() << "Error: loading settings for older XtalOpt version and"
+                 << "the queue interface is empty!";
+        return false;
+      }
+
+      clearOptSteps();
+
+      // Append the first step and grab the template names
       appendOptStep();
+      setOptimizer(0, optimizer.toStdString());
+      setQueueInterface(0, qi.toStdString());
 
-      QString queueInterface =
-          settings->value("queueInterface/" + QString::number(i),
-                          "local").toString().toLower();
+      QStringList optTemplateNames =
+        this->optimizer(0)->getTemplateFileNames();
 
-      setQueueInterface(i, queueInterface.toStdString());
+      QStringList queueTemplateNames =
+        this->queueInterface(0)->getTemplateFileNames();
 
-      readQueueInterfaceTemplatesFromSettings(i, filename.toStdString());
+      for (int i = 0; i < optTemplateNames.size(); i++) {
+        QStringList temp = settings->value("optimizer/" + optimizer.toUpper()
+                                           + "/" +
+                                           optTemplateNames.at(i) + "_list",
+                                           "").toStringList();
+        temp.removeAll("");
+        if (!temp.empty()) {
+          for (size_t j = 0; j < temp.size(); ++j) {
+            while (j + 1 > getNumOptSteps())
+              appendOptStep();
 
-      this->queueInterface(i)->readSettings(filename);
+            setOptimizerTemplate(j, optTemplateNames[i].toStdString(),
+                                 temp[j].toStdString());
+          }
+          continue;
+        }
 
-      QString optimizerName =
-        settings->value("optimizer/" + QString::number(i),
-                        "gulp").toString().toLower();
+        // If "temp" is empty, perhaps we have some template filenames to open
+        QStringList templateFileNames =
+          settings->value("optimizer/" + optimizer.toUpper() + "/" +
+                          optTemplateNames.at(i) + "_templates",
+                          "").toStringList();
 
-      setOptimizer(i, optimizerName.toStdString());
 
-      readOptimizerTemplatesFromSettings(i, filename.toStdString());
+        templateFileNames.removeAll("");
+        // Loop through the files and see if they exist. If they do, store
+        // the contents
+        for (size_t j = 0; j < templateFileNames.size(); ++j) {
+          while (j + 1 > getNumOptSteps())
+            appendOptStep();
 
-      this->optimizer(i)->readSettings(filename);
+          const QString& templateFile = templateFileNames[j];
+
+          QFile file(templateFile);
+          if (!file.exists()) {
+            qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
+                       << "does not exist!";
+            continue;
+          }
+          if (!file.open(QIODevice::ReadOnly)) {
+            qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
+                       << "could not be opened!";
+            continue;
+          }
+          setOptimizerTemplate(j, templateFile.toStdString(),
+                               QString(file.readAll()).toStdString());
+          file.close();
+        }
+      }
+
+      // Repeat for queue interfaces
+      for (int i = 0; i < queueTemplateNames.size(); i++) {
+        QStringList temp = settings->value("optimizer/" + optimizer.toUpper() +
+                                           "/QI/" + qi.toUpper() + "/" +
+                                           queueTemplateNames.at(i) + "_list",
+                                           "").toStringList();
+        temp.removeAll("");
+        if (!temp.empty()) {
+          for (size_t j = 0; j < temp.size(); ++j) {
+            while (j + 1 > getNumOptSteps())
+              appendOptStep();
+
+            setQueueInterfaceTemplate(j, queueTemplateNames[i].toStdString(),
+                                      temp[j].toStdString());
+          }
+          continue;
+        }
+
+        // If "temp" is empty, perhaps we have some template filenames to open
+        QStringList templateFileNames =
+          settings->value("optimizer/" + optimizer.toUpper() + "/QI/" +
+                          qi.toUpper() + "/" + queueTemplateNames.at(i) +
+                          "_templates", "").toStringList();
+
+        templateFileNames.removeAll("");
+        // Loop through the files and see if they exist. If they do, store
+        // the contents
+        for (size_t j = 0; j < templateFileNames.size(); ++j) {
+          while (j + 1 > getNumOptSteps())
+            appendOptStep();
+
+          const QString& templateFile = templateFileNames[j];
+
+          QFile file(templateFile);
+          if (!file.exists()) {
+            qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
+                       << "does not exist!";
+            continue;
+          }
+          if (!file.open(QIODevice::ReadOnly)) {
+            qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
+                       << "could not be opened!";
+            continue;
+          }
+          setQueueInterfaceTemplate(j, templateFile.toStdString(),
+                                    QString(file.readAll()).toStdString());
+          file.close();
+        }
+      }
+
+      // Finally, read the user values
+      setUser1(settings->value("optimizer/" + optimizer.toUpper() + "/user1",
+               "").toString().toStdString());
+      setUser2(settings->value("optimizer/" + optimizer.toUpper() + "/user2",
+               "").toString().toStdString());
+      setUser3(settings->value("optimizer/" + optimizer.toUpper() + "/user3",
+               "").toString().toStdString());
+      setUser4(settings->value("optimizer/" + optimizer.toUpper() + "/user4",
+               "").toString().toStdString());
+
     }
+    // New load instructions
+    else {
+      size_t numOptSteps = settings->value("numOptSteps", "1").toUInt();
 
-    readUserValuesFromSettings(filename.toStdString());
+      // Let's make sure this is at least 1, or we may have some issues
+      if (numOptSteps == 0)
+        numOptSteps = 1;
+
+      clearOptSteps();
+      for (size_t i = 0; i < numOptSteps; ++i) {
+        appendOptStep();
+
+        QString queueInterface =
+            settings->value("queueInterface/" + QString::number(i),
+                            "local").toString().toLower();
+
+        setQueueInterface(i, queueInterface.toStdString());
+
+        readQueueInterfaceTemplatesFromSettings(i, filename.toStdString());
+
+        this->queueInterface(i)->readSettings(filename);
+
+        QString optimizerName =
+          settings->value("optimizer/" + QString::number(i),
+                          "gulp").toString().toLower();
+
+        setOptimizer(i, optimizerName.toStdString());
+
+        readOptimizerTemplatesFromSettings(i, filename.toStdString());
+
+        this->optimizer(i)->readSettings(filename);
+      }
+
+      readUserValuesFromSettings(filename.toStdString());
+
+    }
 
     settings->endGroup();
     return true;
@@ -779,21 +917,12 @@ namespace XtalOpt {
     int loadedVersion = settings->value("version", 0).toInt();
 
     // Only scheme version 3 will work currently
-    if (!filename.isEmpty() && loadedVersion != 3) {
-      if (loadedVersion < 3) {
-        error("XtalOpt::readSettings(): Settings in file " + filename +
-              " cannot be opened by this version of XtalOpt due to a "
-              "scheme change. Use a previous version of XtalOpt if "
-              "you wish to load this file.");
-        return false;
-      }
-      if (loadedVersion > 3) {
-        error("XtalOpt::readSettings(): Settings in file " + filename +
-              " cannot be opened by this version of XtalOpt. Please "
-              "visit https://xtalopt.github.io to obtain a "
-              "newer version.");
-        return false;
-      }
+    if (!filename.isEmpty() && loadedVersion > 3) {
+      error("XtalOpt::readSettings(): Settings in file " + filename +
+            " cannot be opened by this version of XtalOpt. Please "
+            "visit https://xtalopt.github.io to obtain a "
+            "newer version.");
+      return false;
     }
 
     a_min = settings->value("limits/a/min", 3).toDouble();
@@ -3219,7 +3348,6 @@ namespace XtalOpt {
       readOnly = true;
     }
     else readOnly = false;
-
     loaded = true;
 
     // Attempt to open state file
@@ -3236,23 +3364,17 @@ namespace XtalOpt {
     // Update config data. Be sure to bump m_schemaVersion in ctor if
     // adding updates.
     switch (loadedVersion) {
+    case 0:
+    case 1:
+    case 2:
     case 3:
       break;
     default:
-      if (loadedVersion < 3) {
-        error("XtalOpt::load(): Settings in file "+file.fileName()+
-              " cannot be opened by this version of XtalOpt due to a "
-              "scheme change. Use a previous version of XtalOpt if "
-              "you wish to load this file.");
-        return false;
-      }
-      if (loadedVersion > 3) {
-        error("XtalOpt::load(): Settings in file "+file.fileName()+
-              " cannot be opened by this version of XtalOpt. Please "
-              "visit https://xtalopt.github.io to obtain a "
-              "newer version.");
-        return false;
-      }
+      error("XtalOpt::load(): Settings in file "+file.fileName()+
+            " cannot be opened by this version of XtalOpt. Please "
+            "visit https://xtalopt.github.io to obtain a "
+            "newer version.");
+      return false;
     }
 
     bool stateFileIsValid = settings->value("xtalopt/saveSuccessful",
@@ -3281,6 +3403,7 @@ namespace XtalOpt {
                                              QDir::AllDirs, QDir::Size);
     xtalDirs.removeAll(".");
     xtalDirs.removeAll("..");
+
     for (int i = 0; i < xtalDirs.size(); i++) {
       // old versions of xtalopt used xtal.state, so still check for it.
       if (!QFile::exists(dataPath + "/" + xtalDirs.at(i)
@@ -3309,6 +3432,7 @@ namespace XtalOpt {
 #ifdef ENABLE_SSH
     // Create the SSHManager if running remotely
     if (anyRemoteQueueInterfaces()) {
+      qDebug() << "Creating SSH connections...";
       if (!this->createSSHConnections()) {
         error(tr("Could not create ssh connections."));
         return false;
