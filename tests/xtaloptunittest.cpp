@@ -75,7 +75,7 @@ namespace XtalOpt {
 
   void XtalOptUnitTest::constructDialog()
   {
-    m_dialog = new XtalOptDialog(nullptr, Qt::Window, true, m_opt);
+    m_dialog = new XtalOptDialog(nullptr, Qt::Window, false, m_opt);
     QVERIFY(m_dialog != 0);
     m_opt->setDialog(m_dialog);
   }
