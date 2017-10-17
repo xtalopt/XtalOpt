@@ -148,9 +148,14 @@ namespace XtalOpt {
     // Randomly pick an index from the vector where the values in the vector
     // are weights. Lower values have a higher weight.
     static long long randomlyPickWeightedIndex(const std::vector<double>& v);
-    long long chooseMolecularConformer();
+    std::string chooseMolecularConformer();
+    minIADs generateMolecularMinIADs(const GlobalSearch::Molecule& mol) const;
     Xtal* generateRandomMolecularXtal(uint generation, uint id, uint FU);
+    Xtal* generateRandomMolecularXtal(uint generation, uint id, uint FU,
+                                      const std::string& confFile);
 #endif // ENABLE_MOLECULAR
+
+    Xtal* generateEmptyXtalWithLattice(uint FU);
 
     bool addSeed(const QString & filename);
     GlobalSearch::Structure* replaceWithRandom(

@@ -25,6 +25,8 @@
 #include <randSpg/include/xtaloptWrapper.h>
 
 #include <globalsearch/eleminfo.h>
+#include <globalsearch/formats/cmlformat.h>
+#include <globalsearch/formats/obconvert.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
@@ -1352,7 +1354,7 @@ namespace XtalOpt {
     // We will create a vector of probabilities from 0.0 to 1.0
     std::vector<double> probs;
     for (const auto& d: v)
-      probs.push_back(((d / v.size()) - lowest) / spread);
+      probs.push_back((d  - lowest) / spread);
 
     double sum = 0.0;
     for (int i = 0; i < probs.size(); ++i) {
@@ -1365,6 +1367,12 @@ namespace XtalOpt {
     for (int i = 0; i < probs.size(); ++i)
       probs[i] /= sum;
 
+/*
+    std::cout << "probs is:\n";
+    for (const auto& d: probs)
+      std::cout << d << "\n";
+*/
+
     // Then replace each entry with a cumulative total:
     // 0.4 0.68 0.92 1
     sum = 0.0;
@@ -1372,11 +1380,8 @@ namespace XtalOpt {
       sum += probs[i];
       probs[i] = sum;
     }
-/*
-    std::cout << "probs is:\n";
-    for (const auto& d: probs)
-      std::cout << d << "\n";
-*/
+
+    // Select one at random
     double rand = getRandDouble();
     for (size_t i = 0; i < probs.size(); ++i) {
       if (rand < probs[i])
@@ -1386,7 +1391,7 @@ namespace XtalOpt {
     return -1;
   }
 
-  long long XtalOpt::chooseMolecularConformer()
+  std::string XtalOpt::chooseMolecularConformer()
   {
     // First, open up the energies.txt file in the conformers directory and
     // read off the names and the energies
@@ -1397,7 +1402,7 @@ namespace XtalOpt {
              energiesFileName + " for reading. Please make sure " +
              "the conformer out dir, " + m_conformerOutDir + ", is " +
              "a valid conformer directory").c_str());
-      return -1;
+      return "";
     }
 
     std::vector<std::string> fileNames;
@@ -1421,25 +1426,157 @@ namespace XtalOpt {
              "in " + energiesFileName + ". Please make sure " +
              "the conformer out dir, " + m_conformerOutDir + ", is " +
              "a valid conformer directory").c_str());
-      return -1;
+      return "";
     }
 
-    return randomlyPickWeightedIndex(energies);
+    long long ind = randomlyPickWeightedIndex(energies);
+    if (ind == -1) {
+      error(("XtalOpt::chooseMolecularConformer(): failed to randomly pick "
+             "a conformer"));
+      return "";
+    }
+    return m_conformerOutDir + "/" + fileNames[ind];
+  }
+
+  minIADs
+  XtalOpt::generateMolecularMinIADs(const GlobalSearch::Molecule& mol) const
+  {
+    minIADs iads;
+
+    double minRad = -1.0, scale = 1.0;
+    if (using_interatomicDistanceLimit) {
+      minRad = minRadius;
+      scale = scaleFactor;
+    }
+
+    // Get a set of the unique atomic numbers
+    const std::vector<unsigned short> atomNums = mol.atomicNumbers();
+    std::set<unsigned short> uniqueAtomicNums(atomNums.cbegin(),
+                                              atomNums.cend());
+
+    // Create the min IADs with the covalent radii
+    for (size_t i = 0; i < uniqueAtomicNums.size(); ++i) {
+      unsigned short atomicNum1 = *std::next(uniqueAtomicNums.begin(), i);
+      double rad1 = ElemInfo::getCovalentRadius(atomicNum1);
+      if (rad1 < minRad)
+        rad1 = minRad;
+      for (size_t j = i; j < uniqueAtomicNums.size(); ++j) {
+        unsigned short atomicNum2 = *std::next(uniqueAtomicNums.begin(), j);
+        double rad2 = ElemInfo::getCovalentRadius(atomicNum2);
+        if (rad2 < minRad)
+          rad2 = minRad;
+
+        double minIAD = (rad1 + rad2) * scale;
+        iads.set(atomicNum1, atomicNum2, minIAD);
+      }
+    }
+
+    return iads;
   }
 
   Xtal* XtalOpt::generateRandomMolecularXtal(uint generation, uint id,
                                              uint FU)
   {
-    long long confId = chooseMolecularConformer();
-    if (confId == -1) {
+    std::string confFile = chooseMolecularConformer();
+    if (confFile.empty()) {
       qDebug() << "XtalOpt::generateRandomMolecularXtal(): failed to choose"
                << "a conformer.";
       return nullptr;
     }
 
-    return nullptr;
+    return generateRandomMolecularXtal(generation, id, FU, confFile);
+  }
+
+  Xtal* XtalOpt::generateRandomMolecularXtal(uint generation, uint id,
+                                             uint FU,
+                                             const std::string& confFile)
+  {
+    // Create the molecule from the pdb file
+    std::ifstream ifs(confFile);
+
+    if (!ifs.is_open()) {
+      error(("XtalOpt::generateRandomMolecularXtal(): failed to open the pdb "
+             "file: " + confFile + ". Please make sure the conformer "
+             "directory, " + m_conformerOutDir + " is valid.").c_str());
+      return nullptr;
+    }
+
+    // Read the data
+    std::string pdbData{std::istreambuf_iterator<char>(ifs),
+                        std::istreambuf_iterator<char>()};
+
+    // Use OBConvert to convert it to cml
+    QByteArray CMLData;
+    if (!GlobalSearch::OBConvert::convertFormat("pdb", "cml",
+                                                pdbData.c_str(),
+                                                CMLData))
+    {
+      error(("XtalOpt::generateRandomMolecularXtal(): failed to convert the "
+             "pdb file " + confFile + " to CML format with OBabel. Please make "
+             "sure the file and the directory it is in are valid.").c_str());
+      return nullptr;
+    }
+
+    std::stringstream css(CMLData.data());
+
+    // Now read it
+    GlobalSearch::Structure conformer;
+    if (!GlobalSearch::CmlFormat::read(conformer, css)) {
+      error(("XtalOpt::generateRandomMolecularXtal(): failed to convert the "
+             "cml output from OBabel into a structure. Please make sure the "
+             "file," + confFile + ", is valid, and that it is in a valid "
+             "directory.").c_str());
+      return nullptr;
+    }
+
+    // Now, create a valid lattice
+    Xtal* xtal = generateEmptyXtalWithLattice(FU);
+
+    // Get the min IADs for the molecule
+    minIADs iads = generateMolecularMinIADs(conformer);
+
+    // Now add in the appropriate number of formula units
+    for (size_t i = 0; i < FU; ++i) {
+      // No max attempts right now. But they can be added in the future.
+      if (!xtal->addMoleculeRandomly(conformer, iads)) {
+        xtal->deleteLater();
+        debug(("XtalOpt::" + std::string(__FUNCTION__) + "(): Failed to add "
+               "molecules to the crystal and satisfy the interatomic distance "
+               "constraints.").c_str());
+        return nullptr;
+      }
+    }
+
+    // Set up geneology info
+    xtal->setGeneration(generation);
+    xtal->setIDNumber(id);
+    xtal->setParents("Randomly generated");
+    xtal->setStatus(Xtal::WaitingForOptimization);
+
+    return xtal;
   }
 #endif // ENABLE_MOLECULAR
+
+  Xtal* XtalOpt::generateEmptyXtalWithLattice(uint FU)
+  {
+    Xtal* xtal = nullptr;
+    do {
+      delete xtal;
+      xtal = nullptr;
+      double a     = getRandDouble() * (a_max-a_min) + a_min;
+      double b     = getRandDouble() * (b_max-b_min) + b_min;
+      double c     = getRandDouble() * (c_max-c_min) + c_min;
+      double alpha = getRandDouble() * (alpha_max - alpha_min) + alpha_min;
+      double beta  = getRandDouble() * (beta_max  - beta_min ) + beta_min;
+      double gamma = getRandDouble() * (gamma_max - gamma_min) + gamma_min;
+      xtal = new Xtal(a, b, c, alpha, beta, gamma);
+    } while (!checkLattice(xtal, FU));
+
+    if (using_fixed_volume)
+      xtal->setVolume(vol_fixed * FU);
+
+    return xtal;
+  }
 
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
   {
@@ -1450,34 +1587,17 @@ namespace XtalOpt {
       return generateRandomMolecularXtal(generation, id, FU);
 #endif // ENABLE_MOLECULAR
 
-    // Set cell parameters
-    double a, b, c, alpha, beta, gamma;
+    // Create a valid lattice first
+    Xtal* xtal = generateEmptyXtalWithLattice(FU);
 
-    // Create a valid crystal first
-    Xtal *xtal = nullptr;
-    do {
-      delete xtal;
-      xtal = nullptr;
-      a            = getRandDouble() * (a_max-a_min) + a_min;
-      b            = getRandDouble() * (b_max-b_min) + b_min;
-      c            = getRandDouble() * (c_max-c_min) + c_min;
-      alpha        = getRandDouble() * (alpha_max - alpha_min) + alpha_min;
-      beta         = getRandDouble() * (beta_max  - beta_min ) + beta_min;
-      gamma        = getRandDouble() * (gamma_max - gamma_min) + gamma_min;
-      xtal = new Xtal(a, b, c, alpha, beta, gamma);
-    } while (!checkLattice(xtal, FU));
+    // Cache these for later use
+    double a = xtal->getA();
+    double b = xtal->getB();
+    double c = xtal->getC();
 
     QWriteLocker locker(&xtal->lock());
 
     xtal->setStatus(Xtal::Empty);
-
-    if (using_fixed_volume)
-      xtal->setVolume(vol_fixed * FU);
-
-    // In case we rescaled the cell, update a, b, and c
-    a = xtal->getA();
-    b = xtal->getB();
-    c = xtal->getC();
 
     // Populate crystal
     QList<uint> atomicNums = comp.keys();
