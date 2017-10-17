@@ -57,6 +57,8 @@
 
 #include <randSpg/include/randSpg.h>
 
+#include <fstream>
+#include <iostream>
 #include <mutex>
 
 #define ANGSTROM_TO_BOHR 1.889725989
@@ -142,22 +144,6 @@ namespace XtalOpt {
     if (!startLock.try_lock())
       return false;
 
-    // Populate crystal
-    QList<uint> atomicNums = comp.keys();
-    // Sort atomic number by decreasing minimum radius. Adding the "larger"
-    // atoms first encourages a more even (and ordered) distribution
-/*    qDebug() << "atomicNums are:";
-    for (size_t i = 0; i < atomicNums.size(); ++i)
-      qDebug() << QString::number(atomicNums.at(i));*/
-    for (int i = 0; i < atomicNums.size()-1; ++i) {
-      for (int j = i + 1; j < atomicNums.size(); ++j) {
-        if (this->comp.value(atomicNums[i]).minRadius <
-            this->comp.value(atomicNums[j]).minRadius) {
-          atomicNums.swap(i,j);
-        }
-      }
-    }
-
     // Settings checks
     // Check lattice parameters, volume, etc
     if (!XtalOpt::checkLimits()) {
@@ -166,7 +152,7 @@ namespace XtalOpt {
     }
 
     // Do we have a composition?
-    if (comp.isEmpty()) {
+    if (!molecularMode() && comp.isEmpty()) {
       error("Cannot create structures. Composition is not set.");
       return false;
     }
@@ -236,30 +222,6 @@ namespace XtalOpt {
       }
     };
 
-    // VASP checks:
-    for (size_t i = 0; i < getNumOptSteps(); ++i) {
-      if (optimizer(i)->getIDString() == "VASP") {
-        // Is the POTCAR generated? If not, warn user in log and launch
-        // generator. Every POTCAR will be identical in this case!
-        QList<uint> oldcomp, atomicNums = comp.keys();
-        QList<QVariant> oldcomp_ =
-          optimizer(i)->getData("Composition").toList();
-        for (int i = 0; i < oldcomp_.size(); i++)
-          oldcomp.append(oldcomp_.at(i).toUInt());
-        qSort(atomicNums);
-        if (m_usingGUI) {/*
-          if (optimizer(i)->getData("POTCAR info").toList().isEmpty() ||
-              oldcomp != atomicNums // Composition has changed!
-              ) {
-            error("Using VASP and POTCAR is empty. Please select the "
-                  "pseudopotentials before continuing.");
-            return false;
-          }
-          */
-        }
-      }
-    }
-
 #ifdef ENABLE_SSH
     // Create the SSHManager if running remotely
     if (anyRemoteQueueInterfaces()) {
@@ -310,7 +272,7 @@ namespace XtalOpt {
     }
 
     // Perform a regular random generation
-    if (!using_randSpg) {
+    if (!using_randSpg || molecularMode()) {
       // Generation loop...
       while (newXtalCount < numInitial) {
         updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
@@ -1372,8 +1334,122 @@ namespace XtalOpt {
     return xtal;
   }
 
+#ifdef ENABLE_MOLECULAR
+  // More negative means more likely to be picked. The vector should be sorted.
+  long long XtalOpt::randomlyPickWeightedIndex(const std::vector<double>& v)
+  {
+    if (v.empty())
+      return -1;
+
+    double lowest  = *std::min_element(v.begin(), v.end());
+    double highest = *std::max_element(v.begin(), v.end());
+    double spread  = highest - lowest;
+
+    // Save some time if they are all about the same
+    if (spread <= 1e-6)
+      return 0;
+
+    // We will create a vector of probabilities from 0.0 to 1.0
+    std::vector<double> probs;
+    for (const auto& d: v)
+      probs.push_back(((d / v.size()) - lowest) / spread);
+
+    double sum = 0.0;
+    for (int i = 0; i < probs.size(); ++i) {
+      probs[i] = 1.0 - probs[i];
+      sum += probs[i];
+    }
+
+    // Normalize with the sum so that the list adds to 1
+    // 0.4  0.28  0.24  0.08
+    for (int i = 0; i < probs.size(); ++i)
+      probs[i] /= sum;
+
+    // Then replace each entry with a cumulative total:
+    // 0.4 0.68 0.92 1
+    sum = 0.0;
+    for (int i = 0; i < probs.size(); ++i) {
+      sum += probs[i];
+      probs[i] = sum;
+    }
+/*
+    std::cout << "probs is:\n";
+    for (const auto& d: probs)
+      std::cout << d << "\n";
+*/
+    double rand = getRandDouble();
+    for (size_t i = 0; i < probs.size(); ++i) {
+      if (rand < probs[i])
+        return i;
+    }
+
+    return -1;
+  }
+
+  long long XtalOpt::chooseMolecularConformer()
+  {
+    // First, open up the energies.txt file in the conformers directory and
+    // read off the names and the energies
+    std::string energiesFileName = m_conformerOutDir + "/energies.txt";
+    std::ifstream energiesFile(energiesFileName);
+    if (!energiesFile.is_open()) {
+      error(("XtalOpt::chooseMolecularConformer(): Error opening file " +
+             energiesFileName + " for reading. Please make sure " +
+             "the conformer out dir, " + m_conformerOutDir + ", is " +
+             "a valid conformer directory").c_str());
+      return -1;
+    }
+
+    std::vector<std::string> fileNames;
+    std::vector<double> energies;
+
+    while (energiesFile.good()) {
+      std::string fileName;
+      double energy;
+      energiesFile >> fileName;
+      energiesFile >> energy;
+
+      if (fileName.empty())
+        break;
+
+      fileNames.push_back(fileName);
+      energies.push_back(energy);
+    }
+
+    if (fileNames.empty() || energies.empty()) {
+      error(("XtalOpt::chooseMolecularConformer(): No file names or energies "
+             "in " + energiesFileName + ". Please make sure " +
+             "the conformer out dir, " + m_conformerOutDir + ", is " +
+             "a valid conformer directory").c_str());
+      return -1;
+    }
+
+    return randomlyPickWeightedIndex(energies);
+  }
+
+  Xtal* XtalOpt::generateRandomMolecularXtal(uint generation, uint id,
+                                             uint FU)
+  {
+    long long confId = chooseMolecularConformer();
+    if (confId == -1) {
+      qDebug() << "XtalOpt::generateRandomMolecularXtal(): failed to choose"
+               << "a conformer.";
+      return nullptr;
+    }
+
+    return nullptr;
+  }
+#endif // ENABLE_MOLECULAR
+
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
   {
+
+#ifdef ENABLE_MOLECULAR
+    // If we are using molecular mode, perform a molecular generation
+    if (molecularMode())
+      return generateRandomMolecularXtal(generation, id, FU);
+#endif // ENABLE_MOLECULAR
+
     // Set cell parameters
     double a, b, c, alpha, beta, gamma;
 
@@ -1800,7 +1876,7 @@ namespace XtalOpt {
   Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
   {
     QList<uint> tempFormulaUnitsList = formulaUnitsList;
-    if (using_mitotic_growth && !using_one_pool) {
+    if (!molecularMode() && using_mitotic_growth && !using_one_pool) {
       // Remove formula units on the list for which there is a smaller multiple that may be used to create a super cell.
       for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
         for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {

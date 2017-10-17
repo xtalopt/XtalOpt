@@ -333,6 +333,30 @@ for (ind = 0; ind < probs.size(); ind++)
      */
     void setUsingGUI(bool b) { m_usingGUI = b; }
 
+#ifdef ENABLE_MOLECULAR
+    /**
+     * Are we in molecular mode? If not, then we are in inorganic mode.
+     *
+     * @return Whether or not we are in molecular mode.
+     */
+    bool molecularMode() { return m_molecularMode; }
+
+    /**
+     * Are we in molecular mode? If not, then we are in inorganic mode.
+     *
+     * @param b True if we are in molecular mode. False otherwise.
+     */
+    void setMolecularMode(bool b) { m_molecularMode = b; }
+
+#else
+
+    /**
+     * If this is not a molecular build, always return false for this function
+     */
+    bool molecularMode() { return false; }
+
+#endif // ENABLE_MOLECULAR
+
     /**
      * Set the refresh interval for checking remote jobs.
      *
@@ -1121,6 +1145,11 @@ for (ind = 0; ind < probs.size(); ind++)
 
     /// Whether or not to clean remote directories after completion
     bool m_cleanRemoteOnStop;
+
+#ifdef ENABLE_MOLECULAR
+    /// Whether or not we are in molecular mode
+    bool m_molecularMode;
+#endif // ENABLE_MOLECULAR
 
    public:
     /// Log error directories?

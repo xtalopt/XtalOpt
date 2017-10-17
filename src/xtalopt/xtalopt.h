@@ -144,6 +144,14 @@ namespace XtalOpt {
                            bool includeCrossover = true,
                            bool includeMitosis = true,
                            bool mitosisMutation = false);
+#ifdef ENABLE_MOLECULAR
+    // Randomly pick an index from the vector where the values in the vector
+    // are weights. Lower values have a higher weight.
+    static long long randomlyPickWeightedIndex(const std::vector<double>& v);
+    long long chooseMolecularConformer();
+    Xtal* generateRandomMolecularXtal(uint generation, uint id, uint FU);
+#endif // ENABLE_MOLECULAR
+
     bool addSeed(const QString & filename);
     GlobalSearch::Structure* replaceWithRandom(
       GlobalSearch::Structure *s,

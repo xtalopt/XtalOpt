@@ -138,6 +138,8 @@ int main(int argc, char* argv[])
   XtalOpt::XtalOpt xtalopt;
   std::unique_ptr<XtalOpt::MolecularXtalOptDialog> d;
 
+  xtalopt.setMolecularMode(true);
+
   if (cliMode) {
     xtalopt.setUsingGUI(false);
 
