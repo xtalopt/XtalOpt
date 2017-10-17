@@ -21,9 +21,9 @@
 #include <globalsearch/structure.h>
 #include <globalsearch/utilities/fileutils.h>
 
-#include <QSettings>
-
+#include <QFileDialog>
 #include <QHeaderView>
+#include <QSettings>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 
@@ -108,6 +108,9 @@ namespace XtalOpt {
             this, SLOT(showConformerGeneratorDialog()));
     connect(ui.edit_conformerDir, SIGNAL(editingFinished()),
             this, SLOT(updateConformerDir()));
+    connect(ui.push_browseConfDir, SIGNAL(clicked()),
+            this, SLOT(browseConfDir()));
+
 
     initialize();
   }
@@ -291,5 +294,22 @@ namespace XtalOpt {
   void TabMolecularInit::updateConformerDir()
   {
     m_opt->m_conformerOutDir = ui.edit_conformerDir->text().toStdString();
+  }
+
+  void TabMolecularInit::browseConfDir()
+  {
+    QString oldDir = m_opt->m_conformerOutDir.c_str();
+    QString newDir = QFileDialog::getExistingDirectory(
+                       m_dialog,
+                       tr("Select the conformer directory..."),
+                       oldDir);
+
+    if (!newDir.endsWith(QDir::separator()))
+      newDir.append(QDir::separator());
+
+    if (!newDir.isEmpty()) {
+      m_opt->m_conformerOutDir = newDir.toStdString();
+      updateGUI();
+    }
   }
 }

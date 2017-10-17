@@ -52,6 +52,7 @@ namespace XtalOpt {
     // Conformer stuff
     void showConformerGeneratorDialog();
     void updateConformerDir();
+    void browseConfDir();
 
   signals:
 

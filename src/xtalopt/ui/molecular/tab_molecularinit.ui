@@ -115,6 +115,13 @@
         </property>
        </widget>
       </item>
+      <item row="2" column="2">
+       <widget class="QPushButton" name="push_browseConfDir">
+        <property name="text">
+         <string>Browse...</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
