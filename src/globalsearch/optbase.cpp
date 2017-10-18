@@ -85,7 +85,9 @@ namespace GlobalSearch {
     m_numOptSteps(0),
     m_schemaVersion(3),
     m_usingGUI(true),
+#ifdef ENABLE_MOLECULAR
     m_molecularMode(false),
+#endif // ENABLE_MOLECULAR
     m_logErrorDirs(false)
   {
     // Connections
