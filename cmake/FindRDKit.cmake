@@ -35,7 +35,9 @@ find_path(RDKit_INCLUDE_DIRS GraphMol/Atom.h
 
 find_library(RDKit_LIBRARY_DIRS RDKitGraphMol
              HINTS ${RDKit_ROOT}/lib
+                   ${RDKit_ROOT}/build/lib
                    ${RDBASE}/lib
+                   ${RDBASE}/build/lib
              PATHS ${_include_search_paths})
 
 # Get the directory component of the file name
