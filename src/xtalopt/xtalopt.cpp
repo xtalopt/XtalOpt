@@ -3096,7 +3096,7 @@ namespace XtalOpt {
       return false;
     }
 
-    if (!checkComposition(xtal, err))
+    if (!molecularMode() && !checkComposition(xtal, err))
       return false;
 
     if (!checkLattice(xtal, xtal->getFormulaUnits(), err))
@@ -3123,7 +3123,7 @@ namespace XtalOpt {
     }
 
     // Check interatomic distances
-    if (using_interatomicDistanceLimit) {
+    if (using_interatomicDistanceLimit && !molecularMode()) {
       int atom1, atom2;
       double IAD;
       if (!xtal->checkInteratomicDistances(this->comp, &atom1, &atom2, &IAD)){
@@ -3143,7 +3143,7 @@ namespace XtalOpt {
       }
     }
 
-    if (using_customIAD) {
+    if (using_customIAD && !molecularMode()) {
       int atom1, atom2;
       double IAD;
       if (!xtal->checkMinIAD(this->interComp, &atom1, &atom2, &IAD)){
