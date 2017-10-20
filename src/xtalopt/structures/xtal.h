@@ -213,6 +213,13 @@ namespace XtalOpt {
     QString toPOSCAR() const;
 
     /**
+     * Take the given xtal and write a CML with it. Return the CML
+     * file as a string.
+     * @return The CML as a string.
+     */
+    QString toCML() const;
+
+    /**
      * Take the given xtal and write a siesta Z matrix with it (where the
      * bonds will be kept fix during optimization). Returns the z matrix
      * as a string.

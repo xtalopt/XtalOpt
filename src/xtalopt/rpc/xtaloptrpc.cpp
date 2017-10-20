@@ -64,11 +64,11 @@ bool XtalOptRpc::updateDisplayedXtal(const Xtal& xtal)
   if (!reconnectIfNeeded())
     return false;
 
-  QString poscar = xtal.toPOSCAR();
+  QString cml = xtal.toCML();
 
   QJsonObject params;
-  params["format"] = QString("POSCAR");
-  params["content"] = poscar;
+  params["format"] = QString("cml");
+  params["content"] = cml;
 
   QJsonObject message;
   message["jsonrpc"] = QString("2.0");

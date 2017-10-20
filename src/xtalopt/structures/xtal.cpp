@@ -18,6 +18,7 @@
 #include <xtalopt/xtalopt.h>
 
 #include <globalsearch/eleminfo.h>
+#include <globalsearch/formats/cmlformat.h>
 #include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/random.h>
 #include <globalsearch/stablecomparison.h>
@@ -2652,6 +2653,14 @@ namespace XtalOpt {
   {
     std::stringstream ss;
     GlobalSearch::PoscarFormat::write(*this, ss);
+    return ss.str().c_str();
+  }
+
+  // Mostly a convenience function...
+  QString Xtal::toCML() const
+  {
+    std::stringstream ss;
+    GlobalSearch::CmlFormat::write(*this, ss);
     return ss.str().c_str();
   }
 
