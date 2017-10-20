@@ -1334,7 +1334,10 @@ namespace XtalOpt {
   }
 
 #ifdef ENABLE_MOLECULAR
-  // More negative means more likely to be picked. The vector should be sorted.
+  // More negative means more likely to be picked.
+  // The equation used here for probability:
+  // Pi = 1 - 0.7 * (Hi - Hmin) / (Hmax - Hmin)
+  // For the ith element
   long long XtalOpt::randomlyPickWeightedIndex(const std::vector<double>& v)
   {
     if (v.empty())
@@ -1355,7 +1358,7 @@ namespace XtalOpt {
 
     double sum = 0.0;
     for (int i = 0; i < probs.size(); ++i) {
-      probs[i] = 1.0 - probs[i];
+      probs[i] = 1.0 -  0.7 * probs[i];
       sum += probs[i];
     }
 
