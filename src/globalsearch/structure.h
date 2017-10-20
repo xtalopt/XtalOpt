@@ -325,6 +325,12 @@ namespace GlobalSearch {
      * created. Only applicable for molecular crystals.
      */
     std::string getParentConformer() { return m_parentConformer; }
+
+    /**
+     * Get the number of molecules in a molecular crystal. Returns -1 for
+     * atomistic crystals.
+     */
+    int getZValue() const { return m_zValue; }
 #endif // ENABLE_MOLECULAR
 
    /** @return A pointer for the parent structure of a given structure
@@ -1060,6 +1066,12 @@ namespace GlobalSearch {
      * created. Only applicable for molecular crystals.
      */
     void setParentConformer(const std::string& p) { m_parentConformer = p; }
+
+    /**
+     * Set the number of molecules in a molecular crystal. Used for formula
+     * unit calculation purposes.
+     */
+    void setZValue(int z) { m_zValue = z; }
 #endif // ENABLE_MOLECULAR
 
     /** Set the parent structure for this structure
@@ -1263,7 +1275,12 @@ namespace GlobalSearch {
     QList<Matrix3> m_histCells;
 
 #ifdef ENABLE_MOLECULAR
+    // The name of the conformer file from which this crystal was generated
     std::string m_parentConformer;
+
+    // The number of molecules in a molecular crystal. Set to -1 in
+    // atomistic crystals.
+    int m_zValue;
 #endif // ENABLE_MOLECULAR
 
     // Pointer to parent structure if one is saved.

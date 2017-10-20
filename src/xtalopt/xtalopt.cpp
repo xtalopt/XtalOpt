@@ -1549,6 +1549,7 @@ namespace XtalOpt {
     }
 
     xtal->setParentConformer(confFile);
+    xtal->setZValue(FU);
 
     // Set up geneology info
     xtal->setGeneration(generation);

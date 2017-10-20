@@ -53,6 +53,9 @@ namespace GlobalSearch {
     m_optEnd(QDateTime()),
     m_index(-1),
     m_lock(QReadWriteLock::Recursive),
+#ifdef ENABLE_MOLECULAR
+    m_zValue(-1),
+#endif // ENABLE_MOLECULAR
     m_parentStructure(nullptr)
   {
     m_currentOptStep = 0;
@@ -78,6 +81,9 @@ namespace GlobalSearch {
     m_optEnd(QDateTime()),
     m_index(-1),
     m_lock(QReadWriteLock::Recursive),
+#ifdef ENABLE_MOLECULAR
+    m_zValue(-1),
+#endif // ENABLE_MOLECULAR
     m_parentStructure(nullptr)
   {
     *this = other;
@@ -106,6 +112,9 @@ namespace GlobalSearch {
     m_optEnd(QDateTime()),
     m_index(-1),
     m_lock(QReadWriteLock::Recursive),
+#ifdef ENABLE_MOLECULAR
+    m_zValue(-1),
+#endif // ENABLE_MOLECULAR
     m_parentStructure(nullptr)
   {
     *this = other;
@@ -233,6 +242,7 @@ namespace GlobalSearch {
 
 #ifdef ENABLE_MOLECULAR
     settings->setValue("parentConformer", getParentConformer().c_str());
+    settings->setValue("zValue", getZValue());
 #endif // ENABLE_MOLECULAR
 
     // Check if a parent structure is saved
@@ -351,6 +361,13 @@ namespace GlobalSearch {
 
       setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));
       setOptTimerEnd(   QDateTime::fromString(settings->value("endTime",   "").toString()));
+
+#ifdef ENABLE_MOLECULAR
+      setParentConformer(
+        settings->value("parentConformer", "").toString().toStdString()
+      );
+      setZValue(settings->value("zValue", "-1").toInt());
+#endif // ENABLE_MOLECULAR
 
     // History
     settings->beginGroup("history");
@@ -1404,6 +1421,13 @@ namespace GlobalSearch {
 
   uint Structure::getFormulaUnits() const
   {
+#ifdef ENABLE_MOLECULAR
+    // First, check and see if it is molecular. z != -1 for molecular
+    if (getZValue() != -1)
+      return getZValue();
+#endif // ENABLE_MOLECULAR
+
+    // Perform an atomistic formula unit calculation
     QList<uint> counts = getNumberOfAtomsAlpha();
     if (counts.empty())
       return 0;
