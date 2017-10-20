@@ -150,6 +150,7 @@ int main(int argc, char* argv[])
     d = std::move(make_unique<XtalOpt::XtalOptDialog>(nullptr, Qt::Window,
                                                       true, &xtalopt));
     xtalopt.setDialog(d.get());
+    xtalopt.setupRpcConnections();
     if (!xtalopt.plotDir(dataDir))
       return 1;
     d->beginPlotOnlyMode();
@@ -193,6 +194,7 @@ int main(int argc, char* argv[])
     d = std::move(make_unique<XtalOpt::XtalOptDialog>(nullptr, Qt::Window,
                                                       true, &xtalopt));
     xtalopt.setDialog(d.get());
+    xtalopt.setupRpcConnections();
     d->show();
   }
 

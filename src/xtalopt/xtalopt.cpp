@@ -93,10 +93,7 @@ namespace XtalOpt {
     connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
             this, SLOT(updateLowestEnthalpyFUList(GlobalSearch::Structure*)));
 
-    if (m_usingGUI && m_dialog) {
-      connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
-              this, SLOT(sendRpcUpdate(GlobalSearch::Structure*)));
-    }
+    setupRpcConnections();
   }
 
   XtalOpt::~XtalOpt()
@@ -4804,6 +4801,14 @@ namespace XtalOpt {
       else {
         stream << "  optimizer: " << opt->getIDString() << "\n";
       }
+    }
+  }
+
+  void XtalOpt::setupRpcConnections()
+  {
+    if (m_usingGUI && m_dialog) {
+      connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)),
+              this, SLOT(sendRpcUpdate(GlobalSearch::Structure*)));
     }
   }
 

@@ -336,6 +336,7 @@ namespace XtalOpt {
     // Prints all the options to @p stream
     void printOptionSettings(QTextStream& stream) const;
 
+    void setupRpcConnections();
     void sendRpcUpdate(GlobalSearch::Structure* s);
 
     // If composition is Ti1O2, returns {22, 8, 8}
