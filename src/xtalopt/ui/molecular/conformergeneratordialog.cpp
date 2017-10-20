@@ -84,7 +84,7 @@ namespace GlobalSearch {
   {
     // We need to end the output directory with '/'
     QString confOutDir = ui->edit_conformerOutDir->text();
-    if (!confOutDir.endsWith(QDir::separator()))
+    if (!confOutDir.isEmpty() && !confOutDir.endsWith(QDir::separator()))
       confOutDir.append(QDir::separator());
 
     m_opt->m_initialMolFile = ui->edit_initialMolFile->text().toStdString();
@@ -140,7 +140,7 @@ namespace GlobalSearch {
                        tr("Select the directory to put the conformers in..."),
                        oldDir);
 
-    if (!newDir.endsWith(QDir::separator()))
+    if (!newDir.isEmpty() && !newDir.endsWith(QDir::separator()))
       newDir.append(QDir::separator());
 
     if (!newDir.isEmpty()) {

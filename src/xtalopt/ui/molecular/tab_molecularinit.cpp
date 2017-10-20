@@ -304,7 +304,7 @@ namespace XtalOpt {
                        tr("Select the conformer directory..."),
                        oldDir);
 
-    if (!newDir.endsWith(QDir::separator()))
+    if (!newDir.isEmpty() && !newDir.endsWith(QDir::separator()))
       newDir.append(QDir::separator());
 
     if (!newDir.isEmpty()) {
