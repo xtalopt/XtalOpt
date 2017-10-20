@@ -231,6 +231,10 @@ namespace GlobalSearch {
     settings->setValue("startTime", getOptTimerStart().toString());
     settings->setValue("endTime", getOptTimerEnd().toString());
 
+#ifdef ENABLE_MOLECULAR
+    settings->setValue("parentConformer", getParentConformer().c_str());
+#endif // ENABLE_MOLECULAR
+
     // Check if a parent structure is saved
     // This is NOT a variable that can be read in readSettings().
     if (this->hasParentStructure()) {

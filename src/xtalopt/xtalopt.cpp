@@ -1548,6 +1548,8 @@ namespace XtalOpt {
       }
     }
 
+    xtal->setParentConformer(confFile);
+
     // Set up geneology info
     xtal->setGeneration(generation);
     xtal->setIDNumber(id);

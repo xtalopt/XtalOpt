@@ -163,7 +163,7 @@ namespace GlobalSearch {
       else return false;
     }
 
-    /** Return the number of times the structure has 
+    /** Return the number of times the structure has
      * had the atoms moved to fix the structure to pass
      * the IAD check.
      *@sa setFixCount
@@ -318,6 +318,14 @@ namespace GlobalSearch {
 
     // Calculate and return the number of formula units
     uint getFormulaUnits() const;
+
+#ifdef ENABLE_MOLECULAR
+    /**
+     * Get the filename for the conformer from which this structure was
+     * created. Only applicable for molecular crystals.
+     */
+    std::string getParentConformer() { return m_parentConformer; }
+#endif // ENABLE_MOLECULAR
 
    /** @return A pointer for the parent structure of a given structure
     */
@@ -917,7 +925,7 @@ namespace GlobalSearch {
     virtual unsigned int sizeOfHistory() {return m_histEnergies.size();};
 
     /** Set the number of times the structures has
-     * had the atoms moved to pass the 
+     * had the atoms moved to pass the
      * IAD check.
      * @sa getFixCount
      */
@@ -1045,6 +1053,14 @@ namespace GlobalSearch {
      * @sa resetFailCount
      */
     void setFailCount(uint count) {m_failCount = count;};
+
+#ifdef ENABLE_MOLECULAR
+    /**
+     * Set the filename for the conformer from which this structure was
+     * created. Only applicable for molecular crystals.
+     */
+    void setParentConformer(const std::string& p) { m_parentConformer = p; }
+#endif // ENABLE_MOLECULAR
 
     /** Set the parent structure for this structure
      */
@@ -1245,6 +1261,10 @@ namespace GlobalSearch {
     QList<double> m_histEnergies;
     QList<QList<Vector3> > m_histCoords;
     QList<Matrix3> m_histCells;
+
+#ifdef ENABLE_MOLECULAR
+    std::string m_parentConformer;
+#endif // ENABLE_MOLECULAR
 
     // Pointer to parent structure if one is saved.
     Structure* m_parentStructure;
