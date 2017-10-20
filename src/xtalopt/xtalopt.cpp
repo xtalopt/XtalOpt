@@ -93,7 +93,8 @@ namespace XtalOpt {
     connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)),
             this, SLOT(updateLowestEnthalpyFUList(GlobalSearch::Structure*)));
 
-    setupRpcConnections();
+    connect(this, &OptBase::dialogSet,
+            this, &XtalOpt::setupRpcConnections);
   }
 
   XtalOpt::~XtalOpt()

@@ -255,7 +255,7 @@ for (ind = 0; ind < probs.size(); ind++)
     /**
      * Set the main dialog..
      */
-    void setDialog(AbstractDialog* d) { m_dialog = d; }
+    void setDialog(AbstractDialog* d) { m_dialog = d; emit dialogSet(); }
 
     /**
      * @return A pointer to the main dialog..
@@ -514,6 +514,11 @@ for (ind = 0; ind < probs.size(); ind++)
      * @sa emitStartingSession
      */
     void readOnlySessionStarted();
+
+    /**
+     * Emitted when the dialog is set.
+     */
+    void dialogSet();
 
     /**
      * Emitted when the current QueueInterface changes
