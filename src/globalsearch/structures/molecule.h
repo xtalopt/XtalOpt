@@ -95,6 +95,18 @@ namespace GlobalSearch
     void addMolecule(const Molecule& mol);
 
     /**
+     * A Molecule class can contain multiple "molecules." This function is
+     * designed to separate these molecules by creating separate Molecules for
+     * every group of bonded atoms and returning them in a vector. The
+     * individual Molecules will all have the same unit cell as the parent
+     * Molecule.
+     *
+     * @return The vector of indvidual molecules (groups of atoms bonded
+     *         together).
+     */
+    std::vector<Molecule> getIndividualMolecules() const;
+
+    /**
      * Set the atoms in the molecule. Any bonds will be cleared.
      *
      * @param atoms The atoms to be set in the molecule.
@@ -302,6 +314,17 @@ namespace GlobalSearch
      * @return A const reference to the Bond object.
      */
     const Bond& bond(size_t bondInd) const;
+
+    /**
+     * If the two atoms are bonded together, return the index of the bond that
+     * is between them. If they are not bonded together, return -1.
+     *
+     * @param atomInd1 The first atom index of the two atoms bonded together.
+     * @param atomInd2 The second atom index of the two atoms bonded together.
+     *
+     * @return The index of the bond between the atoms or -1 if no bond exists.
+     */
+    long long bondBetweenAtoms(size_t atomInd1, size_t atomInd2) const;
 
     /**
      * Is the atom at index @p ind bonded?

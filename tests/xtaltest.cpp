@@ -668,6 +668,15 @@ void XtalTest::addMoleculeRandomly()
   QVERIFY(xtal.numAtoms() == 48);
   QVERIFY(xtal.numBonds() == 50);
 
+  // Confirm that we have two molecules with equal size
+  std::vector<Molecule> mols = xtal.getIndividualMolecules();
+
+  QVERIFY(mols.size() == 2);
+  QVERIFY(mols[0].numAtoms() == 24);
+  QVERIFY(mols[0].numBonds() == 25);
+  QVERIFY(mols[1].numAtoms() == 24);
+  QVERIFY(mols[1].numBonds() == 25);
+
   //std::stringstream cmlOutput;
   //QVERIFY(GlobalSearch::CmlFormat::write(xtal, cmlOutput));
 

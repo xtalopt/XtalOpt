@@ -15,6 +15,9 @@
 
 #include <globalsearch/structures/molecule.h>
 
+#include <iostream>
+#include <unordered_map>
+
 namespace GlobalSearch
 {
   void Molecule::addMolecule(const Molecule& mol)
@@ -28,6 +31,71 @@ namespace GlobalSearch
     for (const auto& bond: mol.bonds()) {
       addBond(bond.first() + offset, bond.second() + offset, bond.bondOrder());
     }
+  }
+
+  std::vector<Molecule> Molecule::getIndividualMolecules() const
+  {
+    std::vector<Molecule> ret;
+
+    std::vector<bool> atomAlreadyUsed(numAtoms(), false);
+
+    while (true) {
+      // Find the first atom we haven't used yet
+      auto it = std::find(atomAlreadyUsed.begin(), atomAlreadyUsed.end(),
+                          false);
+
+      if (it == atomAlreadyUsed.end())
+        break;
+
+      Molecule newMol;
+      newMol.setUnitCell(unitCell());
+
+      size_t startInd = it - atomAlreadyUsed.begin();
+      newMol.addAtom(atoms()[startInd]);
+      atomAlreadyUsed[startInd] = true;
+
+      // Atoms for which to check bonds
+      std::vector<size_t> atomsToCheck(1, startInd);
+
+      // A map of the old indices to the new molecule atom indices.
+      std::unordered_map<size_t, size_t> mapToNewIndices;
+      mapToNewIndices[startInd] = 0;
+
+      // Find all atoms bonded to other atoms
+      while (!atomsToCheck.empty()) {
+        size_t checkInd = atomsToCheck[0];
+
+        for (size_t i = startInd + 1; i < numAtoms(); ++i) {
+          if (i == checkInd)
+            continue;
+
+          // bondInd will be -1 if no such bond exists
+          long long bondInd = bondBetweenAtoms(checkInd, i);
+          if (bondInd != -1 && !atomAlreadyUsed[i]) {
+            newMol.addAtom(atoms()[i]);
+            atomAlreadyUsed[i] = true;
+            atomsToCheck.push_back(i);
+            mapToNewIndices[i] = newMol.numAtoms() - 1;
+            newMol.addBond(mapToNewIndices[checkInd], mapToNewIndices[i],
+                           bonds()[bondInd].bondOrder());
+          }
+          // If we have already added the atom, make sure we have added the
+          // bond
+          else if (bondInd != -1 && atomAlreadyUsed[i]) {
+            if (!newMol.areBonded(mapToNewIndices[checkInd],
+                                  mapToNewIndices[i])) {
+              newMol.addBond(mapToNewIndices[checkInd], mapToNewIndices[i],
+                             bonds()[bondInd].bondOrder());
+            }
+          }
+        }
+        atomsToCheck.erase(atomsToCheck.begin());
+      }
+
+      ret.push_back(newMol);
+    }
+
+    return ret;
   }
 
   bool Molecule::removeAtom(size_t ind)
@@ -96,6 +164,20 @@ namespace GlobalSearch
         --i;
       }
     }
+  }
+
+  long long Molecule::bondBetweenAtoms(size_t atomInd1,
+                                       size_t atomInd2) const
+  {
+    assert(atomInd1 < m_atoms.size());
+    assert(atomInd2 < m_atoms.size());
+    for (size_t i = 0; i < m_bonds.size(); ++i) {
+      if ((m_bonds[i].first() == atomInd1 && m_bonds[i].second() == atomInd2) ||
+          (m_bonds[i].second() == atomInd1 && m_bonds[i].first() == atomInd2)) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   bool Molecule::isBonded(size_t ind) const
