@@ -64,7 +64,16 @@ bool XtalOptRpc::updateDisplayedXtal(const Xtal& xtal)
   if (!reconnectIfNeeded())
     return false;
 
-  QString cml = xtal.toCML();
+  QString cml;
+  if (xtal.hasBonds()) {
+    // For easier visualization if we have bonds
+    Xtal tmpXtal(xtal);
+    tmpXtal.wrapMoleculesToSmallestBonds();
+    cml = tmpXtal.toCML();
+  }
+  else {
+    cml = xtal.toCML();
+  }
 
   QJsonObject params;
   params["format"] = QString("cml");
