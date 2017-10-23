@@ -97,6 +97,7 @@ class XtalTest : public QObject
 
 #ifdef ENABLE_MOLECULAR
   void addMoleculeRandomly();
+  void smallestBondWrap();
 #endif
 
   void equalityVsFingerprintTest();
@@ -681,6 +682,39 @@ void XtalTest::addMoleculeRandomly()
   //QVERIFY(GlobalSearch::CmlFormat::write(xtal, cmlOutput));
 
   //qDebug() << "cmlOutput is: " << cmlOutput.str().c_str();
+}
+
+void XtalTest::smallestBondWrap()
+{
+  Xtal xtal;
+  xtal.setCellInfo(3.00000, 3.00000, 3.00000,
+                   90.00000, 90.00000, 90.00000);
+
+  xtal.addAtom(1, GlobalSearch::Vector3(2.90000, 2.90000, 2.90000));
+  xtal.addAtom(1, GlobalSearch::Vector3(3.10000, 2.90000, 2.90000));
+  xtal.addBond(0, 1);
+
+  double tol = 1.e-4;
+
+  xtal.wrapAtomsToCell();
+  // After a unit cell wrap, the second atom should have a position of
+  // ~ 0.1, 2.9, 2.9
+  QVERIFY(GlobalSearch::fuzzyCompare(
+            xtal.atom(1).pos(),
+            GlobalSearch::Vector3(0.10000, 2.90000, 2.90000),
+            tol
+          )
+  );
+
+  xtal.wrapMoleculesToSmallestBonds();
+  // After a molecule bond wrap, the second atom should have a position of
+  // ~ 3.1, 2.9, 2.9 again
+  QVERIFY(GlobalSearch::fuzzyCompare(
+            xtal.atom(1).pos(),
+            GlobalSearch::Vector3(3.10000, 2.90000, 2.90000),
+            tol
+          )
+  );
 }
 #endif
 

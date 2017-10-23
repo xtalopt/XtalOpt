@@ -363,6 +363,14 @@ namespace GlobalSearch
     std::vector<size_t> bondedAtoms(size_t ind) const;
 
     /**
+     * Wrap the atoms in an attempt to make all the bonds between atoms as
+     * short as possible in a unit cell. This will usually result in some
+     * atoms being located outside the unit cell, but it is very helpful
+     * for visualization.
+     */
+    void wrapMoleculesToSmallestBonds();
+
+    /**
      * Remove all bonds.
      */
     void clearBonds() { m_bonds.clear(); }

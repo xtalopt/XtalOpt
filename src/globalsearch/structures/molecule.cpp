@@ -226,4 +226,46 @@ namespace GlobalSearch
     }
     return ret;
   }
+
+  void Molecule::wrapMoleculesToSmallestBonds()
+  {
+    if (!hasBonds() || !hasUnitCell())
+      return;
+
+    std::vector<bool> atomAlreadyMoved(numAtoms(), false);
+
+    std::vector<size_t> atomsToCheck(1, 0);
+
+    while (!atomsToCheck.empty()) {
+      size_t checkInd = atomsToCheck[0];
+      for (size_t i = 0; i < numAtoms(); ++i) {
+        if (atomAlreadyMoved[i] || checkInd == i)
+          continue;
+
+        if (areBonded(checkInd, i)) {
+          const auto& pos1 = atom(checkInd).pos();
+          const auto& pos2 = atom(i).pos();
+          atom(i).setPos(unitCell().minimumImage(pos2 - pos1) + pos1);
+          atomAlreadyMoved[i] = true;
+          atomsToCheck.push_back(i);
+        }
+      }
+      atomsToCheck.erase(atomsToCheck.begin());
+
+      // Move on to the next group of bonded atoms if this one is done
+      if (atomsToCheck.empty()) {
+        auto it = std::find(atomAlreadyMoved.begin(), atomAlreadyMoved.end(),
+                            false);
+
+        // Break if we are done
+        if (it == atomAlreadyMoved.end())
+          break;
+
+        // Otherwise, append the new atom to check and keep going
+        size_t newInd = it - atomAlreadyMoved.begin();
+        atomAlreadyMoved[newInd] = true;
+        atomsToCheck.push_back(newInd);
+      }
+    }
+  }
 }
