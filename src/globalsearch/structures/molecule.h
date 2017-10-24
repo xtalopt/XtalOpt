@@ -277,6 +277,40 @@ namespace GlobalSearch
     double angle(size_t atomInd1, size_t atomInd2, size_t atomInd3) const;
 
     /**
+     * Get the dihedral angle created by four atoms where the first three atoms
+     * form a plane and the last three atoms form a plane. If we have a valid
+     * unit cell, we will use the minimum images. Otherwise, we will just
+     * perform a regular dihedral angle calculation.
+     *
+     * @param atom1 The first atom.
+     * @param atom2 The second atom.
+     * @param atom3 The third atom.
+     * @param atom4 The fourth atom.
+     *
+     * @return The dihedral angle.
+     */
+    double dihedral(const Atom& atom1,
+                    const Atom& atom2,
+                    const Atom& atom3,
+                    const Atom& atom4) const;
+
+    /**
+     * Get the dihedral angle created by four atoms where the first three atoms
+     * form a plane and the last three atoms form a plane. If we have a valid
+     * unit cell, we will use the minimum images. Otherwise, we will just
+     * perform a regular dihedral angle calculation.
+     *
+     * @param atom1 The first atom index.
+     * @param atom2 The second atom index.
+     * @param atom3 The third atom index.
+     * @param atom4 The fourth atom index.
+     *
+     * @return The dihedral angle.
+     */
+    double dihedral(size_t atomInd1, size_t atomInd2,
+                    size_t atomInd3, size_t atomInd4) const;
+
+    /**
      * Does this molecule contain bonds? Returns true if !m_bonds.empty().
      *
      * @return Whether or not the molecule contains bonds.
@@ -555,6 +589,19 @@ namespace GlobalSearch
     assert(atomInd2 < m_atoms.size());
     assert(atomInd3 < m_atoms.size());
     return angle(m_atoms[atomInd1], m_atoms[atomInd2], m_atoms[atomInd3]);
+  }
+
+  inline double Molecule::dihedral(size_t atomInd1,
+                                   size_t atomInd2,
+                                   size_t atomInd3,
+                                   size_t atomInd4) const
+  {
+    assert(atomInd1 < m_atoms.size());
+    assert(atomInd2 < m_atoms.size());
+    assert(atomInd3 < m_atoms.size());
+    assert(atomInd4 < m_atoms.size());
+    return dihedral(m_atoms[atomInd1], m_atoms[atomInd2],
+                    m_atoms[atomInd3], m_atoms[atomInd4]);
   }
 
   inline void Molecule::addBond(size_t ind1, size_t ind2,

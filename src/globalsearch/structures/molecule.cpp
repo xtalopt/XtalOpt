@@ -288,4 +288,31 @@ namespace GlobalSearch
 
     return acos(AB.dot(BC) / (AB.norm() * BC.norm())) * RAD2DEG;
   }
+
+  double Molecule::dihedral(const Atom& atom1,
+                            const Atom& atom2,
+                            const Atom& atom3,
+                            const Atom& atom4) const
+  {
+    const Vector3& A = atom1.pos();
+    const Vector3& B = atom2.pos();
+    const Vector3& C = atom3.pos();
+    const Vector3& D = atom4.pos();
+
+    Vector3 AB = B - A;
+    Vector3 BC = C - B;
+    Vector3 CD = D - C;
+
+    // If we have a unit cell, use the minimum images
+    if (hasUnitCell()) {
+      AB = unitCell().minimumImage(AB);
+      BC = unitCell().minimumImage(BC);
+      CD = unitCell().minimumImage(CD);
+    }
+
+    const Vector3& n1 = AB.cross(BC);
+    const Vector3& n2 = BC.cross(CD);
+
+    return atan2(n1.cross(n2).dot(BC / BC.norm()), n1.dot(n2)) * RAD2DEG;
+  }
 }

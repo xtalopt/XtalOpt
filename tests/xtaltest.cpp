@@ -746,7 +746,43 @@ void XtalTest::angleCalculationTest()
 
 void XtalTest::dihedralCalculationTest()
 {
+  Xtal xtal;
+  xtal.setCellInfo(3.0, 3.0, 3.0, 90.0, 90.0, 90.0);
 
+  xtal.addAtom(1, GlobalSearch::Vector3(1.00000, 0.00000, 0.00000));
+  xtal.addAtom(1, GlobalSearch::Vector3(0.00000, 0.00000, 0.00000));
+  xtal.addAtom(1, GlobalSearch::Vector3(0.00000, 0.00000, 1.00000));
+  xtal.addAtom(1, GlobalSearch::Vector3(0.10000, 0.60000, 1.00000));
+
+  double tol = 1.e-5;
+
+  // Dihedral should be 80.53768 degrees
+  QVERIFY(
+    GlobalSearch::fuzzyCompare(xtal.dihedral(0, 1, 2, 3), 80.53768, tol)
+  );
+
+  // Move the last atom and calculate again
+  xtal.atom(3).setPos(GlobalSearch::Vector3(0.999999, 0.000001, 1.00000));
+
+  // The dihedral should be close to zero
+  QVERIFY(
+    GlobalSearch::fuzzyCompare(xtal.dihedral(0, 1, 2, 3), 0.000057, tol)
+  );
+
+  xtal.atom(3).setPos(GlobalSearch::Vector3(-0.30000, -0.60000, 0.0000));
+
+  // Now the dihedral should be -116.56505
+  QVERIFY(
+    GlobalSearch::fuzzyCompare(xtal.dihedral(0, 1, 2, 3), -116.56505, tol)
+  );
+
+  // Wrap the atom into the unit cell. Because we use minimum images for
+  // dihedral calculations, the dihedral should remain the same.
+  xtal.wrapAtomsToCell();
+
+  QVERIFY(
+    GlobalSearch::fuzzyCompare(xtal.dihedral(0, 1, 2, 3), -116.56505, tol)
+  );
 }
 
 #endif
