@@ -268,4 +268,24 @@ namespace GlobalSearch
       }
     }
   }
+
+  double Molecule::angle(const Atom& atom1,
+                         const Atom& atom2,
+                         const Atom& atom3) const
+  {
+    const Vector3& A = atom1.pos();
+    const Vector3& B = atom2.pos();
+    const Vector3& C = atom3.pos();
+
+    Vector3 AB = B - A;
+    Vector3 BC = C - B;
+
+    // If we have a unit cell, use the minimum images
+    if (hasUnitCell()) {
+      AB = unitCell().minimumImage(AB);
+      BC = unitCell().minimumImage(BC);
+    }
+
+    return acos(AB.dot(BC) / (AB.norm() * BC.norm())) * RAD2DEG;
+  }
 }

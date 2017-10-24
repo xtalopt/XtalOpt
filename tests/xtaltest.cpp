@@ -98,6 +98,8 @@ class XtalTest : public QObject
 #ifdef ENABLE_MOLECULAR
   void addMoleculeRandomly();
   void smallestBondWrap();
+  void angleCalculationTest();
+  void dihedralCalculationTest();
 #endif
 
   void equalityVsFingerprintTest();
@@ -716,6 +718,37 @@ void XtalTest::smallestBondWrap()
           )
   );
 }
+
+void XtalTest::angleCalculationTest()
+{
+  Xtal xtal;
+  xtal.setCellInfo(3.0, 3.0, 3.0, 90.0, 90.0, 90.0);
+
+  xtal.addAtom(1, GlobalSearch::Vector3(0.10000, 0.10000, 0.50000));
+  xtal.addAtom(1, GlobalSearch::Vector3(0.10000, 0.10000, 0.10000));
+  xtal.addAtom(1, GlobalSearch::Vector3(-0.30000, 0.10000, 0.10000));
+
+  double tol = 1.e-5;
+
+  // Angle should be 90 degrees
+  QVERIFY(GlobalSearch::fuzzyCompare(xtal.angle(0, 1, 2), 90.00000, tol));
+
+  // Move the third atom so that the angle should be 45 degrees
+  xtal.atom(2).setPos(GlobalSearch::Vector3(-0.10000, 0.10000, -0.10000));
+  QVERIFY(GlobalSearch::fuzzyCompare(xtal.angle(0, 1, 2), 45.00000, tol));
+
+  // Wrap the atom into the unit cell. Because we use minimum images for
+  // angle calculation, the angle should still come out as 45 degrees.
+  xtal.wrapAtomsToCell();
+
+  QVERIFY(GlobalSearch::fuzzyCompare(xtal.angle(0, 1, 2), 45.00000, tol));
+}
+
+void XtalTest::dihedralCalculationTest()
+{
+
+}
+
 #endif
 
 void XtalTest::equalityVsFingerprintTest()

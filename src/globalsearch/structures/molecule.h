@@ -237,6 +237,46 @@ namespace GlobalSearch
     double distance(const Atom& atom1, const Atom& atom2) const;
 
     /**
+     * Get the cartesian distance between two atoms. If we have a valid
+     * unit cell, we will take into account neighboring atom images.
+     * Otherwise, we will just perform a regular distance calculation.
+     *
+     * @param atomInd1 The first atom index.
+     * @param atomInd2 The second atom index.
+     *
+     * @return The distance.
+     */
+    double distance(size_t atomInd1, size_t atomInd2) const;
+
+    /**
+     * Get the angle between three atoms (where the second atom is the vertex).
+     * If we have a valid unit cell, we will use the minimum images.
+     * Otherwise, we will just perform a regular angle calculation.
+     *
+     * @param atom1 The first atom.
+     * @param atom2 The second atom (the vertex of the angle).
+     * @param atom3 The third atom.
+     *
+     * @return The angle.
+     */
+    double angle(const Atom& atom1,
+                 const Atom& atom2,
+                 const Atom& atom3) const;
+
+    /**
+     * Get the angle between three atoms (where the second atom is the vertex).
+     * If we have a valid unit cell, we will use the minimum images.
+     * Otherwise, we will just perform a regular angle calculation.
+     *
+     * @param atomInd1 The first atom index.
+     * @param atomInd2 The second atom index (the vertex of the angle).
+     * @param atomInd3 The third atom index.
+     *
+     * @return The angle.
+     */
+    double angle(size_t atomInd1, size_t atomInd2, size_t atomInd3) const;
+
+    /**
      * Does this molecule contain bonds? Returns true if !m_bonds.empty().
      *
      * @return Whether or not the molecule contains bonds.
@@ -498,6 +538,23 @@ namespace GlobalSearch
     if (hasUnitCell())
       return m_unitCell.distance(atom1.pos(), atom2.pos());
     return fabs((atom1.pos() - atom2.pos()).norm());
+  }
+
+  inline double Molecule::distance(size_t atomInd1, size_t atomInd2) const
+  {
+    assert(atomInd1 < m_atoms.size());
+    assert(atomInd2 < m_atoms.size());
+    return distance(m_atoms[atomInd1], m_atoms[atomInd2]);
+  }
+
+  inline double Molecule::angle(size_t atomInd1,
+                                size_t atomInd2,
+                                size_t atomInd3) const
+  {
+    assert(atomInd1 < m_atoms.size());
+    assert(atomInd2 < m_atoms.size());
+    assert(atomInd3 < m_atoms.size());
+    return angle(m_atoms[atomInd1], m_atoms[atomInd2], m_atoms[atomInd3]);
   }
 
   inline void Molecule::addBond(size_t ind1, size_t ind2,
