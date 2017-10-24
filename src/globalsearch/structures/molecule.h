@@ -225,16 +225,16 @@ namespace GlobalSearch
     void reorderAtoms(std::vector<size_t> newOrder);
 
     /**
-     * Get the cartesian distance between two atoms. If we have a valid
-     * unit cell, we will take into account neighboring atom images.
+     * Get the cartesian distance between two points. If we have a valid
+     * unit cell, we will take into account neighboring images.
      * Otherwise, we will just perform a regular distance calculation.
      *
-     * @param atom1 The first atom.
-     * @param atom2 The second atom.
+     * @param A The first point.
+     * @param B The second point.
      *
      * @return The distance.
      */
-    double distance(const Atom& atom1, const Atom& atom2) const;
+    double distance(const Vector3& A, const Vector3& B) const;
 
     /**
      * Get the cartesian distance between two atoms. If we have a valid
@@ -249,63 +249,63 @@ namespace GlobalSearch
     double distance(size_t atomInd1, size_t atomInd2) const;
 
     /**
-     * Get the angle between three atoms (where the second atom is the vertex).
-     * If we have a valid unit cell, we will use the minimum images.
-     * Otherwise, we will just perform a regular angle calculation.
+     * Get the angle (in degrees) between three points (where the second point
+     * is the vertex). If we have a valid unit cell, we will use the minimum
+     * images. Otherwise, we will just perform a regular angle calculation.
      *
-     * @param atom1 The first atom.
-     * @param atom2 The second atom (the vertex of the angle).
-     * @param atom3 The third atom.
+     * @param A The first point.
+     * @param B The second point (the vertex of the angle).
+     * @param C The third point.
      *
-     * @return The angle.
+     * @return The angle in degrees.
      */
-    double angle(const Atom& atom1,
-                 const Atom& atom2,
-                 const Atom& atom3) const;
+    double angle(const Vector3& A,
+                 const Vector3& B,
+                 const Vector3& C) const;
 
     /**
-     * Get the angle between three atoms (where the second atom is the vertex).
-     * If we have a valid unit cell, we will use the minimum images.
-     * Otherwise, we will just perform a regular angle calculation.
+     * Get the angle (in degrees) between three atoms (where the second atom is
+     * the vertex). If we have a valid unit cell, we will use the minimum
+     * images. Otherwise, we will just perform a regular angle calculation.
      *
      * @param atomInd1 The first atom index.
      * @param atomInd2 The second atom index (the vertex of the angle).
      * @param atomInd3 The third atom index.
      *
-     * @return The angle.
+     * @return The angle in degrees.
      */
     double angle(size_t atomInd1, size_t atomInd2, size_t atomInd3) const;
 
     /**
-     * Get the dihedral angle created by four atoms where the first three atoms
-     * form a plane and the last three atoms form a plane. If we have a valid
-     * unit cell, we will use the minimum images. Otherwise, we will just
-     * perform a regular dihedral angle calculation.
+     * Get the dihedral angle (in degrees) created by four points where the
+     * first three points form a plane and the last three points form a plane.
+     * If we have a valid unit cell, we will use the minimum images. Otherwise,
+     * we will just perform a regular dihedral angle calculation.
      *
-     * @param atom1 The first atom.
-     * @param atom2 The second atom.
-     * @param atom3 The third atom.
-     * @param atom4 The fourth atom.
+     * @param A The first point.
+     * @param B The second point.
+     * @param C The third point.
+     * @param D The fourth point.
      *
-     * @return The dihedral angle.
+     * @return The dihedral angle in degrees.
      */
-    double dihedral(const Atom& atom1,
-                    const Atom& atom2,
-                    const Atom& atom3,
-                    const Atom& atom4) const;
+    double dihedral(const Vector3& A,
+                    const Vector3& B,
+                    const Vector3& C,
+                    const Vector3& D) const;
 
     /**
-     * Get the dihedral angle created by four atoms where the first three atoms
-     * form a plane and the last three atoms form a plane. If we have a valid
-     * unit cell, we will use the minimum images. Otherwise, we will just
-     * perform a regular dihedral angle calculation.
+     * Get the dihedral angle (in degrees) created by four atoms where the
+     * first three atoms form a plane and the last three atoms form a plane.
+     * If we have a valid unit cell, we will use the minimum images. Otherwise,
+     * we will just perform a regular dihedral angle calculation.
      *
      * @param atom1 The first atom index.
      * @param atom2 The second atom index.
      * @param atom3 The third atom index.
      * @param atom4 The fourth atom index.
      *
-     * @return The dihedral angle.
+     * @return The dihedral angle (in degrees).
      */
     double dihedral(size_t atomInd1, size_t atomInd2,
                     size_t atomInd3, size_t atomInd4) const;
@@ -567,18 +567,18 @@ namespace GlobalSearch
       bond.swapIndices(ind1, ind2);
   }
 
-  inline double Molecule::distance(const Atom& atom1, const Atom& atom2) const
+  inline double Molecule::distance(const Vector3& A, const Vector3& B) const
   {
     if (hasUnitCell())
-      return m_unitCell.distance(atom1.pos(), atom2.pos());
-    return fabs((atom1.pos() - atom2.pos()).norm());
+      return m_unitCell.distance(A, B);
+    return fabs((A - B).norm());
   }
 
   inline double Molecule::distance(size_t atomInd1, size_t atomInd2) const
   {
     assert(atomInd1 < m_atoms.size());
     assert(atomInd2 < m_atoms.size());
-    return distance(m_atoms[atomInd1], m_atoms[atomInd2]);
+    return distance(m_atoms[atomInd1].pos(), m_atoms[atomInd2].pos());
   }
 
   inline double Molecule::angle(size_t atomInd1,
@@ -588,7 +588,9 @@ namespace GlobalSearch
     assert(atomInd1 < m_atoms.size());
     assert(atomInd2 < m_atoms.size());
     assert(atomInd3 < m_atoms.size());
-    return angle(m_atoms[atomInd1], m_atoms[atomInd2], m_atoms[atomInd3]);
+    return angle(m_atoms[atomInd1].pos(),
+                 m_atoms[atomInd2].pos(),
+                 m_atoms[atomInd3].pos());
   }
 
   inline double Molecule::dihedral(size_t atomInd1,
@@ -600,8 +602,8 @@ namespace GlobalSearch
     assert(atomInd2 < m_atoms.size());
     assert(atomInd3 < m_atoms.size());
     assert(atomInd4 < m_atoms.size());
-    return dihedral(m_atoms[atomInd1], m_atoms[atomInd2],
-                    m_atoms[atomInd3], m_atoms[atomInd4]);
+    return dihedral(m_atoms[atomInd1].pos(), m_atoms[atomInd2].pos(),
+                    m_atoms[atomInd3].pos(), m_atoms[atomInd4].pos());
   }
 
   inline void Molecule::addBond(size_t ind1, size_t ind2,

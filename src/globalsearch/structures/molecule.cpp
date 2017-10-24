@@ -269,14 +269,10 @@ namespace GlobalSearch
     }
   }
 
-  double Molecule::angle(const Atom& atom1,
-                         const Atom& atom2,
-                         const Atom& atom3) const
+  double Molecule::angle(const Vector3& A,
+                         const Vector3& B,
+                         const Vector3& C) const
   {
-    const Vector3& A = atom1.pos();
-    const Vector3& B = atom2.pos();
-    const Vector3& C = atom3.pos();
-
     Vector3 AB = B - A;
     Vector3 BC = C - B;
 
@@ -289,16 +285,11 @@ namespace GlobalSearch
     return acos(AB.dot(BC) / (AB.norm() * BC.norm())) * RAD2DEG;
   }
 
-  double Molecule::dihedral(const Atom& atom1,
-                            const Atom& atom2,
-                            const Atom& atom3,
-                            const Atom& atom4) const
+  double Molecule::dihedral(const Vector3& A,
+                            const Vector3& B,
+                            const Vector3& C,
+                            const Vector3& D) const
   {
-    const Vector3& A = atom1.pos();
-    const Vector3& B = atom2.pos();
-    const Vector3& C = atom3.pos();
-    const Vector3& D = atom4.pos();
-
     Vector3 AB = B - A;
     Vector3 BC = C - B;
     Vector3 CD = D - C;

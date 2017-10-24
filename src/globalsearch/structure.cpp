@@ -599,7 +599,7 @@ namespace GlobalSearch {
           ElemInfo::getCovalentRadius(atoms[i].atomicNumber());
         const auto& rad2 =
           ElemInfo::getCovalentRadius(atoms[j].atomicNumber());
-        if (distance(atoms[i], atoms[j]) < rad1 + rad2 + tol)
+        if (distance(atoms[i].pos(), atoms[j].pos()) < rad1 + rad2 + tol)
           addBond(i, j);
       }
     }

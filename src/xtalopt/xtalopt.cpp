@@ -3186,7 +3186,7 @@ namespace XtalOpt {
 
         double iad = iads(mol.atom(i).atomicNumber(),
                           mol.atom(j).atomicNumber());
-        if (mol.distance(mol.atom(i), mol.atom(j)) < iad)
+        if (mol.distance(mol.atom(i).pos(), mol.atom(j).pos()) < iad)
           return false;
       }
     }
@@ -3203,7 +3203,7 @@ namespace XtalOpt {
       for (const auto& atom2: mol2.atoms()) {
         double iad = iads(atom1.atomicNumber(),
                           atom2.atomicNumber());
-        if (mol1.distance(atom1, atom2) < iad)
+        if (mol1.distance(atom1.pos(), atom2.pos()) < iad)
           return false;
       }
     }
