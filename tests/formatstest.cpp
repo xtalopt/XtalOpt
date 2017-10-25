@@ -16,6 +16,7 @@
 #include <globalsearch/formats/cmlformat.h>
 #include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/formats/formats.h>
+#include <globalsearch/formats/zmatrixformat.h>
 #include <globalsearch/structure.h>
 
 #include <QDebug>
@@ -61,6 +62,7 @@ class FormatsTest : public QObject
   void readCml();
   void writeCml();
   void OBConvert();
+  void ZMatrixEntryGenerator();
 
   // Different optimizer formats
   void readCastep();
@@ -363,6 +365,26 @@ void FormatsTest::OBConvert()
   QVERIFY(caffeineSDF.hasEnthalpy());
   QVERIFY(std::fabs(caffeineSDF.getEnthalpy() - -122.350) < 1.e-5);
   QVERIFY(std::fabs(caffeineSDF.getEnergy() - -122.351) < 1.e-5);
+}
+
+void FormatsTest::ZMatrixEntryGenerator()
+{
+  // We will test it on caffeine
+  QString caffeineFileName = QString(TESTDATADIR) + "/data/caffeine.cml";
+  GlobalSearch::Structure caffeine;
+  QVERIFY(GlobalSearch::Formats::read(&caffeine, caffeineFileName, "cml"));
+
+  std::vector<GlobalSearch::ZMatrixEntry> entries =
+    GlobalSearch::ZMatrixFormat::generateZMatrixEntries(&caffeine);
+
+/*
+  qDebug() << "Entries are:";
+  for (const auto& entry: entries)
+    qDebug() << entry.ind << entry.rInd << entry.angleInd << entry.dihedralInd;
+*/
+
+  // There should be 24 entries. We can check more info in the future
+  QVERIFY(entries.size() == 24);
 }
 
 void FormatsTest::readCastep()

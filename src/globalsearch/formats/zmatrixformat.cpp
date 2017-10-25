@@ -19,6 +19,7 @@
 #include <globalsearch/structure.h>
 
 #include <fstream>
+#include <iostream>
 
 #include <QDebug>
 #include <QString>
@@ -419,5 +420,222 @@ namespace GlobalSearch {
     */
 
     return true;
+  }
+
+  template<typename T>
+  bool alreadyInList(const std::vector<T>& v, const T& item)
+  {
+    for (const auto& elem: v) {
+      if (elem == item)
+        return true;
+    }
+    return false;
+  }
+
+  std::vector<ZMatrixEntry> ZMatrixFormat::generateZMatrixEntries(Structure* s)
+  {
+    std::vector<ZMatrixEntry> ret;
+
+    const std::vector<unsigned short>& atomicNums = s->atomicNumbers();
+    std::vector<bool> atomAlreadyUsed(atomicNums.size(), false);
+
+    // Let's make a priority list for atom selection
+    std::vector<int> priorityList(atomicNums.size(), 1);
+
+    // Carbon gets 2. Hydrogen gets 0. Everything else gets 1.
+    for (size_t i = 0; i < atomicNums.size(); ++i) {
+      if (atomicNums[i] == 6)
+        priorityList[i] = 2;
+      else if (atomicNums[i] == 1)
+        priorityList[i] = 0;
+    }
+
+    // We'll keep doing this until we run out of molecules
+    while (true) {
+      // Find one that hasn't been used yet. If there aren't any, break
+      auto it = std::find(atomAlreadyUsed.begin(), atomAlreadyUsed.end(),
+                          false);
+
+      if (it == atomAlreadyUsed.end())
+        break;
+
+      std::vector<ZMatrixEntry> currentMol;
+      ZMatrixEntry firstEntry, secondEntry, thirdEntry;
+
+      // If we find a higher priority atom that hasn't been used, start with
+      // that one instead
+      size_t workingInd = it - atomAlreadyUsed.begin();
+      for (size_t i = 0; i < atomicNums.size(); ++i) {
+        if (!atomAlreadyUsed[i] && priorityList[i] > priorityList[workingInd])
+          workingInd = i;
+      }
+
+      atomAlreadyUsed[workingInd] = true;
+      firstEntry.ind = workingInd;
+      currentMol.push_back(firstEntry);
+
+      // Now find atoms bonded to this one and make the highest priority atom
+      // the second entry
+      std::vector<size_t> bondedAtoms = s->bondedAtoms(firstEntry.ind);
+
+      // If there are no bonded atoms, just continue
+      if (bondedAtoms.empty())
+        continue;
+
+      // Make sure none of these have been used. If they have been, report
+      // an error, because that shouldn't be possible.
+      for (const auto& bondedAtom: bondedAtoms) {
+        if (atomAlreadyUsed[bondedAtom]) {
+          std::cerr << "Error in " << __FUNCTION__ << ": an atom bonded to "
+                    << "the first atom in this molecule has already been "
+                    << "used!\nThis error should not be possible. Please "
+                    << "contact a developer.\n";
+          return ret;
+        }
+      }
+
+      // Pick the highest priority atom for the second index
+      workingInd = bondedAtoms[0];
+      for (const auto& bondedAtom: bondedAtoms) {
+        if (priorityList[bondedAtom] > priorityList[workingInd])
+          workingInd = bondedAtom;
+      }
+      atomAlreadyUsed[workingInd] = true;
+      secondEntry.ind = workingInd;
+      secondEntry.rInd = firstEntry.ind;
+      currentMol.push_back(secondEntry);
+
+      // Erase that index so we can use bondedAtoms later
+      bondedAtoms.erase(std::find(bondedAtoms.begin(), bondedAtoms.end(),
+                                  workingInd));
+
+      // Now to find the third entry using the same process, but include
+      // both the first and second sets of bonded atoms.
+      std::vector<size_t> tmpBondedAtoms = s->bondedAtoms(secondEntry.ind);
+
+      for (const auto& e: tmpBondedAtoms) {
+        if (!atomAlreadyUsed[e] && !alreadyInList(bondedAtoms, e))
+          bondedAtoms.push_back(e);
+      }
+
+      // If there are no bonded atoms, just continue
+      if (bondedAtoms.empty())
+        continue;
+
+      // Pick the highest priority atom for the third index
+      workingInd = bondedAtoms[0];
+      for (const auto& bondedAtom: bondedAtoms) {
+        if (priorityList[bondedAtom] > priorityList[workingInd])
+          workingInd = bondedAtom;
+      }
+
+      atomAlreadyUsed[workingInd] = true;
+      thirdEntry.ind = workingInd;
+
+      // Figure out which atom this is bonded to
+      if (s->areBonded(thirdEntry.ind, firstEntry.ind)) {
+        thirdEntry.rInd = firstEntry.ind;
+        thirdEntry.angleInd = secondEntry.ind;
+      }
+      else {
+        thirdEntry.rInd = secondEntry.ind;
+        thirdEntry.angleInd = firstEntry.ind;
+      }
+
+      currentMol.push_back(thirdEntry);
+
+      // Erase that index so we can keep using bondedAtoms
+      bondedAtoms.erase(std::find(bondedAtoms.begin(), bondedAtoms.end(),
+                                  workingInd));
+
+      tmpBondedAtoms = s->bondedAtoms(thirdEntry.ind);
+
+      for (const auto& e: tmpBondedAtoms) {
+        if (!atomAlreadyUsed[e] && !alreadyInList(bondedAtoms, e))
+          bondedAtoms.push_back(e);
+      }
+
+      // If there are no bonded atoms, just continue
+      if (bondedAtoms.empty())
+        continue;
+
+      // Now loop until we are done
+      while (!bondedAtoms.empty()) {
+        ZMatrixEntry entry;
+
+        // First, choose an atom via the priority list
+        workingInd = bondedAtoms[0];
+        for (const auto& bondedAtom: bondedAtoms) {
+          if (priorityList[bondedAtom] > priorityList[workingInd])
+            workingInd = bondedAtom;
+        }
+        entry.ind = workingInd;
+
+        // Find an already used atom this one is bonded to
+        for (const auto& elem: currentMol) {
+          if (s->areBonded(entry.ind, elem.ind)) {
+            entry.rInd = elem.ind;
+            break;
+          }
+        }
+
+        if (entry.rInd == -1) {
+          std::cerr << "Error in " << __FUNCTION__ << ": no atom was found "
+                    << "that is bonded to atom index " << entry.ind << "\n"
+                    << "This error should not be possible. Please contact "
+                    << "a developer of this program.\n";
+          ret.clear();
+          return ret;
+        }
+
+        // Now try to find one that rInd is bonded to
+        for (const auto& elem: currentMol) {
+          if (entry.rInd != elem.ind && s->areBonded(entry.rInd, elem.ind)) {
+            entry.angleInd = elem.ind;
+            break;
+          }
+        }
+
+        if (entry.angleInd == -1) {
+          std::cerr << "Error(2) in " << __FUNCTION__ << ": no atom was found "
+                    << "that is bonded to atom index " << entry.rInd << "\n"
+                    << "This error should not be possible. Please contact "
+                    << "a developer of this program.\n";
+          ret.clear();
+          return ret;
+        }
+
+        // Finally, find any others that any indices are connected to one of
+        // these atoms.
+        for (const auto& e: currentMol) {
+          if ((entry.rInd != e.ind && entry.angleInd != e.ind) &&
+              (s->areBonded(entry.ind, e.ind) ||
+               s->areBonded(entry.rInd, e.ind) ||
+               s->areBonded(entry.angleInd, e.ind))) {
+            entry.dihedralInd = e.ind;
+            break;
+          }
+        }
+
+        atomAlreadyUsed[entry.ind] = true;
+        currentMol.push_back(entry);
+
+        bondedAtoms.erase(std::find(bondedAtoms.begin(), bondedAtoms.end(),
+                                    entry.ind));
+
+        tmpBondedAtoms = s->bondedAtoms(entry.ind);
+
+        for (const auto& e: tmpBondedAtoms) {
+          if (!atomAlreadyUsed[e] && !alreadyInList(bondedAtoms, e))
+            bondedAtoms.push_back(e);
+        }
+      }
+
+      // Append these to ret
+      for (const auto& e: currentMol)
+        ret.push_back(e);
+    }
+
+    return ret;
   }
 }
