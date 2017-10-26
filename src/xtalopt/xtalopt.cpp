@@ -714,7 +714,7 @@ namespace XtalOpt {
 
       clearOptSteps();
 
-      // Append the first step and grab the template names
+      // Append the first step and grab the template names.
       appendOptStep();
       setOptimizer(0, optimizer.toStdString());
       setQueueInterface(0, qi.toStdString());
