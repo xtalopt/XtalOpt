@@ -158,7 +158,7 @@ namespace XtalOpt {
     }
 
     // Check if xtalopt data is already saved at the filePath
-    // If we are in no-gui mode, we check it elsewhere
+    // If we are in cli mode, we check it elsewhere
     if (QFile::exists(filePath + QDir::separator() + "xtalopt.state") &&
         !testingMode && m_usingGUI) {
       bool proceed;
