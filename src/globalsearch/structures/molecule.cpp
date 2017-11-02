@@ -273,7 +273,7 @@ namespace GlobalSearch
                          const Vector3& B,
                          const Vector3& C) const
   {
-    Vector3 AB = B - A;
+    Vector3 AB = A - B;
     Vector3 BC = C - B;
 
     // If we have a unit cell, use the minimum images

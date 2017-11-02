@@ -734,7 +734,7 @@ void XtalTest::angleCalculationTest()
   QVERIFY(GlobalSearch::fuzzyCompare(xtal.angle(0, 1, 2), 90.00000, tol));
 
   // Move the third atom so that the angle should be 45 degrees
-  xtal.atom(2).setPos(GlobalSearch::Vector3(-0.10000, 0.10000, -0.10000));
+  xtal.atom(2).setPos(GlobalSearch::Vector3(0.50000, 0.10000, 0.50000));
   QVERIFY(GlobalSearch::fuzzyCompare(xtal.angle(0, 1, 2), 45.00000, tol));
 
   // Wrap the atom into the unit cell. Because we use minimum images for
