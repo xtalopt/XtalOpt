@@ -15,6 +15,7 @@
 #ifndef GLOBALSEARCH_ZMATRIX_FORMAT_H
 #define GLOBALSEARCH_ZMATRIX_FORMAT_H
 
+#include <iostream>
 #include <vector>
 
 // Forward declaration
@@ -64,7 +65,9 @@ namespace GlobalSearch {
    */
   class ZMatrixFormat {
    public:
-    static bool read(Structure* s, const QString& filename);
+    static bool read(Structure* s, std::istream& in);
+
+    static bool write(const Structure& s, std::ostream& out);
 
     /**
      * Chooses numberings for atoms to be part of the z-matrix, and sets
@@ -78,7 +81,7 @@ namespace GlobalSearch {
      * NOTE: these indices are zero-based. If you write the output to a z-matrix file,
      * you should add 1 to all (except ind) because the actual z-matrix format is 1-based.
      */
-    static std::vector<ZMatrixEntry> generateZMatrixEntries(Structure* s);
+    static std::vector<ZMatrixEntry> generateZMatrixEntries(const Structure* s);
   };
 }
 

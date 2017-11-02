@@ -19,6 +19,7 @@
 #include <globalsearch/structure.h>
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 
 #include <QDebug>
@@ -302,24 +303,17 @@ namespace GlobalSearch {
     return true;
   }
 
-  bool ZMatrixFormat::read(Structure* s, const QString& filename)
+  bool ZMatrixFormat::read(Structure* s, std::istream& in)
   {
-    std::ifstream ifs(filename.toStdString());
-    if (!ifs) {
-      qDebug() << "Error: ZMATRIX output, " << filename << ", could not "
-               << "be opened!";
-      return false;
-    }
-
     string line;
 
     // We need to store the lines so we can process the variables later
     // Ignore the first line. It is just a title.
-    getline(ifs, line);
+    getline(in, line);
 
     // First, store the actual z-matrix without any variables replaced.
     vector<vector<string>> zMat;
-    while (getline(ifs, line)) {
+    while (getline(in, line)) {
       line = trim(line);
       if (!line.empty())
         zMat.push_back(split(line, ' '));
@@ -329,7 +323,7 @@ namespace GlobalSearch {
 
     // Now store the variables
     vector<string> vars;
-    while (getline(ifs, line)) {
+    while (getline(in, line)) {
       line = trim(line);
       if (!line.empty())
         vars.push_back(line);
@@ -432,7 +426,80 @@ namespace GlobalSearch {
     return false;
   }
 
-  std::vector<ZMatrixEntry> ZMatrixFormat::generateZMatrixEntries(Structure* s)
+  inline long long indInEntries(long long ind,
+                                const std::vector<ZMatrixEntry>& entries)
+  {
+    for (size_t i = 0; i < entries.size(); ++i) {
+      if (entries[i].ind == ind)
+        return i;
+    }
+    return -1;
+  }
+
+  bool ZMatrixFormat::write(const Structure& s, std::ostream& out)
+  {
+    std::vector<ZMatrixEntry> entries = generateZMatrixEntries(&s);
+
+    if (entries.empty())
+      return false;
+
+    size_t moleculeCounter = 1;
+    for (size_t i = 0; i < entries.size(); ++i) {
+      const auto& entry = entries[i];
+      if (i == 0 && entry.rInd != -1) {
+        std::cerr << "Error in " << __FUNCTION__
+                  << ": the first entry should have no rInd, angleInd, and "
+                  << "dihedralInd.\n";
+        return false;
+      }
+
+      // Put in a title if we do not have an rInd
+      if (entry.rInd == -1) {
+        out << "molecule " << moleculeCounter << "\n";
+        ++moleculeCounter;
+      }
+
+      // First, the atomic symbol.
+      out << std::setw(2)
+          << ElemInfo::getAtomicSymbol(s.atomicNumber(entry.ind));
+
+      // If we don't have an rInd, end the line and continue
+      if (entry.rInd == -1) {
+        out << "\n";
+        continue;
+      }
+
+      out << " " << std::setw(3) << indInEntries(entry.rInd, entries) + 1
+          << " " << std::setw(12) << std::setprecision(8)
+          << s.distance(entry.ind, entry.rInd);
+
+      // If we don't have an angleInd, end the line and continue
+      if (entry.angleInd == -1) {
+        out << "\n";
+        continue;
+      }
+
+      out << " " << std::setw(3) << indInEntries(entry.angleInd, entries) + 1
+          << " " << std::setw(12) << std::setprecision(8)
+          << s.angle(entry.ind, entry.rInd, entry.angleInd);
+
+      // If we don't have a dihedralInd, end the line and continue
+      if (entry.dihedralInd == -1) {
+        out << "\n";
+        continue;
+      }
+
+      out << " " << std::setw(3)
+          << indInEntries(entry.dihedralInd, entries) + 1
+          << " " << std::setw(12) << std::setprecision(8)
+          << s.dihedral(entry.ind, entry.rInd,
+                        entry.angleInd, entry.dihedralInd) << "\n";
+    }
+    return true;
+  }
+
+  std::vector<ZMatrixEntry>
+  ZMatrixFormat::generateZMatrixEntries(const Structure* s)
   {
     std::vector<ZMatrixEntry> ret;
 

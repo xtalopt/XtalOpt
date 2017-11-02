@@ -385,6 +385,20 @@ void FormatsTest::ZMatrixEntryGenerator()
 
   // There should be 24 entries. We can check more info in the future
   QVERIFY(entries.size() == 24);
+
+  // Write it to the z-matrix format
+  std::stringstream ss;
+  GlobalSearch::ZMatrixFormat::write(caffeine, ss);
+  //qDebug() << ("output is:\n" + ss.str()).c_str();
+
+  // Now read it back in to make sure our writer worked
+  GlobalSearch::Structure newCaffeine;
+  GlobalSearch::ZMatrixFormat::read(&newCaffeine, ss);
+
+  // Make sure we have 24 atoms
+  QVERIFY(newCaffeine.numAtoms() == 24);
+
+  // We can potentially run more tests in the future
 }
 
 void FormatsTest::readCastep()

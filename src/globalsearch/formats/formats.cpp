@@ -127,8 +127,14 @@ namespace GlobalSearch {
     if (format.toUpper() == QString("XYZ"))
       return XyzFormat::read(s, filename);
 
-    if (format.toUpper() == QString("ZMATRIX"))
-      return ZMatrixFormat::read(s, filename);
+    if (format.toUpper() == QString("ZMATRIX")) {
+      std::ifstream in(filename.toStdString().c_str());
+      if (!in.is_open()) {
+        qDebug() << "Failed to open ZMatrix file: " << filename;
+        return false;
+      }
+      return ZMatrixFormat::read(s, in);
+    }
 
     qDebug() << "An invalid format, " << format << ", entered into "
              << "Format::read() !";
