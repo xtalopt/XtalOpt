@@ -29,6 +29,7 @@
 #include <GraphMol/ForceFieldHelpers/MMFF/MMFF.h>
 #include <GraphMol/DistGeomHelpers/Embedder.h>
 #include <GraphMol/FileParsers/FileParsers.h>
+#include <GraphMol/FileParsers/MolSupplier.h>
 #include <GraphMol/FileParsers/MolWriters.h>
 #include <GraphMol/Substruct/SubstructMatch.h>
 
@@ -65,63 +66,6 @@ static vector<int> getConfIds(const RDKit::ROMol& mol)
 }
 
 /**
- * Calculate the best possible RMSD between two conformers. It starts
- * with a substructure match and then tries to align the molecule with
- * all substructure matches. It matches the logic that GetBestRMS() in the
- * RDKit Python API follows. After the best alignment is discovered, the
- * probe conformer is placed in that alignment.
- *
- * @param refMol The reference RDKit molecule to use.
- * @param probeMol The probe RDKit molecule to use.
- * @param refId The ID of the conformer to use in the reference molecule.
- * @param probeId The ID of the conformer to use in the probe molecule.
- * @param reflectConfs Whether or not to reflect the probe conformer before
- *                     searching.
- * @param maxIters The maximum number of iterations to use when aligning
- *                 the conformer.
- *
- * @return The best RMSD that was found between the two conformers.
- */
-static double getBestRMSD(RDKit::ROMol& refMol, RDKit::ROMol& probeMol,
-                          int refId, int probeId, bool reflectConfs = false,
-                          int maxIters = 1000)
-{
-    bool uniquify = false;
-    bool recursionPossible = true;
-    bool useChirality = false;
-    bool useQueryQueryMatches = false;
-    int maxMatches = 1000;
-
-    std::vector<RDKit::MatchVectType> matches;
-    int matched = RDKit::SubstructMatch(refMol, probeMol, matches, uniquify,
-                                        recursionPossible, useChirality,
-                                        useQueryQueryMatches, maxMatches);
-
-    if (matches.empty()) {
-        std::cerr << "Error in " << __FUNCTION__ << ": No matches found!\n";
-        return 1.e300;
-    }
-
-    double bestRMSD = 1.e300;
-    RDKit::MatchVectType& bestMatch = matches[0];
-    for (auto& match: matches) {
-        double rmsd = RDKit::MolAlign::alignMol(refMol, probeMol,
-                                                refId, probeId,
-                                                &match, nullptr,
-                                                reflectConfs, maxIters);
-        if (rmsd < bestRMSD) {
-            bestRMSD = rmsd;
-            bestMatch = match;
-        }
-    }
-
-    // Perform a final alignment to the best alignment...
-    RDKit::MolAlign::alignMol(refMol, probeMol, refId, probeId,
-                              &bestMatch, nullptr, reflectConfs, maxIters);
-    return bestRMSD;
-}
-
-/**
  * Compares conformers so that if any two conformers have an RMSD less than
  * the RMSD threshold, the lower energy conformer is removed. @p mol will
  * be updated with the new set of conformers, and @p energies will be updated
@@ -154,14 +98,10 @@ static void pruneConformers(RDKit::ROMol& mol,
             continue;
         }
 
-        bool reflectConfs = false;
-        uint maxIters = 100;
-
         bool keepThisConformer = true;
         for (const auto& keepId: keepConfs) {
-            double rmsd = getBestRMSD(mol, mol,
-                                      id, keepId,
-                                      reflectConfs, maxIters);
+            double rmsd = RDKit::MolAlign::getBestRMS(mol, mol,
+                                                      id, keepId);
 
             if (rmsd < rmsdThreshold) {
                 keepThisConformer = false;
@@ -196,11 +136,11 @@ static void pruneConformers(RDKit::ROMol& mol,
 }
 
 /**
- * Uses RDKit to generate conformers and write them as pdb files to a specific
- * directory.
+ * Uses RDKit to generate conformers and write them as SDF files to a
+ * specific directory.
  *
- * @param pdbFile An istream containing the original molecule whose conformers
- *                are to be found.
+ * @param sdfFile An istream containing the original molecule whose conformers
+ *                are to be found (in SDF format).
  * @param writeDir The directory to which the conformers and their energies
  *                 will be written. The separator at the end ("/" or "\") needs
  *                 to be included. The write dir must also already exist.
@@ -222,15 +162,22 @@ static void pruneConformers(RDKit::ROMol& mol,
  */
 
 static long long generateRDKitConformers(
-                        std::istream& pdbFile,
+                        std::istream& sdfFile,
                         const std::string& writeDir,
                         uint numConformers,
                         const RDKit::DGeomHelpers::EmbedParameters& params,
                         int maxOptimizationIters = 1000,
                         bool pruneConformersAfterOptimization = true)
 {
-    bool sanitize = true, removeHs = false;
-    RDKit::RWMol* mol = RDKit::PDBDataStreamToMol(pdbFile, sanitize, removeHs);
+    bool takeOwnership = false, sanitize = true, removeHs = false;
+    RDKit::SDMolSupplier supplier(&sdfFile, takeOwnership, sanitize, removeHs);
+    RDKit::ROMol* mol = supplier.next();
+    if (!mol) {
+      std::cerr << "Error: in " << __FUNCTION__ << ": failed to read the SDF "
+                << "file\n";
+      return -1;
+    }
+
     vector<int> ids = RDKit::DGeomHelpers::EmbedMultipleConfs(
                                                    *mol,
                                                    numConformers,
@@ -281,7 +228,7 @@ static long long generateRDKitConformers(
     else {
         for (const auto& id: ids) {
             stringstream ss;
-            ss << "conformer-" << id + 1 << ".pdb";
+            ss << "conformer-" << id + 1 << ".sdf";
             string conformerName = ss.str();
             energiesFile << std::left << std::setw(20) << conformerName
                          << std::left << std::setw(15) << std::setprecision(8)
@@ -290,12 +237,12 @@ static long long generateRDKitConformers(
         energiesFile.close();
     }
 
-    // Now, let's write the pdb files
+    // Now, let's write the sdf files
     for (const auto& id: ids) {
         stringstream ss;
-        ss << writeDir << "conformer-" << id + 1 << ".pdb";
+        ss << writeDir << "conformer-" << id + 1 << ".sdf";
         string filename = ss.str();
-        RDKit::PDBWriter writer(filename);
+        RDKit::SDWriter writer(filename);
         writer.write(*mol, id);
     }
 
@@ -305,7 +252,7 @@ static long long generateRDKitConformers(
 }
 
 long long ConformerGenerator::generateConformers(
-    std::istream& pdbIstream,
+    std::istream& sdfIstream,
     const std::string& outDir,
     size_t numConformers,
     size_t maxOptimizationIters,
@@ -337,7 +284,7 @@ long long ConformerGenerator::generateConformers(
 
   params.pruneRmsThresh = rmsdThreshold;
 
-  return generateRDKitConformers(pdbIstream, outDir, numConformers, params,
+  return generateRDKitConformers(sdfIstream, outDir, numConformers, params,
                                  maxOptimizationIters,
                                  pruneConformersAfterOptimization);
 }

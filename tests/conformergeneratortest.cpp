@@ -74,11 +74,11 @@ void ConformerGeneratorTest::cleanup()
 
 void ConformerGeneratorTest::generateButaneConformers()
 {
-  std::string butaneFileName = std::string(TESTDATADIR) + "/data/butane.pdb";
+  std::string butaneFileName = std::string(TESTDATADIR) + "/data/butane.mol";
 
   // Open it up in an ifstream
-  std::ifstream butanePDB(butaneFileName);
-  QVERIFY(butanePDB.is_open());
+  std::ifstream butaneSDF(butaneFileName);
+  QVERIFY(butaneSDF.is_open());
 
   // Make a directory in our current folder called "conformers"
   QDir().mkdir("conformers");
@@ -90,14 +90,14 @@ void ConformerGeneratorTest::generateButaneConformers()
   double rmsdThreshold = 0.1;
   bool pruneConfsAfterOpt = true;
 
-  GlobalSearch::ConformerGenerator::generateConformers(butanePDB,
+  GlobalSearch::ConformerGenerator::generateConformers(butaneSDF,
                                                        outDir,
                                                        numConformers,
                                                        maxOptimizationIters,
                                                        rmsdThreshold,
                                                        pruneConfsAfterOpt);
 
-  butanePDB.close();
+  butaneSDF.close();
 
   // First check: there should be 4 files in the conformers directory plus
   // '.' and '..' == 6
@@ -109,12 +109,12 @@ void ConformerGeneratorTest::generateButaneConformers()
   QString data = energiesFile.readAll();
 
   // Make sure that the file contains certain strings
-  QVERIFY(data.contains("conformer-1.pdb"));
-  QVERIFY(data.contains("conformer-2.pdb"));
-  QVERIFY(data.contains("conformer-3.pdb"));
+  QVERIFY(data.contains("conformer-1.sdf"));
+  QVERIFY(data.contains("conformer-2.sdf"));
+  QVERIFY(data.contains("conformer-3.sdf"));
   QVERIFY(data.contains("-5.07597"));
 
-  // We can try testing the reading of the PDB files later
+  // We can try testing the reading of the SDF files later
 }
 
 QTEST_MAIN(ConformerGeneratorTest)

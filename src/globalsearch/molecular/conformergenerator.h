@@ -26,24 +26,24 @@ class ConformerGenerator {
  public:
 
   /**
-   * Uses RDKit to generate conformers and write them as pdb files to a
+   * Uses RDKit to generate conformers and write them as SDF files to a
    * specific directory. The energies will also be written to an "energies.txt"
    * file like so:
    *
-   *    conformer-1.pdb     -5.0759733
-   *    conformer-2.pdb     -4.2937643
-   *    conformer-3.pdb     -4.2937643
+   *    conformer-1.sdf     -5.0759733
+   *    conformer-2.sdf     -4.2937643
+   *    conformer-3.sdf     -4.2937643
    *    ...
    *
-   * @param pdbIstream An istream in containing the original molecule (in PDB
+   * @param sdfIstream An istream in containing the original molecule (in SDF
    *                   format) whose conformers are to be found.
    * @param outDir The directory to which the conformers and their energies
    *               will be written. The write dir must already exist. The
    *               energies will be written in "energies.txt" within this
    *               directory, and they will be sorted from lowest to highest
    *               energy and labelled with their respective indices. The
-   *               conformers will be written as PDB files as
-   *               "conformer-<num>.pdb".
+   *               conformers will be written as SDF files as
+   *               "conformer-<num>.sdf".
    * @param numConformers The number of attempted conformers to generate. The
    *                      resulting number of conformers may be less because of
    *                      RMSD pruning.
@@ -68,7 +68,7 @@ class ConformerGenerator {
    *         or -1 if an error occurred.
    */
   static long long generateConformers(
-                                std::istream& pdbIstream,
+                                std::istream& sdfIstream,
                                 const std::string& outDir,
                                 size_t numConformers = 1000,
                                 size_t maxOptimizationIters = 1000,

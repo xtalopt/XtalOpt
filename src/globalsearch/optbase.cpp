@@ -587,11 +587,11 @@ namespace GlobalSearch {
 
   long long OptBase::generateConformers()
   {
-    // First, try to open the pdb file
-    std::ifstream pdbIstream(m_initialMolFile);
+    // First, try to open the sdf file
+    std::ifstream sdfIstream(m_initialMolFile);
 
-    if (!pdbIstream.is_open()) {
-      std::cerr << "Error: failed to open initial mol file: "
+    if (!sdfIstream.is_open()) {
+      std::cerr << "Error: failed to open initial SDF file: "
                 << m_initialMolFile << "\n";
       return -1;
     }
@@ -609,7 +609,7 @@ namespace GlobalSearch {
       return -1;
     }
 
-    return ConformerGenerator::generateConformers(pdbIstream,
+    return ConformerGenerator::generateConformers(sdfIstream,
                                                   m_conformerOutDir,
                                                   m_numConformersToGenerate,
                                                   m_maxOptIters,

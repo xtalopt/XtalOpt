@@ -1492,29 +1492,30 @@ namespace XtalOpt {
                                              uint FU,
                                              const std::string& confFile)
   {
-    // Create the molecule from the pdb file
+    // Create the molecule from the SDF file
     std::ifstream ifs(confFile);
 
     if (!ifs.is_open()) {
-      error(("XtalOpt::generateRandomMolecularXtal(): failed to open the pdb "
+      error(("XtalOpt::generateRandomMolecularXtal(): failed to open the SDF "
              "file: " + confFile + ". Please make sure the conformer "
              "directory, " + m_conformerOutDir + " is valid.").c_str());
       return nullptr;
     }
 
     // Read the data
-    std::string pdbData{std::istreambuf_iterator<char>(ifs),
+    std::string sdfData{std::istreambuf_iterator<char>(ifs),
                         std::istreambuf_iterator<char>()};
 
     // Use OBConvert to convert it to cml
     QByteArray CMLData;
-    if (!GlobalSearch::OBConvert::convertFormat("pdb", "cml",
-                                                pdbData.c_str(),
+    if (!GlobalSearch::OBConvert::convertFormat("sdf", "cml",
+                                                sdfData.c_str(),
                                                 CMLData))
     {
       error(("XtalOpt::generateRandomMolecularXtal(): failed to convert the "
-             "pdb file " + confFile + " to CML format with OBabel. Please make "
-             "sure the file and the directory it is in are valid.").c_str());
+             "SDF file " + confFile + " to CML format with OBabel. Please "
+             "make sure the file and the directory it is in are "
+             "valid.").c_str());
       return nullptr;
     }
 

@@ -388,11 +388,11 @@ for (ind = 0; ind < probs.size(); ind++)
 
     /// Conformer generation settings
 
-    /// The initial molecule file (usually pdb) with which to generate
+    /// The initial molecule file (usually SDF) with which to generate
     /// conformers
     std::string m_initialMolFile;
 
-    /// The output directory for the conformers (pdb format) and their energies
+    /// The output directory for the conformers (SDF format) and their energies
     std::string m_conformerOutDir;
 
     /// The number of conformers to generate

@@ -121,10 +121,10 @@ namespace GlobalSearch {
   {
     QString oldFile = m_opt->m_initialMolFile.c_str();
     QString newFile = QFileDialog::getOpenFileName(
-                         this,
-                         tr("Select Initial Conformer file (pdb format)..."),
-                         oldFile, "*.pdb;;*.*",
-                         nullptr, QFileDialog::DontUseNativeDialog);
+                       this,
+                       tr("Select Initial Conformer file (SDF format)..."),
+                       oldFile, "*.mol;;*.sdf;;*.*",
+                       nullptr, QFileDialog::DontUseNativeDialog);
 
     if (!newFile.isEmpty()) {
       m_opt->m_initialMolFile = newFile.toStdString();
