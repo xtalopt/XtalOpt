@@ -3473,13 +3473,7 @@ namespace XtalOpt {
       rep += xtal->toSiestaZMatrix().c_str();
     }
 
-    // Only print the keyword warning if it looks like it should actually
-    // be a keyword.
-    if (rep.isEmpty() && !line.isEmpty() && !line.remove(' ').endsWith("\n") &&
-        !line.remove(' ').startsWith("\n") && !line.trimmed().isEmpty()) {
-      qDebug() << "Warning: keyword not recognized:" << line;
-    }
-    else {
+    if (!rep.isEmpty()) {
       // Remove any trailing newlines
       rep = rep.replace(QRegExp("\n$"), "");
       line = rep;
