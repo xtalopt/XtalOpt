@@ -28,8 +28,9 @@ namespace GlobalSearch {
 
   // For writing z-matrices. Each entry contains indices of the atoms it
   // should be connected to.
-  // NOTE: these indices are zero-based. If you write the output to a z-matrix file,
-  // you should add 1 to all (except ind) because the actual z-matrix format is 1-based.
+  // NOTE: these indices are zero-based. If you write the output to a z-matrix
+  // file, you should add 1 to all (except ind) because the actual z-matrix
+  // format is 1-based.
   struct ZMatrixEntry {
     // The index of the atom for this entry.
     long long ind;
@@ -78,10 +79,29 @@ namespace GlobalSearch {
      * If the structure contains multiple molecules, the first atom
      * of each molecule can be identified because it will have -1 for rInd,
      * angleInd, and dihedralInd.
-     * NOTE: these indices are zero-based. If you write the output to a z-matrix file,
-     * you should add 1 to all (except ind) because the actual z-matrix format is 1-based.
+     * NOTE: these indices are zero-based. If you write the output to a
+     * z-matrix file, you should add 1 to all (except ind) because the actual
+     * z-matrix format is 1-based.
      */
     static std::vector<ZMatrixEntry> generateZMatrixEntries(const Structure* s);
+
+    /**
+     * Write a z-matrix using the specification in SIESTA (Spanish Initiative
+     * for Electronic Simulations with Thousands of Atoms) to @p out. One
+     * molecule block will be used for every set of bonded atoms.
+     *
+     * @param s The structure for which to write the z-matrix.
+     * @param out The output for the SIESTA z-matrix.
+     * @param fixR Whether or not to fix all of the bond distances in the
+     *             z-matrix
+     * @param fixA Whether or not to fix all of the bond angles in the z-matrix
+     * @param fixT Whether or not to fix all the torsions (dihedrals) in the
+     *             z-matrix
+     *
+     * @return True on success. False on failure.
+     */
+    static bool writeSiestaZMatrix(const Structure& s, std::ostream& out,
+                                   bool fixR, bool fixA, bool fixT);
   };
 }
 

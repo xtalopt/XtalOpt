@@ -223,9 +223,18 @@ namespace XtalOpt {
      * Take the given xtal and write a siesta Z matrix with it (where the
      * bonds will be kept fix during optimization). Returns the z matrix
      * as a string.
+     *
+     * @param fixR Whether or not to fix the bond distances given in the
+     *             z-matrix.
+     * @param fixA Whether or not to fix the bond angles given in the z-matrix.
+     * @param fixT Whether or not to fix the torsions (dihedrals) given in
+     *             the z-matrix.
+     *
      * @return The siesta Z Matrix as a string.
      */
-    std::string toSiestaZMatrix() const;
+    std::string toSiestaZMatrix(bool fixR = true,
+                                bool fixA = true,
+                                bool fixT = true) const;
 
     // For random representation generation
     static void generateValidCOBs();

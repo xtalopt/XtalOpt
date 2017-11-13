@@ -20,6 +20,7 @@
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/formats/cmlformat.h>
 #include <globalsearch/formats/poscarformat.h>
+#include <globalsearch/formats/zmatrixformat.h>
 #include <globalsearch/random.h>
 #include <globalsearch/stablecomparison.h>
 
@@ -2702,17 +2703,16 @@ namespace XtalOpt {
   * 2 1 2 0    1.0  1.0 90.0      1 1 0
   * %endblock Zmatrix
   */
-  std::string Xtal::toSiestaZMatrix() const
+  std::string Xtal::toSiestaZMatrix(bool fixR, bool fixA, bool fixT) const
   {
     std::stringstream ss;
 
-    ss << "%block Zmatrix\n\n";
-
-    for (const auto& atom: atoms()) {
-
+    if (!GlobalSearch::ZMatrixFormat::writeSiestaZMatrix(*this, ss,
+                                                         fixR, fixA, fixT)) {
+      std::cerr << "Error in " << __FUNCTION__ << ": writing the siesta "
+                << "z-matrix failed\n";
+      return "";
     }
-
-    ss << "%endblock Zmatrix\n";
 
     return ss.str();
   }

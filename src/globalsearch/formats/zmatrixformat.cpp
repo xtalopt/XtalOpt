@@ -427,13 +427,203 @@ namespace GlobalSearch {
   }
 
   inline long long indInEntries(long long ind,
-                                const std::vector<ZMatrixEntry>& entries)
+                                const std::vector<ZMatrixEntry>& entries,
+                                size_t numAtomsInPreviousMolecules)
   {
     for (size_t i = 0; i < entries.size(); ++i) {
       if (entries[i].ind == ind)
-        return i;
+        return i - numAtomsInPreviousMolecules;
     }
     return -1;
+  }
+
+  std::map<unsigned short, size_t> getSiestaSpeciesNumbers(const Structure& s)
+  {
+    std::map<unsigned short, size_t> ret;
+
+    // We are going to store the species numbers in alphabetical order
+    QStringList atomicSyms = s.getSymbols();
+
+    for (size_t i = 0; i < atomicSyms.size(); ++i)
+      ret[ElemInfo::getAtomicNum(atomicSyms[i].toStdString())] = i + 1;
+
+    return ret;
+  }
+
+ /**
+  * An excerpt from the SIESTA manual with regard to the molecule z-matrix
+  * form:
+  *
+  * @begin_excerpt
+  *
+  * Nspecies i j k r a t ifr ifa ift
+  * Here the values Nspecies, i, j, k, ifr, ifa, and ift are integers and r, a,
+  * and t are double precision reals.
+  * For most atoms, Nspecies is the species number of the atom, r is distance
+  * to atom number i, a is the angle made by the present atom with atoms j and
+  * i, while t is the torsional angle made by the present atom with atoms k,
+  * j, and i. The values ifr, ifa and ift are integer flags that indicate
+  * whether r, a, and t, respectively, should be varied; 0 for fixed, 1 for
+  * varying.
+  * The first three atoms in a molecule are a special case. Because there are
+  * insufficient atoms defined to specify a distance/angle/torsion, the values
+  * are set differently. For atom 1, r, a, and t, are the Cartesian
+  * coordinates of the atom. For the second atom, r, a, and t are the
+  * coordinates in spherical form of the second atom relative to the first:
+  * first the radius, then the polar angle (angle between the z-axis and the
+  * displacement vector) and then the azimuthal angle (angle between the
+  * x-axis and the projection of the displacement vector on the x-y plane).
+  * Finally, for the third atom, the numbers take their normal form, but the
+  * torsional angle is defined relative to a notional atom 1 unit in the
+  * z-direction above the atom j.
+  *
+  * @end_excerpt
+  *
+  * An example:
+  * %block Zmatrix
+  *
+  * molecule
+  * 1 0 0 0    0.0  0.0  0.0      0 0 0
+  * 2 1 0 0    1.0 90.0 37.743919 1 0 0
+  * 2 1 2 0    1.0  1.0 90.0      1 1 0
+  * %endblock Zmatrix
+  */
+  bool ZMatrixFormat::writeSiestaZMatrix(const Structure& s, std::ostream& out,
+                                         bool fixR, bool fixA, bool fixT)
+  {
+    std::vector<ZMatrixEntry> entries = generateZMatrixEntries(&s);
+
+    if (entries.empty())
+      return false;
+
+    std::map<unsigned short, size_t> speciesNumbers =
+      getSiestaSpeciesNumbers(s);
+
+    // We will for sure use angstroms here
+    out << "ZM.UnitsLength = Angstrom\n";
+    out << "ZM.UnitsAngle = degrees\n";
+    out << "%block Zmatrix\n";
+
+    size_t numAtomsInPreviousMolecules = 0;
+    for (size_t i = 0; i < entries.size(); ++i) {
+      const auto& entry = entries[i];
+      if (i == 0 && entry.rInd != -1) {
+        std::cerr << "Error in " << __FUNCTION__
+                  << ": the first entry should have no rInd, angleInd, and "
+                  << "dihedralInd.\n";
+        return false;
+      }
+
+      // Put in "molecule" if we do not have an rInd
+      if (entry.rInd == -1) {
+        numAtomsInPreviousMolecules = i;
+        out << "\nmolecule\n";
+      }
+
+      // Each line looks like this:
+      // Nspecies   i j k   r a t   ifr ifa ift
+      // Where "Nspecies" is the species number
+      // "i j k" are indices of the z-matrix atoms
+      // "r a t" are the distance, angle, and torsion (dihedral) of the
+      // z-matrix atoms
+      // "ifr ifa ift" are whether or not to fix the distance, angle, and
+      // torsion (dihedral) of the z-matrix atoms
+
+      // The first line is a special case - r, a, and t are cartesian
+      // coordinates for this atom.
+
+      // First, the species number.
+      out << std::setw(4)
+          << speciesNumbers[s.atomicNumber(entry.ind)]
+          << "   ";
+
+      // Next, all the indices of the atoms we are connected to
+      out << std::setw(3)
+          << (entry.rInd != -1 ?
+              indInEntries(entry.rInd, entries,
+                           numAtomsInPreviousMolecules) + 1 : 0) << " ";
+      out << std::setw(3)
+          << (entry.angleInd != -1 ?
+              indInEntries(entry.angleInd, entries,
+                           numAtomsInPreviousMolecules) + 1 : 0) << " ";
+      out << std::setw(3)
+          << (entry.dihedralInd != -1 ?
+              indInEntries(entry.dihedralInd, entries,
+                           numAtomsInPreviousMolecules) + 1 : 0) << "   ";
+
+      // If we don't have an rInd, fill in the Cartesian coordinates
+      if (entry.rInd == -1) {
+        out << " "
+            << std::setw(12) << std::setprecision(8)
+            << s.atom(entry.ind).pos()[0]
+            << std::setw(12) << std::setprecision(8)
+            << s.atom(entry.ind).pos()[1]
+            << std::setw(12) << std::setprecision(8)
+            << s.atom(entry.ind).pos()[2]
+            // We will not fix these positions
+            << "   1 1 1\n" ;
+        continue;
+      }
+
+      // Put in the distance
+      out << " " << std::setw(12) << std::setprecision(8)
+          << s.distance(entry.ind, entry.rInd);
+
+      // If we don't have an angleInd, put in spherical coordinates relative
+      // to the first for r, a, t
+      if (entry.angleInd == -1) {
+        // First, the angle between the z-axis and the displacement vector
+        const Vector3& pos1 = s.atom(entry.rInd).pos();
+        const Vector3& pos2 = s.atom(entry.ind).pos();
+        const Vector3& zPoint = pos1 + Vector3(0.0, 0.0, 0.1);
+        out << " " << std::setw(12) << std::setprecision(8)
+            << s.angle(pos2, pos1, zPoint);
+
+        // Next, we need an angle between the x-axis and the projection of
+        // the displacement vector on the x-y plane.
+        const Vector3& xPoint = pos1 + Vector3(0.1, 0.0, 0.0);
+        // Use pos1[2] for the third component because we are treating
+        // the z component of pos1 as the zero.
+        const Vector3& xyComponent = Vector3(pos2[0], pos2[1], pos1[2]);
+        double angle = s.angle(xPoint, pos1, xyComponent);
+
+        // If our y-component is negative, we need to use 360 - angle instead
+        angle = (pos2[1] - pos1[1] >= 0.0 ? angle : 360.0 - angle);
+        out << " " << std::setw(12) << std::setprecision(8) << angle;
+
+        // We might fix the distance, but we will not fix the angles
+        out << "   " << !fixR << " 1 1\n";
+        continue;
+      }
+
+      out << " " << std::setw(12) << std::setprecision(8)
+          << s.angle(entry.ind, entry.rInd, entry.angleInd);
+
+      // If we don't have a dihedralInd, make a dihedral with a notional atom
+      // 1 unit in the z-direction above the second atom
+      if (entry.dihedralInd == -1) {
+        const Vector3& pos1 = s.atom(entry.ind).pos();
+        const Vector3& pos2 = s.atom(entry.rInd).pos();
+        const Vector3& pos3 = s.atom(entry.angleInd).pos();
+        const Vector3& pos4 = pos3 + Vector3(0.0, 0.0, 1.0);
+        out << " " << std::setw(12) << std::setprecision(8)
+            << s.dihedral(pos1, pos2, pos3, pos4);
+
+        // We might fix the distance and the angle, but not the dihedral
+        out << "   " << !fixR << " " << !fixA << " 1\n";
+        continue;
+      }
+
+      out << " " << std::setw(12) << std::setprecision(8)
+          << s.dihedral(entry.ind, entry.rInd,
+                        entry.angleInd, entry.dihedralInd);
+
+      out << "   " << !fixR << " " << !fixA << " " << !fixT << "\n";
+    }
+
+    out << "%endblock Zmatrix\n\n";
+
+    return true;
   }
 
   bool ZMatrixFormat::write(const Structure& s, std::ostream& out)
@@ -444,6 +634,7 @@ namespace GlobalSearch {
       return false;
 
     size_t moleculeCounter = 1;
+    size_t numAtomsInPreviousMolecules = 0;
     for (size_t i = 0; i < entries.size(); ++i) {
       const auto& entry = entries[i];
       if (i == 0 && entry.rInd != -1) {
@@ -457,6 +648,7 @@ namespace GlobalSearch {
       if (entry.rInd == -1) {
         out << "molecule " << moleculeCounter << "\n";
         ++moleculeCounter;
+        numAtomsInPreviousMolecules = i;
       }
 
       // First, the atomic symbol.
@@ -469,7 +661,8 @@ namespace GlobalSearch {
         continue;
       }
 
-      out << " " << std::setw(3) << indInEntries(entry.rInd, entries) + 1
+      out << " " << std::setw(3)
+          << indInEntries(entry.rInd, entries, numAtomsInPreviousMolecules) + 1
           << " " << std::setw(12) << std::setprecision(8)
           << s.distance(entry.ind, entry.rInd);
 
@@ -479,7 +672,9 @@ namespace GlobalSearch {
         continue;
       }
 
-      out << " " << std::setw(3) << indInEntries(entry.angleInd, entries) + 1
+      out << " " << std::setw(3)
+          << indInEntries(entry.angleInd, entries,
+                          numAtomsInPreviousMolecules) + 1
           << " " << std::setw(12) << std::setprecision(8)
           << s.angle(entry.ind, entry.rInd, entry.angleInd);
 
@@ -490,7 +685,8 @@ namespace GlobalSearch {
       }
 
       out << " " << std::setw(3)
-          << indInEntries(entry.dihedralInd, entries) + 1
+          << indInEntries(entry.dihedralInd, entries,
+                          numAtomsInPreviousMolecules) + 1
           << " " << std::setw(12) << std::setprecision(8)
           << s.dihedral(entry.ind, entry.rInd,
                         entry.angleInd, entry.dihedralInd) << "\n";
