@@ -3333,7 +3333,7 @@ namespace XtalOpt {
     else if (line == "gammaDeg")        rep += QString::number(xtal->getGamma());
     else if (line == "volume")          rep += QString::number(xtal->getVolume());
     else if (line == "block")           rep += QString("%block");
-    else if (line == "endblock")        rep += QString("%block");
+    else if (line == "endblock")        rep += QString("%endblock");
     else if (line == "coordsFrac") {
       const std::vector<Atom>& atoms = structure->atoms();
       std::vector<Atom>::const_iterator it;
