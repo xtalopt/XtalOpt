@@ -554,11 +554,11 @@ namespace GlobalSearch {
       // If we don't have an rInd, fill in the Cartesian coordinates
       if (entry.rInd == -1) {
         out << " "
-            << std::setw(12) << std::setprecision(8)
-            << s.atom(entry.ind).pos()[0]
-            << std::setw(12) << std::setprecision(8)
-            << s.atom(entry.ind).pos()[1]
-            << std::setw(12) << std::setprecision(8)
+            << std::setw(15) << std::fixed << std::setprecision(8)
+            << s.atom(entry.ind).pos()[0] << " "
+            << std::setw(15) << std::fixed << std::setprecision(8)
+            << s.atom(entry.ind).pos()[1] << " "
+            << std::setw(15) << std::fixed << std::setprecision(8)
             << s.atom(entry.ind).pos()[2]
             // We will not fix these positions
             << "   1 1 1\n" ;
@@ -566,7 +566,7 @@ namespace GlobalSearch {
       }
 
       // Put in the distance
-      out << " " << std::setw(12) << std::setprecision(8)
+      out << " " << std::setw(15) << std::fixed << std::setprecision(8)
           << s.distance(entry.ind, entry.rInd);
 
       // If we don't have an angleInd, put in spherical coordinates relative
@@ -576,7 +576,7 @@ namespace GlobalSearch {
         const Vector3& pos1 = s.atom(entry.rInd).pos();
         const Vector3& pos2 = s.atom(entry.ind).pos();
         const Vector3& zPoint = pos1 + Vector3(0.0, 0.0, 0.1);
-        out << " " << std::setw(12) << std::setprecision(8)
+        out << " " << std::setw(15) << std::fixed << std::setprecision(8)
             << s.angle(pos2, pos1, zPoint);
 
         // Next, we need an angle between the x-axis and the projection of
@@ -589,14 +589,15 @@ namespace GlobalSearch {
 
         // If our y-component is negative, we need to use 360 - angle instead
         angle = (pos2[1] - pos1[1] >= 0.0 ? angle : 360.0 - angle);
-        out << " " << std::setw(12) << std::setprecision(8) << angle;
+        out << " " << std::setw(15) << std::fixed << std::setprecision(8)
+            << angle;
 
         // We might fix the distance, but we will not fix the angles
         out << "   " << !fixR << " 1 1\n";
         continue;
       }
 
-      out << " " << std::setw(12) << std::setprecision(8)
+      out << " " << std::setw(15) << std::fixed << std::setprecision(8)
           << s.angle(entry.ind, entry.rInd, entry.angleInd);
 
       // If we don't have a dihedralInd, make a dihedral with a notional atom
@@ -606,7 +607,7 @@ namespace GlobalSearch {
         const Vector3& pos2 = s.atom(entry.rInd).pos();
         const Vector3& pos3 = s.atom(entry.angleInd).pos();
         const Vector3& pos4 = pos3 + Vector3(0.0, 0.0, 1.0);
-        out << " " << std::setw(12) << std::setprecision(8)
+        out << " " << std::setw(15) << std::fixed << std::setprecision(8)
             << s.dihedral(pos1, pos2, pos3, pos4);
 
         // We might fix the distance and the angle, but not the dihedral
@@ -614,7 +615,7 @@ namespace GlobalSearch {
         continue;
       }
 
-      out << " " << std::setw(12) << std::setprecision(8)
+      out << " " << std::setw(15) << std::fixed << std::setprecision(8)
           << s.dihedral(entry.ind, entry.rInd,
                         entry.angleInd, entry.dihedralInd);
 
@@ -663,7 +664,7 @@ namespace GlobalSearch {
 
       out << " " << std::setw(3)
           << indInEntries(entry.rInd, entries, numAtomsInPreviousMolecules) + 1
-          << " " << std::setw(12) << std::setprecision(8)
+          << " " << std::setw(15) << std::fixed << std::setprecision(8)
           << s.distance(entry.ind, entry.rInd);
 
       // If we don't have an angleInd, end the line and continue
@@ -675,7 +676,7 @@ namespace GlobalSearch {
       out << " " << std::setw(3)
           << indInEntries(entry.angleInd, entries,
                           numAtomsInPreviousMolecules) + 1
-          << " " << std::setw(12) << std::setprecision(8)
+          << " " << std::setw(15) << std::fixed << std::setprecision(8)
           << s.angle(entry.ind, entry.rInd, entry.angleInd);
 
       // If we don't have a dihedralInd, end the line and continue
@@ -687,7 +688,7 @@ namespace GlobalSearch {
       out << " " << std::setw(3)
           << indInEntries(entry.dihedralInd, entries,
                           numAtomsInPreviousMolecules) + 1
-          << " " << std::setw(12) << std::setprecision(8)
+          << " " << std::setw(15) << std::fixed << std::setprecision(8)
           << s.dihedral(entry.ind, entry.rInd,
                         entry.angleInd, entry.dihedralInd) << "\n";
     }

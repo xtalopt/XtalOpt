@@ -63,6 +63,7 @@ class FormatsTest : public QObject
   void writeCml();
   void OBConvert();
   void ZMatrixEntryGenerator();
+  void writeSiestaZMatrix();
 
   // Different optimizer formats
   void readCastep();
@@ -399,6 +400,28 @@ void FormatsTest::ZMatrixEntryGenerator()
   QVERIFY(newCaffeine.numAtoms() == 24);
 
   // We can potentially run more tests in the future
+}
+
+void FormatsTest::writeSiestaZMatrix()
+{
+  // We will test it on caffeine
+  QString caffeineFileName = QString(TESTDATADIR) + "/data/caffeine.cml";
+  GlobalSearch::Structure caffeine;
+  QVERIFY(GlobalSearch::Formats::read(&caffeine, caffeineFileName, "cml"));
+
+  // Now make a unit cell
+  GlobalSearch::UnitCell uc(5.0, 5.0, 5.0, 90.0, 90.0, 90.0);
+  caffeine.setUnitCell(uc);
+
+  std::stringstream ss;
+  QVERIFY(GlobalSearch::ZMatrixFormat::writeSiestaZMatrix(caffeine, ss, true,
+                                                          true, true));
+
+  // For now, just make sure the string isn't empty. We should probably
+  // include more tests in the future.
+  QVERIFY(!ss.str().empty());
+
+  //std::cout << "ss is:\n" << ss.str() << "\n";
 }
 
 void FormatsTest::readCastep()
