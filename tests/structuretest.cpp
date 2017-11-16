@@ -14,6 +14,9 @@
 
 #include <globalsearch/structure.h>
 
+#include <globalsearch/formats/cmlformat.h>
+#include <globalsearch/formats/obconvert.h>
+
 #include <QtTest>
 
 #define APPROX_EQ(a, b) (fabs((a) - (b)) < 1e-6)
@@ -50,6 +53,7 @@ class StructureTest : public QObject
 
   // Tests
   void enthalpyFallBack();
+  void perceiveBonds();
 };
 
 void StructureTest::initTestCase()
@@ -144,6 +148,37 @@ void StructureTest::enthalpyFallBack()
                           -1.0); // enthalpy
   QVERIFY(APPROX_EQ(s.getEnthalpy(), -1.0));
 
+}
+
+void StructureTest::perceiveBonds()
+{
+  /**** Butane PDB ****/
+  QString butaneFileName = QString(TESTDATADIR) + "/data/butane.pdb";
+  QFile file(butaneFileName);
+  QVERIFY(file.open(QIODevice::ReadOnly));
+  QByteArray butanePDBData(file.readAll());
+
+  // First, use OBConvert to convert it to cml
+  QByteArray butaneCMLData;
+  QVERIFY(GlobalSearch::OBConvert::convertFormat("pdb", "cml",
+                                                 butanePDBData,
+                                                 butaneCMLData));
+
+  std::stringstream css(butaneCMLData.data());
+
+  // Now read it
+  GlobalSearch::Structure butane;
+  QVERIFY(GlobalSearch::CmlFormat::read(butane, css));
+
+  QVERIFY(butane.numBonds() == 13);
+
+  butane.clearBonds();
+
+  QVERIFY(butane.numBonds() == 0);
+
+  butane.perceiveBonds();
+
+  QVERIFY(butane.numBonds() == 13);
 }
 
 QTEST_MAIN(StructureTest)
