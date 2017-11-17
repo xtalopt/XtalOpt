@@ -702,6 +702,34 @@ namespace GlobalSearch {
      */
     static void sortAndRankByEnthalpy(QList<Structure*> *structures);
 
+    /**
+     * Get the extra files to be copied to the working dir.
+     *
+     * @return A vector of the names (including paths) of files to be
+     *         copied to the structure's working directory.
+     */
+    std::vector<std::string> copyFiles() const { return m_copyFiles; }
+
+    /**
+     * Append a file to be copied to this structure's working directory.
+     * This will only append the file if it does not already exist, so it
+     * is safe to append the same file multiple times.
+     *
+     * @param f The name of the file to be copied.
+     */
+    void appendCopyFile(const std::string& f)
+    {
+      if (std::find(m_copyFiles.begin(),
+                    m_copyFiles.end(), f) == m_copyFiles.end()) {
+        m_copyFiles.push_back(f);
+      }
+    }
+
+    /**
+     * Clears the list of files to be copied to a structure's working dir.
+     */
+    void clearCopyFiles() { m_copyFiles.clear(); }
+
    signals:
 
    public slots:
@@ -1286,9 +1314,12 @@ namespace GlobalSearch {
     // Pointer to parent structure if one is saved.
     Structure* m_parentStructure;
 
+    // A list of extra files to be copied from their location to this
+    // structure's working directory.
+    std::vector<std::string> m_copyFiles;
+
     // End doxygen skip:
     /// \endcond
-
   };
 
 } // end namespace GlobalSearch

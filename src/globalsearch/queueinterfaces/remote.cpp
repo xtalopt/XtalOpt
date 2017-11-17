@@ -21,6 +21,7 @@
 #include <globalsearch/structure.h>
 
 #include <QFile>
+#include <QFileInfo>
 #include <QTextStream>
 
 namespace GlobalSearch {
@@ -75,6 +76,26 @@ namespace GlobalSearch {
     qDeleteAll(streams);
     qDeleteAll(files);
 
+    // If there are copy files, copy those to the dir as well.
+    if (!s->copyFiles().empty()) {
+      for (const auto& copyFile: s->copyFiles()) {
+        QFile infile(copyFile.c_str());
+        QString filename = QFileInfo(infile).fileName();
+        QFile outfile(s->fileName() + "/" + filename);
+        if (!infile.copy(outfile.fileName())) {
+          m_opt->error(tr("Failed to copy file %1 to %2")
+            .arg(infile.fileName())
+            .arg(outfile.fileName()));
+          return false;
+        }
+
+        // Also append them to filenames so that they will be copied to
+        // the remote dir
+        filenames.append(filename);
+      }
+      s->clearCopyFiles();
+    }
+
     // Copy to remote
     SSHConnection *ssh = m_opt->ssh()->getFreeConnection();
 
@@ -89,11 +110,9 @@ namespace GlobalSearch {
       return false;
     }
 
-    // Build a list of all filename needed to copy
-    QStringList templates = fileHash.keys();
     for (QStringList::const_iterator
-           it = templates.constBegin(),
-           it_end = templates.constEnd();
+           it = filenames.constBegin(),
+           it_end = filenames.constEnd();
          it != it_end;
          ++it) {
       if (!ssh->copyFileToServer(s->fileName() + "/" + (*it),

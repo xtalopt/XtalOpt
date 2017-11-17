@@ -138,6 +138,23 @@ namespace GlobalSearch {
     // Clean up
     qDeleteAll(streams);
     qDeleteAll(files);
+
+    // If there are copy files, copy those to the dir as well.
+    if (!s->copyFiles().empty()) {
+      for (const auto& copyFile: s->copyFiles()) {
+        QFile infile(copyFile.c_str());
+        QString filename = QFileInfo(infile).fileName();
+        QFile outfile(s->fileName() + "/" + filename);
+        if (!infile.copy(outfile.fileName())) {
+          m_opt->error(tr("Failed to copy file %1 to %2")
+            .arg(infile.fileName())
+            .arg(outfile.fileName()));
+          return false;
+        }
+      }
+      s->clearCopyFiles();
+    }
+
     return true;
   }
 

@@ -34,7 +34,6 @@ namespace XtalOpt {
 
     // Set allowed filenames, e.g.
     m_templates.append("xtal.fdf");
-    m_templates.append("xtal.psf");
 
     // Setup for completion values
     m_completionFilename = "xtal.out";

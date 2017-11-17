@@ -505,6 +505,14 @@ namespace GlobalSearch {
       }
       rep += file.readAll();
     }
+    // Append a file to be copied to the working dir
+    else if (line.startsWith("copyfile:", Qt::CaseInsensitive)) {
+      QString filename = line;
+      filename.remove(0, QString("copyfile:").size());
+      filename = filename.trimmed();
+      structure->appendCopyFile(filename.toStdString());
+      line = "";
+    }
 
     if (!rep.isEmpty()) {
       // Remove any trailing newlines

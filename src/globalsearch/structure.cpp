@@ -56,7 +56,8 @@ namespace GlobalSearch {
 #ifdef ENABLE_MOLECULAR
     m_zValue(-1),
 #endif // ENABLE_MOLECULAR
-    m_parentStructure(nullptr)
+    m_parentStructure(nullptr),
+    m_copyFiles()
   {
     m_currentOptStep = 0;
     setStatus(Empty);
@@ -84,7 +85,8 @@ namespace GlobalSearch {
 #ifdef ENABLE_MOLECULAR
     m_zValue(-1),
 #endif // ENABLE_MOLECULAR
-    m_parentStructure(nullptr)
+    m_parentStructure(nullptr),
+    m_copyFiles()
   {
     *this = other;
   }
@@ -115,7 +117,8 @@ namespace GlobalSearch {
 #ifdef ENABLE_MOLECULAR
     m_zValue(-1),
 #endif // ENABLE_MOLECULAR
-    m_parentStructure(nullptr)
+    m_parentStructure(nullptr),
+    m_copyFiles()
   {
     *this = other;
   }
@@ -167,6 +170,7 @@ namespace GlobalSearch {
       m_optEnd                     = other.m_optEnd;
       m_index                      = other.m_index;
       m_parentStructure            = other.m_parentStructure;
+      m_copyFiles                  = other.m_copyFiles;
     }
 
     return *this;
@@ -204,6 +208,7 @@ namespace GlobalSearch {
       m_parentStructure            = std::move(other.m_parentStructure);
 
       other.m_parentStructure = nullptr;
+      m_copyFiles                  = std::move(other.m_copyFiles);
     }
 
     return *this;
@@ -239,6 +244,12 @@ namespace GlobalSearch {
     settings->setValue("failCount", getFailCount());
     settings->setValue("startTime", getOptTimerStart().toString());
     settings->setValue("endTime", getOptTimerEnd().toString());
+    settings->beginWriteArray("copyFiles");
+    for (size_t i = 0; i < m_copyFiles.size(); ++i) {
+      settings->setArrayIndex(i);
+      settings->setValue("value", m_copyFiles[i].c_str());
+    }
+    settings->endArray();
 
 #ifdef ENABLE_MOLECULAR
     settings->setValue("parentConformer", getParentConformer().c_str());
@@ -362,6 +373,16 @@ namespace GlobalSearch {
       setOptTimerStart( QDateTime::fromString(settings->value("startTime", "").toString()));
       setOptTimerEnd(   QDateTime::fromString(settings->value("endTime",   "").toString()));
 
+      int size = settings->beginReadArray("copyFiles");
+      m_copyFiles.clear();
+      for (int i = 0; i < size; ++i) {
+        settings->setArrayIndex(i);
+        m_copyFiles.push_back(
+          settings->value("value").toString().toStdString()
+        );
+      }
+      settings->endArray();
+
 #ifdef ENABLE_MOLECULAR
       setParentConformer(
         settings->value("parentConformer", "").toString().toStdString()
@@ -372,7 +393,7 @@ namespace GlobalSearch {
     // History
     settings->beginGroup("history");
     //  Atomic nums
-    int size, size2;
+    int size2;
     size = settings->beginReadArray("atomicNums");
     m_histAtomicNums.clear();
     for (int i = 0; i < size; i++) {
