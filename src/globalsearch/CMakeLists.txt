@@ -34,6 +34,8 @@ set( globalsearch_SRCS
      formats/vaspformat.cpp
      formats/xyzformat.cpp
      formats/zmatrixformat.cpp
+     http/aflowml.cpp
+     http/httprequestmanager.cpp
 )
 
 if(ENABLE_MOLECULAR)
