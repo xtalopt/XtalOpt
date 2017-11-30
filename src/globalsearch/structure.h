@@ -730,6 +730,49 @@ namespace GlobalSearch {
      */
     void clearCopyFiles() { m_copyFiles.clear(); }
 
+    /**
+     * Whether or not to re-use the bonding information from before the
+     * optimization occurred. The atom order after optimization MUST be
+     * the same as the input atom order for optimization.
+     *
+     * @param b True if we are to use pre-optimization bonding. False if
+     *           we should not.
+     */
+    void setReusePreoptBonding(bool b) { m_reusePreoptBonding = b; }
+
+    /**
+     * Whether or not to re-use the bonding information from before the
+     * optimization occurred. The atom order after optimization MUST be
+     * the same as the input atom order for optimization.
+     *
+     * @return True if we are to use pre-optimization bonding. False if
+     *         we should not.
+     */
+    bool reusePreoptBonding() { return m_reusePreoptBonding; }
+
+    /**
+     * Clear pre-optimization bonding information.
+     */
+    void clearPreoptBonding() { m_preoptBonds.clear(); }
+
+    /**
+     * Set the preopt bonding information to be used when updating the
+     * structure.
+     *
+     * @param v The vector of bonding information via atom indices.
+     */
+    void setPreoptBonding(const std::vector<Bond>& v) { m_preoptBonds = v; }
+
+    /**
+     * Get the vector of preoptimization bonding information. This will be
+     * used to assign bonds to be the same as that before optimization. Note
+     * that the pre-optimization atom ordering MUST be the same as
+     * the post-optimization atom ordering.
+     *
+     * @return The vector of preoptimization bonding information.
+     */
+    const std::vector<Bond>& getPreoptBonding() const { return m_preoptBonds; }
+
    signals:
 
    public slots:
@@ -1317,6 +1360,14 @@ namespace GlobalSearch {
     // A list of extra files to be copied from their location to this
     // structure's working directory.
     std::vector<std::string> m_copyFiles;
+
+    // Whether or not to use the pre-optimization bonding information to set
+    // the bonds after optimization. The atoms MUST remain in the same order
+    // before and after optimization.
+    bool m_reusePreoptBonding;
+
+    // The pre-optimization bonding information.
+    std::vector<Bond> m_preoptBonds;
 
     // End doxygen skip:
     /// \endcond

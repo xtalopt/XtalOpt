@@ -488,7 +488,7 @@ namespace GlobalSearch {
   * 2 1 2 0    1.0  1.0 90.0      1 1 0
   * %endblock Zmatrix
   */
-  bool ZMatrixFormat::writeSiestaZMatrix(const Structure& s, std::ostream& out,
+  bool ZMatrixFormat::writeSiestaZMatrix(Structure& s, std::ostream& out,
                                          bool fixR, bool fixA, bool fixT)
   {
     std::vector<ZMatrixEntry> entries = generateZMatrixEntries(&s);
@@ -623,6 +623,19 @@ namespace GlobalSearch {
     }
 
     out << "%endblock Zmatrix\n\n";
+
+    // If we are to use pre-optimization bonding with this structure, re-order
+    // the atoms to match the new ordering and save the pre-optimization
+    // bonding information
+    if (s.reusePreoptBonding()) {
+      std::vector<size_t> newOrder(entries.size(), 0);
+
+      for (size_t i = 0; i < entries.size(); ++i)
+        newOrder[entries[i].ind] = i;
+
+      s.reorderAtoms(newOrder);
+      s.setPreoptBonding(s.bonds());
+    }
 
     return true;
   }

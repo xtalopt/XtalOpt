@@ -222,7 +222,9 @@ namespace XtalOpt {
     /**
      * Take the given xtal and write a siesta Z matrix with it (where the
      * bonds will be kept fix during optimization). Returns the z matrix
-     * as a string.
+     * as a string. If GlobalSearch::reusePreoptBonding() is set to true,
+     * the atoms will be re-ordered according to the new order and the
+     * pre-optimization bonding info will be stored.
      *
      * @param fixR Whether or not to fix the bond distances given in the
      *             z-matrix.
@@ -234,7 +236,7 @@ namespace XtalOpt {
      */
     std::string toSiestaZMatrix(bool fixR = true,
                                 bool fixA = true,
-                                bool fixT = true) const;
+                                bool fixT = true);
 
     // For random representation generation
     static void generateValidCOBs();

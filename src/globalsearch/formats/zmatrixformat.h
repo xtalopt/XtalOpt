@@ -88,7 +88,10 @@ namespace GlobalSearch {
     /**
      * Write a z-matrix using the specification in SIESTA (Spanish Initiative
      * for Electronic Simulations with Thousands of Atoms) to @p out. One
-     * molecule block will be used for every set of bonded atoms.
+     * molecule block will be used for every set of bonded atoms. If
+     * Structure::reusePreoptBonding() is true, the atoms in @p s will be
+     * re-ordered according to the z-matrix ordering, and the pre-optimization
+     * bonding information will be stored.
      *
      * @param s The structure for which to write the z-matrix.
      * @param out The output for the SIESTA z-matrix.
@@ -100,7 +103,7 @@ namespace GlobalSearch {
      *
      * @return True on success. False on failure.
      */
-    static bool writeSiestaZMatrix(const Structure& s, std::ostream& out,
+    static bool writeSiestaZMatrix(Structure& s, std::ostream& out,
                                    bool fixR, bool fixA, bool fixT);
   };
 }

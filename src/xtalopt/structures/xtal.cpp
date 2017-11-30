@@ -2703,7 +2703,7 @@ namespace XtalOpt {
   * 2 1 2 0    1.0  1.0 90.0      1 1 0
   * %endblock Zmatrix
   */
-  std::string Xtal::toSiestaZMatrix(bool fixR, bool fixA, bool fixT) const
+  std::string Xtal::toSiestaZMatrix(bool fixR, bool fixA, bool fixT)
   {
     std::stringstream ss;
 

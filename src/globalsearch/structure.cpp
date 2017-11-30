@@ -57,7 +57,8 @@ namespace GlobalSearch {
     m_zValue(-1),
 #endif // ENABLE_MOLECULAR
     m_parentStructure(nullptr),
-    m_copyFiles()
+    m_copyFiles(),
+    m_reusePreoptBonding(true)
   {
     m_currentOptStep = 0;
     setStatus(Empty);
@@ -86,7 +87,8 @@ namespace GlobalSearch {
     m_zValue(-1),
 #endif // ENABLE_MOLECULAR
     m_parentStructure(nullptr),
-    m_copyFiles()
+    m_copyFiles(),
+    m_reusePreoptBonding(true)
   {
     *this = other;
   }
@@ -118,7 +120,8 @@ namespace GlobalSearch {
     m_zValue(-1),
 #endif // ENABLE_MOLECULAR
     m_parentStructure(nullptr),
-    m_copyFiles()
+    m_copyFiles(),
+    m_reusePreoptBonding(true)
   {
     *this = other;
   }
@@ -171,6 +174,7 @@ namespace GlobalSearch {
       m_index                      = other.m_index;
       m_parentStructure            = other.m_parentStructure;
       m_copyFiles                  = other.m_copyFiles;
+      m_reusePreoptBonding         = other.m_reusePreoptBonding;
     }
 
     return *this;
@@ -209,6 +213,7 @@ namespace GlobalSearch {
 
       other.m_parentStructure = nullptr;
       m_copyFiles                  = std::move(other.m_copyFiles);
+      m_reusePreoptBonding         = std::move(other.m_reusePreoptBonding);
     }
 
     return *this;
@@ -248,6 +253,17 @@ namespace GlobalSearch {
     for (size_t i = 0; i < m_copyFiles.size(); ++i) {
       settings->setArrayIndex(i);
       settings->setValue("value", m_copyFiles[i].c_str());
+    }
+    settings->endArray();
+
+    settings->setValue("reusePreoptBonding", reusePreoptBonding());
+    settings->beginWriteArray("preoptBonds");
+    for (size_t i = 0; i < m_preoptBonds.size(); ++i) {
+      settings->setArrayIndex(i);
+      QString entry = QString::number(m_preoptBonds[i].first()) + "," +
+                      QString::number(m_preoptBonds[i].second()) + ":" +
+                      QString::number(m_preoptBonds[i].bondOrder());
+      settings->setValue("value", entry);
     }
     settings->endArray();
 
@@ -381,6 +397,24 @@ namespace GlobalSearch {
           settings->value("value").toString().toStdString()
         );
       }
+      settings->endArray();
+
+      setReusePreoptBonding(
+        settings->value("reusePreoptBonding", false).toBool()
+      );
+      size = settings->beginReadArray("preoptBonds");
+      std::vector<Bond> preoptBonds;
+      for (int i = 0; i < size; ++i) {
+        settings->setArrayIndex(i);
+        QString entry = settings->value("value").toString();
+        if (!entry.contains(',') || !entry.contains(':'))
+          continue;
+        size_t ind1 = entry.split(',')[0].toUInt();
+        size_t ind2 = entry.split(',')[1].split(':')[0].toUInt();
+        size_t bondOrder = entry.split(',')[1].split(':')[1].toUInt();
+        preoptBonds.push_back(Bond(ind1, ind2, bondOrder));
+      }
+      setPreoptBonding(preoptBonds);
       settings->endArray();
 
 #ifdef ENABLE_MOLECULAR
@@ -689,6 +723,14 @@ namespace GlobalSearch {
     clearAtoms();
     for (int i = 0; i < atomicNums.size() && i < coords.size(); ++i)
       addAtom(atomicNums[i], coords[i]);
+
+    // Are we to use the same bonds as we used in pre-optimization? If true,
+    // use them and clear it.
+    if (reusePreoptBonding() && !getPreoptBonding().empty()) {
+      // bonds() returns a reference. So we can set it.
+      bonds() = getPreoptBonding();
+      clearPreoptBonding();
+    }
 
     // Update energy/enthalpy
     if (fabs(enthalpy) < 1e-6) {
