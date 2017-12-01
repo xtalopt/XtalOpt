@@ -163,7 +163,7 @@ void AflowML::_submitPoscar(QString poscar, size_t requestId)
   QString id = rootObject.value("id").toString();
 
   // Create the reply url
-  QUrl statusUrl("http://aflow-ml.materials.duke.edu/prediction/result/" + id);
+  QUrl statusUrl("http://aflow-ml.materials.duke.edu/plmf/prediction/" + id);
 
   // Unlock the mutex so it can be locked in the next function
   lock.unlock();
