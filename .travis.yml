@@ -42,11 +42,11 @@ matrix:
       env:
         - NAME="xcode-8.0"
 
-install: . $TRAVIS_BUILD_DIR/scripts/travis/install.sh
+install: $TRAVIS_BUILD_DIR/scripts/travis/install.sh
 
-script: . $TRAVIS_BUILD_DIR/scripts/travis/script.sh
+script: $TRAVIS_BUILD_DIR/scripts/travis/script.sh
 
-after_success: . $TRAVIS_BUILD_DIR/scripts/travis/after_success.sh
+after_success: $TRAVIS_BUILD_DIR/scripts/travis/after_success.sh
 
 deploy:
   - provider: releases
