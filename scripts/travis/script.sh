@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # Before script
 # For Linux, we have to load the travis-ci display to run the tests even

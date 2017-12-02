@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # For GCC only: capture coverage info, filter out system, print debug info,
 # and upload to codecov
