@@ -5,8 +5,6 @@ if (ENABLE_EXAMPLESEARCH)
 endif (ENABLE_EXAMPLESEARCH)
 
 if (ENABLE_XTALOPT)
-   add_subdirectory(randSpg)
-   add_subdirectory(xtalcomp)
    add_subdirectory(xtalopt)
 endif (ENABLE_XTALOPT)
 
