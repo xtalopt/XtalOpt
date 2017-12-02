@@ -23,29 +23,37 @@
 
 namespace RandomDock {
 
-  class Matrix : public GlobalSearch::Structure
+class Matrix : public GlobalSearch::Structure
+{
+  Q_OBJECT
+
+public:
+  Matrix(QObject* parent = 0);
+  Matrix(Avogadro::Molecule* mol);
+  virtual ~Matrix();
+
+signals:
+
+public slots:
+  double prob(uint index)
   {
-    Q_OBJECT
-
-   public:
-    Matrix(QObject *parent = 0);
-    Matrix(Avogadro::Molecule *mol);
-    virtual ~Matrix();
-
-   signals:
-
-   public slots:
-    double prob(uint index) { checkProbs(); return m_probs.at(index);};
-    void sortConformers();
-    void generateProbabilities();
-    void checkProbs() {if ((uint)m_probs.size() != numConformers()) generateProbabilities();};
-    int getRandomConformerIndex();
-
-   private slots:
-
-   private:
-    QList<double> m_probs;
+    checkProbs();
+    return m_probs.at(index);
   };
+  void sortConformers();
+  void generateProbabilities();
+  void checkProbs()
+  {
+    if ((uint)m_probs.size() != numConformers())
+      generateProbabilities();
+  };
+  int getRandomConformerIndex();
+
+private slots:
+
+private:
+  QList<double> m_probs;
+};
 
 } // end namespace RandomDock
 

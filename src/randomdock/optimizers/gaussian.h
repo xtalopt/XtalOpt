@@ -19,15 +19,14 @@
 
 namespace RandomDock {
 
-  class GaussianOptimizer : public GlobalSearch::Optimizer
-  {
-    Q_OBJECT
+class GaussianOptimizer : public GlobalSearch::Optimizer
+{
+  Q_OBJECT
 
-   public:
-    explicit GaussianOptimizer(GlobalSearch::OptBase *parent,
-                            const QString &filename = "");
-
-  };
+public:
+  explicit GaussianOptimizer(GlobalSearch::OptBase* parent,
+                             const QString& filename = "");
+};
 
 } // end namespace RandomDock
 

@@ -21,8 +21,7 @@
 
 // Unfortunately, GCC < 4.9.0 did not include regex, so we have
 // to use the Qt libraries if are using GCC < 4.9.0
-#if defined(__GNUC__) && __GNUC__ < 4 || \
-    (__GNUC__ == 4 && (__GNUC_MINOR__ < 9))
+#if defined(__GNUC__) && __GNUC__ < 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ < 9))
 #define GNUC_LESS_THAN_4_9_0
 #include <QRegExp>
 #include <QStringList>
@@ -36,11 +35,9 @@
 
 inline bool containsOnlySpaces(const std::string& str)
 {
-  return std::all_of(str.begin(), str.end(),
-                     [](char c)
-                     {
-                       return std::isspace(static_cast<unsigned char>(c));
-                     });
+  return std::all_of(str.begin(), str.end(), [](char c) {
+    return std::isspace(static_cast<unsigned char>(c));
+  });
 }
 
 // Used to replace ')' with ' ', for instance
@@ -50,14 +47,16 @@ static inline void replace(std::string& s, char oldChar, char newChar)
 }
 
 // Replace every occurrence of a string with another string
-static void replaceAll(std::string& str,
-                       const std::string& from,
-                       const std::string& to) {
-  if(from.empty()) return;
+static void replaceAll(std::string& str, const std::string& from,
+                       const std::string& to)
+{
+  if (from.empty())
+    return;
   size_t start_pos = 0;
-  while((start_pos = str.find(from, start_pos)) != std::string::npos) {
+  while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
     str.replace(start_pos, from.length(), to);
-    start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
+    start_pos +=
+      to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
   }
 }
 
@@ -65,9 +64,11 @@ static inline bool hasEnding(const std::string& fullString,
                              const std::string& ending)
 {
   if (fullString.length() >= ending.length())
-    return (0 == fullString.compare(fullString.length() - ending.length(),
-                                    ending.length(), ending));
-  else return false;
+    return (0 ==
+            fullString.compare(fullString.length() - ending.length(),
+                               ending.length(), ending));
+  else
+    return false;
 }
 
 // Replaces all occurrences of "\n" with "<br>" in a string
@@ -81,10 +82,10 @@ static inline std::string useHTMLReturns(const std::string& str)
 static inline std::string removeSpaces(std::string str)
 {
   str.erase(std::remove_if(str.begin(), str.end(),
-                           [](char c)
-                           {
+                           [](char c) {
                              return std::isspace(static_cast<unsigned char>(c));
-                           }), str.end());
+                           }),
+            str.end());
   return str;
 }
 
@@ -116,9 +117,11 @@ static inline bool isNumber(const std::string& s)
   if (std::count(s.begin(), s.end(), '.') > 1)
     return false;
   std::string::const_iterator it = s.begin();
-  while (it != s.end() && (isdigit(*it) ||
-         (*it == '-' && it == s.begin()) || // Hyphen must be at beginning
-         *it == '.')) ++it;
+  while (it != s.end() &&
+         (isdigit(*it) ||
+          (*it == '-' && it == s.begin()) || // Hyphen must be at beginning
+          *it == '.'))
+    ++it;
   return !s.empty() && it == s.end();
 }
 
@@ -127,24 +130,26 @@ static inline bool isNumber(const std::string& s)
 static inline bool isInteger(const std::string& s)
 {
   if (s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+')))
-    return false ;
+    return false;
 
   char* p;
-  strtol(s.c_str(), &p, 10) ;
+  strtol(s.c_str(), &p, 10);
 
-  return (*p == 0) ;
+  return (*p == 0);
 }
 
 static inline bool contains(const std::string& s, char c)
 {
   std::size_t found = s.find_first_of(c);
-  if (found != std::string::npos) return true;
+  if (found != std::string::npos)
+    return true;
   return false;
 }
 
 static inline bool contains(const std::string& s1, const std::string& s2)
 {
-  if (s1.find(s2) != std::string::npos) return true;
+  if (s1.find(s2) != std::string::npos)
+    return true;
   return false;
 }
 
@@ -157,7 +162,8 @@ static inline bool greaterThan(const std::pair<uint, uint>& a,
 
 static inline bool numIsEven(int num)
 {
-  if (num % 2 == 0) return true;
+  if (num % 2 == 0)
+    return true;
   return false;
 }
 
@@ -168,8 +174,9 @@ static inline bool numIsOdd(int num)
 
 static inline bool isDigit(char d)
 {
-  if (d != '0' && d != '1' && d != '2' && d != '3' && d != '4' &&
-      d != '5' && d != '6' && d != '7' && d != '8' && d != '9') return false;
+  if (d != '0' && d != '1' && d != '2' && d != '3' && d != '4' && d != '5' &&
+      d != '6' && d != '7' && d != '8' && d != '9')
+    return false;
   return true;
 }
 
@@ -190,7 +197,8 @@ inline std::string trim(const std::string& str,
                         const std::string& whitespace = " \t")
 {
   const auto strBegin = str.find_first_not_of(whitespace);
-  if (strBegin == std::string::npos) return ""; // no content
+  if (strBegin == std::string::npos)
+    return ""; // no content
 
   const auto strEnd = str.find_last_not_of(whitespace);
   const auto strRange = strEnd - strBegin + 1;
@@ -200,8 +208,7 @@ inline std::string trim(const std::string& str,
 
 // Returns a 'reduced' string. In a reduced string, every series of repeated
 // spaces is reduced to 1 space
-inline std::string reduce(const std::string& str,
-                          const std::string& fill = " ",
+inline std::string reduce(const std::string& str, const std::string& fill = " ",
                           const std::string& whitespace = " \t")
 {
   // trim first
@@ -209,8 +216,7 @@ inline std::string reduce(const std::string& str,
 
   // replace sub ranges
   auto beginSpace = result.find_first_of(whitespace);
-  while (beginSpace != std::string::npos)
-  {
+  while (beginSpace != std::string::npos) {
     const auto endSpace = result.find_first_not_of(whitespace, beginSpace);
     const auto range = endSpace - beginSpace;
 
@@ -244,7 +250,7 @@ inline std::string getFileExt(const std::string& s)
   if (i != std::string::npos)
     return (s.substr(i + 1, s.length() - i));
   else
-    return("");
+    return ("");
 }
 
 // Reads a line in reverse from the ifstream and sets the ifstream to
@@ -293,21 +299,16 @@ static inline std::vector<std::string> reSplit(const std::string& s,
 // we are les than 4.9.0, we have to use Qt to do the regex operations
 #ifdef GNUC_LESS_THAN_4_9_0
   QStringList list = QString(s.c_str()).split(
-    QRegExp(regex.c_str()), skipEmpty ?
-                            QString::SkipEmptyParts :
-                            QString::KeepEmptyParts
-  );
+    QRegExp(regex.c_str()),
+    skipEmpty ? QString::SkipEmptyParts : QString::KeepEmptyParts);
   std::vector<std::string> ret;
-  std::for_each(list.begin(), list.end(), [&ret](const QString& s)
-                                          {
-                                            ret.push_back(s.toStdString());
-                                          });
+  std::for_each(list.begin(), list.end(),
+                [&ret](const QString& s) { ret.push_back(s.toStdString()); });
   return ret;
 #else
   std::regex re(regex);
-  std::sregex_token_iterator first(s.begin(), s.end(), re, -1),
-                             last;
-  std::vector<std::string> ret({first, last});
+  std::sregex_token_iterator first(s.begin(), s.end(), re, -1), last;
+  std::vector<std::string> ret({ first, last });
   if (skipEmpty)
     removeEmptyStrings(ret);
   return ret;
@@ -315,14 +316,15 @@ static inline std::vector<std::string> reSplit(const std::string& s,
 }
 
 // Used to change something like "(0,0,0)(0.5,0,0)" to {"0,0,0","0.5,0,0"}
-static inline std::vector<std::string>
-splitAndRemoveParenthesis(const std::string& s)
+static inline std::vector<std::string> splitAndRemoveParenthesis(
+  const std::string& s)
 {
   std::vector<std::string> ret = split(s, '(');
   // Remove any empty strings
   removeEmptyStrings(ret);
   // Remove all other parenthesis
-  for (size_t i = 0; i < ret.size(); i++) removeChar(ret[i], ')');
+  for (size_t i = 0; i < ret.size(); i++)
+    removeChar(ret[i], ')');
   return ret;
 }
 

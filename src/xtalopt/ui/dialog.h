@@ -20,60 +20,58 @@
 #include <QObject>
 
 namespace Ui {
-  class XtalOptDialog;
+class XtalOptDialog;
 }
 
 namespace XtalOpt {
-  class Xtal;
-  class XtalOpt;
-  class TabInit;
-  class TabEdit;
-  class TabOpt;
-  class TabSys;
-  class TabProgress;
-  class TabPlot;
-  class TabLog;
-  class XtalOptTest;
+class Xtal;
+class XtalOpt;
+class TabInit;
+class TabEdit;
+class TabOpt;
+class TabSys;
+class TabProgress;
+class TabPlot;
+class TabLog;
+class XtalOptTest;
 
-  class XtalOptDialog : public GlobalSearch::AbstractDialog
-  {
-    Q_OBJECT
+class XtalOptDialog : public GlobalSearch::AbstractDialog
+{
+  Q_OBJECT
 
-  public:
-    // Setting interactive to false will disable the tutorial popup
-    explicit XtalOptDialog( QWidget *parent = 0,
-                            Qt::WindowFlags f = Qt::Window,
-                            bool interactive = true,
-                            XtalOpt* xtalopt = nullptr);
-    virtual ~XtalOptDialog() override;
+public:
+  // Setting interactive to false will disable the tutorial popup
+  explicit XtalOptDialog(QWidget* parent = 0, Qt::WindowFlags f = Qt::Window,
+                         bool interactive = true, XtalOpt* xtalopt = nullptr);
+  virtual ~XtalOptDialog() override;
 
-    void setMolecule(GlobalSearch::Molecule *molecule);
+  void setMolecule(GlobalSearch::Molecule* molecule);
 
-    // Set's the plot widget's parent to nullptr and shows the plot widget
-    void beginPlotOnlyMode();
+  // Set's the plot widget's parent to nullptr and shows the plot widget
+  void beginPlotOnlyMode();
 
-  public slots:
-    void saveSession() override;
-    void showTutorialDialog() const;
+public slots:
+  void saveSession() override;
+  void showTutorialDialog() const;
 
-  private slots:
-    void startSearch() override;
+private slots:
+  void startSearch() override;
 
-  signals:
+signals:
 
-  private:
-    Ui::XtalOptDialog *ui;
+private:
+  Ui::XtalOptDialog* ui;
 
-    TabInit *m_tab_init;
-    TabEdit *m_tab_edit;
-    TabOpt *m_tab_opt;
-    TabSys *m_tab_sys;
-    TabProgress *m_tab_progress;
-    TabPlot *m_tab_plot;
-    TabLog *m_tab_log;
+  TabInit* m_tab_init;
+  TabEdit* m_tab_edit;
+  TabOpt* m_tab_opt;
+  TabSys* m_tab_sys;
+  TabProgress* m_tab_progress;
+  TabPlot* m_tab_plot;
+  TabLog* m_tab_log;
 
-    XtalOptTest *m_test;
-  };
+  XtalOptTest* m_test;
+};
 }
 
 #endif

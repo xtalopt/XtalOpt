@@ -12,10 +12,10 @@
   limitations under the License.
  **********************************************************************/
 
-#include <globalsearch/formats/obconvert.h>
 #include <globalsearch/formats/cmlformat.h>
-#include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/formats/formats.h>
+#include <globalsearch/formats/obconvert.h>
+#include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/formats/zmatrixformat.h>
 #include <globalsearch/structure.h>
 
@@ -35,7 +35,7 @@ class FormatsTest : public QObject
   GlobalSearch::Structure m_rutile;
   GlobalSearch::Structure m_caffeine;
 
- private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -109,14 +109,13 @@ void FormatsTest::readPoscar()
   double tol = 1.e-5;
   Vector3 rutileAtom2Pos(1.47906, 2.29686, 2.29686);
   QVERIFY(rutile.atom(5).atomicNumber() == 22);
-  QVERIFY(GlobalSearch::fuzzyCompare(rutile.atom(5).pos(),
-                                     rutileAtom2Pos, tol));
+  QVERIFY(
+    GlobalSearch::fuzzyCompare(rutile.atom(5).pos(), rutileAtom2Pos, tol));
 
   // The first atom should be O and should have fractional coordinates of
   // 0, 0.3053, 0.3053
   tol = 1.e-5;
-  Vector3 rutileAtom3Ref =
-      rutile.unitCell().toFractional(rutile.atom(0).pos());
+  Vector3 rutileAtom3Ref = rutile.unitCell().toFractional(rutile.atom(0).pos());
   Vector3 rutileAtom3PosFrac(0.0, 0.3053, 0.3053);
   QVERIFY(rutile.atom(0).atomicNumber() == 8);
   QVERIFY(GlobalSearch::fuzzyCompare(rutileAtom3Ref, rutileAtom3PosFrac, tol));
@@ -148,14 +147,13 @@ void FormatsTest::writePoscar()
   double tol = 1.e-5;
   Vector3 rutileAtom2Pos(1.47906, 2.29686, 2.29686);
   QVERIFY(rutile.atom(5).atomicNumber() == 22);
-  QVERIFY(GlobalSearch::fuzzyCompare(rutile.atom(5).pos(),
-                                     rutileAtom2Pos, tol));
+  QVERIFY(
+    GlobalSearch::fuzzyCompare(rutile.atom(5).pos(), rutileAtom2Pos, tol));
 
   // The first atom should be O and should have fractional coordinates of
   // 0, 0.3053, 0.3053
   tol = 1.e-5;
-  Vector3 rutileAtom3Ref =
-      rutile.unitCell().toFractional(rutile.atom(0).pos());
+  Vector3 rutileAtom3Ref = rutile.unitCell().toFractional(rutile.atom(0).pos());
   Vector3 rutileAtom3PosFrac(0.0, 0.3053, 0.3053);
   QVERIFY(rutile.atom(0).atomicNumber() == 8);
   QVERIFY(GlobalSearch::fuzzyCompare(rutileAtom3Ref, rutileAtom3PosFrac, tol));
@@ -181,14 +179,13 @@ void FormatsTest::readCml()
   double tol = 1.e-5;
   Vector3 rutileAtom2Pos(1.47906, 2.29686, 2.29686);
   QVERIFY(rutile.atom(1).atomicNumber() == 22);
-  QVERIFY(GlobalSearch::fuzzyCompare(rutile.atom(1).pos(),
-                                     rutileAtom2Pos, tol));
+  QVERIFY(
+    GlobalSearch::fuzzyCompare(rutile.atom(1).pos(), rutileAtom2Pos, tol));
 
   // The third atom should be O and should have fractional coordinates of
   // 0, 0.3053, 0.3053
   tol = 1.e-5;
-  Vector3 rutileAtom3Ref =
-      rutile.unitCell().toFractional(rutile.atom(2).pos());
+  Vector3 rutileAtom3Ref = rutile.unitCell().toFractional(rutile.atom(2).pos());
   Vector3 rutileAtom3PosFrac(0.0, 0.3053, 0.3053);
   QVERIFY(rutile.atom(2).atomicNumber() == 8);
   QVERIFY(GlobalSearch::fuzzyCompare(rutileAtom3Ref, rutileAtom3PosFrac, tol));
@@ -219,7 +216,7 @@ void FormatsTest::readCml()
 
   // Caffeine should also have 4 double bonds. Make sure of this.
   size_t numDoubleBonds = 0;
-  for (const GlobalSearch::Bond& bond: caffeine.bonds()) {
+  for (const GlobalSearch::Bond& bond : caffeine.bonds()) {
     if (bond.bondOrder() == 2)
       ++numDoubleBonds;
   }
@@ -255,14 +252,13 @@ void FormatsTest::writeCml()
   double tol = 1.e-5;
   Vector3 rutileAtom2Pos(1.47906, 2.29686, 2.29686);
   QVERIFY(rutile.atom(1).atomicNumber() == 22);
-  QVERIFY(GlobalSearch::fuzzyCompare(rutile.atom(1).pos(),
-                                     rutileAtom2Pos, tol));
+  QVERIFY(
+    GlobalSearch::fuzzyCompare(rutile.atom(1).pos(), rutileAtom2Pos, tol));
 
   // The third atom should be O and should have fractional coordinates of
   // 0, 0.3053, 0.3053
   tol = 1.e-5;
-  Vector3 rutileAtom3Ref =
-      rutile.unitCell().toFractional(rutile.atom(2).pos());
+  Vector3 rutileAtom3Ref = rutile.unitCell().toFractional(rutile.atom(2).pos());
   Vector3 rutileAtom3PosFrac(0.0, 0.3053, 0.3053);
   QVERIFY(rutile.atom(2).atomicNumber() == 8);
   QVERIFY(GlobalSearch::fuzzyCompare(rutileAtom3Ref, rutileAtom3PosFrac, tol));
@@ -282,7 +278,7 @@ void FormatsTest::writeCml()
 
   // Caffeine should also have 4 double bonds. Make sure of this.
   size_t numDoubleBonds = 0;
-  for (const GlobalSearch::Bond& bond: caffeine.bonds()) {
+  for (const GlobalSearch::Bond& bond : caffeine.bonds()) {
     if (bond.bondOrder() == 2)
       ++numDoubleBonds;
   }
@@ -299,8 +295,7 @@ void FormatsTest::OBConvert()
 
   // First, use OBConvert to convert it to cml
   QByteArray caffeineCMLData;
-  QVERIFY(GlobalSearch::OBConvert::convertFormat("pdb", "cml",
-                                                 caffeinePDBData,
+  QVERIFY(GlobalSearch::OBConvert::convertFormat("pdb", "cml", caffeinePDBData,
                                                  caffeineCMLData));
 
   std::stringstream css(caffeineCMLData.data());
@@ -316,7 +311,7 @@ void FormatsTest::OBConvert()
 
   // Caffeine should also have 4 double bonds. Make sure of this.
   size_t numDoubleBonds = 0;
-  for (const GlobalSearch::Bond& bond: caffeine.bonds()) {
+  for (const GlobalSearch::Bond& bond : caffeine.bonds()) {
     if (bond.bondOrder() == 2)
       ++numDoubleBonds;
   }
@@ -337,10 +332,8 @@ void FormatsTest::OBConvert()
   QStringList options;
   options << "-xp";
 
-  QVERIFY(GlobalSearch::OBConvert::convertFormat("sdf", "cml",
-                                                 caffeineSDFData,
-                                                 caffeineCMLDataWithEnergy,
-                                                 options));
+  QVERIFY(GlobalSearch::OBConvert::convertFormat(
+    "sdf", "cml", caffeineSDFData, caffeineCMLDataWithEnergy, options));
 
   std::stringstream csdfss(caffeineCMLDataWithEnergy.data());
 
@@ -355,7 +348,7 @@ void FormatsTest::OBConvert()
 
   // Caffeine should also have 4 double bonds. Make sure of this.
   numDoubleBonds = 0;
-  for (const GlobalSearch::Bond& bond: caffeineSDF.bonds()) {
+  for (const GlobalSearch::Bond& bond : caffeineSDF.bonds()) {
     if (bond.bondOrder() == 2)
       ++numDoubleBonds;
   }
@@ -378,11 +371,12 @@ void FormatsTest::ZMatrixEntryGenerator()
   std::vector<GlobalSearch::ZMatrixEntry> entries =
     GlobalSearch::ZMatrixFormat::generateZMatrixEntries(&caffeine);
 
-/*
-  qDebug() << "Entries are:";
-  for (const auto& entry: entries)
-    qDebug() << entry.ind << entry.rInd << entry.angleInd << entry.dihedralInd;
-*/
+  /*
+    qDebug() << "Entries are:";
+    for (const auto& entry: entries)
+      qDebug() << entry.ind << entry.rInd << entry.angleInd <<
+    entry.dihedralInd;
+  */
 
   // There should be 24 entries. We can check more info in the future
   QVERIFY(entries.size() == 24);
@@ -390,7 +384,7 @@ void FormatsTest::ZMatrixEntryGenerator()
   // Write it to the z-matrix format
   std::stringstream ss;
   GlobalSearch::ZMatrixFormat::write(caffeine, ss);
-  //qDebug() << ("output is:\n" + ss.str()).c_str();
+  // qDebug() << ("output is:\n" + ss.str()).c_str();
 
   // Now read it back in to make sure our writer worked
   GlobalSearch::Structure newCaffeine;
@@ -421,7 +415,7 @@ void FormatsTest::writeSiestaZMatrix()
   // include more tests in the future.
   QVERIFY(!ss.str().empty());
 
-  //std::cout << "ss is:\n" << ss.str() << "\n";
+  // std::cout << "ss is:\n" << ss.str() << "\n";
 }
 
 void FormatsTest::readCastep()
@@ -448,21 +442,15 @@ void FormatsTest::readCastep()
   // -0.037144, 0.000195, 0.088768
   QVERIFY(s.atom(0).atomicNumber() == 1);
   QVERIFY(GlobalSearch::fuzzyCompare(
-      s.unitCell().toFractional(s.atom(0).pos()),
-      GlobalSearch::Vector3(-0.037144, 0.000195, 0.088768),
-      tol
-    )
-  );
+    s.unitCell().toFractional(s.atom(0).pos()),
+    GlobalSearch::Vector3(-0.037144, 0.000195, 0.088768), tol));
 
   // Atom #2 should be H and have a fractional position of
   // 0.474430, 0.498679, 0.850082
   QVERIFY(s.atom(1).atomicNumber() == 1);
   QVERIFY(GlobalSearch::fuzzyCompare(
-      s.unitCell().toFractional(s.atom(1).pos()),
-      GlobalSearch::Vector3(0.474430, 0.498679, 0.850082),
-      tol
-    )
-  );
+    s.unitCell().toFractional(s.atom(1).pos()),
+    GlobalSearch::Vector3(0.474430, 0.498679, 0.850082), tol));
 
   // Energy should be -29.55686228188
   QVERIFY(fabs(s.getEnergy() - -29.55686228188) < tol);
@@ -495,21 +483,15 @@ void FormatsTest::readGulp()
   // 0.499957, 0.999999, 0.500003
   QVERIFY(s.atom(1).atomicNumber() == 22);
   QVERIFY(GlobalSearch::fuzzyCompare(
-      s.unitCell().toFractional(s.atom(1).pos()),
-      GlobalSearch::Vector3(0.499957, 0.999999, 0.500003),
-      tol
-    )
-  );
+    s.unitCell().toFractional(s.atom(1).pos()),
+    GlobalSearch::Vector3(0.499957, 0.999999, 0.500003), tol));
 
   // Atom #3 should be O and have a fractional position of
   // 0.624991, 0.250020, 0.874996
   QVERIFY(s.atom(2).atomicNumber() == 8);
   QVERIFY(GlobalSearch::fuzzyCompare(
-      s.unitCell().toFractional(s.atom(2).pos()),
-      GlobalSearch::Vector3(0.624991, 0.250020, 0.874996),
-      tol
-    )
-  );
+    s.unitCell().toFractional(s.atom(2).pos()),
+    GlobalSearch::Vector3(0.624991, 0.250020, 0.874996), tol));
 
   // Energy should be -78.44239332
   QVERIFY(fabs(s.getEnergy() - -78.44239332) < tol);
@@ -539,21 +521,15 @@ void FormatsTest::readPwscf()
   // 0.040806225, 0.100970667, 0.003304159
   QVERIFY(s.atom(0).atomicNumber() == 8);
   QVERIFY(GlobalSearch::fuzzyCompare(
-      s.unitCell().toFractional(s.atom(0).pos()),
-      GlobalSearch::Vector3(0.040806225, 0.100970667, 0.003304159),
-      tol
-    )
-  );
+    s.unitCell().toFractional(s.atom(0).pos()),
+    GlobalSearch::Vector3(0.040806225, 0.100970667, 0.003304159), tol));
 
   // Atom #2 should be O and have a fractional position of
   // 0.577212775, 0.316072333, 0.629713841
   QVERIFY(s.atom(1).atomicNumber() == 8);
   QVERIFY(GlobalSearch::fuzzyCompare(
-      s.unitCell().toFractional(s.atom(1).pos()),
-      GlobalSearch::Vector3(0.577212775, 0.316072333, 0.629713841),
-      tol
-    )
-  );
+    s.unitCell().toFractional(s.atom(1).pos()),
+    GlobalSearch::Vector3(0.577212775, 0.316072333, 0.629713841), tol));
 
   static const double RYDBERG_TO_EV = 13.605698066;
 
@@ -591,21 +567,15 @@ void FormatsTest::readSiesta()
   // 0.40338285, 0.38896410, 0.75921162
   QVERIFY(s.atom(1).atomicNumber() == 22);
   QVERIFY(GlobalSearch::fuzzyCompare(
-      s.unitCell().toFractional(s.atom(1).pos()),
-      GlobalSearch::Vector3(0.40338285, 0.38896410, 0.75921162),
-      tol
-    )
-  );
+    s.unitCell().toFractional(s.atom(1).pos()),
+    GlobalSearch::Vector3(0.40338285, 0.38896410, 0.75921162), tol));
 
   // Atom #3 should be O and have a fractional position of
   // 0.38568921, 0.74679127, 0.21473350
   QVERIFY(s.atom(2).atomicNumber() == 8);
   QVERIFY(GlobalSearch::fuzzyCompare(
-      s.unitCell().toFractional(s.atom(2).pos()),
-      GlobalSearch::Vector3(0.38568921, 0.74679127, 0.21473350),
-      tol
-    )
-  );
+    s.unitCell().toFractional(s.atom(2).pos()),
+    GlobalSearch::Vector3(0.38568921, 0.74679127, 0.21473350), tol));
 
   // Energy should be -2005.342641 eV
   QVERIFY(fabs(s.getEnergy() - -2005.342641) < tol);
@@ -635,21 +605,17 @@ void FormatsTest::readVasp()
   // 0.9317195263978, 0.20419595775, 0.4923304223199
   QVERIFY(s.atom(1).atomicNumber() == 1);
   QVERIFY(GlobalSearch::fuzzyCompare(
-      s.unitCell().toFractional(s.atom(1).pos()),
-      GlobalSearch::Vector3(0.9317195263978, 0.20419595775, 0.4923304223199),
-      tol
-    )
-  );
+    s.unitCell().toFractional(s.atom(1).pos()),
+    GlobalSearch::Vector3(0.9317195263978, 0.20419595775, 0.4923304223199),
+    tol));
 
   // Atom #3 should be O and have a fractional position of
   // 0.087068957523, -0.1465596214494, 0.1524183445695
   QVERIFY(s.atom(2).atomicNumber() == 8);
   QVERIFY(GlobalSearch::fuzzyCompare(
-      s.unitCell().toFractional(s.atom(2).pos()),
-      GlobalSearch::Vector3(0.087068957523, -0.1465596214494, 0.1524183445695),
-      tol
-    )
-  );
+    s.unitCell().toFractional(s.atom(2).pos()),
+    GlobalSearch::Vector3(0.087068957523, -0.1465596214494, 0.1524183445695),
+    tol));
 
   // Energy should be 5.56502673 eV.
   QVERIFY(fabs(s.getEnergy() - 5.56502673) < tol);

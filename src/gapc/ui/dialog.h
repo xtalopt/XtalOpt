@@ -21,53 +21,52 @@
 
 #include <globalsearch/ui/abstractdialog.h>
 
-#include <avogadro/molecule.h>
 #include <avogadro/glwidget.h>
+#include <avogadro/molecule.h>
 
 #include "ui_dialog.h"
 
 namespace GAPC {
-  class ProtectedCluster;
-  class GAPC;
-  class TabInit;
-  class TabEdit;
-  class TabOpt;
-  class TabSys;
-  class TabProgress;
-  class TabPlot;
-  class TabLog;
+class ProtectedCluster;
+class GAPC;
+class TabInit;
+class TabEdit;
+class TabOpt;
+class TabSys;
+class TabProgress;
+class TabPlot;
+class TabLog;
 
-  class GAPCDialog : public GlobalSearch::AbstractDialog
-  {
-    Q_OBJECT
+class GAPCDialog : public GlobalSearch::AbstractDialog
+{
+  Q_OBJECT
 
-  public:
-    explicit GAPCDialog( Avogadro::GLWidget *glWidget = 0,
-                         QWidget *parent = 0,
-                         Qt::WindowFlags f = 0 );
-    virtual ~GAPCDialog();
+public:
+  explicit GAPCDialog(Avogadro::GLWidget* glWidget = 0, QWidget* parent = 0,
+                      Qt::WindowFlags f = 0);
+  virtual ~GAPCDialog();
 
-    void setMolecule(Avogadro::Molecule *molecule);
+  void setMolecule(Avogadro::Molecule* molecule);
 
-  public slots:
-    void saveSession();
+public slots:
+  void saveSession();
 
-  private slots:
-    void startSearch();
+private slots:
+  void startSearch();
 
-  signals:
+signals:
 
-  private:
-    Ui::GAPCDialog ui;
+private:
+  Ui::GAPCDialog ui;
 
-    TabInit *m_tab_init;
-    TabEdit *m_tab_edit;
-    TabOpt *m_tab_opt;
-    TabSys *m_tab_sys;
-    TabProgress *m_tab_progress;
-    TabPlot *m_tab_plot;
-    TabLog *m_tab_log;
-  };
+  TabInit* m_tab_init;
+  TabEdit* m_tab_edit;
+  TabOpt* m_tab_opt;
+  TabSys* m_tab_sys;
+  TabProgress* m_tab_progress;
+  TabPlot* m_tab_plot;
+  TabLog* m_tab_log;
+};
 }
 
 #endif

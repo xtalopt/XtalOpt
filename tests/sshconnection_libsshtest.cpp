@@ -16,8 +16,8 @@
 #include <globalsearch/sshconnection_libssh.h>
 
 #include <QString>
-#include <QtTest>
 #include <QTemporaryFile>
+#include <QtTest>
 
 using namespace GlobalSearch;
 
@@ -25,8 +25,8 @@ class SSHConnectionLibSSHTest : public QObject
 {
   Q_OBJECT
 
-  private:
-  SSHConnectionLibSSH *conn;
+private:
+  SSHConnectionLibSSH* conn;
   QTemporaryFile m_localTempFile;
   QString m_remoteFileName;
   QString m_localNewFileName;
@@ -47,7 +47,7 @@ class SSHConnectionLibSSHTest : public QObject
   // Large file test
   QTemporaryFile m_largeTempFile;
 
-  private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -96,7 +96,7 @@ void SSHConnectionLibSSHTest::initTestCase()
   // Write local file for later manipulation
   m_fileContents = "This is a test file.\n\nIt has text in it.";
   m_localTempFile.open();
-  QTextStream ts1 (&m_localTempFile);
+  QTextStream ts1(&m_localTempFile);
   ts1 << m_fileContents;
   m_localTempFile.close();
 
@@ -110,24 +110,23 @@ void SSHConnectionLibSSHTest::initTestCase()
   //                       newdir/
   //                              testfile2
   m_remoteDir = ".sshtmpdir";
-  m_dirLayout << m_remoteDir + "/testfile1"
-              << m_remoteDir + "/newdir/"
+  m_dirLayout << m_remoteDir + "/testfile1" << m_remoteDir + "/newdir/"
               << m_remoteDir + "/newdir/testfile2";
   m_localTempDir.mkpath(QDir::tempPath() + "/sshtesttmp");
   m_localTempDir.mkpath(QDir::tempPath() + "/sshtesttmp/newdir");
   m_localTempDir.setPath(QDir::tempPath() + "/sshtesttmp");
   m_localNewDir = m_localTempDir.path() + ".new";
 
-  QFile testfile1 (m_localTempDir.path() + "/testfile1");
+  QFile testfile1(m_localTempDir.path() + "/testfile1");
   testfile1.open(QIODevice::WriteOnly);
-  QTextStream teststream1 (&testfile1);
+  QTextStream teststream1(&testfile1);
   m_testfile1Contents = "This is the first file's contents.\n";
   teststream1 << m_testfile1Contents;
   testfile1.close();
 
-  QFile testfile2 (m_localTempDir.path() + "/newdir/testfile2");
+  QFile testfile2(m_localTempDir.path() + "/newdir/testfile2");
   testfile2.open(QIODevice::WriteOnly);
-  QTextStream teststream2 (&testfile2);
+  QTextStream teststream2(&testfile2);
   m_testfile2Contents = "and these are the second's.\n";
   teststream2 << m_testfile2Contents;
   testfile2.close();
@@ -135,9 +134,9 @@ void SSHConnectionLibSSHTest::initTestCase()
   // Create a large file, 10 MB
   // / Open local file
   m_largeTempFile.open();
-  QTextStream lts (&m_largeTempFile);
+  QTextStream lts(&m_largeTempFile);
   // / Create buffer
-  QString buffer (1048576, '0');
+  QString buffer(1048576, '0');
   // / Write
   for (int i = 0; i < 10; i++)
     lts << buffer;
@@ -152,10 +151,11 @@ void SSHConnectionLibSSHTest::initTestCase()
     conn = new SSHConnectionLibSSH();
     conn->setLoginDetails("testserver", "test", "test");
     conn->connectSession();
-  }
-  catch (SSHConnection::SSHConnectionException) {
+  } catch (SSHConnection::SSHConnectionException) {
     conn = 0;
-    QFAIL("Cannot connect to ssh server. Make sure that the connection opened in initTestCase() points to a valid account on a real host before debugging this failure.");
+    QFAIL("Cannot connect to ssh server. Make sure that the connection opened "
+          "in initTestCase() points to a valid account on a real host before "
+          "debugging this failure.");
   }
 }
 
@@ -175,7 +175,8 @@ void SSHConnectionLibSSHTest::cleanupTestCase()
 
   QFile::remove(m_largeTempFile.fileName());
 
-  if (conn) delete conn;
+  if (conn)
+    delete conn;
   conn = 0;
 }
 
@@ -221,25 +222,21 @@ void SSHConnectionLibSSHTest::execute()
   int ec;
 
   // Execute the command 200 times.
-  QBENCHMARK_ONCE {
+  QBENCHMARK_ONCE
+  {
     for (int i = 1; i <= 200; i++) {
       QVERIFY2(conn->execute(command, stdout_str, stderr_str, ec),
-               QString("Execution of \'"
-                       + command
-                       + "\' (#"
-                       + QString::number(i)
-                       + ") failed."
-                       ).toStdString().c_str()
-               );
+               QString("Execution of \'" + command + "\' (#" +
+                       QString::number(i) + ") failed.")
+                 .toStdString()
+                 .c_str());
       QCOMPARE(ec, 0);
       QCOMPARE(stdout_str, QString("6\n"));
       QVERIFY2(stderr_str.isEmpty(),
-               QString("Execution of \'"
-                       + command
-                       + "\' produced an error: "
-                       + stderr_str
-                       ).toStdString().c_str()
-               );
+               QString("Execution of \'" + command + "\' produced an error: " +
+                       stderr_str)
+                 .toStdString()
+                 .c_str());
     }
   }
 }
@@ -248,8 +245,8 @@ void SSHConnectionLibSSHTest::executeLargeOutput()
 {
   // Don't use seq to generate the loop vars -- it's not available in some
   // chroot jails.
-  QString command = QString("for i in {0..%1};do echo 000; done")
-    .arg(LIBSSH_BUFFER_SIZE);
+  QString command =
+    QString("for i in {0..%1};do echo 000; done").arg(LIBSSH_BUFFER_SIZE);
 
   QString refout;
   for (int i = 0; i <= LIBSSH_BUFFER_SIZE; i++) {
@@ -259,30 +256,22 @@ void SSHConnectionLibSSHTest::executeLargeOutput()
   QString stdout_str, stderr_str;
   int ec;
 
-  QVERIFY2(conn->execute(command, stdout_str, stderr_str, ec),
-           QString("Execution of \'"
-                   + command
-                   + " failed."
-                   ).toStdString().c_str()
-               );
+  QVERIFY2(
+    conn->execute(command, stdout_str, stderr_str, ec),
+    QString("Execution of \'" + command + " failed.").toStdString().c_str());
 
   QCOMPARE(ec, 0);
   QCOMPARE(stdout_str, refout);
-  QVERIFY2(stderr_str.isEmpty(),
-           QString("Execution of \'"
-                   + command
-                   + "\' produced an error: "
-                   + stderr_str
-                   ).toStdString().c_str()
-           );
+  QVERIFY2(stderr_str.isEmpty(), QString("Execution of \'" + command +
+                                         "\' produced an error: " + stderr_str)
+                                   .toStdString()
+                                   .c_str());
 }
 
-  void SSHConnectionLibSSHTest::copyFileToServer()
+void SSHConnectionLibSSHTest::copyFileToServer()
 {
-  QVERIFY2(conn->copyFileToServer(m_localTempFile.fileName(),
-                                  m_remoteFileName),
-           "Error copying file to server."
-           );
+  QVERIFY2(conn->copyFileToServer(m_localTempFile.fileName(), m_remoteFileName),
+           "Error copying file to server.");
 }
 
 void SSHConnectionLibSSHTest::readRemoteFile()
@@ -295,15 +284,13 @@ void SSHConnectionLibSSHTest::readRemoteFile()
 
 void SSHConnectionLibSSHTest::copyFileFromServer()
 {
-  QVERIFY2(conn->copyFileFromServer(m_remoteFileName,
-                                    m_localNewFileName),
+  QVERIFY2(conn->copyFileFromServer(m_remoteFileName, m_localNewFileName),
            "Error copying file from server.");
   // Ensure that new local file matches original local file.
-  QFile newFile (m_localNewFileName);
+  QFile newFile(m_localNewFileName);
   newFile.open(QIODevice::ReadOnly);
   m_localTempFile.open();
-  QCOMPARE(newFile.readAll(),
-           m_localTempFile.readAll());
+  QCOMPARE(newFile.readAll(), m_localTempFile.readAll());
   newFile.close();
   m_localTempFile.close();
 }
@@ -316,14 +303,11 @@ void SSHConnectionLibSSHTest::removeRemoteFile()
 
 void SSHConnectionLibSSHTest::copyDirectoryToServer()
 {
-  QVERIFY2(conn->copyDirectoryToServer(m_localTempDir.path(),
-                                       m_remoteDir),
+  QVERIFY2(conn->copyDirectoryToServer(m_localTempDir.path(), m_remoteDir),
            "Error copying directory to server.");
   QString cont1, cont2;
-  conn->readRemoteFile(m_remoteDir + "/testfile1",
-                       cont1);
-  conn->readRemoteFile(m_remoteDir + "/newdir/testfile2",
-                       cont2);
+  conn->readRemoteFile(m_remoteDir + "/testfile1", cont1);
+  conn->readRemoteFile(m_remoteDir + "/newdir/testfile2", cont2);
   QCOMPARE(cont1, m_testfile1Contents);
   QCOMPARE(cont2, m_testfile2Contents);
 }
@@ -331,8 +315,7 @@ void SSHConnectionLibSSHTest::copyDirectoryToServer()
 void SSHConnectionLibSSHTest::readRemoteDirectoryContents()
 {
   QStringList contents;
-  QVERIFY(conn->readRemoteDirectoryContents(m_remoteDir,
-                                            contents));
+  QVERIFY(conn->readRemoteDirectoryContents(m_remoteDir, contents));
   qSort(contents);
   qSort(m_dirLayout);
   QCOMPARE(contents, m_dirLayout);
@@ -340,18 +323,17 @@ void SSHConnectionLibSSHTest::readRemoteDirectoryContents()
 
 void SSHConnectionLibSSHTest::copyDirectoryFromServer()
 {
-  QVERIFY2(conn->copyDirectoryFromServer(m_remoteDir,
-                                         m_localNewDir),
+  QVERIFY2(conn->copyDirectoryFromServer(m_remoteDir, m_localNewDir),
            "Error copying directory from server.");
 
-  QFile f1 (m_localNewDir + "/testfile1");
+  QFile f1(m_localNewDir + "/testfile1");
   f1.open(QIODevice::ReadOnly);
-  QString cont1 (f1.readAll());
+  QString cont1(f1.readAll());
   QCOMPARE(cont1, m_testfile1Contents);
 
-  QFile f2 (m_localNewDir + "/newdir/testfile2");
+  QFile f2(m_localNewDir + "/newdir/testfile2");
   f2.open(QIODevice::ReadOnly);
-  QString cont2 (f2.readAll());
+  QString cont2(f2.readAll());
   QCOMPARE(cont2, m_testfile2Contents);
 }
 
@@ -363,14 +345,17 @@ void SSHConnectionLibSSHTest::removeRemoteDirectory()
 
 void SSHConnectionLibSSHTest::largeFileCopyBenchmark()
 {
-  QBENCHMARK {
+  QBENCHMARK
+  {
     conn->copyFileToServer(m_largeTempFile.fileName(), ".sshlargetest");
-      }
-  QBENCHMARK {
-    conn->copyFileFromServer(".sshlargetest", m_largeTempFile.fileName() + ".new");
+  }
+  QBENCHMARK
+  {
+    conn->copyFileFromServer(".sshlargetest",
+                             m_largeTempFile.fileName() + ".new");
   }
   conn->removeRemoteFile(".sshlargetest");
-  QFile largeCopy (m_largeTempFile.fileName() + ".new");
+  QFile largeCopy(m_largeTempFile.fileName() + ".new");
   largeCopy.open(QIODevice::ReadOnly);
   m_largeTempFile.open();
   QCOMPARE(largeCopy.readAll(), m_largeTempFile.readAll());

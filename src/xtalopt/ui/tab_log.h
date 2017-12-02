@@ -20,30 +20,30 @@
 #include "ui_tab_log.h"
 
 namespace GlobalSearch {
-  class AbstractDialog;
+class AbstractDialog;
 }
 
 namespace XtalOpt {
-  class XtalOptDialog;
-  class XtalOpt;
+class XtalOptDialog;
+class XtalOpt;
 
-  class TabLog : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
+class TabLog : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabLog(GlobalSearch::AbstractDialog *parent, XtalOpt *p );
-    virtual ~TabLog() override;
+public:
+  explicit TabLog(GlobalSearch::AbstractDialog* parent, XtalOpt* p);
+  virtual ~TabLog() override;
 
-  public slots:
-    void disconnectGUI() override;
-    void newLog(const QString & info);
+public slots:
+  void disconnectGUI() override;
+  void newLog(const QString& info);
 
-  signals:
+signals:
 
-  private:
-    Ui::Tab_Log ui;
-  };
+private:
+  Ui::Tab_Log ui;
+};
 }
 
 #endif

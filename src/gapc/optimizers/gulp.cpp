@@ -18,32 +18,32 @@ using namespace GlobalSearch;
 
 namespace GAPC {
 
-  GULPOptimizer::GULPOptimizer(OptBase *parent, const QString &filename) :
-    Optimizer(parent)
-  {
-    // Set allowed data structure keys, if any, e.g.
-    // None here!
+GULPOptimizer::GULPOptimizer(OptBase* parent, const QString& filename)
+  : Optimizer(parent)
+{
+  // Set allowed data structure keys, if any, e.g.
+  // None here!
 
-    // Set allowed filenames, e.g.
-    m_templates.insert("job.gin",QStringList(""));
+  // Set allowed filenames, e.g.
+  m_templates.insert("job.gin", QStringList(""));
 
-    // Setup for completion values
-    m_completionFilename = "job.got";
-    m_completionStrings.append("**** Optimisation achieved ****");
+  // Setup for completion values
+  m_completionFilename = "job.got";
+  m_completionStrings.append("**** Optimisation achieved ****");
 
-    // Set output filenames to try to read data from, e.g.
-    m_outputFilenames.append(m_completionFilename);
+  // Set output filenames to try to read data from, e.g.
+  m_outputFilenames.append(m_completionFilename);
 
-    // Set the name of the optimizer to be returned by getIDString()
-    m_idString = "GULP";
+  // Set the name of the optimizer to be returned by getIDString()
+  m_idString = "GULP";
 
-    // Local execution setup:
-    m_localRunCommand = "gulp";
-    m_stdinFilename = "job.gin";
-    m_stdoutFilename = "job.got";
-    m_stderrFilename = "job.ger";
+  // Local execution setup:
+  m_localRunCommand = "gulp";
+  m_stdinFilename = "job.gin";
+  m_stdoutFilename = "job.got";
+  m_stderrFilename = "job.ger";
 
-    readSettings(filename);
-  }
+  readSettings(filename);
+}
 
 } // end namespace GAPC

@@ -16,41 +16,41 @@
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/xtalopt.h>
 
-#include <QProcess>
 #include <QDir>
-#include <QString>
+#include <QProcess>
 #include <QSemaphore>
+#include <QString>
 
 using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-  GULPOptimizer::GULPOptimizer(OptBase *parent, const QString &filename) :
-    XtalOptOptimizer(parent)
-  {
-    // Set allowed data structure keys, if any, e.g.
-    // None here!
+GULPOptimizer::GULPOptimizer(OptBase* parent, const QString& filename)
+  : XtalOptOptimizer(parent)
+{
+  // Set allowed data structure keys, if any, e.g.
+  // None here!
 
-    // Set allowed filenames, e.g.
-    m_templates.append("xtal.gin");
+  // Set allowed filenames, e.g.
+  m_templates.append("xtal.gin");
 
-    // Setup for completion values
-    m_completionFilename = "xtal.got";
-    m_completionStrings.append("**** Optimisation achieved ****");
+  // Setup for completion values
+  m_completionFilename = "xtal.got";
+  m_completionStrings.append("**** Optimisation achieved ****");
 
-    // Set output filenames to try to read data from, e.g.
-    m_outputFilenames.append(m_completionFilename);
+  // Set output filenames to try to read data from, e.g.
+  m_outputFilenames.append(m_completionFilename);
 
-    // Set the name of the optimizer to be returned by getIDString()
-    m_idString = "GULP";
+  // Set the name of the optimizer to be returned by getIDString()
+  m_idString = "GULP";
 
-    // Local execution setup:
-    m_localRunCommand = "gulp";
-    m_stdinFilename = "xtal.gin";
-    m_stdoutFilename = "xtal.got";
-    m_stderrFilename = "xtal.ger";
+  // Local execution setup:
+  m_localRunCommand = "gulp";
+  m_stdinFilename = "xtal.gin";
+  m_stdoutFilename = "xtal.got";
+  m_stderrFilename = "xtal.ger";
 
-    readSettings(filename);
-  }
+  readSettings(filename);
+}
 
 } // end namespace XtalOpt

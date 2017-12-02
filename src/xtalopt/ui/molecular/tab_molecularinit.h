@@ -20,47 +20,46 @@
 #include "ui_tab_molecularinit.h"
 
 namespace GlobalSearch {
-  class AbstractDialog;
-  class ConformerGeneratorDialog;
+class AbstractDialog;
+class ConformerGeneratorDialog;
 }
 
 namespace XtalOpt {
-  class XtalOpt;
+class XtalOpt;
 
-  class TabMolecularInit : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
+class TabMolecularInit : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabMolecularInit(GlobalSearch::AbstractDialog *parent,
-                              XtalOpt *p);
-    virtual ~TabMolecularInit() override;
+public:
+  explicit TabMolecularInit(GlobalSearch::AbstractDialog* parent, XtalOpt* p);
+  virtual ~TabMolecularInit() override;
 
-  public slots:
-    void lockGUI() override;
-    void readSettings(const QString &filename = "") override;
-    void writeSettings(const QString &filename = "") override;
-    void updateGUI() override;
-    void updateDimensions();
-    void updateMinRadii();
-    void updateFormulaUnits();
-    void updateFormulaUnitsListUI();
-    void updateInitOptions();
-    void adjustVolumesToBePerFU(uint FU);
-    void updateMinIAD();
+public slots:
+  void lockGUI() override;
+  void readSettings(const QString& filename = "") override;
+  void writeSettings(const QString& filename = "") override;
+  void updateGUI() override;
+  void updateDimensions();
+  void updateMinRadii();
+  void updateFormulaUnits();
+  void updateFormulaUnitsListUI();
+  void updateInitOptions();
+  void adjustVolumesToBePerFU(uint FU);
+  void updateMinIAD();
 
-    // Conformer stuff
-    void showConformerGeneratorDialog();
-    void updateConformerDir();
-    void browseConfDir();
+  // Conformer stuff
+  void showConformerGeneratorDialog();
+  void updateConformerDir();
+  void browseConfDir();
 
-  signals:
+signals:
 
-  private:
-    Ui::TabMolecularInit ui;
+private:
+  Ui::TabMolecularInit ui;
 
-    GlobalSearch::ConformerGeneratorDialog* m_confGenDialog;
-  };
+  GlobalSearch::ConformerGeneratorDialog* m_confGenDialog;
+};
 }
 
 #endif

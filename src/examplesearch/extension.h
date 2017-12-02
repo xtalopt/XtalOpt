@@ -17,57 +17,56 @@
 
 #include <avogadro/extension.h>
 
-#include <QObject>
 #include <QList>
+#include <QObject>
 #include <QString>
 
 class QUndoCommand;
 
 namespace GlobalSearch {
-  class Structure;
+class Structure;
 }
 
 namespace ExampleSearch {
-  class ExampleSearchDialog;
+class ExampleSearchDialog;
 
-  class ExampleSearchExtension : public Avogadro::Extension
-  {
-    Q_OBJECT
-    AVOGADRO_EXTENSION("ExampleSearch", tr("Example Search"),
-                       tr("Example of a structure search Avogadro extension "
-                          "using libglobalsearch"))
+class ExampleSearchExtension : public Avogadro::Extension
+{
+  Q_OBJECT
+  AVOGADRO_EXTENSION("ExampleSearch", tr("Example Search"),
+                     tr("Example of a structure search Avogadro extension "
+                        "using libglobalsearch"))
 
-    public:
-      ExampleSearchExtension(QObject *parent=0);
-      virtual ~ExampleSearchExtension();
+public:
+  ExampleSearchExtension(QObject* parent = 0);
+  virtual ~ExampleSearchExtension();
 
-      //! Perform Action
-      virtual QList<QAction *> actions() const;
-      virtual QUndoCommand* performAction(QAction *action, Avogadro::GLWidget *widget);
-      virtual QString menuPath(QAction *action) const;
-      void writeSettings(QSettings &settings) const;
-      void readSettings(QSettings &settings);
+  //! Perform Action
+  virtual QList<QAction*> actions() const;
+  virtual QUndoCommand* performAction(QAction* action,
+                                      Avogadro::GLWidget* widget);
+  virtual QString menuPath(QAction* action) const;
+  void writeSettings(QSettings& settings) const;
+  void readSettings(QSettings& settings);
 
-   public slots:
-      void reemitMoleculeChanged(GlobalSearch::Structure *structure);
+public slots:
+  void reemitMoleculeChanged(GlobalSearch::Structure* structure);
 
-    private:
-      QList<QAction *> m_actions;
-      ExampleSearchDialog *m_dialog;
-  };
+private:
+  QList<QAction*> m_actions;
+  ExampleSearchDialog* m_dialog;
+};
 
-  // Workaround for Avogadro bug:
-  using Avogadro::Plugin;
+// Workaround for Avogadro bug:
+using Avogadro::Plugin;
 
-  class ExampleSearchExtensionFactory :
-      public QObject,
-      public Avogadro::PluginFactory
-  {
-      Q_OBJECT
-      Q_INTERFACES(Avogadro::PluginFactory)
-      AVOGADRO_EXTENSION_FACTORY(ExampleSearchExtension)
-  };
-
+class ExampleSearchExtensionFactory : public QObject,
+                                      public Avogadro::PluginFactory
+{
+  Q_OBJECT
+  Q_INTERFACES(Avogadro::PluginFactory)
+  AVOGADRO_EXTENSION_FACTORY(ExampleSearchExtension)
+};
 
 } // end namespace ExampleSearch
 

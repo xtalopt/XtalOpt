@@ -20,18 +20,17 @@
 #include <QObject>
 
 namespace GlobalSearch {
-  class OptBase;
+class OptBase;
 }
 
 namespace GAPC {
-  class GULPOptimizer : public GlobalSearch::Optimizer
-  {
-    Q_OBJECT
+class GULPOptimizer : public GlobalSearch::Optimizer
+{
+  Q_OBJECT
 
-   public:
-    GULPOptimizer(GlobalSearch::OptBase *parent,
-                  const QString &filename = "");
-  };
+public:
+  GULPOptimizer(GlobalSearch::OptBase* parent, const QString& filename = "");
+};
 
 } // end namespace GAPC
 

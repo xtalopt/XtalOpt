@@ -16,13 +16,11 @@
 
 namespace GAPC {
 
-  ProtectedCluster::ProtectedCluster(QObject *parent) :
-    Cluster(parent)
-  {
-  }
+ProtectedCluster::ProtectedCluster(QObject* parent) : Cluster(parent)
+{
+}
 
-  ProtectedCluster::~ProtectedCluster()
-  {
-  }
-
+ProtectedCluster::~ProtectedCluster()
+{
+}
 }

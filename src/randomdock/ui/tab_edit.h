@@ -18,21 +18,21 @@
 #include <globalsearch/ui/defaultedittab.h>
 
 namespace RandomDock {
-  class RandomDock;
-  class RandomDockDialog;
+class RandomDock;
+class RandomDockDialog;
 
-  class TabEdit : public GlobalSearch::DefaultEditTab
-  {
-    Q_OBJECT
+class TabEdit : public GlobalSearch::DefaultEditTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabEdit( RandomDockDialog *parent, RandomDock *p );
-    virtual ~TabEdit();
+public:
+  explicit TabEdit(RandomDockDialog* parent, RandomDock* p);
+  virtual ~TabEdit();
 
-  public slots:
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-  };
+public slots:
+  void readSettings(const QString& filename = "");
+  void writeSettings(const QString& filename = "");
+};
 }
 
 #endif

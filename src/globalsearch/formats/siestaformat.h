@@ -20,19 +20,19 @@ class QString;
 
 namespace GlobalSearch {
 
-  // Forward declaration
-  class Structure;
+// Forward declaration
+class Structure;
 
-  /**
-   * @class The Spanish Initiative for Electronic Simulations with Thousands
-   *        of Atoms (SIESTA) format.
-   *        https://departments.icmab.es/leem/siesta/
-   */
-  class SiestaFormat {
-   public:
-    static bool read(Structure* s, const QString& filename);
-  };
-
+/**
+ * @class The Spanish Initiative for Electronic Simulations with Thousands
+ *        of Atoms (SIESTA) format.
+ *        https://departments.icmab.es/leem/siesta/
+ */
+class SiestaFormat
+{
+public:
+  static bool read(Structure* s, const QString& filename);
+};
 }
 
 #endif // GLOBALSEARCH_SIESTA_FORMAT_H

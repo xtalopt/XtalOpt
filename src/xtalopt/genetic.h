@@ -18,28 +18,31 @@
 #include <QObject>
 
 namespace XtalOpt {
-  class Xtal;
-  struct XtalCompositionStruct;
+class Xtal;
+struct XtalCompositionStruct;
 
-  class XtalOptGenetic : public QObject
-  {
-    Q_OBJECT
+class XtalOptGenetic : public QObject
+{
+  Q_OBJECT
 
-   public:
-    static Xtal* crossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution, double &percent1);
-    static Xtal* FUcrossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution, double &percent1, double &percent2, const QList<uint> formulaUnitsList, QHash<uint, XtalCompositionStruct> comp);
-    static Xtal* stripple(Xtal* xtal,
-                          double sigma_lattice_min, double sigma_lattice_max,
-                          double rho_min, double rho_max,
-                          uint eta, uint mu,
-                          double &sigma_lattice,
-                          double &rho);
-    static Xtal* permustrain(Xtal* xtal, double sigma_lattice_max, uint exchanges, double &sigma_lattice);
+public:
+  static Xtal* crossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution,
+                         double& percent1);
+  static Xtal* FUcrossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution,
+                           double& percent1, double& percent2,
+                           const QList<uint> formulaUnitsList,
+                           QHash<uint, XtalCompositionStruct> comp);
+  static Xtal* stripple(Xtal* xtal, double sigma_lattice_min,
+                        double sigma_lattice_max, double rho_min,
+                        double rho_max, uint eta, uint mu,
+                        double& sigma_lattice, double& rho);
+  static Xtal* permustrain(Xtal* xtal, double sigma_lattice_max, uint exchanges,
+                           double& sigma_lattice);
 
-    static void exchange(Xtal *xtal, uint exchanges);
-    static void strain(Xtal *xtal, double sigma_lattice);
-    static void ripple(Xtal* xtal, double rho, uint eta, uint mu);
-  };
+  static void exchange(Xtal* xtal, uint exchanges);
+  static void strain(Xtal* xtal, double sigma_lattice);
+  static void ripple(Xtal* xtal, double rho, uint eta, uint mu);
+};
 
 } // end namespace XtalOpt
 

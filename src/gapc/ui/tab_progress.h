@@ -24,75 +24,76 @@ class QTimer;
 class QMutex;
 
 namespace GlobalSearch {
-  class Structure;
+class Structure;
 }
 
 namespace GAPC {
-  class GAPCDialog;
-  class OptGAPC;
-  class ProtectedCluster;
+class GAPCDialog;
+class OptGAPC;
+class ProtectedCluster;
 
-  class TabProgress : public GlobalSearch::AbstractTab
+class TabProgress : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
+
+public:
+  explicit TabProgress(GAPCDialog* parent, OptGAPC* p);
+  virtual ~TabProgress();
+
+  enum ProgressColumns
   {
-    Q_OBJECT
-
-  public:
-    explicit TabProgress( GAPCDialog *parent, OptGAPC *p );
-    virtual ~TabProgress();
-
-    enum ProgressColumns {
-      Gen = 0,
-      Mol,
-      JobID,
-      Status,
-      TimeElapsed,
-      Enthalpy,
-      Ancestry
-    };
-
-  public slots:
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void disconnectGUI();
-    void addNewEntry();
-    void newInfoUpdate(GlobalSearch::Structure *);
-    void updateInfo();
-    void updateAllInfo();
-    void updateProgressTable();
-    void selectMoleculeFromProgress(int,int,int,int);
-    void highlightPC(GlobalSearch::Structure *s);
-    void startTimer();
-    void stopTimer();
-    void progressContextMenu(QPoint);
-    void restartJobProgress();
-    void killPCProgress();
-    void unkillPCProgress();
-    void resetFailureCountProgress();
-    void randomizeStructureProgress();
-    void enableRowTracking() {rowTracking = true;};
-    void disableRowTracking() {rowTracking = false;};
-
-  signals:
-    void deleteJob(int);
-    void updateStatus(int opt, int run, int queue, int fail);
-    void infoUpdate();
-
-  private:
-    Ui::Tab_Progress ui;
-    QTimer *m_timer;
-    QMutex *m_mutex;
-    QMutex *m_update_mutex, *m_update_all_mutex;
-    ProtectedCluster *m_context_pc;
-    bool rowTracking;
-
-    GlobalSearch::Tracker m_infoUpdateTracker;
-
-    void restartJobProgress_(int incar);
-    void killPCProgress_();
-    void unkillPCProgress_();
-    void resetFailureCountProgress_();
-    void randomizeStructureProgress_();
+    Gen = 0,
+    Mol,
+    JobID,
+    Status,
+    TimeElapsed,
+    Enthalpy,
+    Ancestry
   };
+
+public slots:
+  void readSettings(const QString& filename = "");
+  void writeSettings(const QString& filename = "");
+  void disconnectGUI();
+  void addNewEntry();
+  void newInfoUpdate(GlobalSearch::Structure*);
+  void updateInfo();
+  void updateAllInfo();
+  void updateProgressTable();
+  void selectMoleculeFromProgress(int, int, int, int);
+  void highlightPC(GlobalSearch::Structure* s);
+  void startTimer();
+  void stopTimer();
+  void progressContextMenu(QPoint);
+  void restartJobProgress();
+  void killPCProgress();
+  void unkillPCProgress();
+  void resetFailureCountProgress();
+  void randomizeStructureProgress();
+  void enableRowTracking() { rowTracking = true; };
+  void disableRowTracking() { rowTracking = false; };
+
+signals:
+  void deleteJob(int);
+  void updateStatus(int opt, int run, int queue, int fail);
+  void infoUpdate();
+
+private:
+  Ui::Tab_Progress ui;
+  QTimer* m_timer;
+  QMutex* m_mutex;
+  QMutex *m_update_mutex, *m_update_all_mutex;
+  ProtectedCluster* m_context_pc;
+  bool rowTracking;
+
+  GlobalSearch::Tracker m_infoUpdateTracker;
+
+  void restartJobProgress_(int incar);
+  void killPCProgress_();
+  void unkillPCProgress_();
+  void resetFailureCountProgress_();
+  void randomizeStructureProgress_();
+};
 }
 
 #endif

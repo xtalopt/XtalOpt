@@ -16,11 +16,11 @@
 
 #include <examplesearch/ui/dialog.h>
 
-#include <globalsearch/tracker.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/queueinterfaces/remote.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/slottedwaitcondition.h>
+#include <globalsearch/tracker.h>
 #ifdef ENABLE_SSH
 #include <globalsearch/sshmanager.h>
 #endif // ENABLE_SSH
@@ -42,251 +42,246 @@ using namespace GlobalSearch;
 
 namespace ExampleSearch {
 
-  ExampleSearch::ExampleSearch(ExampleSearchDialog *parent) :
-    OptBase(parent),
-    m_initWC(new SlottedWaitCondition (this)),
+ExampleSearch::ExampleSearch(ExampleSearchDialog* parent)
+  : OptBase(parent), m_initWC(new SlottedWaitCondition(this)),
     m_structureInitMutex(new QMutex)
-  {
-    m_idString = "ExampleSearch";
-    m_schemaVersion = 1;
-    m_structureInitMutex = new QMutex;
-    limitRunningJobs = true;
-    // By default, just replace with random when an optimization fails.
-    failLimit = 1;
-    failAction = FA_Randomize;
-    contStructs = 10;
-    runningJobLimit = 1;
+{
+  m_idString = "ExampleSearch";
+  m_schemaVersion = 1;
+  m_structureInitMutex = new QMutex;
+  limitRunningJobs = true;
+  // By default, just replace with random when an optimization fails.
+  failLimit = 1;
+  failAction = FA_Randomize;
+  contStructs = 10;
+  runningJobLimit = 1;
+}
+
+ExampleSearch::~ExampleSearch()
+{
+  // Stop queuemanager thread
+  if (m_queueThread->isRunning()) {
+    m_queueThread->disconnect();
+    m_queueThread->quit();
+    m_queueThread->wait();
   }
 
-  ExampleSearch::~ExampleSearch()
-  {
-    // Stop queuemanager thread
-    if (m_queueThread->isRunning()) {
-      m_queueThread->disconnect();
-      m_queueThread->quit();
-      m_queueThread->wait();
-    }
-
-    // Delete queuemanager
-    delete m_queue;
-    m_queue = 0;
+  // Delete queuemanager
+  delete m_queue;
+  m_queue = 0;
 
 #ifdef ENABLE_SSH
-    // Stop SSHManager
-    delete m_ssh;
-    m_ssh = 0;
+  // Stop SSHManager
+  delete m_ssh;
+  m_ssh = 0;
 #endif // ENABLE_SSH
 
-    // Wait for save to finish
-    while (savePending) {
-      qDebug() << "Spinning on save before destroying ExampleSearch...";
-      GS_SLEEP(1);
-    };
-    savePending = true;
+  // Wait for save to finish
+  while (savePending) {
+    qDebug() << "Spinning on save before destroying ExampleSearch...";
+    GS_SLEEP(1);
+  };
+  savePending = true;
 
-    // Clean up various members
-    m_initWC->deleteLater();
-    m_initWC = 0;
+  // Clean up various members
+  m_initWC->deleteLater();
+  m_initWC = 0;
+}
+
+void ExampleSearch::startSearch()
+{
+  // Add search-specific checks here
+  // If something is amiss, call error("Error message") and return.
+
+  // Are the selected queueinterface and optimizer happy?
+  QString err;
+  if (!m_optimizer->isReadyToSearch(&err)) {
+    error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
+    return;
   }
 
-  void ExampleSearch::startSearch()
-  {
-    // Add search-specific checks here
-    // If something is amiss, call error("Error message") and return.
+  if (!m_queueInterface->isReadyToSearch(&err)) {
+    error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
+    return;
+  }
 
-    // Are the selected queueinterface and optimizer happy?
-    QString err;
-    if (!m_optimizer->isReadyToSearch(&err)) {
-      error(tr("Optimizer is not fully initialized:") + "\n\n" + err);
-      return;
-    }
+  // Warn user if runningJobLimit is 0
+  if (limitRunningJobs && runningJobLimit == 0) {
+    error(tr("Warning: the number of running jobs is currently set to 0."
+             "\n\nYou will need to increase this value before the search "
+             "can begin (The option is on the 'Optimization Settings' tab)."));
+  };
 
-    if (!m_queueInterface->isReadyToSearch(&err)) {
-      error(tr("QueueInterface is not fully initialized:") + "\n\n" + err);
-      return;
-    }
-
-    // Warn user if runningJobLimit is 0
-    if (limitRunningJobs && runningJobLimit == 0) {
-      error(tr("Warning: the number of running jobs is currently set to 0."
-               "\n\nYou will need to increase this value before the search "
-               "can begin (The option is on the 'Optimization Settings' tab)."));
-    };
-
-    // Initialize ssh connections
+// Initialize ssh connections
 #ifdef ENABLE_SSH
-    // Create the SSHManager if running remotely
-    if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
-      if (!this->createSSHConnections()) {
-        error(tr("Could not create ssh connections."));
-        return;
-      }
+  // Create the SSHManager if running remotely
+  if (qobject_cast<RemoteQueueInterface*>(m_queueInterface) != 0) {
+    if (!this->createSSHConnections()) {
+      error(tr("Could not create ssh connections."));
+      return;
     }
+  }
 #endif // ENABLE_SSH
 
-    // Here we go!
-    debug("Starting optimization.");
+  // Here we go!
+  debug("Starting optimization.");
 
-    // prepare pointers
-    m_tracker->lockForWrite();
-    m_tracker->deleteAllStructures();
-    m_tracker->unlock();
+  // prepare pointers
+  m_tracker->lockForWrite();
+  m_tracker->deleteAllStructures();
+  m_tracker->unlock();
 
-    // Throw signal
-    emit startingSession();
+  // Throw signal
+  emit startingSession();
 
-    ////////////////////////////////
-    // Generate random structures //
-    ////////////////////////////////
+  ////////////////////////////////
+  // Generate random structures //
+  ////////////////////////////////
 
-    // Set up progress bar
-    m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
+  // Set up progress bar
+  m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
 
-    // Initalize loop variables
-    int progCount=0;
+  // Initalize loop variables
+  int progCount = 0;
 
-    // Generation loop...
-    for (uint i = 0; i < runningJobLimit; i++) {
-      m_dialog->updateProgressMaximum( (i == 0)
-                                        ? 0
-                                        : int(progCount
-                                              / static_cast<double>(i))
-                                       * runningJobLimit );
-      m_dialog->updateProgressValue(progCount++);
-      m_dialog->updateProgressLabel(tr("%1 structures generated of (%2)...")
-                                    .arg(i)
-                                    .arg(runningJobLimit));
+  // Generation loop...
+  for (uint i = 0; i < runningJobLimit; i++) {
+    m_dialog->updateProgressMaximum(
+      (i == 0) ? 0 : int(progCount / static_cast<double>(i)) * runningJobLimit);
+    m_dialog->updateProgressValue(progCount++);
+    m_dialog->updateProgressLabel(
+      tr("%1 structures generated of (%2)...").arg(i).arg(runningJobLimit));
 
-      generateNewStructure();
-    }
-
-    // Wait for all structures to appear in tracker
-    m_dialog->updateProgressLabel(tr("Waiting for structures to initialize..."));
-    m_dialog->updateProgressMinimum(0);
-    m_dialog->updateProgressMinimum(runningJobLimit);
-
-    connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
-            m_initWC, SLOT(wakeAllSlot()));
-
-    m_initWC->prewaitLock();
-    do {
-      m_dialog->updateProgressValue(m_tracker->size());
-      m_dialog->updateProgressLabel(tr("Waiting for structures to initialize (%1 of %2)...")
-                                    .arg(m_tracker->size())
-                                    .arg(runningJobLimit));
-      // Don't block here forever -- there is a race condition where
-      // the final newStructureAdded signal may be emitted while the
-      // WC is not waiting. Since this is just trivial GUI updating
-      // and we check the condition in the do-while loop, this is
-      // acceptable. The following call will timeout in 250 ms.
-      m_initWC->wait(250);
-    }
-    while (m_tracker->size() < runningJobLimit);
-    m_initWC->postwaitUnlock();
-
-    // We're done with m_initWC.
-    m_initWC->disconnect();
-
-    m_dialog->stopProgressUpdate();
-
-    emit sessionStarted();
-    m_dialog->saveSession();
+    generateNewStructure();
   }
 
-  Structure* ExampleSearch::replaceWithRandom(Structure *s,
-                                              const QString & reason)
-  {
-    QWriteLocker locker1 (s->lock());
+  // Wait for all structures to appear in tracker
+  m_dialog->updateProgressLabel(tr("Waiting for structures to initialize..."));
+  m_dialog->updateProgressMinimum(0);
+  m_dialog->updateProgressMinimum(runningJobLimit);
 
-    // Generate/Check new structure
-    Structure *structure = generateRandomStructure();
+  connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
+          m_initWC, SLOT(wakeAllSlot()));
 
-    // Copy info over
-    QWriteLocker locker2 (structure->lock());
-    s->copyStructure(*structure);
-    s->resetEnergy();
-    s->resetEnthalpy();
-    s->setPV(0);
-    s->setCurrentOptStep(1);
-    QString parents = "Randomly generated";
-    if (!reason.isEmpty())
-      parents += " (" + reason + ")";
-    s->setParents(parents);
-    s->resetFailCount();
+  m_initWC->prewaitLock();
+  do {
+    m_dialog->updateProgressValue(m_tracker->size());
+    m_dialog->updateProgressLabel(
+      tr("Waiting for structures to initialize (%1 of %2)...")
+        .arg(m_tracker->size())
+        .arg(runningJobLimit));
+    // Don't block here forever -- there is a race condition where
+    // the final newStructureAdded signal may be emitted while the
+    // WC is not waiting. Since this is just trivial GUI updating
+    // and we check the condition in the do-while loop, this is
+    // acceptable. The following call will timeout in 250 ms.
+    m_initWC->wait(250);
+  } while (m_tracker->size() < runningJobLimit);
+  m_initWC->postwaitUnlock();
 
-    // Delete random structure
-    structure->deleteLater();
-    return s;
-  }
+  // We're done with m_initWC.
+  m_initWC->disconnect();
 
-  Structure * ExampleSearch::generateRandomStructure()
-  {
-    Structure * s = new Structure;
+  m_dialog->stopProgressUpdate();
 
-    Atom *O1 = s->addAtom(8, Eigen::Vector3d(0.0, 0.0, 0.0));
-    Atom *O2 = s->addAtom(8, Eigen::Vector3d(1.0, 0.0, 0.0));
+  emit sessionStarted();
+  m_dialog->saveSession();
+}
 
-    s->addBond(O1, O2, 2);
+Structure* ExampleSearch::replaceWithRandom(Structure* s, const QString& reason)
+{
+  QWriteLocker locker1(s->lock());
 
-    return s;
-  }
+  // Generate/Check new structure
+  Structure* structure = generateRandomStructure();
 
-  bool ExampleSearch::checkLimits()
-  {
-    // Validate input parameters here, see XtalOpt class for example.
-  }
+  // Copy info over
+  QWriteLocker locker2(structure->lock());
+  s->copyStructure(*structure);
+  s->resetEnergy();
+  s->resetEnthalpy();
+  s->setPV(0);
+  s->setCurrentOptStep(1);
+  QString parents = "Randomly generated";
+  if (!reason.isEmpty())
+    parents += " (" + reason + ")";
+  s->setParents(parents);
+  s->resetFailCount();
 
-  void ExampleSearch::generateNewStructure()
-  {
-    initializeAndAddStructure(generateRandomStructure());
-  }
+  // Delete random structure
+  structure->deleteLater();
+  return s;
+}
 
-  void ExampleSearch::initializeAndAddStructure(Structure *structure)
-  {
-    // Initialize vars
-    QString id_s;
-    QString locpath_s;
-    QString rempath_s;
+Structure* ExampleSearch::generateRandomStructure()
+{
+  Structure* s = new Structure;
 
-    // So as to not assign duplicate ids, ensure only one assignment
-    // is made at a time
-    m_structureInitMutex->lock();
+  Atom* O1 = s->addAtom(8, Eigen::Vector3d(0.0, 0.0, 0.0));
+  Atom* O2 = s->addAtom(8, Eigen::Vector3d(1.0, 0.0, 0.0));
 
-    // lockForNaming returns a list of all structures, both accepted
-    // and pending, so it's size+1 is the id of the new structure.
-    int id = m_queue->lockForNaming().size() + 1;
+  s->addBond(O1, O2, 2);
 
-    // Generate locations using id number
-    id_s.sprintf("%05d",id);
-    locpath_s = filePath + "/" + id_s + "/";
-    rempath_s = rempath + "/" + id_s + "/";
+  return s;
+}
 
-    // Create path
-    QDir dir (locpath_s);
-    if (!dir.exists()) {
-      if (!dir.mkpath(locpath_s)) {
-        error(tr("ExampleSearch::initializeAndAddStructure: Cannot write to path: %1 (path creation failure)",
-                 "1 is a file path.")
+bool ExampleSearch::checkLimits()
+{
+  // Validate input parameters here, see XtalOpt class for example.
+}
+
+void ExampleSearch::generateNewStructure()
+{
+  initializeAndAddStructure(generateRandomStructure());
+}
+
+void ExampleSearch::initializeAndAddStructure(Structure* structure)
+{
+  // Initialize vars
+  QString id_s;
+  QString locpath_s;
+  QString rempath_s;
+
+  // So as to not assign duplicate ids, ensure only one assignment
+  // is made at a time
+  m_structureInitMutex->lock();
+
+  // lockForNaming returns a list of all structures, both accepted
+  // and pending, so it's size+1 is the id of the new structure.
+  int id = m_queue->lockForNaming().size() + 1;
+
+  // Generate locations using id number
+  id_s.sprintf("%05d", id);
+  locpath_s = filePath + "/" + id_s + "/";
+  rempath_s = rempath + "/" + id_s + "/";
+
+  // Create path
+  QDir dir(locpath_s);
+  if (!dir.exists()) {
+    if (!dir.mkpath(locpath_s)) {
+      error(tr("ExampleSearch::initializeAndAddStructure: Cannot write to "
+               "path: %1 (path creation failure)",
+               "1 is a file path.")
               .arg(locpath_s));
-      }
     }
-
-    // Assign data to structure
-    structure->lock()->lockForWrite();
-    structure->moveToThread(m_queueThread);
-    structure->setIDNumber(id);
-    structure->setIndex(id-1);
-    structure->setFileName(locpath_s);
-    structure->setRempath(rempath_s);
-    structure->setCurrentOptStep(1);
-    structure->setStatus(Structure::WaitingForOptimization);
-    structure->lock()->unlock();
-
-    // unlockForNaming will append the structure
-    m_queue->unlockForNaming(structure);
-
-    // Done!
-    m_structureInitMutex->unlock();
   }
+
+  // Assign data to structure
+  structure->lock()->lockForWrite();
+  structure->moveToThread(m_queueThread);
+  structure->setIDNumber(id);
+  structure->setIndex(id - 1);
+  structure->setFileName(locpath_s);
+  structure->setRempath(rempath_s);
+  structure->setCurrentOptStep(1);
+  structure->setStatus(Structure::WaitingForOptimization);
+  structure->lock()->unlock();
+
+  // unlockForNaming will append the structure
+  m_queue->unlockForNaming(structure);
+
+  // Done!
+  m_structureInitMutex->unlock();
+}
 
 } // end namespace ExampleSearch

@@ -20,23 +20,22 @@
 #include <QObject>
 
 namespace GlobalSearch {
-  class Structure;
-  class OptBase;
-  class Optimizer;
+class Structure;
+class OptBase;
+class Optimizer;
 }
 
 namespace XtalOpt {
-  class SIESTAOptimizer : public XtalOptOptimizer
-  {
-    Q_OBJECT
+class SIESTAOptimizer : public XtalOptOptimizer
+{
+  Q_OBJECT
 
-   public:
-    SIESTAOptimizer(GlobalSearch::OptBase *parent,
-                  const QString &filename = "");
+public:
+  SIESTAOptimizer(GlobalSearch::OptBase* parent, const QString& filename = "");
 
-    QHash<QString, QString>
-      getInterpretedTemplates(GlobalSearch::Structure *structure) override;
-  };
+  QHash<QString, QString> getInterpretedTemplates(
+    GlobalSearch::Structure* structure) override;
+};
 
 } // end namespace XtalOpt
 

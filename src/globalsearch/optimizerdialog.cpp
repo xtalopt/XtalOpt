@@ -23,63 +23,56 @@
 
 #include <QDialog>
 #include <QDialogButtonBox>
-#include <QSpacerItem>
 #include <QLabel>
 #include <QLineEdit>
+#include <QSpacerItem>
 #include <QVBoxLayout>
 
 #include <QObject>
 
 namespace GlobalSearch {
 
-  OptimizerConfigDialog::OptimizerConfigDialog
-  (AbstractDialog *parent, OptBase *opt, Optimizer *o)
-    : QDialog(parent),
-      m_opt(opt),
-      m_optimizer(o),
-      m_lineedit(0)
-  {
-    QVBoxLayout *vlayout = new QVBoxLayout(this);
+OptimizerConfigDialog::OptimizerConfigDialog(AbstractDialog* parent,
+                                             OptBase* opt, Optimizer* o)
+  : QDialog(parent), m_opt(opt), m_optimizer(o), m_lineedit(0)
+{
+  QVBoxLayout* vlayout = new QVBoxLayout(this);
 
-    QLabel *label = new QLabel
-      (tr("Local path to %1 executable "
-          "(only needed when using local queue interface):")
-       .arg(m_optimizer->m_idString), this);
-    vlayout->addWidget(label);
+  QLabel* label =
+    new QLabel(tr("Local path to %1 executable "
+                  "(only needed when using local queue interface):")
+                 .arg(m_optimizer->m_idString),
+               this);
+  vlayout->addWidget(label);
 
-    m_lineedit = new QLineEdit(this);
-    vlayout->addWidget(m_lineedit);
+  m_lineedit = new QLineEdit(this);
+  vlayout->addWidget(m_lineedit);
 
-    QSpacerItem *spacer = new QSpacerItem
-      (10,10, QSizePolicy::Minimum, QSizePolicy::Expanding);
-    vlayout->addItem(spacer);
+  QSpacerItem* spacer =
+    new QSpacerItem(10, 10, QSizePolicy::Minimum, QSizePolicy::Expanding);
+  vlayout->addItem(spacer);
 
-    QDialogButtonBox *bbox = new QDialogButtonBox(this);
-    bbox->setStandardButtons(QDialogButtonBox::Ok |
-                             QDialogButtonBox::Cancel );
-    vlayout->addWidget(bbox);
+  QDialogButtonBox* bbox = new QDialogButtonBox(this);
+  bbox->setStandardButtons(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+  vlayout->addWidget(bbox);
 
-    setLayout(vlayout);
+  setLayout(vlayout);
 
-    connect(bbox, SIGNAL(accepted()),
-            this, SLOT(updateState()));
-    connect(bbox, SIGNAL(accepted()),
-            this, SLOT(close()));
-    connect(bbox, SIGNAL(rejected()),
-            this, SLOT(updateGUI()));
-    connect(bbox, SIGNAL(rejected()),
-            this, SLOT(close()));
-  }
+  connect(bbox, SIGNAL(accepted()), this, SLOT(updateState()));
+  connect(bbox, SIGNAL(accepted()), this, SLOT(close()));
+  connect(bbox, SIGNAL(rejected()), this, SLOT(updateGUI()));
+  connect(bbox, SIGNAL(rejected()), this, SLOT(close()));
+}
 
-  void OptimizerConfigDialog::updateState()
-  {
-    m_optimizer->m_localRunCommand = m_lineedit->text();
-  }
+void OptimizerConfigDialog::updateState()
+{
+  m_optimizer->m_localRunCommand = m_lineedit->text();
+}
 
-  void OptimizerConfigDialog::updateGUI()
-  {
-    m_lineedit->setText(m_optimizer->m_localRunCommand);
-  }
+void OptimizerConfigDialog::updateGUI()
+{
+  m_lineedit->setText(m_optimizer->m_localRunCommand);
+}
 
 } // end namespace GlobalSearch
 

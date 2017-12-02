@@ -22,15 +22,15 @@
 
 using namespace GlobalSearch;
 
-const QString DUMMYNAME    = "Dummy";
-const QString DESCRIPTION  = "Description";
+const QString DUMMYNAME = "Dummy";
+const QString DESCRIPTION = "Description";
 
 // Dummy optimizer for user value keyword checking
 class DummyOptimizer : public Optimizer
 {
   Q_OBJECT
 public:
-  DummyOptimizer(OptBase *p) : Optimizer(p) {};
+  DummyOptimizer(OptBase* p) : Optimizer(p){};
 };
 
 // Since this is a pure virtual class, create a dummy derived class
@@ -38,23 +38,23 @@ class DummyOptBase : public OptBase
 {
   Q_OBJECT
 public:
-  DummyOptBase() : OptBase(0) {m_idString = DUMMYNAME;};
+  DummyOptBase() : OptBase(0) { m_idString = DUMMYNAME; };
 
   // Override this function to allow the creation of the dummy optimizer
-  std::unique_ptr<Optimizer>
-  createOptimizer(const std::string& optName) override
+  std::unique_ptr<Optimizer> createOptimizer(
+    const std::string& optName) override
   {
     if (optName == "dummy")
       return make_unique<DummyOptimizer>(this);
 
-    qDebug() << "Error in" << __FUNCTION__ << ": unknown optName:"
-             << optName.c_str();
+    qDebug() << "Error in" << __FUNCTION__
+             << ": unknown optName:" << optName.c_str();
     return nullptr;
   }
 
 public slots:
-  bool startSearch() override {return true;}
-  bool checkLimits() override {return true;}
+  bool startSearch() override { return true; }
+  bool checkLimits() override { return true; }
   void readRuntimeOptions() override {}
 
 protected:
@@ -65,10 +65,10 @@ class OptBaseTest : public QObject
 {
   Q_OBJECT
 
-  private:
-  OptBase *m_opt;
+private:
+  OptBase* m_opt;
 
-  private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -135,8 +135,7 @@ void OptBaseTest::setIsStartingFalse()
 
 void OptBaseTest::getIDString()
 {
-  QVERIFY(m_opt->getIDString().compare(DUMMYNAME) == 0)
-;
+  QVERIFY(m_opt->getIDString().compare(DUMMYNAME) == 0);
 }
 
 void OptBaseTest::getProbabilityList()
@@ -147,9 +146,9 @@ void OptBaseTest::getProbabilityList()
   // Empty / short lists
   double enthalpy = minE - 1.0; // subtract one since we use ++enthalpy first.
   QList<Structure*> structures;
-  for (int listSize = 0; listSize <=2; ++listSize) {
+  for (int listSize = 0; listSize <= 2; ++listSize) {
     while (structures.size() < listSize) {
-      Structure *s = new Structure;
+      Structure* s = new Structure;
       // We need at least one atom for the probability list calculation
       s->addAtom();
       s->setEnthalpy(++enthalpy);
@@ -160,7 +159,7 @@ void OptBaseTest::getProbabilityList()
 
   // Fill to 100 structures
   while (structures.size() < static_cast<int>(maxE)) {
-    Structure *s = new Structure;
+    Structure* s = new Structure;
     // We need at least one atom for the probability list calculation
     s->addAtom();
     s->setEnthalpy(++enthalpy);
@@ -171,24 +170,26 @@ void OptBaseTest::getProbabilityList()
   QList<double> probs = m_opt->getProbabilityList(structures);
   // reference probabilities
   QList<double> refProbs;
-  refProbs
-    << 0.02 << 0.039798 << 0.0593939 << 0.0787879 << 0.0979798 << 0.11697
-    << 0.135758 << 0.154343 << 0.172727 << 0.190909 << 0.208889 << 0.226667
-    << 0.244242 << 0.261616 << 0.278788 << 0.295758 << 0.312525 << 0.329091
-    << 0.345455 << 0.361616 << 0.377576 << 0.393333 << 0.408889 << 0.424242
-    << 0.439394 << 0.454343 << 0.469091 << 0.483636 << 0.497980 << 0.512121
-    << 0.526061 << 0.539798 << 0.553333 << 0.566667 << 0.579798 << 0.592727
-    << 0.605455 << 0.617980 << 0.630303 << 0.642424 << 0.654343 << 0.666061
-    << 0.677576 << 0.688889 << 0.700000 << 0.710909 << 0.721616 << 0.732121
-    << 0.742424 << 0.752525 << 0.762424 << 0.772121 << 0.781616 << 0.790909
-    << 0.800000 << 0.808889 << 0.817576 << 0.826061 << 0.834343 << 0.842424
-    << 0.850303 << 0.857980 << 0.865455 << 0.872727 << 0.879798 << 0.886667
-    << 0.893333 << 0.899798 << 0.906061 << 0.912121 << 0.917980 << 0.923636
-    << 0.929091 << 0.934343 << 0.939394 << 0.944242 << 0.948889 << 0.953333
-    << 0.957576 << 0.961616 << 0.965455 << 0.969091 << 0.972525 << 0.975758
-    << 0.978788 << 0.981616 << 0.984242 << 0.986667 << 0.988889 << 0.990909
-    << 0.992727 << 0.994343 << 0.995758 << 0.996970 << 0.997980 << 0.998788
-    << 0.999394 << 0.999798 << 1.000000;
+  refProbs << 0.02 << 0.039798 << 0.0593939 << 0.0787879 << 0.0979798 << 0.11697
+           << 0.135758 << 0.154343 << 0.172727 << 0.190909 << 0.208889
+           << 0.226667 << 0.244242 << 0.261616 << 0.278788 << 0.295758
+           << 0.312525 << 0.329091 << 0.345455 << 0.361616 << 0.377576
+           << 0.393333 << 0.408889 << 0.424242 << 0.439394 << 0.454343
+           << 0.469091 << 0.483636 << 0.497980 << 0.512121 << 0.526061
+           << 0.539798 << 0.553333 << 0.566667 << 0.579798 << 0.592727
+           << 0.605455 << 0.617980 << 0.630303 << 0.642424 << 0.654343
+           << 0.666061 << 0.677576 << 0.688889 << 0.700000 << 0.710909
+           << 0.721616 << 0.732121 << 0.742424 << 0.752525 << 0.762424
+           << 0.772121 << 0.781616 << 0.790909 << 0.800000 << 0.808889
+           << 0.817576 << 0.826061 << 0.834343 << 0.842424 << 0.850303
+           << 0.857980 << 0.865455 << 0.872727 << 0.879798 << 0.886667
+           << 0.893333 << 0.899798 << 0.906061 << 0.912121 << 0.917980
+           << 0.923636 << 0.929091 << 0.934343 << 0.939394 << 0.944242
+           << 0.948889 << 0.953333 << 0.957576 << 0.961616 << 0.965455
+           << 0.969091 << 0.972525 << 0.975758 << 0.978788 << 0.981616
+           << 0.984242 << 0.986667 << 0.988889 << 0.990909 << 0.992727
+           << 0.994343 << 0.995758 << 0.996970 << 0.997980 << 0.998788
+           << 0.999394 << 0.999798 << 1.000000;
 
   QVERIFY(probs.size() == structures.size() - 1);
   QVERIFY(probs.size() == refProbs.size());
@@ -198,11 +199,9 @@ void OptBaseTest::getProbabilityList()
   }
 
   // All equal
-  for (QList<Structure*>::iterator
-         it = structures.begin(),
-         it_end = structures.end();
-       it != it_end;
-       ++it) {
+  for (QList<Structure *>::iterator it = structures.begin(),
+                                    it_end = structures.end();
+       it != it_end; ++it) {
     (*it)->setEnthalpy(0.0);
   }
 
@@ -212,11 +211,8 @@ void OptBaseTest::getProbabilityList()
 
   QVERIFY(probs.size() == structures.size() - 1);
 
-  for (QList<double>::iterator
-         it = probs.begin(),
-         it_end = probs.end();
-       it != it_end;
-       ++it) {
+  for (QList<double>::iterator it = probs.begin(), it_end = probs.end();
+       it != it_end; ++it) {
     QVERIFY(fabs((*it) - ref) < 1e-5);
     ref += dref;
   }
@@ -248,7 +244,7 @@ void OptBaseTest::interpretKeyword()
   m_opt->setUser3(USER3.toStdString());
   m_opt->setUser4(USER4.toStdString());
 
-  Structure *s = new Structure;
+  Structure* s = new Structure;
   for (int i = 0; i < NUMATOMS; ++i) {
     Atom& a = s->addAtom();
     a.setAtomicNumber((i % NUMSPECIES) + 1);
@@ -305,9 +301,8 @@ void OptBaseTest::interpretKeyword()
     "B 24 24 24 1 1 1\nH 25 25 25 1 1 1\nHe 26 26 26 1 1 1\n"
     "Li 27 27 27 1 1 1\nBe 28 28 28 1 1 1\nB 29 29 29 1 1 1";
 
-#define VERIFYKEYWORD(key, value)                 \
-  QVERIFY(m_opt->interpretTemplate(key, s)        \
-          .compare(QString(value) + "\n") == 0)
+#define VERIFYKEYWORD(key, value)                                              \
+  QVERIFY(m_opt->interpretTemplate(key, s).compare(QString(value) + "\n") == 0)
 
   VERIFYKEYWORD("%percent%", "%");
   VERIFYKEYWORD("%user1%", USER1);

@@ -19,21 +19,21 @@
 #include <ostream>
 
 namespace GlobalSearch {
-  class Structure;
+class Structure;
 
-  /**
-   * @class CmlFormat cmlformat.h
-   * @brief Implementation of the Chemical Markup Language format - based
-   *        upon the cml format implementation in Avogadro2.
-   * @author Patrick Avery
-   */
+/**
+ * @class CmlFormat cmlformat.h
+ * @brief Implementation of the Chemical Markup Language format - based
+ *        upon the cml format implementation in Avogadro2.
+ * @author Patrick Avery
+ */
 
-  class CmlFormat
-  {
-   public:
-    static bool read(GlobalSearch::Structure& s, std::istream& in);
-    static bool write(const GlobalSearch::Structure& s, std::ostream& out);
-  };
+class CmlFormat
+{
+public:
+  static bool read(GlobalSearch::Structure& s, std::istream& in);
+  static bool write(const GlobalSearch::Structure& s, std::ostream& out);
+};
 }
 
 #endif // GLOBALSEARCH_CML_FORMAT_H

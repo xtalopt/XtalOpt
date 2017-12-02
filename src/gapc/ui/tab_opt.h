@@ -20,32 +20,32 @@
 #include "ui_tab_opt.h"
 
 namespace GAPC {
-  class GAPCDialog;
-  class OptGAPC;
+class GAPCDialog;
+class OptGAPC;
 
-  class TabOpt : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
+class TabOpt : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabOpt( GAPCDialog *parent, OptGAPC *p );
-    virtual ~TabOpt();
+public:
+  explicit TabOpt(GAPCDialog* parent, OptGAPC* p);
+  virtual ~TabOpt();
 
-  public slots:
-    void lockGUI();
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void updateGUI();
-    void updateOptimizationInfo();
-    void addSeed(QListWidgetItem *item = NULL);
-    void removeSeed();
-    void updateSeeds();
+public slots:
+  void lockGUI();
+  void readSettings(const QString& filename = "");
+  void writeSettings(const QString& filename = "");
+  void updateGUI();
+  void updateOptimizationInfo();
+  void addSeed(QListWidgetItem* item = NULL);
+  void removeSeed();
+  void updateSeeds();
 
-  signals:
+signals:
 
-  private:
-    Ui::Tab_Opt ui;
-  };
+private:
+  Ui::Tab_Opt ui;
+};
 }
 
 #endif

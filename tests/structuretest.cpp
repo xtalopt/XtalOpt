@@ -27,10 +27,10 @@ class StructureTest : public QObject
 {
   Q_OBJECT
 
-  private:
-  Structure *m_structure;
+private:
+  Structure* m_structure;
 
-  private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -98,56 +98,47 @@ void StructureTest::enthalpyFallBack()
   QList<unsigned int> anums;
   anums << 1;
   QList<Eigen::Vector3d> coords;
-  coords << Eigen::Vector3d(0,0,0);
+  coords << Eigen::Vector3d(0, 0, 0);
 
-  s.updateAndSkipHistory(anums,
-                         coords,
-                         1.0, // energy
+  s.updateAndSkipHistory(anums, coords,
+                         1.0,  // energy
                          0.0); // enthalpy
   QVERIFY(APPROX_EQ(s.getEnthalpy(), 1.0));
 
-  s.updateAndSkipHistory(anums,
-                         coords,
+  s.updateAndSkipHistory(anums, coords,
                          -1.0, // energy
                          0.0); // enthalpy
   QVERIFY(APPROX_EQ(s.getEnthalpy(), -1.0));
 
-  s.updateAndAddToHistory(anums,
-                          coords,
-                          1.0, // energy
+  s.updateAndAddToHistory(anums, coords,
+                          1.0,  // energy
                           0.0); // enthalpy
   QVERIFY(APPROX_EQ(s.getEnthalpy(), 1.0));
 
-  s.updateAndAddToHistory(anums,
-                          coords,
+  s.updateAndAddToHistory(anums, coords,
                           -1.0, // energy
                           0.0); // enthalpy
   QVERIFY(APPROX_EQ(s.getEnthalpy(), -1.0));
 
-  s.updateAndSkipHistory(anums,
-                         coords,
-                         0.0, // energy
+  s.updateAndSkipHistory(anums, coords,
+                         0.0,  // energy
                          1.0); // enthalpy
   QVERIFY(APPROX_EQ(s.getEnthalpy(), 1.0));
 
-  s.updateAndSkipHistory(anums,
-                         coords,
-                         0.0, // energy
+  s.updateAndSkipHistory(anums, coords,
+                         0.0,   // energy
                          -1.0); // enthalpy
   QVERIFY(APPROX_EQ(s.getEnthalpy(), -1.0));
 
-  s.updateAndAddToHistory(anums,
-                          coords,
-                          0.0, // energy
+  s.updateAndAddToHistory(anums, coords,
+                          0.0,  // energy
                           1.0); // enthalpy
   QVERIFY(APPROX_EQ(s.getEnthalpy(), 1.0));
 
-  s.updateAndAddToHistory(anums,
-                          coords,
-                          0.0, // energy
+  s.updateAndAddToHistory(anums, coords,
+                          0.0,   // energy
                           -1.0); // enthalpy
   QVERIFY(APPROX_EQ(s.getEnthalpy(), -1.0));
-
 }
 
 void StructureTest::perceiveBonds()
@@ -160,8 +151,7 @@ void StructureTest::perceiveBonds()
 
   // First, use OBConvert to convert it to cml
   QByteArray butaneCMLData;
-  QVERIFY(GlobalSearch::OBConvert::convertFormat("pdb", "cml",
-                                                 butanePDBData,
+  QVERIFY(GlobalSearch::OBConvert::convertFormat("pdb", "cml", butanePDBData,
                                                  butaneCMLData));
 
   std::stringstream css(butaneCMLData.data());

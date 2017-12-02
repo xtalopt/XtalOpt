@@ -16,46 +16,45 @@
 
 #include <globalsearch/structure.h>
 
-#include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
+#include <openbabel/obconversion.h>
 
+#include <QDebug>
 #include <QDir>
 #include <QString>
-#include <QDebug>
 
 using namespace GlobalSearch;
 
 namespace RandomDock {
 
-  MopacOptimizer::MopacOptimizer(OptBase *parent, const QString &filename) :
-    Optimizer(parent)
-  {
-    // Set allowed data structure keys, if any, e.g.
-    // None here!
+MopacOptimizer::MopacOptimizer(OptBase* parent, const QString& filename)
+  : Optimizer(parent)
+{
+  // Set allowed data structure keys, if any, e.g.
+  // None here!
 
-    // Set allowed filenames, e.g.
-    m_templates.insert("job.mop",QStringList(""));
+  // Set allowed filenames, e.g.
+  m_templates.insert("job.mop", QStringList(""));
 
-    // Setup for completion values
-    m_completionFilename = "job.out";
-    m_completionStrings.clear();
-    m_completionStrings.append("          FINAL HEAT OF FORMATION =");
+  // Setup for completion values
+  m_completionFilename = "job.out";
+  m_completionStrings.clear();
+  m_completionStrings.append("          FINAL HEAT OF FORMATION =");
 
-    // Set output filenames to try to read data from
-    m_outputFilenames.append(m_completionFilename);
-    m_outputFilenames.append("job.arc");
+  // Set output filenames to try to read data from
+  m_outputFilenames.append(m_completionFilename);
+  m_outputFilenames.append("job.arc");
 
-    // Set the name of the optimizer to be returned by getIDString()
-    m_idString = "MOPAC";
+  // Set the name of the optimizer to be returned by getIDString()
+  m_idString = "MOPAC";
 
-    // Local execution setup:
-    m_localRunCommand = "mopac job";
-    m_stdinFilename = "";
-    m_stdoutFilename = "";
-    m_stderrFilename = "";
+  // Local execution setup:
+  m_localRunCommand = "mopac job";
+  m_stdinFilename = "";
+  m_stdoutFilename = "";
+  m_stderrFilename = "";
 
-    readSettings(filename);
-  }
+  readSettings(filename);
+}
 
 } // end namespace RandomDock
-

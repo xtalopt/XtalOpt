@@ -20,26 +20,26 @@
 #include "ui_tab_log.h"
 
 namespace GAPC {
-  class GAPCDialog;
-  class OptGAPC;
+class GAPCDialog;
+class OptGAPC;
 
-  class TabLog : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
+class TabLog : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabLog( GAPCDialog *parent, OptGAPC *p );
-    virtual ~TabLog();
+public:
+  explicit TabLog(GAPCDialog* parent, OptGAPC* p);
+  virtual ~TabLog();
 
-  public slots:
-    void disconnectGUI();
-    void newLog(const QString & info);
+public slots:
+  void disconnectGUI();
+  void newLog(const QString& info);
 
-  signals:
+signals:
 
-  private:
-    Ui::Tab_Log ui;
-  };
+private:
+  Ui::Tab_Log ui;
+};
 }
 
 #endif

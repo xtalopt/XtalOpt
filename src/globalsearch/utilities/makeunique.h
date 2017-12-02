@@ -25,9 +25,9 @@
 // This function is not needed in C++14, so check for C++14
 // MSVC hasn't updated the __cplusplus variable in a while, so do
 // a separate check for them
-#if (__cplusplus <= 201103L && !defined(_MSC_VER)) || \
-    (defined(_MSC_VER) && _MSC_VER < 1900)
-template<typename T, typename... Ts>
+#if (__cplusplus <= 201103L && !defined(_MSC_VER)) ||                          \
+  (defined(_MSC_VER) && _MSC_VER < 1900)
+template <typename T, typename... Ts>
 std::unique_ptr<T> make_unique(Ts&&... params)
 {
   return std::unique_ptr<T>(new T(std::forward<Ts>(params)...));

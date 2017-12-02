@@ -18,35 +18,43 @@
 
 #include <globalsearch/structure.h>
 
-#include <QDebug>
 #include <QDateTime>
+#include <QDebug>
 #include <QTextStream>
 
 namespace RandomDock {
 
-  class Substrate : public GlobalSearch::Structure
+class Substrate : public GlobalSearch::Structure
+{
+  Q_OBJECT
+
+public:
+  Substrate(QObject* parent = 0);
+  Substrate(Avogadro::Molecule* mol);
+  virtual ~Substrate();
+
+signals:
+
+public slots:
+  double prob(uint index)
   {
-    Q_OBJECT
-
-   public:
-    Substrate(QObject *parent = 0);
-    Substrate(Avogadro::Molecule *mol);
-    virtual ~Substrate();
-
-   signals:
-
-   public slots:
-    double prob(uint index) { checkProbs(); return m_probs.at(index);};
-    void sortConformers();
-    void generateProbabilities();
-    void checkProbs() {if ((uint)m_probs.size() != numConformers()) generateProbabilities();};
-    int getRandomConformerIndex();
-
-   private slots:
-
-   private:
-    QList<double> m_probs;
+    checkProbs();
+    return m_probs.at(index);
   };
+  void sortConformers();
+  void generateProbabilities();
+  void checkProbs()
+  {
+    if ((uint)m_probs.size() != numConformers())
+      generateProbabilities();
+  };
+  int getRandomConformerIndex();
+
+private slots:
+
+private:
+  QList<double> m_probs;
+};
 
 } // end namespace RandomDock
 

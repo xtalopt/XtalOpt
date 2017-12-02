@@ -18,48 +18,47 @@
 #include <globalsearch/ui/abstractedittab.h>
 
 namespace Ui {
-  class DefaultEditTab;
+class DefaultEditTab;
 }
 
 namespace GlobalSearch {
-  class AbstractDialog;
-  class OptBase;
+class AbstractDialog;
+class OptBase;
+
+/**
+ * @class DefaultEditTab defaultedittab.h <globalsearch/defaultedittab.h>
+ *
+ * @brief Default implementation of a template editor tab.
+ *
+ * @author David C. Lonie
+ */
+class DefaultEditTab : public GlobalSearch::AbstractEditTab
+{
+  Q_OBJECT
+
+public:
+  /**
+   * Constructor
+   *
+   * @param dialog Parent AbstractDialog
+   * @param opt Associated OptBase
+   */
+  explicit DefaultEditTab(AbstractDialog* dialog, OptBase* opt);
 
   /**
-   * @class DefaultEditTab defaultedittab.h <globalsearch/defaultedittab.h>
-   *
-   * @brief Default implementation of a template editor tab.
-   *
-   * @author David C. Lonie
+   * Destructor
    */
-  class DefaultEditTab : public GlobalSearch::AbstractEditTab
-  {
-    Q_OBJECT
+  virtual ~DefaultEditTab() override;
 
-  public:
-    /**
-     * Constructor
-     *
-     * @param dialog Parent AbstractDialog
-     * @param opt Associated OptBase
-     */
-    explicit DefaultEditTab(AbstractDialog *dialog,
-                            OptBase *opt);
+protected slots:
+  /**
+   * Set up the GUI pointers and call AbstractEditTab::initialize()
+   */
+  virtual void initialize() override;
 
-    /**
-     * Destructor
-     */
-    virtual ~DefaultEditTab() override;
-
-  protected slots:
-    /**
-     * Set up the GUI pointers and call AbstractEditTab::initialize()
-     */
-    virtual void initialize() override;
-
-  private:
-    Ui::DefaultEditTab *ui;
-  };
+private:
+  Ui::DefaultEditTab* ui;
+};
 }
 
 #endif

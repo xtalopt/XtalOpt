@@ -20,25 +20,24 @@
 #include <QObject>
 
 namespace GlobalSearch {
-  class Structure;
-  class OptBase;
+class Structure;
+class OptBase;
 }
 
 namespace XtalOpt {
-  class VASPOptimizer : public XtalOptOptimizer
-  {
-    Q_OBJECT
+class VASPOptimizer : public XtalOptOptimizer
+{
+  Q_OBJECT
 
-   public:
-    VASPOptimizer(GlobalSearch::OptBase *parent,
-                  const QString &filename = "");
+public:
+  VASPOptimizer(GlobalSearch::OptBase* parent, const QString& filename = "");
 
-    QHash<QString, QString>
-      getInterpretedTemplates(GlobalSearch::Structure *structure) override;
+  QHash<QString, QString> getInterpretedTemplates(
+    GlobalSearch::Structure* structure) override;
 
-    void readSettings(const QString &filename = "") override;
-    void writeDataToSettings(const QString &filename = "") override;
-  };
+  void readSettings(const QString& filename = "") override;
+  void writeDataToSettings(const QString& filename = "") override;
+};
 
 } // end namespace XtalOpt
 

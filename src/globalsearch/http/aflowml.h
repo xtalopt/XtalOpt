@@ -35,11 +35,10 @@ typedef std::map<std::string, std::string> AflowMLData;
  */
 class AflowML : public QObject
 {
- Q_OBJECT
- public:
-  explicit AflowML(
-      const std::shared_ptr<QNetworkAccessManager>& networkManager,
-      QObject *parent = nullptr);
+  Q_OBJECT
+public:
+  explicit AflowML(const std::shared_ptr<QNetworkAccessManager>& networkManager,
+                   QObject* parent = nullptr);
 
   // Submits a POSCAR and returns an index for the request ID.
   size_t submitPoscar(const QString& poscar);
@@ -54,12 +53,12 @@ class AflowML : public QObject
   // If data for a particular reply index @p i exists, erase it from the map.
   void eraseData(size_t i) { m_receivedData.erase(i); }
 
- signals:
+signals:
   // When data is received for a particular index, this signal will be
   // emitted with the index.
   void received(size_t);
 
- private:
+private:
   // The submitPoscar function to be ran in another thread
   void _submitPoscar(QString poscar, size_t requestId);
 

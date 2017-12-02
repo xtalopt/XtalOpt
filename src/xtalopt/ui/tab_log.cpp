@@ -14,8 +14,8 @@
 
 #include <xtalopt/ui/tab_log.h>
 
-#include <xtalopt/xtalopt.h>
 #include <xtalopt/ui/dialog.h>
+#include <xtalopt/xtalopt.h>
 
 #include <QDateTime>
 #include <QSettings>
@@ -24,32 +24,32 @@ using namespace std;
 
 namespace XtalOpt {
 
-  TabLog::TabLog(GlobalSearch::AbstractDialog *parent, XtalOpt *p ) :
-    AbstractTab(parent, p)
-  {
-    ui.setupUi(m_tab_widget);
+TabLog::TabLog(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
+  : AbstractTab(parent, p)
+{
+  ui.setupUi(m_tab_widget);
 
-    connect(m_dialog, SIGNAL(newLog(QString)),
-            this, SLOT(newLog(QString)));
+  connect(m_dialog, SIGNAL(newLog(QString)), this, SLOT(newLog(QString)));
 
-    initialize();
-  }
+  initialize();
+}
 
-  TabLog::~TabLog()
-  {
-  }
+TabLog::~TabLog()
+{
+}
 
-  void TabLog::disconnectGUI()
-  {
-    connect(m_dialog, 0, this, 0);
-  }
+void TabLog::disconnectGUI()
+{
+  connect(m_dialog, 0, this, 0);
+}
 
-  void TabLog::newLog(const QString & info)
-  {
-    QString entry;
-    QString timestamp = QDateTime::currentDateTime().toString("MM/dd/yyyy hh:mm:ss (zzz) -- ");
+void TabLog::newLog(const QString& info)
+{
+  QString entry;
+  QString timestamp =
+    QDateTime::currentDateTime().toString("MM/dd/yyyy hh:mm:ss (zzz) -- ");
 
-    entry = timestamp + info;
-    ui.list_list->addItem(entry);
-  }
+  entry = timestamp + info;
+  ui.list_list->addItem(entry);
+}
 }

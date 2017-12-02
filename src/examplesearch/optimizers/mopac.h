@@ -19,15 +19,14 @@
 
 namespace ExampleSearch {
 
-  class MopacOptimizer : public GlobalSearch::Optimizer
-  {
-    Q_OBJECT
+class MopacOptimizer : public GlobalSearch::Optimizer
+{
+  Q_OBJECT
 
-   public:
-    explicit MopacOptimizer(GlobalSearch::OptBase *parent,
-                            const QString &filename = "");
-
-  };
+public:
+  explicit MopacOptimizer(GlobalSearch::OptBase* parent,
+                          const QString& filename = "");
+};
 
 } // end namespace ExampleSearch
 

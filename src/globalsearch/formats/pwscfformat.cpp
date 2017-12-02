@@ -15,8 +15,8 @@
 #include <globalsearch/formats/pwscfformat.h>
 
 #include <globalsearch/eleminfo.h>
-#include <globalsearch/utilities/utilityfunctions.h>
 #include <globalsearch/structure.h>
+#include <globalsearch/utilities/utilityfunctions.h>
 
 #include <fstream>
 
@@ -51,143 +51,141 @@ namespace GlobalSearch {
  * !    total energy              =     -95.01479203 Ry
  */
 
-  bool PwscfFormat::read(Structure* s, const QString& filename)
-  {
-    std::ifstream ifs(filename.toStdString());
-    if (!ifs) {
-      qDebug() << "Error: PWSCF output, " << filename << ", could not "
-               << "be opened!";
-      return false;
-    }
+bool PwscfFormat::read(Structure* s, const QString& filename)
+{
+  std::ifstream ifs(filename.toStdString());
+  if (!ifs) {
+    qDebug() << "Error: PWSCF output, " << filename << ", could not "
+             << "be opened!";
+    return false;
+  }
 
-    bool coordsFound = false, energyFound = false, cellFound = false;
+  bool coordsFound = false, energyFound = false, cellFound = false;
 
-    QList<unsigned int> atomicNums;
-    QList<Vector3> coords;
-    double energy = 0;
-    double enthalpy = 0;
-    Matrix3 cellMatrix = Matrix3::Zero();
+  QList<unsigned int> atomicNums;
+  QList<Vector3> coords;
+  double energy = 0;
+  double enthalpy = 0;
+  Matrix3 cellMatrix = Matrix3::Zero();
 
-    std::string line;
-    std::vector<std::string> lineSplit;
-    while (getline(ifs, line)) {
-      // Cell parameters
-      // This section should contain the final cell and final coordinates
-      if (strstr(line.c_str(), "Begin final coordinates")) {
-        getline(ifs, line);
-        while (!strstr(line.c_str(), "End final coordinates")) {
-          if (strstr(line.c_str(), "CELL_PARAMETERS")) {
-            // Get the scaling factor and then the cell matrix
-            lineSplit = split(line, '=');
-            double scalingFactor = 1.0;
+  std::string line;
+  std::vector<std::string> lineSplit;
+  while (getline(ifs, line)) {
+    // Cell parameters
+    // This section should contain the final cell and final coordinates
+    if (strstr(line.c_str(), "Begin final coordinates")) {
+      getline(ifs, line);
+      while (!strstr(line.c_str(), "End final coordinates")) {
+        if (strstr(line.c_str(), "CELL_PARAMETERS")) {
+          // Get the scaling factor and then the cell matrix
+          lineSplit = split(line, '=');
+          double scalingFactor = 1.0;
 
-            if (lineSplit.size() < 2) {
-              qDebug() << "Warning: in PWSCF output, alat was not found.";
-              qDebug() << "Assuming alat to be 1.0";
+          if (lineSplit.size() < 2) {
+            qDebug() << "Warning: in PWSCF output, alat was not found.";
+            qDebug() << "Assuming alat to be 1.0";
+          } else {
+            std::string alatLine = trim(lineSplit[1]);
+            replaceAll(alatLine, ")", "");
+            scalingFactor = atof(alatLine.c_str());
+          }
+
+          // Get the cell matrix
+          for (unsigned short i = 0; i < 3; ++i) {
+            getline(ifs, line);
+            lineSplit = split(line, ' ');
+            if (lineSplit.size() != 3) {
+              qDebug() << "Error reading the cell matrix in PWSCF output!"
+                       << line.c_str();
+              return false;
             }
-            else {
-              std::string alatLine = trim(lineSplit[1]);
-              replaceAll(alatLine, ")", "");
-              scalingFactor = atof(alatLine.c_str());
-            }
+            cellMatrix(i, 0) = atof(lineSplit[0].c_str()) * scalingFactor;
+            cellMatrix(i, 1) = atof(lineSplit[1].c_str()) * scalingFactor;
+            cellMatrix(i, 2) = atof(lineSplit[2].c_str()) * scalingFactor;
+          }
 
-            // Get the cell matrix
-            for (unsigned short i = 0; i < 3; ++i) {
-              getline(ifs, line);
-              lineSplit = split(line, ' ');
-              if (lineSplit.size() != 3) {
-                qDebug() << "Error reading the cell matrix in PWSCF output!"
-                         << line.c_str();
-                return false;
-              }
-              cellMatrix(i, 0) = atof(lineSplit[0].c_str()) * scalingFactor;
-              cellMatrix(i, 1) = atof(lineSplit[1].c_str()) * scalingFactor;
-              cellMatrix(i, 2) = atof(lineSplit[2].c_str()) * scalingFactor;
+          cellFound = true;
+        }
+        // Atomic coords
+        if (strstr(line.c_str(), "ATOMIC_POSITIONS")) {
+          getline(ifs, line);
+          while (!strstr(line.c_str(), "End final coordinates")) {
+            lineSplit = split(line, ' ');
+            if (lineSplit.size() != 4) {
+              qDebug() << "Error reading atomic positions in PWSCF output!"
+                       << line.c_str();
+              return false;
             }
+            atomicNums.append(ElemInfo::getAtomicNum(lineSplit[0]));
+            coords.append(Vector3(atof(lineSplit[1].c_str()),
+                                  atof(lineSplit[2].c_str()),
+                                  atof(lineSplit[3].c_str())));
+            if (!getline(ifs, line))
+              break;
+          }
 
+          coordsFound = true;
+
+          // If we haven't found CELL_PARAMETERS, assumes that we were
+          // not relaxing the unit cell, and that our old unit cell is
+          // the same.
+          if (!cellFound) {
+            cellMatrix = s->unitCell().cellMatrix();
             cellFound = true;
           }
-          // Atomic coords
-          if (strstr(line.c_str(), "ATOMIC_POSITIONS")) {
-            getline(ifs, line);
-            while (!strstr(line.c_str(), "End final coordinates")) {
-              lineSplit = split(line, ' ');
-              if (lineSplit.size() != 4) {
-                qDebug() << "Error reading atomic positions in PWSCF output!"
-                         << line.c_str();
-                return false;
-              }
-              atomicNums.append(ElemInfo::getAtomicNum(lineSplit[0]));
-              coords.append(Vector3(atof(lineSplit[1].c_str()),
-                                    atof(lineSplit[2].c_str()),
-                                    atof(lineSplit[3].c_str())));
-              if (!getline(ifs, line))
-                break;
-            }
 
-            coordsFound = true;
-
-            // If we haven't found CELL_PARAMETERS, assumes that we were
-            // not relaxing the unit cell, and that our old unit cell is
-            // the same.
-            if (!cellFound) {
-              cellMatrix = s->unitCell().cellMatrix();
-              cellFound = true;
-            }
-
-            // After we find ATOMIC_POSITIONS, the loop is done. Break.
-            break;
-          }
-
-          // Get a new line. If we reached the end of the file, break.
-          if (!getline(ifs, line))
-            break;
+          // After we find ATOMIC_POSITIONS, the loop is done. Break.
+          break;
         }
-      }
 
-      // Enthalpy in Ry. Convert to eV.
-      else if (strstr(line.c_str(), "Final enthalpy")) {
-        lineSplit = split(line, ' ');
-        if (line.size() < 5) {
-          qDebug() << "Error reading final enthalpy in PWSCF output!"
-                   << line.c_str();
-          return false;
-        }
-        enthalpy = atof(lineSplit[3].c_str()) * RY_TO_EV;
-        // If the energy hasn't been found, set the energy to be the enthalpy
-        if (fabs(energy) < 1e-8)
-          energy = enthalpy;
-        energyFound = true;
-      }
-      // Energy in Ry. Convert to eV.
-      else if (strstr(line.c_str(), "!    total energy")) {
-        lineSplit = split(line, ' ');
-        if (line.size() < 6) {
-          qDebug() << "Error reading final energy in PWSCF output!"
-                   << line.c_str();
-          return false;
-        }
-        energy = atof(lineSplit[4].c_str()) * RY_TO_EV;
-        energyFound = true;
+        // Get a new line. If we reached the end of the file, break.
+        if (!getline(ifs, line))
+          break;
       }
     }
 
-    if (!cellFound)
-      qDebug() << "Error: cell info was not found in PWSCF output!";
-    if (!coordsFound)
-      qDebug() << "Error: atom coords not found in PWSCF output!";
-    if (!energyFound)
-      qDebug() << "Error: energy not found in PWSCF output!";
-    if (!cellFound || !coordsFound || !energyFound)
-      return false;
-
-    // Convert coords to Cartesian
-    UnitCell uc(cellMatrix);
-    for (size_t i = 0; i < coords.size(); ++i)
-      coords[i] = uc.toCartesian(coords[i]);
-
-    s->updateAndAddToHistory(atomicNums, coords,
-                             energy, enthalpy, cellMatrix);
-    return true;
+    // Enthalpy in Ry. Convert to eV.
+    else if (strstr(line.c_str(), "Final enthalpy")) {
+      lineSplit = split(line, ' ');
+      if (line.size() < 5) {
+        qDebug() << "Error reading final enthalpy in PWSCF output!"
+                 << line.c_str();
+        return false;
+      }
+      enthalpy = atof(lineSplit[3].c_str()) * RY_TO_EV;
+      // If the energy hasn't been found, set the energy to be the enthalpy
+      if (fabs(energy) < 1e-8)
+        energy = enthalpy;
+      energyFound = true;
+    }
+    // Energy in Ry. Convert to eV.
+    else if (strstr(line.c_str(), "!    total energy")) {
+      lineSplit = split(line, ' ');
+      if (line.size() < 6) {
+        qDebug() << "Error reading final energy in PWSCF output!"
+                 << line.c_str();
+        return false;
+      }
+      energy = atof(lineSplit[4].c_str()) * RY_TO_EV;
+      energyFound = true;
+    }
   }
+
+  if (!cellFound)
+    qDebug() << "Error: cell info was not found in PWSCF output!";
+  if (!coordsFound)
+    qDebug() << "Error: atom coords not found in PWSCF output!";
+  if (!energyFound)
+    qDebug() << "Error: energy not found in PWSCF output!";
+  if (!cellFound || !coordsFound || !energyFound)
+    return false;
+
+  // Convert coords to Cartesian
+  UnitCell uc(cellMatrix);
+  for (size_t i = 0; i < coords.size(); ++i)
+    coords[i] = uc.toCartesian(coords[i]);
+
+  s->updateAndAddToHistory(atomicNums, coords, energy, enthalpy, cellMatrix);
+  return true;
+}
 }

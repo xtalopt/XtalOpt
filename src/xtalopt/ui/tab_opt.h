@@ -20,35 +20,35 @@
 #include "ui_tab_opt.h"
 
 namespace GlobalSearch {
-  class AbstractDialog;
+class AbstractDialog;
 }
 
 namespace XtalOpt {
-  class XtalOpt;
+class XtalOpt;
 
-  class TabOpt : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
+class TabOpt : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabOpt( GlobalSearch::AbstractDialog *parent, XtalOpt *p );
-    virtual ~TabOpt() override;
+public:
+  explicit TabOpt(GlobalSearch::AbstractDialog* parent, XtalOpt* p);
+  virtual ~TabOpt() override;
 
-  public slots:
-    void lockGUI() override;
-    void readSettings(const QString &filename = "") override;
-    void writeSettings(const QString &filename = "") override;
-    void updateGUI() override;
-    void updateOptimizationInfo();
-    void addSeed(QListWidgetItem *item = nullptr);
-    void removeSeed();
-    void updateSeeds();
+public slots:
+  void lockGUI() override;
+  void readSettings(const QString& filename = "") override;
+  void writeSettings(const QString& filename = "") override;
+  void updateGUI() override;
+  void updateOptimizationInfo();
+  void addSeed(QListWidgetItem* item = nullptr);
+  void removeSeed();
+  void updateSeeds();
 
-  signals:
+signals:
 
-  private:
-    Ui::Tab_Opt ui;
-  };
+private:
+  Ui::Tab_Opt ui;
+};
 }
 
 #endif

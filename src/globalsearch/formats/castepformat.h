@@ -20,18 +20,18 @@ class QString;
 
 namespace GlobalSearch {
 
-  // Forward declaration
-  class Structure;
+// Forward declaration
+class Structure;
 
-  /**
-   * @class The CASTEP (Cambridge Serial Total Energy Package) format.
-   *        http://www.castep.org/
-   */
-  class CastepFormat {
-   public:
-    static bool read(Structure* s, const QString& filename);
-  };
-
+/**
+ * @class The CASTEP (Cambridge Serial Total Energy Package) format.
+ *        http://www.castep.org/
+ */
+class CastepFormat
+{
+public:
+  static bool read(Structure* s, const QString& filename);
+};
 }
 
 #endif // GLOBALSEARCH_CASTEP_FORMAT_H

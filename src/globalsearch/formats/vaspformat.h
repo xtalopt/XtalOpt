@@ -22,28 +22,28 @@ class QString;
 
 namespace GlobalSearch {
 
-  // Forward declaration
-  class Structure;
+// Forward declaration
+class Structure;
 
-  /**
-   * @class Vienna Ab initio Simulation Package (VASP) format.
-   *        https://www.vasp.at/
-   */
-  class VaspFormat {
-   public:
-    // filename should be a CONTCAR file. This function will search
-    // for the OUTCAR file in the same directory.
-    static bool read(Structure* s, const QString& filename);
+/**
+ * @class Vienna Ab initio Simulation Package (VASP) format.
+ *        https://www.vasp.at/
+ */
+class VaspFormat
+{
+public:
+  // filename should be a CONTCAR file. This function will search
+  // for the OUTCAR file in the same directory.
+  static bool read(Structure* s, const QString& filename);
 
-    // Read the OUTCAR given in @p istream and find the energy. If it is
-    // not found, return false.
-    static bool getOUTCAREnergy(std::istream& in, double& energy);
+  // Read the OUTCAR given in @p istream and find the energy. If it is
+  // not found, return false.
+  static bool getOUTCAREnergy(std::istream& in, double& energy);
 
-    // Read the OUTCAR given in @p istream and find the enthalpy. If it is
-    // not found, return false.
-    static bool getOUTCAREnthalpy(std::istream& in, double& ethalpy);
-  };
-
+  // Read the OUTCAR given in @p istream and find the enthalpy. If it is
+  // not found, return false.
+  static bool getOUTCAREnthalpy(std::istream& in, double& ethalpy);
+};
 }
 
 #endif // GLOBALSEARCH_VASP_FORMAT_H

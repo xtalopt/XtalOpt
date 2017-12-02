@@ -17,14 +17,12 @@
 
 namespace GlobalSearch {
 
-  SlottedWaitCondition::SlottedWaitCondition(QObject *parent)
-    : QObject(parent),
-      QWaitCondition(),
-      m_mutex()
-  {
-  }
+SlottedWaitCondition::SlottedWaitCondition(QObject* parent)
+  : QObject(parent), QWaitCondition(), m_mutex()
+{
+}
 
-  SlottedWaitCondition::~SlottedWaitCondition()
-  {
-  }
+SlottedWaitCondition::~SlottedWaitCondition()
+{
+}
 }

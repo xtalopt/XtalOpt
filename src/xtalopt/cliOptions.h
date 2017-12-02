@@ -28,9 +28,9 @@ class QueueInterface;
 
 namespace XtalOpt {
 
-class XtalOptCLIOptions {
- public:
-
+class XtalOptCLIOptions
+{
+public:
   /**
    * Reads options from a specified file and sets the options in the
    * XtalOpt object.
@@ -62,7 +62,7 @@ class XtalOptCLIOptions {
    */
   static void writeInitialRuntimeFile(XtalOpt& xtalopt);
 
- private:
+private:
   /**
    * Checks to see if s is a valid keyword. If it is, it will then
    * set csString to be the same keyword with the proper cases for each letter
@@ -197,8 +197,7 @@ class XtalOptCLIOptions {
    */
   static bool addOptimizerTemplate(XtalOpt& xtalopt,
                                    const QString& templateName,
-                                   const QString& queueName,
-                                   size_t optStep,
+                                   const QString& queueName, size_t optStep,
                                    const QHash<QString, QString>& options);
   /**
    * Checks the xtalopt settings (@p xtalopt) to see if the mitosis settings

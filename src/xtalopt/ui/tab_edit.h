@@ -20,36 +20,36 @@
 class QListWidgetItem;
 
 namespace GlobalSearch {
-  class AbstractDialog;
+class AbstractDialog;
 }
 
 namespace XtalOpt {
-  class XtalOpt;
-  class XtalOptDialog;
+class XtalOpt;
+class XtalOptDialog;
 
-  class TabEdit : public GlobalSearch::DefaultEditTab
-  {
-    Q_OBJECT
+class TabEdit : public GlobalSearch::DefaultEditTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabEdit(GlobalSearch::AbstractDialog *parent, XtalOpt *p);
-    virtual ~TabEdit() override;
+public:
+  explicit TabEdit(GlobalSearch::AbstractDialog* parent, XtalOpt* p);
+  virtual ~TabEdit() override;
 
-  public slots:
-    void readSettings(const QString &filename = "") override;
-    void writeSettings(const QString &filename = "") override;
-    void loadScheme() override;
-    void updateEditWidget() override;
-    void appendOptStep() override;
-    void removeCurrentOptStep() override;
+public slots:
+  void readSettings(const QString& filename = "") override;
+  void writeSettings(const QString& filename = "") override;
+  void loadScheme() override;
+  void updateEditWidget() override;
+  void appendOptStep() override;
+  void removeCurrentOptStep() override;
 
-  protected slots:
-    // Returns false if user cancels
-    bool generateVASP_POTCAR_info();
-    bool generateSIESTA_PSF_info();
-    void changePOTCAR(QListWidgetItem *item);
-    void changePSF(QListWidgetItem *item);
-  };
+protected slots:
+  // Returns false if user cancels
+  bool generateVASP_POTCAR_info();
+  bool generateSIESTA_PSF_info();
+  void changePOTCAR(QListWidgetItem* item);
+  void changePSF(QListWidgetItem* item);
+};
 }
 
 #endif

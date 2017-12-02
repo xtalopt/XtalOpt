@@ -20,21 +20,19 @@
 #include <QObject>
 
 namespace GlobalSearch {
-  class Structure;
-  class OptBase;
-  class Optimizer;
+class Structure;
+class OptBase;
+class Optimizer;
 }
 
 namespace XtalOpt {
-  class GULPOptimizer : public XtalOptOptimizer
-  {
-    Q_OBJECT
+class GULPOptimizer : public XtalOptOptimizer
+{
+  Q_OBJECT
 
-   public:
-    GULPOptimizer(GlobalSearch::OptBase *parent,
-                  const QString &filename = "");
-
-  };
+public:
+  GULPOptimizer(GlobalSearch::OptBase* parent, const QString& filename = "");
+};
 
 } // end namespace XtalOpt
 

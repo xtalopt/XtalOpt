@@ -28,37 +28,36 @@ class QSpacerItem;
 class QVBoxLayout;
 
 namespace GlobalSearch {
-  class AbstractDialog;
-  class OptBase;
-  class LocalQueueInterface;
+class AbstractDialog;
+class OptBase;
+class LocalQueueInterface;
 
-  // Basic input dialog for local QueueInterfaces
-  class LocalQueueInterfaceConfigDialog : public QDialog
-  {
-    Q_OBJECT
-  public:
-    LocalQueueInterfaceConfigDialog(AbstractDialog *parent,
-                                    OptBase *opt,
-                                    LocalQueueInterface *qi);
-    ~LocalQueueInterfaceConfigDialog();
+// Basic input dialog for local QueueInterfaces
+class LocalQueueInterfaceConfigDialog : public QDialog
+{
+  Q_OBJECT
+public:
+  LocalQueueInterfaceConfigDialog(AbstractDialog* parent, OptBase* opt,
+                                  LocalQueueInterface* qi);
+  ~LocalQueueInterfaceConfigDialog();
 
-  public slots:
-    void accept() override;
-    void reject() override;
-    void updateGUI();
+public slots:
+  void accept() override;
+  void reject() override;
+  void updateGUI();
 
-  protected:
-    OptBase *m_opt;
-    LocalQueueInterface *m_queueInterface;
+protected:
+  OptBase* m_opt;
+  LocalQueueInterface* m_queueInterface;
 
-    QCheckBox *m_cb_logErrorDirs;
-    QDialogButtonBox *m_bbox;
-    QHBoxLayout *m_top_label_layout, *m_desc_layout, *m_workdir_layout;
-    QLabel *m_label0, *m_label1, *m_label2;
-    QLineEdit *m_edit_workdir, *m_edit_description;
-    QSpacerItem *m_spacer;
-    QVBoxLayout *m_vlayout;
-  };
+  QCheckBox* m_cb_logErrorDirs;
+  QDialogButtonBox* m_bbox;
+  QHBoxLayout *m_top_label_layout, *m_desc_layout, *m_workdir_layout;
+  QLabel *m_label0, *m_label1, *m_label2;
+  QLineEdit *m_edit_workdir, *m_edit_description;
+  QSpacerItem* m_spacer;
+  QVBoxLayout* m_vlayout;
+};
 
 } // end namespace GlobalSearch
 

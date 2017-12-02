@@ -20,18 +20,17 @@
 #include <QString>
 #include <QtTest>
 
-namespace GlobalSearch
-{
+namespace GlobalSearch {
 
 class LoadLevelerTest : public QObject
 {
   Q_OBJECT
 
-  private:
-  XtalOpt::XtalOpt *m_opt;
-  LoadLevelerQueueInterface * m_qi;
+private:
+  XtalOpt::XtalOpt* m_opt;
+  LoadLevelerQueueInterface* m_qi;
 
-  private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -88,13 +87,18 @@ void LoadLevelerTest::parseJobId()
 void LoadLevelerTest::parseStatus()
 {
   QStringList statusList;
-  statusList << "Id                       Owner      Submitted   ST PRI Class        Running On";
-  statusList << "------------------------ ---------- ----------- -- --- ------------ -----------";
-  statusList << "mars.498.0               brownap    5/20 11:31  R  100 silver       mars";
-  statusList << "mars.499.0               brownap    5/20 11:31  Q  50  No_Class     mars";
+  statusList << "Id                       Owner      Submitted   ST PRI Class  "
+                "      Running On";
+  statusList << "------------------------ ---------- ----------- -- --- "
+                "------------ -----------";
+  statusList << "mars.498.0               brownap    5/20 11:31  R  100 silver "
+                "      mars";
+  statusList << "mars.499.0               brownap    5/20 11:31  Q  50  "
+                "No_Class     mars";
   statusList << "mars.501.0               brownap    5/20 11:31  I  50  silver";
   statusList << "";
-  statusList << "3 job step(s) in query, 1 waiting, 0 pending, 2 running, 0 held, 0 preempted";
+  statusList << "3 job step(s) in query, 1 waiting, 0 pending, 2 running, 0 "
+                "held, 0 preempted";
 
   QString Status498 = m_qi->parseStatus(statusList, 498u);
   QString Status499 = m_qi->parseStatus(statusList, 499u);
@@ -103,9 +107,7 @@ void LoadLevelerTest::parseStatus()
   QCOMPARE(Status498, QString("R"));
   QCOMPARE(Status499, QString("Q"));
   QCOMPARE(Status501, QString("I"));
-
 }
-
 }
 
 QTEST_MAIN(GlobalSearch::LoadLevelerTest)

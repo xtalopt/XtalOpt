@@ -24,10 +24,10 @@ class ConformerGeneratorTest : public QObject
 {
   Q_OBJECT
 
- public:
+public:
   ConformerGeneratorTest();
 
- private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -90,12 +90,9 @@ void ConformerGeneratorTest::generateButaneConformers()
   double rmsdThreshold = 0.1;
   bool pruneConfsAfterOpt = true;
 
-  GlobalSearch::ConformerGenerator::generateConformers(butaneSDF,
-                                                       outDir,
-                                                       numConformers,
-                                                       maxOptimizationIters,
-                                                       rmsdThreshold,
-                                                       pruneConfsAfterOpt);
+  GlobalSearch::ConformerGenerator::generateConformers(
+    butaneSDF, outDir, numConformers, maxOptimizationIters, rmsdThreshold,
+    pruneConfsAfterOpt);
 
   butaneSDF.close();
 

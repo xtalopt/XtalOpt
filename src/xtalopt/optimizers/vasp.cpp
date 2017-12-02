@@ -19,86 +19,86 @@
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/sshmanager.h>
 
-#include <QDir>
 #include <QDebug>
-#include <QString>
+#include <QDir>
 #include <QSettings>
+#include <QString>
 
 using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-  VASPOptimizer::VASPOptimizer(OptBase *parent, const QString &filename) :
-    XtalOptOptimizer(parent)
-  {
-    // Set allowed data structure keys, if any
-    // "POTCAR info" is of type
-    // QList<QHash<QString, QString> >
-    // e.g. a list of hashes containing
-    // [atomic symbol : pseudopotential file] pairs
-    m_data.insert("POTCAR info",QVariant());
-    m_data.insert("Composition",QVariant());
+VASPOptimizer::VASPOptimizer(OptBase* parent, const QString& filename)
+  : XtalOptOptimizer(parent)
+{
+  // Set allowed data structure keys, if any
+  // "POTCAR info" is of type
+  // QList<QHash<QString, QString> >
+  // e.g. a list of hashes containing
+  // [atomic symbol : pseudopotential file] pairs
+  m_data.insert("POTCAR info", QVariant());
+  m_data.insert("Composition", QVariant());
 
-    // Set allowed filenames, e.g.
-    m_templates.append("INCAR");
-    m_templates.append("POTCAR");
-    m_templates.append("KPOINTS");
+  // Set allowed filenames, e.g.
+  m_templates.append("INCAR");
+  m_templates.append("POTCAR");
+  m_templates.append("KPOINTS");
 
-    // Setup for completion values
-    m_completionFilename = "OUTCAR";
-    m_completionStrings.clear();
-    m_completionStrings.append("General timing and accounting informations for this job:");
+  // Setup for completion values
+  m_completionFilename = "OUTCAR";
+  m_completionStrings.clear();
+  m_completionStrings.append(
+    "General timing and accounting informations for this job:");
 
-    // Set output filenames to try to read data from, e.g.
-    m_outputFilenames.append("CONTCAR");
-    m_outputFilenames.append("POSCAR");
+  // Set output filenames to try to read data from, e.g.
+  m_outputFilenames.append("CONTCAR");
+  m_outputFilenames.append("POSCAR");
 
-    // Set the name of the optimizer to be returned by getIDString()
-    m_idString = "VASP";
+  // Set the name of the optimizer to be returned by getIDString()
+  m_idString = "VASP";
 
-    // Local execution setup:
-    m_localRunCommand = "vasp";
-    m_stdinFilename = "";
-    m_stdoutFilename = "";
-    m_stderrFilename = "";
+  // Local execution setup:
+  m_localRunCommand = "vasp";
+  m_stdinFilename = "";
+  m_stdoutFilename = "";
+  m_stderrFilename = "";
 
-    readSettings(filename);
+  readSettings(filename);
+}
+
+void VASPOptimizer::readSettings(const QString& filename)
+{
+  // Don't consider default setting,, only schemes and states.
+  if (filename.isEmpty())
+    return;
+
+  readDataFromSettings(filename);
+}
+
+void VASPOptimizer::writeDataToSettings(const QString& filename)
+{
+  // We only want to save POTCAR info and Composition to the resume
+  // file, not the main config file, so only dump the data here if
+  // we are given a filename and it contains the string
+  // "xtalopt.state"
+  if (filename.isEmpty() || !filename.contains("xtalopt.state")) {
+    return;
   }
-
-  void VASPOptimizer::readSettings(const QString &filename)
-  {
-    // Don't consider default setting,, only schemes and states.
-    if (filename.isEmpty())
-      return;
-
-    readDataFromSettings(filename);
-  }
-
-  void VASPOptimizer::writeDataToSettings(const QString &filename)
-  {
-    // We only want to save POTCAR info and Composition to the resume
-    // file, not the main config file, so only dump the data here if
-    // we are given a filename and it contains the string
-    // "xtalopt.state"
-    if (filename.isEmpty() || !filename.contains("xtalopt.state")) {
-      return;
-    }
-    SETTINGS(filename);
-    QStringList ids = getDataIdentifiers();
-    for (int i = 0; i < ids.size(); i++) {
-      settings->setValue("xtalopt/optimizer/" +
-                         getIDString() + "/data/" +
+  SETTINGS(filename);
+  QStringList ids = getDataIdentifiers();
+  for (int i = 0; i < ids.size(); i++) {
+    settings->setValue("xtalopt/optimizer/" + getIDString() + "/data/" +
                          ids.at(i),
-                         m_data.value(ids.at(i)));
-    }
+                       m_data.value(ids.at(i)));
   }
+}
 
-  QHash<QString, QString>
-  VASPOptimizer::getInterpretedTemplates(Structure *structure)
-  {
-    QHash<QString, QString> hash = Optimizer::getInterpretedTemplates(structure);
-    hash.insert("POSCAR", m_opt->interpretTemplate("%POSCAR%", structure));
-    return hash;
-  }
+QHash<QString, QString> VASPOptimizer::getInterpretedTemplates(
+  Structure* structure)
+{
+  QHash<QString, QString> hash = Optimizer::getInterpretedTemplates(structure);
+  hash.insert("POSCAR", m_opt->interpretTemplate("%POSCAR%", structure));
+  return hash;
+}
 
 } // end namespace XtalOpt

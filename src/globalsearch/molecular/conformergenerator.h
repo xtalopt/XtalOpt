@@ -22,9 +22,9 @@
 
 namespace GlobalSearch {
 
-class ConformerGenerator {
- public:
-
+class ConformerGenerator
+{
+public:
   /**
    * Uses RDKit to generate conformers and write them as SDF files to a
    * specific directory. The energies will also be written to an "energies.txt"
@@ -68,14 +68,10 @@ class ConformerGenerator {
    *         or -1 if an error occurred.
    */
   static long long generateConformers(
-                                std::istream& sdfIstream,
-                                const std::string& outDir,
-                                size_t numConformers = 1000,
-                                size_t maxOptimizationIters = 1000,
-                                double rmsdThreshold = 0.1,
-                                bool pruneConformersAfterOptimization = true);
+    std::istream& sdfIstream, const std::string& outDir,
+    size_t numConformers = 1000, size_t maxOptimizationIters = 1000,
+    double rmsdThreshold = 0.1, bool pruneConformersAfterOptimization = true);
 };
-
 }
 
 #endif

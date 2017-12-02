@@ -35,12 +35,12 @@
 
 // timeType needs to be one of the std::chrono time types such as
 // std::chrono:microseconds
-template<typename timeType>
-class Timer {
- public:
-  Timer(const std::string& functionName) :
-    funcName(functionName),
-    start(std::chrono::system_clock::now())
+template <typename timeType>
+class Timer
+{
+public:
+  Timer(const std::string& functionName)
+    : funcName(functionName), start(std::chrono::system_clock::now())
   {
     std::cout << funcName << " started!\n";
   };
@@ -50,11 +50,12 @@ class Timer {
     std::cout << funcName << " ending!\n";
     std::cout << funcName << " total elapsed time: "
               << std::chrono::duration_cast<timeType>(
-                   std::chrono::system_clock::now() - start
-                 ).count()
+                   std::chrono::system_clock::now() - start)
+                   .count()
               << " μs\n";
   };
- private:
+
+private:
   std::string funcName;
   std::chrono::time_point<std::chrono::system_clock> start;
 };

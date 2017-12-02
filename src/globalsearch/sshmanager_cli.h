@@ -22,61 +22,58 @@
 class QSemaphore;
 
 namespace GlobalSearch {
-  class OptBase;
-  class SSHConnectionCLI;
+class OptBase;
+class SSHConnectionCLI;
+
+/**
+ * @class SSHManagerCLI sshmanager_cli.h <globalsearch/sshmanager_cli.h>
+ *
+ * @brief A class to manage SSHConnectionCLI objects.
+ *
+ * @author David C. Lonie
+ */
+class SSHManagerCLI : public SSHManager
+{
+  Q_OBJECT
+
+public:
+  /**
+   * Constructor.
+   *
+   * @param parent The OptBase parent
+   */
+  explicit SSHManagerCLI(unsigned int connections = 5, OptBase* parent = 0);
 
   /**
-   * @class SSHManagerCLI sshmanager_cli.h <globalsearch/sshmanager_cli.h>
-   *
-   * @brief A class to manage SSHConnectionCLI objects.
-   *
-   * @author David C. Lonie
+   * Destructor.
    */
-  class SSHManagerCLI : public SSHManager
-  {
-    Q_OBJECT
+  virtual ~SSHManagerCLI() override;
 
-  public:
-    /**
-     * Constructor.
-     *
-     * @param parent The OptBase parent
-     */
-    explicit SSHManagerCLI(unsigned int connections = 5,
-                           OptBase *parent = 0);
+  /**
+   * Create connections to the specifed host. If the connections
+   * cannot be made, an SSHConnection::SSHConnectionException will
+   * be thrown.
+   */
+  void makeConnections(const QString& host, const QString& user,
+                       const QString& pass, unsigned int port) override;
 
-    /**
-     * Destructor.
-     */
-    virtual ~SSHManagerCLI() override;
+public slots:
+  /**
+   * Returns a free connection from the pool and locks it.
+   * @sa unlockConnection
+   */
+  SSHConnection* getFreeConnection();
 
-    /**
-     * Create connections to the specifed host. If the connections
-     * cannot be made, an SSHConnection::SSHConnectionException will
-     * be thrown.
-     */
-    void makeConnections(const QString &host,
-                         const QString &user,
-                         const QString &pass,
-                         unsigned int port) override;
+  /**
+   * Call this when finished with a connection so other threads can
+   * use it.
+   */
+  void unlockConnection(SSHConnection* ssh);
 
-    public slots:
-    /**
-     * Returns a free connection from the pool and locks it.
-     * @sa unlockConnection
-     */
-    SSHConnection *getFreeConnection();
-
-    /**
-     * Call this when finished with a connection so other threads can
-     * use it.
-     */
-    void unlockConnection(SSHConnection* ssh);
-
-  protected:
-    SSHConnectionCLI *m_conn;
-    QSemaphore *m_semaphore;
-  };
+protected:
+  SSHConnectionCLI* m_conn;
+  QSemaphore* m_semaphore;
+};
 
 } // end namespace GlobalSearch
 

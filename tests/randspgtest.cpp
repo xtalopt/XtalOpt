@@ -12,8 +12,8 @@
   limitations under the License.
  **********************************************************************/
 
-#include <xtalopt/xtalopt.h>
 #include <xtalopt/structures/xtal.h>
+#include <xtalopt/xtalopt.h>
 
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/random.h>
@@ -30,13 +30,13 @@ class RandSpgTest : public QObject
 {
   Q_OBJECT
 
- public:
+public:
   RandSpgTest();
 
- private:
+private:
   XtalOpt::XtalOpt m_opt;
 
- private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -61,8 +61,7 @@ class RandSpgTest : public QObject
   void generateXtals();
 };
 
-RandSpgTest::RandSpgTest()
-  : m_opt(nullptr)
+RandSpgTest::RandSpgTest() : m_opt(nullptr)
 {
 }
 
@@ -83,11 +82,11 @@ void RandSpgTest::init()
 
   std::map<uint, uint> comp;
   QVERIFY(ElemInfo::readComposition("Ti1O2", comp));
-  for (const auto& elem: comp) {
+  for (const auto& elem : comp) {
     XtalOpt::XtalCompositionStruct compStruct;
     // Set the radius - taking into account scaling factor and minRadius
-    compStruct.minRadius = ElemInfo::getCovalentRadius(elem.first) *
-                           m_opt.scaleFactor;
+    compStruct.minRadius =
+      ElemInfo::getCovalentRadius(elem.first) * m_opt.scaleFactor;
     if (compStruct.minRadius < m_opt.minRadius)
       compStruct.minRadius = m_opt.minRadius;
 
@@ -96,7 +95,7 @@ void RandSpgTest::init()
   }
 
   // We'll use two formula units
-  m_opt.formulaUnitsList = {2};
+  m_opt.formulaUnitsList = { 2 };
   uint FU = 2;
 
   // Now let's put in lattice constraints
@@ -104,14 +103,14 @@ void RandSpgTest::init()
   m_opt.b_min = 3.0;
   m_opt.c_min = 3.0;
   m_opt.alpha_min = 60.0;
-  m_opt.beta_min  = 60.0;
+  m_opt.beta_min = 60.0;
   m_opt.gamma_min = 60.0;
 
   m_opt.a_max = 10.0;
   m_opt.b_max = 10.0;
   m_opt.c_max = 10.0;
   m_opt.alpha_max = 120.0;
-  m_opt.beta_max  = 120.0;
+  m_opt.beta_max = 120.0;
   m_opt.gamma_max = 120.0;
 
   m_opt.vol_min = 25.0;
@@ -156,8 +155,8 @@ void RandSpgTest::generateXtals()
 
     // Now try to generate an xtal with that space group
     bool checkSpgWithSpglib = false;
-    XtalOpt::Xtal* xtal = m_opt.randSpgXtal(1, i + 1, formulaUnits, spg,
-                                            checkSpgWithSpglib);
+    XtalOpt::Xtal* xtal =
+      m_opt.randSpgXtal(1, i + 1, formulaUnits, spg, checkSpgWithSpglib);
     if (!xtal) {
       ++numFailures;
       continue;
@@ -166,7 +165,7 @@ void RandSpgTest::generateXtals()
     // seems. They have been tested with findsym, so in theory they should be
     // fine... If we ever figure out why spglib detection is failing, let's
     // add this step in.
-    //QVERIFY(xtal->getSpaceGroupNumber() == spg);
+    // QVERIFY(xtal->getSpaceGroupNumber() == spg);
   }
 
   QVERIFY(numFailures <= maxFailures);

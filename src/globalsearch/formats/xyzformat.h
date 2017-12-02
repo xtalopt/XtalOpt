@@ -20,26 +20,26 @@ class QString;
 
 namespace GlobalSearch {
 
-  // Forward declaration
-  class Structure;
+// Forward declaration
+class Structure;
 
-  /**
-   * @class The XYZ format. These files will typically look like this:
-   *        5
-   *        Methane
-   *        C      0.00000    0.00000    0.00000
-   *        H      0.00000    0.00000    1.08900
-   *        H      1.02672    0.00000   -0.36300
-   *        H     -0.51336   -0.88916   -0.36300
-   *        H     -0.51336    0.88916   -0.36300
-   *
-   *        Multiple molecules are allowed as well.
-   */
-  class XyzFormat {
-   public:
-    static bool read(Structure* s, const QString& filename);
-  };
-
+/**
+ * @class The XYZ format. These files will typically look like this:
+ *        5
+ *        Methane
+ *        C      0.00000    0.00000    0.00000
+ *        H      0.00000    0.00000    1.08900
+ *        H      1.02672    0.00000   -0.36300
+ *        H     -0.51336   -0.88916   -0.36300
+ *        H     -0.51336    0.88916   -0.36300
+ *
+ *        Multiple molecules are allowed as well.
+ */
+class XyzFormat
+{
+public:
+  static bool read(Structure* s, const QString& filename);
+};
 }
 
 #endif // GLOBALSEARCH_XYZ_FORMAT_H

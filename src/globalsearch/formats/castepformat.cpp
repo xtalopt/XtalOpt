@@ -15,8 +15,8 @@
 #include <globalsearch/formats/castepformat.h>
 
 #include <globalsearch/eleminfo.h>
-#include <globalsearch/utilities/utilityfunctions.h>
 #include <globalsearch/structure.h>
+#include <globalsearch/utilities/utilityfunctions.h>
 
 #include <fstream>
 
@@ -63,135 +63,134 @@ namespace GlobalSearch {
  *
  */
 
-  bool CastepFormat::read(Structure* s, const QString& filename)
-  {
-    std::ifstream ifs(filename.toStdString());
-    if (!ifs) {
-      qDebug() << "Error: CASTEP output, " << filename << ", could not "
-               << "be opened!";
-      return false;
-    }
-
-    bool coordsFound = false, energyFound = false, cellFound = false;
-
-    QList<unsigned int> atomicNums;
-    QList<Vector3> coords;
-    double energy = 0;
-    double enthalpy = 0;
-    Matrix3 cellMatrix = Matrix3::Zero();
-
-    std::string line;
-    std::vector<std::string> lineSplit;
-    while (getline(ifs, line)) {
-      // This section should contain everything we need except energy
-      if (strstr(line.c_str(), "Final Configuration")) {
-        // We will break out of this while loop when we finish with it
-        while (getline(ifs, line)) {
-          // Cell matrix.
-          if (strstr(line.c_str(), "Unit Cell")) {
-            getline(ifs, line); // Should be: ---------------...
-            getline(ifs, line); // Should be: Real Lattice(A)...
-            if (!strstr(line.c_str(), "Real Lattice(A)")) {
-              qDebug() << "Error reading the real lattice in CASTEP output!"
-                       << line.c_str();
-              return false;
-            }
-            // Get the cell matrix.
-            for (unsigned short i = 0; i < 3; ++i) {
-              getline(ifs, line);
-              lineSplit = split(line, ' ');
-              // It has a size of 6 because the reciprocal lattice is here also
-              if (lineSplit.size() != 6) {
-                qDebug() << "Error reading the cell matrix in CASTEP output!"
-                         << line.c_str();
-                return false;
-              }
-              cellMatrix(i, 0) = atof(lineSplit[0].c_str());
-              cellMatrix(i, 1) = atof(lineSplit[1].c_str());
-              cellMatrix(i, 2) = atof(lineSplit[2].c_str());
-            }
-
-            cellFound = true;
-          }
-          // Atomic coords
-          if (strstr(line.c_str(), "Cell Contents")) {
-            getline(ifs, line); // Should be: ------------------...
-            getline(ifs, line); // Should be:
-            getline(ifs, line); // Should be: xxxxxxxxxxxxxxxxxx...
-            getline(ifs, line); // Should be: x  Element    Atom ...
-            getline(ifs, line); // Should be: x            Number ...
-            getline(ifs, line); // Should be: ------------------...
-
-            getline(ifs, line); // Here's where the coordinates actually start!
-            while (!strstr(line.c_str(), "xxxxxxxx")) {
-              lineSplit = split(line, ' ');
-              if (lineSplit.size() != 7) {
-                qDebug() << "Error reading atomic positions in CASTEP output!"
-                         << line.c_str();
-                return false;
-              }
-              atomicNums.append(ElemInfo::getAtomicNum(lineSplit[1]));
-              coords.append(Vector3(atof(lineSplit[3].c_str()),
-                                    atof(lineSplit[4].c_str()),
-                                    atof(lineSplit[5].c_str())));
-              if (!getline(ifs, line))
-                break;
-            }
-
-            coordsFound = true;
-          }
-          // Enthalpy
-          if (strstr(line.c_str(), "Final Enthalpy")) {
-            lineSplit = split(line, ' ');
-            if (lineSplit.size() != 6) {
-              qDebug() << "Error reading final enthalpy in CASTEP output!"
-                       << line.c_str();
-              return false;
-            }
-            enthalpy = atof(lineSplit[4].c_str());
-
-            // If we haven't found the energy yet, set this to be the energy
-            if (fabs(energy) < 1e-8)
-              energy = enthalpy;
-
-            energyFound = true;
-
-            // This is the last thing that we need in the inner loop. Break.
-            break;
-          }
-        }
-      }
-
-      // Energy. This may be encountered several times,
-      // so it will be updated with each encounter.
-      else if (strstr(line.c_str(), "Final energy, E")) {
-        lineSplit = split(line, ' ');
-        if (line.size() < 6) {
-          qDebug() << "Error reading final energy in CASTEP output!"
-                   << line.c_str();
-          return false;
-        }
-        energy = atof(lineSplit[4].c_str());
-        energyFound = true;
-      }
-    }
-
-    if (!cellFound)
-      qDebug() << "Error: cell info was not found in CASTEP output!";
-    if (!coordsFound)
-      qDebug() << "Error: atom coords not found in CASTEP output!";
-    if (!energyFound)
-      qDebug() << "Error: energy not found in CASTEP output!";
-    if (!cellFound || !coordsFound || !energyFound)
-      return false;
-
-    // Convert coords to Cartesian
-    UnitCell uc(cellMatrix);
-    for (size_t i = 0; i < coords.size(); ++i)
-      coords[i] = uc.toCartesian(coords[i]);
-
-    s->updateAndAddToHistory(atomicNums, coords,
-                             energy, enthalpy, cellMatrix);
-    return true;
+bool CastepFormat::read(Structure* s, const QString& filename)
+{
+  std::ifstream ifs(filename.toStdString());
+  if (!ifs) {
+    qDebug() << "Error: CASTEP output, " << filename << ", could not "
+             << "be opened!";
+    return false;
   }
+
+  bool coordsFound = false, energyFound = false, cellFound = false;
+
+  QList<unsigned int> atomicNums;
+  QList<Vector3> coords;
+  double energy = 0;
+  double enthalpy = 0;
+  Matrix3 cellMatrix = Matrix3::Zero();
+
+  std::string line;
+  std::vector<std::string> lineSplit;
+  while (getline(ifs, line)) {
+    // This section should contain everything we need except energy
+    if (strstr(line.c_str(), "Final Configuration")) {
+      // We will break out of this while loop when we finish with it
+      while (getline(ifs, line)) {
+        // Cell matrix.
+        if (strstr(line.c_str(), "Unit Cell")) {
+          getline(ifs, line); // Should be: ---------------...
+          getline(ifs, line); // Should be: Real Lattice(A)...
+          if (!strstr(line.c_str(), "Real Lattice(A)")) {
+            qDebug() << "Error reading the real lattice in CASTEP output!"
+                     << line.c_str();
+            return false;
+          }
+          // Get the cell matrix.
+          for (unsigned short i = 0; i < 3; ++i) {
+            getline(ifs, line);
+            lineSplit = split(line, ' ');
+            // It has a size of 6 because the reciprocal lattice is here also
+            if (lineSplit.size() != 6) {
+              qDebug() << "Error reading the cell matrix in CASTEP output!"
+                       << line.c_str();
+              return false;
+            }
+            cellMatrix(i, 0) = atof(lineSplit[0].c_str());
+            cellMatrix(i, 1) = atof(lineSplit[1].c_str());
+            cellMatrix(i, 2) = atof(lineSplit[2].c_str());
+          }
+
+          cellFound = true;
+        }
+        // Atomic coords
+        if (strstr(line.c_str(), "Cell Contents")) {
+          getline(ifs, line); // Should be: ------------------...
+          getline(ifs, line); // Should be:
+          getline(ifs, line); // Should be: xxxxxxxxxxxxxxxxxx...
+          getline(ifs, line); // Should be: x  Element    Atom ...
+          getline(ifs, line); // Should be: x            Number ...
+          getline(ifs, line); // Should be: ------------------...
+
+          getline(ifs, line); // Here's where the coordinates actually start!
+          while (!strstr(line.c_str(), "xxxxxxxx")) {
+            lineSplit = split(line, ' ');
+            if (lineSplit.size() != 7) {
+              qDebug() << "Error reading atomic positions in CASTEP output!"
+                       << line.c_str();
+              return false;
+            }
+            atomicNums.append(ElemInfo::getAtomicNum(lineSplit[1]));
+            coords.append(Vector3(atof(lineSplit[3].c_str()),
+                                  atof(lineSplit[4].c_str()),
+                                  atof(lineSplit[5].c_str())));
+            if (!getline(ifs, line))
+              break;
+          }
+
+          coordsFound = true;
+        }
+        // Enthalpy
+        if (strstr(line.c_str(), "Final Enthalpy")) {
+          lineSplit = split(line, ' ');
+          if (lineSplit.size() != 6) {
+            qDebug() << "Error reading final enthalpy in CASTEP output!"
+                     << line.c_str();
+            return false;
+          }
+          enthalpy = atof(lineSplit[4].c_str());
+
+          // If we haven't found the energy yet, set this to be the energy
+          if (fabs(energy) < 1e-8)
+            energy = enthalpy;
+
+          energyFound = true;
+
+          // This is the last thing that we need in the inner loop. Break.
+          break;
+        }
+      }
+    }
+
+    // Energy. This may be encountered several times,
+    // so it will be updated with each encounter.
+    else if (strstr(line.c_str(), "Final energy, E")) {
+      lineSplit = split(line, ' ');
+      if (line.size() < 6) {
+        qDebug() << "Error reading final energy in CASTEP output!"
+                 << line.c_str();
+        return false;
+      }
+      energy = atof(lineSplit[4].c_str());
+      energyFound = true;
+    }
+  }
+
+  if (!cellFound)
+    qDebug() << "Error: cell info was not found in CASTEP output!";
+  if (!coordsFound)
+    qDebug() << "Error: atom coords not found in CASTEP output!";
+  if (!energyFound)
+    qDebug() << "Error: energy not found in CASTEP output!";
+  if (!cellFound || !coordsFound || !energyFound)
+    return false;
+
+  // Convert coords to Cartesian
+  UnitCell uc(cellMatrix);
+  for (size_t i = 0; i < coords.size(); ++i)
+    coords[i] = uc.toCartesian(coords[i]);
+
+  s->updateAndAddToHistory(atomicNums, coords, energy, enthalpy, cellMatrix);
+  return true;
+}
 }

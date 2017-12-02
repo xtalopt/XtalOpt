@@ -14,8 +14,8 @@
 
 #include <examplesearch/ui/tab_init.h>
 
-#include <examplesearch/ui/dialog.h>
 #include <examplesearch/examplesearch.h>
+#include <examplesearch/ui/dialog.h>
 
 #include <globalsearch/macros.h>
 
@@ -31,25 +31,23 @@ using namespace Avogadro;
 
 namespace ExampleSearch {
 
-  TabInit::TabInit( ExampleSearchDialog *dialog, ExampleSearch *opt ) :
-    AbstractTab(dialog, opt)
-  {
-    ui.setupUi(m_tab_widget);
+TabInit::TabInit(ExampleSearchDialog* dialog, ExampleSearch* opt)
+  : AbstractTab(dialog, opt)
+{
+  ui.setupUi(m_tab_widget);
 
+  initialize();
+}
 
-    initialize();
-  }
+TabInit::~TabInit()
+{
+}
 
-  TabInit::~TabInit()
-  {
-  }
+void TabInit::lockGUI()
+{
+}
 
-  void TabInit::lockGUI()
-  {
-  }
-
-  void TabInit::updateParams()
-  {
-  }
-
+void TabInit::updateParams()
+{
+}
 }

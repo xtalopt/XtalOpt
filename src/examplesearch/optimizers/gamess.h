@@ -19,15 +19,14 @@
 
 namespace ExampleSearch {
 
-  class GAMESSOptimizer : public GlobalSearch::Optimizer
-  {
-    Q_OBJECT
+class GAMESSOptimizer : public GlobalSearch::Optimizer
+{
+  Q_OBJECT
 
-   public:
-    explicit GAMESSOptimizer(GlobalSearch::OptBase *parent,
-                             const QString &filename = "");
-
-  };
+public:
+  explicit GAMESSOptimizer(GlobalSearch::OptBase* parent,
+                           const QString& filename = "");
+};
 
 } // end namespace ExampleSearch
 

@@ -18,14 +18,12 @@
 class QString;
 
 namespace XtalOpt {
-  class Xtal;
+class Xtal;
 }
 
-namespace XtalOptDebug
-{
+namespace XtalOptDebug {
 
-  void dumpPseudoPwscfOut(const XtalOpt::Xtal *xtal, const QString &filename);
-
+void dumpPseudoPwscfOut(const XtalOpt::Xtal* xtal, const QString& filename);
 }
 
 #endif // XTALOPTDEBUG_H

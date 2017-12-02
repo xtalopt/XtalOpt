@@ -16,46 +16,45 @@
 
 #include <globalsearch/structure.h>
 
-#include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
+#include <openbabel/obconversion.h>
 
+#include <QDebug>
 #include <QDir>
 #include <QString>
-#include <QDebug>
 
 using namespace GlobalSearch;
 
 namespace RandomDock {
 
-  GaussianOptimizer::GaussianOptimizer(OptBase *parent, const QString &filename) :
-    Optimizer(parent)
-  {
-    // Set allowed data structure keys, if any, e.g.
-    // None here!
+GaussianOptimizer::GaussianOptimizer(OptBase* parent, const QString& filename)
+  : Optimizer(parent)
+{
+  // Set allowed data structure keys, if any, e.g.
+  // None here!
 
-    // Set allowed filenames, e.g.
-    m_templates.insert("job.com",QStringList(""));
+  // Set allowed filenames, e.g.
+  m_templates.insert("job.com", QStringList(""));
 
-    // Setup for completion values
-    m_completionFilename = "job.out";
-    m_completionStrings.clear();
-    m_completionStrings.append("Optimization completed.");
+  // Setup for completion values
+  m_completionFilename = "job.out";
+  m_completionStrings.clear();
+  m_completionStrings.append("Optimization completed.");
 
-    // Set output filenames to try to read data from
-    m_outputFilenames.append(m_completionFilename);
-    //m_outputFilenames.append("job.arc");
+  // Set output filenames to try to read data from
+  m_outputFilenames.append(m_completionFilename);
+  // m_outputFilenames.append("job.arc");
 
-    // Set the name of the optimizer to be returned by getIDString()
-    m_idString = "GAUSSIAN";
+  // Set the name of the optimizer to be returned by getIDString()
+  m_idString = "GAUSSIAN";
 
-    // Local execution setup:
-    m_localRunCommand = "g09";
-    m_stdinFilename = "job.com";
-    m_stdoutFilename = "job.out";
-    m_stderrFilename = "";
+  // Local execution setup:
+  m_localRunCommand = "g09";
+  m_stdinFilename = "job.com";
+  m_stdoutFilename = "job.out";
+  m_stderrFilename = "";
 
-    readSettings(filename);
-  }
+  readSettings(filename);
+}
 
 } // end namespace RandomDock
-

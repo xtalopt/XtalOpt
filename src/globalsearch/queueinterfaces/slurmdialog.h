@@ -17,46 +17,43 @@
 
 #ifdef ENABLE_SSH
 
-//Doxygen should ignore this file:
+// Doxygen should ignore this file:
 /// @cond
 
 #include <QDialog>
 
 namespace Ui {
-  class SlurmConfigDialog;
+class SlurmConfigDialog;
 }
 
 namespace GlobalSearch {
-  class AbstractDialog;
-  class OptBase;
-  class SlurmQueueInterface;
+class AbstractDialog;
+class OptBase;
+class SlurmQueueInterface;
 
-  class SlurmConfigDialog : public QDialog
-  {
-    Q_OBJECT
+class SlurmConfigDialog : public QDialog
+{
+  Q_OBJECT
 
-  public:
+public:
+  explicit SlurmConfigDialog(AbstractDialog* parent, OptBase* o,
+                             SlurmQueueInterface* p);
+  virtual ~SlurmConfigDialog() override;
 
-    explicit SlurmConfigDialog(AbstractDialog *parent,
-                             OptBase *o,
-                             SlurmQueueInterface *p);
-    virtual ~SlurmConfigDialog() override;
+public slots:
+  void updateGUI();
 
-  public slots:
-    void updateGUI();
+protected slots:
+  void accept() override;
+  void reject() override;
 
-  protected slots:
-    void accept() override;
-    void reject() override;
+protected:
+  OptBase* m_opt;
+  SlurmQueueInterface* m_slurm;
 
-  protected:
-    OptBase *m_opt;
-    SlurmQueueInterface *m_slurm;
-
-  private:
-    Ui::SlurmConfigDialog *ui;
-
-  };
+private:
+  Ui::SlurmConfigDialog* ui;
+};
 }
 
 /// @endcond

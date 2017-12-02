@@ -24,85 +24,87 @@
 class QReadWriteLock;
 
 namespace GlobalSearch {
-  class AbstractDialog;
-  class Structure;
+class AbstractDialog;
+class Structure;
 }
 
 namespace XtalOpt {
-  class XtalOpt;
-  class Xtal;
+class XtalOpt;
+class Xtal;
 
-  class TabPlot : public GlobalSearch::AbstractTab
+class TabPlot : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
+
+public:
+  explicit TabPlot(GlobalSearch::AbstractDialog* parent, XtalOpt* p);
+  virtual ~TabPlot() override;
+
+  enum PlotAxes
   {
-    Q_OBJECT
-
-  public:
-    explicit TabPlot( GlobalSearch::AbstractDialog *parent, XtalOpt *p );
-    virtual ~TabPlot() override;
-
-    enum PlotAxes {
-      Structure_T = 0,
-      Generation_T,
-      Enthalpy_T,
-      Enthalpy_per_FU_T,
-      Energy_T,
-      PV_T,
-      A_T,
-      B_T,
-      C_T,
-      Alpha_T,
-      Beta_T,
-      Gamma_A,
-      Volume_T,
-      Volume_per_FU_T,
-      Formula_Units_T
-    };
-
-    enum PlotType {
-      Trend_PT = 0,
-      DistHist_PT
-    };
-
-    enum LabelTypes {
-      Number_L = 0,
-      Symbol_L,
-      Enthalpy_L,
-      Energy_L,
-      PV_L,
-      Volume_L,
-      Generation_L,
-      Structure_L,
-      Formula_Units_L
-    };
-
-  public slots:
-    void selectXtal(QwtPlotMarker* pm);
-    void readSettings(const QString &filename = "") override;
-    void writeSettings(const QString &filename = "") override;
-    void updateGUI() override;
-    void disconnectGUI() override;
-    void enablePlotUpdate() { m_enablePlotUpdate = true; };
-    void disablePlotUpdate() { m_enablePlotUpdate = false; };
-    void refreshPlot();
-    void updatePlot();
-    void plotTrends();
-    void plotDistHist();
-    void selectMoleculeFromIndex(int index);
-    void highlightXtal(GlobalSearch::Structure *s);
-    void updatePlotFormulaUnits();
-
-  private:
-
-    QwtPlotMarker* addXtalToPlot(Xtal* xtal, double x, double y);
-    void plotTrace(double x1, double y1, double x2, double y2);
-
-    std::atomic_bool m_enablePlotUpdate;
-
-    Ui::Tab_Plot ui;
-    QReadWriteLock* m_plot_mutex;
-    QMap<QwtPlotMarker*, Xtal*> m_marker_xtal_map;
-    QList<uint> m_formulaUnitsList;
+    Structure_T = 0,
+    Generation_T,
+    Enthalpy_T,
+    Enthalpy_per_FU_T,
+    Energy_T,
+    PV_T,
+    A_T,
+    B_T,
+    C_T,
+    Alpha_T,
+    Beta_T,
+    Gamma_A,
+    Volume_T,
+    Volume_per_FU_T,
+    Formula_Units_T
   };
+
+  enum PlotType
+  {
+    Trend_PT = 0,
+    DistHist_PT
+  };
+
+  enum LabelTypes
+  {
+    Number_L = 0,
+    Symbol_L,
+    Enthalpy_L,
+    Energy_L,
+    PV_L,
+    Volume_L,
+    Generation_L,
+    Structure_L,
+    Formula_Units_L
+  };
+
+public slots:
+  void selectXtal(QwtPlotMarker* pm);
+  void readSettings(const QString& filename = "") override;
+  void writeSettings(const QString& filename = "") override;
+  void updateGUI() override;
+  void disconnectGUI() override;
+  void enablePlotUpdate() { m_enablePlotUpdate = true; };
+  void disablePlotUpdate() { m_enablePlotUpdate = false; };
+  void refreshPlot();
+  void updatePlot();
+  void plotTrends();
+  void plotDistHist();
+  void selectMoleculeFromIndex(int index);
+  void highlightXtal(GlobalSearch::Structure* s);
+  void updatePlotFormulaUnits();
+
+private:
+  QwtPlotMarker* addXtalToPlot(Xtal* xtal, double x, double y);
+  void plotTrace(double x1, double y1, double x2, double y2);
+
+  std::atomic_bool m_enablePlotUpdate;
+
+  Ui::Tab_Plot ui;
+  QReadWriteLock* m_plot_mutex;
+  QMap<QwtPlotMarker*, Xtal*> m_marker_xtal_map;
+  QList<uint> m_formulaUnitsList;
+};
 }
 
 #endif

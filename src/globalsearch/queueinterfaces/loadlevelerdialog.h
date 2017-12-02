@@ -17,46 +17,43 @@
 
 #ifdef ENABLE_SSH
 
-//Doxygen should ignore this file:
+// Doxygen should ignore this file:
 /// @cond
 
 #include <QDialog>
 
 namespace Ui {
-  class LoadLevelerConfigDialog;
+class LoadLevelerConfigDialog;
 }
 
 namespace GlobalSearch {
-  class AbstractDialog;
-  class OptBase;
-  class LoadLevelerQueueInterface;
+class AbstractDialog;
+class OptBase;
+class LoadLevelerQueueInterface;
 
-  class LoadLevelerConfigDialog : public QDialog
-  {
-    Q_OBJECT
+class LoadLevelerConfigDialog : public QDialog
+{
+  Q_OBJECT
 
-  public:
+public:
+  explicit LoadLevelerConfigDialog(AbstractDialog* parent, OptBase* o,
+                                   LoadLevelerQueueInterface* p);
+  virtual ~LoadLevelerConfigDialog() override;
 
-    explicit LoadLevelerConfigDialog(AbstractDialog *parent,
-                             OptBase *o,
-                             LoadLevelerQueueInterface *p);
-    virtual ~LoadLevelerConfigDialog() override;
+public slots:
+  void updateGUI();
 
-  public slots:
-    void updateGUI();
+protected slots:
+  void accept() override;
+  void reject() override;
 
-  protected slots:
-    void accept() override;
-    void reject() override;
+protected:
+  OptBase* m_opt;
+  LoadLevelerQueueInterface* m_ll;
 
-  protected:
-    OptBase *m_opt;
-    LoadLevelerQueueInterface *m_ll;
-
-  private:
-    Ui::LoadLevelerConfigDialog *ui;
-
-  };
+private:
+  Ui::LoadLevelerConfigDialog* ui;
+};
 }
 
 /// @endcond

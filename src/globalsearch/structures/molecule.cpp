@@ -18,292 +18,286 @@
 #include <iostream>
 #include <unordered_map>
 
-namespace GlobalSearch
+namespace GlobalSearch {
+void Molecule::addMolecule(const Molecule& mol)
 {
-  void Molecule::addMolecule(const Molecule& mol)
-  {
-    // First, get an offset for the bond numbering later
-    size_t offset = numAtoms();
-    // Add the new atoms
-    for (const auto& atom: mol.atoms())
-      addAtom(atom);
-    // Add their bonds
-    for (const auto& bond: mol.bonds()) {
-      addBond(bond.first() + offset, bond.second() + offset, bond.bondOrder());
-    }
+  // First, get an offset for the bond numbering later
+  size_t offset = numAtoms();
+  // Add the new atoms
+  for (const auto& atom : mol.atoms())
+    addAtom(atom);
+  // Add their bonds
+  for (const auto& bond : mol.bonds()) {
+    addBond(bond.first() + offset, bond.second() + offset, bond.bondOrder());
   }
+}
 
-  std::vector<Molecule> Molecule::getIndividualMolecules() const
-  {
-    std::vector<Molecule> ret;
+std::vector<Molecule> Molecule::getIndividualMolecules() const
+{
+  std::vector<Molecule> ret;
 
-    std::vector<bool> atomAlreadyUsed(numAtoms(), false);
+  std::vector<bool> atomAlreadyUsed(numAtoms(), false);
 
-    while (true) {
-      // Find the first atom we haven't used yet
-      auto it = std::find(atomAlreadyUsed.begin(), atomAlreadyUsed.end(),
-                          false);
+  while (true) {
+    // Find the first atom we haven't used yet
+    auto it = std::find(atomAlreadyUsed.begin(), atomAlreadyUsed.end(), false);
 
-      if (it == atomAlreadyUsed.end())
-        break;
+    if (it == atomAlreadyUsed.end())
+      break;
 
-      Molecule newMol;
-      newMol.setUnitCell(unitCell());
+    Molecule newMol;
+    newMol.setUnitCell(unitCell());
 
-      size_t startInd = it - atomAlreadyUsed.begin();
-      newMol.addAtom(atoms()[startInd]);
-      atomAlreadyUsed[startInd] = true;
+    size_t startInd = it - atomAlreadyUsed.begin();
+    newMol.addAtom(atoms()[startInd]);
+    atomAlreadyUsed[startInd] = true;
 
-      // Atoms for which to check bonds
-      std::vector<size_t> atomsToCheck(1, startInd);
+    // Atoms for which to check bonds
+    std::vector<size_t> atomsToCheck(1, startInd);
 
-      // A map of the old indices to the new molecule atom indices.
-      std::unordered_map<size_t, size_t> mapToNewIndices;
-      mapToNewIndices[startInd] = 0;
+    // A map of the old indices to the new molecule atom indices.
+    std::unordered_map<size_t, size_t> mapToNewIndices;
+    mapToNewIndices[startInd] = 0;
 
-      // Find all atoms bonded to other atoms
-      while (!atomsToCheck.empty()) {
-        size_t checkInd = atomsToCheck[0];
+    // Find all atoms bonded to other atoms
+    while (!atomsToCheck.empty()) {
+      size_t checkInd = atomsToCheck[0];
 
-        for (size_t i = startInd + 1; i < numAtoms(); ++i) {
-          if (i == checkInd)
-            continue;
+      for (size_t i = startInd + 1; i < numAtoms(); ++i) {
+        if (i == checkInd)
+          continue;
 
-          // bondInd will be -1 if no such bond exists
-          long long bondInd = bondBetweenAtoms(checkInd, i);
-          if (bondInd != -1 && !atomAlreadyUsed[i]) {
-            newMol.addAtom(atoms()[i]);
-            atomAlreadyUsed[i] = true;
-            atomsToCheck.push_back(i);
-            mapToNewIndices[i] = newMol.numAtoms() - 1;
+        // bondInd will be -1 if no such bond exists
+        long long bondInd = bondBetweenAtoms(checkInd, i);
+        if (bondInd != -1 && !atomAlreadyUsed[i]) {
+          newMol.addAtom(atoms()[i]);
+          atomAlreadyUsed[i] = true;
+          atomsToCheck.push_back(i);
+          mapToNewIndices[i] = newMol.numAtoms() - 1;
+          newMol.addBond(mapToNewIndices[checkInd], mapToNewIndices[i],
+                         bonds()[bondInd].bondOrder());
+        }
+        // If we have already added the atom, make sure we have added the
+        // bond
+        else if (bondInd != -1 && atomAlreadyUsed[i]) {
+          if (!newMol.areBonded(mapToNewIndices[checkInd],
+                                mapToNewIndices[i])) {
             newMol.addBond(mapToNewIndices[checkInd], mapToNewIndices[i],
                            bonds()[bondInd].bondOrder());
           }
-          // If we have already added the atom, make sure we have added the
-          // bond
-          else if (bondInd != -1 && atomAlreadyUsed[i]) {
-            if (!newMol.areBonded(mapToNewIndices[checkInd],
-                                  mapToNewIndices[i])) {
-              newMol.addBond(mapToNewIndices[checkInd], mapToNewIndices[i],
-                             bonds()[bondInd].bondOrder());
-            }
-          }
-        }
-        atomsToCheck.erase(atomsToCheck.begin());
-      }
-
-      ret.push_back(newMol);
-    }
-
-    return ret;
-  }
-
-  bool Molecule::removeAtom(size_t ind)
-  {
-    if (ind >= m_atoms.size())
-      return false;
-    removeBondsFromAtom(ind);
-
-    // Indicate to the bonds that they should decrement any indices greater
-    // than ind.
-    for (auto& bond: m_bonds)
-      bond.atomIndexRemoved(ind);
-
-    m_atoms.erase(m_atoms.begin() + ind);
-    return true;
-  }
-
-  bool Molecule::removeAtom(const Atom& atom)
-  {
-    long long index = atomIndex(atom);
-    if (index == -1)
-      return false;
-    else
-      removeAtom(index);
-    return true;
-  }
-
-  // We pass by copy because we want to edit a copy of newOrder...
-  void Molecule::reorderAtoms(std::vector<size_t> newOrder)
-  {
-    assert(newOrder.size() == m_atoms.size());
-
-    // Only need to do m_atoms.size() - 1 since the last item will
-    // automatically be in place.
-    for (size_t i = 0; i < m_atoms.size() - 1; ++i) {
-      assert(newOrder[i] < m_atoms.size());
-
-      // Keep swapping until the index is in the correct place
-      while (newOrder[i] != i) {
-        size_t newInd = newOrder[i];
-        swapAtoms(i, newInd);
-        std::swap(newOrder[i], newOrder[newInd]);
-      }
-    }
-  }
-
-  void Molecule::removeBondBetweenAtoms(size_t ind1, size_t ind2)
-  {
-    assert(ind1 < m_atoms.size());
-    assert(ind2 < m_atoms.size());
-    for (size_t i = 0; i < m_bonds.size(); ++i) {
-      if ((m_bonds[i].first() == ind1 && m_bonds[i].second() == ind2) ||
-          (m_bonds[i].first() == ind2 && m_bonds[i].second() == ind1)) {
-        removeBond(i);
-        --i;
-      }
-    }
-  }
-
-  void Molecule::removeBondsFromAtom(size_t ind)
-  {
-    assert(ind < m_atoms.size());
-    for (size_t i = 0; i < m_bonds.size(); ++i) {
-      if (m_bonds[i].first() == ind || m_bonds[i].second() == ind) {
-        removeBond(i);
-        --i;
-      }
-    }
-  }
-
-  long long Molecule::bondBetweenAtoms(size_t atomInd1,
-                                       size_t atomInd2) const
-  {
-    assert(atomInd1 < m_atoms.size());
-    assert(atomInd2 < m_atoms.size());
-    for (size_t i = 0; i < m_bonds.size(); ++i) {
-      if ((m_bonds[i].first() == atomInd1 && m_bonds[i].second() == atomInd2) ||
-          (m_bonds[i].second() == atomInd1 && m_bonds[i].first() == atomInd2)) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
-  bool Molecule::isBonded(size_t ind) const
-  {
-    assert(ind < m_atoms.size());
-    for (const auto& bond: m_bonds) {
-      if (bond.first() == ind || bond.second() == ind)
-        return true;
-    }
-    return false;
-  }
-
-  bool Molecule::areBonded(size_t ind1, size_t ind2) const
-  {
-    assert(ind1 < m_atoms.size());
-    assert(ind2 < m_atoms.size());
-    for (const auto& bond: m_bonds) {
-      if ((bond.first() == ind1 && bond.second() == ind2) ||
-          (bond.first() == ind2 && bond.second() == ind1)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  std::vector<size_t> Molecule::bonds(size_t ind) const
-  {
-    assert(ind < m_atoms.size());
-    std::vector<size_t> ret;
-    for (size_t i = 0; i < m_bonds.size(); ++i) {
-      if (m_bonds[i].first() == ind || m_bonds[i].second() == ind)
-        ret.push_back(i);
-    }
-    return ret;
-  }
-
-  std::vector<size_t> Molecule::bondedAtoms(size_t ind) const
-  {
-    assert(ind < m_atoms.size());
-    std::vector<size_t> ret;
-    for (size_t i = 0; i < m_atoms.size(); ++i) {
-      if (ind == i)
-        continue;
-      else if (areBonded(i, ind))
-        ret.push_back(i);
-    }
-    return ret;
-  }
-
-  void Molecule::wrapMoleculesToSmallestBonds()
-  {
-    if (!hasBonds() || !hasUnitCell())
-      return;
-
-    std::vector<bool> atomAlreadyMoved(numAtoms(), false);
-
-    std::vector<size_t> atomsToCheck(1, 0);
-
-    while (!atomsToCheck.empty()) {
-      size_t checkInd = atomsToCheck[0];
-      for (size_t i = 0; i < numAtoms(); ++i) {
-        if (atomAlreadyMoved[i] || checkInd == i)
-          continue;
-
-        if (areBonded(checkInd, i)) {
-          const auto& pos1 = atom(checkInd).pos();
-          const auto& pos2 = atom(i).pos();
-          atom(i).setPos(unitCell().minimumImage(pos2 - pos1) + pos1);
-          atomAlreadyMoved[i] = true;
-          atomsToCheck.push_back(i);
         }
       }
       atomsToCheck.erase(atomsToCheck.begin());
+    }
 
-      // Move on to the next group of bonded atoms if this one is done
-      if (atomsToCheck.empty()) {
-        auto it = std::find(atomAlreadyMoved.begin(), atomAlreadyMoved.end(),
-                            false);
+    ret.push_back(newMol);
+  }
 
-        // Break if we are done
-        if (it == atomAlreadyMoved.end())
-          break;
+  return ret;
+}
 
-        // Otherwise, append the new atom to check and keep going
-        size_t newInd = it - atomAlreadyMoved.begin();
-        atomAlreadyMoved[newInd] = true;
-        atomsToCheck.push_back(newInd);
+bool Molecule::removeAtom(size_t ind)
+{
+  if (ind >= m_atoms.size())
+    return false;
+  removeBondsFromAtom(ind);
+
+  // Indicate to the bonds that they should decrement any indices greater
+  // than ind.
+  for (auto& bond : m_bonds)
+    bond.atomIndexRemoved(ind);
+
+  m_atoms.erase(m_atoms.begin() + ind);
+  return true;
+}
+
+bool Molecule::removeAtom(const Atom& atom)
+{
+  long long index = atomIndex(atom);
+  if (index == -1)
+    return false;
+  else
+    removeAtom(index);
+  return true;
+}
+
+// We pass by copy because we want to edit a copy of newOrder...
+void Molecule::reorderAtoms(std::vector<size_t> newOrder)
+{
+  assert(newOrder.size() == m_atoms.size());
+
+  // Only need to do m_atoms.size() - 1 since the last item will
+  // automatically be in place.
+  for (size_t i = 0; i < m_atoms.size() - 1; ++i) {
+    assert(newOrder[i] < m_atoms.size());
+
+    // Keep swapping until the index is in the correct place
+    while (newOrder[i] != i) {
+      size_t newInd = newOrder[i];
+      swapAtoms(i, newInd);
+      std::swap(newOrder[i], newOrder[newInd]);
+    }
+  }
+}
+
+void Molecule::removeBondBetweenAtoms(size_t ind1, size_t ind2)
+{
+  assert(ind1 < m_atoms.size());
+  assert(ind2 < m_atoms.size());
+  for (size_t i = 0; i < m_bonds.size(); ++i) {
+    if ((m_bonds[i].first() == ind1 && m_bonds[i].second() == ind2) ||
+        (m_bonds[i].first() == ind2 && m_bonds[i].second() == ind1)) {
+      removeBond(i);
+      --i;
+    }
+  }
+}
+
+void Molecule::removeBondsFromAtom(size_t ind)
+{
+  assert(ind < m_atoms.size());
+  for (size_t i = 0; i < m_bonds.size(); ++i) {
+    if (m_bonds[i].first() == ind || m_bonds[i].second() == ind) {
+      removeBond(i);
+      --i;
+    }
+  }
+}
+
+long long Molecule::bondBetweenAtoms(size_t atomInd1, size_t atomInd2) const
+{
+  assert(atomInd1 < m_atoms.size());
+  assert(atomInd2 < m_atoms.size());
+  for (size_t i = 0; i < m_bonds.size(); ++i) {
+    if ((m_bonds[i].first() == atomInd1 && m_bonds[i].second() == atomInd2) ||
+        (m_bonds[i].second() == atomInd1 && m_bonds[i].first() == atomInd2)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+bool Molecule::isBonded(size_t ind) const
+{
+  assert(ind < m_atoms.size());
+  for (const auto& bond : m_bonds) {
+    if (bond.first() == ind || bond.second() == ind)
+      return true;
+  }
+  return false;
+}
+
+bool Molecule::areBonded(size_t ind1, size_t ind2) const
+{
+  assert(ind1 < m_atoms.size());
+  assert(ind2 < m_atoms.size());
+  for (const auto& bond : m_bonds) {
+    if ((bond.first() == ind1 && bond.second() == ind2) ||
+        (bond.first() == ind2 && bond.second() == ind1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::vector<size_t> Molecule::bonds(size_t ind) const
+{
+  assert(ind < m_atoms.size());
+  std::vector<size_t> ret;
+  for (size_t i = 0; i < m_bonds.size(); ++i) {
+    if (m_bonds[i].first() == ind || m_bonds[i].second() == ind)
+      ret.push_back(i);
+  }
+  return ret;
+}
+
+std::vector<size_t> Molecule::bondedAtoms(size_t ind) const
+{
+  assert(ind < m_atoms.size());
+  std::vector<size_t> ret;
+  for (size_t i = 0; i < m_atoms.size(); ++i) {
+    if (ind == i)
+      continue;
+    else if (areBonded(i, ind))
+      ret.push_back(i);
+  }
+  return ret;
+}
+
+void Molecule::wrapMoleculesToSmallestBonds()
+{
+  if (!hasBonds() || !hasUnitCell())
+    return;
+
+  std::vector<bool> atomAlreadyMoved(numAtoms(), false);
+
+  std::vector<size_t> atomsToCheck(1, 0);
+
+  while (!atomsToCheck.empty()) {
+    size_t checkInd = atomsToCheck[0];
+    for (size_t i = 0; i < numAtoms(); ++i) {
+      if (atomAlreadyMoved[i] || checkInd == i)
+        continue;
+
+      if (areBonded(checkInd, i)) {
+        const auto& pos1 = atom(checkInd).pos();
+        const auto& pos2 = atom(i).pos();
+        atom(i).setPos(unitCell().minimumImage(pos2 - pos1) + pos1);
+        atomAlreadyMoved[i] = true;
+        atomsToCheck.push_back(i);
       }
     }
-  }
+    atomsToCheck.erase(atomsToCheck.begin());
 
-  double Molecule::angle(const Vector3& A,
-                         const Vector3& B,
-                         const Vector3& C) const
-  {
-    Vector3 AB = A - B;
-    Vector3 BC = C - B;
+    // Move on to the next group of bonded atoms if this one is done
+    if (atomsToCheck.empty()) {
+      auto it =
+        std::find(atomAlreadyMoved.begin(), atomAlreadyMoved.end(), false);
 
-    // If we have a unit cell, use the minimum images
-    if (hasUnitCell()) {
-      AB = unitCell().minimumImage(AB);
-      BC = unitCell().minimumImage(BC);
+      // Break if we are done
+      if (it == atomAlreadyMoved.end())
+        break;
+
+      // Otherwise, append the new atom to check and keep going
+      size_t newInd = it - atomAlreadyMoved.begin();
+      atomAlreadyMoved[newInd] = true;
+      atomsToCheck.push_back(newInd);
     }
+  }
+}
 
-    return acos(AB.dot(BC) / (AB.norm() * BC.norm())) * RAD2DEG;
+double Molecule::angle(const Vector3& A, const Vector3& B,
+                       const Vector3& C) const
+{
+  Vector3 AB = A - B;
+  Vector3 BC = C - B;
+
+  // If we have a unit cell, use the minimum images
+  if (hasUnitCell()) {
+    AB = unitCell().minimumImage(AB);
+    BC = unitCell().minimumImage(BC);
   }
 
-  double Molecule::dihedral(const Vector3& A,
-                            const Vector3& B,
-                            const Vector3& C,
-                            const Vector3& D) const
-  {
-    Vector3 AB = B - A;
-    Vector3 BC = C - B;
-    Vector3 CD = D - C;
+  return acos(AB.dot(BC) / (AB.norm() * BC.norm())) * RAD2DEG;
+}
 
-    // If we have a unit cell, use the minimum images
-    if (hasUnitCell()) {
-      AB = unitCell().minimumImage(AB);
-      BC = unitCell().minimumImage(BC);
-      CD = unitCell().minimumImage(CD);
-    }
+double Molecule::dihedral(const Vector3& A, const Vector3& B, const Vector3& C,
+                          const Vector3& D) const
+{
+  Vector3 AB = B - A;
+  Vector3 BC = C - B;
+  Vector3 CD = D - C;
 
-    const Vector3& n1 = AB.cross(BC);
-    const Vector3& n2 = BC.cross(CD);
-
-    return atan2(n1.cross(n2).dot(BC / BC.norm()), n1.dot(n2)) * RAD2DEG;
+  // If we have a unit cell, use the minimum images
+  if (hasUnitCell()) {
+    AB = unitCell().minimumImage(AB);
+    BC = unitCell().minimumImage(BC);
+    CD = unitCell().minimumImage(CD);
   }
+
+  const Vector3& n1 = AB.cross(BC);
+  const Vector3& n2 = BC.cross(CD);
+
+  return atan2(n1.cross(n2).dot(BC / BC.norm()), n1.dot(n2)) * RAD2DEG;
+}
 }

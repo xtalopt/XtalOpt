@@ -17,8 +17,8 @@
 #include <pugixml/pugixml.hpp>
 
 #include <globalsearch/eleminfo.h>
-#include <globalsearch/utilities/utilityfunctions.h>
 #include <globalsearch/structure.h>
+#include <globalsearch/utilities/utilityfunctions.h>
 
 #include <bitset>
 #include <cmath>
@@ -163,15 +163,12 @@ public:
         xml_attribute z3 = node.attribute("z3");
         if (y3 && z3) {
           // It looks like we have a valid 3D position.
-          atom.setPos(Vector3(x3.as_float(),
-                              y3.as_float(),
-                              z3.as_float()));
+          atom.setPos(Vector3(x3.as_float(), y3.as_float(), z3.as_float()));
         } else {
           // Corrupt 3D position supplied for atom.
           return false;
         }
-      }
-      else if ((attribute = node.attribute("xFract"))) {
+      } else if ((attribute = node.attribute("xFract"))) {
         if (!m_structure->hasUnitCell()) {
           m_error += "No unit cell defined. "
                      "Cannot interpret fractional coordinates.";
@@ -181,18 +178,14 @@ public:
         xml_attribute yF = node.attribute("yFract");
         xml_attribute zF = node.attribute("zFract");
         if (yF && zF) {
-          Vector3 coord((xF.as_float()),
-                        (yF.as_float()),
-                        (zF.as_float()));
+          Vector3 coord((xF.as_float()), (yF.as_float()), (zF.as_float()));
           coord = m_structure->unitCell().toCartesian(coord);
           atom.setPos(coord);
-        }
-        else {
+        } else {
           m_error += "Missing y or z fractional coordinate on atom.";
           return false;
         }
-      }
-      else {
+      } else {
         m_error += "Atom positions not found!";
         return false;
       }
@@ -280,7 +273,8 @@ public:
     return true;
   }
 
-  bool properties() {
+  bool properties()
+  {
     bool enthalpyFound = false, energyFound = false;
     double enthalpy = 0.0, energy = 0.0;
 
@@ -305,7 +299,7 @@ public:
           }
           enthalpyFound = true;
           enthalpy = scalar.text().as_float();
-          //std::cout << "Enthalpy is " << enthalpy << "\n";
+          // std::cout << "Enthalpy is " << enthalpy << "\n";
         }
         // Is this energy?
         else if (std::string(title.value()) == "Energy") {
@@ -321,11 +315,9 @@ public:
           if (units) {
             if (std::string(units.value()) == "kJ/mol") {
               energy *= KJ_PER_MOL_TO_EV;
-            }
-            else if (std::string(units.value()) == "eV") {
+            } else if (std::string(units.value()) == "eV") {
               // Do nothing...
-            }
-            else {
+            } else {
               m_error += ("Warning: we do not have a unit conversion for " +
                           std::string(units.value()) + "yet. Please email " +
                           "a developer of this program about this.");
@@ -335,10 +327,9 @@ public:
           // If there aren't any units, we'll just assume eV...
 
           energyFound = true;
-          //std::cout << "Energy is " << energy << "\n"; // TMP
+          // std::cout << "Energy is " << energy << "\n"; // TMP
         }
-      }
-      else {
+      } else {
         // If there is no title, this property node is corrupt.
         m_error += "Warning: no title found for a property.";
         return false;
@@ -363,7 +354,6 @@ public:
   std::map<std::string, size_t> m_atomIds;
   string m_error;
 };
-
 }
 
 bool CmlFormat::read(Structure& s, std::istream& file)
@@ -372,7 +362,7 @@ bool CmlFormat::read(Structure& s, std::istream& file)
   pugi::xml_parse_result result = document.load(file);
   if (!result) {
     std::cerr << "Error parsing XML in CML file: " +
-                std::string(result.description()) + "\n";
+                   std::string(result.description()) + "\n";
     return false;
   }
 

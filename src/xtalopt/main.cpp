@@ -38,52 +38,35 @@ int main(int argc, char* argv[])
   parser.addVersionOption();
 
   QCommandLineOption cliModeOption(
-      QStringList() << "cli",
-          QCoreApplication::translate(
-              "main",
-              "Use the command-line interface (CLI) mode."
-          )
-  );
+    QStringList() << "cli",
+    QCoreApplication::translate("main",
+                                "Use the command-line interface (CLI) mode."));
   parser.addOption(cliModeOption);
 
   QCommandLineOption cliResumeOption(
-      QStringList() << "resume",
-          QCoreApplication::translate(
-              "main",
-              "Resume an XtalOpt run in CLI mode."
-          )
-  );
+    QStringList() << "resume",
+    QCoreApplication::translate("main", "Resume an XtalOpt run in CLI mode."));
   parser.addOption(cliResumeOption);
 
   QCommandLineOption inputFileOption(
-      QStringList() << "input-file",
-          QCoreApplication::translate(
-              "main",
-              "Specify the input file for CLI mode."
-          ),
-          QCoreApplication::translate("main", "file")
-  );
+    QStringList() << "input-file",
+    QCoreApplication::translate("main", "Specify the input file for CLI mode."),
+    QCoreApplication::translate("main", "file"));
   inputFileOption.setDefaultValue("xtalopt.in");
   parser.addOption(inputFileOption);
 
   QCommandLineOption plotModeOption(
-      QStringList() << "plot",
-          QCoreApplication::translate(
-              "main",
-              "Show a plot of a specified XtalOpt directory."
-          )
-  );
+    QStringList() << "plot",
+    QCoreApplication::translate(
+      "main", "Show a plot of a specified XtalOpt directory."));
   parser.addOption(plotModeOption);
 
   QCommandLineOption dataDirOption(
-      QStringList() << "dir",
-          QCoreApplication::translate(
-              "main",
-              "Specify the XtalOpt results directory to be used for a CLI "
-              "resume or a plot."
-          ),
-          QCoreApplication::translate("main", "directory")
-  );
+    QStringList() << "dir",
+    QCoreApplication::translate(
+      "main", "Specify the XtalOpt results directory to be used for a CLI "
+              "resume or a plot."),
+    QCoreApplication::translate("main", "directory"));
   parser.addOption(dataDirOption);
 
   // Make a QStringList of the arguments
@@ -128,9 +111,9 @@ int main(int argc, char* argv[])
 
   // If we are running in CLI mode, we want a QCoreApplication
   // If we are running in GUI mode, we want a QApplication
-  std::unique_ptr<QCoreApplication> app = (cliMode || cliResume) ?
-      make_unique<QCoreApplication>(argc, argv) :
-      make_unique<QApplication>(argc, argv);
+  std::unique_ptr<QCoreApplication> app =
+    (cliMode || cliResume) ? make_unique<QCoreApplication>(argc, argv)
+                           : make_unique<QApplication>(argc, argv);
 
   // XtalOptDialog needs to be destroyed before XtalOpt gets destroyed. So
   // the ordering here matters.
@@ -147,20 +130,18 @@ int main(int argc, char* argv[])
   }
   // We just want to generate a plot tab and display it...
   else if (plotMode) {
-    d = std::move(make_unique<XtalOpt::XtalOptDialog>(nullptr, Qt::Window,
-                                                      true, &xtalopt));
+    d = std::move(
+      make_unique<XtalOpt::XtalOptDialog>(nullptr, Qt::Window, true, &xtalopt));
     xtalopt.setDialog(d.get());
     if (!xtalopt.plotDir(dataDir))
       return 1;
     d->beginPlotOnlyMode();
-  }
-  else if (cliResume) {
+  } else if (cliResume) {
     xtalopt.setUsingGUI(false);
 
     // Make sure the state file exists
     if (!QDir(dataDir).exists("xtalopt.state")) {
-      qDebug() << "Error: no xtalopt.state file found in"
-               << dataDir;
+      qDebug() << "Error: no xtalopt.state file found in" << dataDir;
       qDebug() << "Please check your --dir option and try again";
       return 1;
     }
@@ -190,8 +171,8 @@ int main(int argc, char* argv[])
   }
   // If we are using the GUI, show the dialog...
   else {
-    d = std::move(make_unique<XtalOpt::XtalOptDialog>(nullptr, Qt::Window,
-                                                      true, &xtalopt));
+    d = std::move(
+      make_unique<XtalOpt::XtalOptDialog>(nullptr, Qt::Window, true, &xtalopt));
     xtalopt.setDialog(d.get());
     d->show();
   }

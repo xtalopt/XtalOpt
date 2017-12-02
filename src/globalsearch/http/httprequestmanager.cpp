@@ -19,18 +19,15 @@
 #include <QNetworkRequest>
 
 HttpRequestManager::HttpRequestManager(
-    const std::shared_ptr<QNetworkAccessManager>& networkManager,
-    QObject* parent) :
- QObject(parent),
- m_networkManager(networkManager),
- m_requestCounter(0)
+  const std::shared_ptr<QNetworkAccessManager>& networkManager, QObject* parent)
+  : QObject(parent), m_networkManager(networkManager), m_requestCounter(0)
 {
   // This is done so that handleGet and handlePost are always ran in the
   // main thread
-  connect(this, &HttpRequestManager::signalGet,
-          this, &HttpRequestManager::handleGet);
-  connect(this, &HttpRequestManager::signalPost,
-          this, &HttpRequestManager::handlePost);
+  connect(this, &HttpRequestManager::signalGet, this,
+          &HttpRequestManager::handleGet);
+  connect(this, &HttpRequestManager::signalPost, this,
+          &HttpRequestManager::handlePost);
 }
 
 size_t HttpRequestManager::sendGet(QUrl url)
@@ -81,11 +78,11 @@ void HttpRequestManager::handleGet(QNetworkRequest request, size_t requestId)
 
   QNetworkReply* reply = m_networkManager->get(request);
 
-  connect(reply, (void (QNetworkReply::*)(QNetworkReply::NetworkError))
-                 (&QNetworkReply::error),
+  connect(reply, (void (QNetworkReply::*)(QNetworkReply::NetworkError))(
+                   &QNetworkReply::error),
           this, &HttpRequestManager::handleError);
-  connect(reply, &QNetworkReply::finished,
-          this, &HttpRequestManager::handleFinished);
+  connect(reply, &QNetworkReply::finished, this,
+          &HttpRequestManager::handleFinished);
 
   m_pendingReplies[requestId] = reply;
 }
@@ -97,11 +94,11 @@ void HttpRequestManager::handlePost(QNetworkRequest request, QByteArray data,
 
   QNetworkReply* reply = m_networkManager->post(request, data);
 
-  connect(reply, (void (QNetworkReply::*)(QNetworkReply::NetworkError))
-                 (&QNetworkReply::error),
+  connect(reply, (void (QNetworkReply::*)(QNetworkReply::NetworkError))(
+                   &QNetworkReply::error),
           this, &HttpRequestManager::handleError);
-  connect(reply, &QNetworkReply::finished,
-          this, &HttpRequestManager::handleFinished);
+  connect(reply, &QNetworkReply::finished, this,
+          &HttpRequestManager::handleFinished);
 
   m_pendingReplies[requestId] = reply;
 }
@@ -119,12 +116,11 @@ void HttpRequestManager::handleError(QNetworkReply::NetworkError ec)
   }
 
   // Make sure this HttpRequestManager owns this reply
-  auto it = std::find_if(m_pendingReplies.begin(),
-                         m_pendingReplies.end(),
-                         [reply](const std::pair<size_t, QNetworkReply*>& item)
-                         {
-                           return reply == item.second;
-                         });
+  auto it =
+    std::find_if(m_pendingReplies.begin(), m_pendingReplies.end(),
+                 [reply](const std::pair<size_t, QNetworkReply*>& item) {
+                   return reply == item.second;
+                 });
 
   // If not, print an error and return
   if (it == m_pendingReplies.end()) {
@@ -170,12 +166,11 @@ void HttpRequestManager::handleFinished()
   }
 
   // Make sure this HttpRequestManager owns this reply
-  auto it = std::find_if(m_pendingReplies.begin(),
-                         m_pendingReplies.end(),
-                         [reply](const std::pair<size_t, QNetworkReply*>& item)
-                         {
-                           return reply == item.second;
-                         });
+  auto it =
+    std::find_if(m_pendingReplies.begin(), m_pendingReplies.end(),
+                 [reply](const std::pair<size_t, QNetworkReply*>& item) {
+                   return reply == item.second;
+                 });
 
   // If not, just return
   if (it == m_pendingReplies.end())

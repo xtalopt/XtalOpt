@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-#include<globalsearch/structures/molecule.h>
+#include <globalsearch/structures/molecule.h>
 
 #include "moltransformations.h"
 
@@ -24,7 +24,7 @@ namespace GlobalSearch {
 Vector3 MolTransformations::getMeanPosition(const Molecule& mol)
 {
   Vector3 mean(0.0, 0.0, 0.0);
-  for (const auto& atom: mol.atoms()) {
+  for (const auto& atom : mol.atoms()) {
     mean[0] += atom.pos()[0];
     mean[1] += atom.pos()[1];
     mean[2] += atom.pos()[2];
@@ -42,36 +42,36 @@ void MolTransformations::setMeanPosition(Molecule& mol, const Vector3& pos)
   translateMolecule(mol, -offset);
 }
 
-void MolTransformations::rotateMolecule(Molecule& mol, short axis,
-                                        double theta)
+void MolTransformations::rotateMolecule(Molecule& mol, short axis, double theta)
 {
   // First, find the two axes that are NOT the axes of rotation. These we
   // will label 'a' and 'b'
   short a, b;
-  switch(axis) {
-  case 0:
-    a = 1;
-    b = 2;
-    break;
-  case 1:
-    a = 0;
-    b = 2;
-    break;
-  case 2:
-    a = 0;
-    b = 1;
-    break;
-  default:
-    std::cerr << "Error in " << __FUNCTION__ << ": invalid axis number: "
-              << axis << "!\nValid axis numbers are 0, 1, and 2\n";
-    return;
+  switch (axis) {
+    case 0:
+      a = 1;
+      b = 2;
+      break;
+    case 1:
+      a = 0;
+      b = 2;
+      break;
+    case 2:
+      a = 0;
+      b = 1;
+      break;
+    default:
+      std::cerr << "Error in " << __FUNCTION__
+                << ": invalid axis number: " << axis
+                << "!\nValid axis numbers are 0, 1, and 2\n";
+      return;
   }
 
   // Cache these for improved speed
   double sinTheta = sin(theta);
   double cosTheta = cos(theta);
 
-  for (auto& atom: mol.atoms()) {
+  for (auto& atom : mol.atoms()) {
     // 'x' corresponds to the positional value in the 'a' direction
     // 'y' corresponds to the positional value in the 'b' direction
     double x = atom.pos()[a];
@@ -91,12 +91,12 @@ void MolTransformations::rotateMolecule(Molecule& mol, double thetaX,
 
 void MolTransformations::translateMolecule(Molecule& mol, const Vector3& vec)
 {
-  for (auto& atom: mol.atoms())
+  for (auto& atom : mol.atoms())
     atom.pos() += vec;
 }
 
-void MolTransformations::translateMolecule(Molecule& mol, double x,
-                                           double y, double z)
+void MolTransformations::translateMolecule(Molecule& mol, double x, double y,
+                                           double z)
 {
   translateMolecule(mol, Vector3(x, y, z));
 }

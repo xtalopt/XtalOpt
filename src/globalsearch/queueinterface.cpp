@@ -14,22 +14,20 @@
 
 #include <globalsearch/queueinterface.h>
 
-#include <globalsearch/structure.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/optimizer.h>
+#include <globalsearch/structure.h>
 #include <globalsearch/structure.h>
 
 #include <QString>
 #include <QStringList>
 
-
 namespace GlobalSearch {
 
-  bool QueueInterface::writeInputFiles(Structure *s) const
-  {
-    return writeFiles(
-      s, m_opt->optimizer(s->getCurrentOptStep())->getInterpretedTemplates(s)
-    );
-  }
+bool QueueInterface::writeInputFiles(Structure* s) const
+{
+  return writeFiles(
+    s, m_opt->optimizer(s->getCurrentOptStep())->getInterpretedTemplates(s));
+}
 
 } // end namespace GlobalSearch

@@ -20,23 +20,22 @@
 #include <QDebug>
 
 namespace RandomDock {
-  class Scene : public GlobalSearch::Structure
-  {
-    Q_OBJECT
+class Scene : public GlobalSearch::Structure
+{
+  Q_OBJECT
 
-   public:
-    Scene(QObject *parent = 0);
-    virtual ~Scene();
+public:
+  Scene(QObject* parent = 0);
+  virtual ~Scene();
 
-   signals:
+signals:
 
-   public slots:
+public slots:
 
-   private slots:
+private slots:
 
-   private:
-
-  };
+private:
+};
 
 } // end namespace RandomDock
 

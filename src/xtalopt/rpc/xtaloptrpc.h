@@ -26,8 +26,7 @@
 class QDataStream;
 class QJsonObject;
 
-namespace XtalOpt
-{
+namespace XtalOpt {
 
 class Xtal;
 
@@ -40,7 +39,7 @@ class XtalOptRpc : public QObject
 {
   Q_OBJECT
 
- public:
+public:
   /**
    * Constructor. Pass the server name in as "serverName"
    */
@@ -53,7 +52,7 @@ class XtalOptRpc : public QObject
    */
   bool updateDisplayedXtal(const Xtal& xtal);
 
- private:
+private:
   /**
    * Are we connected to the Avogadro2 server?
    * @return True if we are and false if we are not.

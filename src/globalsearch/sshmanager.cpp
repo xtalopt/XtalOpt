@@ -21,26 +21,22 @@
 
 namespace GlobalSearch {
 
-  SSHManager::SSHManager(OptBase *parent)
-    : QObject(parent)
-  {
-  }
+SSHManager::SSHManager(OptBase* parent) : QObject(parent)
+{
+}
 
-  SSHManager::~SSHManager()
-  {
-  }
+SSHManager::~SSHManager()
+{
+}
 
-  void SSHManager::makeConnections(const QString &host,
-                                   const QString &user,
-                                   const QString &pass,
-                                   unsigned int port)
-  {
-    m_host = host;
-    m_user = user;
-    Q_UNUSED(pass);
-    m_port = port;
-  }
-
+void SSHManager::makeConnections(const QString& host, const QString& user,
+                                 const QString& pass, unsigned int port)
+{
+  m_host = host;
+  m_user = user;
+  Q_UNUSED(pass);
+  m_port = port;
+}
 
 } // end namespace GlobalSearch
 

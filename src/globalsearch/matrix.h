@@ -20,18 +20,16 @@
 
 #include "vector.h"
 
-namespace GlobalSearch
+namespace GlobalSearch {
+typedef Eigen::Matrix<double, 3, 3> Matrix3;
+
+inline bool fuzzyCompare(const Matrix3& v1, const Matrix3& v2,
+                         double tol = 1e-8)
 {
-  typedef Eigen::Matrix<double, 3, 3> Matrix3;
-
-  inline bool fuzzyCompare(const Matrix3& v1, const Matrix3& v2,
-                           double tol = 1e-8)
-  {
-    return fuzzyCompare(Vector3(v1.row(0)), Vector3(v2.row(0)), tol) &&
-           fuzzyCompare(Vector3(v1.row(1)), Vector3(v2.row(1)), tol) &&
-           fuzzyCompare(Vector3(v1.row(2)), Vector3(v2.row(2)), tol);
-  }
-
+  return fuzzyCompare(Vector3(v1.row(0)), Vector3(v2.row(0)), tol) &&
+         fuzzyCompare(Vector3(v1.row(1)), Vector3(v2.row(1)), tol) &&
+         fuzzyCompare(Vector3(v1.row(2)), Vector3(v2.row(2)), tol);
+}
 }
 
 #endif

@@ -19,23 +19,21 @@
 
 namespace GAPC {
 
-  class GAPCGenetic
-  {
-   public:
-    static ProtectedCluster* crossover(ProtectedCluster* pc1,
-                                       ProtectedCluster* pc2);
-    static ProtectedCluster* twist(ProtectedCluster* pc,
-                                   double minimumRotation,
-                                   double &rotationDeg);
-    static ProtectedCluster* exchange(ProtectedCluster* pc,
-                                      unsigned int exchanges);
-    static ProtectedCluster* randomWalk(ProtectedCluster* pc,
-                                        unsigned int numberAtoms,
-                                        double minWalk,
-                                        double maxWalk);
-    static ProtectedCluster* anisotropicExpansion(ProtectedCluster *pc,
-                                                  double amp);
-  };
+class GAPCGenetic
+{
+public:
+  static ProtectedCluster* crossover(ProtectedCluster* pc1,
+                                     ProtectedCluster* pc2);
+  static ProtectedCluster* twist(ProtectedCluster* pc, double minimumRotation,
+                                 double& rotationDeg);
+  static ProtectedCluster* exchange(ProtectedCluster* pc,
+                                    unsigned int exchanges);
+  static ProtectedCluster* randomWalk(ProtectedCluster* pc,
+                                      unsigned int numberAtoms, double minWalk,
+                                      double maxWalk);
+  static ProtectedCluster* anisotropicExpansion(ProtectedCluster* pc,
+                                                double amp);
+};
 
 } // end namespace GAPC
 

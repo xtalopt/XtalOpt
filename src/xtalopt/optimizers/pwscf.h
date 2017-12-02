@@ -20,18 +20,17 @@
 #include <QObject>
 
 namespace GlobalSearch {
-  class OptBase;
+class OptBase;
 }
 
 namespace XtalOpt {
-  class PWscfOptimizer : public XtalOptOptimizer
-  {
-    Q_OBJECT
+class PWscfOptimizer : public XtalOptOptimizer
+{
+  Q_OBJECT
 
-   public:
-    PWscfOptimizer(GlobalSearch::OptBase *parent, const QString &filename = "");
-
-  };
+public:
+  PWscfOptimizer(GlobalSearch::OptBase* parent, const QString& filename = "");
+};
 
 } // end namespace XtalOpt
 

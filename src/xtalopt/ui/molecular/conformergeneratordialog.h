@@ -17,43 +17,42 @@
 
 #ifdef ENABLE_MOLECULAR
 
-//Doxygen should ignore this file:
+// Doxygen should ignore this file:
 /// @cond
 
 #include <QDialog>
 
 namespace Ui {
-  class ConformerGeneratorDialog;
+class ConformerGeneratorDialog;
 }
 
 namespace GlobalSearch {
-  class OptBase;
+class OptBase;
 
-  class ConformerGeneratorDialog : public QDialog
-  {
-    Q_OBJECT
+class ConformerGeneratorDialog : public QDialog
+{
+  Q_OBJECT
 
-  public:
-    explicit ConformerGeneratorDialog(QDialog* parent,
-                                      OptBase* o);
-    virtual ~ConformerGeneratorDialog() override;
+public:
+  explicit ConformerGeneratorDialog(QDialog* parent, OptBase* o);
+  virtual ~ConformerGeneratorDialog() override;
 
-  public slots:
-    void updateGUI();
+public slots:
+  void updateGUI();
 
-  protected slots:
-    void accept() override;
-    void reject() override;
+protected slots:
+  void accept() override;
+  void reject() override;
 
-    void browseInitialMolFile();
-    void browseConformerOutDir();
+  void browseInitialMolFile();
+  void browseConformerOutDir();
 
-  protected:
-    OptBase* m_opt;
+protected:
+  OptBase* m_opt;
 
-  private:
-    Ui::ConformerGeneratorDialog* ui;
-  };
+private:
+  Ui::ConformerGeneratorDialog* ui;
+};
 }
 
 /// @endcond

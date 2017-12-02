@@ -22,9 +22,9 @@ namespace GlobalSearch {
 
 class Molecule;
 
-class MolTransformations {
- public:
-
+class MolTransformations
+{
+public:
   /**
    * Get the mean position of the atoms in the molecule.
    *
@@ -49,7 +49,9 @@ class MolTransformations {
    * @param mol The molecule to be centered.
    */
   static void centerMolecule(Molecule& mol)
-    { setMeanPosition(mol, Vector3(0.0, 0.0, 0.0)); }
+  {
+    setMeanPosition(mol, Vector3(0.0, 0.0, 0.0));
+  }
 
   /**
    * Rotate the molecule about one of the principal Cartesian axes.
@@ -73,8 +75,8 @@ class MolTransformations {
    * @param thetaZ The angle to rotate (counterclockwise) in radians for the
    *               z axis.
    */
-  static void rotateMolecule(Molecule& mol, double thetaX,
-                             double thetaY, double thetaZ);
+  static void rotateMolecule(Molecule& mol, double thetaX, double thetaY,
+                             double thetaZ);
 
   /**
    * Translate the molecule by a specific Cartesian vector.

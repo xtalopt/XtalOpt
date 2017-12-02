@@ -20,88 +20,94 @@
 #include <Eigen/Geometry>
 
 #include <QDebug>
-#include <QStringList>
 #include <QReadWriteLock>
+#include <QStringList>
 
 #include <QInputDialog>
 
 namespace GlobalSearch {
-  class SlottedWaitCondition;
-  class Structure;
+class SlottedWaitCondition;
+class Structure;
 }
 
 namespace RandomDock {
-  class RandomDockDialog;
-  class RandomDockParams;
-  class Scene;
-  class Substrate;
-  class Matrix;
+class RandomDockDialog;
+class RandomDockParams;
+class Scene;
+class Substrate;
+class Matrix;
 
-  class RandomDock : public GlobalSearch::OptBase
+class RandomDock : public GlobalSearch::OptBase
+{
+  Q_OBJECT
+
+public:
+  explicit RandomDock(RandomDockDialog* parent);
+  virtual ~RandomDock();
+
+  enum OptTypes
   {
-    Q_OBJECT
-
-   public:
-    explicit RandomDock(RandomDockDialog *parent);
-    virtual ~RandomDock();
-
-    enum OptTypes {
-      OT_GAMESS = 0,
-      OT_ADF,
-      OT_MOPAC,
-      OT_GAUSSIAN
-    };
-
-    enum QueueInterfaces {
-      QI_LOCAL = 0
-#ifdef ENABLE_SSH
-      ,
-      QI_PBS,
-      QI_SLURM,
-      QI_SGE
-#endif // ENABLE_SSH
-    };
-
-    Scene* generateRandomScene();
-    GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure *s,
-                                               const QString & reason = "");
-    bool checkLimits();
-
-    bool checkScene(Scene *scene);
-    static void sortAndRankByEnergy(QList<Scene*> *scenes);
-
-    //TODO move to structure-derived classes, or incorporate into scene generation
-    static void centerCoordinatesAtOrigin(QList<Eigen::Vector3d> & coords);
-    static void randomlyRotateCoordinates(QList<Eigen::Vector3d> & coords);
-    static void randomlyDisplaceCoordinates(QList<Eigen::Vector3d> & coords, double radiusMin, double radiusMax);
-    static void DRotateCoordinates(QList<Eigen::Vector3d> & coords);
-    static void DDisplaceCoordinates(QList<Eigen::Vector3d> & coords, double radiusMin, double radiusMax);
-
-    QString substrateFile;	// Filename of the substrate
-    Substrate *substrate;	// Pointer to the substrate
-    QStringList matrixFiles;	// List of filenames
-    QList<Matrix*> matrixList;	// List of pointers to the matrix molecules
-    QList<int> matrixStoich;	// Stoichiometry of the matrix elements
-    uint numMatrixMol;		// Number of matrix molecules to be placed around the substrate
-    double IAD_min;		// Minimum allowed interatomic distance
-    double IAD_max;		// Maximum allowed interatomic distance
-    double radius_min;		// Minimum distance from origin to place matrix molecules
-    double radius_max;		// Maximum distance from origin to place matrix molecules
-    bool radius_auto;		// Whether to automatically calculate the matrix radius
-    bool cluster_mode;
-    bool strictHBonds;
-    bool build2DNetwork;    // Make a 2D Network keeping the Z-coordinate constant
-
-    QMutex *sceneInitMutex;
-
-  public slots:
-    void startSearch();
-    void generateNewStructure();
-    void initializeAndAddScene(Scene *scene);
-
-  private:
-    GlobalSearch::SlottedWaitCondition *m_initWC;
+    OT_GAMESS = 0,
+    OT_ADF,
+    OT_MOPAC,
+    OT_GAUSSIAN
   };
+
+  enum QueueInterfaces
+  {
+    QI_LOCAL = 0
+#ifdef ENABLE_SSH
+    ,
+    QI_PBS,
+    QI_SLURM,
+    QI_SGE
+#endif // ENABLE_SSH
+  };
+
+  Scene* generateRandomScene();
+  GlobalSearch::Structure* replaceWithRandom(GlobalSearch::Structure* s,
+                                             const QString& reason = "");
+  bool checkLimits();
+
+  bool checkScene(Scene* scene);
+  static void sortAndRankByEnergy(QList<Scene*>* scenes);
+
+  // TODO move to structure-derived classes, or incorporate into scene
+  // generation
+  static void centerCoordinatesAtOrigin(QList<Eigen::Vector3d>& coords);
+  static void randomlyRotateCoordinates(QList<Eigen::Vector3d>& coords);
+  static void randomlyDisplaceCoordinates(QList<Eigen::Vector3d>& coords,
+                                          double radiusMin, double radiusMax);
+  static void DRotateCoordinates(QList<Eigen::Vector3d>& coords);
+  static void DDisplaceCoordinates(QList<Eigen::Vector3d>& coords,
+                                   double radiusMin, double radiusMax);
+
+  QString substrateFile;     // Filename of the substrate
+  Substrate* substrate;      // Pointer to the substrate
+  QStringList matrixFiles;   // List of filenames
+  QList<Matrix*> matrixList; // List of pointers to the matrix molecules
+  QList<int> matrixStoich;   // Stoichiometry of the matrix elements
+  uint numMatrixMol; // Number of matrix molecules to be placed around the
+                     // substrate
+  double IAD_min;    // Minimum allowed interatomic distance
+  double IAD_max;    // Maximum allowed interatomic distance
+  double radius_min; // Minimum distance from origin to place matrix molecules
+  double radius_max; // Maximum distance from origin to place matrix molecules
+  bool radius_auto;  // Whether to automatically calculate the matrix radius
+  bool cluster_mode;
+  bool strictHBonds;
+  bool build2DNetwork; // Make a 2D Network keeping the Z-coordinate constant
+
+  QMutex* sceneInitMutex;
+
+public slots:
+  void startSearch();
+  void generateNewStructure();
+  void initializeAndAddScene(Scene* scene);
+
+private:
+  GlobalSearch::SlottedWaitCondition* m_initWC;
+};
 
 } // end namespace RandomDock
 

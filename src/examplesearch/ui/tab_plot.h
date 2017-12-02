@@ -22,66 +22,69 @@
 class QReadWriteLock;
 
 namespace GlobalSearch {
-  class Structure;
+class Structure;
 }
 
 namespace Avogadro {
-  class PlotPoint;
-  class PlotObject;
+class PlotPoint;
+class PlotObject;
 }
 
 // Workaround for Qt's ignorance of namespaces in signals/slots
 using Avogadro::PlotPoint;
 
 namespace ExampleSearch {
-  class ExampleSearchDialog;
-  class ExampleSearch;
+class ExampleSearchDialog;
+class ExampleSearch;
 
-  class TabPlot : public GlobalSearch::AbstractTab
+class TabPlot : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
+
+public:
+  explicit TabPlot(ExampleSearchDialog* parent, ExampleSearch* p);
+  virtual ~TabPlot();
+
+  enum PlotAxes
   {
-    Q_OBJECT
-
-  public:
-    explicit TabPlot( ExampleSearchDialog *parent, ExampleSearch *p );
-    virtual ~TabPlot();
-
-    enum PlotAxes {
-      Structure_T = 0,
-      Energy_T
-    };
-
-    enum PlotType {
-      Trend_PT = 0,
-      DistHist_PT
-    };
-
-    enum LabelTypes {
-      Index_L = 0,
-      Energy_L
-    };
-
-  public slots:
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void updateGUI();
-    void disconnectGUI();
-    void lockClearAndSelectPoint(PlotPoint *pp);
-    void selectStructureFromPlot(PlotPoint *pp);
-    void refreshPlot();
-    void updatePlot();
-    void plotTrends();
-    void plotDistHist();
-    void populateStructureList();
-    void selectStructureFromIndex(int index);
-    void highlightStructure(GlobalSearch::Structure *stucture);
-
-  signals:
-
-  private:
-    Ui::Tab_Plot ui;
-    QReadWriteLock *m_plot_mutex;
-    Avogadro::PlotObject *m_plotObject;
+    Structure_T = 0,
+    Energy_T
   };
+
+  enum PlotType
+  {
+    Trend_PT = 0,
+    DistHist_PT
+  };
+
+  enum LabelTypes
+  {
+    Index_L = 0,
+    Energy_L
+  };
+
+public slots:
+  void readSettings(const QString& filename = "");
+  void writeSettings(const QString& filename = "");
+  void updateGUI();
+  void disconnectGUI();
+  void lockClearAndSelectPoint(PlotPoint* pp);
+  void selectStructureFromPlot(PlotPoint* pp);
+  void refreshPlot();
+  void updatePlot();
+  void plotTrends();
+  void plotDistHist();
+  void populateStructureList();
+  void selectStructureFromIndex(int index);
+  void highlightStructure(GlobalSearch::Structure* stucture);
+
+signals:
+
+private:
+  Ui::Tab_Plot ui;
+  QReadWriteLock* m_plot_mutex;
+  Avogadro::PlotObject* m_plotObject;
+};
 }
 
 #endif

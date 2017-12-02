@@ -20,28 +20,28 @@
 #include "ui_tab_params.h"
 
 namespace RandomDock {
-  class RandomDockDialog;
-  class RandomDock;
+class RandomDockDialog;
+class RandomDock;
 
-  class TabParams : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
+class TabParams : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabParams( RandomDockDialog *dialog, RandomDock *opt );
-    virtual ~TabParams();
+public:
+  explicit TabParams(RandomDockDialog* dialog, RandomDock* opt);
+  virtual ~TabParams();
 
-  public slots:
-    void lockGUI();
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void updateOptimizationInfo();
+public slots:
+  void lockGUI();
+  void readSettings(const QString& filename = "");
+  void writeSettings(const QString& filename = "");
+  void updateOptimizationInfo();
 
-  signals:
+signals:
 
-  private:
-    Ui::Tab_Params ui;
-  };
+private:
+  Ui::Tab_Params ui;
+};
 }
 
 #endif

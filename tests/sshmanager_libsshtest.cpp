@@ -16,8 +16,8 @@
 #include <globalsearch/sshmanager_libssh.h>
 
 #include <QString>
-#include <QtTest>
 #include <QTemporaryFile>
+#include <QtTest>
 
 #define NUM_CONN 5
 
@@ -27,8 +27,8 @@ class SSHManagerLibSSHTest : public QObject
 {
   Q_OBJECT
 
-  private:
-  SSHManager *manager;
+private:
+  SSHManager* manager;
 
   // Create a local directory structure:
   // [tmp path]/sshtesttmp/
@@ -42,7 +42,7 @@ class SSHManagerLibSSHTest : public QObject
   QString m_testfile1Contents;
   QString m_testfile2Contents;
 
-  private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -76,8 +76,7 @@ void SSHManagerLibSSHTest::initTestCase()
   //                       newdir/
   //                              testfile2
   m_remoteDir = ".sshtmpdir";
-  m_dirLayout << m_remoteDir + "/testfile1"
-              << m_remoteDir + "/newdir/"
+  m_dirLayout << m_remoteDir + "/testfile1" << m_remoteDir + "/newdir/"
               << m_remoteDir + "/newdir/testfile2";
   m_localTempDir.mkpath(QDir::tempPath() + "/sshtesttmp");
   m_localTempDir.mkpath(QDir::tempPath() + "/sshtesttmp/newdir");
@@ -85,17 +84,17 @@ void SSHManagerLibSSHTest::initTestCase()
   m_localNewDir = m_localTempDir.path() + ".new";
 
   // Each testfile is ~1MB
-  QString buffer (104857, '0');
-  QFile testfile1 (m_localTempDir.path() + "/testfile1");
+  QString buffer(104857, '0');
+  QFile testfile1(m_localTempDir.path() + "/testfile1");
   testfile1.open(QIODevice::WriteOnly);
-  QTextStream teststream1 (&testfile1);
+  QTextStream teststream1(&testfile1);
   m_testfile1Contents = "This is the first file's contents.\n" + buffer;
   teststream1 << m_testfile1Contents;
   testfile1.close();
 
-  QFile testfile2 (m_localTempDir.path() + "/newdir/testfile2");
+  QFile testfile2(m_localTempDir.path() + "/newdir/testfile2");
   testfile2.open(QIODevice::WriteOnly);
-  QTextStream teststream2 (&testfile2);
+  QTextStream teststream2(&testfile2);
   m_testfile2Contents = "and these are the second's.\n" + buffer;
   teststream2 << m_testfile2Contents;
   testfile2.close();
@@ -108,9 +107,10 @@ void SSHManagerLibSSHTest::initTestCase()
     // /etc/hosts to map "testserver" to a real server with a
     // chroot-jailed acct/pw = "test")
     manager->makeConnections("testserver", "test", "test", 22);
-  }
-  catch (SSHConnection::SSHConnectionException) {
-    QFAIL("Cannot connect to ssh server. Make sure that the connection opened in initTestCase() points to a valid account on a real host before debugging this failure.");
+  } catch (SSHConnection::SSHConnectionException) {
+    QFAIL("Cannot connect to ssh server. Make sure that the connection opened "
+          "in initTestCase() points to a valid account on a real host before "
+          "debugging this failure.");
   }
 }
 
@@ -125,7 +125,8 @@ void SSHManagerLibSSHTest::cleanupTestCase()
   m_localTempDir.rmdir(m_localNewDir + "/newdir");
   m_localTempDir.rmdir(m_localNewDir);
 
-  if (manager) delete manager;
+  if (manager)
+    delete manager;
   manager = 0;
 }
 
@@ -136,7 +137,6 @@ void SSHManagerLibSSHTest::init()
 void SSHManagerLibSSHTest::cleanup()
 {
 }
-
 
 void SSHManagerLibSSHTest::lockAllAndExecute()
 {
@@ -162,49 +162,46 @@ void SSHManagerLibSSHTest::lockAllAndExecute()
   for (int i = 0; i < NUM_CONN; i++) {
     manager->unlockConnection(list.at(i));
   }
-
 }
 
 class CopyThread : public QThread
 {
 public:
-  CopyThread(SSHManager *m,
-             const QString &f,
-             const QString &t)
-    : QThread(0),
-      manager(m),
-      from(f),
-      to(t) {}
-  void run() {
-    SSHConnection *conn = manager->getFreeConnection();
+  CopyThread(SSHManager* m, const QString& f, const QString& t)
+    : QThread(0), manager(m), from(f), to(t)
+  {
+  }
+  void run()
+  {
+    SSHConnection* conn = manager->getFreeConnection();
     conn->copyDirectoryToServer(from, to);
     conn->removeRemoteDirectory(to);
     manager->unlockConnection(conn);
   }
+
 private:
-  SSHManager *manager;
+  SSHManager* manager;
   QString from, to;
 };
 
 void SSHManagerLibSSHTest::copyThreads()
 {
   QList<CopyThread*> list;
-  for (int i = 0; i < NUM_CONN*20; ++i) {
-    CopyThread *ct = new CopyThread(manager,
-                                    m_localTempDir.path(),
-                                    m_remoteDir + QString::number(i+1));
+  for (int i = 0; i < NUM_CONN * 20; ++i) {
+    CopyThread* ct = new CopyThread(manager, m_localTempDir.path(),
+                                    m_remoteDir + QString::number(i + 1));
     list.append(ct);
   }
 
-  QBENCHMARK {
+  QBENCHMARK
+  {
     for (int i = 0; i < list.size(); ++i) {
       list.at(i)->start();
     }
 
     for (int i = 0; i < list.size(); ++i) {
       list.at(i)->wait();
-      qDebug() << "Thread " << i+1 << " of "
-               << list.size() << " finished.";
+      qDebug() << "Thread " << i + 1 << " of " << list.size() << " finished.";
     }
   }
 }

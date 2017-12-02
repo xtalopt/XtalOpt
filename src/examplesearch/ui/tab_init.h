@@ -20,24 +20,24 @@
 #include "ui_tab_init.h"
 
 namespace ExampleSearch {
-  class ExampleSearchDialog;
-  class ExampleSearch;
+class ExampleSearchDialog;
+class ExampleSearch;
 
-  class TabInit : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
+class TabInit : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabInit( ExampleSearchDialog *dialog, ExampleSearch *opt );
-    virtual ~TabInit();
+public:
+  explicit TabInit(ExampleSearchDialog* dialog, ExampleSearch* opt);
+  virtual ~TabInit();
 
-  public slots:
-    void lockGUI();
-    void updateParams();
+public slots:
+  void lockGUI();
+  void updateParams();
 
-  private:
-    Ui::Tab_Init ui;
-  };
+private:
+  Ui::Tab_Init ui;
+};
 }
 
 #endif

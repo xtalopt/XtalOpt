@@ -30,11 +30,11 @@ class RandDoubleTest : public QObject
 {
   Q_OBJECT
 
-  private:
+private:
   int m_size;
   int m_numPoints;
 
-  private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -98,16 +98,13 @@ void createAndSaveImage(unsigned int size,
   }
 
   // Generate image
-  QImage im (size, size, QImage::Format_RGB32);
+  QImage im(size, size, QImage::Format_RGB32);
   for (unsigned int i = 0; i < size; i++) {
     for (unsigned int j = 0; j < size; j++) {
       unsigned int normHit = (hits[i][j] * 100) / max;
       unsigned int rgb = (normHit * 0xff) / 100;
-      im.setPixel(i, j,
-                  0xff000000 +
-                  0x00010000 * rgb +
-                  0x00000100 * rgb +
-                  0x00000001 * rgb );
+      im.setPixel(i, j, 0xff000000 + 0x00010000 * rgb + 0x00000100 * rgb +
+                          0x00000001 * rgb);
     }
   }
   im.save(imageName, 0, 100);
@@ -116,7 +113,7 @@ void createAndSaveImage(unsigned int size,
 void RandDoubleTest::generateImageDefault()
 {
   // Create matrix to store hits
-  std::vector<std::vector<unsigned int> > hits;
+  std::vector<std::vector<unsigned int>> hits;
   hits.resize(m_size);
   for (int i = 0; i < m_size; i++) {
     hits[i].resize(m_size);
@@ -126,8 +123,9 @@ void RandDoubleTest::generateImageDefault()
   }
 
   // Generate numbers
-  int x,y;
-  QBENCHMARK {
+  int x, y;
+  QBENCHMARK
+  {
     for (int i = 0; i < m_numPoints; i++) {
       x = (int)(GlobalSearch::getRandDouble() * m_size);
       y = (int)(GlobalSearch::getRandDouble() * m_size);
@@ -146,7 +144,7 @@ void RandDoubleTest::generateImageSystem()
   std::srand(time(0));
 
   // Create matrix to store hits
-  std::vector<std::vector<unsigned int> > hits;
+  std::vector<std::vector<unsigned int>> hits;
   hits.resize(m_size);
   for (int i = 0; i < m_size; i++) {
     hits[i].resize(m_size);
@@ -156,11 +154,12 @@ void RandDoubleTest::generateImageSystem()
   }
 
   // Generate numbers
-  int x,y;
-  QBENCHMARK {
+  int x, y;
+  QBENCHMARK
+  {
     for (int i = 0; i < m_numPoints; i++) {
-      x = (int)((std::rand()/(double)RAND_MAX) * m_size);
-      y = (int)((std::rand()/(double)RAND_MAX) * m_size);
+      x = (int)((std::rand() / (double)RAND_MAX) * m_size);
+      y = (int)((std::rand() / (double)RAND_MAX) * m_size);
       hits[x][y]++;
     }
   }

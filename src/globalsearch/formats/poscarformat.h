@@ -20,19 +20,19 @@
 
 namespace GlobalSearch {
 
-  // Forward declaration
-  class Structure;
+// Forward declaration
+class Structure;
 
-  /**
-   * @class Vienna Ab initio Simulation Package (POSCAR) format.
-   *        https://www.vasp.at/
-   */
-  class PoscarFormat {
-   public:
-    static bool read(Structure& s, std::istream& in);
-    static bool write(const Structure& s, std::ostream& out);
-  };
-
+/**
+ * @class Vienna Ab initio Simulation Package (POSCAR) format.
+ *        https://www.vasp.at/
+ */
+class PoscarFormat
+{
+public:
+  static bool read(Structure& s, std::istream& in);
+  static bool write(const Structure& s, std::ostream& out);
+};
 }
 
 #endif // GLOBALSEARCH_POSCAR_FORMAT_H

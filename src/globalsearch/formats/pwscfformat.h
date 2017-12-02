@@ -20,18 +20,18 @@ class QString;
 
 namespace GlobalSearch {
 
-  // Forward declaration
-  class Structure;
+// Forward declaration
+class Structure;
 
-  /**
-   * @class The PWSCF format for Quantum Espresso.
-   *        http://www.quantum-espresso.org/
-   */
-  class PwscfFormat {
-   public:
-    static bool read(Structure* s, const QString& filename);
-  };
-
+/**
+ * @class The PWSCF format for Quantum Espresso.
+ *        http://www.quantum-espresso.org/
+ */
+class PwscfFormat
+{
+public:
+  static bool read(Structure* s, const QString& filename);
+};
 }
 
 #endif // GLOBALSEARCH_PWSCF_FORMAT_H

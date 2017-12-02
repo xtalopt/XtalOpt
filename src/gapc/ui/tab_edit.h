@@ -18,21 +18,21 @@
 #include <globalsearch/ui/defaultedittab.h>
 
 namespace GAPC {
-  class OptGAPC;
-  class GAPCDialog;
+class OptGAPC;
+class GAPCDialog;
 
-  class TabEdit : public GlobalSearch::DefaultEditTab
-  {
-    Q_OBJECT
+class TabEdit : public GlobalSearch::DefaultEditTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabEdit( GAPCDialog *parent, OptGAPC *p );
-    virtual ~TabEdit();
+public:
+  explicit TabEdit(GAPCDialog* parent, OptGAPC* p);
+  virtual ~TabEdit();
 
-  public slots:
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-  };
+public slots:
+  void readSettings(const QString& filename = "");
+  void writeSettings(const QString& filename = "");
+};
 }
 
 #endif

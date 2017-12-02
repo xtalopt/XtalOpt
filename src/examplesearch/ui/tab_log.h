@@ -20,25 +20,25 @@
 #include "ui_tab_log.h"
 
 namespace ExampleSearch {
-  class ExampleSearchDialog;
-  class ExampleSearch;
+class ExampleSearchDialog;
+class ExampleSearch;
 
-  class TabLog : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
+class TabLog : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabLog( ExampleSearchDialog *dialog, ExampleSearch *opt );
-    virtual ~TabLog();
+public:
+  explicit TabLog(ExampleSearchDialog* dialog, ExampleSearch* opt);
+  virtual ~TabLog();
 
-  public slots:
-    void newLog(const QString & info);
+public slots:
+  void newLog(const QString& info);
 
-  signals:
+signals:
 
-  private:
-    Ui::Tab_Log ui;
-  };
+private:
+  Ui::Tab_Log ui;
+};
 }
 
 #endif

@@ -12,8 +12,8 @@
   limitations under the License.
  **********************************************************************/
 
-#include <xtalopt/structures/xtal.h>
 #include <xtalopt/genetic.h>
+#include <xtalopt/structures/xtal.h>
 
 #include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/random.h>
@@ -33,7 +33,7 @@ class GeneticTest : public QObject
 {
   Q_OBJECT
 
- private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -78,8 +78,7 @@ void GeneticTest::cleanup()
 // Returns the number of swapped atoms
 // If there appear to be changes to atom positions other than a swap
 // of atoms, this will return -1.
-int numSwaps(const std::vector<Atom>& atoms1,
-             const std::vector<Atom>& atoms2,
+int numSwaps(const std::vector<Atom>& atoms1, const std::vector<Atom>& atoms2,
              double tol)
 {
   if (atoms1.size() != atoms2.size())
@@ -136,8 +135,8 @@ void GeneticTest::exchange()
   std::vector<Atom> newAtoms = xtal.atoms();
 
   // The unit cell should be unchanged
-  QVERIFY(GlobalSearch::fuzzyCompare(oldUC.cellMatrix(), newUC.cellMatrix(),
-                                     tol));
+  QVERIFY(
+    GlobalSearch::fuzzyCompare(oldUC.cellMatrix(), newUC.cellMatrix(), tol));
 
   // There should be two atoms that were swapped
   size_t numSwappedAtoms = numSwaps(oldAtoms, newAtoms, tol);
@@ -159,13 +158,12 @@ void GeneticTest::exchange()
   newAtoms = xtal.atoms();
 
   // The unit cell should be unchanged
-  QVERIFY(GlobalSearch::fuzzyCompare(oldUC.cellMatrix(), newUC.cellMatrix(),
-                                     tol));
+  QVERIFY(
+    GlobalSearch::fuzzyCompare(oldUC.cellMatrix(), newUC.cellMatrix(), tol));
 
   numSwappedAtoms = numSwaps(oldAtoms, newAtoms, tol);
 
-  QVERIFY(numSwappedAtoms == 0 || numSwappedAtoms == 2 ||
-          numSwappedAtoms == 4);
+  QVERIFY(numSwappedAtoms == 0 || numSwappedAtoms == 2 || numSwappedAtoms == 4);
 }
 
 QTEST_MAIN(GeneticTest)

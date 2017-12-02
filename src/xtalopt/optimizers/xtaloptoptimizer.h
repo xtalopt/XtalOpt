@@ -20,25 +20,25 @@
 #include <QObject>
 
 namespace GlobalSearch {
-  class Structure;
-  class OptBase;
-  class Optimizer;
+class Structure;
+class OptBase;
+class Optimizer;
 }
 
 namespace XtalOpt {
 
-  class XtalOptOptimizer : public GlobalSearch::Optimizer
-  {
-    Q_OBJECT
+class XtalOptOptimizer : public GlobalSearch::Optimizer
+{
+  Q_OBJECT
 
-  public:
-    explicit XtalOptOptimizer(GlobalSearch::OptBase *parent,
-                              const QString &filename = "");
-    virtual ~XtalOptOptimizer() override;
+public:
+  explicit XtalOptOptimizer(GlobalSearch::OptBase* parent,
+                            const QString& filename = "");
+  virtual ~XtalOptOptimizer() override;
 
-    virtual bool read(GlobalSearch::Structure *structure, const QString & filename) override;
-
-  };
+  virtual bool read(GlobalSearch::Structure* structure,
+                    const QString& filename) override;
+};
 
 } // end namespace XtalOpt
 

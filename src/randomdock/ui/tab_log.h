@@ -20,25 +20,25 @@
 #include "ui_tab_log.h"
 
 namespace RandomDock {
-  class RandomDockDialog;
-  class RandomDock;
+class RandomDockDialog;
+class RandomDock;
 
-  class TabLog : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
+class TabLog : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabLog( RandomDockDialog *dialog, RandomDock *opt );
-    virtual ~TabLog();
+public:
+  explicit TabLog(RandomDockDialog* dialog, RandomDock* opt);
+  virtual ~TabLog();
 
-  public slots:
-    void newLog(const QString & info);
+public slots:
+  void newLog(const QString& info);
 
-  signals:
+signals:
 
-  private:
-    Ui::Tab_Log ui;
-  };
+private:
+  Ui::Tab_Log ui;
+};
 }
 
 #endif

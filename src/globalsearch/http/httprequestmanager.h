@@ -20,10 +20,10 @@
 #include <mutex>
 #include <unordered_map>
 
-#include <QObject>
 #include <QByteArray>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QObject>
 
 /**
  * This class can be used to perform an http get or an http post. It takes
@@ -38,11 +38,11 @@
  */
 class HttpRequestManager : public QObject
 {
- Q_OBJECT
- public:
+  Q_OBJECT
+public:
   explicit HttpRequestManager(
-      const std::shared_ptr<QNetworkAccessManager>& networkManager,
-      QObject *parent = nullptr);
+    const std::shared_ptr<QNetworkAccessManager>& networkManager,
+    QObject* parent = nullptr);
 
   // Sends a URL get and returns an index that is used to access the
   // obtained data.
@@ -62,7 +62,7 @@ class HttpRequestManager : public QObject
   // If data for a particular reply index @p i exists, erase it from the map.
   void eraseData(size_t i) { m_receivedReplies.erase(i); }
 
- signals:
+signals:
   // When a reply is received for a particular index, this signal will be
   // emitted with the index.
   void received(size_t);
@@ -73,7 +73,7 @@ class HttpRequestManager : public QObject
   // Signal a post request in the main thread
   void signalPost(QNetworkRequest request, QByteArray data, size_t requestId);
 
- private slots:
+private slots:
   // Handle a get request in the main thread
   void handleGet(QNetworkRequest request, size_t requestId);
 
@@ -86,7 +86,7 @@ class HttpRequestManager : public QObject
   // Handles a finished QNetworkReply object.
   void handleFinished();
 
- private:
+private:
   // A shared pointer to the network access manager.
   std::shared_ptr<QNetworkAccessManager> m_networkManager;
 

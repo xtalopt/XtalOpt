@@ -27,19 +27,16 @@
 // Define START_FT as such in the files in which you want to use this:
 // #define START_FT FunctionTracker functionTracker(__FUNCTION__);
 
-class FunctionTracker {
- public:
-  FunctionTracker(std::string functionName) :
-    funcName(functionName)
+class FunctionTracker
+{
+public:
+  FunctionTracker(std::string functionName) : funcName(functionName)
   {
     std::cout << funcName << " called!\n";
   };
 
-  virtual ~FunctionTracker()
-  {
-    std::cout << funcName << " ending!\n";
-  };
- private:
+  virtual ~FunctionTracker() { std::cout << funcName << " ending!\n"; };
+private:
   std::string funcName;
 };
 

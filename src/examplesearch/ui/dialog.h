@@ -22,46 +22,44 @@
 #include "ui_dialog.h"
 
 namespace Avogadro {
-  class Molecule;
-  class GLWidget;
+class Molecule;
+class GLWidget;
 }
 
 namespace ExampleSearch {
-  class TabInit;
-  class TabEdit;
-  class TabProgress;
-  class TabPlot;
-  class TabLog;
-  class ExampleSearch;
+class TabInit;
+class TabEdit;
+class TabProgress;
+class TabPlot;
+class TabLog;
+class ExampleSearch;
 
-  class ExampleSearchDialog : public GlobalSearch::AbstractDialog
-  {
-    Q_OBJECT
+class ExampleSearchDialog : public GlobalSearch::AbstractDialog
+{
+  Q_OBJECT
 
-  public:
+public:
+  explicit ExampleSearchDialog(Avogadro::GLWidget* glWidget = 0,
+                               QWidget* parent = 0, Qt::WindowFlags f = 0);
+  virtual ~ExampleSearchDialog();
 
-    explicit ExampleSearchDialog( Avogadro::GLWidget *glWidget = 0,
-                               QWidget *parent = 0,
-                               Qt::WindowFlags f = 0 );
-    virtual ~ExampleSearchDialog();
+public slots:
+  void saveSession();
 
-  public slots:
-    void saveSession();
+private slots:
+  void startSearch();
 
-  private slots:
-    void startSearch();
+signals:
 
-  signals:
+private:
+  Ui::ExampleSearchDialog ui;
 
-  private:
-    Ui::ExampleSearchDialog ui;
-
-    TabInit *m_tab_init;
-    TabEdit *m_tab_edit;
-    TabProgress *m_tab_progress;
-    TabPlot *m_tab_plot;
-    TabLog *m_tab_log;
-  };
+  TabInit* m_tab_init;
+  TabEdit* m_tab_edit;
+  TabProgress* m_tab_progress;
+  TabPlot* m_tab_plot;
+  TabLog* m_tab_log;
+};
 }
 
 #endif

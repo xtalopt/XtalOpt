@@ -17,8 +17,8 @@
 
 #include "ui_tab_progress.h"
 
-#include <globalsearch/ui/abstracttab.h>
 #include <globalsearch/tracker.h>
+#include <globalsearch/ui/abstracttab.h>
 
 #include <QBrush>
 
@@ -26,110 +26,111 @@ class QTimer;
 class QMutex;
 
 namespace GlobalSearch {
-  class AbstractDialog;
-  class Structure;
+class AbstractDialog;
+class Structure;
 }
 
 namespace XtalOpt {
-  class XtalOpt;
-  class Xtal;
+class XtalOpt;
+class Xtal;
 
-  struct XO_Prog_TableEntry {
-    int gen;
-    int id;
-    int jobID;
-    double enthalpy;
-    double volume;
-    int FU;
-    QString elapsed;
-    QString parents;
-    QString spg;
-    QString status;
-    QBrush brush;
-    QBrush pen;
+struct XO_Prog_TableEntry
+{
+  int gen;
+  int id;
+  int jobID;
+  double enthalpy;
+  double volume;
+  int FU;
+  QString elapsed;
+  QString parents;
+  QString spg;
+  QString status;
+  QBrush brush;
+  QBrush pen;
+};
+
+class TabProgress : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
+
+public:
+  explicit TabProgress(GlobalSearch::AbstractDialog* parent, XtalOpt* p);
+  virtual ~TabProgress() override;
+
+  enum ProgressColumns
+  {
+    Gen = 0,
+    Mol,
+    JobID,
+    Status,
+    TimeElapsed,
+    Enthalpy,
+    FU,
+    Volume,
+    SpaceGroup,
+    Ancestry
   };
 
-  class TabProgress : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
-
-  public:
-    explicit TabProgress(GlobalSearch::AbstractDialog *parent, XtalOpt *p );
-    virtual ~TabProgress() override;
-
-    enum ProgressColumns {
-      Gen = 0,
-      Mol,
-      JobID,
-      Status,
-      TimeElapsed,
-      Enthalpy,
-      FU,
-      Volume,
-      SpaceGroup,
-      Ancestry
-    };
-
-  public slots:
-    void readSettings(const QString &filename = "") override;
-    void writeSettings(const QString &filename = "") override;
-    void disconnectGUI() override;
-    void addNewEntry();
-    void newInfoUpdate(GlobalSearch::Structure *);
-    void updateInfo();
-    void updateAllInfo();
-    void updateProgressTable();
-    void setTableEntry(int row,
-                       const XO_Prog_TableEntry& e);
-    void selectMoleculeFromProgress(int,int,int,int);
-    void highlightXtal(GlobalSearch::Structure *s);
-    void startTimer();
-    void stopTimer();
-    void progressContextMenu(QPoint);
-    void restartJobProgress();
-    void killXtalProgress();
-    void unkillXtalProgress();
-    void resetFailureCountProgress();
-    void randomizeStructureProgress();
-    void replaceWithOffspringProgress();
-    void injectStructureProgress();
-    void clipPOSCARProgress();
-    void enableRowTracking() {rowTracking = true;};
-    void disableRowTracking() {rowTracking = false;};
-    void updateRank();
-    void clearFiles();
-    void printFile();
-    // The signal "readOnlySessionStarted()" calls this function.
-    // It enables column sorting when a read-only session is started.
-    void setColumnSortingEnabled() {ui.table_list->setSortingEnabled(true);};
+public slots:
+  void readSettings(const QString& filename = "") override;
+  void writeSettings(const QString& filename = "") override;
+  void disconnectGUI() override;
+  void addNewEntry();
+  void newInfoUpdate(GlobalSearch::Structure*);
+  void updateInfo();
+  void updateAllInfo();
+  void updateProgressTable();
+  void setTableEntry(int row, const XO_Prog_TableEntry& e);
+  void selectMoleculeFromProgress(int, int, int, int);
+  void highlightXtal(GlobalSearch::Structure* s);
+  void startTimer();
+  void stopTimer();
+  void progressContextMenu(QPoint);
+  void restartJobProgress();
+  void killXtalProgress();
+  void unkillXtalProgress();
+  void resetFailureCountProgress();
+  void randomizeStructureProgress();
+  void replaceWithOffspringProgress();
+  void injectStructureProgress();
+  void clipPOSCARProgress();
+  void enableRowTracking() { rowTracking = true; };
+  void disableRowTracking() { rowTracking = false; };
+  void updateRank();
+  void clearFiles();
+  void printFile();
+  // The signal "readOnlySessionStarted()" calls this function.
+  // It enables column sorting when a read-only session is started.
+  void setColumnSortingEnabled() { ui.table_list->setSortingEnabled(true); };
 
 signals:
-    void deleteJob(int);
-    void updateStatus(int opt, int iad, int run, int queue, int fail);
-    void infoUpdate();
-    void updateTableEntry(int row, const XO_Prog_TableEntry& e);
+  void deleteJob(int);
+  void updateStatus(int opt, int iad, int run, int queue, int fail);
+  void infoUpdate();
+  void updateTableEntry(int row, const XO_Prog_TableEntry& e);
 
-  private:
-    Ui::Tab_Progress ui;
-    QTimer *m_timer;
-    QMutex *m_mutex;
-    QMutex *m_update_mutex, *m_update_all_mutex;
-    QMutex *m_context_mutex;
-    Xtal *m_context_xtal;
-    bool rowTracking;
+private:
+  Ui::Tab_Progress ui;
+  QTimer* m_timer;
+  QMutex* m_mutex;
+  QMutex *m_update_mutex, *m_update_all_mutex;
+  QMutex* m_context_mutex;
+  Xtal* m_context_xtal;
+  bool rowTracking;
 
-    GlobalSearch::Tracker m_infoUpdateTracker;
+  GlobalSearch::Tracker m_infoUpdateTracker;
 
-    void updateInfo_();
-    void restartJobProgress_(int incar);
-    void killXtalProgress_();
-    void unkillXtalProgress_();
-    void resetFailureCountProgress_();
-    void randomizeStructureProgress_();
-    void replaceWithOffspringProgress_();
-    void injectStructureProgress_(const QString & filename);
-    void clipPOSCARProgress_();
-  };
+  void updateInfo_();
+  void restartJobProgress_(int incar);
+  void killXtalProgress_();
+  void unkillXtalProgress_();
+  void resetFailureCountProgress_();
+  void randomizeStructureProgress_();
+  void replaceWithOffspringProgress_();
+  void injectStructureProgress_(const QString& filename);
+  void clipPOSCARProgress_();
+};
 }
 
 #endif

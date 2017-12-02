@@ -22,68 +22,69 @@
 #include <QMutex>
 
 namespace GlobalSearch {
-  class Structure;
+class Structure;
 }
 
 namespace Avogadro {
-  class Molecule;
+class Molecule;
 }
 
 namespace OpenBabel {
-  class OBForceField;
+class OBForceField;
 }
 
 namespace RandomDock {
-  class RandomDockDialog;
-  class RandomDock;
+class RandomDockDialog;
+class RandomDock;
 
-  class TabConformers : public GlobalSearch::AbstractTab
+class TabConformers : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
+
+public:
+  explicit TabConformers(RandomDockDialog* dialog, RandomDock* opt);
+  virtual ~TabConformers();
+
+  enum Columns
   {
-    Q_OBJECT
-
-  public:
-    explicit TabConformers( RandomDockDialog *dialog, RandomDock *opt);
-    virtual ~TabConformers();
-
-    enum Columns {
-      Conformer = 0,
-      Energy,
-      Prob
-    };
-
-    GlobalSearch::Structure* currentStructure();
-
-  public slots:
-    void lockGUI();
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void updateGUI();
-    void generateConformers();
-    void fillForceFieldCombo();
-    void updateStructureList();
-    void updateConformerTable();
-    void updateForceField(const QString & s = "");
-    void selectStructure(const QString & text);
-    void conformerChanged(int row, int, int oldrow, int);
-    void calculateNumberOfConformers(bool isSystematic);
-
-  signals:
-    void conformerGenerationStarting();
-    void conformerGenerationDone();
-    void conformersChanged();
-
-  private slots:
-    void enableGenerateButton() {ui.push_generate->setEnabled(true);};
-    void disableGenerateButton() {ui.push_generate->setEnabled(false);};
-
-  private:
-    Ui::Tab_Conformers ui;
-    OpenBabel::OBForceField *m_ff;
-    std::vector<std::string> m_forceFieldList;
-    QMutex m_ffMutex;
-
-    void generateConformers_(GlobalSearch::Structure *mol);
+    Conformer = 0,
+    Energy,
+    Prob
   };
+
+  GlobalSearch::Structure* currentStructure();
+
+public slots:
+  void lockGUI();
+  void readSettings(const QString& filename = "");
+  void writeSettings(const QString& filename = "");
+  void updateGUI();
+  void generateConformers();
+  void fillForceFieldCombo();
+  void updateStructureList();
+  void updateConformerTable();
+  void updateForceField(const QString& s = "");
+  void selectStructure(const QString& text);
+  void conformerChanged(int row, int, int oldrow, int);
+  void calculateNumberOfConformers(bool isSystematic);
+
+signals:
+  void conformerGenerationStarting();
+  void conformerGenerationDone();
+  void conformersChanged();
+
+private slots:
+  void enableGenerateButton() { ui.push_generate->setEnabled(true); };
+  void disableGenerateButton() { ui.push_generate->setEnabled(false); };
+
+private:
+  Ui::Tab_Conformers ui;
+  OpenBabel::OBForceField* m_ff;
+  std::vector<std::string> m_forceFieldList;
+  QMutex m_ffMutex;
+
+  void generateConformers_(GlobalSearch::Structure* mol);
+};
 }
 
 #endif

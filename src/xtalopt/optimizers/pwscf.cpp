@@ -14,41 +14,41 @@
 
 #include <xtalopt/optimizers/pwscf.h>
 
+#include <QDebug>
 #include <QDir>
 #include <QString>
-#include <QDebug>
 
 using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-  PWscfOptimizer::PWscfOptimizer(OptBase *parent, const QString &filename) :
-    XtalOptOptimizer(parent)
-  {
-    // Set allowed data structure keys, if any, e.g.
-    // None here!
+PWscfOptimizer::PWscfOptimizer(OptBase* parent, const QString& filename)
+  : XtalOptOptimizer(parent)
+{
+  // Set allowed data structure keys, if any, e.g.
+  // None here!
 
-    // Set allowed filenames, e.g.
-    m_templates.append("xtal.in");
+  // Set allowed filenames, e.g.
+  m_templates.append("xtal.in");
 
-    // Setup for completion values
-    m_completionFilename = "xtal.out";
-    m_completionStrings.clear();
-    m_completionStrings.append("Final");
+  // Setup for completion values
+  m_completionFilename = "xtal.out";
+  m_completionStrings.clear();
+  m_completionStrings.append("Final");
 
-    // Set output filenames to try to read data from, e.g.
-    m_outputFilenames.append(m_completionFilename);
+  // Set output filenames to try to read data from, e.g.
+  m_outputFilenames.append(m_completionFilename);
 
-    // Set the name of the optimizer to be returned by getIDString()
-    m_idString = "PWscf";
+  // Set the name of the optimizer to be returned by getIDString()
+  m_idString = "PWscf";
 
-    // Local execution setup:
-    m_localRunCommand = "pw.x";
-    m_stdinFilename = "xtal.in";
-    m_stdoutFilename = "xtal.out";
-    m_stderrFilename = "xtal.err";
+  // Local execution setup:
+  m_localRunCommand = "pw.x";
+  m_stdinFilename = "xtal.in";
+  m_stdoutFilename = "xtal.out";
+  m_stderrFilename = "xtal.err";
 
-    readSettings(filename);
-  }
+  readSettings(filename);
+}
 
 } // end namespace XtalOpt

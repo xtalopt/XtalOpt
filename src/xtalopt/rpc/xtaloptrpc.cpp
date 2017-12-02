@@ -26,37 +26,34 @@
 
 namespace XtalOpt {
 
-XtalOptRpc::XtalOptRpc(QObject* parent,
-                       const QString& serverName)
-  : QObject(parent),
-    m_isConnected(false),
-    m_idCounter(0),
+XtalOptRpc::XtalOptRpc(QObject* parent, const QString& serverName)
+  : QObject(parent), m_isConnected(false), m_idCounter(0),
     m_socket(make_unique<QLocalSocket>()),
-    m_dataStream(make_unique<QDataStream>()),
-    m_serverName(serverName)
+    m_dataStream(make_unique<QDataStream>()), m_serverName(serverName)
 {
   m_dataStream->setDevice(m_socket.get());
   m_dataStream->setVersion(QDataStream::Qt_4_8);
   // Cache whether we are connected or not when we receive the signal
   connect(m_socket.get(), &QLocalSocket::connected,
-          [this](){ this->setIsConnected(true); });
+          [this]() { this->setIsConnected(true); });
   connect(m_socket.get(), &QLocalSocket::disconnected,
-          [this](){ this->setIsConnected(false); });
+          [this]() { this->setIsConnected(false); });
 
   // If the local socket produces any errors, let's print them.
-  connect(m_socket.get(), static_cast<void(QLocalSocket::*)(QLocalSocket::LocalSocketError)>(&QLocalSocket::error),
-          [this](QLocalSocket::LocalSocketError socketError)
-          {
+  connect(m_socket.get(),
+          static_cast<void (QLocalSocket::*)(QLocalSocket::LocalSocketError)>(
+            &QLocalSocket::error),
+          [this](QLocalSocket::LocalSocketError socketError) {
             // We can use this in the future if we feel that we need to
             // print out errors that are emitted. Usually they just happen
             // because the user doesn't have Avogadro2 open, though...
-            //qDebug() << "XtalOptRpc received a socket error: "
+            // qDebug() << "XtalOptRpc received a socket error: "
             //         << this->m_socket->errorString();
           });
 
   // We can read data back from the server if we want to
-  connect(m_socket.get(), &QLocalSocket::readyRead,
-          this, &XtalOptRpc::readData);
+  connect(m_socket.get(), &QLocalSocket::readyRead, this,
+          &XtalOptRpc::readData);
 }
 
 bool XtalOptRpc::updateDisplayedXtal(const Xtal& xtal)
@@ -70,8 +67,7 @@ bool XtalOptRpc::updateDisplayedXtal(const Xtal& xtal)
     Xtal tmpXtal(xtal);
     tmpXtal.wrapMoleculesToSmallestBonds();
     cml = tmpXtal.toCML();
-  }
-  else {
+  } else {
     cml = xtal.toCML();
   }
 

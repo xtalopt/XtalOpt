@@ -20,72 +20,54 @@
 #define STABLE_COMP_TOL 1e-5
 
 namespace GlobalSearch {
-  namespace StableComp {
+namespace StableComp {
 
-    inline bool lt(double v1,
-            double v2,
-            double prec =
-            STABLE_COMP_TOL)
-    {
-      return ( v1 < (v2 - prec) );
-    }
+inline bool lt(double v1, double v2, double prec = STABLE_COMP_TOL)
+{
+  return (v1 < (v2 - prec));
+}
 
-    inline bool gt(double v1,
-            double v2,
-            double prec =
-            STABLE_COMP_TOL)
-    {
-      return ( v2 < (v1 - prec) );
-    }
+inline bool gt(double v1, double v2, double prec = STABLE_COMP_TOL)
+{
+  return (v2 < (v1 - prec));
+}
 
-    inline bool eq(double v1,
-            double v2,
-            double prec =
-            STABLE_COMP_TOL)
-    {
-      return (!(lt(v1,v2,prec) ||
-                gt(v1,v2,prec) ) );
-    }
+inline bool eq(double v1, double v2, double prec = STABLE_COMP_TOL)
+{
+  return (!(lt(v1, v2, prec) || gt(v1, v2, prec)));
+}
 
-    inline bool neq(double v1,
-             double v2,
-             double prec =
-             STABLE_COMP_TOL)
-    {
-      return (!(eq(v1,v2,prec)));
-    }
+inline bool neq(double v1, double v2, double prec = STABLE_COMP_TOL)
+{
+  return (!(eq(v1, v2, prec)));
+}
 
-    inline bool leq(double v1,
-             double v2,
-             double prec =
-             STABLE_COMP_TOL)
-    {
-      return (!gt(v1, v2, prec));
-    }
+inline bool leq(double v1, double v2, double prec = STABLE_COMP_TOL)
+{
+  return (!gt(v1, v2, prec));
+}
 
-    inline bool geq(double v1,
-             double v2,
-             double prec =
-             STABLE_COMP_TOL)
-    {
-      return (!lt(v1, v2, prec));
-    }
+inline bool geq(double v1, double v2, double prec = STABLE_COMP_TOL)
+{
+  return (!lt(v1, v2, prec));
+}
 
-    inline double sign(double v)
-    {
-      // consider 0 to be positive
-      if (v >= 0) return 1.0;
-      else return -1.0;
-    }
+inline double sign(double v)
+{
+  // consider 0 to be positive
+  if (v >= 0)
+    return 1.0;
+  else
+    return -1.0;
+}
 
-    inline double round(double v,
-                 int dec)
-    {
-      const double shift = pow(10.0,dec);
-      const double shifted = v * shift;
-      return floor(shifted+0.5) / shift;
-    }
-  }
+inline double round(double v, int dec)
+{
+  const double shift = pow(10.0, dec);
+  const double shifted = v * shift;
+  return floor(shifted + 0.5) / shift;
+}
+}
 }
 
 #endif

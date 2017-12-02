@@ -14,43 +14,43 @@
 
 #include <xtalopt/optimizers/castep.h>
 
+#include <QDebug>
 #include <QDir>
 #include <QString>
-#include <QDebug>
 
 using namespace std;
 
 namespace XtalOpt {
 
-  CASTEPOptimizer::CASTEPOptimizer(GlobalSearch::OptBase *parent,
-                                   const QString &filename) :
-    XtalOptOptimizer(parent)
-  {
-    // Set allowed data structure keys, if any, e.g.
-    // None here!
+CASTEPOptimizer::CASTEPOptimizer(GlobalSearch::OptBase* parent,
+                                 const QString& filename)
+  : XtalOptOptimizer(parent)
+{
+  // Set allowed data structure keys, if any, e.g.
+  // None here!
 
-    // Set allowed filenames, e.g.
-    m_templates.append("xtal.param");
-    m_templates.append("xtal.cell");
+  // Set allowed filenames, e.g.
+  m_templates.append("xtal.param");
+  m_templates.append("xtal.cell");
 
-    // Setup for completion values
-    m_completionFilename = "xtal.castep";
-    m_completionStrings.clear();
-    m_completionStrings.append("Geometry optimization completed successfully.");
+  // Setup for completion values
+  m_completionFilename = "xtal.castep";
+  m_completionStrings.clear();
+  m_completionStrings.append("Geometry optimization completed successfully.");
 
-    // Set output filenames to try to read data from, e.g.
-    m_outputFilenames.append(m_completionFilename);
+  // Set output filenames to try to read data from, e.g.
+  m_outputFilenames.append(m_completionFilename);
 
-    // Set the name of the optimizer to be returned by getIDString()
-    m_idString = "CASTEP";
+  // Set the name of the optimizer to be returned by getIDString()
+  m_idString = "CASTEP";
 
-    // Local execution setup:
-    m_localRunCommand = "castep xtal";
-    m_stdinFilename = "";
-    m_stdoutFilename = "";
-    m_stderrFilename = "";
+  // Local execution setup:
+  m_localRunCommand = "castep xtal";
+  m_stdinFilename = "";
+  m_stdoutFilename = "";
+  m_stderrFilename = "";
 
-    readSettings(filename);
-  }
+  readSettings(filename);
+}
 
 } // end namespace XtalOpt

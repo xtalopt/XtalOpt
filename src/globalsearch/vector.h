@@ -18,22 +18,20 @@
 
 #include <Eigen/Dense>
 
-namespace GlobalSearch
+namespace GlobalSearch {
+typedef Eigen::Matrix<double, 3, 1> Vector3;
+
+inline bool fuzzyCompare(double a1, double a2, double tol = 1e-8)
 {
-  typedef Eigen::Matrix<double, 3, 1> Vector3;
+  return std::fabs(a1 - a2) < tol;
+}
 
-  inline bool fuzzyCompare(double a1, double a2, double tol = 1e-8)
-  {
-    return std::fabs(a1 - a2) < tol;
-  }
-
-  inline bool fuzzyCompare(const Vector3& v1, const Vector3& v2,
-                           double tol = 1e-8)
-  {
-    return fuzzyCompare(v1[0], v2[0], tol) &&
-           fuzzyCompare(v1[1], v2[1], tol) &&
-           fuzzyCompare(v1[2], v2[2], tol);
-  }
+inline bool fuzzyCompare(const Vector3& v1, const Vector3& v2,
+                         double tol = 1e-8)
+{
+  return fuzzyCompare(v1[0], v2[0], tol) && fuzzyCompare(v1[1], v2[1], tol) &&
+         fuzzyCompare(v1[2], v2[2], tol);
+}
 }
 
 #endif

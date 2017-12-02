@@ -18,23 +18,21 @@
 #include <globalsearch/optimizer.h>
 
 namespace GlobalSearch {
-  class Structure;
+class Structure;
 }
 
 namespace GAPC {
 
-  class ADFOptimizer : public GlobalSearch::Optimizer
-  {
-    Q_OBJECT
+class ADFOptimizer : public GlobalSearch::Optimizer
+{
+  Q_OBJECT
 
-   public:
-    explicit ADFOptimizer(GlobalSearch::OptBase *parent,
-                          const QString &filename = "");
+public:
+  explicit ADFOptimizer(GlobalSearch::OptBase* parent,
+                        const QString& filename = "");
 
-    bool checkForSuccessfulOutput(GlobalSearch::Structure *s,
-                                  bool *success);
-
-  };
+  bool checkForSuccessfulOutput(GlobalSearch::Structure* s, bool* success);
+};
 
 } // end namespace GAPC
 

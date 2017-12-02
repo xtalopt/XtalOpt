@@ -17,46 +17,43 @@
 
 #ifdef ENABLE_SSH
 
-//Doxygen should ignore this file:
+// Doxygen should ignore this file:
 /// @cond
 
 #include <QDialog>
 
 namespace Ui {
-  class PbsConfigDialog;
+class PbsConfigDialog;
 }
 
 namespace GlobalSearch {
-  class AbstractDialog;
-  class OptBase;
-  class PbsQueueInterface;
+class AbstractDialog;
+class OptBase;
+class PbsQueueInterface;
 
-  class PbsConfigDialog : public QDialog
-  {
-    Q_OBJECT
+class PbsConfigDialog : public QDialog
+{
+  Q_OBJECT
 
-  public:
+public:
+  explicit PbsConfigDialog(AbstractDialog* parent, OptBase* o,
+                           PbsQueueInterface* p);
+  virtual ~PbsConfigDialog() override;
 
-    explicit PbsConfigDialog(AbstractDialog *parent,
-                             OptBase *o,
-                             PbsQueueInterface *p);
-    virtual ~PbsConfigDialog() override;
+public slots:
+  void updateGUI();
 
-  public slots:
-    void updateGUI();
+protected slots:
+  void accept() override;
+  void reject() override;
 
-  protected slots:
-    void accept() override;
-    void reject() override;
+protected:
+  OptBase* m_opt;
+  PbsQueueInterface* m_pbs;
 
-  protected:
-    OptBase *m_opt;
-    PbsQueueInterface *m_pbs;
-
-  private:
-    Ui::PbsConfigDialog *ui;
-
-  };
+private:
+  Ui::PbsConfigDialog* ui;
+};
 }
 
 /// @endcond

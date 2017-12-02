@@ -2,8 +2,8 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QFileInfoList>
-#include <QTextStream>
 #include <QString>
+#include <QTextStream>
 
 #include "fileutils.h"
 
@@ -17,28 +17,30 @@
    \param dirName Path of directory to remove.
    \return true on success; false on error.
 */
-bool FileUtils::removeDir(const QString &dirName)
+bool FileUtils::removeDir(const QString& dirName)
 {
-    bool result = true;
-    QDir dir(dirName);
+  bool result = true;
+  QDir dir(dirName);
 
-    if (dir.exists(dirName)) {
-        Q_FOREACH(QFileInfo info, dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
-            if (info.isDir()) {
-                result = removeDir(info.absoluteFilePath());
-            }
-            else {
-                result = QFile::remove(info.absoluteFilePath());
-            }
+  if (dir.exists(dirName)) {
+    Q_FOREACH (QFileInfo info,
+               dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System |
+                                   QDir::Hidden | QDir::AllDirs | QDir::Files,
+                                 QDir::DirsFirst)) {
+      if (info.isDir()) {
+        result = removeDir(info.absoluteFilePath());
+      } else {
+        result = QFile::remove(info.absoluteFilePath());
+      }
 
-            if (!result) {
-                return result;
-            }
-        }
-        result = dir.rmdir(dirName);
+      if (!result) {
+        return result;
+      }
     }
+    result = dir.rmdir(dirName);
+  }
 
-    return result;
+  return result;
 }
 
 QList<uint> FileUtils::parseUIntString(const QString& s, QString& result)
@@ -82,11 +84,12 @@ QList<uint> FileUtils::parseUIntString(const QString& s, QString& result)
   // Remove leading zeros
   for (int i = 0; i < sList.size(); i++) {
     while (sList.at(i).trimmed().startsWith("0")) {
-      sList[i].remove(0,1);
+      sList[i].remove(0, 1);
     }
   }
 
-  // Check that each QString may be converted to an unsigned int. Discard it if it cannot.
+  // Check that each QString may be converted to an unsigned int. Discard it if
+  // it cannot.
   for (int i = 0; i < sList.size(); i++) {
     sList.at(i).toUInt(&isNumeric);
     if (isNumeric == false) {
@@ -103,7 +106,7 @@ QList<uint> FileUtils::parseUIntString(const QString& s, QString& result)
   }
 
   // If nothing valid was entered, return 1
-  if ( sList.size() == 0 ) {
+  if (sList.size() == 0) {
     string << "1";
     return QList<uint>();
   }
@@ -122,7 +125,7 @@ QList<uint> FileUtils::parseUIntString(const QString& s, QString& result)
   for (int i = 0; i < sList.size() - 1; i++) {
     for (int j = i + 1; j < sList.size(); j++) {
       if (sList.at(i).toUInt() > sList.at(j).toUInt()) {
-        sList.swap(i,j);
+        sList.swap(i, j);
       }
     }
   }
@@ -135,7 +138,8 @@ QList<uint> FileUtils::parseUIntString(const QString& s, QString& result)
 
   // Check for series to hyphenate
   for (int i = 0; i < sList.size() - 2; i++) {
-    if ( (sList.at(i).toUInt() + 1 == sList.at(i + 1).toUInt()) && (sList.at(i + 1).toUInt() + 1 == sList.at(i + 2).toUInt()) ) {
+    if ((sList.at(i).toUInt() + 1 == sList.at(i + 1).toUInt()) &&
+        (sList.at(i + 1).toUInt() + 1 == sList.at(i + 2).toUInt())) {
       series.replace(i, true);
       series.replace(i + 1, true);
       series.replace(i + 2, true);
@@ -147,29 +151,28 @@ QList<uint> FileUtils::parseUIntString(const QString& s, QString& result)
     if (series.at(i) == false) {
       if (i + 1 == sList.size()) {
         string << sList.at(i).trimmed();
-      }
-      else if (i + 1 != sList.size()) {
+      } else if (i + 1 != sList.size()) {
         string << sList.at(i).trimmed() << ", ";
       }
-    }
-    else if (series.at(i) == true) {
+    } else if (series.at(i) == true) {
       uint seriesLength = 1;
       int j = i + 1;
-      while ( (j != sList.size()) && (series.at(j) == true) && ( sList.at(j - 1).toUInt() + 1 == sList.at(j).toUInt() ) ) {
+      while ((j != sList.size()) && (series.at(j) == true) &&
+             (sList.at(j - 1).toUInt() + 1 == sList.at(j).toUInt())) {
         seriesLength += 1;
         j++;
       }
       if (i + seriesLength == sList.size()) {
         string << sList.at(i).trimmed() << " - " << sList.at(j - 1).trimmed();
-      }
-      else if (i + seriesLength != sList.size()) {
-        string << sList.at(i).trimmed() << " - " << sList.at(j - 1).trimmed() << ", ";
+      } else if (i + seriesLength != sList.size()) {
+        string << sList.at(i).trimmed() << " - " << sList.at(j - 1).trimmed()
+               << ", ";
       }
       i = i + seriesLength - 1;
     }
   }
 
-  //Create the uintList
+  // Create the uintList
   QList<uint> uintList;
   uintList.clear();
   for (int i = 0; i < sList.size(); i++) {

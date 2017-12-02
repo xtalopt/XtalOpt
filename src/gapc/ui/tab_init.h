@@ -20,31 +20,31 @@
 #include "ui_tab_init.h"
 
 namespace GAPC {
-  class GAPCDialog;
-  class OptGAPC;
+class GAPCDialog;
+class OptGAPC;
 
-  class TabInit : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
+class TabInit : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabInit( GAPCDialog *parent, OptGAPC *p );
-    virtual ~TabInit();
+public:
+  explicit TabInit(GAPCDialog* parent, OptGAPC* p);
+  virtual ~TabInit();
 
-  public slots:
-    void lockGUI();
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void updateGUI();
-    void getComposition(const QString & str);
-    void updateComposition();
-    void updateParams();
+public slots:
+  void lockGUI();
+  void readSettings(const QString& filename = "");
+  void writeSettings(const QString& filename = "");
+  void updateGUI();
+  void getComposition(const QString& str);
+  void updateComposition();
+  void updateParams();
 
-  signals:
+signals:
 
-  private:
-    Ui::Tab_Init ui;
-  };
+private:
+  Ui::Tab_Init ui;
+};
 }
 
 #endif

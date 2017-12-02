@@ -15,55 +15,56 @@
 #ifndef XTALOPTTEST_H
 #define XTALOPTTEST_H
 
-#include <QObject>
 #include <QDateTime>
+#include <QObject>
 
 class QProgressDialog;
 
 namespace XtalOpt {
 
-  class XtalOpt;
-  class XtalOptDialog;
+class XtalOpt;
+class XtalOptDialog;
 
-  class XtalOptTest : public QObject
-  {
-    Q_OBJECT
+class XtalOptTest : public QObject
+{
+  Q_OBJECT
 
-   public:
-    XtalOptTest(XtalOpt *p, QObject *parent = 0);
-    virtual ~XtalOptTest() override;
+public:
+  XtalOptTest(XtalOpt* p, QObject* parent = 0);
+  virtual ~XtalOptTest() override;
 
-    void start();
-    void gatherData();
-    void showDialog();
-    void generateRun(int run);
-    void writeDataFile(int run);
-    void resetOpt();
-    bool isFinished();
-    int getCurrentStructure();
+  void start();
+  void gatherData();
+  void showDialog();
+  void generateRun(int run);
+  void writeDataFile(int run);
+  void resetOpt();
+  bool isFinished();
+  int getCurrentStructure();
 
-   signals:
-    void testStarting();
-    void newMessage(const QString &);
-    void status();
-    void sig_updateProgressDialog();
+signals:
+  void testStarting();
+  void newMessage(const QString&);
+  void status();
+  void sig_updateProgressDialog();
 
-   public slots:
-    void updateMessage(const QString &);
-    void updateStatus();
-    void updateProgressDialog();
-    void outputStatus(const QString&,int,int,int,int,int,int);
+public slots:
+  void updateMessage(const QString&);
+  void updateStatus();
+  void updateProgressDialog();
+  void outputStatus(const QString&, int, int, int, int, int, int);
 
-   private slots:
+private slots:
 
-   private:
-    QProgressDialog *m_prog;
-    int m_currentRun, m_numberRuns, m_startRun, m_endRun, m_currentStructure, m_numberStructures, m_totalNumberStructures;
-    QString m_message;
-    QDateTime m_begin;
-    XtalOpt *m_opt;
-    XtalOptDialog *m_dialog;
-  };
+private:
+  QProgressDialog* m_prog;
+  int m_currentRun, m_numberRuns, m_startRun, m_endRun, m_currentStructure,
+    m_numberStructures, m_totalNumberStructures;
+  QString m_message;
+  QDateTime m_begin;
+  XtalOpt* m_opt;
+  XtalOptDialog* m_dialog;
+};
 } // end namespace XtalOpt
 
 #endif

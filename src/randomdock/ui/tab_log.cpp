@@ -14,40 +14,40 @@
 
 #include <randomdock/ui/tab_log.h>
 
-#include <randomdock/ui/dialog.h>
-#include <randomdock/randomdock.h>
 #include <globalsearch/macros.h>
+#include <randomdock/randomdock.h>
+#include <randomdock/ui/dialog.h>
 
-#include <QSettings>
 #include <QDateTime>
+#include <QSettings>
 
 using namespace std;
 using namespace Avogadro;
 
 namespace RandomDock {
 
-  TabLog::TabLog( RandomDockDialog *dialog, RandomDock *opt ) :
-    AbstractTab(dialog, opt)
-  {
-    ui.setupUi(m_tab_widget);
+TabLog::TabLog(RandomDockDialog* dialog, RandomDock* opt)
+  : AbstractTab(dialog, opt)
+{
+  ui.setupUi(m_tab_widget);
 
-    // Log
-    connect(dialog, SIGNAL(newLog(QString)),
-            this, SLOT(newLog(QString)));
+  // Log
+  connect(dialog, SIGNAL(newLog(QString)), this, SLOT(newLog(QString)));
 
-    initialize();
-  }
+  initialize();
+}
 
-  TabLog::~TabLog()
-  {
-  }
+TabLog::~TabLog()
+{
+}
 
-  void TabLog::newLog(const QString & info)
-  {
-    QString entry;
-    QString timestamp = QDateTime::currentDateTime().toString("MM/dd/yyyy hh:mm:ss (zzz) -- ");
+void TabLog::newLog(const QString& info)
+{
+  QString entry;
+  QString timestamp =
+    QDateTime::currentDateTime().toString("MM/dd/yyyy hh:mm:ss (zzz) -- ");
 
-    entry = timestamp + info;
-    ui.list_list->addItem(entry);
-  }
+  entry = timestamp + info;
+  ui.list_list->addItem(entry);
+}
 }

@@ -23,8 +23,9 @@
 
 typedef unsigned int uint;
 
-class ElemInfo {
- public:
+class ElemInfo
+{
+public:
   static std::string getAtomicSymbol(uint atomicNum);
 
   static double getAtomicMass(uint atomicNum);
@@ -64,7 +65,7 @@ class ElemInfo {
 
   static double getRadius(uint atomicNum, bool usingVdwRadius);
 
- private:
+private:
   // Retain a copy of the database pieces here so they may be edited
   static std::vector<std::string> atomicSymbols;
   static std::vector<double> masses;

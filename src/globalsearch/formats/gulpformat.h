@@ -20,18 +20,18 @@ class QString;
 
 namespace GlobalSearch {
 
-  // Forward declaration
-  class Structure;
+// Forward declaration
+class Structure;
 
-  /**
-   * @class The General Utility Lattice Program (GULP) format.
-   *        http://gulp.curtin.edu.au/gulp/
-   */
-  class GulpFormat {
-   public:
-    static bool read(Structure* s, const QString& filename);
-  };
-
+/**
+ * @class The General Utility Lattice Program (GULP) format.
+ *        http://gulp.curtin.edu.au/gulp/
+ */
+class GulpFormat
+{
+public:
+  static bool read(Structure* s, const QString& filename);
+};
 }
 
 #endif // GLOBALSEARCH_GULP_FORMAT_H

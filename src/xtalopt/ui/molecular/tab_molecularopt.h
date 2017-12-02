@@ -20,35 +20,35 @@
 #include "ui_tab_molecularopt.h"
 
 namespace GlobalSearch {
-  class AbstractDialog;
+class AbstractDialog;
 }
 
 namespace XtalOpt {
-  class XtalOpt;
+class XtalOpt;
 
-  class TabMolecularOpt : public GlobalSearch::AbstractTab
-  {
-    Q_OBJECT
+class TabMolecularOpt : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
 
-  public:
-    explicit TabMolecularOpt(GlobalSearch::AbstractDialog *parent, XtalOpt *p );
-    virtual ~TabMolecularOpt() override;
+public:
+  explicit TabMolecularOpt(GlobalSearch::AbstractDialog* parent, XtalOpt* p);
+  virtual ~TabMolecularOpt() override;
 
-  public slots:
-    void lockGUI() override;
-    void readSettings(const QString &filename = "") override;
-    void writeSettings(const QString &filename = "") override;
-    void updateGUI() override;
-    void updateOptimizationInfo();
-    void addSeed(QListWidgetItem *item = nullptr);
-    void removeSeed();
-    void updateSeeds();
+public slots:
+  void lockGUI() override;
+  void readSettings(const QString& filename = "") override;
+  void writeSettings(const QString& filename = "") override;
+  void updateGUI() override;
+  void updateOptimizationInfo();
+  void addSeed(QListWidgetItem* item = nullptr);
+  void removeSeed();
+  void updateSeeds();
 
-  signals:
+signals:
 
-  private:
-    Ui::TabMolecularOpt ui;
-  };
+private:
+  Ui::TabMolecularOpt ui;
+};
 }
 
 #endif

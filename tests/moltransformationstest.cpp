@@ -13,8 +13,8 @@
   limitations under the License.
  **********************************************************************/
 
-#include <globalsearch/structures/molecule.h>
 #include <globalsearch/molecular/moltransformations.h>
+#include <globalsearch/structures/molecule.h>
 
 #include <QDebug>
 #include <QString>
@@ -28,13 +28,13 @@ class MolTransformationsTest : public QObject
 {
   Q_OBJECT
 
- public:
+public:
   MolTransformationsTest();
 
- private:
+private:
   double m_tol;
 
- private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -63,8 +63,7 @@ class MolTransformationsTest : public QObject
   void translateMolecule();
 };
 
-MolTransformationsTest::MolTransformationsTest()
-  : m_tol(1.e-5)
+MolTransformationsTest::MolTransformationsTest() : m_tol(1.e-5)
 {
 }
 
@@ -106,8 +105,8 @@ void MolTransformationsTest::setMeanPosition()
 
   MolTransformations::setMeanPosition(mol, newMeanPos);
 
-  QVERIFY(fuzzyCompare(MolTransformations::getMeanPosition(mol),
-                       newMeanPos, m_tol));
+  QVERIFY(
+    fuzzyCompare(MolTransformations::getMeanPosition(mol), newMeanPos, m_tol));
 }
 
 void MolTransformationsTest::centerMolecule()
@@ -125,8 +124,8 @@ void MolTransformationsTest::centerMolecule()
   QVERIFY(fuzzyCompare(MolTransformations::getMeanPosition(mol),
                        Vector3(0.00000, 0.00000, 0.00000), m_tol));
 
-  QVERIFY(fuzzyCompare(mol.atom(0).pos(),
-                       Vector3(0.66667, -0.33333, -0.33333), m_tol));
+  QVERIFY(fuzzyCompare(mol.atom(0).pos(), Vector3(0.66667, -0.33333, -0.33333),
+                       m_tol));
 }
 
 void MolTransformationsTest::rotateMolecule()
@@ -139,22 +138,21 @@ void MolTransformationsTest::rotateMolecule()
   MolTransformations::rotateMolecule(mol, 2, 60.0 * DEG2RAD);
 
   // New position of the first atom should be as follows
-  QVERIFY(fuzzyCompare(mol.atom(0).pos(),
-                       Vector3(-0.366025, 1.366025, 0.00000), m_tol));
+  QVERIFY(fuzzyCompare(mol.atom(0).pos(), Vector3(-0.366025, 1.366025, 0.00000),
+                       m_tol));
 
   // The atom on the z-axis should be in the same position
-  QVERIFY(fuzzyCompare(mol.atom(2).pos(),
-                       Vector3(0.00000, 0.00000, 1.00000), m_tol));
+  QVERIFY(
+    fuzzyCompare(mol.atom(2).pos(), Vector3(0.00000, 0.00000, 1.00000), m_tol));
 
   // Restore it to its original state
   MolTransformations::rotateMolecule(mol, 2, -60.0 * DEG2RAD);
 
   // Now let's test multiple rotations at once
-  MolTransformations::rotateMolecule(mol, 0.0,
-                                     90.0 * DEG2RAD, 90.0 * DEG2RAD);
+  MolTransformations::rotateMolecule(mol, 0.0, 90.0 * DEG2RAD, 90.0 * DEG2RAD);
 
-  QVERIFY(fuzzyCompare(mol.atom(2).pos(),
-                       Vector3(0.00000, -1.00000, 0.00000), m_tol));
+  QVERIFY(fuzzyCompare(mol.atom(2).pos(), Vector3(0.00000, -1.00000, 0.00000),
+                       m_tol));
 }
 
 void MolTransformationsTest::translateMolecule()
@@ -166,12 +164,12 @@ void MolTransformationsTest::translateMolecule()
 
   MolTransformations::translateMolecule(mol, 1.0, 0.0, -0.5);
 
-  QVERIFY(fuzzyCompare(mol.atom(0).pos(),
-                       Vector3(2.00000,  0.00000, -0.50000), m_tol));
-  QVERIFY(fuzzyCompare(mol.atom(1).pos(),
-                       Vector3(1.00000,  1.00000, -0.50000), m_tol));
-  QVERIFY(fuzzyCompare(mol.atom(2).pos(),
-                       Vector3(1.00000,  0.00000,  0.50000), m_tol));
+  QVERIFY(fuzzyCompare(mol.atom(0).pos(), Vector3(2.00000, 0.00000, -0.50000),
+                       m_tol));
+  QVERIFY(fuzzyCompare(mol.atom(1).pos(), Vector3(1.00000, 1.00000, -0.50000),
+                       m_tol));
+  QVERIFY(
+    fuzzyCompare(mol.atom(2).pos(), Vector3(1.00000, 0.00000, 0.50000), m_tol));
 }
 
 QTEST_MAIN(MolTransformationsTest)

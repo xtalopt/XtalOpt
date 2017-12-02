@@ -20,42 +20,43 @@
 #include "ui_tab_init.h"
 
 namespace RandomDock {
-  class RandomDockDialog;
-  class RandomDock;
-  class Substrate;
-  class Matrix;
+class RandomDockDialog;
+class RandomDock;
+class Substrate;
+class Matrix;
 
-  class TabInit : public GlobalSearch::AbstractTab
+class TabInit : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
+
+public:
+  explicit TabInit(RandomDockDialog* dialog, RandomDock* opt);
+  virtual ~TabInit();
+
+  enum Columns
   {
-    Q_OBJECT
-
-  public:
-    explicit TabInit( RandomDockDialog *dialog, RandomDock *opt );
-    virtual ~TabInit();
-
-    enum Columns {
-      Num = 0,
-      Stoich,
-      Filename
-    };
-
-  public slots:
-    void lockGUI();
-    void updateParams();
-    void substrateBrowse();
-    void substrateCurrent();
-    void matrixAdd();
-    void matrixRemove();
-    void matrixCurrent();
-
-  signals:
-    void substrateChanged(Substrate*);
-    void matrixAdded(Matrix*);
-    void matrixRemoved();
-
-  private:
-    Ui::Tab_Init ui;
+    Num = 0,
+    Stoich,
+    Filename
   };
+
+public slots:
+  void lockGUI();
+  void updateParams();
+  void substrateBrowse();
+  void substrateCurrent();
+  void matrixAdd();
+  void matrixRemove();
+  void matrixCurrent();
+
+signals:
+  void substrateChanged(Substrate*);
+  void matrixAdded(Matrix*);
+  void matrixRemoved();
+
+private:
+  Ui::Tab_Init ui;
+};
 }
 
 #endif

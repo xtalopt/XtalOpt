@@ -20,29 +20,23 @@
 
 namespace GlobalSearch {
 
-  SSHConnection::SSHConnection(SSHManager *parent)
-    : QObject(parent),
-      m_host(""),
-      m_user(""),
-      m_pass(""),
-      m_port(22)
-  {
-  }
+SSHConnection::SSHConnection(SSHManager* parent)
+  : QObject(parent), m_host(""), m_user(""), m_pass(""), m_port(22)
+{
+}
 
-  SSHConnection::~SSHConnection()
-  {
-  }
+SSHConnection::~SSHConnection()
+{
+}
 
-  void SSHConnection::setLoginDetails(const QString &host,
-                                      const QString &user,
-                                      const QString &pass,
-                                      int port)
-  {
-    m_host = host;
-    m_user = user;
-    m_pass = pass;
-    m_port = port;
-  }
+void SSHConnection::setLoginDetails(const QString& host, const QString& user,
+                                    const QString& pass, int port)
+{
+  m_host = host;
+  m_user = user;
+  m_pass = pass;
+  m_port = port;
+}
 
 } // end namespace GlobalSearch
 

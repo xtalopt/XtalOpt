@@ -22,13 +22,12 @@ using namespace Avogadro;
 
 namespace RandomDock {
 
-  Scene::Scene(QObject *parent) :
-    Structure(parent)
-  {
-  }
+Scene::Scene(QObject* parent) : Structure(parent)
+{
+}
 
-  Scene::~Scene()
-  {
-  }
+Scene::~Scene()
+{
+}
 
 } // end namespace RandomDock

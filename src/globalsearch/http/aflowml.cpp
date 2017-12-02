@@ -17,21 +17,19 @@
 #include <thread> // for sleep
 
 #include <QDebug>
-#include <QtConcurrent>
 #include <QEventLoop>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkRequest>
+#include <QtConcurrent>
 
 #include "aflowml.h"
 #include "httprequestmanager.h"
 
-AflowML::AflowML(
-    const std::shared_ptr<QNetworkAccessManager>& networkManager,
-    QObject* parent) :
- QObject(parent),
- m_httpRequestManager(networkManager, parent),
- m_requestCounter(0)
+AflowML::AflowML(const std::shared_ptr<QNetworkAccessManager>& networkManager,
+                 QObject* parent)
+  : QObject(parent), m_httpRequestManager(networkManager, parent),
+    m_requestCounter(0)
 {
   // Qt is not aware of size_t for some reason...
   qRegisterMetaType<size_t>("size_t");
@@ -47,8 +45,8 @@ void AflowML::checkLoop(QUrl url, size_t requestId)
     QEventLoop loop;
 
     // Quit the event loop when we get a response.
-    connect(&m_httpRequestManager, &HttpRequestManager::received,
-            &loop, &QEventLoop::quit);
+    connect(&m_httpRequestManager, &HttpRequestManager::received, &loop,
+            &QEventLoop::quit);
 
     size_t replyInd = m_httpRequestManager.sendGet(url);
 
@@ -73,7 +71,8 @@ void AflowML::checkLoop(QUrl url, size_t requestId)
     // It should contain a "status" entry
     if (!rootObject.contains("status")) {
       qDebug() << "Error in AflowML:" << __FUNCTION__
-               << ": invalid aflow response:\n" << response;
+               << ": invalid aflow response:\n"
+               << response;
       return;
     }
 
@@ -91,12 +90,13 @@ void AflowML::checkLoop(QUrl url, size_t requestId)
 
     if (status != "SUCCESS") {
       qDebug() << "Error in AflowML:" << __FUNCTION__
-               << ": job was not successful:\n" << response;
+               << ": job was not successful:\n"
+               << response;
       return;
     }
 
     AflowMLData data;
-    for (const auto& key: rootObject.keys()) {
+    for (const auto& key : rootObject.keys()) {
       data[key.toStdString()] =
         rootObject.value(key).toVariant().toString().toStdString();
     }
@@ -127,8 +127,8 @@ void AflowML::_submitPoscar(QString poscar, size_t requestId)
   QEventLoop loop;
 
   // Quit the event loop when we get a response.
-  connect(&m_httpRequestManager, &HttpRequestManager::received,
-          &loop, &QEventLoop::quit);
+  connect(&m_httpRequestManager, &HttpRequestManager::received, &loop,
+          &QEventLoop::quit);
 
   QByteArray poscarData = "file=" + QUrl::toPercentEncoding(poscar);
 

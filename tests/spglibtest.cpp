@@ -30,10 +30,10 @@ class SPGLibTest : public QObject
 {
   Q_OBJECT
 
-  private:
-  Xtal *m_xtal;
+private:
+  Xtal* m_xtal;
 
-  private slots:
+private slots:
   /**
    * Called before the first test function is executed.
    */
@@ -90,7 +90,8 @@ void SPGLibTest::cleanup()
   }
 }
 
-void SPGLibTest::idealBCC() {
+void SPGLibTest::idealBCC()
+{
   m_xtal->setCellInfo(3.0, 3.0, 3.0, 90.0, 90.0, 90.0);
 
   // Build bcc structure
@@ -106,11 +107,14 @@ void SPGLibTest::idealBCC() {
   m_xtal->findSpaceGroup();
   QCOMPARE(m_xtal->getSpaceGroupNumber(), 229U);
   QCOMPARE(m_xtal->getSpaceGroupSymbol(), QString("Im-3m"));
-  QCOMPARE(m_xtal->getHTMLSpaceGroupSymbol(),
-           QString("<HTML>Im<span style=\"text-decoration: overline\">3</span>m</HTML>"));
+  QCOMPARE(
+    m_xtal->getHTMLSpaceGroupSymbol(),
+    QString(
+      "<HTML>Im<span style=\"text-decoration: overline\">3</span>m</HTML>"));
 }
 
-void SPGLibTest::fromPio1() {
+void SPGLibTest::fromPio1()
+{
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
 
@@ -153,7 +157,8 @@ Direct\n\
   QCOMPARE(xtal.getSpaceGroupSymbol(), QString("Cmc2_1"));
 }
 
-void SPGLibTest::fromPio2() {
+void SPGLibTest::fromPio2()
+{
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
 
@@ -194,7 +199,8 @@ Direct\n\
   QCOMPARE(xtal.getSpaceGroupSymbol(), QString("Pc"));
 }
 
-void SPGLibTest::fromPio3() {
+void SPGLibTest::fromPio3()
+{
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
 
@@ -235,7 +241,8 @@ Direct\n\
   QCOMPARE(xtal.getSpaceGroupSymbol(), QString("Pc"));
 }
 
-void SPGLibTest::fromPio4() {
+void SPGLibTest::fromPio4()
+{
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
 
@@ -276,7 +283,8 @@ Direct\n\
   QCOMPARE(xtal.getSpaceGroupSymbol(), QString("Cm"));
 }
 
-void SPGLibTest::fromPio5() {
+void SPGLibTest::fromPio5()
+{
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
 
@@ -317,7 +325,8 @@ Direct\n\
   QCOMPARE(xtal.getSpaceGroupSymbol(), QString("C2"));
 }
 
-void SPGLibTest::fromPio6() {
+void SPGLibTest::fromPio6()
+{
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
 
@@ -358,7 +367,8 @@ Direct\n\
   QCOMPARE(xtal.getSpaceGroupSymbol(), QString("R3c"));
 }
 
-void SPGLibTest::fromPio7() {
+void SPGLibTest::fromPio7()
+{
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
 
@@ -398,7 +408,8 @@ Direct\n\
   QCOMPARE(xtal.getSpaceGroupSymbol(), QString("R3c"));
 }
 
-void SPGLibTest::fromPio8() {
+void SPGLibTest::fromPio8()
+{
   // This is part of a collection of POSCARs that Pio Baettig found
   // that gave different results in FINDSYM from what spglib reported.
 

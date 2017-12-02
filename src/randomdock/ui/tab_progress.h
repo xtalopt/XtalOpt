@@ -26,88 +26,90 @@ class QTimer;
 class QMutex;
 
 namespace GlobalSearch {
-  class Structure;
+class Structure;
 }
 
 namespace RandomDock {
-  class RandomDockDialog;
-  class RandomDock;
-  class Scene;
+class RandomDockDialog;
+class RandomDock;
+class Scene;
 
-  struct RD_Prog_TableEntry {
-    int rank;
-    int id;
-    int jobID;
-    double energy;
-    QString elapsed;
-    QString status;
-    QBrush brush;
-  };
+struct RD_Prog_TableEntry
+{
+  int rank;
+  int id;
+  int jobID;
+  double energy;
+  QString elapsed;
+  QString status;
+  QBrush brush;
+};
 
-  class TabProgress : public GlobalSearch::AbstractTab
+class TabProgress : public GlobalSearch::AbstractTab
+{
+  Q_OBJECT
+
+public:
+  explicit TabProgress(RandomDockDialog* parent, RandomDock* p);
+  virtual ~TabProgress();
+
+  enum ProgressColumns
   {
-    Q_OBJECT
-
-  public:
-    explicit TabProgress( RandomDockDialog *parent, RandomDock *p );
-    virtual ~TabProgress();
-
-    enum ProgressColumns {
-      C_Rank = 0,
-      C_Index,
-      C_Energy,
-      C_Elapsed,
-      C_JobID,
-      C_Status
-    };
-
-  public slots:
-    void readSettings(const QString &filename = "");
-    void writeSettings(const QString &filename = "");
-    void disconnectGUI();
-    void addNewEntry();
-    void newInfoUpdate(GlobalSearch::Structure *);
-    void updateInfo();
-    void updateAllInfo();
-    void updateProgressTable();
-    void setTableEntry(int row, const RD_Prog_TableEntry& e);
-    void selectMoleculeFromProgress(int,int,int,int);
-    void highlightScene(GlobalSearch::Structure *structure);
-    void startTimer();
-    void stopTimer();
-    void progressContextMenu(QPoint);
-    void restartJobProgress();
-    void killSceneProgress();
-    void unkillSceneProgress();
-    void resetFailureCountProgress();
-    void randomizeStructureProgress();
-    void enableRowTracking() {rowTracking = true;};
-    void disableRowTracking() {rowTracking = false;};
-
-  signals:
-    void deleteJob(int);
-    void updateStatus(int opt, int run, int queue, int fail);
-    void infoUpdate();
-    void updateTableEntry(int row, const RD_Prog_TableEntry& e);
-
-  private:
-    Ui::Tab_Progress ui;
-    QTimer *m_timer;
-    QMutex *m_mutex;
-    QMutex *m_update_mutex;
-    QMutex *m_update_all_mutex;
-    Scene *m_context_scene;
-    bool rowTracking;
-
-    GlobalSearch::Tracker m_infoUpdateTracker;
-
-    void updateInfo_();
-    void restartJobProgress_(int incar);
-    void killSceneProgress_();
-    void unkillSceneProgress_();
-    void resetFailureCountProgress_();
-    void randomizeStructureProgress_();
+    C_Rank = 0,
+    C_Index,
+    C_Energy,
+    C_Elapsed,
+    C_JobID,
+    C_Status
   };
+
+public slots:
+  void readSettings(const QString& filename = "");
+  void writeSettings(const QString& filename = "");
+  void disconnectGUI();
+  void addNewEntry();
+  void newInfoUpdate(GlobalSearch::Structure*);
+  void updateInfo();
+  void updateAllInfo();
+  void updateProgressTable();
+  void setTableEntry(int row, const RD_Prog_TableEntry& e);
+  void selectMoleculeFromProgress(int, int, int, int);
+  void highlightScene(GlobalSearch::Structure* structure);
+  void startTimer();
+  void stopTimer();
+  void progressContextMenu(QPoint);
+  void restartJobProgress();
+  void killSceneProgress();
+  void unkillSceneProgress();
+  void resetFailureCountProgress();
+  void randomizeStructureProgress();
+  void enableRowTracking() { rowTracking = true; };
+  void disableRowTracking() { rowTracking = false; };
+
+signals:
+  void deleteJob(int);
+  void updateStatus(int opt, int run, int queue, int fail);
+  void infoUpdate();
+  void updateTableEntry(int row, const RD_Prog_TableEntry& e);
+
+private:
+  Ui::Tab_Progress ui;
+  QTimer* m_timer;
+  QMutex* m_mutex;
+  QMutex* m_update_mutex;
+  QMutex* m_update_all_mutex;
+  Scene* m_context_scene;
+  bool rowTracking;
+
+  GlobalSearch::Tracker m_infoUpdateTracker;
+
+  void updateInfo_();
+  void restartJobProgress_(int incar);
+  void killSceneProgress_();
+  void unkillSceneProgress_();
+  void resetFailureCountProgress_();
+  void randomizeStructureProgress_();
+};
 }
 
 #endif

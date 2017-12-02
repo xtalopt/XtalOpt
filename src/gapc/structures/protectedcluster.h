@@ -18,24 +18,22 @@
 #include <gapc/structures/cluster.h>
 
 namespace GAPC {
-  class ProtectedCluster : public Cluster
-  {
-    Q_OBJECT
+class ProtectedCluster : public Cluster
+{
+  Q_OBJECT
 
-   public:
-    ProtectedCluster(QObject *parent = 0);
-    virtual ~ProtectedCluster();
+public:
+  ProtectedCluster(QObject* parent = 0);
+  virtual ~ProtectedCluster();
 
-   signals:
+signals:
 
-   public slots:
+public slots:
 
-   private slots:
+private slots:
 
-   private:
-
-  };
-
+private:
+};
 }
 
 #endif

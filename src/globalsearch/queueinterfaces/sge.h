@@ -21,8 +21,8 @@
 // Tell doxygen to skip this file
 /// \cond
 
-#include <globalsearch/queueinterfaces/sgedialog.h>
 #include <globalsearch/queueinterfaces/remote.h>
+#include <globalsearch/queueinterfaces/sgedialog.h>
 
 #include <QDateTime>
 #include <QReadWriteLock>
@@ -31,39 +31,38 @@
 
 namespace GlobalSearch {
 
-  class SgeQueueInterface : public RemoteQueueInterface
-  {
-    Q_OBJECT
+class SgeQueueInterface : public RemoteQueueInterface
+{
+  Q_OBJECT
 
-  public:
-    explicit SgeQueueInterface(OptBase *parent,
-                               const QString &settingsFile = "");
+public:
+  explicit SgeQueueInterface(OptBase* parent, const QString& settingsFile = "");
 
-    virtual ~SgeQueueInterface() override;
+  virtual ~SgeQueueInterface() override;
 
-    virtual bool isReadyToSearch(QString *str) override;
+  virtual bool isReadyToSearch(QString* str) override;
 
-    QDialog* dialog() override;
+  QDialog* dialog() override;
 
-    friend class SgeConfigDialog;
+  friend class SgeConfigDialog;
 
-  public slots:
-    void readSettings(const QString &filename = "") override;
-    void writeSettings(const QString &filename = "") override;
-    bool startJob(Structure *s) override;
-    bool stopJob(Structure *s) override;
-    QueueInterface::QueueStatus getStatus(Structure *s) const override;
+public slots:
+  void readSettings(const QString& filename = "") override;
+  void writeSettings(const QString& filename = "") override;
+  bool startJob(Structure* s) override;
+  bool stopJob(Structure* s) override;
+  QueueInterface::QueueStatus getStatus(Structure* s) const override;
 
-  protected:
-    // Fetches the queue from the server
-    QStringList getQueueList() const;
-    // Cached queue data
-    QStringList m_queueData;
-    // Limits queue checks to once per second
-    QDateTime m_queueTimeStamp;
-    // Locks for m_queueData;
-    QReadWriteLock m_queueMutex;
-  };
+protected:
+  // Fetches the queue from the server
+  QStringList getQueueList() const;
+  // Cached queue data
+  QStringList m_queueData;
+  // Limits queue checks to once per second
+  QDateTime m_queueTimeStamp;
+  // Locks for m_queueData;
+  QReadWriteLock m_queueMutex;
+};
 }
 
 // End doxygen skip:

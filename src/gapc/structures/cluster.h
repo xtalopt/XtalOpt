@@ -17,32 +17,32 @@
 
 #include <globalsearch/structure.h>
 
-#include <QVariant>
 #include <QHash>
+#include <QVariant>
 
 namespace GAPC {
-  class Cluster : public GlobalSearch::Structure
-  {
-    Q_OBJECT
+class Cluster : public GlobalSearch::Structure
+{
+  Q_OBJECT
 
-   public:
-    Cluster(QObject *parent = 0);
-    virtual ~Cluster();
+public:
+  Cluster(QObject* parent = 0);
+  virtual ~Cluster();
 
-   signals:
+signals:
 
-   public slots:
-    void constructRandomCluster(const QHash<unsigned int, unsigned int> &comp, float minIAD, float maxIAD);
-    void centerAtoms();
-    QHash<QString, QVariant> getFingerprint() const;
-    bool checkForExplosion(double rcut) const;
-    void expand(double factor);
+public slots:
+  void constructRandomCluster(const QHash<unsigned int, unsigned int>& comp,
+                              float minIAD, float maxIAD);
+  void centerAtoms();
+  QHash<QString, QVariant> getFingerprint() const;
+  bool checkForExplosion(double rcut) const;
+  void expand(double factor);
 
-   private slots:
+private slots:
 
-   private:
-
-  };
+private:
+};
 
 } // end namespace GAPC
 
