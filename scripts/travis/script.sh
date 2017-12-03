@@ -2,7 +2,8 @@
 
 if [[ "$NAME" == "clang-format" ]]; then
   cd $TRAVIS_BUILD_DIR
-  exit $(./scripts/travis/run_clang_format_diff.sh master $TRAVIS_COMMIT)
+  ./scripts/travis/run_clang_format_diff.sh master $TRAVIS_COMMIT
+  exit
 fi
 
 # Before script
