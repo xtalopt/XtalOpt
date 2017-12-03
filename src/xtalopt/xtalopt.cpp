@@ -14,13 +14,13 @@
 
 #include <xtalopt/xtalopt.h>
 
-#include <xtalopt/cliOptions.h>
 #include <xtalopt/genetic.h>
 #include <xtalopt/optimizers/optimizers.h>
 #include <xtalopt/rpc/xtaloptrpc.h>
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/ui/randSpgDialog.h>
+#include <xtalopt/cliOptions.h>
 
 #include <randSpg/include/xtaloptWrapper.h>
 
