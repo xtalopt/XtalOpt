@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [[ "$NAME" == "clang-format" ]]; then
+  cd $TRAVIS_BUILD_DIR
+  exit $(./scripts/travis/run_clang_format_diff.sh master $TRAVIS_COMMIT)
+fi
+
 # Before script
 # For Linux, we have to load the travis-ci display to run the tests even
 # though we don't actually need the display...

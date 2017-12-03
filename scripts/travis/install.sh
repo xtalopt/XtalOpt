@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Just exit if this is clang-format
+if [[ "$NAME" == "clang-format" ]]; then
+  exit 0
+fi
+
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
   # Before install
   brew update

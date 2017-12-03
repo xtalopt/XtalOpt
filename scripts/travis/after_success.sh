@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Just exit if this is clang-format
+if [[ "$NAME" == "clang-format" ]]; then
+  exit 0
+fi
+
 # For GCC only: capture coverage info, filter out system, print debug info,
 # and upload to codecov
 if [[ "$NAME" == "gcc-4.8" ]]; then
