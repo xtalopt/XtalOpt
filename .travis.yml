@@ -2,45 +2,36 @@ sudo: required
 dist: trusty
 
 language: cpp
+compiler: gcc
 
 matrix:
   include:
-    - compiler: gcc
-      env:
-         - NAME="gcc-4.8"
+    - env: NAME="gcc-4.8"
 
     # works on Precise and Trusty
-    - compiler: gcc
-      addons:
+    - addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-5
+          sources: ubuntu-toolchain-r-test
+          packages: g++-5
       env:
          - NAME="gcc-5.4"
          - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
 
     # works on Precise and Trusty
-    - compiler: gcc
-      addons:
+    - addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-6
+          sources: ubuntu-toolchain-r-test
+          packages: g++-6
       env:
         - NAME="gcc-6.3"
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
 
     - compiler: clang
-      env:
-        - NAME="clang-3.5"
+      env: NAME="clang-3.5"
 
     - os: osx
       osx_image: xcode8
-      env:
-        - NAME="xcode-8.0"
+      env: NAME="xcode-8.0"
 
 install: $TRAVIS_BUILD_DIR/scripts/travis/install.sh
 
