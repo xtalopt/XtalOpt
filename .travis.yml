@@ -25,27 +25,18 @@ matrix:
     - addons:
         apt:
           sources: ubuntu-toolchain-r-test
-          packages: g++-5
-      env:
-         - NAME="gcc-5.4"
-         - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
-
-    # works on Precise and Trusty
-    - addons:
-        apt:
-          sources: ubuntu-toolchain-r-test
           packages: g++-6
       env:
         - NAME="gcc-6.3"
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
 
     - compiler: clang
-      env: NAME="clang-3.5"
+      env: NAME="clang-3.9"
 
     - os: osx
       osx_image: xcode8
       compiler:
-      env: NAME="xcode-8.0"
+      env: NAME="xcode-8.3"
 
 install: $TRAVIS_BUILD_DIR/scripts/travis/install.sh
 
