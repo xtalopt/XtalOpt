@@ -556,25 +556,24 @@ bool ZMatrixFormat::writeSiestaZMatrix(Structure& s, std::ostream& out,
     // If we don't have an angleInd, put in spherical coordinates relative
     // to the first for r, a, t
     if (entry.angleInd == -1) {
-      // First, the angle between the z-axis and the displacement vector
       const Vector3& pos1 = s.atom(entry.rInd).pos();
       const Vector3& pos2 = s.atom(entry.ind).pos();
-      const Vector3& zPoint = pos1 + Vector3(0.0, 0.0, 0.1);
-      out << " " << std::setw(15) << std::fixed << std::setprecision(8)
-          << s.angle(pos2, pos1, zPoint);
 
-      // Next, we need an angle between the x-axis and the projection of
-      // the displacement vector on the x-y plane.
-      const Vector3& xPoint = pos1 + Vector3(0.1, 0.0, 0.0);
-      // Use pos1[2] for the third component because we are treating
-      // the z component of pos1 as the zero.
-      const Vector3& xyComponent = Vector3(pos2[0], pos2[1], pos1[2]);
-      double angle = s.angle(xPoint, pos1, xyComponent);
+      // We need to use the minimum image here to take into account unit
+      // cell boundaries
+      Vector3 relPos = s.unitCell().minimumImage(pos2 - pos1);
 
-      // If our y-component is negative, we need to use 360 - angle instead
-      angle = (pos2[1] - pos1[1] >= 0.0 ? angle : 360.0 - angle);
+      double r = s.distance(entry.ind, entry.rInd);
+      // Get the angles for the spherical coordinates
+      double angle1 = acos(relPos[2] / r) * RAD2DEG;
+
+      double angle2 = atan2(relPos[1], relPos[0]) * RAD2DEG;
+
       out << " " << std::setw(15) << std::fixed << std::setprecision(8)
-          << angle;
+          << angle1;
+
+      out << " " << std::setw(15) << std::fixed << std::setprecision(8)
+          << angle2;
 
       // We might fix the distance, but we will not fix the angles
       out << "   " << !fixR << " 1 1\n";
@@ -590,7 +589,7 @@ bool ZMatrixFormat::writeSiestaZMatrix(Structure& s, std::ostream& out,
       const Vector3& pos1 = s.atom(entry.ind).pos();
       const Vector3& pos2 = s.atom(entry.rInd).pos();
       const Vector3& pos3 = s.atom(entry.angleInd).pos();
-      const Vector3& pos4 = pos3 + Vector3(0.0, 0.0, 1.0);
+      const Vector3& pos4 = pos3 + Vector3(0.00000, 0.00000, 1.00000);
       out << " " << std::setw(15) << std::fixed << std::setprecision(8)
           << s.dihedral(pos1, pos2, pos3, pos4);
 
