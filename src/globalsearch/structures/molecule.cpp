@@ -266,34 +266,20 @@ void Molecule::wrapMoleculesToSmallestBonds()
   }
 }
 
-double Molecule::angle(const Vector3& A, const Vector3& B,
-                       const Vector3& C) const
+double Molecule::angle(const Vector3& A, const Vector3& B, const Vector3& C)
 {
-  Vector3 AB = A - B;
-  Vector3 BC = C - B;
-
-  // If we have a unit cell, use the minimum images
-  if (hasUnitCell()) {
-    AB = unitCell().minimumImage(AB);
-    BC = unitCell().minimumImage(BC);
-  }
+  const Vector3& AB = A - B;
+  const Vector3& BC = C - B;
 
   return acos(AB.dot(BC) / (AB.norm() * BC.norm())) * RAD2DEG;
 }
 
 double Molecule::dihedral(const Vector3& A, const Vector3& B, const Vector3& C,
-                          const Vector3& D) const
+                          const Vector3& D)
 {
-  Vector3 AB = B - A;
-  Vector3 BC = C - B;
-  Vector3 CD = D - C;
-
-  // If we have a unit cell, use the minimum images
-  if (hasUnitCell()) {
-    AB = unitCell().minimumImage(AB);
-    BC = unitCell().minimumImage(BC);
-    CD = unitCell().minimumImage(CD);
-  }
+  const Vector3& AB = B - A;
+  const Vector3& BC = C - B;
+  const Vector3& CD = D - C;
 
   const Vector3& n1 = AB.cross(BC);
   const Vector3& n2 = BC.cross(CD);

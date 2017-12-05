@@ -253,8 +253,7 @@ public:
 
   /**
    * Get the angle (in degrees) between three points (where the second point
-   * is the vertex). If we have a valid unit cell, we will use the minimum
-   * images. Otherwise, we will just perform a regular angle calculation.
+   * is the vertex).
    *
    * @param A The first point.
    * @param B The second point (the vertex of the angle).
@@ -262,12 +261,11 @@ public:
    *
    * @return The angle in degrees.
    */
-  double angle(const Vector3& A, const Vector3& B, const Vector3& C) const;
+  static double angle(const Vector3& A, const Vector3& B, const Vector3& C);
 
   /**
    * Get the angle (in degrees) between three atoms (where the second atom is
-   * the vertex). If we have a valid unit cell, we will use the minimum
-   * images. Otherwise, we will just perform a regular angle calculation.
+   * the vertex).
    *
    * @param atomInd1 The first atom index.
    * @param atomInd2 The second atom index (the vertex of the angle).
@@ -280,8 +278,6 @@ public:
   /**
    * Get the dihedral angle (in degrees) created by four points where the
    * first three points form a plane and the last three points form a plane.
-   * If we have a valid unit cell, we will use the minimum images. Otherwise,
-   * we will just perform a regular dihedral angle calculation.
    *
    * @param A The first point.
    * @param B The second point.
@@ -290,14 +286,12 @@ public:
    *
    * @return The dihedral angle in degrees.
    */
-  double dihedral(const Vector3& A, const Vector3& B, const Vector3& C,
-                  const Vector3& D) const;
+  static double dihedral(const Vector3& A, const Vector3& B, const Vector3& C,
+                         const Vector3& D);
 
   /**
    * Get the dihedral angle (in degrees) created by four atoms where the
    * first three atoms form a plane and the last three atoms form a plane.
-   * If we have a valid unit cell, we will use the minimum images. Otherwise,
-   * we will just perform a regular dihedral angle calculation.
    *
    * @param atom1 The first atom index.
    * @param atom2 The second atom index.

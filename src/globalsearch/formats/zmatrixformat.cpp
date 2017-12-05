@@ -474,6 +474,9 @@ std::map<unsigned short, size_t> getSiestaSpeciesNumbers(const Structure& s)
 bool ZMatrixFormat::writeSiestaZMatrix(Structure& s, std::ostream& out,
                                        bool fixR, bool fixA, bool fixT)
 {
+  // We must perform a molecule wrap first
+  s.wrapMoleculesToSmallestBonds();
+
   std::vector<ZMatrixEntry> entries = generateZMatrixEntries(&s);
 
   if (entries.empty())

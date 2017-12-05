@@ -92,6 +92,9 @@ public:
    * re-ordered according to the z-matrix ordering, and the pre-optimization
    * bonding information will be stored.
    *
+   * A molecule wrap to the smallest bonds will always be performed on
+   * @param s.
+   *
    * @param s The structure for which to write the z-matrix.
    * @param out The output for the SIESTA z-matrix.
    * @param fixR Whether or not to fix all of the bond distances in the

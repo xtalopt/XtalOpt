@@ -762,12 +762,23 @@ void XtalTest::dihedralCalculationTest()
   QVERIFY(
     GlobalSearch::fuzzyCompare(xtal.dihedral(0, 1, 2, 3), -116.56505, tol));
 
-  // Wrap the atom into the unit cell. Because we use minimum images for
-  // dihedral calculations, the dihedral should remain the same.
-  xtal.wrapAtomsToCell();
+  // Try out a case where we found a bug calculating the dihedrals
+  xtal.clear();
 
-  QVERIFY(
-    GlobalSearch::fuzzyCompare(xtal.dihedral(0, 1, 2, 3), -116.56505, tol));
+  // xtal.setCellInfo(3.91187, 14.46650, 17.60200, 67.96050, 87.11340,
+  // 86.23450);
+
+  xtal.addAtom(1, GlobalSearch::Vector3(1.76391, 8.14756, 0.58282));
+  xtal.addAtom(1, GlobalSearch::Vector3(2.40147, 7.25420, 1.63496));
+  xtal.addAtom(1, GlobalSearch::Vector3(3.90214, 7.09537, 1.39932));
+  xtal.addAtom(1, GlobalSearch::Vector3(2.22368, 7.68422, 2.62761));
+  xtal.addAtom(1, GlobalSearch::Vector3(1.91516, 6.27194, 1.61540));
+
+  double dihedral1 = xtal.dihedral(3, 1, 0, 2); // Used to give -76.7699
+  double dihedral2 = xtal.dihedral(4, 1, 0, 2); // Used to give  40.1023
+
+  QVERIFY(abs(dihedral1 - 121.559) < 1.e-3);
+  QVERIFY(abs(dihedral2 + 121.559) < 1.e-3);
 }
 
 #endif
