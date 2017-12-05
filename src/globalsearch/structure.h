@@ -781,6 +781,50 @@ public:
    */
   const std::vector<Bond>& getPreoptBonding() const { return m_preoptBonds; }
 
+  /**
+   * Get the bulk modulus as calculated by Aflow machine learning.
+   *
+   * @return The bulk modulus (or -1.0 if it hasn't been set).
+   */
+  double bulkModulus() const { return m_bulkModulus; }
+
+  /**
+   * Get the shear modulus as calculated by Aflow machine learning.
+   *
+   * @return The shear modulus (or -1.0 if it hasn't been set).
+   */
+  double shearModulus() const { return m_shearModulus; }
+
+  /**
+   * Get the Vickers hardness as calculated with the Chen model involving
+   * the bulk and shear moduli from Aflow.
+   *
+   * @return The Vickers hardness (or -1.0 if it hasn't been set).
+   */
+  double vickersHardness() const { return m_vickersHardness; }
+
+  /**
+   * Set the bulk modulus (usually calculated via aflow machine learning).
+   *
+   * @param d The bulk modulus.
+   */
+  void setBulkModulus(double d) { m_bulkModulus = d; }
+
+  /**
+   * Set the shear modulus (usually calculated via aflow machine learning).
+   *
+   * @param d The shear modulus.
+   */
+  void setShearModulus(double d) { m_shearModulus = d; }
+
+  /**
+   * Set the Vickers hardness (usually calculated via aflow machine learning
+   * and the Chen model).
+   *
+   * @param d The Vickers hardness.
+   */
+  void setVickersHardness(double d) { m_vickersHardness = d; }
+
 signals:
 
 public slots:
@@ -1389,6 +1433,9 @@ protected:
 
   // The pre-optimization bonding information.
   std::vector<Bond> m_preoptBonds;
+
+  // AFLOW ML stuff
+  double m_bulkModulus, m_shearModulus, m_vickersHardness;
 
   // End doxygen skip:
   /// \endcond

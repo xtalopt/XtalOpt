@@ -44,7 +44,8 @@ Structure::Structure(QObject* parent)
 #ifdef ENABLE_MOLECULAR
     m_zValue(-1),
 #endif // ENABLE_MOLECULAR
-    m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true)
+    m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true),
+    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0)
 {
   m_currentOptStep = 0;
   setStatus(Empty);
@@ -60,7 +61,8 @@ Structure::Structure(const Structure& other)
 #ifdef ENABLE_MOLECULAR
     m_zValue(-1),
 #endif // ENABLE_MOLECULAR
-    m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true)
+    m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true),
+    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0)
 {
   *this = other;
 }
@@ -79,7 +81,8 @@ Structure::Structure(const GlobalSearch::Molecule& other)
 #ifdef ENABLE_MOLECULAR
     m_zValue(-1),
 #endif // ENABLE_MOLECULAR
-    m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true)
+    m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true),
+    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0)
 {
   *this = other;
 }
@@ -133,6 +136,9 @@ Structure& Structure::operator=(const Structure& other)
     m_parentStructure = other.m_parentStructure;
     m_copyFiles = other.m_copyFiles;
     m_reusePreoptBonding = other.m_reusePreoptBonding;
+    m_bulkModulus = other.m_bulkModulus;
+    m_shearModulus = other.m_shearModulus;
+    m_vickersHardness = other.m_vickersHardness;
   }
 
   return *this;
@@ -173,6 +179,9 @@ Structure& Structure::operator=(Structure&& other) noexcept
     other.m_parentStructure = nullptr;
     m_copyFiles = std::move(other.m_copyFiles);
     m_reusePreoptBonding = std::move(other.m_reusePreoptBonding);
+    m_bulkModulus = std::move(other.m_bulkModulus);
+    m_shearModulus = std::move(other.m_shearModulus);
+    m_vickersHardness = std::move(other.m_vickersHardness);
   }
 
   return *this;
@@ -239,6 +248,11 @@ void Structure::writeStructureSettings(const QString& filename)
       QString::number(m_parentStructure->getIDNumber());
     settings->setValue("parentStructure", parentStructure);
   }
+
+  // Aflow ML stuff
+  settings->setValue("bulkModulus", bulkModulus());
+  settings->setValue("shearModulus", shearModulus());
+  settings->setValue("vickersHardness", vickersHardness());
 
   // History
   settings->beginGroup("history");
@@ -379,6 +393,10 @@ void Structure::readStructureSettings(const QString& filename,
       settings->value("parentConformer", "").toString().toStdString());
     setZValue(settings->value("zValue", "-1").toInt());
 #endif // ENABLE_MOLECULAR
+
+    setBulkModulus(settings->value("bulkModulus", "-1.0").toDouble());
+    setShearModulus(settings->value("shearModulus", "-1.0").toDouble());
+    setVickersHardness(settings->value("vickersModulus", "-1.0").toDouble());
 
     // History
     settings->beginGroup("history");
