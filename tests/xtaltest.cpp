@@ -777,8 +777,8 @@ void XtalTest::dihedralCalculationTest()
   double dihedral1 = xtal.dihedral(3, 1, 0, 2); // Used to give -76.7699
   double dihedral2 = xtal.dihedral(4, 1, 0, 2); // Used to give  40.1023
 
-  QVERIFY(abs(dihedral1 - 121.559) < 1.e-3);
-  QVERIFY(abs(dihedral2 + 121.559) < 1.e-3);
+  QVERIFY(abs(dihedral1 - 121.5590987) < tol);
+  QVERIFY(abs(dihedral2 + 121.5686988) < tol);
 }
 
 #endif
