@@ -57,13 +57,13 @@
 namespace GlobalSearch {
 
 OptBase::OptBase(AbstractDialog* parent)
-  : QObject(parent), cutoff(-1),
+  : QObject(parent),
 #ifdef ENABLE_MOLECULAR
     m_initialMolFile(""), m_conformerOutDir(""), m_numConformersToGenerate(0),
     m_rmsdThreshold(0.1), m_maxOptIters(1000), m_mmffOptConfs(false),
     m_pruneConfsAfterOpt(true),
 #endif // ENABLE_MOLECULAR
-    testingMode(false), test_nRunsStart(1), test_nRunsEnd(100),
+    cutoff(-1), testingMode(false), test_nRunsStart(1), test_nRunsEnd(100),
     test_nStructs(600), stateFileMutex(new QMutex), readOnly(false),
     m_idString("Generic"),
 #ifdef ENABLE_SSH
