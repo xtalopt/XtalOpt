@@ -1165,6 +1165,12 @@ protected:
 public:
   /// Log error directories?
   bool m_logErrorDirs;
+
+  /// Calculate hardness using Aflow machine learning? (Requires internet)
+  bool m_calculateHardness;
+
+  /// Use hardness for the fitness function instead of enthalpy?
+  bool m_useHardnessFitnessFunction;
 };
 
 } // end namespace GlobalSearch

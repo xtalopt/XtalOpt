@@ -522,7 +522,7 @@ is a good value here.</string>
       <string>Tolerances</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
-      <item row="4" column="2">
+      <item row="5" column="2">
        <spacer name="verticalSpacer_2">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
@@ -737,6 +737,36 @@ is a good value here.</string>
           </widget>
          </item>
         </layout>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="QCheckBox" name="cb_calculateHardness">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;After the crystals are optimized, they will be sent to AFLOW's machine learning server in order to get an approximation of the bulk and shear moduli (which are then used to approximate the material's hardness).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;You must have a valid internet connection in order to use this.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Calculate hardness with Aflow ML?</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QGroupBox" name="groupBox_11">
+        <property name="title">
+         <string>Hardness</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="QCheckBox" name="cb_useHardnessFitnessFunction">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Instead of enthalpy (default), use hardness for the fitness function. Harder materials are more likely to be chosen.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Use hardness for fitness function?</string>
+        </property>
        </widget>
       </item>
      </layout>
@@ -1766,6 +1796,22 @@ Default: 4</string>
     <hint type="destinationlabel">
      <x>651</x>
      <y>320</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>cb_calculateHardness</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>cb_useHardnessFitnessFunction</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>904</x>
+     <y>297</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>904</x>
+     <y>325</y>
     </hint>
    </hints>
   </connection>

@@ -113,6 +113,12 @@ TabOpt::TabOpt(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
   connect(ui.spin_perm_ex, SIGNAL(valueChanged(int)), this,
           SLOT(updateOptimizationInfo()));
 
+  // Hardness stuff
+  connect(ui.cb_calculateHardness, SIGNAL(toggled(bool)), this,
+          SLOT(updateOptimizationInfo()));
+  connect(ui.cb_useHardnessFitnessFunction, SIGNAL(toggled(bool)), this,
+          SLOT(updateOptimizationInfo()));
+
   initialize();
 }
 
@@ -173,6 +179,10 @@ void TabOpt::updateGUI()
   ui.spin_p_perm->setValue(xtalopt->p_perm);
   ui.spin_perm_strainStdev_max->setValue(xtalopt->perm_strainStdev_max);
   ui.spin_perm_ex->setValue(xtalopt->perm_ex);
+
+  ui.cb_calculateHardness->setChecked(xtalopt->m_calculateHardness);
+  ui.cb_useHardnessFitnessFunction->setChecked(
+    xtalopt->m_useHardnessFitnessFunction);
 }
 
 void TabOpt::lockGUI()
@@ -249,6 +259,11 @@ void TabOpt::updateOptimizationInfo()
   // Permustrain
   xtalopt->perm_strainStdev_max = ui.spin_perm_strainStdev_max->value();
   xtalopt->perm_ex = ui.spin_perm_ex->value();
+
+  // Hardness stuff
+  xtalopt->m_calculateHardness = ui.cb_calculateHardness->isChecked();
+  xtalopt->m_useHardnessFitnessFunction =
+    ui.cb_useHardnessFitnessFunction->isChecked();
 }
 
 void TabOpt::addSeed(QListWidgetItem* item)

@@ -587,6 +587,11 @@ bool XtalOpt::save(QString filename, bool notify)
   settings->setValue("opt/perm_strainStdev_max", perm_strainStdev_max);
   settings->setValue("opt/perm_ex", perm_ex);
 
+  // Hardness settings
+  settings->setValue("opt/calculateHardness", m_calculateHardness);
+  settings->setValue("opt/useHardnessFitnessFunction",
+                     m_useHardnessFitnessFunction);
+
   return true;
 }
 
@@ -1125,6 +1130,12 @@ bool XtalOpt::readSettings(const QString& filename)
   perm_strainStdev_max =
     settings->value("opt/perm_strainStdev_max", 0.5).toDouble();
   perm_ex = settings->value("opt/perm_ex", 4).toUInt();
+
+  // Hardness stuff
+  m_calculateHardness =
+    settings->value("opt/calculateHardness", false).toBool();
+  m_useHardnessFitnessFunction =
+    settings->value("opt/useHardnessFitnessFunction", false).toBool();
 
   settings->endGroup();
 

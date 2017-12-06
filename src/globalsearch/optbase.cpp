@@ -75,7 +75,8 @@ OptBase::OptBase(AbstractDialog* parent)
 #ifdef ENABLE_MOLECULAR
     m_molecularMode(false),
 #endif // ENABLE_MOLECULAR
-    m_logErrorDirs(false)
+    m_logErrorDirs(false), m_calculateHardness(false),
+    m_useHardnessFitnessFunction(false)
 {
   // Connections
   connect(this, SIGNAL(sessionStarted()), m_queueThread, SLOT(start()),
