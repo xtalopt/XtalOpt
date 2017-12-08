@@ -103,6 +103,11 @@
            </item>
            <item>
             <property name="text">
+             <string>Vickers Hardness (GPa)</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
              <string>PV enthalpy term (eV)</string>
             </property>
            </item>
@@ -201,6 +206,11 @@
            <item>
             <property name="text">
              <string>Energy (eV)</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Vickers Hardness (GPa)</string>
             </property>
            </item>
            <item>

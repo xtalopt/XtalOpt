@@ -32,7 +32,8 @@
 #include <memory>
 #include <mutex>
 
-#include <globalsearch/bt.h> // TEMPORARY
+#include <globalsearch/bt.h>
+#include <globalsearch/http/aflowml.h>
 
 class QMutex;
 
@@ -209,6 +210,16 @@ if (r < probs.at(ind)) break;
    * @return
    */
   static QList<double> getProbabilityList(const QList<Structure*>& structures);
+
+  /**
+   * Use Aflow machine learning to calculate the hardness of structure
+   * @param s. Note that @param s will not be updated immediately, but
+   * it will be updated with the bulk modulus, shear modulus, and hardness
+   * when it receives the data back from the aflow servers.
+   *
+   * @param s The structure whose hardness is to be calculated.
+   */
+  void calculateHardness(Structure* s);
 
   /**
    * Save the current search. If filename is omitted, default to
@@ -1079,6 +1090,15 @@ protected slots:
   void setClipboard_(const QString& text) const;
 /// \endcond
 
+  /**
+   * This should be called when the aflow calculation is completed for
+   * @param ind. It will obtain the data from Aflow and set the data to
+   * the structure.
+   *
+   * @param ind The AflowML index to be updated.
+   */
+  void finishHardnessCalculation(size_t ind);
+
 #ifdef ENABLE_SSH
 #ifndef USE_CLI_SSH
   /**
@@ -1171,6 +1191,15 @@ public:
 
   /// Use hardness for the fitness function instead of enthalpy?
   bool m_useHardnessFitnessFunction;
+
+  /// Only one QNetworkAccessManager is needed for a whole program
+  std::shared_ptr<QNetworkAccessManager> m_networkAccessManager;
+
+  /// For performing Aflow ML calculations
+  AflowML m_aflowML;
+
+  /// A map of the AflowML indicies to their pending hardness calculations
+  std::unordered_map<size_t, Structure*> m_pendingHardnessCalculations;
 };
 
 } // end namespace GlobalSearch

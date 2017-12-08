@@ -16,6 +16,7 @@
 
 #include <globalsearch/bt.h>
 #include <globalsearch/eleminfo.h>
+#include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
@@ -48,6 +49,7 @@
 #include <QMessageBox>
 #include <QtConcurrent>
 
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <mutex>
@@ -76,7 +78,9 @@ OptBase::OptBase(AbstractDialog* parent)
     m_molecularMode(false),
 #endif // ENABLE_MOLECULAR
     m_logErrorDirs(false), m_calculateHardness(false),
-    m_useHardnessFitnessFunction(false)
+    m_useHardnessFitnessFunction(false),
+    m_networkAccessManager(std::make_shared<QNetworkAccessManager>()),
+    m_aflowML(m_networkAccessManager, this)
 {
   // Connections
   connect(this, SIGNAL(sessionStarted()), m_queueThread, SLOT(start()),
@@ -101,6 +105,10 @@ OptBase::OptBase(AbstractDialog* parent)
           [this]() { QtConcurrent::run([this]() { this->save("", false); }); });
   connect(m_queue, &QueueManager::structureUpdated,
           [this]() { QtConcurrent::run([this]() { this->save("", false); }); });
+  connect(m_queue, &QueueManager::structureFinished, this,
+          &OptBase::calculateHardness);
+  connect(&m_aflowML, &AflowML::received, this,
+          &OptBase::finishHardnessCalculation);
 }
 
 OptBase::~OptBase()
@@ -218,6 +226,66 @@ QList<double> OptBase::getProbabilityList(const QList<Structure*>& structures)
   //
   // ind will hold the chosen index.
   return probs;
+}
+
+void OptBase::calculateHardness(Structure* s)
+{
+  // If we are not to calculate hardness, do nothing
+  if (!m_calculateHardness)
+    return;
+
+  // Convert the structure to a POSCAR file
+  std::stringstream ss;
+  PoscarFormat::write(*s, ss);
+
+  size_t ind = m_aflowML.submitPoscar(ss.str().c_str());
+  m_pendingHardnessCalculations[ind] = s;
+}
+
+void OptBase::finishHardnessCalculation(size_t ind)
+{
+  // First, make sure we have this index
+  auto it = m_pendingHardnessCalculations.find(ind);
+
+  if (it == m_pendingHardnessCalculations.end()) {
+    qDebug() << "Error in" << __FUNCTION__
+             << ": Received hardness data for index" << ind << ", but could"
+             << "not find the structure for this index!";
+    return;
+  }
+
+  Structure* s = it->second;
+  m_pendingHardnessCalculations.erase(ind);
+
+  // Make sure AflowML actually has the data
+  if (!m_aflowML.containsData(ind)) {
+    qDebug() << "Error in" << __FUNCTION__
+             << ": Received hardness data for index" << ind << ", but could"
+             << "not find the AflowMLData for this index!";
+    return;
+  }
+
+  AflowMLData data = m_aflowML.data(ind);
+  m_aflowML.eraseData(ind);
+
+  // Also make sure the structure is still in the tracker
+  // Just skip over it if it isn't
+  QReadLocker trackerLocker(m_tracker->rwLock());
+  if (!m_tracker->contains(s))
+    return;
+
+  double bulkModulus = atof(data["ml_ael_bulk_modulus_vrh"].c_str());
+  double shearModulus = atof(data["ml_ael_shear_modulus_vrh"].c_str());
+
+  double k = shearModulus / bulkModulus;
+
+  // The Chen model: 2.0 * (k^2 * shear)^0.585 - 3.0
+  double hardness = 2.0 * pow((pow(k, 2.0) * shearModulus), 0.585) - 3.0;
+
+  QWriteLocker structureLocker(&s->lock());
+  s->setBulkModulus(bulkModulus);
+  s->setShearModulus(shearModulus);
+  s->setVickersHardness(hardness);
 }
 
 bool OptBase::save(QString stateFilename, bool notify)

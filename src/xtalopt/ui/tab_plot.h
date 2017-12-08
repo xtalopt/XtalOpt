@@ -47,6 +47,7 @@ public:
     Enthalpy_T,
     Enthalpy_per_FU_T,
     Energy_T,
+    Hardness_T,
     PV_T,
     A_T,
     B_T,

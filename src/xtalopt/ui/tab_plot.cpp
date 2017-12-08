@@ -316,6 +316,19 @@ void TabPlot::plotTrends()
               break;
           }
           break;
+        case Hardness_T:
+          // Skip xtals that don't have a hardness set
+          if (xtal->vickersHardness() < 0.0)
+            continue;
+          switch (j) {
+            case 0:
+              x = xtal->vickersHardness();
+              break;
+            default:
+              y = xtal->vickersHardness();
+              break;
+          }
+          break;
         case PV_T:
           // Skip xtals that don't have enthalpy/energy set
           if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy())
@@ -508,6 +521,9 @@ void TabPlot::plotTrends()
         break;
       case Energy_T:
         label = tr("Energy (eV)");
+        break;
+      case Hardness_T:
+        label = tr("Vickers Hardness (GPa)");
         break;
       case PV_T:
         label = tr("Enthalpy PV term (eV)");
