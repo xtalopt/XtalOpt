@@ -243,6 +243,7 @@ void TabPlot::plotTrends()
       continue;
     }
 
+    bool usePoint = true;
     // Get X/Y data
     for (int j = 0; j < 2; j++) { // 0 = x, 1 = y
       switch (j) {
@@ -277,8 +278,10 @@ void TabPlot::plotTrends()
           break;
         case Enthalpy_T:
           // Skip xtals that don't have enthalpy/energy set
-          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy())
+          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy()) {
+            usePoint = false;
             continue;
+          }
           switch (j) {
             case 0:
               x = xtal->getEnthalpy();
@@ -290,8 +293,10 @@ void TabPlot::plotTrends()
           break;
         case Enthalpy_per_FU_T:
           // Skip xtals that don't have enthalpy/energy set
-          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy())
+          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy()) {
+            usePoint = false;
             continue;
+          }
           switch (j) {
             case 0:
               x = xtal->getEnthalpy() /
@@ -305,8 +310,10 @@ void TabPlot::plotTrends()
           break;
         case Energy_T:
           // Skip xtals that don't have energy set
-          if (xtal->getEnergy() == 0.0)
+          if (xtal->getEnergy() == 0.0) {
+            usePoint = false;
             continue;
+          }
           switch (j) {
             case 0:
               x = xtal->getEnergy();
@@ -318,8 +325,10 @@ void TabPlot::plotTrends()
           break;
         case Hardness_T:
           // Skip xtals that don't have a hardness set
-          if (xtal->vickersHardness() < 0.0)
+          if (xtal->vickersHardness() < 0.0) {
+            usePoint = false;
             continue;
+          }
           switch (j) {
             case 0:
               x = xtal->vickersHardness();
@@ -331,8 +340,10 @@ void TabPlot::plotTrends()
           break;
         case PV_T:
           // Skip xtals that don't have enthalpy/energy set
-          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy())
+          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy()) {
+            usePoint = false;
             continue;
+          }
           switch (j) {
             case 0:
               x = xtal->getPV();
@@ -436,6 +447,9 @@ void TabPlot::plotTrends()
           break;
       }
     }
+
+    if (!usePoint)
+      continue;
 
     QwtPlotMarker* pm = addXtalToPlot(xtal, x, y);
 
