@@ -2628,11 +2628,19 @@ Xtal* Xtal::getRandomRepresentation() const
   return nxtal;
 }
 
-// Mostly a convenience function...
-QString Xtal::toPOSCAR() const
+QString Xtal::toPOSCAR()
 {
   std::stringstream ss;
   GlobalSearch::PoscarFormat::write(*this, ss);
+
+  // If we are to use pre-optimization bonding with this structure, re-order
+  // the atoms to match the new ordering and save the pre-optimization
+  // bonding information
+  if (reusePreoptBonding()) {
+    GlobalSearch::PoscarFormat::reorderAtomsToMatchPoscar(*this);
+    setPreoptBonding(bonds());
+  }
+
   return ss.str().c_str();
 }
 
@@ -2691,6 +2699,14 @@ std::string Xtal::toSiestaZMatrix(bool fixR, bool fixA, bool fixT)
     std::cerr << "Error in " << __FUNCTION__ << ": writing the siesta "
               << "z-matrix failed\n";
     return "";
+  }
+
+  // If we are to use pre-optimization bonding with this structure, re-order
+  // the atoms to match the new ordering and save the pre-optimization
+  // bonding information
+  if (reusePreoptBonding()) {
+    GlobalSearch::ZMatrixFormat::reorderAtomsToMatchZMatrix(*this);
+    setPreoptBonding(bonds());
   }
 
   return ss.str();

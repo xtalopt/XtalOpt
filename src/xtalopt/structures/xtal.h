@@ -202,11 +202,12 @@ public:
                           const double angleTol = 2.0) const;
 
   /**
-   * Take the given xtal and write a POSCAR with it. Return the POSCAR
-   * file as a string.
+   * Take the given xtal and write a POSCAR with it. If we are to use
+   * preoptimization bonding, it will reorder the atoms to match that of the
+   * POSCAR and set the preopt bonding. Return the POSCAR file as a string.
    * @return The POSCAR as a string.
    */
-  QString toPOSCAR() const;
+  QString toPOSCAR();
 
   /**
    * Take the given xtal and write a CML with it. Return the CML

@@ -255,4 +255,24 @@ bool PoscarFormat::write(const Structure& s, std::ostream& out)
 
   return true;
 }
+
+void PoscarFormat::reorderAtomsToMatchPoscar(Structure& s)
+{
+  // Sort by symbols
+  const auto& symbols = s.getSymbols();
+  const auto& atoms = s.atoms();
+
+  std::vector<size_t> newOrder;
+  for (const auto& symbol_ref: symbols) {
+    for (size_t i = 0; i < atoms.size(); ++i) {
+      const auto& symbol_cur =
+        ElemInfo::getAtomicSymbol(atoms[i].atomicNumber()).c_str();
+      if (symbol_cur == symbol_ref)
+        newOrder.push_back(i);
+    }
+  }
+
+  s.reorderAtoms(newOrder);
+}
+
 }

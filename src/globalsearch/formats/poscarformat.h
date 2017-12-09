@@ -32,6 +32,7 @@ class PoscarFormat
 public:
   static bool read(Structure& s, std::istream& in);
   static bool write(const Structure& s, std::ostream& out);
+  static void reorderAtomsToMatchPoscar(Structure& s);
 };
 }
 

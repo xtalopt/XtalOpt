@@ -609,18 +609,6 @@ bool ZMatrixFormat::writeSiestaZMatrix(Structure& s, std::ostream& out,
 
   out << "%endblock Zmatrix\n\n";
 
-  // If we are to use pre-optimization bonding with this structure, re-order
-  // the atoms to match the new ordering and save the pre-optimization
-  // bonding information
-  if (s.reusePreoptBonding()) {
-    std::vector<size_t> newOrder;
-    for (const auto& entry: entries)
-      newOrder.push_back(entry.ind);
-
-    s.reorderAtoms(newOrder);
-    s.setPreoptBonding(s.bonds());
-  }
-
   return true;
 }
 
@@ -896,5 +884,16 @@ std::vector<ZMatrixEntry> ZMatrixFormat::generateZMatrixEntries(
   }
 
   return ret;
+}
+
+void ZMatrixFormat::reorderAtomsToMatchZMatrix(Structure& s)
+{
+  std::vector<ZMatrixEntry> entries = generateZMatrixEntries(&s);
+
+  std::vector<size_t> newOrder;
+  for (const auto& entry : entries)
+    newOrder.push_back(entry.ind);
+
+  s.reorderAtoms(newOrder);
 }
 }

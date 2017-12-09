@@ -107,6 +107,14 @@ public:
    */
   static bool writeSiestaZMatrix(Structure& s, std::ostream& out, bool fixR,
                                  bool fixA, bool fixT);
+
+  /**
+   * Reorder the atoms so that they match the ordering for the z-matrix
+   * ordering.
+   *
+   * @param s The Structure whose atoms are to be reordered.
+   */
+  static void reorderAtomsToMatchZMatrix(Structure& s);
 };
 }
 
