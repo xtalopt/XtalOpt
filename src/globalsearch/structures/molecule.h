@@ -217,6 +217,17 @@ public:
   void swapAtoms(size_t ind1, size_t ind2);
 
   /**
+   * Sort the atoms. The input, @p sortOrder, should
+   * have a size equal to the number of atoms, and every number from
+   * 0 to numAtoms() - 1 should be in the vector. This function will
+   * automatically adjust the bonds as well so that the atoms remain
+   * bonded correctly.
+   *
+   * @param sortOrder The sort order for the atoms.
+   */
+  void sortAtoms(std::vector<size_t> sortOrder);
+
+  /**
    * Change the ordering of the atoms. The input, @p newOrder, should
    * have a size equal to the number of atoms, and every number from
    * 0 to numAtoms() - 1 should be in the vector. This function will
@@ -225,7 +236,7 @@ public:
    *
    * @param newOrder The new order for the atoms.
    */
-  void reorderAtoms(std::vector<size_t> newOrder);
+  void reorderAtoms(const std::vector<size_t>& newOrder);
 
   /**
    * Get the cartesian distance between two points. If we have a valid

@@ -122,22 +122,33 @@ bool Molecule::removeAtom(const Atom& atom)
 }
 
 // We pass by copy because we want to edit a copy of newOrder...
-void Molecule::reorderAtoms(std::vector<size_t> newOrder)
+void Molecule::sortAtoms(std::vector<size_t> sortOrder)
 {
-  assert(newOrder.size() == m_atoms.size());
+  assert(sortOrder.size() == m_atoms.size());
 
   // Only need to do m_atoms.size() - 1 since the last item will
   // automatically be in place.
   for (size_t i = 0; i < m_atoms.size() - 1; ++i) {
-    assert(newOrder[i] < m_atoms.size());
+    assert(sortOrder[i] < m_atoms.size());
 
     // Keep swapping until the index is in the correct place
-    while (newOrder[i] != i) {
-      size_t newInd = newOrder[i];
+    while (sortOrder[i] != i) {
+      size_t newInd = sortOrder[i];
       swapAtoms(i, newInd);
-      std::swap(newOrder[i], newOrder[newInd]);
+      std::swap(sortOrder[i], sortOrder[newInd]);
     }
   }
+}
+
+// We will implement this in terms of sortAtoms()
+void Molecule::reorderAtoms(const std::vector<size_t>& newOrder)
+{
+  std::vector<size_t> sortOrder(newOrder.size(), 0);
+  for (size_t i = 0; i < newOrder.size(); ++i) {
+    assert(newOrder[i] < sortOrder.size());
+    sortOrder[newOrder[i]] = i;
+  }
+  sortAtoms(sortOrder);
 }
 
 void Molecule::removeBondBetweenAtoms(size_t ind1, size_t ind2)

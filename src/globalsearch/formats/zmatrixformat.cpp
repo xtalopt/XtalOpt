@@ -613,10 +613,9 @@ bool ZMatrixFormat::writeSiestaZMatrix(Structure& s, std::ostream& out,
   // the atoms to match the new ordering and save the pre-optimization
   // bonding information
   if (s.reusePreoptBonding()) {
-    std::vector<size_t> newOrder(entries.size(), 0);
-
-    for (size_t i = 0; i < entries.size(); ++i)
-      newOrder[entries[i].ind] = i;
+    std::vector<size_t> newOrder;
+    for (const auto& entry: entries)
+      newOrder.push_back(entry.ind);
 
     s.reorderAtoms(newOrder);
     s.setPreoptBonding(s.bonds());
