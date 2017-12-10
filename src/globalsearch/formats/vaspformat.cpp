@@ -74,6 +74,11 @@ bool VaspFormat::read(Structure* s, const QString& filename)
   if (enthalpyFound)
     s->setEnthalpy(enthalpy);
 
+  if (s->reusePreoptBonding()) {
+    s->bonds() = s->getPreoptBonding();
+    s->clearPreoptBonding();
+  }
+
   return true;
 }
 

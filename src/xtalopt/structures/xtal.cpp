@@ -2636,7 +2636,7 @@ QString Xtal::toPOSCAR()
   // If we are to use pre-optimization bonding with this structure, re-order
   // the atoms to match the new ordering and save the pre-optimization
   // bonding information
-  if (reusePreoptBonding()) {
+  if (hasBonds() && reusePreoptBonding()) {
     GlobalSearch::PoscarFormat::reorderAtomsToMatchPoscar(*this);
     setPreoptBonding(bonds());
   }
