@@ -16,6 +16,7 @@
 #ifndef AFLOWML_H
 #define AFLOWML_H
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 
@@ -76,7 +77,7 @@ private:
   mutable std::mutex m_mutex;
 
   // A counter for requests
-  size_t m_requestCounter;
+  std::atomic_size_t m_requestCounter;
 };
 
 #endif // AFLOWML_H

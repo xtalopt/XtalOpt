@@ -17,6 +17,7 @@
 #include <globalsearch/bt.h>
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/formats/poscarformat.h>
+#include <globalsearch/http/aflowml.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
@@ -32,6 +33,7 @@
 #endif // ENABLE_SSH
 #include <globalsearch/structure.h>
 #include <globalsearch/ui/abstractdialog.h>
+#include <globalsearch/utilities/makeunique.h>
 #include <globalsearch/utilities/passwordprompt.h>
 #include <globalsearch/utilities/utilityfunctions.h>
 
@@ -80,7 +82,7 @@ OptBase::OptBase(AbstractDialog* parent)
     m_logErrorDirs(false), m_calculateHardness(false),
     m_useHardnessFitnessFunction(false),
     m_networkAccessManager(std::make_shared<QNetworkAccessManager>()),
-    m_aflowML(m_networkAccessManager, this)
+    m_aflowML(make_unique<AflowML>(m_networkAccessManager, this))
 {
   // Connections
   connect(this, SIGNAL(sessionStarted()), m_queueThread, SLOT(start()),
@@ -107,7 +109,7 @@ OptBase::OptBase(AbstractDialog* parent)
           [this]() { QtConcurrent::run([this]() { this->save("", false); }); });
   connect(m_queue, &QueueManager::structureFinished, this,
           &OptBase::calculateHardness);
-  connect(&m_aflowML, &AflowML::received, this,
+  connect(m_aflowML.get(), &AflowML::received, this,
           &OptBase::finishHardnessCalculation);
 }
 
@@ -238,7 +240,7 @@ void OptBase::calculateHardness(Structure* s)
   std::stringstream ss;
   PoscarFormat::write(*s, ss);
 
-  size_t ind = m_aflowML.submitPoscar(ss.str().c_str());
+  size_t ind = m_aflowML->submitPoscar(ss.str().c_str());
   m_pendingHardnessCalculations[ind] = s;
 }
 
@@ -258,15 +260,15 @@ void OptBase::finishHardnessCalculation(size_t ind)
   m_pendingHardnessCalculations.erase(ind);
 
   // Make sure AflowML actually has the data
-  if (!m_aflowML.containsData(ind)) {
+  if (!m_aflowML->containsData(ind)) {
     qDebug() << "Error in" << __FUNCTION__
              << ": Received hardness data for index" << ind << ", but could"
              << "not find the AflowMLData for this index!";
     return;
   }
 
-  AflowMLData data = m_aflowML.data(ind);
-  m_aflowML.eraseData(ind);
+  AflowMLData data = m_aflowML->data(ind);
+  m_aflowML->eraseData(ind);
 
   // Also make sure the structure is still in the tracker
   // Just skip over it if it isn't

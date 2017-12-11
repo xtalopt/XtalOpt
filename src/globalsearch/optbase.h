@@ -31,11 +31,13 @@
 
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 
 #include <globalsearch/bt.h>
-#include <globalsearch/http/aflowml.h>
 
+class AflowML;
 class QMutex;
+class QNetworkAccessManager;
 
 namespace GlobalSearch {
 class Structure;
@@ -1196,7 +1198,7 @@ public:
   std::shared_ptr<QNetworkAccessManager> m_networkAccessManager;
 
   /// For performing Aflow ML calculations
-  AflowML m_aflowML;
+  std::unique_ptr<AflowML> m_aflowML;
 
   /// A map of the AflowML indicies to their pending hardness calculations
   std::unordered_map<size_t, Structure*> m_pendingHardnessCalculations;

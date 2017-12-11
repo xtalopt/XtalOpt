@@ -109,12 +109,11 @@ void AflowML::checkLoop(QUrl url, size_t requestId)
 
 size_t AflowML::submitPoscar(const QString& poscar)
 {
-  // We will lock this for reading/writing to m_requestCounter
-  std::unique_lock<std::mutex> lock(m_mutex);
+  size_t newInd = m_requestCounter++;
 
   // We need to run this in a separate thread
-  QtConcurrent::run(this, &AflowML::_submitPoscar, poscar, m_requestCounter);
-  return m_requestCounter++;
+  QtConcurrent::run(this, &AflowML::_submitPoscar, poscar, newInd);
+  return newInd;
 }
 
 void AflowML::_submitPoscar(QString poscar, size_t requestId)
