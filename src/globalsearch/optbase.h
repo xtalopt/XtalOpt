@@ -1095,11 +1095,16 @@ protected slots:
   /**
    * This should be called when the aflow calculation is completed for
    * @param ind. It will obtain the data from Aflow and set the data to
-   * the structure.
+   * the structure. It will run in a separate thread.
    *
    * @param ind The AflowML index to be updated.
    */
   void finishHardnessCalculation(size_t ind);
+
+  /**
+   * Same as above except runs in the current thread.
+   */
+  void _finishHardnessCalculation(size_t ind);
 
 #ifdef ENABLE_SSH
 #ifndef USE_CLI_SSH

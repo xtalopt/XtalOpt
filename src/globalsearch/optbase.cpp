@@ -244,8 +244,13 @@ void OptBase::calculateHardness(Structure* s)
   m_pendingHardnessCalculations[ind] = s;
 }
 
-void OptBase::finishHardnessCalculation(size_t ind)
+void OptBase::_finishHardnessCalculation(size_t ind)
 {
+  // Let's use a mutex so this function can't be run in multiple threads at
+  // once
+  static std::mutex mutex;
+  std::unique_lock<std::mutex> lock(mutex);
+
   // First, make sure we have this index
   auto it = m_pendingHardnessCalculations.find(ind);
 
@@ -288,6 +293,12 @@ void OptBase::finishHardnessCalculation(size_t ind)
   s->setBulkModulus(bulkModulus);
   s->setShearModulus(shearModulus);
   s->setVickersHardness(hardness);
+}
+
+void OptBase::finishHardnessCalculation(size_t ind)
+{
+  // Run in a separate thread
+  QtConcurrent::run(this, &OptBase::_finishHardnessCalculation, ind);
 }
 
 bool OptBase::save(QString stateFilename, bool notify)
