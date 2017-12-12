@@ -148,7 +148,8 @@ bool OptBase::createSSHConnections()
 }
 #endif // ENABLE_SSH
 
-QList<double> OptBase::getProbabilityList(const QList<Structure*>& structures)
+QList<double> OptBase::getProbabilityList(const QList<Structure*>& structures,
+                                          bool useHardness)
 {
   // IMPORTANT: structures must contain one more structure than
   // needed -- the last structure in the list will be removed from
@@ -158,17 +159,29 @@ QList<double> OptBase::getProbabilityList(const QList<Structure*>& structures)
   }
 
   QList<double> probs;
-  Structure *s = 0, *first = 0, *last = 0;
-  first = structures.first();
-  last = structures.last();
-  first->lock().lockForRead();
-  last->lock().lockForRead();
-  double lowest = first->getEnthalpy() / static_cast<double>(first->numAtoms());
-  double highest = last->getEnthalpy() / static_cast<double>(last->numAtoms());
-  double spread = highest - lowest;
-  last->lock().unlock();
-  first->lock().unlock();
-  // If all structures are at the same enthalpy, lets save some time...
+  Structure* s = 0;
+  double lowest, highest, spread;
+
+  Structure* first = structures.first();
+  Structure* last = structures.last();
+  QReadLocker lock1(&first->lock());
+  QReadLocker lock2(&last->lock());
+
+  if (useHardness) {
+    lowest = first->vickersHardness();
+    highest = last->vickersHardness();
+  } else {
+    lowest = first->getEnthalpy() / static_cast<double>(first->numAtoms());
+    highest = last->getEnthalpy() / static_cast<double>(last->numAtoms());
+  }
+
+  lock1.unlock();
+  lock2.unlock();
+
+  spread = highest - lowest;
+
+  // If all structures are at the same enthalpy/hardness, let's save some
+  // time...
   if (spread <= 1e-5) {
     double dprob = 1.0 / static_cast<double>(structures.size() - 1);
     double prob = 0;
@@ -178,7 +191,8 @@ QList<double> OptBase::getProbabilityList(const QList<Structure*>& structures)
     }
     return probs;
   }
-  // Generate a list of floats from 0->1 proportional to the enthalpies;
+  // Generate a list of floats from 0->1 proportional to the
+  // enthalpies/hardnesses;
   // E.g. if enthalpies are:
   // -5   -2   -1   3   5
   // We'll have:
@@ -186,9 +200,15 @@ QList<double> OptBase::getProbabilityList(const QList<Structure*>& structures)
   for (int i = 0; i < structures.size(); i++) {
     s = structures.at(i);
     QReadLocker(&s->lock());
-    probs.append(
-      ((s->getEnthalpy() / static_cast<double>(s->numAtoms())) - lowest) /
-      spread);
+    if (useHardness) {
+      double prob = (highest - s->vickersHardness()) / spread;
+      probs.append(prob);
+    } else {
+      double prob =
+        (s->getEnthalpy() / static_cast<double>(s->numAtoms()) - lowest) /
+        spread;
+      probs.append(prob);
+    }
   }
   // Subtract each value from one, and find the sum of the resulting list
   // Find the sum of the resulting list

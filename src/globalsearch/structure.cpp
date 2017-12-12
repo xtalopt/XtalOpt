@@ -1402,6 +1402,31 @@ void Structure::sortByEnthalpy(QList<Structure*>* structures)
   }
 }
 
+void Structure::sortByVickersHardness(QList<Structure*>* structures)
+{
+  uint numStructs = structures->size();
+  if (numStructs <= 1)
+    return;
+
+  // Simple selection sort
+  Structure *structure_i = 0, *structure_j = 0, *tmp = 0;
+  for (uint i = 0; i < numStructs - 1; i++) {
+    structure_i = structures->at(i);
+    QReadLocker iLocker(&structure_i->lock());
+
+    for (uint j = i + 1; j < numStructs; j++) {
+      structure_j = structures->at(j);
+      QReadLocker jLocker(&structure_j->lock());
+      if (structure_j->vickersHardness() < structure_i->vickersHardness()) {
+        structures->swap(i, j);
+        tmp = structure_i;
+        structure_i = structure_j;
+        structure_j = tmp;
+      }
+    }
+  }
+}
+
 void rankInPlace(const QList<Structure*>& structures)
 {
   if (structures.size() == 0)

@@ -2900,8 +2900,23 @@ Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
     }
   }
 
+  bool useHardness = m_useHardnessFitnessFunction;
   // Sort structure list
-  Structure::sortByEnthalpy(&structures);
+  if (useHardness)
+    Structure::sortByVickersHardness(&structures);
+  else
+    Structure::sortByEnthalpy(&structures);
+
+  // If we are using hardness, remove all structures with a hardness
+  // less than 0
+  if (useHardness) {
+    for (size_t i = 0; i < structures.size(); i++) {
+      if (structures[i]->vickersHardness() < 0.0) {
+        structures.removeAt(i);
+        --i;
+      }
+    }
+  }
 
   // Trim list
   // Remove all but (popSize + 1). The "+ 1" will be removed
@@ -2910,7 +2925,7 @@ Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
     structures.removeLast();
   }
 
-  QList<double> probs = getProbabilityList(structures);
+  QList<double> probs = getProbabilityList(structures, useHardness);
 
   // Cast Structures into Xtals
   QList<Xtal*> xtals;

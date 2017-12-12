@@ -690,6 +690,12 @@ public:
    */
   static void sortByEnthalpy(QList<Structure*>* structures);
 
+  /** Sort the listed structures by their vickers hardnesses
+   *
+   * @param structures List of structures to sort
+   */
+  static void sortByVickersHardness(QList<Structure*>* structures);
+
   /** Rank the listed structures by their enthalpies
    *
    * @param structures List of structures to assign ranks
