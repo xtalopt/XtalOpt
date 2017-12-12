@@ -251,7 +251,7 @@ void OptBase::resubmitUnfinishedHardnessCalcs()
 {
   QReadLocker trackerLocker(m_tracker->rwLock());
   QList<Structure*> structures = m_queue->getAllOptimizedStructures();
-  for (auto& s: structures) {
+  for (auto& s : structures) {
     if (s->vickersHardness() < 0.0)
       calculateHardness(s);
   }
