@@ -240,6 +240,9 @@ void OptBase::calculateHardness(Structure* s)
   std::stringstream ss;
   PoscarFormat::write(*s, ss);
 
+  QString id = QString::number(s->getGeneration()) + "x" +
+               QString::number(s->getIDNumber());
+  qDebug() << "Submitting structure" << id << "for Aflow ML calculation...";
   size_t ind = m_aflowML->submitPoscar(ss.str().c_str());
   m_pendingHardnessCalculations[ind] = s;
 }
@@ -263,6 +266,10 @@ void OptBase::_finishHardnessCalculation(size_t ind)
 
   Structure* s = it->second;
   m_pendingHardnessCalculations.erase(ind);
+
+  QString id = QString::number(s->getGeneration()) + "x" +
+               QString::number(s->getIDNumber());
+  qDebug() << "Received Aflow ML data for structure" << id;
 
   // Make sure AflowML actually has the data
   if (!m_aflowML->containsData(ind)) {
