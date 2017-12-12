@@ -116,6 +116,8 @@ TabOpt::TabOpt(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
   // Hardness stuff
   connect(ui.cb_calculateHardness, SIGNAL(toggled(bool)), this,
           SLOT(updateOptimizationInfo()));
+  connect(ui.cb_calculateHardness, &QCheckBox::toggled, m_opt,
+          &GlobalSearch::OptBase::resubmitUnfinishedHardnessCalcs);
   connect(ui.cb_useHardnessFitnessFunction, SIGNAL(toggled(bool)), this,
           SLOT(updateOptimizationInfo()));
 

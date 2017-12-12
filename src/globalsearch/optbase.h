@@ -224,6 +224,12 @@ if (r < probs.at(ind)) break;
   void calculateHardness(Structure* s);
 
   /**
+   * Run calculateHardness() on any structure that does not yet have
+   * vickersHardness info (i. e., vickersHardness() < 0.0).
+   */
+  void resubmitUnfinishedHardnessCalcs();
+
+  /**
    * Save the current search. If filename is omitted, default to
    * m_filePath + "/[search name].state". Will only save once at a time.
    *

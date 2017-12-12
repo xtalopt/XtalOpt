@@ -247,6 +247,16 @@ void OptBase::calculateHardness(Structure* s)
   m_pendingHardnessCalculations[ind] = s;
 }
 
+void OptBase::resubmitUnfinishedHardnessCalcs()
+{
+  QReadLocker trackerLocker(m_tracker->rwLock());
+  QList<Structure*> structures = m_queue->getAllOptimizedStructures();
+  for (auto& s: structures) {
+    if (s->vickersHardness() < 0.0)
+      calculateHardness(s);
+  }
+}
+
 void OptBase::_finishHardnessCalculation(size_t ind)
 {
   // Let's use a mutex so this function can't be run in multiple threads at
