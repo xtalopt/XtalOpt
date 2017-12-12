@@ -44,6 +44,16 @@ void AflowML::checkLoop(QUrl url, size_t requestId)
 
     QEventLoop loop;
 
+    // Make a timer for timeout
+    QTimer timer;
+    // 10 seconds
+    int timeOutTime = 10000;
+    bool timedOut = false;
+
+    // Quit the event loop on timeout and indicate that timeout occurred
+    connect(&timer, &QTimer::timeout, [&timedOut](){ timedOut = true; });
+    connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
     // Quit the event loop when we get a response.
     connect(&m_httpRequestManager, &HttpRequestManager::received, &loop,
             &QEventLoop::quit);
@@ -51,7 +61,12 @@ void AflowML::checkLoop(QUrl url, size_t requestId)
     size_t replyInd = m_httpRequestManager.sendGet(url);
 
     // Wait for a response
+    timer.start(timeOutTime);
     loop.exec();
+
+    // If we timed out, just try again
+    if (timedOut)
+      continue;
 
     // Make sure it has the data we are looking for
     if (!m_httpRequestManager.containsData(replyInd)) {
@@ -125,6 +140,16 @@ void AflowML::_submitPoscar(QString poscar, size_t requestId)
   // We will use an event loop to block until the reply is received.
   QEventLoop loop;
 
+  // Make a timer for timeout
+  QTimer timer;
+  // 10 seconds
+  int timeOutTime = 10000;
+  bool timedOut = false;
+
+  // Quit the event loop on timeout and indicate that timeout occurred
+  connect(&timer, &QTimer::timeout, [&timedOut](){ timedOut = true; });
+  connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
   // Quit the event loop when we get a response.
   connect(&m_httpRequestManager, &HttpRequestManager::received, &loop,
           &QEventLoop::quit);
@@ -136,7 +161,14 @@ void AflowML::_submitPoscar(QString poscar, size_t requestId)
   size_t replyInd = m_httpRequestManager.sendPost(aflowServer, poscarData);
 
   // Wait for a response
+  timer.start(timeOutTime);
   loop.exec();
+
+  // If we timed out, unlock the mutex and tail recurse the function
+  if (timedOut) {
+    lock.unlock();
+    return _submitPoscar(poscar, requestId);
+  }
 
   // Make sure it has the data we are looking for
   if (!m_httpRequestManager.containsData(replyInd)) {
