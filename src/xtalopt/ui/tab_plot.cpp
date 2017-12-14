@@ -640,6 +640,11 @@ QwtPlotMarker* TabPlot::addXtalToPlot(Xtal* xtal, double x, double y)
     // Orange Square
     pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Rect, QColor(204, 102, 0, 255),
                                QColor(204, 102, 0, 255));
+  } else if (xtal->skippedOptimization()) {
+    // Blue violet
+    QColor blueViolet(138, 43, 226, 255);
+    pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Triangle, QBrush(blueViolet),
+                               QPen(QBrush(Qt::black), 2));
   } else {
     // Blue Triangle
     pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Triangle, QBrush(Qt::blue),

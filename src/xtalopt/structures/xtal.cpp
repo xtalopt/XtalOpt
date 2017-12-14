@@ -2190,7 +2190,10 @@ QString Xtal::getResultsEntry() const
   QString status;
   switch (getStatus()) {
     case Optimized:
-      status = "Optimized";
+      if (skippedOptimization())
+        status = "Skipped Optimization";
+      else
+        status = "Optimized";
       break;
     case Killed:
     case Removed:

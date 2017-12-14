@@ -385,9 +385,15 @@ void TabProgress::updateInfo_()
       e.brush.setColor(Qt::cyan);
       break;
     case Xtal::Optimized:
-      e.status = "Optimized";
-      e.brush.setColor(Qt::blue);
-      e.pen.setColor(Qt::white);
+      if (xtal->skippedOptimization()) {
+        e.status = "Skipped Optimization";
+        e.brush.setColor(QColor(138, 43, 226, 255));
+        e.pen.setColor(Qt::white);
+      } else {
+        e.status = "Optimized";
+        e.brush.setColor(Qt::blue);
+        e.pen.setColor(Qt::white);
+      }
       break;
     case Xtal::WaitingForOptimization:
       e.status = tr("Waiting for Optimization (%1 of %2)")
