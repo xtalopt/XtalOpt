@@ -2218,12 +2218,13 @@ QString Xtal::getResultsEntry() const
       status = "In progress";
       break;
   }
-  return QString("%1 %2 %3 %4 %5 %6 %7")
-    .arg(getRank(), 6)
-    .arg(getGeneration(), 6)
-    .arg(getIDNumber(), 6)
-    .arg(getEnthalpy() / static_cast<double>(getFormulaUnits()), 13)
-    .arg(getFormulaUnits(), 6)
+  return QString("%1 %2 %3 %4 %5 %6 %7 %8")
+    .arg(getRank(), 5)
+    .arg(getGeneration(), 5)
+    .arg(getIDNumber(), 5)
+    .arg(getEnthalpy() / static_cast<double>(getFormulaUnits()), 10)
+    .arg(getFormulaUnits(), 5)
+    .arg(vickersHardness(), 10)
     .arg(m_spgSymbol, 10)
     .arg(status, 11);
 }

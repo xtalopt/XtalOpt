@@ -117,12 +117,13 @@ public:
   virtual QString getResultsEntry() const override;
   virtual QString getResultsHeader() const override
   {
-    return QString("%1 %2 %3 %4 %5 %6 %7")
-      .arg("Rank", 6)
-      .arg("Gen", 6)
-      .arg("ID", 6)
-      .arg("Enthalpy/FU", 13)
-      .arg("FU", 6)
+    return QString("%1 %2 %3 %4 %5 %6 %7 %8")
+      .arg("Rank", 5)
+      .arg("Gen", 5)
+      .arg("ID", 5)
+      .arg("Enthalpy/FU", 10)
+      .arg("FU", 5)
+      .arg("Hardness", 10)
       .arg("SpaceGroup", 10)
       .arg("Status", 11);
   };
