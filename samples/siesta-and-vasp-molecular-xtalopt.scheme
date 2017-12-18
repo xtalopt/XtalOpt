@@ -1,0 +1,28 @@
+[xtalopt]
+edit\description=test
+edit\localpath=/some/dir
+edit\logErrorDirs=false
+edit\numOptSteps=2
+edit\optimizer\0=siesta
+edit\optimizer\0\siesta\xtal.fdf=# Acetaminophen test\n#\nSystemName\t%description%\nSystemLabel\t%description%-%gen%x%id%\nNumberOfSpecies  %numSpecies%\nNumberOfAtoms    %numAtoms%\n%block% ChemicalSpeciesLabel\n%chemicalSpeciesLabel%\n%endblock% ChemicalSpeciesLabel\n\nPAO.BasisSize  SZ\nDiag.Divide-and-Conquer F\n\nLatticeConstant     1.0 Ang\n%block% LatticeVectors   \n%cellMatrixAngstrom%\n%endblock% LatticeVectors   \n\n%siestaZMatrix%\n\nZM.ForceTolAng 0.001 eV/deg\nZM.MaxDisplLen 0.1 Ang\nZM.MaxDisplAng 20.0 deg\n\nXC.functional       GGA\nXC.authors          PBE\nMaxSCFIterations    30\nPAO.BasisSize  SZ\nPAO.EnergyShift 0.02 Ry\n\nkgrid_cutoff 5.0 Ang\n\nSolution.Method       diagon\nMeshCutoff             300 eV\nDM.MixingWeight        0.1         # New DM amount for next SCF cycle\nDM.Tolerance           1.d-3       # Tolerance in maximum difference\nDM.NumberPulay          3\n\nWriteCoorStep      .true.\nWriteForces        .true.\n\nMD.TypeOfRun         cg\nMD.Variable-Cell      T\nMD.Target-pressure    0.0 GPa\nMD.Num-CG-steps\t     30\nMD.Max-Stress-Tol    2.0 GPa\nMD.MaxForceTol           2d-3 eV/Ang\nMD.RemoveIntramolecularPressure T\n\nElectronicTemperature   5 meV\n\n# PSF files to copy over. Do one for each atom type.\n%copyfile:/psfdir/C.psf%\n%copyfile:/psfdir/H.psf%\n%copyfile:/psfdir/N.psf%\n%copyfile:/psfdir/O.psf%
+edit\optimizer\1=vasp
+edit\optimizer\1\vasp\INCAR="Acetaminophen Test\n\n# output options\nLWAVE  = .FALSE. # write or don't write WAVECAR\nLCHARG = .FALSE. # write or don't write CHG and CHGCAR\nLELF   = .FALSE. # write ELF\n\n# ionic relaxation\nNSW = 200        # number of ionic steps\nIBRION = 2       # 2=conjucate gradient, 1=Newton like\nISIF = 3         # 3=relax everything, 2=relax ions only, 4=keep volume fixed\n\n# precision parameters\nEDIFF = 1E-3     # 1E-3 very low precision for pre-relaxation, use 1E-5 next\nEDIFFG = 1E-2    # usually: 10 * EDIFF\nPREC = low      # precision low, med, high, accurate\n\n# electronic relaxation\n#ISMEAR = 1      # -5 = tetraedon, 1..N = Methfessel\nENCUT = 600      # cutoff energy\n#PSTRESS = 0\nNELMIN = 5\n#ISYM=0"
+edit\optimizer\1\vasp\KPOINTS=Automatic generation\n0\nAuto\n24
+edit\optimizer\1\vasp\POTCAR=%filecontents:/potcarDir/C/POTCAR%\n%filecontents:/potcarDir/H/POTCAR%\n%filecontents:/potcarDir/N/POTCAR%\n%filecontents:/potcarDir/O/POTCAR%
+edit\queueInterface\0=slurm
+edit\queueInterface\0\slurm\job.slurm="#!/bin/sh\n#SBATCH --nodes=1\n#SBATCH --ntasks-per-node=\n#SBATCH --job-name=siesta-test\n#SBATCH --output=job.out\n#SBATCH --error=job.err\n#SBATCH --mail-type=END\n##SBATCH --mail-user=\n##SBATCH --account=\n##SBATCH --clusters=\n##SBATCH --partition=\n##SBATCH --mem=\n#SBATCH --exclusive\n\ntic=`date +%s`\necho \"Start Time = \"`date`\n\n# echo some important slurm environment vars\necho \"SLURM job ID         = \"$SLURM_JOB_ID\necho \"Working Dir          = \"$SLURM_SUBMIT_DIR\necho \"Compute Nodes        = \"$SLURM_NODELIST\necho \"Number of Processors = \"$SLURM_NPROCS\necho \"Number of Nodes      = \"$SLURM_NNODES\necho \"Tasks per Node       = \"$SLURM_TASKS_PER_NODE\n\n# load required modules\necho \"Loading intel modules ...\"\nmodule load mkl/11.2\nmodule load siesta/4.1-b2-omp\nmodule list\nulimit -s unlimited\n\n# launch job\necho \"Launching siesta job using openmp ...\"\nexport OMP_NUM_THREADS=$SLURM_NPROCS\nsiesta xtal.fdf > xtal.out\necho \"siesta job is complete!\"\n\necho \"All Done!\"\n\necho \"End Time = \"`date`\ntoc=`date +%s`\n\nelapsedTime=`expr $toc - $tic`\necho \"Elapsed Time = $elapsedTime seconds\""
+edit\queueInterface\1=slurm
+edit\queueInterface\1\slurm\job.slurm="#!/bin/sh\n#SBATCH --nodes=1\n#SBATCH --ntasks-per-node=\n#SBATCH --job-name=vasp-test\n#SBATCH --output=job.out\n#SBATCH --error=job.err\n#SBATCH --mail-type=END\n##SBATCH --mail-user=\n##SBATCH --account=\n##SBATCH --clusters=\n##SBATCH --partition=\n##SBATCH --mem=\n#SBATCH --exclusive\n\ntic=`date +%s`\necho \"Start Time = \"`date`\n\n# echo some important slurm environment vars\necho \"SLURM job ID         = \"$SLURM_JOB_ID\necho \"Working Dir          = \"$SLURM_SUBMIT_DIR\necho \"Compute Nodes        = \"$SLURM_NODELIST\necho \"Number of Processors = \"$SLURM_NPROCS\necho \"Number of Nodes      = \"$SLURM_NNODES\necho \"Tasks per Node       = \"$SLURM_TASKS_PER_NODE\n\nexport SCRATCH_DIR=$SLURM_SUBMIT_DIR\necho \"SLURMTMPDIR is $SLURMTMPDIR\"\nexport OMP_NUM_THREADS=1\nexport I_MPI_PIN=0\nulimit -s unlimited\nexport NNODES=`srun -l hostname | uniq | wc -l`\nexport NPROCS=`srun -l hostname | wc -l`\n\nHOSTFILE=hosts.$SLURM_JOB_ID\nsrun hostname -s | sort > $HOSTFILE\n\n#module use /somedir\nmodule load vasp5.4.12\nmodule list\nwhich vasp\n\nexport I_MPI_PMI_LIBRARY=/usr/lib64/libpmi.so\n\nsrun --propagate=STACK vasp\n\necho \"vasp job is complete!\"\n\necho \"All Done!\"\n\necho \"End Time = \"`date`\ntoc=`date +%s`\n\nelapsedTime=`expr $toc - $tic`\necho \"Elapsed Time = $elapsedTime seconds\""
+edit\remote\cleanRemoteOnStop=false
+edit\remote\host=rush.ccr.buffalo.edu
+edit\remote\port=22
+edit\remote\queueRefreshInterval=10
+edit\remote\rempath=/some/dir
+edit\remote\username=name
+edit\user1=
+edit\user2=
+edit\user3=
+edit\user4=
+edit\version=3
+optimizer\SIESTA\data\Composition=@Invalid()
+optimizer\SIESTA\data\PSF%20info=@Invalid()

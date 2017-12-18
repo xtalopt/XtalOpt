@@ -1,0 +1,22 @@
+[xtalopt]
+edit\description=test
+edit\localpath=/home/patrick/xtalopt-runs/siesta/test
+edit\logErrorDirs=false
+edit\numOptSteps=1
+edit\optimizer\0=siesta
+edit\optimizer\0\siesta\xtal.fdf=# Acetaminophen test\n#\nSystemName\t%description%\nSystemLabel\t%description%-%gen%x%id%\nNumberOfSpecies  %numSpecies%\nNumberOfAtoms    %numAtoms%\n%block% ChemicalSpeciesLabel\n%chemicalSpeciesLabel%\n%endblock% ChemicalSpeciesLabel\n\nPAO.BasisSize  SZ\nDiag.Divide-and-Conquer F\n\nLatticeConstant     1.0 Ang\n%block% LatticeVectors   \n%cellMatrixAngstrom%\n%endblock% LatticeVectors   \n\n%siestaZMatrix%\n\nZM.ForceTolAng 0.001 eV/deg\nZM.MaxDisplLen 0.1 Ang\nZM.MaxDisplAng 20.0 deg\n\nXC.functional       GGA\nXC.authors          PBE\nMaxSCFIterations    30\nPAO.BasisSize  SZ\nPAO.EnergyShift 0.02 Ry\n\nkgrid_cutoff 5.0 Ang\n\nSolution.Method       diagon\nMeshCutoff             300 eV\nDM.MixingWeight        0.1         # New DM amount for next SCF cycle\nDM.Tolerance           1.d-3       # Tolerance in maximum difference\nDM.NumberPulay          3\n\nWriteCoorStep      .true.\nWriteForces        .true.\n\nMD.TypeOfRun         cg\nMD.Variable-Cell      T\nMD.Target-pressure    0.0 GPa\nMD.Num-CG-steps\t     30\nMD.Max-Stress-Tol    2.0 GPa\nMD.MaxForceTol           2d-3 eV/Ang\nMD.RemoveIntramolecularPressure T\n\nElectronicTemperature   5 meV\n\n# PSF files to copy over. Do one for each atom type.\n%copyfile:/somedir/siesta/psf/C.psf%\n%copyfile:/somedir/siesta/psf/H.psf%\n%copyfile:/somedir/siesta/psf/N.psf%\n%copyfile:/somedir/siesta/psf/O.psf%
+edit\queueInterface\0=slurm
+edit\queueInterface\0\slurm\job.slurm="#!/bin/sh\n#SBATCH --nodes=1\n##SBATCH --ntasks-per-node=\n#SBATCH --job-name=siesta-test\n#SBATCH --output=job.out\n#SBATCH --error=job.err\n#SBATCH --mail-type=END\n##SBATCH --mail-user=\n##SBATCH --account=\n##SBATCH --clusters=\n##SBATCH --partition=\n##SBATCH --mem=\n#SBATCH --exclusive\n\ntic=`date +%s`\necho \"Start Time = \"`date`\n\n# echo some important slurm environment vars\necho \"SLURM job ID         = \"$SLURM_JOB_ID\necho \"Working Dir          = \"$SLURM_SUBMIT_DIR\necho \"Compute Nodes        = \"$SLURM_NODELIST\necho \"Number of Processors = \"$SLURM_NPROCS\necho \"Number of Nodes      = \"$SLURM_NNODES\necho \"Tasks per Node       = \"$SLURM_TASKS_PER_NODE\n\n# load required modules\necho \"Loading intel modules ...\"\nmodule load mkl/11.2\nmodule load siesta/4.1-b2-omp\nmodule list\nulimit -s unlimited\n\n# launch job\necho \"Launching siesta job using openmp ...\"\nexport OMP_NUM_THREADS=$SLURM_NPROCS\nsiesta xtal.fdf > xtal.out\necho \"siesta job is complete!\"\n\necho \"All Done!\"\n\necho \"End Time = \"`date`\ntoc=`date +%s`\n\nelapsedTime=`expr $toc - $tic`\necho \"Elapsed Time = $elapsedTime seconds\""
+edit\remote\cleanRemoteOnStop=false
+edit\remote\host=rush.ccr.buffalo.edu
+edit\remote\port=22
+edit\remote\queueRefreshInterval=10
+edit\remote\rempath=/path/to/dir/
+edit\remote\username=name
+edit\user1=
+edit\user2=
+edit\user3=
+edit\user4=
+edit\version=3
+optimizer\SIESTA\data\Composition=@Invalid()
+optimizer\SIESTA\data\PSF%20info=@Invalid()
