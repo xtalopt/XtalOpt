@@ -325,7 +325,17 @@
            </item>
            <item>
             <property name="text">
+             <string>Enthalpy per FU (eV)</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
              <string>Energy (eV)</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Vickers Hardness (GPa)</string>
             </property>
            </item>
            <item>

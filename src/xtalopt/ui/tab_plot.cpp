@@ -482,8 +482,15 @@ void TabPlot::plotTrends()
         case Enthalpy_L:
           s = QString::number(xtal->getEnthalpy(), 'g', 5);
           break;
+        case Enthalpy_Per_FU_L:
+          s = QString::number(xtal->getEnthalpy() / xtal->getFormulaUnits(),
+                              'g', 5);
+          break;
         case Energy_L:
           s = QString::number(xtal->getEnergy(), 'g', 5);
+          break;
+        case Hardness_L:
+          s = QString::number(xtal->vickersHardness(), 'g', 5);
           break;
         case PV_L:
           s = QString::number(xtal->getPV(), 'g', 5);
