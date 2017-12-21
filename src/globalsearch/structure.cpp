@@ -396,7 +396,7 @@ void Structure::readStructureSettings(const QString& filename,
 
     setBulkModulus(settings->value("bulkModulus", "-1.0").toDouble());
     setShearModulus(settings->value("shearModulus", "-1.0").toDouble());
-    setVickersHardness(settings->value("vickersModulus", "-1.0").toDouble());
+    setVickersHardness(settings->value("vickersHardness", "-1.0").toDouble());
 
     // History
     settings->beginGroup("history");
