@@ -81,17 +81,17 @@ option ( BUILD_INDEPENDENT_PACKAGE
 option( USE_SYSTEM_OBABEL
         "Instead of downloading a static obabel, use a system obabel instead? You should set the environment variable OBABEL_EXECUTABLE before running the program if you choose to do this"
         OFF )
-option( USE_SYSTEM_GENPOWDERDIFFRACTION
-        "Instead of downloading a static genPowderDiffraction, use a system genPowderDiffraction instead? You should set the environment variable GENPOWDERDIFFRACTION_EXECUTABLE before running the program if you choose to do this"
+option( USE_SYSTEM_GENXRDPATTERN
+        "Instead of downloading a static genXrdPattern, use a system genXrdPattern instead? You should set the environment variable GENXRDPATTERN_EXECUTABLE before running the program if you choose to do this"
         OFF )
 
 # This will only actually download if USE_SYSTEM_OBABEL is off
 include(DownloadOBabel)
 DownloadObabel()
 
-# This will only actually download if USE_SYSTEM_GENPOWDERDIFFRACTION is off
-include(DownloadGenPowderDiffraction)
-DownloadGenPowderDiffraction()
+# This will only actually download if USE_SYSTEM_GENXRDPATTERN is off
+include(DownloadGenXrdPattern)
+DownloadGenXrdPattern()
 
 # The main packages
 option( ENABLE_EXAMPLESEARCH
