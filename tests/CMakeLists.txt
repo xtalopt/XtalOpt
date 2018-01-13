@@ -28,6 +28,7 @@ endif(ENABLE_MOLECULAR)
 set(tests
   formats
   genetic
+  genxrd
   optbase
   structure
   spglib

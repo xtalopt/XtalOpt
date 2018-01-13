@@ -36,6 +36,7 @@ set( globalsearch_SRCS
      formats/zmatrixformat.cpp
      http/aflowml.cpp
      http/httprequestmanager.cpp
+     xrd/generatexrd.cpp
 )
 
 if(ENABLE_MOLECULAR)
