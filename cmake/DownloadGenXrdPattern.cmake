@@ -19,12 +19,12 @@ macro(DownloadGenXrdPattern)
 
     # Apple
     elseif(APPLE)
-      set(GENXRDPATTERN_DOWNLOAD_LOCATION "https://github.com/psavery/plotXrd/releases/download/${GENXRDPATTERN_V}/osx64-genXrdPattern")
+      set(GENXRDPATTERN_DOWNLOAD_LOCATION "https://github.com/psavery/genXrdPattern/releases/download/${GENXRDPATTERN_V}/osx64-genXrdPattern")
       set(MD5 "cdcb73c847bd147e21642f205a72e6e9")
 
     # Windows
     elseif(WIN32 AND NOT CYGWIN)
-      set(GENXRDPATTERN_DOWNLOAD_LOCATION "https://github.com/psavery/plotXrd/releases/download/${GENXRDPATTERN_V}/win64-genXrdPattern.exe")
+      set(GENXRDPATTERN_DOWNLOAD_LOCATION "https://github.com/psavery/genXrdPattern/releases/download/${GENXRDPATTERN_V}/win64-genXrdPattern.exe")
       set(MD5 "7b1a1e18a6044773c631189cbfd8b440")
 
     else()
