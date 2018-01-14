@@ -21,6 +21,7 @@
 #include <globalsearch/tracker.h>
 #include <globalsearch/ui/abstracttab.h>
 #include <globalsearch/utilities/fileutils.h>
+#include <globalsearch/xrd/generatexrd.h>
 
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/ui/dialog.h>
@@ -37,15 +38,21 @@
 #include <QInputDialog>
 #include <QMenu>
 
+#include "ui_xrdOptionsDialog.h"
+
 using namespace GlobalSearch;
 
 namespace XtalOpt {
 
 TabProgress::TabProgress(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
-  : AbstractTab(parent, p), m_timer(new QTimer(this)), m_mutex(new QMutex),
-    m_update_mutex(new QMutex), m_update_all_mutex(new QMutex),
-    m_context_mutex(new QMutex), m_context_xtal(0)
+  : AbstractTab(parent, p), m_ui_xrdOptionsDialog(new Ui::XrdOptionsDialog),
+    m_xrdOptionsDialog(new QDialog(parent)), m_timer(new QTimer(this)),
+    m_mutex(new QMutex), m_update_mutex(new QMutex),
+    m_update_all_mutex(new QMutex), m_context_mutex(new QMutex),
+    m_context_xtal(0)
 {
+  m_ui_xrdOptionsDialog->setupUi(m_xrdOptionsDialog);
+
   // Allow queued connections to work with the TableEntry struct
   qRegisterMetaType<XO_Prog_TableEntry>("XO_Prog_TableEntry");
 
@@ -93,6 +100,7 @@ TabProgress::TabProgress(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
 
 TabProgress::~TabProgress()
 {
+  delete m_ui_xrdOptionsDialog;
   delete m_mutex;
   delete m_update_mutex;
   delete m_update_all_mutex;
@@ -548,6 +556,8 @@ void TabProgress::progressContextMenu(QPoint p)
   QAction* a_injectSeed = menu.addAction("Inject &seed structure");
   menu.addSeparator();
   QAction* a_clipPOSCAR = menu.addAction("&Copy POSCAR to clipboard");
+  menu.addSeparator();
+  QAction* a_plotXrd = menu.addAction("Plot Theoretical XRD Pattern");
 
   // Connect actions
   connect(a_restart, SIGNAL(triggered()), this, SLOT(restartJobProgress()));
@@ -562,6 +572,7 @@ void TabProgress::progressContextMenu(QPoint p)
   connect(a_injectSeed, SIGNAL(triggered()), this,
           SLOT(injectStructureProgress()));
   connect(a_clipPOSCAR, SIGNAL(triggered()), this, SLOT(clipPOSCARProgress()));
+  connect(a_plotXrd, SIGNAL(triggered()), this, SLOT(plotXrdProgress()));
 
   // Disable / hide illogical operations
   if (isKilled) {
@@ -584,6 +595,7 @@ void TabProgress::progressContextMenu(QPoint p)
     a_offspring->setEnabled(false);
     a_injectSeed->setEnabled(true);
     a_clipPOSCAR->setEnabled(false);
+    a_plotXrd->setEnabled(false);
   }
 
   QAction* selection = menu.exec(QCursor::pos());
@@ -842,6 +854,57 @@ void TabProgress::clipPOSCARProgress_()
   // Clear context xtal pointer
   emit finishedBackgroundProcessing();
   locker.unlock();
+  m_context_xtal = 0;
+}
+
+void TabProgress::plotXrdProgress()
+{
+  if (!m_context_xtal)
+    return;
+
+  QReadLocker locker(&m_context_xtal->lock());
+
+  // Save these options for use in the current run
+  static double wavelength = 1.5056;
+  static double peakwidth = 0.52958;
+  static size_t numpoints = 1000;
+  static double max2theta = 162.0;
+
+  m_ui_xrdOptionsDialog->spin_wavelength->setValue(wavelength);
+  m_ui_xrdOptionsDialog->spin_peakwidth->setValue(peakwidth);
+  m_ui_xrdOptionsDialog->spin_numpoints->setValue(numpoints);
+  m_ui_xrdOptionsDialog->spin_max2theta->setValue(max2theta);
+
+  if (m_xrdOptionsDialog->exec() != QDialog::Accepted) {
+    qDebug() << "Cancelled!";
+    emit finishedBackgroundProcessing();
+    m_context_xtal = 0;
+    return;
+  }
+
+  qDebug() << "Accepted!";
+
+  wavelength = m_ui_xrdOptionsDialog->spin_wavelength->value();
+  peakwidth = m_ui_xrdOptionsDialog->spin_peakwidth->value();
+  numpoints = m_ui_xrdOptionsDialog->spin_numpoints->value();
+  max2theta = m_ui_xrdOptionsDialog->spin_max2theta->value();
+
+  GlobalSearch::XrdData results;
+  if (!GlobalSearch::GenerateXrd::generateXrdPattern(*m_context_xtal, results,
+                                                     wavelength, peakwidth,
+                                                     numpoints, max2theta)) {
+    qDebug() << "GenerateXrd failed for xtal '"
+             << m_context_xtal->getGeneration() << "x"
+             << m_context_xtal->getIDNumber();
+    m_context_xtal = 0;
+    return;
+  }
+
+  qDebug() << "results.size() is" << results.size();
+
+  qDebug() << "THIS FEATURE IS NOT FULLY IMPLEMENTED. WILL BE COMPLETE SOON";
+
+  // Clear context xtal pointer
   m_context_xtal = 0;
 }
 

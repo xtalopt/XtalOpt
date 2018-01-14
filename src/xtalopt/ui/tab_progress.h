@@ -22,8 +22,13 @@
 
 #include <QBrush>
 
+class QDialog;
 class QTimer;
 class QMutex;
+
+namespace Ui {
+class XrdOptionsDialog;
+}
 
 namespace GlobalSearch {
 class AbstractDialog;
@@ -95,6 +100,7 @@ public slots:
   void replaceWithOffspringProgress();
   void injectStructureProgress();
   void clipPOSCARProgress();
+  void plotXrdProgress();
   void enableRowTracking() { rowTracking = true; };
   void disableRowTracking() { rowTracking = false; };
   void updateRank();
@@ -112,6 +118,8 @@ signals:
 
 private:
   Ui::Tab_Progress ui;
+  Ui::XrdOptionsDialog* m_ui_xrdOptionsDialog;
+  QDialog* m_xrdOptionsDialog;
   QTimer* m_timer;
   QMutex* m_mutex;
   QMutex *m_update_mutex, *m_update_all_mutex;
