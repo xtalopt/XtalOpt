@@ -141,7 +141,8 @@ bool GenerateXrd::generateXrdPattern(const Structure& s, XrdData& results,
   results.clear();
   bool dataStarted = false;
 
-  QStringList lines = QString(output).split("\n", QString::SkipEmptyParts);
+  QStringList lines = QString(output).split(QRegExp("[\r\n]"),
+                                            QString::SkipEmptyParts);
   for (const auto& line : lines) {
     if (!dataStarted && line.contains("#    2Theta/TOF    ICalc")) {
       dataStarted = true;
