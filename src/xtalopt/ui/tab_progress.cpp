@@ -25,8 +25,10 @@
 
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/ui/dialog.h>
+#include <xtalopt/ui/xrd_plot.h>
 #include <xtalopt/xtalopt.h>
 
+#include <QDesktopWidget>
 #include <QDir>
 #include <QFile>
 #include <QFileDialog>
@@ -46,8 +48,8 @@ namespace XtalOpt {
 
 TabProgress::TabProgress(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
   : AbstractTab(parent, p), m_ui_xrdOptionsDialog(new Ui::XrdOptionsDialog),
-    m_xrdOptionsDialog(new QDialog(parent)), m_timer(new QTimer(this)),
-    m_mutex(new QMutex), m_update_mutex(new QMutex),
+    m_xrdOptionsDialog(new QDialog(parent)), m_xrdPlot(new XrdPlot),
+    m_timer(new QTimer(this)), m_mutex(new QMutex), m_update_mutex(new QMutex),
     m_update_all_mutex(new QMutex), m_context_mutex(new QMutex),
     m_context_xtal(0)
 {
@@ -101,6 +103,8 @@ TabProgress::TabProgress(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
 TabProgress::~TabProgress()
 {
   delete m_ui_xrdOptionsDialog;
+  delete m_xrdOptionsDialog;
+  delete m_xrdPlot;
   delete m_mutex;
   delete m_update_mutex;
   delete m_update_all_mutex;
@@ -876,13 +880,9 @@ void TabProgress::plotXrdProgress()
   m_ui_xrdOptionsDialog->spin_max2theta->setValue(max2theta);
 
   if (m_xrdOptionsDialog->exec() != QDialog::Accepted) {
-    qDebug() << "Cancelled!";
-    emit finishedBackgroundProcessing();
     m_context_xtal = 0;
     return;
   }
-
-  qDebug() << "Accepted!";
 
   wavelength = m_ui_xrdOptionsDialog->spin_wavelength->value();
   peakwidth = m_ui_xrdOptionsDialog->spin_peakwidth->value();
@@ -900,9 +900,20 @@ void TabProgress::plotXrdProgress()
     return;
   }
 
-  qDebug() << "results.size() is" << results.size();
+  if (m_xrdPlot->isVisible())
+    m_xrdPlot->hide();
 
-  qDebug() << "THIS FEATURE IS NOT FULLY IMPLEMENTED. WILL BE COMPLETE SOON";
+  m_xrdPlot->clearPlotCurves();
+  m_xrdPlot->addXrdData(results);
+  m_xrdPlot->resize(600, 600);
+  m_xrdPlot->setAxisAutoScale(QwtPlot::yLeft);
+  m_xrdPlot->setAxisAutoScale(QwtPlot::xBottom);
+  m_xrdPlot->replot();
+
+  // Center the plot on the desktop screen
+  m_xrdPlot->move(QApplication::desktop()->screen()->rect().center() -
+                  m_xrdPlot->rect().center());
+  m_xrdPlot->show();
 
   // Clear context xtal pointer
   m_context_xtal = 0;

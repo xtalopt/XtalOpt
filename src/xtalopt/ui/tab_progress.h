@@ -36,6 +36,7 @@ class Structure;
 }
 
 namespace XtalOpt {
+class XrdPlot;
 class XtalOpt;
 class Xtal;
 
@@ -120,6 +121,7 @@ private:
   Ui::Tab_Progress ui;
   Ui::XrdOptionsDialog* m_ui_xrdOptionsDialog;
   QDialog* m_xrdOptionsDialog;
+  XrdPlot* m_xrdPlot;
   QTimer* m_timer;
   QMutex* m_mutex;
   QMutex *m_update_mutex, *m_update_all_mutex;

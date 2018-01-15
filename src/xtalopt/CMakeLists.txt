@@ -21,6 +21,7 @@ set( xtalopt_SRCS
      ui/tab_opt.cpp
      ui/tab_progress.cpp
      ui/tab_plot.cpp
+     ui/xrd_plot.cpp
      ui/xtalopt_plot.cpp
      ui/tab_log.cpp)
 
