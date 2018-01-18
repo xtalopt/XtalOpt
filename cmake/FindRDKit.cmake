@@ -9,7 +9,7 @@
 # Copyright (c) 2010 Tim Vandermeersch
 # Copyright (c) 2017 Patrick Avery
 
-if(RDKit_INCLUDE_DIRS AND RDKit_LIBRARY_DIRS)
+if(RDKit_INCLUDE_DIRS AND RDKit_LIBRARIES)
   set(RDKit_FOUND TRUE)
   return()
 endif()
@@ -33,23 +33,37 @@ find_path(RDKit_INCLUDE_DIRS GraphMol/Atom.h
                 ${RDBASE}/Code
           PATHS ${_include_search_paths})
 
-find_library(RDKit_LIBRARY_DIRS RDKitGraphMol
-             HINTS ${RDKit_ROOT}/lib
-                   ${RDKit_ROOT}/build/lib
-                   ${RDBASE}/lib
-                   ${RDBASE}/build/lib
-             PATHS ${_include_search_paths})
+# This will set RDKit_LIBRARIES to contain all the library names
+include(RDKitLibraries)
 
-# Get the directory component of the file name
-get_filename_component(RDKit_LIBRARY_DIRS ${RDKit_LIBRARY_DIRS} DIRECTORY)
+# We need to find each one
+foreach(_lib ${RDKit_LIBRARIES})
+  find_library(lib ${_lib}
+               HINTS ${RDKit_ROOT}/lib
+                     ${RDKit_ROOT}/build/lib
+                     ${RDBASE}/lib
+                     ${RDBASE}/build/lib
+               PATHS ${_include_search_paths})
 
-if(RDKit_INCLUDE_DIRS AND RDKit_LIBRARY_DIRS)
+  if("${lib}" STREQUAL "lib-NOTFOUND")
+    message(SEND_ERROR "Could not find ${_lib}")
+    set(_rdk_libs "")
+    break()
+  endif()
+
+  set(_rdk_libs ${_rdk_libs} ${lib})
+  unset(lib CACHE)
+endforeach()
+
+set(RDKit_LIBRARIES ${_rdk_libs})
+
+if(RDKit_INCLUDE_DIRS AND RDKit_LIBRARIES)
   set(RDKit_FOUND TRUE)
 endif()
 
 if(RDKit_FOUND)
   message(STATUS "Found RDKit header file: ${RDKit_INCLUDE_DIRS}")
-  message(STATUS "Found RDKit libraries: ${RDKit_LIBRARY_DIRS}")
+  message(STATUS "Found RDKit libraries: ${RDKit_LIBRARIES}")
 else(RDKit_FOUND)
   if(RDKit_FIND_REQUIRED)
     message(FATAL_ERROR "Could not find RDKit")

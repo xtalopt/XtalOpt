@@ -32,9 +32,6 @@ if(ENABLE_MOLECULAR)
 
   find_package(RDKit REQUIRED)
   set(RDKit_INCLUDE_DIRS ${RDKit_INCLUDE_DIRS} PARENT_SCOPE)
-  set(RDKit_LIBRARY_DIRS ${RDKit_LIBRARY_DIRS} PARENT_SCOPE)
-
-  include(RDKitLibraries)
   set(RDKit_LIBRARIES ${RDKit_LIBRARIES} PARENT_SCOPE)
 
   message(STATUS "RDKit found.")

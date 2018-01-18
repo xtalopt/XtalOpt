@@ -20,7 +20,6 @@ if(ENABLE_MOLECULAR)
   # We are including these as system libraries so we do not
   # receive warnings from them
   include_directories(SYSTEM ${RDKit_INCLUDE_DIRS})
-  link_directories(${RDKit_LIBRARY_DIRS})
   include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
   link_directories(${Boost_LIBRARY_DIRS})
 endif(ENABLE_MOLECULAR)

@@ -63,8 +63,6 @@ foreach(_lib ${_RDKit_LIBRARIES})
   )
 endforeach()
 
-message(STATUS "RDKit libraries: ${RDKit_LIBRARIES}")
-
 # If RDKIT_STATIC, we should add another copy of RDKit_LIBRARIES to the end of
 # the list to ensure that all libraries will be found when linking
 # In fact, tests show that we need 3 copies of it...

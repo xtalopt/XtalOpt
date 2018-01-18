@@ -66,7 +66,6 @@ endif()
 
 if(ENABLE_MOLECULAR)
   include_directories(SYSTEM ${RDKit_INCLUDE_DIRS})
-  link_directories(${RDKit_LIBRARY_DIRS})
   include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
   link_directories(${Boost_LIBRARY_DIRS})
 endif(ENABLE_MOLECULAR)
