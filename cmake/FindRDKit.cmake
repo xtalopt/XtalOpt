@@ -31,6 +31,8 @@ endif(UNIX)
 find_path(RDKit_INCLUDE_DIRS GraphMol/Atom.h
           HINTS ${RDKit_ROOT}/Code
                 ${RDBASE}/Code
+                ${RDBASE}/include
+                ${RDBASE}/include/rdkit
           PATHS ${_include_search_paths})
 
 # This will set RDKit_LIBRARIES to contain all the library names
@@ -38,21 +40,21 @@ include(RDKitLibraries)
 
 # We need to find each one
 foreach(_lib ${RDKit_LIBRARIES})
-  find_library(lib ${_lib}
+  find_library(_tmplib ${_lib}
                HINTS ${RDKit_ROOT}/lib
                      ${RDKit_ROOT}/build/lib
                      ${RDBASE}/lib
                      ${RDBASE}/build/lib
                PATHS ${_include_search_paths})
 
-  if("${lib}" STREQUAL "lib-NOTFOUND")
+  if("${_tmplib}" STREQUAL "_tmplib-NOTFOUND")
     message(SEND_ERROR "Could not find ${_lib}")
     set(_rdk_libs "")
     break()
   endif()
 
-  set(_rdk_libs ${_rdk_libs} ${lib})
-  unset(lib CACHE)
+  set(_rdk_libs ${_rdk_libs} ${_tmplib})
+  unset(_tmplib CACHE)
 endforeach()
 
 set(RDKit_LIBRARIES ${_rdk_libs})
