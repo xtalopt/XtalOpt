@@ -55,6 +55,8 @@
 #include <fstream>
 #include <iostream>
 #include <mutex>
+#include <chrono>
+#include <thread>
 
 //#define OPTBASE_DEBUG
 
@@ -250,6 +252,44 @@ QList<double> OptBase::getProbabilityList(const QList<Structure*>& structures,
   return probs;
 }
 
+// Start up a resubmission thread that will attempt resubmissions every
+// 10 minutes
+void OptBase::startHardnessResubmissionThread()
+{
+  if (!m_calculateHardness)
+    return;
+
+  // Run in a separate thread
+  // This is our first usage of std::thread in the program. If we run into
+  // linking or packaging problems, we can go back to QtConcurrent
+  std::thread(&OptBase::_startHardnessResubmissionThread, this).detach();
+}
+
+void OptBase::_startHardnessResubmissionThread()
+{
+  if (!m_calculateHardness)
+    return;
+
+  // Make sure we only ever have one of these going at a time
+  static std::mutex resubmissionMutex;
+  std::unique_lock<std::mutex> lock(resubmissionMutex, std::defer_lock);
+  if (!lock.try_lock())
+    return;
+
+  while (m_calculateHardness) {
+    // Wait 10 minutes before the resubmission
+    std::this_thread::sleep_for(std::chrono::minutes(10));
+    resubmitUnfinishedHardnessCalcs();
+  }
+
+  lock.unlock();
+
+  // Run this function again if m_calculateHardness became true in
+  // between the "while" check and the unlocking of the mutex
+  if (m_calculateHardness)
+    _startHardnessResubmissionThread();
+}
+
 void OptBase::calculateHardness(Structure* s)
 {
   // If we are not to calculate hardness, do nothing
@@ -269,6 +309,9 @@ void OptBase::calculateHardness(Structure* s)
 
 void OptBase::resubmitUnfinishedHardnessCalcs()
 {
+  if (!m_calculateHardness)
+    return;
+
   QReadLocker trackerLocker(m_tracker->rwLock());
   QList<Structure*> structures = m_queue->getAllOptimizedStructures();
   for (auto& s : structures) {

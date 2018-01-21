@@ -588,7 +588,7 @@ bool XtalOpt::save(QString filename, bool notify)
   settings->setValue("opt/perm_ex", perm_ex);
 
   // Hardness settings
-  settings->setValue("opt/calculateHardness", m_calculateHardness);
+  settings->setValue("opt/calculateHardness", m_calculateHardness.load());
   settings->setValue("opt/useHardnessFitnessFunction",
                      m_useHardnessFitnessFunction);
 

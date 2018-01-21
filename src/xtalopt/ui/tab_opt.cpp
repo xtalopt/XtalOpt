@@ -118,6 +118,8 @@ TabOpt::TabOpt(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
           SLOT(updateOptimizationInfo()));
   connect(ui.cb_calculateHardness, &QCheckBox::toggled, m_opt,
           &GlobalSearch::OptBase::resubmitUnfinishedHardnessCalcs);
+  connect(ui.cb_calculateHardness, &QCheckBox::toggled, m_opt,
+          &GlobalSearch::OptBase::startHardnessResubmissionThread);
   connect(ui.cb_useHardnessFitnessFunction, SIGNAL(toggled(bool)), this,
           SLOT(updateOptimizationInfo()));
 
@@ -182,7 +184,7 @@ void TabOpt::updateGUI()
   ui.spin_perm_strainStdev_max->setValue(xtalopt->perm_strainStdev_max);
   ui.spin_perm_ex->setValue(xtalopt->perm_ex);
 
-  ui.cb_calculateHardness->setChecked(xtalopt->m_calculateHardness);
+  ui.cb_calculateHardness->setChecked(xtalopt->m_calculateHardness.load());
   ui.cb_useHardnessFitnessFunction->setChecked(
     xtalopt->m_useHardnessFitnessFunction);
 }

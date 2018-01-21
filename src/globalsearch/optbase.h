@@ -29,6 +29,7 @@
 #include <QMutex>
 #include <QObject>
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -231,6 +232,12 @@ if (r < probs.at(ind)) break;
    * @param s The structure whose hardness is to be calculated.
    */
   void calculateHardness(Structure* s);
+
+  /**
+   * In a separate thread, resubmit incomplete hardness calculations every
+   * 10 minutes if m_calculateHardness is true.
+   */
+  void startHardnessResubmissionThread();
 
   /**
    * Run calculateHardness() on any structure that does not yet have
@@ -1108,6 +1115,12 @@ protected slots:
 /// \endcond
 
   /**
+   * Resubmit incomplete hardness calculations every 10 minutes if
+   * m_calculateHardness is true (runs in the current thread).
+   */
+  void _startHardnessResubmissionThread();
+
+  /**
    * This should be called when the aflow calculation is completed for
    * @param ind. It will obtain the data from Aflow and set the data to
    * the structure. It will run in a separate thread.
@@ -1209,7 +1222,7 @@ public:
   bool m_logErrorDirs;
 
   /// Calculate hardness using Aflow machine learning? (Requires internet)
-  bool m_calculateHardness;
+  std::atomic<bool> m_calculateHardness;
 
   /// Use hardness for the fitness function instead of enthalpy?
   bool m_useHardnessFitnessFunction;

@@ -92,6 +92,7 @@ set(GLOBALSEARCH_LINK_LIBS
     Qt5::Network # Needed for XtalOpt RPC
     Qt5::Widgets
     pugixml
+    ${CMAKE_THREAD_LIBS_INIT} # Standard threads library
 )
 
 if(ENABLE_MOLECULAR)
