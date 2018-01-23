@@ -86,11 +86,6 @@ void GenXrdTest::generateXrdPatternTest()
   size_t numpoints = 1000;
   double max2theta = 162.0;
 
-#ifdef __APPLE__
-  // This currently fails on Apple
-  QEXPECT_FAIL("", "The executable fails to run on OS X on Travis-CI", Abort);
-#endif
-
   QVERIFY(GlobalSearch::GenerateXrd::generateXrdPattern(
     rutile, results, wavelength, peakwidth, numpoints, max2theta));
 
