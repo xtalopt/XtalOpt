@@ -367,7 +367,10 @@ void OptBase::_finishHardnessCalculation(size_t ind)
   double k = shearModulus / bulkModulus;
 
   // The Chen model: 2.0 * (k^2 * shear)^0.585 - 3.0
-  double hardness = 2.0 * pow((pow(k, 2.0) * shearModulus), 0.585) - 3.0;
+  //double hardness = 2.0 * pow((pow(k, 2.0) * shearModulus), 0.585) - 3.0;
+
+  // The Teter model: 0.151 * shear
+  double hardness = 0.151 * shearModulus;
 
   QWriteLocker structureLocker(&s->lock());
   s->setBulkModulus(bulkModulus);
