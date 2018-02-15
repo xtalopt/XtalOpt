@@ -624,8 +624,10 @@ bool XtalOpt::writeEditSettings(const QString& filename)
 
   writeUserValuesToSettings(filename.toStdString());
 
-  for (size_t i = 0; i < getNumOptSteps(); ++i)
+  for (size_t i = 0; i < getNumOptSteps(); ++i) {
     optimizer(i)->writeSettings(filename);
+    queueInterface(i)->writeSettings(filename);
+  }
 
   return true;
 }
