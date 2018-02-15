@@ -133,6 +133,9 @@ Structure& Structure::operator=(const Structure& other)
     m_optStart = other.m_optStart;
     m_optEnd = other.m_optEnd;
     m_index = other.m_index;
+#ifdef ENABLE_MOLECULAR
+    m_zValue = other.m_zValue.load(),
+#endif // ENABLE_MOLECULAR
     m_parentStructure = other.m_parentStructure;
     m_copyFiles = other.m_copyFiles;
     m_reusePreoptBonding = other.m_reusePreoptBonding;
@@ -174,6 +177,9 @@ Structure& Structure::operator=(Structure&& other) noexcept
     m_optStart = std::move(other.m_optStart);
     m_optEnd = std::move(other.m_optEnd);
     m_index = std::move(other.m_index);
+#ifdef ENABLE_MOLECULAR
+    m_zValue = std::move(other.m_zValue.load()),
+#endif // ENABLE_MOLECULAR
     m_parentStructure = std::move(other.m_parentStructure);
 
     other.m_parentStructure = nullptr;

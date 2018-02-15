@@ -337,7 +337,7 @@ public:
    * Get the number of molecules in a molecular crystal. Returns -1 for
    * atomistic crystals.
    */
-  int getZValue() const { return m_zValue; }
+  int getZValue() const { return m_zValue.load(); }
 #endif // ENABLE_MOLECULAR
 
   /** @return A pointer for the parent structure of a given structure
@@ -1422,7 +1422,7 @@ protected:
 
   // The number of molecules in a molecular crystal. Set to -1 in
   // atomistic crystals.
-  int m_zValue;
+  std::atomic<int> m_zValue;
 #endif // ENABLE_MOLECULAR
 
   // Pointer to parent structure if one is saved.
