@@ -19,8 +19,10 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/sshmanager_libssh.h>
 
+#include <QApplication>
 #include <QDebug>
 #include <QDir>
+#include <QThread>
 
 #include <fcntl.h>
 #include <fstream>
@@ -390,6 +392,13 @@ bool SSHConnectionLibSSH::_execute(const QString& command, QString& stdout_str,
                                    QString& stderr_str, int& exitcode,
                                    bool printWarning)
 {
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "_execute(): mainThread is" << mainThread;
+  qDebug() << "_execute(): currentThread is" << currentThread;
+  qDebug() << "_execute(): Are they equal? " << (mainThread == currentThread);
+  qDebug() << "command is" << command;
   START;
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "The following command is being executed:" << command;
@@ -491,6 +500,12 @@ bool SSHConnectionLibSSH::copyFileToServer(const QString& localpath,
 bool SSHConnectionLibSSH::_copyFileToServer(const QString& localpath,
                                             const QString& remotepath)
 {
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "_copyFileToServer(): mainThread is" << mainThread;
+  qDebug() << "_copyFileToServer(): currentThread is" << currentThread;
+  qDebug() << "_copyFileToServer(): Are they equal? " << (mainThread == currentThread);
   START;
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "copying" << localpath << "to" << remotepath;
@@ -558,6 +573,12 @@ bool SSHConnectionLibSSH::copyFileFromServer(const QString& remotepath,
 bool SSHConnectionLibSSH::_copyFileFromServer(const QString& remotepath,
                                               const QString& localpath)
 {
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "_copyFileFromServer(): mainThread is" << mainThread;
+  qDebug() << "_copyFileFromServer(): currentThread is" << currentThread;
+  qDebug() << "_copyFileFromServer(): Are they equal? " << (mainThread == currentThread);
   START;
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "copying" << remotepath << "to" << localpath;
@@ -623,6 +644,12 @@ bool SSHConnectionLibSSH::readRemoteFile(const QString& filename,
 bool SSHConnectionLibSSH::_readRemoteFile(const QString& filename,
                                           QString& contents)
 {
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "_readRemoteFile(): mainThread is" << mainThread;
+  qDebug() << "_readRemoteFile(): currentThread is" << currentThread;
+  qDebug() << "_readRemoteFile(): Are they equal? " << (mainThread == currentThread);
   START;
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "reading" << filename;
@@ -674,6 +701,12 @@ bool SSHConnectionLibSSH::removeRemoteFile(const QString& filename)
 /// @cond
 bool SSHConnectionLibSSH::_removeRemoteFile(const QString& filename)
 {
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "_removeRemoteFile(): mainThread is" << mainThread;
+  qDebug() << "_removeRemoteFile(): currentThread is" << currentThread;
+  qDebug() << "_removeRemoteFile(): Are they equal? " << (mainThread == currentThread);
   START;
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "Removing remote file: " << filename;
@@ -710,6 +743,12 @@ bool SSHConnectionLibSSH::copyDirectoryToServer(const QString& local,
 bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString& local,
                                                  const QString& remote)
 {
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "_copyDirectoryToServer(): mainThread is" << mainThread;
+  qDebug() << "_copyDirectoryToServer(): currentThread is" << currentThread;
+  qDebug() << "_copyDirectoryToServer(): Are they equal? " << (mainThread == currentThread);
   START;
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "copying" << local << "to" << remote;
@@ -768,6 +807,12 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString& local,
 bool SSHConnectionLibSSH::copyDirectoryFromServer(const QString& remote,
                                                   const QString& local)
 {
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "_copyDirectoryFromServer(): mainThread is" << mainThread;
+  qDebug() << "_copyDirectoryFromServer(): currentThread is" << currentThread;
+  qDebug() << "_copyDirectoryFromServer(): Are they equal? " << (mainThread == currentThread);
   QMutexLocker locker(&m_lock);
   if (local.trimmed().isEmpty() || remote.trimmed().isEmpty()) {
     qWarning() << QString("Refusing to copy to/from empty path: '%2' to '%1'")
@@ -782,6 +827,12 @@ bool SSHConnectionLibSSH::copyDirectoryFromServer(const QString& remote,
 bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString& remote,
                                                    const QString& local)
 {
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "_copyDirectoryFromServer(): mainThread is" << mainThread;
+  qDebug() << "_copyDirectoryFromServer(): currentThread is" << currentThread;
+  qDebug() << "_copyDirectoryFromServer(): Are they equal? " << (mainThread == currentThread);
   START;
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "copying" << remote << "to" << local;
@@ -866,6 +917,12 @@ bool SSHConnectionLibSSH::readRemoteDirectoryContents(const QString& path,
 bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString& path,
                                                        QStringList& contents)
 {
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "_readRemoteDirectoryContents(): mainThread is" << mainThread;
+  qDebug() << "_readRemoteDirectoryContents(): currentThread is" << currentThread;
+  qDebug() << "_readRemoteDirectoryContents(): Are they equal? " << (mainThread == currentThread);
   START;
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "Reading remote directory contents of:" << path;
@@ -939,6 +996,12 @@ bool SSHConnectionLibSSH::removeRemoteDirectory(const QString& path,
 bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString& path,
                                                  bool onlyDeleteContents)
 {
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "_removeRemoteDirectory(): mainThread is" << mainThread;
+  qDebug() << "_removeRemoteDirectory(): currentThread is" << currentThread;
+  qDebug() << "_removeRemoteDirectory(): Are they equal? " << (mainThread == currentThread);
   START;
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
   qDebug() << "Removing remote directory:" << path;

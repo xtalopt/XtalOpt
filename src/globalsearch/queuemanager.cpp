@@ -22,6 +22,7 @@
 #include <globalsearch/random.h>
 #include <globalsearch/structure.h>
 
+#include <QApplication>
 #include <QDateTime>
 #include <QDebug>
 #include <QTimer>
@@ -198,6 +199,14 @@ void QueueManager::checkLoop()
     checkPopulation();
     checkRunning();
   }
+
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "mainThread is" << mainThread;
+  qDebug() << "currentThread is" << currentThread;
+
+  qDebug() << "Are they equal? " << (mainThread == currentThread);
 
   QTimer::singleShot(1000, this, SLOT(checkLoop()));
 }
@@ -898,6 +907,13 @@ void QueueManager::addStructureToSubmissionQueue_(Structure* s, int optStep)
 
 void QueueManager::startJob()
 {
+  QThread* mainThread = QApplication::instance()->thread();
+  QThread* currentThread = QThread::currentThread();
+
+  qDebug() << "startJob(): mainThread is" << mainThread;
+  qDebug() << "startJob(): currentThread is" << currentThread;
+
+  qDebug() << "startJob(): Are they equal? " << (mainThread == currentThread);
   Structure* s;
   if (!m_jobStartTracker.popFirst(s)) {
     return;
