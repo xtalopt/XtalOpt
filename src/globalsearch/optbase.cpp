@@ -364,7 +364,7 @@ void OptBase::_finishHardnessCalculation(size_t ind)
   double bulkModulus = atof(data["ml_ael_bulk_modulus_vrh"].c_str());
   double shearModulus = atof(data["ml_ael_shear_modulus_vrh"].c_str());
 
-  double k = shearModulus / bulkModulus;
+  //double k = shearModulus / bulkModulus;
 
   // The Chen model: 2.0 * (k^2 * shear)^0.585 - 3.0
   //double hardness = 2.0 * pow((pow(k, 2.0) * shearModulus), 0.585) - 3.0;
