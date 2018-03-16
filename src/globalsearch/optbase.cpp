@@ -724,6 +724,15 @@ QueueInterface* OptBase::queueInterface(int optStep) const
   return m_queueInterfaceAtOptStep[optStep].get();
 }
 
+int OptBase::queueInterfaceIndex(const QueueInterface* qi) const
+{
+  for (size_t i = 0; i < m_queueInterfaceAtOptStep.size(); ++i) {
+    if (qi == m_queueInterfaceAtOptStep[i].get())
+      return i;
+  }
+  return -1;
+}
+
 Optimizer* OptBase::optimizer(int optStep) const
 {
   if (optStep >= getNumOptSteps()) {
@@ -733,6 +742,15 @@ Optimizer* OptBase::optimizer(int optStep) const
     return nullptr;
   }
   return m_optimizerAtOptStep[optStep].get();
+}
+
+int OptBase::optimizerIndex(const Optimizer* optimizer) const
+{
+  for (size_t i = 0; i < m_optimizerAtOptStep.size(); ++i) {
+    if (optimizer == m_optimizerAtOptStep[i].get())
+      return i;
+  }
+  return -1;
 }
 
 #ifdef ENABLE_MOLECULAR

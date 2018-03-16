@@ -85,10 +85,16 @@ void VASPOptimizer::writeDataToSettings(const QString& filename)
     return;
   }
   SETTINGS(filename);
+
+  // Figure out what opt index this is.
+  int optInd = m_opt->optimizerIndex(this);
+  if (optInd < 0)
+    return;
+
   QStringList ids = getDataIdentifiers();
   for (int i = 0; i < ids.size(); i++) {
-    settings->setValue("xtalopt/optimizer/" + getIDString() + "/data/" +
-                         ids.at(i),
+    settings->setValue("xtalopt/optimizer/" + getIDString() + "/" +
+                       QString::number(optInd) + "/data/" + ids.at(i),
                        m_data.value(ids.at(i)));
   }
 }

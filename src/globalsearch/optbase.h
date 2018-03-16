@@ -355,11 +355,23 @@ if (r < probs.at(ind)) break;
   QueueInterface* queueInterface(int optStep) const;
 
   /**
+   * @return Get the index of the queue interface pointer or -1 if it does
+   *         not exist.
+   */
+  int queueInterfaceIndex(const QueueInterface* qi) const;
+
+  /**
    * @return A pointer to the current Optimizer.
    * @sa setOptimizer
    * @sa optimizerChanged
    */
   Optimizer* optimizer(int optStep) const;
+
+  /**
+   * @return Get the index of the optimizer pointer or -1 if it does
+   *         not exist.
+   */
+  int optimizerIndex(const Optimizer* optimizer) const;
 
   /**
    * @return A pointer to the SSHManager instance.

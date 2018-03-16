@@ -155,8 +155,14 @@ void LoadLevelerQueueInterface::readSettings(const QString& filename)
 {
   SETTINGS(filename);
 
+  // Figure out what opt index this is.
+  int optInd = m_opt->queueInterfaceIndex(this);
+  if (optInd < 0)
+    return;
+
   settings->beginGroup(m_opt->getIDString().toLower());
   settings->beginGroup("queueinterface/loadlevelerqueueinterface");
+  settings->beginGroup(QString::number(optInd));
   int loadedVersion = settings->value("version", 0).toInt();
   settings->beginGroup("paths");
 
@@ -164,6 +170,7 @@ void LoadLevelerQueueInterface::readSettings(const QString& filename)
   m_statusCommand = settings->value("llq", "llq").toString();
   m_cancelCommand = settings->value("llcancel", "llcancel").toString();
 
+  settings->endGroup();
   settings->endGroup();
   settings->endGroup();
   settings->endGroup();
@@ -183,8 +190,14 @@ void LoadLevelerQueueInterface::writeSettings(const QString& filename)
 
   const int version = 1;
 
+  // Figure out what opt index this is.
+  int optInd = m_opt->queueInterfaceIndex(this);
+  if (optInd < 0)
+    return;
+
   settings->beginGroup(m_opt->getIDString().toLower());
   settings->beginGroup("queueinterface/loadlevelerqueueinterface");
+  settings->beginGroup(QString::number(optInd));
   settings->setValue("version", version);
   settings->beginGroup("paths");
 
@@ -192,6 +205,7 @@ void LoadLevelerQueueInterface::writeSettings(const QString& filename)
   settings->setValue("llq", m_statusCommand);
   settings->setValue("llcancel", m_cancelCommand);
 
+  settings->endGroup();
   settings->endGroup();
   settings->endGroup();
   settings->endGroup();

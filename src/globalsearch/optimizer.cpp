@@ -107,12 +107,17 @@ void Optimizer::readDataFromSettings(const QString& filename)
 {
   SETTINGS(filename);
 
+  // Figure out what opt index this is.
+  int optInd = m_opt->optimizerIndex(this);
+  if (optInd < 0)
+    return;
+
   QStringList ids = getDataIdentifiers();
   for (int i = 0; i < ids.size(); i++) {
     m_data.insert(ids.at(i), settings->value(m_opt->getIDString().toLower() +
-                                               "/optimizer/" + getIDString() +
-                                               "/data/" + ids.at(i),
-                                             ""));
+                                             "/optimizer/" + getIDString() +
+                                             "/" + QString::number(optInd) +
+                                             "/data/" + ids.at(i), ""));
   }
 }
 
@@ -128,11 +133,17 @@ void Optimizer::writeSettings(const QString& filename)
 void Optimizer::writeDataToSettings(const QString& filename)
 {
   SETTINGS(filename);
+
+  // Figure out what opt index this is.
+  int optInd = m_opt->optimizerIndex(this);
+  if (optInd < 0)
+    return;
+
   QStringList ids = getDataIdentifiers();
   for (int i = 0; i < ids.size(); i++) {
     settings->setValue(m_opt->getIDString().toLower() + "/optimizer/" +
-                         getIDString() + "/data/" + ids.at(i),
-                       m_data.value(ids.at(i)));
+                       getIDString() + "/" + QString::number(optInd) +
+                       "/data/" + ids.at(i), m_data.value(ids.at(i)));
   }
 }
 
