@@ -479,6 +479,19 @@ bool OptBase::save(QString stateFilename, bool notify)
         tr("Saving: Writing %1...").arg(structureStateFileName));
     }
     structure->writeSettings(structureStateFileName);
+
+    // Special request from Eva: if we are using VASP and we encounter
+    // a structure that skipped optimization (primitive reduction, for
+    // instance), still write the CONTCAR in the structure directory.
+    if (structure->skippedOptimization() &&
+        optimizer(getNumOptSteps() - 1)->getIDString() == "VASP") {
+      QFile file(structure->fileName() + "/CONTCAR");
+      file.open(QIODevice::WriteOnly);
+
+      std::stringstream ss;
+      PoscarFormat::write(*structure, ss);
+      file.write(ss.str().c_str());
+    }
   }
 
   /////////////////////////
