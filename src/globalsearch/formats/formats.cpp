@@ -18,6 +18,7 @@
 #include <globalsearch/formats/castepformat.h>
 #include <globalsearch/formats/cmlformat.h>
 #include <globalsearch/formats/formats.h>
+#include <globalsearch/formats/genericformat.h>
 #include <globalsearch/formats/gulpformat.h>
 #include <globalsearch/formats/poscarformat.h>
 #include <globalsearch/formats/pwscfformat.h>
@@ -123,8 +124,12 @@ bool Formats::read(Structure* s, const QString& filename, const QString& format)
     return ZMatrixFormat::read(s, in);
   }
 
-  qDebug() << "An invalid format, " << format << ", entered into "
-           << "Format::read() !";
-  return false;
+  // If we made it to the end, try the generic format reader
+  std::ifstream in(filename.toStdString().c_str());
+  if (!in.is_open()) {
+    qDebug() << "Failed to open generic file: " << filename;
+    return false;
+  }
+  return GenericFormat::read(*s, in, format.toStdString());
 }
 }

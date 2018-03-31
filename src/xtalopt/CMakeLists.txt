@@ -7,11 +7,12 @@ set( xtalopt_SRCS
      genetic.cpp
      structures/xtal.cpp
      optimizers/xtaloptoptimizer.cpp
-     optimizers/vasp.cpp
+     optimizers/castep.cpp
+     optimizers/generic.cpp
      optimizers/gulp.cpp
      optimizers/pwscf.cpp
-     optimizers/castep.cpp
      optimizers/siesta.cpp
+     optimizers/vasp.cpp
      rpc/xtaloptrpc.cpp
      testing/xtalopttest.cpp
      ui/dialog.cpp

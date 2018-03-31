@@ -109,7 +109,8 @@ public:
     OT_GULP,
     OT_PWscf,
     OT_CASTEP,
-    OT_SIESTA
+    OT_SIESTA,
+    OT_GENERIC
   };
 
   enum QueueInterfaces

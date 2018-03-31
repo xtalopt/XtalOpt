@@ -39,7 +39,7 @@ TabEdit::TabEdit(AbstractDialog* parent, XtalOpt* p) : DefaultEditTab(parent, p)
 {
   // Fill m_optimizers in order of XtalOpt::OptTypes
   m_optimizers.clear();
-  const unsigned int numOptimizers = 5;
+  const unsigned int numOptimizers = 6;
   for (unsigned int i = 0; i < numOptimizers; ++i) {
     switch (i) {
       case XtalOpt::OT_VASP:
@@ -56,6 +56,9 @@ TabEdit::TabEdit(AbstractDialog* parent, XtalOpt* p) : DefaultEditTab(parent, p)
         break;
       case XtalOpt::OT_SIESTA:
         m_optimizers.append("siesta");
+        break;
+      case XtalOpt::OT_GENERIC:
+        m_optimizers.append("generic");
         break;
     }
   }

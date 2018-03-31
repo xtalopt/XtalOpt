@@ -3676,6 +3676,9 @@ std::unique_ptr<GlobalSearch::Optimizer> XtalOpt::createOptimizer(
   if (caseInsensitiveCompare(optName, "castep"))
     return make_unique<CASTEPOptimizer>(this);
 
+  if (caseInsensitiveCompare(optName, "generic"))
+    return make_unique<GenericOptimizer>(this);
+
   if (caseInsensitiveCompare(optName, "gulp"))
     return make_unique<GULPOptimizer>(this);
 
