@@ -32,6 +32,14 @@ class GenericOptimizer : public XtalOptOptimizer
 
 public:
   GenericOptimizer(GlobalSearch::OptBase* parent, const QString& filename = "");
+
+  // This will always return true for the generic optimizer
+  bool checkForSuccessfulOutput(GlobalSearch::Structure* s,
+                                bool* success) override
+  {
+    *success = true;
+    return true;
+  };
 };
 
 } // end namespace XtalOpt
