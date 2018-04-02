@@ -36,9 +36,13 @@ bool GenericFormat::read(Structure& s, std::istream& in,
   // Read the whole file
   std::string data(std::istreambuf_iterator<char>(in), {});
 
+  // We need the "-xp" flag to make sure the energy gets written
+  QStringList options;
+  options << "-xp";
+
   // Use OBConvert to get it in CML format
   QByteArray output;
-  if (!OBConvert::convertFormat(format, "cml", data.c_str(), output)) {
+  if (!OBConvert::convertFormat(format, "cml", data.c_str(), output, options)) {
     qDebug() << "Failed to convert generic output file to cml with Open Babel";
     return false;
   }
