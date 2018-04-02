@@ -1,0 +1,24 @@
+[xtalopt]
+edit\description=test
+edit\localpath=/path/to/working/dir
+edit\logErrorDirs=true
+edit\numOptSteps=1
+edit\optimizer\0=generic
+edit\optimizer\0\generic\job.in="Task\n  RunType GO\nEnd\n\nGeometry\n  Optim Cartesian\n  Converge Grad=0.0001\n  optimizelattice yes\nEnd\n\nUnits\n    length Angstrom\nEnd\n\nSystem\n\n    lattice\n      %cellMatrixAngstrom%\n    end\n\n    FractionalCoords\n\n    Atoms\n      %coordsFrac%\n    End\nEnd\n\nDFTB\n    ResourcesDir Dresden\n    model DFTB0\nEnd\nperiodic\n    kspace 3\nend\n"
+edit\queueInterface\0=slurm
+edit\queueInterface\0\slurm\job.slurm="#!/bin/sh\n#SBATCH --nodes=1\n#SBATCH --ntasks-per-node=8\n#SBATCH --job-name=adf-dftb-test\n#SBATCH --output=slurm_job.out\n#SBATCH --error=slurm_job.err\n#SBATCH --mail-type=END\n##SBATCH --mail-user=\n#SBATCH --account=\n#SBATCH --clusters=\n#SBATCH --partition=\n#SBATCH --mem=\n#SBATCH --constraint=\n#SBATCH --exclusive\n##SBATCH --mem-per-cpu=4000\n\nexport SCRATCH_DIR=$SLURM_SUBMIT_DIR\necho \"SLURMTMPDIR is $SLURMTMPDIR\"\nexport OMP_NUM_THREADS=1\nexport I_MPI_PIN=0\nulimit -s unlimited\nexport NNODES=`srun -l hostname | uniq | wc -l`\nexport NPROCS=`srun -l hostname | wc -l`\n\n\nHOSTFILE=hosts.$SLURM_JOB_ID\nsrun hostname -s | sort > $HOSTFILE\n\nmodule use /projects/academic/ezurek/software/projectmodules/\nmodule load adf2017\nmodule list\n\necho \"The number of nodes is $SLURM_NNODES\"\necho \"The number of processors per node $SLURM_NTASKS_PER_NODE\"\necho \"The number of processors is $NPROCS\"\n\nexport I_MPI_PMI_LIBRARY=/usr/lib64/libpmi.so\n\nexport NSCM=$NPROCS\n$ADFBIN/dftb < job.in > job.out"
+edit\remote\cleanRemoteOnStop=false
+edit\remote\host=host
+edit\remote\port=22
+edit\remote\queueRefreshInterval=10
+edit\remote\rempath=/path/to/working/dir
+edit\remote\username=name
+edit\user1=
+edit\user2=
+edit\user3=
+edit\user4=
+edit\version=3
+queueinterface\slurmqueueinterface\0\paths\sbatch=sbatch
+queueinterface\slurmqueueinterface\0\paths\scancel=scancel
+queueinterface\slurmqueueinterface\0\paths\squeue=squeue
+queueinterface\slurmqueueinterface\0\version=0
