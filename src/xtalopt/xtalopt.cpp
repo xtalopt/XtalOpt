@@ -3538,7 +3538,7 @@ void XtalOpt::interpretKeyword(QString& line, Structure* structure)
       for (int j = 0; j < 3; j++) {
         QString inp;
         inp.sprintf("%4.8f", m(i, j));
-        rep += inp + "\t";
+        rep += inp + "  ";
       }
       rep += "\n";
     }
