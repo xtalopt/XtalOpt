@@ -2881,6 +2881,9 @@ Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU, Xtal* parentXtal,
   return xtal;
 }
 
+// Define this macro to produce some debug info from this function
+//#define PROBS_DEBUG
+
 Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
                                              uint FU)
 {
@@ -2934,8 +2937,21 @@ Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
 #if QT_VERSION >= 0x040700
   xtals.reserve(structures.size());
 #endif // QT_VERSION
+
+#ifdef PROBS_DEBUG
+  qDebug() << "Sorted structures list with probs is as follows:";
+#endif
+
   for (int i = 0; i < structures.size(); ++i) {
     xtals.append(qobject_cast<Xtal*>(structures.at(i)));
+
+#ifdef PROBS_DEBUG
+    qDebug() << structures[i]->getGeneration() << "x"
+             << structures[i]->getIDNumber() << ":"
+             << structures[i]->vickersHardness() << "GPa : probs:"
+             << (i == 0 ? 0.0 : probs[i] - probs[i - 1])
+             << ": cumulative probs:" << probs[i];
+#endif
   }
 
   // Initialize loop vars
@@ -2949,6 +2965,12 @@ Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
     if (r < probs.at(ind))
       break;
   xtal = xtals.at(ind);
+
+#ifdef PROBS_DEBUG
+  qDebug() << "r is" << r;
+  qDebug() << "Selected crystal is" << xtal->getGeneration() << "x"
+           << xtal->getIDNumber();
+#endif
   return xtal;
 }
 
