@@ -11,21 +11,21 @@ macro(DownloadOBabel)
 
   # If it already exists, don't download it again
   if(NOT EXISTS ${CMAKE_BINARY_DIR}/bin/${OBABEL_NAME} AND NOT USE_SYSTEM_OBABEL)
-     set(OBABEL_V "openbabel-2-4-1-static-obabel-executables")
+     set(OBABEL_V "openbabel-2-4-90-static-obabel-executables")
     # Linux
     if(UNIX AND NOT APPLE)
       set(OBABEL_DOWNLOAD_LOCATION "https://github.com/psavery/openbabel/releases/download/${OBABEL_V}/linux64-obabel")
-      set(MD5 "2e24b5d9816d9903b37a1258e0af27d6")
+      set(MD5 "6c49c049d0e159f7c66e97e982dff792")
 
     # Apple
     elseif(APPLE)
       set(OBABEL_DOWNLOAD_LOCATION "https://github.com/psavery/openbabel/releases/download/${OBABEL_V}/osx64-obabel")
-      set(MD5 "f74710141d13138de23f25463c812270")
+      set(MD5 "8b7779da046a0f48847f5c1cf9b9c659")
 
     # Windows
     elseif(WIN32 AND NOT CYGWIN)
       set(OBABEL_DOWNLOAD_LOCATION "https://github.com/psavery/openbabel/releases/download/${OBABEL_V}/win64-obabel.exe")
-      set(MD5 "bd7df731a0efc21dc53cc1f0b9fb152e")
+      set(MD5 "6cd08c875d4b15d1f07cf5342b5bce44")
 
     else()
       message(FATAL_ERROR "OBabel is not supported with the current OS type!")
