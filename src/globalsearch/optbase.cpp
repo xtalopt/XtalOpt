@@ -314,6 +314,8 @@ void OptBase::resubmitUnfinishedHardnessCalcs()
 
   QReadLocker trackerLocker(m_tracker->rwLock());
   QList<Structure*> structures = m_queue->getAllOptimizedStructures();
+  structures.append(m_queue->getAllDuplicateStructures());
+  structures.append(m_queue->getAllSupercellStructures());
   for (auto& s : structures) {
     if (s->vickersHardness() < 0.0)
       calculateHardness(s);
