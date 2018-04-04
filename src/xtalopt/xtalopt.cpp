@@ -2926,8 +2926,16 @@ Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
   // Trim list
   // Remove all but (popSize + 1). The "+ 1" will be removed
   // during probability generation.
-  while (static_cast<uint>(structures.size()) > popSize + 1) {
-    structures.removeLast();
+  if (!useHardness) {
+    // If we are using enthalpy for the fitness function, remove the highest
+    // enthalpy items on the list
+    while (static_cast<uint>(structures.size()) > popSize + 1)
+      structures.removeLast();
+  } else {
+    // If we are using the hardness fitness function, remove the softest
+    // items on the list
+    while (static_cast<uint>(structures.size()) > popSize + 1)
+      structures.removeFirst();
   }
 
   QList<double> probs = getProbabilityList(structures, useHardness);
@@ -2948,8 +2956,8 @@ Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
 #ifdef PROBS_DEBUG
     qDebug() << structures[i]->getGeneration() << "x"
              << structures[i]->getIDNumber() << ":"
-             << structures[i]->vickersHardness() << "GPa : probs:"
-             << (i == 0 ? 0.0 : probs[i] - probs[i - 1])
+             << structures[i]->vickersHardness()
+             << "GPa : probs:" << (i == 0 ? 0.0 : probs[i] - probs[i - 1])
              << ": cumulative probs:" << probs[i];
 #endif
   }
