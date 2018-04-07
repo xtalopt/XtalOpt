@@ -1073,9 +1073,6 @@ bool XtalOpt::readSettings(const QString& filename)
 
   settings->endGroup();
 
-  using_interatomicDistanceLimit =
-    settings->value("using/shortestInteratomicDistance", false).toBool();
-
   // We have a separate function for reading the edit settings because
   // the edit tab may need to call it
   if (!readEditSettings(filename))
