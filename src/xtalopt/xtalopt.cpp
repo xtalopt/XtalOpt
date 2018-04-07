@@ -1193,13 +1193,24 @@ Structure* XtalOpt::replaceWithRandom(Structure* s, const QString& reason)
   id = s->getIDNumber();
   // Generate/Check new xtal
   Xtal* xtal = 0;
+  uint spg = 0;
   while (!checkXtal(xtal)) {
     if (xtal) {
       delete xtal;
       xtal = 0;
     }
 
-    xtal = generateRandomXtal(generation, id, FU);
+    if (using_randSpg) {
+      do {
+        // Randomly select a possible spg
+        spg = pickRandomSpgFromPossibleOnes();
+      }
+      while (!RandSpg::isSpgPossible(spg, getStdVecOfAtoms(FU)));
+
+      xtal = randSpgXtal(generation, id, FU, spg);
+    } else {
+      xtal = generateRandomXtal(generation, id, FU);
+    }
   }
 
   // Copy info over
@@ -1210,7 +1221,14 @@ Structure* XtalOpt::replaceWithRandom(Structure* s, const QString& reason)
   oldXtal->resetEnthalpy();
   oldXtal->setPV(0);
   oldXtal->setCurrentOptStep(0);
-  QString parents = "Randomly generated";
+  QString parents;
+  if (using_randSpg) {
+    QString HM_spg = Xtal::getHMName(spg);
+    parents = tr("RandSpg Init: %1 (%2)").arg(spg).arg(HM_spg);
+  }
+  else {
+    parents = "Randomly generated";
+  }
   if (!reason.isEmpty())
     parents += " (" + reason + ")";
   oldXtal->setParents(parents);
@@ -1346,7 +1364,7 @@ Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg,
   // Set up xtal data
   xtal->setGeneration(generation);
   xtal->setIDNumber(id);
-  xtal->setParents(tr("Spg Init: %1 (%2)").arg(spg).arg(HM_spg));
+  xtal->setParents(tr("RandSpg Init: %1 (%2)").arg(spg).arg(HM_spg));
   return xtal;
 }
 
