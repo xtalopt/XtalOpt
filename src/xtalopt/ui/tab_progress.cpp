@@ -769,7 +769,7 @@ void TabProgress::randomizeStructureProgress_()
 
   // Restart job:
   newInfoUpdate(m_context_xtal);
-  restartJobProgress_(1);
+  restartJobProgress_(0);
   // above function handles background processing signal
 }
 
