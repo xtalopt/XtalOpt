@@ -625,6 +625,7 @@ void QueueManager::handleErrorStructure_(Structure* s)
         m_opt->replaceWithRandom(s, tr("excessive failures"));
         s->setStatus(Structure::Restart);
         emit structureUpdated(s);
+        return;
       case OptBase::FA_NewOffspring:
         s->setStatus(Structure::Empty);
         locker.unlock();
