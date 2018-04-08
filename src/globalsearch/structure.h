@@ -205,6 +205,16 @@ public:
     return m_enthalpy;
   };
 
+  double getEnthalpyPerFU() const
+  {
+    return getEnthalpy() / static_cast<double>(getFormulaUnits());
+  }
+
+  double getEnthalpyPerAtom() const
+  {
+    return getEnthalpy() / static_cast<double>(numAtoms());
+  }
+
   /** Returns the value PV term from an enthalpy calculation (H = U
    * + PV) in eV.
    *
