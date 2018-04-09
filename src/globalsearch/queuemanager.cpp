@@ -982,6 +982,7 @@ QueueManager::getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit()
           continue;
         QReadLocker s2Locker(&s2->lock());
         if (s2->getStatus() == Structure::Supercell &&
+            !s2->getSupercellString().isEmpty() &&
             s2->getSupercellString() == s->getSupercellString() &&
             s2->getFormulaUnits() == s->getFormulaUnits()) {
           break;
