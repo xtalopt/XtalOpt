@@ -51,6 +51,7 @@
 #include <QMessageBox>
 #include <QtConcurrent>
 
+#include <cfloat>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -82,7 +83,7 @@ OptBase::OptBase(AbstractDialog* parent)
     m_molecularMode(false),
 #endif // ENABLE_MOLECULAR
     m_logErrorDirs(false), m_calculateHardness(false),
-    m_useHardnessFitnessFunction(false),
+    m_hardnessFitnessWeight(0.0),
     m_networkAccessManager(std::make_shared<QNetworkAccessManager>()),
     m_aflowML(make_unique<AflowML>(m_networkAccessManager, this))
 {
@@ -150,105 +151,157 @@ bool OptBase::createSSHConnections()
 }
 #endif // ENABLE_SSH
 
-QList<double> OptBase::getProbabilityList(const QList<Structure*>& structures,
-                                          bool useHardness)
+static inline double calculateProb(double currentEnthalpy,
+                                   double currentHardness,
+                                   double lowestEnthalpy,
+                                   double highestEnthalpy,
+                                   double lowestHardness,
+                                   double highestHardness,
+                                   double hardnessWeight)
 {
-  // IMPORTANT: structures must contain one more structure than
-  // needed -- the last structure in the list will be removed from
-  // the probability list!
-  if (structures.size() <= 2) {
-    return QList<double>();
-  }
+  double enthalpySpread = highestEnthalpy - lowestEnthalpy;
+  double hardnessSpread = highestHardness - lowestHardness;
+  return 1.0 - hardnessWeight * (highestHardness - currentHardness) /
+         hardnessSpread -
+         (1.0 - hardnessWeight) * (currentEnthalpy - lowestEnthalpy) /
+         enthalpySpread;
+}
 
-  QList<double> probs;
-  Structure* s = 0;
-  double lowest, highest, spread;
+// Uncomment this to print out probability debug information
+//#define OPTBASE_PROBS_DEBUG
 
-  Structure* first = structures.first();
-  Structure* last = structures.last();
-  QReadLocker lock1(&first->lock());
-  QReadLocker lock2(&last->lock());
+QList<QPair<Structure*, double>>
+OptBase::getProbabilityList(const QList<Structure*>& structures,
+                            size_t popSize,
+                            double hardnessWeight)
+{
+  QList<QPair<Structure*, double>> probs;
+  if (structures.isEmpty() || popSize == 0)
+    return probs;
 
-  if (useHardness) {
-    lowest = first->vickersHardness();
-    highest = last->vickersHardness();
-  } else {
-    lowest = first->getEnthalpy() / static_cast<double>(first->numAtoms());
-    highest = last->getEnthalpy() / static_cast<double>(last->numAtoms());
-  }
-
-  lock1.unlock();
-  lock2.unlock();
-
-  spread = highest - lowest;
-
-  // If all structures are at the same enthalpy/hardness, let's save some
-  // time...
-  if (spread <= 1e-5) {
-    double dprob = 1.0 / static_cast<double>(structures.size() - 1);
-    double prob = 0;
-    for (int i = 0; i < structures.size() - 1; i++) {
-      probs.append(prob);
-      prob += dprob;
-    }
+  if (structures.size() == 1) {
+    probs.append(QPair<Structure*, double>(structures[0], 1.0));
     return probs;
   }
-  // Generate a list of floats from 0->1 proportional to the
-  // enthalpies/hardnesses;
-  // E.g. if enthalpies are:
-  // -5   -2   -1   3   5
-  // We'll have:
-  // 0   0.3  0.4  0.8  1
-  for (int i = 0; i < structures.size(); i++) {
-    s = structures.at(i);
-    QReadLocker(&s->lock());
-    if (useHardness) {
-      double prob = (highest - s->vickersHardness()) / spread;
-      probs.append(prob);
-    } else {
-      double prob =
-        (s->getEnthalpy() / static_cast<double>(s->numAtoms()) - lowest) /
-        spread;
-      probs.append(prob);
-    }
+
+  // Since enthalpy can be negative, we will make -DBL_MAX the starting value
+  // for highestEnthalpy. But since hardness can't be negative, we will use
+  // DBL_MIN as the starting value for highestHardness.
+  double lowestEnthalpy  =  DBL_MAX;
+  double highestEnthalpy = -DBL_MAX;
+  double lowestHardness  =  DBL_MAX;
+  double highestHardness =  DBL_MIN;
+
+  // Find the lowest and highest of each
+  for (const auto& s: structures) {
+    QReadLocker lock(&s->lock());
+    const auto& enthalpy = s->getEnthalpyPerFU();
+    if (enthalpy < lowestEnthalpy)
+      lowestEnthalpy = enthalpy;
+    if (enthalpy > highestEnthalpy)
+      highestEnthalpy = enthalpy;
+
+    const auto& hardness = s->vickersHardness();
+    if (hardness < lowestHardness)
+      lowestHardness = hardness;
+    if (hardness > highestHardness)
+      highestHardness = hardness;
   }
-  // Subtract each value from one, and find the sum of the resulting list
-  // Find the sum of the resulting list
-  // We'll end up with:
-  // 1  0.7  0.6  0.2  0   --   sum = 2.5
-  double sum = 0;
-  for (int i = 0; i < probs.size(); i++) {
-    probs[i] = 1.0 - probs.at(i);
-    sum += probs.at(i);
-  }
-  // Normalize with the sum so that the list adds to 1
-  // 0.4  0.28  0.24  0.08  0
-  for (int i = 0; i < probs.size(); i++) {
-    probs[i] /= sum;
-#ifdef OPTBASE_DEBUG
-    qDebug() << "For " << QString::number(structures.at(i)->getGeneration())
-             << "x" << QString::number(structures.at(i)->getIDNumber())
-             << ":\n  normalized probs = " << QString::number(probs[i]);
+
+#ifdef OPTBASE_PROBS_DEBUG
+  std::cout << "lowestEnthalpy is: "  << lowestEnthalpy  << "\n";
+  std::cout << "highestEnthalpy is: " << highestEnthalpy << "\n";
+  std::cout << "lowestHardness is: "  << lowestHardness  << "\n";
+  std::cout << "highestHardness is: " << highestHardness << "\n";
+  std::cout << "Unnormalized, unsorted, and untrimmed probs list is:\n";
+  std::cout << "Structure : enthalpy : hardness : probs\n";
+#endif
+
+  // Now calculate the probability of each structure
+  for (const auto& s: structures) {
+    QReadLocker lock(&s->lock());
+    double prob = calculateProb(s->getEnthalpyPerFU(),
+                                s->vickersHardness(),
+                                lowestEnthalpy,
+                                highestEnthalpy,
+                                lowestHardness,
+                                highestHardness,
+                                hardnessWeight);
+    probs.append(QPair<Structure*, double>(s, prob));
+
+#ifdef OPTBASE_PROBS_DEBUG
+    std::cout << s->getGeneration() << "x"
+              << s->getIDNumber() << " : "
+              << s->getEnthalpyPerFU() << " : "
+              << s->vickersHardness() << " : " << prob << "\n";
 #endif
   }
-  // Then replace each entry with a cumulative total:
-  // 0.4 0.68 0.92 1 1
-  sum = 0;
-  for (int i = 0; i < probs.size(); i++) {
-    sum += probs.at(i);
-    probs[i] = sum;
+
+  // Sort by probability
+  std::sort(probs.begin(), probs.end(),
+            [](const QPair<Structure*, double>& a,
+               const QPair<Structure*, double>& b)
+            {
+              return a.second < b.second;
+            });
+
+  // Remove the lowest probability structures until we have the pop size
+  while (probs.size() > popSize)
+    probs.pop_front();
+
+
+#ifdef OPTBASE_PROBS_DEBUG
+  std::cout << "Unnormalized (but sorted and trimmed) probs list is:\n";
+  std::cout << "Structure : enthalpy : hardness : probs\n";
+  for (const auto& elem: probs) {
+    QReadLocker lock(&elem.first->lock());
+    std::cout << elem.first->getGeneration() << "x"
+              << elem.first->getIDNumber() << " : "
+              << elem.first->getEnthalpyPerFU() << " : "
+              << elem.first->vickersHardness() << " : " << elem.second << "\n";
   }
-  // Pop off the last entry (remember the n_popSize + 1 earlier?)
-  // 0.4 0.68 0.92 1
-  probs.removeLast();
-  // And we have a enthalpy weighted probability list! To use:
-  //
-  //   double r = rand.NextFloat();
-  //   uint ind;
-  //   for (ind = 0; ind < probs.size(); ind++)
-  //     if (r < probs.at(ind)) break;
-  //
-  // ind will hold the chosen index.
+#endif
+
+  // Sum the resulting probs
+  double sum = 0.0;
+  for (const auto& elem: probs)
+    sum += elem.second;
+
+  // Normalize the list so that the sum is 1
+  for (auto& elem: probs)
+    elem.second /= sum;
+
+#ifdef OPTBASE_PROBS_DEBUG
+  std::cout << "Normalized, sorted, and trimmed probs list is:\n";
+  std::cout << "Structure : enthalpy : hardness : probs\n";
+  for (const auto& elem: probs) {
+    QReadLocker lock(&elem.first->lock());
+    std::cout << elem.first->getGeneration() << "x"
+              << elem.first->getIDNumber() << " : "
+              << elem.first->getEnthalpyPerFU() << " : "
+              << elem.first->vickersHardness() << " : " << elem.second << "\n";
+  }
+#endif
+
+  // Now replace each entry with a cumulative total
+  sum = 0.0;
+  for (auto& elem: probs) {
+    sum += elem.second;
+    elem.second = sum;
+  }
+
+#ifdef OPTBASE_PROBS_DEBUG
+  std::cout << "Cumulative (final) probs list is:\n";
+  std::cout << "Structure : enthalpy : hardness : probs\n";
+  for (const auto& elem: probs) {
+    QReadLocker lock(&elem.first->lock());
+    std::cout << elem.first->getGeneration() << "x"
+              << elem.first->getIDNumber() << " : "
+              << elem.first->getEnthalpyPerFU() << " : "
+              << elem.first->vickersHardness() << " : " << elem.second << "\n";
+  }
+#endif
+
   return probs;
 }
 

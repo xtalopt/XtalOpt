@@ -120,7 +120,7 @@ TabOpt::TabOpt(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
           &GlobalSearch::OptBase::resubmitUnfinishedHardnessCalcs);
   connect(ui.cb_calculateHardness, &QCheckBox::toggled, m_opt,
           &GlobalSearch::OptBase::startHardnessResubmissionThread);
-  connect(ui.cb_useHardnessFitnessFunction, SIGNAL(toggled(bool)), this,
+  connect(ui.spin_hardnessFitnessWeight, SIGNAL(valueChanged(double)), this,
           SLOT(updateOptimizationInfo()));
 
   initialize();
@@ -185,8 +185,8 @@ void TabOpt::updateGUI()
   ui.spin_perm_ex->setValue(xtalopt->perm_ex);
 
   ui.cb_calculateHardness->setChecked(xtalopt->m_calculateHardness.load());
-  ui.cb_useHardnessFitnessFunction->setChecked(
-    xtalopt->m_useHardnessFitnessFunction);
+  ui.spin_hardnessFitnessWeight->setValue(
+    xtalopt->m_hardnessFitnessWeight * 100.0);
 }
 
 void TabOpt::lockGUI()
@@ -266,8 +266,8 @@ void TabOpt::updateOptimizationInfo()
 
   // Hardness stuff
   xtalopt->m_calculateHardness = ui.cb_calculateHardness->isChecked();
-  xtalopt->m_useHardnessFitnessFunction =
-    ui.cb_useHardnessFitnessFunction->isChecked();
+  xtalopt->m_hardnessFitnessWeight =
+    ui.spin_hardnessFitnessWeight->value() / 100.0;
 }
 
 void TabOpt::addSeed(QListWidgetItem* item)

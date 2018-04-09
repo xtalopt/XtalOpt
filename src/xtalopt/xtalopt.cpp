@@ -589,8 +589,8 @@ bool XtalOpt::save(QString filename, bool notify)
 
   // Hardness settings
   settings->setValue("opt/calculateHardness", m_calculateHardness.load());
-  settings->setValue("opt/useHardnessFitnessFunction",
-                     m_useHardnessFitnessFunction);
+  settings->setValue("opt/hardnessFitnessWeight",
+                     m_hardnessFitnessWeight.load());
 
   return true;
 }
@@ -1133,8 +1133,8 @@ bool XtalOpt::readSettings(const QString& filename)
   // Hardness stuff
   m_calculateHardness =
     settings->value("opt/calculateHardness", false).toBool();
-  m_useHardnessFitnessFunction =
-    settings->value("opt/useHardnessFitnessFunction", false).toBool();
+  m_hardnessFitnessWeight =
+    settings->value("opt/hardnessFitnessWeight", 0.0).toDouble();
 
   settings->endGroup();
 
@@ -2920,79 +2920,63 @@ Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
     }
   }
 
-  bool useHardness = m_useHardnessFitnessFunction;
-  // Sort structure list
-  if (useHardness)
-    Structure::sortByVickersHardness(&structures);
-  else
-    Structure::sortByEnthalpy(&structures);
+  double hardnessWeight = m_hardnessFitnessWeight;
+  if (!m_calculateHardness)
+    hardnessWeight = 0.0;
+
+  int sizeBeforeHardnessPruning = structures.size();
 
   // If we are using hardness, remove all structures with a hardness
   // less than 0
-  if (useHardness) {
+  if (hardnessWeight > 1.0e-5) {
     for (size_t i = 0; i < structures.size(); i++) {
-      if (structures[i]->vickersHardness() < 0.0) {
+      if (structures[i]->vickersHardness() < 0.0 && structures.size() > 1) {
         structures.removeAt(i);
         --i;
       }
     }
   }
 
-  // Trim list
-  // Remove all but (popSize + 1). The "+ 1" will be removed
-  // during probability generation.
-  if (!useHardness) {
-    // If we are using enthalpy for the fitness function, remove the highest
-    // enthalpy items on the list
-    while (static_cast<uint>(structures.size()) > popSize + 1)
-      structures.removeLast();
-  } else {
-    // If we are using the hardness fitness function, remove the softest
-    // items on the list
-    while (static_cast<uint>(structures.size()) > popSize + 1)
-      structures.removeFirst();
+  if (structures.size() == 1 && sizeBeforeHardnessPruning > 1) {
+    warning("A nonzero hardness weight is being used for the fitness "
+            "function, but very few (if any) structures have their "
+            "hardnesses calculated. This current probability selection will "
+            "not be good.");
   }
 
-  QList<double> probs = getProbabilityList(structures, useHardness);
-
-  // Cast Structures into Xtals
-  QList<Xtal*> xtals;
-#if QT_VERSION >= 0x040700
-  xtals.reserve(structures.size());
-#endif // QT_VERSION
+  QList<QPair<GlobalSearch::Structure*, double>> probs =
+    getProbabilityList(structures, popSize, hardnessWeight);
 
 #ifdef PROBS_DEBUG
-  qDebug() << "Sorted structures list with probs is as follows:";
-#endif
-
-  for (int i = 0; i < structures.size(); ++i) {
-    xtals.append(qobject_cast<Xtal*>(structures.at(i)));
-
-#ifdef PROBS_DEBUG
-    qDebug() << structures[i]->getGeneration() << "x"
-             << structures[i]->getIDNumber() << ":"
-             << structures[i]->vickersHardness()
-             << "GPa : probs:" << (i == 0 ? 0.0 : probs[i] - probs[i - 1])
-             << ": cumulative probs:" << probs[i];
-#endif
+  std::cout << "Sorted structures list with probs is as follows:\n";
+  double previousProbs = 0.0;
+  for (const auto& elem: probs) {
+    std::cout << elem.first->getGeneration() << "x"
+              << elem.first->getIDNumber() << ": "
+              << elem.first->vickersHardness()
+              << " GPa : " << elem.first->getEnthalpyPerFU()
+              << " eV/FU : probs: " << elem.second - previousProbs
+              << " : cumulative probs: " << elem.second << "\n";
+    previousProbs = elem.second;
   }
+#endif
 
   // Initialize loop vars
-  double r;
   Xtal* xtal = nullptr;
 
   // Pick a parent
-  int ind;
-  r = getRandDouble();
-  for (ind = 0; ind < probs.size(); ind++)
-    if (r < probs.at(ind))
+  double r = getRandDouble();
+  for (const auto& elem: probs) {
+    if (r < elem.second) {
+      xtal = qobject_cast<Xtal*>(elem.first);
       break;
-  xtal = xtals.at(ind);
+    }
+  }
 
 #ifdef PROBS_DEBUG
-  qDebug() << "r is" << r;
-  qDebug() << "Selected crystal is" << xtal->getGeneration() << "x"
-           << xtal->getIDNumber();
+  std::cout << "r is " << r << "\n";
+  std::cout << "Selected crystal is " << xtal->getGeneration() << "x"
+            << xtal->getIDNumber() << "\n";
 #endif
   return xtal;
 }
