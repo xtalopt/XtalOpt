@@ -237,6 +237,27 @@ OptBase::getProbabilityList(const QList<Structure*>& structures,
 #endif
   }
 
+  // If they are all nan, that means all the probs are equal. Just
+  // return an equal list
+  bool allNan = true;
+  for (const auto& prob: probs) {
+    if (!std::isnan(prob.second)) {
+      allNan = false;
+      break;
+    }
+  }
+
+  if (allNan) {
+    double dref = 1.0 / probs.size();
+    double sum = 0.0;
+
+    for (auto& prob: probs) {
+      prob.second = sum;
+      sum += dref;
+    }
+    return probs;
+  }
+
   // Sort by probability
   std::sort(probs.begin(), probs.end(),
             [](const QPair<Structure*, double>& a,

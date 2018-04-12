@@ -30,7 +30,8 @@ class DummyOptimizer : public Optimizer
 {
   Q_OBJECT
 public:
-  DummyOptimizer(OptBase* p) : Optimizer(p){};
+  DummyOptimizer(OptBase* p)
+    : Optimizer(p){};
 };
 
 // Since this is a pure virtual class, create a dummy derived class
@@ -38,7 +39,11 @@ class DummyOptBase : public OptBase
 {
   Q_OBJECT
 public:
-  DummyOptBase() : OptBase(0) { m_idString = DUMMYNAME; };
+  DummyOptBase()
+    : OptBase(0)
+  {
+    m_idString = DUMMYNAME;
+  };
 
   // Override this function to allow the creation of the dummy optimizer
   std::unique_ptr<Optimizer> createOptimizer(
@@ -111,13 +116,9 @@ void OptBaseTest::cleanupTestCase()
   m_opt = 0;
 }
 
-void OptBaseTest::init()
-{
-}
+void OptBaseTest::init() {}
 
-void OptBaseTest::cleanup()
-{
-}
+void OptBaseTest::cleanup() {}
 
 void OptBaseTest::setIsStartingTrue()
 {
@@ -142,6 +143,7 @@ void OptBaseTest::getProbabilityList()
 {
   const double minE = 1.0;
   const double maxE = 100.0;
+  const double hardnessWeight = 0.0;
 
   // Empty / short lists
   double enthalpy = minE - 1.0; // subtract one since we use ++enthalpy first.
@@ -150,70 +152,72 @@ void OptBaseTest::getProbabilityList()
     while (structures.size() < listSize) {
       Structure* s = new Structure;
       // We need at least one atom for the probability list calculation
-      s->addAtom();
+      s->addAtom(1);
       s->setEnthalpy(++enthalpy);
       structures.append(s);
     }
-    QVERIFY(m_opt->getProbabilityList(structures).isEmpty());
+    QVERIFY(m_opt->getProbabilityList(structures, 0, hardnessWeight).isEmpty());
   }
 
   // Fill to 100 structures
   while (structures.size() < static_cast<int>(maxE)) {
     Structure* s = new Structure;
     // We need at least one atom for the probability list calculation
-    s->addAtom();
+    s->addAtom(1);
     s->setEnthalpy(++enthalpy);
     structures.append(s);
   }
 
   // Check probabilities
-  QList<double> probs = m_opt->getProbabilityList(structures);
+  auto probs =
+    m_opt->getProbabilityList(structures, structures.size(), hardnessWeight);
   // reference probabilities
   QList<double> refProbs;
-  refProbs << 0.02 << 0.039798 << 0.0593939 << 0.0787879 << 0.0979798 << 0.11697
-           << 0.135758 << 0.154343 << 0.172727 << 0.190909 << 0.208889
-           << 0.226667 << 0.244242 << 0.261616 << 0.278788 << 0.295758
-           << 0.312525 << 0.329091 << 0.345455 << 0.361616 << 0.377576
-           << 0.393333 << 0.408889 << 0.424242 << 0.439394 << 0.454343
-           << 0.469091 << 0.483636 << 0.497980 << 0.512121 << 0.526061
-           << 0.539798 << 0.553333 << 0.566667 << 0.579798 << 0.592727
-           << 0.605455 << 0.617980 << 0.630303 << 0.642424 << 0.654343
-           << 0.666061 << 0.677576 << 0.688889 << 0.700000 << 0.710909
-           << 0.721616 << 0.732121 << 0.742424 << 0.752525 << 0.762424
-           << 0.772121 << 0.781616 << 0.790909 << 0.800000 << 0.808889
-           << 0.817576 << 0.826061 << 0.834343 << 0.842424 << 0.850303
-           << 0.857980 << 0.865455 << 0.872727 << 0.879798 << 0.886667
-           << 0.893333 << 0.899798 << 0.906061 << 0.912121 << 0.917980
-           << 0.923636 << 0.929091 << 0.934343 << 0.939394 << 0.944242
-           << 0.948889 << 0.953333 << 0.957576 << 0.961616 << 0.965455
-           << 0.969091 << 0.972525 << 0.975758 << 0.978788 << 0.981616
-           << 0.984242 << 0.986667 << 0.988889 << 0.990909 << 0.992727
-           << 0.994343 << 0.995758 << 0.996970 << 0.997980 << 0.998788
-           << 0.999394 << 0.999798 << 1.000000;
+  refProbs << 0 << 0.00020202 << 0.000606061 << 0.00121212 << 0.0020202
+           << 0.0030303 << 0.00424242 << 0.00565657 << 0.00727273 << 0.00909091
+           << 0.0111111 << 0.0133333 << 0.0157576 << 0.0183838 << 0.0212121
+           << 0.0242424 << 0.0274747 << 0.0309091 << 0.0345455 << 0.0383838
+           << 0.0424242 << 0.0466667 << 0.0511111 << 0.0557576 << 0.0606061
+           << 0.0656566 << 0.0709091 << 0.0763636 << 0.0820202 << 0.0878788
+           << 0.0939394 << 0.100202 << 0.106667 << 0.113333 << 0.120202
+           << 0.127273 << 0.134545 << 0.14202 << 0.149697 << 0.157576
+           << 0.165657 << 0.173939 << 0.182424 << 0.191111 << 0.2 << 0.209091
+           << 0.218384 << 0.227879 << 0.237576 << 0.247475 << 0.257576
+           << 0.267879 << 0.278384 << 0.289091 << 0.3 << 0.311111 << 0.322424
+           << 0.333939 << 0.345657 << 0.357576 << 0.369697 << 0.38202
+           << 0.394545 << 0.407273 << 0.420202 << 0.433333 << 0.446667
+           << 0.460202 << 0.473939 << 0.487879 << 0.50202 << 0.516364
+           << 0.530909 << 0.545657 << 0.560606 << 0.575758 << 0.591111
+           << 0.606667 << 0.622424 << 0.638384 << 0.654545 << 0.670909
+           << 0.687475 << 0.704242 << 0.721212 << 0.738384 << 0.755758
+           << 0.773333 << 0.791111 << 0.809091 << 0.827273 << 0.845657
+           << 0.864242 << 0.88303 << 0.90202 << 0.921212 << 0.940606 << 0.960202
+           << 0.98 << 1;
 
-  QVERIFY(probs.size() == structures.size() - 1);
+  QVERIFY(probs.size() == structures.size());
   QVERIFY(probs.size() == refProbs.size());
 
-  for (int i = 0; i < probs.size(); ++i) {
-    QVERIFY(fabs(probs[i] - refProbs[i]) < 1e-5);
-  }
+  for (int i = 0; i < probs.size(); ++i)
+    QVERIFY(fabs(probs[i].second - refProbs[i]) < 1e-5);
+
 
   // All equal
-  for (QList<Structure *>::iterator it = structures.begin(),
-                                    it_end = structures.end();
-       it != it_end; ++it) {
+  for (QList<Structure*>::iterator it = structures.begin(),
+                                   it_end = structures.end();
+       it != it_end;
+       ++it) {
     (*it)->setEnthalpy(0.0);
   }
 
-  probs = m_opt->getProbabilityList(structures);
-  double dref = 1.0 / static_cast<double>(structures.size() - 1);
+  probs =
+    m_opt->getProbabilityList(structures, structures.size(), hardnessWeight);
+  double dref = 1.0 / static_cast<double>(structures.size());
   double ref = 0.0;
 
-  QVERIFY(probs.size() == structures.size() - 1);
+  QVERIFY(probs.size() == structures.size());
 
-  for (QList<double>::iterator it = probs.begin(), it_end = probs.end();
-       it != it_end; ++it) {
-    QVERIFY(fabs((*it) - ref) < 1e-5);
+  for (auto it = probs.begin(), it_end = probs.end(); it != it_end; ++it) {
+    QVERIFY(fabs((*it).second - ref) < 1e-5);
     ref += dref;
   }
 
