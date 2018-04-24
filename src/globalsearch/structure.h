@@ -1413,7 +1413,7 @@ protected:
     m_fixCount;
   QString m_parents, m_dupString, m_supString, m_rempath, m_fileName;
   double m_energy, m_enthalpy, m_PV;
-  State m_status;
+  std::atomic<State> m_status;
   QDateTime m_optStart, m_optEnd;
   int m_index;
   QList<QVariant> m_histogramDist, m_histogramFreq;
