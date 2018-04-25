@@ -4453,7 +4453,7 @@ void XtalOpt::checkForDuplicates_()
           // Perform a course enthalpy screening to cut down on number of
           // comparisons
           fabs(((*xi)->getEnthalpyPerAtom()) -
-               ((*xj)->getEnthalpyPerAtom())) < 0.5 &&
+               ((*xj)->getEnthalpyPerAtom())) < 0.1 &&
           // Screen out options that CANNOT be supercells
           (((*xi)->getFormulaUnits() % (*xj)->getFormulaUnits() == 0) ||
            ((*xj)->getFormulaUnits() % (*xi)->getFormulaUnits() == 0))) {
