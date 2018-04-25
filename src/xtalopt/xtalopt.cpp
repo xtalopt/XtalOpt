@@ -4354,9 +4354,12 @@ void XtalOpt::checkIfSups(supCheckStruct& st)
     smallerFormulaUnitXtal = st.i;
   }
 
-  // if the larger formula unit xtal is already a supercell, skip over it.
-  if (largerFormulaUnitXtal->getStatus() == Xtal::Supercell)
+  // if the larger formula unit xtal is already a supercell or duplicate,
+  // skip over it.
+  if (largerFormulaUnitXtal->getStatus() == Xtal::Supercell ||
+      largerFormulaUnitXtal->getStatus() == Xtal::Duplicate) {
     return;
+  }
 
   // This temporary xtal will need to be deleted
   Xtal* tempXtal = generateSuperCell(smallerFormulaUnitXtal->getFormulaUnits(),
@@ -4427,50 +4430,46 @@ void XtalOpt::checkForDuplicates_()
   // Build helper structs
   QList<dupCheckStruct> dupSts;
   dupCheckStruct dupSt;
+  dupSt.tol_len = this->tol_xcLength;
+  dupSt.tol_ang = this->tol_xcAngle;
+
   QList<supCheckStruct> supSts;
   supCheckStruct supSt;
+  supSt.tol_len = this->tol_xcLength;
+  supSt.tol_ang = this->tol_xcAngle;
 
-  for (QList<Xtal*>::iterator xi = xtals.begin(); xi != xtals.end(); xi++) {
+  for (QList<Xtal*>::iterator xi = xtals.begin(); xi != xtals.end(); ++xi) {
     QReadLocker xiLocker(&(*xi)->lock());
     if ((*xi)->getStatus() != Xtal::Optimized)
       continue;
 
-    for (QList<Xtal*>::iterator xj = xi + 1; xj != xtals.end(); xj++) {
+    for (QList<Xtal*>::iterator xj = xi + 1; xj != xtals.end(); ++xj) {
       QReadLocker xjLocker(&(*xj)->lock());
-      if ((*xj)->getStatus() != Xtal::Optimized) {
+      if ((*xj)->getStatus() != Xtal::Optimized)
         continue;
-      }
+
       if (((*xi)->hasChangedSinceDupChecked() ||
            (*xj)->hasChangedSinceDupChecked()) &&
           // Perform a course enthalpy screening to cut down on number of
           // comparisons
-          fabs(((*xi)->getEnthalpy() /
-                static_cast<double>((*xi)->getFormulaUnits())) -
-               ((*xj)->getEnthalpy() /
-                static_cast<double>((*xj)->getFormulaUnits()))) < 1.0 &&
+          fabs(((*xi)->getEnthalpyPerAtom()) -
+               ((*xj)->getEnthalpyPerAtom())) < 0.5 &&
           // Screen out options that CANNOT be supercells
-
           (((*xi)->getFormulaUnits() % (*xj)->getFormulaUnits() == 0) ||
            ((*xj)->getFormulaUnits() % (*xi)->getFormulaUnits() == 0))) {
         // Append the duplicate structs list
         if ((*xi)->getFormulaUnits() == (*xj)->getFormulaUnits()) {
           dupSt.i = (*xi);
           dupSt.j = (*xj);
-          dupSt.tol_len = this->tol_xcLength;
-          dupSt.tol_ang = this->tol_xcAngle;
           dupSts.append(dupSt);
         }
         // Append the supercell structs list. One has to be a formula unit
         // multiple of the other to be a candidate supercell. In addition,
         // their formula units cannot equal.
-        else if ((((*xi)->getFormulaUnits() % (*xj)->getFormulaUnits() == 0) ||
-                  ((*xj)->getFormulaUnits() % (*xi)->getFormulaUnits() == 0)) &&
-                 ((*xj)->getFormulaUnits() != (*xi)->getFormulaUnits())) {
-
+        else if (((*xi)->getFormulaUnits() % (*xj)->getFormulaUnits() == 0) ||
+                 ((*xj)->getFormulaUnits() % (*xi)->getFormulaUnits() == 0)) {
           supSt.i = (*xi);
           supSt.j = (*xj);
-          supSt.tol_len = this->tol_xcLength;
-          supSt.tol_ang = this->tol_xcAngle;
           supSts.append(supSt);
         }
       }
@@ -4480,39 +4479,43 @@ void XtalOpt::checkForDuplicates_()
     (*xi)->setChangedSinceDupChecked(false);
   }
 
-  // If a supercell is matched as a duplicate in the checkIfDups function,
-  // it is okay because it will be overwritten with the checkIfSups function
-  // following it.
-  for (size_t i = 0; i < dupSts.size(); i++)
-    checkIfDups(dupSts[i]);
+  for (auto& dupSt : dupSts)
+    checkIfDups(dupSt);
 
   // Tried to run this concurrently. Would freeze upon resuming for some
   // reason, though...
   // QtConcurrent::blockingMap(supSts, checkIfSups);
-  for (size_t i = 0; i < supSts.size(); i++)
-    checkIfSups(supSts[i]);
+  for (auto& supSt : supSts)
+    checkIfSups(supSt);
 
   // Label supercells that primitive xtals came from as such
-  for (size_t i = 0; i < xtals.size(); i++) {
-    QReadLocker ixtalLocker(&xtals.at(i)->lock());
-    if (xtals.at(i)->skippedOptimization()) {
-      for (size_t j = 0; j < xtals.size(); j++) {
-        if (i == j)
+  for (size_t i = 0; i < xtals.size(); ++i) {
+    QReadLocker ixtalLocker(&xtals[i]->lock());
+    if (xtals[i]->skippedOptimization()) {
+      // We should only check the crystals that are ordered before this one,
+      // since a primitive reduced crystal will always have an index greater
+      // than its parent
+      for (size_t j = 0; j < i; ++j) {
+        // If the Xtal is not optimized, just continue
+        if (xtals[j]->getStatus() != Xtal::Optimized)
           continue;
-        QWriteLocker jxtalLocker(&xtals.at(j)->lock());
-        // If the xtal is optimized, a duplicate, or a supercell, overwrite
-        // the previous settings with what it should be for the primitive...
-        if ((xtals.at(i)->getStatus() == Xtal::Optimized ||
-             xtals.at(i)->getStatus() == Xtal::Duplicate ||
-             xtals.at(i)->getStatus() == Xtal::Supercell) &&
-            xtals.at(i)->getParents() ==
-              tr("Primitive of %1x%2")
-                .arg((xtals.at(j))->getGeneration())
-                .arg(xtals.at(j)->getIDNumber())) {
-          xtals.at(j)->setStatus(Xtal::Supercell);
-          xtals.at(j)->setSupercellString(QString("%1x%2")
-                                            .arg(xtals.at(i)->getGeneration())
-                                            .arg(xtals.at(i)->getIDNumber()));
+        QWriteLocker jxtalLocker(&xtals[j]->lock());
+        // Check and see if xtals[j] matches xtals[i]
+        if (xtals[i]->getParents() == tr("Primitive of %1x%2")
+            .arg((xtals[j])->getGeneration())
+            .arg(xtals[j]->getIDNumber())) {
+          xtals[j]->setStatus(Xtal::Supercell);
+          // If xtals[i] is a duplicate, set xtals[j] to be a super cell
+          // of the xtal that xtals[i] is a duplicate of
+          if (xtals[i]->getStatus() == Xtal::Duplicate)
+            xtals[j]->setSupercellString(xtals[i]->getDuplicateString());
+          else if (xtals[i]->getStatus() == Xtal::Supercell)
+            xtals[j]->setSupercellString(xtals[i]->getSupercellString());
+          else {
+            xtals[j]->setSupercellString(QString("%1x%2")
+                                         .arg(xtals.at(i)->getGeneration())
+                                         .arg(xtals.at(i)->getIDNumber()));
+          }
         }
       }
     }
