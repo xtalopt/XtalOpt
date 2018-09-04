@@ -8,14 +8,13 @@ matrix:
   include:
     - env: NAME="clang-format"
       sudo: false
-      dist: precise
       language: generic
       compiler:
       addons:
         apt:
           sources:
           - ubuntu-toolchain-r-test
-          - llvm-toolchain-precise-6.0
+          - llvm-toolchain-trusty-6.0
           packages:
           - clang-format-6.0
 
