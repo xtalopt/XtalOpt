@@ -15,9 +15,9 @@ matrix:
         apt:
           sources:
           - ubuntu-toolchain-r-test
-          - llvm-toolchain-precise-3.8
+          - llvm-toolchain-precise-6.0
           packages:
-          - clang-format-3.8
+          - clang-format-6.0
 
     - env: NAME="gcc-4.8"
 
