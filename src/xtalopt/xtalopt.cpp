@@ -3809,6 +3809,17 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
   if (m_dialog)
     m_dialog->readSettings(filename);
 
+#ifdef ENABLE_SSH
+  // Create the SSHManager if running remotely
+  if (anyRemoteQueueInterfaces()) {
+    qDebug() << "Creating SSH connections...";
+    if (!this->createSSHConnections()) {
+      error(tr("Could not create ssh connections."));
+      return false;
+    }
+  }
+#endif // ENABLE_SSH
+
   debug(tr("Resuming XtalOpt session in '%1' readOnly = %2")
           .arg(filename)
           .arg((readOnly) ? "true" : "false"));
@@ -4076,17 +4087,6 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
     readOnly = !resume;
     qDebug() << "Read only? " << readOnly;
   }
-
-#ifdef ENABLE_SSH
-  // Create the SSHManager if running remotely
-  if (!readOnly && anyRemoteQueueInterfaces()) {
-    qDebug() << "Creating SSH connections...";
-    if (!this->createSSHConnections()) {
-      error(tr("Could not create ssh connections."));
-      return false;
-    }
-  }
-#endif // ENABLE_SSH
 
   return true;
 }
