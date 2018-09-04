@@ -25,14 +25,14 @@ init:
       appveyor DownloadFile https://github.com/xtalopt/xtalopt-dependencies/releases/download/1.0/xtalopt-dependencies-msvc2015-32bit.zip &
       7z x xtalopt-dependencies-msvc2015-32bit.zip > nul &
       set "DEPS=C:\xtalopt-dependencies-msvc2015-32bit" &
-      set "CMAKE_FLAGS=-DCMAKE_PREFIX_PATH=C:\Qt\5.8\msvc2015" &
+      set "CMAKE_FLAGS=-DCMAKE_PREFIX_PATH=C:\Qt\5.11.1\msvc2015" &
       call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\VsDevCmd.bat")
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2017" (
       echo "Downloading dependencies for Visual Studio 2017" &
       appveyor DownloadFile https://github.com/xtalopt/xtalopt-dependencies/releases/download/1.0/xtalopt-dependencies-msvc2017-64bit.zip &
       7z x xtalopt-dependencies-msvc2017-64bit.zip > nul &
       set "DEPS=C:\xtalopt-dependencies-msvc2017-64bit" &
-      set "CMAKE_FLAGS=-DCMAKE_PREFIX_PATH=C:\Qt\5.9\msvc2017_64" &
+      set "CMAKE_FLAGS=-DCMAKE_PREFIX_PATH=C:\Qt\5.11.1\msvc2017_64" &
       call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64)
 
   - set CMAKE_FLAGS=%CMAKE_FLAGS% -DENABLE_MOLECULAR=ON
