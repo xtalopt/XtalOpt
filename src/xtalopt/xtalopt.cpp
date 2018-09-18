@@ -4088,6 +4088,13 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
     qDebug() << "Read only? " << readOnly;
   }
 
+  // Set this up to prevent a bug if "replace with random" is the failure
+  // action and "Initialize with RandSpg" is checked.
+  if (minXtalsOfSpgPerFU.empty()) {
+    for (size_t spg = 1; spg <= 230; spg++)
+      minXtalsOfSpgPerFU.append(0);
+  }
+
   return true;
 }
 
