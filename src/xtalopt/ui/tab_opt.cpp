@@ -184,7 +184,12 @@ void TabOpt::updateGUI()
   ui.spin_perm_strainStdev_max->setValue(xtalopt->perm_strainStdev_max);
   ui.spin_perm_ex->setValue(xtalopt->perm_ex);
 
+  // Block this signal so we don't start a resubmission thread
+  bool wasBlocked = ui.cb_calculateHardness->blockSignals(true);
   ui.cb_calculateHardness->setChecked(xtalopt->m_calculateHardness.load());
+  ui.cb_calculateHardness->blockSignals(wasBlocked);
+
+  ui.spin_hardnessFitnessWeight->setEnabled(ui.cb_calculateHardness->isChecked());
   ui.spin_hardnessFitnessWeight->setValue(
     xtalopt->m_hardnessFitnessWeight * 100.0);
 }
