@@ -642,6 +642,14 @@ public:
    */
   QString getOptElapsed() const;
 
+  /** @return Get the amount of seconds elapsed as an int.
+   */
+  int getOptElapsedSeconds() const;
+
+  /** @return Get the amount of hours elapsed as a double.
+   */
+  double getOptElapsedHours() const;
+
   /** A "fingerprint" hash of the structure. Returns "enthalpy" key
    * with the enthalpy value as a double wrapped in a QVariant. May
    * be extended in derived classes.

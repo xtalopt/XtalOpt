@@ -609,6 +609,9 @@ bool XtalOpt::writeEditSettings(const QString& filename)
   settings->setValue("remote/queueRefreshInterval", queueRefreshInterval());
   settings->setValue("remote/cleanRemoteOnStop", cleanRemoteOnStop());
   settings->setValue("remote/rempath", rempath);
+  settings->setValue("remote/cancelJobAfterTime", cancelJobAfterTime());
+  settings->setValue("remote/hoursForCancelJobAfterTime",
+                     hoursForCancelJobAfterTime());
 
   // This will also write the number of opt steps
   writeAllTemplatesToSettings(filename.toStdString());
@@ -686,6 +689,11 @@ bool XtalOpt::readEditSettings(const QString& filename)
 
   setCleanRemoteOnStop(
     settings->value("remote/cleanRemoteOnStop", "false").toBool());
+
+  m_cancelJobAfterTime =
+    settings->value("remote/cancelJobAfterTime", "false").toBool();
+  m_hoursForCancelJobAfterTime =
+    settings->value("remote/hoursForCancelJobAfterTime", "100.0").toDouble();
 
   // Old load instructions
   if (loadedVersion < 3) {

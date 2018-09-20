@@ -422,15 +422,27 @@ void QueueManager::handleInProcessStructure_(Structure* s)
     return;
   }
 
-  switch (m_opt->queueInterface(s->getCurrentOptStep())->getStatus(s)) {
+  QueueInterface* qi = m_opt->queueInterface(s->getCurrentOptStep());
+  switch (qi->getStatus(s)) {
     case QueueInterface::Running:
     case QueueInterface::Queued:
     case QueueInterface::CommunicationError:
     case QueueInterface::Unknown:
     case QueueInterface::Pending:
     case QueueInterface::Started:
+    {
+      // Kill the structure if it has exceeded the allowable time.
+      // Only perform this for remote queues.
+      if (m_opt->cancelJobAfterTime() &&
+          s->getOptElapsedHours() > m_opt->hoursForCancelJobAfterTime() &&
+          qi->getIDString().toLower() != "local") {
+        killStructure(s);
+        emit structureUpdated(s);
+        return;
+      }
       // Nothing to do but wait
       break;
+    }
     case QueueInterface::Success:
       updateStructure(s);
       break;

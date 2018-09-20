@@ -1305,19 +1305,28 @@ QList<Vector3> Structure::getAtomCoordsFrac() const
 
 QString Structure::getOptElapsed() const
 {
-  int secs;
-  if (m_optStart.toString() == "")
-    return "0:00:00";
-  if (m_optEnd.toString() == "")
-    secs = m_optStart.secsTo(QDateTime::currentDateTime());
-  else
-    secs = m_optStart.secsTo(m_optEnd);
+  int secs = getOptElapsedSeconds();
   int hours = static_cast<int>(secs / 3600);
   int mins = static_cast<int>((secs - hours * 3600) / 60);
   secs = secs % 60;
   QString ret;
   ret.sprintf("%d:%02d:%02d", hours, mins, secs);
   return ret;
+}
+
+int Structure::getOptElapsedSeconds() const
+{
+  if (m_optStart.toString() == "")
+    return 0;
+  if (m_optEnd.toString() == "")
+    return m_optStart.secsTo(QDateTime::currentDateTime());
+
+  return m_optStart.secsTo(m_optEnd);
+}
+
+double Structure::getOptElapsedHours() const
+{
+  return getOptElapsedSeconds() / 3600.0;
 }
 
 void Structure::load(QTextStream& in)

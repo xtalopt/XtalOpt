@@ -42,61 +42,29 @@ SgeConfigDialog::~SgeConfigDialog()
 
 void SgeConfigDialog::updateGUI()
 {
-  ui->edit_description->blockSignals(true);
-  ui->edit_host->blockSignals(true);
   ui->edit_qdel->blockSignals(true);
   ui->edit_qstat->blockSignals(true);
   ui->edit_qsub->blockSignals(true);
-  ui->edit_rempath->blockSignals(true);
-  ui->edit_locpath->blockSignals(true);
-  ui->edit_username->blockSignals(true);
-  ui->spin_port->blockSignals(true);
-  ui->spin_interval->blockSignals(true);
-  ui->cb_cleanRemoteOnStop->blockSignals(true);
-  ui->cb_logErrorDirs->blockSignals(true);
 
-  ui->edit_description->setText(m_opt->description);
-  ui->edit_host->setText(m_opt->host);
   ui->edit_qdel->setText(m_sge->m_cancelCommand);
   ui->edit_qstat->setText(m_sge->m_statusCommand);
   ui->edit_qsub->setText(m_sge->m_submitCommand);
-  ui->edit_rempath->setText(m_opt->rempath);
-  ui->edit_locpath->setText(m_opt->filePath);
-  ui->edit_username->setText(m_opt->username);
-  ui->spin_port->setValue(m_opt->port);
-  ui->spin_interval->setValue(m_opt->queueRefreshInterval());
-  ui->cb_cleanRemoteOnStop->setChecked(m_opt->cleanRemoteOnStop());
-  ui->cb_logErrorDirs->setChecked(m_opt->m_logErrorDirs);
 
-  ui->edit_description->blockSignals(false);
-  ui->edit_host->blockSignals(false);
   ui->edit_qdel->blockSignals(false);
   ui->edit_qstat->blockSignals(false);
   ui->edit_qsub->blockSignals(false);
-  ui->edit_rempath->blockSignals(false);
-  ui->edit_locpath->blockSignals(false);
-  ui->edit_username->blockSignals(false);
-  ui->spin_port->blockSignals(false);
-  ui->spin_interval->blockSignals(false);
-  ui->cb_cleanRemoteOnStop->blockSignals(false);
-  ui->cb_logErrorDirs->blockSignals(false);
+
+  ui->widget_globalQueueInterfaceSettings->updateGUI(m_opt);
 }
 
 void SgeConfigDialog::accept()
 {
-  m_opt->description = ui->edit_description->text().trimmed();
-  m_opt->host = ui->edit_host->text().trimmed();
   m_sge->m_cancelCommand = ui->edit_qdel->text().trimmed();
   m_sge->m_statusCommand = ui->edit_qstat->text().trimmed();
   m_sge->m_submitCommand = ui->edit_qsub->text().trimmed();
-  m_opt->rempath = ui->edit_rempath->text().trimmed();
-  m_opt->filePath = ui->edit_locpath->text().trimmed();
-  m_opt->username = ui->edit_username->text().trimmed();
-  m_opt->port = ui->spin_port->value();
-  // Use setter for interval -- mutex must be locked.
-  m_opt->setQueueRefreshInterval(ui->spin_interval->value());
-  m_opt->setCleanRemoteOnStop(ui->cb_cleanRemoteOnStop->isChecked());
-  m_opt->m_logErrorDirs = ui->cb_logErrorDirs->isChecked();
+
+  ui->widget_globalQueueInterfaceSettings->accept(m_opt);
+
   QDialog::accepted();
   close();
 }

@@ -1124,6 +1124,21 @@ public slots:
    */
   void setClipboard(const QString& text) const;
 
+  /**
+   * @return Whether or not we are to cancel a job after a given amount
+   *         of time.
+   */
+  bool cancelJobAfterTime() const { return m_cancelJobAfterTime; }
+
+  /**
+   * @return The amount of time in hours that, if exceeded, we are to
+   *         cancel a job.
+   */
+  double hoursForCancelJobAfterTime() const
+  {
+    return m_hoursForCancelJobAfterTime;
+  }
+
 protected slots:
   // Disable doxygen parser here:
   /// \cond
@@ -1251,6 +1266,13 @@ public:
 
   /// A map of the AflowML indicies to their pending hardness calculations
   std::unordered_map<size_t, Structure*> m_pendingHardnessCalculations;
+
+  /// Should we cancel the job if a number of hours are exceeded?
+  /// This is primarily implemented because some optimizers have
+  /// bugs that cause them to run forever. But also because XtalOpt
+  /// will sometimes think a job is queued even though it is not.
+  bool m_cancelJobAfterTime = false;
+  double m_hoursForCancelJobAfterTime = 100.0;
 };
 
 } // end namespace GlobalSearch

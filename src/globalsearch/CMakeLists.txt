@@ -82,6 +82,7 @@ set( globalsearch_SRCS
      queueinterfaces/sgedialog.cpp
      queueinterfaces/slurm.cpp
      queueinterfaces/slurmdialog.cpp
+     queueinterfaces/globalqueueinterfacesettingswidget.cpp
 )
 endif()
 
