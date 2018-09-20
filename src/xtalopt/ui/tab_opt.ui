@@ -1692,7 +1692,7 @@ Default: 4</string>
           </widget>
          </item>
          <item row="1" column="0">
-          <widget class="QLabel" name="label_13">
+          <widget class="QLabel" name="label_hardnessFitness">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -1816,7 +1816,7 @@ Default: 4</string>
   <connection>
    <sender>cb_calculateHardness</sender>
    <signal>toggled(bool)</signal>
-   <receiver>label_13</receiver>
+   <receiver>label_hardnessFitness</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">

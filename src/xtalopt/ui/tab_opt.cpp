@@ -189,6 +189,7 @@ void TabOpt::updateGUI()
   ui.cb_calculateHardness->setChecked(xtalopt->m_calculateHardness.load());
   ui.cb_calculateHardness->blockSignals(wasBlocked);
 
+  ui.label_hardnessFitness->setEnabled(ui.cb_calculateHardness->isChecked());
   ui.spin_hardnessFitnessWeight->setEnabled(ui.cb_calculateHardness->isChecked());
   ui.spin_hardnessFitnessWeight->setValue(
     xtalopt->m_hardnessFitnessWeight * 100.0);
