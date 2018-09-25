@@ -928,7 +928,8 @@ bool XtalOpt::readEditSettings(const QString& filename)
 bool XtalOpt::readSettings(const QString& filename)
 {
   // Some sections, we only want to load if we are loading a state file
-  bool isStateFile = filename.endsWith(".state");
+  bool isStateFile = filename.endsWith(".state") ||
+                     filename.endsWith(".state.old");
 
   SETTINGS(filename);
 
