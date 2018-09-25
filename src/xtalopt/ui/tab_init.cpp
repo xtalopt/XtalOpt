@@ -253,6 +253,8 @@ void TabInit::readSettings(const QString& filename)
 
 void TabInit::updateGUI()
 {
+  m_updateGuiInProgress = true;
+
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
   ui.spin_a_min->setValue(xtalopt->a_min);
@@ -289,6 +291,7 @@ void TabInit::updateGUI()
   ui.cb_checkStepOpt->setChecked(xtalopt->using_checkStepOpt);
   ui.cb_useMolUnit->setChecked(xtalopt->using_molUnit);
   ui.cb_allowRandSpg->setChecked(xtalopt->using_randSpg);
+  m_updateGuiInProgress = false;
 
   updateComposition();
 }
@@ -550,6 +553,9 @@ void TabInit::updateComposition()
 
 void TabInit::updateDimensions()
 {
+  if (m_updateGuiInProgress)
+    return;
+
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
   // Check for conflicts -- favor lower value

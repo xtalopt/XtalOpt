@@ -168,8 +168,6 @@ void AbstractDialog::resumeSession_(const QString& filename)
   }
   m_opt->emitStartingSession();
 
-  // Refresh dialog and settings
-  writeSettings();
   stopProgressUpdate();
 
   // Emit session started signals

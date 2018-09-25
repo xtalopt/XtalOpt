@@ -15,6 +15,8 @@
 #ifndef ABSTRACTTAB_H
 #define ABSTRACTTAB_H
 
+#include <atomic>
+
 #include <QObject>
 
 namespace GlobalSearch {
@@ -166,6 +168,9 @@ protected:
 
   /// Set to true once initialized() completes.
   bool m_isInitialized;
+
+  /// Used to determine if a gui update is in progress
+  std::atomic<bool> m_updateGuiInProgress{false};
 };
 }
 

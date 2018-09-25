@@ -141,6 +141,7 @@ void TabOpt::readSettings(const QString& filename)
 
 void TabOpt::updateGUI()
 {
+  m_updateGuiInProgress = true;
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
   // Initial generation
@@ -193,6 +194,7 @@ void TabOpt::updateGUI()
   ui.spin_hardnessFitnessWeight->setEnabled(ui.cb_calculateHardness->isChecked());
   ui.spin_hardnessFitnessWeight->setValue(
     xtalopt->m_hardnessFitnessWeight * 100.0);
+  m_updateGuiInProgress = false;
 }
 
 void TabOpt::lockGUI()
@@ -206,6 +208,9 @@ void TabOpt::lockGUI()
 
 void TabOpt::updateOptimizationInfo()
 {
+  if (m_updateGuiInProgress)
+    return;
+
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
 
   // See if the spin boxes caused this change.
