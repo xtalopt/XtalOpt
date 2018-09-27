@@ -221,8 +221,6 @@ void AbstractEditTab::updateQueueInterface()
 
   unsigned int newQiIndex = ui_combo_queueInterfaces->currentIndex();
 
-  qDebug() << "newQiIndex is" << newQiIndex;
-
   Q_ASSERT(newQiIndex <= m_queueInterfaces.size() - 1);
 
   QueueInterface* qi = m_opt->queueInterface(getCurrentOptStep());
@@ -233,7 +231,6 @@ void AbstractEditTab::updateQueueInterface()
     ui_push_queueInterfaceConfig->setEnabled(false);
   }
 
-  qDebug() << "Emitting queue interface changed";
   emit queueInterfaceChanged(getCurrentOptStep(),
                              m_queueInterfaces[newQiIndex].toStdString());
 }
