@@ -128,7 +128,7 @@ static const QStringList requiredRemoteKeywords = { "host", "user",
                                                     "jobTemplates" };
 
 static const QStringList validOptimizers = { "gulp", "castep", "pwscf",
-                                             "siesta", "vasp" };
+                                             "siesta", "vasp" , "generic" };
 
 static const QHash<QString, QStringList> requiredOptimizerKeywords = {
   { "gulp", { "ginTemplates" } },
