@@ -1,0 +1,26 @@
+[xtalopt]
+edit\description=dftb
+edit\localpath=path/to/dir
+edit\logErrorDirs=true
+edit\numOptSteps=1
+edit\optimizer\0=generic
+edit\optimizer\0\generic\job.in="Task GeometryOptimization\n\nGeometryOptimization\n  MaxIterations 10000\n  OptimizeLattice true\n  Convergence Gradients=1e-3\nEnd\n\nSystem\n  FractionalCoords True\n  Atoms\n    %coordsFrac%\n  End\n\n  Lattice [Angstrom]\n    %cellMatrixAngstrom%\n  End\nEnd\n\nEngine DFTB\n   ResourcesDir Dresden\n   Model DFTB0\n   Periodic\n       kspace 5\n       nstar 5\n   End\nEndEngine"
+edit\queueInterface\0=slurm
+edit\queueInterface\0\slurm\job.slurm="#!/bin/sh\n#SBATCH --nodes=1\n#SBATCH --ntasks-per-node=\n#SBATCH --job-name=adf-dftb\n#SBATCH --output=slurm_job.out\n#SBATCH --error=slurm_job.err\n#SBATCH --mail-type=END\n##SBATCH --mail-user=\n#SBATCH --qos=\n#SBATCH --clusters=\n#SBATCH --partition=\n#SBATCH --mem=\n#SBATCH --constraint=\n#SBATCH --exclusive\n##SBATCH --mem-per-cpu=\n\nexport SCRATCH_DIR=$SLURM_SUBMIT_DIR\necho \"SLURMTMPDIR is $SLURMTMPDIR\"\nexport OMP_NUM_THREADS=1\nexport I_MPI_PIN=0\nulimit -s unlimited\nexport NNODES=`srun -l hostname | uniq | wc -l`\nexport NPROCS=`srun -l hostname | wc -l`\n\n\nHOSTFILE=hosts.$SLURM_JOB_ID\nsrun hostname -s | sort > $HOSTFILE\n\nmodule list\n\necho \"The number of nodes is $SLURM_NNODES\"\necho \"The number of processors per node $SLURM_NTASKS_PER_NODE\"\necho \"The number of processors is $NPROCS\"\n\nexport I_MPI_PMI_LIBRARY=/usr/lib64/libpmi.so\n\n# This line needs to be modified to source the correct file for ADF\nsource /adf/tag.sh\n\n$ADFBIN/ams < job.in > job.out"
+edit\remote\cancelJobAfterTime=false
+edit\remote\cleanRemoteOnStop=false
+edit\remote\host=host
+edit\remote\hoursForCancelJobAfterTime=100
+edit\remote\port=22
+edit\remote\queueRefreshInterval=10
+edit\remote\rempath=/path/to/dir
+edit\remote\username=user
+edit\user1=
+edit\user2=
+edit\user3=
+edit\user4=
+edit\version=3
+queueinterface\slurmqueueinterface\0\paths\sbatch=sbatch
+queueinterface\slurmqueueinterface\0\paths\scancel=scancel
+queueinterface\slurmqueueinterface\0\paths\squeue=squeue
+queueinterface\slurmqueueinterface\0\version=0
