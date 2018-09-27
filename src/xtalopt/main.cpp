@@ -74,6 +74,14 @@ int main(int argc, char* argv[])
   for (int i = 0; i < argc; ++i)
     args << argv[i];
 
+  if (args.contains("--help") || args.contains("-h")) {
+    // Apparently, new versions of Qt require the QApplication object to
+    // be instantiated before printing the help information.
+    QCoreApplication app(argc, argv);
+    parser.process(args);
+    return 0;
+  }
+
   // Process the arguments
   parser.process(args);
 
