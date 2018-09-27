@@ -638,7 +638,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
         }
 
         hash.insert(symbol, QVariant(filename));
-        potcarStr += "\%fileContents:" + filename.toStdString() + "\%\n";
+        potcarStr += "%fileContents:" + filename.toStdString() + "%\n";
       }
 
       potcarInfo.append(QVariant(hash));
