@@ -624,6 +624,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
       }
       qSort(symbols);
       QVariantHash hash;
+      std::string potcarStr;
       for (const auto& symbol : symbols) {
         QString filename =
           options["potcarfile " + symbol.toLower()];
@@ -637,9 +638,12 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
         }
 
         hash.insert(symbol, QVariant(filename));
+        potcarStr += "\%fileContents:" + filename.toStdString() + "\%\n";
       }
 
       potcarInfo.append(QVariant(hash));
+
+      xtalopt.setTemplate(i, "POTCAR", potcarStr);
 
       // Set composition in optimizer
       QVariantList toOpt;
