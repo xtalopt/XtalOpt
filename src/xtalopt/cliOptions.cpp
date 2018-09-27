@@ -71,6 +71,8 @@ static const QStringList keywords = { "empiricalFormula",
                                       "jobFailLimit",
                                       "jobFailAction",
                                       "maxNumStructures",
+                                      "calculateHardness",
+                                      "hardnessFitnessWeight",
                                       "usingMitoticGrowth",
                                       "usingFormulaUnitCrossovers",
                                       "formulaUnitCrossoversGen",
@@ -95,6 +97,8 @@ static const QStringList keywords = { "empiricalFormula",
                                       "queueInterface",
                                       "localWorkingDirectory",
                                       "logErrorDirectories",
+                                      "autoCancelJobAfterTime",
+                                      "hoursForAutoCancelJob",
                                       "numOptimizationSteps",
                                       "host",
                                       "port",
@@ -432,6 +436,10 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   }
 
   xtalopt.cutoff = options.value("maxNumStructures", "10000").toUInt();
+  xtalopt.m_calculateHardness =
+    toBool(options.value("calculateHardness", "false"));
+  xtalopt.m_hardnessFitnessWeight =
+    options.value("hardnessFitnessWeight", "0.5").toDouble();
   xtalopt.using_mitotic_growth =
     toBool(options.value("usingMitoticGrowth", "false"));
   xtalopt.using_FU_crossovers =
@@ -681,6 +689,14 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
 
   xtalopt.m_logErrorDirs =
     toBool(options.value("logErrorDirectories", "false"));
+
+  xtalopt.m_cancelJobAfterTime =
+    toBool(options.value("autoCancelJobAfterTime", "false"));
+
+  if (xtalopt.m_cancelJobAfterTime) {
+    xtalopt.m_hoursForCancelJobAfterTime =
+      options.value("hoursForAutoCancelJob", "100.0").toDouble();
+  }
 
   if (anyRemote) {
     xtalopt.setQueueRefreshInterval(
@@ -1245,6 +1261,15 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
 
   text +=
     QString("maxNumStructures = ") + QString::number(xtalopt.cutoff) + "\n";
+
+  text += QString("calculateHardness = ") +
+          fromBool(xtalopt.m_calculateHardness) + "\n";
+
+  if (xtalopt.m_calculateHardness) {
+    text += QString("hardnessFitnessWeight = ") +
+            QString::number(xtalopt.m_hardnessFitnessWeight) + "\n";
+  }
+
   text += QString("usingMitoticGrowth = ") +
           fromBool(xtalopt.using_mitotic_growth) + "\n";
   text += QString("usingFormulaUnitCrossovers = ") +
@@ -1292,6 +1317,15 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
           QString::number(xtalopt.tol_xcAngle) + "\n";
   text +=
     QString("spglibTolerance = ") + QString::number(xtalopt.tol_spg) + "\n";
+
+  text += QString("\n# Queue Interface Settings\n");
+  text += QString("autoCancelJobAfterTime = ") +
+          fromBool(xtalopt.m_cancelJobAfterTime) + "\n";
+
+  if (xtalopt.m_cancelJobAfterTime) {
+    text += QString("hoursForAutoCancelJob = ") +
+            QString::number(xtalopt.m_hoursForCancelJobAfterTime) + "\n";
+  }
 
   file.write(text.toLocal8Bit().data());
 }
@@ -1416,6 +1450,10 @@ void XtalOptCLIOptions::processRuntimeOptions(
       }
     } else if (CICompare("maxNumStructures", option)) {
       xtalopt.cutoff = options[option].toUInt();
+    } else if (CICompare("calculateHardness", option)) {
+      xtalopt.m_calculateHardness = toBool(options[option]);
+    } else if (CICompare("hardnessFitnessWeight", option)) {
+      xtalopt.m_hardnessFitnessWeight = options[option].toDouble();
     } else if (CICompare("usingMitoticGrowth", option)) {
       xtalopt.using_mitotic_growth = toBool(options[option]);
     } else if (CICompare("usingFormulaUnitCrossovers", option)) {
@@ -1470,6 +1508,10 @@ void XtalOptCLIOptions::processRuntimeOptions(
       xtalopt.tol_xcAngle = options[option].toFloat();
     } else if (CICompare("spglibTolerance", option)) {
       xtalopt.tol_spg = options[option].toFloat();
+    } else if (CICompare("autoCancelJobAfterTime", option)) {
+      xtalopt.m_cancelJobAfterTime = toBool(options[option]);
+    } else if (CICompare("hoursForAutoCancelJob", option)) {
+      xtalopt.m_hoursForCancelJobAfterTime = options[option].toDouble();
     } else {
       qDebug() << "Warning: option," << option << ", is not a valid runtime"
                << "option! It is being ignored.";

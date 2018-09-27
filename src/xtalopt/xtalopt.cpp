@@ -4885,6 +4885,12 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
 
   stream << "  maxNumStructures: " << cutoff << "\n";
 
+  stream << "  calculateHardness: " << toString(m_calculateHardness) << "\n";
+
+  if (m_calculateHardness) {
+    stream << "  hardnessFitnessWeight: " << m_hardnessFitnessWeight << "\n";
+  }
+
   stream << "\n  usingMitoticGrowth: " << toString(using_mitotic_growth)
          << "\n";
   stream << "  usingFormulUnitCrossovers: " << toString(using_FU_crossovers)
@@ -4957,6 +4963,13 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
   stream << "\n  localQueueSettings: \n";
   stream << "  localWorkingDirectory: " << filePath << "\n";
   stream << "  logErrorDirectories: " << toString(m_logErrorDirs) << "\n";
+
+  stream << "  autoCancelJobAfterTime: " << toString(m_cancelJobAfterTime)
+         << "\n";
+  if (m_cancelJobAfterTime) {
+    stream << "  hoursForAutoCancelJob: " << m_hoursForCancelJobAfterTime
+           << "\n";
+  }
 
   stream << "\nOptimizer settings:\n";
 
