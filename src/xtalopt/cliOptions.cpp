@@ -492,17 +492,17 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
 
   size_t numOptSteps = options.value("numOptimizationSteps", "1").toUInt();
 
+  xtalopt.clearOptSteps();
+
   for (size_t i = 0; i < numOptSteps; ++i) {
 
     xtalopt.appendOptStep();
 
-    QString optInd = QString::number(i + 1);
-
 #ifdef ENABLE_SSH
     xtalopt.setQueueInterface(
-      i, options["queueInterface " + optInd].toLower().toStdString());
+      i, options["queueInterface"].toLower().toStdString());
 #else
-    if (options["queueInterface " + optInd].toLower() != "local") {
+    if (options["queueInterface"].toLower() != "local") {
       qDebug() << "Error: SSH is disabled, so only 'local' interface is"
                << "allowed.";
       qDebug() << "Please use the option 'queueInterface <optStep> = local'";
@@ -513,7 +513,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
 
 #ifdef ENABLE_SSH
 
-    bool remote = (options["queueInterface " + optInd].toLower() != "local");
+    bool remote = (options["queueInterface"].toLower() != "local");
 
     // We have additional things to set if we are remote
     if (remote) {
@@ -521,42 +521,42 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
       RemoteQueueInterface* remoteQueue =
         qobject_cast<RemoteQueueInterface*>(xtalopt.queueInterface(i + 1));
 
-      if (!options["submitCommand " + optInd].isEmpty())
-        remoteQueue->setSubmitCommand(options["submitCommand " + optInd]);
-      if (!options["cancelCommand " + optInd].isEmpty())
-        remoteQueue->setCancelCommand(options["cancelCommand " + optInd]);
-      if (!options["statusCommand " + optInd].isEmpty())
-        remoteQueue->setStatusCommand(options["statusCommand " + optInd]);
+      if (!options["submitCommand"].isEmpty())
+        remoteQueue->setSubmitCommand(options["submitCommand"]);
+      if (!options["cancelCommand"].isEmpty())
+        remoteQueue->setCancelCommand(options["cancelCommand"]);
+      if (!options["statusCommand"].isEmpty())
+        remoteQueue->setStatusCommand(options["statusCommand"]);
     }
 #endif
 
-    QString optimizerName = options["optimizer " + optInd].toLower();
+    QString optimizerName = options["optimizer"].toLower();
     QString queueName = xtalopt.queueInterface(i)->getIDString().toLower();
     xtalopt.setOptimizer(i, optimizerName.toStdString());
     XtalOptOptimizer* optimizer =
       static_cast<XtalOptOptimizer*>(xtalopt.optimizer(i));
     if (optimizerName == "castep") {
-      if (!addOptimizerTemplate(xtalopt, "castepCellTemplates " + optInd,
+      if (!addOptimizerTemplate(xtalopt, "castepCellTemplates",
                                 queueName, i, options)) {
         return false;
       }
 
-      if (!addOptimizerTemplate(xtalopt, "castepCellTemplates " + optInd,
+      if (!addOptimizerTemplate(xtalopt, "castepParamTemplates",
                                 queueName, i, options)) {
         return false;
       }
     } else if (options["optimizer"].toLower() == "gulp") {
-      if (!addOptimizerTemplate(xtalopt, "ginTemplates " + optInd, queueName, i,
+      if (!addOptimizerTemplate(xtalopt, "ginTemplates", queueName, i,
                                 options)) {
         return false;
       }
     } else if (options["optimizer"].toLower() == "pwscf") {
-      if (!addOptimizerTemplate(xtalopt, "pwscfTemplates " + optInd, queueName,
+      if (!addOptimizerTemplate(xtalopt, "pwscfTemplates", queueName,
                                 i, options)) {
         return false;
       }
     } else if (options["optimizer"].toLower() == "siesta") {
-      if (!addOptimizerTemplate(xtalopt, "fdfTemplates " + optInd, queueName, i,
+      if (!addOptimizerTemplate(xtalopt, "fdfTemplates", queueName, i,
                                 options)) {
         return false;
       }
@@ -576,12 +576,11 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
       QVariantHash hash;
       for (const auto& symbol : symbols) {
         QString filename =
-          options["psffile " + symbol.toLower() + " " + optInd];
+          options["psffile " + symbol.toLower()];
         if (filename.isEmpty()) {
-          qDebug() << "Error: no PSF file found for atom type" << symbol
-                   << "and opt step:" << optInd;
+          qDebug() << "Error: no PSF file found for atom type" << symbol;
           qDebug() << "You must set the PSF file in the options like so:";
-          QString tmp = "psfFile " + symbol + " " + optInd +
+          QString tmp = "psfFile " + symbol +
                         " = /path/to/siesta_psfs/symbol.psf";
           qDebug() << tmp;
           return false;
@@ -602,12 +601,12 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
       // Set PSF info
       optimizer->setData("PSF info", QVariant(psfInfo));
     } else if (options["optimizer"].toLower() == "vasp") {
-      if (!addOptimizerTemplate(xtalopt, "incarTemplates " + optInd, queueName,
+      if (!addOptimizerTemplate(xtalopt, "incarTemplates", queueName,
                                 i, options)) {
         return false;
       }
 
-      if (!addOptimizerTemplate(xtalopt, "kpointsTemplates " + optInd,
+      if (!addOptimizerTemplate(xtalopt, "kpointsTemplates",
                                 queueName, i, options)) {
         return false;
       }
@@ -627,12 +626,11 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
       QVariantHash hash;
       for (const auto& symbol : symbols) {
         QString filename =
-          options["potcarfile " + symbol.toLower() + " " + optInd];
+          options["potcarfile " + symbol.toLower()];
         if (filename.isEmpty()) {
-          qDebug() << "Error: no POTCAR file found for atom type" << symbol
-                   << "and opt step" << optInd;
+          qDebug() << "Error: no POTCAR file found for atom type" << symbol;
           qDebug() << "You must set the POTCAR file in the options like so:";
-          QString tmp = "potcarFile " + symbol + " " + optInd +
+          QString tmp = "potcarFile " + symbol +
                         " = /path/to/vasp_potcars/symbol/POTCAR";
           qDebug() << tmp;
           return false;
@@ -660,7 +658,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
 #ifdef ENABLE_SSH
     if (remote) {
       // We need to add the job templates if we are remote
-      if (!addOptimizerTemplate(xtalopt, "jobTemplates " + optInd, queueName, i,
+      if (!addOptimizerTemplate(xtalopt, "jobTemplates", queueName, i,
                                 options)) {
         return false;
       }
@@ -846,7 +844,16 @@ bool XtalOptCLIOptions::addOptimizerTemplate(
   XtalOpt& xtalopt, const QString& templateName, const QString& queueName,
   size_t optStep, const QHash<QString, QString>& options)
 {
-  QString filename = options[templateName];
+  QString optStepStr = QString::number(optStep + 1);
+  QStringList fileList = options[templateName].split(",");
+
+  if (fileList.size() <= optStep) {
+    qDebug() << "Error in" << __FUNCTION__ << ": " << templateName
+             << "does not contain a template for opt step " << optStepStr;
+    return false;
+  }
+
+  QString filename = fileList[optStep].trimmed();
   if (filename.isEmpty()) {
     qDebug() << "Error in" << __FUNCTION__ << ": " << templateName
              << "is missing!";
