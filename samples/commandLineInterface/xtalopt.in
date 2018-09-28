@@ -142,6 +142,10 @@
   # Space group detection tolerance
     spglibTolerance = 0.05
 
+  # Hardness settings
+    #calculateHardness = false
+    #hardnessFitnessWeight = 0.5
+
 # End of search settings
 
 # The directory in which to find all the templates
@@ -190,6 +194,10 @@
     # For multiple jobs, comma separation works. Must be equal to the
     # number of optimization steps
       jobTemplates = job1, job2, job3
+
+    # Autocancel job settings
+      #autoCancelJobAfterTime = false
+      #hoursForAutoCancelJob = 100.0
 
 # End of queue interface settings
 
