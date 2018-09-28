@@ -1713,7 +1713,7 @@ Default: 4</string>
          <item row="0" column="0" colspan="2">
           <widget class="QCheckBox" name="cb_calculateHardness">
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;After the crystals are optimized, they will be sent to AFLOW's machine learning server in order to get an approximation of the bulk and shear moduli (which are then used to approximate the material's hardness).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;You must have a valid internet connection in order to use this.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;After the crystals are optimized, they will be sent to AFLOW's machine learning server in order to get an approximation of the bulk and shear moduli (which are then used to approximate the material's hardness).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;You must have a valid internet connection in order to use this.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;If this box is checked in the middle of a run, structures whose hardnesses have not been calculated will be submitted/resubmitted to Aflow ML in order to obtain their hardnesses.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="text">
             <string>Calculate hardness with Aflow ML?</string>
