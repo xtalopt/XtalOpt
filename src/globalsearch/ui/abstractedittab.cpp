@@ -220,7 +220,7 @@ void AbstractEditTab::showHelp()
 
   vLayout.addWidget(&textEdit);
 
-  dialog.resize(QSize(600, 600));
+  dialog.resize(QSize(700, 600));
   dialog.exec();
 }
 
