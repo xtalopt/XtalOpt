@@ -27,6 +27,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
+#include <QVBoxLayout>
 #include <QTextEdit>
 
 #include <QDebug>
@@ -208,8 +209,19 @@ void AbstractEditTab::lockGUI()
 
 void AbstractEditTab::showHelp()
 {
-  QMessageBox::information(m_dialog, "Template Help",
-                           m_opt->getTemplateKeywordHelp());
+  QDialog dialog(m_dialog);
+
+  QVBoxLayout vLayout(&dialog);
+  dialog.setLayout(&vLayout);
+
+  QTextEdit textEdit(&dialog);
+  textEdit.setPlainText(m_opt->getTemplateKeywordHelp());
+  textEdit.setReadOnly(true);
+
+  vLayout.addWidget(&textEdit);
+
+  dialog.resize(QSize(600, 600));
+  dialog.exec();
 }
 
 void AbstractEditTab::updateQueueInterface()
