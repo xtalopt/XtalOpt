@@ -800,7 +800,7 @@ bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD,
   return true;
 }
 
-QString Structure::getResultsEntry() const
+QString Structure::getResultsEntry(bool includeHardness) const
 {
   QString status;
   switch (getStatus()) {
@@ -833,12 +833,23 @@ QString Structure::getResultsEntry() const
       status = "In progress";
       break;
   }
-  return QString("%1 %2 %3 %4 %5")
-    .arg(getRank(), 6)
-    .arg(getGeneration(), 6)
-    .arg(getIDNumber(), 6)
-    .arg(getEnthalpy(), 10)
-    .arg(status, 11);
+  if (!includeHardness) {
+    return QString("%1 %2 %3 %4 %5")
+      .arg(getRank(), 6)
+      .arg(getGeneration(), 6)
+      .arg(getIDNumber(), 6)
+      .arg(getEnthalpy(), 10)
+      .arg(status, 11);
+  }
+  else {
+    return QString("%1 %2 %3 %4 %5 %6")
+      .arg(getRank(), 6)
+      .arg(getGeneration(), 6)
+      .arg(getIDNumber(), 6)
+      .arg(getEnthalpy(), 10)
+      .arg(vickersHardness(), 10)
+      .arg(status, 11);
+  }
 }
 
 bool Structure::getNearestNeighborDistances(QList<double>* list) const

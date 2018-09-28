@@ -399,21 +399,32 @@ public:
    * @sa getResultsEntry
    * @sa OptBase::save
    */
-  virtual QString getResultsHeader() const
+  virtual QString getResultsHeader(bool includeHardness) const
   {
-    return QString("%1 %2 %3 %4 %5")
-      .arg("Rank", 6)
-      .arg("Gen", 6)
-      .arg("ID", 6)
-      .arg("Enthalpy", 10)
-      .arg("Status", 11);
+    if (!includeHardness) {
+      return QString("%1 %2 %3 %4 %5")
+        .arg("Rank", 6)
+        .arg("Gen", 6)
+        .arg("ID", 6)
+        .arg("Enthalpy", 10)
+        .arg("Status", 11);
+    }
+    else {
+      return QString("%1 %2 %3 %4 %5 %6")
+        .arg("Rank", 6)
+        .arg("Gen", 6)
+        .arg("ID", 6)
+        .arg("Enthalpy", 10)
+        .arg("Hardness", 10)
+        .arg("Status", 11);
+    }
   };
 
   /** @return A structure-specific entry for a results printout
    * @sa getResultsHeader
    * @sa OptBase::save
    */
-  virtual QString getResultsEntry() const;
+  virtual QString getResultsEntry(bool includeHardness) const;
 
   /** Find the smallest separation between all atoms in the
    * Structure.

@@ -114,18 +114,30 @@ public:
     const QHash<unsigned int, XtalCompositionStruct>& limits,
     int* atom1 = nullptr, int* atom2 = nullptr, double* IAD = nullptr);
   QHash<QString, QVariant> getFingerprint();
-  virtual QString getResultsEntry() const override;
-  virtual QString getResultsHeader() const override
+  virtual QString getResultsEntry(bool includeHardness) const override;
+  virtual QString getResultsHeader(bool includeHardness) const override
   {
-    return QString("%1 %2 %3 %4 %5 %6 %7 %8")
-      .arg("Rank", 5)
-      .arg("Gen", 5)
-      .arg("ID", 5)
-      .arg("Enthalpy/FU", 10)
-      .arg("FU", 5)
-      .arg("Hardness", 10)
-      .arg("SpaceGroup", 10)
-      .arg("Status", 11);
+    if (!includeHardness) {
+      return QString("%1 %2 %3 %4 %5 %6 %7")
+        .arg("Rank", 5)
+        .arg("Gen", 5)
+        .arg("ID", 5)
+        .arg("Enthalpy/FU", 12)
+        .arg("FU", 4)
+        .arg("SpaceGroup", 11)
+        .arg("Status", 12);
+    }
+    else {
+      return QString("%1 %2 %3 %4 %5 %6 %7 %8")
+        .arg("Rank", 5)
+        .arg("Gen", 5)
+        .arg("ID", 5)
+        .arg("Enthalpy/FU", 12)
+        .arg("FU", 4)
+        .arg("Hardness", 10)
+        .arg("SpaceGroup", 11)
+        .arg("Status", 12);
+    }
   };
 
   // Convencience functions for cell parameters

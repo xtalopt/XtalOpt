@@ -600,7 +600,8 @@ bool OptBase::save(QString stateFilename, bool notify)
       sortedStructures.append(structures->at(i));
     if (sortedStructures.size() != 0) {
       Structure::sortAndRankByEnthalpy(&sortedStructures);
-      out << sortedStructures.first()->getResultsHeader() << endl;
+      out << sortedStructures.first()->getResultsHeader(m_calculateHardness)
+          << endl;
     }
 
     for (int i = 0; i < sortedStructures.size(); i++) {
@@ -608,7 +609,7 @@ bool OptBase::save(QString stateFilename, bool notify)
       if (!structure)
         continue; // In case there was a problem copying.
       QReadLocker structureLocker(&structure->lock());
-      out << structure->getResultsEntry() << endl;
+      out << structure->getResultsEntry(m_calculateHardness) << endl;
       structureLocker.unlock();
       if (notify && m_dialog) {
         m_dialog->stopProgressUpdate();
