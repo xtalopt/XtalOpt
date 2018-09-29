@@ -19,12 +19,14 @@ fi
 if [[ -n "$TRAVIS_TAG" ]] && [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then
   if [[ "$NAME" == "gcc-4.8" ]]; then
     echo "Tag detected for gcc-4.8. Installing, zipping installation, and creating md5sum."
+    cd build
     make -j2 install
     cd install
     tar -czvf linux-xtalopt.tgz xtalopt
     md5sum linux-xtalopt.tgz > linux-xtalopt.md5
   elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     echo "Tag detected for osx. Installing, zipping installation, and creating md5sum."
+    cd build
     sudo make -j2 install
     sudo chown -R travis ./install
     cd install/xtalopt
