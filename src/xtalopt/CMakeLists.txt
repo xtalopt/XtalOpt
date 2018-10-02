@@ -75,7 +75,7 @@ add_library(xtalopt_static STATIC ${xtalopt_SRCS} ${xtalopt_RCS})
 target_link_libraries(xtalopt_static globalsearch XtalComp spglib RandSpg
                       "${QWT_LIBRARIES}")
 
-add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp)
+add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp ${xtalopt_RCS})
 target_link_libraries(xtalopt xtalopt_static)
 
 if(ENABLE_MOLECULAR)
