@@ -127,6 +127,11 @@ if(APPLE)
   InstallCocoa("${CMAKE_INSTALL_PREFIX}/xtalopt.app/Contents/plugins"
                QT_PLUGINS)
 
+  # It appears that we need to install the style as well...
+  include(MacroInstallStyle)
+  InstallQMacStyle("${CMAKE_INSTALL_PREFIX}/xtalopt.app/Contents/plugins"
+                   QT_PLUGINS)
+
   # We need to write a qt.conf file that points to the plugins
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/qt.conf"
        "[Paths]\nPlugins = plugins\n")
