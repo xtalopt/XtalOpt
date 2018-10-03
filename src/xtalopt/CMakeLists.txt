@@ -178,6 +178,12 @@ if(INSTALL_DEPENDENCIES AND EXISTS "${ExeLocation}" AND NOT APPLE)
     install(DIRECTORY "${QtCore_location}/../plugins/platforms"
       DESTINATION bin
     )
+    # If the styles directory exists, install that as well
+    if(EXISTS "${QtCore_location}/../plugins/styles")
+      install(DIRECTORY "${QtCore_location}/../plugins/styles"
+        DESTINATION bin
+      )
+    endif()
   elseif(UNIX)
     # For unix, install qxcb and its dependencies as well
     include(MacroInstallPlatform)
