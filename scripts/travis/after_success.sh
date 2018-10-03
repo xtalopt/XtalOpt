@@ -23,11 +23,6 @@ if [[ -n "$TRAVIS_TAG" ]] && [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then
     cd build
     make -j2 install
     cd install
-    wget -c -nv "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
-    chmod a+x linuxdeployqt-continuous-x86_64.AppImage
-    unset QTDIR; unset QT_PLUGIN_PATH ; unset LD_LIBRARY_PATH
-    export VERSION=$(git rev-parse --short HEAD) # linuxdeployqt uses this for naming the file
-    ./linuxdeployqt-continuous-x86_64.AppImage ./xtalopt/bin/xtalopt
     tar -czvf linux-xtalopt.tgz xtalopt
     md5sum linux-xtalopt.tgz > linux-xtalopt.md5
     # It has been difficult to deploy them from the build directory.
