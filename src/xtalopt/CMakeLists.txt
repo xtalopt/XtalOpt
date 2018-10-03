@@ -176,7 +176,7 @@ if(INSTALL_DEPENDENCIES AND EXISTS "${ExeLocation}" AND NOT APPLE)
   elseif(UNIX)
     # For unix, install qxcb and its dependencies as well
     include(MacroInstallPlatform)
-    InstallQXcbPlatform("${CMAKE_INSTALL_PREFIX}/plugins/platforms"
+    InstallQXcbPlatform("${CMAKE_INSTALL_PREFIX}/bin/platforms"
                         "${CMAKE_INSTALL_PREFIX}/lib")
   endif()
 
