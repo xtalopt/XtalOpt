@@ -178,7 +178,12 @@ if(INSTALL_DEPENDENCIES AND EXISTS "${ExeLocation}" AND NOT APPLE)
     install(DIRECTORY "${QtCore_location}/../plugins/platforms"
       DESTINATION bin
     )
-  endif(MSVC)
+  elseif(UNIX)
+    # For unix, install qxcb and its dependencies as well
+    include(MacroInstallPlatform)
+    InstallQXcbPlatform("${CMAKE_INSTALL_PREFIX}/bin/platforms"
+                        "${CMAKE_INSTALL_PREFIX}/lib")
+  endif()
 
   # Let's install required system libraries as well...
   include (InstallRequiredSystemLibraries)

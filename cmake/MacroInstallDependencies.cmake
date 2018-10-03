@@ -22,7 +22,11 @@ endmacro()
 function(gp_resolved_file_type_override filename type)
   if(filename MATCHES "(.*)Qt5(.*)" OR
      filename MATCHES "(.*)libssh(.*)" OR
-     filename MATCHES "(.*)libcrypto(.*)")
+     filename MATCHES "(.*)libcrypto(.*)" OR
+     filename MATCHES "(.*)libpng(.*)" OR
+     filename MATCHES "(.*)libicui18n(.*)" OR
+     filename MATCHES "(.*)libicuuc(.*)" OR
+     filename MATCHES "(.*)libicudata(.*)")
     set(type "other" PARENT_SCOPE)
   endif()
 endfunction()
