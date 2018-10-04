@@ -390,7 +390,9 @@ void AbstractEditTab::saveCurrentTemplate()
   m_opt->setTemplate(optStepIndex, templateName.toStdString(),
                      text.toStdString());
 
+  bool wasBlocked = ui_edit_edit->blockSignals(true);
   ui_edit_edit->setCurrentFont(QFont("Courier"));
+  ui_edit_edit->blockSignals(wasBlocked);
 }
 
 void AbstractEditTab::updateUserValues()
