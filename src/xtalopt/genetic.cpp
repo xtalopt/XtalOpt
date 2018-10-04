@@ -503,16 +503,16 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
       xform2.block(0, i, 3, 1) << 0, 0, s2;
   }
 
-  // Store unit cells
-  Matrix3 cell1 = xtal1->unitCell().cellMatrix();
-  Matrix3 cell2 = xtal2->unitCell().cellMatrix();
-
   // Get lists of atoms and fractional coordinates
   xtal1->lock().lockForRead();
+  QString xtal1IDString = xtal1->getIDString();
+  // Store unit cells
+  Matrix3 cell1 = xtal1->unitCell().cellMatrix();
+  double xtal1AVal = xtal1->getA();
   // Save composition for checks later
   QList<QString> xtalAtoms = xtal1->getSymbols();
   QList<uint> xtalCounts1 = xtal1->getNumberOfAtomsAlpha();
-  const std::vector<Atom>& atomList1 = xtal1->atoms();
+  const std::vector<Atom> atomList1 = xtal1->atoms();
   uint xtal1FU = xtal1->getFormulaUnits();
   QList<Vector3> fracCoordsList1;
   // qDebug() << "xtal1FU is " << QString::number(xtal1FU);
@@ -528,12 +528,41 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
   xtal1->lock().unlock();
 
   xtal2->lock().lockForRead();
-  const std::vector<Atom>& atomList2 = xtal2->atoms();
+  QString xtal2IDString = xtal2->getIDString();
+  // Store unit cells
+  Matrix3 cell2 = xtal2->unitCell().cellMatrix();
+  double xtal2AVal = xtal2->getA();
+  const std::vector<Atom> atomList2 = xtal2->atoms();
   QList<Vector3> fracCoordsList2;
   // qDebug() << "xtal2FU is " << QString::number(xtal2->getFormulaUnits());
   for (int i = 0; i < atomList2.size(); i++)
     fracCoordsList2.append(xtal2->cartToFrac(atomList2.at(i).pos()));
   xtal2->lock().unlock();
+
+  // Perform a few sanity checks
+  if (atomList1.empty()) {
+    qDebug() << "Error in" << __FUNCTION__
+             << ": no atoms found for" << xtal1IDString;
+    return nullptr;
+  }
+
+  if (atomList2.empty()) {
+    qDebug() << "Error in" << __FUNCTION__
+             << ": no atoms found for" << xtal2IDString;
+    return nullptr;
+  }
+
+  if (empiricalFormulaList.empty()) {
+    qDebug() << "Error in" << __FUNCTION__
+             << ": empirical formula units list is empty!";
+    return nullptr;
+  }
+
+  if (xtal1FU == 0) {
+    qDebug() << "Error in" << __FUNCTION__
+             << ": number of formula units for xtal1 is 0!";
+    return nullptr;
+  }
 
   // Will NOT transform (reflect / rot) the unit cell in FUcrossover
   cell1 *= xform1;
@@ -640,7 +669,7 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
       newAtom.setAtomicNumber(atomList1.at(i).atomicNumber());
       // Correct for atom position distortion across the cutVal axis
       tempFracCoordsList1[i][0] =
-        (xtal1->getA() / nxtal->getA()) * fracCoordsList1.at(i)[0];
+        (xtal1AVal / nxtal->getA()) * fracCoordsList1.at(i)[0];
       newAtom.setPos(nxtal->fracToCart(tempFracCoordsList1.at(i)));
     }
   }
@@ -653,7 +682,7 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
       newAtom.setAtomicNumber(atomList2.at(i).atomicNumber());
       // Correct for atom position distortion across the cutVal axis
       tempFracCoordsList2[i][0] =
-        (xtal2->getA() / nxtal->getA()) * fracCoordsList2.at(i)[0];
+        (xtal2AVal / nxtal->getA()) * fracCoordsList2.at(i)[0];
       // Reflect these atoms to the other side of the xtal via the plane
       // perpendicular to the cutVal axis
       tempFracCoordsList2[i][0] = 1 - fracCoordsList2.at(i)[0];
@@ -693,11 +722,15 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
       smallestCountIndex = i;
   }
 
+  // This is only here for safety purposes
+  const int& maxWhileLoopIterations = 10000;
+
   // Make sure the smallest number of atoms in the new xtal is a multiple
   // of the smallest number of atoms in the empirical formula. If not,
   // decide randomly whether to increase or decrease to reach a valid
   // number of atoms.
   double rand = getRandDouble();
+  int iterationCount = 0;
   while (targetXtalCounts.at(smallestCountIndex) %
            (empiricalFormulaList.at(smallestCountIndex)) !=
          0) {
@@ -709,6 +742,15 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
     else if (rand > 0.5)
       targetXtalCounts[smallestCountIndex] =
         targetXtalCounts.at(smallestCountIndex) + 1;
+
+    ++iterationCount;
+    if (iterationCount > maxWhileLoopIterations) {
+      qDebug() << "Error in" << __FUNCTION__ << ": max while loop iterations"
+               << "exceeded for randomly adjusting the smallest number of"
+               << "atoms in an xtal.\nThis error should not be possible."
+               << "Please contact the developers of XtalOpt about this.";
+      return nullptr;
+    }
   }
 
   // Add or subtract atoms from targetXtalCounts until the proper ratios
@@ -720,6 +762,7 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
     double actualRatio =
       static_cast<double>(targetXtalCounts.at(i)) /
       static_cast<double>(targetXtalCounts.at(smallestCountIndex));
+    iterationCount = 0;
     while (desiredRatio != actualRatio) {
       if (desiredRatio < actualRatio) {
         // Need to decrease the numerator
@@ -734,10 +777,19 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
           static_cast<double>(targetXtalCounts.at(i)) /
           static_cast<double>(targetXtalCounts.at(smallestCountIndex));
       }
+      ++iterationCount;
+      if (iterationCount > maxWhileLoopIterations) {
+        qDebug() << "Error in" << __FUNCTION__ << ": max while loop iterations"
+                 << "exceeded for adjusting ratios."
+                 << "\nThis error should not be possible."
+                 << "Please contact the developers of XtalOpt about this.";
+        return nullptr;
+      }
     }
   }
 
   bool onTheList = false;
+  iterationCount = 0;
   while (!onTheList) {
     // Count the number of formula units
     QList<uint> xtalCounts = targetXtalCounts;
@@ -799,6 +851,14 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
           (targetXtalCounts.at(i) / numberOfFormulaUnits) * closestFU;
       }
     }
+    ++iterationCount;
+    if (iterationCount > maxWhileLoopIterations) {
+      qDebug() << "Error in" << __FUNCTION__ << ": max while loop iterations"
+               << "exceeded for choosing a formula unit on the list."
+               << "\nThis error should not be possible."
+               << "Please contact the developers of XtalOpt about this.";
+      return nullptr;
+    }
   }
 
   // And targetXtalCounts should now have the correct desired counts for each
@@ -817,6 +877,8 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
     // qDebug() << "Delta = " << delta;
     if (delta == 0)
       continue;
+
+    iterationCount = 0;
     while (delta < 0) { // qDebug() << "Too many " << xtalAtoms.at(i) << "!";
       // Randomly delete atoms from nxtal;
       // 1 in X chance of each atom being deleted, where
@@ -836,7 +898,16 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
           }
         }
       }
+      ++iterationCount;
+      if (iterationCount > maxWhileLoopIterations) {
+        qDebug() << "Error in" << __FUNCTION__ << ": max while loop iterations"
+                 << "exceeded for adjusting delta < 0."
+                 << "\nThis error should not be possible."
+                 << "Please contact the developers of XtalOpt about this.";
+        return nullptr;
+      }
     }
+    iterationCount = 0;
     while (delta > 0) { // qDebug() << "Too few " << xtalAtoms.at(i) << "!";
 
       // For FUcrossover, we will try to add the atom randomly at first
@@ -907,6 +978,14 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
             break;
           }
         }
+      }
+      ++iterationCount;
+      if (iterationCount > maxWhileLoopIterations) {
+        qDebug() << "Error in" << __FUNCTION__ << ": max while loop iterations"
+                 << "exceeded for adjusting delta > 0."
+                 << "\nThis error should not be possible."
+                 << "Please contact the developers of XtalOpt about this.";
+        return nullptr;
       }
     }
   }
