@@ -40,6 +40,11 @@ public:
     *success = true;
     return true;
   };
+
+  // Override the read() function so we can produce an error in the case that
+  // some parts were not set.
+  bool read(GlobalSearch::Structure* structure,
+            const QString& filename) override;
 };
 
 } // end namespace XtalOpt

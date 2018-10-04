@@ -50,4 +50,37 @@ GenericOptimizer::GenericOptimizer(OptBase* parent, const QString& filename)
   readSettings(filename);
 }
 
+bool GenericOptimizer::read(Structure* structure, const QString& filename)
+{
+  // Call the base class read() function
+  if (!Optimizer::read(structure, filename)) {
+    qDebug() << "In" << __FUNCTION__ << ": Optimizer::read() failed!";
+    return false;
+  }
+
+  // Now perform some safety checks
+  // There should always be some atoms
+  if (structure->numAtoms() == 0) {
+    qDebug() << "Error: there are no atoms in generic output file:"
+             << filename;
+    return false;
+  }
+
+  // There should be a unit cell
+  if (!structure->hasUnitCell()) {
+    qDebug() << "Error: no unit cell was found in the generic output file:"
+             << filename;
+    return false;
+  }
+
+  // An energy/enthalpy should have been set
+  if (!structure->hasEnthalpy() && structure->getEnergy() == 0) {
+    qDebug() << "Error: enthalpy and energy were not found in the generic"
+             << "output file:" << filename;
+    return false;
+  }
+
+  return true;
+}
+
 } // end namespace XtalOpt
