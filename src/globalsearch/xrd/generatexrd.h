@@ -1,6 +1,6 @@
 /**********************************************************************
-  GenerateXrd - Use ObjCryst++ to generate a theoretical x-ray diffraction
-                powder pattern
+  GenerateXrd - Use ObjCryst++ to generate a simulated x-ray diffraction
+                pattern
 
   Copyright (C) 2018 by Patrick Avery
 

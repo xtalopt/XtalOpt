@@ -561,7 +561,7 @@ void TabProgress::progressContextMenu(QPoint p)
   menu.addSeparator();
   QAction* a_clipPOSCAR = menu.addAction("&Copy POSCAR to clipboard");
   menu.addSeparator();
-  QAction* a_plotXrd = menu.addAction("Plot Theoretical XRD Pattern");
+  QAction* a_plotXrd = menu.addAction("Plot Simulated XRD Pattern");
 
   // Connect actions
   connect(a_restart, SIGNAL(triggered()), this, SLOT(restartJobProgress()));

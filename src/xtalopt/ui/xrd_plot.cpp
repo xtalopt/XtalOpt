@@ -38,7 +38,7 @@ XrdPlot::XrdPlot(QWidget* parent, const QColor& backgroundColor)
 
   setCanvasBackground(backgroundColor);
 
-  setTitle("Theoretical Xrd Pattern");
+  setTitle("Simulated Xrd Pattern");
 
   setXTitle("2*theta (degrees)");
   setYTitle("Intensity");
