@@ -25,6 +25,40 @@
 
 int main(int argc, char* argv[])
 {
+  // Unfortunately, it is becoming more and more difficult to run
+  // QCommandLineParser without having a QApplication first. For us,
+  // it is ideal to run QCommandLineParser first because we want to
+  // determine whether we are using CLI mode or not (which will
+  // determine whether we instantiate a QApplication or
+  // QCoreApplication)
+
+  // Because we run into great difficulties, let's examine the arguments
+  // manually and determine whether or not we are in CLI mode first, and
+  // then perform the rest of the QCommandLineParser actions
+  const char* cliModeStr = "--cli";
+  const char* cliResumeStr = "--resume";
+
+  bool cliMode = false;
+  bool cliResume = false;
+  for (int i = 0; i < argc; ++i) {
+    const QString& curArg(argv[i]);
+    if (curArg == cliModeStr) {
+      cliMode = true;
+    }
+    else if (curArg == cliResumeStr) {
+      cliResume = true;
+    }
+  }
+
+  // If we are running in CLI mode, we want a QCoreApplication
+  // If we are running in GUI mode, we want a QApplication
+  std::unique_ptr<QCoreApplication> app =
+    (cliMode || cliResume) ? make_unique<QCoreApplication>(argc, argv)
+                           : make_unique<QApplication>(argc, argv);
+
+  // Now that we have the QApplication, we can proceed with the rest
+  // of the command line options.
+
   // Set up groups for QSettings
   QCoreApplication::setOrganizationName("XtalOpt");
   QCoreApplication::setOrganizationDomain("xtalopt.github.io");
@@ -78,8 +112,6 @@ int main(int argc, char* argv[])
   // Process the arguments
   parser.process(args);
 
-  bool cliMode = parser.isSet(cliModeOption);
-  bool cliResume = parser.isSet(cliResumeOption);
   bool plotMode = parser.isSet(plotModeOption);
 
   QString inputfile = parser.value(inputFileOption);
@@ -109,12 +141,6 @@ int main(int argc, char* argv[])
              << "at the same time!";
     return 1;
   }
-
-  // If we are running in CLI mode, we want a QCoreApplication
-  // If we are running in GUI mode, we want a QApplication
-  std::unique_ptr<QCoreApplication> app =
-    (cliMode || cliResume) ? make_unique<QCoreApplication>(argc, argv)
-                           : make_unique<QApplication>(argc, argv);
 
   // XtalOptDialog needs to be destroyed before XtalOpt gets destroyed. So
   // the ordering here matters.
