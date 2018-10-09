@@ -18,6 +18,9 @@
     <layout class="QGridLayout" name="gridLayout">
      <item row="6" column="0">
       <widget class="QLabel" name="label_2">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The number of seconds to wait before querying the jobs' statuses again with the queue interface.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>Queue refresh interval:</string>
        </property>
@@ -121,6 +124,9 @@
      </item>
      <item row="6" column="1" colspan="2">
       <widget class="QSpinBox" name="spin_interval">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The number of seconds to wait before querying the jobs' statuses again with the queue interface.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="minimum">
         <number>1</number>
        </property>
