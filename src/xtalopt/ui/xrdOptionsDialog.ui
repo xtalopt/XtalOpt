@@ -151,6 +151,12 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>spin_wavelength</tabstop>
+  <tabstop>spin_peakwidth</tabstop>
+  <tabstop>spin_numpoints</tabstop>
+  <tabstop>spin_max2theta</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>
