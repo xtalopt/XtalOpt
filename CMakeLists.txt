@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(XtalOpt)
 
-set(XtalOpt_VERSION_MAJOR 11)
+set(XtalOpt_VERSION_MAJOR 12)
 set(XtalOpt_VERSION_MINOR 0)
 set(XtalOpt_VERSION_PATCH 0)
 set(XtalOpt_VERSION "${XtalOpt_VERSION_MAJOR}.${XtalOpt_VERSION_MINOR}")
