@@ -2584,6 +2584,9 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
               xtal = XtalOptGenetic::FUcrossover(
                 xtal1, xtal2, cross_minimumContribution, percent1, percent2,
                 formulaUnitsList, this->comp);
+
+              if (!xtal)
+                continue;
             }
           }
 
@@ -2610,10 +2613,12 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
 
           // We will set the parent xtal of this xtal to be
           // the parent that contributed the most
-          if (percent1 >= 50.0)
-            xtal->setParentStructure(xtal1);
-          else
-            xtal->setParentStructure(xtal2);
+          if (xtal) {
+            if (percent1 >= 50.0)
+              xtal->setParentStructure(xtal1);
+            else
+              xtal->setParentStructure(xtal2);
+          }
 
           // Determine generation number
           gen = (gen1 >= gen2) ? gen1 + 1 : gen2 + 1;
@@ -2651,7 +2656,7 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
           uint id1 = selectedXtal->getIDNumber();
 
           // If it's a mitosis mutation, the parent xtal is already set
-          if (!mitosisMutation)
+          if (!mitosisMutation && xtal)
             xtal->setParentStructure(selectedXtal);
           selectedXtal->lock().unlock();
 
@@ -2691,7 +2696,7 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
           uint id1 = selectedXtal->getIDNumber();
 
           // If it's a mitosis mutation, the parent xtal is already set
-          if (!mitosisMutation)
+          if (!mitosisMutation && xtal)
             xtal->setParentStructure(selectedXtal);
           selectedXtal->lock().unlock();
 
