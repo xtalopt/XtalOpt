@@ -581,7 +581,7 @@ is a good value here.</string>
          </font>
         </property>
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allows crossovers between different formula units. The resulting cell structure will be rounded to the nearest formula unit on the list (i. e. atoms will be removed/added randomly until it reaches the closest number of formula units on the list).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allows crossovers between different formula units. The resulting cell structure will be rounded to the nearest formula unit on the list (i. e. atoms will be removed/added randomly until it reaches the closest number of formula units on the list).&lt;/p&gt;&lt;p&gt;This option will be ignored if there is only one formula unit on the formula units list (found on the &amp;quot;Structure Limits&amp;quot; tab).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
          <string>Allow FU Crossovers</string>

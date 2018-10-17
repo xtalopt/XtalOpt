@@ -2555,8 +2555,9 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
           // If FU crossovers have been enabled, generate a new breeding pool
           // that includes multiple different formula units then run the
           // alternative crossover function
+          // Only perform FU crossover if there is more than one formula unit
           bool enoughStructures = true;
-          if (using_FU_crossovers) {
+          if (using_FU_crossovers && formulaUnitsList.size() > 1) {
             // Get all optimized structures
             QList<Structure*> tempStructures =
               m_queue->getAllOptimizedStructures();
@@ -2591,7 +2592,8 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
           }
 
           // Perform a regular crossover instead!
-          if (!using_FU_crossovers || !enoughStructures) {
+          if (!using_FU_crossovers || !enoughStructures ||
+              formulaUnitsList.size() <= 1) {
             xtal1 = selectedXtal;
             xtal2 = selectXtalFromProbabilityList(structures,
                                                   xtal1->getFormulaUnits());
