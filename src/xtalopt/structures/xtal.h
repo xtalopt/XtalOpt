@@ -125,7 +125,7 @@ public:
         .arg("Enthalpy/FU", 12)
         .arg("FU", 4)
         .arg("SpaceGroup", 11)
-        .arg("Status", 22);
+        .arg("Status", 21);
     }
     else {
       return QString("%1 %2 %3 %4 %5 %6 %7 %8")
@@ -136,7 +136,7 @@ public:
         .arg("FU", 4)
         .arg("Hardness", 10)
         .arg("SpaceGroup", 11)
-        .arg("Status", 22);
+        .arg("Status", 21);
     }
   };
 

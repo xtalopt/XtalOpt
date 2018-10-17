@@ -2226,7 +2226,7 @@ QString Xtal::getResultsEntry(bool includeHardness) const
       .arg(getEnthalpy() / static_cast<double>(getFormulaUnits()), 12)
       .arg(getFormulaUnits(), 4)
       .arg(m_spgSymbol, 11)
-      .arg(status, 22);
+      .arg(status, 21);
   }
   else {
     return QString("%1 %2 %3 %4 %5 %6 %7 %8")
@@ -2237,7 +2237,7 @@ QString Xtal::getResultsEntry(bool includeHardness) const
       .arg(getFormulaUnits(), 4)
       .arg(vickersHardness(), 10)
       .arg(m_spgSymbol, 11)
-      .arg(status, 22);
+      .arg(status, 21);
   }
 }
 
