@@ -32,7 +32,7 @@ All contributors, in alphabetical order:
 
 - Patrick Avery <psavery@buffalo.edu>
 - Zackary Falls <zmfalls@buffalo.edu>
-- David Lonie <loniedavid@gmail.com>
+- Allison Vacanti <allison.vacanti@kitware.com>
 
 
 =========
