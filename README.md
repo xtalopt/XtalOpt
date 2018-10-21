@@ -38,8 +38,10 @@ All contributors, in alphabetical order:
 =========
 Included sources from various projects are found under:
 
-- external/spglib   https://atztogo.github.io/spglib/
 - external/pugixml  https://pugixml.org/
+- external/randSpg  http://xtalopt.openmolecules.net/randSpg/randSpg.html
+- external/spglib   https://atztogo.github.io/spglib/
+- external/xtalcomp http://xtalopt.openmolecules.net/xtalcomp/xtalcomp.html
 
 These files, other than some minor modifications for interoperability
 with XtalOpt/libglobalsearch, are the works of the copyright holders
