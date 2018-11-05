@@ -1728,7 +1728,7 @@ void TabInit::openSpgOptions()
     QCoreApplication::processEvents();
 
     // Open up the RandSpg dialog
-    m_spgOptions = new RandSpgDialog(xtalopt);
+    m_spgOptions = new RandSpgDialog(xtalopt, xtalopt->dialog());
 
     // Close the mesage box
     msgBox.close();
