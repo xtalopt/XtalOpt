@@ -3779,10 +3779,17 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
   bool stateFileIsValid =
     settings->value("xtalopt/saveSuccessful", false).toBool();
   if (!stateFileIsValid && !file.fileName().endsWith(".old")) {
-    warning("XtalOpt::load(): File " + file.fileName() +
-            " is incomplete, corrupt, or invalid. Trying " + file.fileName() +
-            ".old ...");
+    bool readFromOldState;
+    needBoolean(tr("XtalOpt::load(): File:\n\n'%1'\n\nis incomplete, corrupt, "
+                   "or invalid. Would you like to try loading:\n\n'%1"
+                   ".old'\n\ninstead?").arg(file.fileName()),
+                &readFromOldState);
+
+    if (!readFromOldState)
+      return false;
+
     return load(file.fileName() + ".old", false);
+
   } else if (!stateFileIsValid && file.fileName().endsWith(".old")) {
     error("XtalOpt::load(): File " + file.fileName() +
           " is incomplete, corrupt, or invalid. Cannot begin run. Please "
