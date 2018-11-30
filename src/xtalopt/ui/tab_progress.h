@@ -121,6 +121,7 @@ private:
   Ui::Tab_Progress ui;
   Ui::XrdOptionsDialog* m_ui_xrdOptionsDialog;
   QDialog* m_xrdOptionsDialog;
+  QDialog* m_xrdPlotDialog;
   XrdPlot* m_xrdPlot;
   QTimer* m_timer;
   QMutex* m_mutex;
