@@ -99,6 +99,13 @@ class XtalComp
   // Make next comparison
   bool compareCurrent();
 
+  // Reduce the xtal to its primitive form
+  // Returns the space group
+  static unsigned int reduceToPrimitive(std::vector<XcVector>& fcoords,
+                                        std::vector<unsigned int>& atomicNums,
+                                        XcMatrix& cellMatrix,
+                                        const double cartTol);
+
   // Tolerance
   double m_lengthtol;
   double m_angletol;
