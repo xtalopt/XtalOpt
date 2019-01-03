@@ -33,9 +33,9 @@ matrix:
       env: NAME="clang-3.9"
 
     - os: osx
-      osx_image: xcode8
+      osx_image: xcode10
       compiler:
-      env: NAME="xcode-8.3"
+      env: NAME="xcode-10"
 
 install: $TRAVIS_BUILD_DIR/scripts/travis/install.sh
 
