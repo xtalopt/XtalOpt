@@ -11,7 +11,7 @@ if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
 
   # Install
   brew upgrade git cmake
-  brew install qt5 qwt libssh eigen
+  brew install qt5 qwt eigen # libssh should already be installed...
 else
   # Before install
   eval "${MATRIX_EVAL}"
