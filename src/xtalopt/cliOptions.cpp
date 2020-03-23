@@ -527,7 +527,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
     if (remote) {
       anyRemote = true;
       RemoteQueueInterface* remoteQueue =
-        qobject_cast<RemoteQueueInterface*>(xtalopt.queueInterface(i + 1));
+        qobject_cast<RemoteQueueInterface*>(xtalopt.queueInterface(i));
 
       if (!options["submitCommand"].isEmpty())
         remoteQueue->setSubmitCommand(options["submitCommand"]);
