@@ -1200,11 +1200,18 @@ Structure* XtalOpt::replaceWithRandom(Structure* s, const QString& reason)
   // Generate/Check new xtal
   Xtal* xtal = 0;
   uint spg = 0;
+  int maxAttempts = 10000;
+  int attemptCount = 0;
   while (!checkXtal(xtal)) {
     if (xtal) {
       delete xtal;
       xtal = 0;
     }
+    if (attemptCount >= maxAttempts) {
+      qDebug() << "Failed too many times in replaceWithRandom. Giving up";
+      return nullptr;
+    }
+    ++attemptCount;
 
     if (using_randSpg) {
       do {
@@ -1260,11 +1267,18 @@ Structure* XtalOpt::replaceWithOffspring(Structure* s, const QString& reason)
   uint FU = s->getFormulaUnits();
   // Generate/Check new xtal
   Xtal* xtal = 0;
+  int maxAttempts = 10000;
+  int attemptCount = 0;
   while (!checkXtal(xtal)) {
     if (xtal) {
       xtal->deleteLater();
       xtal = nullptr;
     }
+    if (attemptCount >= maxAttempts) {
+      qDebug() << "Failed too many times in replaceWithOffspring. Giving up";
+      return nullptr;
+    }
+    ++attemptCount;
     xtal = generateNewXtal(FU);
   }
 
@@ -2236,11 +2250,18 @@ Xtal* XtalOpt::generateNewXtal(uint FU)
       for (int i = FU - 1; 0 < i; i--) {
         if (FU % i == 0 && numberOfEachFormulaUnit.at(i) >= 5 &&
             onTheFormulaUnitsList(i) == true) {
+          int maxAttempts = 10000;
+          int attemptCount = 0;
           while (!checkXtal(xtal)) {
             if (xtal) {
               delete xtal;
               xtal = 0;
             }
+            if (attemptCount >= maxAttempts) {
+              qDebug() << "Failed too many times in generateNewXtal1. Giving up";
+              return nullptr;
+            }
+            ++attemptCount;
             xtal = generateSuperCell(i, FU, nullptr, true);
           }
           return xtal;
@@ -2263,9 +2284,16 @@ Xtal* XtalOpt::generateNewXtal(uint FU)
     }
 
     // If a supercell cannot be formed or if using_mitotic_growth == false
+    int maxAttempts = 10000;
+    int attemptCount = 0;
     while (!checkXtal(xtal)) {
       if (xtal)
         xtal->deleteLater();
+      if (attemptCount >= maxAttempts) {
+        qDebug() << "Failed too many times in generateNewXtal2. Giving up";
+        return nullptr;
+      }
+      ++attemptCount;
       if (!using_one_pool)
         xtal = generateRandomXtal(1, 0, FU);
       else if (using_one_pool)
@@ -2457,12 +2485,20 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
   Xtal *xtal = nullptr, *selectedXtal = nullptr;
 
   // Perform operation until xtal is valid:
+  int maxAttempts = 10000;
+  int attemptCount = 0;
   while (!checkXtal(xtal)) {
     // First delete any previous failed structure in xtal
     if (xtal) {
       xtal->deleteLater();
       xtal = 0;
     }
+
+    if (attemptCount >= maxAttempts) {
+      qDebug() << "Failed too many times in H_getMutatedXtal1. Giving up";
+      return nullptr;
+    }
+    ++attemptCount;
 
     // If an xtal hasn't been preselected, select one
     if (!preselectedXtal)
@@ -2498,11 +2534,19 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
           uint formulaUnits = formulaUnitsList.at(selectedIndex);
           // Perform mitosis
           Xtal* nxtal = nullptr;
+          maxAttempts = 10000;
+          attemptCount = 0;
           while (!checkXtal(nxtal)) {
             if (nxtal) {
               delete nxtal;
               nxtal = 0;
             }
+
+            if (attemptCount >= maxAttempts) {
+              qDebug() << "Failed too many times in H_getMutatedXtal2. Giving up";
+              return nullptr;
+            }
+            ++attemptCount;
 
             nxtal = generateSuperCell(selectedXtal->getFormulaUnits(),
                                       formulaUnits, selectedXtal, true);
@@ -2536,13 +2580,19 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
     // Try 1000 times to get a good structure from the selected
     // operation. If not possible, send a warning to the log and
     // start anew.
-    int attemptCount = 0;
+    attemptCount = 0;
+    maxAttempts = 10000;
     while (attemptCount < 1000 && !checkXtal(xtal)) {
-      attemptCount++;
       if (xtal) {
         delete xtal;
         xtal = 0;
       }
+
+      if (attemptCount >= maxAttempts) {
+        qDebug() << "Failed too many times in H_getMutatedXtal3. Giving up";
+        return nullptr;
+      }
+      ++attemptCount;
 
       // Operation specific set up:
       switch (op) {
