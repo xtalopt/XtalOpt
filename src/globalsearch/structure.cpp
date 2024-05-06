@@ -14,6 +14,7 @@
 
 #include <globalsearch/structure.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/bt.h>
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/macros.h>
@@ -27,8 +28,6 @@
 #include <QTimer>
 #include <QtConcurrent>
 
-#define KCAL_PER_MOL_TO_EV 0.043364122
-
 using namespace Eigen;
 using namespace std;
 
@@ -41,11 +40,9 @@ Structure::Structure(QObject* parent)
     m_generation(0), m_id(0), m_rank(0), m_jobID(0), m_energy(0), m_enthalpy(0),
     m_PV(0), m_optStart(QDateTime()), m_optEnd(QDateTime()), m_index(-1),
     m_lock(QReadWriteLock::Recursive),
-#ifdef ENABLE_MOLECULAR
-    m_zValue(-1),
-#endif // ENABLE_MOLECULAR
     m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true),
-    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0)
+    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0),
+    m_strucObjState(Structure::Os_NotCalculated), m_strucObjFailCt(0)
 {
   m_currentOptStep = 0;
   setStatus(Empty);
@@ -58,11 +55,9 @@ Structure::Structure(const Structure& other)
     m_histogramGenerationPending(false), m_generation(0), m_id(0), m_rank(0),
     m_jobID(0), m_energy(0), m_enthalpy(0), m_PV(0), m_optStart(QDateTime()),
     m_optEnd(QDateTime()), m_index(-1), m_lock(QReadWriteLock::Recursive),
-#ifdef ENABLE_MOLECULAR
-    m_zValue(-1),
-#endif // ENABLE_MOLECULAR
     m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true),
-    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0)
+    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0),
+    m_strucObjState(Structure::Os_NotCalculated), m_strucObjFailCt(0)
 {
   *this = other;
 }
@@ -78,11 +73,9 @@ Structure::Structure(const GlobalSearch::Molecule& other)
     m_histogramGenerationPending(false), m_generation(0), m_id(0), m_rank(0),
     m_jobID(0), m_energy(0), m_enthalpy(0), m_PV(0), m_optStart(QDateTime()),
     m_optEnd(QDateTime()), m_index(-1), m_lock(QReadWriteLock::Recursive),
-#ifdef ENABLE_MOLECULAR
-    m_zValue(-1),
-#endif // ENABLE_MOLECULAR
     m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true),
-    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0)
+    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0),
+    m_strucObjState(Structure::Os_NotCalculated), m_strucObjFailCt(0)
 {
   *this = other;
 }
@@ -125,7 +118,7 @@ Structure& Structure::operator=(const Structure& other)
     m_parents = other.m_parents;
     m_dupString = other.m_dupString;
     m_rempath = other.m_rempath;
-    m_fileName = other.m_fileName;
+    m_locpath = other.m_locpath;
     m_energy = other.m_energy;
     m_enthalpy = other.m_enthalpy;
     m_PV = other.m_PV;
@@ -133,15 +126,15 @@ Structure& Structure::operator=(const Structure& other)
     m_optStart = other.m_optStart;
     m_optEnd = other.m_optEnd;
     m_index = other.m_index;
-#ifdef ENABLE_MOLECULAR
-    m_zValue = other.m_zValue.load(),
-#endif // ENABLE_MOLECULAR
     m_parentStructure = other.m_parentStructure;
     m_copyFiles = other.m_copyFiles;
     m_reusePreoptBonding = other.m_reusePreoptBonding;
     m_bulkModulus = other.m_bulkModulus;
     m_shearModulus = other.m_shearModulus;
     m_vickersHardness = other.m_vickersHardness;
+    m_strucObjValues = other.m_strucObjValues;
+    m_strucObjState = ObjectivesState(other.m_strucObjState);
+    m_strucObjFailCt = other.m_strucObjFailCt;
   }
 
   return *this;
@@ -169,7 +162,7 @@ Structure& Structure::operator=(Structure&& other) noexcept
     m_parents = std::move(other.m_parents);
     m_dupString = std::move(other.m_dupString);
     m_rempath = std::move(other.m_rempath);
-    m_fileName = std::move(other.m_fileName);
+    m_locpath = std::move(other.m_locpath);
     m_energy = std::move(other.m_energy);
     m_enthalpy = std::move(other.m_enthalpy);
     m_PV = std::move(other.m_PV);
@@ -177,9 +170,6 @@ Structure& Structure::operator=(Structure&& other) noexcept
     m_optStart = std::move(other.m_optStart);
     m_optEnd = std::move(other.m_optEnd);
     m_index = std::move(other.m_index);
-#ifdef ENABLE_MOLECULAR
-    m_zValue = std::move(other.m_zValue.load()),
-#endif // ENABLE_MOLECULAR
     m_parentStructure = std::move(other.m_parentStructure);
 
     other.m_parentStructure = nullptr;
@@ -188,6 +178,9 @@ Structure& Structure::operator=(Structure&& other) noexcept
     m_bulkModulus = std::move(other.m_bulkModulus);
     m_shearModulus = std::move(other.m_shearModulus);
     m_vickersHardness = std::move(other.m_vickersHardness);
+    m_strucObjValues = std::move(other.m_strucObjValues);
+    m_strucObjState = std::move(ObjectivesState(other.m_strucObjState));
+    m_strucObjFailCt = std::move(other.m_strucObjFailCt);
   }
 
   return *this;
@@ -218,7 +211,7 @@ void Structure::writeStructureSettings(const QString& filename)
   settings->setValue("currentOptStep", getCurrentOptStep());
   settings->setValue("parents", getParents());
   settings->setValue("rempath", getRempath());
-  settings->setValue("fileName", fileName());
+  settings->setValue("locpath", getLocpath());
   settings->setValue("status", int(getStatus()));
   settings->setValue("failCount", getFailCount());
   settings->setValue("startTime", getOptTimerStart().toString());
@@ -229,6 +222,16 @@ void Structure::writeStructureSettings(const QString& filename)
     settings->setValue("value", m_copyFiles[i].c_str());
   }
   settings->endArray();
+
+  // Objectives (multi-objective run): write current info to structure.state file
+  settings->beginWriteArray("objectives");
+  for (size_t i = 0; i < getStrucObjNumber(); i++) {
+    settings->setArrayIndex(i);
+    settings->setValue("value", QString::number(getStrucObjValues(i)));
+  }
+  settings->endArray();
+  settings->setValue("objectivesState", getStrucObjState());
+  settings->setValue("objectivesFailCount", getStrucObjFailCt());
 
   settings->setValue("reusePreoptBonding", reusePreoptBonding());
   settings->beginWriteArray("preoptBonds");
@@ -241,17 +244,10 @@ void Structure::writeStructureSettings(const QString& filename)
   }
   settings->endArray();
 
-#ifdef ENABLE_MOLECULAR
-  settings->setValue("parentConformer", getParentConformer().c_str());
-  settings->setValue("zValue", getZValue());
-#endif // ENABLE_MOLECULAR
-
   // Check if a parent structure is saved
   // This is NOT a variable that can be read in readSettings().
   if (this->hasParentStructure()) {
-    QString parentStructure =
-      QString::number(m_parentStructure->getGeneration()) + "x" +
-      QString::number(m_parentStructure->getIDNumber());
+    QString parentStructure = m_parentStructure->getTag();
     settings->setValue("parentStructure", parentStructure);
   }
 
@@ -308,6 +304,21 @@ void Structure::writeStructureSettings(const QString& filename)
   }
   settings->endArray();
 
+  // Objectives (multi-objective run): write history to structure.state file
+  settings->beginWriteArray("objectives");
+  for (int i = 0; i < getStrucHistObjNumber(); i++) {
+    settings->setArrayIndex(i);
+    settings->beginWriteArray("value");
+    for (int j = 0; j < getStrucHistObjValues(i).size(); j++) {
+      settings->setArrayIndex(j);
+      settings->setValue("value", getStrucHistObjValues(i).at(j));
+    }
+    settings->endArray();
+    settings->setValue("state", getStrucHistObjState(i));
+    settings->setValue("failcount", getStrucHistObjFailCt(i));
+  }
+  settings->endArray();
+
   //  Cells
   settings->beginWriteArray("cells");
   for (int i = 0; i < m_histCells.size(); i++) {
@@ -361,7 +372,7 @@ void Structure::readStructureSettings(const QString& filename,
     setFailCount(settings->value("failCount", 0).toInt());
     setParents(settings->value("parents", "").toString());
     setRempath(settings->value("rempath", "").toString());
-    setFileName(settings->value("fileName", m_fileName).toString());
+    setLocpath(settings->value("locpath", m_locpath).toString());
     setStatus(State(settings->value("status", -1).toInt()));
 
     setOptTimerStart(
@@ -376,6 +387,17 @@ void Structure::readStructureSettings(const QString& filename,
       m_copyFiles.push_back(settings->value("value").toString().toStdString());
     }
     settings->endArray();
+
+    // Objectives (multi-objective run): read current info from structure.state file
+    resetStrucObj();
+    size = settings->beginReadArray("objectives");
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      setStrucObjValues(settings->value("value").toDouble());
+    }
+    settings->endArray();
+    setStrucObjState(ObjectivesState(settings->value("objectivesState", 0).toInt()));
+    setStrucObjFailCt(settings->value("objectivesFailCount", 0).toInt());
 
     setReusePreoptBonding(
       settings->value("reusePreoptBonding", false).toBool());
@@ -393,12 +415,6 @@ void Structure::readStructureSettings(const QString& filename,
     }
     setPreoptBonding(preoptBonds);
     settings->endArray();
-
-#ifdef ENABLE_MOLECULAR
-    setParentConformer(
-      settings->value("parentConformer", "").toString().toStdString());
-    setZValue(settings->value("zValue", "-1").toInt());
-#endif // ENABLE_MOLECULAR
 
     setBulkModulus(settings->value("bulkModulus", "-1.0").toDouble());
     setShearModulus(settings->value("shearModulus", "-1.0").toDouble());
@@ -457,6 +473,24 @@ void Structure::readStructureSettings(const QString& filename,
     for (int i = 0; i < size; i++) {
       settings->setArrayIndex(i);
       m_histEnthalpies.append(settings->value("value").toDouble());
+    }
+    settings->endArray();
+
+    // Objectives (multi-objective run): read history from structure.state file
+    size = settings->beginReadArray("objectives");
+    resetStrucHistObj();
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      int size2 = settings->beginReadArray("value");
+      QList<double> tmpvalue;
+      for (int j = 0; j < size2; j++) {
+        settings->setArrayIndex(j);
+        tmpvalue.push_back(settings->value("value").toDouble());
+      }
+      setStrucHistObjValues(tmpvalue);
+      settings->endArray();
+      setStrucHistObjState(ObjectivesState(settings->value("state").toInt()));
+      setStrucHistObjFailCt(settings->value("failcount").toInt());
     }
     settings->endArray();
 
@@ -659,7 +693,7 @@ void Structure::updateAndSkipHistory(const QList<unsigned int>& atomicNums,
   }
 
   // Update energy/enthalpy
-  if (fabs(enthalpy) < 1e-6) {
+  if (fabs(enthalpy) < ZERO6) {
     m_hasEnthalpy = false;
     m_PV = 0.0;
   } else {
@@ -672,6 +706,13 @@ void Structure::updateAndSkipHistory(const QList<unsigned int>& atomicNums,
   // Update cell if necessary
   if (!cell.isZero())
     unitCell().setCellMatrix(cell);
+}
+
+void Structure::updateAndAddObjectivesToHistory(Structure* s)
+{
+  s->setStrucHistObjValues(s->getStrucObjValuesVec());
+  s->setStrucHistObjState(s->getStrucObjState());
+  s->setStrucHistObjFailCt(s->getStrucObjFailCt());
 }
 
 void Structure::updateAndAddToHistory(const QList<unsigned int>& atomicNums,
@@ -704,7 +745,7 @@ void Structure::updateAndAddToHistory(const QList<unsigned int>& atomicNums,
   }
 
   // Update energy/enthalpy
-  if (fabs(enthalpy) < 1e-6) {
+  if (fabs(enthalpy) < ZERO6) {
     m_hasEnthalpy = false;
     m_PV = 0.0;
   } else {
@@ -800,7 +841,7 @@ bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD,
   return true;
 }
 
-QString Structure::getResultsEntry(bool includeHardness) const
+QString Structure::getResultsEntry(bool includeHardness, int objectives_num, int optstep) const
 {
   QString status;
   switch (getStatus()) {
@@ -823,33 +864,48 @@ QString Structure::getResultsEntry(bool includeHardness) const
     case Error:
       status = "Error";
       break;
+    case ObjectiveDismiss:
+      status = "ObjectiveDismiss";
+      break;
+    case ObjectiveFail:
+      status = "ObjectiveFail";
+      break;
+    case ObjectiveRetain:
+    case ObjectiveCalculation:
+      status = "ObjectiveCalculation";
+      break;
     case StepOptimized:
     case WaitingForOptimization:
+    case Submitted:
     case InProcess:
     case Empty:
     case Updating:
-    case Submitted:
+      status = "Opt Step " + QString::number(optstep);
+      break;
     default:
       status = "In progress";
       break;
   }
-  if (!includeHardness) {
-    return QString("%1 %2 %3 %4 %5")
+
+  QString out = QString("%1 %2 %3 %4 %5")
       .arg(getRank(), 6)
       .arg(getGeneration(), 6)
       .arg(getIDNumber(), 6)
-      .arg(getEnthalpy(), 10)
-      .arg(status, 11);
+      .arg(getIndex(), 6)
+      .arg(getEnthalpy(), 10);
+  if (includeHardness)
+    out += QString("%1")
+      .arg(vickersHardness(), 10);
+  for (int i = 0; i < objectives_num; i++) {
+    if (i < getStrucObjNumber())
+      out += " "+QString("%1").arg(getStrucObjValues(i), 10);
+    else
+      out += QString("%1").arg("-", 11);
   }
-  else {
-    return QString("%1 %2 %3 %4 %5 %6")
-      .arg(getRank(), 6)
-      .arg(getGeneration(), 6)
-      .arg(getIDNumber(), 6)
-      .arg(getEnthalpy(), 10)
-      .arg(vickersHardness(), 10)
+  out += QString("%1")
       .arg(status, 11);
-  }
+
+  return out;
 }
 
 bool Structure::getNearestNeighborDistances(QList<double>* list) const
@@ -1520,12 +1576,6 @@ uint gcd(uint a, uint b)
 
 uint Structure::getFormulaUnits() const
 {
-#ifdef ENABLE_MOLECULAR
-  // First, check and see if it is molecular. z != -1 for molecular
-  if (getZValue() != -1)
-    return getZValue();
-#endif // ENABLE_MOLECULAR
-
   // Perform an atomistic formula unit calculation
   QList<uint> counts = getNumberOfAtomsAlpha();
   if (counts.empty())

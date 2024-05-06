@@ -14,6 +14,7 @@
 
 #include <globalsearch/formats/pwscfformat.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/structure.h>
 #include <globalsearch/utilities/utilityfunctions.h>
@@ -154,7 +155,7 @@ bool PwscfFormat::read(Structure* s, const QString& filename)
       }
       enthalpy = atof(lineSplit[3].c_str()) * RY_TO_EV;
       // If the energy hasn't been found, set the energy to be the enthalpy
-      if (fabs(energy) < 1e-8)
+      if (fabs(energy) < ZERO8)
         energy = enthalpy;
       energyFound = true;
     }

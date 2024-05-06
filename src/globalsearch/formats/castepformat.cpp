@@ -14,6 +14,7 @@
 
 #include <globalsearch/formats/castepformat.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/structure.h>
 #include <globalsearch/utilities/utilityfunctions.h>
@@ -151,7 +152,7 @@ bool CastepFormat::read(Structure* s, const QString& filename)
           enthalpy = atof(lineSplit[4].c_str());
 
           // If we haven't found the energy yet, set this to be the energy
-          if (fabs(energy) < 1e-8)
+          if (fabs(energy) < ZERO8)
             energy = enthalpy;
 
           energyFound = true;

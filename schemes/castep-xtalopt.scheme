@@ -1,0 +1,17 @@
+[xtalopt]
+edit\description=
+edit\locWorkDir=
+edit\logErrorDirs=false
+edit\numOptSteps=1
+edit\optimizer\0=castep
+edit\optimizer\0\castep\xtal.cell=%percent%BLOCK LATTICE_CART\n%cellVector1Angstrom%\n%cellVector2Angstrom%\n%cellVector3Angstrom%\n%percent%ENDBLOCK LATTICE_CART\n\n%percent%BLOCK POSITIONS_FRAC\n%coordsFrac%\n%percent%ENDBLOCK POSITIONS_FRAC
+edit\optimizer\0\castep\xtal.param=task : geometryoptimization
+edit\queueInterface\0=pbs
+edit\queueInterface\0\pbs\job.pbs="#/bin/bash\n#PBS -q parity\n#PBS -l nodes=2:ppn=8\n#PBS -o ../%gen%x%id%-%incar%-%description%.out\n#PBS -N %description%-%gen%x%id%-%optStep%\n#PBS -j oe\n#PBS -m e\n##PBS -W umask=022\n\n###Include this for xtalopt scripts!###\nexport PBS_O_WORKDIR=%rempath%\necho $PBS_O_WORKDIR\n# -----------------------------------------------------------------------\n# start: prepare script to clean up scratch directories\n# -----------------------------------------------------------------------                                                                                                          \nCLEANUPSCRIPT=~/pbscleanup_$PBS_JOBID.sh                                                                                                                                           \necho \"# clean up job $PBS_JOBID\" >$CLEANUPSCRIPT\nfor i in `cat $PBS_NODEFILE | sort | uniq`; do\necho \"ssh $i \\\"rm -r $PBSTMPDIR\\\" \" >> $CLEANUPSCRIPT\ndone\nchmod +x $CLEANUPSCRIPT\n# -----------------------------------------------------------------------\n# end:  prepare script to clean up scratch directories\n# -----------------------------------------------------------------------\n\nsource /san/projects3/ezurek/software/src/Castep_170206.ifc/tag.sh\n\ncd $PBS_O_WORKDIR\nfor node in `cat $PBS_NODEFILE | sort | uniq`; do\nssh $node \"cp $PBS_O_WORKDIR/* $PBSTMPDIR/;\";\ndone\ncd $PBSTMPDIR\necho \"running in directory $PBSTMPDIR\"\n\n###########\n# End PBS setup. User comands start below.\n# Do NOT redirect standard output. It will all be collected in\n# the PBS output file specified in the header above.\n###########\n\nmpiexec castep xtal\n\nfor node in `cat $PBS_NODEFILE | sort | uniq`; do\nssh $node \"ls -l $PBSTMPDIR\"\ndone\ncp $PBSTMPDIR/* $PBS_O_WORKDIR/"
+edit\remote\cleanRemoteOnStop=false
+edit\remote\host=
+edit\remote\port=22
+edit\remote\queueRefreshInterval=10
+edit\remote\remWorkDir=
+edit\remote\username=
+edit\version=3

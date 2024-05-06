@@ -111,11 +111,11 @@ void TabEdit::writeSettings(const QString& filename)
   settings->setValue("version", version);
 
   settings->setValue("description", m_opt->description);
-  settings->setValue("localpath", m_opt->filePath);
+  settings->setValue("locWorkDir", m_opt->locWorkDir);
   settings->setValue("remote/host", m_opt->host);
   settings->setValue("remote/port", m_opt->port);
   settings->setValue("remote/username", m_opt->username);
-  settings->setValue("remote/rempath", m_opt->rempath);
+  settings->setValue("remote/remWorkDir", m_opt->remWorkDir);
 
   settings->setValue("optimizer", m_opt->optimizer()->getIDString().toLower());
   settings->setValue("queueInterface",
@@ -144,14 +144,14 @@ void TabEdit::readSettings(const QString& filename)
     m_opt->description = tmpstr;
   }
 
-  tmpstr = settings->value("remote/rempath", "").toString();
+  tmpstr = settings->value("remote/remWorkDir", "").toString();
   if (!tmpstr.isEmpty()) {
-    m_opt->rempath = tmpstr;
+    m_opt->remWorkDir = tmpstr;
   }
 
-  tmpstr = settings->value("localpath", "").toString();
+  tmpstr = settings->value("locWorkDir", "").toString();
   if (!tmpstr.isEmpty()) {
-    m_opt->filePath = tmpstr;
+    m_opt->locWorkDir = tmpstr;
   }
 
   tmpstr = settings->value("remote/host", "").toString();

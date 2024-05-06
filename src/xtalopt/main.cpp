@@ -31,6 +31,10 @@ int main(int argc, char* argv[])
   // determine whether we instantiate a QApplication or
   // QCoreApplication)
 
+  // This needs to be set before initializing QApplication for proper
+  // detection of high-DPI to avoid scaling issues on Windows OS.
+  QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
   // Because we run into great difficulties, let's examine the arguments
   // manually and determine whether or not we are in CLI mode first, and
   // then perform the rest of the QCommandLineParser actions
@@ -62,11 +66,11 @@ int main(int argc, char* argv[])
   QCoreApplication::setOrganizationName("XtalOpt");
   QCoreApplication::setOrganizationDomain("xtalopt.github.io");
   QCoreApplication::setApplicationName("XtalOpt");
-  QCoreApplication::setApplicationVersion("12.1");
+  QCoreApplication::setApplicationVersion(QString("%1.%2").arg(XTALOPT_VER_MAJOR).arg(XTALOPT_VER_MINOR));
 
   QCommandLineParser parser;
-  parser.setApplicationDescription("XtalOpt: an open-source evolutionary "
-                                   "algorithm for crystal structure "
+  parser.setApplicationDescription("XtalOpt: an open-source multi-objective "
+                                   "evolutionary algorithm for crystal structure "
                                    "prediction");
   parser.addHelpOption();
   parser.addVersionOption();
@@ -188,9 +192,12 @@ int main(int argc, char* argv[])
                << "working directory";
     }
 
-    // If the runtime file doesn't exist, write one
-    if (!QFile(xtalopt.CLIRuntimeFile()).exists())
-      XtalOpt::XtalOptCLIOptions::writeInitialRuntimeFile(xtalopt);
+    // softExit is always set to false in resume
+    // Also, runtime file is always re-written at resume
+    //   This is basically to avoid issues with softExit flag
+    //   written to run-time file in the previous run.
+    xtalopt.m_softExit = false;
+    XtalOpt::XtalOptCLIOptions::writeInitialRuntimeFile(xtalopt);
 
     // Emit that we are starting a session
     emit xtalopt.sessionStarted();
@@ -200,6 +207,13 @@ int main(int argc, char* argv[])
     d = std::move(
       make_unique<XtalOpt::XtalOptDialog>(nullptr, Qt::Window, true, &xtalopt));
     xtalopt.setDialog(d.get());
+// This is a kind of dirty hack: overwrite all GUI font sizes
+//   (to avoid some bizzare appearances in Windows OS, etc).
+#ifdef _WIN32
+    d->setStyleSheet("QWidget{font-size: 10pt;}");
+#else
+    d->setStyleSheet("QWidget{font-size: 12pt;}");
+#endif
     d->show();
   }
 

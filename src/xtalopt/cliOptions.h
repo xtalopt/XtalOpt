@@ -31,6 +31,12 @@ namespace XtalOpt {
 class XtalOptCLIOptions
 {
 public:
+
+  /**
+   * Return a qstring containing a brief header for the code
+   */
+  static QString xtaloptHeaderString();
+
   /**
    * Reads options from a specified file and sets the options in the
    * XtalOpt object.
@@ -114,9 +120,10 @@ private:
    *
    * @param line The line to be read.
    * @param options The hash containing the set options.
+   * @param xtalopt The xtalopt object (this is needed for processing objective-related stuff)
    */
   static void processLine(const QString& line,
-                          QHash<QString, QString>& options);
+                          QHash<QString, QString>& options, XtalOpt& xtalopt);
 
   /**
    * Checks the options QHash to make sure the required options were set.

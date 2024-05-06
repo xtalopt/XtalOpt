@@ -14,6 +14,7 @@
 
 #include <globalsearch/optbase.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/bt.h>
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/formats/poscarformat.h>
@@ -37,10 +38,6 @@
 #include <globalsearch/utilities/passwordprompt.h>
 #include <globalsearch/utilities/utilityfunctions.h>
 
-#ifdef ENABLE_MOLECULAR
-#include <globalsearch/molecular/conformergenerator.h>
-#endif // ENABLE_MOLECULAR
-
 #include <QDebug>
 #include <QFile>
 #include <QThread>
@@ -59,17 +56,13 @@
 #include <chrono>
 #include <thread>
 
-//#define OPTBASE_DEBUG
+// Uncomment for yet more debug info about probabilities
+//#define OPTBASE_PROBS_DEBUG
 
 namespace GlobalSearch {
 
 OptBase::OptBase(AbstractDialog* parent)
   : QObject(parent),
-#ifdef ENABLE_MOLECULAR
-    m_initialMolFile(""), m_conformerOutDir(""), m_numConformersToGenerate(0),
-    m_rmsdThreshold(0.1), m_maxOptIters(1000), m_mmffOptConfs(false),
-    m_pruneConfsAfterOpt(true),
-#endif // ENABLE_MOLECULAR
     cutoff(-1), testingMode(false), test_nRunsStart(1), test_nRunsEnd(100),
     test_nStructs(600), stateFileMutex(new QMutex), readOnly(false),
     m_idString("Generic"),
@@ -79,13 +72,12 @@ OptBase::OptBase(AbstractDialog* parent)
     m_dialog(parent), m_tracker(new Tracker(this)), m_queueThread(new QThread),
     m_queue(new QueueManager(m_queueThread, this)), m_numOptSteps(0),
     m_schemaVersion(3), m_usingGUI(true),
-#ifdef ENABLE_MOLECULAR
-    m_molecularMode(false),
-#endif // ENABLE_MOLECULAR
     m_logErrorDirs(false), m_calculateHardness(false),
-    m_hardnessFitnessWeight(0.0),
+    m_hardnessFitnessWeight(-1.0),
     m_networkAccessManager(std::make_shared<QNetworkAccessManager>()),
-    m_aflowML(make_unique<AflowML>(m_networkAccessManager, this))
+    m_aflowML(make_unique<AflowML>(m_networkAccessManager, this)),
+    m_calculateObjectives(false), m_objectives_num(0), m_objectivesReDo(false),
+    m_softExit(false), m_hardExit(false), m_localQueue(false)
 {
   // Connections
   connect(this, SIGNAL(sessionStarted()), m_queueThread, SLOT(start()),
@@ -110,8 +102,10 @@ OptBase::OptBase(AbstractDialog* parent)
           [this]() { QtConcurrent::run([this]() { this->save("", false); }); });
   connect(m_queue, &QueueManager::structureUpdated,
           [this]() { QtConcurrent::run([this]() { this->save("", false); }); });
-  connect(m_queue, &QueueManager::structureFinished, this,
-          &OptBase::calculateHardness);
+  connect(m_queue, &QueueManager::readyForObjectiveCalculations,
+          this,    &OptBase::calculateObjectives, Qt::QueuedConnection);
+  connect(m_queue, &QueueManager::readyForObjectiveCalculations,
+          this,    &OptBase::calculateHardness, Qt::QueuedConnection);
   connect(m_aflowML.get(), &AflowML::received, this,
           &OptBase::finishHardnessCalculation);
 }
@@ -151,30 +145,160 @@ bool OptBase::createSSHConnections()
 }
 #endif // ENABLE_SSH
 
-static inline double calculateProb(double currentEnthalpy,
-                                   double currentHardness,
-                                   double lowestEnthalpy,
-                                   double highestEnthalpy,
-                                   double lowestHardness,
-                                   double highestHardness,
-                                   double hardnessWeight)
+void OptBase::performTheExit(int delay)
 {
-  double enthalpySpread = highestEnthalpy - lowestEnthalpy;
-  double hardnessSpread = highestHardness - lowestHardness;
-  return 1.0 - hardnessWeight * (highestHardness - currentHardness) /
-         hardnessSpread -
-         (1.0 - hardnessWeight) * (currentEnthalpy - lowestEnthalpy) /
-         enthalpySpread;
+  // This functions performs the exit, i.e., terminates the run.
+  // The input parameter "delay" has a default of 0. If a non-zero
+  //   delay is specified, the function waits for that amount, and
+  //   will attempt to do some clean up before quitting.
+
+  if (delay > 0) {
+    // Impose a delay if needed
+    QThread::msleep(delay * 1000);
+
+    m_dialog = nullptr;
+
+    // Save one last time
+    warning("Saving XtalOpt settings...");
+
+    // First save the state file (only if we have structures)
+    if (!m_queue->getAllStructures().isEmpty())
+      save("", false);
+
+    // Then save the config settings
+    QString configFileName = QSettings().fileName();
+    save(configFileName, false);
+
+    // Stop queuemanager thread
+    if (m_queueThread->isRunning()) {
+      m_queueThread->disconnect();
+      m_queueThread->quit();
+      m_queueThread->wait();
+    }
+
+    // Delete queuemanager
+    delete m_queue;
+    m_queue = 0;
+
+#ifdef ENABLE_SSH
+    // Stop SSHManager
+    delete m_ssh;
+    m_ssh = 0;
+#endif // ENABLE_SSH
+  }
+
+  QString formattedTime = QDateTime::currentDateTime().toString("MMMM dd, yyyy   hh:mm:ss");
+  QByteArray formattedTimeMsg = formattedTime.toLocal8Bit();
+  qDebug().noquote() << "\n=== Optimization finished ... " + formattedTimeMsg + "\n";
+  exit(1);
 }
 
-// Uncomment this to print out probability debug information
-//#define OPTBASE_PROBS_DEBUG
+static inline double calculateProb(QString strucTag,
+                                   int    objectives_num,
+                                   QList<OptBase::ObjectivesType> objectives_typ,
+                                   QList<double> objectives_wgt,
+                                   QList<double> objectives_val,
+                                   QList<double> objectives_min,
+                                   QList<double> objectives_max,
+                                   double currentEnthalpy,
+                                   double lowestEnthalpy,
+                                   double highestEnthalpy,
+                                   double hardnessWeight,
+                                   double currentHardness,
+                                   double lowestHardness,
+                                   double highestHardness)
+{
+  // General note: if the spread for any objective/property is zero;
+  //   we take its contribution to be zero so it does not suppress the effect of the other
+  //   objectives. Otherwise, this single objective will make the whole prob to be "nan" while
+  //   there might be other contributing objectives with meaningful values.
+  // So, we calculate "partialFitns" for each objective as its raw fitness, and depending
+  //   on the spread correct it to get the "correctFitns". Then multiply it into corresponding
+  //   weight to obtain the actual contribution of that objective to the total fitness.
+
+  double enthalpySpread = highestEnthalpy - lowestEnthalpy;
+  double hardnessSpread = highestHardness - lowestHardness;
+  double objectivesSpread;
+  double weightsTotal   = 0.0;    // total weight of all objectives/properties
+  double fitnessTotal   = 0.0;    // total fitness (to be returned)
+  double partialFitns;            // (raw) contribution of a single objective to total fitness
+  double correctFitns;            // corrected contrib. of a single objective (if zero spread?)
+  QString outs = "";              // auxiliary variable for debug output
+
+  // ===== multi-objective search objectives
+  // If no objectives calculation; objectives_num is 0 at this point.
+  // Any Filtration objective should have a value of 1 here and zero spread.
+  for(int i = 0; i < objectives_num; i++) {
+      objectivesSpread = objectives_max[i] - objectives_min[i];
+      if (objectives_typ[i] == OptBase::Ot_Min)
+        partialFitns = (objectives_max[i] - objectives_val[i]) / objectivesSpread;
+      else if (objectives_typ[i] == OptBase::Ot_Max)
+        partialFitns = (objectives_val[i] - objectives_min[i]) / objectivesSpread;
+      else // Fil objectives
+        partialFitns = 0.0;
+      // Correction: if spread is zero then contribution is zero
+      correctFitns = (objectivesSpread < ZERO8) ? 0.0 : partialFitns;
+      //
+      weightsTotal += objectives_wgt[i];
+      fitnessTotal += objectives_wgt[i] * correctFitns;
+
+#ifdef MOES_DEBUG
+outs += QString("NOTE: objc %1 typ %2 val %3 min %4 max %5 ftn %6 wgt %7 - ctr %8\n")
+ .arg(i+1,2).arg(objectives_typ[i],2).arg(objectives_val[i],10,'f',5)
+ .arg(objectives_min[i],10,'f',5).arg(objectives_max[i],10,'f',5).arg(partialFitns,7,'f',5)
+ .arg(objectives_wgt[i],5,'f',3).arg(objectives_wgt[i] * correctFitns,7,'f',5);
+#endif
+  }
+
+  // ===== aflow-hardness
+  // If no aflow-hardness calculation, it's weight is -1.0 at this point.
+  if (hardnessWeight >= 0.0) {
+    partialFitns = (currentHardness - lowestHardness) / hardnessSpread;
+    // Correction: if spread is zero then contribution is zero
+    correctFitns = (hardnessSpread < ZERO8) ? 0.0 : partialFitns;
+    //
+    weightsTotal += hardnessWeight;
+    fitnessTotal += hardnessWeight * correctFitns;
+
+#ifdef MOES_DEBUG
+outs += QString("NOTE: hard %1 typ %2 val %3 min %4 max %5 ftn %6 wgt %7 - ctr %8\n")
+  .arg(-1,2).arg(1,2).arg(currentHardness,10,'f',5).arg(lowestHardness,10,'f',5)
+  .arg(highestHardness,10,'f',5).arg(partialFitns,7,'f',5).arg(hardnessWeight,5,'f',3)
+  .arg(hardnessWeight * correctFitns,7,'f',5);
+#endif
+  }
+
+  // ===== enthalpy
+  partialFitns = (highestEnthalpy - currentEnthalpy) / enthalpySpread;
+  // Correction: if spread is zero then contribution is zero
+  correctFitns = (enthalpySpread < ZERO8) ? 0.0 : partialFitns;
+  //
+  fitnessTotal += (1.0 - weightsTotal) * correctFitns;
+
+#ifdef MOES_DEBUG
+outs += QString("NOTE: enth %1 typ %2 val %3 min %4 max %5 ftn %6 wgt %7 - ctr %8\n")
+  .arg(0,2).arg(0,2).arg(currentEnthalpy,10,'f',5).arg(lowestEnthalpy,10,'f',5)
+  .arg(highestEnthalpy,10,'f',5).arg(partialFitns,7,'f',5).arg(1.0-weightsTotal,5,'f',3)
+  .arg((1.0 - weightsTotal) * correctFitns,7,'f',5);
+outs += QString("NOTE: struc %1   oldFitness %2   newFitness %3")
+  .arg(strucTag,8).arg(correctFitns,8,'f',6).arg(fitnessTotal,8,'f',6);
+qDebug().noquote() << outs;
+#endif
+
+  // Finally, return the calculated total fitness
+  return fitnessTotal;
+}
 
 QList<QPair<Structure*, double>>
 OptBase::getProbabilityList(const QList<Structure*>& structures,
-                            size_t popSize,
-                            double hardnessWeight)
+                     size_t popSize,
+                     double hardnessWeight,
+                     int    objectives_num,
+                     QList<double> objectives_wgt,
+                     QList<OptBase::ObjectivesType> objectives_typ)
 {
+  // This function is modified for multi-objective case;
+  //   it has default values for some input parameters in optbase.h
   QList<QPair<Structure*, double>> probs;
   if (structures.isEmpty() || popSize == 0)
     return probs;
@@ -191,6 +315,13 @@ OptBase::getProbabilityList(const QList<Structure*>& structures,
   double highestEnthalpy = -DBL_MAX;
   double lowestHardness  =  DBL_MAX;
   double highestHardness =  DBL_MIN;
+  // For multi-objective case
+  QList<double> objectives_min = {};
+  QList<double> objectives_max = {};
+  for (int i = 0; i< objectives_num; i++) {
+    objectives_min.push_back(DBL_MAX);
+    objectives_max.push_back(-DBL_MAX);
+  }
 
   // Find the lowest and highest of each
   for (const auto& s: structures) {
@@ -206,48 +337,55 @@ OptBase::getProbabilityList(const QList<Structure*>& structures,
       lowestHardness = hardness;
     if (hardness > highestHardness)
       highestHardness = hardness;
-  }
 
-#ifdef OPTBASE_PROBS_DEBUG
-  std::cout << "lowestEnthalpy is: "  << lowestEnthalpy  << "\n";
-  std::cout << "highestEnthalpy is: " << highestEnthalpy << "\n";
-  std::cout << "lowestHardness is: "  << lowestHardness  << "\n";
-  std::cout << "highestHardness is: " << highestHardness << "\n";
-  std::cout << "Unnormalized, unsorted, and untrimmed probs list is:\n";
-  std::cout << "Structure : enthalpy : hardness : probs\n";
-#endif
+    for (int i = 0; i< objectives_num; i++) {
+        if(s->getStrucObjValues(i) < objectives_min[i])
+          objectives_min[i] = s->getStrucObjValues(i);
+        if(s->getStrucObjValues(i) > objectives_max[i])
+          objectives_max[i] = s->getStrucObjValues(i);
+    }
+  }
 
   // Now calculate the probability of each structure
   for (const auto& s: structures) {
     QReadLocker lock(&s->lock());
-    double prob = calculateProb(s->getEnthalpyPerFU(),
-                                s->vickersHardness(),
+
+    double prob = calculateProb(s->getTag(),
+                                objectives_num,
+                                objectives_typ,
+                                objectives_wgt,
+                                s->getStrucObjValuesVec(),
+                                objectives_min,
+                                objectives_max,
+                                s->getEnthalpyPerFU(),
                                 lowestEnthalpy,
                                 highestEnthalpy,
+                                hardnessWeight,
+                                s->vickersHardness(),
                                 lowestHardness,
-                                highestHardness,
-                                hardnessWeight);
-    probs.append(QPair<Structure*, double>(s, prob));
+                                highestHardness);
 
-#ifdef OPTBASE_PROBS_DEBUG
-    std::cout << s->getGeneration() << "x"
-              << s->getIDNumber() << " : "
-              << s->getEnthalpyPerFU() << " : "
-              << s->vickersHardness() << " : " << prob << "\n";
-#endif
+    probs.append(QPair<Structure*, double>(s, prob));
   }
 
-  // If they are all nan, that means all the probs are equal. Just
-  // return an equal list
+  // =======================================================================
+  // The probs are set to zero if the spread is zero.
+  // So, all probs shouldn't be "nan" anymore; unless there is an unfortunate
+  //   case in which the ratio still diverges because of small denaminator, etc.
+  //                           -----------------
+  // In any case; if all the probs are equal (including "nan"), just return a uniform list
   bool allNan = true;
+  bool allEqual = true;
+  double refProb = probs[0].second;
   for (const auto& prob: probs) {
     if (!std::isnan(prob.second)) {
       allNan = false;
-      break;
+      if (fabs(prob.second - refProb) > ZERO8)
+        allEqual = false;
     }
   }
 
-  if (allNan) {
+  if (allNan || allEqual) {
     double dref = 1.0 / probs.size();
     double sum = 0.0;
 
@@ -257,6 +395,7 @@ OptBase::getProbabilityList(const QList<Structure*>& structures,
     }
     return probs;
   }
+  // =======================================================================
 
   // Sort by probability
   std::sort(probs.begin(), probs.end(),
@@ -272,15 +411,14 @@ OptBase::getProbabilityList(const QList<Structure*>& structures,
 
 
 #ifdef OPTBASE_PROBS_DEBUG
-  std::cout << "Unnormalized (but sorted and trimmed) probs list is:\n";
-  std::cout << "Structure : enthalpy : hardness : probs\n";
+  QString outs1 = QString("\nNOTE: Unnormalized (but sorted and trimmed) probs list is:\n"
+                         "    structure :  enthalpy  : probs\n");
   for (const auto& elem: probs) {
     QReadLocker lock(&elem.first->lock());
-    std::cout << elem.first->getGeneration() << "x"
-              << elem.first->getIDNumber() << " : "
-              << elem.first->getEnthalpyPerFU() << " : "
-              << elem.first->vickersHardness() << " : " << elem.second << "\n";
+    outs1 += QString("      %1 : %3 : %4\n").arg(elem.first->getTag(),7)
+      .arg(elem.first->getEnthalpyPerFU(),0,'f',6).arg(elem.second,0,'f',6);
   }
+  qDebug().noquote() << outs1;
 #endif
 
   // Sum the resulting probs
@@ -293,15 +431,14 @@ OptBase::getProbabilityList(const QList<Structure*>& structures,
     elem.second /= sum;
 
 #ifdef OPTBASE_PROBS_DEBUG
-  std::cout << "Normalized, sorted, and trimmed probs list is:\n";
-  std::cout << "Structure : enthalpy : hardness : probs\n";
+  outs1 = QString("NOTE: Normalized, sorted, and trimmed probs list is:\n"
+                  "    structure :  enthalpy  : probs\n");
   for (const auto& elem: probs) {
     QReadLocker lock(&elem.first->lock());
-    std::cout << elem.first->getGeneration() << "x"
-              << elem.first->getIDNumber() << " : "
-              << elem.first->getEnthalpyPerFU() << " : "
-              << elem.first->vickersHardness() << " : " << elem.second << "\n";
+    outs1 += QString("      %1 : %3 : %4\n").arg(elem.first->getTag(),7)
+      .arg(elem.first->getEnthalpyPerFU(),0,'f',6).arg(elem.second,0,'f',6);
   }
+  qDebug().noquote() << outs1;
 #endif
 
   // Now replace each entry with a cumulative total
@@ -312,18 +449,225 @@ OptBase::getProbabilityList(const QList<Structure*>& structures,
   }
 
 #ifdef OPTBASE_PROBS_DEBUG
-  std::cout << "Cumulative (final) probs list is:\n";
-  std::cout << "Structure : enthalpy : hardness : probs\n";
+  outs1 = QString("NOTE: Cumulative (final) probs list is:\n"
+                  "    structure :  enthalpy  : probs\n");
   for (const auto& elem: probs) {
     QReadLocker lock(&elem.first->lock());
-    std::cout << elem.first->getGeneration() << "x"
-              << elem.first->getIDNumber() << " : "
-              << elem.first->getEnthalpyPerFU() << " : "
-              << elem.first->vickersHardness() << " : " << elem.second << "\n";
+    outs1 += QString("      %1 : %3 : %4\n").arg(elem.first->getTag(),7)
+      .arg(elem.first->getEnthalpyPerFU(),0,'f',6).arg(elem.second,0,'f',6);
   }
+  qDebug().noquote() << outs1;
 #endif
 
   return probs;
+}
+
+void OptBase::calculateObjectives(Structure* s)
+{
+  // This is the wrapper for objective calculation for the structure.
+  //
+  // The objective calculations for each structure is handled in two steps:
+  //   (1) startObjectiveCalculations
+  //     (1-a) generate output.POSCAR file,
+  //     (1-b) copy to remote (if needed),
+  //     (1-c) run the commands, i.e., user-defined script.
+  //   (2) finishObjectiveCalculations
+  //     (2-a) wait for objective output files to appear (if needed),
+  //     (2-b) copy back them from remote (if needed),
+  //     (2-c) process the output files,
+  //     (2-d) update structure object with the results,
+  //     (2-e) signal the finish.
+  //
+  // Note:
+  //   (1) Failing in the followings are ***fatal errors****
+  //       - writing the output.POSCAR file
+  //       - copying the output.POSCAR file to remote (in a remote run)
+  //       - running user script
+  //       - copying back objective output files (in a remote run)
+  //   However, since error handling in local/local-remote runs is not
+  //   so reliable (due to error channel pollution, etc.), we won't force
+  //   quitting the objective calculcations and just print an error message;
+  //   except than error in writing the output.POSCAR which will results
+  //   in marking the structure as Fail, signalling the finish, and return.
+
+  // We might be here just because aflow-hardness is requested; so first check
+  //   if objective calculations are requested too or not! If not, just do nothing.
+  if (!m_calculateObjectives)
+    return;
+
+  QtConcurrent::run(this, &OptBase::startObjectiveCalculations, s);
+
+  return;
+}
+
+void OptBase::startObjectiveCalculations(Structure* s)
+{
+  // Set up some variables
+  QueueInterface* qi = queueInterface(s->getCurrentOptStep());
+  // Structure files prepared for the user script
+  QString flname = "output.POSCAR";
+  // The local run directory (where files are generated)
+  QString locdir = s->getLocpath() + QDir::separator();
+  // Where we run the user-provided script
+  //   It's assumed that the remote is a "unix"-based system
+  QString wrkdir =
+    (qi->getIDString().toLower() == "local") ? locdir : s->getRempath() + "/";
+
+  qDebug() << "Objective calculations for " << s->getTag() << " started!";
+
+  // We set the default objective calc. status to Fail. In case the run is
+  //   interrupted with a major failure, this will remain as the overall status.
+  QWriteLocker structureLocker(&s->lock());
+  s->setStrucObjState(Structure::Os_Fail);
+  structureLocker.unlock();
+
+  // Write the output.POSCAR file
+  std::stringstream ss;
+  QFile file(locdir + flname);
+  if ((file.open(QIODevice::WriteOnly | QIODevice::Text)) &&
+      (PoscarFormat::write(*s, ss) && file.write(ss.str().c_str()))) {
+    file.close();
+  } else {
+    // This is a major failure! We shouldn't proceed!
+    error(tr("Failed writing output.POSCAR file for structure %1")
+        .arg(s->getTag()));
+    emit doneWithObjectives(s);
+    return;
+  }
+
+  // Copy it to the remote location. This is needed only for remote runs.
+  // Actually, this function doesn't do anything if it is a local run!
+  if (!qi->copyAFileLocalToRemote(locdir + flname, wrkdir + flname)) {
+    error(tr("Failed to copy the output.POSCAR file for structure %1 to remote!")
+          .arg(s->getTag()));
+  }
+
+  // Run/Submit the objective scripts
+  QString stdout_str, stderr_str;
+  int ec;
+  for(int i = 0; i < getObjectivesNum(); i++) {
+    if (!qi->runACommand(wrkdir, getObjectivesExe(i), &stdout_str, &stderr_str, &ec)) {
+      error(tr("Failed to run the user script for objective %1 for structure %2")
+            .arg(i+1).arg(s->getTag()));
+    }
+  }
+
+  // Now, on a separate thread, wait for all objective output files
+  //   to appear (and copy them back if it's a remote run), and
+  //   process the results of objective calculations.
+  QtConcurrent::run(this, &OptBase::finishObjectiveCalculations, s);
+
+  return;
+}
+
+void OptBase::finishObjectiveCalculations(Structure* s)
+{
+  // Set up some variables
+  QueueInterface* qi = queueInterface(s->getCurrentOptStep());
+  // Structure files prepared for the user script
+  QString flname = "output.POSCAR";
+  // The local run directory (where files are generated)
+  QString locdir = s->getLocpath() + QDir::separator();
+  // Where we run the user-provided script
+  //   It's assumed that the remote is a "unix"-based system
+  QString wrkdir =
+    (qi->getIDString().toLower() == "local") ? locdir : s->getRempath() + "/";
+
+  // First, check if all output files exist and wait if not. This step is basically
+  //   important for objectives that submit their calculation to a queue; otherwise
+  //   the qprocess run returns when process finishes and files are already generated.
+  // This function runs on a separate thread; so sleep won't freeze gui.
+  bool ok = false, exists;
+  while (!ok) {
+    ok = true;
+    for (int i = 0; i < getObjectivesNum(); i++)
+      if (!qi->checkIfFileExists(s, getObjectivesOut(i), &exists) || !exists)
+        ok = false;
+    if (!ok)
+      QThread::currentThread()->usleep(queueRefreshInterval() * 1000 * 1000);
+  }
+
+  // Copy objective output files back to structure's local working directory.
+  // Actually, this function doesn't do anything if it is a local run!
+  for (int i = 0; i < getObjectivesNum(); i++) {
+    if (!qi->copyAFileRemoteToLocal(wrkdir + getObjectivesOut(i), locdir + getObjectivesOut(i))) {
+      error(tr("Failed to copy output for objective %1 for structure %2 from remote!")
+            .arg(i+1).arg(s->getTag()));
+    }
+  }
+
+  // Process the objective output files.
+
+  QList<double> tmp_values;
+  int failed_count = 0;
+  int dismis_count = 0;
+  for (int i = 0; i < getObjectivesNum(); i++) {
+    double flagv = 0.0;
+    bool   flags = false;
+
+    QFile file(locdir + getObjectivesOut(i));
+
+    if (file.open(QIODevice::ReadOnly)) {
+      QTextStream in(&file);
+      QString fline = in.readLine();
+      QStringList flist = fline.split(" ", QString::SkipEmptyParts);
+      if (flist.size() >= 1) {
+        // The below line, aims at reading the first entry of the first line;
+        //   while ignoring everything else. The default "false" value of the
+        //   "flags" variable changes to true if a legit value is read successfully.
+        flagv = flist.at(0).toDouble(&flags);
+      }
+      file.close();
+    } else {
+      // This is when failed to read the file for any reason, or it's empty.
+      //   With default values of flagv/flags, the objective will be automatically marked
+      // as failed in the following. We just produce an error message here.
+      error(tr("Failed to read any results from output file for objective %1 for structure %2")
+            .arg(i+1).arg(s->getTag()));
+    }
+
+    // Apparently c++ considers "nan" and "inf" valid numerical entries. To avoid issues
+    //   with these type of values, we exclude them and mark the objective calc as failed.
+    //   Otherwise, the probability calculation might end up with a seg fault.
+    if (std::isnan(flagv) || std::isinf(flagv)) {
+      flagv = 0.0;
+      flags = false;
+    }
+
+    // Save the whatever value we end up with for the objective.
+    tmp_values.push_back(flagv);
+
+    if (!flags)
+      // Calculations went wrong (e.g. output file is empty or has an incorrect format)
+      failed_count += 1;
+    else if (getObjectivesTyp(i) == OptBase::Ot_Fil && flagv == 0.0)
+      // Structure marked for discarding by a filtration objective
+      dismis_count += 1;
+  }
+
+  // Update objective calculation status for the structure to either: Retain, Dismiss, Fail.
+  // If none of objectives Fail or Dismiss, we mark the structure as Retain.
+  // If at least one Dismiss, we don't care about fails and mark it as Dismiss
+  //   since it will be removed from the pull anyways, but gives a chance of redoing.
+  // If there are at least Fail objectives (and no Dismiss), then we mark it as Fail.
+
+  QWriteLocker structureLocker(&s->lock());
+  s->setStrucObjValuesVec(tmp_values);
+  if (failed_count == 0 && dismis_count == 0)
+    s->setStrucObjState(Structure::Os_Retain);
+  else if (dismis_count > 0)
+    s->setStrucObjState(Structure::Os_Dismiss);
+  else
+    s->setStrucObjState(Structure::Os_Fail);
+  structureLocker.unlock();
+
+  qDebug() << "Objective calculations for " << s->getTag()
+           << " finished ( status = " << s->getStrucObjState() << " )";
+
+  // We are done here.
+  emit doneWithObjectives(s);
+
+  return;
 }
 
 // Start up a resubmission thread that will attempt resubmissions every
@@ -374,9 +718,8 @@ void OptBase::calculateHardness(Structure* s)
   std::stringstream ss;
   PoscarFormat::write(*s, ss);
 
-  QString id = QString::number(s->getGeneration()) + "x" +
-               QString::number(s->getIDNumber());
-  qDebug() << "Submitting structure" << id << "for Aflow ML calculation...";
+  qDebug() << "Submitting structure" << s->getTag() << "for Aflow ML calculation...";
+
   size_t ind = m_aflowML->submitPoscar(ss.str().c_str());
   m_pendingHardnessCalculations[ind] = s;
 }
@@ -416,9 +759,7 @@ void OptBase::_finishHardnessCalculation(size_t ind)
   Structure* s = it->second;
   m_pendingHardnessCalculations.erase(ind);
 
-  QString id = QString::number(s->getGeneration()) + "x" +
-               QString::number(s->getIDNumber());
-  qDebug() << "Received Aflow ML data for structure" << id;
+  qDebug() << "Received Aflow ML data for structure" << s->getTag();
 
   // Make sure AflowML actually has the data
   if (!m_aflowML->containsData(ind)) {
@@ -452,6 +793,8 @@ void OptBase::_finishHardnessCalculation(size_t ind)
   s->setBulkModulus(bulkModulus);
   s->setShearModulus(shearModulus);
   s->setVickersHardness(hardness);
+
+  emit doneWithHardness(s);
 }
 
 void OptBase::finishHardnessCalculation(size_t ind)
@@ -469,7 +812,7 @@ bool OptBase::save(QString stateFilename, bool notify)
   QMutexLocker locker(stateFileMutex);
   QString filename;
   if (stateFilename.isEmpty()) {
-    filename = filePath + "/" + m_idString.toLower() + ".state";
+    filename = locWorkDir + "/" + m_idString.toLower() + ".state";
   } else {
     filename = stateFilename;
   }
@@ -518,7 +861,7 @@ bool OptBase::save(QString stateFilename, bool notify)
     // Set index here -- this is the only time these are written, so
     // this is "ok" under a read lock because of the savePending logic
     structure->setIndex(i);
-    structureStateFileName = structure->fileName() + "/structure.state";
+    structureStateFileName = structure->getLocpath() + "/structure.state";
     oldStructureStateFileName = structureStateFileName + ".old";
 
     // We are going to write to structure.state.old if one already exists
@@ -561,7 +904,7 @@ bool OptBase::save(QString stateFilename, bool notify)
     // instance), still write the CONTCAR in the structure directory.
     if (structure->skippedOptimization() &&
         optimizer(getNumOptSteps() - 1)->getIDString() == "VASP") {
-      QFile file(structure->fileName() + "/CONTCAR");
+      QFile file(structure->getLocpath() + "/CONTCAR");
       file.open(QIODevice::WriteOnly);
 
       std::stringstream ss;
@@ -575,9 +918,9 @@ bool OptBase::save(QString stateFilename, bool notify)
   /////////////////////////
 
   // Only print the results file if we have a file path
-  if (!filePath.isEmpty()) {
-    QFile file(filePath + "/results.txt");
-    QFile oldfile(filePath + "/results_old.txt");
+  if (!locWorkDir.isEmpty()) {
+    QFile file(locWorkDir + "/results.txt");
+    QFile oldfile(locWorkDir + "/results_old.txt");
     if (notify && m_dialog) {
       m_dialog->updateProgressLabel(
         tr("Saving: Writing %1...").arg(file.fileName()));
@@ -600,7 +943,7 @@ bool OptBase::save(QString stateFilename, bool notify)
       sortedStructures.append(structures->at(i));
     if (sortedStructures.size() != 0) {
       Structure::sortAndRankByEnthalpy(&sortedStructures);
-      out << sortedStructures.first()->getResultsHeader(m_calculateHardness)
+      out << sortedStructures.first()->getResultsHeader(m_calculateHardness, getObjectivesNum())
           << endl;
     }
 
@@ -609,7 +952,8 @@ bool OptBase::save(QString stateFilename, bool notify)
       if (!structure)
         continue; // In case there was a problem copying.
       QReadLocker structureLocker(&structure->lock());
-      out << structure->getResultsEntry(m_calculateHardness) << endl;
+      out << structure->getResultsEntry(m_calculateHardness, getObjectivesNum(),
+                                        structure->getCurrentOptStep()) << endl;
       structureLocker.unlock();
       if (notify && m_dialog) {
         m_dialog->stopProgressUpdate();
@@ -716,7 +1060,7 @@ void OptBase::interpretKeyword_base(QString& line, Structure* structure)
   else if (line == "numSpecies")
     rep += QString::number(structure->getSymbols().size());
   else if (line == "filename")
-    rep += structure->fileName();
+    rep += structure->getLocpath();
   else if (line == "rempath")
     rep += structure->getRempath();
   else if (line == "gen")
@@ -846,39 +1190,6 @@ int OptBase::optimizerIndex(const Optimizer* optimizer) const
   }
   return -1;
 }
-
-#ifdef ENABLE_MOLECULAR
-
-long long OptBase::generateConformers()
-{
-  // First, try to open the sdf file
-  std::ifstream sdfIstream(m_initialMolFile);
-
-  if (!sdfIstream.is_open()) {
-    std::cerr << "Error: failed to open initial SDF file: " << m_initialMolFile
-              << "\n";
-    return -1;
-  }
-
-  // Perform a few sanity checks
-  if (m_numConformersToGenerate == 0) {
-    std::cerr << "Error: " << __FUNCTION__ << " was asked to generate 0 "
-              << "conformers.\n";
-    return -1;
-  }
-
-  if (m_rmsdThreshold < 0.0) {
-    std::cerr << "Error: rmsd threshold, " << m_rmsdThreshold << " is less "
-              << "than zero!\n";
-    return -1;
-  }
-
-  return ConformerGenerator::generateConformers(
-    sdfIstream, m_conformerOutDir, m_numConformersToGenerate, m_maxOptIters,
-    m_rmsdThreshold, m_pruneConfsAfterOpt);
-}
-
-#endif // ENABLE_MOLECULAR
 
 void OptBase::clearOptSteps()
 {
@@ -1164,6 +1475,9 @@ void OptBase::readOptimizerTemplatesFromSettings(
 
   SETTINGS(settingsFile.c_str());
 
+  optim->setLocalRunCommand(settings->value(getIDString().toLower() + "/edit/optimizer/" +
+                            QString::number(optStep) + "/exeLocation",
+                            optim->getIDString().toLower()).toString());
   settings->beginGroup(getIDString().toLower() + "/edit/optimizer/" +
                        QString::number(optStep) + "/" +
                        optim->getIDString().toLower());
@@ -1260,6 +1574,9 @@ void OptBase::writeOptimizerTemplatesToSettings(
 
   SETTINGS(settingsFilename.c_str());
   // Optimizer templates
+  settings->setValue(getIDString().toLower() + "/edit/optimizer/" +
+                     QString::number(optStep) + "/exeLocation",
+                     optim->localRunCommand());
   settings->beginGroup(getIDString().toLower() + "/edit/optimizer/" +
                        QString::number(optStep) + "/" +
                        optim->getIDString().toLower());
@@ -1318,7 +1635,7 @@ void OptBase::writeUserValuesToSettings(const std::string& filename)
 bool OptBase::isReadyToSearch(QString& err) const
 {
   err.clear();
-  if (filePath.isEmpty()) {
+  if (locWorkDir.isEmpty()) {
     err += "Local working directory is not set.";
     return false;
   }

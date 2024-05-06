@@ -18,6 +18,7 @@
 #include <randomdock/structures/scene.h>
 #include <randomdock/ui/dialog.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/tracker.h>
@@ -275,7 +276,7 @@ void TabPlot::plotTrends()
 
     if (scene->getStatus() == Scene::Killed ||
         scene->getStatus() == Scene::Removed ||
-        fabs(scene->getEnergy()) <= 1e-50) {
+        fabs(scene->getEnergy()) <= ZERO0) {
       continue;
     }
 

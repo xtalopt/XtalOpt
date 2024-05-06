@@ -40,19 +40,6 @@ set( globalsearch_SRCS
      xrd/generatexrd.cpp
 )
 
-if(ENABLE_MOLECULAR)
-  set(globalsearch_SRCS
-      ${globalsearch_SRCS}
-      molecular/conformergenerator.cpp
-      molecular/moltransformations.cpp
-  )
-  # We are including these as system libraries so we do not
-  # receive warnings from them
-  include_directories(SYSTEM ${RDKit_INCLUDE_DIRS})
-  include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
-  link_directories(${Boost_LIBRARY_DIRS})
-endif(ENABLE_MOLECULAR)
-
 if (ENABLE_SSH)
 if (NOT USE_CLI_SSH)
 set( globalsearch_SRCS
@@ -86,7 +73,8 @@ set( globalsearch_SRCS
 )
 endif()
 
-add_library(globalsearch STATIC ${globalsearch_SRCS} ${moc_files})
+add_library(globalsearch STATIC ${globalsearch_SRCS} ${moc_files}
+  constants.h)
 
 set(GLOBALSEARCH_LINK_LIBS
     ${GLOBALSEARCH_LINK_LIBS}
@@ -96,13 +84,6 @@ set(GLOBALSEARCH_LINK_LIBS
     pugixml
     ${CMAKE_THREAD_LIBS_INIT} # Standard threads library
 )
-
-if(ENABLE_MOLECULAR)
-  set(GLOBALSEARCH_LINK_LIBS
-      ${GLOBALSEARCH_LINK_LIBS}
-      ${RDKit_LIBRARIES}
-  )
-endif(ENABLE_MOLECULAR)
 
 target_link_libraries(globalsearch ${GLOBALSEARCH_LINK_LIBS})
 

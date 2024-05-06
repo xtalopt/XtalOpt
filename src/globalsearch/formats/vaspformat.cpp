@@ -100,6 +100,14 @@ bool VaspFormat::getOUTCAREnergy(std::istream& in, double& energy)
 
       energy = atof(stringSplit[4].c_str());
       return true;
+    } else if (strstr(line.c_str(), "free  energy ML TOTEN")) { // VASP ML output
+      vector<string> stringSplit = split(line, ' ');
+      // Make sure the line is long enough. If not, just keep reading.
+      if (stringSplit.size() < 6)
+        continue;
+
+      energy = atof(stringSplit[5].c_str());
+      return true;
     }
   }
   return false;
@@ -122,6 +130,14 @@ bool VaspFormat::getOUTCAREnthalpy(std::istream& in, double& enthalpy)
         continue;
 
       enthalpy = atof(stringSplit[4].c_str());
+      return true;
+    } else if (strstr(line.c_str(), "enthalpy is ML")) { // VASP ML output
+      vector<string> stringSplit = split(line, ' ');
+      // Make sure the line is long enough. If not, just keep reading.
+      if (stringSplit.size() < 6)
+        continue;
+
+      enthalpy = atof(stringSplit[5].c_str());
       return true;
     }
   }

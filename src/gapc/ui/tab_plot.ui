@@ -120,7 +120,7 @@
          <item row="2" column="0" colspan="2">
           <widget class="QCheckBox" name="cb_showDuplicates">
            <property name="text">
-            <string>Show &amp;duplicate structures</string>
+            <string>Show &amp;duplicate structures and supercells</string>
            </property>
           </widget>
          </item>

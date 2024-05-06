@@ -20,11 +20,10 @@
 
 #include <globalsearch/matrix.h>
 #include <globalsearch/vector.h>
+#include <globalsearch/constants.h>
 
 namespace GlobalSearch {
-static const double PI = 3.14159265359;
-static const double DEG2RAD = PI / 180.0;
-static const double RAD2DEG = 180.0 / PI;
+
 
 /**
  * @class UnitCell unitcell.h
@@ -86,7 +85,7 @@ public:
    *
    * @return True if the cell is valid. False if it is not.
    */
-  bool isValid() const { return volume() > 1.e-8; };
+  bool isValid() const { return volume() > ZERO8; };
 
   /**
    * This uses cell parameters to create the cell matrix.

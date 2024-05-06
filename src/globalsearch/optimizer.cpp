@@ -29,8 +29,6 @@
 #include <QSettings>
 #include <QString>
 
-#define KCAL_PER_MOL_TO_EV 0.043364122
-
 namespace GlobalSearch {
 
 Optimizer::Optimizer(OptBase* parent, const QString& filename)
@@ -206,8 +204,7 @@ bool Optimizer::checkForSuccessfulOutput(Structure* s, bool* success)
     if (!m_opt->queueInterface(s->getCurrentOptStep())
            ->grepFile(s, (*it), m_completionFilename, 0, &ec)) {
       qDebug() << "For structure "
-               << QString::number(s->getGeneration()) + "x" +
-                    QString::number(s->getIDNumber())
+               << s->getTag()
                << ":";
       qDebug() << "The completion string, " << (*it) << ", was not found"
                << "in the output file. Job failed.";
@@ -236,7 +233,7 @@ bool Optimizer::update(Structure* structure)
   if (!ok) {
     m_opt->warning(
       tr("Optimizer::update: Error while preparing to update structure %1")
-        .arg(structure->getIDString()));
+        .arg(structure->getTag()));
     return false;
   }
 
@@ -244,14 +241,14 @@ bool Optimizer::update(Structure* structure)
   ok = false;
   for (int i = 0; i < m_outputFilenames.size(); i++) {
     if (read(structure,
-             structure->fileName() + "/" + m_outputFilenames.at(i))) {
+             structure->getLocpath() + "/" + m_outputFilenames.at(i))) {
       ok = true;
       break;
     }
   }
   if (!ok) {
     m_opt->warning(tr("Optimizer::Update: Error loading structure at %1")
-                     .arg(structure->fileName()));
+                     .arg(structure->getLocpath()));
     return false;
   }
 
@@ -268,14 +265,14 @@ bool Optimizer::load(Structure* structure)
   bool ok = false;
   for (int i = 0; i < m_outputFilenames.size(); i++) {
     if (read(structure,
-             structure->fileName() + "/" + m_outputFilenames.at(i))) {
+             structure->getLocpath() + "/" + m_outputFilenames.at(i))) {
       ok = true;
       break;
     }
   }
   if (!ok) {
     m_opt->warning(tr("Optimizer::load: Error loading structure at %1")
-                     .arg(structure->fileName()));
+                     .arg(structure->getLocpath()));
     return false;
   }
   return true;
@@ -291,7 +288,8 @@ bool Optimizer::read(Structure* structure, const QString& filename)
   file.close();
 
   if (!Formats::read(structure, filename, m_idString)) {
-    qDebug() << "Failed to read the output file!";
+    qDebug().noquote() << "Failed to read the output file " +
+      filename + " for " + structure->getTag();
     return false;
   }
 

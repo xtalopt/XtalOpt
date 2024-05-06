@@ -28,6 +28,8 @@
 #include <QDebug>
 #include <QMutex>
 #include <QObject>
+#include <QFile>
+#include <QDir>
 
 #include <atomic>
 #include <memory>
@@ -35,6 +37,63 @@
 #include <unordered_map>
 
 #include <globalsearch/bt.h>
+
+#ifdef XTALOPT_DEBUG
+//*******************************************************************
+// This part, as a whole, is to save a copy of all messages of the  *
+//   run to a log file, by setting up a message handler.            *
+// These are here so other parts of the code (than xtalopt module)  *
+//   can use them.                                                  *
+//                                                                  *
+// This output file will be written if XTALOPT_DEBUG flag is        *
+//   defined at the cmake input.                                    *
+//                                                                  *
+// The main variables/functions are:                                *
+//   i)  messageHandlerIsSet : (logical) make sure this is set once *
+//  ii)  gui_log_filename    : name of the log file                 *
+// iii)  customMessageOutput : the message handler function         *
+//  iv)  saveLogFileOfRun    : main function to be called           *
+//                                                                  *
+// The saveLogFileOfRun, whenever called, saves a copy of all the   *
+//   output messages to the file. This function, can and must       *
+//   be called only once! Either on:                                *
+//   (1) Starting a run (in xtalopt.cpp file, startSearch())        *
+//   (2) Resuming a run (in xtalopt.cpp file, load())               *
+//*******************************************************************
+static bool messageHandlerIsSet = false;
+static QString run_log_filename = "xtaloptDebug.log";
+static void customMessageOutput(QtMsgType type,
+                  const QMessageLogContext &, const QString & msg)
+{
+  if (type == QtFatalMsg)
+  abort();
+
+  // Write the message to file
+  QFile outFile(run_log_filename);
+  outFile.open(QIODevice::WriteOnly | QIODevice::Append);
+  QTextStream ts(&outFile);
+  ts << msg << endl;
+  // Write the message to stdout
+  qDebug().noquote() << msg;
+}
+static void saveLogFileOfRun(QString work_dir)
+{
+  // Basically, this function is called after the locWorkDir
+  //   variable is set. Just in case, if this is not true
+  //   then we will just ignore setting up the handler.
+  // Also, the logical variable messageHandler... is checked
+  //   to make sure that handler is set only once in the run.
+  if (work_dir.isEmpty() || messageHandlerIsSet)
+    return;
+  // Set the log file's full path.
+  run_log_filename = work_dir + QDir::separator() + run_log_filename;
+  // Setup the message handler.
+  qInstallMessageHandler(customMessageOutput);
+  messageHandlerIsSet = true;
+}
+//*******************************************************************
+//*******************************************************************
+#endif
 
 class AflowML;
 class QMutex;
@@ -77,6 +136,21 @@ public:
    * Destructor
    */
   virtual ~OptBase() override;
+
+  /**
+   * Types of the optimization for objectives in a multi-objective run
+   */
+  enum ObjectivesType
+  {
+    // Minimization objective
+    Ot_Min = 0,
+    // Maximization objective
+    Ot_Max,
+    // Filtration objective
+    Ot_Fil,
+    // aflow-hardness
+    Ot_Har
+  };
 
   /**
    * Actions to take when a structure has failed optimization too
@@ -204,6 +278,8 @@ public:
    * high hardness is favored. A value closer to 0 puts more importance on low
    * enthalpy, and a value closer to 1 puts more importance on high hardness.
    *
+   * This function's arguments are adjusted to allow for multi-objective search.
+   *
    * @param structures The list of structures to consider (if the hardness
    *                   weight is greater than 0, do not include structures
    *                   whose hardness isn't set (i. e., less than 0)).
@@ -211,9 +287,15 @@ public:
    *                generated, the low probability structures will be trimmed
    *                off until popSize is reached.
    * @param hardnessWeight w in the probability equation. This value should
-   *                       be between 0 and 1. 0 means no hardness
-   *                       consideration, and 1 means only
-   *                       hardness consideration.
+   *                be between 0 and 1. 0 means hardness calculated but not used
+   *                in optimization, 1 means only hardness consideration;
+   *                and -1.0 is the case that no hardness calculation is performed.
+   * @param objectives_num (Optional) The number of objectives introduced by
+   *                the user for multi-objective optimization.
+   * @param objectives_wgt (Optional) The weight of objectives introduced by
+   *                the user for multi-objective optimization.
+   * @param objectives_typ (Optional) The type of optimization (min/max etc)
+   *                for the objectives introduced by the user for multi-objective run.
    *
    * @return A list of pairs with a structure pointer and a double (the
    *         probability). This list will be trimmed so that it is not greater
@@ -221,11 +303,16 @@ public:
    *         The probabilities will be cumulative so that the last probability
    *         is 1. To use this list, generate a random double 'r' between 0
    *         and 1, and select the structure that is immediately larger than r.
+   *         Default arguments are added for the multi-objective search which
+   *         is not added to gapc part of the code.
    */
   static QList<QPair<Structure*, double>>
   getProbabilityList(const QList<Structure*>& structures,
                      size_t popSize,
-                     double hardnessWeight);
+                     double hardnessWeight,
+                     int    objectives_num = 0,
+                     QList<double>  objectives_wgt = {},
+                     QList<ObjectivesType> objectives_typ = {});
 
   /**
    * Use Aflow machine learning to calculate the hardness of structure
@@ -251,7 +338,7 @@ public:
 
   /**
    * Save the current search. If filename is omitted, default to
-   * m_filePath + "/[search name].state". Will only save once at a time.
+   * locWorkDir + "/[search name].state". Will only save once at a time.
    *
    * @param filename Filename to write to. Optional.
    * @param notify Whether to display a user-visible notification
@@ -396,29 +483,11 @@ public:
    */
   void setUsingGUI(bool b) { m_usingGUI = b; }
 
-#ifdef ENABLE_MOLECULAR
   /**
-   * Are we in molecular mode? If not, then we are in inorganic mode.
-   *
-   * @return Whether or not we are in molecular mode.
-   */
-  bool molecularMode() { return m_molecularMode; }
-
-  /**
-   * Are we in molecular mode? If not, then we are in inorganic mode.
-   *
-   * @param b True if we are in molecular mode. False otherwise.
-   */
-  void setMolecularMode(bool b) { m_molecularMode = b; }
-
-#else
-
-  /**
-   * If this is not a molecular build, always return false for this function
+   * Old molecular unit is removed; so always return false for this function
    */
   bool molecularMode() { return false; }
 
-#endif // ENABLE_MOLECULAR
 
   /**
    * Set the refresh interval for checking remote jobs.
@@ -443,40 +512,6 @@ public:
    * Get whether or not to clean remote directories when a job finishes.
    */
   bool cleanRemoteOnStop() const { return m_cleanRemoteOnStop; }
-
-#ifdef ENABLE_MOLECULAR
-
-  /// Generate conformers using the settings set below
-  long long generateConformers();
-
-  /// Conformer generation settings
-
-  /// The initial molecule file (usually SDF) with which to generate
-  /// conformers
-  std::string m_initialMolFile;
-
-  /// The output directory for the conformers (SDF format) and their energies
-  std::string m_conformerOutDir;
-
-  /// The number of conformers to generate
-  size_t m_numConformersToGenerate;
-
-  /// The RMSD threshold to use when pruning conformers (also used for
-  /// pruning conformers after optimization if that is set to true)
-  double m_rmsdThreshold;
-
-  /// The maximum number of optimization iterations (only valid if
-  /// m_mmffOptConfs is true)
-  size_t m_maxOptIters;
-
-  /// Whether or not to use MMFF94 to optimize conformers after generation
-  bool m_mmffOptConfs;
-
-  /// Whether or not to prune conformers again after using MMFF94 to optimize
-  /// them.
-  bool m_pruneConfsAfterOpt;
-
-#endif // ENABLE_MOLECULAR
 
   /// Whether to impose the running job limit
   bool limitRunningJobs;
@@ -513,7 +548,7 @@ public:
   FailActions failAction;
 
   /// Local directory to work in
-  QString filePath;
+  QString locWorkDir;
 
   /// Terse description of current search
   QString description;
@@ -529,7 +564,7 @@ public:
 
   /// Path on remote server to store files during and after
   /// optimization
-  QString rempath;
+  QString remWorkDir;
 
   /// This should be locked whenever the state file (resume file) is
   /// being written
@@ -544,7 +579,83 @@ public:
   /// Whether readOnly mode is enabled (e.g. no connection to server)
   bool readOnly;
 
+  /**
+   * Wrapper for calculating the objectives for multi-objective run
+   * @param s The structure whose objectives is to be calculated.
+   */
+  void calculateObjectives(Structure* s);
+
+  /**
+   * Starts multi-objective run for structure by generating/copying relevant files, and running objective scripts
+   * @param s The structure whose objectives is to be calculated.
+   */
+  void startObjectiveCalculations(Structure* s);
+
+  /**
+   * Finalizes the multi-objective run for a structure by waiting for output files to appear, transferring output
+   * files (if they're on a remote server) and processing them, updating structure info, and signal the finished job.
+   * @param s The structure whose objectives is to be calculated.
+   */
+  void finishObjectiveCalculations(Structure* s);
+
+  /**
+   * Performs a soft/hard exit after writing state files, closing ssh, etc.
+   * @param delay Amount of time (seconds) to wait before quitting; in case
+   *   we need to make sure all files are written/copied properly, e.g., a soft_exit
+   */
+  void performTheExit(int dealy = 0);
+
+  /// Quit once maximum number of structures are generated (cli mode only)
+  bool m_softExit;
+
+  /// Quit immediately! This is only a runtime option in the cli mode,
+  ///   but won't be written to runtime file; it can be added by the user.
+  bool m_hardExit;
+
+  /// To allow for slurm job submission in a local run.
+  bool m_localQueue;
+
+  /// Should a redo for structure dismissed by filtration objective be considered?
+  bool m_objectivesReDo;
+
+  /// Perform objective calculations in a multi-objective search
+  bool m_calculateObjectives;
+
+  /// Multi-objective functions for the run
+  void setObjectivesNum(int i)         {m_objectives_num = i;};
+  void setObjectivesTyp(ObjectivesType f) {m_objectives_typ.push_back(f);};
+  void setObjectivesExe(QString f)     {m_objectives_exe.push_back(f);};
+  void setObjectivesOut(QString f)     {m_objectives_out.push_back(f);};
+  void setObjectivesWgt(double f)      {m_objectives_wgt.push_back(f);};
+  int  getObjectivesNum()              const {return m_objectives_num;};
+  ObjectivesType getObjectivesTyp(int i)  const {return m_objectives_typ.at(i);};
+  QString     getObjectivesExe(int i)  const {return m_objectives_exe.at(i);};
+  QString     getObjectivesOut(int i)  const {return m_objectives_out.at(i);};
+  double      getObjectivesWgt(int i)  const {return m_objectives_wgt.at(i);};
+  //
+  void resetObjectives() { m_objectives_num = 0; m_objectives_typ.clear(); m_objectives_exe.clear();
+    m_objectives_out.clear(); m_objectives_wgt.clear();};
+  /// Objective list-related: this holds a list of all objective-related entries
+  ///   with the cli input format, i.e., "opt_type script_name filename weight"
+  void    objectiveListAdd(QString f) {m_objectives_lst.push_back(f);};
+  QString objectiveListGet(int i)     {return m_objectives_lst.at(i);};
+  void    objectiveListClear()        {m_objectives_lst.clear();};
+  void    objectiveListRemove(int i)  {m_objectives_lst.removeAt(i);};
+  int     objectiveListSize()         {return m_objectives_lst.size();};
+
 signals:
+  /**
+   * Emitted when objective calculations for the structure are finished.
+   * @param s Structure
+   */
+  void doneWithObjectives(Structure* s);
+
+  /**
+   * Emitted when aflow-hardness calculation for the structure is finished.
+   * @param s Structure
+   */
+  void doneWithHardness(Structure* s);
+
   /**
    * Emitted when a session is starting or being loaded.
    * @sa sessionStarted
@@ -1182,6 +1293,15 @@ protected slots:
 #endif // not USE_CLI_SSH
 #endif // ENABLE_SSH
 protected:
+
+  /// Multi-objective parameters for the run
+  int                m_objectives_num; // total number of objectives (internal variable), default = 0
+  QStringList        m_objectives_exe; // location of external scripts for each objective
+  QList<ObjectivesType> m_objectives_typ; // type of optimization: minimization/maximization/filtration/hardness
+  QList<double>      m_objectives_wgt; // weight for each objective
+  QStringList        m_objectives_out; // output file name produced by the external script for each objective
+  QStringList        m_objectives_lst; // list of objective inputs in xtalopt.in file (internal variable)
+
   /// String that uniquely identifies the derived OptBase
   /// @sa getIDString
   QString m_idString;
@@ -1242,11 +1362,6 @@ protected:
 
   /// Whether or not to clean remote directories after completion
   bool m_cleanRemoteOnStop;
-
-#ifdef ENABLE_MOLECULAR
-  /// Whether or not we are in molecular mode
-  bool m_molecularMode;
-#endif // ENABLE_MOLECULAR
 
 public:
   /// Log error directories?

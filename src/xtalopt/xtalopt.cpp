@@ -44,10 +44,6 @@
 #include <globalsearch/sshmanager.h>
 #endif // ENABLE_SSH
 
-#ifdef ENABLE_MOLECULAR
-#include <globalsearch/molecular/conformergenerator.h>
-#endif // ENABLE_MOLECULAR
-
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -62,8 +58,6 @@
 #include <fstream>
 #include <iostream>
 #include <mutex>
-
-#define ANGSTROM_TO_BOHR 1.889725989
 
 using namespace GlobalSearch;
 
@@ -98,7 +92,7 @@ XtalOpt::~XtalOpt()
   m_dialog = nullptr;
 
   // Save one last time
-  qDebug() << "Saving XtalOpt settings...";
+  qDebug() << "\nSaving XtalOpt settings...";
 
   // First save the state file (only if we have structures)
   if (!m_queue->getAllStructures().isEmpty())
@@ -128,6 +122,10 @@ XtalOpt::~XtalOpt()
   // Clean up various members
   m_initWC->deleteLater();
   m_initWC = 0;
+
+  QString formattedTime = QDateTime::currentDateTime().toString("MMMM dd, yyyy   hh:mm:ss");
+  QByteArray formattedTimeMsg = formattedTime.toLocal8Bit();
+  qDebug().noquote() << "\n=== Optimization finished ... " + formattedTimeMsg + "\n";
 }
 
 bool XtalOpt::startSearch()
@@ -138,6 +136,11 @@ bool XtalOpt::startSearch()
   std::unique_lock<std::mutex> startLock(startMutex, std::defer_lock);
   if (!startLock.try_lock())
     return false;
+
+#ifdef XTALOPT_DEBUG
+  // Setup the message handler for the run log file
+  saveLogFileOfRun(locWorkDir);
+#endif
 
   // Settings checks
   // Check lattice parameters, volume, etc
@@ -152,25 +155,22 @@ bool XtalOpt::startSearch()
     return false;
   }
 
-  // Check if xtalopt data is already saved at the filePath
+  // Check if xtalopt data is already saved at the locWorkDir
   // If we are in cli mode, we check it elsewhere
-  if (QFile::exists(filePath + QDir::separator() + "xtalopt.state") &&
+  while (QFile::exists(locWorkDir + QDir::separator() + "xtalopt.state") &&
       !testingMode && m_usingGUI) {
     bool proceed;
-    needBoolean(tr("Warning: XtalOpt data is already saved at: %1"
-                   "\nDo you wish to proceed and overwrite it?"
-                   "\n\nIf no, please change the local working "
-                   "directory under Queue configure located in the "
-                   "'Optimization Settings' tab")
-                  .arg(filePath),
-                &proceed);
+    needBoolean(tr("Error: XtalOpt data is already saved at:"
+                   "\n%1"
+                   "\n\nEmpty the directory to proceed or "
+                   "select a new 'Local working directory'!"
+                   "\n\nDo you wish to proceed?"
+                   "\n[Yes] directory is cleaned up"
+                   "\n[No] return")
+                   .arg(locWorkDir),
+                   &proceed);
     if (!proceed) {
       return false;
-    } else {
-      bool result = FileUtils::removeDir(filePath);
-      if (!result) {
-        error(tr("Error removing directory at:\n %1").arg(filePath));
-      }
     }
   }
 
@@ -226,7 +226,10 @@ bool XtalOpt::startSearch()
 #endif // ENABLE_SSH
 
   // Here we go!
-  debug("Starting optimization.");
+  QString formattedTime = QDateTime::currentDateTime().toString("MMMM dd, yyyy   hh:mm:ss");
+  QByteArray formattedTimeMsg = formattedTime.toLocal8Bit();
+
+  qDebug().noquote() << "\n=== Optimization started ... " + formattedTimeMsg + "\n";
   emit startingSession();
 
   // prepare pointers
@@ -426,8 +429,8 @@ bool XtalOpt::save(QString filename, bool notify)
   if (!saveLock.try_lock())
     return false;
 
-  if (filename.isEmpty() && !filePath.isEmpty())
-    filename = filePath + "/" + m_idString.toLower() + ".state";
+  if (filename.isEmpty() && !locWorkDir.isEmpty())
+    filename = locWorkDir + "/" + m_idString.toLower() + ".state";
 
   bool isStateFile = filename.endsWith(".state");
 
@@ -458,6 +461,8 @@ bool XtalOpt::save(QString filename, bool notify)
   settings->setValue("limits/scaleFactor", scaleFactor);
   settings->setValue("limits/minRadius", minRadius);
   settings->setValue("using/fixedVolume", using_fixed_volume);
+  settings->setValue("limits/volume/scale_min", vol_scale_min);
+  settings->setValue("limits/volume/scale_max", vol_scale_max);
   settings->setValue("using/mitosis", using_mitosis);
   settings->setValue("using/subcellPrint", using_subcellPrint);
   settings->setValue("limits/divisions", divisions);
@@ -526,20 +531,6 @@ bool XtalOpt::save(QString filename, bool notify)
     settings->endArray();
   }
 
-#ifdef ENABLE_MOLECULAR
-
-  // Conformer generation stuff
-  settings->setValue("initialMolFile", m_initialMolFile.c_str());
-  settings->setValue("conformerOutDir", m_conformerOutDir.c_str());
-  settings->setValue("numConformersToGenerate",
-                     static_cast<uint>(m_numConformersToGenerate));
-  settings->setValue("rmsdThreshold", m_rmsdThreshold);
-  settings->setValue("maxOptIters", static_cast<uint>(m_maxOptIters));
-  settings->setValue("mmffOptConfs", m_mmffOptConfs);
-  settings->setValue("pruneConfsAfterOpt", m_pruneConfsAfterOpt);
-
-#endif // ENABLE_MOLECULAR
-
   settings->endGroup();
 
   writeEditSettings(filename);
@@ -587,10 +578,22 @@ bool XtalOpt::save(QString filename, bool notify)
   settings->setValue("opt/perm_strainStdev_max", perm_strainStdev_max);
   settings->setValue("opt/perm_ex", perm_ex);
 
-  // Hardness settings
-  settings->setValue("opt/calculateHardness", m_calculateHardness.load());
-  settings->setValue("opt/hardnessFitnessWeight",
-                     m_hardnessFitnessWeight.load());
+  // Multi-objective, aflow-hardness, softExit, localQueue, ...
+  settings->setValue("opt/softExit", m_softExit);
+  settings->setValue("opt/localQueue", m_localQueue);
+  settings->setValue("obj/calculateHardness", m_calculateHardness.load());
+  settings->setValue("obj/hardnessFitnessWeight", m_hardnessFitnessWeight.load());
+  settings->setValue("obj/objectivesReDo", m_objectivesReDo);
+  settings->setValue("obj/objectivesNum", getObjectivesNum());
+  settings->beginWriteArray("obj/objectives");
+  for (size_t i = 0; i < getObjectivesNum(); i++) {
+    settings->setArrayIndex(i);
+    settings->setValue("exe",getObjectivesExe(i));
+    settings->setValue("typ",getObjectivesTyp(i));
+    settings->setValue("wgt",getObjectivesWgt(i));
+    settings->setValue("out",getObjectivesOut(i));
+  }
+  settings->endArray();
 
   return true;
 }
@@ -602,13 +605,13 @@ bool XtalOpt::writeEditSettings(const QString& filename)
   settings->setValue("version", m_schemaVersion);
 
   settings->setValue("description", description);
-  settings->setValue("localpath", filePath);
+  settings->setValue("locWorkDir", locWorkDir);
   settings->setValue("remote/host", host);
   settings->setValue("remote/port", port);
   settings->setValue("remote/username", username);
   settings->setValue("remote/queueRefreshInterval", queueRefreshInterval());
   settings->setValue("remote/cleanRemoteOnStop", cleanRemoteOnStop());
-  settings->setValue("remote/rempath", rempath);
+  settings->setValue("remote/remWorkDir", remWorkDir);
   settings->setValue("remote/cancelJobAfterTime", cancelJobAfterTime());
   settings->setValue("remote/hoursForCancelJobAfterTime",
                      hoursForCancelJobAfterTime());
@@ -664,14 +667,14 @@ bool XtalOpt::readEditSettings(const QString& filename)
     description = tmpstr;
   }
 
-  tmpstr = settings->value("remote/rempath", "").toString();
+  tmpstr = settings->value("remote/remWorkDir", "").toString();
   if (!tmpstr.isEmpty()) {
-    rempath = tmpstr;
+    remWorkDir = tmpstr;
   }
 
-  tmpstr = settings->value("localpath", "").toString();
+  tmpstr = settings->value("locWorkDir", "").toString();
   if (!tmpstr.isEmpty()) {
-    filePath = tmpstr;
+    locWorkDir = tmpstr;
   }
 
   tmpstr = settings->value("remote/host", "").toString();
@@ -963,6 +966,8 @@ bool XtalOpt::readSettings(const QString& filename)
   scaleFactor = settings->value("limits/scaleFactor", 0.5).toDouble();
   minRadius = settings->value("limits/minRadius", 0.25).toDouble();
   using_fixed_volume = settings->value("using/fixedVolume", false).toBool();
+  vol_scale_max = settings->value("limits/volume/scale_max", 0.0).toDouble();
+  vol_scale_min = settings->value("limits/volume/scale_min", 0.0).toDouble();
   using_interatomicDistanceLimit =
     settings->value("using/interatomicDistanceLimit", false).toBool();
   using_customIAD = settings->value("using/customIAD").toBool();
@@ -1064,22 +1069,6 @@ bool XtalOpt::readSettings(const QString& filename)
   if (formulaUnitsList.isEmpty())
     formulaUnitsList = { 1 };
 
-#ifdef ENABLE_MOLECULAR
-
-  // Conformer generation stuff
-  m_initialMolFile =
-    settings->value("initialMolFile", "").toString().toStdString();
-  m_conformerOutDir =
-    settings->value("conformerOutDir", "").toString().toStdString();
-  m_numConformersToGenerate =
-    settings->value("numConformersToGenerate", 10).toUInt();
-  m_rmsdThreshold = settings->value("rmsdThreshold", 0.1).toDouble();
-  m_maxOptIters = settings->value("maxOptIters", 1000).toUInt();
-  m_mmffOptConfs = settings->value("mmffOptConfs", true).toBool();
-  m_pruneConfsAfterOpt = settings->value("pruneConfsAfterOpt", true).toBool();
-
-#endif // ENABLE_MOLECULAR
-
   settings->endGroup();
 
   // We have a separate function for reading the edit settings because
@@ -1115,7 +1104,7 @@ bool XtalOpt::readSettings(const QString& filename)
   // Duplicates
   tol_xcLength = settings->value("tol/xtalcomp/length", 0.1).toDouble();
   tol_xcAngle = settings->value("tol/xtalcomp/angle", 2.0).toDouble();
-  tol_spg = settings->value("tol/spg", 0.05).toDouble();
+  tol_spg = settings->value("tol/spg", 0.01).toDouble();
 
   // Crossover
   p_cross = settings->value("opt/p_cross", 15).toUInt();
@@ -1139,11 +1128,35 @@ bool XtalOpt::readSettings(const QString& filename)
     settings->value("opt/perm_strainStdev_max", 0.5).toDouble();
   perm_ex = settings->value("opt/perm_ex", 4).toUInt();
 
-  // Hardness stuff
-  m_calculateHardness =
-    settings->value("opt/calculateHardness", false).toBool();
-  m_hardnessFitnessWeight =
-    settings->value("opt/hardnessFitnessWeight", 0.0).toDouble();
+  if (isStateFile)
+  {
+    // Multi-objective, aflow-hardness, softExit, localQueue, ...
+    //
+    // softExit shouldn't be read in resuming; it causes the code to quit immediately!
+    // Instead; always set it to false in resuming for which settings are being read here.
+    m_softExit = false;
+    //
+    m_localQueue = settings->value("opt/localQueue", false).toBool();
+    m_calculateHardness = settings->value("obj/calculateHardness", false).toBool();
+    m_hardnessFitnessWeight = settings->value("obj/hardnessFitnessWeight", -1.0).toDouble();
+    m_objectivesReDo = settings->value("obj/objectivesReDo", false).toBool();
+    resetObjectives();
+    int objnum = settings->value("obj/objectivesNum", 0).toInt();
+    m_calculateObjectives = (objnum > 0) ? true : false;
+    setObjectivesNum(objnum);
+    int size = settings->beginReadArray("obj/objectives");
+    for (size_t i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      setObjectivesTyp(ObjectivesType(settings->value("typ","").toInt()));
+      setObjectivesExe(settings->value("exe","").toString());
+      setObjectivesWgt(settings->value("wgt",0.0).toDouble());
+      setObjectivesOut(settings->value("out","").toString());
+    }
+    settings->endArray();
+    // Double-check weights (and re-construct objectives list for gui)
+    if (!processObjectivesWeights())
+      return false;
+  }
 
   settings->endGroup();
 
@@ -1154,7 +1167,7 @@ bool XtalOpt::addSeed(const QString& filename)
 {
   QString err;
   Xtal* xtal = new Xtal;
-  xtal->setFileName(filename);
+  xtal->setLocpath(filename);
   xtal->setStatus(Xtal::WaitingForOptimization);
 
   // We will only display the warning once, so use a static bool for this
@@ -1388,241 +1401,6 @@ Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg,
   return xtal;
 }
 
-#ifdef ENABLE_MOLECULAR
-// More negative means more likely to be picked.
-// The equation used here for probability:
-// Pi = 1 - 0.7 * (Hi - Hmin) / (Hmax - Hmin)
-// For the ith element
-long long XtalOpt::randomlyPickWeightedIndex(const std::vector<double>& v)
-{
-  if (v.empty())
-    return -1;
-
-  double lowest = *std::min_element(v.begin(), v.end());
-  double highest = *std::max_element(v.begin(), v.end());
-  double spread = highest - lowest;
-
-  // Save some time if they are all about the same
-  if (spread <= 1e-6)
-    return 0;
-
-  // We will create a vector of probabilities from 0.0 to 1.0
-  std::vector<double> probs;
-  for (const auto& d : v)
-    probs.push_back((d - lowest) / spread);
-
-  double sum = 0.0;
-  for (int i = 0; i < probs.size(); ++i) {
-    probs[i] = 1.0 - 0.7 * probs[i];
-    sum += probs[i];
-  }
-
-  // Normalize with the sum so that the list adds to 1
-  // 0.4  0.28  0.24  0.08
-  for (int i = 0; i < probs.size(); ++i)
-    probs[i] /= sum;
-
-  /*
-      std::cout << "probs is:\n";
-      for (const auto& d: probs)
-        std::cout << d << "\n";
-  */
-
-  // Then replace each entry with a cumulative total:
-  // 0.4 0.68 0.92 1
-  sum = 0.0;
-  for (int i = 0; i < probs.size(); ++i) {
-    sum += probs[i];
-    probs[i] = sum;
-  }
-
-  // Select one at random
-  double rand = getRandDouble();
-  for (size_t i = 0; i < probs.size(); ++i) {
-    if (rand < probs[i])
-      return i;
-  }
-
-  return -1;
-}
-
-std::string XtalOpt::chooseMolecularConformer()
-{
-  // First, open up the energies.txt file in the conformers directory and
-  // read off the names and the energies
-  std::string energiesFileName = m_conformerOutDir + "/energies.txt";
-  std::ifstream energiesFile(energiesFileName);
-  if (!energiesFile.is_open()) {
-    error(("XtalOpt::chooseMolecularConformer(): Error opening file " +
-           energiesFileName + " for reading. Please make sure " +
-           "the conformer out dir, " + m_conformerOutDir + ", is " +
-           "a valid conformer directory")
-            .c_str());
-    return "";
-  }
-
-  std::vector<std::string> fileNames;
-  std::vector<double> energies;
-
-  while (energiesFile.good()) {
-    std::string fileName;
-    double energy;
-    energiesFile >> fileName;
-    energiesFile >> energy;
-
-    if (fileName.empty())
-      break;
-
-    fileNames.push_back(fileName);
-    energies.push_back(energy);
-  }
-
-  if (fileNames.empty() || energies.empty()) {
-    error(("XtalOpt::chooseMolecularConformer(): No file names or energies "
-           "in " +
-           energiesFileName + ". Please make sure " +
-           "the conformer out dir, " + m_conformerOutDir + ", is " +
-           "a valid conformer directory")
-            .c_str());
-    return "";
-  }
-
-  long long ind = randomlyPickWeightedIndex(energies);
-  if (ind == -1) {
-    error(("XtalOpt::chooseMolecularConformer(): failed to randomly pick "
-           "a conformer"));
-    return "";
-  }
-  return m_conformerOutDir + "/" + fileNames[ind];
-}
-
-minIADs XtalOpt::generateMolecularMinIADs(
-  const GlobalSearch::Molecule& mol) const
-{
-  minIADs iads;
-
-  double minRad = -1.0, scale = 1.0;
-  if (using_interatomicDistanceLimit) {
-    minRad = minRadius;
-    scale = scaleFactor;
-  }
-
-  // Get a set of the unique atomic numbers
-  const std::vector<unsigned short> atomNums = mol.atomicNumbers();
-  std::set<unsigned short> uniqueAtomicNums(atomNums.cbegin(), atomNums.cend());
-
-  // Create the min IADs with the covalent radii
-  for (size_t i = 0; i < uniqueAtomicNums.size(); ++i) {
-    unsigned short atomicNum1 = *std::next(uniqueAtomicNums.begin(), i);
-    double rad1 = ElemInfo::getCovalentRadius(atomicNum1);
-    if (rad1 < minRad)
-      rad1 = minRad;
-    for (size_t j = i; j < uniqueAtomicNums.size(); ++j) {
-      unsigned short atomicNum2 = *std::next(uniqueAtomicNums.begin(), j);
-      double rad2 = ElemInfo::getCovalentRadius(atomicNum2);
-      if (rad2 < minRad)
-        rad2 = minRad;
-
-      double minIAD = (rad1 + rad2) * scale;
-      iads.set(atomicNum1, atomicNum2, minIAD);
-    }
-  }
-
-  return iads;
-}
-
-Xtal* XtalOpt::generateRandomMolecularXtal(uint generation, uint id, uint FU)
-{
-  std::string confFile = chooseMolecularConformer();
-  if (confFile.empty()) {
-    qDebug() << "XtalOpt::generateRandomMolecularXtal(): failed to choose"
-             << "a conformer.";
-    return nullptr;
-  }
-
-  return generateRandomMolecularXtal(generation, id, FU, confFile);
-}
-
-Xtal* XtalOpt::generateRandomMolecularXtal(uint generation, uint id, uint FU,
-                                           const std::string& confFile)
-{
-  // Create the molecule from the SDF file
-  std::ifstream ifs(confFile);
-
-  if (!ifs.is_open()) {
-    error(("XtalOpt::generateRandomMolecularXtal(): failed to open the SDF "
-           "file: " +
-           confFile + ". Please make sure the conformer "
-                      "directory, " +
-           m_conformerOutDir + " is valid.")
-            .c_str());
-    return nullptr;
-  }
-
-  // Read the data
-  std::string sdfData{ std::istreambuf_iterator<char>(ifs),
-                       std::istreambuf_iterator<char>() };
-
-  // Use OBConvert to convert it to cml
-  QByteArray CMLData;
-  if (!GlobalSearch::OBConvert::convertFormat("sdf", "cml", sdfData.c_str(),
-                                              CMLData)) {
-    error(("XtalOpt::generateRandomMolecularXtal(): failed to convert the "
-           "SDF file " +
-           confFile + " to CML format with OBabel. Please "
-                      "make sure the file and the directory it is in are "
-                      "valid.")
-            .c_str());
-    return nullptr;
-  }
-
-  std::stringstream css(CMLData.data());
-
-  // Now read it
-  GlobalSearch::Structure conformer;
-  if (!GlobalSearch::CmlFormat::read(conformer, css)) {
-    error(("XtalOpt::generateRandomMolecularXtal(): failed to convert the "
-           "cml output from OBabel into a structure. Please make sure the "
-           "file," +
-           confFile + ", is valid, and that it is in a valid "
-                      "directory.")
-            .c_str());
-    return nullptr;
-  }
-
-  // Now, create a valid lattice
-  Xtal* xtal = generateEmptyXtalWithLattice(FU);
-
-  // Get the min IADs for the molecule
-  minIADs iads = generateMolecularMinIADs(conformer);
-
-  // Now add in the appropriate number of formula units
-  for (size_t i = 0; i < FU; ++i) {
-    // No max attempts right now. But they can be added in the future.
-    if (!xtal->addMoleculeRandomly(conformer, iads)) {
-      xtal->deleteLater();
-      debug(("XtalOpt::" + std::string(__FUNCTION__) +
-             "(): Failed to add "
-             "molecules to the crystal and satisfy the interatomic distance "
-             "constraints.")
-              .c_str());
-      return nullptr;
-    }
-  }
-
-  xtal->setParentConformer(confFile);
-  xtal->setZValue(FU);
-
-  // Set up geneology info
-  xtal->setGeneration(generation);
-  xtal->setIDNumber(id);
-  xtal->setParents("Randomly generated");
-  xtal->setStatus(Xtal::WaitingForOptimization);
-
-  return xtal;
-}
-#endif // ENABLE_MOLECULAR
-
 Xtal* XtalOpt::generateEmptyXtalWithLattice(uint FU)
 {
   Xtal* xtal = nullptr;
@@ -1646,13 +1424,6 @@ Xtal* XtalOpt::generateEmptyXtalWithLattice(uint FU)
 
 Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
 {
-
-#ifdef ENABLE_MOLECULAR
-  // If we are using molecular mode, perform a molecular generation
-  if (molecularMode())
-    return generateRandomMolecularXtal(generation, id, FU);
-#endif // ENABLE_MOLECULAR
-
   // Create a valid lattice first
   Xtal* xtal = generateEmptyXtalWithLattice(FU);
 
@@ -2022,7 +1793,7 @@ void XtalOpt::printSubXtal(Xtal* xtal, uint generation, uint id)
   QString id_s, gen_s, locpath_s;
   id_s.sprintf("%05d", id);
   gen_s.sprintf("%05d", generation);
-  locpath_s = filePath + "/subcells";
+  locpath_s = locWorkDir + "/subcells";
   QDir dir(locpath_s);
   if (!dir.exists()) {
     if (!dir.mkpath(locpath_s)) {
@@ -2150,8 +1921,8 @@ void XtalOpt::initializeAndAddXtal(Xtal* xtal, uint generation,
   QString id_s, gen_s, locpath_s, rempath_s;
   id_s.sprintf("%05d", xtal->getIDNumber());
   gen_s.sprintf("%05d", xtal->getGeneration());
-  locpath_s = filePath + "/" + gen_s + "x" + id_s + "/";
-  rempath_s = rempath + "/" + gen_s + "x" + id_s + "/";
+  locpath_s = locWorkDir + "/" + gen_s + "x" + id_s + "/";
+  rempath_s = remWorkDir + "/" + gen_s + "x" + id_s + "/";
   QDir dir(locpath_s);
   if (!dir.exists()) {
     if (!dir.mkpath(locpath_s)) {
@@ -2163,7 +1934,7 @@ void XtalOpt::initializeAndAddXtal(Xtal* xtal, uint generation,
   }
   // xtal->moveToThread(m_tracker->thread());
   xtal->setupConnections();
-  xtal->setFileName(locpath_s);
+  xtal->setLocpath(locpath_s);
   xtal->setRempath(rempath_s);
   xtal->setCurrentOptStep(0);
   // If none of the cell parameters are fixed, perform a normalization on
@@ -2835,6 +2606,11 @@ Xtal* XtalOpt::generatePrimitiveXtal(Xtal* xtal)
                    xtal->getFormulaUnits());
   nxtal->setPrimitiveChecked(true);
   nxtal->setSkippedOptimization(true);
+
+  nxtal->resetStrucObj();
+  nxtal->setStrucObjState(xtal->getStrucObjState());
+  nxtal->setStrucObjValuesVec(xtal->getStrucObjValuesVec());
+
   nxtal->setStatus(Xtal::Optimized);
   return nxtal;
 }
@@ -2878,6 +2654,10 @@ Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU, Xtal* parentXtal,
   xtal->setParentStructure(parentXtal);
   xtal->setParents(parents);
   xtal->setGeneration(gen + 1);
+
+  xtal->resetStrucObj();
+  xtal->setStrucObjState(parentXtal->getStrucObjState());
+  xtal->setStrucObjValuesVec(parentXtal->getStrucObjValuesVec());
 
   parentXtalLocker.unlock();
   trackerLocker.unlock();
@@ -2962,9 +2742,6 @@ Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU, Xtal* parentXtal,
   return xtal;
 }
 
-// Define this macro to produce some debug info from this function
-//#define PROBS_DEBUG
-
 Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
                                              uint FU)
 {
@@ -2986,46 +2763,68 @@ Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
     }
   }
 
-  double hardnessWeight = m_hardnessFitnessWeight;
-  if (!m_calculateHardness)
-    hardnessWeight = 0.0;
+  int sizeBeforeObjectivesPruning = structures.size();
+
+  // Create auxiliary variables and double-check objectives for submitting to parents pool.
+  // This check, basically, is not needed! In the final implementation those whose objectives
+  //    are not successfully calculated or dismissed by marking them as Fail or Dismiss, are already removed.
+  int                objnum = getObjectivesNum();
+  QList<double>      objwgt = {};
+  QList<ObjectivesType> objtyp = {};
+  if (m_calculateObjectives)
+  {
+    // First, create list of wgt and out of objectives for later use in get_probability... function
+    for (int i = 0; i < objnum; i++) {
+      objwgt.push_back(getObjectivesWgt(i));
+      objtyp.push_back(getObjectivesTyp(i));
+    }
+
+    for (size_t i = 0; i < structures.size(); i++) {
+      if (structures[i]->getStrucObjState() != Structure::Os_Retain) {
+        structures.removeAt(i);
+        --i;
+#ifdef MOES_DEBUG
+qDebug().noquote() << QString("NOTE: structure %1 excluded from pool "
+                              "with objectives state %2 ")
+  .arg(structures[i]->getTag(),7).arg(structures[i]->getStrucObjState(),2);
+#endif
+      }
+    }
+#ifdef MOES_DEBUG
+qDebug().noquote() << QString("NOTE: a total of %1 (from %2) structures "
+                              "left for pool after objective analysis\n")
+  .arg(structures.size(),5).arg(sizeBeforeObjectivesPruning,5);
+#endif
+
+    if (structures.size() == 1 && sizeBeforeObjectivesPruning > 1) {
+      warning(tr("A nonzero objective weight is being used for the fitness "
+            "function, but very few (%1 from %2) structures have their "
+            "objectives calculated. This current probability selection will "
+            "not be good.\n").arg(structures.size()).arg(sizeBeforeObjectivesPruning));
+    }
+  }
 
   int sizeBeforeHardnessPruning = structures.size();
 
-  // If we are using hardness, remove all structures with a hardness
-  // less than 0
-  if (hardnessWeight > 1.0e-5) {
+  // Check aflow-hardness before submitting to parents pool
+  if (m_calculateHardness) {
+    // If we are using aflow-hardness, remove all structures with a hardness less than 0
     for (size_t i = 0; i < structures.size(); i++) {
       if (structures[i]->vickersHardness() < 0.0 && structures.size() > 1) {
         structures.removeAt(i);
         --i;
       }
     }
-  }
-
-  if (structures.size() == 1 && sizeBeforeHardnessPruning > 1) {
-    warning("A nonzero hardness weight is being used for the fitness "
-            "function, but very few (if any) structures have their "
+    if (structures.size() == 1 && sizeBeforeHardnessPruning > 1) {
+      warning(tr("A nonzero hardness weight is being used for the fitness "
+            "function, but very few (%1 from %2) structures have their "
             "hardnesses calculated. This current probability selection will "
-            "not be good.");
+            "not be good.\n").arg(structures.size()).arg(sizeBeforeHardnessPruning));
+    }
   }
 
   QList<QPair<GlobalSearch::Structure*, double>> probs =
-    getProbabilityList(structures, popSize, hardnessWeight);
-
-#ifdef PROBS_DEBUG
-  std::cout << "Sorted structures list with probs is as follows:\n";
-  double previousProbs = 0.0;
-  for (const auto& elem: probs) {
-    std::cout << elem.first->getGeneration() << "x"
-              << elem.first->getIDNumber() << ": "
-              << elem.first->vickersHardness()
-              << " GPa : " << elem.first->getEnthalpyPerFU()
-              << " eV/FU : probs: " << elem.second - previousProbs
-              << " : cumulative probs: " << elem.second << "\n";
-    previousProbs = elem.second;
-  }
-#endif
+    getProbabilityList(structures, popSize, m_hardnessFitnessWeight, objnum, objwgt, objtyp);
 
   // Initialize loop vars
   Xtal* xtal = nullptr;
@@ -3039,10 +2838,18 @@ Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
     }
   }
 
-#ifdef PROBS_DEBUG
-  std::cout << "r is " << r << "\n";
-  std::cout << "Selected crystal is " << xtal->getGeneration() << "x"
-            << xtal->getIDNumber() << "\n";
+#ifdef MOES_DEBUG
+QString outs = QString("\nNOTE: Selected %1 ( r = %2 ) from structures with probs:\n"
+                       "      structure : enthalpy (eV/FU) :    probs   : cumulative probs\n")
+                       .arg(xtal->getTag(),7).arg(r,8,'f',6);
+  double previousProbs = 0.0;
+  for (const auto& elem: probs) {
+    outs += QString("        %1 :     %2 : %3 : %4\n")
+      .arg(elem.first->getTag(),7).arg(elem.first->getEnthalpyPerFU(),12,'f',6)
+      .arg(elem.second - previousProbs,10,'f',6).arg(elem.second,10,'f',6);
+    previousProbs = elem.second;
+  }
+qDebug().noquote() << outs;
 #endif
   return xtal;
 }
@@ -3204,7 +3011,7 @@ bool XtalOpt::checkLattice(Xtal* xtal, uint formulaUnits, QString* err)
   // cell matrix is negative (otherwise VASP complains about a
   // "negative triple product")
   if (xtal->unitCell().cellMatrix().determinant() <= 0.0) {
-    qDebug() << "Rejecting structure" << xtal->getIDString()
+    qDebug() << "Rejecting structure" << xtal->getTag()
              << ": determinant of unit cell is negative or zero.";
     if (err != nullptr) {
       *err = "Unit cell matrix cannot have a negative or zero determinant.";
@@ -3214,12 +3021,12 @@ bool XtalOpt::checkLattice(Xtal* xtal, uint formulaUnits, QString* err)
 
   // Before fixing angles, make sure that the current cell
   // parameters are realistic
-  if (GS_IS_NAN_OR_INF(xtal->getA()) || fabs(xtal->getA()) < 1e-8 ||
-      GS_IS_NAN_OR_INF(xtal->getB()) || fabs(xtal->getB()) < 1e-8 ||
-      GS_IS_NAN_OR_INF(xtal->getC()) || fabs(xtal->getC()) < 1e-8 ||
-      GS_IS_NAN_OR_INF(xtal->getAlpha()) || fabs(xtal->getAlpha()) < 1e-8 ||
-      GS_IS_NAN_OR_INF(xtal->getBeta()) || fabs(xtal->getBeta()) < 1e-8 ||
-      GS_IS_NAN_OR_INF(xtal->getGamma()) || fabs(xtal->getGamma()) < 1e-8) {
+  if (GS_IS_NAN_OR_INF(xtal->getA()) || fabs(xtal->getA()) < ZERO8 ||
+      GS_IS_NAN_OR_INF(xtal->getB()) || fabs(xtal->getB()) < ZERO8 ||
+      GS_IS_NAN_OR_INF(xtal->getC()) || fabs(xtal->getC()) < ZERO8 ||
+      GS_IS_NAN_OR_INF(xtal->getAlpha()) || fabs(xtal->getAlpha()) < ZERO8 ||
+      GS_IS_NAN_OR_INF(xtal->getBeta()) || fabs(xtal->getBeta()) < ZERO8 ||
+      GS_IS_NAN_OR_INF(xtal->getGamma()) || fabs(xtal->getGamma()) < ZERO8) {
     qDebug() << "XtalOpt::checkXtal: A cell parameter is either 0, nan, or "
                 "inf. Discarding.";
     if (err != nullptr) {
@@ -3229,7 +3036,7 @@ bool XtalOpt::checkLattice(Xtal* xtal, uint formulaUnits, QString* err)
   }
 
   // If no cell parameters are fixed, normalize lattice
-  if (fabs(a + b + c + alpha + beta + gamma) < 1e-8) {
+  if (fabs(a + b + c + alpha + beta + gamma) < ZERO8) {
     // If one length is 25x shorter than another, it can sometimes
     // cause the spglib to crash in this function
     // If one is 25x shorter than another, discard it
@@ -3240,8 +3047,8 @@ bool XtalOpt::checkLattice(Xtal* xtal, uint formulaUnits, QString* err)
         xtal->getB() * cutoff < xtal->getC() ||
         xtal->getC() * cutoff < xtal->getA() ||
         xtal->getC() * cutoff < xtal->getB()) {
-      qDebug() << "Error: one of the lengths is more than 25x shorter "
-               << "than another length. Crystals like these can sometimes "
+      qDebug() << "Error: one of the lengths is more than 25x shorter"
+               << "than another length.\nCrystals like these can sometimes"
                << "cause spglib to crash the program. Discarding the xtal:";
       xtal->printXtalInfo();
       return false;
@@ -3253,8 +3060,8 @@ bool XtalOpt::checkLattice(Xtal* xtal, uint formulaUnits, QString* err)
         xtal->getBeta() * cutoff < xtal->getGamma() ||
         xtal->getGamma() * cutoff < xtal->getAlpha() ||
         xtal->getGamma() * cutoff < xtal->getBeta()) {
-      qDebug() << "Error: one of the angles is more than 25x smaller "
-               << "than another angle. Crystals like these can sometimes "
+      qDebug() << "Error: one of the angles is more than 25x smaller"
+               << "than another angle.\nCrystals like these can sometimes"
                << "cause spglib to crash the program. Discarding the xtal:";
       xtal->printXtalInfo();
       return false;
@@ -3540,11 +3347,11 @@ void XtalOpt::interpretKeyword(QString& line, Structure* structure)
   else if (line == "c")
     rep += QString::number(xtal->getC());
   else if (line == "alphaRad")
-    rep += QString::number(xtal->getAlpha() * DEG_TO_RAD);
+    rep += QString::number(xtal->getAlpha() * DEG2RAD);
   else if (line == "betaRad")
-    rep += QString::number(xtal->getBeta() * DEG_TO_RAD);
+    rep += QString::number(xtal->getBeta() * DEG2RAD);
   else if (line == "gammaRad")
-    rep += QString::number(xtal->getGamma() * DEG_TO_RAD);
+    rep += QString::number(xtal->getGamma() * DEG2RAD);
   else if (line == "alphaDeg")
     rep += QString::number(xtal->getAlpha());
   else if (line == "betaDeg")
@@ -3608,6 +3415,17 @@ void XtalOpt::interpretKeyword(QString& line, Structure* structure)
       rep += QString::number(coords.y()) + " ";
       rep += QString::number(coords.z()) + "\n";
     }
+  } else if (line == "coordsFracIndex") {
+    const std::vector<Atom>& atoms = structure->atoms();
+    std::vector<Atom>::const_iterator it;
+    int tag = 0;
+    for (it = atoms.begin(); it != atoms.end(); it++) {
+      const Vector3 coords = xtal->cartToFrac((*it).pos());
+      rep += QString::number(tag++) + " ";
+      rep += QString::number(coords.x()) + " ";
+      rep += QString::number(coords.y()) + " ";
+      rep += QString::number(coords.z()) + "\n";
+    }
   } else if (line == "gulpFracShell") {
     const std::vector<Atom>& atoms = structure->atoms();
     std::vector<Atom>::const_iterator it;
@@ -3656,24 +3474,24 @@ void XtalOpt::interpretKeyword(QString& line, Structure* structure)
     Matrix3 m = xtal->unitCell().cellMatrix();
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
-        rep += QString::number(m(i, j) * ANGSTROM_TO_BOHR) + "\t";
+        rep += QString::number(m(i, j) * ANG2BOHR) + "\t";
       }
       rep += "\n";
     }
   } else if (line == "cellVector1Bohr") {
     Vector3 v = xtal->unitCell().aVector();
     for (int i = 0; i < 3; i++) {
-      rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
+      rep += QString::number(v[i] * ANG2BOHR) + "\t";
     }
   } else if (line == "cellVector2Bohr") {
     Vector3 v = xtal->unitCell().bVector();
     for (int i = 0; i < 3; i++) {
-      rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
+      rep += QString::number(v[i] * ANG2BOHR) + "\t";
     }
   } else if (line == "cellVector3Bohr") {
     Vector3 v = xtal->unitCell().cVector();
     for (int i = 0; i < 3; i++) {
-      rep += QString::number(v[i] * ANGSTROM_TO_BOHR) + "\t";
+      rep += QString::number(v[i] * ANG2BOHR) + "\t";
     }
   } else if (line == "POSCAR") {
     rep += xtal->toPOSCAR();
@@ -3705,6 +3523,8 @@ QString XtalOpt::getTemplateKeywordHelp_xtalopt()
   out << "Crystal specific information:\n"
       << "%POSCAR% -- VASP poscar generator\n"
       << "%coordsFrac% -- fractional coordinate data\n\t[symbol] [x] [y] [z]\n"
+      << "%coordsFracIndex% -- fractional coordinate data with order index\n"
+         "\t[index: 0..number of atoms] [x] [y] [z]\n"
       << "%coordsFracId% -- fractional coordinate data with atomic "
          "number\n\t[symbol] [atomic number] [x] [y] [z]\n"
       << "%gulpFracShell% -- fractional coordinates for use in GULP core/shell "
@@ -3853,6 +3673,12 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
   // path to resume file
   QDir dataDir = stateInfo.absoluteDir();
   QString dataPath = dataDir.absolutePath() + "/";
+
+#ifdef XTALOPT_DEBUG
+  // Setup the message handler for the run log file
+  saveLogFileOfRun(dataPath);
+#endif
+
   // list of xtal dirs
   QStringList xtalDirs =
     dataDir.entryList(QStringList(), QDir::AllDirs, QDir::Size);
@@ -3868,7 +3694,7 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
     }
   }
 
-  // Set filePath:
+  // Set locWorkDir:
   QString newFilePath = dataPath;
   QString newFileBase = filename;
   newFileBase.remove(newFilePath);
@@ -3936,7 +3762,7 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
     xtal->moveToThread(m_tracker->thread());
     xtal->setupConnections();
 
-    xtal->setFileName(dataPath + "/" + xtalDirs.at(i) + "/");
+    xtal->setLocpath(dataPath + "/" + xtalDirs.at(i) + "/");
     // The "true" in the second parameter tells it to read current structure
     // info. This sets current cell info, atom info, enthalpy, energy, & PV
     xtal->readSettings(xtalStateFileName, true);
@@ -3966,13 +3792,11 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
       settings->value("structure/parentStructure", "").toString();
     if (!parentStructureString.isEmpty()) {
       for (size_t i = 0; i < loadedStructures.size(); i++) {
-        QString compare =
-          QString::number(loadedStructures.at(i)->getGeneration()) + "x" +
-          QString::number(loadedStructures.at(i)->getIDNumber());
         // If the xtal skipped optimization, we don't want to count it
         // We also only want to count finished structures...
-        if (parentStructureString == compare && !xtal->skippedOptimization() &&
-            (xtal->getStatus() == Xtal::Duplicate ||
+        if (parentStructureString == loadedStructures.at(i)->getTag() && 
+             !xtal->skippedOptimization() &&
+             (xtal->getStatus() == Xtal::Duplicate ||
              xtal->getStatus() == Xtal::Supercell ||
              xtal->getStatus() == Xtal::Optimized)) {
           xtal->setParentStructure(loadedStructures.at(i));
@@ -3995,7 +3819,7 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
     QString warningMsg = tr("structure.state file was not saved "
                             "successfully for %1. This structure will be "
                             "excluded.")
-                           .arg(xtal->fileName());
+                           .arg(xtal->getLocpath());
 
     // version == -1 implies that the save failed.
     if (version == -1) {
@@ -4117,7 +3941,7 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
   }
 
   // Reset the local file path information in case the files have moved
-  filePath = newFilePath;
+  locWorkDir = newFilePath;
 
   Structure* s = 0;
   emit disablePlotUpdate();
@@ -4154,7 +3978,7 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
                    "submitting jobs and resume the search? (Answering "
                    "\"No\" will enter read-only mode.)")
                   .arg(description)
-                  .arg(filePath),
+                  .arg(locWorkDir),
                 &resume);
 
     readOnly = !resume;
@@ -4205,7 +4029,7 @@ bool XtalOpt::plotDir(const QDir& dataDir)
 
     Xtal* xtal = new Xtal();
 
-    xtal->setFileName(dataDir.absolutePath() + "/" + xtalDirs.at(i) + "/");
+    xtal->setLocpath(dataDir.absolutePath() + "/" + xtalDirs.at(i) + "/");
     // The "true" in the second parameter tells it to read current structure
     // info. This sets current cell info, atom info, enthalpy, energy, & PV
     xtal->readSettings(xtalStateFileName, true);
@@ -4240,7 +4064,7 @@ bool XtalOpt::plotDir(const QDir& dataDir)
     QString warningMsg = tr("structure.state file was not saved "
                             "successfully for %1. This structure will be "
                             "excluded.")
-                           .arg(xtal->fileName());
+                           .arg(xtal->getLocpath());
 
     if (!saveSuccessful) {
       // Check the structure.state.old file if this was not saved
@@ -4359,6 +4183,279 @@ void XtalOpt::resetDuplicates_()
     xtal->structureChanged(); // Reset cached comparisons
   }
   checkForDuplicates();
+}
+
+void XtalOpt::getScaledVolumePerFU(double& scl_min, double& scl_max,
+                                   double& vol_min, double& vol_max)
+{
+  // This function returns the scaled factors (if any adjustment is needed),
+  //   and the min/max of volume per FU as the total vdW spheres' volumes
+  //   times the scaling factors.
+  // It takes effect only if the composition is set!
+  QList<uint> atomicNums = this->comp.keys();
+  if (atomicNums.size() == 0)
+    return;
+
+  // First, find the equivalent vdW volume per FU
+  double vdw_vol = 0.0;
+  for (int i = 0; i < atomicNums.size(); i++)
+    if (atomicNums[i] != 0) {
+      double q = this->comp.value(atomicNums[i]).quantity;
+      double r = ElemInfoDatabase::_vdwRadii[atomicNums[i]];
+      vdw_vol += q * 4.0 / 3.0 * PI * pow(r, 3.0);
+    }
+  if (vdw_vol < ZERO5)
+    return;
+
+  // Now, sort out the situation with scaling factors
+  if (scl_min < ZERO5 && scl_max > ZERO5) {
+    vol_min = 1.0;
+    vol_max = vdw_vol * scl_max;
+  } else if (scl_min > ZERO5 && scl_max < scl_min) {
+    scl_max = scl_min;
+    vol_min = vdw_vol * scl_min;
+    vol_max = vdw_vol * scl_max;
+  } else if (scl_min > ZERO5 && scl_max > ZERO5) {
+    vol_min = vdw_vol * scl_min;
+    vol_max = vdw_vol * scl_max;
+  }
+}
+
+bool XtalOpt::processObjectivesInfo()
+{
+  // This function processes the objective/aflow-hardness entries from the CLI
+  //   or GUI input. It reads the input info, initiates weights and output files
+  //   (which are optional in CLI mode), sets flags and variables for
+  //    multi-objective run; then, calls the "processObjectivesWeights" function.
+  //
+  // From now on, aflow-hardness is being treated just as one of the objectives:
+  //      opt_typ = hardness
+  //      weight  = input (default value of -1.0)
+  //      no script path or output file name is needed
+  // Internally, though, the same old flags are set since the nature of the
+  //      aflow-hardness calculations is not similar to that of user-defined objectives.
+  //      As a result, m_objectives_num ONLY includes non-aflow-hardness objectives.
+
+  // Initialize the temp value for *legacy* aflow-hardness flags,
+  //      the weight will be adjusted in processObjectivesWeight
+  m_calculateHardness     = false;  // no aflow-hardness calculations
+  m_hardnessFitnessWeight = -1.0;   // no weight is given
+
+  // This needs to be done: this function might be
+  //   called more than once in gui mode
+  resetObjectives();
+
+  int objnum = 0; // Counter for non-aflow-hardness objectives
+  for (int i = 0; i < objectiveListSize(); i++)
+  {
+    QString     line  = objectiveListGet(i);
+    QStringList sline = line.split(" ", QString::SkipEmptyParts);
+    int nparam = sline.size();
+    // There should be at least one entry in the input!
+    if (nparam < 1)
+    { qDebug() << "Error: objectives are not properly initiated: " << line; return false; }
+    // Initializing some temporary variables;
+    //   first parameter in the input entry is always optimization type: min/max/fil/har
+    QString tmps = sline.at(0).toLower().mid(0,3);
+    ObjectivesType objtyp = (tmps == "min") ? ObjectivesType::Ot_Min :
+      ((tmps == "max") ? ObjectivesType::Ot_Max : ((tmps == "fil" ) ?
+      ObjectivesType::Ot_Fil : ObjectivesType::Ot_Har ));
+    QString objout = "objective" + QString::number(objnum+1) + ".out";
+    QString objexe = "none";
+    double  objwgt = -1.0;
+    //
+    bool   isNumber;
+    double vline;
+    // aflow-hardness might have only 1 entry (opt type), the rest should have at least 2
+    //   (opt type and executable paht; output file and weight optional in CLI).
+    if (objtyp != ObjectivesType::Ot_Har && nparam < 2)
+    { qDebug() << "Error: objectives are not properly initiated: " << line; return false; }
+    // Start by handling aflow-hardness entry (if any!)
+    if (objtyp == ObjectivesType::Ot_Har)
+    {
+      m_calculateHardness = true;
+      // Check if aflow-hardness weight is given
+      for (int j = 1; j < nparam; j++)
+      {
+        vline = sline.at(j).toDouble(&isNumber);
+        if (isNumber && vline >= 0.0)
+          m_hardnessFitnessWeight = vline;
+      }
+    }
+    // Now, the rest of optimization types (min/max/fil)
+    else
+    {
+      objexe = sline.at(1); // The second field is always the script path. Now, read
+                            //   the optional fields of output file and weight if they are
+                            //   given; otherwise, they will remain with their default values.
+      switch(nparam) {
+        case 3: // 3rd item might be weight or output filename
+          vline = sline.at(2).toDouble(&isNumber);
+          if (isNumber && vline >= 0.0)
+            objwgt = vline;
+          else
+            objout = sline.at(2);
+          break;
+        case 4: // one of them is weight and one is output filename
+          vline = sline.at(2).toDouble(&isNumber);
+          if (isNumber && vline >= 0.0) {
+            objwgt = vline;
+            objout = sline.at(3);
+          }
+          else {
+            objwgt = (sline.at(3).toDouble() >= 0.0) ? sline.at(3).toDouble() : -1.0;
+            objout = sline.at(2);
+          }
+          break;
+        default:
+          break;
+      }
+
+      // We have collected all the info! Add to the list of objectives
+      setObjectivesTyp(objtyp);
+      setObjectivesExe(objexe);
+      setObjectivesOut(objout);
+      setObjectivesWgt(objwgt);
+
+      // So, we have a non-aflow-hardness objective; add to the counter
+      objnum++;
+    }
+  }
+
+  setObjectivesNum(objnum);
+
+  // Process weights and initialize unspecified weights
+  return processObjectivesWeights();
+}
+
+bool XtalOpt::processObjectivesWeights()
+{
+  // This function adjusts the weights and performs some sanity checks on the
+  //   objectives' data.
+  //
+  // Essentially, objectives/aflow-hardness can have weights of 0.0 <= w <= 1.0.
+  //     The 0.0 is to allow the objective being calculated while not enter
+  //     the optimization. Here, we want to treat unspecified weights, and
+  //     make sure the total optimization weight is fine (0.0<=total_w<=1.0).
+  //
+  // Arriving here from the processObjectivesInfo(), every objective
+  //     (including aflow-hardness) that has a weight of -1.0, means that
+  //     its weight is unspecified by the user, and we take care of it here!
+  //
+  // To not have a chance of affecting the optimization,
+  //     weight for filtering objectives will be set to 0.0
+  //
+  // For aflow-hardness; the weight will be set to "-1.0" if
+  //     no aflow-hardness calculation
+  //
+  // Otherwise, initialization of unspecified weights depends on aflow-hardness,
+  //     and on the number of objectives with weight of -1.0. Basically, we divide
+  //     the (1.0-total_non_zero_weight) between optimizable objectives, i.e.,
+  //     enthalpy and objectives (and possibly aflow-hardness) without weight.
+  //
+  // We always have enthalpy as a objective with a weight which is not predetermined.
+  //     So, the number of optimizable objectives with unspecified weight,
+  //     cparam, starts from 1. If we have aflow-hardness calculations and
+  //     its weight is still -1 (i.e., not specified), cparam = 2.
+  //     Next, we examine non-filter objectives for those without given weight.
+
+  int    cparam      = 1; // # of objectives of unspecified weights; always count enthalpy!
+  double totalweight = 0.0;
+
+  // Initiate some temporary variables
+  int                   objnum = getObjectivesNum();
+  QList<ObjectivesType> objtyp = {};
+  QStringList           objout = {};
+  QStringList           objexe = {};
+  QList<double>         objwgt = {};
+  for (int i = 0; i < objnum; i++) {
+    objtyp.push_back(getObjectivesTyp(i));
+    objout.push_back(getObjectivesOut(i));
+    objexe.push_back(getObjectivesExe(i));
+    objwgt.push_back(getObjectivesWgt(i));
+  }
+
+  // If aflow-hardness, analyse its weight
+  if (m_calculateHardness) {
+    if (m_hardnessFitnessWeight >= 0.0)
+      totalweight += m_hardnessFitnessWeight;
+    else // We have aflow-hardness with unspecified weight
+      cparam += 1;
+  }
+
+  // Find objectives with unspecified weight
+  //   (and set the weight for the filtration objectives to 0.0)
+  for (int i = 0; i < objnum; i++)
+    if (objtyp[i] == ObjectivesType::Ot_Fil)
+      objwgt[i] = 0.0;
+    else {
+    if (objwgt[i] >= 0.0)
+      totalweight += objwgt[i];
+    else // We have an objective with unspecified weight
+      cparam += 1;
+    }
+
+  // Initialize hardness weight if it's unspecified (=-1.0)
+  //   and if hardness calculation
+  if (m_calculateHardness && m_hardnessFitnessWeight < 0.0)
+    m_hardnessFitnessWeight = (1.0 - totalweight) / (double)(cparam);
+
+  // Initialize objectives with unspecified weight
+  //   (weight=-1.0 as for filtering it's already set to 0.0)
+  for (int i = 0; i < objnum; i++)
+    if (objwgt[i] < 0.0)
+      objwgt[i] = (1.0 - totalweight) / (double)(cparam);
+
+  // Here, everything should be sorted out! Weights must be either 0.0 or
+  //     some value less than 1.0, while the total optimization weight is <=1.0.
+  //     Now, perform a sanity check to make sure that this is the case.
+  totalweight = 0.0;
+  if (m_calculateHardness) {
+    if (m_hardnessFitnessWeight < 0.0) {
+      error(tr("Weight for aflow-hardness can't be negative ( %1 )")
+          .arg(m_hardnessFitnessWeight));
+      return false;
+    } else {
+      totalweight += m_hardnessFitnessWeight;
+    }
+  }
+  for (int i = 0; i < objnum; i++)
+  {
+    if (objwgt[i] < 0.0) {
+      error(tr("Weights of objectives can't be negative ( %1 : %2 )")
+          .arg(i+1).arg(objwgt[i]));
+      return false;
+    } else {
+      totalweight += objwgt[i];
+    }
+  }
+  if ((totalweight < 0.0) || (totalweight > 1.0))
+  {
+    error(tr("Total weight for objectives can't be negative or exceed 1.0 ( %1 )")
+       .arg(totalweight));
+    return false;
+  }
+
+  // Finally, re-construct objectives list; this is to make gui table look nice!
+  objectiveListClear();
+  if (m_calculateHardness)
+    objectiveListAdd("hardness  N/A  N/A  " + QString::number(m_hardnessFitnessWeight));
+
+  resetObjectives();
+  m_calculateObjectives = (objnum > 0) ? true : false;
+  setObjectivesNum(objnum);
+  for (int i = 0; i < objnum; i++)
+  {
+    QString opttype = (objtyp[i] == ObjectivesType::Ot_Min) ? "minimization" :
+      ((objtyp[i] == ObjectivesType::Ot_Max) ? "maximization" : "filtration");
+    setObjectivesTyp(objtyp[i]);
+    setObjectivesExe(objexe[i]);
+    setObjectivesOut(objout[i]);
+    setObjectivesWgt(objwgt[i]);
+    objectiveListAdd(opttype + " " + objexe[i] + " " + objout[i] + " " + QString::number(objwgt[i]));
+  }
+
+  return true;
 }
 
 // Helper struct for the map below
@@ -4833,7 +4930,7 @@ QString XtalOpt::getGeom(int numNeighbors, int geom)
 
 void XtalOpt::printOptionSettings(QTextStream& stream) const
 {
-  stream << "Initialization settings:\n";
+  stream << "\n=== Initialization Settings";
 
   stream << "\n  Composition: \n";
   for (const auto& key : comp.keys()) {
@@ -4868,6 +4965,9 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
 
   stream << "\n  volumeMin: " << vol_min << "\n";
   stream << "  volumeMax: " << vol_max << "\n";
+
+  stream << "\n  volumeScaleMin: " << vol_scale_min << "\n";
+  stream << "  volumeScaleMax: " << vol_scale_max << "\n";
 
   stream << "\n  usingRadiiInteratomicDistanceLimit: "
          << toString(using_interatomicDistanceLimit) << "\n";
@@ -4926,7 +5026,7 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
     }
   }
 
-  stream << "\nSearch settings: \n";
+  stream << "\n=== Search Settings\n";
   stream << "  numInitial: " << numInitial << "\n";
   stream << "  popSize: " << popSize << "\n";
   stream << "  limitRunningJobs: " << toString(limitRunningJobs) << "\n";
@@ -4948,12 +5048,6 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
     stream << "Unknown fail action\n";
 
   stream << "  maxNumStructures: " << cutoff << "\n";
-
-  stream << "  calculateHardness: " << toString(m_calculateHardness) << "\n";
-
-  if (m_calculateHardness) {
-    stream << "  hardnessFitnessWeight: " << m_hardnessFitnessWeight << "\n";
-  }
 
   stream << "\n  usingMitoticGrowth: " << toString(using_mitotic_growth)
          << "\n";
@@ -4989,7 +5083,8 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
 
   stream << "\n  spglibTolerance: " << tol_spg << "\n";
 
-  stream << "\nQueue Interface Settings: \n";
+  stream << "\n=== Queue Interface Settings\n";
+  stream << "  localQueue: " << toString(m_localQueue) << "\n";
 
   bool anyRemote = false;
   for (size_t i = 0; i < getNumOptSteps(); ++i) {
@@ -5015,17 +5110,17 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
   }
 
   if (anyRemote) {
-    stream << "\n  remoteQueueSettings: \n";
+    stream << "\n=== Remote Queue Settings\n";
     stream << "    host: " << host << "\n";
     stream << "    port: " << port << "\n";
     stream << "    username: " << username << "\n";
-    stream << "    remoteWorkingDirectory: " << rempath << "\n";
+    stream << "    remoteWorkingDirectory: " << remWorkDir << "\n";
     stream << "    queueRefreshInterval: " << queueRefreshInterval() << "\n";
     stream << "    cleanRemoteDirs: " << toString(cleanRemoteOnStop()) << "\n";
   }
 
-  stream << "\n  localQueueSettings: \n";
-  stream << "  localWorkingDirectory: " << filePath << "\n";
+  stream << "\n=== Local Queue Settings\n";
+  stream << "  localWorkingDirectory: " << locWorkDir << "\n";
   stream << "  logErrorDirectories: " << toString(m_logErrorDirs) << "\n";
 
   stream << "  autoCancelJobAfterTime: " << toString(m_cancelJobAfterTime)
@@ -5035,7 +5130,7 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
            << "\n";
   }
 
-  stream << "\nOptimizer settings:\n";
+  stream << "\n=== Optimizer Settings\n";
 
   for (size_t i = 0; i < getNumOptSteps(); ++i) {
     stream << " OptStep " << i + 1 << "\n";
@@ -5046,6 +5141,22 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
       stream << "  optimizer: " << opt->getIDString() << "\n";
     }
   }
+
+  // Write multi-objective (and exit) stuff
+  stream << "\n=== Run Termination Settings\n";
+  stream << "  softExit: " << toString(m_softExit) << "\n";
+  stream << "\n=== Multi-Objective Settings\n";
+  stream << "  objectivesNum: " << QString::number(getObjectivesNum()) << "\n";
+  stream << "  objectivesReDo: " << toString(m_objectivesReDo) << "\n";
+  for (int i = 0; i < getObjectivesNum(); i++)
+    stream << "  objective" << i+1 << ": " << QString::number(getObjectivesTyp(i)) << "  "
+      << getObjectivesExe(i) << "  " << getObjectivesOut(i) << "  " << getObjectivesWgt(i) << "\n";
+  stream << "  calculateHardness: " << toString(m_calculateHardness) << "\n";
+  if (m_calculateHardness) {
+    stream << "  hardnessFitnessWeight: " << m_hardnessFitnessWeight << "\n";
+  }
+
+  stream << "\n====================================================\n";
 }
 
 void XtalOpt::setupRpcConnections()

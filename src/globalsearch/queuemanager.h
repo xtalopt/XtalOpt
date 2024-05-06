@@ -70,15 +70,15 @@ newStructure->setParents(parents);
 QString id_s, gen_s, locpath_s, rempath_s;
 id_s.sprintf("%05d",structure->getIDNumber());
 gen_s.sprintf("%05d",structure->getGeneration());
-locpath_s = filePath + "/" + gen_s + "x" + id_s + "/";
-rempath_s = rempath + "/" + gen_s + "x" + id_s + "/";
+locpath_s = locWorkDir + "/" + gen_s + "x" + id_s + "/";
+rempath_s = remWorkDir + "/" + gen_s + "x" + id_s + "/";
 QDir dir (locpath_s);
 if (!dir.exists()) {
 if (!dir.mkpath(locpath_s)) {
   // Output error
 }
 }
-newStructure->setFileName(locpath_s);
+newStructure->setLocpath(locpath_s);
 newStructure->setRempath(rempath_s);
 newStructure->setCurrentOptStep(0);
 newStructure->findSpaceGroup();
@@ -109,6 +109,13 @@ public:
   virtual ~QueueManager();
 
 signals:
+  /**
+  * Emitted when a structure has successfully finished
+  * all optimization steps and is ready for objective calculation
+  * @param s Structure
+  */
+  void readyForObjectiveCalculations(GlobalSearch::Structure* s);
+
   /**
    * Emitted when the QueueManager has been moved to it's final
    * thread and is ready to accept connections.
@@ -168,7 +175,7 @@ signals:
    * for optimization)
    * @param failing Number of structures with a getFailCount() > 0
    */
-  void newStatusOverview(int optimized, int running, int failing);
+  void newStatusOverview(int optimized, int running, int failing, int total);
 
 // Work around for Qt 4.6.3
 #if QT_VERSION == 0x040603
@@ -273,6 +280,14 @@ public slots:
 
 protected slots:
   /**
+   * Check for the status of finished objective/aflow-hardness
+   * calculations, and label the structure accordingly for
+   * further processing with appropriate handler.
+   * @param s Structure whose objectives/aflow-hardness is calculated
+   */
+  void updateStructureObjectiveState(Structure* s);
+
+  /**
    * This is called automatically when the QueueManager is
    * started. This function sets up a simple event loop that will
    * run checkPopulation and checkRunning regularly.
@@ -376,6 +391,13 @@ protected:
   void checkPopulation();
 
   /**
+   * Check the conditions for soft/hard exit.
+   * For a soft exit, checks for no running/pending jobs and quit with a delay.
+   * For a hard exit, the acting function will be called for an immediate quit.
+   */
+  void checkExit();
+
+  /**
    * Monitors the Structures in getAllRunningStructures() and
    * updates their statuses if they've changed.
    *
@@ -475,6 +497,28 @@ protected:
    */
   void handleRestartStructure(Structure* s);
 
+  /**
+   * Perform actions on a structure that has successfully
+   * finished objective/aflow-hardness calculations
+   *
+   * @param s Structure whose objectives/aflow-hardness is calculated
+   */
+  void handleRetainObjective(Structure* s);
+
+  /**
+   * Perform actions on a structure dismissed by a filtering objective
+   *
+   * @param s Structure whose objectives/aflow-hardness is calculated
+   */
+  void handleDismissObjective(Structure* s);
+
+  /**
+   * Perform actions on a structure failed in objective calculation
+   *
+   * @param s Structure whose objectives/aflow-hardness is calculated
+   */
+  void handleFailObjective(Structure* s);
+
   // These run in the background and are called by the above
   // functions via QtConcurrent::run.
   /// @cond
@@ -487,6 +531,9 @@ protected:
   void handleDuplicateStructure_(Structure* s);
   void handleSupercellStructure_(Structure* s);
   void handleRestartStructure_(Structure* s);
+  void handleRetainObjective_(Structure* s);
+  void handleFailObjective_(Structure* s);
+  void handleDismissObjective_(Structure* s);
   /// @endcond
 
   // Other background handlers
@@ -515,6 +562,9 @@ protected:
   Tracker m_newSupercellTracker;
   Tracker m_restartTracker;
   Tracker m_newSubmissionTracker;
+  Tracker m_objectiveRetainTracker;
+  Tracker m_objectiveFailTracker;
+  Tracker m_objectiveDismissTracker;
   /// @endcond
 
   /// Tracks which structures are currently running

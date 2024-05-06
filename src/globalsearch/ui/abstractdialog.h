@@ -53,6 +53,7 @@ class Structure;
   ui_push_resume  = ui.push_resume;
   ui_label_opt    = ui.label_opt;
   ui_label_run    = ui.label_run;
+  ui_label_tot    = ui.label_tot;
   ui_label_fail   = ui.label_fail;
   ui_label_prog   = ui.label_prog;
   ui_progbar      = ui.progbar;
@@ -183,7 +184,7 @@ public slots:
   };
 
   /**
-   * Saves resume information to a state file in OptBase::filePath.
+   * Saves resume information to a state file in OptBase::locWorkDir.
    *
    * This should look something like:
 @verbatim
@@ -211,9 +212,9 @@ void DerivedDialog::saveSession() {
    * @param run Number of running structures
    * @param fail Number of failing structures
    */
-  void updateStatus(int opt, int run, int fail)
+  void updateStatus(int opt, int run, int fail, int total)
   {
-    emit sig_updateStatus(opt, run, fail);
+    emit sig_updateStatus(opt, run, fail, total);
   };
 
   /**
@@ -369,7 +370,7 @@ void DerivedDialog::startSearch() {
    * appropriate thread.
    * @sa updateStatus
    */
-  void updateStatus_(int, int, int);
+  void updateStatus_(int, int, int, int);
 
   /**
    * Hidden call. Ensures that the GUI is modified from the
@@ -484,7 +485,7 @@ signals:
    * appropriate thread.
    * @sa updateStatus
    */
-  void sig_updateStatus(int, int, int);
+  void sig_updateStatus(int, int, int, int);
 
   /**
    * Hidden call. Ensures that the GUI is modified from the
@@ -606,6 +607,13 @@ protected:
    * @note This must be set up in the derived-constructor. See class
    * description.
    */
+  QPushButton* ui_push_hide;
+
+  /**
+   * Pointer to GUI element. Do not use in derived class code.
+   * @note This must be set up in the derived-constructor. See class
+   * description.
+   */
   QLabel* ui_label_opt;
 
   /**
@@ -614,6 +622,13 @@ protected:
    * description.
    */
   QLabel* ui_label_run;
+
+  /**
+   * Pointer to GUI element. Do not use in derived class code.
+   * @note This must be set up in the derived-constructor. See class
+   * description.
+   */
+  QLabel* ui_label_tot;
 
   /**
    * Pointer to GUI element. Do not use in derived class code.

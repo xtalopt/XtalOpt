@@ -17,6 +17,7 @@
 #include <gapc/gapc.h>
 #include <gapc/ui/dialog.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/macros.h>
 
 #include <QDebug>
@@ -181,7 +182,7 @@ void TabOpt::readSettings(const QString& filename)
 
   // Duplicates
   ui.spin_tol_enthalpy->setValue(
-    settings->value("tol/enthalpy", 1e-2).toDouble());
+    settings->value("tol/enthalpy", ZERO2).toDouble());
   ui.spin_tol_geo->setValue(settings->value("tol/geo", 5e2).toDouble());
 
   // Crossover
@@ -361,7 +362,7 @@ void TabOpt::addSeed(QListWidgetItem* item)
   if (replace) {
     filename = item->text();
   } else {
-    filename = settings.value("gapc/opt/seedPath", m_opt->filePath).toString();
+    filename = settings.value("gapc/opt/seedPath", m_opt->locWorkDir).toString();
   }
 
   // Launch file dialog

@@ -19,7 +19,7 @@
 
 #include <globalsearch/sshmanager.h>
 
-class QSemaphore;
+#include <QSemaphore>
 
 namespace GlobalSearch {
 class OptBase;

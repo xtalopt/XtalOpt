@@ -109,8 +109,7 @@ bool GenerateXrd::generateXrdPattern(const Structure& s, XrdData& results,
 
   if (!CmlFormat::write(s, cml)) {
     qDebug() << "Error in" << __FUNCTION__ << ": failed to convert structure'"
-             << s.getGeneration() << "x" << s.getIDNumber() << "' to CML"
-             << "format!";
+             << s.getTag() << "' to CML format!";
     return false;
   }
 

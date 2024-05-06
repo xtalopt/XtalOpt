@@ -54,10 +54,11 @@ LocalQueueInterfaceConfigDialog::LocalQueueInterfaceConfigDialog(
   // Create workdir prompt
   m_workdir_layout = new QHBoxLayout();
 
-  m_label1 = new QLabel(tr("Local working directory:"), this);
+  m_label1 = new QLabel(tr("Local working directory:   "), this);
   m_workdir_layout->addWidget(m_label1);
 
   m_edit_workdir = new QLineEdit(this);
+  m_edit_workdir->setMinimumWidth(350);
   m_workdir_layout->addWidget(m_edit_workdir);
 
   m_vlayout->addItem(m_workdir_layout);
@@ -65,7 +66,7 @@ LocalQueueInterfaceConfigDialog::LocalQueueInterfaceConfigDialog(
   // Create description prompt
   m_desc_layout = new QHBoxLayout();
 
-  m_label2 = new QLabel(tr("Search description:"), this);
+  m_label2 = new QLabel(tr("Search description:   "), this);
   m_desc_layout->addWidget(m_label2);
 
   m_edit_description = new QLineEdit(this);
@@ -80,7 +81,7 @@ LocalQueueInterfaceConfigDialog::LocalQueueInterfaceConfigDialog(
   m_cb_logErrorDirs->setChecked(m_opt->m_logErrorDirs);
   QString toolTip = tr("When a job fails or has to restart for any reason,"
                        "\nif this is checked, it will create a copy of the "
-                       "\nfailed job directory in <localpath>/errorDirs. "
+                       "\nfailed job directory in <localworkdir>/errorDirs. "
                        "\nThis can assist in figuring out why a job failed. "
                        "\nNote that if a job fails twice, the second "
                        "\nfailure will overwrite the first one.");
@@ -116,7 +117,7 @@ LocalQueueInterfaceConfigDialog::~LocalQueueInterfaceConfigDialog()
 
 void LocalQueueInterfaceConfigDialog::accept()
 {
-  m_opt->filePath = m_edit_workdir->text().trimmed();
+  m_opt->locWorkDir = m_edit_workdir->text().trimmed();
   m_opt->description = m_edit_description->text().trimmed();
   m_opt->m_logErrorDirs = m_cb_logErrorDirs->isChecked();
   QDialog::accept();
@@ -132,7 +133,7 @@ void LocalQueueInterfaceConfigDialog::reject()
 
 void LocalQueueInterfaceConfigDialog::updateGUI()
 {
-  m_edit_workdir->setText(m_opt->filePath);
+  m_edit_workdir->setText(m_opt->locWorkDir);
   m_edit_description->setText(m_opt->description);
 }
 

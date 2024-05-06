@@ -15,15 +15,20 @@
 #
 
 MACRO(_libssh_check_version)
-  file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/libssh.h LIBSSH_VERSION_MAJOR
+  if(EXISTS ${LIBSSH_INCLUDE_DIRS}/libssh/libssh_version.h)
+    set(verlibssh "libssh_version.h")
+  else()
+    set(verlibssh "libssh.h")
+  endif()
+  file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/${verlibssh} LIBSSH_VERSION_MAJOR
     REGEX "#define[ ]+LIBSSH_VERSION_MAJOR[ ]+[0-9]+")
   # Older versions of libssh like libssh-0.2 have LIBSSH_VERSION but not LIBSSH_VERSION_MAJOR
   if (LIBSSH_VERSION_MAJOR)
     string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_MAJOR ${LIBSSH_VERSION_MAJOR})
-          file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/libssh.h LIBSSH_VERSION_MINOR
+          file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/${verlibssh} LIBSSH_VERSION_MINOR
          REGEX "#define[ ]+LIBSSH_VERSION_MINOR[ ]+[0-9]+")
           string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_MINOR ${LIBSSH_VERSION_MINOR})
-          file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/libssh.h LIBSSH_VERSION_PATCH
+          file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/${verlibssh} LIBSSH_VERSION_PATCH
          REGEX "#define[ ]+LIBSSH_VERSION_MICRO[ ]+[0-9]+")
   	string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_PATCH ${LIBSSH_VERSION_PATCH})
 
@@ -32,7 +37,7 @@ MACRO(_libssh_check_version)
           include(FindPackageVersionCheck)
           find_package_version_check(LibSSH DEFAULT_MSG)
   else (LIBSSH_VERSION_MAJOR)
-    message(STATUS "LIBSSH_VERSION_MAJOR not found in ${LIBSSH_INCLUDE_DIRS}/libssh/libssh.h, assuming libssh is too old")
+    message(STATUS "LIBSSH_VERSION_MAJOR not found in ${LIBSSH_INCLUDE_DIRS}/libssh/${verlibssh}, assuming libssh is too old")
     set(LIBSSH_FOUND FALSE)
   endif (LIBSSH_VERSION_MAJOR)
 ENDMACRO(_libssh_check_version)

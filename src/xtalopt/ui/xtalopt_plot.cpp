@@ -19,7 +19,9 @@
 #include <QMouseEvent>
 
 #include <qwt_plot_canvas.h>
+#include <qwt_scale_map.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/utilities/makeunique.h>
 
 namespace XtalOpt {
@@ -279,7 +281,7 @@ void XtalOptPlot::shiftMarkerCursor(int direction)
 
   QwtPlotMarker* selection = nullptr;
 
-  double dist = 1e300;
+  double dist = PINF;
 
   const QwtPlotItemList& itmList = itemList();
   for (QwtPlotItemIterator it = itmList.begin(); it != itmList.end(); ++it) {

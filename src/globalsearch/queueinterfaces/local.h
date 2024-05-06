@@ -157,6 +157,38 @@ public slots:
   virtual bool prepareForStructureUpdate(Structure* s) const override;
 
   /**
+   *  Runs a command (e.g., bash command or script) in a local path.
+   *
+   * @param workdir Workind directory for the command
+   * @param command The command
+   * @param sout The stdout string
+   * @param serr The stderr string
+   * @param ercd The exit error code
+   *
+   * @return For a local run, always returns True.
+   */
+  virtual bool runACommand(const QString& workdir, const QString& command,
+                           QString* sout, QString* serr, int* ercd) const override;
+
+  /**
+   * This is a dummy function! If called while the run is 'local', it does nothing!
+   *
+   * @param rem_file Full path to the file to be copied (a remote path)
+   * @param loc_file Full path to the destination file (a local path)
+   */
+  virtual bool copyAFileRemoteToLocal(const QString& rem_file,
+                                      const QString& loc_file) override;
+
+  /**
+   * This is a dummy function! If called while the run is 'local', it does nothing!
+   *
+   * @param loc_file Full path to the file to be copied (a local path)
+   * @param rem_file Full path to the destination file (a remote path)
+   */
+  virtual bool copyAFileLocalToRemote(const QString& loc_file,
+                                      const QString& rem_file) override;
+
+  /**
    * Check if the file \a filename exists in the working directory
    * of Structure \a s and store the result in \a exists.
    *

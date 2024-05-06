@@ -17,7 +17,9 @@
 
 #include <cmath>
 
-#define STABLE_COMP_TOL 1e-5
+#include <globalsearch/constants.h>
+
+#define STABLE_COMP_TOL ZERO5
 
 namespace GlobalSearch {
 namespace StableComp {

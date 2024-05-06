@@ -16,6 +16,7 @@
 
 #include <pugixml/pugixml.hpp>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/structure.h>
 #include <globalsearch/utilities/utilityfunctions.h>
@@ -314,7 +315,7 @@ public:
 
           if (units) {
             if (std::string(units.value()) == "kJ/mol") {
-              energy *= KJ_PER_MOL_TO_EV;
+              energy *= KJMOL2EV;
             } else if (std::string(units.value()) == "eV") {
               // Do nothing...
             } else {

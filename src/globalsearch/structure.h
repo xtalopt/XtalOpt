@@ -26,10 +26,6 @@
 
 class QTextStream;
 
-// source: http://en.wikipedia.org/wiki/Electronvolt
-#define EV_TO_KJ_PER_MOL 96.4853365
-#define KJ_PER_MOL_TO_EV 0.0103642692
-
 namespace GlobalSearch {
 
 /**
@@ -92,6 +88,21 @@ public:
   Structure& operator=(const GlobalSearch::Molecule& other);
 
   /**
+   * Enum possible objective calculation outcomes for a structure
+   */
+  enum ObjectivesState
+  {
+    /** Objectives are not calculated */
+    Os_NotCalculated = 0,
+    /** Objectives are calculated, structure should be kept */
+    Os_Retain,
+    /** Objectives calculated, structure dismissed by a filtration objective */
+    Os_Dismiss,
+    /** Objective calculations failed (bad or missing output file, ...) */
+    Os_Fail
+  };
+
+  /**
    * Enum containing possible optimization statuses.
    * @sa setStatus
    * @sa getStatus
@@ -137,10 +148,44 @@ public:
      * another. The other structure's information can be found in
      * getSupercellString(). */
     Supercell,
-    /** The Structure is about to restart it's current optimization
-     * step. */
-    Restart
+    /** The Structure is about to restart it's current optimization step. */
+    Restart,
+    /** Structure marked as dismissed in objective calculations. */
+    ObjectiveDismiss,
+    /** Objective calculations for the structure have failed. */
+    ObjectiveFail,
+    /** All objective/hardness calculations for structure are successfully finished. */
+    ObjectiveRetain,
+    /** Structure is in the process of objective calculations */
+    ObjectiveCalculation
   };
+
+  /**
+   * Multi-objective read/write functions for a structure
+   */
+  int          getStrucObjNumber() const       {return m_strucObjValues.size();};
+  double       getStrucObjValues(int i) const  {return m_strucObjValues.at(i);};
+  int          getStrucObjFailCt() const       {return m_strucObjFailCt;};
+  void         setStrucObjValues(double v)     {m_strucObjValues.push_back(v);};
+  void         setStrucObjFailCt(int i)        {m_strucObjFailCt = i;};
+  void         setStrucObjState(ObjectivesState v) {m_strucObjState = v;};
+  ObjectivesState getStrucObjState() const {return m_strucObjState;};
+  // we don't reset objective fail count; it might be a redone structure which shouldn't be repeated!
+  void          resetStrucObj() {m_strucObjValues.clear(); m_strucObjState = Structure::Os_NotCalculated;};
+  //
+  void          setStrucObjValuesVec(QList<double> v) {m_strucObjValues = v;};
+  QList<double> getStrucObjValuesVec()                {return m_strucObjValues;};
+  //
+  void resetStrucHistObj() {m_hist_strucObjValues.clear();
+    m_hist_strucObjState.clear(); m_hist_strucObjFailCt.clear();};
+  //
+  int           getStrucHistObjNumber()      {return m_hist_strucObjValues.size();};
+  QList<double> getStrucHistObjValues(int i) {return m_hist_strucObjValues.at(i);};
+  int           getStrucHistObjFailCt(int i) {return m_hist_strucObjFailCt.at(i);};
+  void          setStrucHistObjValues(QList<double> v) {m_hist_strucObjValues.push_back(v);};
+  void          setStrucHistObjState(ObjectivesState v) {m_hist_strucObjState.push_back(v);};
+  void          setStrucHistObjFailCt(int v) {m_hist_strucObjFailCt.push_back(v);};
+  ObjectivesState  getStrucHistObjState(int i) {return m_hist_strucObjState.at(i);};
 
   /** Whether the Structure has an enthalpy value set.
    * @return true if enthalpy has been set, false otherwise
@@ -249,7 +294,7 @@ public:
    * @sa getIndex
    * @sa setIDNumber
    * @sa setIndex
-   * @sa getIDString
+   * @sa getTag
    */
   uint getGeneration() const { return m_generation; };
 
@@ -263,7 +308,7 @@ public:
    * @sa getIndex
    * @sa setIDNumber
    * @sa setIndex
-   * @sa getIDString
+   * @sa getTag
    */
   uint getIDNumber() const { return m_id; };
 
@@ -276,7 +321,7 @@ public:
    * @sa getIndex
    * @sa setIDNumber
    * @sa getIDNumber
-   * @sa getIDString
+   * @sa getTag
    */
   int getIndex() const { return m_index; };
 
@@ -303,16 +348,15 @@ public:
    */
   QString getParents() const { return m_parents; };
 
-  /** @return The path on the remote server to write this Structure
-   * for optimization.
+  /** @return The path on the remote server for the Structure
    * @sa setRempath
    */
   QString getRempath() const { return m_rempath; };
 
-  /** @return The file name.
-   * @sa setFilename
+  /** @return The local path of the structure.
+   * @sa setLocpath
    */
-  QString fileName() const { return m_fileName; };
+  QString getLocpath() const { return m_locpath; };
 
   /** @return The current status of the Structure.
    * @sa setStatus
@@ -335,20 +379,6 @@ public:
 
   // Calculate and return the number of formula units
   uint getFormulaUnits() const;
-
-#ifdef ENABLE_MOLECULAR
-  /**
-   * Get the filename for the conformer from which this structure was
-   * created. Only applicable for molecular crystals.
-   */
-  std::string getParentConformer() { return m_parentConformer; }
-
-  /**
-   * Get the number of molecules in a molecular crystal. Returns -1 for
-   * atomistic crystals.
-   */
-  int getZValue() const { return m_zValue.load(); }
-#endif // ENABLE_MOLECULAR
 
   /** @return A pointer for the parent structure of a given structure
    */
@@ -390,7 +420,7 @@ public:
    * @sa setIDNumber
    * @sa getIDNumber
    */
-  QString getIDString() const
+  QString getTag() const
   {
     return tr("%1x%2").arg(getGeneration()).arg(getIDNumber());
   };
@@ -399,32 +429,36 @@ public:
    * @sa getResultsEntry
    * @sa OptBase::save
    */
-  virtual QString getResultsHeader(bool includeHardness) const
+  virtual QString getResultsHeader(bool includeHardness, int objectives_num) const
   {
-    if (!includeHardness) {
-      return QString("%1 %2 %3 %4 %5")
-        .arg("Rank", 6)
-        .arg("Gen", 6)
-        .arg("ID", 6)
-        .arg("Enthalpy", 10)
-        .arg("Status", 11);
-    }
-    else {
-      return QString("%1 %2 %3 %4 %5 %6")
-        .arg("Rank", 6)
-        .arg("Gen", 6)
-        .arg("ID", 6)
-        .arg("Enthalpy", 10)
-        .arg("Hardness", 10)
-        .arg("Status", 11);
-    }
-  };
+    QString out = QString("%1 %2 %3 %4 %5")
+      .arg("Rank", 6)
+      .arg("Gen", 6)
+      .arg("ID", 6)
+      .arg("INDX", 6)
+      .arg("Enthalpy", 10);
+    if (includeHardness)
+      out += QString("%1")
+        .arg("Hardness", 10);
+    for (int i = 0; i< objectives_num; i++)
+      out += QString("%1").arg("Objective"+QString::number(i+1), 11);
+    out += QString("%1")
+      .arg("Status", 11);
 
-  /** @return A structure-specific entry for a results printout
+    return out;
+  }
+
+  /** Add objectives info to history of the structure
+   * @param s Structure whose objective-related info is added to history
+   */
+  void updateAndAddObjectivesToHistory(Structure* s);
+
+  /** This function is changed for multi-objective case // SH
+   * @return A structure-specific entry for a results printout
    * @sa getResultsHeader
    * @sa OptBase::save
    */
-  virtual QString getResultsEntry(bool includeHardness) const;
+  virtual QString getResultsEntry(bool includeHardness, int objectives_num, int optstep) const;
 
   /** Find the smallest separation between all atoms in the
    * Structure.
@@ -862,6 +896,12 @@ public:
 
 signals:
 
+  /**
+   * Emitted when a objective's output file is found for a structure
+   *
+   */
+  void objectiveOutputExists();
+
 public slots:
 
   /**
@@ -1156,7 +1196,7 @@ public slots:
    * @sa getIndex
    * @sa setIDNumber
    * @sa getIDNumber
-   * @sa getIDString
+   * @sa getTag
    */
   void setGeneration(uint gen) { m_generation = gen; };
 
@@ -1170,7 +1210,7 @@ public slots:
    * @sa setIndex
    * @sa getIndex
    * @sa getIDNumber
-   * @sa getIDString
+   * @sa getTag
    */
   void setIDNumber(uint id) { m_id = id; };
 
@@ -1185,7 +1225,7 @@ public slots:
    * @sa getIndex
    * @sa setIDNumber
    * @sa getIDNumber
-   * @sa getIDString
+   * @sa getTag
    */
   void setIndex(int index) { m_index = index; };
 
@@ -1194,16 +1234,15 @@ public slots:
    */
   void setParents(const QString& p) { m_parents = p; };
 
-  /** @param p The path on the remote server to write this Structure
-   * for optimization.
+  /** @param p The path on the remote server to the Structure.
    * @sa getRempath
    */
   void setRempath(const QString& p) { m_rempath = p; };
 
-  /** @param p The file name.
-   * @sa fileName
+  /** @param p The local path to the structure.
+   * @sa getLocpath
    */
-  void setFileName(const QString& p) { m_fileName = p; };
+  void setLocpath(const QString& p) { m_locpath = p; };
 
   /** @param status The current status of the Structure.
    * @sa getStatus
@@ -1223,20 +1262,6 @@ public slots:
    * @sa resetFailCount
    */
   void setFailCount(uint count) { m_failCount = count; };
-
-#ifdef ENABLE_MOLECULAR
-  /**
-   * Set the filename for the conformer from which this structure was
-   * created. Only applicable for molecular crystals.
-   */
-  void setParentConformer(const std::string& p) { m_parentConformer = p; }
-
-  /**
-   * Set the number of molecules in a molecular crystal. Used for formula
-   * unit calculation purposes.
-   */
-  void setZValue(int z) { m_zValue = z; }
-#endif // ENABLE_MOLECULAR
 
   /** Set the parent structure for this structure
    */
@@ -1422,6 +1447,16 @@ protected slots:
   void readCurrentStructureInfo(const QString& filename);
 
 protected:
+
+  // Multi-objective parameters for a structure
+  QList<double> m_strucObjValues;
+  int           m_strucObjFailCt;
+  std::atomic<ObjectivesState> m_strucObjState;
+  // Objective history parameters
+  QList<QList<double>> m_hist_strucObjValues;
+  QList<int>           m_hist_strucObjFailCt;
+  QList<ObjectivesState> m_hist_strucObjState;
+
   // skip Doxygen parsing
   /// \cond
   bool m_hasEnthalpy;
@@ -1430,7 +1465,7 @@ protected:
   bool m_histogramGenerationPending;
   uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount,
     m_fixCount;
-  QString m_parents, m_dupString, m_supString, m_rempath, m_fileName;
+  QString m_parents, m_dupString, m_supString, m_rempath, m_locpath;
   double m_energy, m_enthalpy, m_PV;
   std::atomic<State> m_status;
   QDateTime m_optStart, m_optEnd;
@@ -1444,15 +1479,6 @@ protected:
   QList<double> m_histEnergies;
   QList<QList<Vector3>> m_histCoords;
   QList<Matrix3> m_histCells;
-
-#ifdef ENABLE_MOLECULAR
-  // The name of the conformer file from which this crystal was generated
-  std::string m_parentConformer;
-
-  // The number of molecules in a molecular crystal. Set to -1 in
-  // atomistic crystals.
-  std::atomic<int> m_zValue;
-#endif // ENABLE_MOLECULAR
 
   // Pointer to parent structure if one is saved.
   Structure* m_parentStructure;

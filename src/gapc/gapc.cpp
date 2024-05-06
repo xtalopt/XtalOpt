@@ -176,7 +176,7 @@ void OptGAPC::checkOptimizedPC(Structure* s)
 
   // Explode check
   if (!pc->checkForExplosion(explodeLimit)) {
-    qDebug() << "Cluster " << pc->getIDString() << " exploded!";
+    qDebug() << "Cluster " << pc->getTag() << " exploded!";
     switch (explodeAction) {
       case EA_Kill:
         locker.unlock();
@@ -249,7 +249,7 @@ bool OptGAPC::load(const QString& filename, const bool forceReadOnly)
     }
   }
 
-  // Set filePath:
+  // Set locWorkDir:
   QString newFilePath = dataPath;
   QString newFileBase = filename;
   newFileBase.remove(newFilePath);
@@ -300,7 +300,7 @@ bool OptGAPC::load(const QString& filename, const bool forceReadOnly)
       for (uint k = 0; k < comp.core.value(keys.at(j)); k++)
         pc->addAtom();
     }
-    pc->setFileName(dataPath + "/" + structureDirs.at(i) + "/");
+    pc->setLocpath(dataPath + "/" + structureDirs.at(i) + "/");
     pc->readSettings(pcStateFileName);
 
     // Store current state -- updatePC will overwrite it.
@@ -315,7 +315,7 @@ bool OptGAPC::load(const QString& filename, const bool forceReadOnly)
 This could be a result of resuming a structure that has not yet done any local \
 optimizations. If so, safely ignore this message.")
           .arg(m_optimizer->getIDString())
-          .arg(pc->fileName()));
+          .arg(pc->getLocpath()));
       continue;
     }
 
@@ -363,7 +363,7 @@ optimizations. If so, safely ignore this message.")
   m_dialog->updateProgressLabel("Preparing GUI and tracker...");
 
   // Reset the local file path information in case the files have moved
-  filePath = newFilePath;
+  locWorkDir = newFilePath;
 
   Structure* s = 0;
   for (int i = 0; i < loadedStructures.size(); i++) {
@@ -434,7 +434,10 @@ void OptGAPC::startSearch()
 #endif // ENABLE_SSH
 
   // Here we go!
-  debug("Starting optimization.");
+  QString formattedTime = QDateTime::currentDateTime().toString("MMMM dd, yyyy   hh:mm:ss");
+  QByteArray formattedTimeMsg = formattedTime.toLocal8Bit();
+
+  qDebug().noquote() << "\n=== Optimization started ... " + formattedTimeMsg + "\n";
   emit startingSession();
 
   // prepare pointers
@@ -462,7 +465,7 @@ void OptGAPC::startSearch()
   for (int i = 0; i < seedList.size(); i++) {
     filename = seedList.at(i);
     pc = new ProtectedCluster;
-    pc->setFileName(filename);
+    pc->setLocpath(filename);
     if (!m_optimizer->read(pc, filename) || (pc == 0)) {
       m_tracker->lockForWrite();
       m_tracker->deleteAllStructures();
@@ -565,8 +568,8 @@ void OptGAPC::initializeAndAddPC(ProtectedCluster* pc, uint generation,
   QString id_s, gen_s, locpath_s, rempath_s;
   id_s.sprintf("%05d", pc->getIDNumber());
   gen_s.sprintf("%05d", pc->getGeneration());
-  locpath_s = filePath + "/" + gen_s + "x" + id_s + "/";
-  rempath_s = rempath + "/" + gen_s + "x" + id_s + "/";
+  locpath_s = locWorkDir + "/" + gen_s + "x" + id_s + "/";
+  rempath_s = remWorkDir + "/" + gen_s + "x" + id_s + "/";
   QDir dir(locpath_s);
   if (!dir.exists()) {
     if (!dir.mkpath(locpath_s)) {
@@ -576,7 +579,7 @@ void OptGAPC::initializeAndAddPC(ProtectedCluster* pc, uint generation,
               .arg(locpath_s));
     }
   }
-  pc->setFileName(locpath_s);
+  pc->setLocpath(locpath_s);
   pc->setRempath(rempath_s);
   pc->setCurrentOptStep(1);
   pc->setupConnections();

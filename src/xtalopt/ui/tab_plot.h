@@ -42,7 +42,7 @@ public:
 
   enum PlotAxes
   {
-    Structure_T = 0,
+    StructureINDX_T = 0,
     Generation_T,
     Enthalpy_T,
     Enthalpy_per_FU_T,
@@ -57,7 +57,15 @@ public:
     Gamma_A,
     Volume_T,
     Volume_per_FU_T,
-    Formula_Units_T
+    Formula_Units_T,
+    // The objective entries: these will appear in the menu only
+    //   if it's a multi-objective run.
+    // Note: since the number of objectives is not fixed, we add
+    //   their entry at the end: right after the last well-defined one.
+    //   (1) Any non-objective entry should be added before this line!
+    //   (2) Don't ever add any entries after this line!
+    Objectivei_T
+    //
   };
 
   enum PlotType
@@ -77,8 +85,17 @@ public:
     PV_L,
     Volume_L,
     Generation_L,
-    Structure_L,
-    Formula_Units_L
+    StructureINDX_L,
+    StructureTAG_L,
+    Formula_Units_L,
+    // The objective entries: these will appear in the menu only
+    //   if it's a multi-objective run.
+    // Note: since the number of objectives is not fixed, we add
+    //   their entry at the end: right after the last well-defined one.
+    //   (1) Any non-objective entry should be added before this line!
+    //   (2) Don't ever add any entries after this line!
+    Objectivei_L
+    //
   };
 
 public slots:

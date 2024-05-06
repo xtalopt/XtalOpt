@@ -28,7 +28,7 @@ class Structure;
 
 // For writing z-matrices. Each entry contains indices of the atoms it
 // should be connected to.
-// NOTE: these indices are zero-based. If you write the output to a z-matrix
+// Note: these indices are zero-based. If you write the output to a z-matrix
 // file, you should add 1 to all (except ind) because the actual z-matrix
 // format is 1-based.
 struct ZMatrixEntry
@@ -78,7 +78,7 @@ public:
    * If the structure contains multiple molecules, the first atom
    * of each molecule can be identified because it will have -1 for rInd,
    * angleInd, and dihedralInd.
-   * NOTE: these indices are zero-based. If you write the output to a
+   * Note: these indices are zero-based. If you write the output to a
    * z-matrix file, you should add 1 to all (except ind) because the actual
    * z-matrix format is 1-based.
    */

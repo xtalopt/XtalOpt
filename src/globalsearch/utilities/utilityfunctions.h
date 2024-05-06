@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <globalsearch/constants.h>
 
 // Unfortunately, GCC < 4.9.0 did not include regex, so we have
 // to use the Qt libraries if are using GCC < 4.9.0
@@ -180,16 +181,15 @@ static inline bool isDigit(char d)
   return true;
 }
 
-static const double _PI = 3.14159265;
 
 inline double deg2rad(double a)
 {
-  return a * _PI / 180.0;
+  return a * DEG2RAD;
 }
 
 inline double rad2deg(double a)
 {
-  return a * 180.0 / _PI;
+  return a * RAD2DEG;
 }
 
 // Returns a string with leading and trailing whitespace removed

@@ -89,7 +89,7 @@ void GAPCExtension::reemitMoleculeChanged(Structure* s)
   // Make copy of s to pass to editor
   GlobalSearch::Structure* newS = new GlobalSearch::Structure(*s);
   // Reset filename to something unique
-  newS->setFileName(s->fileName() + "/usermodified.cml");
+  newS->setLocpath(s->getLocpath() + "/usermodified.cml");
 
   emit moleculeChanged(newS, Extension::DeleteOld);
 }

@@ -12,11 +12,3 @@ set(DEP_SEARCH_DIRS "${DEP_SEARCH_DIRS}" "${QWT_DLL_DIR}")
 get_target_property(QtCore_location Qt5::Core LOCATION)
 get_filename_component(QtCore_location "${QtCore_location}" DIRECTORY)
 set(DEP_SEARCH_DIRS "${DEP_SEARCH_DIRS}" "${QtCore_location}/../bin")
-
-# All of the Boost dependencies will hopefully be in the boost library dirs
-string(REGEX REPLACE "\\\\" "/" _tmp "${Boost_LIBRARY_DIRS}")
-set(DEP_SEARCH_DIRS "${DEP_SEARCH_DIRS}" "${_tmp}")
-
-# All of the RDKit dependencies will hopefully be in the RDKit library dirs
-string(REGEX REPLACE "\\\\" "/" _tmp "${RDKit_LIBRARY_DIRS}")
-set(DEP_SEARCH_DIRS "${DEP_SEARCH_DIRS}" "${_tmp}")

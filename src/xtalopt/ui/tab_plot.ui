@@ -78,7 +78,7 @@
            </property>
            <item>
             <property name="text">
-             <string>Structure</string>
+             <string>Structure Index</string>
             </property>
            </item>
            <item>
@@ -185,7 +185,7 @@
            </property>
            <item>
             <property name="text">
-             <string>Structure</string>
+             <string>Structure Index</string>
             </property>
            </item>
            <item>
@@ -273,7 +273,7 @@
             </font>
            </property>
            <property name="text">
-            <string>Show &amp;duplicate structures</string>
+            <string>Show &amp;duplicate structures and supercells</string>
            </property>
           </widget>
          </item>
@@ -355,7 +355,12 @@
            </item>
            <item>
             <property name="text">
-             <string>Structure #</string>
+             <string>Structure Index</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Structure Tag</string>
             </property>
            </item>
            <item>
@@ -381,6 +386,12 @@
           <widget class="QLineEdit" name="edit_showSpecifiedFU">
            <property name="enabled">
             <bool>false</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>25</height>
+            </size>
            </property>
            <property name="font">
             <font>

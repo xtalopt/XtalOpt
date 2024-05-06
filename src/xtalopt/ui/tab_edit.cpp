@@ -215,14 +215,14 @@ void TabEdit::changePOTCAR(QListWidgetItem* item)
     return;
 
   QStringList delimited = filename.split("/");
-  QString filePath = "";
+  QString runpath = "";
   // We want to chop off the last item...
   for (size_t i = 0; i < delimited.size() - 1; i++)
-    filePath += (delimited[i] + "/");
+    runpath += (delimited[i] + "/");
 
   // QFileDialog::getOpenFileName() only allows one selection. So we don't
   // have to worry about multiple files.
-  settings.setValue("xtalopt/templates/potcarPath", filePath);
+  settings.setValue("xtalopt/templates/potcarPath", runpath);
 
   // "POTCAR info" is of type
   // QList<QHash<QString, QString> >
@@ -259,12 +259,12 @@ void TabEdit::changePSF(QListWidgetItem* item)
     return;
 
   QStringList delimited = filename.split("/");
-  QString filePath = "";
+  QString runath = "";
   // We want to chop off the last item on the list
   for (size_t i = 0; i < delimited.size() - 1; i++)
-    filePath += (delimited[i] + "/");
+    runath += (delimited[i] + "/");
 
-  settings.setValue("xtalopt/templates/psfPath", filePath);
+  settings.setValue("xtalopt/templates/psfPath", runath);
 
   // "PSF info" is of type
   // QList<QHash<QString, QString> >
@@ -307,12 +307,12 @@ bool TabEdit::generateVASP_POTCAR_info()
 
     if (!filename.isEmpty()) {
       QStringList delimited = filename.split("/");
-      QString filePath = "";
+      QString runpath = "";
       // We want to chop off the last item...
       for (size_t i = 0; i < delimited.size() - 1; i++)
-        filePath += (delimited[i] + "/");
+        runpath += (delimited[i] + "/");
 
-      settings.setValue("xtalopt/templates/potcarPath", filePath);
+      settings.setValue("xtalopt/templates/potcarPath", runpath);
     } else {
       // User cancel file selection. Set template selection combo to
       // something else so the list will remain empty and be
@@ -371,11 +371,11 @@ bool TabEdit::generateSIESTA_PSF_info()
 
     if (!filename.isEmpty()) {
       QStringList delimited = filename.split("/");
-      QString filePath = "";
+      QString runpath = "";
       // We want to chop off the last item...
       for (size_t i = 0; i < delimited.size() - 1; i++)
-        filePath += (delimited[i] + "/");
-      settings.setValue("xtalopt/templates/psfPath", filePath);
+        runpath += (delimited[i] + "/");
+      settings.setValue("xtalopt/templates/psfPath", runpath);
     } else {
       // User cancel file selection. Set template selection combo to
       // something else so the list will remain empty and be

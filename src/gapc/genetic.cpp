@@ -15,6 +15,7 @@
 #include <gapc/genetic.h>
 
 #include <globalsearch/macros.h>
+#include <globalsearch/constants.h>
 
 #include <QDebug>
 #include <QFile>
@@ -74,7 +75,7 @@ inline Matrix3d createRotationMatrix(double x = 0.0, double y = 0.0,
 
   // Now randomly generate theta (on [0,2*pi]), c, s, and t
   if (theta == 0.0) {
-    theta = RANDDOUBLE() * 2 * M_PI;
+    theta = RANDDOUBLE() * 2 * PI;
   }
   double c = cos(theta);
   double s = sin(theta);
@@ -404,7 +405,7 @@ ProtectedCluster* GAPCGenetic::twist(ProtectedCluster* pc,
     minimumRotation + (RANDDOUBLE() * (360.0 - (2.0 * minimumRotation)));
 
   twisters_pos = rotateCoordinates(
-    twisters_pos, createRotationMatrix(0, 0, 1, rotationDeg * DEG_TO_RAD));
+    twisters_pos, createRotationMatrix(0, 0, 1, rotationDeg * DEG2RAD));
 
 #ifdef DUMP_STRUCTURES
   vs.clear();
@@ -660,7 +661,7 @@ ProtectedCluster* GAPCGenetic::anisotropicExpansion(ProtectedCluster* pc,
     phi = acos(z / rho);
     theta = asin(y / sqrt(x * x + y * y));
     if (x < 0)
-      theta = M_PI - theta;
+      theta = PI - theta;
     // Expand
     double factor = (cos(2 * phi) + 1) / 2.0;
     // cube factor

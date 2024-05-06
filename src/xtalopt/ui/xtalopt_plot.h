@@ -27,6 +27,7 @@
 #include <qwt_symbol.h>
 
 #include <memory>
+#include <cmath>
 
 namespace XtalOpt {
 

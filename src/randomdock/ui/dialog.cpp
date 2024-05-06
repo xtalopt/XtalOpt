@@ -47,6 +47,7 @@ RandomDockDialog::RandomDockDialog(GLWidget* glWidget, QWidget* parent,
   ui_push_resume = ui.push_resume;
   ui_label_opt = ui.label_opt;
   ui_label_run = ui.label_run;
+  ui_label_tot = ui.label_tot;
   ui_label_fail = ui.label_fail;
   ui_label_prog = ui.label_prog;
   ui_progbar = ui.progbar;

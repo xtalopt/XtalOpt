@@ -86,11 +86,11 @@ void TabEdit::writeSettings(const QString& filename)
   settings->setValue("version", version);
 
   settings->setValue("description", m_opt->description);
-  settings->setValue("localpath", m_opt->filePath);
+  settings->setValue("locWorkDir", m_opt->locWorkDir);
   settings->setValue("remote/host", m_opt->host);
   settings->setValue("remote/port", m_opt->port);
   settings->setValue("remote/username", m_opt->username);
-  settings->setValue("remote/rempath", m_opt->rempath);
+  settings->setValue("remote/remWorkDir", m_opt->remWorkDir);
 
   settings->setValue("optimizer", m_opt->optimizer()->getIDString().toLower());
   settings->setValue("queueInterface",
@@ -119,14 +119,14 @@ void TabEdit::readSettings(const QString& filename)
     m_opt->description = tmpstr;
   }
 
-  tmpstr = settings->value("remote/rempath", "").toString();
+  tmpstr = settings->value("remote/remWorkDir", "").toString();
   if (!tmpstr.isEmpty()) {
-    m_opt->rempath = tmpstr;
+    m_opt->remWorkDir = tmpstr;
   }
 
-  tmpstr = settings->value("localpath", "").toString();
+  tmpstr = settings->value("locWorkDir", "").toString();
   if (!tmpstr.isEmpty()) {
-    m_opt->filePath = tmpstr;
+    m_opt->locWorkDir = tmpstr;
   }
 
   tmpstr = settings->value("remote/host", "").toString();
@@ -200,12 +200,11 @@ void TabEdit::readSettings(const QString& filename)
         // Formerly tab_sys stuff. Read from default settings object:
         settings->beginGroup("gapc/sys/");
         m_opt->description = settings->value("description", "").toString();
-        m_opt->rempath = settings->value("remote/rempath", "").toString();
-        m_opt->filePath = settings->value("file/path", "").toString();
+        m_opt->remWorkDir = settings->value("remote/rempath", "").toString();
+        m_opt->locWorkDir = settings->value("file/path", "").toString();
         m_opt->host = settings->value("remote/host", "").toString();
         m_opt->port = settings->value("remote/port", 22).toInt();
         m_opt->username = settings->value("remote/username", "").toString();
-        m_opt->rempath = settings->value("remote/rempath", "").toString();
         settings->endGroup(); // "gapc/sys"
       }
     case 2:

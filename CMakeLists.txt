@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.0...3.27)
 project(XtalOpt)
 
-set(XtalOpt_VERSION_MAJOR 12)
-set(XtalOpt_VERSION_MINOR 1)
+set(XtalOpt_VERSION_MAJOR 13)
+set(XtalOpt_VERSION_MINOR 0)
 set(XtalOpt_VERSION_PATCH 0)
 set(XtalOpt_VERSION "${XtalOpt_VERSION_MAJOR}.${XtalOpt_VERSION_MINOR}")
 set(XtalOpt_VERSION_FULL "${XtalOpt_VERSION}.${XtalOpt_VERSION_PATCH}")
@@ -40,6 +40,20 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
                     ${XtalOpt_SOURCE_DIR}/src/)
 
 include(MacroEnsureVersion)
+
+option( XTALOPT_DEBUG
+  "Enable writing xtaloptDebug.log file to the working directory"
+  OFF )
+if(XTALOPT_DEBUG)
+  add_definitions(-DXTALOPT_DEBUG)
+endif(XTALOPT_DEBUG)
+
+option( MOES_DEBUG
+  "Enable some useful output for monitoring feature analysis"
+  OFF )
+if(MOES_DEBUG)
+  add_definitions(-DMOES_DEBUG)
+endif(MOES_DEBUG)
 
 option( BUILD_TESTS
  	"Whether to compile the test suite as well as the main code."
@@ -112,14 +126,6 @@ option( ENABLE_GAPC
   "Build the evolutionary cluster search extension - DOES NOT WORK CURRENTLY"
   OFF )
 
-option(ENABLE_MOLECULAR
-       "Whether or not to compile the molecular version of XtalOpt"
-       OFF)
-
-option(RDKIT_STATIC
-       "Whether or not to statically compile RDKit. Does nothing if ENABLE_MOLECULAR is off"
-       OFF)
-
 if(BUILD_INDEPENDENT_PACKAGE)
   set(ENABLE_RPATH ON)
   set(INSTALL_DEPENDENCIES ON)
@@ -156,10 +162,6 @@ if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC"  )
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC"  )
 endif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-
-if(ENABLE_MOLECULAR)
-  add_definitions(-DENABLE_MOLECULAR)
-endif(ENABLE_MOLECULAR)
 
 add_subdirectory(external)
 include_directories(external)

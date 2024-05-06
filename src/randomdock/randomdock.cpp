@@ -20,6 +20,7 @@
 #include <randomdock/structures/substrate.h>
 #include <randomdock/ui/dialog.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/optbase.h>
 #include <globalsearch/queueinterfaces/remote.h>
 #include <globalsearch/queuemanager.h>
@@ -138,7 +139,9 @@ void RandomDock::startSearch()
 #endif // ENABLE_SSH
 
   // Here we go!
-  debug("Starting optimization.");
+  QString formattedTime = QDateTime::currentDateTime().toString("MMMM dd, yyyy   hh:mm:ss");
+  QByteArray formattedTimeMsg = formattedTime.toLocal8Bit();
+  qDebug().noquote() << "\n=== Optimization started ... " + formattedTimeMsg + "\n";
   emit startingSession();
 
   // prepare pointers
@@ -489,8 +492,8 @@ void RandomDock::initializeAndAddScene(Scene* scene)
 
   // Generate locations using id number
   id_s.sprintf("%05d", id);
-  locpath_s = filePath + "/" + id_s + "/";
-  rempath_s = rempath + "/" + id_s + "/";
+  locpath_s = locWorkDir + "/" + id_s + "/";
+  rempath_s = remWorkDir + "/" + id_s + "/";
 
   // Create path
   QDir dir(locpath_s);
@@ -508,7 +511,7 @@ void RandomDock::initializeAndAddScene(Scene* scene)
   scene->moveToThread(m_queueThread);
   scene->setIDNumber(id);
   scene->setIndex(id - 1);
-  scene->setFileName(locpath_s);
+  scene->setLocpath(locpath_s);
   scene->setRempath(rempath_s);
   scene->setCurrentOptStep(1);
   scene->setStatus(Structure::WaitingForOptimization);
@@ -596,9 +599,9 @@ void RandomDock::randomlyRotateCoordinates(QList<Eigen::Vector3d>& coords)
   center /= static_cast<float>(coords.size());
 
   // Get random angles
-  double X = RANDDOUBLE() * 2 * 3.14159265;
-  double Y = RANDDOUBLE() * 2 * 3.14159265;
-  double Z = RANDDOUBLE() * 2 * 3.14159265;
+  double X = RANDDOUBLE() * 2.0 * PI;
+  double Y = RANDDOUBLE() * 2.0 * PI;
+  double Z = RANDDOUBLE() * 2.0 * PI;
 
   // Build rotation matrix
   Eigen::Matrix3d rx, ry, rz, rot;
@@ -621,8 +624,8 @@ void RandomDock::randomlyDisplaceCoordinates(QList<Eigen::Vector3d>& coords,
   INIT_RANDOM_GENERATOR();
   // Get random spherical coordinates
   double rho = RANDDOUBLE() * (radiusMax - radiusMin) + radiusMin;
-  double theta = RANDDOUBLE() * 2 * 3.14159265;
-  double phi = RANDDOUBLE() * 2 * 3.14159265;
+  double theta = RANDDOUBLE() * 2.0 * PI;
+  double phi = RANDDOUBLE() * 2.0 * PI;
 
   // convert to cartesian coordinates
   double x = rho * sin(phi) * cos(theta);
@@ -648,7 +651,7 @@ void RandomDock::DRotateCoordinates(QList<Eigen::Vector3d>& coords)
   center /= static_cast<float>(coords.size());
 
   // Get random angles
-  double theta = RANDDOUBLE() * 2 * 3.14159265;
+  double theta = RANDDOUBLE() * 2.0 * PI;
 
   // Build rotation matrix
   Eigen::Matrix3d rot;
@@ -667,8 +670,8 @@ void RandomDock::DDisplaceCoordinates(QList<Eigen::Vector3d>& coords,
 {
   INIT_RANDOM_GENERATOR();
   // Get random 2D coordinates
-  double pi = RANDDOUBLE() * 2 * 3.14159265;
-  double phi = RANDDOUBLE() * 2 * 3.14159265;
+  double pi = RANDDOUBLE() * 2.0 * PI;
+  double phi = RANDDOUBLE() * 2.0 * PI;
   double dx = cos(phi) * (radiusMax - radiusMin) + radiusMin;
   double dy = sin(pi) * (radiusMax - radiusMin) + radiusMin;
 

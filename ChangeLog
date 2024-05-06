@@ -1,0 +1,244 @@
+
+==================================
+========== Release 13.0 ==========
+==================================
+
+===== 0) Highlights
+0-1)  Multi-objective evolutionary search is implemented
+0-2)  Support for "local queue" is added (i.e., running XtalOpt locally while submitting jobs to a queue)
+0-3)  "Scaled volume" option is added for initiating the minimum and maximum limits of volume per FU
+0-4)  AFLOW-ML entries are removed from CLI and GUI input (it's now a multi-objective objective)
+0-5)  The "old molecular unit" is removed (no ENABLE_MOLECULAR cmake flag and RDKit/Boost dependencies anymore)
+
+===== 1) New features, options, outputs, etc.
+1-1)  XtalOpt CLI:
+## Input file:
+- "objective" flag is added for multi-objective runs
+- "localQueue" flag for running code locally on a cluster is added for all remote queue types in CLI
+- "softExit" and "hardExit" flags are added for quitting the code in CLI mode
+- Support for "hyphen-separated list of space group numbers" in the CLI input file is added
+## Output file:
+- The "opt_step_#" for optimization step is added to "In progress" status in results.txt file
+1-2)  XtalOpt GUI:
+- "Multiobjective Search" tab is added to GUI, and AFLOW-ML entries are removed from "Search Settings" tab
+- "Plot" tab includes the objective entries in x and y labels, and labeling symbol list
+- "StructureID" is added to the labeling symbols list in the "Plot" tab of GUI
+- A confirmation dialog for exit is added in GUI
+1-3)  VASP Optimizer:
+- Support for VASP machine-learning OUTCAR files is added
+- Support for a "single" POTCAR for VASP optimizer in the multi-element systems is added
+1-4)  Misc.
+- The "coordsFracIndex" is added to XtalOpt predefined input keywords
+1-5)  CMake options:
+- The "-DXTALOPT_DEBUG=ON" flag outputs a detailed log file (xtaloptRun.log) for both CLI/GUI
+- The "-DMOES_DEBUG=ON" flag outputs extra information about the multi-objective run
+
+===== 2) Bug fixes
+2-1)  Fixed a bug where errorDirs directory for local runs did not include structure ID subdirs
+2-2)  Fixed the issue of the "Hide" button of the GUI which did nothing or crashed the code on some OS
+2-3)  A potential issue fixed: existence of POTCAR/PSF files was not checked when run started
+2-4)  A potential issue fixed: jobs could fail because of a timing issue in checking the queue
+
+===== 3) Technical and code changes
+3-1)  The remote queues and their use of SSH is re-written
+3-2)  Fitness of a single objective is set to zero when spread is zero (no "nan" probs for the pool)
+3-3)  GUI scalings/font sizes changed to make appearance consistent across operating systems
+3-4)  "pugixml" source code is updated in the external/
+3-5)  Internal variable names changed for consistency and readability, e.g.:
+fileName->Locpath; filePath->locWorkDir; rempath->remWorkDir
+Some output patterns in *.state files are changed too.
+so, runs performed with older versions can't be resumed unless the *.state files are adjusted.
+
+===== 4) Documentation
+4-1)  XtalOpt repo (https://github.com/xtalopt/XtalOpt):
+- "docs" folder is revised: doxy config files updated and user guide of XtalOpt is moved to docs/ from website
+- "ChangeLogs" folder is removed with its content moved to the "ChangeLog" file.
+- "COPYING" file edited and renamed to "LICENSE"
+- "samples" folder is renamed to "schemes"
+- XtalOpt logo files in scr/xtalopt/images/ replaced with new ones
+4-2)  XtalOpt website (https://xtalopt.github.io/):
+- Content and appearance is updated
+- "docs" folder is removed
+- "User Guide" doc generator is now in main repo, with the pdf file copied to files folder of the website
+- dist/img revised; those images which are not used are kept in dist/old-img for now
+- "Download" and "Installation" pages are combined with adjusted content
+- "Other" page is renamed to "Resources"
+- "API" page is removed and is avaialble in the docs folder of the main repo
+- "Tutorial" page is removed; user guide file is available via the "XtalOpt" page
+
+
+
+==================================
+========== Release 12.0 ==========
+==================================
+
+===== 1) New features, options, outputs, etc.
+1-1)  Added a hardness calculation via AFLOW-ML (Automatic FLOW for Materials Discovery - Machine Learning)
+1-2)  Added a hardness fitness function, which allows for the prediction of hard structures
+1-3)  Added a generic optimizer, which allows the user to employ many previously unsupported optimizers for minimizing the geometry of an extended system
+1-4)  Added the ability to generate a simulated XRD (X-Ray Diffraction) pattern
+1-5)  Added the ability to use various optimizers and queuing interfaces for each optimization step
+
+===== 2) Bug fixes
+2-1)  Implemented various bug fixes
+
+
+
+==================================
+========== Release 11.0 ==========
+==================================
+
+===== 1) New features, options, outputs, etc.
+1-1)  Removed dependence on Avogadro and Open Babel, making XtalOpt a stand-alone program rather than an extension
+1-2)  Changed the license from GPLv2 to a 3-Clause BSD license
+1-3)  Added the optional use of Avogadro2 to render crystals through a remote procedure call (RPC) protocol
+1-4)  Added a command-line interface (CLI) to run the program and generate plots
+1-5)  Added the ability for the user to define custom minimum inter-atomic distances (IAD) between pairs of atom types
+
+===== 2) Bug fixes
+2-1)  Implemented various bug fixes
+
+
+
+==================================
+========== Release 10.0 ==========
+==================================
+
+===== 1) New features, options, outputs, etc.
+1-1)  Implementation of RandSpg, an algorithm that generates random crystals with specific spacegroups.
+1-2)  Inclusion of variable forumla units within XtalOpt enables the search for cells with multiple numbers of formula units within a single run.
+1-3)  A molecular-unit generator permits users to create single-center molecules in the unit cell during the initial generation step.
+
+
+
+==================================
+========== Release  9   ==========
+==================================
+
+===== 1) Enhancements / New features:
+1-1)  Added support for the LSF and LoadLeveler queuing systems.
+1-2)  Added support for the SIESTA program package.
+1-3)  Incorporated the XtalComp library for duplicate structure removal (niching).
+1-4)  Added the "mitosis" function, which increases the local order of structures in the initial generation
+by replicating a unit cell to create a supercell for constructing the starting structure.
+1-5)  Customizable polling interval for updating remote queue information.
+1-6)  Automatic removal of remote working files (optional).
+1-7)  Optional removal of unnecessary files for VASP calculations.
+1-8)  Option to rank all current structures and export structures to a new subdirectory as .cml, CONTCAR, or .got.
+1-9)  New option to replace a failing structure with a new offspring.
+1-10) Ability to “inject” (seed) a structure mid-run.
+1-11) Minimum atomic separation now specified as a fraction of the sum of atomic radii, with a hard minimum.
+1-12) Set a final number of structures to be generated before termination of the search.
+1-13) Changing the minimum and maximum cell vectors now directly influences the minimum and maximum volume for the cell.
+
+===== 2) Bug fixes:
+2-1)  Numerous misc bug-fixes.
+
+===== 3) Documentation:
+3-1)  New program website:  http://xtalopt.github.io/
+3-2)  New landing page for user tutorials: http://xtalopt.github.io/tut.html
+3-3)  New landing page for user docs: http://xtalopt.github.io/api/html/annotated.html
+
+===== 4) Maintenance:
+4-1)  More server-friendly method of fetching queue data.
+4-2)  Support for GULP shell/core calculations added.
+4-3)  Submission of remote calculations is throttled to ease DRMS load.
+4-4)  Fix compilation against Qt 4.6.3 and 4.8.0.
+4-5)  Bundled libssh library removed, now an optional dependency.
+4-6)  Added option to use command-line ssh/scp interfaces when libssh is unavailable or Kerberos authentication is needed.
+
+
+
+==================================
+========== Release  8   ==========
+==================================
+
+===== 1) Enhancements / New features:
+1-1)  Use the XtalComp algorithm for duplicate matching
+1-2)  Ability to limit remote queue polling frequency
+
+===== 2) Maintenance:
+2-1)  Update spglib to version 1.0.8
+
+
+
+==================================
+========== Release  7   ==========
+==================================
+
+===== 1) Enhancements / New features:
+1-1)  Support for the SLURM queue interface added
+1-2)  Added warning if Continuous Structures is set to zero at session start
+1-3)  Disable relevant user-interface components in ReadOnly mode
+
+===== 2) Bug fixes:
+2-1)  Fixed freeze when structures are killed for excessive optimization failures
+2-2)  Fixed freeze when structures are killed using progress table context menu
+2-3)  Fixed bug that cleared all POTCAR information when removing optimization steps
+2-4)  Fixed bug that stopped XtalOpt's internal queue from updating when the date changes (only affected certain Qt versions)
+2-5)  Reject structures with a negative cell matrix determinant when using VASP (VASP will refuse to handle these)
+2-6)  Various fixes to ease building on win32 platforms
+
+
+
+==================================
+========== Release  6   ==========
+==================================
+
+===== 1) Enhancements / New features:
+1-1)  Support for Sun Grid Engine added: Thanks to Atsushi Togo for testing and contributing to this feature!
+1-2)  Support for running geometry optimizations locally without an external queuing system
+- Optimizers are no longer tied to a single queuing system
+- XtalOpt will manage local calculations in an internal queue
+1-3)  Space group is now set in Avogadro for interoperability with the new Avogadro Crystallography extension (beta)
+1-4)  Enthalpy vs. Structure Number plots now trace lowest enthalpy structures
+1-5)  Improved networking
+- XtalOpt will now detect with a cable is unplugged or a VPN has timed out and display "Communication Error" until connectivity is restored.
+- Various improvements to the performance of remote execution and file transfer.
+1-6)  Add option to copy a structure's POSCAR representation to the clipboard
+- Available in the Progress Table's right-click menu
+1-7)  Resuming a session no longer freezes the interface while loading
+1-8)  User is warned if attempting to begin a search with the running job limit set to 0.
+1-9)  Progress table now shows a busy cursor while performing background operations
+1-10) Searches begin immediately, no need to click refresh to start search
+1-11) Added ENABLE_SSH option to CMake.
+- XtalOpt can be build without libssh if only local queuing is needed
+
+===== 2) Bug fixes:
+2-1)  Fix crash when canceling VASP POTCAR selection
+2-2)  Improved point selection in XtalOpt trend plot
+2-3)  XtalOpt auto-saves sessions more frequently
+2-4)  Fix various crashes on Avogadro exit
+2-5)  Improved speed of space group detection
+2-6)  Fix occasional bug when loading structures with negative enthalpies
+2-7)  Fix occasional crash when rescaling the cell's volume
+2-8)  Cleaner format of POSCAR output
+2-9)  Patched memory leak in random structure generation
+2-10) Numerous minor fixes throughout
+
+===== 3) Documentation:
+3-1)  Notify user that a tutorial is available when XtalOpt is launched
+3-2)  Added main page for doxygen
+- New landing page for user docs
+- http://xtalopt.openmolecules.net/globalsearch/docs/index.html
+3-3)  Combined all XtalOpt tutorials into one
+- Each Optimizer and Queue Interface gets its own section, rather than a separate tutorial for each optimizer.
+- http://xtalopt.openmolecules.net/globalsearch/docs/tut-xo.html
+3-4)  Added documentation detailing how Optimization Schemes work:
+- http://xtalopt.openmolecules.net/globalsearch/docs/optschemes.html
+3-5)  Added documentation detailing how to save/resume a session in XtalOpt:
+- http://xtalopt.openmolecules.net/globalsearch/docs/xo__saveresume.html
+
+===== 4) Maintenance:
+4-1)  Renamed menu entry from "Crystal Optimization" to "XtalOpt"
+4-2)  Template editor GUI changed, "System Settings" tab removed
+4-3)  All System Settings options are now handled by configuration dialog in the template editor tab.
+4-4)  Bump Qt version to 4.6.0
+4-5)  The distributed sources of libssh have been bumped to 0.4.8
+4-6)  Portions of libglobalsearch have been relicensed with a more open three-clause BSD license:
+- sshconnection.* (Handles communication with SSH server)
+- sshmanager.* (Manages a pool of SSHConnections)
+- random.* (cross-platform threadsafe pseudo-random number generator)
+- slottedwaitcondition.* (Wrapper for QSlottedWaitCondition that can be woken using Qt slots)
+- macros.h (Handful of macros that are used widely throughout the code)
+

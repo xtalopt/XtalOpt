@@ -37,7 +37,7 @@
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -233,7 +233,7 @@ Default: 60</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -296,7 +296,7 @@ Default: 10</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -403,7 +403,7 @@ is a good value here.</string>
           <property name="minimumSize">
            <size>
             <width>0</width>
-            <height>21</height>
+            <height>25</height>
            </size>
           </property>
           <property name="font">
@@ -497,7 +497,7 @@ is a good value here.</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -602,7 +602,7 @@ is a good value here.</string>
         <property name="minimumSize">
          <size>
           <width>150</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -635,7 +635,7 @@ is a good value here.</string>
         <property name="minimumSize">
          <size>
           <width>30</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -732,7 +732,7 @@ Default: 85</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -791,7 +791,7 @@ Default: 15</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -872,7 +872,7 @@ Default: 25%</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -936,7 +936,7 @@ Default: 0.07</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -976,7 +976,7 @@ Default: 0.5</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -1053,7 +1053,7 @@ Default: 0.5</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -1093,7 +1093,7 @@ Default: 0.5</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -1157,7 +1157,7 @@ Default: 1.0</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -1210,7 +1210,7 @@ Default: 1</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -1292,7 +1292,7 @@ Default: 5%</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -1353,7 +1353,7 @@ Default: 35%</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -1416,7 +1416,7 @@ Default: 3</string>
         <property name="minimumSize">
          <size>
           <width>0</width>
-          <height>21</height>
+          <height>25</height>
          </size>
         </property>
         <property name="font">
@@ -1462,6 +1462,19 @@ Default: 4</string>
       <string>Tolerances</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
+      <item row="2" column="2">
+       <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
       <item row="0" column="2" colspan="2">
        <widget class="QGroupBox" name="groupBox_8">
         <property name="title">
@@ -1500,7 +1513,7 @@ Default: 4</string>
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>21</height>
+             <height>25</height>
             </size>
            </property>
            <property name="font">
@@ -1554,7 +1567,7 @@ Default: 4</string>
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>21</height>
+             <height>25</height>
             </size>
            </property>
            <property name="font">
@@ -1605,7 +1618,7 @@ Default: 4</string>
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>21</height>
+             <height>25</height>
             </size>
            </property>
            <property name="font">
@@ -1660,63 +1673,6 @@ Default: 4</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-      </item>
-      <item row="2" column="2" colspan="2">
-       <widget class="QGroupBox" name="groupBox_11">
-        <property name="title">
-         <string>Hardness</string>
-        </property>
-        <layout class="QGridLayout" name="gridLayout_11">
-         <item row="1" column="1">
-          <widget class="QDoubleSpinBox" name="spin_hardnessFitnessWeight">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change the weight of the hardness in the fitness function.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The probability of a crystal being selected is as follows:&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;p&lt;span style=&quot; vertical-align:sub;&quot;&gt;i&lt;/span&gt; = N [ 1 - w (H&lt;span style=&quot; vertical-align:sub;&quot;&gt;max&lt;/span&gt; - H&lt;span style=&quot; vertical-align:sub;&quot;&gt;i&lt;/span&gt;) / (H&lt;span style=&quot; vertical-align:sub;&quot;&gt;max&lt;/span&gt; - H&lt;span style=&quot; vertical-align:sub;&quot;&gt;min&lt;/span&gt;) - (1 - w) (E&lt;span style=&quot; vertical-align:sub;&quot;&gt;i&lt;/span&gt; - E&lt;span style=&quot; vertical-align:sub;&quot;&gt;min&lt;/span&gt;) / (E&lt;span style=&quot; vertical-align:sub;&quot;&gt;max&lt;/span&gt; - E&lt;span style=&quot; vertical-align:sub;&quot;&gt;min&lt;/span&gt;) ]&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;where H is the hardness, E is the enthalpy per formula unit,  w is the fractional weight of the hardness (between 0.0 and 1.0), and N is a normalization constant.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;If w is 0, then the probability selection will be based entirely upon enthalpy (lower enthalpy is more likely to be selected).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;If w is 1, then the pobability selection will be based entirely upon hardness (higher hardness is more likely to be selected).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;If w is anywhere between 0 and 1, the probability is based upon a combination of enthalpy and hardness, where low enthalpy is favored and high hardness is favored. A value closer to 0 puts more importance on low enthalpy, and a value closer to 1 puts more importance on high hardness.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="suffix">
-            <string>%</string>
-           </property>
-           <property name="maximum">
-            <double>100.000000000000000</double>
-           </property>
-           <property name="value">
-            <double>0.000000000000000</double>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_hardnessFitness">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change the weight of the hardness in the fitness function.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The probability of a crystal being selected is as follows:&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;p&lt;span style=&quot; vertical-align:sub;&quot;&gt;i&lt;/span&gt; = N [ 1 - w (H&lt;span style=&quot; vertical-align:sub;&quot;&gt;max&lt;/span&gt; - H&lt;span style=&quot; vertical-align:sub;&quot;&gt;i&lt;/span&gt;) / (H&lt;span style=&quot; vertical-align:sub;&quot;&gt;max&lt;/span&gt; - H&lt;span style=&quot; vertical-align:sub;&quot;&gt;min&lt;/span&gt;) - (1 - w) (E&lt;span style=&quot; vertical-align:sub;&quot;&gt;i&lt;/span&gt; - E&lt;span style=&quot; vertical-align:sub;&quot;&gt;min&lt;/span&gt;) / (E&lt;span style=&quot; vertical-align:sub;&quot;&gt;max&lt;/span&gt; - E&lt;span style=&quot; vertical-align:sub;&quot;&gt;min&lt;/span&gt;) ]&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;where H is the hardness, E is the enthalpy per formula unit,  w is the fractional weight of the hardness (between 0.0 and 1.0), and N is a normalization constant.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;If w is 0, then the probability selection will be based entirely upon enthalpy (lower enthalpy is more likely to be selected).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;If w is 1, then the pobability selection will be based entirely upon hardness (higher hardness is more likely to be selected).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;If w is anywhere between 0 and 1, the probability is based upon a combination of enthalpy and hardness, where low enthalpy is favored and high hardness is favored. A value closer to 0 puts more importance on low enthalpy, and a value closer to 1 puts more importance on high hardness.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="layoutDirection">
-            <enum>Qt::LeftToRight</enum>
-           </property>
-           <property name="text">
-            <string>Hardness fitness weight:</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="0" colspan="2">
-          <widget class="QCheckBox" name="cb_calculateHardness">
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;After the crystals are optimized, they will be sent to AFLOW's machine learning server in order to get an approximation of the bulk and shear moduli (which are then used to approximate the material's hardness).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;You must have a valid internet connection in order to use this.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;If this box is checked in the middle of a run, structures whose hardnesses have not been calculated will be submitted/resubmitted to Aflow ML in order to obtain their hardnesses.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="text">
-            <string>Calculate hardness with Aflow ML?</string>
            </property>
           </widget>
          </item>
@@ -1810,38 +1766,6 @@ Default: 4</string>
     <hint type="destinationlabel">
      <x>651</x>
      <y>320</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cb_calculateHardness</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>label_hardnessFitness</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>983</x>
-     <y>318</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>935</x>
-     <y>348</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>cb_calculateHardness</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>spin_hardnessFitnessWeight</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>983</x>
-     <y>318</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>1069</x>
-     <y>348</y>
     </hint>
    </hints>
   </connection>

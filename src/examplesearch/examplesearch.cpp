@@ -124,7 +124,9 @@ void ExampleSearch::startSearch()
 #endif // ENABLE_SSH
 
   // Here we go!
-  debug("Starting optimization.");
+  QString formattedTime = QDateTime::currentDateTime().toString("MMMM dd, yyyy   hh:mm:ss");
+  QByteArray formattedTimeMsg = formattedTime.toLocal8Bit();
+  qDebug().noquote() << "\n=== Optimization started ... " + formattedTimeMsg + "\n";
 
   // prepare pointers
   m_tracker->lockForWrite();
@@ -252,8 +254,8 @@ void ExampleSearch::initializeAndAddStructure(Structure* structure)
 
   // Generate locations using id number
   id_s.sprintf("%05d", id);
-  locpath_s = filePath + "/" + id_s + "/";
-  rempath_s = rempath + "/" + id_s + "/";
+  locpath_s = locWorkDir + "/" + id_s + "/";
+  rempath_s = remWorkDir + "/" + id_s + "/";
 
   // Create path
   QDir dir(locpath_s);
@@ -271,7 +273,7 @@ void ExampleSearch::initializeAndAddStructure(Structure* structure)
   structure->moveToThread(m_queueThread);
   structure->setIDNumber(id);
   structure->setIndex(id - 1);
-  structure->setFileName(locpath_s);
+  structure->setLocpath(locpath_s);
   structure->setRempath(rempath_s);
   structure->setCurrentOptStep(1);
   structure->setStatus(Structure::WaitingForOptimization);

@@ -387,6 +387,19 @@ void TabProgress::updateInfo_()
       e.status = "Killed";
       e.brush.setColor(Qt::darkGray);
       break;
+    case Xtal::ObjectiveDismiss:
+      e.status = "ObjectiveDismiss";
+      e.brush.setColor(Qt::darkGray);
+      break;
+    case Xtal::ObjectiveFail:
+      e.status = "ObjectiveFail";
+      e.brush.setColor(Qt::darkGray);
+      break;
+    case Xtal::ObjectiveRetain:
+    case Xtal::ObjectiveCalculation:
+      e.status = "Calculating objectives...";
+      e.brush.setColor(Qt::yellow);
+      break;
     case Xtal::Duplicate:
       e.status = tr("Duplicate of %1").arg(xtal->getDuplicateString());
       e.brush.setColor(Qt::darkGreen);
@@ -546,7 +559,8 @@ void TabProgress::progressContextMenu(QPoint p)
     m_context_xtal = xtal;
 
     Xtal::State state = m_context_xtal->getStatus();
-    isKilled = (state == Xtal::Killed || state == Xtal::Removed);
+    isKilled = (state == Xtal::Killed || state == Xtal::Removed ||
+                state == Xtal::ObjectiveFail || state == Xtal::ObjectiveDismiss);
 
     xtal->lock().unlock();
   }
@@ -633,15 +647,13 @@ void TabProgress::restartJobProgress()
 
   // Get info from xtal
   m_context_xtal->lock().lockForRead();
-  int gen = m_context_xtal->getGeneration();
-  int id = m_context_xtal->getIDNumber();
   int optstep = m_context_xtal->getCurrentOptStep();
   m_context_xtal->lock().unlock();
 
   // Choose which OptStep to use
   bool ok;
   int optStep = QInputDialog::getInt(
-    m_dialog, tr("Restart Optimization %1x%2").arg(gen).arg(id),
+    m_dialog, tr("Restart Optimization %1").arg(m_context_xtal->getTag()),
     "Select optimization step to restart from:", optstep, 1,
     m_opt->getNumOptSteps(), 1, &ok);
   --optStep;
@@ -705,7 +717,9 @@ void TabProgress::unkillXtalProgress_()
 
   QWriteLocker locker(&m_context_xtal->lock());
   if (m_context_xtal->getStatus() != Xtal::Killed &&
-      m_context_xtal->getStatus() != Xtal::Removed) {
+      m_context_xtal->getStatus() != Xtal::Removed &&
+      m_context_xtal->getStatus() != Xtal::ObjectiveFail &&
+      m_context_xtal->getStatus() != Xtal::ObjectiveDismiss) {
     emit finishedBackgroundProcessing();
     return;
   }
@@ -714,7 +728,9 @@ void TabProgress::unkillXtalProgress_()
   if (m_context_xtal->getStatus() == Xtal::Killed)
     m_context_xtal->setStatus(Xtal::Error);
   // Set status to Optimized if xtal was previously optimized
-  else if (m_context_xtal->getStatus() == Xtal::Removed) {
+  else if (m_context_xtal->getStatus() == Xtal::Removed ||
+           m_context_xtal->getStatus() == Xtal::ObjectiveFail ||
+           m_context_xtal->getStatus() == Xtal::ObjectiveDismiss) {
     m_context_xtal->setStatus(Xtal::Optimized);
   }
 
@@ -815,7 +831,7 @@ void TabProgress::injectStructureProgress()
   // Prompt for filename
   QSettings settings;
   QString filename =
-    settings.value("xtalopt/opt/seedPath", m_opt->filePath).toString();
+    settings.value("xtalopt/opt/seedPath", m_opt->locWorkDir).toString();
 
   // Launch file dialog
   QString newFilename = QFileDialog::getOpenFileName(
@@ -896,9 +912,7 @@ void TabProgress::plotXrdProgress()
   if (!GlobalSearch::GenerateXrd::generateXrdPattern(*m_context_xtal, results,
                                                      wavelength, peakwidth,
                                                      numpoints, max2theta)) {
-    qDebug() << "GenerateXrd failed for xtal '"
-             << m_context_xtal->getGeneration() << "x"
-             << m_context_xtal->getIDNumber();
+    qDebug() << "GenerateXrd failed for xtal " << m_context_xtal->getTag();
     m_context_xtal = 0;
     return;
   }
@@ -923,13 +937,13 @@ void TabProgress::updateRank()
 {
   /*
        Optimizer* opti = m_opt->optimizer();
-       QString filePath = m_opt->filePath;
-        QDir dir(filePath+"/ranked");
-        QDir cifDir(filePath+"/ranked/CIF");
-        QDir contDir(filePath+"/ranked/CONTCAR");
-        QDir gotDir(filePath+"/ranked/GOT");
+       QString runpath = m_opt->locWorkDir;
+        QDir dir(runpath+"/ranked");
+        QDir cifDir(runpath+"/ranked/CIF");
+        QDir contDir(runpath+"/ranked/CONTCAR");
+        QDir gotDir(runpath+"/ranked/GOT");
 
-     if(dir.exists()) FileUtils::removeDir(filePath+"/ranked");
+     if(dir.exists()) FileUtils::removeDir(runpath+"/ranked");
      dir.mkpath(".");
      cifDir.mkpath(".");
      if (opti->getIDString() == "VASP") contDir.mkpath(".");
@@ -937,7 +951,7 @@ void TabProgress::updateRank()
 
      int gen, id;
      QString space, stat, pathName, rank, gen_s, id_s, enthalpy;
-     QFile results (filePath+"/results.txt");
+     QFile results (runpath+"/results.txt");
         if(!results.open(QIODevice::ReadOnly)) {
             return;
         }
@@ -958,9 +972,9 @@ void TabProgress::updateRank()
           id_s.sprintf("%05d", id);
 
           if (opti->getIDString() == "VASP") {
-              QFile file (filePath+"/" +gen_s+ "x" +id_s+ "/CONTCAR");
-              QFile potFile (filePath+"/" +gen_s+ "x" +id_s+ "/POTCAR");
-              QFile newFile (filePath+"/ranked/CONTCAR/" + rank +
+              QFile file (runpath+"/" +gen_s+ "x" +id_s+ "/CONTCAR");
+              QFile potFile (runpath+"/" +gen_s+ "x" +id_s+ "/POTCAR");
+              QFile newFile (runpath+"/ranked/CONTCAR/" + rank +
      "-"+gen_s+"x"+id_s);
               if(file.exists()) {
                   if(potFile.exists()) {
@@ -968,33 +982,33 @@ void TabProgress::updateRank()
                       file.close();
                       newFile.close();
                       QString command = "obabel -iVASP
-     \""+filePath+"\"/\""+gen_s+"\"x\""+id_s+"\"/CONTCAR -ocif -O
-     \""+filePath+"\"/ranked/CIF/\""+rank+"\"-\""+gen_s+"\"x\""+id_s+"\".cif";
+     \""+runpath+"\"/\""+gen_s+"\"x\""+id_s+"\"/CONTCAR -ocif -O
+     \""+runpath+"\"/ranked/CIF/\""+rank+"\"-\""+gen_s+"\"x\""+id_s+"\".cif";
                       system(qPrintable(command));
                   } else {
-                      QFile tempFile (filePath+"/CONTCAR");
+                      QFile tempFile (runpath+"/CONTCAR");
                       file.copy(tempFile.fileName());
                       file.close();
                       newFile.close();
                       tempFile.close();
-                      QString command = "obabel -iVASP \""+filePath+"\"/CONTCAR
+                      QString command = "obabel -iVASP \""+runpath+"\"/CONTCAR
      -ocif -O
-     \""+filePath+"\"/ranked/CIF/\""+rank+"\"-\""+gen_s+"\"x\""+id_s+"\".cif";
+     \""+runpath+"\"/ranked/CIF/\""+rank+"\"-\""+gen_s+"\"x\""+id_s+"\".cif";
                       system(qPrintable(command));
-                      QFile::remove(filePath+"/CONTCAR");
+                      QFile::remove(runpath+"/CONTCAR");
                   }
               }
           } else if (opti->getIDString() == "GULP") {
-              QFile file (filePath+"/" +gen_s+ "x" +id_s+ "/xtal.got");
-              QFile newFile (filePath+"/ranked/GOT/" + rank +
+              QFile file (runpath+"/" +gen_s+ "x" +id_s+ "/xtal.got");
+              QFile newFile (runpath+"/ranked/GOT/" + rank +
      "-"+gen_s+"x"+id_s+".got");
               if(file.exists()) {
                       file.copy(newFile.fileName());
                       file.close();
                       newFile.close();
                       QString command = "obabel -igot
-     \""+filePath+"\"/\""+gen_s+"\"x\""+id_s+"\"/xtal.got -ocif -O
-     \""+filePath+"\"/ranked/CIF/\""+rank+"\"-\""+gen_s+"\"x\""+id_s+"\".cif";
+     \""+runpath+"\"/\""+gen_s+"\"x\""+id_s+"\"/xtal.got -ocif -O
+     \""+runpath+"\"/ranked/CIF/\""+rank+"\"-\""+gen_s+"\"x\""+id_s+"\".cif";
                       system(qPrintable(command));
               }
           }
@@ -1005,7 +1019,7 @@ void TabProgress::updateRank()
 void TabProgress::printFile()
 {
   QFile file;
-  file.setFileName(m_opt->filePath + "/run-results.txt");
+  file.setFileName(m_opt->locWorkDir + "/run-results.txt");
   if (!file.open(QIODevice::WriteOnly)) {
     m_opt->error("TabProgress::printFile(): Error opening file " +
                  file.fileName() + " for writing...");
@@ -1054,12 +1068,24 @@ void TabProgress::printFile()
       case Xtal::Error:
         out << "Error";
         break;
+      case Xtal::ObjectiveDismiss:
+        out << "ObjectiveDismiss";
+        break;
+      case Xtal::ObjectiveFail:
+        out << "ObjectiveFail";
+        break;
+      case Xtal::ObjectiveRetain:
+      case Xtal::ObjectiveCalculation:
+        out << "ObjectiveCalculation";
+        break;
       case Xtal::StepOptimized:
       case Xtal::WaitingForOptimization:
+      case Xtal::Submitted:
       case Xtal::InProcess:
       case Xtal::Empty:
       case Xtal::Updating:
-      case Xtal::Submitted:
+        out << "Opt Step " << xtal->getCurrentOptStep() + 1;
+        break;
       default:
         out << "In progress";
         break;
@@ -1077,8 +1103,8 @@ void TabProgress::clearFiles()
 {
   int gen, id;
   QString stat, gen_s, id_s;
-  QString filePath = m_opt->filePath;
-  QFile results(filePath + "/results.txt");
+  QString runath = m_opt->locWorkDir;
+  QFile results(runath + "/results.txt");
   if (!results.open(QIODevice::ReadOnly))
     return;
 
@@ -1094,7 +1120,7 @@ void TabProgress::clearFiles()
     gen_s.sprintf("%05d", gen);
     id_s.sprintf("%05d", id);
     if (stat == "Optimized") {
-      QDir dir(filePath + "/" + gen_s + "x" + id_s);
+      QDir dir(runath + "/" + gen_s + "x" + id_s);
       if (dir.exists()) {
         Q_FOREACH (QFileInfo info,
                    dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System |
@@ -1103,11 +1129,11 @@ void TabProgress::clearFiles()
                                      QDir::DirsFirst)) {
           if (info.fileName() == "POTCAR") {
             QFile file(info.filePath());
-            QFile newFile(filePath + "/POTCAR");
+            QFile newFile(runath + "/POTCAR");
             if (!newFile.exists()) {
               file.copy(newFile.fileName());
-              newFile.link(filePath + "/POTCAR",
-                           filePath + "/" + gen_s + "x" + id_s + "/POTCAR");
+              newFile.link(runath + "/POTCAR",
+                           runath + "/" + gen_s + "x" + id_s + "/POTCAR");
               file.close();
               newFile.close();
               dir.remove(info.fileName());

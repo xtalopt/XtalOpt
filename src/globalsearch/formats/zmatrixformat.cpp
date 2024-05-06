@@ -14,6 +14,7 @@
 
 #include <globalsearch/formats/zmatrixformat.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/structure.h>
 #include <globalsearch/utilities/utilityfunctions.h>
@@ -265,7 +266,7 @@ static bool parseLine(const vector<string>& words, std::vector<Atom>& atoms)
 
     Vector3 u(x1 - x1.dot(x2) * x2);
     double uNorm = u.norm();
-    if (uNorm < 1e-5) {
+    if (uNorm < ZERO5) {
       qDebug() << "Error in Z-matrix reader: dihedral atoms on the same"
                << "line!";
       qDebug() << "Error occurred in this line: "

@@ -18,6 +18,8 @@
 #include <globalsearch/ui/abstractdialog.h>
 
 #include <QObject>
+#include <QCloseEvent>
+#include <QKeyEvent>
 
 namespace Ui {
 class XtalOptDialog;
@@ -29,6 +31,7 @@ class XtalOpt;
 class TabInit;
 class TabEdit;
 class TabOpt;
+class TabMo;
 class TabSys;
 class TabProgress;
 class TabPlot;
@@ -56,6 +59,8 @@ public slots:
 
 private slots:
   void startSearch() override;
+  void closeEvent(QCloseEvent *e) override;
+  void keyPressEvent(QKeyEvent *e) override;
 
 signals:
 
@@ -65,6 +70,7 @@ private:
   TabInit* m_tab_init;
   TabEdit* m_tab_edit;
   TabOpt* m_tab_opt;
+  TabMo* m_tab_mo;
   TabSys* m_tab_sys;
   TabProgress* m_tab_progress;
   TabPlot* m_tab_plot;

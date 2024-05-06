@@ -254,7 +254,7 @@ void OptBaseTest::interpretKeyword()
     a.setAtomicNumber((i % NUMSPECIES) + 1);
     a.setPos(Eigen::Vector3d(i, i, i));
   }
-  s->setFileName(FILENAME);
+  s->setLocpath(FILENAME);
   s->setRempath(REMPATH);
   s->setGeneration(GENERATION);
   s->setIDNumber(IDNUM);

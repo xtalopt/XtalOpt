@@ -216,7 +216,7 @@ bool PoscarFormat::write(const Structure& s, std::ostream& out)
   for (size_t i = 0; i < symbols.size(); ++i)
     out << symbols[i].toStdString() << atomCounts[i];
 
-  out << " " << s.fileName().toStdString() << "\n";
+  out << " " << s.getLocpath().toStdString() << "\n";
 
   // Scaling factor. Just 1.0
   out << 1.0 << "\n";

@@ -30,8 +30,6 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-const double PI = 3.141592653589793;
-
 Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
                                 double minimumContribution, double& percent1)
 {
@@ -505,7 +503,7 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
 
   // Get lists of atoms and fractional coordinates
   xtal1->lock().lockForRead();
-  QString xtal1IDString = xtal1->getIDString();
+  QString xtal1IDString = xtal1->getTag();
   // Store unit cells
   Matrix3 cell1 = xtal1->unitCell().cellMatrix();
   double xtal1AVal = xtal1->getA();
@@ -528,7 +526,7 @@ Xtal* XtalOptGenetic::FUcrossover(Xtal* xtal1, Xtal* xtal2,
   xtal1->lock().unlock();
 
   xtal2->lock().lockForRead();
-  QString xtal2IDString = xtal2->getIDString();
+  QString xtal2IDString = xtal2->getTag();
   // Store unit cells
   Matrix3 cell2 = xtal2->unitCell().cellMatrix();
   double xtal2AVal = xtal2->getA();

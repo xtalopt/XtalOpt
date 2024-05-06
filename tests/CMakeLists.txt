@@ -16,14 +16,6 @@ link_directories(
   ${XtalOpt_BINARY_DIR}/src
 )
 
-if(ENABLE_MOLECULAR)
-  # We are including these as system libraries so we do not
-  # receive warnings from them
-  include_directories(SYSTEM ${RDKit_INCLUDE_DIRS})
-  include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
-  link_directories(${Boost_LIBRARY_DIRS})
-endif(ENABLE_MOLECULAR)
-
 set(tests
   formats
   genetic
@@ -36,14 +28,6 @@ set(tests
   xtal
   xtaloptunit
 )
-
-if(ENABLE_MOLECULAR)
-  set(tests
-      ${tests}
-      conformergenerator
-      moltransformations
-  )
-endif(ENABLE_MOLECULAR)
 
 if (ENABLE_SSH)
 set(tests
@@ -80,14 +64,6 @@ if(ENABLE_SSH)
       ${LIBSSH_LIBRARIES}
   )
 endif(ENABLE_SSH)
-
-if(ENABLE_MOLECULAR)
-  set(_link_libs
-      ${_link_libs}
-      ${RDKit_LIBRARIES}
-      ${Boost_LIBRARIES}
-  )
-endif(ENABLE_MOLECULAR)
 
 foreach (test ${tests})
   message(STATUS "Test:  ${test}")

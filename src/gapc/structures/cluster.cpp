@@ -15,6 +15,7 @@
 #include <gapc/structures/cluster.h>
 
 #include <globalsearch/macros.h>
+#include <globalsearch/constants.h>
 
 #include <avogadro/neighborlist.h>
 
@@ -225,7 +226,7 @@ void Cluster::expand(double factor)
     phi = acos(z / rho);
     theta = asin(y / sqrt(x * x + y * y));
     if (x < 0)
-      theta = M_PI - theta;
+      theta = PI - theta;
     // Expand
     rho *= factor;
     // Back to cartesian

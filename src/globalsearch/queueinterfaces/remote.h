@@ -152,6 +152,48 @@ public slots:
   virtual bool prepareForStructureUpdate(Structure* s) const override;
 
   /**
+   *  Runs a command (e.g., bash command or script) on a remote server.
+   *
+   * @note This is a wrapper function for both remote and local-remote jobs,
+   *  and for remote jobs creates/discards ssh connection of its own.
+   *
+   * @param workdir Workind directory for the command
+   * @param command The command
+   * @param sout The stdout string
+   * @param serr The stderr string
+   * @param ercd The exit error code
+   *
+   * @return For a remote run, True if the command ran successfully and exit code is 0,
+   *  False otherwise. For a local-remote run, always returns True.
+   */
+  virtual bool runACommand(const QString& workdir, const QString& command,
+                           QString* sout, QString* serr, int* ercd) const override;
+
+  /**
+   * Copy a file from a remote source to a local destination.
+   *
+   * @note This is a wrapper function for both remote and local-remote jobs,
+   *  and for remote jobs creates/discards ssh connection of its own.
+   *
+   * @param rem_file Full path to the file to be copied (a remote path)
+   * @param loc_file Full path to the destination file (a local path)
+   */
+  virtual bool copyAFileRemoteToLocal(const QString& rem_file,
+                                      const QString& loc_file) override;
+
+  /**
+   * Copy a file from a local source to a remote destination.
+   *
+   * @note This is a wrapper function for both remote and local-remote jobs,
+   *  and for remote jobs creates/discards ssh connection of its own.
+   *
+   * @param loc_file Full path of the file to be copied (a local path)
+   * @param rem_file Full path to the destination file (a remote path)
+   */
+  virtual bool copyAFileLocalToRemote(const QString& loc_file,
+                                      const QString& rem_file) override;
+
+  /**
    * Check if the file \a filename exists in the working directory
    * of Structure \a s and store the result in \a exists.
    *
@@ -160,6 +202,9 @@ public slots:
    * whether the file check was performed without errors
    * (e.g. network errors).
    *
+   * @note This is a wrapper function for both remote and local-remote jobs,
+   *  and for remote jobs creates/discards ssh connection of its own.
+   *
    * @return True if the test encountered no errors, false otherwise.
    */
   virtual bool checkIfFileExists(Structure* s, const QString& filename,
@@ -167,6 +212,8 @@ public slots:
   /**
    * Retrieve the contents of the file \a filename for Structure \a
    * s as a QString \a contents.
+   * @note This is a wrapper function for both remote and local-remote jobs,
+   *  and for remote jobs creates/discards ssh connection of its own.
    *
    * @return True on success, false otherwise.
    */
@@ -202,6 +249,9 @@ public slots:
    *
    * @note On local queue interface, grep is not actually used and
    * the exit code behavior is emulated.
+   *
+   * @note This is a wrapper function for both remote and local-remote jobs,
+   *  and for remote jobs creates/discards ssh connection of its own.
    */
   virtual bool grepFile(Structure* s, const QString& matchText,
                         const QString& filename, QStringList* matches = 0,
@@ -212,6 +262,9 @@ protected:
   /**
    * Create a working directory for \a structure on the remote
    * cluster.
+   * @note This is a wrapper function for both remote and local-remote jobs;
+   *  for remote jobs, if an existing ssh connection is passed to the function
+   *  it will be used; otherwise the function will create/discard one.
    *
    * @param structure Structure of interest
    * @param ssh An initialized SSHConnection to use.
@@ -220,40 +273,46 @@ protected:
    *
    * @return True on success, false otherwise
    */
-  bool createRemoteDirectory(Structure* structure, SSHConnection* ssh) const;
+  bool createRemoteDirectory(Structure* structure, SSHConnection* ssh = nullptr) const;
 
   /**
    * Remove all files from \a structure's remote working directory.
+   * @note This is a wrapper function for both remote and local-remote jobs;
+   *  for remote jobs, if an existing ssh connection is passed to the function
+   *  it will be used; otherwise the function will create/discard one.
    *
    * @param structure Structure of interest
    * @param ssh An initialized SSHConnection
    *
    * @return True on success, false otherwise
    */
-  bool cleanRemoteDirectory(Structure* structure, SSHConnection* ssh) const;
+  bool cleanRemoteDirectory(Structure* structure, SSHConnection* ssh = nullptr) const;
 
   /**
    * Copy all files from \a structure's remote working directory to the local
    * working directory.
+   * @note This is a wrapper function for both remote and local-remote jobs,
+   *  and for remote jobs creates/discards ssh connection of its own.
    *
    * @param structure Structure of interest
    * @param ssh An initialized SSHConnection to use.
    *
    * @return True on success, false otherwise
    */
-  bool copyRemoteFilesToLocalCache(Structure* structure,
-                                   SSHConnection* ssh) const;
+  bool copyRemoteFilesToLocalCache(Structure* structure) const;
 
   /**
    * Saves a copy of the error directory that caused this structure to fail.
    * Saves it in <remote_path>/errorDirs
+   * @note This is a wrapper function for both remote and local-remote jobs,
+   *  and for remote jobs creates/discards ssh connection of its own.
    *
    * @param structure Structure of interest
    * @param ssh An initialized SSHConnection to use.
    *
    * @return True on success, false otherwise
    */
-  bool logErrorDirectory(Structure* structure, SSHConnection* ssh) const;
+  bool logErrorDirectory(Structure* structure) const;
 
   // Submit command. For example, on slurm, this may be 'sbatch'.
   QString m_submitCommand;

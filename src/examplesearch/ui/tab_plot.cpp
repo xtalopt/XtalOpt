@@ -17,6 +17,7 @@
 #include <examplesearch/examplesearch.h>
 #include <examplesearch/ui/dialog.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/tracker.h>
@@ -274,7 +275,7 @@ void TabPlot::plotTrends()
 
     if (structure->getStatus() == Structure::Killed ||
         structure->getStatus() == Structure::Removed ||
-        fabs(structure->getEnergy()) <= 1e-50) {
+        fabs(structure->getEnergy()) <= ZERO0) {
       continue;
     }
 

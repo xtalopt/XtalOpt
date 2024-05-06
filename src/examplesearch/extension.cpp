@@ -83,7 +83,7 @@ void ExampleSearchExtension::reemitMoleculeChanged(GlobalSearch::Structure* s)
   // Make copy of s to pass to editor
   GlobalSearch::Structure* newS = new GlobalSearch::Structure(*s);
   // Reset filename to something unique
-  newS->setFileName(s->fileName() + "/usermodified.cml");
+  newS->setLocpath(s->getLocpath() + "/usermodified.cml");
 
   // Make any pre-vis cleanup changes you'd like here.
 

@@ -49,7 +49,7 @@
      </column>
      <column>
       <property name="text">
-       <string>Mol</string>
+       <string>ID</string>
       </property>
      </column>
      <column>

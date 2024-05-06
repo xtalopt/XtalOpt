@@ -185,6 +185,51 @@ public slots:
   virtual bool prepareForStructureUpdate(Structure* s) const = 0;
 
   /**
+   *  Runs a command (e.g., bash command or script) on
+   *  either local/remote/local-remote queues.
+   *
+   *  @note For a remote run, this function creates/discards
+   *  the ssh connection for its own.
+   *
+   * @param workdir The working directory in which command is running
+   * @param command The command to be run
+   * @param sout The standard output of command
+   * @param serr The standard error of command
+   * @param ercd The error code of command
+   *
+   * @return For remote run: True if the command ran successfully and exit code is 0,
+   *  False otherwise. For local/local-remote runs, always returns True.
+   */
+  virtual bool runACommand(const QString& workdir, const QString& command,
+                           QString* sout, QString* serr, int* ercd) const = 0;
+
+  /**
+   * Copy a file from a remote source to a local destination.
+   *
+   * @note On local queue, this does nothing!
+   * @note It is a wrapper for both remote and local-remote runs.
+   * @note For a remote run, this creates/discards the ssh connection.
+   *
+   * @param rem_file Full path to the remote source file
+   * @param loc_file Full path to the local destination file
+   */
+  virtual bool copyAFileRemoteToLocal(const QString& rem_file,
+                                      const QString& loc_file) = 0;
+
+  /**
+   * Copy a file from a local source to a remote destination.
+   *
+   * @note On local queue, this does nothing!
+   * @note It is a wrapper for both remote and local-remote runs.
+   * @note For a remote run, this creates/discards the ssh connection.
+   *
+   * @param loc_file Full path to the local source file
+   * @param rem_file Full path to the remote destination file
+   */
+  virtual bool copyAFileLocalToRemote(const QString& loc_file,
+                                      const QString& rem_file) = 0;
+
+  /**
    * Check if the file \a filename exists in the working directory
    * of Structure \a s and store the result in \a exists.
    *

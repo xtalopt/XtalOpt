@@ -19,6 +19,7 @@
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/xtalopt.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/utilities/fileutils.h>
 
@@ -26,6 +27,7 @@
 #include <QSettings>
 
 #include <qwt_scale_engine.h>
+#include <qwt_text.h>
 
 #include <float.h>
 
@@ -109,7 +111,7 @@ void TabPlot::readSettings(const QString& filename)
   settings->beginGroup("xtalopt/plot/");
   int loadedVersion = settings->value("version", 0).toInt();
   ui.combo_xAxis->setCurrentIndex(
-    settings->value("x_label", Structure_T).toInt());
+    settings->value("x_label", StructureINDX_T).toInt());
   ui.combo_yAxis->setCurrentIndex(
     settings->value("y_label", Enthalpy_per_FU_T).toInt());
   ui.cb_showDuplicates->setChecked(
@@ -120,6 +122,12 @@ void TabPlot::readSettings(const QString& filename)
   ui.combo_labelType->setCurrentIndex(
     settings->value("labelType", Symbol_L).toInt());
   settings->endGroup();
+
+  // Set the default values of x, y, and label menus
+  ui.combo_labelType->setCurrentIndex(10);
+  ui.combo_yAxis->setCurrentIndex(3);
+  ui.combo_xAxis->setCurrentIndex(0);
+  ui.cb_labelPoints->setChecked(true);
 }
 
 void TabPlot::updateGUI()
@@ -165,6 +173,19 @@ void TabPlot::updatePlot()
   // Lock plot mutex
   m_plot_mutex->lockForWrite();
 
+  // Here, we want to make sure that objectives are shown only if they are present
+  // To show the proper number of them, we set the starting point to Objectivei_*
+  int numaxisitems = m_opt->getObjectivesNum() + Objectivei_T;
+  int numsymbitems = m_opt->getObjectivesNum() + Objectivei_L;
+  ui.combo_xAxis->setMaxCount(numaxisitems);
+  ui.combo_yAxis->setMaxCount(numaxisitems);
+  ui.combo_labelType->setMaxCount(numsymbitems);
+  for (int i = 0; i < m_opt->getObjectivesNum(); i++) {
+      ui.combo_xAxis->addItem(tr("Objective%1").arg(i+1));
+      ui.combo_yAxis->addItem(tr("Objective%1").arg(i+1));
+      ui.combo_labelType->addItem(tr("Objective%1").arg(i+1));
+  }
+
   plotTrends();
 
   m_plot_mutex->unlock();
@@ -188,7 +209,7 @@ void TabPlot::plotTrends()
   int ind;
   Xtal* xtal = nullptr;
   double minE = DBL_MAX;
-  size_t lastTraceStructure = 0;
+  size_t lastTraceStructure = -1;
   bool performTrace = false;
   // Load config settings:
   bool labelPoints = ui.cb_labelPoints->isChecked();
@@ -199,7 +220,7 @@ void TabPlot::plotTrends()
   PlotAxes xAxis = PlotAxes(ui.combo_xAxis->currentIndex());
   PlotAxes yAxis = PlotAxes(ui.combo_yAxis->currentIndex());
 
-  if (xAxis == Structure_T && (yAxis == Energy_T || yAxis == Enthalpy_T ||
+  if (xAxis == StructureINDX_T && (yAxis == Energy_T || yAxis == Enthalpy_T ||
                                yAxis == Enthalpy_per_FU_T)) {
     performTrace = true;
   }
@@ -214,8 +235,8 @@ void TabPlot::plotTrends()
     // first INCAR. Also only plot specified formula units if box is checked.
     if (showSpecifiedFU) {
       bool inTheList = false;
-      for (int i = 0; i < m_formulaUnitsList.size(); i++) {
-        if (m_formulaUnitsList.at(i) == xtal->getFormulaUnits()) {
+      for (int j = 0; j < m_formulaUnitsList.size(); j++) {
+        if (m_formulaUnitsList.at(j) == xtal->getFormulaUnits()) {
           inTheList = true;
         }
       }
@@ -231,7 +252,9 @@ void TabPlot::plotTrends()
 
     if (xtal->getStatus() == Xtal::Killed ||
         xtal->getStatus() == Xtal::Removed ||
-        fabs(xtal->getEnthalpy()) <= 1e-50) {
+        xtal->getStatus() == Xtal::ObjectiveFail ||
+        xtal->getStatus() == Xtal::ObjectiveDismiss ||
+        fabs(xtal->getEnthalpy()) <= ZERO0) {
       continue;
     }
 
@@ -256,13 +279,13 @@ void TabPlot::plotTrends()
       }
 
       switch (ind) {
-        case Structure_T:
+        case StructureINDX_T:
           switch (j) {
             case 0:
-              x = i + 1;
+              x = xtal->getIndex();
               break;
             default:
-              y = i + 1;
+              y = xtal->getIndex();
               break;
           }
           break;
@@ -445,6 +468,27 @@ void TabPlot::plotTrends()
               break;
           }
           break;
+        default:
+          // Objectives in multi-objective run. Since there is no fixed number of
+          //   objectives; and MSVC does not support "case range", we put them
+          //   under "default".
+          // Their index in the list of options starts from Objectivei_T,
+          //   so the proper index for objective value array is "ind - Objectivei_T"
+          if (ind >= Objectivei_T) {
+            // Skip xtals that don't have objectives calculated
+            if (xtal->getStrucObjState() == Structure::Os_NotCalculated) {
+              usePoint = false;
+              continue;
+            }
+            switch (j) {
+              case 0:
+                x = xtal->getStrucObjValues(ind - Objectivei_T);
+                break;
+              default:
+                y = xtal->getStrucObjValues(ind - Objectivei_T);
+                break;
+            }
+          }
       }
     }
 
@@ -454,17 +498,17 @@ void TabPlot::plotTrends()
     QwtPlotMarker* pm = addXtalToPlot(xtal, x, y);
 
     // See if we should draw another line for the trace
-    // This trace assumes the xtals will be ordered based on structure number
+    // This trace assumes the xtals will be ordered based on structure index
     if (performTrace) {
-      if (lastTraceStructure == 0) {
-        lastTraceStructure = i + 1;
+      if (lastTraceStructure == -1) {
+        lastTraceStructure = xtal->getIndex();
         minE = y;
       } else if (y < minE) {
-        plotTrace(lastTraceStructure, minE, i + 1, y);
-        lastTraceStructure = i + 1;
+        plotTrace(lastTraceStructure, minE, xtal->getIndex(), y);
+        lastTraceStructure = xtal->getIndex();
         minE = y;
       } else {
-        ui.plot->addHorizontalPlotLine(lastTraceStructure, i + 1, minE);
+        ui.plot->addHorizontalPlotLine(lastTraceStructure, xtal->getIndex() , minE);
       }
     }
 
@@ -476,7 +520,6 @@ void TabPlot::plotTrends()
           s = QString::number(xtal->getSpaceGroupNumber());
           break;
         case Symbol_L:
-        default:
           s = xtal->getSpaceGroupSymbol();
           break;
         case Enthalpy_L:
@@ -501,13 +544,27 @@ void TabPlot::plotTrends()
         case Generation_L:
           s = QString::number(xtal->getGeneration());
           break;
-        case Structure_L:
-          s = QString::number(i);
+        case StructureINDX_L:
+          s = QString::number(xtal->getIndex());
+          break;
+        case StructureTAG_L:
+          s = xtal->getTag();
           break;
         case Formula_Units_L:
           s = QString::number(xtal->getFormulaUnits());
           break;
-      }
+        default:
+          // Objectives in multi-objective run. Since there is no fixed number of
+          //   objectives; and MSVC does not support "case range", we put them
+          //   under "default".
+          // Their index in the list of options starts from Objectivei_L,
+          //   so the proper index for objective value array is "labelTyep - Objectivei_L"
+          if (labelType >= Objectivei_L) {
+            s = QString::number(xtal->getStrucObjValues(labelType - Objectivei_L));
+          } else {
+            s = xtal->getSpaceGroupSymbol();
+          }
+        }
       QwtText text(s);
       text.setColor(Qt::black);
       pm->setLabel(text);
@@ -528,8 +585,8 @@ void TabPlot::plotTrends()
 
     QString label;
     switch (ind) {
-      case Structure_T:
-        label = tr("Structure");
+      case StructureINDX_T:
+        label = tr("Structure Index");
         break;
       case Generation_T:
         label = tr("Generation");
@@ -576,7 +633,16 @@ void TabPlot::plotTrends()
       case Formula_Units_T:
         label = tr("Formula Units");
         break;
-    }
+      default:
+        // Objectives in multi-objective run. Since there is no fixed number of
+        //   objectives; and MSVC does not support "case range", we put them
+        //   under "default".
+        // Their index in the list of options starts from Objectivei_T,
+        //   but their "shown" index starts from 1; so we have "ind - Objectivei_T + 1"
+        if (ind >= Objectivei_T) {
+          label = tr("Objective%1").arg(ind - Objectivei_T + 1);
+        }
+      }
     if (j == 0)
       ui.plot->setXTitle(label);
     else

@@ -24,6 +24,7 @@
 #include <xtalopt/ui/tab_init.h>
 #include <xtalopt/ui/tab_log.h>
 #include <xtalopt/ui/tab_opt.h>
+#include <xtalopt/ui/tab_mo.h>
 #include <xtalopt/ui/tab_plot.h>
 #include <xtalopt/ui/tab_progress.h>
 #include <xtalopt/xtalopt.h>
@@ -51,8 +52,10 @@ XtalOptDialog::XtalOptDialog(QWidget* parent, Qt::WindowFlags f,
   ui_push_begin = ui->push_begin;
   ui_push_save = ui->push_save;
   ui_push_resume = ui->push_resume;
+  ui_push_hide = ui->push_hide;
   ui_label_opt = ui->label_opt;
   ui_label_run = ui->label_run;
+  ui_label_tot = ui->label_tot;
   ui_label_fail = ui->label_fail;
   ui_label_prog = ui->label_prog;
   ui_progbar = ui->progbar;
@@ -69,6 +72,7 @@ XtalOptDialog::XtalOptDialog(QWidget* parent, Qt::WindowFlags f,
   m_tab_init = new TabInit(this, xtalopt);
   m_tab_edit = new TabEdit(this, xtalopt);
   m_tab_opt = new TabOpt(this, xtalopt);
+  m_tab_mo = new TabMo(this, xtalopt);
   m_tab_progress = new TabProgress(this, xtalopt);
   m_tab_plot = new TabPlot(this, xtalopt);
   m_tab_log = new TabLog(this, xtalopt);
@@ -78,6 +82,7 @@ XtalOptDialog::XtalOptDialog(QWidget* parent, Qt::WindowFlags f,
   ui->tabs->addTab(m_tab_init->getTabWidget(), tr("&Structure Limits"));
   ui->tabs->addTab(m_tab_edit->getTabWidget(), tr("Optimization &Settings"));
   ui->tabs->addTab(m_tab_opt->getTabWidget(), tr("&Search Settings"));
+  ui->tabs->addTab(m_tab_mo->getTabWidget(), tr("&Multiobjective Search"));
   ui->tabs->addTab(m_tab_progress->getTabWidget(), tr("&Progress"));
   ui->tabs->addTab(m_tab_plot->getTabWidget(), tr("&Plot"));
   ui->tabs->addTab(m_tab_log->getTabWidget(), tr("&Log"));
@@ -104,6 +109,26 @@ void XtalOptDialog::setMolecule(GlobalSearch::Molecule* molecule)
     return;
   }
   m_molecule = molecule;
+}
+
+void XtalOptDialog::closeEvent(QCloseEvent *e)
+{
+  // Show "quit" dialog before closing main window
+  QMessageBox::StandardButton reply;
+  reply = QMessageBox::question(this, "Quit", "Quit XtalOpt now?",
+                                QMessageBox::Yes|QMessageBox::No);
+  if (reply == QMessageBox::Yes)
+    e->accept();
+  else
+    e->ignore();
+}
+
+void XtalOptDialog::keyPressEvent(QKeyEvent *e)
+{
+  // Prevent closing with "Esc" key: applies only to the "main window"
+  if (e->key() == Qt::Key_Escape)
+    return;
+  QDialog::keyPressEvent(e);
 }
 
 void XtalOptDialog::beginPlotOnlyMode()
@@ -144,8 +169,8 @@ void XtalOptDialog::startSearch()
 void XtalOptDialog::showTutorialDialog() const
 {
   QMessageBox mbox;
-  mbox.setText("There is a tutorial available for new XtalOpt users at\n\n"
-               "http://xtalopt.github.io/tut.html"
+  mbox.setText("There is a user manual available for new XtalOpt users at\n\n"
+               "https://xtalopt.github.io/xtalopt.html"
                "\n\nWould you like to go there now?");
   mbox.setIcon(QMessageBox::Information);
   QPushButton* yes = mbox.addButton(tr("&Yes"), QMessageBox::YesRole);
@@ -159,7 +184,7 @@ void XtalOptDialog::showTutorialDialog() const
 
   if (clicked == yes) {
     QDesktopServices::openUrl(
-      QUrl("http://xtalopt.github.io/tut.html", QUrl::TolerantMode));
+      QUrl("https://xtalopt.github.io/xtalopt.html", QUrl::TolerantMode));
   } else if (clicked == never) {
     QSettings settings;
     settings.setValue("xtalopt/showTutorialLink", false);

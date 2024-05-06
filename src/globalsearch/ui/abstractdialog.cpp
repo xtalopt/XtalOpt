@@ -59,15 +59,16 @@ void AbstractDialog::initialize()
   connect(ui_push_begin, SIGNAL(clicked()), this, SLOT(startSearch()));
   connect(ui_push_save, SIGNAL(clicked()), this, SLOT(saveSession()));
   connect(ui_push_resume, SIGNAL(clicked()), this, SLOT(resumeSession()));
+  connect(ui_push_hide, SIGNAL(clicked()), this, SLOT(showMinimized()));
 
   connect(m_opt, SIGNAL(sessionStarted()), this, SLOT(updateGUI()));
   connect(m_opt, SIGNAL(sessionStarted()), this, SLOT(lockGUI()));
   connect(m_opt, SIGNAL(readOnlySessionStarted()), this, SLOT(updateGUI()));
   connect(m_opt, SIGNAL(readOnlySessionStarted()), this, SLOT(lockGUI()));
-  connect(m_opt->queue(), SIGNAL(newStatusOverview(int, int, int)), this,
-          SLOT(updateStatus(int, int, int)));
-  connect(this, SIGNAL(sig_updateStatus(int, int, int)), this,
-          SLOT(updateStatus_(int, int, int)));
+  connect(m_opt->queue(), SIGNAL(newStatusOverview(int, int, int, int)), this,
+          SLOT(updateStatus(int, int, int, int)));
+  connect(this, SIGNAL(sig_updateStatus(int, int, int, int)), this,
+          SLOT(updateStatus_(int, int, int, int)));
 
   connect(progTimer, SIGNAL(timeout()), this, SLOT(repaintProgressBar_()),
           Qt::QueuedConnection);
@@ -121,8 +122,8 @@ void AbstractDialog::disconnectGUI()
   emit tabsDisconnectGUI();
   disconnect(m_opt, SIGNAL(sessionStarted()), this, SLOT(updateGUI()));
   disconnect(m_opt, SIGNAL(readOnlySessionStarted()), this, SLOT(updateGUI()));
-  disconnect(this, SIGNAL(sig_updateStatus(int, int, int)), this,
-             SLOT(updateStatus_(int, int, int)));
+  disconnect(this, SIGNAL(sig_updateStatus(int, int, int, int)), this,
+             SLOT(updateStatus_(int, int, int, int)));
 }
 
 void AbstractDialog::lockGUI()
@@ -148,7 +149,7 @@ void AbstractDialog::resumeSession()
 {
   QString filename;
   filename = QFileDialog::getOpenFileName(
-    this, QString("Select .state file to resume"), m_opt->filePath,
+    this, QString("Select .state file to resume"), m_opt->locWorkDir,
     "*.state;;*.*", 0, QFileDialog::DontUseNativeDialog);
 
   if (!filename.isEmpty())
@@ -177,11 +178,12 @@ void AbstractDialog::resumeSession_(const QString& filename)
     m_opt->emitSessionStarted();
 }
 
-void AbstractDialog::updateStatus_(int opt, int run, int fail)
+void AbstractDialog::updateStatus_(int opt, int run, int fail, int tot)
 {
   ui_label_opt->setText(QString::number(opt));
   ui_label_run->setText(QString::number(run));
   ui_label_fail->setText(QString::number(fail));
+  ui_label_tot->setText(QString::number(tot));
 }
 
 void AbstractDialog::startProgressUpdate_(const QString& text, int min, int max)

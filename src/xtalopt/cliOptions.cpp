@@ -18,6 +18,7 @@
 #include <QFile>
 #include <QString>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/queueinterfaces/queueinterfaces.h>
 #include <globalsearch/utilities/fileutils.h>
@@ -33,7 +34,14 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-static const QStringList keywords = { "empiricalFormula",
+static const QStringList keywords = { "volumeScaleMin",
+                                      "volumeScaleMax",
+                                      "objective",
+                                      "objectivesReDo",
+                                      "softExit",
+                                      "hardExit",
+                                      "localQueue",
+                                      "empiricalFormula",
                                       "formulaUnits",
                                       "aMin",
                                       "bMin",
@@ -71,8 +79,6 @@ static const QStringList keywords = { "empiricalFormula",
                                       "jobFailLimit",
                                       "jobFailAction",
                                       "maxNumStructures",
-                                      "calculateHardness",
-                                      "hardnessFitnessWeight",
                                       "usingMitoticGrowth",
                                       "usingFormulaUnitCrossovers",
                                       "formulaUnitCrossoversGen",
@@ -146,6 +152,16 @@ static const QHash<QString, QStringList> requiredOptimizerKeywords = {
   { "siesta", { "fdfTemplates" } }
 };
 
+QString XtalOptCLIOptions::xtaloptHeaderString()
+{
+  QString out = QString("\n====================================================\n")
+              + QString("   XtalOpt Multi-Objective Evolutionary Algorithm   \n")
+              + QString("\n Version %1.%2").arg(XTALOPT_VER_MAJOR).arg(XTALOPT_VER_MINOR)
+              + QString("\n Zurek Group, University at Buffalo")
+              + QString("\n====================================================\n\n");
+  return out;
+}
+
 bool XtalOptCLIOptions::isKeyword(const QString& s, QString& csString)
 {
   size_t ind = keywords.indexOf(QRegExp(s, Qt::CaseInsensitive));
@@ -189,7 +205,7 @@ bool XtalOptCLIOptions::isMultiLineEntry(const QString& s)
 }
 
 void XtalOptCLIOptions::processLine(const QString& tmpLine,
-                                    QHash<QString, QString>& options)
+                                    QHash<QString, QString>& options, XtalOpt& xtalopt)
 {
   QString line = tmpLine.trimmed();
 
@@ -223,7 +239,16 @@ void XtalOptCLIOptions::processLine(const QString& tmpLine,
     return;
   }
 
-  options[csKey] = value;
+  // Multi-objective related entries are treated separately. The reason is that
+  //   there might be multiple of these entries, each have multiple fields, and
+  //   some of these fields are optional in the CLI. This requires some flexibity
+  //   and a more complicated handling.
+  // So, we won't assign actual variables here. Rather, the following function
+  //   adds the input info to a sring list, and they will be processed later on.
+  if (csKey == "objective" )
+    xtalopt.objectiveListAdd(value);
+  else
+    options[csKey] = value;
 }
 
 bool XtalOptCLIOptions::requiredOptionsSet(
@@ -342,8 +367,17 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.vol_min = options.value("volumeMin", "1.0").toFloat();
   xtalopt.vol_max = options.value("volumeMax", "100000.0").toFloat();
 
-  // Check for fixed volume
-  if (fabs(xtalopt.vol_min - xtalopt.vol_max) < 1.e-5) {
+  // If scaled volume is the case, we adjust the main
+  //   vol_max/vol_min (which will be used later on) right away.
+  xtalopt.vol_scale_min = options.value("volumeScaleMin", "0.0").toFloat();
+  xtalopt.vol_scale_max = options.value("volumeScaleMax", "0.0").toFloat();
+  if (xtalopt.vol_scale_min > ZERO5 || xtalopt.vol_scale_max > ZERO5) {
+    xtalopt.getScaledVolumePerFU(xtalopt.vol_scale_min, xtalopt.vol_scale_max,
+                                 xtalopt.vol_min, xtalopt.vol_max);
+  }
+
+  if (fabs(xtalopt.vol_min - xtalopt.vol_max) < ZERO5) {
+   // Check for fixed volume
     xtalopt.using_fixed_volume = true;
     xtalopt.vol_fixed = xtalopt.vol_min;
   } else {
@@ -398,9 +432,23 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
 
     QStringList list = toList(options.value("forcedSpgsWithRandSpg", ""));
     for (const auto& item : list) {
-      unsigned int num = item.toUInt();
-      if (num != 0 && num <= 230)
-        ++xtalopt.minXtalsOfSpgPerFU[num - 1];
+      int numhyphens = item.count(QLatin1Char('-'));
+      if (numhyphens == 0) {
+        unsigned int num = item.toUInt();
+        if (num != 0 && num <= 230)
+          ++xtalopt.minXtalsOfSpgPerFU[num - 1];
+      } else if (numhyphens == 1) {
+        QStringList num_list = item.split("-", QString::SkipEmptyParts);
+        bool ok1, ok2;
+        unsigned int min_num = num_list[0].toUInt(&ok1);
+        unsigned int max_num = num_list[1].toUInt(&ok2);
+        if (!ok1 || !ok2)
+          continue;
+        for (unsigned int num = min_num; num <= max_num; num++) {
+          if (num != 0 && num <= 230)
+            ++xtalopt.minXtalsOfSpgPerFU[num - 1];
+        }
+      }
     }
   }
 
@@ -436,10 +484,6 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   }
 
   xtalopt.cutoff = options.value("maxNumStructures", "10000").toUInt();
-  xtalopt.m_calculateHardness =
-    toBool(options.value("calculateHardness", "false"));
-  xtalopt.m_hardnessFitnessWeight =
-    options.value("hardnessFitnessWeight", "0.5").toDouble();
   xtalopt.using_mitotic_growth =
     toBool(options.value("usingMitoticGrowth", "false"));
   xtalopt.using_FU_crossovers =
@@ -449,6 +493,19 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.using_one_pool = toBool(options.value("usingOneGenePool", "false"));
   xtalopt.chance_of_mitosis =
     options.value("chanceOfFutureMitosis", "50").toUInt();
+  xtalopt.m_softExit = toBool(options.value("softExit", "false"));
+  xtalopt.m_localQueue = toBool(options.value("localQueue", "false"));
+
+  // MULTI-OBJECTIVE RELATED ENTRIES.
+  // Process the optimization objectives (and weights) for energy/aflow-hardness/objectives.
+  // If no objectives/aflow-hardness; the aflow-hardness weight will be set to -1.0 and
+  //   the number of objectives will be set to 0.
+  // For this process, objectives list will be used that contains all objective/aflow-hardness
+  //   related input.
+  xtalopt.m_objectivesReDo = toBool(options.value("objectivesReDo", "false"));
+  if (!xtalopt.processObjectivesInfo())
+    return false;
+  ///////////////
 
   // Mutators
   xtalopt.p_strip = options.value("percentChanceStripple", "50").toUInt();
@@ -490,7 +547,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
     options.value("xtalcompToleranceAngle", "2.0").toFloat();
 
   // Spglib tolerance
-  xtalopt.tol_spg = options.value("spglibTolerance", "0.05").toFloat();
+  xtalopt.tol_spg = options.value("spglibTolerance", "0.01").toFloat();
 
   // We will use this later
   QString templatesDir = options.value("templatesDirectory", ".");
@@ -594,6 +651,14 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
           return false;
         }
 
+        // Check if psf file exists
+        QFileInfo check_file(filename);
+        if (!check_file.exists() || !check_file.isFile()) {
+          qDebug() << "Error: the PSF file for atom type" << symbol
+                   << "was not found at " << filename;
+          return false;
+        }
+
         hash.insert(symbol, QVariant(filename));
       }
 
@@ -633,20 +698,48 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
       qSort(symbols);
       QVariantHash hash;
       std::string potcarStr;
-      for (const auto& symbol : symbols) {
-        QString filename =
-          options["potcarfile " + symbol.toLower()];
-        if (filename.isEmpty()) {
-          qDebug() << "Error: no POTCAR file found for atom type" << symbol;
-          qDebug() << "You must set the POTCAR file in the options like so:";
-          QString tmp = "potcarFile " + symbol +
-                        " = /path/to/vasp_potcars/symbol/POTCAR";
-          qDebug() << tmp;
+
+      // We first check if a "single" POTCAR for the "system" is given
+      //   by the user as "potcarfile system" in the setup file!
+      // If so, then single potcarfile entries for the elements are
+      //   ignored and this single file will be used "as is".
+      // If not, then a traditional element-by-element check is performed
+      //   to see all required POTCAR files are present.
+      QString filename =
+        options["potcarfile system"];
+      if (!filename.isEmpty()) {
+        // Check if potcar file exists
+        QFileInfo check_file(filename);
+        if (!check_file.exists() || !check_file.isFile()) {
+          qDebug() << "Error: the POTCAR file for the system"
+            << "was not found at " << filename;
           return false;
         }
-
-        hash.insert(symbol, QVariant(filename));
+        qDebug() << "A single POTCAR file for the system was found at " << filename;
+        hash.insert("system", QVariant(filename));
         potcarStr += "%fileContents:" + filename.toStdString() + "%\n";
+      } else {
+        for (const auto& symbol : symbols) {
+          filename =
+            options["potcarfile " + symbol.toLower()];
+          if (filename.isEmpty()) {
+            qDebug() << "Error: no POTCAR file found for atom type" << symbol;
+            qDebug() << "You must set the POTCAR file in the options like so:";
+            QString tmp = "potcarFile " + symbol +
+              " = /path/to/vasp_potcars/symbol/POTCAR";
+            qDebug() << tmp;
+            return false;
+          }
+          // Check if potcar file exists
+          QFileInfo check_file(filename);
+          if (!check_file.exists() || !check_file.isFile()) {
+            qDebug() << "Error: the POTCAR file for atom type" << symbol
+              << "was not found at " << filename;
+            return false;
+          }
+          hash.insert(symbol, QVariant(filename));
+          potcarStr += "%fileContents:" + filename.toStdString() + "%\n";
+        }
       }
 
       potcarInfo.append(QVariant(hash));
@@ -682,10 +775,10 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
       optimizer->setLocalRunCommand(options["exeLocation"]);
   }
 
-  xtalopt.filePath =
+  xtalopt.locWorkDir =
     options.value("localWorkingDirectory", "localWorkingDirectory");
   // Make relative paths become absolute paths
-  xtalopt.filePath = QDir(xtalopt.filePath).absolutePath();
+  xtalopt.locWorkDir = QDir(xtalopt.locWorkDir).absolutePath();
 
   xtalopt.m_logErrorDirs =
     toBool(options.value("logErrorDirectories", "false"));
@@ -706,7 +799,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
     xtalopt.host = options["host"];
     xtalopt.port = options.value("port", "22").toUInt();
     xtalopt.username = options["user"];
-    xtalopt.rempath = options["remoteWorkingDirectory"];
+    xtalopt.remWorkDir = options["remoteWorkingDirectory"];
   }
 
   return true;
@@ -720,43 +813,43 @@ bool XtalOptCLIOptions::printOptions(const QHash<QString, QString>& options,
 
   QString output;
   QTextStream stream(&output);
-  stream << "**** Manually set options: ****\n";
+
+  // Print Program's header
+  stream << xtaloptHeaderString();
+
+  // Former: Manually set options
+  stream << "\n=== Manually Set Settings\n";
   for (const auto& key : keys)
     stream << key << ": " << options[key] << "\n";
 
-  stream << "\n**** All options: ****\n";
+  // Former: All options
   xtalopt.printOptionSettings(stream);
 
   // We need to convert to c string to properly print newlines
   qDebug() << output.toUtf8().data();
 
-  // Let's clean out the directory if old data is here - before we write logs
-  // Check if xtalopt data is already saved at the filePath
-  if (QFile::exists(xtalopt.filePath + QDir::separator() + "xtalopt.state")) {
-    bool proceed;
-    QString msg = QString("Warning: XtalOpt data is already saved at: ") +
-                  xtalopt.filePath +
-                  "\nDo you wish to proceed and overwrite it?"
-                  "\n\nIf no, please change the "
-                  "'localWorkingDirectory' option in the input file";
-
-    xtalopt.promptForBoolean(msg, &proceed);
-    if (!proceed) {
-      return false;
-    } else {
-      bool result = FileUtils::removeDir(xtalopt.filePath);
-      if (!result) {
-        qDebug() << "Error removing directory at" << xtalopt.filePath;
-        return false;
-      }
-    }
+  // Check if xtalopt data is already saved at the local working directory.
+  // Up to r12, xtalopt would ask the user if they want the code to clean up the folder.
+  // But there were cases which user had mistakenly specified an important directory
+  //   such as Desktop/ or Documents/, and then asked the code to clean up which
+  //   results in permanent deletion of data!
+  // So, now we only let the user know that the directory is not empty and quit (in the
+  //   GUI there is dialog for this).
+  if (QFile::exists(xtalopt.locWorkDir + QDir::separator() + "xtalopt.state")) {
+    QString msg = QString("Error: XtalOpt data is already saved at:\n") +
+                          xtalopt.locWorkDir +
+                          "\n\nEmpty the directory to proceed or "
+                          "select a new 'Local working directory'!"
+                          "\n\nQuitting now ...";
+    qDebug().noquote() << msg;
+    return false;
   }
   // Make the directory if it doesn't exist...
-  if (!QFile::exists(xtalopt.filePath))
-    QDir().mkpath(xtalopt.filePath);
+  if (!QFile::exists(xtalopt.locWorkDir))
+    QDir().mkpath(xtalopt.locWorkDir);
 
   // Try to write to a log file also
-  QFile file(xtalopt.filePath + QDir::separator() + "xtaloptSettings.log");
+  QFile file(xtalopt.locWorkDir + QDir::separator() + "xtaloptSettings.log");
   if (file.open(QIODevice::WriteOnly | QIODevice::Text))
     file.write(output.toStdString().c_str());
 
@@ -778,7 +871,7 @@ bool XtalOptCLIOptions::readOptions(const QString& filename, XtalOpt& xtalopt)
   // Read the file line-by-line
   while (!file.atEnd()) {
     QString line = file.readLine();
-    processLine(line, options);
+    processLine(line, options, xtalopt);
   }
 
   // Check to make sure all required options were set
@@ -1227,6 +1320,8 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
   text += QString("gammaMax = ") + QString::number(xtalopt.gamma_max) + "\n";
   text += QString("volumeMin = ") + QString::number(xtalopt.vol_min) + "\n";
   text += QString("volumeMax = ") + QString::number(xtalopt.vol_max) + "\n";
+  text += QString("volumeScaleMax = ") + QString::number(xtalopt.vol_scale_max) + "\n";
+  text += QString("volumeScaleMin = ") + QString::number(xtalopt.vol_scale_min) + "\n";
   text += QString("usingRadiiInteratomicDistanceLimit = ") +
           fromBool(xtalopt.using_interatomicDistanceLimit) + "\n";
   text += QString("radiiScalingFactor = ") +
@@ -1262,14 +1357,6 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
   text +=
     QString("maxNumStructures = ") + QString::number(xtalopt.cutoff) + "\n";
 
-  text += QString("calculateHardness = ") +
-          fromBool(xtalopt.m_calculateHardness) + "\n";
-
-  if (xtalopt.m_calculateHardness) {
-    text += QString("hardnessFitnessWeight = ") +
-            QString::number(xtalopt.m_hardnessFitnessWeight) + "\n";
-  }
-
   text += QString("usingMitoticGrowth = ") +
           fromBool(xtalopt.using_mitotic_growth) + "\n";
   text += QString("usingFormulaUnitCrossovers = ") +
@@ -1280,6 +1367,10 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
     QString("usingOneGenePool = ") + fromBool(xtalopt.using_one_pool) + "\n";
   text += QString("chanceOfFutureMitosis = ") +
           QString::number(xtalopt.chance_of_mitosis) + "\n";
+
+  text += QString("softExit = ") + fromBool(xtalopt.m_softExit) + "\n";
+  text += QString("localQueue = ") + fromBool(xtalopt.m_localQueue) + "\n";
+  text += QString("objectivesReDo = ") + fromBool(xtalopt.m_objectivesReDo) + "\n";
 
   text += QString("\n# Mutator Settings\n");
   text += QString("percentChanceStripple = ") +
@@ -1343,7 +1434,7 @@ void XtalOptCLIOptions::readRuntimeOptions(XtalOpt& xtalopt)
   // Read the file line-by-line
   while (!file.atEnd()) {
     QString line = file.readLine();
-    processLine(line, options);
+    processLine(line, options, xtalopt);
   }
 
   processRuntimeOptions(options, xtalopt);
@@ -1396,6 +1487,10 @@ void XtalOptCLIOptions::processRuntimeOptions(
       xtalopt.vol_min = options[option].toFloat();
     } else if (CICompare("volumeMax", option)) {
       xtalopt.vol_max = options[option].toFloat();
+    } else if (CICompare("volumeScaleMax", option)) {
+      xtalopt.vol_scale_max = options[option].toFloat();
+    } else if (CICompare("volumeScaleMin", option)) {
+      xtalopt.vol_scale_min = options[option].toFloat();
     } else if (CICompare("usingRadiiInteratomicDistanceLimit", option)) {
       xtalopt.using_interatomicDistanceLimit = toBool(options[option]);
     } else if (CICompare("radiiScalingFactor", option)) {
@@ -1450,10 +1545,6 @@ void XtalOptCLIOptions::processRuntimeOptions(
       }
     } else if (CICompare("maxNumStructures", option)) {
       xtalopt.cutoff = options[option].toUInt();
-    } else if (CICompare("calculateHardness", option)) {
-      xtalopt.m_calculateHardness = toBool(options[option]);
-    } else if (CICompare("hardnessFitnessWeight", option)) {
-      xtalopt.m_hardnessFitnessWeight = options[option].toDouble();
     } else if (CICompare("usingMitoticGrowth", option)) {
       xtalopt.using_mitotic_growth = toBool(options[option]);
     } else if (CICompare("usingFormulaUnitCrossovers", option)) {
@@ -1512,6 +1603,14 @@ void XtalOptCLIOptions::processRuntimeOptions(
       xtalopt.m_cancelJobAfterTime = toBool(options[option]);
     } else if (CICompare("hoursForAutoCancelJob", option)) {
       xtalopt.m_hoursForCancelJobAfterTime = options[option].toDouble();
+    } else if (CICompare("softExit", option)) {
+      xtalopt.m_softExit = toBool(options[option]);
+    } else if (CICompare("hardExit", option)) {
+      xtalopt.m_hardExit = toBool(options[option]);
+    } else if (CICompare("localQueue", option)) {
+      xtalopt.m_localQueue = toBool(options[option]);
+    } else if (CICompare("objectivesReDo", option)) {
+      xtalopt.m_objectivesReDo = toBool(options[option]);
     } else {
       qDebug() << "Warning: option," << option << ", is not a valid runtime"
                << "option! It is being ignored.";

@@ -156,7 +156,8 @@ bool XtalOptTest::isFinished()
     xtal->lock().unlock();
     if (state == Xtal::Optimized || state == Xtal::Killed ||
         state == Xtal::Duplicate || state == Xtal::Supercell ||
-        state == Xtal::Removed)
+        state == Xtal::Removed ||
+        state == Xtal::ObjectiveFail || state == Xtal::ObjectiveDismiss)
       done++;
   }
   m_opt->tracker()->unlock();
@@ -180,7 +181,9 @@ int XtalOptTest::getCurrentStructure()
     if (state == Xtal::InProcess || state == Xtal::Optimized ||
         state == Xtal::Submitted || state == Xtal::Killed ||
         state == Xtal::Restart || state == Xtal::Duplicate ||
-        state == Xtal::Supercell || state == Xtal::Removed)
+        state == Xtal::Supercell || state == Xtal::Removed ||
+        state == Xtal::ObjectiveFail || state == Xtal::ObjectiveDismiss ||
+        state == Xtal::ObjectiveRetain || state == Xtal::ObjectiveCalculation)
       n++;
   }
   m_opt->tracker()->unlock();
@@ -196,7 +199,7 @@ void XtalOptTest::writeDataFile(int run)
 {
   qDebug() << "Run " << run << " Finished!!" << endl;
   QFile file;
-  file.setFileName(m_opt->filePath + "/run" + QString::number(run) +
+  file.setFileName(m_opt->locWorkDir + "/run" + QString::number(run) +
                    "-results.txt");
   if (!file.open(QIODevice::WriteOnly)) {
     m_opt->error("XtalOptTest::writeDataFile(): Error opening file " +
@@ -236,12 +239,24 @@ void XtalOptTest::writeDataFile(int run)
       case Xtal::Error:
         out << "Error";
         break;
+      case Xtal::ObjectiveDismiss:
+        out << "ObjectiveDismiss";
+        break;
+      case Xtal::ObjectiveFail:
+        out << "ObjectiveFail";
+        break;
+      case Xtal::ObjectiveRetain:
+      case Xtal::ObjectiveCalculation:
+        out << "ObjectiveCalculation";
+        break;
       case Xtal::StepOptimized:
       case Xtal::WaitingForOptimization:
+      case Xtal::Submitted:
       case Xtal::InProcess:
       case Xtal::Empty:
       case Xtal::Updating:
-      case Xtal::Submitted:
+        out << "Opt Step " << xtal->getCurrentOptStep();
+        break;
       default:
         out << "In progress";
         break;

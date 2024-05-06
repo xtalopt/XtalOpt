@@ -23,8 +23,6 @@
 #include <globalsearch/macros.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/random.h>
-#include <globalsearch/sshconnection.h>
-#include <globalsearch/sshmanager.h>
 #include <globalsearch/structure.h>
 
 #include <QDir>
@@ -32,6 +30,7 @@
 #include <QString>
 #include <QStringList>
 
+#include <QProcess>
 namespace GlobalSearch {
 
 PbsQueueInterface::PbsQueueInterface(OptBase* parent,
@@ -57,23 +56,23 @@ PbsQueueInterface::~PbsQueueInterface()
 bool PbsQueueInterface::isReadyToSearch(QString* str)
 {
   // Is a working directory specified?
-  if (m_opt->filePath.isEmpty()) {
+  if (m_opt->locWorkDir.isEmpty()) {
     *str = tr("Local working directory is not set. Check your Queue "
               "configuration.");
     return false;
   }
 
   // Can we write to the working directory?
-  QDir workingdir(m_opt->filePath);
+  QDir workingdir(m_opt->locWorkDir);
   bool writable = true;
   if (!workingdir.exists()) {
-    if (!workingdir.mkpath(m_opt->filePath)) {
+    if (!workingdir.mkpath(m_opt->locWorkDir)) {
       writable = false;
     }
   } else {
     // If the path exists, attempt to open a small test file for writing
     QString filename =
-      m_opt->filePath + QString("queuetest-") + QString::number(getRandUInt());
+      m_opt->locWorkDir + QString("queuetest-") + QString::number(getRandUInt());
     QFile file(filename);
     if (!file.open(QFile::ReadWrite)) {
       writable = false;
@@ -84,7 +83,7 @@ bool PbsQueueInterface::isReadyToSearch(QString* str)
     *str = tr("Cannot write to working directory '%1'.\n\nPlease "
               "change the permissions on this directory or specify "
               "a different one in the Queue configuration.")
-             .arg(m_opt->filePath);
+             .arg(m_opt->locWorkDir);
     return false;
   }
 
@@ -119,7 +118,7 @@ bool PbsQueueInterface::isReadyToSearch(QString* str)
     return false;
   }
 
-  if (m_opt->rempath.isEmpty()) {
+  if (m_opt->remWorkDir.isEmpty()) {
     *str = tr("Remote working directory is not set. Check your Queue "
               "configuration.");
     return false;
@@ -224,27 +223,13 @@ void PbsQueueInterface::writeSettings(const QString& filename)
 
 bool PbsQueueInterface::startJob(Structure* s)
 {
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
-
-  if (ssh == nullptr) {
-    m_opt->warning(tr("Cannot connect to ssh server"));
-    return false;
-  }
-
   QWriteLocker wlocker(&s->lock());
-
-  QString command =
-    "cd \"" + s->getRempath() + "\" && " + m_submitCommand + " job.pbs";
-
-  QString stdout_str;
-  QString stderr_str;
+  QString command = m_submitCommand + " job.pbs";
+  QString stdout_str, stderr_str;
   int ec;
-  if (!ssh->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
-    m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
-    m_opt->ssh()->unlockConnection(ssh);
+
+  if (!this->runACommand(s->getRempath(), command, &stdout_str, &stderr_str, &ec))
     return false;
-  }
-  m_opt->ssh()->unlockConnection(ssh);
 
   // Assuming stdout_str value is <jobID>.trailing.garbage.hostname.edu or
   // similar
@@ -259,58 +244,54 @@ bool PbsQueueInterface::startJob(Structure* s)
 
   if (!ok) {
     m_opt->warning(
-      tr("Error retrieving jobID for structure %1.").arg(s->getIDString()));
+      tr("Error retrieving jobID for structure %1.").arg(s->getTag()));
     return false;
   }
 
   s->setJobID(jobID);
   s->startOptTimer();
+  // This is done to make sure at least one queue list refresh is done after
+  //   the job is submitted and before the first status check. Otherwise, sometimes
+  //   using the old queue list might cause the code believe that the job is
+  //   missing and with an existing output file, the run will be marked as failed.
+  getQueueList(true);
   return true;
 }
 
 bool PbsQueueInterface::stopJob(Structure* s)
 {
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
-
-  if (ssh == nullptr) {
-    m_opt->warning(tr("Cannot connect to ssh server"));
-    return false;
-  }
-
   // lock structure
   QWriteLocker locker(&s->lock());
 
-  // Log errors if needed
+  // Log error dir if needed
   if (this->m_opt->m_logErrorDirs && (s->getStatus() == Structure::Error ||
                                       s->getStatus() == Structure::Restart)) {
-    this->logErrorDirectory(s, ssh);
+    this->logErrorDirectory(s);
   }
 
   // jobid has not been set, cannot delete!
   if (s->getJobID() == 0) {
     if (m_opt->cleanRemoteOnStop()) {
-      this->cleanRemoteDirectory(s, ssh);
+      this->cleanRemoteDirectory(s);
     }
-    m_opt->ssh()->unlockConnection(ssh);
     return true;
   }
 
+  // Execute
   const QString command =
     m_cancelCommand + " " + QString::number(s->getJobID());
-
-  // Execute
   QString stdout_str;
   QString stderr_str;
   int ec;
   bool ret = true;
-  if (!ssh->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
+
+  if (!this->runACommand("", command, &stdout_str, &stderr_str, &ec)) {
     // Most likely job is already gone from queue.
     ret = false;
   }
 
   s->setJobID(0);
   s->stopOptTimer();
-  m_opt->ssh()->unlockConnection(ssh);
   return ret;
 }
 
@@ -407,7 +388,7 @@ QueueInterface::QueueStatus PbsQueueInterface::getStatus(Structure* s) const
     // output files are never copied back. Just restart.
     m_opt->debug(tr("Structure %1 with jobID %2 is missing "
                     "from the queue and has not written any output.")
-                   .arg(s->getIDString())
+                   .arg(s->getTag())
                    .arg(s->getJobID()));
     return QueueInterface::Error;
   }
@@ -415,22 +396,23 @@ QueueInterface::QueueStatus PbsQueueInterface::getStatus(Structure* s) const
   else {
     m_opt->debug(tr("Structure %1 with jobID %2 has "
                     "unrecognized status: %3")
-                   .arg(s->getIDString())
+                   .arg(s->getTag())
                    .arg(s->getJobID())
                    .arg(status));
     return QueueInterface::Unknown;
   }
 }
 
-QStringList PbsQueueInterface::getQueueList() const
+// The forced input parameter has a default False value
+QStringList PbsQueueInterface::getQueueList(bool forced) const
 {
   // recast queue mutex as mutable for safe access:
   QReadWriteLock& queueMutex = const_cast<QReadWriteLock&>(m_queueMutex);
 
   queueMutex.lockForRead();
 
-  // Limit queries to once per second
-  if (m_queueTimeStamp.isValid() &&
+  // Limit queries to once per queueRefreshInterval
+  if (!forced && m_queueTimeStamp.isValid() &&
 // QDateTime::msecsTo is not implemented until Qt 4.7
 #if QT_VERSION >= 0x040700
       m_queueTimeStamp.msecsTo(QDateTime::currentDateTime()) <=
@@ -471,46 +453,35 @@ QStringList PbsQueueInterface::getQueueList() const
   QStringList& queueData = const_cast<QStringList&>(m_queueData);
   QDateTime& queueTimeStamp = const_cast<QDateTime&>(m_queueTimeStamp);
 
-  // Get SSH connection
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
-
-  if (ssh == nullptr) {
-    m_opt->warning(tr("Cannot connect to ssh server"));
-    queueTimeStamp = QDateTime::currentDateTime();
-    queueData.clear();
-    queueData << "CommError";
-    QStringList ret(m_queueData);
-    return ret;
-  }
-
   QString command = m_statusCommand + " -u " + m_opt->username;
 
   // Execute
   QString stdout_str;
   QString stderr_str;
   int ec;
+  bool ok;
   // Valid exit codes for grep: (0) matches found, execution successful
   //                            (1) no matches found, execution successful
   //                            (2) execution unsuccessful
-  if (!ssh->execute(command, stdout_str, stderr_str, ec) ||
-      (ec != 0 && ec != 1)) {
-    m_opt->ssh()->unlockConnection(ssh);
+  ok = this->runACommand("", command, &stdout_str, &stderr_str, &ec);
+
+  if (!ok || (ec != 0 && ec != 1)) {
     m_opt->warning(tr("Error executing %1: (%2) %3\n\t"
-                      "Using cached queue data.")
-                     .arg(command)
-                     .arg(QString::number(ec))
-                     .arg(stderr_str));
+          "Using cached queue data.")
+        .arg(command)
+        .arg(QString::number(ec))
+        .arg(stderr_str));
     queueTimeStamp = QDateTime::currentDateTime();
     QStringList ret(m_queueData);
     return ret;
   }
-  m_opt->ssh()->unlockConnection(ssh);
 
   queueData = stdout_str.split("\n", QString::SkipEmptyParts);
 
   QStringList ret(m_queueData);
   queueTimeStamp = QDateTime::currentDateTime();
   return ret;
+
 }
 }
 

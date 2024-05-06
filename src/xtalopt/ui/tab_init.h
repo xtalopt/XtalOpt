@@ -62,6 +62,7 @@ public:
   };
 
 public slots:
+  void updateScaledVolume();
   void lockGUI() override;
   void readSettings(const QString& filename = "") override;
   void writeSettings(const QString& filename = "") override;

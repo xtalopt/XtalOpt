@@ -19,6 +19,7 @@
 #include <globalsearch/structures/atom.h>
 #include <globalsearch/structures/bond.h>
 #include <globalsearch/structures/unitcell.h>
+#include <globalsearch/constants.h>
 
 #include <cassert>
 #include <vector>

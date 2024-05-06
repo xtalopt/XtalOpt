@@ -40,8 +40,8 @@ void GlobalQueueInterfaceSettingsWidget::updateGUI(GlobalSearch::OptBase* opt)
 
   m_ui->edit_description->setText(opt->description);
   m_ui->edit_host->setText(opt->host);
-  m_ui->edit_rempath->setText(opt->rempath);
-  m_ui->edit_locpath->setText(opt->filePath);
+  m_ui->edit_rempath->setText(opt->remWorkDir);
+  m_ui->edit_locpath->setText(opt->locWorkDir);
   m_ui->edit_username->setText(opt->username);
   m_ui->spin_port->setValue(opt->port);
   m_ui->cb_cleanRemoteOnStop->setChecked(opt->cleanRemoteOnStop());
@@ -62,8 +62,8 @@ void GlobalQueueInterfaceSettingsWidget::accept(GlobalSearch::OptBase* opt)
 {
   opt->description = m_ui->edit_description->text().trimmed();
   opt->host = m_ui->edit_host->text().trimmed();
-  opt->rempath = m_ui->edit_rempath->text().trimmed();
-  opt->filePath = m_ui->edit_locpath->text().trimmed();
+  opt->remWorkDir = m_ui->edit_rempath->text().trimmed();
+  opt->locWorkDir = m_ui->edit_locpath->text().trimmed();
   opt->username = m_ui->edit_username->text().trimmed();
   opt->port = m_ui->spin_port->value();
   opt->setCleanRemoteOnStop(m_ui->cb_cleanRemoteOnStop->isChecked());

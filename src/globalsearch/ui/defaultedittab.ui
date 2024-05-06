@@ -40,6 +40,12 @@
    </item>
    <item row="0" column="1" colspan="3">
     <widget class="QComboBox" name="combo_queueInterfaces">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>25</height>
+      </size>
+     </property>
      <property name="font">
       <font>
        <pointsize>11</pointsize>
@@ -115,6 +121,12 @@
    </item>
    <item row="1" column="1" colspan="3">
     <widget class="QComboBox" name="combo_optimizers">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>25</height>
+      </size>
+     </property>
      <property name="font">
       <font>
        <pointsize>11</pointsize>
@@ -154,6 +166,12 @@
    </item>
    <item row="2" column="1" colspan="3">
     <widget class="QComboBox" name="combo_templates">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>25</height>
+      </size>
+     </property>
      <property name="font">
       <font>
        <pointsize>11</pointsize>
@@ -292,6 +310,12 @@
    </item>
    <item row="6" column="1" colspan="4">
     <widget class="QLineEdit" name="edit_user1">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>25</height>
+      </size>
+     </property>
      <property name="font">
       <font>
        <pointsize>11</pointsize>
@@ -301,6 +325,12 @@
    </item>
    <item row="7" column="1" colspan="4">
     <widget class="QLineEdit" name="edit_user2">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>25</height>
+      </size>
+     </property>
      <property name="font">
       <font>
        <pointsize>11</pointsize>
@@ -310,6 +340,12 @@
    </item>
    <item row="8" column="1" colspan="4">
     <widget class="QLineEdit" name="edit_user3">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>25</height>
+      </size>
+     </property>
      <property name="font">
       <font>
        <pointsize>11</pointsize>
@@ -319,6 +355,12 @@
    </item>
    <item row="9" column="1" colspan="4">
     <widget class="QLineEdit" name="edit_user4">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>25</height>
+      </size>
+     </property>
      <property name="font">
       <font>
        <pointsize>11</pointsize>

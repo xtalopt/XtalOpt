@@ -22,8 +22,6 @@
 #include <QMutex>
 #include <QVector>
 
-#define EV_TO_KCAL_PER_MOL 23.060538
-
 class QFile;
 
 namespace XtalOpt {
@@ -80,12 +78,6 @@ public:
     const QHash<unsigned int, XtalCompositionStruct>& limits,
     int maxAttempts = 100.0, GlobalSearch::Atom* atom = 0);
 
-#ifdef ENABLE_MOLECULAR
-  bool addMoleculeRandomly(GlobalSearch::Molecule& mol,
-                           const minIADs& iads = minIADs(),
-                           int maxAttempts = 1000);
-#endif
-
   bool addAtomRandomlyIAD(
     unsigned int atomicNumber,
     const QHash<unsigned int, XtalCompositionStruct>& limits,
@@ -114,30 +106,26 @@ public:
     const QHash<unsigned int, XtalCompositionStruct>& limits,
     int* atom1 = nullptr, int* atom2 = nullptr, double* IAD = nullptr);
   QHash<QString, QVariant> getFingerprint();
-  virtual QString getResultsEntry(bool includeHardness) const override;
-  virtual QString getResultsHeader(bool includeHardness) const override
+  virtual QString getResultsEntry(bool includeHardness, int objectives_num, int optstep) const override;
+  virtual QString getResultsHeader(bool includeHardness, int objectives_num) const override
   {
-    if (!includeHardness) {
-      return QString("%1 %2 %3 %4 %5 %6 %7")
+    QString out = QString("%1 %2 %3 %4 %5 %6")
         .arg("Rank", 5)
         .arg("Gen", 5)
         .arg("ID", 5)
+        .arg("INDX", 5)
         .arg("Enthalpy/FU", 12)
-        .arg("FU", 4)
+        .arg("FU", 4);
+    if (includeHardness)
+      out += QString("%1")
+        .arg("Hardness", 10);
+    for (int i = 0; i < objectives_num; i++)
+      out += QString("%1").arg("Objective"+QString::number(i+1), 11);
+    out += QString("%1 %2")
         .arg("SpaceGroup", 11)
         .arg("Status", 21);
-    }
-    else {
-      return QString("%1 %2 %3 %4 %5 %6 %7 %8")
-        .arg("Rank", 5)
-        .arg("Gen", 5)
-        .arg("ID", 5)
-        .arg("Enthalpy/FU", 12)
-        .arg("FU", 4)
-        .arg("Hardness", 10)
-        .arg("SpaceGroup", 11)
-        .arg("Status", 21);
-    }
+
+    return out;
   };
 
   // Convencience functions for cell parameters

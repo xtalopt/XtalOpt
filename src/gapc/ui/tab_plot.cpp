@@ -18,6 +18,7 @@
 #include <gapc/structures/protectedcluster.h>
 #include <gapc/ui/dialog.h>
 
+#include <globalsearch/constants.h>
 #include <globalsearch/macros.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/tracker.h>
@@ -274,7 +275,7 @@ void TabPlot::plotTrends()
 
     if (pc->getStatus() == ProtectedCluster::Killed ||
         pc->getStatus() == ProtectedCluster::Removed ||
-        fabs(pc->getEnthalpy()) <= 1e-50) {
+        fabs(pc->getEnthalpy()) <= ZERO0) {
       continue;
     }
 
@@ -493,7 +494,7 @@ void TabPlot::populatePCList()
     // index:
     s.append(QString::number(i) + ": ");
     // generation and ID:
-    s.append(pc->getIDString());
+    s.append(pc->getTag());
     // disposition
     switch (pc->getStatus()) {
       case ProtectedCluster::Optimized:
