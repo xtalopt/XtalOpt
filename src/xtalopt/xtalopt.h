@@ -24,9 +24,6 @@
 #include <memory>
 #include <mutex>
 
-#define XTALOPT_VER_MAJOR 13
-#define XTALOPT_VER_MINOR 0
-
 // Forward declarations...
 struct latticeStruct;
 

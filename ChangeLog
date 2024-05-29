@@ -1,6 +1,6 @@
 
 ==================================
-========== Release 13.0 ==========
+==========  Release 13  ==========
 ==================================
 
 ===== 0) Highlights
@@ -9,6 +9,7 @@
 0-3)  "Scaled volume" option is added for initiating the minimum and maximum limits of volume per FU
 0-4)  AFLOW-ML entries are removed from CLI and GUI input (it's now a multi-objective objective)
 0-5)  The "old molecular unit" is removed (no ENABLE_MOLECULAR cmake flag and RDKit/Boost dependencies anymore)
+0-6)  Adding seed structures in the CLI mode is supported.
 
 ===== 1) New features, options, outputs, etc.
 1-1)  XtalOpt CLI:
@@ -17,8 +18,10 @@
 - "localQueue" flag for running code locally on a cluster is added for all remote queue types in CLI
 - "softExit" and "hardExit" flags are added for quitting the code in CLI mode
 - Support for "hyphen-separated list of space group numbers" in the CLI input file is added
+- "seedStructures" flag for space-separated list of full path to seed structures is added
 ## Output file:
 - The "opt_step_#" for optimization step is added to "In progress" status in results.txt file
+- Extra Column of "INDX" with the structure index is added to the results.txt file
 1-2)  XtalOpt GUI:
 - "Multiobjective Search" tab is added to GUI, and AFLOW-ML entries are removed from "Search Settings" tab
 - "Plot" tab includes the objective entries in x and y labels, and labeling symbol list
@@ -38,6 +41,7 @@
 2-2)  Fixed the issue of the "Hide" button of the GUI which did nothing or crashed the code on some OS
 2-3)  A potential issue fixed: existence of POTCAR/PSF files was not checked when run started
 2-4)  A potential issue fixed: jobs could fail because of a timing issue in checking the queue
+2-5)  A potential infinite loop in checking suitability of structures for VASP fixed.
 
 ===== 3) Technical and code changes
 3-1)  The remote queues and their use of SSH is re-written
@@ -48,6 +52,7 @@
 fileName->Locpath; filePath->locWorkDir; rempath->remWorkDir
 Some output patterns in *.state files are changed too.
 so, runs performed with older versions can't be resumed unless the *.state files are adjusted.
+3-6)  CMake definition for string variable "XTALOPT_VER" added; to use anywhere inside the code.
 
 ===== 4) Documentation
 4-1)  XtalOpt repo (https://github.com/xtalopt/XtalOpt):
@@ -69,7 +74,7 @@ so, runs performed with older versions can't be resumed unless the *.state files
 
 
 ==================================
-========== Release 12.0 ==========
+==========  Release 12  ==========
 ==================================
 
 ===== 1) New features, options, outputs, etc.
@@ -85,7 +90,7 @@ so, runs performed with older versions can't be resumed unless the *.state files
 
 
 ==================================
-========== Release 11.0 ==========
+==========  Release 11  ==========
 ==================================
 
 ===== 1) New features, options, outputs, etc.
@@ -101,7 +106,7 @@ so, runs performed with older versions can't be resumed unless the *.state files
 
 
 ==================================
-========== Release 10.0 ==========
+==========  Release 10  ==========
 ==================================
 
 ===== 1) New features, options, outputs, etc.
@@ -112,7 +117,7 @@ so, runs performed with older versions can't be resumed unless the *.state files
 
 
 ==================================
-========== Release  9   ==========
+==========  Release  9  ==========
 ==================================
 
 ===== 1) Enhancements / New features:
@@ -150,7 +155,7 @@ by replicating a unit cell to create a supercell for constructing the starting s
 
 
 ==================================
-========== Release  8   ==========
+==========  Release  8  ==========
 ==================================
 
 ===== 1) Enhancements / New features:
@@ -163,7 +168,7 @@ by replicating a unit cell to create a supercell for constructing the starting s
 
 
 ==================================
-========== Release  7   ==========
+==========  Release  7  ==========
 ==================================
 
 ===== 1) Enhancements / New features:
@@ -182,7 +187,7 @@ by replicating a unit cell to create a supercell for constructing the starting s
 
 
 ==================================
-========== Release  6   ==========
+==========  Release  6  ==========
 ==================================
 
 ===== 1) Enhancements / New features:

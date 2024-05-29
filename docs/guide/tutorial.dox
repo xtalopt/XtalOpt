@@ -1046,7 +1046,7 @@ the user should provide the following information to the XtalOpt code:
 
    - <b>optimization type:</b> instruction for the code on how to use the result
    of an objective calculation in determining the fitness function.
-   XtalOpt can minimize or maximize a feature, maximize the AFLOW-ML hardness,
+   XtalOpt can minimize or maximize an objective, maximize the AFLOW-ML hardness,
    or use the results of objective calculations for filtering the parents' pool.
    - <b>path to the user-defined script:</b> the full path to the script corresponding to
    the introduced objective. The script will be automatically run by the XtalOpt
@@ -1134,9 +1134,9 @@ can be entered in the corresponding fields by:
  -# choosing the optimization type for the objective from a drop-down menu,
  i.e., "Minimization", "Maximization", "Filtration" (see \ref moes-fil), and
  "Hardness" (see \ref moes-har),
+ -# entering or setting the weight, and
  -# entering the full path to the external code (or script) that calcualtes the objective,
  -# entering the output file name that the external code generates with the objective value,
- -# entering or setting the weight, and
  -# specifying whether a structure discarded by a filtration feature requires further handling or not
  (see \ref moes-fil for more details).
 
@@ -1488,13 +1488,22 @@ and other options may be changed. In addition, if Avogadro2 is open in the
 background and an Avogadro2 RPC server is running, XtalOpt will still also set
 the structure in the Avogadro2 view to the crystals the user selects.
 
+As of XtalOpt version 13, the user can add seed structures in the CLI
+mode as well. This can be done by introducing a "space separated" list of
+full path to the seed structures through the following flag in the XtalOpt input
+file:
+<BR>
+\code
+seedStructures = [path/seed1] [path/seed2] ...
+\endcode
+
 \subsection moes-cli Multiobjective Runs in the XtalOpt CLI
 
 In XtalOpt version 13.0, the multiobjective functionality is implemented,
 as discussed previously in \ref moes section. In order to invoke the multiobjective
-functionality in the CLI mode, for each user-defined feature a line should be added
-to the XtalOpt input file that starts with the keyword features. This line, includes
-the above-mentioned information for the feature and, generally, has the following format:
+functionality in the CLI mode, for each user-defined objective a line should be added
+to the XtalOpt input file that starts with the keyword "objective". This line, includes
+the above-mentioned information for the objective and, generally, has the following format:
 <BR>
 \code
 objective = "optimization_type" "/path_to/script" "script_output_filename" "weight"
@@ -1507,12 +1516,12 @@ It should be noted that in the CLI mode of XtalOpt:
    and only the first three letters are important in identifying the optimization type
    by XtalOpt (i.e., "min", "max", "har", and "fil").
    - Providing the "script output filename" is optional. If this is not specified,
-   the default will be "objective#.out" in which "#" is the number of the feature in the
-   order that it appears in the XtalOpt input file (excluding the "hardness" feature),
+   the default will be "objective#.out" in which "#" is the number of the objective in the
+   order that it appears in the XtalOpt input file (excluding the "hardness" objective),
    e.g., "objective1.out", "objective2.out", etc.
-   - Specifying the "weight" for the feature is optional, as well. If this field is not
-   given for a number of features, it will be determined via the following formula.
-   If any weight is provided for any of the features, it will be subtracted from 1.0 and
+   - Specifying the "weight" for the objective is optional, as well. If this field is not
+   given for a number of objectives, it will be determined via the following formula.
+   If any weight is provided for any of the objectives, it will be subtracted from 1.0 and
    the remaining value will be divided between the enthalpy and objectives that don't have
    a specified weight.
 

@@ -41,6 +41,7 @@ static const QStringList keywords = { "volumeScaleMin",
                                       "softExit",
                                       "hardExit",
                                       "localQueue",
+                                      "seedStructures",
                                       "empiricalFormula",
                                       "formulaUnits",
                                       "aMin",
@@ -156,7 +157,7 @@ QString XtalOptCLIOptions::xtaloptHeaderString()
 {
   QString out = QString("\n====================================================\n")
               + QString("   XtalOpt Multi-Objective Evolutionary Algorithm   \n")
-              + QString("\n Version %1.%2").arg(XTALOPT_VER_MAJOR).arg(XTALOPT_VER_MINOR)
+              + QString("\n Version %1").arg(XTALOPT_VER)
               + QString("\n Zurek Group, University at Buffalo")
               + QString("\n====================================================\n\n");
   return out;
@@ -350,6 +351,12 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   if (xtalopt.formulaUnitsList.isEmpty())
     xtalopt.formulaUnitsList = { 1 };
 
+  // Seed structures
+  QStringList sl = options.value("seedStructures", "").split(QRegExp("\\s+"), QString::SkipEmptyParts);
+  for (int i = 0; i < sl.size(); i++) {
+    xtalopt.seedList.append(sl.at(i));
+  }
+
   // We put default values in all of these
   // Initialization settings
   xtalopt.a_min = options.value("aMin", "3.0").toFloat();
@@ -376,8 +383,8 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
                                  xtalopt.vol_min, xtalopt.vol_max);
   }
 
+  // Check for fixed volume
   if (fabs(xtalopt.vol_min - xtalopt.vol_max) < ZERO5) {
-   // Check for fixed volume
     xtalopt.using_fixed_volume = true;
     xtalopt.vol_fixed = xtalopt.vol_min;
   } else {

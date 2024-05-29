@@ -484,12 +484,6 @@ public:
   void setUsingGUI(bool b) { m_usingGUI = b; }
 
   /**
-   * Old molecular unit is removed; so always return false for this function
-   */
-  bool molecularMode() { return false; }
-
-
-  /**
    * Set the refresh interval for checking remote jobs.
    *
    * @param i The interval in seconds

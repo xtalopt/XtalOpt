@@ -150,7 +150,7 @@ bool XtalOpt::startSearch()
   }
 
   // Do we have a composition?
-  if (!molecularMode() && comp.isEmpty()) {
+  if (comp.isEmpty()) {
     error("Cannot create structures. Composition is not set.");
     return false;
   }
@@ -269,7 +269,7 @@ bool XtalOpt::startSearch()
   }
 
   // Perform a regular random generation
-  if (!using_randSpg || molecularMode()) {
+  if (!using_randSpg) {
     // Generation loop...
     while (newXtalCount < numInitial) {
       updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
@@ -1404,7 +1404,14 @@ Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg,
 Xtal* XtalOpt::generateEmptyXtalWithLattice(uint FU)
 {
   Xtal* xtal = nullptr;
+  int maxAttempts = 10000;
+  int attemptCount = 0;
   do {
+    if (attemptCount >= maxAttempts) {
+      qDebug() << "Failed too many times in generateEmptyXtalWithLattice. Giving up";
+      return nullptr;
+    }
+    ++attemptCount;
     delete xtal;
     xtal = nullptr;
     double a = getRandDouble() * (a_max - a_min) + a_min;
@@ -1874,7 +1881,7 @@ void XtalOpt::printSubXtal(Xtal* xtal, uint generation, uint id)
 Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
 {
   QList<uint> tempFormulaUnitsList = formulaUnitsList;
-  if (!molecularMode() && using_mitotic_growth && !using_one_pool) {
+  if (using_mitotic_growth && !using_one_pool) {
     // Remove formula units on the list for which there is a smaller multiple
     // that may be used to create a super cell.
     for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
@@ -3122,7 +3129,7 @@ bool XtalOpt::checkXtal(Xtal* xtal, QString* err)
     return false;
   }
 
-  if (!molecularMode() && !checkComposition(xtal, err))
+  if (!checkComposition(xtal, err))
     return false;
 
   if (!checkLattice(xtal, xtal->getFormulaUnits(), err))
@@ -3149,7 +3156,7 @@ bool XtalOpt::checkXtal(Xtal* xtal, QString* err)
   }
 
   // Check interatomic distances
-  if (using_interatomicDistanceLimit && !molecularMode()) {
+  if (using_interatomicDistanceLimit) {
     int atom1, atom2;
     double IAD;
     if (!xtal->checkInteratomicDistances(this->comp, &atom1, &atom2, &IAD)) {
@@ -3167,7 +3174,7 @@ bool XtalOpt::checkXtal(Xtal* xtal, QString* err)
     }
   }
 
-  if (using_customIAD && !molecularMode()) {
+  if (using_customIAD) {
     int atom1, atom2;
     double IAD;
     if (!xtal->checkMinIAD(this->interComp, &atom1, &atom2, &IAD)) {

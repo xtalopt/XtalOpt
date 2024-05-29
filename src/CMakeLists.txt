@@ -1,3 +1,6 @@
+# String version variable "XTALOPT_VER" for the use anywhere inside the source code
+add_definitions(-DXTALOPT_VER="${XtalOpt_VERSION_MAJOR}.${XtalOpt_VERSION_MINOR}")
+
 add_subdirectory(globalsearch)
 
 if (ENABLE_EXAMPLESEARCH)
