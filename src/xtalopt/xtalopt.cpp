@@ -1404,12 +1404,11 @@ Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg,
 Xtal* XtalOpt::generateEmptyXtalWithLattice(uint FU)
 {
   Xtal* xtal = nullptr;
-  int maxAttempts = 10000;
-  int attemptCount = 0;
+  int attemptCount = 1;
   do {
-    if (attemptCount >= maxAttempts) {
-      qDebug() << "Failed too many times in generateEmptyXtalWithLattice. Giving up";
-      return nullptr;
+    // This is just to let the user know in case we are stuck here; but not to flood the output!
+    if ((attemptCount % 100000) == 0) {
+      qDebug() << "Attempts in generateEmptyXtalWithLattice: " << QString::number(attemptCount);
     }
     ++attemptCount;
     delete xtal;

@@ -722,7 +722,6 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
             << "was not found at " << filename;
           return false;
         }
-        qDebug() << "A single POTCAR file for the system was found at " << filename;
         hash.insert("system", QVariant(filename));
         potcarStr += "%fileContents:" + filename.toStdString() + "%\n";
       } else {
