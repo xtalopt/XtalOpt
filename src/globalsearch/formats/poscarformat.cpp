@@ -101,8 +101,12 @@ bool PoscarFormat::read(Structure& s, std::istream& in)
     // Assume atomic symbols are here and store them
     symbolsList = split(line, ' ');
     // Store atomic nums
-    for (size_t i = 0; i < symbolsList.size(); ++i)
-      atomicNumbers.push_back(ElemInfo::getAtomicNum(symbolsList[i]));
+    for (size_t i = 0; i < symbolsList.size(); ++i) {
+      // This is to handle VASP compiled with HDF5 where "/..."
+      //   might appear after species symbol
+      string sptype = symbolsList[i].substr(0, symbolsList[i].find("/"));
+      atomicNumbers.push_back(ElemInfo::getAtomicNum(sptype));
+    }
     // This next one should be atom types
     getline(in, line);
   }
@@ -119,8 +123,12 @@ bool PoscarFormat::read(Structure& s, std::istream& in)
       }
       // Now get the symbols with a simple space split
       symbolsList = split(trimFormula, ' ');
-      for (size_t i = 0; i < symbolsList.size(); ++i)
-        atomicNumbers.push_back(ElemInfo::getAtomicNum(symbolsList.at(i)));
+      for (size_t i = 0; i < symbolsList.size(); ++i) {
+        // This is to handle VASP compiled with HDF5 where "/..."
+        //   might appear after species symbol
+        string sptype = symbolsList[i].substr(0, symbolsList[i].find("/"));
+        atomicNumbers.push_back(ElemInfo::getAtomicNum(sptype));
+      }
     }
   }
 

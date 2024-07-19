@@ -123,7 +123,7 @@ bool VaspFormat::getOUTCAREnthalpy(std::istream& in, double& enthalpy)
   in.seekg(0, std::ios::end);
   while (in.tellg() >= 0) {
     reverseGetline(in, line);
-    if (strstr(line.c_str(), "enthalpy is")) {
+    if (strstr(line.c_str(), "enthalpy is  TOTEN")) {
       vector<string> stringSplit = split(line, ' ');
       // Make sure the line is long enough. If not, just keep reading.
       if (stringSplit.size() < 5)
@@ -131,7 +131,7 @@ bool VaspFormat::getOUTCAREnthalpy(std::istream& in, double& enthalpy)
 
       enthalpy = atof(stringSplit[4].c_str());
       return true;
-    } else if (strstr(line.c_str(), "enthalpy is ML")) { // VASP ML output
+    } else if (strstr(line.c_str(), "enthalpy is ML TOTEN")) { // VASP ML output
       vector<string> stringSplit = split(line, ' ');
       // Make sure the line is long enough. If not, just keep reading.
       if (stringSplit.size() < 6)

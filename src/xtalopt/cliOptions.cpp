@@ -1416,6 +1416,8 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
     QString("spglibTolerance = ") + QString::number(xtalopt.tol_spg) + "\n";
 
   text += QString("\n# Queue Interface Settings\n");
+  text += QString("queueRefreshInterval = ") +
+          QString::number(xtalopt.queueRefreshInterval()) + "\n";
   text += QString("autoCancelJobAfterTime = ") +
           fromBool(xtalopt.m_cancelJobAfterTime) + "\n";
 
@@ -1609,6 +1611,8 @@ void XtalOptCLIOptions::processRuntimeOptions(
       xtalopt.m_cancelJobAfterTime = toBool(options[option]);
     } else if (CICompare("hoursForAutoCancelJob", option)) {
       xtalopt.m_hoursForCancelJobAfterTime = options[option].toDouble();
+    } else if (CICompare("queueRefreshInterval", option)) {
+      xtalopt.setQueueRefreshInterval(options[option].toUInt());
     } else if (CICompare("softExit", option)) {
       xtalopt.m_softExit = toBool(options[option]);
     } else if (CICompare("hardExit", option)) {
