@@ -1,5 +1,5 @@
 /**********************************************************************
-  XtalOptGenetic - Tools neccessary for genetic structure optimization
+  XtalOptGenetic - Tools necessary for genetic structure optimization
 
   Copyright (C) 2009-2011 by David C. Lonie
 
@@ -15,29 +15,40 @@
 #ifndef XTALOPTGENETIC_H
 #define XTALOPTGENETIC_H
 
+#include <xtalopt/xtalopt.h>
+
 #include <QObject>
 
 namespace XtalOpt {
 class Xtal;
-struct XtalCompositionStruct;
 
 class XtalOptGenetic : public QObject
 {
   Q_OBJECT
 
 public:
-  static Xtal* crossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution,
-                         double& percent1);
-  static Xtal* FUcrossover(Xtal* xtal1, Xtal* xtal2, double minimumContribution,
-                           double& percent1, double& percent2,
-                           const QList<uint> formulaUnitsList,
-                           QHash<uint, XtalCompositionStruct> comp);
+  static Xtal* crossover(Xtal* xtal1, Xtal* xtal2,
+                         const QList<CellComp>& compa,
+                         const EleRadii& elrad,
+                         double minimumContribution,
+                         double& percent1, double& percent2,
+                         int maxatoms,
+                         bool isVcSearch,
+                         bool verbose);
   static Xtal* stripple(Xtal* xtal, double sigma_lattice_min,
                         double sigma_lattice_max, double rho_min,
                         double rho_max, uint eta, uint mu,
                         double& sigma_lattice, double& rho);
   static Xtal* permustrain(Xtal* xtal, double sigma_lattice_max, uint exchanges,
                            double& sigma_lattice);
+  static Xtal* permutomic(Xtal* xtal,
+                          const CellComp& comp,
+                          const EleRadii& elrad,
+                          int maxatoms, bool verbose);
+  static Xtal* permucomp(Xtal* xtal,
+                         const CellComp& comp,
+                         const EleRadii& elrad,
+                         int maxatoms, bool verbose);
 
   static void exchange(Xtal* xtal, uint exchanges);
   static void strain(Xtal* xtal, double sigma_lattice);

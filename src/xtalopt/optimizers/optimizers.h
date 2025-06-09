@@ -22,5 +22,6 @@
 #include <xtalopt/optimizers/pwscf.h>
 #include <xtalopt/optimizers/siesta.h>
 #include <xtalopt/optimizers/vasp.h>
+#include <xtalopt/optimizers/mtp.h>
 
 #endif

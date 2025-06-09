@@ -1,3 +1,87 @@
+==================================
+==========  Release 14  ==========
+==================================
+
+===== 0) Highlights
+0-1)  Variable-composition and multi-composition search options added
+0-2)  Pareto optimization added with both tournament selection and scalar fitness
+0-3)  Explicit support for MTP potential optimizer added; with "mtpAtomsInfo" keyword
+0-4)  New evolutionary operation "PERMUTOMIC" added: randomly adding/removing atoms (vc-search)
+0-5)  New evolutionary operation "PERMUCOMP" added: create a random new composition (vc-search)
+0-6)  New pseudo-evolutionary operation added: random supercell generation (all search modes)
+0-7)  New similarity check option added: dot product of normalized RDF vectors
+0-8)  New option for volume limits added: elemental volume limits
+0-9)  New seed structure option added: sub-system structures
+0-10) New output file "hull.txt" added to create convex hull plots
+0-11) Option to save hull snapshots in "local/movie" folder added for easy monitoring the run
+0-12) New option for output added: verbose output
+
+===== 1) Changes in the code behavior, interface, input/output files
+## General changes
+- Energy optimization target is set to "distance above hull per atom" all the time
+- Removed the usage of "formula units" and "mitosis" input
+- Removed explicit support for "Aflow-Hardness" optimization
+- MOES_DEBUG cmake flag removed; all important debug info produced by XTALOPT_DEBUG
+- Input flags "user1...user4" added to CLI (they were only in GUI)
+- Input for percent chances of genetic operations are read in as "relative weights"
+- Input for objectives changed: all fields are mandatory; filtration weight must be zero
+## Changes to the GUI
+- Some GUI tabs re-designed
+- The "About" tab added to the GUI
+- All new features/options added to relevant GUI tabs
+## Various changes to output filenames
+- Output file "results.txt" re-designed (Pareto index, SPG number, status, etc)
+- Output file "xtalopt-runtime-options.txt" renamed to "cli-runtime-options.txt"
+- Output file "xtaloptSettings.log" renamed to "settings.log"
+- Output file "xtaloptDebug.log" renamed to "output.log"
+## Added CLI flags:
+- "chemicalFormulas", "vcSearch", "maxAtoms", "referenceEnergies", "elementalVolumes"
+- "weightPermutomic", "weightPermucomp", "randomSuperCell",
+- "rdfTolerance", "rdfCutoff", "rdfSigma", "rdfNumBins",
+- "optimizationType", "tournamentSelection", "restrictedPool", "objectivePrecision"
+- "crowdingDistance", "saveHullSnapshots", "verboseOutput"
+- "user1...user4"
+## Removed CLI flgas:
+- "empiricalFormula", "formulaUnits", "mitosis...", "usingOneGenePool",
+- "usingFormulaUnitCrossovers", "usingMitoticGrowth", "chanceOfFutureMitosis",
+## Renamed/Redefined CLI flags:
+- "popSize"        -> "parentsPoolSize" (flag name changed)
+- "volumeMin"      -> "minVolume"       (flag name changed; units are per atom)
+- "volumeMax"      -> "maxVolume"       (flag name changed; units are per atom)
+- "volumeScaleMin" -> "minVolumeScale"  (flag name changed)
+- "volumeScaleMax" -> "maxVolumeScale"  (flag name changed)
+- "objective"      -> all four fields are mandatory
+- "seedStructures" -> comma-separated entries
+- "percentChanceCrossover"   -> "weightCrossover"
+- "percentChanceStripple"    -> "weightStripple"
+- "percentChancePermustrain" -> "weightPermustrain"
+
+===== 2) Bug fixes
+2-1)  A -seems to be system dependent- bug in finding formula units in xtalopt.cpp fixed
+2-2)  Bug in findSpaceGroup (transpose of cell matrix) fixed
+2-3)  Resetting the min radii table after RandSpg fixed
+2-4)  Bug in resuming from a crashed multi-objective run fixed
+
+===== 3) Technical changes in code and workflow
+3-1)  While localQueue does not use SSH; to use it XtalOpt should be compiled with SSH
+3-2)  All optimizable objectives are converted to minimization objectives
+3-3)  All objective values are scaled to [0,1] before optimization; with "objectivePrecision" accuracy
+3-4)  The scalar probability part re-written completely
+3-5)  The completion string for QE changed from "Final" to "JOB DONE"
+3-6)  The completion string for VASP changed from "General timing ..." to "Total CPU time"
+3-7)  Internal variable names and filenames changed to match "tab" names, e.g. m_opt -> m_search
+3-8)  The "composition" and "min radii" objects in xtalopt.h re-written
+3-9)  ElemInfo class renamed to avoid overlap with those in RandSpg
+3-10) Adjustment made to POTCAR writing for sub-system structures
+3-11) XtalComp similarity check adjusted to check the primitive cells
+3-12) Default tolerance for "Niggli cell" and "spglib" are now set in constants.h (0.01)
+3-13) External library "qhull" added to calculate distance above hull (src/globalsearch/chull.h interface)
+3-14) External library spglib updated to version 2.5.0
+3-15) GAPC, EXAMPLESEARCH, RANDOMDOCK removed
+3-16) "docs" folder removed from the code repository
+3-17) "scripts" folder added with wrapper to UIPs and other tools
+
+
 
 ==================================
 ==========  Release 13  ==========

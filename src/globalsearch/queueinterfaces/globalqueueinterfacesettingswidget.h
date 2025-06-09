@@ -25,7 +25,7 @@ class GlobalQueueInterfaceSettingsWidget;
 
 namespace GlobalSearch {
 
-class OptBase;
+class SearchBase;
 
 class GlobalQueueInterfaceSettingsWidget : public QWidget
 {
@@ -35,8 +35,8 @@ public:
   explicit GlobalQueueInterfaceSettingsWidget(QWidget* parent = nullptr);
   ~GlobalQueueInterfaceSettingsWidget();
 
-  void updateGUI(GlobalSearch::OptBase* opt);
-  void accept(GlobalSearch::OptBase* opt);
+  void updateGUI(GlobalSearch::SearchBase* opt);
+  void accept(GlobalSearch::SearchBase* opt);
 
 private:
   std::unique_ptr<Ui::GlobalQueueInterfaceSettingsWidget> m_ui;

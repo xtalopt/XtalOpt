@@ -33,7 +33,7 @@ using namespace GlobalSearch;
 namespace XtalOpt {
 
 XtalOptTest::XtalOptTest(XtalOpt* p, QObject* parent)
-  : QObject(parent), m_opt(p),
+  : QObject(parent), m_search(p),
     m_dialog(qobject_cast<XtalOptDialog*>(p->dialog()))
 {
   connect(this, SIGNAL(testStarting()), m_dialog, SLOT(lockGUI()),
@@ -74,9 +74,9 @@ void XtalOptTest::start()
 
 void XtalOptTest::gatherData()
 {
-  m_numberStructures = m_opt->test_nStructs;
-  m_startRun = m_opt->test_nRunsStart;
-  m_endRun = m_opt->test_nRunsEnd;
+  m_numberStructures = m_search->test_nStructs;
+  m_startRun = m_search->test_nRunsStart;
+  m_endRun = m_search->test_nRunsEnd;
   m_numberRuns = m_endRun - m_startRun + 1;
   m_totalNumberStructures = m_numberStructures * m_numberRuns;
 }
@@ -93,7 +93,7 @@ void XtalOptTest::showDialog()
 void XtalOptTest::generateRun(int run)
 {
   // Stop the check loop
-  m_opt->setIsStartingTrue();
+  m_search->setIsStartingTrue();
 // Wait for (hopefully) long enough for the check loop to finish
 #ifdef WIN32
   _sleep(1000);
@@ -107,12 +107,12 @@ void XtalOptTest::generateRun(int run)
   // Perform run
   emit status();
   resetOpt();
-  m_opt->startSearch();
+  m_search->startSearch();
   emit status();
   m_message = "Looping...";
-  while (m_opt->tracker()->size() < m_numberStructures) {
-    // m_opt->queue()->checkPopulation();
-    // m_opt->queue()->checkRunning();
+  while (m_search->tracker()->size() < m_numberStructures) {
+    // m_search->queue()->checkPopulation();
+    // m_search->queue()->checkRunning();
     m_currentStructure = getCurrentStructure();
     outputStatus(m_message, m_currentRun - m_startRun + 1, m_numberRuns,
                  m_currentStructure, m_numberStructures,
@@ -127,8 +127,8 @@ void XtalOptTest::generateRun(int run)
   }
   m_message = "Waiting to finish...";
   while (!isFinished()) {
-    // m_opt->queue()->checkPopulation();
-    // m_opt->queue()->checkRunning();
+    // m_search->queue()->checkPopulation();
+    // m_search->queue()->checkRunning();
     m_currentStructure = getCurrentStructure();
     outputStatus(m_message, m_currentRun - m_startRun + 1, m_numberRuns,
                  m_currentStructure, m_numberStructures,
@@ -146,8 +146,8 @@ void XtalOptTest::generateRun(int run)
 bool XtalOptTest::isFinished()
 {
   int done = 0;
-  m_opt->tracker()->lockForRead();
-  QList<Structure*>* structures = m_opt->tracker()->list();
+  m_search->tracker()->lockForRead();
+  QList<Structure*>* structures = m_search->tracker()->list();
   Xtal* xtal = 0;
   for (int i = 0; i < structures->size(); i++) {
     xtal = qobject_cast<Xtal*>(structures->at(i));
@@ -155,12 +155,11 @@ bool XtalOptTest::isFinished()
     Xtal::State state = xtal->getStatus();
     xtal->lock().unlock();
     if (state == Xtal::Optimized || state == Xtal::Killed ||
-        state == Xtal::Duplicate || state == Xtal::Supercell ||
-        state == Xtal::Removed ||
+        state == Xtal::Similar || state == Xtal::Removed ||
         state == Xtal::ObjectiveFail || state == Xtal::ObjectiveDismiss)
       done++;
   }
-  m_opt->tracker()->unlock();
+  m_search->tracker()->unlock();
   if (done >= m_numberStructures)
     return true;
   else
@@ -170,8 +169,8 @@ bool XtalOptTest::isFinished()
 int XtalOptTest::getCurrentStructure()
 {
   int n = 0;
-  m_opt->tracker()->lockForRead();
-  QList<Structure*>* structures = m_opt->tracker()->list();
+  m_search->tracker()->lockForRead();
+  QList<Structure*>* structures = m_search->tracker()->list();
   Xtal* xtal = 0;
   for (int i = 0; i < structures->size(); i++) {
     xtal = qobject_cast<Xtal*>(structures->at(i));
@@ -180,35 +179,35 @@ int XtalOptTest::getCurrentStructure()
     xtal->lock().unlock();
     if (state == Xtal::InProcess || state == Xtal::Optimized ||
         state == Xtal::Submitted || state == Xtal::Killed ||
-        state == Xtal::Restart || state == Xtal::Duplicate ||
-        state == Xtal::Supercell || state == Xtal::Removed ||
+        state == Xtal::Restart || state == Xtal::Similar ||
+        state == Xtal::Removed ||
         state == Xtal::ObjectiveFail || state == Xtal::ObjectiveDismiss ||
         state == Xtal::ObjectiveRetain || state == Xtal::ObjectiveCalculation)
       n++;
   }
-  m_opt->tracker()->unlock();
+  m_search->tracker()->unlock();
   return n;
 }
 
 void XtalOptTest::resetOpt()
 {
-  m_opt->reset();
+  m_search->reset();
 }
 
 void XtalOptTest::writeDataFile(int run)
 {
   qDebug() << "Run " << run << " Finished!!" << endl;
   QFile file;
-  file.setFileName(m_opt->locWorkDir + "/run" + QString::number(run) +
+  file.setFileName(m_search->locWorkDir + "/run" + QString::number(run) +
                    "-results.txt");
   if (!file.open(QIODevice::WriteOnly)) {
-    m_opt->error("XtalOptTest::writeDataFile(): Error opening file " +
+    m_search->error("XtalOptTest::writeDataFile(): Error opening file " +
                  file.fileName() + " for writing...");
   }
   QTextStream out;
   out.setDevice(&file);
-  m_opt->tracker()->lockForRead();
-  QList<Structure*>* structures = m_opt->tracker()->list();
+  m_search->tracker()->lockForRead();
+  QList<Structure*>* structures = m_search->tracker()->list();
   Xtal* xtal;
 
   // Print the data to the file:
@@ -230,11 +229,8 @@ void XtalOptTest::writeDataFile(int run)
       case Xtal::Removed:
         out << "Killed";
         break;
-      case Xtal::Duplicate:
-        out << "Duplicate";
-        break;
-      case Xtal::Supercell:
-        out << "Supercell";
+      case Xtal::Similar:
+        out << "Similar";
         break;
       case Xtal::Error:
         out << "Error";
@@ -266,7 +262,7 @@ void XtalOptTest::writeDataFile(int run)
     xtal->lock().unlock();
     out << endl;
   }
-  m_opt->tracker()->unlock();
+  m_search->tracker()->unlock();
 }
 
 void XtalOptTest::updateMessage(const QString& text)
@@ -293,7 +289,7 @@ void XtalOptTest::outputStatus(const QString& message, int currentRun,
   double secondsPerStructure = secondsElapsed / double(totalStructures);
   int remaining =
     int((totalNumberStructures - totalStructures) * secondsPerStructure);
-  remaining /= m_opt->runningJobLimit;
+  remaining /= m_search->runningJobLimit;
   int h = int(remaining / 3600);
   remaining -= h * 3600;
   int m = int(remaining / 60);
@@ -306,7 +302,7 @@ void XtalOptTest::outputStatus(const QString& message, int currentRun,
   QString finishedAt =
     m_begin
       .addSecs(int((totalNumberStructures * secondsPerStructure) /
-                   m_opt->runningJobLimit))
+                   m_search->runningJobLimit))
       .toString("ddd, MMM dd hh:mm:ss");
 
   qDebug() << "";

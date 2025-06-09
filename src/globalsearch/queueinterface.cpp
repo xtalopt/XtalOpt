@@ -14,7 +14,7 @@
 
 #include <globalsearch/queueinterface.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/structure.h>
 #include <globalsearch/structure.h>
@@ -27,7 +27,7 @@ namespace GlobalSearch {
 bool QueueInterface::writeInputFiles(Structure* s) const
 {
   return writeFiles(
-    s, m_opt->optimizer(s->getCurrentOptStep())->getInterpretedTemplates(s));
+    s, m_search->optimizer(s->getCurrentOptStep())->getInterpretedTemplates(s));
 }
 
 } // end namespace GlobalSearch

@@ -1,0 +1,8 @@
+BEGIN_CFG
+Size
+%numAtoms%
+Supercell
+%cellMatrixAngstrom%
+AtomData: id type direct_x direct_y direct_z
+%mtpAtomsInfo%
+END_CFG

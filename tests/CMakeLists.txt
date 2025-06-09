@@ -20,7 +20,7 @@ set(tests
   formats
   genetic
   genxrd
-  optbase
+  searchbase
   structure
   spglib
   randdouble

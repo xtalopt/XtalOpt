@@ -22,7 +22,7 @@
 #include <QSemaphore>
 
 namespace GlobalSearch {
-class OptBase;
+class SearchBase;
 class SSHConnectionCLI;
 
 /**
@@ -40,9 +40,9 @@ public:
   /**
    * Constructor.
    *
-   * @param parent The OptBase parent
+   * @param parent The SearchBase parent
    */
-  explicit SSHManagerCLI(unsigned int connections = 5, OptBase* parent = 0);
+  explicit SSHManagerCLI(unsigned int connections = 5, SearchBase* parent = 0);
 
   /**
    * Destructor.

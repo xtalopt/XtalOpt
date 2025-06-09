@@ -3,7 +3,7 @@ INCLUDE_DIRECTORIES(${XtalOpt_BINARY_DIR}/src/globalsearch/)
 INCLUDE_DIRECTORIES(${LIBSSH_INCLUDE_DIRS})
 
 set( globalsearch_SRCS
-     optbase.cpp
+     searchbase.cpp
      queuemanager.cpp
      eleminfo.cpp
      structure.cpp
@@ -14,8 +14,8 @@ set( globalsearch_SRCS
      slottedwaitcondition.cpp
      ui/abstractdialog.cpp
      ui/abstracttab.cpp
-     ui/abstractedittab.cpp
-     ui/defaultedittab.cpp
+     ui/abstractopttab.cpp
+     ui/defaultopttab.cpp
      queueinterface.cpp
      queueinterfaces/local.cpp
      queueinterfaces/localdialog.cpp
@@ -35,8 +35,7 @@ set( globalsearch_SRCS
      formats/vaspformat.cpp
      formats/xyzformat.cpp
      formats/zmatrixformat.cpp
-     http/aflowml.cpp
-     http/httprequestmanager.cpp
+     formats/mtpformat.cpp
      xrd/generatexrd.cpp
 )
 
@@ -73,8 +72,7 @@ set( globalsearch_SRCS
 )
 endif()
 
-add_library(globalsearch STATIC ${globalsearch_SRCS} ${moc_files}
-  constants.h)
+add_library(globalsearch STATIC ${globalsearch_SRCS} ${moc_files})
 
 set(GLOBALSEARCH_LINK_LIBS
     ${GLOBALSEARCH_LINK_LIBS}
@@ -85,7 +83,7 @@ set(GLOBALSEARCH_LINK_LIBS
     ${CMAKE_THREAD_LIBS_INIT} # Standard threads library
 )
 
-target_link_libraries(globalsearch ${GLOBALSEARCH_LINK_LIBS})
+target_link_libraries(globalsearch ${GLOBALSEARCH_LINK_LIBS} qhullcpp qhullstatic_r)
 
 if (ENABLE_SSH AND NOT USE_CLI_SSH)
   target_link_libraries(globalsearch ${LIBSSH_LIBRARIES})

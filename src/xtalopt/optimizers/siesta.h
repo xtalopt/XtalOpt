@@ -21,7 +21,7 @@
 
 namespace GlobalSearch {
 class Structure;
-class OptBase;
+class SearchBase;
 class Optimizer;
 }
 
@@ -31,7 +31,7 @@ class SIESTAOptimizer : public XtalOptOptimizer
   Q_OBJECT
 
 public:
-  SIESTAOptimizer(GlobalSearch::OptBase* parent, const QString& filename = "");
+  SIESTAOptimizer(GlobalSearch::SearchBase* parent, const QString& filename = "");
 
   QHash<QString, QString> getInterpretedTemplates(
     GlobalSearch::Structure* structure) override;

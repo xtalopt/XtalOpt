@@ -15,9 +15,9 @@
 #ifndef TAB_OPT_H
 #define TAB_OPT_H
 
-#include <globalsearch/ui/abstracttab.h>
+#include <globalsearch/ui/defaultopttab.h>
 
-#include "ui_tab_opt.h"
+class QListWidgetItem;
 
 namespace GlobalSearch {
 class AbstractDialog;
@@ -25,8 +25,9 @@ class AbstractDialog;
 
 namespace XtalOpt {
 class XtalOpt;
+class XtalOptDialog;
 
-class TabOpt : public GlobalSearch::AbstractTab
+class TabOpt : public GlobalSearch::DefaultOptTab
 {
   Q_OBJECT
 
@@ -35,19 +36,19 @@ public:
   virtual ~TabOpt() override;
 
 public slots:
-  void lockGUI() override;
   void readSettings(const QString& filename = "") override;
   void writeSettings(const QString& filename = "") override;
-  void updateGUI() override;
-  void updateOptimizationInfo();
-  void addSeed(QListWidgetItem* item = nullptr);
-  void removeSeed();
-  void updateSeeds();
+  void loadScheme() override;
+  void updateEditWidget() override;
+  void appendOptStep() override;
+  void removeCurrentOptStep() override;
 
-signals:
-
-private:
-  Ui::Tab_Opt ui;
+protected slots:
+  // Returns false if user cancels
+  bool generateVASP_POTCAR_info();
+  bool generateSIESTA_PSF_info();
+  void changePOTCAR(QListWidgetItem* item);
+  void changePSF(QListWidgetItem* item);
 };
 }
 

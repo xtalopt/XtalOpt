@@ -31,7 +31,7 @@
 #include <QProcess>
 namespace GlobalSearch {
 
-SlurmQueueInterface::SlurmQueueInterface(OptBase* parent,
+SlurmQueueInterface::SlurmQueueInterface(SearchBase* parent,
                                          const QString& settingsFile)
   : RemoteQueueInterface(parent, settingsFile),
     m_queueMutex(QReadWriteLock::Recursive)
@@ -54,23 +54,23 @@ SlurmQueueInterface::~SlurmQueueInterface()
 bool SlurmQueueInterface::isReadyToSearch(QString* str)
 {
   // Is a working directory specified?
-  if (m_opt->locWorkDir.isEmpty()) {
+  if (m_search->locWorkDir.isEmpty()) {
     *str = tr("Local working directory is not set. Check your Queue "
               "configuration.");
     return false;
   }
 
   // Can we write to the working directory?
-  QDir workingdir(m_opt->locWorkDir);
+  QDir workingdir(m_search->locWorkDir);
   bool writable = true;
   if (!workingdir.exists()) {
-    if (!workingdir.mkpath(m_opt->locWorkDir)) {
+    if (!workingdir.mkpath(m_search->locWorkDir)) {
       writable = false;
     }
   } else {
     // If the path exists, attempt to open a small test file for writing
     QString filename =
-      m_opt->locWorkDir + QString("queuetest-") + QString::number(getRandUInt());
+      m_search->locWorkDir + QString("queuetest-") + QString::number(getRandUInt());
     QFile file(filename);
     if (!file.open(QFile::ReadWrite)) {
       writable = false;
@@ -81,12 +81,12 @@ bool SlurmQueueInterface::isReadyToSearch(QString* str)
     *str = tr("Cannot write to working directory '%1'.\n\nPlease "
               "change the permissions on this directory or specify "
               "a different one in the Queue configuration.")
-             .arg(m_opt->locWorkDir);
+             .arg(m_search->locWorkDir);
     return false;
   }
 
   // Check all other parameters:
-  if (m_opt->host.isEmpty()) {
+  if (m_search->host.isEmpty()) {
     *str = tr("Hostname of SLURM server is not set. Check your Queue "
               "configuration.");
     return false;
@@ -110,23 +110,25 @@ bool SlurmQueueInterface::isReadyToSearch(QString* str)
     return false;
   }
 
-  if (m_opt->remWorkDir.isEmpty()) {
-    *str = tr("Remote working directory is not set. Check your Queue "
-              "configuration.");
-    return false;
-  }
+  if (!m_search->m_localQueue) {
+    if (m_search->remWorkDir.isEmpty()) {
+      *str = tr("Remote working directory is not set. Check your Queue "
+          "configuration.");
+      return false;
+    }
 
-  if (m_opt->username.isEmpty()) {
-    *str = tr("SSH username for SLURM server is not set. Check your Queue "
-              "configuration.");
-    return false;
-  }
+    if (m_search->username.isEmpty()) {
+      *str = tr("SSH username for SLURM server is not set. Check your Queue "
+          "configuration.");
+      return false;
+    }
 
-  if (m_opt->port < 0) {
-    *str = tr("SSH port is invalid (Port %1). Check your Queue "
-              "configuration.")
-             .arg(m_opt->port);
-    return false;
+    if (m_search->port < 0) {
+      *str = tr("SSH port is invalid (Port %1). Check your Queue "
+          "configuration.")
+        .arg(m_search->port);
+      return false;
+    }
   }
 
   *str = "";
@@ -136,9 +138,9 @@ bool SlurmQueueInterface::isReadyToSearch(QString* str)
 QDialog* SlurmQueueInterface::dialog()
 {
   if (!m_dialog) {
-    if (!m_opt->dialog())
+    if (!m_search->dialog())
       return nullptr;
-    m_dialog = new SlurmConfigDialog(m_opt->dialog(), m_opt, this);
+    m_dialog = new SlurmConfigDialog(m_search->dialog(), m_search, this);
   }
   SlurmConfigDialog* d = qobject_cast<SlurmConfigDialog*>(m_dialog);
   d->updateGUI();
@@ -151,11 +153,11 @@ void SlurmQueueInterface::readSettings(const QString& filename)
   SETTINGS(filename);
 
   // Figure out what opt index this is.
-  int optInd = m_opt->queueInterfaceIndex(this);
+  int optInd = m_search->queueInterfaceIndex(this);
   if (optInd < 0)
     return;
 
-  settings->beginGroup(m_opt->getIDString().toLower());
+  settings->beginGroup(m_search->getIDString().toLower());
   settings->beginGroup("queueinterface/slurmqueueinterface");
   settings->beginGroup(QString::number(optInd));
   int loadedVersion = settings->value("version", 0).toInt();
@@ -185,11 +187,11 @@ void SlurmQueueInterface::writeSettings(const QString& filename)
   const int version = 0;
 
   // Figure out what opt index this is.
-  int optInd = m_opt->queueInterfaceIndex(this);
+  int optInd = m_search->queueInterfaceIndex(this);
   if (optInd < 0)
     return;
 
-  settings->beginGroup(m_opt->getIDString().toLower());
+  settings->beginGroup(m_search->getIDString().toLower());
   settings->beginGroup("queueinterface/slurmqueueinterface");
   settings->beginGroup(QString::number(optInd));
   settings->setValue("version", version);
@@ -211,8 +213,9 @@ bool SlurmQueueInterface::startJob(Structure* s)
   QString command = m_submitCommand + " job.slurm";
   QString stdout_str, stderr_str;
   int ec;
+  QString workdir = (m_search->m_localQueue) ? s->getLocpath() : s->getRempath();
 
-  if (!this->runACommand(s->getRempath(), command, &stdout_str, &stderr_str, &ec))
+  if (!this->runACommand(workdir, command, &stdout_str, &stderr_str, &ec))
     return false;
 
   // Assuming stdout_str value is "Submitted batch job <jobid>";
@@ -224,7 +227,7 @@ bool SlurmQueueInterface::startJob(Structure* s)
   }
 
   if (!ok) {
-    m_opt->warning(
+    m_search->warning(
       tr("Error retrieving jobID for structure %1.").arg(s->getTag()));
     return false;
   }
@@ -245,14 +248,14 @@ bool SlurmQueueInterface::stopJob(Structure* s)
   QWriteLocker locker(&s->lock());
 
   // Log error dir if needed
-  if (this->m_opt->m_logErrorDirs && (s->getStatus() == Structure::Error ||
+  if (this->m_search->m_logErrorDirs && (s->getStatus() == Structure::Error ||
                                       s->getStatus() == Structure::Restart)) {
     this->logErrorDirectory(s);
   }
 
   // jobid has not been set, cannot delete!
   if (s->getJobID() == 0) {
-    if (m_opt->cleanRemoteOnStop()) {
+    if (m_search->cleanRemoteOnStop()) {
       this->cleanRemoteDirectory(s);
     }
     return true;
@@ -406,7 +409,7 @@ QueueInterface::QueueStatus SlurmQueueInterface::getStatus(Structure* s) const
     // I've seen this a few times on PBS when mpd dies unexpectedly
     // and the (incomplete) output files are never copied back. This
     // is an error, just restart.
-    m_opt->debug(tr("Structure %1 with jobID %2 is missing "
+    m_search->debug(tr("Structure %1 with jobID %2 is missing "
                     "from the queue and has not written any output.")
                    .arg(s->getTag())
                    .arg(s->getJobID()));
@@ -414,7 +417,7 @@ QueueInterface::QueueStatus SlurmQueueInterface::getStatus(Structure* s) const
   }
   // Unrecognized status:
   else {
-    m_opt->debug(tr("Structure %1 with jobID %2 has "
+    m_search->debug(tr("Structure %1 with jobID %2 has "
                     "unrecognized status: %3")
                    .arg(s->getTag())
                    .arg(s->getJobID())
@@ -436,13 +439,13 @@ QStringList SlurmQueueInterface::getQueueList(bool forced) const
 // QDateTime::msecsTo is not implemented until Qt 4.7
 #if QT_VERSION >= 0x040700
       m_queueTimeStamp.msecsTo(QDateTime::currentDateTime()) <=
-        1000 * m_opt->queueRefreshInterval()
+        1000 * m_search->queueRefreshInterval()
 #else
       // Check if day is the same. If not, refresh. Otherwise check
       // msecsTo current time
       (m_queueTimeStamp.date() == QDate::currentDate() &&
        m_queueTimeStamp.time().msecsTo(QTime::currentTime()) <=
-         1000 * m_opt->queueRefreshInterval())
+         1000 * m_search->queueRefreshInterval())
 #endif // QT_VERSION >= 4.7
         ) {
     // If the cache is valid, return it
@@ -473,7 +476,7 @@ QStringList SlurmQueueInterface::getQueueList(bool forced) const
   QStringList& queueData = const_cast<QStringList&>(m_queueData);
   QDateTime& queueTimeStamp = const_cast<QDateTime&>(m_queueTimeStamp);
 
-  QString command = m_statusCommand + " -u " + m_opt->username;
+  QString command = m_statusCommand + " -u " + m_search->username;
 
   // Execute
   QString stdout_str;
@@ -486,7 +489,7 @@ QStringList SlurmQueueInterface::getQueueList(bool forced) const
   ok = this->runACommand("", command, &stdout_str, &stderr_str, &ec);
 
   if (!ok || (ec != 0) || stdout_str.isEmpty()) {
-    m_opt->warning(tr("Error executing %1: (%2) %3\n\t"
+    m_search->warning(tr("Error executing %1: (%2) %3\n\t"
           "Using cached queue data.")
         .arg(command)
         .arg(QString::number(ec))

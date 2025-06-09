@@ -104,7 +104,7 @@ inline void resetStatus(QList<Structure*>* list, Structure::State status)
     s = list->at(i);
     s->lock().lockForWrite();
     s->setStatus(status);
-    s->setChangedSinceDupChecked(true);
+    s->setChangedSinceSimChecked(true);
     s->lock().unlock();
   }
 }
@@ -114,10 +114,10 @@ void XtalOptUnitTest::checkForDuplicatesTest()
   m_opt->tracker()->blockSignals(true);
   resetStatus(m_opt->tracker()->list(), Structure::Optimized);
 
-  QBENCHMARK_ONCE { m_opt->checkForDuplicates_(); }
+  QBENCHMARK_ONCE { m_opt->checkForSimilarities_(); }
 
   qDebug() << m_opt->tracker()->size()
-           << m_opt->queue()->getAllDuplicateStructures().size();
+           << m_opt->queue()->getAllSimilarStructures().size();
 
   // This may change when Xtal::operator== becomes more or less robust.
   // QVERIFY(m_opt->queue()->getAllDuplicateStructures().size() == 41);
@@ -150,12 +150,12 @@ void XtalOptUnitTest::stepwiseCheckForDuplicatesTest()
         m_opt->tracker()->append(listAll[nextStructureIndex++]);
       }
 
-      m_opt->checkForDuplicates_();
+      m_opt->checkForSimilarities_();
     }
   }
 
   qDebug() << m_opt->tracker()->size()
-           << m_opt->queue()->getAllDuplicateStructures().size();
+           << m_opt->queue()->getAllSimilarStructures().size();
 
   // This may change when Xtal::operator== becomes more or less robust.
   // QVERIFY(m_opt->queue()->getAllDuplicateStructures().size() == 41);

@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the kspclib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -34,6 +34,8 @@
 
 #ifndef __kgrid_H__
 #define __kgrid_H__
+
+#include <stddef.h>
 
 /* #define GRID_ORDER_XYZ */
 /* This changes behaviour of index order of address. */
@@ -70,12 +72,13 @@
 /* without GRID_BOUNDARY_AS_NEGATIVE, e.g., [-2, -1, 0, 1, 2, 3]. */
 /* with GRID_BOUNDARY_AS_NEGATIVE, e.g., [-3, -2, -1, 0, 1, 2]. */
 
-void kgd_get_all_grid_addresses(int grid_address[][3], const int mesh[3]);
-int kgd_get_grid_point_double_mesh(const int address_double[3],
-				   const int mesh[3]);
+void kgd_get_all_grid_addresses(int grid_address[][3], int const mesh[3]);
+int kgd_get_grid_point_double_mesh(int const address_double[3],
+                                   int const mesh[3]);
+size_t kgd_get_dense_grid_point_double_mesh(int const address_double[3],
+                                            int const mesh[3]);
 void kgd_get_grid_address_double_mesh(int address_double[3],
-				      const int address[3],
-				      const int mesh[3],
-				      const int is_shift[3]);
+                                      int const address[3], int const mesh[3],
+                                      int const is_shift[3]);
 
 #endif

@@ -34,7 +34,7 @@
 
 namespace GlobalSearch {
 
-LocalQueueInterface::LocalQueueInterface(OptBase* parent,
+LocalQueueInterface::LocalQueueInterface(SearchBase* parent,
                                          const QString& settingFile)
   : QueueInterface(parent)
 {
@@ -65,23 +65,23 @@ LocalQueueInterface::~LocalQueueInterface()
 bool LocalQueueInterface::isReadyToSearch(QString* str)
 {
   // Is a working directory specified?
-  if (m_opt->locWorkDir.isEmpty()) {
+  if (m_search->locWorkDir.isEmpty()) {
     *str = tr("Local working directory is not set. Check your Queue "
               "configuration.");
     return false;
   }
 
   // Can we write to the working directory?
-  QDir workingdir(m_opt->locWorkDir);
+  QDir workingdir(m_search->locWorkDir);
   bool writable = true;
   if (!workingdir.exists()) {
-    if (!workingdir.mkpath(m_opt->locWorkDir)) {
+    if (!workingdir.mkpath(m_search->locWorkDir)) {
       writable = false;
     }
   } else {
     // If the path exists, attempt to open a small test file for writing
     QString filename =
-      m_opt->locWorkDir + QString("queuetest-") + QString::number(getRandUInt());
+      m_search->locWorkDir + QString("queuetest-") + QString::number(getRandUInt());
     QFile file(filename);
     if (!file.open(QFile::ReadWrite)) {
       writable = false;
@@ -92,7 +92,7 @@ bool LocalQueueInterface::isReadyToSearch(QString* str)
     *str = tr("Cannot write to working directory '%1'.\n\nPlease "
               "change the permissions on this directory or use "
               "a different one.")
-             .arg(m_opt->locWorkDir);
+             .arg(m_search->locWorkDir);
     return false;
   }
 
@@ -113,7 +113,7 @@ bool LocalQueueInterface::writeFiles(
   // Check that the files can be written to
   for (int i = 0; i < files.size(); i++) {
     if (!files.at(i)->open(QIODevice::WriteOnly | QIODevice::Text)) {
-      m_opt->error(tr("Cannot write input file %1 (file writing failure)",
+      m_search->error(tr("Cannot write input file %1 (file writing failure)",
                       "1 is a file path")
                      .arg(files.at(i)->fileName()));
       qDeleteAll(files);
@@ -148,7 +148,7 @@ bool LocalQueueInterface::writeFiles(
       QString filename = QFileInfo(infile).fileName();
       QFile outfile(s->getLocpath() + "/" + filename);
       if (!infile.copy(outfile.fileName())) {
-        m_opt->error(tr("Failed to copy file %1 to %2")
+        m_search->error(tr("Failed to copy file %1 to %2")
                        .arg(infile.fileName())
                        .arg(outfile.fileName()));
         return false;
@@ -163,7 +163,7 @@ bool LocalQueueInterface::writeFiles(
 bool LocalQueueInterface::startJob(Structure* s)
 {
   if (s->getJobID() != 0) {
-    m_opt->warning(tr("LocalQueueInterface::startJob: Attempting to start "
+    m_search->warning(tr("LocalQueueInterface::startJob: Attempting to start "
                       "job for structure %1, but a JobID is already set (%2).")
                      .arg(s->getTag())
                      .arg(s->getJobID()));
@@ -171,7 +171,7 @@ bool LocalQueueInterface::startJob(Structure* s)
   }
   // TODO the corresponding function in Optimizer should prepend a
   // path for e.g. windows
-  QString command = getCurrentOptimizer(s)->localRunCommand();
+  QString command = getCurrentOptimizer(s)->getLocalRunCommand();
 
 #ifdef WIN32
   command = "cmd.exe /C \"" + command + "\"";
@@ -218,14 +218,14 @@ bool LocalQueueInterface::logErrorDirectory(Structure* s) const
   QString command, command2;
   QProcess proc, proc2;
 #ifdef WIN32
-  command = "mkdir " + this->m_opt->locWorkDir + "\\errorDirs\\";
+  command = "mkdir " + this->m_search->locWorkDir + "\\errorDirs\\";
   // Does robocopy come with all windows computers?
   command2 = "robocopy " + s->getLocpath() + " " +
-                     this->m_opt->locWorkDir + "\\errorDirs\\" + strdir_s;
+                     this->m_search->locWorkDir + "\\errorDirs\\" + strdir_s;
 #else
-  command = "mkdir -p " + this->m_opt->locWorkDir + "/errorDirs/" + strdir_s + "/";
+  command = "mkdir -p " + this->m_search->locWorkDir + "/errorDirs/" + strdir_s + "/";
   command2 =
-    "cp -r " + s->getLocpath() + " " + this->m_opt->locWorkDir + "/errorDirs/" + strdir_s + "/";
+    "cp -r " + s->getLocpath() + " " + this->m_search->locWorkDir + "/errorDirs/" + strdir_s + "/";
 #endif
 
   proc.start(command);
@@ -242,7 +242,7 @@ bool LocalQueueInterface::stopJob(Structure* s)
 
   unsigned long pid = static_cast<unsigned long>(s->getJobID());
 
-  if (this->m_opt->m_logErrorDirs && (s->getStatus() == Structure::Error ||
+  if (this->m_search->m_logErrorDirs && (s->getStatus() == Structure::Error ||
                                       s->getStatus() == Structure::Restart)) {
     logErrorDirectory(s);
   }
@@ -323,7 +323,7 @@ QueueInterface::QueueStatus LocalQueueInterface::getStatus(Structure* s) const
     case LocalQueueProcess::Finished:
       // Was the run successful?
       if (proc->exitCode() != 0) {
-        m_opt->warning(tr("%1: Structure %2, PID=%3 failed. QProcess error "
+        m_search->warning(tr("%1: Structure %2, PID=%3 failed. QProcess error "
                           "code: %4. Process exit code: %5 errStr: %6\n"
                           "stdout:\n%7\nstderr:\n%8")
                          .arg(Q_FUNC_INFO)
@@ -380,7 +380,7 @@ bool LocalQueueInterface::runACommand(const QString& workdir, const QString& com
   exitcode   = proc.exitCode();
 
   if (!stderr_str.isEmpty() || (exitcode != 0)) {
-    m_opt->warning(tr("Local command %1 at %2 exited with code %3 and error: %4")
+    m_search->warning(tr("Local command %1 at %2 exited with code %3 and error: %4")
         .arg(command).arg(workdir).arg(exitcode).arg(stderr_str));
   }
 
@@ -402,6 +402,14 @@ bool LocalQueueInterface::copyAFileLocalToRemote(const QString& loc_file,
                                                  const QString& rem_file)
 {
   // Nothing to do!
+  return true;
+}
+
+bool LocalQueueInterface::removeAFile(Structure *s, const QString& filename)
+{
+  if (!QFile::remove(s->getLocpath() + QDir::separator() + filename))
+    return false;
+
   return true;
 }
 
@@ -465,10 +473,10 @@ bool LocalQueueInterface::grepFile(Structure* s, const QString& matchText,
 QDialog* LocalQueueInterface::dialog()
 {
   if (!m_dialog) {
-    if (!m_opt->dialog())
+    if (!m_search->dialog())
       return nullptr;
     m_dialog =
-      new LocalQueueInterfaceConfigDialog(m_opt->dialog(), m_opt, this);
+      new LocalQueueInterfaceConfigDialog(m_search->dialog(), m_search, this);
   }
   LocalQueueInterfaceConfigDialog* d =
     qobject_cast<LocalQueueInterfaceConfigDialog*>(m_dialog);

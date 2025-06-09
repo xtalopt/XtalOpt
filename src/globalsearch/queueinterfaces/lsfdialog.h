@@ -28,7 +28,7 @@ class LsfConfigDialog;
 
 namespace GlobalSearch {
 class AbstractDialog;
-class OptBase;
+class SearchBase;
 class LsfQueueInterface;
 
 class LsfConfigDialog : public QDialog
@@ -36,7 +36,7 @@ class LsfConfigDialog : public QDialog
   Q_OBJECT
 
 public:
-  explicit LsfConfigDialog(AbstractDialog* parent, OptBase* o,
+  explicit LsfConfigDialog(AbstractDialog* parent, SearchBase* o,
                            LsfQueueInterface* p);
   virtual ~LsfConfigDialog() override;
 
@@ -48,7 +48,7 @@ protected slots:
   void reject() override;
 
 protected:
-  OptBase* m_opt;
+  SearchBase* m_search;
   LsfQueueInterface* m_lsf;
 
 private:

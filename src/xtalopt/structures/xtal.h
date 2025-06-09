@@ -16,6 +16,7 @@
 #define XTAL_H
 
 #include <globalsearch/structure.h>
+#include <globalsearch/constants.h>
 
 #include <xtalopt/xtalopt.h>
 
@@ -67,24 +68,24 @@ public:
                        int maxAttempts = 100.0) override; // maxIAD is not used.
   // Uses the minRadius constraints in @a limits to restrict atom placement
   bool addAtomRandomly(unsigned int atomicNumber,
-                       const QHash<unsigned int, XtalCompositionStruct>& limits,
+                       const EleRadii& limits,
                        int maxAttempts = 100.0);
   bool addAtomRandomly(unsigned int atomicNumber, unsigned int neighbor,
-                       const QHash<unsigned int, XtalCompositionStruct>& limits,
+                       const EleRadii& limits,
                        const QHash<QPair<int, int>, MolUnit>& limitsMolUnit,
                        bool useMolUnit, int maxAttempts = 100.0);
   bool moveAtomRandomly(
     unsigned int atomicNumber,
-    const QHash<unsigned int, XtalCompositionStruct>& limits,
+    const EleRadii& limits,
     int maxAttempts = 100.0, GlobalSearch::Atom* atom = 0);
 
   bool addAtomRandomlyIAD(
     unsigned int atomicNumber,
-    const QHash<unsigned int, XtalCompositionStruct>& limits,
+    const EleRadii& limits,
     const QHash<QPair<int, int>, IAD>& limitsIAD, int maxAttempts = 100.0);
   bool moveAtomRandomlyIAD(
     unsigned int atomicNumber,
-    const QHash<unsigned int, XtalCompositionStruct>& limits,
+    const EleRadii& limits,
     const QHash<QPair<int, int>, IAD>& limitsIAD, int maxAttempts = 100.0,
     GlobalSearch::Atom* atom = 0);
   bool checkMinIAD(const QHash<QPair<int, int>, IAD>& limitsIAD,
@@ -95,40 +96,42 @@ public:
   bool molUnitBuilder(Vector3 centerCoords, unsigned int atomicNum, int valence,
                       double dist, int hyb);
 
-  // Fills a supercell for the mitosis process
-  bool fillSuperCell(int a, int b, int c, Xtal* myXtal);
-
   // Use the minRadius constraints in @a limits to check the interatomic
   // distances in the xtal. atom1 and atom2 are overwritten with the indexes
   // of the first set of offending atom, if any, that are found. The bad IAD
   // is written to IAD if a double pointer is provided.
   bool checkInteratomicDistances(
-    const QHash<unsigned int, XtalCompositionStruct>& limits,
+    const EleRadii& limits,
     int* atom1 = nullptr, int* atom2 = nullptr, double* IAD = nullptr);
   QHash<QString, QVariant> getFingerprint();
-  virtual QString getResultsEntry(bool includeHardness, int objectives_num, int optstep) const override;
-  virtual QString getResultsHeader(bool includeHardness, int objectives_num) const override
+  virtual QString getResultsEntry(int objectives_num, int optstep,
+                                  QList<QString> chemSys) const override;
+  virtual QString getResultsHeader(int objectives_num) const override
   {
-    QString out = QString("%1 %2 %3 %4 %5 %6")
+    QString out = QString("%1 %2 %3 %4 %5 %6 %7 %8")
         .arg("Rank", 5)
-        .arg("Gen", 5)
-        .arg("ID", 5)
-        .arg("INDX", 5)
-        .arg("Enthalpy/FU", 12)
-        .arg("FU", 4);
-    if (includeHardness)
-      out += QString("%1")
-        .arg("Hardness", 10);
+        .arg("Struct", 9)
+        .arg("Formula", 15)
+        .arg("Compos", 10)
+        .arg("Index", 5)
+        .arg("EnthalpyAtm", 12)
+        .arg("Front", 5)
+        .arg("AbovHullAtm", 12);
     for (int i = 0; i < objectives_num; i++)
       out += QString("%1").arg("Objective"+QString::number(i+1), 11);
     out += QString("%1 %2")
-        .arg("SpaceGroup", 11)
-        .arg("Status", 21);
+        .arg("SG", 6)
+        .arg("Status", 16);
 
     return out;
   };
 
-  // Convencience functions for cell parameters
+  // Functions for calculating radial distribution function
+  //bool calculateNormalizedRDF(int nbins, double cutoff, double sigma) override;
+  bool compareRDFs(Xtal* other, double tolerance, int nbins,
+                   double cutoff, double sigma, bool verbose);
+
+  // Convenience functions for cell parameters
   double getA() const { return unitCell().a(); };
   double getB() const { return unitCell().b(); };
   double getC() const { return unitCell().c(); };
@@ -136,6 +139,7 @@ public:
   double getBeta() const { return unitCell().beta(); };
   double getGamma() const { return unitCell().gamma(); };
   double getVolume() const { return unitCell().volume(); };
+  double getVolumePerAtom() const { return (unitCell().volume() / numAtoms()); };
 
   // Debugging
   void getSpglibFormat() const;
@@ -178,16 +182,16 @@ public:
   // Foundations of Crystallography. 2003;60(1):1-6. Available at:
   // http://scripts.iucr.org/cgi-bin/paper?S010876730302186X [Accessed
   // November 24, 2010].
-  bool niggliReduce(const unsigned int iterations = 100, double lenTol = 0.01);
+  bool niggliReduce(const unsigned int iterations = 100, double lenTol = LENTOLDEF);
   static bool isNiggliReduced(const double a, const double b, const double c,
                               const double alpha, const double beta,
-                              const double gamma, double lenTol = 0.01);
-  bool isNiggliReduced(double lenTol = 0.01) const;
+                              const double gamma, double lenTol = LENTOLDEF);
+  bool isNiggliReduced(double lenTol = LENTOLDEF) const;
 
   // Checks to see if an xtal is primitive or not. If a primitive reduction
   // results in a smaller FU xtal, the function returns true
-  bool isPrimitive(const double cartTol = 0.05);
-  bool reduceToPrimitive(const double cartTol = 0.05);
+  bool isPrimitive(const double prec = SPGTOLDEF);
+  bool reduceToPrimitive(const double prec = SPGTOLDEF);
 
   QList<QString> currentAtomicSymbols();
   inline void updateMolecule(const QList<QString>& ids,
@@ -263,7 +267,7 @@ public slots:
   void wrapAtomsToCell();
 
   // Spacegroup
-  void findSpaceGroup(double prec = 0.05);
+  void findSpaceGroup(double prec = SPGTOLDEF);
 
   // Printing debug output
   void printLatticeInfo() const;
@@ -274,11 +278,11 @@ private slots:
 
 private:
   // This function is called by the public overloaded function:
-  // bool reduceToPrimitive(const double cartTol = 0.05)
+  // bool reduceToPrimitive(const double prec = SPGTOLDEF tolerance)
   unsigned int reduceToPrimitive(QList<Vector3>* fcoords,
                                  QList<unsigned int>* atomicNums,
                                  Matrix3* cellMatrix,
-                                 const double cartTol = 0.05);
+                                 const double prec = SPGTOLDEF);
   unsigned short m_spgNumber;
   QString m_spgSymbol;
 };

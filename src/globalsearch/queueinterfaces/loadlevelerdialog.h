@@ -28,7 +28,7 @@ class LoadLevelerConfigDialog;
 
 namespace GlobalSearch {
 class AbstractDialog;
-class OptBase;
+class SearchBase;
 class LoadLevelerQueueInterface;
 
 class LoadLevelerConfigDialog : public QDialog
@@ -36,7 +36,7 @@ class LoadLevelerConfigDialog : public QDialog
   Q_OBJECT
 
 public:
-  explicit LoadLevelerConfigDialog(AbstractDialog* parent, OptBase* o,
+  explicit LoadLevelerConfigDialog(AbstractDialog* parent, SearchBase* o,
                                    LoadLevelerQueueInterface* p);
   virtual ~LoadLevelerConfigDialog() override;
 
@@ -48,7 +48,7 @@ protected slots:
   void reject() override;
 
 protected:
-  OptBase* m_opt;
+  SearchBase* m_search;
   LoadLevelerQueueInterface* m_ll;
 
 private:

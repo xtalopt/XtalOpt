@@ -60,7 +60,7 @@ void dumpPseudoPwscfOut(const XtalOpt::Xtal* xtal, const QString& filename)
                                                        it_end = atoms.end();
        it != it_end; ++it) {
     fcoord = xtal->cartToFrac((*it).pos());
-    out << QString(ElemInfo::getAtomicSymbol(it->atomicNumber()).c_str()) << " "
+    out << QString(ElementInfo::getAtomicSymbol(it->atomicNumber()).c_str()) << " "
         << fcoord.x() << " " << fcoord.y() << " " << fcoord.z() << endl;
   }
 }

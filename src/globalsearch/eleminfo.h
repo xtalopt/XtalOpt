@@ -23,7 +23,7 @@
 
 typedef unsigned int uint;
 
-class ElemInfo
+class ElementInfo
 {
 public:
   static std::string getAtomicSymbol(uint atomicNum);
@@ -45,7 +45,11 @@ public:
 
   static double getVdwRadius(uint atomicNum);
 
+  static double getVdwVolume(uint atomicNum);
+
   static double getCovalentRadius(uint atomicNum);
+
+  static double getCovalentVolume(uint atomicNum);
 
   // Applies a specified scaling factor to every radius for both
   // covalent and vdw radii to the database radii and sets the

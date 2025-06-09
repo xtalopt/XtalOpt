@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -36,22 +36,29 @@
 #define __refinement_H__
 
 #include "cell.h"
-#include "mathfunc.h"
 #include "spacegroup.h"
 #include "symmetry.h"
 
-Symmetry *
-ref_get_refined_symmetry_operations(const Cell * cell,
-                                    const Cell * primitive,
-                                    SPGCONST Spacegroup * spacegroup,
-                                    const double symprec);
-Cell * ref_get_Wyckoff_positions(int * wyckoffs,
-                                 int * equiv_atoms,
-                                 const Cell * primitive,
-                                 const Cell * cell,
-                                 SPGCONST Spacegroup * spacegroup,
-                                 const Symmetry * symmetry,
-                                 const int * mapping_table,
-                                 const double symprec);
+typedef struct {
+    Cell *bravais;
+    Symmetry *symmetry;
+    int *wyckoffs;
+    char (*site_symmetry_symbols)[7];
+    int *equivalent_atoms;
+    int *crystallographic_orbits;
+    int *std_mapping_to_primitive;
+    double rotation[3][3];
+} ExactStructure;
+
+ExactStructure *ref_get_exact_structure_and_symmetry(Spacegroup *spacegroup,
+                                                     Cell const *primitive,
+                                                     Cell const *cell,
+                                                     int const *mapping_table,
+                                                     double const symprec);
+void ref_free_exact_structure(ExactStructure *exstr);
+int ref_find_similar_bravais_lattice(Spacegroup *spacegroup,
+                                     double const symprec);
+void ref_get_conventional_lattice(double lattice[3][3],
+                                  Spacegroup const *spacegroup);
 
 #endif

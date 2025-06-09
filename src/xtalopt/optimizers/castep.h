@@ -20,7 +20,7 @@
 #include <QObject>
 
 namespace GlobalSearch {
-class OptBase;
+class SearchBase;
 }
 
 namespace XtalOpt {
@@ -29,7 +29,7 @@ class CASTEPOptimizer : public XtalOptOptimizer
   Q_OBJECT
 
 public:
-  CASTEPOptimizer(GlobalSearch::OptBase* parent, const QString& filename = "");
+  CASTEPOptimizer(GlobalSearch::SearchBase* parent, const QString& filename = "");
 };
 
 } // end namespace XtalOpt

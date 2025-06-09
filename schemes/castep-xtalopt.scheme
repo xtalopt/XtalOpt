@@ -14,4 +14,4 @@ edit\remote\port=22
 edit\remote\queueRefreshInterval=10
 edit\remote\remWorkDir=
 edit\remote\username=
-edit\version=3
+edit\version=4

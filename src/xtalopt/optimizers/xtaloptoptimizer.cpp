@@ -16,7 +16,7 @@
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/xtalopt.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 
 #include <QFile>
 
@@ -24,7 +24,7 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-XtalOptOptimizer::XtalOptOptimizer(OptBase* parent, const QString& filename)
+XtalOptOptimizer::XtalOptOptimizer(SearchBase* parent, const QString& filename)
   : Optimizer(parent)
 {
 }
@@ -41,7 +41,7 @@ bool XtalOptOptimizer::read(Structure* structure, const QString& filename)
   }
 
   Xtal* xtal = qobject_cast<Xtal*>(structure);
-  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
   // If none of the cell parameters are fixed, perform a normalization on
   // the lattice (currently a Niggli reduction)

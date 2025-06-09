@@ -28,7 +28,7 @@ class SgeConfigDialog;
 
 namespace GlobalSearch {
 class AbstractDialog;
-class OptBase;
+class SearchBase;
 class SgeQueueInterface;
 
 class SgeConfigDialog : public QDialog
@@ -36,7 +36,7 @@ class SgeConfigDialog : public QDialog
   Q_OBJECT
 
 public:
-  explicit SgeConfigDialog(AbstractDialog* parent, OptBase* o,
+  explicit SgeConfigDialog(AbstractDialog* parent, SearchBase* o,
                            SgeQueueInterface* p);
   virtual ~SgeConfigDialog() override;
 
@@ -48,7 +48,7 @@ protected slots:
   void reject() override;
 
 protected:
-  OptBase* m_opt;
+  SearchBase* m_search;
   SgeQueueInterface* m_sge;
 
 private:

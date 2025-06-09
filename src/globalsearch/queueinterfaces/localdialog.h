@@ -29,7 +29,7 @@ class QVBoxLayout;
 
 namespace GlobalSearch {
 class AbstractDialog;
-class OptBase;
+class SearchBase;
 class LocalQueueInterface;
 
 // Basic input dialog for local QueueInterfaces
@@ -37,7 +37,7 @@ class LocalQueueInterfaceConfigDialog : public QDialog
 {
   Q_OBJECT
 public:
-  LocalQueueInterfaceConfigDialog(AbstractDialog* parent, OptBase* opt,
+  LocalQueueInterfaceConfigDialog(AbstractDialog* parent, SearchBase* opt,
                                   LocalQueueInterface* qi);
   ~LocalQueueInterfaceConfigDialog();
 
@@ -47,7 +47,7 @@ public slots:
   void updateGUI();
 
 protected:
-  OptBase* m_opt;
+  SearchBase* m_search;
   LocalQueueInterface* m_queueInterface;
 
   QCheckBox* m_cb_logErrorDirs;

@@ -116,7 +116,7 @@ static bool parseLine(const vector<string>& words, std::vector<Atom>& atoms)
       return false;
     }
 
-    Atom newAtom(ElemInfo::getAtomicNum(words[0]), Vector3(0.0, 0.0, 0.0));
+    Atom newAtom(ElementInfo::getAtomicNum(words[0]), Vector3(0.0, 0.0, 0.0));
     atoms.push_back(newAtom);
   } else if (atoms.size() == 1) {
     // Second atom. Should only have an R value.
@@ -142,7 +142,7 @@ static bool parseLine(const vector<string>& words, std::vector<Atom>& atoms)
       return false;
     }
 
-    Atom newAtom(ElemInfo::getAtomicNum(words[0]), Vector3(0.0, 0.0, r));
+    Atom newAtom(ElementInfo::getAtomicNum(words[0]), Vector3(0.0, 0.0, r));
     atoms.push_back(newAtom);
   } else if (atoms.size() == 2) {
     // Third atom. Should have R and theta.
@@ -195,7 +195,7 @@ static bool parseLine(const vector<string>& words, std::vector<Atom>& atoms)
     coords[2] =
       (thetaInd == 0) ? atoms[1].pos()[2] - r * cos(theta) : r * cos(theta);
 
-    Atom newAtom(ElemInfo::getAtomicNum(words[0]), coords);
+    Atom newAtom(ElementInfo::getAtomicNum(words[0]), coords);
     atoms.push_back(newAtom);
   } else {
     // General atom. Should have R, theta, and phi.
@@ -281,7 +281,7 @@ static bool parseLine(const vector<string>& words, std::vector<Atom>& atoms)
     pos -= r * (cos(theta) * x2 + sin(theta) * (cos(phi) * u - sin(phi) * v));
 
     // Add the atom in
-    Atom newAtom(ElemInfo::getAtomicNum(words[0]), pos);
+    Atom newAtom(ElementInfo::getAtomicNum(words[0]), pos);
     atoms.push_back(newAtom);
   }
 
@@ -429,7 +429,7 @@ std::map<unsigned short, size_t> getSiestaSpeciesNumbers(const Structure& s)
   QStringList atomicSyms = s.getSymbols();
 
   for (size_t i = 0; i < atomicSyms.size(); ++i)
-    ret[ElemInfo::getAtomicNum(atomicSyms[i].toStdString())] = i + 1;
+    ret[ElementInfo::getAtomicNum(atomicSyms[i].toStdString())] = i + 1;
 
   return ret;
 }
@@ -639,7 +639,7 @@ bool ZMatrixFormat::write(const Structure& s, std::ostream& out)
     }
 
     // First, the atomic symbol.
-    out << std::setw(2) << ElemInfo::getAtomicSymbol(s.atomicNumber(entry.ind));
+    out << std::setw(2) << ElementInfo::getAtomicSymbol(s.atomicNumber(entry.ind));
 
     // If we don't have an rInd, end the line and continue
     if (entry.rInd == -1) {

@@ -20,13 +20,14 @@
 #include <globalsearch/tracker.h>
 #include <xtalopt/testing/xtalopttest.h>
 
-#include <xtalopt/ui/tab_edit.h>
-#include <xtalopt/ui/tab_init.h>
-#include <xtalopt/ui/tab_log.h>
+#include <xtalopt/ui/tab_struc.h>
 #include <xtalopt/ui/tab_opt.h>
+#include <xtalopt/ui/tab_search.h>
 #include <xtalopt/ui/tab_mo.h>
-#include <xtalopt/ui/tab_plot.h>
 #include <xtalopt/ui/tab_progress.h>
+#include <xtalopt/ui/tab_plot.h>
+#include <xtalopt/ui/tab_log.h>
+#include <xtalopt/ui/tab_about.h>
 #include <xtalopt/xtalopt.h>
 
 #include <QSettings>
@@ -63,29 +64,31 @@ XtalOptDialog::XtalOptDialog(QWidget* parent, Qt::WindowFlags f,
 
   if (!xtalopt) {
     xtalopt = new XtalOpt(this);
-    m_ownsOptBase = true;
+    m_ownsSearchBase = true;
   }
 
-  m_opt = xtalopt;
+  m_search = xtalopt;
 
   // Initialize tabs
-  m_tab_init = new TabInit(this, xtalopt);
-  m_tab_edit = new TabEdit(this, xtalopt);
+  m_tab_struc = new TabStruc(this, xtalopt);
   m_tab_opt = new TabOpt(this, xtalopt);
+  m_tab_search = new TabSearch(this, xtalopt);
   m_tab_mo = new TabMo(this, xtalopt);
   m_tab_progress = new TabProgress(this, xtalopt);
   m_tab_plot = new TabPlot(this, xtalopt);
   m_tab_log = new TabLog(this, xtalopt);
+  m_tab_about = new TabAbout(this, xtalopt);
 
   // Populate tab widget
   ui->tabs->clear();
-  ui->tabs->addTab(m_tab_init->getTabWidget(), tr("&Structure Limits"));
-  ui->tabs->addTab(m_tab_edit->getTabWidget(), tr("Optimization &Settings"));
-  ui->tabs->addTab(m_tab_opt->getTabWidget(), tr("&Search Settings"));
+  ui->tabs->addTab(m_tab_struc->getTabWidget(), tr("&Structure Limits"));
+  ui->tabs->addTab(m_tab_opt->getTabWidget(), tr("&Optimization Settings"));
+  ui->tabs->addTab(m_tab_search->getTabWidget(), tr("&Search Settings"));
   ui->tabs->addTab(m_tab_mo->getTabWidget(), tr("&Multiobjective Search"));
   ui->tabs->addTab(m_tab_progress->getTabWidget(), tr("&Progress"));
   ui->tabs->addTab(m_tab_plot->getTabWidget(), tr("&Plot"));
   ui->tabs->addTab(m_tab_log->getTabWidget(), tr("&Log"));
+  ui->tabs->addTab(m_tab_about->getTabWidget(), tr("&About"));
 
   initialize();
 
@@ -136,7 +139,7 @@ void XtalOptDialog::beginPlotOnlyMode()
   m_tab_progress->blockSignals(true);
 
   // Make sure xtalopt is in readOnly mode
-  m_opt->readOnly = true;
+  m_search->readOnly = true;
 
   // A QWidget will not display by itself if its parent is not displayed.
   // Thus, we need to set the parent to nullptr.
@@ -153,16 +156,16 @@ void XtalOptDialog::saveSession()
   if (sender() == ui->push_save)
     notify = true;
 
-  QtConcurrent::run([this, notify]() { this->m_opt->save("", notify); });
+  QtConcurrent::run([this, notify]() { this->m_search->save("", notify); });
 }
 
 void XtalOptDialog::startSearch()
 {
-  if (m_opt->testingMode) {
-    m_test = new XtalOptTest(qobject_cast<XtalOpt*>(m_opt));
+  if (m_search->testingMode) {
+    m_test = new XtalOptTest(qobject_cast<XtalOpt*>(m_search));
     QtConcurrent::run(m_test, &XtalOptTest::start);
   } else {
-    QtConcurrent::run(qobject_cast<XtalOpt*>(m_opt), &XtalOpt::startSearch);
+    QtConcurrent::run(qobject_cast<XtalOpt*>(m_search), &XtalOpt::startSearch);
   }
 }
 

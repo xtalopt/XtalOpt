@@ -36,7 +36,7 @@ class LsfQueueInterface : public RemoteQueueInterface
   Q_OBJECT
 
 public:
-  explicit LsfQueueInterface(OptBase* parent, const QString& settingsFile = "");
+  explicit LsfQueueInterface(SearchBase* parent, const QString& settingsFile = "");
 
   virtual ~LsfQueueInterface() override;
 

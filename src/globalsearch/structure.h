@@ -140,25 +140,51 @@ public:
     /** The Structure has been killed after finishing all
      * optimization steps. */
     Removed,
-    /** The Structure has been found to be a duplicate of
+    /** The Structure has been found to be similar to
      * another. The other structure's information can be found in
-     * getDuplicateString(). */
-    Duplicate,
-    /** The Structure has been found to be a supercell of
-     * another. The other structure's information can be found in
-     * getSupercellString(). */
-    Supercell,
+     * getSimilarityString(). */
+    Similar,
     /** The Structure is about to restart it's current optimization step. */
     Restart,
     /** Structure marked as dismissed in objective calculations. */
     ObjectiveDismiss,
     /** Objective calculations for the structure have failed. */
     ObjectiveFail,
-    /** All objective/hardness calculations for structure are successfully finished. */
+    /** All objective calculations for structure are successfully finished. */
     ObjectiveRetain,
     /** Structure is in the process of objective calculations */
     ObjectiveCalculation
   };
+
+  /** Functions to set or retrieve the "composition validity"
+   *  for a structure. Validity here means that the structure
+   *  has a chemical composition that matches one of the user's
+   *  input formulas list, or -at least- is a supercell of one of
+   *  those formulas. So, e.g., a "sub-system" seed structure
+   *  will not have a valid composition.
+   *  For now, this is being used in genetic operation selection
+   *  to filter out structures with "unknown" comp from stripple/permustrain
+   *  in a fixed/multi composition search, where we already
+   *  know the output of gen opt will not be acceptable.
+   *  By default, this is set to true as internally generated
+   *  structures match the list (or in vc search are acceptable
+   *  anyways). Currently, we only set it to "false" in the
+   *  "checkComposition" for off-composition seeds.
+   */
+  bool hasValidComposition() {return m_hasValidComposition;};
+  void setCompositionValidity(bool v) {m_hasValidComposition = v;};
+
+  /** Functions to set or retrieve the distance above hull
+   *    (in energy per atom units).
+   */
+  double getDistAboveHull() const {return m_aboveHull;};
+  void   setDistAboveHull(double i) {m_aboveHull = i;};
+
+  /**
+   * Set and retrieve the Pareto front index for structure
+   */
+  int  getParetoFront() const {return m_paretoFront; };
+  void setParetoFront(int i)  {m_paretoFront = i; };
 
   /**
    * Multi-objective read/write functions for a structure
@@ -229,13 +255,14 @@ public:
    */
   double getEnergy() const { return m_energy; };
 
-  /** Return the enthalpy value of the structure in eV.
+  /** Return the enthalpy value of the structure.
    *
    * @note If the enthalpy is not set but the energy is set, this
    * function assumes that the system is at zero-pressure and
    * returns the energy.
    *
-   * @return The enthalpy of the structure in eV.
+   * @return The enthalpy of the structure.
+   * @sa getEnthalpyPerAtom
    * @sa setEnthalpy
    * @sa hasEnthalpy
    * @sa setPV
@@ -250,11 +277,21 @@ public:
     return m_enthalpy;
   };
 
-  double getEnthalpyPerFU() const
-  {
-    return getEnthalpy() / static_cast<double>(getFormulaUnits());
-  }
-
+  /** Return the enthalpy per atom value of the structure.
+   *
+   * @note If the enthalpy is not set but the energy is set, this
+   * function assumes that the system is at zero-pressure and
+   * returns the energy.
+   *
+   * @return The enthalpy of the structure.
+   * @sa getEnthalpy
+   * @sa setEnthalpy
+   * @sa hasEnthalpy
+   * @sa setPV
+   * @sa getPV
+   * @sa setEnergy
+   * @sa getEnergy
+   */
   double getEnthalpyPerAtom() const
   {
     return getEnthalpy() / static_cast<double>(numAtoms());
@@ -318,7 +355,7 @@ public:
    * @return Unique identification number
    * @sa setGeneration
    * @sa getGeneration
-   * @sa getIndex
+   * @sa setIndex
    * @sa setIDNumber
    * @sa getIDNumber
    * @sa getTag
@@ -331,17 +368,11 @@ public:
    */
   QReadWriteLock& lock() { return m_lock; };
 
-  /** @return A string naming the Structure that this Structure is a
-   * duplicate of.
-   * @sa setDuplicateString
+  /** @return A string naming the Structure that this Structure is
+   * similar to.
+   * @sa setSimilarityString
    */
-  QString getDuplicateString() const { return m_dupString; };
-
-  /** @return A string naming the Structure that this Structure is a
-   * supercell of.
-   * @sa setSupercellString
-   */
-  QString getSupercellString() const { return m_supString; };
+  QString getSimilarityString() const { return m_simString; };
 
   /** @return a string describing the ancestory of the Structure.
    * @sa setParents
@@ -384,12 +415,6 @@ public:
    */
   Structure* getParentStructure() const { return m_parentStructure; };
 
-  // returns the number of structures of each formula unit up to the
-  // user-specified maximum formula units. numberOfEachFormulaUnit.at(n)
-  // is the number of structures with formula units n.
-  static QList<uint> countStructuresOfEachFormulaUnit(
-    QList<Structure*>* structures, int maxFU);
-
   /** @return The time that the current optimization step started.
   * @sa getOptTimerEnd
   * @sa startOptTimer
@@ -427,19 +452,16 @@ public:
 
   /** @return A header line for a results printout
    * @sa getResultsEntry
-   * @sa OptBase::save
+   * @sa SearchBase::save
    */
-  virtual QString getResultsHeader(bool includeHardness, int objectives_num) const
+  virtual QString getResultsHeader(int objectives_num) const
   {
     QString out = QString("%1 %2 %3 %4 %5")
       .arg("Rank", 6)
-      .arg("Gen", 6)
-      .arg("ID", 6)
+      .arg("Tag", 8)
+      .arg("Formula", 12)
       .arg("INDX", 6)
       .arg("Enthalpy", 10);
-    if (includeHardness)
-      out += QString("%1")
-        .arg("Hardness", 10);
     for (int i = 0; i< objectives_num; i++)
       out += QString("%1").arg("Objective"+QString::number(i+1), 11);
     out += QString("%1")
@@ -456,9 +478,10 @@ public:
   /** This function is changed for multi-objective case // SH
    * @return A structure-specific entry for a results printout
    * @sa getResultsHeader
-   * @sa OptBase::save
+   * @sa SearchBase::save
    */
-  virtual QString getResultsEntry(bool includeHardness, int objectives_num, int optstep) const;
+  virtual QString getResultsEntry(int objectives_num, int optstep,
+                                  QList<QString> chemSys) const;
 
   /** Find the smallest separation between all atoms in the
    * Structure.
@@ -658,11 +681,37 @@ public:
    */
   void perceiveBonds();
 
+  /** The collection of functions to calculate and set, clear, and retrieve the
+   * "Normalized pairwise" RDF vector for the structure. The normalization
+   * of pairwise entries is done so they are ready for dot product.
+   *
+   * This normalized RDF object is a "nbin*nelem*nelem" size matrix; however
+   * the relevant pairwise entries are unique pairs in their natural order.
+   * For examples:
+   * 1) For a ternary system such as "A-B-C", the relevant entries are:
+   * "distance" "AA" "AB" "AC" "BB" "BC" "CC".
+   * 2) For a quaternary "A-B-C-D", they are:
+   * "distance" "AA" "AB" "AC" "AD" "BB" "BC" "BD" "CC" "CD" "DD".
+   *
+   * So, to read the meaningful RDF columns, these kind of loops are needed:
+   *     i=0,nbins -> j=0,nelem -> k=j,nelem ---> rdf[i][j][k]
+   */
+  std::vector<std::vector<std::vector<double> > >
+       getNormalizedRDF() const { return m_norm_rdf; }
+  void clearNormalizedRDF() {m_norm_rdf.clear();}
+  bool hasNormalizedRDF() {return (!m_norm_rdf.empty());}
+  bool calculateNormalizedRDF(int nbins, double cutoff, double sigma);
+
   /** @return An alphabetized list of the atomic symbols for the
    * atomic species present in the Structure.
    * @sa getNumberOfAtomsAlpha
    */
   QList<QString> getSymbols() const;
+
+  /** @return The number of atoms of species
+   * given by the variable s.
+   */
+  uint getNumberOfAtomsOfSymbol(QString s) const;
 
   /** @return A list of the number of species present that
    * corresponds to the symbols listed in getSymbols().
@@ -670,12 +719,22 @@ public:
    */
   QList<uint> getNumberOfAtomsAlpha() const;
 
+  /** @return The string with chemical formula
+   */
+  QString getChemicalFormula() const;
+
+  /** Return the "unique" composition of the structure
+   * With default true argument, the output is "empirical composition",
+   * otherwise, it will be exact atom counts.
+   */
+  QString getCompositionString(bool reduceToEmpirical = true) const;
+
   /** @return Fractional atom coordinates. The atoms are ordered in
    * the same ordering you would get from getSymbols().
    */
   QList<Vector3> getAtomCoordsFrac() const;
 
-  /** @return A string formated "HH:MM:SS" indicating the amount of
+  /** @return A string formatted "HH:MM:SS" indicating the amount of
    * time spent in the current optimization step
    *
    * @sa setOptTimerStart
@@ -700,7 +759,7 @@ public:
    * be extended in derived classes.
    *
    * Used for checking if two Structures are similar enough to be
-   * marked as duplicates.
+   * marked as similarities.
    *
    * @return A hash of key/value pairs containing data that is
    * representative of the Structure.
@@ -709,13 +768,13 @@ public:
 
   /**
    * Structure can track if it has changed since it was last checked
-   * in a duplicate finding routine. This is useful for cutting down
+   * in a similarity finding routine. This is useful for cutting down
    * on the number of comparisons needed.
    *
    * Must call setupConnections() before using this function.
-   * @sa setChangedSinceDupChecked()
+   * @sa setChangedSinceSimChecked()
    */
-  bool hasChangedSinceDupChecked() { return m_updatedSinceDupChecked; };
+  bool hasChangedSinceSimChecked() { return m_updatedSinceSimChecked; };
 
   /** Structure tracks if it has been primitive-checked or not. Primitive
    * checking involves running the primitive reduction function to see if
@@ -724,18 +783,6 @@ public:
    * @sa setPrimitiveChecked()
    */
   bool wasPrimitiveChecked() const { return m_primitiveChecked; };
-
-  /** Structure tracks if it has been supercell-generation checked or not.
-   * Supercell generation checking involves checking to see if a supercell
-   * should be generated from this structure and placed into a higher FU gene
-   * pool.
-   *
-   * @sa setSupercellGenerationChecked()
-   */
-  bool wasSupercellGenerationChecked() const
-  {
-    return m_supercellGenerationChecked;
-  };
 
   /** If the structure was created by primitive reduction, then it does
    * not proceed through the optimizer. This bool indicates if it was created
@@ -748,36 +795,28 @@ public:
   /** Sort the listed structures by their enthalpies
    *
    * @param structures List of structures to sort
-   * @sa rankEnthalpies
-   * @sa sortAndRankByEnthalpy
+   * @sa sortByAboveHull
+   * @sa sortAndRankStructures
    */
-  static void sortByEnthalpy(QList<Structure*>* structures);
+  static void sortByEnthalpyPerAtom(QList<Structure*>* structures);
 
-  /** Sort the listed structures by their vickers hardnesses
+  /** Sort the listed structures by their distance above hull
    *
    * @param structures List of structures to sort
+   * @sa sortByEnthalpyPerAtom
+   * @sa sortAndRankStructures
    */
-  static void sortByVickersHardness(QList<Structure*>* structures);
+  static void sortByDistanceAboveHull(QList<Structure*>* structures);
 
-  /** Rank the listed structures by their enthalpies
-   *
-   * @param structures List of structures to assign ranks
-   * @sa sortEnthalpies
-   * @sa sortAndRankByEnthalpy
-   * @sa setRank
-   * @sa getRank
-   */
-  static void rankByEnthalpy(const QList<Structure*>& structures);
-
-  /** Sort and rank the listed structures by their enthalpies
+  /** Sort and rank the listed structures by their above hull (formerly: enthalpy)
    *
    * @param structures List of structures to sort and assign rank
-   * @sa sortByEnthalpy
-   * @sa rankEnthalpies
+   * @sa sortByEnthalpyPerAtom
+   * @sa sortByDistanceAboveHull
    * @sa setRank
    * @sa getRank
    */
-  static void sortAndRankByEnthalpy(QList<Structure*>* structures);
+  static void sortAndRankStructures(QList<Structure*>* structures);
 
   /**
    * Get the extra files to be copied to the working dir.
@@ -849,50 +888,6 @@ public:
    * @return The vector of preoptimization bonding information.
    */
   const std::vector<Bond>& getPreoptBonding() const { return m_preoptBonds; }
-
-  /**
-   * Get the bulk modulus as calculated by Aflow machine learning.
-   *
-   * @return The bulk modulus (or -1.0 if it hasn't been set).
-   */
-  double bulkModulus() const { return m_bulkModulus; }
-
-  /**
-   * Get the shear modulus as calculated by Aflow machine learning.
-   *
-   * @return The shear modulus (or -1.0 if it hasn't been set).
-   */
-  double shearModulus() const { return m_shearModulus; }
-
-  /**
-   * Get the Vickers hardness as calculated with the Chen model involving
-   * the bulk and shear moduli from Aflow.
-   *
-   * @return The Vickers hardness (or -1.0 if it hasn't been set).
-   */
-  double vickersHardness() const { return m_vickersHardness; }
-
-  /**
-   * Set the bulk modulus (usually calculated via aflow machine learning).
-   *
-   * @param d The bulk modulus.
-   */
-  void setBulkModulus(double d) { m_bulkModulus = d; }
-
-  /**
-   * Set the shear modulus (usually calculated via aflow machine learning).
-   *
-   * @param d The shear modulus.
-   */
-  void setShearModulus(double d) { m_shearModulus = d; }
-
-  /**
-   * Set the Vickers hardness (usually calculated via aflow machine learning
-   * and the Chen model).
-   *
-   * @param d The Vickers hardness.
-   */
-  void setVickersHardness(double d) { m_vickersHardness = d; }
 
 signals:
 
@@ -1289,26 +1284,20 @@ public slots:
   void addFailure() { setFailCount(getFailCount() + 1); };
 
   /** @param s A string naming the Structure that this Structure is a
-   * duplicate of.
-   * @sa getDuplicateString
+   * similar to.
+   * @sa getSimilarityString
    */
-  void setDuplicateString(const QString& s) { m_dupString = s; };
-
-  /** @param s A string naming the Structure that this Structure is a
-   * supercell of.
-   * @sa getSupercellString
-   */
-  void setSupercellString(const QString& s) { m_supString = s; };
+  void setSimilarityString(const QString& s) { m_simString = s; };
 
   /**
    * Structure can track if it has changed since it was last checked
-   * in a duplicate finding routine. This is useful for cutting down
+   * in a similarity finding routine. This is useful for cutting down
    * on the number of comparisons needed.
    *
    * Must call setupConnections() before using this function.
-   * @sa hasChangedSinceDupChecked()
+   * @sa hasChangedSinceSimChecked()
    */
-  void setChangedSinceDupChecked(bool b) { m_updatedSinceDupChecked = b; };
+  void setChangedSinceSimChecked(bool b) { m_updatedSinceSimChecked = b; };
 
   /**
    * Structure tracks if it has been primitive-checked or not. Primitive
@@ -1318,18 +1307,6 @@ public slots:
    * @sa wasPrimitiveChecked()
    */
   void setPrimitiveChecked(bool b) { m_primitiveChecked = b; };
-
-  /** Structure tracks if it has been supercell-generation checked or not.
-   * Supercell generation checking involves checking to see if a supercell
-   * should be generated from this structure and placed into a higher FU gene
-   * pool.
-   *
-   * @sa wasSupercellGenerationChecked()
-   */
-  void setSupercellGenerationChecked(bool b)
-  {
-    m_supercellGenerationChecked = b;
-  };
 
   /** If the structure was created by primitive reduction, then it does
    * not proceed through the optimizer. This bool indicates if it was created
@@ -1448,6 +1425,10 @@ protected slots:
 
 protected:
 
+  // Valid composition: false if: (1) sub-system structure
+  // (2) a composition not on the list (for FC/MC searches)
+  bool m_hasValidComposition;
+
   // Multi-objective parameters for a structure
   QList<double> m_strucObjValues;
   int           m_strucObjFailCt;
@@ -1460,13 +1441,14 @@ protected:
   // skip Doxygen parsing
   /// \cond
   bool m_hasEnthalpy;
-  std::atomic_bool m_updatedSinceDupChecked, m_primitiveChecked,
-    m_skippedOptimization, m_supercellGenerationChecked;
+  std::vector<std::vector<std::vector<double> > > m_norm_rdf;
+  std::atomic_bool m_updatedSinceSimChecked, m_primitiveChecked,
+    m_skippedOptimization;
   bool m_histogramGenerationPending;
   uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount,
     m_fixCount;
-  QString m_parents, m_dupString, m_supString, m_rempath, m_locpath;
-  double m_energy, m_enthalpy, m_PV;
+  QString m_parents, m_simString, m_rempath, m_locpath;
+  double m_energy, m_enthalpy, m_PV, m_paretoFront, m_aboveHull;
   std::atomic<State> m_status;
   QDateTime m_optStart, m_optEnd;
   int m_index;
@@ -1494,9 +1476,6 @@ protected:
 
   // The pre-optimization bonding information.
   std::vector<Bond> m_preoptBonds;
-
-  // AFLOW ML stuff
-  double m_bulkModulus, m_shearModulus, m_vickersHardness;
 
   // End doxygen skip:
   /// \endcond

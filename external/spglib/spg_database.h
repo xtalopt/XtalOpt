@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -39,20 +39,22 @@
 #include "symmetry.h"
 
 typedef struct {
-  int number;
-  char schoenflies[7];
-  char hall_symbol[17];
-  char international[32];
-  char international_full[20];
-  char international_short[11];
-  char choice[6];
-  Centering centering;
-  int pointgroup_number;
+    int number;
+    char schoenflies[7];
+    char hall_symbol[17];
+    char international[32];
+    char international_full[20];
+    char international_short[11];
+    char choice[6];
+    Centering centering;
+    int pointgroup_number;
 } SpacegroupType;
 
-int spgdb_get_operation(int rot[3][3], double trans[3], const int hall_number);
-void spgdb_get_operation_index(int indices[2], const int hall_number);
-Symmetry * spgdb_get_spacegroup_operations(const int hall_number);
-SpacegroupType spgdb_get_spacegroup_type(const int hall_number);
+void spgdb_decode_symmetry(int rot[3][3], double trans[3], int const encoded);
+int spgdb_get_operation(int rot[3][3], double trans[3], int const hall_number);
+void spgdb_get_operation_index(int indices[2], int const hall_number);
+Symmetry* spgdb_get_spacegroup_operations(int const hall_number);
+SpacegroupType spgdb_get_spacegroup_type(int const hall_number);
+int spgdb_remove_space(char symbol[], int const num_char);
 
 #endif

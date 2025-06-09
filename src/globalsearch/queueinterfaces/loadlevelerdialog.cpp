@@ -21,7 +21,7 @@
 
 #include <globalsearch/queueinterfaces/loadleveler.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/ui/abstractdialog.h>
 
 #include "ui_loadlevelerdialog.h"
@@ -29,9 +29,9 @@
 namespace GlobalSearch {
 
 LoadLevelerConfigDialog::LoadLevelerConfigDialog(AbstractDialog* parent,
-                                                 OptBase* o,
+                                                 SearchBase* o,
                                                  LoadLevelerQueueInterface* p)
-  : QDialog(parent), m_opt(o), m_ll(p), ui(new Ui::LoadLevelerConfigDialog)
+  : QDialog(parent), m_search(o), m_ll(p), ui(new Ui::LoadLevelerConfigDialog)
 {
   ui->setupUi(this);
 }
@@ -55,7 +55,7 @@ void LoadLevelerConfigDialog::updateGUI()
   ui->edit_llq->blockSignals(false);
   ui->edit_llsubmit->blockSignals(false);
 
-  ui->widget_globalQueueInterfaceSettings->updateGUI(m_opt);
+  ui->widget_globalQueueInterfaceSettings->updateGUI(m_search);
 }
 
 void LoadLevelerConfigDialog::accept()
@@ -64,7 +64,7 @@ void LoadLevelerConfigDialog::accept()
   m_ll->m_statusCommand = ui->edit_llq->text().trimmed();
   m_ll->m_submitCommand = ui->edit_llsubmit->text().trimmed();
 
-  ui->widget_globalQueueInterfaceSettings->accept(m_opt);
+  ui->widget_globalQueueInterfaceSettings->accept(m_search);
 
   QDialog::accepted();
   close();

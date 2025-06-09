@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -32,35 +32,18 @@
 /* ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE */
 /* POSSIBILITY OF SUCH DAMAGE. */
 
-#ifndef __debug_H__
-#define __debug_H__
+#pragma once
 
-#ifdef SPGDEBUG
-#define NIGGLI_DEBUG
-#define debug_print(...) printf(__VA_ARGS__)
-#define debug_print_matrix_d3( a ) dbg_print_matrix_d3( a )
-#define debug_print_matrix_i3( a ) dbg_print_matrix_i3( a )
-#define debug_print_vectors_d3(...) dbg_print_vectors_d3(__VA_ARGS__)
-#define debug_print_vectors_with_label(...) dbg_print_vectors_with_label(__VA_ARGS__)
+// Main print interface
+extern inline void warning_print(char const* format, ...);
+extern inline void debug_print(char const* format, ...);
+extern inline void info_print(char const* format, ...);
+extern inline void debug_print_matrix_d3(double const a[3][3]);
+extern inline void debug_print_matrix_i3(int const a[3][3]);
+extern inline void debug_print_vector_d3(double const a[3]);
+extern inline void debug_print_vectors_d3(double const a[][3], int size);
+extern inline void debug_print_vectors_with_label(double const a[][3],
+                                                  int const b[], int size);
 
-void dbg_print_matrix_d3(double a[3][3]);
-void dbg_print_matrix_i3(int a[3][3]);
-void dbg_print_vectors_d3(double a[][3], int size);
-void dbg_print_vectors_with_label(double a[][3], int b[], int size);
-
-#else
-#define debug_print(...)
-#define debug_print_matrix_d3( a )
-#define debug_print_matrix_i3( a )
-#define debug_print_vectors_d3(...)
-#define debug_print_vectors_with_label(...)
-#endif
-
-#ifdef SPGWARNING
-#define NIGGLI_WARNING
-#include <stdio.h>
-#define warning_print(...) fprintf(stderr,__VA_ARGS__)
-#else
-#define warning_print(...)
-#endif
-#endif
+// Common messages
+extern inline void warning_memory(char const* what);

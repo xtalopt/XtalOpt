@@ -28,7 +28,7 @@ using namespace std;
 
 namespace GlobalSearch {
 
-SSHManagerLibSSH::SSHManagerLibSSH(unsigned int connections, OptBase* parent)
+SSHManagerLibSSH::SSHManagerLibSSH(unsigned int connections, SearchBase* parent)
   : SSHManager(parent), m_connSemaphore(connections),
     m_connections(connections), m_isValid(false)
 {

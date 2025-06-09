@@ -28,7 +28,7 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-VASPOptimizer::VASPOptimizer(OptBase* parent, const QString& filename)
+VASPOptimizer::VASPOptimizer(SearchBase* parent, const QString& filename)
   : XtalOptOptimizer(parent)
 {
   // Set allowed data structure keys, if any
@@ -47,8 +47,7 @@ VASPOptimizer::VASPOptimizer(OptBase* parent, const QString& filename)
   // Setup for completion values
   m_completionFilename = "OUTCAR";
   m_completionStrings.clear();
-  m_completionStrings.append(
-    "General timing and accounting informations for this job:");
+  m_completionStrings.append("Total CPU time");
 
   // Set output filenames to try to read data from, e.g.
   m_outputFilenames.append("CONTCAR");
@@ -87,7 +86,7 @@ void VASPOptimizer::writeDataToSettings(const QString& filename)
   SETTINGS(filename);
 
   // Figure out what opt index this is.
-  int optInd = m_opt->optimizerIndex(this);
+  int optInd = m_search->optimizerIndex(this);
   if (optInd < 0)
     return;
 
@@ -103,7 +102,7 @@ QHash<QString, QString> VASPOptimizer::getInterpretedTemplates(
   Structure* structure)
 {
   QHash<QString, QString> hash = Optimizer::getInterpretedTemplates(structure);
-  hash.insert("POSCAR", m_opt->interpretTemplate("%POSCAR%", structure));
+  hash.insert("POSCAR", m_search->interpretTemplate("%POSCAR%", structure));
   return hash;
 }
 

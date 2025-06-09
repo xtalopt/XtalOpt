@@ -16,6 +16,11 @@
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
+  <property name="font">
+   <font>
+    <pointsize>11</pointsize>
+   </font>
+  </property>
   <property name="windowTitle">
    <string>SLURM Queue Configuration</string>
   </property>
@@ -156,7 +161,7 @@
   <customwidget>
    <class>GlobalSearch::GlobalQueueInterfaceSettingsWidget</class>
    <extends>QWidget</extends>
-   <header location="global">globalsearch/queueinterfaces/globalqueueinterfacesettingswidget.h</header>
+   <header>globalsearch/queueinterfaces/globalqueueinterfacesettingswidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -15,7 +15,7 @@
 #include <globalsearch/queuemanager.h>
 
 #include <globalsearch/macros.h>
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/remote.h>
@@ -63,8 +63,8 @@ bool trackerContainsStructure(GlobalSearch::Structure* s,
 
 namespace GlobalSearch {
 
-QueueManager::QueueManager(QThread* thread, OptBase* opt)
-  : QObject(), m_opt(opt), m_thread(thread), m_tracker(opt->tracker()),
+QueueManager::QueueManager(QThread* thread, SearchBase* srch)
+  : QObject(), m_search(srch), m_thread(thread), m_tracker(srch->tracker()),
     m_requestedStructures(0), m_isDestroying(false),
     m_lastSubmissionTimeStamp(new QDateTime(QDateTime::currentDateTime()))
 {
@@ -84,8 +84,7 @@ QueueManager::~QueueManager()
   trackers.append(&m_errorTracker);
   trackers.append(&m_submittedTracker);
   trackers.append(&m_newlyKilledTracker);
-  trackers.append(&m_newDuplicateTracker);
-  trackers.append(&m_newSupercellTracker);
+  trackers.append(&m_newSimilarityTracker);
   trackers.append(&m_restartTracker);
   trackers.append(&m_newSubmissionTracker);
   trackers.append(&m_objectiveRetainTracker);
@@ -130,11 +129,9 @@ void QueueManager::moveToQMThread()
 void QueueManager::setupConnections()
 {
   // opt connections
-  connect(this, SIGNAL(needNewStructure()), m_opt, SLOT(generateNewStructure()),
+  connect(this, SIGNAL(needNewStructure()), m_search, SLOT(generateNewStructure()),
           Qt::QueuedConnection);
-  connect(m_opt, SIGNAL(doneWithObjectives(Structure*)), this,
-      SLOT(updateStructureObjectiveState(Structure*)));
-  connect(m_opt, SIGNAL(doneWithHardness(Structure*)), this,
+  connect(m_search, SIGNAL(doneWithObjectives(Structure*)), this,
       SLOT(updateStructureObjectiveState(Structure*)));
 
   // re-emit connections
@@ -177,8 +174,7 @@ void QueueManager::reset()
   trackers.append(&m_errorTracker);
   trackers.append(&m_submittedTracker);
   trackers.append(&m_newlyKilledTracker);
-  trackers.append(&m_newDuplicateTracker);
-  trackers.append(&m_newSupercellTracker);
+  trackers.append(&m_newSimilarityTracker);
   trackers.append(&m_restartTracker);
   trackers.append(&m_newSubmissionTracker);
   trackers.append(&m_objectiveRetainTracker);
@@ -204,10 +200,10 @@ void QueueManager::checkLoop()
   // Update runtime options by reading a file if we are not using the GUI
   // This needs to be here first because sometimes, our CLI settings are
   // over-written from somewhere else when starting.
-  if (!m_opt->usingGUI())
-    m_opt->readRuntimeOptions();
+  if (!m_search->usingGUI())
+    m_search->readRuntimeOptions();
 
-  if (!m_opt->readOnly && !m_opt->isStarting) {
+  if (!m_search->readOnly && !m_search->isStarting) {
     checkPopulation();
     checkRunning();
     checkExit();
@@ -246,8 +242,8 @@ void QueueManager::checkPopulation()
       ++submitted;
     }
     // Count running jobs and update trackers
-    if (state != Structure::Optimized && state != Structure::Duplicate &&
-        state != Structure::Supercell && state != Structure::Killed &&
+    if (state != Structure::Optimized && state != Structure::Similar &&
+        state != Structure::Killed &&
         state != Structure::Removed && state != Structure::ObjectiveFail &&
         state != Structure::ObjectiveDismiss) {
       m_runningTracker.append(structure);
@@ -265,7 +261,7 @@ void QueueManager::checkPopulation()
   QWriteLocker jobStartTrackerLocker(m_jobStartTracker.rwLock());
   int pending = m_jobStartTracker.size();
   if (pending != 0 &&
-      (!m_opt->limitRunningJobs || submitted < m_opt->runningJobLimit)) {
+      (!m_search->limitRunningJobs || submitted < m_search->runningJobLimit)) {
 // Submit a single throttled job (1 submission per 3-8 seconds) if using
 // a remote queue interface. Interval is randomly chosen each iteration.
 // This prevents hammering the pbs server from multiple XtalOpt instances
@@ -273,7 +269,7 @@ void QueueManager::checkPopulation()
 #ifdef ENABLE_SSH
     Structure* s = m_jobStartTracker.at(0);
     if (qobject_cast<RemoteQueueInterface*>(
-          m_opt->queueInterface(s->getCurrentOptStep())) != nullptr) {
+          m_search->queueInterface(s->getCurrentOptStep())) != nullptr) {
       if (m_lastSubmissionTimeStamp->secsTo(QDateTime::currentDateTime()) >=
           3 + (6 * getRandDouble())) {
         startJob();
@@ -285,7 +281,7 @@ void QueueManager::checkPopulation()
 // Local job submission doesn't need to be throttled
 #endif
       while (pending != 0 &&
-             (!m_opt->limitRunningJobs || submitted < m_opt->runningJobLimit)) {
+             (!m_search->limitRunningJobs || submitted < m_search->runningJobLimit)) {
         startJob();
         ++submitted;
         --pending;
@@ -310,15 +306,15 @@ void QueueManager::checkPopulation()
   // incomplete is getAllRunningStructures.size() + m_requestedStructures:
   int incomplete = m_runningTracker.size() + m_newStructureTracker.size() +
                    m_requestedStructures;
-  int needed = m_opt->contStructs - incomplete;
+  int needed = m_search->contStructs - incomplete;
 
   if (
     // Are we at the continuous structure limit?
     (needed > 0) &&
     // Is the cutoff either disabled or reached/exceeded?
-    (m_opt->cutoff <= 0 || total < m_opt->cutoff) &&
+    (m_search->maxNumStructures <= 0 || total < m_search->maxNumStructures) &&
     // Check if we are testing. If so, have we reached the testing limit?
-    (!m_opt->testingMode || total < m_opt->test_nStructs)) {
+    (!m_search->testingMode || total < m_search->test_nStructs)) {
     // emit requests
     qDebug() << "Need " << needed << " structures. " << incomplete
              << " already incomplete.";
@@ -356,8 +352,7 @@ void QueueManager::checkRunning()
         m_errorTracker.contains(structure) ||
         m_submittedTracker.contains(structure) ||
         m_newlyKilledTracker.contains(structure) ||
-        m_newDuplicateTracker.contains(structure) ||
-        m_newSupercellTracker.contains(structure) ||
+        m_newSimilarityTracker.contains(structure) ||
         m_restartTracker.contains(structure) ||
         m_newSubmissionTracker.contains(structure) ||
         m_objectiveRetainTracker.contains(structure) ||
@@ -407,11 +402,8 @@ void QueueManager::checkRunning()
       case Structure::Updating:
         handleUpdatingStructure(structure);
         break;
-      case Structure::Duplicate:
-        handleDuplicateStructure(structure);
-        break;
-      case Structure::Supercell:
-        handleSupercellStructure(structure);
+      case Structure::Similar:
+        handleSimilarStructure(structure);
         break;
       case Structure::Empty:
         handleEmptyStructure(structure);
@@ -442,13 +434,13 @@ void QueueManager::checkExit()
   //   running/pending jobs, then waits a few second to make sure all
   //   files are transferred and status' are saved before quitting.
 
-  if (! (m_opt->m_hardExit || m_opt->m_softExit)) {
+  if (! (m_search->m_hardExit || m_search->m_softExit)) {
     // If no hard or soft exit, return.
     return;
-  } else if (m_opt->m_hardExit) {
+  } else if (m_search->m_hardExit) {
     // If hard exit.
-    m_opt->warning(tr("Performing a hard exit ..."));
-    m_opt->performTheExit();
+    m_search->warning(tr("Performing a hard exit ..."));
+    m_search->performTheExit();
   } else {
     // If not a hard exit; then we're here for a soft exit.
     int total = 0;
@@ -464,21 +456,20 @@ void QueueManager::checkExit()
       structureLocker.unlock();
       if (st != Structure::Optimized   && st != Structure::Killed         &&
           st != Structure::ObjectiveFail && st != Structure::ObjectiveDismiss &&
-          st != Structure::Removed     && st != Structure::Duplicate      &&
-          st != Structure::Supercell)
+          st != Structure::Removed     && st != Structure::Similar)
         ++pending;
       else
         ++total;
     }
     trackerReadLocker.unlock();
 
-    if (pending == 0 && total >= m_opt->cutoff) {
-      m_opt->warning(
+    if (pending == 0 && total >= m_search->maxNumStructures) {
+      m_search->warning(
           tr("Performing a soft exit (total, finished, and pending runs: %1 , %2 , %3)")
-          .arg(m_opt->cutoff).arg(total).arg(pending));
+          .arg(m_search->maxNumStructures).arg(total).arg(pending));
       // Call the perform_the_exit with a delay in quitting to make
       //   sure all output files are transferred/written.
-      m_opt->performTheExit(30);
+      m_search->performTheExit(3);
     }
   }
 }
@@ -504,7 +495,7 @@ void QueueManager::handleInProcessStructure_(Structure* s)
     return;
   }
 
-  QueueInterface* qi = m_opt->queueInterface(s->getCurrentOptStep());
+  QueueInterface* qi = m_search->queueInterface(s->getCurrentOptStep());
   switch (qi->getStatus(s)) {
     case QueueInterface::Running:
     case QueueInterface::Queued:
@@ -515,8 +506,8 @@ void QueueManager::handleInProcessStructure_(Structure* s)
     {
       // Kill the structure if it has exceeded the allowable time.
       // Only perform this for remote queues.
-      if (m_opt->cancelJobAfterTime() &&
-          s->getOptElapsedHours() > m_opt->hoursForCancelJobAfterTime() &&
+      if (m_search->cancelJobAfterTime() &&
+          s->getOptElapsedHours() > m_search->hoursForCancelJobAfterTime() &&
           qi->getIDString().toLower() != "local") {
         killStructure(s);
         emit structureUpdated(s);
@@ -597,9 +588,9 @@ void QueueManager::handleStepOptimizedStructure_(Structure* s)
   s->stopOptTimer();
 
   QString err;
-  if (!m_opt->checkStepOptimizedStructure(s, &err)) {
+  if (!m_search->checkStepOptimizedStructure(s, &err)) {
     // Structure failed a post optimization step:
-    m_opt->warning(QString("Structure %1 failed a post-optimization step: %2")
+    m_search->warning(QString("Structure %1 failed a post-optimization step: %2")
                      .arg(s->getTag())
                      .arg(err));
     s->setStatus(Structure::Killed);
@@ -610,10 +601,10 @@ void QueueManager::handleStepOptimizedStructure_(Structure* s)
 
   // update optstep and relaunch if necessary
   if (s->getCurrentOptStep() + 1 <
-      static_cast<unsigned int>(m_opt->getNumOptSteps())) {
+      static_cast<unsigned int>(m_search->getNumOptSteps())) {
 
     // Print an update to the terminal if we are not using the GUI
-    if (!m_opt->usingGUI()) {
+    if (!m_search->usingGUI()) {
       qDebug() << "Structure" << s->getTag()
                << "completed step" << s->getCurrentOptStep();
     }
@@ -632,16 +623,16 @@ void QueueManager::handleStepOptimizedStructure_(Structure* s)
   }
   // Otherwise, it's done
   else {
-    if (m_opt->m_calculateObjectives || m_opt->m_calculateHardness) {
-      // Initiate objective/aflow-hardness calculations; if needed
+    if (m_search->m_calculateObjectives) {
+      // Initiate objective calculations if needed
       s->resetStrucObj();
       s->setStatus(Structure::ObjectiveCalculation);
       locker.unlock();
       emit readyForObjectiveCalculations(s);
       return;
     } else {
-      // No objective/aflow-hardness calculations; proceed to optimized!
-      if (!m_opt->usingGUI()) {
+      // No objective calculations; proceed to optimized!
+      if (!m_search->usingGUI()) {
         qDebug() << "Structure" << s->getTag()
                  << "is optimized!";
       }
@@ -658,8 +649,8 @@ void QueueManager::updateStructureObjectiveState(Structure* s)
 {
   // This is the main entry into processing finished objective calculations.
   // This function:
-  //   (1) Starts by either doneWithObjectives or doneWithHardness signals,
-  //   (2) Checks if both objectives and aflow-hardness calculations are
+  //   (1) Starts by doneWithObjectives signal,
+  //   (2) Checks if objective calculations are
   //       finished, and if so, sets the structure status according to the
   //       outcomes which hands the structure over to the appropriate
   //       handler function.
@@ -668,32 +659,17 @@ void QueueManager::updateStructureObjectiveState(Structure* s)
   //       other calculation is not finished, we just return from here
   //       doing nothing. By the time the second one is emitted, we get
   //       here again, and this time both calculations are finished.
-  //   (2) Handling of aflow-hardness internally is problematic! If it
-  //       fails, there is no way of knowing that. The result will be
-  //       structure remaining in "Calculating objectives..." status
-  //       indefinitely, while all non-aflow-hardness related output files
-  //       from other objectives are produced and copied to structures directory.
-  //   (3) This function is called only with a signal; so basically a tracker
+  //   (2) This function is called only with a signal; so basically a tracker
   //       is not needed.
 
   QWriteLocker locker(&s->lock());
 
-  // If any of the objectives or aflow-hardness calculations is not finished, return.
-  if ((m_opt->m_calculateHardness && s->vickersHardness() < 0.0) ||
-      (m_opt->m_calculateObjectives &&
+  // If any of the objectives is not finished, return.
+  if ((m_search->m_calculateObjectives &&
        s->getStrucObjState() == Structure::Os_NotCalculated))
     return;
 
-  // If it's only aflow-hardness calculation.
-  if (m_opt->m_calculateHardness && !m_opt->m_calculateObjectives) {
-    s->setStatus(Structure::ObjectiveRetain);
-    s->setStrucObjState(Structure::Os_Retain);
-    return;
-  }
-
   // Getting here means that we have objective calculation for sure.
-  // If we had aflow-hardness, it's finished for sure; otherwise wouldn't
-  //  be here! So, the overall status depends only on objective calculation results.
   if (s->getStrucObjState() == Structure::Os_Retain)
     s->setStatus(Structure::ObjectiveRetain);
   else if (s->getStrucObjState() == Structure::Os_Dismiss)
@@ -726,7 +702,7 @@ void QueueManager::handleRetainObjective_(Structure* s)
   if (s->getStatus() != Structure::ObjectiveRetain)
     return;
 
-  if (!m_opt->usingGUI()) {
+  if (!m_search->usingGUI()) {
     qDebug() << "Structure" << s->getTag()
              << "is optimized!";
   }
@@ -758,7 +734,7 @@ void QueueManager::handleFailObjective_(Structure* s)
 
   // This might happen if objectives fail for any reason
   //   (failed communication with remote server, no script present, ...)
-  m_opt->error(tr("Objectives Fail (%1): removing the structure %2 ")
+  m_search->error(tr("Objectives Fail (%1): removing the structure %2 ")
       .arg(s->getStrucObjState()).arg(s->getTag()));
 
   s->setStatus(Structure::ObjectiveFail);
@@ -791,32 +767,34 @@ void QueueManager::handleDismissObjective_(Structure* s)
 
   QWriteLocker locker(&s->lock());
 
-  if (m_opt->m_objectivesReDo && s->getStrucObjFailCt() == 0)
+  if (m_search->m_objectivesReDo && s->getStrucObjFailCt() == 0)
   {
-#ifdef MOES_DEBUG
-    QString outstr;
-    outstr.sprintf(
-        "NOTE: redo str %8s with objective outcome % 2d ( action = % 3d ) !",
-        s->getTag().toStdString().c_str(),
-        s->getStrucObjState(), OptBase::FailActions(m_opt->failAction));
-    qDebug().noquote() << outstr;
-#endif
+
+    if (m_search->m_verbose) {
+      QString outstr;
+      outstr.sprintf(
+          "   Redo struc %8s with objective outcome % 2d ( action = % 3d ) !",
+          s->getTag().toStdString().c_str(),
+          s->getStrucObjState(), SearchBase::FailActions(m_search->failAction));
+      qDebug().noquote() << outstr;
+    }
+
     // Update structure objective info; for the record, and to
     //   not repeat this step (we do this once)
     s->setStrucObjFailCt(s->getStrucObjFailCt()+1);
     // save info to history; as it might be recalculated!
     s->updateAndAddObjectivesToHistory(s);
-    if (OptBase::FailActions(m_opt->failAction) == OptBase::FA_Randomize) {
+    if (SearchBase::FailActions(m_search->failAction) == SearchBase::FA_Randomize) {
       s->setStatus(Structure::Empty);
       locker.unlock();
-      m_opt->replaceWithRandom(s, tr("failed objective calculation"));
+      m_search->replaceWithRandom(s, tr("failed objective calculation"));
       s->setStatus(Structure::Restart);
       emit structureUpdated(s);
       return;
-    } else if (OptBase::FailActions(m_opt->failAction) == OptBase::FA_NewOffspring) {
+    } else if (SearchBase::FailActions(m_search->failAction) == SearchBase::FA_NewOffspring) {
       s->setStatus(Structure::Empty);
       locker.unlock();
-      m_opt->replaceWithOffspring(s, tr("failed objective calculation"));
+      m_search->replaceWithOffspring(s, tr("failed objective calculation"));
       s->setStatus(Structure::Restart);
       emit structureUpdated(s);
       return;
@@ -824,7 +802,7 @@ void QueueManager::handleDismissObjective_(Structure* s)
   }
 
   // Except than the above cases; we just dismiss the structure
-  m_opt->warning(tr("Objectives Dismiss (%1): removing the structure %2 ")
+  m_search->warning(tr("Objectives Dismiss (%1): removing the structure %2 ")
       .arg(s->getStrucObjState()).arg(s->getTag()));
 
   s->setStatus(Structure::ObjectiveDismiss);
@@ -874,7 +852,7 @@ void QueueManager::handleErrorStructure_(Structure* s)
     return;
   }
 
-  if (!m_opt->usingGUI()) {
+  if (!m_search->usingGUI()) {
     qDebug() << "Structure" << s->getTag()
              << "failed";
   }
@@ -888,30 +866,30 @@ void QueueManager::handleErrorStructure_(Structure* s)
 
   // If the number of failures has exceed the limit, take
   // appropriate action
-  if (s->getFailCount() >= m_opt->failLimit) {
-    switch (OptBase::FailActions(m_opt->failAction)) {
-      case OptBase::FA_DoNothing:
+  if (s->getFailCount() >= m_search->failLimit) {
+    switch (SearchBase::FailActions(m_search->failAction)) {
+      case SearchBase::FA_DoNothing:
       default:
         // resubmit job
         s->setStatus(Structure::Restart);
         emit structureUpdated(s);
         return;
-      case OptBase::FA_KillIt:
+      case SearchBase::FA_KillIt:
         locker.unlock();
         killStructure(s);
         emit structureUpdated(s);
         return;
-      case OptBase::FA_Randomize:
+      case SearchBase::FA_Randomize:
         s->setStatus(Structure::Empty);
         locker.unlock();
-        m_opt->replaceWithRandom(s, tr("excessive failures"));
+        m_search->replaceWithRandom(s, tr("failures: random"));
         s->setStatus(Structure::Restart);
         emit structureUpdated(s);
         return;
-      case OptBase::FA_NewOffspring:
+      case SearchBase::FA_NewOffspring:
         s->setStatus(Structure::Empty);
         locker.unlock();
-        m_opt->replaceWithOffspring(s, tr("excessive failures"));
+        m_search->replaceWithOffspring(s, tr("failures: offspring"));
         s->setStatus(Structure::Restart);
         emit structureUpdated(s);
         return;
@@ -946,7 +924,7 @@ void QueueManager::handleSubmittedStructure_(Structure* s)
     return;
   }
 
-  switch (m_opt->queueInterface(s->getCurrentOptStep())->getStatus(s)) {
+  switch (m_search->queueInterface(s->getCurrentOptStep())->getStatus(s)) {
     case QueueInterface::Running:
     case QueueInterface::Queued:
     case QueueInterface::Success:
@@ -1011,53 +989,23 @@ void QueueManager::handleRemovedStructure(Structure* s)
   handleKilledStructure(s);
 }
 
-void QueueManager::handleDuplicateStructure(Structure* s)
+void QueueManager::handleSimilarStructure(Structure* s)
 {
-  QWriteLocker locker(m_newDuplicateTracker.rwLock());
-  if (!m_newDuplicateTracker.append(s)) {
+  QWriteLocker locker(m_newSimilarityTracker.rwLock());
+  if (!m_newSimilarityTracker.append(s)) {
     return;
   }
-  QtConcurrent::run(this, &QueueManager::handleDuplicateStructure_, s);
+  QtConcurrent::run(this, &QueueManager::handleSimilarStructure_, s);
 }
 
 // Doxygen skip:
 /// @cond
-void QueueManager::handleDuplicateStructure_(Structure* s)
+void QueueManager::handleSimilarStructure_(Structure* s)
 {
-  Q_ASSERT(trackerContainsStructure(s, &m_newDuplicateTracker));
-  removeFromTrackerWhenScopeEnds popper(s, &m_newDuplicateTracker);
+  Q_ASSERT(trackerContainsStructure(s, &m_newSimilarityTracker));
+  removeFromTrackerWhenScopeEnds popper(s, &m_newSimilarityTracker);
 
-  if (s->getStatus() != Structure::Duplicate) {
-    return;
-  }
-
-  // Ensure that the job is not tying up the queue
-  stopJob(s);
-
-  // Remove from running tracker
-  m_runningTracker.lockForWrite();
-  m_runningTracker.remove(s);
-  m_runningTracker.unlock();
-}
-/// @endcond
-
-void QueueManager::handleSupercellStructure(Structure* s)
-{
-  QWriteLocker locker(m_newSupercellTracker.rwLock());
-  if (!m_newSupercellTracker.append(s)) {
-    return;
-  }
-  QtConcurrent::run(this, &QueueManager::handleSupercellStructure_, s);
-}
-
-// Doxygen skip:
-/// @cond
-void QueueManager::handleSupercellStructure_(Structure* s)
-{
-  Q_ASSERT(trackerContainsStructure(s, &m_newSupercellTracker));
-  removeFromTrackerWhenScopeEnds popper(s, &m_newSupercellTracker);
-
-  if (s->getStatus() != Structure::Supercell) {
+  if (s->getStatus() != Structure::Similar) {
     return;
   }
 
@@ -1103,7 +1051,7 @@ void QueueManager::updateStructure(Structure* s)
   s->resetFailCount();
   s->setStatus(Structure::Updating);
   s->lock().unlock();
-  if (!m_opt->optimizer(s->getCurrentOptStep())->update(s)) {
+  if (!m_search->optimizer(s->getCurrentOptStep())->update(s)) {
     s->lock().lockForWrite();
     s->setStatus(Structure::Error);
     s->lock().unlock();
@@ -1165,7 +1113,7 @@ void QueueManager::addStructureToSubmissionQueue_(Structure* s, int optStep)
   s->lock().unlock();
 
   // Perform writing
-  m_opt->queueInterface(s->getCurrentOptStep())->writeInputFiles(s);
+  m_search->queueInterface(s->getCurrentOptStep())->writeInputFiles(s);
 
   m_jobStartTracker.lockForWrite();
   m_jobStartTracker.append(s);
@@ -1186,9 +1134,9 @@ void QueueManager::startJob()
     return;
   }
 
-  if (!m_opt->queueInterface(s->getCurrentOptStep())->startJob(s)) {
+  if (!m_search->queueInterface(s->getCurrentOptStep())->startJob(s)) {
     s->lock().lockForWrite();
-    m_opt->warning(tr("QueueManager::startJob_: Job did not start "
+    m_search->warning(tr("QueueManager::startJob_: Job did not start "
                       "successfully for structure %1-%2.")
                      .arg(s->getTag())
                      .arg(s->getCurrentOptStep()));
@@ -1201,7 +1149,7 @@ void QueueManager::startJob()
   s->setStatus(Structure::Submitted);
   s->lock().unlock();
 
-  if (!m_opt->usingGUI()) {
+  if (!m_search->usingGUI()) {
     QReadLocker locker(&s->lock());
     qDebug() << "Structure"
              << s->getTag()
@@ -1214,7 +1162,7 @@ void QueueManager::startJob()
 
 void QueueManager::stopJob(Structure* s)
 {
-  m_opt->queueInterface(s->getCurrentOptStep())->stopJob(s);
+  m_search->queueInterface(s->getCurrentOptStep())->stopJob(s);
 }
 
 QList<Structure*> QueueManager::getAllRunningStructures()
@@ -1244,58 +1192,33 @@ QList<Structure*> QueueManager::getAllOptimizedStructures()
   return list;
 }
 
-QList<Structure*>
-QueueManager::getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit()
+QList<Structure*> QueueManager::getAllParentPoolStructures()
 {
   QList<Structure*> list;
-  QReadLocker trackerLocker(m_tracker->rwLock());
-  for (int i = 0; i < m_tracker->list()->size(); ++i) {
-    Structure* s = m_tracker->list()->at(i);
-    QReadLocker sLocker(&s->lock());
-    if (s->getStatus() == Structure::Optimized)
-      list.append(s);
-    else if (s->getStatus() == Structure::Supercell) {
-      // We only want to add one copy of each supercell for each formula
-      // unit. So do not add the supercell s if there is already one present.
-      for (int j = 0; j < list.size(); ++j) {
-        Structure* s2 = list.at(j);
-        // These should never be equal, but in case they are, continue
-        if (s == s2)
-          continue;
-        QReadLocker s2Locker(&s2->lock());
-        if (s2->getStatus() == Structure::Supercell &&
-            !s2->getSupercellString().isEmpty() &&
-            s2->getSupercellString() == s->getSupercellString() &&
-            s2->getFormulaUnits() == s->getFormulaUnits()) {
-          break;
-        }
-        // Made it to the end of the list and did not find a match!
-        else if (j == list.size() - 1) {
-          list.append(s);
-        }
-      }
-    }
-  }
-  return list;
-}
 
-QList<Structure*> QueueManager::getAllDuplicateStructures()
-{
-  QList<Structure*> list;
   m_tracker->lockForRead();
   Structure* s;
   for (int i = 0; i < m_tracker->list()->size(); i++) {
     s = m_tracker->list()->at(i);
     s->lock().lockForRead();
-    if (s->getStatus() == Structure::Duplicate)
+
+    // If structure is not optimized (includes calculation of objectives)
+    //   or above hull not calculated, ignore structure!
+    bool strIsOk = true;
+    if (s->getStatus() != Structure::Optimized || std::isnan(s->getDistAboveHull()))
+      strIsOk = false;
+
+    if (strIsOk)
       list.append(s);
+
     s->lock().unlock();
   }
   m_tracker->unlock();
   return list;
+
 }
 
-QList<Structure*> QueueManager::getAllSupercellStructures()
+QList<Structure*> QueueManager::getAllSimilarStructures()
 {
   QList<Structure*> list;
   m_tracker->lockForRead();
@@ -1303,7 +1226,7 @@ QList<Structure*> QueueManager::getAllSupercellStructures()
   for (int i = 0; i < m_tracker->list()->size(); i++) {
     s = m_tracker->list()->at(i);
     s->lock().lockForRead();
-    if (s->getStatus() == Structure::Supercell)
+    if (s->getStatus() == Structure::Similar)
       list.append(s);
     s->lock().unlock();
   }
@@ -1347,7 +1270,7 @@ void QueueManager::unlockForNaming(Structure* s)
     return;
   }
 
-  if (!m_opt->isStarting) {
+  if (!m_search->isStarting) {
     --m_requestedStructures;
   }
 
@@ -1401,13 +1324,6 @@ void QueueManager::unlockForNaming_()
     emit structureFinished(s);
 }
 /// @endcond
-
-void QueueManager::addManualStructureRequest(int requests)
-{
-  m_tracker->lockForWrite();
-  m_requestedStructures += requests;
-  m_tracker->unlock();
-}
 
 void QueueManager::appendToJobStartTracker(Structure* s)
 {

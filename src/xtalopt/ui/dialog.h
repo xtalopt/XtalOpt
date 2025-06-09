@@ -28,14 +28,14 @@ class XtalOptDialog;
 namespace XtalOpt {
 class Xtal;
 class XtalOpt;
-class TabInit;
-class TabEdit;
+class TabStruc;
 class TabOpt;
+class TabSearch;
 class TabMo;
-class TabSys;
 class TabProgress;
 class TabPlot;
 class TabLog;
+class TabAbout;
 class XtalOptTest;
 
 class XtalOptDialog : public GlobalSearch::AbstractDialog
@@ -67,14 +67,14 @@ signals:
 private:
   Ui::XtalOptDialog* ui;
 
-  TabInit* m_tab_init;
-  TabEdit* m_tab_edit;
+  TabStruc* m_tab_struc;
   TabOpt* m_tab_opt;
+  TabSearch* m_tab_search;
   TabMo* m_tab_mo;
-  TabSys* m_tab_sys;
   TabProgress* m_tab_progress;
   TabPlot* m_tab_plot;
   TabLog* m_tab_log;
+  TabAbout* m_tab_about;
 
   XtalOptTest* m_test;
 };

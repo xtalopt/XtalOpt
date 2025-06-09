@@ -13,19 +13,21 @@ set( xtalopt_SRCS
      optimizers/pwscf.cpp
      optimizers/siesta.cpp
      optimizers/vasp.cpp
+     optimizers/mtp.cpp
      rpc/xtaloptrpc.cpp
      testing/xtalopttest.cpp
      ui/dialog.cpp
      ui/randSpgDialog.cpp
-     ui/tab_init.cpp
-     ui/tab_edit.cpp
+     ui/tab_struc.cpp
      ui/tab_opt.cpp
+     ui/tab_search.cpp
      ui/tab_mo.cpp
      ui/tab_progress.cpp
      ui/tab_plot.cpp
      ui/xrd_plot.cpp
      ui/xtalopt_plot.cpp
-     ui/tab_log.cpp)
+     ui/tab_log.cpp
+     ui/tab_about.cpp)
 
 set( xtalopt_RCS xtalopt.qrc )
 
@@ -58,13 +60,15 @@ if(UNIX AND ENABLE_RPATH)
 endif()
 
 add_library(xtalopt_static STATIC ${xtalopt_SRCS} ${xtalopt_RCS})
-target_link_libraries(xtalopt_static globalsearch XtalComp spglib RandSpg
-                      "${QWT_LIBRARIES}")
+target_link_libraries(xtalopt_static globalsearch XtalComp spglib RandSpg "${QWT_LIBRARIES}")
 
 add_executable(xtalopt WIN32 MACOSX_BUNDLE main.cpp ${xtalopt_RCS})
 target_link_libraries(xtalopt xtalopt_static)
 
 # Install instructions
+if (WIN32)
+  target_compile_definitions(spglib PUBLIC SPG_STATIC_LIBRARY)
+endif ()
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   if(UNIX)
     set(CMAKE_INSTALL_PREFIX "$ENV{HOME}" CACHE PATH

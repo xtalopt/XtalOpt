@@ -21,7 +21,7 @@
 
 namespace GlobalSearch {
 class Structure;
-class OptBase;
+class SearchBase;
 class Optimizer;
 }
 
@@ -31,7 +31,7 @@ class GULPOptimizer : public XtalOptOptimizer
   Q_OBJECT
 
 public:
-  GULPOptimizer(GlobalSearch::OptBase* parent, const QString& filename = "");
+  GULPOptimizer(GlobalSearch::SearchBase* parent, const QString& filename = "");
 };
 
 } // end namespace XtalOpt

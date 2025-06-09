@@ -21,16 +21,16 @@
 
 #include <globalsearch/queueinterfaces/sge.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/ui/abstractdialog.h>
 
 #include "ui_sgedialog.h"
 
 namespace GlobalSearch {
 
-SgeConfigDialog::SgeConfigDialog(AbstractDialog* parent, OptBase* o,
+SgeConfigDialog::SgeConfigDialog(AbstractDialog* parent, SearchBase* o,
                                  SgeQueueInterface* p)
-  : QDialog(parent), m_opt(o), m_sge(p), ui(new Ui::SgeConfigDialog)
+  : QDialog(parent), m_search(o), m_sge(p), ui(new Ui::SgeConfigDialog)
 {
   ui->setupUi(this);
 }
@@ -54,7 +54,7 @@ void SgeConfigDialog::updateGUI()
   ui->edit_qstat->blockSignals(false);
   ui->edit_qsub->blockSignals(false);
 
-  ui->widget_globalQueueInterfaceSettings->updateGUI(m_opt);
+  ui->widget_globalQueueInterfaceSettings->updateGUI(m_search);
 }
 
 void SgeConfigDialog::accept()
@@ -63,7 +63,7 @@ void SgeConfigDialog::accept()
   m_sge->m_statusCommand = ui->edit_qstat->text().trimmed();
   m_sge->m_submitCommand = ui->edit_qsub->text().trimmed();
 
-  ui->widget_globalQueueInterfaceSettings->accept(m_opt);
+  ui->widget_globalQueueInterfaceSettings->accept(m_search);
 
   QDialog::accepted();
   close();

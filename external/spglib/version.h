@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -35,9 +35,11 @@
 #ifndef __version_H__
 #define __version_H__
 
-#define SPGLIB_MAJOR_VERSION 1
-#define SPGLIB_MINOR_VERSION 9
-#define SPGLIB_MICRO_VERSION 9
+#define SPGLIB_MAJOR_VERSION 2
+#define SPGLIB_MINOR_VERSION 5
+#define SPGLIB_MICRO_VERSION 0
+#define SPGLIB_VERSION "2.5.0"
+#define SPGLIB_VERSION_FULL "2.5.0"
+#define SPGLIB_COMMIT ""
 
 #endif
-

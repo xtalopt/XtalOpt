@@ -20,7 +20,7 @@
 class QDateTime;
 
 namespace GlobalSearch {
-class OptBase;
+class SearchBase;
 class Structure;
 
 /**
@@ -41,7 +41,7 @@ class Structure;
 @verbatim
 // lockForNaming() returns a list of all structures that the main
 // tracker is aware of. It also locks a naming mutex to prevent
-// simultaneous naming of Structures, avoiding duplicate
+// simultaneous naming of Structures, avoiding similar
 // Structure indices, ID numbers, etc.
 QList<Structure*> allStructures = m_queue->lockForNaming();
 // Check the Structures in allStructures to determine the next
@@ -99,9 +99,9 @@ public:
    * Constructor.
    *
    * @param thread A QThread instance to run in
-   * @param parent The OptBase class the QueueManager uses
+   * @param parent The SearchBase class the QueueManager uses
    */
-  explicit QueueManager(QThread* thread, OptBase* parent);
+  explicit QueueManager(QThread* thread, SearchBase* parent);
 
   /**
    * Destructor.
@@ -160,9 +160,16 @@ signals:
   void structureFinished(GlobalSearch::Structure* s);
 
   /**
+   * Emitted when the hull calculation is finished (to properly update GUI)
+   *
+   * @param s The hull info has been updated
+   */
+  void hullCalculationFinished();
+
+  /**
    * Emitted when the number of unoptimized Structures drops below
-   * OptBase::contStructs. This is connected to
-   * OptBase::generateNewStructure() by default.
+   * SearchBase::contStructs. This is connected to
+   * SearchBase::generateNewStructure() by default.
    */
   void needNewStructure();
 
@@ -213,17 +220,6 @@ public slots:
   void appendToJobStartTracker(Structure* s);
 
   /**
-   * Add a structure request. This must be called every time a structure is
-   * added via unlockForNaming(), and must be called first. This will not
-   * actually request the structure, it is only used for internal
-   * bookkeeping.
-   *
-   * @note The mutex of m_tracker is locked while incrementing the request
-   * counter.
-   */
-  void addManualStructureRequest(int requests = 1);
-
-  /**
    * @return All Structures in m_runningTracker
    */
   QList<Structure*> getAllRunningStructures();
@@ -236,26 +232,15 @@ public slots:
 
   /**
    * @return All Structures in m_tracker with status
-   * Structure::Optimized or Structure::Supercell.
-   * Note that duplicates of a supercell at a particular formula unit are
-   * not included. Hence the "OneSupercellCopy."
-   * This function was chosen because of its usefulness in some parts of
-   * the program.
+   * Structure::Optimized, and their hull and objectives calculated
    */
-  QList<Structure*>
-  getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
+  QList<Structure*> getAllParentPoolStructures();
 
   /**
    * @return All Structures in m_tracker with status
-   * Structure::Duplicate.
+   * Structure::Similar.
    */
-  QList<Structure*> getAllDuplicateStructures();
-
-  /**
-   * @return All Structures in m_tracker with status
-   * Structure::Supercell.
-   */
-  QList<Structure*> getAllSupercellStructures();
+  QList<Structure*> getAllSimilarStructures();
 
   /**
    * @return All Structures in m_tracker and m_startPendingTracker
@@ -280,10 +265,10 @@ public slots:
 
 protected slots:
   /**
-   * Check for the status of finished objective/aflow-hardness
+   * Check for the status of finished objective
    * calculations, and label the structure accordingly for
    * further processing with appropriate handler.
-   * @param s Structure whose objectives/aflow-hardness is calculated
+   * @param s Structure whose objectives are calculated
    */
   void updateStructureObjectiveState(Structure* s);
 
@@ -331,13 +316,13 @@ protected slots:
   void setupConnections();
 
 protected:
-  /// Cached pointer to main optbase class
-  OptBase* m_opt;
+  /// Cached pointer to main searchbase class
+  SearchBase* m_search;
 
   /// Pointer to the thread where the queuemanager lives
   QThread* m_thread;
 
-  /// Convenience pointer to m_opt->tracker()
+  /// Convenience pointer to m_search->tracker()
   Tracker* m_tracker;
 
   /**
@@ -477,18 +462,11 @@ protected:
   void handleRemovedStructure(Structure* s);
 
   /**
-   * Perform actions on the Duplicate Structure \a s.
+   * Perform actions on the similar Structure \a s.
    *
    * @param s Structure of interest
    */
-  void handleDuplicateStructure(Structure* s);
-
-  /**
-   * Perform actions on the Supercell Structure \a s.
-   *
-   * @param s Structure of interest
-   */
-  void handleSupercellStructure(Structure* s);
+  void handleSimilarStructure(Structure* s);
 
   /**
    * Perform actions on the Restart'ing Structure \a s.
@@ -499,23 +477,23 @@ protected:
 
   /**
    * Perform actions on a structure that has successfully
-   * finished objective/aflow-hardness calculations
+   * finished objective calculations
    *
-   * @param s Structure whose objectives/aflow-hardness is calculated
+   * @param s Structure whose objectives are calculated
    */
   void handleRetainObjective(Structure* s);
 
   /**
    * Perform actions on a structure dismissed by a filtering objective
    *
-   * @param s Structure whose objectives/aflow-hardness is calculated
+   * @param s Structure whose objectives are calculated
    */
   void handleDismissObjective(Structure* s);
 
   /**
    * Perform actions on a structure failed in objective calculation
    *
-   * @param s Structure whose objectives/aflow-hardness is calculated
+   * @param s Structure whose objectives are calculated
    */
   void handleFailObjective(Structure* s);
 
@@ -528,8 +506,7 @@ protected:
   void handleErrorStructure_(Structure* s);
   void handleSubmittedStructure_(Structure* s);
   void handleKilledStructure_(Structure* s);
-  void handleDuplicateStructure_(Structure* s);
-  void handleSupercellStructure_(Structure* s);
+  void handleSimilarStructure_(Structure* s);
   void handleRestartStructure_(Structure* s);
   void handleRetainObjective_(Structure* s);
   void handleFailObjective_(Structure* s);
@@ -558,8 +535,7 @@ protected:
   Tracker m_errorTracker;
   Tracker m_submittedTracker;
   Tracker m_newlyKilledTracker;
-  Tracker m_newDuplicateTracker;
-  Tracker m_newSupercellTracker;
+  Tracker m_newSimilarityTracker;
   Tracker m_restartTracker;
   Tracker m_newSubmissionTracker;
   Tracker m_objectiveRetainTracker;
@@ -571,7 +547,7 @@ protected:
   Tracker m_runningTracker;
   /// Tracks which structures are queued to be submitted
   Tracker m_jobStartTracker;
-  /// Tracks structures that have been returned from m_opt but have
+  /// Tracks structures that have been returned from m_search but have
   /// not yet been accepted into m_tracker.
   Tracker m_newStructureTracker;
 

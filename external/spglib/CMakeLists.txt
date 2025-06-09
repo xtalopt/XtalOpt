@@ -1,28 +1,46 @@
-set( spglib_SRCS
-arithmetic.c
-cell.c
-debug.c
-delaunay.c
-hall_symbol.c
-kgrid.c
-kpoint.c
-mathfunc.c
-niggli.c
-pointgroup.c
-primitive.c
-refinement.c
-sitesym_database.c
-site_symmetry.c
-spacegroup.c
-spg_database.c
-spglib.c
-spglib_f.c
-spin.c
-symmetry.c
-tetrahedron_method.c
+
+cmake_minimum_required(VERSION 3.10)
+
+project (spglib)
+
+# C
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+
+# Build type
+set(CMAKE_BUILD_TYPE Release)
+
+# Source files
+set(SPGLIB_SOURCES
+        arithmetic.c
+        cell.c
+        debug.c
+        delaunay.c
+        determination.c
+        hall_symbol.c
+        kgrid.c
+        kpoint.c
+        magnetic_spacegroup.c
+        mathfunc.c
+        msg_database.c
+        niggli.c
+        overlap.c
+        pointgroup.c
+        primitive.c
+        refinement.c
+        site_symmetry.c
+        sitesym_database.c
+        spacegroup.c
+        spg_database.c
+        spglib.c
+        spin.c
+        symmetry.c
 )
 
-add_library(spglib STATIC ${spglib_SRCS})
+# Library (static)
+add_library(spglib STATIC ${SPGLIB_SOURCES})
+
 # Suppress spglib warnings
-set_target_properties( spglib PROPERTIES
-		       COMPILE_FLAGS "-w")
+set_target_properties(spglib PROPERTIES COMPILE_FLAGS "-w")

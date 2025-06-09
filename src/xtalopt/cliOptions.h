@@ -72,7 +72,7 @@ private:
   /**
    * Checks to see if s is a valid keyword. If it is, it will then
    * set csString to be the same keyword with the proper cases for each letter
-   * (for example, "empiricalformula" will be "empiricalFormula").
+   * (for example, "chemicalformulas" will be "chemicalFormulas").
    *
    * @param s The keyword to check.
    * @parm csString The string to set to the properly-cased keyword.
@@ -206,18 +206,6 @@ private:
                                    const QString& templateName,
                                    const QString& queueName, size_t optStep,
                                    const QHash<QString, QString>& options);
-  /**
-   * Checks the xtalopt settings (@p xtalopt) to see if the mitosis settings
-   * are fine. Returns true if they are. Returns false if they are not.
-   * The following constitute bad mitosis settings:
-   * mitosisA * mitosisB * mitosisC != mitosisDivisions
-   * mitosisDivisions > minFU * smallestNumAtomsOfOneType
-   *
-   * @param xtalopt The XtalOpt object to check.
-   *
-   * @return True if mitosis settings are okay, and false if they are not.
-   */
-  static bool isMitosisOk(XtalOpt& xtalopt);
 
   /**
    * Reads the molecular unit options from @p options and attempts to set them

@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-namespace ElemInfoDatabase {
+namespace ElementInfoDatabase {
 // Atomic symbols
 static const std::vector<std::string> _atomicSymbols = {
   " ",   // 0 -- not a real element...

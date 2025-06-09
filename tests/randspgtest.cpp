@@ -81,22 +81,22 @@ void RandSpgTest::init()
   m_opt.minRadius = 0.33;
 
   std::map<uint, uint> comp;
-  QVERIFY(ElemInfo::readComposition("Ti1O2", comp));
-  for (const auto& elem : comp) {
-    XtalOpt::XtalCompositionStruct compStruct;
-    // Set the radius - taking into account scaling factor and minRadius
-    compStruct.minRadius =
-      ElemInfo::getCovalentRadius(elem.first) * m_opt.scaleFactor;
-    if (compStruct.minRadius < m_opt.minRadius)
-      compStruct.minRadius = m_opt.minRadius;
-
-    compStruct.quantity = elem.second;
-    m_opt.comp[elem.first] = compStruct;
-  }
-
+  XtalOpt::CellComp tmpcomp;
   // We'll use two formula units
-  m_opt.formulaUnitsList = { 2 };
-  uint FU = 2;
+  QVERIFY(ElementInfo::readComposition("Ti2O4", comp));
+  for (const auto& elem : comp) {
+    tmpcomp.set(ElementInfo::getAtomicSymbol(elem.first).c_str(),
+                elem.first, elem.second);
+  }
+  m_opt.compList.append(tmpcomp);
+
+  m_opt.eleMinRadii.clear();
+  for (const auto& atomcn : m_opt.compList[0].getAtomicNumbers()) {
+    double r = ElementInfo::getCovalentRadius(atomcn) * m_opt.scaleFactor;
+    if (r < m_opt.minRadius)
+      r = m_opt.minRadius;
+    m_opt.eleMinRadii.set(atomcn, r);
+  }
 
   // Now let's put in lattice constraints
   m_opt.a_min = 3.0;
@@ -119,14 +119,15 @@ void RandSpgTest::init()
   // Space group tolerance
   m_opt.tol_spg = 0.05;
 
-  m_opt.using_fixed_volume = false;
+  // We only have one composition (that has 2 formula units)
+  int    comp_ind = 0;
 
   // Generate the space groups list (with none turned off by default)
   for (int spg = 1; spg <= 230; spg++) {
-    if (RandSpg::isSpgPossible(spg, m_opt.getStdVecOfAtoms(FU)))
-      m_opt.minXtalsOfSpgPerFU.append(0);
+    if (RandSpg::isSpgPossible(spg, m_opt.getStdVecOfAtomsComp(m_opt.compList[comp_ind])))
+      m_opt.minXtalsOfSpg.append(0);
     else
-      m_opt.minXtalsOfSpgPerFU.append(-1);
+      m_opt.minXtalsOfSpg.append(-1);
   }
 }
 
@@ -140,8 +141,8 @@ void RandSpgTest::generateXtals()
   srand(0);
   GlobalSearch::seedMt19937Generator(0);
 
-  // We'll use 2 formula units
-  size_t formulaUnits = 2;
+  // We only have one composition (that has 2 formula units)
+  int    comp_ind = 0;
 
   size_t numTrials = 100;
 
@@ -156,7 +157,7 @@ void RandSpgTest::generateXtals()
     // Now try to generate an xtal with that space group
     bool checkSpgWithSpglib = false;
     XtalOpt::Xtal* xtal =
-      m_opt.randSpgXtal(1, i + 1, formulaUnits, spg, checkSpgWithSpglib);
+      m_opt.randSpgXtal(1, i + 1, m_opt.compList[comp_ind], spg, checkSpgWithSpglib);
     if (!xtal) {
       ++numFailures;
       continue;

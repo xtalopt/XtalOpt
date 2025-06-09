@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>944</width>
+    <width>999</width>
     <height>436</height>
    </rect>
   </property>
@@ -15,6 +15,11 @@
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>11</pointsize>
+   </font>
   </property>
   <property name="windowTitle">
    <string>Generic Global Search Dialog Window</string>
@@ -56,7 +61,7 @@
    <item row="4" column="0">
     <widget class="QPushButton" name="push_save">
      <property name="text">
-      <string>Sa&amp;ve Session</string>
+      <string>S&amp;ave Session</string>
      </property>
     </widget>
    </item>
@@ -151,7 +156,7 @@
    <item row="4" column="1">
     <widget class="QPushButton" name="push_resume">
      <property name="text">
-      <string>Resu&amp;me stored session</string>
+      <string>R&amp;esume Stored Session</string>
      </property>
     </widget>
    </item>

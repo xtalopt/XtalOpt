@@ -105,7 +105,7 @@ bool PoscarFormat::read(Structure& s, std::istream& in)
       // This is to handle VASP compiled with HDF5 where "/..."
       //   might appear after species symbol
       string sptype = symbolsList[i].substr(0, symbolsList[i].find("/"));
-      atomicNumbers.push_back(ElemInfo::getAtomicNum(sptype));
+      atomicNumbers.push_back(ElementInfo::getAtomicNum(sptype));
     }
     // This next one should be atom types
     getline(in, line);
@@ -127,7 +127,7 @@ bool PoscarFormat::read(Structure& s, std::istream& in)
         // This is to handle VASP compiled with HDF5 where "/..."
         //   might appear after species symbol
         string sptype = symbolsList[i].substr(0, symbolsList[i].find("/"));
-        atomicNumbers.push_back(ElemInfo::getAtomicNum(sptype));
+        atomicNumbers.push_back(ElementInfo::getAtomicNum(sptype));
       }
     }
   }
@@ -274,7 +274,7 @@ void PoscarFormat::reorderAtomsToMatchPoscar(Structure& s)
   for (const auto& symbol_ref: symbols) {
     for (size_t i = 0; i < atoms.size(); ++i) {
       const auto& symbol_cur =
-        ElemInfo::getAtomicSymbol(atoms[i].atomicNumber()).c_str();
+        ElementInfo::getAtomicSymbol(atoms[i].atomicNumber()).c_str();
       if (symbol_cur == symbol_ref)
         newOrder.push_back(i);
     }

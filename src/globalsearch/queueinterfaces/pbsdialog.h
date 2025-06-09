@@ -28,7 +28,7 @@ class PbsConfigDialog;
 
 namespace GlobalSearch {
 class AbstractDialog;
-class OptBase;
+class SearchBase;
 class PbsQueueInterface;
 
 class PbsConfigDialog : public QDialog
@@ -36,7 +36,7 @@ class PbsConfigDialog : public QDialog
   Q_OBJECT
 
 public:
-  explicit PbsConfigDialog(AbstractDialog* parent, OptBase* o,
+  explicit PbsConfigDialog(AbstractDialog* parent, SearchBase* o,
                            PbsQueueInterface* p);
   virtual ~PbsConfigDialog() override;
 
@@ -48,7 +48,7 @@ protected slots:
   void reject() override;
 
 protected:
-  OptBase* m_opt;
+  SearchBase* m_search;
   PbsQueueInterface* m_pbs;
 
 private:

@@ -43,21 +43,21 @@ public:
   enum PlotAxes
   {
     StructureINDX_T = 0,
-    Generation_T,
-    Enthalpy_T,
-    Enthalpy_per_FU_T,
-    Energy_T,
-    Hardness_T,
+    AboveHull_per_Atm_T,
+    Enthalpy_per_Atm_T,
+    Volume_per_Atm_T,
+    ParetoFront_T,
     PV_T,
+    Enthalpy_T,
+    Energy_T,
+    Volume_T,
+    Generation_T,
     A_T,
     B_T,
     C_T,
     Alpha_T,
     Beta_T,
     Gamma_A,
-    Volume_T,
-    Volume_per_FU_T,
-    Formula_Units_T,
     // The objective entries: these will appear in the menu only
     //   if it's a multi-objective run.
     // Note: since the number of objectives is not fixed, we add
@@ -76,18 +76,18 @@ public:
 
   enum LabelTypes
   {
-    Number_L = 0,
-    Symbol_L,
-    Enthalpy_L,
-    Enthalpy_Per_FU_L,
-    Energy_L,
-    Hardness_L,
-    PV_L,
-    Volume_L,
-    Generation_L,
+    StructureTAG_L = 0,
     StructureINDX_L,
-    StructureTAG_L,
-    Formula_Units_L,
+    Number_L,
+    Symbol_L,
+    ParetoFront_L,
+    AboveHull_per_Atm_L,
+    Enthalpy_per_Atm_L,
+    Volume_per_Atm_L,
+    PV_L,
+    Enthalpy_L,
+    Energy_L,
+    Generation_L,
     // The objective entries: these will appear in the menu only
     //   if it's a multi-objective run.
     // Note: since the number of objectives is not fixed, we add
@@ -112,7 +112,6 @@ public slots:
   void plotDistHist();
   void selectMoleculeFromIndex(int index);
   void highlightXtal(GlobalSearch::Structure* s);
-  void updatePlotFormulaUnits();
 
 private:
   QwtPlotMarker* addXtalToPlot(Xtal* xtal, double x, double y);
@@ -123,7 +122,6 @@ private:
   Ui::Tab_Plot ui;
   QReadWriteLock* m_plot_mutex;
   QMap<QwtPlotMarker*, Xtal*> m_marker_xtal_map;
-  QList<uint> m_formulaUnitsList;
 };
 }
 

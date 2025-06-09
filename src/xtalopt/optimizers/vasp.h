@@ -21,7 +21,7 @@
 
 namespace GlobalSearch {
 class Structure;
-class OptBase;
+class SearchBase;
 }
 
 namespace XtalOpt {
@@ -30,7 +30,7 @@ class VASPOptimizer : public XtalOptOptimizer
   Q_OBJECT
 
 public:
-  VASPOptimizer(GlobalSearch::OptBase* parent, const QString& filename = "");
+  VASPOptimizer(GlobalSearch::SearchBase* parent, const QString& filename = "");
 
   QHash<QString, QString> getInterpretedTemplates(
     GlobalSearch::Structure* structure) override;

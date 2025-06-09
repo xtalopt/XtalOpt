@@ -45,9 +45,6 @@ TabPlot::TabPlot(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
   ui.plot->axisScaleEngine(QwtPlot::yLeft)->setMargins(0.1, 0.1);
   ui.plot->axisScaleEngine(QwtPlot::xBottom)->setMargins(1.0, 1.0);
 
-  // We will have a default value of 1 in this list
-  m_formulaUnitsList.append(1);
-
   // dialog connections
   connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)), this,
           SLOT(highlightXtal(GlobalSearch::Structure*)));
@@ -61,26 +58,22 @@ TabPlot::TabPlot(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
   connect(ui.cb_labelPoints, SIGNAL(toggled(bool)), this, SLOT(updatePlot()));
   connect(ui.combo_labelType, SIGNAL(currentIndexChanged(int)), this,
           SLOT(updatePlot()));
-  connect(ui.cb_showDuplicates, SIGNAL(toggled(bool)), this,
+  connect(ui.cb_showSimilarities, SIGNAL(toggled(bool)), this,
           SLOT(updatePlot()));
   connect(ui.cb_showIncompletes, SIGNAL(toggled(bool)), this,
           SLOT(updatePlot()));
-  connect(ui.cb_showSpecifiedFU, SIGNAL(toggled(bool)), this,
-          SLOT(updatePlot()));
-  connect(ui.edit_showSpecifiedFU, SIGNAL(editingFinished()), this,
-          SLOT(updatePlotFormulaUnits()));
   connect(ui.plot, SIGNAL(selectedMarkerChanged(QwtPlotMarker*)), this,
           SLOT(selectXtal(QwtPlotMarker*)));
-  connect(m_opt, SIGNAL(refreshAllStructureInfo()), this, SLOT(updatePlot()));
-  connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
+  connect(m_search, SIGNAL(refreshAllStructureInfo()), this, SLOT(updatePlot()));
+  connect(m_search->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
           this, SLOT(updatePlot()));
-  connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
+  connect(m_search->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
           this, SLOT(updatePlot()));
 
   // Enable/disable updating the plot?
-  connect(m_opt, SIGNAL(disablePlotUpdate()), this, SLOT(disablePlotUpdate()));
-  connect(m_opt, SIGNAL(enablePlotUpdate()), this, SLOT(enablePlotUpdate()));
-  connect(m_opt, SIGNAL(updatePlot()), this, SLOT(updatePlot()));
+  connect(m_search, SIGNAL(disablePlotUpdate()), this, SLOT(disablePlotUpdate()));
+  connect(m_search, SIGNAL(enablePlotUpdate()), this, SLOT(enablePlotUpdate()));
+  connect(m_search, SIGNAL(updatePlot()), this, SLOT(updatePlot()));
 
   initialize();
 }
@@ -93,12 +86,12 @@ TabPlot::~TabPlot()
 void TabPlot::writeSettings(const QString& filename)
 {
   SETTINGS(filename);
-  const int version = 1;
+  const int version = 4;
   settings->beginGroup("xtalopt/plot/");
   settings->setValue("version", version);
   settings->setValue("x_label", ui.combo_xAxis->currentIndex());
   settings->setValue("y_label", ui.combo_yAxis->currentIndex());
-  settings->setValue("showDuplicates", ui.cb_showDuplicates->isChecked());
+  settings->setValue("showSimilarities", ui.cb_showSimilarities->isChecked());
   settings->setValue("showIncompletes", ui.cb_showIncompletes->isChecked());
   settings->setValue("labelPoints", ui.cb_labelPoints->isChecked());
   settings->setValue("labelType", ui.combo_labelType->currentIndex());
@@ -113,9 +106,9 @@ void TabPlot::readSettings(const QString& filename)
   ui.combo_xAxis->setCurrentIndex(
     settings->value("x_label", StructureINDX_T).toInt());
   ui.combo_yAxis->setCurrentIndex(
-    settings->value("y_label", Enthalpy_per_FU_T).toInt());
-  ui.cb_showDuplicates->setChecked(
-    settings->value("showDuplicates", false).toBool());
+    settings->value("y_label", AboveHull_per_Atm_T).toInt());
+  ui.cb_showSimilarities->setChecked(
+    settings->value("showSimilarities", false).toBool());
   ui.cb_showIncompletes->setChecked(
     settings->value("showIncompletes", false).toBool());
   ui.cb_labelPoints->setChecked(settings->value("labelPoints", false).toBool());
@@ -124,8 +117,8 @@ void TabPlot::readSettings(const QString& filename)
   settings->endGroup();
 
   // Set the default values of x, y, and label menus
-  ui.combo_labelType->setCurrentIndex(10);
-  ui.combo_yAxis->setCurrentIndex(3);
+  ui.combo_labelType->setCurrentIndex(0);
+  ui.combo_yAxis->setCurrentIndex(1);
   ui.combo_xAxis->setCurrentIndex(0);
   ui.cb_labelPoints->setChecked(true);
 }
@@ -141,11 +134,11 @@ void TabPlot::disconnectGUI()
   ui.combo_yAxis->disconnect();
   ui.cb_labelPoints->disconnect();
   ui.combo_labelType->disconnect();
-  ui.cb_showDuplicates->disconnect();
+  ui.cb_showSimilarities->disconnect();
   ui.cb_showIncompletes->disconnect();
   this->disconnect();
   disconnect(m_dialog, 0, this, 0);
-  disconnect(m_opt, 0, this, 0);
+  disconnect(m_search, 0, this, 0);
 }
 
 void TabPlot::refreshPlot()
@@ -163,11 +156,11 @@ void TabPlot::updatePlot()
     return;
 
   updateGUI();
-  if (!m_opt)
+  if (!m_search)
     return;
 
   // Make sure we have structures!
-  if (m_opt->tracker()->size() == 0)
+  if (m_search->tracker()->size() == 0)
     return;
 
   // Lock plot mutex
@@ -175,12 +168,12 @@ void TabPlot::updatePlot()
 
   // Here, we want to make sure that objectives are shown only if they are present
   // To show the proper number of them, we set the starting point to Objectivei_*
-  int numaxisitems = m_opt->getObjectivesNum() + Objectivei_T;
-  int numsymbitems = m_opt->getObjectivesNum() + Objectivei_L;
+  int numaxisitems = m_search->getObjectivesNum() + Objectivei_T;
+  int numsymbitems = m_search->getObjectivesNum() + Objectivei_L;
   ui.combo_xAxis->setMaxCount(numaxisitems);
   ui.combo_yAxis->setMaxCount(numaxisitems);
   ui.combo_labelType->setMaxCount(numsymbitems);
-  for (int i = 0; i < m_opt->getObjectivesNum(); i++) {
+  for (int i = 0; i < m_search->getObjectivesNum(); i++) {
       ui.combo_xAxis->addItem(tr("Objective%1").arg(i+1));
       ui.combo_yAxis->addItem(tr("Objective%1").arg(i+1));
       ui.combo_labelType->addItem(tr("Objective%1").arg(i+1));
@@ -213,40 +206,26 @@ void TabPlot::plotTrends()
   bool performTrace = false;
   // Load config settings:
   bool labelPoints = ui.cb_labelPoints->isChecked();
-  bool showDuplicates = ui.cb_showDuplicates->isChecked();
+  bool showSimilarities = ui.cb_showSimilarities->isChecked();
   bool showIncompletes = ui.cb_showIncompletes->isChecked();
-  bool showSpecifiedFU = ui.cb_showSpecifiedFU->isChecked();
   LabelTypes labelType = LabelTypes(ui.combo_labelType->currentIndex());
   PlotAxes xAxis = PlotAxes(ui.combo_xAxis->currentIndex());
   PlotAxes yAxis = PlotAxes(ui.combo_yAxis->currentIndex());
 
   if (xAxis == StructureINDX_T && (yAxis == Energy_T || yAxis == Enthalpy_T ||
-                               yAxis == Enthalpy_per_FU_T)) {
+                               yAxis == Enthalpy_per_Atm_T || yAxis == AboveHull_per_Atm_T)) {
     performTrace = true;
   }
 
-  QReadLocker trackerLocker(m_opt->tracker()->rwLock());
-  const QList<Structure*> structures(*m_opt->tracker()->list());
+  QReadLocker trackerLocker(m_search->tracker()->rwLock());
+  const QList<Structure*> structures(*m_search->tracker()->list());
   for (int i = 0; i < structures.size(); i++) {
     x = y = 0;
     xtal = qobject_cast<Xtal*>(structures[i]);
     QReadLocker xtalLocker(&xtal->lock());
     // Don't plot removed structures or those who have not completed their
-    // first INCAR. Also only plot specified formula units if box is checked.
-    if (showSpecifiedFU) {
-      bool inTheList = false;
-      for (int j = 0; j < m_formulaUnitsList.size(); j++) {
-        if (m_formulaUnitsList.at(j) == xtal->getFormulaUnits()) {
-          inTheList = true;
-        }
-      }
-      if (inTheList == false) {
-        continue;
-      }
-    }
-
-    if (!showDuplicates && (xtal->getStatus() == Xtal::Duplicate ||
-                            xtal->getStatus() == Xtal::Supercell)) {
+    // first INCAR.
+    if (!showSimilarities && xtal->getStatus() == Xtal::Similar) {
       continue;
     }
 
@@ -258,10 +237,9 @@ void TabPlot::plotTrends()
       continue;
     }
 
-    // If it is anything other than a duplicate, supercell, or optimized
+    // If it is anything other than a similar or optimized
     // and showIncompletes is false, don't show it
-    if (!showIncompletes && xtal->getStatus() != Xtal::Duplicate &&
-        xtal->getStatus() != Xtal::Supercell &&
+    if (!showIncompletes && xtal->getStatus() != Xtal::Similar &&
         xtal->getStatus() != Xtal::Optimized) {
       continue;
     }
@@ -314,7 +292,37 @@ void TabPlot::plotTrends()
               break;
           }
           break;
-        case Enthalpy_per_FU_T:
+        case ParetoFront_T:
+          // Skip xtals that don't have pareto front
+          if (xtal->getParetoFront() < 0) {
+            usePoint = false;
+            continue;
+          }
+          switch (j) {
+            case 0:
+              x = xtal->getParetoFront();
+              break;
+            default:
+              y = xtal->getParetoFront();
+              break;
+          }
+          break;
+        case AboveHull_per_Atm_T:
+          // Skip xtals that don't have above hull
+          if (std::isnan(xtal->getDistAboveHull())) {
+            usePoint = false;
+            continue;
+          }
+          switch (j) {
+            case 0:
+              x = xtal->getDistAboveHull();
+              break;
+            default:
+              y = xtal->getDistAboveHull();
+              break;
+          }
+          break;
+        case Enthalpy_per_Atm_T:
           // Skip xtals that don't have enthalpy/energy set
           if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy()) {
             usePoint = false;
@@ -322,12 +330,10 @@ void TabPlot::plotTrends()
           }
           switch (j) {
             case 0:
-              x = xtal->getEnthalpy() /
-                  static_cast<double>(xtal->getFormulaUnits());
+              x = xtal->getEnthalpyPerAtom();
               break;
             default:
-              y = xtal->getEnthalpy() /
-                  static_cast<double>(xtal->getFormulaUnits());
+              y = xtal->getEnthalpyPerAtom();
               break;
           }
           break;
@@ -343,21 +349,6 @@ void TabPlot::plotTrends()
               break;
             default:
               y = xtal->getEnergy();
-              break;
-          }
-          break;
-        case Hardness_T:
-          // Skip xtals that don't have a hardness set
-          if (xtal->vickersHardness() < 0.0) {
-            usePoint = false;
-            continue;
-          }
-          switch (j) {
-            case 0:
-              x = xtal->vickersHardness();
-              break;
-            default:
-              y = xtal->vickersHardness();
               break;
           }
           break;
@@ -446,25 +437,13 @@ void TabPlot::plotTrends()
               break;
           }
           break;
-        case Volume_per_FU_T:
+        case Volume_per_Atm_T:
           switch (j) {
             case 0:
-              x = xtal->getVolume() /
-                  static_cast<double>(xtal->getFormulaUnits());
+              x = xtal->getVolumePerAtom();
               break;
             default:
-              y = xtal->getVolume() /
-                  static_cast<double>(xtal->getFormulaUnits());
-              break;
-          }
-          break;
-        case Formula_Units_T:
-          switch (j) {
-            case 0:
-              x = xtal->getFormulaUnits();
-              break;
-            default:
-              y = xtal->getFormulaUnits();
+              y = xtal->getVolumePerAtom();
               break;
           }
           break;
@@ -525,21 +504,23 @@ void TabPlot::plotTrends()
         case Enthalpy_L:
           s = QString::number(xtal->getEnthalpy(), 'g', 5);
           break;
-        case Enthalpy_Per_FU_L:
-          s = QString::number(xtal->getEnthalpy() / xtal->getFormulaUnits(),
-                              'g', 5);
+        case Enthalpy_per_Atm_L:
+          s = QString::number(xtal->getEnthalpyPerAtom(), 'g', 5);
+          break;
+        case AboveHull_per_Atm_L:
+          s = QString::number(xtal->getDistAboveHull(), 'g', 5);
+          break;
+        case ParetoFront_L:
+          s = QString::number(xtal->getParetoFront());
           break;
         case Energy_L:
           s = QString::number(xtal->getEnergy(), 'g', 5);
           break;
-        case Hardness_L:
-          s = QString::number(xtal->vickersHardness(), 'g', 5);
-          break;
         case PV_L:
           s = QString::number(xtal->getPV(), 'g', 5);
           break;
-        case Volume_L:
-          s = QString::number(xtal->getVolume(), 'g', 5);
+        case Volume_per_Atm_L:
+          s = QString::number(xtal->getVolumePerAtom(), 'g', 5);
           break;
         case Generation_L:
           s = QString::number(xtal->getGeneration());
@@ -549,9 +530,6 @@ void TabPlot::plotTrends()
           break;
         case StructureTAG_L:
           s = xtal->getTag();
-          break;
-        case Formula_Units_L:
-          s = QString::number(xtal->getFormulaUnits());
           break;
         default:
           // Objectives in multi-objective run. Since there is no fixed number of
@@ -592,19 +570,22 @@ void TabPlot::plotTrends()
         label = tr("Generation");
         break;
       case Enthalpy_T:
-        label = tr("Enthalpy (eV)");
+        label = tr("Enthalpy");
         break;
-      case Enthalpy_per_FU_T: // PSA Enthalpy per atom
-        label = tr("Enthalpy per FU (eV)");
+      case AboveHull_per_Atm_T:
+        label = tr("Above Hull per Atom");
+        break;
+      case ParetoFront_T:
+        label = tr("Pareto Front");
+        break;
+      case Enthalpy_per_Atm_T: // PSA Enthalpy per atom
+        label = tr("Enthalpy per Atom");
         break;
       case Energy_T:
-        label = tr("Energy (eV)");
-        break;
-      case Hardness_T:
-        label = tr("Vickers Hardness (GPa)");
+        label = tr("Energy");
         break;
       case PV_T:
-        label = tr("Enthalpy PV term (eV)");
+        label = tr("Enthalpy PV Term");
         break;
       case A_T:
         label = tr("A");
@@ -627,11 +608,8 @@ void TabPlot::plotTrends()
       case Volume_T:
         label = tr("Volume");
         break;
-      case Volume_per_FU_T:
-        label = tr("Volume per FU");
-        break;
-      case Formula_Units_T:
-        label = tr("Formula Units");
+      case Volume_per_Atm_T:
+        label = tr("Volume per Atom");
         break;
       default:
         // Objectives in multi-objective run. Since there is no fixed number of
@@ -668,10 +646,10 @@ void TabPlot::plotDistHist()
 
       // Determine xtal
       int ind = ui.combo_distHistXtal->currentIndex();
-      if (ind < 0 || ind > m_opt->tracker()->size() - 1) {
+      if (ind < 0 || ind > m_search->tracker()->size() - 1) {
         ind = 0;
       }
-      Xtal* xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(ind));
+      Xtal* xtal = qobject_cast<Xtal*>(m_search->tracker()->at(ind));
 
       // Get histogram
       // If no atoms selected...
@@ -705,14 +683,10 @@ void TabPlot::plotDistHist()
 QwtPlotMarker* TabPlot::addXtalToPlot(Xtal* xtal, double x, double y)
 {
   QwtPlotMarker* pm = nullptr;
-  if (xtal->getStatus() == Xtal::Duplicate) {
+  if (xtal->getStatus() == Xtal::Similar) {
     // Dark Green Square
     pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Rect, QBrush(Qt::darkGreen),
                                QPen(Qt::darkGreen));
-  } else if (xtal->getStatus() == Xtal::Supercell) {
-    // Orange Square
-    pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Rect, QColor(204, 102, 0, 255),
-                               QColor(204, 102, 0, 255));
   } else if (xtal->skippedOptimization()) {
     // Blue violet
     QColor blueViolet(138, 43, 226, 255);
@@ -745,13 +719,13 @@ void TabPlot::selectXtal(QwtPlotMarker* pm)
 
 void TabPlot::selectMoleculeFromIndex(int index)
 {
-  if (index < 0 || index > m_opt->tracker()->size() - 1) {
+  if (index < 0 || index > m_search->tracker()->size() - 1) {
     index = 0;
   }
-  if (m_opt->tracker()->size() == 0) {
+  if (m_search->tracker()->size() == 0) {
     return;
   }
-  emit moleculeChanged(m_opt->tracker()->at(index));
+  emit moleculeChanged(m_search->tracker()->at(index));
 }
 
 void TabPlot::highlightXtal(Structure* s)
@@ -759,29 +733,5 @@ void TabPlot::highlightXtal(Structure* s)
   Xtal* xtal = qobject_cast<Xtal*>(s);
 
   ui.plot->selectMarker(m_marker_xtal_map.key(xtal));
-}
-
-// Almost identical to the updateFormulaUnits() function in tab_init.cpp.
-// It functions in the same way.
-void TabPlot::updatePlotFormulaUnits()
-{
-  m_formulaUnitsList.clear();
-  QString tmp;
-  QList<unsigned int> tempFormulaUnitsList =
-    FileUtils::parseUIntString(ui.edit_showSpecifiedFU->text(), tmp);
-
-  // If nothing valid was entered, return 1
-  if (tempFormulaUnitsList.size() == 0) {
-    m_formulaUnitsList.append(1);
-    tmp = "1";
-    ui.edit_showSpecifiedFU->setText(tmp.trimmed());
-    return;
-  }
-
-  m_formulaUnitsList = tempFormulaUnitsList;
-
-  // Update UI
-  ui.edit_showSpecifiedFU->setText(tmp.trimmed());
-  refreshPlot();
 }
 }

@@ -23,7 +23,7 @@ class QLineEdit;
 
 namespace GlobalSearch {
 class AbstractDialog;
-class OptBase;
+class SearchBase;
 class Optimizer;
 
 // Basic input dialog needed for all optimizers
@@ -31,14 +31,14 @@ class OptimizerConfigDialog : public QDialog
 {
   Q_OBJECT
 public:
-  OptimizerConfigDialog(AbstractDialog* parent, OptBase* opt, Optimizer* o);
+  OptimizerConfigDialog(AbstractDialog* parent, SearchBase* opt, Optimizer* o);
 
 public slots:
   void updateState();
   void updateGUI();
 
 protected:
-  OptBase* m_opt;
+  SearchBase* m_search;
   Optimizer* m_optimizer;
   QLineEdit* m_lineedit;
 };

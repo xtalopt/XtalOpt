@@ -23,12 +23,13 @@
 #include <QBrush>
 #include <QDialog>
 
+#include <xtalopt/xtalopt.h>
+
 class QCheckBox;
 class QSpinBox;
 
 namespace XtalOpt {
 class XtalOpt;
-struct XtalCompositionStruct;
 
 class RandSpgDialog : public QDialog, public Ui::RandSpgDialog
 {
@@ -37,7 +38,7 @@ class RandSpgDialog : public QDialog, public Ui::RandSpgDialog
   enum TableColumns
   {
     HM_Spg = 0,
-    FormulaUnitsPossible,
+    PossibleFormulas,
     CheckBox,
     SpinBox
   };
@@ -45,7 +46,7 @@ class RandSpgDialog : public QDialog, public Ui::RandSpgDialog
   struct Spg_Table_Entry
   {
     QString HM_spg;
-    QString formulaUnitsPossible;
+    QString possibleFormulas;
     QBrush brush;
   };
 
@@ -64,11 +65,9 @@ public slots:
 
 private:
   QSpinBox* getNewSpinBox();
-  void setLabel();
 
   XtalOpt* m_xtalopt;
-  QHash<uint, XtalCompositionStruct> m_comp;
-  QList<uint> m_FUList;
+  QList<CellComp> m_compList;
   QList<QCheckBox*> m_checkBoxList;
   QList<QSpinBox*> m_spinBoxList;
 };

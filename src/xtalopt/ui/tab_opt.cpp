@@ -14,106 +14,111 @@
 
 #include <xtalopt/ui/tab_opt.h>
 
+#include <xtalopt/optimizers/optimizers.h>
 #include <xtalopt/ui/dialog.h>
 #include <xtalopt/xtalopt.h>
 
-#include <QDebug>
+#include <globalsearch/eleminfo.h>
+#include <globalsearch/macros.h>
+#include <globalsearch/queueinterface.h>
+#include <globalsearch/queueinterfaces/queueinterfaces.h>
+
 #include <QSettings>
 
+#include <QComboBox>
 #include <QFileDialog>
-#include <QMessageBox>
+#include <QFont>
+#include <QListWidgetItem>
+#include <QTextEdit>
 
-using namespace std;
+using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-TabOpt::TabOpt(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
-  : AbstractTab(parent, p)
+TabOpt::TabOpt(AbstractDialog* parent, XtalOpt* p) : DefaultOptTab(parent, p)
 {
-  ui.setupUi(m_tab_widget);
+  // Fill m_optimizers in order of XtalOpt::OptTypes
+  m_optimizers.clear();
+  // FIXME: this is a "mark"! The number of optimizers is hardcoded here!
+  const unsigned int numOptimizers = 7;
+  for (unsigned int i = 0; i < numOptimizers; ++i) {
+    switch (i) {
+      case XtalOpt::OT_VASP:
+        m_optimizers.append("vasp");
+        break;
+      case XtalOpt::OT_GULP:
+        m_optimizers.append("gulp");
+        break;
+      case XtalOpt::OT_PWscf:
+        m_optimizers.append("pwscf");
+        break;
+      case XtalOpt::OT_CASTEP:
+        m_optimizers.append("castep");
+        break;
+      case XtalOpt::OT_SIESTA:
+        m_optimizers.append("siesta");
+        break;
+      case XtalOpt::OT_MTP:
+        m_optimizers.append("mtp");
+        break;
+      case XtalOpt::OT_GENERIC:
+        m_optimizers.append("generic");
+        break;
+    }
+  }
 
-  // Before we make any connections, let's read the settings
-  readSettings();
+  // Set the correct index
+  if (m_search->optimizer(0)) {
+    int optIndex = m_optimizers.indexOf(m_search->optimizer(0)->getIDString());
+    ui_combo_optimizers->setCurrentIndex(optIndex);
+  }
 
-  // Optimization connections
-  // Initial generation
-  connect(ui.spin_numInitial, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
+  // Fill m_optimizers in order of XtalOpt::QueueInterfaces
+  m_queueInterfaces.clear();
+  const unsigned int numQIs = 6;
+  for (unsigned int i = 0; i < numQIs; ++i) {
+    switch (i) {
+      case XtalOpt::QI_LOCAL:
+        m_queueInterfaces.append("local");
+        break;
+#ifdef ENABLE_SSH
+      case XtalOpt::QI_PBS:
+        m_queueInterfaces.append("pbs");
+        break;
+      case XtalOpt::QI_SGE:
+        m_queueInterfaces.append("sge");
+        break;
+      case XtalOpt::QI_SLURM:
+        m_queueInterfaces.append("slurm");
+        break;
+      case XtalOpt::QI_LSF:
+        m_queueInterfaces.append("lsf");
+        break;
+      case XtalOpt::QI_LOADLEVELER:
+        m_queueInterfaces.append("loadleveler");
+        break;
+//
+// Don't forget to modify numQIs above, or additions here won't matter!
+//
+#endif // ENABLE_SSH
+    }
+  }
 
-  // Seeds
-  connect(ui.push_addSeed, SIGNAL(clicked()), this, SLOT(addSeed()));
-  connect(ui.push_removeSeed, SIGNAL(clicked()), this, SLOT(removeSeed()));
-  connect(ui.list_seeds, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this,
-          SLOT(addSeed(QListWidgetItem*)));
+  // Set the queue interface index
+  if (m_search->queueInterface(0)) {
+    int qiIndex =
+      m_queueInterfaces.indexOf(m_search->queueInterface(0)->getIDString());
+    ui_combo_queueInterfaces->setCurrentIndex(qiIndex);
+  }
 
-  // Search params
-  connect(ui.spin_popSize, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_contStructs, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.cb_limitRunningJobs, SIGNAL(stateChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_runningJobLimit, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_failLimit, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.combo_failAction, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_cutoff, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.cb_using_FU_crossovers, SIGNAL(toggled(bool)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_FU_crossovers_generation, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.cb_using_mitotic_growth, SIGNAL(toggled(bool)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.cb_using_one_pool, SIGNAL(toggled(bool)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_chance_of_mitosis, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
+  connect(ui_list_edit, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this,
+          SLOT(changePOTCAR(QListWidgetItem*)));
+  connect(ui_list_edit, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this,
+          SLOT(changePSF(QListWidgetItem*)));
 
-  // Duplicate tolerances
-  connect(ui.spin_tol_xcLength, SIGNAL(editingFinished()), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_tol_xcAngle, SIGNAL(editingFinished()), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_tol_spg, SIGNAL(editingFinished()), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.push_dup_reset, SIGNAL(clicked()), m_opt, SLOT(resetDuplicates()));
-  connect(ui.push_spg_reset, SIGNAL(clicked()), m_opt,
-          SLOT(resetSpacegroups()));
+  DefaultOptTab::initialize();
 
-  // Crossover
-  connect(ui.spin_p_cross, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_cross_minimumContribution, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-
-  // Stripple
-  connect(ui.spin_p_strip, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_strip_strainStdev_min, SIGNAL(valueChanged(double)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_strip_strainStdev_max, SIGNAL(valueChanged(double)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_strip_amp_min, SIGNAL(valueChanged(double)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_strip_amp_max, SIGNAL(valueChanged(double)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_strip_per1, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_strip_per2, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-
-  // Permustrain
-  connect(ui.spin_p_perm, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_perm_strainStdev_max, SIGNAL(valueChanged(double)), this,
-          SLOT(updateOptimizationInfo()));
-  connect(ui.spin_perm_ex, SIGNAL(valueChanged(int)), this,
-          SLOT(updateOptimizationInfo()));
-
-  initialize();
+  populateTemplates();
 }
 
 TabOpt::~TabOpt()
@@ -122,6 +127,10 @@ TabOpt::~TabOpt()
 
 void TabOpt::writeSettings(const QString& filename)
 {
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+
+  // We have a special function for writing edit settings
+  xtalopt->writeEditSettings(filename);
 }
 
 void TabOpt::readSettings(const QString& filename)
@@ -129,188 +138,264 @@ void TabOpt::readSettings(const QString& filename)
   updateGUI();
 }
 
-void TabOpt::updateGUI()
+void TabOpt::loadScheme()
 {
-  m_updateGuiInProgress = true;
-  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
+  QString filename;
 
-  // Initial generation
-  ui.spin_numInitial->setValue(xtalopt->numInitial);
-
-  // Search parameters
-  ui.spin_popSize->setValue(xtalopt->popSize);
-  ui.spin_contStructs->setValue(xtalopt->contStructs);
-  ui.cb_limitRunningJobs->setChecked(xtalopt->limitRunningJobs);
-  ui.spin_runningJobLimit->setValue(xtalopt->runningJobLimit);
-  ui.spin_failLimit->setValue(xtalopt->failLimit);
-  ui.combo_failAction->setCurrentIndex(xtalopt->failAction);
-  ui.spin_cutoff->setValue(xtalopt->cutoff);
-  ui.cb_using_mitotic_growth->setChecked(xtalopt->using_mitotic_growth);
-  ui.cb_using_FU_crossovers->setChecked(xtalopt->using_FU_crossovers);
-  ui.spin_FU_crossovers_generation->setValue(xtalopt->FU_crossovers_generation);
-  ui.cb_using_one_pool->setChecked(xtalopt->using_one_pool);
-  ui.spin_chance_of_mitosis->setValue(xtalopt->chance_of_mitosis);
-
-  // Duplicates
-  ui.spin_tol_xcLength->setValue(xtalopt->tol_xcLength);
-  ui.spin_tol_xcAngle->setValue(xtalopt->tol_xcAngle);
-  ui.spin_tol_spg->setValue(xtalopt->tol_spg);
-
-  // Crossover
-  ui.spin_p_cross->setValue(xtalopt->p_cross);
-  ui.spin_cross_minimumContribution->setValue(
-    xtalopt->cross_minimumContribution);
-
-  // Stripple
-  ui.spin_p_strip->setValue(xtalopt->p_strip);
-  ui.spin_strip_strainStdev_min->setValue(xtalopt->strip_strainStdev_min);
-  ui.spin_strip_strainStdev_max->setValue(xtalopt->strip_strainStdev_max);
-  ui.spin_strip_amp_min->setValue(xtalopt->strip_amp_min);
-  ui.spin_strip_amp_max->setValue(xtalopt->strip_amp_max);
-  ui.spin_strip_per1->setValue(xtalopt->strip_per1);
-  ui.spin_strip_per2->setValue(xtalopt->strip_per2);
-
-  // Permustrain
-  ui.spin_p_perm->setValue(xtalopt->p_perm);
-  ui.spin_perm_strainStdev_max->setValue(xtalopt->perm_strainStdev_max);
-  ui.spin_perm_ex->setValue(xtalopt->perm_ex);
-
-  m_updateGuiInProgress = false;
-}
-
-void TabOpt::lockGUI()
-{
-  ui.spin_numInitial->setDisabled(true);
-  ui.list_seeds->setDisabled(true);
-  ui.push_addSeed->setDisabled(true);
-  ui.push_addSeed->setDisabled(true);
-  ui.push_removeSeed->setDisabled(true);
-}
-
-void TabOpt::updateOptimizationInfo()
-{
-  if (m_updateGuiInProgress)
-    return;
-
-  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
-  // See if the spin boxes caused this change.
-  if (sender() == ui.spin_p_cross || sender() == ui.spin_p_strip) {
-    xtalopt->p_cross = ui.spin_p_cross->value();
-    xtalopt->p_strip = ui.spin_p_strip->value();
-    xtalopt->p_perm = 100 - (xtalopt->p_cross + xtalopt->p_strip);
-    ui.spin_p_perm->blockSignals(true);
-    ui.spin_p_perm->setValue(xtalopt->p_perm);
-    ui.spin_p_perm->blockSignals(false);
-  } else if (sender() == ui.spin_p_perm) {
-    xtalopt->p_perm = ui.spin_p_perm->value();
-    xtalopt->p_strip = ui.spin_p_strip->value();
-    xtalopt->p_cross = 100 - (xtalopt->p_perm + xtalopt->p_strip);
-    ui.spin_p_cross->blockSignals(true);
-    ui.spin_p_cross->setValue(xtalopt->p_cross);
-    ui.spin_p_cross->blockSignals(false);
-  } else {
-    xtalopt->p_perm = ui.spin_p_perm->value();
-    xtalopt->p_strip = ui.spin_p_strip->value();
-    xtalopt->p_cross = ui.spin_p_cross->value();
-  }
-
-  // Initial generation
-  xtalopt->numInitial = ui.spin_numInitial->value();
-  if (int(xtalopt->numInitial) < ui.list_seeds->count())
-    ui.spin_numInitial->setValue(ui.list_seeds->count());
-
-  // Search parameters
-  xtalopt->popSize = ui.spin_popSize->value();
-  xtalopt->contStructs = ui.spin_contStructs->value();
-  xtalopt->runningJobLimit = ui.spin_runningJobLimit->value();
-  xtalopt->limitRunningJobs = ui.cb_limitRunningJobs->isChecked();
-  xtalopt->failLimit = ui.spin_failLimit->value();
-  xtalopt->failAction =
-    XtalOpt::FailActions(ui.combo_failAction->currentIndex());
-  xtalopt->cutoff = ui.spin_cutoff->value();
-  xtalopt->using_mitotic_growth = ui.cb_using_mitotic_growth->isChecked();
-  xtalopt->using_FU_crossovers = ui.cb_using_FU_crossovers->isChecked();
-  xtalopt->FU_crossovers_generation = ui.spin_FU_crossovers_generation->value();
-  xtalopt->using_one_pool = ui.cb_using_one_pool->isChecked();
-  xtalopt->chance_of_mitosis = ui.spin_chance_of_mitosis->value();
-
-  // Duplicates
-  xtalopt->tol_xcLength = ui.spin_tol_xcLength->value();
-  xtalopt->tol_xcAngle = ui.spin_tol_xcAngle->value();
-  xtalopt->tol_spg = ui.spin_tol_spg->value();
-
-  // Crossover
-  xtalopt->cross_minimumContribution =
-    ui.spin_cross_minimumContribution->value();
-
-  // Stripple
-  xtalopt->strip_strainStdev_min = ui.spin_strip_strainStdev_min->value();
-  xtalopt->strip_strainStdev_max = ui.spin_strip_strainStdev_max->value();
-  xtalopt->strip_amp_min = ui.spin_strip_amp_min->value();
-  xtalopt->strip_amp_max = ui.spin_strip_amp_max->value();
-  xtalopt->strip_per1 = ui.spin_strip_per1->value();
-  xtalopt->strip_per2 = ui.spin_strip_per2->value();
-
-  // Permustrain
-  xtalopt->perm_strainStdev_max = ui.spin_perm_strainStdev_max->value();
-  xtalopt->perm_ex = ui.spin_perm_ex->value();
-}
-
-void TabOpt::addSeed(QListWidgetItem* item)
-{
-  // qDebug() << "TabOpt::addSeed( " << item << " ) called";
-  QSettings settings;
-  QString filename("");
-  bool replace = false;
-  if (item)
-    replace = true;
-
-  // Set filename
-  if (replace) {
-    filename = item->text();
-  } else {
-    filename =
-      settings.value("xtalopt/opt/seedPath", m_opt->locWorkDir + "/POSCAR")
+  {
+    SETTINGS("");
+    QString oldFilename =
+      settings->value(m_search->getIDString().toLower() + "/edit/schemePath/", "")
         .toString();
+    filename = QFileDialog::getOpenFileName(
+      nullptr, tr("Select Optimization Scheme to load..."), oldFilename,
+      "*.scheme;;*.state;;*.*", 0, QFileDialog::DontUseNativeDialog);
+
+    // User canceled
+    if (filename.isEmpty())
+      return;
+
+    settings->setValue(m_search->getIDString().toLower() + "/edit/schemePath/",
+                       filename);
   }
 
-  // Launch file dialog
-  QString newFilename = QFileDialog::getOpenFileName(
-    m_dialog, QString("Select structure file to use as seed"), filename,
-    "Common formats (*POSCAR *CONTCAR *.got *.cml *cif"
-    " *.out);;All Files (*)",
-    0, QFileDialog::DontUseNativeDialog);
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
-  // User canceled
-  if (newFilename.isEmpty())
-    return;
+  // We have a special function for reading this tab's settings
+  xtalopt->readEditSettings(filename);
 
-  settings.setValue("xtalopt/opt/seedPath", newFilename);
-
-  // Update text
-  if (replace)
-    item->setText(newFilename);
-  else
-    ui.list_seeds->addItem(newFilename);
-  updateOptimizationInfo();
-  updateSeeds();
+  updateGUI();
 }
 
-void TabOpt::removeSeed()
+void TabOpt::updateEditWidget()
 {
-  if (ui.list_seeds->count() == 0)
+  if (!m_isInitialized) {
     return;
-  delete ui.list_seeds->takeItem(ui.list_seeds->currentRow());
-  updateSeeds();
+  }
+
+  QStringList filenames = getTemplateNames(getCurrentOptStep());
+  int templateInd = ui_combo_templates->currentIndex();
+  QString templateName = ui_combo_templates->currentText();
+  Q_ASSERT(templateInd >= 0 && templateInd < filenames.size());
+  Q_ASSERT(templateName.compare(filenames.at(templateInd)) == 0);
+
+  AbstractOptTab::updateEditWidget();
 }
 
-void TabOpt::updateSeeds()
+void TabOpt::appendOptStep()
 {
-  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
+  AbstractOptTab::appendOptStep();
 
-  xtalopt->seedList.clear();
-  for (int i = 0; i < ui.list_seeds->count(); i++)
-    xtalopt->seedList.append(ui.list_seeds->item(i)->text());
+  populateOptStepList();
+}
+
+void TabOpt::removeCurrentOptStep()
+{
+  AbstractOptTab::removeCurrentOptStep();
+
+  populateOptStepList();
+}
+
+void TabOpt::changePOTCAR(QListWidgetItem* item)
+{
+  // If the optimizer isn't VASP, just return...
+  if (getCurrentOptimizer()->getIDString() != "VASP")
+    return;
+
+  QSettings settings;
+
+  // Get symbol and filename
+  QStringList strl = item->text().split(":");
+  QString symbol = strl.at(0).trimmed();
+
+  QStringList files;
+  QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
+  QString filename = QFileDialog::getOpenFileName(
+    nullptr, QString("Select pot file for atom %1").arg(symbol), path,
+    QString(), 0, QFileDialog::DontUseNativeDialog);
+
+  // User canceled file selection
+  if (filename.isEmpty())
+    return;
+
+  QStringList delimited = filename.split("/");
+  QString runpath = "";
+  // We want to chop off the last item...
+  for (size_t i = 0; i < delimited.size() - 1; i++)
+    runpath += (delimited[i] + "/");
+
+  // QFileDialog::getOpenFileName() only allows one selection. So we don't
+  // have to worry about multiple files.
+  settings.setValue("xtalopt/templates/potcarPath", runpath);
+
+  // "POTCAR info" is of type
+  // QList<QHash<QString, QString> >
+  // e.g. a list of hashes containing
+  // [atomic symbol : pseudopotential file] pairs
+  QVariantList potcarInfo =
+    getCurrentOptimizer()->getData("POTCAR info").toList();
+  QVariantHash hash = potcarInfo.at(ui_list_optStep->currentRow()).toHash();
+  hash.insert(symbol, QVariant(filename));
+  potcarInfo.replace(ui_list_optStep->currentRow(), hash);
+  getCurrentOptimizer()->setData("POTCAR info", potcarInfo);
+  updateEditWidget();
+}
+
+void TabOpt::changePSF(QListWidgetItem* item)
+{
+  // If the optimizer isn't siesta, just return...
+  if (getCurrentOptimizer()->getIDString() != "SIESTA")
+    return;
+
+  QSettings settings;
+
+  // Get symbol and filename
+  QStringList strl = item->text().split(":");
+  QString symbol = strl.at(0).trimmed();
+
+  QString path = settings.value("xtalopt/templates/psfPath", "").toString();
+  QString filename = QFileDialog::getOpenFileName(
+    nullptr, QString("Select psf file for atom %1").arg(symbol), path,
+    QString(), 0, QFileDialog::DontUseNativeDialog);
+
+  // User canceled file selection
+  if (filename.isEmpty())
+    return;
+
+  QStringList delimited = filename.split("/");
+  QString runath = "";
+  // We want to chop off the last item on the list
+  for (size_t i = 0; i < delimited.size() - 1; i++)
+    runath += (delimited[i] + "/");
+
+  settings.setValue("xtalopt/templates/psfPath", runath);
+
+  // "PSF info" is of type
+  // QList<QHash<QString, QString> >
+  // e.g. a list of hashes containing
+  // [atomic symbol : pseudopotential file] pairs
+  QVariantList psfInfo = getCurrentOptimizer()->getData("PSF info").toList();
+  QVariantHash hash = psfInfo.at(ui_list_optStep->currentRow()).toHash();
+  hash.insert(symbol, QVariant(filename));
+  psfInfo.replace(ui_list_optStep->currentRow(), hash);
+  getCurrentOptimizer()->setData("PSF info", psfInfo);
+  updateEditWidget();
+}
+
+bool TabOpt::generateVASP_POTCAR_info()
+{
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+  QSettings settings;
+  QString path = settings.value("xtalopt/templates/potcarPath", "").toString();
+  QVariantList potcarInfo;
+
+  // Generate list of symbols
+  QList<QString> symbols = xtalopt->compList[0].getSymbols();
+  std::sort(symbols.begin(), symbols.end());
+  QList<uint> atomicNums = xtalopt->compList[0].getAtomicNumbers();
+  std::sort(atomicNums.begin(), atomicNums.end());
+
+  QString filename;
+  QVariantHash hash;
+  for (int i = 0; i < symbols.size(); i++) {
+    QString path =
+      settings.value("xtalopt/templates/potcarPath", "").toString();
+    QString filename = QFileDialog::getOpenFileName(
+      nullptr, QString("Select pot file for atom %1").arg(symbols.at(i)), path,
+      QString(), 0, QFileDialog::DontUseNativeDialog);
+
+    if (!filename.isEmpty()) {
+      QStringList delimited = filename.split("/");
+      QString runpath = "";
+      // We want to chop off the last item...
+      for (size_t i = 0; i < delimited.size() - 1; i++)
+        runpath += (delimited[i] + "/");
+
+      settings.setValue("xtalopt/templates/potcarPath", runpath);
+    } else {
+      // User cancel file selection. Set template selection combo to
+      // something else so the list will remain empty and be
+      // detected when the search starts. Ref ticket 79.
+      int curInd = ui_combo_templates->currentIndex();
+      int maxInd = ui_combo_templates->count() - 1;
+      int newInd = (curInd == maxInd) ? 0 : maxInd;
+      ui_combo_templates->setCurrentIndex(newInd);
+      return false;
+    }
+    hash.insert(symbols.at(i), QVariant(filename));
+  }
+
+  potcarInfo.append(QVariant(hash));
+
+  // Set composition in optimizer
+  QVariantList toOpt;
+  for (int i = 0; i < atomicNums.size(); i++) {
+    toOpt.append(atomicNums.at(i));
+  }
+  getCurrentOptimizer()->setData("Composition", toOpt);
+
+  // Set POTCAR info
+  getCurrentOptimizer()->setData("POTCAR info", QVariant(potcarInfo));
+
+  updateEditWidget();
+  return true;
+}
+
+bool TabOpt::generateSIESTA_PSF_info()
+{
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+  QSettings settings;
+  QString path = settings.value("xtalopt/templates/psfPath", "").toString();
+  QVariantList psfInfo;
+
+  // Generate list of symbols
+  QList<QString> symbols = xtalopt->compList[0].getSymbols();
+  std::sort(symbols.begin(), symbols.end());
+  QList<uint> atomicNums = xtalopt->compList[0].getAtomicNumbers();
+  std::sort(atomicNums.begin(), atomicNums.end());
+
+  QStringList files;
+  QVariantHash hash;
+
+  for (int i = 0; i < symbols.size(); i++) {
+    QString path = settings.value("xtalopt/templates/psfPath", "").toString();
+    QString filename = QFileDialog::getOpenFileName(
+      nullptr, QString("Select psf file for atom %1").arg(symbols.at(i)), path,
+      QString(), 0, QFileDialog::DontUseNativeDialog);
+
+    if (!filename.isEmpty()) {
+      QStringList delimited = filename.split("/");
+      QString runpath = "";
+      // We want to chop off the last item...
+      for (size_t i = 0; i < delimited.size() - 1; i++)
+        runpath += (delimited[i] + "/");
+      settings.setValue("xtalopt/templates/psfPath", runpath);
+    } else {
+      // User cancel file selection. Set template selection combo to
+      // something else so the list will remain empty and be
+      // detected when the search starts. Ref ticket 79.
+      int curInd = ui_combo_templates->currentIndex();
+      int maxInd = ui_combo_templates->count() - 1;
+      int newInd = (curInd == maxInd) ? 0 : maxInd;
+      ui_combo_templates->setCurrentIndex(newInd);
+      return false;
+    }
+    hash.insert(symbols.at(i), QVariant(filename));
+  }
+
+  psfInfo.append(QVariant(hash));
+
+  // Set composition in optimizer
+  QVariantList toOpt;
+  for (int i = 0; i < atomicNums.size(); i++) {
+    toOpt.append(atomicNums.at(i));
+  }
+  getCurrentOptimizer()->setData("Composition", toOpt);
+
+  // Set POTCAR info
+  getCurrentOptimizer()->setData("PSF info", QVariant(psfInfo));
+
+  updateEditWidget();
+  return true;
 }
 }

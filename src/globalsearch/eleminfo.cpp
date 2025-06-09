@@ -23,12 +23,12 @@
 using namespace std;
 
 // Set the static member variables
-vector<string> ElemInfo::atomicSymbols = ElemInfoDatabase::_atomicSymbols;
-vector<double> ElemInfo::masses = ElemInfoDatabase::_masses;
-vector<double> ElemInfo::covalentRadii = ElemInfoDatabase::_covalentRadii;
-vector<double> ElemInfo::vdwRadii = ElemInfoDatabase::_vdwRadii;
+vector<string> ElementInfo::atomicSymbols = ElementInfoDatabase::_atomicSymbols;
+vector<double> ElementInfo::masses = ElementInfoDatabase::_masses;
+vector<double> ElementInfo::covalentRadii = ElementInfoDatabase::_covalentRadii;
+vector<double> ElementInfo::vdwRadii = ElementInfoDatabase::_vdwRadii;
 
-std::string ElemInfo::getAtomicSymbol(uint atomicNum)
+std::string ElementInfo::getAtomicSymbol(uint atomicNum)
 {
   if (atomicNum == 0 || atomicNum > 117) {
     std::cout << "Error: Invalid atomicNum, " << atomicNum
@@ -38,7 +38,7 @@ std::string ElemInfo::getAtomicSymbol(uint atomicNum)
   return atomicSymbols[atomicNum];
 }
 
-double ElemInfo::getAtomicMass(uint atomicNum)
+double ElementInfo::getAtomicMass(uint atomicNum)
 {
   if (atomicNum == 0 || atomicNum > 117) {
     std::cout << "Error: Invalid atomicNum, " << atomicNum
@@ -48,7 +48,7 @@ double ElemInfo::getAtomicMass(uint atomicNum)
   return masses[atomicNum];
 }
 
-uint ElemInfo::getAtomicNum(std::string symbol)
+uint ElementInfo::getAtomicNum(std::string symbol)
 {
   for (uint i = 0; i < atomicSymbols.size(); i++) {
     if (caseInsensitiveCompare(atomicSymbols[i], symbol))
@@ -58,8 +58,9 @@ uint ElemInfo::getAtomicNum(std::string symbol)
   return 0;
 }
 
-bool ElemInfo::readComposition(string compStr, map<uint, uint>& comp)
+bool ElementInfo::readComposition(string compStr, map<uint, uint>& comp)
 {
+  // As a "map", this always returns entries sorted by atomic number (first entry).
   compStr = removeSpaces(compStr);
   comp.clear();
 
@@ -67,8 +68,8 @@ bool ElemInfo::readComposition(string compStr, map<uint, uint>& comp)
   vector<string> countsStr = reSplit(compStr, "[A-Za-z]");
 
   if (symbols.size() != countsStr.size()) {
-    cerr << "Error: invalid composition, " << compStr << ", was entered.\n";
-    cerr << "Every symbol must be followed by a number (i.e., Ti1O2).\n";
+    cerr << "Warning: invalid composition '" << compStr
+         << "'. Symbols should be followed by a number!\n";
     return false;
   }
 
@@ -98,7 +99,7 @@ bool ElemInfo::readComposition(string compStr, map<uint, uint>& comp)
   return true;
 }
 
-bool ElemInfo::readComposition(const string& comp, vector<uint>& atoms)
+bool ElementInfo::readComposition(const string& comp, vector<uint>& atoms)
 {
   atoms.clear();
   map<uint, uint> compMap;
@@ -113,7 +114,7 @@ bool ElemInfo::readComposition(const string& comp, vector<uint>& atoms)
   return true;
 }
 
-double ElemInfo::getVdwRadius(uint atomicNum)
+double ElementInfo::getVdwRadius(uint atomicNum)
 {
   if (atomicNum == 0 || atomicNum > 117) {
     std::cout << "Error: Invalid atomicNum, " << atomicNum
@@ -123,7 +124,17 @@ double ElemInfo::getVdwRadius(uint atomicNum)
   return vdwRadii[atomicNum];
 }
 
-double ElemInfo::getCovalentRadius(uint atomicNum)
+double ElementInfo::getVdwVolume(uint atomicNum)
+{
+  if (atomicNum == 0 || atomicNum > 117) {
+    std::cout << "Error: Invalid atomicNum, " << atomicNum
+              << ", was entered in " << __FUNCTION__ << "!\n";
+    return 0;
+  }
+  return 4.0 * PI * pow(vdwRadii[atomicNum], 3.0) / 3.0;
+}
+
+double ElementInfo::getCovalentRadius(uint atomicNum)
 {
   if (atomicNum == 0 || atomicNum > 117) {
     std::cout << "Error: Invalid atomicNum, " << atomicNum
@@ -133,18 +144,28 @@ double ElemInfo::getCovalentRadius(uint atomicNum)
   return covalentRadii[atomicNum];
 }
 
-void ElemInfo::applyScalingFactor(double sf)
+double ElementInfo::getCovalentVolume(uint atomicNum)
+{
+  if (atomicNum == 0 || atomicNum > 117) {
+    std::cout << "Error: Invalid atomicNum, " << atomicNum
+              << ", was entered in " << __FUNCTION__ << "!\n";
+    return 0;
+  }
+  return 4.0 * PI * pow(covalentRadii[atomicNum], 3.0) / 3.0;
+}
+
+void ElementInfo::applyScalingFactor(double sf)
 {
   for (int i = 1; i < 118; i++) {
-    covalentRadii[i] = ElemInfoDatabase::_covalentRadii[i] * sf;
-    vdwRadii[i] = ElemInfoDatabase::_vdwRadii[i] * sf;
+    covalentRadii[i] = ElementInfoDatabase::_covalentRadii[i] * sf;
+    vdwRadii[i] = ElementInfoDatabase::_vdwRadii[i] * sf;
   }
 }
 
 // We allow the user to set a radius here
 // We will set both radii since we know the user will only be using one of
 // them, but we don't know which...
-void ElemInfo::setRadius(uint atomicNum, double newRadius)
+void ElementInfo::setRadius(uint atomicNum, double newRadius)
 {
   if (atomicNum == 0 || atomicNum > 117) {
     std::cout << "Error: Invalid atomicNum, " << atomicNum
@@ -162,7 +183,7 @@ void ElemInfo::setRadius(uint atomicNum, double newRadius)
   vdwRadii[atomicNum] = newRadius;
 }
 
-void ElemInfo::setMinRadius(double minRadius)
+void ElementInfo::setMinRadius(double minRadius)
 {
   for (size_t i = 1; i < covalentRadii.size(); i++) {
     if (covalentRadii[i] < minRadius)
@@ -172,7 +193,7 @@ void ElemInfo::setMinRadius(double minRadius)
   }
 }
 
-double ElemInfo::getRadius(uint atomicNum, bool usingVdwRadius)
+double ElementInfo::getRadius(uint atomicNum, bool usingVdwRadius)
 {
   if (usingVdwRadius)
     return getVdwRadius(atomicNum);

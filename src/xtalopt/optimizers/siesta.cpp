@@ -25,7 +25,7 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-SIESTAOptimizer::SIESTAOptimizer(OptBase* parent, const QString& filename)
+SIESTAOptimizer::SIESTAOptimizer(SearchBase* parent, const QString& filename)
   : XtalOptOptimizer(parent)
 {
   // Set allowed data structure keys, if any

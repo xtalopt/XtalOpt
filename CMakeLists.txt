@@ -1,11 +1,15 @@
 cmake_minimum_required(VERSION 3.0...3.27)
 project(XtalOpt)
 
-set(XtalOpt_VERSION_MAJOR 13)
-set(XtalOpt_VERSION_MINOR 2)
+set(XtalOpt_VERSION_MAJOR 14)
+set(XtalOpt_VERSION_MINOR 0)
 set(XtalOpt_VERSION_PATCH 0)
+
+# Version definitions
 set(XtalOpt_VERSION "${XtalOpt_VERSION_MAJOR}.${XtalOpt_VERSION_MINOR}")
 set(XtalOpt_VERSION_FULL "${XtalOpt_VERSION}.${XtalOpt_VERSION_PATCH}")
+# The string variable "XTALOPT_VER" can be used anywhere inside code
+add_definitions(-DXTALOPT_VER="${XtalOpt_VERSION_FULL}")
 
 set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake)
 
@@ -39,6 +43,8 @@ include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}
                     ${XtalOpt_SOURCE_DIR}/src/)
 
+include_directories(external/qhull/src)
+
 include(MacroEnsureVersion)
 
 option( XTALOPT_DEBUG
@@ -47,13 +53,6 @@ option( XTALOPT_DEBUG
 if(XTALOPT_DEBUG)
   add_definitions(-DXTALOPT_DEBUG)
 endif(XTALOPT_DEBUG)
-
-option( MOES_DEBUG
-  "Enable some useful output for monitoring feature analysis"
-  OFF )
-if(MOES_DEBUG)
-  add_definitions(-DMOES_DEBUG)
-endif(MOES_DEBUG)
 
 option( BUILD_TESTS
  	"Whether to compile the test suite as well as the main code."
@@ -98,20 +97,6 @@ DownloadObabel()
 # This will only actually download if USE_SYSTEM_GENXRDPATTERN is off
 include(DownloadGenXrdPattern)
 DownloadGenXrdPattern()
-
-# The main packages
-option( ENABLE_EXAMPLESEARCH
-  "Build the examplesearch extension - DOES NOT WORK CURRENTLY"
-  OFF )
-option( ENABLE_XTALOPT
-  "Build the XtalOpt extension"
-  ON )
-option( ENABLE_RANDOMDOCK
-  "Build the RandomDock extension - DOES NOT WORK CURRENTLY"
-  OFF )
-option( ENABLE_GAPC
-  "Build the evolutionary cluster search extension - DOES NOT WORK CURRENTLY"
-  OFF )
 
 if(BUILD_INDEPENDENT_PACKAGE)
   set(ENABLE_RPATH ON)

@@ -25,7 +25,7 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-GULPOptimizer::GULPOptimizer(OptBase* parent, const QString& filename)
+GULPOptimizer::GULPOptimizer(SearchBase* parent, const QString& filename)
   : XtalOptOptimizer(parent)
 {
   // Set allowed data structure keys, if any, e.g.

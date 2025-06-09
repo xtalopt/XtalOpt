@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -39,11 +39,10 @@
 #include "mathfunc.h"
 #include "symmetry.h"
 
-VecDBL * ssm_get_exact_positions(int * wyckoffs,
-                                 int * equiv_atoms,
-                                 const Cell * bravais,
-                                 const Symmetry * conv_sym,
-                                 const int hall_number,
-                                 const double symprec);
+VecDBL* ssm_get_exact_positions(int* wyckoffs, int* equiv_atoms,
+                                char (*site_symmetry_symbols)[7],
+                                Cell const* bravais, Symmetry const* conv_sym,
+                                int const num_pure_trans, int const hall_number,
+                                double const symprec);
 
 #endif

@@ -42,12 +42,13 @@ class Xtal;
 
 struct XO_Prog_TableEntry
 {
-  int gen;
-  int id;
+  QString tag;
+  QString formula;
   int jobID;
   double enthalpy;
+  double abovehull;
+  int front;
   double volume;
-  int FU;
   QString elapsed;
   QString parents;
   QString spg;
@@ -66,15 +67,18 @@ public:
 
   enum ProgressColumns
   {
-    Gen = 0,
-    Mol,
+    Tag = 0,
+    Formula,
     JobID,
     Status,
     TimeElapsed,
     Enthalpy,
-    FU,
+    AboveHull,
+    Front,
     Volume,
     SpaceGroup,
+    // Keep this one the last; it's used as the
+    //   max number of columns in .cpp file!
     Ancestry
   };
 
@@ -82,11 +86,14 @@ public slots:
   void readSettings(const QString& filename = "") override;
   void writeSettings(const QString& filename = "") override;
   void disconnectGUI() override;
+  void updateVerboseOutput();
   void addNewEntry();
   void newInfoUpdate(GlobalSearch::Structure*);
   void updateInfo();
   void updateAllInfo();
   void updateProgressTable();
+  void refreshHullFrontEntries();
+  XO_Prog_TableEntry getTableEntry(int row);
   void setTableEntry(int row, const XO_Prog_TableEntry& e);
   void selectMoleculeFromProgress(int, int, int, int);
   void highlightXtal(GlobalSearch::Structure* s);
@@ -106,7 +113,6 @@ public slots:
   void disableRowTracking() { rowTracking = false; };
   void updateRank();
   void clearFiles();
-  void printFile();
   // The signal "readOnlySessionStarted()" calls this function.
   // It enables column sorting when a read-only session is started.
   void setColumnSortingEnabled() { ui.table_list->setSortingEnabled(true); };
@@ -131,8 +137,10 @@ private:
   bool rowTracking;
 
   GlobalSearch::Tracker m_infoUpdateTracker;
+  GlobalSearch::Tracker m_hullInfoUpdateTracker;
 
   void updateInfo_();
+  void refreshHullFrontEntries_();
   void restartJobProgress_(int incar);
   void killXtalProgress_();
   void unkillXtalProgress_();

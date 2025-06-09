@@ -23,7 +23,7 @@
 class QDialog;
 
 namespace GlobalSearch {
-class OptBase;
+class SearchBase;
 class OptimizerConfigDialog;
 class Structure;
 
@@ -31,20 +31,20 @@ class Structure;
  * @class Optimizer optimizer.h <globalsearch/optimizer.h>
  *
  * @brief The Optimizer class provides an interface between an
- * OptBase instance and an external optimization engine.
+ * SearchBase instance and an external optimization engine.
  *
  * @author David C. Lonie
  *
- * The Optimizer class standardizes communication between an OptBase
+ * The Optimizer class standardizes communication between an SearchBase
  * instance and an external chemical optimization engine, such as
  * GAMESS, ADF, VASP, etc.
  *
  * The file contents may be set using the setTemplate,
  * appendTemplate, and removeTemplate functions. These will be
- * passed through the associated OptBase's template interpreter
+ * passed through the associated SearchBase's template interpreter
  * prior to writing.
  *
- * Once the Optimizer is attached to the OptBase instance and the
+ * Once the Optimizer is attached to the SearchBase instance and the
  * templates are set, the QueueManager handles all job submission,
  * file writing, and Structure updating automatically.
  */
@@ -59,11 +59,11 @@ public:
   /**
    * Constructor
    *
-   * @param parent OptBase parent
+   * @param parent SearchBase parent
    * @param filename Optional filename to load data from (scheme or
    * resume file)
    */
-  explicit Optimizer(OptBase* parent, const QString& filename = "");
+  explicit Optimizer(SearchBase* parent, const QString& filename = "");
 
   /**
    * Destructor
@@ -243,7 +243,7 @@ public slots:
    * @sa m_stdoutFilename
    * @sa m_stderrFilename
    */
-  QString localRunCommand() const { return m_localRunCommand; };
+  QString getLocalRunCommand() const { return m_localRunCommand; };
 
   /**
    * Set the local run command.
@@ -257,7 +257,7 @@ public slots:
    *
    * Details given in m_localRunCommand.
    *
-   * @sa localRunCommand
+   * @sa getLocalRunCommand
    * @sa stdoutFilename
    * @sa stderrFilename
    * @sa m_localRunCommand
@@ -272,7 +272,7 @@ public slots:
    *
    * Details given in m_localRunCommand.
    *
-   * @sa localRunCommand
+   * @sa getLocalRunCommand
    * @sa stdinFilename
    * @sa stderrFilename
    * @sa m_localRunCommand
@@ -287,7 +287,7 @@ public slots:
    *
    * Details given in m_localRunCommand.
    *
-   * @sa localRunCommand
+   * @sa getLocalRunCommand
    * @sa stdinFilename
    * @sa stdoutFilename
    * @sa m_localRunCommand
@@ -384,7 +384,7 @@ protected:
    *
    * Stdin/out/err is not used (="") by default.
    *
-   * @sa localRunCommand
+   * @sa getLocalRunCommand
    * @sa stdinFilename
    * @sa stdoutFilename
    * @sa stderrFilename
@@ -399,7 +399,7 @@ protected:
    *
    * Details given in m_localRunCommand.
    *
-   * @sa localRunCommand
+   * @sa getLocalRunCommand
    * @sa stdinFilename
    * @sa stdoutFilename
    * @sa stderrFilename
@@ -414,7 +414,7 @@ protected:
    *
    * Details given in m_localRunCommand.
    *
-   * @sa localRunCommand
+   * @sa getLocalRunCommand
    * @sa stdinFilename
    * @sa stdoutFilename
    * @sa stderrFilename
@@ -429,7 +429,7 @@ protected:
    *
    * Details given in m_localRunCommand.
    *
-   * @sa localRunCommand
+   * @sa getLocalRunCommand
    * @sa stdinFilename
    * @sa stdoutFilename
    * @sa stderrFilename
@@ -440,9 +440,9 @@ protected:
   QString m_stderrFilename;
 
   /**
-   * Cached pointer to the associated OptBase instance
+   * Cached pointer to the associated SearchBase instance
    */
-  OptBase* m_opt;
+  SearchBase* m_search;
 
   /**
    * Unique identification string for this Optimizer.

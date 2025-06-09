@@ -36,7 +36,7 @@ class SlurmQueueInterface : public RemoteQueueInterface
   Q_OBJECT
 
 public:
-  explicit SlurmQueueInterface(OptBase* parent,
+  explicit SlurmQueueInterface(SearchBase* parent,
                                const QString& settingsFile = "");
 
   virtual ~SlurmQueueInterface() override;

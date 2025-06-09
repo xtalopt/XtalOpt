@@ -17,11 +17,11 @@
 #include <globalsearch/sshmanager.h>
 
 #include <globalsearch/macros.h>
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 
 namespace GlobalSearch {
 
-SSHManager::SSHManager(OptBase* parent) : QObject(parent)
+SSHManager::SSHManager(SearchBase* parent) : QObject(parent)
 {
 }
 

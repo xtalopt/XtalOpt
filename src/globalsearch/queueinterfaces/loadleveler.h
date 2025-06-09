@@ -36,7 +36,7 @@ class LoadLevelerQueueInterface : public RemoteQueueInterface
   Q_OBJECT
 
 public:
-  explicit LoadLevelerQueueInterface(OptBase* parent,
+  explicit LoadLevelerQueueInterface(SearchBase* parent,
                                      const QString& settingsFile = "");
 
   virtual ~LoadLevelerQueueInterface() override;

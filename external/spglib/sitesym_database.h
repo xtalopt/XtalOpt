@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -35,9 +35,8 @@
 #ifndef __sitesym_database_H__
 #define __sitesym_database_H__
 
-int ssmdb_get_coordinate( int rot[3][3],
-			  double trans[3],
-			  const int index );
-void ssmdb_get_wyckoff_indices( int indices[2], const int index );
+int ssmdb_get_coordinate(int rot[3][3], double trans[3], int const index);
+void ssmdb_get_wyckoff_indices(int indices[2], int const index);
+void ssmdb_get_site_symmetry_symbol(char symbol[7], int const index);
 
 #endif

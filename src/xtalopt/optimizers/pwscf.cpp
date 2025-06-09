@@ -22,7 +22,7 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-PWscfOptimizer::PWscfOptimizer(OptBase* parent, const QString& filename)
+PWscfOptimizer::PWscfOptimizer(SearchBase* parent, const QString& filename)
   : XtalOptOptimizer(parent)
 {
   // Set allowed data structure keys, if any, e.g.
@@ -34,7 +34,7 @@ PWscfOptimizer::PWscfOptimizer(OptBase* parent, const QString& filename)
   // Setup for completion values
   m_completionFilename = "xtal.out";
   m_completionStrings.clear();
-  m_completionStrings.append("Final");
+  m_completionStrings.append("JOB DONE");
 
   // Set output filenames to try to read data from, e.g.
   m_outputFilenames.append(m_completionFilename);

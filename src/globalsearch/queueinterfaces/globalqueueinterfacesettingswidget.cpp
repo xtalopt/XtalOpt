@@ -12,7 +12,7 @@
   limitations under the License.
  ***********************************************************************/
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 
 #include "globalqueueinterfacesettingswidget.h"
 #include "ui_globalqueueinterfacesettingswidget.h"
@@ -30,7 +30,7 @@ GlobalQueueInterfaceSettingsWidget::GlobalQueueInterfaceSettingsWidget(
 GlobalQueueInterfaceSettingsWidget::~GlobalQueueInterfaceSettingsWidget() =
   default;
 
-void GlobalQueueInterfaceSettingsWidget::updateGUI(GlobalSearch::OptBase* opt)
+void GlobalQueueInterfaceSettingsWidget::updateGUI(GlobalSearch::SearchBase* opt)
 {
   // Block signals for all widgets when we update the GUI
   QList<bool> wasBlocked;
@@ -58,7 +58,7 @@ void GlobalQueueInterfaceSettingsWidget::updateGUI(GlobalSearch::OptBase* opt)
     children[i]->blockSignals(wasBlocked[i]);
 }
 
-void GlobalQueueInterfaceSettingsWidget::accept(GlobalSearch::OptBase* opt)
+void GlobalQueueInterfaceSettingsWidget::accept(GlobalSearch::SearchBase* opt)
 {
   opt->description = m_ui->edit_description->text().trimmed();
   opt->host = m_ui->edit_host->text().trimmed();

@@ -51,7 +51,7 @@ public:
   /**
    * Constructor.
    *
-   * @param parent The OptBase parent
+   * @param parent The SearchBase parent
    */
   explicit SSHConnectionLibSSH(SSHManagerLibSSH* parent = 0);
 

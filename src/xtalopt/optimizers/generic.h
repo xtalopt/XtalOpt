@@ -21,7 +21,7 @@
 
 namespace GlobalSearch {
 class Structure;
-class OptBase;
+class SearchBase;
 class Optimizer;
 }
 
@@ -31,7 +31,7 @@ class GenericOptimizer : public XtalOptOptimizer
   Q_OBJECT
 
 public:
-  GenericOptimizer(GlobalSearch::OptBase* parent, const QString& filename = "");
+  GenericOptimizer(GlobalSearch::SearchBase* parent, const QString& filename = "");
 
   // This will always return true for the generic optimizer
   bool checkForSuccessfulOutput(GlobalSearch::Structure* s,

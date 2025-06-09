@@ -44,22 +44,27 @@ TabMo::TabMo(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
   // Before we make any connections, let's read the settings
   readSettings();
 
-  // Update active button if objectives are being entered; this is to avoid doing anything but adding!
-  connect(ui.combo_type, SIGNAL(activated(int)), this, SLOT(setActiveButtonAdd()));
-  connect(ui.line_output, SIGNAL(returnPressed()), this, SLOT(setActiveButtonAdd()));
-  connect(ui.line_path, SIGNAL(returnPressed()), this, SLOT(setActiveButtonAdd()));
-  connect(ui.sb_weight, SIGNAL(editingFinished()), this, SLOT(setActiveButtonAdd()));
-  connect(ui.table_objectives, SIGNAL(cellClicked(int, int)), this, SLOT(setActiveButtonRemove()));
-
   // Update fields with opt type selection
   connect(ui.combo_type, SIGNAL(currentIndexChanged(const QString&)), this,
           SLOT(updateFieldsWithOptSelection(const QString&)));
+
+  // Fitness
+  connect(ui.cb_tournament, SIGNAL(toggled(bool)), this,
+          SLOT(updateOptTypeInfo()));
+  connect(ui.cb_restrictPool, SIGNAL(toggled(bool)), this,
+          SLOT(updateOptTypeInfo()));
+  connect(ui.cb_crowding, SIGNAL(toggled(bool)), this,
+          SLOT(updateOptTypeInfo()));
+  connect(ui.combo_optType, SIGNAL(currentIndexChanged(int)), this,
+          SLOT(updateOptTypeInfo()));
+  connect(ui.sb_prec, SIGNAL(editingFinished()), this,
+          SLOT(updateOptTypeInfo()));
 
   // Objectives
   connect(ui.push_addObjectives, SIGNAL(clicked()), this, SLOT(addObjectives()));
   connect(ui.push_removeObjectives, SIGNAL(clicked()), this, SLOT(removeObjectives()));
   connect(ui.cb_redo_objectives, SIGNAL(toggled(bool)), this,
-          SLOT(updateOptimizationInfo()));
+          SLOT(updateObjectives()));
 
   initialize();
 }
@@ -77,40 +82,45 @@ void TabMo::readSettings(const QString& filename)
   updateGUI();
 }
 
-void TabMo::setActiveButtonAdd()
-{
-  ui.push_addObjectives->setDefault(true);
-}
-
-void TabMo::setActiveButtonRemove()
-{
-  ui.push_removeObjectives->setDefault(true);
-}
-
 void TabMo::updateFieldsWithOptSelection(QString value_type)
 {
-  if (value_type == "Hardness:AFLOW-ML")
-  {
-    ui.line_path->setText("N/A");
-    ui.line_output->setText("N/A");
-    ui.line_path->setDisabled(true);
-    ui.line_output->setDisabled(true);
-  }
-  else
-  {
-    ui.line_path->setDisabled(false);
-    ui.line_output->setDisabled(false);
-    ui.line_path->setText("");
-    ui.line_output->setText("");
-  }
+  ui.line_path->setDisabled(false);
+  ui.line_output->setDisabled(false);
+  ui.line_path->setText("");
+  ui.line_output->setText("");
 }
 
 void TabMo::updateGUI()
 {
   m_updateGuiInProgress = true;
-  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+
+  // Optimization and selection type and info
+  ui.cb_tournament->setChecked(xtalopt->m_tournamentSelection);
+  ui.cb_crowding->setChecked(xtalopt->m_crowdingDistance);
+  ui.sb_prec->setValue(xtalopt->m_objectivePrecision);
+
+  if (xtalopt->m_optimizationType == "pareto") {
+    ui.combo_optType->setCurrentIndex(1);
+    ui.cb_crowding->setEnabled(true);
+    ui.cb_tournament->setEnabled(true);
+  } else if (xtalopt->m_optimizationType == "basic") {
+    ui.combo_optType->setCurrentIndex(0);
+    ui.cb_tournament->setDisabled(true);
+    ui.cb_crowding->setDisabled(true);
+  }
+
+  if (xtalopt->m_optimizationType == "pareto" &&
+      ui.cb_tournament->isChecked()) {
+    ui.cb_restrictPool->setEnabled(true);
+  } else {
+    ui.cb_restrictPool->setDisabled(true);
+  }
 
   // Objectives
+  ui.line_path->setPlaceholderText("Full path to the executable script");
+  ui.line_output->setPlaceholderText("Script's output file name");
+
   bool wasBlocked = ui.cb_redo_objectives->blockSignals(true);
   ui.cb_redo_objectives->setChecked(xtalopt->m_objectivesReDo);
   ui.cb_redo_objectives->blockSignals(wasBlocked);
@@ -133,63 +143,71 @@ void TabMo::lockGUI()
   //ui.cb_redo_objectives->setDisabled(true);
 }
 
-bool TabMo::updateOptimizationInfo()
+bool TabMo::updateOptTypeInfo()
+{
+  if (m_updateGuiInProgress)
+    return false;
+
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+
+  xtalopt->m_objectivePrecision = ui.sb_prec->value();
+  xtalopt->m_tournamentSelection = ui.cb_tournament->isChecked();
+  xtalopt->m_restrictedPool = ui.cb_restrictPool->isChecked();
+  xtalopt->m_crowdingDistance = ui.cb_crowding->isChecked();
+  xtalopt->m_optimizationType = ui.combo_optType->currentText().toLower();
+  if (xtalopt->m_optimizationType == "basic") {
+    ui.cb_tournament->setDisabled(true);
+    ui.cb_crowding->setDisabled(true);
+  } else if (xtalopt->m_optimizationType == "pareto"){
+    ui.cb_tournament->setEnabled(true);
+    ui.cb_crowding->setEnabled(true);
+  }
+
+  if (xtalopt->m_optimizationType == "pareto" &&
+      ui.cb_tournament->isChecked()) {
+    ui.cb_restrictPool->setEnabled(true);
+  } else {
+    ui.cb_restrictPool->setDisabled(true);
+  }
+  return true;
+}
+
+bool TabMo::updateObjectives()
 {
   if (m_updateGuiInProgress)
     return true;
 
-  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
-  // Objectives/hardness; the process_objectives_info is called
-  // here to properly initialize the number of objectives and
-  // the hardness weight.
   xtalopt->m_objectivesReDo = ui.cb_redo_objectives->isChecked();
-  bool ret = xtalopt->processObjectivesInfo();
-  updateObjectivesTable();
 
-  return ret;
+  return true;
 }
 
 void TabMo::addObjectives()
 {
-  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
-
-  // A copy: for restoring table if anything goes wrong!
-  QStringList tmpobjectiveslst;
-  for(int i = 0; i < xtalopt->objectiveListSize(); i++)
-   tmpobjectiveslst.push_back(xtalopt->objectiveListGet(i));
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
   QString value_type = ui.combo_type->currentText();
   QString value_path = ui.line_path->text();
   QString value_outf = ui.line_output->text();
   QString value_wegt = QString::number(ui.sb_weight->value());
 
-  if (value_path.split(" ", QString::SkipEmptyParts).size() != 1
-      || value_outf.split(" ", QString::SkipEmptyParts).size() != 1)
-  {
-    errorPromptWindow("Invalid user-defined script/output file name!");
+  QString ins = value_type + " " + value_path + " "
+                + value_outf + " " + value_wegt;
+
+  if (!xtalopt->processInputObjectives(ins)) {
+    errorPromptWindow("Error adding objective!");
     return;
   }
 
-  QString ftxt = value_type + " " + value_path + " " + value_outf + " " + value_wegt;
-
-  xtalopt->objectiveListAdd(ftxt);
-
-  // If anything goes wrong with objective/weights; restore last ok info!
-  if (!updateOptimizationInfo())
-  {
-    errorPromptWindow("Total weight can't exceed 1.0!");
-    xtalopt->objectiveListClear();
-    for (int i = 0; i < tmpobjectiveslst.size(); i++)
-      xtalopt->objectiveListAdd(tmpobjectiveslst.at(i));
-    updateOptimizationInfo();
-  }
+  updateObjectivesTable();
 
   // Clean up the entry fields in "Add Objective" after adding a objective
-  //ui.line_path->setText("/path_to/script");
-  //ui.line_output->setText("/path_to/output_file");
   ui.line_output->clear();
+  ui.line_output->setPlaceholderText("Script's output file name");
   ui.line_path->clear();
+  ui.line_path->setPlaceholderText("Full path to the executable script");
   ui.sb_weight->setValue(0.0);
   ui.combo_type->setCurrentIndex(0);
   ui.push_addObjectives->setDefault(false);
@@ -197,12 +215,14 @@ void TabMo::addObjectives()
 
 void TabMo::removeObjectives()
 {
-  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
+  // First, check if a row is selected in the objective list
+  if (!ui.table_objectives->selectionModel()->hasSelection())
+    return;
 
-  // A copy: for restoring table if anything goes wrong!
-  QStringList tmpobjectiveslst;
-  for(int i = 0; i < xtalopt->objectiveListSize(); i++)
-    tmpobjectiveslst.push_back(xtalopt->objectiveListGet(i));
+  if (ui.table_objectives->selectionModel()->selectedRows().size() <= 0)
+    return;
+
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
   int row = ui.table_objectives->currentRow();
   int tot = ui.table_objectives->rowCount();
@@ -210,35 +230,34 @@ void TabMo::removeObjectives()
   if (tot == 0 || row < 0 || row > tot)
     return;
 
-  xtalopt->objectiveListRemove(row);
+  xtalopt->removeObjective(row);
 
-  // If anything goes wrong with objective/weights; restore last ok info!
-  if (!updateOptimizationInfo())
-  {
-    errorPromptWindow("Total weight can't exceed 1.0!");
-    xtalopt->objectiveListClear();
-    for (int i = 0; i < tmpobjectiveslst.size(); i++)
-      xtalopt->objectiveListAdd(tmpobjectiveslst.at(i));
-    updateOptimizationInfo();
-  }
+  updateObjectivesTable();
+
   ui.push_removeObjectives->setDefault(false);
 }
 
 void TabMo::updateObjectivesTable()
 {
-  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
   // Adjust the table size.
-  int numRows = xtalopt->objectiveListSize();
+  int numRows = xtalopt->getObjectivesNum();
 
   ui.table_objectives->setRowCount(numRows);
 
   for (int i = 0; i < numRows; i++) {
-    QStringList fline = xtalopt->objectiveListGet(i).split(" ", QString::SkipEmptyParts);
-    QTableWidgetItem* value_type = new QTableWidgetItem(fline[0]);
-    QTableWidgetItem* value_path = new QTableWidgetItem(fline[1]);
-    QTableWidgetItem* value_outf = new QTableWidgetItem(fline[2]);
-    QTableWidgetItem* value_wegt = new QTableWidgetItem(fline[3]);
+    QString tmp;
+    if (xtalopt->getObjectivesTyp(i) == xtalopt->Ot_Min)
+      tmp = "minimization";
+    else if (xtalopt->getObjectivesTyp(i) == xtalopt->Ot_Max)
+      tmp = "maximization";
+    else
+      tmp = "filtration";
+    QTableWidgetItem* value_type = new QTableWidgetItem(tmp);
+    QTableWidgetItem* value_path = new QTableWidgetItem(xtalopt->getObjectivesExe(i));
+    QTableWidgetItem* value_outf = new QTableWidgetItem(xtalopt->getObjectivesOut(i));
+    QTableWidgetItem* value_wegt = new QTableWidgetItem(QString::number(xtalopt->getObjectivesWgt(i)));
 
     ui.table_objectives->setItem(i, Oc_TYPE, value_type);
     ui.table_objectives->setItem(i, Oc_PATH, value_path);

@@ -143,7 +143,7 @@ public:
       // Step through all of the atom attributes and store them.
       xml_attribute attribute = node.attribute("elementType");
       if (attribute) {
-        atom.setAtomicNumber(ElemInfo::getAtomicNum(attribute.value()));
+        atom.setAtomicNumber(ElementInfo::getAtomicNum(attribute.value()));
       } else {
         // There is no element data, this atom node is corrupt.
         m_error += "Warning, corrupt element node found.";
@@ -436,7 +436,7 @@ bool CmlFormat::write(const Structure& s, std::ostream& out)
     atomNode.append_attribute("id") = index.str().c_str();
     const Atom& atom = s.atom(i);
     atomNode.append_attribute("elementType") =
-      ElemInfo::getAtomicSymbol(atom.atomicNumber()).c_str();
+      ElementInfo::getAtomicSymbol(atom.atomicNumber()).c_str();
     if (cell.isValid()) {
       Vector3 fracPos = cell.toFractional(atom.pos());
       atomNode.append_attribute("xFract") = fracPos.x();

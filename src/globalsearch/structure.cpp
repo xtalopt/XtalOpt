@@ -34,15 +34,16 @@ using namespace std;
 namespace GlobalSearch {
 
 Structure::Structure(QObject* parent)
-  : Molecule(), m_hasEnthalpy(false), m_updatedSinceDupChecked(true),
+  : Molecule(), m_updatedSinceSimChecked(true),
     m_primitiveChecked(false), m_skippedOptimization(false),
-    m_supercellGenerationChecked(false), m_histogramGenerationPending(false),
+    m_histogramGenerationPending(false), m_hasEnthalpy(false), 
     m_generation(0), m_id(0), m_rank(0), m_jobID(0), m_energy(0), m_enthalpy(0),
     m_PV(0), m_optStart(QDateTime()), m_optEnd(QDateTime()), m_index(-1),
     m_lock(QReadWriteLock::Recursive),
     m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true),
-    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0),
-    m_strucObjState(Structure::Os_NotCalculated), m_strucObjFailCt(0)
+    m_strucObjState(Structure::Os_NotCalculated), m_strucObjFailCt(0), m_paretoFront(-1),
+    m_aboveHull(std::numeric_limits<double>::quiet_NaN()),
+    m_hasValidComposition(true)
 {
   m_currentOptStep = 0;
   setStatus(Empty);
@@ -50,14 +51,16 @@ Structure::Structure(QObject* parent)
 }
 
 Structure::Structure(const Structure& other)
-  : Molecule(other), m_updatedSinceDupChecked(true), m_primitiveChecked(false),
-    m_skippedOptimization(false), m_supercellGenerationChecked(false),
-    m_histogramGenerationPending(false), m_generation(0), m_id(0), m_rank(0),
-    m_jobID(0), m_energy(0), m_enthalpy(0), m_PV(0), m_optStart(QDateTime()),
-    m_optEnd(QDateTime()), m_index(-1), m_lock(QReadWriteLock::Recursive),
+  : Molecule(other), m_updatedSinceSimChecked(true),
+    m_primitiveChecked(false), m_skippedOptimization(false),
+    m_histogramGenerationPending(false), m_hasEnthalpy(false),
+    m_generation(0), m_id(0), m_rank(0), m_jobID(0), m_energy(0), m_enthalpy(0),
+    m_PV(0), m_optStart(QDateTime()), m_optEnd(QDateTime()), m_index(-1),
+    m_lock(QReadWriteLock::Recursive),
     m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true),
-    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0),
-    m_strucObjState(Structure::Os_NotCalculated), m_strucObjFailCt(0)
+    m_strucObjState(Structure::Os_NotCalculated), m_strucObjFailCt(0), m_paretoFront(-1),
+    m_aboveHull(std::numeric_limits<double>::quiet_NaN()),
+    m_hasValidComposition(true)
 {
   *this = other;
 }
@@ -68,14 +71,16 @@ Structure::Structure(Structure&& other) noexcept
 }
 
 Structure::Structure(const GlobalSearch::Molecule& other)
-  : Molecule(other), m_updatedSinceDupChecked(true), m_primitiveChecked(false),
-    m_skippedOptimization(false), m_supercellGenerationChecked(false),
-    m_histogramGenerationPending(false), m_generation(0), m_id(0), m_rank(0),
-    m_jobID(0), m_energy(0), m_enthalpy(0), m_PV(0), m_optStart(QDateTime()),
-    m_optEnd(QDateTime()), m_index(-1), m_lock(QReadWriteLock::Recursive),
+  : Molecule(other), m_updatedSinceSimChecked(true),
+    m_primitiveChecked(false), m_skippedOptimization(false),
+    m_histogramGenerationPending(false), m_hasEnthalpy(false),
+    m_generation(0), m_id(0), m_rank(0), m_jobID(0), m_energy(0), m_enthalpy(0),
+    m_PV(0), m_optStart(QDateTime()), m_optEnd(QDateTime()), m_index(-1),
+    m_lock(QReadWriteLock::Recursive),
     m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true),
-    m_bulkModulus(-1.0), m_shearModulus(-1.0), m_vickersHardness(-1.0),
-    m_strucObjState(Structure::Os_NotCalculated), m_strucObjFailCt(0)
+    m_strucObjState(Structure::Os_NotCalculated), m_strucObjFailCt(0), m_paretoFront(-1),
+    m_aboveHull(std::numeric_limits<double>::quiet_NaN()),
+    m_hasValidComposition(true)
 {
   *this = other;
 }
@@ -104,10 +109,9 @@ Structure& Structure::operator=(const Structure& other)
 
     // Set properties
     m_hasEnthalpy = other.m_hasEnthalpy;
-    m_updatedSinceDupChecked = other.m_updatedSinceDupChecked.load();
+    m_updatedSinceSimChecked = other.m_updatedSinceSimChecked.load();
     m_primitiveChecked = other.m_primitiveChecked.load();
     m_skippedOptimization = other.m_skippedOptimization.load();
-    m_supercellGenerationChecked = other.m_supercellGenerationChecked.load();
     m_histogramGenerationPending = other.m_histogramGenerationPending;
     m_generation = other.m_generation;
     m_id = other.m_id;
@@ -116,7 +120,7 @@ Structure& Structure::operator=(const Structure& other)
     m_currentOptStep = other.m_currentOptStep;
     m_failCount = other.m_failCount;
     m_parents = other.m_parents;
-    m_dupString = other.m_dupString;
+    m_simString = other.m_simString;
     m_rempath = other.m_rempath;
     m_locpath = other.m_locpath;
     m_energy = other.m_energy;
@@ -129,12 +133,12 @@ Structure& Structure::operator=(const Structure& other)
     m_parentStructure = other.m_parentStructure;
     m_copyFiles = other.m_copyFiles;
     m_reusePreoptBonding = other.m_reusePreoptBonding;
-    m_bulkModulus = other.m_bulkModulus;
-    m_shearModulus = other.m_shearModulus;
-    m_vickersHardness = other.m_vickersHardness;
     m_strucObjValues = other.m_strucObjValues;
     m_strucObjState = ObjectivesState(other.m_strucObjState);
     m_strucObjFailCt = other.m_strucObjFailCt;
+    m_paretoFront = other.m_paretoFront;
+    m_aboveHull = other.m_aboveHull;
+    m_hasValidComposition = other.m_hasValidComposition;
   }
 
   return *this;
@@ -147,10 +151,9 @@ Structure& Structure::operator=(Structure&& other) noexcept
 
     // Set properties
     m_hasEnthalpy = std::move(other.m_hasEnthalpy);
-    m_updatedSinceDupChecked = other.m_updatedSinceDupChecked.load();
+    m_updatedSinceSimChecked = other.m_updatedSinceSimChecked.load();
     m_primitiveChecked = other.m_primitiveChecked.load();
     m_skippedOptimization = other.m_skippedOptimization.load();
-    m_supercellGenerationChecked = other.m_supercellGenerationChecked.load();
     m_histogramGenerationPending =
       std::move(other.m_histogramGenerationPending);
     m_generation = std::move(other.m_generation);
@@ -160,7 +163,7 @@ Structure& Structure::operator=(Structure&& other) noexcept
     m_currentOptStep = std::move(other.m_currentOptStep);
     m_failCount = std::move(other.m_failCount);
     m_parents = std::move(other.m_parents);
-    m_dupString = std::move(other.m_dupString);
+    m_simString = std::move(other.m_simString);
     m_rempath = std::move(other.m_rempath);
     m_locpath = std::move(other.m_locpath);
     m_energy = std::move(other.m_energy);
@@ -172,15 +175,15 @@ Structure& Structure::operator=(Structure&& other) noexcept
     m_index = std::move(other.m_index);
     m_parentStructure = std::move(other.m_parentStructure);
 
-    other.m_parentStructure = nullptr;
+    other.m_parentStructure = nullptr; // FIXME
     m_copyFiles = std::move(other.m_copyFiles);
     m_reusePreoptBonding = std::move(other.m_reusePreoptBonding);
-    m_bulkModulus = std::move(other.m_bulkModulus);
-    m_shearModulus = std::move(other.m_shearModulus);
-    m_vickersHardness = std::move(other.m_vickersHardness);
     m_strucObjValues = std::move(other.m_strucObjValues);
     m_strucObjState = std::move(ObjectivesState(other.m_strucObjState));
     m_strucObjFailCt = std::move(other.m_strucObjFailCt);
+    m_paretoFront = std::move(other.m_paretoFront);
+    m_aboveHull = std::move(other.m_aboveHull);
+    m_hasValidComposition = std::move(other.m_hasValidComposition);
   }
 
   return *this;
@@ -205,8 +208,6 @@ void Structure::writeStructureSettings(const QString& filename)
   settings->setValue("rank", getRank());
   settings->setValue("primitiveChecked", wasPrimitiveChecked());
   settings->setValue("skippedOptimization", skippedOptimization());
-  settings->setValue("supercellGenerationChecked",
-                     wasSupercellGenerationChecked());
   settings->setValue("jobID", getJobID());
   settings->setValue("currentOptStep", getCurrentOptStep());
   settings->setValue("parents", getParents());
@@ -216,6 +217,7 @@ void Structure::writeStructureSettings(const QString& filename)
   settings->setValue("failCount", getFailCount());
   settings->setValue("startTime", getOptTimerStart().toString());
   settings->setValue("endTime", getOptTimerEnd().toString());
+  settings->setValue("hasValidComposition", hasValidComposition());
   settings->beginWriteArray("copyFiles");
   for (size_t i = 0; i < m_copyFiles.size(); ++i) {
     settings->setArrayIndex(i);
@@ -250,11 +252,6 @@ void Structure::writeStructureSettings(const QString& filename)
     QString parentStructure = m_parentStructure->getTag();
     settings->setValue("parentStructure", parentStructure);
   }
-
-  // Aflow ML stuff
-  settings->setValue("bulkModulus", bulkModulus());
-  settings->setValue("shearModulus", shearModulus());
-  settings->setValue("vickersHardness", vickersHardness());
 
   // History
   settings->beginGroup("history");
@@ -357,9 +354,8 @@ void Structure::readStructureSettings(const QString& filename,
     setIndex(settings->value("index", 0).toInt());
     setRank(settings->value("rank", 0).toInt());
     setPrimitiveChecked(settings->value("primitiveChecked", 0).toBool());
+    setCompositionValidity(settings->value("hasValidComposition", 1).toBool());
     setSkippedOptimization(settings->value("skippedOptimization", 0).toBool());
-    setSupercellGenerationChecked(
-      settings->value("supercellGenerationChecked", 0).toBool());
     setJobID(settings->value("jobID", 0).toInt());
 
     setCurrentOptStep(settings->value("currentOptStep", 0).toInt());
@@ -415,10 +411,6 @@ void Structure::readStructureSettings(const QString& filename,
     }
     setPreoptBonding(preoptBonds);
     settings->endArray();
-
-    setBulkModulus(settings->value("bulkModulus", "-1.0").toDouble());
-    setShearModulus(settings->value("shearModulus", "-1.0").toDouble());
-    setVickersHardness(settings->value("vickersHardness", "-1.0").toDouble());
 
     // History
     settings->beginGroup("history");
@@ -662,8 +654,8 @@ void Structure::perceiveBonds()
   const auto& atoms = this->atoms();
   for (size_t i = 0; i < atoms.size(); ++i) {
     for (size_t j = i + 1; j < atoms.size(); ++j) {
-      const auto& rad1 = ElemInfo::getCovalentRadius(atoms[i].atomicNumber());
-      const auto& rad2 = ElemInfo::getCovalentRadius(atoms[j].atomicNumber());
+      const auto& rad1 = ElementInfo::getCovalentRadius(atoms[i].atomicNumber());
+      const auto& rad2 = ElementInfo::getCovalentRadius(atoms[j].atomicNumber());
       if (distance(atoms[i].pos(), atoms[j].pos()) < rad1 + rad2 + tol)
         addBond(i, j);
     }
@@ -672,7 +664,7 @@ void Structure::perceiveBonds()
 
 void Structure::structureChanged()
 {
-  m_updatedSinceDupChecked = true;
+  m_updatedSinceSimChecked = true;
 }
 
 void Structure::updateAndSkipHistory(const QList<unsigned int>& atomicNums,
@@ -841,8 +833,11 @@ bool Structure::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD,
   return true;
 }
 
-QString Structure::getResultsEntry(bool includeHardness, int objectives_num, int optstep) const
+QString Structure::getResultsEntry(int objectives_num, int optstep,
+                                   QList<QString> chemSys) const
 {
+  // This doesn't do anything! The one defined in xtal.cpp produces the
+  //   actual output.
   QString status;
   switch (getStatus()) {
     case Optimized:
@@ -855,11 +850,8 @@ QString Structure::getResultsEntry(bool includeHardness, int objectives_num, int
     case Removed:
       status = "Killed";
       break;
-    case Duplicate:
-      status = "Duplicate";
-      break;
-    case Supercell:
-      status = "Supercell";
+    case Similar:
+      status = "Similar";
       break;
     case Error:
       status = "Error";
@@ -889,13 +881,10 @@ QString Structure::getResultsEntry(bool includeHardness, int objectives_num, int
 
   QString out = QString("%1 %2 %3 %4 %5")
       .arg(getRank(), 6)
-      .arg(getGeneration(), 6)
-      .arg(getIDNumber(), 6)
+      .arg(getTag(), 8)
+      .arg(getChemicalFormula(), 12)
       .arg(getIndex(), 6)
       .arg(getEnthalpy(), 10);
-  if (includeHardness)
-    out += QString("%1")
-      .arg(vickersHardness(), 10);
   for (int i = 0; i < objectives_num; i++) {
     if (i < getStrucObjNumber())
       out += " "+QString("%1").arg(getStrucObjValues(i), 10);
@@ -906,6 +895,135 @@ QString Structure::getResultsEntry(bool includeHardness, int objectives_num, int
       .arg(status, 11);
 
   return out;
+}
+
+bool Structure::calculateNormalizedRDF(int nbins, double cutoff, double sigma)
+{
+  // First, check if we've already done this!
+  if (hasNormalizedRDF())
+    return true;
+
+  // Number of symbols in chemical system
+  QList<QString> symbols = getSymbols();
+  int nsymbs = symbols.size();
+  // Real-space bin size
+  double delta = cutoff / nbins;
+  // Number of bins equivalent to 3*sigma
+  int del_bin = 3 * std::ceil(sigma / delta);
+  // Gaussian exponential factor
+  double gaus_fact = -0.5 / (sigma * sigma);
+  // Soft cutoff for smoothing
+  double softcutoff = 0.99 * cutoff;
+
+  // Initialize a working copy of the rdf vector.
+  std::vector<std::vector<std::vector<double> > > rdf;
+
+  // A Sanity check
+  if (numAtoms() == 0 || nsymbs == 0)
+    return false;
+
+  //
+  rdf.clear();
+  rdf.resize(nbins);
+  for(int i = 0; i < nbins; i++) {
+    rdf[i].resize(nsymbs);
+    for (int j = 0; j < nsymbs; j++) {
+      rdf[i][j].resize(nsymbs, 0.0);
+    }
+  }
+
+  // Translation vectors of the unit cell in various directions
+  std::vector<Vector3> vecs = {unitCell().aVector(), unitCell().bVector(), unitCell().cVector()};
+
+  // How many translation is needed in each direction to cover the cutoff?
+  std::vector<int> expan;
+  for (int i = 0; i < 3; i++)
+    expan.push_back(std::ceil(cutoff / vecs[i].norm()));
+
+  //
+  // Start producing "bond-resolved" rdf vector
+  //
+
+  // We should be careful with various kinds of double-counting:
+  // (I)  : a bond between type1-type2 needs to be included only once,
+  // (II) : once atom "i" is selected in the first loop, the atom "j" in
+  //   the second loop will include "i" itself and its images. We need to
+  //   exclude the "j" when it is the "i in the central unit cell".
+  // (III): still, and despite (I), the contribution of bonds between atoms
+  //   of the same type are counted twice, i.e., we allow "index0==index1",
+  //   to include the bonds between an atom and its own images.
+  for (int i = 0; i < this->atoms().size(); i++) {
+    const Vector3& v0 = this->atoms()[i].pos();
+    int indx0 = symbols.indexOf(ElementInfo::getAtomicSymbol(this->atoms()[i].atomicNumber()).c_str());
+    for (int j = 0; j < this->atoms().size(); j++) {
+      const Vector3& v1 = this->atoms()[j].pos();
+      int indx1 = symbols.indexOf(ElementInfo::getAtomicSymbol(this->atoms()[j].atomicNumber()).c_str());
+      // Avoid double-counting (I)
+      if (indx1 < indx0)
+        continue;
+      for (int s_1 = -expan[0]; s_1 <= expan[0]; s_1++) {
+        for (int s_2 = -expan[1]; s_2 <= expan[1]; s_2++) {
+          for (int s_3 = -expan[2]; s_3 <= expan[2]; s_3++) {
+            // Avoid double-counting (II)
+            if ((s_1 == 0 && s_2 == 0 && s_3 == 0) && i == j)
+              continue;
+            // Translation vector to the neighboring unit cell
+            Vector3 tVec = s_1 * vecs[0] + s_2 * vecs[1] + s_3 * vecs[2];
+            // Distance of the atom to the "image" atom
+            double distance = fabs((v1 + tVec - v0).norm());
+            // If it is within the cutoff, process it
+            if (distance < cutoff) {
+              int binn = std::floor(distance / delta);
+              for (int b = binn - del_bin; b <= binn + del_bin; b++) {
+                if (b < 0 || b >= nbins)
+                  continue;
+                double coor = b * delta;
+                double smooth = 1.0;
+                if (coor >= softcutoff)
+                  smooth = cos(0.5 * PI * (coor - softcutoff) / (cutoff - softcutoff));
+                rdf[b][indx0][indx1] += smooth * exp(gaus_fact * (distance - coor) * (distance - coor));
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  // Avoid double-counting (III)
+  for (int i = 0; i < nbins; i++)
+    for (int j = 0; j < nsymbs; j++)
+      rdf[i][j][j] *= 0.5;
+
+  // We are done with calculating the RDF! For the comparison (dot product),
+  //   however, we need the normalized RDF of pairwise entries.
+  // Basically, these can be separated in two steps/functions; one that gets
+  //   the raw RDF, and one that returns the normalizes RDF. But since currently
+  //   we don't make any use of the raw RDF, to save the computation time, we
+  //   perform the normalization of pairwise terms here; so that everything is
+  //   done only once for each structure.
+
+  // Get the norm of the "pairwise" rdf vectors
+  double norm = 0.0;
+  for (int i = 0; i < nbins; i++)
+    for (int j = 0; j < nsymbs; j++)
+      for (int k = j; k < nsymbs; k++)
+        norm += rdf[i][j][k] * rdf[i][j][k];
+
+  // Sanity check
+  if (norm < ZERO6)
+    return false;
+
+  // Normalize the rdf vector
+  norm = 1.0 / sqrt(norm);
+  for (int i = 0; i < nbins; i++)
+    for (int j = 0; j < nsymbs; j++)
+      for (int k = j; k < nsymbs; k++)
+        rdf[i][j][k] *= norm;
+
+  // We're good! Let's assign relevant variables
+  m_norm_rdf = rdf;
+
+  return true;
 }
 
 bool Structure::getNearestNeighborDistances(QList<double>* list) const
@@ -1318,21 +1436,51 @@ bool Structure::compareIADDistributions(const QList<QVariant>& d,
 
 QList<QString> Structure::getSymbols() const
 {
+  // Returns the ordered list of structure symbols "as is"; i.e.,
+  //   for a sub-system seed it might miss some of the symbols.
   QList<QString> list;
   for (std::vector<Atom>::const_iterator it = atoms().begin(),
                                          it_end = atoms().end();
        it != it_end; ++it) {
-    QString symbol = ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
+    QString symbol = ElementInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
     if (!list.contains(symbol)) {
       list.append(symbol);
     }
   }
-  qSort(list);
+  std::sort(list.begin(), list.end());
   return list;
+}
+
+QString Structure::getChemicalFormula() const
+{
+  // Returns the structure chemical formula "as is"; i.e.,
+  //   for a sub-system seed it might miss some of the symbols.
+  QList<QString> symbols = getSymbols();
+  QList<uint> counts = getNumberOfAtomsAlpha();
+
+  QString chemformula = "";
+  for (int i = 0; i < symbols.size(); i++) {
+    chemformula += QString("%1%2").arg(symbols.at(i)).arg(counts.at(i));
+  }
+  return chemformula;
+}
+
+uint Structure::getNumberOfAtomsOfSymbol(QString s) const
+{
+  // Retruns the number of atoms of a symbol (0 if that type
+  //   doesn't exist; e.g., sub-system seed).
+  QList<QString> symbols = getSymbols();
+  int index = symbols.indexOf(s);
+  if (index == -1)
+    return 0;
+  else
+    return getNumberOfAtomsAlpha().at(index);
 }
 
 QList<uint> Structure::getNumberOfAtomsAlpha() const
 {
+  // Returns the ordered list of atom counts "as is"; i.e.,
+  //   for a sub-system seed it might miss counts for some of the symbols.
   QList<uint> list;
   QList<QString> symbols = getSymbols();
   for (int i = 0; i < symbols.size(); i++)
@@ -1341,13 +1489,33 @@ QList<uint> Structure::getNumberOfAtomsAlpha() const
   for (std::vector<Atom>::const_iterator it = atoms().begin(),
                                          it_end = atoms().end();
        it != it_end; ++it) {
-    QString symbol = ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
+    QString symbol = ElementInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
     Q_ASSERT_X(symbols.contains(symbol), Q_FUNC_INFO,
                "getNumberOfAtomsAlpha found a symbol not in getSymbols.");
     ind = symbols.indexOf(symbol);
     ++list[ind];
   }
   return list;
+}
+
+QString Structure::getCompositionString(bool reduceToEmpirical) const
+{
+  // Returns the structure composition id ("n:m:o") "as is"; i.e.,
+  //   for a sub-system seed it might miss some of the symbols.
+  uint fu = (reduceToEmpirical) ? getFormulaUnits() : 1;
+
+  QList<uint> atoms = getNumberOfAtomsAlpha();
+
+  QString id = "";
+
+  if (atoms.size() == 0 || fu < 1)
+    return id;
+
+  for (int i = 0; i < atoms.size(); i++)
+    id += QString("%1:").arg(atoms[i]/fu);
+  id.chop(1);
+
+  return id;
 }
 
 QList<Vector3> Structure::getAtomCoordsFrac() const
@@ -1361,7 +1529,7 @@ QList<Vector3> Structure::getAtomCoordsFrac() const
   for (int i = 0; i < symbols.size(); i++) {
     symbol_ref = symbols.at(i);
     for (it = atoms().begin(); it != atoms().end(); it++) {
-      symbol_cur = ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
+      symbol_cur = ElementInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
       if (symbol_cur == symbol_ref) {
         list.append(unitCell().toFractional((*it).pos()));
       }
@@ -1458,7 +1626,7 @@ QHash<QString, QVariant> Structure::getFingerprint() const
   return fp;
 }
 
-void Structure::sortByEnthalpy(QList<Structure*>* structures)
+void Structure::sortByEnthalpyPerAtom(QList<Structure*>* structures)
 {
   uint numStructs = structures->size();
   if (numStructs <= 1)
@@ -1473,11 +1641,7 @@ void Structure::sortByEnthalpy(QList<Structure*>* structures)
     for (uint j = i + 1; j < numStructs; j++) {
       structure_j = structures->at(j);
       QReadLocker jLocker(&structure_j->lock());
-      if (structure_j->getEnthalpy() /
-            static_cast<double>(structure_j->numAtoms()) <
-          structure_i->getEnthalpy() /
-            static_cast<double>(
-              structure_i->numAtoms())) { // PSA Enthalpy per atom
+      if (structure_j->getEnthalpyPerAtom() < structure_i->getEnthalpyPerAtom()) { // PSA Enthalpy per atom
         structures->swap(i, j);
         tmp = structure_i;
         structure_i = structure_j;
@@ -1487,7 +1651,7 @@ void Structure::sortByEnthalpy(QList<Structure*>* structures)
   }
 }
 
-void Structure::sortByVickersHardness(QList<Structure*>* structures)
+void Structure::sortByDistanceAboveHull(QList<Structure*>* structures)
 {
   uint numStructs = structures->size();
   if (numStructs <= 1)
@@ -1502,7 +1666,15 @@ void Structure::sortByVickersHardness(QList<Structure*>* structures)
     for (uint j = i + 1; j < numStructs; j++) {
       structure_j = structures->at(j);
       QReadLocker jLocker(&structure_j->lock());
-      if (structure_j->vickersHardness() < structure_i->vickersHardness()) {
+      double hull_i = structure_i->getDistAboveHull(); 
+      double hull_j = structure_j->getDistAboveHull(); 
+      bool doSwap = false;
+      // Meanwhile, try to push "nan"s to the end of the list!
+      if ( (!std::isnan(hull_j) && std::isnan(hull_i)) || (hull_j < hull_i) ) {
+        doSwap = true;
+      }
+
+      if (doSwap) {
         structures->swap(i, j);
         tmp = structure_i;
         structure_i = structure_j;
@@ -1524,47 +1696,10 @@ void rankInPlace(const QList<Structure*>& structures)
   }
 }
 
-void Structure::rankByEnthalpy(const QList<Structure*>& structures)
+void Structure::sortAndRankStructures(QList<Structure*>* structures)
 {
-  uint numStructs = structures.size();
-
-  if (numStructs == 0)
-    return;
-
-  QList<Structure*> rstructures;
-
-  // Copy structures to a temporary list (don't modify input list!)
-  for (uint i = 0; i < numStructs; i++)
-    rstructures.append(structures.at(i));
-
-  // Simple selection sort
-  Structure *structure_i = 0, *structure_j = 0, *tmp = 0;
-  for (uint i = 0; i < numStructs - 1; i++) {
-    structure_i = rstructures.at(i);
-    QReadLocker iLocker(&structure_i->lock());
-
-    for (uint j = i + 1; j < numStructs; j++) {
-      structure_j = rstructures.at(j);
-      QReadLocker jLocker(&structure_j->lock());
-      if (structure_j->getEnthalpy() /
-            static_cast<double>(structure_j->numAtoms()) <
-          structure_i->getEnthalpy() /
-            static_cast<double>(
-              structure_i->numAtoms())) { // PSA Enthalpy per atom
-        rstructures.swap(i, j);
-        tmp = structure_i;
-        structure_i = structure_j;
-        structure_j = tmp;
-      }
-    }
-  }
-
-  rankInPlace(rstructures);
-}
-
-void Structure::sortAndRankByEnthalpy(QList<Structure*>* structures)
-{
-  sortByEnthalpy(structures);
+  //sortByEnthalpyPerAtom(structures);
+  sortByDistanceAboveHull(structures);
   rankInPlace(*structures);
 }
 
@@ -1581,27 +1716,5 @@ uint Structure::getFormulaUnits() const
   if (counts.empty())
     return 0;
   return std::accumulate(counts.begin(), counts.end(), counts[0], gcd);
-}
-
-// Returns the number of structures of each formula unit up to the
-// user-specified maximum formula units numberOfEachFormulaUnit.at(n) is the
-// number of structures with formula units n.
-QList<uint> Structure::countStructuresOfEachFormulaUnit(
-  QList<Structure*>* structures, int maxFU)
-{
-  QList<uint> numberOfEachFormulaUnit;
-  uint numStructs = structures->size();
-  Structure* structure_j = 0;
-  for (int i = 0; i <= maxFU; i++) {
-    int numbers = 0;
-    for (uint j = 0; j < numStructs; j++) {
-      structure_j = structures->at(j);
-      QReadLocker(&structure_j->lock());
-      if (structure_j->getFormulaUnits() == i)
-        numbers += 1;
-    }
-    numberOfEachFormulaUnit.append(numbers);
-  }
-  return numberOfEachFormulaUnit;
 }
 } // end namespace GlobalSearch

@@ -21,7 +21,7 @@
 
 namespace GlobalSearch {
 class Structure;
-class OptBase;
+class SearchBase;
 class Optimizer;
 }
 
@@ -32,7 +32,7 @@ class XtalOptOptimizer : public GlobalSearch::Optimizer
   Q_OBJECT
 
 public:
-  explicit XtalOptOptimizer(GlobalSearch::OptBase* parent,
+  explicit XtalOptOptimizer(GlobalSearch::SearchBase* parent,
                             const QString& filename = "");
   virtual ~XtalOptOptimizer() override;
 

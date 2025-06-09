@@ -142,7 +142,7 @@ bool GulpFormat::read(Structure* s, const QString& filename)
                    << line.c_str();
           return false;
         }
-        atomicNums.append(ElemInfo::getAtomicNum(lineSplit[1]));
+        atomicNums.append(ElementInfo::getAtomicNum(lineSplit[1]));
         coords.append(Vector3(atof(lineSplit[3].c_str()),
                               atof(lineSplit[4].c_str()),
                               atof(lineSplit[5].c_str())));

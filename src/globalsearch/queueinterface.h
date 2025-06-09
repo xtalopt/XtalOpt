@@ -15,7 +15,7 @@
 #ifndef QUEUEINTERFACE_H
 #define QUEUEINTERFACE_H
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/structure.h>
 
 #include <QHash>
@@ -46,11 +46,11 @@ public:
   /**
    * Constructor
    *
-   * @param parent OptBase parent
+   * @param parent SearchBase parent
    * @param settingFile Filename from which to initialize settings.
    */
-  explicit QueueInterface(OptBase* parent, const QString& settingFile = "")
-    : QObject(parent), m_opt(parent), m_hasDialog(false), m_dialog(0){};
+  explicit QueueInterface(SearchBase* parent, const QString& settingFile = "")
+    : QObject(parent), m_search(parent), m_hasDialog(false), m_dialog(0){};
 
   /**
    * Destructor
@@ -230,6 +230,20 @@ public slots:
                                       const QString& rem_file) = 0;
 
   /**
+   * Remove a file from a local or remote working directory of structure.
+   *
+   * @note This function does not check if file exists. If that was
+   * not checked before calling this, then a false return value might
+   * be because of both file not existing or an issue in removing it.
+   *
+   * @note It is a wrapper for both remote and local-remote runs.
+   * @note For a remote run, this creates/discards the ssh connection.
+   *
+   * @param filename The full path and name of the file to remove
+   */
+  virtual bool removeAFile(Structure* s, const QString& filename) = 0;
+
+  /**
    * Check if the file \a filename exists in the working directory
    * of Structure \a s and store the result in \a exists.
    *
@@ -316,7 +330,7 @@ public slots:
    */
   Optimizer* getCurrentOptimizer(Structure* s) const
   {
-    return m_opt->optimizer(s->getCurrentOptStep());
+    return m_search->optimizer(s->getCurrentOptStep());
   }
 
   /// \defgroup dialog Dialog access
@@ -337,14 +351,14 @@ public slots:
   virtual QDialog* dialog() { return m_dialog; };
 
 protected:
-  /// Cached pointer to the parent OptBase class
-  OptBase* m_opt;
+  /// Cached pointer to the parent SearchBase class
+  SearchBase* m_search;
 
   /// String identifying the type of queue interface
   QString m_idString;
 
   /// QStringList containing list of all template filenames
-  /// @note templates are actually handled in OptBase
+  /// @note templates are actually handled in SearchBase
   QStringList m_templates;
 
   /// Whether this QueueInterface has a configuration dialog.

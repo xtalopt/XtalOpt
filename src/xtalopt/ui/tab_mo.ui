@@ -10,77 +10,35 @@
     <height>635</height>
    </rect>
   </property>
+  <property name="font">
+   <font>
+    <pointsize>11</pointsize>
+   </font>
+  </property>
+  <property name="focusPolicy">
+   <enum>Qt::StrongFocus</enum>
+  </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <item row="2" column="0">
-    <widget class="QCheckBox" name="cb_redo_objectives">
-     <property name="mouseTracking">
-      <bool>true</bool>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::StrongFocus</enum>
-     </property>
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If selected, the code will perform the &amp;quot;jobFailAction&amp;quot; task for any structure that is marked for dismissing by a filtration objective.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="text">
-      <string>Handle structures discarded in filtration</string>
-     </property>
-     <property name="tristate">
-      <bool>false</bool>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="0" colspan="3">
+   <item row="0" column="1" colspan="2">
     <widget class="QGroupBox" name="groupBox">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
      <property name="title">
-      <string>Add an Objective</string>
+      <string>Add New Objectives</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
-      <item row="0" column="0">
+      <item row="1" column="0">
        <widget class="QGroupBox" name="groupBox_2">
         <property name="title">
          <string/>
         </property>
         <layout class="QGridLayout" name="gridLayout_4">
-         <item row="1" column="1">
-          <widget class="QLabel" name="label">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>20</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <pointsize>11</pointsize>
-            </font>
-           </property>
-           <property name="text">
-            <string>Optimization type</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QLabel" name="label_3">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>20</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <pointsize>11</pointsize>
-            </font>
-           </property>
-           <property name="text">
-            <string>Weight</string>
-           </property>
-          </widget>
-         </item>
          <item row="2" column="4">
           <widget class="QLineEdit" name="line_output">
            <property name="sizePolicy">
@@ -91,7 +49,7 @@
            </property>
            <property name="minimumSize">
             <size>
-             <width>400</width>
+             <width>300</width>
              <height>25</height>
             </size>
            </property>
@@ -101,82 +59,16 @@
              <height>25</height>
             </size>
            </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Output file name that user-defined script generates. Basically, this is a text file that contains a digit (integer or float) as the &amp;quot;first entry&amp;quot; of its &amp;quot;first line&amp;quot;; which is being read by XtalOpt.&lt;/p&gt;&lt;p&gt;(1) This entry is ignored for Hardness:AFLOW-ML calculations.&lt;/p&gt;&lt;p&gt;(2) This entry should not contain any white space character in between.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Output file name that user-defined script generates. Basically, this is a text file that contains a digit (integer or float) as the &amp;quot;first entry&amp;quot; of its &amp;quot;first line&amp;quot;; which is being read by XtalOpt.&lt;/p&gt;&lt;p&gt;This entry should not contain any white space character in between.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="text">
             <string/>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="4">
-          <widget class="QLineEdit" name="line_path">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>400</width>
-             <height>25</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>1000</width>
-             <height>25</height>
-            </size>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The user-defined &amp;quot;executable&amp;quot; script which performs the calculations for objective.&lt;/p&gt;&lt;p&gt;(1) This entry should include &amp;quot;abolute&amp;quot; path to avoid issues in locating the script.&lt;/p&gt;&lt;p&gt;(2) This field is mandatory for min/max/fil optimization types, but will be ignored for Hardness:AFLOW-ML calculations.&lt;/p&gt;&lt;p&gt;(3) For a remote job the script should be on the remote cluster, while for a local run it should be in a local path.&lt;/p&gt;&lt;p&gt;(4) This field should not contain any white space character in between.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="2">
-          <widget class="QDoubleSpinBox" name="sb_weight">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>220</width>
-             <height>25</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>220</width>
-             <height>25</height>
-            </size>
-           </property>
-           <property name="mouseTracking">
-            <bool>true</bool>
-           </property>
-           <property name="focusPolicy">
-            <enum>Qt::StrongFocus</enum>
-           </property>
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Optimization weight for the objective.&lt;/p&gt;&lt;p&gt;(1) This should be a float number, larger than or equal to 0.0, and less than or equal to 1.0.&lt;/p&gt;&lt;p&gt;(2) For &amp;quot;Filtration&amp;quot; task, this will be set to 0.0 by the code.&lt;/p&gt;&lt;p&gt;(3) Total weight for all objectives should be less than or equal to 1.0.&lt;/p&gt;&lt;p&gt;(4) If this is set to zero for any non-Filtration objective; that objective is being calculated but will not be included in the optimization.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="styleSheet">
-            <string notr="true"/>
-           </property>
-           <property name="buttonSymbols">
-            <enum>QAbstractSpinBox::UpDownArrows</enum>
-           </property>
-           <property name="maximum">
-            <double>1.000000000000000</double>
-           </property>
-           <property name="singleStep">
-            <double>0.050000000000000</double>
            </property>
           </widget>
          </item>
@@ -184,7 +76,7 @@
           <widget class="QComboBox" name="combo_type">
            <property name="minimumSize">
             <size>
-             <width>220</width>
+             <width>150</width>
              <height>25</height>
             </size>
            </property>
@@ -194,6 +86,11 @@
              <height>25</height>
             </size>
            </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
            <property name="mouseTracking">
             <bool>true</bool>
            </property>
@@ -201,7 +98,7 @@
             <enum>Qt::StrongFocus</enum>
            </property>
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Optimization type for the objective. Possible options are:&lt;/p&gt;&lt;p&gt;1- Minimization&lt;/p&gt;&lt;p&gt;2- Maximization&lt;/p&gt;&lt;p&gt;3- Filtration&lt;/p&gt;&lt;p&gt;4- Hardness:AFLOW-ML &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Objective type from:&lt;/p&gt;&lt;p&gt;1- Minimization&lt;/p&gt;&lt;p&gt;2- Maximization&lt;/p&gt;&lt;p&gt;3- Filtration&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="autoFillBackground">
             <bool>false</bool>
@@ -230,11 +127,6 @@
              <string>Filtration</string>
             </property>
            </item>
-           <item>
-            <property name="text">
-             <string>Hardness:AFLOW-ML</string>
-            </property>
-           </item>
           </widget>
          </item>
          <item row="2" column="3">
@@ -252,6 +144,39 @@
            </property>
            <property name="text">
             <string>Output file name</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="4">
+          <widget class="QLineEdit" name="line_path">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>300</width>
+             <height>25</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>1000</width>
+             <height>25</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The user-defined &amp;quot;executable&amp;quot; script which performs the calculations for objective.&lt;/p&gt;&lt;p&gt;(1) This entry should include &amp;quot;abolute&amp;quot; path to avoid issues in locating the script.&lt;/p&gt;&lt;p&gt;(2) This field is mandatory for all objectives.&lt;/p&gt;&lt;p&gt;(3) For a remote job the script should be on the remote cluster, while for a local run it should be in a local path.&lt;/p&gt;&lt;p&gt;(4) This field should not contain any white space character in between.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="text">
+            <string/>
            </property>
           </widget>
          </item>
@@ -273,10 +198,94 @@
            </property>
           </widget>
          </item>
+         <item row="2" column="2">
+          <widget class="QDoubleSpinBox" name="sb_weight">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>150</width>
+             <height>25</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>220</width>
+             <height>25</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="mouseTracking">
+            <bool>true</bool>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::StrongFocus</enum>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Optimization weight for the objective.&lt;/p&gt;&lt;p&gt;(1) This should be a float number, larger than or equal to 0.0, and less than or equal to 1.0.&lt;/p&gt;&lt;p&gt;(2) For &amp;quot;Filtration&amp;quot; task, this must be set to 0.0.&lt;/p&gt;&lt;p&gt;(3) Total weight for all objectives should be less than or equal to 1.0.&lt;/p&gt;&lt;p&gt;(4) If this is set to zero for any non-Filtration objective; that objective is being calculated but will not be included in the optimization.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true"/>
+           </property>
+           <property name="buttonSymbols">
+            <enum>QAbstractSpinBox::UpDownArrows</enum>
+           </property>
+           <property name="maximum">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.050000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="label">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>Objective type</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLabel" name="label_3">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>Weight</string>
+           </property>
+          </widget>
+         </item>
         </layout>
        </widget>
       </item>
-      <item row="1" column="0">
+      <item row="3" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout_5">
         <item>
          <widget class="QPushButton" name="push_addObjectives">
@@ -289,17 +298,22 @@
           <property name="minimumSize">
            <size>
             <width>160</width>
-            <height>32</height>
+            <height>25</height>
            </size>
           </property>
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
           <property name="focusPolicy">
-           <enum>Qt::NoFocus</enum>
+           <enum>Qt::StrongFocus</enum>
           </property>
           <property name="toolTip">
            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add an objective:&lt;/p&gt;&lt;p&gt;(1) A zero weight for any objective results in calculation of that objective; but excluding that from optimization.&lt;/p&gt;&lt;p&gt;(2) Sum of the total weight for introduced objectives can't exceed 1.0.&lt;/p&gt;&lt;p&gt;(3) Path to script and output filename entries can't contain any white space character.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="text">
-           <string>Add objective</string>
+           <string>Add Objective</string>
           </property>
          </widget>
         </item>
@@ -321,16 +335,103 @@
      </layout>
     </widget>
    </item>
-   <item row="1" column="0" colspan="3">
+   <item row="3" column="0">
+    <widget class="QCheckBox" name="cb_redo_objectives">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
+     <property name="mouseTracking">
+      <bool>true</bool>
+     </property>
+     <property name="focusPolicy">
+      <enum>Qt::StrongFocus</enum>
+     </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If selected, the code will perform the &amp;quot;jobFailAction&amp;quot; task for any structure that is marked for dismissing by a filtration objective.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Handle structures discarded in filtration</string>
+     </property>
+     <property name="tristate">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="3">
     <widget class="QGroupBox" name="groupBox_12">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
      <property name="title">
-      <string>List of Added Objectives</string>
+      <string>List Of Added Objectives</string>
      </property>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0">
+      <item row="2" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_6">
+        <item>
+         <widget class="QPushButton" name="push_removeObjectives">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>160</width>
+            <height>25</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::StrongFocus</enum>
+          </property>
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Remove the selected objective from the list.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string>Remove Objective</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0">
        <widget class="QTableWidget" name="table_objectives">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
         <property name="focusPolicy">
-         <enum>Qt::NoFocus</enum>
+         <enum>Qt::StrongFocus</enum>
         </property>
         <property name="editTriggers">
          <set>QAbstractItemView::NoEditTriggers</set>
@@ -354,10 +455,10 @@
          <bool>true</bool>
         </attribute>
         <attribute name="horizontalHeaderMinimumSectionSize">
-         <number>200</number>
+         <number>20</number>
         </attribute>
         <attribute name="horizontalHeaderDefaultSectionSize">
-         <number>200</number>
+         <number>80</number>
         </attribute>
         <attribute name="horizontalHeaderHighlightSections">
          <bool>false</bool>
@@ -368,72 +469,202 @@
         <attribute name="horizontalHeaderStretchLastSection">
          <bool>true</bool>
         </attribute>
+        <attribute name="verticalHeaderVisible">
+         <bool>false</bool>
+        </attribute>
+        <attribute name="verticalHeaderMinimumSectionSize">
+         <number>23</number>
+        </attribute>
         <attribute name="verticalHeaderDefaultSectionSize">
-         <number>30</number>
+         <number>23</number>
         </attribute>
         <column>
          <property name="text">
-          <string>Optimization type</string>
+          <string>Objective Type</string>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>Path to user script</string>
+          <string>User Script</string>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>Output filename</string>
+          <string>Output Filename</string>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
          </property>
         </column>
         <column>
          <property name="text">
           <string>Weight</string>
          </property>
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
         </column>
        </widget>
       </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QGroupBox" name="groupBox_3">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
+     <property name="toolTip">
+      <string/>
+     </property>
+     <property name="title">
+      <string>Optimization</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_5">
+      <item row="0" column="1">
+       <widget class="QComboBox" name="combo_optType">
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the optimization type from the following options:&lt;/p&gt;&lt;p&gt;(1) Basic: the parent selection is based on the &amp;quot;weighted sum of normalized objective(s) value&amp;quot; that is represented by the (generalized) scalar fitness function.&lt;/p&gt;&lt;p&gt;(2) Pareto: the parent selection is performed through Pareto optimization, i.e., performing a non-dominated sorting (and optionally applying crowding distances). The rank/distance information are then used to choose a parent structure by a &amp;quot;binary tournament selection&amp;quot; from two randomly chosen structures from the pool.&lt;/p&gt;&lt;p&gt;For tournament selection in Pareto optimization, if the &amp;quot;Restricted pool&amp;quot; is checked the choice of two random structures will be made from the top &amp;quot;pool size&amp;quot; number of structures from the entire pool.&lt;/p&gt;&lt;p&gt;Also, if the &amp;quot;Tournament selection&amp;quot; is un-checked, the rank/distance information are converted to a scalar fitness function for the selection of a new parent.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="editable">
+         <bool>false</bool>
+        </property>
+        <item>
+         <property name="text">
+          <string>Basic</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Pareto</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_6">
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Numeric precision</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <widget class="QCheckBox" name="cb_crowding">
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;For the case of Pareto optimization, check (uncheck) for using (not using) crowding distances correction to probabilities.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;For &amp;quot;Basic&amp;quot; optimization, this is irrelevant.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Apply crowding distance adjustments</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="toolTip">
+         <string/>
+        </property>
+        <property name="text">
+         <string>Optimization type</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QSpinBox" name="sb_prec">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The percision, in terms of number of decimal digits, used to specify all objective values in calculating the structures' fitness, hence, probability of them being selected for generating an offspring structure.&lt;/p&gt;&lt;p&gt;This is in particular important if Pareto optimization is used.&lt;/p&gt;&lt;p&gt;If the precision is set to &amp;quot;-1&amp;quot;, the numerical values will be used as is, i.e., no rounding is performed.&lt;/p&gt;&lt;p&gt;Default: -1 (no rounding)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="suffix">
+         <string/>
+        </property>
+        <property name="minimum">
+         <number>-1</number>
+        </property>
+        <property name="maximum">
+         <number>24</number>
+        </property>
+        <property name="value">
+         <number>-1</number>
+        </property>
+       </widget>
+      </item>
       <item row="1" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout_6">
-        <item>
-         <widget class="QPushButton" name="push_removeObjectives">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>160</width>
-            <height>32</height>
-           </size>
-          </property>
-          <property name="focusPolicy">
-           <enum>Qt::NoFocus</enum>
-          </property>
-          <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Remove the selected objective from the list.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="text">
-           <string>Remove objective</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <spacer name="horizontalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
+       <widget class="QCheckBox" name="cb_tournament">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use the &amp;quot;binary tournament selection&amp;quot; in Pareto optimization, instead of converting the rank/distance information to a scalar fitness function.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Tournament selection</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QCheckBox" name="cb_restrictPool">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Applicable only when &amp;quot;tournament selection&amp;quot; is checked; if checked the selection will be done from up to &amp;quot;pool size&amp;quot; number of the &amp;quot;best&amp;quot; structures, instead of randomly choosing the parent structure from the entire pool.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Restricted pool</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
@@ -441,10 +672,16 @@
   </layout>
  </widget>
  <tabstops>
+  <tabstop>combo_optType</tabstop>
+  <tabstop>cb_crowding</tabstop>
+  <tabstop>sb_prec</tabstop>
   <tabstop>combo_type</tabstop>
   <tabstop>sb_weight</tabstop>
   <tabstop>line_path</tabstop>
   <tabstop>line_output</tabstop>
+  <tabstop>push_addObjectives</tabstop>
+  <tabstop>table_objectives</tabstop>
+  <tabstop>push_removeObjectives</tabstop>
   <tabstop>cb_redo_objectives</tabstop>
  </tabstops>
  <resources/>

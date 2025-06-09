@@ -16,6 +16,11 @@
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
+  <property name="font">
+   <font>
+    <pointsize>11</pointsize>
+   </font>
+  </property>
   <property name="windowTitle">
    <string>XtalOpt</string>
   </property>
@@ -79,7 +84,7 @@
    <item row="4" column="0">
     <widget class="QPushButton" name="push_save">
      <property name="text">
-      <string>Sa&amp;ve Session</string>
+      <string>S&amp;ave Session</string>
      </property>
     </widget>
    </item>
@@ -142,7 +147,7 @@
    <item row="4" column="1">
     <widget class="QPushButton" name="push_resume">
      <property name="text">
-      <string>Resu&amp;me stored session</string>
+      <string>R&amp;esume Stored Session</string>
      </property>
     </widget>
    </item>
@@ -158,7 +163,7 @@
       <string>&amp;Hide</string>
      </property>
      <property name="autoDefault">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
     </widget>
    </item>
@@ -172,6 +177,9 @@
      </property>
      <property name="text">
       <string>&amp;Begin...</string>
+     </property>
+     <property name="default">
+      <bool>false</bool>
      </property>
     </widget>
    </item>

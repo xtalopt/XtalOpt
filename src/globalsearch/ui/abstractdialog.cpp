@@ -15,7 +15,7 @@
 
 #include <globalsearch/ui/abstractdialog.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queuemanager.h>
 #include <globalsearch/structure.h>
@@ -38,7 +38,7 @@ using namespace std;
 namespace GlobalSearch {
 
 AbstractDialog::AbstractDialog(QWidget* parent, Qt::WindowFlags f)
-  : QDialog(parent, f), m_opt(0), m_ownsOptBase(false)
+  : QDialog(parent, f), m_search(0), m_ownsSearchBase(false)
 {
   // Initialize vars, connections, etc
   progMutex = new QMutex;
@@ -61,11 +61,11 @@ void AbstractDialog::initialize()
   connect(ui_push_resume, SIGNAL(clicked()), this, SLOT(resumeSession()));
   connect(ui_push_hide, SIGNAL(clicked()), this, SLOT(showMinimized()));
 
-  connect(m_opt, SIGNAL(sessionStarted()), this, SLOT(updateGUI()));
-  connect(m_opt, SIGNAL(sessionStarted()), this, SLOT(lockGUI()));
-  connect(m_opt, SIGNAL(readOnlySessionStarted()), this, SLOT(updateGUI()));
-  connect(m_opt, SIGNAL(readOnlySessionStarted()), this, SLOT(lockGUI()));
-  connect(m_opt->queue(), SIGNAL(newStatusOverview(int, int, int, int)), this,
+  connect(m_search, SIGNAL(sessionStarted()), this, SLOT(updateGUI()));
+  connect(m_search, SIGNAL(sessionStarted()), this, SLOT(lockGUI()));
+  connect(m_search, SIGNAL(readOnlySessionStarted()), this, SLOT(updateGUI()));
+  connect(m_search, SIGNAL(readOnlySessionStarted()), this, SLOT(lockGUI()));
+  connect(m_search->queue(), SIGNAL(newStatusOverview(int, int, int, int)), this,
           SLOT(updateStatus(int, int, int, int)));
   connect(this, SIGNAL(sig_updateStatus(int, int, int, int)), this,
           SLOT(updateStatus_(int, int, int, int)));
@@ -88,13 +88,13 @@ void AbstractDialog::initialize()
   connect(this, SIGNAL(sig_repaintProgressBar()), this,
           SLOT(repaintProgressBar_()), Qt::QueuedConnection);
 
-  connect(m_opt, SIGNAL(warningStatement(const QString&)), this,
+  connect(m_search, SIGNAL(warningStatement(const QString&)), this,
           SLOT(newWarning(const QString&)), Qt::QueuedConnection);
-  connect(m_opt, SIGNAL(debugStatement(const QString&)), this,
+  connect(m_search, SIGNAL(debugStatement(const QString&)), this,
           SLOT(newDebug(const QString&)), Qt::QueuedConnection);
-  connect(m_opt, SIGNAL(errorStatement(const QString&)), this,
+  connect(m_search, SIGNAL(errorStatement(const QString&)), this,
           SLOT(newError(const QString&)), Qt::QueuedConnection);
-  connect(m_opt, SIGNAL(messageStatement(const QString&)), this,
+  connect(m_search, SIGNAL(messageStatement(const QString&)), this,
           SLOT(newMessage(const QString&)), Qt::QueuedConnection);
   connect(this, SIGNAL(sig_messageBox(const QString&)), this,
           SLOT(messageBox_(const QString&)), Qt::QueuedConnection);
@@ -113,15 +113,15 @@ void AbstractDialog::initialize()
 
 AbstractDialog::~AbstractDialog()
 {
-  if (m_ownsOptBase)
-    delete m_opt;
+  if (m_ownsSearchBase)
+    delete m_search;
 }
 
 void AbstractDialog::disconnectGUI()
 {
   emit tabsDisconnectGUI();
-  disconnect(m_opt, SIGNAL(sessionStarted()), this, SLOT(updateGUI()));
-  disconnect(m_opt, SIGNAL(readOnlySessionStarted()), this, SLOT(updateGUI()));
+  disconnect(m_search, SIGNAL(sessionStarted()), this, SLOT(updateGUI()));
+  disconnect(m_search, SIGNAL(readOnlySessionStarted()), this, SLOT(updateGUI()));
   disconnect(this, SIGNAL(sig_updateStatus(int, int, int, int)), this,
              SLOT(updateStatus_(int, int, int, int)));
 }
@@ -138,10 +138,10 @@ void AbstractDialog::lockGUI()
 void AbstractDialog::updateGUI()
 {
   setWindowTitle(QString("%1 - %2 @ %3%4")
-                   .arg(m_opt->getIDString())
-                   .arg(m_opt->description)
-                   .arg(m_opt->host)
-                   .arg(m_opt->readOnly ? " (Read-Only mode)" : ""));
+                   .arg(m_search->getIDString())
+                   .arg(m_search->description)
+                   .arg(m_search->host)
+                   .arg(m_search->readOnly ? " (Read-Only mode)" : ""));
   emit tabsUpdateGUI();
 }
 
@@ -149,7 +149,7 @@ void AbstractDialog::resumeSession()
 {
   QString filename;
   filename = QFileDialog::getOpenFileName(
-    this, QString("Select .state file to resume"), m_opt->locWorkDir,
+    this, QString("Select .state file to resume"), m_search->locWorkDir,
     "*.state;;*.*", 0, QFileDialog::DontUseNativeDialog);
 
   if (!filename.isEmpty())
@@ -159,23 +159,23 @@ void AbstractDialog::resumeSession()
 void AbstractDialog::resumeSession_(const QString& filename)
 {
   startProgressUpdate(tr("Resuming session..."), 0, 0);
-  m_opt->tracker()->lockForWrite();
-  m_opt->tracker()->deleteAllStructures();
-  m_opt->tracker()->unlock();
-  if (!m_opt->load(filename)) {
+  m_search->tracker()->lockForWrite();
+  m_search->tracker()->deleteAllStructures();
+  m_search->tracker()->unlock();
+  if (!m_search->load(filename)) {
     stopProgressUpdate();
-    m_opt->isStarting = false;
+    m_search->isStarting = false;
     return;
   }
-  m_opt->emitStartingSession();
+  m_search->emitStartingSession();
 
   stopProgressUpdate();
 
   // Emit session started signals
-  if (m_opt->readOnly)
-    m_opt->emitReadOnlySessionStarted();
+  if (m_search->readOnly)
+    m_search->emitReadOnlySessionStarted();
   else
-    m_opt->emitSessionStarted();
+    m_search->emitSessionStarted();
 }
 
 void AbstractDialog::updateStatus_(int opt, int run, int fail, int tot)
@@ -265,7 +265,7 @@ void AbstractDialog::reemitTabsReadSettings(const QString& filename)
 
 void AbstractDialog::errorBox_(const QString& s)
 {
-  if (m_opt->usingGUI()) {
+  if (m_search->usingGUI()) {
     QMessageBox::critical(this, "Error", s);
   } else {
     qDebug() << "Error: " << s;
@@ -274,7 +274,7 @@ void AbstractDialog::errorBox_(const QString& s)
 
 void AbstractDialog::messageBox_(const QString& s)
 {
-  if (m_opt->usingGUI()) {
+  if (m_search->usingGUI()) {
     QMessageBox::information(this, "Message", s);
   }
 }

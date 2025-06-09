@@ -21,16 +21,16 @@
 
 #include <globalsearch/queueinterfaces/slurm.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/ui/abstractdialog.h>
 
 #include "ui_slurmdialog.h"
 
 namespace GlobalSearch {
 
-SlurmConfigDialog::SlurmConfigDialog(AbstractDialog* parent, OptBase* o,
+SlurmConfigDialog::SlurmConfigDialog(AbstractDialog* parent, SearchBase* o,
                                      SlurmQueueInterface* p)
-  : QDialog(parent), m_opt(o), m_slurm(p), ui(new Ui::SlurmConfigDialog)
+  : QDialog(parent), m_search(o), m_slurm(p), ui(new Ui::SlurmConfigDialog)
 {
   ui->setupUi(this);
 }
@@ -54,7 +54,7 @@ void SlurmConfigDialog::updateGUI()
   ui->edit_squeue->blockSignals(false);
   ui->edit_sbatch->blockSignals(false);
 
-  ui->widget_globalQueueInterfaceSettings->updateGUI(m_opt);
+  ui->widget_globalQueueInterfaceSettings->updateGUI(m_search);
 }
 
 void SlurmConfigDialog::accept()
@@ -63,7 +63,7 @@ void SlurmConfigDialog::accept()
   m_slurm->m_statusCommand = ui->edit_squeue->text().trimmed();
   m_slurm->m_submitCommand = ui->edit_sbatch->text().trimmed();
 
-  ui->widget_globalQueueInterfaceSettings->accept(m_opt);
+  ui->widget_globalQueueInterfaceSettings->accept(m_search);
 
   QDialog::accepted();
   close();

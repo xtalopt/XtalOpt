@@ -14,7 +14,7 @@
 
 #include <xtalopt/ui/tab_progress.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queuemanager.h>
@@ -65,12 +65,21 @@ TabProgress::TabProgress(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
   QHeaderView* horizontal = ui.table_list->horizontalHeader();
   horizontal->setSectionResizeMode(QHeaderView::ResizeToContents);
 
+  // Verbose output (but it is relevant depending on the code compilation flag)
+  ui.cb_verbose->setChecked(m_search->m_verbose);
+#ifndef XTALOPT_DEBUG
+  ui.cb_verbose->setEnabled(false);
+#endif
+  connect(ui.cb_verbose, SIGNAL(toggled(bool)), this, SLOT(updateVerboseOutput()));
+
+
+
   rowTracking = true;
 
   // dialog connections
   connect(m_dialog, SIGNAL(moleculeChanged(GlobalSearch::Structure*)), this,
           SLOT(highlightXtal(GlobalSearch::Structure*)));
-  connect(m_opt, SIGNAL(sessionStarted()), this, SLOT(startTimer()));
+  connect(m_search, SIGNAL(sessionStarted()), this, SLOT(startTimer()));
 
   // Progress table connections
   connect(m_timer, SIGNAL(timeout()), this, SLOT(updateProgressTable()));
@@ -81,23 +90,26 @@ TabProgress::TabProgress(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
           SLOT(updateProgressTable()));
   connect(ui.table_list, SIGNAL(currentCellChanged(int, int, int, int)), this,
           SLOT(selectMoleculeFromProgress(int, int, int, int)));
-  connect(m_opt->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
+  connect(m_search->tracker(), SIGNAL(newStructureAdded(GlobalSearch::Structure*)),
           this, SLOT(addNewEntry()), Qt::QueuedConnection);
-  connect(m_opt->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
+  connect(m_search->queue(), SIGNAL(structureUpdated(GlobalSearch::Structure*)),
           this, SLOT(newInfoUpdate(GlobalSearch::Structure*)));
   connect(this, SIGNAL(infoUpdate()), this, SLOT(updateInfo()));
   connect(ui.table_list, SIGNAL(customContextMenuRequested(QPoint)), this,
           SLOT(progressContextMenu(QPoint)));
   connect(ui.push_refreshAll, SIGNAL(clicked()), this, SLOT(updateAllInfo()));
-  connect(m_opt, SIGNAL(refreshAllStructureInfo()), this,
+  connect(m_search, SIGNAL(refreshAllStructureInfo()), this,
           SLOT(updateAllInfo()));
-  connect(m_opt, SIGNAL(startingSession()), this, SLOT(disableRowTracking()));
-  connect(m_opt, SIGNAL(sessionStarted()), this, SLOT(enableRowTracking()));
+  connect(m_search, SIGNAL(startingSession()), this, SLOT(disableRowTracking()));
+  connect(m_search, SIGNAL(sessionStarted()), this, SLOT(enableRowTracking()));
   connect(this, SIGNAL(updateTableEntry(int, const XO_Prog_TableEntry&)), this,
           SLOT(setTableEntry(int, const XO_Prog_TableEntry&)));
-  connect(ui.push_rank, SIGNAL(clicked()), this, SLOT(updateRank()));
-  connect(ui.push_print, SIGNAL(clicked()), this, SLOT(printFile()));
   connect(ui.push_clear, SIGNAL(clicked()), this, SLOT(clearFiles()));
+  // This is a potentially demanding task: refresh info after hull calculations
+  connect(m_search->queue(), SIGNAL(hullCalculationFinished()), this, SLOT(refreshHullFrontEntries()));
+  connect(ui.push_hull, SIGNAL(clicked()), this, SLOT(refreshHullFrontEntries()));
+  // This doesn't do anything; removed the button from the GUI!
+  //connect(ui.push_rank, SIGNAL(clicked()), this, SLOT(updateRank()));
 
   initialize();
 }
@@ -118,7 +130,7 @@ TabProgress::~TabProgress()
 void TabProgress::writeSettings(const QString& filename)
 {
   SETTINGS(filename);
-  const int version = 1;
+  const int version = 4;
   settings->beginGroup("xtalopt/progress");
   settings->setValue("version", version);
   settings->setValue("refreshTime", ui.spin_period->value());
@@ -140,10 +152,15 @@ void TabProgress::disconnectGUI()
   ui.push_refreshAll->disconnect();
   ui.spin_period->disconnect();
   ui.table_list->disconnect();
-  disconnect(m_opt->tracker(), 0, this, 0);
-  disconnect(m_opt->queue(), 0, this, 0);
+  disconnect(m_search->tracker(), 0, this, 0);
+  disconnect(m_search->queue(), 0, this, 0);
   disconnect(m_dialog, 0, this, 0);
   this->disconnect();
+}
+
+void TabProgress::updateVerboseOutput()
+{
+  m_search->m_verbose = ui.cb_verbose->isChecked();
 }
 
 void TabProgress::updateProgressTable()
@@ -154,7 +171,7 @@ void TabProgress::updateProgressTable()
     return;
   }
 
-  QList<Structure*> running = m_opt->queue()->getAllRunningStructures();
+  QList<Structure*> running = m_search->queue()->getAllRunningStructures();
 
   for (QList<Structure *>::iterator it = running.begin(),
                                     it_end = running.end();
@@ -172,8 +189,8 @@ void TabProgress::addNewEntry()
 
   // The new entry will be at the end of the table, so determine the index:
   int index = ui.table_list->rowCount();
-  QReadLocker trackerLocker(m_opt->tracker()->rwLock());
-  Xtal* xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
+  QReadLocker trackerLocker(m_search->tracker()->rwLock());
+  Xtal* xtal = qobject_cast<Xtal*>(m_search->tracker()->at(index));
   // qDebug() << "TabProgress::addNewEntry() at index " << index;
 
   // Turn off signals
@@ -188,7 +205,7 @@ void TabProgress::addNewEntry()
   // Add the new row
   ui.table_list->insertRow(index);
   // Columns: once for each column in ProgressColumns:
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i <= ProgressColumns::Ancestry; i++) {
     ui.table_list->setItem(index, i, new QTableWidgetItem());
   }
 
@@ -199,24 +216,25 @@ void TabProgress::addNewEntry()
   XO_Prog_TableEntry e;
   xtal->lock().lockForRead();
   e.elapsed = xtal->getOptElapsed();
-  e.gen = xtal->getGeneration();
-  e.id = xtal->getIDNumber();
+  e.tag = xtal->getTag();
+  e.formula = xtal->getChemicalFormula();
   e.parents = xtal->getParents();
   e.jobID = xtal->getJobID();
-  e.volume = xtal->getVolume();
+  e.volume = xtal->getVolumePerAtom();
   e.status = "Waiting for data...";
   e.brush = QBrush(Qt::white);
   e.pen = QBrush(Qt::black);
   e.spg = QString::number(xtal->getSpaceGroupNumber()) + ": " +
           xtal->getSpaceGroupSymbol();
-  e.FU = xtal->getFormulaUnits();
 
   if (xtal->hasEnthalpy() || xtal->getEnergy() != 0)
     e.enthalpy =
-      xtal->getEnthalpy() /
-      static_cast<double>(xtal->getFormulaUnits()); // PSA Enthalpy per atom
+      xtal->getEnthalpyPerAtom();
   else
     e.enthalpy = 0.0;
+
+  e.abovehull = xtal->getDistAboveHull();
+  e.front = xtal->getParetoFront();
 
   xtal->lock().unlock();
 
@@ -239,9 +257,9 @@ void TabProgress::updateAllInfo()
     qDebug() << "Killing extra TabProgress::updateAllInfo() call";
     return;
   }
-  QReadLocker trackerLocker(m_opt->tracker()->rwLock());
+  QReadLocker trackerLocker(m_search->tracker()->rwLock());
   QWriteLocker infoUpdateTrackerLocker(m_infoUpdateTracker.rwLock());
-  QList<Structure*>* structures = m_opt->tracker()->list();
+  QList<Structure*>* structures = m_search->tracker()->list();
   for (int i = 0; i < ui.table_list->rowCount(); i++) {
     m_infoUpdateTracker.append(structures->at(i));
     emit infoUpdate();
@@ -288,8 +306,8 @@ void TabProgress::updateInfo_()
   }
   m_infoUpdateTracker.unlock();
 
-  QReadLocker trackerLocker(m_opt->tracker()->rwLock());
-  int i = m_opt->tracker()->list()->indexOf(structure);
+  QReadLocker trackerLocker(m_search->tracker()->rwLock());
+  int i = m_search->tracker()->list()->indexOf(structure);
 
   Xtal* xtal = qobject_cast<Xtal*>(structure);
 
@@ -305,33 +323,34 @@ void TabProgress::updateInfo_()
   }
 
   XO_Prog_TableEntry e;
-  uint totalOptSteps = m_opt->getNumOptSteps();
+  uint totalOptSteps = m_search->getNumOptSteps();
   e.brush = QBrush(Qt::white);
   e.pen = QBrush(Qt::black);
 
   QReadLocker xtalLocker(&xtal->lock());
   e.elapsed = xtal->getOptElapsed();
-  e.gen = xtal->getGeneration();
-  e.id = xtal->getIDNumber();
+  e.tag = xtal->getTag();
+  e.formula = xtal->getChemicalFormula();
   e.parents = xtal->getParents();
   e.jobID = xtal->getJobID();
-  e.volume = xtal->getVolume();
+  e.volume = xtal->getVolumePerAtom();
   e.spg = QString::number(xtal->getSpaceGroupNumber()) + ": " +
           xtal->getSpaceGroupSymbol();
-  e.FU = xtal->getFormulaUnits();
 
   if (xtal->hasEnthalpy() || xtal->getEnergy() != 0)
     e.enthalpy =
-      xtal->getEnthalpy() /
-      static_cast<double>(xtal->getFormulaUnits()); // PSA Enthalpy per atom
+      xtal->getEnthalpyPerAtom();
   else
     e.enthalpy = 0.0;
+
+  e.abovehull = xtal->getDistAboveHull();
+  e.front = xtal->getParetoFront();
 
   switch (xtal->getStatus()) {
     case Xtal::InProcess: {
       xtalLocker.unlock();
       QueueInterface::QueueStatus state =
-        m_opt->queueInterface(xtal->getCurrentOptStep())->getStatus(xtal);
+        m_search->queueInterface(xtal->getCurrentOptStep())->getStatus(xtal);
       xtalLocker.relock();
       switch (state) {
         case QueueInterface::Running:
@@ -400,13 +419,9 @@ void TabProgress::updateInfo_()
       e.status = "Calculating objectives...";
       e.brush.setColor(Qt::yellow);
       break;
-    case Xtal::Duplicate:
-      e.status = tr("Duplicate of %1").arg(xtal->getDuplicateString());
+    case Xtal::Similar:
+      e.status = tr("Similar to %1").arg(xtal->getSimilarityString());
       e.brush.setColor(Qt::darkGreen);
-      break;
-    case Xtal::Supercell:
-      e.status = tr("Supercell of %1").arg(xtal->getSupercellString());
-      e.brush.setColor(QColor(204, 102, 0, 255));
       break;
     case Xtal::StepOptimized:
       e.status = "Checking status...";
@@ -448,21 +463,123 @@ void TabProgress::updateInfo_()
   emit updateTableEntry(i, e);
 }
 
+
+// These are functions to only update the hull and front entries in table.
+// They are called after each optimization is successfully finished or
+//   by the user request.
+void TabProgress::refreshHullFrontEntries()
+{
+  if (!m_update_all_mutex->tryLock()) {
+    qDebug() << "Killing extra table refresh call in refreshHullFrontEntries()";
+    return;
+  }
+
+  QReadLocker trackerLocker(m_search->tracker()->rwLock());
+  QWriteLocker hullInfoUpdateTrackerLocker(m_hullInfoUpdateTracker.rwLock());
+
+  QList<Structure*>* structures = m_search->tracker()->list();
+  for (int i = 0; i < ui.table_list->rowCount(); i++) {
+    m_hullInfoUpdateTracker.append(structures->at(i));
+    QtConcurrent::run(this, &TabProgress::refreshHullFrontEntries_);
+  }
+
+  m_update_all_mutex->unlock();
+  return;
+}
+
+void TabProgress::refreshHullFrontEntries_()
+{
+  // Don't update while a context operation is in the works
+  if (m_context_xtal != 0) {
+    qDebug()
+      << "TabProgress::refreshHullFrontEntries_: Waiting for context operation"
+      << " to complete (" << m_context_xtal << ").";
+    return;
+  }
+  // Return if we don't have any structure
+  if (m_hullInfoUpdateTracker.size() == 0) {
+    return;
+  }
+
+  // Prep variables
+  Structure* structure;
+  m_hullInfoUpdateTracker.lockForWrite();
+  if (!m_hullInfoUpdateTracker.popFirst(structure)) {
+    m_hullInfoUpdateTracker.unlock();
+    return;
+  }
+  m_hullInfoUpdateTracker.unlock();
+
+  QReadLocker trackerLocker(m_search->tracker()->rwLock());
+  int row = m_search->tracker()->list()->indexOf(structure);
+
+  if (row < 0 || row > ui.table_list->rowCount() - 1) {
+    qDebug() << "TabProgress::refreshHullFrontEntries_: Trying to update an index "
+                "that doesn't exist...yet (" << row << ")";
+    return;
+  }
+
+  Xtal* xtal = qobject_cast<Xtal*>(structure);
+
+  QReadLocker xtalLocker(&xtal->lock());
+
+  // Lock the table
+  QMutexLocker locker(m_mutex);
+
+  // Read in the latest values
+  double abovehull = xtal->getDistAboveHull();
+  int    front     = xtal->getParetoFront();
+
+  // Update the table entries
+  if (!std::isnan(abovehull))
+    ui.table_list->item(row, AboveHull)->setText(QString("%1").arg(abovehull, 12, 'f', 6));
+  else
+    ui.table_list->item(row, AboveHull)->setText("N/A");
+
+  if (front >= 0)
+    ui.table_list->item(row, Front)->setText(QString::number(front));
+  else
+    ui.table_list->item(row, Front)->setText("N/A");
+}
+
+XO_Prog_TableEntry TabProgress::getTableEntry(int row)
+{
+  // Lock the table
+  QMutexLocker locker(m_mutex);
+
+  XO_Prog_TableEntry e;
+
+  e.elapsed = ui.table_list->item(row, TimeElapsed)->text();
+  e.tag = ui.table_list->item(row, Tag)->text();
+  e.formula = ui.table_list->item(row, Formula)->text();
+  e.parents = ui.table_list->item(row, Ancestry)->text();
+  e.spg = ui.table_list->item(row, SpaceGroup)->text();
+  e.status = ui.table_list->item(row, Status)->text();
+  e.brush = ui.table_list->item(row, Status)->background();
+  e.pen = ui.table_list->item(row, Status)->foreground();
+  e.volume = ui.table_list->item(row, Volume)->text().toDouble();
+  e.jobID = ui.table_list->item(row, JobID)->text().toInt();
+  e.enthalpy = ui.table_list->item(row, Enthalpy)->text().toDouble();
+  e.abovehull = ui.table_list->item(row, AboveHull)->text().toDouble();
+  e.front = ui.table_list->item(row, Front)->text().toInt();
+
+  return e;
+}
+
 void TabProgress::setTableEntry(int row, const XO_Prog_TableEntry& e)
 {
   // Lock the table
   QMutexLocker locker(m_mutex);
 
   ui.table_list->item(row, TimeElapsed)->setText(e.elapsed);
-  ui.table_list->item(row, Gen)->setText(QString::number(e.gen));
-  ui.table_list->item(row, Mol)->setText(QString::number(e.id));
+  ui.table_list->item(row, Tag)->setText(e.tag);
+  ui.table_list->item(row, Formula)->setText(e.formula);
   ui.table_list->item(row, Ancestry)->setText(e.parents);
   ui.table_list->item(row, SpaceGroup)->setText(e.spg);
   ui.table_list->item(row, Volume)->setText(QString::number(e.volume, 'f', 2));
   ui.table_list->item(row, Status)->setText(e.status);
   ui.table_list->item(row, Status)->setBackground(e.brush);
   ui.table_list->item(row, Status)->setForeground(e.pen);
-  ui.table_list->item(row, FU)->setText(QString::number(e.FU));
 
   if (e.jobID)
     ui.table_list->item(row, JobID)->setText(QString::number(e.jobID));
@@ -470,34 +587,42 @@ void TabProgress::setTableEntry(int row, const XO_Prog_TableEntry& e)
     ui.table_list->item(row, JobID)->setText("N/A");
 
   if (e.enthalpy != 0)
-    ui.table_list->item(row, Enthalpy)->setText(QString::number(e.enthalpy));
+    ui.table_list->item(row, Enthalpy)->setText(QString("%1").arg(e.enthalpy, 12, 'f', 6));
   else
     ui.table_list->item(row, Enthalpy)->setText("N/A");
+
+  if (!std::isnan(e.abovehull))
+    ui.table_list->item(row, AboveHull)->setText(QString("%1").arg(e.abovehull, 12, 'f', 6));
+  else
+    ui.table_list->item(row, AboveHull)->setText("N/A");
+
+  if (e.front >= 0)
+    ui.table_list->item(row, Front)->setText(QString::number(e.front));
+  else
+    ui.table_list->item(row, Front)->setText("N/A");
 }
 
 void TabProgress::selectMoleculeFromProgress(int row, int, int oldrow, int)
 {
   Q_UNUSED(oldrow);
-  if (m_opt->isStarting) {
+  if (m_search->isStarting) {
     // qDebug() << "TabProgress::selectMoleculeFromProgress: Not updating widget
     // while session is starting";
     return;
   }
   if (row == -1)
     return;
-  emit moleculeChanged(qobject_cast<Xtal*>(m_opt->tracker()->at(row)));
+  emit moleculeChanged(qobject_cast<Xtal*>(m_search->tracker()->at(row)));
 }
 
 void TabProgress::highlightXtal(Structure* s)
 {
   Xtal* xtal = qobject_cast<Xtal*>(s);
   xtal->lock().lockForRead();
-  int gen = xtal->getGeneration();
-  int id = xtal->getIDNumber();
+  QString tag = xtal->getTag();
   xtal->lock().unlock();
   for (int row = 0; row < ui.table_list->rowCount(); row++) {
-    if (ui.table_list->item(row, Gen)->text().toInt() == gen &&
-        ui.table_list->item(row, Mol)->text().toInt() == id) {
+    if (ui.table_list->item(row, Tag)->text() == tag) {
       ui.table_list->blockSignals(true);
       ui.table_list->setCurrentCell(row, 0);
       ui.table_list->blockSignals(false);
@@ -543,14 +668,14 @@ void TabProgress::progressContextMenu(QPoint p)
 
   // Used to determine available options:
   bool canGenerateOffspring =
-    (this->m_opt->queue()->getAllOptimizedStructures().size() >= 3);
+    (this->m_search->queue()->getAllParentPoolStructures().size() >= 3);
 
   qDebug() << "Context menu at row " << index;
 
   // Set m_context_xtal after locking to avoid threading issues.
   Xtal* xtal = nullptr;
   if (index != -1) {
-    xtal = qobject_cast<Xtal*>(m_opt->tracker()->at(index));
+    xtal = qobject_cast<Xtal*>(m_search->tracker()->at(index));
   }
 
   bool isKilled = false;
@@ -655,7 +780,7 @@ void TabProgress::restartJobProgress()
   int optStep = QInputDialog::getInt(
     m_dialog, tr("Restart Optimization %1").arg(m_context_xtal->getTag()),
     "Select optimization step to restart from:", optstep, 1,
-    m_opt->getNumOptSteps(), 1, &ok);
+    m_search->getNumOptSteps(), 1, &ok);
   --optStep;
 
   if (!ok) {
@@ -694,7 +819,7 @@ void TabProgress::killXtalProgress_()
   }
 
   // QueueManager will handle mutex locking
-  m_opt->queue()->killStructure(m_context_xtal);
+  m_search->queue()->killStructure(m_context_xtal);
 
   // Clear context xtal pointer
   emit finishedBackgroundProcessing();
@@ -780,11 +905,11 @@ void TabProgress::randomizeStructureProgress_()
 
   // End job if currently running
   if (m_context_xtal->getJobID()) {
-    m_opt->queueInterface(m_context_xtal->getCurrentOptStep())
+    m_search->queueInterface(m_context_xtal->getCurrentOptStep())
       ->stopJob(m_context_xtal);
   }
 
-  m_opt->replaceWithRandom(m_context_xtal, "manual");
+  m_search->replaceWithRandom(m_context_xtal, "manual");
 
   // Restart job:
   newInfoUpdate(m_context_xtal);
@@ -807,19 +932,19 @@ void TabProgress::replaceWithOffspringProgress_()
 
   // End job if currently running
   if (m_context_xtal->getJobID()) {
-    m_opt->queueInterface(m_context_xtal->getCurrentOptStep())
+    m_search->queueInterface(m_context_xtal->getCurrentOptStep())
       ->stopJob(m_context_xtal);
   }
 
-  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
-  Q_ASSERT_X(xtalopt != nullptr, Q_FUNC_INFO, "m_opt is not an instance of "
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+  Q_ASSERT_X(xtalopt != nullptr, Q_FUNC_INFO, "m_search is not an instance of "
                                               "XtalOpt.");
 
   xtalopt->replaceWithOffspring(m_context_xtal, "manual");
 
   // Restart job:
   newInfoUpdate(m_context_xtal);
-  restartJobProgress_(1);
+  restartJobProgress_(0);
   // above function handles background processing signal
 }
 
@@ -831,7 +956,7 @@ void TabProgress::injectStructureProgress()
   // Prompt for filename
   QSettings settings;
   QString filename =
-    settings.value("xtalopt/opt/seedPath", m_opt->locWorkDir).toString();
+    settings.value("xtalopt/opt/seedPath", m_search->locWorkDir).toString();
 
   // Launch file dialog
   QString newFilename = QFileDialog::getOpenFileName(
@@ -852,7 +977,7 @@ void TabProgress::injectStructureProgress()
 
 void TabProgress::injectStructureProgress_(const QString& filename)
 {
-  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_opt);
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
   xtalopt->addSeed(filename);
 }
 
@@ -872,7 +997,7 @@ void TabProgress::clipPOSCARProgress_()
 
   QString poscar = m_context_xtal->toPOSCAR();
 
-  m_opt->setClipboard(poscar);
+  m_search->setClipboard(poscar);
 
   // Clear context xtal pointer
   emit finishedBackgroundProcessing();
@@ -936,8 +1061,8 @@ void TabProgress::plotXrdProgress()
 void TabProgress::updateRank()
 {
   /*
-       Optimizer* opti = m_opt->optimizer();
-       QString runpath = m_opt->locWorkDir;
+       Optimizer* opti = m_search->optimizer();
+       QString runpath = m_search->locWorkDir;
         QDir dir(runpath+"/ranked");
         QDir cifDir(runpath+"/ranked/CIF");
         QDir contDir(runpath+"/ranked/CONTCAR");
@@ -1016,94 +1141,11 @@ void TabProgress::updateRank()
   */
 }
 
-void TabProgress::printFile()
-{
-  QFile file;
-  file.setFileName(m_opt->locWorkDir + "/run-results.txt");
-  if (!file.open(QIODevice::WriteOnly)) {
-    m_opt->error("TabProgress::printFile(): Error opening file " +
-                 file.fileName() + " for writing...");
-  }
-  QTextStream out;
-  out.setDevice(&file);
-  m_opt->tracker()->lockForRead();
-  QList<Structure*>* structures = m_opt->tracker()->list();
-  Xtal* xtal;
-
-  // Print the data to the file:
-  out << "Index\tGen\tID\tEnthalpy/FU\tFU\tSpaceGroup\t\tStatus\t\tParentage\n";
-  for (int i = 0; i < structures->size(); i++) {
-    xtal = qobject_cast<Xtal*>(structures->at(i));
-    if (!xtal)
-      continue; // In case there was a problem copying.
-    xtal->lock().lockForRead();
-    QString gen_s, id_s, enthalpy, formulaUnits, space;
-    int gen = xtal->getGeneration();
-    int id = xtal->getIDNumber();
-    double en =
-      xtal->getEnthalpy() / static_cast<double>(xtal->getFormulaUnits());
-    int FU = xtal->getFormulaUnits();
-    space = xtal->getSpaceGroupSymbol();
-    space = space.leftJustified(10, ' ');
-    out << i << "\t" << gen_s.sprintf("%u", gen) << "\t"
-        << id_s.sprintf("%u", id) << "\t" << enthalpy.sprintf("%.4f", en)
-        << "\t" << formulaUnits.sprintf("%u", FU) << "\t"
-        << xtal->getSpaceGroupNumber() << ": " << space << "\t\t";
-
-    // Status:
-    switch (xtal->getStatus()) {
-      case Xtal::Optimized:
-        out << "Optimized";
-        break;
-      case Xtal::Killed:
-      case Xtal::Removed:
-        out << "Killed";
-        break;
-      case Xtal::Duplicate:
-        out << "Duplicate";
-        break;
-      case Xtal::Supercell:
-        out << "Supercell";
-        break;
-      case Xtal::Error:
-        out << "Error";
-        break;
-      case Xtal::ObjectiveDismiss:
-        out << "ObjectiveDismiss";
-        break;
-      case Xtal::ObjectiveFail:
-        out << "ObjectiveFail";
-        break;
-      case Xtal::ObjectiveRetain:
-      case Xtal::ObjectiveCalculation:
-        out << "ObjectiveCalculation";
-        break;
-      case Xtal::StepOptimized:
-      case Xtal::WaitingForOptimization:
-      case Xtal::Submitted:
-      case Xtal::InProcess:
-      case Xtal::Empty:
-      case Xtal::Updating:
-        out << "Opt Step " << xtal->getCurrentOptStep() + 1;
-        break;
-      default:
-        out << "In progress";
-        break;
-    }
-
-    // Parentage:
-    out << "\t" << xtal->getParents();
-    xtal->lock().unlock();
-    out << endl;
-  }
-  m_opt->tracker()->unlock();
-}
-
 void TabProgress::clearFiles()
 {
   int gen, id;
   QString stat, gen_s, id_s;
-  QString runath = m_opt->locWorkDir;
+  QString runath = m_search->locWorkDir;
   QFile results(runath + "/results.txt");
   if (!results.open(QIODevice::ReadOnly))
     return;

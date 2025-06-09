@@ -22,7 +22,7 @@
 namespace GlobalSearch {
 class AbstractDialog;
 class Structure;
-class OptBase;
+class SearchBase;
 
 /**
  * @class AbstractTab abstracttab.h <globalsearch/ui/abstracttab.h>
@@ -43,7 +43,7 @@ public:
    * Minimum constructor for derived tab:
 @verbatim
 DerivedTab::DerivedTab(AbstractDialog *parent,
-                       OptBase *p) :
+                       SearchBase *p) :
   AbstractTab(parent, p)
 {
 ui.setupUi(m_tab_widget);
@@ -52,7 +52,7 @@ initialize();
 }
 @endverbatim
    */
-  explicit AbstractTab(AbstractDialog* parent, OptBase* p);
+  explicit AbstractTab(AbstractDialog* parent, SearchBase* p);
 
   /**
    * Destructor
@@ -163,8 +163,8 @@ protected:
   /// A pointer to the parent dialog.
   AbstractDialog* m_dialog;
 
-  /// A pointer to the associated OptBase class.
-  OptBase* m_opt;
+  /// A pointer to the associated SearchBase class.
+  SearchBase* m_search;
 
   /// Set to true once initialized() completes.
   bool m_isInitialized;

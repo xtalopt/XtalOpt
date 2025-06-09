@@ -22,7 +22,7 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-GenericOptimizer::GenericOptimizer(OptBase* parent, const QString& filename)
+GenericOptimizer::GenericOptimizer(SearchBase* parent, const QString& filename)
   : XtalOptOptimizer(parent)
 {
   // Set allowed data structure keys, if any, e.g.

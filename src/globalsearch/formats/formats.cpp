@@ -15,6 +15,7 @@
 #include <globalsearch/structure.h>
 #include <globalsearch/utilities/utilityfunctions.h>
 
+#include <globalsearch/formats/mtpformat.h>
 #include <globalsearch/formats/castepformat.h>
 #include <globalsearch/formats/cmlformat.h>
 #include <globalsearch/formats/formats.h>
@@ -41,13 +42,14 @@ using std::vector;
 // The list of possible formats
 static const vector<string> _formats = { "CASTEP", "CML",   "GULP",
                                          "POSCAR", "PWSCF", "SIESTA",
-                                         "VASP",   "XYZ",   "ZMATRIX" };
+                                         "VASP",   "XYZ",   "ZMATRIX",
+                                         "MTP" };
 
 // The map of the formats and their extensions
 static const vector<pair<string, string>> _formatExtensions = {
   make_pair("castep", "CASTEP"), make_pair("cml", "CML"),
   make_pair("got", "GULP"), make_pair("gout", "GULP"),
-  make_pair("xyz", "XYZ")
+  make_pair("xyz", "XYZ"), make_pair("mot", "MTP")
 };
 
 namespace GlobalSearch {
@@ -79,6 +81,9 @@ bool Formats::read(Structure* s, const QString& filename)
 bool Formats::read(Structure* s, const QString& filename, const QString& format)
 {
   // List the formats here
+  if (format.toUpper() == QString("MTP"))
+    return MtpFormat::read(s, filename);
+
   if (format.toUpper() == QString("CASTEP"))
     return CastepFormat::read(s, filename);
 

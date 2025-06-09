@@ -3,9 +3,18 @@
 XtalOpt
 =========
 
-XtalOpt searches for stable or metastable crystal structures,
-optionally with desired properties or characteristics,
-using a multi-objective evolutionary algorithm.
+XtalOpt is an evolutionary multi-objective global optimization
+algorithm, designed for computational prediction of functional materials
+with fixed or variable composition.
+
+With an on-the-fly convex hull evaluation, the code can explore the
+composition space of a desired chemical system, 
+and supports both generalized scalar fitness function and Pareto
+optimization schemes for global optimization.
+
+XtalOpt is developed and maintained in the
+[Eva Zurek's group](https://www.acsu.buffalo.edu/~ezurek/)
+in the University at Buffalo.
 
 More information can be found at https://xtalopt.github.io
 
@@ -23,7 +32,7 @@ https://xtalopt.github.io/download.html
 
 XtalOpt is published under the "New" BSD License. See LICENSE file.
 
-# Authors
+# Contributors
 
 All contributors, in alphabetical order:
 
@@ -40,7 +49,8 @@ Included sources from various projects are found under:
 - external/randSpg  http://xtalopt.openmolecules.net/randSpg/randSpg.html
 - external/spglib   https://github.com/spglib/spglib
 - external/xtalcomp http://xtalopt.openmolecules.net/xtalcomp/xtalcomp.html
+- external/qhull    http://www.qhull.org
 
 These files, other than some minor modifications for interoperability
-with XtalOpt/libglobalsearch, are the works of the copyright holders
+with XtalOpt, are the works of the copyright holders
 specified in the source files.

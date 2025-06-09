@@ -47,13 +47,12 @@ public slots:
   void readSettings(const QString& filename = "") override;
   void writeSettings(const QString& filename = "") override;
   void updateGUI() override;
-  bool updateOptimizationInfo();
+  bool updateOptTypeInfo();
+  bool updateObjectives();
   void addObjectives();
   void removeObjectives();
   void updateObjectivesTable();
   void updateFieldsWithOptSelection(QString value_type);
-  void setActiveButtonAdd();
-  void setActiveButtonRemove();
   void errorPromptWindow(const QString& instr);
 
 signals:

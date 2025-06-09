@@ -17,7 +17,7 @@
 
 #include <globalsearch/queueinterfaces/localdialog.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/queueinterfaces/local.h>
 #include <globalsearch/ui/abstractdialog.h>
 
@@ -35,8 +35,8 @@
 namespace GlobalSearch {
 
 LocalQueueInterfaceConfigDialog::LocalQueueInterfaceConfigDialog(
-  AbstractDialog* parent, OptBase* opt, LocalQueueInterface* o)
-  : QDialog(parent), m_opt(opt), m_queueInterface(o), m_edit_workdir(0),
+  AbstractDialog* parent, SearchBase* srch, LocalQueueInterface* o)
+  : QDialog(parent), m_search(srch), m_queueInterface(o), m_edit_workdir(0),
     m_edit_description(0)
 {
   m_vlayout = new QVBoxLayout(this);
@@ -44,7 +44,7 @@ LocalQueueInterfaceConfigDialog::LocalQueueInterfaceConfigDialog(
   m_label0 = new QLabel(tr("Global Queue Interface Settings"), this);
   QFont font = m_label0->font();
   font.setBold(true);
-  font.setPointSize(13);
+  font.setPointSize(11);
   m_label0->setFont(font);
 
   m_top_label_layout = new QHBoxLayout();
@@ -78,7 +78,7 @@ LocalQueueInterfaceConfigDialog::LocalQueueInterfaceConfigDialog(
   m_cb_logErrorDirs = new QCheckBox();
 
   m_cb_logErrorDirs->setText("Log error directories?");
-  m_cb_logErrorDirs->setChecked(m_opt->m_logErrorDirs);
+  m_cb_logErrorDirs->setChecked(m_search->m_logErrorDirs);
   QString toolTip = tr("When a job fails or has to restart for any reason,"
                        "\nif this is checked, it will create a copy of the "
                        "\nfailed job directory in <localworkdir>/errorDirs. "
@@ -117,9 +117,9 @@ LocalQueueInterfaceConfigDialog::~LocalQueueInterfaceConfigDialog()
 
 void LocalQueueInterfaceConfigDialog::accept()
 {
-  m_opt->locWorkDir = m_edit_workdir->text().trimmed();
-  m_opt->description = m_edit_description->text().trimmed();
-  m_opt->m_logErrorDirs = m_cb_logErrorDirs->isChecked();
+  m_search->locWorkDir = m_edit_workdir->text().trimmed();
+  m_search->description = m_edit_description->text().trimmed();
+  m_search->m_logErrorDirs = m_cb_logErrorDirs->isChecked();
   QDialog::accept();
   this->close();
 }
@@ -133,8 +133,8 @@ void LocalQueueInterfaceConfigDialog::reject()
 
 void LocalQueueInterfaceConfigDialog::updateGUI()
 {
-  m_edit_workdir->setText(m_opt->locWorkDir);
-  m_edit_description->setText(m_opt->description);
+  m_edit_workdir->setText(m_search->locWorkDir);
+  m_edit_description->setText(m_search->description);
 }
 
 } // end namespace GlobalSearch

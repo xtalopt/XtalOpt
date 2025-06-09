@@ -37,10 +37,10 @@ public:
   /**
    * Constructor
    *
-   * @param parent OptBase parent
+   * @param parent SearchBase parent
    * @param settingFile Filename from which to initialize settings.
    */
-  explicit RemoteQueueInterface(OptBase* parent,
+  explicit RemoteQueueInterface(SearchBase* parent,
                                 const QString& settingFile = "");
 
   /**
@@ -192,6 +192,19 @@ public slots:
    */
   virtual bool copyAFileLocalToRemote(const QString& loc_file,
                                       const QString& rem_file) override;
+
+  /**
+   * Remove a files by its name from remote working directory of structure.
+   * @note This is a wrapper function for both remote and local-remote jobs;
+   *  for remote jobs, if an existing ssh connection is passed to the function
+   *  it will be used; otherwise the function will create/discard one.
+   *
+   * @param filename The file's name
+   * @param ssh An initialized SSHConnection
+   *
+   * @return True on success, false otherwise
+   */
+  virtual bool removeAFile(Structure *s, const QString& filename) override;
 
   /**
    * Check if the file \a filename exists in the working directory

@@ -28,7 +28,7 @@ class SlurmConfigDialog;
 
 namespace GlobalSearch {
 class AbstractDialog;
-class OptBase;
+class SearchBase;
 class SlurmQueueInterface;
 
 class SlurmConfigDialog : public QDialog
@@ -36,7 +36,7 @@ class SlurmConfigDialog : public QDialog
   Q_OBJECT
 
 public:
-  explicit SlurmConfigDialog(AbstractDialog* parent, OptBase* o,
+  explicit SlurmConfigDialog(AbstractDialog* parent, SearchBase* o,
                              SlurmQueueInterface* p);
   virtual ~SlurmConfigDialog() override;
 
@@ -48,7 +48,7 @@ protected slots:
   void reject() override;
 
 protected:
-  OptBase* m_opt;
+  SearchBase* m_search;
   SlurmQueueInterface* m_slurm;
 
 private:

@@ -117,7 +117,7 @@ bool PwscfFormat::read(Structure* s, const QString& filename)
                        << line.c_str();
               return false;
             }
-            atomicNums.append(ElemInfo::getAtomicNum(lineSplit[0]));
+            atomicNums.append(ElementInfo::getAtomicNum(lineSplit[0]));
             coords.append(Vector3(atof(lineSplit[1].c_str()),
                                   atof(lineSplit[2].c_str()),
                                   atof(lineSplit[3].c_str())));

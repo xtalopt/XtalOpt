@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -35,6 +35,6 @@
 #ifndef __arithmetic_H__
 #define __arithmetic_H__
 
-int arth_get_symbol(char symbol[7], const int spgroup_number);
+int arth_get_symbol(char symbol[7], int const spgroup_number);
 
 #endif

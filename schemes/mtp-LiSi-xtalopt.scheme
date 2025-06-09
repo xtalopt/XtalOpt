@@ -1,0 +1,24 @@
+[xtalopt]
+edit\description=mtplisi
+edit\locWorkDir=/Users/sam/XtalOpt/runmtp/local/
+edit\logErrorDirs=false
+edit\numOptSteps=1
+edit\optimizer\0=mtp
+edit\optimizer\0\exeLocation="mlp relax mtp.relax --cfg-filename=mtp.cell --save-relaxed=xtal.mot"
+edit\optimizer\0\mtp\mtp.cell=BEGIN_CFG\nSize\n%numAtoms%\nSupercell\n%cellMatrixAngstrom%\nAtomData: id type direct_x direct_y direct_z\n%mtpAtomsInfo%\nEND_CFG\n
+edit\optimizer\0\mtp\mtp.pot=%fileContents:/Users/sam/XtalOpt/mtp_pot%
+edit\optimizer\0\mtp\mtp.relax=mtp-filename           mtp.pot\n
+edit\queueInterface\0=local
+edit\remote\cancelJobAfterTime=true
+edit\remote\cleanRemoteOnStop=false
+edit\remote\host=vortex.ccr.buffalo.edu
+edit\remote\hoursForCancelJobAfterTime=1
+edit\remote\port=22
+edit\remote\queueRefreshInterval=30
+edit\remote\remWorkDir=/projects/academic/ezurek/samadh/vaspvasp
+edit\remote\username=samadh
+edit\user1=
+edit\user2=
+edit\user3=
+edit\user4=
+edit\version=4

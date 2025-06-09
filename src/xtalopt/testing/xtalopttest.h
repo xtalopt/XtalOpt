@@ -62,7 +62,7 @@ private:
     m_numberStructures, m_totalNumberStructures;
   QString m_message;
   QDateTime m_begin;
-  XtalOpt* m_opt;
+  XtalOpt* m_search;
   XtalOptDialog* m_dialog;
 };
 } // end namespace XtalOpt

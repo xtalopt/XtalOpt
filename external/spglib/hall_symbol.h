@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -35,15 +35,13 @@
 #ifndef __hall_symbol_H__
 #define __hall_symbol_H__
 
+#include "mathfunc.h"
 #include "spacegroup.h"
 #include "symmetry.h"
-#include "mathfunc.h"
 
 int hal_match_hall_symbol_db(double origin_shift[3],
-			     SPGCONST double bravais_lattice[3][3],
-			     const int hall_number,
-			     const Centering centering,
-			     const Symmetry *symmetry,
-			     const double symprec);
+                             double const bravais_lattice[3][3],
+                             int const hall_number, Centering const centering,
+                             Symmetry const *symmetry, double const symprec);
 
 #endif

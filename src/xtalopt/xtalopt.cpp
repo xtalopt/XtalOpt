@@ -28,7 +28,7 @@
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/formats/cmlformat.h>
 #include <globalsearch/formats/obconvert.h>
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/queueinterface.h>
 #include <globalsearch/queueinterfaces/queueinterfaces.h>
@@ -64,26 +64,23 @@ using namespace GlobalSearch;
 namespace XtalOpt {
 
 XtalOpt::XtalOpt(GlobalSearch::AbstractDialog* parent)
-  : OptBase(parent), formulaUnitsList({ 1 }), lowestEnthalpyFUList({ 0, 0 }),
-    using_randSpg(false), minXtalsOfSpgPerFU(QList<int>()),
+  : SearchBase(parent),
+    using_randSpg(false), minXtalsOfSpg(QList<int>()),
     m_rpcClient(make_unique<XtalOptRpc>()),
     m_initWC(new SlottedWaitCondition(this))
 {
   xtalInitMutex = new QMutex;
   m_idString = "XtalOpt";
-  m_schemaVersion = 3;
+  m_schemaVersion = 4;
 
   // Read the general settings
   readSettings();
 
   // Connections
-  connect(m_tracker, SIGNAL(newStructureAdded(GlobalSearch::Structure*)), this,
-          SLOT(checkForDuplicates()));
-  connect(this, SIGNAL(sessionStarted()), this, SLOT(resetDuplicates()));
   connect(m_queue, SIGNAL(structureFinished(GlobalSearch::Structure*)), this,
-          SLOT(updateLowestEnthalpyFUList(GlobalSearch::Structure*)));
-
-  connect(this, &OptBase::dialogSet, this, &XtalOpt::setupRpcConnections);
+          SLOT(checkForSimilarities()));
+  connect(this, SIGNAL(sessionStarted()), this, SLOT(resetSimilarities()));
+  connect(this, &SearchBase::dialogSet, this, &XtalOpt::setupRpcConnections);
 }
 
 XtalOpt::~XtalOpt()
@@ -122,10 +119,6 @@ XtalOpt::~XtalOpt()
   // Clean up various members
   m_initWC->deleteLater();
   m_initWC = 0;
-
-  QString formattedTime = QDateTime::currentDateTime().toString("MMMM dd, yyyy   hh:mm:ss");
-  QByteArray formattedTimeMsg = formattedTime.toLocal8Bit();
-  qDebug().noquote() << "\n=== Optimization finished ... " + formattedTimeMsg + "\n";
 }
 
 bool XtalOpt::startSearch()
@@ -150,7 +143,7 @@ bool XtalOpt::startSearch()
   }
 
   // Do we have a composition?
-  if (comp.isEmpty()) {
+  if (compList.isEmpty()) {
     error("Cannot create structures. Composition is not set.");
     return false;
   }
@@ -191,7 +184,7 @@ bool XtalOpt::startSearch()
                << "0."
                << "\nYou will need to increase this value before the"
                << "search can begin \n(You can change this in the"
-               << "xtalopt-runtime-options.txt file in the local working"
+               << "cli-runtime-options.txt file in the local working"
                << "directory).\n";
     }
   };
@@ -209,14 +202,14 @@ bool XtalOpt::startSearch()
                << "currently set to 0."
                << "\nYou will need to increase this value before the"
                << "search can move past the first generation \n(You can"
-               << "change this in the xtalopt-runtime-options.txt file in"
+               << "change this in the cli-runtime-options.txt file in"
                << "the local working directory).\n";
     }
   };
 
 #ifdef ENABLE_SSH
   // Create the SSHManager if running remotely
-  if (anyRemoteQueueInterfaces()) {
+  if (!m_localQueue && anyRemoteQueueInterfaces()) {
     qDebug() << "Creating SSH connections...";
     if (!this->createSSHConnections()) {
       error(tr("Could not create ssh connections."));
@@ -245,7 +238,7 @@ bool XtalOpt::startSearch()
   if (m_usingGUI && m_dialog)
     m_dialog->startProgressUpdate(tr("Generating structures..."), 0, 0);
 
-  // Initalize loop variables
+  // Initialize loop variables
   int failed = 0;
   QString filename;
   Xtal* xtal = 0;
@@ -272,75 +265,79 @@ bool XtalOpt::startSearch()
   if (!using_randSpg) {
     // Generation loop...
     while (newXtalCount < numInitial) {
-      updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
-
-      // Generate/Check xtal
-      xtal = generateRandomXtal(1, newXtalCount + 1);
-      if (!checkXtal(xtal)) {
-        delete xtal;
-        failed++;
-      } else {
-        xtal->findSpaceGroup(tol_spg);
-        initializeAndAddXtal(xtal, 1, xtal->getParents());
-        newXtalCount++;
+      for (int compi = 0; compi < compList.size(); compi++) {
+        if (m_verbose) {
+          qDebug() << "   startSearch : new xtal composition "
+            << compList[compi].getFormula() << " from list.";
+        }
+        updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
+        // Generate/Check xtal
+        xtal = generateRandomXtal(1, newXtalCount + 1, compList[compi]);
+        if (!checkXtal(xtal)) {
+          delete xtal;
+          failed++;
+        } else {
+          xtal->findSpaceGroup(tol_spg);
+          initializeAndAddXtal(xtal, 1, xtal->getParents());
+          newXtalCount++;
+        }
       }
     }
   }
   // Perform a spacegroup generation generation
   else {
-    // If minXtalsOfSpgPerFU was never correctly generated, just generate one
+    // If minXtalsOfSpg was never correctly generated, just generate one
     // now
-    if (minXtalsOfSpgPerFU.size() == 0) {
+    if (minXtalsOfSpg.size() == 0) {
       for (size_t spg = 1; spg <= 230; spg++)
-        minXtalsOfSpgPerFU.append(0);
+        minXtalsOfSpg.append(0);
     }
 
-    QList<int> spgStillNeeded = minXtalsOfSpgPerFU;
+    QList<int> spgStillNeeded = minXtalsOfSpg;
 
     // Find the total number of xtals that will be generated
-    // If minXtalsOfSpgPerFU specifies more xtals to be generated than
+    // If minXtalsOfSpg specifies more xtals to be generated than
     // numInitial, then the total needed will be the sum from
-    // minXtalsOfSpgPerFU
+    // minXtalsOfSpg
 
     size_t numXtalsToBeGenerated = 0;
-    for (size_t i = 0; i < minXtalsOfSpgPerFU.size(); i++) {
+    for (size_t i = 0; i < minXtalsOfSpg.size(); i++) {
       // The value in the vector is -1 if that spg is to not be used
-      if (minXtalsOfSpgPerFU.at(i) != -1)
+      if (minXtalsOfSpg.at(i) != -1)
         numXtalsToBeGenerated +=
-          (minXtalsOfSpgPerFU.at(i) * formulaUnitsList.size());
+          (minXtalsOfSpg.at(i) * compList.size());
     }
 
-    // Now that minXtalsOfSpgPerFU is set up, proceed!
+    // Now that minXtalsOfSpg is set up, proceed!
     newXtalCount = failed = 0;
     // Find spacegroups for which we have required a certain number of xtals
-    // per formula unit
     for (size_t i = 0; i < spgStillNeeded.size(); i++) {
       while (spgStillNeeded.at(i) > 0) {
-        for (size_t FU_ind = 0; FU_ind < formulaUnitsList.size(); FU_ind++) {
-          // Update the progresss bar
+        for (int compi = 0; compi < compList.size(); compi++) {
+          // Update the progress bar
           updateProgressBar((numXtalsToBeGenerated - failed > numInitial
                                ? numXtalsToBeGenerated - failed
                                : numInitial),
                             newXtalCount + failed, newXtalCount);
 
           uint spg = i + 1;
-          uint FU = formulaUnitsList.at(FU_ind);
 
-          // If the spacegroup isn't possible for this FU, just continue
-          if (!RandSpg::isSpgPossible(spg, getStdVecOfAtoms(FU))) {
+          // If the spacegroup isn't possible, just continue
+          if (!RandSpg::isSpgPossible(spg, getStdVecOfAtomsComp(compList[compi]))) {
             numXtalsToBeGenerated--;
             continue;
           }
 
           // Generate/Check xtal
-          xtal = randSpgXtal(1, newXtalCount + 1, FU, spg);
+          xtal = randSpgXtal(1, newXtalCount + 1, compList[compi], spg);
           if (!checkXtal(xtal)) {
             delete xtal;
-            qWarning() << "Failed to generate an xtal with spacegroup of"
-                       << QString::number(spg) << "and FU of"
-                       << QString::number(FU);
             failed++;
           } else {
+            if (m_verbose) {
+              qDebug() << "   startSearch : new xtal composition "
+                       << compList[compi].getFormula() << " randspg " << spg << " from list.";
+            }
             xtal->findSpaceGroup(tol_spg);
             initializeAndAddXtal(xtal, 1, xtal->getParents());
             newXtalCount++;
@@ -349,30 +346,29 @@ bool XtalOpt::startSearch()
         spgStillNeeded[i]--;
       }
     }
-    // If we still haven't generated enough xtals, pick a random FU and spg
-    // to be generated
+    // If we still haven't generated enough xtals, pick a random spg
+    // and a random composition to be generated
     while (newXtalCount < numInitial) {
       // Let's keep the progress bar updated
       updateProgressBar(numInitial, newXtalCount + failed, newXtalCount);
 
-      // Randomly select a formula unit
-      uint randomFU =
-        formulaUnitsList.at(rand() % int(formulaUnitsList.size()));
+      // Randomly select a composition from the list
+      CellComp randomComp = pickRandomCompositionFromPossibleOnes();
       // Randomly select a possible spg
-      uint randomSpg =
-        pickRandomSpgFromPossibleOnes(); // pickRandomSpgFromPossibleOnes();
+      uint randomSpg = pickRandomSpgFromPossibleOnes();
       // If it isn't possible, try again
-      if (!RandSpg::isSpgPossible(randomSpg, getStdVecOfAtoms(randomFU)))
+      if (!RandSpg::isSpgPossible(randomSpg, getStdVecOfAtomsComp(randomComp)))
         continue;
       // Try it out
-      xtal = randSpgXtal(1, newXtalCount + 1, randomFU, randomSpg);
+      xtal = randSpgXtal(1, newXtalCount + 1, randomComp, randomSpg);
       if (!checkXtal(xtal)) {
         delete xtal;
-        qWarning() << "Failed to generate an xtal with spacegroup of"
-                   << QString::number(randomSpg) << "and FU of"
-                   << QString::number(randomFU);
         failed++;
       } else {
+        if (m_verbose) {
+          qDebug() << "   startSearch : new xtal composition " << randomComp.getFormula()
+                   << " randspg " << randomSpg << " chosen randomly.";
+        }
         xtal->findSpaceGroup(tol_spg);
         initializeAndAddXtal(xtal, 1, xtal->getParents());
         newXtalCount++;
@@ -436,13 +432,16 @@ bool XtalOpt::save(QString filename, bool notify)
 
   // If we have a state file, call the parent save
   if (isStateFile)
-    OptBase::save(filename, notify);
+    SearchBase::save(filename, notify);
 
   SETTINGS(filename);
   settings->beginGroup("xtalopt/init/");
 
   settings->setValue("version", m_schemaVersion);
 
+  settings->setValue("verboseOutput", m_verbose);
+
+  settings->setValue("maxAtoms", maxAtoms);
   settings->setValue("limits/a/min", a_min);
   settings->setValue("limits/b/min", b_min);
   settings->setValue("limits/c/min", c_min);
@@ -455,20 +454,13 @@ bool XtalOpt::save(QString filename, bool notify)
   settings->setValue("limits/alpha/max", alpha_max);
   settings->setValue("limits/beta/max", beta_max);
   settings->setValue("limits/gamma/max", gamma_max);
-  settings->setValue("limits/volume/min", vol_min);
-  settings->setValue("limits/volume/max", vol_max);
-  settings->setValue("limits/volume/fixed", vol_fixed);
   settings->setValue("limits/scaleFactor", scaleFactor);
   settings->setValue("limits/minRadius", minRadius);
-  settings->setValue("using/fixedVolume", using_fixed_volume);
+  settings->setValue("limits/volume/min", vol_min);
+  settings->setValue("limits/volume/max", vol_max);
   settings->setValue("limits/volume/scale_min", vol_scale_min);
   settings->setValue("limits/volume/scale_max", vol_scale_max);
-  settings->setValue("using/mitosis", using_mitosis);
-  settings->setValue("using/subcellPrint", using_subcellPrint);
-  settings->setValue("limits/divisions", divisions);
-  settings->setValue("limits/ax", ax);
-  settings->setValue("limits/bx", bx);
-  settings->setValue("limits/cx", cx);
+  settings->setValue("limits/volume/elemental", input_ele_volm_string);
   settings->setValue("using/interatomicDistanceLimit",
                      using_interatomicDistanceLimit);
   settings->setValue("using/molUnit", using_molUnit);
@@ -476,26 +468,11 @@ bool XtalOpt::save(QString filename, bool notify)
   settings->setValue("using/randSpg", using_randSpg);
   settings->setValue("using/checkStepOpt", using_checkStepOpt);
 
-  // Composition
-  settings->beginWriteArray("composition");
-  QList<uint> keys = comp.keys();
-  for (int i = 0; i < keys.size(); i++) {
-    if (keys.at(i) == 0)
-      continue;
-    settings->setArrayIndex(i);
-    settings->setValue("atomicNumber", keys.at(i));
-    settings->setValue("quantity", comp.value(keys.at(i)).quantity);
-    settings->setValue("minRadius", comp.value(keys.at(i)).minRadius);
-  }
-  settings->endArray();
-
-  // Formula Units List
-  settings->beginWriteArray("Formula_Units");
-  for (int i = 0; i < formulaUnitsList.size(); i++) {
-    settings->setArrayIndex(i);
-    settings->setValue("FU", formulaUnitsList.at(i));
-  }
-  settings->endArray();
+  // Composition, search type, and reference energies
+  settings->setValue("saveHullSnapshots", m_saveHullSnapshots);
+  settings->setValue("vcSearch", vcSearch);
+  settings->setValue("referenceEnergies", input_ene_refs_string);
+  settings->setValue("chemical_formulas", input_formulas_string);
 
   // Mol Unit stuff
   if (using_molUnit) {
@@ -504,10 +481,10 @@ bool XtalOpt::save(QString filename, bool notify)
     for (const auto& pair : compMolUnit.keys()) {
       settings->setArrayIndex(ind);
       settings->setValue("center",
-                         ElemInfo::getAtomicSymbol(pair.first).c_str());
+                         ElementInfo::getAtomicSymbol(pair.first).c_str());
       settings->setValue("number_of_centers", compMolUnit[pair].numCenters);
       settings->setValue("neighbor",
-                         ElemInfo::getAtomicSymbol(pair.second).c_str());
+                         ElementInfo::getAtomicSymbol(pair.second).c_str());
       settings->setValue("number_of_neighbors", compMolUnit[pair].numNeighbors);
       settings->setValue("geometry", getGeom(compMolUnit[pair].numNeighbors,
                                              compMolUnit[pair].geom));
@@ -535,29 +512,29 @@ bool XtalOpt::save(QString filename, bool notify)
 
   writeEditSettings(filename);
 
+  // Search settings tab
   settings->beginGroup("xtalopt/opt/");
 
   // Initial generation
   settings->setValue("opt/numInitial", numInitial);
 
   // Search parameters
-  settings->setValue("opt/popSize", popSize);
+  settings->setValue("opt/parentsPoolSize", parentsPoolSize);
   settings->setValue("opt/contStructs", contStructs);
   settings->setValue("opt/limitRunningJobs", limitRunningJobs);
   settings->setValue("opt/runningJobLimit", runningJobLimit);
   settings->setValue("opt/failLimit", failLimit);
   settings->setValue("opt/failAction", failAction);
-  settings->setValue("opt/cutoff", cutoff);
-  settings->setValue("opt/using_mitotic_growth", using_mitotic_growth);
-  settings->setValue("opt/using_FU_crossovers", using_FU_crossovers);
-  settings->setValue("opt/FU_crossovers_generation", FU_crossovers_generation);
-  settings->setValue("opt/using_one_pool", using_one_pool);
-  settings->setValue("opt/chance_of_mitosis", chance_of_mitosis);
+  settings->setValue("opt/maxNumStructures", maxNumStructures);
 
-  // Duplicates
+  // Similarities
   settings->setValue("tol/xtalcomp/length", tol_xcLength);
   settings->setValue("tol/xtalcomp/angle", tol_xcAngle);
   settings->setValue("tol/spg", tol_spg);
+  settings->setValue("tol/rdf/tolerance", tol_rdf);
+  settings->setValue("tol/rdf/cutoff", tol_rdf_cutoff);
+  settings->setValue("tol/rdf/nbins", tol_rdf_nbins);
+  settings->setValue("tol/rdf/sigma", tol_rdf_sigma);
 
   // Crossover
   settings->setValue("opt/p_cross", p_cross);
@@ -578,14 +555,31 @@ bool XtalOpt::save(QString filename, bool notify)
   settings->setValue("opt/perm_strainStdev_max", perm_strainStdev_max);
   settings->setValue("opt/perm_ex", perm_ex);
 
-  // Multi-objective, aflow-hardness, softExit, localQueue, ...
+  // Permutomic
+  settings->setValue("opt/p_atomic", p_atomic);
+
+  // Permucomp
+  settings->setValue("opt/p_comp", p_comp);
+
+  // Random Supercell
+  settings->setValue("opt/p_supercell", p_supercell);
+
   settings->setValue("opt/softExit", m_softExit);
   settings->setValue("opt/localQueue", m_localQueue);
-  settings->setValue("obj/calculateHardness", m_calculateHardness.load());
-  settings->setValue("obj/hardnessFitnessWeight", m_hardnessFitnessWeight.load());
-  settings->setValue("obj/objectivesReDo", m_objectivesReDo);
-  settings->setValue("obj/objectivesNum", getObjectivesNum());
-  settings->beginWriteArray("obj/objectives");
+
+  settings->endGroup();
+
+  settings->beginGroup("xtalopt/obj/");
+  // Optimization Type
+  settings->setValue("optimizationType", m_optimizationType);
+  settings->setValue("tournamentSelection", m_tournamentSelection);
+  settings->setValue("restrictedPool", m_restrictedPool);
+  settings->setValue("crowdingDistance", m_crowdingDistance);
+  settings->setValue("objectivePrecision", m_objectivePrecision);
+
+  // Multi-objective
+  settings->setValue("objectivesReDo", m_objectivesReDo);
+  settings->beginWriteArray("objectives");
   for (size_t i = 0; i < getObjectivesNum(); i++) {
     settings->setArrayIndex(i);
     settings->setValue("exe",getObjectivesExe(i));
@@ -594,6 +588,8 @@ bool XtalOpt::save(QString filename, bool notify)
     settings->setValue("out",getObjectivesOut(i));
   }
   settings->endArray();
+
+  settings->endGroup();
 
   return true;
 }
@@ -649,12 +645,12 @@ bool XtalOpt::readEditSettings(const QString& filename)
 
   int loadedVersion = settings->value("version", 0).toInt();
 
-  // Only scheme version 3 or less will work currently
-  if (!filename.isEmpty() && loadedVersion > 3) {
-    error("XtalOpt::readSettings(): Settings in file " + filename +
-          " cannot be opened by this version of XtalOpt. Please "
-          "visit https://xtalopt.github.io to obtain a "
-          "newer version.");
+  // As of xtalopt version 14, state files older than v4 will not work
+  if (!filename.isEmpty() && loadedVersion < 4) {
+    error("XtalOpt::readEditSettings(): Settings in file " + filename +
+          " appears to be a run with an older version of XtalOpt. "
+          "Please visit https://xtalopt.github.io for latest updates "
+          "on XtalOpt and its input flag descriptions.");
     return false;
   }
 
@@ -698,231 +694,40 @@ bool XtalOpt::readEditSettings(const QString& filename)
   m_hoursForCancelJobAfterTime =
     settings->value("remote/hoursForCancelJobAfterTime", "100.0").toDouble();
 
-  // Old load instructions
-  if (loadedVersion < 3) {
-    settings->endGroup();
-    settings->beginGroup("xtalopt");
+  size_t numOptSteps = settings->value("numOptSteps", "1").toUInt();
 
-    QString optimizer = settings->value("edit/optimizer", "").toString();
-    if (optimizer.isEmpty()) {
-      if (!filename.isEmpty()) {
-        qDebug() << "Error: loading settings for older XtalOpt version and"
-                 << "the optimizer is empty!";
-        return false;
-      }
-      optimizer = "gulp";
-    }
+  // Let's make sure this is at least 1, or we may have some issues
+  if (numOptSteps == 0)
+    numOptSteps = 1;
 
-    QString qi = settings->value("edit/queueInterface", "").toString();
-    if (qi.isEmpty()) {
-      if (!filename.isEmpty()) {
-        qDebug() << "Error: loading settings for older XtalOpt version and"
-                 << "the queue interface is empty!";
-        return false;
-      }
-      qi = "local";
-      ;
-    }
-
-    clearOptSteps();
-
-    // Append the first step and grab the template names.
+  clearOptSteps();
+  for (size_t i = 0; i < numOptSteps; ++i) {
     appendOptStep();
-    setOptimizer(0, optimizer.toStdString());
-    setQueueInterface(0, qi.toStdString());
 
-    // Get the POTCAR stuff if VASP
-    QString potcarTemplate;
-    if (optimizer.toLower() == "vasp") {
-      this->optimizer(0)->readSettings(filename);
-      QVariantList potcarInfo =
-        this->optimizer(0)->getData("POTCAR info").toList();
-      if (!potcarInfo.isEmpty()) {
-        QVariantHash hash = potcarInfo.at(0).toHash();
-
-        QList<uint> atomicNums = comp.keys();
-        QStringList atomicSymbols;
-        for (const auto& atomicNum : atomicNums)
-          atomicSymbols.append(ElemInfo::getAtomicSymbol(atomicNum).c_str());
-        qSort(atomicSymbols);
-
-        // Now get the potcar info and store it
-        for (const auto& atomicSymbol : atomicSymbols) {
-          potcarTemplate +=
-            "%filecontents:" + hash[atomicSymbol].toString() + "%\n";
-        }
-      }
-    }
-
-    QStringList optTemplateNames = this->optimizer(0)->getTemplateFileNames();
-
-    QStringList queueTemplateNames =
-      this->queueInterface(0)->getTemplateFileNames();
-
-    for (int i = 0; i < optTemplateNames.size(); i++) {
-      QStringList temp = settings
-                           ->value("optimizer/" + optimizer.toUpper() + "/" +
-                                     optTemplateNames.at(i) + "_list",
-                                   "")
-                           .toStringList();
-      temp.removeAll("");
-      if (!temp.empty()) {
-        for (size_t j = 0; j < temp.size(); ++j) {
-          while (j + 1 > getNumOptSteps())
-            appendOptStep();
-
-          setOptimizerTemplate(j, optTemplateNames[i].toStdString(),
-                               temp[j].toStdString());
-        }
-        continue;
-      }
-
-      // If "temp" is empty, perhaps we have some template filenames to open
-      QStringList templateFileNames =
-        settings
-          ->value("optimizer/" + optimizer.toUpper() + "/" +
-                    optTemplateNames.at(i) + "_templates",
-                  "")
-          .toStringList();
-
-      templateFileNames.removeAll("");
-      // Loop through the files and see if they exist. If they do, store
-      // the contents
-      for (size_t j = 0; j < templateFileNames.size(); ++j) {
-        while (j + 1 > getNumOptSteps())
-          appendOptStep();
-
-        const QString& templateFile = templateFileNames[j];
-
-        QFile file(templateFile);
-        if (!file.exists()) {
-          qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
-                     << "does not exist!";
-          continue;
-        }
-        if (!file.open(QIODevice::ReadOnly)) {
-          qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
-                     << "could not be opened!";
-          continue;
-        }
-        setOptimizerTemplate(j, templateFile.toStdString(),
-                             QString(file.readAll()).toStdString());
-        file.close();
-      }
-    }
-
-    // If we are using VASP, update the potcar info
-    if (optimizer.toLower() == "vasp") {
-      for (size_t i = 0; i < getNumOptSteps(); ++i)
-        setOptimizerTemplate(i, "POTCAR", potcarTemplate.toStdString());
-    }
-
-    // Repeat for queue interfaces
-    for (int i = 0; i < queueTemplateNames.size(); i++) {
-      QStringList temp =
-        settings
-          ->value("optimizer/" + optimizer.toUpper() + "/QI/" + qi.toUpper() +
-                    "/" + queueTemplateNames.at(i) + "_list",
-                  "")
-          .toStringList();
-      temp.removeAll("");
-      if (!temp.empty()) {
-        for (size_t j = 0; j < temp.size(); ++j) {
-          while (j + 1 > getNumOptSteps())
-            appendOptStep();
-
-          setQueueInterfaceTemplate(j, queueTemplateNames[i].toStdString(),
-                                    temp[j].toStdString());
-        }
-        continue;
-      }
-
-      // If "temp" is empty, perhaps we have some template filenames to open
-      QStringList templateFileNames =
-        settings
-          ->value("optimizer/" + optimizer.toUpper() + "/QI/" + qi.toUpper() +
-                    "/" + queueTemplateNames.at(i) + "_templates",
-                  "")
-          .toStringList();
-
-      templateFileNames.removeAll("");
-      // Loop through the files and see if they exist. If they do, store
-      // the contents
-      for (size_t j = 0; j < templateFileNames.size(); ++j) {
-        while (j + 1 > getNumOptSteps())
-          appendOptStep();
-
-        const QString& templateFile = templateFileNames[j];
-
-        QFile file(templateFile);
-        if (!file.exists()) {
-          qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
-                     << "does not exist!";
-          continue;
-        }
-        if (!file.open(QIODevice::ReadOnly)) {
-          qWarning() << "Warning in " << __FUNCTION__ << ": " << templateFile
-                     << "could not be opened!";
-          continue;
-        }
-        setQueueInterfaceTemplate(j, templateFile.toStdString(),
-                                  QString(file.readAll()).toStdString());
-        file.close();
-      }
-    }
-
-    // Finally, read the user values
-    setUser1(settings->value("optimizer/" + optimizer.toUpper() + "/user1", "")
-               .toString()
-               .toStdString());
-    setUser2(settings->value("optimizer/" + optimizer.toUpper() + "/user2", "")
-               .toString()
-               .toStdString());
-    setUser3(settings->value("optimizer/" + optimizer.toUpper() + "/user3", "")
-               .toString()
-               .toStdString());
-    setUser4(settings->value("optimizer/" + optimizer.toUpper() + "/user4", "")
-               .toString()
-               .toStdString());
-
-  }
-  // New load instructions
-  else {
-    size_t numOptSteps = settings->value("numOptSteps", "1").toUInt();
-
-    // Let's make sure this is at least 1, or we may have some issues
-    if (numOptSteps == 0)
-      numOptSteps = 1;
-
-    clearOptSteps();
-    for (size_t i = 0; i < numOptSteps; ++i) {
-      appendOptStep();
-
-      QString queueInterface =
+    QString queueInterface =
         settings->value("queueInterface/" + QString::number(i), "local")
-          .toString()
-          .toLower();
+            .toString()
+            .toLower();
 
-      setQueueInterface(i, queueInterface.toStdString());
+    setQueueInterface(i, queueInterface.toStdString());
 
-      readQueueInterfaceTemplatesFromSettings(i, filename.toStdString());
+    readQueueInterfaceTemplatesFromSettings(i, filename.toStdString());
 
-      this->queueInterface(i)->readSettings(filename);
+    this->queueInterface(i)->readSettings(filename);
 
-      QString optimizerName =
+    QString optimizerName =
         settings->value("optimizer/" + QString::number(i), "gulp")
-          .toString()
-          .toLower();
+            .toString()
+            .toLower();
 
-      setOptimizer(i, optimizerName.toStdString());
+    setOptimizer(i, optimizerName.toStdString());
 
-      readOptimizerTemplatesFromSettings(i, filename.toStdString());
+    readOptimizerTemplatesFromSettings(i, filename.toStdString());
 
-      this->optimizer(i)->readSettings(filename);
-    }
-
-    readUserValuesFromSettings(filename.toStdString());
+    this->optimizer(i)->readSettings(filename);
   }
+
+  readUserValuesFromSettings(filename.toStdString());
 
   settings->endGroup();
   return true;
@@ -930,24 +735,28 @@ bool XtalOpt::readEditSettings(const QString& filename)
 
 bool XtalOpt::readSettings(const QString& filename)
 {
-  // Some sections, we only want to load if we are loading a state file
+  // Some stuff, we only want to load if we are loading a state file
+  //   and not a generic xtalopt saved settings
   bool isStateFile = filename.endsWith(".state") ||
                      filename.endsWith(".state.old");
 
   SETTINGS(filename);
 
+  // Init (structure limit) tab
   settings->beginGroup("xtalopt/init/");
   int loadedVersion = settings->value("version", 0).toInt();
 
-  // Only scheme version 3 will work currently
-  if (!filename.isEmpty() && loadedVersion > 3) {
+  // As of xtalopt version 14, state files older than v4 will not work
+  if (!filename.isEmpty() && loadedVersion < 4) {
     error("XtalOpt::readSettings(): Settings in file " + filename +
-          " cannot be opened by this version of XtalOpt. Please "
-          "visit https://xtalopt.github.io to obtain a "
-          "newer version.");
+          " appears to be a run with an older version of XtalOpt. "
+          "Please visit https://xtalopt.github.io for latest updates "
+          "on XtalOpt and its input flag descriptions.");
     return false;
   }
 
+  m_verbose = settings->value("verboseOutput", false).toBool();
+  maxAtoms = settings->value("maxAtoms", 20).toInt();
   a_min = settings->value("limits/a/min", 3).toDouble();
   b_min = settings->value("limits/b/min", 3).toDouble();
   c_min = settings->value("limits/c/min", 3).toDouble();
@@ -961,49 +770,35 @@ bool XtalOpt::readSettings(const QString& filename)
   beta_max = settings->value("limits/beta/max", 120).toDouble();
   gamma_max = settings->value("limits/gamma/max", 120).toDouble();
   vol_min = settings->value("limits/volume/min", 1).toDouble();
-  vol_max = settings->value("limits/volume/max", 100000).toDouble();
-  vol_fixed = settings->value("limits/volume/fixed", 500).toDouble();
-  scaleFactor = settings->value("limits/scaleFactor", 0.5).toDouble();
-  minRadius = settings->value("limits/minRadius", 0.25).toDouble();
-  using_fixed_volume = settings->value("using/fixedVolume", false).toBool();
+  vol_max = settings->value("limits/volume/max", 100).toDouble();
   vol_scale_max = settings->value("limits/volume/scale_max", 0.0).toDouble();
   vol_scale_min = settings->value("limits/volume/scale_min", 0.0).toDouble();
+  scaleFactor = settings->value("limits/scaleFactor", 0.5).toDouble();
+  minRadius = settings->value("limits/minRadius", 0.25).toDouble();
   using_interatomicDistanceLimit =
-    settings->value("using/interatomicDistanceLimit", false).toBool();
-  using_customIAD = settings->value("using/customIAD").toBool();
+    settings->value("using/interatomicDistanceLimit", true).toBool();
   using_randSpg = settings->value("using/randSpg").toBool();
   using_checkStepOpt = settings->value("using/checkStepOpt").toBool();
 
-  using_mitosis = settings->value("using/mitosis", false).toBool();
-  using_subcellPrint = settings->value("using/subcellPrint", false).toBool();
-
-  if (isStateFile) {
-    divisions = settings->value("limits/divisions").toInt();
-    ax = settings->value("limits/ax").toInt();
-    bx = settings->value("limits/bx").toInt();
-    cx = settings->value("limits/cx").toInt();
-  }
-
+  using_customIAD = settings->value("using/customIAD", false).toBool();
   using_molUnit = settings->value("using/molUnit", false).toBool();
 
+  // Init setup
   if (isStateFile) {
-    // Composition
-    int size = settings->beginReadArray("composition");
-    comp = QHash<uint, XtalCompositionStruct>();
-    for (int i = 0; i < size; i++) {
-      settings->setArrayIndex(i);
-      uint atomicNum, quantity;
-      XtalCompositionStruct entry;
-      atomicNum = settings->value("atomicNumber").toUInt();
-      if (atomicNum == 0)
-        continue;
-      quantity = settings->value("quantity").toUInt();
-      entry.quantity = quantity;
-      comp.insert(atomicNum, entry);
-    }
-    settings->endArray();
+    // Always read the composition stuff first right after radii entries are read!
+    // Since these are saved while the run was proceeding, we assume they all have
+    //   "valid" outputs; so won't check if they return true or false.
+    input_formulas_string = settings->value("chemical_formulas").toString();
+    processInputChemicalFormulas(input_formulas_string);
+    input_ene_refs_string = settings->value("referenceEnergies").toString();
+    processInputReferenceEnergies(input_ene_refs_string);
+    input_ele_volm_string = settings->value("limits/volume/elemental").toString();
+    processInputElementalVolumes(input_ele_volm_string);
+    vcSearch = settings->value("vcSearch", false).toBool();
+    m_saveHullSnapshots = settings->value("saveHullSnapshots", false).toBool();
   }
 
+  // Molecular units
   if (using_molUnit && isStateFile) {
     int size = settings->beginReadArray("compMolUnit");
     compMolUnit = QHash<QPair<int, int>, MolUnit>();
@@ -1015,18 +810,17 @@ bool XtalOpt::readSettings(const QString& filename)
       MolUnit entry;
 
       QString center = settings->value("center").toString();
-      centerNum = ElemInfo::getAtomicNum(center.trimmed().toStdString());
+      centerNum = ElementInfo::getAtomicNum(center.trimmed().toStdString());
       QString strNumCenters = settings->value("number_of_centers").toString();
       numCenters = strNumCenters.toInt();
       QString neighbor = settings->value("neighbor").toString();
-      neighborNum = ElemInfo::getAtomicNum(neighbor.trimmed().toStdString());
+      neighborNum = ElementInfo::getAtomicNum(neighbor.trimmed().toStdString());
       QString strNumNeighbors =
-        settings->value("number_of_neighbors").toString();
+          settings->value("number_of_neighbors").toString();
       numNeighbors = strNumNeighbors.toInt();
       QString strGeom = settings->value("geometry").toString();
       setGeom(geom, strGeom);
       dist = settings->value("distance").toDouble();
-      QString strDist = QString::number(dist, 'f', 3);
       entry.numCenters = numCenters;
       entry.numNeighbors = numNeighbors;
       entry.geom = geom;
@@ -1048,31 +842,17 @@ bool XtalOpt::readSettings(const QString& filename)
       atomicNum1 = settings->value("atomicNumber1").toInt();
       atomicNum2 = settings->value("atomicNumber2").toInt();
       double minInteratomicDist =
-        settings->value("minInteratomicDist").toDouble();
+          settings->value("minInteratomicDist").toDouble();
       entry.minIAD = minInteratomicDist;
       interComp[qMakePair<int, int>(atomicNum1, atomicNum2)] = entry;
     }
     settings->endArray();
   }
 
-  // Formula Units List
-  formulaUnitsList.clear();
-  if (isStateFile) {
-    int size = settings->beginReadArray("Formula_Units");
-    for (int i = 0; i < size; i++) {
-      settings->setArrayIndex(i);
-      formulaUnitsList.append(settings->value("FU").toUInt());
-    }
-    settings->endArray();
-  }
-
-  if (formulaUnitsList.isEmpty())
-    formulaUnitsList = { 1 };
-
   settings->endGroup();
 
   // We have a separate function for reading the edit settings because
-  // the edit tab may need to call it
+  //   the edit tab may need to call it
   if (!readEditSettings(filename))
     return false;
 
@@ -1080,39 +860,46 @@ bool XtalOpt::readSettings(const QString& filename)
   settings->beginGroup("xtalopt/opt/");
 
   // Initial generation
-  numInitial = settings->value("opt/numInitial", 20).toInt();
+  numInitial = settings->value("opt/numInitial", 0).toInt();
 
   // Search parameters
-  popSize = settings->value("opt/popSize", 20).toUInt();
-  contStructs = settings->value("opt/contStructs", 10).toUInt();
+  parentsPoolSize = settings->value("opt/parentsPoolSize", 20).toUInt();
+  contStructs = settings->value("opt/contStructs", 15).toUInt();
   limitRunningJobs = settings->value("opt/limitRunningJobs", false).toBool();
   runningJobLimit = settings->value("opt/runningJobLimit", 1).toUInt();
-  failLimit = settings->value("opt/failLimit", 2).toUInt();
 
-  failAction = static_cast<OptBase::FailActions>(
+  failLimit = settings->value("opt/failLimit", 1).toUInt();
+  if (failLimit < 1)
+    failLimit = 1;
+  failAction = static_cast<SearchBase::FailActions>(
     settings->value("opt/failAction", XtalOpt::FA_Randomize).toUInt());
-  cutoff = settings->value("opt/cutoff", 100).toInt();
-  using_mitotic_growth =
-    settings->value("opt/using_mitotic_growth", false).toBool();
-  using_FU_crossovers =
-    settings->value("opt/using_FU_crossovers", false).toBool();
-  FU_crossovers_generation =
-    settings->value("opt/FU_crossovers_generation", 4).toUInt();
-  using_one_pool = settings->value("opt/using_one_pool", false).toBool();
-  chance_of_mitosis = settings->value("opt/chance_of_mitosis", 50).toUInt();
+  maxNumStructures = settings->value("opt/maxNumStructures", 100).toInt();
 
-  // Duplicates
+  // Similarities
   tol_xcLength = settings->value("tol/xtalcomp/length", 0.1).toDouble();
   tol_xcAngle = settings->value("tol/xtalcomp/angle", 2.0).toDouble();
   tol_spg = settings->value("tol/spg", 0.01).toDouble();
+  tol_rdf = settings->value("tol/rdf/tolerance", 0.0).toDouble();
+  tol_rdf_cutoff = settings->value("tol/rdf/cutoff", 6.0).toDouble(); 
+  tol_rdf_nbins = settings->value("tol/rdf/nbins", 3000).toInt();
+  tol_rdf_sigma = settings->value("tol/rdf/sigma", 0.008).toDouble();
+
+  // Random supercell
+  p_supercell = settings->value("opt/p_supercell", 0).toUInt();
+
+  // Permutomic
+  p_atomic = settings->value("opt/p_atomic", 15).toUInt();
+
+  // Permutomic
+  p_comp = settings->value("opt/p_comp", 5).toUInt();
 
   // Crossover
-  p_cross = settings->value("opt/p_cross", 15).toUInt();
+  p_cross = settings->value("opt/p_cross", 35).toUInt();
   cross_minimumContribution =
     settings->value("opt/cross_minimumContribution", 25).toUInt();
 
   // Stripple
-  p_strip = settings->value("opt/p_strip", 50).toUInt();
+  p_strip = settings->value("opt/p_strip", 25).toUInt();
   strip_strainStdev_min =
     settings->value("opt/strip_strainStdev_min", 0.5).toDouble();
   strip_strainStdev_max =
@@ -1123,39 +910,44 @@ bool XtalOpt::readSettings(const QString& filename)
   strip_per2 = settings->value("opt/strip_per2", 1).toUInt();
 
   // Permustrain
-  p_perm = settings->value("opt/p_perm", 35).toUInt();
+  p_perm = settings->value("opt/p_perm", 25).toUInt();
   perm_strainStdev_max =
     settings->value("opt/perm_strainStdev_max", 0.5).toDouble();
   perm_ex = settings->value("opt/perm_ex", 4).toUInt();
 
-  if (isStateFile)
-  {
-    // Multi-objective, aflow-hardness, softExit, localQueue, ...
-    //
-    // softExit shouldn't be read in resuming; it causes the code to quit immediately!
-    // Instead; always set it to false in resuming for which settings are being read here.
-    m_softExit = false;
-    //
-    m_localQueue = settings->value("opt/localQueue", false).toBool();
-    m_calculateHardness = settings->value("obj/calculateHardness", false).toBool();
-    m_hardnessFitnessWeight = settings->value("obj/hardnessFitnessWeight", -1.0).toDouble();
-    m_objectivesReDo = settings->value("obj/objectivesReDo", false).toBool();
+  // softExit shouldn't be read in resuming; it causes the code to quit
+  //   because the max number of structures is already met! Instead; always
+  //   set it to false in resuming for which settings are being read here.
+  m_softExit = false;
+  //
+  m_localQueue = settings->value("opt/localQueue", false).toBool();
+
+  settings->endGroup();
+
+  // Multi-objective tab
+  settings->beginGroup("xtalopt/obj/");
+
+  // Optimization Type
+  m_optimizationType = settings->value("optimizationType", "basic").toString();
+  m_tournamentSelection = settings->value("tournamentSelection", true).toBool();
+  m_restrictedPool = settings->value("restrictedPool", false).toBool();
+  m_crowdingDistance = settings->value("crowdingDistance", true).toBool();
+  m_objectivePrecision = settings->value("objectivePrecision", -1).toInt();
+
+  if (isStateFile) {
+    // Multi-objective: we assume weights are already saved correctly
+    m_objectivesReDo = settings->value("objectivesReDo", false).toBool();
     resetObjectives();
-    int objnum = settings->value("obj/objectivesNum", 0).toInt();
-    m_calculateObjectives = (objnum > 0) ? true : false;
-    setObjectivesNum(objnum);
-    int size = settings->beginReadArray("obj/objectives");
+    int size = settings->beginReadArray("objectives");
     for (size_t i = 0; i < size; i++) {
       settings->setArrayIndex(i);
-      setObjectivesTyp(ObjectivesType(settings->value("typ","").toInt()));
+      setObjectivesTyp(ObjType(settings->value("typ","").toInt()));
       setObjectivesExe(settings->value("exe","").toString());
       setObjectivesWgt(settings->value("wgt",0.0).toDouble());
       setObjectivesOut(settings->value("out","").toString());
     }
+    m_calculateObjectives = (size > 0) ? true : false;
     settings->endArray();
-    // Double-check weights (and re-construct objectives list for gui)
-    if (!processObjectivesWeights())
-      return false;
   }
 
   settings->endGroup();
@@ -1174,38 +966,36 @@ bool XtalOpt::addSeed(const QString& filename)
   // Use an atomic bool for thread safety
   static std::atomic_bool warningAlreadyDisplayed(false);
   if (!warningAlreadyDisplayed.load()) {
-    warning("XtalOpt no longer check to make sure seed "
-            "xtals obey user-defined constraints (minimum "
-            "interatomic distances, min/max volume, etc.). Be sure "
-            "your seed structures are reasonable.");
+    warning("XtalOpt no longer checks seed xtals for user-defined "
+            "geometrical constraints.");
     warningAlreadyDisplayed = true;
   }
 
-  xtal->moveToThread(m_queue->thread());
+  // For seed structures, we call check composition with "isSeed = true"
+  //   where we perform a basic check and increase max atoms if needed.
   if (!optimizer(0)->read(xtal, filename) ||
-      !this->checkComposition(xtal, &err)) {
+      !this->checkComposition(xtal, true)) {
     error(tr("Error loading seed %1\n\n%2").arg(filename).arg(err));
     xtal->deleteLater();
     return false;
   }
-  QString parents = tr("Seeded: %1", "1 is a filename").arg(filename);
-  this->m_queue->addManualStructureRequest(1);
+
+  QString parents = QString("Seeded: %1").arg(filename);
   initializeAndAddXtal(xtal, 1, parents);
-  debug(
-    tr("XtalOpt::addSeed: Loaded seed: %1", "1 is a filename").arg(filename));
+  debug(QString("XtalOpt::addSeed: loaded seed: %1").arg(filename));
   return true;
 }
 
 Structure* XtalOpt::replaceWithRandom(Structure* s, const QString& reason)
 {
-
   Xtal* oldXtal = qobject_cast<Xtal*>(s);
   QWriteLocker locker1(&oldXtal->lock());
 
   // Randomly generated xtals do not have parent structures
   oldXtal->setParentStructure(nullptr);
 
-  uint FU = s->getFormulaUnits();
+  // Retrieve the composition of the original cell
+  CellComp origComp = getXtalComposition(s);
 
   uint generation, id;
   generation = s->getGeneration();
@@ -1231,11 +1021,11 @@ Structure* XtalOpt::replaceWithRandom(Structure* s, const QString& reason)
         // Randomly select a possible spg
         spg = pickRandomSpgFromPossibleOnes();
       }
-      while (!RandSpg::isSpgPossible(spg, getStdVecOfAtoms(FU)));
+      while (!RandSpg::isSpgPossible(spg, getStdVecOfAtomsComp(origComp)));
 
-      xtal = randSpgXtal(generation, id, FU, spg);
+      xtal = randSpgXtal(generation, id, origComp, spg);
     } else {
-      xtal = generateRandomXtal(generation, id, FU);
+      xtal = generateRandomXtal(generation, id, origComp);
     }
   }
 
@@ -1250,10 +1040,12 @@ Structure* XtalOpt::replaceWithRandom(Structure* s, const QString& reason)
   QString parents;
   if (using_randSpg) {
     QString HM_spg = Xtal::getHMName(spg);
-    parents = tr("RandSpg Init: %1 (%2)").arg(spg).arg(HM_spg);
+    parents = QString("RandSpg: %1 [comp=%2] (%3)")
+                  .arg(spg).arg(origComp.getFormula()).arg(HM_spg);
   }
   else {
-    parents = "Randomly generated";
+    parents = QString("Randomly generated replacement (comp=%1)")
+                  .arg(origComp.getFormula());
   }
   if (!reason.isEmpty())
     parents += " (" + reason + ")";
@@ -1277,7 +1069,9 @@ Structure* XtalOpt::replaceWithOffspring(Structure* s, const QString& reason)
 {
   Xtal* oldXtal = qobject_cast<Xtal*>(s);
 
-  uint FU = s->getFormulaUnits();
+  // Retrieve the composition of the original cell
+  CellComp origComp = getXtalComposition(s);
+
   // Generate/Check new xtal
   Xtal* xtal = 0;
   int maxAttempts = 10000;
@@ -1292,13 +1086,13 @@ Structure* XtalOpt::replaceWithOffspring(Structure* s, const QString& reason)
       return nullptr;
     }
     ++attemptCount;
-    xtal = generateNewXtal(FU);
+    xtal = generateNewXtal(origComp);
   }
 
-  // Just return xtal if the formula units are not equivalent.
-  // This should theoretically not occur since generateNewXtal(FU) forces
-  // xtal to have the correct FU.
-  if (xtal->getFormulaUnits() != s->getFormulaUnits()) {
+  // Just return xtal if the formulas are not equivalent.
+  // This should theoretically not occur since generateNewXtal(origComp) forces
+  // xtal to have the correct composition.
+  if (xtal->getChemicalFormula() != s->getChemicalFormula()) {
     return xtal;
   }
 
@@ -1332,8 +1126,8 @@ Structure* XtalOpt::replaceWithOffspring(Structure* s, const QString& reason)
   return static_cast<Structure*>(oldXtal);
 }
 
-Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg,
-                           bool checkSpgWithSpglib)
+Xtal* XtalOpt::randSpgXtal(uint generation, uint id, CellComp incomp,
+                           uint spg, bool checkSpgWithSpglib)
 {
   Xtal* xtal = nullptr;
 
@@ -1342,18 +1136,25 @@ Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg,
   setLatticeMinsAndMaxes(latticeMins, latticeMaxes);
 
   // Create the input
-  randSpgInput input(spg, getStdVecOfAtoms(FU), latticeMins, latticeMaxes);
+  randSpgInput input(spg, getStdVecOfAtomsComp(incomp), latticeMins, latticeMaxes);
 
   // Add various other input options
-  input.IADScalingFactor = scaleFactor;
   input.minRadius = minRadius;
-  input.minVolume = vol_min * static_cast<double>(FU);
-  input.maxVolume = vol_max * static_cast<double>(FU);
+
+  // FIXME: this is a mark!
+  // At least on mac os, the ElemInfo/ElemInfoDatabase defined in randSpg where not
+  //   resolved from those in XtalOpt. So, the following line would change the base
+  //   radii, hence, minimum radii of atoms right after the first call to randSpg.
+  //   As of XtalOpt14, these class/namespace are renamed to
+  //   ElementInfo/ElementInfoDatabase in XtalOpt to avoid any such issues.
+  input.IADScalingFactor = scaleFactor;
+
+  getCompositionVolumeLimits(incomp, input.minVolume, input.maxVolume);
 
   input.maxAttempts = 10;
   input.verbosity = 'n';
-  // This removes the guarantee that we will generate the right space group,
-  // but we will just check it with spglib
+  // This removes the guarantee that we will generate the right
+  //   space group, but we will just check it with spglib
   input.forceMostGeneralWyckPos = false;
 
   // Let's try this 3 times
@@ -1371,8 +1172,8 @@ Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg,
     }
   } while (numAttempts < 3);
 
-  // Make sure we don't call xtal->getSpaceGroupNumber() until we know that
-  // we have an xtal
+  // Make sure we don't call xtal->getSpaceGroupNumber() until we
+  //   know that we have an xtal
   if (xtal) {
     if (checkSpgWithSpglib && xtal->getSpaceGroupNumber() != spg) {
       delete xtal;
@@ -1383,12 +1184,12 @@ Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg,
   // We need to set these things before checkXtal() is called
   if (xtal) {
     xtal->setStatus(Xtal::WaitingForOptimization);
-    if (using_fixed_volume)
-      xtal->setVolume(vol_fixed * FU);
   } else {
     qDebug() << "After" << QString::number(input.maxAttempts)
              << "attempts, failed to generate an xtal with spg of"
-             << QString::number(spg);
+             << QString::number(spg) << "and composition of"
+             << incomp.getFormula();
+
     return nullptr;
   }
 
@@ -1397,18 +1198,21 @@ Xtal* XtalOpt::randSpgXtal(uint generation, uint id, uint FU, uint spg,
   // Set up xtal data
   xtal->setGeneration(generation);
   xtal->setIDNumber(id);
-  xtal->setParents(tr("RandSpg Init: %1 (%2)").arg(spg).arg(HM_spg));
+  xtal->setParents(QString("RandSpg Init: %1 [comp=%2] (%3)")
+                       .arg(spg).arg(incomp.getFormula()).arg(HM_spg));
   return xtal;
 }
 
-Xtal* XtalOpt::generateEmptyXtalWithLattice(uint FU)
+Xtal* XtalOpt::generateEmptyXtalWithLattice(CellComp incomp)
 {
   Xtal* xtal = nullptr;
   int attemptCount = 1;
   do {
-    // This is just to let the user know in case we are stuck here; but not to flood the output!
+    // This is just to let the user know in case we are stuck here
+    //   without flooding the output!
     if ((attemptCount % 100000) == 0) {
-      qDebug() << "Attempts in generateEmptyXtalWithLattice: " << QString::number(attemptCount);
+      qDebug() << "Attempts in generateEmptyXtalWithLattice: "
+               << QString::number(attemptCount);
     }
     ++attemptCount;
     delete xtal;
@@ -1420,18 +1224,20 @@ Xtal* XtalOpt::generateEmptyXtalWithLattice(uint FU)
     double beta = getRandDouble() * (beta_max - beta_min) + beta_min;
     double gamma = getRandDouble() * (gamma_max - gamma_min) + gamma_min;
     xtal = new Xtal(a, b, c, alpha, beta, gamma);
-  } while (!checkLattice(xtal, FU));
+  } while (!checkLattice(xtal));
 
-  if (using_fixed_volume)
-    xtal->setVolume(vol_fixed * FU);
+  // Set the volume
+  double minvol, maxvol;
+  getCompositionVolumeLimits(incomp, minvol, maxvol);
+  xtal->setVolume(getRandDouble(minvol, maxvol));
 
   return xtal;
 }
 
-Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
+Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, CellComp incomp)
 {
   // Create a valid lattice first
-  Xtal* xtal = generateEmptyXtalWithLattice(FU);
+  Xtal* xtal = generateEmptyXtalWithLattice(incomp);
 
   // Cache these for later use
   double a = xtal->getA();
@@ -1443,13 +1249,13 @@ Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
   xtal->setStatus(Xtal::Empty);
 
   // Populate crystal
-  QList<uint> atomicNums = comp.keys();
+  QList<uint> atomicNums = incomp.getAtomicNumbers();
   // Sort atomic number by decreasing minimum radius. Adding the "larger"
   // atoms first encourages a more even (and ordered) distribution
   for (int i = 0; i < atomicNums.size() - 1; ++i) {
     for (int j = i + 1; j < atomicNums.size(); ++j) {
-      if (this->comp.value(atomicNums[i]).minRadius <
-          this->comp.value(atomicNums[j]).minRadius) {
+      if (this->eleMinRadii.getMinRadius(atomicNums[i]) <
+          this->eleMinRadii.getMinRadius(atomicNums[j])) {
         atomicNums.swap(i, j);
       }
     }
@@ -1457,37 +1263,36 @@ Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
 
   unsigned int atomicNum;
   int qRand;
-  int qTotal;
-  int qRandPre;
-  int qRandPost;
 
-  // Mitosis = True
-  if (using_mitosis) {
-    //  Unit Cell Vectors
-    int A = ax;
-    int B = bx;
-    int C = cx;
-
-    a = a / A;
-    b = b / B;
-    c = c / C;
-
-    xtal->setCellInfo(a, b, c, xtal->getAlpha(), xtal->getBeta(),
-                      xtal->getGamma());
-
+  if (using_customIAD) {
+    for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+      atomicNum = atomicNums.at(num_idx);
+      int q = incomp.getCount(atomicNum);
+      for (uint i = 0; i < q; i++) {
+        if (!xtal->addAtomRandomlyIAD(atomicNum, this->eleMinRadii,
+                                      this->interComp, 1000)) {
+          xtal->deleteLater();
+          debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
+              "specified custom interatomic distance.");
+          return 0;
+        }
+      }
+    }
+  } else {
     // First check for "no center" MolUnits
     for (QHash<QPair<int, int>, MolUnit>::const_iterator
-           it = this->compMolUnit.constBegin(),
-           it_end = this->compMolUnit.constEnd();
-         it != it_end; it++) {
+        it = this->compMolUnit.constBegin(),
+        it_end = this->compMolUnit.constEnd();
+        it != it_end; it++) {
       QPair<int, int> key = const_cast<QPair<int, int>&>(it.key());
       if (key.first == 0) {
-        for (int i = 0; i < it->numCenters / divisions; i++) {
-          if (!xtal->addAtomRandomly(key.first, key.second, this->comp,
+        for (int i = 0; i < it->numCenters; i++) {
+          if (!xtal->addAtomRandomly(key.first, key.second,
+                                     this->eleMinRadii,
                                      this->compMolUnit, true)) {
             xtal->deleteLater();
             debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                  "specified interatomic distance.");
+                "specified interatomic distance.");
             return 0;
           }
         }
@@ -1495,33 +1300,33 @@ Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
     }
 
     for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
+      // To avoid messing up the stoichiometry with the MolUnit builder
       atomicNum = atomicNums.at(num_idx);
+      qRand = incomp.getCount(atomicNum);
+
       if (atomicNum == 0)
         continue;
-      qTotal = comp.value(atomicNum).quantity * FU;
 
-      // Do we use the MolUnit builder?
       bool addAtom = true;
       bool useMolUnit = false;
+
       for (QHash<QPair<int, int>, MolUnit>::const_iterator
-             it = this->compMolUnit.constBegin(),
-             it_end = this->compMolUnit.constEnd();
-           it != it_end; it++) {
+          it = this->compMolUnit.constBegin(),
+          it_end = this->compMolUnit.constEnd();
+          it != it_end; it++) {
         QPair<int, int> key = const_cast<QPair<int, int>&>(it.key());
-        int first = key.first;
-        if (atomicNum == first) {
+        if (atomicNum == key.first) {
           useMolUnit = true;
           break;
         }
       }
 
-      // Do we add Atom or has it already been placed by MolUnit builder
       unsigned int qCenter = 0;
       unsigned int qNeighbor = 0;
       for (QHash<QPair<int, int>, MolUnit>::const_iterator
-             it = this->compMolUnit.constBegin(),
-             it_end = this->compMolUnit.constEnd();
-           it != it_end; it++) {
+          it = this->compMolUnit.constBegin(),
+          it_end = this->compMolUnit.constEnd();
+          it != it_end; it++) {
         QPair<int, int> key = const_cast<QPair<int, int>&>(it.key());
         if (atomicNum == key.first) {
           qCenter += it->numCenters;
@@ -1531,249 +1336,40 @@ Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
         }
       }
 
-      if (qCenter / divisions == 0)
-        useMolUnit = false;
-
-      if (qTotal == qCenter + qNeighbor) {
+      if (qRand == qCenter + qNeighbor) {
         addAtom = false;
-        qRandPre = 0;
+        qRand -= qCenter + qNeighbor;
       } else {
-        qRandPre = (qTotal - (qCenter + qNeighbor)) / divisions;
+        qRand -= qCenter + qNeighbor;
       }
 
       // Initial atom placement
-      for (uint i = 0; i < qRandPre; i++) {
+      for (uint i = 0; i < qRand; i++) {
         if (addAtom == true) {
-          if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
+          if (!xtal->addAtomRandomly(atomicNum, this->eleMinRadii)) {
             xtal->deleteLater();
             debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                  "specified interatomic distance.");
+                "specified interatomic distance.");
             return 0;
           }
         }
       }
 
-      // Add atom with MolUnit builder or Randomly
       if (useMolUnit == true) {
         for (QHash<QPair<int, int>, MolUnit>::const_iterator
-               it = this->compMolUnit.constBegin(),
-               it_end = this->compMolUnit.constEnd();
-             it != it_end; it++) {
+            it = this->compMolUnit.constBegin(),
+            it_end = this->compMolUnit.constEnd();
+            it != it_end; it++) {
           QPair<int, int> key = const_cast<QPair<int, int>&>(it.key());
           if (atomicNum == key.first) {
-            for (int i = 0; i < it->numCenters / divisions; i++) {
-              if (!xtal->addAtomRandomly(atomicNum, key.second, this->comp,
+            for (int i = 0; i < it->numCenters; i++) {
+              if (!xtal->addAtomRandomly(atomicNum, key.second,
+                                         this->eleMinRadii,
                                          this->compMolUnit, useMolUnit)) {
                 xtal->deleteLater();
                 debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                      "specified interatomic distance.");
-                return 0;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Print subcell if checked
-    if (using_subcellPrint)
-      printSubXtal(xtal, generation, id);
-
-    // Fill supercell by copying subcell according to parameters
-    if (!xtal->fillSuperCell(A, B, C, xtal)) {
-      xtal->deleteLater();
-      debug("XtalOpt::generateRandomXtal: Failed to add atoms.");
-      return 0;
-    }
-
-    // Randomly place the left over atoms
-    for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
-      atomicNum = atomicNums.at(num_idx);
-      qTotal = (comp.value(atomicNum).quantity * FU);
-
-      // Do we use the MolUnit builder?
-      bool addAtom = true;
-      bool useMolUnit = false;
-      for (QHash<QPair<int, int>, MolUnit>::const_iterator
-             it = this->compMolUnit.constBegin(),
-             it_end = this->compMolUnit.constEnd();
-           it != it_end; it++) {
-        QPair<int, int> key = const_cast<QPair<int, int>&>(it.key());
-        int first = key.first;
-        if (atomicNum == first) {
-          useMolUnit = true;
-          break;
-        }
-      }
-
-      // Do we add Atom or has it already been placed by MolUnit builder
-      unsigned int qCenter = 0;
-      unsigned int qNeighbor = 0;
-      for (QHash<QPair<int, int>, MolUnit>::const_iterator
-             it = this->compMolUnit.constBegin(),
-             it_end = this->compMolUnit.constEnd();
-           it != it_end; it++) {
-        QPair<int, int> key = const_cast<QPair<int, int>&>(it.key());
-        if (atomicNum == key.first) {
-          qCenter += it->numCenters;
-        }
-        if (atomicNum == key.second) {
-          qNeighbor += it->numCenters * it->numNeighbors;
-        }
-      }
-
-      if (qTotal == qCenter + qNeighbor) {
-        addAtom = false;
-        qRandPost = 0;
-      } else {
-        qRandPre = (qTotal - (qCenter + qNeighbor)) / divisions;
-        qRandPost = qTotal - (qCenter + qNeighbor) - (qRandPre * divisions);
-      }
-
-      if (qCenter / divisions > 0)
-        qCenter -= (qCenter / divisions) * divisions;
-
-      // Initial atom placement
-      for (uint i = 0; i < qRandPost; i++) {
-        if (addAtom == true) {
-          if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
-            xtal->deleteLater();
-            debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                  "specified interatomic distance.");
-            return 0;
-          }
-        }
-      }
-
-      // Add atom with MolUnit builder or Randomly
-      if (useMolUnit == true) {
-        for (QHash<QPair<int, int>, MolUnit>::const_iterator
-               it = this->compMolUnit.constBegin(),
-               it_end = this->compMolUnit.constEnd();
-             it != it_end; it++) {
-          QPair<int, int> key = const_cast<QPair<int, int>&>(it.key());
-          if (atomicNum == key.first) {
-            for (int i = 0; i < it->numCenters % divisions; i++) {
-              if (!xtal->addAtomRandomly(atomicNum, key.second, this->comp,
-                                         this->compMolUnit, useMolUnit)) {
-                xtal->deleteLater();
-                debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                      "specified interatomic distance.");
-                return 0;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Mitosis = False
-  } else {
-    if (using_customIAD) {
-      for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
-        atomicNum = atomicNums.at(num_idx);
-        int q = comp.value(atomicNum).quantity * FU;
-        for (uint i = 0; i < q; i++) {
-          if (!xtal->addAtomRandomlyIAD(atomicNum, this->comp, this->interComp,
-                                        1000)) {
-            xtal->deleteLater();
-            debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                  "specified custom interatomic distance.");
-            return 0;
-          }
-        }
-      }
-    } else {
-      // First check for "no center" MolUnits
-      for (QHash<QPair<int, int>, MolUnit>::const_iterator
-             it = this->compMolUnit.constBegin(),
-             it_end = this->compMolUnit.constEnd();
-           it != it_end; it++) {
-        QPair<int, int> key = const_cast<QPair<int, int>&>(it.key());
-        if (key.first == 0) {
-          for (int i = 0; i < it->numCenters; i++) {
-            if (!xtal->addAtomRandomly(key.first, key.second, this->comp,
-                                       this->compMolUnit, true)) {
-              xtal->deleteLater();
-              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
                     "specified interatomic distance.");
-              return 0;
-            }
-          }
-        }
-      }
-
-      for (int num_idx = 0; num_idx < atomicNums.size(); num_idx++) {
-        // To avoid messing up the stoichiometry with the MolUnit builder
-        atomicNum = atomicNums.at(num_idx);
-        qRand = comp.value(atomicNum).quantity * FU;
-
-        if (atomicNum == 0)
-          continue;
-
-        bool addAtom = true;
-        bool useMolUnit = false;
-
-        for (QHash<QPair<int, int>, MolUnit>::const_iterator
-               it = this->compMolUnit.constBegin(),
-               it_end = this->compMolUnit.constEnd();
-             it != it_end; it++) {
-          QPair<int, int> key = const_cast<QPair<int, int>&>(it.key());
-          if (atomicNum == key.first) {
-            useMolUnit = true;
-            break;
-          }
-        }
-
-        unsigned int qCenter = 0;
-        unsigned int qNeighbor = 0;
-        for (QHash<QPair<int, int>, MolUnit>::const_iterator
-               it = this->compMolUnit.constBegin(),
-               it_end = this->compMolUnit.constEnd();
-             it != it_end; it++) {
-          QPair<int, int> key = const_cast<QPair<int, int>&>(it.key());
-          if (atomicNum == key.first) {
-            qCenter += it->numCenters;
-          }
-          if (atomicNum == key.second) {
-            qNeighbor += it->numCenters * it->numNeighbors;
-          }
-        }
-
-        if (qRand == qCenter + qNeighbor) {
-          addAtom = false;
-          qRand -= qCenter + qNeighbor;
-        } else {
-          qRand -= qCenter + qNeighbor;
-        }
-
-        // Initial atom placement
-        for (uint i = 0; i < qRand; i++) {
-          if (addAtom == true) {
-            if (!xtal->addAtomRandomly(atomicNum, this->comp)) {
-              xtal->deleteLater();
-              debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                    "specified interatomic distance.");
-              return 0;
-            }
-          }
-        }
-
-        if (useMolUnit == true) {
-          for (QHash<QPair<int, int>, MolUnit>::const_iterator
-                 it = this->compMolUnit.constBegin(),
-                 it_end = this->compMolUnit.constEnd();
-               it != it_end; it++) {
-            QPair<int, int> key = const_cast<QPair<int, int>&>(it.key());
-            if (atomicNum == key.first) {
-              for (int i = 0; i < it->numCenters; i++) {
-                if (!xtal->addAtomRandomly(atomicNum, key.second, this->comp,
-                                           this->compMolUnit, useMolUnit)) {
-                  xtal->deleteLater();
-                  debug("XtalOpt::generateRandomXtal: Failed to add atoms with "
-                        "specified interatomic distance.");
-                  return 0;
-                }
+                return 0;
               }
             }
           }
@@ -1782,124 +1378,14 @@ Xtal* XtalOpt::generateRandomXtal(uint generation, uint id, uint FU)
     }
   }
 
-  // Set up geneology info
+  // Set up genealogy info
   xtal->setGeneration(generation);
   xtal->setIDNumber(id);
-  xtal->setParents("Randomly generated");
+  xtal->setParents(tr("Randomly generated (comp=%1)").arg(incomp.getFormula()));
   xtal->setStatus(Xtal::WaitingForOptimization);
 
   // Set up xtal data
   return xtal;
-}
-
-void XtalOpt::printSubXtal(Xtal* xtal, uint generation, uint id)
-{
-  QMutexLocker xtalInitMutexLocker(xtalInitMutex);
-
-  QString id_s, gen_s, locpath_s;
-  id_s.sprintf("%05d", id);
-  gen_s.sprintf("%05d", generation);
-  locpath_s = locWorkDir + "/subcells";
-  QDir dir(locpath_s);
-  if (!dir.exists()) {
-    if (!dir.mkpath(locpath_s)) {
-      error(tr("XtalOpt::initializeSubXtal: Cannot write to path: %1 "
-               "(path creation failure)",
-               "1 is a file path.")
-              .arg(locpath_s));
-    }
-  }
-  QFile loc_subcell;
-  loc_subcell.setFileName(locpath_s + "/" + gen_s + "x" + id_s + ".cml");
-
-  if (!loc_subcell.open(QIODevice::WriteOnly)) {
-    error("XtalOpt::initializeSubXtal(): Error opening file " +
-          loc_subcell.fileName() + " for writing...");
-  }
-
-  QTextStream out;
-  out.setDevice(&loc_subcell);
-
-  // Print the subcells as .cml files
-  QStringList symbols = xtal->getSymbols();
-  QList<unsigned int> atomCounts = xtal->getNumberOfAtomsAlpha();
-  out << "<molecule>\n";
-  out << "\t<crystal>\n";
-
-  // Unit Cell Vectors
-  out << QString(
-           "\t\t<scalar title=\"a\" units=\"units:angstrom\">%1</scalar>\n")
-           .arg(xtal->unitCell().aVector().x(), 12);
-  out << QString(
-           "\t\t<scalar title=\"b\" units=\"units:angstrom\">%1</scalar>\n")
-           .arg(xtal->unitCell().bVector().y(), 12, 'f', 8);
-  out << QString(
-           "\t\t<scalar title=\"c\" units=\"units:angstrom\">%1</scalar>\n")
-           .arg(xtal->unitCell().cVector().z(), 12, 'f', 8);
-
-  // Unit Cell Angles
-  out << QString(
-           "\t\t<scalar title=\"alpha\" units=\"units:degree\">%1</scalar>\n")
-           .arg(xtal->getAlpha(), 12, 'f', 8);
-  out << QString(
-           "\t\t<scalar title=\"beta\" units=\"units:degree\">%1</scalar>\n")
-           .arg(xtal->getBeta(), 12, 'f', 8);
-  out << QString(
-           "\t\t<scalar title=\"gamma\" units=\"units:degree\">%1</scalar>\n")
-           .arg(xtal->getGamma(), 12, 'f', 8);
-
-  out << "\t</crystal>\n";
-  out << "\t<atomArray>\n";
-
-  int symbolCount = 0;
-  int j = 1;
-  // Coordinates of each atom (sorted alphabetically by symbol)
-  QList<Vector3> coords = xtal->getAtomCoordsFrac();
-  for (int i = 0; i < coords.size(); i++) {
-    if (j > atomCounts[symbolCount]) {
-      symbolCount++;
-      j = 0;
-    }
-    j++;
-    out << QString("\t\t<atom id=\"a%1\" elementType=\"%2\" xFract=\"%3\" "
-                   "yFract=\"%4\" zFract=\"%5\"/>\n")
-             .arg(i + 1)
-             .arg(symbols[symbolCount])
-             .arg(coords[i].x(), 12, 'f', 8)
-             .arg(coords[i].y(), 12, 'f', 8)
-             .arg(coords[i].z(), 12, 'f', 8);
-  }
-
-  out << "\t</atomArray>\n";
-  out << "</molecule>\n";
-  out << endl;
-}
-
-// Overloaded version of generateRandomXtal(uint generation, uint id, uint FU)
-// without FU specified
-Xtal* XtalOpt::generateRandomXtal(uint generation, uint id)
-{
-  QList<uint> tempFormulaUnitsList = formulaUnitsList;
-  if (using_mitotic_growth && !using_one_pool) {
-    // Remove formula units on the list for which there is a smaller multiple
-    // that may be used to create a super cell.
-    for (int i = 0; i < tempFormulaUnitsList.size(); i++) {
-      for (int j = i + 1; j < tempFormulaUnitsList.size(); j++) {
-        if (tempFormulaUnitsList.at(j) % tempFormulaUnitsList.at(i) == 0) {
-          tempFormulaUnitsList.removeAt(j);
-          j--;
-        }
-      }
-    }
-  }
-
-  // We will assume modulo bias will be small since formula unit ranges are
-  // typically small. Pick random formula units.
-  uint randomListIndex = rand() % int(tempFormulaUnitsList.size());
-
-  uint FU = tempFormulaUnitsList.at(randomListIndex);
-
-  return generateRandomXtal(generation, id, FU);
 }
 
 void XtalOpt::initializeAndAddXtal(Xtal* xtal, uint generation,
@@ -1932,10 +1418,8 @@ void XtalOpt::initializeAndAddXtal(Xtal* xtal, uint generation,
   QDir dir(locpath_s);
   if (!dir.exists()) {
     if (!dir.mkpath(locpath_s)) {
-      error(tr("XtalOpt::initializeAndAddXtal: Cannot write to path: %1 "
-               "(path creation failure)",
-               "1 is a file path.")
-              .arg(locpath_s));
+      error(QString("XtalOpt::initializeAndAddXtal: Cannot write to path: %1 ")
+            .arg(locpath_s));
     }
   }
   // xtal->moveToThread(m_tracker->thread());
@@ -1963,104 +1447,36 @@ void XtalOpt::generateNewStructure()
 
 void XtalOpt::generateNewStructure_()
 {
-  Xtal* newXtal = generateNewXtal();
+  // This function is being used to generate new structures.
+  // We choose a random composition each time it's called.
+
+  CellComp randomComp = pickRandomCompositionFromPossibleOnes();
+
+  Xtal* newXtal = generateNewXtal(randomComp);
   initializeAndAddXtal(newXtal, newXtal->getGeneration(),
                        newXtal->getParents());
 }
 
-// Identical to the previous generateNewXtal() function except the number
-// formula units to use have been specified
-Xtal* XtalOpt::generateNewXtal(uint FU)
+Xtal* XtalOpt::generateNewXtal(CellComp incomp)
 {
+  // A sanity check; although this shouldn't happen!
+  if (incomp.getNumAtoms() == 0) {
+    qDebug() << "Failed in generateNewXtal1 with empty composition";
+    return nullptr;
+  }
+
   QList<Structure*> structures;
 
   QReadLocker trackerLocker(m_tracker->rwLock());
 
-  // If we are NOT using one pool. FU == 0 implies that we are using one pool
-  if (!using_one_pool) {
+  // Just remove non-optimized structures
+  structures = m_queue->getAllParentPoolStructures();
 
-    // We want to include supercell structures so that each individual formula
-    // unit can build off of supercells in their own gene pool. One supercell
-    // may be a duplicate of another supercell, though, and we don't want to
-    // include duplicate supercells. This function fixes that for us.
-    structures =
-      m_queue->getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
-
-    // Remove all structures that do not have formula units of FU
-    for (size_t i = 0; i < structures.size(); i++) {
-      if (structures.at(i)->getFormulaUnits() != FU) {
-        structures.removeAt(i);
-        i--;
-      }
-    }
-  }
-
-  // Just remove non-optimized structures if using_one_pool
-  else if (using_one_pool) {
-    structures = m_queue->getAllOptimizedStructures();
-  }
-
-  // Remove all structures that are not on the formula units list...
-  for (size_t i = 0; i < structures.size(); i++) {
-    if (!onTheFormulaUnitsList(structures.at(i)->getFormulaUnits())) {
-      structures.removeAt(i);
-      i--;
-    }
-  }
-
-  // Check to see if there are enough optimized structure to perform
-  // genetic operations
+  // Try to get it from the probability list only if we have large
+  //   enough parents pool. Otherwise, generate randomly.
   if (structures.size() < 3) {
     Xtal* xtal = 0;
 
-    // Check to see if a supercell should be formed by mitosis
-    if (using_mitotic_growth && FU != 0) {
-      QList<Structure*> tempStructures =
-        m_queue
-          ->getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
-      QList<uint> numberOfEachFormulaUnit =
-        Structure::countStructuresOfEachFormulaUnit(&tempStructures, maxFU());
-
-      // The number of formula units to use to make the super cell must be a
-      // multiple of the larger formula unit, and there must be as many at
-      // least five optimized structures. If there aren't, then generate more.
-      for (int i = FU - 1; 0 < i; i--) {
-        if (FU % i == 0 && numberOfEachFormulaUnit.at(i) >= 5 &&
-            onTheFormulaUnitsList(i) == true) {
-          int maxAttempts = 10000;
-          int attemptCount = 0;
-          while (!checkXtal(xtal)) {
-            if (xtal) {
-              delete xtal;
-              xtal = 0;
-            }
-            if (attemptCount >= maxAttempts) {
-              qDebug() << "Failed too many times in generateNewXtal1. Giving up";
-              return nullptr;
-            }
-            ++attemptCount;
-            xtal = generateSuperCell(i, FU, nullptr, true);
-          }
-          return xtal;
-        }
-
-        // Generates more of a particular formula unit if everything checks
-        // except that there aren't enough parent structures. Must be on the
-        // formulaUnitsList.
-        if (FU % i == 0 && numberOfEachFormulaUnit.at(i) < 5 &&
-            onTheFormulaUnitsList(i) == true) {
-          xtal = generateNewXtal(i);
-          QString parents = xtal->getParents();
-          parents =
-            parents +
-            tr(" for mitosis to make %1 FU xtals").arg(QString::number(FU));
-          xtal->setParents(parents);
-          return xtal;
-        }
-      }
-    }
-
-    // If a supercell cannot be formed or if using_mitotic_growth == false
     int maxAttempts = 10000;
     int attemptCount = 0;
     while (!checkXtal(xtal)) {
@@ -2071,195 +1487,138 @@ Xtal* XtalOpt::generateNewXtal(uint FU)
         return nullptr;
       }
       ++attemptCount;
-      if (!using_one_pool)
-        xtal = generateRandomXtal(1, 0, FU);
-      else if (using_one_pool)
-        xtal = generateRandomXtal(1, 0);
+      xtal = generateRandomXtal(1, 0, incomp);
     }
-    xtal->setParents(xtal->getParents() + " (too few optimized structures "
-                                          "to generate offspring)");
+    xtal->setParents(xtal->getParents());
     return xtal;
   }
 
-  Xtal* xtal = H_getMutatedXtal(structures, FU);
+  Xtal* xtal = generateEvolvedXtal_H(structures);
   return xtal;
 }
 
-// Overloaded function of generateNewXtal(uint FU)
-Xtal* XtalOpt::generateNewXtal()
+XtalOpt::Operators XtalOpt::selectOperation(bool validComp)
 {
-  // Check to see if there are any structures that need to be primitive
-  // reduced or if there are supercells that needs to be generated. If
-  // there are, then generate and return one.
-  QReadLocker trackerLocker(m_tracker->rwLock());
-  QList<Structure*> optimizedStructures = m_queue->getAllOptimizedStructures();
-  if (supercellCheckLock.try_lock()) {
-    for (size_t i = 0; i < optimizedStructures.size(); i++) {
-      Xtal* testXtal = qobject_cast<Xtal*>(optimizedStructures.at(i));
-      QReadLocker testXtalLocker(&testXtal->lock());
-      // If the structure has been primitive checked, we don't need to check
-      // it again. If it hasn't been duplicate checked, yet, let it be
-      // duplicate checked first (so we don't check unnecessary structures).
-      if (!testXtal->wasPrimitiveChecked() &&
-          !testXtal->hasChangedSinceDupChecked()) {
-        // If testXtal is found to not be primitive, make a new xtal that is
-        // the primitive of testXtal.
-        if (!testXtal->isPrimitive(tol_spg)) {
-          testXtal->setPrimitiveChecked(true);
-          Xtal* nxtal = generatePrimitiveXtal(testXtal);
-          // This will continue the structure generation while simultaneously
-          // unlocking supercellCheckLock in 0.1 second
-          // This allows time for the structure to be finished before
-          // checking to see if another supercell could be generated
-          waitThenUnlockSupercellCheckLock();
-          return nxtal;
-        }
-        testXtal->setPrimitiveChecked(true);
-      }
+  // In this function we start by relative operation weights given
+  //   by the user, and will try to find an appropriate genetic operation.
+  //
+  // Our general considerations are applied in the following order:
+  // (1) non-vcSearch: we exclude permutomic and permucomp
+  // (2) non-valid parent composition: we exclude stripple and permustrain
+  //
+  // Here, we:
+  //   - decide about the fallback option,
+  //   - create helper lists of operators, input weights (and set any negative
+  //     weights to zero) and masks for the above conditions,
+  //   - combine masks to figure out what operations are allowed,
+  //   - normalize the weights to 1.0 for allowed operations while zeroing the rest,
+  //   - and finally choose a random number and select/return operator accordingly.
 
-      // Now let's check to see if a supercell should be generated from
-      // the optimized structure
-      if (!testXtal->wasSupercellGenerationChecked()) {
-        // If the optimized structure's enthalpy is not the lowest enthalpy
-        // of it's formula unit set, set the supercell generation to be
-        // true and just continue to the next structure in the loop.
-        // For some reason, even though the datatypes are all doubles, it
-        // does not appear that we can do a direct comparison between the
-        // lowestEnthalpyFUList and the structure's enthalpy. So, we will
-        // just do a basic percent diff comparison instead. If the difference
-        // is less than 0.001%, then we will assume they are the same
-        uint FU = testXtal->getFormulaUnits();
-        double percentDiff =
-          fabs((testXtal->getEnthalpy() - lowestEnthalpyFUList.at(FU)) /
-               lowestEnthalpyFUList.at(FU) * 100.00000);
-        if (percentDiff > 0.001) {
-          testXtal->setSupercellGenerationChecked(true);
-          continue;
-        }
-        double enthalpyPerAtom1 =
-          testXtal->getEnthalpy() / static_cast<double>(testXtal->numAtoms());
-        uint numAtomsPerFU = testXtal->numAtoms() / testXtal->getFormulaUnits();
-        for (size_t j = 1; j <= maxFU(); j++) {
-          if (!onTheFormulaUnitsList(j))
-            continue;
-          // j represents a formula unit that is being checked.
-          // If optimizedStructures.at(i) can create a supercell with formula
-          // units of j and optimizedStructures.at(i)'s enthalpy/atom is
-          // smaller than the smallest so-far discovered enthalpy/atom at that
-          // FU, and if there is a difference greater than 3 meV/atom between
-          // the two, build a supercell and add it to the gene pool
-          double enthalpyPerAtom2 =
-            (lowestEnthalpyFUList.at(j) / static_cast<double>(j)) /
-            static_cast<double>(numAtomsPerFU);
-          if (j != testXtal->getFormulaUnits() &&
-              j % testXtal->getFormulaUnits() == 0 &&
-              (enthalpyPerAtom1 < enthalpyPerAtom2 || enthalpyPerAtom2 == 0)) {
-            // enthalpyDiff is in meV
-            double enthalpyDiff =
-              fabs(enthalpyPerAtom1 - enthalpyPerAtom2) * 1000.0000000;
-            if (enthalpyDiff <= 3.000000)
-              continue;
-            else {
-              // We may need to create more than one supercell from a given
-              // xtal, so only update this if it is generating an xtal with
-              // the maxFU
-              if (j == maxFU())
-                testXtal->setSupercellGenerationChecked(true);
-              Xtal* nxtal = generateSuperCell(testXtal->getFormulaUnits(), j,
-                                              testXtal, false);
-              nxtal->setParents(tr("Supercell generated from %1x%2")
-                                  .arg(testXtal->getGeneration())
-                                  .arg(testXtal->getIDNumber()));
-              // We only want to perform offspring tracking for mutated
-              // offspring.
-              nxtal->setParentStructure(nullptr);
-              nxtal->setEnthalpy(testXtal->getEnthalpy() *
-                                 nxtal->getFormulaUnits() /
-                                 testXtal->getFormulaUnits());
-              nxtal->setEnergy(testXtal->getEnergy() *
-                               nxtal->getFormulaUnits() /
-                               testXtal->getFormulaUnits());
-              nxtal->setPrimitiveChecked(true);
-              nxtal->setSkippedOptimization(true);
-              nxtal->setStatus(Xtal::Optimized);
-              // This will continue the structure generation while
-              // simultaneously unlocking supercellCheckLock in 0.1 second
-              // This allows time for the structure to be finished before
-              // checking to see if another supercell could be generated
-              waitThenUnlockSupercellCheckLock();
-              return nxtal;
-            }
-          }
-        }
-        testXtal->setSupercellGenerationChecked(true);
-      }
-    }
-    supercellCheckLock.unlock();
-  }
-  // Having finished doing primitive reduction and supercell generation
-  // checks, we can now continue!
+  // In case of any failure, we return crossover since it's always applicable.
+  Operators fallback = OP_Crossover;
 
-  // Inputing a formula unit of 0 implies using all formula units when
-  // generating the probability list.
-  if (using_one_pool) {
-    return generateNewXtal(0);
+  // IMPORTANT: IN BUILDING THE FOLLOWING 4 VECTORS; MAKE SURE THAT ALWAYS:
+  //   THE LIST OF WEIGHTS (ops_weight) AND LISTS OF APPLIED CONDITIONS
+  //   (allow_search and allow_valid) ARE CREATED IN THE SAME ORDER AS
+  //   THE LIST OF OPERATORS (ops_list).
+
+  // Build list of operators
+  std::vector<Operators> ops_list = {OP_Stripple, OP_Permustrain,
+                                     OP_Permutomic, OP_Permucomp,
+                                     OP_Crossover};
+  // Build list of user weights (in the order of operators list)
+  std::vector<double> ops_weight = {
+      static_cast<double>(p_strip  >= 0 ? p_strip  : 0),
+      static_cast<double>(p_perm   >= 0 ? p_perm   : 0),
+      static_cast<double>(p_atomic >= 0 ? p_atomic : 0),
+      static_cast<double>(p_comp   >= 0 ? p_comp   : 0),
+      static_cast<double>(p_cross  >= 0 ? p_cross  : 0)
+  };
+  // Build list of allowed‐by‐searchtype conditions (in the order of operators list)
+  std::vector<bool> allow_search = { true, true, vcSearch, vcSearch, true };
+  // Build list of allowed‐by‐validcomp conditions (in the order of operators list)
+  std::vector<bool> allow_valid  = { validComp, validComp, true, true, true };
+
+  int ops_num = ops_weight.size();
+
+  // Now combine masks, find allowed ops, and zero out weights for the rest
+  std::vector<bool> allowed(ops_num, false);
+  int num_allowed = 0;
+  for (int i = 0; i < ops_num; ++i) {
+    allowed[i] = allow_search[i] && allow_valid[i];
+    if (allowed[i])
+      num_allowed++;
+    else
+      ops_weight[i] = 0.0;
   }
 
-  // Get all structures to count numbers of each formula unit
-  QList<Structure*> allStructures = m_queue->getAllStructures();
-
-  // Count the number of structures of each formula unit
-  QList<uint> numberOfEachFormulaUnit =
-    Structure::countStructuresOfEachFormulaUnit(&allStructures, maxFU());
-
-  // No need to keep the tracker locked now
-  trackerLocker.unlock();
-
-  // If there are not yet at least 5 of any one FU, make more of that FU
-  // Will generate smaller FU's first
-  for (uint i = minFU(); i <= maxFU(); ++i) {
-    if ((numberOfEachFormulaUnit.at(i) < 5) && (onTheFormulaUnitsList(i))) {
-      uint FU = i;
-      return generateNewXtal(FU);
-    }
+  // Sanity check
+  if (num_allowed == 0) {
+    qDebug() << "\n*************************************************************";
+    qDebug() << "*** Warning: unexpected op weights!!! Selecting crossover ***";
+    qDebug() << "*************************************************************";
+    return fallback;
   }
 
-  // Find the formula unit with the smallest number of total structures.
-  uint smallest = numberOfEachFormulaUnit.at(minFU());
-  for (uint i = minFU(); i <= maxFU(); ++i) {
-    if ((numberOfEachFormulaUnit.at(i) < smallest) &&
-        (onTheFormulaUnitsList(i))) {
-      smallest = numberOfEachFormulaUnit.at(i);
-    }
+  // Find total weight of enabled ops: since the weight for the rest
+  //   are already set to zero; we don't need to be worried about them.
+  double total = std::accumulate(ops_weight.begin(), ops_weight.end(), 0.0);
+
+  // Now normalize the weights for enabled ops while leaving the rest zero.
+  //   If total weight of enabled ops is zero, make them equal;
+  //   otherwise just normalize the wights.
+  for (int i = 0; i < ops_num; i++) {
+    if (allowed[i])
+      ops_weight[i] = (total > 0.0) ? ops_weight[i]/total : 1.0/num_allowed;
   }
 
-  // Pick the formula unit with the smallest number of optimized structures. If
-  // there are two or more formula units that have the smallest number of
-  // optimized structures, pick the smallest
-  uint FU;
-  for (uint i = minFU(); i <= maxFU(); i++) {
-    if ((numberOfEachFormulaUnit.at(i) == smallest) &&
-        (onTheFormulaUnitsList(i))) {
-      FU = i;
+  if (m_verbose) {
+    qDebug().noquote() <<
+    QString("   Operation chances: stri %1 perm %2 atom %3 comp %4 cros %5")
+            .arg(ops_weight[0], 5, 'f', 2).arg(ops_weight[1], 5, 'f', 2).arg(ops_weight[2], 5, 'f', 2)
+            .arg(ops_weight[3], 5, 'f', 2).arg(ops_weight[4], 5, 'f', 2);
+  }
+
+  // Perform the selection
+  Operators op = fallback;
+
+  double r = getRandDouble();
+
+  double cum = 0.0;
+  for (int i = 0; i < ops_num; i++) {
+    cum += ops_weight[i];
+    if (r < cum) {
+      op = ops_list[i];
       break;
     }
   }
 
-  return generateNewXtal(FU);
+  // Return the selected operation
+  return op;
 }
 
-// preselectedXtal is nullptr by default
-// includeCrossover is true by default
-// includeMitosis is also true by default
-Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
-                                Xtal* preselectedXtal, bool includeCrossover,
-                                bool includeMitosis, bool mitosisMutation)
+Xtal* XtalOpt::generateEvolvedXtal_H(QList<Structure*>& structures, Xtal* preselectedXtal)
 {
+  // preselectedXtal is nullptr by default
+
   // Initialize loop vars
-  double r;
   unsigned int gen;
   QString parents;
   Xtal *xtal = nullptr, *selectedXtal = nullptr;
+
+  // Shouldn't happen; but just in case ...
+  if (!preselectedXtal && structures.size() == 0) {
+    qDebug() << "Warning: empty pool and no preselected xtal in generateEvolvedXtal_H (0)!";
+    return nullptr;
+  }
+
+  // Also, here we determine the chances of generating a random supercell.
+  double wSupr;
+  if (p_supercell > 100) {
+    wSupr = 1.0;
+  } else {
+    wSupr = static_cast<double>(p_supercell) / 100.0;
+  }
 
   // Perform operation until xtal is valid:
   int maxAttempts = 10000;
@@ -2272,87 +1631,34 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
     }
 
     if (attemptCount >= maxAttempts) {
-      qDebug() << "Failed too many times in H_getMutatedXtal1. Giving up";
+      qDebug() << "Failed too many times in generateEvolvedXtal_H1. Giving up";
       return nullptr;
     }
     ++attemptCount;
 
     // If an xtal hasn't been preselected, select one
     if (!preselectedXtal)
-      selectedXtal = selectXtalFromProbabilityList(structures, FU);
+      selectedXtal = selectXtalFromProbabilityList(structures);
     else
       selectedXtal = preselectedXtal;
 
-    // Decide operator:
-    r = getRandDouble();
-
-    // We will perform mitosis if:
-    // 1: using_one_pool is enabled and
-    // 2: the xtal selected can produce an FU on the list through mitosis and
-    // 3: the probability succeeds
-    if (includeMitosis && using_one_pool) {
-      // Find candidate formula units to be created through mitosis
-      QList<uint> possibleMitosisFU_index;
-      for (int i = 0; i < formulaUnitsList.size(); i++) {
-        if (formulaUnitsList.at(i) % selectedXtal->getFormulaUnits() == 0 &&
-            formulaUnitsList.at(i) != selectedXtal->getFormulaUnits()) {
-          possibleMitosisFU_index.append(i);
-        }
-      }
-
-      // If no FU's may be created by mitosis, just continue
-      if (!possibleMitosisFU_index.isEmpty()) {
-        // If the probability fails, delete xtal and continue
-        if (r <= chance_of_mitosis / 100.0) {
-          // Select an index randomly from the possibleMitosisFU_index
-          uint randomListIndex = rand() % int(possibleMitosisFU_index.size());
-          uint selectedIndex = possibleMitosisFU_index.at(randomListIndex);
-          // Use that selected index to choose the formula units
-          uint formulaUnits = formulaUnitsList.at(selectedIndex);
-          // Perform mitosis
-          Xtal* nxtal = nullptr;
-          maxAttempts = 10000;
-          attemptCount = 0;
-          while (!checkXtal(nxtal)) {
-            if (nxtal) {
-              delete nxtal;
-              nxtal = 0;
-            }
-
-            if (attemptCount >= maxAttempts) {
-              qDebug() << "Failed too many times in H_getMutatedXtal2. Giving up";
-              return nullptr;
-            }
-            ++attemptCount;
-
-            nxtal = generateSuperCell(selectedXtal->getFormulaUnits(),
-                                      formulaUnits, selectedXtal, true);
-          }
-          return nxtal;
-        }
-      }
+    // Specially, the probability selection might fail and we get null pointer
+    if (!selectedXtal) {
+      qDebug() << "Warning: selecting xtal failed in generateEvolvedXtal_H (1)!";
+      return nullptr;
     }
 
-    Operators op;
-    // Include the crossover in the selection
-    if (includeCrossover) {
-      if (r < p_cross / 100.0)
-        op = OP_Crossover;
-      else if (r < (p_cross + p_strip) / 100.0)
-        op = OP_Stripple;
-      else
-        op = OP_Permustrain;
-    }
-    // In some cases (like in generateSuperCell()), we may
-    // not want to perform crossover. Instead, renormalize
-    // the percentages for stripple and permustrain and choose one
-    else {
-      double temp_p_strip = 100.0 * p_strip / (100.0 - p_cross);
-      if (r < temp_p_strip / 100.0)
-        op = OP_Stripple;
-      else
-        op = OP_Permustrain;
-    }
+    // Decide operator
+    // As of XtalOpt v14, we read "operation weights" instead of their percentages,
+    //   and decide the chance of applying operators at the time of selection; based
+    //   on the run condition (if variable-comp or if parent has invalid composition).
+    // The following takes into account these conditions, and returns a randomly
+    //   selected operator based on the user-specified relative weights.
+    Operators op = selectOperation(selectedXtal->hasValidComposition());
+
+    if (m_verbose)
+      qDebug() << "   Operator selected " << op
+               << " for parent " << selectedXtal->getTag();
 
     // Try 1000 times to get a good structure from the selected
     // operation. If not possible, send a warning to the log and
@@ -2366,7 +1672,7 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
       }
 
       if (attemptCount >= maxAttempts) {
-        qDebug() << "Failed too many times in H_getMutatedXtal3. Giving up";
+        qDebug() << "Failed too many times in generateEvolvedXtal_H2. Giving up";
         return nullptr;
       }
       ++attemptCount;
@@ -2379,56 +1685,21 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
           double percent1;
           double percent2;
 
-          // If FU crossovers have been enabled, generate a new breeding pool
-          // that includes multiple different formula units then run the
-          // alternative crossover function
-          // Only perform FU crossover if there is more than one formula unit
-          bool enoughStructures = true;
-          if (using_FU_crossovers && formulaUnitsList.size() > 1) {
-            // Get all optimized structures
-            QList<Structure*> tempStructures =
-              m_queue->getAllOptimizedStructures();
-
-            // Trim all the structures that aren't of the allowed generation or
-            // greater
-            for (int i = 0; i < tempStructures.size(); i++) {
-              if (tempStructures.at(i)->getGeneration() <
-                  FU_crossovers_generation) {
-                tempStructures.removeAt(i);
-                i--;
-              }
-            }
-
-            // Only continue if there are at least 3 of the allowed generation
-            // or greater
-            if (tempStructures.size() < 3)
-              enoughStructures = false;
-            if (enoughStructures) {
-
-              xtal1 = selectXtalFromProbabilityList(tempStructures);
-              xtal2 = selectXtalFromProbabilityList(tempStructures);
-
-              // Perform operation
-              xtal = XtalOptGenetic::FUcrossover(
-                xtal1, xtal2, cross_minimumContribution, percent1, percent2,
-                formulaUnitsList, this->comp);
-
-              if (!xtal)
-                continue;
-            }
-          }
 
           // Perform a regular crossover instead!
-          if (!using_FU_crossovers || !enoughStructures ||
-              formulaUnitsList.size() <= 1) {
-            xtal1 = selectedXtal;
-            xtal2 = selectXtalFromProbabilityList(structures,
-                                                  xtal1->getFormulaUnits());
+          xtal1 = selectedXtal;
+          xtal2 = selectXtalFromProbabilityList(structures);
 
-            // Perform operation
-            xtal = XtalOptGenetic::crossover(
-              xtal1, xtal2, cross_minimumContribution, percent1);
+          // The probability selection might fail and we get null pointer
+          if (!xtal2) {
+            qDebug() << "Warning: selecting xtal failed in generateEvolvedXtal_H (2)!";
+            return nullptr;
           }
+
+          // Perform operation
+          xtal = XtalOptGenetic::crossover(xtal1, xtal2, this->compList, this->eleMinRadii,
+                                           cross_minimumContribution,
+                                           percent1, percent2, maxAtoms, vcSearch, m_verbose);
 
           // Lock parents and get info from them
           xtal1->lock().lockForRead();
@@ -2452,26 +1723,16 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
           // Determine generation number
           gen = (gen1 >= gen2) ? gen1 + 1 : gen2 + 1;
 
-          // A regular crossover was performed. So percent2 will
-          // simply be 100.0 - percent1. This may not be the case
-          // for an FU Crossover
-          if (!using_FU_crossovers || !enoughStructures)
-            percent2 = 100.0 - percent1;
-
-          parents = tr("Crossover: %1x%2 (%3%) + %4x%5 (%6%)")
+          parents = QString("Crossover: %1x%2 (%3%) + %4x%5 (%6%)")
                       .arg(gen1)
                       .arg(id1)
                       .arg(percent1, 0, 'f', 0)
                       .arg(gen2)
                       .arg(id2)
                       .arg(percent2, 0, 'f', 0);
-          // To identify that a formula unit crossover was performed...
-          if (using_FU_crossovers && enoughStructures)
-            parents.prepend("FU ");
           continue;
         }
         case OP_Stripple: {
-
           // Perform stripple
           double amplitude = 0, stdev = 0;
           xtal = XtalOptGenetic::stripple(selectedXtal, strip_strainStdev_min,
@@ -2484,36 +1745,23 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
           uint gen1 = selectedXtal->getGeneration();
           uint id1 = selectedXtal->getIDNumber();
 
-          // If it's a mitosis mutation, the parent xtal is already set
-          if (!mitosisMutation && xtal)
+          if (xtal)
             xtal->setParentStructure(selectedXtal);
           selectedXtal->lock().unlock();
 
           // Determine generation number
           gen = gen1 + 1;
           // A regular mutation is being performed
-          if (!mitosisMutation) {
-            parents = tr("Stripple: %1x%2 stdev=%3 amp=%4 waves=%5,%6")
-                        .arg(gen1)
-                        .arg(id1)
-                        .arg(stdev, 0, 'f', 5)
-                        .arg(amplitude, 0, 'f', 5)
-                        .arg(strip_per1)
-                        .arg(strip_per2);
-          }
-          // Modified version of setting the parents for mitosis mutation.
-          else {
-            parents = selectedXtal->getParents() +
-                      tr(" followed by Stripple: stdev=%1 amp=%2 waves=%3,%4")
-                        .arg(stdev, 0, 'f', 5)
-                        .arg(amplitude, 0, 'f', 5)
-                        .arg(strip_per1)
-                        .arg(strip_per2);
-          }
+          parents = QString("Stripple: %1x%2 stdev=%3 amp=%4 waves=%5,%6")
+            .arg(gen1)
+            .arg(id1)
+            .arg(stdev, 0, 'f', 5)
+            .arg(amplitude, 0, 'f', 5)
+            .arg(strip_per1)
+            .arg(strip_per2);
           continue;
         }
         case OP_Permustrain: {
-
           double stdev = 0;
 
           xtal = XtalOptGenetic::permustrain(selectedXtal, perm_strainStdev_max,
@@ -2524,32 +1772,68 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
           uint gen1 = selectedXtal->getGeneration();
           uint id1 = selectedXtal->getIDNumber();
 
-          // If it's a mitosis mutation, the parent xtal is already set
-          if (!mitosisMutation && xtal)
+          if (xtal)
             xtal->setParentStructure(selectedXtal);
           selectedXtal->lock().unlock();
 
           // Determine generation number
           gen = gen1 + 1;
           // Set the ancestry like normal...
-          if (!mitosisMutation) {
-            parents = tr("Permustrain: %1x%2 stdev=%3 exch=%4")
-                        .arg(gen1)
-                        .arg(id1)
-                        .arg(stdev, 0, 'f', 5)
-                        .arg(perm_ex);
-          }
-          // Modified settings if it is a mitosis mutation
-          else {
-            parents = selectedXtal->getParents() +
-                      tr(" followed by Permustrain: stdev=%1 exch=%2")
-                        .arg(stdev, 0, 'f', 5)
-                        .arg(perm_ex);
-          }
+          parents = QString("Permustrain: %1x%2 stdev=%3 exch=%4")
+            .arg(gen1)
+            .arg(id1)
+            .arg(stdev, 0, 'f', 5)
+            .arg(perm_ex);
+          continue;
+        }
+        case OP_Permutomic: {
+          xtal = XtalOptGenetic::permutomic(selectedXtal, this->compList[0],
+                                            this->eleMinRadii, maxAtoms, m_verbose);
+
+          // Lock parent and extract info
+          selectedXtal->lock().lockForRead();
+          uint gen1 = selectedXtal->getGeneration();
+          uint id1 = selectedXtal->getIDNumber();
+
+          if (xtal)
+            xtal->setParentStructure(selectedXtal);
+          selectedXtal->lock().unlock();
+
+          // Determine generation number
+          gen = gen1 + 1;
+          // Set the ancestry like normal...
+          parents = QString("Permutomic: %1x%2 (%3-%4)")
+            .arg(gen1)
+            .arg(id1)
+            .arg(selectedXtal->getCompositionString(false))
+            .arg(xtal->getCompositionString(false));
+          continue;
+        }
+        case OP_Permucomp: {
+          xtal = XtalOptGenetic::permucomp(selectedXtal, this->compList[0],
+                                           this->eleMinRadii, maxAtoms, m_verbose);
+
+          // Lock parent and extract info
+          selectedXtal->lock().lockForRead();
+          uint gen1 = selectedXtal->getGeneration();
+          uint id1 = selectedXtal->getIDNumber();
+
+          if (xtal)
+            xtal->setParentStructure(selectedXtal);
+          selectedXtal->lock().unlock();
+
+          // Determine generation number
+          gen = gen1 + 1;
+          // Set the ancestry like normal...
+          parents = QString("Permucomp: %1x%2 (%3-%4)")
+            .arg(gen1)
+            .arg(id1)
+            .arg(selectedXtal->getCompositionString(false))
+            .arg(xtal->getCompositionString(false));
           continue;
         }
         default:
-          warning("XtalOpt::generateSingleOffspring: Attempt to use an "
+          warning("XtalOpt::generateEvolvedXtal_H: Attempt to use an "
                   "invalid operator.");
       }
     }
@@ -2565,6 +1849,12 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
         case OP_Permustrain:
           opStr = "permustrain";
           break;
+        case OP_Permutomic:
+          opStr = "permutomic";
+          break;
+        case OP_Permucomp:
+          opStr = "permucomp";
+          break;
         default:
           opStr = "(unknown)";
           break;
@@ -2577,106 +1867,89 @@ Xtal* XtalOpt::H_getMutatedXtal(QList<Structure*>& structures, int FU,
 
   xtal->setGeneration(gen);
   xtal->setParents(parents);
-  Xtal* parentXtal;
-  if (!mitosisMutation)
-    parentXtal = qobject_cast<Xtal*>(xtal->getParentStructure());
-  else {
-    parentXtal = qobject_cast<Xtal*>(selectedXtal->getParentStructure());
-    xtal->setParentStructure(parentXtal);
+  Xtal* parentXtal = qobject_cast<Xtal*>(xtal->getParentStructure());
+  xtal->setParentStructure(parentXtal);
+
+  // This is not a genetic operation, per se. By a user-defined chance (0-100)
+  //   of "p_supercell", we try to generate a supercell with a randomly chosen
+  //   expansion factor, with up to maximum number of atoms.
+  // If this worked, we return the supercell. Otherwise, we just return the
+  //   original generated cell.
+  // We have already converted user input to a chance in [0,1] range in "wSupr".
+  double s = getRandDouble();
+  if (s < wSupr) {
+    Xtal* supercellXtal = generateSuperCell(xtal, 0, true);
+    if (supercellXtal)
+      return supercellXtal;
   }
 
   return xtal;
 }
 
-Xtal* XtalOpt::generatePrimitiveXtal(Xtal* xtal)
-{
-  Xtal* nxtal = new Xtal();
-  // Copy cell over from xtal to nxtal
-  QReadLocker xtalLocker(&xtal->lock());
-  nxtal->setCellInfo(xtal->unitCell().cellMatrix());
-  // Add the atoms in...
-  for (const auto& atom : xtal->atoms())
-    nxtal->addAtom(atom.atomicNumber(), atom.pos());
-
-  // Reduce it to primitive...
-  nxtal->reduceToPrimitive(tol_spg);
-  uint gen = xtal->getGeneration() + 1;
-  QString parents = tr("Primitive of %1x%2")
-                      .arg(xtal->getGeneration())
-                      .arg(xtal->getIDNumber());
-  nxtal->setGeneration(gen);
-  nxtal->setParents(parents);
-  nxtal->setEnthalpy(xtal->getEnthalpy() * nxtal->getFormulaUnits() /
-                     xtal->getFormulaUnits());
-  nxtal->setEnergy(xtal->getEnergy() * nxtal->getFormulaUnits() /
-                   xtal->getFormulaUnits());
-  nxtal->setPrimitiveChecked(true);
-  nxtal->setSkippedOptimization(true);
-
-  nxtal->resetStrucObj();
-  nxtal->setStrucObjState(xtal->getStrucObjState());
-  nxtal->setStrucObjValuesVec(xtal->getStrucObjValuesVec());
-
-  nxtal->setStatus(Xtal::Optimized);
-  return nxtal;
-}
-
 // This always returns a dynamically allocated xtal
 // Callers take ownership of the pointer
-Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU, Xtal* parentXtal,
-                                 bool mutate)
+Xtal* XtalOpt::generateSuperCell(Xtal* inXtal, uint expansion, bool distort)
 {
-  // First perform a sanity check
-  if (finalFU % initialFU != 0) {
-    qDebug() << "Warning:" << __FUNCTION__ << "was called with an impossible"
-             << "ratio of finalFU to initialFU! initialFU is" << initialFU
-             << "and finalFU is" << finalFU << "\nReturning nullptr";
+  // This function will generate a supercell out of the input cell.
+  // It can be called in two modes:
+  //   (1) expansion > 0: make unit cell with that many times the atoms,
+  //   (2) expansion = 0: randomly choose a factor, and generate a supercell.
+  //
+  // If "distort" is true; randomly distorts an atom in the final supercell.
+  //
+  // If expansion is given, we check to see if it complies with max atoms.
+  // If we pick this factor, we make sure it is compatible with max atoms.
+
+  // A basic sanity check
+  if (!inXtal)
     return nullptr;
+
+  uint initNumAtoms = inXtal->numAtoms();
+  uint finalExpansion = expansion;
+
+  if (finalExpansion > 0) {
+    // If pre-defined factor, make sure it's good.
+    if (static_cast<double>(finalExpansion) * initNumAtoms > maxAtoms)
+      return nullptr;
+  } else {
+    // If not, try to find a proper one randomly.
+    int maxPossibleExpansion = std::floor(maxAtoms / initNumAtoms);
+    if (maxPossibleExpansion < 2)
+      return nullptr;
+    finalExpansion = getRandInt(2, maxPossibleExpansion);
   }
 
   // This is the return xtal
   Xtal* xtal = new Xtal;
 
-  // Lock the tracker so the parentXtal won't get erased while we are reading
-  // from it
-  QReadLocker trackerLocker(m_tracker->rwLock());
-  if (!parentXtal) {
-    QList<Structure*> structures =
-      m_queue->getAllOptimizedStructuresAndOneSupercellCopyForEachFormulaUnit();
-    parentXtal = selectXtalFromProbabilityList(structures, initialFU);
-  }
-
   // Lock the parent xtal for reading
-  QReadLocker parentXtalLocker(&parentXtal->lock());
+  QReadLocker parentXtalLocker(&inXtal->lock());
 
-  // Copy info over from parent to new xtal
-  xtal->setCellInfo(parentXtal->unitCell().cellMatrix());
-  const std::vector<Atom>& atoms = parentXtal->atoms();
+  // Copy info over from input to new xtal
+  xtal->setCellInfo(inXtal->unitCell().cellMatrix());
+  const std::vector<Atom>& atoms = inXtal->atoms();
   for (const auto& atom : atoms)
     xtal->addAtom(atom.atomicNumber(), atom.pos());
-
-  uint gen = parentXtal->getGeneration();
-  QString parents = tr("%1x%2 mitosis").arg(gen).arg(parentXtal->getIDNumber());
-  xtal->setParentStructure(parentXtal);
-  xtal->setParents(parents);
-  xtal->setGeneration(gen + 1);
-
-  xtal->resetStrucObj();
-  xtal->setStrucObjState(parentXtal->getStrucObjState());
-  xtal->setStrucObjValuesVec(parentXtal->getStrucObjValuesVec());
-
+  uint gen = inXtal->getGeneration();
+  QString parents = inXtal->getParents();
+  Xtal* parentXtal = qobject_cast<Xtal*>(inXtal->getParentStructure());
   parentXtalLocker.unlock();
-  trackerLocker.unlock();
 
-  // Done copying over parent xtal stuff
+  // Keep performing the supercell generator until we are at the correct size.
+  // We have already checked that the target cell will comply with the max atoms.
 
-  // Keep performing the supercell generator until we are at the correct FU
-  // Because of the check at the beginning of this function, we should always
-  // end up at finalFU
-  while (xtal->getFormulaUnits() != finalFU) {
+  // The current expansion factor of the generated supercell.
+  uint factor = 1;
+  while (factor != finalExpansion) {
+    // This never happens; just in case!
+    if (xtal->numAtoms() / initNumAtoms != std::floor(xtal->numAtoms() / initNumAtoms))
+      return nullptr;
+
+    factor = xtal->numAtoms() / initNumAtoms;
+
     // Find the largest prime number multiple. We will expand
     // upon the shortest length with this number.
-    uint numberOfDuplicates = finalFU / xtal->getFormulaUnits();
+    uint numberOfDuplicates = finalExpansion / factor;
     for (int i = 2; i < numberOfDuplicates; ++i) {
       if (numberOfDuplicates % i == 0) {
         numberOfDuplicates = numberOfDuplicates / i;
@@ -2728,135 +2001,94 @@ Xtal* XtalOpt::generateSuperCell(uint initialFU, uint finalFU, Xtal* parentXtal,
                       xtal->getGamma());
   }
 
-  // If we are to do so, mutate the xtal
-  if (mutate) {
-    // If xtal is already selected, no structure list is needed for
-    // parameter 1. So we will use an empty list.
-    // Technically, parameter 2 is not needed either.
-    // Parameter 3 is the selected xtal to mutate.
-    // Parameter 4 is includeCrossover and parameter 5 is includeMitosis.
-    // Parameter 6 is mitosisMutation (changes the way the parents are set)
-    QList<Structure*> temp;
-    Xtal* ret =
-      H_getMutatedXtal(temp, xtal->getFormulaUnits(), xtal, false, false, true);
 
-    // We don't need xtal anymore, so delete it
-    delete xtal;
-    xtal = ret;
+  // Distort an atom?
+  if (distort) {
+    // pick a random atom
+    uint ratom = getRandUInt(0, xtal->numAtoms() - 1);
+    Atom atom = xtal->atoms().at(ratom);
+    int atomicNumber = atom.atomicNumber();
+    // try to distort it's position
+    xtal->moveAtomRandomlyIAD(atomicNumber, this->eleMinRadii, this->interComp, 1000, &atom);
   }
+
+  // Set the new xtal stuff
+  xtal->setGeneration(gen);
+  parents=QString("Supercell[%1]-").arg(factor)+parents;
+  xtal->setParents(parents);
+  xtal->setParentStructure(parentXtal);
 
   return xtal;
 }
 
-Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures,
-                                             uint FU)
+Xtal* XtalOpt::generatePrimitiveXtal(Xtal* xtal)
 {
-  // Remove all structures that have an FU that ISN'T on the list
-  for (size_t i = 0; i < structures.size(); i++) {
-    if (!onTheFormulaUnitsList(structures.at(i)->getFormulaUnits())) {
-      structures.removeAt(i);
-      i--;
-    }
+  Xtal* nxtal = new Xtal();
+  // Copy cell over from xtal to nxtal
+  QReadLocker xtalLocker(&xtal->lock());
+  nxtal->setCellInfo(xtal->unitCell().cellMatrix());
+  // Add the atoms in...
+  for (const auto& atom : xtal->atoms())
+    nxtal->addAtom(atom.atomicNumber(), atom.pos());
+
+  // Reduce it to primitive...
+  nxtal->reduceToPrimitive(tol_spg);
+  uint gen = xtal->getGeneration() + 1;
+  QString parents = QString("Primitive of %1x%2")
+                      .arg(xtal->getGeneration())
+                      .arg(xtal->getIDNumber());
+  nxtal->setGeneration(gen);
+  nxtal->setParents(parents);
+  nxtal->setEnthalpy(xtal->getEnthalpy());
+  nxtal->setEnergy(xtal->getEnergy());
+  nxtal->setPrimitiveChecked(true);
+  nxtal->setSkippedOptimization(true);
+
+  nxtal->resetStrucObj();
+  nxtal->setStrucObjState(xtal->getStrucObjState());
+  nxtal->setStrucObjValuesVec(xtal->getStrucObjValuesVec());
+
+  nxtal->setStatus(Xtal::Optimized);
+  return nxtal;
+}
+
+Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures)
+{
+  // Basically, this function is called only from generateEvolvedXtal_H
+  //   (twice!), where the input "structures" is a proper parent pool.
+  //
+  // That's, "structures" is a set of at least 3 structures that are
+  //   optimized, their hull and objectives (if needed) are calculated,
+  //   and contain subsystem seeds only if user has allowed it.
+  //
+  // Still, we will put some safeguards in place (e.g., if list is empty
+  //   or empty probs are returned), which result in returning a null pointer.
+
+  if (parentsPoolSize == 0) {
+    error("Error: parents pool size is zero for probability selection!");
+    return nullptr;
   }
 
-  if (FU != 0) {
-    // Remove all structures that do not have formula units of FU
-    for (int i = 0; i < structures.size(); i++) {
-      if (structures.at(i)->getFormulaUnits() != FU) {
-        structures.removeAt(i);
-        i--;
-      }
-    }
+  if (structures.isEmpty()) {
+    error("Error: no structure provided for probability selection!");
+    return nullptr;
   }
 
-  int sizeBeforeObjectivesPruning = structures.size();
+  if (structures.size() == 1)
+    warning("Warning: probability selection has only one structure!");
 
-  // Create auxiliary variables and double-check objectives for submitting to parents pool.
-  // This check, basically, is not needed! In the final implementation those whose objectives
-  //    are not successfully calculated or dismissed by marking them as Fail or Dismiss, are already removed.
-  int                objnum = getObjectivesNum();
-  QList<double>      objwgt = {};
-  QList<ObjectivesType> objtyp = {};
-  if (m_calculateObjectives)
-  {
-    // First, create list of wgt and out of objectives for later use in get_probability... function
-    for (int i = 0; i < objnum; i++) {
-      objwgt.push_back(getObjectivesWgt(i));
-      objtyp.push_back(getObjectivesTyp(i));
-    }
+  // Select the parent xtal: this will return the index of the chosen parent
+  //   in the list of structures (-1 if anything goes wrong).
+  int ind = selectParentFromPool(structures, parentsPoolSize);
 
-    for (size_t i = 0; i < structures.size(); i++) {
-      if (structures[i]->getStrucObjState() != Structure::Os_Retain) {
-        structures.removeAt(i);
-        --i;
-#ifdef MOES_DEBUG
-qDebug().noquote() << QString("NOTE: structure %1 excluded from pool "
-                              "with objectives state %2 ")
-  .arg(structures[i]->getTag(),7).arg(structures[i]->getStrucObjState(),2);
-#endif
-      }
-    }
-#ifdef MOES_DEBUG
-qDebug().noquote() << QString("NOTE: a total of %1 (from %2) structures "
-                              "left for pool after objective analysis\n")
-  .arg(structures.size(),5).arg(sizeBeforeObjectivesPruning,5);
-#endif
-
-    if (structures.size() == 1 && sizeBeforeObjectivesPruning > 1) {
-      warning(tr("A nonzero objective weight is being used for the fitness "
-            "function, but very few (%1 from %2) structures have their "
-            "objectives calculated. This current probability selection will "
-            "not be good.\n").arg(structures.size()).arg(sizeBeforeObjectivesPruning));
-    }
+  // This shouldn't happen; but just in case ...
+  if (ind == -1 ) {
+    error("Error: probability selection didn't return any results!");
+    return nullptr;
   }
 
-  int sizeBeforeHardnessPruning = structures.size();
+  Xtal* xtal = qobject_cast<Xtal*>(structures[ind]);
 
-  // Check aflow-hardness before submitting to parents pool
-  if (m_calculateHardness) {
-    // If we are using aflow-hardness, remove all structures with a hardness less than 0
-    for (size_t i = 0; i < structures.size(); i++) {
-      if (structures[i]->vickersHardness() < 0.0 && structures.size() > 1) {
-        structures.removeAt(i);
-        --i;
-      }
-    }
-    if (structures.size() == 1 && sizeBeforeHardnessPruning > 1) {
-      warning(tr("A nonzero hardness weight is being used for the fitness "
-            "function, but very few (%1 from %2) structures have their "
-            "hardnesses calculated. This current probability selection will "
-            "not be good.\n").arg(structures.size()).arg(sizeBeforeHardnessPruning));
-    }
-  }
-
-  QList<QPair<GlobalSearch::Structure*, double>> probs =
-    getProbabilityList(structures, popSize, m_hardnessFitnessWeight, objnum, objwgt, objtyp);
-
-  // Initialize loop vars
-  Xtal* xtal = nullptr;
-
-  // Pick a parent
-  double r = getRandDouble();
-  for (const auto& elem: probs) {
-    if (r < elem.second) {
-      xtal = qobject_cast<Xtal*>(elem.first);
-      break;
-    }
-  }
-
-#ifdef MOES_DEBUG
-QString outs = QString("\nNOTE: Selected %1 ( r = %2 ) from structures with probs:\n"
-                       "      structure : enthalpy (eV/FU) :    probs   : cumulative probs\n")
-                       .arg(xtal->getTag(),7).arg(r,8,'f',6);
-  double previousProbs = 0.0;
-  for (const auto& elem: probs) {
-    outs += QString("        %1 :     %2 : %3 : %4\n")
-      .arg(elem.first->getTag(),7).arg(elem.first->getEnthalpyPerFU(),12,'f',6)
-      .arg(elem.second - previousProbs,10,'f',6).arg(elem.second,10,'f',6);
-    previousProbs = elem.second;
-  }
-qDebug().noquote() << outs;
-#endif
   return xtal;
 }
 
@@ -2887,113 +2119,166 @@ bool XtalOpt::checkLimits()
     return false;
   }
 
-  // Check to make sure at least one formula unit can be made with
-  // the specified lengths and volume constraints
-  bool anyFails = false;
-  for (int i = 0; i < formulaUnitsList.size(); i++) {
-    if ((using_fixed_volume &&
-         ((a_min * b_min * c_min) >
-            (vol_fixed * static_cast<double>(formulaUnitsList.at(i))) ||
-          (a_max * b_max * c_max) <
-            (vol_fixed * static_cast<double>(formulaUnitsList.at(i))))) ||
-        (!using_fixed_volume &&
-         ((a_min * b_min * c_min) >
-            (vol_max * static_cast<double>(formulaUnitsList.at(i))) ||
-          (a_max * b_max * c_max) <
-            (vol_min * static_cast<double>(formulaUnitsList.at(i))) ||
-          vol_min > vol_max))) {
-      warning(
-        tr("XtalOptRand::checkLimits error: Illogical Volume limits for %1 FU. "
-           "(Also check min/max volumes based on cell lengths)")
-          .arg(QString::number(formulaUnitsList.at(i))));
-      anyFails = true;
-    }
-  }
-
-  if (anyFails == true)
-    return false;
-
   return true;
 }
 
-bool XtalOpt::checkComposition(Xtal* xtal, QString* err)
+bool XtalOpt::checkComposition(Xtal* xtal, bool isSeed)
 {
-  // Check composition
-  QList<unsigned int> atomTypes = comp.keys();
-  QList<unsigned int> atomCounts;
-#if QT_VERSION >= 0x040700
-  atomCounts.reserve(atomTypes.size());
-#endif // QT_VERSION
-  for (size_t i = 0; i < atomTypes.size(); ++i) {
-    atomCounts.append(0);
+  // This function checks if the composition (atom types and counts)
+  //   of a given xtal is "valid".
+  // Valid means that it doesn't have unknown element types, and
+  //   depending on the search type it has a proper composition, i.e.,
+  //   for FC/MC searches, the composition is listed.
+  // Also, except than seed structures, it makes sure that the xtal
+  //   does not have any zero atom counts, and the total counts does
+  //   not exceed the max atom parameter.
+  // For seed structures, we allow for zero atom counts, and raise the
+  //   max atoms if needed.
+
+  // Basic sanity checks
+  if (!xtal || xtal->numAtoms() <= 0) {
+    qDebug() << "Error checkComposition: empty xtal.";
+    return false;
+  }
+  if (compList.isEmpty()) {
+    qDebug() << "Error checkComposition: composition is not set.";
+    return false;
   }
 
-  // Count atoms of each type
-  for (size_t i = 0; i < xtal->numAtoms(); ++i) {
-    int typeIndex = atomTypes.indexOf(
-      static_cast<unsigned int>(xtal->atom(i).atomicNumber()));
-    // Type not found:
-    if (typeIndex == -1) {
-      qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
-      if (err != nullptr) {
-        *err = "Bad composition.";
-      }
-      return false;
+  QStringList chemSystem = getChemicalSystem();
+
+  // Input xtal's info (composition, symbol list, atom counts, etc)
+  CellComp comp = getXtalComposition(xtal);
+  QList<QString> symbols = comp.getSymbols();
+  uint numAtoms = comp.getNumAtoms();
+
+  // Perform a series of checks
+  bool hasExtraAtomCount = false;
+  bool hasExtraTypes = false;
+  bool hasMissingTypes = false;
+  bool compositionIsNew = true;
+
+  // Is there any species not defined in chemical system?
+  for(int i = 0; i < symbols.size(); i++)
+    if (!chemSystem.contains(symbols[i]))
+      hasExtraTypes = true;
+
+  // Does the total atoms count exceed the maximum number of atoms?
+  if (numAtoms > maxAtoms)
+    hasExtraAtomCount = true;
+
+  // Is there any species of chemical system that is not present?
+  for(int i = 0; i < chemSystem.size(); i++)
+    if (!symbols.contains(chemSystem[i]))
+      hasMissingTypes = true;
+
+  // Is "chemical composition" equivalent to any on the initial list?
+  // (We don't force it to be "exact" match with the list because
+  //    random supercells generated in the run are accepted too).
+  for(int i = 0; i < compList.size(); i++) {
+    if (compareCompositions(compList[i], comp) != 0.0) {
+      compositionIsNew = false;
+      break;
     }
-    ++atomCounts[typeIndex];
   }
 
-  // Check counts. Adjust for formula units.
-  for (size_t i = 0; i < atomTypes.size(); ++i) {
-    if (atomCounts[i] !=
-        comp[atomTypes[i]].quantity * xtal->getFormulaUnits()) { // PSA
-      qDebug() << "atomCounts for atomic num " << QString::number(atomTypes[i])
-               << "is" << QString::number(atomCounts[i]) << ". It should be "
-               << QString::number(comp[atomTypes[i]].quantity *
-                                  xtal->getFormulaUnits())
-               << "instead.";
-      qDebug() << "FU is " << QString::number(xtal->getFormulaUnits())
-               << " and comp[atomTypes[i]].quantity is "
-               << QString::number(comp[atomTypes[i]].quantity);
-      // Incorrect count:
-      qDebug() << "XtalOpt::checkXtal: Composition incorrect.";
-      if (err != nullptr) {
-        *err = "Bad composition.";
-      }
+  // Now, according to run type and the above tests, see if xtal is ok.
+
+  // Having extra types is always a no.
+  if (hasExtraTypes) {
+      qDebug() << "Error checkComposition: unknown types in the xtal.";
       return false;
     }
+
+  // If a seed structure; we're done except than:
+  // (1) if seed is a sub-system or it's composition is not on the list, mark it
+  //     so we can manage for a proper genetic operation selection.
+  // (2) if seed is acceptable, increase max atoms if needed
+  if (isSeed) {
+    if (hasMissingTypes || compositionIsNew)
+      xtal->setCompositionValidity(false);
+    if (hasExtraAtomCount) {
+      maxAtoms = numAtoms;
+      qDebug() << "Warning checkComposition: increased maxAtoms to " << maxAtoms;
+    }
+    return true;
   }
+
+  // Except than seeds, for now, we won't handle "sub-system" structures.
+  if (hasMissingTypes) {
+    qDebug() << "Error checkComposition: some atomic types are missing.";
+    return false;
+  }
+
+  // No structure can have more atoms than maxAtoms.
+  if (hasExtraAtomCount) {
+    qDebug() << "Error checkComposition: number of atoms exceeds the maxAtoms.";
+    return false;
+  }
+
+  // For a variable-composition search, we're good.
+  if (vcSearch) {
+    // FIXME: this is a "mark"! In general, here we can add "new" compositions
+    //   to the list of compositions and/or formulae if we wanted! E.g.,
+    //formulas_input += "," + form;
+    //compList.append(incomp);
+    return true;
+  }
+
+  // So the search is either fixed-/multi-composition;
+  //   that's, composition should be on the list.
+  if (compositionIsNew) {
+    qDebug() << "Error checkComposition: composition doesn't match any of the list.";
+    return false;
+  }
+
+  // If we make it here, then xtal has an acceptable composition.
   return true;
 }
 
 // Xtal should be write-locked before calling this function
-bool XtalOpt::checkLattice(Xtal* xtal, uint formulaUnits, QString* err)
+bool XtalOpt::checkLattice(Xtal* xtal)
 {
-  // Adjust max and min constraints depending on the formula unit
-  new_vol_max = static_cast<double>(formulaUnits) * vol_max;
-  new_vol_min = static_cast<double>(formulaUnits) * vol_min;
+  if (xtal->numAtoms() > 0) {
+    // Start with volume check, which is done only for non-empty xtals.
+    //   Empty lattices have their volume adjusted separately.
+    CellComp xtalComp = getXtalComposition(xtal);
+    // The current (original) volume
+    double org_vol = xtal->getVolume();
 
-  // Check volume
-  if (using_fixed_volume) {
-    xtal->setVolume(vol_fixed * static_cast<double>(formulaUnits));
-  } else if (xtal->getVolume() < new_vol_min || // PSA
-             xtal->getVolume() > new_vol_max) { // PSA
-    // I don't want to initialize a random number generator here, so
-    // just use the modulus of the current volume as a random float.
-    double newvol =
-      fabs(fmod(xtal->getVolume(), 1)) * (new_vol_max - new_vol_min) +
-      new_vol_min;
-    // If the user has set vol_min to 0, we can end up with a null
-    // volume. Fix this here. This is just to keep things stable
-    // numerically during the rescaling -- it's unlikely that other
-    // cells with small, nonzero volumes will pass the other checks
-    // so long as other limits are reasonable.
-    if (fabs(newvol) < 1.0) {
-      newvol = (new_vol_max - new_vol_min) * 0.5 + new_vol_min; // PSA;
+    // First, find volume limits for the structure
+    double minvol, maxvol;
+    getCompositionVolumeLimits(xtalComp, minvol, maxvol);
+
+    // Check volume
+    if (xtal->getVolume() < minvol || // PSA
+        xtal->getVolume() > maxvol) { // PSA
+      // I don't want to initialize a random number generator here, so
+      // just use the modulus of the current volume as a random float.
+      double newvol =
+          fabs(fmod(xtal->getVolume(), 1)) * (maxvol - minvol) + minvol;
+      // If the user has set vol_min to 0, we can end up with a null
+      // volume. Fix this here. This is just to keep things stable
+      // numerically during the rescaling -- it's unlikely that other
+      // cells with small, nonzero volumes will pass the other checks
+      // so long as other limits are reasonable.
+      if (fabs(newvol) < 1.0) {
+        newvol = (maxvol - minvol) * 0.5 + minvol; // PSA;
+      }
+      // qDebug() << "XtalOpt::checkXtal: Rescaling volume from "
+      //         << xtal->getVolume() << " to " << newvol;
+      xtal->setVolume(newvol);
     }
-    // qDebug() << "XtalOpt::checkXtal: Rescaling volume from "
-    //         << xtal->getVolume() << " to " << newvol;
-    xtal->setVolume(newvol);
+
+    if (m_verbose) {
+      double new_vol = xtal->getVolume();
+      if (fabs(org_vol - new_vol) > ZERO2)
+        qDebug().noquote() <<
+            QString("   checkLattice: volume fixed - ori %1   new %2   (%3 - %4) %5")
+                                  .arg(org_vol,9,'f',2).arg(new_vol,9,'f',2)
+                                  .arg(minvol,9,'f',2).arg(maxvol,9,'f',2)
+                                  .arg(xtal->getCompositionString());
+    }
   }
 
   // Scale to any fixed parameters
@@ -3017,11 +2302,20 @@ bool XtalOpt::checkLattice(Xtal* xtal, uint formulaUnits, QString* err)
   // cell matrix is negative (otherwise VASP complains about a
   // "negative triple product")
   if (xtal->unitCell().cellMatrix().determinant() <= 0.0) {
-    qDebug() << "Rejecting structure" << xtal->getTag()
-             << ": determinant of unit cell is negative or zero.";
-    if (err != nullptr) {
-      *err = "Unit cell matrix cannot have a negative or zero determinant.";
+    QString out0 =
+       QString("Rejecting structure %1 : determinant of unit cell neg or zero\n")
+       .arg(xtal->getTag());
+
+    if (m_verbose) {
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++)
+          out0 += QString("   %1 ")
+                      .arg(xtal->unitCell().cellMatrix()(i,j),12,'f',6);
+        out0 += QString("\n");
+      }
     }
+
+    qDebug().noquote() << out0;
     return false;
   }
 
@@ -3035,9 +2329,6 @@ bool XtalOpt::checkLattice(Xtal* xtal, uint formulaUnits, QString* err)
       GS_IS_NAN_OR_INF(xtal->getGamma()) || fabs(xtal->getGamma()) < ZERO8) {
     qDebug() << "XtalOpt::checkXtal: A cell parameter is either 0, nan, or "
                 "inf. Discarding.";
-    if (err != nullptr) {
-      *err = "A cell parameter is too small (<10^-8) or not a number.";
-    }
     return false;
   }
 
@@ -3080,11 +2371,9 @@ bool XtalOpt::checkLattice(Xtal* xtal, uint formulaUnits, QString* err)
   if ((!a && (xtal->getA() < a_min || xtal->getA() > a_max)) ||
       (!b && (xtal->getB() < b_min || xtal->getB() > b_max)) ||
       (!c && (xtal->getC() < c_min || xtal->getC() > c_max)) ||
-      (!alpha &&
-       (xtal->getAlpha() < alpha_min || xtal->getAlpha() > alpha_max)) ||
-      (!beta && (xtal->getBeta() < beta_min || xtal->getBeta() > beta_max)) ||
-      (!gamma &&
-       (xtal->getGamma() < gamma_min || xtal->getGamma() > gamma_max))) {
+      (!alpha && (xtal->getAlpha() < alpha_min || xtal->getAlpha() > alpha_max)) ||
+      (!beta  && (xtal->getBeta() < beta_min || xtal->getBeta() > beta_max)) ||
+      (!gamma && (xtal->getGamma() < gamma_min || xtal->getGamma() > gamma_max))) {
     qDebug() << "Discarding structure -- Bad lattice:" << endl
              << "A:     " << a_min << " " << xtal->getA() << " " << a_max
              << endl
@@ -3098,10 +2387,6 @@ bool XtalOpt::checkLattice(Xtal* xtal, uint formulaUnits, QString* err)
              << beta_max << endl
              << "Gamma: " << gamma_min << " " << xtal->getGamma() << " "
              << gamma_max;
-    if (err != nullptr) {
-      *err = "The unit cell parameters do not fall within the specified "
-             "limits.";
-    }
     return false;
   }
 
@@ -3109,12 +2394,12 @@ bool XtalOpt::checkLattice(Xtal* xtal, uint formulaUnits, QString* err)
   return true;
 }
 
-bool XtalOpt::checkXtal(Xtal* xtal, QString* err)
+bool XtalOpt::checkXtal(Xtal* xtal)
 {
+  // In this function, we always assume that we have a valid input xtal
+  QString err;
   if (!xtal) {
-    if (err != nullptr) {
-      *err = "Xtal pointer is nullptr.";
-    }
+    err = "Xtal pointer is nullptr.";
     return false;
   }
 
@@ -3122,16 +2407,14 @@ bool XtalOpt::checkXtal(Xtal* xtal, QString* err)
   QWriteLocker locker(&xtal->lock());
 
   if (xtal->getStatus() == Xtal::Empty) {
-    if (err != nullptr) {
-      *err = "Xtal status is empty.";
-    }
+    err = "Xtal status is empty.";
     return false;
   }
 
-  if (!checkComposition(xtal, err))
+  if (!checkLattice(xtal))
     return false;
 
-  if (!checkLattice(xtal, xtal->getFormulaUnits(), err))
+  if (!checkComposition(xtal))
     return false;
 
   // Sometimes, all the atom positions are set to 'nan' for an unknown reason
@@ -3158,17 +2441,16 @@ bool XtalOpt::checkXtal(Xtal* xtal, QString* err)
   if (using_interatomicDistanceLimit) {
     int atom1, atom2;
     double IAD;
-    if (!xtal->checkInteratomicDistances(this->comp, &atom1, &atom2, &IAD)) {
+    if (!xtal->checkInteratomicDistances(this->eleMinRadii,
+                                         &atom1, &atom2, &IAD)) {
       Atom& a1 = xtal->atom(atom1);
       Atom& a2 = xtal->atom(atom2);
-      const double minIAD = this->comp.value(a1.atomicNumber()).minRadius +
-                            this->comp.value(a2.atomicNumber()).minRadius;
+      const double minIAD = this->eleMinRadii.getMinRadius(a1.atomicNumber()) +
+                            this->eleMinRadii.getMinRadius(a2.atomicNumber());
 
       qDebug() << "Discarding structure -- Bad IAD (" << IAD << " < " << minIAD
                << ")";
-      if (err != nullptr) {
-        *err = "Two atoms are too close together.";
-      }
+      err = "Two atoms are too close together.";
       return false;
     }
   }
@@ -3186,17 +2468,12 @@ bool XtalOpt::checkXtal(Xtal* xtal, QString* err)
       xtal->setStatus(Xtal::Killed);
       qDebug() << "Discarding structure -- Bad IAD (" << IAD << " < " << minIAD
                << ")";
-      if (err != NULL) {
-        *err = "Two atoms are too close together (post-optimization).";
-      }
+      err = "Two atoms are too close together (post-optimization).";
       return false;
     }
   }
 
   // Xtal is OK!
-  if (err != nullptr) {
-    *err = "";
-  }
   return true;
 }
 
@@ -3256,7 +2533,7 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
           if (fixCount < 10) {
             int atomicNumber = a2.atomicNumber();
             Atom* atom = &a2;
-            if (xtal->moveAtomRandomlyIAD(atomicNumber, this->comp,
+            if (xtal->moveAtomRandomlyIAD(atomicNumber, this->eleMinRadii,
                                           this->interComp, 1000, atom)) {
               continue;
             } else {
@@ -3299,11 +2576,11 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
     if (using_interatomicDistanceLimit) {
       int atom1, atom2;
       double IAD;
-      if (!xtal->checkInteratomicDistances(this->comp, &atom1, &atom2, &IAD)) {
+      if (!xtal->checkInteratomicDistances(this->eleMinRadii, &atom1, &atom2, &IAD)) {
         Atom& a1 = xtal->atom(atom1);
         Atom& a2 = xtal->atom(atom2);
-        const double minIAD = this->comp.value(a1.atomicNumber()).minRadius +
-                              this->comp.value(a2.atomicNumber()).minRadius;
+        const double minIAD = this->eleMinRadii.getMinRadius(a1.atomicNumber()) +
+                              this->eleMinRadii.getMinRadius(a2.atomicNumber());
 
         qDebug() << "Discarding structure -- Bad IAD (" << IAD << " < "
                  << minIAD << ")";
@@ -3375,7 +2652,7 @@ void XtalOpt::interpretKeyword(QString& line, Structure* structure)
     std::vector<Atom>::const_iterator it;
     for (it = atoms.begin(); it != atoms.end(); it++) {
       const Vector3 coords = xtal->cartToFrac((*it).pos());
-      rep += (QString(ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str()) +
+      rep += (QString(ElementInfo::getAtomicSymbol((*it).atomicNumber()).c_str()) +
               " ");
       rep += QString::number(coords.x()) + " ";
       rep += QString::number(coords.y()) + " ";
@@ -3387,7 +2664,7 @@ void XtalOpt::interpretKeyword(QString& line, Structure* structure)
       rep += " ";
       rep += QString::number(i + 1) + " ";
       rep +=
-        QString::number(ElemInfo::getAtomicNum(symbols[i].toStdString())) + " ";
+        QString::number(ElementInfo::getAtomicNum(symbols[i].toStdString())) + " ";
       rep += symbols[i] + "\n";
     }
   } else if (line == "atomicCoordsAndAtomicSpecies") {
@@ -3397,16 +2674,16 @@ void XtalOpt::interpretKeyword(QString& line, Structure* structure)
     for (it = atoms.begin(); it != atoms.end(); it++) {
       const Vector3 coords = xtal->cartToFrac((*it).pos());
       QString currAtom =
-        ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
+        ElementInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
       int i = symbol.indexOf(currAtom) + 1;
       rep += " ";
       QString inp;
-      inp.sprintf("%4.8f", coords.x());
-      rep += inp + "\t";
-      inp.sprintf("%4.8f", coords.y());
-      rep += inp + "\t";
-      inp.sprintf("%4.8f", coords.z());
-      rep += inp + "\t";
+      inp.sprintf("%14.8f", coords.x());
+      rep += inp + "  ";
+      inp.sprintf("%14.8f", coords.y());
+      rep += inp + "  ";
+      inp.sprintf("%14.8f", coords.z());
+      rep += inp + "  ";
       rep += QString::number(i) + "\n";
     }
   } else if (line == "coordsFracId") {
@@ -3414,7 +2691,7 @@ void XtalOpt::interpretKeyword(QString& line, Structure* structure)
     std::vector<Atom>::const_iterator it;
     for (it = atoms.begin(); it != atoms.end(); it++) {
       const Vector3 coords = xtal->cartToFrac((*it).pos());
-      rep += (QString(ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str()) +
+      rep += (QString(ElementInfo::getAtomicSymbol((*it).atomicNumber()).c_str()) +
               " ");
       rep += QString::number((*it).atomicNumber()) + " ";
       rep += QString::number(coords.x()) + " ";
@@ -3432,13 +2709,35 @@ void XtalOpt::interpretKeyword(QString& line, Structure* structure)
       rep += QString::number(coords.y()) + " ";
       rep += QString::number(coords.z()) + "\n";
     }
+  } else if (line == "mtpAtomsInfo") {
+    const std::vector<Atom>& atoms = structure->atoms();
+    std::vector<Atom>::const_iterator it;
+    int tag = 1;
+    for (it = atoms.begin(); it != atoms.end(); it++) {
+      const Vector3 coords = xtal->cartToFrac((*it).pos());
+      QString sym = QString(ElementInfo::getAtomicSymbol((*it).atomicNumber()).c_str());
+      int typ = getChemicalSystem().indexOf(sym);
+      rep += QString("    %1  %2  %3  %4  %5\n").arg(tag++, 5, 10, QChar(' '))
+                    .arg(typ, 5, 10, QChar(' ')).arg(coords.x(), 14, 'f', 8, QChar(' '))
+                    .arg(coords.y(), 14, 'f', 8, QChar(' ')).arg(coords.z(), 14, 'f', 8, QChar(' '));
+    }
+    rep += "Feature chemical_system ";
+    for (int i = 0; i < getChemicalSystem().size(); i++) {
+      rep += getChemicalSystem()[i] + " ";
+    }
+    rep += "\n";
+  } else if (line == "chemicalSystem") {
+    for (int i = 0; i < getChemicalSystem().size(); i++) {
+      rep += getChemicalSystem()[i] + " ";
+    }
+    rep += "\n";
   } else if (line == "gulpFracShell") {
     const std::vector<Atom>& atoms = structure->atoms();
     std::vector<Atom>::const_iterator it;
     for (it = atoms.begin(); it != atoms.end(); it++) {
       const Vector3 coords = xtal->cartToFrac((*it).pos());
       const char* symbol =
-        ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
+        ElementInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
       rep += QString("%1 core %2 %3 %4\n")
                .arg(symbol)
                .arg(coords.x())
@@ -3456,7 +2755,7 @@ void XtalOpt::interpretKeyword(QString& line, Structure* structure)
       rep += " ";
       for (int j = 0; j < 3; j++) {
         QString inp;
-        inp.sprintf("%4.8f", m(i, j));
+        inp.sprintf("%14.8f", m(i, j));
         rep += inp + "  ";
       }
       rep += "\n";
@@ -3464,40 +2763,40 @@ void XtalOpt::interpretKeyword(QString& line, Structure* structure)
   } else if (line == "cellVector1Angstrom") {
     Vector3 v = xtal->unitCell().aVector();
     for (int i = 0; i < 3; i++) {
-      rep += QString::number(v[i]) + "\t";
+      rep += QString::number(v[i]) + "   ";
     }
   } else if (line == "cellVector2Angstrom") {
     Vector3 v = xtal->unitCell().bVector();
     for (int i = 0; i < 3; i++) {
-      rep += QString::number(v[i]) + "\t";
+      rep += QString::number(v[i]) + "   ";
     }
   } else if (line == "cellVector3Angstrom") {
     Vector3 v = xtal->unitCell().cVector();
     for (int i = 0; i < 3; i++) {
-      rep += QString::number(v[i]) + "\t";
+      rep += QString::number(v[i]) + "   ";
     }
   } else if (line == "cellMatrixBohr") {
     Matrix3 m = xtal->unitCell().cellMatrix();
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
-        rep += QString::number(m(i, j) * ANG2BOHR) + "\t";
+        rep += QString::number(m(i, j) * ANG2BOHR) + "   ";
       }
       rep += "\n";
     }
   } else if (line == "cellVector1Bohr") {
     Vector3 v = xtal->unitCell().aVector();
     for (int i = 0; i < 3; i++) {
-      rep += QString::number(v[i] * ANG2BOHR) + "\t";
+      rep += QString::number(v[i] * ANG2BOHR) + "   ";
     }
   } else if (line == "cellVector2Bohr") {
     Vector3 v = xtal->unitCell().bVector();
     for (int i = 0; i < 3; i++) {
-      rep += QString::number(v[i] * ANG2BOHR) + "\t";
+      rep += QString::number(v[i] * ANG2BOHR) + "   ";
     }
   } else if (line == "cellVector3Bohr") {
     Vector3 v = xtal->unitCell().cVector();
     for (int i = 0; i < 3; i++) {
-      rep += QString::number(v[i] * ANG2BOHR) + "\t";
+      rep += QString::number(v[i] * ANG2BOHR) + "   ";
     }
   } else if (line == "POSCAR") {
     rep += xtal->toPOSCAR();
@@ -3528,6 +2827,7 @@ QString XtalOpt::getTemplateKeywordHelp_xtalopt()
   QTextStream out(&str);
   out << "Crystal specific information:\n"
       << "%POSCAR% -- VASP poscar generator\n"
+      << "%mtpAtomsInfo% -- MTP atomic coordinates and full chemical system info\n"
       << "%coordsFrac% -- fractional coordinate data\n\t[symbol] [x] [y] [z]\n"
       << "%coordsFracIndex% -- fractional coordinate data with order index\n"
          "\t[index: 0..number of atoms] [x] [y] [z]\n"
@@ -3557,7 +2857,8 @@ QString XtalOpt::getTemplateKeywordHelp_xtalopt()
       << "%gammaDeg% -- Lattice parameter Gamma in degrees\n"
       << "%volume% -- Unit cell volume\n"
       << "%gen% -- xtal generation number\n"
-      << "%id% -- xtal id number\n";
+      << "%id% -- xtal id number\n"
+      << "%chemicalSystem% -- list of element symbols in alpha. order\n";
 
   return str;
 }
@@ -3612,6 +2913,9 @@ std::unique_ptr<GlobalSearch::Optimizer> XtalOpt::createOptimizer(
   if (caseInsensitiveCompare(optName, "vasp"))
     return make_unique<VASPOptimizer>(this);
 
+  if (caseInsensitiveCompare(optName, "mtp"))
+    return make_unique<MTPOptimizer>(this);
+
   qDebug() << "Error in" << __FUNCTION__
            << ": Unknown optimizer:" << optName.c_str();
   return nullptr;
@@ -3638,17 +2942,12 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
 
   // Update config data. Be sure to bump m_schemaVersion in ctor if
   // adding updates.
-  switch (loadedVersion) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-      break;
-    default:
-      error("XtalOpt::load(): Settings in file " + file.fileName() +
-            " cannot be opened by this version of XtalOpt. Please "
-            "visit https://xtalopt.github.io to obtain a "
-            "newer version.");
+  // As of xtalopt version 14, state files older than v4 will not work
+  if (loadedVersion < 4) {
+    error("XtalOpt::load(): Settings in file " + file.fileName() +
+          " appears to be a run with an older version of XtalOpt. "
+          "Please visit https://xtalopt.github.io for latest updates "
+          "on XtalOpt and its input flag descriptions.");
       return false;
   }
 
@@ -3692,9 +2991,8 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
   xtalDirs.removeAll("..");
 
   for (int i = 0; i < xtalDirs.size(); i++) {
-    // old versions of xtalopt used xtal.state, so still check for it.
-    if (!QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/structure.state") &&
-        !QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/xtal.state")) {
+    // No longer check for xtal.state as they are from old versions of xtalopt.
+    if (!QFile::exists(dataPath + "/" + xtalDirs.at(i) + "/structure.state")) {
       xtalDirs.removeAt(i);
       i--;
     }
@@ -3716,7 +3014,7 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
 
 #ifdef ENABLE_SSH
   // Create the SSHManager if running remotely
-  if (anyRemoteQueueInterfaces()) {
+  if (!m_localQueue && anyRemoteQueueInterfaces()) {
     qDebug() << "Creating SSH connections...";
     if (!this->createSSHConnections()) {
       error(tr("Could not create ssh connections."));
@@ -3743,7 +3041,6 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
   }
   // Load xtals
   Xtal* xtal;
-  QList<uint> keys = comp.keys();
   QList<Structure*> loadedStructures;
   QString xtalStateFileName;
   bool errorMsgAlreadyGiven = false;
@@ -3782,6 +3079,10 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
     if (restartInProcessStructures && state == Structure::InProcess) {
       state = Structure::Restart;
     }
+    // Set state from unfinished objective calcs. -> step optimized; so redo objectives
+    if (restartInProcessStructures && state == Structure::ObjectiveCalculation) {
+      state = Structure::StepOptimized;
+    }
     QDateTime endtime = xtal->getOptTimerEnd();
 
     locker.unlock();
@@ -3802,8 +3103,7 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
         // We also only want to count finished structures...
         if (parentStructureString == loadedStructures.at(i)->getTag() && 
              !xtal->skippedOptimization() &&
-             (xtal->getStatus() == Xtal::Duplicate ||
-             xtal->getStatus() == Xtal::Supercell ||
+             (xtal->getStatus() == Xtal::Similar ||
              xtal->getStatus() == Xtal::Optimized)) {
           xtal->setParentStructure(loadedStructures.at(i));
           break;
@@ -3869,7 +3169,6 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
       xtal->setEnergy(energy);
 
       locker.unlock();
-      updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
       loadedStructures.append(qobject_cast<Structure*>(xtal));
       continue;
     }
@@ -3882,21 +3181,7 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
       xtal->setJobID(0);
     }
     locker.unlock();
-    updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
     loadedStructures.append(qobject_cast<Structure*>(xtal));
-    // Update the formula unit list. This is for loading older versions
-    // of xtalopt
-    if (i == 0) {
-      formulaUnitsList.clear();
-      formulaUnitsList.append(xtal->getFormulaUnits());
-      emit updateFormulaUnitsListUIText();
-      emit updateVolumesToBePerFU(xtal->getFormulaUnits());
-      error("Warning: an XtalOpt run from an older version is being "
-            "loaded.\n\nIf you choose to resume the run, you will not "
-            "be able to load it with the older version any longer.\n\n"
-            "Upon resuming, the formula units will be set to what they were "
-            "in the prior run, and the volumes will be adjusted to be per FU.");
-    }
   }
 
   if (m_dialog) {
@@ -3924,7 +3209,6 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
   }
 
   // Locate and assign memory addresses for parent structures
-
   if (m_dialog) {
     m_dialog->updateProgressMinimum(0);
     m_dialog->updateProgressValue(0);
@@ -3962,6 +3246,12 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
       m_queue->appendToJobStartTracker(s);
   }
 
+  // As of XtalOpt v14, we use convex hull for fitness. So, the very last
+  //   step in loading an older run would be to re-calculate distance
+  //   above hull for loaded structures.
+  // Since this is a "dynamic" value, it is not saved to structure.state files.
+  updateHullAndFrontInfo();
+
   emit enablePlotUpdate();
   emit updatePlot();
 
@@ -3993,9 +3283,9 @@ bool XtalOpt::load(const QString& filename, const bool forceReadOnly)
 
   // Set this up to prevent a bug if "replace with random" is the failure
   // action and "Initialize with RandSpg" is checked.
-  if (minXtalsOfSpgPerFU.empty()) {
+  if (minXtalsOfSpg.empty()) {
     for (size_t spg = 1; spg <= 230; spg++)
-      minXtalsOfSpgPerFU.append(0);
+      minXtalsOfSpg.append(0);
   }
 
   return true;
@@ -4097,7 +3387,6 @@ bool XtalOpt::plotDir(const QDir& dataDir)
     double energy = settings->value("structure/current/energy", 0).toDouble();
     xtal->setEnergy(energy);
 
-    updateLowestEnthalpyFUList_(qobject_cast<Structure*>(xtal));
     loadedStructures.append(qobject_cast<Structure*>(xtal));
   }
 
@@ -4137,15 +3426,6 @@ bool XtalOpt::plotDir(const QDir& dataDir)
   return true;
 }
 
-bool XtalOpt::onTheFormulaUnitsList(uint FU)
-{
-  for (int i = 0; i < formulaUnitsList.size(); i++) {
-    if (FU == formulaUnitsList.at(i))
-      return true;
-  }
-  return false;
-}
-
 void XtalOpt::resetSpacegroups()
 {
   if (isStarting) {
@@ -4164,434 +3444,797 @@ void XtalOpt::resetSpacegroups_()
     qobject_cast<Xtal*>(*it)->findSpaceGroup(tol_spg);
     (*it)->lock().unlock();
   }
+
+  emit refreshAllStructureInfo();
 }
 
-void XtalOpt::resetDuplicates()
+void XtalOpt::resetSimilarities()
 {
   if (isStarting) {
     return;
   }
-  QtConcurrent::run(this, &XtalOpt::resetDuplicates_);
+  QtConcurrent::run(this, &XtalOpt::resetSimilarities_);
 }
 
-void XtalOpt::resetDuplicates_()
+void XtalOpt::resetSimilarities_()
 {
   const QList<Structure*>* structures = m_tracker->list();
   Xtal* xtal = 0;
   for (int i = 0; i < structures->size(); i++) {
     xtal = qobject_cast<Xtal*>(structures->at(i));
     QWriteLocker xtalLocker(&xtal->lock());
-    // Let's reset supercells here too
-    if (xtal->getStatus() == Xtal::Duplicate ||
-        xtal->getStatus() == Xtal::Supercell) {
+    if (xtal->getStatus() == Xtal::Similar) {
       xtal->setStatus(Xtal::Optimized);
     }
     xtal->structureChanged(); // Reset cached comparisons
   }
-  checkForDuplicates();
+  checkForSimilarities();
 }
 
-void XtalOpt::getScaledVolumePerFU(double& scl_min, double& scl_max,
-                                   double& vol_min, double& vol_max)
+std::vector<double> XtalOpt::getReferenceEnergiesVector()
 {
-  // This function returns the scaled factors (if any adjustment is needed),
-  //   and the min/max of volume per FU as the total vdW spheres' volumes
-  //   times the scaling factors.
-  // It takes effect only if the composition is set!
-  QList<uint> atomicNums = this->comp.keys();
-  if (atomicNums.size() == 0)
-    return;
+  // This is an override "convenience function" to give searchbase
+  //   access to reference energies for hull calculations.
+  // It returns a 1D vector of atom counts (sorted with symbols)
+  //   and energies; ready to be added to the hull data input.
+  // Reference structure might be a subsystem of chemical space;
+  //   so we should return a vector with atom counts of "all symbols"
+  //   including those that are -possibly- zero.
+  std::vector<double> out;
 
-  // First, find the equivalent vdW volume per FU
-  double vdw_vol = 0.0;
-  for (int i = 0; i < atomicNums.size(); i++)
-    if (atomicNums[i] != 0) {
-      double q = this->comp.value(atomicNums[i]).quantity;
-      double r = ElemInfoDatabase::_vdwRadii[atomicNums[i]];
-      vdw_vol += q * 4.0 / 3.0 * PI * pow(r, 3.0);
+  QList<QString> chem_sys = getChemicalSystem();
+
+  for (int i = 0; i < refEnergies.size(); i++) {
+    QList<QString> symbols = refEnergies[i].cell.getSymbols();
+    double         energy  = refEnergies[i].energy;
+    for (int j = 0; j < chem_sys.size(); j++) {
+      double natoms = 0.0;
+      int ind = symbols.indexOf(chem_sys[j]);
+      if (ind != -1) {
+        natoms = static_cast<double>(refEnergies[i].cell.getCount(symbols[ind]));
+      }
+      out.push_back(natoms);
     }
-  if (vdw_vol < ZERO5)
-    return;
-
-  // Now, sort out the situation with scaling factors
-  if (scl_min < ZERO5 && scl_max > ZERO5) {
-    vol_min = 1.0;
-    vol_max = vdw_vol * scl_max;
-  } else if (scl_min > ZERO5 && scl_max < scl_min) {
-    scl_max = scl_min;
-    vol_min = vdw_vol * scl_min;
-    vol_max = vdw_vol * scl_max;
-  } else if (scl_min > ZERO5 && scl_max > ZERO5) {
-    vol_min = vdw_vol * scl_min;
-    vol_max = vdw_vol * scl_max;
+    out.push_back(energy);
   }
+
+  return out;
 }
 
-bool XtalOpt::processObjectivesInfo()
+CellComp XtalOpt::getXtalComposition(GlobalSearch::Structure *s)
 {
-  // This function processes the objective/aflow-hardness entries from the CLI
-  //   or GUI input. It reads the input info, initiates weights and output files
-  //   (which are optional in CLI mode), sets flags and variables for
-  //    multi-objective run; then, calls the "processObjectivesWeights" function.
+  // Returns the "actual" composition, e.g., for a "sub-system" structure
+  //   the output comp will have fewer atom types compared to the reference
+  //   chemical system.
+  CellComp out;
+
+  if (s == nullptr || s->numAtoms() == 0)
+    return out;
+
+  QList<QString> symbs = s->getSymbols();
+  QList<uint>    count = s->getNumberOfAtomsAlpha();
+
+  for (int i = 0; i < symbs.size(); i++) {
+    uint atmcn = ElementInfo::getAtomicNum(symbs[i].toStdString());
+    out.set(symbs[i], atmcn, count[i]);
+  }
+
+  return out;
+}
+
+CellComp XtalOpt::formulaToComposition(QString form)
+{
+  // Given a single input chemical formula (as a string); return
+  //   the corresponding composition object.
+  // This is done by adding symbol, atomic number, and atom count
+  //   of each element to the composition object.
+
+  CellComp compout;
+
+  std::map<uint, uint> cmp;
+  if (!ElementInfo::readComposition(form.toStdString(), cmp)) {
+    return compout;
+  }
+
+  for (const auto& elem : cmp) {
+    compout.set(ElementInfo::getAtomicSymbol(elem.first).c_str(),
+                elem.first, elem.second);
+  }
+
+  return compout;
+}
+
+double XtalOpt::compareCompositions(CellComp comp1, CellComp comp2)
+{
+  // This function determines if species of two comps match and if atom
+  //   count of all species in comp2 are a fixed multiple "r > 0"
+  //   of those in comp1.
+  // So, the return value tells us that:
+  // r > 0: comp2 has the same composition as comp1; with "r * num atoms",
+  // r = 0: species don't match, or atom counts are not a fixed multiple, etc.
+
+  // Some basic checks first
+  if (comp1.getNumTypes() != comp2.getNumTypes())
+    return 0;
+
+  // Do species match?
+  for (int i = 0; i < comp2.getNumTypes(); i++) {
+    if (!comp1.getSymbols().contains(comp2.getSymbols()[i]))
+      return 0;
+  }
+
+  // Are counts equivalent: start by finding reference ratio.
+  QString symb = comp1.getSymbols()[0];
+  double ref1 = static_cast<double>(comp1.getCount(symb));
+  double ref2 = static_cast<double>(comp2.getCount(symb));
+  double refRatio = ref2 / ref1;
+
+  for (int i = 0; i < comp2.getNumTypes(); i++) {
+    symb = comp2.getSymbols()[i];
+    double ele1 = static_cast<double>(comp1.getCount(symb));
+    double ele2 = static_cast<double>(comp2.getCount(symb));
+    double checkRatio = ele2 / ele1;
+    if (fabs( checkRatio - refRatio ) > ZERO6)
+      return 0;
+  }
+
+  // They are equivalent! Return the ratio.
+  return refRatio;
+}
+
+void XtalOpt::getCompositionVolumeLimits(CellComp incomp, double& minvol, double& maxvol)
+{
+  // This function makes an estimate for min/max limits of volume corresponding to a composition.
+  // From the composition, species types and their atom counts are obtained; and these
+  //   info are then used to estimate volume limits according to one of the schemes:
+  //   (1) elemental volumes, (2) scaled volume, or (3) absolute volume limits.
+
+  // This shouldn't ever happen. Just in case ...
+  if (incomp.getNumAtoms() == 0) {
+    qDebug() << "Warning: strange things happening with composition volume!!!";
+    minvol = 1;
+    maxvol = 10000;
+    return;
+  }
+
+  // Now: which scheme should be used calculate the volume limits?
+  //   (1) If elemental volumes are given, use them,
+  //   (2) If scaled volume is given, use that,
+  //   (3) If none of the above, use absolute limits.
+  bool useEleVol = (eleVolumes.getAtomicNumbers().size() == 0) ? false : true;
+  bool useScaVol = (vol_scale_min > ZERO6 && vol_scale_max > vol_scale_min) ? true : false;
+
+  minvol = 0.0;
+  maxvol = 0.0;
+
+  QList<uint> atomicNums = incomp.getAtomicNumbers();
+
+  for (int i = 0; i < atomicNums.size(); i++) {
+    uint atomCount = incomp.getCount(atomicNums[i]);
+    double atomVolum = ElementInfo::getCovalentVolume(atomicNums[i]);
+    if (useEleVol) {
+      minvol += atomCount * eleVolumes.getMinVolume(atomicNums[i]);
+      maxvol += atomCount * eleVolumes.getMaxVolume(atomicNums[i]);
+    } else if (useScaVol) {
+      minvol += atomCount * atomVolum * vol_scale_min;
+      maxvol += atomCount * atomVolum * vol_scale_max;
+    } else {
+      minvol += atomCount * vol_min;
+      maxvol += atomCount * vol_max;
+    }
+  } 
+
+  return;
+}
+
+CellComp XtalOpt::getMinimalComposition()
+{
+  // Return the "minimum quantity composition": the one which
+  //   has the smallest number of atoms of each symbol among
+  //   all the compositions in the input list.
+  // This is actually a small helper function which is being
+  //   used whenever we want to setup the "molecular unit".
+  // NOTE: it is always assumed that the chemical elements
+  //   in all compositions are the same; even if some have
+  //   zero atom count!
+
+  CellComp compMins;
+
+  if (compList.isEmpty())
+    return compMins;
+
+  QList<QString> symbols = compList[0].getSymbols();
+  QList<uint> counts;
+  for (int i = 0; i < symbols.size(); i++)
+    counts.append(compList[0].getCount(symbols[i]));
+
+  for (int i = 1; i < compList.size(); i++) {
+    for (int j = 0; j < symbols.size(); j++) {
+      if (!compList[i].getSymbols().contains(symbols[j]))
+        return compMins;
+      uint c = compList[i].getCount(symbols[j]);
+      if (c < counts[j])
+        counts[j] = c;
+    }
+  }
+
+  for (int i = 0; i < symbols.size(); i++)
+    compMins.set(symbols[i],
+                 ElementInfo::getAtomicNum(symbols[i].toStdString()), counts[i]);
+
+  return compMins;
+}
+
+CellComp XtalOpt::getMaximalComposition()
+{
+  // Return the "maximum quantity composition": the one which
+  //   has the largest number of atoms of each symbol among
+  //   all the compositions in the input list.
+  // NOTE: it is always assumed that the chemical elements
+  //   in all compositions are the same; even if some have
+  //   zero atom count!
+
+  CellComp compMaxs;
+
+  if (compList.isEmpty())
+    return compMaxs;
+
+  QList<QString> symbols = compList[0].getSymbols();
+  QList<uint> counts;
+  for (int i = 0; i < symbols.size(); i++)
+    counts.append(compList[0].getCount(symbols[i]));
+
+  for (int i = 1; i < compList.size(); i++) {
+    for (int j = 0; j < symbols.size(); j++) {
+      if (!compList[i].getSymbols().contains(symbols[j]))
+        return compMaxs;
+      uint c = compList[i].getCount(symbols[j]);
+      if (c > counts[j])
+        counts[j] = c;
+    }
+  }
+
+  for (int i = 0; i < symbols.size(); i++)
+    compMaxs.set(symbols[i],
+                 ElementInfo::getAtomicNum(symbols[i].toStdString()), counts[i]);
+
+  return compMaxs;
+}
+
+QList<QString> XtalOpt::getChemicalSystem() const
+{
+  // A small helper function: return sorted list of symbols in ref chemical system
+
+  QList<QString> out = QList<QString>();
+
+  if (compList.isEmpty())
+    return out;
+
+  out = compList[0].getSymbols();
+
+  return out;
+}
+
+bool XtalOpt::processInputChemicalFormulas(QString s)
+{
+  // This function, one of the first things to be called, processes
+  //   the input chemical formulas, and sets the list of compositions.
+  // Input formula should all be of the same chemical system, and
+  //   "full" chemical formula, i.e., proper combination of symbols
+  //   and quantities, e.g., "Ti2O4" and not "TiO2".
+  // An entry can also be a hyphen-separated list of "supercells",
+  //   e.g., "Ti1O4 - Ti3O12".
+  // If anything goes wrong, we will return false which quits the run.
+  //   Examples of input formulae issues:
+  //   - input formulae don't have correct format,
+  //   - list of symbols of input formulae don't match the chemical system.
   //
-  // From now on, aflow-hardness is being treated just as one of the objectives:
-  //      opt_typ = hardness
-  //      weight  = input (default value of -1.0)
-  //      no script path or output file name is needed
-  // Internally, though, the same old flags are set since the nature of the
-  //      aflow-hardness calculations is not similar to that of user-defined objectives.
-  //      As a result, m_objectives_num ONLY includes non-aflow-hardness objectives.
+  // This function sets the global variable "compList", and at the end of
+  //    it where we now the chemical system, we initiate atomic radii.
+  //
+  // If it returns true, the above global variables are overwritten;
+  //   otherwise they will have their previous values (if any).
 
-  // Initialize the temp value for *legacy* aflow-hardness flags,
-  //      the weight will be adjusted in processObjectivesWeight
-  m_calculateHardness     = false;  // no aflow-hardness calculations
-  m_hardnessFitnessWeight = -1.0;   // no weight is given
+  // Working output variable
+  QList<CellComp> out;
 
-  // This needs to be done: this function might be
-  //   called more than once in gui mode
-  resetObjectives();
+  // Input list of formulas.
+  QStringList formulalist = s.split(',');
 
-  int objnum = 0; // Counter for non-aflow-hardness objectives
-  for (int i = 0; i < objectiveListSize(); i++)
-  {
-    QString     line  = objectiveListGet(i);
-    QStringList sline = line.split(" ", QString::SkipEmptyParts);
-    int nparam = sline.size();
-    // There should be at least one entry in the input!
-    if (nparam < 1)
-    { qDebug() << "Error: objectives are not properly initiated: " << line; return false; }
-    // Initializing some temporary variables;
-    //   first parameter in the input entry is always optimization type: min/max/fil/har
-    QString tmps = sline.at(0).toLower().mid(0,3);
-    ObjectivesType objtyp = (tmps == "min") ? ObjectivesType::Ot_Min :
-      ((tmps == "max") ? ObjectivesType::Ot_Max : ((tmps == "fil" ) ?
-      ObjectivesType::Ot_Fil : ObjectivesType::Ot_Har ));
-    QString objout = "objective" + QString::number(objnum+1) + ".out";
-    QString objexe = "none";
-    double  objwgt = -1.0;
-    //
-    bool   isNumber;
-    double vline;
-    // aflow-hardness might have only 1 entry (opt type), the rest should have at least 2
-    //   (opt type and executable paht; output file and weight optional in CLI).
-    if (objtyp != ObjectivesType::Ot_Har && nparam < 2)
-    { qDebug() << "Error: objectives are not properly initiated: " << line; return false; }
-    // Start by handling aflow-hardness entry (if any!)
-    if (objtyp == ObjectivesType::Ot_Har)
-    {
-      m_calculateHardness = true;
-      // Check if aflow-hardness weight is given
-      for (int j = 1; j < nparam; j++)
-      {
-        vline = sline.at(j).toDouble(&isNumber);
-        if (isNumber && vline >= 0.0)
-          m_hardnessFitnessWeight = vline;
+  // Process the input formula list and produce composition object.
+  // At the end, we will check to see if we have any valid compositions,
+  //   and if so, they belong to the same chemical system.
+  for (const auto &tmpform : qAsConst(formulalist)) {
+    QString formula = tmpform.simplified();
+    formula.replace(" ", "");
+    // First, is this a "single" formula entry?
+    if (!formula.contains("-")) {
+      CellComp tmpcomp = formulaToComposition(formula);
+      if (tmpcomp.getNumTypes() > 0) {
+        out.append(tmpcomp);
+        continue;
+      } else {
+        qDebug() << "Error: incorrect chemical formula entry '" << formula << "'";
+        return false;
       }
     }
-    // Now, the rest of optimization types (min/max/fil)
-    else
-    {
-      objexe = sline.at(1); // The second field is always the script path. Now, read
-                            //   the optional fields of output file and weight if they are
-                            //   given; otherwise, they will remain with their default values.
-      switch(nparam) {
-        case 3: // 3rd item might be weight or output filename
-          vline = sline.at(2).toDouble(&isNumber);
-          if (isNumber && vline >= 0.0)
-            objwgt = vline;
-          else
-            objout = sline.at(2);
-          break;
-        case 4: // one of them is weight and one is output filename
-          vline = sline.at(2).toDouble(&isNumber);
-          if (isNumber && vline >= 0.0) {
-            objwgt = vline;
-            objout = sline.at(3);
-          }
-          else {
-            objwgt = (sline.at(3).toDouble() >= 0.0) ? sline.at(3).toDouble() : -1.0;
-            objout = sline.at(2);
-          }
-          break;
-        default:
-          break;
+    // Then, we have a formula range ("-" entry) to deal with.
+    QStringList expcomp = formula.split("-");
+    if (expcomp.size() != 2) {
+      qDebug() << "Error: incorrect chemical formula entry '" << formula << "'";
+      return false;
+    }
+
+    // Convert limits to compositions; this makes it easier to verify and analyse them
+    CellComp comp1 = formulaToComposition(expcomp[0]);
+    CellComp comp2 = formulaToComposition(expcomp[1]);
+
+    // Proceed only if they are legit compositions.
+    if (comp1.getNumTypes() == 0 || comp2.getNumTypes() == 0) {
+      qDebug() << "Error: failed to process chemical formula entry '" << formula << "'";
+      return false;
+    }
+
+    // Formulae at the both end must be equivalent, proper supercells,
+    //   and the second one being larger than the first.
+    double ratio = compareCompositions(comp1, comp2);
+    if (ratio == 0 || ratio != std::floor(ratio) || ratio < 1) {
+      qDebug() << "Error: incorrect chemical formula entry '" << formula << "'";
+      return false;
+    }
+
+    // Now: comp2 is a "proper supercell" of (or equal to) comp1.
+    // Find the supercell ratio (largest expansion factor).
+    uint quantratio = static_cast<unsigned int>(ratio);
+
+    // Process all supercell formula and add them to composition list
+    for (uint i = 1; i <= quantratio; i++) {
+      QString frm = "";
+      for (const auto& symb : comp1.getSymbols()) {
+        frm += symb + QString::number(comp1.getCount(symb) * i);
       }
-
-      // We have collected all the info! Add to the list of objectives
-      setObjectivesTyp(objtyp);
-      setObjectivesExe(objexe);
-      setObjectivesOut(objout);
-      setObjectivesWgt(objwgt);
-
-      // So, we have a non-aflow-hardness objective; add to the counter
-      objnum++;
+      out.append(formulaToComposition(frm));
     }
   }
 
-  setObjectivesNum(objnum);
+  // A few final sanity checks.
 
-  // Process weights and initialize unspecified weights
-  return processObjectivesWeights();
-}
-
-bool XtalOpt::processObjectivesWeights()
-{
-  // This function adjusts the weights and performs some sanity checks on the
-  //   objectives' data.
-  //
-  // Essentially, objectives/aflow-hardness can have weights of 0.0 <= w <= 1.0.
-  //     The 0.0 is to allow the objective being calculated while not enter
-  //     the optimization. Here, we want to treat unspecified weights, and
-  //     make sure the total optimization weight is fine (0.0<=total_w<=1.0).
-  //
-  // Arriving here from the processObjectivesInfo(), every objective
-  //     (including aflow-hardness) that has a weight of -1.0, means that
-  //     its weight is unspecified by the user, and we take care of it here!
-  //
-  // To not have a chance of affecting the optimization,
-  //     weight for filtering objectives will be set to 0.0
-  //
-  // For aflow-hardness; the weight will be set to "-1.0" if
-  //     no aflow-hardness calculation
-  //
-  // Otherwise, initialization of unspecified weights depends on aflow-hardness,
-  //     and on the number of objectives with weight of -1.0. Basically, we divide
-  //     the (1.0-total_non_zero_weight) between optimizable objectives, i.e.,
-  //     enthalpy and objectives (and possibly aflow-hardness) without weight.
-  //
-  // We always have enthalpy as a objective with a weight which is not predetermined.
-  //     So, the number of optimizable objectives with unspecified weight,
-  //     cparam, starts from 1. If we have aflow-hardness calculations and
-  //     its weight is still -1 (i.e., not specified), cparam = 2.
-  //     Next, we examine non-filter objectives for those without given weight.
-
-  int    cparam      = 1; // # of objectives of unspecified weights; always count enthalpy!
-  double totalweight = 0.0;
-
-  // Initiate some temporary variables
-  int                   objnum = getObjectivesNum();
-  QList<ObjectivesType> objtyp = {};
-  QStringList           objout = {};
-  QStringList           objexe = {};
-  QList<double>         objwgt = {};
-  for (int i = 0; i < objnum; i++) {
-    objtyp.push_back(getObjectivesTyp(i));
-    objout.push_back(getObjectivesOut(i));
-    objexe.push_back(getObjectivesExe(i));
-    objwgt.push_back(getObjectivesWgt(i));
-  }
-
-  // If aflow-hardness, analyse its weight
-  if (m_calculateHardness) {
-    if (m_hardnessFitnessWeight >= 0.0)
-      totalweight += m_hardnessFitnessWeight;
-    else // We have aflow-hardness with unspecified weight
-      cparam += 1;
-  }
-
-  // Find objectives with unspecified weight
-  //   (and set the weight for the filtration objectives to 0.0)
-  for (int i = 0; i < objnum; i++)
-    if (objtyp[i] == ObjectivesType::Ot_Fil)
-      objwgt[i] = 0.0;
-    else {
-    if (objwgt[i] >= 0.0)
-      totalweight += objwgt[i];
-    else // We have an objective with unspecified weight
-      cparam += 1;
-    }
-
-  // Initialize hardness weight if it's unspecified (=-1.0)
-  //   and if hardness calculation
-  if (m_calculateHardness && m_hardnessFitnessWeight < 0.0)
-    m_hardnessFitnessWeight = (1.0 - totalweight) / (double)(cparam);
-
-  // Initialize objectives with unspecified weight
-  //   (weight=-1.0 as for filtering it's already set to 0.0)
-  for (int i = 0; i < objnum; i++)
-    if (objwgt[i] < 0.0)
-      objwgt[i] = (1.0 - totalweight) / (double)(cparam);
-
-  // Here, everything should be sorted out! Weights must be either 0.0 or
-  //     some value less than 1.0, while the total optimization weight is <=1.0.
-  //     Now, perform a sanity check to make sure that this is the case.
-  totalweight = 0.0;
-  if (m_calculateHardness) {
-    if (m_hardnessFitnessWeight < 0.0) {
-      error(tr("Weight for aflow-hardness can't be negative ( %1 )")
-          .arg(m_hardnessFitnessWeight));
-      return false;
-    } else {
-      totalweight += m_hardnessFitnessWeight;
-    }
-  }
-  for (int i = 0; i < objnum; i++)
-  {
-    if (objwgt[i] < 0.0) {
-      error(tr("Weights of objectives can't be negative ( %1 : %2 )")
-          .arg(i+1).arg(objwgt[i]));
-      return false;
-    } else {
-      totalweight += objwgt[i];
-    }
-  }
-  if ((totalweight < 0.0) || (totalweight > 1.0))
-  {
-    error(tr("Total weight for objectives can't be negative or exceed 1.0 ( %1 )")
-       .arg(totalweight));
+  // Are we left with any valid formula?
+  if (out.isEmpty()) {
+    qDebug() << "Error: no valid chemical formula was present in the list!";
     return false;
   }
 
-  // Finally, re-construct objectives list; this is to make gui table look nice!
-  objectiveListClear();
-  if (m_calculateHardness)
-    objectiveListAdd("hardness  N/A  N/A  " + QString::number(m_hardnessFitnessWeight));
+  // All compositions must be non-empty; have the same number of types of elements
+  if (out[0].getNumTypes() == 0) {
+    qDebug() << "Error: empty formula is not accepted!";
+    return false;
+  }
+  for (int i = 1; i < out.size(); i++) {
+    if (out[i].getNumTypes() != out[0].getNumTypes()) {
+      qDebug() << "Error: number of elements in formulas must be the same!";
+      return false;
+    }
+    for (int j = 0; j < out[i].getNumTypes(); j++) {
+      if (out[i].getAtomicNumbers()[j] != out[0].getAtomicNumbers()[j]) {
+        qDebug() << "Error: element types in all formulas must be the same!";
+        return false;
+      }
+    }
+  }
 
-  resetObjectives();
-  m_calculateObjectives = (objnum > 0) ? true : false;
-  setObjectivesNum(objnum);
-  for (int i = 0; i < objnum; i++)
-  {
-    QString opttype = (objtyp[i] == ObjectivesType::Ot_Min) ? "minimization" :
-      ((objtyp[i] == ObjectivesType::Ot_Max) ? "maximization" : "filtration");
-    setObjectivesTyp(objtyp[i]);
-    setObjectivesExe(objexe[i]);
-    setObjectivesOut(objout[i]);
-    setObjectivesWgt(objwgt[i]);
-    objectiveListAdd(opttype + " " + objexe[i] + " " + objout[i] + " " + QString::number(objwgt[i]));
+  // Set the composition list
+  compList = out;
+
+  // Finally, at this point we have the final list of elements in the search;
+  //   time to set the initial elemental minimum radii!
+  eleMinRadii.clear();
+  for (const auto& atomcn : compList[0].getAtomicNumbers()) {
+    double r = ElementInfo::getCovalentRadius(atomcn) * scaleFactor;
+    if (r < minRadius)
+      r = minRadius;
+    eleMinRadii.set(atomcn, r);
   }
 
   return true;
 }
 
-// Helper struct for the map below
-struct dupCheckStruct
+bool XtalOpt::processInputReferenceEnergies(QString s)
 {
-  Xtal *i, *j;
-  double tol_len, tol_ang;
-};
+  // This function processes the input reference energies (if any),
+  //   and given a proper input, it sets the set of "lists" each
+  //   for a reference entry and containing:
+  //     "normalized composition plus the energy per atom".
+  // In general, ref energy input entries include "formula energy"
+  //   where the formula can be a subsystem of our chemical system.
+  // We will ignore "empty" entries, and will return false:
+  //  (1) if failed to read any "non-empty" entry,
+  //  (2) if failed to read values for "all elements" in chemical system.
+  //
+  // This function sets the global variable "m_reference_energies".
+  // If it returns true, the relevant global variable is overwritten;
+  //   otherwise it will have its previous value (if any).
 
-// Helper Supercell Check Struct is defined in the header
+  // Basic sanity checks
+  if (compList.isEmpty()) {
+    qDebug() << "Error processInputReferenceEnergies: composition is not set.";
+    return false;
+  }
 
-void checkIfDups(dupCheckStruct& st)
+  // List of chemical elements in the system
+  QStringList chemSystem = getChemicalSystem();
+
+  // To keep track of elemental references (if user provides ref energies)
+  std::vector<int> eleRefs(chemSystem.size(), 0);
+
+  // Final list of reference energies to return
+  QList<RefEnergy> output_list;
+
+  // Start processing the entries.
+  int nonEmptyEntries = 0;
+  QStringList entries = s.split(','); // input entries
+
+  for(int i = 0; i < entries.size(); i++) {
+    QStringList ent = entries[i].split(" ", QString::SkipEmptyParts);
+
+    // Ignore empty entries.
+    if (ent.isEmpty())
+      continue;
+
+    nonEmptyEntries += 1;
+
+    // Each entry must have a formula and an energy.
+    if (ent.size() < 2) {
+      qDebug() << "Error: reference energy entries must "
+                  "include chemical formula and energy.";
+      return false;
+    }
+
+    // Extract energy
+    double ener = ent.takeLast().toDouble();
+    // Extract chemical formula
+    QString form = ent.join(' ');
+
+    // Convert formula to composition: this makes sure we have a valid
+    //   formula and simplifies obtaining needed information.
+    CellComp comp = formulaToComposition(form);
+
+    // If formula is not a "valid" composition, return false.
+    if (comp.getNumTypes() == 0 || comp.getNumAtoms() == 0) {
+      qDebug() << "Error: couldn't read entry '" << entries[i]
+               << "' in reference energy list.";
+      return false;
+    }
+
+    // Also, all symbols in the entry should be in our chemical system.
+    QList<QString> names = comp.getSymbols();
+    for(int j = 0; j < names.size(); j++) {
+      if (!chemSystem.contains(names[j])) {
+        qDebug() << "Error: unknown element '" << names[j]
+                 << "' in reference energy list.";
+        return false;
+      }
+    }
+
+    // So, the composition is good! See if it's an elemental reference
+    if (comp.getNumTypes() == 1) {
+      eleRefs[chemSystem.indexOf(names[0])]++;
+    }
+    // Finally, add the data to output list.
+    output_list.append({comp, ener});
+
+  }
+
+  // If no non-empty entries are given, just construct the
+  //   list with default "zero" value for elements.
+  if (nonEmptyEntries == 0) {
+    output_list.clear();
+    for (int i = 0; i < chemSystem.size(); i++) {
+      QString frm = chemSystem[i]+"1";
+      CellComp comp = formulaToComposition(frm);
+      output_list.append({comp, 0.0});
+    }
+    refEnergies = output_list;
+    return true;
+  }
+
+  // Otherwise, make sure every non-empty entry was read in successfully.
+  if (nonEmptyEntries != output_list.size()) {
+    qDebug() << "Error: failed to process some reference energy entries.";
+    return false;
+  }
+
+  // If user gives ref energies, at least one of each elements must be given.
+  for (int i = 0; i < chemSystem.size(); i++) {
+    if (eleRefs[i] == 0) {
+      qDebug() << "Error: reference energies must include all elements.";
+      return false;
+    }
+  }
+
+  // We're good! Initiate the main reference energy "global" variable.
+  refEnergies = output_list;
+
+  return true;
+}
+
+bool XtalOpt::processInputElementalVolumes(QString s)
+{
+  // This function processes the input elemental volumes (if any),
+  //  and sets the elemental volume global variable if valid volume
+  //  limits for all elements in chemical system are given.
+  // We will ignore "empty" entries, and will return false:
+  //  (1) if failed to read any "non-empty" entry,
+  //  (2) if failed to read values for "all elements" in chemical system.
+  //
+  // This function sets the global variable "elemental_volumes".
+  // If it returns true, the relevant global variable is overwritten;
+  //   otherwise it will have its previous value (if any).
+
+  // Basic sanity checks
+  if (compList.isEmpty()) {
+    qDebug() << "Error processInputElementalVolumes: composition is not set.";
+    return false;
+  }
+
+  // List of chemical elements in the system
+  QStringList chemSystem = getChemicalSystem();
+
+  // To keep track of elemental references (if user provides ref energies)
+  std::vector<int> eleVols(chemSystem.size(), 0);
+
+  // Final processed elemental volumes.
+  EleVolume out;
+
+  // Start processing the entries.
+  int nonEmptyEntries = 0;
+  QStringList entries = s.split(',');
+
+  for(int i = 0; i < entries.size(); i++) {
+    QStringList ent = entries[i].split(" ", QString::SkipEmptyParts);
+
+    // Ignore empty entries.
+    if (ent.isEmpty())
+      continue;
+
+    nonEmptyEntries += 1;
+
+    // Each entry must have a formula and two volume limits.
+    if (ent.size() < 3)
+      return false;
+
+    // Extract volume limits
+    double vmax = ent.takeLast().toDouble();
+    double vmin = ent.takeLast().toDouble();
+    // Extract the -elemental- chemical formula
+    QString form = ent.join(' ');
+
+    // If not a valid set of limits, just ignore the entry.
+    if (vmin < ZERO6 || vmax < vmin) {
+      qDebug() << "Error: incorrect volume limits for elemental volume entry '"
+               << entries[i] << "'";
+      return false;
+    }
+
+    // Convert formula to composition: this makes sure we have a valid
+    //   formula and simplifies obtaining needed information.
+    CellComp comp = formulaToComposition(form);
+
+    // If entry is not proper (e.g., formula with more than one element) ignore it.
+    if (comp.getNumTypes() != 1 || comp.getNumAtoms() == 0) {
+      qDebug() << "Error: couldn't process elemental volume entry '"
+               << entries[i] << "'";
+      return false;
+    }
+
+    // Symbol must be on the list. Otherwise, ignore it.
+    QString symbol = comp.getSymbols()[0];
+    uint atomcn = comp.getAtomicNumbers()[0];
+    uint totaln = comp.getNumAtoms();
+    int ind = chemSystem.indexOf(symbol);
+    if (ind == -1) {
+      qDebug() << "Error: elemental volume for unknown symbol '"
+               << symbol << "'";
+      return false;
+    } else {
+      // Which element is this?!
+      eleVols[chemSystem.indexOf(symbol)]++;
+    }
+
+    // Add volume data to composition object (we save "per atom" values)
+    out.set(atomcn, vmin / totaln, vmax / totaln);
+  }
+
+  // If no non-empty entries are given, just return.
+  if (nonEmptyEntries == 0) {
+    eleVolumes.clear();
+    return true;
+  }
+
+  // Otherwise, make sure every non-empty entry was read in successfully.
+  if (nonEmptyEntries != out.getAtomicNumbers().size()) {
+    qDebug() << "Error: failed to process some elemental volume entries.";
+    return false;
+  }
+
+  // If elemental volumes are given; we should have one per chemical element.
+  for (int i = 0; i < chemSystem.size(); i++) {
+    if (eleVols[i] != 1) {
+      qDebug() << "Error: elemental volumes must include all elements.";
+      return false;
+    }
+  }
+
+  // We're good! Assign the main elemental volume object
+  eleVolumes.clear();
+  eleVolumes = out;
+
+  return true;
+}
+
+bool XtalOpt::processInputObjectives(QString s)
+{
+  // This function processes the objective entries from a string
+  //   input that includes all relevant fields:
+  //   type, executable, output filename, and weight.
+
+  // Number of already added objectives
+  int objnum = getObjectivesNum();
+  // Total weight of objectives
+  double totalweight = 0.0;
+  for (int i = 0; i < objnum; i++)
+    totalweight += getObjectivesWgt(i);
+  // We call this function multiple times: just in case!
+  m_calculateObjectives = (objnum > 0) ? true : false;
+
+  // Process entries
+
+  QStringList sline = s.split(" ", QString::SkipEmptyParts);
+  // There should be four entries in the input: (1) objective
+  //   type (min/max/fil), (2) executable script, (3) output
+  //   filename, and (4) weight.
+  if (sline.size() < 4) {
+    error("objective is not properly initiated");
+    return false;
+  }
+
+  // 1st item is always objective's type: min/max/fil
+  QString tmps = sline.at(0).toLower().mid(0,3);
+  ObjType objtyp;
+  if (tmps == "min")
+    objtyp = ObjType::Ot_Min;
+  else if (tmps == "max")
+    objtyp = ObjType::Ot_Max;
+  else if (tmps == "fil")
+    objtyp = ObjType::Ot_Fil;
+  else {
+    error(tr("unknown objective type: '%1' in '%2'")
+              .arg(tmps).arg(s));
+    return false;
+  }
+  // 2nd item is always the script path
+  QString objexe = sline.at(1);
+  // 3rd item is the output filename
+  QString objout = sline.at(2);
+  // 4th item is the weight
+  bool isNumber;
+  double objwgt = sline.at(3).toDouble(&isNumber);
+  if (!isNumber || objwgt < 0.0 || objwgt > 1.0) {
+    error("objective weight should be a digit in [0,1]");
+    return false;
+  }
+  // Filtration objective should have a weight of zero
+  if (objtyp == ObjType::Ot_Fil && objwgt != 0) {
+    error("filtration objectives should have zero weight");
+    return false;
+  }
+
+  // Sanity check: total weights should be less than or equal to 1
+  if (totalweight + objwgt > 1.0) {
+    error("total weight of objectives can't exceed 1.0");
+    return false;
+  }
+
+  // We're good! Add the objective
+  setObjectivesTyp(objtyp);
+  setObjectivesExe(objexe);
+  setObjectivesOut(objout);
+  setObjectivesWgt(objwgt);
+
+  // We have at least one objective added!
+  m_calculateObjectives = true;
+
+  return true;
+}
+
+void XtalOpt::checkIfSimilar(simCheckStruct& st)
 {
   if (st.i == st.j)
     return;
   Xtal *kickXtal, *keepXtal;
   QReadLocker iLocker(&st.i->lock());
   QReadLocker jLocker(&st.j->lock());
-  // if they are already both duplicates, just return.
-  if (st.i->getStatus() == Xtal::Duplicate &&
-      st.j->getStatus() == Xtal::Duplicate) {
+  // If they are already both marked as similar, just return.
+  if (st.i->getStatus() == Xtal::Similar &&
+      st.j->getStatus() == Xtal::Similar) {
     return;
   }
-  if (st.i->compareCoordinates(*st.j, st.tol_len, st.tol_ang)) {
-    // Mark the newest xtal as a duplicate of the oldest. This keeps the
-    // lowest-energy plot trace accurate.
-    // For some reason, primitive structures do not always update their
-    // indices immediately, and they remain the default "-1". So, if one
-    // of the indices is -1, set that to be the kickXtal
-    if (st.i->getIndex() == -1) {
-      kickXtal = st.i;
-      keepXtal = st.j;
-    } else if (st.j->getIndex() == -1) {
-      kickXtal = st.j;
-      keepXtal = st.i;
-    } else if (st.i->getIndex() > st.j->getIndex()) {
-      kickXtal = st.i;
-      keepXtal = st.j;
-    } else {
-      kickXtal = st.j;
-      keepXtal = st.i;
-    }
-    // If the kickXtal is already a duplicate, just return
-    if (kickXtal->getStatus() == Xtal::Duplicate ||
-        kickXtal->getStatus() == Xtal::Supercell) {
-      return;
-    }
-    // Unlock the kickXtal and lock it for writing
-    kickXtal == st.i ? iLocker.unlock() : jLocker.unlock();
-    QWriteLocker kickXtalLocker(&kickXtal->lock());
-    kickXtal->setStatus(Xtal::Duplicate);
-    kickXtal->setDuplicateString(QString("%1x%2")
-                                   .arg(keepXtal->getGeneration())
-                                   .arg(keepXtal->getIDNumber()));
-  }
-}
 
-void XtalOpt::checkIfSups(supCheckStruct& st)
-{
-  if (st.i == st.j)
+  // With the variable-composition search, we have the possibilities of having:
+  //   (1) subsystems seeds (e.g., elemental structures of various types), and
+  //   (2) one xtal being a supercell of the other one without explicitly marked as such.
+  //
+  // As of XtalOpt v14, we have two options for similarity check:
+  //   (1) XtalComp, (2) RDF dot product.
+  // By default, we use XtalComp; RDF is used only if it has a non-zero tolerance.
+  //   For RDF check, we just pass xtals as is for similarity check.
+  //   For XtalComp, we first convert them to primitive cells, and compare them.
+
+  // If elements in xtals are not the same (e.g., one of them is a sub-system seed),
+  //   we don't need to do anything!
+  if (st.i->getSymbols() != st.j->getSymbols()) {
     return;
-  Xtal *smallerFormulaUnitXtal, *largerFormulaUnitXtal;
-  QReadLocker iLocker(&st.i->lock());
-  QReadLocker jLocker(&st.j->lock());
+  }
 
-  // Determine the larger formula unit structure and the smaller formula unit
-  // structure.
-  if (st.i->getFormulaUnits() > st.j->getFormulaUnits()) {
-    largerFormulaUnitXtal = st.i;
-    smallerFormulaUnitXtal = st.j;
+  bool theyAreSimilar = false;
+
+  if (tol_rdf > 0.0 && tol_rdf <= 1.0) {
+    theyAreSimilar = st.i->compareRDFs(st.j, tol_rdf, tol_rdf_nbins,
+                                       tol_rdf_cutoff, tol_rdf_sigma, m_verbose);
   } else {
-    largerFormulaUnitXtal = st.j;
-    smallerFormulaUnitXtal = st.i;
+    Xtal* xtali = generatePrimitiveXtal(st.i);
+    Xtal* xtalj = generatePrimitiveXtal(st.j);
+    theyAreSimilar = xtali->compareCoordinates(*xtalj, st.tol_len, st.tol_ang);
   }
 
-  // if the larger formula unit xtal is already a supercell or duplicate,
-  // skip over it.
-  if (largerFormulaUnitXtal->getStatus() == Xtal::Supercell ||
-      largerFormulaUnitXtal->getStatus() == Xtal::Duplicate) {
+  if (!theyAreSimilar)
+    return;
+
+  // Mark the newest xtal as a similarity to the oldest. This keeps the
+  // lowest-energy plot trace accurate.
+  // For some reason, primitive structures do not always update their
+  // indices immediately, and they remain the default "-1". So, if one
+  // of the indices is -1, set that to be the kickXtal
+  if (st.i->getIndex() == -1) {
+    kickXtal = st.i;
+    keepXtal = st.j;
+  } else if (st.j->getIndex() == -1) {
+    kickXtal = st.j;
+    keepXtal = st.i;
+  } else if (st.i->getIndex() > st.j->getIndex()) {
+    kickXtal = st.i;
+    keepXtal = st.j;
+  } else {
+    kickXtal = st.j;
+    keepXtal = st.i;
+  }
+  // If the kickXtal is already a similar, just return
+  if (kickXtal->getStatus() == Xtal::Similar) {
     return;
   }
-
-  // This temporary xtal will need to be deleted
-  Xtal* tempXtal = generateSuperCell(smallerFormulaUnitXtal->getFormulaUnits(),
-                                     largerFormulaUnitXtal->getFormulaUnits(),
-                                     smallerFormulaUnitXtal, false);
-
-  if (tempXtal->compareCoordinates(*largerFormulaUnitXtal, st.tol_len,
-                                   st.tol_ang)) {
-    // Unlock the larger formula unit xtal and lock it for writing
-    largerFormulaUnitXtal == st.i ? iLocker.unlock() : jLocker.unlock();
-    QWriteLocker largerFUXtalLocker(&largerFormulaUnitXtal->lock());
-
-    // We're going to label the larger formula unit structure a supercell
-    // of the smaller. The smaller structure is more fundamental and should
-    // remain in the gene pool.
-    largerFormulaUnitXtal->setStatus(Xtal::Supercell);
-    // If the smaller formula unit xtal is already a duplicate, make the
-    // supercell a supercell the structure that the smaller formula unit
-    // duplicate points to.
-    if (smallerFormulaUnitXtal->getStatus() == Xtal::Duplicate)
-      largerFormulaUnitXtal->setSupercellString(
-        smallerFormulaUnitXtal->getDuplicateString());
-    else if (smallerFormulaUnitXtal->getStatus() == Xtal::Supercell)
-      largerFormulaUnitXtal->setSupercellString(
-        smallerFormulaUnitXtal->getSupercellString());
-    // Otherwise, just make it a supercell of the smaller formula unit xtal
-    else
-      largerFormulaUnitXtal->setSupercellString(
-        QString("%1x%2")
-          .arg(smallerFormulaUnitXtal->getGeneration())
-          .arg(smallerFormulaUnitXtal->getIDNumber()));
-  }
-  tempXtal->deleteLater();
+  // Unlock the kickXtal and lock it for writing
+  kickXtal == st.i ? iLocker.unlock() : jLocker.unlock();
+  QWriteLocker kickXtalLocker(&kickXtal->lock());
+  kickXtal->setStatus(Xtal::Similar);
+  kickXtal->setSimilarityString(QString("%1x%2")
+                   .arg(keepXtal->getGeneration())
+                   .arg(keepXtal->getIDNumber()));
 }
 
-void XtalOpt::checkForDuplicates()
+void XtalOpt::checkForSimilarities()
 {
   if (isStarting)
     return;
 
-  QtConcurrent::run(this, &XtalOpt::checkForDuplicates_);
+  QtConcurrent::run(this, &XtalOpt::checkForSimilarities_);
 }
 
-void XtalOpt::checkForDuplicates_()
+void XtalOpt::checkForSimilarities_()
 {
   // Only run this function with one thread at a time.
-  static std::mutex dupMutex;
-  std::unique_lock<std::mutex> dupLock(dupMutex, std::defer_lock);
-  if (!dupLock.try_lock()) {
+  static std::mutex simMutex;
+  std::unique_lock<std::mutex> simLock(simMutex, std::defer_lock);
+  if (!simLock.try_lock()) {
     // If a thread is already running this function, we can wait. But
     // we should only have one waiter at any time.
     static std::mutex waitMutex;
@@ -4599,7 +4242,7 @@ void XtalOpt::checkForDuplicates_()
     if (!waitLock.try_lock())
       return;
     else
-      dupLock.lock();
+      simLock.lock();
   }
 
   QReadLocker trackerLocker(m_tracker->rwLock());
@@ -4611,121 +4254,40 @@ void XtalOpt::checkForDuplicates_()
   });
 
   // Build helper structs
-  QList<dupCheckStruct> dupSts;
-  dupCheckStruct dupSt;
-  dupSt.tol_len = this->tol_xcLength;
-  dupSt.tol_ang = this->tol_xcAngle;
-
-  QList<supCheckStruct> supSts;
-  supCheckStruct supSt;
-  supSt.tol_len = this->tol_xcLength;
-  supSt.tol_ang = this->tol_xcAngle;
+  QList<simCheckStruct> simSts;
+  simCheckStruct simSt;
+  simSt.tol_len = this->tol_xcLength;
+  simSt.tol_ang = this->tol_xcAngle;
 
   for (QList<Xtal*>::iterator xi = xtals.begin(); xi != xtals.end(); ++xi) {
     QReadLocker xiLocker(&(*xi)->lock());
-    if ((*xi)->getStatus() != Xtal::Optimized)
+    double abvhulli = (*xi)->getDistAboveHull();
+    if ((*xi)->getStatus() != Xtal::Optimized || std::isnan(abvhulli))
       continue;
 
     for (QList<Xtal*>::iterator xj = xi + 1; xj != xtals.end(); ++xj) {
       QReadLocker xjLocker(&(*xj)->lock());
-      if ((*xj)->getStatus() != Xtal::Optimized)
+      double abvhullj = (*xj)->getDistAboveHull();
+      if ((*xj)->getStatus() != Xtal::Optimized || std::isnan(abvhullj))
         continue;
 
-      if (((*xi)->hasChangedSinceDupChecked() ||
-           (*xj)->hasChangedSinceDupChecked()) &&
-          // Perform a course enthalpy screening to cut down on number of
-          // comparisons
-          fabs(((*xi)->getEnthalpyPerAtom()) -
-               ((*xj)->getEnthalpyPerAtom())) < 0.1 &&
-          // Screen out options that CANNOT be supercells
-          (((*xi)->getFormulaUnits() % (*xj)->getFormulaUnits() == 0) ||
-           ((*xj)->getFormulaUnits() % (*xi)->getFormulaUnits() == 0))) {
-        // Append the duplicate structs list
-        if ((*xi)->getFormulaUnits() == (*xj)->getFormulaUnits()) {
-          dupSt.i = (*xi);
-          dupSt.j = (*xj);
-          dupSts.append(dupSt);
-        }
-        // Append the supercell structs list. One has to be a formula unit
-        // multiple of the other to be a candidate supercell. In addition,
-        // their formula units cannot equal.
-        else if (((*xi)->getFormulaUnits() % (*xj)->getFormulaUnits() == 0) ||
-                 ((*xj)->getFormulaUnits() % (*xi)->getFormulaUnits() == 0)) {
-          supSt.i = (*xi);
-          supSt.j = (*xj);
-          supSts.append(supSt);
-        }
+      if (((*xi)->hasChangedSinceSimChecked() || (*xj)->hasChangedSinceSimChecked()) &&
+          // Perform a coarse energy screening to cut down on number of comparisons
+          fabs(abvhulli - abvhullj) < 0.1) {
+        // Append the similar structs list
+        simSt.i = (*xi);
+        simSt.j = (*xj);
+        simSts.append(simSt);
       }
     }
-    // Nothing else should be setting this, so just update under a
-    // read lock
-    (*xi)->setChangedSinceDupChecked(false);
+    // Nothing else should be setting this, so just update under a read lock
+    (*xi)->setChangedSinceSimChecked(false);
   }
 
-  for (auto& dupSt : dupSts)
-    checkIfDups(dupSt);
-
-  // Tried to run this concurrently. Would freeze upon resuming for some
-  // reason, though...
-  // QtConcurrent::blockingMap(supSts, checkIfSups);
-  for (auto& supSt : supSts)
-    checkIfSups(supSt);
-
-  // Label supercells that primitive xtals came from as such
-  for (size_t i = 0; i < xtals.size(); ++i) {
-    QReadLocker ixtalLocker(&xtals[i]->lock());
-    if (xtals[i]->skippedOptimization()) {
-      // We should only check the crystals that are ordered before this one,
-      // since a primitive reduced crystal will always have an index greater
-      // than its parent
-      for (size_t j = 0; j < i; ++j) {
-        // If the Xtal is not optimized, just continue
-        if (xtals[j]->getStatus() != Xtal::Optimized)
-          continue;
-        QWriteLocker jxtalLocker(&xtals[j]->lock());
-        // Check and see if xtals[j] matches xtals[i]
-        if (xtals[i]->getParents() == tr("Primitive of %1x%2")
-            .arg((xtals[j])->getGeneration())
-            .arg(xtals[j]->getIDNumber())) {
-          xtals[j]->setStatus(Xtal::Supercell);
-          // If xtals[i] is a duplicate, set xtals[j] to be a super cell
-          // of the xtal that xtals[i] is a duplicate of
-          if (xtals[i]->getStatus() == Xtal::Duplicate)
-            xtals[j]->setSupercellString(xtals[i]->getDuplicateString());
-          else if (xtals[i]->getStatus() == Xtal::Supercell)
-            xtals[j]->setSupercellString(xtals[i]->getSupercellString());
-          else {
-            xtals[j]->setSupercellString(QString("%1x%2")
-                                         .arg(xtals.at(i)->getGeneration())
-                                         .arg(xtals.at(i)->getIDNumber()));
-          }
-        }
-      }
-    }
-  }
+  for (auto& simSt : simSts)
+    checkIfSimilar(simSt);
 
   emit refreshAllStructureInfo();
-}
-
-void XtalOpt::updateLowestEnthalpyFUList(GlobalSearch::Structure* s)
-{
-  // Perform this in a background thread
-  QtConcurrent::run(this, &XtalOpt::updateLowestEnthalpyFUList_, s);
-}
-
-void XtalOpt::updateLowestEnthalpyFUList_(GlobalSearch::Structure* s)
-{
-  // Thankfully, the enthalpy appears to get updated before it reaches this
-  // point
-  QReadLocker sLocker(&s->lock());
-  // This is to prevent segmentation faults...
-  while (lowestEnthalpyFUList.size() < s->getFormulaUnits() + 1) {
-    lowestEnthalpyFUList.append(0);
-  }
-  if (lowestEnthalpyFUList.at(s->getFormulaUnits()) == 0 ||
-      lowestEnthalpyFUList.at(s->getFormulaUnits()) > s->getEnthalpy()) {
-    lowestEnthalpyFUList[s->getFormulaUnits()] = s->getEnthalpy();
-  }
 }
 
 void XtalOpt::setLatticeMinsAndMaxes(latticeStruct& latticeMins,
@@ -4746,16 +4308,22 @@ void XtalOpt::setLatticeMinsAndMaxes(latticeStruct& latticeMins,
   latticeMaxes.gamma = gamma_max;
 }
 
-QList<uint> XtalOpt::getListOfAtoms(uint FU)
+QList<uint> XtalOpt::getListOfAtomsComp(CellComp incomp)
 {
+  if (incomp.getNumTypes() == 0) {
+    qDebug() << "Warning: getListOfAtomsComp: empty composition!"
+             << " Using the first composition!";
+    incomp = compList[0];
+  }
+
   // Populate crystal
-  QList<uint> atomicNums = comp.keys();
+  QList<uint> atomicNums = incomp.getAtomicNumbers();
   // Sort atomic number by decreasing minimum radius. Adding the "larger"
   // atoms first encourages a more even (and ordered) distribution
   for (int i = 0; i < atomicNums.size() - 1; ++i) {
     for (int j = i + 1; j < atomicNums.size(); ++j) {
-      if (this->comp.value(atomicNums[i]).minRadius <
-          this->comp.value(atomicNums[j]).minRadius) {
+      if (this->eleMinRadii.getMinRadius(atomicNums[i]) <
+          this->eleMinRadii.getMinRadius(atomicNums[j])) {
         atomicNums.swap(i, j);
       }
     }
@@ -4763,31 +4331,39 @@ QList<uint> XtalOpt::getListOfAtoms(uint FU)
 
   QList<uint> atoms;
   for (size_t i = 0; i < atomicNums.size(); i++) {
-    for (size_t j = 0; j < comp.value(atomicNums[i]).quantity * FU; j++) {
+    for (size_t j = 0; j < incomp.getCount(atomicNums[i]); j++) {
       atoms.push_back(atomicNums[i]);
     }
   }
   return atoms;
 }
 
-std::vector<uint> XtalOpt::getStdVecOfAtoms(uint FU)
+std::vector<uint> XtalOpt::getStdVecOfAtomsComp(CellComp incomp)
 {
-  return getListOfAtoms(FU).toVector().toStdVector();
+  return getListOfAtomsComp(incomp).toVector().toStdVector();
 }
 
-// minXtalsOfSpgPerFU should already be set up by now
+CellComp XtalOpt::pickRandomCompositionFromPossibleOnes()
+{
+  if (compList.size() < 2)
+    return compList[0];
+
+  return compList[getRandInt(0, compList.size() - 1)];
+}
+
+// minXtalsOfSpg should already be set up by now
 uint XtalOpt::pickRandomSpgFromPossibleOnes()
 {
-  if (minXtalsOfSpgPerFU.size() == 0) {
+  if (minXtalsOfSpg.size() == 0) {
     qDebug() << "Error! pickRandomSpgFromPossibleOnes() was called before"
-             << "minXtalsOfSpgPerFU was set up!";
+             << "minXtalsOfSpg was set up!";
     return 1;
   }
 
   QList<uint> possibleSpgs;
-  for (size_t i = 0; i < minXtalsOfSpgPerFU.size(); i++) {
+  for (size_t i = 0; i < minXtalsOfSpg.size(); i++) {
     uint spg = i + 1;
-    if (minXtalsOfSpgPerFU.at(i) != -1)
+    if (minXtalsOfSpg.at(i) != -1)
       possibleSpgs.append(spg);
   }
 
@@ -4818,24 +4394,6 @@ void XtalOpt::updateProgressBar(size_t goal, size_t attempted, size_t succeeded)
         .arg(succeeded)
         .arg(attempted - succeeded));
   }
-}
-
-uint XtalOpt::minFU()
-{
-  if (formulaUnitsList.empty())
-    formulaUnitsList.append(1);
-  else
-    qSort(formulaUnitsList);
-  return formulaUnitsList[0];
-}
-
-uint XtalOpt::maxFU()
-{
-  if (formulaUnitsList.empty())
-    formulaUnitsList.append(1);
-  else
-    qSort(formulaUnitsList);
-  return formulaUnitsList[formulaUnitsList.size() - 1];
 }
 
 QString toString(bool b)
@@ -4936,25 +4494,26 @@ QString XtalOpt::getGeom(int numNeighbors, int geom)
 
 void XtalOpt::printOptionSettings(QTextStream& stream) const
 {
-  stream << "\n=== Initialization Settings";
+  stream << "\n=== All Run Options\n";
+  stream << "\n= Initialization";
 
-  stream << "\n  Composition: \n";
-  for (const auto& key : comp.keys()) {
-    stream << "    " << ElemInfo::getAtomicSymbol(key).c_str()
-           << comp[key].quantity << "\n";
-  }
+  stream << "\n  chemical system: \n";
+  for (const auto& key : getChemicalSystem())
+    stream << "    " << key;
+  stream << "\n";
+
+  stream << "\n  chemicalFormulas: " << input_formulas_string << "\n";
 
   if (using_interatomicDistanceLimit) {
-    stream << "\n  Atomic radii (Angstroms): \n";
-    for (const auto& key : comp.keys()) {
-      stream << "    " << ElemInfo::getAtomicSymbol(key).c_str() << ": "
-             << comp[key].minRadius << "\n";
+    stream << "\n  atomic radii (Angstroms): \n";
+    for (const auto& key : eleMinRadii.getAtomicNumbers()) {
+      stream << "    " << ElementInfo::getAtomicSymbol(key).c_str() << ": "
+             << eleMinRadii.getMinRadius(key) << "\n";
     }
   }
 
-  stream << "\n  Formula Units: \n";
-  for (const auto& elem : formulaUnitsList)
-    stream << "    " << elem << "\n";
+  stream << "\n  referenceEnergies: " << input_ene_refs_string << "\n";
+
   stream << "\n  aMin: " << a_min << "\n";
   stream << "  bMin: " << b_min << "\n";
   stream << "  cMin: " << c_min << "\n";
@@ -4969,11 +4528,13 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
   stream << "  betaMax: " << beta_max << "\n";
   stream << "  gammaMax: " << gamma_max << "\n";
 
-  stream << "\n  volumeMin: " << vol_min << "\n";
-  stream << "  volumeMax: " << vol_max << "\n";
+  stream << "\n  minVolume: " << vol_min << "\n";
+  stream << "  maxVolume: " << vol_max << "\n";
 
-  stream << "\n  volumeScaleMin: " << vol_scale_min << "\n";
-  stream << "  volumeScaleMax: " << vol_scale_max << "\n";
+  stream << "\n  minVolumeScale: " << vol_scale_min << "\n";
+  stream << "  maxVolumeScale: " << vol_scale_max << "\n";
+
+  stream << "\n  elementalVolumes: " << input_ele_volm_string << "\n";
 
   stream << "\n  usingRadiiInteratomicDistanceLimit: "
          << toString(using_interatomicDistanceLimit) << "\n";
@@ -4987,8 +4548,8 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
     stream << "  current customIADs:\n";
     stream << "  <firstSymbol>, <secondSymbol>, <minIAD>\n";
     for (const auto& pair : interComp.keys()) {
-      stream << "  " << ElemInfo::getAtomicSymbol(pair.first).c_str() << ", "
-             << ElemInfo::getAtomicSymbol(pair.second).c_str() << ", "
+      stream << "  " << ElementInfo::getAtomicSymbol(pair.first).c_str() << ", "
+             << ElementInfo::getAtomicSymbol(pair.second).c_str() << ", "
              << interComp[pair].minIAD << "\n";
     }
   }
@@ -4996,24 +4557,15 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
   stream << "\n  checkIADPostOptimization: " << toString(using_checkStepOpt)
          << "\n";
 
-  stream << "\n  usingSubcellMitosis: " << toString(using_mitosis) << "\n";
-  if (using_mitosis) {
-    stream << "  printSubcell: " << toString(using_subcellPrint) << "\n";
-    stream << "  mitosisDivisions: " << divisions << "\n";
-    stream << "  mitosisA: " << ax << "\n";
-    stream << "  mitosisB: " << bx << "\n";
-    stream << "  mitosisC: " << cx << "\n";
-  }
-
   stream << "\n  usingMolecularUnits: " << toString(using_molUnit) << "\n";
   if (using_molUnit) {
     stream << "  molUnits:\n";
     stream << "  <center>, <numCenters>, <neighbor>, <numNeighbors>, "
               "<geometry>, <distance>\n";
     for (const auto& pair : compMolUnit.keys()) {
-      stream << "    " << ElemInfo::getAtomicSymbol(pair.first).c_str() << ", "
+      stream << "    " << ElementInfo::getAtomicSymbol(pair.first).c_str() << ", "
              << compMolUnit[pair].numCenters << ", "
-             << ElemInfo::getAtomicSymbol(pair.second).c_str() << ", "
+             << ElementInfo::getAtomicSymbol(pair.second).c_str() << ", "
              << compMolUnit[pair].numNeighbors << ", "
              << getGeom(compMolUnit[pair].numNeighbors, compMolUnit[pair].geom)
              << ", " << compMolUnit[pair].dist << "\n";
@@ -5023,8 +4575,8 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
   stream << "\n  usingRandSpg: " << toString(using_randSpg) << "\n";
   if (using_randSpg) {
     stream << "  Space group settings:\n";
-    for (int i = 0; i < minXtalsOfSpgPerFU.size(); ++i) {
-      int num = minXtalsOfSpgPerFU[i];
+    for (int i = 0; i < minXtalsOfSpg.size(); ++i) {
+      int num = minXtalsOfSpg[i];
       if (num == -1)
         stream << "    spg " << i + 1 << ": do not generate\n";
       else if (num > 0)
@@ -5032,9 +4584,12 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
     }
   }
 
-  stream << "\n=== Search Settings\n";
+  stream << "\n= Search\n";
+  stream << "  maxAtoms: " << maxAtoms << "\n";
+  stream << "  vcSearch: " << toString(vcSearch) << "\n";
+  stream << "  saveHullSnapshots: " << toString(m_saveHullSnapshots) << "\n";
   stream << "  numInitial: " << numInitial << "\n";
-  stream << "  popSize: " << popSize << "\n";
+  stream << "  parentsPoolSize: " << parentsPoolSize << "\n";
   stream << "  limitRunningJobs: " << toString(limitRunningJobs) << "\n";
   if (limitRunningJobs) {
     stream << "  runningJobLimit: " << runningJobLimit << "\n";
@@ -5053,23 +4608,13 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
   else
     stream << "Unknown fail action\n";
 
-  stream << "  maxNumStructures: " << cutoff << "\n";
+  stream << "  maxNumStructures: " << maxNumStructures << "\n";
 
-  stream << "\n  usingMitoticGrowth: " << toString(using_mitotic_growth)
-         << "\n";
-  stream << "  usingFormulUnitCrossovers: " << toString(using_FU_crossovers)
-         << "\n";
-  if (using_FU_crossovers) {
-    stream << "  formulaUnitCrossoversGen: " << FU_crossovers_generation
-           << "\n";
-  }
-  stream << "  usingOneGenePool: " << toString(using_one_pool) << "\n";
-  if (using_one_pool)
-    stream << "  chanceOfFutureMitosis: " << chance_of_mitosis << "\n";
-
-  stream << "\n  percentChanceStripple: " << p_strip << "\n";
-  stream << "  percentChancePermutation: " << p_perm << "\n";
-  stream << "  percentChanceCrossover: " << p_cross << "\n";
+  stream << "\n  weightStripple: " << p_strip << "\n";
+  stream << "  weightPermustrain: " << p_perm << "\n";
+  stream << "  weightCrossover: " << p_cross << "\n";
+  stream << "  weightPermutomic: " << p_atomic << "\n";
+  stream << "  randomSuperCell: " << p_supercell << "\n";
 
   stream << "\n  strippleAmplitudeMin: " << strip_amp_min << "\n";
   stream << "  strippleAmplitudeMax: " << strip_amp_max << "\n";
@@ -5089,7 +4634,7 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
 
   stream << "\n  spglibTolerance: " << tol_spg << "\n";
 
-  stream << "\n=== Queue Interface Settings\n";
+  stream << "\n= Queue interface\n";
   stream << "  localQueue: " << toString(m_localQueue) << "\n";
 
   bool anyRemote = false;
@@ -5115,8 +4660,8 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
     }
   }
 
-  if (anyRemote) {
-    stream << "\n=== Remote Queue Settings\n";
+  if (!m_localQueue && anyRemote) {
+    stream << "\n= Remote queue\n";
     stream << "    host: " << host << "\n";
     stream << "    port: " << port << "\n";
     stream << "    username: " << username << "\n";
@@ -5125,7 +4670,7 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
     stream << "    cleanRemoteDirs: " << toString(cleanRemoteOnStop()) << "\n";
   }
 
-  stream << "\n=== Local Queue Settings\n";
+  stream << "\n= Local queue\n";
   stream << "  localWorkingDirectory: " << locWorkDir << "\n";
   stream << "  logErrorDirectories: " << toString(m_logErrorDirs) << "\n";
 
@@ -5136,7 +4681,7 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
            << "\n";
   }
 
-  stream << "\n=== Optimizer Settings\n";
+  stream << "\n= Optimizer\n";
 
   for (size_t i = 0; i < getNumOptSteps(); ++i) {
     stream << " OptStep " << i + 1 << "\n";
@@ -5145,22 +4690,24 @@ void XtalOpt::printOptionSettings(QTextStream& stream) const
       stream << "  optimizer: NONE\n";
     } else {
       stream << "  optimizer: " << opt->getIDString() << "\n";
+      //stream << "  exeLocation: " << opt->getLocalRunCommand() << "\n";
     }
   }
 
   // Write multi-objective (and exit) stuff
-  stream << "\n=== Run Termination Settings\n";
+  stream << "\n= Run termination\n";
   stream << "  softExit: " << toString(m_softExit) << "\n";
-  stream << "\n=== Multi-Objective Settings\n";
-  stream << "  objectivesNum: " << QString::number(getObjectivesNum()) << "\n";
+  stream << "\n= Multi-objective\n";
+  stream << "  optimizationType: " << m_optimizationType << "\n";
+  stream << "  tournamentSelection: " << toString(m_tournamentSelection) << "\n";
+  stream << "  restrictedPool: " << toString(m_restrictedPool) << "\n";
+  stream << "  crowdingDistance: " << toString(m_crowdingDistance) << "\n";
+  stream << "  objectivePrecision: " << QString::number(m_objectivePrecision) << "\n";
   stream << "  objectivesReDo: " << toString(m_objectivesReDo) << "\n";
   for (int i = 0; i < getObjectivesNum(); i++)
-    stream << "  objective" << i+1 << ": " << QString::number(getObjectivesTyp(i)) << "  "
-      << getObjectivesExe(i) << "  " << getObjectivesOut(i) << "  " << getObjectivesWgt(i) << "\n";
-  stream << "  calculateHardness: " << toString(m_calculateHardness) << "\n";
-  if (m_calculateHardness) {
-    stream << "  hardnessFitnessWeight: " << m_hardnessFitnessWeight << "\n";
-  }
+    stream << "  objective" << i+1 << ": " << QString::number(getObjectivesTyp(i))
+           << "  " << getObjectivesExe(i) << "  " << getObjectivesOut(i) << "  "
+           << getObjectivesWgt(i) << "\n";
 
   stream << "\n====================================================\n";
 }

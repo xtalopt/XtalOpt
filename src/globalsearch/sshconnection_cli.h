@@ -23,7 +23,7 @@
 #include <QStringList>
 
 namespace GlobalSearch {
-class OptBase;
+class SearchBase;
 class SSHManager;
 class SSHManagerCLI;
 
@@ -46,7 +46,7 @@ public:
   /**
    * Constructor.
    *
-   * @param parent The OptBase parent
+   * @param parent The SearchBase parent
    */
   explicit SSHConnectionCLI(SSHManagerCLI* parent = 0);
 

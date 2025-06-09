@@ -2,10 +2,16 @@
 
 # Initialization settings
   # Composition settings
-    # Empirical formula
-      empiricalFormula = Ti1O2
-    # Formula Units (may use commas and hyphens)
-      formulaUnits = 2-4
+      chemicalFormulas = Ti2O4 - Ti4O8
+
+  # Reference energies (not necessary for fixed-composition search)
+  #referenceEnergies = Ti3 -14.18719749, O4 -10.19855357
+
+  # Search type
+  #vcSearch = true
+
+  # System size limit
+  #maxAtoms = 30
 
   # Lattice constraints
     # Lattice length minima and maxima (Angstroms)
@@ -24,9 +30,15 @@
       betaMax  = 120.0
       gammaMax = 120.0
 
-    # Volume min and max (Angstroms cubed)
-      volumeMin = 1.0
-      volumeMax = 100000.0
+    # Volume limits (applied in the following order)
+    # Elemental volumes (min/max in Angstroms cubed per cell for all elements)
+      #elementalVolumes = Ti1 30 50, O2 40 60
+    # Scaled volume limits (factor of equivalent vdW spheres for all atoms)
+      #minVolumeScale = 0.8
+      #maxVolumeScale = 1.2
+    # Absolute min and max limits (Angstroms cubed per atom)
+      minVolume = 1.0
+      maxVolume = 100000.0
 
   # Atomic radii
     # Ensure that atoms are distanced such that their covalent radii do not
@@ -36,21 +48,6 @@
       radiiScalingFactor = 0.5
     # Minimum radius for any given atom (Angstroms)
       minRadius = 0.25
-
-  # Subcell mitosis settings - build subcells first then duplicate to make
-  # the larger cells
-    # Use subcell mitosis?
-      #usingSubcellMitosis = false
-
-    # Print the subcell?
-      #printSubcell = false
-
-    # If using subcell mitosis, specify the number of divisions and the
-    # number of subcells in each direction
-      #mitosisDivisions = 1
-      #mitosisA = 1
-      #mitosisB = 1
-      #mitosisC = 1
 
   # Initialize molecular units?
     #usingMolecularUnits = false
@@ -81,15 +78,25 @@
   # Check IADs after optimization?
   #checkIADPostOptimization = false
 
+  # Custom user-defined variables
+  #user1 =
+  #user2 =
+  #user3 =
+  #user4 =
+
+
 # End of initialization settings
 
 # Search settings
-  # Search parameters
+    # Search parameters
     numInitial = 20
-    popSize = 20
+    parentsPoolSize = 20
     limitRunningJobs = true
     runningJobLimit = 1
     continuousStructures = 2
+
+    # Maximum number of structures to be generated
+    maxNumStructures = 1000
 
     # Number of failures for a job before we take action
     jobFailLimit = 2
@@ -97,26 +104,16 @@
     # Options: keepTrying, kill, replaceWithRandom, replaceWithOffspring
     jobFailAction = replaceWithRandom
 
-    # Maximum number of structures to be generated
-    maxNumStructures = 10000
-
-  # Multiple formula unit settings
-    # Build smaller formula units first and then larger ones via supercells?
-      usingMitoticGrowth = false
-    # Use the formula unit crossover?
-      usingFormulaUnitCrossovers = false
-      formulaUnitCrossoversGen = 4
-    # Use one gene pool between all the formula units?
-      usingOneGenePool = false
-    # If we are using one gene pool, what is the chance of first building a
-    # supercell before mutating?
-      chanceOfFutureMitosis = 50
-
   # Mutators
-    # Percent chance of mutators - need to be integers
-      percentChanceStripple = 50
-      percentChancePermustrain = 35
-      percentChanceCrossover = 15
+    # Percent chances of producing a supercell after genetic operations
+    #randomSupercell = 10
+
+    # Relative weight of applying genetic operations - need to be integers
+      weightCrossover = 35
+      weightStripple = 35
+      weightPermustrain = 35
+      weightPermutomic = 15
+      weightPermucomp = 15
 
     # Stripple options
       strippleAmplitudeMin = 0.5
@@ -133,18 +130,48 @@
     # Crossover options
       crossoverMinContribution = 25
 
-  # Duplicate matching
+  # Multi-objective search (and objectives)
+  #objective = min path/script1 outputfile1 weight1
+  #objective = max path/script2 outputfile2 weight2
+  #objective = fil path/script3 outputfile3 0.0
+  #fitnessType = scalar
+  #crowdingDistance = true
+  #objectivePrecision = 6
+  #objectivesReDo = false
+
+  # Similarity check
+  # By default, XtalComp is used; unless the rdf tolerance is > 0
+  # XtalComp
     # Angstroms
       xtalcompToleranceLength = 0.1
     # Degrees
       xtalcompToleranceAngle = 2.0
+  # RDF
+    # Similarity tolerance in [0, 1] range
+      rdfTolerance = 0.0
+    # Bond length cutoff
+      rdfCutoff = 6.0
+    # Gaussian spread
+      rdfSigma = 0.008
+    # Number of bins
+      rdfNumBins = 3000
 
   # Space group detection tolerance
     spglibTolerance = 0.05
 
-  # Hardness settings
-    #calculateHardness = false
-    #hardnessFitnessWeight = 0.5
+  # Seed structures
+  # List of initial seed structures
+  #seedStructures = /path1/seed1 , /path2/seed2
+  # Evolve seed structures, if they are a "sub-system"
+  #evolveSubSystemSeeds = true
+
+  # Run termination and output
+  # Finish the run after max number of structures are produces
+  #softExit = true
+  # Finish the run as soon as this "run-time flag" is set
+  #hardExit = true
+  # Produce a verbose output (i.e., debug-like information)
+  #verboseOutput = true
 
 # End of search settings
 
@@ -156,6 +183,11 @@
   # What type of queue interface? Options are local, pbs, sge, slurm, lsf,
   # and loadleveler. All are remote except for 'local'.
     queueInterface = local
+
+  # If we want to run XtalOpt locall, but submit jobs to queue, then
+  # a remote queue must be specified in queue interface, along with
+  # the following flag:
+  #localQueue = true
 
   # Where to save the data locally?
     localWorkingDirectory = ./localWorkingDirectory
@@ -207,7 +239,7 @@
     optimizer = gulp
 
   # Location of the executable (only applicable for local queue interfaces)
-  # Note: for castep, you need to put xtal after the name, e.g. "castep xtal"
+  # The value can be arbitrarily formatted, according to the code, e.g. "castep xtal"
     exeLocation = gulp
 
   # In these templates, there are special characters used like %a% for the
@@ -224,6 +256,9 @@
     # For example, TiO2 would look like this:
     #potcarFile Ti = /home/user/vasp_potcars/Ti/POTCAR
     #potcarFile O = /home/user/vasp_potcars/O/POTCAR
+    # Or, if POTCARs are combined (in alphabetical order for element names),
+    # a single file can be introduced for the system as:
+    #potcarFile system = /home/user/vasp_potcars/POTCAR
 
   # PWSCF templates (only for optimizer = pwscf)
     #pwscfTemplates = pwscf1, pwscf2, pwscf3
@@ -234,5 +269,10 @@
 
   # SIESTA templates (only for optimizer = siesta)
     #fdfTemplates = fdf1, fdf2, fdf3
+
+  # MTP templates (only for optimizer = mtp)
+    #mtpCellTemplates = cell1
+    #mtpPotTemplates = pot1
+    #mtpRelaxTemplates = relax1
 
 # End of optimizer settings

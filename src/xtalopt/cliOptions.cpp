@@ -34,16 +34,40 @@ using namespace GlobalSearch;
 
 namespace XtalOpt {
 
-static const QStringList keywords = { "volumeScaleMin",
-                                      "volumeScaleMax",
+// To avoid multi-line complications; we define this variable
+// here which stores the values for "objective" entries in the
+// input file for later processing.
+static QStringList objectives_input = {};
+
+static const QStringList keywords = { "minVolumeScale",
+                                      "maxVolumeScale",
+                                      "elementalVolumes",
+                                      "maxAtoms",
+                                      "vcSearch",
+                                      "saveHullSnapshots",
+                                      "verboseOutput",
+                                      "referenceEnergies",
+                                      "randomSuperCell",
+                                      "optimizationType",
+                                      "tournamentSelection",
+                                      "restrictedPool",
+                                      "rdfTolerance",
+                                      "rdfCutoff",
+                                      "rdfNumBins",
+                                      "rdfSigma",
+                                      "user1",
+                                      "user2",
+                                      "user3",
+                                      "user4",
+                                      "crowdingDistance",
+                                      "objectivePrecision",
                                       "objective",
                                       "objectivesReDo",
                                       "softExit",
                                       "hardExit",
                                       "localQueue",
                                       "seedStructures",
-                                      "empiricalFormula",
-                                      "formulaUnits",
+                                      "chemicalFormulas",
                                       "aMin",
                                       "bMin",
                                       "cMin",
@@ -56,38 +80,29 @@ static const QStringList keywords = { "volumeScaleMin",
                                       "alphaMax",
                                       "betaMax",
                                       "gammaMax",
-                                      "volumeMin",
-                                      "volumeMax",
+                                      "minVolume",
+                                      "maxVolume",
                                       "usingRadiiInteratomicDistanceLimit",
                                       "usingCustomIADs",
                                       "checkIADPostOptimization",
                                       "radiiScalingFactor",
                                       "minRadius",
-                                      "usingSubcellMitosis",
-                                      "printSubcell",
-                                      "mitosisDivisions",
-                                      "mitosisA",
-                                      "mitosisB",
-                                      "mitosisC",
                                       "usingMolecularUnits",
                                       "usingRandSpg",
                                       "forcedSpgsWithRandSpg",
                                       "numInitial",
-                                      "popSize",
+                                      "parentsPoolSize",
                                       "limitRunningJobs",
                                       "runningJobLimit",
                                       "continuousStructures",
                                       "jobFailLimit",
                                       "jobFailAction",
                                       "maxNumStructures",
-                                      "usingMitoticGrowth",
-                                      "usingFormulaUnitCrossovers",
-                                      "formulaUnitCrossoversGen",
-                                      "usingOneGenePool",
-                                      "chanceOfFutureMitosis",
-                                      "percentChanceStripple",
-                                      "percentChancePermustrain",
-                                      "percentChanceCrossover",
+                                      "weightPermutomic",
+                                      "weightPermucomp",
+                                      "weightStripple",
+                                      "weightPermustrain",
+                                      "weightCrossover",
                                       "strippleAmplitudeMin",
                                       "strippleAmplitudeMax",
                                       "strippleNumWavesAxis1",
@@ -125,9 +140,12 @@ static const QStringList keywords = { "volumeScaleMin",
                                       "pwscfTemplates",
                                       "fdfTemplates",
                                       "incarTemplates",
-                                      "kpointsTemplates" };
+                                      "kpointsTemplates",
+                                      "mtpCellTemplates",
+                                      "mtpRelaxTemplates",
+                                      "mtpPotTemplates" };
 
-static const QStringList requiredKeywords = { "empiricalFormula",
+static const QStringList requiredKeywords = { "chemicalFormulas",
                                               "queueInterface", "optimizer" };
 
 static const QStringList validQueueInterfaces = { "loadleveler", "local",
@@ -138,8 +156,10 @@ static const QStringList requiredRemoteKeywords = { "host", "user",
                                                     "remoteWorkingDirectory",
                                                     "jobTemplates" };
 
+static const QStringList requiredLocalQueueKeywords = { "jobTemplates" };
+
 static const QStringList validOptimizers = { "gulp", "castep", "pwscf",
-                                             "siesta", "vasp" , "generic" };
+                                             "siesta", "vasp" , "generic", "mtp" };
 
 static const QHash<QString, QStringList> requiredOptimizerKeywords = {
   { "gulp", { "ginTemplates" } },
@@ -150,7 +170,9 @@ static const QHash<QString, QStringList> requiredOptimizerKeywords = {
 
   { "castep", { "castepCellTemplates", "castepParamTemplates" } },
 
-  { "siesta", { "fdfTemplates" } }
+  { "siesta", { "fdfTemplates" } },
+
+  { "mtp" , { "mtpCellTemplates", "mtpRelaxTemplates", "mtpPotTemplates" } }
 };
 
 QString XtalOptCLIOptions::xtaloptHeaderString()
@@ -212,13 +234,20 @@ void XtalOptCLIOptions::processLine(const QString& tmpLine,
 
   // Remove everything to the right of '#' (including '#') since it is a comment
   line.remove(QRegExp(" *#.*"));
+  // Simplify 'space' characters (e.g., prevent issues in reading 'potcar element')
+  //line.replace(QRegExp("\\s+"), " ");
+  line = line.simplified();
 
   if (line.isEmpty())
     return;
 
+  // We might have additional "=" signs in the value (e.g., arguments
+  //   of the local run command). So, we split the input based on the
+  //   "leftmost '=' sign", to obtain the key and value.
+
   // Get the key and the value
   QString key = line.section('=', 0, 0).trimmed().toLower();
-  QString value = line.section('=', 1, 1).trimmed();
+  QString value = line.section('=', 1).trimmed();
 
   if (key.isEmpty()) {
     qDebug() << "Warning: invalid line '" << tmpLine
@@ -241,13 +270,11 @@ void XtalOptCLIOptions::processLine(const QString& tmpLine,
   }
 
   // Multi-objective related entries are treated separately. The reason is that
-  //   there might be multiple of these entries, each have multiple fields, and
-  //   some of these fields are optional in the CLI. This requires some flexibity
-  //   and a more complicated handling.
-  // So, we won't assign actual variables here. Rather, the following function
-  //   adds the input info to a sring list, and they will be processed later on.
+  //   there might be multiple of these entries and each have multiple fields.
+  // So, we won't assign actual variables here. Rather, add them all to a list
+  //   to process them later on.
   if (csKey == "objective" )
-    xtalopt.objectiveListAdd(value);
+    objectives_input.append(value);
   else
     options[csKey] = value;
 }
@@ -282,8 +309,18 @@ bool XtalOptCLIOptions::requiredOptionsSet(
   }
 
 #ifdef ENABLE_SSH
-  // If we are not local, several remote files are required
-  if (options["queueInterface"].toLower() != "local") {
+  // If we are local queue or remote, several entries are required
+  if (toBool(options["localQueue"]) && options["queueInterface"].toLower() != "local") {
+    for (const auto& requiredKeyword : requiredLocalQueueKeywords) {
+      if (options[requiredKeyword].isEmpty()) {
+        qDebug() << "Error: required option for local queue interfaces, '"
+                 << requiredKeyword << "', was not set in the options file.\n"
+                 << "Required options for local queue interfaces are: "
+                 << requiredLocalQueueKeywords;
+        return false;
+      }
+    }
+  } else if (options["queueInterface"].toLower() != "local") {
     for (const auto& requiredKeyword : requiredRemoteKeywords) {
       if (options[requiredKeyword].isEmpty()) {
         qDebug() << "Error: required option for remote queue interfaces, '"
@@ -318,47 +355,152 @@ bool XtalOptCLIOptions::requiredOptionsSet(
 bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
                                        XtalOpt& xtalopt)
 {
-  // First, let's set the radii options so we can use them in the
-  // XtalCompositionStruct
+  // Process the input parameters for XtalOpt run. Basically, the first thing
+  //   to process and initialize is the chemical formula (as it is needed to
+  //   initialize elemental volumes and reference energies). However, since
+  //   construction of composition object needs the knowledge of radii, we
+  //   start by reading them.
+
+  // Start by figuring out if the user wants a verbose output?
+  xtalopt.m_verbose = toBool(options.value("verboseOutput", "false"));
+
+  // First, let's set the radii options so we can use them in
+  // processing the input compositions.
   xtalopt.scaleFactor = options.value("radiiScalingFactor", "0.5").toFloat();
   xtalopt.minRadius = options.value("minRadius", "0.25").toFloat();
 
-  // Next, read the composition
-  // First uint is the atomic number and second uint is the quantity
-  map<uint, uint> comp;
-  if (!ElemInfo::readComposition(options["empiricalFormula"].toStdString(),
-                                 comp)) {
-    qDebug() << "Error reading composition: " << options["empiricalFormula"];
+  // Now process the initial chemical formulae list.
+  xtalopt.input_formulas_string = options["chemicalFormulas"];
+  if (!xtalopt.processInputChemicalFormulas(xtalopt.input_formulas_string)) {
+    qDebug() << "Error: input compositions were not read in successfully!";
     return false;
   } else {
-    for (const auto& elem : comp) {
-      XtalCompositionStruct compStruct;
-      // Set the radius - taking into account scaling factor and minRadius
-      compStruct.minRadius =
-        ElemInfo::getCovalentRadius(elem.first) * xtalopt.scaleFactor;
-      if (compStruct.minRadius < xtalopt.minRadius)
-        compStruct.minRadius = xtalopt.minRadius;
 
-      compStruct.quantity = elem.second;
-      xtalopt.comp[elem.first] = compStruct;
+    if (xtalopt.m_verbose) {
+      QString outstr = "   Final list of input compositions:\n";
+      for (int i = 0; i < xtalopt.compList.size(); i++) {
+        outstr += QString("%1").arg(xtalopt.compList[i].getFormula(), 20);
+        if ((i+1) % 3 == 0)
+          outstr += "\n";
+      }
+      outstr += "\n\n";
+      outstr += "   Chemical System: " + xtalopt.getChemicalSystem().join(" ");
+      outstr += "\n\n";
+      outstr += "   Initial atomic min radii: \n";
+      for (const auto& el : xtalopt.eleMinRadii.getAtomicNumbers())
+        outstr += QString("      %1 : %2\n").arg(el).arg(xtalopt.eleMinRadii.getMinRadius(el));
+      qDebug().noquote() << outstr;
+    }
+
+  }
+
+  // Is this a variable-composition search?
+  xtalopt.vcSearch = toBool(options.value("vcSearch", "false"));
+  // If the chemical system is elemental, vcsearch should be false
+  if (xtalopt.getChemicalSystem().size() <= 1) {
+    qDebug() << "\nWarning: for elemental systems vcSearch is set to false!";
+    xtalopt.vcSearch = false;
+  }
+
+  // Should we save hull snapshots?
+  xtalopt.m_saveHullSnapshots = toBool(options.value("saveHullSnapshots", "false"));
+
+  // Read maximum number of atoms.
+  xtalopt.maxAtoms = options.value("maxAtoms", "20").toInt();
+  // Increase "maxAtoms" if it's smaller than the largest initial cell.
+  int maximum_atoms_in_compositions = 0;
+  for (int i = 0; i < xtalopt.compList.size(); i++) {
+    if (xtalopt.compList[i].getNumAtoms() > maximum_atoms_in_compositions)
+      maximum_atoms_in_compositions = xtalopt.compList[i].getNumAtoms();
+  }
+  if (maximum_atoms_in_compositions > xtalopt.maxAtoms) {
+    qDebug() << "\nWarning: maximum atom count in formulas larger"
+             << "than maxAtoms; reseting its value to "
+             << maximum_atoms_in_compositions;
+    xtalopt.maxAtoms = maximum_atoms_in_compositions;
+  }
+
+  // Process the seed structures list input.
+  QStringList sl =
+      options.value("seedStructures", "").split(",", QString::SkipEmptyParts);
+  for (int i = 0; i < sl.size(); i++) {
+    if (!sl[i].simplified().isEmpty())
+    xtalopt.seedList.append(sl[i].simplified());
+  }
+
+  // Process the reference energies (for convex hull formation energy).
+  // If user provides "non-empty" reference entries, it is processed here and
+  //   the default values are set inside this function.
+  // If the input is empty, this function initiates a list of "zero" energy
+  //   for elements only; as the default values.
+  // If this function returns false, it means user has entered "something", but
+  //   we couldn't read it! True means input was empty or was read successfully.
+  // Appropriate error messages will be printed inside the function.
+  //
+  // Now read the input list (if any).
+  xtalopt.input_ene_refs_string = options.value("referenceEnergies", "");
+  if (!xtalopt.processInputReferenceEnergies(xtalopt.input_ene_refs_string)) {
+    return false;
+  } else {
+    if (xtalopt.m_verbose) {
+      QString outstr = "\n";
+      for(int i = 0; i < xtalopt.refEnergies.size(); i++) {
+        outstr += QString("   Reference energy %1 : %2\n")
+                      .arg(xtalopt.refEnergies[i].cell.getFormula(), 10)
+                      .arg(xtalopt.refEnergies[i].energy, 12, 'f', 6);
+      }
+      qDebug().noquote() << outstr;
     }
   }
 
-  // Next, the formula units
-  QString unused;
-  xtalopt.formulaUnitsList =
-    FileUtils::parseUIntString(options["formulaUnits"], unused);
-  if (xtalopt.formulaUnitsList.isEmpty())
-    xtalopt.formulaUnitsList = { 1 };
-
-  // Seed structures
-  QStringList sl = options.value("seedStructures", "").split(QRegExp("\\s+"), QString::SkipEmptyParts);
-  for (int i = 0; i < sl.size(); i++) {
-    xtalopt.seedList.append(sl.at(i));
+  // Process the volume limits.
+  // Volume limits are used in the code in the following order:
+  //   (1) if elemental volumes are given, they are used,
+  //   (2) if scaled volumes are given, then use them,
+  //   (3) otherwise, use the pair of vol_min/vol_max.
+  //
+  // Start with the absolute volume limits. Since these are
+  //  the "base" values to be used if other "optional" volume
+  //  schemes are not given, we return false with any error here.
+  //  So, we make sure user knows what they're doing.
+  //
+  xtalopt.vol_min = options.value("minVolume", "1.0").toFloat();
+  xtalopt.vol_max = options.value("maxVolume", "100.0").toFloat();
+  if (xtalopt.vol_min < ZERO6 || xtalopt.vol_max < ZERO6) {
+    qDebug() << "Error: input values for volume min and max limit "
+                "can't be negative!";
+    return false;
   }
+  if (xtalopt.vol_max < xtalopt.vol_min) {
+    qDebug() << "Error: max volume limit is smaller than the min "
+                " volume limit!";
+    return false;
+  }
+  // Now, process the elemental volumes (if any)
+  // If they are properly given, the "element_vol" variable will be initiated.
+  // Elemental volumes are used if "given for all elements, min > 0, and max >= min"
+  xtalopt.input_ele_volm_string = options.value("elementalVolumes", "");
+  if (!xtalopt.processInputElementalVolumes(xtalopt.input_ele_volm_string)) {
+    qDebug() << "\nWarning: Ignoring elemental volume input.";
+  } else {
+    if (xtalopt.m_verbose) {
+      QString outstr = "\n";
+      for (const auto& atomcn : xtalopt.eleVolumes.getAtomicNumbers()) {
+        outstr += QString("   Elemental volume %1 : %2 %3\n")
+                      .arg(ElementInfo::getAtomicSymbol(atomcn).c_str(), 10)
+                      .arg(xtalopt.eleVolumes.getMinVolume(atomcn), 12, 'f', 6)
+                      .arg(xtalopt.eleVolumes.getMaxVolume(atomcn), 12, 'f', 6);
+      }
+      qDebug().noquote() << outstr;
+    }
+  }
+  // Finally, check for scaled volumes (if any)
+  // These will be used only if "min > 0 and max >= min"
+  xtalopt.vol_scale_min = options.value("minVolumeScale", "0.0").toFloat();
+  xtalopt.vol_scale_max = options.value("maxVolumeScale", "0.0").toFloat();
 
   // We put default values in all of these
-  // Initialization settings
+  // Other initialization settings
   xtalopt.a_min = options.value("aMin", "3.0").toFloat();
   xtalopt.b_min = options.value("bMin", "3.0").toFloat();
   xtalopt.c_min = options.value("cMin", "3.0").toFloat();
@@ -371,25 +513,6 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.alpha_max = options.value("alphaMax", "120.0").toFloat();
   xtalopt.beta_max = options.value("betaMax", "120.0").toFloat();
   xtalopt.gamma_max = options.value("gammaMax", "120.0").toFloat();
-  xtalopt.vol_min = options.value("volumeMin", "1.0").toFloat();
-  xtalopt.vol_max = options.value("volumeMax", "100000.0").toFloat();
-
-  // If scaled volume is the case, we adjust the main
-  //   vol_max/vol_min (which will be used later on) right away.
-  xtalopt.vol_scale_min = options.value("volumeScaleMin", "0.0").toFloat();
-  xtalopt.vol_scale_max = options.value("volumeScaleMax", "0.0").toFloat();
-  if (xtalopt.vol_scale_min > ZERO5 || xtalopt.vol_scale_max > ZERO5) {
-    xtalopt.getScaledVolumePerFU(xtalopt.vol_scale_min, xtalopt.vol_scale_max,
-                                 xtalopt.vol_min, xtalopt.vol_max);
-  }
-
-  // Check for fixed volume
-  if (fabs(xtalopt.vol_min - xtalopt.vol_max) < ZERO5) {
-    xtalopt.using_fixed_volume = true;
-    xtalopt.vol_fixed = xtalopt.vol_min;
-  } else {
-    xtalopt.using_fixed_volume = false;
-  }
 
   xtalopt.using_interatomicDistanceLimit =
     toBool(options.value("usingRadiiInteratomicDistanceLimit", "true"));
@@ -405,12 +528,6 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.using_checkStepOpt =
     toBool(options.value("checkIADPostOptimization", "false"));
 
-  xtalopt.using_mitosis = toBool(options.value("usingSubcellMitosis", "false"));
-  xtalopt.using_subcellPrint = toBool(options.value("printSubcell", "false"));
-  xtalopt.divisions = options.value("mitosisDivisions", "1").toUInt();
-  xtalopt.ax = options.value("mitosisA", "1").toUInt();
-  xtalopt.bx = options.value("mitosisB", "1").toUInt();
-  xtalopt.cx = options.value("mitosisC", "1").toUInt();
   xtalopt.using_molUnit = toBool(options.value("usingMolecularUnits", "false"));
 
   if (xtalopt.using_molUnit && !processMolUnits(options, xtalopt)) {
@@ -425,25 +542,19 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
     return false;
   }
 
-  if (xtalopt.using_mitosis && !isMitosisOk(xtalopt)) {
-    qDebug() << "Error: Invalid numbers entered for mitosis. Please check"
-             << "your input and try again.";
-    return false;
-  }
-
   xtalopt.using_randSpg = toBool(options.value("usingRandSpg", "false"));
   if (xtalopt.using_randSpg) {
     // Create the list of space groups for generation
     for (int spg = 1; spg <= 230; spg++)
-      xtalopt.minXtalsOfSpgPerFU.append(0);
+      xtalopt.minXtalsOfSpg.append(0);
 
     QStringList list = toList(options.value("forcedSpgsWithRandSpg", ""));
-    for (const auto& item : list) {
+    for (const auto& item : qAsConst(list)) {
       int numhyphens = item.count(QLatin1Char('-'));
       if (numhyphens == 0) {
         unsigned int num = item.toUInt();
         if (num != 0 && num <= 230)
-          ++xtalopt.minXtalsOfSpgPerFU[num - 1];
+          ++xtalopt.minXtalsOfSpg[num - 1];
       } else if (numhyphens == 1) {
         QStringList num_list = item.split("-", QString::SkipEmptyParts);
         bool ok1, ok2;
@@ -453,78 +564,77 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
           continue;
         for (unsigned int num = min_num; num <= max_num; num++) {
           if (num != 0 && num <= 230)
-            ++xtalopt.minXtalsOfSpgPerFU[num - 1];
+            ++xtalopt.minXtalsOfSpg[num - 1];
         }
       }
     }
   }
 
-  if ((xtalopt.using_randSpg && xtalopt.using_molUnit) ||
-      (xtalopt.using_randSpg && xtalopt.using_mitosis)) {
-    qDebug() << "Error: randSpg cannot be used with molUnit or subcell"
-             << "mitosis. Please turn both of these off if you wish to"
+  if (xtalopt.using_randSpg && xtalopt.using_molUnit) {
+    qDebug() << "Error: randSpg cannot be used with molUnit."
+             << " Please turn this off if you wish to "
              << "use randSpg.";
     return false;
   }
 
-  // Search setings
-  xtalopt.numInitial = options.value("numInitial", "20").toUInt();
-  xtalopt.popSize = options.value("popSize", "20").toUInt();
+  // Search settings
+  xtalopt.numInitial = options.value("numInitial", "0").toUInt();
+  xtalopt.parentsPoolSize = options.value("parentsPoolSize", "20").toUInt();
   xtalopt.limitRunningJobs = toBool(options.value("limitRunningJobs", "true"));
-  xtalopt.runningJobLimit = options.value("runningJobLimit", "2").toUInt();
-  xtalopt.contStructs = options.value("continuousStructures", "3").toUInt();
-  xtalopt.failLimit = options.value("jobFailLimit", "2").toUInt();
+  xtalopt.runningJobLimit = options.value("runningJobLimit", "1").toUInt();
+  xtalopt.contStructs = options.value("continuousStructures", "15").toUInt();
+  xtalopt.failLimit = options.value("jobFailLimit", "1").toUInt();
+  if (xtalopt.failLimit < 1)
+    xtalopt.failLimit = 1;
 
   QString failAction = options.value("jobFailAction", "replaceWithRandom");
   if (failAction.toLower() == "keeptrying")
-    xtalopt.failAction = OptBase::FA_DoNothing;
+    xtalopt.failAction = SearchBase::FA_DoNothing;
   else if (failAction.toLower() == "kill")
-    xtalopt.failAction = OptBase::FA_KillIt;
+    xtalopt.failAction = SearchBase::FA_KillIt;
   else if (failAction.toLower() == "replacewithrandom")
-    xtalopt.failAction = OptBase::FA_Randomize;
+    xtalopt.failAction = SearchBase::FA_Randomize;
   else if (failAction.toLower() == "replacewithoffspring")
-    xtalopt.failAction = OptBase::FA_NewOffspring;
+    xtalopt.failAction = SearchBase::FA_NewOffspring;
   else {
-    qDebug() << "Warning: unrecognized jobFailAction: " << failAction;
+    qDebug() << "\nWarning: unrecognized jobFailAction: " << failAction;
     qDebug() << "Using default option: replaceWithRandom";
-    xtalopt.failAction = OptBase::FA_Randomize;
+    xtalopt.failAction = SearchBase::FA_Randomize;
   }
 
-  xtalopt.cutoff = options.value("maxNumStructures", "10000").toUInt();
-  xtalopt.using_mitotic_growth =
-    toBool(options.value("usingMitoticGrowth", "false"));
-  xtalopt.using_FU_crossovers =
-    toBool(options.value("usingFormulaUnitCrossovers", "false"));
-  xtalopt.FU_crossovers_generation =
-    options.value("formulaUnitCrossoversGen", "4").toUInt();
-  xtalopt.using_one_pool = toBool(options.value("usingOneGenePool", "false"));
-  xtalopt.chance_of_mitosis =
-    options.value("chanceOfFutureMitosis", "50").toUInt();
+  xtalopt.maxNumStructures = options.value("maxNumStructures", "100").toUInt();
   xtalopt.m_softExit = toBool(options.value("softExit", "false"));
   xtalopt.m_localQueue = toBool(options.value("localQueue", "false"));
 
-  // MULTI-OBJECTIVE RELATED ENTRIES.
-  // Process the optimization objectives (and weights) for energy/aflow-hardness/objectives.
-  // If no objectives/aflow-hardness; the aflow-hardness weight will be set to -1.0 and
-  //   the number of objectives will be set to 0.
-  // For this process, objectives list will be used that contains all objective/aflow-hardness
-  //   related input.
+  // Multi-Objective related entries.
+  // Process the optimization objectives (and weights) for energy/objectives.
+  // For this process, objectives list will be used that contains all objective
+  //   related input provided by the user.
+  if (objectives_input.size() > 0) {
+    for (int i = 0; i < objectives_input.size(); i++)
+      if (!xtalopt.processInputObjectives(objectives_input[i]))
+        return false;
+  }
   xtalopt.m_objectivesReDo = toBool(options.value("objectivesReDo", "false"));
-  if (!xtalopt.processObjectivesInfo())
-    return false;
-  ///////////////
+
+  // Optimization type: Basic (scalar fitness), Pareto
+  xtalopt.m_optimizationType = options.value("optimizationType", "basic").toLower();
+  // Tournament selection (applies only to Pareto optimization)
+  xtalopt.m_tournamentSelection = toBool(options.value("tournamentSelection", "true"));
+  // Restrict the pool size in tournament selection
+  xtalopt.m_restrictedPool = toBool(options.value("restrictedPool", "false"));
+  // Crowding distance
+  xtalopt.m_crowdingDistance = toBool(options.value("crowdingDistance", "true"));
+  // Objectives' value precision
+  xtalopt.m_objectivePrecision = options.value("objectivePrecision", "-1").toInt();
 
   // Mutators
-  xtalopt.p_strip = options.value("percentChanceStripple", "50").toUInt();
-  xtalopt.p_perm = options.value("percentChancePermustrain", "35").toUInt();
-  xtalopt.p_cross = options.value("percentChanceCrossover", "15").toUInt();
-
-  // Sanity check
-  if (xtalopt.p_strip + xtalopt.p_perm + xtalopt.p_cross != 100) {
-    qDebug() << "Error: percentChanceStripple + percentChancePermustrain"
-             << "+ percentChanceCrossover must equal 100!";
-    return false;
-  }
+  xtalopt.p_cross = options.value("weightCrossover", "35").toUInt();
+  xtalopt.p_strip = options.value("weightStripple", "25").toUInt();
+  xtalopt.p_perm = options.value("weightPermustrain", "25").toUInt();
+  xtalopt.p_atomic = options.value("weightPermutomic", "15").toUInt();
+  xtalopt.p_comp = options.value("weightPermucomp", "5").toUInt();
+  xtalopt.p_supercell = options.value("randomSuperCell", "0").toUInt();
 
   // Stripple options
   xtalopt.strip_amp_min =
@@ -547,17 +657,39 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.cross_minimumContribution =
     options.value("crossoverMinContribution", "25").toUInt();
 
-  // Duplicate matching
+  // RDF similarity check
+  xtalopt.tol_rdf = options.value("rdfTolerance", "0.0").toDouble();
+  xtalopt.tol_rdf_cutoff = options.value("rdfCutoff", "6.0").toDouble();
+  xtalopt.tol_rdf_nbins = options.value("rdfNumBins", "3000").toInt();
+  xtalopt.tol_rdf_sigma = options.value("rdfSigma", "0.008").toDouble();
+
+  // XtalComp similarity check
   xtalopt.tol_xcLength =
     options.value("xtalcompToleranceLength", "0.1").toFloat();
   xtalopt.tol_xcAngle =
     options.value("xtalcompToleranceAngle", "2.0").toFloat();
 
   // Spglib tolerance
-  xtalopt.tol_spg = options.value("spglibTolerance", "0.01").toFloat();
+  //   (for consistency; default "tolerances" are defined in constants.h)
+  xtalopt.tol_spg = options.value("spglibTolerance", QString::number(SPGTOLDEF)).toFloat();
 
-  // We will use this later
+  // FIXME: We will use this later
   QString templatesDir = options.value("templatesDirectory", ".");
+
+  // Read the "custom" user input entries
+  xtalopt.setUser1(options.value("user1", "").toStdString());
+  xtalopt.setUser2(options.value("user2", "").toStdString());
+  xtalopt.setUser3(options.value("user3", "").toStdString());
+  xtalopt.setUser4(options.value("user4", "").toStdString());
+
+  if (xtalopt.m_verbose) {
+    std::string outstr = "   Custom user-defined keywords:\n";
+    outstr += "     user1 = " + xtalopt.getUser1() + "\n";
+    outstr += "     user2 = " + xtalopt.getUser2() + "\n";
+    outstr += "     user3 = " + xtalopt.getUser3() + "\n";
+    outstr += "     user4 = " + xtalopt.getUser4() + "\n";
+    qDebug().noquote() << QString::fromStdString(outstr);
+  }
 
   // Are there any queue interfaces that are remote?
   bool anyRemote = false;
@@ -627,6 +759,19 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
                                 i, options)) {
         return false;
       }
+    } else if (options["optimizer"].toLower() == "mtp") {
+      if (!addOptimizerTemplate(xtalopt, "mtpCellTemplates", queueName,
+                                i, options)) {
+        return false;
+      }
+      if (!addOptimizerTemplate(xtalopt, "mtpRelaxTemplates", queueName,
+                                i, options)) {
+        return false;
+      }
+      if (!addOptimizerTemplate(xtalopt, "mtpPotTemplates", queueName,
+                                i, options)) {
+        return false;
+      }
     } else if (options["optimizer"].toLower() == "siesta") {
       if (!addOptimizerTemplate(xtalopt, "fdfTemplates", queueName, i,
                                 options)) {
@@ -637,14 +782,14 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
       // Generate list of symbols
       QVariantList psfInfo;
       QStringList symbols;
-      QList<uint> atomicNums = xtalopt.comp.keys();
-      qSort(atomicNums);
+      QList<uint> atomicNums = xtalopt.compList[0].getAtomicNumbers();
+      std::sort(atomicNums.begin(), atomicNums.end());
 
       for (const auto& atomicNum : atomicNums) {
         if (atomicNum != 0)
-          symbols.append(ElemInfo::getAtomicSymbol(atomicNum).c_str());
+          symbols.append(ElementInfo::getAtomicSymbol(atomicNum).c_str());
       }
-      qSort(symbols);
+      std::sort(symbols.begin(), symbols.end());
       QVariantHash hash;
       for (const auto& symbol : symbols) {
         QString filename =
@@ -695,14 +840,14 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
       // Generate list of symbols
       QVariantList potcarInfo;
       QStringList symbols;
-      QList<uint> atomicNums = xtalopt.comp.keys();
-      qSort(atomicNums);
+      QList<uint> atomicNums = xtalopt.compList[0].getAtomicNumbers();
+      std::sort(atomicNums.begin(), atomicNums.end());
 
       for (const auto& atomicNum : atomicNums) {
         if (atomicNum != 0)
-          symbols.append(ElemInfo::getAtomicSymbol(atomicNum).c_str());
+          symbols.append(ElementInfo::getAtomicSymbol(atomicNum).c_str());
       }
-      qSort(symbols);
+      std::sort(symbols.begin(), symbols.end());
       QVariantHash hash;
       std::string potcarStr;
 
@@ -815,16 +960,13 @@ bool XtalOptCLIOptions::printOptions(const QHash<QString, QString>& options,
                                      XtalOpt& xtalopt)
 {
   QStringList keys = options.keys();
-  qSort(keys);
+  std::sort(keys.begin(), keys.end());
 
   QString output;
   QTextStream stream(&output);
 
-  // Print Program's header
-  stream << xtaloptHeaderString();
-
   // Former: Manually set options
-  stream << "\n=== Manually Set Settings\n";
+  stream << "\n=== Manually Set Options\n\n";
   for (const auto& key : keys)
     stream << key << ": " << options[key] << "\n";
 
@@ -836,8 +978,8 @@ bool XtalOptCLIOptions::printOptions(const QHash<QString, QString>& options,
 
   // Check if xtalopt data is already saved at the local working directory.
   // Up to r12, xtalopt would ask the user if they want the code to clean up the folder.
-  // But there were cases which user had mistakenly specified an important directory
-  //   such as Desktop/ or Documents/, and then asked the code to clean up which
+  // But there were cases which user had run data stored in an important directory
+  //   such as Desktop/ or Documents/, and then mistakenly let the code to clean up which
   //   results in permanent deletion of data!
   // So, now we only let the user know that the directory is not empty and quit (in the
   //   GUI there is dialog for this).
@@ -855,7 +997,7 @@ bool XtalOptCLIOptions::printOptions(const QHash<QString, QString>& options,
     QDir().mkpath(xtalopt.locWorkDir);
 
   // Try to write to a log file also
-  QFile file(xtalopt.locWorkDir + QDir::separator() + "xtaloptSettings.log");
+  QFile file(xtalopt.locWorkDir + QDir::separator() + "settings.log");
   if (file.open(QIODevice::WriteOnly | QIODevice::Text))
     file.write(output.toStdString().c_str());
 
@@ -864,6 +1006,9 @@ bool XtalOptCLIOptions::printOptions(const QHash<QString, QString>& options,
 
 bool XtalOptCLIOptions::readOptions(const QString& filename, XtalOpt& xtalopt)
 {
+  // Start by printing the program header
+  qDebug().noquote() << xtaloptHeaderString();
+
   // Attempt to open the file
   QFile file(filename);
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -939,6 +1084,12 @@ QString convertedTemplateName(const QString& s, const QString& queueName)
     return "INCAR";
   if (s.compare("kpointsTemplates", Qt::CaseInsensitive) == 0)
     return "KPOINTS";
+  if (s.compare("mtpCellTemplates", Qt::CaseInsensitive) == 0)
+    return "mtp.cell";
+  if (s.compare("mtpRelaxTemplates", Qt::CaseInsensitive) == 0)
+    return "mtp.relax";
+  if (s.compare("mtpPotTemplates", Qt::CaseInsensitive) == 0)
+    return "mtp.pot";
 
   if (s.compare("jobTemplates", Qt::CaseInsensitive) == 0) {
     if (queueName.compare("LoadLeveler", Qt::CaseInsensitive) == 0)
@@ -991,40 +1142,6 @@ bool XtalOptCLIOptions::addOptimizerTemplate(
   xtalopt.setTemplate(
     optStep, convertedTemplateName(templateName, queueName).toStdString(),
     text.toStdString());
-
-  return true;
-}
-
-bool XtalOptCLIOptions::isMitosisOk(XtalOpt& xtalopt)
-{
-  if (xtalopt.ax * xtalopt.bx * xtalopt.cx != xtalopt.divisions) {
-    qDebug() << "Error: mitosisDivisions must equal"
-             << "mitosisA * mitosisB * mitosisC";
-    return false;
-  }
-
-  size_t minNumAtoms =
-    std::min_element(
-      xtalopt.comp.cbegin(), xtalopt.comp.cend(),
-      [](const XtalCompositionStruct& lhs, const XtalCompositionStruct& rhs) {
-        return lhs.quantity < rhs.quantity;
-      })
-      ->quantity;
-
-  if (minNumAtoms == 0) {
-    qDebug() << "Error: no atoms were found when checking mitosis!";
-    return false;
-  }
-
-  minNumAtoms *= xtalopt.minFU();
-
-  if (minNumAtoms < xtalopt.divisions) {
-    qDebug() << "Error: mitosisDivisions cannot be greater than the smallest"
-             << "formula unit times the smallest number of atoms of one type";
-    qDebug() << "With the current composition and formula unit, the largest"
-             << "number of divisions possible is:" << minNumAtoms;
-    return false;
-  }
 
   return true;
 }
@@ -1092,7 +1209,7 @@ bool XtalOptCLIOptions::processMolUnits(const QHash<QString, QString>& options,
 
       // Make sure the data is valid
       unsigned short centerAtomicNum =
-        ElemInfo::getAtomicNum(centerSymbol.toStdString());
+        ElementInfo::getAtomicNum(centerSymbol.toStdString());
 
       // If the centerSymbol == "None", then 0 is the correct number for it
       if (centerSymbol.toLower() != "none" && centerAtomicNum == 0) {
@@ -1105,7 +1222,7 @@ bool XtalOptCLIOptions::processMolUnits(const QHash<QString, QString>& options,
       }
 
       unsigned short neighborAtomicNum =
-        ElemInfo::getAtomicNum(neighborSymbol.toStdString());
+        ElementInfo::getAtomicNum(neighborSymbol.toStdString());
 
       if (neighborAtomicNum == 0) {
         qDebug() << "Error processing molecularUnits line:"
@@ -1206,21 +1323,17 @@ bool XtalOptCLIOptions::processMolUnits(const QHash<QString, QString>& options,
     }
   }
 
-  // Check to see if we exceeded the number of atoms in any cases.
+  // Considering the case of multi-/variable-composition; we will compare
+  //   molunits against the "minimum quantities in all input compositions"
+  //   If they are appropriate, we will proceed. So we use "comp" variable.
   for (const auto& countKey : atomCounts.keys()) {
-    if (xtalopt.comp[ElemInfo::getAtomicNum(countKey.toStdString().c_str())]
-            .quantity *
-          xtalopt.minFU() <
-        atomCounts[countKey]) {
+    if (xtalopt.getMinimalComposition().getCount(countKey) < atomCounts[countKey]) {
       QString elemName = countKey;
       if (!elemName.isEmpty())
         elemName[0] = elemName[0].toUpper();
       qDebug() << "Error reading molecularUnits: for atom" << elemName << ","
                << "there are more atoms predicted to be generated with"
-               << "the molUnit settings than there are for minFU * numAtoms";
-      qDebug() << "You must make sure that for each atom, minFU * numAtoms is"
-               << "greater than the number of atoms to be generated with"
-               << "MolUnits.";
+               << "the molUnit settings than those allowed by the input compoisitions.";
       return false;
     }
   }
@@ -1251,7 +1364,7 @@ bool XtalOptCLIOptions::processCustomIADs(
 
       // Make sure the data is valid
       unsigned short firstAtomicNum =
-        ElemInfo::getAtomicNum(firstSymbol.toStdString());
+        ElementInfo::getAtomicNum(firstSymbol.toStdString());
 
       // If the atomic number is 0, the symbol is invalid
       if (firstAtomicNum == 0) {
@@ -1263,7 +1376,7 @@ bool XtalOptCLIOptions::processCustomIADs(
       }
 
       unsigned short secondAtomicNum =
-        ElemInfo::getAtomicNum(secondSymbol.toStdString());
+        ElementInfo::getAtomicNum(secondSymbol.toStdString());
 
       // If the atomic number is 0, the symbol is invalid
       if (secondAtomicNum == 0) {
@@ -1298,17 +1411,9 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
   if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
     return;
 
-  QString tmpText;
-  for (const auto& e : xtalopt.formulaUnitsList)
-    tmpText += (QString::number(e) + ", ");
-  tmpText.chop(2);
-
-  QString result;
-  FileUtils::parseUIntString(tmpText, result);
   QString text = "# XtalOpt Run-Time File\n";
   text += "# Change options here during the CLI run to "
           "change options in the program\n\n";
-  text += QString("formulaUnits = ") + result + "\n";
 
   text += "\n# Lattice constraints\n";
   text += QString("aMin = ") + QString::number(xtalopt.a_min) + "\n";
@@ -1324,10 +1429,14 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
   text += QString("alphaMax = ") + QString::number(xtalopt.alpha_max) + "\n";
   text += QString("betaMax = ") + QString::number(xtalopt.beta_max) + "\n";
   text += QString("gammaMax = ") + QString::number(xtalopt.gamma_max) + "\n";
-  text += QString("volumeMin = ") + QString::number(xtalopt.vol_min) + "\n";
-  text += QString("volumeMax = ") + QString::number(xtalopt.vol_max) + "\n";
-  text += QString("volumeScaleMax = ") + QString::number(xtalopt.vol_scale_max) + "\n";
-  text += QString("volumeScaleMin = ") + QString::number(xtalopt.vol_scale_min) + "\n";
+  text += QString("minVolume = ") + QString::number(xtalopt.vol_min) + "\n";
+  text += QString("maxVolume = ") + QString::number(xtalopt.vol_max) + "\n";
+  text += QString("maxVolumeScale = ") +
+          QString::number(xtalopt.vol_scale_max) + "\n";
+  text += QString("minVolumeScale = ") +
+          QString::number(xtalopt.vol_scale_min) + "\n";
+  // The "," below is just to avoid annoying "empty line/value" warning!
+  text += QString("elementalVolumes = ,") + xtalopt.input_ele_volm_string + "\n";
   text += QString("usingRadiiInteratomicDistanceLimit = ") +
           fromBool(xtalopt.using_interatomicDistanceLimit) + "\n";
   text += QString("radiiScalingFactor = ") +
@@ -1339,53 +1448,65 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
           fromBool(xtalopt.using_checkStepOpt) + "\n";
 
   text += "\n# Optimization Settings\n";
-  text += QString("popSize = ") + QString::number(xtalopt.popSize) + "\n";
-  text +=
-    QString("limitRunningJobs = ") + fromBool(xtalopt.limitRunningJobs) + "\n";
-  text += QString("runningJobLimit = ") +
-          QString::number(xtalopt.runningJobLimit) + "\n";
-  text += QString("continuousStructures = ") +
-          QString::number(xtalopt.contStructs) + "\n";
-  text +=
-    QString("jobFailLimit = ") + QString::number(xtalopt.failLimit) + "\n";
+  text += QString("maxAtoms = ") + QString::number(xtalopt.maxAtoms) + "\n";
+  text += QString("localQueue = ") + fromBool(xtalopt.m_localQueue) + "\n";
+  text += QString("objectivesReDo = ") +
+          fromBool(xtalopt.m_objectivesReDo) + "\n";
+  // Optimization Type
+  text += QString("optimizationType = ") + xtalopt.m_optimizationType + "\n";
+  text += QString("tournamentSelection = ") +
+          fromBool(xtalopt.m_tournamentSelection) + "\n";
+  text += QString("restrictedPool = ") +
+          fromBool(xtalopt.m_restrictedPool) + "\n";
+  text += QString("crowdingDistance = ") +
+          fromBool(xtalopt.m_crowdingDistance) + "\n";
+  text += QString("objectivePrecision = ") +
+          QString::number(xtalopt.m_objectivePrecision) + "\n";
+
+  text += QString("jobFailLimit = ") +
+          QString::number(xtalopt.failLimit) + "\n";
   text += QString("jobFailAction = ");
-  if (xtalopt.failAction == OptBase::FA_DoNothing)
+  if (xtalopt.failAction == SearchBase::FA_DoNothing)
     text += "keepTrying\n";
-  else if (xtalopt.failAction == OptBase::FA_KillIt)
+  else if (xtalopt.failAction == SearchBase::FA_KillIt)
     text += "kill\n";
-  else if (xtalopt.failAction == OptBase::FA_Randomize)
+  else if (xtalopt.failAction == SearchBase::FA_Randomize)
     text += "replaceWithRandom\n";
-  else if (xtalopt.failAction == OptBase::FA_NewOffspring)
+  else if (xtalopt.failAction == SearchBase::FA_NewOffspring)
     text += "replaceWithOffspring\n";
   else
     text += "unknown\n";
 
-  text +=
-    QString("maxNumStructures = ") + QString::number(xtalopt.cutoff) + "\n";
-
-  text += QString("usingMitoticGrowth = ") +
-          fromBool(xtalopt.using_mitotic_growth) + "\n";
-  text += QString("usingFormulaUnitCrossovers = ") +
-          fromBool(xtalopt.using_FU_crossovers) + "\n";
-  text += QString("formulaUnitCrossoversGen = ") +
-          QString::number(xtalopt.FU_crossovers_generation) + "\n";
-  text +=
-    QString("usingOneGenePool = ") + fromBool(xtalopt.using_one_pool) + "\n";
-  text += QString("chanceOfFutureMitosis = ") +
-          QString::number(xtalopt.chance_of_mitosis) + "\n";
-
+  text += QString("limitRunningJobs = ") +
+          fromBool(xtalopt.limitRunningJobs) + "\n";
+  text += QString("runningJobLimit = ") +
+          QString::number(xtalopt.runningJobLimit) + "\n";
+  text += QString("continuousStructures = ") +
+          QString::number(xtalopt.contStructs) + "\n";
+  text += QString("parentsPoolSize = ") +
+          QString::number(xtalopt.parentsPoolSize) + "\n";
+  text += QString("maxNumStructures = ") +
+          QString::number(xtalopt.maxNumStructures) + "\n";
   text += QString("softExit = ") + fromBool(xtalopt.m_softExit) + "\n";
-  text += QString("localQueue = ") + fromBool(xtalopt.m_localQueue) + "\n";
-  text += QString("objectivesReDo = ") + fromBool(xtalopt.m_objectivesReDo) + "\n";
 
-  text += QString("\n# Mutator Settings\n");
-  text += QString("percentChanceStripple = ") +
+  text += QString("\n# Search and Mutator Settings\n");
+  text += QString("vcSearch = ") + fromBool(xtalopt.vcSearch) + "\n";
+  text += QString("saveHullSnapshots = ") + fromBool(xtalopt.m_saveHullSnapshots) + "\n";
+  text += QString("weightStripple = ") +
           QString::number(xtalopt.p_strip) + "\n";
-  text += QString("percentChancePermustrain = ") +
+  text += QString("weightPermustrain = ") +
           QString::number(xtalopt.p_perm) + "\n";
-  text += QString("percentChanceCrossover = ") +
+  text += QString("weightPermutomic = ") +
+          QString::number(xtalopt.p_atomic) + "\n";
+  text += QString("weightPermucomp = ") +
+          QString::number(xtalopt.p_comp) + "\n";
+  text += QString("weightCrossover = ") +
           QString::number(xtalopt.p_cross) + "\n";
 
+
+  text += QString("\n# Mutator Details Settings\n");
+  text += QString("randomSuperCell = ") +
+          QString::number(xtalopt.p_supercell) + "\n";
   text += QString("strippleAmplitudeMin = ") +
           QString::number(xtalopt.strip_amp_min) + "\n";
   text += QString("strippleAmplitudeMax = ") +
@@ -1407,13 +1528,19 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
   text += QString("crossoverMinContribution = ") +
           QString::number(xtalopt.cross_minimumContribution) + "\n";
 
-  text += QString("\n# Duplicate Matching and SpgLib Settings\n");
+  text += QString("\n# Similarity Check and SpgLib Settings\n");
   text += QString("xtalcompToleranceLength = ") +
           QString::number(xtalopt.tol_xcLength) + "\n";
   text += QString("xtalcompToleranceAngle = ") +
           QString::number(xtalopt.tol_xcAngle) + "\n";
-  text +=
-    QString("spglibTolerance = ") + QString::number(xtalopt.tol_spg) + "\n";
+  text += QString("spglibTolerance = ") +
+          QString::number(xtalopt.tol_spg) + "\n";
+  text += QString("rdfTolerance = ") + QString::number(xtalopt.tol_rdf) + "\n";
+  /* FIXME: this is a mark! For now, no runtime update of rdf details
+  text += QString("rdfCutoff = ") + QString::number(xtalopt.tol_rdf_cutoff) + "\n";
+  text += QString("rdfNumBins = ") + QString::number(xtalopt.tol_rdf_nbins) + "\n";
+  text += QString("rdfSigma = ") + QString::number(xtalopt.tol_rdf_sigma) + "\n";
+  */
 
   text += QString("\n# Queue Interface Settings\n");
   text += QString("queueRefreshInterval = ") +
@@ -1425,6 +1552,8 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
     text += QString("hoursForAutoCancelJob = ") +
             QString::number(xtalopt.m_hoursForCancelJobAfterTime) + "\n";
   }
+
+  text += QString("verboseOutput = ") + fromBool(xtalopt.m_verbose) + "\n";
 
   file.write(text.toLocal8Bit().data());
 }
@@ -1456,17 +1585,64 @@ inline bool CICompare(const QString& s1, const QString& s2)
 void XtalOptCLIOptions::processRuntimeOptions(
   const QHash<QString, QString>& options, XtalOpt& xtalopt)
 {
+  // Change in some values at the runtime requires verification
+  //   or further processing. This is a list of temporary
+  //   variables that are updated if a runtime-adjusted value
+  //   is given. We will verify them at the end and will update
+  //   the "main" parameters only if changes are valid.
+  double scal_vmin  = xtalopt.vol_scale_min;
+  double scal_vmax  = xtalopt.vol_scale_max;
+  double absl_vmin  = xtalopt.vol_min;
+  double absl_vmax  = xtalopt.vol_max;
+  QString elem_vols = xtalopt.input_ele_volm_string;
+
   for (const auto& option : options.keys()) {
-    if (CICompare("formulaUnits", option)) {
-      QString unused;
-      xtalopt.formulaUnitsList =
-        FileUtils::parseUIntString(options["formulaUnits"], unused);
-      if (xtalopt.formulaUnitsList.isEmpty()) {
-        qDebug()
-          << "Warning: in runtime options, formula units unsuccessfully read."
-          << "\nSetting formula units to be 1.";
-        xtalopt.formulaUnitsList = { 1 };
+    // Start with those that need further verification.
+    if (CICompare("minVolume", option)) {
+      absl_vmin = options[option].toFloat();
+    } else if (CICompare("maxVolume", option)) {
+      absl_vmax = options[option].toFloat();
+    } else if (CICompare("maxVolumeScale", option)) {
+      scal_vmax = options[option].toFloat();
+    } else if (CICompare("minVolumeScale", option)) {
+      scal_vmin = options[option].toFloat();
+    } else if (CICompare("elementalVolumes", option)) {
+      elem_vols = options[option];
+    // Then, the rest of entries.
+    } else if (CICompare("radiiScalingFactor", option)) {
+      xtalopt.scaleFactor = options[option].toFloat();
+      for (const auto& atomcn : xtalopt.eleMinRadii.getAtomicNumbers()) {
+        double  minr = ElementInfo::getCovalentRadius(atomcn) * xtalopt.scaleFactor;
+        minr = (minr > xtalopt.minRadius) ? minr : xtalopt.minRadius;
+        xtalopt.eleMinRadii.set(atomcn, minr);
       }
+    } else if (CICompare("minRadius", option)) {
+      xtalopt.minRadius = options[option].toFloat();
+      for (const auto& atomcn : xtalopt.eleMinRadii.getAtomicNumbers()) {
+        double  minr = ElementInfo::getCovalentRadius(atomcn) * xtalopt.scaleFactor;
+        minr = (minr > xtalopt.minRadius) ? minr : xtalopt.minRadius;
+        xtalopt.eleMinRadii.set(atomcn, minr);
+      }
+    } else if (CICompare("verboseOutput", option)) {
+      xtalopt.m_verbose = toBool(options[option]);
+    } else if (CICompare("weightStripple", option)) {
+      xtalopt.p_strip = options[option].toUInt();
+    } else if (CICompare("weightPermustrain", option)) {
+      xtalopt.p_perm = options[option].toUInt();
+    } else if (CICompare("weightPermutomic", option)) {
+      xtalopt.p_atomic = options[option].toUInt();
+    } else if (CICompare("weightPermucomp", option)) {
+      xtalopt.p_comp = options[option].toUInt();
+    } else if (CICompare("weightCrossover", option)) {
+      xtalopt.p_cross = options[option].toUInt();
+    } else if (CICompare("vcSearch", option)) {
+      xtalopt.vcSearch = toBool(options[option]);
+    } else if (CICompare("saveHullSnapshots", option)) {
+      xtalopt.m_saveHullSnapshots = toBool(options[option]);
+    } else if (CICompare("randomSuperCell", option)) {
+      xtalopt.p_supercell = options[option].toUInt();
+    } else if (CICompare("maxAtoms", option)) {
+      xtalopt.maxAtoms = options[option].toUInt();
     } else if (CICompare("aMin", option)) {
       xtalopt.a_min = options[option].toFloat();
     } else if (CICompare("bMin", option)) {
@@ -1491,32 +1667,8 @@ void XtalOptCLIOptions::processRuntimeOptions(
       xtalopt.beta_max = options[option].toFloat();
     } else if (CICompare("gammaMax", option)) {
       xtalopt.gamma_max = options[option].toFloat();
-    } else if (CICompare("volumeMin", option)) {
-      xtalopt.vol_min = options[option].toFloat();
-    } else if (CICompare("volumeMax", option)) {
-      xtalopt.vol_max = options[option].toFloat();
-    } else if (CICompare("volumeScaleMax", option)) {
-      xtalopt.vol_scale_max = options[option].toFloat();
-    } else if (CICompare("volumeScaleMin", option)) {
-      xtalopt.vol_scale_min = options[option].toFloat();
     } else if (CICompare("usingRadiiInteratomicDistanceLimit", option)) {
       xtalopt.using_interatomicDistanceLimit = toBool(options[option]);
-    } else if (CICompare("radiiScalingFactor", option)) {
-      xtalopt.scaleFactor = options[option].toFloat();
-      for (const auto& key : xtalopt.comp.keys()) {
-        xtalopt.comp[key].minRadius =
-          ElemInfo::getCovalentRadius(key) * xtalopt.scaleFactor;
-        if (xtalopt.comp[key].minRadius < xtalopt.minRadius)
-          xtalopt.comp[key].minRadius = xtalopt.minRadius;
-      }
-    } else if (CICompare("minRadius", option)) {
-      xtalopt.minRadius = options[option].toFloat();
-      for (const auto& key : xtalopt.comp.keys()) {
-        xtalopt.comp[key].minRadius =
-          ElemInfo::getCovalentRadius(key) * xtalopt.scaleFactor;
-        if (xtalopt.comp[key].minRadius < xtalopt.minRadius)
-          xtalopt.comp[key].minRadius = xtalopt.minRadius;
-      }
     } else if (CICompare("usingCustomIADs", option)) {
       xtalopt.using_customIAD = toBool(options[option]);
       if (xtalopt.using_customIAD && xtalopt.using_interatomicDistanceLimit) {
@@ -1527,8 +1679,8 @@ void XtalOptCLIOptions::processRuntimeOptions(
       }
     } else if (CICompare("checkIADPostOptimization", option)) {
       xtalopt.using_checkStepOpt = toBool(options[option]);
-    } else if (CICompare("popSize", option)) {
-      xtalopt.popSize = options[option].toUInt();
+    } else if (CICompare("parentsPoolSize", option)) {
+      xtalopt.parentsPoolSize = options[option].toUInt();
     } else if (CICompare("limitRunningJobs", option)) {
       xtalopt.limitRunningJobs = toBool(options[option]);
     } else if (CICompare("runningJobLimit", option)) {
@@ -1540,40 +1692,29 @@ void XtalOptCLIOptions::processRuntimeOptions(
     } else if (CICompare("jobFailAction", option)) {
       QString failAction = options[option];
       if (failAction.toLower() == "keeptrying")
-        xtalopt.failAction = OptBase::FA_DoNothing;
+        xtalopt.failAction = SearchBase::FA_DoNothing;
       else if (failAction.toLower() == "kill")
-        xtalopt.failAction = OptBase::FA_KillIt;
+        xtalopt.failAction = SearchBase::FA_KillIt;
       else if (failAction.toLower() == "replacewithrandom")
-        xtalopt.failAction = OptBase::FA_Randomize;
+        xtalopt.failAction = SearchBase::FA_Randomize;
       else if (failAction.toLower() == "replacewithoffspring")
-        xtalopt.failAction = OptBase::FA_NewOffspring;
+        xtalopt.failAction = SearchBase::FA_NewOffspring;
       else {
         qDebug() << "Warning: unrecognized jobFailAction: " << failAction;
         qDebug() << "Ignoring change in jobFailAction.";
       }
     } else if (CICompare("maxNumStructures", option)) {
-      xtalopt.cutoff = options[option].toUInt();
-    } else if (CICompare("usingMitoticGrowth", option)) {
-      xtalopt.using_mitotic_growth = toBool(options[option]);
-    } else if (CICompare("usingFormulaUnitCrossovers", option)) {
-      xtalopt.using_FU_crossovers = toBool(options[option]);
-    } else if (CICompare("formulaUnitCrossoversGen", option)) {
-      xtalopt.FU_crossovers_generation = options[option].toUInt();
-    } else if (CICompare("usingOneGenePool", option)) {
-      xtalopt.using_one_pool = toBool(options[option]);
-    } else if (CICompare("chanceOfFutureMitosis", option)) {
-      xtalopt.chance_of_mitosis = options[option].toUInt();
-      if (xtalopt.chance_of_mitosis > 100) {
-        qDebug() << "Warning: chanceOfFutureMitosis must not be greater"
-                 << "than 100. Setting chanceOfFutureMitosis to 100";
-        xtalopt.chance_of_mitosis = 100;
-      }
-    } else if (CICompare("percentChanceStripple", option)) {
-      xtalopt.p_strip = options[option].toUInt();
-    } else if (CICompare("percentChancePermustrain", option)) {
-      xtalopt.p_perm = options[option].toUInt();
-    } else if (CICompare("percentChanceCrossover", option)) {
-      xtalopt.p_cross = options[option].toUInt();
+      xtalopt.maxNumStructures = options[option].toUInt();
+    } else if (CICompare("optimizationType", option)) {
+      xtalopt.m_optimizationType = options[option].toLower();
+    } else if (CICompare("tournamentSelection", option)) {
+      xtalopt.m_tournamentSelection = toBool(options[option]);
+    } else if (CICompare("restrictedPool", option)) {
+      xtalopt.m_restrictedPool = toBool(options[option]);
+    } else if (CICompare("crowdingDistance", option)) {
+      xtalopt.m_crowdingDistance = toBool(options[option]);
+    } else if (CICompare("objectivePrecision", option)) {
+      xtalopt.m_objectivePrecision = options[option].toInt();
     } else if (CICompare("strippleAmplitudeMin", option)) {
       xtalopt.strip_amp_min = options[option].toFloat();
     } else if (CICompare("strippleAmplitudeMax", option)) {
@@ -1607,6 +1748,14 @@ void XtalOptCLIOptions::processRuntimeOptions(
       xtalopt.tol_xcAngle = options[option].toFloat();
     } else if (CICompare("spglibTolerance", option)) {
       xtalopt.tol_spg = options[option].toFloat();
+    } else if (CICompare("rdfTolerance", option)) {
+      xtalopt.tol_rdf = options[option].toDouble();
+    } else if (CICompare("rdfCutoff", option)) {
+      xtalopt.tol_rdf_cutoff = options[option].toDouble();
+    } else if (CICompare("rdfNumBins", option)) {
+      xtalopt.tol_rdf_nbins = options[option].toInt();
+    } else if (CICompare("rdfSigma", option)) {
+      xtalopt.tol_rdf_sigma = options[option].toDouble();
     } else if (CICompare("autoCancelJobAfterTime", option)) {
       xtalopt.m_cancelJobAfterTime = toBool(options[option]);
     } else if (CICompare("hoursForAutoCancelJob", option)) {
@@ -1627,14 +1776,27 @@ void XtalOptCLIOptions::processRuntimeOptions(
     }
   }
 
-  // Sanity checks
-  if (xtalopt.p_strip + xtalopt.p_perm + xtalopt.p_cross != 100) {
-    qDebug() << "Error: percentChanceStripple + percentChancePermustrain"
-             << "+ percentChanceCrossover must equal 100!";
-    qDebug() << "Setting them to default values of 50, 35, 15, respectively";
-    xtalopt.p_strip = 50;
-    xtalopt.p_perm = 35;
-    xtalopt.p_cross = 15;
+  // Sanity checks and post-processing: absolute volume limits.
+  if (absl_vmin < ZERO6 || absl_vmax < ZERO6 || absl_vmax < absl_vmin) {
+    qDebug() << "Warning: ignored incorrect runtime values for volume limits!";
+  } else {
+    xtalopt.vol_min = absl_vmin;
+    xtalopt.vol_max = absl_vmax;
+  }
+  // Sanity checks and post-processing: elemental volume limits.
+  if (!xtalopt.processInputElementalVolumes(elem_vols)) {
+    qDebug() << "Warning: ignored incorrect runtime values for elemental volume limits!";
+  } else {
+    xtalopt.input_ele_volm_string = elem_vols;
+  }
+  // Sanity checks and post-processing: scaled volume limits.
+  // The lower limit is set to 0.0 (instead of ZERO...) to let the user set them
+  //   to "zero" to not use them, without a repeating warning.
+  if (scal_vmin < 0.0 || scal_vmax < scal_vmin) {
+    qDebug() << "Warning: ignored incorrect runtime values for scaled volume limits!";
+  } else {
+    xtalopt.vol_scale_min = scal_vmin;
+    xtalopt.vol_scale_max = scal_vmax;
   }
 }
 

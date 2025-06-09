@@ -17,7 +17,6 @@
 
 #include <xtalopt/xtalopt.h>
 
-#include <globalsearch/constants.h>
 #include <globalsearch/eleminfo.h>
 #include <globalsearch/formats/cmlformat.h>
 #include <globalsearch/formats/poscarformat.h>
@@ -250,7 +249,7 @@ bool Xtal::niggliReduce(const unsigned int iterations, double lenTol)
   // Initialize change of basis matrices:
   //
   // Although the reduction algorithm produces quantities directly
-  // relatible to a,b,c,alpha,beta,gamma, we will calculate a change
+  // relatable to a,b,c,alpha,beta,gamma, we will calculate a change
   // of basis matrix to use instead, and discard A, B, C, xi, eta,
   // zeta. By multiplying the change of basis matrix against the
   // current cell matrix, we avoid the problem of handling the
@@ -569,7 +568,7 @@ bool Xtal::isPrimitive(const double cartTol)
     return false;
 }
 
-bool Xtal::reduceToPrimitive(const double cartTol)
+bool Xtal::reduceToPrimitive(const double prec)
 {
 
   // Cache fractional coordinates and atomic nums
@@ -586,7 +585,7 @@ bool Xtal::reduceToPrimitive(const double cartTol)
   Matrix3 cellMatrix = this->unitCell().cellMatrix();
 
   unsigned int spg =
-    reduceToPrimitive(&fcoords, &atomicNums, &cellMatrix, cartTol);
+    reduceToPrimitive(&fcoords, &atomicNums, &cellMatrix, prec);
 
   // spg == 0 implies that reduceToPrimitive() failed
   if (spg == 0)
@@ -612,7 +611,7 @@ bool Xtal::reduceToPrimitive(const double cartTol)
 
 unsigned int Xtal::reduceToPrimitive(QList<Vector3>* fcoords,
                                      QList<unsigned int>* atomicNums,
-                                     Matrix3* cellMatrix, const double cartTol)
+                                     Matrix3* cellMatrix, const double perc)
 {
   Q_ASSERT(fcoords->size() == atomicNums->size());
 
@@ -646,11 +645,11 @@ unsigned int Xtal::reduceToPrimitive(QList<Vector3>* fcoords,
   // find spacegroup for return value
   char symbol[21];
   int spg =
-    spg_get_international(symbol, lattice, positions, types, numAtoms, cartTol);
+    spg_get_international(symbol, lattice, positions, types, numAtoms, perc);
 
   // Refine the structure
   int numBravaisAtoms =
-    spg_refine_cell(lattice, positions, types, numAtoms, cartTol);
+    spg_refine_cell(lattice, positions, types, numAtoms, perc);
 
   // if spglib cannot refine the cell, return 0.
   if (numBravaisAtoms <= 0) {
@@ -660,7 +659,7 @@ unsigned int Xtal::reduceToPrimitive(QList<Vector3>* fcoords,
   // Find primitive cell. This updates lattice, positions, types
   // to primitive
   int numPrimitiveAtoms =
-    spg_find_primitive(lattice, positions, types, numBravaisAtoms, cartTol);
+    spg_find_primitive(lattice, positions, types, numBravaisAtoms, perc);
 
   // If the cell was already a primitive cell, reset
   // numPrimitiveAtoms.
@@ -721,7 +720,7 @@ QList<QString> Xtal::currentAtomicSymbols()
   for (std::vector<Atom>::const_iterator it = atoms.begin(),
                                          it_end = atoms.end();
        it != it_end; ++it) {
-    result << ElemInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
+    result << ElementInfo::getAtomicSymbol((*it).atomicNumber()).c_str();
   }
   return result;
 }
@@ -741,7 +740,7 @@ inline void Xtal::updateMolecule(const QList<QString>& ids,
   // Add new atoms
   for (int i = 0; i < ids.size(); ++i) {
     Atom& atom = this->addAtom();
-    atom.setAtomicNumber(ElemInfo::getAtomicNum(ids[i].toStdString()));
+    atom.setAtomicNumber(ElementInfo::getAtomicNum(ids[i].toStdString()));
     atom.setPos(coords[i]);
   }
 }
@@ -916,9 +915,7 @@ bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, double maxIAD,
   return true;
 }
 
-bool Xtal::addAtomRandomly(
-  unsigned int atomicNumber,
-  const QHash<unsigned int, XtalCompositionStruct>& limits, int maxAttempts)
+bool Xtal::addAtomRandomly(unsigned int atomicNumber, const EleRadii& limits, int maxAttempts)
 {
   Vector3 cartCoords;
   bool success;
@@ -931,17 +928,14 @@ bool Xtal::addAtomRandomly(
     Vector3 fracCoords;
 
     // Cache the minimum radius for the new atom
-    const double newMinRadius = limits.value(atomicNumber).minRadius;
+    const double newMinRadius = limits.getMinRadius(atomicNumber);
 
     // Compute a cut off distance -- atoms farther away than this value
     // will abort the check early.
     double maxCheckDistance = 0.0;
-    for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
-           it = limits.constBegin(),
-           it_end = limits.constEnd();
-         it != it_end; ++it) {
-      if (it.value().minRadius > maxCheckDistance) {
-        maxCheckDistance = it.value().minRadius;
+    for (const auto& atmn : limits.getAtomicNumbers()) {
+      if (limits.getMinRadius(atmn) > maxCheckDistance) {
+        maxCheckDistance = limits.getMinRadius(atmn);
       }
     }
     maxCheckDistance += newMinRadius;
@@ -970,9 +964,7 @@ bool Xtal::addAtomRandomly(
           continue;
         }
         // Compare distance to minimum:
-        const double minDist =
-          newMinRadius +
-          limits.value(this->atom(dist_ind).atomicNumber()).minRadius;
+        const double minDist = newMinRadius + limits.getMinRadius(this->atom(dist_ind).atomicNumber());
         const double minDistSquared = minDist * minDist;
 
         if (curDistSquared < minDistSquared) {
@@ -995,7 +987,7 @@ bool Xtal::addAtomRandomly(
 // MolUnit corrected function
 bool Xtal::addAtomRandomly(
   unsigned int atomicNumber, unsigned int neighbor,
-  const QHash<unsigned int, XtalCompositionStruct>& limits,
+  const EleRadii& limits,
   const QHash<QPair<int, int>, MolUnit>& limitsMolUnit, bool useMolUnit,
   int maxAttempts)
 {
@@ -1018,7 +1010,7 @@ bool Xtal::addAtomRandomly(
     Vector3 fracCoords;
 
     // Cache the minimum radius for the new atom
-    const double newMinRadius = limits.value(atomicNumber).minRadius;
+    const double newMinRadius = limits.getMinRadius(atomicNumber);
 
     // Compute a cut off distance -- atoms farther away than this value
     // will abort the check early.
@@ -1026,12 +1018,9 @@ bool Xtal::addAtomRandomly(
     if (atomicNumber == 0)
       maxCheckDistance = 1;
     else {
-      for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
-             it = limits.constBegin(),
-             it_end = limits.constEnd();
-           it != it_end; ++it) {
-        if (it.value().minRadius > maxCheckDistance) {
-          maxCheckDistance = it.value().minRadius;
+      for (const auto& atmn : limits.getAtomicNumbers()) {
+        if (limits.getMinRadius(atmn) > maxCheckDistance) {
+          maxCheckDistance = limits.getMinRadius(atmn);
         }
       }
     }
@@ -1062,9 +1051,7 @@ bool Xtal::addAtomRandomly(
           continue;
         }
         // Compare distance to minimum:
-        const double minDist =
-          newMinRadius +
-          limits.value(this->atom(dist_ind).atomicNumber()).minRadius;
+        const double minDist = newMinRadius + limits.getMinRadius(this->atom(dist_ind).atomicNumber());
         const double minDistSquared = minDist * minDist;
 
         if (curDistSquared < minDistSquared) {
@@ -1113,7 +1100,7 @@ bool Xtal::addAtomRandomly(
 
 bool Xtal::moveAtomRandomly(
   unsigned int atomicNumber,
-  const QHash<unsigned int, XtalCompositionStruct>& limits, int maxAttempts,
+  const EleRadii& limits, int maxAttempts,
   GlobalSearch::Atom* atom)
 {
   Eigen::Vector3d cartCoords;
@@ -1153,8 +1140,8 @@ bool Xtal::moveAtomRandomly(
 
         double& curDistSquared = squaredDists[dist_ind];
 
-        double minDist = limits.value((*atom).atomicNumber()).minRadius;
-        minDist = limits.value(a2.atomicNumber()).minRadius + minDist;
+        double minDist = limits.getMinRadius((*atom).atomicNumber());
+        minDist = limits.getMinRadius(a2.atomicNumber()) + minDist;
         double minDistSquared = minDist * minDist;
 
         if (curDistSquared < minDistSquared) {
@@ -1169,14 +1156,14 @@ bool Xtal::moveAtomRandomly(
     if (i >= maxAttempts)
       return false;
   }
-  qDebug() << "XtalOpt::moveAtomRandomlyIAD: Success in moving atom";
+  //qDebug() << "XtalOpt::moveAtomRandomlyIAD: Success in moving atom";
   atom->setPos(cartCoords);
   return true;
 }
 
 bool Xtal::addAtomRandomlyIAD(
   unsigned int atomicNumber,
-  const QHash<unsigned int, XtalCompositionStruct>& limits,
+  const EleRadii& limits,
   const QHash<QPair<int, int>, IAD>& limitsIAD, int maxAttempts)
 {
   Eigen::Vector3d cartCoords;
@@ -1236,7 +1223,7 @@ bool Xtal::addAtomRandomlyIAD(
 
 bool Xtal::moveAtomRandomlyIAD(
   unsigned int atomicNumber,
-  const QHash<unsigned int, XtalCompositionStruct>& limits,
+  const EleRadii& limits,
   const QHash<QPair<int, int>, IAD>& limitsIAD, int maxAttempts,
   GlobalSearch::Atom* atom)
 {
@@ -1289,7 +1276,7 @@ bool Xtal::moveAtomRandomlyIAD(
     if (i >= maxAttempts)
       return false;
   }
-  qDebug() << "XtalOpt::moveAtomRandomlyIAD: Success in moving atom";
+  //qDebug() << "XtalOpt::moveAtomRandomlyIAD: Success in moving atom";
   atom->setPos(cartCoords);
   return true;
 }
@@ -1726,63 +1713,16 @@ bool Xtal::molUnitBuilder(Vector3 a1Coords, unsigned int atomicNum, int valence,
   return true;
 }
 
-bool Xtal::fillSuperCell(int a, int b, int c, Xtal* myXtal)
-{
-  // qDebug() << "Xtal has a=" << a << " b=" << b << " c=" << c;
-
-  std::vector<Atom> oneFUatoms = atoms();
-  Vector3 aVec = myXtal->unitCell().aVector();
-  Vector3 bVec = myXtal->unitCell().bVector();
-  Vector3 cVec = myXtal->unitCell().cVector();
-  // Scale cell
-  double A = myXtal->getA();
-  double B = myXtal->getB();
-  double C = myXtal->getC();
-  myXtal->setCellInfo(a * A, b * B, c * C, myXtal->getAlpha(),
-                      myXtal->getBeta(), myXtal->getGamma());
-  // qDebug() << "Xtal cell dimensions are increasing from a=" << A << "b=" << B
-  // << "c=" << C <<
-  //            "to a=" << a*A << "b=" << b*B << "c=" << c*C;
-  a--;
-  b--;
-  c--;
-
-  for (int i = 0; i <= a; i++) {
-    for (int j = 0; j <= b; j++) {
-      for (int k = 0; k <= c; k++) {
-        if (i == 0 && j == 0 && k == 0)
-          continue;
-        Vector3 uVecs(aVec.x() * i + bVec.x() * j + cVec.x() * k,
-                      aVec.y() * i + bVec.y() * j + cVec.y() * k,
-                      aVec.z() * i + bVec.z() * j + cVec.z() * k);
-        // Vector3 uVecs(this->getA() * i, this->getB() * j, this-> getC() * k);
-        foreach (const Atom& atom, oneFUatoms) {
-          Atom& newAtom = myXtal->addAtom();
-          newAtom.setPos(atom.pos() + uVecs);
-          newAtom.setAtomicNumber(atom.atomicNumber());
-          // qDebug() << "Added atom at a=" << i << " b=" << j << " c=" << k <<
-          // " with atomic number " << newAtom.atomicNumber();
-        }
-      }
-    }
-  }
-  return true;
-}
-
 bool Xtal::checkInteratomicDistances(
-  const QHash<unsigned int, XtalCompositionStruct>& limits, int* atom1,
+  const EleRadii& limits, int* atom1,
   int* atom2, double* IAD)
 {
   // Compute a cut off distance -- atoms farther away than this value
   // will abort the check early.
   double maxCheckDistance = 0.0;
-  for (QHash<unsigned int, XtalCompositionStruct>::const_iterator
-         it = limits.constBegin(),
-         it_end = limits.constEnd();
-       it != it_end; ++it) {
-    if (it.value().minRadius > maxCheckDistance) {
-      maxCheckDistance = it.value().minRadius;
-    }
+  for (const auto& atmn : limits.getAtomicNumbers()) {
+    if (limits.getMinRadius(atmn) > maxCheckDistance)
+      maxCheckDistance = limits.getMinRadius(atmn);
   }
   maxCheckDistance += maxCheckDistance;
   const double maxCheckDistSquared = maxCheckDistance * maxCheckDistance;
@@ -1799,7 +1739,7 @@ bool Xtal::checkInteratomicDistances(
                "Size of distance list does not match number of atoms.");
 
     // Cache the minimum radius of a1
-    const double minA1Radius = limits.value((*a1).atomicNumber()).minRadius;
+    const double minA1Radius = limits.getMinRadius((*a1).atomicNumber());
 
     // Iterate through each distance
     for (int i = 0; i < squaredDists.size(); ++i) {
@@ -1822,7 +1762,7 @@ bool Xtal::checkInteratomicDistances(
 
       // Calculate the minimum distance for the atom pair
       const double minDist =
-        limits.value(a2.atomicNumber()).minRadius + minA1Radius;
+        limits.getMinRadius(a2.atomicNumber()) + minA1Radius;
       const double minDistSquared = minDist * minDist;
 
       // If the distance is too small, set atom1/atom2 and return false
@@ -1947,6 +1887,45 @@ bool Xtal::getSquaredAtomicDistancesToPoint(const Vector3& coord,
   }
 
   return true;
+}
+
+bool Xtal::compareRDFs(Xtal* other, double tolerance, int nbins, double cutoff,
+                       double sigma, bool verbose)
+{
+  // Start by a trivial check: are the species the same for both xtals?
+  if (getSymbols() != other->getSymbols())
+    return false;
+
+  // Calculate "species-resolved normalized" rdf vectors if not already done
+  if (!calculateNormalizedRDF(nbins, cutoff, sigma) ||
+      !other->calculateNormalizedRDF(nbins, cutoff, sigma)) {
+    qDebug() << "Error : failed to calculate dot product for " << getTag()
+             << " and " << other->getTag();
+    return false;
+  }
+
+  // Get the "already normalized" rdf vectors
+  std::vector<std::vector<std::vector<double> > > rdfi = getNormalizedRDF();
+  std::vector<std::vector<std::vector<double> > > rdfj = other->getNormalizedRDF();
+
+  // Calculate the dot product
+  double dotprod = 0.0;
+  for (int i = 0; i < rdfi.size(); i++)
+    for (int j = 0; j < rdfi[i].size(); j++)
+      for (int k = j; k < rdfi[i][j].size(); k++)
+        dotprod += rdfi[i][j][k] * rdfj[i][j][k];
+
+if (verbose) {
+  qDebug().noquote() << QString("   RDF dot product of %1 and %2 is %3 with tolerance %4")
+                                .arg(getTag(), 10).arg(other->getTag(), 10)
+                                .arg(dotprod, 12,'f', 6).arg(tolerance);
+}
+
+  // Compare the dot product against the rdf similarity threshold
+  if (dotprod >= tolerance)
+    return true;
+
+  return false;
 }
 
 bool Xtal::getNearestNeighborDistance(const double x, const double y,
@@ -2135,13 +2114,14 @@ QHash<QString, QVariant> Xtal::getFingerprint()
   return fp;
 }
 
-QString Xtal::getResultsEntry(bool includeHardness, int objectives_num, int optstep) const
+QString Xtal::getResultsEntry(int objectives_num, int optstep,
+                              QList<QString> chemSys) const
 {
   QString status;
   switch (getStatus()) {
     case Optimized:
       if (skippedOptimization())
-        status = "Skipped Optimization";
+        status = "Skipped";
       else
         status = "Optimized";
       break;
@@ -2149,24 +2129,21 @@ QString Xtal::getResultsEntry(bool includeHardness, int objectives_num, int opts
     case Removed:
       status = "Killed";
       break;
-    case Duplicate:
-      status = "Duplicate (" + getDuplicateString() + ")";
-      break;
-    case Supercell:
-      status = "Supercell (" + getSupercellString() + ")";
+    case Similar:
+      status = "Sim("+ getSimilarityString() + ")";
       break;
     case Error:
       status = "Error";
       break;
     case ObjectiveDismiss:
-      status = "ObjectiveDismiss";
+      status = "ObjDismiss";
       break;
     case ObjectiveFail:
-      status = "ObjectiveFail";
+      status = "ObjFail";
       break;
     case ObjectiveRetain:
     case ObjectiveCalculation:
-      status = "ObjectiveCalculation";
+      status = "ObjCalcs";
       break;
     case StepOptimized:
     case WaitingForOptimization:
@@ -2174,22 +2151,36 @@ QString Xtal::getResultsEntry(bool includeHardness, int objectives_num, int opts
     case InProcess:
     case Empty:
     case Updating:
-      status = "Opt Step " + QString::number(optstep);
+      status = "Step" + QString::number(optstep);
       break;
     default:
-      status = "In progress";
+      status = "InProgress";
       break;
   }
-  QString out = QString("%1 %2 %3 %4 %5 %6")
+
+  // Construct the "full" composition id and formula strings
+  // FIXME: this is a "mark"! This is done (instead of using Formula/Composition functions)
+  //   only because here we have easy access to full reference chemical system symbols,
+  //   so we can handle -possibly existing- zero atom counts (e.g., for sub-systems).
+  uint nFUs = getFormulaUnits();
+  QString compId = "";
+  QString formId = "";
+  for (const auto& symb : chemSys) {
+    compId += QString::number(getNumberOfAtomsOfSymbol(symb)/nFUs) + ":";
+    formId += symb + QString::number(getNumberOfAtomsOfSymbol(symb));
+  }
+  compId.chop(1);
+  //
+
+  QString out = QString("%1 %2 %3 %4 %5 %6 %7 %8")
       .arg(getRank(), 5)
-      .arg(getGeneration(), 5)
-      .arg(getIDNumber(), 5)
+      .arg(getTag(), 9)
+      .arg(formId, 15)
+      .arg(compId, 10)
       .arg(getIndex(), 5)
-      .arg(getEnthalpy() / static_cast<double>(getFormulaUnits()), 12)
-      .arg(getFormulaUnits(), 4);
-  if (includeHardness)
-    out += QString("%1")
-      .arg(vickersHardness(), 10);
+      .arg(getEnthalpyPerAtom(), 12, 'f', 6)
+      .arg(getParetoFront(), 5)
+      .arg(getDistAboveHull(), 12, 'f', 6);
   for(int i = 0; i < objectives_num; i++) {
     if (i < getStrucObjNumber())
       out += " "+QString("%1").arg(getStrucObjValues(i), 10);
@@ -2197,8 +2188,8 @@ QString Xtal::getResultsEntry(bool includeHardness, int objectives_num, int opts
       out += QString("%1").arg("-", 11);
   }
   out += QString("%1 %2")
-      .arg(m_spgSymbol, 11)
-      .arg(status, 21);
+      .arg(m_spgNumber, 6)
+      .arg(status, 16);
 
   return out;
 }
@@ -2212,14 +2203,14 @@ uint Xtal::getSpaceGroupNumber()
 
 QString Xtal::getSpaceGroupSymbol()
 {
-  if (m_spgNumber > 230)
+  if (m_spgNumber > 230 || m_spgNumber < 1)
     findSpaceGroup();
   return m_spgSymbol;
 }
 
 QString Xtal::getHTMLSpaceGroupSymbol()
 {
-  if (m_spgNumber > 230)
+  if (m_spgNumber > 230 || m_spgNumber < 1)
     findSpaceGroup();
 
   QString s = m_spgSymbol;
@@ -2249,7 +2240,7 @@ QString Xtal::getHTMLSpaceGroupSymbol()
 
 QString Xtal::getHMName(unsigned short spg)
 {
-  if (spg == 0 || spg > 230) {
+  if (spg > 230 || spg < 1) {
     qDebug() << "Error in " << __FUNCTION__ << ": an invalid "
              << "spg number of " << spg << " was entered!";
     return QString();
@@ -2262,9 +2253,9 @@ void Xtal::findSpaceGroup(double prec)
   // Check that the precision is reasonable
   if (prec < ZERO5) {
     qWarning() << "Xtal::findSpaceGroup called with a precision of " << prec
-               << ". This is likely an error. Resetting prec to " << 0.05
+               << ". This is likely an error. Resetting prec to " << SPGTOLDEF
                << ".";
-    prec = 0.05;
+    prec = SPGTOLDEF;
   }
 
   // reset space group to 0 so we can exit if needed
@@ -2283,9 +2274,9 @@ void Xtal::findSpaceGroup(double prec)
 
   // Get lattice matrix. Spglib expects column vectors.
   const Matrix3& cell = unitCell().cellMatrix();
-  double lattice[3][3] = { { cell(0, 0), cell(0, 1), cell(0, 2) },
-                           { cell(1, 0), cell(1, 1), cell(1, 2) },
-                           { cell(2, 0), cell(2, 1), cell(2, 2) } };
+  double lattice[3][3] = { { cell(0, 0), cell(1, 0), cell(2, 0) },
+                           { cell(0, 1), cell(1, 1), cell(2, 1) },
+                           { cell(0, 2), cell(1, 2), cell(2, 2) } };
 
   // Get atom info
   double(*positions)[3] = new double[num][3];

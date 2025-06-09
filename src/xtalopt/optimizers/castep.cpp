@@ -22,7 +22,7 @@ using namespace std;
 
 namespace XtalOpt {
 
-CASTEPOptimizer::CASTEPOptimizer(GlobalSearch::OptBase* parent,
+CASTEPOptimizer::CASTEPOptimizer(GlobalSearch::SearchBase* parent,
                                  const QString& filename)
   : XtalOptOptimizer(parent)
 {

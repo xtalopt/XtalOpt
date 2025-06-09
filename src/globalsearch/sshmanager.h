@@ -20,7 +20,7 @@
 #include <QObject>
 
 namespace GlobalSearch {
-class OptBase;
+class SearchBase;
 class SSHConnection;
 
 /**
@@ -39,9 +39,9 @@ public:
    * Constructor.
    *
    * @param connections The maximum number of simultaneous connections.
-   * @param parent The OptBase parent
+   * @param parent The SearchBase parent
    */
-  explicit SSHManager(OptBase* parent = 0);
+  explicit SSHManager(SearchBase* parent = 0);
 
   /**
    * Destructor.

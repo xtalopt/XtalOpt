@@ -25,7 +25,7 @@ class QTabWidget;
 class QTimer;
 
 namespace GlobalSearch {
-class OptBase;
+class SearchBase;
 class Molecule;
 class Structure;
 
@@ -37,7 +37,7 @@ class Structure;
  *
  * @author David C. Lonie
  *
- * AbstractDialog is set up for use with an OptBase class. See the
+ * AbstractDialog is set up for use with an SearchBase class. See the
  * accompanying .ui file for a QtDesigner template.
  *
  * To properly use this class, modify abstractdialog.ui in Qt
@@ -61,24 +61,23 @@ class Structure;
 
   // Tabs: be sure to include and define in derived header.
   // Initialize tabs (modify as needed)
-  m_tab_init     = new TabInit(this, m_opt);
-  m_tab_edit     = new TabEdit(this, m_opt);
-  m_tab_opt      = new TabOpt(this, m_opt);
-  m_tab_sys      = new TabSys(this, m_opt);
-  m_tab_progress = new TabProgress(this, m_opt);
-  m_tab_plot     = new TabPlot(this, m_opt);
-  m_tab_log      = new TabLog(this, m_opt);
+  m_tab_struc    = new TabStruc(this, m_search);
+  m_tab_opt      = new TabOpt(this, m_search);
+  m_tab_search   = new TabSearch(this, m_search);
+  m_tab_progress = new TabProgress(this, m_search);
+  m_tab_plot     = new TabPlot(this, m_search);
+  m_tab_log      = new TabLog(this, m_search);
+  m_tab_about    = new TabAbout(this, m_search);
 
   // Populate tab widget (modify as needed)
   ui.tabs->clear();
-  ui.tabs->addTab(m_tab_init->getTabWidget(),	    tr("Cell &Initialization"));
-  ui.tabs->addTab(m_tab_edit->getTabWidget(),     tr("Optimization
-&Templates"));
-  ui.tabs->addTab(m_tab_opt->getTabWidget(),      tr("&Optimization Settings"));
-  ui.tabs->addTab(m_tab_sys->getTabWidget(),      tr("&System Settings"));
+  ui.tabs->addTab(m_tab_struc->getTabWidget(),	  tr("Cell &Initialization"));
+  ui.tabs->addTab(m_tab_opt->getTabWidget(),      tr("Optimization &Templates"));
+  ui.tabs->addTab(m_tab_search->getTabWidget(),   tr("&Optimization Settings"));
   ui.tabs->addTab(m_tab_progress->getTabWidget(), tr("&Progress"));
   ui.tabs->addTab(m_tab_plot->getTabWidget(),     tr("&Plot"));
   ui.tabs->addTab(m_tab_log->getTabWidget(),      tr("&Log"));
+  ui.tabs->addTab(m_tab_about->getTabWidget(),    tr("&About"));
 
   // Select the first tab by default
   ui.tabs->setCurrentIndex(0);
@@ -100,7 +99,7 @@ public:
    * Constructor.
    *
    * When deriving, be sure to call initialize() after initializing
-   * m_opt and ui.
+   * m_search and ui.
    * @sa initialize
    * @param parent Parent object
    * @param f Window flags
@@ -108,22 +107,22 @@ public:
   explicit AbstractDialog(QWidget* parent = 0, Qt::WindowFlags f = Qt::Window);
 
   /**
-   * Connect m_opt and the ui to the dialog. Call this in the
-   * derived class's constructor after initializing m_opt and the
+   * Connect m_search and the ui to the dialog. Call this in the
+   * derived class's constructor after initializing m_search and the
    * private ui_* member variables.
    */
   void initialize();
 
   /**
-   * Destructor. Deletes m_opt.
+   * Destructor. Deletes m_search.
    *
    * Consider calling something along the lines of
 @verbatim
-  if (m_opt->saveOnExit) {
-    m_opt->tracker()->lockForRead();
+  if (m_search->saveOnExit) {
+    m_search->tracker()->lockForRead();
     writeSettings();
     saveSession();
-    m_opt->tracker()->unlock();
+    m_search->tracker()->unlock();
   }
 @endverbatim
    * in the derived destructor.
@@ -131,9 +130,9 @@ public:
   virtual ~AbstractDialog() override;
 
   /**
-   * @return The associated OptBase derived class.
+   * @return The associated SearchBase derived class.
    */
-  OptBase* getOptBase() { return m_opt; };
+  SearchBase* getSearchBase() { return m_search; };
 
 public slots:
   /**
@@ -151,7 +150,7 @@ public slots:
   virtual void lockGUI();
 
   /**
-   * Refresh the GUI from data stored in m_opt.
+   * Refresh the GUI from data stored in m_search.
    * @note This call is passed on to all tabs.
    */
   virtual void updateGUI();
@@ -184,21 +183,21 @@ public slots:
   };
 
   /**
-   * Saves resume information to a state file in OptBase::locWorkDir.
+   * Saves resume information to a state file in SearchBase::locWorkDir.
    *
    * This should look something like:
 @verbatim
 void DerivedDialog::saveSession() {
   // Notify if this was user requested.
-  if (m_opt->savePending) {
+  if (m_search->savePending) {
     return;
   }
   bool notify = false;
   if (sender() == ui_push_save) {
     notify = true;
   }
-  m_opt->savePending = true;
-  QtConcurrent::run(m_opt, &DerivedOptBase::save, QString(""), notify);
+  m_search->savePending = true;
+  QtConcurrent::run(m_search, &DerivedSearchBase::save, QString(""), notify);
 }
 @endverbatim
    */
@@ -277,31 +276,31 @@ void DerivedDialog::saveSession() {
   /** @} */
 
   /**
-   * Called by OptBase::debug and sends a message to the log tab.
+   * Called by SearchBase::debug and sends a message to the log tab.
    *
    * @note Do not use this function, but instead send call
-   * OptBase::debug
+   * SearchBase::debug
    *
    * @param s The debugging message.
    */
   void newDebug(const QString& s) { emit newLog("Debug: " + s); };
 
   /**
-   * Called by OptBase::warning and sends a message to the log tab.
+   * Called by SearchBase::warning and sends a message to the log tab.
    *
    * @note Do not use this function, but instead send call
-   * OptBase::warning
+   * SearchBase::warning
    *
    * @param s The warning message.
    */
   void newWarning(const QString& s) { emit newLog("Warning: " + s); };
 
   /**
-   * Called by OptBase::error. Sends a message to the log tab
+   * Called by SearchBase::error. Sends a message to the log tab
    * and calls errorBox.
    *
    * @note Do not use this function, but instead send call
-   * OptBase::error
+   * SearchBase::error
    *
    * @param s The error message.
    */
@@ -312,11 +311,11 @@ void DerivedDialog::saveSession() {
   };
 
   /**
-   * Called by OptBase::message. Sends a message to the log tab
+   * Called by SearchBase::message. Sends a message to the log tab
    * and calls messageBox.
    *
    * @note Do not use this function, but instead send call
-   * OptBase::message
+   * SearchBase::message
    *
    * @param s The message.
    */
@@ -331,7 +330,7 @@ void DerivedDialog::saveSession() {
    * will block the GUI thread until user clicks "Ok".
    *
    * @note Do not use this function, but instead send call
-   * OptBase::error
+   * SearchBase::error
    *
    * @param s Error message.
    */
@@ -342,7 +341,7 @@ void DerivedDialog::saveSession() {
    * will block the GUI thread until user clicks "Ok".
    *
    * @note Do not use this function, but instead send call
-   * OptBase::message
+   * SearchBase::message
    *
    * @param s message.
    */
@@ -353,7 +352,7 @@ protected slots:
    * Begin the search. Suggested form for derived class:
 @verbatim
 void DerivedDialog::startSearch() {
-  QtConcurrent::run(m_opt, &DerivedOptBase::startSearch);
+  QtConcurrent::run(m_search, &DerivedSearchBase::startSearch);
 }
 @endverbatim
    */
@@ -473,9 +472,9 @@ signals:
 
   /**
    * Emitted when there is a new log message ready.
-   * @sa OptBase::debug
-   * @sa OptBase::warning
-   * @sa OptBase::error
+   * @sa SearchBase::debug
+   * @sa SearchBase::warning
+   * @sa SearchBase::error
    * @param str Log message
    */
   void newLog(const QString& str);
@@ -557,14 +556,14 @@ protected:
   virtual void resumeSession_(const QString& filename);
 
   /**
-   * Cached pointer to the associated OptBase object.
+   * Cached pointer to the associated SearchBase object.
    */
-  OptBase* m_opt;
+  SearchBase* m_search;
 
   /**
-   * Whether or not to delete the Optbase object upon destruction.
+   * Whether or not to delete the Searchbase object upon destruction.
    */
-  bool m_ownsOptBase;
+  bool m_ownsSearchBase;
 
   /**
    * The molecule object that is selected.

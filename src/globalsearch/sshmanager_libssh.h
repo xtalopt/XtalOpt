@@ -23,7 +23,7 @@
 #include <QSemaphore>
 
 namespace GlobalSearch {
-class OptBase;
+class SearchBase;
 class SSHConnection;
 class SSHConnectionLibSSH;
 
@@ -44,9 +44,9 @@ public:
    * Constructor.
    *
    * @param connections The maximum number of simultaneous connections.
-   * @param parent The OptBase parent
+   * @param parent The SearchBase parent
    */
-  explicit SSHManagerLibSSH(unsigned int connections = 5, OptBase* parent = 0);
+  explicit SSHManagerLibSSH(unsigned int connections = 5, SearchBase* parent = 0);
 
   /**
    * Destructor.

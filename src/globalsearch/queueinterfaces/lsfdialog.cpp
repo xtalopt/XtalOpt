@@ -21,16 +21,16 @@
 
 #include <globalsearch/queueinterfaces/lsf.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/ui/abstractdialog.h>
 
 #include "ui_lsfdialog.h"
 
 namespace GlobalSearch {
 
-LsfConfigDialog::LsfConfigDialog(AbstractDialog* parent, OptBase* o,
+LsfConfigDialog::LsfConfigDialog(AbstractDialog* parent, SearchBase* o,
                                  LsfQueueInterface* p)
-  : QDialog(parent), m_opt(o), m_lsf(p), ui(new Ui::LsfConfigDialog)
+  : QDialog(parent), m_search(o), m_lsf(p), ui(new Ui::LsfConfigDialog)
 {
   ui->setupUi(this);
 }
@@ -54,7 +54,7 @@ void LsfConfigDialog::updateGUI()
   ui->edit_bjobs->blockSignals(false);
   ui->edit_bsub->blockSignals(false);
 
-  ui->widget_globalQueueInterfaceSettings->updateGUI(m_opt);
+  ui->widget_globalQueueInterfaceSettings->updateGUI(m_search);
 }
 
 void LsfConfigDialog::accept()
@@ -63,7 +63,7 @@ void LsfConfigDialog::accept()
   m_lsf->m_statusCommand = ui->edit_bjobs->text().trimmed();
   m_lsf->m_submitCommand = ui->edit_bsub->text().trimmed();
 
-  ui->widget_globalQueueInterfaceSettings->accept(m_opt);
+  ui->widget_globalQueueInterfaceSettings->accept(m_search);
 
   QDialog::accepted();
   close();

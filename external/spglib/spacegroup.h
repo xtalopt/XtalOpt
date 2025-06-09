@@ -15,7 +15,7 @@
 /*   the documentation and/or other materials provided with the */
 /*   distribution. */
 
-/* * Neither the name of the phonopy project nor the names of its */
+/* * Neither the name of the spglib project nor the names of its */
 /*   contributors may be used to endorse or promote products derived */
 /*   from this software without specific prior written permission. */
 
@@ -41,43 +41,44 @@
 #include "symmetry.h"
 
 typedef struct {
-  int number;
-  int hall_number;
-  int pointgroup_number;
-  char schoenflies[7];
-  char hall_symbol[17];
-  char international[32];
-  char international_long[20];
-  char international_short[11];
-  char choice[6];
-  double bravais_lattice[3][3];
-  double origin_shift[3];
+    int number;
+    int hall_number;
+    int pointgroup_number;
+    char schoenflies[7];
+    char hall_symbol[17];
+    char international[32];
+    char international_long[20];
+    char international_short[11];
+    char choice[6];
+    double bravais_lattice[3][3];
+    double origin_shift[3];
 } Spacegroup;
 
 typedef enum {
-  CENTERING_ERROR,
-  PRIMITIVE,
-  BODY,
-  FACE,
-  A_FACE,
-  B_FACE,
-  C_FACE,
-  BASE,
-  R_CENTER,
+    CENTERING_ERROR,
+    PRIMITIVE,
+    BODY,
+    FACE,
+    A_FACE,
+    B_FACE,
+    C_FACE,
+    BASE,
+    R_CENTER,
 } Centering;
 
-Primitive * spa_get_spacegroup(Spacegroup * spacegroup,
-                               const Cell * cell,
-                               const double symprec,
-                               const double angle_tolerance);
-Spacegroup spa_search_spacegroup_with_symmetry(const Symmetry *symmetry,
-					       const double symprec);
-Spacegroup spa_get_spacegroup_with_hall_number(const Primitive * primitive,
-                                               const int hall_number);
-Cell * spa_transform_to_primitive(const Cell * cell,
-                                  SPGCONST double trans_mat[3][3],
-                                  const Centering centering,
-                                  const double symprec);
-
+Spacegroup *spa_search_spacegroup(Primitive const *primitive,
+                                  int const hall_number, double const symprec,
+                                  double const angle_tolerance);
+Spacegroup *spa_search_spacegroup_with_symmetry(Symmetry const *symmetry,
+                                                double const prim_lat[3][3],
+                                                double const symprec);
+Cell *spa_transform_to_primitive(int *mapping_table, Cell const *cell,
+                                 double const trans_mat[3][3],
+                                 Centering const centering,
+                                 double const symprec);
+Cell *spa_transform_from_primitive(Cell const *primitive,
+                                   Centering const centering,
+                                   double const symprec);
+void spa_copy_spacegroup(Spacegroup *dst, Spacegroup const *src);
 
 #endif

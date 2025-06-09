@@ -19,7 +19,7 @@
 
 namespace GlobalSearch {
 
-SSHManagerCLI::SSHManagerCLI(unsigned int connections, OptBase* parent)
+SSHManagerCLI::SSHManagerCLI(unsigned int connections, SearchBase* parent)
   : SSHManager(parent), m_conn(new SSHConnectionCLI()),
     m_semaphore(new QSemaphore(connections))
 {

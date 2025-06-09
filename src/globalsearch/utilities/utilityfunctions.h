@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <QDateTime>
 #include <globalsearch/constants.h>
 
 // Unfortunately, GCC < 4.9.0 did not include regex, so we have
@@ -33,8 +34,68 @@
 #include <set>
 #include <sstream>
 #include <vector>
+#include <cmath>
 
-inline bool containsOnlySpaces(const std::string& str)
+static inline QString uniqueTimestampString(const QString& id = QString())
+{
+  // Return a "unique" string with current date and time
+  //   (millisecond resolution), e.g., for distinct file names.
+  // The user can "optionally" add an extra identifier with "id".
+  // Format codes:
+  //   yyyy = 4‑digit year
+  //   MM   = 2‑digit month (01–12)
+  //   dd   = 2‑digit day (01–31)
+  //   HH   = 2‑digit hour (00–23)
+  //   mm   = 2‑digit minute (00–59)
+  //   ss   = 2‑digit second (00–59)
+  //   zzz  = 3‑digit millisecond (000–999)
+
+  QString ts = QDateTime::currentDateTime()
+      .toString(QStringLiteral("yyyyMMdd_HHmmss_zzz"));
+
+  if (!id.isEmpty())
+    ts += QLatin1Char('_') + id;
+
+  return ts;
+}
+
+static inline int findMinIndex(const std::vector<double>& list)
+{
+  // A helper function to find the index of the minimum
+  //   of a list of double values.
+  if (list.empty()) {
+    return -1;
+  }
+
+  auto min_it = std::min_element(list.begin(), list.end());
+  return std::distance(list.begin(), min_it);
+}
+
+static inline std::vector<std::string> splitStringByNewline(const std::string& str)
+{
+  // A kind of special function to handle "POTCAR" strings which contain
+  // new line character "\n" after each elemental entry.
+  std::vector<std::string> lines;
+  std::stringstream ss(str);
+  std::string line;
+  while (std::getline(ss, line)) {
+    lines.push_back(line);
+  }
+  return lines;
+}
+
+static inline double roundToDecimalPlaces(double d, int n)
+{
+  // A helper function to set the precision of double values
+  // Basically, it returns "d" with "n" decimal digits. If n<0,
+  //   "d" is returned as is.
+  if (n < 0)
+    return d;
+  double prec = pow(10.0, n);
+  return round(d * prec) / prec;
+}
+
+static inline bool containsOnlySpaces(const std::string& str)
 {
   return std::all_of(str.begin(), str.end(), [](char c) {
     return std::isspace(static_cast<unsigned char>(c));

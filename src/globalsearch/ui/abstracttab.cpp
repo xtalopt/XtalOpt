@@ -14,7 +14,7 @@
 
 #include <globalsearch/ui/abstracttab.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/ui/abstractdialog.h>
 
 #include <QApplication>
@@ -23,8 +23,8 @@
 
 namespace GlobalSearch {
 
-AbstractTab::AbstractTab(AbstractDialog* parent, OptBase* p)
-  : QObject(parent), m_dialog(parent), m_opt(p), m_isInitialized(false)
+AbstractTab::AbstractTab(AbstractDialog* parent, SearchBase* p)
+  : QObject(parent), m_dialog(parent), m_search(p), m_isInitialized(false)
 {
   m_tab_widget = new QWidget;
 }

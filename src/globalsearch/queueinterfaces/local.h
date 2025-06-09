@@ -72,10 +72,10 @@ public:
   /**
    * Constructor
    *
-   * @param parent OptBase parent
+   * @param parent SearchBase parent
    * @param settingFile Filename from which to initialize settings.
    */
-  explicit LocalQueueInterface(OptBase* parent,
+  explicit LocalQueueInterface(SearchBase* parent,
                                const QString& settingFile = "");
 
   /**
@@ -187,6 +187,14 @@ public slots:
    */
   virtual bool copyAFileLocalToRemote(const QString& loc_file,
                                       const QString& rem_file) override;
+  /**
+   * Remove a files by its name from local working directory of structure.
+   *
+   * @param filename The file's name
+   *
+   * @return True on success, false otherwise
+   */
+  virtual bool removeAFile(Structure *s, const QString& filename) override;
 
   /**
    * Check if the file \a filename exists in the working directory

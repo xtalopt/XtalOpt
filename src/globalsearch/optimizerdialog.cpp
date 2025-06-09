@@ -17,7 +17,7 @@
 
 #include <globalsearch/optimizerdialog.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/optimizer.h>
 #include <globalsearch/ui/abstractdialog.h>
 
@@ -33,8 +33,8 @@
 namespace GlobalSearch {
 
 OptimizerConfigDialog::OptimizerConfigDialog(AbstractDialog* parent,
-                                             OptBase* opt, Optimizer* o)
-  : QDialog(parent), m_opt(opt), m_optimizer(o), m_lineedit(0)
+                                             SearchBase* srch, Optimizer* o)
+  : QDialog(parent), m_search(srch), m_optimizer(o), m_lineedit(0)
 {
   QVBoxLayout* vlayout = new QVBoxLayout(this);
 

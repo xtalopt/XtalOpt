@@ -28,7 +28,7 @@
 
 namespace GlobalSearch {
 
-RemoteQueueInterface::RemoteQueueInterface(OptBase* parent,
+RemoteQueueInterface::RemoteQueueInterface(SearchBase* parent,
                                            const QString& settingFile)
   : QueueInterface(parent)
 {
@@ -52,7 +52,7 @@ bool RemoteQueueInterface::writeFiles(
   // Check that the files can be written to
   for (int i = 0; i < files.size(); i++) {
     if (!files.at(i)->open(QIODevice::WriteOnly | QIODevice::Text)) {
-      m_opt->error(tr("Cannot write input file %1 (file writing failure)",
+      m_search->error(tr("Cannot write input file %1 (file writing failure)",
                       "1 is a file path")
                      .arg(files.at(i)->fileName()));
       qDeleteAll(files);
@@ -87,7 +87,7 @@ bool RemoteQueueInterface::writeFiles(
       QString filename = QFileInfo(infile).fileName();
       QFile outfile(s->getLocpath() + "/" + filename);
       if (!infile.copy(outfile.fileName())) {
-        m_opt->error(tr("Failed to copy file %1 to %2")
+        m_search->error(tr("Failed to copy file %1 to %2")
                        .arg(infile.fileName())
                        .arg(outfile.fileName()));
         return false;
@@ -104,27 +104,14 @@ bool RemoteQueueInterface::writeFiles(
 
   // ===================================================
   // If a local-remote run, perform this part and return
-  if (m_opt->m_localQueue) {
-    if (!createRemoteDirectory(s) || !cleanRemoteDirectory(s))
-      return false;
-
-    QString stdout_str, stderr_str;
-    int exitcode;
-
-    for (QStringList::const_iterator it = filenames.constBegin(),
-        it_end = filenames.constEnd(); it != it_end; ++it) {
-      QString command = "scp " + s->getLocpath() + "/" +
-                        (*it) + " " + s->getRempath() + "/" + (*it);
-      if (!runACommand("", command, &stdout_str, &stderr_str, &exitcode))
-        return false;
-    }
+  if (m_search->m_localQueue) {
     return true;
   }
   // ===================================================
 
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
+  SSHConnection* ssh = m_search->ssh()->getFreeConnection();
   if (ssh == nullptr) {
-    m_opt->warning(tr("Cannot connect to ssh server."));
+    m_search->warning(tr("Cannot connect to ssh server."));
     return false;
   }
 
@@ -135,14 +122,14 @@ bool RemoteQueueInterface::writeFiles(
       it_end = filenames.constEnd(); it != it_end; ++it) {
     if (!ssh->copyFileToServer(s->getLocpath() + "/" + (*it),
           s->getRempath() + "/" + (*it))) {
-      m_opt->warning(tr("Error copying \"%1\" to remote server (structure %2)")
+      m_search->warning(tr("Error copying \"%1\" to remote server (structure %2)")
           .arg(*it)
           .arg(s->getTag()));
-      m_opt->ssh()->unlockConnection(ssh);
+      m_search->ssh()->unlockConnection(ssh);
       return false;
     }
   }
-  m_opt->ssh()->unlockConnection(ssh);
+  m_search->ssh()->unlockConnection(ssh);
   return true;
 }
 
@@ -166,7 +153,7 @@ bool RemoteQueueInterface::runACommand(const QString& workdir, const QString& co
 
   // ===================================================
   // If a local-remote run, perform this part and return
-  if (m_opt->m_localQueue) {
+  if (m_search->m_localQueue) {
     QProcess proc;
     if (!workdir.isEmpty()) {
       proc.setWorkingDirectory(workdir);
@@ -179,7 +166,7 @@ bool RemoteQueueInterface::runACommand(const QString& workdir, const QString& co
     exitcode   = proc.exitCode();
 
     if (!stderr_str.isEmpty() || (exitcode != 0)) {
-      m_opt->warning(tr("LocalQueue command %1 at %2 exited with code %3 and error: %4")
+      m_search->warning(tr("LocalQueue command %1 at %2 exited with code %3 and error: %4")
           .arg(command).arg(workdir).arg(exitcode).arg(stderr_str));
     }
 
@@ -191,9 +178,9 @@ bool RemoteQueueInterface::runACommand(const QString& workdir, const QString& co
   }
   // ===================================================
 
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
+  SSHConnection* ssh = m_search->ssh()->getFreeConnection();
   if (ssh == nullptr) {
-    m_opt->warning("Cannot connect to ssh server");
+    m_search->warning("Cannot connect to ssh server");
     return false;
   }
 
@@ -212,12 +199,12 @@ bool RemoteQueueInterface::runACommand(const QString& workdir, const QString& co
   *ercd = exitcode;
 
   if (!ok || exitcode !=0) {
-    m_opt->warning(tr("Remote command %1 at %2 failed!")
+    m_search->warning(tr("Remote command %1 at %2 failed!")
         .arg(command).arg(workdir));
-    m_opt->ssh()->unlockConnection(ssh);
+    m_search->ssh()->unlockConnection(ssh);
     return false;
   }
-  m_opt->ssh()->unlockConnection(ssh);
+  m_search->ssh()->unlockConnection(ssh);
 
   return true;
 }
@@ -227,29 +214,24 @@ bool RemoteQueueInterface::copyAFileRemoteToLocal(const QString& rem_file,
 {
   // ===================================================
   // If a local-remote run, perform this part and return
-  if (m_opt->m_localQueue) {
-    // QFile copy does not overwrite existing file,
-    //   so we first delete it first if it exists.
-    if (QFile::exists(loc_file)) {
-      QFile::remove(loc_file);
-    }
-    return QFile::copy(rem_file, loc_file);
+  if (m_search->m_localQueue) {
+    return true;
   }
   // ===================================================
 
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
+  SSHConnection* ssh = m_search->ssh()->getFreeConnection();
   if (ssh == nullptr) {
-    m_opt->warning("Cannot connect to ssh server");
+    m_search->warning("Cannot connect to ssh server");
     return false;
   }
 
   if (!ssh->copyFileFromServer(rem_file, loc_file)) {
-    m_opt->warning(tr("Failed copying '%1' from remote server to local '%2'")
+    m_search->warning(tr("Failed copying '%1' from remote server to local '%2'")
         .arg(rem_file).arg(loc_file));
-    m_opt->ssh()->unlockConnection(ssh);
+    m_search->ssh()->unlockConnection(ssh);
     return false;
   }
-  m_opt->ssh()->unlockConnection(ssh);
+  m_search->ssh()->unlockConnection(ssh);
 
   return true;
 }
@@ -259,29 +241,53 @@ bool RemoteQueueInterface::copyAFileLocalToRemote(const QString& loc_file,
 {
   // ===================================================
   // If a local-remote run, perform this part and return
-  if (m_opt->m_localQueue) {
-    // QFile copy does not overwrite existing file,
-    //   so we first delete it, if it exists.
-    if (QFile::exists(rem_file)) {
-      QFile::remove(rem_file);
-    }
-    return QFile::copy(loc_file, rem_file);
+  if (m_search->m_localQueue) {
+    return true;
   }
   // ===================================================
 
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
+  SSHConnection* ssh = m_search->ssh()->getFreeConnection();
   if (ssh == nullptr) {
-    m_opt->warning("Cannot connect to ssh server");
+    m_search->warning("Cannot connect to ssh server");
     return false;
   }
 
   if (!ssh->copyFileToServer(loc_file, rem_file)) {
-    m_opt->warning(tr("Failed copying '%1' to remote server '%2'")
+    m_search->warning(tr("Failed copying '%1' to remote server '%2'")
         .arg(loc_file).arg(rem_file));
-    m_opt->ssh()->unlockConnection(ssh);
+    m_search->ssh()->unlockConnection(ssh);
     return false;
   }
-  m_opt->ssh()->unlockConnection(ssh);
+  m_search->ssh()->unlockConnection(ssh);
+  return true;
+}
+
+bool RemoteQueueInterface::removeAFile(Structure *s, const QString& filename)
+{
+  // ===================================================
+  // If a local-remote run, perform this part and return
+  if (m_search->m_localQueue) {
+    if (!QFile::remove(s->getLocpath() + QDir::separator() + filename))
+      return false;
+
+    return true;
+  }
+  // ===================================================
+
+  SSHConnection* ssh2 = m_search->ssh()->getFreeConnection();
+  if (ssh2 == nullptr) {
+    m_search->warning(tr("Cannot connect to ssh server"));
+    return false;
+  }
+
+  if (!ssh2->removeRemoteFile(s->getRempath() + QDir::separator() + filename)) {
+    m_search->warning(
+      tr("Error removing the remote file %1").arg(filename));
+    m_search->ssh()->unlockConnection(ssh2);
+    return false;
+  }
+  m_search->ssh()->unlockConnection(ssh2);
+
   return true;
 }
 
@@ -295,30 +301,30 @@ bool RemoteQueueInterface::checkIfFileExists(Structure* s,
 
   // ===================================================
   // If a local-remote run, perform this part and return
-  if (m_opt->m_localQueue) {
-    *exists = QFile::exists(s->getRempath() + QDir::separator() + filename);
+  if (m_search->m_localQueue) {
+    *exists = QFile::exists(s->getLocpath() + QDir::separator() + filename);
     return true;
   }
   // ===================================================
 
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
+  SSHConnection* ssh = m_search->ssh()->getFreeConnection();
 
   if (ssh == nullptr) {
-    m_opt->warning(tr("Cannot connect to ssh server"));
+    m_search->warning(tr("Cannot connect to ssh server"));
     return false;
   }
 
   needle = s->getRempath() + "/" + filename;
   if (!ssh->readRemoteDirectoryContents(searchPath, haystack)) {
-    m_opt->warning(tr("Error reading directory %1 on %2@%3:%4")
+    m_search->warning(tr("Error reading directory %1 on %2@%3:%4")
                      .arg(searchPath)
                      .arg(ssh->getUser())
                      .arg(ssh->getHost())
                      .arg(ssh->getPort()));
-    m_opt->ssh()->unlockConnection(ssh);
+    m_search->ssh()->unlockConnection(ssh);
     return false;
   }
-  m_opt->ssh()->unlockConnection(ssh);
+  m_search->ssh()->unlockConnection(ssh);
 
   *exists = false;
   for (QStringList::const_iterator it = haystack.constBegin(),
@@ -339,7 +345,7 @@ bool RemoteQueueInterface::fetchFile(Structure* s, const QString& rel_filename,
 {
   // ===================================================
   // If a local-remote run, perform this part and return
-  if (m_opt->m_localQueue) {
+  if (m_search->m_localQueue) {
     QString filename = s->getRempath() + "/" + rel_filename;
     QFile output(filename);
 
@@ -355,18 +361,18 @@ bool RemoteQueueInterface::fetchFile(Structure* s, const QString& rel_filename,
   }
   // ===================================================
 
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
+  SSHConnection* ssh = m_search->ssh()->getFreeConnection();
 
   if (ssh == nullptr) {
-    m_opt->warning(tr("Cannot connect to ssh server"));
+    m_search->warning(tr("Cannot connect to ssh server"));
     return false;
   }
 
   if (!ssh->readRemoteFile(s->getRempath() + "/" + rel_filename, *contents)) {
-    m_opt->ssh()->unlockConnection(ssh);
+    m_search->ssh()->unlockConnection(ssh);
     return false;
   }
-  m_opt->ssh()->unlockConnection(ssh);
+  m_search->ssh()->unlockConnection(ssh);
 
   return true;
 }
@@ -393,13 +399,13 @@ bool RemoteQueueInterface::grepFile(Structure* s, const QString& matchText,
 
   // ===================================================
   // If a local-remote run, perform this part and return
-  if (m_opt->m_localQueue) {
+  if (m_search->m_localQueue) {
     if (exitcode) {
       *exitcode = 1;
     }
 
     // Read the file
-    QFile infile(s->getRempath() + "/" + filename);
+    QFile infile(s->getLocpath() + "/" + filename);
     if (!infile.open(QFile::ReadOnly | QFile::Text)) {
       return false;
     }
@@ -422,9 +428,9 @@ bool RemoteQueueInterface::grepFile(Structure* s, const QString& matchText,
   }
   // ===================================================
 
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
+  SSHConnection* ssh = m_search->ssh()->getFreeConnection();
   if (ssh == nullptr) {
-    m_opt->warning(tr("Cannot connect to ssh server"));
+    m_search->warning(tr("Cannot connect to ssh server"));
     return false;
   }
 
@@ -434,10 +440,10 @@ bool RemoteQueueInterface::grepFile(Structure* s, const QString& matchText,
                       .arg(s->getRempath())
                       .arg(filename),
                     stdout_str, stderr_str, ec)) {
-    m_opt->ssh()->unlockConnection(ssh);
+    m_search->ssh()->unlockConnection(ssh);
     return false;
   }
-  m_opt->ssh()->unlockConnection(ssh);
+  m_search->ssh()->unlockConnection(ssh);
 
   if (exitcode) {
     *exitcode = ec;
@@ -457,17 +463,16 @@ bool RemoteQueueInterface::createRemoteDirectory(Structure* structure,
 {
   // ===================================================
   // If a local-remote run, perform this part and return
-  if (m_opt->m_localQueue) {
-    QDir dir;
-    return dir.mkpath(structure->getRempath());
+  if (m_search->m_localQueue) {
+    return true;
   }
   // ===================================================
 
   // We'll create ssh connection only if one hasn't been passed as argument.
   // Also, we won't destroy a passed ssh as it belongs to the calling function.
-  SSHConnection* ssh2 = (!ssh) ? m_opt->ssh()->getFreeConnection() : ssh;
+  SSHConnection* ssh2 = (!ssh) ? m_search->ssh()->getFreeConnection() : ssh;
   if (ssh2 == nullptr) {
-    m_opt->warning(tr("Cannot connect to ssh server"));
+    m_search->warning(tr("Cannot connect to ssh server"));
     return false;
   }
 
@@ -476,11 +481,11 @@ bool RemoteQueueInterface::createRemoteDirectory(Structure* structure,
   QString stdout_str, stderr_str;
   int ec;
   if (!ssh2->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
-    m_opt->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
-    if (!ssh) m_opt->ssh()->unlockConnection(ssh2);
+    m_search->warning(tr("Error executing %1: %2").arg(command).arg(stderr_str));
+    if (!ssh) m_search->ssh()->unlockConnection(ssh2);
     return false;
   }
-  if (!ssh) m_opt->ssh()->unlockConnection(ssh2);
+  if (!ssh) m_search->ssh()->unlockConnection(ssh2);
 
   return true;
 }
@@ -492,44 +497,27 @@ bool RemoteQueueInterface::cleanRemoteDirectory(Structure* structure,
 {
   // ===================================================
   // If a local-remote run, perform this part and return
-  if (m_opt->m_localQueue) {
-    QDir dir(structure->getRempath());
-    dir.setNameFilters(QStringList() << "*");
-    dir.setFilter(QDir::Files);
-
-    bool ok = true;
-    foreach(QString dirFile, dir.entryList()) {
-      if (!dir.remove(dirFile)) {
-        ok = false;
-      }
-    }
-
-    if (!ok) {
-      m_opt->warning(
-          tr("Error clearing remote directory %1").arg(structure->getRempath()));
-      return false;
-    }
-
+  if (m_search->m_localQueue) {
     return true;
   }
   // ===================================================
 
   // We'll create ssh connection only if one hasn't been passed as argument.
   // Also, we won't destroy a passed ssh: it belongs to the calling function.
-  SSHConnection* ssh2 = (!ssh) ? m_opt->ssh()->getFreeConnection() : ssh;
+  SSHConnection* ssh2 = (!ssh) ? m_search->ssh()->getFreeConnection() : ssh;
   if (ssh2 == nullptr) {
-    m_opt->warning(tr("Cannot connect to ssh server"));
+    m_search->warning(tr("Cannot connect to ssh server"));
     return false;
   }
 
   // 2nd arg keeps the directory, only removes directory contents.
   if (!ssh2->removeRemoteDirectory(structure->getRempath(), true)) {
-    m_opt->warning(
+    m_search->warning(
       tr("Error clearing remote directory %1").arg(structure->getRempath()));
-    if (!ssh) m_opt->ssh()->unlockConnection(ssh2);
+    if (!ssh) m_search->ssh()->unlockConnection(ssh2);
     return false;
   }
-  if (!ssh) m_opt->ssh()->unlockConnection(ssh2);
+  if (!ssh) m_search->ssh()->unlockConnection(ssh2);
 
   return true;
 }
@@ -549,43 +537,43 @@ bool RemoteQueueInterface::logErrorDirectory(Structure* structure) const
   seps = "/";
 #endif
 
-  QString path = this->m_opt->locWorkDir + seps + "errorDirs" + seps;
+  QString path = this->m_search->locWorkDir + seps + "errorDirs" + seps;
 
   // ===================================================
   // If a local-remote run, perform this part and return
-  if (m_opt->m_localQueue) {
+  if (m_search->m_localQueue) {
     QDir dir;
     if (!dir.mkpath(path)) {
-      m_opt->warning("Error: could not create error directory " + path);
+      m_search->warning("Error: could not create error directory " + path);
     }
 
     QString stdout_str, stderr_str;
     int exitcode;
-    QString command = "scp -r " + structure->getRempath() + " " + path;
+    QString command = "scp -r " + structure->getLocpath() + " " + path;
 
     return runACommand("", command, &stdout_str, &stderr_str, &exitcode);
   }
   // ===================================================
 
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
+  SSHConnection* ssh = m_search->ssh()->getFreeConnection();
   if (ssh == nullptr) {
-    m_opt->warning(tr("Cannot connect to ssh server"));
+    m_search->warning(tr("Cannot connect to ssh server"));
     return false;
   }
 
   path += strdir_s + seps;
   QDir dir;
   if (!dir.mkpath(path)) {
-    m_opt->warning("Error: could not create error directory " + path);
+    m_search->warning("Error: could not create error directory " + path);
   }
 
   if (!ssh->copyDirectoryFromServer(structure->getRempath(), path)) {
-    m_opt->error("Cannot copy from remote directory for Structure " +
+    m_search->error("Cannot copy from remote directory for Structure " +
                  structure->getTag());
-    m_opt->ssh()->unlockConnection(ssh);
+    m_search->ssh()->unlockConnection(ssh);
     return false;
   }
-  m_opt->ssh()->unlockConnection(ssh);
+  m_search->ssh()->unlockConnection(ssh);
 
   return true;
 }
@@ -594,30 +582,25 @@ bool RemoteQueueInterface::copyRemoteFilesToLocalCache(Structure* structure) con
 {
   // ===================================================
   // If a local-remote run, perform this part and return
-  if (m_opt->m_localQueue) {
-    QString stdout_str, stderr_str;
-    int exitcode;
-    QString command = "scp -r " + structure->getRempath() +
-      " " + structure->getLocpath() + "..";
-
-    return runACommand("", command, &stdout_str, &stderr_str, &exitcode);
+  if (m_search->m_localQueue) {
+    return true;
   }
   // ===================================================
 
-  SSHConnection* ssh = m_opt->ssh()->getFreeConnection();
+  SSHConnection* ssh = m_search->ssh()->getFreeConnection();
   if (ssh == nullptr) {
-    m_opt->warning(tr("Cannot connect to ssh server"));
+    m_search->warning(tr("Cannot connect to ssh server"));
     return false;
   }
 
   if (!ssh->copyDirectoryFromServer(structure->getRempath(),
         structure->getLocpath())) {
-    m_opt->error("Cannot copy from remote directory for Structure " +
+    m_search->error("Cannot copy from remote directory for Structure " +
         structure->getTag());
-    m_opt->ssh()->unlockConnection(ssh);
+    m_search->ssh()->unlockConnection(ssh);
     return false;
   }
-  m_opt->ssh()->unlockConnection(ssh);
+  m_search->ssh()->unlockConnection(ssh);
 
   return true;
 }

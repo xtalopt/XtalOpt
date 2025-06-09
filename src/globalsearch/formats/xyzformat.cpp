@@ -83,7 +83,7 @@ bool XyzFormat::read(Structure* s, const QString& filename)
           return false;
         }
       } else {
-        atomicNum = ElemInfo::getAtomicNum(lineSplit[0]);
+        atomicNum = ElementInfo::getAtomicNum(lineSplit[0]);
         if (atomicNum < 1 || atomicNum > 255) {
           qDebug() << "Error in XYZ reader: Invalid atomic symbol entered.";
           qDebug() << "Error occurred on this line: " << line.c_str();

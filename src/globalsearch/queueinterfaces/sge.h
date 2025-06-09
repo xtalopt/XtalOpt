@@ -36,7 +36,7 @@ class SgeQueueInterface : public RemoteQueueInterface
   Q_OBJECT
 
 public:
-  explicit SgeQueueInterface(OptBase* parent, const QString& settingsFile = "");
+  explicit SgeQueueInterface(SearchBase* parent, const QString& settingsFile = "");
 
   virtual ~SgeQueueInterface() override;
 

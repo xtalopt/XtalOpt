@@ -36,7 +36,7 @@ class PbsQueueInterface : public RemoteQueueInterface
   Q_OBJECT
 
 public:
-  explicit PbsQueueInterface(OptBase* parent, const QString& settingsFile = "");
+  explicit PbsQueueInterface(SearchBase* parent, const QString& settingsFile = "");
 
   virtual ~PbsQueueInterface() override;
 

@@ -21,16 +21,16 @@
 
 #include <globalsearch/queueinterfaces/pbs.h>
 
-#include <globalsearch/optbase.h>
+#include <globalsearch/searchbase.h>
 #include <globalsearch/ui/abstractdialog.h>
 
 #include "ui_pbsdialog.h"
 
 namespace GlobalSearch {
 
-PbsConfigDialog::PbsConfigDialog(AbstractDialog* parent, OptBase* o,
+PbsConfigDialog::PbsConfigDialog(AbstractDialog* parent, SearchBase* o,
                                  PbsQueueInterface* p)
-  : QDialog(parent), m_opt(o), m_pbs(p), ui(new Ui::PbsConfigDialog)
+  : QDialog(parent), m_search(o), m_pbs(p), ui(new Ui::PbsConfigDialog)
 {
   ui->setupUi(this);
 }
@@ -54,7 +54,7 @@ void PbsConfigDialog::updateGUI()
   ui->edit_qstat->blockSignals(false);
   ui->edit_qsub->blockSignals(false);
 
-  ui->widget_globalQueueInterfaceSettings->updateGUI(m_opt);
+  ui->widget_globalQueueInterfaceSettings->updateGUI(m_search);
 }
 
 void PbsConfigDialog::accept()
@@ -63,7 +63,7 @@ void PbsConfigDialog::accept()
   m_pbs->m_statusCommand = ui->edit_qstat->text().trimmed();
   m_pbs->m_submitCommand = ui->edit_qsub->text().trimmed();
 
-  ui->widget_globalQueueInterfaceSettings->accept(m_opt);
+  ui->widget_globalQueueInterfaceSettings->accept(m_search);
 
   QDialog::accepted();
   close();
