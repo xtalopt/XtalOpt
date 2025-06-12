@@ -5,13 +5,20 @@
       chemicalFormulas = Ti2O4 - Ti4O8
 
   # Reference energies (not necessary for fixed-composition search)
-  #referenceEnergies = Ti3 -14.18719749, O4 -10.19855357
+    #referenceEnergies = Ti3 -14.18719749, O4 -10.19855357
 
   # Search type
-  #vcSearch = true
+    #vcSearch = false
 
   # System size limit
-  #maxAtoms = 30
+    #maxAtoms = 20
+
+  # Global optimization settings
+    #optimizationType = basic
+    #tournamentSelection = true
+    #restrictedPool = false
+    #crowdingDistance = true
+    #objectivePrecision = -1
 
   # Lattice constraints
     # Lattice length minima and maxima (Angstroms)
@@ -34,11 +41,11 @@
     # Elemental volumes (min/max in Angstroms cubed per cell for all elements)
       #elementalVolumes = Ti1 30 50, O2 40 60
     # Scaled volume limits (factor of equivalent vdW spheres for all atoms)
-      #minVolumeScale = 0.8
-      #maxVolumeScale = 1.2
+      #minVolumeScale = 0.0
+      #maxVolumeScale = 0.0
     # Absolute min and max limits (Angstroms cubed per atom)
       minVolume = 1.0
-      maxVolume = 100000.0
+      maxVolume = 100.0
 
   # Atomic radii
     # Ensure that atoms are distanced such that their covalent radii do not
@@ -48,6 +55,13 @@
       radiiScalingFactor = 0.5
     # Minimum radius for any given atom (Angstroms)
       minRadius = 0.25
+
+  # Custom IAD entries appear as follows:
+    # customIAD <atomicSymbol1>, <atomicSymbol2>, <minIAD>
+    #customIAD 1 = Ti, O, 1.45
+
+  # Check IADs after optimization?
+    #checkIADPostOptimization = false
 
   # Initialize molecular units?
     #usingMolecularUnits = false
@@ -62,82 +76,72 @@
 
   # Initialize all crystals with symmetry? (space groups are randomly selected)
     #usingRandSpg = false
-    # We can put down a list of space groups to be generated for sure per FU.
-    # You must comma-separate each space group (no hyphens allowed). If you
-    # want more of a single space group, repeat it like 136 below.
+  # We can put down a list of space groups to be generated for sure per FU.
+  # You must comma-separate each space group (no hyphens allowed). If you
+  # want more of a single space group, repeat it like 136 below.
     #forcedSpgsWithRandSpg = 1, 2, 136, 136, 136
 
   # Use custom interatomic distances? Note: this option and
   # "usingRadiiInteratomicDistanceLimit" cannot both be true.
-  #usingCustomIADs = false
+    #usingCustomIADs = false
 
-  # Custom IAD entries appear as follows:
-  # customIAD <atomicSymbol1>, <atomicSymbol2>, <minIAD>
-  #customIAD 1 = Ti, O, 1.45
-
-  # Check IADs after optimization?
-  #checkIADPostOptimization = false
-
-  # Custom user-defined variables
-  #user1 =
-  #user2 =
-  #user3 =
-  #user4 =
+  # Custom user-defined keywords
+    #user1 =
+    #user2 =
+    #user3 =
+    #user4 =
 
 
 # End of initialization settings
 
 # Search settings
-    # Search parameters
-    numInitial = 20
+  # Search parameters
+    numInitial = 0
     parentsPoolSize = 20
     limitRunningJobs = true
     runningJobLimit = 1
-    continuousStructures = 2
+    continuousStructures = 15
 
-    # Maximum number of structures to be generated
-    maxNumStructures = 1000
+  # Maximum number of structures to be generated
+    maxNumStructures = 100
 
-    # Number of failures for a job before we take action
-    jobFailLimit = 2
-    # What to do after a job has failed too many times
-    # Options: keepTrying, kill, replaceWithRandom, replaceWithOffspring
+  # Number of failures for a job before we take action
+    jobFailLimit = 1
+  # What to do after a job has failed too many times
+  # Options: keepTrying, kill, replaceWithRandom, replaceWithOffspring
     jobFailAction = replaceWithRandom
 
   # Mutators
-    # Percent chances of producing a supercell after genetic operations
-    #randomSupercell = 10
+  # Percent chances of producing a supercell after genetic operations
+    #randomSupercell = 0
 
-    # Relative weight of applying genetic operations - need to be integers
-      weightCrossover = 35
-      weightStripple = 35
-      weightPermustrain = 35
-      weightPermutomic = 15
-      weightPermucomp = 15
+  # Relative weight of applying genetic operations - need to be integers
+    weightCrossover = 35
+    weightStripple = 25
+    weightPermustrain = 25
+    weightPermutomic = 15
+    weightPermucomp = 5
 
-    # Stripple options
-      strippleAmplitudeMin = 0.5
-      strippleAmplitudeMax = 1.0
-      strippleNumWavesAxis1 = 1
-      strippleNumWavesAxis2 = 1
-      strippleStrainStdevMin = 0.5
-      strippleStrainStdevMax = 0.5
+  # Stripple options
+    strippleAmplitudeMin = 0.5
+    strippleAmplitudeMax = 1.0
+    strippleNumWavesAxis1 = 1
+    strippleNumWavesAxis2 = 1
+    strippleStrainStdevMin = 0.5
+    strippleStrainStdevMax = 0.5
 
-    # Permustrain options
-      permustrainNumExchanges = 4
-      permustrainStrainStdevMax = 0.5
+  # Permustrain options
+    permustrainNumExchanges = 4
+    permustrainStrainStdevMax = 0.5
 
-    # Crossover options
-      crossoverMinContribution = 25
+  # Crossover options
+    crossoverMinContribution = 25
 
   # Multi-objective search (and objectives)
-  #objective = min path/script1 outputfile1 weight1
-  #objective = max path/script2 outputfile2 weight2
-  #objective = fil path/script3 outputfile3 0.0
-  #fitnessType = scalar
-  #crowdingDistance = true
-  #objectivePrecision = 6
-  #objectivesReDo = false
+    #objective = min path/script1 outputfile1 weight1
+    #objective = max path/script2 outputfile2 weight2
+    #objective = fil path/script3 outputfile3 0.0
+    #objectivesReDo = false
 
   # Similarity check
   # By default, XtalComp is used; unless the rdf tolerance is > 0
@@ -157,21 +161,23 @@
       rdfNumBins = 3000
 
   # Space group detection tolerance
-    spglibTolerance = 0.05
+    spglibTolerance = 0.01
 
   # Seed structures
   # List of initial seed structures
-  #seedStructures = /path1/seed1 , /path2/seed2
-  # Evolve seed structures, if they are a "sub-system"
-  #evolveSubSystemSeeds = true
+    #seedStructures = /path1/seed1 , /path2/seed2
 
   # Run termination and output
   # Finish the run after max number of structures are produces
-  #softExit = true
+    #softExit = true
   # Finish the run as soon as this "run-time flag" is set
-  #hardExit = true
+    #hardExit = true
+
+  # Output of the run
   # Produce a verbose output (i.e., debug-like information)
-  #verboseOutput = true
+    #verboseOutput = true
+  # Save a copy of the convex hull to 'movie' folder after each optimization
+    #saveHullSnapshots = false
 
 # End of search settings
 
@@ -187,7 +193,7 @@
   # If we want to run XtalOpt locall, but submit jobs to queue, then
   # a remote queue must be specified in queue interface, along with
   # the following flag:
-  #localQueue = true
+    #localQueue = true
 
   # Where to save the data locally?
     localWorkingDirectory = ./localWorkingDirectory
@@ -254,11 +260,11 @@
 
     # For each element, you need to specify a separate line for its POTCAR
     # For example, TiO2 would look like this:
-    #potcarFile Ti = /home/user/vasp_potcars/Ti/POTCAR
-    #potcarFile O = /home/user/vasp_potcars/O/POTCAR
+      #potcarFile Ti = /home/user/vasp_potcars/Ti/POTCAR
+      #potcarFile O = /home/user/vasp_potcars/O/POTCAR
     # Or, if POTCARs are combined (in alphabetical order for element names),
     # a single file can be introduced for the system as:
-    #potcarFile system = /home/user/vasp_potcars/POTCAR
+      #potcarFile system = /home/user/vasp_potcars/POTCAR
 
   # PWSCF templates (only for optimizer = pwscf)
     #pwscfTemplates = pwscf1, pwscf2, pwscf3
