@@ -86,7 +86,7 @@ parser.add_argument("-c", "--convergence", type=float, default=0.05,
 parser.add_argument("-d", "--distancelimit", type=float, default=1.0,
    help="min acceptable post-opt atomic distance in A; negative: no check [%(default)s]")
 parser.add_argument("-f", "--forcelimit", type=float, default=10.0,
-   help="max acceptable post-opt force component in eV/A; negative: no check [%(default)s]")
+   help="max acceptable post-opt atomic force in eV/A; negative: no check [%(default)s]")
 parser.add_argument("-m", "--model", type=str, default="default",
    help="UIP-ML potential model [%(default)s]")
 parser.add_argument("-s", "--symprec", type=float, default=0.01,
@@ -240,7 +240,7 @@ print("Relaxation type:                          % 12d" % default_rlx)
 print("Pressure (GPa):                           % 12.6lf" % default_gpa)
 print("Force convergence threshold (eV/A):       % 12.6lf" % default_cnv)
 print("Smallest acceptable interatomic dist (A): % 12.6lf" % minimum_dis)
-print("Largest acceptable force component (eV/A):% 12.6lf" % maximum_frc)
+print("Largest acceptable atomic force (eV/A):   % 12.6lf" % maximum_frc)
 print("Spglib tolerance:                         % 12.6lf" % default_tol)
 print("Only initial and final steps in OUTCAR:       %r" % (default_onl))
 
@@ -346,14 +346,15 @@ if minimum_dis < 0.0 or default_stp == 0:
 
 # ======== Check if forces are "acceptable" (if needed)
 cnvrg_force = True
-maxmf = abs(fin_force[0][0])
+maxmf = -1.0
 for i in range(0, ini_natms):
   totlf = 0.0
   for j in range(0, 3):
-    if abs(fin_force[i][j]) > maxmf:
-      maxmf = abs(fin_force[i][j])
     totlf += fin_force[i][j]*fin_force[i][j]
-  if sqrt(totlf) > maximum_frc:
+  totlf = sqrt(totlf)
+  if totlf > maxmf:
+    maxmf = totlf
+  if totlf > maximum_frc:
     cnvrg_force = False
 if maximum_frc < 0.0 or default_stp == 0:
   cnvrg_force = True
@@ -482,7 +483,7 @@ print("Number of atoms and types in unit cell:     % 10d    % 11d" %
        (ini_natms, len(ini_types)))
 print("Chemical formula of the cell:                 %s" %
        ini_systm)
-print("Min dist max force component (A,eV/A):    % 12.6lf   % 12.6lf" %
+print("Min dist and max atomic force (A, eV/A):  % 12.6lf   % 12.6lf" %
        (minds,maxmf))
 print("Symmetry of initial and final structures:   % 10d    % 11d" %
        (ini_symmt, fin_symmt))
