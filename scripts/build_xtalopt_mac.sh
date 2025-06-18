@@ -9,7 +9,7 @@
 # *********************************************************
 
 insdir=$PWD/../xtalopt_macos
-qt5dir=/opt/homebrew/opt/qt5
+qt5dir=/opt/homebrew/opt/qt@5
 qwtdir=/opt/homebrew/opt/qwt-qt5
 libssh=/opt/homebrew/opt/libssh
 buildt=Release

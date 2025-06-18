@@ -7,12 +7,17 @@
 #  samadh~at~buffalo.edu                                               #
 # ==================================================================== #
 
+
 # NOTE: This script is tested with MACE v0.3.10 and CHGNet v0.3.8
 #       The syntax and details of loading models might differ
 #         especially with older versions.
 #       Here we use "custom"-style models for MACE
 #         (i.e., ".model file full path"), and "version"-based
 #         models for CHGNet (i.e., "0.3.0" or "0.2.0").
+#       For MatterSim, the model is loaded from a local file.
+#       For Orb and SevenNet, the pretrained models are loaded as
+#         "orb-v3-conservative-inf-omat" and
+#         "7net-mf-ompa"/"mpa", respectively.
 
 # ======== Load basic modules
 import warnings
@@ -28,12 +33,15 @@ from math import sqrt, floor
 # ======== Print the header
 print("\n===================================================================\n"
       "Wrapper script to perform VASP I/O format optimization with ML-UIPs\n"
-      "Samad Hajinazar                                                v1.3\n"
+      "Samad Hajinazar                                                v1.4\n"
       "===================================================================\n")
 
 # ======== Default models (if needed)
-def_mace_mdl   = "/Users/sam/CODES/mace_models/mace-mpa-0-medium.model"
+def_mace_mdl   = "/Users/sam/CODES/uip_models/mace-mpa-0-medium.model"
 def_chgnet_mdl = "0.3.0"
+def_mattersim_mdl = "/Users/sam/CODES/uip_models/mattersim-v1.0.0-5M.pth"
+def_orb_mdl = "orb-v3-conservative-inf-omat"
+def_sevennet_mdl = ["7net-mf-ompa", "mpa"]
 
 # ======== Constants and conversion factors
 gpa2evan =   0.00624150913
@@ -60,7 +68,7 @@ class CustomHelpFormatter(argparse.HelpFormatter):
 
 parser = argparse.ArgumentParser(formatter_class=CustomHelpFormatter)
 parser.add_argument("-u", "--uip", type=str.upper, default="MACE", metavar='UIP',
-   choices=['MACE', 'CHGNET'],
+   choices=['MACE', 'CHGNET', 'MATTERSIM', 'ORB', 'SEVENNET'],
    help="UIP type [%(default)s]")
 parser.add_argument("-a", "--algorithm", type=str.upper, default="FIRE", metavar='ALGORITHM',
    choices=['FIRE','BFGS','LBFGS', 'BFGSLINESEARCH', 'LBFGSLINESEARCH','GPMIN','MDMIN'],
@@ -131,7 +139,7 @@ except Exception as e:
 default_opt = eval('optimize.'+default_alg)
 
 # ======== Load UIP modules and set the calculator
-if default_uip == 'MACE':
+if default_uip == 'MACE': ########## MACE UIP
   try:
     from mace.calculators import MACECalculator
     from mace import __version__
@@ -147,7 +155,7 @@ if default_uip == 'MACE':
     sys.exit()
   default_cal = MACECalculator(model_paths=default_mdl, models=None,
                    default_dtype='float64') #, device='cuda')
-elif default_uip == 'CHGNET':
+elif default_uip == 'CHGNET': ########## CHGNET UIP
   try:
     from chgnet.model.dynamics import CHGNetCalculator
     from chgnet.model.model import CHGNet
@@ -160,6 +168,61 @@ elif default_uip == 'CHGNET':
   if default_mdl == 'default':
     default_mdl = def_chgnet_mdl
   default_cal = CHGNetCalculator(model=CHGNet.load(model_name=default_mdl))
+elif default_uip == 'MATTERSIM': ########## MATTERSIM UIP
+  try:
+    from mattersim.forcefield import MatterSimCalculator
+  except Exception as e:
+    print("Error: failed to load MATTERSIM modules.")
+    exit()
+  # set the default model if none given in the input
+  default_ver = "0.0"
+  if default_mdl == 'default':
+    default_mdl = def_mattersim_mdl
+  if not os.path.exists(default_mdl):
+    print("Error: MATTERSIM model file '%s' does not exist!" % default_mdl)
+    sys.exit()
+  import torch
+  device = "cuda" if torch.cuda.is_available() else "cpu"
+  default_cal = MatterSimCalculator(load_path=default_mdl, device = device)
+elif default_uip == "ORB": ########## ORB UIP
+  try:
+    from orb_models.forcefield import pretrained
+    from orb_models.forcefield.calculator import ORBCalculator
+  except Exception as e:
+    print("Error: failed to load ORB modules.")
+    exit()
+  #
+  default_ver = "0.0"
+  if default_mdl == 'default':
+    default_mdl = def_orb_mdl
+  device="cpu" # or device="cuda"
+  orbff = pretrained.ORB_PRETRAINED_MODELS[default_mdl](precision="float32-high")
+  default_cal = ORBCalculator(orbff, device=device)
+elif default_uip == 'SEVENNET': ########## SEVENNET UIP
+  try:
+    from sevenn.calculator import SevenNetCalculator
+  except Exception as e:
+    print("Error: failed to load SEVENNET modules.")
+    exit()
+  # set the default model if none given in the input
+  default_ver = "0.0"
+  if default_mdl == 'default':
+    default_mdl = def_sevennet_mdl[0]+"_"+def_sevennet_mdl[1]
+  default_cal = SevenNetCalculator(def_sevennet_mdl[0], modal=def_sevennet_mdl[1])
+elif default_uip == "ORB": ########## ORB UIP
+  try:
+    from orb_models.forcefield import pretrained
+    from orb_models.forcefield.calculator import ORBCalculator
+  except Exception as e:
+    print("Error: failed to load ORB modules.")
+    exit()
+  #
+  default_ver = "0.0"
+  if default_mdl == 'default':
+    default_mdl = def_orb_mdl
+  device="cpu" # or device="cuda"
+  orbff = pretrained.ORB_PRETRAINED_MODELS[default_mdl](precision="float32-high")
+  default_cal = ORBCalculator(orbff, device=device)
 else:
   print("Error: unknown UIP type '%s'.")
   exit()
