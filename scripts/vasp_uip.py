@@ -7,12 +7,21 @@
 #  samadh~at~buffalo.edu                                               #
 # ==================================================================== #
 
-# NOTE: This script is tested with MACE v0.3.10 and CHGNet v0.3.8
-#       The syntax and details of loading models might differ
-#         especially with older versions.
-#       Here we use "custom"-style models for MACE
+# NOTE:
+#   1)  This script is tested with the following versions of UIPs:
+#       MACE       0.3.13
+#       CHGNet     0.4.0
+#       MatterSim  1.1.2
+#       Orb        0.5.4
+#       SevenNet   0.11.2.post1
+#   2)  Consider citing the relevant reference for the used model.
+#   3)  Here we use "custom"-style models for MACE
 #         (i.e., ".model file full path"), and "version"-based
 #         models for CHGNet (i.e., "0.3.0" or "0.2.0").
+#       For MatterSim, the model is loaded from a local file.
+#       For Orb and SevenNet, the pretrained models are loaded as
+#         "orb-v3-conservative-inf-omat" and
+#         "7net-mf-ompa"/"mpa", respectively.
 
 # ======== Load basic modules
 import warnings
@@ -28,12 +37,15 @@ from math import sqrt, floor
 # ======== Print the header
 print("\n===================================================================\n"
       "Wrapper script to perform VASP I/O format optimization with ML-UIPs\n"
-      "Samad Hajinazar                                                v1.3\n"
+      "Samad Hajinazar                                                v1.4\n"
       "===================================================================\n")
 
 # ======== Default models (if needed)
-def_mace_mdl   = "/Users/sam/CODES/mace_models/mace-mpa-0-medium.model"
+def_mace_mdl   = "/Users/sam/CODES/uip_models/mace-mpa-0-medium.model"
 def_chgnet_mdl = "0.3.0"
+def_mattersim_mdl = "/Users/sam/CODES/uip_models/mattersim-v1.0.0-5M.pth"
+def_orb_mdl = "orb-v3-conservative-inf-omat"
+def_sevennet_mdl = ["7net-mf-ompa", "mpa"]
 
 # ======== Constants and conversion factors
 gpa2evan =   0.00624150913
@@ -60,7 +72,7 @@ class CustomHelpFormatter(argparse.HelpFormatter):
 
 parser = argparse.ArgumentParser(formatter_class=CustomHelpFormatter)
 parser.add_argument("-u", "--uip", type=str.upper, default="MACE", metavar='UIP',
-   choices=['MACE', 'CHGNET'],
+   choices=['MACE', 'CHGNET', 'MATTERSIM', 'ORB', 'SEVENNET'],
    help="UIP type [%(default)s]")
 parser.add_argument("-a", "--algorithm", type=str.upper, default="FIRE", metavar='ALGORITHM',
    choices=['FIRE','BFGS','LBFGS', 'BFGSLINESEARCH', 'LBFGSLINESEARCH','GPMIN','MDMIN'],
@@ -78,7 +90,7 @@ parser.add_argument("-c", "--convergence", type=float, default=0.05,
 parser.add_argument("-d", "--distancelimit", type=float, default=1.0,
    help="min acceptable post-opt atomic distance in A; negative: no check [%(default)s]")
 parser.add_argument("-f", "--forcelimit", type=float, default=10.0,
-   help="max acceptable post-opt force component in eV/A; negative: no check [%(default)s]")
+   help="max acceptable post-opt atomic force in eV/A; negative: no check [%(default)s]")
 parser.add_argument("-m", "--model", type=str, default="default",
    help="UIP-ML potential model [%(default)s]")
 parser.add_argument("-s", "--symprec", type=float, default=0.01,
@@ -131,7 +143,7 @@ except Exception as e:
 default_opt = eval('optimize.'+default_alg)
 
 # ======== Load UIP modules and set the calculator
-if default_uip == 'MACE':
+if default_uip == 'MACE': ########## MACE UIP
   try:
     from mace.calculators import MACECalculator
     from mace import __version__
@@ -147,7 +159,7 @@ if default_uip == 'MACE':
     sys.exit()
   default_cal = MACECalculator(model_paths=default_mdl, models=None,
                    default_dtype='float64') #, device='cuda')
-elif default_uip == 'CHGNET':
+elif default_uip == 'CHGNET': ########## CHGNET UIP
   try:
     from chgnet.model.dynamics import CHGNetCalculator
     from chgnet.model.model import CHGNet
@@ -160,6 +172,50 @@ elif default_uip == 'CHGNET':
   if default_mdl == 'default':
     default_mdl = def_chgnet_mdl
   default_cal = CHGNetCalculator(model=CHGNet.load(model_name=default_mdl))
+elif default_uip == 'MATTERSIM': ########## MATTERSIM UIP
+  try:
+    from mattersim.forcefield import MatterSimCalculator
+    from mattersim import __version__
+  except Exception as e:
+    print("Error: failed to load MATTERSIM modules.")
+    exit()
+  # set the default model if none given in the input
+  default_ver = __version__
+  if default_mdl == 'default':
+    default_mdl = def_mattersim_mdl
+  if not os.path.exists(default_mdl):
+    print("Error: MATTERSIM model file '%s' does not exist!" % default_mdl)
+    sys.exit()
+  import torch
+  device = "cuda" if torch.cuda.is_available() else "cpu"
+  default_cal = MatterSimCalculator(load_path=default_mdl, device = device)
+elif default_uip == "ORB": ########## ORB UIP
+  try:
+    from orb_models.forcefield import pretrained
+    from orb_models.forcefield.calculator import ORBCalculator
+    from orb_models import __version__
+  except Exception as e:
+    print("Error: failed to load ORB modules.")
+    exit()
+  #
+  default_ver = __version__
+  if default_mdl == 'default':
+    default_mdl = def_orb_mdl
+  device="cpu" # or device="cuda"
+  orbff = pretrained.ORB_PRETRAINED_MODELS[default_mdl](precision="float32-high")
+  default_cal = ORBCalculator(orbff, device=device)
+elif default_uip == 'SEVENNET': ########## SEVENNET UIP
+  try:
+    from sevenn.calculator import SevenNetCalculator
+    from sevenn import __version__
+  except Exception as e:
+    print("Error: failed to load SEVENNET modules.")
+    exit()
+  # set the default model if none given in the input
+  default_ver = __version__
+  if default_mdl == 'default':
+    default_mdl = def_sevennet_mdl[0]+"_"+def_sevennet_mdl[1]
+  default_cal = SevenNetCalculator(def_sevennet_mdl[0], modal=def_sevennet_mdl[1])
 else:
   print("Error: unknown UIP type '%s'.")
   exit()
@@ -177,7 +233,7 @@ print("Relaxation type:                          % 12d" % default_rlx)
 print("Pressure (GPa):                           % 12.6lf" % default_gpa)
 print("Force convergence threshold (eV/A):       % 12.6lf" % default_cnv)
 print("Smallest acceptable interatomic dist (A): % 12.6lf" % minimum_dis)
-print("Largest acceptable force component (eV/A):% 12.6lf" % maximum_frc)
+print("Largest acceptable atomic force (eV/A):   % 12.6lf" % maximum_frc)
 print("Spglib tolerance:                         % 12.6lf" % default_tol)
 print("Only initial and final steps in OUTCAR:       %r" % (default_onl))
 
@@ -283,14 +339,15 @@ if minimum_dis < 0.0 or default_stp == 0:
 
 # ======== Check if forces are "acceptable" (if needed)
 cnvrg_force = True
-maxmf = abs(fin_force[0][0])
+maxmf = -1.0
 for i in range(0, ini_natms):
   totlf = 0.0
   for j in range(0, 3):
-    if abs(fin_force[i][j]) > maxmf:
-      maxmf = abs(fin_force[i][j])
     totlf += fin_force[i][j]*fin_force[i][j]
-  if sqrt(totlf) > maximum_frc:
+  totlf = sqrt(totlf)
+  if totlf > maxmf:
+    maxmf = totlf
+  if totlf > maximum_frc:
     cnvrg_force = False
 if maximum_frc < 0.0 or default_stp == 0:
   cnvrg_force = True
@@ -419,7 +476,7 @@ print("Number of atoms and types in unit cell:     % 10d    % 11d" %
        (ini_natms, len(ini_types)))
 print("Chemical formula of the cell:                 %s" %
        ini_systm)
-print("Min dist max force component (A,eV/A):    % 12.6lf   % 12.6lf" %
+print("Min dist and max atomic force (A, eV/A):  % 12.6lf   % 12.6lf" %
        (minds,maxmf))
 print("Symmetry of initial and final structures:   % 10d    % 11d" %
        (ini_symmt, fin_symmt))

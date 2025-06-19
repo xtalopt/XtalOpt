@@ -438,9 +438,9 @@ int SearchBase::selectParentFromPool(const QList<Structure*>& structures, size_t
   //       affect scalar fitness. This will have no effect in the outcome of
   //       Pareto probabilities.
   // After preparing the objective data matrix, we will calculate scalar probs
-  //   from either generalized fitness function or the Pareto-based scalar fitness
-  //   values. However, at the end, the parent selection will be done according
-  //   to the user's choice through:
+  //   from both basic generalized fitness function and the Pareto-based scalar
+  //   fitness values. However, at the end, the parent selection will be done
+  //   according to the user's choice through:
   //   - Basic  optimization (i.e., scalar generalized fitness function)
   //   - Pareto optimization (tournament selection with/without restricted pool)
   //   - Pareto optimization (ranks/distances converted to scalar fitness)
@@ -449,7 +449,7 @@ int SearchBase::selectParentFromPool(const QList<Structure*>& structures, size_t
   //   chooses so. Also, generally, we will apply the user-specified precision
   //   on the values of objectives.
 
-  // Before getting here; we have checked that there are at least one optimized
+  // Before getting here; we have checked that there are enough optimized
   //   structure; and distance above hull (and objectives, if any) are already
   //   calculated for all structures in the input set.
 

@@ -4161,7 +4161,7 @@ void XtalOpt::checkIfSimilar(simCheckStruct& st)
   }
 
   // With the variable-composition search, we have the possibilities of having:
-  //   (1) subsystems seeds (e.g., elemental structures of various types), and
+  //   (1) xtals of different composition (even those which are sub-system seeds)
   //   (2) one xtal being a supercell of the other one without explicitly marked as such.
   //
   // As of XtalOpt v14, we have two options for similarity check:
@@ -4170,9 +4170,10 @@ void XtalOpt::checkIfSimilar(simCheckStruct& st)
   //   For RDF check, we just pass xtals as is for similarity check.
   //   For XtalComp, we first convert them to primitive cells, and compare them.
 
-  // If elements in xtals are not the same (e.g., one of them is a sub-system seed),
-  //   we don't need to do anything!
-  if (st.i->getSymbols() != st.j->getSymbols()) {
+  // If the composition of the xtals are different, we won't check for similarity!
+  CellComp xc1 = getXtalComposition(st.i);
+  CellComp xc2 = getXtalComposition(st.j);
+  if (compareCompositions(xc1, xc2) == 0) {
     return;
   }
 
