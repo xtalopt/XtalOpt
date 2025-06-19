@@ -7,7 +7,6 @@
 #  samadh~at~buffalo.edu                                               #
 # ==================================================================== #
 
-
 # NOTE: This script is tested with MACE v0.3.10 and CHGNet v0.3.8
 #       The syntax and details of loading models might differ
 #         especially with older versions.
@@ -209,20 +208,6 @@ elif default_uip == 'SEVENNET': ########## SEVENNET UIP
   if default_mdl == 'default':
     default_mdl = def_sevennet_mdl[0]+"_"+def_sevennet_mdl[1]
   default_cal = SevenNetCalculator(def_sevennet_mdl[0], modal=def_sevennet_mdl[1])
-elif default_uip == "ORB": ########## ORB UIP
-  try:
-    from orb_models.forcefield import pretrained
-    from orb_models.forcefield.calculator import ORBCalculator
-  except Exception as e:
-    print("Error: failed to load ORB modules.")
-    exit()
-  #
-  default_ver = "0.0"
-  if default_mdl == 'default':
-    default_mdl = def_orb_mdl
-  device="cpu" # or device="cuda"
-  orbff = pretrained.ORB_PRETRAINED_MODELS[default_mdl](precision="float32-high")
-  default_cal = ORBCalculator(orbff, device=device)
 else:
   print("Error: unknown UIP type '%s'.")
   exit()
