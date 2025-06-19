@@ -7,10 +7,15 @@
 #  samadh~at~buffalo.edu                                               #
 # ==================================================================== #
 
-# NOTE: This script is tested with MACE v0.3.10 and CHGNet v0.3.8
-#       The syntax and details of loading models might differ
-#         especially with older versions.
-#       Here we use "custom"-style models for MACE
+# NOTE:
+#   1)  This script is tested with the following versions of UIPs:
+#       MACE       0.3.13
+#       CHGNet     0.4.0
+#       MatterSim  1.1.2
+#       Orb        0.5.4
+#       SevenNet   0.11.2.post1
+#   2)  Consider citing the relevant reference for the used model.
+#   3)  Here we use "custom"-style models for MACE
 #         (i.e., ".model file full path"), and "version"-based
 #         models for CHGNet (i.e., "0.3.0" or "0.2.0").
 #       For MatterSim, the model is loaded from a local file.
@@ -170,11 +175,12 @@ elif default_uip == 'CHGNET': ########## CHGNET UIP
 elif default_uip == 'MATTERSIM': ########## MATTERSIM UIP
   try:
     from mattersim.forcefield import MatterSimCalculator
+    from mattersim import __version__
   except Exception as e:
     print("Error: failed to load MATTERSIM modules.")
     exit()
   # set the default model if none given in the input
-  default_ver = "0.0"
+  default_ver = __version__
   if default_mdl == 'default':
     default_mdl = def_mattersim_mdl
   if not os.path.exists(default_mdl):
@@ -187,11 +193,12 @@ elif default_uip == "ORB": ########## ORB UIP
   try:
     from orb_models.forcefield import pretrained
     from orb_models.forcefield.calculator import ORBCalculator
+    from orb_models import __version__
   except Exception as e:
     print("Error: failed to load ORB modules.")
     exit()
   #
-  default_ver = "0.0"
+  default_ver = __version__
   if default_mdl == 'default':
     default_mdl = def_orb_mdl
   device="cpu" # or device="cuda"
@@ -200,11 +207,12 @@ elif default_uip == "ORB": ########## ORB UIP
 elif default_uip == 'SEVENNET': ########## SEVENNET UIP
   try:
     from sevenn.calculator import SevenNetCalculator
+    from sevenn import __version__
   except Exception as e:
     print("Error: failed to load SEVENNET modules.")
     exit()
   # set the default model if none given in the input
-  default_ver = "0.0"
+  default_ver = __version__
   if default_mdl == 'default':
     default_mdl = def_sevennet_mdl[0]+"_"+def_sevennet_mdl[1]
   default_cal = SevenNetCalculator(def_sevennet_mdl[0], modal=def_sevennet_mdl[1])
