@@ -538,6 +538,7 @@ bool XtalOpt::save(QString filename, bool notify)
 
   // Crossover
   settings->setValue("opt/p_cross", p_cross);
+  settings->setValue("opt/cross_ncuts", cross_ncuts);
   settings->setValue("opt/cross_minimumContribution",
                      cross_minimumContribution);
 
@@ -895,6 +896,7 @@ bool XtalOpt::readSettings(const QString& filename)
 
   // Crossover
   p_cross = settings->value("opt/p_cross", 35).toUInt();
+  cross_ncuts  = settings->value("opt/cross_ncuts", 1).toUInt();
   cross_minimumContribution =
     settings->value("opt/cross_minimumContribution", 25).toUInt();
 
@@ -1552,7 +1554,7 @@ XtalOpt::Operators XtalOpt::selectOperation(bool validComp)
       ops_weight[i] = 0.0;
   }
 
-  // Sanity check
+  // Sanity check: are we left with any allowed operations?
   if (num_allowed == 0) {
     qDebug() << "\n*************************************************************";
     qDebug() << "*** Warning: unexpected op weights!!! Selecting crossover ***";
@@ -1560,13 +1562,13 @@ XtalOpt::Operators XtalOpt::selectOperation(bool validComp)
     return fallback;
   }
 
-  // Find total weight of enabled ops: since the weight for the rest
-  //   are already set to zero; we don't need to be worried about them.
+  // Find total weight of allowed ops: since we have set the weight for
+  //   the rest to zero, a simple sum is fine.
   double total = std::accumulate(ops_weight.begin(), ops_weight.end(), 0.0);
 
-  // Now normalize the weights for enabled ops while leaving the rest zero.
-  //   If total weight of enabled ops is zero, make them equal;
-  //   otherwise just normalize the wights.
+  // Normalize the weights for allowed ops, while leaving the rest zero.
+  // If total weight of allowed ops is zero, make them normalized-equal;
+  //   otherwise normalize their weight using the total.
   for (int i = 0; i < ops_num; i++) {
     if (allowed[i])
       ops_weight[i] = (total > 0.0) ? ops_weight[i]/total : 1.0/num_allowed;
@@ -1584,10 +1586,10 @@ XtalOpt::Operators XtalOpt::selectOperation(bool validComp)
 
   double r = getRandDouble();
 
-  double cum = 0.0;
+  double cumr = 0.0;
   for (int i = 0; i < ops_num; i++) {
-    cum += ops_weight[i];
-    if (r < cum) {
+    cumr += ops_weight[i];
+    if (r < cumr) {
       op = ops_list[i];
       break;
     }
@@ -1656,8 +1658,29 @@ Xtal* XtalOpt::generateEvolvedXtal_H(QList<Structure*>& structures, Xtal* presel
     //   selected operator based on the user-specified relative weights.
     Operators op = selectOperation(selectedXtal->hasValidComposition());
 
+    QString opStr;
+    switch (op) {
+      case OP_Crossover:
+        opStr = "crossover";
+        break;
+      case OP_Stripple:
+        opStr = "stripple";
+        break;
+      case OP_Permustrain:
+        opStr = "permustrain";
+        break;
+      case OP_Permutomic:
+        opStr = "permutomic";
+        break;
+      case OP_Permucomp:
+        opStr = "permucomp";
+        break;
+      default:
+        opStr = "(unknown)";
+        break;
+    }
     if (m_verbose)
-      qDebug() << "   Operator selected " << op
+      qDebug() << "   Operator selected " << opStr
                << " for parent " << selectedXtal->getTag();
 
     // Try 1000 times to get a good structure from the selected
@@ -1685,8 +1708,6 @@ Xtal* XtalOpt::generateEvolvedXtal_H(QList<Structure*>& structures, Xtal* presel
           double percent1;
           double percent2;
 
-
-          // Perform a regular crossover instead!
           xtal1 = selectedXtal;
           xtal2 = selectXtalFromProbabilityList(structures);
 
@@ -1698,8 +1719,8 @@ Xtal* XtalOpt::generateEvolvedXtal_H(QList<Structure*>& structures, Xtal* presel
 
           // Perform operation
           xtal = XtalOptGenetic::crossover(xtal1, xtal2, this->compList, this->eleMinRadii,
-                                           cross_minimumContribution,
-                                           percent1, percent2, maxAtoms, vcSearch, m_verbose);
+                                           cross_ncuts, cross_minimumContribution, percent1, percent2,
+                                           maxAtoms, vcSearch, m_verbose);
 
           // Lock parents and get info from them
           xtal1->lock().lockForRead();
@@ -1838,27 +1859,6 @@ Xtal* XtalOpt::generateEvolvedXtal_H(QList<Structure*>& structures, Xtal* presel
       }
     }
     if (attemptCount >= 1000) {
-      QString opStr;
-      switch (op) {
-        case OP_Crossover:
-          opStr = "crossover";
-          break;
-        case OP_Stripple:
-          opStr = "stripple";
-          break;
-        case OP_Permustrain:
-          opStr = "permustrain";
-          break;
-        case OP_Permutomic:
-          opStr = "permutomic";
-          break;
-        case OP_Permucomp:
-          opStr = "permucomp";
-          break;
-        default:
-          opStr = "(unknown)";
-          break;
-      }
       warning(tr("Unable to perform operation %1 after 1000 tries. "
                  "Reselecting operator...")
                 .arg(opStr));
@@ -2253,10 +2253,7 @@ bool XtalOpt::checkLattice(Xtal* xtal)
     // Check volume
     if (xtal->getVolume() < minvol || // PSA
         xtal->getVolume() > maxvol) { // PSA
-      // I don't want to initialize a random number generator here, so
-      // just use the modulus of the current volume as a random float.
-      double newvol =
-          fabs(fmod(xtal->getVolume(), 1)) * (maxvol - minvol) + minvol;
+      double newvol = getRandDouble(minvol, maxvol);
       // If the user has set vol_min to 0, we can end up with a null
       // volume. Fix this here. This is just to keep things stable
       // numerically during the rescaling -- it's unlikely that other
@@ -2265,8 +2262,6 @@ bool XtalOpt::checkLattice(Xtal* xtal)
       if (fabs(newvol) < 1.0) {
         newvol = (maxvol - minvol) * 0.5 + minvol; // PSA;
       }
-      // qDebug() << "XtalOpt::checkXtal: Rescaling volume from "
-      //         << xtal->getVolume() << " to " << newvol;
       xtal->setVolume(newvol);
     }
 
@@ -2274,7 +2269,7 @@ bool XtalOpt::checkLattice(Xtal* xtal)
       double new_vol = xtal->getVolume();
       if (fabs(org_vol - new_vol) > ZERO2)
         qDebug().noquote() <<
-            QString("   checkLattice: volume fixed - ori %1   new %2   (%3 - %4) %5")
+            QString("   volume fixed - ori %1   new %2   (%3 - %4) %5")
                                   .arg(org_vol,9,'f',2).arg(new_vol,9,'f',2)
                                   .arg(minvol,9,'f',2).arg(maxvol,9,'f',2)
                                   .arg(xtal->getCompositionString());
@@ -2303,10 +2298,10 @@ bool XtalOpt::checkLattice(Xtal* xtal)
   // "negative triple product")
   if (xtal->unitCell().cellMatrix().determinant() <= 0.0) {
     QString out0 =
-       QString("Rejecting structure %1 : determinant of unit cell neg or zero\n")
+       QString("Discarding structure %1: determinant of unit cell negative or zero")
        .arg(xtal->getTag());
-
     if (m_verbose) {
+      out0 += QString("\n");
       for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++)
           out0 += QString("   %1 ")
@@ -2314,8 +2309,8 @@ bool XtalOpt::checkLattice(Xtal* xtal)
         out0 += QString("\n");
       }
     }
-
     qDebug().noquote() << out0;
+
     return false;
   }
 
@@ -2327,8 +2322,9 @@ bool XtalOpt::checkLattice(Xtal* xtal)
       GS_IS_NAN_OR_INF(xtal->getAlpha()) || fabs(xtal->getAlpha()) < ZERO8 ||
       GS_IS_NAN_OR_INF(xtal->getBeta()) || fabs(xtal->getBeta()) < ZERO8 ||
       GS_IS_NAN_OR_INF(xtal->getGamma()) || fabs(xtal->getGamma()) < ZERO8) {
-    qDebug() << "XtalOpt::checkXtal: A cell parameter is either 0, nan, or "
-                "inf. Discarding.";
+    qDebug() << QString("Discarding structure %1: a cell parameter is either 0, nan, or inf.")
+                .arg(xtal->getTag());
+
     return false;
   }
 
@@ -2344,10 +2340,10 @@ bool XtalOpt::checkLattice(Xtal* xtal)
         xtal->getB() * cutoff < xtal->getC() ||
         xtal->getC() * cutoff < xtal->getA() ||
         xtal->getC() * cutoff < xtal->getB()) {
-      qDebug() << "Error: one of the lengths is more than 25x shorter"
-               << "than another length.\nCrystals like these can sometimes"
-               << "cause spglib to crash the program. Discarding the xtal:";
-      xtal->printXtalInfo();
+      qDebug() << "Discarding structure " << xtal->getTag()
+               << ": ratio of two lengths is 25x or larger"
+               << xtal->getA() << xtal->getB() << xtal->getC();
+
       return false;
     }
     // Check that the angles aren't 25x different than the others as well
@@ -2357,10 +2353,10 @@ bool XtalOpt::checkLattice(Xtal* xtal)
         xtal->getBeta() * cutoff < xtal->getGamma() ||
         xtal->getGamma() * cutoff < xtal->getAlpha() ||
         xtal->getGamma() * cutoff < xtal->getBeta()) {
-      qDebug() << "Error: one of the angles is more than 25x smaller"
-               << "than another angle.\nCrystals like these can sometimes"
-               << "cause spglib to crash the program. Discarding the xtal:";
-      xtal->printXtalInfo();
+      qDebug() << "Discarding structure " << xtal->getTag()
+               << ": ratio of two angles is 25x or larger"
+               << xtal->getAlpha() << xtal->getBeta() << xtal->getGamma();
+
       return false;
     }
 
@@ -2374,19 +2370,20 @@ bool XtalOpt::checkLattice(Xtal* xtal)
       (!alpha && (xtal->getAlpha() < alpha_min || xtal->getAlpha() > alpha_max)) ||
       (!beta  && (xtal->getBeta() < beta_min || xtal->getBeta() > beta_max)) ||
       (!gamma && (xtal->getGamma() < gamma_min || xtal->getGamma() > gamma_max))) {
-    qDebug() << "Discarding structure -- Bad lattice:" << endl
-             << "A:     " << a_min << " " << xtal->getA() << " " << a_max
-             << endl
-             << "B:     " << b_min << " " << xtal->getB() << " " << b_max
-             << endl
-             << "C:     " << c_min << " " << xtal->getC() << " " << c_max
-             << endl
-             << "Alpha: " << alpha_min << " " << xtal->getAlpha() << " "
-             << alpha_max << endl
-             << "Beta:  " << beta_min << " " << xtal->getBeta() << " "
-             << beta_max << endl
-             << "Gamma: " << gamma_min << " " << xtal->getGamma() << " "
-             << gamma_max;
+    QString out0 = QString("Discarding structure %1: bad lattice").arg(xtal->getTag());
+    if (m_verbose) {
+      out0 += QString("\n       A:    %1  %2  %3\n       B:    %4  %5  %6"
+                      "\n       C:    %7  %8  %9\n   Alpha:    %10  %11  %12"
+                      "\n    Beta:    %13  %14  %15\n   Gamma:    %16  %17  %18\n")
+              .arg(a_min,12,'f').arg(xtal->getA(),12,'f').arg(a_max,12,'f')
+              .arg(b_min,12,'f').arg(xtal->getB(),12,'f').arg(b_max,12,'f')
+              .arg(c_min,12,'f').arg(xtal->getC(),12,'f').arg(c_max,12,'f')
+              .arg(alpha_min,12,'f').arg(xtal->getAlpha(),12,'f').arg(alpha_max,12,'f')
+              .arg(beta_min,12,'f').arg(xtal->getBeta(),12,'f').arg(beta_max,12,'f')
+              .arg(gamma_min,12,'f').arg(xtal->getGamma(),12,'f').arg(gamma_max,12,'f');
+    }
+    qDebug().noquote() << out0;
+
     return false;
   }
 
@@ -2420,7 +2417,8 @@ bool XtalOpt::checkXtal(Xtal* xtal)
   // Sometimes, all the atom positions are set to 'nan' for an unknown reason
   // Make sure that the position of the first atom is not nan
   if (GS_IS_NAN_OR_INF(xtal->atoms().at(0).pos().x())) {
-    qDebug() << "Discarding structure -- contains 'nan' atom positions";
+    qDebug() << QString("Discarding structure %1: contains 'nan' atom positions")
+                .arg(xtal->getTag());
     return false;
   }
 
@@ -2429,9 +2427,9 @@ bool XtalOpt::checkXtal(Xtal* xtal)
   for (size_t i = 0; i < xtal->numAtoms(); ++i) {
     for (size_t j = i + 1; j < xtal->numAtoms(); ++j) {
       if (fuzzyCompare(xtal->atom(i).pos(), xtal->atom(j).pos())) {
-        qDebug() << "Discarding structure -- two atoms are basically on "
-                 << "top of one another. This can confuse some "
-                 << "optimizers.";
+        qDebug() << QString("Discarding structure %1: two atoms are basically on "
+                            "top of one another. This can confuse some "
+                            "optimizers.").arg(xtal->getTag());
         return false;
       }
     }
@@ -2448,8 +2446,8 @@ bool XtalOpt::checkXtal(Xtal* xtal)
       const double minIAD = this->eleMinRadii.getMinRadius(a1.atomicNumber()) +
                             this->eleMinRadii.getMinRadius(a2.atomicNumber());
 
-      qDebug() << "Discarding structure -- Bad IAD (" << IAD << " < " << minIAD
-               << ")";
+      qDebug() << "Discarding structure " << xtal->getTag() << ": bad IAD ("
+               << IAD << " < " << minIAD << ")";
       err = "Two atoms are too close together.";
       return false;
     }
@@ -2466,8 +2464,8 @@ bool XtalOpt::checkXtal(Xtal* xtal)
           .value(qMakePair<int, int>(a1.atomicNumber(), a2.atomicNumber()))
           .minIAD;
       xtal->setStatus(Xtal::Killed);
-      qDebug() << "Discarding structure -- Bad IAD (" << IAD << " < " << minIAD
-               << ")";
+      qDebug() << "Discarding structure " << xtal->getTag() << ": bad post-opt IAD ("
+               << IAD << " < " << minIAD << ")";
       err = "Two atoms are too close together (post-optimization).";
       return false;
     }
@@ -2543,9 +2541,9 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
                   .minIAD;
               s->setStatus(Xtal::Killed);
 
-              qDebug() << "Custom IAD: Discarding structure"
-                       << "-- Bad IAD (" << IAD << " < " << minIAD
-                       << ") \n Could not fix the IAD issue.";
+              qDebug() << "Discarding structure " << xtal->getTag()
+                       << ": bad Custom IAD (" << IAD << " < " << minIAD
+                       << ") - couldn't fix";
               return false;
             }
           } else {
@@ -2555,9 +2553,9 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
                                     .minIAD;
             s->setStatus(Xtal::Killed);
 
-            qDebug() << "Custom IAD: Discarding structure"
-                     << "-- Bad IAD (" << IAD << " < " << minIAD
-                     << ") \n Exceeded the number of fixes.";
+              qDebug() << "Discarding structure " << xtal->getTag()
+                       << ": bad Custom IAD (" << IAD << " < " << minIAD
+                       << ") - exceeded the number of fixes";
             return false;
           }
         } else {
@@ -2582,8 +2580,8 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
         const double minIAD = this->eleMinRadii.getMinRadius(a1.atomicNumber()) +
                               this->eleMinRadii.getMinRadius(a2.atomicNumber());
 
-        qDebug() << "Discarding structure -- Bad IAD (" << IAD << " < "
-                 << minIAD << ")";
+        qDebug() << "Discarding structure " << xtal->getTag()
+                 << ": bad IAD (" << IAD << " < " << minIAD << ")";
         if (err != NULL) {
           *err = "Two atoms are too close together.";
         }
@@ -4493,224 +4491,264 @@ QString XtalOpt::getGeom(int numNeighbors, int geom)
   return "unknown";
 }
 
-void XtalOpt::printOptionSettings(QTextStream& stream) const
+bool XtalOpt::importSettings_(QString filename, XtalOpt& x)
 {
-  stream << "\n=== All Run Options\n";
-  stream << "\n= Initialization";
+  // This is the "working" extension to the import function
+  //   in ui/dialog.cpp which is tasked with reading in the
+  //   GUI entries from a CLI input file (as much as possible!).
+  // NOTE: the import is not complete!
+  //   Especially the optimizer/queue interface settings.
+  if (filename.isEmpty())
+    return false;
 
-  stream << "\n  chemical system: \n";
-  for (const auto& key : getChemicalSystem())
-    stream << "    " << key;
+  return XtalOptCLIOptions::readOptions_(filename, x);
+}
+
+bool XtalOpt::exportSettings_(QString filename, XtalOpt* x)
+{
+  // This is the "working" extension to the export function
+  //   in ui/dialog.cpp which is tasked with writing the GUI
+  //   entries to a file for CLI input format.
+  // NOTE: the writing is not complete! template files are not
+  //   written, as well as some other fields.
+  //   Especially the optimizer/queue interface settings.
+  QString output;
+  QTextStream stream(&output);
+
+  printOptionSettings(stream, x);
+
+  // Try to write to the CLI input file
+  QFile file(filename);
+  if (file.open(QIODevice::WriteOnly | QIODevice::Text))
+    file.write(output.toStdString().c_str());
+  else
+    return false;
+
+  return true;
+}
+
+void XtalOpt::printOptionSettings(QTextStream& stream, XtalOpt* x)
+{
+  // This is used to print "all" options, both to produce initial
+  //   "settings.log" file, and also is used in exporting GUI entries
+  //   to a CLI input file.
+  // To be used in GUI->CLI exporting; some fields (e.g., template file names
+  //   and their content, job templates, or templates directory) are just printed
+  //   as a flag without value, as a placeholder. In that case,
+  //   the user must check all entries and make sure they are correct!
+
+  stream << "\n### Search Parameters ###\n";
+  stream << "  chemicalFormulas = " << x->input_formulas_string << "\n";
+  stream << "  referenceEnergies = " << x->input_ene_refs_string << "\n";
+  stream << "  vcSearch = " << toString(x->vcSearch) << "\n";
+  stream << "  maxAtoms = " << x->maxAtoms << "\n";
+  stream << "  numInitial = " << x->numInitial << "\n";
+  stream << "  parentsPoolSize = " << x->parentsPoolSize << "\n";
+  stream << "  limitRunningJobs = " << toString(x->limitRunningJobs) << "\n";
+  stream << "  maxNumStructures = " << x->maxNumStructures << "\n";
+  stream << "  runningJobLimit = " << x->runningJobLimit << "\n";
+  stream << "  continuousStructures = " << x->contStructs << "\n";
+
   stream << "\n";
+  stream << "  optimizationType = " << x->m_optimizationType << "\n";
+  stream << "  tournamentSelection = " << toString(x->m_tournamentSelection) << "\n";
+  stream << "  restrictedPool = " << toString(x->m_restrictedPool) << "\n";
+  stream << "  crowdingDistance = " << toString(x->m_crowdingDistance) << "\n";
+  stream << "  objectivePrecision = " << QString::number(x->m_objectivePrecision) << "\n";
 
-  stream << "\n  chemicalFormulas: " << input_formulas_string << "\n";
+  stream << "\n";
+  stream << "  objectivesReDo = " << toString(x->m_objectivesReDo) << "\n";
+  for (int i = 0; i < x->getObjectivesNum(); i++) {
+    stream << "  objective = ";
+    if (x->getObjectivesTyp(i) == Ot_Min)
+      stream << " min ";
+    else  if (x->getObjectivesTyp(i) == Ot_Max)
+      stream << " max ";
+    else if (x->getObjectivesTyp(i) == Ot_Fil)
+      stream << " fil ";
+    else
+      stream << " unkown ";
+    stream << "  " << x->getObjectivesExe(i) << "  " << x->getObjectivesOut(i) << "  "
+      << x->getObjectivesWgt(i) << "\n";
+  }
 
-  if (using_interatomicDistanceLimit) {
-    stream << "\n  atomic radii (Angstroms): \n";
-    for (const auto& key : eleMinRadii.getAtomicNumbers()) {
-      stream << "    " << ElementInfo::getAtomicSymbol(key).c_str() << ": "
-             << eleMinRadii.getMinRadius(key) << "\n";
+  if (x->seedList.size() > 0) {
+    stream << "\n";
+    stream << "  seedStructures = ";
+    for (auto& s : x->seedList)
+      stream << s << ",";
+    stream << "\n";
+  }
+
+  stream << "\n";
+  stream << "  softExit = " << toString(x->m_softExit) << "\n";
+  stream << "  saveHullSnapshots = " << toString(x->m_saveHullSnapshots) << "\n";
+  stream << "  verboseOutput = " << toString(x->m_verbose) << "\n";
+
+  stream << "\n### Cell Limits and Initialization ###\n";
+  stream << "  minVolume = " << x->vol_min << "\n";
+  stream << "  maxVolume = " << x->vol_max << "\n";
+  stream << "  minVolumeScale = " << x->vol_scale_min << "\n";
+  stream << "  maxVolumeScale = " << x->vol_scale_max << "\n";
+  stream << "  elementalVolumes = " << x->input_ele_volm_string << "\n";
+
+  stream << "\n";
+  stream << "  aMin = " << x->a_min << "\n";
+  stream << "  bMin = " << x->b_min << "\n";
+  stream << "  cMin = " << x->c_min << "\n";
+  stream << "  aMax = " << x->a_max << "\n";
+  stream << "  bMax = " << x->b_max << "\n";
+  stream << "  cMax = " << x->c_max << "\n";
+
+  stream << "  alphaMin = " << x->alpha_min << "\n";
+  stream << "  betaMin  = " << x->beta_min << "\n";
+  stream << "  gammaMin = " << x->gamma_min << "\n";
+  stream << "  alphaMax = " << x->alpha_max << "\n";
+  stream << "  betaMax  = " << x->beta_max << "\n";
+  stream << "  gammaMax = " << x->gamma_max << "\n";
+
+  stream << "\n";
+  stream << "  usingRadiiInteratomicDistanceLimit = "
+         << toString(x->using_interatomicDistanceLimit) << "\n";
+  stream << "  radiiScalingFactor =  " << x->scaleFactor << "\n";
+  stream << "  minRadius = " << x->minRadius << "\n";
+  stream << "  usingCustomIADs = " << toString(x->using_customIAD) << "\n";
+  uint i = 1;
+  for (auto& pair : x->interComp.keys()) {
+    stream << "  customIAD " << i++ << " = "
+      << ElementInfo::getAtomicSymbol(pair.first).c_str()  << ", "
+      << ElementInfo::getAtomicSymbol(pair.second).c_str() << ", "
+      << x->interComp[pair].minIAD << "\n";
+  }
+  stream << "  checkIADPostOptimization = " << toString(x->using_checkStepOpt) << "\n";
+
+  stream << "\n";
+  stream << "  usingRandSpg = " << toString(x->using_randSpg) << "\n";
+  if (x->using_randSpg) {
+    stream << "  forcedSpgsWithRandSpg = ";
+    for (int i = 0; i < x->minXtalsOfSpg.size(); ++i) {
+      int num = x->minXtalsOfSpg[i];
+      if (num > 0)
+        stream << i + 1 << ",";
     }
+    stream << "\n";
   }
 
-  stream << "\n  referenceEnergies: " << input_ene_refs_string << "\n";
-
-  stream << "\n  aMin: " << a_min << "\n";
-  stream << "  bMin: " << b_min << "\n";
-  stream << "  cMin: " << c_min << "\n";
-  stream << "  aMax: " << a_max << "\n";
-  stream << "  bMax: " << b_max << "\n";
-  stream << "  cMax: " << c_max << "\n";
-
-  stream << "\n  alphaMin: " << alpha_min << "\n";
-  stream << "  betaMin: " << beta_min << "\n";
-  stream << "  gammaMin: " << gamma_min << "\n";
-  stream << "  alphaMax: " << alpha_max << "\n";
-  stream << "  betaMax: " << beta_max << "\n";
-  stream << "  gammaMax: " << gamma_max << "\n";
-
-  stream << "\n  minVolume: " << vol_min << "\n";
-  stream << "  maxVolume: " << vol_max << "\n";
-
-  stream << "\n  minVolumeScale: " << vol_scale_min << "\n";
-  stream << "  maxVolumeScale: " << vol_scale_max << "\n";
-
-  stream << "\n  elementalVolumes: " << input_ele_volm_string << "\n";
-
-  stream << "\n  usingRadiiInteratomicDistanceLimit: "
-         << toString(using_interatomicDistanceLimit) << "\n";
-  if (using_interatomicDistanceLimit) {
-    stream << "  radiiScalingFactor: " << scaleFactor << "\n";
-    stream << "  minRadius: " << minRadius << "\n";
-  }
-
-  stream << "\n  usingCustomIADs: " << toString(using_customIAD) << "\n";
-  if (using_customIAD) {
-    stream << "  current customIADs:\n";
-    stream << "  <firstSymbol>, <secondSymbol>, <minIAD>\n";
-    for (const auto& pair : interComp.keys()) {
-      stream << "  " << ElementInfo::getAtomicSymbol(pair.first).c_str() << ", "
+  stream << "\n";
+  stream << "  usingMolecularUnits = " << toString(x->using_molUnit) << "\n";
+  if (x->using_molUnit) {
+    uint i = 1;
+    for (auto& pair : x->compMolUnit.keys()) {
+      stream << "  molecularUnits " << i++ << " = ";
+      stream << ElementInfo::getAtomicSymbol(pair.first).c_str() << ", "
+             << x->compMolUnit[pair].numCenters << ", "
              << ElementInfo::getAtomicSymbol(pair.second).c_str() << ", "
-             << interComp[pair].minIAD << "\n";
+             << x->compMolUnit[pair].numNeighbors << ", "
+             << getGeom(x->compMolUnit[pair].numNeighbors, x->compMolUnit[pair].geom)
+             << ", " << x->compMolUnit[pair].dist << "\n";
     }
   }
 
-  stream << "\n  checkIADPostOptimization: " << toString(using_checkStepOpt)
-         << "\n";
+  stream << "\n### Genetic Operations ###\n";
+  stream << "  weightStripple    = " << x->p_strip << "\n";
+  stream << "  weightPermustrain = " << x->p_perm << "\n";
+  stream << "  weightCrossover   = " << x->p_cross << "\n";
+  stream << "  weightPermutomic  = " << x->p_atomic << "\n";
+  stream << "  weightPermucomp   = " << x->p_comp << "\n";
+  stream << "  randomSuperCell   = " << x->p_supercell << "\n";
 
-  stream << "\n  usingMolecularUnits: " << toString(using_molUnit) << "\n";
-  if (using_molUnit) {
-    stream << "  molUnits:\n";
-    stream << "  <center>, <numCenters>, <neighbor>, <numNeighbors>, "
-              "<geometry>, <distance>\n";
-    for (const auto& pair : compMolUnit.keys()) {
-      stream << "    " << ElementInfo::getAtomicSymbol(pair.first).c_str() << ", "
-             << compMolUnit[pair].numCenters << ", "
-             << ElementInfo::getAtomicSymbol(pair.second).c_str() << ", "
-             << compMolUnit[pair].numNeighbors << ", "
-             << getGeom(compMolUnit[pair].numNeighbors, compMolUnit[pair].geom)
-             << ", " << compMolUnit[pair].dist << "\n";
-    }
-  }
+  stream << "\n";
+  stream << "  crossoverMinContribution = " << x->cross_minimumContribution << "\n";
+  stream << "  crossoverCuts            = " << x->cross_ncuts << "\n";
+  stream << "  strippleAmplitudeMin     = " << x->strip_amp_min << "\n";
+  stream << "  strippleAmplitudeMax     = " << x->strip_amp_max << "\n";
+  stream << "  strippleNumWavesAxis1    = " << x->strip_per1 << "\n";
+  stream << "  strippleNumWavesAxis2    = " << x->strip_per2 << "\n";
+  stream << "  strippleStrainStdevMin   = " << x->strip_strainStdev_min << "\n";
+  stream << "  strippleStrainStdevMax   = " << x->strip_strainStdev_max << "\n";
+  stream << "  permustrainNumExchanges  = " << x->perm_ex << "\n";
+  stream << "  permustrainStrainStdevMax= " << x->perm_strainStdev_max << "\n";
 
-  stream << "\n  usingRandSpg: " << toString(using_randSpg) << "\n";
-  if (using_randSpg) {
-    stream << "  Space group settings:\n";
-    for (int i = 0; i < minXtalsOfSpg.size(); ++i) {
-      int num = minXtalsOfSpg[i];
-      if (num == -1)
-        stream << "    spg " << i + 1 << ": do not generate\n";
-      else if (num > 0)
-        stream << "    spg " << i + 1 << ": generate " << num << "\n";
-    }
-  }
+  stream << "\n### Tolerances ###\n";
+  stream << "  spglibTolerance        = " << x->tol_spg << "\n";
+  stream << "  xtalcompToleranceLength= " << x->tol_xcLength << "\n";
+  stream << "  xtalcompToleranceAngle = " << x->tol_xcAngle << "\n";
+  stream << "  rdfTolerance           = " << x->tol_rdf << "\n";
+  stream << "  rdfCutoff              = " << x->tol_rdf_cutoff << "\n";
+  stream << "  rdfSigma               = " << x->tol_rdf_sigma << "\n";
+  stream << "  rdfNumBins             = " << x->tol_rdf_nbins << "\n";
 
-  stream << "\n= Search\n";
-  stream << "  maxAtoms: " << maxAtoms << "\n";
-  stream << "  vcSearch: " << toString(vcSearch) << "\n";
-  stream << "  saveHullSnapshots: " << toString(m_saveHullSnapshots) << "\n";
-  stream << "  numInitial: " << numInitial << "\n";
-  stream << "  parentsPoolSize: " << parentsPoolSize << "\n";
-  stream << "  limitRunningJobs: " << toString(limitRunningJobs) << "\n";
-  if (limitRunningJobs) {
-    stream << "  runningJobLimit: " << runningJobLimit << "\n";
-  }
-  stream << "  continuousStructures: " << contStructs << "\n";
-  stream << "  jobFailLimit: " << failLimit << "\n";
-  stream << "  jobFailAction: ";
-  if (failAction == FA_DoNothing)
-    stream << "Keep Trying\n";
-  else if (failAction == FA_KillIt)
-    stream << "Kill it\n";
-  else if (failAction == FA_Randomize)
+  stream << "\n### Job Handling ###\n";
+  stream << "  jobFailLimit = " << x->failLimit << "\n";
+  stream << "  jobFailAction = ";
+  if (x->failAction == FA_DoNothing)
+    stream << "keepTrying\n";
+  else if (x->failAction == FA_KillIt)
+    stream << "kill\n";
+  else if (x->failAction == FA_Randomize)
     stream << "replaceWithRandom\n";
-  else if (failAction == FA_NewOffspring)
+  else if (x->failAction == FA_NewOffspring)
     stream << "replaceWithOffspring\n";
   else
-    stream << "Unknown fail action\n";
+    stream << "\n";
 
-  stream << "  maxNumStructures: " << maxNumStructures << "\n";
+  stream << "\n### Optimizer ###\n";
+  stream << "  numOptimizationSteps = " << x->getNumOptSteps() << "\n";
+  const GlobalSearch::Optimizer* opt = x->optimizer(0);
+  QString optname = opt->getIDString().toLower();
+  stream << "  optimizer = " << optname << "\n";
+  stream << "  templatesDirectory = " << "\n";
+  if (optname == "vasp") {
+    stream << "  incarTemplates =\n  kpointsTemplates =\n  potcarFile =\n";
+  } else if (optname == "mtp") {
+    stream << "  mtpCellTemplates =\n  mtpPotTemplates =\n  mtpRelaxTemplates\n";
+  } else if (optname == "pwscf") {
+    stream << "  pwscfTemplates =\n";
+  } else if (optname == "gulp") {
+    stream << "  ginTemplates =\n";
+  } else if (optname == "castep") {
+    stream << "  castepCellTemplates =\n  castepParamTemplates =\n";
+  } else if (optname == "siesta") {
+    stream << "  fdfTemplates =\n";
+  }
 
-  stream << "\n  weightStripple: " << p_strip << "\n";
-  stream << "  weightPermustrain: " << p_perm << "\n";
-  stream << "  weightCrossover: " << p_cross << "\n";
-  stream << "  weightPermutomic: " << p_atomic << "\n";
-  stream << "  randomSuperCell: " << p_supercell << "\n";
+  stream << "\n";
+  stream << "  user1 = " << QString::fromStdString(x->getUser1()) << "\n";
+  stream << "  user2 = " << QString::fromStdString(x->getUser2()) << "\n";
+  stream << "  user3 = " << QString::fromStdString(x->getUser3()) << "\n";
+  stream << "  user4 = " << QString::fromStdString(x->getUser4()) << "\n";
 
-  stream << "\n  strippleAmplitudeMin: " << strip_amp_min << "\n";
-  stream << "  strippleAmplitudeMax: " << strip_amp_max << "\n";
-  stream << "  strippleNumWavesAxis1: " << strip_per1 << "\n";
-  stream << "  strippleNumWavesAxis2: " << strip_per2 << "\n";
-  stream << "  strippleStrainStdevMin: " << strip_strainStdev_min << "\n";
-  stream << "  strippleStrainStdevMax: " << strip_strainStdev_max << "\n";
-
-  stream << "\n  permustrainNumExchanges: " << perm_ex << "\n";
-  stream << "  permustrainStrainStdevMax: " << perm_strainStdev_max << "\n";
-
-  stream << "\n  crossoverMinContribution: " << cross_minimumContribution
-         << "\n";
-
-  stream << "\n  xtalcompToleranceLength: " << tol_xcLength << "\n";
-  stream << "  xtalcompToleranceAngle: " << tol_xcAngle << "\n";
-
-  stream << "\n  spglibTolerance: " << tol_spg << "\n";
-
-  stream << "\n= Queue interface\n";
-  stream << "  localQueue: " << toString(m_localQueue) << "\n";
-
-  bool anyRemote = false;
-  for (size_t i = 0; i < getNumOptSteps(); ++i) {
-    stream << " OptStep " << i + 1 << ":\n";
-    const GlobalSearch::QueueInterface* queue = queueInterface(i);
-    if (!queue) {
-      stream << "  queueInterface: NONE\n";
-    } else {
-      stream << "  queueInterface: " << queue->getIDString() << "\n";
+  stream << "\n### Queue Interface ###\n";
+  const GlobalSearch::QueueInterface* queue = x->queueInterface(0);
+  if (!queue) {
+    stream << "  queueInterface = NONE\n";
+  } else {
+    stream << "  queueInterface = " << queue->getIDString().toLower() << "\n";
+  }
+  stream << "  jobTemplates = " << "\n";
+  stream << "  exeLocation = " << opt->getLocalRunCommand() << "\n";
+  stream << "  localWorkingDirectory = " << x->locWorkDir << "\n";
+  stream << "  remoteWorkingDirectory = " << x->remWorkDir << "\n";
+  stream << "  localQueue = " << toString(x->m_localQueue) << "\n";
+  stream << "\n";
+  stream << "  logErrorDirectories   = " << toString(x->m_logErrorDirs) << "\n";
+  stream << "  queueRefreshInterval = " << x->queueRefreshInterval() << "\n";
+  stream << "  cleanRemoteDirs = " << toString(x->cleanRemoteOnStop()) << "\n";
+  stream << "  autoCancelJobAfterTime = " << toString(x->m_cancelJobAfterTime) << "\n";
+  stream << "  hoursForAutoCancelJob = " << x->m_hoursForCancelJobAfterTime << "\n";
+  stream << "  host = " << x->host << "\n";
+  stream << "  port = " << x->port << "\n";
+  stream << "  username = " << x->username << "\n";
 #ifdef ENABLE_SSH
-      if (queue->getIDString().toLower() != "local") {
-        anyRemote = true;
-
-        const GlobalSearch::RemoteQueueInterface* remoteQueue =
+    if (queue->getIDString().toLower() != "local") {
+      const GlobalSearch::RemoteQueueInterface* remoteQueue =
           qobject_cast<const GlobalSearch::RemoteQueueInterface*>(queue);
-
-        stream << "    submitCommand: " << remoteQueue->submitCommand() << "\n";
-        stream << "    cancelCommand: " << remoteQueue->cancelCommand() << "\n";
-        stream << "    statusCommand: " << remoteQueue->statusCommand() << "\n";
-      }
+      stream << "  submitCommand = " << remoteQueue->submitCommand() << "\n";
+      stream << "  cancelCommand = " << remoteQueue->cancelCommand() << "\n";
+      stream << "  statusCommand = " << remoteQueue->statusCommand() << "\n";
+    }
 #endif
-    }
-  }
 
-  if (!m_localQueue && anyRemote) {
-    stream << "\n= Remote queue\n";
-    stream << "    host: " << host << "\n";
-    stream << "    port: " << port << "\n";
-    stream << "    username: " << username << "\n";
-    stream << "    remoteWorkingDirectory: " << remWorkDir << "\n";
-    stream << "    queueRefreshInterval: " << queueRefreshInterval() << "\n";
-    stream << "    cleanRemoteDirs: " << toString(cleanRemoteOnStop()) << "\n";
-  }
-
-  stream << "\n= Local queue\n";
-  stream << "  localWorkingDirectory: " << locWorkDir << "\n";
-  stream << "  logErrorDirectories: " << toString(m_logErrorDirs) << "\n";
-
-  stream << "  autoCancelJobAfterTime: " << toString(m_cancelJobAfterTime)
-         << "\n";
-  if (m_cancelJobAfterTime) {
-    stream << "  hoursForAutoCancelJob: " << m_hoursForCancelJobAfterTime
-           << "\n";
-  }
-
-  stream << "\n= Optimizer\n";
-
-  for (size_t i = 0; i < getNumOptSteps(); ++i) {
-    stream << " OptStep " << i + 1 << "\n";
-    const GlobalSearch::Optimizer* opt = optimizer(i);
-    if (!opt) {
-      stream << "  optimizer: NONE\n";
-    } else {
-      stream << "  optimizer: " << opt->getIDString() << "\n";
-      //stream << "  exeLocation: " << opt->getLocalRunCommand() << "\n";
-    }
-  }
-
-  // Write multi-objective (and exit) stuff
-  stream << "\n= Run termination\n";
-  stream << "  softExit: " << toString(m_softExit) << "\n";
-  stream << "\n= Multi-objective\n";
-  stream << "  optimizationType: " << m_optimizationType << "\n";
-  stream << "  tournamentSelection: " << toString(m_tournamentSelection) << "\n";
-  stream << "  restrictedPool: " << toString(m_restrictedPool) << "\n";
-  stream << "  crowdingDistance: " << toString(m_crowdingDistance) << "\n";
-  stream << "  objectivePrecision: " << QString::number(m_objectivePrecision) << "\n";
-  stream << "  objectivesReDo: " << toString(m_objectivesReDo) << "\n";
-  for (int i = 0; i < getObjectivesNum(); i++)
-    stream << "  objective" << i+1 << ": " << QString::number(getObjectivesTyp(i))
-           << "  " << getObjectivesExe(i) << "  " << getObjectivesOut(i) << "  "
-           << getObjectivesWgt(i) << "\n";
-
-  stream << "\n====================================================\n";
 }
 
 void XtalOpt::setupRpcConnections()

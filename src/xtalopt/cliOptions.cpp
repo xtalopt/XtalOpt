@@ -111,6 +111,7 @@ static const QStringList keywords = { "minVolumeScale",
                                       "strippleStrainStdevMax",
                                       "permustrainNumExchanges",
                                       "permustrainStrainStdevMax",
+                                      "crossoverCuts",
                                       "crossoverMinContribution",
                                       "xtalcompToleranceLength",
                                       "xtalcompToleranceAngle",
@@ -396,11 +397,6 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
 
   // Is this a variable-composition search?
   xtalopt.vcSearch = toBool(options.value("vcSearch", "false"));
-  // If the chemical system is elemental, vcsearch should be false
-  if (xtalopt.getChemicalSystem().size() <= 1) {
-    qDebug() << "\nWarning: for elemental systems vcSearch is set to false!";
-    xtalopt.vcSearch = false;
-  }
 
   // Should we save hull snapshots?
   xtalopt.m_saveHullSnapshots = toBool(options.value("saveHullSnapshots", "false"));
@@ -415,7 +411,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   }
   if (maximum_atoms_in_compositions > xtalopt.maxAtoms) {
     qDebug() << "\nWarning: maximum atom count in formulas larger"
-             << "than maxAtoms; reseting its value to "
+             << "than maxAtoms; resetting it to "
              << maximum_atoms_in_compositions;
     xtalopt.maxAtoms = maximum_atoms_in_compositions;
   }
@@ -654,6 +650,7 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
     options.value("permustrainStrainStdevMax", "0.5").toFloat();
 
   // Crossover options
+  xtalopt.cross_ncuts  = options.value("crossoverCuts", "1").toUInt();
   xtalopt.cross_minimumContribution =
     options.value("crossoverMinContribution", "25").toUInt();
 
@@ -681,15 +678,6 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   xtalopt.setUser2(options.value("user2", "").toStdString());
   xtalopt.setUser3(options.value("user3", "").toStdString());
   xtalopt.setUser4(options.value("user4", "").toStdString());
-
-  if (xtalopt.m_verbose) {
-    std::string outstr = "   Custom user-defined keywords:\n";
-    outstr += "     user1 = " + xtalopt.getUser1() + "\n";
-    outstr += "     user2 = " + xtalopt.getUser2() + "\n";
-    outstr += "     user3 = " + xtalopt.getUser3() + "\n";
-    outstr += "     user4 = " + xtalopt.getUser4() + "\n";
-    qDebug().noquote() << QString::fromStdString(outstr);
-  }
 
   // Are there any queue interfaces that are remote?
   bool anyRemote = false;
@@ -968,10 +956,11 @@ bool XtalOptCLIOptions::printOptions(const QHash<QString, QString>& options,
   // Former: Manually set options
   stream << "\n=== Manually Set Options\n\n";
   for (const auto& key : keys)
-    stream << key << ": " << options[key] << "\n";
+    stream << key << " = " << options[key] << "\n";
 
   // Former: All options
-  xtalopt.printOptionSettings(stream);
+  stream << "\n=== All Run Options\n";
+  xtalopt.printOptionSettings(stream, &xtalopt);
 
   // We need to convert to c string to properly print newlines
   qDebug() << output.toUtf8().data();
@@ -1002,6 +991,45 @@ bool XtalOptCLIOptions::printOptions(const QHash<QString, QString>& options,
     file.write(output.toStdString().c_str());
 
   return true;
+}
+
+bool XtalOptCLIOptions::readOptions_(const QString& filename, XtalOpt& x)
+{
+  // This is a slightly-modified version of the below function; to be
+  //   used in reading a CLI input file to populate the GUI entries.
+  // It does not produce output files by its own, and we will try
+  //   to read the stuff as much as we can (not insisting on having
+  //   a prefectly OK input file). If the file is not OK, we return
+  //   false, which eventually prompts a warning message in the GUI.
+
+  // Attempt to open the file
+  QFile file(filename);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qDebug() << "Error: could not open file '" << filename << "'.";
+    return false;
+  }
+
+  // The options QHash
+  QHash<QString, QString> options;
+
+  bool results = true;
+
+  // Read the file line-by-line
+  while (!file.atEnd()) {
+    QString line = file.readLine();
+    processLine(line, options, x);
+  }
+
+  // Check to make sure all required options were set
+  if (!requiredOptionsSet(options))
+    results = false;
+
+  // Process the options
+  if (!processOptions(options, x))
+    results = false;
+
+  return results;
+
 }
 
 bool XtalOptCLIOptions::readOptions(const QString& filename, XtalOpt& xtalopt)
@@ -1507,6 +1535,7 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
   text += QString("\n# Mutator Details Settings\n");
   text += QString("randomSuperCell = ") +
           QString::number(xtalopt.p_supercell) + "\n";
+
   text += QString("strippleAmplitudeMin = ") +
           QString::number(xtalopt.strip_amp_min) + "\n";
   text += QString("strippleAmplitudeMax = ") +
@@ -1525,8 +1554,11 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
           QString::number(xtalopt.perm_ex) + "\n";
   text += QString("permustrainStrainStdevMax = ") +
           QString::number(xtalopt.perm_strainStdev_max) + "\n";
+
   text += QString("crossoverMinContribution = ") +
           QString::number(xtalopt.cross_minimumContribution) + "\n";
+  text += QString("crossoverCuts = ") +
+          QString::number(xtalopt.cross_ncuts) + "\n";
 
   text += QString("\n# Similarity Check and SpgLib Settings\n");
   text += QString("xtalcompToleranceLength = ") +
@@ -1635,6 +1667,8 @@ void XtalOptCLIOptions::processRuntimeOptions(
       xtalopt.p_comp = options[option].toUInt();
     } else if (CICompare("weightCrossover", option)) {
       xtalopt.p_cross = options[option].toUInt();
+    } else if (CICompare("crossoverCuts", option)) {
+      xtalopt.cross_ncuts = options[option].toUInt();
     } else if (CICompare("vcSearch", option)) {
       xtalopt.vcSearch = toBool(options[option]);
     } else if (CICompare("saveHullSnapshots", option)) {

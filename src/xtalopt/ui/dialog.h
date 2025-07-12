@@ -56,6 +56,9 @@ public:
 public slots:
   void saveSession() override;
   void showTutorialDialog() const;
+  bool importSettings();
+  bool exportSettings();
+  void errorPromptWindow(const QString& instr);
 
 private slots:
   void startSearch() override;

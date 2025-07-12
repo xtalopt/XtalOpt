@@ -374,6 +374,7 @@ public:
 
   uint
     cross_minimumContribution; // Minimum contribution each parent in crossover
+  uint  cross_ncuts;           // Number of cut points in crossover
 
   double strip_amp_min;         // Minimum amplitude of periodic displacement
   double strip_amp_max;         // Maximum amplitude of periodic displacement
@@ -447,8 +448,12 @@ public slots:
     return locWorkDir + QDir::separator() + "cli-runtime-options.txt";
   }
 
+  // Import/Export settings in GUI from/to CLI
+  static bool importSettings_(QString filename, XtalOpt& x);
+  static bool exportSettings_(QString filename, XtalOpt* x);
+
   // Prints all the options to @p stream
-  void printOptionSettings(QTextStream& stream) const;
+  static void printOptionSettings(QTextStream& stream, XtalOpt* x);
 
   void setupRpcConnections();
   void sendRpcUpdate(GlobalSearch::Structure* s);

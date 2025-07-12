@@ -56,7 +56,8 @@ static inline int findClosestComposition(const QList<uint>& counts,
 Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
                                 const QList<CellComp>& compa,
                                 const EleRadii& elrad,
-                                double minimumContribution,
+                                uint numCuts,
+                                double minContribution,
                                 double& percent1, double& percent2,
                                 int maxatoms,
                                 bool isVcSearch,
@@ -67,12 +68,6 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
 
   //
   // Random Assignments
-  //
-  // Where to slice in fractional units
-  double cutVal = ((100.0 - (2.0 * minimumContribution)) *
-                   getRandDouble() + minimumContribution) / 100.0;
-  percent1 = cutVal * 100.0;
-  percent2 = 100.0 - percent1;
 
   // Shift values = s_n_m:
   //  n = xtal (1,2)
@@ -275,40 +270,116 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
     }
   }
 
-  // Generate the new xtal
-
   Xtal* nxtal = new Xtal();
   QWriteLocker nxtalLocker(&nxtal->lock());
 
   // Set the new xtal lattice cell
   nxtal->setCellInfo(dims.col(0), dims.col(1), dims.col(2));
 
-  // Cut parent xtals and populate atoms in the new xtal; while saving
-  //   the index of discarded atoms for possible later use.
+  // Where to slice the parent xtals (in fractional units)?
+  // If we have a "single-cut" crossover, we will use minimum contribution
+  //   settings to partition the parent xtals.
+  // In the "multi-cut" case, we start with uniformly distributing cut points
+  //   to get ribbons of width "l", and distort those points randomly by up to
+  //   "0.25*l" (so, no overlap and hopefully no too narrow ribbons).
+  // E.g., with 3 cut points, we will have 4 ribbons with min and max width of
+  //   0.125 and 0.375 (fractional coordinate [0,1]).
+
+  int numPoints = numCuts + 2;               // all cut points (adding 2 fixed endpoints 0/1)
+  QVector<double> corPoints(numPoints, 0.0); // coordinate of all cut points
+  corPoints[numPoints - 1] = 1.0;
+
+  // Find the intermediate cut points' coordinates
+  //   (we have already set the endpoints to 0.0 and 1.0)
+  if (numCuts == 1) {
+    // For single-cut, ie. simple crossover, we use the minimum contribution.
+    corPoints[1] = ((100.0 - (2.0 * minContribution)) *
+                    getRandDouble() + minContribution) / 100.0;
+  } else {
+    // For multi-cut, we find coordinates for "numCuts" intermediate points.
+    double rlen = 1.0 / (numCuts + 1); // initial uniform ribbons' length
+    double rtol = rlen * 0.25;         // tolerance for displacing the cut points
+    for (int i = 1; i <= numCuts; i++) {
+      corPoints[i] = i * rlen + getRandDouble(-rtol, rtol);
+    }
+  }
+
+  // Before moving on, determine the "percentage" of each parent xtal
+  //   that will be used in distributing atoms, so we can report it back.
+  percent1 = percent2 = 0.0;
+  for (int i = 0; i < numPoints - 1; i+=2)
+    percent1 += corPoints[i+1] - corPoints[i];
+  percent1 *= 100.0;
+  percent2  = 100.0 - percent1;
+
+  if (verbose) {
+    QString tmp_par = QString("   crossover: ribbon markers %1% %2% : ")
+                      .arg(percent1, 5, 'f', 1).arg(percent2, 5, 'f', 1);
+    for (int i = 0; i < numPoints; i++)
+      tmp_par += QString(" %1 ").arg(corPoints[i], 10, 'f', 6);
+    qDebug().noquote() << tmp_par;
+  }
+
+  // Select atoms of parent xtals for the new xtal.
+  // If we have "n" cut points, we will have a total of "n+1" ribbons in each parent
+  //   cell (indexed as 1, 2, ..., n+1). Basically, we go over the atoms of each xtal,
+  //   find to which ribbon they belong (variable "ribn"), and will pick the atoms of
+  //   xtal1 if they are in "odd" ribbons, and those from xtal2 that are in "even" ribbons.
+  // For simplicity, we assign the cut points to xtal1 set (note that 0 = 1 in frac coords!)
+  //   So, atoms of xtal2 that are on cut points end up "ribbon-less", and discarded.
+  // NOTE: although user can do it; but "even number of numCuts" will result in an
+  //   uneven atom selection (xtal1 will have more ribbons from which we select atoms).
+  //
+  // Finally, we will save the index of discarded atoms for possible later use.
   // For extra atoms, if we needed to add them, we will convert their
   //   fractional coordinates to Cartesian in the nxtal cell.
+
   QMultiHash<uint, int> extraXtal1;
   QMultiHash<uint, int> extraXtal2;
 
   for (int i = 0; i < fracCoordsList1.size(); i++) {
     uint atmcn = atomList1.at(i).atomicNumber();
-    if (fracCoordsList1.at(i)[0] <= cutVal) {
+    double coor = fracCoordsList1.at(i)[0];
+    // In which ribbon this atom is located?
+    int ribn = -1;
+    for (int p = 1; p < numPoints; p++) {
+      if (coor >= corPoints[p-1] && coor <= corPoints[p])
+        {ribn = p; break;}
+    }
+    // Pick xtal1 atoms if they are in odd ribbons
+    if (ribn % 2 == 1) {
       Atom& newAtom = nxtal->addAtom();
       newAtom.setAtomicNumber(atmcn);
       newAtom.setPos(nxtal->fracToCart(fracCoordsList1.at(i)));
+      //qDebug().noquote() << QString("   atomcell1 type %1 coord %2 ribbon %3 added %4")
+      //                      .arg(atmcn, 3).arg(coor, 10,'f',6).arg(ribn, 2).arg("yes");
     } else {
       extraXtal1.insert(atmcn, i);
+      //qDebug().noquote() << QString("   atomcell1 type %1 coord %2 ribbon %3 added %4")
+      //                      .arg(atmcn, 3).arg(coor, 10,'f',6).arg(ribn, 2).arg("no");
     }
   }
 
   for (int i = 0; i < fracCoordsList2.size(); i++) {
     uint atmcn = atomList2.at(i).atomicNumber();
-    if (fracCoordsList2.at(i)[0] > cutVal) {
+    double coor = fracCoordsList2.at(i)[0];
+    // In which ribbon this atom is located?
+    int ribn = -1;
+    for (int p = 1; p < numPoints; p++) {
+      if (coor > corPoints[p-1] && coor < corPoints[p])
+        {ribn = p; break;}
+    }
+    // Pick xtal2 atoms if they are in even ribbons
+    if (ribn % 2 == 0) {
       Atom& newAtom = nxtal->addAtom();
       newAtom.setAtomicNumber(atmcn);
       newAtom.setPos(nxtal->fracToCart(fracCoordsList2.at(i)));
+      //qDebug().noquote() << QString("   atomcell2 type %1 coord %2 ribbon %3 added %4")
+      //                      .arg(atmcn, 3).arg(coor, 10,'f',6).arg(ribn, 2).arg("yes");
     } else {
       extraXtal2.insert(atmcn, i);
+      //qDebug().noquote() << QString("   atomcell2 type %1 coord %2 ribbon %3 added %4")
+      //                      .arg(atmcn, 3).arg(coor, 10,'f',6).arg(ribn, 2).arg("no");
     }
   }
 
@@ -336,7 +407,9 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   //   that has the closest atom counts to the current nxtal. Either case,
   //   we don't need to be worried about the max atoms here.
 
-  QList<uint> targetCounts;
+  QList<uint> targetCounts; // FC/MC/VC: final target counts?
+  int targetParent = -1;    // FC/MC : which parent we choose?
+  int chosenComp = -1;      // FC/MC : which composition from list (if needed)?
 
   if (isVcSearch) {
     int targetTotalCounts = 0;
@@ -370,21 +443,24 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
         }
       }
     }
-  } else {
-    int chosenComp = -1;
-    int targetParent;
+  } else { // fixed/multi-composition search
     // Find the target parent (if any)
     if (xtal1->hasValidComposition() && xtal2->hasValidComposition()) {
-      targetParent = getRandDouble() < 0.5 ? 1 : 2;
+      // If both parents are good, pick the one with larger num of atoms;
+      //   then randomly if they are of the same size.
+      if (xtal1->numAtoms() > xtal2->numAtoms())
+        targetParent = 1;
+      else if (xtal2->numAtoms() > xtal1->numAtoms())
+        targetParent = 2;
+      else
+        targetParent = getRandDouble() < 0.5 ? 1 : 2;
     } else if (xtal1->hasValidComposition()) {
       targetParent = 1;
     } else if (xtal2->hasValidComposition()) {
       targetParent = 2;
-    } else {
-      targetParent = 0;
     }
 
-    // Find the target counts
+    // Find the target counts: if no parent is found, select from comp list
     if (targetParent == 1) {
       targetCounts = xtalCounts1;
     } else if (targetParent == 2) {
@@ -399,12 +475,6 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
       }
       for (const auto& symb : refSymbols)
         targetCounts.append(compa[chosenComp].getCount(symb));
-    }
-
-    if (verbose) {
-    qDebug() << "   crossover target comp for " << nxtalCounts << " is "
-             << targetParent << "(" << chosenComp << ") with counts "
-             << targetCounts << " from " << xtal1->getTag() << xtal2->getTag();
     }
   }
 
@@ -422,9 +492,10 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   }
 
   if (verbose) {
-    qDebug() << "   crossover : counts initial " << nxtalCounts
-             << " target " << targetCounts << " deltas " << deltas
-             << " from "         << xtal1->getTag() << " and " << xtal2->getTag();
+    qDebug() << "   crossover: counts initial" << nxtalCounts
+             << "target" << targetCounts << "parent" << targetParent
+             << "comp" << (chosenComp) << "deltas" << deltas
+             << "-" << xtal1->getTag() << xtal2->getTag();
   }
 
   // Main loop to correct for differences by inserting atoms (from
@@ -534,7 +605,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
     if (deltas[i] != 0) {
       if (verbose) {
         qDebug().noquote() <<
-            QString("   crossover failed to adjust remaining %1 atoms for %2 (%3)")
+            QString("   crossover: failed to adjust remaining %1 atoms for %2 (%3)")
             .arg(deltas[i]).arg(refSymbols[i]).arg(nxtal->getTag());
       }
     }
@@ -772,9 +843,9 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
   }
 
   if (verbose) {
-    qDebug() << "   permutomic : counts initial " << nxtalCounts
-             << " target " << targetCounts << " deltas "
-             << deltas << " from " << xtal->getTag();
+    qDebug() << "   permutomic: counts initial" << nxtalCounts
+             << "target" << targetCounts << "deltas"
+             << deltas << "-" << xtal->getTag();
   }
 
   // Try to fix the atom counts according to the obtained values for deltas
@@ -812,7 +883,7 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
     if (deltas[i] != 0) {
       if (verbose) {
         qDebug().noquote() <<
-            QString("   permutomic failed to adjust remaining %1 atoms for %2 (%3)")
+            QString("   permutomic: failed to adjust remaining %1 atoms for %2 (%3)")
             .arg(deltas[i]).arg(refSymbols[i]).arg(xtal->getTag());
       }
     }
@@ -910,9 +981,9 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal,
   }
 
   if (verbose) {
-    qDebug() << "   permucomp : counts initial " << nxtalCounts
-             << " target " << targetCounts << " deltas "
-             << deltas << " from " << xtal->getTag();
+    qDebug() << "   permucomp: counts initial" << nxtalCounts
+             << "target" << targetCounts << "deltas"
+             << deltas << "-" << xtal->getTag();
   }
 
   // Correct for differences by inserting or removing atoms.
@@ -957,7 +1028,7 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal,
     if (deltas[i] != 0) {
       if (verbose) {
         qDebug().noquote() <<
-            QString("   permucomp failed to adjust remaining %1 atoms for %2 (%3)")
+            QString("   permucomp: failed to adjust remaining %1 atoms for %2 (%3)")
             .arg(deltas[i]).arg(refSymbols[i]).arg(xtal->getTag());
       }
     }

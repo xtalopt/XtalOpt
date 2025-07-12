@@ -42,6 +42,7 @@ public slots:
   void updateOptimizationInfo();
   void addSeed(QListWidgetItem* item = nullptr);
   void removeSeed();
+  void showSeeds();
   void updateSeeds();
 
 signals:

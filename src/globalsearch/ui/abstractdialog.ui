@@ -98,22 +98,6 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="7">
-    <widget class="QPushButton" name="push_hide">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="text">
-      <string>&amp;Hide</string>
-     </property>
-     <property name="autoDefault">
-      <bool>false</bool>
-     </property>
-    </widget>
-   </item>
    <item row="2" column="0" colspan="8">
     <widget class="QTabWidget" name="tabs">
      <property name="currentIndex">
@@ -206,7 +190,6 @@
   <tabstop>push_save</tabstop>
   <tabstop>push_resume</tabstop>
   <tabstop>push_begin</tabstop>
-  <tabstop>push_hide</tabstop>
  </tabstops>
  <resources/>
  <connections/>

@@ -59,7 +59,6 @@ void AbstractDialog::initialize()
   connect(ui_push_begin, SIGNAL(clicked()), this, SLOT(startSearch()));
   connect(ui_push_save, SIGNAL(clicked()), this, SLOT(saveSession()));
   connect(ui_push_resume, SIGNAL(clicked()), this, SLOT(resumeSession()));
-  connect(ui_push_hide, SIGNAL(clicked()), this, SLOT(showMinimized()));
 
   connect(m_search, SIGNAL(sessionStarted()), this, SLOT(updateGUI()));
   connect(m_search, SIGNAL(sessionStarted()), this, SLOT(lockGUI()));
@@ -130,6 +129,7 @@ void AbstractDialog::lockGUI()
 {
   ui_push_resume->setDisabled(true);
   ui_push_begin->setDisabled(true);
+  ui_push_import->setDisabled(true);
   // This function is called when a session begins. Enable saves:
   ui_push_save->setEnabled(true);
   emit tabsLockGUI();

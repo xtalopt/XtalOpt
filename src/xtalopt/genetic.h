@@ -30,6 +30,7 @@ public:
   static Xtal* crossover(Xtal* xtal1, Xtal* xtal2,
                          const QList<CellComp>& compa,
                          const EleRadii& elrad,
+                         uint numCuts,
                          double minimumContribution,
                          double& percent1, double& percent2,
                          int maxatoms,

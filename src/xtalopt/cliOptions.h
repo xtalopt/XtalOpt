@@ -47,6 +47,7 @@ public:
    * @return True if all the required options were set. False otherwise.
    */
   static bool readOptions(const QString& filename, XtalOpt& xtalopt);
+  static bool readOptions_(const QString& filename, XtalOpt& x);
 
   /**
    * Read runtime options from the runtime file and write them to the @p

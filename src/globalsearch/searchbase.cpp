@@ -763,11 +763,11 @@ int SearchBase::selectParentFromPool(const QList<Structure*>& structures, size_t
       parent = (getRandDouble() < 0.5) ? str_a : str_b;
 
     if (m_verbose) {
-      QString outs = QString("\n   Selected (tournament) %1 from structures with rank-dist (%2):\n")
-                         .arg(structures[parent]->getTag(),7).arg(total);
-      outs += QString("   %1   %2   %3\n").arg(structures[str_a]->getTag(),7)
+      QString outs = QString("   Selected (tournament) %1 from structures with rank-dist (%2)")
+                     .arg(structures[parent]->getTag(),7).arg(total);
+      outs += QString("\n   %1   %2   %3").arg(structures[str_a]->getTag(),7)
                   .arg(strFrnt[str_a], 4).arg(strDist[str_a],10,'f',6);
-      outs += QString("   %1   %2   %3\n").arg(structures[str_b]->getTag(),7)
+      outs += QString("\n   %1   %2   %3").arg(structures[str_b]->getTag(),7)
                   .arg(strFrnt[str_b], 4).arg(strDist[str_b],10,'f',6);
       outs += QString("\n");
       qDebug().noquote() << outs;
@@ -791,9 +791,9 @@ int SearchBase::selectParentFromPool(const QList<Structure*>& structures, size_t
   }
   if (m_verbose) {
     QString outs =
-            QString("\n   Selected (fitness) %1 ( r = %2 ) from structures with probs:\n"
-                    "      structure : enthalpy (e/Atom):    probs   : cumulative probs\n")
-                    .arg(structures[parent]->getTag(),7).arg(r,8,'f',6);
+      QString("   Selected (fitness) %1 ( r = %2 ) from structures with probs (%3)")
+      .arg(structures[parent]->getTag(),7).arg(r,8,'f',6).arg(probs.size());
+    outs += QString("\n      structure : enthalpy (e/Atom):    probs   : cumulative probs\n");
     double previousProbs = 0.0;
     for (const auto& elem: probs) {
       outs += QString("        %1 :     %2 : %3 : %4\n")

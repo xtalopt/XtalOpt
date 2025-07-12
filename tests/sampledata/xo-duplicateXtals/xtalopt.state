@@ -83,6 +83,7 @@ opt\opt\calculateHardness=false
 opt\opt\chance_of_mitosis=50
 opt\opt\contStructs=10
 opt\opt\cross_minimumContribution=25
+opt\opt\cross_ncuts=1
 opt\opt\cutoff=100
 opt\opt\evolvesubsystems=false
 opt\opt\failAction=2

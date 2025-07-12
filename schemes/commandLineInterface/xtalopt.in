@@ -56,6 +56,9 @@
     # Minimum radius for any given atom (Angstroms)
       minRadius = 0.25
 
+  # Use custom interatomic distances? Note: this option and
+  # "usingRadiiInteratomicDistanceLimit" cannot both be true.
+    #usingCustomIADs = false
   # Custom IAD entries appear as follows:
     # customIAD <atomicSymbol1>, <atomicSymbol2>, <minIAD>
     #customIAD 1 = Ti, O, 1.45
@@ -80,10 +83,6 @@
   # You must comma-separate each space group (no hyphens allowed). If you
   # want more of a single space group, repeat it like 136 below.
     #forcedSpgsWithRandSpg = 1, 2, 136, 136, 136
-
-  # Use custom interatomic distances? Note: this option and
-  # "usingRadiiInteratomicDistanceLimit" cannot both be true.
-    #usingCustomIADs = false
 
   # Custom user-defined keywords
     #user1 =
@@ -136,6 +135,7 @@
 
   # Crossover options
     crossoverMinContribution = 25
+    crossoverCuts = 1
 
   # Multi-objective search (and objectives)
     #objective = min path/script1 outputfile1 weight1

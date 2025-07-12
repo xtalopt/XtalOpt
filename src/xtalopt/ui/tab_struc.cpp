@@ -520,11 +520,6 @@ void TabStruc::updateSearchType()
 {
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
-  if (ui.cb_vcsearch->isChecked() && xtalopt->getChemicalSystem().size() == 1) {
-    errorPromptWindow("VC search can't be used for elemental systems!");
-    ui.cb_vcsearch->setChecked(false);
-  }
-
   xtalopt->vcSearch = ui.cb_vcsearch->isChecked();
 }
 

@@ -599,14 +599,21 @@ protected:
    * @note This must be set up in the derived-constructor. See class
    * description.
    */
-  QPushButton* ui_push_resume;
+  QPushButton* ui_push_import;
 
   /**
    * Pointer to GUI element. Do not use in derived class code.
    * @note This must be set up in the derived-constructor. See class
    * description.
    */
-  QPushButton* ui_push_hide;
+  QPushButton* ui_push_export;
+
+  /**
+   * Pointer to GUI element. Do not use in derived class code.
+   * @note This must be set up in the derived-constructor. See class
+   * description.
+   */
+  QPushButton* ui_push_resume;
 
   /**
    * Pointer to GUI element. Do not use in derived class code.

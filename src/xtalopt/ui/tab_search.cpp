@@ -95,6 +95,8 @@ TabSearch::TabSearch(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
           SLOT(updateOptimizationInfo()));
   connect(ui.spin_cross_minimumContribution, SIGNAL(valueChanged(int)), this,
           SLOT(updateOptimizationInfo()));
+  connect(ui.sb_ncuts, SIGNAL(valueChanged(int)), this,
+          SLOT(updateOptimizationInfo()));
 
   // Stripple
   connect(ui.spin_p_strip, SIGNAL(editingFinished()), this,
@@ -182,8 +184,14 @@ void TabSearch::updateGUI()
 
   // Crossover
   ui.spin_p_cross->setValue(xtalopt->p_cross);
+  ui.sb_ncuts->setValue(xtalopt->cross_ncuts);
   ui.spin_cross_minimumContribution->setValue(
     xtalopt->cross_minimumContribution);
+  if (xtalopt->cross_ncuts > 1) {
+    ui.spin_cross_minimumContribution->setEnabled(false);
+  } else {
+    ui.spin_cross_minimumContribution->setEnabled(true);
+  }
 
   // Stripple
   ui.spin_p_strip->setValue(xtalopt->p_strip);
@@ -271,8 +279,14 @@ void TabSearch::updateOptimizationInfo()
   xtalopt->p_comp = ui.spin_p_comp->value();
 
   // Crossover
+  xtalopt->cross_ncuts = ui.sb_ncuts->value();
   xtalopt->cross_minimumContribution =
     ui.spin_cross_minimumContribution->value();
+  if (xtalopt->cross_ncuts > 1) {
+    ui.spin_cross_minimumContribution->setEnabled(false);
+  } else {
+    ui.spin_cross_minimumContribution->setEnabled(true);
+  }
 
   // Stripple
   xtalopt->strip_strainStdev_min = ui.spin_strip_strainStdev_min->value();
@@ -336,6 +350,15 @@ void TabSearch::removeSeed()
     return;
   delete ui.list_seeds->takeItem(ui.list_seeds->currentRow());
   updateSeeds();
+}
+
+void TabSearch::showSeeds()
+{
+  ui.list_seeds->clear();
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+  for (const auto& s : xtalopt->seedList) {
+    ui.list_seeds->addItem(s);
+  }
 }
 
 void TabSearch::updateSeeds()

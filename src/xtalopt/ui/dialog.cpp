@@ -50,17 +50,24 @@ XtalOptDialog::XtalOptDialog(QWidget* parent, Qt::WindowFlags f,
   setWindowFlags(Qt::Window);
   ui = new Ui::XtalOptDialog;
   ui->setupUi(this);
+
+  connect(ui->push_import, SIGNAL(clicked()), this, SLOT(importSettings()));
+  connect(ui->push_export, SIGNAL(clicked()), this, SLOT(exportSettings()));
+
   ui_push_begin = ui->push_begin;
   ui_push_save = ui->push_save;
   ui_push_resume = ui->push_resume;
-  ui_push_hide = ui->push_hide;
   ui_label_opt = ui->label_opt;
   ui_label_run = ui->label_run;
   ui_label_tot = ui->label_tot;
   ui_label_fail = ui->label_fail;
   ui_label_prog = ui->label_prog;
   ui_progbar = ui->progbar;
+  ui_push_import = ui->push_import;
+  ui_push_export = ui->push_export;
   ui_tabs = ui->tabs;
+
+  ui_push_import->setAutoDefault(false);
 
   if (!xtalopt) {
     xtalopt = new XtalOpt(this);
@@ -169,6 +176,69 @@ void XtalOptDialog::startSearch()
   }
 }
 
+bool XtalOptDialog::importSettings()
+{
+  // EXPERIMENTAL FEATURE: Read a CLI input file and initialize
+  //   the GUI entries. Option should be used carefully; some
+  //   entries of GUI might be set improperly, especially
+  //   Optimizer/Queue settings.
+
+  // Launch file dialog
+  QString newFilename = QFileDialog::getOpenFileName(
+    this, QString("Select xtalopt input settings file"),
+    QDir::homePath(), "All files (*.*)",
+    0, QFileDialog::DontUseNativeDialog);
+
+  // If a valid file is selected
+  if (!newFilename.isEmpty()) {
+    XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+
+    bool read = XtalOpt::importSettings_(newFilename, *xtalopt);
+    m_tab_struc->updateGUI();
+    m_tab_struc->updateCompositionTable();
+    m_tab_opt->updateGUI();
+    m_tab_search->updateGUI();
+    m_tab_search->showSeeds();
+    m_tab_mo->updateGUI();
+    // This is important: soft/hard exit should be ignored in GUI
+    xtalopt->m_softExit = false;
+    xtalopt->m_hardExit = false;
+    // If reading is not fully ok; we will still update the GUI, but
+    //   will let the user know that something was off!
+    if (!read) {
+      QString errmsg = QString("Failed to read *some* settings from the file:\n'%1'").arg(newFilename);
+      errorPromptWindow(errmsg);
+    }
+  }
+
+  return true;
+}
+
+bool XtalOptDialog::exportSettings()
+{
+  // EXPERIMENTAL FEATURE: Output GUI settings to a file
+  //   for CLI input. Optimizer/Queue settings are not fully exported!
+
+  // Launch file dialog
+  QString newFilename = QFileDialog::getSaveFileName(
+    this, QString("Select a file to write settings file"),
+      QDir::homePath(), "All files (*.*)",
+      0, QFileDialog::DontUseNativeDialog);
+
+  // If a valid file is selected
+  if (!newFilename.isEmpty()) {
+    XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+    bool write = XtalOpt::exportSettings_(newFilename, xtalopt);
+    if (!write) {
+      QString errmsg = QString("Failed to write settings from the file:\n'%1'").arg(newFilename);
+      errorPromptWindow(errmsg);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 void XtalOptDialog::showTutorialDialog() const
 {
   QMessageBox mbox;
@@ -195,5 +265,12 @@ void XtalOptDialog::showTutorialDialog() const
   // else ("no" clicked) just return;
 
   return;
+}
+
+void XtalOptDialog::errorPromptWindow(const QString& instr)
+{
+  QMessageBox msgBox;
+  msgBox.setText(instr);
+  msgBox.exec();
 }
 }
