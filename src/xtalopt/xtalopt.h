@@ -357,6 +357,7 @@ public:
   EleVolume eleVolumes;        // Elemental volumes
 
   int maxAtoms;                // Maximum number of atoms in the run
+  int minAtoms;                // Minimum number of atoms in the run
   bool vcSearch;               // Is the search variable-composition?
 
   bool loaded;

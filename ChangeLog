@@ -1,13 +1,19 @@
 
 ==================================
+==========  Release 14.2 =========
+==================================
+
+0-1)  The option to specify "minimum atom per cell" added
+0-2)  Slight adjustment to crossover and permucomp: maxatom check loops
+
+==================================
 ==========  Release 14.1 =========
 ==================================
 
 ===== 0) Highlights
-0-1)  Multi-cut crossover is possible with user-defined number of cuts
-0-2)  Variable-composition search is now allowed for elemental systems
+0-1)  Variable-composition search is now allowed for elemental systems
+0-2)  Multi-cut crossover is possible with user-defined number of cuts
 0-3)  Crossover for fixed/multi-composition is set to target larger parent cell
-0-4)  Volume adjustment uses a "pure random" generator
 0-4)  The "Import Settings"/"Export Settings" buttons added to GUI for using CLI input file
 0-5)  The "Hide" button is removed from the GUI
 

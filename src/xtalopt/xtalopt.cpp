@@ -442,6 +442,7 @@ bool XtalOpt::save(QString filename, bool notify)
   settings->setValue("verboseOutput", m_verbose);
 
   settings->setValue("maxAtoms", maxAtoms);
+  settings->setValue("minAtoms", minAtoms);
   settings->setValue("limits/a/min", a_min);
   settings->setValue("limits/b/min", b_min);
   settings->setValue("limits/c/min", c_min);
@@ -758,6 +759,7 @@ bool XtalOpt::readSettings(const QString& filename)
 
   m_verbose = settings->value("verboseOutput", false).toBool();
   maxAtoms = settings->value("maxAtoms", 20).toInt();
+  minAtoms = settings->value("minAtoms", 1).toInt();
   a_min = settings->value("limits/a/min", 3).toDouble();
   b_min = settings->value("limits/b/min", 3).toDouble();
   c_min = settings->value("limits/c/min", 3).toDouble();
@@ -1719,8 +1721,9 @@ Xtal* XtalOpt::generateEvolvedXtal_H(QList<Structure*>& structures, Xtal* presel
 
           // Perform operation
           xtal = XtalOptGenetic::crossover(xtal1, xtal2, this->compList, this->eleMinRadii,
-                                           cross_ncuts, cross_minimumContribution, percent1, percent2,
-                                           maxAtoms, vcSearch, m_verbose);
+                                           cross_ncuts, cross_minimumContribution,
+                                           percent1, percent2,
+                                           minAtoms, maxAtoms, vcSearch, m_verbose);
 
           // Lock parents and get info from them
           xtal1->lock().lockForRead();
@@ -1808,8 +1811,8 @@ Xtal* XtalOpt::generateEvolvedXtal_H(QList<Structure*>& structures, Xtal* presel
           continue;
         }
         case OP_Permutomic: {
-          xtal = XtalOptGenetic::permutomic(selectedXtal, this->compList[0],
-                                            this->eleMinRadii, maxAtoms, m_verbose);
+          xtal = XtalOptGenetic::permutomic(selectedXtal, this->compList[0], this->eleMinRadii,
+                                            minAtoms, maxAtoms, m_verbose);
 
           // Lock parent and extract info
           selectedXtal->lock().lockForRead();
@@ -1831,8 +1834,8 @@ Xtal* XtalOpt::generateEvolvedXtal_H(QList<Structure*>& structures, Xtal* presel
           continue;
         }
         case OP_Permucomp: {
-          xtal = XtalOptGenetic::permucomp(selectedXtal, this->compList[0],
-                                           this->eleMinRadii, maxAtoms, m_verbose);
+          xtal = XtalOptGenetic::permucomp(selectedXtal, this->compList[0], this->eleMinRadii,
+                                           minAtoms, maxAtoms, m_verbose);
 
           // Lock parent and extract info
           selectedXtal->lock().lockForRead();
@@ -2154,6 +2157,7 @@ bool XtalOpt::checkComposition(Xtal* xtal, bool isSeed)
 
   // Perform a series of checks
   bool hasExtraAtomCount = false;
+  bool hasLowAtomCount = false;
   bool hasExtraTypes = false;
   bool hasMissingTypes = false;
   bool compositionIsNew = true;
@@ -2166,6 +2170,10 @@ bool XtalOpt::checkComposition(Xtal* xtal, bool isSeed)
   // Does the total atoms count exceed the maximum number of atoms?
   if (numAtoms > maxAtoms)
     hasExtraAtomCount = true;
+
+  // Does the total atoms count exceed the maximum number of atoms?
+  if (numAtoms < minAtoms)
+    hasLowAtomCount = true;
 
   // Is there any species of chemical system that is not present?
   for(int i = 0; i < chemSystem.size(); i++)
@@ -2193,13 +2201,17 @@ bool XtalOpt::checkComposition(Xtal* xtal, bool isSeed)
   // If a seed structure; we're done except than:
   // (1) if seed is a sub-system or it's composition is not on the list, mark it
   //     so we can manage for a proper genetic operation selection.
-  // (2) if seed is acceptable, increase max atoms if needed
+  // (2) if seed is acceptable, reset the min/max atom counts if needed
   if (isSeed) {
     if (hasMissingTypes || compositionIsNew)
       xtal->setCompositionValidity(false);
     if (hasExtraAtomCount) {
       maxAtoms = numAtoms;
       qDebug() << "Warning checkComposition: increased maxAtoms to " << maxAtoms;
+    }
+    if (hasLowAtomCount) {
+      minAtoms = numAtoms;
+      qDebug() << "Warning checkComposition: decreased minAtoms to " << minAtoms;
     }
     return true;
   }
@@ -2213,6 +2225,12 @@ bool XtalOpt::checkComposition(Xtal* xtal, bool isSeed)
   // No structure can have more atoms than maxAtoms.
   if (hasExtraAtomCount) {
     qDebug() << "Error checkComposition: number of atoms exceeds the maxAtoms.";
+    return false;
+  }
+
+  // No structure can have fewer atoms than minAtoms.
+  if (hasLowAtomCount) {
+    qDebug() << "Error checkComposition: number of atoms lower than minAtoms.";
     return false;
   }
 
@@ -4541,6 +4559,7 @@ void XtalOpt::printOptionSettings(QTextStream& stream, XtalOpt* x)
   stream << "  chemicalFormulas = " << x->input_formulas_string << "\n";
   stream << "  referenceEnergies = " << x->input_ene_refs_string << "\n";
   stream << "  vcSearch = " << toString(x->vcSearch) << "\n";
+  stream << "  minAtoms = " << x->minAtoms << "\n";
   stream << "  maxAtoms = " << x->maxAtoms << "\n";
   stream << "  numInitial = " << x->numInitial << "\n";
   stream << "  parentsPoolSize = " << x->parentsPoolSize << "\n";

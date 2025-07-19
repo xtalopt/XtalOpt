@@ -33,6 +33,7 @@ public:
                          uint numCuts,
                          double minimumContribution,
                          double& percent1, double& percent2,
+                         int minatoms,
                          int maxatoms,
                          bool isVcSearch,
                          bool verbose);
@@ -45,10 +46,12 @@ public:
   static Xtal* permutomic(Xtal* xtal,
                           const CellComp& comp,
                           const EleRadii& elrad,
+                          int minatoms,
                           int maxatoms, bool verbose);
   static Xtal* permucomp(Xtal* xtal,
                          const CellComp& comp,
                          const EleRadii& elrad,
+                         int minatoms,
                          int maxatoms, bool verbose);
 
   static void exchange(Xtal* xtal, uint exchanges);

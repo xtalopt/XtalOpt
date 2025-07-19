@@ -66,7 +66,7 @@ public slots:
   void readSettings(const QString& filename = "") override;
   void writeSettings(const QString& filename = "") override;
   void updateGUI() override;
-  void updateMaxAtoms();
+  void updateAtomCountLimits();
   void updateVolumes();
   void updateReferenceEnergies();
   void updateSearchType();

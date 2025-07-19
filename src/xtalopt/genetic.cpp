@@ -59,6 +59,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
                                 uint numCuts,
                                 double minContribution,
                                 double& percent1, double& percent2,
+                                int minatoms,
                                 int maxatoms,
                                 bool isVcSearch,
                                 bool verbose)
@@ -400,12 +401,12 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   //   adjustments to the current counts of nxtal:
   // CASE1: variable-composition search: just make sure no element is
   //   absent in the final cell. Here, we also need to make sure that
-  //   the max atoms limits is maintained.
+  //   the min/max atoms limits are maintained.
   // CASE2: fixed- or multi-composition search: if both/any parents have
   //   "valid" composition, we will chose the target from them. Otherwise,
   //   we will select the "best" composition from the list, i.e., the one
   //   that has the closest atom counts to the current nxtal. Either case,
-  //   we don't need to be worried about the max atoms here.
+  //   we don't need to be worried about the min/max atom limits here.
 
   QList<uint> targetCounts; // FC/MC/VC: final target counts?
   int targetParent = -1;    // FC/MC : which parent we choose?
@@ -418,31 +419,28 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
       targetCounts.append(numA);
       targetTotalCounts += numA;
     }
-    // Impose the max atom limit: if the target counts
-    //   exceed the max atoms limit, try to fix it.
-    if (targetTotalCounts > maxatoms) {
-      // First, see if we have enough extra atoms to remove
-      //   such that we will have at least 1 atom per element.
-      int excessCounts = 0;
-      for (int i = 0; i < targetCounts.size(); i++)
-        excessCounts += targetCounts[i] - 1;
-      // Sanity check: if we really can't decrease the total count
-      //    to meet the max atoms, we can't do anything.
-      if (excessCounts < (targetTotalCounts - maxatoms)) {
-        return nullptr;
+    // Make sure that the total target count is within the min/max
+    //   atom count limits.
+    int desiredTotal = targetTotalCounts;
+    if      (desiredTotal < minatoms) desiredTotal = minatoms;
+    else if (desiredTotal > maxatoms) desiredTotal = maxatoms;
+
+    int Ndiff = targetTotalCounts - desiredTotal; // (-) add, (+) remove
+    int Ntypes = targetCounts.size();
+    for (int pass = 0; Ndiff != 0; /*increment below*/) {
+      int i = pass % Ntypes;
+      if (Ndiff > 0 && targetCounts[i] > 1) {
+        targetCounts[i]--; // remove one
+        Ndiff -= 1;
       }
-      // Otherwise, try to fix the target counts.
-      while (targetTotalCounts > maxatoms) { 
-        for (int i = 0; i < targetCounts.size(); i++) {
-          if (targetCounts[i] > 1) {
-            targetCounts[i]--;
-            targetTotalCounts--;
-          }
-          if (targetTotalCounts <= maxatoms)
-            break;
-        }
+      else if (Ndiff < 0) {
+        targetCounts[i]++; // add one
+        Ndiff += 1;
       }
+      pass++;
     }
+    targetTotalCounts = desiredTotal;
+    //
   } else { // fixed/multi-composition search
     // Find the target parent (if any)
     if (xtal1->hasValidComposition() && xtal2->hasValidComposition()) {
@@ -534,21 +532,21 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
     // Try to add atoms from discarded parts of the parent cells
     currentAttempt = 0;
     while (deltas[i] < 0 && currentAttempt < maxAttempts) {
-      // If none of the parents have extra atoms of this type; just abort the loop
-      if (extraCounts1[i] == 0 && extraCounts2[i] == 0)
-        break;
       //
       currentAttempt++;
       //
-      // Pick the parent: 1/2 chance for each; considering available extra atoms
-      //
+      // Pick the parent: 1/2 chance for each if both have extra atoms of desired
+      //   type; otherwise pick the one that has such atoms.
+      // If none of the parents have extra atoms of this type; just abort the loop.
       uint parent = 0;
-      if (getRandDouble() < 0.5 && extraCounts1[i] > 0)
+      if (extraCounts1[i] == 0 && extraCounts2[i] == 0)
+        break;
+      else if (extraCounts1[i] != 0 && extraCounts2[i] != 0)
+        parent = (getRandDouble() < 0.5) ? 1 : 2;
+      else if (extraCounts1[i] != 0)
         parent = 1;
-      else if (extraCounts2[i] > 0)
-        parent = 2;
       else
-        continue;
+        parent = 2;
       //
       // Whichever parent we have, it must have atoms of this type!
       //
@@ -704,6 +702,7 @@ Xtal* XtalOptGenetic::permustrain(Xtal* xtal, double sigma_lattice_max,
 Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
                                  const CellComp& comp,
                                  const EleRadii& elrad,
+                                 int minatoms,
                                  int maxatoms, bool verbose)
 {
   // Save the reference chemical system (i.e., full list of symbols)
@@ -768,8 +767,12 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
   while (!changedComp && currentAttempt < maxAttempts) {
     currentAttempt++;
     // Should we increase (diff=+1) or decrease (diff=-1)?
-    int diff = (targetTotalCounts >= maxatoms) ? -1 : 0;
-    if (diff == 0)
+    int diff;
+    if (targetTotalCounts >= maxatoms)
+      diff = -1;
+    else if (targetTotalCounts <= minatoms)
+      diff = +1;
+    else
       diff = (getRandDouble() < 0.5) ? -1 : +1;
     //
     for (int i = 0; i < targetCounts.size(); i++) {
@@ -797,40 +800,30 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
     return nxtal;
   }
 
-  // Time to impose the max atom limit: if we changed the initial counts
-  //   and they exceed the max atoms limit, try to fix it here.
-  if (targetTotalCounts > maxatoms) {
-    // First, see if we have enough extra atoms to remove
-    //   such that we will have at least 1 atom per element.
-    int excessCounts = 0;
-    for (int i = 0; i < targetCounts.size(); i++)
-      excessCounts += targetCounts[i] - 1;
-    // Sanity check: if we really can't decrease the total count
-    //    to meet the max atoms, we can't do anything.
-    if (excessCounts < (targetTotalCounts - maxatoms)) {
-      return nxtal;
-    }
-    // Otherwise, try to fix the target counts.
-    while (targetTotalCounts > maxatoms) { 
-      for (int i = 0; i < targetCounts.size(); i++) {
-        if (targetCounts[i] > 1) {
-          targetCounts[i]--;
-          targetTotalCounts--;
-        }
-        if (targetTotalCounts <= maxatoms)
-          break;
-      }
-    }
-  }
+  // Make sure that the total target count is within the min/max
+  //   atom count limits.
+  int desiredTotal = targetTotalCounts;
+  if      (desiredTotal < minatoms) desiredTotal = minatoms;
+  else if (desiredTotal > maxatoms) desiredTotal = maxatoms;
 
-  // If we weren't able to change the initial count up to this point,
-  //   that's it! We just return the distorted lattice.
-  if (!changedComp) {
-    return nxtal;
+  int Ndiff = targetTotalCounts - desiredTotal; // (-) add, (+) remove
+  int Ntypes = targetCounts.size();
+  for (int pass = 0; Ndiff != 0; /*increment below*/) {
+    int i = pass % Ntypes;
+    if (Ndiff > 0 && targetCounts[i] > 1) {
+      targetCounts[i]--; // remove one
+      Ndiff -= 1;
+    }
+    else if (Ndiff < 0) {
+      targetCounts[i]++; // add one
+      Ndiff += 1;
+    }
+    pass++;
   }
+  targetTotalCounts = desiredTotal;
 
   // So, we have a valid targetCounts that has a total within the
-  //   max atoms, and has no zero counts.
+  //   atom count limits, and has no zero counts.
 
   // Now, find deltas
   // List "deltas" is for all types, with each element of the list:
@@ -898,6 +891,7 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
 Xtal* XtalOptGenetic::permucomp(Xtal* xtal,
                                 const CellComp& comp,
                                 const EleRadii& elrad,
+                                int minatoms,
                                 int maxatoms, bool verbose)
 {
   // Save the reference chemical system (i.e., full list of symbols)
@@ -931,44 +925,52 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal,
   XtalOptGenetic::strain(nxtal, sigma_lattice);
 
   // Now, we create a "new random composition" as follows:
-  //  (1) Randomly generate a new total atom count with at least
-  //      one atom per type and up to maximum atoms,
-  //  (2) Initiate a list of random counts for all elements each 
-  //      ranging from "1" and up to "max atoms/number of types",
-  //  (3) In case the total atoms of the new counts becomes larger
-  //      than the desired new total count, we reduce atom count
-  //      of symbols one by one until we get it right.
+  //  (1) Initiate a list of random counts for all elements each 
+  //      ranging from "1" and up to "max atoms",
+  //  (2) Randomly generate a new total target total atom count in
+  //      the range of largest of minatoms/number of types (so we can
+  //      have at least one atom per type while maintaining the minatoms)
+  //      and up to the maxatoms.
+  //  (3) In case the initialized total atom count is larger than the
+  //      target total, reduce atom counts of species one by one (making
+  //      sure we have at least 1 atom per type) until we reach the desired
+  //      total atom count.
 
-  // Total atom count of the new xtal
-  uint targetTotalCount = getRandUInt(nxtalCounts.size(), maxatoms);
-
-  // Initiate the new counts
+  // Initiate the new counts: randomly from 1 to max atom counts
   QList<uint> targetCounts;
-  uint rng = static_cast<unsigned int>(maxatoms / nxtalCounts.size());
+  uint targetTotalCounts = 0;
+  uint rng = static_cast<unsigned int>(maxatoms);
   for (int i = 0; i < nxtalCounts.size(); i++) {
     targetCounts.push_back(getRandUInt(1, rng));
+    targetTotalCounts += targetCounts[i];
   }
 
-  // See how many atoms we have got; and make sure no count is zero
-  uint currentTotalCount = 0;
-  for (int i = 0; i < targetCounts.size(); i++) {
-    if (targetCounts[i] == 0)
-      targetCounts += 1;
-    currentTotalCount += targetCounts[i];
-  }
+  // Generate a target total atom count between the largest of
+  //   "number of types"/"min atoms" and "max atoms"; such that
+  //   we are within min/max total count limits, and can have
+  //   at least one atom per type.
+  // We will then adjust the current counts to match the desired
+  //   total atom count.
+  int lowestDesired = nxtalCounts.size();
+  if (lowestDesired < minatoms) lowestDesired = minatoms;
+  //
+  int desiredTotal = getRandUInt(lowestDesired, maxatoms);
 
-  // If the total count is larger than desired total, keep reducing
-  //   each count (if it's > 1) until the total is less than max atoms.
-  while (currentTotalCount > targetTotalCount) {
-    for (int i = 0; i < targetCounts.size(); i++) {
-      if (targetCounts[i] > 1) {
-        targetCounts[i]  -= 1;
-        currentTotalCount-= 1;
-      }
-      if (currentTotalCount <= targetTotalCount)
-        break;
+  int Ndiff = targetTotalCounts - desiredTotal; // (-) add, (+) remove
+  int Ntypes = targetCounts.size();
+  for (int pass = 0; Ndiff != 0; /*increment below*/) {
+    int i = pass % Ntypes;
+    if (Ndiff > 0 && targetCounts[i] > 1) {
+      targetCounts[i]--; // remove one
+      Ndiff -= 1;
     }
+    else if (Ndiff < 0) {
+      targetCounts[i]++; // add one
+      Ndiff += 1;
+    }
+    pass++;
   }
+  targetTotalCounts = desiredTotal;
 
   // Now, find deltas
   // List "deltas" is for all types, with each element of the list:

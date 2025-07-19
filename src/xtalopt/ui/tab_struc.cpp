@@ -52,9 +52,11 @@ TabStruc::TabStruc(GlobalSearch::AbstractDialog* parent, XtalOpt* p)
   connect(ui.cb_vcsearch, SIGNAL(clicked(bool)), this,
           SLOT(updateSearchType()));
 
-  // Max number of atoms
+  // Min and Max number of atoms
   connect(ui.sb_max_atoms, SIGNAL(valueChanged(int)), this,
-          SLOT(updateMaxAtoms()));
+          SLOT(updateAtomCountLimits()));
+  connect(ui.sb_min_atoms, SIGNAL(valueChanged(int)), this,
+          SLOT(updateAtomCountLimits()));
 
   // Updating reference energy values
   connect(ui.edit_ref_enes, SIGNAL(returnPressed()), this,
@@ -288,6 +290,7 @@ void TabStruc::updateGUI()
 
   ui.cb_vcsearch->setChecked(xtalopt->vcSearch);
   ui.sb_max_atoms->setValue(xtalopt->maxAtoms);
+  ui.sb_min_atoms->setValue(xtalopt->minAtoms);
 
   m_updateGuiInProgress = false;
 }
@@ -304,6 +307,8 @@ void TabStruc::lockGUI()
   ui.push_spgOptions->setDisabled(true);
   ui.edit_ref_enes->setDisabled(true);
   ui.cb_vcsearch->setDisabled(true);
+  ui.sb_max_atoms->setDisabled(true);
+  ui.sb_min_atoms->setDisabled(true);
 }
 
 void TabStruc::getComposition()
@@ -381,7 +386,7 @@ void TabStruc::getComposition()
   xtalopt->input_ele_volm_string.clear();
   xtalopt->processInputElementalVolumes(xtalopt->input_ele_volm_string);
   // Update various relevant tables/variables
-  this->updateMaxAtoms();
+  this->updateAtomCountLimits();
   this->updateScaledIAD();
   this->updateCustomIAD();
   this->updateCompositionTable();
@@ -406,20 +411,26 @@ void TabStruc::getComposition()
   }
 }
 
-void TabStruc::updateMaxAtoms()
+void TabStruc::updateAtomCountLimits()
 {
   disconnect(ui.sb_max_atoms, SIGNAL(valueChanged(int)), this,
-             SLOT(updateMaxAtoms()));
+             SLOT(updateAtomCountLimits()));
+  disconnect(ui.sb_min_atoms, SIGNAL(valueChanged(int)), this,
+             SLOT(updateAtomCountLimits()));
 
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
-  // Set the maximum number of atoms
+  // Set the minimum/maximum number of atoms
   xtalopt->maxAtoms = ui.sb_max_atoms->value();
+  xtalopt->minAtoms = ui.sb_min_atoms->value();
 
-  // What is the largest number of atoms in the input cells?
+  // What is the largest/smallest number of atoms in the input cells?
   int maximum_atoms_in_compositions = 0;
+  int minimum_atoms_in_compositions = std::numeric_limits<int>::max();
   for (int i = 0; i < xtalopt->compList.size(); i++) {
     if (xtalopt->compList[i].getNumAtoms() > maximum_atoms_in_compositions)
       maximum_atoms_in_compositions = xtalopt->compList[i].getNumAtoms();
+    if (xtalopt->compList[i].getNumAtoms() < minimum_atoms_in_compositions)
+      minimum_atoms_in_compositions = xtalopt->compList[i].getNumAtoms();
   }
 
   // Increase "maxAtoms" if it's smaller than the largest initial cell.
@@ -427,9 +438,16 @@ void TabStruc::updateMaxAtoms()
     xtalopt->maxAtoms = maximum_atoms_in_compositions;
     ui.sb_max_atoms->setValue(maximum_atoms_in_compositions);
   }
+  // Decrease "minAtoms" if it's larger than the smallest initial cell.
+  if (minimum_atoms_in_compositions < xtalopt->minAtoms) {
+    xtalopt->minAtoms = minimum_atoms_in_compositions;
+    ui.sb_min_atoms->setValue(minimum_atoms_in_compositions);
+  }
 
   connect(ui.sb_max_atoms, SIGNAL(valueChanged(int)), this,
-          SLOT(updateMaxAtoms()));
+          SLOT(updateAtomCountLimits()));
+  connect(ui.sb_min_atoms, SIGNAL(valueChanged(int)), this,
+          SLOT(updateAtomCountLimits()));
 }
 
 void TabStruc::updateReferenceEnergies()

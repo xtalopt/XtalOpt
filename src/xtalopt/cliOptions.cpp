@@ -43,6 +43,7 @@ static const QStringList keywords = { "minVolumeScale",
                                       "maxVolumeScale",
                                       "elementalVolumes",
                                       "maxAtoms",
+                                      "minAtoms",
                                       "vcSearch",
                                       "saveHullSnapshots",
                                       "verboseOutput",
@@ -401,19 +402,41 @@ bool XtalOptCLIOptions::processOptions(const QHash<QString, QString>& options,
   // Should we save hull snapshots?
   xtalopt.m_saveHullSnapshots = toBool(options.value("saveHullSnapshots", "false"));
 
-  // Read maximum number of atoms.
+  // Read minimum/maximum number of atoms.
+  xtalopt.minAtoms = options.value("minAtoms", "1").toInt();
   xtalopt.maxAtoms = options.value("maxAtoms", "20").toInt();
-  // Increase "maxAtoms" if it's smaller than the largest initial cell.
+  // Minimum and maximum atom count limit should be reasonable!
+  if (xtalopt.minAtoms < 1) {
+    qDebug() << "\nError: min atom limit should be 1 or larger";
+    return false;
+  } else if (xtalopt.minAtoms > xtalopt.maxAtoms) {
+    qDebug() << "\nError: min and max atom limits are unacceptable "
+             << xtalopt.minAtoms << xtalopt.maxAtoms;
+    return false;
+  }
+
+  // Find the minimum and maximum of total atom count in input formulas.
   int maximum_atoms_in_compositions = 0;
+  int minimum_atoms_in_compositions = std::numeric_limits<int>::max();
   for (int i = 0; i < xtalopt.compList.size(); i++) {
     if (xtalopt.compList[i].getNumAtoms() > maximum_atoms_in_compositions)
       maximum_atoms_in_compositions = xtalopt.compList[i].getNumAtoms();
+    if (xtalopt.compList[i].getNumAtoms() < minimum_atoms_in_compositions)
+      minimum_atoms_in_compositions = xtalopt.compList[i].getNumAtoms();
   }
+  // Increase "maxAtoms" if it's smaller than the largest initial cell.
   if (maximum_atoms_in_compositions > xtalopt.maxAtoms) {
     qDebug() << "\nWarning: maximum atom count in formulas larger"
              << "than maxAtoms; resetting it to "
              << maximum_atoms_in_compositions;
     xtalopt.maxAtoms = maximum_atoms_in_compositions;
+  }
+  // Decrease "minAtoms" if it's larger than the smallest initial cell.
+  if (minimum_atoms_in_compositions < xtalopt.minAtoms) {
+    qDebug() << "\nWarning: minimum atom count in formulas smaller"
+             << "than minAtoms; resetting it to "
+             << minimum_atoms_in_compositions;
+    xtalopt.minAtoms = minimum_atoms_in_compositions;
   }
 
   // Process the seed structures list input.
@@ -1476,7 +1499,6 @@ void XtalOptCLIOptions::writeInitialRuntimeFile(XtalOpt& xtalopt)
           fromBool(xtalopt.using_checkStepOpt) + "\n";
 
   text += "\n# Optimization Settings\n";
-  text += QString("maxAtoms = ") + QString::number(xtalopt.maxAtoms) + "\n";
   text += QString("localQueue = ") + fromBool(xtalopt.m_localQueue) + "\n";
   text += QString("objectivesReDo = ") +
           fromBool(xtalopt.m_objectivesReDo) + "\n";
@@ -1675,8 +1697,6 @@ void XtalOptCLIOptions::processRuntimeOptions(
       xtalopt.m_saveHullSnapshots = toBool(options[option]);
     } else if (CICompare("randomSuperCell", option)) {
       xtalopt.p_supercell = options[option].toUInt();
-    } else if (CICompare("maxAtoms", option)) {
-      xtalopt.maxAtoms = options[option].toUInt();
     } else if (CICompare("aMin", option)) {
       xtalopt.a_min = options[option].toFloat();
     } else if (CICompare("bMin", option)) {

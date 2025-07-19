@@ -11,6 +11,7 @@
     #vcSearch = false
 
   # System size limit
+    #minAtoms = 1
     #maxAtoms = 20
 
   # Global optimization settings
