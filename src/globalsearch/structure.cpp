@@ -936,9 +936,12 @@ bool Structure::calculateNormalizedRDF(int nbins, double cutoff, double sigma)
   std::vector<Vector3> vecs = {unitCell().aVector(), unitCell().bVector(), unitCell().cVector()};
 
   // How many translation is needed in each direction to cover the cutoff?
+  double vol = vecs[0].dot(vecs[1].cross(vecs[2]));
   std::vector<int> expan;
-  for (int i = 0; i < 3; i++)
-    expan.push_back(std::ceil(cutoff / vecs[i].norm()));
+  for (int i = 0; i < 3; i++) {
+    Vector3 rec = vecs[(i+1) % 3].cross(vecs[(i+2) % 3]) / vol;
+    expan.push_back(std::ceil(cutoff * rec.norm()));
+  }
 
   //
   // Start producing "bond-resolved" rdf vector
