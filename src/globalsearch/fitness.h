@@ -28,20 +28,16 @@
 
 //=========================================================================================
 
-bool doesDominate(const std::vector<double>& x, const std::vector<double>& y)
+inline bool doesDominate(const double* __restrict x, const double* __restrict y, int m) noexcept
 {
   // This function checks if a solution candidate dominates another one
-  bool all_le = true;
   bool any_lt = false;
-  for (int i = 0; i < x.size(); ++i) {
-    if (x[i] > y[i]) {
-      all_le = false;
-    }
-    if (x[i] < y[i]) {
-      any_lt = true;
-    }
+  for (int k = 0; k < m; ++k) {
+    double xi = x[k], yi = y[k];
+    if (xi > yi) return false;
+    any_lt |= (xi < yi);
   }
-  return all_le && any_lt;
+  return any_lt;
 }
 
 //=========================================================================================
@@ -155,48 +151,47 @@ std::vector<std::vector<int>> nonDominatedSorting(const std::vector<std::vector<
 {
   // This function performs non-dominated sorting for a set of objectives, all to be minimized,
   //   and returns "fronts" that contains vectors of point indices which belong to each rank.
+  const size_t n = points.size();
+  if (n == 0) return {};
 
-  int ndat = points.size();
+  const int m = static_cast<int>(points[0].size());
+  std::vector<int> domCount(n, 0);
+  std::vector<std::vector<int>> S(n);
+  for (auto& v : S) v.reserve(8);
 
-  std::vector<std::vector<int>> fronts;
-  std::vector<int> wrk_ind(ndat);
-  std::iota(wrk_ind.begin(), wrk_ind.end(), 0);
-
-  std::vector<std::vector<double>> wrk_arr = points;
-  while (!wrk_arr.empty()) {
-    int s = wrk_arr.size();
-    std::vector<int> dom(s, 0);
-
-    // Compute domination matrix
-    for (int i = 0; i < s; ++i)
-      for (int j = 0; j < s; ++j)
-        if (doesDominate(wrk_arr[i], wrk_arr[j]))
-          dom[j]++;
-
-    // Select non-dominated ones
-    std::vector<int> sel;
-    for (int i = 0; i < s; ++i)
-      if (dom[i] == 0)
-        sel.push_back(i);
-
-    // Save the indices of the selected ones
-    std::vector<int> front;
-    for (int i : sel)
-      front.push_back(wrk_ind[i]);
-    fronts.push_back(front);
-
-    // Remove selected points from wrk_arr and wrk_ind
-    std::vector<std::vector<double>> new_arr;
-    std::vector<int> new_ind;
-    for (int i = 0; i < s; ++i)
-      if (std::find(sel.begin(), sel.end(), i) == sel.end()) {
-        new_arr.push_back(wrk_arr[i]);
-        new_ind.push_back(wrk_ind[i]);
+  // Pairwise checks once (i<j), update both sides
+  for (size_t i = 0; i < n; ++i) {
+    const double* xi = points[i].data();
+    for (size_t j = i + 1; j < n; ++j) {
+      const double* xj = points[j].data();
+      if (doesDominate(xi, xj, m)) {
+        S[i].push_back(static_cast<int>(j));
+        ++domCount[j];
+      } else if (doesDominate(xj, xi, m)) {
+        S[j].push_back(static_cast<int>(i));
+        ++domCount[i];
       }
-    wrk_arr = new_arr;
-    wrk_ind = new_ind;
+    }
   }
 
+  // Build fronts
+  std::vector<std::vector<int>> fronts;
+  fronts.emplace_back();
+  fronts.back().reserve(n);
+  for (int i = 0; i < (int)n; ++i)
+    if (domCount[i] == 0) fronts.back().push_back(i);
+
+  while (!fronts.back().empty()) {
+    const auto& F = fronts.back();
+    std::vector<int> next;
+    for (int p : F) {
+      for (int q : S[p]) {
+        if (--domCount[q] == 0) next.push_back(q);
+      }
+    }
+    if (next.empty()) break;
+    fronts.emplace_back(std::move(next));
+  }
   return fronts;
 }
 

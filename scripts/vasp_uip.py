@@ -37,7 +37,7 @@ from math import sqrt, floor
 # ======== Print the header
 print("\n===================================================================\n"
       "Wrapper script to perform VASP I/O format optimization with ML-UIPs\n"
-      "Samad Hajinazar                                                v1.4\n"
+      "Samad Hajinazar                                                v1.5\n"
       "===================================================================\n")
 
 # ======== Default models (if needed)
@@ -51,9 +51,9 @@ def_sevennet_mdl = ["7net-mf-ompa", "mpa"]
 gpa2evan =   0.00624150913
 evan2gpa = 160.21766197432
 gpa2kbar =  10.0
-aseoptmz = { "BFGS": "BFGS", "BFGSLINESEARCH": "BFGSLineSearch",
-             "LBFGS": "LBFGS", "LBFGSLINESEARCH": "LBFGSLineSearch",
-             "GPMIN": "GPMin", "MDMIN": "MDMin", "FIRE": "FIRE"}
+aseoptmz = [ "FIRE", "BFGS", "BFGSLineSearch", "LBFGS", "LBFGSLineSearch",
+             "GPMin", "MDMin" ]
+uipchoic = [ 'MACE', 'CHGNET', 'MATTERSIM', 'ORB', 'SEVENNET' ]
 
 # ======== Input arguments (and defaults)
 class CustomHelpFormatter(argparse.HelpFormatter):
@@ -70,31 +70,38 @@ class CustomHelpFormatter(argparse.HelpFormatter):
       return parts
     return super()._format_action_invocation(action)
 
+def uip_choice(arg_value, ch=uipchoic):
+  '''
+  A helper function: the UIP name can be only first 3 chars
+  '''
+  for i in range(0, len(ch)):
+    if arg_value[:3].upper() == ch[i][:3].upper():
+      return ch[i]
+  return arg_value
+
 parser = argparse.ArgumentParser(formatter_class=CustomHelpFormatter)
-parser.add_argument("-u", "--uip", type=str.upper, default="MACE", metavar='UIP',
-   choices=['MACE', 'CHGNET', 'MATTERSIM', 'ORB', 'SEVENNET'],
-   help="UIP type [%(default)s]")
+parser.add_argument("-u", "--uip", type=uip_choice, default="MACE", metavar='UIP',
+   help="UIP type [*%s]" % ",".join(uipchoic))
 parser.add_argument("-a", "--algorithm", type=str.upper, default="FIRE", metavar='ALGORITHM',
-   choices=['FIRE','BFGS','LBFGS', 'BFGSLINESEARCH', 'LBFGSLINESEARCH','GPMIN','MDMIN'],
-   help="optimization algorithm [%(default)s]")
+   help="optimization algorithm [*%s]" % ",".join(aseoptmz))
 parser.add_argument("-i", "--inputfile", type=str, default="POSCAR",
-   help="input structure file name [%(default)s]")
+   help="input structure file name [*%(default)s]")
 parser.add_argument("-n", "--numsteps", type=int, default=0,
-   help="number of optimization steps [%(default)s]")
+   help="number of optimization steps [*%(default)s]")
 parser.add_argument("-r", "--relaxtype", type=int, default=3, metavar='RELAXTYPE',
-   help="relaxation scheme according to VASP ISIF flag [%(default)s]")
+   help="relaxation scheme according to VASP ISIF flag [*%(default)s]")
 parser.add_argument("-p", "--pressure", type=float, default=0.0,
-   help="pressure in GPa [%(default)s]")
+   help="pressure in GPa [*%(default)s]")
 parser.add_argument("-c", "--convergence", type=float, default=0.05,
-   help="convergence threshold for force in eV/A [%(default)s]")
+   help="convergence threshold for force in eV/A [*%(default)s]")
 parser.add_argument("-d", "--distancelimit", type=float, default=1.0,
-   help="min acceptable post-opt atomic distance in A; negative: no check [%(default)s]")
+   help="min acceptable post-opt atomic distance in A; negative: no check [*%(default)s]")
 parser.add_argument("-f", "--forcelimit", type=float, default=10.0,
-   help="max acceptable post-opt atomic force in eV/A; negative: no check [%(default)s]")
+   help="max acceptable post-opt atomic force in eV/A; negative: no check [*%(default)s]")
 parser.add_argument("-m", "--model", type=str, default="default",
-   help="UIP-ML potential model [%(default)s]")
+   help="UIP-ML potential model [*%(default)s]")
 parser.add_argument("-s", "--symprec", type=float, default=0.01,
-   help="SPGLIB symmetry precision [%(default)s]")
+   help="SPGLIB symmetry precision [*%(default)s]")
 parser.add_argument("-o", "--onlif", action="store_true", default=False,
    help="output only initial and final steps in OUTCAR")
 
@@ -103,7 +110,7 @@ args = parser.parse_args()
 # ======== Initiate run variables
 default_uip = args.uip.upper()
 default_inp = args.inputfile
-default_alg = aseoptmz[args.algorithm.upper()]
+default_alg = args.algorithm.upper()
 default_stp = args.numsteps
 default_rlx = args.relaxtype
 default_cnv = args.convergence
@@ -118,6 +125,11 @@ default_onl = args.onlif
 # Does the input file exist?
 if not os.path.exists(default_inp):
   print("Error: input file '%s' does not exist!" % default_inp)
+  sys.exit()
+
+# Is the algorithm is a valid one?
+if default_alg not in aseoptmz:
+  print("Error: invalid optimization algorithm '%s'" % default_alg)
   sys.exit()
 
 # Number of steps can't be negative!
@@ -143,7 +155,8 @@ except Exception as e:
 default_opt = eval('optimize.'+default_alg)
 
 # ======== Load UIP modules and set the calculator
-if default_uip == 'MACE': ########## MACE UIP
+########## MACE UIP ##########
+if default_uip == 'MACE':
   try:
     from mace.calculators import MACECalculator
     from mace import __version__
@@ -159,7 +172,8 @@ if default_uip == 'MACE': ########## MACE UIP
     sys.exit()
   default_cal = MACECalculator(model_paths=default_mdl, models=None,
                    default_dtype='float64') #, device='cuda')
-elif default_uip == 'CHGNET': ########## CHGNET UIP
+########## CHGNET UIP ##########
+elif default_uip == 'CHGNET':
   try:
     from chgnet.model.dynamics import CHGNetCalculator
     from chgnet.model.model import CHGNet
@@ -172,7 +186,8 @@ elif default_uip == 'CHGNET': ########## CHGNET UIP
   if default_mdl == 'default':
     default_mdl = def_chgnet_mdl
   default_cal = CHGNetCalculator(model=CHGNet.load(model_name=default_mdl))
-elif default_uip == 'MATTERSIM': ########## MATTERSIM UIP
+########## MATTERSIM UIP ##########
+elif default_uip == 'MATTERSIM':
   try:
     from mattersim.forcefield import MatterSimCalculator
     from mattersim import __version__
@@ -189,7 +204,8 @@ elif default_uip == 'MATTERSIM': ########## MATTERSIM UIP
   import torch
   device = "cuda" if torch.cuda.is_available() else "cpu"
   default_cal = MatterSimCalculator(load_path=default_mdl, device = device)
-elif default_uip == "ORB": ########## ORB UIP
+########## ORB UIP ##########
+elif default_uip == "ORB":
   try:
     from orb_models.forcefield import pretrained
     from orb_models.forcefield.calculator import ORBCalculator
@@ -204,7 +220,8 @@ elif default_uip == "ORB": ########## ORB UIP
   device="cpu" # or device="cuda"
   orbff = pretrained.ORB_PRETRAINED_MODELS[default_mdl](precision="float32-high")
   default_cal = ORBCalculator(orbff, device=device)
-elif default_uip == 'SEVENNET': ########## SEVENNET UIP
+########## SEVENNET UIP ##########
+elif default_uip == 'SEVENNET':
   try:
     from sevenn.calculator import SevenNetCalculator
     from sevenn import __version__
@@ -217,7 +234,7 @@ elif default_uip == 'SEVENNET': ########## SEVENNET UIP
     default_mdl = def_sevennet_mdl[0]+"_"+def_sevennet_mdl[1]
   default_cal = SevenNetCalculator(def_sevennet_mdl[0], modal=def_sevennet_mdl[1])
 else:
-  print("Error: unknown UIP type '%s'.")
+  print("Error: unknown UIP type '%s'." % default_uip)
   exit()
 
 # ======== Output the general run parameters
@@ -453,20 +470,19 @@ for s in slst:
 #  total cpu time will be written with a slight modification if forces/distances
 #  thresholds (if any) are not met! This is only to signal XtalOpt of a failed run.
 # In general, this can be just removed to produce a normal output.
+f.write("\nGeneral timing and accounting informations for this job:\n")
 if default_stp > 0 and not (cnvrg_force and cnvrg_dists):
-  f.write("\n  Total_CPU_time_used_(sec):   % 12.4lf\n" % (cputim))
-  f.write("         Elapsed time (sec):   % 12.4lf\n" % (waltim))
+  f.write("  Total_CPU_time_used_(sec):   % 12.4lf\n" % (cputim))
 else:
-  # For old XtalOpt compatibility!
-  f.write("General timing and accounting informations for this job:\n")
-  f.write("\n  Total CPU time used (sec):   % 12.4lf\n" % (cputim))
-  f.write("         Elapsed time (sec):   % 12.4lf\n" % (waltim))
-  f.write("\n")
+  f.write("  Total CPU time used (sec):   % 12.4lf\n" % (cputim))
+f.write("         Elapsed time (sec):   % 12.4lf\n" % (waltim))
 
 # Output error messages if forces/distances are not acceptable!
 if default_stp > 0 and not (cnvrg_force and cnvrg_dists):
   f.write("Error: didn't converge in % 5d steps - check forces/distances!\n" % act_steps);
   print("\nError: didn't converge in % 5d steps - check forces/distances!\n\n" % act_steps);
+else:
+  f.write("\n")
 
 f.close()
 
