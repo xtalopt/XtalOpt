@@ -1671,9 +1671,13 @@ void Structure::sortByDistanceAboveHull(QList<Structure*>* structures)
       QReadLocker jLocker(&structure_j->lock());
       double hull_i = structure_i->getDistAboveHull(); 
       double hull_j = structure_j->getDistAboveHull(); 
+      State stat_i = structure_i->getStatus();
+      State stat_j = structure_j->getStatus();
       bool doSwap = false;
-      // Meanwhile, try to push "nan"s to the end of the list!
-      if ( (!std::isnan(hull_j) && std::isnan(hull_i)) || (hull_j < hull_i) ) {
+      // Meanwhile, try to push "nan"s and failed ones to the end of the list!
+      if ( (hull_j < hull_i) ||
+           (!std::isnan(hull_j) && std::isnan(hull_i)) ||
+           (stat_j != Killed && stat_j != Removed) && (stat_i == Killed || stat_i == Removed) ) {
         doSwap = true;
       }
 
