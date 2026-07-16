@@ -1,0 +1,438 @@
+/**********************************************************************
+  Optimizer - Local optimizers' interface
+
+  Copyright (C) 2010-2011 by David C. Lonie
+  Copyright (C) 2026 Samad Hajinazar
+
+  This source code is released under the New BSD License, (the "License").
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ ***********************************************************************/
+
+#include <search/optimizer.h>
+
+#include <common/fileutils.h>
+#include <search/registeredcreators.h>
+#include <common/output.h>
+#include <search/search.h>
+#include <search/queueinterface.h>
+#include <search/structure.h>
+#include <search/optimizers/optimizers.h>
+
+#include <QFile>
+#include <QFileInfo>
+#include <QIODevice>
+#include <QReadLocker>
+#include <QString>
+
+#include <algorithm>
+
+namespace Search {
+
+
+namespace {
+// Registered optimizers' helpers
+typedef RegisteredCreators<Optimizer, SearchBase> RegisteredOptimizers;
+
+typedef std::unique_ptr<Optimizer> (*OptimizerCreator)(SearchBase*);
+
+template <typename OptimizerType>
+std::unique_ptr<Optimizer> createOptimizer(SearchBase* s)
+{
+  return std::unique_ptr<Optimizer>(new OptimizerType(s));
+}
+
+// This table just maps each optimzier name to its creator function. The
+//   per-optimzier strings (templates, assets, completion, outputs, commands)
+//   live in each optimizer class's defaults() (see e.g.
+//   optimizers/vaspoptimizer.cpp); each optimizer sets m_optimizerDefaults from its own
+//   defaults() in its ctor.
+struct BuiltInOptimizerDefinition
+{
+  const char* optimizerName;
+  OptimizerCreator optimizerCreator;
+};
+
+const BuiltInOptimizerDefinition builtInOptimizerDefinitions[] = {
+  { "vasp",   &createOptimizer<VASPOptimizer>   },
+  { "pwscf",  &createOptimizer<PWSCFOptimizer>  },
+  { "castep", &createOptimizer<CASTEPOptimizer> },
+  { "siesta", &createOptimizer<SIESTAOptimizer> },
+  { "gulp",   &createOptimizer<GULPOptimizer>   },
+  { "mtp",    &createOptimizer<MTPOptimizer>    }
+};
+
+const BuiltInOptimizerDefinition* builtInOptimizerDefinition(const QString& name)
+{
+  for (const auto& definition : builtInOptimizerDefinitions) {
+    if (name.compare(definition.optimizerName, Qt::CaseInsensitive) == 0)
+      return &definition;
+  }
+  return nullptr;
+}
+
+// Build a QStringList from a null-terminated array of C strings.
+QStringList defaultStringList(const char* const* values)
+{
+  QStringList list;
+  if (values)
+    for (const char* const* value = values; *value; ++value)
+      list.append(QString::fromLatin1(*value));
+  return list;
+}
+
+} // anonymous namespace
+
+// Input-asset string helpers, shared by the CLI reader, the GUI asset box,
+//   and the runtime getInputFiles(). The stored format is described in
+//   optimizer.h.
+
+bool Optimizer::parseAssetIdFileLine(const QString& line, QString& id, QString& fileEntry)
+{
+  const QString trimmed = line.trimmed();
+  const int space = trimmed.indexOf(' ');
+  if (space <= 0)
+    return false;
+  id = trimmed.left(space).trimmed();
+  fileEntry = trimmed.mid(space + 1).trimmed();
+  return !id.isEmpty() && !fileEntry.isEmpty();
+}
+
+QString Optimizer::inputAssetValueForSave(const QString& fileEntry)
+{
+  const QString trimmed = fileEntry.trimmed();
+  // An existing "%...%" keyword (e.g. %fileContents:..% / %copyFile:..%) is kept
+  //   verbatim; anything else is a bare path to inline.
+  if (trimmed.startsWith('%') && trimmed.endsWith('%') && trimmed.size() > 1)
+    return trimmed;
+  return "%fileContents:" + trimmed + "%";
+}
+
+QString Optimizer::inputAssetFilesToText(const QHash<QString, QString>& assetFiles)
+{
+  QStringList entries;
+  QStringList ids = assetFiles.keys();
+  std::sort(ids.begin(), ids.end());
+  for (const auto& id : ids)
+    entries.append(id + "=" + assetFiles.value(id).trimmed());
+  return entries.join("; ");
+}
+
+QString Optimizer::inputAssetTextToFiles(const QString& parsedStr)
+{
+  const QString trimmed = parsedStr.trimmed();
+  if (trimmed.isEmpty())
+    return QString();
+
+  const QHash<QString, QString> assets = inputAssetTextToMap(trimmed);
+  // Not a valid map (e.g. legacy literal content): show it unchanged so that
+  //   nothing is silently lost.
+  if (assets.isEmpty())
+    return parsedStr;
+
+  QStringList ids = assets.keys();
+  std::sort(ids.begin(), ids.end());
+  QStringList lines;
+  for (const auto& id : ids) {
+    QString value = assets.value(id).trimmed();
+    // Show a "%fileContents:path%" value as the bare path for readability;
+    //   inputAssetValueForSave() re-creates it on save.
+    if (value.startsWith("%fileContents:", Qt::CaseInsensitive) && value.endsWith("%")) {
+      value = value.mid(QString("%fileContents:").size());
+      value.chop(1);
+      value = value.trimmed();
+    }
+    lines.append(id + " " + value);
+  }
+  return lines.join("\n");
+}
+
+QHash<QString, QString> Optimizer::inputAssetTextToMap(const QString& text)
+{
+  QHash<QString, QString> assets;
+  const QString trimmed = text.trimmed();
+  if (trimmed.isEmpty())
+    return assets;
+
+  QStringList entries = trimmed.split(';');
+  if (entries.isEmpty())
+    return assets;
+
+  for (const auto& entry : entries) {
+    const QString trimmedEntry = entry.trimmed();
+    const int equalsIndex = trimmedEntry.indexOf('=');
+    if (equalsIndex <= 0)
+      return QHash<QString, QString>();
+    QString key = trimmedEntry.left(equalsIndex).trimmed();
+    const QString value = trimmedEntry.mid(equalsIndex + 1).trimmed();
+    if (key.isEmpty() || value.isEmpty())
+      return QHash<QString, QString>();
+    if (key.compare("system", Qt::CaseInsensitive) == 0)
+      key = "system";
+    assets.insert(key, value);
+  }
+  return assets;
+}
+
+bool Optimizer::readSavedInputAssetValue(const QString& assetValue, QString& contents,
+                                         QString* sourceFilename)
+{
+  if (sourceFilename)
+    sourceFilename->clear();
+
+  const QString trimmed = assetValue.trimmed();
+  if (!trimmed.startsWith("%fileContents:", Qt::CaseInsensitive) || !trimmed.endsWith("%")) {
+    contents = assetValue;
+    return true;
+  }
+
+  QString filename = trimmed.mid(QString("%fileContents:").size());
+  filename.chop(1);
+  filename = filename.trimmed();
+  if (sourceFilename)
+    *sourceFilename = QFileInfo(filename).fileName();
+
+  if (!Common::readFileToQString(filename, &contents)) {
+    Common::error(QString("%1: could not open %2")
+                    .arg(__func__)
+                    .arg(filename));
+    return false;
+  }
+  if (contents.endsWith('\n'))
+    contents.chop(1);
+  return true;
+}
+
+bool Optimizer::registerOptimizer(const QString& name,
+  std::function<std::unique_ptr<Optimizer>(SearchBase*)> creator)
+{
+  return RegisteredOptimizers::shared().registerCreator(name, creator);
+}
+
+QStringList Optimizer::registeredOptimizers()
+{
+  return RegisteredOptimizers::shared().names();
+}
+
+QStringList Optimizer::availableBuiltInOptimizers()
+{
+  QStringList names;
+  for (const auto& definition : builtInOptimizerDefinitions)
+    names.append(definition.optimizerName);
+  return names;
+}
+
+std::unique_ptr<Optimizer> Optimizer::createRegisteredOptimizer(
+  const QString& name, SearchBase* parent)
+{
+  std::unique_ptr<Optimizer> optimizer = RegisteredOptimizers::shared().create(name, parent);
+  if (optimizer)
+    return optimizer;
+  if (parent) {
+    Common::error(QString("%1: unknown optimizer: %2")
+                   .arg(__func__)
+                   .arg(name));
+  }
+  return std::unique_ptr<Optimizer>();
+}
+
+bool Optimizer::registerBuiltInOptimizer(const QString& name)
+{
+  const BuiltInOptimizerDefinition* definition = builtInOptimizerDefinition(name);
+  if (definition)
+    return registerOptimizer(definition->optimizerName, definition->optimizerCreator);
+
+  Common::error(QString("%1: unknown built-in optimizer: %2")
+                  .arg(__func__)
+                  .arg(name));
+  return false;
+}
+
+Optimizer::Optimizer(SearchBase* parent)
+  : QObject(parent), m_search(parent)
+{
+}
+
+Optimizer::~Optimizer()
+{
+}
+
+QHash<QString, QString> Optimizer::getInputFiles(Structure* s)
+{
+  int optStep;
+  {
+    QReadLocker locker(&s->lock());
+    optStep = s->getCurrentOptStep();
+  }
+
+  QueueInterface* queue = m_search->queueInterface(optStep);
+  if (!queue)
+    return QHash<QString, QString>();
+
+  // Stop any running jobs associated with this structure
+  queue->stopJob(s);
+
+  // Lock
+  QReadLocker locker(&s->lock());
+
+  // Unlock for optimizer calls
+  locker.unlock();
+
+  // Build hash
+  QHash<QString, QString> hash;
+  const QStringList queueFilenames = queue->getQueueInterfaceTemplateFileNames();
+  for (const auto& filename : queueFilenames) {
+    std::string temp = m_search->getQueueInterfaceTemplate(optStep, filename.toStdString());
+    hash.insert(filename, m_search->interpretTemplate(temp.c_str(), s));
+  }
+
+  const QStringList optimizerFilenames = getOptimizerTemplateFileNames();
+  for (const auto& filename : optimizerFilenames) {
+    std::string temp = m_search->getOptimizerTemplate(optStep, filename.toStdString());
+    hash.insert(filename, m_search->interpretTemplate(temp.c_str(), s));
+  }
+
+  // Optimizer-specific inputs (e.g. VASP POSCAR/POTCAR, SIESTA per-species PSF).
+  if (!addOptimizerInputFiles(s, optStep, hash))
+    return QHash<QString, QString>();
+
+  return hash;
+}
+
+bool Optimizer::addOptimizerInputFiles(Structure*, int, QHash<QString, QString>&) const
+{
+  // The base optimizer has no optimizer-specific input files.
+  return true;
+}
+
+QStringList Optimizer::getOptimizerTemplateFileNames() const
+{
+  return defaultStringList(m_optimizerDefaults ? m_optimizerDefaults->templateFiles : nullptr);
+}
+
+QStringList Optimizer::getOptimizerInputAssetNames() const
+{
+  return defaultStringList(m_optimizerDefaults ? m_optimizerDefaults->inputAssets : nullptr);
+}
+
+bool Optimizer::checkIfOutputFileExists(Structure* s, bool* exists)
+{
+  *exists = false;
+  int optStep;
+  {
+    QReadLocker locker(&s->lock());
+    optStep = s->getCurrentOptStep();
+  }
+  QueueInterface* queue = m_search->queueInterface(optStep);
+  if (!queue)
+    return false;
+
+  const QString completionFilename =
+    m_optimizerDefaults ? QString::fromLatin1(m_optimizerDefaults->completionFilename) : QString();
+  return queue->checkIfFileExists(s, completionFilename, exists);
+}
+
+bool Optimizer::checkForSuccessfulOutput(Structure* s, bool* success)
+{
+  *success = false;
+  if (!m_optimizerDefaults)
+    return true;
+
+  int optStep;
+  {
+    QReadLocker locker(&s->lock());
+    optStep = s->getCurrentOptStep();
+  }
+  QueueInterface* queue = m_search->queueInterface(optStep);
+  if (!queue)
+    return false;
+
+  const QString completionFilename = QString::fromLatin1(m_optimizerDefaults->completionFilename);
+  const QString completionString = QString::fromLatin1(m_optimizerDefaults->completionString);
+  int ec;
+  if (!queue->grepFile(s, completionString, completionFilename, 0, &ec)) {
+    Common::debug(
+      QString("Could not check the completion string in the output (%1)"
+              " of opt step %2")
+        .arg(s->getTag())
+        .arg(optStep + 1));
+    return false;
+  }
+  if (ec == 0)
+    *success = true;
+  return true;
+}
+
+bool Optimizer::update(Structure* structure)
+{
+  // lock structure
+  QWriteLocker locker(&structure->lock());
+
+  structure->stopOptTimer();
+  const int optStep = structure->getCurrentOptStep();
+  QueueInterface* queue = m_search->queueInterface(optStep);
+  if (!queue)
+    return false;
+
+  // Copy remote files over, other prep work:
+  locker.unlock();
+  bool ok = queue->prepareForStructureUpdate(structure);
+  locker.relock();
+  if (!ok) {
+    Common::warning(tr("%1: could not prepare to update structure %2"
+                       " of opt step %3")
+                     .arg(__func__)
+                     .arg(structure->getTag())
+                     .arg(optStep + 1));
+    return false;
+  }
+
+  // Try to read each output file in order until one succeeds.
+  ok = false;
+  const QStringList outputFilenames = defaultStringList(m_optimizerDefaults ? m_optimizerDefaults->outputFiles : nullptr);
+  for (const auto& outputFilename : outputFilenames) {
+    if (read(structure, Common::localPath(structure->getLocpath(), outputFilename))) {
+      ok = true;
+      break;
+    }
+  }
+  if (!ok) {
+    Common::warning(tr("%1: could not load structure at %2")
+                     .arg(__func__)
+                     .arg(structure->getLocpath()));
+    return false;
+  }
+
+  structure->setJobID(0);
+  locker.unlock();
+  return true;
+}
+
+bool Optimizer::read(Structure* structure, const QString& filename)
+{
+  // Test filename
+  QFile file(filename);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    return false;
+  }
+  file.close();
+
+  if (!readOutput(structure, filename)) {
+    Common::debug("Failed to read the output file " + filename + " for " + structure->getTag());
+    return false;
+  }
+
+  return true;
+}
+
+bool Optimizer::readOutput(Structure*, const QString&) const
+{
+  // The base optimizer has no output reader; subclasses parse their own format.
+  return false;
+}
+
+} // end namespace Search

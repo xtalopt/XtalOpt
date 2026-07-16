@@ -1,0 +1,1759 @@
+/**********************************************************************
+  io_text - Reading and applying xtalopt.in, runtime options, and structured inputs.
+
+  Copyright (C) 2009-2011 by David C. Lonie
+  Copyright (C) 2017 by Patrick S. Avery
+  Copyright (C) 2026 Samad Hajinazar
+
+  This source code is released under the New BSD License, (the "License").
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ ***********************************************************************/
+
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <map>
+#include <vector>
+
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QHash>
+#include <QRegularExpression>
+#include <QSet>
+#include <QSettings>
+#include <QString>
+#include <QStringList>
+#include <QTextStream>
+#include <QWriteLocker>
+
+#include <common/compatibility/qt_compat.h>
+#include <common/constants.h>
+#include <common/fileutils.h>
+#include <common/stringutils.h>
+#include <atoms/eleminfo.h>
+#include <atoms/molecule.h>
+#include <search/optimizer.h>
+#include <common/output.h>
+#include <search/queueinterface.h>
+
+#include <xtalopt/legacy/input_compat.h>
+#include <xtalopt/xtalopt.h>
+
+#include <xtalopt/settings.h>
+
+using namespace Search;
+
+namespace XtalOpt {
+
+// Functions for reading and writing input files
+
+bool optimizerTemplateOptionKeywords(const Optimizer* optimizer, QStringList& keywords,
+                                     QString* err = nullptr)
+{
+  keywords.clear();
+  if (!optimizer)
+    return true;
+
+  const QStringList filenames = optimizer->getOptimizerTemplateFileNames();
+  for (const auto& filename : filenames) {
+    const QString keyword = Settings::keywordForOptimizerTemplateFile(filename);
+    if (keyword.isEmpty()) {
+      if (err) {
+        *err = QString("No XtalOpt input keyword is defined for optimizer "
+                       "template '%1'.").arg(filename);
+      }
+      return false;
+    }
+    keywords.append(keyword);
+  }
+  return true;
+}
+
+bool queueTemplateOptionKeywords(const QueueInterface* queue, QStringList& keywords,
+                                 QString* err = nullptr)
+{
+  keywords.clear();
+  if (!queue)
+    return true;
+
+  const QStringList filenames = queue->getQueueInterfaceTemplateFileNames();
+  if (filenames.isEmpty())
+    return true;
+
+  if (filenames.size() > 1) {
+    if (err) {
+      *err = QString("XtalOpt input keyword '%1' can map only one "
+                     "queue template, but queue interface '%2' defines %3.")
+                     .arg(Settings::queueTemplateKeyword())
+                     .arg(queue->getIDString()).arg(filenames.join(", "));
+    }
+    return false;
+  }
+
+  keywords.append(Settings::queueTemplateKeyword());
+  return true;
+}
+
+QString filenameForQueueTemplateKeyword(const QueueInterface* queue, const QString& keyword,
+                                        QString* err = nullptr)
+{
+  if (err)
+    err->clear();
+
+  if (keyword.compare(Settings::queueTemplateKeyword(), Qt::CaseInsensitive) != 0) {
+    if (err)
+      *err = "Unknown queue template keyword: " + keyword;
+    return QString();
+  }
+  if (!queue) {
+    if (err)
+      *err = "No queue interface is selected for jobTemplates.";
+    return QString();
+  }
+
+  const QStringList filenames = queue->getQueueInterfaceTemplateFileNames();
+  if (filenames.size() != 1) {
+    if (err) {
+      *err = QString("Queue interface '%1' defines %2 queue templates for " "jobTemplates.")
+                     .arg(queue->getIDString())
+                     .arg(filenames.size());
+    }
+    return QString();
+  }
+
+  return filenames.first();
+}
+
+// Write one "  keyword = value" line (or "  keyword =" when value is empty).
+static void writeKeyword(QTextStream& stream, const QString& k, const QString& v)
+{
+  if (v.isEmpty())
+    stream << "  " << k << " =\n";
+  else
+    stream << "  " << k << " = " << v << "\n";
+}
+
+// Write XtalOpt settings in xtalopt.in format.
+void writeOptionSettings(QTextStream& stream, XtalOpt* x)
+{
+  const Search::Optimizer* opt = x->optimizer(0);
+  const Search::QueueInterface* queue = x->queueInterface(0);
+  QStringList optimizerTemplateKws;
+  QString keywordError;
+  if (!optimizerTemplateOptionKeywords(opt, optimizerTemplateKws, &keywordError))
+    Common::warning(keywordError);
+  QStringList queueTemplateKws;
+  if (!queueTemplateOptionKeywords(queue, queueTemplateKws, &keywordError))
+    Common::warning(keywordError);
+  QStringList assetKws;
+  if (opt) {
+    for (const auto& assetName : opt->getOptimizerInputAssetNames()) {
+      const QString assetKeyword = Settings::keywordForOptimizerInputAsset(assetName);
+      if (!assetKeyword.isEmpty())
+        assetKws.append(assetKeyword);
+    }
+  }
+
+  stream << "\n### XtalOpt Run Options ###\n";
+
+  for (const auto& keyword : Settings::allKeywords()) {
+    // Write settings with one value.
+    if (Settings::hasScalarBinding(keyword)) {
+      const QString value = Settings::scalarValue(*x, keyword);
+      if (keyword == "seedStructures" && value.isEmpty())
+        continue;
+      writeKeyword(stream, keyword, value);
+      continue;
+    }
+
+    // Write settings with more than one line.
+    if (Settings::isRepeated(keyword)) {
+      for (const QString& entry : Settings::repeatedEntries(*x, keyword))
+        writeKeyword(stream, keyword, entry);
+      continue;
+    }
+
+    // Write optimizer and queue settings.
+    if (keyword == "queueInterface") {
+      writeKeyword(stream, keyword, queue ? queue->getIDString().toLower() : "none");
+    } else if (keyword == "optimizer") {
+      writeKeyword(stream, keyword, opt ? opt->getIDString().toLower() : "none");
+    } else if (keyword == "numOptimizationSteps") {
+      writeKeyword(stream, keyword, QString::number(x->getNumOptSteps()));
+    } else if (keyword == "templatesDirectory") {
+      writeKeyword(stream, keyword, "");
+    } else if (keyword == "directRunCommand") {
+      writeKeyword(stream, keyword, opt ? opt->getDirectRunCommand() : QString());
+    } else if (keyword == "submitCommand" || keyword == "cancelCommand" || keyword == "statusCommand") {
+      if (queue && queue->isBatchQueue()) {
+        if (keyword == "submitCommand")
+          writeKeyword(stream, keyword, queue->submitCommand());
+        else if (keyword == "cancelCommand")
+          writeKeyword(stream, keyword, queue->cancelCommand());
+        else
+          writeKeyword(stream, keyword, queue->statusCommand());
+      }
+    } else if (queueTemplateKws.contains(keyword)) {
+      writeKeyword(stream, keyword, "");
+    } else if (optimizerTemplateKws.contains(keyword)) {
+      writeKeyword(stream, keyword, "");
+    } else if (assetKws.contains(keyword)) {
+      writeKeyword(stream, keyword, "");
+    } else if (Settings::isOptimizerAndQueueFileKeyword(keyword)) {
+      // Template/asset keyword for an optimizer/queue that is not selected.
+    } else {
+      // A settings-table row this writer does not know how to handle yet.
+      Common::warning("writeOptionSettings: keyword not exported: " + keyword);
+    }
+  }
+}
+
+// Read one input line as "keyword = value".
+// Multi-entry keywords are stored to relevant lists; while
+//   scalar keywords are stored in options.
+void processLine(const QString& tmpLine, QHash<QString, QString>& options,
+                 QHash<QString, QStringList>& multiInput,
+                 const QString& sourceDescription = QString())
+{
+  QString line = tmpLine.trimmed();
+  const QString displayLine = line;
+
+  // Remove everything to the right of '#' (including '#') since it is a comment
+  line.replace(QRegularExpression(" *#.*"), "");
+  // Simplify 'space' characters (e.g., prevent issues in reading 'potcar element')
+  line = line.simplified();
+
+  if (line.isEmpty())
+    return;
+
+  // We might have additional "=" signs in the value (e.g., arguments
+  //   of the direct run command). So, we split the input based on the
+  //   "leftmost '=' sign", to obtain the key and value.
+
+  // Get the key and the value
+  QString key = line.section('=', 0, 0).trimmed().toLower();
+  QString value = line.section('=', 1).trimmed();
+
+  // Make sure the line has a key and an '='.
+  if (key.isEmpty() || !line.contains('=')) {
+    Common::warning(QString("%1 Invalid line '%2' is ignored")
+                            .arg(sourceDescription).arg(displayLine));
+    return;
+  }
+
+  // Case insensitive key
+  const QString csKey = Settings::findKeywordName(key);
+  if (csKey.isEmpty()) {
+    Common::warning(QString("%1 Unrecognized option '%2' is ignored")
+                            .arg(sourceDescription).arg(key));
+    return;
+  }
+
+  // Multi-objective related entries are treated separately. The reason is that
+  //   there might be multiple of these entries and each have multiple fields.
+  // So, we won't assign actual variables here. Rather, add them all to a list
+  //   to process them later on.
+  if (Settings::isRepeatableInput(csKey)) {
+    if (!value.isEmpty())
+      multiInput[csKey].append(value);
+  } else {
+    options[csKey] = value.isEmpty() ? Settings::defaultValue(csKey) : value;
+  }
+}
+
+bool readOptionsFile(const QString& filename, QHash<QString, QString>& options,
+                     QHash<QString, QStringList>& multiInput)
+{
+  QString inputText;
+  if (!Common::readFileToQString(filename, &inputText)) {
+    Common::error(QString("Could not open file '%1'.").arg(filename));
+    return false;
+  }
+
+  QString parserText;
+  QString compatError;
+  if (!Legacy::prepareXtalOptInputTextForRead(filename, inputText, parserText, &compatError)) {
+    Common::error(compatError);
+    return false;
+  }
+
+  QString parserTextCopy = parserText;
+  QTextStream stream(&parserTextCopy);
+  while (!stream.atEnd()) {
+    const QString line = stream.readLine();
+    processLine(line, options, multiInput, "Settings file:");
+  }
+  return true;
+}
+
+bool requiredOptionsSet(const QHash<QString, QString>& options)
+{
+  const QStringList requiredKeywords = Settings::requiredKeywords();
+
+  for (const auto& keyword : requiredKeywords) {
+    if (options.value(keyword).isEmpty()) {
+      Common::error(QString("Required option '%1' was not set in the "
+                            "options file.\nRequired options for every run "
+                            "are: %2")
+                            .arg(keyword)
+                            .arg(requiredKeywords.join(", ")));
+      return false;
+    }
+  }
+
+  const QString queueInterfaceStr = options.value("queueInterface").toLower();
+  const QString optimizerStr = options.value("optimizer").toLower();
+  QStringList validQueueInterfaces = QueueInterface::registeredQueueInterfaces();
+  QStringList validOptimizers = Optimizer::registeredOptimizers();
+  for (QString& name : validQueueInterfaces)
+    name = name.toLower();
+  for (QString& name : validOptimizers)
+    name = name.toLower();
+
+  // Make sure that the queue interface is valid
+  if (!validQueueInterfaces.contains(queueInterfaceStr)) {
+    Common::error(QString("Unrecognized queue interface '%1' was "
+                          "entered.\nValid queue interfaces are: %2")
+                          .arg(options.value("queueInterface"))
+                          .arg(validQueueInterfaces.join(", ")));
+    return false;
+  }
+
+  // Make sure that the optimizer is valid
+  if (!validOptimizers.contains(optimizerStr)) {
+    Common::error(QString("Unrecognized optimizer '%1' was entered.\n"
+                          "Valid optimizers are: %2")
+                          .arg(options.value("optimizer"))
+                          .arg(validOptimizers.join(", ")));
+    return false;
+  }
+
+  bool remoteQueueRequested = false;
+
+  const QString remoteQueueText = options.value("remoteQueue", Settings::defaultValue("remoteQueue"));
+
+  if (!Common::textToValue(remoteQueueText, remoteQueueRequested)) {
+    Common::error("Invalid value for option 'remoteQueue': " + options.value("remoteQueue"));
+    return false;
+  }
+  const bool batchQueueInterface = (queueInterfaceStr != "none");
+  const QString sshMethod = options.value("sshMethod", Settings::defaultValue("sshMethod"));
+
+  if (!SearchBase::isValidSshMethod(sshMethod)) {
+    Common::error(QString("Unrecognized sshMethod '%1'. Valid values are: "
+                          "system, libssh, auto.")
+                  .arg(sshMethod));
+    return false;
+  }
+
+  if (remoteQueueRequested && !batchQueueInterface) {
+    Common::error("'remoteQueue = true' cannot be used with " "'queueInterface = none'.");
+    return false;
+  }
+
+  if (remoteQueueRequested && batchQueueInterface) {
+    if (!SearchBase::isSshMethodAvailable(sshMethod)) {
+      Common::error(QString("sshMethod '%1' is not available in this build.")
+                    .arg(sshMethod));
+      return false;
+    }
+
+    QStringList requiredRemoteKeywords;
+    requiredRemoteKeywords << "host" << "user" << "remoteWorkingDirectory";
+    for (const auto& requiredKeyword : requiredRemoteKeywords) {
+      if (options.value(requiredKeyword).isEmpty()) {
+        Common::error(QString("Required option for remote queue "
+                              "submission, '%1', was not set in the options "
+                              "file.\nRequired options for remote queue "
+                              "submission are: %2")
+                              .arg(requiredKeyword)
+                              .arg(requiredRemoteKeywords.join(", ")));
+        return false;
+      }
+    }
+  }
+
+  // Everything that was required was set!
+  return true;
+}
+
+bool printOptions(const QHash<QString, QString>& options, XtalOpt& xtalopt)
+{
+  QStringList keys = options.keys();
+  std::sort(keys.begin(), keys.end());
+
+  QString output;
+  QTextStream stream(&output);
+
+  // Options the user set explicitly in the input file.
+  stream << "\n=== Manually Set Options\n\n";
+  for (const auto& key : keys)
+    stream << key << " = " << options[key] << "\n";
+
+  // Every run option, in settings-table order.
+  stream << "\n=== All Run Options\n";
+  writeOptionSettings(stream, &xtalopt);
+
+  // We need to convert to c string to properly print newlines
+  Common::message(output);
+  return true;
+}
+
+// Appy default values for keywords that don't have any.
+void setDefaultOptions(QHash<QString, QString>& options)
+{
+  for (const auto& keyword : Settings::allKeywords()) {
+    const QString value = Settings::defaultValue(keyword);
+    if (!options.contains(keyword) && !value.isEmpty())
+      options[keyword] = value;
+  }
+}
+
+// Make a path relative to sourceDir absolute (unchanged if already absolute).
+QString localAssetPath(const QString& sourceDir, const QString& path)
+{
+  const QString trimmed = path.trimmed();
+  if (trimmed.isEmpty())
+    return trimmed;
+  return QFileInfo(Common::localPath(sourceDir, trimmed)).absoluteFilePath();
+}
+
+bool findReadableLocalFile(QString& path, const QString& description, const QString& sourceDir)
+{
+  path = localAssetPath(sourceDir, path);
+  if (!Common::isReadableFile(path)) {
+    Common::error(QString("%1 was not found or is not readable: %2").arg(description).arg(path));
+    return false;
+  }
+  path = QFileInfo(path).absoluteFilePath();
+  return true;
+}
+
+bool findReadableLocalDirectory(QString& path, const QString& description, const QString& sourceDir)
+{
+  path = localAssetPath(sourceDir, path);
+  if (!Common::isReadableDirectory(path)) {
+    Common::error(QString("%1 was not found or is not readable: %2").arg(description).arg(path));
+    return false;
+  }
+  path = QFileInfo(path).absoluteFilePath();
+  return true;
+}
+
+QList<uint> sortedCompositionAtomicNumbers(const XtalOpt& xtalopt)
+{
+  QList<uint> atomicNums = xtalopt.compList()[0].getCompositionAtomicNumbers();
+
+  std::sort(atomicNums.begin(), atomicNums.end());
+  return atomicNums;
+}
+
+QStringList sortedCompositionSymbols(const QList<uint>& atomicNums)
+{
+  QStringList symbols;
+  for (const auto& atomicNum : atomicNums) {
+    if (atomicNum != 0)
+      symbols.append(Atoms::ElementInfo::getAtomicSymbol(atomicNum).c_str());
+  }
+  std::sort(symbols.begin(), symbols.end());
+  return symbols;
+}
+
+bool processTemplateFileKeyword(QString& str, const QString& keyword, const QString& sourceDir)
+{
+  if (!str.startsWith(keyword + ":", Qt::CaseInsensitive))
+    return true;
+
+  const int colon = str.indexOf(':');
+  QString filename = str.mid(colon + 1).trimmed();
+  if (filename.isEmpty()) {
+    Common::error(QString("Template keyword %1 has an empty filename.").arg(keyword));
+    return false;
+  }
+
+  if (!findReadableLocalFile(filename,
+                                QString("Template keyword %1 file").arg(keyword),
+                                sourceDir)) {
+    return false;
+  }
+
+  str = str.left(colon + 1) + filename;
+  return true;
+}
+
+bool processTemplateLocalFileKeywords(QString& text, const QString& sourceDir)
+{
+  QStringList parts = text.split('%');
+  bool changed = false;
+  for (int i = 0; i < parts.size(); ++i) {
+    const QString original = parts[i];
+    if (!processTemplateFileKeyword(parts[i], "fileContents", sourceDir))
+      return false;
+    if (!processTemplateFileKeyword(parts[i], "copyFile", sourceDir))
+      return false;
+    changed = changed || parts[i] != original;
+  }
+
+  if (changed)
+    text = parts.join("%");
+  return true;
+}
+
+// Process an input asset entry.
+bool processInputAssetFileEntry(QString str, const QString& description, const QString& sourceDir,
+                                QString& parsedStr)
+{
+  str = str.trimmed();
+  if (str.contains('%')) {
+    if (!processTemplateLocalFileKeywords(str, sourceDir))
+      return false;
+    parsedStr = str;
+    return true;
+  }
+  if (!findReadableLocalFile(str, description, sourceDir))
+    return false;
+  parsedStr = Search::Optimizer::inputAssetValueForSave(str);
+  return true;
+}
+
+bool processOptimizerInputAssets(XtalOpt& xtalopt, size_t optStep,
+                                 const QHash<QString, QStringList>& multiInput,
+                                 const QString& sourceDir)
+{
+  Optimizer* optimizer = xtalopt.optimizer(optStep);
+  if (!optimizer)
+    return true;
+
+  const QList<uint> atomicNums = sortedCompositionAtomicNumbers(xtalopt);
+  const QStringList symbols = sortedCompositionSymbols(atomicNums);
+
+  for (const auto& assetName : optimizer->getOptimizerInputAssetNames()) {
+    const QString optionKeyword = Settings::keywordForOptimizerInputAsset(assetName);
+    if (optionKeyword.isEmpty())
+      continue;
+
+    // Each repeated entry is "<id> <file>": <id> is an element symbol or, for
+    //   POTCAR, the literal "system"; <file> is a path or a %...% entry.
+    QHash<QString, QString> idFiles;
+    for (const QString& entry : multiInput.value(optionKeyword)) {
+      QString id, file;
+      if (!Search::Optimizer::parseAssetIdFileLine(entry, id, file)) {
+        Common::error("The " + assetName + " entry must be '<id> <file>': " + entry);
+        return false;
+      }
+      idFiles.insert(id.toLower(), file);
+    }
+
+    const bool allowSystemFile = assetName.compare("POTCAR", Qt::CaseInsensitive) == 0;
+
+    if (allowSystemFile && !idFiles.value("system").isEmpty()) {
+      QString prsdStr;
+      if (!processInputAssetFileEntry(idFiles.value("system"),
+                   "The " + assetName + " file for the system", sourceDir, prsdStr)) {
+        return false;
+      }
+      QHash<QString, QString> systemFile;
+      systemFile.insert("system", prsdStr);
+      xtalopt.setOptimizerInputAsset(optStep, assetName.toStdString(),
+                                     Search::Optimizer::inputAssetFilesToText(systemFile).toStdString());
+      continue;
+    }
+
+    QHash<QString, QString> speciesFiles;
+    for (const auto& symbol : symbols) {
+      const QString file = idFiles.value(symbol.toLower());
+      if (file.isEmpty()) {
+        QString example = optionKeyword + " = " + symbol + " /path/to/";
+        if (assetName.compare("POTCAR", Qt::CaseInsensitive) == 0)
+          example += "vasp_potcars/symbol/POTCAR";
+        else if (assetName.compare("PSF", Qt::CaseInsensitive) == 0)
+          example += "siesta_psfs/symbol.psf";
+        else
+          example += assetName.toLower() + "/" + symbol;
+        Common::error("No " + assetName + " file found for atom type " +
+                      symbol + ". You must set the " + assetName +
+                      " file in the options like so: " + example);
+        return false;
+      }
+
+      QString parsedStr;
+      if (!processInputAssetFileEntry(file, "The " + assetName + " file for atom type " + symbol,
+                                      sourceDir, parsedStr)) {
+        return false;
+      }
+      speciesFiles.insert(symbol, parsedStr);
+    }
+
+    xtalopt.setOptimizerInputAsset(optStep, assetName.toStdString(),
+                                   Search::Optimizer::inputAssetFilesToText(speciesFiles).toStdString());
+  }
+
+  return true;
+}
+
+bool templateOptionsSet(const QStringList& templateKeywords, const QString& optQueueName,
+                        const QHash<QString, QString>& options)
+{
+  for (const auto& templateKeyword : templateKeywords) {
+    if (options[templateKeyword].isEmpty()) {
+      Common::error(QString("Required option for %1, '%2', was not set "
+                            "in the options file.\nRequired options for %1 "
+                            "are: %3")
+                            .arg(optQueueName)
+                            .arg(templateKeyword)
+                            .arg(templateKeywords.join(", ")));
+      return false;
+    }
+  }
+  return true;
+}
+
+// Add the verbose summary of the main search inputs to the output.
+void addMainSearchParamReport(XtalOpt& xtalopt, QString* verboseReport)
+{
+  if (!xtalopt.isVerbose() || !verboseReport)
+    return;
+
+  QString outstr = "\n\n   -----\n\n";
+  outstr += "   Final list of input compositions:\n";
+  for (int i = 0; i < xtalopt.compList().size(); i++) {
+    outstr += QString("%1").arg(xtalopt.compList()[i].getFormula(), 20);
+    if ((i + 1) % 3 == 0)
+      outstr += "\n";
+  }
+  outstr += "\n\n";
+  outstr += "   Chemical System: " + xtalopt.getChemicalSystem().join(" ");
+  outstr += "\n\n";
+  outstr += "   Initial atomic min radii: \n";
+  for (const auto& el : xtalopt.eleMinRadii().getRadiusAtomicNumbers())
+    outstr += QString("      %1 : %2\n")
+                      .arg(el)
+                      .arg(xtalopt.eleMinRadii().getMinRadius(el));
+
+  outstr += "\n";
+  for (int i = 0; i < xtalopt.refEnergies().size(); i++) {
+    outstr += QString("   Reference energy %1 : %2\n")
+                     .arg(xtalopt.refEnergies()[i].cell.getFormula(), 10)
+                     .arg(xtalopt.refEnergies()[i].energy, 12, 'f', 6);
+  }
+
+  outstr += "\n";
+  for (const auto& atomcn : xtalopt.eleVolumes().getVolumeAtomicNumbers()) {
+    outstr += QString("   Elemental volume %1 : %2 %3\n")
+                      .arg(Atoms::ElementInfo::getAtomicSymbol(atomcn).c_str(), 10)
+                      .arg(xtalopt.eleVolumes().getMinVolume(atomcn), 12, 'f', 6)
+                      .arg(xtalopt.eleVolumes().getMaxVolume(atomcn), 12, 'f', 6);
+  }
+  outstr += "   -----\n\n"; // Just for style!
+
+  *verboseReport += outstr;
+}
+
+bool applyRepeatedInputs(const QHash<QString, QStringList>& multiInput, XtalOpt& xtalopt)
+{
+  // Apply multi-entry settings.
+  for (const QString& keyword : Settings::allKeywords()) {
+    if (!Settings::isRepeated(keyword))
+      continue;
+    Settings::clearRepeated(xtalopt, keyword);
+    for (const QString& entry : multiInput.value(keyword)) {
+      if (entry.trimmed().isEmpty())
+        continue;
+      if (!Settings::addRepeatedEntry(xtalopt, keyword, entry)) {
+        Common::error("Invalid " + keyword + " entry: " + entry);
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool loadTemplateOptionText(const QString& templateKeyword, size_t optStep,
+                            const QHash<QString, QString>& options, const QString& sourceDir,
+                            QString& text)
+{
+  QString optStepStr = QString::number(optStep + 1);
+  QStringList fileList = options[templateKeyword].split(",");
+
+  if (fileList.size() <= static_cast<int>(optStep)) {
+    Common::error(QString("%1: %2 does not contain a template for "
+                          "opt step %3").arg(__func__, templateKeyword, optStepStr));
+    return false;
+  }
+
+  QString filename = fileList[static_cast<int>(optStep)].trimmed();
+  if (filename.isEmpty()) {
+    Common::error(QString("%1: %2 is missing!").arg(__func__, templateKeyword));
+    return false;
+  }
+
+  const QString templatePath =
+    QFileInfo(Common::localPath(options.value("templatesDirectory"), filename))
+      .absoluteFilePath();
+
+  const QFileInfo templateInfo(templatePath);
+  if (!templateInfo.exists() || !templateInfo.isFile() || !templateInfo.isReadable()) {
+    Common::error("Could not read file '" + filename + "' in the templates directory: " +
+                  options.value("templatesDirectory"));
+    return false;
+  }
+
+  if (!Common::readFileToQString(templatePath, &text)) {
+    Common::error("Could not open file '" + filename + "' in the templates directory: " +
+                  options.value("templatesDirectory"));
+    return false;
+  }
+  if (!processTemplateLocalFileKeywords(text, sourceDir))
+    return false;
+
+  return true;
+}
+
+bool addOptimizerTemplate(XtalOpt& xtalopt, const QString& templateKeyword, size_t optStep,
+                          const QHash<QString, QString>& options, const QString& sourceDir)
+{
+  QString text;
+  if (!loadTemplateOptionText(templateKeyword, optStep, options, sourceDir, text)) {
+    return false;
+  }
+
+  const QString engineTemplateName = Settings::filenameForOptimizerTemplateKeyword(templateKeyword);
+
+  if (engineTemplateName.isEmpty()) {
+    Common::error("Unknown optimizer template keyword: " + templateKeyword);
+    return false;
+  }
+
+  xtalopt.setOptimizerTemplate(optStep, engineTemplateName.toStdString(), text.toStdString());
+  return true;
+}
+
+bool addQueueTemplate(XtalOpt& xtalopt, const QueueInterface* queue, const QString& templateKeyword,
+                      size_t optStep, const QHash<QString, QString>& options,
+                      const QString& sourceDir)
+{
+  QString text;
+  if (!loadTemplateOptionText(templateKeyword, optStep, options, sourceDir, text)) {
+    return false;
+  }
+
+  QString filenameError;
+  const QString engineTemplateName =
+    filenameForQueueTemplateKeyword(queue, templateKeyword, &filenameError);
+  if (engineTemplateName.isEmpty()) {
+    Common::error(filenameError);
+    return false;
+  }
+
+  xtalopt.setQueueInterfaceTemplate(optStep, engineTemplateName.toStdString(), text.toStdString());
+  return true;
+}
+
+bool applyTemplateSettings(XtalOpt& xtalopt, size_t optStep, const QHash<QString, QString>& options,
+                           const QHash<QString, QStringList>& multiInput, const QString& sourceDir)
+{
+  Optimizer* optimizer = xtalopt.optimizer(optStep);
+
+  QStringList templateKeywords;
+  QString templateKeywordError;
+  if (!optimizerTemplateOptionKeywords(optimizer, templateKeywords, &templateKeywordError)) {
+    Common::error(templateKeywordError);
+    return false;
+  }
+
+  if (!templateOptionsSet(templateKeywords, options["optimizer"], options))
+    return false;
+
+  for (const auto& templateKeyword : templateKeywords) {
+    if (!addOptimizerTemplate(xtalopt, templateKeyword, optStep, options, sourceDir)) {
+      return false;
+    }
+  }
+
+  return processOptimizerInputAssets(xtalopt, optStep, multiInput, sourceDir);
+}
+
+bool applyOptimizerAndQueueSettings(QHash<QString, QString>& options,
+                                    const QHash<QString, QStringList>& multiInput, XtalOpt& xtalopt,
+                                    const QString& sourceDir, bool loadAndVerifyAssets, bool bestEffort)
+{
+  size_t numOptSteps = options.value("numOptimizationSteps").toUInt();
+  // Zero (or an unreadable value) would leave the run with no
+  //   optimizer/queue steps at all; use one step, as the state loader does.
+  if (numOptSteps == 0) {
+    Common::warning("numOptimizationSteps must be at least 1; using 1.");
+    numOptSteps = 1;
+  }
+
+  xtalopt.clearOptSteps();
+
+  const QString queueInterfaceStr = options["queueInterface"].toLower();
+  const QString optimizerStr = options["optimizer"].toLower();
+
+  // Set the queue and optimizer.
+  for (size_t i = 0; i < numOptSteps; ++i) {
+    xtalopt.appendOptStep();
+
+    if (!xtalopt.setQueueInterface(i, queueInterfaceStr.toStdString()))
+      return false;
+
+    QueueInterface* queue = xtalopt.queueInterface(i);
+    if (queue && queue->isBatchQueue()) {
+      if (!options["submitCommand"].isEmpty())
+        queue->setSubmitCommand(options["submitCommand"]);
+      if (!options["cancelCommand"].isEmpty())
+        queue->setCancelCommand(options["cancelCommand"]);
+      if (!options["statusCommand"].isEmpty())
+        queue->setStatusCommand(options["statusCommand"]);
+    }
+
+    if (!xtalopt.setOptimizer(i, optimizerStr.toStdString()))
+      return false;
+
+    Optimizer* optimizer = xtalopt.optimizer(i);
+    if (!options["directRunCommand"].isEmpty())
+      optimizer->setDirectRunCommand(options["directRunCommand"]);
+  }
+
+  // A simple read sets the optimizers/queues but does not load template contents.
+  if (!loadAndVerifyAssets)
+    return true;
+
+  // Load the template and asset input files.
+  QString templatesDirectory = options.value("templatesDirectory");
+
+  if (!findReadableLocalDirectory(templatesDirectory, "templatesDirectory", sourceDir)) {
+    if (!bestEffort)
+      return false;
+    Common::warning("Templates directory was not found; template contents were "
+                    "left empty. Set them before starting a search.");
+    return true;
+  }
+  options["templatesDirectory"] = templatesDirectory;
+
+  for (size_t i = 0; i < numOptSteps; ++i) {
+    QueueInterface* queue = xtalopt.queueInterface(i);
+    if (queue && queue->isBatchQueue()) {
+      QStringList queueTemplateKeywords;
+      QString queueTemplateKeywordError;
+
+      bool queueTemplatesOk =
+        queueTemplateOptionKeywords(queue, queueTemplateKeywords, &queueTemplateKeywordError) &&
+        templateOptionsSet(queueTemplateKeywords, options["queueInterface"], options);
+
+      for (const auto& templateKeyword : queueTemplateKeywords) {
+        if (!queueTemplatesOk)
+          break;
+        if (!addQueueTemplate(xtalopt, queue, templateKeyword, i, options, sourceDir))
+          queueTemplatesOk = false;
+      }
+      if (!queueTemplatesOk) {
+        if (!bestEffort) {
+          if (!queueTemplateKeywordError.isEmpty())
+            Common::error(queueTemplateKeywordError);
+          return false;
+        }
+        Common::warning(QString("Queue templates for opt step %1 were left empty.").arg(i + 1));
+        continue;
+      }
+    }
+
+    if (!applyTemplateSettings(xtalopt, i, options, multiInput, sourceDir)) {
+      if (!bestEffort)
+        return false;
+      Common::warning(QString("Optimizer templates for opt step %1 were left empty.").arg(i + 1));
+    }
+  }
+
+  return true;
+}
+
+// Set the local working directory. Imports keep a relative path; command-line
+// input uses the process directory.
+bool applyRemainingSettings(const QHash<QString, QString>& options, XtalOpt& xtalopt,
+                            bool bestEffort)
+{
+  const QString locWorkDir = options.value("localWorkingDirectory");
+
+  if (!bestEffort)
+    xtalopt.setLocWorkDir(QDir(locWorkDir).absolutePath());
+  else
+    xtalopt.setLocWorkDir(locWorkDir);
+
+  return true;
+}
+
+// Apply input settings in order: structure values, search values, then optimizers/queues.
+bool processOptions(QHash<QString, QString> options, const QHash<QString, QStringList>& multiInput,
+                    XtalOpt& xtalopt, const QString& sourceDir,
+                    bool loadAndVerifyAssets, bool bestEffort, QString* verboseReport)
+{
+  setDefaultOptions(options);
+
+  // Scalars apply through the settings table. localWorkingDirectory is
+  //   excluded here since it may need to be made absolute below.
+  for (auto it = options.constBegin(); it != options.constEnd(); ++it) {
+    const QString canon = Settings::findKeywordName(it.key());
+
+    if (canon.isEmpty() || canon == "localWorkingDirectory" || !Settings::hasScalarBinding(canon))
+      continue;
+    if (!Settings::applyScalar(xtalopt, canon, it.value())) {
+      Common::error(QString("Invalid value for option '%1': %2").arg(canon).arg(it.value()));
+      return false;
+    }
+  }
+  // Seed paths (a scalar now) are resolved relative to the input file when this
+  //   read loads assets; the scalar set already populated seedList().
+  if (loadAndVerifyAssets) {
+    QStringList resolvedSeeds;
+    for (const QString& seed : xtalopt.seedList())
+      resolvedSeeds.append(localAssetPath(sourceDir, seed));
+    xtalopt.seedList() = resolvedSeeds;
+  }
+
+  // Process the single-line inputs (eg, compositions and radii).
+  if (!xtalopt.processInputData()) {
+    Common::error("Input compositions were not read in successfully.");
+    return false;
+  }
+  addMainSearchParamReport(xtalopt, verboseReport);
+
+  if (!applyRepeatedInputs(multiInput, xtalopt))
+    return false;
+
+  if (!multiInput.value("objective").isEmpty())
+    xtalopt.refreshBuiltinObjectiveWeight();
+
+  if (!applyOptimizerAndQueueSettings(options, multiInput, xtalopt, sourceDir,
+                                      loadAndVerifyAssets, bestEffort))
+    return false;
+
+  if (!applyRemainingSettings(options, xtalopt, bestEffort))
+    return false;
+
+  // One final validation: a fresh input file with bad values is rejected.
+  return Settings::validateSettings(xtalopt, Settings::InvalidSettingAction::Reject);
+}
+
+// Main reader of the input file. Imports keep paths relative to the input file; a normal
+// command-line read checks the templates and input files.
+bool XtalOpt::readInputFile(const QString& filename, bool bestEffort,
+                            bool loadAndVerifyAssets)
+{
+  QString verboseReport;
+  // Find the input file directory for relative input paths.
+  const QString sourceDir =
+    bestEffort ? QFileInfo(filename).absoluteDir().absolutePath() : QDir::currentPath();
+
+  // Parse the raw keyword/value lines of the file.
+  QHash<QString, QString> options;
+  QHash<QString, QStringList> multiInput;
+  if (!readOptionsFile(filename, options, multiInput))
+    return false;
+
+  // A strict CLI start needs every required keyword before anything is applied.
+  const bool requiredOptionsOk = requiredOptionsSet(options);
+  if (!requiredOptionsOk && !bestEffort)
+    return false;
+
+  // Apply all parsed options to this XtalOpt instance.
+  if (!processOptions(options, multiInput, *this,
+                      sourceDir, loadAndVerifyAssets, bestEffort, &verboseReport))
+    return false;
+
+  // A GUI import tolerates missing required keywords while applying the rest,
+  //   but still reports the gap to the caller.
+  if (!requiredOptionsOk)
+    return false;
+
+  if (bestEffort) {
+    // softExit only makes sense for a CLI start; an imported session should
+    //   not auto-quit.
+    setSoftExit(false);
+  } else {
+    // CLI startup echo.
+    if (!printOptions(options, *this))
+      return false;
+    if (!verboseReport.isEmpty())
+      Common::message(verboseReport);
+  }
+  return true;
+}
+
+bool XtalOpt::processInputCustomIAD(QString s)
+{
+  // Custom IADs are only used when usingCustomIADs is set; ignore otherwise.
+  if (!getUsingCustomIAD())
+    return true;
+  QStringList splitLine = s.split(",", QtCompat::SkipEmptyParts);
+  if (splitLine.size() != 3) {
+    Common::error("customIAD line must have 3 comma-delimited items on "
+                  "the right-hand side of the equals sign.\nFaulty option "
+                  "is as follows: customIAD = " + s +
+                  ". Proper format is as follows: <firstSymbol>, " "<secondSymbol>, <minDistance>");
+    return false;
+  }
+  QString firstSymbol = splitLine[0].trimmed(),
+          secondSymbol = splitLine[1].trimmed();
+  bool ok = false;
+  double minDist = splitLine[2].toDouble(&ok);
+  if (!ok || minDist <= 0.0) {
+    Common::error("Invalid minDistance in customIAD line: " "distance: " + splitLine[2].trimmed() +
+                  ". Proper format is as follows: <firstSymbol>, " "<secondSymbol>, <minDistance>");
+    return false;
+  }
+
+  // Make sure the data is valid
+  unsigned short firstAtomicNum =
+    Atoms::ElementInfo::getAtomicNum(firstSymbol.toStdString());
+
+  // If the atomic number is 0, the symbol is invalid
+  if (firstAtomicNum == 0) {
+    Common::error("Invalid atomic symbol in customIAD line: " "symbol: " + firstSymbol +
+                  ". Proper format is as follows: <firstSymbol>, " "<secondSymbol>, <minDistance>");
+    return false;
+  }
+
+  unsigned short secondAtomicNum =
+    Atoms::ElementInfo::getAtomicNum(secondSymbol.toStdString());
+
+  // If the atomic number is 0, the symbol is invalid
+  if (secondAtomicNum == 0) {
+    Common::error("Invalid atomic symbol in customIAD line: " "symbol: " + secondSymbol +
+                  ". Proper format is as follows: <firstSymbol>, " "<secondSymbol>, <minDistance>");
+    return false;
+  }
+
+  // Now make the struct and add it to XtalOpt
+  IAD entry;
+  entry.minIAD = minDist;
+
+  interComp().insert(qMakePair(firstAtomicNum, secondAtomicNum), entry);
+
+  // IAD lookup is directional; custom distances are symmetric.
+  interComp().insert(qMakePair(secondAtomicNum, firstAtomicNum), entry);
+
+  return true;
+}
+
+QString stripOptionalQuotes(QString value)
+{
+  value = value.trimmed();
+  if (value.size() >= 2 && value.at(0) == '"' && value.at(value.size() - 1) == '"')
+    return value.mid(1, value.size() - 2);
+  return value;
+}
+
+bool compositionFitsInAnyInputFormula(const CellComp& requested,
+                                      const QList<CellComp>& inputFormulas)
+{
+  if (inputFormulas.isEmpty())
+    return true;
+
+  const QList<unsigned int> atomicNums = requested.getCompositionAtomicNumbers();
+  for (int formulaIndex = 0; formulaIndex < inputFormulas.size(); ++formulaIndex) {
+    const CellComp& inputFormula = inputFormulas.at(formulaIndex);
+    if (requested.getNumAtoms() > inputFormula.getNumAtoms())
+      continue;
+
+    bool fits = true;
+    for (int i = 0; i < atomicNums.size(); ++i) {
+      const unsigned int atomicNum = atomicNums.at(i);
+      if (requested.getCount(atomicNum) > inputFormula.getCount(atomicNum)) {
+        fits = false;
+        break;
+      }
+    }
+    if (fits)
+      return true;
+  }
+
+  return false;
+}
+
+bool parseFormulaWithTrailingDoubles(const QString& entry, int valueCount,
+                                     QString& formula, QList<double>& values, QString* error)
+{
+  formula.clear();
+  values.clear();
+
+  QStringList fields = entry.split(" ", QtCompat::SkipEmptyParts);
+  if (fields.size() < valueCount + 1) {
+    if (error) {
+      *error = QString("Entry must contain a formula and %1 numeric value(s): %2")
+                       .arg(valueCount).arg(entry);
+    }
+    return false;
+  }
+
+  values.reserve(valueCount);
+  QList<double> reversedValues;
+  reversedValues.reserve(valueCount);
+  for (int i = 0; i < valueCount; ++i) {
+    bool ok = false;
+    const QString valueText = fields.takeLast();
+    const double value = valueText.toDouble(&ok);
+    if (!ok || !GS_ISFINITE(value)) {
+      if (error) {
+        *error = QString("Invalid numeric value '%1' in entry: %2").arg(valueText).arg(entry);
+      }
+      return false;
+    }
+    reversedValues.prepend(value);
+  }
+
+  formula = fields.join(' ');
+  values = reversedValues;
+  return true;
+}
+
+bool XtalOpt::processInputChemicalFormulas(QString s)
+{
+  // This function, one of the first things to be called, processes
+  //   the input chemical formulas, and sets the list of compositions.
+  // Input formula should all be of the same chemical system, and
+  //   "full" chemical formula, i.e., proper combination of symbols
+  //   and quantities, e.g., "Ti2O4" and not "TiO2".
+  // An entry can also be a hyphen-separated list of "supercells",
+  //   e.g., "Ti1O4 - Ti3O12".
+  // If anything goes wrong, we will return false which quits the run.
+  //   Examples of input formulae issues:
+  //   - input formulae don't have correct format,
+  //   - list of symbols of input formulae don't match the chemical system.
+  //
+  // At the end of this function, where we know the chemical system,
+  //   we initiate atomic radii.
+  //
+  // If it returns true, the composition list is overwritten;
+  //   otherwise it will have its previous value (if any).
+
+  // Working output variable
+  QList<CellComp> out;
+
+  // Input list of formulas.
+  const QStringList formulalist = s.split(',');
+
+  // Process the input formula list and produce composition object.
+  // At the end, we will check to see if we have any valid compositions,
+  //   and if so, they belong to the same chemical system.
+  for (const auto& tmpform : formulalist) {
+    QString formula = tmpform.simplified();
+    formula.replace(" ", "");
+    // First, is this a "single" formula entry?
+    if (!formula.contains("-")) {
+      CellComp tmpcomp = formulaToComposition(formula);
+      if (tmpcomp.getNumTypes() > 0) {
+        out.append(tmpcomp);
+        continue;
+      } else {
+        Common::error(QString("Incorrect chemical formula entry '%1'.").arg(formula));
+        return false;
+      }
+    }
+    // Then, we have a formula range ("-" entry) to deal with.
+    QStringList expcomp = formula.split("-");
+    if (expcomp.size() != 2) {
+      Common::error(QString("Incorrect chemical formula entry '%1'.").arg(formula));
+      return false;
+    }
+
+    // Convert limits to compositions; this makes it easier to verify and analyse them
+    CellComp comp1 = formulaToComposition(expcomp[0]);
+    CellComp comp2 = formulaToComposition(expcomp[1]);
+
+    // Proceed only if they are legit compositions.
+    if (comp1.getNumTypes() == 0 || comp2.getNumTypes() == 0) {
+      Common::error(QString("Failed to process chemical formula entry '%1'.").arg(formula));
+      return false;
+    }
+
+    // Formulae at the both end must be equivalent, proper supercells,
+    //   and the second one being larger than the first.
+    double ratio = compareCompositions(comp1, comp2);
+    if (ratio == 0 || ratio != std::floor(ratio) || ratio < 1) {
+      Common::error(QString("Incorrect chemical formula entry '%1'.").arg(formula));
+      return false;
+    }
+
+    // Now: comp2 is a "proper supercell" of (or equal to) comp1.
+    // Find the supercell ratio (largest expansion factor).
+    uint quantratio = static_cast<unsigned int>(ratio);
+
+    // Process all supercell formula and add them to composition list
+    for (uint i = 1; i <= quantratio; i++) {
+      QString frm = "";
+      for (const auto& symb : comp1.getCompositionSymbols()) {
+        frm += symb + QString::number(comp1.getCount(symb) * i);
+      }
+      out.append(formulaToComposition(frm));
+    }
+  }
+
+  // A few final sanity checks.
+
+  // Are we left with any valid formula?
+  if (out.isEmpty()) {
+    Common::error("No valid chemical formula was present in the list.");
+    return false;
+  }
+
+  // All compositions must be non-empty; have the same number of types of elements
+  if (out[0].getNumTypes() == 0) {
+    Common::error("Empty formula is not accepted.");
+    return false;
+  }
+  for (int i = 1; i < out.size(); i++) {
+    if (out[i].getNumTypes() != out[0].getNumTypes()) {
+      Common::error("Number of elements in formulas must be the same.");
+      return false;
+    }
+    for (int j = 0; j < out[i].getNumTypes(); j++) {
+      if (out[i].getCompositionAtomicNumbers()[j] != out[0].getCompositionAtomicNumbers()[j]) {
+        Common::error("Element types in all formulas must be the same.");
+        return false;
+      }
+    }
+  }
+
+  // Set the composition list
+  compList() = out;
+
+  // Finally, at this point we have the final list of elements in the search;
+  //   time to set the initial elemental minimum radii!
+  refreshElementMinRadii();
+
+  return true;
+}
+
+bool XtalOpt::processInputReferenceEnergies(QString s)
+{
+  // This function processes the input reference energies (if any),
+  //   and given a proper input, it sets the set of "lists" each
+  //   for a reference entry and containing:
+  //     "normalized composition plus the energy per atom".
+  // In general, ref energy input entries include "formula energy"
+  //   where the formula can be a subsystem of our chemical system.
+  // We will ignore "empty" entries, and will return false:
+  //  (1) if failed to read any "non-empty" entry,
+  //  (2) if failed to read values for "all elements" in chemical system.
+  //
+  // This function sets the global variable "m_reference_energies".
+  // If it returns true, the relevant global variable is overwritten;
+  //   otherwise it will have its previous value (if any).
+
+  // Basic sanity checks
+  if (compList().isEmpty()) {
+    Common::error(QString("%1: composition is not set.").arg(__func__));
+    return false;
+  }
+
+  // List of chemical elements in the system
+  QStringList chemSystem = getChemicalSystem();
+
+  // To keep track of elemental references (if user provides ref energies)
+  std::vector<int> eleRefs(chemSystem.size(), 0);
+
+  // Final list of reference energies to return
+  QList<RefEnergy> output_list;
+
+  // Start processing the entries.
+  int nonEmptyEntries = 0;
+  QStringList entries = s.split(',');
+
+  for (int i = 0; i < entries.size(); i++) {
+    QString form;
+    QList<double> parsedValues;
+    QString parseError;
+
+    // Ignore empty entries.
+    if (entries[i].trimmed().isEmpty())
+      continue;
+
+    nonEmptyEntries += 1;
+
+    if (!parseFormulaWithTrailingDoubles(entries[i], 1, form, parsedValues, &parseError)) {
+      Common::error(parseError);
+      return false;
+    }
+    const double ener = parsedValues.at(0);
+
+    // Convert formula to composition: this makes sure we have a valid
+    //   formula and simplifies obtaining needed information.
+    CellComp comp = formulaToComposition(form);
+
+    // If formula is not a "valid" composition, return false.
+    if (comp.getNumTypes() == 0 || comp.getNumAtoms() == 0) {
+      Common::error(QString("Could not read entry '%1' in reference energy list.").arg(entries[i]));
+      return false;
+    }
+
+    // Also, all symbols in the entry should be in our chemical system.
+    QList<QString> names = comp.getCompositionSymbols();
+    for (int j = 0; j < names.size(); j++) {
+      if (!chemSystem.contains(names[j])) {
+        Common::error(QString("Unknown element '%1' in reference energy list.").arg(names[j]));
+        return false;
+      }
+    }
+
+    // So, the composition is good! See if it's an elemental reference
+    if (comp.getNumTypes() == 1) {
+      eleRefs[chemSystem.indexOf(names[0])]++;
+    }
+    // Finally, add the data to output list.
+    output_list.append({comp, ener});
+  }
+
+  // If no non-empty entries are given, just construct the
+  //   list with default "zero" value for elements.
+  if (nonEmptyEntries == 0) {
+    output_list.clear();
+    for (int i = 0; i < chemSystem.size(); i++) {
+      QString frm = chemSystem[i] + "1";
+      CellComp comp = formulaToComposition(frm);
+      output_list.append({comp, 0.0});
+    }
+    refEnergies() = output_list;
+    return true;
+  }
+
+  // Otherwise, make sure every non-empty entry was read in successfully.
+  if (nonEmptyEntries != output_list.size()) {
+    Common::error("Failed to process some reference energy entries.");
+    return false;
+  }
+
+  // If user gives ref energies, at least one of each elements must be given.
+  for (int i = 0; i < chemSystem.size(); i++) {
+    if (eleRefs[i] == 0) {
+      Common::error("Reference energies must include all elements.");
+      return false;
+    }
+  }
+
+  // We're good! Initiate the main reference energy "global" variable.
+  refEnergies() = output_list;
+
+  return true;
+}
+
+bool XtalOpt::processInputElementalVolumes(QString s)
+{
+  // This function processes the input elemental volumes (if any),
+  //  and sets the elemental volume global variable if valid volume
+  //  limits for all elements in chemical system are given.
+  // We will ignore "empty" entries, and will return false:
+  //  (1) if failed to read any "non-empty" entry,
+  //  (2) if failed to read values for "all elements" in chemical system.
+  //
+  // This function sets the global variable "elemental_volumes".
+  // If it returns true, the relevant global variable is overwritten;
+  //   otherwise it will have its previous value (if any).
+
+  // Basic sanity checks
+  if (compList().isEmpty()) {
+    Common::error(QString("%1: composition is not set.").arg(__func__));
+    return false;
+  }
+
+  // List of chemical elements in the system
+  QStringList chemSystem = getChemicalSystem();
+
+  // To keep track of elemental references (if user provides ref energies)
+  std::vector<int> eleVols(chemSystem.size(), 0);
+
+  // Final processed elemental volumes.
+  EleVolume out;
+
+  // Start processing the entries.
+  int nonEmptyEntries = 0;
+  QStringList entries = s.split(',');
+
+  for (int i = 0; i < entries.size(); i++) {
+    QString form;
+    QList<double> parsedValues;
+    QString parseError;
+
+    // Ignore empty entries.
+    if (entries[i].trimmed().isEmpty())
+      continue;
+
+    nonEmptyEntries += 1;
+
+    if (!parseFormulaWithTrailingDoubles(entries[i], 2, form, parsedValues, &parseError)) {
+      Common::error(parseError);
+      return false;
+    }
+    const double vmin = parsedValues.at(0);
+    const double vmax = parsedValues.at(1);
+
+    // If not a valid set of limits, just ignore the entry.
+    if (vmin < ZERO06 || vmax < vmin) {
+      Common::error(QString("Incorrect volume limits for elemental volume entry '%1'.").arg(entries[i]));
+      return false;
+    }
+
+    // Convert formula to composition: this makes sure we have a valid
+    //   formula and simplifies obtaining needed information.
+    CellComp comp = formulaToComposition(form);
+
+    // If entry is not proper (e.g., formula with more than one element) ignore it.
+    if (comp.getNumTypes() != 1 || comp.getNumAtoms() == 0) {
+      Common::error(QString("Could not process elemental volume entry '%1'.").arg(entries[i]));
+      return false;
+    }
+
+    // Symbol must be on the list. Otherwise, ignore it.
+    QString symbol = comp.getCompositionSymbols()[0];
+    uint atomcn = comp.getCompositionAtomicNumbers()[0];
+    uint totaln = comp.getNumAtoms();
+    int ind = chemSystem.indexOf(symbol);
+    if (ind == -1) {
+      Common::error(QString("Elemental volume for unknown symbol '%1'.").arg(symbol));
+      return false;
+    } else {
+      // Which element is this?!
+      eleVols[chemSystem.indexOf(symbol)]++;
+    }
+
+    // Add volume data to composition object (we save "per atom" values)
+    out.setElementVolumeRange(atomcn, vmin / totaln, vmax / totaln);
+  }
+
+  // If no non-empty entries are given, just return.
+  if (nonEmptyEntries == 0) {
+    eleVolumes().clearElementVolumes();
+    return true;
+  }
+
+  // Otherwise, make sure every non-empty entry was read in successfully.
+  if (nonEmptyEntries != out.getVolumeAtomicNumbers().size()) {
+    Common::error("Failed to process some elemental volume entries.");
+    return false;
+  }
+
+  // If elemental volumes are given; we should have one per chemical element.
+  for (int i = 0; i < chemSystem.size(); i++) {
+    if (eleVols[i] != 1) {
+      Common::error("Elemental volumes must include all elements.");
+      return false;
+    }
+  }
+
+  // We're good! Assign the main elemental volume object
+  eleVolumes().clearElementVolumes();
+  eleVolumes() = out;
+
+  return true;
+}
+
+bool XtalOpt::processInputMoleculeUnit(QString s)
+{
+  s = s.simplified();
+  if (s.isEmpty()) {
+    Common::error("molUnit entry cannot be empty.");
+    return false;
+  }
+
+  const QStringList fields = s.split(' ', QtCompat::SkipEmptyParts);
+  if (fields.size() < 2) {
+    Common::error("molUnit entry expects: <formula> <template>.");
+    return false;
+  }
+  const QString selectedTemplate = stripOptionalQuotes(fields.last());
+  QStringList formulaFields = fields;
+  formulaFields.removeLast();
+  s = formulaFields.join(" ");
+
+  const CellComp requested = formulaToComposition(s);
+  if (requested.getNumTypes() == 0 || requested.getNumAtoms() == 0) {
+    Common::error(QString("Invalid molUnit composition: %1").arg(s));
+    return false;
+  }
+  const QString normalizedFormula = requested.getFormula();
+
+  Atoms::Geometry molecule;
+  QString error;
+  // Store molUnit templates at normal scale (a molUnit entry is a 0D Geometry).
+  //   Random generation expands a selected unit later if the current IAD
+  //   settings need it.
+  if (!Atoms::buildMoleculeFromFormula(normalizedFormula.toStdString(),
+                                       selectedTemplate.toStdString(),
+                                       molecule, error)) {
+    Common::error(error);
+    return false;
+  }
+
+  if (!compositionFitsInAnyInputFormula(requested, compList())) {
+    Common::error(QString("molUnit composition %1 does not fit in any input formula.").arg(s));
+    return false;
+  }
+
+  moleculeUnitInputs().append(QString("%1 %2").arg(normalizedFormula).arg(selectedTemplate));
+
+  moleculeUnits().push_back(molecule);
+  return true;
+}
+
+bool XtalOpt::processInputObjectives(QString s)
+{
+  // This function processes the objective entries from a string
+  //   input that includes all relevant fields:
+  //   type, executable, output filename, and weight.
+
+  ensureBuiltinObjective();
+
+  // Total weight of objectives
+  double totalweight = 0.0;
+  for (int userObjective = 0; userObjective < getUserObjectivesNum(); ++userObjective)
+    totalweight += getObjectivesWgt(getUserObjectiveIndex(userObjective));
+
+  // Process entries
+
+  QStringList sline = s.split(" ", QtCompat::SkipEmptyParts);
+  // There should be four entries in the input: (1) objective
+  //   type (min/max), (2) executable script, (3) output
+  //   filename, and (4) weight.
+  if (sline.size() < 4) {
+    Common::error("objective is not properly initiated");
+    return false;
+  }
+
+  // 1st item is always objective's type: min/max
+  QString tmps = sline.at(0).toLower().mid(0, 3);
+  ObjType objtyp;
+  if (tmps == "min")
+    objtyp = ObjType::Ot_Min;
+  else if (tmps == "max")
+    objtyp = ObjType::Ot_Max;
+  else {
+    Common::error(tr("unknown objective type: '%1' in '%2'").arg(tmps).arg(s));
+    return false;
+  }
+  // 2nd item is always the script path
+  QString objexe = sline.at(1);
+  // 3rd item is the output filename
+  QString objout = sline.at(2);
+  // 4th item is the weight
+  bool isNumber;
+  double objwgt = sline.at(3).toDouble(&isNumber);
+  if (!isNumber) {
+    Common::error("objective weight should be a digit in [0,1]");
+    return false;
+  }
+
+  QString definitionError;
+  if (!validateUserObjectiveDefinition(objtyp, objexe, objout, objwgt, &definitionError)) {
+    Common::error(definitionError);
+    return false;
+  }
+
+  // Sanity check: total weights should be less than or equal to 1
+  if (totalweight + objwgt > 1.0) {
+    Common::error("total weight of objectives can't exceed 1.0");
+    return false;
+  }
+
+  // We're good! Add the objective
+  addObjective(objtyp, objexe, objout, objwgt);
+
+  return true;
+}
+
+bool XtalOpt::processInputConstraint(QString s)
+{
+  QStringList sline = s.split(" ", QtCompat::SkipEmptyParts);
+  if (sline.size() < 2) {
+    Common::error("constraint is not properly initiated");
+    return false;
+  }
+
+  const QString exe = sline.at(0).trimmed();
+  const QString out = sline.at(1).trimmed();
+  QString err;
+  if (!validateConstraintDefinition(exe, out, &err)) {
+    Common::error(err);
+    return false;
+  }
+
+  addConstraint(exe, out);
+  return true;
+}
+
+// Apply runtime-changeable options from the parsed options map to xtalopt.
+void processRuntimeOptions(const QHash<QString, QString>& options, XtalOpt& xtalopt)
+{
+  bool settingsChanged = false;
+  bool spacegroupSettingsChanged = false;
+  bool similaritySettingsChanged = false;
+  {
+    QWriteLocker runtimeLocker(xtalopt.runtimeSettingsLock());
+
+    // Store the current settings: invalid edits restore to it, and changes are
+    //   reported against it afterwards.
+    const Settings::ScalarSnapshot before = Settings::captureScalars(xtalopt);
+
+    for (auto it = options.constBegin(); it != options.constEnd(); ++it) {
+      const QString canon = Settings::findKeywordName(it.key());
+      const QString& value = it.value();
+
+      if (canon.isEmpty() || !Settings::isRuntimeChangeable(canon)) {
+        Common::warning("Runtime file: Ignored unknown or fixed option: " + it.key());
+        continue;
+      }
+
+      // Everything (elementalVolumes included) applies through the settings
+      //   table; we keep the raw text as entered and re-parse it below.
+      if (!Settings::applyScalar(xtalopt, canon, value)) {
+        Common::warning("Runtime file: Ignored invalid value for " + canon + ": " + value);
+        continue;
+      }
+    }
+
+    // elementalVolumes is parsed text: keep the previous value if a new one is
+    //   invalid (the setter already stored the raw string).
+    if (xtalopt.getInputEleVolmString() != before.value("elementalVolumes") &&
+        !xtalopt.compList().isEmpty() &&
+        !xtalopt.processInputElementalVolumes(xtalopt.getInputEleVolmString())) {
+      Common::warning("Runtime file: Ignored invalid elemental volume limits.");
+      xtalopt.setInputEleVolmString(before.value("elementalVolumes"));
+    }
+
+    // Validate the settings (KeepPrevious): an edit the makes settings invalid
+    //   is restored to the previous value.
+    Settings::validateSettings(xtalopt, Settings::InvalidSettingAction::KeepPrevious, &before);
+
+    // Recompute compositions, volumes, radii, etc after restoring bad values.
+    xtalopt.processInputData();
+
+    // Report every runtime-changeable value that actually changed.
+    for (const auto& keyword : Settings::allKeywords()) {
+      if (!Settings::hasScalarBinding(keyword) || !Settings::isRuntimeChangeable(keyword))
+        continue;
+      const QString now = Settings::scalarValue(xtalopt, keyword);
+      if (now != before.value(keyword)) {
+        settingsChanged = true;
+        Common::warning("Runtime file: Updated option " + keyword + " = " + now);
+        if (keyword == "spglibTolerance")
+          spacegroupSettingsChanged = true;
+        if (keyword == "rdfTolerance" || keyword == "xtalcompToleranceLength" ||
+            keyword == "xtalcompToleranceAngle")
+          similaritySettingsChanged = true;
+        // Rebuild parent-selection values when they are next needed.
+        if (keyword == "objectivePrecision" || keyword == "optimizationType" ||
+            keyword == "crowdingDistance" || keyword == "paretoFilterZeroWeights")
+          xtalopt.markParentSelectionForUpdate();
+      }
+    }
+  }
+
+  if (spacegroupSettingsChanged)
+    xtalopt.resetSpacegroups();
+  if (similaritySettingsChanged)
+    xtalopt.resetSimilarities();
+  if (settingsChanged)
+    xtalopt.requestSettingsStateSave();
+}
+
+// Write the runtime options file with the current value of every
+//   runtime-changeable setting, one "keyword = value" per line.
+void XtalOpt::writeInitialRuntimeFile()
+{
+  if (!QDir().mkpath(getLocWorkDir()))
+    return;
+
+  QFile file(CLIRuntimeFile());
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    return;
+
+  QString t = "# XtalOpt Run-Time File\n"
+              "# Edit these options while the CLI run is active to update "
+              "the search.\n\n";
+
+  for (const auto& keyword : Settings::runtimeKeywords()) {
+    t += keyword + " = " + Settings::scalarValue(*this, keyword) + "\n";
+  }
+
+  file.write(t.toLocal8Bit().data());
+}
+
+void XtalOpt::readRuntimeOptions()
+{
+  QString runtimeText;
+  if (!Common::readFileToQString(CLIRuntimeFile(), &runtimeText))
+    return;
+
+  readRuntimeOptions(runtimeText);
+}
+
+void XtalOpt::readRuntimeOptions(const QString& runtimeText)
+{
+  QHash<QString, QString> options;
+  QHash<QString, QStringList> multiInput;
+
+  QString runtimeTextCopy = runtimeText;
+  QTextStream stream(&runtimeTextCopy);
+  while (!stream.atEnd()) {
+    const QString line = stream.readLine();
+    processLine(line, options, multiInput, "Runtime file:");
+  }
+
+  processRuntimeOptions(options, *this);
+}
+
+bool XtalOpt::writeInputFile(const QString& filename)
+{
+  if (filename.isEmpty())
+    return false;
+
+  QString output;
+  QTextStream stream(&output);
+
+  stream << "# NOTE: This file is generated from XtalOpt settings as a best-effort.\n";
+  stream << "# Review template paths, job templates, and any optimizer or queue settings before runnint it.\n";
+  stream << "\n";
+
+  writeOptionSettings(stream, this);
+
+  QFile file(filename);
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    return false;
+
+  QTextStream out(&file);
+  out << output;
+  return true;
+}
+
+// Process one user objective as the "min|max exe out wgt".
+//   The same format is parsed back by processInputObjectives().
+QString XtalOpt::objectiveEntryToText(int objectiveIndex) const
+{
+  const QString objType = getObjectivesTyp(objectiveIndex) == SearchBase::Ot_Min ? "min" : "max";
+
+  return objType + " " + getObjectivesExe(objectiveIndex) + " " +
+         getObjectivesOut(objectiveIndex) + " " + QString::number(getObjectivesWgt(objectiveIndex));
+}
+
+// Process one constraint as the "exe out".
+//   The same format is parsed back by processInputConstraint().
+QString XtalOpt::constraintEntryToText(int constraintIndex) const
+{
+  return getConstraintExe(constraintIndex) + " " + getConstraintOut(constraintIndex);
+}
+
+// Process one custom-IAD pair as the "sym1, sym2, minIAD".
+QString XtalOpt::customIADEntryToText(int atomicNumber1, int atomicNumber2, double minIAD)
+{
+  return QString("%1, %2, %3")
+    .arg(Atoms::ElementInfo::getAtomicSymbol(atomicNumber1).c_str())
+    .arg(Atoms::ElementInfo::getAtomicSymbol(atomicNumber2).c_str())
+    .arg(minIAD);
+}
+
+} // namespace XtalOpt

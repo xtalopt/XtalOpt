@@ -23,7 +23,6 @@ dir="local"
 if [ $# -lt 1 ]; then echo Error: no input structure!; exit; fi
 str="$1"
 
-dir=""
 if [ $# -eq 2 ]; then
   dir="$2"
 elif [ -e xtalopt.in ]; then
@@ -43,7 +42,9 @@ echo   "------------------------------------------------------------------------
 
 #==== "Parent(s)"
 #export GREP_COLOR='01;36'
-rnk=$(grep rank= $dir/$fll/structure.state|cut -d '=' -f2)
+# Ranks are read from results.txt: first column!
+rnk=$(awk -v t="$str" '$2 == t {print $1}' $dir/results.txt 2>/dev/null)
+if [ "$rnk" == "" ]; then rnk=0; fi
 ind=$(grep index= $dir/$fll/structure.state|cut -d '=' -f2)
 prn=$(grep parents= $dir/$fll/structure.state| sed 's|parents=||' | sed 's|\"||g')
 printf "this    % 12s   % 5d   % 5d   " $(echo $fll|grep --color=always -E "$fll") $ind $rnk
@@ -61,7 +62,9 @@ lst=($(grep parents= $dir/*/st*te| grep "$str" | awk -F "/structure.state" '{pri
 for((i=0; i < ${#lst[@]}; i++)); do
   cld="${lst[$i]}"
   if [ -e $dir/$cld/structure.state ]; then
-    rnk=$(grep rank= $dir/$cld/structure.state|cut -d '=' -f2)
+    tag=$(echo $cld | awk -F "x" '{printf "%dx%d", $1, $2}')
+    rnk=$(awk -v t="$tag" '$2 == t {print $1}' $dir/results.txt 2>/dev/null)
+    if [ "$rnk" == "" ]; then rnk=0; fi
     ind=$(grep index= $dir/$cld/structure.state|cut -d '=' -f2)
     prn=$(grep parents= $dir/$cld/structure.state| sed 's|parents=||' | sed 's|\"||g')
     all=($prn)

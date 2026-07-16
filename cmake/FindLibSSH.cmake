@@ -4,7 +4,6 @@
 #  LIBSSH_FOUND - system has LibSSH
 #  LIBSSH_INCLUDE_DIRS - the LibSSH include directory
 #  LIBSSH_LIBRARIES - Link these to use LibSSH
-#  LIBSSH_DEFINITIONS - Compiler switches required for using LibSSH
 #
 #  Copyright (c) 2009 Andreas Schneider <mail@cynapses.org>
 #  Copyright (c) 2017 Patrick Avery (creation of _libssh_check_version macro)
@@ -14,7 +13,7 @@
 #  For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 #
 
-MACRO(_libssh_check_version)
+macro(_libssh_check_version)
   if(EXISTS ${LIBSSH_INCLUDE_DIRS}/libssh/libssh_version.h)
     set(verlibssh "libssh_version.h")
   else()
@@ -23,41 +22,38 @@ MACRO(_libssh_check_version)
   file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/${verlibssh} LIBSSH_VERSION_MAJOR
     REGEX "#define[ ]+LIBSSH_VERSION_MAJOR[ ]+[0-9]+")
   # Older versions of libssh like libssh-0.2 have LIBSSH_VERSION but not LIBSSH_VERSION_MAJOR
-  if (LIBSSH_VERSION_MAJOR)
+  if(LIBSSH_VERSION_MAJOR)
     string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_MAJOR ${LIBSSH_VERSION_MAJOR})
-          file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/${verlibssh} LIBSSH_VERSION_MINOR
+    file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/${verlibssh} LIBSSH_VERSION_MINOR
          REGEX "#define[ ]+LIBSSH_VERSION_MINOR[ ]+[0-9]+")
-          string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_MINOR ${LIBSSH_VERSION_MINOR})
-          file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/${verlibssh} LIBSSH_VERSION_PATCH
+    string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_MINOR ${LIBSSH_VERSION_MINOR})
+    file(STRINGS ${LIBSSH_INCLUDE_DIRS}/libssh/${verlibssh} LIBSSH_VERSION_PATCH
          REGEX "#define[ ]+LIBSSH_VERSION_MICRO[ ]+[0-9]+")
-  	string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_PATCH ${LIBSSH_VERSION_PATCH})
+    string(REGEX MATCH "[0-9]+" LIBSSH_VERSION_PATCH ${LIBSSH_VERSION_PATCH})
 
-          set(LibSSH_VERSION ${LIBSSH_VERSION_MAJOR}.${LIBSSH_VERSION_MINOR}.${LIBSSH_VERSION_PATCH})
+    set(LibSSH_VERSION ${LIBSSH_VERSION_MAJOR}.${LIBSSH_VERSION_MINOR}.${LIBSSH_VERSION_PATCH})
 
-          include(FindPackageVersionCheck)
-          find_package_version_check(LibSSH DEFAULT_MSG)
-  else (LIBSSH_VERSION_MAJOR)
+    include(FindPackageVersionCheck)
+    find_package_version_check(LibSSH DEFAULT_MSG)
+  else()
     message(STATUS "LIBSSH_VERSION_MAJOR not found in ${LIBSSH_INCLUDE_DIRS}/libssh/${verlibssh}, assuming libssh is too old")
     set(LIBSSH_FOUND FALSE)
-  endif (LIBSSH_VERSION_MAJOR)
-ENDMACRO(_libssh_check_version)
+  endif()
+endmacro()
 
-if (LIBSSH_LIBRARIES AND LIBSSH_INCLUDE_DIRS)
-  # in cache already
+if(LIBSSH_LIBRARIES AND LIBSSH_INCLUDE_DIRS)
+  # Use cached values.
   set(LIBSSH_FOUND TRUE)
   _libssh_check_version()
-else (LIBSSH_LIBRARIES AND LIBSSH_INCLUDE_DIRS)
+else()
 
+  # Also check the MacPorts and Fink paths.
   find_path(LIBSSH_INCLUDE_DIR
     NAMES
       libssh/libssh.h
     PATHS
-      /usr/include
-      /usr/local/include
       /opt/local/include
       /sw/include
-      ${CMAKE_INCLUDE_PATH}
-      ${CMAKE_INSTALL_PREFIX}/include
   )
 
   find_library(SSH_LIBRARY
@@ -65,23 +61,15 @@ else (LIBSSH_LIBRARIES AND LIBSSH_INCLUDE_DIRS)
       ssh
       libssh
     PATHS
-      /usr/lib
-      /usr/local/lib
       /opt/local/lib
       /sw/lib
-      ${CMAKE_LIBRARY_PATH}
-      ${CMAKE_INSTALL_PREFIX}/lib
   )
-
-  if (LIBSSH_INCLUDE_DIR AND SSH_LIBRARY)
-    set(SSH_FOUND TRUE)
-  endif (LIBSSH_INCLUDE_DIR AND SSH_LIBRARY)
 
   set(LIBSSH_INCLUDE_DIRS
     ${LIBSSH_INCLUDE_DIR}
   )
 
-  if (SSH_FOUND)
+  if(LIBSSH_INCLUDE_DIR AND SSH_LIBRARY)
     set(LIBSSH_LIBRARIES
       ${LIBSSH_LIBRARIES}
       ${SSH_LIBRARY}
@@ -89,21 +77,18 @@ else (LIBSSH_LIBRARIES AND LIBSSH_INCLUDE_DIRS)
 
     set(LIBSSH_FOUND TRUE)
 
-    if (LibSSH_FIND_VERSION)
+    if(LibSSH_FIND_VERSION)
       _libssh_check_version()
-    endif (LibSSH_FIND_VERSION)
-  endif (SSH_FOUND)
+    endif()
+  endif()
 
-  # If the version is too old, but libs and includes are set,
-  # find_package_handle_standard_args will set LIBSSH_FOUND to TRUE again,
-  # so we need this if() here.
-  if (LIBSSH_FOUND)
-    include(FindPackageHandleStandardArgs)
-    find_package_handle_standard_args(LibSSH DEFAULT_MSG LIBSSH_LIBRARIES LIBSSH_INCLUDE_DIRS)
-  endif (LIBSSH_FOUND)
+  # Hide these cache values in the advanced view.
+  mark_as_advanced(LIBSSH_INCLUDE_DIR SSH_LIBRARY)
 
-  # show the LIBSSH_INCLUDE_DIRS and LIBSSH_LIBRARIES variables only in the advanced view
-  mark_as_advanced(LIBSSH_INCLUDE_DIRS LIBSSH_LIBRARIES)
+endif()
 
-endif (LIBSSH_LIBRARIES AND LIBSSH_INCLUDE_DIRS)
-
+# Prevent an old libssh version from being accepted.
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(LibSSH
+  REQUIRED_VARS LIBSSH_LIBRARIES LIBSSH_INCLUDE_DIRS
+  VERSION_VAR LibSSH_VERSION)

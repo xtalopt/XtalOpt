@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=XtalOpt
+GenericName=Crystal Structure Prediction
+Comment=Evolutionary algorithm for crystal structure prediction
+Exec=@CMAKE_INSTALL_PREFIX@/bin/xtalopt
+Icon=@CMAKE_INSTALL_PREFIX@/xtalopt-logo.png
+Terminal=false
+Categories=Science;Chemistry;Physics;

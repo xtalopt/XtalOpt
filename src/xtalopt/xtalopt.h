@@ -1,7 +1,8 @@
 /**********************************************************************
-  XtalOpt - Holds all data for genetic optimization
+  XtalOpt - XtalOpt application search workflow implementation
 
   Copyright (C) 2009-2011 by David C. Lonie
+  Copyright (C) 2026 Samad Hajinazar
 
   This source code is released under the New BSD License, (the "License").
 
@@ -15,207 +16,105 @@
 #ifndef XTALOPT_H
 #define XTALOPT_H
 
-#include <globalsearch/macros.h>
-#include <globalsearch/searchbase.h>
-#include <globalsearch/constants.h>
+#include <common/fileutils.h>
+#include <common/settings.h>
+#include <search/search.h>
+#include <atoms/geometry.h>
+
+#include <xtalopt/types.h>
+#include <xtalopt/settings.h>
 
 #include <QtConcurrent>
+#include <QElapsedTimer>
+#include <QPair>
+#include <QSet>
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 
-// Forward declarations...
-struct latticeStruct;
+class QTimer;
 
-namespace GlobalSearch {
-class AbstractDialog;
-class Molecule;
+namespace Search {
 class SlottedWaitCondition;
 }
 
 namespace XtalOpt {
 class Xtal;
-class XtalOptRpc;
 
-// As of XtalOpt 14, we use the user-provided "chemical formula" strings
-//   to obtain the list of chemical composition, elemental volumes, and
-//   reference energies.
-// The "Cell Composition" object will be used to store the information about
-//   the chemical composition of a cell (symbol, atomic number, number of atoms
-//   of a symbol for all elements in the cell); and is obtained by parsing a
-//   (full) chemical formula string in "formulaToComposition" function.
-//
-// We maintain a list of these objects as the list of user-provided formula, and
-//   use them to generate new cells.
-// Further, we use them as a convenience tool to parse elemental volume
-//   and reference energy entries.
-//
-// The set of "get..." function are interfaces to access various information.
-//   Since composition object stores elemental data as a qMap; these functions
-//   return "sorted" lists: symbols are alphabetically sorted, and the rest are
-//   sorted accordingly. Although, we generally don't rely on this order in the code.
-//
-class CellComp
+// The legacy layer converts old state files before the code reads them.
+// As of XtalOpt v15, XtalOpt handles all state files; the engine doesn't
+//   know anything about their format.
+enum StateSchemaVersion
 {
-public:
-  void clear() {m_data.clear();}
-  // Set an element's entry in cell composition using symbol, atomic number, atom count
-  void set(QString symb, uint atomicn, uint acount)
-    {m_data[symb] = qMakePair(atomicn, acount);}
-  // Access atom count of "symbol" or "atomic number"
-  uint getCount(const QString& s) const
-    {return (m_data.contains(s) ? m_data.value(s).second : 0);}
-  uint getCount(const uint& i) const
-    {for (const auto& ed : m_data) {if (ed.first == i) return ed.second;} return 0;}
-  // Access total number of atoms and types
-  int getNumAtoms() const
-    {int n = 0; for (const auto& ed : m_data) n += ed.second; return n;}
-  int getNumTypes() const
-    {return m_data.size();}
-  QString getFormula() const
-    {QString f = "";
-    for (const auto& key : m_data.keys())
-      f += QString("%1%2").arg(key).arg(m_data.value(key).second);
-    return f;}
-  // Access lists: the symbols are always sorted alphabetically and the
-  // rest of the lists are sorted accordingly.
-  QList<QString> getSymbols() const
-    {return m_data.keys();}
-  QList<uint> getAtomicNumbers() const
-    {QList<uint> a; for (const auto &ed : m_data) a.append(ed.first); return a;}
-  QList<uint> getCounts() const
-    {QList<uint> c; for (const auto &ed : m_data) c.append(ed.second); return c;}
-private:
-  // This is a map of  <"element symbol" , "atomic number , atom count">
-  QMap<QString, QPair<uint, uint> > m_data;
+  FloorStateSchemaVersion   = 4, // Oldest xtalopt.state version we read
+  CurrentStateSchemaVersion = 5  // Version we write
 };
 
-// Reference energy object: for each formula in the reference energies input
-//   we construct a cell composition object, and assign to it the corresponding
-//   energy. A list of this "RefEnergy" objects will be used in the code to
-//   produce the "reference energies vector" for convex hull calculation.
-struct RefEnergy
-{
-  CellComp cell;
-  double   energy;
-};
+// Check whether a structure state was saved.
+bool isStateFileSaveSuccessful(const QString& filename);
 
-// Minimum radii of elements: an instance of this class is created once the
-//   user's input formula are processed, by assigning the values for all
-//   elements in the search space.
-// Note: prior to XtalOpt14, this information was stored in the composition
-//   object. It is separated now to simplify it's runtime update by eliminating
-//   the need to update all composition objects every time radii-related stuff
-//   are being updated.
-class EleRadii
-{
-public:
-  void clear() {m_data.clear();}
-  // Set an element's entry with atomic number and minimum radius
-  void set(const uint& atomcn, const double& minradius)
-    {m_data[atomcn] = minradius;}
-  // Access the list of elements stored in the object
-  QList<uint> getAtomicNumbers() const
-    {return m_data.keys();}
-  // Access the min radius for an atomic number (if element is not there, return 1e300)
-  double getMinRadius(uint a) const
-    {if (m_data.contains(a)) return m_data.value(a); return PINF;}
-private:
-  QMap<uint, double> m_data;
-};
+// Check whether a structure state can be read.
+bool isStateFileLoadable(const QString& filename);
 
-// Elemental volume object (as of XtalOpt14): user can provide a list of min/max
-//   values for elemental volumes; besides the absolute and scaled volume limit
-//   options. An instance of this class is initialized once the input is processed,
-//   and being updated at runtime if user provides new values.
-class EleVolume
-{
-public:
-  void clear() {m_data.clear();}
-  // Set an element's entry with atomic number and minimum/maximum volumes
-  void set(const uint& atomcn, const double& min, const double& max)
-    {m_data[atomcn] = qMakePair(min, max);}
-  // Access the list of elements stored in the object
-  QList<uint> getAtomicNumbers() const
-    {return m_data.keys();}
-  // Access the min/max volumes for an atomic number
-  double getMinVolume(uint a) const
-    {if (m_data.contains(a)) return m_data.value(a).first; return 0.0;}
-  double getMaxVolume(uint a) const
-    {if (m_data.contains(a)) return m_data.value(a).second; return 0.0;}
-private:
-  QMap<uint, QPair<double, double> > m_data;
-};
+// Return the saved parent structure tag.
+QString savedParentStructureTag(const QString& filename);
 
-struct MolUnit
-{
-  unsigned int numCenters;
-  unsigned int numNeighbors;
-  double dist;
-  unsigned int geom;
-};
+// Write a structure state file.
+void writeStructureState(Xtal& xtal, const QString& filename);
 
-struct IAD
-{
-  double minIAD;
-};
+// Read a structure state file.
+bool readStructureState(Xtal& xtal, const QString& filename, const bool readCurrentInfo = false);
 
-// A simple minIADs class that uses unordered atomic numbers for
-// the key and a double for the value. In order to set a value,
-// you must use set() and not ().
-class minIADs
-{
-public:
-  // Set a specific atomic number pair to have a specific IAD
-  void set(short i, short j, double d) { m_data[std::minmax(i, j)] = d; }
-
-  void clear() { m_data.clear(); }
-
-  // Get the IAD value for a specific atomic number pair, or
-  // 1e300 if the value does not exist.
-  double operator()(short i, short j) const
-  {
-    if (m_data.count(std::minmax(i, j)) != 1)
-      return PINF;
-    return m_data.at(std::minmax(i, j));
-  }
-
-private:
-  std::map<std::pair<short, short>, double> m_data;
-};
-
-class XtalOpt : public GlobalSearch::SearchBase
+class XtalOpt : public Search::SearchBase
 {
   Q_OBJECT
 
 public:
-  explicit XtalOpt(GlobalSearch::AbstractDialog* parent = nullptr);
+  explicit XtalOpt(QObject* parent = nullptr);
+
+  // Values obtained from the structured input entries.
+  const QList<CellComp>& compList() const { return x_compList; }
+  QList<CellComp>& compList() { return x_compList; }
+  const QHash<QPair<int, int>, IAD>& interComp() const { return x_interComp; }
+  QHash<QPair<int, int>, IAD>& interComp() { return x_interComp; }
+  const EleRadii& eleMinRadii() const { return x_eleMinRadii; }
+  EleRadii& eleMinRadii() { return x_eleMinRadii; }
+  const EleVolume& eleVolumes() const { return x_eleVolumes; }
+  EleVolume& eleVolumes() { return x_eleVolumes; }
+  const QList<RefEnergy>& refEnergies() const { return x_refEnergies; }
+  QList<RefEnergy>& refEnergies() { return x_refEnergies; }
+  const QStringList& moleculeUnitInputs() const { return x_moleculeUnitInputs; }
+  QStringList& moleculeUnitInputs() { return x_moleculeUnitInputs; }
+  const std::vector<Atoms::Geometry>& moleculeUnits() const { return x_moleculeUnits; }
+  std::vector<Atoms::Geometry>& moleculeUnits() { return x_moleculeUnits; }
+  const QStringList& seedList() const { return x_seedList; }
+  QStringList& seedList() { return x_seedList; }
+  const QList<int>& minXtalsOfSpg() const { return x_minXtalsOfSpg; }
+  QList<int>& minXtalsOfSpg() { return x_minXtalsOfSpg; }
+
+  // Repeated entries' values.
+  QStringList objectiveLines() const;
+  QStringList constraintLines() const;
+  QStringList customIADLines() const;
+  QStringList molUnitLines() const;
+  void clearCustomIADs() { x_interComp.clear(); }
+
+  // Change the atom limits (if needed) with a warning to user.
+  void adjustAtomCountLimits(int numAtoms);
+
   virtual ~XtalOpt() override;
 
-  enum OptTypes
-  {
-    OT_VASP = 0,
-    OT_GULP,
-    OT_PWscf,
-    OT_CASTEP,
-    OT_SIESTA,
-    OT_MTP,
-    OT_GENERIC
+  // Run mode, set when the program starts.
+  enum RunMode {
+    RunModeUnknown,   // not yet set (constructor default)
+    RunModeCliStart,  // CLI fresh start from xtalopt.in
+    RunModeCliResume, // CLI resume from xtalopt.state
+    RunModeGui,       // interactive GUI (start or resume, user-driven)
+    RunModeReadOnly   // read-only plot / inspection session
   };
 
-  enum QueueInterfaces
-  {
-    QI_LOCAL = 0
-#ifdef ENABLE_SSH
-    ,
-    QI_PBS,
-    QI_SGE,
-    QI_SLURM,
-    QI_LSF,
-    QI_LOADLEVELER
-#endif // ENABLE_SSH
-  };
-
+  // Genetic operators available for offspring generation.
   enum Operators
   {
     OP_Stripple = 0,
@@ -225,18 +124,149 @@ public:
     OP_Crossover
   };
 
-  // Helper struct for similarity check with XtalComp
-  struct simCheckStruct
+  // Set the run mode.
+  void setRunMode(RunMode mode)
   {
-    Xtal *i, *j;
-    double tol_len, tol_ang;
-  };
+    x_runMode = mode;
+    setReadOnly(mode == RunModeReadOnly);
+  }
+  RunMode getRunMode() const { return x_runMode; }
 
-  virtual void readRuntimeOptions() override;
+  //
+  // Accessors for scalar settings
+  //
+
+  // Composition limits
+  int getMaxAtoms() const { return x_maxAtoms; }
+  void setMaxAtoms(int v) { x_maxAtoms = v; }
+  int getMinAtoms() const { return x_minAtoms; }
+  void setMinAtoms(int v) { x_minAtoms = v; }
+  bool getVcSearch() const { return x_vcSearch; }
+  void setVcSearch(bool v) { x_vcSearch = v; }
+  bool getSaveHullSnapshots() const { return x_saveHullSnapshots; }
+  void setSaveHullSnapshots(bool v) { x_saveHullSnapshots = v; }
+  // Lattice limits
+  double getAMin() const { return x_aMin; }
+  void setAMin(double v) { x_aMin = v; }
+  double getBMin() const { return x_bMin; }
+  void setBMin(double v) { x_bMin = v; }
+  double getCMin() const { return x_cMin; }
+  void setCMin(double v) { x_cMin = v; }
+  double getAMax() const { return x_aMax; }
+  void setAMax(double v) { x_aMax = v; }
+  double getBMax() const { return x_bMax; }
+  void setBMax(double v) { x_bMax = v; }
+  double getCMax() const { return x_cMax; }
+  void setCMax(double v) { x_cMax = v; }
+  double getAlphaMin() const { return x_alphaMin; }
+  void setAlphaMin(double v) { x_alphaMin = v; }
+  double getBetaMin() const { return x_betaMin; }
+  void setBetaMin(double v) { x_betaMin = v; }
+  double getGammaMin() const { return x_gammaMin; }
+  void setGammaMin(double v) { x_gammaMin = v; }
+  double getAlphaMax() const { return x_alphaMax; }
+  void setAlphaMax(double v) { x_alphaMax = v; }
+  double getBetaMax() const { return x_betaMax; }
+  void setBetaMax(double v) { x_betaMax = v; }
+  double getGammaMax() const { return x_gammaMax; }
+  void setGammaMax(double v) { x_gammaMax = v; }
+  // Volume limits
+  double getVolMin() const { return x_volMin; }
+  void setVolMin(double v) { x_volMin = v; }
+  double getVolMax() const { return x_volMax; }
+  void setVolMax(double v) { x_volMax = v; }
+  double getVolScaleMin() const { return x_volScaleMin; }
+  void setVolScaleMin(double v) { x_volScaleMin = v; }
+  double getVolScaleMax() const { return x_volScaleMax; }
+  void setVolScaleMax(double v) { x_volScaleMax = v; }
+  // Interatomic distance settings
+  bool getUsingScaledIAD() const { return x_usingScaledIAD; }
+  void setUsingScaledIAD(bool v) { x_usingScaledIAD = v; }
+  bool getUsingCustomIAD() const { return x_usingCustomIAD; }
+  void setUsingCustomIAD(bool v) { x_usingCustomIAD = v; }
+  bool getUsingCheckStepOpt() const { return x_usingCheckStepOpt; }
+  void setUsingCheckStepOpt(bool v) { x_usingCheckStepOpt = v; }
+  double getScaleFactor() const { return x_scaleFactor; }
+  void setScaleFactor(double v) { x_scaleFactor = v; }
+  double getMinRadius() const { return x_minRadius; }
+  void setMinRadius(double v) { x_minRadius = v; }
+  // RandSpg
+  bool getUsingRandSpg() const { return x_usingRandSpg; }
+  void setUsingRandSpg(bool v) { x_usingRandSpg = v; }
+  // Run parameters
+  uint getNumInitial() const { return x_numInitial; }
+  void setNumInitial(uint v) { x_numInitial = v; }
+  uint getParentsPoolSize() const { return x_parentsPoolSize; }
+  void setParentsPoolSize(uint v) { x_parentsPoolSize = v; }
+  // Operator weights
+  uint getPStrip() const { return x_pStrip; }
+  void setPStrip(uint v) { x_pStrip = v; }
+  uint getPPerm() const { return x_pPerm; }
+  void setPPerm(uint v) { x_pPerm = v; }
+  uint getPAtomic() const { return x_pAtomic; }
+  void setPAtomic(uint v) { x_pAtomic = v; }
+  uint getPComp() const { return x_pComp; }
+  void setPComp(uint v) { x_pComp = v; }
+  uint getPCross() const { return x_pCross; }
+  void setPCross(uint v) { x_pCross = v; }
+  uint getPSupercell() const { return x_pSupercell; }
+  void setPSupercell(uint v) { x_pSupercell = v; }
+  // Operator parameters
+  double getStripAmpMin() const { return x_stripAmpMin; }
+  void setStripAmpMin(double v) { x_stripAmpMin = v; }
+  double getStripAmpMax() const { return x_stripAmpMax; }
+  void setStripAmpMax(double v) { x_stripAmpMax = v; }
+  uint getStripPer1() const { return x_stripPer1; }
+  void setStripPer1(uint v) { x_stripPer1 = v; }
+  uint getStripPer2() const { return x_stripPer2; }
+  void setStripPer2(uint v) { x_stripPer2 = v; }
+  double getStripStrainStdevMin() const { return x_stripStrainStdevMin; }
+  void setStripStrainStdevMin(double v) { x_stripStrainStdevMin = v; }
+  double getStripStrainStdevMax() const { return x_stripStrainStdevMax; }
+  void setStripStrainStdevMax(double v) { x_stripStrainStdevMax = v; }
+  uint getPermEx() const { return x_permEx; }
+  void setPermEx(uint v) { x_permEx = v; }
+  double getPermStrainStdevMax() const { return x_permStrainStdevMax; }
+  void setPermStrainStdevMax(double v) { x_permStrainStdevMax = v; }
+  uint getCrossNcuts() const { return x_crossNcuts; }
+  void setCrossNcuts(uint v) { x_crossNcuts = v; }
+  uint getCrossMinimumContribution() const { return x_crossMinimumContribution; }
+  void setCrossMinimumContribution(uint v) { x_crossMinimumContribution = v; }
+  // Tolerances
+  double getTolXcLength() const { return x_tolXcLength; }
+  void setTolXcLength(double v) { x_tolXcLength = v; }
+  double getTolXcAngle() const { return x_tolXcAngle; }
+  void setTolXcAngle(double v) { x_tolXcAngle = v; }
+  double getTolSpg() const { return x_tolSpg; }
+  void setTolSpg(double v) { x_tolSpg = v; }
+  double getTolRdf() const { return x_tolRdf; }
+  void setTolRdf(double v) { x_tolRdf = v; }
+  double getTolRdfCutoff() const { return x_tolRdfCutoff; }
+  void setTolRdfCutoff(double v) { x_tolRdfCutoff = v; }
+  int getTolRdfNbins() const { return x_tolRdfNbins; }
+  void setTolRdfNbins(int v) { x_tolRdfNbins = v; }
+  double getTolRdfSigma() const { return x_tolRdfSigma; }
+  void setTolRdfSigma(double v) { x_tolRdfSigma = v; }
+  // Structured single-line settings
+  QString getInputFormulasString() const { return x_inputFormulasString; }
+  void setInputFormulasString(const QString& v) { x_inputFormulasString = v; }
+  QString getInputEneRefsString() const { return x_inputEneRefsString; }
+  void setInputEneRefsString(const QString& v) { x_inputEneRefsString = v; }
+  QString getInputEleVolmString() const { return x_inputEleVolmString; }
+  void setInputEleVolmString(const QString& v) { x_inputEleVolmString = v; }
+  QString getInputForcedSpgsString() const { return x_inputForcedSpgsString; }
+  bool setInputForcedSpgsString(const QString& v);
+
+
+  bool addSeed(const QString& filename);
 
   Xtal* randSpgXtal(uint generation, uint id, CellComp incomp,
                     uint spg, bool checkSpgWithSpglib = true);
+
   Xtal* generateRandomXtal(uint generation, uint id, CellComp incomp = {});
+
+  // This returns a dynamically allocated xtal.
+  Xtal* generateEvolvedXtal(QList<Search::Structure*>& structures, Xtal* preselectedXtal = nullptr);
 
   // Starting from XtalOpt 14, the user defines genetic operation relative
   //   weights, can add sub-system seeds or define various search types.
@@ -245,89 +275,76 @@ public:
   //   into account and returns a randomly selected genetic operation.
   Operators selectOperation(bool valid);
 
-  // The _H indicates that it returns a dynamically allocated xtal.
-  // H stands for 'heap'
-  Xtal* generateEvolvedXtal_H(QList<GlobalSearch::Structure*>& structures,
-                            Xtal* preselectedXtal = nullptr);
+  Search::Structure* replaceWithRandom(
+    Search::Structure* s, const QString& reason = "") override;
 
-  Xtal* generateEmptyXtalWithLattice(CellComp incomp = {});
+  Search::Structure* replaceWithOffspring(
+    Search::Structure* s, const QString& reason = "") override;
 
-  bool addSeed(const QString& filename);
-  GlobalSearch::Structure* replaceWithRandom(
-    GlobalSearch::Structure* s, const QString& reason = "") override;
-  GlobalSearch::Structure* replaceWithOffspring(
-    GlobalSearch::Structure* s, const QString& reason = "") override;
-  bool checkStepOptimizedStructure(GlobalSearch::Structure* s,
-                                   QString* err = NULL) override;
-  bool checkLimits() override;
+  bool checkStepOptimizedStructure(Search::Structure* s, QString* err = nullptr) override;
+
+  bool checkLimits();
+
   bool checkComposition(Xtal* xtal, bool isSeed = false);
+
   bool checkLattice(Xtal* xtal);
+
   bool checkXtal(Xtal* xtal);
 
   // Returns true if all IAD checks passed, and false otherwise
-  static bool checkIntramolecularIADs(const GlobalSearch::Molecule& mol,
-                                      const minIADs& iads,
-                                      bool ignoreBondedAtoms);
+  static bool checkInternalIADs(const Atoms::Geometry& geometry, const minIADs& iads,
+                                bool ignoreBondedAtoms);
 
-  // These two molecules under comparison should have the same unit cell
+  // These two geometries under comparison should have the same unit cell
   // Returns true if all IAD checks passed, and false otherwise
-  // Does not check intramolecular IADs.
-  static bool checkIntermolecularIADs(const GlobalSearch::Molecule& mol1,
-                                      const GlobalSearch::Molecule& mol2,
-                                      const minIADs& iads);
+  // Does not check internal IADs.
+  static bool checkBetweenGeometriesIADs(const Atoms::Geometry& geometry1,
+                                         const Atoms::Geometry& geometry2, const minIADs& iads);
 
-  QString interpretTemplate(const QString& templateString,
-                            GlobalSearch::Structure* structure) override;
-  QString getTemplateKeywordHelp() override;
+  // Save all output files  (state files, results, hull)
+  bool save(QString filename, bool notify = false);
 
-  std::unique_ptr<GlobalSearch::QueueInterface> createQueueInterface(
-    const std::string& queueName) override;
+  // Write the main state file only
+  bool saveSettingsState(const QString& filename);
 
-  std::unique_ptr<GlobalSearch::Optimizer> createOptimizer(
-    const std::string& optName) override;
+  // Load settings/state from a file (doesn't start a session by itself).
+  bool loadSettingsState(const QString& filename);
 
-  bool save(QString filename = "", bool notify = false) override;
-  bool load(const QString& filename, const bool forceReadOnly = false) override;
+  // Resume a saved session using the SearchBase session functions.
+  bool resumeSearch(const QString& filename, bool* settingsOnlyLoaded = nullptr);
 
-  bool writeEditSettings(const QString& filename = "");
-  bool readEditSettings(const QString& filename = "");
-  bool readSettings(const QString& filename = "");
+  // Write job/search settings to filename.
+  bool writeOptScheme(const QString& filename);
 
-  // This function will load all the xtals in the data directory in a
-  // read-only fashion so that a plot may be displayed. This is intended
-  // to be used for generating a plot in the CLI mode.
-  bool plotDir(const QDir& dataDir);
+  // Read job and search settings.
+  bool readOptScheme(const QString& filename, bool fullState = false);
 
-  void checkIfSimilar(simCheckStruct& st);
+  // Convert an old settings file.
+  bool convertFileToCurrent(const QString& filename);
 
-  // This function parses the objective-related input and initializes relevant variables
-  bool processInputObjectives(QString s);
+  // Read shared settings from an input/state file.
+  bool readSettings(const QString& filename, bool fullState);
 
-  // An override function to give searchbase access to reference energies for hull calculations
-  virtual std::vector<double> getReferenceEnergiesVector() override;
+  // Absolute path to this session's state file.
+  QString searchStateFilePath() const;
 
-  // Returns the composition object for an xtal/structure (considering the full
-  //   chemical system, so, might include zero counts!).
-  CellComp getXtalComposition(GlobalSearch::Structure *s);
+  // Whether a state file already exists in the local work directory.
+  bool hasExistingSearchStateFile() const;
 
-  // Convert a string of chemical formula to composition object
-  CellComp formulaToComposition(QString form);
+  // Path to the CLI runtime-options file.
+  QString CLIRuntimeFile()
+  {
+    return Common::localPath(getLocWorkDir(), "cli-runtime-options.txt");
+  }
 
-  // Compare two composition object if they are equivalent/supercell or not
-  double compareCompositions(CellComp comp1, CellComp comp2);
+  // Update "runtime adjustable" settings
+  void updateRuntimeState();
 
-  // Get the estimated min/max volume limits for a composition
-  void getCompositionVolumeLimits(CellComp incomp, double& vol_min, double& vol_max);
+  // Request a save of main state file after a runtime setting change
+  void requestSettingsStateSave();
 
-  // Get the composition that has the smallest atom counts for all elements
-  CellComp getMinimalComposition();
-
-  // Get the composition that has the largest atom counts for all elements
-  CellComp getMaximalComposition();
-
-  // Get the sorted full list of chemical element in the current run (reference chemical system)
-  // Also, overrides a searchbase function so access to this info is provided there for hull calcs.
-  QList<QString> getChemicalSystem() const override;
+  void requestStructureEvaluation(Search::Structure* structure);
+  void handleOptimizedDeparture(Search::Structure* structure);
 
   // Process input formulas string and produce composition objects
   bool processInputChemicalFormulas(QString s);
@@ -338,157 +355,427 @@ public:
   // Process input elemental volumes string
   bool processInputElementalVolumes(QString s);
 
-  // Variables
+  // Process the saved single-line inputs again.
+  bool processInputData();
 
-  // Input strings to be processed for main internal variables
-  // NOTE: To keep the state/runtime files shorter; reading and saving
-  //   of the chemical formula, reference energies, elemental volumes
-  //   will be "based on a string entry". That's, for example, we save
-  //   the "input entry for chemical formulas" as is to the state file
-  //   and at the time of resuming a run, we read that and process it
-  //   to obtain the actual composition list.
-  QString input_formulas_string;  // Input string for chemical formulas
-  QString input_ene_refs_string;  // Input string for reference energies
-  QString input_ele_volm_string;  // Input string for elemental volumes
+  // Parse one molecule-unit entry.
+  bool processInputMoleculeUnit(QString s);
 
-  QList<CellComp> compList;    // Cell compositions
-  QList<RefEnergy> refEnergies;// Reference energies
-  EleRadii  eleMinRadii;       // Elemental minimum radii
-  EleVolume eleVolumes;        // Elemental volumes
+  // Parse and append one user-defined objective entry.
+  bool processInputObjectives(QString s);
 
-  int maxAtoms;                // Maximum number of atoms in the run
-  int minAtoms;                // Minimum number of atoms in the run
-  bool vcSearch;               // Is the search variable-composition?
+  // Parse and append one constrained-search entry.
+  bool processInputConstraint(QString s);
 
-  bool loaded;
+  // Parse one "<symbol>, <symbol>, <minDistance>" custom-IAD entry and store it
+  //   (symmetrically) in the interatomic-distance table.
+  bool processInputCustomIAD(QString s);
 
-  uint numInitial;             // Number of initial structures
+  // Text accessors for settings with a complicated type (eg, jobFailAction).
+  QString failActionText() const;
+  bool setFailActionText(const QString& v);
+  // Read and write the seed structure list.
+  QString seedStructuresText() const;
+  void setSeedStructuresText(const QString& v);
 
-  uint parentsPoolSize;        // Parents pool size
+  // Read text input setting and run-time files.
+  bool readInputFile(const QString& filename, bool bestEffort,
+                     bool loadAndVerifyAssets = true);
 
-  uint p_cross;       // Relative weight of new structures by crossover
-  uint p_strip;       // Relative weight of new structures by stripple
-  uint p_perm;        // Relative weight of new structures by permustrain
-  uint p_atomic;      // Relative weight of new structures by permutomic
-  uint p_comp;        // Relative weight of new structures by permucomp
-  double p_supercell; // Percent chances of expanding a new xtal to a random supercell
+  // Write an input file; warn if this fails.
+  bool writeInputFile(const QString& filename);
 
-  uint
-    cross_minimumContribution; // Minimum contribution each parent in crossover
-  uint  cross_ncuts;           // Number of cut points in crossover
+  // Read and apply run-time options (does nothing if file is missing/unreadable).
+  void readRuntimeOptions();
 
-  double strip_amp_min;         // Minimum amplitude of periodic displacement
-  double strip_amp_max;         // Maximum amplitude of periodic displacement
-  uint strip_per1;              // Number of cosine waves in direction 1
-  uint strip_per2;              // Number of cosine waves in direction 2
-  double strip_strainStdev_min; // Minimum standard deviation of epsilon in the
-                                // stripple strain matrix
-  double strip_strainStdev_max; // Maximum standard deviation of epsilon in the
-                                // stripple strain matrix
+  // Apply runtime options from an already-loaded runtime option text.
+  void readRuntimeOptions(const QString& runtimeText);
 
-  uint perm_ex;      // Number of times atoms are swapped in permustrain
-  double perm_strainStdev_max; // Max standard deviation of epsilon in the
-                               // permustrain strain matrix
+  // Write the initial run-time file (CLI run).
+  void writeInitialRuntimeFile();
 
-  double a_min, a_max, // Limits for lattice
-    b_min, b_max, c_min, c_max, new_a_min,
-    new_a_max, // new_min and new_max are formula unit corrected
-    new_b_min, new_b_max, new_c_min, new_c_max, alpha_min, alpha_max, beta_min,
-    beta_max, gamma_min, gamma_max, vol_min, vol_max, vol_fixed,
-    scaleFactor, minRadius, vol_scale_min, vol_scale_max;
+  // Convert multi-entry (repeated) lists to text.
+  QString objectiveEntryToText(int objectiveIndex) const;
+  QString constraintEntryToText(int constraintIndex) const;
+  static QString customIADEntryToText(int atomicNumber1, int atomicNumber2, double minIAD);
 
-  double tol_xcLength;  // XtalComp similarity tolerance: length
-  double tol_xcAngle;   // XtalComp similarity tolerance: angle
-  double tol_spg;       // spglib tolerance (default value is in constants.h file)
-  double tol_rdf;       // tolerance for RDF similarity (0.0 to 1.0, default = 0.0: ignore)
-  double tol_rdf_sigma; // gaussian spread for RDF calculations (default = 0.008)
-  double tol_rdf_cutoff;// distance cutoff for RDF calculations (default = 6.0)
-  int    tol_rdf_nbins; // number of bins for RDF calculations (default = 3000)
+  // Get the composition that has the smallest atom counts for all elements
+  CellComp getMinimalComposition();
 
-  bool using_molUnit;
-
-  bool using_customIAD;
-  bool using_checkStepOpt;
-  QHash<QPair<int, int>, IAD> interComp;
-
-  bool using_interatomicDistanceLimit;
-
-  QHash<QPair<int, int>, MolUnit> compMolUnit;
-
-  QStringList seedList;
-
-  QMutex* xtalInitMutex;
-
-  // Spacegroup generation
-  bool using_randSpg;
-  // If the number is -1, that spg is not allowed
-  // Otherwise, it represents the minimum number of xtals for that spacegroup
-  // per formula unit. The spacegroup it represents is index + 1
-  QList<int> minXtalsOfSpg;
-
-  std::unique_ptr<XtalOptRpc> m_rpcClient;
-
-public slots:
-  bool startSearch() override;
-  void generateNewStructure() override;
-  Xtal* generateNewXtal(CellComp incomp);
-  // Returns a dynamically allocated xtal that has undergone a primitive
-  // reduction of the xtal that was input
-  Xtal* generatePrimitiveXtal(Xtal* xtal);
-  Xtal* generateSuperCell(Xtal* parentXtal, uint expansion, bool distort);
-  void initializeAndAddXtal(Xtal* xtal, unsigned int generation,
-                            const QString& parents);
-  void resetSpacegroups();
-  void resetSimilarities();
-  void checkForSimilarities();
-  CellComp pickRandomCompositionFromPossibleOnes();
-  uint pickRandomSpgFromPossibleOnes();
-
-  QString CLIRuntimeFile()
-  {
-    return locWorkDir + QDir::separator() + "cli-runtime-options.txt";
-  }
-
-  // Import/Export settings in GUI from/to CLI
-  static bool importSettings_(QString filename, XtalOpt& x);
-  static bool exportSettings_(QString filename, XtalOpt* x);
-
-  // Prints all the options to @p stream
-  static void printOptionSettings(QTextStream& stream, XtalOpt* x);
-
-  void setupRpcConnections();
-  void sendRpcUpdate(GlobalSearch::Structure* s);
+  // Get the sorted full list of chemical element in the current run (reference chemical system)
+  QList<QString> getChemicalSystem() const;
 
   // If composition is Ti1O2, returns {22, 8, 8}
   QList<uint> getListOfAtomsComp(CellComp incomp);
+
   std::vector<uint> getStdVecOfAtomsComp(CellComp incomp);
+
+  // Recalculate per-element minimum radii from current scale/custom settings.
+  void refreshElementMinRadii();
+
+  // Check whether RandSpg can generate spg for the given comp.
+  bool isRandSpgPossibleForComposition(uint spg, CellComp comp);
+
+  // Return input formulas compatible with a RandSpg space group.
+  QStringList randSpgCompatibleFormulaStrings(uint spg);
+
+  //
+  // Objective and constraint functions
+  // The engine doesn't distinguish the built-in and user objectives, so these
+  //   functions translate the user objective numbers when needed.
+  //
+
+  // Remove an objective (the built-in above-hull one can't be removed).
+  bool removeUserObjective(int index);
+
+  // Remove a constrained-search entry.
+  bool removeConstraint(int index);
+
+  // Update the above-hull objective weight considering user-defined objectives' weights.
+  void refreshBuiltinObjectiveWeight();
+
+  // Engine objective index of the built-in above-hull value
+  static int getBuiltinObjectiveIndex() { return 0; }
+
+  // First engine objective index available to user-defined objectives
+  static int getFirstUserObjectiveIndex() { return 1; }
+
+  // Number of user-defined objectives (excludes the always present above hull).
+  int getUserObjectivesNum() const;
+
+  // Return the engine objective index for a zero-based user-defined objective.
+  int getUserObjectiveIndex(int userObjectiveNumber) const;
+
+  // Whether any user-defined objectives are configured.
+  bool hasUserObjectives() const;
+
+  // Whether external objective or constraint scripts are needed.
+  bool needsObjectiveOrConstraintCalculations() const;
+
+private:
+  void checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols);
+
+  void ensureBuiltinObjective();
+  bool normalizeLoadedStructureObjectives(Search::Structure* structure, const QString& stateFilename) const;
+  bool validateUserObjectiveDefinition(ObjType objtyp, const QString& objexe, const QString& objout,
+                                       double objwgt, QString* errorMessage = nullptr) const;
+  bool validateConstraintDefinition(const QString& exe, const QString& out, QString* errorMessage = nullptr) const;
+
+  bool runSearch(const QString& stateFile, bool* settingsOnlyLoaded);
+  bool checkLocalInputFiles(bool includeSeeds, QString* errorMessage) const;
+  bool checkOptimizerAndQueue(const QString& readinessAction, QString* errorMessage);
+  bool canRequestFileSave() const;
+  void requestStructureStateSave(Search::Structure* structure);
+  void requestStructureStateSave(const QList<Search::Structure*>& structures);
+  void requestResultsFileSave(bool alsoHullFile = false);
+  void markResultsFileNeedsSave();
+  void retryFileSave();
+  void clearPendingRequests();
+  bool saveRequestedStateFiles(const QString& filename, bool everything, bool notify);
+  bool saveRequestedOutputFiles(bool everything, bool notify);
+  QSet<Search::Structure*> writeStructureStateFiles(const QList<Search::Structure*>& structures,
+                                                    const QSet<Search::Structure*>& structuresToSave,
+                                                    bool notify);
+  void finishSearch();
+  void requestFullEvaluation();
+  void requestEvaluationAfterKill(Search::Structure* structure);
+  bool evaluateStructuresIncrementally(const QSet<Search::Structure*>& structures);
+  // Write all XtalOpt settings groups to filename.
+  bool writeSettingsGroups(const QString& filename);
+  bool writeFreshSettingsStateFile(const QString& filename);
+  bool prepareXtalOptStateFileForRead(const QString& filename, bool fullState,
+                                      QString& readFilename,
+                                      bool keepCompatibilityCopy);
+  QStringList structureStateDirs(const QString& stateFile) const;
+  bool restorePopulation(const QString& stateFile, const QStringList& xtalDirs);
+
+  //
+  // Generation functions.
+  //
+
+  Xtal* generateRandomRandSpgXtal(uint generation, uint id, CellComp incomp = {});
+  Xtal* generateRandomAtomicXtal(uint generation, uint id, CellComp incomp = {});
+  Xtal* generateRandomMolUnitXtal(uint generation, uint id, CellComp incomp = {});
+  Xtal* generateEmptyXtalWithLattice(CellComp incomp = {});
+
+  //
+  // XtalOpt-specific run variables/settings.
+  //
+
+  std::unique_ptr<QMutex> x_xtalInitMutex;
+  std::mutex x_stateSaveMutex;
+  std::mutex x_outputSaveMutex;
+
+  std::mutex x_filesNeedingSaveMutex;
+  QSet<Search::Structure*> x_structuresNeedingSave;
+  bool x_settingsStateNeedsSave;
+  bool x_resultsFileNeedsSave;
+  bool x_hullFileNeedsSave;
+  QList<QPair<QString, QString>> x_pendingHullSnapshots;
+  QSet<Search::Structure*> x_structuresNeedingEvaluation;
+  bool x_fullEvaluationNeeded;
+
+  std::atomic<bool> x_resultsFileSaveScheduled;
+  std::atomic<unsigned long long> x_hullSnapshotSequence;
+  std::atomic<qint64> x_lastOutputWriteMs;
+  std::atomic<qint64> x_lastOutputWriteEndMs;
+  QElapsedTimer x_saveClock;
+  std::vector<double> x_hullPointsCache;
+
+  QList<int> x_loadedStateConstraintObjectiveIndices;
+  bool x_loadedVersion4State;
+
+  BackgroundJob x_fileSaveJob;
+  BackgroundJob x_outputSaveJob;
+
+  BackgroundJob x_similarityCheckJob;
+  BackgroundJob x_spacegroupResetJob;
+  std::atomic<bool> x_similaritiesNeedReset;
+
+  RunMode x_runMode;
+  QString x_lastRuntimeText;
+
+  QTimer* x_resultsSaveTimer;
+
+  QTimer* x_saveRetryTimer;
+
+  QTimer* x_runtimeTimer;
+
+  //
+  // Scalar settings
+  //
+  // Composition limits
+  int x_maxAtoms = 0;                // Maximum number of atoms in the run
+  int x_minAtoms = 0;                // Minimum number of atoms in the run
+  bool x_vcSearch = false;           // Is the search variable-composition?
+  bool x_saveHullSnapshots = false;
+  // Limits for lattice
+  double x_aMin = 0.0;
+  double x_bMin = 0.0;
+  double x_cMin = 0.0;
+  double x_aMax = 0.0;
+  double x_bMax = 0.0;
+  double x_cMax = 0.0;
+  double x_alphaMin = 0.0;
+  double x_betaMin = 0.0;
+  double x_gammaMin = 0.0;
+  double x_alphaMax = 0.0;
+  double x_betaMax = 0.0;
+  double x_gammaMax = 0.0;
+  // Volume limits
+  double x_volMin = 0.0;
+  double x_volMax = 0.0;
+  double x_volScaleMin = 0.0;
+  double x_volScaleMax = 0.0;
+  // Interatomic distance settings
+  bool x_usingScaledIAD = false;
+  bool x_usingCustomIAD = false;
+  bool x_usingCheckStepOpt = false;
+  double x_scaleFactor = 0.0;
+  double x_minRadius = 0.0;
+  // RandSpg
+  bool x_usingRandSpg = false;
+  // Run parameters
+  uint x_numInitial = 0;             // Number of initial structures
+  uint x_parentsPoolSize = 0;        // Parents pool size
+  // Operator weights
+  uint x_pStrip = 0;                 // Relative weight of new structures by stripple
+  uint x_pPerm = 0;                  // Relative weight of new structures by permustrain
+  uint x_pAtomic = 0;                // Relative weight of new structures by permutomic
+  uint x_pComp = 0;                  // Relative weight of new structures by permucomp
+  uint x_pCross = 0;                 // Relative weight of new structures by crossover
+  uint x_pSupercell = 0;             // Percent chances of expanding to a random supercell
+  // Operator parameters
+  double x_stripAmpMin = 0.0;        // Minimum amplitude of periodic displacement
+  double x_stripAmpMax = 0.0;        // Maximum amplitude of periodic displacement
+  uint x_stripPer1 = 0;              // Number of cosine waves in direction 1
+  uint x_stripPer2 = 0;              // Number of cosine waves in direction 2
+  double x_stripStrainStdevMin = 0.0; // Minimum standard deviation of epsilon in the
+                                      // stripple strain matrix
+  double x_stripStrainStdevMax = 0.0; // Maximum standard deviation of epsilon in the
+                                      // stripple strain matrix
+  uint x_permEx = 0;                 // Number of times atoms are swapped in permustrain
+  double x_permStrainStdevMax = 0.0; // Max standard deviation of epsilon in the
+                                     // permustrain strain matrix
+  uint x_crossNcuts = 0;             // Number of cut points in crossover
+  uint x_crossMinimumContribution = 0; // Minimum contribution each parent in crossover
+  // Tolerances
+  double x_tolXcLength = 0.0;  // XtalComp similarity tolerance: length
+  double x_tolXcAngle = 0.0;   // XtalComp similarity tolerance: angle
+  double x_tolSpg = 0.0;       // spglib tolerance (default value is in constants.h file)
+  double x_tolRdf = 0.0;       // tolerance for RDF similarity (0.0 to 1.0, default = 0.0: ignore)
+  double x_tolRdfCutoff = 0.0; // distance cutoff for RDF calculations (default = 6.0)
+  int x_tolRdfNbins = 0;       // number of bins for RDF calculations (default = 3000)
+  double x_tolRdfSigma = 0.0;  // gaussian spread for RDF calculations (default = 0.008)
+  // Input strings to be processed for main internal variables
+  // NOTE: To keep the state/runtime files shorter; reading and saving
+  //   of the chemical formula, reference energies, elemental volumes,
+  //   and forced space groups will be "based on a string entry". That's,
+  //   for example, we save the "input entry for chemical formulas" as is
+  //   to the state file and at the time of resuming a run, we read that and
+  //   process it to obtain the actual composition list.
+  QString x_inputFormulasString;
+  QString x_inputEneRefsString;
+  QString x_inputEleVolmString;
+  QString x_inputForcedSpgsString;
+  QList<CellComp> x_compList;
+  QHash<QPair<int, int>, IAD> x_interComp;
+  EleRadii x_eleMinRadii;
+  EleVolume x_eleVolumes;
+  QList<RefEnergy> x_refEnergies;
+  QStringList x_moleculeUnitInputs;
+  std::vector<Atoms::Geometry> x_moleculeUnits;
+  QStringList x_seedList;
+  // Spacegroup generation
+  // If the number is -1, that spg is not allowed
+  // Otherwise, it represents the minimum number of xtals for that spacegroup
+  // per formula unit. The spacegroup it represents is index + 1
+  QList<int> x_minXtalsOfSpg;
+
+
+public:
+  // Clear molecule units.
+  void clearMoleculeUnits()
+  {
+    moleculeUnitInputs().clear();
+    moleculeUnits().clear();
+  }
+
+public slots:
+
+  //
+  // Search slots
+  //
+
+  // Start an active XtalOpt search.
+  bool startSearch() override;
+
+  // QueueManager calls this when it needs a new structure.
+  void generateNewStructure() override;
+
+  void resetSpacegroups();
+
+  // Clear similarity information for tracked structures.
+  void resetSimilarities();
 
 protected:
   friend class XtalOptUnitTest;
+
+  // Counts for planning the initial generation.
+  struct InitialGenerationPlan
+  {
+    InitialGenerationPlan()
+      : seedCount(0),
+        forcedRandSpgCount(0),
+        randomCount(0),
+        totalTarget(0)
+    {
+    }
+
+    uint seedCount;
+    uint forcedRandSpgCount;
+    uint randomCount;
+    uint totalTarget;
+    QList<int> randSpgCounts; // list of forced spgs
+  };
+
+  //
+  // Composition handlers.
+  //
+
+  // Build the reference-energy table used for hull calculations.
+  std::vector<double> getReferenceEnergiesVector();
+
+  // Returns the composition object for an xtal/structure (considering the full
+  //   chemical system, so, might include zero counts!).
+  CellComp getXtalComposition(Search::Structure *s);
+
+  // Convert a string of chemical formula to composition object
+  CellComp formulaToComposition(QString form);
+
+  // Compare two composition object if they are equivalent/supercell or not
+  double compareCompositions(CellComp comp1, CellComp comp2);
+
+  // Get the estimated min/max volume limits for a composition
+  void getCompositionVolumeLimits(CellComp incomp, double& vol_min, double& vol_max);
+
+  //
+  // Output files and hull movie.
+  //
+
+  // Refresh per-structure evaluation data from current objective/hull state.
+  bool refreshStructureEvaluationData();
+
+  // Emit notifications that structure evaluation data changed.
+  void updateStructureEvaluationInfo();
+
+  // Write the main XtalOpt results file.
+  bool writeResultsFile(const QList<Search::Structure*>& structures, bool notify);
+
+  // Record one convex-hull snapshot (the movie option)
+  void queueHullSnapshot();
+
+  // The text content of a hull data file for the structures.
+  QString hullFileContents(const QList<Search::Structure*>& structures);
+
+  // Write a hull data file for the supplied structures.
+  bool writeHullFile(const QList<Search::Structure*>& structures, const QString& filename);
+
+  //
+  // Structure generation
+  //
+
   void resetSpacegroups_();
-  void resetSimilarities_();
-  void checkForSimilarities_();
+
+  // Build the initial-generation plan from current settings.
+  bool buildInitialGenerationPlan(InitialGenerationPlan& plan,
+                                  QString* errorMessage = nullptr,
+                                  bool reportWarnings = true);
+
+  // Generate and register the initial structures for a fresh search.
+  bool generateInitialStructures();
+
   void generateNewStructure_();
 
+  Xtal* generateNewXtal(CellComp incomp);
+
+  Xtal* generateSuperCell(Xtal* parentXtal, uint expansion, bool distort);
+
+  void initializeAndAddXtal(Xtal* xtal, unsigned int generation,
+                             const QString& parents);
+
+  // Check and add a generated initial structure.
+  bool acceptInitialXtal(Xtal* generated);
+
+  CellComp pickRandomCompositionFromPossibleOnes();
+
   Xtal* selectXtalFromProbabilityList(
-    QList<GlobalSearch::Structure*> structures);
-  void interpretKeyword(QString& keyword, GlobalSearch::Structure* structure);
-  QString getTemplateKeywordHelp_xtalopt();
+    QList<Search::Structure*> structures);
 
-  GlobalSearch::SlottedWaitCondition* m_initWC;
+  //
+  // Similarity check handlers.
+  //
 
-  // Sets a_min, b_min, c_min, ... to the given lattice structs
-  void setLatticeMinsAndMaxes(latticeStruct& latticeMins,
-                              latticeStruct& latticeMaxes);
+  void resetSimilarities_();
+
+  void checkForSimilarities();
+
+  void checkForSimilarities_();
+
+  //
+  // Optimizer/Queue Template stuff.
+  //
+
+  // Register XtalOpt "queue/optimizer"s.
+  void registerXtalOptOptimizerAndQueue();
+
+  // Register XtalOpt-specific template keywords.
+  void registerXtalOptKeywords();
+
+  // Report generation progress to the user interface.
   void updateProgressBar(size_t goal, size_t attempted, size_t succeeded);
 
-  static void setGeom(unsigned int& geom, QString strGeom);
-  static QString getGeom(int numNeighbors, int geom);
-
-signals:
-  void updatePlot();
-  void enablePlotUpdate();
-  void disablePlotUpdate();
+  Search::SlottedWaitCondition* x_initWC;
 };
 } // end namespace XtalOpt
 

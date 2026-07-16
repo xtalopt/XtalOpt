@@ -24,13 +24,13 @@ A brief introduction to the code's features and its user manual are available at
 
 https://xtalopt.github.io/xtalopt.html
 
-For downloading the latest stable version and installation instructions see:
+Detailed instructions for downloading the latest stable version and installation can be found here:
 
 https://xtalopt.github.io/download.html
 
 # License
 
-XtalOpt is published under the "New" BSD License. See LICENSE file.
+XtalOpt is published under the "New" BSD License. See the [LICENSE](LICENSE) file.
 
 # Contributors
 
@@ -43,14 +43,16 @@ All contributors, in alphabetical order:
 
 # External Sources
 
-Included sources from various projects are found under:
+The sources from the following projects and libraries are used in XtalOpt, and can be found under 'external/' folder:
 
-- external/pugixml  https://pugixml.org/
-- external/randSpg  http://xtalopt.openmolecules.net/randSpg/randSpg.html
-- external/spglib   https://github.com/spglib/spglib
-- external/xtalcomp http://xtalopt.openmolecules.net/xtalcomp/xtalcomp.html
-- external/qhull    http://www.qhull.org
+- [xtalcomp](http://xtalopt.openmolecules.net/xtalcomp/xtalcomp.html)
+- [randspg](http://xtalopt.openmolecules.net/randSpg/randSpg.html)
+- [spglib](https://github.com/spglib/spglib) (2.5.0)
+- [qhull](http://www.qhull.org) (8.0.2)
+- [xraylib](https://github.com/tschoonj/xraylib) (4.2.1)
+- [libmsym](https://github.com/mcodev31/libmsym) (0.2.2)
+- [args](https://github.com/Taywee/args) (3.3.0)
 
-These files, other than some minor modifications for interoperability
+These sources, other than modifications for interoperability
 with XtalOpt, are the works of the copyright holders
-specified in the source files.
+specified in the corresponding folder.

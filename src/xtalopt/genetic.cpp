@@ -2,6 +2,7 @@
   XtalOptGenetic - Tools necessary for genetic structure optimization
 
   Copyright (C) 2009-2011 by David C. Lonie
+  Copyright (C) 2026 Samad Hajinazar
 
   This source code is released under the New BSD License, (the "License").
 
@@ -15,30 +16,38 @@
 #include <xtalopt/genetic.h>
 
 #include <xtalopt/structures/xtal.h>
-#include <xtalopt/ui/dialog.h>
 
-#include <globalsearch/eleminfo.h>
-#include <globalsearch/random.h>
+#include <common/constants.h>
+#include <atoms/eleminfo.h>
+#include <common/output.h>
+#include <common/random.h>
 
-#include <globalsearch/utilities/utilityfunctions.h>
+#include <common/numericutils.h>
 
-#include <QDebug>
+#include <QStringList>
 
 using namespace std;
-using namespace Eigen;
-using namespace GlobalSearch;
+using namespace Search;
 
 namespace XtalOpt {
 
-static inline int findClosestComposition(const QList<uint>& counts,
-                                         const QList<CellComp>& compa)
+template <class T>
+static QString listToString(const QList<T>& values)
+{
+  QStringList strings;
+  for (const auto& value : values)
+    strings.append(QString::number(value));
+  return "[" + strings.join(", ") + "]";
+}
+
+static inline int findClosestComposition(const QList<uint>& counts, const QList<CellComp>& compa)
 {
   // A helper function to find the closest composition in the list
   //   to the given atom counts.
   // If anything goes wrong, return -1; but this shouldn't happen!
   if (compa.isEmpty())
     return -1;
-  QList<QString> refSymbols = compa[0].getSymbols();
+  QList<QString> refSymbols = compa[0].getCompositionSymbols();
   std::vector<double> avglist;
   for (const auto& comp : compa) {
     double avg = 0.0;
@@ -50,22 +59,236 @@ static inline int findClosestComposition(const QList<uint>& counts,
     avglist.push_back(avg);
   }
 
-  return findMinIndex(avglist);
+  return Common::findMinIndex(avglist);
 }
 
-Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
-                                const QList<CellComp>& compa,
-                                const EleRadii& elrad,
-                                uint numCuts,
-                                double minContribution,
-                                double& percent1, double& percent2,
-                                int minatoms,
-                                int maxatoms,
-                                bool isVcSearch,
-                                bool verbose)
+static bool addAtomRandomlyForPolicy(Xtal* xtal, unsigned int atomicnum, const EleRadii& elrad,
+                                     bool useCustomIAD,
+                                     const QHash<QPair<int, int>, IAD>* customIADs)
+{
+  // Add an atom using the same distance checks that final validation uses.
+  if (!useCustomIAD)
+    return xtal->addAtomRandomly(atomicnum, elrad);
+  if (customIADs == nullptr)
+    return false;
+  return xtal->addAtomRandomlyIAD(atomicnum, *customIADs);
+}
+
+// Change the counts to the desired total.
+static bool rebalanceCountsToTotal(QList<uint>& targetCounts, int desiredTotal)
+{
+  int Ntypes = targetCounts.size();
+  if (Ntypes == 0 || desiredTotal < Ntypes)
+    return false;
+
+  int current = 0;
+  for (const auto& count : targetCounts)
+    current += count;
+  int Ndiff = current - desiredTotal; // (-) add, (+) remove
+  for (int pass = 0; Ndiff != 0; /*increment below*/) {
+    int i = pass % Ntypes;
+    if (Ndiff > 0 && targetCounts[i] > 1) {
+      targetCounts[i]--; // remove one
+      Ndiff -= 1;
+    }
+    else if (Ndiff < 0) {
+      targetCounts[i]++; // add one
+      Ndiff += 1;
+    }
+    pass++;
+  }
+  return true;
+}
+
+// Change the atom counts in the new crystal.
+static void applyCompositionDeltas(Xtal* nxtal, QList<int>& deltas, QList<uint>& nxtalCounts,
+                                   const QList<QString>& refSymbols,
+                                   const EleRadii& elrad, bool useCustomIAD,
+                                   const QHash<QPair<int, int>, IAD>* customIADs,
+                                   int maxAttempts, bool verbose,
+                                   const QString& tag, const char* context)
+{
+  for (int i = 0; i < deltas.size(); i++) {
+    uint atomicnum = Atoms::ElementInfo::getAtomicNum(refSymbols.at(i).toStdString());
+    // No fix is needed
+    if (deltas[i] == 0)
+      continue;
+    // Delete extra atoms
+    while (deltas[i] > 0) {
+      const std::vector<Atoms::Atom>& atomList = nxtal->atoms();
+      double odds = 0.5;
+      for (int j = 0; j < static_cast<int>(atomList.size()); j++) {
+        if (Common::getRandDouble() < odds &&
+            atomList.at(j).atomicNumber() == atomicnum) {
+          nxtal->removeAtom(atomList.at(j));
+          deltas[i]--;
+          nxtalCounts[i]--;
+          break;
+        }
+      }
+    }
+    // Add atoms randomly
+    int currentAttempt = 0;
+    while (deltas[i] < 0 && currentAttempt < maxAttempts) {
+      currentAttempt++;
+      if (addAtomRandomlyForPolicy(nxtal, atomicnum, elrad, useCustomIAD, customIADs)) {
+        deltas[i]++;
+        nxtalCounts[i]++;
+      }
+    }
+    // Just see if we could fix the atom counts for this type
+    if (deltas[i] != 0) {
+      if (verbose) {
+        Common::message(
+          QString("   %1: failed to adjust remaining %2 atoms for %3 (%4)")
+            .arg(context).arg(deltas[i]).arg(refSymbols[i]).arg(tag));
+      }
+    }
+  }
+}
+
+static void strain(Xtal* xtal, double sigma_lattice)
+{
+  // Build Voight strain matrix
+  double volume = xtal->getVolume();
+  Common::Matrix3 strainM;
+  const double NV_MAGICCONST = 4 * exp(-0.5) / sqrt(2.0);
+  for (uint row = 0; row < 3; row++) {
+    for (uint col = row; col < 3; col++) {
+      // Generate random value from a Gaussian distribution.
+      // Ported from Python's standard random library.
+      // Uses Kinderman and Monahan method. Reference: Kinderman,
+      // A.J. and Monahan, J.F., "Computer generation of random
+      // variables using the ratio of uniform deviates", ACM Trans
+      // Math Software, 3, (1977), pp257-260.
+      // mu = 0, sigma = sigma_lattice
+      double z;
+      while (true) {
+        double u1 = Common::getRandDouble();
+        double u2 = 1.0 - Common::getRandDouble();
+        if (u2 == 0.0)
+          continue; // happens a _lot_ with MSVC...
+        z = NV_MAGICCONST * (u1 - 0.5) / u2;
+        double zz = z * z / 4.0;
+        if (zz <= -log(u2))
+          break;
+      }
+      double epsilon = z * sigma_lattice;
+      if (col == row) {
+        strainM(row, col) = 1 + epsilon;
+      } else {
+        strainM(row, col) = epsilon / 2.0;
+        strainM(col, row) = epsilon / 2.0;
+      }
+    }
+  }
+
+  // Store fractional coordinates
+  std::vector<Atoms::Atom>& atomList = xtal->atoms();
+  QList<Common::Vector3> fracCoordsList;
+  for (const auto& atm : atomList)
+    fracCoordsList.append(xtal->cartToFrac(atm.pos()));
+
+  // Apply strain
+  xtal->setCellInfo(xtal->unitCell().cellMatrix() * strainM);
+
+  // Reset coordinates
+  for (int i = 0; i < static_cast<int>(atomList.size()); i++)
+    atomList.at(i).setPos(xtal->fracToCart(fracCoordsList.at(i)));
+
+  // Rescale volume
+  xtal->setVolume(volume);
+  xtal->wrapAtomsToCell();
+}
+
+static void ripple(Xtal* xtal, double rho, uint eta, uint mu)
+{
+  double phase1 = Common::getRandDouble() * 2 * PI;
+  double phase2 = Common::getRandDouble() * 2 * PI;
+
+  // Get random direction to shift atoms (x=0, y=1, z=2)
+  int shiftAxis = 3, axis1 = 0, axis2 = 0;
+  while (shiftAxis == 3)
+    shiftAxis = static_cast<uint>(Common::getRandDouble() * 3);
+  switch (shiftAxis) {
+    case 0:
+      axis1 = 1;
+      axis2 = 2;
+      break;
+    case 1:
+      axis1 = 0;
+      axis2 = 2;
+      break;
+    case 2:
+      axis1 = 0;
+      axis2 = 1;
+      break;
+    default:
+      Common::warning(QString("Something is wrong in the periodic displacement "
+                              "operator -- shiftAxis should not be %1")
+                        .arg(shiftAxis));
+      break;
+  }
+
+  std::vector<Atoms::Atom>& atoms = xtal->atoms();
+  QList<Common::Vector3> fracCoordsList;
+
+  for (const auto& atm : atoms)
+    fracCoordsList.append(xtal->cartToFrac(atm.pos()));
+
+  for (auto& fc : fracCoordsList) {
+    Common::Vector3 v = fc;
+    double shift = rho * cos(2 * PI * eta * v[axis1] + phase1) *
+                   cos(2 * PI * mu * v[axis2] + phase2);
+    v[shiftAxis] += shift;
+    fc = v;
+  }
+
+  for (int i = 0; i < static_cast<int>(atoms.size()); i++) {
+    Atoms::Atom& atm = atoms.at(i);
+    atm.setPos(xtal->fracToCart(fracCoordsList.at(i)));
+  }
+  xtal->wrapAtomsToCell();
+}
+
+static void exchange(Xtal* xtal, uint exchanges)
+{
+  // Check that there is more than 1 atom type present.
+  // If not, print a warning and return input xtal:
+  if (xtal->getSymbols().size() <= 1) {
+    Common::warning("Cannot perform exchange with fewer than 2 atomic species.");
+    return;
+  }
+
+  std::vector<Atoms::Atom>& atoms = xtal->atoms();
+  // Swap <exchanges> number of atoms
+  for (uint ex = 0; ex < exchanges; ex++) {
+    // Generate some indices
+    uint index1 = 0, index2 = 0;
+    // Make sure we're swapping different atom types
+    while (atoms.at(index1).atomicNumber() == atoms.at(index2).atomicNumber()) {
+      index1 = index2 = 0;
+      while (index1 == index2) {
+        index1 = Common::getRandUInt(0, atoms.size() - 1);
+        index2 = Common::getRandUInt(0, atoms.size() - 1);
+      }
+    }
+    // Swap the atoms
+    Common::Vector3 tmp = atoms.at(index1).pos();
+    atoms[index1].setPos(atoms.at(index2).pos());
+    atoms[index2].setPos(tmp);
+  }
+  return;
+}
+
+Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>& compa,
+                                const EleRadii& elrad, uint numCuts, double minContribution,
+                                double& percent1, double& percent2, int minatoms, int maxatoms,
+                                bool isVcSearch, bool verbose, bool useCustomIAD,
+                                const QHash<QPair<int, int>, IAD>* customIADs)
 {
   // Save the reference chemical system (i.e., full list of symbols)
-  QList<QString> refSymbols = compa[0].getSymbols();
+  QList<QString> refSymbols = compa[0].getCompositionSymbols();
 
   //
   // Random Assignments
@@ -74,12 +297,12 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   //  n = xtal (1,2)
   //  m = axes (1 = a_ch; 2,3 = secondary axes)
   double s_1_1, s_1_2, s_1_3, s_2_1, s_2_2, s_2_3;
-  s_1_1 = getRandDouble();
-  s_2_1 = getRandDouble();
-  s_1_2 = getRandDouble();
-  s_2_2 = getRandDouble();
-  s_1_3 = getRandDouble();
-  s_2_3 = getRandDouble();
+  s_1_1 = Common::getRandDouble();
+  s_2_1 = Common::getRandDouble();
+  s_1_2 = Common::getRandDouble();
+  s_2_2 = Common::getRandDouble();
+  s_1_3 = Common::getRandDouble();
+  s_2_3 = Common::getRandDouble();
   //
   // Transformation matrices
   //
@@ -107,12 +330,12 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   // should do the trick.
   //
   QList<int> list1;
-  list1.append(static_cast<int>(floor(getRandDouble() * 3)));
+  list1.append(static_cast<int>(floor(Common::getRandDouble() * 3)));
   if (list1.at(0) == 3)
     list1[0] = 2;
   switch (list1.at(0)) {
     case 0:
-      if (getRandDouble() > 0.5) {
+      if (Common::getRandDouble() > 0.5) {
         list1.append(1);
         list1.append(2);
       } else {
@@ -121,7 +344,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
       }
       break;
     case 1:
-      if (getRandDouble() > 0.5) {
+      if (Common::getRandDouble() > 0.5) {
         list1.append(0);
         list1.append(2);
       } else {
@@ -130,7 +353,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
       }
       break;
     case 2:
-      if (getRandDouble() > 0.5) {
+      if (Common::getRandDouble() > 0.5) {
         list1.append(0);
         list1.append(1);
       } else {
@@ -141,12 +364,12 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   }
 
   QList<int> list2;
-  list2.append(static_cast<int>(floor(getRandDouble() * 3)));
+  list2.append(static_cast<int>(floor(Common::getRandDouble() * 3)));
   if (list2.at(0) == 3)
     list2[0] = 2;
   switch (list2.at(0)) {
     case 0:
-      if (getRandDouble() > 0.5) {
+      if (Common::getRandDouble() > 0.5) {
         list2.append(1);
         list2.append(2);
       } else {
@@ -155,7 +378,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
       }
       break;
     case 1:
-      if (getRandDouble() > 0.5) {
+      if (Common::getRandDouble() > 0.5) {
         list2.append(0);
         list2.append(2);
       } else {
@@ -164,7 +387,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
       }
       break;
     case 2:
-      if (getRandDouble() > 0.5) {
+      if (Common::getRandDouble() > 0.5) {
         list2.append(0);
         list2.append(1);
       } else {
@@ -176,85 +399,105 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   //
   //  Now populate the matrices:
   //
-  Matrix3 xform1 = Matrix3::Zero();
-  Matrix3 xform2 = Matrix3::Zero();
+  Common::Matrix3 xform1 = Common::Matrix3::Zero();
+  Common::Matrix3 xform2 = Common::Matrix3::Zero();
   for (int i = 0; i < 3; i++) {
-    double r1 = getRandDouble() - 0.5;
-    double r2 = getRandDouble() - 0.5;
-    int s1 = int(r1 / fabs(r1));
-    int s2 = int(r2 / fabs(r2));
+    double r1 = Common::getRandDouble() - 0.5;
+    double r2 = Common::getRandDouble() - 0.5;
+    int s1 = (r1 < 0.0) ? -1 : 1;
+    int s2 = (r2 < 0.0) ? -1 : 1;
     if (list1.at(i) == 0)
-      xform1.block(0, i, 3, 1) << s1, 0, 0;
+      xform1.setCol(i, Common::Vector3(s1, 0, 0));
     else if (list1.at(i) == 1)
-      xform1.block(0, i, 3, 1) << 0, s1, 0;
+      xform1.setCol(i, Common::Vector3(0, s1, 0));
     else if (list1.at(i) == 2)
-      xform1.block(0, i, 3, 1) << 0, 0, s1;
+      xform1.setCol(i, Common::Vector3(0, 0, s1));
     if (list2.at(i) == 0)
-      xform2.block(0, i, 3, 1) << s2, 0, 0;
+      xform2.setCol(i, Common::Vector3(s2, 0, 0));
     else if (list2.at(i) == 1)
-      xform2.block(0, i, 3, 1) << 0, s2, 0;
+      xform2.setCol(i, Common::Vector3(0, s2, 0));
     else if (list2.at(i) == 2)
-      xform2.block(0, i, 3, 1) << 0, 0, s2;
+      xform2.setCol(i, Common::Vector3(0, 0, s2));
   }
 
   // Get parents info: cells, lists of atoms, and fractional coordinates
-  xtal1->lock().lockForRead();
-  Matrix3 cell1 = xtal1->unitCell().cellMatrix();
+  Common::Matrix3 cell1;
   QList<uint> xtalCounts1;
-  for (const auto& symb : refSymbols)
-    xtalCounts1.append(xtal1->getNumberOfAtomsOfSymbol(symb));
+  QList<Common::Vector3> fracCoordsList1;
+  QList<uint> atomicNumbers1;
+  bool validComp1 = false;
+  size_t numAtoms1 = 0;
+  QString tag1;
+  {
+    QReadLocker locker(&xtal1->lock());
+    cell1 = xtal1->unitCell().cellMatrix();
+    for (const auto& symb : refSymbols)
+      xtalCounts1.append(xtal1->getNumberOfAtomsOfSymbol(symb));
+    const std::vector<Atoms::Atom>& atomList1 = xtal1->atoms();
+    for (const auto& atm : atomList1) {
+      fracCoordsList1.append(xtal1->cartToFrac(atm.pos()));
+      atomicNumbers1.append(atm.atomicNumber());
+    }
+    validComp1 = xtal1->hasValidComposition();
+    numAtoms1 = xtal1->numAtoms();
+    tag1 = xtal1->getTag();
+  }
 
-  const std::vector<Atom>& atomList1 = xtal1->atoms();
-  QList<Vector3> fracCoordsList1;
-  for (int i = 0; i < atomList1.size(); i++)
-    fracCoordsList1.append(xtal1->cartToFrac(atomList1.at(i).pos()));
-  xtal1->lock().unlock();
-
-  xtal2->lock().lockForRead();
-  Matrix3 cell2 = xtal2->unitCell().cellMatrix();
+  Common::Matrix3 cell2;
   QList<uint> xtalCounts2;
-  for (const auto& symb : refSymbols)
-    xtalCounts2.append(xtal2->getNumberOfAtomsOfSymbol(symb));
-
-  const std::vector<Atom>& atomList2 = xtal2->atoms();
-  QList<Vector3> fracCoordsList2;
-  for (int i = 0; i < atomList2.size(); i++)
-    fracCoordsList2.append(xtal2->cartToFrac(atomList2.at(i).pos()));
-  xtal2->lock().unlock();
+  QList<Common::Vector3> fracCoordsList2;
+  QList<uint> atomicNumbers2;
+  bool validComp2 = false;
+  size_t numAtoms2 = 0;
+  QString tag2;
+  {
+    QReadLocker locker(&xtal2->lock());
+    cell2 = xtal2->unitCell().cellMatrix();
+    for (const auto& symb : refSymbols)
+      xtalCounts2.append(xtal2->getNumberOfAtomsOfSymbol(symb));
+    const std::vector<Atoms::Atom>& atomList2 = xtal2->atoms();
+    for (const auto& atm : atomList2) {
+      fracCoordsList2.append(xtal2->cartToFrac(atm.pos()));
+      atomicNumbers2.append(atm.atomicNumber());
+    }
+    validComp2 = xtal2->hasValidComposition();
+    numAtoms2 = xtal2->numAtoms();
+    tag2 = xtal2->getTag();
+  }
 
   // Transform cells and atoms (reflect / rot)
   cell1 *= xform1;
   cell2 *= xform2;
-  // Vector3 is a column vector, so transpose before and
-  // after transforming them.
-  for (int i = 0; i < fracCoordsList1.size(); i++)
-    fracCoordsList1[i] = (fracCoordsList1[i].transpose() * xform1).transpose();
-  for (int i = 0; i < fracCoordsList2.size(); i++)
-    fracCoordsList2[i] = (fracCoordsList2[i].transpose() * xform2).transpose();
+  const Common::Matrix3 xform1Transpose = xform1.transpose();
+  const Common::Matrix3 xform2Transpose = xform2.transpose();
+  for (auto& fc : fracCoordsList1)
+    fc = xform1Transpose * fc;
+  for (auto& fc : fracCoordsList2)
+    fc = xform2Transpose * fc;
 
   // Shift coordinates:
-  for (int i = 0; i < fracCoordsList1.size(); i++) {
+  for (auto& fc : fracCoordsList1) {
     // <QList>[<QList index>][<0=x,1=y,2=z axes>]
-    fracCoordsList1[i][0] += s_1_1;
-    fracCoordsList1[i][1] += s_1_2;
-    fracCoordsList1[i][2] += s_1_3;
+    fc[0] += s_1_1;
+    fc[1] += s_1_2;
+    fc[2] += s_1_3;
   }
-  for (int i = 0; i < fracCoordsList2.size(); i++) {
-    fracCoordsList2[i][0] += s_2_1;
-    fracCoordsList2[i][1] += s_2_2;
-    fracCoordsList2[i][2] += s_2_3;
+  for (auto& fc : fracCoordsList2) {
+    fc[0] += s_2_1;
+    fc[1] += s_2_2;
+    fc[2] += s_2_3;
   }
 
   // Wrap coordinates
-  for (int i = 0; i < fracCoordsList1.size(); i++) {
-    fracCoordsList1[i][0] = fmod(fracCoordsList1[i][0] + 100, 1);
-    fracCoordsList1[i][1] = fmod(fracCoordsList1[i][1] + 100, 1);
-    fracCoordsList1[i][2] = fmod(fracCoordsList1[i][2] + 100, 1);
+  for (auto& fc : fracCoordsList1) {
+    fc[0] = fmod(fc[0] + 100, 1);
+    fc[1] = fmod(fc[1] + 100, 1);
+    fc[2] = fmod(fc[2] + 100, 1);
   }
-  for (int i = 0; i < fracCoordsList2.size(); i++) {
-    fracCoordsList2[i][0] = fmod(fracCoordsList2[i][0] + 100, 1);
-    fracCoordsList2[i][1] = fmod(fracCoordsList2[i][1] + 100, 1);
-    fracCoordsList2[i][2] = fmod(fracCoordsList2[i][2] + 100, 1);
+  for (auto& fc : fracCoordsList2) {
+    fc[0] = fmod(fc[0] + 100, 1);
+    fc[1] = fmod(fc[1] + 100, 1);
+    fc[2] = fmod(fc[2] + 100, 1);
   }
 
   //
@@ -262,8 +505,8 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   //
 
   // Average cell matrices by a weight
-  double weight = getRandDouble();
-  Matrix3 dims;
+  double weight = Common::getRandDouble();
+  Common::Matrix3 dims;
   for (uint row = 0; row < 3; row++) {
     for (uint col = 0; col < 3; col++) {
       dims(row, col) =
@@ -275,7 +518,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   QWriteLocker nxtalLocker(&nxtal->lock());
 
   // Set the new xtal lattice cell
-  nxtal->setCellInfo(dims.col(0), dims.col(1), dims.col(2));
+  nxtal->setCellInfo(dims.row(0), dims.row(1), dims.row(2));
 
   // Where to slice the parent xtals (in fractional units)?
   // If we have a "single-cut" crossover, we will use minimum contribution
@@ -287,7 +530,10 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   //   0.125 and 0.375 (fractional coordinate [0,1]).
 
   int numPoints = numCuts + 2;               // all cut points (adding 2 fixed endpoints 0/1)
-  QVector<double> corPoints(numPoints, 0.0); // coordinate of all cut points
+  QList<double> corPoints;                   // coordinate of all cut points
+  corPoints.reserve(numPoints);
+  for (int i = 0; i < numPoints; ++i)
+    corPoints.append(0.0);
   corPoints[numPoints - 1] = 1.0;
 
   // Find the intermediate cut points' coordinates
@@ -295,13 +541,13 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   if (numCuts == 1) {
     // For single-cut, ie. simple crossover, we use the minimum contribution.
     corPoints[1] = ((100.0 - (2.0 * minContribution)) *
-                    getRandDouble() + minContribution) / 100.0;
+                    Common::getRandDouble() + minContribution) / 100.0;
   } else {
     // For multi-cut, we find coordinates for "numCuts" intermediate points.
     double rlen = 1.0 / (numCuts + 1); // initial uniform ribbons' length
     double rtol = rlen * 0.25;         // tolerance for displacing the cut points
-    for (int i = 1; i <= numCuts; i++) {
-      corPoints[i] = i * rlen + getRandDouble(-rtol, rtol);
+    for (int i = 1; i <= static_cast<int>(numCuts); i++) {
+      corPoints[i] = i * rlen + Common::getRandDouble(-rtol, rtol);
     }
   }
 
@@ -314,11 +560,13 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   percent2  = 100.0 - percent1;
 
   if (verbose) {
-    QString tmp_par = QString("   crossover: ribbon markers %1% %2% : ")
-                      .arg(percent1, 5, 'f', 1).arg(percent2, 5, 'f', 1);
+    QString tmp_par = QString("   %1: ribbon markers %2% %3% : ")
+                      .arg(__func__)
+                      .arg(percent1, 5, 'f', 1)
+                      .arg(percent2, 5, 'f', 1);
     for (int i = 0; i < numPoints; i++)
       tmp_par += QString(" %1 ").arg(corPoints[i], 10, 'f', 6);
-    qDebug().noquote() << tmp_par;
+    Common::message(tmp_par);
   }
 
   // Select atoms of parent xtals for the new xtal.
@@ -339,7 +587,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   QMultiHash<uint, int> extraXtal2;
 
   for (int i = 0; i < fracCoordsList1.size(); i++) {
-    uint atmcn = atomList1.at(i).atomicNumber();
+    uint atmcn = atomicNumbers1.at(i);
     double coor = fracCoordsList1.at(i)[0];
     // In which ribbon this atom is located?
     int ribn = -1;
@@ -349,20 +597,16 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
     }
     // Pick xtal1 atoms if they are in odd ribbons
     if (ribn % 2 == 1) {
-      Atom& newAtom = nxtal->addAtom();
+      Atoms::Atom& newAtom = nxtal->addAtom();
       newAtom.setAtomicNumber(atmcn);
       newAtom.setPos(nxtal->fracToCart(fracCoordsList1.at(i)));
-      //qDebug().noquote() << QString("   atomcell1 type %1 coord %2 ribbon %3 added %4")
-      //                      .arg(atmcn, 3).arg(coor, 10,'f',6).arg(ribn, 2).arg("yes");
     } else {
       extraXtal1.insert(atmcn, i);
-      //qDebug().noquote() << QString("   atomcell1 type %1 coord %2 ribbon %3 added %4")
-      //                      .arg(atmcn, 3).arg(coor, 10,'f',6).arg(ribn, 2).arg("no");
     }
   }
 
   for (int i = 0; i < fracCoordsList2.size(); i++) {
-    uint atmcn = atomList2.at(i).atomicNumber();
+    uint atmcn = atomicNumbers2.at(i);
     double coor = fracCoordsList2.at(i)[0];
     // In which ribbon this atom is located?
     int ribn = -1;
@@ -372,15 +616,11 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
     }
     // Pick xtal2 atoms if they are in even ribbons
     if (ribn % 2 == 0) {
-      Atom& newAtom = nxtal->addAtom();
+      Atoms::Atom& newAtom = nxtal->addAtom();
       newAtom.setAtomicNumber(atmcn);
       newAtom.setPos(nxtal->fracToCart(fracCoordsList2.at(i)));
-      //qDebug().noquote() << QString("   atomcell2 type %1 coord %2 ribbon %3 added %4")
-      //                      .arg(atmcn, 3).arg(coor, 10,'f',6).arg(ribn, 2).arg("yes");
     } else {
       extraXtal2.insert(atmcn, i);
-      //qDebug().noquote() << QString("   atomcell2 type %1 coord %2 ribbon %3 added %4")
-      //                      .arg(atmcn, 3).arg(coor, 10,'f',6).arg(ribn, 2).arg("no");
     }
   }
 
@@ -391,7 +631,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   QList<uint> extraCounts1;
   QList<uint> extraCounts2;
   for (const auto& symb : refSymbols) {
-    uint atmcn = ElementInfo::getAtomicNum(symb.toStdString());
+    uint atmcn = Atoms::ElementInfo::getAtomicNum(symb.toStdString());
     nxtalCounts.append(nxtal->getNumberOfAtomsOfSymbol(symb));
     extraCounts1.append(extraXtal1.values(atmcn).size());
     extraCounts2.append(extraXtal2.values(atmcn).size());
@@ -425,36 +665,28 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
     if      (desiredTotal < minatoms) desiredTotal = minatoms;
     else if (desiredTotal > maxatoms) desiredTotal = maxatoms;
 
-    int Ndiff = targetTotalCounts - desiredTotal; // (-) add, (+) remove
-    int Ntypes = targetCounts.size();
-    for (int pass = 0; Ndiff != 0; /*increment below*/) {
-      int i = pass % Ntypes;
-      if (Ndiff > 0 && targetCounts[i] > 1) {
-        targetCounts[i]--; // remove one
-        Ndiff -= 1;
-      }
-      else if (Ndiff < 0) {
-        targetCounts[i]++; // add one
-        Ndiff += 1;
-      }
-      pass++;
+    if (!rebalanceCountsToTotal(targetCounts, desiredTotal)) {
+      Common::error("Could not adjust atom counts in crossover!");
+      nxtalLocker.unlock();
+      delete nxtal;
+      return nullptr;
     }
     targetTotalCounts = desiredTotal;
     //
   } else { // fixed/multi-composition search
     // Find the target parent (if any)
-    if (xtal1->hasValidComposition() && xtal2->hasValidComposition()) {
+    if (validComp1 && validComp2) {
       // If both parents are good, pick the one with larger num of atoms;
       //   then randomly if they are of the same size.
-      if (xtal1->numAtoms() > xtal2->numAtoms())
+      if (numAtoms1 > numAtoms2)
         targetParent = 1;
-      else if (xtal2->numAtoms() > xtal1->numAtoms())
+      else if (numAtoms2 > numAtoms1)
         targetParent = 2;
       else
-        targetParent = getRandDouble() < 0.5 ? 1 : 2;
-    } else if (xtal1->hasValidComposition()) {
+        targetParent = Common::getRandDouble() < 0.5 ? 1 : 2;
+    } else if (validComp1) {
       targetParent = 1;
-    } else if (xtal2->hasValidComposition()) {
+    } else if (validComp2) {
       targetParent = 2;
     }
 
@@ -465,10 +697,12 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
       targetCounts = xtalCounts2;
     } else {
       // Select a target composition from list and use its counts
-      chosenComp = findClosestComposition(nxtalCounts, compa); // getRandInt(0, compa.size() - 1);
+      chosenComp = findClosestComposition(nxtalCounts, compa); // Common::getRandInt(0, compa.size() - 1);
       // Sanity check: this can't happen!
       if (chosenComp < 0) {
-        qDebug() << "Error could not select from composition list in crossover!";
+        Common::error("Could not select from composition list in crossover!");
+        nxtalLocker.unlock();
+        delete nxtal;
         return nullptr;
       }
       for (const auto& symb : refSymbols)
@@ -490,10 +724,16 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   }
 
   if (verbose) {
-    qDebug() << "   crossover: counts initial" << nxtalCounts
-             << "target" << targetCounts << "parent" << targetParent
-             << "comp" << (chosenComp) << "deltas" << deltas
-             << "-" << xtal1->getTag() << xtal2->getTag();
+    Common::message(QString("   %1: counts initial %2 target %3 parent "
+                          "%4 comp %5 deltas %6 - %7 %8")
+                    .arg(__func__,
+                         listToString(nxtalCounts),
+                         listToString(targetCounts),
+                         QString::number(targetParent),
+                         QString::number(chosenComp),
+                         listToString(deltas),
+                         tag1,
+                         tag2));
   }
 
   // Main loop to correct for differences by inserting atoms (from
@@ -508,17 +748,17 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
   int currentAttempt;
 
   for (int i = 0; i < deltas.size(); i++) {
-    uint atomicnum = ElementInfo::getAtomicNum(refSymbols[i].toStdString());
+    uint atomicnum = Atoms::ElementInfo::getAtomicNum(refSymbols[i].toStdString());
     // Nothing to do for zero deltas
     if (deltas[i] == 0)
       continue;
     // Remove extra atoms
     while (deltas[i] > 0) {
       // Randomly delete atoms from nxtal;
-      const std::vector<Atom>& atomList = nxtal->atoms();
-      double odds = 0.5; //1.0 / static_cast<double>(nxtalCounts[i]);
-      for (int j = 0; j < atomList.size(); j++) {
-        if (getRandDouble() < odds &&
+      const std::vector<Atoms::Atom>& atomList = nxtal->atoms();
+      double odds = 0.5;
+      for (int j = 0; j < static_cast<int>(atomList.size()); j++) {
+        if (Common::getRandDouble() < odds &&
             atomList[j].atomicNumber() == atomicnum) {
           // If the atom type and odds are right, delete the atom and break loop to
           //   recheck condition. removeAtom(Atom*) takes care of deleting pointer.
@@ -542,7 +782,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
       if (extraCounts1[i] == 0 && extraCounts2[i] == 0)
         break;
       else if (extraCounts1[i] != 0 && extraCounts2[i] != 0)
-        parent = (getRandDouble() < 0.5) ? 1 : 2;
+        parent = (Common::getRandDouble() < 0.5) ? 1 : 2;
       else if (extraCounts1[i] != 0)
         parent = 1;
       else
@@ -551,13 +791,13 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
       // Whichever parent we have, it must have atoms of this type!
       //
       if (parent == 1) {
-        double odds = 0.5; //1.0 / static_cast<double>(extraCounts1[i]);
+        double odds = 0.5;
         QList<int> extraAtoms = extraXtal1.values(atomicnum);
         for (int j = 0; j < extraAtoms.size(); j++) {
-          if (getRandDouble() < odds) {
+          if (Common::getRandDouble() < odds) {
             int posindx = extraAtoms.value(j);
             //
-            Atom& newAtom = nxtal->addAtom();
+            Atoms::Atom& newAtom = nxtal->addAtom();
             newAtom.setAtomicNumber(atomicnum);
             newAtom.setPos(nxtal->fracToCart(fracCoordsList1[posindx]));
             //
@@ -570,13 +810,13 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
           }
         }
       } else {
-        double odds = 0.5; //1.0 / static_cast<double>(extraCounts2[i]);
+        double odds = 0.5;
         QList<int> extraAtoms = extraXtal2.values(atomicnum);
         for (int j = 0; j < extraAtoms.size(); j++) {
-          if (getRandDouble() < odds) {
+          if (Common::getRandDouble() < odds) {
             int posindx = extraAtoms.value(j);
             //
-            Atom& newAtom = nxtal->addAtom();
+            Atoms::Atom& newAtom = nxtal->addAtom();
             newAtom.setAtomicNumber(atomicnum);
             newAtom.setPos(nxtal->fracToCart(fracCoordsList2[posindx]));
             //
@@ -594,7 +834,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
     currentAttempt = 0;
     while (deltas[i] < 0 && currentAttempt < maxAttempts) {
       currentAttempt++;
-      if (nxtal->addAtomRandomly(atomicnum, elrad)) {
+      if (addAtomRandomlyForPolicy(nxtal, atomicnum, elrad, useCustomIAD, customIADs)) {
         deltas[i]++;
         nxtalCounts[i]++;
       }
@@ -602,9 +842,9 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2,
     // Just see if we could fix the atom counts for this type
     if (deltas[i] != 0) {
       if (verbose) {
-        qDebug().noquote() <<
-            QString("   crossover: failed to adjust remaining %1 atoms for %2 (%3)")
-            .arg(deltas[i]).arg(refSymbols[i]).arg(nxtal->getTag());
+        Common::message(
+          QString("   %1: failed to adjust remaining %2 atoms for %3 (%4)")
+            .arg(__func__).arg(deltas[i]).arg(refSymbols[i]).arg(nxtal->getTag()));
       }
     }
   }
@@ -628,7 +868,7 @@ Xtal* XtalOptGenetic::stripple(Xtal* xtal, double sigma_lattice_min,
   QWriteLocker nxtalLocker(&nxtal->lock());
   nxtal->setCellInfo(xtal->unitCell().cellMatrix());
   for (uint i = 0; i < xtal->numAtoms(); i++) {
-    Atom& atm = nxtal->addAtom();
+    Atoms::Atom& atm = nxtal->addAtom();
     atm.setAtomicNumber(xtal->atom(i).atomicNumber());
     atm.setPos(xtal->atom(i).pos());
   }
@@ -642,16 +882,16 @@ Xtal* XtalOptGenetic::stripple(Xtal* xtal, double sigma_lattice_min,
   // Note that this will repeat until EITHER sigma OR rho is greater
   // than its respective minimum value, not both
   do {
-    sigma_lattice = getRandDouble();
+    sigma_lattice = Common::getRandDouble();
     sigma_lattice *= sigma_lattice_max;
-    rho = getRandDouble();
+    rho = Common::getRandDouble();
     rho *= rho_max;
     // If values are fixed (min==max), check to see if they need to
     // be set manually, since it is unlikely that the above
     // randomization will produce an acceptable value. Randomize
     // which parameter to check to avoid biasing setting one value
     // over the other.
-    double r = getRandDouble();
+    double r = Common::getRandDouble();
     if (r < 0.5 && sigma_lattice_min == sigma_lattice_max && rho < rho_min) {
       sigma_lattice = sigma_lattice_max;
     }
@@ -660,8 +900,8 @@ Xtal* XtalOptGenetic::stripple(Xtal* xtal, double sigma_lattice_min,
     }
   } while (sigma_lattice < sigma_lattice_min && rho < rho_min);
 
-  XtalOptGenetic::strain(nxtal, sigma_lattice);
-  XtalOptGenetic::ripple(nxtal, rho, eta, mu);
+  strain(nxtal, sigma_lattice);
+  ripple(nxtal, rho, eta, mu);
 
   nxtal->setStatus(Xtal::WaitingForOptimization);
   return nxtal;
@@ -677,20 +917,20 @@ Xtal* XtalOptGenetic::permustrain(Xtal* xtal, double sigma_lattice_max,
   Xtal* nxtal = new Xtal;
   QWriteLocker nxtalLocker(&nxtal->lock());
   nxtal->setCellInfo(xtal->unitCell().cellMatrix());
-  const std::vector<Atom>& atoms = xtal->atoms();
-  for (int i = 0; i < atoms.size(); i++) {
-    Atom& atom = nxtal->addAtom();
-    atom.setAtomicNumber(atoms.at(i).atomicNumber());
-    atom.setPos(atoms.at(i).pos());
+  const std::vector<Atoms::Atom>& atoms = xtal->atoms();
+  for (const auto& srcAtom : atoms) {
+    Atoms::Atom& atom = nxtal->addAtom();
+    atom.setAtomicNumber(srcAtom.atomicNumber());
+    atom.setPos(srcAtom.pos());
   }
 
   // unlock the parent xtal
   locker.unlock();
 
   // Perform lattice strain
-  sigma_lattice = sigma_lattice_max * getRandDouble();
-  XtalOptGenetic::strain(nxtal, sigma_lattice);
-  XtalOptGenetic::exchange(nxtal, exchanges);
+  sigma_lattice = sigma_lattice_max * Common::getRandDouble();
+  strain(nxtal, sigma_lattice);
+  exchange(nxtal, exchanges);
 
   // Clean up
   nxtal->wrapAtomsToCell();
@@ -699,14 +939,12 @@ Xtal* XtalOptGenetic::permustrain(Xtal* xtal, double sigma_lattice_max,
   return nxtal;
 }
 
-Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
-                                 const CellComp& comp,
-                                 const EleRadii& elrad,
-                                 int minatoms,
-                                 int maxatoms, bool verbose)
+Xtal* XtalOptGenetic::permutomic(Xtal* xtal, const CellComp& comp, const EleRadii& elrad,
+                                 int minatoms, int maxatoms, bool verbose, bool useCustomIAD,
+                                 const QHash<QPair<int, int>, IAD>* customIADs)
 {
   // Save the reference chemical system (i.e., full list of symbols)
-  QList<QString> refSymbols = comp.getSymbols();
+  QList<QString> refSymbols = comp.getCompositionSymbols();
 
   // lock parent xtal for reading
   QReadLocker locker(&xtal->lock());
@@ -715,11 +953,11 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
   Xtal* nxtal = new Xtal;
   QWriteLocker nxtalLocker(&nxtal->lock());
   nxtal->setCellInfo(xtal->unitCell().cellMatrix());
-  const std::vector<Atom>& atoms = xtal->atoms();
-  for (int i = 0; i < atoms.size(); i++) {
-    Atom& atom = nxtal->addAtom();
-    atom.setAtomicNumber(atoms.at(i).atomicNumber());
-    atom.setPos(atoms.at(i).pos());
+  const std::vector<Atoms::Atom>& atoms = xtal->atoms();
+  for (const auto& srcAtom : atoms) {
+    Atoms::Atom& atom = nxtal->addAtom();
+    atom.setAtomicNumber(srcAtom.atomicNumber());
+    atom.setPos(srcAtom.pos());
   }
 
   // unlock the parent xtal
@@ -727,8 +965,8 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
 
   // First, apply a small "strain" to slightly distort the parent lattice.
   // We will use "half the default maximum strain stdev (= 0.5 * 0.5)"
-  double sigma_lattice = 0.25 * getRandDouble();
-  XtalOptGenetic::strain(nxtal, sigma_lattice);
+  double sigma_lattice = 0.25 * Common::getRandDouble();
+  strain(nxtal, sigma_lattice);
 
   // "Working" lists of symbols and atom counts in new xtal
   // We will use the full list of elements, so the output
@@ -773,19 +1011,19 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
     else if (targetTotalCounts <= minatoms)
       diff = +1;
     else
-      diff = (getRandDouble() < 0.5) ? -1 : +1;
+      diff = (Common::getRandDouble() < 0.5) ? -1 : +1;
     //
     for (int i = 0; i < targetCounts.size(); i++) {
       // To avoid any bias in the produced target counts, we
       //   will give equal chances of increasing/decreasing to
       //   every target count; regardless of its current value.
       double odds = 0.5;
-      if (diff == -1 && targetCounts[i] > 1 && getRandDouble() < odds) {
+      if (diff == -1 && targetCounts[i] > 1 && Common::getRandDouble() < odds) {
         targetCounts[i]--;
         targetTotalCounts--;
         changedComp = true;
         break;
-      } else if (diff == +1 && getRandDouble() < odds) {
+      } else if (diff == +1 && Common::getRandDouble() < odds) {
         targetCounts[i]++;
         targetTotalCounts++;
         changedComp = true;
@@ -806,19 +1044,11 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
   if      (desiredTotal < minatoms) desiredTotal = minatoms;
   else if (desiredTotal > maxatoms) desiredTotal = maxatoms;
 
-  int Ndiff = targetTotalCounts - desiredTotal; // (-) add, (+) remove
-  int Ntypes = targetCounts.size();
-  for (int pass = 0; Ndiff != 0; /*increment below*/) {
-    int i = pass % Ntypes;
-    if (Ndiff > 0 && targetCounts[i] > 1) {
-      targetCounts[i]--; // remove one
-      Ndiff -= 1;
-    }
-    else if (Ndiff < 0) {
-      targetCounts[i]++; // add one
-      Ndiff += 1;
-    }
-    pass++;
+  if (!rebalanceCountsToTotal(targetCounts, desiredTotal)) {
+    Common::error("Could not adjust atom counts in permutomic!");
+    nxtalLocker.unlock();
+    delete nxtal;
+    return nullptr;
   }
   targetTotalCounts = desiredTotal;
 
@@ -836,51 +1066,20 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
   }
 
   if (verbose) {
-    qDebug() << "   permutomic: counts initial" << nxtalCounts
-             << "target" << targetCounts << "deltas"
-             << deltas << "-" << xtal->getTag();
+    Common::message(QString("   %1: counts initial %2 target %3 "
+                          "deltas %4 - %5")
+                    .arg(__func__,
+                         listToString(nxtalCounts),
+                         listToString(targetCounts),
+                         listToString(deltas),
+                         xtal->getTag()));
   }
 
   // Try to fix the atom counts according to the obtained values for deltas
   // For adding atoms, we will limit the attempts, as the radii limits might
   //   prevent us from being able to add them.
-  for (int i = 0; i < deltas.size(); i++) {
-    uint atomicnum = ElementInfo::getAtomicNum(refSymbols.at(i).toStdString());
-    // No fix is needed
-    if (deltas[i] == 0)
-      continue;
-    // Delete extra atoms
-    while (deltas[i] > 0) {
-      const std::vector<Atom>& atomList = nxtal->atoms();
-      double odds = 0.5; //1.0 / static_cast<double>(nxtalCounts[i]);
-      for (int j = 0; j < atomList.size(); j++) {
-        if (getRandDouble() < odds &&
-            atomList.at(j).atomicNumber() == atomicnum) {
-          nxtal->removeAtom(atomList.at(j));
-          deltas[i]--;
-          nxtalCounts[i]--;
-          break;
-        }
-      }
-    }
-    // Add atoms randomly
-    currentAttempt = 0;
-    while (deltas[i] < 0 && currentAttempt < maxAttempts) {
-      currentAttempt++;
-      if (nxtal->addAtomRandomly(atomicnum, elrad)) {
-        deltas[i]++;
-        nxtalCounts[i]++;
-      }
-    }
-    // Just see if we could fix the atom counts for this type
-    if (deltas[i] != 0) {
-      if (verbose) {
-        qDebug().noquote() <<
-            QString("   permutomic: failed to adjust remaining %1 atoms for %2 (%3)")
-            .arg(deltas[i]).arg(refSymbols[i]).arg(xtal->getTag());
-      }
-    }
-  }
+  applyCompositionDeltas(nxtal, deltas, nxtalCounts, refSymbols, elrad,
+                         useCustomIAD, customIADs, maxAttempts, verbose, xtal->getTag(), __func__);
 
   // We're done!
   nxtal->wrapAtomsToCell();
@@ -888,14 +1087,12 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal,
   return nxtal;
 }
 
-Xtal* XtalOptGenetic::permucomp(Xtal* xtal,
-                                const CellComp& comp,
-                                const EleRadii& elrad,
-                                int minatoms,
-                                int maxatoms, bool verbose)
+Xtal* XtalOptGenetic::permucomp(Xtal* xtal, const CellComp& comp, const EleRadii& elrad,
+                                int minatoms, int maxatoms, bool verbose, bool useCustomIAD,
+                                const QHash<QPair<int, int>, IAD>* customIADs)
 {
   // Save the reference chemical system (i.e., full list of symbols)
-  QList<QString> refSymbols = comp.getSymbols();
+  QList<QString> refSymbols = comp.getCompositionSymbols();
 
   // lock parent xtal for reading
   QReadLocker locker(&xtal->lock());
@@ -904,11 +1101,11 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal,
   Xtal* nxtal = new Xtal;
   QWriteLocker nxtalLocker(&nxtal->lock());
   nxtal->setCellInfo(xtal->unitCell().cellMatrix());
-  const std::vector<Atom>& atoms = xtal->atoms();
-  for (int i = 0; i < atoms.size(); i++) {
-    Atom& atom = nxtal->addAtom();
-    atom.setAtomicNumber(atoms.at(i).atomicNumber());
-    atom.setPos(atoms.at(i).pos());
+  const std::vector<Atoms::Atom>& atoms = xtal->atoms();
+  for (const auto& srcAtom : atoms) {
+    Atoms::Atom& atom = nxtal->addAtom();
+    atom.setAtomicNumber(srcAtom.atomicNumber());
+    atom.setPos(srcAtom.pos());
   }
 
   // unlock the parent xtal
@@ -921,11 +1118,11 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal,
 
   // First, apply a small "strain" to slightly distort the parent lattice.
   // We will use "half the default maximum strain stdev (= 0.5 * 0.5)"
-  double sigma_lattice = 0.25 * getRandDouble();
-  XtalOptGenetic::strain(nxtal, sigma_lattice);
+  double sigma_lattice = 0.25 * Common::getRandDouble();
+  strain(nxtal, sigma_lattice);
 
   // Now, we create a "new random composition" as follows:
-  //  (1) Initiate a list of random counts for all elements each 
+  //  (1) Initiate a list of random counts for all elements each
   //      ranging from "1" and up to "max atoms",
   //  (2) Randomly generate a new total target total atom count in
   //      the range of largest of minatoms/number of types (so we can
@@ -938,11 +1135,9 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal,
 
   // Initiate the new counts: randomly from 1 to max atom counts
   QList<uint> targetCounts;
-  uint targetTotalCounts = 0;
   uint rng = static_cast<unsigned int>(maxatoms);
   for (int i = 0; i < nxtalCounts.size(); i++) {
-    targetCounts.push_back(getRandUInt(1, rng));
-    targetTotalCounts += targetCounts[i];
+    targetCounts.push_back(Common::getRandUInt(1, rng));
   }
 
   // Generate a target total atom count between the largest of
@@ -954,24 +1149,14 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal,
   int lowestDesired = nxtalCounts.size();
   if (lowestDesired < minatoms) lowestDesired = minatoms;
   //
-  int desiredTotal = getRandUInt(lowestDesired, maxatoms);
+  int desiredTotal = Common::getRandUInt(lowestDesired, maxatoms);
 
-  int Ndiff = targetTotalCounts - desiredTotal; // (-) add, (+) remove
-  int Ntypes = targetCounts.size();
-  for (int pass = 0; Ndiff != 0; /*increment below*/) {
-    int i = pass % Ntypes;
-    if (Ndiff > 0 && targetCounts[i] > 1) {
-      targetCounts[i]--; // remove one
-      Ndiff -= 1;
-    }
-    else if (Ndiff < 0) {
-      targetCounts[i]++; // add one
-      Ndiff += 1;
-    }
-    pass++;
+  if (!rebalanceCountsToTotal(targetCounts, desiredTotal)) {
+    Common::error("Could not adjust atom counts in permucomp!");
+    nxtalLocker.unlock();
+    delete nxtal;
+    return nullptr;
   }
-  targetTotalCounts = desiredTotal;
-
   // Now, find deltas
   // List "deltas" is for all types, with each element of the list:
   //   (deltas[i] > 0): type "i" has extra atoms; we need to remove
@@ -983,58 +1168,23 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal,
   }
 
   if (verbose) {
-    qDebug() << "   permucomp: counts initial" << nxtalCounts
-             << "target" << targetCounts << "deltas"
-             << deltas << "-" << xtal->getTag();
+    Common::message(QString("   %1: counts initial %2 target %3 "
+                          "deltas %4 - %5")
+                    .arg(__func__,
+                         listToString(nxtalCounts),
+                         listToString(targetCounts),
+                         listToString(deltas),
+                         xtal->getTag()));
   }
 
   // Correct for differences by inserting or removing atoms.
-
   // Because of the possible drastic changes in the composition,
   //   it might be impossible to adjust the counts when we need
   //   to add atoms. So, we put a limit on the number of tries.
   // If we reach the limit, we just leave it alone and move on
   //   with whatever count that we have been able to produce.
-  int maxAttempts = 1000;
-  int currentAttempt;
-
-  for (int i = 0; i < deltas.size(); i++) {
-    uint atomicnum = ElementInfo::getAtomicNum(refSymbols.at(i).toStdString());
-    // No fix is needed
-    if (deltas[i] == 0)
-      continue;
-    // Delete extra atoms
-    while (deltas[i] > 0) {
-      const std::vector<Atom>& atomList = nxtal->atoms();
-      double odds = 0.5; //1.0 / static_cast<double>(nxtalCounts[i]);
-      for (int j = 0; j < atomList.size(); j++) {
-        if (getRandDouble() < odds &&
-            atomList.at(j).atomicNumber() == atomicnum) {
-          nxtal->removeAtom(atomList.at(j));
-          deltas[i]--;
-          nxtalCounts[i]--;
-          break;
-        }
-      }
-    }
-    // Add atoms randomly
-    currentAttempt = 0;
-    while (deltas[i] < 0 && currentAttempt < maxAttempts) {
-      currentAttempt++;
-      if (nxtal->addAtomRandomly(atomicnum, elrad)) {
-        deltas[i]++;
-        nxtalCounts[i]++;
-      }
-    }
-    // Just see if we could fix the atom counts for this type
-    if (deltas[i] != 0) {
-      if (verbose) {
-        qDebug().noquote() <<
-            QString("   permucomp: failed to adjust remaining %1 atoms for %2 (%3)")
-            .arg(deltas[i]).arg(refSymbols[i]).arg(xtal->getTag());
-      }
-    }
-  }
+  applyCompositionDeltas(nxtal, deltas, nxtalCounts, refSymbols, elrad,
+                         useCustomIAD, customIADs, 1000, verbose, xtal->getTag(), __func__);
 
   // We're done!
   nxtal->wrapAtomsToCell();
@@ -1042,143 +1192,4 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal,
   return nxtal;
 }
 
-void XtalOptGenetic::exchange(Xtal* xtal, uint exchanges)
-{
-  // Check that there is more than 1 atom type present.
-  // If not, print a warning and return input xtal:
-  if (xtal->getSymbols().size() <= 1) {
-    qDebug() << "Warning: Cannot perform exchange with fewer than 2 atomic species.";
-    return;
-  }
-
-  std::vector<Atom>& atoms = xtal->atoms();
-  // Swap <exchanges> number of atoms
-  for (uint ex = 0; ex < exchanges; ex++) {
-    // Generate some indices
-    uint index1 = 0, index2 = 0;
-    // Make sure we're swapping different atom types
-    while (atoms.at(index1).atomicNumber() == atoms.at(index2).atomicNumber()) {
-      index1 = index2 = 0;
-      while (index1 == index2) {
-        index1 = static_cast<uint>(getRandDouble() * atoms.size());
-        index2 = static_cast<uint>(getRandDouble() * atoms.size());
-      }
-    }
-    // Swap the atoms
-    Vector3 tmp = atoms.at(index1).pos();
-    atoms[index1].setPos(atoms.at(index2).pos());
-    atoms[index2].setPos(tmp);
-  }
-  return;
-}
-
-void XtalOptGenetic::strain(Xtal* xtal, double sigma_lattice)
-{
-  // Build Voight strain matrix
-  double volume = xtal->getVolume();
-  Matrix3 strainM;
-  const double NV_MAGICCONST = 4 * exp(-0.5) / sqrt(2.0);
-  for (uint row = 0; row < 3; row++) {
-    for (uint col = row; col < 3; col++) {
-      // Generate random value from a Gaussian distribution.
-      // Ported from Python's standard random library.
-      // Uses Kinderman and Monahan method. Reference: Kinderman,
-      // A.J. and Monahan, J.F., "Computer generation of random
-      // variables using the ratio of uniform deviates", ACM Trans
-      // Math Software, 3, (1977), pp257-260.
-      // mu = 0, sigma = sigma_lattice
-      double z;
-      while (true) {
-        double u1 = getRandDouble();
-        double u2 = 1.0 - getRandDouble();
-        if (u2 == 0.0)
-          continue; // happens a _lot_ with MSVC...
-        z = NV_MAGICCONST * (u1 - 0.5) / u2;
-        double zz = z * z / 4.0;
-        if (zz <= -log(u2))
-          break;
-      }
-      double epsilon = z * sigma_lattice;
-      // qDebug() << "epsilon(" << row << ", " << col << ") = " << epsilon;
-      if (col == row) {
-        strainM(row, col) = 1 + epsilon;
-      } else {
-        strainM(row, col) = epsilon / 2.0;
-        strainM(col, row) = epsilon / 2.0;
-      }
-    }
-  }
-
-  // Store fractional coordinates
-  std::vector<Atom>& atomList = xtal->atoms();
-  QList<Vector3> fracCoordsList;
-  for (int i = 0; i < atomList.size(); i++)
-    fracCoordsList.append(xtal->cartToFrac(atomList.at(i).pos()));
-
-  // Apply strain
-  xtal->setCellInfo(xtal->unitCell().cellMatrix() * strainM);
-
-  // Reset coordinates
-  for (int i = 0; i < atomList.size(); i++)
-    atomList.at(i).setPos(xtal->fracToCart(fracCoordsList.at(i)));
-
-  // Rescale volume
-  xtal->setVolume(volume);
-  xtal->wrapAtomsToCell();
-}
-
-void XtalOptGenetic::ripple(Xtal* xtal, double rho, uint eta, uint mu)
-{
-  double phase1 = getRandDouble() * 2 * PI;
-  double phase2 = getRandDouble() * 2 * PI;
-
-  // Get random direction to shift atoms (x=0, y=1, z=2)
-  int shiftAxis = 3, axis1, axis2;
-  while (shiftAxis == 3)
-    shiftAxis = static_cast<uint>(getRandDouble() * 3);
-  switch (shiftAxis) {
-    case 0:
-      axis1 = 1;
-      axis2 = 2;
-      break;
-    case 1:
-      axis1 = 0;
-      axis2 = 2;
-      break;
-    case 2:
-      axis1 = 0;
-      axis2 = 1;
-      break;
-    default:
-      qWarning() << "Something is wrong in the periodic displacement operator "
-                    "-- shiftAxis should not be "
-                 << shiftAxis;
-      break;
-  }
-
-  std::vector<Atom>& atoms = xtal->atoms();
-  QList<Vector3> fracCoordsList;
-
-  for (int i = 0; i < atoms.size(); i++)
-    fracCoordsList.append(xtal->cartToFrac(atoms.at(i).pos()));
-
-  Vector3 v;
-  double shift;
-  for (int i = 0; i < fracCoordsList.size(); i++) {
-    v = fracCoordsList.at(i);
-    shift = rho * cos(2 * PI * eta * v[axis1] + phase1) *
-            cos(2 * PI * mu * v[axis2] + phase2);
-    // qDebug() << "Before: " << v.x() << " " << v.y() << " " << v.z();
-    v[shiftAxis] += shift;
-    // qDebug() << "After:  " << v.x() << " " << v.y() << " " << v.z();
-    fracCoordsList[i] = v;
-  }
-
-  for (int i = 0; i < atoms.size(); i++) {
-    Atom& atm = atoms.at(i);
-    atm.setPos(xtal->fracToCart(fracCoordsList.at(i)));
-  }
-  xtal->wrapAtomsToCell();
-}
-
-} // end namespace XtalOpt
+} // namespace XtalOpt

@@ -218,9 +218,9 @@ bool XtalComp::compare(const XcMatrix &_cellMatrix1,
   // Next, check that types and positions are of the same size
   if (types1.size() != positions1.size() ||
       types2.size() != positions2.size() ){
-    fprintf(stderr, "XtalComp::compare was given a structure description with"
-            " differing numbers of types and positions:\n\ttypes1: %d "
-            "positions1: %d\n\ttypes2: %d positions2: %d\n", types1.size(),
+    fprintf(stdout, "XtalComp::compare was given a structure description with"
+            " differing numbers of types and positions:\n\ttypes1: %zu "
+            "positions1: %zu\n\ttypes2: %zu positions2: %zu\n", types1.size(),
             positions1.size(),types2.size(), positions2.size());
     return false;
   }
@@ -250,7 +250,7 @@ bool XtalComp::compare(const XcMatrix &_cellMatrix1,
   // Standardize the lattices
   if (!x1.canonicalizeLattice() ||
       !x2.canonicalizeLattice() ){
-    std::cerr << "XtalComp warning: Failed to canonicalize one of the "
+    std::cout << "XtalComp warning: Failed to canonicalize one of the "
                  "lattices. Returning false without finishing comparison.\n";
     return false;
   }
@@ -1801,7 +1801,7 @@ bool XtalComp::ReducedXtal::canonicalizeLattice()
       }
       if (i*j*k < 0) {
         if (!p) {
-          std::cerr << "XtalComp warning: one of the input structures "
+          std::cout << "XtalComp warning: one of the input structures "
                        "contains a lattice that is confusing the Niggli "
                        "reduction algorithm. Try making a small perturbation "
                        "(approx. 2 orders of magnitude smaller than the "
@@ -1915,7 +1915,7 @@ bool XtalComp::ReducedXtal::canonicalizeLattice()
 
   // iterations exceeded
   if (!ret) {
-    fprintf(stderr, "Number of iterations exceeded in Niggli reduction.\n");
+    fprintf(stdout, "Number of iterations exceeded in Niggli reduction.\n");
   }
   else {
     assert (fabs(fabs(cob.determinant()) - 1.0) < 1e-5);
@@ -2061,4 +2061,3 @@ bool XtalComp::ReducedXtal::isNiggliReduced() const
   // all good!
   return true;
 }
-

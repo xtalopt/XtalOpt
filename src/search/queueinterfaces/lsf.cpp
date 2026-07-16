@@ -1,0 +1,103 @@
+/**********************************************************************
+  LsfQueueInterface - Base class for running jobs on a LSF cluster.
+
+  Copyright (C) 2011 by David C. Lonie
+  Copyright (C) 2026 Samad Hajinazar
+
+  This source code is released under the New BSD License, (the "License").
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ ***********************************************************************/
+
+// Doxygen skip:
+/// @cond
+
+#include <search/queueinterfaces/lsf.h>
+#include <common/fileutils.h>
+#include <common/output.h>
+
+#include <search/optimizer.h>
+#include <search/structure.h>
+
+#include <common/compatibility/qt_compat.h>
+#include <QRegularExpression>
+
+namespace Search {
+namespace {
+
+bool isRunningStatus(const QString& status)
+{
+  return status == "RUN" || status == "DONE" || status == "EXIT";
+}
+
+bool isQueuedStatus(const QString& status)
+{
+  return status == "PEND" || status == "PSUSP" || status == "USUSP" || status == "SSUSP";
+}
+
+} // namespace
+
+const QueueDefaults& LsfQueueInterface::defaults()
+{
+  static const QueueDefaults s{ "LSF", "job.lsf", "bsub", "bjobs", "bkill" };
+  return s;
+}
+
+LsfQueueInterface::LsfQueueInterface(SearchBase* parent,
+                                     const QString& /*settingsFile*/)
+  : BatchQueueInterface(parent, QString())
+{
+  m_queueDefaults = &defaults();
+
+
+}
+
+LsfQueueInterface::~LsfQueueInterface()
+{
+}
+
+unsigned int LsfQueueInterface::parseJobId(const QString& submissionOutput, bool* ok) const
+{
+  const QStringList list = submissionOutput.split(QRegularExpression("<|>"));
+  *ok = false;
+  return list.size() >= 2 ? list.at(1).toUInt(ok) : 0;
+}
+
+QueueInterface::QueueStatus LsfQueueInterface::parseQueueStatus(
+  const QStringList& queueData, unsigned int jobId, QString* rawStatus) const
+{
+  if (rawStatus)
+    rawStatus->clear();
+
+  for (const auto& line : queueData) {
+    const QStringList entryList = line.split(' ', QtCompat::SkipEmptyParts);
+    bool ok = false;
+    const unsigned int curJobId = entryList.isEmpty() ? 0 : entryList.first().toUInt(&ok);
+    if (ok && curJobId == jobId) {
+      if (entryList.size() < 3) {
+        // The job is present but we can't parse the output: report the raw line so an empty
+        //   so an empty rawStatus is distinguished from a missing job.
+        if (rawStatus)
+          *rawStatus = line;
+        return QueueInterface::Unknown;
+      }
+      const QString status = entryList.at(2);
+      if (rawStatus)
+        *rawStatus = status;
+      if (isRunningStatus(status))
+        return QueueInterface::Running;
+      if (isQueuedStatus(status))
+        return QueueInterface::Queued;
+      return QueueInterface::Unknown;
+    }
+  }
+
+  return QueueInterface::Unknown;
+}
+}
+
+/// @endcond

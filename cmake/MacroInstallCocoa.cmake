@@ -2,7 +2,7 @@
 # This is a macro for installing Cocoa during a Mac build
 
 macro(InstallCocoa _destination _qt_plugins_var)
-  include(MacroInstallQt5Plugin)
-  install_qt5_plugin("Qt5::QCocoaIntegrationPlugin"
+  include(MacroInstallQtPlugin)
+  install_qt_plugin("Qt${QT_VERSION_MAJOR}::QCocoaIntegrationPlugin"
                      "${_destination}" "${_qt_plugins_var}")
 endmacro()

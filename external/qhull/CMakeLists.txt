@@ -1,8 +1,9 @@
 # CMakeLists.txt -- This is based on the original file from qhull distribution.
 
+cmake_minimum_required(VERSION 3.12...3.31)
+
 project(qhull)
 
-cmake_minimum_required(VERSION 3.0)
 set(qhull_VERSION  "8.0.2")  # Advance every release
 
 include(CMakeDependentOption)

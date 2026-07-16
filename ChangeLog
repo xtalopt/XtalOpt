@@ -1,5 +1,30 @@
 
 ==================================
+==========    15 (rc0)   =========
+==================================
+
+Restructured sources into layers: search (engine), atoms (geometry, cell, formats), common (utilities), xtalopt (application)
+Removed Eigen, OpenBabel, GenXrdPattern download and dependency; Avogadro RPC and backtrace debug helpers
+Added new structure view and xrd view widgets to GUI
+Removed the generic optimizer (now, only gulp, vasp, pwscf, castep, siesta, mtp)
+Added new libraries to external: xraylib, libmsym, args
+GUI fully split as a build option
+Added a centralized compatibility layer for platform and Qt/Qwt
+Moved all settings/satae I/O to xtalopt (engine no longer do or participate in that)
+Support for older formats collected in xtalopt/legacy; update state version to 5
+Unified all xtalopt settings into a registry table (their accessors, defaults, properties) with a single validation
+Revised command-line options
+Added a structure toolset to the xtalopt for structural analysis and molecular unit/crystal generation
+Revised queue interface (direct vs batch run, etc) and SSH usage for remoteQueue
+Separated objectives into objectives (min/max) and constraints (fil)
+Added/revised settings flags (sshMethod,directRunCommand,forcedSpgs,usingScaledIADs, pareto filter zero weight, debug output)
+Unified input settings syntax (potcar/psf = <id> <file>) and defined asset file group for optimizers
+Improved search wall time for fast local optimizers (queue manager workflow, background file saving, in-memory parent-selection data)
+Expanded and updated the test suite
+Updated supporting data (schemes, scripts, tests/sampledata) for format consistency with new version
+Build system: support for Qt6/Qt5, system SSH always with libssh optional; macOS code-sign; CPack on all platforms, 3rd party licenses
+
+==================================
 ==========  Release 14.2 =========
 ==================================
 

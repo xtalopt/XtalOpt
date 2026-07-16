@@ -1,5 +1,4 @@
-
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.12...3.31)
 
 project (spglib)
 
@@ -9,8 +8,12 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-# Build type
-set(CMAKE_BUILD_TYPE Release)
+# Build type - default to Release if not specified by the user: spglib does
+#   the heavy symmetry work and would otherwise be built without any
+#   optimization. This only applies to this directory, not the whole project.
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
 
 # Source files
 set(SPGLIB_SOURCES
@@ -42,5 +45,13 @@ set(SPGLIB_SOURCES
 # Library (static)
 add_library(spglib STATIC ${SPGLIB_SOURCES})
 
-# Suppress spglib warnings
-set_target_properties(spglib PROPERTIES COMPILE_FLAGS "-w")
+# Suppress spglib warnings (GCC/Clang only; MSVC uses /W0 or defaults)
+if(NOT MSVC)
+  target_compile_options(spglib PRIVATE -w)
+endif()
+
+# We build spglib as a static library, so on Windows the headers must not
+#   declare the functions dllimport.
+if(WIN32)
+  target_compile_definitions(spglib PUBLIC SPG_STATIC_LIBRARY)
+endif()

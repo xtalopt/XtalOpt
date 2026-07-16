@@ -2,6 +2,7 @@
   XtalOptGenetic - Tools necessary for genetic structure optimization
 
   Copyright (C) 2009-2011 by David C. Lonie
+  Copyright (C) 2026 Samad Hajinazar
 
   This source code is released under the New BSD License, (the "License").
 
@@ -15,48 +16,39 @@
 #ifndef XTALOPTGENETIC_H
 #define XTALOPTGENETIC_H
 
-#include <xtalopt/xtalopt.h>
+#include <xtalopt/types.h>
 
-#include <QObject>
+#include <QHash>
 
 namespace XtalOpt {
 class Xtal;
 
-class XtalOptGenetic : public QObject
-{
-  Q_OBJECT
+// Genetic operators
 
+class XtalOptGenetic
+{
 public:
-  static Xtal* crossover(Xtal* xtal1, Xtal* xtal2,
-                         const QList<CellComp>& compa,
-                         const EleRadii& elrad,
-                         uint numCuts,
-                         double minimumContribution,
-                         double& percent1, double& percent2,
-                         int minatoms,
-                         int maxatoms,
-                         bool isVcSearch,
-                         bool verbose);
+  static Xtal* crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>& compa,
+                         const EleRadii& elrad, uint numCuts, double minContribution,
+                         double& percent1, double& percent2, int minatoms, int maxatoms,
+                         bool isVcSearch, bool verbose, bool useCustomIAD = false,
+                         const QHash<QPair<int, int>, IAD>* customIADs = nullptr);
+
   static Xtal* stripple(Xtal* xtal, double sigma_lattice_min,
                         double sigma_lattice_max, double rho_min,
                         double rho_max, uint eta, uint mu,
                         double& sigma_lattice, double& rho);
+
   static Xtal* permustrain(Xtal* xtal, double sigma_lattice_max, uint exchanges,
                            double& sigma_lattice);
-  static Xtal* permutomic(Xtal* xtal,
-                          const CellComp& comp,
-                          const EleRadii& elrad,
-                          int minatoms,
-                          int maxatoms, bool verbose);
-  static Xtal* permucomp(Xtal* xtal,
-                         const CellComp& comp,
-                         const EleRadii& elrad,
-                         int minatoms,
-                         int maxatoms, bool verbose);
 
-  static void exchange(Xtal* xtal, uint exchanges);
-  static void strain(Xtal* xtal, double sigma_lattice);
-  static void ripple(Xtal* xtal, double rho, uint eta, uint mu);
+  static Xtal* permutomic(Xtal* xtal, const CellComp& comp, const EleRadii& elrad, int minatoms,
+                          int maxatoms, bool verbose, bool useCustomIAD = false,
+                          const QHash<QPair<int, int>, IAD>* customIADs = nullptr);
+
+  static Xtal* permucomp(Xtal* xtal, const CellComp& comp, const EleRadii& elrad, int minatoms,
+                         int maxatoms, bool verbose, bool useCustomIAD = false,
+                         const QHash<QPair<int, int>, IAD>* customIADs = nullptr);
 };
 
 } // end namespace XtalOpt

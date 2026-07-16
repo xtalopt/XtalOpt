@@ -1,0 +1,571 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Tab_Plot</class>
+ <widget class="QWidget" name="Tab_Plot">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>820</width>
+    <height>480</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>11</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <property name="margin">
+    <number>6</number>
+   </property>
+   <property name="spacing">
+    <number>4</number>
+   </property>
+   <item row="1" column="2">
+    <spacer name="horizontalSpacer_3">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>24</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="push_savePlot">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
+     <property name="focusPolicy">
+      <enum>Qt::StrongFocus</enum>
+     </property>
+     <property name="text">
+      <string>Save</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="3">
+    <widget class="QPushButton" name="pushButton">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
+     <property name="focusPolicy">
+      <enum>Qt::StrongFocus</enum>
+     </property>
+     <property name="text">
+      <string>Toggle Options...</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="4">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
+     <property name="title">
+      <string>Options</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0" colspan="2">
+       <widget class="QGroupBox" name="gb_trend">
+        <property name="title">
+         <string>Plot Options</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_3">
+         <item row="0" column="1">
+          <widget class="QComboBox" name="combo_yAxis">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::StrongFocus</enum>
+           </property>
+           <item>
+            <property name="text">
+             <string>Structure Index</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Above Hull per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Enthalpy per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Volume per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Pareto Front</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Total Number of Atoms</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>PV Enthalpy Term</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Enthalpy</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Energy</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Volume</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Generation</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>A per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>B per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>C per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>α</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>β</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>γ</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_23">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>X axis label</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+           </property>
+           <property name="buddy">
+            <cstring>combo_xAxis</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QComboBox" name="combo_xAxis">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::StrongFocus</enum>
+           </property>
+           <item>
+            <property name="text">
+             <string>Structure Index</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Above Hull per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Enthalpy per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Volume per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Pareto Front</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Total Number of Atoms</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>PV Enthalpy term</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Enthalpy</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Energy</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Volume</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Generation</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>A per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>B per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>C per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>α</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>β</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>γ</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QCheckBox" name="cb_labelPoints">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>Label points</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_34">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>Y axis label</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+           </property>
+           <property name="buddy">
+            <cstring>combo_yAxis</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QComboBox" name="combo_labelType">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::StrongFocus</enum>
+           </property>
+           <item>
+            <property name="text">
+             <string>Structure Tag</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Structure Index</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>SG Number</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>SG Symbol</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Pareto Front</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Total Number of Atoms</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Above Hull per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Enthalpy per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Volume per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>PV Enthalpy Term</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Enthalpy</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Energy</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Generation</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <widget class="QGroupBox" name="groupBox_2">
+        <property name="title">
+         <string>Data Options</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_4">
+         <item row="0" column="0">
+          <widget class="QCheckBox" name="cb_showDismissed">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::StrongFocus</enum>
+           </property>
+           <property name="text">
+            <string>Show dismissed structures</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QCheckBox" name="cb_showSimilarities">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::StrongFocus</enum>
+           </property>
+           <property name="text">
+            <string>Show similar structures</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QCheckBox" name="cb_showIncompletes">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::StrongFocus</enum>
+           </property>
+           <property name="text">
+            <string>Show incomplete structures</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QCheckBox" name="cb_showFailures">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::StrongFocus</enum>
+           </property>
+           <property name="text">
+            <string>Show failed structures</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="push_refresh">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
+     <property name="focusPolicy">
+      <enum>Qt::StrongFocus</enum>
+     </property>
+     <property name="text">
+      <string>Refresh</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0" colspan="4">
+    <widget class="XtalOpt::XtalOptPlot" name="plot">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>XtalOpt::XtalOptPlot</class>
+   <extends>QFrame</extends>
+   <header location="global">xtalopt/gui/xtalopt_plot.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>combo_yAxis</tabstop>
+  <tabstop>combo_xAxis</tabstop>
+  <tabstop>cb_labelPoints</tabstop>
+  <tabstop>combo_labelType</tabstop>
+  <tabstop>cb_showDismissed</tabstop>
+  <tabstop>cb_showSimilarities</tabstop>
+  <tabstop>cb_showIncompletes</tabstop>
+  <tabstop>cb_showFailures</tabstop>
+  <tabstop>push_refresh</tabstop>
+  <tabstop>push_savePlot</tabstop>
+  <tabstop>pushButton</tabstop>
+ </tabstops>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>pushButton</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>groupBox</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>782</x>
+     <y>552</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>983</x>
+     <y>283</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

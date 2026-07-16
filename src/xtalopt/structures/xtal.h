@@ -1,7 +1,8 @@
 /**********************************************************************
-  Xtal - Wrapper for Structure to ease work with crystals.
+  Xtal - XtalOpt-specific Structure subclass.
 
   Copyright (C) 2009-2011 by David C. Lonie
+  Copyright (C) 2026 Samad Hajinazar
 
   This source code is released under the New BSD License, (the "License").
 
@@ -15,29 +16,27 @@
 #ifndef XTAL_H
 #define XTAL_H
 
-#include <globalsearch/structure.h>
-#include <globalsearch/constants.h>
+#include <search/structure.h>
+#include <common/constants.h>
 
-#include <xtalopt/xtalopt.h>
+#include <xtalopt/types.h>
 
 #include <QMutex>
-#include <QVector>
+#include <QList>
 
 class QFile;
 
 namespace XtalOpt {
 
-using GlobalSearch::Matrix3;
-using GlobalSearch::Vector3;
-
-class Xtal : public GlobalSearch::Structure
+// XtalOpt structure information and checks.
+class Xtal : public Search::Structure
 {
   Q_OBJECT
 
 public:
-  Xtal(QObject* parent = 0);
+  Xtal(QObject* parent = nullptr);
   Xtal(double A, double B, double C, double Alpha, double Beta, double Gamma,
-       QObject* parent = 0);
+       QObject* parent = nullptr);
 
   /* Copy constructor */
   Xtal(const Xtal& other);
@@ -53,48 +52,41 @@ public:
 
   virtual ~Xtal() override;
 
-  // Virtuals from structure
-  bool getShortestInteratomicDistance(double& shortest) const override;
-  bool getSquaredAtomicDistancesToPoint(const Vector3& coord,
-                                        QVector<double>* distances);
-  bool getNearestNeighborDistance(const double x, const double y,
-                                  const double z,
-                                  double& shortest) const override;
-  bool getIADHistogram(QList<double>* distance, QList<double>* frequency,
-                       double min, double max, double step,
-                       GlobalSearch::Atom* atom = 0) const;
+  /** Functions to set or retrieve the "composition validity"
+   *  for a structure. Validity here means that the structure
+   *  has a chemical composition that matches one of the user's
+   *  input formulas list, or -at least- is a supercell of one of
+   *  those formulas. So, e.g., a "sub-system" seed structure
+   *  will not have a valid composition.
+   *  For now, this is being used in genetic operation selection
+   *  to filter out structures with "unknown" comp from stripple/permustrain
+   *  in a fixed/multi composition search, where we already
+   *  know the output of gen opt will not be acceptable.
+   *  By default, this is set to true as internally generated
+   *  structures match the list (or in vc search are acceptable
+   *  anyways). Currently, we only set it to "false" in the
+   *  "checkComposition" for off-composition seeds.
+   */
+  bool hasValidComposition() const { return m_hasValidComposition; };
+  void setCompositionValidity(bool value) { m_hasValidComposition = value; };
+
   bool addAtomRandomly(uint atomicNumber, double minIAD = 0.0,
-                       double maxIAD = 0.0,
-                       int maxAttempts = 100.0) override; // maxIAD is not used.
+                       int maxAttempts = 100) override;
   // Uses the minRadius constraints in @a limits to restrict atom placement
   bool addAtomRandomly(unsigned int atomicNumber,
                        const EleRadii& limits,
                        int maxAttempts = 100.0);
-  bool addAtomRandomly(unsigned int atomicNumber, unsigned int neighbor,
-                       const EleRadii& limits,
-                       const QHash<QPair<int, int>, MolUnit>& limitsMolUnit,
-                       bool useMolUnit, int maxAttempts = 100.0);
-  bool moveAtomRandomly(
-    unsigned int atomicNumber,
-    const EleRadii& limits,
-    int maxAttempts = 100.0, GlobalSearch::Atom* atom = 0);
+  bool moveAtomRandomly(unsigned int atomicNumber, const EleRadii& limits,
+    int maxAttempts = 100.0, Atoms::Atom* atom = nullptr);
 
-  bool addAtomRandomlyIAD(
-    unsigned int atomicNumber,
-    const EleRadii& limits,
+  bool addAtomRandomlyIAD(unsigned int atomicNumber,
     const QHash<QPair<int, int>, IAD>& limitsIAD, int maxAttempts = 100.0);
-  bool moveAtomRandomlyIAD(
-    unsigned int atomicNumber,
-    const EleRadii& limits,
+  bool moveAtomRandomlyIAD(unsigned int atomicNumber,
     const QHash<QPair<int, int>, IAD>& limitsIAD, int maxAttempts = 100.0,
-    GlobalSearch::Atom* atom = 0);
+    Atoms::Atom* atom = nullptr);
   bool checkMinIAD(const QHash<QPair<int, int>, IAD>& limitsIAD,
                    int* atom1 = nullptr, int* atom2 = nullptr,
                    double* IAD = nullptr);
-
-  // Build molUnit given a tempMolecule with a center atom defined
-  bool molUnitBuilder(Vector3 centerCoords, unsigned int atomicNum, int valence,
-                      double dist, int hyb);
 
   // Use the minRadius constraints in @a limits to check the interatomic
   // distances in the xtal. atom1 and atom2 are overwritten with the indexes
@@ -103,11 +95,12 @@ public:
   bool checkInteratomicDistances(
     const EleRadii& limits,
     int* atom1 = nullptr, int* atom2 = nullptr, double* IAD = nullptr);
-  QHash<QString, QVariant> getFingerprint();
-  virtual QString getResultsEntry(int objectives_num, int optstep,
-                                  QList<QString> chemSys) const override;
-  virtual QString getResultsHeader(int objectives_num) const override
+  virtual QString getResultsEntry(int objectives_num, int optstep, int objective_offset = 0,
+                                  int constraints_num = 0) const override;
+  virtual QString getResultsHeader(int objectives_num, int objective_offset = 0,
+                                   int constraints_num = 0) const override
   {
+    Q_UNUSED(objective_offset);
     QString out = QString("%1 %2 %3 %4 %5 %6 %7 %8")
         .arg("Rank", 5)
         .arg("Struct", 9)
@@ -118,7 +111,9 @@ public:
         .arg("Front", 5)
         .arg("AbovHullAtm", 12);
     for (int i = 0; i < objectives_num; i++)
-      out += QString("%1").arg("Objective"+QString::number(i+1), 11);
+      out += QString("%1").arg("Objc"+QString::number(i+1), 11);
+    for (int i = 0; i < constraints_num; i++)
+      out += QString("%1").arg(QString("Cons%1").arg(i + 1), 6);
     out += QString("%1 %2")
         .arg("SG", 6)
         .arg("Status", 16);
@@ -126,148 +121,41 @@ public:
     return out;
   };
 
-  // Functions for calculating radial distribution function
-  //bool calculateNormalizedRDF(int nbins, double cutoff, double sigma) override;
-  bool compareRDFs(Xtal* other, double tolerance, int nbins,
-                   double cutoff, double sigma, bool verbose);
+  /** Functions to set or retrieve the distance above hull
+   *    (in energy per atom units).
+   */
+  double getDistAboveHull() const { return m_aboveHull; };
+  void setDistAboveHull(double value) { m_aboveHull = value; };
 
-  // Convenience functions for cell parameters
-  double getA() const { return unitCell().a(); };
-  double getB() const { return unitCell().b(); };
-  double getC() const { return unitCell().c(); };
-  double getAlpha() const { return unitCell().alpha(); };
-  double getBeta() const { return unitCell().beta(); };
-  double getGamma() const { return unitCell().gamma(); };
-  double getVolume() const { return unitCell().volume(); };
-  double getVolumePerAtom() const { return (unitCell().volume() / numAtoms()); };
-
-  // Debugging
-  void getSpglibFormat() const;
-
-  // Rotate the cell vectors (and atomic coordinates in the second
-  // function) so that v1 is parallel to x and v2 is in the xy plane
-  bool rotateCellToStandardOrientation();
-  bool rotateCellAndCoordsToStandardOrientation();
-
-  // Calculate the matrix used in the above function. Matrix has row vectors.
-  // If the current cell cannot be rotated in a numerically stable
-  // manner, this will return Matrix3::Zeros;
-  // Use matrix @a m
-  static Matrix3 getCellMatrixInStandardOrientation(const Matrix3& m);
-  // Use this's cell
-  Matrix3 getCellMatrixInStandardOrientation() const;
+  static QString getHullHeader(const QList<QString>& chemSystem);
+  QString getHullEntry(const QList<QString>& chemSystem) const;
 
   // Randomly skew the lattice and translate the coordinates. Coordinates
   // may be reflected, but the structures should be energetically
   // equivalent
   Xtal* getRandomRepresentation() const;
 
-  // Conversion convenience
-  Vector3 fracToCart(const Vector3& v) const;
-  Vector3 cartToFrac(const Vector3& v) const;
-
-  // Spacegroup
-  uint getSpaceGroupNumber();
-  QString getSpaceGroupSymbol();
-  QString getHTMLSpaceGroupSymbol();
-
-  // Static function for getting a Hermann-Mauguin name from a spg number
-  static QString getHMName(unsigned short spg);
-
-  // Reduce cell. See member function fixAngles()
-  // Returns true if successful, false otherwise
-  // Angles are in degrees. Algorithm is based on Grosse-Kunstleve
-  // RW, Sauter NK, Adams PD. Numerically stable algorithms for the
-  // computation of reduced unit cells. Acta Crystallographica Section A
-  // Foundations of Crystallography. 2003;60(1):1-6. Available at:
-  // http://scripts.iucr.org/cgi-bin/paper?S010876730302186X [Accessed
-  // November 24, 2010].
-  bool niggliReduce(const unsigned int iterations = 100, double lenTol = LENTOLDEF);
-  static bool isNiggliReduced(const double a, const double b, const double c,
-                              const double alpha, const double beta,
-                              const double gamma, double lenTol = LENTOLDEF);
-  bool isNiggliReduced(double lenTol = LENTOLDEF) const;
-
-  // Checks to see if an xtal is primitive or not. If a primitive reduction
-  // results in a smaller FU xtal, the function returns true
-  bool isPrimitive(const double prec = SPGTOLDEF);
-  bool reduceToPrimitive(const double prec = SPGTOLDEF);
-
-  QList<QString> currentAtomicSymbols();
-  inline void updateMolecule(const QList<QString>& ids,
-                             const QList<Vector3>& coords);
-  void setCurrentFractionalCoords(const QList<QString>& ids,
-                                  const QList<Vector3>& fcoords);
 
   bool operator==(const Xtal& other) const;
   bool operator!=(const Xtal& other) const { return !operator==(other); };
 
-  // Tolerances in angstrom and degree:
-  bool compareCoordinates(const Xtal& other, const double tol = 0.1,
-                          const double angleTol = 2.0) const;
-
-  /**
-   * Take the given xtal and write a POSCAR with it. If we are to use
-   * preoptimization bonding, it will reorder the atoms to match that of the
-   * POSCAR and set the preopt bonding. Return the POSCAR file as a string.
-   * @return The POSCAR as a string.
-   */
-  QString toPOSCAR();
-
-  /**
-   * Take the given xtal and write a CML with it. Return the CML
-   * file as a string.
-   * @return The CML as a string.
-   */
-  QString toCML() const;
-
-  /**
-   * Take the given xtal and write a siesta Z matrix with it (where the
-   * bonds will be kept fix during optimization). Returns the z matrix
-   * as a string. If GlobalSearch::reusePreoptBonding() is set to true,
-   * the atoms will be re-ordered according to the new order and the
-   * pre-optimization bonding info will be stored.
-   *
-   * @param fixR Whether or not to fix the bond distances given in the
-   *             z-matrix.
-   * @param fixA Whether or not to fix the bond angles given in the z-matrix.
-   * @param fixT Whether or not to fix the torsions (dihedrals) given in
-   *             the z-matrix.
-   *
-   * @return The siesta Z Matrix as a string.
-   */
-  std::string toSiestaZMatrix(bool fixR = true, bool fixA = true,
-                              bool fixT = true);
-
   // For random representation generation
   static void generateValidCOBs();
-  static QVector<Matrix3> m_transformationMatrices;
-  static QVector<Matrix3> m_mixMatrices;
-  // Ensure that only one thread generates the COB vectors
-  static QMutex m_validCOBsGenMutex;
+  static const QList<Common::Matrix3>& transformationMatrices()
+  {
+    return m_transformationMatrices;
+  }
+  static const QList<Common::Matrix3>& mixMatrices()
+  {
+    return m_mixMatrices;
+  }
 
 signals:
   void dimensionsChanged();
 
 public slots:
-  // Cell data
-  void setCellInfo(double a, double b, double c, double alpha, double beta,
-                   double gamma);
-  void setCellInfo(const Matrix3& m) { unitCell().setCellMatrix(m); };
-  void setCellInfo(const Vector3& a, const Vector3& b, const Vector3& c);
-  void setVolume(double Volume);
-  // rescale cell can be used to "fix" any cell parameter at a particular value.
-  // Simply pass the fixed values and use "0" for any non-fixed parameters.
-  // Volume will be preserved.
-  void rescaleCell(double a, double b, double c, double alpha, double beta,
-                   double gamma);
-
   // Self-correction
   bool fixAngles(int attempts = 100);
-  void wrapAtomsToCell();
-
-  // Spacegroup
-  void findSpaceGroup(double prec = SPGTOLDEF);
 
   // Printing debug output
   void printLatticeInfo() const;
@@ -277,37 +165,13 @@ public slots:
 private slots:
 
 private:
-  // This function is called by the public overloaded function:
-  // bool reduceToPrimitive(const double prec = SPGTOLDEF tolerance)
-  unsigned int reduceToPrimitive(QList<Vector3>* fcoords,
-                                 QList<unsigned int>* atomicNums,
-                                 Matrix3* cellMatrix,
-                                 const double prec = SPGTOLDEF);
-  unsigned short m_spgNumber;
-  QString m_spgSymbol;
+  static QList<Common::Matrix3> m_transformationMatrices;
+  static QList<Common::Matrix3> m_mixMatrices;
+  // Ensure that only one thread generates the COB vectors
+  static QMutex m_validCOBsGenMutex;
+  bool m_hasValidComposition;
+  double m_aboveHull;
 };
-
-inline Vector3 Xtal::fracToCart(const Vector3& v) const
-{
-  return unitCell().toCartesian(v);
-}
-
-inline Vector3 Xtal::cartToFrac(const Vector3& v) const
-{
-  return unitCell().toFractional(v);
-}
-
-inline void Xtal::setCellInfo(double a, double b, double c, double alpha,
-                              double beta, double gamma)
-{
-  unitCell().setCellParameters(a, b, c, alpha, beta, gamma);
-}
-
-inline void Xtal::setCellInfo(const Vector3& a, const Vector3& b,
-                              const Vector3& c)
-{
-  unitCell().setCellVectors(a, b, c);
-}
 
 } // end namespace XtalOpt
 

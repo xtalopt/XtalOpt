@@ -1,7 +1,8 @@
 /**********************************************************************
-  SearchBaseTest - SearchBaseTest class provides unit testing for SearchBase
+  SearchBaseTest - Unit tests for SearchBase class
 
   Copyright (C) 2011 David C. Lonie
+  Copyright (C) 2026 Samad Hajinazar
 
   This source code is released under the New BSD License, (the "License").
 
@@ -10,17 +11,26 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
- **********************************************************************/
+ ***********************************************************************/
 
-#include <globalsearch/searchbase.h>
+#include <search/search.h>
+#include <common/compatibility/qt_compat.h>
+#include <common/fileutils.h>
+#include <common/output.h>
 
-#include <globalsearch/optimizer.h>
-#include <globalsearch/structure.h>
-#include <globalsearch/utilities/makeunique.h>
+#include <search/optimizer.h>
+#include <common/output.h>
+#include <search/queueinterface.h>
+#include <search/queuemanager.h>
+#include <search/structure.h>
+#include <common/makeunique.h>
 
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include <QtTest>
 
-using namespace GlobalSearch;
+using namespace Search;
 
 const QString DUMMYNAME = "Dummy";
 const QString DESCRIPTION = "Description";
@@ -32,6 +42,157 @@ class DummyOptimizer : public Optimizer
 public:
   DummyOptimizer(SearchBase* p)
     : Optimizer(p){};
+
+  QString getIDString() const override { return "Generic"; }
+
+  bool update(Structure* structure) override
+  {
+    structure->setEnergy(-1.0);
+    structure->setEnthalpy(-1.0);
+    return true;
+  }
+};
+
+class DummyQueueInterface : public QueueInterface
+{
+  Q_OBJECT
+public:
+  explicit DummyQueueInterface(SearchBase* p)
+    : QueueInterface(p)
+  {
+  }
+  QString getIDString() const override { return "dummyqueue"; }
+
+  bool writeFiles(Structure*, const QHash<QString, QString>&) const override
+  {
+    return true;
+  }
+  bool writeInputFiles(Structure*) const override { return true; }
+  bool startJob(Structure*) override { return true; }
+  bool stopJob(Structure*) override { return true; }
+  QueueStatus getStatus(Structure*) const override
+  {
+    if (statuses.isEmpty())
+      return Success;
+    return statuses.takeFirst();
+  }
+  bool prepareForStructureUpdate(Structure*) const override { return true; }
+  CommandResult runACommand(const QString&, const QString&) const override
+  {
+    CommandResult result;
+    result.launched = true;
+    result.exitCode = 0;
+    return result;
+  }
+
+  mutable QList<QueueStatus> statuses;
+};
+
+class LocalDirCreatingQueueInterface : public DummyQueueInterface
+{
+  Q_OBJECT
+public:
+  explicit LocalDirCreatingQueueInterface(SearchBase* p)
+    : DummyQueueInterface(p)
+  {
+  }
+  QString getIDString() const override { return "dirqueue"; }
+
+  bool isReadyToSearch(QString* err) override
+  {
+    Q_UNUSED(err);
+    return QDir().mkpath(m_search->getLocWorkDir());
+  }
+};
+
+class LocalFileQueueInterface : public DummyQueueInterface
+{
+  Q_OBJECT
+public:
+  explicit LocalFileQueueInterface(SearchBase* p)
+    : DummyQueueInterface(p)
+  {
+  }
+  QString getIDString() const override { return "localfiles"; }
+
+  bool checkIfFileExists(Structure* s, const QString& filename, bool* exists) override
+  {
+    *exists = QFile::exists(Common::localPath(s->getLocpath(), filename));
+    return true;
+  }
+};
+
+class FailingWriteQueueInterface : public DummyQueueInterface
+{
+  Q_OBJECT
+public:
+  explicit FailingWriteQueueInterface(SearchBase* p)
+    : DummyQueueInterface(p)
+  {
+  }
+  QString getIDString() const override { return "failingwritequeue"; }
+
+  bool writeInputFiles(Structure*) const override
+  {
+    ++writeCalls;
+    return false;
+  }
+
+  bool startJob(Structure*) override
+  {
+    ++startCalls;
+    return true;
+  }
+
+  mutable int writeCalls = 0;
+  int startCalls = 0;
+};
+
+class TestQueueManager : public QueueManager
+{
+  Q_OBJECT
+public:
+  explicit TestQueueManager(SearchBase* search)
+    : QueueManager(QThread::currentThread(), search)
+  {
+    // Run the check loop quickly (default in search itself is 1s,
+    //   here we use a shorter period to finish the test quickly).
+    setCheckInterval(25);
+  }
+
+  using QueueManager::addStructureToSubmissionQueue;
+
+  // Slots for this test.
+  static const int kKilledSlot = QueueManager::KilledHandler;
+  static const int kErrorSlot = QueueManager::ErrorHandler;
+
+  bool tryEnterForTest(Structure* s, int slot)
+  {
+    return m_runningHandlers.tryStart(s, slot);
+  }
+  void leaveForTest(Structure* s, int slot) { m_runningHandlers.finish(s, slot); }
+  bool hasAnyForTest(Structure* s) { return m_runningHandlers.hasHandlerFor(s); }
+};
+
+class ScopedContStructs
+{
+public:
+  ScopedContStructs(SearchBase* search, uint value)
+    : m_search(search), m_oldValue(search ? search->getContStructs() : 0)
+  {
+    if (m_search)
+      m_search->setContStructs(value);
+  }
+
+  ~ScopedContStructs()
+  {
+    if (m_search)
+      m_search->setContStructs(m_oldValue);
+  }
+
+private:
+  SearchBase* m_search;
+  uint m_oldValue;
 };
 
 // Since this is a pure virtual class, create a dummy derived class
@@ -42,8 +203,54 @@ public:
   DummySearchBase()
     : SearchBase(0)
   {
-    m_idString = DUMMYNAME;
+    setSearchIDString(DUMMYNAME);
   };
+
+  void refreshFrontsForTest(const QList<Structure*>& structures)
+  {
+    for (auto* structure : structures)
+      tracker()->append(structure);
+    refreshParentSelectionFronts(structures);
+    tracker()->reset();
+  }
+
+  bool runStartWorkflowForTest()
+  {
+    if (!beginSession())
+      return false;
+    ++initializeCalls;
+    launchSession();
+    return true;
+  }
+
+  // Start a test session.
+  void markSessionActiveForTest() { setSessionActive(true); }
+
+  // Set read-only mode for this test.
+  void setReadOnlyForTest(bool v) { setReadOnly(v); }
+
+  bool runAbortedWorkflowForTest()
+  {
+    if (!beginSession())
+      return false;
+    abortSession();
+    return true;
+  }
+
+  bool runResumeWorkflowForTest()
+  {
+    if (!beginSession())
+      return false;
+    ++restoreCalls;
+    launchSession();
+    return true;
+  }
+
+  bool createSSHConnections() override
+  {
+    ++sshConnectionCalls;
+    return !failSSHConnections;
+  }
 
   // Override this function to allow the creation of the dummy optimizer
   std::unique_ptr<Optimizer> createOptimizer(
@@ -52,30 +259,137 @@ public:
     if (optName == "dummy")
       return make_unique<DummyOptimizer>(this);
 
-    qDebug() << "Error in" << __FUNCTION__
-             << ": unknown optName:" << optName.c_str();
+    Common::message(QString("Unknown optName: %1").arg(optName.c_str()));
+
     return nullptr;
   }
 
-  std::vector<double> getReferenceEnergiesVector() override
+  std::unique_ptr<QueueInterface> createQueueInterface(const std::string& queueName) override
   {
-    // Just return an empty vector for the dummy case
-    return {};
-  }
+    if (queueName == "dummyqueue")
+      return make_unique<DummyQueueInterface>(this);
+    if (queueName == "dirqueue")
+      return make_unique<LocalDirCreatingQueueInterface>(this);
+    if (queueName == "localfiles")
+      return make_unique<LocalFileQueueInterface>(this);
+    if (queueName == "failingwritequeue")
+      return make_unique<FailingWriteQueueInterface>(this);
 
-  QList<QString> getChemicalSystem() const override
-  {
-    // Just return an empty list for the dummy case
-    return {};
+    Common::message(QString("Unknown queueName: %1").arg(queueName.c_str()));
+
+    return nullptr;
   }
 
 public slots:
   bool startSearch() override { return true; }
-  bool checkLimits() override { return true; }
-  void readRuntimeOptions() override {}
+  void generateNewStructure() override
+  {
+    ++newStructureRequests;
+    // Clear the pending structure request.
+    queue()->structureGenerationFailed();
+  }
 
 protected:
   void setOptimizer_string(const QString&, const QString&) {}
+
+public:
+  bool failSSHConnections = false;
+  int sshConnectionCalls = 0;
+  std::atomic<int> newStructureRequests{0};
+  int initializeCalls = 0;
+  int restoreCalls = 0;
+};
+
+class TestPromptHandler : public QObject
+{
+  Q_OBJECT
+public:
+  explicit TestPromptHandler(QObject* parent = nullptr)
+    : QObject(parent), booleanResponse(false),
+      passwordAccepted(false),
+      progressStartCalls(0),
+      progressStopCalls(0),
+      reportDebugCalls(0),
+      reportWarningCalls(0),
+      reportErrorCalls(0),
+      reportMessageCalls(0)
+  {
+  }
+
+  bool booleanResponse;
+  bool passwordAccepted;
+  QString passwordResponse;
+  QString lastBooleanPrompt;
+  QString lastPasswordPrompt;
+  QString lastProgressLabel;
+  QString lastDebug;
+  QString lastWarning;
+  QString lastError;
+  QString lastMessage;
+  int progressStartCalls;
+  int progressStopCalls;
+  int reportDebugCalls;
+  int reportWarningCalls;
+  int reportErrorCalls;
+  int reportMessageCalls;
+
+public:
+  void beginProgress(const QString& label, int min, int max)
+  {
+    Q_UNUSED(min);
+    Q_UNUSED(max);
+    lastProgressLabel = label;
+    ++progressStartCalls;
+  }
+
+  void endProgress() { ++progressStopCalls; }
+
+  void updateProgress(int value, const QString& label, int min, int max)
+  {
+    Q_UNUSED(value);
+    Q_UNUSED(min);
+    Q_UNUSED(max);
+    if (!label.isNull())
+      lastProgressLabel = label;
+  }
+
+  bool promptForBoolean(const QString& message, bool defaultValue)
+  {
+    lastBooleanPrompt = message;
+    Q_UNUSED(defaultValue);
+    return booleanResponse;
+  }
+
+  bool promptForPassword(const QString& message, QString& newPassword)
+  {
+    lastPasswordPrompt = message;
+    newPassword = passwordResponse;
+    return passwordAccepted;
+  }
+
+  void reportDebug(const QString& text)
+  {
+    lastDebug = text;
+    ++reportDebugCalls;
+  }
+
+  void reportWarning(const QString& text)
+  {
+    lastWarning = text;
+    ++reportWarningCalls;
+  }
+
+  void reportError(const QString& text)
+  {
+    lastError = text;
+    ++reportErrorCalls;
+  }
+
+  void reportMessage(const QString& text)
+  {
+    lastMessage = text;
+    ++reportMessageCalls;
+  }
 };
 
 class SearchBaseTest : public QObject
@@ -106,12 +420,26 @@ private slots:
    */
   void cleanup();
 
+  void abortedSessionStaysIdle();
+
+  void dispatchDedupesPerStructureAndSlot();
+
   // Tests
-  void setIsStartingTrue();
-  void setIsStartingFalse();
-  void getIDString();
-  void getProbabilityList();
   void interpretKeyword();
+  void interpretCrystalKeywords();
+  void paretoFrontsIgnoreConstraints();
+  void constraintDismissalPrecedesFailure();
+  void constraintOutputAcceptsBooleanString();
+  void scriptPrecheckRequiresAbsoluteExistingLocalPaths();
+  void paretoFrontsRespectMaxObjectives();
+  void paretoFilterZeroWeightsRemovesZeroWeightObjectives();
+  void resetObjectivesClearsParetoFront();
+  void runtimeInteractionDispatchesPromptsAndReports();
+  void startWorkflowDoesNotRunApplicationPrecheck();
+  void activeResumeWorkflowClearsSessionStartingAfterRestore();
+  void unknownOptimizerQueueNamesDoNotChangeExistingOptStep();
+  void queueManagerRunsSubmissionToOptimizedLifecycle();
+  void queueManagerDoesNotSubmitWhenInputStagingFails();
 };
 
 void SearchBaseTest::initTestCase()
@@ -119,6 +447,7 @@ void SearchBaseTest::initTestCase()
   m_opt = new DummySearchBase();
   if (m_opt->getNumOptSteps() == 0)
     m_opt->appendOptStep();
+  m_opt->setQueueInterface(0, "dummyqueue");
   m_opt->setOptimizer(0, "dummy");
 }
 
@@ -131,112 +460,6 @@ void SearchBaseTest::cleanupTestCase()
 void SearchBaseTest::init() {}
 
 void SearchBaseTest::cleanup() {}
-
-void SearchBaseTest::setIsStartingTrue()
-{
-  m_opt->isStarting = false;
-  m_opt->setIsStartingTrue();
-  QVERIFY(m_opt->isStarting);
-}
-
-void SearchBaseTest::setIsStartingFalse()
-{
-  m_opt->isStarting = true;
-  m_opt->setIsStartingFalse();
-  QVERIFY(!m_opt->isStarting);
-}
-
-void SearchBaseTest::getIDString()
-{
-  QVERIFY(m_opt->getIDString().compare(DUMMYNAME) == 0);
-}
-
-void SearchBaseTest::getProbabilityList()
-{
-  const double minE = 1.0;
-  const double maxE = 100.0;
-  const double hardnessWeight = 0.0;
-
-  // Empty / short lists
-  double enthalpy = minE - 1.0; // subtract one since we use ++enthalpy first.
-  QList<Structure*> structures;
-  for (int listSize = 0; listSize <= 2; ++listSize) {
-    while (structures.size() < listSize) {
-      Structure* s = new Structure;
-      // We need at least one atom for the probability list calculation
-      s->addAtom(1);
-      s->setDistAboveHull(++enthalpy);
-      structures.append(s);
-    }
-    QVERIFY(m_opt->getProbabilityList(structures, 0).isEmpty());
-  }
-
-  // Fill to 100 structures
-  while (structures.size() < static_cast<int>(maxE)) {
-    Structure* s = new Structure;
-    // We need at least one atom for the probability list calculation
-    s->addAtom(1);
-    s->setDistAboveHull(++enthalpy);
-    structures.append(s);
-  }
-
-  // Check probabilities
-  auto probs =
-    m_opt->getProbabilityList(structures, structures.size());
-
-  // reference probabilities
-  QList<double> refProbs;
-  refProbs <<   0.00000000  <<   0.00020202  <<   0.00060606  <<   0.00121212  <<   0.00202020  <<
-                0.00303030  <<   0.00424242  <<   0.00565656  <<   0.00727272  <<   0.00909090  <<
-                0.01111110  <<   0.01333332  <<   0.01575756  <<   0.01838382  <<   0.02121210  <<
-                0.02424240  <<   0.02747472  <<   0.03090906  <<   0.03454542  <<   0.03838380  <<
-                0.04242420  <<   0.04666662  <<   0.05111106  <<   0.05575752  <<   0.06060600  <<
-                0.06565650  <<   0.07090902  <<   0.07636356  <<   0.08202012  <<   0.08787870  <<
-                0.09393930  <<   0.10020192  <<   0.10666656  <<   0.11333322  <<   0.12020190  <<
-                0.12727260  <<   0.13454532  <<   0.14202006  <<   0.14969682  <<   0.15757560  <<
-                0.16565640  <<   0.17393922  <<   0.18242406  <<   0.19111092  <<   0.19999980  <<
-                0.20909070  <<   0.21838362  <<   0.22787856  <<   0.23757552  <<   0.24747450  <<
-                0.25757552  <<   0.26787856  <<   0.27838362  <<   0.28909070  <<   0.29999980  <<
-                0.31111092  <<   0.32242406  <<   0.33393922  <<   0.34565640  <<   0.35757560  <<
-                0.36969682  <<   0.38202006  <<   0.39454532  <<   0.40727260  <<   0.42020190  <<
-                0.43333322  <<   0.44666656  <<   0.46020192  <<   0.47393930  <<   0.48787870  <<
-                0.50202012  <<   0.51636356  <<   0.53090902  <<   0.54565650  <<   0.56060600  <<
-                0.57575752  <<   0.59111106  <<   0.60666662  <<   0.62242420  <<   0.63838380  <<
-                0.65454542  <<   0.67090906  <<   0.68747472  <<   0.70424240  <<   0.72121210  <<
-                0.73838382  <<   0.75575756  <<   0.77333332  <<   0.79111110  <<   0.80909090  <<
-                0.82727272  <<   0.84565656  <<   0.86424242  <<   0.88303030  <<   0.90202020  <<
-                0.92121212  <<   0.94060606  <<   0.96020202  <<   0.98000000  <<   1.00000000;
-
-  QVERIFY(probs.size() == structures.size());
-  QVERIFY(probs.size() == refProbs.size());
-
-  for (int i = 0; i < probs.size(); ++i)
-    QVERIFY(fabs(probs[i].second - refProbs[i]) < 1e-5);
-
-
-  // All equal
-  for (QList<Structure*>::iterator it = structures.begin(),
-                                   it_end = structures.end();
-       it != it_end;
-       ++it) {
-    (*it)->setDistAboveHull(0.0);
-  }
-
-  probs =
-    m_opt->getProbabilityList(structures, structures.size());
-  double dref = 1.0 / static_cast<double>(structures.size());
-  double ref = 0.01;
-
-  QVERIFY(probs.size() == structures.size());
-
-  for (auto it = probs.begin(), it_end = probs.end(); it != it_end; ++it) {
-    QVERIFY(fabs((*it).second - ref) < 1e-5);
-    ref += dref;
-  }
-
-  // cleanup
-  qDeleteAll(structures);
-}
 
 void SearchBaseTest::interpretKeyword()
 {
@@ -255,17 +478,17 @@ void SearchBaseTest::interpretKeyword()
   const QString USER4 = "user4";
 
   // Setup
-  m_opt->description = DESCRIPTION;
-  m_opt->setUser1(USER1.toStdString());
-  m_opt->setUser2(USER2.toStdString());
-  m_opt->setUser3(USER3.toStdString());
-  m_opt->setUser4(USER4.toStdString());
+  m_opt->setDescription(DESCRIPTION);
+  m_opt->setUser1(USER1);
+  m_opt->setUser2(USER2);
+  m_opt->setUser3(USER3);
+  m_opt->setUser4(USER4);
 
   Structure* s = new Structure;
   for (int i = 0; i < NUMATOMS; ++i) {
-    Atom& a = s->addAtom();
+    Atoms::Atom& a = s->addAtom();
     a.setAtomicNumber((i % NUMSPECIES) + 1);
-    a.setPos(Eigen::Vector3d(i, i, i));
+    a.setPos(Common::Vector3(i, i, i));
   }
   s->setLocpath(FILENAME);
   s->setRempath(REMPATH);
@@ -338,6 +561,534 @@ void SearchBaseTest::interpretKeyword()
   VERIFYKEYWORD("%gen%", QString::number(GENERATION));
   VERIFYKEYWORD("%id%", QString::number(IDNUM));
   VERIFYKEYWORD("%optStep%", QString::number(COPTSTEP));
+}
+
+void SearchBaseTest::interpretCrystalKeywords()
+{
+  Structure s;
+  s.setCellInfo(2.0, 4.0, 8.0, 90.0, 90.0, 90.0);
+  s.setLocpath("structure-1");
+
+  Atoms::Atom& h = s.addAtom();
+  h.setAtomicNumber(1);
+  h.setPos(Common::Vector3(0.0, 0.0, 0.0));
+
+  Atoms::Atom& o = s.addAtom();
+  o.setAtomicNumber(8);
+  o.setPos(Common::Vector3(1.0, 2.0, 4.0));
+
+  QCOMPARE(m_opt->interpretTemplate("%a% %b% %c%", &s), QString("2 4 8\n"));
+  QCOMPARE(m_opt->interpretTemplate("%alphaDeg% %betaDeg% %gammaDeg%", &s), QString("90 90 90\n"));
+  QCOMPARE(m_opt->interpretTemplate("%coordsFrac%", &s), QString("H 0 0 0\nO 0.5 0.5 0.5\n"));
+  QCOMPARE(m_opt->interpretTemplate("%chemicalSpeciesLabel%", &s), QString(" 1 1 H\n 2 8 O\n"));
+  QCOMPARE(m_opt->interpretTemplate("%block% lattice\n%endblock%", &s),
+           QString("%block lattice\n%endblock\n"));
+
+  const QString poscar = m_opt->interpretTemplate("%POSCAR%", &s);
+  QVERIFY(poscar.contains("structure-1"));
+  QVERIFY(poscar.contains("H O"));
+  QVERIFY(poscar.contains("Direct"));
+}
+
+void SearchBaseTest::paretoFrontsIgnoreConstraints()
+{
+  DummySearchBase* dummy = static_cast<DummySearchBase*>(m_opt);
+  const QList<double> minValues = {1.0, 2.0, 3.0};
+
+  QList<Structure*> baselineStructures;
+  m_opt->setOptimizationType("pareto");
+  m_opt->resetObjectives();
+  m_opt->addObjective(SearchBase::Ot_Min, QString(), QString(), 1.0);
+  for (double minValue : minValues) {
+    Structure* s = new Structure;
+    s->addAtom(1);
+    s->setStrucObjValues(minValue);
+    baselineStructures.append(s);
+  }
+
+  dummy->refreshFrontsForTest(baselineStructures);
+
+  QList<int> baselineFronts;
+  for (auto* structure : baselineStructures)
+    baselineFronts.append(structure->getParetoFront());
+
+  QList<Structure*> filteredStructures;
+  m_opt->resetObjectives();
+  m_opt->resetConstraints();
+  m_opt->addObjective(SearchBase::Ot_Min, QString(), QString(), 1.0);
+  m_opt->addConstraint("/tmp/filter", "filter.out");
+
+  for (int i = 0; i < minValues.size(); ++i) {
+    Structure* s = new Structure;
+    s->addAtom(1);
+    s->setStrucObjValues(minValues[i]);
+    filteredStructures.append(s);
+  }
+
+  dummy->refreshFrontsForTest(filteredStructures);
+
+  for (int i = 0; i < filteredStructures.size(); ++i)
+    QCOMPARE(filteredStructures[i]->getParetoFront(), baselineFronts[i]);
+
+  qDeleteAll(baselineStructures);
+  qDeleteAll(filteredStructures);
+  m_opt->resetObjectives();
+  m_opt->resetConstraints();
+  m_opt->setOptimizationType("basic");
+}
+
+void SearchBaseTest::constraintDismissalPrecedesFailure()
+{
+  QTemporaryDir tempDir;
+  QVERIFY(tempDir.isValid());
+
+  Structure structure;
+  structure.setLocpath(tempDir.path());
+  structure.setCurrentOptStep(0);
+
+  QFile dismissFile(Common::localPath(tempDir.path(), "dismiss.out"));
+  QVERIFY(dismissFile.open(QIODevice::WriteOnly | QIODevice::Text));
+  dismissFile.write("0.0\n");
+  dismissFile.close();
+
+  QFile invalidFile(Common::localPath(tempDir.path(), "invalid.out"));
+  QVERIFY(invalidFile.open(QIODevice::WriteOnly | QIODevice::Text));
+  invalidFile.write("not-a-number\n");
+  invalidFile.close();
+
+  m_opt->setQueueInterface(0, "localfiles");
+  m_opt->resetConstraints();
+  m_opt->addConstraint(QString(), "dismiss.out");
+  m_opt->addConstraint(QString(), "invalid.out");
+
+  m_opt->finishConstraintCalculations(&structure);
+
+  QCOMPARE(structure.getStrucConstraintState(), Structure::Cs_Dismiss);
+
+  m_opt->resetConstraints();
+  m_opt->setQueueInterface(0, "dummyqueue");
+}
+
+void SearchBaseTest::constraintOutputAcceptsBooleanString()
+{
+  QTemporaryDir tempDir;
+  QVERIFY(tempDir.isValid());
+
+  QFile passFile(Common::localPath(tempDir.path(), "pass.out"));
+  QVERIFY(passFile.open(QIODevice::WriteOnly | QIODevice::Text));
+  passFile.write("TrUe ignored-fields\n");
+  passFile.close();
+
+  QFile dismissFile(Common::localPath(tempDir.path(), "dismiss.out"));
+  QVERIFY(dismissFile.open(QIODevice::WriteOnly | QIODevice::Text));
+  dismissFile.write("FALSE\n");
+  dismissFile.close();
+
+  Structure structure;
+  structure.setLocpath(tempDir.path());
+  structure.setCurrentOptStep(0);
+
+  m_opt->setQueueInterface(0, "localfiles");
+  m_opt->resetConstraints();
+  m_opt->addConstraint(QString(), "pass.out");
+  m_opt->finishConstraintCalculations(&structure);
+  QCOMPARE(structure.getStrucConstraintNumber(), 1);
+  QCOMPARE(structure.getStrucConstraintValues(0), 1.0);
+  QCOMPARE(structure.getStrucConstraintState(), Structure::Cs_Retain);
+
+  structure.resetStrucConstraint();
+  m_opt->resetConstraints();
+  m_opt->addConstraint(QString(), "dismiss.out");
+  m_opt->finishConstraintCalculations(&structure);
+  QCOMPARE(structure.getStrucConstraintNumber(), 1);
+  QCOMPARE(structure.getStrucConstraintValues(0), 0.0);
+  QCOMPARE(structure.getStrucConstraintState(), Structure::Cs_Dismiss);
+
+  m_opt->resetConstraints();
+  m_opt->setQueueInterface(0, "dummyqueue");
+}
+
+void SearchBaseTest::scriptPrecheckRequiresAbsoluteExistingLocalPaths()
+{
+  QTemporaryDir tempDir;
+  QVERIFY(tempDir.isValid());
+
+  DummySearchBase opt;
+  opt.appendOptStep();
+  opt.setQueueInterface(0, "dummyqueue");
+  opt.setOptimizer(0, "dummy");
+  opt.setLocWorkDir(tempDir.path());
+
+  QString err;
+  opt.addObjective(SearchBase::Ot_Min, "relative-objective", "objective.out", 1.0);
+  QVERIFY(!opt.isReadyToSearch(&err));
+  QVERIFY(err.contains("absolute local path"));
+
+  opt.resetObjectives();
+  opt.addConstraint(Common::localPath(tempDir.path(), "missing-constraint"), "constraint.out");
+  QVERIFY(!opt.isReadyToSearch(&err));
+  QVERIFY(err.contains("was not found on the local machine"));
+
+  QFile script(Common::localPath(tempDir.path(), "constraint-script"));
+  QVERIFY(script.open(QIODevice::WriteOnly | QIODevice::Text));
+  script.write("# test script\n");
+  script.close();
+
+  opt.resetConstraints();
+  opt.addConstraint(script.fileName(), "constraint.out");
+  QVERIFY2(opt.isReadyToSearch(&err), qPrintable(err));
+}
+
+void SearchBaseTest::runtimeInteractionDispatchesPromptsAndReports()
+{
+  QVERIFY(m_opt != nullptr);
+
+  TestPromptHandler interaction;
+  m_opt->setDecisionPromptHandler(
+    [&interaction](const QString& message, bool defaultValue) {
+      return interaction.promptForBoolean(message, defaultValue);
+    });
+  m_opt->setPasswordPromptHandler(
+    [&interaction](const QString& message, QString& password) {
+      return interaction.promptForPassword(message, password);
+    });
+  const int outHandlerId = Common::addOutputHandler(
+    [&interaction](Common::OutputLevel level, const QString& text) {
+      switch (level) {
+        case Common::OutputLevel::Debug:
+          interaction.reportDebug(text);
+          break;
+        case Common::OutputLevel::Warning:
+          interaction.reportWarning(text);
+          break;
+        case Common::OutputLevel::Error:
+          interaction.reportError(text);
+          break;
+        case Common::OutputLevel::Message:
+          interaction.reportMessage(text);
+          break;
+      }
+    });
+  // Enable debug output.
+  struct InteractionCleanup
+  {
+    SearchBase* opt;
+    int handlerId;
+    ~InteractionCleanup()
+    {
+      Common::removeOutputHandler(handlerId);
+      opt->clearPromptHandlers();
+      Common::setDebugOutputEnabled(false);
+    }
+  } interactionCleanup = { m_opt, outHandlerId };
+  Common::setDebugOutputEnabled(true);
+  QObject::connect(m_opt, &SearchBase::progressRangeChanged,
+                   &interaction, &TestPromptHandler::beginProgress);
+  QObject::connect(m_opt, &SearchBase::progressValueChanged,
+                   &interaction, &TestPromptHandler::updateProgress);
+  QObject::connect(m_opt, &SearchBase::progressEnded,
+                   &interaction, &TestPromptHandler::endProgress);
+
+  interaction.booleanResponse = true;
+  const bool booleanOk = m_opt->requestBooleanDecision("bool prompt");
+  QVERIFY(booleanOk);
+  QCOMPARE(interaction.lastBooleanPrompt, QString("bool prompt"));
+
+  interaction.passwordAccepted = true;
+  interaction.passwordResponse = "secret";
+  QString password;
+  const bool passwordOk = m_opt->requestPassword("password prompt", password);
+  QVERIFY(passwordOk);
+  QCOMPARE(password, QString("secret"));
+  QCOMPARE(interaction.lastPasswordPrompt, QString("password prompt"));
+
+  Common::debug("debug text");
+  Common::warning("warning text");
+  Common::error("error text");
+  Common::message("message text");
+  m_opt->beginProgressUpdate("progress label", 0, 10);
+  m_opt->updateProgressValue(5, "updated label", 0, 10);
+  m_opt->endProgressUpdate();
+
+  QCOMPARE(interaction.reportDebugCalls, 1);
+  QCOMPARE(interaction.reportWarningCalls, 1);
+  QCOMPARE(interaction.reportErrorCalls, 1);
+  QCOMPARE(interaction.reportMessageCalls, 1);
+  QCOMPARE(interaction.lastDebug, QString("debug text"));
+  QCOMPARE(interaction.lastWarning, QString("warning text"));
+  QCOMPARE(interaction.lastError, QString("error text"));
+  QCOMPARE(interaction.lastMessage, QString("message text"));
+  QCOMPARE(interaction.progressStartCalls, 1);
+  QCOMPARE(interaction.progressStopCalls, 1);
+  QCOMPARE(interaction.lastProgressLabel, QString("updated label"));
+}
+
+void SearchBaseTest::startWorkflowDoesNotRunApplicationPrecheck()
+{
+  QTemporaryDir tempDir;
+  QVERIFY(tempDir.isValid());
+
+  const QString runDir = Common::localPath(tempDir.path(), "run");
+
+  DummySearchBase opt;
+  opt.appendOptStep();
+  opt.setQueueInterface(0, "dirqueue");
+  opt.setOptimizer(0, "dummy");
+  opt.setLocWorkDir(runDir);
+  opt.setRemoteQueue(true);
+  opt.failSSHConnections = true;
+
+  QVERIFY(!QFile::exists(runDir));
+  QVERIFY(opt.runStartWorkflowForTest());
+  QCOMPARE(opt.sshConnectionCalls, 0);
+  QCOMPARE(opt.initializeCalls, 1);
+  QVERIFY(!QFile::exists(runDir));
+}
+
+void SearchBaseTest::activeResumeWorkflowClearsSessionStartingAfterRestore()
+{
+  DummySearchBase opt;
+  opt.appendOptStep();
+  opt.setQueueInterface(0, "dummyqueue");
+  opt.setOptimizer(0, "dummy");
+  opt.setLocWorkDir(QString());
+  opt.setReadOnlyForTest(false);
+
+  QVERIFY(opt.runResumeWorkflowForTest());
+  QCOMPARE(opt.restoreCalls, 1);
+  QVERIFY(!opt.isSessionStarting());
+}
+
+void SearchBaseTest::paretoFrontsRespectMaxObjectives()
+{
+  DummySearchBase* dummy = static_cast<DummySearchBase*>(m_opt);
+  m_opt->setOptimizationType("pareto");
+  m_opt->resetObjectives();
+  m_opt->addObjective(SearchBase::Ot_Max, QString(), QString(), 1.0);
+
+  Structure* lowMax = new Structure;
+  lowMax->addAtom(1);
+  lowMax->setStrucObjValues(1.0); // maximization objective
+
+  Structure* highMax = new Structure;
+  highMax->addAtom(1);
+  highMax->setStrucObjValues(9.0); // better maximization objective
+
+  QList<Structure*> structures;
+  structures << lowMax << highMax;
+
+  dummy->refreshFrontsForTest(structures);
+
+  QCOMPARE(highMax->getParetoFront(), 0);
+  QCOMPARE(lowMax->getParetoFront(), 1);
+
+  qDeleteAll(structures);
+  m_opt->resetObjectives();
+  m_opt->setOptimizationType("basic");
+}
+
+void SearchBaseTest::paretoFilterZeroWeightsRemovesZeroWeightObjectives()
+{
+  DummySearchBase* dummy = static_cast<DummySearchBase*>(m_opt);
+  m_opt->resetObjectives();
+  m_opt->setOptimizationType("pareto");
+  m_opt->addObjective(SearchBase::Ot_Min, QString(), QString(), 0.0);
+  m_opt->addObjective(SearchBase::Ot_Min, QString(), QString(), 1.0);
+
+  Structure* lowZeroWeightObjective = new Structure;
+  lowZeroWeightObjective->addAtom(1);
+  lowZeroWeightObjective->setStrucObjValues(0.0);
+  lowZeroWeightObjective->setStrucObjValues(10.0);
+
+  Structure* lowActiveObjective = new Structure;
+  lowActiveObjective->addAtom(1);
+  lowActiveObjective->setStrucObjValues(10.0);
+  lowActiveObjective->setStrucObjValues(0.0);
+
+  QList<Structure*> structures;
+  structures << lowZeroWeightObjective << lowActiveObjective;
+
+  m_opt->setParetoFilterZeroWeights(false);
+  dummy->refreshFrontsForTest(structures);
+  QCOMPARE(lowZeroWeightObjective->getParetoFront(), 0);
+  QCOMPARE(lowActiveObjective->getParetoFront(), 0);
+
+  m_opt->setParetoFilterZeroWeights(true);
+  dummy->refreshFrontsForTest(structures);
+  QCOMPARE(lowActiveObjective->getParetoFront(), 0);
+  QCOMPARE(lowZeroWeightObjective->getParetoFront(), 1);
+
+  qDeleteAll(structures);
+  m_opt->resetObjectives();
+  m_opt->setOptimizationType("basic");
+  m_opt->setParetoFilterZeroWeights(false);
+}
+
+void SearchBaseTest::resetObjectivesClearsParetoFront()
+{
+  Structure structure;
+  structure.setParetoFront(3);
+  structure.setStrucObjValues(1.0);
+  structure.setStrucObjValues(2.0);
+
+  structure.resetStrucObj();
+
+  QCOMPARE(structure.getStrucObjNumber(), 0);
+  QCOMPARE(structure.getParetoFront(), -1);
+}
+
+void SearchBaseTest::unknownOptimizerQueueNamesDoNotChangeExistingOptStep()
+{
+  QVERIFY(m_opt->queueInterface(0) != nullptr);
+  QVERIFY(m_opt->optimizer(0) != nullptr);
+  QCOMPARE(m_opt->queueInterface(0)->getIDString(), QString("dummyqueue"));
+  QCOMPARE(m_opt->optimizer(0)->getIDString(), QString("Generic"));
+
+  QVERIFY(!m_opt->setQueueInterface(0, "missingqueue"));
+  QVERIFY(!m_opt->setOptimizer(0, "missingoptimizer"));
+
+  QVERIFY(m_opt->queueInterface(0) != nullptr);
+  QVERIFY(m_opt->optimizer(0) != nullptr);
+  QCOMPARE(m_opt->queueInterface(0)->getIDString(), QString("dummyqueue"));
+  QCOMPARE(m_opt->optimizer(0)->getIDString(), QString("Generic"));
+}
+
+void SearchBaseTest::queueManagerRunsSubmissionToOptimizedLifecycle()
+{
+  ScopedContStructs noPopulationRequests(m_opt, 0);
+
+  QVERIFY(m_opt->queueInterface(0) != nullptr);
+  QVERIFY(m_opt->optimizer(0) != nullptr);
+
+  DummyQueueInterface* queue = qobject_cast<DummyQueueInterface*>(m_opt->queueInterface(0));
+  QVERIFY(queue != nullptr);
+  queue->statuses.clear();
+  queue->statuses << QueueInterface::Running << QueueInterface::Success;
+
+  static_cast<DummySearchBase*>(m_opt)->markSessionActiveForTest();
+  TestQueueManager queueManager(m_opt);
+  QList<Structure::State> observedStates;
+  QMutex observedStatesMutex;
+  QObject::connect(&queueManager, &QueueManager::structureUpdated,
+                   &queueManager,
+                   [&observedStates, &observedStatesMutex](Structure* s) {
+                     QtCompat::MutexLocker locker(&observedStatesMutex);
+                     observedStates.append(s->getStatus());
+                   },
+                   Qt::DirectConnection);
+  QObject::connect(&queueManager, &QueueManager::structureSubmitted,
+                   &queueManager,
+                   [&observedStates, &observedStatesMutex](Structure*) {
+                     QtCompat::MutexLocker locker(&observedStatesMutex);
+                     observedStates.append(Structure::Submitted);
+                   },
+                   Qt::DirectConnection);
+  QObject::connect(&queueManager, &QueueManager::structureFinished,
+                   &queueManager,
+                   [&observedStates, &observedStatesMutex](Structure*) {
+                     QtCompat::MutexLocker locker(&observedStatesMutex);
+                     observedStates.append(Structure::Optimized);
+                   },
+                   Qt::DirectConnection);
+
+  Structure structure;
+  structure.setGeneration(1);
+  structure.setIDNumber(1);
+  structure.setCurrentOptStep(0);
+  structure.setStatus(Structure::Empty);
+
+  queueManager.addStructureToSubmissionQueue(&structure);
+  QTRY_COMPARE(structure.getStatus(), Structure::Optimized);
+  QTRY_COMPARE(queueManager.getAllRunningStructures().size(), 0);
+
+  QList<Structure::State> states;
+  {
+    QtCompat::MutexLocker locker(&observedStatesMutex);
+    states = observedStates;
+  }
+
+  const QList<Structure::State> expectedStates = QList<Structure::State>()
+      << Structure::Submitted
+      << Structure::InProcess
+      << Structure::StepOptimized
+      << Structure::Optimized;
+
+  int searchFrom = 0;
+  for (Structure::State expected : expectedStates) {
+    const int index = states.indexOf(expected, searchFrom);
+    QVERIFY2(index >= 0,
+             qPrintable(QString("Queue lifecycle did not emit state %1")
+                           .arg(static_cast<int>(expected))));
+    searchFrom = index + 1;
+  }
+}
+
+void SearchBaseTest::queueManagerDoesNotSubmitWhenInputStagingFails()
+{
+  ScopedContStructs noPopulationRequests(m_opt, 0);
+
+  QVERIFY(m_opt->setQueueInterface(0, "failingwritequeue"));
+  FailingWriteQueueInterface* queue =
+    qobject_cast<FailingWriteQueueInterface*>(m_opt->queueInterface(0));
+  QVERIFY(queue != nullptr);
+
+  static_cast<DummySearchBase*>(m_opt)->markSessionActiveForTest();
+  TestQueueManager queueManager(m_opt);
+  Structure structure;
+  structure.setGeneration(1);
+  structure.setIDNumber(1);
+  structure.setCurrentOptStep(0);
+  structure.setStatus(Structure::Empty);
+
+  queueManager.addStructureToSubmissionQueue(&structure);
+
+  QTRY_COMPARE(queue->writeCalls, 1);
+  QTRY_COMPARE(structure.getStatus(), Structure::Error);
+  QCOMPARE(queue->startCalls, 0);
+  QCOMPARE(queueManager.getAllRunningStructures().size(), 0);
+
+  QVERIFY(m_opt->setQueueInterface(0, "dummyqueue"));
+}
+
+void SearchBaseTest::dispatchDedupesPerStructureAndSlot()
+{
+  TestQueueManager queueManager(m_opt);
+  Structure a;
+  Structure b;
+
+  // Do not run the same work twice.
+  QVERIFY(queueManager.tryEnterForTest(&a, TestQueueManager::kKilledSlot));
+  QVERIFY(!queueManager.tryEnterForTest(&a, TestQueueManager::kKilledSlot));
+
+  // Different work may run at the same time.
+  QVERIFY(queueManager.tryEnterForTest(&a, TestQueueManager::kErrorSlot));
+  QVERIFY(queueManager.hasAnyForTest(&a));
+  QVERIFY(!queueManager.hasAnyForTest(&b));
+
+  queueManager.leaveForTest(&a, TestQueueManager::kKilledSlot);
+  QVERIFY(queueManager.hasAnyForTest(&a)); // ErrorSlot still in flight
+  queueManager.leaveForTest(&a, TestQueueManager::kErrorSlot);
+  QVERIFY(!queueManager.hasAnyForTest(&a));
+
+  // Run the work again.
+  QVERIFY(queueManager.tryEnterForTest(&a, TestQueueManager::kKilledSlot));
+  queueManager.leaveForTest(&a, TestQueueManager::kKilledSlot);
+}
+
+void SearchBaseTest::abortedSessionStaysIdle()
+{
+  DummySearchBase opt;
+  // Run the loop quickly.
+  opt.queue()->setCheckInterval(25);
+
+  // Abort the session.
+  QVERIFY(opt.runAbortedWorkflowForTest());
+  QTest::qWait(200);
+  QCOMPARE(opt.newStructureRequests.load(), 0);
+
+  // Conclude the session.
+  QVERIFY(opt.runStartWorkflowForTest());
+  QTRY_VERIFY(opt.newStructureRequests.load() > 0);
 }
 
 QTEST_MAIN(SearchBaseTest)

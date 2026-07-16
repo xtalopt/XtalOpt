@@ -1,58 +1,91 @@
-cmake_minimum_required(VERSION 3.0...3.27)
+cmake_minimum_required(VERSION 3.12...3.31)
 project(XtalOpt)
 
-set(XtalOpt_VERSION_MAJOR 14)
-set(XtalOpt_VERSION_MINOR 3)
-set(XtalOpt_VERSION_PATCH 1.rc1)
+set(XtalOpt_VERSION_MAJOR 15)
+set(XtalOpt_VERSION_MINOR 0)
+set(XtalOpt_VERSION_PATCH 0.rc0)
 
 # Version definitions
 set(XtalOpt_VERSION "${XtalOpt_VERSION_MAJOR}.${XtalOpt_VERSION_MINOR}")
 set(XtalOpt_VERSION_FULL "${XtalOpt_VERSION}.${XtalOpt_VERSION_PATCH}")
-# The string variable "XTALOPT_VER" can be used anywhere inside code
-add_definitions(-DXTALOPT_VER="${XtalOpt_VERSION_FULL}")
 
-set(CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake)
+# Version definitions for the XtalOpt code itself ("XTALOPT_VER" can be used in src/ and tests/).
+list(APPEND XTALOPT_COMPILE_DEFINITIONS XTALOPT_VER="${XtalOpt_VERSION_FULL}")
+
+list(APPEND CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake)
 
 # Place xtalopt.exe in build dir
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-# C++11 is required
+add_custom_target(check_source_hierarchy
+  COMMAND "${CMAKE_COMMAND}"
+          "-DXTALOPT_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
+          -P "${CMAKE_SOURCE_DIR}/cmake/CheckSourceHierarchy.cmake"
+  COMMENT "Checking source hierarchy"
+  VERBATIM)
+
+# Require C++11 (Qt6 builds its own targets with a newer standard).
 include(MacroUseCXX11)
 use_cxx11()
-
-# Use CPACK
-include(XtalOptCPack)
 
 # Automoc, AutoUIC, and AutoRCC
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt5 COMPONENTS Concurrent Network Widgets REQUIRED)
-find_package(Eigen3 REQUIRED)
-find_package(Qwt REQUIRED)
+option(BUILD_XTALOPT_GUI
+  "Build the XtalOpt GUI (requires Qt Widgets and Qwt)"
+  OFF)
+
+# Support Qt5.4+ and Qt6, prefer Qt6.
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Concurrent REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Concurrent REQUIRED)
+if(BUILD_XTALOPT_GUI)
+  find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets REQUIRED)
+endif()
+
+if(QT_VERSION_MAJOR EQUAL 5)
+  set(_qt_detected_version
+      "${QT_VERSION_MAJOR}.${QT_VERSION_MINOR}.${QT_VERSION_PATCH}")
+  if(_qt_detected_version VERSION_LESS "5.4.0")
+    message(FATAL_ERROR
+            "Qt 5.4.0 or newer is required by the supported Qt "
+            "compatibility baseline for this project.")
+  endif()
+endif()
+message(STATUS "Using Qt ${QT_VERSION_MAJOR}.${QT_VERSION_MINOR}.${QT_VERSION_PATCH}")
+list(APPEND XTALOPT_COMPILE_DEFINITIONS
+     QT_VER="${QT_VERSION_MAJOR}.${QT_VERSION_MINOR}.${QT_VERSION_PATCH}")
+
+if(BUILD_XTALOPT_GUI)
+  list(APPEND XTALOPT_COMPILE_DEFINITIONS BUILD_XTALOPT_GUI)
+  # Support Qwt 6.1 or later, built with the current Qt version.
+  find_package(Qwt 6.1 REQUIRED)
+  # The string variable "QWT_VER" can be used anywhere inside code
+  message(STATUS "Using Qwt ${QWT_VERSION_STRING}")
+  list(APPEND XTALOPT_COMPILE_DEFINITIONS QWT_VER="${QWT_VERSION_STRING}")
+
+  # Use one Qwt target: system includes keep project warnings out of Qwt.
+  add_library(Qwt::Qwt INTERFACE IMPORTED)
+  set_target_properties(Qwt::Qwt PROPERTIES
+    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${QWT_INCLUDE_DIRS}"
+    INTERFACE_INCLUDE_DIRECTORIES "${QWT_INCLUDE_DIRS}"
+    INTERFACE_LINK_LIBRARIES "${QWT_LIBRARIES}")
+  if(WIN32)
+    if(QWT_IS_STATIC)
+      set_property(TARGET Qwt::Qwt APPEND PROPERTY
+        INTERFACE_COMPILE_DEFINITIONS QWT_STATIC)
+    else()
+      set_property(TARGET Qwt::Qwt APPEND PROPERTY
+        INTERFACE_COMPILE_DEFINITIONS QWT_DLL)
+    endif()
+  endif()
+else()
+  list(APPEND XTALOPT_COMPILE_DEFINITIONS QWT_VER="N/A")
+endif()
+# engine and application includes are now target scoped.
+
 find_package(Threads REQUIRED)
-include_directories(${QWT_INCLUDE_DIRS})
-
-include_directories(${Qt5Network_INCLUDE_DIRS})
-include_directories(${Qt5Widgets_INCLUDE_DIRS})
-
-# Include Eigen3 as a system dir so we can ignore compiler warnings from it
-include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
-
-include_directories(${CMAKE_CURRENT_BINARY_DIR}
-                    ${XtalOpt_SOURCE_DIR}/src/)
-
-include_directories(external/qhull/src)
-
-include(MacroEnsureVersion)
-
-option( XTALOPT_DEBUG
-  "Enable writing output.log file to the working directory"
-  OFF )
-if(XTALOPT_DEBUG)
-  add_definitions(-DXTALOPT_DEBUG)
-endif(XTALOPT_DEBUG)
 
 option( BUILD_TESTS
  	"Whether to compile the test suite as well as the main code."
@@ -63,80 +96,55 @@ if(BUILD_TESTS)
 
 endif(BUILD_TESTS)
 
-option( ENABLE_SSH
- 	"Enable SSH. Only the local queue interface will be available if disabled."
- 	ON )
-
-option( USE_CLI_SSH
- 	"Use command line ssh/scp commands for remote communication. Use this if on linux/mac and Kerberos authentication is needed."
- 	OFF )
+option( BUILD_WITH_LIBSSH
+  "Build the optional libssh method in addition to the always-available system ssh/scp method."
+  OFF )
+set(ENABLE_LIBSSH ${BUILD_WITH_LIBSSH})
+unset(ENABLE_LIBSSH CACHE)
 
 option( ENABLE_RPATH
         "Enable rpath support on Linux and Mac. This will automatically be turned on if BUILD_INDEPENDENT_PACKAGE is true"
         ON )
 
-option( INSTALL_DEPENDENCIES
-        "Attempt to automatically find and install non-system dependencies to CMAKE_INSTALL_PREFIX/lib. This will automatically be turned on if BUILD_INDEPENDENT_PACKAGE is true"
+option( BUILD_INDEPENDENT_PACKAGE
+        "Builds a self-contained, portable package. Bundles all non-system runtime dependencies into PREFIX/lib and sets RPATH accordingly."
         OFF )
 
-option ( BUILD_INDEPENDENT_PACKAGE
-         "Builds an independent package to be distributed. This will automatically switch on ENABLE_RPATH and INSTALL_DEPENDENCIES"
-         OFF )
-
-option( USE_SYSTEM_OBABEL
-        "Instead of downloading a static obabel, use a system obabel instead? You should set the environment variable OBABEL_EXECUTABLE before running the program if you choose to do this"
-        OFF )
-option( USE_SYSTEM_GENXRDPATTERN
-        "Instead of downloading a static genXrdPattern, use a system genXrdPattern instead? You should set the environment variable GENXRDPATTERN_EXECUTABLE before running the program if you choose to do this"
-        OFF )
-
-# This will only actually download if USE_SYSTEM_OBABEL is off
-include(DownloadOBabel)
-DownloadObabel()
-
-# This will only actually download if USE_SYSTEM_GENXRDPATTERN is off
-include(DownloadGenXrdPattern)
-DownloadGenXrdPattern()
+if(APPLE)
+  option( XTALOPT_MACOS_SIGN_BUNDLE
+          "Ad-hoc sign the macOS app bundle after fixup_bundle rewrites its binaries during install and packaging."
+          ON )
+else()
+  option( XTALOPT_MACOS_SIGN_BUNDLE
+          "Ad-hoc sign the macOS app bundle after fixup_bundle rewrites its binaries during install and packaging."
+          OFF )
+endif()
+set(XTALOPT_MACOS_CODESIGN_IDENTITY "-"
+    CACHE STRING "macOS code signing identity used for the installed and packaged app bundle. Use '-' for ad-hoc signing.")
 
 if(BUILD_INDEPENDENT_PACKAGE)
   set(ENABLE_RPATH ON)
-  set(INSTALL_DEPENDENCIES ON)
 endif(BUILD_INDEPENDENT_PACKAGE)
 
-if(ENABLE_SSH)
-  add_definitions(-DENABLE_SSH)
-  message(STATUS "SSH Enabled")
-  # Pull in libssh
-  if(USE_CLI_SSH)
-    add_definitions(-DUSE_CLI_SSH)
-    message(STATUS "Using command-line SSH interface")
-  else(USE_CLI_SSH)
-    message(STATUS "Using libssh SSH interface")
-    set(LibSSH_FIND_VERSION ON)
-    set(LibSSH_MIN_VERSION "0.4.8")
-    find_package(LibSSH REQUIRED)
-    if(NOT LIBSSH_FOUND)
-      message(FATAL_ERROR "libssh not found!")
-    endif()
-    macro_ensure_version(${LibSSH_MIN_VERSION} ${LibSSH_VERSION}
-                         LIBSSH_VERSION_OK)
-    if(NOT LIBSSH_VERSION_OK)
-      message(FATAL_ERROR
-      "libssh too old! Installed version is ${LibSSH_VERSION}, need at least "
-      "libssh ${LibSSH_MIN_VERSION}")
-    endif()
-    include_directories(${LIBSSH_INCLUDE_DIRS})
-  endif(USE_CLI_SSH)
+if(ENABLE_LIBSSH)
+  message(STATUS "Using libssh + system ssh/scp SSH interfaces")
+  list(APPEND XTALOPT_COMPILE_DEFINITIONS ENABLE_LIBSSH)
+  set(LibSSH_MIN_VERSION "0.4.8")
+  find_package(LibSSH ${LibSSH_MIN_VERSION} REQUIRED)
+  # src/search now sets the libssh include directory.
+  list(APPEND XTALOPT_COMPILE_DEFINITIONS SSH_VER="${LibSSH_MIN_VERSION}+system")
+else()
+  message(STATUS "Using system ssh/scp SSH interface")
+  list(APPEND XTALOPT_COMPILE_DEFINITIONS SSH_VER="system")
 endif()
 
-# Set -fPIC on x86_64
-if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC"  )
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC"  )
-endif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+# Use CPack after the build options are set: package filename includes gui/ssh build types.
+include(XtalOptCPack)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_subdirectory(external)
-include_directories(external)
+# src/xtalopt now sets external include directories.
 
 # Use this to set the DEP_SEARCH_DIRS variable for searching for dependencies
 include(DepSearchDirs)
@@ -145,4 +153,27 @@ add_subdirectory(src)
 
 if(BUILD_TESTS)
   add_subdirectory(tests)
+  add_test(NAME check_source_hierarchy
+           COMMAND "${CMAKE_COMMAND}"
+                   "-DXTALOPT_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
+                   -P "${CMAKE_SOURCE_DIR}/cmake/CheckSourceHierarchy.cmake")
 endif(BUILD_TESTS)
+
+foreach(_xtalopt_hierarchy_target
+    common_core
+    common_math
+    atoms_core
+    atoms_gui
+    generatexrd_core
+    generatexrd_gui
+    search_core
+    search_cli
+    search_gui
+    xtalopt_core
+    xtalopt_gui
+    xtalopt
+    structuretool)
+  if(TARGET "${_xtalopt_hierarchy_target}")
+    add_dependencies("${_xtalopt_hierarchy_target}" check_source_hierarchy)
+  endif()
+endforeach()

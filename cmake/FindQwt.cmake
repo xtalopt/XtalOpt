@@ -1,5 +1,5 @@
 # Qt Widgets for Technical Applications
-# available at http://www.http://qwt.sourceforge.net/
+# available at https://qwt.sourceforge.io/
 #
 # The module defines the following variables:
 #  QWT_FOUND - the system has Qwt
@@ -10,7 +10,7 @@
 #  QWT_MAJOR_VERSION - major version
 #  QWT_MINOR_VERSION - minor version
 #  QWT_PATCH_VERSION - patch version
-#  QWT_VERSION_STRING - version (ex. 5.2.1)
+#  QWT_VERSION_STRING - version (ex. 6.3.0)
 #  QWT_ROOT_DIR - root dir (ex. /usr/local)
 
 #=============================================================================
@@ -43,10 +43,10 @@
 #=============================================================================
 
 
+# The Qwt build should be for this Qt version (don't mix Qt5 and Qt6 Qwt).
 find_path ( QWT_INCLUDE_DIR
   NAMES qwt_plot.h
-  HINTS ${QT_INCLUDE_DIR}
-  PATH_SUFFIXES qwt qwt-qt3 qwt-qt4 qwt-qt5
+  PATH_SUFFIXES qwt-qt${QT_VERSION_MAJOR} qwt
 )
 
 set ( QWT_INCLUDE_DIRS ${QWT_INCLUDE_DIR} )
@@ -79,10 +79,33 @@ if ( Qwt_FIND_VERSION AND QWT_VERSION_STRING )
 endif ()
 
 
+# Try debug library names too (as a fallback; mostly Windows convention).
 find_library ( QWT_LIBRARY
-  NAMES qwt qwt-qt3 qwt-qt4 qwt-qt5
-  HINTS ${QT_LIBRARY_DIR}
+  NAMES qwt-qt${QT_VERSION_MAJOR} qwt qwtd-qt${QT_VERSION_MAJOR} qwtd
 )
+
+set ( QWT_IS_STATIC FALSE )
+if ( WIN32 AND QWT_LIBRARY )
+  get_filename_component ( _QWT_LIBRARY_DIR "${QWT_LIBRARY}" DIRECTORY )
+  find_file ( QWT_RUNTIME_LIBRARY
+    NAMES qwt-qt${QT_VERSION_MAJOR}.dll qwt.dll
+          qwtd-qt${QT_VERSION_MAJOR}.dll qwtd.dll
+    HINTS "${_QWT_LIBRARY_DIR}" "${_QWT_LIBRARY_DIR}/../bin"
+  )
+  if ( NOT QWT_RUNTIME_LIBRARY )
+    set ( QWT_IS_STATIC TRUE )
+  endif ()
+elseif ( QWT_LIBRARY MATCHES "\\.a$" )
+  set ( QWT_IS_STATIC TRUE )
+endif ()
+
+# Just in case: warn if the Qwt's Qt version cannot be checked (it may be for the other Qt).
+if ( QWT_LIBRARY
+     AND NOT QWT_LIBRARY MATCHES "qwt-qt${QT_VERSION_MAJOR}"
+     AND NOT QWT_LIBRARY MATCHES "\\.framework" )
+  message ( WARNING "Found Qwt library '${QWT_LIBRARY}' without a Qt-version suffix. "
+                    "Make sure this Qwt was built against Qt${QT_VERSION_MAJOR}.")
+endif ()
 
 set ( QWT_LIBRARIES ${QWT_LIBRARY} )
 
@@ -92,17 +115,13 @@ if ( QWT_INCLUDE_DIR )
   string ( REGEX REPLACE "(.*)/include.*" "\\1" QWT_ROOT_DIR ${QWT_INCLUDE_DIR} )
 # try to guess root dir from library dir
 elseif ( QWT_LIBRARY )
-  string ( REGEX REPLACE "(.*)/lib[/|32|64].*" "\\1" QWT_ROOT_DIR ${QWT_LIBRARY} )
+  string ( REGEX REPLACE "(.*)/lib(|32|64)/.*" "\\1" QWT_ROOT_DIR ${QWT_LIBRARY} )
 endif ()
 
 
 # handle the QUIETLY and REQUIRED arguments
 include ( FindPackageHandleStandardArgs )
-if ( CMAKE_VERSION LESS 2.8.3 )
-  find_package_handle_standard_args( Qwt DEFAULT_MSG QWT_LIBRARY QWT_INCLUDE_DIR _QWT_VERSION_MATCH )
-else ()
-  find_package_handle_standard_args( Qwt REQUIRED_VARS QWT_LIBRARY QWT_INCLUDE_DIR _QWT_VERSION_MATCH VERSION_VAR QWT_VERSION_STRING )
-endif ()
+find_package_handle_standard_args( Qwt REQUIRED_VARS QWT_LIBRARY QWT_INCLUDE_DIR _QWT_VERSION_MATCH VERSION_VAR QWT_VERSION_STRING )
 
 
 mark_as_advanced (
@@ -113,6 +132,7 @@ mark_as_advanced (
   QWT_MAJOR_VERSION
   QWT_MINOR_VERSION
   QWT_PATCH_VERSION
+  QWT_RUNTIME_LIBRARY
   QWT_VERSION_STRING
   QWT_ROOT_DIR
 )

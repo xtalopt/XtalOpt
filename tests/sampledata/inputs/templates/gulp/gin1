@@ -1,0 +1,17 @@
+opti conj conp
+switch_minimiser bfgs gnorm 0.5
+cell
+  %a% %b% %c% %alphaDeg% %betaDeg% %gammaDeg%
+frac
+%coordsFrac%
+species
+Ti 2.196
+O -1.098
+buck
+Ti Ti 31120.1 0.1540 5.25  15
+O  O  11782.7 0.2340 30.22 15
+Ti O  16957.5 0.1940 12.59 15
+lennard 12 6
+Ti Ti 1 0 15
+O  O  1 0 15
+Ti O  1 0 15

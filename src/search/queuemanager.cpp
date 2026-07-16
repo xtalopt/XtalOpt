@@ -1,0 +1,1440 @@
+/**********************************************************************
+  QueueManager - Generic queue manager to track running structures
+
+  Copyright (C) 2010-2011 by David C. Lonie
+  Copyright (C) 2026 Samad Hajinazar
+
+  This source code is released under the New BSD License, (the "License").
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ ***********************************************************************/
+
+#include <search/queuemanager.h>
+
+#include <common/compatibility/qt_compat.h>
+#include <common/fileutils.h>
+#include <common/output.h>
+#include <common/timing.h>
+#include <search/constants.h>
+#include <search/search.h>
+#include <search/optimizer.h>
+#include <search/queueinterface.h>
+#include <search/queueinterfaces/batch.h>
+#include <common/random.h>
+#include <search/structure.h>
+
+#include <QDateTime>
+#include <QDir>
+#include <QSet>
+#include <memory>
+#include <QReadWriteLock>
+#include <QThread>
+#include <QThreadPool>
+#include <QTimer>
+#include <QtConcurrent>
+
+// A couple helper functions/classes; disable doxygen parsing:
+/// \cond
+namespace {
+
+void appendTrackerSnapshot(QList<Search::Structure*>& out, Search::Tracker* tracker)
+{
+  const QList<Search::Structure*>* source = tracker->list();
+  out.reserve(out.size() + source->size());
+  for (auto* structure : *source)
+    out.append(structure);
+}
+
+QString objectiveOrConstraintFailureState(Search::Structure* s)
+{
+  if (s->getStrucConstraintState() == Search::Structure::Cs_Fail)
+    return QString("constraint state %1").arg(s->getStrucConstraintState());
+  return QString("objective state %1").arg(s->getStrucObjState());
+}
+
+QString objectiveOrConstraintDismissState(Search::Structure* s)
+{
+  if (s->getStrucConstraintState() == Search::Structure::Cs_Dismiss)
+    return QString("constraint state %1").arg(s->getStrucConstraintState());
+  return QString("objective state %1").arg(s->getStrucObjState());
+}
+
+QString objectiveOrConstraintDismissRedoReason(Search::Structure* s)
+{
+  if (s->getStrucConstraintState() == Search::Structure::Cs_Dismiss)
+    return QObject::tr("dismissed by constraint calculation");
+  return QObject::tr("failed objective calculation");
+}
+
+Search::Structure::State postprocessingFailureStatus(Search::Structure* s)
+{
+  if (s->getStrucConstraintState() == Search::Structure::Cs_Fail)
+    return Search::Structure::ConsFailed;
+  return Search::Structure::ObjcFailed;
+}
+
+}
+/// \endcond
+
+namespace Search {
+
+QueueManager::QueueManager(QThread* thread, SearchBase* srch)
+  : QObject(), m_search(srch), m_thread(thread), m_tracker(srch->tracker()),
+    m_requestedStructures(0), m_isDestroying(false),
+    m_lastSubmissionTimeStamp(std::unique_ptr<QDateTime>(new QDateTime(QDateTime::currentDateTime())))
+{
+  moveToQMThread();
+}
+
+QueueManager::~QueueManager()
+{
+  m_isDestroying.store(true);
+  this->disconnect();
+
+  // Wait for running work to finish before its structures are deleted.
+  while (!m_runningHandlers.waitForAll(STRUCTURE_HANDLER_WAIT_TIMEOUT))
+    Common::warning("QueueManager: still waiting for running handlers...");
+
+  // Wait for m_requestedStructures to == 0.
+  {
+    unsigned int timeout = 150;
+    QtCompat::MutexLocker lock(&m_destroyMutex);
+    while (timeout > 0 && m_requestedStructures > 0) {
+      Common::debug("Waiting for structure generation threads to finish...");
+      m_destroyWait.wait(&m_destroyMutex, 100);
+      --timeout;
+    }
+  }
+
+  // m_lastSubmissionTimeStamp destroyed automatically by unique_ptr.
+}
+
+void QueueManager::prepareForThreadStop()
+{
+  m_isDestroying.store(true);
+  QtCompat::MutexLocker lock(&m_destroyMutex);
+  m_requestedStructures = 0;
+  m_destroyWait.wakeAll();
+}
+
+void QueueManager::moveToQMThread()
+{
+  this->moveToThread(m_thread);
+
+  // Set the queue connections before a structure can emit a signal.
+  setupConnections();
+  connect(this, &QueueManager::movedToQMThread,
+          this, &QueueManager::startCheckLoop, Qt::QueuedConnection);
+
+  emit movedToQMThread();
+}
+
+void QueueManager::setupConnections()
+{
+  // opt connections
+  connect(this, &QueueManager::needNewStructure,
+          m_search, &SearchBase::generateNewStructure, Qt::QueuedConnection);
+  connect(m_search, &SearchBase::doneWithObjectives,
+          this, &QueueManager::updateStructureObjectiveState);
+  connect(m_search, &SearchBase::doneWithConstraints,
+          this, &QueueManager::updateStructureConstraintState);
+
+  // re-emit connections
+  connect(this, &QueueManager::structureStarted, this, &QueueManager::structureUpdated);
+  connect(this, &QueueManager::structureSubmitted, this, &QueueManager::structureUpdated);
+  connect(this, &QueueManager::structureKilled, this, &QueueManager::structureUpdated);
+  connect(this, &QueueManager::structureFinished, this, &QueueManager::structureUpdated);
+  // Re-emit when a structure leaves optimization and is ready for follow-up
+  // evaluation, so application observers can refresh their views/output.
+  connect(this, &QueueManager::readyForObjectiveCalculations,
+          this, &QueueManager::structureUpdated);
+  connect(this, &QueueManager::readyForConstraintCalculations,
+          this, &QueueManager::structureUpdated);
+
+  // internal connections
+  connect(this, &QueueManager::structureStarted, this,
+          static_cast<void(QueueManager::*)(Search::Structure*)>(
+              &QueueManager::addStructureToSubmissionQueue), Qt::QueuedConnection);
+}
+
+void QueueManager::startCheckLoop()
+{
+  QTimer::singleShot(0, this, &QueueManager::checkLoop);
+}
+
+
+bool QueueManager::RunningHandlers::tryStart(Structure* s, int h)
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  const QPair<Structure*, int> key(s, h);
+  if (m_pairs.contains(key))
+    return false;
+  m_pairs.insert(key);
+  ++m_perStructure[s];
+  return true;
+}
+
+void QueueManager::RunningHandlers::finish(Structure* s, int h)
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  const QPair<Structure*, int> key(s, h);
+  if (!m_pairs.remove(key))
+    return;
+  if (--m_perStructure[s] <= 0)
+    m_perStructure.remove(s);
+  if (m_pairs.isEmpty())
+    m_emptyWait.wakeAll();
+}
+
+bool QueueManager::RunningHandlers::hasHandlerFor(Structure* s) const
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  return m_perStructure.contains(s);
+}
+
+bool QueueManager::RunningHandlers::waitForAll(int timeoutMs)
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  int remaining = timeoutMs;
+  while (!m_pairs.isEmpty() && remaining > 0) {
+    m_emptyWait.wait(&m_mutex, 100);
+    remaining -= 100;
+  }
+  return m_pairs.isEmpty();
+}
+
+void QueueManager::RunningHandlers::clear()
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  m_pairs.clear();
+  m_perStructure.clear();
+  m_emptyWait.wakeAll();
+}
+
+void QueueManager::runHandler(Structure* s, StructureHandlerType handler)
+{
+  // One worker per handler type, indexed by the enum value.
+  typedef void (QueueManager::*HandlerWorker)(Structure*);
+  static const HandlerWorker kWorkers[] = {
+    &QueueManager::handleOptimizedStructure,
+    &QueueManager::handleStepOptimizedStructure,
+    &QueueManager::handleInProcessStructure,
+    &QueueManager::handleErrorStructure,
+    &QueueManager::handleSubmittedStructure,
+    &QueueManager::handleKilledStructure,
+    &QueueManager::handleRestartStructure,
+    &QueueManager::handlePostprocessingStructure,
+    &QueueManager::handleFailObjectiveStructure,
+    &QueueManager::handleDismissObjectiveStructure,
+  };
+
+  if (handler == SubmissionHandler) {
+    addStructureToSubmissionQueue(s);
+    return;
+  }
+  if (!m_runningHandlers.tryStart(s, handler))
+    return;
+  const HandlerWorker worker = kWorkers[handler];
+  (void)QtConcurrent::run([this, s, handler, worker]() {
+    (this->*worker)(s);
+    m_runningHandlers.finish(s, handler);
+  });
+}
+
+void QueueManager::reset()
+{
+  // Wait for running work to finish before resetting the structures.
+  while (!m_runningHandlers.waitForAll(STRUCTURE_HANDLER_WAIT_TIMEOUT))
+    Common::warning(QString("%1: still waiting for running handlers...").arg(__func__));
+
+  QtCompat::MutexLocker namingLocker(&m_namingMutex);
+  QList<Tracker*> trackers = allTrackers();
+
+  for (auto it = trackers.begin(), it_end = trackers.end(); it != it_end; it++) {
+    QWriteLocker locker((*it)->rwLock());
+    (*it)->reset();
+  }
+  m_nextIdByGeneration.clear();
+  m_runningHandlers.clear();
+}
+
+void QueueManager::checkLoop()
+{
+  // Ensure that this is only called from the QM thread:
+  Q_ASSERT_X(QThread::currentThread() == m_thread, Q_FUNC_INFO,
+             "Attempting to run QueueManager::checkLoop "
+             "from a thread other than the QM thread. ");
+
+  if (m_isDestroying.load())
+    return;
+
+  if (!m_search->isReadOnly() && !m_search->isSessionStarting() && m_search->isSessionActive()) {
+    {
+      QReadLocker runtimeLocker(m_search->runtimeSettingsLock());
+      if (m_search->isHardExit()) {
+        checkExit();
+        return;
+      }
+      checkPopulation();
+      checkRunning();
+    }
+    // Exit without holding the settings lock, or waiting work can stop the exit.
+    checkExit();
+  }
+
+  QTimer::singleShot(m_checkInterval, this, &QueueManager::checkLoop);
+}
+
+void QueueManager::checkPopulation()
+{
+  Common::ScopedTimer _timer("QueueManager::checkPopulation");
+  // Count jobs
+  uint running = 0;
+  uint optimized = 0;
+  uint submitted = 0;
+
+  QReadLocker trackerReadLocker(m_tracker->rwLock());
+  QList<Structure*> structures;
+  appendTrackerSnapshot(structures, m_tracker);
+
+  uint tot = structures.size();
+
+  QList<Structure*> runningTrackerAdds;
+  QList<Structure*> runningTrackerRemoves;
+  runningTrackerAdds.reserve(structures.size());
+  runningTrackerRemoves.reserve(structures.size());
+
+  // Check to see that the number of running jobs is >= that specified:
+  int fail = 0;
+  for (auto* structure : structures) {
+    QReadLocker structureLocker(&structure->lock());
+    Structure::State state = structure->getStatus();
+    if (Structure::isStoppedFinalState(state))
+      ++fail;
+    structureLocker.unlock();
+
+    // Count submitted structures
+    if (Structure::isQueueInProgressState(state)) {
+      ++submitted;
+    }
+    // Count running jobs and update trackers
+    if (!Structure::isQueueTerminalState(state)) {
+      runningTrackerAdds.append(structure);
+      ++running;
+    } else {
+      if (Structure::isOptimizedState(state))
+        ++optimized;
+      runningTrackerRemoves.append(structure);
+    }
+  }
+  trackerReadLocker.unlock();
+
+  // Update the running structures in one pass.
+  {
+    QWriteLocker runningTrackerLocker(m_runningTracker.rwLock());
+    for (auto* structure : runningTrackerAdds)
+      m_runningTracker.append(structure);
+    for (auto* structure : runningTrackerRemoves)
+      m_runningTracker.remove(structure);
+  }
+
+  emit newStatusOverview(optimized, running, fail, tot);
+
+  // Take waiting jobs under the lock, then submit them without it.
+  QList<Structure*> toSubmit;
+  {
+    QWriteLocker jobStartTrackerLocker(m_jobStartTracker.rwLock());
+    int pending = m_jobStartTracker.size();
+    if (pending != 0 &&
+        (!m_search->isLimitRunningJobs() || submitted < m_search->getRunningJobLimit())) {
+        // Submit remote jobs slowly to avoid overloading the queue.
+      Structure* s = m_jobStartTracker.at(0);
+      if (m_search->isRemoteQueue() && qobject_cast<BatchQueueInterface*>(
+            m_search->queueInterface(s->getCurrentOptStep())) != nullptr) {
+        if (m_lastSubmissionTimeStamp->secsTo(QDateTime::currentDateTime()) >=
+            3 + (6 * Common::getRandDouble())) {
+          Structure* popped;
+          if (m_jobStartTracker.popFirst(popped))
+            toSubmit.append(popped);
+          ++submitted;
+          --pending;
+          *m_lastSubmissionTimeStamp = QDateTime::currentDateTime();
+        }
+      } else {
+        // Local job submission doesn't need to be throttled.
+        while (pending != 0 &&
+               (!m_search->isLimitRunningJobs() || submitted < m_search->getRunningJobLimit())) {
+          Structure* popped;
+          if (m_jobStartTracker.popFirst(popped))
+            toSubmit.append(popped);
+          ++submitted;
+          --pending;
+        }
+      }
+    }
+  }
+  for (auto* s : toSubmit)
+    startJob(s);
+
+  // Count the running jobs before taking the tracker lock.
+  int runningCount = 0;
+  {
+    QReadLocker runningLocker(m_runningTracker.rwLock());
+    runningCount = m_runningTracker.size();
+  }
+
+  // Generate requests
+  // Write lock for m_requestedStructures var
+  Common::ScopedTimer _lockWait("QueueManager::checkPopulation:trackerWriteLockWait");
+  QWriteLocker trackerWriteLocker(m_tracker->rwLock());
+  _lockWait.stop();
+  QReadLocker newStructureTrackerLocker(m_newStructureTracker.rwLock());
+
+  // Avoid convenience function calls here; we already hold the relevant
+  // tracker locks.
+  int requestedStructures = 0;
+  {
+    QtCompat::MutexLocker requestedLocker(&m_destroyMutex);
+    requestedStructures = m_requestedStructures;
+  }
+
+  int total = m_tracker->size() + m_newStructureTracker.size() + requestedStructures;
+  // incomplete is getAllRunningStructures.size() + m_requestedStructures.
+  int incomplete = runningCount + m_newStructureTracker.size() + requestedStructures;
+  int needed = m_search->getContStructs() - incomplete;
+  needed = qMin(needed, m_search->getMaxNumStructures() - total);
+
+  if (
+    // Are we at the continuous structure limit?
+    (needed > 0) &&
+    // Are we below the total structure limit?
+    (total < m_search->getMaxNumStructures())) {
+    // emit requests
+    Common::debug(QString("Need %1 structures. %2 already incomplete.")
+                      .arg(needed)
+                      .arg(incomplete));
+    for (int i = 0; i < needed; ++i) {
+      int totalRequested = 0;
+      {
+        QtCompat::MutexLocker requestedLocker(&m_destroyMutex);
+        if (m_isDestroying.load())
+          break;
+        totalRequested = ++m_requestedStructures;
+      }
+      emit needNewStructure();
+      Common::debug(QString("Requested new structure. Total requested: %1")
+                        .arg(totalRequested));
+    }
+  }
+}
+
+void QueueManager::checkRunning()
+{
+  Common::ScopedTimer _timer("QueueManager::checkRunning");
+  // Ensure that this is only called from the QM thread:
+  Q_ASSERT_X(QThread::currentThread() == m_thread, Q_FUNC_INFO,
+             "Attempting to run QueueManager::checkRunning "
+             "from a thread other than the QM thread. ");
+
+  // Get list of running structures
+  QList<Structure*> runningStructures = getAllRunningStructures();
+
+  // iterate over all structures and handle each based on its status
+  for (auto s_it = runningStructures.begin(), s_it_end = runningStructures.end();
+       s_it != s_it_end; ++s_it) {
+
+    // Assign pointer for convenience
+    Structure* structure = *s_it;
+
+    // Skip structures that already have a function running.
+    if (m_runningHandlers.hasHandlerFor(structure)) {
+      continue;
+    }
+
+    // Lookup status
+    Structure::State status;
+    {
+      QReadLocker structLocker(&structure->lock());
+      status = structure->getStatus();
+    }
+    // Check the structure state before the exact state table.
+    if (Structure::isFailedFinalState(status)) {
+      runHandler(structure, ObjectiveFailHandler);
+      continue;
+    }
+    if (Structure::isDismissedFinalState(status)) {
+      runHandler(structure, ObjectiveDismissHandler);
+      continue;
+    }
+    if (Structure::isPostOptimizationCalculationState(status)) {
+      // Nothing to be done! Wait for signal!
+      continue;
+    }
+
+    // Select the state function. States not listed here need no work.
+    //  - WaitingForOptimization: waiting on the submission queue,
+    //  - Updating: an optimizer update is already running,
+    //  - Empty: shouldn't be in the running list,
+    //  - Optimized: handled by onPostprocessing, and may already be off the
+    //    running list by the time checkRunning sees it,
+    //  - ObjectiveCalculation/ConstraintCalculation: waiting on the done signals
+    //    (resumed by updateStructure*State above).
+    struct StateActionRow
+    {
+      Structure::State state;
+      StructureHandlerType state_handler;
+    };
+    static const StateActionRow kStateActions[] = {
+      { Structure::InProcess,      InProcessHandler },
+      { Structure::StepOptimized,  StepOptimizedHandler },
+      { Structure::Error,          ErrorHandler },
+      { Structure::Submitted,      SubmittedHandler },
+      { Structure::Killed,         KilledHandler },
+      { Structure::Removed,        KilledHandler },
+      { Structure::Restart,        RestartHandler },
+      { Structure::Postprocessing, PostprocessingHandler },
+    };
+
+    for (const auto& row : kStateActions) {
+      if (row.state == status) {
+        runHandler(structure, row.state_handler);
+        break;
+      }
+    }
+  }
+
+  return;
+}
+
+void QueueManager::checkExit()
+{
+  // If either hardExit or softExit flags are set, this function calls
+  //   the performTheExit function. For a hard exit, the code will quit
+  //   immediately. For a soft exit, it will check if there is no any
+  //   running/pending jobs, then waits a few second to make sure all
+  //   files are transferred and status' are saved before quitting.
+
+  if (! (m_search->isHardExit() || m_search->isSoftExit())) {
+    // If no hard or soft exit, return.
+    return;
+  } else if (m_search->isHardExit()) {
+    // If hard exit.
+    Common::message(tr("\nPerforming a hard exit ..."));
+    m_search->performTheExit();
+  } else {
+    // If not a hard exit; then we're here for a soft exit.
+    int total = 0;
+    int pending = 0;
+
+    QReadLocker trackerReadLocker(m_tracker->rwLock());
+    QList<Structure*> struct2;
+    appendTrackerSnapshot(struct2, m_tracker);
+    for (auto* str2 : struct2)
+    {
+      QReadLocker structureLocker(&str2->lock());
+      Structure::State st = str2->getStatus();
+      structureLocker.unlock();
+      if (!Structure::isQueueTerminalState(st))
+        ++pending;
+      else
+        ++total;
+    }
+    trackerReadLocker.unlock();
+
+    if (pending == 0 && total >= m_search->getMaxNumStructures()) {
+      // Do not announce the exit while state workers are still running.
+      if (!m_runningHandlers.waitForAll(0))
+        return;
+
+      // Wait for all running async tasks (similarity checks, hull updates,
+      // saves) to finish before announcing exit, so their output doesn't
+      // appear after the warning.
+      QThreadPool::globalInstance()->waitForDone(-1);
+      Common::message(tr("\nPerforming a soft exit (total, finished, and "
+                           "pending runs: %1 , %2 , %3)")
+                          .arg(m_search->getMaxNumStructures())
+                          .arg(total)
+                          .arg(pending));
+      // Call the perform_the_exit with a delay in quitting to make
+      //   sure all output files are transferred/written.
+      m_search->performTheExit(3);
+    }
+  }
+}
+
+
+QList<Tracker*> QueueManager::allTrackers()
+{
+  QList<Tracker*> trackers;
+  trackers.append(&m_jobStartTracker);
+  trackers.append(&m_runningTracker);
+  trackers.append(&m_newStructureTracker);
+  return trackers;
+}
+
+
+
+// Doxygen skip:
+/// @cond
+void QueueManager::handleInProcessStructure(Structure* s)
+{
+  // Revalidate assumptions
+  if (s->getStatus() != Structure::InProcess) {
+    return;
+  }
+
+  QueueInterface* qi = m_search->queueInterface(s->getCurrentOptStep());
+  switch (qi->getStatus(s)) {
+    case QueueInterface::Running:
+    case QueueInterface::Queued:
+    case QueueInterface::CommunicationError:
+    case QueueInterface::Unknown:
+    case QueueInterface::Pending:
+    case QueueInterface::Started:
+    {
+      // Kill the structure if it has exceeded the allowable time.
+      // Only perform this for remote queues.
+      if (m_search->cancelJobAfterTime() &&
+          s->getOptElapsedHours() > m_search->hoursForCancelJobAfterTime() &&
+          qi->getIDString().toLower() != "none") {
+        // This will emit structureKilled, which is then re-emitted as structureUpdated.
+        killStructure(s);
+        return;
+      }
+      // Nothing to do but wait
+      break;
+    }
+    case QueueInterface::Success:
+      updateStructure(s);
+      break;
+    case QueueInterface::Error:
+      {
+        QWriteLocker structLocker(&s->lock());
+        s->setStatus(Structure::Error);
+      }
+      emit structureUpdated(s);
+      break;
+  }
+
+  return;
+}
+/// @endcond
+
+
+// Doxygen skip:
+/// @cond
+void QueueManager::handleOptimizedStructure(Structure* s)
+{
+  {
+    QReadLocker locker(&s->lock());
+    if (s->getStatus() != Structure::Optimized)
+      return;
+
+    QString output;
+    output += QString(" %1 ").arg(s->getEnthalpyPerAtom(), 20, 'f', 12);
+    for (int i = 0; i < m_search->getObjectivesNum(); ++i) {
+      if (i < s->getStrucObjNumber())
+        output += QString(" %1 ").arg(s->getStrucObjValues(i), 20, 'f', 12);
+    }
+    // Constraint values are pass/fail (1/0), so a narrow field is enough.
+    for (int i = 0; i < m_search->getConstraintsNum(); ++i) {
+      if (i < s->getStrucConstraintNumber())
+        output += QString(" %1 ").arg(s->getStrucConstraintValues(i), 4, 'f', 0);
+    }
+    output += QString(" %1   FINAL_OBJECTIVES").arg(s->getTag(), 8);
+    Common::message(output + "\n");
+  }
+
+  stopJobAndRemoveFromRunning(s);
+
+  emit structureFinished(s);
+}
+/// @endcond
+
+
+// Doxygen skip:
+/// @cond
+void QueueManager::handleStepOptimizedStructure(Structure* s)
+{
+  QWriteLocker locker(&s->lock());
+
+  // Validate assumptions
+  if (s->getStatus() != Structure::StepOptimized) {
+    return;
+  }
+
+  s->stopOptTimer();
+
+  QString err;
+  if (!m_search->checkStepOptimizedStructure(s, &err)) {
+    // Structure failed a post optimization step:
+    Common::warning(QString("Structure %1 failed a post-optimization step: %2")
+                     .arg(s->getTag())
+                     .arg(err));
+    s->setStatus(Structure::Killed);
+    locker.unlock();
+    emit structureUpdated(s);
+    return;
+  }
+
+  // update optstep and relaunch if necessary
+  if (s->getCurrentOptStep() + 1 <
+      static_cast<unsigned int>(m_search->getNumOptSteps())) {
+
+    Common::message(tr("Structure %1 completed opt step %2")
+                      .arg(s->getTag())
+                      .arg(s->getCurrentOptStep() + 1));
+
+    s->setCurrentOptStep(s->getCurrentOptStep() + 1);
+
+    // Update status
+    s->setStatus(Structure::WaitingForOptimization);
+    {
+      QWriteLocker runningLocker(m_runningTracker.rwLock());
+      m_runningTracker.append(s);
+    }
+    locker.unlock();
+    emit structureUpdated(s);
+    addStructureToSubmissionQueue(s);
+    return;
+  }
+  // Otherwise, it's done
+  else {
+    s->setStatus(Structure::Postprocessing);
+    locker.unlock();
+    runHandler(s, PostprocessingHandler);
+    return;
+  }
+}
+/// @endcond
+
+void QueueManager::updateStructureObjectiveState(Structure* s)
+{
+  // Resume the queue manager's postprocessing flow after objective
+  // calculations finish. SearchBase only reports the objective outcome;
+  // QueueManager decides the next handler stage.
+
+  QWriteLocker locker(&s->lock());
+
+  if (s->getStatus() != Structure::ObjectiveCalculation ||
+      s->getStrucObjState() == Structure::Os_NotCalculated)
+    return;
+
+  s->setStatus(Structure::Postprocessing);
+  locker.unlock();
+  runHandler(s, PostprocessingHandler);
+}
+
+void QueueManager::updateStructureConstraintState(Structure* s)
+{
+  // Resume postprocessing after constrained-search calculations finish.
+
+  QWriteLocker locker(&s->lock());
+
+  if (s->getStatus() != Structure::ConstraintCalculation ||
+      s->getStrucConstraintState() == Structure::Cs_NotCalculated)
+    return;
+
+  s->setStatus(Structure::Postprocessing);
+  locker.unlock();
+  runHandler(s, PostprocessingHandler);
+}
+
+
+// Doxygen skip:
+/// @cond
+void QueueManager::handlePostprocessingStructure(Structure* s)
+{
+  QWriteLocker locker(&s->lock());
+
+  if (s->getStatus() != Structure::Postprocessing)
+    return;
+
+  if (m_search->getConstraintsNum() > 0) {
+    if (s->getStrucConstraintState() == Structure::Cs_NotCalculated) {
+      s->resetStrucConstraint();
+      s->setStatus(Structure::ConstraintCalculation);
+      locker.unlock();
+      emit readyForConstraintCalculations(s);
+      return;
+    }
+
+    if (s->getStrucConstraintState() == Structure::Cs_Dismiss) {
+      s->setStatus(Structure::Dismissed);
+      locker.unlock();
+      runHandler(s, ObjectiveDismissHandler);
+      return;
+    }
+
+    if (s->getStrucConstraintState() == Structure::Cs_Fail) {
+      s->setStatus(Structure::ConsFailed);
+      locker.unlock();
+      runHandler(s, ObjectiveFailHandler);
+      return;
+    }
+  }
+
+  if (m_search->hasExternalObjectiveCalculations()) {
+    if (s->getStrucObjState() == Structure::Os_NotCalculated) {
+      s->resetStrucObj();
+      s->setStatus(Structure::ObjectiveCalculation);
+      locker.unlock();
+      emit readyForObjectiveCalculations(s);
+      return;
+    }
+
+    if (s->getStrucObjState() == Structure::Os_Fail) {
+      s->setStatus(Structure::ObjcFailed);
+      locker.unlock();
+      runHandler(s, ObjectiveFailHandler);
+      return;
+    }
+
+    if (s->getStrucObjState() == Structure::Os_Dismiss) {
+      s->setStatus(Structure::Dismissed);
+      locker.unlock();
+      runHandler(s, ObjectiveDismissHandler);
+      return;
+    }
+  }
+
+  Common::message(tr("Structure %1 is optimized!").arg(s->getTag()));
+
+  s->setStatus(Structure::Optimized);
+  locker.unlock();
+  runHandler(s, OptimizedHandler);
+}
+/// @endcond
+
+
+// Doxygen skip:
+/// @cond
+void QueueManager::handleFailObjectiveStructure(Structure* s)
+{
+  QWriteLocker locker(&s->lock());
+
+  // Revalidate assumptions
+  if (!Structure::isFailedFinalState(s->getStatus()))
+    return;
+
+  Common::error(tr("Postprocessing Fail (%1): removing the structure %2 ")
+      .arg(objectiveOrConstraintFailureState(s)).arg(s->getTag()));
+
+  Structure::State status = s->getStatus();
+  if (!Structure::isFailedFinalState(status))
+    status = postprocessingFailureStatus(s);
+  s->setStatus(status);
+
+  // Release the structure lock before stopping the job: stopJob() may make
+  // blocking invokes into the QM thread, which takes per-structure locks.
+  locker.unlock();
+  stopJobAndRemoveFromRunning(s);
+  emit structureKilled(s);
+}
+/// @endcond
+
+
+// Doxygen skip:
+/// @cond
+void QueueManager::handleDismissObjectiveStructure(Structure* s)
+{
+  QWriteLocker locker(&s->lock());
+
+  // Revalidate assumptions
+  if (s->getStatus() != Structure::Dismissed)
+    return;
+
+  if (m_search->isConstraintsReDo() && s->getStrucConstraintFailCt() == 0)
+  {
+
+    if (m_search->isVerbose()) {
+      QString outstr;
+      outstr = QString("   Redo struc %1 with %2 ( action = %3 ) !")
+          .arg(s->getTag(), 8)
+          .arg(objectiveOrConstraintDismissState(s))
+          .arg(static_cast<int>(m_search->getFailAction()), 3);
+      Common::message(outstr);
+    }
+
+    // Update structure objective info; for the record, and to
+    //   not repeat this step (we do this once)
+    s->setStrucConstraintFailCt(s->getStrucConstraintFailCt()+1);
+    // save info to history; as it might be recalculated!
+    s->updateAndAddObjectivesToHistory(s);
+    if (SearchBase::FailActions(m_search->getFailAction()) == SearchBase::FA_Randomize) {
+      locker.unlock();
+      replaceStructureForRestart(
+        s, SearchBase::FA_Randomize, objectiveOrConstraintDismissRedoReason(s),
+        Structure::Dismissed, tr("Structure %1 could not be replaced after objective dismissal."));
+      return;
+    } else if (SearchBase::FailActions(m_search->getFailAction()) == SearchBase::FA_NewOffspring) {
+      locker.unlock();
+      replaceStructureForRestart(
+        s, SearchBase::FA_NewOffspring, objectiveOrConstraintDismissRedoReason(s),
+        Structure::Dismissed,
+        tr("Structure %1 could not be replaced with offspring after objective dismissal."));
+      return;
+    }
+  }
+
+  // Except than the above cases; we just dismiss the structure
+  /*
+  Common::warning(tr("Postprocessing Dismiss (%1): removing the structure %2 ")
+      .arg(objectiveOrConstraintDismissState(s)).arg(s->getTag()));
+  */
+
+  s->setStatus(Structure::Dismissed);
+
+  // Release the structure lock before stopping the job: stopJob() may make
+  // blocking invokes into the QM thread, which takes per-structure locks.
+  locker.unlock();
+  stopJobAndRemoveFromRunning(s);
+  emit structureKilled(s);
+}
+/// @endcond
+
+
+
+
+
+// Doxygen skip:
+/// @cond
+void QueueManager::handleErrorStructure(Structure* s)
+{
+  if (s->getStatus() != Structure::Error) {
+    return;
+  }
+
+  Common::warning(tr("Structure %1 failed").arg(s->getTag()));
+
+  stopJob(s);
+
+  // Lock for writing
+  QWriteLocker locker(&s->lock());
+
+  s->addFailure();
+
+  // If the number of failures has exceed the limit, take
+  // appropriate action
+  if (s->getFailCount() >= m_search->getFailLimit()) {
+    switch (SearchBase::FailActions(m_search->getFailAction())) {
+      case SearchBase::FA_DoNothing:
+      default:
+        // resubmit job
+        s->setStatus(Structure::Restart);
+        emit structureUpdated(s);
+        return;
+      case SearchBase::FA_KillIt:
+        locker.unlock();
+        // This will emit structureKilled, which is then re-emitted as structureUpdated.
+        killStructure(s);
+        return;
+      case SearchBase::FA_Randomize:
+        locker.unlock();
+        replaceStructureForRestart(s, SearchBase::FA_Randomize, tr("failures: random"),
+          Structure::Killed, tr("Structure %1 could not be replaced after failure."));
+        return;
+      case SearchBase::FA_NewOffspring:
+        locker.unlock();
+        replaceStructureForRestart(s, SearchBase::FA_NewOffspring, tr("failures: offspring"),
+          Structure::Killed,
+          tr("Structure %1 could not be replaced with offspring after failure."));
+        return;
+    }
+  }
+  // Resubmit job if failure limit hasn't been reached
+  else {
+    s->setStatus(Structure::Restart);
+    emit structureUpdated(s);
+    return;
+  }
+}
+/// @endcond
+
+void QueueManager::replaceStructureForRestart(Structure* s, int action, const QString& reason,
+  int failureState, const QString& failureMessage)
+{
+  {
+    QWriteLocker replacementLocker(&s->lock());
+    s->setStatus(Structure::Empty);
+  }
+
+  bool replacementSucceeded = false;
+  if (action == SearchBase::FA_Randomize) {
+    replacementSucceeded = (m_search->replaceWithRandom(s, reason) != nullptr);
+  } else if (action == SearchBase::FA_NewOffspring) {
+    replacementSucceeded = (m_search->replaceWithOffspring(s, reason) != nullptr);
+  }
+
+  if (!replacementSucceeded) {
+    Common::warning(failureMessage.arg(s->getTag()));
+    QWriteLocker replacementLocker(&s->lock());
+    s->setStatus(static_cast<Structure::State>(failureState));
+    replacementLocker.unlock();
+    // structureKilled is re-emitted as structureUpdated.
+    emit structureKilled(s);
+    return;
+  }
+
+  {
+    QWriteLocker replacementLocker(&s->lock());
+    s->setStatus(Structure::Restart);
+  }
+  emit structureUpdated(s);
+}
+
+
+// Doxygen skip:
+/// @cond
+void QueueManager::handleSubmittedStructure(Structure* s)
+{
+  if (s->getStatus() != Structure::Submitted) {
+    return;
+  }
+
+  switch (m_search->queueInterface(s->getCurrentOptStep())->getStatus(s)) {
+    case QueueInterface::Running:
+    case QueueInterface::Queued:
+    case QueueInterface::Success:
+    case QueueInterface::Started:
+      // Update the structure as "InProcess"
+      {
+        QWriteLocker structLocker(&s->lock());
+        s->setStatus(Structure::InProcess);
+      }
+      emit structureUpdated(s);
+      break;
+    case QueueInterface::Error:
+      {
+        QWriteLocker structLocker(&s->lock());
+        s->setStatus(Structure::Restart);
+      }
+      emit structureUpdated(s);
+      break;
+    case QueueInterface::CommunicationError:
+    case QueueInterface::Unknown:
+    case QueueInterface::Pending:
+    default:
+      // nothing to do but wait
+      break;
+  }
+}
+/// @endcond
+
+
+// Doxygen skip:
+/// @cond
+void QueueManager::handleKilledStructure(Structure* s)
+{
+  // Removed structures end up here, too; see handleRemovedStructure below.
+  if (!s->isKilledOrRemovedState()) {
+    return;
+  }
+
+  stopJobAndRemoveFromRunning(s);
+}
+/// @endcond
+
+
+
+// Doxygen skip:
+/// @cond
+void QueueManager::handleRestartStructure(Structure* s)
+{
+  if (s->getStatus() != Structure::Restart) {
+    return;
+  }
+
+  stopJob(s);
+
+  addStructureToSubmissionQueue(s);
+}
+
+void QueueManager::updateStructure(Structure* s)
+{
+  Common::ScopedTimer _timer("QueueManager::updateStructure");
+  {
+    QWriteLocker structLocker(&s->lock());
+    s->stopOptTimer();
+    s->resetFailCount();
+    s->setStatus(Structure::Updating);
+  }
+  if (!m_search->optimizer(s->getCurrentOptStep())->update(s)) {
+    QWriteLocker structLocker(&s->lock());
+    s->setStatus(Structure::Error);
+    structLocker.unlock();
+    emit structureUpdated(s);
+    return;
+  }
+  {
+    QWriteLocker structLocker(&s->lock());
+    s->setStatus(Structure::StepOptimized);
+  }
+  emit structureUpdated(s);
+  return;
+}
+/// @endcond
+
+void QueueManager::killStructure(Structure* s)
+{
+  // Don't kill the same structure twice at the same time.
+  if (!m_runningHandlers.tryStart(s, KillRequestHandler))
+    return;
+
+  // A running job becomes Killed; an optimized one becomes Removed.
+  {
+    QWriteLocker structLocker(&s->lock());
+    s->stopOptTimer();
+    s->setStatus(s->getStatus() != Structure::Optimized ? Structure::Killed : Structure::Removed);
+  }
+  stopJob(s);
+  emit structureKilled(s);
+
+  m_runningHandlers.finish(s, KillRequestHandler);
+}
+
+void QueueManager::addStructureToSubmissionQueue(Structure* s, int optStep)
+{
+  if (!m_runningHandlers.tryStart(s, SubmissionHandler))
+    return;
+
+  (void)QtConcurrent::run([this, s, optStep]() {
+    this->handleSubmissionStructure(s, optStep);
+    m_runningHandlers.finish(s, SubmissionHandler);
+  });
+}
+
+// Doxygen skip:
+/// @cond
+void QueueManager::handleSubmissionStructure(Structure* s, int optStep)
+{
+  // Update structure
+  {
+    QWriteLocker structLocker(&s->lock());
+    if (s->getStatus() != Structure::Optimized) {
+      s->setStatus(Structure::WaitingForOptimization);
+      if (optStep != -1) {
+        s->setCurrentOptStep(optStep);
+      }
+    }
+  }
+
+  // Perform writing
+  if (!m_search->queueInterface(s->getCurrentOptStep())->writeInputFiles(s)) {
+    QWriteLocker structLocker(&s->lock());
+    s->setStatus(Structure::Error);
+    structLocker.unlock();
+    emit structureUpdated(s);
+    return;
+  }
+
+  {
+    QWriteLocker jobStartLocker(m_jobStartTracker.rwLock());
+    m_jobStartTracker.append(s);
+  }
+  {
+    QWriteLocker runningLocker(m_runningTracker.rwLock());
+    m_runningTracker.append(s);
+  }
+
+  emit structureUpdated(s);
+}
+/// @endcond
+
+void QueueManager::startJob(Structure* s)
+{
+  Common::ScopedTimer _timer("QueueManager::startJob");
+  if (!m_search->queueInterface(s->getCurrentOptStep())->startJob(s)) {
+    QWriteLocker structLocker(&s->lock());
+    Common::error(tr("%1: job did not start successfully for structure %2 opt step %3.")
+                     .arg(__func__)
+                     .arg(s->getTag())
+                     .arg(s->getCurrentOptStep() + 1));
+    s->setStatus(Structure::Error);
+    return;
+  }
+
+  {
+    QWriteLocker structLocker(&s->lock());
+    s->setStatus(Structure::Submitted);
+  }
+
+  {
+    QReadLocker locker(&s->lock());
+    Common::message(tr("Structure %1 has been submitted opt step %2")
+                      .arg(s->getTag())
+                      .arg(s->getCurrentOptStep() + 1));
+  }
+
+  emit structureSubmitted(s);
+}
+
+void QueueManager::stopJob(Structure* s)
+{
+  m_search->queueInterface(s->getCurrentOptStep())->stopJob(s);
+}
+
+void QueueManager::stopJobAndRemoveFromRunning(Structure* s)
+{
+  stopJob(s);
+  QWriteLocker runningLocker(m_runningTracker.rwLock());
+  m_runningTracker.remove(s);
+}
+
+QList<Structure*> QueueManager::getAllRunningStructures()
+{
+  QReadLocker runningLocker(m_runningTracker.rwLock());
+  QReadLocker newStructLocker(m_newStructureTracker.rwLock());
+  QList<Structure*> list;
+  appendTrackerSnapshot(list, &m_runningTracker);
+  appendTrackerSnapshot(list, &m_newStructureTracker);
+  return list;
+}
+
+QList<Structure*> QueueManager::getAllOptimizedStructures()
+{
+  QList<Structure*> list;
+  QReadLocker trackerLocker(m_tracker->rwLock());
+  for (auto* s : *m_tracker->list()) {
+    if (!s)
+      continue;
+
+    QReadLocker structLocker(&s->lock());
+    if (s->getStatus() == Structure::Optimized)
+      list.append(s);
+  }
+  return list;
+}
+
+QList<Structure*> QueueManager::getAllParentPoolStructures()
+{
+  QList<Structure*> list;
+
+  QReadLocker trackerLocker(m_tracker->rwLock());
+  for (auto* s : *m_tracker->list()) {
+    if (!s)
+      continue;
+
+    QReadLocker structLocker(&s->lock());
+
+    // Parent-pool structures must be fully optimized and have a complete
+    // generic objective table ready for SearchBase selection logic.
+    if (s->getStatus() == Structure::Optimized &&
+        !s->isSimilar() &&
+        m_search->hasCompleteObjectiveValues(*s))
+      list.append(s);
+  }
+  return list;
+}
+
+QList<Structure*> QueueManager::getAllSimilarStructures()
+{
+  QList<Structure*> list;
+  QReadLocker trackerLocker(m_tracker->rwLock());
+  for (auto* s : *m_tracker->list()) {
+    if (!s)
+      continue;
+
+    QReadLocker structLocker(&s->lock());
+    if (s->isSimilar())
+      list.append(s);
+  }
+  return list;
+}
+
+QList<Structure*> QueueManager::getAllStructures()
+{
+  QReadLocker trackerLocker(m_tracker->rwLock());
+  QReadLocker newStructLocker(m_newStructureTracker.rwLock());
+  QList<Structure*> list;
+  appendTrackerSnapshot(list, m_tracker);
+  appendTrackerSnapshot(list, &m_newStructureTracker);
+  return list;
+}
+
+QList<Structure*> QueueManager::lockForNaming()
+{
+  m_namingMutex.lock();
+  m_tracker->lockForRead();
+  m_newStructureTracker.lockForRead();
+  QList<Structure*> list;
+  appendTrackerSnapshot(list, m_tracker);
+  appendTrackerSnapshot(list, &m_newStructureTracker);
+
+  return list;
+}
+
+void QueueManager::addNewStructure(Structure* s, uint generation, const QString& parents)
+{
+  if (!s) {
+    structureGenerationFailed();
+    return;
+  }
+
+  QList<Structure*> allStructures = lockForNaming();
+  const uint id = nextIdForGeneration(generation, allStructures);
+
+  QWriteLocker locker(&s->lock());
+  s->setIDNumber(id);
+  s->setGeneration(generation);
+  s->setParents(parents);
+
+  const QString dirTag = s->getDirectoryTag();
+  const QString locpath = Common::localPath(m_search->getLocWorkDir(), dirTag);
+  const QString rempath = Common::remotePath(m_search->getRemWorkDir(), dirTag);
+
+  QDir dir(locpath);
+  if (!dir.exists() && !dir.mkpath(locpath)) {
+    Common::error(QString("%1: cannot write to path: %2")
+                    .arg(__func__)
+                    .arg(locpath));
+    s->setStatus(Structure::Error);
+    locker.unlock();
+    if (!m_search->isSessionStarting())
+      structureGenerationFailed();
+    m_newStructureTracker.unlock();
+    m_tracker->unlock();
+    m_namingMutex.unlock();
+    delete s;
+    return;
+  }
+
+  s->moveToThread(m_thread);
+  s->setupConnections();
+  s->setLocpath(locpath);
+  s->setRempath(rempath);
+  s->setCurrentOptStep(0);
+  locker.unlock();
+
+  unlockForNaming(s);
+}
+
+uint QueueManager::nextIdForGeneration(uint generation, const QList<Structure*>& allStructures)
+{
+  auto it = m_nextIdByGeneration.find(generation);
+  if (it == m_nextIdByGeneration.end()) {
+    uint nextId = 1;
+    for (auto* structure : allStructures) {
+      if (!structure)
+        continue;
+
+      QReadLocker locker(&structure->lock());
+      if (structure->getGeneration() == generation && structure->getIDNumber() >= nextId) {
+        nextId = structure->getIDNumber() + 1;
+      }
+    }
+    it = m_nextIdByGeneration.insert(generation, nextId);
+  }
+
+  const uint id = it.value();
+  it.value() = id + 1;
+  return id;
+}
+
+void QueueManager::unlockForNaming(Structure* s)
+{
+  m_newStructureTracker.unlock();
+  if (!s) {
+    m_tracker->unlock();
+    m_namingMutex.unlock();
+    return;
+  }
+
+  // Discard structure if we're shutting down
+  if (m_isDestroying.load()) {
+    decrementRequestedStructures();
+    m_tracker->unlock();
+    m_namingMutex.unlock();
+    Tracker::deleteStructure(s);
+    return;
+  }
+
+  if (!m_search->isSessionStarting()) {
+    decrementRequestedStructures();
+  }
+
+  // Append to tracker after decrementing
+  // m_requestedStructures. This keeps behavior predictable during
+  // session initialization.
+  {
+    QWriteLocker wl(m_newStructureTracker.rwLock());
+    // the Tracker keeps this structure from here on
+    m_newStructureTracker.append(s);
+
+    {
+      QtCompat::MutexLocker requestedLocker(&m_destroyMutex);
+      Q_ASSERT_X(m_requestedStructures >= 0, Q_FUNC_INFO,
+                 "The requested structures counter has become negative.");
+    }
+
+    Common::message(QString("New structure accepted (%1)").arg(s->getTag()));
+  }
+  m_tracker->unlock();
+  m_namingMutex.unlock();
+
+  // Make sure shutdown waits for this naming task.
+  if (m_runningHandlers.tryStart(s, NamingHandler)) {
+    (void)QtConcurrent::run([this, s]() {
+      this->unlockForNaming_();
+      m_runningHandlers.finish(s, NamingHandler);
+    });
+  }
+}
+
+void QueueManager::structureGenerationFailed()
+{
+  decrementRequestedStructures();
+}
+
+void QueueManager::decrementRequestedStructures()
+{
+  QtCompat::MutexLocker requestedLocker(&m_destroyMutex);
+  if (m_requestedStructures > 0) {
+    --m_requestedStructures;
+  } else if (!m_isDestroying.load()) {
+    Common::warning(QString("%1: structure request counter is already zero.")
+                     .arg(__func__));
+  }
+  m_destroyWait.wakeAll();
+}
+
+// Doxygen skip:
+/// @cond
+void QueueManager::unlockForNaming_()
+{
+  Structure* s;
+  {
+    QWriteLocker trackerLocker(m_tracker->rwLock());
+    QWriteLocker newStructLocker(m_newStructureTracker.rwLock());
+    if (!m_newStructureTracker.popFirst(s)) {
+      return;
+    }
+
+    // Update structure
+    {
+      QWriteLocker structLocker(&s->lock());
+      if (s->getStatus() != Structure::Optimized)
+        s->setStatus(Structure::WaitingForOptimization);
+    }
+
+    m_tracker->append(s);
+  }
+
+  if (s->getStatus() != Structure::Optimized)
+    emit structureStarted(s);
+  else if (s->getStatus() == Structure::Optimized)
+    emit structureFinished(s);
+}
+/// @endcond
+
+void QueueManager::appendToJobStartTracker(Structure* s)
+{
+  QWriteLocker jobStartLocker(m_jobStartTracker.rwLock());
+  m_jobStartTracker.append(s);
+}
+
+} // end namespace Search

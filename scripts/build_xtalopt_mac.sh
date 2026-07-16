@@ -1,7 +1,8 @@
 #!/bin/bash
+set -e
 
-# Script to build XtalOpt on a linux system, given that all
-#   requirements already installed.
+# Script to build the XtalOpt GUI on a macOS system, given that all
+#   requirements are already installed (e.g. via homebrew: qt, qwt, libssh).
 # It is assumed that this is run in "xtalopt-source"/build
 
 # *********************************************************
@@ -9,30 +10,27 @@
 # *********************************************************
 
 insdir=$PWD/../xtalopt_macos
-qt5dir=/opt/homebrew/opt/qt@5
-qwtdir=/opt/homebrew/opt/qwt-qt5
+qtdir=/opt/homebrew/opt/qt
+qwtdir=/opt/homebrew/opt/qwt
 libssh=/opt/homebrew/opt/libssh
 buildt=Release
 instal=ON
 hasssh=ON
-clissh=ON
-hasdbg=OFF
 
 # *********************************************************
 # **** Configure the build                             ****
 # *********************************************************
 
-cmake -DCMAKE_PREFIX_PATH=$qt5dir/lib/cmake/Qt5 \
+cmake -DCMAKE_PREFIX_PATH=$qtdir \
       -DQWT_LIBRARY=$qwtdir/lib/qwt.framework/qwt \
       -DQWT_INCLUDE_DIR=$qwtdir/lib/qwt.framework/Headers \
+      -DBUILD_XTALOPT_GUI=ON \
       -DBUILD_INDEPENDENT_PACKAGE=$instal \
-      -DINSTALL_DEPENDENCIES=$instal \
+      -DCMAKE_BUILD_TYPE=$buildt \
       -DCMAKE_INSTALL_PREFIX=$insdir \
       -DLIBSSH_INCLUDE_DIRS=$libssh/include \
       -DLIBSSH_LIBRARIES=$libssh/lib/libssh.dylib \
-      -DENABLE_SSH=$hasssh \
-      -DUSE_CLI_SSH=$clissh \
-      -DXTALOPT_DEBUG=$hasdbg \
+      -DBUILD_WITH_LIBSSH=$hasssh \
       ..
 
 # *********************************************************

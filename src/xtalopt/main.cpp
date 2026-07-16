@@ -1,7 +1,8 @@
 /**********************************************************************
-  main.cpp - The main() function to be used by XtalOpt 11.0 and beyond.
+  main - The main() function to be used by XtalOpt
 
   Copyright (C) 2016-2017 by Patrick S. Avery
+  Copyright (C) 2026 Samad Hajinazar
 
   This source code is released under the New BSD License, (the "License").
 
@@ -10,208 +11,523 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-
  ***********************************************************************/
 
-#include <QApplication>
-#include <QCommandLineParser>
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QString>
+#include <QStringList>
+#include <QTextStream>
 
-#include <globalsearch/utilities/makeunique.h>
-
-#include <xtalopt/cliOptions.h>
-#include <xtalopt/ui/dialog.h>
+#include <search/cliinterface.h>
+#include <common/compatibility/platform_defs.h>
+#include <common/output.h>
+#include <common/makeunique.h>
+#include <xtalopt/structuretool.h>
 #include <xtalopt/xtalopt.h>
 
-int main(int argc, char* argv[])
+extern "C" {
+#include <args.h>
+}
+
+#ifdef BUILD_XTALOPT_GUI
+#include <QApplication>
+#include <QMessageBox>
+#include <xtalopt/gui/dialog.h>
+#endif
+
+#include <memory>
+
+namespace XtalOpt {
+
+namespace {
+
+// We will process and parse the "launch options" first to avoid complications
+//   with Qt construction.
+// The followings control how the executable starts (help/version, CLI vs GUI,
+//   target directory, logging).
+enum LaunchMode
 {
-  // Unfortunately, it is becoming more and more difficult to run
-  // QCommandLineParser without having a QApplication first. For us,
-  // it is ideal to run QCommandLineParser first because we want to
-  // determine whether we are using CLI mode or not (which will
-  // determine whether we instantiate a QApplication or
-  // QCoreApplication)
+  LaunchHelp,
+  LaunchVersion,
+  LaunchKeywords,
+  LaunchInputKeywords,
+  LaunchConvert,
+  LaunchStructureTool,
+  LaunchCliStart,
+  LaunchCliResume,
+  LaunchGui,
+  LaunchPlot
+};
 
-  // Because we run into great difficulties, let's examine the arguments
-  // manually and determine whether or not we are in CLI mode first, and
-  // then perform the rest of the QCommandLineParser actions
-  const char* cliModeStr = "--cli";
-  const char* cliResumeStr = "--resume";
+struct LaunchOptions
+{
+  LaunchMode mode = LaunchGui;
+  bool saveLog = false;
+  QString inputFile = "xtalopt.in";
+  QString dataDir;
+  QString error;
+};
 
-  bool cliMode = false;
-  bool cliResume = false;
-  for (int i = 0; i < argc; ++i) {
-    const QString& curArg(argv[i]);
-    if (curArg == cliModeStr) {
-      cliMode = true;
-    }
-    else if (curArg == cliResumeStr) {
-      cliResume = true;
-    }
+bool isHelpInvocation(int argc, char* argv[])
+{
+  for (int i = 1; i < argc; ++i) {
+    const QString arg = QString::fromLocal8Bit(argv[i]);
+    if (arg == "--help" || arg.startsWith("--help="))
+      return true;
+    if (arg.startsWith("-") && !arg.startsWith("--") && arg.contains('h'))
+      return true;
+  }
+  return false;
+}
+
+bool parseLaunchOptions(int argc, char* argv[], LaunchOptions& options)
+{
+  if (isHelpInvocation(argc, argv)) {
+    options.mode = LaunchHelp;
+    return true;
   }
 
-  // If we are running in CLI mode, we want a QCoreApplication
-  // If we are running in GUI mode, we want a QApplication
-  std::unique_ptr<QCoreApplication> app =
-    (cliMode || cliResume) ? make_unique<QCoreApplication>(argc, argv)
-                           : make_unique<QApplication>(argc, argv);
+  if (StructureTool::isInvocation(argc, argv)) {
+    options.mode = LaunchStructureTool;
+    return true;
+  }
 
-  // Now that we have the QApplication, we can proceed with the rest
-  // of the command line options.
+  std::unique_ptr<ArgParser, void (*)(ArgParser*)> parser(ap_new_parser(), &ap_free);
+  if (!parser) {
+    options.error = "Failed to initialize command-line parser.";
+    return false;
+  }
 
-  // Set up groups for QSettings
+  ap_set_exit_on_error(parser.get(), false);
+
+  // The search start and input file flags were changed as of XtalOpt v15.
+  // For now, we keep "legacy aliases" for backward compatibility.
+  ap_add_flag(parser.get(), "start s cli");
+  ap_add_flag(parser.get(), "resume r");
+  ap_add_flag(parser.get(), "plot p");
+  ap_add_flag(parser.get(), "keywords k");
+  ap_add_flag(parser.get(), "xtalopt-flags x");
+  ap_add_flag(parser.get(), "convert c");
+  ap_add_flag(parser.get(), "log l");
+  ap_add_flag(parser.get(), "version v");
+  ap_add_str_opt(parser.get(), "input i input-file", "xtalopt.in");
+  ap_add_str_opt(parser.get(), "dir d", "");
+
+  if (!ap_parse(parser.get(), argc, argv)) {
+    const char* error = ap_get_parse_error(parser.get());
+    options.error = error && error[0] != '\0'
+                      ? QString::fromLocal8Bit(error)
+                      : "Failed to parse command-line options.";
+    return false;
+  }
+
+  if (ap_has_args(parser.get())) {
+    options.error = QString("Unknown option: %1")
+                      .arg(QString::fromLocal8Bit(ap_get_arg_at_index(parser.get(), 0)));
+    return false;
+  }
+
+  const bool cliStart = ap_found(parser.get(), "start");
+  const bool cliResume = ap_found(parser.get(), "resume");
+  const bool plotMode = ap_found(parser.get(), "plot");
+  const bool showKeywords = ap_found(parser.get(), "keywords");
+  const bool showInputKeywords = ap_found(parser.get(), "xtalopt-flags");
+  const bool convertMode = ap_found(parser.get(), "convert");
+  const bool showVersion = ap_found(parser.get(), "version");
+  options.saveLog = ap_found(parser.get(), "log");
+  options.inputFile = QString::fromLocal8Bit(ap_get_str_value(parser.get(), "input"));
+  options.dataDir = QString::fromLocal8Bit(ap_get_str_value(parser.get(), "dir"));
+
+  if (showVersion) {
+    options.mode = LaunchVersion;
+    return true;
+  }
+  if (showKeywords) {
+    options.mode = LaunchKeywords;
+    return true;
+  }
+  if (showInputKeywords) {
+    options.mode = LaunchInputKeywords;
+    return true;
+  }
+  if (convertMode) {
+    if (cliStart || cliResume || plotMode) {
+      options.error = "You cannot combine --convert with --start, --resume, "
+                      "or --plot.";
+      return false;
+    }
+    // Convert needs an explicit file; no fallback to the xtalopt.in default.
+    if (!ap_found(parser.get(), "input")) {
+      options.error = "--convert requires an input file: -i, --input <file>.";
+      return false;
+    }
+    options.mode = LaunchConvert;
+    return true;
+  }
+
+  if (cliStart && cliResume) {
+    options.error = "You cannot start and resume a CLI run at the same time.";
+    return false;
+  }
+
+  if (plotMode && cliStart) {
+    options.error = "You cannot use CLI mode and plot mode at the same time.";
+    return false;
+  }
+
+  if (plotMode && cliResume) {
+    options.error = "You cannot resume in CLI mode and use plot mode at "
+                    "the same time.";
+    return false;
+  }
+
+  if (plotMode && options.dataDir.isEmpty()) {
+    options.error = "To use plot mode, you must specify an XtalOpt results "
+                    "directory with --dir";
+    return false;
+  }
+
+  if (cliResume && options.dataDir.isEmpty()) {
+    options.error = "To resume an XtalOpt run in CLI mode, you must specify an "
+                    "XtalOpt results directory with --dir";
+    return false;
+  }
+
+#ifndef BUILD_XTALOPT_GUI
+  if (plotMode) {
+    options.error = "Plot mode is unavailable in this BUILD_XTALOPT_GUI=OFF build.";
+    return false;
+  }
+#endif
+
+  if (cliStart)
+    options.mode = LaunchCliStart;
+  else if (cliResume)
+    options.mode = LaunchCliResume;
+  else if (plotMode)
+    options.mode = LaunchPlot;
+#ifdef BUILD_XTALOPT_GUI
+  else
+    options.mode = LaunchGui;
+#else
+  else
+    options.mode = LaunchCliStart;
+#endif
+
+  return true;
+}
+
+bool installLogHandler(const LaunchOptions& options, QString& error)
+{
+  error.clear();
+  if (!options.saveLog)
+    return true;
+
+  if (options.dataDir.isEmpty()) {
+    error = "--log requires an existing XtalOpt results directory with --dir.";
+    return false;
+  }
+
+  QDir logDir(options.dataDir);
+  if (!logDir.exists()) {
+    error = QString("--log directory does not exist: %1")
+              .arg(options.dataDir);
+    return false;
+  }
+
+  const QString logFilename = logDir.absoluteFilePath("outlog_xtalopt.txt");
+  QFile initialLogFile(logFilename);
+  if (!initialLogFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    error = QString("Cannot write log file: %1").arg(logFilename);
+    return false;
+  }
+  initialLogFile.close();
+
+  Common::addOutputHandler([logFilename](Common::OutputLevel level, const QString& text) {
+    QFile file(logFilename);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
+      return;
+    QTextStream stream(&file);
+    Common::writeFormattedOutput(stream, level, text);
+  });
+  return true;
+}
+
+QString headerString()
+{
+  return QString("\n================================================\n")
+       + QString("                      XtalOpt")
+       + QString("\n Evolutionary Algorithm for Ground State Search\n")
+       + QString("\n Version %1").arg(XTALOPT_VER)
+       + QString("\n Zurek Group, University at Buffalo")
+       + QString("\n================================================\n")
+       + QString("\n");
+}
+
+QString buildSummary()
+{
+  QString buildType = "CLI binary";
+  QString summary = QString("Qt-%1").arg(QT_VER);
+#ifdef BUILD_XTALOPT_GUI
+  summary += QString(", Qwt-%1").arg(QWT_VER);
+  buildType = "CLI+GUI binary";
+#endif
+  summary += QString(", SSH-%1").arg(SSH_VER);
+  summary += QString(" (%1)").arg(buildType);
+  return summary;
+}
+
+void printHelp(const QString& argv0)
+{
+  const QString appName = QFileInfo(argv0).fileName();
+  QString text;
+  QTextStream out(&text);
+  out << "Build:   " << buildSummary() << "\n\n";
+  out << "Usage:   " << appName << " [options]\n\n";
+  out << "Options:\n";
+  out << "  -h, --help                          Print this help\n";
+  out << "  -v, --version                       Print version information\n";
+  out << "  -k, --keywords                      Print all available XtalOpt template keywords\n";
+  out << "  -x, --xtalopt-flags                 Print all xtalopt.in input keywords with defaults\n";
+  out << "  -c, --convert                       Convert an old CLI or state settings <file> to latest format as <file>.compat\n";
+  out << "  -s, --start                         Start an XtalOpt search in CLI\n";
+  out << "  -r, --resume                        Resume an XtalOpt search from <directory> in CLI\n";
+  out << "  -p, --plot                          Show a plot of a XtalOpt search saved at <directory> (requires CLI+GUI binary)\n";
+  out << "  -l, --log                           Save output to <directory>/outlog_xtalopt.txt\n";
+  out << "  -d, --dir <directory>               Directory for resuming search, plotting data, or saving log\n";
+  out << "  -i, --input <file>                  Input file for XtalOpt search in CLI (Default: xtalopt.in)\n";
+  out << "\n";
+  StructureTool::printHelp(out);
+  Common::message(text);
+}
+
+void printVersion()
+{
+  Common::message(QString("XtalOpt %1").arg(XTALOPT_VER));
+}
+
+bool startCliRun(XtalOpt& xtalopt, const QString& inputfile)
+{
+  // Set the run mode before any session work begins.
+  xtalopt.setRunMode(XtalOpt::RunModeCliStart);
+
+  if (!xtalopt.readInputFile(inputfile, false))
+    return false;
+
+  // Start the search.
+  return xtalopt.startSearch();
+}
+
+QString searchStateFileForDataDir(const QDir& dataDir)
+{
+  const QString stateFile = dataDir.filePath("xtalopt.state");
+  if (QFile::exists(stateFile))
+    return stateFile;
+
+  const QString backupStateFile = stateFile + ".old";
+  if (QFile::exists(backupStateFile))
+    return backupStateFile;
+
+  return QString();
+}
+
+bool resumeCliRun(XtalOpt& xtalopt, const QString& dataDir)
+{
+  xtalopt.setRunMode(XtalOpt::RunModeCliResume);
+  const QDir resultsDir(dataDir);
+  const QString stateFile = searchStateFileForDataDir(resultsDir);
+  if (stateFile.isEmpty()) {
+    Common::error(QString("No xtalopt.state file found in %1.").arg(dataDir));
+    Common::message("Please check your --dir option and try again.");
+    return false;
+  }
+
+  // The resumeSearch() also writes the CLI runtime options file on success.
+  return xtalopt.resumeSearch(stateFile);
+}
+
+#ifdef BUILD_XTALOPT_GUI
+void initializeGuiDialog(XtalOpt& xtalopt, std::unique_ptr<XtalOptDialog>& dialog)
+{
+  dialog = make_unique<XtalOptDialog>(nullptr, Qt::Window, true, &xtalopt);
+#if GS_WINDOWS
+  dialog->setStyleSheet("QWidget{font-size: 10pt;}");
+#else
+  dialog->setStyleSheet("QWidget{font-size: 12pt;}");
+#endif
+}
+
+bool showGui(XtalOpt& xtalopt, std::unique_ptr<XtalOptDialog>& dialog)
+{
+  // GUI mode: start or resume is decided later inside the dialog.
+  xtalopt.setRunMode(XtalOpt::RunModeGui);
+  initializeGuiDialog(xtalopt, dialog);
+  dialog->show();
+  return true;
+}
+
+bool startPlotRun(XtalOpt& xtalopt, std::unique_ptr<XtalOptDialog>& dialog, const QString& dataDir)
+{
+  xtalopt.setRunMode(XtalOpt::RunModeReadOnly);
+  initializeGuiDialog(xtalopt, dialog);
+
+  const QString stateFile = searchStateFileForDataDir(QDir(dataDir));
+  if (stateFile.isEmpty()) {
+    QMessageBox::critical(dialog.get(), "XtalOpt Plot",
+                          QString("No xtalopt.state file was found in:\n%1").arg(dataDir));
+    return false;
+  }
+
+  QString startupError;
+  const int outHandlerId = Common::addOutputHandler(
+    [&startupError](Common::OutputLevel level,
+                    const QString& text) {
+      if (level == Common::OutputLevel::Error)
+        startupError = text;
+    });
+  Common::message("Loading xtals for plotting...");
+  if (!xtalopt.resumeSearch(stateFile)) {
+    Common::removeOutputHandler(outHandlerId);
+    QMessageBox::critical(dialog.get(), "XtalOpt Plot", startupError.isEmpty()
+                            ? QString("Failed to load XtalOpt plot data from:\n%1").arg(dataDir)
+                            : startupError);
+    return false;
+  }
+  Common::removeOutputHandler(outHandlerId);
+
+  dialog->beginPlotOnlyMode();
+  return true;
+}
+#endif
+
+int runApplication(int argc, char* argv[], const LaunchOptions& options)
+{
+  // Set the Qt application and XtalOpt object; then start the requested mode:
+  //   CLI start/resume, GUI run, or GUI read-only plot.
+  std::unique_ptr<QCoreApplication> app;
+#ifdef BUILD_XTALOPT_GUI
+  const bool needsGuiApp = options.mode == LaunchGui || options.mode == LaunchPlot;
+  if (needsGuiApp) {
+    app.reset(make_unique<QApplication>(argc, argv).release());
+  } else
+#endif
+  {
+    app = make_unique<QCoreApplication>(argc, argv);
+  }
+
   QCoreApplication::setOrganizationName("XtalOpt");
   QCoreApplication::setOrganizationDomain("xtalopt.github.io");
   QCoreApplication::setApplicationName("XtalOpt");
   QCoreApplication::setApplicationVersion(XTALOPT_VER);
 
-  QCommandLineParser parser;
-  parser.setApplicationDescription("XtalOpt: an open-source multi-objective "
-                                   "evolutionary algorithm for crystal structure "
-                                   "prediction");
-  parser.addHelpOption();
-  parser.addVersionOption();
-
-  QCommandLineOption cliModeOption(
-    QStringList() << QString(cliModeStr).remove(0, 2), // Remove "--"
-    QCoreApplication::translate("main",
-                                "Use the command-line interface (CLI) mode."));
-  parser.addOption(cliModeOption);
-
-  QCommandLineOption cliResumeOption(
-    QStringList() << QString(cliResumeStr).remove(0, 2), // Remove "--"
-    QCoreApplication::translate("main", "Resume an XtalOpt run in CLI mode."));
-  parser.addOption(cliResumeOption);
-
-  QCommandLineOption inputFileOption(
-    QStringList() << "input-file",
-    QCoreApplication::translate("main", "Specify the input file for CLI mode."),
-    QCoreApplication::translate("main", "file"));
-  inputFileOption.setDefaultValue("xtalopt.in");
-  parser.addOption(inputFileOption);
-
-  QCommandLineOption plotModeOption(
-    QStringList() << "plot",
-    QCoreApplication::translate(
-      "main", "Show a plot of a specified XtalOpt directory."));
-  parser.addOption(plotModeOption);
-
-  QCommandLineOption dataDirOption(
-    QStringList() << "dir",
-    QCoreApplication::translate(
-      "main", "Specify the XtalOpt results directory to be used for a CLI "
-              "resume or a plot."),
-    QCoreApplication::translate("main", "directory"));
-  parser.addOption(dataDirOption);
-
-  // Make a QStringList of the arguments
-  QStringList args;
-  for (int i = 0; i < argc; ++i)
-    args << argv[i];
-
-  // Process the arguments
-  parser.process(args);
-
-  bool plotMode = parser.isSet(plotModeOption);
-
-  QString inputfile = parser.value(inputFileOption);
-  QString dataDir = parser.value(dataDirOption);
-
-  // Make sure we have valid options set...
-  if (plotMode && !parser.isSet(dataDirOption)) {
-    qDebug() << "To use plot mode, you must specify an XtalOpt results"
-             << "directory with --dir";
-    return 1;
+  if (options.mode == LaunchKeywords) {
+    XtalOpt xtalopt;
+    Common::message(xtalopt.getTemplateKeywordHelp());
+    return 0;
   }
 
-  if (cliResume && !parser.isSet(dataDirOption)) {
-    qDebug() << "To resume an XtalOpt run in CLI mode, you must specify an"
-             << "XtalOpt results directory with --dir";
-    return 1;
+  if (options.mode == LaunchInputKeywords) {
+    Common::message(Settings::keywordSummaryText());
+    return 0;
   }
 
-  if (plotMode && cliMode) {
-    qDebug() << "Error: you cannot use CLI mode and plot mode"
-             << "at the same time!";
-    return 1;
+  if (options.mode == LaunchConvert) {
+    XtalOpt xtalopt;
+    return xtalopt.convertFileToCurrent(options.inputFile) ? 0 : 1;
   }
 
-  if (plotMode && cliResume) {
-    qDebug() << "Error: you cannot resume in CLI mode and use plot mode"
-             << "at the same time!";
-    return 1;
-  }
-
-  // XtalOptDialog needs to be destroyed before XtalOpt gets destroyed. So
-  // the ordering here matters.
-  XtalOpt::XtalOpt xtalopt;
-  std::unique_ptr<XtalOpt::XtalOptDialog> d;
-
-  if (cliMode) {
-    xtalopt.setUsingGUI(false);
-
-    if (!XtalOpt::XtalOptCLIOptions::readOptions(inputfile, xtalopt))
-      return 1;
-    if (!xtalopt.startSearch())
-      return 1;
-  }
-  // We just want to generate a plot tab and display it...
-  else if (plotMode) {
-    d = std::move(
-      make_unique<XtalOpt::XtalOptDialog>(nullptr, Qt::Window, true, &xtalopt));
-    xtalopt.setDialog(d.get());
-    if (!xtalopt.plotDir(dataDir))
-      return 1;
-    d->beginPlotOnlyMode();
-  } else if (cliResume) {
-    xtalopt.setUsingGUI(false);
-
-    // Make sure the state file exists
-    if (!QDir(dataDir).exists("xtalopt.state")) {
-      qDebug() << "Error: no xtalopt.state file found in" << dataDir;
-      qDebug() << "Please check your --dir option and try again";
-      return 1;
-    }
-
-    // Try to load the state file
-    if (!xtalopt.load(QDir(dataDir).filePath("xtalopt.state")))
-      return 1;
-
-    // Warn the user if they need to change something to get XtalOpt to run
-    if (xtalopt.limitRunningJobs && xtalopt.runningJobLimit == 0) {
-      qDebug() << "Warning: the running job limit is set to zero. You can"
-               << "change this in the runtime options file in the local"
-               << "working directory";
-    }
-    if (xtalopt.contStructs == 0) {
-      qDebug() << "Warning: the continuous structure limit is set to zero. You"
-               << "can change this in the runtime options file in the local"
-               << "working directory";
-    }
-
-    // softExit is always set to false in resume
-    // Also, runtime file is always re-written at resume
-    //   This is basically to avoid issues with softExit flag
-    //   written to run-time file in the previous run.
-    xtalopt.m_softExit = false;
-    XtalOpt::XtalOptCLIOptions::writeInitialRuntimeFile(xtalopt);
-
-    // Emit that we are starting a session
-    emit xtalopt.sessionStarted();
-  }
-  // If we are using the GUI, show the dialog...
-  else {
-    d = std::move(
-      make_unique<XtalOpt::XtalOptDialog>(nullptr, Qt::Window, true, &xtalopt));
-    xtalopt.setDialog(d.get());
-// This is a kind of dirty hack: overwrite all GUI font sizes
-//   (to avoid some bizzare appearances in Windows OS, etc).
-#ifdef _WIN32
-    d->setStyleSheet("QWidget{font-size: 10pt;}");
-#else
-    d->setStyleSheet("QWidget{font-size: 12pt;}");
+  XtalOpt xtalopt;
+  // Install terminal prompts first; GUI construction replaces them later if needed.
+  Search::installTerminalInterface(xtalopt);
+#ifdef BUILD_XTALOPT_GUI
+  std::unique_ptr<XtalOptDialog> dialog;
 #endif
-    d->show();
+
+  switch (options.mode) {
+  case LaunchCliStart:
+    if (!startCliRun(xtalopt, options.inputFile))
+      return 1;
+    break;
+  case LaunchCliResume:
+    if (!resumeCliRun(xtalopt, options.dataDir))
+      return 1;
+    break;
+  case LaunchPlot:
+#ifdef BUILD_XTALOPT_GUI
+    if (!startPlotRun(xtalopt, dialog, options.dataDir))
+      return 1;
+#else
+    Common::error("GUI support is unavailable in this build.");
+    return 1;
+#endif
+    break;
+  case LaunchGui:
+#ifdef BUILD_XTALOPT_GUI
+    if (!showGui(xtalopt, dialog))
+      return 1;
+#else
+    Common::error("GUI support is unavailable in this build.");
+    return 1;
+#endif
+    break;
+  case LaunchHelp:
+  case LaunchVersion:
+  case LaunchKeywords:
+  case LaunchInputKeywords:
+  case LaunchConvert:
+  case LaunchStructureTool:
+    return 0;
   }
 
   return app->exec();
+}
+
+} // namespace
+
+} // namespace XtalOpt
+
+int main(int argc, char* argv[])
+{
+  using namespace XtalOpt;
+
+  LaunchOptions options;
+  QString startupError;
+  bool showHelpHint = false;
+  QString logError;
+
+  if (!parseLaunchOptions(argc, argv, options)) {
+    startupError = options.error;
+    showHelpHint = true;
+  }
+
+  if (startupError.isEmpty() && options.mode == LaunchStructureTool)
+    return StructureTool::run(argc, argv);
+
+  if (startupError.isEmpty() && options.mode != LaunchHelp && !installLogHandler(options, logError)) {
+    startupError = logError;
+  }
+
+  Common::message(headerString());
+
+  if (options.mode == LaunchHelp) {
+    printHelp(QString::fromLocal8Bit(argv[0]));
+    return 0;
+  }
+
+  if (!startupError.isEmpty()) {
+    Common::error(startupError);
+    if (showHelpHint)
+      Common::message("Use --help to see available options.");
+    return 1;
+  }
+
+  if (options.mode == LaunchVersion) {
+    printVersion();
+    return 0;
+  }
+
+  return runApplication(argc, argv, options);
 }

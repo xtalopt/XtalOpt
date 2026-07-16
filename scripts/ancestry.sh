@@ -22,7 +22,6 @@ dir="local"
 if [ $# -lt 1 ]; then echo Error: no input structure!; exit; fi
 str="$1"
 
-dir=""
 if [ $# -eq 2 ]; then
   dir="$2"
 elif [ -e xtalopt.in ]; then
