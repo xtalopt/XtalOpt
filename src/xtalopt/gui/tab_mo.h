@@ -50,6 +50,7 @@ public slots:
   void lockGUI() override;
   void updateGUI() override;
   bool updateObjectives();
+  void updateScriptCancel();
   void addObjectives();
   void removeObjectives();
   void updateObjectivesTable();

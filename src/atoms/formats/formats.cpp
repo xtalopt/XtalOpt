@@ -159,6 +159,10 @@ DetectedFormat detectFormatFromContents(const QString& filename)
   if (text.contains("outcell: Unit cell vectors") && text.contains("outcoor:"))
     return DetectedFormat("SIESTA", ReadOptimizerOutput);
 
+  if (text.contains("GENERAL UTILITY LATTICE PROGRAM") &&
+      text.contains("Final fractional coordinates of atoms"))
+    return DetectedFormat("GULP", ReadOptimizerOutput);
+
   if (lower.contains("&control") && lower.contains("&system") && lower.contains("atomic_species") &&
       lower.contains("atomic_positions"))
     return DetectedFormat("PWSCF", ReadStructure);

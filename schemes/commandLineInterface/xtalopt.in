@@ -149,7 +149,7 @@
       xtalcompToleranceAngle = 2.0
   # RDF
     # Similarity tolerance in [0, 1] range; suggested: 0.98
-      rdfTolerance = 0.0
+      rdfTolerance = 0.98
     # Bond length cutoff
       rdfCutoff = 6.0
     # Gaussian spread

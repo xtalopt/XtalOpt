@@ -684,7 +684,7 @@ bool printNormalizedRDF(Atoms::Geometry& structure, int bins, double cutoff, dou
   }
 
   const QStringList symbols = structure.getSymbols();
-  const std::vector<std::vector<std::vector<double> > > rdf = structure.getNormalizedRDF();
+  const std::vector<float>& rdf = structure.getNormalizedRDF();
   const double delta = cutoff / bins;
 
   QString header = QString("%1").arg("#distance", 14);
@@ -697,12 +697,15 @@ bool printNormalizedRDF(Atoms::Geometry& structure, int bins, double cutoff, dou
   }
   Common::message(header);
 
-  for (int bin = 0; bin < static_cast<int>(rdf.size()); ++bin) {
+  // RDF vector is bin-major; for each bin entries are ordered as natural
+  //   order of unique pairs.
+  size_t next = 0;
+  for (int bin = 0; bin < bins; ++bin) {
     QString line = QString("%1").arg(bin * delta, 14, 'f', 6);
     line += QString(" %1").arg(total[bin], 14, 'f', 6);
     for (int i = 0; i < symbols.size(); ++i) {
       for (int j = i; j < symbols.size(); ++j)
-        line += QString(" %1").arg(rdf[bin][i][j], 14, 'f', 6);
+        line += QString(" %1").arg(rdf[next++], 14, 'f', 6);
     }
     Common::message(line);
   }

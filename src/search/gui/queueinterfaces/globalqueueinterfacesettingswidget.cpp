@@ -48,8 +48,6 @@ GlobalQueueInterfaceSettingsWidget::GlobalQueueInterfaceSettingsWidget(
 
   connect(m_ui->cb_remoteQueue, &QCheckBox::toggled,
           this, [this]() { updateTransportWidgetsEnabled(); });
-  connect(m_ui->cb_cancelJobAfterTime, &QCheckBox::toggled,
-          this, [this]() { updateRuntimeOptionWidgetsEnabled(); });
   updateTransportWidgetsEnabled();
   updateRuntimeOptionWidgetsEnabled();
 }
@@ -75,9 +73,6 @@ void GlobalQueueInterfaceSettingsWidget::updateGUI(Search::SearchBase* opt)
     m_ui->combo_sshMethod->setCurrentIndex(sshIndex);
   m_ui->spin_interval->setValue(opt->queueRefreshInterval());
   m_ui->cb_cleanRemoteOnStop->setChecked(opt->cleanRemoteOnStop());
-  m_ui->cb_cancelJobAfterTime->setChecked(opt->cancelJobAfterTime());
-  m_ui->spin_hoursForCancelJobAfterTime->setValue(
-    opt->hoursForCancelJobAfterTime());
 
   updateTransportWidgetsEnabled();
   updateRuntimeOptionWidgetsEnabled();
@@ -108,16 +103,11 @@ void GlobalQueueInterfaceSettingsWidget::accept(Search::SearchBase* opt)
     opt->setCleanRemoteOnStop(m_ui->cb_cleanRemoteOnStop->isChecked());
   }
   opt->setQueueRefreshInterval(m_ui->spin_interval->value());
-  opt->setCancelJobAfterTime(m_ui->cb_cancelJobAfterTime->isChecked());
-  opt->setHoursForCancelJobAfterTime(m_ui->spin_hoursForCancelJobAfterTime->value());
 }
 
 void GlobalQueueInterfaceSettingsWidget::updateRuntimeOptionWidgetsEnabled()
 {
   m_ui->spin_interval->setEnabled(m_runtimeOptionsEditable);
-  m_ui->cb_cancelJobAfterTime->setEnabled(m_runtimeOptionsEditable);
-  m_ui->spin_hoursForCancelJobAfterTime->setEnabled(
-    m_runtimeOptionsEditable && m_ui->cb_cancelJobAfterTime->isChecked());
 }
 
 void GlobalQueueInterfaceSettingsWidget::updateTransportWidgetsEnabled()

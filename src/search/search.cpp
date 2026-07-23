@@ -16,6 +16,7 @@
 #include <search/search.h>
 
 #include <common/constants.h>
+#include <common/timing.h>
 #include <atoms/eleminfo.h>
 #include <atoms/formats/poscarformat.h>
 #include <atoms/formats/siestaformat.h>
@@ -92,7 +93,6 @@ SearchBase::SearchBase(QObject* parent)
     m_ssh(nullptr),
     m_tracker(std::unique_ptr<Tracker>(new Tracker())),
     m_queueThread(std::unique_ptr<QThread>(new QThread())),
-    m_objectiveThreadPool(std::unique_ptr<QThreadPool>(new QThreadPool())),
     m_queue(std::unique_ptr<QueueManager>(new QueueManager(m_queueThread.get(), this))),
     m_runtimeSettingsLock(QReadWriteLock::Recursive),
     m_optSteps([this](const std::string& n) { return createQueueInterface(n); },
@@ -113,7 +113,7 @@ SearchBase::SearchBase(QObject* parent)
     m_hardExit(false),
     m_remoteQueue(false),
     m_constraintsReDo(false),
-    m_optimizationType("basic"),
+    m_optimizationType(OT_Basic),
     m_tournamentSelection(true),
     m_restrictedPool(false),
     m_crowdingDistance(true),
@@ -130,17 +130,14 @@ SearchBase::SearchBase(QObject* parent)
 {
   m_sshMethod = defaultSshMethod();
   clearPromptHandlers();
-  m_objectiveThreadPool->setMaxThreadCount(qMax(2, QThread::idealThreadCount()));
 
   // Connections
   connect(tracker(), &Tracker::newStructureAdded,
           this, &SearchBase::reportStructureStateChanged);
   connect(queue(), &QueueManager::structureUpdated,
           this, &SearchBase::reportStructureStateChanged);
-  connect(queue(), &QueueManager::readyForObjectiveCalculations,
-          this,    &SearchBase::calculateObjectives, Qt::QueuedConnection);
-  connect(queue(), &QueueManager::readyForConstraintCalculations,
-          this,    &SearchBase::calculateConstraints, Qt::QueuedConnection);
+  connect(queue(), &QueueManager::structureUpdated,
+          this, &SearchBase::refreshParentPoolMembership, Qt::DirectConnection);
 
   // Register base template keywords
   registerKeyword("user1", [this](Structure*) -> QString { return getUser1(); },
@@ -499,8 +496,7 @@ SearchBase::~SearchBase()
   stopQueueThread();
 
   // Wait for objective work before destroying the structures.
-  if (m_objectiveThreadPool)
-    m_objectiveThreadPool->waitForDone(-1);
+  queue()->waitForScriptCalculations(-1);
 
   // Wait for save work before destroying the search.
   QThreadPool::globalInstance()->waitForDone(-1);
@@ -538,6 +534,12 @@ void SearchBase::reset()
   // Wait for structure work before deleting the structures.
   QThreadPool::globalInstance()->waitForDone(-1);
   tracker()->deleteAllStructures();
+
+  // Clear selection table with all structures gone
+  QWriteLocker tableLocker(&m_parentSelectionDataLock);
+  m_parentPool.clear();
+  m_parentSelectionData = ParentSelectionData();
+  ++m_selectionDataStamp;
 }
 
 QThread* SearchBase::restoredStructureThread() const
@@ -552,9 +554,7 @@ void SearchBase::addRestoredStructure(Structure* structure, bool queueWaitingFor
     m_tracker->append(structure);
   }
 
-  if (queueWaitingForOptimization && structure->getStatus() == Structure::WaitingForOptimization) {
-    m_queue->appendToJobStartTracker(structure);
-  }
+  m_queue->trackRestoredStructure(structure, queueWaitingForOptimization);
 }
 
 QString SearchBase::defaultSshMethod()
@@ -753,9 +753,8 @@ void SearchBase::performTheExit(int delay)
   }
 
   if (delay > 0) {
-    // Give running handlers the extra time to finish naturally.
-    if (m_objectiveThreadPool)
-      m_objectiveThreadPool->waitForDone(delay * 1000);
+    // Give running script launches the extra time to finish naturally.
+    queue()->waitForScriptCalculations(delay * 1000);
 
     // Wait for pending work.
     QThreadPool::globalInstance()->waitForDone(delay * 1000);
@@ -763,8 +762,7 @@ void SearchBase::performTheExit(int delay)
     // Stop pending work before deleting structures it may still use.
     m_shuttingDown.store(true);
     m_evaluationUpdateJob.shutdown();
-    if (m_objectiveThreadPool)
-      m_objectiveThreadPool->waitForDone(-1);
+    queue()->waitForScriptCalculations(-1);
     QThreadPool::globalInstance()->waitForDone(-1);
 
     // Let the application refresh and save while structures are still loaded.
@@ -808,7 +806,7 @@ bool SearchBase::objectiveParticipatesInOptimization(int i) const
   if (type != SearchBase::Ot_Min && type != SearchBase::Ot_Max)
     return false;
 
-  if (m_paretoFilterZeroWeights && m_optimizationType == "pareto" &&
+  if (m_paretoFilterZeroWeights && m_optimizationType == OT_Pareto &&
       std::fabs(getObjectivesWgt(i)) <= ZERO08)
     return false;
 
@@ -912,6 +910,59 @@ void SearchBase::normalizeObjData(std::vector<std::vector<double>>& objData) con
   }
 }
 
+bool SearchBase::parentPoolEligible(Structure* s) const
+{
+  QReadLocker structureLocker(&s->lock());
+  return s->getStatus() == Structure::Optimized && !s->isSimilar() &&
+         hasCompleteObjectiveValues(*s);
+}
+
+void SearchBase::refreshParentPoolMembership(Structure* s)
+{
+  if (!s)
+    return;
+
+  const bool eligible = parentPoolEligible(s);
+
+  QWriteLocker tableLocker(&m_parentSelectionDataLock);
+  if (eligible == m_parentPool.contains(s))
+    return;
+  if (eligible)
+    m_parentPool.insert(s);
+  else
+    m_parentPool.remove(s);
+  // The pool changed; the selection table is rebuilt at the next selection.
+  ++m_selectionDataStamp;
+}
+
+void SearchBase::rebuildParentPoolMembership()
+{
+  QSet<Structure*> pool;
+  {
+    QReadLocker trackerLocker(m_tracker->rwLock());
+    for (Structure* s : *m_tracker->list()) {
+      if (s && parentPoolEligible(s))
+        pool.insert(s);
+    }
+  }
+
+  QWriteLocker tableLocker(&m_parentSelectionDataLock);
+  m_parentPool = pool;
+  ++m_selectionDataStamp;
+}
+
+int SearchBase::getParentPoolSize() const
+{
+  QReadLocker tableLocker(&m_parentSelectionDataLock);
+  return m_parentPool.size();
+}
+
+QList<Structure*> SearchBase::getAllParentPoolStructures() const
+{
+  QReadLocker tableLocker(&m_parentSelectionDataLock);
+  return m_parentPool.values();
+}
+
 void SearchBase::applyParentSelectionFronts()
 {
   bool needsUpdate = false;
@@ -926,7 +977,7 @@ void SearchBase::applyParentSelectionFronts()
     bool updated = false;
     while (!updated) {
       const long long poolStamp = m_selectionDataStamp.load();
-      const QList<Structure*> currentPool = queue()->getAllParentPoolStructures();
+      const QList<Structure*> currentPool = getAllParentPoolStructures();
       if (poolStamp != m_selectionDataStamp.load())
         continue;
 
@@ -1033,6 +1084,8 @@ int SearchBase::selectTournamentParent(const QList<Structure*>& structures,
 
 void SearchBase::rebuildParentSelectionData(const QList<Structure*>& structures)
 {
+  Common::ScopedTimer _timer("SearchBase::rebuildParentSelectionData");
+
   // Build the selection data once for this parent list.
   ParentSelectionData table;
   table.pool = structures;
@@ -1051,7 +1104,7 @@ void SearchBase::rebuildParentSelectionData(const QList<Structure*>& structures)
     return;
   }
 
-  bool usePareto = (m_optimizationType == "pareto") ? true : false;
+  bool usePareto = (m_optimizationType == OT_Pareto) ? true : false;
   table.usePareto = usePareto;
 
   std::vector<std::vector<double>> objData; // final optimization 2D input matrix
@@ -1138,13 +1191,11 @@ void SearchBase::rebuildParentSelectionData(const QList<Structure*>& structures)
   m_parentSelectionData = std::move(table);
 }
 
-int SearchBase::selectParentFromPool(const QList<Structure*>& structures, size_t poolSize)
+Structure* SearchBase::selectParentStructure(size_t poolSize)
 {
-  // Select a parent structure from prepared objective values.
-  // Picks a parent from the input list and returns its index there, or -1 on
-  //   failure.
+  // Select a parent structure from the in-memory parent pool.
   //
-  // Then we compute scalar probabilities from both the basic generalized fitness
+  // We compute scalar probabilities from both the basic generalized fitness
   //   function and the Pareto-based fitness. Which one actually drives parent
   //   selection is the user's choice:
   //   - Basic  optimization (the scalar generalized fitness function)
@@ -1154,42 +1205,38 @@ int SearchBase::selectParentFromPool(const QList<Structure*>& structures, size_t
   // For Pareto we may ignore the crowding distances if the user asks, and we
   //   apply the user's objective precision to the values throughout.
 
-  // Before getting here, we have checked that there are enough optimized
-  //   structures and that all objective values are already prepared for the
-  //   input set.
-
   QReadLocker runtimeLocker(runtimeSettingsLock());
 
-  if (structures.isEmpty() || poolSize == 0)
-    return -1;
-
-  if (structures.size() == 1) {
-    return 0;
-  }
+  if (poolSize == 0)
+    return nullptr;
 
   //============================ MAKE SURE THE SELECTION TABLE IS CURRENT
-  // Update the selection data when the parent list or selection settings change.
+  // Update the selection data when the parent pool or selection settings change.
   {
     QReadLocker tableLocker(&m_parentSelectionDataLock);
     if (!m_parentSelectionData.built ||
-        m_parentSelectionData.stamp != m_selectionDataStamp.load() ||
-        m_parentSelectionData.pool.size() != structures.size()) {
+        m_parentSelectionData.stamp != m_selectionDataStamp.load()) {
       tableLocker.unlock();
       QWriteLocker tableWriteLocker(&m_parentSelectionDataLock);
       if (!m_parentSelectionData.built ||
-          m_parentSelectionData.stamp != m_selectionDataStamp.load() ||
-          m_parentSelectionData.pool.size() != structures.size())
-        rebuildParentSelectionData(structures);
+          m_parentSelectionData.stamp != m_selectionDataStamp.load())
+        rebuildParentSelectionData(m_parentPool.values());
     }
   }
 
   QReadLocker tableLocker(&m_parentSelectionDataLock);
   const ParentSelectionData& table = m_parentSelectionData;
+  const QList<Structure*>& structures = table.pool;
+
+  if (structures.isEmpty())
+    return nullptr;
+  if (structures.size() == 1)
+    return structures.first();
 
   if (!table.valid)
-    return -1;
+    return nullptr;
   if (table.noObjectives)
-    return Common::getRandUInt(0, structures.size() - 1);
+    return structures[Common::getRandUInt(0, structures.size() - 1)];
 
   // Read the selection data.
   int strNumb = structures.size();
@@ -1202,7 +1249,7 @@ int SearchBase::selectParentFromPool(const QList<Structure*>& structures, size_t
   // Sanity check
   if (static_cast<int>(strProb.size()) != strNumb) {
     Common::error("Failed to calculate fitness values!");
-    return -1;
+    return nullptr;
   }
 
   // Select from the full list for an unrestricted tournament selection.
@@ -1212,7 +1259,7 @@ int SearchBase::selectParentFromPool(const QList<Structure*>& structures, size_t
     int str_b;
     do {str_b = Common::getRandUInt(0, total-1);}
     while (str_b == str_a);
-    return selectTournamentParent(structures, strFrnt, strDist, str_a, str_b, total);
+    return structures[selectTournamentParent(structures, strFrnt, strDist, str_a, str_b, total)];
   }
 
   // Construct <index in structures list, prob> variable for further processing
@@ -1281,14 +1328,14 @@ int SearchBase::selectParentFromPool(const QList<Structure*>& structures, size_t
     const int total = probs.size();
     if (total < 2) {
       Common::error("Tournament parent selection requires at least two structures.");
-      return -1;
+      return nullptr;
     }
 
     const int str_a = probs[Common::getRandUInt(0, total-1)].first;
     int str_b;
     do {str_b = probs[Common::getRandUInt(0, total-1)].first;}
     while (str_b == str_a);
-    return selectTournamentParent(structures, strFrnt, strDist, str_a, str_b, total);
+    return structures[selectTournamentParent(structures, strFrnt, strDist, str_a, str_b, total)];
   }
 
   // Sum the resulting probs
@@ -1359,7 +1406,7 @@ int SearchBase::selectParentFromPool(const QList<Structure*>& structures, size_t
     Common::message(outs);
   }
 
-  return parent;
+  return structures[parent];
 }
 
 

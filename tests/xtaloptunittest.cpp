@@ -884,7 +884,7 @@ void XtalOptUnitTest::resultsOutputsAreStable()
   }
 
   QVERIFY(opt.refreshStructureEvaluationData());
-  opt.refreshParentSelectionFronts(opt.queue()->getAllParentPoolStructures());
+  opt.refreshParentSelectionFronts(opt.getAllParentPoolStructures());
   QVERIFY(opt.writeResultsFile(opt.queue()->getAllStructures(), false));
   QVERIFY(opt.writeHullFile(opt.queue()->getAllStructures(), tempPath(tempDir, "hull.txt")));
 
@@ -1341,6 +1341,8 @@ void XtalOptUnitTest::readOptionsAppliesScalarSettingRegistry()
   input << "logErrorDirectories = true\n";
   input << "autoCancelJobAfterTime = true\n";
   input << "hoursForAutoCancelJob = 12.5\n";
+  input << "autoCancelScriptAfterTime = false\n";
+  input << "hoursForAutoCancelScript = 3.5\n";
   input << "queueRefreshInterval = 11\n";
   inputFile.close();
 
@@ -1355,7 +1357,7 @@ void XtalOptUnitTest::readOptionsAppliesScalarSettingRegistry()
   QCOMPARE(opt.getMaxNumStructures(), 44);
   QVERIFY(!opt.isSoftExit());
   QVERIFY(opt.isConstraintsReDo());
-  QCOMPARE(opt.getOptimizationType(), QString("pareto"));
+  QCOMPARE(opt.getOptimizationType(), Search::SearchBase::OT_Pareto);
   QVERIFY(!opt.isTournamentSelection());
   QVERIFY(opt.isRestrictedPool());
   QVERIFY(!opt.isCrowdingDistance());
@@ -1391,6 +1393,8 @@ void XtalOptUnitTest::readOptionsAppliesScalarSettingRegistry()
   QVERIFY(opt.logErrorDirs());
   QVERIFY(opt.cancelJobAfterTime());
   QCOMPARE(opt.hoursForCancelJobAfterTime(), 12.5);
+  QVERIFY(!opt.cancelScriptAfterTime());
+  QCOMPARE(opt.hoursForCancelScriptAfterTime(), 3.5);
   QCOMPARE(opt.queueRefreshInterval(), 11);
 }
 
@@ -2193,7 +2197,7 @@ void XtalOptUnitTest::stateSettingsReadAndWritePreservesMainFields()
   saved.setPPerm(19);
   saved.setPAtomic(23);
   saved.setPComp(29);
-  saved.setOptimizationType("pareto");
+  saved.setOptimizationType(Search::SearchBase::OT_Pareto);
   saved.setTournamentSelection(false);
   saved.setRestrictedPool(true);
   saved.setCrowdingDistance(false);
@@ -2241,7 +2245,7 @@ void XtalOptUnitTest::stateSettingsReadAndWritePreservesMainFields()
   QCOMPARE(loaded.getPPerm(), static_cast<uint>(19));
   QCOMPARE(loaded.getPAtomic(), static_cast<uint>(23));
   QCOMPARE(loaded.getPComp(), static_cast<uint>(29));
-  QCOMPARE(loaded.getOptimizationType(), QString("pareto"));
+  QCOMPARE(loaded.getOptimizationType(), Search::SearchBase::OT_Pareto);
   QVERIFY(!loaded.isTournamentSelection());
   QVERIFY(loaded.isRestrictedPool());
   QVERIFY(!loaded.isCrowdingDistance());

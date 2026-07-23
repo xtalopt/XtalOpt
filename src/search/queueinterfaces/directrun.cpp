@@ -16,6 +16,7 @@
 #include <search/queueinterfaces/directrun.h>
 #include <common/fileutils.h>
 #include <common/output.h>
+#include <common/timing.h>
 
 #include <common/compatibility/platform_defs.h>
 #include <common/compatibility/qt_compat.h>
@@ -33,8 +34,6 @@
 #include <limits>
 
 namespace Search {
-
-static const int DIRECT_RUN_START_TIMEOUT_MS = 5000;
 
 namespace {
 
@@ -235,6 +234,7 @@ static QString directRunFilePath(Structure* s, const QString& name)
 
 bool DirectRunInterface::startJob(Structure* s)
 {
+  Common::ScopedTimer _timer("DirectRunInterface::startJob");
   if (s->getJobID() != 0) {
     Common::error(tr("%1: attempting to start job for structure %2, "
                     "but a JobID is already set (%3).")
@@ -264,7 +264,7 @@ bool DirectRunInterface::startJob(Structure* s)
     Q_ARG(QString, directRunFilePath(s, optimizer->stdinFilename())),
     Q_ARG(QString, directRunFilePath(s, optimizer->stdoutFilename())),
     Q_ARG(QString, directRunFilePath(s, optimizer->stderrFilename())),
-    Q_ARG(int, DIRECT_RUN_START_TIMEOUT_MS));
+    Q_ARG(int, PROCESS_START_TIMEOUT));
 
   if (!proc) {
     Common::error(tr("%1: direct run for structure %2 did not start.")
@@ -481,7 +481,7 @@ QueueInterface::CommandResult DirectRunInterface::runACommand(
     proc.setWorkingDirectory(workdir);
   }
   QtCompat::processStartCommand(proc, command);
-  if (!proc.waitForStarted(DIRECT_RUN_START_TIMEOUT_MS)) {
+  if (!proc.waitForStarted(PROCESS_START_TIMEOUT)) {
     result.stderrText = proc.errorString();
     Common::warning(tr("Direct command %1 at %2 failed to start: %3")
         .arg(command).arg(workdir).arg(result.stderrText));

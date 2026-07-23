@@ -303,6 +303,13 @@ void XtalOpt::requestSettingsStateSave()
 
 void XtalOpt::requestStructureStateSave(Search::Structure* structure)
 {
+  // Objc/cons calculation statuses don't need a save operation
+  if (structure) {
+    QReadLocker locker(&structure->lock());
+    if (structure->isPostOptimizationCalculationState())
+      return;
+  }
+
   QList<Search::Structure*> structures;
   structures.append(structure);
   requestStructureStateSave(structures);
@@ -429,7 +436,7 @@ void XtalOpt::handleOptimizedDeparture(Search::Structure* structure)
   }
 
   // Re-set the structures that were similar to the recovered one!
-  bool anyReleased = false;
+  QList<Search::Structure*> released;
   for (Search::Structure* other : structures) {
     if (other == structure)
       continue;
@@ -437,9 +444,13 @@ void XtalOpt::handleOptimizedDeparture(Search::Structure* structure)
     if (other->getSimilarityString() != tag)
       continue;
     other->structureChanged(); // Clears the status and sets the re-check flag
-    anyReleased = true;
+    released.append(other);
   }
-  if (anyReleased)
+  // A released structure rejoins the parent pool (refresh takes the
+  //   structure lock itself, so it must run after the loop's write locks).
+  for (Search::Structure* other : released)
+    refreshParentPoolMembership(other);
+  if (!released.isEmpty())
     checkForSimilarities();
 
   requestFullEvaluation();
@@ -472,7 +483,7 @@ void XtalOpt::finishSearch()
     return;
 
   refreshStructureEvaluationData();
-  refreshParentSelectionFronts(queue()->getAllParentPoolStructures());
+  refreshParentSelectionFronts(getAllParentPoolStructures());
   save(searchStateFilePath(), false);
 }
 
@@ -631,6 +642,10 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
       return false;
     }
   } else {
+    const QString formattedTime =
+      QDateTime::currentDateTime().toString("MMMM dd, yyyy   hh:mm:ss");
+    Common::message("\n=== Optimization started ... " +
+                    formattedTime.toLocal8Bit() + "\n");
     if (!generateInitialStructures()) {
       abortSession();
       return false;
@@ -654,19 +669,19 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
 
   launchSession();
 
-  const QString formattedTime =
-    QDateTime::currentDateTime().toString("MMMM dd, yyyy   hh:mm:ss");
   if (!restoring) {
-    Common::message("\n=== Optimization started ... " +
-                    formattedTime.toLocal8Bit() + "\n");
     save(searchStateFilePath(), false);
-  } else if (readOnly) {
-    Common::message("\n=== XtalOpt session loaded read-only ... " +
-                    formattedTime.toLocal8Bit() + "\n\n");
   } else {
-    Common::message("\n=== Optimization resumed ... " +
-                    formattedTime.toLocal8Bit() + "\n\n");
-    saveRequestedOutputFiles(true, false);
+    const QString formattedTime =
+      QDateTime::currentDateTime().toString("MMMM dd, yyyy   hh:mm:ss");
+    if (readOnly) {
+      Common::message("\n=== XtalOpt session loaded read-only ... " +
+                      formattedTime.toLocal8Bit() + "\n\n");
+    } else {
+      Common::message("\n=== Optimization resumed ... " +
+                      formattedTime.toLocal8Bit() + "\n\n");
+      saveRequestedOutputFiles(true, false);
+    }
   }
 
   // Write and watch the run-time file for CLI runs.
@@ -1137,6 +1152,29 @@ bool XtalOpt::setFailActionText(const QString& v)
     setFailAction(Search::SearchBase::FA_Randomize);
   else if (n == "replacewithoffspring")
     setFailAction(Search::SearchBase::FA_NewOffspring);
+  else
+    return false;
+  return true;
+}
+
+QString XtalOpt::optimizationTypeText() const
+{
+  switch (getOptimizationType()) {
+    case Search::SearchBase::OT_Basic:
+      return "basic";
+    case Search::SearchBase::OT_Pareto:
+      return "pareto";
+  }
+  return "unknown";
+}
+
+bool XtalOpt::setOptimizationTypeText(const QString& v)
+{
+  const QString n = v.trimmed().toLower();
+  if (n == "basic")
+    setOptimizationType(Search::SearchBase::OT_Basic);
+  else if (n == "pareto")
+    setOptimizationType(Search::SearchBase::OT_Pareto);
   else
     return false;
   return true;

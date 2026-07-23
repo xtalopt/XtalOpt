@@ -22,7 +22,8 @@
 //   will show the average number of busy cores over the measured period).
 // A low value for CPU/elapsed total (and cpu_ms/call much smaller than wall_ms/call)
 //   means that the code (scoped) were mostly waiting over that period of time.
-// NOTE: this file, exceptionally, is free of using compatibility shims!
+
+#include <common/compatibility/platform_compat.h>
 
 #include <algorithm>
 #include <chrono>
@@ -34,63 +35,9 @@
 #include <utility>
 #include <vector>
 
-#if defined(_WIN32)
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#else
-#include <time.h>
-#endif
-
 namespace Common {
 
 namespace timing_detail {
-
-// Return CPU time for this thread (zero when it is not available).
-inline long long threadCpuNanos()
-{
-#if defined(_WIN32)
-  FILETIME creation, exitt, kernel, user;
-  if (!GetThreadTimes(GetCurrentThread(), &creation, &exitt, &kernel, &user))
-    return 0;
-  ULARGE_INTEGER k, u;
-  k.LowPart = kernel.dwLowDateTime; k.HighPart = kernel.dwHighDateTime;
-  u.LowPart = user.dwLowDateTime;   u.HighPart = user.dwHighDateTime;
-  return static_cast<long long>(k.QuadPart + u.QuadPart) * 100LL; // 100ns units
-#elif defined(CLOCK_THREAD_CPUTIME_ID)
-  struct timespec ts;
-  if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) != 0)
-    return 0;
-  return static_cast<long long>(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
-#else
-  return 0;
-#endif
-}
-
-// Return CPU time for this process, over all threads.
-inline long long processCpuNanos()
-{
-#if defined(_WIN32)
-  FILETIME creation, exitt, kernel, user;
-  if (!GetProcessTimes(GetCurrentProcess(), &creation, &exitt, &kernel, &user))
-    return 0;
-  ULARGE_INTEGER k, u;
-  k.LowPart = kernel.dwLowDateTime; k.HighPart = kernel.dwHighDateTime;
-  u.LowPart = user.dwLowDateTime;   u.HighPart = user.dwHighDateTime;
-  return static_cast<long long>(k.QuadPart + u.QuadPart) * 100LL;
-#elif defined(CLOCK_PROCESS_CPUTIME_ID)
-  struct timespec ts;
-  if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts) != 0)
-    return 0;
-  return static_cast<long long>(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
-#else
-  return 0;
-#endif
-}
 
 struct Bucket
 {
@@ -141,7 +88,7 @@ inline double timingElapsedSeconds()
 
 inline double timingProcessCpuSeconds()
 {
-  return (timing_detail::processCpuNanos() - timing_detail::startProcessCpu()) / 1.0e9;
+  return (processCpuNanos() - timing_detail::startProcessCpu()) / 1.0e9;
 }
 
 // Print the timer values (sorts with largest wall time at the top).
@@ -231,7 +178,7 @@ public:
   {
     if (m_enabled) {
       m_start = std::chrono::steady_clock::now();
-      m_cpuStart = timing_detail::threadCpuNanos();
+      m_cpuStart = threadCpuNanos();
     }
   }
 
@@ -243,7 +190,7 @@ public:
     m_done = true;
     const long long wall = std::chrono::duration_cast<std::chrono::nanoseconds>(
                              std::chrono::steady_clock::now() - m_start).count();
-    addTiming(m_name, wall, timing_detail::threadCpuNanos() - m_cpuStart);
+    addTiming(m_name, wall, threadCpuNanos() - m_cpuStart);
   }
 
   ~ScopedTimer()

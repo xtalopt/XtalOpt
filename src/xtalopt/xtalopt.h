@@ -266,7 +266,7 @@ public:
   Xtal* generateRandomXtal(uint generation, uint id, CellComp incomp = {});
 
   // This returns a dynamically allocated xtal.
-  Xtal* generateEvolvedXtal(QList<Search::Structure*>& structures, Xtal* preselectedXtal = nullptr);
+  Xtal* generateEvolvedXtal(Xtal* preselectedXtal = nullptr);
 
   // Starting from XtalOpt 14, the user defines genetic operation relative
   //   weights, can add sub-system seeds or define various search types.
@@ -374,6 +374,8 @@ public:
   // Text accessors for settings with a complicated type (eg, jobFailAction).
   QString failActionText() const;
   bool setFailActionText(const QString& v);
+  QString optimizationTypeText() const;
+  bool setOptimizationTypeText(const QString& v);
   // Read and write the seed structure list.
   QString seedStructuresText() const;
   void setSeedStructuresText(const QString& v);
@@ -453,7 +455,8 @@ public:
   bool needsObjectiveOrConstraintCalculations() const;
 
 private:
-  void checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols);
+  // Returns the structure that was marked similar, or nullptr if none was.
+  Xtal* checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols);
 
   void ensureBuiltinObjective();
   bool normalizeLoadedStructureObjectives(Search::Structure* structure, const QString& stateFilename) const;
@@ -749,8 +752,7 @@ protected:
 
   CellComp pickRandomCompositionFromPossibleOnes();
 
-  Xtal* selectXtalFromProbabilityList(
-    QList<Search::Structure*> structures);
+  Xtal* selectXtalFromProbabilityList();
 
   //
   // Similarity check handlers.

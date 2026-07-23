@@ -198,19 +198,19 @@ void TabSearch::updateGUI()
   ui.cb_paretoFilterZeroWeights->setChecked(xtalopt->isParetoFilterZeroWeights());
   ui.sb_prec->setValue(xtalopt->getObjectivePrecision());
 
-  if (xtalopt->getOptimizationType() == "pareto") {
+  if (xtalopt->getOptimizationType() == Search::SearchBase::OT_Pareto) {
     ui.combo_optType->setCurrentIndex(1);
     ui.cb_crowding->setEnabled(true);
     ui.cb_paretoFilterZeroWeights->setEnabled(true);
     ui.cb_tournament->setEnabled(true);
-  } else if (xtalopt->getOptimizationType() == "basic") {
+  } else if (xtalopt->getOptimizationType() == Search::SearchBase::OT_Basic) {
     ui.combo_optType->setCurrentIndex(0);
     ui.cb_tournament->setDisabled(true);
     ui.cb_crowding->setDisabled(true);
     ui.cb_paretoFilterZeroWeights->setDisabled(true);
   }
 
-  if (xtalopt->getOptimizationType() == "pareto" && ui.cb_tournament->isChecked()) {
+  if (xtalopt->getOptimizationType() == Search::SearchBase::OT_Pareto && ui.cb_tournament->isChecked()) {
     ui.cb_restrictPool->setEnabled(true);
   } else {
     ui.cb_restrictPool->setDisabled(true);
@@ -282,18 +282,18 @@ bool TabSearch::updateOptTypeInfo()
     xtalopt->setRestrictedPool(ui.cb_restrictPool->isChecked());
     xtalopt->setCrowdingDistance(ui.cb_crowding->isChecked());
     xtalopt->setParetoFilterZeroWeights(ui.cb_paretoFilterZeroWeights->isChecked());
-    xtalopt->setOptimizationType(ui.combo_optType->currentText().toLower());
-    if (xtalopt->getOptimizationType() == "basic") {
+    xtalopt->setOptimizationTypeText(ui.combo_optType->currentText());
+    if (xtalopt->getOptimizationType() == Search::SearchBase::OT_Basic) {
       ui.cb_tournament->setDisabled(true);
       ui.cb_crowding->setDisabled(true);
       ui.cb_paretoFilterZeroWeights->setDisabled(true);
-    } else if (xtalopt->getOptimizationType() == "pareto") {
+    } else if (xtalopt->getOptimizationType() == Search::SearchBase::OT_Pareto) {
       ui.cb_tournament->setEnabled(true);
       ui.cb_crowding->setEnabled(true);
       ui.cb_paretoFilterZeroWeights->setEnabled(true);
     }
 
-    if (xtalopt->getOptimizationType() == "pareto" && ui.cb_tournament->isChecked()) {
+    if (xtalopt->getOptimizationType() == Search::SearchBase::OT_Pareto && ui.cb_tournament->isChecked()) {
       ui.cb_restrictPool->setEnabled(true);
     } else {
       ui.cb_restrictPool->setDisabled(true);
@@ -376,6 +376,8 @@ void TabSearch::updateOptimizationInfo()
 
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
   bool settingsChanged = false;
+  bool spacegroupSettingsChanged = false;
+  bool similaritySettingsChanged = false;
   {
     // Change the settings.
     QWriteLocker runtimeLocker(m_search->runtimeSettingsLock());
@@ -447,11 +449,19 @@ void TabSearch::updateOptimizationInfo()
     for (const auto& keyword : Settings::runtimeKeywords()) {
       if (Settings::scalarValue(*xtalopt, keyword) != before.value(keyword)) {
         settingsChanged = true;
-        break;
+        if (keyword == "spglibTolerance")
+          spacegroupSettingsChanged = true;
+        if (keyword == "rdfTolerance" || keyword == "xtalcompToleranceLength" ||
+            keyword == "xtalcompToleranceAngle")
+          similaritySettingsChanged = true;
       }
     }
   }
 
+  if (spacegroupSettingsChanged)
+    xtalopt->resetSpacegroups();
+  if (similaritySettingsChanged)
+    xtalopt->resetSimilarities();
   if (settingsChanged && m_search->isSessionInProgress())
     xtalopt->requestSettingsStateSave();
 }

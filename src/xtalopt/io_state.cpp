@@ -1184,16 +1184,14 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
   QFileInfo stateInfo(stateFile);
   QDir dataDir = stateInfo.absoluteDir();
 
+  Common::message("\n");
+
   if (readOnlyLoad)
     Common::message(QString("%1 xtals were found!").arg(xtalDirs.size()));
 
   // Xtals
   if (!readOnlyLoad)
     updateProgressValue(-1, QString(), -1, xtalDirs.size());
-
-  // Direct-run active jobs restart any InProcess structures.
-  bool restartInProcessStructures = !readOnlyLoad && !anyBatchQueueInterfaces();
-  bool clearJobIDs = restartInProcessStructures;
 
   // Load xtals
   QList<Structure*> loadedStructures;
@@ -1264,17 +1262,17 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
     if (!readOnlyLoad) {
       QWriteLocker locker(&xtal->lock());
       Xtal::State state = xtal->getStatus();
-      // Direct/local jobs die with the process, so restart them. Remote batch
-      //   jobs survive it and are judged by outcome later, so they stay
-      //   InProcess (reconnect via the queue status check).
-      if (restartInProcessStructures && state == Structure::InProcess) {
-        state = Structure::Restart;
+      // Direct/local jobs finish with the process, so restart them and clear
+      //   the process job IDs. Remote batch jobs are fine, and will be
+      //   checked later (reconnected through queue status check).
+      QueueInterface* structureQueue = queueInterface(xtal->getCurrentOptStep());
+      if (!(structureQueue && structureQueue->isBatchQueue())) {
+        if (state == Structure::InProcess || state == Structure::Submitted) {
+          state = Structure::Restart;
+        }
+        xtal->setJobID(0);
       }
-      // Objective/constraint calculations are driven by a local worker (even on
-      //   a remote run), so they always die with the process and must re-run on
-      //   any active resume; otherwise the structure waits forever for a
-      //   done-signal that can no longer arrive. Reset to Postprocessing to
-      //   re-run them (old outputs are removed first by removeOldOutputFiles).
+      // Objective/constraint script launches are basically "direct" runs; too.
       if (!readOnlyLoad && state == Structure::ConstraintCalculation) {
         state = Structure::Postprocessing;
         xtal->resetStrucConstraint();
@@ -1287,9 +1285,6 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
 
       xtal->setStatus(state);
       xtal->setOptTimerEnd(endtime);
-      if (clearJobIDs) {
-        xtal->setJobID(0);
-      }
     }
 
     loadedStructures.append(qobject_cast<Structure*>(xtal));
@@ -1347,8 +1342,9 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
   QList<Structure*> structures = queue()->getAllStructures();
   const bool refreshed = refreshStructureEvaluationData();
   resetSimilarities_();
-  // Set the display fronts from a freshly built selection table
-  refreshParentSelectionFronts(queue()->getAllParentPoolStructures());
+  // Generate the parent pool (including fronts) from the loaded structures
+  rebuildParentPoolMembership();
+  refreshParentSelectionFronts(getAllParentPoolStructures());
   if (!refreshed)
     Structure::sortAndRankStructures(&structures);
 

@@ -596,7 +596,7 @@ void SearchBaseTest::paretoFrontsIgnoreConstraints()
   const QList<double> minValues = {1.0, 2.0, 3.0};
 
   QList<Structure*> baselineStructures;
-  m_opt->setOptimizationType("pareto");
+  m_opt->setOptimizationType(Search::SearchBase::OT_Pareto);
   m_opt->resetObjectives();
   m_opt->addObjective(SearchBase::Ot_Min, QString(), QString(), 1.0);
   for (double minValue : minValues) {
@@ -634,7 +634,7 @@ void SearchBaseTest::paretoFrontsIgnoreConstraints()
   qDeleteAll(filteredStructures);
   m_opt->resetObjectives();
   m_opt->resetConstraints();
-  m_opt->setOptimizationType("basic");
+  m_opt->setOptimizationType(Search::SearchBase::OT_Basic);
 }
 
 void SearchBaseTest::constraintDismissalPrecedesFailure()
@@ -862,7 +862,7 @@ void SearchBaseTest::activeResumeWorkflowClearsSessionStartingAfterRestore()
 void SearchBaseTest::paretoFrontsRespectMaxObjectives()
 {
   DummySearchBase* dummy = static_cast<DummySearchBase*>(m_opt);
-  m_opt->setOptimizationType("pareto");
+  m_opt->setOptimizationType(Search::SearchBase::OT_Pareto);
   m_opt->resetObjectives();
   m_opt->addObjective(SearchBase::Ot_Max, QString(), QString(), 1.0);
 
@@ -884,14 +884,14 @@ void SearchBaseTest::paretoFrontsRespectMaxObjectives()
 
   qDeleteAll(structures);
   m_opt->resetObjectives();
-  m_opt->setOptimizationType("basic");
+  m_opt->setOptimizationType(Search::SearchBase::OT_Basic);
 }
 
 void SearchBaseTest::paretoFilterZeroWeightsRemovesZeroWeightObjectives()
 {
   DummySearchBase* dummy = static_cast<DummySearchBase*>(m_opt);
   m_opt->resetObjectives();
-  m_opt->setOptimizationType("pareto");
+  m_opt->setOptimizationType(Search::SearchBase::OT_Pareto);
   m_opt->addObjective(SearchBase::Ot_Min, QString(), QString(), 0.0);
   m_opt->addObjective(SearchBase::Ot_Min, QString(), QString(), 1.0);
 
@@ -920,7 +920,7 @@ void SearchBaseTest::paretoFilterZeroWeightsRemovesZeroWeightObjectives()
 
   qDeleteAll(structures);
   m_opt->resetObjectives();
-  m_opt->setOptimizationType("basic");
+  m_opt->setOptimizationType(Search::SearchBase::OT_Basic);
   m_opt->setParetoFilterZeroWeights(false);
 }
 

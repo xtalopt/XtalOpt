@@ -209,6 +209,8 @@ bool parseLaunchOptions(int argc, char* argv[], LaunchOptions& options)
     options.mode = LaunchCliResume;
   else if (plotMode)
     options.mode = LaunchPlot;
+  else if (ap_found(parser.get(), "input"))
+    options.mode = LaunchCliStart;
 #ifdef BUILD_XTALOPT_GUI
   else
     options.mode = LaunchGui;

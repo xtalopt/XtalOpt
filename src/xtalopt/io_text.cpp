@@ -267,8 +267,25 @@ void processLine(const QString& tmpLine, QHash<QString, QString>& options,
   }
 }
 
+bool hasAnyRequiredKeyword(const QString& parserText)
+{
+  const QStringList requiredKeywords = Settings::requiredKeywords();
+  QString textCopy = parserText;
+  QTextStream stream(&textCopy);
+  while (!stream.atEnd()) {
+    QString line = stream.readLine();
+    line.replace(QRegularExpression(" *#.*"), "");
+    if (!line.contains('='))
+      continue;
+    const QString key = line.section('=', 0, 0).trimmed().toLower();
+    if (requiredKeywords.contains(Settings::findKeywordName(key)))
+      return true;
+  }
+  return false;
+}
+
 bool readOptionsFile(const QString& filename, QHash<QString, QString>& options,
-                     QHash<QString, QStringList>& multiInput)
+                     QHash<QString, QStringList>& multiInput, bool bestEffort)
 {
   QString inputText;
   if (!Common::readFileToQString(filename, &inputText)) {
@@ -280,6 +297,12 @@ bool readOptionsFile(const QString& filename, QHash<QString, QString>& options,
   QString compatError;
   if (!Legacy::prepareXtalOptInputTextForRead(filename, inputText, parserText, &compatError)) {
     Common::error(compatError);
+    return false;
+  }
+
+  if (!bestEffort && !hasAnyRequiredKeyword(parserText)) {
+    Common::error(QString("The input file '%1' does not look like an XtalOpt input file")
+                    .arg(filename));
     return false;
   }
 
@@ -954,7 +977,7 @@ bool XtalOpt::readInputFile(const QString& filename, bool bestEffort,
   // Parse the raw keyword/value lines of the file.
   QHash<QString, QString> options;
   QHash<QString, QStringList> multiInput;
-  if (!readOptionsFile(filename, options, multiInput))
+  if (!readOptionsFile(filename, options, multiInput, bestEffort))
     return false;
 
   // A strict CLI start needs every required keyword before anything is applied.

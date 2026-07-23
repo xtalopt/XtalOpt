@@ -505,13 +505,9 @@ Xtal* XtalOpt::generateNewXtal(CellComp incomp)
     return nullptr;
   }
 
-  QList<Structure*> structures;
-
-  structures = queue()->getAllParentPoolStructures();
-
   // Try to get it from the probability list only if we have large
   //   enough parents pool. Otherwise, generate randomly.
-  if (structures.size() < 3) {
+  if (getParentPoolSize() < 3) {
     Xtal* xtal = nullptr;
 
     int maxAttempts = 10000;
@@ -531,7 +527,7 @@ Xtal* XtalOpt::generateNewXtal(CellComp incomp)
     return xtal;
   }
 
-  Xtal* xtal = generateEvolvedXtal(structures);
+  Xtal* xtal = generateEvolvedXtal();
   return xtal;
 }
 
@@ -972,7 +968,7 @@ Xtal* XtalOpt::generateRandomAtomicXtal(uint generation, uint id, CellComp incom
   return xtal;
 }
 
-Xtal* XtalOpt::generateEvolvedXtal(QList<Structure*>& structures, Xtal* preselectedXtal)
+Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
 {
   // preselectedXtal is nullptr by default
 
@@ -982,7 +978,7 @@ Xtal* XtalOpt::generateEvolvedXtal(QList<Structure*>& structures, Xtal* preselec
   Xtal *xtal = nullptr, *selectedXtal = nullptr;
 
   // Shouldn't happen; but just in case ...
-  if (!preselectedXtal && structures.size() == 0) {
+  if (!preselectedXtal && getParentPoolSize() == 0) {
     Common::warning(QString("%1: empty pool and no preselected xtal.")
                      .arg(__func__));
     return nullptr;
@@ -1015,7 +1011,7 @@ Xtal* XtalOpt::generateEvolvedXtal(QList<Structure*>& structures, Xtal* preselec
 
     // If an xtal hasn't been preselected, select one
     if (!preselectedXtal)
-      selectedXtal = selectXtalFromProbabilityList(structures);
+      selectedXtal = selectXtalFromProbabilityList();
     else
       selectedXtal = preselectedXtal;
 
@@ -1078,7 +1074,7 @@ Xtal* XtalOpt::generateEvolvedXtal(QList<Structure*>& structures, Xtal* preselec
           double percent2;
 
           xtal1 = selectedXtal;
-          xtal2 = selectXtalFromProbabilityList(structures);
+          xtal2 = selectXtalFromProbabilityList();
 
           // The probability selection might fail and we get null pointer
           if (!xtal2) {
@@ -1267,44 +1263,28 @@ Xtal* XtalOpt::generateEvolvedXtal(QList<Structure*>& structures, Xtal* preselec
   return xtal;
 }
 
-Xtal* XtalOpt::selectXtalFromProbabilityList(QList<Structure*> structures)
+Xtal* XtalOpt::selectXtalFromProbabilityList()
 {
   // Basically, this function is called only from generateEvolvedXtal
-  //   (twice!), where the input "structures" is a proper parent pool.
-  //
-  // That's, "structures" is a set of at least 3 structures that are
-  //   optimized, their hull and objectives (if needed) are calculated,
-  //   and contain subsystem seeds only if user has allowed it.
-  //
-  // Still, we will put some safeguards in place (e.g., if list is empty
-  //   or empty probs are returned), which result in returning a null pointer.
+  //   (twice!). The engine selects the parent from its in-memory pool table:
+  //   structures that are optimized and have their hull and objectives
+  //   (if needed) calculated, and are not similar to another one.
 
   if (getParentsPoolSize() == 0) {
     Common::error("Parents pool size is zero for probability selection!");
     return nullptr;
   }
 
-  if (structures.isEmpty()) {
-    Common::error("No structure provided for probability selection!");
-    return nullptr;
-  }
-
-  if (structures.size() == 1)
-    Common::warning("Probability selection has only one structure!");
-
-  // Select the parent xtal: this will return the index of the chosen parent
-  //   in the list of structures (-1 if anything goes wrong).
-  int ind = selectParentFromPool(structures, getParentsPoolSize());
+  // Select the parent xtal (nullptr if anything goes wrong).
+  Structure* structure = selectParentStructure(getParentsPoolSize());
 
   // This shouldn't happen; but just in case ...
-  if (ind == -1 ) {
+  if (!structure) {
     Common::error("Probability selection didn't return any results!");
     return nullptr;
   }
 
-  Xtal* xtal = qobject_cast<Xtal*>(structures[ind]);
-
-  return xtal;
+  return qobject_cast<Xtal*>(structure);
 }
 
 XtalOpt::Operators XtalOpt::selectOperation(bool validComp)
@@ -1742,6 +1722,7 @@ Structure* XtalOpt::replaceWithOffspring(Structure* s, const QString& reason)
 
 bool XtalOpt::checkXtal(Xtal* xtal)
 {
+  Common::ScopedTimer _timer("XtalOpt::checkXtal");
   QReadLocker runtimeLocker(runtimeSettingsLock());
 
   // In this function, we always assume that we have a valid input xtal

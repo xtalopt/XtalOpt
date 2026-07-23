@@ -16,7 +16,6 @@
 #include <search/constants.h>
 #include <search/search.h>
 
-#include <common/timing.h>
 #include <common/compatibility/platform_compat.h>
 #include <common/compatibility/qt_compat.h>
 
@@ -27,13 +26,11 @@
 #include <atoms/formats/poscarformat.h>
 
 #include <QFile>
-#include <QFileInfo>
 #include <QHash>
 #include <QObject>
 #include <QStringList>
 #include <QTextStream>
-#include <QThreadPool>
-#include <QtConcurrent>
+#include <QThread>
 
 #include <cmath>
 #include <limits>
@@ -43,20 +40,6 @@
 namespace Search {
 
 namespace {
-
-bool isSafeOutputBasename(const QString& filename)
-{
-  const QString trimmed = filename.trimmed();
-  if (trimmed.isEmpty() || trimmed != filename)
-    return false;
-  if (trimmed == "." || trimmed == "..")
-    return false;
-  if (trimmed.contains('/') || trimmed.contains('\\'))
-    return false;
-  if (trimmed.contains(QChar::fromLatin1('\0')))
-    return false;
-  return QFileInfo(trimmed).fileName() == trimmed;
-}
 
 bool usesLocalExecutionHost(const SearchBase* search, const QueueInterface* queue)
 {
@@ -120,130 +103,72 @@ bool writeOutputPoscar(Structure* s, const QString& filename)
   return false;
 }
 
-void removeOldOutputFiles(Structure* s, const ScriptCalculationContext& context,
+bool removeOldOutputFiles(Structure* s, const ScriptCalculationContext& context,
                           const std::vector<ExternalScript>& scripts)
 {
   QStringList outputFiles;
   outputFiles.reserve(static_cast<int>(scripts.size()));
-  for (const auto& script : scripts) {
-    if (!isSafeOutputBasename(script.outputFile)) {
-      Common::error(QObject::tr("Refusing unsafe output filename for structure %1: %2")
-                      .arg(s->getTag())
-                      .arg(script.outputFile));
-      continue;
-    }
+  for (const auto& script : scripts)
     outputFiles.append(script.outputFile);
-  }
   if (outputFiles.isEmpty())
-    return;
+    return true;
 
   QHash<QString, bool> existingFiles;
   if (!context.queue->checkIfFilesExist(s, outputFiles, &existingFiles))
-    return;
-
-  for (const auto& script : scripts) {
-    if (!isSafeOutputBasename(script.outputFile))
-      continue;
-    if (existingFiles.value(script.outputFile, false)) {
-      if (!context.queue->removeAFile(s, script.outputFile))
-        Common::error(QObject::tr("Failed to remove file %1!")
-                        .arg(script.outputFile));
-    }
-  }
-}
-
-void runExternalScripts(Structure* s, const ScriptCalculationContext& context,
-                        const std::vector<ExternalScript>& scripts, const QString& scriptKind)
-{
-  for (const auto& script : scripts) {
-    const QueueInterface::CommandResult result =
-      context.queue->runACommand(context.workDir, script.executable);
-    if (!result.launched || result.exitCode != 0) {
-      Common::error(QObject::tr("Failed to run the user script for %1 %2 for structure %3")
-                      .arg(scriptKind)
-                      .arg(script.displayIndex)
-                      .arg(s->getTag()));
-    }
-  }
-}
-
-bool waitForOutputFiles(Structure* s, const ScriptCalculationContext& context,
-                        const std::vector<ExternalScript>& scripts, const QString& scriptKind,
-                        int queueRefreshInterval)
-{
-  bool ok = false;
-  int waitCycles = 0;
-  QStringList missingFiles;
-  QStringList outputFiles;
-  outputFiles.reserve(static_cast<int>(scripts.size()));
-  for (const auto& script : scripts) {
-    if (!isSafeOutputBasename(script.outputFile)) {
-      // Check the output file name to be acceptable.
-      Common::error(QObject::tr("Refusing unsafe output filename for structure %1: %2")
-                      .arg(s->getTag())
-                      .arg(script.outputFile));
-      return false;
-    }
-    outputFiles.append(script.outputFile);
-  }
-  if (outputFiles.isEmpty())
     return false;
 
-  while (!ok) {
-    ok = true;
-    missingFiles.clear();
-    QHash<QString, bool> existingFiles;
-    const bool checkedFiles = context.queue->checkIfFilesExist(s, outputFiles, &existingFiles);
-    if (!checkedFiles) {
-      ok = false;
-      missingFiles = outputFiles;
-    }
-    if (checkedFiles) {
-      for (const auto& script : scripts) {
-        if (!existingFiles.value(script.outputFile, false)) {
-          ok = false;
-          missingFiles.append(script.outputFile);
-        }
-      }
-    }
-    if (!ok) {
-      ++waitCycles;
-      if (waitCycles % 120 == 0) {
-        Common::debug(QObject::tr("%1 calculations for %2 waiting for output file(s): %3")
-                        .arg(scriptKind)
-                        .arg(s->getTag())
-                        .arg(missingFiles.join(", ")));
-      }
-      if (waitCycles >= OBJECTIVE_WAIT_CYCLES) {
-        Common::error(QObject::tr("%1 calculations for %2 timed out waiting for output file(s): %3")
-                        .arg(scriptKind)
-                        .arg(s->getTag())
-                        .arg(missingFiles.join(", ")));
+  for (const auto& script : scripts) {
+    if (existingFiles.value(script.outputFile, false)) {
+      if (!context.queue->removeAFile(s, script.outputFile)) {
+        Common::error(QObject::tr("Failed to remove file %1!")
+                        .arg(script.outputFile));
         return false;
-      }
-      // Wait one second at a time.
-      const int sleepSeconds = qMax(1, queueRefreshInterval);
-      for (int slept = 0; slept < sleepSeconds; ++slept) {
-        if (context.search->isShuttingDown()) {
-          Common::debug(QObject::tr("%1 calculations for %2 abandoned: engine is shutting down.")
-                          .arg(scriptKind)
-                          .arg(s->getTag()));
-          return false;
-        }
-        GS_SLEEP(1);
       }
     }
   }
   return true;
 }
 
-bool waitForAndFetchScriptOutputs(Structure* s, const ScriptCalculationContext& context,
-                                  const std::vector<ExternalScript>& scripts,
-                                  const QString& scriptKind, int queueRefreshInterval)
+bool runExternalScripts(Structure* s, const ScriptCalculationContext& context,
+                        const std::vector<ExternalScript>& scripts, const QString& scriptKind)
 {
-  if (!waitForOutputFiles(s, context, scripts, scriptKind, queueRefreshInterval)) {
-    return false;
+  for (const auto& script : scripts) {
+    const QueueInterface::CommandResult result =
+      context.queue->runACommand(context.workDir, script.executable);
+    if (!result.succeeded()) {
+      Common::error(QObject::tr("Failed to run the user script for %1 %2 for structure %3")
+                      .arg(scriptKind)
+                      .arg(script.displayIndex)
+                      .arg(s->getTag()));
+      return false;
+    }
   }
+  return true;
+}
+
+bool checkAndGetScriptOutputs(Structure* s, const ScriptCalculationContext& context,
+                              const std::vector<ExternalScript>& scripts,
+                              const QString& scriptKind)
+{
+  QStringList outputFiles;
+  outputFiles.reserve(static_cast<int>(scripts.size()));
+  for (const auto& script : scripts)
+    outputFiles.append(script.outputFile);
+  if (outputFiles.isEmpty())
+    return true;
+
+  QHash<QString, bool> existingFiles;
+  if (!context.queue->checkIfFilesExist(s, outputFiles, &existingFiles))
+    return false;
+
+  for (const auto& script : scripts) {
+    if (!existingFiles.value(script.outputFile, false))
+      return false;
+  }
+
+  // A script may create its output file before writing it. Give the
+  //   writer a short delay to finish before the files are read.
+  QThread::msleep(OBJECTIVE_CHECK_MS);
 
   const QString lowerKind = scriptKind.toLower();
   for (const auto& script : scripts) {
@@ -251,13 +176,14 @@ bool waitForAndFetchScriptOutputs(Structure* s, const ScriptCalculationContext& 
     if (!context.localRun)
       QFile::remove(localOutput);
 
-    // Report a failed copy of output files.
+    // Report a failed copy of output files: it will be retried.
     if (!context.queue->copyFileFromExecutionHost(
           workPath(context, script.outputFile), localOutput)) {
       Common::error(QObject::tr("Failed to copy output for %1 %2 for structure %3 from remote!")
                       .arg(lowerKind)
                       .arg(script.displayIndex)
                       .arg(s->getTag()));
+      return false;
     }
   }
 
@@ -322,18 +248,7 @@ bool readConstraintValue(const QString& filename, const QString& localDir, doubl
 
 } // namespace
 
-void SearchBase::calculateConstraints(Structure* s)
-{
-  if (getConstraintsNum() == 0)
-    return;
-
-  Common::ScopedTimer _timer("SearchBase::calculateConstraints");
-
-  (void)QtConcurrent::run(m_objectiveThreadPool.get(),
-    [this, s]() { this->startConstraintCalculations(s); });
-}
-
-void SearchBase::startConstraintCalculations(Structure* s)
+bool SearchBase::startConstraintCalculations(Structure* s)
 {
   const ScriptCalculationContext context = calculationContext(this, s);
   std::vector<ExternalScript> scripts;
@@ -343,31 +258,23 @@ void SearchBase::startConstraintCalculations(Structure* s)
 
   Common::message(tr("Constraint calculations for %1 started.").arg(s->getTag()));
 
-  {
-    QWriteLocker structureLocker(&s->lock());
-    s->setStrucConstraintState(Structure::Cs_Fail);
-  }
-
   const QString outputStructure = "output.POSCAR";
   if (!writeOutputPoscar(s, outputStructure)) {
     Common::error(tr("Failed writing output.POSCAR file for structure %1")
                     .arg(s->getTag()));
-    emit doneWithConstraints(s);
-    return;
+    return false;
   }
 
-  removeOldOutputFiles(s, context, scripts);
   if (!context.queue->copyFileToExecutionHost(Common::localPath(context.localDir, outputStructure),
         workPath(context, outputStructure))) {
     Common::error(tr("Failed to copy the output.POSCAR file for structure %1 to remote!")
                     .arg(s->getTag()));
+    return false;
   }
-  runExternalScripts(s, context, scripts, tr("constraint"));
-
-  finishConstraintCalculations(s);
+  return runExternalScripts(s, context, scripts, tr("constraint"));
 }
 
-void SearchBase::finishConstraintCalculations(Structure* s)
+bool SearchBase::finishConstraintCalculations(Structure* s)
 {
   const ScriptCalculationContext context = calculationContext(this, s);
   std::vector<ExternalScript> scripts;
@@ -375,11 +282,8 @@ void SearchBase::finishConstraintCalculations(Structure* s)
   for (int i = 0; i < getConstraintsNum(); ++i)
     scripts.push_back(ExternalScript(i + 1, getConstraintExe(i), getConstraintOut(i)));
 
-  if (!waitForAndFetchScriptOutputs(s, context, scripts, tr("Constraint"),
-                                    queueRefreshInterval())) {
-    emit doneWithConstraints(s);
-    return;
-  }
+  if (!checkAndGetScriptOutputs(s, context, scripts, tr("Constraint")))
+    return false;
 
   int failedCount = 0;
   int dismissedCount = 0;
@@ -419,28 +323,10 @@ void SearchBase::finishConstraintCalculations(Structure* s)
   Common::message(tr("Constraint calculations for %1 finished (status = %2).")
           .arg(s->getTag()).arg(constext));
 
-  emit doneWithConstraints(s);
+  return true;
 }
 
-void SearchBase::calculateObjectives(Structure* s)
-{
-  // Objective calculations for each structure are handled in two steps:
-  //   (1) startObjectiveCalculations writes output.POSCAR and runs the
-  //       user scripts,
-  //   (2) finishObjectiveCalculations waits for the output files, reads
-  //       the values, updates the structure, and signals the finish.
-
-  // Just start by checking if objective calculations are requested
-  if (!hasExternalObjectiveCalculations())
-    return;
-
-  Common::ScopedTimer _timer("SearchBase::calculateObjectives");
-
-  (void)QtConcurrent::run(m_objectiveThreadPool.get(),
-    [this, s]() { this->startObjectiveCalculations(s); });
-}
-
-void SearchBase::startObjectiveCalculations(Structure* s)
+bool SearchBase::startObjectiveCalculations(Structure* s)
 {
   const ScriptCalculationContext context = calculationContext(this, s);
   std::vector<ExternalScript> scripts;
@@ -453,31 +339,23 @@ void SearchBase::startObjectiveCalculations(Structure* s)
 
   Common::message(tr("Objective calculations for %1 started.").arg(s->getTag()));
 
-  {
-    QWriteLocker structureLocker(&s->lock());
-    s->setStrucObjState(Structure::Os_Fail);
-  }
-
   const QString outputStructure = "output.POSCAR";
   if (!writeOutputPoscar(s, outputStructure)) {
     Common::error(tr("Failed writing output.POSCAR file for structure %1")
                     .arg(s->getTag()));
-    emit doneWithObjectives(s);
-    return;
+    return false;
   }
 
-  removeOldOutputFiles(s, context, scripts);
   if (!context.queue->copyFileToExecutionHost(Common::localPath(context.localDir, outputStructure),
         workPath(context, outputStructure))) {
     Common::error(tr("Failed to copy the output.POSCAR file for structure %1 to remote!")
                     .arg(s->getTag()));
+    return false;
   }
-  runExternalScripts(s, context, scripts, tr("objective"));
-
-  finishObjectiveCalculations(s);
+  return runExternalScripts(s, context, scripts, tr("objective"));
 }
 
-void SearchBase::finishObjectiveCalculations(Structure* s)
+bool SearchBase::finishObjectiveCalculations(Structure* s)
 {
   const ScriptCalculationContext context = calculationContext(this, s);
   std::vector<ExternalScript> scripts;
@@ -488,10 +366,8 @@ void SearchBase::finishObjectiveCalculations(Structure* s)
     }
   }
 
-  if (!waitForAndFetchScriptOutputs(s, context, scripts, tr("Objective"), queueRefreshInterval())) {
-    emit doneWithObjectives(s);
-    return;
-  }
+  if (!checkAndGetScriptOutputs(s, context, scripts, tr("Objective")))
+    return false;
 
   QList<double> values;
   values.reserve(getObjectivesNum());
@@ -531,7 +407,26 @@ void SearchBase::finishObjectiveCalculations(Structure* s)
   Common::message(tr("Objective calculations for %1 finished (status = %2).")
           .arg(s->getTag()).arg(objctext));
 
-  emit doneWithObjectives(s);
+  return true;
+}
+
+bool SearchBase::removeOldScriptOutputs(Structure* s, bool constraints)
+{
+  const ScriptCalculationContext context = calculationContext(this, s);
+  std::vector<ExternalScript> scripts;
+  if (constraints) {
+    scripts.reserve(getConstraintsNum());
+    for (int i = 0; i < getConstraintsNum(); ++i)
+      scripts.push_back(ExternalScript(i + 1, getConstraintExe(i), getConstraintOut(i)));
+  } else {
+    scripts.reserve(getObjectivesNum());
+    for (int i = 0; i < getObjectivesNum(); ++i) {
+      if (objectiveNeedsExternalCalculation(i)) {
+        scripts.push_back(ExternalScript(i + 1, getObjectivesExe(i), getObjectivesOut(i)));
+      }
+    }
+  }
+  return removeOldOutputFiles(s, context, scripts);
 }
 
 } // namespace Search

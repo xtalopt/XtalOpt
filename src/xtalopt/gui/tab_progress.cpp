@@ -651,8 +651,7 @@ void TabProgress::progressContextMenu(QPoint p)
   m_context_mutex->unlock();
 
   // Used to determine available options:
-  bool canGenerateOffspring =
-    (this->m_search->queue()->getAllParentPoolStructures().size() >= 3);
+  bool canGenerateOffspring = (this->m_search->getParentPoolSize() >= 3);
   const bool readOnly = m_search->isReadOnly();
 
   Common::debug(QString("%1: Context menu at row %2")

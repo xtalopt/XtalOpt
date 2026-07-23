@@ -189,7 +189,7 @@ const QList<Row>& rows()
     t << scalar("hardExit", "false", false, true, &XtalOpt::isHardExit, &XtalOpt::setHardExit);
 
     //  Objectives
-    t << scalar("optimizationType", "basic", false, true, &XtalOpt::getOptimizationType, &XtalOpt::setOptimizationType);
+    t << scalar("optimizationType", "basic", false, true, &XtalOpt::optimizationTypeText, &XtalOpt::setOptimizationTypeText);
     t << scalar("tournamentSelection", "true", false, true, &XtalOpt::isTournamentSelection, &XtalOpt::setTournamentSelection);
     t << scalar("restrictedPool", "false", false, true, &XtalOpt::isRestrictedPool, &XtalOpt::setRestrictedPool);
     t << scalar("crowdingDistance", "true", false, true, &XtalOpt::isCrowdingDistance, &XtalOpt::setCrowdingDistance);
@@ -250,6 +250,8 @@ const QList<Row>& rows()
     t << scalar("logErrorDirectories", "false", false, false, &XtalOpt::logErrorDirs, &XtalOpt::setLogErrorDirs);
     t << scalar("autoCancelJobAfterTime", "false", false, true, &XtalOpt::cancelJobAfterTime, &XtalOpt::setCancelJobAfterTime);
     t << scalar("hoursForAutoCancelJob", "100.0", false, true, &XtalOpt::hoursForCancelJobAfterTime, &XtalOpt::setHoursForCancelJobAfterTime);
+    t << scalar("autoCancelScriptAfterTime", "true", false, true, &XtalOpt::cancelScriptAfterTime, &XtalOpt::setCancelScriptAfterTime);
+    t << scalar("hoursForAutoCancelScript", "2.0", false, true, &XtalOpt::hoursForCancelScriptAfterTime, &XtalOpt::setHoursForCancelScriptAfterTime);
     t << optscheme("directRunCommand", "", false, false);
     t << optscheme(queueTemplateKeyword(), "", false, false);
 
@@ -630,14 +632,6 @@ bool validateSettings(XtalOpt& opt, InvalidSettingAction invalidAction, const Sc
       valid = false;
   }
 
-  // Make sure the optimization type is a known one.
-  if (opt.getOptimizationType() != "basic" && opt.getOptimizationType() != "pareto") {
-    if (!handleInvalidSetting(opt, invalidAction, base,
-                               "Invalid optimizationType (must be basic or pareto).",
-                               {"optimizationType" }))
-      valid = false;
-  }
-
   // Lattice limits should always have acceptable values and min <= max.
   const struct
   {
@@ -827,6 +821,16 @@ bool validateSettings(XtalOpt& opt, InvalidSettingAction invalidAction, const Sc
                                "Automatic job cancellation settings are invalid "
                                "(hours must be between 0 and 10000, and positive when enabled).",
                                {"autoCancelJobAfterTime", "hoursForAutoCancelJob"}))
+      valid = false;
+  }
+
+  if (opt.hoursForCancelScriptAfterTime() < 0.0 ||
+      opt.hoursForCancelScriptAfterTime() > 10000.0 ||
+      (opt.cancelScriptAfterTime() && opt.hoursForCancelScriptAfterTime() <= 0.0)) {
+    if (!handleInvalidSetting(opt, invalidAction, base,
+                               "Automatic script cancellation settings are invalid "
+                               "(hours must be between 0 and 10000, and positive when enabled).",
+                               {"autoCancelScriptAfterTime", "hoursForAutoCancelScript"}))
       valid = false;
   }
 

@@ -16,6 +16,7 @@
 #ifndef QUEUEMANAGER_H
 #define QUEUEMANAGER_H
 
+#include <search/constants.h>
 #include <search/tracker.h>
 
 #include <QDateTime>
@@ -24,6 +25,7 @@
 #include <QSet>
 #include <QMutex>
 #include <QString>
+#include <QThreadPool>
 #include <QWaitCondition>
 #include <atomic>
 #include <memory>
@@ -77,21 +79,6 @@ public:
   void setCheckInterval(int ms) { m_checkInterval = ms; }
 
 signals:
-  /**
-  * Emitted when a structure has successfully finished
-  * all optimization steps and is ready for post-optimization
-  * objective calculation
-  * @param s Structure
-  */
-  void readyForObjectiveCalculations(Search::Structure* s);
-
-  /**
-  * Emitted when a structure has successfully finished all optimization steps
-  * and is ready for constrained-search calculations.
-  * @param s Structure
-  */
-  void readyForConstraintCalculations(Search::Structure* s);
-
   /**
    * Emitted when the QueueManager has been moved to it's final
    * thread and is ready to accept connections.
@@ -178,17 +165,13 @@ public slots:
   void killStructure(Structure* s);
 
   /**
-   * Appends a Structure to m_jobStartTracker. This should not be
-   * used unless resuming a session, and then only for structures
-   * that are marked Structure::WaitingForOptimization.
-   *
-   * All other cases should use
-   * addStructureToSubmissionQueue(Structure*)
-   *
-   * @param s The Structure to be appended
+   * Restores QueueManager tracking for a loaded structure.
+   * @param s The restored Structure.
+   * @param queueWaitingForOptimization Whether a waiting structure should be
+   * queued for submission.
    * @sa addStructureToSubmissionQueue
    */
-  void appendToJobStartTracker(Structure* s);
+  void trackRestoredStructure(Structure* s, bool queueWaitingForOptimization);
 
   /**
    * @return All Structures in m_runningTracker
@@ -200,13 +183,6 @@ public slots:
    * Structure::Optimized.
    */
   QList<Structure*> getAllOptimizedStructures();
-
-  /**
-   * @return All Structures in m_tracker with status
-   * Structure::Optimized, not similar to another structure, and
-   * with their hull and objectives/constraints calculated.
-   */
-  QList<Structure*> getAllParentPoolStructures();
 
   /**
    * @return All Structures in m_tracker that are similar to another structure.
@@ -229,16 +205,14 @@ public slots:
    */
   void structureGenerationFailed();
 
-protected slots:
   /**
-   * Check for the status of finished objective
-   * calculations, and label the structure accordingly for
-   * further processing with appropriate handler.
-   * @param s Structure whose objectives are calculated
+   * Wait until all objective/constraint script launches have returned.
+   * @param timeoutMs Wait limit in milliseconds; -1 waits without limit.
+   * @return True when no script launch is left running.
    */
-  void updateStructureObjectiveState(Structure* s);
-  void updateStructureConstraintState(Structure* s);
+  bool waitForScriptCalculations(int timeoutMs);
 
+protected slots:
   /**
    * This is called automatically when the QueueManager is
    * started. This function sets up a simple event loop that will
@@ -285,6 +259,9 @@ protected slots:
   /** Start the periodic check loop; must run on the queue thread. */
   void startCheckLoop();
 
+  /** Submit queued jobs without waiting for the periodic engine tick. */
+  void submitQueuedJobs();
+
 protected:
   /// Cached pointer to main searchbase class
   SearchBase* m_search;
@@ -293,7 +270,7 @@ protected:
   QThread* m_thread;
 
   /// Delay between checkLoop() passes in ms; see setCheckInterval().
-  int m_checkInterval = 1000;
+  int m_checkInterval = QUEUE_CHECK_INTERVAL;
 
   /// Convenience pointer to m_search->tracker()
   Tracker* m_tracker;
@@ -389,7 +366,8 @@ protected:
     ObjectiveDismissHandler,
     SubmissionHandler,
     NamingHandler,
-    KillRequestHandler
+    KillRequestHandler,
+    ScriptLaunchHandler
   };
 
   /**
@@ -437,6 +415,34 @@ protected:
 
   RunningHandlers m_runningHandlers;
 
+  // Bookkeeping for structures during objective/constraint run.
+  struct ScriptWaitInfo
+  {
+    QDateTime started;
+    QDateTime nextCheck;
+  };
+  mutable QMutex m_scriptWaitsMutex;
+  QHash<Structure*, ScriptWaitInfo> m_scriptWaits;
+
+  // Thread pool reserved for objective/constraint scripts
+  QThreadPool m_objectiveThreadPool;
+
+  /**
+   * Launch the objective or constraint scripts for @p s on the objective
+   * thread pool. A handler slot stays live until the launch returns.
+   */
+  void startScriptCalculations(Structure* s, bool constraints);
+
+  /**
+   * The engine's checker for structure's objective/constraint calculations.
+   */
+  void watchScriptCalculation(Structure* s, bool constraints);
+
+  /**
+   * Remove objc/cons timing data for a single calculation
+   */
+  void clearScriptWait(Structure* s);
+
   // Other background handlers
   /// @cond
   void unlockForNaming_();
@@ -475,9 +481,6 @@ protected:
 
   /// Boolean set to true while the queue is being stopped.
   std::atomic<bool> m_isDestroying;
-
-  /// Used to throttle job submissions
-  std::unique_ptr<QDateTime> m_lastSubmissionTimeStamp;
 
   /// Lets the destructor wait for pending work instead of busy-waiting.
   QMutex m_destroyMutex;

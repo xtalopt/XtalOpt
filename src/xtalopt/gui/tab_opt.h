@@ -41,6 +41,7 @@ public slots:
   void writeSettings(const QString& filename) override;
   void loadScheme() override;
   void configureQueueInterface() override;
+  void updateJobCancel();
 };
 }
 

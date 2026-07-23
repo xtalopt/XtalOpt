@@ -24,8 +24,8 @@
 #include <QHash>
 #include <QObject>
 #include <QReadWriteLock>
+#include <QSet>
 
-class QThreadPool;
 class QThread;
 
 #include <atomic>
@@ -156,6 +156,17 @@ public:
     FA_NewOffspring
   };
 
+  /**
+   * The global optimization scheme (used for parent selection).
+   */
+  enum OptimizationType
+  {
+    // Scalar generalized fitness function
+    OT_Basic = 0,
+    // Pareto optimization
+    OT_Pareto
+  };
+
   //
   // Engine identity
   //
@@ -224,21 +235,18 @@ public:
   //
 
   /**
-   * Generate a sorted, trimmed, cumulative probability list for selecting a
-   * structure, and return the selected structure's index in the list.
+   * Select a parent structure from the in-memory parent pool table.
    *
    * The probability of a structure being selected may be obtained from either
    *   multi-objective scalar function or Pareto optimization.
    *
-   * @param structures The list of structures to consider
    * @param poolSize The size of the parent pool. After probabilities are
    *                generated, the low probability structures will be trimmed
    *                off until poolSize is reached.
    *
-   * @return The index of the selected structure in the input list.
-   *         If (for any reason) it fails, the return value will be -1.
+   * @return The selected structure, or nullptr on failure.
    */
-  int selectParentFromPool(const QList<Structure*>& structures, size_t poolSize);
+  Structure* selectParentStructure(size_t poolSize);
 
   // Select one tournament winner in parent selection.
   int selectTournamentParent(const QList<Structure*>& structures, const std::vector<int>& strFrnt,
@@ -464,38 +472,30 @@ public:
   //
 
   /**
-   * Wrapper for calculating the objectives for multi-objective run
+   * Starts user-defined objective runs for structure @p s.
    * @param s The structure whose objectives is to be calculated.
    */
-  void calculateObjectives(Structure* s);
-
-  /**
-   * Wrapper for calculating constrained-search values for @p s.
-   */
-  void calculateConstraints(Structure* s);
-
-  /**
-   * Starts multi-objective run for structure by generating/copying relevant files, and running objective scripts
-   * @param s The structure whose objectives is to be calculated.
-   */
-  void startObjectiveCalculations(Structure* s);
+  bool startObjectiveCalculations(Structure* s);
 
   /**
    * Start constrained-search script execution for @p s.
    */
-  void startConstraintCalculations(Structure* s);
+  bool startConstraintCalculations(Structure* s);
 
   /**
-   * Finalizes the multi-objective run for a structure by waiting for output files to appear, transferring output
-   * files (if they're on a remote server) and processing them, updating structure info, and signal the finished job.
-   * @param s The structure whose objectives is to be calculated.
+   * Finalize the objective script execution for @p s.
    */
-  void finishObjectiveCalculations(Structure* s);
+  bool finishObjectiveCalculations(Structure* s);
 
   /**
    * Finalize constrained-search script execution for @p s.
    */
-  void finishConstraintCalculations(Structure* s);
+  bool finishConstraintCalculations(Structure* s);
+
+  /**
+   * Delete objc/const script outputs from any earlier run.
+   */
+  bool removeOldScriptOutputs(Structure* s, bool constraints);
 
   // Multi-objective: add an objective
   void addObjective(ObjType type, const QString& exe = QString(), const QString& out = QString(),
@@ -634,8 +634,8 @@ protected:
 public:
   bool isRemoteQueue() const        { return m_remoteQueue; }
   void setRemoteQueue(bool v)       { m_remoteQueue = v; }
-  const QString& getOptimizationType() const { return m_optimizationType; }
-  void setOptimizationType(const QString& v) { m_optimizationType = v.trimmed().toLower(); }
+  OptimizationType getOptimizationType() const { return m_optimizationType; }
+  void setOptimizationType(OptimizationType v) { m_optimizationType = v; }
   bool isTournamentSelection() const { return m_tournamentSelection; }
   void setTournamentSelection(bool v){ m_tournamentSelection = v; }
   bool isRestrictedPool() const     { return m_restrictedPool; }
@@ -650,6 +650,18 @@ public:
   // Update the parent selection data after changing the parent list or relevant settings.
   void markParentSelectionForUpdate() { ++m_selectionDataStamp; }
 
+  // Re-check an structure's parent-pool eligibility (after change of status, similarity, objc/cons)
+  void refreshParentPoolMembership(Structure* s);
+
+  // Re-construct the parent pool table from all tracked structures (session load/reset).
+  void rebuildParentPoolMembership();
+
+  // Number of structures currently in the parent pool.
+  int getParentPoolSize() const;
+
+  // A copy of all structure in the current parent pool.
+  QList<Structure*> getAllParentPoolStructures() const;
+
   // Update structures' Pareto front using pool values
   void applyParentSelectionFronts();
 
@@ -660,15 +672,6 @@ public:
   void reportStructureStateChanged(Structure* structure);
 
 signals:
-  // QueueManager continuation signals.
-
-  /**
-   * Emitted when objective calculations for the structure are finished.
-   * @param s Structure
-   */
-  void doneWithObjectives(Structure* s);
-  void doneWithConstraints(Structure* s);
-
   // Session signals.
 
   /**
@@ -1069,6 +1072,26 @@ public slots:
     m_hoursForCancelJobAfterTime = v;
   }
 
+  /**
+   * @return Whether we stop waiting for an objective/constraint script's
+   *         output after a set time and mark it failed.
+   */
+  bool cancelScriptAfterTime() const { return m_cancelScriptAfterTime; }
+  void setCancelScriptAfterTime(bool v) { m_cancelScriptAfterTime = v; }
+
+  /**
+   * @return The amount of time in hours that, if exceeded, we stop waiting
+   *         for an objective/constraint script's output and mark it failed
+   */
+  double hoursForCancelScriptAfterTime() const
+  {
+    return m_hoursForCancelScriptAfterTime;
+  }
+  void setHoursForCancelScriptAfterTime(double v)
+  {
+    m_hoursForCancelScriptAfterTime = v;
+  }
+
   // Generic ranking helpers.
   // Derived applications prepare raw objective values, then can use these
   // helpers for scalar/Pareto ranking.
@@ -1239,9 +1262,6 @@ private:
   // Thread to run the QueueManager
   std::unique_ptr<QThread> m_queueThread;
 
-  // Thread pool for objective scripts and output-file checks.
-  std::unique_ptr<QThreadPool> m_objectiveThreadPool;
-
   // Owning pointer to the QueueManager
   std::unique_ptr<QueueManager> m_queue;
 
@@ -1271,7 +1291,7 @@ private:
   std::atomic<bool> m_hardExit;
   bool    m_remoteQueue;
   bool    m_constraintsReDo;
-  QString m_optimizationType;
+  OptimizationType m_optimizationType;
   bool    m_tournamentSelection;
   bool    m_restrictedPool;
   bool    m_crowdingDistance;
@@ -1292,7 +1312,10 @@ private:
     bool built = false;
   };
   void rebuildParentSelectionData(const QList<Structure*>& structures);
+  bool parentPoolEligible(Structure* s) const;
   ParentSelectionData m_parentSelectionData;
+  // Structures eligible as parents: kept up to date by refreshParentPoolMembership.
+  QSet<Structure*> m_parentPool;
   mutable QReadWriteLock m_parentSelectionDataLock;
   std::atomic<long long> m_selectionDataStamp{0};
 
@@ -1320,6 +1343,8 @@ private:
 
   bool m_cancelJobAfterTime = false;
   double m_hoursForCancelJobAfterTime = 100.0;
+  bool m_cancelScriptAfterTime = true;
+  double m_hoursForCancelScriptAfterTime = 2.0;
 
   BackgroundJob m_evaluationUpdateJob;
 };

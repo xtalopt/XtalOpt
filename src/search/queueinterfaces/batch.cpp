@@ -295,12 +295,17 @@ bool BatchQueueInterface::queueListCommandSucceeded(
 
 QStringList BatchQueueInterface::queueList(bool forced) const
 {
+  int refreshInterval = 0;
+  {
+    QReadLocker runtimeLocker(m_search->runtimeSettingsLock());
+    refreshInterval = m_search->queueRefreshInterval();
+  }
+
   QDateTime oldTimeStamp;
   {
     QReadLocker readLocker(&m_queueMutex);
     if (!forced && m_queueTimeStamp.isValid() &&
-        m_queueTimeStamp.msecsTo(QDateTime::currentDateTime()) <=
-          1000 * m_search->queueRefreshInterval()) {
+        m_queueTimeStamp.msecsTo(QDateTime::currentDateTime()) <= 1000 * refreshInterval) {
       return QStringList(m_queueData);
     }
     oldTimeStamp = m_queueTimeStamp;

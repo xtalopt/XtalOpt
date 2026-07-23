@@ -28,6 +28,7 @@ class QAction;
 class QCheckBox;
 class QComboBox;
 class QDialog;
+class QDoubleSpinBox;
 class QLineEdit;
 class QPushButton;
 class QTextEdit;
@@ -269,6 +270,10 @@ protected:
   QLineEdit*   ui_edit_description;
   /// Cached GUI pointer. This is set in DefaultOptTab
   QCheckBox*   ui_cb_logErrorDirs;
+  /// Cached GUI pointer. This is set in DefaultOptTab
+  QCheckBox*   ui_cb_cancelJobAfterTime;
+  /// Cached GUI pointer. This is set in DefaultOptTab
+  QDoubleSpinBox* ui_spin_hoursForCancelJob;
 
   bool m_configDialogsReadOnly;
   QPointer<QWidget> m_helpDialog;

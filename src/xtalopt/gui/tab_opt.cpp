@@ -22,8 +22,10 @@
 #include <search/queueinterface.h>
 #include <search/queueinterfaces/queueinterfaces.h>
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDir>
+#include <QDoubleSpinBox>
 #include <QFileDialog>
 #include <QReadWriteLock>
 
@@ -54,11 +56,40 @@ TabOpt::TabOpt(AbstractDialog* parent, XtalOpt* p) : DefaultOptTab(parent, p)
 
   DefaultOptTab::initialize();
 
+  // The job-cancel setting
+  connect(ui_cb_cancelJobAfterTime, &QCheckBox::toggled, this, &TabOpt::updateJobCancel);
+  connect(ui_spin_hoursForCancelJob,
+          static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+          this, &TabOpt::updateJobCancel);
+
   populateTemplates();
 }
 
 TabOpt::~TabOpt()
 {
+}
+
+void TabOpt::updateJobCancel()
+{
+  ui_spin_hoursForCancelJob->setEnabled(ui_cb_cancelJobAfterTime->isChecked());
+
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+  const bool enabled = ui_cb_cancelJobAfterTime->isChecked();
+  const double hours = ui_spin_hoursForCancelJob->value();
+  bool changed = false;
+  {
+    QWriteLocker runtimeLocker(m_search->runtimeSettingsLock());
+    if (xtalopt->cancelJobAfterTime() != enabled) {
+      xtalopt->setCancelJobAfterTime(enabled);
+      changed = true;
+    }
+    if (xtalopt->hoursForCancelJobAfterTime() != hours) {
+      xtalopt->setHoursForCancelJobAfterTime(hours);
+      changed = true;
+    }
+  }
+  if (changed && m_search->isSessionInProgress())
+    xtalopt->requestSettingsStateSave();
 }
 
 void TabOpt::writeSettings(const QString& filename)
@@ -108,7 +139,7 @@ void TabOpt::configureQueueInterface()
   {
     QWriteLocker runtimeLocker(m_search->runtimeSettingsLock());
     Settings::validateSettings(*xtalopt, Settings::InvalidSettingAction::KeepPrevious, &before);
-    const QStringList keywords = { "queueRefreshInterval", "autoCancelJobAfterTime", "hoursForAutoCancelJob" };
+    const QStringList keywords = { "queueRefreshInterval" };
     for (const auto& keyword : keywords) {
       if (Settings::scalarValue(*xtalopt, keyword) != before.value(keyword)) {
         settingsChanged = true;

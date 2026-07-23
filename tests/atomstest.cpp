@@ -244,10 +244,8 @@ void AtomsTest::normalizedRDF()
   QVERIFY(structure.calculateNormalizedRDF(50, 5.0, 0.1));
   QVERIFY(structure.hasNormalizedRDF());
 
-  std::vector<std::vector<std::vector<double> > > rdf = structure.getNormalizedRDF();
+  const std::vector<float>& rdf = structure.getNormalizedRDF();
   QCOMPARE(rdf.size(), static_cast<size_t>(50));
-  QCOMPARE(rdf.front().size(), static_cast<size_t>(1));
-  QCOMPARE(rdf.front().front().size(), static_cast<size_t>(1));
 
   structure.clearNormalizedRDF();
   QVERIFY(!structure.hasNormalizedRDF());

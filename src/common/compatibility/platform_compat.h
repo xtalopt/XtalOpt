@@ -29,6 +29,7 @@
 #include <windows.h> // Sleep
 #include <float.h>   // _finite
 #else
+#include <time.h>   // clock_gettime
 #include <unistd.h> // sleep
 #endif
 
@@ -52,5 +53,54 @@
 #endif // GS_WINDOWS
 
 #define GS_IS_NAN_OR_INF(a) (GS_ISNAN(a) || GS_ISINF(a))
+
+namespace Common {
+
+// Process CPU counters (e.g., for the timing report).
+// These return 0 when the value is not available.
+
+// CPU time used by the calling thread, in nanoseconds.
+inline long long threadCpuNanos()
+{
+#if GS_WINDOWS
+  FILETIME creation, exitt, kernel, user;
+  if (!GetThreadTimes(GetCurrentThread(), &creation, &exitt, &kernel, &user))
+    return 0;
+  ULARGE_INTEGER k, u;
+  k.LowPart = kernel.dwLowDateTime; k.HighPart = kernel.dwHighDateTime;
+  u.LowPart = user.dwLowDateTime;   u.HighPart = user.dwHighDateTime;
+  return static_cast<long long>(k.QuadPart + u.QuadPart) * 100LL; // 100ns units
+#elif defined(CLOCK_THREAD_CPUTIME_ID)
+  struct timespec ts;
+  if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) != 0)
+    return 0;
+  return static_cast<long long>(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
+#else
+  return 0;
+#endif
+}
+
+// CPU time used by the process, over all threads, in nanoseconds.
+inline long long processCpuNanos()
+{
+#if GS_WINDOWS
+  FILETIME creation, exitt, kernel, user;
+  if (!GetProcessTimes(GetCurrentProcess(), &creation, &exitt, &kernel, &user))
+    return 0;
+  ULARGE_INTEGER k, u;
+  k.LowPart = kernel.dwLowDateTime; k.HighPart = kernel.dwHighDateTime;
+  u.LowPart = user.dwLowDateTime;   u.HighPart = user.dwHighDateTime;
+  return static_cast<long long>(k.QuadPart + u.QuadPart) * 100LL;
+#elif defined(CLOCK_PROCESS_CPUTIME_ID)
+  struct timespec ts;
+  if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts) != 0)
+    return 0;
+  return static_cast<long long>(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
+#else
+  return 0;
+#endif
+}
+
+} // namespace Common
 
 #endif // COMMON_PLATFORM_COMPAT_H

@@ -22,6 +22,7 @@
 #include <atoms/eleminfo.h>
 #include <common/output.h>
 #include <common/random.h>
+#include <common/timing.h>
 #include <common/numericutils.h>
 #include <atoms/data/spghmnames.h>
 
@@ -1121,8 +1122,12 @@ bool Geometry::calculateNormalizedRDF(int nbins, double cutoff, double sigma)
       cutoff == g_norm_rdf_cutoff && sigma == g_norm_rdf_sigma)
     return true;
 
+  // Timed after verifying the cache; so the call count shows real RDF calculations.
+  Common::ScopedTimer _timer("Geometry::calculateRDF");
+
   QList<QString> symbols = getSymbols();
   int nsymbs = symbols.size();
+  int npairs = nsymbs * (nsymbs + 1) / 2;
 
   double delta      = cutoff / nbins;
   int    del_bin    = 3 * std::ceil(sigma / delta);
@@ -1133,15 +1138,9 @@ bool Geometry::calculateNormalizedRDF(int nbins, double cutoff, double sigma)
     return false;
   std::vector<std::vector<std::pair<int, double> > > nnlist = getNearestNeighborLists();
 
-  std::vector<std::vector<std::vector<double> > > rdf;
-
-  rdf.clear();
-  rdf.resize(nbins);
-  for (int i = 0; i < nbins; i++) {
-    rdf[i].resize(nsymbs);
-    for (int j = 0; j < nsymbs; j++)
-      rdf[i][j].resize(nsymbs, 0.0);
-  }
+  // We calculate rdf as double (cached values are float). The flat vector is
+  //   bin-major: value for bin "b" and species pair "p" is [b * npairs + p].
+  std::vector<double> rdf(static_cast<size_t>(nbins) * npairs, 0.0);
 
   for (int i = 0; i < static_cast<int>(atoms().size()); i++) {
     int indx0 = symbols.indexOf(
@@ -1153,6 +1152,8 @@ bool Geometry::calculateNormalizedRDF(int nbins, double cutoff, double sigma)
         Atoms::ElementInfo::getAtomicSymbol(atoms()[a1].atomicNumber()).c_str());
       if (indx1 < indx0)
         continue;
+      // Index of the (indx0, indx1) species pair within the ordered unique pairs
+      int pair = indx0 * nsymbs - (indx0 * (indx0 - 1)) / 2 + (indx1 - indx0);
       int binn = std::floor(d1 / delta);
       for (int b = binn - del_bin; b <= binn + del_bin; b++) {
         if (b < 0 || b >= nbins)
@@ -1162,31 +1163,31 @@ bool Geometry::calculateNormalizedRDF(int nbins, double cutoff, double sigma)
         if (coor >= softcutoff) {
           smooth = std::cos(0.5 * PI * (coor - softcutoff) / (cutoff - softcutoff));
         }
-        rdf[b][indx0][indx1] += smooth * std::exp(gaus_fact * (d1 - coor) * (d1 - coor));
+        rdf[static_cast<size_t>(b) * npairs + pair] += smooth * std::exp(gaus_fact * (d1 - coor) * (d1 - coor));
       }
     }
   }
 
-  for (int i = 0; i < nbins; i++)
-    for (int j = 0; j < nsymbs; j++)
-      rdf[i][j][j] *= 0.5;
+  // Adjust for double-counting of same-species
+  for (int j = 0; j < nsymbs; j++) {
+    int pair = j * nsymbs - (j * (j - 1)) / 2;
+    for (int i = 0; i < nbins; i++)
+      rdf[static_cast<size_t>(i) * npairs + pair] *= 0.5;
+  }
 
   double norm = 0.0;
-  for (int i = 0; i < nbins; i++)
-    for (int j = 0; j < nsymbs; j++)
-      for (int k = j; k < nsymbs; k++)
-        norm += rdf[i][j][k] * rdf[i][j][k];
+  for (size_t i = 0; i < rdf.size(); i++)
+    norm += rdf[i] * rdf[i];
 
   if (norm < ZERO06)
     return false;
 
   norm = 1.0 / std::sqrt(norm);
-  for (int i = 0; i < nbins; i++)
-    for (int j = 0; j < nsymbs; j++)
-      for (int k = j; k < nsymbs; k++)
-        rdf[i][j][k] *= norm;
+  for (size_t i = 0; i < rdf.size(); i++)
+    rdf[i] *= norm;
 
-  g_norm_rdf = rdf;
+  g_norm_rdf.assign(rdf.begin(), rdf.end());
+  g_norm_rdf_nsymbs = nsymbs;
   g_norm_rdf_nbins = nbins;
   g_norm_rdf_cutoff = cutoff;
   g_norm_rdf_sigma = sigma;
@@ -1202,19 +1203,17 @@ bool Geometry::calculateTotalNormalizedRDF(int nbins, double cutoff, double sigm
   if (!calculateNormalizedRDF(nbins, cutoff, sigma))
     return false;
 
-  int x = g_norm_rdf.size();
-  int y = g_norm_rdf.empty() ? 0 : g_norm_rdf[0].size();
-  int z = (g_norm_rdf.empty() || g_norm_rdf[0].empty()) ? 0 : g_norm_rdf[0][0].size();
+  int npairs = g_norm_rdf_nsymbs * (g_norm_rdf_nsymbs + 1) / 2;
 
-  if (x == 0 || y == 0 || z == 0 || x != nbins || y != z)
+  if (nbins <= 0 || npairs <= 0 ||
+      g_norm_rdf.size() != static_cast<size_t>(nbins) * npairs)
     return false;
 
   total.assign(nbins, 0.0);
 
-  for (int i = 0; i < x; i++) {
-    for (int j = 0; j < y; j++)
-      for (int k = j; k < z; k++)
-        total[i] += g_norm_rdf[i][j][k];
+  for (int i = 0; i < nbins; i++) {
+    for (int p = 0; p < npairs; p++)
+      total[i] += g_norm_rdf[static_cast<size_t>(i) * npairs + p];
   }
 
   return true;
@@ -1236,13 +1235,13 @@ bool Geometry::compareRDF(Geometry& other, int nbins, double cutoff, double sigm
       !other.calculateNormalizedRDF(nbins, cutoff, sigma))
     return false;
 
-  const std::vector<std::vector<std::vector<double> > >& rdfi = g_norm_rdf;
-  const std::vector<std::vector<std::vector<double> > >& rdfj = other.g_norm_rdf;
+  const std::vector<float>& rdfi = g_norm_rdf;
+  const std::vector<float>& rdfj = other.g_norm_rdf;
+  if (rdfi.size() != rdfj.size())
+    return false;
 
   for (size_t i = 0; i < rdfi.size(); i++)
-    for (size_t j = 0; j < rdfi[i].size(); j++)
-      for (size_t k = j; k < rdfi[i][j].size(); k++)
-        dotProduct += rdfi[i][j][k] * rdfj[i][j][k];
+    dotProduct += static_cast<double>(rdfi[i]) * rdfj[i];
 
   return (dotProduct >= tolerance);
 }

@@ -57,7 +57,7 @@ struct MoleculeTemplate
 
 static const MoleculeTemplate moleculeTemplates[] = {
   {
-    "linear_2_pair", "Ci",
+    "linear_2_pair", "D0h",
     "two equivalent atoms related by inversion",
     1, { 2, 0, 0 },
     { { 0.0, 0.0, 1.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }

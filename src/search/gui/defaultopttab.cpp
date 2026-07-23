@@ -53,6 +53,8 @@ DefaultOptTab::DefaultOptTab(AbstractDialog* dialog, SearchBase* opt)
   ui_edit_locpath = ui->edit_locpath;
   ui_edit_description = ui->edit_description;
   ui_cb_logErrorDirs = ui->cb_logErrorDirs;
+  ui_cb_cancelJobAfterTime = ui->cb_cancelJobAfterTime;
+  ui_spin_hoursForCancelJob = ui->spin_hoursForCancelJobAfterTime;
 }
 
 DefaultOptTab::~DefaultOptTab()

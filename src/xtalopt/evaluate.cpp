@@ -54,32 +54,39 @@ static Xtal* xtalOrFlagged(Structure* structure, const char* context)
   return xtal;
 }
 
-// Keep the old complete output until the new file has been written.
-static bool finishOutputFile(const QString& freshFilename, const QString& filename,
-                             const char* caller)
+// Refresh the ".old" backup, then rewrite the output file in place. The
+//   file is never removed or renamed, so a "tail -f" on it keeps working.
+static bool writeOutputFileWithBackup(const QString& filename, const QString& contents,
+                                      const char* caller)
 {
   if (QFile::exists(filename)) {
     const QString oldFilename = filename + ".old";
-    const QString oldTempFilename = oldFilename + ".tmp";
-    if ((QFile::exists(oldTempFilename) && !QFile::remove(oldTempFilename)) ||
-        !QFile::copy(filename, oldTempFilename) ||
-        (QFile::exists(oldFilename) && !QFile::remove(oldFilename)) ||
-        !QFile::rename(oldTempFilename, oldFilename)) {
+    if ((QFile::exists(oldFilename) && !QFile::remove(oldFilename)) ||
+        !QFile::copy(filename, oldFilename)) {
       Common::error(QString("%1: could not write backup file %2.")
                     .arg(caller).arg(oldFilename));
-      QFile::remove(oldTempFilename);
-      QFile::remove(freshFilename);
       return false;
     }
   }
 
-  if ((!QFile::exists(filename) || QFile::remove(filename)) &&
-      QFile::rename(freshFilename, filename))
-    return true;
+  QFile file(filename);
+  if (!file.open(QIODevice::WriteOnly)) {
+    Common::error(QString("%1: could not open file %2 for writing...")
+                    .arg(caller).arg(file.fileName()));
+    return false;
+  }
 
-  Common::error(QString("%1: could not replace file %2.").arg(caller).arg(filename));
-  QFile::remove(freshFilename);
-  return false;
+  QTextStream out(&file);
+  out << contents;
+
+  // A failed write must report it for a retry
+  out.flush();
+  file.close();
+  if (file.error() != QFile::NoError) {
+    Common::error(QString("%1: could not write file %2.").arg(caller).arg(filename));
+    return false;
+  }
+  return true;
 }
 
 void XtalOpt::updateStructureEvaluationInfo()
@@ -221,6 +228,10 @@ bool XtalOpt::evaluateStructuresIncrementally(const QSet<Structure*>& structures
     else
       xtal->setParetoFront(-1);
     anyAssigned = true;
+    structureLocker.unlock();
+
+    // The structure can be added to the parent pool now with values completed.
+    refreshParentPoolMembership(xtal);
   }
 
   // The parent pool changed; the selection table is rebuilt at the next selection round.
@@ -353,6 +364,10 @@ bool XtalOpt::refreshStructureEvaluationData()
     optimizedStructures[structureIndex]->setStrucObjValuesVec(objectiveValuesList[i]);
   }
 
+  // The new values may change the structures' pool eligibility.
+  for (Structure* structure : optimizedStructures)
+    refreshParentPoolMembership(structure);
+
   // The parent pool and its fitness changed; the selection table is rebuilt
   //   at the next parent selection.
   markParentSelectionForUpdate();
@@ -392,21 +407,8 @@ bool XtalOpt::writeResultsFile(const QList<Structure*>& structures, bool notify)
   if (notify)
     updateProgressValue(-1, tr("Saving: Writing %1...").arg(resultsFilename));
 
-  const QString freshResultsFilename = resultsFilename + ".tmp";
-  if (QFile::exists(freshResultsFilename) && !QFile::remove(freshResultsFilename)) {
-    Common::error(QString("%1: could not remove file %2.").arg(__func__).arg(freshResultsFilename));
-    return false;
-  }
-
-  QFile file(freshResultsFilename);
-  if (!file.open(QIODevice::WriteOnly)) {
-    Common::error(QString("%1: could not open file %2 for writing...")
-                   .arg(__func__)
-                   .arg(file.fileName()));
-    return false;
-  }
-
-  QTextStream out(&file);
+  QString contents;
+  QTextStream out(&contents);
   QList<Structure*> sortedStructures(structures);
   const int objectiveOffset = (getObjectivesNum() > 0) ? getFirstUserObjectiveIndex() : 0;
   const int userObjectivesNum = getUserObjectivesNum();
@@ -428,15 +430,7 @@ bool XtalOpt::writeResultsFile(const QList<Structure*>& structures, bool notify)
         << QtCompat::endl;
   }
 
-  // A failed write must report it for a retry
-  out.flush();
-  file.close();
-  if (file.error() != QFile::NoError) {
-    Common::error(QString("%1: could not write file %2.").arg(__func__).arg(resultsFilename));
-    QFile::remove(freshResultsFilename);
-    return false;
-  }
-  return finishOutputFile(freshResultsFilename, resultsFilename, __func__);
+  return writeOutputFileWithBackup(resultsFilename, contents, __func__);
 }
 
 QString XtalOpt::hullFileContents(const QList<Structure*>& structures)
@@ -486,31 +480,7 @@ bool XtalOpt::writeHullFile(const QList<Structure*>& structures, const QString& 
     return false;
   }
 
-  const QString freshFilename = filename + ".tmp";
-  if (QFile::exists(freshFilename) && !QFile::remove(freshFilename)) {
-    Common::error(QString("%1: could not remove file %2.").arg(__func__).arg(freshFilename));
-    return false;
-  }
-
-  QFile file(freshFilename);
-  if (!file.open(QIODevice::WriteOnly)) {
-    Common::error(QString("%1: could not open file %2 for writing...")
-                  .arg(__func__).arg(file.fileName()));
-    return false;
-  }
-
-  QTextStream out(&file);
-  out << hullFileContents(structures);
-
-  // A failed write must report so we can retry
-  out.flush();
-  file.close();
-  if (file.error() != QFile::NoError) {
-    Common::error(QString("%1: could not write file %2.").arg(__func__).arg(filename));
-    QFile::remove(freshFilename);
-    return false;
-  }
-  return finishOutputFile(freshFilename, filename, __func__);
+  return writeOutputFileWithBackup(filename, hullFileContents(structures), __func__);
 }
 
 void XtalOpt::resetSimilarities()
@@ -542,7 +512,8 @@ void XtalOpt::checkForSimilarities_()
   QReadLocker runtimeLocker(runtimeSettingsLock());
 
   // A tolerance or relevant setting change requires a full re-check.
-  if (x_similaritiesNeedReset.exchange(false)) {
+  const bool didReset = x_similaritiesNeedReset.exchange(false);
+  if (didReset) {
     QList<Structure*> structures;
     {
       QReadLocker trackerLocker(tracker()->rwLock());
@@ -610,6 +581,7 @@ void XtalOpt::checkForSimilarities_()
   }
 
   // Only check pairs involving a changed Xtal; the rest were checked before.
+  QList<Xtal*> markedXtals;
   for (size_t i = 0; i < candidates.size(); ++i) {
     if (!candidates[i].changed)
       continue;
@@ -640,21 +612,33 @@ void XtalOpt::checkForSimilarities_()
       if (compareCompositions(candidates[i].composition, candidates[j].composition) == 0)
         continue;
 
-      checkIfSimilar(candidates[i].xtal, candidates[j].xtal, candidates[i].symbols, candidates[j].symbols);
+      Xtal* marked = checkIfSimilar(candidates[i].xtal, candidates[j].xtal,
+                                    candidates[i].symbols, candidates[j].symbols);
+      if (marked)
+        markedXtals.append(marked);
     }
   }
 
-  // A structure marked similar leaves the parent pool; the selection table is
-  //   rebuilt at the next parent selection.
-  markParentSelectionForUpdate();
+  // A structure marked as similar leaves the parent pool. The refresh bumps
+  //   the selection stamp, so the table is rebuilt at the next selection.
+  for (Xtal* marked : markedXtals)
+    refreshParentPoolMembership(marked);
+
+  // A full re-check may also have released previously similar structures
+  //   back into the pool; re-derive the whole pool for that case.
+  if (didReset)
+    rebuildParentPoolMembership();
 
   emit refreshAllStructureInfo();
 }
 
-void XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols)
+Xtal* XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols)
 {
+  // Timed per screen-passing pair: the call count tracks how many pairs
+  //   reach the real comparison.
+  Common::ScopedTimer _timer("XtalOpt::checkIfSimilar");
   if (a == b)
-    return;
+    return nullptr;
   Xtal *kickXtal, *keepXtal;
   // Lock the lower-address structure first, so two threads locking the same
   //   pair always agree on the order (avoids a deadlock).
@@ -662,7 +646,7 @@ void XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, c
   QReadLocker jLocker(&(a < b ? b : a)->lock());
   // If they are already both marked as similar, just return.
   if (a->isSimilar() && b->isSimilar()) {
-    return;
+    return nullptr;
   }
 
   // With the variable-composition search, we have the possibilities of having:
@@ -695,6 +679,7 @@ void XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, c
       }
     }
   } else {
+    Common::ScopedTimer _xcTimer("XtalOpt::xtalCompCompare");
     Structure xtali(*a);
     Structure xtalj(*b);
     xtali.reduceToPrimitive(getTolSpg());
@@ -703,7 +688,7 @@ void XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, c
   }
 
   if (!theyAreSimilar)
-    return;
+    return nullptr;
 
   // Mark the newest xtal as a similarity to the oldest. This keeps the
   //   lowest-energy plot trace accurate.
@@ -725,7 +710,7 @@ void XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, c
   }
   // If the kickXtal is already a similar, just return
   if (kickXtal->isSimilar()) {
-    return;
+    return nullptr;
   }
   // Capture what we need from keepXtal while its read lock is still held.
   const uint keepGen = keepXtal->getGeneration();
@@ -745,9 +730,11 @@ void XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, c
     kickXtal->lock().lockForWrite();
   }
 
+  Xtal* marked = nullptr;
   if (kickXtal->getStatus() == Xtal::Optimized && !kickXtal->isSimilar() &&
       keepXtal->getStatus() == Xtal::Optimized && !keepXtal->isSimilar()) {
     kickXtal->setSimilarityString(QString("%1x%2").arg(keepGen).arg(keepId));
+    marked = kickXtal;
   }
 
   if (kickFirst) {
@@ -757,6 +744,8 @@ void XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, c
     kickXtal->lock().unlock();
     keepXtal->lock().unlock();
   }
+
+  return marked;
 }
 
 } // namespace XtalOpt

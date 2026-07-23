@@ -193,38 +193,6 @@
        </property>
       </widget>
      </item>
-     <item row="9" column="0">
-      <widget class="QCheckBox" name="cb_cancelJobAfterTime">
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Automatically cancel a job after a specified amount of time. The next pending job will then be submitted.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="text">
-        <string>Automatically cancel job after:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="9" column="1">
-      <widget class="QDoubleSpinBox" name="spin_hoursForCancelJobAfterTime">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Automatically cancel a job after a specified amount of time.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="suffix">
-        <string> hours</string>
-       </property>
-       <property name="minimum">
-        <double>0.010000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>10000.000000000000000</double>
-       </property>
-       <property name="value">
-        <double>100.000000000000000</double>
-       </property>
-      </widget>
-     </item>
     </layout>
    </item>
   </layout>

@@ -200,23 +200,25 @@ public:
    * "Normalized pairwise" RDF vector for the structure. The normalization
    * of pairwise entries is done so they are ready for dot product.
    *
-   * This normalized RDF object is a "nbin*nelem*nelem" size matrix; however
-   * the relevant pairwise entries are unique pairs in their natural order.
-   * For examples:
-   * 1) For a ternary system such as "A-B-C", the relevant entries are:
-   * "distance" "AA" "AB" "AC" "BB" "BC" "CC".
+   * The normalized RDF is a flat "float" vector (memory considerations!).
+   * Its size is "nbins*npairs" vector, with npairs = nelem*(nelem+1)/2.
+   * The vector is bin-major: for each bin, the values for unique pairs
+   *   are saved in their natural order (getSymbols() order); eg,
+   * 1) For a ternary system such as "A-B-C", the pair entries are:
+   * "AA" "AB" "AC" "BB" "BC" "CC" --index--> {0,...,5}.
    * 2) For a quaternary "A-B-C-D", they are:
-   * "distance" "AA" "AB" "AC" "AD" "BB" "BC" "BD" "CC" "CD" "DD".
+   * "AA" "AB" "AC" "AD" "BB" "BC" "BD" "CC" "CD" "DD" --index--> {0,...,9}.
    *
-   * So, to read the meaningful RDF columns, these kind of loops are needed:
-   *     i=0,nbins -> j=0,nelem -> k=j,nelem ---> rdf[i][j][k]
+   * So, the value for bin "b" and unique pair index "p" is:
+   *     rdf[b * npairs + p]
    */
   ///@{
-  std::vector<std::vector<std::vector<double> > >
+  const std::vector<float>&
        getNormalizedRDF() const { return g_norm_rdf; }
   void clearNormalizedRDF()
   {
     g_norm_rdf.clear();
+    g_norm_rdf_nsymbs = 0;
     g_norm_rdf_nbins = 0;
     g_norm_rdf_cutoff = 0.0;
     g_norm_rdf_sigma = 0.0;
@@ -790,8 +792,9 @@ private:
 
   mutable unsigned short g_spgNumber = 231;
   mutable QString g_spgSymbol;
-  mutable std::vector<std::vector<std::vector<double> > > g_norm_rdf;
+  mutable std::vector<float> g_norm_rdf;
   // Parameters used to make the RDF.
+  mutable int g_norm_rdf_nsymbs = 0;
   mutable int g_norm_rdf_nbins = 0;
   mutable double g_norm_rdf_cutoff = 0.0;
   mutable double g_norm_rdf_sigma = 0.0;

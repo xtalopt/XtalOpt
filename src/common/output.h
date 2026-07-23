@@ -31,8 +31,10 @@
 namespace Common {
 
 // All user output goes through these functions. They write to stdout and any
-//   installed output functions, keeping CLI, GUI, tests, and log files consistent.
-// Do not use qDebug/cout/cerr/printf for user output.
+//   installed output handlers, keeping CLI, GUI, tests, and log files consistent.
+// NOTE:
+//   1) Do not use qDebug/cout/cerr/printf for user output.
+//   2) Debug output is off by default; it can be set to true by user.
 enum class OutputLevel
 {
   /// Normal user-facing message.
@@ -48,7 +50,7 @@ enum class OutputLevel
 // Buffered entries for messages which will be printed later.
 typedef QList<QPair<OutputLevel, QString> > OutputLog;
 
-// Function installed to receive each output entry.
+// Handler installed to receive each output entry.
 typedef std::function<void(OutputLevel, const QString&)> OutputHandler;
 
 namespace detail {

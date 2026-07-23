@@ -27,6 +27,7 @@
 #include <QAbstractSpinBox>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDoubleSpinBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -90,6 +91,7 @@ AbstractOptTab::AbstractOptTab(AbstractDialog* parent, SearchBase* p)
     ui_edit_opt(0),
     ui_edit_locpath(0), ui_action_browse_locpath(0),
     ui_edit_description(0), ui_cb_logErrorDirs(0),
+    ui_cb_cancelJobAfterTime(0), ui_spin_hoursForCancelJob(0),
     m_configDialogsReadOnly(false), m_helpDialog(nullptr)
 {
 }
@@ -254,9 +256,19 @@ void AbstractOptTab::updateGUI()
 
   ui_edit_locpath->setText(m_search->getLocWorkDir());
   ui_edit_description->setText(m_search->getDescription());
+
   bool wasBlocked = ui_cb_logErrorDirs->blockSignals(true);
   ui_cb_logErrorDirs->setChecked(m_search->logErrorDirs());
   ui_cb_logErrorDirs->blockSignals(wasBlocked);
+
+  wasBlocked = ui_cb_cancelJobAfterTime->blockSignals(true);
+  ui_cb_cancelJobAfterTime->setChecked(m_search->cancelJobAfterTime());
+  ui_cb_cancelJobAfterTime->blockSignals(wasBlocked);
+
+  wasBlocked = ui_spin_hoursForCancelJob->blockSignals(true);
+  ui_spin_hoursForCancelJob->setValue(m_search->hoursForCancelJobAfterTime());
+  ui_spin_hoursForCancelJob->setEnabled(m_search->cancelJobAfterTime());
+  ui_spin_hoursForCancelJob->blockSignals(wasBlocked);
 }
 
 void AbstractOptTab::lockGUI()
@@ -283,6 +295,8 @@ void AbstractOptTab::lockGUI()
     ui_edit_user2->setReadOnly(true);
     ui_edit_user3->setReadOnly(true);
     ui_edit_user4->setReadOnly(true);
+    ui_cb_cancelJobAfterTime->setDisabled(true);
+    ui_spin_hoursForCancelJob->setDisabled(true);
   }
 }
 

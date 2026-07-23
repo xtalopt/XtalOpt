@@ -20,6 +20,7 @@
 
 #include <QAbstractItemView>
 #include <QComboBox>
+#include <QDoubleSpinBox>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QReadWriteLock>
@@ -63,6 +64,12 @@ TabMo::TabMo(Search::AbstractDialog* parent, XtalOpt* p)
   connect(ui.push_addConstraint, &QPushButton::clicked, this, &TabMo::addConstraint);
   connect(ui.push_removeConstraint, &QPushButton::clicked, this, &TabMo::removeConstraint);
 
+  // The script-cancel setting
+  connect(ui.cb_cancelScriptAfterTime, &QCheckBox::toggled, this, &TabMo::updateScriptCancel);
+  connect(ui.spin_hoursForCancelScript,
+          static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+          this, &TabMo::updateScriptCancel);
+
   initialize();
 }
 
@@ -87,6 +94,15 @@ void TabMo::updateGUI()
   ui.cb_redo_constraints->setChecked(xtalopt->isConstraintsReDo());
   ui.cb_redo_constraints->blockSignals(wasBlocked);
 
+  wasBlocked = ui.cb_cancelScriptAfterTime->blockSignals(true);
+  ui.cb_cancelScriptAfterTime->setChecked(xtalopt->cancelScriptAfterTime());
+  ui.cb_cancelScriptAfterTime->blockSignals(wasBlocked);
+
+  wasBlocked = ui.spin_hoursForCancelScript->blockSignals(true);
+  ui.spin_hoursForCancelScript->setValue(xtalopt->hoursForCancelScriptAfterTime());
+  ui.spin_hoursForCancelScript->setEnabled(xtalopt->cancelScriptAfterTime());
+  ui.spin_hoursForCancelScript->blockSignals(wasBlocked);
+
   // Initiate the objectives table
   updateObjectivesTable();
   updateConstraintsTable();
@@ -109,8 +125,12 @@ void TabMo::lockGUI()
   ui.push_removeConstraint->setDisabled(true);
   ui.table_constraints->setDisabled(true);
 
-  if (m_search->isReadOnly())
+  // The script-cancel setting is runtime-adjustable
+  if (m_search->isReadOnly()) {
     ui.cb_redo_constraints->setDisabled(true);
+    ui.cb_cancelScriptAfterTime->setDisabled(true);
+    ui.spin_hoursForCancelScript->setDisabled(true);
+  }
 }
 
 bool TabMo::updateObjectives()
@@ -131,6 +151,31 @@ bool TabMo::updateObjectives()
     xtalopt->requestSettingsStateSave();
 
   return true;
+}
+
+void TabMo::updateScriptCancel()
+{
+  ui.spin_hoursForCancelScript->setEnabled(ui.cb_cancelScriptAfterTime->isChecked());
+  if (m_updateGuiInProgress)
+    return;
+
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+  const bool enabled = ui.cb_cancelScriptAfterTime->isChecked();
+  const double hours = ui.spin_hoursForCancelScript->value();
+  bool changed = false;
+  {
+    QWriteLocker runtimeLocker(m_search->runtimeSettingsLock());
+    if (xtalopt->cancelScriptAfterTime() != enabled) {
+      xtalopt->setCancelScriptAfterTime(enabled);
+      changed = true;
+    }
+    if (xtalopt->hoursForCancelScriptAfterTime() != hours) {
+      xtalopt->setHoursForCancelScriptAfterTime(hours);
+      changed = true;
+    }
+  }
+  if (changed && m_search->isSessionInProgress())
+    xtalopt->requestSettingsStateSave();
 }
 
 void TabMo::addObjectives()
