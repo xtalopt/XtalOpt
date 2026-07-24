@@ -1321,7 +1321,7 @@
          <enum>Qt::StrongFocus</enum>
         </property>
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allow RandSpg as one of the random generators for numInitial structures.&lt;/p&gt;&lt;p&gt;Forced space-group requests are configured separately with the &amp;quot;Space Group Options&amp;quot; button.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allow RandSpg as one of the random generators for numInitial structures.&lt;/p&gt;&lt;p&gt;Forced space-group requests are configured separately with the &amp;quot;Forced Space Group Options&amp;quot; button.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
          <string>Use RandSpg</string>
@@ -1497,7 +1497,7 @@
          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select allowed RandSpg space groups and explicit forced counts.&lt;/p&gt;&lt;p&gt;This displays a table of possible space groups for the current formulas.&lt;p&gt;This table will be reset if the user changes the composition after setting the table.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
-         <string>Space Group Options</string>
+         <string>Forced Space Group Options</string>
         </property>
         <property name="autoDefault">
          <bool>false</bool>

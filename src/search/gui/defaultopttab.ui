@@ -544,7 +544,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Automatically cancel a running optimization job after the set time; the next pending job is then submitted.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Cancel job after</string>
+        <string>Cancel jobs after</string>
        </property>
       </widget>
      </item>

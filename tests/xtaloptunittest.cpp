@@ -38,6 +38,7 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace Search;
@@ -52,12 +53,18 @@ QString tempPath(const QTemporaryDir& dir, const QString& child)
 
 // Compare a produced file with its expected copy. Set the
 // XTALOPT_UPDATE_EXPECTED=1 to re-write/update the expected copy.
-void compareWithExpectedFile(const QString& producedPath, const QString& expectedPath)
+// Line endings are normalized so the comparison works the same on all
+//   platforms. With sortLines, lines are compared regardless of their
+//   order; this is for files whose line order is decided by QSettings
+//   (it differs between platforms, while the content is the same).
+void compareWithExpectedFile(const QString& producedPath, const QString& expectedPath,
+                             bool sortLines = false)
 {
   QFile producedFile(producedPath);
   QVERIFY(producedFile.open(QIODevice::ReadOnly));
-  const QByteArray produced = producedFile.readAll();
+  QByteArray produced = producedFile.readAll();
   QVERIFY(!produced.isEmpty());
+  produced.replace("\r\n", "\n");
 
   if (qgetenv("XTALOPT_UPDATE_EXPECTED") == "1") {
     QVERIFY(QDir().mkpath(QFileInfo(expectedPath).absolutePath()));
@@ -71,7 +78,19 @@ void compareWithExpectedFile(const QString& producedPath, const QString& expecte
   QVERIFY2(expectedFile.open(QIODevice::ReadOnly),
            "Expected file is missing. Run this test once with "
            "XTALOPT_UPDATE_EXPECTED=1 to create it.");
-  QCOMPARE(produced, expectedFile.readAll());
+  QByteArray expected = expectedFile.readAll();
+  expected.replace("\r\n", "\n");
+
+  if (sortLines) {
+    QList<QByteArray> producedLines = produced.split('\n');
+    QList<QByteArray> expectedLines = expected.split('\n');
+    std::sort(producedLines.begin(), producedLines.end());
+    std::sort(expectedLines.begin(), expectedLines.end());
+    QCOMPARE(producedLines, expectedLines);
+    return;
+  }
+
+  QCOMPARE(produced, expected);
 }
 
 Xtal* makeTestXtal(uint generation, uint id, int index, int atomicNumber,
@@ -795,7 +814,7 @@ void XtalOptUnitTest::structureStateFileIsStable()
   writeStructureState(*xtal, statePath);
 
   const QString expectedDir = Common::localPath(QString(TESTDATADIR), "outputs");
-  compareWithExpectedFile(statePath, Common::localPath(expectedDir, "structure.state"));
+  compareWithExpectedFile(statePath, Common::localPath(expectedDir, "structure.state"), true);
 }
 
 void XtalOptUnitTest::saveWritesOnlyChangedStructureStates()

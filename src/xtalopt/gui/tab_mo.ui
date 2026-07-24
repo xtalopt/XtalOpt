@@ -638,7 +638,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Cancel waiting for an objective/constraint script's output after the set time and mark the calculation failed. This only cancels the wait; any external work is not killed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Cancel waiting for objective and constraint script outputs after</string>
+        <string>Cancel waiting for script output, and mark objective and constraint as failed after</string>
        </property>
       </widget>
      </item>

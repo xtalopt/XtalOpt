@@ -50,14 +50,16 @@ QString tempPath(const QTemporaryDir& dir, const QString& child)
   return Common::localPath(dir.path(), child);
 }
 
-// Compare a file with its expected copy.
+// Compare a file with its expected copy. Line endings are normalized so
+//   the comparison works the same on all platforms.
 // Note: the expected copies can be re-written with XTALOPT_UPDATE_EXPECTED=1
 void compareWithExpectedFile(const QString& producedPath, const QString& expectedPath)
 {
   QFile producedFile(producedPath);
   QVERIFY(producedFile.open(QIODevice::ReadOnly));
-  const QByteArray produced = producedFile.readAll();
+  QByteArray produced = producedFile.readAll();
   QVERIFY(!produced.isEmpty());
+  produced.replace("\r\n", "\n");
 
   if (qgetenv("XTALOPT_UPDATE_EXPECTED") == "1") {
     QVERIFY(QDir().mkpath(QFileInfo(expectedPath).absolutePath()));
@@ -71,7 +73,9 @@ void compareWithExpectedFile(const QString& producedPath, const QString& expecte
   QVERIFY2(expectedFile.open(QIODevice::ReadOnly),
            "Expected file is missing. Run this test once with "
            "XTALOPT_UPDATE_EXPECTED=1 to create it.");
-  QCOMPARE(produced, expectedFile.readAll());
+  QByteArray expected = expectedFile.readAll();
+  expected.replace("\r\n", "\n");
+  QCOMPARE(produced, expected);
 }
 
 void markXtalOptStateVersion(QSettings& settings, int version)

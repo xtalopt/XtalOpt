@@ -173,7 +173,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The number of seconds to wait before querying the jobs' statuses again with the queue interface.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Queue refresh interval:</string>
+        <string>Queue refresh interval (seconds):</string>
        </property>
       </widget>
      </item>

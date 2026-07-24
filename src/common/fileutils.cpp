@@ -72,7 +72,9 @@ bool readFileToString(const QString& filename, std::string* contents)
     return false;
 
   QFile file(filename);
-  if (!file.open(QIODevice::ReadOnly))
+  // Text mode converts "\r\n" line endings to "\n", so readers always
+  //   get the same text no matter where the file was written.
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
     return false;
 
   const QByteArray data = file.readAll();
