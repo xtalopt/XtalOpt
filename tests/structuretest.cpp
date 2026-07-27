@@ -352,7 +352,7 @@ void StructureTest::workflowStateCycle()
   saved.setStrucObjState(Structure::Os_Retain);
   saved.setStrucConstraintValues(constraintValue);
   saved.setStrucConstraintState(Structure::Cs_Dismiss);
-  saved.setStrucConstraintFailCt(1);
+  saved.setStrucConstraintRedoCount(1);
   XtalOpt::writeStructureState(saved, stateFile);
 
   XtalOpt::Xtal loaded;
@@ -377,7 +377,7 @@ void StructureTest::workflowStateCycle()
   QCOMPARE(loaded.getStrucConstraintNumber(), 1);
   QCOMPARE(loaded.getStrucConstraintValues(0), constraintValue);
   QCOMPARE(loaded.getStrucConstraintState(), Structure::Cs_Dismiss);
-  QCOMPARE(loaded.getStrucConstraintFailCt(), 1);
+  QCOMPARE(loaded.getStrucConstraintRedoCount(), 1);
   QCOMPARE(loaded.numAtoms(), static_cast<size_t>(1));
   QCOMPARE(loaded.atom(0).atomicNumber(), static_cast<unsigned short>(8));
   QCOMPARE(loaded.atom(0).pos().x(), position.x());

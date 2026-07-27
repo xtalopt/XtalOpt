@@ -489,15 +489,14 @@ void LegacyCompatTest::legacyFiltrationStructureObjectivesNormalizeOnPlotLoad()
   xtal.setEnthalpy(-1.0);
   xtal.setStrucObjValuesVec(QList<double>() << 0.0 << 4.0 << 1.0 << 8.0);
   xtal.setStrucObjState(Structure::Os_Retain);
-  xtal.setStrucHistObjValues(QList<double>() << 0.0 << 3.0 << 2.0 << 7.0);
-  xtal.setStrucHistObjState(Structure::Os_Retain);
-  xtal.setStrucHistConstraintFailCt(0);
   const QString structureStateFile = Common::localPath(structureDir, "structure.state");
   writeStructureState(xtal, structureStateFile);
   {
     QSettings settings(structureStateFile, QSettings::IniFormat);
     settings.beginGroup("structure");
     settings.setValue("version", OriginalStateVersion);
+    settings.remove("constraintRedoCount");
+    settings.setValue("objectivesFailCount", 1);
     settings.remove("userObjectives");
     settings.beginWriteArray("objectives");
     const QList<double> objectives = { 0.0, 4.0, 1.0, 8.0 };
@@ -510,7 +509,6 @@ void LegacyCompatTest::legacyFiltrationStructureObjectivesNormalizeOnPlotLoad()
     settings.endArray();
 
     settings.beginGroup("history");
-    settings.remove("userObjectives");
     settings.beginWriteArray("objectives");
     settings.setArrayIndex(0);
     settings.beginWriteArray("value");
@@ -542,10 +540,7 @@ void LegacyCompatTest::legacyFiltrationStructureObjectivesNormalizeOnPlotLoad()
   QCOMPARE(loadedStructure->getStrucConstraintNumber(), 1);
   QCOMPARE(loadedStructure->getStrucConstraintValues(0), 1.0);
   QCOMPARE(loadedStructure->getStrucConstraintState(), Structure::Cs_Retain);
-  QCOMPARE(loadedStructure->getStrucHistObjNumber(), 1);
-  QCOMPARE(loadedStructure->getStrucHistObjValues(0).size(), 3);
-  QCOMPARE(loadedStructure->getStrucHistObjValues(0).at(1), 3.0);
-  QCOMPARE(loadedStructure->getStrucHistObjValues(0).at(2), 7.0);
+  QCOMPARE(loadedStructure->getStrucConstraintRedoCount(), 1);
 }
 
 void LegacyCompatTest::legacyV4StructureUserObjectivesExpandOnPlotLoad()

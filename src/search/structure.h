@@ -127,30 +127,17 @@ public:
   void         setStrucObjValues(double v)     {m_strucObjValues.push_back(v);};
   void         setStrucObjState(ObjectivesState v) {m_strucObjState = v;};
   ObjectivesState getStrucObjState() const {return m_strucObjState;};
-  // we don't reset objective fail count; it might be a redone structure which shouldn't be repeated!
   void          resetStrucObj() {m_strucObjValues.clear(); setParetoFront(-1);
                                  m_strucObjState = Structure::Os_NotCalculated;};
   //
   void          setStrucObjValuesVec(QList<double> v) {m_strucObjValues = v;};
   QList<double> getStrucObjValuesVec() const          {return m_strucObjValues;};
-  //
-  void resetStrucHistObj() {m_hist_strucObjValues.clear();
-    m_hist_strucObjState.clear(); };
-  //
-  int           getStrucHistObjNumber()      {return m_hist_strucObjValues.size();};
-  QList<double> getStrucHistObjValues(int i) {return m_hist_strucObjValues.at(i);};
-  void          setStrucHistObjValues(QList<double> v) {m_hist_strucObjValues.push_back(v);};
-  void          setStrucHistObjValues(int i, QList<double> v) {m_hist_strucObjValues[i] = v;};
-  void          setStrucHistObjState(ObjectivesState v) {m_hist_strucObjState.push_back(v);};
-  ObjectivesState  getStrucHistObjState(int i) {return m_hist_strucObjState.at(i);};
 
   ConstraintState getStrucConstraintState() const { return m_strucConstraintState; }
   void setStrucConstraintState(ConstraintState v) { m_strucConstraintState = v; }
   int getStrucConstraintNumber() const { return m_strucConstraintValues.size(); }
-  int getStrucConstraintFailCt() const { return m_strucConstraintFailCt; }
-  void setStrucConstraintFailCt(int i) { m_strucConstraintFailCt = i; }
-  int getStrucHistConstraintFailCt(int i) {return m_hist_strucConstraintFailCt.at(i);};
-  void setStrucHistConstraintFailCt(int v) {m_hist_strucConstraintFailCt.push_back(v);};
+  int getStrucConstraintRedoCount() const { return m_strucConstraintRedoCount; }
+  void setStrucConstraintRedoCount(int i) { m_strucConstraintRedoCount = i; }
   double getStrucConstraintValues(int i) const
   {
     return m_strucConstraintValues.at(i);
@@ -168,7 +155,6 @@ public:
   {
     m_strucConstraintValues.clear();
     m_strucConstraintState = Structure::Cs_NotCalculated;
-    m_hist_strucConstraintFailCt.clear();
   }
 
   /** Whether the Structure has an enthalpy value set.
@@ -516,11 +502,6 @@ public:
 
     return out;
   }
-
-  /** Add objectives info to history of the structure
-   * @param s Structure whose objective-related info is added to history
-   */
-  void updateAndAddObjectivesToHistory(Structure* s);
 
   /** @return Generic fallback results entry. XtalOpt overrides this in Xtal.
    * @sa getResultsHeader */
@@ -975,13 +956,9 @@ protected:
   // Multi-objective parameters for a structure
   QList<double> m_strucObjValues;
   QList<double> m_strucConstraintValues;
-  int           m_strucConstraintFailCt;
+  int           m_strucConstraintRedoCount;
   std::atomic<ObjectivesState> m_strucObjState;
   std::atomic<ConstraintState> m_strucConstraintState;
-  // Objective history parameters
-  QList<QList<double>> m_hist_strucObjValues;
-  QList<int>           m_hist_strucConstraintFailCt;
-  QList<ObjectivesState> m_hist_strucObjState;
 
   // skip Doxygen parsing
   /// \cond

@@ -784,6 +784,14 @@ QSet<Structure*> XtalOpt::writeStructureStateFiles(const QList<Search::Structure
     QString scratchFileName;
     {
       QReadLocker structureLocker(&structure->lock());
+      // A structure being replaced (Empty) or having its optimizer results
+      //   read in (Updating) is between two stable points and has no
+      //   resumable snapshot. Keep its previous state file and leave it in
+      //   the failed set; the save retry writes it once it settles.
+      const Structure::State transientCheck = structure->getStatus();
+      if (transientCheck == Structure::Empty ||
+          transientCheck == Structure::Updating)
+        continue;
       // The saved order is part of resume state: so write files in that order.
       structure->setIndex(i);
       Xtal* xtal = qobject_cast<Xtal*>(structure);
@@ -966,7 +974,7 @@ void writeStructureState(Xtal& xtal, const QString& filename)
   }
   settings->endArray();
   settings->setValue("constraintsState", xtal.getStrucConstraintState());
-  settings->setValue("objectivesFailCount", xtal.getStrucConstraintFailCt());
+  settings->setValue("constraintRedoCount", xtal.getStrucConstraintRedoCount());
 
   settings->setValue("reusePreoptBonding", xtal.reusePreoptBonding());
   settings->remove("preoptBonds");
@@ -1059,25 +1067,6 @@ void writeStructureState(Xtal& xtal, const QString& filename)
   for (int i = 0; i < histEnthalpies.size(); i++) {
     settings->setArrayIndex(i);
     settings->setValue("value", histEnthalpies.at(i));
-  }
-  settings->endArray();
-
-  // Objectives (multi-objective run): write history to structure.state file
-  settings->remove("objectives");
-  settings->remove("userObjectives");
-  settings->beginWriteArray("userObjectives");
-  for (int i = 0; i < xtal.getStrucHistObjNumber(); i++) {
-    settings->setArrayIndex(i);
-    settings->beginWriteArray("value");
-    for (int j = XtalOpt::getFirstUserObjectiveIndex();
-             j < xtal.getStrucHistObjValues(i).size();
-             j++) {
-      settings->setArrayIndex(j - XtalOpt::getFirstUserObjectiveIndex());
-      settings->setValue("value", xtal.getStrucHistObjValues(i).at(j));
-    }
-    settings->endArray();
-    settings->setValue("state", xtal.getStrucHistObjState(i));
-    settings->setValue("failcount", xtal.getStrucHistConstraintFailCt(i));
   }
   settings->endArray();
 
@@ -1262,6 +1251,15 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
     if (!readOnlyLoad) {
       QWriteLocker locker(&xtal->lock());
       Xtal::State state = xtal->getStatus();
+      // An interrupted optimizer-results import: the job itself had finished,
+      //   so treat the structure as in process and let the usual queue status
+      //   check decide (direct/local runs collapse to a restart below).
+      if (state == Structure::Updating)
+        state = Structure::InProcess;
+      // An interrupted replacement: the file still holds a complete structure
+      //   (the old one or its replacement), so just restart it.
+      if (state == Structure::Empty)
+        state = Structure::Restart;
       // Direct/local jobs finish with the process, so restart them and clear
       //   the process job IDs. Remote batch jobs are fine, and will be
       //   checked later (reconnected through queue status check).
@@ -1528,7 +1526,7 @@ bool readStructureState(Xtal& xtal, const QString& filename, const bool readCurr
     settings->endArray();
     xtal.setStrucConstraintState(Structure::ConstraintState(
       settings->value("constraintsState", 0).toInt()));
-    xtal.setStrucConstraintFailCt(settings->value("objectivesFailCount", 0).toInt());
+    xtal.setStrucConstraintRedoCount(settings->value("constraintRedoCount", 0).toInt());
     xtal.setCurrentOptStep(currentOptStep);
     xtal.setStatus(static_cast<Structure::State>(loadedStatusValue));
 
@@ -1603,28 +1601,6 @@ bool readStructureState(Xtal& xtal, const QString& filename, const bool readCurr
     for (int i = 0; i < size; i++) {
       settings->setArrayIndex(i);
       histEnthalpies.append(settings->value("value").toDouble());
-    }
-    settings->endArray();
-
-    // Objectives (multi-objective run): read history from structure.state
-    size = settings->beginReadArray("userObjectives");
-
-    xtal.resetStrucHistObj();
-    for (int i = 0; i < size; i++) {
-      settings->setArrayIndex(i);
-      int size3 = settings->beginReadArray("value");
-
-      QList<double> tmpvalue;
-      tmpvalue.push_back(std::numeric_limits<double>::quiet_NaN());
-
-      for (int j = 0; j < size3; j++) {
-        settings->setArrayIndex(j);
-        tmpvalue.push_back(settings->value("value").toDouble());
-      }
-      xtal.setStrucHistObjValues(tmpvalue);
-      settings->endArray();
-      xtal.setStrucHistObjState(Structure::ObjectivesState(settings->value("state").toInt()));
-      xtal.setStrucHistConstraintFailCt(settings->value("failcount").toInt());
     }
     settings->endArray();
 

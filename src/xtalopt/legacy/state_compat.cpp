@@ -1315,12 +1315,11 @@ bool XtalOpt::normalizeLoadedStructureObjectives(Structure* structure, const QSt
   }
 
   QList<double> legacyValues;
-  QList<QList<double>> legacyHistoryValues;
-  QList<Structure::ObjectivesState> legacyHistoryStates;
-  QList<int> legacyHistoryFailCounts;
+  int legacyConstraintRedoCount = 0;
   {
     QSettings settings(stateFilename, QSettings::IniFormat);
     settings.beginGroup("structure");
+    legacyConstraintRedoCount = settings.value("objectivesFailCount", 0).toInt();
 
     int size = settings.beginReadArray("objectives");
     for (int i = 0; i < size; ++i) {
@@ -1328,28 +1327,11 @@ bool XtalOpt::normalizeLoadedStructureObjectives(Structure* structure, const QSt
       legacyValues.append(settings.value("value").toDouble());
     }
     settings.endArray();
-
-    settings.beginGroup("history");
-    size = settings.beginReadArray("objectives");
-    for (int i = 0; i < size; ++i) {
-      settings.setArrayIndex(i);
-      QList<double> values;
-      const int valueCount = settings.beginReadArray("value");
-      for (int j = 0; j < valueCount; ++j) {
-        settings.setArrayIndex(j);
-        values.append(settings.value("value").toDouble());
-      }
-      settings.endArray();
-      legacyHistoryValues.append(values);
-      legacyHistoryStates.append(Structure::ObjectivesState(settings.value("state").toInt()));
-      legacyHistoryFailCounts.append(settings.value("failcount").toInt());
-    }
-    settings.endArray();
-    settings.endGroup();
     settings.endGroup();
   }
 
   QWriteLocker locker(&structure->lock());
+  structure->setStrucConstraintRedoCount(legacyConstraintRedoCount);
   QList<double> values = legacyValues.isEmpty() ? structure->getStrucObjValuesVec() : legacyValues;
   if (!legacyValues.isEmpty())
     structure->setStrucObjValuesVec(values);
@@ -1401,61 +1383,6 @@ bool XtalOpt::normalizeLoadedStructureObjectives(Structure* structure, const QSt
   } else if (values.size() == currentFullCount && currentFullCount > currentUserCount) {
     values[getBuiltinObjectiveIndex()] = std::numeric_limits<double>::quiet_NaN();
     structure->setStrucObjValuesVec(values);
-  }
-
-  const int historyCount = legacyHistoryValues.isEmpty()
-    ? structure->getStrucHistObjNumber() : legacyHistoryValues.size();
-  QList<QList<double>> historyValues;
-  historyValues.reserve(historyCount);
-  for (int i = 0; i < historyCount; ++i) {
-    QList<double> history = legacyHistoryValues.isEmpty() ? structure->getStrucHistObjValues(i) : legacyHistoryValues.at(i);
-
-    if (!x_loadedStateConstraintObjectiveIndices.isEmpty() &&
-        !legacyHistoryValues.isEmpty() && !history.isEmpty()) {
-      QList<double> normalized;
-      if (!splitVersion4ObjectiveValues(history, currentFullCount, currentUserCount,
-                                        x_loadedStateConstraintObjectiveIndices, normalized)) {
-        Common::error(QString("The objective history in old structure state file %1 does "
-                              "not match the main state file.").arg(stateFilename));
-        return false;
-      }
-      history = normalized;
-    }
-
-    if (!legacyHistoryValues.isEmpty() && history.size() != currentFullCount &&
-        history.size() != currentUserCount) {
-      Common::error(QString("The objective history in old structure state file %1 does "
-                            "not match the main state file.").arg(stateFilename));
-      return false;
-    }
-
-    if (history.size() == currentUserCount) {
-      QList<double> expanded;
-      expanded.reserve(currentFullCount);
-
-      for (int j = 0; j < currentFullCount; ++j)
-        expanded.append(std::numeric_limits<double>::quiet_NaN());
-      for (int j = 0; j < currentUserCount; ++j)
-        expanded[getUserObjectiveIndex(j)] = history.at(j);
-
-      history = expanded;
-    } else if (history.size() == currentFullCount && currentFullCount > currentUserCount) {
-      history[getBuiltinObjectiveIndex()] = std::numeric_limits<double>::quiet_NaN();
-    }
-
-    historyValues.append(history);
-  }
-
-  if (!legacyHistoryValues.isEmpty()) {
-    structure->resetStrucHistObj();
-    for (int i = 0; i < historyValues.size(); ++i) {
-      structure->setStrucHistObjValues(historyValues.at(i));
-      structure->setStrucHistObjState(legacyHistoryStates.at(i));
-      structure->setStrucHistConstraintFailCt(legacyHistoryFailCounts.at(i));
-    }
-  } else {
-    for (int i = 0; i < historyValues.size(); ++i)
-      structure->setStrucHistObjValues(i, historyValues.at(i));
   }
 
   return true;

@@ -269,7 +269,7 @@ QString Structure::statusText(bool longText) const
 
 Structure::Structure(QObject* parent)
   : QObject(parent), Atoms::Geometry(),
-    m_strucConstraintFailCt(0),
+    m_strucConstraintRedoCount(0),
     m_strucObjState(Structure::Os_NotCalculated),
     m_strucConstraintState(Structure::Cs_NotCalculated),
     m_updatedSinceSimChecked(true),
@@ -337,7 +337,7 @@ Structure& Structure::operator=(const Structure& other)
     m_strucConstraintValues = other.m_strucConstraintValues;
     m_strucObjState = ObjectivesState(other.m_strucObjState);
     m_strucConstraintState = ConstraintState(other.m_strucConstraintState);
-    m_strucConstraintFailCt = other.m_strucConstraintFailCt;
+    m_strucConstraintRedoCount = other.m_strucConstraintRedoCount;
     m_paretoFrontIndex = other.m_paretoFrontIndex;
   }
 
@@ -376,7 +376,7 @@ Structure& Structure::operator=(Structure&& other) noexcept
     m_strucConstraintValues = std::move(other.m_strucConstraintValues);
     m_strucObjState = std::move(ObjectivesState(other.m_strucObjState));
     m_strucConstraintState = std::move(ConstraintState(other.m_strucConstraintState));
-    m_strucConstraintFailCt = std::move(other.m_strucConstraintFailCt);
+    m_strucConstraintRedoCount = std::move(other.m_strucConstraintRedoCount);
     m_paretoFrontIndex = std::move(other.m_paretoFrontIndex);
   }
 
@@ -423,13 +423,6 @@ void Structure::updateAndSkipHistory(const QList<unsigned int>& atomicNums,
 
   // Mark the structure for the next similarity check.
   structureChanged();
-}
-
-void Structure::updateAndAddObjectivesToHistory(Structure* s)
-{
-  s->setStrucHistObjValues(s->getStrucObjValuesVec());
-  s->setStrucHistObjState(s->getStrucObjState());
-  s->setStrucHistConstraintFailCt(s->getStrucConstraintFailCt());
 }
 
 void Structure::updateAndAddToHistory(const QList<unsigned int>& atomicNums,

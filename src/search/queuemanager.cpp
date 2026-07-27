@@ -1010,9 +1010,10 @@ void QueueManager::handleDismissObjectiveStructure(Structure* s)
   if (s->getStatus() != Structure::Dismissed)
     return;
 
-  if (constraintsReDo && s->getStrucConstraintFailCt() == 0)
+  if (constraintsReDo && s->getStrucConstraintRedoCount() == 0 &&
+      (failAction == SearchBase::FA_Randomize ||
+       failAction == SearchBase::FA_NewOffspring))
   {
-
     if (verbose) {
       QString outstr;
       outstr = QString("   Redo struc %1 with %2 ( action = %3 ) !")
@@ -1022,11 +1023,8 @@ void QueueManager::handleDismissObjectiveStructure(Structure* s)
       Common::message(outstr);
     }
 
-    // Update structure objective info; for the record, and to
-    //   not repeat this step (we do this once)
-    s->setStrucConstraintFailCt(s->getStrucConstraintFailCt()+1);
-    // save info to history; as it might be recalculated!
-    s->updateAndAddObjectivesToHistory(s);
+    // Record the redo; each structure is given at most one redo.
+    s->setStrucConstraintRedoCount(s->getStrucConstraintRedoCount() + 1);
     if (failAction == SearchBase::FA_Randomize) {
       locker.unlock();
       replaceStructureForRestart(
@@ -1094,10 +1092,7 @@ void QueueManager::handleErrorStructure(Structure* s)
     switch (failAction) {
       case SearchBase::FA_DoNothing:
       default:
-        // resubmit job
-        s->setStatus(Structure::Restart);
-        emit structureUpdated(s);
-        return;
+        break;
       case SearchBase::FA_KillIt:
         locker.unlock();
         // This will emit structureKilled, which is then re-emitted as structureUpdated.
@@ -1116,12 +1111,10 @@ void QueueManager::handleErrorStructure(Structure* s)
         return;
     }
   }
-  // Resubmit job if failure limit hasn't been reached
-  else {
-    s->setStatus(Structure::Restart);
-    emit structureUpdated(s);
-    return;
-  }
+
+  s->setStatus(Structure::Restart);
+  locker.unlock();
+  emit structureUpdated(s);
 }
 /// @endcond
 
@@ -1230,7 +1223,6 @@ void QueueManager::updateStructure(Structure* s)
   {
     QWriteLocker structLocker(&s->lock());
     s->stopOptTimer();
-    s->resetFailCount();
     s->setStatus(Structure::Updating);
   }
   if (!m_search->optimizer(s->getCurrentOptStep())->update(s)) {
@@ -1242,6 +1234,7 @@ void QueueManager::updateStructure(Structure* s)
   }
   {
     QWriteLocker structLocker(&s->lock());
+    s->resetFailCount();
     s->setStatus(Structure::StepOptimized);
   }
   emit structureUpdated(s);
