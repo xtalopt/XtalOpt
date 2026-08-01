@@ -107,7 +107,6 @@ bool CASTEPOptimizer::readOutput(Structure* s, const QString& filename) const
   if (!readCastepEnergy(filename, energy, enthalpy))
     return false;
 
-  s->updateAndAddToHistory(structure, energy, enthalpy);
-  return true;
+  return s->updateAndAddToHistory(structure, energy, enthalpy);
 }
 } // namespace Search

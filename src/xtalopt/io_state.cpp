@@ -30,7 +30,6 @@
 #include <xtalopt/structures/xtal.h>
 
 #include <atoms/eleminfo.h>
-#include <common/compatibility/qt_compat.h>
 #include <common/constants.h>
 #include <common/timing.h>
 #include <common/fileutils.h>
@@ -55,6 +54,8 @@
 #include <QList>
 #include <QPair>
 #include <QThread>
+
+#include <algorithm>
 
 using namespace Search;
 
@@ -256,6 +257,13 @@ void writeOptimizerInputSettings(XtalOpt& xtalopt, size_t optStep, const QString
 
 bool writeOptSchemeGroup(XtalOpt& xtalopt, const QString& filename)
 {
+  for (size_t i = 0; i < xtalopt.getNumOptSteps(); ++i) {
+    if (!xtalopt.optimizer(i) || !xtalopt.queueInterface(i)) {
+      Common::error(QString("%1: optimization step %2 is incomplete.").arg(__func__).arg(i + 1));
+      return false;
+    }
+  }
+
   QSETTINGS_FILE(filename);
   settings->beginGroup("xtalopt/optscheme");
 
@@ -332,24 +340,26 @@ Xtal* loadXtalState(const QString& stateFile, const QString& locPath,
 
 void sortStructuresBySavedIndex(QList<Structure*>& structures)
 {
-  // The saved indices may have gaps (e.g. some structures failed to load),
-  // so we cannot just loop up to structures.size() below: that would miss
-  // any saved index that is >= the number of structures that did load.
-  int maxIndex = -1;
+  QHash<int, int> indexCounts;
   for (int i = 0; i < structures.size(); i++) {
-    if (structures.at(i)->getIndex() > maxIndex)
-      maxIndex = structures.at(i)->getIndex();
+    const int savedIndex = structures.at(i)->getIndex();
+    if (savedIndex < 0) {
+      Common::warning(QString("Structure %1 has invalid saved index %2.")
+                              .arg(structures.at(i)->getTag()).arg(savedIndex));
+    }
+    indexCounts[savedIndex]++;
   }
 
-  int curpos = 0;
-  for (int i = 0; i <= maxIndex; i++) {
-    for (int j = 0; j < structures.size(); j++) {
-      if (structures.at(j)->getIndex() == i) {
-        QtCompat::listSwapItemsAt(structures, j, curpos);
-        curpos++;
-      }
+  for (auto it = indexCounts.constBegin(); it != indexCounts.constEnd(); ++it) {
+    if (it.value() > 1) {
+      Common::warning(QString("Saved structure index %1 is used %2 times.").arg(it.key()).arg(it.value()));
     }
   }
+
+  std::stable_sort(structures.begin(), structures.end(),
+                   [](const Structure* left, const Structure* right) {
+                     return left->getIndex() < right->getIndex();
+                   });
 
   for (int i = 0; i < structures.size(); i++)
     structures.at(i)->setIndex(i);
@@ -360,7 +370,7 @@ void restoreLoadedStructureParents(const QList<QPair<Structure*, QString>>& pare
 {
   QHash<QString, Structure*> rankedParents;
   for (auto* structure : loadedStructures) {
-    if (structure && structure->isOptimizedState())
+    if (structure)
       rankedParents.insert(structure->getTag(), structure);
   }
 
@@ -792,7 +802,7 @@ QSet<Structure*> XtalOpt::writeStructureStateFiles(const QList<Search::Structure
       if (transientCheck == Structure::Empty ||
           transientCheck == Structure::Updating)
         continue;
-      // The saved order is part of resume state: so write files in that order.
+      // The index is atomic. The read lock keeps the rest of the saved structure stable.
       structure->setIndex(i);
       Xtal* xtal = qobject_cast<Xtal*>(structure);
       if (!xtal) {
@@ -941,6 +951,7 @@ void writeStructureState(Xtal& xtal, const QString& filename)
   settings->setValue("locpath", xtal.getLocpath());
   settings->setValue("status", int(xtal.getStatus()));
   settings->setValue("failCount", xtal.getFailCount());
+  settings->setValue("fixCount", xtal.getFixCount());
   settings->setValue("startTime", xtal.getOptTimerStart().toString());
   settings->setValue("endTime", xtal.getOptTimerEnd().toString());
   settings->remove("copyFiles");
@@ -1236,11 +1247,24 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
       continue;
     }
 
+    if (xtal->getCurrentOptStep() >= getNumOptSteps()) {
+      if (!errorMsgAlreadyGiven) {
+        Common::error(errorMsg);
+        errorMsgAlreadyGiven = true;
+      }
+      Common::warning(
+        tr("Structure %1 uses saved optimization step %2, but only %3 steps "
+           "are available. This structure will be excluded.")
+           .arg(xtalPath).arg(xtal->getCurrentOptStep() + 1).arg(static_cast<qulonglong>(getNumOptSteps())));
+      structureLoadFailed = true;
+      Tracker::deleteStructure(xtal);
+      continue;
+    }
+
     if (!normalizeLoadedStructureObjectives(xtal, xtalStateFileName)) {
-      xtal->deleteLater();
-      for (Structure* loadedStructure : loadedStructures)
-        loadedStructure->deleteLater();
-      return false;
+      Tracker::deleteStructure(xtal);
+      structureLoadFailed = true;
+      continue;
     }
 
     QString parentStructureString = savedParentStructureTag(xtalStateFileName);
@@ -1288,13 +1312,8 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
     loadedStructures.append(qobject_cast<Structure*>(xtal));
   }
 
-  if (!readOnlyLoad && x_loadedVersion4State && structureLoadFailed) {
-    Common::error("The old main state file was not updated because some structures "
-                  "could not be loaded.");
-    for (Structure* loadedStructure : loadedStructures)
-      loadedStructure->deleteLater();
-    return false;
-  }
+  if (x_loadedVersion4State && structureLoadFailed)
+    Common::warning("Some old structures could not be loaded and were skipped.");
 
   // If no structures were loaded successfully, report restore failure.
   if (loadedStructures.size() == 0) {
@@ -1486,6 +1505,7 @@ bool readStructureState(Xtal& xtal, const QString& filename, const bool readCurr
     unsigned int currentOptStep = settings->value("currentOptStep", 0).toUInt();
 
     xtal.setFailCount(settings->value("failCount", 0).toInt());
+    xtal.setFixCount(settings->value("fixCount", 0).toInt());
     xtal.setParents(settings->value("parents", "").toString());
     xtal.setRempath(settings->value("rempath", "").toString());
     xtal.setLocpath(settings->value("locpath", xtal.getLocpath()).toString());
@@ -1510,7 +1530,14 @@ bool readStructureState(Xtal& xtal, const QString& filename, const bool readCurr
 
     for (int i = 0; i < size; i++) {
       settings->setArrayIndex(i);
-      xtal.setStrucObjValues(settings->value("value").toDouble());
+      const QString savedValue = settings->value("value").toString();
+      bool ok = false;
+      double value = savedValue.toDouble(&ok);
+      if (!ok && savedValue.compare("nan", Qt::CaseInsensitive) == 0) {
+        value = std::numeric_limits<double>::quiet_NaN();
+        ok = true;
+      }
+      xtal.setStrucObjValues(ok ? value : std::numeric_limits<double>::quiet_NaN());
     }
     settings->endArray();
     xtal.setStrucObjState(Structure::ObjectivesState(
@@ -1733,7 +1760,7 @@ static bool readCurrentStructureState(Xtal& xtal, const QString& filename)
     }
     settings->endGroup();
 
-    if (!cellIsValid) {
+    if (!cellIsValid || !Atoms::Geometry::isCellMatrixUsable(cellMatrix)) {
       Common::error(QString("Current structure cell info in %1 is invalid.")
                     .arg(filename));
       settings->endGroup();

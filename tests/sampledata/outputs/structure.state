@@ -32,6 +32,7 @@ current\hasEnthalpy=true
 currentOptStep=1
 endTime=Fri Jan 2 06:07:08 2026
 failCount=1
+fixCount=0
 generation=3
 hasValidComposition=true
 history\atomicNums\1\atomicNums-0\1\value=22

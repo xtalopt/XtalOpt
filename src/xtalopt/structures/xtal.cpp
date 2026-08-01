@@ -62,8 +62,13 @@ QString fixedWidthDecimal(double value, int width, int maxPrecision)
       break;
   }
 
-  if (text.size() > width)
-    text = text.left(width);
+  if (text.size() > width) {
+    for (int precision = maxPrecision; precision >= 0; --precision) {
+      text = QString::number(value, 'e', precision);
+      if (text.size() <= width)
+        break;
+    }
+  }
 
   return QString("%1").arg(text, width);
 }
@@ -370,9 +375,6 @@ bool Xtal::moveAtomRandomly(
         const double minDistSquared = minDistWithTol * minDistWithTol;
 
         if (Common::lt(curDistSquared, minDistSquared, 0.0)) {
-          Common::error(QString("%1: failed to add atoms with specified "
-                               "interatomic distance. Distance too small")
-                       .arg(__func__));
           success = false;
           break;
         }
@@ -380,10 +382,14 @@ bool Xtal::moveAtomRandomly(
     } while (++i < static_cast<unsigned int>(maxAttempts) && !success);
 
     // Check the result, not the counter.
-    if (!success)
+    if (!success) {
+      Common::error(QString("%1: failed to move an atom within the "
+                            "interatomic distance after all attempts.").arg(__func__));
       return false;
+    }
 
     this->atom(movingAtomIndex).setPos(cartCoords);
+    notifyGeometryChanged();
     return true;
   }
 }
@@ -426,16 +432,12 @@ bool Xtal::addAtomRandomlyIAD(unsigned int atomicNumber,
                        .arg(__func__)
                        .arg(atomicNumber)
                        .arg(this->atom(dist_ind).atomicNumber()));
-          success = false;
-          break;
+          return false;
         }
         const double minDistWithTol = std::max(0.0, minDist - ZERO08);
         const double minDistSquared = minDistWithTol * minDistWithTol;
 
         if (Common::lt(curDistSquared, minDistSquared, 0.0)) {
-          Common::error(QString("%1: failed to add atoms with specified "
-                               "interatomic distance. Distance too small")
-                       .arg(__func__));
           success = false;
           break;
         }
@@ -443,8 +445,11 @@ bool Xtal::addAtomRandomlyIAD(unsigned int atomicNumber,
     } while (++i < static_cast<unsigned int>(maxAttempts) && !success);
 
     // Check the result, not the counter.
-    if (!success)
+    if (!success) {
+      Common::error(QString("%1: failed to add an atom within the "
+                            "interatomic distance after all attempts.").arg(__func__));
       return false;
+    }
   }
   Atoms::Atom& atom = addAtom();
   atom.setPos(cartCoords);
@@ -506,16 +511,12 @@ bool Xtal::moveAtomRandomlyIAD(unsigned int atomicNumber,
                        .arg(__func__)
                        .arg(atomicNumber)
                        .arg(this->atom(dist_ind).atomicNumber()));
-          success = false;
-          break;
+          return false;
         }
         const double minDistWithTol = std::max(0.0, minDist - ZERO08);
         const double minDistSquared = minDistWithTol * minDistWithTol;
 
         if (Common::lt(curDistSquared, minDistSquared, 0.0)) {
-          Common::error(QString("%1: failed to add atoms with specified "
-                               "interatomic distance. Distance too small")
-                       .arg(__func__));
           success = false;
           break;
         }
@@ -523,10 +524,14 @@ bool Xtal::moveAtomRandomlyIAD(unsigned int atomicNumber,
     } while (++i < static_cast<unsigned int>(maxAttempts) && !success);
 
     // Check the result, not the counter.
-    if (!success)
+    if (!success) {
+      Common::error(QString("%1: failed to move an atom within the "
+                            "interatomic distance after all attempts.").arg(__func__));
       return false;
+    }
 
     this->atom(movingAtomIndex).setPos(cartCoords);
+    notifyGeometryChanged();
     return true;
   }
 }
@@ -537,6 +542,7 @@ bool Xtal::checkMinIAD(const QHash<QPair<int, int>, IAD>& limitsIAD, int* atom1,
   // Check the custom IAD values (fails if any pairs of atoms are missing).
   // Iterate through all of the atoms in the geometry for "a1"
   for (auto a1 = atoms().begin(), a1_end = atoms().end(); a1 != a1_end; ++a1) {
+    const int a1Index = static_cast<int>(a1 - atoms().begin());
 
     // Get list of minimum squared distances between each atom and a1
     QList<double> squaredDists;
@@ -551,7 +557,7 @@ bool Xtal::checkMinIAD(const QHash<QPair<int, int>, IAD>& limitsIAD, int* atom1,
       Atoms::Atom a2 = this->atom(i);
 
       // If a1 and a2 are the same, skip the comparison
-      if (*a1 == a2) {
+      if (i == a1Index) {
         continue;
       }
 
@@ -562,8 +568,8 @@ bool Xtal::checkMinIAD(const QHash<QPair<int, int>, IAD>& limitsIAD, int* atom1,
       double minDist = 0.0;
       if (!customMinIAD(limitsIAD, a1->atomicNumber(), a2.atomicNumber(), &minDist)) {
         if (atom1 != nullptr && atom2 != nullptr) {
-          *atom1 = atomIndex(*a1);
-          *atom2 = atomIndex(a2);
+          *atom1 = a1Index;
+          *atom2 = i;
           if (IAD != nullptr)
             *IAD = sqrt(curDistSquared);
         }
@@ -580,8 +586,8 @@ bool Xtal::checkMinIAD(const QHash<QPair<int, int>, IAD>& limitsIAD, int* atom1,
       // If the distance is too small, set atom1/atom2 and return false
       if (Common::lt(curDistSquared, minDistSquared, 0.0)) {
         if (atom1 != nullptr && atom2 != nullptr) {
-          *atom1 = atomIndex(*a1);
-          *atom2 = atomIndex(a2);
+          *atom1 = a1Index;
+          *atom2 = i;
           if (IAD != nullptr) {
             *IAD = sqrt(curDistSquared);
           }
@@ -620,6 +626,7 @@ bool Xtal::checkInteratomicDistances(
 
   // Iterate through all of the atoms in the geometry for "a1"
   for (auto a1 = atoms().begin(), a1_end = atoms().end(); a1 != a1_end; ++a1) {
+    const int a1Index = static_cast<int>(a1 - atoms().begin());
 
     // Get list of minimum squared distances between each atom and a1
     QList<double> squaredDists;
@@ -637,7 +644,7 @@ bool Xtal::checkInteratomicDistances(
       Atoms::Atom& a2 = this->atom(i);
 
       // If a1 and a2 are the same, skip the comparison
-      if (*a1 == a2) {
+      if (i == a1Index) {
         continue;
       }
 
@@ -658,8 +665,8 @@ bool Xtal::checkInteratomicDistances(
       // If the distance is too small, set atom1/atom2 and return false
       if (Common::lt(curDistSquared, minDistSquared, 0.0)) {
         if (atom1 != nullptr && atom2 != nullptr) {
-          *atom1 = atomIndex(*a1);
-          *atom2 = atomIndex(a2);
+          *atom1 = a1Index;
+          *atom2 = i;
           if (IAD != nullptr) {
             *IAD = sqrt(curDistSquared);
           }

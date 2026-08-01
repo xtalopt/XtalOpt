@@ -61,9 +61,9 @@ class SSHManager;
  * checks jobs. Other threads make structures, save them, and run objective
  * and constraint scripts.
  *
- * When more than one lock is needed, take the tracker lock, the structure
- * lock, the settings lock, and then the QueueManager naming lock. Do not hold
- * a lock while waiting for another thread or calling the queue. Do not hold a
+ * When more than one lock is needed, take the settings lock, the QueueManager
+ * naming lock, tracker locks, and then structure locks. Do not hold a lock
+ * while waiting for another thread or calling the queue. Do not hold a
  * Structure lock while calling the queue.
  *
  * Values that change during a search must use runtimeSettingsLock().
@@ -260,7 +260,8 @@ public:
 
   /**
    * Takes a template and inserts structure specific information by
-   * replacing keywords.
+   * replacing recognized %keyword% entries. Use %% for a literal percent
+   * character.
    *
    * @param templateString Template
    * @param structure Structure of interest
@@ -502,6 +503,7 @@ public:
                     double weight = 0.0)
   {
     m_objectives.push_back(ObjectiveInfo(type, exe, out, weight));
+    markParentSelectionForUpdate();
   }
 
   // Multi-objective: retrieve an objective
@@ -510,7 +512,13 @@ public:
   QString getObjectivesExe(int i) const { return m_objectives.at(i).exe; }
   QString getObjectivesOut(int i) const { return m_objectives.at(i).out; }
   double  getObjectivesWgt(int i) const { return m_objectives.at(i).weight; }
-  void    setObjectivesWgt(int i, double weight) { m_objectives[i].weight = weight; }
+  void    setObjectivesWgt(int i, double weight)
+  {
+    if (m_objectives[i].weight != weight) {
+      m_objectives[i].weight = weight;
+      markParentSelectionForUpdate();
+    }
+  }
   bool hasExternalObjectiveCalculations() const
   {
     for (int i = 0; i < getObjectivesNum(); ++i)
@@ -519,9 +527,19 @@ public:
     return false;
   }
   // Reset all the objectives
-  void resetObjectives() { m_objectives.clear(); }
+  void resetObjectives()
+  {
+    if (!m_objectives.isEmpty()) {
+      m_objectives.clear();
+      markParentSelectionForUpdate();
+    }
+  }
   // Remove the "i"th objective
-  void removeObjective(int i) { m_objectives.removeAt(i); }
+  void removeObjective(int i)
+  {
+    m_objectives.removeAt(i);
+    markParentSelectionForUpdate();
+  }
 
   // Constrained-search filters: retrieve and modify constraints
   void addConstraint(const QString& exe = QString(), const QString& out = QString())
@@ -620,6 +638,7 @@ public:
      True while the search is stopping.
    */
   bool isShuttingDown() const       { return m_shuttingDown.load(); }
+  const std::atomic<bool>* shutdownFlag() const { return &m_shuttingDown; }
 
 protected:
   /** @sa isSessionStarting(). Set by the session functions. */
@@ -635,17 +654,41 @@ public:
   bool isRemoteQueue() const        { return m_remoteQueue; }
   void setRemoteQueue(bool v)       { m_remoteQueue = v; }
   OptimizationType getOptimizationType() const { return m_optimizationType; }
-  void setOptimizationType(OptimizationType v) { m_optimizationType = v; }
+  void setOptimizationType(OptimizationType v)
+  {
+    if (m_optimizationType != v) {
+      m_optimizationType = v;
+      markParentSelectionForUpdate();
+    }
+  }
   bool isTournamentSelection() const { return m_tournamentSelection; }
   void setTournamentSelection(bool v){ m_tournamentSelection = v; }
   bool isRestrictedPool() const     { return m_restrictedPool; }
   void setRestrictedPool(bool v)    { m_restrictedPool = v; }
   bool isCrowdingDistance() const   { return m_crowdingDistance; }
-  void setCrowdingDistance(bool v)  { m_crowdingDistance = v; }
+  void setCrowdingDistance(bool v)
+  {
+    if (m_crowdingDistance != v) {
+      m_crowdingDistance = v;
+      markParentSelectionForUpdate();
+    }
+  }
   bool isParetoFilterZeroWeights() const { return m_paretoFilterZeroWeights; }
-  void setParetoFilterZeroWeights(bool v) { m_paretoFilterZeroWeights = v; }
+  void setParetoFilterZeroWeights(bool v)
+  {
+    if (m_paretoFilterZeroWeights != v) {
+      m_paretoFilterZeroWeights = v;
+      markParentSelectionForUpdate();
+    }
+  }
   int  getObjectivePrecision() const { return m_objectivePrecision; }
-  void setObjectivePrecision(int v)  { m_objectivePrecision = v; }
+  void setObjectivePrecision(int v)
+  {
+    if (m_objectivePrecision != v) {
+      m_objectivePrecision = v;
+      markParentSelectionForUpdate();
+    }
+  }
 
   // Update the parent selection data after changing the parent list or relevant settings.
   void markParentSelectionForUpdate() { ++m_selectionDataStamp; }
@@ -663,7 +706,7 @@ public:
   QList<Structure*> getAllParentPoolStructures() const;
 
   // Update structures' Pareto front using pool values
-  void applyParentSelectionFronts();
+  bool applyParentSelectionFronts();
 
   // Rebuild the selection table for the pool (for sesseion load and final save)
   void refreshParentSelectionFronts(const QList<Structure*>& pool);
@@ -679,6 +722,11 @@ signals:
    * @sa sessionStarted
    */
   void startingSession();
+
+  /**
+   * Emitted before tracked structures are deleted.
+   */
+  void structuresAboutToBeDeleted();
 
   /**
    * Emitted when a session finishes starting or loading.
@@ -1103,10 +1151,9 @@ public slots:
   int getOptimizableObjectivesNum() const;
 
   /**
-   * Initialize objective count and weight vector. Assigns weight 1.0 to the
-   * primary search-specific ranking objective, then appends user weights for
-   * each Min/Max objective, and adjusts the primary-objective weight so all
-   * weights sum to 1.
+   * Build the objective count and weight vector. Basic selection uses the
+   * relative weights after normalizing a local copy. Pareto selection uses
+   * weights only to filter objectives when that option is enabled.
    * @param objNumb  Set to the total number of optimizable objectives.
    * @param objWght  Populated with one weight per objective.
    */
@@ -1147,6 +1194,9 @@ protected:
 
   // Release queue objects and stop their thread.
   void stopQueueThread();
+
+  // Notify views, then delete every tracked structure.
+  void deleteTrackedStructures();
 
   // The application does its setup between these calls:
   //   beginSession() -> build or restore the population -> launchSession()

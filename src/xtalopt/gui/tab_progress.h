@@ -99,6 +99,7 @@ public slots:
   void highlightXtal(Search::Structure* s);
   void startTimer();
   void stopTimer();
+  void releaseStructureReferences();
   void progressContextMenu(QPoint);
   void restartJobProgress();
   void killXtalProgress();

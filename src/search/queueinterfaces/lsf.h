@@ -40,9 +40,13 @@ public:
   virtual ~LsfQueueInterface() override;
 
 protected:
+  bool submitScriptOnStdin() const override { return true; }
   unsigned int parseJobId(const QString& submissionOutput, bool* ok) const override;
   QueueInterface::QueueStatus parseQueueStatus(const QStringList& queueData, unsigned int jobId,
     QString* rawStatus = nullptr) const override;
+  QString queueListCommand() const override;
+  bool queueListCommandSucceeded(bool ok, int exitCode, const QString& stdoutText,
+                                 const QString& stderrText) const override;
 };
 }
 

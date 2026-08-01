@@ -235,7 +235,8 @@ void XtalOptPlot::select(const QPoint& pos)
     }
   }
 
-  selectMarker(selection);
+  if (selection)
+    selectMarker(selection);
 }
 
 void XtalOptPlot::highlightMarker(QwtPlotMarker* m)

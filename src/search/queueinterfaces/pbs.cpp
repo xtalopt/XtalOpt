@@ -26,6 +26,7 @@
 #include <common/compatibility/qt_compat.h>
 #include <QString>
 #include <QStringList>
+#include <QRegularExpression>
 
 namespace Search {
 
@@ -61,6 +62,18 @@ QueueInterface::QueueStatus PbsQueueInterface::parseQueueStatus(
   if (rawStatus)
     rawStatus->clear();
 
+  int statusColumn = -1;
+  const QRegularExpression statusHeader("(^|\\s)(S|State)(?=\\s|$)");
+  for (const QString& line : queueData) {
+    const QRegularExpressionMatch match = statusHeader.match(line);
+    if (match.hasMatch() && line.contains("Job", Qt::CaseInsensitive)) {
+      statusColumn = match.capturedStart(2);
+      break;
+    }
+  }
+  if (statusColumn < 0)
+    return QueueInterface::Unknown;
+
   for (const auto& line : queueData) {
     const QStringList entryList = line.split(' ', QtCompat::SkipEmptyParts);
     if (entryList.isEmpty())
@@ -71,22 +84,22 @@ QueueInterface::QueueStatus PbsQueueInterface::parseQueueStatus(
     if (!ok || curJobId != jobId)
       continue;
 
-    if (entryList.size() < 10) {
-      Common::debug(QString("Skipping short qstat entry; need at least 10 fields: %1").arg(line));
-      // The job is present but we can't parse the output: report the raw line so an empty
-      //   so an empty rawStatus is distinguished from a missing job.
+    const QString statusText = line.mid(statusColumn).section(QRegularExpression("\\s+"), 0, 0, QString::SectionSkipEmpty);
+    if (statusText.isEmpty()) {
       if (rawStatus)
         *rawStatus = line;
       return QueueInterface::Unknown;
     }
-    const QString status = entryList.at(9);
+    const QString status = statusText.left(1);
     if (rawStatus)
       *rawStatus = status;
-    if (status.contains('R') || status.contains('E'))
+    if (status == "B" || status == "E" || status == "R" ||
+        status == "S" || status == "U" || status == "M")
       return QueueInterface::Running;
-    if (status.contains('Q') || status.contains('H') ||
-        status.contains('T') || status.contains('W') || status.contains('S'))
+    if (status == "Q" || status == "H" || status == "T" || status == "W")
       return QueueInterface::Queued;
+    if (status == "C" || status == "F" || status == "X")
+      return QueueInterface::Running;
     return QueueInterface::Unknown;
   }
 

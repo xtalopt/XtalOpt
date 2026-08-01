@@ -551,8 +551,13 @@ bool applyStructureTransforms(Atoms::Geometry& structure, const StructureToolOpt
     return false;
   }
 
-  if (options.doRescaleVolume)
+  if (options.doRescaleVolume) {
+    if (!structure.is3D()) {
+      Common::error("Volume rescaling is applicable only to a crystal");
+      return false;
+    }
     structure.setVolume(options.rescaleVolume);
+  }
 
   return true;
 }
@@ -799,6 +804,11 @@ bool compareXtalComptoFile(const Atoms::Geometry& structure, const std::string& 
   Atoms::Geometry other;
   if (!readStructure(other, compareFile, compareFormat)) {
     Common::error(QString("Failed to read comparison structure: %1").arg(QString::fromLocal8Bit(compareFile.c_str())));
+    return false;
+  }
+
+  if (!structure.is3D() || !other.is3D()) {
+    Common::error("XtalComp comparison is applicable only to crystals");
     return false;
   }
 

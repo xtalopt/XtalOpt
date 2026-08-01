@@ -132,14 +132,10 @@ bool SIESTAOptimizer::addOptimizerInputFiles(Structure* s, int optStep,
       return false;
     }
 
-    QString filename = symbol + ".psf";
     QString contents;
-    QString sourceFilename;
-    if (!readSavedInputAssetValue(psfAsset, contents, &sourceFilename))
+    if (!readSavedInputAssetValue(psfAsset, contents))
       return false;
-    if (!sourceFilename.isEmpty())
-      filename = sourceFilename;
-    files.insert(filename, contents);
+    files.insert(symbol + ".psf", contents);
   }
 
   return true;
@@ -156,7 +152,6 @@ bool SIESTAOptimizer::readOutput(Structure* s, const QString& filename) const
   if (!readSiestaEnergy(filename, energy, enthalpy))
     return false;
 
-  s->updateAndAddToHistory(structure, energy, enthalpy);
-  return true;
+  return s->updateAndAddToHistory(structure, energy, enthalpy);
 }
 } // namespace Search

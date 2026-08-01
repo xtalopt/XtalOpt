@@ -108,7 +108,6 @@ bool PWSCFOptimizer::readOutput(Structure* s, const QString& filename) const
   if (!readPwscfEnergy(filename, energy, enthalpy))
     return false;
 
-  s->updateAndAddToHistory(structure, energy, enthalpy);
-  return true;
+  return s->updateAndAddToHistory(structure, energy, enthalpy);
 }
 } // namespace Search

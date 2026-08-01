@@ -142,7 +142,7 @@ signals:
    * @param optimized Number of optimized structures
    * @param running Number of running structures (e.g. submitted
    * for optimization)
-   * @param failing Number of structures with a getFailCount() > 0
+   * @param failing Number of structures stopped by failure, dismissal, or kill
    */
   void newStatusOverview(int optimized, int running, int failing, int total);
 
@@ -303,7 +303,7 @@ protected:
    *
    * @param s The Structure to stop optimizing.
    */
-  void stopJob(Structure* s);
+  bool stopJob(Structure* s);
   void stopJobAndRemoveFromRunning(Structure* s);
 
   /**
@@ -365,6 +365,7 @@ protected:
     ObjectiveFailHandler,
     ObjectiveDismissHandler,
     SubmissionHandler,
+    JobStartHandler,
     NamingHandler,
     KillRequestHandler,
     ScriptLaunchHandler
@@ -401,6 +402,8 @@ protected:
     void finish(Structure* s, int h);
 
     bool hasHandlerFor(Structure* s) const;
+
+    bool hasHandler(Structure* s, int h) const;
 
     bool waitForAll(int timeoutMs);
 

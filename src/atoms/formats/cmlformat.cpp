@@ -36,7 +36,7 @@ namespace {
 
 // Some helpers for reading file content
 
-// Find the first molecule element, inside an optional <cml> wrapper.
+// Find the next molecule element, inside an optional <cml> wrapper.
 static bool skipToMolecule(QXmlStreamReader& xml)
 {
   while (!xml.atEnd()) {
@@ -55,7 +55,7 @@ static bool skipToMolecule(QXmlStreamReader& xml)
 static bool readUnitCell(QXmlStreamReader& xml, Atoms::Geometry* s, std::string& error)
 {
   // Read the crystal values in <crystal>.
-  float a = 0, b = 0, c = 0, alpha = 0, beta = 0, gamma = 0;
+  double a = 0, b = 0, c = 0, alpha = 0, beta = 0, gamma = 0;
   enum { CellA = 0, CellB, CellC, CellAlpha, CellBeta, CellGamma };
   std::bitset<6> parsed;
 
@@ -67,7 +67,12 @@ static bool readUnitCell(QXmlStreamReader& xml, Atoms::Geometry* s, std::string&
       continue;
 
     QString title = xml.attributes().value("title").toString();
-    float val = xml.readElementText().toFloat();
+    bool ok = false;
+    const double val = xml.readElementText().toDouble(&ok);
+    if (!ok) {
+      error += "Invalid number in unit cell description.";
+      return false;
+    }
 
     if (title == "a")     { a     = val; parsed.set(CellA); }
     else if (title == "b")     { b     = val; parsed.set(CellB); }
@@ -81,7 +86,7 @@ static bool readUnitCell(QXmlStreamReader& xml, Atoms::Geometry* s, std::string&
     error += "Incomplete unit cell description.";
     return false;
   }
-  s->unitCell().setCellParameters(a, b, c, alpha, beta, gamma);
+  s->setCellInfo(a, b, c, alpha, beta, gamma);
   return true;
 }
 
@@ -128,7 +133,15 @@ static bool readAtomArray(QXmlStreamReader& xml, Atoms::Geometry* s,
         error += "Missing y or z Cartesian coordinate on atom.";
         return false;
       }
-      atom.setPos(Common::Vector3(x3.toFloat(), y3.toFloat(), z3.toFloat()));
+      bool xOk = false, yOk = false, zOk = false;
+      const double x = x3.toString().toDouble(&xOk);
+      const double y = y3.toString().toDouble(&yOk);
+      const double z = z3.toString().toDouble(&zOk);
+      if (!xOk || !yOk || !zOk) {
+        error += "Invalid Cartesian coordinate on atom.";
+        return false;
+      }
+      atom.setPos(Common::Vector3(x, y, z));
     } else {
       auto xFract = attrs.value("xFract");
       auto yFract = attrs.value("yFract");
@@ -141,7 +154,15 @@ static bool readAtomArray(QXmlStreamReader& xml, Atoms::Geometry* s,
         error += "No unit cell defined. Cannot interpret fractional coordinates.";
         return false;
       }
-      Common::Vector3 coord(xFract.toFloat(), yFract.toFloat(), zFract.toFloat());
+      bool xOk = false, yOk = false, zOk = false;
+      const double x = xFract.toString().toDouble(&xOk);
+      const double y = yFract.toString().toDouble(&yOk);
+      const double z = zFract.toString().toDouble(&zOk);
+      if (!xOk || !yOk || !zOk) {
+        error += "Invalid fractional coordinate on atom.";
+        return false;
+      }
+      Common::Vector3 coord(x, y, z);
       coord = s->unitCell().toCartesian(coord);
       atom.setPos(coord);
     }
@@ -208,46 +229,55 @@ bool CmlFormat::read(Atoms::Geometry& s, std::istream& file)
 
   QXmlStreamReader xml(data);
 
-  if (!skipToMolecule(xml)) {
+  bool moleculeFound = false;
+
+  // A CML file may hold several molecule entries; the last one is read.
+  while (skipToMolecule(xml)) {
+    s.clear();
+
+    std::string error;
+    std::map<std::string, size_t> atomIds;
+    bool success = true;
+
+    while (!xml.atEnd() && success) {
+      xml.readNext();
+      if (xml.isEndElement() && xml.name() == QLatin1String("molecule"))
+        break;
+      if (!xml.isStartElement())
+        continue;
+
+      if (xml.name() == QLatin1String("crystal")) {
+        success = readUnitCell(xml, &s, error);
+      } else if (xml.name() == QLatin1String("atomArray")) {
+        success = readAtomArray(xml, &s, atomIds, error);
+      } else if (xml.name() == QLatin1String("bondArray")) {
+        success = readBondArray(xml, &s, atomIds, error);
+      } else if (xml.name() == QLatin1String("propertyList")) {
+        xml.skipCurrentElement();
+      }
+    }
+
+    if (xml.hasError()) {
+      Common::error(QString("Could not parse XML in CML file: %1")
+                   .arg(xml.errorString()));
+      return false;
+    }
+
+    if (!success) {
+      Common::error(QString("Could not read CML file: %1")
+                   .arg(QString::fromStdString(error)));
+      return false;
+    }
+
+    moleculeFound = true;
+  }
+
+  if (!moleculeFound) {
     Common::error("No molecule element found in CML file.");
     return false;
   }
 
-  s.clear();
-
-  std::string error;
-  std::map<std::string, size_t> atomIds;
-  bool success = true;
-
-  while (!xml.atEnd() && success) {
-    xml.readNext();
-    if (xml.isEndElement() && xml.name() == QLatin1String("molecule"))
-      break;
-    if (!xml.isStartElement())
-      continue;
-
-    if (xml.name() == QLatin1String("crystal")) {
-      success = readUnitCell(xml, &s, error);
-    } else if (xml.name() == QLatin1String("atomArray")) {
-      success = readAtomArray(xml, &s, atomIds, error);
-    } else if (xml.name() == QLatin1String("bondArray")) {
-      success = readBondArray(xml, &s, atomIds, error);
-    } else if (xml.name() == QLatin1String("propertyList")) {
-      xml.skipCurrentElement();
-    }
-  }
-
-  if (xml.hasError()) {
-    Common::error(QString("Could not parse XML in CML file: %1")
-                 .arg(xml.errorString()));
-    return false;
-  }
-
-  if (!success)
-    Common::error(QString("Could not read CML file: %1")
-                 .arg(QString::fromStdString(error)));
-
-  return success;
+  return true;
 }
 
 bool CmlFormat::write(const Atoms::Geometry& s, std::ostream& out)

@@ -504,6 +504,18 @@ void XtalOptUnitTest::loadTest()
   const int count = buildTestSearch(producer, tempDir.path());
   QVERIFY(count > 0);
   QVERIFY(producer.refreshStructureEvaluationData());
+
+  Xtal* invalid = makeTestXtal(9, 9, count, 8, Common::Vector3(0.0, 0.0, 0.0), 0.0);
+  const QString invalidPath = tempPath(tempDir, "00009x00009");
+  QVERIFY(QDir().mkpath(invalidPath));
+  invalid->setLocpath(invalidPath);
+  invalid->setCurrentOptStep(static_cast<uint>(producer.getNumOptSteps()));
+  invalid->findSpaceGroup();
+  {
+    QWriteLocker trackerLocker(producer.tracker()->rwLock());
+    QVERIFY(producer.tracker()->append(invalid));
+  }
+
   QVERIFY(producer.save(Common::localPath(tempDir.path(), "xtalopt.state")));
 
   XtalOpt reloaded;
@@ -881,6 +893,7 @@ void XtalOptUnitTest::resultsOutputsAreStable()
     xtal->setStatus(Xtal::Optimized);
     xtal->setEnthalpy(enthalpy);
     xtal->setChangedSinceSimChecked(false);
+    xtal->findSpaceGroup();
     return xtal;
   };
 
@@ -2518,6 +2531,28 @@ void XtalOptUnitTest::checkForDuplicatesTest()
   QCOMPARE(similar->getSimilarityString(), QString("1x1"));
 
   opt.reset();
+
+  XtalOpt rdfOpt;
+  rdfOpt.setTolRdf(0.99);
+  rdfOpt.setTolRdfNbins(100);
+  rdfOpt.setTolRdfCutoff(3.0);
+  rdfOpt.setTolRdfSigma(0.1);
+
+  Xtal* rdfKeep = makeTestXtal(2, 1, 0, 8, Common::Vector3(0.0, 0.0, 0.0), 0.0);
+  Xtal* rdfSimilar = makeTestXtal(2, 2, 1, 8, Common::Vector3(0.0, 0.0, 0.0), 0.0);
+  rdfKeep->addAtom(8, Common::Vector3(1.0, 0.0, 0.0));
+  rdfSimilar->addAtom(8, Common::Vector3(1.0, 0.0, 0.0));
+
+  QVERIFY(rdfOpt.tracker()->append(rdfKeep));
+  QVERIFY(rdfOpt.tracker()->append(rdfSimilar));
+
+  rdfOpt.checkForSimilarities_();
+
+  QCOMPARE(rdfOpt.queue()->getAllSimilarStructures().size(), 1);
+  QVERIFY(rdfSimilar->isSimilar());
+  QCOMPARE(rdfSimilar->getSimilarityString(), QString("2x1"));
+
+  rdfOpt.reset();
 }
 
 void XtalOptUnitTest::stepwiseCheckForDuplicatesTest()

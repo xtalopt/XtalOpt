@@ -18,6 +18,7 @@
 #include <common/fileutils.h>
 #include <common/output.h>
 
+#include <search/constants.h>
 #include <search/structure.h>
 #include <search/optimizer.h>
 #include <search/search.h>
@@ -27,6 +28,7 @@
 
 #include <common/compatibility/qt_compat.h>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QReadLocker>
 #include <QSet>
@@ -147,22 +149,36 @@ bool BatchQueueInterface::startJob(Structure* s)
 {
   // Copy the structure values.
   QString workdir;
+  QString tag;
   {
     QReadLocker locker(&s->lock());
     workdir = m_search->isRemoteQueue() ? s->getRempath() : s->getLocpath();
+    tag = s->getTag();
   }
 
-  const QString command = submitCommand() + " " + submitScriptName();
-  const CommandResult result = runACommand(workdir, command);
+  QString command = submitCommand();
+  QString stdinFile;
+  if (submitScriptOnStdin())
+    stdinFile = submitScriptName();
+  else
+    command += " " + submitScriptName();
+  const CommandResult result = runBatchCommand(workdir, command, stdinFile);
   if (!result.succeeded())
     return false;
 
   bool ok = false;
   const unsigned int jobId = parseJobId(result.stdoutText, &ok);
   if (!ok || jobId == 0) {
-    Common::error(tr("Could not retrieve jobID for structure %1.")
-                    .arg(s->getTag()));
-    return false;
+    {
+      QWriteLocker locker(&s->lock());
+      s->setJobID(0);
+      s->startOptTimer();
+    }
+    Common::warning(tr("The scheduler accepted structure %1, but its job ID "
+                       "could not be read. Inspect the scheduler before "
+                       "restarting or killing this structure.")
+                      .arg(tag));
+    return true;
   }
 
   {
@@ -179,18 +195,16 @@ bool BatchQueueInterface::stopJob(Structure* s)
   // Copy the structure values.
   unsigned long jobId = 0;
   bool logErrors = false;
+  Structure::State state = Structure::Empty;
   {
     QWriteLocker locker(&s->lock());
     jobId = s->getJobID();
+    state = s->getStatus();
     logErrors = m_search->logErrorDirs() && s->isQueueErrorRecoveryState();
   }
 
-  if (logErrors) {
-    logErrorDirectory(s);
-  }
-
   if (jobId == 0) {
-    if (m_search->cleanRemoteOnStop())
+    if (state != Structure::Submitted && m_search->cleanRemoteOnStop())
       cleanExecutionDirectory(s);
     return true;
   }
@@ -198,12 +212,25 @@ bool BatchQueueInterface::stopJob(Structure* s)
   const QString command = cancelCommand() + " " + QString::number(jobId);
   const CommandResult result = runACommand("", command);
 
-  {
+  bool jobIsGone = false;
+  if (!result.succeeded()) {
+    const QStringList queueData = queueList(true);
+    if (!(queueData.size() == 1 && queueData.first() == "CommError")) {
+      QString rawStatus;
+      jobIsGone = parseQueueStatus(queueData, static_cast<unsigned int>(jobId), &rawStatus) == QueueInterface::Unknown &&
+                  rawStatus.isEmpty();
+    }
+  }
+
+  if (result.succeeded() || jobIsGone) {
     QWriteLocker locker(&s->lock());
     s->setJobID(0);
     s->stopOptTimer();
   }
-  return result.succeeded();
+  if (logErrors && (result.succeeded() || jobIsGone))
+    logErrorDirectory(s);
+
+  return result.succeeded() || jobIsGone;
 }
 
 QueueInterface::QueueStatus BatchQueueInterface::getStatus(Structure* s) const
@@ -217,13 +244,16 @@ QueueInterface::QueueStatus BatchQueueInterface::getStatus(Structure* s) const
     state = s->getStatus();
   }
 
+  if (!jobId && state != Structure::Submitted)
+    return QueueInterface::Error;
+
+  if (!jobId && state == Structure::Submitted)
+    return QueueInterface::Pending;
+
   const QStringList queueData = queueList();
 
   if (queueData.size() == 1 && queueData[0].compare("CommError") == 0)
     return QueueInterface::CommunicationError;
-
-  if (!jobId && state != Structure::Submitted)
-    return QueueInterface::Error;
 
   QString rawStatus;
   const QueueInterface::QueueStatus queueStatus = parseQueueStatus(queueData, jobId, &rawStatus);
@@ -287,10 +317,11 @@ QString BatchQueueInterface::queueListCommand() const
 }
 
 bool BatchQueueInterface::queueListCommandSucceeded(
-  bool ok, int exitCode, const QString& stdoutText) const
+  bool ok, int exitCode, const QString& stdoutText, const QString& stderrText) const
 {
   Q_UNUSED(stdoutText);
-  return ok && (exitCode == 0 || exitCode == 1);
+  Q_UNUSED(stderrText);
+  return ok && exitCode == 0;
 }
 
 QStringList BatchQueueInterface::queueList(bool forced) const
@@ -320,7 +351,7 @@ QStringList BatchQueueInterface::queueList(bool forced) const
   const QString command = queueListCommand();
   const CommandResult result = runACommand("", command);
 
-  if (!queueListCommandSucceeded(result.launched, result.exitCode, result.stdoutText)) {
+  if (!queueListCommandSucceeded(result.launched, result.exitCode, result.stdoutText, result.stderrText)) {
     Common::warning(tr("Could not execute %1: (%2) %3\n\t"
                        "Treating as a communication error.")
                     .arg(command)
@@ -421,7 +452,13 @@ bool BatchQueueInterface::prepareForStructureUpdate(Structure* s) const
 }
 
 QueueInterface::CommandResult BatchQueueInterface::runACommand(
-  const QString& workdir, const QString& command) const
+  const QString& workdir, const QString& command, int timeoutMs) const
+{
+  return runBatchCommand(workdir, command, QString(), timeoutMs);
+}
+
+QueueInterface::CommandResult BatchQueueInterface::runBatchCommand(const QString& workdir, const QString& command,
+                                                                   const QString& stdinFile, int timeoutMs) const
 {
   // Run a batch command.
   CommandResult result;
@@ -432,6 +469,8 @@ QueueInterface::CommandResult BatchQueueInterface::runACommand(
     if (!workdir.isEmpty()) {
       proc.setWorkingDirectory(workdir);
     }
+    if (!stdinFile.isEmpty())
+      proc.setStandardInputFile(Common::localPath(workdir, stdinFile));
     QtCompat::processStartCommand(proc, command);
     if (!proc.waitForStarted(-1)) {
       result.stderrText = proc.errorString();
@@ -439,12 +478,30 @@ QueueInterface::CommandResult BatchQueueInterface::runACommand(
           .arg(command).arg(workdir).arg(result.stderrText));
       return result;
     }
-    proc.waitForFinished(-1);
+    QElapsedTimer timer;
+    timer.start();
+    bool finished = false;
+    while (!finished && !m_search->isShuttingDown()) {
+      const qint64 remaining = timeoutMs < 0 ? 100 : static_cast<qint64>(timeoutMs) - timer.elapsed();
+      if (remaining <= 0)
+        break;
+      finished = proc.waitForFinished(static_cast<int>(qMin<qint64>(remaining, 100)));
+    }
+    const bool stopped = !finished;
+    if (stopped) {
+      proc.terminate();
+      if (!proc.waitForFinished(1000)) {
+        proc.kill();
+        proc.waitForFinished(PROCESS_KILL_TIMEOUT);
+      }
+    }
 
     result.launched = true;
     result.stdoutText = QString(proc.readAllStandardOutput());
     result.stderrText = QString(proc.readAllStandardError());
-    result.exitCode = proc.exitCode();
+    result.exitCode = stopped ? -1 : proc.exitCode();
+    if (stopped)
+      result.stderrText += tr("Command was stopped before it finished.");
 
     // Report the command output.
     if (!result.stderrText.isEmpty() || (result.exitCode != 0)) {
@@ -462,12 +519,15 @@ QueueInterface::CommandResult BatchQueueInterface::runACommand(
   QString runcom;
   if (!workdir.isEmpty()) {
     // Run the command in the working directory.
-    runcom = "cd " + shellSingleQuote(workdir) + " && " + command;
+    runcom = "cd " + Common::quoteRemotePath(workdir) + " && " + command;
   } else {
     runcom = command;
   }
+  if (!stdinFile.isEmpty())
+    runcom += " < " + Common::quoteRemotePath(stdinFile);
 
-  result.launched = ssh->execute(runcom, result.stdoutText, result.stderrText, result.exitCode);
+  result.launched = ssh->execute(runcom, result.stdoutText, result.stderrText,
+                                 result.exitCode, true, timeoutMs, m_search->shutdownFlag());
 
   // Report the command output.
   if (!result.succeeded()) {
@@ -678,7 +738,7 @@ bool BatchQueueInterface::grepFile(Structure* s, const QString& matchText,
   const QString command = QString("grep %1 -F -- %2 %3")
       .arg(flags)
       .arg(shellSingleQuote(matchText))
-      .arg(shellSingleQuote(Common::remotePath(s->getRempath(), filename)));
+      .arg(Common::quoteRemotePath(Common::remotePath(s->getRempath(), filename)));
   if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
     return false;
   }
@@ -705,7 +765,7 @@ bool BatchQueueInterface::createExecutionDirectory(Structure* structure, SSHConn
   if (ssh2 == nullptr)
     return false;
 
-  const QString command = "mkdir -p " + shellSingleQuote(structure->getRempath());
+  const QString command = "mkdir -p " + Common::quoteRemotePath(structure->getRempath());
   QString stdout_str, stderr_str;
   int ec;
   if (!ssh2->execute(command, stdout_str, stderr_str, ec) || ec != 0) {

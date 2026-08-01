@@ -158,36 +158,36 @@ bool XyzFormat::read(Atoms::Geometry* s, const QString& filename)
   std::string line;
   std::vector<std::string> lineSplit;
   std::vector<Atoms::Atom> atoms;
-
-  if (!getline(ifs, line)) {
-    Common::error("XYZ reader: file is empty.");
-    return false;
-  }
-
   LatticeInfo lattice;
+  bool frameFound = false;
 
-  // We need a while loop here because we may have multiple molecules
-  while (true) {
-    // First line should be the number of atoms
-    lineSplit = Common::split(Common::trim(line, " \t\r"), ' ');
+  // An XYZ file may hold a series of frames; the last complete frame is read.
+  for (;;) {
+    // Find the next frame's atom-count line; the series ends at the file end.
+    lineSplit.clear();
+    while (getline(ifs, line)) {
+      lineSplit = Common::split(Common::reduce(line, " ", " \t\r"), ' ');
+      if (!lineSplit.empty())
+        break;
+    }
+    if (lineSplit.empty())
+      break;
+
     if (lineSplit.size() != 1) {
       Common::error("XYZ reader: the line containing the number of "
                    "atoms must only contain one word: the number of atoms!");
-      Common::error(QString("Problem line: %1")
-                   .arg(line.c_str()));
+      Common::error(QString("Problem line: %1").arg(line.c_str()));
       return false;
     }
 
     size_t numAtoms = 0;
     if (!Common::parseSizeString(lineSplit[0], numAtoms)) {
       Common::error("XYZ reader: the number of atoms must be a " "non-negative integer.");
-      Common::error(QString("Problem line: %1")
-                   .arg(line.c_str()));
+      Common::error(QString("Problem line: %1").arg(line.c_str()));
       return false;
     }
 
-    // Next line is a comment line for molecules; but may contain Lattice
-    //   for extended XYZ formats
+    // Next line is a comment line for molecules; but may contain Lattice for extended XYZ formats
     if (!getline(ifs, line)) {
       Common::error("XYZ reader: the end of file was reached before " "the comment line was read.");
       return false;
@@ -196,6 +196,7 @@ bool XyzFormat::read(Atoms::Geometry* s, const QString& filename)
     lattice = parseLatticeFromXYZComment(line);
 
     // Now, let's read a number of times equal to numAtoms!
+    atoms.clear();
     for (size_t i = 0; i < numAtoms; ++i) {
       if (!getline(ifs, line)) {
         Common::error(QString("XYZ reader: the end of file was reached "
@@ -204,19 +205,18 @@ bool XyzFormat::read(Atoms::Geometry* s, const QString& filename)
         return false;
       }
 
-      lineSplit = Common::split(Common::trim(line, " \t\r"), ' ');
-      if (lineSplit.size() != 4) {
+      lineSplit = Common::split(Common::reduce(line, " ", " \t\r"), ' ');
+      if (lineSplit.size() < 4) {
         Common::error("XYZ reader: each atom coordinate line should "
-                     "contain exactly 4 words: <element> <x> <y> <z>");
-        Common::error(QString("Problem line: %1")
-                     .arg(line.c_str()));
+                      "contain at least 4 words: <element> <x> <y> <z>");
+        Common::error(QString("Problem line: %1").arg(line.c_str()));
         return false;
       }
 
       // If it is a number, it is the atomic number. Otherwise, a symbol
       int atomicNum = 0;
       if (Common::parseIntString(lineSplit[0], atomicNum)) {
-        if (atomicNum < 1 || atomicNum > 255) {
+        if (atomicNum < 1 || atomicNum > 117) {
           Common::error("XYZ reader: invalid atomic number entered.");
           Common::error(QString("Problem line: %1")
                        .arg(line.c_str()));
@@ -224,7 +224,7 @@ bool XyzFormat::read(Atoms::Geometry* s, const QString& filename)
         }
       } else {
         atomicNum = Atoms::ElementInfo::getAtomicNum(lineSplit[0]);
-        if (atomicNum < 1 || atomicNum > 255) {
+        if (atomicNum < 1 || atomicNum > 117) {
           Common::error("XYZ reader: invalid atomic symbol entered.");
           Common::error(QString("Problem line: %1")
                        .arg(line.c_str()));
@@ -238,28 +238,21 @@ bool XyzFormat::read(Atoms::Geometry* s, const QString& filename)
           !Common::parseDoubleString(lineSplit[2], y) ||
           !Common::parseDoubleString(lineSplit[3], z)) {
         Common::error("XYZ reader: invalid atomic coordinate entered.");
-        Common::error(QString("Problem line: %1")
-                     .arg(line.c_str()));
+        Common::error(QString("Problem line: %1").arg(line.c_str()));
         return false;
       }
       Atoms::Atom newAtom(atomicNum, Common::Vector3(x, y, z));
       atoms.push_back(newAtom);
     }
-
-    // If the next line has exactly one word, assume it is the start of
-    // a new molecule. Otherwise, break.
-    if (!getline(ifs, line))
-      break;
-    line = Common::trim(line, " \t\r");
-    if (line.empty())
-      break;
-
-    lineSplit = Common::split(line, ' ');
-    if (lineSplit.size() != 1)
-      break;
-
-    // Otherwise, just keep on going.
+    frameFound = true;
   }
+
+  if (!frameFound) {
+    Common::error("XYZ reader: file is empty.");
+    return false;
+  }
+
+  Atoms::Geometry parsed;
 
   // If we have found a lattice, set it here.
   if (lattice.type == LatticeInfo::Vectors) {
@@ -271,15 +264,16 @@ bool XyzFormat::read(Atoms::Geometry* s, const QString& filename)
       cellMatrix(i, 2) = lattice.vectors[i][2];
     }
     Atoms::UnitCell uc(cellMatrix);
-    s->setUnitCell(uc);
+    parsed.setUnitCell(uc);
   }
   else if (lattice.type == LatticeInfo::Parameters) {
-    s->setCellInfo(lattice.parameters[0], lattice.parameters[1], lattice.parameters[2],
-                   lattice.parameters[3], lattice.parameters[4], lattice.parameters[5]);
+    parsed.setCellInfo(lattice.parameters[0], lattice.parameters[1], lattice.parameters[2],
+                       lattice.parameters[3], lattice.parameters[4], lattice.parameters[5]);
   }
 
-  s->setAtoms(atoms);
-  s->perceiveBonds();
+  parsed.setAtoms(atoms);
+  parsed.perceiveBonds();
+  *s = parsed;
 
   return true;
 }

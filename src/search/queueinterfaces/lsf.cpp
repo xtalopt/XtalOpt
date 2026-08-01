@@ -21,6 +21,7 @@
 #include <common/output.h>
 
 #include <search/optimizer.h>
+#include <search/search.h>
 #include <search/structure.h>
 
 #include <common/compatibility/qt_compat.h>
@@ -31,12 +32,14 @@ namespace {
 
 bool isRunningStatus(const QString& status)
 {
-  return status == "RUN" || status == "DONE" || status == "EXIT";
+  return status == "RUN" || status == "USUSP" || status == "SSUSP" ||
+         status == "UNKWN" || status == "ZOMBI" || status == "DONE" ||
+         status == "EXIT" || status == "POST_DONE" || status == "POST_ERR";
 }
 
 bool isQueuedStatus(const QString& status)
 {
-  return status == "PEND" || status == "PSUSP" || status == "USUSP" || status == "SSUSP";
+  return status == "PEND" || status == "PROV" || status == "PSUSP" || status == "WAIT";
 }
 
 } // namespace
@@ -78,14 +81,13 @@ QueueInterface::QueueStatus LsfQueueInterface::parseQueueStatus(
     bool ok = false;
     const unsigned int curJobId = entryList.isEmpty() ? 0 : entryList.first().toUInt(&ok);
     if (ok && curJobId == jobId) {
-      if (entryList.size() < 3) {
-        // The job is present but we can't parse the output: report the raw line so an empty
-        //   so an empty rawStatus is distinguished from a missing job.
+      if (entryList.size() < 2) {
+        // Keep the raw line so this is not mistaken for a missing job.
         if (rawStatus)
           *rawStatus = line;
         return QueueInterface::Unknown;
       }
-      const QString status = entryList.at(2);
+      const QString status = entryList.at(1);
       if (rawStatus)
         *rawStatus = status;
       if (isRunningStatus(status))
@@ -97,6 +99,25 @@ QueueInterface::QueueStatus LsfQueueInterface::parseQueueStatus(
   }
 
   return QueueInterface::Unknown;
+}
+
+QString LsfQueueInterface::queueListCommand() const
+{
+  QString command = statusCommand() + " -noheader -o \"jobid stat\"";
+  const QString username = m_search->getUsername().trimmed();
+  if (!username.isEmpty())
+    command += " -u " + username;
+  return command;
+}
+
+bool LsfQueueInterface::queueListCommandSucceeded(
+  bool ok, int exitCode, const QString& stdoutText, const QString& stderrText) const
+{
+  if (ok && exitCode == 0)
+    return true;
+
+  const QString output = stdoutText + "\n" + stderrText;
+  return ok && exitCode == 255 && output.contains("No unfinished job found", Qt::CaseInsensitive);
 }
 }
 

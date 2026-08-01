@@ -115,17 +115,42 @@ void SearchBase::registerKeyword(const QString& key, std::function<QString(Struc
 
 QString SearchBase::interpretTemplate(const QString& str, Structure* structure)
 {
-  QStringList list = str.split("%");
-  QString line;
-  for (int line_ind = 0; line_ind < list.size(); line_ind++) {
-    line = list.at(line_ind);
-    interpretKeyword_base(line, structure);
-    // Add other interpret keyword sections here if needed when subclassing
-    if (line != list.at(line_ind)) // Line was a keyword
-      list.replace(line_ind, line);
+  QString ret;
+  int pos = 0;
+  while (pos < str.size()) {
+    if (str.at(pos) != '%') {
+      ret += str.at(pos++);
+      continue;
+    }
+
+    if (pos + 1 < str.size() && str.at(pos + 1) == '%') {
+      ret += '%';
+      pos += 2;
+      continue;
+    }
+
+    const int end = str.indexOf('%', pos + 1);
+    if (end < 0) {
+      ret += '%';
+      ++pos;
+      continue;
+    }
+
+    QString keyword = str.mid(pos + 1, end - pos - 1);
+    const bool known = m_keywordMap.contains(keyword) ||
+                       keyword.startsWith("filecontents:", Qt::CaseInsensitive) ||
+                       keyword.startsWith("copyfile:", Qt::CaseInsensitive);
+    if (!known) {
+      ret += '%';
+      ++pos;
+      continue;
+    }
+
+    interpretKeyword_base(keyword, structure);
+    ret += keyword;
+    pos = end + 1;
   }
-  // Rejoin string
-  QString ret = list.join("");
+
   ret += "\n";
   return ret;
 }

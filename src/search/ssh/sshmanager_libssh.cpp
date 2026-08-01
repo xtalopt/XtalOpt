@@ -20,6 +20,7 @@
 #include <common/output.h>
 
 #include <memory>
+#include <search/search.h>
 #include <search/ssh/sshconnection_libssh.h>
 
 #define START
@@ -92,8 +93,12 @@ SSHManagerLibSSH::~SSHManagerLibSSH()
 
 SSHConnection* SSHManagerLibSSH::getFreeConnection()
 {
-  // Wait until a connection is available:
-  m_connSemaphore.acquire();
+  // Wait until a connection is available.
+  SearchBase* search = qobject_cast<SearchBase*>(parent());
+  while (!m_connSemaphore.tryAcquire(1, 100)) {
+    if (search && search->isShuttingDown())
+      return nullptr;
+  }
 
   // When a connection is available, allow one thread at a time to
   // obtain the next available SSHConnection
@@ -117,18 +122,16 @@ SSHConnection* SSHManagerLibSSH::getFreeConnection()
       return (*it);
     }
   }
-  // If this point is reached, no connections are available. If in
-  // debug mode, fail here
+  Common::warning(tr("No SSH connections are available after obtaining a permit."));
+
   Q_ASSERT_X(false, Q_FUNC_INFO,
              "No SSHConnections available. This should not "
              "happen with the protection provided by "
              "m_connSemaphore. Is SSHManagerLibSSH::unlockConnection "
              "being called correctly?");
 
-  // If this is a release build, release semaphore and tail-recurse.
   m_connSemaphore.release();
-
-  return this->getFreeConnection();
+  return nullptr;
 }
 
 void SSHManagerLibSSH::unlockConnection(SSHConnection* ssh)

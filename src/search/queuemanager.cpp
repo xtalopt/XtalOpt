@@ -69,13 +69,6 @@ QString objectiveOrConstraintDismissRedoReason(Search::Structure* s)
   return QObject::tr("failed objective calculation");
 }
 
-Search::Structure::State postprocessingFailureStatus(Search::Structure* s)
-{
-  if (s->getStrucConstraintState() == Search::Structure::Cs_Fail)
-    return Search::Structure::ConsFailed;
-  return Search::Structure::ObjcFailed;
-}
-
 }
 /// \endcond
 
@@ -183,6 +176,12 @@ bool QueueManager::RunningHandlers::hasHandlerFor(Structure* s) const
   return m_perStructure.contains(s);
 }
 
+bool QueueManager::RunningHandlers::hasHandler(Structure* s, int h) const
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  return m_pairs.contains(QPair<Structure*, int>(s, h));
+}
+
 bool QueueManager::RunningHandlers::waitForAll(int timeoutMs)
 {
   QtCompat::MutexLocker locker(&m_mutex);
@@ -218,11 +217,16 @@ void QueueManager::runHandler(Structure* s, StructureHandlerType handler)
     &QueueManager::handleFailObjectiveStructure,
     &QueueManager::handleDismissObjectiveStructure,
   };
+  static_assert(sizeof(kWorkers) / sizeof(kWorkers[0]) == SubmissionHandler,
+                "kWorkers needs one entry per state function.");
 
   if (handler == SubmissionHandler) {
     addStructureToSubmissionQueue(s);
     return;
   }
+  // These handlers do not have worker functions.
+  if (handler >= SubmissionHandler)
+    return;
   if (!m_runningHandlers.tryStart(s, handler))
     return;
   const HandlerWorker worker = kWorkers[handler];
@@ -425,8 +429,23 @@ void QueueManager::submitQueuedJobs()
            (!m_search->isLimitRunningJobs() ||
             submitted < m_search->getRunningJobLimit())) {
       Structure* structure = m_jobStartTracker.at(0);
+      int optStep = 0;
+      Structure::State status = Structure::Empty;
+      {
+        QReadLocker structureLocker(&structure->lock());
+        optStep = structure->getCurrentOptStep();
+        status = structure->getStatus();
+      }
+
+      if (status != Structure::WaitingForOptimization) {
+        Structure* discarded = nullptr;
+        if (!m_jobStartTracker.popFirst(discarded))
+          break;
+        continue;
+      }
+
       const bool isBatchJob = qobject_cast<BatchQueueInterface*>(
-        m_search->queueInterface(structure->getCurrentOptStep())) != nullptr;
+        m_search->queueInterface(optStep)) != nullptr;
       if (isBatchJob && batchSubmitted)
         break;
 
@@ -544,7 +563,15 @@ void QueueManager::checkRunning()
 
 void QueueManager::startScriptCalculations(Structure* s, bool constraints)
 {
-  // The handler slot is already held during the run and is released when it returns.
+  {
+    QtCompat::MutexLocker waitsLocker(&m_scriptWaitsMutex);
+    ScriptWaitInfo info;
+    info.started = QDateTime::currentDateTime();
+    info.nextCheck = info.started;
+    m_scriptWaits.insert(s, info);
+  }
+
+  // The handler slot is held during the run and is released when it returns.
   (void)QtConcurrent::run(&m_objectiveThreadPool,
                           [this, s, constraints]() {
     bool ok = true;
@@ -711,9 +738,12 @@ QList<Tracker*> QueueManager::allTrackers()
 /// @cond
 void QueueManager::handleInProcessStructure(Structure* s)
 {
-  // Revalidate assumptions
-  if (s->getStatus() != Structure::InProcess) {
-    return;
+  int optStep = 0;
+  {
+    QReadLocker locker(&s->lock());
+    if (s->getStatus() != Structure::InProcess)
+      return;
+    optStep = s->getCurrentOptStep();
   }
 
   bool cancelJob = false;
@@ -724,7 +754,7 @@ void QueueManager::handleInProcessStructure(Structure* s)
     cancelJobHours = m_search->hoursForCancelJobAfterTime();
   }
 
-  QueueInterface* qi = m_search->queueInterface(s->getCurrentOptStep());
+  QueueInterface* qi = m_search->queueInterface(optStep);
   switch (qi->getStatus(s)) {
     case QueueInterface::Running:
     case QueueInterface::Queued:
@@ -735,7 +765,12 @@ void QueueManager::handleInProcessStructure(Structure* s)
     {
       // Kill the structure if it has exceeded the allowable time.
       // This is applied to all local and batch local optimizations.
-      if (cancelJob && s->getOptElapsedHours() > cancelJobHours) {
+      double elapsedHours = 0.0;
+      {
+        QReadLocker structLocker(&s->lock());
+        elapsedHours = s->getOptElapsedHours();
+      }
+      if (cancelJob && elapsedHours > cancelJobHours) {
         // This will emit structureKilled, which is then re-emitted as structureUpdated.
         killStructure(s);
         return;
@@ -749,6 +784,8 @@ void QueueManager::handleInProcessStructure(Structure* s)
     case QueueInterface::Error:
       {
         QWriteLocker structLocker(&s->lock());
+        if (s->getStatus() != Structure::InProcess)
+          return;
         s->setStatus(Structure::Error);
       }
       emit structureUpdated(s);
@@ -828,11 +865,11 @@ void QueueManager::handleStepOptimizedStructure(Structure* s)
 
     // Update status
     s->setStatus(Structure::WaitingForOptimization);
+    locker.unlock();
     {
       QWriteLocker runningLocker(m_runningTracker.rwLock());
       m_runningTracker.append(s);
     }
-    locker.unlock();
     emit structureUpdated(s);
     addStructureToSubmissionQueue(s);
     return;
@@ -976,11 +1013,6 @@ void QueueManager::handleFailObjectiveStructure(Structure* s)
   Common::error(tr("Postprocessing Fail (%1): removing the structure %2 ")
       .arg(objectiveOrConstraintFailureState(s)).arg(s->getTag()));
 
-  Structure::State status = s->getStatus();
-  if (!Structure::isFailedFinalState(status))
-    status = postprocessingFailureStatus(s);
-  s->setStatus(status);
-
   // Release the structure lock before stopping the job: stopJob() may make
   // blocking invokes into the QM thread, which takes per-structure locks.
   locker.unlock();
@@ -1079,10 +1111,16 @@ void QueueManager::handleErrorStructure(Structure* s)
     failAction = m_search->getFailAction();
   }
 
-  stopJob(s);
+  if (!stopJob(s)) {
+    Common::warning(tr("Structure %1 remains in the error state because its "
+                       "scheduler job could not be cancelled.").arg(s->getTag()));
+    return;
+  }
 
   // Lock for writing
   QWriteLocker locker(&s->lock());
+  if (s->getStatus() != Structure::Error)
+    return;
 
   s->addFailure();
 
@@ -1155,11 +1193,25 @@ void QueueManager::replaceStructureForRestart(Structure* s, int action, const QS
 /// @cond
 void QueueManager::handleSubmittedStructure(Structure* s)
 {
-  if (s->getStatus() != Structure::Submitted) {
+  int optStep = 0;
+  {
+    QReadLocker locker(&s->lock());
+    if (s->getStatus() != Structure::Submitted)
+      return;
+    optStep = s->getCurrentOptStep();
+  }
+
+  QueueInterface* queue = m_search->queueInterface(optStep);
+  if (!queue) {
+    QWriteLocker locker(&s->lock());
+    if (s->getStatus() == Structure::Submitted)
+      s->setStatus(Structure::Error);
+    locker.unlock();
+    emit structureUpdated(s);
     return;
   }
 
-  switch (m_search->queueInterface(s->getCurrentOptStep())->getStatus(s)) {
+  switch (queue->getStatus(s)) {
     case QueueInterface::Running:
     case QueueInterface::Queued:
     case QueueInterface::Success:
@@ -1167,6 +1219,8 @@ void QueueManager::handleSubmittedStructure(Structure* s)
       // Update the structure as "InProcess"
       {
         QWriteLocker structLocker(&s->lock());
+        if (s->getStatus() != Structure::Submitted)
+          return;
         s->setStatus(Structure::InProcess);
       }
       emit structureUpdated(s);
@@ -1174,6 +1228,8 @@ void QueueManager::handleSubmittedStructure(Structure* s)
     case QueueInterface::Error:
       {
         QWriteLocker structLocker(&s->lock());
+        if (s->getStatus() != Structure::Submitted)
+          return;
         s->setStatus(Structure::Restart);
       }
       emit structureUpdated(s);
@@ -1194,8 +1250,14 @@ void QueueManager::handleSubmittedStructure(Structure* s)
 void QueueManager::handleKilledStructure(Structure* s)
 {
   // Removed structures end up here, too; see handleRemovedStructure below.
-  if (!s->isKilledOrRemovedState()) {
-    return;
+  {
+    QReadLocker locker(&s->lock());
+    if (!s->isKilledOrRemovedState())
+      return;
+    if (m_runningHandlers.hasHandler(s, SubmissionHandler) ||
+        m_runningHandlers.hasHandler(s, JobStartHandler) ||
+        m_runningHandlers.hasHandler(s, KillRequestHandler))
+      return;
   }
 
   stopJobAndRemoveFromRunning(s);
@@ -1212,7 +1274,11 @@ void QueueManager::handleRestartStructure(Structure* s)
     return;
   }
 
-  stopJob(s);
+  if (!stopJob(s)) {
+    Common::warning(tr("Structure %1 cannot restart until its scheduler job "
+                       "has been cancelled.").arg(s->getTag()));
+    return;
+  }
 
   addStructureToSubmissionQueue(s);
 }
@@ -1220,13 +1286,20 @@ void QueueManager::handleRestartStructure(Structure* s)
 void QueueManager::updateStructure(Structure* s)
 {
   Common::ScopedTimer _timer("QueueManager::updateStructure");
+  int optStep = 0;
   {
     QWriteLocker structLocker(&s->lock());
+    if (s->getStatus() != Structure::InProcess)
+      return;
+    optStep = s->getCurrentOptStep();
     s->stopOptTimer();
     s->setStatus(Structure::Updating);
   }
-  if (!m_search->optimizer(s->getCurrentOptStep())->update(s)) {
+  Optimizer* optimizer = m_search->optimizer(optStep);
+  if (!optimizer || !optimizer->update(s)) {
     QWriteLocker structLocker(&s->lock());
+    if (s->getStatus() != Structure::Updating)
+      return;
     s->setStatus(Structure::Error);
     structLocker.unlock();
     emit structureUpdated(s);
@@ -1234,6 +1307,8 @@ void QueueManager::updateStructure(Structure* s)
   }
   {
     QWriteLocker structLocker(&s->lock());
+    if (s->getStatus() != Structure::Updating)
+      return;
     s->resetFailCount();
     s->setStatus(Structure::StepOptimized);
   }
@@ -1248,14 +1323,48 @@ void QueueManager::killStructure(Structure* s)
   if (!m_runningHandlers.tryStart(s, KillRequestHandler))
     return;
 
+  bool submitInProgress = false;
+
   // A running job becomes Killed; an optimized one becomes Removed.
   {
     QWriteLocker structLocker(&s->lock());
+    if (s->isStoppedFinalState()) {
+      structLocker.unlock();
+      m_runningHandlers.finish(s, KillRequestHandler);
+      return;
+    }
     s->stopOptTimer();
     s->setStatus(s->getStatus() != Structure::Optimized ? Structure::Killed : Structure::Removed);
+    submitInProgress =
+      m_runningHandlers.hasHandler(s, SubmissionHandler) ||
+      m_runningHandlers.hasHandler(s, JobStartHandler);
   }
-  stopJob(s);
-  emit structureKilled(s);
+  {
+    QWriteLocker jobStartLocker(m_jobStartTracker.rwLock());
+    m_jobStartTracker.remove(s);
+  }
+
+  bool stopped = true;
+  if (!submitInProgress)
+    stopped = stopJob(s);
+
+  bool restored = false;
+  if (!stopped) {
+    QWriteLocker structLocker(&s->lock());
+    if (s->getStatus() == Structure::Killed && s->getJobID() != 0) {
+      s->setStatus(Structure::Submitted);
+      s->setOptTimerEnd(QDateTime());
+      restored = true;
+    }
+  }
+
+  if (restored) {
+    Common::warning(tr("Structure %1 was not killed because the scheduler "
+                       "cancellation failed. The job will remain tracked.").arg(s->getTag()));
+    emit structureSubmitted(s);
+  } else {
+    emit structureKilled(s);
+  }
 
   m_runningHandlers.finish(s, KillRequestHandler);
 }
@@ -1267,7 +1376,6 @@ void QueueManager::addStructureToSubmissionQueue(Structure* s, int optStep)
 
   (void)QtConcurrent::run([this, s, optStep]() {
     this->handleSubmissionStructure(s, optStep);
-    m_runningHandlers.finish(s, SubmissionHandler);
   });
 }
 
@@ -1275,27 +1383,48 @@ void QueueManager::addStructureToSubmissionQueue(Structure* s, int optStep)
 /// @cond
 void QueueManager::handleSubmissionStructure(Structure* s, int optStep)
 {
-  // Update structure
+  bool emitError = false;
+  bool cleanStoppedStructure = false;
+
+  // Update structure.
   {
     QWriteLocker structLocker(&s->lock());
-    if (s->getStatus() != Structure::Optimized) {
-      s->setStatus(Structure::WaitingForOptimization);
-      if (optStep != -1) {
-        s->setCurrentOptStep(optStep);
-      }
+    const Structure::State status = s->getStatus();
+    if (status != Structure::Empty &&
+        status != Structure::WaitingForOptimization &&
+        status != Structure::Restart) {
+      cleanStoppedStructure = s->isKilledOrRemovedState();
+      m_runningHandlers.finish(s, SubmissionHandler);
+      structLocker.unlock();
+      if (cleanStoppedStructure)
+        stopJob(s);
+      return;
     }
+    s->setStatus(Structure::WaitingForOptimization);
+    if (optStep != -1)
+      s->setCurrentOptStep(optStep);
   }
 
-  // Perform writing
-  if (!m_search->queueInterface(s->getCurrentOptStep())->writeInputFiles(s)) {
+  // Perform writing.
+  QueueInterface* queue = m_search->queueInterface(s->getCurrentOptStep());
+  if (!queue || !queue->writeInputFiles(s)) {
     QWriteLocker structLocker(&s->lock());
-    s->setStatus(Structure::Error);
+    if (s->getStatus() == Structure::WaitingForOptimization) {
+      s->setStatus(Structure::Error);
+      emitError = true;
+    } else {
+      cleanStoppedStructure = s->isKilledOrRemovedState();
+    }
+    m_runningHandlers.finish(s, SubmissionHandler);
     structLocker.unlock();
-    emit structureUpdated(s);
+    if (cleanStoppedStructure)
+      stopJob(s);
+    if (emitError)
+      emit structureUpdated(s);
     return;
   }
 
-  // Add to the running tracker first
+  // Add to the running tracker first.
   {
     QWriteLocker runningLocker(m_runningTracker.rwLock());
     m_runningTracker.append(s);
@@ -1305,6 +1434,23 @@ void QueueManager::handleSubmissionStructure(Structure* s, int optStep)
     m_jobStartTracker.append(s);
   }
 
+  bool queued = false;
+  {
+    QWriteLocker structLocker(&s->lock());
+    queued = s->getStatus() == Structure::WaitingForOptimization;
+    cleanStoppedStructure = s->isKilledOrRemovedState();
+    m_runningHandlers.finish(s, SubmissionHandler);
+  }
+
+  if (!queued) {
+    QWriteLocker jobStartLocker(m_jobStartTracker.rwLock());
+    m_jobStartTracker.remove(s);
+    jobStartLocker.unlock();
+    if (cleanStoppedStructure)
+      stopJob(s);
+    return;
+  }
+
   emit structureUpdated(s);
 }
 /// @endcond
@@ -1312,34 +1458,122 @@ void QueueManager::handleSubmissionStructure(Structure* s, int optStep)
 void QueueManager::startJob(Structure* s)
 {
   Common::ScopedTimer _timer("QueueManager::startJob");
-  if (!m_search->queueInterface(s->getCurrentOptStep())->startJob(s)) {
+
+  QueueInterface* queue = nullptr;
+  {
     QWriteLocker structLocker(&s->lock());
-    Common::error(tr("%1: job did not start successfully for structure %2 opt step %3.")
-                     .arg(__func__)
-                     .arg(s->getTag())
-                     .arg(s->getCurrentOptStep() + 1));
-    s->setStatus(Structure::Error);
+    if (s->getStatus() != Structure::WaitingForOptimization)
+      return;
+    if (!m_runningHandlers.tryStart(s, JobStartHandler))
+      return;
+    queue = m_search->queueInterface(s->getCurrentOptStep());
+  }
+
+  const bool started = queue->startJob(s);
+  bool reliable = true;
+  {
+    QReadLocker structLocker(&s->lock());
+    reliable = !qobject_cast<BatchQueueInterface*>(queue) || s->getJobID() != 0;
+  }
+
+  if (started && reliable) {
+    bool submitted = false;
+    bool killed = false;
+    {
+      QWriteLocker structLocker(&s->lock());
+      if (s->getStatus() == Structure::WaitingForOptimization) {
+        s->setStatus(Structure::Submitted);
+        submitted = true;
+        m_runningHandlers.finish(s, JobStartHandler);
+      } else {
+        killed = s->isKilledOrRemovedState();
+        if (!killed)
+          m_runningHandlers.finish(s, JobStartHandler);
+      }
+    }
+
+    if (submitted) {
+      QReadLocker locker(&s->lock());
+      Common::message(tr("Structure %1 has been submitted opt step %2")
+                        .arg(s->getTag()).arg(s->getCurrentOptStep() + 1));
+      locker.unlock();
+      emit structureSubmitted(s);
+      return;
+    }
+
+    if (!killed)
+      return;
+
+    const bool cancelled = queue->stopJob(s);
+    bool restored = false;
+    {
+      QWriteLocker structLocker(&s->lock());
+      if (s->getStatus() == Structure::Killed && !cancelled && s->getJobID() != 0) {
+        s->setStatus(Structure::Submitted);
+        s->setOptTimerEnd(QDateTime());
+        restored = true;
+      }
+      m_runningHandlers.finish(s, JobStartHandler);
+    }
+    if (restored) {
+      Common::warning(tr("Structure %1 was not killed because the scheduler "
+                         "cancellation failed. The job will remain tracked.").arg(s->getTag()));
+      emit structureSubmitted(s);
+    }
     return;
   }
 
+  if (started && !reliable) {
+    bool submitted = false;
+    {
+      QWriteLocker structLocker(&s->lock());
+      if (s->getStatus() == Structure::WaitingForOptimization ||
+          s->isKilledOrRemovedState()) {
+        s->setStatus(Structure::Submitted);
+        submitted = true;
+      }
+      m_runningHandlers.finish(s, JobStartHandler);
+    }
+    if (submitted)
+      emit structureSubmitted(s);
+    return;
+  }
+
+  bool emitError = false;
+  bool cleanStoppedStructure = false;
   {
     QWriteLocker structLocker(&s->lock());
-    s->setStatus(Structure::Submitted);
+    if (s->getStatus() == Structure::WaitingForOptimization) {
+      Common::error(tr("%1: job did not start successfully for structure %2 opt step %3.")
+                       .arg(__func__).arg(s->getTag()).arg(s->getCurrentOptStep() + 1));
+      s->setStatus(Structure::Error);
+      emitError = true;
+    } else {
+      cleanStoppedStructure = s->isKilledOrRemovedState();
+    }
+    m_runningHandlers.finish(s, JobStartHandler);
   }
 
-  {
-    QReadLocker locker(&s->lock());
-    Common::message(tr("Structure %1 has been submitted opt step %2")
-                      .arg(s->getTag())
-                      .arg(s->getCurrentOptStep() + 1));
-  }
-
-  emit structureSubmitted(s);
+  if (cleanStoppedStructure)
+    stopJob(s);
+  if (emitError)
+    emit structureUpdated(s);
 }
 
-void QueueManager::stopJob(Structure* s)
+bool QueueManager::stopJob(Structure* s)
 {
-  m_search->queueInterface(s->getCurrentOptStep())->stopJob(s);
+  int optStep = 0;
+  {
+    QReadLocker locker(&s->lock());
+    optStep = s->getCurrentOptStep();
+  }
+  QueueInterface* queue = m_search->queueInterface(optStep);
+  if (!queue) {
+    Common::error(tr("%1: structure %2 has invalid optimization step %3.")
+                    .arg(__func__).arg(s->getTag()).arg(optStep + 1));
+    return false;
+  }
+  return queue->stopJob(s);
 }
 
 void QueueManager::stopJobAndRemoveFromRunning(Structure* s)
@@ -1550,6 +1784,7 @@ void QueueManager::decrementRequestedStructures()
 void QueueManager::unlockForNaming_()
 {
   Structure* s;
+  bool optimized;
   {
     QWriteLocker trackerLocker(m_tracker->rwLock());
     QWriteLocker newStructLocker(m_newStructureTracker.rwLock());
@@ -1560,17 +1795,18 @@ void QueueManager::unlockForNaming_()
     // Update structure
     {
       QWriteLocker structLocker(&s->lock());
-      if (s->getStatus() != Structure::Optimized)
+      optimized = s->getStatus() == Structure::Optimized;
+      if (!optimized)
         s->setStatus(Structure::WaitingForOptimization);
     }
 
     m_tracker->append(s);
   }
 
-  if (s->getStatus() != Structure::Optimized)
-    emit structureStarted(s);
-  else if (s->getStatus() == Structure::Optimized)
+  if (optimized)
     emit structureFinished(s);
+  else
+    emit structureStarted(s);
 }
 /// @endcond
 

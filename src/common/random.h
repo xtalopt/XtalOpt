@@ -16,21 +16,72 @@
 #ifndef COMMON_RANDOM_H
 #define COMMON_RANDOM_H
 
+#include <atomic>
+#include <chrono>
 #include <climits>
+#include <limits>
 #include <random>
+#include <thread>
 
 namespace Common {
+
+struct RandomGeneratorState
+{
+  RandomGeneratorState()
+    : generation(0), nextThread(0)
+  {
+    std::random_device device;
+    const unsigned int clockValue = static_cast<unsigned int>(
+        std::chrono::high_resolution_clock::now().time_since_epoch().count());
+    std::seed_seq sequence{ device(), device(), device(), device(), clockValue };
+    unsigned int initialSeed = 0;
+    sequence.generate(&initialSeed, &initialSeed + 1);
+    seed.store(initialSeed);
+  }
+
+  std::atomic<unsigned long> generation;
+  std::atomic<unsigned int> nextThread;
+  std::atomic<unsigned int> seed;
+};
+
+inline RandomGeneratorState& randomGeneratorState()
+{
+  static RandomGeneratorState state;
+  return state;
+}
 
 // Return the random generator for this thread.
 inline std::mt19937& getMt19937Generator()
 {
-  thread_local std::mt19937 generator(std::random_device{}());
-  return generator;
+  struct ThreadGenerator
+  {
+    ThreadGenerator()
+      : generation(std::numeric_limits<unsigned long>::max())
+    {}
+
+    std::mt19937 generator;
+    unsigned long generation;
+  };
+
+  RandomGeneratorState& state = randomGeneratorState();
+  thread_local ThreadGenerator threadGenerator;
+  const unsigned long generation = state.generation.load();
+  if (threadGenerator.generation != generation) {
+    const unsigned int threadNumber = state.nextThread.fetch_add(1);
+    std::seed_seq sequence{ state.seed.load(), threadNumber };
+    threadGenerator.generator.seed(sequence);
+    threadGenerator.generation = generation;
+  }
+  return threadGenerator.generator;
 }
 
 // Seed the generator
 inline void seedMt19937Generator(unsigned int s)
 {
+  RandomGeneratorState& state = randomGeneratorState();
+  state.seed = s;
+  state.nextThread.store(0);
+  state.generation.fetch_add(1);
   getMt19937Generator().seed(s);
 }
 

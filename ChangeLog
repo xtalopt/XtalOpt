@@ -1,28 +1,90 @@
 
 ==================================
-==========    15 (rc0)   =========
+==========    15 (rc4)   =========
 ==================================
 
+===== Source organization, build system, and dependencies
+
 Restructured sources into layers: search (engine), atoms (geometry, cell, formats), common (utilities), xtalopt (application)
-Removed Eigen, OpenBabel, GenXrdPattern download and dependency; Avogadro RPC and backtrace debug helpers
-Added new structure view and xrd view widgets to GUI
-Removed the generic optimizer (now, only gulp, vasp, pwscf, castep, siesta, mtp)
+Removed Eigen, OpenBabel and GenXrdPattern dependencies
+Removed Avogadro RPC and backtrace debug helpers
 Added new libraries to external: xraylib, libmsym, args
-GUI fully split as a build option
-Added a centralized compatibility layer for platform and Qt/Qwt
-Moved all settings/satae I/O to xtalopt (engine no longer do or participate in that)
-Support for older formats collected in xtalopt/legacy; update state version to 5
-Unified all xtalopt settings into a registry table (their accessors, defaults, properties) with a single validation
-Revised command-line options
-Added a structure toolset to the xtalopt for structural analysis and molecular unit/crystal generation
-Revised queue interface (direct vs batch run, etc) and SSH usage for remoteQueue
-Separated objectives into objectives (min/max) and constraints (fil)
-Added/revised settings flags (sshMethod,directRunCommand,forcedSpgs,usingScaledIADs, pareto filter zero weight, debug output)
-Unified input settings syntax (potcar/psf = <id> <file>) and defined asset file group for optimizers
-Improved search wall time for fast local optimizers (queue manager workflow, background file saving, in-memory parent-selection data)
+Made the GUI optional at build time
+Added centralized cross-platform and Qt/Qwt compatibility layers
+Build system: C++11; Qt5.4 up to Qt6; always available system SSH with optional libssh
+Added macOS code-signing, CPack on all platforms and third-party licenses
+
+===== Application settings, input and saved data
+
+Moved application settings, state-file and results-file handling from engine to xtalopt
+Limited main code to current input and state formats
+Kept legacy v14 conversion in xtalopt/legacy; updated state version to 5
+Kept structure state files static: similarity, hull, fronts and space groups are recovered on load
+Unified xtalopt settings in one registry table (accessors, defaults, properties, validation)
+Revised command-line options and added stricter input checking
+Improved runtime setting updates
+Added/revised settings: sshMethod, directRunCommand, forcedSpgs, IAD checks and RDF tolerance
+Added/revised settings for Pareto zero-weight filtering, external script timeouts and debug output
+Renamed localQueue to remoteQueue and the local queue interface to none
+Standardized potcar/psf input syntax: <id> <file>
+Defined optimizer asset-file groups
+Improved state save/resume and v14 conversion for batch schemes, custom IADs and transient states
+Preserved structure order and parent links on resume
+Shortened the final save at exit by writing only pending structure files
+Improved template placeholders, including literal percent characters
+
+===== Structure handling, geometry, and formats
+
+Expanded seed structure reading to all supported formats regardless of optimizer
+Added xtalopt structure tools for analysis and molecular unit/crystal generation
+Added CIF; revised CML, XYZ, MTP, POSCAR, PWSCF and SIESTA structure readers
+Read the last geometry from multi-entry files (XYZ, CML, MTP, GULP); CIF stays single-block
+Validated optimizer geometry through a shared structure-update path
+Rejected invalid cells and missing VASP energies without partial updates
+Fixed cell rescaling and fractional wrapping
+Fixed skewed-cell neighbor/bond handling
+Kept geometry neighbor data current after coordinate changes
+Fixed small-molecule SIESTA Z-matrices and supercell generation
+
+===== Fitness, objectives, and parent selection
+
+Separated min/max objectives from pass/fail constraints
+Added distance above hull as a built-in objective with automatically calculated weight
+Reworked objective/constraint script execution and monitoring
+Added output-wait time limits and correct resume handling
+Updated Basic/Pareto parent selection after runtime setting changes
+Fixed objective precision, Basic weight normalization and zero-weight handling
+Reduced search overhead for fast local optimizers
+Improved similarity checks, incremental parent-pool updates and selection-data caching
+Set the default RDF tolerance to 0.98
+
+===== Optimizers, queues, and remote execution
+
+Removed the generic optimizer; retained only gulp, vasp, pwscf, castep, siesta and mtp
+Revised direct/batch queue interfaces and unified SSH use for remote queues
+Improved queue manager workflow and background save coordination
+Made queue states safe across overlapping submissions, updates, kills and restarts
+Improved scheduler job-ID parsing and status handling
+Made command timeouts and failed cancellations safe
+Kept unconfirmed submissions pending for manual resolution instead of resubmission
+Improved remote path handling and CLI/libssh directory listing consistency
+Improved transfer failure reporting and job cleanup
+
+===== GUI
+
+Added new structure and XRD views to GUI
+Refined GUI tab layouts and runtime refresh behavior
+Improved composition, atom-limit, molecule-unit and custom-IAD updates
+Initialized custom IAD values from covalent radii after a changed formula
+Fixed tab cleanup during session reset and shutdown
+
+===== Output, tests, and supporting data
+
+Made text, results and hull writes report failures
+Added profiling option: periodic and final timing summaries in the run output
+Preserved significant digits and .old output backups
 Expanded and updated the test suite
-Updated supporting data (schemes, scripts, tests/sampledata) for format consistency with new version
-Build system: support for Qt6/Qt5, system SSH always with libssh optional; macOS code-sign; CPack on all platforms, 3rd party licenses
+Updated schemes, scripts and test/sample data for the new formats
 
 ==================================
 ==========  Release 14.2 =========
@@ -374,4 +436,3 @@ by replicating a unit cell to create a supercell for constructing the starting s
 - random.* (cross-platform threadsafe pseudo-random number generator)
 - slottedwaitcondition.* (Wrapper for QSlottedWaitCondition that can be woken using Qt slots)
 - macros.h (Handful of macros that are used widely throughout the code)
-

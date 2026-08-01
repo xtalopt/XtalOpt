@@ -27,14 +27,6 @@
 #include <QRegularExpression>
 
 namespace Search {
-namespace {
-
-bool hasQueuedSgeState(const QString& status)
-{
-  return status.contains('q') || status.contains('w') || status.contains('s');
-}
-
-} // namespace
 
 const QueueDefaults& SgeQueueInterface::defaults()
 {
@@ -57,10 +49,16 @@ SgeQueueInterface::~SgeQueueInterface()
 
 unsigned int SgeQueueInterface::parseJobId(const QString& submissionOutput, bool* ok) const
 {
-  const QStringList list =
-    submissionOutput.split(QRegularExpression("\\s+"), QtCompat::SkipEmptyParts);
   *ok = false;
-  return list.size() >= 3 ? list.at(2).toUInt(ok) : 0;
+  const QRegularExpression expression("^\\s*Your job\\s+(\\d+)(?:\\s+\\([^\\r\\n]*\\))?\\s+has been submitted\\s*$",
+                                      QRegularExpression::MultilineOption);
+  QRegularExpressionMatchIterator matches = expression.globalMatch(submissionOutput);
+  if (!matches.hasNext())
+    return 0;
+  const QRegularExpressionMatch match = matches.next();
+  if (matches.hasNext())
+    return 0;
+  return match.captured(1).toUInt(ok);
 }
 
 QueueInterface::QueueStatus SgeQueueInterface::parseQueueStatus(
@@ -75,8 +73,7 @@ QueueInterface::QueueStatus SgeQueueInterface::parseQueueStatus(
     const unsigned int currentJobId = list.isEmpty() ? 0 : list.at(0).toUInt(&ok);
     if (ok && currentJobId == jobId) {
       if (list.size() <= 4) {
-        // The job is present but we can't parse the output: report the raw line so an empty
-        //   so an empty rawStatus is distinguished from a missing job.
+        // Keep the raw line so this is not mistaken for a missing job.
         if (rawStatus)
           *rawStatus = line;
         return QueueInterface::Unknown;
@@ -84,12 +81,13 @@ QueueInterface::QueueStatus SgeQueueInterface::parseQueueStatus(
       const QString status = list.at(4);
       if (rawStatus)
         *rawStatus = status;
-      if (status.contains('r'))
-        return QueueInterface::Running;
       if (status.contains('E'))
         return QueueInterface::Error;
-      if (hasQueuedSgeState(status))
+      if (status.contains('q') || status.contains('w') || status.contains('h'))
         return QueueInterface::Queued;
+      if (status.contains('r') || status.contains('R') || status.contains('t') ||
+          status.contains('s') || status.contains('S') || status.contains('T') || status.contains('d'))
+        return QueueInterface::Running;
       return QueueInterface::Unknown;
     }
   }

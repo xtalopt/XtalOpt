@@ -308,8 +308,13 @@ bool TabSearch::updateOptTypeInfo()
     }
   }
 
-  if (selectionSettingsChanged)
-    xtalopt->markParentSelectionForUpdate();
+  if (selectionSettingsChanged) {
+    if (m_search->isSessionInProgress() && xtalopt->applyParentSelectionFronts()) {
+      emit xtalopt->structureViewDataChanged();
+      xtalopt->requestResultsFileSave();
+    }
+  }
+
   if (settingsChanged && m_search->isSessionInProgress())
     xtalopt->requestSettingsStateSave();
 

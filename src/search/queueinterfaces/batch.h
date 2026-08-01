@@ -20,7 +20,9 @@
 #include <search/queueinterface.h>
 
 #include <QDateTime>
+#include <QReadLocker>
 #include <QReadWriteLock>
+#include <QWriteLocker>
 
 
 namespace Search {
@@ -61,6 +63,7 @@ public:
    */
   QString submitCommand() const override
   {
+    QReadLocker locker(&m_commandLock);
     return !m_submitOverride.isEmpty() ? m_submitOverride
            : (m_queueDefaults ? QString::fromLatin1(m_queueDefaults->submit) : QString());
   }
@@ -71,7 +74,11 @@ public:
    *
    * @s The submit command.
    */
-  void setSubmitCommand(const QString& s) override { m_submitOverride = s; }
+  void setSubmitCommand(const QString& s) override
+  {
+    QWriteLocker locker(&m_commandLock);
+    m_submitOverride = s;
+  }
 
   /**
    * Get the cancel command for the queue interface. For example, in slurm,
@@ -81,6 +88,7 @@ public:
    */
   QString cancelCommand() const override
   {
+    QReadLocker locker(&m_commandLock);
     return !m_cancelOverride.isEmpty() ? m_cancelOverride
            : (m_queueDefaults ? QString::fromLatin1(m_queueDefaults->cancel) : QString());
   }
@@ -91,7 +99,11 @@ public:
    *
    * @s The cancel command.
    */
-  void setCancelCommand(const QString& s) override { m_cancelOverride = s; }
+  void setCancelCommand(const QString& s) override
+  {
+    QWriteLocker locker(&m_commandLock);
+    m_cancelOverride = s;
+  }
 
   /**
    * Get the status command for the queue interface. For example, in slurm,
@@ -101,6 +113,7 @@ public:
    */
   QString statusCommand() const override
   {
+    QReadLocker locker(&m_commandLock);
     return !m_statusOverride.isEmpty() ? m_statusOverride
            : (m_queueDefaults ? QString::fromLatin1(m_queueDefaults->status) : QString());
   }
@@ -111,7 +124,11 @@ public:
    *
    * @s The status command.
    */
-  void setStatusCommand(const QString& s) override { m_statusOverride = s; }
+  void setStatusCommand(const QString& s) override
+  {
+    QWriteLocker locker(&m_commandLock);
+    m_statusOverride = s;
+  }
 
 public slots:
 
@@ -177,7 +194,7 @@ public slots:
    * @param command The command
    * @return Command launch, exit code, stdout, and stderr.
    */
-  virtual CommandResult runACommand(const QString& workdir, const QString& command) const override;
+  virtual CommandResult runACommand(const QString& workdir, const QString& command, int timeoutMs = -1) const override;
 
   /**
    * Copy a file from the execution host to a local destination.
@@ -283,13 +300,15 @@ protected:
   bool remoteQueueConfigurationReady(QString* err) const;
 
   virtual QString submitScriptName() const;
+  virtual bool submitScriptOnStdin() const { return false; }
   virtual unsigned int parseJobId(const QString& submissionOutput, bool* ok) const = 0;
   // Each subclass turns its scheduler's queue-list lines into a QueueStatus;
   // rawStatus is only used for the warning when the status is not recognized.
   virtual QueueInterface::QueueStatus parseQueueStatus(const QStringList& queueData,
     unsigned int jobId, QString* rawStatus = nullptr) const = 0;
   virtual QString queueListCommand() const;
-  virtual bool queueListCommandSucceeded(bool ok, int exitCode, const QString& stdoutText) const;
+  virtual bool queueListCommandSucceeded(bool ok, int exitCode, const QString& stdoutText,
+                                         const QString& stderrText) const;
   virtual QueueInterface::QueueStatus missingFromQueueWithoutOutputStatus(Structure* s) const;
 
   QStringList queueList(bool forced = false) const;
@@ -350,11 +369,14 @@ protected:
 
 private:
   QueueInterface::QueueStatus statusFromMissingQueueEntry(Structure* s) const;
+  CommandResult runBatchCommand(const QString& workdir, const QString& command,
+                                const QString& stdinFile, int timeoutMs = -1) const;
 
   // User-defined settings for the batch queue commands.
   QString m_submitOverride;
   QString m_cancelOverride;
   QString m_statusOverride;
+  mutable QReadWriteLock m_commandLock;
 
   mutable QStringList m_queueData;
   mutable QDateTime m_queueTimeStamp;

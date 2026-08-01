@@ -1184,15 +1184,18 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
           xtal = XtalOptGenetic::permutomic(selectedXtal, this->compList()[0], this->eleMinRadii(),
                                             getMinAtoms(), getMaxAtoms(), isVerbose(),
                                             getUsingCustomIAD(), &this->interComp());
+          if (!xtal)
+            continue;
 
           // Lock parent and extract info
           uint gen1, id1;
+          QString parentComposition;
           {
             QReadLocker locker(&selectedXtal->lock());
             gen1 = selectedXtal->getGeneration();
             id1 = selectedXtal->getIDNumber();
-            if (xtal)
-              xtal->setParentStructure(selectedXtal);
+            parentComposition = selectedXtal->getCompositionString(false);
+            xtal->setParentStructure(selectedXtal);
           }
 
           // Determine generation number
@@ -1201,7 +1204,7 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
           parents = QString("Permutomic: %1x%2 (%3-%4)")
             .arg(gen1)
             .arg(id1)
-            .arg(selectedXtal->getCompositionString(false))
+            .arg(parentComposition)
             .arg(xtal->getCompositionString(false));
           continue;
         }
@@ -1209,15 +1212,18 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
           xtal = XtalOptGenetic::permucomp(selectedXtal, this->compList()[0], this->eleMinRadii(),
                                            getMinAtoms(), getMaxAtoms(), isVerbose(),
                                            getUsingCustomIAD(), &this->interComp());
+          if (!xtal)
+            continue;
 
           // Lock parent and extract info
           uint gen1, id1;
+          QString parentComposition;
           {
             QReadLocker locker(&selectedXtal->lock());
             gen1 = selectedXtal->getGeneration();
             id1 = selectedXtal->getIDNumber();
-            if (xtal)
-              xtal->setParentStructure(selectedXtal);
+            parentComposition = selectedXtal->getCompositionString(false);
+            xtal->setParentStructure(selectedXtal);
           }
 
           // Determine generation number
@@ -1226,7 +1232,7 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
           parents = QString("Permucomp: %1x%2 (%3-%4)")
             .arg(gen1)
             .arg(id1)
-            .arg(selectedXtal->getCompositionString(false))
+            .arg(parentComposition)
             .arg(xtal->getCompositionString(false));
           continue;
         }
@@ -1256,8 +1262,10 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
   double s = Common::getRandDouble();
   if (s < wSupr) {
     Xtal* supercellXtal = generateSuperCell(xtal, 0, true);
-    if (supercellXtal)
+    if (supercellXtal) {
+      delete xtal;
       return supercellXtal;
+    }
   }
 
   return xtal;
@@ -1450,13 +1458,15 @@ Xtal* XtalOpt::generateSuperCell(Xtal* inXtal, uint expansion, bool distort)
 
     // Find the largest prime number multiple. We will expand
     // upon the shortest length with this number.
-    uint numberOfDuplicates = finalExpansion / factor;
-    for (int i = 2; i < static_cast<int>(numberOfDuplicates); ++i) {
-      if (numberOfDuplicates % i == 0) {
-        numberOfDuplicates = numberOfDuplicates / i;
-        i = 2;
-      }
+    uint remaining = finalExpansion / factor;
+    uint divisor = 2;
+    while (divisor < remaining) {
+      if (remaining % divisor == 0)
+        remaining /= divisor;
+      else
+        ++divisor;
     }
+    const uint numberOfDuplicates = remaining;
 
     // a, b, and c are the number of duplicates in the A, B, and C
     // directions, respectively.
@@ -1522,6 +1532,7 @@ Xtal* XtalOpt::generateSuperCell(Xtal* inXtal, uint expansion, bool distort)
   parents=QString("Supercell[%1]-").arg(factor)+parents;
   xtal->setParents(parents);
   xtal->setParentStructure(parentXtal);
+  xtal->setStatus(Xtal::WaitingForOptimization);
 
   return xtal;
 }

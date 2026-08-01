@@ -38,6 +38,7 @@ public slots:
   Search::DirectRunProcess* startProcess(const QString& command, const QString& workDir,
                                          const QString& stdinFile, const QString& stdoutFile,
                                          const QString& stderrFile, int startTimeoutMs);
+  void flushDeferredDeletes();
 };
 
 class DirectRunProcess : public QProcess
@@ -86,10 +87,11 @@ public slots:
     return QString(const_cast<DirectRunProcess*>(this)->readAllStandardError());
   };
   void killProcess() { kill(); };
-  void killAndWait(int timeoutMs)
+  int killAndWait()
   {
     kill();
-    waitForFinished(timeoutMs);
+    waitForFinished(PROCESS_KILL_TIMEOUT);
+    return state() == QProcess::NotRunning;
   };
   void terminateAndKill()
   {
@@ -214,11 +216,11 @@ public slots:
    * @param command The command
    * @return Command launch, exit code, stdout, and stderr.
    */
-  virtual CommandResult runACommand(const QString& workdir, const QString& command) const override;
+  virtual CommandResult runACommand(const QString& workdir, const QString& command, int timeoutMs = -1) const override;
 
 private:
   // Running processes. Do not hold this lock while calling a process.
-  QHash<uint, QSharedPointer<DirectRunProcess>> m_processes;
+  mutable QHash<uint, QSharedPointer<DirectRunProcess>> m_processes;
   mutable QMutex m_processesMutex;
 
   // Starts the processes on the queue thread.

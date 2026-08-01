@@ -624,14 +624,6 @@ public:
   }
 
 
-signals:
-
-  /**
-   * Emitted when a objective's output file is found for a structure
-   *
-   */
-  void objectiveOutputExists();
-
 public slots:
 
   /**
@@ -657,7 +649,7 @@ public slots:
    * @param enthalpy in eV
    * @param cell Matrix of cell vectors (row vectors)
    */
-  virtual void updateAndSkipHistory(const QList<unsigned int>& atomicNums,
+  virtual bool updateAndSkipHistory(const QList<unsigned int>& atomicNums,
                                     const QList<Common::Vector3>& coords,
                                     const double energy = 0,
                                     const double enthalpy = 0,
@@ -674,14 +666,14 @@ public slots:
    * @param enthalpy in eV
    * @param cell Matrix of cell vectors (row vectors)
    */
-  virtual void updateAndAddToHistory(const QList<unsigned int>& atomicNums,
+  virtual bool updateAndAddToHistory(const QList<unsigned int>& atomicNums,
                                      const QList<Common::Vector3>& coords,
                                      const double energy = 0,
                                      const double enthalpy = 0,
                                      const Common::Matrix3& cell = Common::Matrix3::Zero());
 
   /** Update from a Geometry, appending to history. */
-  virtual void updateAndAddToHistory(const Atoms::Geometry& structure, const double energy = 0,
+  virtual bool updateAndAddToHistory(const Atoms::Geometry& structure, const double energy = 0,
                                      const double enthalpy = 0);
 
   /**

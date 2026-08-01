@@ -120,7 +120,7 @@ private slots:
   void checkInteratomicDistancesTest();
   void moveAtomRandomlyChecksDistancesAgainstEachAtom();
   void writeReadSettingsPreservesCompositionValidity();
-  void resultsEntryComputesSpaceGroup();
+  void resultsEntryUsesComputedSpaceGroup();
   void hullFormattingTest();
 };
 
@@ -688,10 +688,11 @@ void XtalTest::writeReadSettingsPreservesCompositionValidity()
   QVERIFY(!loaded.hasValidComposition());
 }
 
-void XtalTest::resultsEntryComputesSpaceGroup()
+void XtalTest::resultsEntryUsesComputedSpaceGroup()
 {
   Xtal xtal(5.0, 5.0, 5.0, 90.0, 90.0, 90.0);
   xtal.addAtom(14, Common::Vector3(0.0, 0.0, 0.0));
+  xtal.findSpaceGroup();
 
   const QString entry = xtal.getResultsEntry(0, 0, 0);
   QVERIFY(entry.contains("   221 "));

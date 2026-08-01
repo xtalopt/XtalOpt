@@ -538,6 +538,7 @@ void XtalOpt::checkForSimilarities_()
     bool loaded;
     CellComp composition;
     QList<QString> symbols;
+    bool rdfReady;
   };
 
   // Copy the candidate data under a short read lock, then let the lock go before
@@ -560,24 +561,23 @@ void XtalOpt::checkForSimilarities_()
         continue;
 
       // Composition and symbols are checked later only for the pairs that really get compared.
-      SimilarityCandidate candidate = { xtal, abvhull, xtal->hasChangedSinceSimChecked(), false, CellComp(), QList<QString>() };
+      SimilarityCandidate candidate = { xtal, abvhull, xtal->hasChangedSinceSimChecked(), false, CellComp(), QList<QString>(), false };
       candidates.push_back(candidate);
-
-      // Reset the handler flag here: the functions that sets it has the write
-      //   lock, so no change while we have the read lock. Any change
-      //   after this keeps the handler flag set for the next check.
-      xtal->setChangedSinceSimChecked(false);
     }
   }
 
-  // The saved RDF data of a changed xtal describes its old geometry; reset
-  //   it so the comparisons below recompute it.
-  for (const auto& candidate : candidates) {
-    if (!candidate.changed)
+  const bool rdfMode = getTolRdf() > 0.0 && getTolRdf() <= 1.0;
+
+  // Prepare the saved comparison data before taking pair read locks.
+  for (auto& candidate : candidates) {
+    if (!rdfMode && !candidate.changed)
       continue;
     QWriteLocker xtalLocker(&candidate.xtal->lock());
-    candidate.xtal->clearNormalizedRDF();
-    candidate.xtal->clearNearestNeighborLists();
+    candidate.changed = candidate.changed || candidate.xtal->hasChangedSinceSimChecked();
+    if (rdfMode) {
+      candidate.rdfReady = candidate.xtal->calculateNormalizedRDF(getTolRdfNbins(), getTolRdfCutoff(), getTolRdfSigma());
+    }
+    candidate.xtal->setChangedSinceSimChecked(false);
   }
 
   // Only check pairs involving a changed Xtal; the rest were checked before.
@@ -594,6 +594,9 @@ void XtalOpt::checkForSimilarities_()
 
       // Perform a coarse energy screening to cut down on number of comparisons.
       if (fabs(candidates[i].distAboveHull - candidates[j].distAboveHull) >= 0.1)
+        continue;
+
+      if (rdfMode && (!candidates[i].rdfReady || !candidates[j].rdfReady))
         continue;
 
       // Now, build composition and symbols cache for as soon as we need a comparison.
@@ -644,6 +647,8 @@ Xtal* XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, 
   //   pair always agree on the order (avoids a deadlock).
   QReadLocker iLocker(&(a < b ? a : b)->lock());
   QReadLocker jLocker(&(a < b ? b : a)->lock());
+  if (a->hasChangedSinceSimChecked() || b->hasChangedSinceSimChecked())
+    return nullptr;
   // If they are already both marked as similar, just return.
   if (a->isSimilar() && b->isSimilar()) {
     return nullptr;
@@ -655,7 +660,7 @@ Xtal* XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, 
   //
   // As of XtalOpt v14, we have two options for similarity check:
   //   (1) XtalComp, (2) RDF dot product.
-  // By default, we use XtalComp; RDF is used only if it has a non-zero tolerance.
+  // RDF is used when its tolerance is non-zero. The default is 0.98.
   //   For RDF check, we just pass xtals as is for similarity check.
   //   For XtalComp, we first convert them to primitive cells, and compare them.
 
@@ -680,8 +685,8 @@ Xtal* XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, 
     }
   } else {
     Common::ScopedTimer _xcTimer("XtalOpt::xtalCompCompare");
-    Structure xtali(*a);
-    Structure xtalj(*b);
+    Atoms::Geometry xtali(*a);
+    Atoms::Geometry xtalj(*b);
     xtali.reduceToPrimitive(getTolSpg());
     xtalj.reduceToPrimitive(getTolSpg());
     theyAreSimilar = xtali.compareXtalComp(xtalj, getTolXcLength(), getTolXcAngle());

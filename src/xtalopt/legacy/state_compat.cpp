@@ -20,6 +20,7 @@
 #include <atoms/eleminfo.h>
 
 #include <search/structure.h>
+#include <search/optimizer.h>
 #include <xtalopt/legacy/input_compat.h>
 #include <xtalopt/legacy/legacy_helpers.h>
 #include <xtalopt/legacy/queue_command_compat.h>
@@ -107,8 +108,7 @@ void normalizeEditSettings(QSettings& settings, QStringList& notes)
     numOptSteps = 1;
 
   if (settings.contains("queueInterface")) {
-    appendNote(notes, "ignored unindexed xtalopt/edit/queueInterface entry");
-    settings.remove("queueInterface");
+    appendNote(notes, "kept unindexed queueInterface until the old edit group is removed");
   }
 
   for (int i = 0; i < numOptSteps; ++i) {
@@ -398,10 +398,12 @@ bool normalizeMoleculeUnits(QSettings& settings, QStringList& notes, QString& er
   const int currentMolUnitSize = settings.beginReadArray("molUnit");
   settings.endArray();
   const bool hasCurrentMolUnits = currentMolUnitSize > 0;
+  const int legacyMolUnitSize = settings.beginReadArray("compMolUnit");
+  settings.endArray();
   const bool usingOldMolUnits = settingToBool(settings.value("using/molUnit", false));
 
   if (hasCurrentMolUnits) {
-    if (settings.contains("using/molUnit")) {
+    if (legacyMolUnitSize > 0) {
       appendNote(notes, "ignored legacy compMolUnit data because current molUnit "
                  "entries are present");
     }
@@ -412,7 +414,7 @@ bool normalizeMoleculeUnits(QSettings& settings, QStringList& notes, QString& er
   }
 
   if (!usingOldMolUnits) {
-    if (settings.contains("using/molUnit")) {
+    if (legacyMolUnitSize > 0) {
       appendNote(notes, "ignored disabled legacy compMolUnit data");
     }
     settings.remove("compMolUnit");
@@ -424,7 +426,7 @@ bool normalizeMoleculeUnits(QSettings& settings, QStringList& notes, QString& er
   QStringList convertedEntries;
   QHash<unsigned int, unsigned int> atomCounts;
   int droppedEntries = 0;
-  const int legacyMolUnitSize = settings.beginReadArray("compMolUnit");
+  settings.beginReadArray("compMolUnit");
   for (int i = 0; i < legacyMolUnitSize; ++i) {
     settings.setArrayIndex(i);
     LegacyMolUnitFields fields;
@@ -469,6 +471,7 @@ bool normalizeMoleculeUnits(QSettings& settings, QStringList& notes, QString& er
     }
     settings.endArray();
     appendNote(notes, "converted enabled legacy compMolUnit data to current " "molUnit entries");
+    appendNote(notes, "legacy compMolUnit bond distances are not used by current molecule templates");
   }
   if (droppedEntries > 0) {
     appendNote(notes, "dropped legacy compMolUnit entries with a single "
@@ -503,7 +506,7 @@ int currentNumOptSteps(QSettings& settings)
 }
 
 bool legacyPotcarAssetMap(const QString& potcarTemplate, const QStringList& symbols,
-                          QString& normalized)
+                          QString& normalized, QString& error)
 {
   if (potcarTemplate.trimmed().isEmpty())
     return false;
@@ -516,16 +519,24 @@ bool legacyPotcarAssetMap(const QString& potcarTemplate, const QStringList& symb
       continue;
     if (!trimmed.startsWith("%fileContents:") || !trimmed.endsWith("%") ||
         trimmed.mid(1, trimmed.size() - 2).indexOf('%') != -1) {
+      error = "legacy VASP POTCAR entries could not be parsed";
       return false;
     }
     entries.append(trimmed);
   }
-  if (entries.isEmpty())
+  if (entries.isEmpty()) {
+    error = "legacy VASP POTCAR does not contain any file entries";
     return false;
+  }
 
-  if (entries.size() == 1 || entries.size() != symbols.size()) {
+  if (entries.size() == 1) {
     normalized = "system=" + entries.first().trimmed();
     return true;
+  }
+  if (entries.size() != symbols.size()) {
+    error = QString("legacy VASP POTCAR has %1 entries for %2 elements")
+                    .arg(entries.size()).arg(symbols.size());
+    return false;
   }
 
   QStringList parsedEntries;
@@ -535,7 +546,7 @@ bool legacyPotcarAssetMap(const QString& potcarTemplate, const QStringList& symb
   return true;
 }
 
-void normalizeVaspPotcarAssets(QSettings& settings, QStringList& notes)
+bool normalizeVaspPotcarAssets(QSettings& settings, QStringList& notes, QString& error)
 {
   const QStringList symbols = chemicalSystemFromState(settings);
   const int numOptSteps = currentNumOptSteps(settings);
@@ -553,13 +564,54 @@ void normalizeVaspPotcarAssets(QSettings& settings, QStringList& notes)
     const QString potcarTemplate = settings.value(potcarKey).toString();
 
     QString normalized;
-    if (!legacyPotcarAssetMap(potcarTemplate, symbols, normalized))
+    if (!legacyPotcarAssetMap(potcarTemplate, symbols, normalized, error)) {
+      if (!error.isEmpty())
+        return false;
       continue;
+    }
 
     settings.setValue(potcarKey, normalized);
     appendNote(notes,
                QString("normalized legacy VASP POTCAR asset at %1")
                  .arg(potcarKey));
+  }
+  return true;
+}
+
+void normalizeSiestaPsfAssets(QSettings& settings, QStringList& notes)
+{
+  const int numOptSteps = currentNumOptSteps(settings);
+  for (int i = 0; i < numOptSteps; ++i) {
+    const QString optimizer = settings.value("xtalopt/edit/optimizer/" + QString::number(i), "gulp").toString().trimmed();
+    if (optimizer.compare("siesta", Qt::CaseInsensitive) != 0)
+      continue;
+
+    const QString oldKey = QString("xtalopt/optimizer/SIESTA/%1/data/PSF info").arg(i);
+    const QVariantList savedInfo = settings.value(oldKey).toList();
+    if (savedInfo.isEmpty())
+      continue;
+
+    QVariantHash files;
+    if (i < savedInfo.size())
+      files = savedInfo.at(i).toHash();
+    if (files.isEmpty())
+      files = savedInfo.first().toHash();
+    if (files.isEmpty())
+      continue;
+
+    QHash<QString, QString> assets;
+    for (auto it = files.constBegin(); it != files.constEnd(); ++it) {
+      const QString filename = it.value().toString().trimmed();
+      if (!filename.isEmpty()) {
+        assets.insert(it.key(), Search::Optimizer::inputAssetValueForSave(filename));
+      }
+    }
+    if (assets.isEmpty())
+      continue;
+
+    const QString newKey = QString("xtalopt/optscheme/optimizer/%1/assets/siesta/PSF").arg(i);
+    settings.setValue(newKey, Search::Optimizer::inputAssetFilesToText(assets));
+    appendNote(notes, QString("converted legacy SIESTA PSF assets for optimization step %1").arg(i + 1));
   }
 }
 
@@ -834,7 +886,7 @@ void convertCustomIADsToRepeated(QSettings& settings)
       entries.append(QString("%1, %2, %3")
                        .arg(Atoms::ElementInfo::getAtomicSymbol(a1).c_str())
                        .arg(Atoms::ElementInfo::getAtomicSymbol(a2).c_str())
-                       .arg(minIAD));
+                       .arg(minIAD, 0, 'g', std::numeric_limits<double>::max_digits10));
     }
   }
   settings.endArray();
@@ -1105,21 +1157,23 @@ bool rewriteVersion4XtalOptStateFile(QSettings& settings, bool fullState, int lo
                                       QList<int>& constraintObjectiveIndices, QStringList& notes,
                                       QString& error)
 {
-  markAsCurrentState(settings);
   normalizeEditSettings(settings, notes);
   Legacy::normalizeLegacySearchState(settings, "xtalopt", loadedVersion, notes);
 
   if (fullState) {
     if (!normalizeMoleculeUnits(settings, notes, error))
       return false;
-    normalizeVaspPotcarAssets(settings, notes);
+    if (!normalizeVaspPotcarAssets(settings, notes, error))
+      return false;
+    normalizeSiestaPsfAssets(settings, notes);
     removeLegacyOptimizerSettings(settings, notes);
     normalizeRemoteQueue(settings, notes);
-    normalizeObjectiveSettings(settings, constraintObjectiveIndices, notes);
     normalizeRandSpgCounts(settings, notes);
   }
 
+  normalizeObjectiveSettings(settings, constraintObjectiveIndices, notes);
   convertVersion4LayoutToCurrent(settings, notes);
+  markAsCurrentState(settings);
   return true;
 }
 
@@ -1130,13 +1184,13 @@ bool appendCompatibilityNotes(const QString& filename, const QStringList& notes)
     return false;
 
   QTextStream out(&file);
-  out << "\n# XtalOpt state compatibility notes\n";
-  out << "# This file was generated while reading an old version 4 "
+  out << "\n; XtalOpt state compatibility notes\n";
+  out << "; This file was generated while reading an old version 4 "
          "XtalOpt state file.\n";
-  out << "# It is a read-side copy only; active runs save to the original "
+  out << "; It is a read-side copy only; active runs save to the original "
          "state file.\n";
   for (const auto& note : notes)
-    out << "# " << note << "\n";
+    out << "; " << note << "\n";
   return true;
 }
 
@@ -1282,8 +1336,7 @@ bool XtalOpt::prepareXtalOptStateFileForRead(const QString& filename, bool fullS
   }
 
   if (!converted) {
-    if (temporaryCopy)
-      QFile::remove(compatFilename);
+    QFile::remove(compatFilename);
     return false;
   }
 

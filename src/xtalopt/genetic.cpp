@@ -278,6 +278,7 @@ static void exchange(Xtal* xtal, uint exchanges)
     atoms[index1].setPos(atoms.at(index2).pos());
     atoms[index2].setPos(tmp);
   }
+  xtal->notifyGeometryChanged();
   return;
 }
 
@@ -948,6 +949,7 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal, const CellComp& comp, const EleRadi
 
   // lock parent xtal for reading
   QReadLocker locker(&xtal->lock());
+  const QString parentTag = xtal->getTag();
 
   // Copy info over from parent to new xtal
   Xtal* nxtal = new Xtal;
@@ -1072,14 +1074,14 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal, const CellComp& comp, const EleRadi
                          listToString(nxtalCounts),
                          listToString(targetCounts),
                          listToString(deltas),
-                         xtal->getTag()));
+                         parentTag));
   }
 
   // Try to fix the atom counts according to the obtained values for deltas
   // For adding atoms, we will limit the attempts, as the radii limits might
   //   prevent us from being able to add them.
   applyCompositionDeltas(nxtal, deltas, nxtalCounts, refSymbols, elrad,
-                         useCustomIAD, customIADs, maxAttempts, verbose, xtal->getTag(), __func__);
+                         useCustomIAD, customIADs, maxAttempts, verbose, parentTag, __func__);
 
   // We're done!
   nxtal->wrapAtomsToCell();
@@ -1096,6 +1098,7 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal, const CellComp& comp, const EleRadii
 
   // lock parent xtal for reading
   QReadLocker locker(&xtal->lock());
+  const QString parentTag = xtal->getTag();
 
   // Copy info over from parent to new xtal
   Xtal* nxtal = new Xtal;
@@ -1174,7 +1177,7 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal, const CellComp& comp, const EleRadii
                          listToString(nxtalCounts),
                          listToString(targetCounts),
                          listToString(deltas),
-                         xtal->getTag()));
+                         parentTag));
   }
 
   // Correct for differences by inserting or removing atoms.
@@ -1184,7 +1187,7 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal, const CellComp& comp, const EleRadii
   // If we reach the limit, we just leave it alone and move on
   //   with whatever count that we have been able to produce.
   applyCompositionDeltas(nxtal, deltas, nxtalCounts, refSymbols, elrad,
-                         useCustomIAD, customIADs, 1000, verbose, xtal->getTag(), __func__);
+                         useCustomIAD, customIADs, 1000, verbose, parentTag, __func__);
 
   // We're done!
   nxtal->wrapAtomsToCell();

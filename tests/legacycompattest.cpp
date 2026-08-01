@@ -168,7 +168,7 @@ private slots:
   void stateSaveRewritesLegacyResumeToFreshV5State();
   void stateSettingsNormalizeSingleLegacyVaspPotcarEntry();
   void stateSettingsNormalizeLegacyVaspPotcarEntries();
-  void stateSettingsNormalizeMismatchedLegacyVaspPotcarEntries();
+  void stateSettingsRejectMismatchedLegacyVaspPotcarEntries();
 
   // Legacy structure.state compatibility (structure_state_compat.cpp).
   void legacyWorkflowStatusesNormalizeOnRead();
@@ -1020,6 +1020,7 @@ void LegacyCompatTest::stateSettingsLoadLegacyBatchQueueCommands()
     markXtalOptStateVersion(settings, OriginalStateVersion);
     settings.setValue("xtalopt/init/chemical_formulas", "O1");
     settings.setValue("xtalopt/edit/numOptSteps", 1);
+    settings.setValue("xtalopt/edit/queueInterface", "local");
     settings.setValue("xtalopt/edit/queueInterface/0", "pbs");
     settings.setValue("xtalopt/edit/optimizer/0", "gulp");
     settings.remove("xtalopt/optscheme/queue/0/commands/pbs");
@@ -1245,7 +1246,7 @@ void LegacyCompatTest::stateSettingsNormalizeLegacyVaspPotcarEntries()
                    "Ti=%fileContents:/potentials/Ti/POTCAR%"));
 }
 
-void LegacyCompatTest::stateSettingsNormalizeMismatchedLegacyVaspPotcarEntries()
+void LegacyCompatTest::stateSettingsRejectMismatchedLegacyVaspPotcarEntries()
 {
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
@@ -1275,10 +1276,8 @@ void LegacyCompatTest::stateSettingsNormalizeMismatchedLegacyVaspPotcarEntries()
   }
 
   XtalOpt loaded;
-  QVERIFY(loaded.readSettings(stateFile, true));
-
-  const QString potcar = QString::fromStdString(loaded.getOptimizerInputAsset(0, "POTCAR"));
-  QCOMPARE(potcar, QString("system=%fileContents:/potentials/system/POTCAR%"));
+  QVERIFY(!loaded.readSettings(stateFile, true));
+  QVERIFY(!QFile::exists(stateFile + ".compat"));
 }
 
 // Legacy structure.state compatibility (structure_state_compat.cpp).

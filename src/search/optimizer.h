@@ -18,7 +18,10 @@
 
 #include <QHash>
 #include <QObject>
+#include <QReadLocker>
+#include <QReadWriteLock>
 #include <QStringList>
+#include <QWriteLocker>
 
 #include <functional>
 #include <memory>
@@ -204,6 +207,7 @@ public slots:
    */
   QString getDirectRunCommand() const
   {
+    QReadLocker locker(&m_commandLock);
     return !m_directRunOverride.isEmpty()
              ? m_directRunOverride
              : (m_optimizerDefaults ? QString::fromLatin1(m_optimizerDefaults->directRunCommand) : QString());
@@ -215,6 +219,7 @@ public slots:
    */
   void setDirectRunCommand(const QString& command)
   {
+    QWriteLocker locker(&m_commandLock);
     m_directRunOverride = command;
   }
 
@@ -263,10 +268,9 @@ protected:
   static QHash<QString, QString> inputAssetTextToMap(const QString& text);
 
   // Resolve one stored asset value to its file contents: a "%fileContents:f%"
-  //   entry is read from disk (optional source filename returned), anything
-  //   else is taken literally. Returns false if the file cannot be read.
-  static bool readSavedInputAssetValue(const QString& assetValue, QString& contents,
-                                       QString* sourceFilename = nullptr);
+  //   entry is read from disk, anything else is taken literally. Returns false
+  //   if the file cannot be read.
+  static bool readSavedInputAssetValue(const QString& assetValue, QString& contents);
 
   /// Per-optimizer defaults (id, templates, assets, completion, outputs,
   ///   command); each built-in subclass sets this from its own defaults() in its
@@ -290,6 +294,7 @@ private:
   /// User override for the direct-run command. Empty means "use the optimizer
   ///   default" (see getDirectRunCommand()).
   QString m_directRunOverride;
+  mutable QReadWriteLock m_commandLock;
 };
 } // end namespace Search
 

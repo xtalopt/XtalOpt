@@ -74,7 +74,7 @@ public slots:
   void updateReferenceEnergies();
   void updateSearchType();
   void getComposition();
-  void updateCompositionTable();
+  void updateCompositionTable(bool initializeCustomIADs = false);
   void updateDimensions();
   void updateInitOptions();
   void updateMoleculeUnits();

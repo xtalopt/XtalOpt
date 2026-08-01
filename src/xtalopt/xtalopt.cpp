@@ -277,7 +277,7 @@ XtalOpt::~XtalOpt()
 
   // Destroy queuemanager
   queue()->reset();
-  tracker()->deleteAllStructures();
+  deleteTrackedStructures();
 
 
   x_initWC->deleteLater();
@@ -484,7 +484,15 @@ void XtalOpt::finishSearch()
 
   refreshStructureEvaluationData();
   refreshParentSelectionFronts(getAllParentPoolStructures());
-  save(searchStateFilePath(), false);
+
+  // Structure files are kept current throughout the run; write the ones
+  //   still waiting, and always refresh the main state file.
+  {
+    std::lock_guard<std::mutex> guard(x_filesNeedingSaveMutex);
+    x_settingsStateNeedsSave = true;
+  }
+  saveRequestedStateFiles(searchStateFilePath(), false, false);
+  saveRequestedOutputFiles(true, false);
 }
 
 bool XtalOpt::startSearch()
@@ -960,7 +968,7 @@ bool XtalOpt::generateInitialStructures()
   x_initWC->postwaitUnlock();
 
   // We're done with x_initWC.
-  x_initWC->disconnect();
+  disconnect(tracker(), &Tracker::newStructureAdded, x_initWC, &SlottedWaitCondition::wakeAllSlot);
 
   endProgressUpdate();
 

@@ -79,6 +79,7 @@ TabProgress::TabProgress(Search::AbstractDialog* parent, XtalOpt* p)
   connect(m_timer.get(), &QTimer::timeout, this, &TabProgress::updateProgressTable);
   connect(ui.push_refresh, &QPushButton::clicked, this, &TabProgress::startTimer);
   connect(ui.push_refresh, &QPushButton::clicked, this, &TabProgress::updateProgressTable);
+  connect(ui.spin_period, &QAbstractSpinBox::editingFinished, this, &TabProgress::startTimer);
   connect(ui.spin_period, &QAbstractSpinBox::editingFinished,
           this, &TabProgress::updateProgressTable);
   connect(ui.table_list, &QTableWidget::currentCellChanged,
@@ -91,8 +92,10 @@ TabProgress::TabProgress(Search::AbstractDialog* parent, XtalOpt* p)
           this, &TabProgress::progressContextMenu);
   connect(ui.push_refreshAll, &QPushButton::clicked, this, &TabProgress::updateAllInfo);
   connect(m_search, &SearchBase::refreshAllStructureInfo, this, &TabProgress::updateAllInfo);
+  connect(m_search, &SearchBase::structureViewDataChanged, this, &TabProgress::updateAllInfo);
   connect(m_search, &SearchBase::startingSession, this, &TabProgress::disableRowTracking);
   connect(m_search, &SearchBase::sessionStarted, this, &TabProgress::enableRowTracking);
+  connect(m_search, &SearchBase::structuresAboutToBeDeleted, this, &TabProgress::releaseStructureReferences);
   connect(this, &TabProgress::updateTableEntry, this, &TabProgress::setTableEntry);
   connect(ui.push_clear, &QPushButton::clicked, this, &TabProgress::clearFiles);
   // This is a potentially demanding task: refresh info after hull calculations
@@ -105,8 +108,7 @@ TabProgress::TabProgress(Search::AbstractDialog* parent, XtalOpt* p)
 
 TabProgress::~TabProgress()
 {
-  // Wait for background work to finish.
-  m_workerPool.waitForDone();
+  releaseStructureReferences();
 }
 
 void TabProgress::lockGUI()
@@ -234,7 +236,9 @@ void TabProgress::updateAllInfo()
     QReadLocker trackerLocker(m_search->tracker()->rwLock());
     QWriteLocker infoUpdateTrackerLocker(m_infoUpdateTracker.rwLock());
     QList<Structure*>* structures = m_search->tracker()->list();
-    for (int i = 0; i < ui.table_list->rowCount(); i++) {
+    const int count = qMin(ui.table_list->rowCount(), static_cast<int>(structures->size()));
+
+    for (int i = 0; i < count; ++i) {
       appended = m_infoUpdateTracker.append(structures->at(i)) || appended;
     }
   }
@@ -257,17 +261,18 @@ void TabProgress::newInfoUpdate(Structure* s)
 
 void TabProgress::updateInfo()
 {
-  if (m_infoUpdateTracker.size() == 0) {
-    return;
+  {
+    QReadLocker locker(m_infoUpdateTracker.rwLock());
+    if (m_infoUpdateTracker.size() == 0)
+      return;
   }
 
   // Don't update while a context operation is in the works
   {
     QtCompat::MutexLocker contextLocker(m_context_mutex.get());
     if (m_context_xtal != 0) {
-      Common::debug(QString("%1: Waiting for context operation to complete "
-                           "(%2) Trying again very soon.")
-                           .arg(__func__).arg(m_context_xtal->getTag()));
+      Common::debug(QString("%1: Waiting for context operation to complete. "
+                           "Trying again very soon.").arg(__func__));
       QTimer::singleShot(PROGRESS_REFRESH_DELAY, this, &TabProgress::updateInfo);
       return;
     }
@@ -343,10 +348,11 @@ void TabProgress::updateInfo_()
           break;
         }
         // Get the queue status.
+        const int optStep = xtal->getCurrentOptStep();
         xtalLocker.unlock();
         trackerLocker.unlock();
-        QueueInterface::QueueStatus state =
-          m_search->queueInterface(xtal->getCurrentOptStep())->getStatus(xtal);
+        QueueInterface* queue = m_search->queueInterface(optStep);
+        QueueInterface::QueueStatus state = queue ? queue->getStatus(xtal) : QueueInterface::Error;
         trackerLocker.relock();
         xtalLocker.relock();
         switch (state) {
@@ -389,10 +395,17 @@ void TabProgress::updateInfo_()
         break;
       }
       case Xtal::Submitted:
-        e.status = tr("%1 (%2 of %3)")
-                     .arg(xtal->statusText(true))
-                     .arg(QString::number(xtal->getCurrentOptStep() + 1))
-                     .arg(QString::number(totalOptSteps));
+        if (xtal->getJobID() == 0) {
+          e.status = tr("Submitted, job ID unavailable: inspect scheduler "
+                        "(Opt Step %1 of %2)")
+                       .arg(QString::number(xtal->getCurrentOptStep() + 1))
+                       .arg(QString::number(totalOptSteps));
+        } else {
+          e.status = tr("%1 (%2 of %3)")
+                       .arg(xtal->statusText(true))
+                       .arg(QString::number(xtal->getCurrentOptStep() + 1))
+                       .arg(QString::number(totalOptSteps));
+        }
         e.brush.setColor(Qt::cyan);
         break;
       case Xtal::Restart:
@@ -484,9 +497,7 @@ void TabProgress::refreshHullFrontEntries()
   {
     QtCompat::MutexLocker contextLocker(m_context_mutex.get());
     if (m_context_xtal != 0) {
-      Common::debug(QString("%1: Waiting for context operation "
-                           "to complete (%2).")
-                   .arg(__func__).arg(m_context_xtal->getTag()));
+      Common::debug(QString("%1: Waiting for context operation to complete.").arg(__func__));
       m_update_all_mutex->unlock();
       return;
     }
@@ -532,6 +543,8 @@ void TabProgress::setTableEntry(int row, const XO_Prog_TableEntry& e)
 {
   // Lock the table
   QtCompat::MutexLocker locker(m_mutex.get());
+  if (row < 0 || row >= ui.table_list->rowCount() || !ui.table_list->item(row, TimeElapsed))
+    return;
 
   ui.table_list->item(row, TimeElapsed)->setText(e.elapsed);
   ui.table_list->item(row, Tag)->setText(e.tag);
@@ -618,6 +631,28 @@ void TabProgress::startTimer()
 void TabProgress::stopTimer()
 {
   m_timer->stop();
+}
+
+void TabProgress::releaseStructureReferences()
+{
+  m_timer->stop();
+  m_workerPool.clear();
+  m_workerPool.waitForDone();
+
+  {
+    QWriteLocker locker(m_infoUpdateTracker.rwLock());
+    m_infoUpdateTracker.reset();
+  }
+  {
+    QtCompat::MutexLocker locker(m_context_mutex.get());
+    m_context_xtal = nullptr;
+  }
+  {
+    QtCompat::MutexLocker locker(m_mutex.get());
+    ui.table_list->clearContents();
+    ui.table_list->setRowCount(0);
+    m_tableRows.store(0);
+  }
 }
 
 void TabProgress::progressContextMenu(QPoint p)
@@ -757,13 +792,29 @@ void TabProgress::restartJobProgress()
     QReadLocker xtalLocker(&xtal->lock());
     optstep = xtal->getCurrentOptStep();
     tag = xtal->getTag();
+    if (xtal->getStatus() == Xtal::Submitted && xtal->getJobID() == 0) {
+      xtalLocker.unlock();
+
+      const QMessageBox::StandardButton answer = QMessageBox::question(
+        m_dialog, tr("Unconfirmed scheduler job"),
+        tr("The scheduler accepted this job, but XtalOpt could not read its job ID.\n\n"
+           "Inspect the scheduler and cancel the job manually before restarting it. "
+           "Continue only after doing that."),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+
+      if (answer != QMessageBox::Yes) {
+        QtCompat::MutexLocker contextLocker(m_context_mutex.get());
+        m_context_xtal = nullptr;
+        return;
+      }
+    }
   }
 
   // Choose which OptStep to use
   bool ok;
   int optStep = QInputDialog::getInt(
     m_dialog, tr("Restart Optimization %1").arg(tag),
-    "Select optimization step to restart from:", optstep, 1,
+    "Select optimization step to restart from:", optstep + 1, 1,
     m_search->getNumOptSteps(), 1, &ok);
   --optStep;
 
@@ -815,6 +866,34 @@ void TabProgress::restartJobProgress_(int optStep)
 
 void TabProgress::killXtalProgress()
 {
+  QPointer<Xtal> xtal;
+  {
+    QtCompat::MutexLocker contextLocker(m_context_mutex.get());
+    xtal = m_context_xtal;
+  }
+  if (!xtal)
+    return;
+
+  {
+    QReadLocker locker(&xtal->lock());
+    if (xtal->getStatus() == Xtal::Submitted && xtal->getJobID() == 0) {
+      locker.unlock();
+
+      const QMessageBox::StandardButton answer = QMessageBox::question(
+        m_dialog, tr("Unconfirmed scheduler job"),
+        tr("The scheduler accepted this job, but XtalOpt could not read its job ID.\n\n"
+           "Inspect the scheduler and cancel the job manually before killing the "
+           "structure. Continue only after doing that."),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+
+      if (answer != QMessageBox::Yes) {
+        QtCompat::MutexLocker contextLocker(m_context_mutex.get());
+        m_context_xtal = nullptr;
+        return;
+      }
+    }
+  }
+
   emit startingBackgroundProcessing();
   QPointer<TabProgress> self(this);
   (void)QtConcurrent::run(&m_workerPool, [self]() {
@@ -862,38 +941,32 @@ void TabProgress::unkillXtalProgress_()
     QtCompat::MutexLocker contextLocker(m_context_mutex.get());
     xtal = m_context_xtal;
   }
-  if (!xtal) {
-    emit finishedBackgroundProcessing();
-    return;
-  }
-
-  QWriteLocker locker(&xtal->lock());
-  if (!xtal->isKilledOrRemovedState()) {
-    emit finishedBackgroundProcessing();
-    return;
-  }
-
-  // Setting status to Xtal::Error will restart the job if was killed
   bool nowOptimized = false;
-  if (xtal->getStatus() == Xtal::Killed)
-    xtal->setStatus(Xtal::Error);
-  // Set status to Optimized if xtal was previously optimized
-  else {
-    xtal->setStatus(Xtal::Optimized);
-    nowOptimized = true;
+  bool changed = false;
+  if (xtal) {
+    QWriteLocker locker(&xtal->lock());
+    if (xtal->isKilledOrRemovedState()) {
+      // Setting status to Xtal::Error will restart a killed structure.
+      if (xtal->getStatus() == Xtal::Killed)
+        xtal->setStatus(Xtal::Error);
+      else {
+        xtal->setStatus(Xtal::Optimized);
+        nowOptimized = true;
+      }
+      changed = true;
+    }
   }
 
-  locker.unlock();
-  m_search->reportStructureStateChanged(xtal);
-  // An un-killed optimized structure re-enters the hull just like a fresh one.
-  if (nowOptimized) {
+  if (changed)
+    m_search->reportStructureStateChanged(xtal);
+  if (changed && nowOptimized) {
     XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
     xtalopt->requestStructureEvaluation(xtal);
   }
 
-  // Clear context xtal pointer
   emit finishedBackgroundProcessing();
-  newInfoUpdate(xtal);
+  if (changed)
+    newInfoUpdate(xtal);
   QtCompat::MutexLocker contextLocker(m_context_mutex.get());
   m_context_xtal = 0;
 }
@@ -956,15 +1029,30 @@ void TabProgress::randomizeStructureProgress_()
     return;
   }
 
+  int jobID;
+  int optStep;
+  {
+    QReadLocker locker(&xtal->lock());
+    jobID = xtal->getJobID();
+    optStep = xtal->getCurrentOptStep();
+  }
+
   // End job if currently running
-  if (xtal->getJobID()) {
-    m_search->queueInterface(xtal->getCurrentOptStep())->stopJob(xtal);
+  if (jobID) {
+    QueueInterface* queue = m_search->queueInterface(optStep);
+    if (queue)
+      queue->stopJob(xtal);
   }
 
   if (!m_search->replaceWithRandom(xtal, "manual")) {
+    QString tag;
+    {
+      QReadLocker locker(&xtal->lock());
+      tag = xtal->getTag();
+      optStep = xtal->getCurrentOptStep();
+    }
     Common::warning(tr("Manual random replacement failed for structure %1 in opt step %2.")
-                     .arg(xtal->getTag())
-                     .arg(xtal->getCurrentOptStep() + 1));
+                       .arg(tag).arg(optStep + 1));
     emit finishedBackgroundProcessing();
     QtCompat::MutexLocker contextLocker(m_context_mutex.get());
     m_context_xtal = 0;
@@ -999,9 +1087,19 @@ void TabProgress::replaceWithOffspringProgress_()
     return;
   }
 
+  int jobID;
+  int optStep;
+  {
+    QReadLocker locker(&xtal->lock());
+    jobID = xtal->getJobID();
+    optStep = xtal->getCurrentOptStep();
+  }
+
   // End job if currently running
-  if (xtal->getJobID()) {
-    m_search->queueInterface(xtal->getCurrentOptStep())->stopJob(xtal);
+  if (jobID) {
+    QueueInterface* queue = m_search->queueInterface(optStep);
+    if (queue)
+      queue->stopJob(xtal);
   }
 
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
@@ -1009,8 +1107,12 @@ void TabProgress::replaceWithOffspringProgress_()
                                               "XtalOpt.");
 
   if (!xtalopt->replaceWithOffspring(xtal, "manual")) {
-    Common::warning(tr("Manual offspring replacement failed for structure %1.")
-                     .arg(xtal->getTag()));
+    QString tag;
+    {
+      QReadLocker locker(&xtal->lock());
+      tag = xtal->getTag();
+    }
+    Common::warning(tr("Manual offspring replacement failed for structure %1.").arg(tag));
     emit finishedBackgroundProcessing();
     QtCompat::MutexLocker contextLocker(m_context_mutex.get());
     m_context_xtal = 0;

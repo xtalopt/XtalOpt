@@ -33,7 +33,8 @@ namespace Atoms {
 namespace {
 
 // Shared CFG reader for MTP input and output files (the format is the
-//   same); "kind" only tells the messages apart.
+//   same); "kind" only is used for clear messaging. A file may hold a
+//   series of configurations; the last complete block is read.
 bool readCfgFile(Atoms::Geometry* s, const QString& filename, const QString& kind)
 {
   std::string text;
@@ -43,7 +44,16 @@ bool readCfgFile(Atoms::Geometry* s, const QString& filename, const QString& kin
                  .arg(filename));
     return false;
   }
-  std::istringstream ifs(text);
+
+  const size_t begin = text.rfind("BEGIN_CFG");
+  const size_t end =
+    (begin != std::string::npos) ? text.find("END_CFG", begin) : std::string::npos;
+  if (begin == std::string::npos || end == std::string::npos) {
+    Common::error(QString("MTP %1 does not contain a complete CFG block.").arg(kind));
+    return false;
+  }
+  // Parse only the selected block.
+  std::istringstream ifs(text.substr(begin, end - begin));
 
   bool coordsFound = false, cellFound = false;
   bool fractionalCoord = true;

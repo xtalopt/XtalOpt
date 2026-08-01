@@ -44,14 +44,14 @@
      <property name="title">
       <string>Unit Cell Parameters</string>
      </property>
-     <layout class="QGridLayout" name="gridLayout_3">
+     <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,1,1">
       <item row="4" column="2">
        <widget class="QDoubleSpinBox" name="spin_beta_max">
         <property name="minimum">
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -64,7 +64,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -117,7 +117,7 @@
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -130,7 +130,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -207,7 +207,7 @@
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -220,7 +220,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -252,7 +252,7 @@
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -265,7 +265,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -349,7 +349,7 @@
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -362,7 +362,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -391,7 +391,7 @@
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -404,7 +404,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -481,7 +481,7 @@
          <bool>true</bool>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -494,7 +494,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -530,7 +530,7 @@
       <item row="7" column="1">
        <widget class="QDoubleSpinBox" name="spin_vol_min">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -543,7 +543,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -575,7 +575,7 @@
          <bool>true</bool>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -588,7 +588,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -627,7 +627,7 @@
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -640,7 +640,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -669,7 +669,7 @@
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -682,7 +682,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -738,7 +738,7 @@
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -751,7 +751,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -777,7 +777,7 @@
       <item row="7" column="2">
        <widget class="QDoubleSpinBox" name="spin_vol_max">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -790,7 +790,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -822,7 +822,7 @@
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -835,7 +835,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -867,7 +867,7 @@
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -880,7 +880,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>
@@ -909,7 +909,7 @@
          <double>0.000010000000000</double>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -922,7 +922,7 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>95</width>
+          <width>16777215</width>
           <height>25</height>
          </size>
         </property>

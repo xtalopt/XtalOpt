@@ -512,7 +512,7 @@
       <enum>Qt::StrongFocus</enum>
      </property>
      <property name="text">
-      <string>Refresh</string>
+      <string>Reset View</string>
      </property>
     </widget>
    </item>

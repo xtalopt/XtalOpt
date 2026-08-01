@@ -22,7 +22,9 @@
 #include <search/ssh/sshmanager_libssh.h>
 
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
+#include <QThread>
 
 // File access flags for libssh.
 #include <fcntl.h>
@@ -33,6 +35,18 @@
 using namespace std;
 
 namespace Search {
+namespace {
+
+QString sftpPath(const QString& path)
+{
+  if (path == "~" || path == "~/")
+    return ".";
+  if (path.startsWith("~/"))
+    return path.mid(2);
+  return path;
+}
+
+}
 
 #if LIBSSH_VERSION_INT >= SSH_VERSION_INT(0, 4, 90)
 #define GS_CHANNEL_IS_CLOSED(channel) ssh_channel_is_closed(channel)
@@ -46,6 +60,8 @@ namespace Search {
 #define GS_CHANNEL_CLOSE(channel) ssh_channel_close(channel)
 #define GS_CHANNEL_READ(channel, buffer, count, is_stderr) \
   ssh_channel_read(channel, buffer, count, is_stderr)
+#define GS_CHANNEL_READ_NONBLOCKING(channel, buffer, count, is_stderr) \
+  ssh_channel_read_nonblocking(channel, buffer, count, is_stderr)
 #define GS_CHANNEL_SEND_EOF(channel) ssh_channel_send_eof(channel)
 #else
 #define GS_CHANNEL_IS_CLOSED(channel) channel_is_closed(channel)
@@ -58,6 +74,8 @@ namespace Search {
 #define GS_CHANNEL_CLOSE(channel) channel_close(channel)
 #define GS_CHANNEL_READ(channel, buffer, count, is_stderr) \
   channel_read(channel, buffer, count, is_stderr)
+#define GS_CHANNEL_READ_NONBLOCKING(channel, buffer, count, is_stderr) \
+  channel_read_nonblocking(channel, buffer, count, is_stderr)
 #define GS_CHANNEL_SEND_EOF(channel) channel_send_eof(channel)
 #endif
 
@@ -463,6 +481,8 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
   m_sftp = _openSFTP();
   if (!m_sftp) {
     Common::warning("Could not create sftp channel.");
+    if (throwExceptions)
+      throw SSH_UNKNOWN_ERROR;
     return false;
   }
 
@@ -473,17 +493,20 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
 
 bool SSHConnectionLibSSH::execute(const QString& command, QString& stdout_str,
                                   QString& stderr_str, int& exitcode,
-                                  bool printWarning)
+                                  bool printWarning, int timeoutMs,
+                                  const std::atomic<bool>* cancel)
 {
   QtCompat::MutexLocker locker(&m_lock);
-  return _execute(command, stdout_str, stderr_str, exitcode, printWarning);
+  return _execute(command, stdout_str, stderr_str, exitcode, printWarning,
+                  timeoutMs, cancel);
 }
 
 // No need to document this:
 /// @cond
 bool SSHConnectionLibSSH::_execute(const QString& command, QString& stdout_str,
                                    QString& stderr_str, int& exitcode,
-                                   bool printWarning)
+                                   bool printWarning, int timeoutMs,
+                                   const std::atomic<bool>* cancel)
 {
   START;
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
@@ -516,20 +539,57 @@ bool SSHConnectionLibSSH::_execute(const QString& command, QString& stdout_str,
   // Create string streams
   ostringstream ossout, osserr;
 
-  // Read output
+  // Read both streams while the command is running.
   char buffer[LIBSSH_BUFFER_SIZE];
-  int len;
-  while ((len = GS_CHANNEL_READ(channel, buffer, sizeof(buffer), 0)) > 0) {
-    ossout.write(buffer, len);
+  QElapsedTimer timer;
+  timer.start();
+  bool readFailed = false;
+  bool cancelled = false;
+  while (!GS_CHANNEL_IS_EOF(channel) && !GS_CHANNEL_IS_CLOSED(channel)) {
+    bool readData = false;
+    int len = GS_CHANNEL_READ_NONBLOCKING(channel, buffer, sizeof(buffer), 0);
+    if (len == SSH_ERROR) {
+      readFailed = true;
+      break;
+    }
+    if (len > 0) {
+      ossout.write(buffer, len);
+      readData = true;
+    }
+
+    len = GS_CHANNEL_READ_NONBLOCKING(channel, buffer, sizeof(buffer), 1);
+    if (len == SSH_ERROR) {
+      readFailed = true;
+      break;
+    }
+    if (len > 0) {
+      osserr.write(buffer, len);
+      readData = true;
+    }
+
+    if ((cancel && cancel->load()) ||
+        (timeoutMs >= 0 && timer.elapsed() >= timeoutMs)) {
+      cancelled = true;
+      break;
+    }
+    if (!readData)
+      QThread::msleep(10);
   }
-  stdout_str = QString(ossout.str().c_str());
-  while ((len = GS_CHANNEL_READ(channel, buffer, sizeof(buffer), 1)) > 0) {
-    osserr.write(buffer, len);
+  stdout_str = QString::fromStdString(ossout.str());
+  stderr_str = QString::fromStdString(osserr.str());
+
+  if (readFailed || cancelled) {
+    if (printWarning) {
+      Common::warning(cancelled
+                        ? "SSH command was cancelled or timed out."
+                        : QString("SSH failure while reading command output: %1").arg(ssh_get_error(m_session)));
+    }
+    GS_CHANNEL_CLOSE(channel);
+    GS_CHANNEL_FREE(channel);
+    return false;
   }
-  stderr_str = QString(osserr.str().c_str());
 
   GS_CHANNEL_SEND_EOF(channel);
-  GS_CHANNEL_CLOSE(channel);
 
   // 15 iterations, one second sleep each: ~15 second timeout
   exitcode = -1;
@@ -539,6 +599,8 @@ bool SSHConnectionLibSSH::_execute(const QString& command, QString& stdout_str,
 #ifdef SSH_CONNECTION_LIBSSH_DEBUG
     Common::debug("Waiting for server to close channel...");
 #endif
+    if ((cancel && cancel->load()) || (timeoutMs >= 0 && timer.elapsed() >= timeoutMs))
+      break;
     GS_SLEEP(1);
     timeout--;
     exitStatusResult = getChannelExitStatus(channel, exitcode);
@@ -550,10 +612,12 @@ bool SSHConnectionLibSSH::_execute(const QString& command, QString& stdout_str,
                         : QString("SSH failure while reading command exit status: %1")
                             .arg(ssh_get_error(m_session)));
     }
+    GS_CHANNEL_CLOSE(channel);
     GS_CHANNEL_FREE(channel);
     return false;
   }
 
+  GS_CHANNEL_CLOSE(channel);
   GS_CHANNEL_FREE(channel);
   END;
   return true;
@@ -616,7 +680,7 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString& localpath,
   }
 
   // Create output file handle
-  sftp_file to = sftp_open(sftp, remotepath.toStdString().c_str(),
+  sftp_file to = sftp_open(sftp, sftpPath(remotepath).toStdString().c_str(),
                            O_WRONLY | O_CREAT | O_TRUNC, 0750);
   if (!to) {
     Common::warning(QString("Could not open file %1 for writing.").arg(remotepath));
@@ -678,7 +742,7 @@ bool SSHConnectionLibSSH::_copyFileFromServer(const QString& remotepath,
 
   // Open remote file
   sftp_file from =
-    sftp_open(sftp, remotepath.toStdString().c_str(), O_RDONLY, 0);
+    sftp_open(sftp, sftpPath(remotepath).toStdString().c_str(), O_RDONLY, 0);
   if (!from) {
     Common::warning(QString("Could not open file %1 for reading.").arg(remotepath));
     return false;
@@ -744,7 +808,7 @@ bool SSHConnectionLibSSH::_readRemoteFile(const QString& filename,
   }
 
   // Open remote file
-  sftp_file from = sftp_open(sftp, filename.toStdString().c_str(), O_RDONLY, 0);
+  sftp_file from = sftp_open(sftp, sftpPath(filename).toStdString().c_str(), O_RDONLY, 0);
   if (!from) {
     Common::warning(QString("Could not open file %1 for reading.").arg(filename));
     return false;
@@ -797,7 +861,7 @@ bool SSHConnectionLibSSH::_removeRemoteFile(const QString& filename)
     return false;
   }
 
-  if (sftp_unlink(sftp, filename.toStdString().c_str()) != 0) {
+  if (sftp_unlink(sftp, sftpPath(filename).toStdString().c_str()) != 0) {
     Common::warning(QString("Could not remove remote file %1").arg(filename));
     return false;
   }
@@ -850,7 +914,7 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString& local,
   }
 
   // Create remote directory:
-  sftp_mkdir(sftp, remotepath.toStdString().c_str(), 0750);
+  sftp_mkdir(sftp, sftpPath(remotepath).toStdString().c_str(), 0750);
 
   // Recurse over directories and files (depth-first)
   for (auto dir = directories.begin(); dir != directories.end(); dir++) {
@@ -909,7 +973,7 @@ bool SSHConnectionLibSSH::_copyDirectoryFromServer(const QString& remote,
   }
 
   // Open remote directory
-  dir = sftp_opendir(sftp, remotepath.toStdString().c_str());
+  dir = sftp_opendir(sftp, sftpPath(remotepath).toStdString().c_str());
   if (!dir) {
     Common::warning(QString("Could not open remote directory %1:\n\t%2")
                    .arg(remotepath)
@@ -1008,7 +1072,7 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString& path,
   }
 
   // Open remote directory
-  dir = sftp_opendir(sftp, remotepath.toStdString().c_str());
+  dir = sftp_opendir(sftp, sftpPath(remotepath).toStdString().c_str());
   if (!dir) {
     Common::warning(QString("Could not open remote directory %1:\n\t%2")
                    .arg(remotepath)
@@ -1027,7 +1091,7 @@ bool SSHConnectionLibSSH::_readRemoteDirectoryContents(const QString& path,
       case SSH_FILEXFER_TYPE_DIRECTORY:
       {
         const QString entryPath = Common::remotePath(remotepath, file->name);
-        contents << (entryPath.endsWith('/') ? entryPath : entryPath + "/");
+        contents << entryPath;
         if (!_readRemoteDirectoryContents(entryPath, tmp)) {
           sftp_attributes_free(file);
           sftp_closedir(dir);
@@ -1090,7 +1154,7 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString& path,
   }
 
   // Open remote directory
-  dir = sftp_opendir(sftp, remotepath.toStdString().c_str());
+  dir = sftp_opendir(sftp, sftpPath(remotepath).toStdString().c_str());
   if (!dir) {
     Common::warning(QString("Could not open remote directory %1:\n\t%2")
                    .arg(remotepath)
@@ -1146,7 +1210,7 @@ bool SSHConnectionLibSSH::_removeRemoteDirectory(const QString& path,
 
   // Finally remove directory if asked
   if (!onlyDeleteContents) {
-    if (sftp_rmdir(sftp, remotepath.toStdString().c_str()) == SSH_ERROR) {
+    if (sftp_rmdir(sftp, sftpPath(remotepath).toStdString().c_str()) == SSH_ERROR) {
       Common::warning(QString("Could not remove remote directory %1: %2")
                      .arg(remotepath)
                      .arg(ssh_get_error(m_session)));

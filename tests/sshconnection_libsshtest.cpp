@@ -119,7 +119,7 @@ void SSHConnectionLibSSHTest::initTestCase()
   m_remoteDir = ".sshtmpdir";
   const QString remoteNewDir = Common::remotePath(m_remoteDir, "newdir");
   m_dirLayout << Common::remotePath(m_remoteDir, "testfile1")
-              << remoteNewDir + "/"
+              << remoteNewDir
               << Common::remotePath(remoteNewDir, "testfile2");
   QVERIFY(m_localTempRoot.isValid());
   const QString localTestDir = Common::localPath(m_localTempRoot.path(), "source");

@@ -81,6 +81,40 @@ void checkState(StateCheck check, MemberStateCheck memberCheck,
     QCOMPARE((structure.*memberCheck)(), expected);
   }
 }
+
+void checkCopiedState(Structure& structure)
+{
+  QCOMPARE(structure.getFixCount(), 3);
+  QVERIFY(structure.hasEnthalpy());
+  QCOMPARE(structure.getEnergy(), -4.5);
+  QCOMPARE(structure.getEnthalpy(), -4.0);
+  QCOMPARE(structure.getPV(), 0.5);
+
+  QCOMPARE(structure.sizeOfHistory(), 1u);
+  QList<unsigned int> atomicNums;
+  QList<Common::Vector3> coords;
+  double energy = 0.0;
+  double enthalpy = 0.0;
+  Common::Matrix3 cell;
+  structure.retrieveHistoryEntry(0, &atomicNums, &coords, &energy, &enthalpy,&cell);
+  QCOMPARE(atomicNums, QList<unsigned int>() << 8u << 14u);
+  QCOMPARE(coords.size(), 2);
+  QVERIFY(coords.at(0) == Common::Vector3(0.0, 0.0, 0.0));
+  QVERIFY(coords.at(1) == Common::Vector3(1.0, 2.0, 3.0));
+  QCOMPARE(energy, -3.5);
+  QCOMPARE(enthalpy, -3.0);
+  Common::Matrix3 expectedCell;
+  expectedCell << 4.0, 0.0, 0.0,
+                  0.0, 5.0, 0.0,
+                  0.0, 0.0, 6.0;
+  QVERIFY(cell == expectedCell);
+
+  const std::vector<Atoms::Bond>& bonds = structure.getPreoptBonding();
+  QCOMPARE(static_cast<int>(bonds.size()), 1);
+  QCOMPARE(bonds.at(0).first(), static_cast<size_t>(0));
+  QCOMPARE(bonds.at(0).second(), static_cast<size_t>(1));
+  QCOMPARE(bonds.at(0).bondOrder(), static_cast<unsigned short>(2));
+}
 }
 
 class StructureTest : public QObject
@@ -120,7 +154,7 @@ private slots:
   void workflowStateCycle();
   void stateHelpersClassifyStates();
   void workflowStateStatusText();
-  void fixCountInitializesAndCopies();
+  void copyAndMovePreserveState();
   void malformedCurrentGeometryDoesNotClearExistingAtoms();
   void generateIADHistogramSkipsDuplicateZeroTranslation();
   void perceiveBonds();
@@ -508,22 +542,54 @@ void StructureTest::workflowStateStatusText()
   QCOMPARE(invalid.statusText(true), QString("Unknown"));
 }
 
-void StructureTest::fixCountInitializesAndCopies()
+void StructureTest::copyAndMovePreserveState()
 {
   Structure record;
   QCOMPARE(record.getFixCount(), 0);
 
   record.setFixCount(3);
+  record.setEnergy(-4.5);
+  record.setEnthalpy(-4.0);
+  record.setPV(0.5);
+
+  QList<unsigned int> atomicNums;
+  atomicNums << 8u << 14u;
+  QList<Common::Vector3> coords;
+  coords << Common::Vector3(0.0, 0.0, 0.0)
+         << Common::Vector3(1.0, 2.0, 3.0);
+  Common::Matrix3 cell;
+  cell << 4.0, 0.0, 0.0,
+          0.0, 5.0, 0.0,
+          0.0, 0.0, 6.0;
+  record.appendHistoryEntry(atomicNums, coords, -3.5, -3.0, cell);
+
+  std::vector<Atoms::Bond> bonds;
+  bonds.push_back(Atoms::Bond(0, 1, 2));
+  record.setPreoptBonding(bonds);
 
   Structure copied(record);
-  QCOMPARE(copied.getFixCount(), 3);
+  checkCopiedState(copied);
 
   Structure assigned;
+  assigned.setEnergy(10.0);
+  assigned.appendHistoryEntry(QList<unsigned int>() << 1u,
+                              QList<Common::Vector3>() << Common::Vector3(9.0, 9.0, 9.0),
+                              10.0, 11.0, Common::Matrix3::Identity());
+  assigned.setPreoptBonding(std::vector<Atoms::Bond>(1, Atoms::Bond(2, 3, 1)));
   assigned = record;
-  QCOMPARE(assigned.getFixCount(), 3);
+  checkCopiedState(assigned);
 
   Structure moved(std::move(copied));
-  QCOMPARE(moved.getFixCount(), 3);
+  checkCopiedState(moved);
+
+  Structure moveAssigned;
+  moveAssigned.setEnergy(20.0);
+  moveAssigned.appendHistoryEntry(QList<unsigned int>() << 2u,
+                                  QList<Common::Vector3>() << Common::Vector3(8.0, 8.0, 8.0),
+                                  20.0, 21.0, Common::Matrix3::Identity());
+  moveAssigned.setPreoptBonding(std::vector<Atoms::Bond>(1, Atoms::Bond(3, 4, 1)));
+  moveAssigned = std::move(assigned);
+  checkCopiedState(moveAssigned);
 }
 
 void StructureTest::malformedCurrentGeometryDoesNotClearExistingAtoms()

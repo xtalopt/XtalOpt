@@ -77,7 +77,7 @@ public:
     return statuses.takeFirst();
   }
   bool prepareForStructureUpdate(Structure*) const override { return true; }
-  CommandResult runACommand(const QString&, const QString&) const override
+  CommandResult runACommand(const QString&, const QString&, int = -1) const override
   {
     CommandResult result;
     result.launched = true;
@@ -583,6 +583,10 @@ void SearchBaseTest::interpretCrystalKeywords()
   QCOMPARE(m_opt->interpretTemplate("%chemicalSpeciesLabel%", &s), QString(" 1 1 H\n 2 8 O\n"));
   QCOMPARE(m_opt->interpretTemplate("%block% lattice\n%endblock%", &s),
            QString("%block lattice\n%endblock\n"));
+  QCOMPARE(m_opt->interpretTemplate("literal % text and %% escape", &s),
+           QString("literal % text and % escape\n"));
+  QCOMPARE(m_opt->interpretTemplate("%unknown% %a% %j", &s),
+           QString("%unknown% 2 %j\n"));
 
   const QString poscar = m_opt->interpretTemplate("%POSCAR%", &s);
   QVERIFY(poscar.contains("structure-1"));

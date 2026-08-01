@@ -15,6 +15,7 @@
 
 #include <atoms/formats/formats.h>
 
+#include <atoms/geometry.h>
 #include <atoms/formats/castepformat.h>
 #include <atoms/formats/cifformat.h>
 #include <atoms/formats/cmlformat.h>
@@ -255,59 +256,62 @@ bool Formats::read(Atoms::Geometry* s, const QString& filename)
     return false;
   }
 
+  Atoms::Geometry parsed;
+  bool ok = false;
+
   if (detected.format == "CASTEP") {
     if (detected.kind == ReadOptimizerOutput)
-      return CastepFormat::readOutput(s, filename);
-    return CastepFormat::read(s, filename);
-  }
-
-  if (detected.format == "CIF")
-    return CifFormat::read(s, filename);
-
-  if (detected.format == "CML") {
+      ok = CastepFormat::readOutput(&parsed, filename);
+    else
+      ok = CastepFormat::read(&parsed, filename);
+  } else if (detected.format == "CIF") {
+    ok = CifFormat::read(&parsed, filename);
+  } else if (detected.format == "CML") {
     std::string text;
     if (!readInputText(filename, detected.format, text))
       return false;
     std::istringstream in(text);
-    return CmlFormat::read(*s, in);
-  }
-
-  if (detected.format == "GULP")
-    return GulpFormat::readOutput(s, filename);
-
-  if (detected.format == "MTP") {
+    ok = CmlFormat::read(parsed, in);
+  } else if (detected.format == "GULP") {
+    ok = GulpFormat::readOutput(&parsed, filename);
+  } else if (detected.format == "MTP") {
     if (detected.kind == ReadOptimizerOutput)
-      return MtpFormat::readOutput(s, filename);
-    return MtpFormat::read(s, filename);
-  }
-
-  if (detected.format == "POSCAR") {
+      ok = MtpFormat::readOutput(&parsed, filename);
+    else
+      ok = MtpFormat::read(&parsed, filename);
+  } else if (detected.format == "POSCAR") {
     std::string text;
     if (!readInputText(filename, detected.format, text))
       return false;
     std::istringstream in(text);
-    return PoscarFormat::read(*s, in);
-  }
-
-  if (detected.format == "PWSCF") {
+    ok = PoscarFormat::read(parsed, in);
+  } else if (detected.format == "PWSCF") {
     if (detected.kind == ReadOptimizerOutput)
-      return PwscfFormat::readOutput(s, filename);
-    return PwscfFormat::read(s, filename);
-  }
-
-  if (detected.format == "SIESTA") {
+      ok = PwscfFormat::readOutput(&parsed, filename);
+    else
+      ok = PwscfFormat::read(&parsed, filename);
+  } else if (detected.format == "SIESTA") {
     if (detected.kind == ReadOptimizerOutput)
-      return SiestaFormat::readOutput(s, filename);
-    return SiestaFormat::read(s, filename);
+      ok = SiestaFormat::readOutput(&parsed, filename);
+    else
+      ok = SiestaFormat::read(&parsed, filename);
+  } else if (detected.format == "XYZ") {
+    ok = XyzFormat::read(&parsed, filename);
+  } else {
+    Common::error(QString("Unsupported structure format: %1 for file: %2")
+                 .arg(detected.format).arg(filename));
+    return false;
   }
 
-  if (detected.format == "XYZ")
-    return XyzFormat::read(s, filename);
+  if (!ok)
+    return false;
+  if (parsed.is3D() && !Atoms::Geometry::isCellMatrixUsable(parsed.unitCell().cellMatrix())) {
+    Common::error(QString("The cell read from %1 is invalid.").arg(filename));
+    return false;
+  }
 
-  Common::error(QString("Unsupported structure format: %1 for file: %2")
-               .arg(detected.format)
-               .arg(filename));
-  return false;
+  *s = parsed;
+  return true;
 }
 
 } // namespace Atoms

@@ -152,6 +152,14 @@ XtalOptDialog::XtalOptDialog(QWidget* parent, Qt::WindowFlags f,
 XtalOptDialog::~XtalOptDialog()
 {
   this->hide();
+  delete m_tab_about;
+  delete m_tab_log;
+  delete m_tab_plot;
+  delete m_tab_progress;
+  delete m_tab_search;
+  delete m_tab_mo;
+  delete m_tab_opt;
+  delete m_tab_struc;
   delete ui;
 }
 
@@ -186,7 +194,7 @@ void XtalOptDialog::lockGUI()
 
 void XtalOptDialog::beginPlotOnlyMode()
 {
-  m_tab_progress->blockSignals(true);
+  m_tab_progress->disconnectGUI();
 
   // A QWidget will not display by itself if its parent is not displayed.
   // Thus, we need to set the parent to nullptr.

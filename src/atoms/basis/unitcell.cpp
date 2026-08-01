@@ -44,14 +44,12 @@ void UnitCell::setCellParameters(double a, double b, double c, double alpha,
 
 Common::Vector3 UnitCell::wrapFractional(const Common::Vector3& frac) const
 {
-  Common::Vector3 ret = Common::Vector3(std::fmod(frac[0], 1.0), std::fmod(frac[1], 1.0),
-                        std::fmod(frac[2], 1.0));
-  if (ret[0] < 0.0)
-    ++ret[0];
-  if (ret[1] < 0.0)
-    ++ret[1];
-  if (ret[2] < 0.0)
-    ++ret[2];
+  Common::Vector3 ret;
+  for (int i = 0; i < 3; ++i) {
+    ret[i] = frac[i] - std::floor(frac[i]);
+    if (ret[i] >= 1.0)
+      ret[i] = 0.0;
+  }
   return ret;
 }
 

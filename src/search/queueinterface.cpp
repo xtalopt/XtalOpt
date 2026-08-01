@@ -64,10 +64,7 @@ const BuiltInQueueInterfaceDefinition builtInQueueInterfaceDefinitions[] = {
 
 QString normalizedBuiltInQueueInterfaceName(const QString& name)
 {
-  QString key = name.toLower();
-  if (key == "local")
-    key = "none";
-  return key;
+  return name.toLower();
 }
 
 const BuiltInQueueInterfaceDefinition* builtInQueueInterfaceDefinition(const QString& name)
@@ -205,6 +202,12 @@ bool QueueInterface::writeHashToLocalDir(Structure* s,
 
     QTextStream stream(&file);
     stream << it.value();
+    stream.flush();
+    if (stream.status() != QTextStream::Ok || !file.flush() || file.error() != QFileDevice::NoError) {
+      Common::error(tr("Cannot write input file %1 (file writing failure)",
+                       "1 is a file path").arg(file.fileName()));
+      return false;
+    }
   }
 
   return true;
@@ -318,9 +321,15 @@ bool QueueInterface::writeCopyFilesToLocalDir(Structure* s, QStringList* extraFi
 
 bool QueueInterface::writeInputFiles(Structure* s) const
 {
+  Optimizer* optimizer = m_search->optimizer(s->getCurrentOptStep());
+  if (!optimizer) {
+    Common::error(tr("No optimizer is available for structure %1 at opt step %2.")
+                    .arg(s->getTag()).arg(s->getCurrentOptStep() + 1));
+    return false;
+  }
+
   // Check if the input files were found.
-  const QHash<QString, QString> files =
-    m_search->optimizer(s->getCurrentOptStep())->getInputFiles(s);
+  const QHash<QString, QString> files = optimizer->getInputFiles(s);
   if (files.isEmpty()) {
     Common::error(tr("No input files to write for structure %1 in opt step %2;"
                      " check the optimizer templates and input assets.")

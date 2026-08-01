@@ -24,7 +24,6 @@
 #include <search/optimizers/optimizers.h>
 
 #include <QFile>
-#include <QFileInfo>
 #include <QIODevice>
 #include <QReadLocker>
 #include <QString>
@@ -178,12 +177,8 @@ QHash<QString, QString> Optimizer::inputAssetTextToMap(const QString& text)
   return assets;
 }
 
-bool Optimizer::readSavedInputAssetValue(const QString& assetValue, QString& contents,
-                                         QString* sourceFilename)
+bool Optimizer::readSavedInputAssetValue(const QString& assetValue, QString& contents)
 {
-  if (sourceFilename)
-    sourceFilename->clear();
-
   const QString trimmed = assetValue.trimmed();
   if (!trimmed.startsWith("%fileContents:", Qt::CaseInsensitive) || !trimmed.endsWith("%")) {
     contents = assetValue;
@@ -193,8 +188,6 @@ bool Optimizer::readSavedInputAssetValue(const QString& assetValue, QString& con
   QString filename = trimmed.mid(QString("%fileContents:").size());
   filename.chop(1);
   filename = filename.trimmed();
-  if (sourceFilename)
-    *sourceFilename = QFileInfo(filename).fileName();
 
   if (!Common::readFileToQString(filename, &contents)) {
     Common::error(QString("%1: could not open %2")
@@ -382,6 +375,8 @@ bool Optimizer::update(Structure* structure)
   locker.unlock();
   bool ok = queue->prepareForStructureUpdate(structure);
   locker.relock();
+  if (structure->getStatus() != Structure::Updating)
+    return false;
   if (!ok) {
     Common::warning(tr("%1: could not prepare to update structure %2"
                        " of opt step %3")

@@ -130,19 +130,18 @@ std::vector<Reflection> calculateReflections(const Atoms::Geometry& structure, d
   const Common::Vector3 bStar = reciprocalVectorB(cell);
   const Common::Vector3 cStar = reciprocalVectorC(cell);
 
-  // Set one reflection index limit from the shortest reciprocal cell vector.
-  const double minReciprocalBasisNorm = std::min({aStar.norm(), bStar.norm(), cStar.norm()});
-  const int maxIndex = std::max(
-    1, static_cast<int>(std::ceil(maxReciprocalNorm / minReciprocalBasisNorm)) + 2);
+  const int maxH = std::max(1, static_cast<int>(std::ceil(maxReciprocalNorm * cell.aVector().norm())));
+  const int maxK = std::max(1, static_cast<int>(std::ceil(maxReciprocalNorm * cell.bVector().norm())));
+  const int maxL = std::max(1, static_cast<int>(std::ceil(maxReciprocalNorm * cell.cVector().norm())));
 
   std::vector<Common::Vector3> fractionalCoords;
   fractionalCoords.reserve(structure.numAtoms());
   for (const auto& atom : structure.atoms())
     fractionalCoords.push_back(cell.toFractional(atom.pos()));
 
-  for (int h = -maxIndex; h <= maxIndex; ++h) {
-    for (int k = -maxIndex; k <= maxIndex; ++k) {
-      for (int l = -maxIndex; l <= maxIndex; ++l) {
+  for (int h = -maxH; h <= maxH; ++h) {
+    for (int k = -maxK; k <= maxK; ++k) {
+      for (int l = -maxL; l <= maxL; ++l) {
         if (h == 0 && k == 0 && l == 0)
           continue;
 

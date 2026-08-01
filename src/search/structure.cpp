@@ -314,6 +314,10 @@ Structure& Structure::operator=(const Structure& other)
   if (this != &other) {
     Atoms::Geometry::operator=(static_cast<const Atoms::Geometry&>(other));
 
+    m_hasEnthalpy = other.m_hasEnthalpy;
+    m_energy = other.m_energy;
+    m_enthalpy = other.m_enthalpy;
+    m_PV = other.m_PV;
     m_updatedSinceSimChecked = other.m_updatedSinceSimChecked.load();
     m_generation = other.m_generation;
     m_id = other.m_id;
@@ -330,9 +334,15 @@ Structure& Structure::operator=(const Structure& other)
     m_optStart = other.m_optStart;
     m_optEnd = other.m_optEnd;
     m_index = other.m_index.load();
+    m_histAtomicNums = other.m_histAtomicNums;
+    m_histEnthalpies = other.m_histEnthalpies;
+    m_histEnergies = other.m_histEnergies;
+    m_histCoords = other.m_histCoords;
+    m_histCells = other.m_histCells;
     m_parentStructure = other.m_parentStructure;
     m_copyFiles = other.m_copyFiles;
     m_reusePreoptBonding = other.m_reusePreoptBonding;
+    m_preoptBonds = other.m_preoptBonds;
     m_strucObjValues = other.m_strucObjValues;
     m_strucConstraintValues = other.m_strucConstraintValues;
     m_strucObjState = ObjectivesState(other.m_strucObjState);
@@ -349,6 +359,10 @@ Structure& Structure::operator=(Structure&& other) noexcept
   if (this != &other) {
     Atoms::Geometry::operator=(static_cast<Atoms::Geometry&&>(other));
 
+    m_hasEnthalpy = other.m_hasEnthalpy;
+    m_energy = other.m_energy;
+    m_enthalpy = other.m_enthalpy;
+    m_PV = other.m_PV;
     m_updatedSinceSimChecked = other.m_updatedSinceSimChecked.load();
     m_generation = std::move(other.m_generation);
     m_id = std::move(other.m_id);
@@ -365,6 +379,11 @@ Structure& Structure::operator=(Structure&& other) noexcept
     m_optStart = std::move(other.m_optStart);
     m_optEnd = std::move(other.m_optEnd);
     m_index = other.m_index.load();
+    m_histAtomicNums = std::move(other.m_histAtomicNums);
+    m_histEnthalpies = std::move(other.m_histEnthalpies);
+    m_histEnergies = std::move(other.m_histEnergies);
+    m_histCoords = std::move(other.m_histCoords);
+    m_histCells = std::move(other.m_histCells);
     m_parentStructure = std::move(other.m_parentStructure);
 
     // We never delete the parent pointer; just clear it in the moved-from
@@ -372,6 +391,7 @@ Structure& Structure::operator=(Structure&& other) noexcept
     other.m_parentStructure = nullptr;
     m_copyFiles = std::move(other.m_copyFiles);
     m_reusePreoptBonding = std::move(other.m_reusePreoptBonding);
+    m_preoptBonds = std::move(other.m_preoptBonds);
     m_strucObjValues = std::move(other.m_strucObjValues);
     m_strucConstraintValues = std::move(other.m_strucConstraintValues);
     m_strucObjState = std::move(ObjectivesState(other.m_strucObjState));
@@ -396,18 +416,20 @@ void Structure::structureChanged()
   m_updatedSinceSimChecked = true;
 }
 
-void Structure::updateAndSkipHistory(const QList<unsigned int>& atomicNums,
+bool Structure::updateAndSkipHistory(const QList<unsigned int>& atomicNums,
                                      const QList<Common::Vector3>& coords,
                                      const double energy, const double enthalpy,
                                      const Common::Matrix3& cell)
 {
-  Q_ASSERT_X(atomicNums.size() == coords.size() && coords.size() == static_cast<int>(numAtoms()),
-             Q_FUNC_INFO, "Lengths of atomicNums and coords must match numAtoms().");
+  Q_ASSERT_X(atomicNums.size() == coords.size(), Q_FUNC_INFO,
+             "Lengths of atomicNums and coords must match.");
+  if (atomicNums.size() != coords.size() ||
+      (!cell.isZero() && !Atoms::Geometry::isCellMatrixUsable(cell)))
+    return false;
 
-  for (int i = 0; i < static_cast<int>(numAtoms()); i++) {
-    atoms()[i].setAtomicNumber(atomicNums.at(i));
-    atoms()[i].setPos(coords.at(i));
-  }
+  clearAtoms();
+  for (int i = 0; i < atomicNums.size(); ++i)
+    addAtom(atomicNums.at(i), coords.at(i));
 
   // enthalpy ~0 means none was reported
   if (fabs(enthalpy) < ZERO06) {
@@ -423,9 +445,10 @@ void Structure::updateAndSkipHistory(const QList<unsigned int>& atomicNums,
 
   // Mark the structure for the next similarity check.
   structureChanged();
+  return true;
 }
 
-void Structure::updateAndAddToHistory(const QList<unsigned int>& atomicNums,
+bool Structure::updateAndAddToHistory(const QList<unsigned int>& atomicNums,
                                       const QList<Common::Vector3>& coords,
                                       const double energy,
                                       const double enthalpy,
@@ -433,6 +456,8 @@ void Structure::updateAndAddToHistory(const QList<unsigned int>& atomicNums,
 {
   Q_ASSERT_X(atomicNums.size() == coords.size(), Q_FUNC_INFO,
              "Lengths of atomicNums and coords must match numAtoms().");
+  if (atomicNums.size() != coords.size() || (!cell.isZero() && !Atoms::Geometry::isCellMatrixUsable(cell)))
+    return false;
 
   // Update history
   m_histAtomicNums.append(atomicNums);
@@ -470,9 +495,10 @@ void Structure::updateAndAddToHistory(const QList<unsigned int>& atomicNums,
 
   // Mark the structure for the next similarity check.
   structureChanged();
+  return true;
 }
 
-void Structure::updateAndAddToHistory(const Atoms::Geometry& structure, const double energy,
+bool Structure::updateAndAddToHistory(const Atoms::Geometry& structure, const double energy,
   const double enthalpy)
 {
   QList<unsigned int> atomicNums;
@@ -482,7 +508,7 @@ void Structure::updateAndAddToHistory(const Atoms::Geometry& structure, const do
     coords.append(atom.pos());
   }
 
-  updateAndAddToHistory(atomicNums, coords, energy, enthalpy,
+  return updateAndAddToHistory(atomicNums, coords, energy, enthalpy,
     structure.is3D() ? structure.unitCell().cellMatrix() : Common::Matrix3::Zero());
 }
 

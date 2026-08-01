@@ -225,7 +225,7 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="5" rowspan="11">
+   <item row="0" column="5" rowspan="13">
     <widget class="QTextEdit" name="edit_edit">
      <property name="sizePolicy">
       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
@@ -411,7 +411,40 @@
      </property>
     </widget>
    </item>
-   <item row="6" column="0">
+   <item row="6" column="0" colspan="5">
+    <layout class="QVBoxLayout" name="verticalLayout_jobTimeoutDivider">
+     <property name="margin">
+      <number>0</number>
+     </property>
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <spacer name="verticalSpacer_jobTimeoutDivider">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>4</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="Line" name="line_jobTimeout">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="9" column="0">
     <widget class="QLabel" name="label">
      <property name="font">
       <font>
@@ -426,7 +459,7 @@
      </property>
     </widget>
    </item>
-   <item row="7" column="0">
+   <item row="10" column="0">
     <widget class="QLabel" name="label_2">
      <property name="font">
       <font>
@@ -441,7 +474,7 @@
      </property>
     </widget>
    </item>
-   <item row="8" column="0">
+   <item row="11" column="0">
     <widget class="QLabel" name="label_3">
      <property name="font">
       <font>
@@ -456,7 +489,7 @@
      </property>
     </widget>
    </item>
-   <item row="9" column="0">
+   <item row="12" column="0">
     <widget class="QLabel" name="label_4">
      <property name="font">
       <font>
@@ -471,7 +504,7 @@
      </property>
     </widget>
    </item>
-   <item row="6" column="1" colspan="4">
+   <item row="9" column="1" colspan="4">
     <widget class="QLineEdit" name="edit_user1">
      <property name="minimumSize">
       <size>
@@ -486,7 +519,7 @@
      </property>
     </widget>
    </item>
-   <item row="7" column="1" colspan="4">
+   <item row="10" column="1" colspan="4">
     <widget class="QLineEdit" name="edit_user2">
      <property name="minimumSize">
       <size>
@@ -501,7 +534,7 @@
      </property>
     </widget>
    </item>
-   <item row="8" column="1" colspan="4">
+   <item row="11" column="1" colspan="4">
     <widget class="QLineEdit" name="edit_user3">
      <property name="minimumSize">
       <size>
@@ -516,7 +549,7 @@
      </property>
     </widget>
    </item>
-   <item row="9" column="1" colspan="4">
+   <item row="12" column="1" colspan="4">
     <widget class="QLineEdit" name="edit_user4">
      <property name="minimumSize">
       <size>
@@ -531,7 +564,14 @@
      </property>
     </widget>
    </item>
-   <item row="10" column="0" colspan="5">
+   <item row="8" column="0" colspan="5">
+    <widget class="Line" name="line_userFields">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="0" colspan="5">
     <layout class="QHBoxLayout" name="horizontalLayout_jobTimeout">
      <item>
       <widget class="QCheckBox" name="cb_cancelJobAfterTime">
@@ -626,6 +666,8 @@
   <tabstop>push_help</tabstop>
   <tabstop>push_saveScheme</tabstop>
   <tabstop>push_loadScheme</tabstop>
+  <tabstop>cb_cancelJobAfterTime</tabstop>
+  <tabstop>spin_hoursForCancelJobAfterTime</tabstop>
   <tabstop>edit_user1</tabstop>
   <tabstop>edit_user2</tabstop>
   <tabstop>edit_user3</tabstop>

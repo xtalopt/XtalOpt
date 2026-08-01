@@ -20,6 +20,7 @@
 #include <atoms/geometry.h>
 
 #include <algorithm> // for std::count()
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -67,17 +68,32 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
   // Next line is scaling factor
   getline(in, line);
   double scalingFactor;
-  stringSplit = Common::split(line, ' ');
-  if (stringSplit.empty() || !Common::parseDoubleString(stringSplit[0], scalingFactor)) {
+  double scalingFactors[3];
+  stringSplit = Common::split(Common::reduce(line), ' ');
+  const size_t scalingFactorCount = stringSplit.size();
+  if ((stringSplit.size() != 1 && stringSplit.size() != 3) ||
+      !Common::parseDoubleString(stringSplit[0], scalingFactor)) {
     Common::error("Could not read scaling factor in POSCAR");
     return false;
+  }
+  scalingFactors[0] = scalingFactor;
+  scalingFactors[1] = scalingFactor;
+  scalingFactors[2] = scalingFactor;
+  if (stringSplit.size() == 3) {
+    for (size_t i = 0; i < 3; ++i) {
+      if (!Common::parseDoubleString(stringSplit[i], scalingFactors[i]) ||
+          scalingFactors[i] <= 0.0) {
+        Common::error("Could not read scaling factors in POSCAR");
+        return false;
+      }
+    }
   }
 
   // Next comes the matrix
   Common::Matrix3 cellMat;
   for (size_t i = 0; i < 3; ++i) {
     getline(in, line);
-    stringSplit = Common::split(line, ' ');
+    stringSplit = Common::split(Common::reduce(line), ' ');
     // If this is not three, then there is some kind of error in the line
     if (stringSplit.size() != 3) {
       Common::error("Could not read lattice vectors in POSCAR");
@@ -91,14 +107,33 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
       Common::error("Could not read lattice vectors in POSCAR");
       return false;
     }
-    cellMat(i, 0) = v0 * scalingFactor;
-    cellMat(i, 1) = v1 * scalingFactor;
-    cellMat(i, 2) = v2 * scalingFactor;
+    cellMat(i, 0) = v0;
+    cellMat(i, 1) = v1;
+    cellMat(i, 2) = v2;
   }
+
+  if (scalingFactor < 0.0) {
+    if (scalingFactorCount != 1) {
+      Common::error("POSCAR target volume requires one scaling factor");
+      return false;
+    }
+    const double rawVolume = std::fabs(cellMat.determinant());
+    if (rawVolume == 0.0) {
+      Common::error("Could not apply the target volume in POSCAR");
+      return false;
+    }
+    scalingFactor = std::pow(-scalingFactor / rawVolume, 1.0 / 3.0);
+    scalingFactors[0] = scalingFactor;
+    scalingFactors[1] = scalingFactor;
+    scalingFactors[2] = scalingFactor;
+  }
+  for (size_t i = 0; i < 3; ++i)
+    for (size_t j = 0; j < 3; ++j)
+      cellMat(i, j) *= scalingFactors[j];
 
   // Sometimes, atomic symbols go here.
   getline(in, line);
-  stringSplit = Common::split(line, ' ');
+  stringSplit = Common::split(Common::reduce(line), ' ');
 
   if (stringSplit.empty()) {
     Common::error("Could not read numbers of atom types in POSCAR");
@@ -113,7 +148,7 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
 
   if (!isInt) {
     // Assume atomic symbols are here and store them
-    symbolsList = Common::split(line, ' ');
+    symbolsList = Common::split(Common::reduce(line), ' ');
     // Store atomic nums
     for (size_t i = 0; i < symbolsList.size(); ++i) {
       // This is to handle VASP compiled with HDF5 where "/..."
@@ -127,7 +162,7 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
   // If the atomic symbols aren't here, try to find them in the title
   // In Vasp 4.x, symbols are in the title like so: " O4H2 <restOfTitle>"
   else {
-    stringSplit = Common::split(title, ' ');
+    stringSplit = Common::split(Common::reduce(title), ' ');
     if (stringSplit.size() != 0) {
       string trimFormula = Common::trim(stringSplit.at(0));
       // Let's replace all numbers with spaces
@@ -136,7 +171,7 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
           trimFormula[i] = ' ';
       }
       // Now get the symbols with a simple space split
-      symbolsList = Common::split(trimFormula, ' ');
+      symbolsList = Common::split(Common::reduce(trimFormula), ' ');
       for (size_t i = 0; i < symbolsList.size(); ++i) {
         // This is to handle VASP compiled with HDF5 where "/..."
         //   might appear after species symbol
@@ -146,7 +181,7 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
     }
   }
 
-  stringSplit = Common::split(line, ' ');
+  stringSplit = Common::split(Common::reduce(line), ' ');
   vector<unsigned int> atomCounts;
   for (size_t i = 0; i < stringSplit.size(); ++i) {
     int count;
@@ -208,7 +243,7 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
   for (size_t i = 0; i < atomCounts.size(); ++i) {
     for (size_t j = 0; j < atomCounts[i]; ++j) {
       getline(in, line);
-      stringSplit = Common::split(line, ' ');
+      stringSplit = Common::split(Common::reduce(line), ' ');
       // This may be greater than 3 with selective dynamics
       if (stringSplit.size() < 3) {
         Common::error("Could not read atomic coordinates in POSCAR.");
@@ -237,7 +272,9 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
   // If they're already cartesian, we just need to apply the scaling factor
   else {
     for (auto& atom : atoms)
-      atom.setPos(atom.pos() * scalingFactor);
+      atom.setPos(Common::Vector3(atom.pos()[0] * scalingFactors[0],
+                                  atom.pos()[1] * scalingFactors[1],
+                                  atom.pos()[2] * scalingFactors[2]));
   }
 
   // Success! Now let's add the unit cell and the atoms!

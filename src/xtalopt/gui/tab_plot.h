@@ -114,6 +114,7 @@ public slots:
   void disconnectGUI() override;
   void enablePlotUpdate() { m_enablePlotUpdate = true; };
   void disablePlotUpdate() { m_enablePlotUpdate = false; };
+  void releaseStructureReferences();
   void refreshPlot();
   void savePlotImage();
   void updatePlot();

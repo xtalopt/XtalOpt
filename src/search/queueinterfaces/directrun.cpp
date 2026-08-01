@@ -25,6 +25,9 @@
 #include <search/structure.h>
 
 #include <QDir>
+#include <QCoreApplication>
+#include <QElapsedTimer>
+#include <QEvent>
 #include <QHash>
 #include <QMetaObject>
 #include <QProcess>
@@ -83,14 +86,6 @@ void directRunProcessCall(DirectRunProcess* proc, const char* method)
     return;
 
   QMetaObject::invokeMethod(proc, method, directRunProcessConnectionType(proc));
-}
-
-void directRunProcessCallInt(DirectRunProcess* proc, const char* method, int arg)
-{
-  if (!proc)
-    return;
-
-  QMetaObject::invokeMethod(proc, method, directRunProcessConnectionType(proc), Q_ARG(int, arg));
 }
 
 void deleteDirectRunProcess(DirectRunProcess* proc)
@@ -153,17 +148,23 @@ void DirectRunInterface::prepareForThreadStop()
       directRunProcessCall(proc.data(), "terminateAndKill");
     }
   }
+  processes.clear();
 
   // Check the process thread.
   if (!m_processHost)
     return;
 
   QThread* hostThread = m_processHost->thread();
-  if (!hostThread || hostThread == QThread::currentThread() || !hostThread->isRunning()) {
-    delete m_processHost;
-  } else {
-    QMetaObject::invokeMethod(m_processHost, "deleteLater", Qt::QueuedConnection);
+
+  if (hostThread && hostThread != QThread::currentThread() &&
+      hostThread->isRunning()) {
+    QMetaObject::invokeMethod(m_processHost, "flushDeferredDeletes", Qt::BlockingQueuedConnection);
+    m_processHost->deleteLater();
+    m_processHost = nullptr;
+    return;
   }
+
+  delete m_processHost;
   m_processHost = nullptr;
 }
 
@@ -180,7 +181,12 @@ DirectRunProcess* DirectRunProcessHost::startProcess(
   if (!stderrFile.isEmpty())
     proc->setStandardErrorFile(stderrFile);
 
+#if GS_WINDOWS
+  proc->setNativeArguments("/S /C \"" + command + "\"");
+  proc->start("cmd.exe");
+#else
   QtCompat::processStartCommand(*proc, command);
+#endif
 
   if (!proc->waitForStarted(startTimeoutMs)) {
     Common::error(QObject::tr("%1: failed to start direct run in %2: %3")
@@ -205,6 +211,11 @@ DirectRunProcess* DirectRunProcessHost::startProcess(
   }
 
   return proc;
+}
+
+void DirectRunProcessHost::flushDeferredDeletes()
+{
+  QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
 }
 
 bool DirectRunInterface::isReadyToSearch(QString* str)
@@ -246,10 +257,6 @@ bool DirectRunInterface::startJob(Structure* s)
   // Use the optimizer command as-is; it may be a PATH name, an absolute
   // path, or a user-provided command line.
   QString command = getCurrentOptimizer(s)->getDirectRunCommand();
-
-#if GS_WINDOWS
-  command = "cmd.exe /S /C " + command;
-#endif // GS_WINDOWS
 
   const Optimizer* optimizer = getCurrentOptimizer(s);
 
@@ -338,14 +345,23 @@ bool DirectRunInterface::stopJob(Structure* s)
   }
   if (!proc) {
     // No process associated with this JobID.
+    QWriteLocker locker(&s->lock());
+    s->setJobID(0);
+    s->stopOptTimer();
     return true;
   }
 
   // Stop the process.
+  bool stopped = true;
   if (directRunProcessInt(proc.data(), "processStateValue",
                           static_cast<int>(QProcess::NotRunning)) ==
       static_cast<int>(QProcess::Running)) {
-    directRunProcessCallInt(proc.data(), "killAndWait", PROCESS_KILL_TIMEOUT);
+    stopped = directRunProcessInt(proc.data(), "killAndWait", 0) != 0;
+  }
+  if (!stopped) {
+    QtCompat::MutexLocker locker(&m_processesMutex);
+    m_processes.insert(pid, proc);
+    return false;
   }
 
   {
@@ -442,6 +458,10 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
         bool success = false;
         if (!getCurrentOptimizer(s)->checkForSuccessfulOutput(s, &success))
           return QueueInterface::CommunicationError;
+        if (success) {
+          QtCompat::MutexLocker locker(&m_processesMutex);
+          m_processes.remove(pid);
+        }
         return success ? QueueInterface::Success : QueueInterface::Error;
       }
     case DirectRunProcess::Error:
@@ -470,7 +490,7 @@ bool DirectRunInterface::prepareForStructureUpdate(Structure* /*s*/) const
 }
 
 QueueInterface::CommandResult DirectRunInterface::runACommand(
-  const QString& workdir, const QString& command) const
+  const QString& workdir, const QString& command, int timeoutMs) const
 {
   // QProcess stderr is unreliable for direct runs (e.g. srun writes to stderr
   // on success), so don't fail on stderr or exit code; just warn on either.
@@ -487,12 +507,30 @@ QueueInterface::CommandResult DirectRunInterface::runACommand(
         .arg(command).arg(workdir).arg(result.stderrText));
     return result;
   }
-  proc.waitForFinished(-1);
+  QElapsedTimer timer;
+  timer.start();
+  bool finished = false;
+  while (!finished && !m_search->isShuttingDown()) {
+    const qint64 remaining = timeoutMs < 0 ? 100 : static_cast<qint64>(timeoutMs) - timer.elapsed();
+    if (remaining <= 0)
+      break;
+    finished = proc.waitForFinished(static_cast<int>(qMin<qint64>(remaining, 100)));
+  }
+  const bool stopped = !finished;
+  if (stopped) {
+    proc.terminate();
+    if (!proc.waitForFinished(1000)) {
+      proc.kill();
+      proc.waitForFinished(PROCESS_KILL_TIMEOUT);
+    }
+  }
 
   result.launched = true;
   result.stdoutText = QString(proc.readAllStandardOutput());
   result.stderrText = QString(proc.readAllStandardError());
-  result.exitCode = proc.exitCode();
+  result.exitCode = stopped ? -1 : proc.exitCode();
+  if (stopped)
+    result.stderrText += tr("Command was stopped before it finished.");
 
   if (!result.stderrText.isEmpty() || (result.exitCode != 0)) {
     Common::warning(tr("Direct command %1 at %2 exited with code %3 and error: %4")

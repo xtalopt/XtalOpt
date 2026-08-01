@@ -43,6 +43,9 @@ void FileUtilsTest::remotePathUsesPosixPathRules()
   QCOMPARE(Common::remotePath("/remote/base/", "child"), QString("/remote/base/child"));
   QCOMPARE(Common::remotePath("~/work", "child"), QString("~/work/child"));
   QCOMPARE(Common::remotePath("/remote/base", "/absolute"), QString("/absolute"));
+  QCOMPARE(Common::quoteRemotePath("/remote/a b"), QString("'/remote/a b'"));
+  QCOMPARE(Common::quoteRemotePath("~/a b"), QString("~/'a b'"));
+  QCOMPARE(Common::quoteRemotePath("~"), QString("~"));
 }
 
 QTEST_MAIN(FileUtilsTest)

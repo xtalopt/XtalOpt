@@ -43,6 +43,7 @@
 #include <QRectF>
 #include <QReadWriteLock>
 #include <QSettings>
+#include <QSignalBlocker>
 
 #include <qwt_plot_canvas.h>
 #include <qwt_plot_renderer.h>
@@ -141,12 +142,15 @@ TabPlot::TabPlot(Search::AbstractDialog* parent, XtalOpt* p)
             else
               enablePlotUpdate();
           });
+  connect(m_search, &Search::SearchBase::structuresAboutToBeDeleted,
+          this, &TabPlot::releaseStructureReferences);
 
   initialize();
 }
 
 TabPlot::~TabPlot()
 {
+  releaseStructureReferences();
   delete m_plot_mutex;
 }
 
@@ -172,6 +176,14 @@ void TabPlot::refreshPlot()
   ui.plot->setAxisAutoScale(QwtPlot::yLeft);
   ui.plot->setAxisAutoScale(QwtPlot::xBottom);
   updatePlot();
+}
+
+void TabPlot::releaseStructureReferences()
+{
+  QWriteLocker locker(m_plot_mutex);
+  m_context_xtal = nullptr;
+  m_marker_xtal_map.clear();
+  ui.plot->clearAll();
 }
 
 void TabPlot::savePlotImage()
@@ -252,6 +264,18 @@ void TabPlot::updatePlot()
   const int dynamicValuesNum = userObjectivesNum + constraintsNum;
   int numaxisitems = dynamicValuesNum + Objectivei_T;
   int numsymbitems = dynamicValuesNum + Objectivei_L;
+  const int xSelection = ui.combo_xAxis->currentIndex();
+  const int ySelection = ui.combo_yAxis->currentIndex();
+  const int labelSelection = ui.combo_labelType->currentIndex();
+  const QSignalBlocker xBlocker(ui.combo_xAxis);
+  const QSignalBlocker yBlocker(ui.combo_yAxis);
+  const QSignalBlocker labelBlocker(ui.combo_labelType);
+  while (ui.combo_xAxis->count() > Objectivei_T)
+    ui.combo_xAxis->removeItem(Objectivei_T);
+  while (ui.combo_yAxis->count() > Objectivei_T)
+    ui.combo_yAxis->removeItem(Objectivei_T);
+  while (ui.combo_labelType->count() > Objectivei_L)
+    ui.combo_labelType->removeItem(Objectivei_L);
   ui.combo_xAxis->setMaxCount(numaxisitems);
   ui.combo_yAxis->setMaxCount(numaxisitems);
   ui.combo_labelType->setMaxCount(numsymbitems);
@@ -265,6 +289,9 @@ void TabPlot::updatePlot()
       ui.combo_yAxis->addItem(tr("Constraint%1").arg(i+1));
       ui.combo_labelType->addItem(tr("Constraint%1").arg(i+1));
   }
+  ui.combo_xAxis->setCurrentIndex(qMin(xSelection, ui.combo_xAxis->count() - 1));
+  ui.combo_yAxis->setCurrentIndex(qMin(ySelection, ui.combo_yAxis->count() - 1));
+  ui.combo_labelType->setCurrentIndex(qMin(labelSelection, ui.combo_labelType->count() - 1));
 
   plotTrends();
 
@@ -630,13 +657,16 @@ void TabPlot::plotTrends()
           s = xtal->getSpaceGroupSymbol();
           break;
         case Enthalpy_L:
-          s = QString::number(xtal->getEnthalpy(), 'g', 5);
+          if (GS_ISFINITE(xtal->getEnthalpy()))
+            s = QString::number(xtal->getEnthalpy(), 'g', 5);
           break;
         case Enthalpy_per_Atm_L:
-          s = QString::number(xtal->getEnthalpyPerAtom(), 'g', 5);
+          if (GS_ISFINITE(xtal->getEnthalpyPerAtom()))
+            s = QString::number(xtal->getEnthalpyPerAtom(), 'g', 5);
           break;
         case AboveHull_per_Atm_L:
-          s = QString::number(xtal->getDistAboveHull(), 'g', 5);
+          if (GS_ISFINITE(xtal->getDistAboveHull()))
+            s = QString::number(xtal->getDistAboveHull(), 'g', 5);
           break;
         case ParetoFront_L:
           s = QString::number(xtal->getParetoFront());
@@ -645,13 +675,16 @@ void TabPlot::plotTrends()
           s = QString::number(xtal->numAtoms());
           break;
         case Energy_L:
-          s = QString::number(xtal->getEnergy(), 'g', 5);
+          if (GS_ISFINITE(xtal->getEnergy()))
+            s = QString::number(xtal->getEnergy(), 'g', 5);
           break;
         case PV_L:
-          s = QString::number(xtal->getPV(), 'g', 5);
+          if (GS_ISFINITE(xtal->getPV()))
+            s = QString::number(xtal->getPV(), 'g', 5);
           break;
         case Volume_per_Atm_L:
-          s = QString::number(xtal->getVolumePerAtom(), 'g', 5);
+          if (GS_ISFINITE(xtal->getVolumePerAtom()))
+            s = QString::number(xtal->getVolumePerAtom(), 'g', 5);
           break;
         case Generation_L:
           s = QString::number(xtal->getGeneration());
@@ -674,12 +707,14 @@ void TabPlot::plotTrends()
             const int dynamicIndex = labelType - Objectivei_L;
             if (dynamicIndex < userObjectivesNum) {
               const int objectiveIndex = xtalopt->getUserObjectiveIndex(dynamicIndex);
-              if (objectiveIndex < xtal->getStrucObjNumber())
+              if (objectiveIndex < xtal->getStrucObjNumber() && GS_ISFINITE(xtal->getStrucObjValues(objectiveIndex))) {
                 s = QString::number(xtal->getStrucObjValues(objectiveIndex));
+              }
             } else {
               const int constraintIndex = dynamicIndex - userObjectivesNum;
-              if (constraintIndex < xtal->getStrucConstraintNumber())
+              if (constraintIndex < xtal->getStrucConstraintNumber() && GS_ISFINITE(xtal->getStrucConstraintValues(constraintIndex))) {
                 s = QString::number(xtal->getStrucConstraintValues(constraintIndex));
+              }
             }
           } else {
             s = xtal->getSpaceGroupSymbol();

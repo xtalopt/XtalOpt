@@ -17,9 +17,7 @@ NOTE on Qt and Qwt: XtalOpt is also linked against the Qt framework and the Qwt
 library, which are NOT vendored here. The version and edition of Qt/Qwt are
 chosen at build time (e.g. Qt5 vs Qt6, any Qwt, or even a commercial Qt edition
 with different terms), so their license notices cannot be fixed in this source
-tree. For binary packages that bundle Qt/Qwt, the appropriate license texts and
-notices for the actually-bundled versions are provided with the package at
-packaging time, not in this file.
+tree. This file contains a common open-source license for these dependencies.
 
 
 --------------------------------------------------------------------------------

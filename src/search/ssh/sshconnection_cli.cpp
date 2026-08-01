@@ -22,6 +22,7 @@
 #include <search/ssh/sshmanager_cli.h>
 
 #include <common/compatibility/qt_compat.h>
+#include <QElapsedTimer>
 #include <QProcess>
 #include <QStandardPaths>
 
@@ -33,29 +34,13 @@ QString commandString(const QString& program, const QStringList& args)
   return program + " " + args.join(" ");
 }
 
-QString shellSingleQuote(const QString& text)
-{
-  QString quoted = text;
-  quoted.replace("'", "'\\''");
-  return "'" + quoted + "'";
-}
-
-QString shellSingleQuoteRemotePath(const QString& text)
-{
-  if (text == "~")
-    return text;
-  if (text.startsWith("~/"))
-    return "~/" + shellSingleQuote(text.mid(2));
-  return shellSingleQuote(text);
-}
-
 // Quote remote paths so they cannot become shell syntax, while keeping a
 // leading "~/" outside the quotes so the remote shell still expands it.
 QStringList quoteRemotePathArgs(const QStringList& args)
 {
   QStringList quoted;
   for (const auto& arg : args)
-    quoted << shellSingleQuoteRemotePath(arg);
+    quoted << Common::quoteRemotePath(arg);
   return quoted;
 }
 
@@ -76,10 +61,13 @@ struct ProcessResult
   }
 };
 
-ProcessResult runCliSshCommand(const QString& program, const QStringList& args, int timeoutMs)
+ProcessResult runCliSshCommand(const QString& program, const QStringList& args,
+                              int timeoutMs, const std::atomic<bool>* cancel = nullptr)
 {
   ProcessResult result;
   QProcess proc;
+  QElapsedTimer timer;
+  timer.start();
   proc.start(program, args);
 
   if (!proc.waitForStarted(timeoutMs)) {
@@ -89,7 +77,14 @@ ProcessResult runCliSshCommand(const QString& program, const QStringList& args, 
 
   result.started = true;
   proc.closeWriteChannel();
-  result.finished = proc.waitForFinished(timeoutMs);
+  while (!result.finished) {
+    if (cancel && cancel->load())
+      break;
+    const qint64 remaining = timeoutMs < 0 ? 100 : static_cast<qint64>(timeoutMs) - timer.elapsed();
+    if (remaining <= 0)
+      break;
+    result.finished = proc.waitForFinished(static_cast<int>(qMin<qint64>(remaining, 100)));
+  }
   if (!result.finished) {
     proc.kill();
     proc.waitForFinished(PROCESS_KILL_TIMEOUT);
@@ -206,10 +201,11 @@ bool SSHConnectionCLI::precheck(QString* error)
 
 bool SSHConnectionCLI::execute(const QString& command, QString& stdout_str,
                                QString& stderr_str, int& exitcode,
-                               bool /*printWarning*/)
+                               bool /*printWarning*/, int timeoutMs,
+                               const std::atomic<bool>* cancel)
 {
   return this->executeSSH(command, QStringList(), &stdout_str, &stderr_str,
-                          &exitcode);
+                          &exitcode, timeoutMs, cancel);
 }
 
 bool SSHConnectionCLI::copyFileToServer(const QString& localpath,
@@ -256,12 +252,30 @@ bool SSHConnectionCLI::readRemoteDirectoryContents(const QString& remotepath,
                                                    QStringList& contents)
 {
   QString contents_str;
-  const QString command = "find " + shellSingleQuoteRemotePath(remotepath) +
-    " -mindepth 1 -maxdepth 1 -exec ls -Fd -- {} \\;";
+  const bool fromHome = remotepath == "~" || remotepath.startsWith("~/");
+  QString findPath = remotepath;
+  if (fromHome) {
+    findPath = remotepath == "~" ? "." : remotepath.mid(2);
+    if (findPath.isEmpty())
+      findPath = ".";
+  }
+  while (findPath.size() > 1 && findPath.endsWith('/'))
+    findPath.chop(1);
+
+  const QString command = (fromHome ? "cd ~ && " : QString()) +
+                          "find " + Common::quoteRemotePath(findPath) +
+                          " -mindepth 1 -print";
   if (!this->executeSSH(command, QStringList(), &contents_str)) {
     return false;
   }
   contents = contents_str.split("\n", QtCompat::SkipEmptyParts);
+  if (fromHome) {
+    for (auto& entry : contents) {
+      while (entry.startsWith("./"))
+        entry.remove(0, 2);
+      entry = Common::remotePath("~", entry);
+    }
+  }
   return true;
 }
 
@@ -274,7 +288,7 @@ bool SSHConnectionCLI::removeRemoteDirectory(const QString& remotepath,
     return false;
   }
 
-  const QString target = shellSingleQuoteRemotePath(remotepath);
+  const QString target = Common::quoteRemotePath(remotepath);
   const QString command =
     onlyDeleteContents ? "find " + target + " -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +"
                        : "rm -rf -- " + target;
@@ -283,7 +297,8 @@ bool SSHConnectionCLI::removeRemoteDirectory(const QString& remotepath,
 
 bool SSHConnectionCLI::executeSSH(const QString& command,
                                   const QStringList& args, QString* stdout_str,
-                                  QString* stderr_str, int* ec)
+                                  QString* stderr_str, int* ec, int timeoutMs,
+                                  const std::atomic<bool>* cancel)
 {
   QStringList fullArgs;
 
@@ -303,8 +318,8 @@ bool SSHConnectionCLI::executeSSH(const QString& command,
   // remote paths as arguments; quote them with the shared remote-path rule.
   fullArgs << quoteRemotePathArgs(args);
 
-  const int timeout_ms = CLISSH_RUN_TIMEOUT;
-  const ProcessResult result = runCliSshCommand("ssh", fullArgs, timeout_ms);
+  const int timeout_ms = timeoutMs < 0 ? CLISSH_RUN_TIMEOUT : timeoutMs;
+  const ProcessResult result = runCliSshCommand("ssh", fullArgs, timeout_ms, cancel);
 
   if (!result.started) {
     Common::warning(QString("Failed to start ssh command with args \"%1\" "

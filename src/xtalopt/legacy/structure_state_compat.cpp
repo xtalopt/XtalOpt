@@ -150,11 +150,7 @@ bool normalizeStructureStateAfterRead(Search::Structure& structure, const QStrin
   if (atomicNums.isEmpty() || atomicNums.size() != coords.size())
     return false;
 
-  structure.clearAtoms();
-  for (int i = 0; i < atomicNums.size(); ++i)
-    structure.addAtom(atomicNums.at(i), coords.at(i));
-  structure.updateAndSkipHistory(atomicNums, coords, energy, enthalpy, cell);
-  return true;
+  return structure.updateAndSkipHistory(atomicNums, coords, energy, enthalpy, cell);
 }
 
 } // namespace Legacy

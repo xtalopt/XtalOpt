@@ -16,6 +16,7 @@
 
 #include <search/ssh/sshconnection_cli.h>
 #include <common/output.h>
+#include <search/search.h>
 #include <search/ssh/sshmanager_cli.h>
 
 #include <memory>
@@ -50,7 +51,11 @@ bool SSHManagerCLI::precheck(QString* error)
 
 SSHConnection* SSHManagerCLI::getFreeConnection()
 {
-  m_semaphore->acquire();
+  SearchBase* search = qobject_cast<SearchBase*>(parent());
+  while (!m_semaphore->tryAcquire(1, 100)) {
+    if (search && search->isShuttingDown())
+      return nullptr;
+  }
   return m_conn;
 }
 

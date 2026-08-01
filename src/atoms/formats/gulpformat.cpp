@@ -71,6 +71,9 @@ bool GulpFormat::readOutput(Atoms::Geometry* s, const QString& filename)
     }
     // Atomic coords
     else if (strstr(line.c_str(), "Final fractional coordinates of atoms")) {
+      // Only the last complete coordinates block is kept.
+      atomicNums.clear();
+      coords.clear();
       // Grab the fractional coordinates of the atoms
       getline(ifs, line); // Blank
       getline(ifs, line); // -----

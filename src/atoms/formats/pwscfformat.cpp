@@ -23,6 +23,7 @@
 #include <atoms/geometry.h>
 
 #include <cstring>
+#include <cmath>
 #include <sstream>
 
 #include <QFile>
@@ -74,14 +75,26 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
 
   std::string line;
   std::vector<std::string> lineSplit;
+  double outputAlat = 1.0;
   while (getline(ifs, line)) {
+    if (strstr(line.c_str(), "lattice parameter (alat)")) {
+      lineSplit = Common::split(line, '=');
+      if (lineSplit.size() >= 2) {
+        const std::string value = Common::trim(lineSplit[1]);
+        const std::vector<std::string> fields = Common::split(value, ' ');
+        double parsedAlat = 0.0;
+        if (!fields.empty() && Common::parseDoubleString(fields[0], parsedAlat) && parsedAlat > 0.0) {
+          outputAlat = parsedAlat;
+        }
+      }
+    }
     // Cell parameters
     // This section should contain the final cell and final coordinates
     if (strstr(line.c_str(), "Begin final coordinates")) {
       bool blockCoordsFound = false;
       bool blockCellFound = false;
-      bool blockCoordsAreFractional = true;
-      double blockScalingFactor = 1.0;
+      bool blockCoordsAreFractional = false;
+      double blockScalingFactor = outputAlat;
       QList<unsigned int> blockAtomicNums;
       QList<Common::Vector3> blockCoords;
       Common::Matrix3 blockCellMatrix = Common::Matrix3::Zero();
@@ -89,9 +102,11 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
       while (!strstr(line.c_str(), "End final coordinates")) {
         if (strstr(line.c_str(), "CELL_PARAMETERS")) {
           // Read angstrom, bohr, or alat cell units qualifiers.
-          double cellScale = 1.0;
+          double cellScale = blockScalingFactor / ANG2BOHR;
           if (strstr(line.c_str(), "bohr")) {
             cellScale = 1.0 / ANG2BOHR;
+          } else if (strstr(line.c_str(), "angstrom")) {
+            cellScale = 1.0;
           } else if (strstr(line.c_str(), "alat")) {
             lineSplit = Common::split(line, '=');
 
@@ -113,7 +128,7 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
           // Get the cell matrix
           for (unsigned short i = 0; i < 3; ++i) {
             getline(ifs, line);
-            lineSplit = Common::split(line, ' ');
+            lineSplit = Common::split(Common::reduce(line), ' ');
             if (lineSplit.size() != 3) {
               Common::error(QString("Could not read the cell matrix in PWSCF output! %1")
                            .arg(line.c_str()));
@@ -136,23 +151,24 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
         }
         // Atomic coords
         if (strstr(line.c_str(), "ATOMIC_POSITIONS")) {
-          // Coordinates are assumed fractional; unless qualifier says otherwise.
-          double posScale = 1.0;
+          // Bare ATOMIC_POSITIONS uses alat.
+          blockCoordsAreFractional = false;
+          double posScale = blockScalingFactor / ANG2BOHR;
           if (strstr(line.c_str(), "bohr")) {
-            blockCoordsAreFractional = false;
             posScale = 1.0 / ANG2BOHR;
           } else if (strstr(line.c_str(), "angstrom")) {
-            blockCoordsAreFractional = false;
+            posScale = 1.0;
           } else if (strstr(line.c_str(), "alat")) {
-            // alat is in Bohr; convert the resulting cartesians to Angstrom.
-            blockCoordsAreFractional = false;
             posScale = blockScalingFactor / ANG2BOHR;
+          } else if (strstr(line.c_str(), "crystal")) {
+            blockCoordsAreFractional = true;
+            posScale = 1.0;
           }
 
           getline(ifs, line);
           while (!strstr(line.c_str(), "End final coordinates")) {
-            lineSplit = Common::split(line, ' ');
-            if (lineSplit.size() != 4) {
+            lineSplit = Common::split(Common::reduce(line), ' ');
+            if (lineSplit.size() < 4) {
               Common::error(QString("Could not read atomic positions in PWSCF output! %1")
                            .arg(line.c_str()));
               return false;
@@ -253,42 +269,55 @@ bool PwscfFormat::read(Atoms::Geometry* s, const QString& filename)
 
   bool cellFound = false;
   bool coordsFound = false;
+  bool hasAlat = false;
   double alat = 1.0;
   Common::Matrix3 cellMatrix = Common::Matrix3::Zero();
   QList<unsigned int> atomicNums;
   QList<Common::Vector3> coords;
 
   for (int i = 0; i < lines.size(); ++i) {
-    const QString lower = lines.at(i).toLower();
-    if (lower.contains("celldm(1)") || lower.contains("celldm (1)")) {
-      const QStringList fields = lines.at(i).split("=", QtCompat::SkipEmptyParts);
-      if (fields.size() >= 2) {
-        const QStringList values = fields.at(1).split(",", QtCompat::SkipEmptyParts);
-        if (!values.isEmpty()) {
-          bool ok = false;
-          const double celldm = values.first().trimmed().toDouble(&ok);
-          if (ok)
-            alat = celldm / ANG2BOHR;
-        }
+    const QStringList assignments = lines.at(i).split(",", QtCompat::SkipEmptyParts);
+    for (int j = 0; j < assignments.size(); ++j) {
+      const QStringList fields = assignments.at(j).split("=", QtCompat::SkipEmptyParts);
+      if (fields.size() < 2)
+        continue;
+      const QString name = fields.at(0).trimmed().toLower();
+      bool ok = false;
+      const double value = fields.at(1).trimmed().toDouble(&ok);
+      if (!ok)
+        continue;
+      if (name == "celldm(1)" || name == "celldm (1)") {
+        alat = value / ANG2BOHR;
+        hasAlat = true;
+      } else if (name == "a") {
+        alat = value;
+        hasAlat = true;
       }
     }
+  }
+
+  if (alat <= 0.0) {
+    Common::error("PWSCF input contains an invalid lattice parameter.");
+    return false;
   }
 
   for (int i = 0; i < lines.size(); ++i) {
     const QString lower = lines.at(i).toLower();
     if (lower.startsWith("cell_parameters")) {
-      double scale = 1.0;
+      double scale = alat;
       if (lower.contains("bohr"))
         scale = 1.0 / ANG2BOHR;
-      else if (lower.contains("alat"))
-        scale = alat;
+      else if (lower.contains("angstrom"))
+        scale = 1.0;
+      else if (!hasAlat)
+        scale = 1.0 / ANG2BOHR;
 
       if (i + 3 >= lines.size()) {
         Common::error("Incomplete CELL_PARAMETERS block in PWSCF input.");
         return false;
       }
       for (int j = 0; j < 3; ++j) {
-        const QStringList fields = lines.at(++i).split(" ", QtCompat::SkipEmptyParts);
+        const QStringList fields = lines.at(++i).simplified().split(" ", QtCompat::SkipEmptyParts);
         if (fields.size() < 3) {
           Common::error(QString("Could not read CELL_PARAMETERS line in PWSCF input: %1")
                        .arg(lines.at(i)));
@@ -304,6 +333,15 @@ bool PwscfFormat::read(Atoms::Geometry* s, const QString& filename)
           return false;
         }
       }
+      if (!hasAlat) {
+        alat = std::sqrt(cellMatrix(0, 0) * cellMatrix(0, 0) +
+                         cellMatrix(0, 1) * cellMatrix(0, 1) +
+                         cellMatrix(0, 2) * cellMatrix(0, 2));
+        if (alat <= 0.0) {
+          Common::error("PWSCF input contains an invalid lattice parameter.");
+          return false;
+        }
+      }
       cellFound = true;
     } else if (lower.startsWith("atomic_positions")) {
       if (!cellFound) {
@@ -312,11 +350,11 @@ bool PwscfFormat::read(Atoms::Geometry* s, const QString& filename)
       }
 
       const bool fractional = lower.contains("crystal") || lower.contains("crystal_sg");
-      double scale = 1.0;
+      double scale = fractional ? 1.0 : alat;
       if (lower.contains("bohr"))
         scale = 1.0 / ANG2BOHR;
-      else if (lower.contains("alat"))
-        scale = alat;
+      else if (lower.contains("angstrom"))
+        scale = 1.0;
 
       for (++i; i < lines.size(); ++i) {
         const QString l = lines.at(i).trimmed();
@@ -325,7 +363,7 @@ bool PwscfFormat::read(Atoms::Geometry* s, const QString& filename)
             lLower.startsWith("cell_parameters") || lLower.startsWith("atomic_species"))
           break;
 
-        const QStringList fields = l.split(" ", QtCompat::SkipEmptyParts);
+        const QStringList fields = l.simplified().split(" ", QtCompat::SkipEmptyParts);
         if (fields.size() < 4)
           break;
 

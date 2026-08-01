@@ -19,6 +19,8 @@
 #include <QObject>
 #include <QString>
 
+#include <atomic>
+
 namespace Search {
 class SearchBase;
 class SSHManager;
@@ -98,7 +100,8 @@ public slots:
    */
   virtual bool execute(const QString& command, QString& stdout_str,
                        QString& stderr_str, int& exitcode,
-                       bool printWarning = true) = 0;
+                       bool printWarning = true, int timeoutMs = -1,
+                       const std::atomic<bool>* cancel = nullptr) = 0;
 
   /**
    * Copy a file to the remote host
@@ -165,7 +168,8 @@ public slots:
                                        const QString& localpath) = 0;
 
   /**
-   * List the contents of a remote directory
+   * List the contents of a remote directory and its subdirectories.
+   * Entries are full remote paths without type markers.
    *
    * @param remotepath Path to remote directory
    * @param contents (return) List of file/directory names

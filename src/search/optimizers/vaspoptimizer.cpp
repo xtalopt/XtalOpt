@@ -181,7 +181,8 @@ bool VASPOptimizer::readOutput(Structure* s, const QString& filename) const
   // Open it and make sure it exists
   std::string outcarText;
   std::istringstream outcar_ifs;
-  if (Common::readFileToString(outcarFile, &outcarText))
+  const bool outcarRead = Common::readFileToString(outcarFile, &outcarText);
+  if (outcarRead)
     outcar_ifs.str(outcarText);
 
   // We don't want to print a warning here if the OUTCAR file doesn't exist
@@ -193,13 +194,11 @@ bool VASPOptimizer::readOutput(Structure* s, const QString& filename) const
   bool energyFound = getOUTCAREnergy(outcar_ifs, energy);
   getOUTCAREnthalpy(outcar_ifs, enthalpy);
 
-  if (outcar_ifs && !energyFound) {
+  if (outcarRead && !energyFound) {
     Common::warning("The energy could not be found in the OUTCAR file!");
     return false;
   }
 
-  s->updateAndAddToHistory(structure, energy, enthalpy);
-
-  return true;
+  return s->updateAndAddToHistory(structure, energy, enthalpy);
 }
 } // namespace Search

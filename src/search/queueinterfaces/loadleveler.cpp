@@ -18,6 +18,7 @@
 
 #include <search/queueinterfaces/loadleveler.h>
 #include <common/output.h>
+#include <search/search.h>
 
 #include <QRegularExpression>
 
@@ -48,23 +49,33 @@ QueueInterface::QueueStatus LoadLevelerQueueInterface::parseQueueStatus(
   if (rawStatus)
     rawStatus->clear();
 
-  const QString matchString = QString("^\\w*\\.%1\\.\\d+\\s*\\w+[\\s0-9/:]+(\\w+)").arg(jobId);
-  QRegularExpression statusCapture(matchString);
-  QRegularExpressionMatch statusMatch;
-  for (const QString& str : statusList) {
-    statusMatch = statusCapture.match(str);
-    if (statusMatch.hasMatch())
-      break;
+  const QRegularExpression statusCapture("^(.+)\\.(\\d+)\\.(\\d+)\\s+(\\w+)\\s*$");
+
+  QString status;
+  bool found = false;
+  for (const QString& line : statusList) {
+    const QRegularExpressionMatch match = statusCapture.match(line.trimmed());
+    if (!match.hasMatch())
+      continue;
+    bool ok = false;
+    const unsigned int currentJobId = match.captured(2).toUInt(&ok);
+    if (!ok || currentJobId != jobId)
+      continue;
+    if (found) {
+      if (rawStatus)
+        *rawStatus = line;
+      return QueueInterface::Unknown;
+    }
+    found = true;
+    status = match.captured(4);
   }
 
-  const QString status = statusMatch.captured(1);
   if (rawStatus)
     *rawStatus = status;
 
-  static const QRegularExpression runningStatusMatcher(
-    "^(?:C|CP|D|E|EP|MP|NR|NQ|R|RM|RP|ST|TX|V|VP)$");
-  static const QRegularExpression queuedStatusMatcher("^(?:H|HS|I|S)$");
-  static const QRegularExpression errorStatusMatcher("^(?:SX|X|XP)$");
+  static const QRegularExpression runningStatusMatcher("^(?:C|CA|CK|CP|E|EP|MP|R|RM|RP|ST|TX|V|VP)$");
+  static const QRegularExpression queuedStatusMatcher("^(?:D|H|HS|I|NQ|P|S)$");
+  static const QRegularExpression errorStatusMatcher("^(?:NR|SX|X|XP)$");
 
   if (runningStatusMatcher.match(status).hasMatch())
     return QueueInterface::Running;
@@ -76,6 +87,15 @@ QueueInterface::QueueStatus LoadLevelerQueueInterface::parseQueueStatus(
     return QueueInterface::Error;
   }
   return QueueInterface::Unknown;
+}
+
+QString LoadLevelerQueueInterface::queueListCommand() const
+{
+  QString command = statusCommand() + " -f \"%id %st\"";
+  const QString username = m_search->getUsername().trimmed();
+  if (!username.isEmpty())
+    command += " -u " + username;
+  return command;
 }
 
 unsigned int LoadLevelerQueueInterface::parseJobId(

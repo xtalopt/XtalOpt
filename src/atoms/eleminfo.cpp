@@ -131,7 +131,13 @@ bool ElementInfo::readComposition(string compStr, map<unsigned int, unsigned int
                    .arg(compStr.c_str()));
       return false;
     }
-    comp[atomicNum] = counts[i];
+    const unsigned int oldCount = comp[atomicNum];
+    if (counts[i] > numeric_limits<unsigned int>::max() - oldCount) {
+      Common::error(QString("Composition count is too large in %1")
+                    .arg(compStr.c_str()));
+      return false;
+    }
+    comp[atomicNum] = oldCount + counts[i];
   }
 
   return true;

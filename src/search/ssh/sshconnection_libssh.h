@@ -79,7 +79,8 @@ public slots:
    */
   virtual bool execute(const QString& command, QString& stdout_str,
                        QString& stderr_str, int& exitcode,
-                       bool printWarning = true) override;
+                       bool printWarning = true, int timeoutMs = -1,
+                       const std::atomic<bool>* cancel = nullptr) override;
 
   /**
    * Copy a file to the remote host
@@ -252,7 +253,8 @@ protected:
   /// \cond
   sftp_session _openSFTP();
   bool _execute(const QString& command, QString& stdout_err,
-                QString& stderr_err, int& exitcode, bool printWarning = true);
+                QString& stderr_err, int& exitcode, bool printWarning = true,
+                int timeoutMs = -1, const std::atomic<bool>* cancel = nullptr);
   bool _copyFileToServer(const QString& localpath, const QString& remotepath);
   bool _copyFileFromServer(const QString& remotepath, const QString& localpath);
   bool _readRemoteFile(const QString& filename, QString& contents);

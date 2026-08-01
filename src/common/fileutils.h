@@ -26,6 +26,7 @@ namespace Common {
 
 QString localPath(const QString& base, const QString& child);
 QString remotePath(const QString& base, const QString& child);
+QString quoteRemotePath(const QString& path);
 bool readFileToString(const QString& filename, std::string* contents);
 
 // Produces a local 8-bit; returns false (contents untouched) if open fails.

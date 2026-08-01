@@ -142,14 +142,16 @@ QString normalizeSymbol(QString symbol)
   symbol = stripQuotes(symbol);
   QString letters;
   for (int i = 0; i < symbol.size(); ++i) {
-    if (symbol.at(i).isLetter())
-      letters.append(symbol.at(i));
+    if (!symbol.at(i).isLetter())
+      break;
+    letters.append(symbol.at(i));
   }
-  symbol = letters;
-  if (symbol.isEmpty())
-    return symbol;
-  symbol = symbol.left(1).toUpper() + symbol.mid(1).toLower();
-  return symbol;
+
+  const unsigned int atomicNum = Atoms::ElementInfo::getAtomicNum(letters.toStdString());
+  if (atomicNum == 0)
+    return QString();
+
+  return QString::fromStdString(Atoms::ElementInfo::getAtomicSymbol(atomicNum));
 }
 
 double parseCifDouble(QString value, bool* ok = nullptr)
@@ -446,6 +448,37 @@ QString formulaToString(const std::map<unsigned short, double>& counts, double s
   return parts.join(" ");
 }
 
+QString symOpText(const SymOp& op)
+{
+  QStringList coordinates;
+  const char variables[] = { 'x', 'y', 'z' };
+  for (int i = 0; i < 3; ++i) {
+    QString coordinate;
+    for (int j = 0; j < 3; ++j) {
+      const int coefficient = op.rot[i][j];
+      if (coefficient == 0)
+        continue;
+      if (!coordinate.isEmpty() && coefficient > 0)
+        coordinate += "+";
+      if (coefficient == -1)
+        coordinate += "-";
+      else if (coefficient != 1)
+        coordinate += QString::number(coefficient) + "*";
+      coordinate += QChar(variables[j]);
+    }
+    double translation = op.trans[i] - std::floor(op.trans[i]);
+    if (translation > ZERO12) {
+      if (!coordinate.isEmpty())
+        coordinate += "+";
+      coordinate += QString::number(translation, 'g', 12);
+    }
+    if (coordinate.isEmpty())
+      coordinate = "0";
+    coordinates.append(coordinate);
+  }
+  return coordinates.join(",");
+}
+
 } // namespace
 
 namespace Atoms {
@@ -462,6 +495,15 @@ bool CifFormat::read(Geometry* s, const QString& filename)
   const QStringList all_str = parseCif(stream.readAll());
   if (all_str.isEmpty()) {
     Common::error(QString("CIF file, %1, is empty.").arg(filename));
+    return false;
+  }
+  int dataBlocks = 0;
+  for (int i = 0; i < all_str.size(); ++i) {
+    if (all_str.at(i).startsWith("data_", Qt::CaseInsensitive))
+      ++dataBlocks;
+  }
+  if (dataBlocks > 1) {
+    Common::error(QString("CIF file, %1, contains more than one data block.").arg(filename));
     return false;
   }
 
@@ -506,15 +548,39 @@ bool CifFormat::read(Geometry* s, const QString& filename)
       const int fy = headers.indexOf("_atom_site_fract_y");
       const int fz = headers.indexOf("_atom_site_fract_z");
       if (fx >= 0 && fy >= 0 && fz >= 0) {
-        int sym = headers.indexOf("_atom_site_type_symbol");
-        if (sym < 0)
-          sym = headers.indexOf("_atom_site_label");
+        const int typeIndex = headers.indexOf("_atom_site_type_symbol");
+        const int labelIndex = headers.indexOf("_atom_site_label");
         const int mult = headers.indexOf("_atom_site_symmetry_multiplicity");
-        if (sym >= 0) {
+        const int occupancy = headers.indexOf("_atom_site_occupancy");
+        if (typeIndex >= 0 || labelIndex >= 0) {
           for (const QStringList& row : rows) {
             bool okx = false, oky = false, okz = false;
             CifAtomSite site;
-            site.symbol = normalizeSymbol(row.at(sym));
+            if (typeIndex >= 0) {
+              const QString typeValue = stripQuotes(row.at(typeIndex));
+              if (typeValue.isEmpty() || typeValue == "." || typeValue == "?") {
+                if (labelIndex >= 0)
+                  site.symbol = normalizeSymbol(row.at(labelIndex));
+              } else {
+                site.symbol = normalizeSymbol(typeValue);
+                if (site.symbol.isEmpty()) {
+                  Common::error(QString("CIF file, %1, contains an invalid "
+                                        "atom type symbol: %2")
+                                        .arg(filename).arg(typeValue));
+                  return false;
+                }
+              }
+            } else {
+              site.symbol = normalizeSymbol(row.at(labelIndex));
+            }
+            if (site.symbol.isEmpty()) {
+              const QString label =
+                labelIndex >= 0 ? stripQuotes(row.at(labelIndex)) : QString();
+              Common::error(QString("CIF file, %1, contains an atom site "
+                                    "without a valid element symbol: %2")
+                                    .arg(filename).arg(label));
+              return false;
+            }
             site.frac = Common::Vector3(parseCifDouble(row.at(fx), &okx),
                                 parseCifDouble(row.at(fy), &oky), parseCifDouble(row.at(fz), &okz));
             if (mult >= 0) {
@@ -523,7 +589,18 @@ bool CifFormat::read(Geometry* s, const QString& filename)
               if (!ok)
                 site.multiplicity = 0;
             }
-            if (okx && oky && okz && !site.symbol.isEmpty())
+            if (occupancy >= 0) {
+              bool occupancyOk = false;
+              const double value =
+                parseCifDouble(row.at(occupancy), &occupancyOk);
+              if (!occupancyOk || std::fabs(value - 1.0) > ZERO05) {
+                Common::error(QString("CIF file, %1, contains a partial or "
+                                      "invalid atom-site occupancy.")
+                                      .arg(filename));
+                return false;
+              }
+            }
+            if (okx && oky && okz)
               sites.push_back(site);
           }
         }
@@ -571,8 +648,12 @@ bool CifFormat::read(Geometry* s, const QString& filename)
   std::vector<SymOp> operations;
   for (const QString& opText : explicitSymOps) {
     SymOp op;
-    if (parseSymOp(opText, op))
-      operations.push_back(op);
+    if (!parseSymOp(opText, op)) {
+      Common::error(QString("CIF file, %1, contains an invalid symmetry "
+                            "operation: %2").arg(filename).arg(opText));
+      return false;
+    }
+    operations.push_back(op);
   }
 
   if (operations.empty()) {
@@ -776,6 +857,25 @@ bool CifFormat::write(const Geometry& s, std::ostream& out, double symprec)
       << dataset->international_symbol << "'\n";
   out << "_symmetry_Int_Tables_number     "
       << dataset->spacegroup_number << "\n\n";
+
+  const SpglibSpacegroupType groupType =
+    spg_get_spacegroup_type(dataset->hall_number);
+  if (groupType.number != 0)
+    out << "_space_group_name_Hall         '" << groupType.hall_symbol << "'\n\n";
+
+  const std::vector<SymOp> symmetry =
+    symmetryFromDatabase(dataset->hall_number);
+  if (symmetry.empty()) {
+    spg_free_dataset(dataset);
+    Common::error("CIF writer failed to obtain symmetry operations.");
+    return false;
+  }
+  out << "loop_\n";
+  out << "_space_group_symop_id\n";
+  out << "_space_group_symop_operation_xyz\n";
+  for (size_t i = 0; i < symmetry.size(); ++i)
+    out << i + 1 << " '" << symOpText(symmetry.at(i)).toStdString() << "'\n";
+  out << "\n";
 
   out << "loop_\n";
   out << "_atom_site_label\n";

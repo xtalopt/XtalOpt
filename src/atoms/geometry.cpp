@@ -117,14 +117,22 @@ Common::Matrix3 columnLatticeArrayToCell(const double lattice[3][3])
 void Geometry::setCellInfo(double a, double b, double c, double alpha, double beta, double gamma)
 {
   // Assigning a cell makes this 3D.
-  unitCell().setCellParameters(a, b, c, alpha, beta, gamma);
+  g_unitCell.setCellParameters(a, b, c, alpha, beta, gamma);
+  clearGeometryCaches();
 }
 
 void Geometry::setCellInfo(const Common::Vector3& a, const Common::Vector3& b,
                             const Common::Vector3& c)
 {
   // Assigning a cell makes this 3D.
-  unitCell().setCellVectors(a, b, c);
+  g_unitCell.setCellVectors(a, b, c);
+  clearGeometryCaches();
+}
+
+bool Geometry::isCellMatrixUsable(const Common::Matrix3& matrix)
+{
+  const double determinant = matrix.determinant();
+  return GS_ISFINITE(determinant) && std::fabs(determinant) > ZERO08;
 }
 
 void Geometry::setVolume(double volume)
@@ -157,6 +165,7 @@ void Geometry::rescaleCell(double a, double b, double c, double alpha,
   if (!a && !b && !c && !alpha && !beta && !gamma)
     return;
 
+  const double targetVolume = getVolume();
   rotateCellAndCoordsToStandardOrientation();
 
   // Store position of atoms in fractional units
@@ -172,75 +181,41 @@ void Geometry::rescaleCell(double a, double b, double c, double alpha,
   double nBeta = getBeta();
   double nGamma = getGamma();
 
-  // Set angles and reset volume
-  if (alpha || beta || gamma) {
-    double volume = getVolume();
-    if (alpha)
-      nAlpha = alpha;
-    if (beta)
-      nBeta = beta;
-    if (gamma)
-      nGamma = gamma;
-    setCellInfo(nA, nB, nC, nAlpha, nBeta, nGamma);
-    setVolume(volume);
+  if (a)
+    nA = a;
+  if (b)
+    nB = b;
+  if (c)
+    nC = c;
+  if (alpha)
+    nAlpha = alpha;
+  if (beta)
+    nBeta = beta;
+  if (gamma)
+    nGamma = gamma;
+
+  int freeLengths = 0;
+  if (!a)
+    ++freeLengths;
+  if (!b)
+    ++freeLengths;
+  if (!c)
+    ++freeLengths;
+
+  if (freeLengths > 0) {
+    UnitCell adjusted;
+    adjusted.setCellParameters(nA, nB, nC, nAlpha, nBeta, nGamma);
+    const double scale =
+      std::pow(targetVolume / adjusted.volume(), 1.0 / freeLengths);
+    if (!a)
+      nA *= scale;
+    if (!b)
+      nB *= scale;
+    if (!c)
+      nC *= scale;
   }
 
-  if (a || b || c) {
-    // Initialize variables
-    double scale_primary, scale_secondary, scale_tertiary;
-
-    // Set lengths while preserving volume
-    // Case one length is static
-    if (a && !b && !c) { // A
-      scale_primary = a / nA;
-      scale_secondary = std::pow(scale_primary, 0.5);
-      nA = a;
-      nB *= scale_secondary;
-      nC *= scale_secondary;
-    } else if (!a && b && !c) { // B
-      scale_primary = b / nB;
-      scale_secondary = std::pow(scale_primary, 0.5);
-      nB = b;
-      nA *= scale_secondary;
-      nC *= scale_secondary;
-    } else if (!a && !b && c) { // C
-      scale_primary = c / nC;
-      scale_secondary = std::pow(scale_primary, 0.5);
-      nC = c;
-      nA *= scale_secondary;
-      nB *= scale_secondary;
-    // Case two lengths are static
-    } else if (a && b && !c) { // AB
-      scale_primary = a / nA;
-      scale_secondary = b / nB;
-      scale_tertiary = scale_primary * scale_secondary;
-      nA = a;
-      nB = b;
-      nC *= scale_tertiary;
-    } else if (a && !b && c) { // AC
-      scale_primary = a / nA;
-      scale_secondary = c / nC;
-      scale_tertiary = scale_primary * scale_secondary;
-      nA = a;
-      nC = c;
-      nB *= scale_tertiary;
-    } else if (!a && b && c) { // BC
-      scale_primary = c / nC;
-      scale_secondary = b / nB;
-      scale_tertiary = scale_primary * scale_secondary;
-      nC = c;
-      nB = b;
-      nA *= scale_tertiary;
-    // Case three lengths are static
-    } else if (a && b && c) { // ABC
-      nA = a;
-      nB = b;
-      nC = c;
-    }
-
-    // Update unit cell
-    setCellInfo(nA, nB, nC, nAlpha, nBeta, nGamma);
-  }
+  setCellInfo(nA, nB, nC, nAlpha, nBeta, nGamma);
 
   // Recalculate coordinates:
   for (int i = 0; i < static_cast<int>(atomList.size()); i++)
@@ -281,6 +256,7 @@ void Geometry::wrapAtomsToCell()
 {
   // 3D only.
   if (!is3D()) return;
+  clearGeometryCaches();
   // Store position of atoms in fractional units
   std::vector<Atom>& atomList = atoms();
   QList<Common::Vector3> fracCoordsList;
@@ -288,11 +264,8 @@ void Geometry::wrapAtomsToCell()
     fracCoordsList.append(cartToFrac(atm.pos()));
 
   // wrap fractional coordinates to [0,1)
-  for (auto& fc : fracCoordsList) {
-    fc[0] = std::fmod(fc[0] + 100, 1);
-    fc[1] = std::fmod(fc[1] + 100, 1);
-    fc[2] = std::fmod(fc[2] + 100, 1);
-  }
+  for (auto& fc : fracCoordsList)
+    fc = unitCell().wrapFractional(fc);
 
   // Recalculate cartesian coordinates:
   for (int i = 0; i < static_cast<int>(atomList.size()); i++)
@@ -304,10 +277,12 @@ void Geometry::wrapBondedComponentsToSmallestBonds()
   // 3D only.
   if (!hasBonds() || !is3D())
     return;
+  clearGeometryCaches();
 
   std::vector<bool> atomAlreadyMoved(numAtoms(), false);
 
   std::vector<size_t> atomsToCheck(1, 0);
+  atomAlreadyMoved[0] = true;
 
   while (!atomsToCheck.empty()) {
     size_t checkInd = atomsToCheck[0];
@@ -945,6 +920,8 @@ bool Geometry::calculateNearestNeighborLists(double cutoff)
   std::vector<int> expan = { 0, 0, 0 };
   if (is3D()) {
     double vol = vecs[0].dot(vecs[1].cross(vecs[2]));
+    if (!GS_ISFINITE(vol) || std::fabs(vol) <= ZERO08)
+      return false;
     for (int i = 0; i < 3; i++) {
       Common::Vector3 rec = vecs[(i + 1) % 3].cross(vecs[(i + 2) % 3]) / vol;
       expan[i] = std::ceil(cutoff * rec.norm());
@@ -1009,6 +986,8 @@ bool Geometry::calculateNearestNeighborListsCellList(double cutoff)
   std::vector<int> expan = { 0, 0, 0 };
   if (is3D()) {
     double vol = vecs[0].dot(vecs[1].cross(vecs[2]));
+    if (!GS_ISFINITE(vol) || std::fabs(vol) <= ZERO08)
+      return false;
     for (int i = 0; i < 3; i++) {
       Common::Vector3 rec = vecs[(i + 1) % 3].cross(vecs[(i + 2) % 3]) / vol;
       expan[i] = std::ceil(cutoff * rec.norm());
@@ -1774,23 +1753,16 @@ bool Geometry::standardizeToConventionalCell(const double prec)
 
 uint Geometry::getSpaceGroupNumber() const
 {
-  if (g_spgNumber >= 231 || g_spgNumber < 1)
-    findSpaceGroup();
   return g_spgNumber;
 }
 
 QString Geometry::getSpaceGroupSymbol() const
 {
-  if (g_spgNumber >= 231 || g_spgNumber < 1)
-    findSpaceGroup();
   return g_spgSymbol;
 }
 
 QString Geometry::getHTMLSpaceGroupSymbol() const
 {
-  if (g_spgNumber >= 231 || g_spgNumber < 1)
-    findSpaceGroup();
-
   QString s = g_spgSymbol;
 
   // Prepare HTML tags
@@ -2068,6 +2040,7 @@ bool Geometry::removeAtom(size_t ind)
 {
   if (ind >= g_atoms.size())
     return false;
+  clearGeometryCaches();
   removeBondsFromAtom(ind);
 
   // Indicate to the bonds that they should decrement any indices greater
@@ -2115,6 +2088,20 @@ void Geometry::sortAtoms(std::vector<size_t> sortOrder)
 // We will implement this in terms of sortAtoms()
 void Geometry::reorderAtoms(const std::vector<size_t>& newOrder)
 {
+  if (newOrder.size() != g_atoms.size()) {
+    Common::error(QString("%1: atom order has the wrong size.").arg(__func__));
+    return;
+  }
+
+  std::vector<bool> found(g_atoms.size(), false);
+  for (size_t index : newOrder) {
+    if (index >= g_atoms.size() || found[index]) {
+      Common::error(QString("%1: atom order is incomplete.").arg(__func__));
+      return;
+    }
+    found[index] = true;
+  }
+
   std::vector<size_t> sortOrder(newOrder.size(), 0);
   for (size_t i = 0; i < newOrder.size(); ++i) {
     assert(newOrder[i] < sortOrder.size());
@@ -2215,11 +2202,26 @@ void Geometry::perceiveBonds()
   // The cutoff tolerance to be used
   const double tol = 0.1;
   const auto& atomList = atoms();
-  for (size_t i = 0; i < atomList.size(); ++i) {
-    for (size_t j = i + 1; j < atomList.size(); ++j) {
-      const double rad1 = Atoms::ElementInfo::getCovalentRadius(atomList[i].atomicNumber());
-      const double rad2 = Atoms::ElementInfo::getCovalentRadius(atomList[j].atomicNumber());
-      if (distance(atomList[i].pos(), atomList[j].pos()) < rad1 + rad2 + tol)
+  double cutoff = 0.0;
+  for (const Atom& atom : atomList)
+    cutoff = std::max(cutoff, Atoms::ElementInfo::getCovalentRadius(atom.atomicNumber()));
+  cutoff = 2.0 * cutoff + tol;
+
+  if (!calculateNearestNeighborLists(cutoff))
+    return;
+
+  const auto& neighbors = getNearestNeighborLists();
+  for (size_t i = 0; i < neighbors.size(); ++i) {
+    for (const auto& neighbor : neighbors[i]) {
+      if (neighbor.first < 0 || neighbor.first >= static_cast<int>(atomList.size()))
+        continue;
+      const size_t j = static_cast<size_t>(neighbor.first);
+      if (i >= j || areBonded(i, j))
+        continue;
+      const double maxDistance =
+              Atoms::ElementInfo::getCovalentRadius(atomList[i].atomicNumber()) +
+              Atoms::ElementInfo::getCovalentRadius(atomList[j].atomicNumber()) + tol;
+      if (neighbor.second < maxDistance)
         addBond(i, j);
     }
   }

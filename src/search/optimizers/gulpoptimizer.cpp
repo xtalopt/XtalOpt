@@ -93,7 +93,6 @@ bool GULPOptimizer::readOutput(Structure* s, const QString& filename) const
   if (!readGulpEnergy(filename, energy))
     return false;
 
-  s->updateAndAddToHistory(structure, energy, enthalpy);
-  return true;
+  return s->updateAndAddToHistory(structure, energy, enthalpy);
 }
 } // namespace Search

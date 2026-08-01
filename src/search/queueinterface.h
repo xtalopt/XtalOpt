@@ -229,10 +229,11 @@ public slots:
    *
    * @param workdir The working directory in which command is running
    * @param command The command to be run
+   * @param timeoutMs Maximum run time, or -1 for no time limit
    * @return Command launch, exit code, stdout, and stderr. Callers decide
    * whether a non-zero exit is acceptable for their command.
    */
-  virtual CommandResult runACommand(const QString& workdir, const QString& command) const = 0;
+  virtual CommandResult runACommand(const QString& workdir, const QString& command, int timeoutMs = -1) const = 0;
 
   /**
    * Copy a file from the execution host to a local destination.

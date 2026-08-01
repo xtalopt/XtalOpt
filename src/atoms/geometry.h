@@ -73,9 +73,11 @@ public:
   void setCellInfo(double a, double b, double c, double alpha, double beta,
                    double gamma);
   void setCellInfo(const Common::Matrix3& m) {
-    unitCell().setCellMatrix(m);
+    g_unitCell.setCellMatrix(m);
+    clearGeometryCaches();
   }
   void setCellInfo(const Common::Vector3& a, const Common::Vector3& b, const Common::Vector3& c);
+  static bool isCellMatrixUsable(const Common::Matrix3& matrix);
   void setVolume(double volume);
   // rescale cell can be used to "fix" any cell parameter at a particular value.
   // Simply pass the fixed values and use "0" for any non-fixed parameters.
@@ -237,6 +239,7 @@ public:
     g_neighbor_list.clear();
     g_neighbor_list_cutoff = 0.0;
   }
+  void notifyGeometryChanged() { clearGeometryCaches(); }
   bool hasNearestNeighborLists() const { return !g_neighbor_list.empty(); }
   bool calculateNearestNeighborLists(double cutoff);
   // Find nearest neighbors using cell lists instead of every atom pair.
@@ -400,6 +403,7 @@ public:
   {
     g_bonds.clear();
     g_atoms.clear();
+    clearGeometryCaches();
   }
 
   /**
@@ -427,7 +431,10 @@ public:
    *
    * @return A reference to the vector of atoms.
    */
-  std::vector<Atom>& atoms() { return g_atoms; }
+  std::vector<Atom>& atoms()
+  {
+    return g_atoms;
+  }
 
   /**
    * Returns a const reference to the atoms vector.
@@ -757,14 +764,21 @@ public:
    *
    * @param uc The new unit cell of the geometry.
    */
-  void setUnitCell(const UnitCell& uc) { g_unitCell = uc; };
+  void setUnitCell(const UnitCell& uc)
+  {
+    g_unitCell = uc;
+    clearGeometryCaches();
+  };
 
   /**
    * Get a reference to the unit cell of the geometry.
    *
    * @return The unit cell of the geometry.
    */
-  UnitCell& unitCell() { return g_unitCell; };
+  UnitCell& unitCell()
+  {
+    return g_unitCell;
+  };
 
   /**
    * Get a const reference to the unit cell of the geometry.
@@ -781,6 +795,7 @@ public:
     g_bonds.clear();
     g_atoms.clear();
     g_unitCell.clear();
+    clearGeometryCaches();
   };
 
   ///@}
@@ -790,8 +805,8 @@ private:
   std::vector<Bond> g_bonds;
   UnitCell g_unitCell;
 
-  mutable unsigned short g_spgNumber = 231;
-  mutable QString g_spgSymbol;
+  mutable unsigned short g_spgNumber = 0;
+  mutable QString g_spgSymbol = "Unknown";
   mutable std::vector<float> g_norm_rdf;
   // Parameters used to make the RDF.
   mutable int g_norm_rdf_nsymbs = 0;
@@ -801,6 +816,14 @@ private:
   mutable std::vector<std::vector<std::pair<int, double> > > g_neighbor_list;
   // Cutoff used to make the neighbor lists.
   mutable double g_neighbor_list_cutoff = 0.0;
+
+  void clearGeometryCaches()
+  {
+    clearNormalizedRDF();
+    clearNearestNeighborLists();
+    g_spgNumber = 0;
+    g_spgSymbol = "Unknown";
+  }
 
   unsigned int reduceToPrimitive(QList<Common::Vector3>* fcoords, QList<unsigned int>* atomicNums,
                                  Common::Matrix3* cellMatrix, const double prec = SPGLIB_TOL);
@@ -814,12 +837,14 @@ static_assert(std::is_nothrow_move_assignable<Geometry>::value,
 
 inline Atom& Geometry::addAtom(unsigned short atomicNum, const Common::Vector3& pos)
 {
+  clearGeometryCaches();
   g_atoms.push_back(Atom(atomicNum, pos));
   return g_atoms.back();
 }
 
 inline Atom& Geometry::addAtom(const Atom& atom)
 {
+  clearGeometryCaches();
   g_atoms.push_back(atom);
   return g_atoms.back();
 }
@@ -828,6 +853,7 @@ inline void Geometry::setAtoms(const std::vector<Atom>& atoms)
 {
   g_bonds.clear();
   g_atoms = atoms;
+  clearGeometryCaches();
 }
 
 inline Atom& Geometry::atom(size_t ind)
@@ -870,6 +896,7 @@ inline void Geometry::swapAtoms(size_t ind1, size_t ind2)
 {
   assert(ind1 < g_atoms.size());
   assert(ind2 < g_atoms.size());
+  clearGeometryCaches();
   std::swap(g_atoms[ind1], g_atoms[ind2]);
   for (auto& bond : g_bonds)
     bond.swapIndices(ind1, ind2);

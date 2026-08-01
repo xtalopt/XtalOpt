@@ -18,6 +18,7 @@
 
 #include <search/queueinterfaces/slurm.h>
 #include <common/output.h>
+#include <search/search.h>
 
 #include <common/compatibility/qt_compat.h>
 #include <QRegularExpression>
@@ -27,13 +28,17 @@ namespace {
 
 bool isRunningStatus(const QString& status)
 {
-  return status == "CA" || status == "CD" || status == "CG" ||
-         status == "F" || status == "NF" || status == "R" || status == "S" || status == "TO";
+  return status == "R" || status == "S" || status == "ST" || status == "CG" ||
+         status == "RS" || status == "SI" || status == "SO" ||
+         status == "BF" || status == "CA" || status == "CD" ||
+         status == "DL" || status == "F" || status == "NF" ||
+         status == "OOM" || status == "PR" || status == "RV" || status == "TO";
 }
 
 bool isQueuedStatus(const QString& status)
 {
-  return status == "CF" || status == "PD";
+  return status == "CF" || status == "PD" || status == "RD" ||
+         status == "RF" || status == "RH" || status == "RQ" || status == "SE";
 }
 
 } // namespace
@@ -59,10 +64,16 @@ SlurmQueueInterface::~SlurmQueueInterface()
 
 unsigned int SlurmQueueInterface::parseJobId(const QString& submissionOutput, bool* ok) const
 {
-  const QStringList list =
-    submissionOutput.split(QRegularExpression("\\s+"), QtCompat::SkipEmptyParts);
   *ok = false;
-  return list.size() >= 4 ? list.at(3).toUInt(ok) : 0;
+  const QRegularExpression expression("^\\s*Submitted batch job\\s+(\\d+)(?:\\s+on\\s+cluster\\s+[^\\r\\n]+)?\\s*$",
+                                      QRegularExpression::MultilineOption);
+  QRegularExpressionMatchIterator matches = expression.globalMatch(submissionOutput);
+  if (!matches.hasNext())
+    return 0;
+  const QRegularExpressionMatch match = matches.next();
+  if (matches.hasNext())
+    return 0;
+  return match.captured(1).toUInt(ok);
 }
 
 QueueInterface::QueueStatus SlurmQueueInterface::parseQueueStatus(
@@ -72,20 +83,14 @@ QueueInterface::QueueStatus SlurmQueueInterface::parseQueueStatus(
     rawStatus->clear();
 
   for (const auto& line : queueData) {
-    const QStringList entryList = line.split(' ', QtCompat::SkipEmptyParts);
+    const QStringList entryList = line.split('|', QtCompat::KeepEmptyParts);
     bool ok = false;
-    const unsigned int curJobId = entryList.isEmpty() ? 0 : entryList.first().toUInt(&ok);
+    const unsigned int curJobId = entryList.size() == 2
+      ? entryList.first().trimmed().toUInt(&ok) : 0;
     if (ok && curJobId == jobId) {
-      if (entryList.size() <= 5) {
-        // The job is present but we can't parse the output: report the raw line so an empty
-        //   so an empty rawStatus is distinguished from a missing job.
-        if (rawStatus)
-          *rawStatus = line;
-        return QueueInterface::Unknown;
-      }
-      const QString status = entryList.at(4);
+      const QString status = entryList.at(1).trimmed();
       if (rawStatus)
-        *rawStatus = status;
+        *rawStatus = status.isEmpty() ? line : status;
       if (isRunningStatus(status))
         return QueueInterface::Running;
       if (isQueuedStatus(status))
@@ -96,10 +101,13 @@ QueueInterface::QueueStatus SlurmQueueInterface::parseQueueStatus(
   return QueueInterface::Unknown;
 }
 
-bool SlurmQueueInterface::queueListCommandSucceeded(
-  bool ok, int exitCode, const QString& stdoutText) const
+QString SlurmQueueInterface::queueListCommand() const
 {
-  return ok && exitCode == 0 && !stdoutText.isEmpty();
+  QString command = statusCommand() + " -h -o \"%i|%t\"";
+  const QString username = m_search->getUsername().trimmed();
+  if (!username.isEmpty())
+    command += " -u " + username;
+  return command;
 }
 
 } // namespace Search

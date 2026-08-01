@@ -126,7 +126,7 @@ bool legacyFiltrationConstraint(const QString& value, QString& constraintLine,
   if (fields.isEmpty() || fields.at(0).toLower().left(3) != "fil")
     return false;
 
-  if (fields.size() != 4) {
+  if (fields.size() < 4) {
     error = QString("legacy filtration objective expects: " "fil <script> <output> <value>");
     return false;
   }
@@ -251,9 +251,14 @@ bool rewriteLegacyXtalOptInputText(const QString& inputText, QString& outputText
     lines.append(parseLine(inputStream.readLine()));
 
   bool hasCurrentMolUnit = false;
+  bool hasLegacyMolecularUnit = false;
   bool usingLegacyMolUnits = false;
+  bool hasRemoteQueue = false;
+  bool hasActiveLocalQueue = false;
   QString effectiveQueueInterface;
   QSet<QString> currentConstraints;
+  const bool mentionsLegacyLocalQueue =
+             inputText.contains(QRegularExpression("(^|\\n)\\s*#?\\s*localQueue\\s*=", QRegularExpression::CaseInsensitiveOption));
 
   for (int i = 0; i < lines.size(); ++i) {
     const ParsedLine& line = lines.at(i);
@@ -262,12 +267,18 @@ bool rewriteLegacyXtalOptInputText(const QString& inputText, QString& outputText
 
     if (isIndexedKeyword(line.lowerKey, "molunit"))
       hasCurrentMolUnit = true;
+    else if (isIndexedKeyword(line.lowerKey, "molecularunits"))
+      hasLegacyMolecularUnit = true;
     else if (line.lowerKey == "usingmolecularunits")
       usingLegacyMolUnits = optionToBool(line.value);
     else if (line.lowerKey == "queueinterface") {
       effectiveQueueInterface = line.value.trimmed().toLower();
       if (effectiveQueueInterface == "local")
         effectiveQueueInterface = "none";
+    } else if (line.lowerKey == "remotequeue") {
+      hasRemoteQueue = true;
+    } else if (line.lowerKey == "localqueue") {
+      hasActiveLocalQueue = true;
     } else if (line.lowerKey == "constraint") {
       const QStringList fields = line.value.split(" ", QtCompat::SkipEmptyParts);
       if (fields.size() >= 2)
@@ -310,7 +321,11 @@ bool rewriteLegacyXtalOptInputText(const QString& inputText, QString& outputText
       appendNote(notes, "converted legacy objectivesReDo to constraintsReDo");
     } else if (line.lowerKey == "forcedspgswithrandspg") {
       outputLines.append(commentedLine(line.original));
-      outputLines.append("forcedSpgs = " + line.value);
+      QStringList groups = line.value.split(",", QtCompat::SkipEmptyParts);
+
+      for (int j = 0; j < groups.size(); ++j)
+        groups[j] = groups.at(j).trimmed();
+      outputLines.append("forcedSpgs = " + groups.join(","));
       appendNote(notes, "converted legacy forcedSpgsWithRandSpg to forcedSpgs");
     } else if (line.lowerKey.startsWith("molunit ") &&
                hasIntegerSuffix(line.key)) {
@@ -360,8 +375,10 @@ bool rewriteLegacyXtalOptInputText(const QString& inputText, QString& outputText
       outputLines.append(commentedLine(line.original));
       if (hasCurrentMolUnit)
         appendNote(notes, "ignored legacy molecularUnits because current molUnit entries are present");
-      else if (usingLegacyMolUnits)
+      else if (usingLegacyMolUnits && hasLegacyMolecularUnit)
         appendNote(notes, "converted enabled legacy molecularUnits to current molUnit entries");
+      else if (usingLegacyMolUnits)
+        appendNote(notes, "removed enabled legacy molecularUnits flag without entries");
       else
         appendNote(notes, "ignored disabled legacy molecularUnits");
     } else if (isIndexedKeyword(line.lowerKey, "molecularunits")) {
@@ -391,12 +408,22 @@ bool rewriteLegacyXtalOptInputText(const QString& inputText, QString& outputText
                             "neighbor and no center (a lone atom needs no molUnit)");
         else
           appendNote(notes, "converted enabled legacy molecularUnits to current molUnit entries");
+        if (!convertedEntries.isEmpty()) {
+          appendNote(notes, "legacy molecularUnits bond distances are not used by current molecule templates");
+        }
       } else {
         appendNote(notes, "ignored disabled legacy molecularUnits");
       }
     } else {
       outputLines.append(line.original);
     }
+  }
+
+  if (!hasRemoteQueue && !hasActiveLocalQueue &&
+      mentionsLegacyLocalQueue && !effectiveQueueInterface.isEmpty() &&
+      effectiveQueueInterface != "none") {
+    outputLines.append("remoteQueue = true");
+    appendNote(notes, "preserved legacy remote submission for the batch queue");
   }
 
   if (!notes.isEmpty()) {

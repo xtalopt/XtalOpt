@@ -97,7 +97,6 @@ TabStruc::TabStruc(Search::AbstractDialog* parent, XtalOpt* p)
 
   updateGUI();
   updateCompositionTable();
-  updateCustomIAD();
 
   // Composition
   connect(ui.edit_composition, &QLineEdit::returnPressed, this, &TabStruc::getComposition);
@@ -146,7 +145,7 @@ TabStruc::TabStruc(Search::AbstractDialog* parent, XtalOpt* p)
   connect(ui.cb_customIAD,   &QCheckBox::toggled, this, &TabStruc::updateDimensions);
   connect(ui.cb_customIAD, &QCheckBox::toggled, this, &TabStruc::updateCustomIADTableEnabled);
   connect(ui.cb_checkStepOpt, &QCheckBox::toggled, this, &TabStruc::updateDimensions);
-  connect(ui.table_IAD, &QTableWidget::itemSelectionChanged, this, &TabStruc::updateCustomIAD);
+  connect(ui.table_IAD, &QTableWidget::itemChanged, this, &TabStruc::updateCustomIAD);
 
   // Molecule-unit builder
   connect(ui.table_moleculeUnit, &QTableWidget::itemSelectionChanged,
@@ -349,6 +348,7 @@ void TabStruc::getComposition()
       ui.edit_ele_vols->clear();
       xtalopt->setInputEleVolmString("");
       ui.table_moleculeUnit->setRowCount(0);
+      xtalopt->clearMoleculeUnits();
       xtalopt->setInputForcedSpgsString("");
       xtalopt->processInputData();
       // Clear custom IAD values.
@@ -386,16 +386,17 @@ void TabStruc::getComposition()
 
       // Update various relevant tables/variables
       this->updateAtomCountLimits();
-      this->updateCustomIAD();
-      this->updateCompositionTable();
+      this->updateCompositionTable(true);
       this->updateSearchType();
 
       // If compositions have changed while molecule units are already set,
       //   reset them so each entry can be validated against the new input list.
       QString frm1 = init_comp.getFormula();
       QString frm2 = xtalopt->getMinimalComposition().getFormula();
-      if (frm1 != frm2 && ui.table_moleculeUnit->rowCount() > 0) {
-        ui.table_moleculeUnit->setRowCount(0);
+      if (frm1 != frm2) {
+        if (ui.table_moleculeUnit->rowCount() > 0)
+          ui.table_moleculeUnit->setRowCount(0);
+        xtalopt->clearMoleculeUnits();
       }
 
       this->updateInitOptions();
@@ -408,6 +409,9 @@ void TabStruc::getComposition()
 
 void TabStruc::updateAtomCountLimits()
 {
+  if (m_updateGuiInProgress)
+    return;
+
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
   // Do not change the atom limits during a run.
@@ -574,7 +578,7 @@ void TabStruc::updateSearchType()
   xtalopt->setVcSearch(ui.cb_vcsearch->isChecked());
 }
 
-void TabStruc::updateCompositionTable()
+void TabStruc::updateCompositionTable(bool initializeCustomIADs)
 {
   // This function actually updates "composition-related" tables,
   //   i.e., the composition table (with various info) and the
@@ -603,6 +607,11 @@ void TabStruc::updateCompositionTable()
     numRows2 = numRows2 + j;
   }
   int z = 0;
+  const bool tableSignalsWereBlocked = ui.table_IAD->blockSignals(true);
+  ui.table_IAD->setRowCount(numRows2);
+
+  if (initializeCustomIADs)
+    xtalopt->clearCustomIADs();
 
   for (int i = 0; i < numRows; i++) {
     if (keys.at(i) == 0)
@@ -654,34 +663,38 @@ void TabStruc::updateCompositionTable()
     ui.table_comp->setItem(i, CC_MAXVOL, volMaxItem);
 
     // Custom IAD table
-    if (ui.cb_customIAD->isChecked()) {
-      ui.table_IAD->setRowCount(numRows2);
+    for (int k = i; k < numRows; k++) {
+      unsigned int atomicNum2 = keys.at(k);
 
-      for (int k = i; k < numRows; k++) {
-        unsigned int atomicNum2 = keys.at(k);
+      QString symbol1 = Atoms::ElementInfo::getAtomicSymbol(atomicNum).c_str();
+      QString symbol2 = Atoms::ElementInfo::getAtomicSymbol(atomicNum2).c_str();
 
-        QString symbol1 = Atoms::ElementInfo::getAtomicSymbol(atomicNum).c_str();
-        QString symbol2 = Atoms::ElementInfo::getAtomicSymbol(atomicNum2).c_str();
+      QTableWidgetItem* symbol1Item = new QTableWidgetItem(symbol1);
+      QTableWidgetItem* symbol2Item = new QTableWidgetItem(symbol2);
 
-        QTableWidgetItem* symbol1Item = new QTableWidgetItem(symbol1);
-        QTableWidgetItem* symbol2Item = new QTableWidgetItem(symbol2);
+      // Element symbols don't need to be editable!
+      symbol1Item->setFlags(symbol1Item->flags() & ~Qt::ItemIsEditable);
+      symbol2Item->setFlags(symbol2Item->flags() & ~Qt::ItemIsEditable);
 
-        // Element symbols don't need to be editable!
-        symbol1Item->setFlags(symbol1Item->flags() & ~Qt::ItemIsEditable);
-        symbol2Item->setFlags(symbol2Item->flags() & ~Qt::ItemIsEditable);
+      ui.table_IAD->setItem(z, IC_SYMBOL1, symbol1Item);
+      ui.table_IAD->setItem(z, IC_SYMBOL2, symbol2Item);
 
-        ui.table_IAD->setItem(z, IC_SYMBOL1, symbol1Item);
-        ui.table_IAD->setItem(z, IC_SYMBOL2, symbol2Item);
-
-        QString minIAD = QString::number(
-          xtalopt->interComp()[qMakePair(atomicNum, atomicNum2)].minIAD, 'f', 3);
-        QTableWidgetItem* minIADItem = new QTableWidgetItem(minIAD);
-        ui.table_IAD->setItem(z, IC_MINIAD, minIADItem);
-
-        z++;
+      const QPair<int, int> pair(atomicNum, atomicNum2);
+      if (initializeCustomIADs) {
+        IAD iad;
+        iad.minIAD = Atoms::ElementInfo::getCovalentRadius(atomicNum) +
+                     Atoms::ElementInfo::getCovalentRadius(atomicNum2);
+        xtalopt->interComp().insert(pair, iad);
+        xtalopt->interComp().insert(qMakePair(atomicNum2, atomicNum), iad);
       }
+      const QString minIAD = QString::number(static_cast<const XtalOpt*>(xtalopt)->interComp().value(pair).minIAD,'f', 3);
+      QTableWidgetItem* minIADItem = new QTableWidgetItem(minIAD);
+      ui.table_IAD->setItem(z, IC_MINIAD, minIADItem);
+
+      z++;
     }
   }
+  ui.table_IAD->blockSignals(tableSignalsWereBlocked);
 }
 
 void TabStruc::updateDimensions()
@@ -736,7 +749,6 @@ void TabStruc::updateDimensions()
 
   if (xtalopt->getUsingCustomIAD() != ui.cb_customIAD->isChecked()) {
     xtalopt->setUsingCustomIAD(ui.cb_customIAD->isChecked());
-    this->updateCustomIAD();
     this->updateCustomIADTableEnabled();
   }
   if (xtalopt->getUsingCheckStepOpt() != ui.cb_checkStepOpt->isChecked()) {
@@ -763,7 +775,7 @@ void TabStruc::updateDimensions()
 void TabStruc::updateCustomIAD()
 {
   // Do not change custom IAD values during a run.
-  if (m_search->isSessionInProgress())
+  if (m_updateGuiInProgress || m_search->isSessionInProgress() || !ui.cb_customIAD->isChecked())
     return;
 
   // Change the settings.

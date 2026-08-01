@@ -16,6 +16,7 @@
 #include <search/search.h>
 
 #include <common/constants.h>
+#include <common/fileutils.h>
 #include <common/timing.h>
 #include <atoms/eleminfo.h>
 #include <atoms/formats/poscarformat.h>
@@ -69,13 +70,6 @@ QString sshMethodFromText(const QString& method)
   if (value == "auto" || value == "automatic")
     return "auto";
   return QString();
-}
-
-QString shellSingleQuote(const QString& text)
-{
-  QString quoted = text;
-  quoted.replace("'", "'\\''");
-  return "'" + quoted + "'";
 }
 
 bool isRemoteAbsolutePath(const QString& path)
@@ -503,7 +497,7 @@ SearchBase::~SearchBase()
 
   // All workers have stopped and their queued work is finished.
   queue()->reset();
-  tracker()->deleteAllStructures();
+  deleteTrackedStructures();
   // m_queueThread and m_tracker are destroyed automatically.
 }
 
@@ -533,13 +527,7 @@ void SearchBase::reset()
   queue()->reset();
   // Wait for structure work before deleting the structures.
   QThreadPool::globalInstance()->waitForDone(-1);
-  tracker()->deleteAllStructures();
-
-  // Clear selection table with all structures gone
-  QWriteLocker tableLocker(&m_parentSelectionDataLock);
-  m_parentPool.clear();
-  m_parentSelectionData = ParentSelectionData();
-  ++m_selectionDataStamp;
+  deleteTrackedStructures();
 }
 
 QThread* SearchBase::restoredStructureThread() const
@@ -604,7 +592,7 @@ bool SearchBase::beginSession()
   emit startingSession();
 
   queue()->reset();
-  tracker()->deleteAllStructures();
+  deleteTrackedStructures();
   return true;
 }
 
@@ -628,6 +616,22 @@ void SearchBase::abortSession()
   setSessionActive(false);
   setSessionStarting(false);
   queue()->reset();
+  deleteTrackedStructures();
+}
+
+void SearchBase::deleteTrackedStructures()
+{
+  // GUI views must release their structure pointers before deletion begins.
+  const Qt::ConnectionType delivery = QThread::currentThread() == thread()
+                                      ? Qt::DirectConnection : Qt::BlockingQueuedConnection;
+  QMetaObject::invokeMethod(this, "structuresAboutToBeDeleted", delivery);
+
+  {
+    QWriteLocker tableLocker(&m_parentSelectionDataLock);
+    m_parentPool.clear();
+    m_parentSelectionData = ParentSelectionData();
+    ++m_selectionDataStamp;
+  }
   tracker()->deleteAllStructures();
 }
 
@@ -773,7 +777,7 @@ void SearchBase::performTheExit(int delay)
 
     // Destroy queuemanager
     queue()->reset();
-    tracker()->deleteAllStructures();
+    deleteTrackedStructures();
 
     // m_ssh destroyed automatically by unique_ptr.
     m_ssh.reset();
@@ -963,7 +967,7 @@ QList<Structure*> SearchBase::getAllParentPoolStructures() const
   return m_parentPool.values();
 }
 
-void SearchBase::applyParentSelectionFronts()
+bool SearchBase::applyParentSelectionFronts()
 {
   bool needsUpdate = false;
   {
@@ -1002,7 +1006,7 @@ void SearchBase::applyParentSelectionFronts()
     }
   }
   if (pool.size() != static_cast<int>(fronts.size()))
-    return;
+    return false;
 
   QList<Structure*> structures;
   {
@@ -1024,6 +1028,7 @@ void SearchBase::applyParentSelectionFronts()
     similarityTag.insert(structure, structure->getSimilarityString());
   }
 
+  bool changed = false;
   // Set Pareto front of every structure (uses pool values). For similar
   //   structures, we use the front for the "similar to" value!
   for (Structure* structure : structures) {
@@ -1036,8 +1041,12 @@ void SearchBase::applyParentSelectionFronts()
       front = frontOfPoolMember.value(keep, -1);
     }
     QWriteLocker structureLocker(&structure->lock());
-    structure->setParetoFront(front);
+    if (structure->getParetoFront() != front) {
+      structure->setParetoFront(front);
+      changed = true;
+    }
   }
+  return changed;
 }
 
 void SearchBase::refreshParentSelectionFronts(const QList<Structure*>& pool)
@@ -1100,6 +1109,7 @@ void SearchBase::rebuildParentSelectionData(const QList<Structure*>& structures)
   // No optimizable objectives: parent selection falls back to a random pick.
   if (objNumb == 0) {
     table.noObjectives = true;
+    table.fronts.assign(strNumb, -1);
     m_parentSelectionData = std::move(table);
     return;
   }
@@ -1115,13 +1125,8 @@ void SearchBase::rebuildParentSelectionData(const QList<Structure*>& structures)
     return;
   }
 
-  // Scale objective values and apply the objective precision to the values and weights.
+  // Scale objective values and apply the objective precision.
   normalizeObjData(objData);
-  for (size_t i = 0; i < objData.size(); i++)
-    for (int j = 0; j < objNumb; j++)
-      objData[i][j] = Common::roundToDecimalPlaces(objData[i][j], m_objectivePrecision);
-  for (int j = 0; j < objNumb; j++)
-    objWght[j] = Common::roundToDecimalPlaces(objWght[j], m_objectivePrecision);
 
   // Calculate the basic and Pareto probabilities.
   std::vector<double> strProb; // final raw probability of structures
@@ -1134,6 +1139,31 @@ void SearchBase::rebuildParentSelectionData(const QList<Structure*>& structures)
     strProb = paretoProbs(objData, m_crowdingDistance, strFrnt, strDist,
                           rawprob, rawdist);
   } else {
+    // Basic selection expects the weights to sum to 1. Normalize the local
+    //   copy here so selection does not depend on the application doing it.
+    double totalWeight = 0.0;
+    bool validWeights = true;
+    for (int j = 0; j < objNumb; ++j) {
+      const double weight = objWght[j];
+      if (GS_ISNAN(weight) || GS_ISINF(weight) || weight < 0.0) {
+        validWeights = false;
+        break;
+      }
+      totalWeight += weight;
+    }
+
+    if (!validWeights || GS_ISNAN(totalWeight) || GS_ISINF(totalWeight)) {
+      Common::error("Basic parent selection requires finite, non-negative weights.");
+      table.valid = false;
+      m_parentSelectionData = std::move(table);
+      return;
+    }
+
+    if (totalWeight > 0.0) {
+      for (int j = 0; j < objNumb; ++j)
+        objWght[j] /= totalWeight;
+    }
+
     strProb = scalarProbs(objData, objWght);
     // Although basic selection doesn't use fronts; we always produce and save them
     const std::vector<std::vector<int>> fronts = nonDominatedSorting(objData);
@@ -1491,7 +1521,7 @@ bool SearchBase::checkScriptPath(const QString& path, const QString& label, int 
       return false;
     }
 
-    const QString command = "test -f " + shellSingleQuote(trimmed);
+    const QString command = "test -f " + Common::quoteRemotePath(trimmed);
     const QueueInterface::CommandResult result = queue->runACommand("", command);
     if (!result.succeeded()) {
       if (err) {

@@ -950,8 +950,7 @@ bool processOptions(QHash<QString, QString> options, const QHash<QString, QStrin
   if (!applyRepeatedInputs(multiInput, xtalopt))
     return false;
 
-  if (!multiInput.value("objective").isEmpty())
-    xtalopt.refreshBuiltinObjectiveWeight();
+  xtalopt.refreshBuiltinObjectiveWeight();
 
   if (!applyOptimizerAndQueueSettings(options, multiInput, xtalopt, sourceDir,
                                       loadAndVerifyAssets, bestEffort))
@@ -1011,9 +1010,6 @@ bool XtalOpt::readInputFile(const QString& filename, bool bestEffort,
 
 bool XtalOpt::processInputCustomIAD(QString s)
 {
-  // Custom IADs are only used when usingCustomIADs is set; ignore otherwise.
-  if (!getUsingCustomIAD())
-    return true;
   QStringList splitLine = s.split(",", QtCompat::SkipEmptyParts);
   if (splitLine.size() != 3) {
     Common::error("customIAD line must have 3 comma-delimited items on "
@@ -1610,17 +1606,25 @@ bool XtalOpt::processInputConstraint(QString s)
 }
 
 // Apply runtime-changeable options from the parsed options map to xtalopt.
-void processRuntimeOptions(const QHash<QString, QString>& options, XtalOpt& xtalopt)
+void processRuntimeOptions(const QHash<QString, QString>& options,
+                           const QHash<QString, QStringList>& multiInput, XtalOpt& xtalopt)
 {
   bool settingsChanged = false;
   bool spacegroupSettingsChanged = false;
   bool similaritySettingsChanged = false;
+  bool selectionSettingsChanged = false;
   {
     QWriteLocker runtimeLocker(xtalopt.runtimeSettingsLock());
 
     // Store the current settings: invalid edits restore to it, and changes are
     //   reported against it afterwards.
     const Settings::ScalarSnapshot before = Settings::captureScalars(xtalopt);
+
+    for (auto it = multiInput.constBegin(); it != multiInput.constEnd(); ++it) {
+      for (const QString& entry : it.value()) {
+        Common::warning("Runtime file: Ignored unsupported repeated option: " + it.key() + " = " + entry);
+      }
+    }
 
     for (auto it = options.constBegin(); it != options.constEnd(); ++it) {
       const QString canon = Settings::findKeywordName(it.key());
@@ -1670,8 +1674,9 @@ void processRuntimeOptions(const QHash<QString, QString>& options, XtalOpt& xtal
           similaritySettingsChanged = true;
         // Rebuild parent-selection values when they are next needed.
         if (keyword == "objectivePrecision" || keyword == "optimizationType" ||
-            keyword == "crowdingDistance" || keyword == "paretoFilterZeroWeights")
-          xtalopt.markParentSelectionForUpdate();
+            keyword == "crowdingDistance" || keyword == "paretoFilterZeroWeights") {
+          selectionSettingsChanged = true;
+        }
       }
     }
   }
@@ -1680,6 +1685,10 @@ void processRuntimeOptions(const QHash<QString, QString>& options, XtalOpt& xtal
     xtalopt.resetSpacegroups();
   if (similaritySettingsChanged)
     xtalopt.resetSimilarities();
+  if (selectionSettingsChanged && xtalopt.applyParentSelectionFronts()) {
+    emit xtalopt.structureViewDataChanged();
+    xtalopt.requestResultsFileSave();
+  }
   if (settingsChanged)
     xtalopt.requestSettingsStateSave();
 }
@@ -1703,7 +1712,10 @@ void XtalOpt::writeInitialRuntimeFile()
     t += keyword + " = " + Settings::scalarValue(*this, keyword) + "\n";
   }
 
-  file.write(t.toLocal8Bit().data());
+  const QByteArray bytes = t.toLocal8Bit();
+  if (file.write(bytes) != bytes.size() || !file.flush() || file.error() != QFileDevice::NoError) {
+    Common::error("Could not write the runtime options file " + file.fileName());
+  }
 }
 
 void XtalOpt::readRuntimeOptions()
@@ -1727,7 +1739,7 @@ void XtalOpt::readRuntimeOptions(const QString& runtimeText)
     processLine(line, options, multiInput, "Runtime file:");
   }
 
-  processRuntimeOptions(options, *this);
+  processRuntimeOptions(options, multiInput, *this);
 }
 
 bool XtalOpt::writeInputFile(const QString& filename)
@@ -1750,7 +1762,11 @@ bool XtalOpt::writeInputFile(const QString& filename)
 
   QTextStream out(&file);
   out << output;
-  return true;
+  out.flush();
+  const bool success = out.status() == QTextStream::Ok && file.flush() && file.error() == QFileDevice::NoError;
+  if (!success)
+    Common::error("Could not write input file " + filename);
+  return success;
 }
 
 // Process one user objective as the "min|max exe out wgt".

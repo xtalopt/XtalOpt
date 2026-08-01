@@ -27,12 +27,14 @@
 
 #include <QFile>
 #include <QHash>
+#include <QElapsedTimer>
 #include <QObject>
 #include <QStringList>
 #include <QTextStream>
 #include <QThread>
 
 #include <cmath>
+#include <climits>
 #include <limits>
 #include <string>
 #include <vector>
@@ -132,9 +134,23 @@ bool removeOldOutputFiles(Structure* s, const ScriptCalculationContext& context,
 bool runExternalScripts(Structure* s, const ScriptCalculationContext& context,
                         const std::vector<ExternalScript>& scripts, const QString& scriptKind)
 {
+  int timeoutMs = -1;
+  if (context.search->cancelScriptAfterTime()) {
+    const double requested = context.search->hoursForCancelScriptAfterTime() * 3600000.0;
+    timeoutMs = requested >= INT_MAX ? INT_MAX : static_cast<int>(requested);
+  }
+  QElapsedTimer timer;
+  timer.start();
+
   for (const auto& script : scripts) {
+    if (context.search->isShuttingDown())
+      return false;
+    const int remaining = timeoutMs < 0 ? -1
+                          : qMax(0, timeoutMs - static_cast<int>(qMin<qint64>(timer.elapsed(), INT_MAX)));
+    if (remaining == 0)
+      return false;
     const QueueInterface::CommandResult result =
-      context.queue->runACommand(context.workDir, script.executable);
+      context.queue->runACommand(context.workDir, script.executable, remaining);
     if (!result.succeeded()) {
       Common::error(QObject::tr("Failed to run the user script for %1 %2 for structure %3")
                       .arg(scriptKind)

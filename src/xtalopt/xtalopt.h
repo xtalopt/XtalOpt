@@ -343,6 +343,9 @@ public:
   // Request a save of main state file after a runtime setting change
   void requestSettingsStateSave();
 
+  // Request a save of the current results table.
+  void requestResultsFileSave(bool alsoHullFile = false);
+
   void requestStructureEvaluation(Search::Structure* structure);
   void handleOptimizedDeparture(Search::Structure* structure);
 
@@ -470,7 +473,6 @@ private:
   bool canRequestFileSave() const;
   void requestStructureStateSave(Search::Structure* structure);
   void requestStructureStateSave(const QList<Search::Structure*>& structures);
-  void requestResultsFileSave(bool alsoHullFile = false);
   void markResultsFileNeedsSave();
   void retryFileSave();
   void clearPendingRequests();
@@ -606,7 +608,7 @@ private:
   double x_tolXcLength = 0.0;  // XtalComp similarity tolerance: length
   double x_tolXcAngle = 0.0;   // XtalComp similarity tolerance: angle
   double x_tolSpg = 0.0;       // spglib tolerance (default value is in constants.h file)
-  double x_tolRdf = 0.0;       // tolerance for RDF similarity (0.0 to 1.0, default = 0.0: ignore)
+  double x_tolRdf = 0.98;      // tolerance for RDF similarity (0.0 to 1.0, default = 0.98)
   double x_tolRdfCutoff = 0.0; // distance cutoff for RDF calculations (default = 6.0)
   int x_tolRdfNbins = 0;       // number of bins for RDF calculations (default = 3000)
   double x_tolRdfSigma = 0.0;  // gaussian spread for RDF calculations (default = 0.008)

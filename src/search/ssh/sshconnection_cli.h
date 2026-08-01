@@ -68,7 +68,8 @@ public slots:
    * @return True on success.
    */
   bool execute(const QString& command, QString& stdout_str, QString& stderr_str,
-               int& exitcode, bool printWarning = false) override;
+               int& exitcode, bool printWarning = false, int timeoutMs = -1,
+               const std::atomic<bool>* cancel = nullptr) override;
 
   /**
    * Copy a file to the remote host
@@ -161,7 +162,8 @@ protected:
   bool executeSSH(const QString& command,
                   const QStringList& args = QStringList(),
                   QString* stdout_str = nullptr, QString* stderr_str = nullptr,
-                  int* ec = nullptr);
+                  int* ec = nullptr, int timeoutMs = -1,
+                  const std::atomic<bool>* cancel = nullptr);
   bool executeSCPTo(const QString& source, const QString& dest,
                     const QStringList& args = QStringList(),
                     QString* stdout_str = nullptr,

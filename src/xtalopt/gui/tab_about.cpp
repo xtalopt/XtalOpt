@@ -46,13 +46,13 @@ TabAbout::TabAbout(Search::AbstractDialog* parent, XtalOpt* p)
 
   // Insert the title
   QString labelText;
-  labelText.append("<P><b><font_size=5>");
+  labelText.append("<p><b><font size=\"5\">");
   labelText.append(QString("XtalOpt  (version %1)").arg(XTALOPT_VER));
-  labelText.append("</font></b></P>");
-  labelText.append("<P><i>A multi-objective evolutionary algorithm for variable-composition ground state search.</i></P></br>");
-  labelText.append(QString("<P>Built with: Qt-%1, Qwt-%2").arg(QT_VER).arg(QWT_VER));
+  labelText.append("</font></b></p>");
+  labelText.append("<p><i>A multi-objective evolutionary algorithm for variable-composition ground state search.</i></p>");
+  labelText.append(QString("<p>Built with: Qt-%1, Qwt-%2").arg(QT_VER).arg(QWT_VER));
   labelText.append(QString(", SSH-%1").arg(SSH_VER));
-  labelText.append(QString("</P>"));
+  labelText.append(QString("</p>"));
   ui.about_title->setText(labelText);
 
   // The detail information are set in "ui" file!

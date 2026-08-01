@@ -43,7 +43,11 @@ bool readMtpResultState(const QString& filename, const QString& tag, double& ene
   std::string line;
   std::vector<std::string> lineSplit;
   while (getline(ifs, line)) {
-    if (strstr(line.c_str(), "Energy")) {
+    if (strstr(line.c_str(), "BEGIN_CFG")) {
+      // A new block starts; keep only the last block's results.
+      energyFound = false;
+      relaxOK = false;
+    } else if (strstr(line.c_str(), "Energy")) {
       getline(ifs, line);
       lineSplit = Common::split(line, ' ');
       if (lineSplit.size() != 1 || !Common::parseDoubleString(lineSplit[0], energy)) {
@@ -105,7 +109,6 @@ bool MTPOptimizer::readOutput(Structure* s, const QString& filename) const
   if (!readMtpResultState(filename, s->getTag(), energy))
     return false;
 
-  s->updateAndAddToHistory(structure, energy, enthalpy);
-  return true;
+  return s->updateAndAddToHistory(structure, energy, enthalpy);
 }
 } // namespace Search

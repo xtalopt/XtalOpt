@@ -90,8 +90,10 @@ bool SiestaFormat::readOutput(Atoms::Geometry* s, const QString& filename)
         fractionalCoords = true;
         angstromCoords = false;
       } else if (strstr(line.c_str(), "(Ang)")) {
+        fractionalCoords = false;
         angstromCoords = true;
       } else if (strstr(line.c_str(), "(Bohr)")) {
+        fractionalCoords = false;
         angstromCoords = false;
       } else {
         Common::error("The atom coords have unrecognizable units.");
@@ -433,8 +435,10 @@ std::vector<ZMatrixEntry> generateZMatrixEntries(const Atoms::Geometry* s)
     // the second entry
     std::vector<size_t> bondedAtoms = s->bondedAtoms(firstEntry.ind);
     // If there are no bonded atoms, just continue
-    if (bondedAtoms.empty())
+    if (bondedAtoms.empty()) {
+      ret.insert(ret.end(), currentMol.begin(), currentMol.end());
       continue;
+    }
 
     // Make sure none of these have been used. If they have been, report
     // an error, because that shouldn't be possible.
@@ -473,8 +477,10 @@ std::vector<ZMatrixEntry> generateZMatrixEntries(const Atoms::Geometry* s)
     }
 
     // If there are no bonded atoms, just continue
-    if (bondedAtoms.empty())
+    if (bondedAtoms.empty()) {
+      ret.insert(ret.end(), currentMol.begin(), currentMol.end());
       continue;
+    }
 
     // Pick the highest priority atom for the third index
     workingInd = bondedAtoms[0];
@@ -508,8 +514,10 @@ std::vector<ZMatrixEntry> generateZMatrixEntries(const Atoms::Geometry* s)
     }
 
     // If there are no bonded atoms, just continue
-    if (bondedAtoms.empty())
+    if (bondedAtoms.empty()) {
+      ret.insert(ret.end(), currentMol.begin(), currentMol.end());
       continue;
+    }
 
     // Now loop until we are done
     while (!bondedAtoms.empty()) {

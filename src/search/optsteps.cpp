@@ -92,10 +92,22 @@ void OptSteps::append()
   }
   // We will duplicate the most recent opt step otherwise
   else {
-    m_queueInterfaceAtOptStep.push_back(m_queueInterfaceAtOptStep.back() ? m_queueInterfaceCreatorByName(
-            m_queueInterfaceAtOptStep.back()->getIDString().toStdString()) : nullptr);
+    QueueInterface* previousQueue = m_queueInterfaceAtOptStep.back().get();
+
+    std::unique_ptr<QueueInterface> queueInterface = previousQueue
+      ? m_queueInterfaceCreatorByName(previousQueue->getIDString().toStdString()) : nullptr;
+
+    if (queueInterface) {
+      queueInterface->setSubmitCommand(previousQueue->submitCommand());
+      queueInterface->setStatusCommand(previousQueue->statusCommand());
+      queueInterface->setCancelCommand(previousQueue->cancelCommand());
+    }
+
+    m_queueInterfaceAtOptStep.push_back(std::move(queueInterface));
+
     std::unique_ptr<Optimizer> optimizer = m_optimizerAtOptStep.back() ? m_optimizerCreatorByName(
-            m_optimizerAtOptStep.back()->getIDString().toStdString()) : nullptr;
+                                           m_optimizerAtOptStep.back()->getIDString().toStdString()) : nullptr;
+
     if (optimizer)
       optimizer->setDirectRunCommand(m_optimizerAtOptStep.back()->getDirectRunCommand());
     m_optimizerAtOptStep.push_back(std::move(optimizer));

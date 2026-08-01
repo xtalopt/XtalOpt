@@ -66,6 +66,19 @@ QString remotePath(const QString& base, const QString& child)
   return left + "/" + right;
 }
 
+QString quoteRemotePath(const QString& path)
+{
+  if (path == "~")
+    return path;
+
+  QString quoted = path;
+  if (quoted.startsWith("~/"))
+    quoted.remove(0, 2);
+  quoted.replace("'", "'\\''");
+  quoted = "'" + quoted + "'";
+  return path.startsWith("~/") ? "~/" + quoted : quoted;
+}
+
 bool readFileToString(const QString& filename, std::string* contents)
 {
   if (contents == nullptr)
