@@ -458,10 +458,6 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
         bool success = false;
         if (!getCurrentOptimizer(s)->checkForSuccessfulOutput(s, &success))
           return QueueInterface::CommunicationError;
-        if (success) {
-          QtCompat::MutexLocker locker(&m_processesMutex);
-          m_processes.remove(pid);
-        }
         return success ? QueueInterface::Success : QueueInterface::Error;
       }
     case DirectRunProcess::Error:
@@ -483,9 +479,17 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
   }
 }
 
-bool DirectRunInterface::prepareForStructureUpdate(Structure* /*s*/) const
+bool DirectRunInterface::prepareForStructureUpdate(Structure* s) const
 {
-  // Nothing to do!
+  uint pid = 0;
+  {
+    QReadLocker locker(&s->lock());
+    pid = s->getJobID();
+  }
+  if (pid != 0) {
+    QtCompat::MutexLocker locker(&m_processesMutex);
+    m_processes.remove(pid);
+  }
   return true;
 }
 

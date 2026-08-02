@@ -375,15 +375,15 @@ void TabProgress::updateInfo_()
             break;
           case QueueInterface::Unknown:
             e.status = "Unknown";
-            e.brush.setColor(Qt::red);
+            e.brush.setColor(Qt::lightGray);
             break;
           case QueueInterface::Error:
             e.status = "Error: Restarting job...";
-            e.brush.setColor(Qt::darkRed);
+            e.brush.setColor(Qt::lightGray);
             break;
           case QueueInterface::CommunicationError:
             e.status = "Communication Error";
-            e.brush.setColor(Qt::darkRed);
+            e.brush.setColor(Qt::lightGray);
             break;
           // Shouldn't happen; started and pending only occur when xtal is
           // "Submitted"
@@ -394,6 +394,7 @@ void TabProgress::updateInfo_()
         }
         break;
       }
+      // Structures waiting for or moving between optimization steps.
       case Xtal::Submitted:
         if (xtal->getJobID() == 0) {
           e.status = tr("Submitted, job ID unavailable: inspect scheduler "
@@ -409,42 +410,51 @@ void TabProgress::updateInfo_()
         e.brush.setColor(Qt::cyan);
         break;
       case Xtal::Restart:
+      case Xtal::StepOptimized:
+      case Xtal::Updating:
         e.status = xtal->statusText(true);
         e.brush.setColor(Qt::cyan);
         break;
-      case Xtal::Killed:
-      case Xtal::Removed:
-        e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::darkGray);
+
+      // A structure is waiting for the next optimization job.
+      case Xtal::WaitingForOptimization:
+        e.status = tr("%1 (%2 of %3)")
+                     .arg(xtal->statusText(true))
+                     .arg(QString::number(xtal->getCurrentOptStep() + 1))
+                     .arg(QString::number(totalOptSteps));
+        e.brush.setColor(Qt::darkCyan);
         break;
-      case Xtal::Dismissed:
-        e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::darkGray);
-        break;
-      case Xtal::ObjcFailed:
-        e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::darkGray);
-        break;
-      case Xtal::ConsFailed:
-        e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::darkGray);
-        break;
+
+      // Objective and constraint calculations are in progress.
       case Xtal::ObjectiveCalculation:
-        e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::yellow);
-        break;
       case Xtal::ConstraintCalculation:
-        e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::yellow);
-        break;
       case Xtal::Postprocessing:
         e.status = xtal->statusText(true);
         e.brush.setColor(Qt::yellow);
         break;
-      case Xtal::StepOptimized:
+
+      // Terminal calculation failures.
+      case Xtal::ObjcFailed:
+      case Xtal::ConsFailed:
         e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::cyan);
+        e.brush.setColor(Qt::red);
         break;
+
+      // Terminal failed/stopped structures.
+      case Xtal::Killed:
+      case Xtal::Removed:
+        e.status = xtal->statusText(true);
+        e.brush.setColor(Qt::darkRed);
+        e.pen.setColor(Qt::white);
+        break;
+
+      // Terminal dismissal of structure by constraints.
+      case Xtal::Dismissed:
+        e.status = xtal->statusText(true);
+        e.brush.setColor(Qt::darkGray);
+        break;
+
+      // Finished structures.
       case Xtal::Optimized:
         e.status = xtal->statusText(true);
         if (xtal->isSimilar()) {
@@ -454,21 +464,13 @@ void TabProgress::updateInfo_()
           e.pen.setColor(Qt::white);
         }
         break;
-      case Xtal::WaitingForOptimization:
-        e.status = tr("%1 (%2 of %3)")
-                     .arg(xtal->statusText(true))
-                     .arg(QString::number(xtal->getCurrentOptStep() + 1))
-                     .arg(QString::number(totalOptSteps));
-        e.brush.setColor(Qt::darkCyan);
-        break;
+
+      // A temporary error may still be handled by the failure policy.
       case Xtal::Error:
         e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::red);
+        e.brush.setColor(Qt::lightGray);
         break;
-      case Xtal::Updating:
-        e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::cyan);
-        break;
+
       case Xtal::Empty:
         e.status = xtal->statusText(true);
         break;
@@ -476,9 +478,18 @@ void TabProgress::updateInfo_()
         break;
     }
 
+
+    // The below override is commented out! With that, any restored structure
+    //   with previous failure would be shown with "darkRed" color (ie, the one
+    //   for the killed/removed) until it was successfully optimized. Without this,
+    //   the color coding will reflect the actual current status (failure count
+    //   is still an indicator of history!)
+    /*
     if (xtal->getFailCount() != 0) {
-      e.brush.setColor(Qt::red);
+      e.brush.setColor(Qt::darkRed);
     }
+    */
+
     emit updateTableEntry(i, e);
   }
 }
@@ -946,9 +957,9 @@ void TabProgress::unkillXtalProgress_()
   if (xtal) {
     QWriteLocker locker(&xtal->lock());
     if (xtal->isKilledOrRemovedState()) {
-      // Setting status to Xtal::Error will restart a killed structure.
+      // Restart a killed structure from its current optimization step.
       if (xtal->getStatus() == Xtal::Killed)
-        xtal->setStatus(Xtal::Error);
+        xtal->setStatus(Xtal::Restart);
       else {
         xtal->setStatus(Xtal::Optimized);
         nowOptimized = true;
