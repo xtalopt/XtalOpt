@@ -25,6 +25,8 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <xtalopt/legacy/input_compat.h>
+#include <xtalopt/legacy/state_compat.h>
 #include <xtalopt/legacy/structure_state_compat.h>
 #include <xtalopt/settings.h>
 #include <xtalopt/structures/xtal.h>
@@ -62,6 +64,9 @@ using namespace Search;
 namespace XtalOpt {
 
 namespace {
+
+bool readStructureStateData(Xtal& xtal, const QString& filename);
+bool readCurrentStructureState(Xtal& xtal, const QString& filename);
 
 typedef bool (*SaveSuccessCheck)(const QString& filename);
 
@@ -298,43 +303,34 @@ bool writeOptSchemeGroup(XtalOpt& xtalopt, const QString& filename)
 bool findStructureStateFile(const QString& primaryStateFile, QString& loadableStateFile)
 {
   loadableStateFile = primaryStateFile;
-  if (isStateFileLoadable(loadableStateFile))
+  if (isStateFileSaveSuccessful(loadableStateFile))
     return true;
 
   loadableStateFile = primaryStateFile + ".old";
-  return isStateFileLoadable(loadableStateFile);
+  return isStateFileSaveSuccessful(loadableStateFile);
 }
 
+// Read a structure state file: it is converted if an old version.
 Xtal* loadXtalState(const QString& stateFile, const QString& locPath,
-                    double spgTolerance, QThread* targetThread)
+                    const QString& mainStateFile)
 {
   Xtal* xtal = new Xtal();
   QWriteLocker locker(&xtal->lock());
 
-  xtal->setLocpath(locPath);
-  // Use True to also read current cell/atom info, enthalpy, energy, and PV entries.
-  if (!readStructureState(*xtal, stateFile, true)) {
+  // An old file may already provide the current structure information while it
+  //   is converted; if it doesn't, read that information here.
+  bool currentInfoRead = false;
+  if (!readStructureStateData(*xtal, stateFile) ||
+      !Legacy::finishStructureStateRead(*xtal, stateFile, mainStateFile, currentInfoRead) ||
+      (!currentInfoRead && !readCurrentStructureState(*xtal, stateFile))) {
     locker.unlock();
     delete xtal;
     return nullptr;
   }
 
-  if (targetThread) {
-    xtal->moveToThread(targetThread);
-    xtal->setupConnections();
-  }
-  // Re-set the local work dir to where the file was actually found; instead of using
-  //   the saved path in state file. This is to allow copying an entire run directory
-  //   to a different location, and resume a run for that.
+  // Re-set the local work dir to where the file was actually found; instead of
+  //   using the saved path. This allows a copied session to be resumed.
   xtal->setLocpath(locPath);
-  xtal->findSpaceGroup(spgTolerance);
-
-  // Re-use saved status/timer to keep the geometry refresh consistent.
-  Xtal::State state = xtal->getStatus();
-  QDateTime endtime = xtal->getOptTimerEnd();
-  xtal->setStatus(state);
-  xtal->setOptTimerEnd(endtime);
-
   return xtal;
 }
 
@@ -584,16 +580,16 @@ QStringList XtalOpt::structureStateDirs(const QString& stateFile) const
 }
 
 // The "needs save" markers are caught and files are written only here and in saveRequestedOutputFiles
-//   everything=false: writes just the requested files (background calls)
-//   everything=true:  writes all files (save() calls)
+//   saveAll=false: writes just the requested files (background calls)
+//   saveAll=true:  writes all files (save() calls)
 // Failed save attempts are retried after a period of time.
-bool XtalOpt::saveRequestedStateFiles(const QString& filename, bool everything, bool notify)
+bool XtalOpt::saveRequestedStateFiles(const QString& filename, bool saveAll, bool showProgress)
 {
   Common::ScopedTimer _timer("XtalOpt::saveRequestedStateFiles");
 
   // Take the collected save requests and clear the markers.
   QSet<Structure*> structuresToSave;
-  bool saveSettings = everything;
+  bool saveSettings = saveAll;
   {
     std::lock_guard<std::mutex> guard(x_filesNeedingSaveMutex);
     structuresToSave = x_structuresNeedingSave;
@@ -602,22 +598,9 @@ bool XtalOpt::saveRequestedStateFiles(const QString& filename, bool everything, 
     x_settingsStateNeedsSave = false;
   }
 
-  // Copy the structure list under a short read lock, then let it go for the
-  //   rest of the save: holding it the whole time would stop the queue thread
-  //   from adding structures (and stall the hull/similarity checks behind it).
-  //   Copy the pointers one by one, not "structures = *tracker()->list()" - a
-  //   shallow copy shares data with the live list, so a concurrent add corrupts
-  //   it. Safe because the tracker only grows during a run (structures are
-  //   removed only at session reset, which can't overlap a save).
-  QList<Structure*> structures;
-  {
-    QReadLocker trackerLocker(tracker()->rwLock());
-    structures.reserve(tracker()->list()->size());
-    for (Structure* structure : *tracker()->list())
-      structures.append(structure);
-  }
+  QList<Structure*> structures = trackedStructuresSnapshot();
 
-  if (everything) {
+  if (saveAll) {
     structuresToSave.clear();
     for (Structure* structure : structures)
       structuresToSave.insert(structure);
@@ -632,7 +615,7 @@ bool XtalOpt::saveRequestedStateFiles(const QString& filename, bool everything, 
     // One "write" each time! We pass on failed writings.
     std::lock_guard<std::mutex> saveGuard(x_stateSaveMutex);
 
-    failedStructures = writeStructureStateFiles(structures, structuresToSave, notify);
+    failedStructures = writeStructureStateFiles(structures, structuresToSave, showProgress);
 
     // Finally, main state file!
     if (saveSettings) {
@@ -656,13 +639,13 @@ bool XtalOpt::saveRequestedStateFiles(const QString& filename, bool everything, 
   return false;
 }
 
-bool XtalOpt::saveRequestedOutputFiles(bool everything, bool notify)
+bool XtalOpt::saveRequestedOutputFiles(bool saveAll, bool showProgress)
 {
   Common::ScopedTimer _timer("XtalOpt::saveRequestedOutputFiles");
 
   // Take the collected save requests and clear the markers.
-  bool saveResults = everything;
-  bool saveHull = everything;
+  bool saveResults = saveAll;
+  bool saveHull = saveAll;
   QList<QPair<QString, QString>> snapshots;
   {
     std::lock_guard<std::mutex> guard(x_filesNeedingSaveMutex);
@@ -677,13 +660,7 @@ bool XtalOpt::saveRequestedOutputFiles(bool everything, bool notify)
   if (!saveResults && !saveHull && snapshots.isEmpty())
     return true;
 
-  QList<Structure*> structures;
-  {
-    QReadLocker trackerLocker(tracker()->rwLock());
-    structures.reserve(tracker()->list()->size());
-    for (Structure* structure : *tracker()->list())
-      structures.append(structure);
-  }
+  QList<Structure*> structures = trackedStructuresSnapshot();
   if (structures.isEmpty()) {
     // Nothing for the results/hull files; queued movie frames still might be there!
     saveResults = false;
@@ -706,7 +683,7 @@ bool XtalOpt::saveRequestedOutputFiles(bool everything, bool notify)
     // Fill in the display fronts from the latest parent selection data
     applyParentSelectionFronts();
 
-    if (saveResults && !writeResultsFile(structures, notify))
+    if (saveResults && !writeResultsFile(structures, showProgress))
       resultsFailed = true;
 
     // Check if we have local work dir set for hull file
@@ -775,7 +752,7 @@ bool XtalOpt::save(QString filename, bool notify)
 
 QSet<Structure*> XtalOpt::writeStructureStateFiles(const QList<Search::Structure*>& structures,
                                                    const QSet<Search::Structure*>& structuresToSave,
-                                                   bool notify)
+                                                   bool showProgress)
 {
   Common::ScopedTimer _timer("XtalOpt::writeStructureStateFiles");
 
@@ -817,7 +794,7 @@ QSet<Structure*> XtalOpt::writeStructureStateFiles(const QList<Search::Structure
     }
 
     // 2) save file in final location.
-    if (notify) {
+    if (showProgress) {
       updateProgressValue(-1, tr("Saving: Writing %1...").arg(structureStateFileName));
     }
     if (finishStateFileWrite(scratchFileName, structureStateFileName, isStateFileSaveSuccessful, __func__))
@@ -931,7 +908,6 @@ bool XtalOpt::writeOptScheme(const QString& filename)
 
 // Read and write the current structure information.
 static bool writeCurrentStructureState(const Xtal& xtal, const QString& filename);
-static bool readCurrentStructureState(Xtal& xtal, const QString& filename);
 
 void writeStructureState(Xtal& xtal, const QString& filename)
 {
@@ -1197,7 +1173,7 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
   QList<Structure*> loadedStructures;
   QList<QPair<Structure*, QString>> parentRequests;
   bool errorMsgAlreadyGiven = false;
-  bool structureLoadFailed = false;
+  QThread* restoredThread = readOnlyLoad ? nullptr : tracker()->thread();
 
   for (int i = 0; i < xtalDirs.size(); i++) {
     const QString xtalPath = Common::localPath(dataDir.absolutePath(), xtalDirs.at(i));
@@ -1225,17 +1201,14 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
         errorMsgAlreadyGiven = true;
       }
       Common::warning(warningMsg);
-      structureLoadFailed = true;
       continue;
     }
 
-    Xtal* xtal = loadXtalState(xtalStateFileName, xtalPath, getTolSpg(),
-                               readOnlyLoad ? nullptr : restoredStructureThread());
+    Xtal* xtal = loadXtalState(xtalStateFileName, xtalPath, stateFile);
     if (!xtal && !xtalStateFileName.endsWith(".old") &&
-        isStateFileLoadable(xtalStateFileName + ".old")) {
+        isStateFileSaveSuccessful(xtalStateFileName + ".old")) {
       xtalStateFileName += ".old";
-      xtal = loadXtalState(xtalStateFileName, xtalPath, getTolSpg(),
-                           readOnlyLoad ? nullptr : restoredStructureThread());
+      xtal = loadXtalState(xtalStateFileName, xtalPath, stateFile);
     }
     if (!xtal) {
       if (!errorMsgAlreadyGiven) {
@@ -1243,8 +1216,23 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
         errorMsgAlreadyGiven = true;
       }
       Common::warning(warningMsg);
-      structureLoadFailed = true;
       continue;
+    }
+
+    // Setup that only happens once, after the structure is read.
+    {
+      QWriteLocker locker(&xtal->lock());
+      if (restoredThread) {
+        xtal->moveToThread(restoredThread);
+        xtal->setupConnections();
+      }
+      xtal->findSpaceGroup(getTolSpg());
+
+      // Re-use saved status/timer to keep the geometry refresh consistent.
+      Xtal::State state = xtal->getStatus();
+      QDateTime endtime = xtal->getOptTimerEnd();
+      xtal->setStatus(state);
+      xtal->setOptTimerEnd(endtime);
     }
 
     if (xtal->getCurrentOptStep() >= getNumOptSteps()) {
@@ -1256,14 +1244,7 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
         tr("Structure %1 uses saved optimization step %2, but only %3 steps "
            "are available. This structure will be excluded.")
            .arg(xtalPath).arg(xtal->getCurrentOptStep() + 1).arg(static_cast<qulonglong>(getNumOptSteps())));
-      structureLoadFailed = true;
       Tracker::deleteStructure(xtal);
-      continue;
-    }
-
-    if (!normalizeLoadedStructureObjectives(xtal, xtalStateFileName)) {
-      Tracker::deleteStructure(xtal);
-      structureLoadFailed = true;
       continue;
     }
 
@@ -1311,9 +1292,6 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
 
     loadedStructures.append(qobject_cast<Structure*>(xtal));
   }
-
-  if (x_loadedVersion4State && structureLoadFailed)
-    Common::warning("Some old structures could not be loaded and were skipped.");
 
   // If no structures were loaded successfully, report restore failure.
   if (loadedStructures.size() == 0) {
@@ -1419,18 +1397,25 @@ bool XtalOpt::loadSettingsState(const QString& filename)
   return true;
 }
 
-bool XtalOpt::readSettings(const QString& filename, bool fullState)
+bool XtalOpt::readSettings(const QString& filename, bool fullState,
+                           bool* stateWasConverted)
 {
+  if (stateWasConverted)
+    *stateWasConverted = false;
+
   if (filename.isEmpty()) {
     Common::error("Cannot read XtalOpt settings without an explicit filename.");
     return false;
   }
 
-  // If needed, use the legacy layer before reading old settings files.
   QString readFilename;
-  if (!prepareXtalOptStateFileForRead(filename, fullState, readFilename,
-                                      false))
+  const bool keepCompatibilityCopy = !isReadOnly();
+  if (!Legacy::prepareXtalOptStateFileForRead(filename, fullState,
+                                              keepCompatibilityCopy, readFilename))
     return false;
+
+  if (stateWasConverted)
+    *stateWasConverted = readFilename != filename;
 
   bool readOk = true;
   {
@@ -1441,9 +1426,9 @@ bool XtalOpt::readSettings(const QString& filename, bool fullState)
   if (readOk && !readOptSchemeGroup(*this, readFilename, fullState))
     readOk = false;
 
-  if (isReadOnly() && readFilename != filename &&
+  if (!keepCompatibilityCopy && readFilename != filename &&
       !QFile::remove(readFilename)) {
-    Common::warning(QString("Could not remove temporary compatibility state copy %1.")
+    Common::warning(QString("Could not remove compatibility state copy %1.")
                       .arg(readFilename));
   }
 
@@ -1453,6 +1438,14 @@ bool XtalOpt::readSettings(const QString& filename, bool fullState)
   // Check all settings. For a loaded session, reset wrong values and warn.
   Settings::validateSettings(*this, Settings::InvalidSettingAction::ResetToDefault);
   processInputData();
+
+  if (fullState && getUsingCustomIAD() && !checkCustomIADs(false)) {
+    setUsingCustomIAD(false);
+    setUsingScaledIAD(true);
+    clearCustomIADs();
+    Common::warning("Saved custom IAD settings are incomplete. "
+                    "Resetting to scaled interatomic distances.");
+  }
 
   // In resume, we always assume that the work directory is the state file's
   //   directory, regardless of what was stored in the state file. We do this
@@ -1470,31 +1463,89 @@ bool XtalOpt::readOptScheme(const QString& filename, bool fullState)
     return false;
   }
 
-  // A "scheme" file contains the optscheme subset of the full state; so, we use
-  //   the same legacy layer as full state to read and convert these files.
+  // A scheme file contains the optscheme subset of a full state file, so it
+  //   uses the same compatibility conversion.
   QString readFilename;
-  if (!prepareXtalOptStateFileForRead(filename, fullState, readFilename,
-                                      false))
+  const bool keepCompatibilityCopy = !isReadOnly();
+  if (!Legacy::prepareXtalOptStateFileForRead(filename, fullState,
+                                              keepCompatibilityCopy, readFilename))
     return false;
 
   const bool readOk = readOptSchemeGroup(*this, readFilename, fullState);
-  if (isReadOnly() && readFilename != filename &&
+  if (!keepCompatibilityCopy && readFilename != filename &&
       !QFile::remove(readFilename)) {
-    Common::warning(QString("Could not remove temporary compatibility state copy %1.")
+    Common::warning(QString("Could not remove compatibility state copy %1.")
                       .arg(readFilename));
   }
   return readOk;
 }
 
-bool readStructureState(Xtal& xtal, const QString& filename, const bool readCurrentInfo)
+bool XtalOpt::convertFileToCurrent(const QString& filename)
 {
-  if (!isStateFileLoadable(filename))
+  if (filename.isEmpty()) {
+    Common::error("Cannot convert without an explicit filename.");
+    return false;
+  }
+  if (!Common::isReadableFile(filename)) {
+    Common::error(QString("Cannot read file to convert: %1").arg(filename));
+    return false;
+  }
+
+  QStringList groups;
+  {
+    QSettings probe(filename, QSettings::IniFormat);
+    groups = probe.childGroups();
+  }
+
+  if (groups.contains("xtalopt")) {
+    QString readFilename;
+    if (!Legacy::prepareXtalOptStateFileForRead(filename, true, true, readFilename))
+      return false;
+    if (readFilename == filename) {
+      Common::message(QString("%1 is already current; nothing written.").arg(filename));
+      return true;
+    }
+    Common::message(QString("Converted session file to current format: %1.").arg(readFilename));
+    return true;
+  }
+
+  if (groups.contains("structure")) {
+    Common::error("structure.state files are converted while loading their "
+                  "XtalOpt session and cannot be converted separately.");
+    return false;
+  }
+
+  QString inputText;
+  QString outputText;
+  QString compatibilityFilename;
+  QString error;
+  if (!Common::readFileToQString(filename, &inputText)) {
+    Common::error(QString("Cannot read file to convert: %1").arg(filename));
+    return false;
+  }
+  if (!Legacy::prepareXtalOptInputTextForRead(filename, inputText, outputText,
+                                              true, &compatibilityFilename, &error)) {
+    Common::error(error);
+    return false;
+  }
+  if (compatibilityFilename.isEmpty()) {
+    Common::message(QString("%1 is already current; nothing written.").arg(filename));
+    return true;
+  }
+  Common::message(QString("Converted input file to current format: %1.")
+                  .arg(compatibilityFilename));
+  return true;
+}
+
+namespace {
+
+bool readStructureStateData(Xtal& xtal, const QString& filename)
+{
+  if (!isStateFileSaveSuccessful(filename))
     return false;
 
   QSETTINGS_FILE(filename);
   settings->beginGroup("structure");
-  // Read the state file directly; below normalizeStructureStateAfterRead will convert
-  //   the v14 status codes.
   {
     int loadedStatusValue = -1;
     xtal.setGeneration(settings->value("generation", 0).toInt());
@@ -1662,8 +1713,6 @@ bool readStructureState(Xtal& xtal, const QString& filename, const bool readCurr
   }
   settings->endGroup();
 
-  const bool currentInfoRead = Legacy::normalizeStructureStateAfterRead(xtal, filename);
-
   // Crystal-specific extras in the same group.
   {
     QSETTINGS_FILE(filename);
@@ -1672,16 +1721,10 @@ bool readStructureState(Xtal& xtal, const QString& filename, const bool readCurr
     settings->endGroup();
   }
 
-  // Read current enthalpy, energy, cell, atom types, and positions.
-  if (readCurrentInfo) {
-    if (currentInfoRead)
-      return xtal.numAtoms() > 0;
-    return readCurrentStructureState(xtal, filename);
-  }
   return true;
 }
 
-static bool readCurrentStructureState(Xtal& xtal, const QString& filename)
+bool readCurrentStructureState(Xtal& xtal, const QString& filename)
 {
   QSETTINGS_FILE(filename);
   settings->beginGroup("structure/current");
@@ -1789,6 +1832,8 @@ static bool readCurrentStructureState(Xtal& xtal, const QString& filename)
   settings->endGroup();
   return true;
 }
+
+} // namespace
 
 QString XtalOpt::searchStateFilePath() const
 {

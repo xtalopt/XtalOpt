@@ -16,6 +16,7 @@
 #include <xtalopt/xtalopt.h>
 
 #include <xtalopt/structures/xtal.h>
+#include <xtalopt/legacy/structure_state_compat.h>
 #include <xtalopt/settings.h>
 
 #include <common/compatibility/qt_compat.h>
@@ -106,8 +107,7 @@ enum Version14State
   Version14ObjectiveCalculation = 15
 };
 
-void writeRawWorkflowState(const QString& filename, int version, int status,
-                           Structure::ConstraintState constraintState = Structure::Cs_NotCalculated)
+void writeRawWorkflowState(const QString& filename, int version, int status)
 {
   Xtal xtal;
   writeStructureState(xtal, filename);
@@ -116,7 +116,6 @@ void writeRawWorkflowState(const QString& filename, int version, int status,
   settings.beginGroup("structure");
   settings.setValue("version", version);
   settings.setValue("status", status);
-  settings.setValue("constraintsState", int(constraintState));
   settings.endGroup();
   settings.sync();
 }
@@ -169,8 +168,6 @@ private slots:
   void stateSettingsNormalizeSingleLegacyVaspPotcarEntry();
   void stateSettingsNormalizeLegacyVaspPotcarEntries();
   void stateSettingsRejectMismatchedLegacyVaspPotcarEntries();
-
-  // Legacy structure.state compatibility (structure_state_compat.cpp).
   void legacyWorkflowStatusesNormalizeOnRead();
   void unversionedTextStateIsRejected();
   void unsupportedStructureVersionsAreRejected();
@@ -364,30 +361,44 @@ void LegacyCompatTest::convertProducesCurrentFormatPerType()
   QVERIFY(!opt.convertFileToCurrent(structPath));
   const QString structCompat = structPath + ".compat";
   QVERIFY(!QFile::exists(structCompat));
+
+  // Read a current text input file.
+  const QString currentIn = tempPath(tempDir, "xtalopt.in");
+  QVERIFY(QFile::copy(Common::localPath(QString(TESTDATADIR), "inputs/xtalopt.in"), currentIn));
+  QVERIFY(opt.convertFileToCurrent(currentIn));
+  QVERIFY(!QFile::exists(currentIn + ".compat"));
 }
 
 void LegacyCompatTest::convertMechanicalReadIgnoresMissingAssets()
 {
-  // Convert an old "text" input settings file.
+  // Convert an old text input without its template files.
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
-  const QString srcIn = Common::localPath(QString(TESTDATADIR), "inputs/xtalopt.in");
   const QString dstIn = tempPath(tempDir, "xtalopt.in");
-  QVERIFY(QFile::copy(srcIn, dstIn)); // the .in only -- no templates/ alongside
+  QFile inputFile(dstIn);
+  QVERIFY(inputFile.open(QIODevice::WriteOnly | QIODevice::Text));
+  QTextStream input(&inputFile);
+  input << "chemicalFormulas = O1\n";
+  input << "queueInterface = local\n";
+  input << "localQueue = true\n";
+  input << "exeLocation = gulp\n";
+  input << "templatesDirectory = ./missing-templates\n";
+  input << "ginTemplates = missing.gin\n";
+  inputFile.close();
 
   XtalOpt opt;
   opt.setRunMode(XtalOpt::RunModeReadOnly);
   QVERIFY(opt.convertFileToCurrent(dstIn));
   const QString compat = dstIn + ".compat";
   QVERIFY(QFile::exists(compat));
-  QFile f(compat);
-  QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
-  const QString text = QString::fromLocal8Bit(f.readAll());
-  QVERIFY(text.contains("optimizer = gulp"));
+  QFile compatFile(compat);
+  QVERIFY(compatFile.open(QIODevice::ReadOnly | QIODevice::Text));
+  const QString text = QString::fromLocal8Bit(compatFile.readAll());
   QVERIFY(text.contains("queueInterface = none"));
-  // Check the template references.
-  QVERIFY(text.contains("templatesDirectory = ./templates/gulp"));
-  QVERIFY(text.contains("ginTemplates = gin1"));
+  QVERIFY(text.contains("remoteQueue = false"));
+  QVERIFY(text.contains("directRunCommand = gulp"));
+  QVERIFY(text.contains("templatesDirectory = ./missing-templates"));
+  QVERIFY(text.contains("ginTemplates = missing.gin"));
 }
 
 void LegacyCompatTest::objectiveSettingsLoadLegacyFiltrationAsConstraint()
@@ -1280,12 +1291,17 @@ void LegacyCompatTest::stateSettingsRejectMismatchedLegacyVaspPotcarEntries()
   QVERIFY(!QFile::exists(stateFile + ".compat"));
 }
 
-// Legacy structure.state compatibility (structure_state_compat.cpp).
-
 void LegacyCompatTest::legacyWorkflowStatusesNormalizeOnRead()
 {
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
+
+  // Old structure files are converted along with their old main state file.
+  const QString mainStateFile = tempPath(tempDir, "xtalopt.state");
+  {
+    QSettings settings(mainStateFile, QSettings::IniFormat);
+    markXtalOptStateVersion(settings, OriginalStateVersion);
+  }
 
   struct StatusConversion
   {
@@ -1316,14 +1332,24 @@ void LegacyCompatTest::legacyWorkflowStatusesNormalizeOnRead()
     const QString stateFile = tempPath(tempDir, QString("status-%1.state").arg(i));
     writeRawWorkflowState(stateFile, OriginalStateVersion, conversions[i].version14State);
 
+    // The file is read before it is converted, so the structure starts out with
+    //   the old status value; the conversion replaces it with the current one.
     Xtal loaded;
-    QVERIFY(readStructureState(loaded, stateFile));
+    loaded.setStatus(static_cast<Structure::State>(conversions[i].version14State));
+    bool currentInfoRead = false;
+    QVERIFY(Legacy::finishStructureStateRead(loaded, stateFile, mainStateFile,
+                                             currentInfoRead));
     QCOMPARE(loaded.getStatus(), conversions[i].currentState);
   }
 
+  // Check an unknown old status.
   const QString unknownStateFile = tempPath(tempDir, "unknown-status.state");
   writeRawWorkflowState(unknownStateFile, OriginalStateVersion, 999);
-  QVERIFY(!isStateFileLoadable(unknownStateFile));
+  Xtal unknown;
+  unknown.setStatus(static_cast<Structure::State>(999));
+  bool currentInfoRead = false;
+  QVERIFY(!Legacy::finishStructureStateRead(unknown, unknownStateFile, mainStateFile,
+                                            currentInfoRead));
 }
 
 void LegacyCompatTest::unversionedTextStateIsRejected()
@@ -1340,7 +1366,9 @@ void LegacyCompatTest::unversionedTextStateIsRejected()
   file.close();
 
   // Check an unsupported old structure state.
-  QVERIFY(!isStateFileLoadable(stateFile));
+  Xtal loaded;
+  bool currentInfoRead = false;
+  QVERIFY(!Legacy::finishStructureStateRead(loaded, stateFile, QString(), currentInfoRead));
 }
 
 void LegacyCompatTest::unsupportedStructureVersionsAreRejected()
@@ -1348,6 +1376,7 @@ void LegacyCompatTest::unsupportedStructureVersionsAreRejected()
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
 
+  bool currentInfoRead = false;
   for (int version = 1; version <= 3; ++version) {
     const QString stateFile = tempPath(tempDir,
       QString("structure-v%1.state").arg(version));
@@ -1357,7 +1386,8 @@ void LegacyCompatTest::unsupportedStructureVersionsAreRejected()
       QSettings settings(stateFile, QSettings::IniFormat);
       settings.setValue("structure/version", version);
     }
-    QVERIFY(!isStateFileLoadable(stateFile));
+    Xtal loaded;
+    QVERIFY(!Legacy::finishStructureStateRead(loaded, stateFile, QString(), currentInfoRead));
   }
 
   const QString version13State = tempPath(tempDir, "structure-v13.state");
@@ -1370,7 +1400,8 @@ void LegacyCompatTest::unsupportedStructureVersionsAreRejected()
     settings.setValue("structure/supercellGenerationChecked", false);
     settings.setValue("structure/objectivesState", Structure::Os_NotCalculated);
   }
-  QVERIFY(!isStateFileLoadable(version13State));
+  Xtal version13Loaded;
+  QVERIFY(!Legacy::finishStructureStateRead(version13Loaded, version13State, QString(), currentInfoRead));
 
   const QString version12State = tempPath(tempDir, "structure-v12.state");
   writeStructureState(saved, version12State);
@@ -1382,7 +1413,8 @@ void LegacyCompatTest::unsupportedStructureVersionsAreRejected()
     settings.setValue("structure/fileName", "old-structure");
     settings.setValue("structure/supercellGenerationChecked", false);
   }
-  QVERIFY(!isStateFileLoadable(version12State));
+  Xtal version12Loaded;
+  QVERIFY(!Legacy::finishStructureStateRead(version12Loaded, version12State, QString(), currentInfoRead));
 }
 
 } // namespace XtalOpt

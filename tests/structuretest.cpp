@@ -14,6 +14,7 @@
  ***********************************************************************/
 
 #include <search/structure.h>
+#include <search/tracker.h>
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/xtalopt.h>
 #include <common/fileutils.h>
@@ -25,6 +26,7 @@
 #include <atoms/geometry.h>
 
 #include <QDateTime>
+#include <QDir>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -155,7 +157,7 @@ private slots:
   void stateHelpersClassifyStates();
   void workflowStateStatusText();
   void copyAndMovePreserveState();
-  void malformedCurrentGeometryDoesNotClearExistingAtoms();
+  void malformedCurrentGeometryIsRejectedOnSessionLoad();
   void generateIADHistogramSkipsDuplicateZeroTranslation();
   void perceiveBonds();
   void updateAndSkipHistoryUpdatesAtoms();
@@ -360,63 +362,79 @@ void StructureTest::workflowStateCycle()
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
 
-  const QString stateFile = Common::localPath(tempDir.path(), "structure.state");
+  const QString stateFile = Common::localPath(tempDir.path(), "xtalopt.state");
+  const QString structureDir = Common::localPath(tempDir.path(), "00003x00007");
+  QVERIFY(QDir().mkpath(structureDir));
 
-  XtalOpt::Xtal saved;
-  saved.setGeneration(3);
-  saved.setIDNumber(7);
-  saved.setIndex(11);
-  saved.setJobID(1234);
-  saved.setCurrentOptStep(2);
-  saved.setParents("parent-a parent-b");
-  const QString localPath = Common::localPath(tempDir.path(), "local");
-  saved.setLocpath(localPath);
-  saved.setRempath("/remote/structure");
-  saved.setStatus(Structure::ObjectiveCalculation);
-  saved.setFailCount(4);
-  saved.setOptTimerStart(QDateTime::fromString("2026-01-02T03:04:05", Qt::ISODate));
-  saved.setOptTimerEnd(QDateTime::fromString("2026-01-02T04:04:05", Qt::ISODate));
-  saved.appendCopyFile("extra.dat");
+  XtalOpt::XtalOpt producer;
+  producer.setLocWorkDir(tempDir.path());
+  producer.setInputFormulasString("O1");
+  QVERIFY(producer.processInputChemicalFormulas(producer.getInputFormulasString()));
+  producer.clearOptSteps();
+  for (int i = 0; i < 3; ++i) {
+    producer.appendOptStep();
+    QVERIFY(producer.setQueueInterface(i, "none"));
+    QVERIFY(producer.setOptimizer(i, "gulp"));
+  }
+
+  XtalOpt::Xtal* saved = new XtalOpt::Xtal;
+  saved->setGeneration(3);
+  saved->setIDNumber(7);
+  saved->setJobID(1234);
+  saved->setCurrentOptStep(2);
+  saved->setParents("parent-a parent-b");
+  saved->setLocpath(structureDir);
+  saved->setRempath("/remote/structure");
+  saved->setStatus(Structure::ObjectiveCalculation);
+  saved->setFailCount(4);
+  saved->setOptTimerStart(QDateTime::fromString("2026-01-02T03:04:05", Qt::ISODate));
+  saved->setOptTimerEnd(QDateTime::fromString("2026-01-02T04:04:05", Qt::ISODate));
+  saved->appendCopyFile("extra.dat");
   const double objectiveValue = 2.500000123456789;
   const double constraintValue = 0.12345678901234566;
   const Common::Vector3 position(1.2345678901234567, -2.3456789012345678, 3.4567890123456789);
-  saved.addAtom(8, position);
-  saved.setStrucObjValues(1.25);
-  saved.setStrucObjValues(objectiveValue);
-  saved.setStrucObjState(Structure::Os_Retain);
-  saved.setStrucConstraintValues(constraintValue);
-  saved.setStrucConstraintState(Structure::Cs_Dismiss);
-  saved.setStrucConstraintRedoCount(1);
-  XtalOpt::writeStructureState(saved, stateFile);
+  saved->addAtom(8, position);
+  saved->setStrucObjValues(1.25);
+  saved->setStrucObjValues(objectiveValue);
+  saved->setStrucObjState(Structure::Os_Retain);
+  saved->setStrucConstraintValues(constraintValue);
+  saved->setStrucConstraintState(Structure::Cs_Dismiss);
+  saved->setStrucConstraintRedoCount(1);
+  QVERIFY(producer.tracker()->append(saved));
+  QVERIFY(producer.save(stateFile, false));
 
-  XtalOpt::Xtal loaded;
-  XtalOpt::readStructureState(loaded, stateFile, true);
+  XtalOpt::XtalOpt restored;
+  restored.setRunMode(XtalOpt::XtalOpt::RunModeReadOnly);
+  QVERIFY(restored.resumeSearch(stateFile));
+  QCOMPARE(restored.tracker()->size(), 1);
+  XtalOpt::Xtal* loaded = static_cast<XtalOpt::Xtal*>(restored.tracker()->at(0));
+  QVERIFY(loaded);
 
-  QCOMPARE(loaded.getGeneration(), static_cast<uint>(3));
-  QCOMPARE(loaded.getIDNumber(), static_cast<uint>(7));
-  QCOMPARE(loaded.getIndex(), 11);
-  QCOMPARE(loaded.getJobID(), static_cast<uint>(1234));
-  QCOMPARE(loaded.getCurrentOptStep(), static_cast<uint>(2));
-  QCOMPARE(loaded.getParents(), QString("parent-a parent-b"));
-  QCOMPARE(loaded.getLocpath(), localPath);
-  QCOMPARE(loaded.getRempath(), QString("/remote/structure"));
-  QCOMPARE(loaded.getStatus(), Structure::ObjectiveCalculation);
-  QCOMPARE(loaded.getFailCount(), static_cast<uint>(4));
-  QCOMPARE(loaded.copyFiles().size(), static_cast<size_t>(1));
-  QCOMPARE(QString::fromStdString(loaded.copyFiles().front()), QString("extra.dat"));
-  QCOMPARE(loaded.getStrucObjNumber(), 2);
-  QVERIFY(std::isnan(loaded.getStrucObjValues(0)));
-  QCOMPARE(loaded.getStrucObjValues(1), objectiveValue);
-  QCOMPARE(loaded.getStrucObjState(), Structure::Os_Retain);
-  QCOMPARE(loaded.getStrucConstraintNumber(), 1);
-  QCOMPARE(loaded.getStrucConstraintValues(0), constraintValue);
-  QCOMPARE(loaded.getStrucConstraintState(), Structure::Cs_Dismiss);
-  QCOMPARE(loaded.getStrucConstraintRedoCount(), 1);
-  QCOMPARE(loaded.numAtoms(), static_cast<size_t>(1));
-  QCOMPARE(loaded.atom(0).atomicNumber(), static_cast<unsigned short>(8));
-  QCOMPARE(loaded.atom(0).pos().x(), position.x());
-  QCOMPARE(loaded.atom(0).pos().y(), position.y());
-  QCOMPARE(loaded.atom(0).pos().z(), position.z());
+  QCOMPARE(loaded->getGeneration(), static_cast<uint>(3));
+  QCOMPARE(loaded->getIDNumber(), static_cast<uint>(7));
+  QCOMPARE(loaded->getIndex(), 0);
+  QCOMPARE(loaded->getJobID(), static_cast<uint>(1234));
+  QCOMPARE(loaded->getCurrentOptStep(), static_cast<uint>(2));
+  QCOMPARE(loaded->getParents(), QString("parent-a parent-b"));
+  QCOMPARE(loaded->getLocpath(), structureDir);
+  QCOMPARE(loaded->getRempath(), QString("/remote/structure"));
+  QCOMPARE(loaded->getStatus(), Structure::ObjectiveCalculation);
+  QCOMPARE(loaded->getFailCount(), static_cast<uint>(4));
+  QCOMPARE(loaded->copyFiles().size(), static_cast<size_t>(1));
+  QCOMPARE(QString::fromStdString(loaded->copyFiles().front()), QString("extra.dat"));
+  QCOMPARE(loaded->getStrucObjNumber(), 2);
+  QVERIFY(std::isnan(loaded->getStrucObjValues(0)));
+  QCOMPARE(loaded->getStrucObjValues(1), objectiveValue);
+  QCOMPARE(loaded->getStrucObjState(), Structure::Os_Retain);
+  QCOMPARE(loaded->getStrucConstraintNumber(), 1);
+  QCOMPARE(loaded->getStrucConstraintValues(0), constraintValue);
+  QCOMPARE(loaded->getStrucConstraintState(), Structure::Cs_Dismiss);
+  QCOMPARE(loaded->getStrucConstraintRedoCount(), 1);
+  QCOMPARE(loaded->numAtoms(), static_cast<size_t>(1));
+  QCOMPARE(loaded->atom(0).atomicNumber(), static_cast<unsigned short>(8));
+  QCOMPARE(loaded->atom(0).pos().x(), position.x());
+  QCOMPARE(loaded->atom(0).pos().y(), position.y());
+  QCOMPARE(loaded->atom(0).pos().z(), position.z());
 }
 
 void StructureTest::stateHelpersClassifyStates()
@@ -592,20 +610,34 @@ void StructureTest::copyAndMovePreserveState()
   checkCopiedState(moveAssigned);
 }
 
-void StructureTest::malformedCurrentGeometryDoesNotClearExistingAtoms()
+void StructureTest::malformedCurrentGeometryIsRejectedOnSessionLoad()
 {
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
 
-  const QString filename = Common::localPath(tempDir.path(), "structure.state");
+  const QString stateFile = Common::localPath(tempDir.path(), "xtalopt.state");
+  const QString structureDir = Common::localPath(tempDir.path(), "00001x00001");
+  QVERIFY(QDir().mkpath(structureDir));
 
-  XtalOpt::Xtal saved;
-  saved.addAtom(1, Common::Vector3(0.0, 0.0, 0.0));
-  saved.addAtom(8, Common::Vector3(1.0, 0.0, 0.0));
-  XtalOpt::writeStructureState(saved, filename);
+  XtalOpt::XtalOpt producer;
+  producer.setLocWorkDir(tempDir.path());
+  producer.setInputFormulasString("O1");
+  QVERIFY(producer.processInputChemicalFormulas(producer.getInputFormulasString()));
+  QVERIFY(producer.setQueueInterface(0, "none"));
+  QVERIFY(producer.setOptimizer(0, "gulp"));
+
+  XtalOpt::Xtal* saved = new XtalOpt::Xtal;
+  saved->setGeneration(1);
+  saved->setIDNumber(1);
+  saved->setLocpath(structureDir);
+  saved->setStatus(Structure::Optimized);
+  saved->addAtom(1, Common::Vector3(0.0, 0.0, 0.0));
+  saved->addAtom(8, Common::Vector3(1.0, 0.0, 0.0));
+  QVERIFY(producer.tracker()->append(saved));
+  QVERIFY(producer.save(stateFile, false));
 
   {
-    QSettings settings(filename, QSettings::IniFormat);
+    QSettings settings(Common::localPath(structureDir, "structure.state"), QSettings::IniFormat);
     settings.beginGroup("structure/current");
     settings.remove("coords");
     settings.beginWriteArray("coords");
@@ -618,13 +650,10 @@ void StructureTest::malformedCurrentGeometryDoesNotClearExistingAtoms()
     settings.sync();
   }
 
-  XtalOpt::Xtal loaded;
-  loaded.addAtom(6, Common::Vector3(2.0, 0.0, 0.0));
-  XtalOpt::readStructureState(loaded, filename, true);
-
-  QCOMPARE(loaded.numAtoms(), static_cast<size_t>(1));
-  QCOMPARE(loaded.atom(0).atomicNumber(), static_cast<unsigned short>(6));
-  QVERIFY(APPROX_EQ(loaded.atom(0).pos().x(), 2.0));
+  XtalOpt::XtalOpt restored;
+  restored.setRunMode(XtalOpt::XtalOpt::RunModeReadOnly);
+  QVERIFY(!restored.resumeSearch(stateFile));
+  QCOMPARE(restored.tracker()->size(), 0);
 }
 
 void StructureTest::generateIADHistogramSkipsDuplicateZeroTranslation()

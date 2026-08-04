@@ -46,7 +46,7 @@ TabAbout::TabAbout(Search::AbstractDialog* parent, XtalOpt* p)
 
   // Insert the title
   QString labelText;
-  labelText.append("<p><b><font size=\"5\">");
+  labelText.append("<p><b><font size=\"4\">");
   labelText.append(QString("XtalOpt  (version %1)").arg(XTALOPT_VER));
   labelText.append("</font></b></p>");
   labelText.append("<p><i>A multi-objective evolutionary algorithm for variable-composition ground state search.</i></p>");

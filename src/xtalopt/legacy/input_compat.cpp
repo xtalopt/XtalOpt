@@ -233,16 +233,13 @@ bool convertLegacyMolUnit(const LegacyMolUnitFields& fields, QStringList& molUni
   return true;
 }
 
-} // end anonymous namespace
-
 bool rewriteLegacyXtalOptInputText(const QString& inputText, QString& outputText,
-                                   QString* errorMessage, bool* compatibilityApplied)
+                                   QString* errorMessage, bool& compatibilityApplied)
 {
   outputText.clear();
   if (errorMessage)
     errorMessage->clear();
-  if (compatibilityApplied)
-    *compatibilityApplied = false;
+  compatibilityApplied = false;
 
   QVector<ParsedLine> lines;
   QString textCopy = inputText;
@@ -436,28 +433,48 @@ bool rewriteLegacyXtalOptInputText(const QString& inputText, QString& outputText
   outputText = outputLines.join("\n");
   if (!outputText.endsWith("\n"))
     outputText += "\n";
-  if (compatibilityApplied)
-    *compatibilityApplied = !notes.isEmpty();
+  compatibilityApplied = !notes.isEmpty();
   return true;
 }
 
+} // end anonymous namespace
+
 bool prepareXtalOptInputTextForRead(const QString& filename, const QString& inputText,
-                                    QString& outputText, QString* errorMessage)
+                                    QString& outputText, bool keepCompatibilityCopy,
+                                    QString* compatibilityFilename, QString* errorMessage)
 {
-  bool compatibilityApplied = false;
-  if (!rewriteLegacyXtalOptInputText(inputText, outputText, errorMessage, &compatibilityApplied))
+  if (compatibilityFilename)
+    compatibilityFilename->clear();
+  bool applied = false;
+  if (!rewriteLegacyXtalOptInputText(inputText, outputText, errorMessage, applied))
     return false;
 
-  if (!compatibilityApplied)
+  if (!applied)
+    return true;
+
+  if (!keepCompatibilityCopy)
     return true;
 
   QFile compatFile(filename + ".compat");
-  if (compatFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-    compatFile.write(outputText.toLocal8Bit());
-  } else {
-    Common::warning(QString("Could not write compatibility input copy '%1'.")
-                            .arg(compatFile.fileName()));
+  if (!compatFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    if (errorMessage)
+      *errorMessage = QString("Could not write compatibility input copy '%1'.")
+                        .arg(compatFile.fileName());
+    return false;
   }
+
+  const QByteArray output = outputText.toLocal8Bit();
+  if (compatFile.write(output) != output.size() || !compatFile.flush() ||
+      compatFile.error() != QFileDevice::NoError) {
+    compatFile.close();
+    QFile::remove(compatFile.fileName());
+    if (errorMessage)
+      *errorMessage = QString("Could not write compatibility input copy '%1'.")
+                        .arg(compatFile.fileName());
+    return false;
+  }
+  if (compatibilityFilename)
+    *compatibilityFilename = compatFile.fileName();
   return true;
 }
 

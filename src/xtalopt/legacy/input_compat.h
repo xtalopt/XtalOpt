@@ -20,14 +20,12 @@ class QString;
 namespace XtalOpt {
 namespace Legacy {
 
-// Convert an old v14 "xtalopt.in" input file to current syntax (this is a version-less file!).
-bool rewriteLegacyXtalOptInputText(const QString& inputText, QString& outputText,
-                                   QString* errorMessage = nullptr,
-                                   bool* compatibilityApplied = nullptr);
-
 // Prepare input settings text for the current reader.
+// NOTE: compatibilityFilename is set only when a converted copy was kept.
 bool prepareXtalOptInputTextForRead(const QString& filename, const QString& inputText,
-                                    QString& outputText, QString* errorMessage = nullptr);
+                                    QString& outputText, bool keepCompatibilityCopy,
+                                    QString* compatibilityFilename = nullptr,
+                                    QString* errorMessage = nullptr);
 
 } // namespace Legacy
 } // end namespace XtalOpt

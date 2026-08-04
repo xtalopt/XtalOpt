@@ -530,11 +530,6 @@ void SearchBase::reset()
   deleteTrackedStructures();
 }
 
-QThread* SearchBase::restoredStructureThread() const
-{
-  return m_tracker->thread();
-}
-
 void SearchBase::addRestoredStructure(Structure* structure, bool queueWaitingForOptimization)
 {
   {

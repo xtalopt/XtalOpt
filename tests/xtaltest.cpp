@@ -16,6 +16,8 @@
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/xtalopt.h>
 
+#include <search/tracker.h>
+
 #include <common/constants.h>
 #include <common/fileutils.h>
 #include <common/output.h>
@@ -25,6 +27,7 @@
 #include <common/random.h>
 
 #include <QString>
+#include <QDir>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -676,16 +679,35 @@ void XtalTest::writeReadSettingsPreservesCompositionValidity()
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
 
-  const QString stateFile = Common::localPath(tempDir.path(), "xtal.state");
+  const QString stateFile = Common::localPath(tempDir.path(), "xtalopt.state");
+  const QString structureDir = Common::localPath(tempDir.path(), "00001x00001");
+  QVERIFY(QDir().mkpath(structureDir));
 
-  Xtal source(4.0, 4.0, 4.0, 90.0, 90.0, 90.0);
-  source.setCompositionValidity(false);
-  writeStructureState(source, stateFile);
+  ::XtalOpt::XtalOpt producer;
+  producer.setLocWorkDir(tempDir.path());
+  producer.setInputFormulasString("O1");
+  QVERIFY(producer.processInputChemicalFormulas(producer.getInputFormulasString()));
+  QVERIFY(producer.setQueueInterface(0, "none"));
+  QVERIFY(producer.setOptimizer(0, "gulp"));
 
-  Xtal loaded;
-  readStructureState(loaded, stateFile, false);
+  Xtal* source = new Xtal(4.0, 4.0, 4.0, 90.0, 90.0, 90.0);
+  source->setGeneration(1);
+  source->setIDNumber(1);
+  source->setLocpath(structureDir);
+  source->setStatus(Structure::Optimized);
+  source->addAtom(8, Common::Vector3(0.0, 0.0, 0.0));
+  source->setCompositionValidity(false);
+  QVERIFY(producer.tracker()->append(source));
+  QVERIFY(producer.save(stateFile, false));
 
-  QVERIFY(!loaded.hasValidComposition());
+  ::XtalOpt::XtalOpt loaded;
+  loaded.setRunMode(::XtalOpt::XtalOpt::RunModeReadOnly);
+  QVERIFY(loaded.resumeSearch(stateFile));
+  QCOMPARE(loaded.tracker()->size(), 1);
+  Xtal* loadedStructure = static_cast<Xtal*>(loaded.tracker()->at(0));
+  QVERIFY(loadedStructure);
+
+  QVERIFY(!loadedStructure->hasValidComposition());
 }
 
 void XtalTest::resultsEntryUsesComputedSpaceGroup()

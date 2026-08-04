@@ -514,13 +514,7 @@ void XtalOpt::checkForSimilarities_()
   // A tolerance or relevant setting change requires a full re-check.
   const bool didReset = x_similaritiesNeedReset.exchange(false);
   if (didReset) {
-    QList<Structure*> structures;
-    {
-      QReadLocker trackerLocker(tracker()->rwLock());
-      structures.reserve(tracker()->list()->size());
-      for (auto* structure : *tracker()->list())
-        structures.append(structure);
-    }
+    QList<Structure*> structures = trackedStructuresSnapshot();
     for (auto* structure : structures) {
       Xtal* xtal = qobject_cast<Xtal*>(structure);
       if (!xtal)

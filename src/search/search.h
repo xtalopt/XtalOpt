@@ -311,11 +311,6 @@ public:
   }
 
   /**
-   * @return Thread that restored structures should move to for an active resume.
-   */
-  QThread* restoredStructureThread() const;
-
-  /**
      Add a saved structure. Queue waiting structures when requested.
    */
   void addRestoredStructure(Structure* structure, bool queueWaitingForOptimization);

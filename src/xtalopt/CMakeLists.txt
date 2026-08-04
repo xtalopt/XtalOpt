@@ -5,6 +5,7 @@ set(xtalopt_core_SRCS
     legacy/input_compat.cpp
     legacy/legacy_helpers.h
     legacy/legacy_helpers.cpp
+    legacy/state_compat.h
     legacy/state_compat.cpp
     legacy/structure_state_compat.cpp
     legacy/queue_command_compat.cpp

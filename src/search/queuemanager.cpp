@@ -243,7 +243,10 @@ void QueueManager::reset()
     Common::warning(QString("%1: still waiting for running handlers...").arg(__func__));
 
   QtCompat::MutexLocker namingLocker(&m_namingMutex);
-  QList<Tracker*> trackers = allTrackers();
+  QList<Tracker*> trackers;
+  trackers.append(&m_jobStartTracker);
+  trackers.append(&m_runningTracker);
+  trackers.append(&m_newStructureTracker);
 
   for (auto it = trackers.begin(), it_end = trackers.end(); it != it_end; it++) {
     QWriteLocker locker((*it)->rwLock());
@@ -721,17 +724,6 @@ void QueueManager::checkExit()
     }
   }
 }
-
-
-QList<Tracker*> QueueManager::allTrackers()
-{
-  QList<Tracker*> trackers;
-  trackers.append(&m_jobStartTracker);
-  trackers.append(&m_runningTracker);
-  trackers.append(&m_newStructureTracker);
-  return trackers;
-}
-
 
 
 // Doxygen skip:

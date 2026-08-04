@@ -466,7 +466,6 @@ protected:
    */
   void unlockForNaming(Structure* s = 0);
   uint nextIdForGeneration(uint generation, const QList<Structure*>& allStructures);
-  QList<Tracker*> allTrackers();
   /// @endcond
 
   /// Tracks which structures are currently running

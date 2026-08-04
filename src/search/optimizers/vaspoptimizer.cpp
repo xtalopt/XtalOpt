@@ -129,6 +129,11 @@ bool VASPOptimizer::addOptimizerInputFiles(Structure* s, int optStep,
   const QString rawPotcarAsset =
     QString::fromStdString(m_search->getOptimizerInputAsset(optStep, "POTCAR"));
   const QHash<QString, QString> potcarAssets = inputAssetTextToMap(rawPotcarAsset);
+  if (!rawPotcarAsset.trimmed().isEmpty() && potcarAssets.isEmpty()) {
+    Common::error(QString("Could not read the saved POTCAR input asset for %1.")
+                    .arg(s->getTag()));
+    return false;
+  }
   const QString systemPotcarAsset = potcarAssets.value("system");
   if (!systemPotcarAsset.isEmpty()) {
     QString potcar;

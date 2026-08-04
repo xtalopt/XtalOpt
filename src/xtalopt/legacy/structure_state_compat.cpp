@@ -14,10 +14,15 @@
  ***********************************************************************/
 
 #include <xtalopt/legacy/structure_state_compat.h>
+#include <xtalopt/legacy/state_compat.h>
 
 #include <xtalopt/xtalopt.h>
 
+#include <common/output.h>
+
 #include <QSettings>
+
+#include <limits>
 
 // Convert XtalOpt v14 structure states.
 
@@ -59,7 +64,7 @@ StructureStateLayout structureStateLayout(const QSettings& settings)
   const int version = settings.value("structure/version", -1).toInt();
   if (version == CurrentStateSchemaVersion)
     return CurrentStructureState;
-  if (version == FloorStateSchemaVersion &&
+  if (version == Legacy::Version4StateSchemaVersion &&
       settings.contains("structure/hasValidComposition"))
     return Version14StructureState;
   return UnsupportedStructureState;
@@ -126,11 +131,67 @@ bool currentStateFromVersion14Status(int statusValue, Structure::State& state)
 } // end anonymous namespace
 
 namespace Legacy {
+namespace {
 
-bool normalizeStructureStateAfterRead(Search::Structure& structure, const QString& filename)
+bool splitVersion4ObjectiveValues(const QList<double>& loadedValues,
+                                  int currentFullCount, int currentUserCount,
+                                  const QList<int>& constraintObjectiveIndices,
+                                  QList<double>& objectiveValues,
+                                  QList<double>* constraintValues)
 {
-  QSettings settings(filename, QSettings::IniFormat);
-  if (structureStateLayout(settings) != Version14StructureState)
+  const int movedObjectiveCount = constraintObjectiveIndices.size();
+  const bool valuesIncludeBuiltinObjective =
+    loadedValues.size() == currentFullCount + movedObjectiveCount;
+  const bool valuesAreUserObjectivesOnly =
+    loadedValues.size() == currentUserCount + movedObjectiveCount;
+  if (!valuesIncludeBuiltinObjective && !valuesAreUserObjectivesOnly)
+    return false;
+
+  objectiveValues.clear();
+  objectiveValues.reserve(valuesIncludeBuiltinObjective ? currentFullCount : currentUserCount);
+  if (constraintValues) {
+    constraintValues->clear();
+    constraintValues->reserve(movedObjectiveCount);
+  }
+
+  for (int i = 0; i < loadedValues.size(); ++i) {
+    const int loadedUserObjectiveIndex = valuesIncludeBuiltinObjective
+      ? i - XtalOpt::getFirstUserObjectiveIndex() : i;
+    if (loadedUserObjectiveIndex >= 0 &&
+        constraintObjectiveIndices.contains(loadedUserObjectiveIndex)) {
+      if (constraintValues)
+        constraintValues->append(loadedValues.at(i));
+      continue;
+    }
+    objectiveValues.append(loadedValues.at(i));
+  }
+
+  return objectiveValues.size() ==
+           (valuesIncludeBuiltinObjective ? currentFullCount : currentUserCount) &&
+           (!constraintValues || constraintValues->size() == movedObjectiveCount);
+}
+
+void normalizeStatusAfterLegacyConstraintMove(Search::Structure& structure)
+{
+  if (structure.getStatus() == Structure::ObjcFailed &&
+      structure.getStrucConstraintState() == Structure::Cs_Fail)
+    structure.setStatus(Structure::ConsFailed);
+}
+
+} // end anonymous namespace
+
+bool finishStructureStateRead(Search::Structure& structure,
+                              const QString& structureStateFilename,
+                              const QString& mainStateFilename,
+                              bool& currentInfoRead)
+{
+  currentInfoRead = false;
+
+  QSettings settings(structureStateFilename, QSettings::IniFormat);
+  const StructureStateLayout layout = structureStateLayout(settings);
+  if (layout == CurrentStructureState)
+    return true;
+  if (layout != Version14StructureState)
     return false;
 
   Structure::State currentState;
@@ -138,47 +199,98 @@ bool normalizeStructureStateAfterRead(Search::Structure& structure, const QStrin
     return false;
   structure.setStatus(currentState);
 
-  if (structure.sizeOfHistory() == 0)
-    return false;
-
-  QList<unsigned int> atomicNums;
-  QList<Common::Vector3> coords;
-  double energy = 0.0;
-  double enthalpy = 0.0;
-  Common::Matrix3 cell;
-  structure.retrieveHistoryEntry(structure.sizeOfHistory() - 1, &atomicNums, &coords, &energy, &enthalpy, &cell);
-  if (atomicNums.isEmpty() || atomicNums.size() != coords.size())
-    return false;
-
-  return structure.updateAndSkipHistory(atomicNums, coords, energy, enthalpy, cell);
-}
-
-} // namespace Legacy
-
-bool isStateFileLoadable(const QString& filename)
-{
-  QSettings settings(filename, QSettings::IniFormat);
-  const bool saveSuccessful =
-    settings.value("structure/saveSuccessful", false).toBool();
-  const StructureStateLayout layout = structureStateLayout(settings);
-  if (layout == UnsupportedStructureState || !saveSuccessful)
-    return false;
-
-  if (layout == CurrentStructureState) {
-    const int status = settings.value("structure/status", -1).toInt();
-    if (status < static_cast<int>(Structure::Optimized) ||
-        status > static_cast<int>(Structure::ConsFailed))
-      return false;
+  if (structure.sizeOfHistory() > 0) {
+    QList<unsigned int> atomicNums;
+    QList<Common::Vector3> coords;
+    double energy = 0.0;
+    double enthalpy = 0.0;
+    Common::Matrix3 cell;
+    structure.retrieveHistoryEntry(structure.sizeOfHistory() - 1, &atomicNums, &coords,
+                                   &energy, &enthalpy, &cell);
+    if (!atomicNums.isEmpty() && atomicNums.size() == coords.size())
+      currentInfoRead = structure.updateAndSkipHistory(atomicNums, coords, energy, enthalpy, cell);
   }
 
-  if (layout == Version14StructureState) {
-    Structure::State currentState;
-    const int status = settings.value("structure/status", -1).toInt();
-    if (!currentStateFromVersion14Status(status, currentState))
+  QString error;
+  QList<int> constraintObjectiveIndices;
+  int legacyObjectiveCount = 0;
+  if (mainStateFilename.isEmpty() ||
+      !version4StateConstraintObjectiveIndices(mainStateFilename, constraintObjectiveIndices,
+                                               legacyObjectiveCount, &error)) {
+    Common::error(QString("The old structure state file %1 cannot be read: %2")
+                  .arg(structureStateFilename).arg(error));
+    return false;
+  }
+
+  // The objectives that are not moved to constraints are the current ones, and
+  //   the built-in objective is added before them.
+  const int currentUserCount = legacyObjectiveCount - constraintObjectiveIndices.size();
+  const int currentFullCount = currentUserCount + XtalOpt::getFirstUserObjectiveIndex();
+
+  QList<double> legacyValues;
+  settings.beginGroup("structure");
+  const int legacyConstraintRedoCount = settings.value("objectivesFailCount", 0).toInt();
+  const int objectiveSize = settings.beginReadArray("objectives");
+  for (int i = 0; i < objectiveSize; ++i) {
+    settings.setArrayIndex(i);
+    legacyValues.append(settings.value("value").toDouble());
+  }
+  settings.endArray();
+  settings.endGroup();
+
+  structure.setStrucConstraintRedoCount(legacyConstraintRedoCount);
+  QList<double> values = legacyValues.isEmpty()
+    ? structure.getStrucObjValuesVec() : legacyValues;
+  if (!legacyValues.isEmpty())
+    structure.setStrucObjValuesVec(values);
+
+  if (!constraintObjectiveIndices.isEmpty() && !legacyValues.isEmpty()) {
+    QList<double> normalized;
+    QList<double> constraintValues;
+    if (!splitVersion4ObjectiveValues(values, currentFullCount, currentUserCount,
+                                      constraintObjectiveIndices, normalized,
+                                      &constraintValues)) {
+      Common::error(QString("The objective information in old structure state file %1 does "
+                            "not match the main state file.").arg(structureStateFilename));
       return false;
+    }
+
+    structure.setStrucObjValuesVec(normalized);
+    structure.setStrucConstraintValuesVec(constraintValues);
+    values = normalized;
+    if (structure.getStrucConstraintState() == Structure::Cs_NotCalculated) {
+      if (structure.getStrucObjState() == Structure::Os_Dismiss)
+        structure.setStrucConstraintState(Structure::Cs_Dismiss);
+      else if (structure.getStrucObjState() == Structure::Os_Fail)
+        structure.setStrucConstraintState(Structure::Cs_Fail);
+      else
+        structure.setStrucConstraintState(Structure::Cs_Retain);
+      normalizeStatusAfterLegacyConstraintMove(structure);
+    }
+  }
+
+  if (!legacyValues.isEmpty() && values.size() != currentFullCount &&
+      values.size() != currentUserCount) {
+    Common::error(QString("The objective information in old structure state file %1 does "
+                          "not match the main state file.").arg(structureStateFilename));
+    return false;
+  }
+
+  if (currentFullCount > currentUserCount && values.size() == currentUserCount) {
+    QList<double> expanded;
+    expanded.reserve(currentFullCount);
+    for (int i = 0; i < currentFullCount; ++i)
+      expanded.append(std::numeric_limits<double>::quiet_NaN());
+    for (int i = 0; i < currentUserCount; ++i)
+      expanded[XtalOpt::getFirstUserObjectiveIndex() + i] = values.at(i);
+    structure.setStrucObjValuesVec(expanded);
+  } else if (values.size() == currentFullCount && currentFullCount > currentUserCount) {
+    values[XtalOpt::getBuiltinObjectiveIndex()] = std::numeric_limits<double>::quiet_NaN();
+    structure.setStrucObjValuesVec(values);
   }
 
   return true;
 }
 
+} // namespace Legacy
 } // namespace XtalOpt

@@ -1251,6 +1251,16 @@ void TabProgress::plotXrdProgress()
 
 void TabProgress::clearFiles()
 {
+  for (size_t i = 0; i < m_search->getNumOptSteps(); ++i) {
+    const Optimizer* optimizer = m_search->optimizer(static_cast<int>(i));
+    if (!optimizer ||
+        optimizer->getIDString().compare("VASP", Qt::CaseInsensitive) != 0) {
+      Common::warning(tr("Clear Extra Files is available only when every "
+                         "optimization step uses VASP."));
+      return;
+    }
+  }
+
   const QString runPath = m_search->getLocWorkDir();
   if (runPath.isEmpty())
     return;

@@ -431,31 +431,6 @@ QList<unsigned int> chemicalSystemAtomicNumbers(const QList<CellComp>& compList)
   return atomicNums;
 }
 
-bool validateCustomIADTable(const QList<CellComp>& compList,
-                            const QHash<QPair<int, int>, IAD>& customIADs)
-{
-  const QList<unsigned int> atomicNums = chemicalSystemAtomicNumbers(compList);
-  if (atomicNums.isEmpty()) {
-    Common::error("Custom IAD mode requires a non-empty chemical system.");
-    return false;
-  }
-
-  for (int i = 0; i < atomicNums.size(); ++i) {
-    for (int j = i; j < atomicNums.size(); ++j) {
-      double minDistance = 0.0;
-      if (!customMinDistance(customIADs, atomicNums.at(i), atomicNums.at(j), &minDistance)) {
-        const QString label1 = QString::fromStdString(Atoms::ElementInfo::getAtomicSymbol(atomicNums.at(i)));
-        const QString label2 = QString::fromStdString(Atoms::ElementInfo::getAtomicSymbol(atomicNums.at(j)));
-        Common::error(QString("Missing customIAD for the pair %1")
-                        .arg(label1+"-"+label2));
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 void XtalOpt::generateNewStructure()
 {
   // Generate in background thread:
@@ -2116,7 +2091,36 @@ bool XtalOpt::checkLimits()
   //   are already checked in validateSettings(); only the custom IAD table is
   //   left for us to check here.
   if (getUsingCustomIAD())
-    return validateCustomIADTable(compList(), interComp());
+    return checkCustomIADs();
+
+  return true;
+}
+
+bool XtalOpt::checkCustomIADs(bool reportError) const
+{
+  const QList<unsigned int> atomicNums = chemicalSystemAtomicNumbers(compList());
+  if (atomicNums.isEmpty()) {
+    if (reportError)
+      Common::error("Custom IAD mode requires a non-empty chemical system.");
+    return false;
+  }
+
+  for (int i = 0; i < atomicNums.size(); ++i) {
+    for (int j = i; j < atomicNums.size(); ++j) {
+      double minDistance = 0.0;
+      if (!customMinDistance(interComp(), atomicNums.at(i), atomicNums.at(j), &minDistance)) {
+        if (reportError) {
+          const QString label1 = QString::fromStdString(
+            Atoms::ElementInfo::getAtomicSymbol(atomicNums.at(i)));
+          const QString label2 = QString::fromStdString(
+            Atoms::ElementInfo::getAtomicSymbol(atomicNums.at(j)));
+          Common::error(QString("Missing customIAD for the pair %1")
+                          .arg(label1 + "-" + label2));
+        }
+        return false;
+      }
+    }
+  }
 
   return true;
 }
@@ -2141,6 +2145,9 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
 
   // Check post-opt
   if (getUsingCheckStepOpt()) {
+
+    const QString tooClose = "Two atoms are too close together.";
+
     if (getUsingCustomIAD()) {
       int atom1, atom2;
       double IAD;
@@ -2157,25 +2164,29 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
             } else {
               double minIAD = 0.0;
               customMinDistance(interComp(), a1.atomicNumber(), atomicNumber, &minIAD);
-              s->setStatus(Xtal::Killed);
 
               Common::debug(QString("Discarding structure %1: bad Custom IAD (%2 < %3) "
                             "- couldn't fix")
                       .arg(xtal->getTag())
                       .arg(IAD)
                       .arg(minIAD));
+              if (err != nullptr) {
+                *err = tooClose;
+              }
               return false;
             }
           } else {
             double minIAD = 0.0;
             customMinDistance(interComp(), a1.atomicNumber(), a2.atomicNumber(), &minIAD);
-            s->setStatus(Xtal::Killed);
 
             Common::debug(QString("Discarding structure %1: bad Custom IAD (%2 < %3) "
                           "- exceeded the number of fixes")
                     .arg(xtal->getTag())
                     .arg(IAD)
                     .arg(minIAD));
+            if (err != nullptr) {
+              *err = tooClose;
+            }
             return false;
           }
         } else {
@@ -2205,7 +2216,7 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
                 .arg(IAD)
                 .arg(minIAD));
         if (err != nullptr) {
-          *err = "Two atoms are too close together.";
+          *err = tooClose;
         }
         return false;
       }
@@ -2261,13 +2272,7 @@ void XtalOpt::resetSpacegroups_()
   if (isReadOnly())
     return;
 
-  QList<Structure*> structures;
-  {
-    QReadLocker trackerLocker(tracker()->rwLock());
-    structures.reserve(tracker()->list()->size());
-    for (auto* structure : *tracker()->list())
-      structures.append(structure);
-  }
+  QList<Structure*> structures = trackedStructuresSnapshot();
   for (auto it = structures.constBegin(), it_end = structures.constEnd(); it != it_end; ++it) {
     {
       QWriteLocker locker(&(*it)->lock());

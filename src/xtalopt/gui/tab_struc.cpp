@@ -294,7 +294,6 @@ void TabStruc::lockGUI()
     ui.spin_scaleFactor->setDisabled(true);
     ui.spin_minRadius->setDisabled(true);
     ui.cb_interatomicDistanceLimit->setDisabled(true);
-    ui.cb_customIAD->setDisabled(true);
     ui.cb_checkStepOpt->setDisabled(true);
     ui.spin_vol_min->setDisabled(true);
     ui.spin_vol_max->setDisabled(true);
@@ -354,7 +353,7 @@ void TabStruc::getComposition()
       // Clear custom IAD values.
       ui.table_IAD->setRowCount(0);
       ui.cb_customIAD->setChecked(false);
-      xtalopt->interComp().clear();
+      xtalopt->clearCustomIADs();
       // Reset the search type
       this->updateSearchType();
       this->updateInitOptions();
@@ -386,7 +385,8 @@ void TabStruc::getComposition()
 
       // Update various relevant tables/variables
       this->updateAtomCountLimits();
-      this->updateCompositionTable(true);
+      xtalopt->clearCustomIADs();
+      this->updateCompositionTable();
       this->updateSearchType();
 
       // If compositions have changed while molecule units are already set,
@@ -578,7 +578,7 @@ void TabStruc::updateSearchType()
   xtalopt->setVcSearch(ui.cb_vcsearch->isChecked());
 }
 
-void TabStruc::updateCompositionTable(bool initializeCustomIADs)
+void TabStruc::updateCompositionTable()
 {
   // This function actually updates "composition-related" tables,
   //   i.e., the composition table (with various info) and the
@@ -609,9 +609,6 @@ void TabStruc::updateCompositionTable(bool initializeCustomIADs)
   int z = 0;
   const bool tableSignalsWereBlocked = ui.table_IAD->blockSignals(true);
   ui.table_IAD->setRowCount(numRows2);
-
-  if (initializeCustomIADs)
-    xtalopt->clearCustomIADs();
 
   for (int i = 0; i < numRows; i++) {
     if (keys.at(i) == 0)
@@ -680,14 +677,12 @@ void TabStruc::updateCompositionTable(bool initializeCustomIADs)
       ui.table_IAD->setItem(z, IC_SYMBOL2, symbol2Item);
 
       const QPair<int, int> pair(atomicNum, atomicNum2);
-      if (initializeCustomIADs) {
-        IAD iad;
-        iad.minIAD = Atoms::ElementInfo::getCovalentRadius(atomicNum) +
-                     Atoms::ElementInfo::getCovalentRadius(atomicNum2);
-        xtalopt->interComp().insert(pair, iad);
-        xtalopt->interComp().insert(qMakePair(atomicNum2, atomicNum), iad);
-      }
-      const QString minIAD = QString::number(static_cast<const XtalOpt*>(xtalopt)->interComp().value(pair).minIAD,'f', 3);
+      QString minIAD;
+      const QHash<QPair<int, int>, IAD>& customIADs =
+        static_cast<const XtalOpt*>(xtalopt)->interComp();
+      auto customIAD = customIADs.constFind(pair);
+      if (customIAD != customIADs.constEnd())
+        minIAD = QString::number(customIAD.value().minIAD, 'f', 3);
       QTableWidgetItem* minIADItem = new QTableWidgetItem(minIAD);
       ui.table_IAD->setItem(z, IC_MINIAD, minIADItem);
 
@@ -749,7 +744,6 @@ void TabStruc::updateDimensions()
 
   if (xtalopt->getUsingCustomIAD() != ui.cb_customIAD->isChecked()) {
     xtalopt->setUsingCustomIAD(ui.cb_customIAD->isChecked());
-    this->updateCustomIADTableEnabled();
   }
   if (xtalopt->getUsingCheckStepOpt() != ui.cb_checkStepOpt->isChecked()) {
     xtalopt->setUsingCheckStepOpt(ui.cb_checkStepOpt->isChecked());
@@ -759,6 +753,7 @@ void TabStruc::updateDimensions()
   Settings::validateSettings(*xtalopt, Settings::InvalidSettingAction::KeepPrevious, &before);
   xtalopt->processInputData();
   this->updateCompositionTable();
+  this->updateCustomIADTableEnabled();
   bool settingsChanged = false;
   for (const auto& keyword : Settings::runtimeKeywords()) {
     if (Settings::scalarValue(*xtalopt, keyword) != before.value(keyword)) {
@@ -781,7 +776,15 @@ void TabStruc::updateCustomIAD()
   // Change the settings.
   QWriteLocker runtimeLocker(m_search->runtimeSettingsLock());
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
-  const QHash<QPair<int, int>, IAD> oldIADs = xtalopt->interComp();
+
+  for (int i = 0; i < ui.table_IAD->rowCount(); ++i) {
+    QTableWidgetItem* minIADItem = ui.table_IAD->item(i, IC_MINIAD);
+    if (!minIADItem || minIADItem->text().trimmed().isEmpty()) {
+      xtalopt->clearCustomIADs();
+      return;
+    }
+  }
+
   xtalopt->clearCustomIADs();
 
   for (int i = 0; i < ui.table_IAD->rowCount(); ++i) {
@@ -793,15 +796,15 @@ void TabStruc::updateCustomIAD()
                             .arg(symbol2Item ? symbol2Item->text() : QString())
                             .arg(minIADItem ? minIADItem->text() : QString());
     if (!xtalopt->processInputCustomIAD(entry)) {
-      xtalopt->interComp() = oldIADs;
+      xtalopt->clearCustomIADs();
       runtimeLocker.unlock();
       errorPromptWindow("Invalid custom IAD value!");
       return;
     }
   }
 
-  if (!xtalopt->checkLimits()) {
-    xtalopt->interComp() = oldIADs;
+  if (!xtalopt->checkCustomIADs()) {
+    xtalopt->clearCustomIADs();
     runtimeLocker.unlock();
     errorPromptWindow("The custom IAD table is incomplete!");
   }
@@ -835,6 +838,12 @@ void TabStruc::updateMoleculeUnitTableEnabled()
 
 void TabStruc::updateCustomIADTableEnabled()
 {
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
+  const bool customIADsReady = xtalopt && xtalopt->checkCustomIADs(false);
+  const bool canSelectCustom = !m_search->isReadOnly() &&
+    !ui.cb_interatomicDistanceLimit->isChecked() &&
+    (!m_search->isSessionInProgress() || customIADsReady);
+  ui.cb_customIAD->setEnabled(canSelectCustom);
   ui.table_IAD->setEnabled(!m_customIADTableLocked && ui.cb_customIAD->isChecked());
 }
 

@@ -13,23 +13,20 @@
   limitations under the License.
  ***********************************************************************/
 
+#include <xtalopt/legacy/state_compat.h>
+
 #include <xtalopt/xtalopt.h>
 
-#include <common/fileutils.h>
 #include <common/output.h>
 #include <atoms/eleminfo.h>
 
-#include <search/structure.h>
 #include <search/optimizer.h>
-#include <xtalopt/legacy/input_compat.h>
 #include <xtalopt/legacy/legacy_helpers.h>
 #include <xtalopt/legacy/queue_command_compat.h>
-#include <xtalopt/structures/xtal.h>
 
 #include <QDir>
 #include <QFile>
 #include <QHash>
-#include <QReadWriteLock>
 #include <QSettings>
 #include <QStringList>
 #include <QTemporaryFile>
@@ -44,8 +41,6 @@
 
 namespace XtalOpt {
 
-using Search::Structure;
-
 namespace {
 
 using namespace Legacy;
@@ -56,9 +51,10 @@ int loadedXtalOptStateVersion(QSettings& settings)
   const int initVersion = settings.value("xtalopt/init/version", 0).toInt();
   const int editVersion = settings.value("xtalopt/edit/version", 0).toInt();
 
-  if (rootVersion == FloorStateSchemaVersion || initVersion == FloorStateSchemaVersion ||
-      editVersion == FloorStateSchemaVersion)
-    return FloorStateSchemaVersion;
+  if (rootVersion == Legacy::Version4StateSchemaVersion ||
+      initVersion == Legacy::Version4StateSchemaVersion ||
+      editVersion == Legacy::Version4StateSchemaVersion)
+    return Legacy::Version4StateSchemaVersion;
 
   if (rootVersion != 0)
     return rootVersion;
@@ -533,6 +529,11 @@ bool legacyPotcarAssetMap(const QString& potcarTemplate, const QStringList& symb
     normalized = "system=" + entries.first().trimmed();
     return true;
   }
+  if (symbols.isEmpty()) {
+    error = "legacy VASP POTCAR has multiple entries, but the file does not "
+            "contain the composition needed to match them to elements";
+    return false;
+  }
   if (entries.size() != symbols.size()) {
     error = QString("legacy VASP POTCAR has %1 entries for %2 elements")
                     .arg(entries.size()).arg(symbols.size());
@@ -659,6 +660,33 @@ struct StateConstraintEntry
   QString out;
 };
 
+bool isLegacyConstraintObjective(const StateObjectiveEntry& entry)
+{
+  bool okType = false;
+  bool okWeight = false;
+  const int typeValue = entry.typ.toInt(&okType);
+  entry.wgt.toDouble(&okWeight);
+  return okType && okWeight && typeValue == 2;
+}
+
+void appendVersion4ConstraintObjectiveIndices(QSettings& settings,
+                                              QList<int>& constraintObjectiveIndices,
+                                              int& objectiveCount)
+{
+  settings.beginGroup("xtalopt/obj");
+  objectiveCount = settings.beginReadArray("objectives");
+  for (int i = 0; i < objectiveCount; ++i) {
+    settings.setArrayIndex(i);
+    StateObjectiveEntry entry;
+    entry.typ = settings.value("typ", "");
+    entry.wgt = settings.value("wgt", 0.0);
+    if (isLegacyConstraintObjective(entry))
+      constraintObjectiveIndices.append(i);
+  }
+  settings.endArray();
+  settings.endGroup();
+}
+
 QList<StateConstraintEntry> readConstraintEntries(QSettings& settings)
 {
   QList<StateConstraintEntry> constraints;
@@ -676,8 +704,7 @@ QList<StateConstraintEntry> readConstraintEntries(QSettings& settings)
   return constraints;
 }
 
-void normalizeObjectiveSettings(QSettings& settings, QList<int>& constraintObjectiveIndices,
-                                QStringList& notes)
+void normalizeObjectiveSettings(QSettings& settings, QStringList& notes)
 {
   settings.beginGroup("xtalopt/obj");
 
@@ -703,16 +730,11 @@ void normalizeObjectiveSettings(QSettings& settings, QList<int>& constraintObjec
     entry.out = settings.value("out", "").toString();
     entry.wgt = settings.value("wgt", 0.0);
 
-    bool okType = false;
-    bool okWeight = false;
-    const int typeValue = entry.typ.toInt(&okType);
-    entry.wgt.toDouble(&okWeight);
-    if (okType && okWeight && typeValue == 2) {
+    if (isLegacyConstraintObjective(entry)) {
       StateConstraintEntry constraint;
       constraint.exe = entry.exe;
       constraint.out = entry.out;
       legacyConstraints.append(constraint);
-      constraintObjectiveIndices.append(i);
       continue;
     }
 
@@ -1154,24 +1176,24 @@ void convertVersion4LayoutToCurrent(QSettings& settings, QStringList& notes)
 }
 
 bool rewriteVersion4XtalOptStateFile(QSettings& settings, bool fullState, int loadedVersion,
-                                      QList<int>& constraintObjectiveIndices, QStringList& notes,
-                                      QString& error)
+                                      QStringList& notes, QString& error)
 {
   normalizeEditSettings(settings, notes);
   Legacy::normalizeLegacySearchState(settings, "xtalopt", loadedVersion, notes);
 
+  if (!normalizeVaspPotcarAssets(settings, notes, error))
+    return false;
+  normalizeSiestaPsfAssets(settings, notes);
+
   if (fullState) {
     if (!normalizeMoleculeUnits(settings, notes, error))
       return false;
-    if (!normalizeVaspPotcarAssets(settings, notes, error))
-      return false;
-    normalizeSiestaPsfAssets(settings, notes);
     removeLegacyOptimizerSettings(settings, notes);
     normalizeRemoteQueue(settings, notes);
     normalizeRandSpgCounts(settings, notes);
   }
 
-  normalizeObjectiveSettings(settings, constraintObjectiveIndices, notes);
+  normalizeObjectiveSettings(settings, notes);
   convertVersion4LayoutToCurrent(settings, notes);
   markAsCurrentState(settings);
   return true;
@@ -1194,69 +1216,38 @@ bool appendCompatibilityNotes(const QString& filename, const QStringList& notes)
   return true;
 }
 
-int structureStateVersion(const QString& filename)
-{
-  // Return the structure state version.
-  QSettings settings(filename, QSettings::IniFormat);
-  settings.beginGroup("structure");
-  const int version = settings.value("version", -1).toInt();
-  settings.endGroup();
-  return version;
-}
-
-void normalizeStatusAfterLegacyConstraintMove(Structure* structure)
-{
-  if (structure->getStatus() == Structure::ObjcFailed &&
-      structure->getStrucConstraintState() == Structure::Cs_Fail)
-    structure->setStatus(Structure::ConsFailed);
-}
-
-bool splitVersion4ObjectiveValues(const QList<double>& loadedValues,
-                                  int currentFullCount, int currentUserCount,
-                                  const QList<int>& constraintObjectiveIndices,
-                                  QList<double>& objectiveValues,
-                                  QList<double>* constraintValues = nullptr)
-{
-  const int movedObjectiveCount = constraintObjectiveIndices.size();
-  const bool valuesIncludeBuiltinObjective =
-    loadedValues.size() == currentFullCount + movedObjectiveCount;
-  const bool valuesAreUserObjectivesOnly =
-    loadedValues.size() == currentUserCount + movedObjectiveCount;
-  if (!valuesIncludeBuiltinObjective && !valuesAreUserObjectivesOnly)
-    return false;
-
-  objectiveValues.clear();
-  objectiveValues.reserve(valuesIncludeBuiltinObjective ? currentFullCount : currentUserCount);
-  if (constraintValues) {
-    constraintValues->clear();
-    constraintValues->reserve(movedObjectiveCount);
-  }
-
-  for (int i = 0; i < loadedValues.size(); ++i) {
-    const int loadedUserObjectiveIndex = valuesIncludeBuiltinObjective ? i - XtalOpt::getFirstUserObjectiveIndex() : i;
-    if (loadedUserObjectiveIndex >= 0 &&
-        constraintObjectiveIndices.contains(loadedUserObjectiveIndex)) {
-      if (constraintValues)
-        constraintValues->append(loadedValues.at(i));
-      continue;
-    }
-    objectiveValues.append(loadedValues.at(i));
-  }
-
-  return objectiveValues.size() ==
-           (valuesIncludeBuiltinObjective ? currentFullCount : currentUserCount) &&
-           (!constraintValues || constraintValues->size() == movedObjectiveCount);
-}
-
 } // end anonymous namespace
 
-bool XtalOpt::prepareXtalOptStateFileForRead(const QString& filename, bool fullState,
-                                             QString& readFilename,
-                                             bool keepCompatibilityCopy)
+namespace Legacy {
+
+bool version4StateConstraintObjectiveIndices(const QString& mainStateFilename,
+                                             QList<int>& constraintObjectiveIndices,
+                                             int& objectiveCount,
+                                             QString* errorMessage)
+{
+  constraintObjectiveIndices.clear();
+  objectiveCount = 0;
+
+  QSettings settings(mainStateFilename, QSettings::IniFormat);
+  if (loadedXtalOptStateVersion(settings) != Version4StateSchemaVersion) {
+    if (errorMessage) {
+      *errorMessage = QString("The old structure state file cannot be read with "
+                              "the current main state file. Restore its matching "
+                              "version 4 xtalopt.state file.");
+    }
+    return false;
+  }
+
+  appendVersion4ConstraintObjectiveIndices(settings, constraintObjectiveIndices,
+                                           objectiveCount);
+  return true;
+}
+
+bool prepareXtalOptStateFileForRead(const QString& filename, bool fullState,
+                                    bool keepCompatibilityCopy,
+                                    QString& readFilename)
 {
   readFilename = filename;
-  x_loadedStateConstraintObjectiveIndices.clear();
-  x_loadedVersion4State = false;
 
   QSettings originalSettings(filename, QSettings::IniFormat);
   const int loadedVersion = loadedXtalOptStateVersion(originalSettings);
@@ -1264,7 +1255,7 @@ bool XtalOpt::prepareXtalOptStateFileForRead(const QString& filename, bool fullS
   // Read the current version or convert version 4.
   if (loadedVersion == CurrentStateSchemaVersion)
     return true; // already current; read in place
-  if (loadedVersion != FloorStateSchemaVersion) {
+  if (loadedVersion != Version4StateSchemaVersion) {
     Common::error(QString("%1: %2 is schema version %3; this XtalOpt reads "
                           "version %4 and converts version %5. Older sessions "
                           "cannot be resumed.")
@@ -1272,63 +1263,42 @@ bool XtalOpt::prepareXtalOptStateFileForRead(const QString& filename, bool fullS
                     .arg(filename)
                     .arg(loadedVersion)
                     .arg(CurrentStateSchemaVersion)
-                    .arg(FloorStateSchemaVersion));
+                    .arg(Version4StateSchemaVersion));
     return false;
   }
 
-  const bool temporaryCopy = isReadOnly() && !keepCompatibilityCopy;
-  QString compatFilename;
-  if (temporaryCopy) {
-    QFile sourceFile(filename);
-    QTemporaryFile temporaryFile(
-      QDir(QDir::tempPath()).filePath("xtalopt-state-XXXXXX.compat"));
-    if (!sourceFile.open(QIODevice::ReadOnly) || !temporaryFile.open()) {
-      Common::error(QString("%1: could not prepare a temporary compatibility state copy.")
-                      .arg(__func__));
-      return false;
-    }
-
-    const QByteArray contents = sourceFile.readAll();
-    if (temporaryFile.write(contents) != contents.size() ||
-        !temporaryFile.flush()) {
-      Common::error(QString("%1: could not write temporary compatibility state copy.")
-                      .arg(__func__));
-      return false;
-    }
-    temporaryFile.setAutoRemove(false);
-    compatFilename = temporaryFile.fileName();
-    temporaryFile.close();
-  } else {
-    compatFilename = filename + ".compat";
-    if (QFile::exists(compatFilename) && !QFile::remove(compatFilename)) {
-      Common::error(QString("%1: could not replace compatibility state copy %2.")
-                      .arg(__func__)
-                      .arg(compatFilename));
-      return false;
-    }
-
-    if (!QFile::copy(filename, compatFilename)) {
-      Common::error(QString("%1: could not write compatibility state copy %2.")
-                      .arg(__func__)
-                      .arg(compatFilename));
-      return false;
-    }
+  QFile sourceFile(filename);
+  QTemporaryFile temporaryFile(
+    QDir(QDir::tempPath()).filePath("xtalopt-state-XXXXXX.compat"));
+  if (!sourceFile.open(QIODevice::ReadOnly) || !temporaryFile.open()) {
+    Common::error(QString("%1: could not prepare a temporary compatibility state copy.")
+                    .arg(__func__));
+    return false;
   }
+  const QByteArray contents = sourceFile.readAll();
+  if (temporaryFile.write(contents) != contents.size() || !temporaryFile.flush()) {
+    Common::error(QString("%1: could not write a temporary compatibility state copy.")
+                    .arg(__func__));
+    return false;
+  }
+  temporaryFile.setAutoRemove(false);
+  const QString temporaryFilename = temporaryFile.fileName();
+  temporaryFile.close();
 
   QStringList notes;
   QString error;
   bool converted = false;
   {
-    QSettings compatSettings(compatFilename, QSettings::IniFormat);
+    QSettings compatSettings(temporaryFilename, QSettings::IniFormat);
     if (!rewriteVersion4XtalOptStateFile(compatSettings, fullState, loadedVersion,
-          x_loadedStateConstraintObjectiveIndices, notes, error)) {
+          notes, error)) {
       Common::error(QString("%1: %2").arg(__func__).arg(error));
     } else {
       compatSettings.sync();
       if (compatSettings.status() != QSettings::NoError) {
         Common::error(QString("%1: failed to sync compatibility state copy %2.")
                         .arg(__func__)
-                        .arg(compatFilename));
+                        .arg(temporaryFilename));
       } else {
         converted = true;
       }
@@ -1336,165 +1306,41 @@ bool XtalOpt::prepareXtalOptStateFileForRead(const QString& filename, bool fullS
   }
 
   if (!converted) {
-    QFile::remove(compatFilename);
+    QFile::remove(temporaryFilename);
     return false;
   }
 
-  if (!temporaryCopy && !appendCompatibilityNotes(compatFilename, notes)) {
-    Common::warning(QString("%1: could not append compatibility notes to %2.")
-                      .arg(__func__)
-                      .arg(compatFilename));
+  if (!keepCompatibilityCopy) {
+    readFilename = temporaryFilename;
+    return true;
   }
 
-  x_loadedVersion4State = true;
+  if (!appendCompatibilityNotes(temporaryFilename, notes)) {
+    Common::warning(QString("%1: could not append compatibility notes to %2.")
+                    .arg(__func__)
+                    .arg(temporaryFilename));
+  }
+
+  const QString compatFilename = filename + ".compat";
+  if (QFile::exists(compatFilename) && !QFile::remove(compatFilename)) {
+    Common::error(QString("%1: could not replace compatibility state copy %2.")
+                    .arg(__func__)
+                    .arg(compatFilename));
+    QFile::remove(temporaryFilename);
+    return false;
+  }
+  if (!QFile::copy(temporaryFilename, compatFilename)) {
+    Common::error(QString("%1: could not write compatibility state copy %2.")
+                    .arg(__func__)
+                    .arg(compatFilename));
+    QFile::remove(temporaryFilename);
+    return false;
+  }
+
+  QFile::remove(temporaryFilename);
   readFilename = compatFilename;
   return true;
 }
 
-bool XtalOpt::normalizeLoadedStructureObjectives(Structure* structure, const QString& stateFilename) const
-{
-  if (!structure)
-    return false;
-
-  const int loadedVersion = structureStateVersion(stateFilename);
-  if (loadedVersion != FloorStateSchemaVersion)
-    return true;
-
-  if (!x_loadedVersion4State) {
-    Common::error(QString("The old structure state file %1 cannot be read with the current "
-                          "main state file. Restore its matching version 4 xtalopt.state file.")
-                          .arg(stateFilename));
-    return false;
-  }
-
-  QList<double> legacyValues;
-  int legacyConstraintRedoCount = 0;
-  {
-    QSettings settings(stateFilename, QSettings::IniFormat);
-    settings.beginGroup("structure");
-    legacyConstraintRedoCount = settings.value("objectivesFailCount", 0).toInt();
-
-    int size = settings.beginReadArray("objectives");
-    for (int i = 0; i < size; ++i) {
-      settings.setArrayIndex(i);
-      legacyValues.append(settings.value("value").toDouble());
-    }
-    settings.endArray();
-    settings.endGroup();
-  }
-
-  QWriteLocker locker(&structure->lock());
-  structure->setStrucConstraintRedoCount(legacyConstraintRedoCount);
-  QList<double> values = legacyValues.isEmpty() ? structure->getStrucObjValuesVec() : legacyValues;
-  if (!legacyValues.isEmpty())
-    structure->setStrucObjValuesVec(values);
-
-  const int currentFullCount = getObjectivesNum();
-  const int currentUserCount = getUserObjectivesNum();
-
-  if (!x_loadedStateConstraintObjectiveIndices.isEmpty() && !legacyValues.isEmpty()) {
-    QList<double> normalized;
-    QList<double> constraintValues;
-    if (!splitVersion4ObjectiveValues(values, currentFullCount, currentUserCount,
-                                      x_loadedStateConstraintObjectiveIndices,
-                                      normalized, &constraintValues)) {
-      Common::error(QString("The objective information in old structure state file %1 does "
-                            "not match the main state file.").arg(stateFilename));
-      return false;
-    }
-
-    structure->setStrucObjValuesVec(normalized);
-    structure->setStrucConstraintValuesVec(constraintValues);
-    values = normalized;
-    if (structure->getStrucConstraintState() == Structure::Cs_NotCalculated) {
-      if (structure->getStrucObjState() == Structure::Os_Dismiss)
-        structure->setStrucConstraintState(Structure::Cs_Dismiss);
-      else if (structure->getStrucObjState() == Structure::Os_Fail)
-        structure->setStrucConstraintState(Structure::Cs_Fail);
-      else
-        structure->setStrucConstraintState(Structure::Cs_Retain);
-      normalizeStatusAfterLegacyConstraintMove(structure);
-    }
-  }
-
-  if (!legacyValues.isEmpty() && values.size() != currentFullCount &&
-      values.size() != currentUserCount) {
-    Common::error(QString("The objective information in old structure state file %1 does "
-                          "not match the main state file.").arg(stateFilename));
-    return false;
-  }
-
-  // Add the built-in objective value.
-  if (currentFullCount > currentUserCount && values.size() == currentUserCount) {
-    QList<double> expanded;
-    expanded.reserve(currentFullCount);
-    for (int i = 0; i < currentFullCount; ++i)
-      expanded.append(std::numeric_limits<double>::quiet_NaN());
-    for (int i = 0; i < currentUserCount; ++i)
-      expanded[getUserObjectiveIndex(i)] = values.at(i);
-    structure->setStrucObjValuesVec(expanded);
-  } else if (values.size() == currentFullCount && currentFullCount > currentUserCount) {
-    values[getBuiltinObjectiveIndex()] = std::numeric_limits<double>::quiet_NaN();
-    structure->setStrucObjValuesVec(values);
-  }
-
-  return true;
-}
-
-bool XtalOpt::convertFileToCurrent(const QString& filename)
-{
-  if (filename.isEmpty()) {
-    Common::error("Cannot convert without an explicit filename.");
-    return false;
-  }
-  if (!Common::isReadableFile(filename)) {
-    Common::error(QString("Cannot read file to convert: %1").arg(filename));
-    return false;
-  }
-
-  const QString compat = filename + ".compat";
-  QStringList groups;
-  {
-    QSettings probe(filename, QSettings::IniFormat);
-    groups = probe.childGroups();
-  }
-
-  if (groups.contains("xtalopt")) {
-    QString readFilename;
-    if (!prepareXtalOptStateFileForRead(filename, true, readFilename, true))
-      return false;
-    if (readFilename == filename) {
-      Common::message(QString("%1 is already current; nothing written.").arg(filename));
-      return true;
-    }
-    Common::message(QString("Converted session file to current format: %1").arg(readFilename));
-    return true;
-  }
-
-  if (groups.contains("structure")) {
-    Common::error("structure.state files are converted while loading their "
-                  "XtalOpt session and cannot be converted separately.");
-    return false;
-  }
-
-  QString inputText, outputText, error;
-  if (!Common::readFileToQString(filename, &inputText)) {
-    Common::error(QString("Cannot read file to convert: %1").arg(filename));
-    return false;
-  }
-  if (!Legacy::rewriteLegacyXtalOptInputText(inputText, outputText, &error)) {
-    Common::error(error);
-    return false;
-  }
-  QFile compatFile(compat);
-  if (!compatFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-    Common::error(QString("Could not write converted input copy: %1").arg(compat));
-    return false;
-  }
-  compatFile.write(outputText.toLocal8Bit());
-  compatFile.close();
-  Common::message(QString("Converted xtalopt.in to current format: %1").arg(compat));
-  return true;
-}
-
+} // namespace Legacy
 } // end namespace XtalOpt

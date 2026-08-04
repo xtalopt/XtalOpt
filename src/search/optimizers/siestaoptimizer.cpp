@@ -119,6 +119,11 @@ bool SIESTAOptimizer::addOptimizerInputFiles(Structure* s, int optStep,
   const QString rawPsfAsset =
     QString::fromStdString(m_search->getOptimizerInputAsset(optStep, "PSF"));
   const QHash<QString, QString> psfAssets = inputAssetTextToMap(rawPsfAsset);
+  if (!rawPsfAsset.trimmed().isEmpty() && psfAssets.isEmpty()) {
+    Common::error(QString("Could not read the saved PSF input asset for %1.")
+                    .arg(s->getTag()));
+    return false;
+  }
   if (psfAssets.isEmpty())
     return true;
 

@@ -669,8 +669,6 @@ bool shouldSortBeforeByPrimaryObjective(const SortEntry& lhs, const SortEntry& r
   return lhs.index < rhs.index;
 }
 
-} // namespace
-
 void rankInPlace(const QList<Structure*>& structures)
 {
   if (structures.size() == 0)
@@ -682,6 +680,8 @@ void rankInPlace(const QList<Structure*>& structures)
     s->setRank(i + 1);
   }
 }
+
+} // namespace
 
 
 void Structure::sortAndRankStructures(QList<Structure*>* structures)

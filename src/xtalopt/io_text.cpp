@@ -285,7 +285,8 @@ bool hasAnyRequiredKeyword(const QString& parserText)
 }
 
 bool readOptionsFile(const QString& filename, QHash<QString, QString>& options,
-                     QHash<QString, QStringList>& multiInput, bool bestEffort)
+                     QHash<QString, QStringList>& multiInput, bool bestEffort,
+                     bool keepCompatibilityCopy)
 {
   QString inputText;
   if (!Common::readFileToQString(filename, &inputText)) {
@@ -295,7 +296,9 @@ bool readOptionsFile(const QString& filename, QHash<QString, QString>& options,
 
   QString parserText;
   QString compatError;
-  if (!Legacy::prepareXtalOptInputTextForRead(filename, inputText, parserText, &compatError)) {
+  if (!Legacy::prepareXtalOptInputTextForRead(filename, inputText, parserText,
+                                              keepCompatibilityCopy, nullptr,
+                                              &compatError)) {
     Common::error(compatError);
     return false;
   }
@@ -976,7 +979,7 @@ bool XtalOpt::readInputFile(const QString& filename, bool bestEffort,
   // Parse the raw keyword/value lines of the file.
   QHash<QString, QString> options;
   QHash<QString, QStringList> multiInput;
-  if (!readOptionsFile(filename, options, multiInput, bestEffort))
+  if (!readOptionsFile(filename, options, multiInput, bestEffort, !isReadOnly()))
     return false;
 
   // A strict CLI start needs every required keyword before anything is applied.
@@ -1658,6 +1661,17 @@ void processRuntimeOptions(const QHash<QString, QString>& options,
 
     // Recompute compositions, volumes, radii, etc after restoring bad values.
     xtalopt.processInputData();
+
+    const bool iadModesChanged =
+      Settings::scalarValue(xtalopt, "usingScaledIADs") != before.value("usingScaledIADs") ||
+      Settings::scalarValue(xtalopt, "usingCustomIADs") != before.value("usingCustomIADs");
+    if (iadModesChanged && xtalopt.getUsingCustomIAD() &&
+        !xtalopt.checkCustomIADs(false)) {
+      Settings::applyScalar(xtalopt, "usingScaledIADs", before.value("usingScaledIADs"));
+      Settings::applyScalar(xtalopt, "usingCustomIADs", before.value("usingCustomIADs"));
+      Common::warning("Runtime file: Custom IAD mode requires a complete customIAD table. "
+                      "Keeping the previous IAD settings.");
+    }
 
     // Report every runtime-changeable value that actually changed.
     for (const auto& keyword : Settings::allKeywords()) {

@@ -154,7 +154,6 @@ XtalOpt::XtalOpt(QObject* parent)
     x_hullSnapshotSequence(0),
     x_lastOutputWriteMs(0),
     x_lastOutputWriteEndMs(0),
-    x_loadedVersion4State(false),
     x_fileSaveJob([this]() { saveRequestedStateFiles(searchStateFilePath(), false, false); }),
     x_outputSaveJob([this]() { saveRequestedOutputFiles(false, false); }),
     x_similarityCheckJob([this]() { checkForSimilarities_(); requestResultsFileSave(); }),
@@ -287,6 +286,18 @@ XtalOpt::~XtalOpt()
 bool XtalOpt::canRequestFileSave() const
 {
   return isSessionActive() && !isSessionStarting() && !isReadOnly();
+}
+
+QList<Search::Structure*> XtalOpt::trackedStructuresSnapshot()
+{
+  // Copy the pointers while the tracker is locked. The returned list is separate
+  // from the live tracker, so callers can release the lock before doing their work.
+  QList<Search::Structure*> structures;
+  QReadLocker trackerLocker(tracker()->rwLock());
+  structures.reserve(tracker()->list()->size());
+  for (Search::Structure* structure : *tracker()->list())
+    structures.append(structure);
+  return structures;
 }
 
 void XtalOpt::requestSettingsStateSave()
@@ -427,13 +438,7 @@ void XtalOpt::handleOptimizedDeparture(Search::Structure* structure)
     tag = structure->getTag();
   }
 
-  QList<Search::Structure*> structures;
-  {
-    QReadLocker trackerLocker(tracker()->rwLock());
-    structures.reserve(tracker()->list()->size());
-    for (Search::Structure* trackerStructure : *tracker()->list())
-      structures.append(trackerStructure);
-  }
+  QList<Search::Structure*> structures = trackedStructuresSnapshot();
 
   // Re-set the structures that were similar to the recovered one!
   QList<Search::Structure*> released;
@@ -514,6 +519,7 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
 {
   const bool restoring = !stateFile.isEmpty();
   const bool readOnly = isReadOnly();
+  bool stateWasConverted = false;
   QString loadedStateFile = stateFile;
   QStringList xtalDirs;
 
@@ -544,8 +550,11 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
       QSettings settings(loadedStateFile, QSettings::IniFormat);
       const bool fileIsValid =
         settings.value("xtalopt/saveSuccessful", false).toBool();
-      if (fileIsValid && readSettings(loadedStateFile, true))
+      bool loadedStateWasConverted = false;
+      if (fileIsValid && readSettings(loadedStateFile, true, &loadedStateWasConverted)) {
+        stateWasConverted = loadedStateWasConverted;
         break;
+      }
 
       if (loadedStateFile.endsWith(".old")) {
         Common::error(QString("%1: file %2 is incomplete, corrupt, or invalid. "
@@ -660,9 +669,9 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
     }
   }
 
-  // Save all converted structure files before replacing the old main state file.
-  // The old main file is needed to read any structures left in the old format.
-  if (restoring && !readOnly && x_loadedVersion4State) {
+  // Save all structure files before replacing a converted main state file.
+  // The old main state is still needed while its old structure files are read.
+  if (restoring && !readOnly && stateWasConverted) {
     if (!saveRequestedStateFiles(searchStateFilePath(), true, false)) {
       const QString saveError = tr("Could not finish updating the old structure state files. "
                                    "The search was not resumed.");
@@ -671,8 +680,6 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
       abortSession();
       return false;
     }
-    x_loadedStateConstraintObjectiveIndices.clear();
-    x_loadedVersion4State = false;
   }
 
   launchSession();

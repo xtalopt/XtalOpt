@@ -42,29 +42,17 @@ class SlottedWaitCondition;
 namespace XtalOpt {
 class Xtal;
 
-// The legacy layer converts old state files before the code reads them.
-// As of XtalOpt v15, XtalOpt handles all state files; the engine doesn't
-//   know anything about their format.
-enum StateSchemaVersion
-{
-  FloorStateSchemaVersion   = 4, // Oldest xtalopt.state version we read
-  CurrentStateSchemaVersion = 5  // Version we write
-};
+// State files written by XtalOpt use this format version.
+const int CurrentStateSchemaVersion = 5;
 
 // Check whether a structure state was saved.
 bool isStateFileSaveSuccessful(const QString& filename);
-
-// Check whether a structure state can be read.
-bool isStateFileLoadable(const QString& filename);
 
 // Return the saved parent structure tag.
 QString savedParentStructureTag(const QString& filename);
 
 // Write a structure state file.
 void writeStructureState(Xtal& xtal, const QString& filename);
-
-// Read a structure state file.
-bool readStructureState(Xtal& xtal, const QString& filename, const bool readCurrentInfo = false);
 
 class XtalOpt : public Search::SearchBase
 {
@@ -285,6 +273,8 @@ public:
 
   bool checkLimits();
 
+  bool checkCustomIADs(bool reportError = true) const;
+
   bool checkComposition(Xtal* xtal, bool isSeed = false);
 
   bool checkLattice(Xtal* xtal);
@@ -323,7 +313,8 @@ public:
   bool convertFileToCurrent(const QString& filename);
 
   // Read shared settings from an input/state file.
-  bool readSettings(const QString& filename, bool fullState);
+  bool readSettings(const QString& filename, bool fullState,
+                    bool* stateWasConverted = nullptr);
 
   // Absolute path to this session's state file.
   QString searchStateFilePath() const;
@@ -462,7 +453,6 @@ private:
   Xtal* checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols);
 
   void ensureBuiltinObjective();
-  bool normalizeLoadedStructureObjectives(Search::Structure* structure, const QString& stateFilename) const;
   bool validateUserObjectiveDefinition(ObjType objtyp, const QString& objexe, const QString& objout,
                                        double objwgt, QString* errorMessage = nullptr) const;
   bool validateConstraintDefinition(const QString& exe, const QString& out, QString* errorMessage = nullptr) const;
@@ -476,11 +466,12 @@ private:
   void markResultsFileNeedsSave();
   void retryFileSave();
   void clearPendingRequests();
-  bool saveRequestedStateFiles(const QString& filename, bool everything, bool notify);
-  bool saveRequestedOutputFiles(bool everything, bool notify);
+  QList<Search::Structure*> trackedStructuresSnapshot();
+  bool saveRequestedStateFiles(const QString& filename, bool saveAll, bool showProgress);
+  bool saveRequestedOutputFiles(bool saveAll, bool showProgress);
   QSet<Search::Structure*> writeStructureStateFiles(const QList<Search::Structure*>& structures,
                                                     const QSet<Search::Structure*>& structuresToSave,
-                                                    bool notify);
+                                                    bool showProgress);
   void finishSearch();
   void requestFullEvaluation();
   void requestEvaluationAfterKill(Search::Structure* structure);
@@ -488,9 +479,6 @@ private:
   // Write all XtalOpt settings groups to filename.
   bool writeSettingsGroups(const QString& filename);
   bool writeFreshSettingsStateFile(const QString& filename);
-  bool prepareXtalOptStateFileForRead(const QString& filename, bool fullState,
-                                      QString& readFilename,
-                                      bool keepCompatibilityCopy);
   QStringList structureStateDirs(const QString& stateFile) const;
   bool restorePopulation(const QString& stateFile, const QStringList& xtalDirs);
 
@@ -526,9 +514,6 @@ private:
   std::atomic<qint64> x_lastOutputWriteEndMs;
   QElapsedTimer x_saveClock;
   std::vector<double> x_hullPointsCache;
-
-  QList<int> x_loadedStateConstraintObjectiveIndices;
-  bool x_loadedVersion4State;
 
   BackgroundJob x_fileSaveJob;
   BackgroundJob x_outputSaveJob;

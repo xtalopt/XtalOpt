@@ -93,13 +93,12 @@ QueueInterface::QueueStatus PbsQueueInterface::parseQueueStatus(
     const QString status = statusText.left(1);
     if (rawStatus)
       *rawStatus = status;
-    if (status == "B" || status == "E" || status == "R" ||
-        status == "S" || status == "U" || status == "M")
+    if (status == "B" || status == "E" || status == "R" || status == "S" ||
+        status == "U" || status == "M" || status == "C" || status == "F" ||
+        status == "X")
       return QueueInterface::Running;
     if (status == "Q" || status == "H" || status == "T" || status == "W")
       return QueueInterface::Queued;
-    if (status == "C" || status == "F" || status == "X")
-      return QueueInterface::Running;
     return QueueInterface::Unknown;
   }
 
