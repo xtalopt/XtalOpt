@@ -16,6 +16,7 @@
 
 #include <QApplication>
 #include <QMouseEvent>
+#include <QResizeEvent>
 
 #include <qwt_plot_canvas.h>
 #include <qwt_scale_map.h>
@@ -26,6 +27,16 @@
 #include <common/makeunique.h>
 
 namespace XtalOpt {
+
+namespace {
+
+// Find the distance between two QPointF's
+inline double distance(const QPointF& p1, const QPointF& p2)
+{
+  return sqrt(pow(p1.x() - p2.x(), 2.0) + pow(p1.y() - p2.y(), 2.0));
+}
+
+} // namespace
 
 XtalOptPlot::XtalOptPlot(QWidget* parent, const QColor& backgroundColor)
   : QwtPlot(parent),
@@ -40,6 +51,12 @@ XtalOptPlot::XtalOptPlot(QWidget* parent, const QColor& backgroundColor)
 
   setCanvasBackground(backgroundColor);
   replot();
+}
+
+void XtalOptPlot::resizeEvent(QResizeEvent* event)
+{
+  QwtPlot::resizeEvent(event);
+  emit plotResized();
 }
 
 QwtPlotMarker* XtalOptPlot::addPlotPoint(double x, double y,
@@ -57,6 +74,7 @@ QwtPlotMarker* XtalOptPlot::addPlotPoint(const QPointF& p,
 {
   auto plotMarker(make_unique<QwtPlotMarker>());
   plotMarker->setSymbol(new QwtSymbol(symbol, brush, pen, size));
+  plotMarker->setRenderHint(QwtPlotItem::RenderAntialiased, true);
   plotMarker->setValue(p);
   plotMarker->setItemAttribute(QwtPlotItem::AutoScale, true);
   plotMarker->attach(this);
@@ -203,12 +221,6 @@ bool XtalOptPlot::eventFilter(QObject* object, QEvent* e)
   return QwtPlot::eventFilter(object, e);
 }
 
-// Find the distance between two QPointF's
-static inline double distance(const QPointF& p1, const QPointF& p2)
-{
-  return sqrt(pow(p1.x() - p2.x(), 2.0) + pow(p1.y() - p2.y(), 2.0));
-}
-
 // Select the point at a position.
 void XtalOptPlot::select(const QPoint& pos)
 {
@@ -235,8 +247,7 @@ void XtalOptPlot::select(const QPoint& pos)
     }
   }
 
-  if (selection)
-    selectMarker(selection);
+  selectMarker(selection);
 }
 
 void XtalOptPlot::highlightMarker(QwtPlotMarker* m)

@@ -73,25 +73,23 @@ public slots:
   virtual void lockGUI(){};
 
   /**
-   * Load any parameters that this tab is responible for here.
+   * Load the parameters that this tab is responible for from a scheme file.
    * @note In most cases, this shouldn't be called directly, but
    * rather call the same function in the parent dialog class.
-   * @param filename If specified, read from given file. Otherwise
-   * read from system config file.
+   * @param filename The scheme file to read.
    */
-  virtual void readSettings(const QString& filename)
+  virtual void readSchemeFile(const QString& filename)
   {
     Q_UNUSED(filename);
   };
 
   /**
-   * Save any parameters that this tab is responible for here.
+   * Save the parameters that this tab is responible for to a scheme file.
    * @note In most cases, this shouldn't be called directly, but
    * rather call the same function in the parent dialog class.
-   * @param filename If specified, write to given file. Otherwise
-   * write to system config file.
+   * @param filename The scheme file to write.
    */
-  virtual void writeSettings(const QString& filename)
+  virtual void writeSchemeFile(const QString& filename)
   {
     Q_UNUSED(filename);
   };

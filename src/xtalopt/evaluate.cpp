@@ -40,9 +40,11 @@ using namespace Search;
 
 namespace XtalOpt {
 
+namespace {
+
 // Cast to Xtal* or flag an invalid one (to exclude from Pareto front) and
 //   return null. Caller must already hold the structure's write lock.
-static Xtal* xtalOrFlagged(Structure* structure, const char* context)
+Xtal* xtalOrFlagged(Structure* structure, const char* context)
 {
   Xtal* xtal = qobject_cast<Xtal*>(structure);
   if (!xtal) {
@@ -56,8 +58,8 @@ static Xtal* xtalOrFlagged(Structure* structure, const char* context)
 
 // Refresh the ".old" backup, then rewrite the output file in place. The
 //   file is never removed or renamed, so a "tail -f" on it keeps working.
-static bool writeOutputFileWithBackup(const QString& filename, const QString& contents,
-                                      const char* caller)
+bool writeOutputFileWithBackup(const QString& filename, const QString& contents,
+                               const char* caller)
 {
   if (QFile::exists(filename)) {
     const QString oldFilename = filename + ".old";
@@ -88,6 +90,8 @@ static bool writeOutputFileWithBackup(const QString& filename, const QString& co
   }
   return true;
 }
+
+} // namespace
 
 void XtalOpt::updateStructureEvaluationInfo()
 {
@@ -376,111 +380,31 @@ bool XtalOpt::refreshStructureEvaluationData()
   return true;
 }
 
-void XtalOpt::queueHullSnapshot()
+void XtalOpt::resetSpacegroups()
 {
-  if (isReadOnly() || getLocWorkDir().isEmpty())
+  if (!isSessionActive() || isSessionStarting() || isReadOnly()) {
+    return;
+  }
+  x_spacegroupResetJob.request();
+}
+
+void XtalOpt::resetSpacegroups_()
+{
+  QReadLocker runtimeLocker(runtimeSettingsLock());
+
+  if (isReadOnly())
     return;
 
-  // Collect the frame data now after a fresh hull
-  const QString path = Common::localPath(getLocWorkDir(), "movie");
-  const unsigned long long sequence = x_hullSnapshotSequence.fetch_add(1) + 1;
-  const QString filename = Common::localPath(path, Common::uniqueTimestampString(QString::number(sequence)));
-  const QString contents = hullFileContents(queue()->getAllStructures());
-
-  std::lock_guard<std::mutex> guard(x_filesNeedingSaveMutex);
-  x_pendingHullSnapshots.append(QPair<QString, QString>(filename, contents));
-}
-
-bool XtalOpt::writeResultsFile(const QList<Structure*>& structures, bool notify)
-{
-  Common::ScopedTimer _timer("XtalOpt::writeResultsFile");
-  if (getLocWorkDir().isEmpty())
-    return true;
-
-  if (!QDir().mkpath(getLocWorkDir())) {
-    Common::error(QString("%1: could not create local work directory %2...")
-                    .arg(__func__).arg(getLocWorkDir()));
-    return false;
-  }
-
-  const QString resultsFilename = Common::localPath(getLocWorkDir(), "results.txt");
-  if (notify)
-    updateProgressValue(-1, tr("Saving: Writing %1...").arg(resultsFilename));
-
-  QString contents;
-  QTextStream out(&contents);
-  QList<Structure*> sortedStructures(structures);
-  const int objectiveOffset = (getObjectivesNum() > 0) ? getFirstUserObjectiveIndex() : 0;
-  const int userObjectivesNum = getUserObjectivesNum();
-  const int constraintsNum = getConstraintsNum();
-  if (!sortedStructures.isEmpty()) {
-    Structure::sortAndRankStructures(&sortedStructures);
-    out << sortedStructures.first()->getResultsHeader(userObjectivesNum, objectiveOffset,
-                                                      constraintsNum)
-        << QtCompat::endl;
-  }
-
-
-  for (auto* structure : sortedStructures) {
-    if (!structure)
-      continue;
-    QReadLocker structureLocker(&structure->lock());
-    out << structure->getResultsEntry(userObjectivesNum, structure->getCurrentOptStep(),
-                                      objectiveOffset, constraintsNum)
-        << QtCompat::endl;
-  }
-
-  return writeOutputFileWithBackup(resultsFilename, contents, __func__);
-}
-
-QString XtalOpt::hullFileContents(const QList<Structure*>& structures)
-{
-  QString contents;
-  QTextStream out(&contents);
-
-  const QList<QString> chemSystem = getChemicalSystem();
-  out << Xtal::getHullHeader(chemSystem) << "\n";
-
-  for (auto* structure : structures) {
-    Xtal* xtal = qobject_cast<Xtal*>(structure);
-    if (!xtal) {
-      Common::error(QString("%1: non-Xtal structure in hull file: %2")
-                    .arg(__func__).arg(structure->getTag()));
-      continue;
+  QList<Structure*> structures = trackedStructuresSnapshot();
+  for (auto it = structures.constBegin(), it_end = structures.constEnd(); it != it_end; ++it) {
+    {
+      QWriteLocker locker(&(*it)->lock());
+      qobject_cast<Xtal*>(*it)->findSpaceGroup(getTolSpg());
     }
-
-    QReadLocker structureLocker(&xtal->lock());
-    if (GS_ISNAN(xtal->getDistAboveHull()))
-      continue;
-    out << xtal->getHullEntry(chemSystem) << "\n";
   }
 
-  const std::vector<double> refData = getReferenceEnergiesVector();
-  const int refCount = static_cast<int>(refData.size()) / (chemSystem.size() + 1);
-  for (int i = 0; i < refCount; ++i) {
-    for (int j = 0; j < chemSystem.size(); ++j)
-      out << QString(" %1")
-             .arg(refData[i * (chemSystem.size() + 1) + j], 7);
-    out << QString(" %1")
-             .arg(refData[i * (chemSystem.size() + 1) + chemSystem.size()], 14, 'f', 6);
-    out << QString("  # %1 %2 %3  %4")
-             .arg("ref", 14).arg("ref", 7).arg("ref", 7).arg("ref")
-        << "\n";
-  }
-
-  return contents;
-}
-
-bool XtalOpt::writeHullFile(const QList<Structure*>& structures, const QString& filename)
-{
-  // Make sure the destination directory exists.
-  const QString hullDir = QFileInfo(filename).absolutePath();
-  if (!QDir().mkpath(hullDir)) {
-    Common::error(QString("%1: could not create directory %2...").arg(__func__).arg(hullDir));
-    return false;
-  }
-
-  return writeOutputFileWithBackup(filename, hullFileContents(structures), __func__);
+  emit refreshAllStructureInfo();
+  requestResultsFileSave();
 }
 
 void XtalOpt::resetSimilarities()
@@ -745,6 +669,113 @@ Xtal* XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, 
   }
 
   return marked;
+}
+
+void XtalOpt::queueHullSnapshot()
+{
+  if (isReadOnly() || getLocWorkDir().isEmpty())
+    return;
+
+  // Collect the frame data now after a fresh hull
+  const QString path = Common::localPath(getLocWorkDir(), "movie");
+  const unsigned long long sequence = x_hullSnapshotSequence.fetch_add(1) + 1;
+  const QString filename = Common::localPath(path, Common::uniqueTimestampString(QString::number(sequence)));
+  const QString contents = hullFileContents(queue()->getAllStructures());
+
+  std::lock_guard<std::mutex> guard(x_filesNeedingSaveMutex);
+  x_pendingHullSnapshots.append(QPair<QString, QString>(filename, contents));
+}
+
+bool XtalOpt::writeResultsFile(const QList<Structure*>& structures, bool notify)
+{
+  Common::ScopedTimer _timer("XtalOpt::writeResultsFile");
+  if (getLocWorkDir().isEmpty())
+    return true;
+
+  if (!QDir().mkpath(getLocWorkDir())) {
+    Common::error(QString("%1: could not create local work directory %2...")
+                    .arg(__func__).arg(getLocWorkDir()));
+    return false;
+  }
+
+  const QString resultsFilename = Common::localPath(getLocWorkDir(), "results.txt");
+  if (notify)
+    updateProgressValue(-1, tr("Saving: Writing %1...").arg(resultsFilename));
+
+  QString contents;
+  QTextStream out(&contents);
+  QList<Structure*> sortedStructures(structures);
+  const int objectiveOffset = (getObjectivesNum() > 0) ? getFirstUserObjectiveIndex() : 0;
+  const int userObjectivesNum = getUserObjectivesNum();
+  const int constraintsNum = getConstraintsNum();
+  if (!sortedStructures.isEmpty()) {
+    Structure::sortAndRankStructures(&sortedStructures);
+    out << sortedStructures.first()->getResultsHeader(userObjectivesNum, objectiveOffset,
+                                                      constraintsNum)
+        << QtCompat::endl;
+  }
+
+
+  for (auto* structure : sortedStructures) {
+    if (!structure)
+      continue;
+    QReadLocker structureLocker(&structure->lock());
+    out << structure->getResultsEntry(userObjectivesNum, structure->getCurrentOptStep(),
+                                      objectiveOffset, constraintsNum)
+        << QtCompat::endl;
+  }
+
+  return writeOutputFileWithBackup(resultsFilename, contents, __func__);
+}
+
+QString XtalOpt::hullFileContents(const QList<Structure*>& structures)
+{
+  QString contents;
+  QTextStream out(&contents);
+
+  const QList<QString> chemSystem = getChemicalSystem();
+  out << Xtal::getHullHeader(chemSystem) << "\n";
+
+  for (auto* structure : structures) {
+    Xtal* xtal = qobject_cast<Xtal*>(structure);
+    if (!xtal) {
+      Common::error(QString("%1: non-Xtal structure in hull file: %2")
+                    .arg(__func__).arg(structure->getTag()));
+      continue;
+    }
+
+    QReadLocker structureLocker(&xtal->lock());
+    if (GS_ISNAN(xtal->getDistAboveHull()))
+      continue;
+    out << xtal->getHullEntry(chemSystem) << "\n";
+  }
+
+  const std::vector<double> refData = getReferenceEnergiesVector();
+  const int refCount = static_cast<int>(refData.size()) / (chemSystem.size() + 1);
+  for (int i = 0; i < refCount; ++i) {
+    for (int j = 0; j < chemSystem.size(); ++j)
+      out << QString(" %1")
+             .arg(refData[i * (chemSystem.size() + 1) + j], 7);
+    out << QString(" %1")
+             .arg(refData[i * (chemSystem.size() + 1) + chemSystem.size()], 14, 'f', 6);
+    out << QString("  # %1 %2 %3  %4")
+             .arg("ref", 14).arg("ref", 7).arg("ref", 7).arg("ref")
+        << "\n";
+  }
+
+  return contents;
+}
+
+bool XtalOpt::writeHullFile(const QList<Structure*>& structures, const QString& filename)
+{
+  // Make sure the destination directory exists.
+  const QString hullDir = QFileInfo(filename).absolutePath();
+  if (!QDir().mkpath(hullDir)) {
+    Common::error(QString("%1: could not create directory %2...").arg(__func__).arg(hullDir));
+    return false;
+  }
+
+  return writeOutputFileWithBackup(filename, hullFileContents(structures), __func__);
 }
 
 } // namespace XtalOpt

@@ -698,7 +698,7 @@ void XtalTest::writeReadSettingsPreservesCompositionValidity()
   source->addAtom(8, Common::Vector3(0.0, 0.0, 0.0));
   source->setCompositionValidity(false);
   QVERIFY(producer.tracker()->append(source));
-  QVERIFY(producer.save(stateFile, false));
+  QVERIFY(producer.saveSessionState(stateFile, false));
 
   ::XtalOpt::XtalOpt loaded;
   loaded.setRunMode(::XtalOpt::XtalOpt::RunModeReadOnly);

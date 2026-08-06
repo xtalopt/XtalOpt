@@ -118,7 +118,7 @@ QString exportedOptionsText(XtalOpt& opt)
     return QString();
 
   const QString filename = tempPath(tempDir, "xtalopt.in");
-  if (!opt.writeInputFile(filename))
+  if (!opt.saveInputFile(filename))
     return QString();
 
   QFile file(filename);
@@ -320,19 +320,19 @@ private slots:
   void constraintInputSyntax();
   void removeUserObjectivePreservesBuiltinObjective();
   void runtimeOptionsApplyRuntimeChangeableKeys();
-  void processInputDataClearsCachesWhenInputsEmpty();
+  void rebuildDerivedSettingsClearsCachesWhenInputsEmpty();
   void optimizerAssetSyntaxReadAndWrite();
-  void writeOptionsFileUsesCentralTemplateMap();
-  void writeOptionsFileCoversEveryScalarKeyword();
-  void readOptionsAppliesFailActionPolicy();
-  void readOptionsAppliesScalarSettingRegistry();
-  void readOptionsAppliesCentralTemplateMap();
+  void saveInputFileUsesCentralTemplateMap();
+  void saveInputFileCoversEveryScalarKeyword();
+  void loadInputFileAppliesFailActionPolicy();
+  void loadInputFileAppliesScalarSettingRegistry();
+  void loadInputFileAppliesCentralTemplateMap();
   void importReadResolvesInputsWithoutRunArtifacts();
-  void readOptionsResolvesFromProcessCwdWithoutRunArtifacts();
+  void loadInputFileResolvesFromProcessCwdWithoutRunArtifacts();
   void optimizerInputAssetsAreLiteral();
   void startSearchPrechecksInputFiles();
-  void readOptionsLocalSchedulerConfiguration();
-  void readOptionsRemoteQueueConfiguration();
+  void loadInputFileLocalSchedulerConfiguration();
+  void loadInputFileRemoteQueueConfiguration();
   void initialRuntimeFileContainsOnlyRuntimeSubset();
   void runtimeOptionsDoNotChangeFixedKeys();
   void genericSettingsDoNotEnableRemoteQueueByDefault();
@@ -449,8 +449,7 @@ void XtalOptUnitTest::initialGenerationPlanForcedRandSpg()
     opt.minXtalsOfSpg() = forced;
 
     XtalOpt::InitialGenerationPlan plan;
-    QString error;
-    QVERIFY(opt.buildInitialGenerationPlan(plan, &error));
+    opt.buildInitialGenerationPlan(plan);
     QCOMPARE(plan.seedCount, static_cast<uint>(0));
     QCOMPARE(plan.forcedRandSpgCount, static_cast<uint>(2));
     QCOMPARE(plan.randomCount, static_cast<uint>(3));
@@ -483,9 +482,7 @@ void XtalOptUnitTest::initialGenerationPlanForcedRandSpg()
     opt.minXtalsOfSpg() = forced;
 
     XtalOpt::InitialGenerationPlan plan;
-    QString error;
-    QVERIFY(opt.buildInitialGenerationPlan(plan, &error));
-    QVERIFY(error.isEmpty());
+    opt.buildInitialGenerationPlan(plan);
     QCOMPARE(plan.randSpgCounts.at(impossibleIndex), -1);
     QCOMPARE(plan.forcedRandSpgCount, static_cast<uint>(0));
     QCOMPARE(plan.randomCount, static_cast<uint>(3));
@@ -516,7 +513,7 @@ void XtalOptUnitTest::loadTest()
     QVERIFY(producer.tracker()->append(invalid));
   }
 
-  QVERIFY(producer.save(Common::localPath(tempDir.path(), "xtalopt.state")));
+  QVERIFY(producer.saveSessionState(Common::localPath(tempDir.path(), "xtalopt.state")));
 
   XtalOpt reloaded;
   reloaded.tracker()->blockSignals(true);
@@ -579,7 +576,7 @@ void XtalOptUnitTest::readOnlyResumeLoadsState()
   const int count = buildTestSearch(producer, tempDir.path());
   QVERIFY(count > 0);
   QVERIFY(producer.refreshStructureEvaluationData());
-  QVERIFY(producer.save(Common::localPath(tempDir.path(), "xtalopt.state")));
+  QVERIFY(producer.saveSessionState(Common::localPath(tempDir.path(), "xtalopt.state")));
 
   XtalOpt opt;
   opt.setRunMode(XtalOpt::RunModeReadOnly);
@@ -619,12 +616,12 @@ void XtalOptUnitTest::invalidSettingsRejectedResetOrReverted()
 
     XtalOpt good;
     good.setRunMode(XtalOpt::RunModeReadOnly);
-    QVERIFY(good.readInputFile(src, /*bestEffort*/ true,
+    QVERIFY(good.loadInputFile(src, /*bestEffort*/ true,
                                /*loadAndVerifyAssets*/ false)); // control: valid
 
     XtalOpt bad;
     bad.setRunMode(XtalOpt::RunModeReadOnly);
-    QVERIFY(!bad.readInputFile(dst, /*bestEffort*/ true,
+    QVERIFY(!bad.loadInputFile(dst, /*bestEffort*/ true,
                                /*loadAndVerifyAssets*/ false)); // bad volume
   }
 
@@ -635,10 +632,10 @@ void XtalOptUnitTest::invalidSettingsRejectedResetOrReverted()
     XtalOpt producer;
     producer.setVolMin(100.0); // deliberately inconsistent
     producer.setVolMax(1.0);
-    QVERIFY(producer.saveSettingsState(file));
+    QVERIFY(producer.saveStateFile(file));
 
     XtalOpt loaded;
-    QVERIFY(loaded.loadSettingsState(file));
+    QVERIFY(loaded.importStateFile(file));
     QCOMPARE(loaded.getVolMin(), 1.0);   // reset to the default
     QCOMPARE(loaded.getVolMax(), 100.0);
   }
@@ -648,7 +645,7 @@ void XtalOptUnitTest::invalidSettingsRejectedResetOrReverted()
     XtalOpt opt; // defaults seed volMin = 1.0, volMax = 100.0
     QCOMPARE(opt.getVolMin(), 1.0);
     QCOMPARE(opt.getVolMax(), 100.0);
-    opt.readRuntimeOptions("minVolume = 100.0\nmaxVolume = 1.0\n");
+    opt.applyRuntimeText("minVolume = 100.0\nmaxVolume = 1.0\n");
     QCOMPARE(opt.getVolMin(), 1.0); // unchanged
     QCOMPARE(opt.getVolMax(), 100.0);
   }
@@ -656,14 +653,14 @@ void XtalOptUnitTest::invalidSettingsRejectedResetOrReverted()
   // Reject a runtime crossover min contribution outside its allowed range.
   {
     XtalOpt opt;
-    opt.readRuntimeOptions("crossoverMinContribution = 60\n");
+    opt.applyRuntimeText("crossoverMinContribution = 60\n");
     QCOMPARE(opt.getCrossMinimumContribution(), 25u);
   }
 
   // Reject invalid search limits and Stripple ranges at runtime.
   {
     XtalOpt opt;
-    opt.readRuntimeOptions("parentsPoolSize = 0\n"
+    opt.applyRuntimeText("parentsPoolSize = 0\n"
                            "maxNumStructures = 0\n"
                            "strippleAmplitudeMin = 0.9\n"
                            "strippleAmplitudeMax = 0.2\n");
@@ -681,7 +678,7 @@ void XtalOptUnitTest::inputReadAndVerifyLoadsAssets()
   XtalOpt opt;
   opt.setRunMode(XtalOpt::RunModeReadOnly);
   // Resolve relative template paths beside the input file.
-  QVERIFY(opt.readInputFile(fixture, /*bestEffort*/ true));
+  QVERIFY(opt.loadInputFile(fixture, /*bestEffort*/ true));
   QCOMPARE(static_cast<int>(opt.getNumOptSteps()), 1);
   QVERIFY(opt.optimizer(0));
   QCOMPARE(opt.optimizer(0)->getIDString().toLower(), QString("gulp"));
@@ -694,15 +691,15 @@ void XtalOptUnitTest::inputReadAndVerifyLoadsAssets()
 void XtalOptUnitTest::settingsDefaultsMatchBuiltInDefaults()
 {
   XtalOpt opt;
-  Settings::applyAllDefaults(opt);
+  Settings::applyDefaultSettings(opt);
 
   // Every scalar setting must return its table default.
-  for (const auto& keyword : Settings::allKeywords()) {
-    if (!Settings::hasScalarBinding(keyword))
+  for (const auto& keyword : Settings::allSettingKeywords()) {
+    if (!Settings::hasScalarSettingBinding(keyword))
       continue;
 
     const QString expected = Settings::defaultValue(keyword);
-    const QString actual = Settings::scalarValue(opt, keyword);
+    const QString actual = Settings::scalarSettingValue(opt, keyword);
 
     bool expectedIsNumber = false;
     const double expectedNumber = expected.toDouble(&expectedIsNumber);
@@ -730,52 +727,52 @@ void XtalOptUnitTest::settingsDefaultsMatchBuiltInDefaults()
 void XtalOptUnitTest::settingsRegistryAppliesAndReadsScalars()
 {
   XtalOpt opt;
-  Settings::applyAllDefaults(opt);
+  Settings::applyDefaultSettings(opt);
 
   // Check a normal scalar setting.
-  QVERIFY(Settings::applyScalar(opt, "maxAtoms", "33"));
+  QVERIFY(Settings::applyScalarSetting(opt, "maxAtoms", "33"));
   QCOMPARE(opt.getMaxAtoms(), 33);
-  QCOMPARE(Settings::scalarValue(opt, "maxAtoms"), QString("33"));
+  QCOMPARE(Settings::scalarSettingValue(opt, "maxAtoms"), QString("33"));
 
   // Case-insensitive keywords.
-  QVERIFY(Settings::applyScalar(opt, "AMIN", "2.5"));
+  QVERIFY(Settings::applyScalarSetting(opt, "AMIN", "2.5"));
   QCOMPARE(opt.getAMin(), 2.5);
 
   // Boolean settings accept true/false and yes/no.
-  QVERIFY(Settings::applyScalar(opt, "softExit", "yes"));
+  QVERIFY(Settings::applyScalarSetting(opt, "softExit", "yes"));
   QVERIFY(opt.isSoftExit());
-  QVERIFY(Settings::applyScalar(opt, "softExit", "NO"));
+  QVERIFY(Settings::applyScalarSetting(opt, "softExit", "NO"));
   QVERIFY(!opt.isSoftExit());
-  QVERIFY(!Settings::applyScalar(opt, "softExit", "1"));
-  QVERIFY(!Settings::applyScalar(opt, "softExit", "0"));
-  QVERIFY(!Settings::applyScalar(opt, "softExit", "maybe"));
+  QVERIFY(!Settings::applyScalarSetting(opt, "softExit", "1"));
+  QVERIFY(!Settings::applyScalarSetting(opt, "softExit", "0"));
+  QVERIFY(!Settings::applyScalarSetting(opt, "softExit", "maybe"));
   QVERIFY(!opt.isSoftExit());
 
   // Check a setting with special input handling.
-  QVERIFY(Settings::applyScalar(opt, "jobFailAction", "kill"));
+  QVERIFY(Settings::applyScalarSetting(opt, "jobFailAction", "kill"));
   QCOMPARE(opt.getFailAction(), Search::SearchBase::FA_KillIt);
-  QCOMPARE(Settings::scalarValue(opt, "jobFailAction"), QString("kill"));
-  QVERIFY(!Settings::applyScalar(opt, "jobFailAction", "nonsense"));
+  QCOMPARE(Settings::scalarSettingValue(opt, "jobFailAction"), QString("kill"));
+  QVERIFY(!Settings::applyScalarSetting(opt, "jobFailAction", "nonsense"));
 
   // Bad numeric values change nothing and report failure.
-  QVERIFY(!Settings::applyScalar(opt, "maxAtoms", "abc"));
+  QVERIFY(!Settings::applyScalarSetting(opt, "maxAtoms", "abc"));
   QCOMPARE(opt.getMaxAtoms(), 33);
 
   // Queue settings are not scalar settings.
-  QVERIFY(!Settings::hasScalarBinding("queueInterface"));
-  QVERIFY(!Settings::applyScalar(opt, "queueInterface", "none"));
+  QVERIFY(!Settings::hasScalarSettingBinding("queueInterface"));
+  QVERIFY(!Settings::applyScalarSetting(opt, "queueInterface", "none"));
 
   // Flags come from the table.
-  QVERIFY(Settings::isRequired("optimizer"));
-  QVERIFY(Settings::isRuntimeChangeable("aMin"));
-  QVERIFY(!Settings::isRuntimeChangeable("usingRandSpg"));
+  QVERIFY(Settings::isRequiredInputKeyword("optimizer"));
+  QVERIFY(Settings::isRuntimeKeyword("aMin"));
+  QVERIFY(!Settings::isRuntimeKeyword("usingRandSpg"));
   // Check all multi-line (repeatable) input values.
-  QVERIFY(Settings::isRepeatableInput("molUnit"));
-  QVERIFY(Settings::isRepeatableInput("customIAD"));
-  QVERIFY(Settings::isRepeatableInput("objective"));
-  QVERIFY(Settings::isRepeatableInput("constraint"));
-  QVERIFY(Settings::isRepeatableInput("potcarFile"));
-  QVERIFY(Settings::isRepeatableInput("psfFile"));
+  QVERIFY(Settings::isRepeatableInputKeyword("molUnit"));
+  QVERIFY(Settings::isRepeatableInputKeyword("customIAD"));
+  QVERIFY(Settings::isRepeatableInputKeyword("objective"));
+  QVERIFY(Settings::isRepeatableInputKeyword("constraint"));
+  QVERIFY(Settings::isRepeatableInputKeyword("potcarFile"));
+  QVERIFY(Settings::isRepeatableInputKeyword("psfFile"));
   QCOMPARE(Settings::findKeywordName("amin"), QString("aMin"));
   QCOMPARE(Settings::findKeywordName("molunit"), QString("molUnit"));
   QVERIFY(Settings::findKeywordName("molunit 2").isEmpty());
@@ -823,7 +820,7 @@ void XtalOptUnitTest::structureStateFileIsStable()
   xtal->updateAndAddToHistory(histNums, histCoords, -10.0, -9.75, histCell);
 
   const QString statePath = tempPath(tempDir, "structure.state");
-  writeStructureState(*xtal, statePath);
+  writeStructureStateFile(*xtal, statePath);
 
   const QString expectedDir = Common::localPath(QString(TESTDATADIR), "outputs");
   compareWithExpectedFile(statePath, Common::localPath(expectedDir, "structure.state"), true);
@@ -839,7 +836,7 @@ void XtalOptUnitTest::saveWritesOnlyChangedStructureStates()
   QVERIFY(count > 1);
 
   const QString stateFile = tempPath(tempDir, "xtalopt.state");
-  QVERIFY(opt.save(stateFile));
+  QVERIFY(opt.saveSessionState(stateFile));
 
   const QList<Structure*> structures = opt.queue()->getAllStructures();
   Structure* changed = structures.first();
@@ -953,7 +950,7 @@ void XtalOptUnitTest::objectiveSettingsValidation()
       QStringList() << "max /tmp/fake-objective objective.out 0.25");
 
     XtalOpt loaded;
-    QVERIFY(loaded.readSettings(stateFile, true));
+    QVERIFY(loaded.readStateFile(stateFile, true));
 
     QCOMPARE(loaded.getObjectivesNum(), 2);
     QCOMPARE(loaded.getObjectivesTyp(0), SearchBase::Ot_Min);
@@ -975,7 +972,7 @@ void XtalOptUnitTest::objectiveSettingsValidation()
                     << "max /tmp/objective-b b.out 0.5");
 
     XtalOpt loaded;
-    QVERIFY(!loaded.readSettings(stateFile, true));
+    QVERIFY(!loaded.readStateFile(stateFile, true));
   }
 
   // Reject an incomplete/failed objective.
@@ -985,7 +982,7 @@ void XtalOptUnitTest::objectiveSettingsValidation()
       QStringList() << "min  objective.out 0.2");
 
     XtalOpt loaded;
-    QVERIFY(!loaded.readSettings(stateFile, true));
+    QVERIFY(!loaded.readStateFile(stateFile, true));
   }
 }
 
@@ -1043,7 +1040,7 @@ void XtalOptUnitTest::runtimeOptionsApplyRuntimeChangeableKeys()
   XtalOpt opt;
   opt.setLocWorkDir(tempDir.path());
 
-  QFile runtimeFile(opt.CLIRuntimeFile());
+  QFile runtimeFile(opt.runtimeFilePath());
 
   // Read hardExit.
   QVERIFY(!opt.isHardExit());
@@ -1051,7 +1048,7 @@ void XtalOptUnitTest::runtimeOptionsApplyRuntimeChangeableKeys()
   runtimeFile.write("hardExit = true\n");
   runtimeFile.close();
 
-  opt.readRuntimeOptions();
+  opt.loadRuntimeFile();
   QVERIFY(opt.isHardExit());
 
   // Ignore invalid boolean text.
@@ -1059,7 +1056,7 @@ void XtalOptUnitTest::runtimeOptionsApplyRuntimeChangeableKeys()
   runtimeFile.write("hardExit = maybe\n");
   runtimeFile.close();
 
-  opt.readRuntimeOptions();
+  opt.loadRuntimeFile();
   QVERIFY(opt.isHardExit());
 
   // Read paretoFilterZeroWeights.
@@ -1068,7 +1065,7 @@ void XtalOptUnitTest::runtimeOptionsApplyRuntimeChangeableKeys()
   runtimeFile.write("paretoFilterZeroWeights = true\n");
   runtimeFile.close();
 
-  opt.readRuntimeOptions();
+  opt.loadRuntimeFile();
   QVERIFY(opt.isParetoFilterZeroWeights());
 
   // Read constraintsReDo.
@@ -1077,7 +1074,7 @@ void XtalOptUnitTest::runtimeOptionsApplyRuntimeChangeableKeys()
   runtimeFile.write("constraintsReDo = true\n");
   runtimeFile.close();
 
-  opt.readRuntimeOptions();
+  opt.loadRuntimeFile();
   QVERIFY(opt.isConstraintsReDo());
 
   // Read jobFailAction.
@@ -1086,14 +1083,14 @@ void XtalOptUnitTest::runtimeOptionsApplyRuntimeChangeableKeys()
   runtimeFile.write("jobFailAction = replaceWithOffspring\n");
   runtimeFile.close();
 
-  opt.readRuntimeOptions();
+  opt.loadRuntimeFile();
   QCOMPARE(opt.getFailAction(), SearchBase::FA_NewOffspring);
 
   QVERIFY(runtimeFile.open(QIODevice::WriteOnly | QIODevice::Text));
   runtimeFile.write("jobFailAction = notARealAction\n");
   runtimeFile.close();
 
-  opt.readRuntimeOptions();
+  opt.loadRuntimeFile();
   QCOMPARE(opt.getFailAction(), SearchBase::FA_NewOffspring);
 
   // Reset a setting value to default (with empty value).
@@ -1102,15 +1099,15 @@ void XtalOptUnitTest::runtimeOptionsApplyRuntimeChangeableKeys()
   QCOMPARE(opt.getMaxNumStructures(), 44);
 
   // Clear the maximum count.
-  opt.readRuntimeOptions("maxNumStructures =\n");
+  opt.applyRuntimeText("maxNumStructures =\n");
   QCOMPARE(opt.getMaxNumStructures(), 100);
 
   // Clear an empty value for an empty-default parameter.
-  opt.readRuntimeOptions("elementalVolumes =\n");
+  opt.applyRuntimeText("elementalVolumes =\n");
   QVERIFY(opt.getInputEleVolmString().isEmpty());
 }
 
-void XtalOptUnitTest::processInputDataClearsCachesWhenInputsEmpty()
+void XtalOptUnitTest::rebuildDerivedSettingsClearsCachesWhenInputsEmpty()
 {
   XtalOpt opt;
 
@@ -1124,12 +1121,12 @@ void XtalOptUnitTest::processInputDataClearsCachesWhenInputsEmpty()
 
   // A composition (and its default reference energies) is built from raw text.
   opt.setInputFormulasString("Ti1O2");
-  QVERIFY(opt.processInputData());
+  QVERIFY(opt.rebuildDerivedSettings());
   QVERIFY(!opt.compList().isEmpty());
 
   // Clear the raw input text composition.
   opt.setInputFormulasString("");
-  opt.processInputData();
+  opt.rebuildDerivedSettings();
   QVERIFY(opt.compList().isEmpty());
   QVERIFY(opt.refEnergies().isEmpty());
   QVERIFY(opt.eleVolumes().getVolumeAtomicNumbers().isEmpty());
@@ -1165,15 +1162,15 @@ void XtalOptUnitTest::optimizerAssetSyntaxReadAndWrite()
            QString("just some literal text"));
 }
 
-void XtalOptUnitTest::writeOptionsFileCoversEveryScalarKeyword()
+void XtalOptUnitTest::saveInputFileCoversEveryScalarKeyword()
 {
   XtalOpt opt;
   const QString output = exportedOptionsText(opt);
   QVERIFY(!output.isEmpty());
 
   // Export every scalar setting (except an empty seedStructures value).
-  for (const auto& keyword : Settings::allKeywords()) {
-    if (!Settings::hasScalarBinding(keyword) || keyword == "seedStructures")
+  for (const auto& keyword : Settings::allSettingKeywords()) {
+    if (!Settings::hasScalarSettingBinding(keyword) || keyword == "seedStructures")
       continue;
     QVERIFY2(output.contains("  " + keyword + " ="), qPrintable("not exported: " + keyword));
   }
@@ -1205,7 +1202,7 @@ void XtalOptUnitTest::writeOptionsFileCoversEveryScalarKeyword()
   QVERIFY(renamedOutput.contains("  mtpRelaxTemplates =\n"));
 }
 
-void XtalOptUnitTest::writeOptionsFileUsesCentralTemplateMap()
+void XtalOptUnitTest::saveInputFileUsesCentralTemplateMap()
 {
   const QHash<QString, QString> templateKeywordByFilename = {
     { "xtal.gin",   "ginTemplates"         },
@@ -1275,7 +1272,7 @@ void XtalOptUnitTest::writeOptionsFileUsesCentralTemplateMap()
   }
 }
 
-void XtalOptUnitTest::readOptionsAppliesFailActionPolicy()
+void XtalOptUnitTest::loadInputFileAppliesFailActionPolicy()
 {
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
@@ -1298,11 +1295,11 @@ void XtalOptUnitTest::readOptionsAppliesFailActionPolicy()
   inputFile.close();
 
   XtalOpt opt;
-  QVERIFY(opt.readInputFile(inputFile.fileName(), true));
+  QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
   QCOMPARE(opt.getFailAction(), SearchBase::FA_DoNothing);
 }
 
-void XtalOptUnitTest::readOptionsAppliesScalarSettingRegistry()
+void XtalOptUnitTest::loadInputFileAppliesScalarSettingRegistry()
 {
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
@@ -1379,7 +1376,7 @@ void XtalOptUnitTest::readOptionsAppliesScalarSettingRegistry()
   inputFile.close();
 
   XtalOpt opt;
-  QVERIFY(opt.readInputFile(inputFile.fileName(), true));
+  QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
   QVERIFY(opt.isVerbose());
   QVERIFY(opt.getSaveHullSnapshots());
   QCOMPARE(opt.getParentsPoolSize(), static_cast<uint>(33));
@@ -1430,7 +1427,7 @@ void XtalOptUnitTest::readOptionsAppliesScalarSettingRegistry()
   QCOMPARE(opt.queueRefreshInterval(), 11);
 }
 
-void XtalOptUnitTest::readOptionsAppliesCentralTemplateMap()
+void XtalOptUnitTest::loadInputFileAppliesCentralTemplateMap()
 {
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
@@ -1464,7 +1461,7 @@ void XtalOptUnitTest::readOptionsAppliesCentralTemplateMap()
   inputFile.close();
 
   XtalOpt opt;
-  QVERIFY(opt.readInputFile(inputFile.fileName(), true));
+  QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
   QCOMPARE(QString::fromStdString(opt.getOptimizerTemplate(0, "mtp.cfg")),
            QString("cell template\n"));
   QCOMPARE(QString::fromStdString(opt.getOptimizerTemplate(0, "mtp.relax")),
@@ -1498,10 +1495,10 @@ void XtalOptUnitTest::importReadResolvesInputsWithoutRunArtifacts()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), true));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
     QCOMPARE(opt.getLocWorkDir(), QDir(runDir).absolutePath());
     QVERIFY(!QFile::exists(runDir));
-    QVERIFY(!QFile::exists(opt.CLIRuntimeFile()));
+    QVERIFY(!QFile::exists(opt.runtimeFilePath()));
   }
 
   // Keep a relative local work directory.
@@ -1526,7 +1523,7 @@ void XtalOptUnitTest::importReadResolvesInputsWithoutRunArtifacts()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), true));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
     QCOMPARE(opt.getLocWorkDir(), QString("./local"));
   }
 
@@ -1562,7 +1559,7 @@ void XtalOptUnitTest::importReadResolvesInputsWithoutRunArtifacts()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), true));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
 
     const QString text = QString::fromStdString(opt.getOptimizerTemplate(0, "xtal.gin"));
     QVERIFY(text.contains(QFileInfo(fragmentFile.fileName()).absoluteFilePath()));
@@ -1603,7 +1600,7 @@ void XtalOptUnitTest::importReadResolvesInputsWithoutRunArtifacts()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), true));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
 
     const QString text = QString::fromStdString(opt.getOptimizerInputAsset(0, "POTCAR"));
     QVERIFY(text.contains(QFileInfo(potcarFile.fileName()).absoluteFilePath()));
@@ -1611,7 +1608,7 @@ void XtalOptUnitTest::importReadResolvesInputsWithoutRunArtifacts()
   }
 }
 
-void XtalOptUnitTest::readOptionsResolvesFromProcessCwdWithoutRunArtifacts()
+void XtalOptUnitTest::loadInputFileResolvesFromProcessCwdWithoutRunArtifacts()
 {
   // Read the working directory: a relative path should be resolved against process work directory.
   {
@@ -1643,7 +1640,7 @@ void XtalOptUnitTest::readOptionsResolvesFromProcessCwdWithoutRunArtifacts()
     QVERIFY(currentPath.changed());
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), false));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), false));
     QCOMPARE(opt.getLocWorkDir(), QDir(processCwd).absoluteFilePath("run"));
   }
 
@@ -1687,7 +1684,7 @@ void XtalOptUnitTest::readOptionsResolvesFromProcessCwdWithoutRunArtifacts()
     QVERIFY(currentPath.changed());
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), false));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), false));
 
     const QString text = QString::fromStdString(opt.getOptimizerTemplate(0, "xtal.gin"));
     QVERIFY(text.contains(QFileInfo(fragmentFile.fileName()).absoluteFilePath()));
@@ -1717,10 +1714,10 @@ void XtalOptUnitTest::readOptionsResolvesFromProcessCwdWithoutRunArtifacts()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), false));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), false));
     QCOMPARE(opt.getLocWorkDir(), QDir(runDir).absolutePath());
     QVERIFY(!QFile::exists(runDir));
-    QVERIFY(!QFile::exists(opt.CLIRuntimeFile()));
+    QVERIFY(!QFile::exists(opt.runtimeFilePath()));
   }
 }
 
@@ -1761,7 +1758,7 @@ void XtalOptUnitTest::optimizerInputAssetsAreLiteral()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), true));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
     QVERIFY(!opt.optimizer(0)->getOptimizerTemplateFileNames().contains("POTCAR"));
     QVERIFY(opt.optimizer(0)->getOptimizerInputAssetNames().contains("POTCAR"));
 
@@ -1802,7 +1799,7 @@ void XtalOptUnitTest::optimizerInputAssetsAreLiteral()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), true));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
     QVERIFY(opt.optimizer(0)->getOptimizerInputAssetNames().contains("PSF"));
 
     Xtal* xtal = makeTestXtal(1, 1, 0, 8, Common::Vector3(0.0, 0.0, 0.0), 0.0);
@@ -1841,7 +1838,7 @@ void XtalOptUnitTest::startSearchPrechecksInputFiles()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), false));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), false));
 
     QSignalSpy errorDialogSpy(&opt, SIGNAL(errorDialogRequested(QString)));
     QVERIFY(!opt.startSearch());
@@ -1888,7 +1885,7 @@ void XtalOptUnitTest::startSearchPrechecksInputFiles()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), false));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), false));
     opt.setOptimizerInputAsset(0, "POTCAR",
       ("system=%fileContents:" + missingPotcar + "%").toStdString());
 
@@ -1902,7 +1899,7 @@ void XtalOptUnitTest::startSearchPrechecksInputFiles()
   }
 }
 
-void XtalOptUnitTest::readOptionsLocalSchedulerConfiguration()
+void XtalOptUnitTest::loadInputFileLocalSchedulerConfiguration()
 {
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
@@ -1927,7 +1924,7 @@ void XtalOptUnitTest::readOptionsLocalSchedulerConfiguration()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(!opt.readInputFile(inputFile.fileName(), false));
+    QVERIFY(!opt.loadInputFile(inputFile.fileName(), false));
   }
 
   // Read local queue settings.
@@ -1967,7 +1964,7 @@ void XtalOptUnitTest::readOptionsLocalSchedulerConfiguration()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY2(opt.readInputFile(inputFile.fileName(), true),
+    QVERIFY2(opt.loadInputFile(inputFile.fileName(), true),
              qPrintable("Failed to read queue interface " + queueName));
     QCOMPARE(opt.queueInterface(0)->getIDString().toLower(), queueName.toLower());
     QVERIFY(!opt.isRemoteQueue());
@@ -1976,7 +1973,7 @@ void XtalOptUnitTest::readOptionsLocalSchedulerConfiguration()
   }
 }
 
-void XtalOptUnitTest::readOptionsRemoteQueueConfiguration()
+void XtalOptUnitTest::loadInputFileRemoteQueueConfiguration()
 {
   QTemporaryDir tempDir;
   QVERIFY(tempDir.isValid());
@@ -2010,7 +2007,7 @@ void XtalOptUnitTest::readOptionsRemoteQueueConfiguration()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), true));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
     QCOMPARE(opt.queueInterface(0)->getIDString().toLower(), QString("pbs"));
     QVERIFY(opt.isRemoteQueue());
     QCOMPARE(QString::fromStdString(opt.getQueueInterfaceTemplate(0, "job.pbs")),
@@ -2033,7 +2030,7 @@ void XtalOptUnitTest::readOptionsRemoteQueueConfiguration()
     inputFile.close();
 
     XtalOpt opt;
-    QVERIFY(opt.readInputFile(inputFile.fileName(), true));
+    QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
     QCOMPARE(opt.sshMethod(), QString("auto"));
   }
 }
@@ -2045,9 +2042,9 @@ void XtalOptUnitTest::initialRuntimeFileContainsOnlyRuntimeSubset()
 
   XtalOpt opt;
   opt.setLocWorkDir(tempDir.path());
-  opt.writeInitialRuntimeFile();
+  opt.saveRuntimeFile();
 
-  QFile runtimeFile(opt.CLIRuntimeFile());
+  QFile runtimeFile(opt.runtimeFilePath());
   QVERIFY(runtimeFile.open(QIODevice::ReadOnly | QIODevice::Text));
   const QString runtimeText = QString::fromUtf8(runtimeFile.readAll());
 
@@ -2074,13 +2071,13 @@ void XtalOptUnitTest::runtimeOptionsDoNotChangeFixedKeys()
     opt.setLocWorkDir(tempDir.path());
     opt.setRemoteQueue(false);
 
-    QFile runtimeFile(opt.CLIRuntimeFile());
+    QFile runtimeFile(opt.runtimeFilePath());
     QVERIFY(runtimeFile.open(QIODevice::WriteOnly | QIODevice::Text));
     runtimeFile.write("remoteQueue = true\n");
     runtimeFile.write("queueInterface = pbs\n");
     runtimeFile.close();
 
-    opt.readRuntimeOptions();
+    opt.loadRuntimeFile();
     QVERIFY(!opt.isRemoteQueue());
   }
 
@@ -2092,7 +2089,7 @@ void XtalOptUnitTest::runtimeOptionsDoNotChangeFixedKeys()
     XtalOpt opt;
     opt.setLocWorkDir(originalRunDir);
 
-    QFile runtimeFile(opt.CLIRuntimeFile());
+    QFile runtimeFile(opt.runtimeFilePath());
     QVERIFY(QDir().mkpath(originalRunDir));
     QVERIFY(runtimeFile.open(QIODevice::WriteOnly | QIODevice::Text));
     runtimeFile.write("localWorkingDirectory = ");
@@ -2101,7 +2098,7 @@ void XtalOptUnitTest::runtimeOptionsDoNotChangeFixedKeys()
     runtimeFile.write("hardExit = true\n");
     runtimeFile.close();
 
-    opt.readRuntimeOptions();
+    opt.loadRuntimeFile();
     QCOMPARE(opt.getLocWorkDir(), originalRunDir);
     QVERIFY(opt.isHardExit());
   }
@@ -2122,7 +2119,7 @@ void XtalOptUnitTest::genericSettingsDoNotEnableRemoteQueueByDefault()
   }
 
   XtalOpt loaded;
-  QVERIFY(loaded.readSettings(settingsFile, false));
+  QVERIFY(loaded.readStateFile(settingsFile, false));
   QVERIFY(!loaded.isRemoteQueue());
 }
 
@@ -2150,7 +2147,7 @@ void XtalOptUnitTest::loadPathsGovernLocalWorkDir()
     Xtal* xtal = makeTestXtal(1, 1, 0, 8, Common::Vector3(0.0, 0.0, 0.0), 0.0);
     xtal->setLocpath(structureDir);
     QVERIFY(saved.tracker()->append(xtal));
-    QVERIFY(saved.save(stateFile, false));
+    QVERIFY(saved.saveSessionState(stateFile, false));
 
     XtalOpt loaded;
     loaded.setRunMode(XtalOpt::RunModeReadOnly);
@@ -2172,10 +2169,10 @@ void XtalOptUnitTest::loadPathsGovernLocalWorkDir()
     QVERIFY(saved.processInputChemicalFormulas(saved.getInputFormulasString()));
     saved.setQueueInterface(0, "none");
     saved.setOptimizer(0, "gulp");
-    QVERIFY(saved.saveSettingsState(stateFile));
+    QVERIFY(saved.saveStateFile(stateFile));
 
     XtalOpt loaded;
-    QVERIFY(loaded.loadSettingsState(stateFile));
+    QVERIFY(loaded.importStateFile(stateFile));
     QCOMPARE(loaded.getLocWorkDir(), QFileInfo(stateFile).absoluteDir().absolutePath());
   }
 
@@ -2187,11 +2184,11 @@ void XtalOptUnitTest::loadPathsGovernLocalWorkDir()
     saved.setLocWorkDir("./saved-local");
     saved.setQueueInterface(0, "none");
     saved.setOptimizer(0, "gulp");
-    QVERIFY(saved.writeOptScheme(settingsFile));
+    QVERIFY(saved.saveSchemeFile(settingsFile));
 
     XtalOpt loaded;
     loaded.setLocWorkDir("/before/read-job-settings");
-    QVERIFY(loaded.readOptScheme(settingsFile));
+    QVERIFY(loaded.loadSchemeFile(settingsFile));
     // Keep the work directory.
     QCOMPARE(loaded.getLocWorkDir(), QString("/before/read-job-settings"));
   }
@@ -2250,10 +2247,10 @@ void XtalOptUnitTest::stateSettingsReadAndWritePreservesMainFields()
   QVERIFY(saved.optimizer(0));
   saved.optimizer(0)->setDirectRunCommand("mpirun -np 3 gulp");
 
-  QVERIFY(saved.save(stateFile, false));
+  QVERIFY(saved.saveSessionState(stateFile, false));
 
   XtalOpt loaded;
-  QVERIFY(loaded.readSettings(stateFile, true));
+  QVERIFY(loaded.readStateFile(stateFile, true));
 
   QCOMPARE(loaded.getInputFormulasString(), QString("O1"));
   QVERIFY(loaded.isVerbose());

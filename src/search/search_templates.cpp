@@ -235,15 +235,4 @@ QString SearchBase::getTemplateKeywordHelp_base()
   return text;
 }
 
-std::unique_ptr<QueueInterface> SearchBase::createQueueInterface(
-  const std::string& queueName)
-{
-  return QueueInterface::createRegisteredQueueInterface(QString::fromStdString(queueName), this);
-}
-
-std::unique_ptr<Optimizer> SearchBase::createOptimizer(const std::string& optName)
-{
-  return Optimizer::createRegisteredOptimizer(QString::fromStdString(optName), this);
-}
-
 } // namespace Search

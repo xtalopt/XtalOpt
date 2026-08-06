@@ -148,7 +148,7 @@ bool TabMo::updateObjectives()
       xtalopt->setConstraintsReDo(value);
   }
   if (changed && m_search->isSessionInProgress())
-    xtalopt->requestSettingsStateSave();
+    xtalopt->requestStateFileSave();
 
   return true;
 }
@@ -175,7 +175,7 @@ void TabMo::updateScriptCancel()
     }
   }
   if (changed && m_search->isSessionInProgress())
-    xtalopt->requestSettingsStateSave();
+    xtalopt->requestStateFileSave();
 }
 
 void TabMo::addObjectives()
@@ -198,7 +198,7 @@ void TabMo::addObjectives()
     errorPromptWindow("Error adding objective!");
     return;
   }
-  xtalopt->processInputData();
+  xtalopt->rebuildDerivedSettings();
 
   updateObjectivesTable();
 

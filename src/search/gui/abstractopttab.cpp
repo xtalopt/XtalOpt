@@ -80,7 +80,7 @@ bool isOptimizerInputAssetName(Optimizer* optimizer, QueueInterface* queueInterf
   }
   return true;
 }
-}
+} // namespace
 
 AbstractOptTab::AbstractOptTab(AbstractDialog* parent, SearchBase* p)
   : AbstractTab(parent, p), ui_combo_queueInterfaces(0), ui_combo_optimizers(0),
@@ -678,7 +678,7 @@ void AbstractOptTab::saveScheme()
   if (filename.isEmpty())
     return;
 
-  writeSettings(filename);
+  writeSchemeFile(filename);
 }
 
 void AbstractOptTab::loadScheme()
@@ -694,6 +694,6 @@ void AbstractOptTab::loadScheme()
   if (filename.isEmpty())
     return;
 
-  readSettings(filename);
+  readSchemeFile(filename);
 }
 }

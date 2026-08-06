@@ -1,8 +1,8 @@
 [xtalopt]
 optscheme\numOptSteps=1
-optscheme\optimizer\0\directRunCommand="mlp relax mtp.relax --cfg-filename=mtp.cell --save-relaxed=xtal.mot"
+optscheme\optimizer\0\directRunCommand="mlp relax mtp.relax --cfg-filename=mtp.cfg --save-relaxed=xtal.mot"
 optscheme\optimizer\0\interface=mtp
-optscheme\optimizer\0\templates\mtp\mtp.cell=BEGIN_CFG\nSize\n%numAtoms%\nSupercell\n%cellMatrixAngstrom%\nAtomData: id type direct_x direct_y direct_z\n%mtpAtomsInfo%\nEND_CFG\n
+optscheme\optimizer\0\templates\mtp\mtp.cfg=BEGIN_CFG\nSize\n%numAtoms%\nSupercell\n%cellMatrixAngstrom%\nAtomData: id type direct_x direct_y direct_z\n%mtpAtomsInfo%\nEND_CFG\n
 optscheme\optimizer\0\templates\mtp\mtp.pot=%fileContents:/Users/sam/XtalOpt/mtp_pot%
 optscheme\optimizer\0\templates\mtp\mtp.relax=mtp-filename           mtp.pot\n
 optscheme\queue\0\interface=none

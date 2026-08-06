@@ -233,6 +233,11 @@ std::unique_ptr<Optimizer> Optimizer::createRegisteredOptimizer(
   return std::unique_ptr<Optimizer>();
 }
 
+std::unique_ptr<Optimizer> SearchBase::createOptimizer(const std::string& optName)
+{
+  return Optimizer::createRegisteredOptimizer(QString::fromStdString(optName), this);
+}
+
 bool Optimizer::registerBuiltInOptimizer(const QString& name)
 {
   const BuiltInOptimizerDefinition* definition = builtInOptimizerDefinition(name);
@@ -268,12 +273,6 @@ QHash<QString, QString> Optimizer::getInputFiles(Structure* s)
 
   // Stop any running jobs associated with this structure
   queue->stopJob(s);
-
-  // Lock
-  QReadLocker locker(&s->lock());
-
-  // Unlock for optimizer calls
-  locker.unlock();
 
   // Build hash
   QHash<QString, QString> hash;

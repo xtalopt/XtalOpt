@@ -1,37 +1,46 @@
 
 ==================================
-==========    15 (rc6)   =========
+==========    15 (rc)    =========
 ==================================
 
 ===== Source organization, build system, and dependencies
 
 Restructured sources into layers: search (engine), atoms (geometry, cell, formats), common (utilities), xtalopt (application)
-Removed Eigen, OpenBabel and GenXrdPattern dependencies
+Added a build hierarchy check for the intended source layout
+Removed Eigen, OpenBabel, GenXrdPattern and pugixml sources/dependencies
 Removed Avogadro RPC and backtrace debug helpers
 Added new libraries to external: xraylib, libmsym, args
-Made the GUI optional at build time
+Made the GUI optional at build time; CLI-only builds do not require Qt Widgets or Qwt
 Added centralized cross-platform and Qt/Qwt compatibility layers
-Build system: C++11; Qt5.4 up to Qt6; always available system SSH with optional libssh
+Build system: C++11; Qt5.4 up to Qt6; Qwt 6.1 or newer
+Made system ssh/scp always available, with libssh (minimum 0.6.0) as an additional build option
+Improved installation and independent-package handling on macOS, Windows and Linux
 Added macOS code-signing, CPack on all platforms and third-party licenses
 
 ===== Application settings, input and saved data
 
 Moved application settings, state-file and results-file handling from engine to xtalopt
 Limited main code to current input and state formats
-Kept legacy v14 conversion in xtalopt/legacy; updated state version to 5
-Kept structure state files static: similarity, hull, fronts and space groups are recovered on load
+Kept old input/state conversion in xtalopt/legacy; updated state version to 5
+Added a command-line option to convert old input and state files
+Added command-line summaries for template keywords and all xtalopt.in settings/defaults
 Unified xtalopt settings in one registry table (accessors, defaults, properties, validation)
 Revised command-line options and added stricter input checking
-Improved runtime setting updates
+Improved runtime setting updates and rewriting of cli-runtime-options.txt
 Added/revised settings: sshMethod, directRunCommand, forcedSpgs, IAD checks and RDF tolerance
 Added/revised settings for Pareto zero-weight filtering, external script timeouts and debug output
 Renamed localQueue to remoteQueue and the local queue interface to none
 Standardized potcar/psf input syntax: <id> <file>
 Defined optimizer asset-file groups
-Improved state save/resume and v14 conversion for batch schemes, custom IADs and transient states
+Updated GUI settings import/export to use the current xtalopt.in format
+Improved state save/resume and old-format conversion for batch schemes, custom IADs and transient states
+Allowed GUI state files to be opened only to initialize entries; besides a normal resume
+Rebuilt similarity, hull, Pareto-front and space-group information after loading a search
 Preserved structure order and parent links on resume
+Allowed copied session directories to be resumed from their new location
 Shortened the final save at exit by writing only pending structure files
 Improved template placeholders, including literal percent characters
+Consistent legacy state-file conversion on Windows and other platforms
 
 ===== Structure handling, geometry, and formats
 
@@ -72,15 +81,21 @@ Improved transfer failure reporting and job cleanup
 
 ===== GUI
 
-Added new structure and XRD views to GUI
+Added a built-in structure viewer to replace the external Avogadro viewer
+Reworked the simulated XRD viewer using xraylib; added image and data export
+Improved Plot-tab axis ranges and margins
+Added Plot-tab image export option
+Added optional Plot-tab legend
+Added optional Plot-tab automatic label placement to avoid overalps
 Refined GUI tab layouts and runtime refresh behavior
 Improved composition, atom-limit, molecule-unit and custom-IAD updates
 Initialized custom IAD values from covalent radii after a changed formula
 Fixed tab cleanup during session reset and shutdown
+Improved cross-platform plot text sizing and table row sizing
 
 ===== Output, tests, and supporting data
 
-Made text, results and hull writes report failures
+Made text, results, state and hull writes report failures
 Added profiling option: periodic and final timing summaries in the run output
 Preserved significant digits and .old output backups
 Expanded and updated the test suite

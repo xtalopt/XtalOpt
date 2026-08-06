@@ -51,10 +51,8 @@ class XtalOptDialog : public Search::AbstractDialog
   Q_OBJECT
 
 public:
-  // The interactive flag is no longer used; the signature is kept so
-  //   existing code that creates the dialog still works.
   explicit XtalOptDialog(QWidget* parent = 0, Qt::WindowFlags f = Qt::Window,
-                         bool interactive = true, XtalOpt* xtalopt = nullptr);
+                         XtalOpt* xtalopt = nullptr);
   virtual ~XtalOptDialog() override;
 
   // Set's the plot widget's parent to nullptr and shows the plot widget

@@ -27,7 +27,7 @@ static constexpr int SAVE_RETRY_DELAY = 60000;
 //   is adjusted on-the-fly with the local optimization speed and population size.
 static constexpr int RESULTS_SAVE_SPACING_FACTOR = 25;
 
-// How often to check the run-time file during a CLI run (milliseconds).
+// How often to check the runtime file during a CLI run (milliseconds).
 static constexpr int RUNTIME_FILE_CHECK_INTERVAL = 1000;
 
 // The time period for waiting for initial structures to be generated (milliseconds)

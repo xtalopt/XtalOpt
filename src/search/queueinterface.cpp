@@ -120,6 +120,12 @@ std::unique_ptr<QueueInterface> QueueInterface::createRegisteredQueueInterface(
   return std::unique_ptr<QueueInterface>();
 }
 
+std::unique_ptr<QueueInterface> SearchBase::createQueueInterface(
+  const std::string& queueName)
+{
+  return QueueInterface::createRegisteredQueueInterface(QString::fromStdString(queueName), this);
+}
+
 bool QueueInterface::registerBuiltInQueueInterface(const QString& name)
 {
   const BuiltInQueueInterfaceDefinition* definition = builtInQueueInterfaceDefinition(name);

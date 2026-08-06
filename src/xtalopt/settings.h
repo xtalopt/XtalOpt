@@ -31,37 +31,37 @@ QString findKeywordName(const QString& raw);
 
 QString defaultValue(const QString& keyword);
 
-bool isRequired(const QString& keyword);
+bool isRequiredInputKeyword(const QString& keyword);
 
-bool isRuntimeChangeable(const QString& keyword);
+bool isRuntimeKeyword(const QString& keyword);
 
-bool isRepeatableInput(const QString& keyword);
+bool isRepeatableInputKeyword(const QString& keyword);
 
-QStringList allKeywords();
+QStringList allSettingKeywords();
 
-QStringList requiredKeywords();
+QStringList requiredInputKeywords();
 
 QStringList runtimeKeywords();
 
-bool hasScalarBinding(const QString& keyword);
+bool hasScalarSettingBinding(const QString& keyword);
 
 // Set a scalar value from text. Return false when it has no scalar setter.
-bool applyScalar(XtalOpt& opt, const QString& keyword, const QString& value);
+bool applyScalarSetting(XtalOpt& opt, const QString& keyword, const QString& value);
 
 // Return the value of a scalar setting as text.
-QString scalarValue(const XtalOpt& opt, const QString& keyword);
+QString scalarSettingValue(const XtalOpt& opt, const QString& keyword);
 
 // Repeated entries
-bool isRepeated(const QString& keyword);
-QStringList repeatedEntries(const XtalOpt& opt, const QString& keyword);
-void clearRepeated(XtalOpt& opt, const QString& keyword);
-bool addRepeatedEntry(XtalOpt& opt, const QString& keyword, const QString& entry);
+bool hasRepeatedSettingBinding(const QString& keyword);
+QStringList repeatedSettingEntries(const XtalOpt& opt, const QString& keyword);
+void clearRepeatedSetting(XtalOpt& opt, const QString& keyword);
+bool addRepeatedSettingEntry(XtalOpt& opt, const QString& keyword, const QString& entry);
 
-void applyAllDefaults(XtalOpt& opt);
+void applyDefaultSettings(XtalOpt& opt);
 
 // A copy of all keywords/values, used for checking and restoring values.
 typedef QHash<QString, QString> ScalarSnapshot;
-ScalarSnapshot captureScalars(const XtalOpt& opt);
+ScalarSnapshot captureScalarSettings(const XtalOpt& opt);
 
 // How validateSettings() handles an unacceptable value:
 //  - Reject:         fail (return false); for fresh start, user must fix input.
@@ -76,17 +76,17 @@ bool validateSettings(XtalOpt& opt, InvalidSettingAction invalidAction, const Sc
 QString keywordSummaryText();
 
 // Convert between optimizer template files and input keywords.
-QString keywordForOptimizerTemplateFile(const QString& filename);
-QString filenameForOptimizerTemplateKeyword(const QString& keyword);
+QString optimizerTemplateFilenameToKeyword(const QString& filename);
+QString optimizerTemplateKeywordToFilename(const QString& keyword);
 
 // Return the input asset keyword for an optimizer file.
-QString keywordForOptimizerInputAsset(const QString& assetName);
+QString optimizerInputAssetToKeyword(const QString& assetName);
 
 // Return the input keyword for a queue template.
 const char* queueTemplateKeyword();
 
 // Check whether keyword names an input file (optimizer template/asset or queue job template).
-bool isOptimizerAndQueueFileKeyword(const QString& keyword);
+bool isInputJobFileKeyword(const QString& keyword);
 
 } // namespace Settings
 

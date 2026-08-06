@@ -276,11 +276,6 @@ protected:
   Tracker* m_tracker;
 
   /**
-   * Update queue-side bookkeeping before status polling.
-   */
-  void updateQueue();
-
-  /**
    * Called on Structures that are Structure::StepOptimized, this
    * function will update the Structure with the results of the
    * optimization and move it toward the next queue state.

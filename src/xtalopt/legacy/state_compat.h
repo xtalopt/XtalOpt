@@ -24,14 +24,13 @@ namespace Legacy {
 
 const int Version4StateSchemaVersion = 4;
 
-bool prepareXtalOptStateFileForRead(const QString& filename, bool fullState,
-                                    bool keepCompatibilityCopy,
-                                    QString& readFilename);
+bool convertStateFile(const QString& filename, bool fullState,
+                      bool keepCompatibilityCopy, QString& readFilename);
 
-bool version4StateConstraintObjectiveIndices(const QString& mainStateFilename,
-                                             QList<int>& constraintObjectiveIndices,
-                                             int& objectiveCount,
-                                             QString* errorMessage = nullptr);
+bool readVersion4Objectives(const QString& mainStateFilename,
+                            QList<int>& constraintObjectiveIndices,
+                            int& objectiveCount,
+                            QString* errorMessage = nullptr);
 
 } // namespace Legacy
 } // namespace XtalOpt

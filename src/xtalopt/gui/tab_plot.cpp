@@ -47,6 +47,8 @@
 
 #include <qwt_plot_canvas.h>
 #include <qwt_plot_renderer.h>
+#include <qwt_plot_textlabel.h>
+#include <qwt_scale_map.h>
 #include <qwt_scale_engine.h>
 #include <qwt_text.h>
 
@@ -57,7 +59,9 @@ using namespace Search;
 
 namespace XtalOpt {
 
-static QString defaultSaveDir()
+namespace {
+
+QString defaultSaveDir()
 {
 #if GS_WINDOWS
   return QStringLiteral("C:/");
@@ -90,21 +94,144 @@ PlotStatusCategory plotStatusCategory(const Xtal* xtal)
   return Psc_Incomplete;
 }
 
+QRectF plotTextLabelRect(XtalOptPlot* plot, const QwtPlotTextLabel* label)
+{
+  if (!label->isVisible())
+    return QRectF();
+
+  const QwtText text = label->text();
+  const QSizeF size = text.textSize(plot->canvas()->font());
+  const int margin = label->margin();
+  const QRectF area = plot->canvas()->contentsRect().adjusted(margin, margin,
+                                                              -margin, -margin);
+  qreal left = area.center().x() - size.width() / 2.0;
+  qreal top = area.center().y() - size.height() / 2.0;
+  if (text.renderFlags() & Qt::AlignLeft)
+    left = area.left();
+  else if (text.renderFlags() & Qt::AlignRight)
+    left = area.right() - size.width();
+  if (text.renderFlags() & Qt::AlignTop)
+    top = area.top();
+  else if (text.renderFlags() & Qt::AlignBottom)
+    top = area.bottom() - size.height();
+  return QRectF(left, top, size.width(), size.height());
+}
+
+void placePlotLabels(XtalOptPlot* plot, const QRectF& textLabelRect)
+{
+  // This functions tries to place labels in a more smart way to avoid overlaps!
+  // It:
+  //   Tries above, below, right, left, then four corner positions,
+  //   Avoids existing plot symbols and previously placed labels,
+  //   Keeps labels inside the plot canvas,
+  //   Retains Qwt's default placement if no collision-free position exists.
+
+  const Qt::Alignment positions[] = {
+    Qt::AlignBottom, Qt::AlignTop, Qt::AlignRight, Qt::AlignLeft,
+    Qt::AlignTop | Qt::AlignRight, Qt::AlignTop | Qt::AlignLeft,
+    Qt::AlignBottom | Qt::AlignRight, Qt::AlignBottom | Qt::AlignLeft
+  };
+  const QRectF canvasRect = plot->canvas()->contentsRect();
+  const QwtScaleMap xMap = plot->canvasMap(QwtPlot::xBottom);
+  const QwtScaleMap yMap = plot->canvasMap(QwtPlot::yLeft);
+  QList<QRectF> usedRects;
+  if (!textLabelRect.isEmpty())
+    usedRects.append(textLabelRect);
+
+  const std::vector<std::unique_ptr<QwtPlotMarker>>& markers = plot->plotMarkers();
+  for (size_t i = 0; i < markers.size(); ++i) {
+    const QwtPlotMarker* marker = markers[i].get();
+    if (marker->symbol()) {
+      const QSize symbolSize = marker->symbol()->size();
+      const QPointF point(xMap.transform(marker->xValue()),
+                          yMap.transform(marker->yValue()));
+      usedRects.append(QRectF(point.x() - symbolSize.width() / 2.0,
+                              point.y() - symbolSize.height() / 2.0,
+                              symbolSize.width(), symbolSize.height()));
+    }
+  }
+
+  for (size_t i = 0; i < markers.size(); ++i) {
+    QwtPlotMarker* marker = markers[i].get();
+    if (marker->label().text().isEmpty())
+      continue;
+
+    const QPointF point(xMap.transform(marker->xValue()),
+                        yMap.transform(marker->yValue()));
+    const QSizeF textSize = marker->label().textSize(plot->canvas()->font());
+    const QSize symbolSize = marker->symbol() ? marker->symbol()->size() : QSize();
+    const qreal xGap = symbolSize.width() / 2.0 + marker->spacing();
+    const qreal yGap = symbolSize.height() / 2.0 + marker->spacing();
+    marker->setLabelAlignment(Qt::AlignBottom);
+
+    for (size_t j = 0; j < sizeof(positions) / sizeof(positions[0]); ++j) {
+      qreal left = point.x() - textSize.width() / 2.0;
+      qreal top = point.y() - textSize.height() / 2.0;
+
+      if (positions[j] & Qt::AlignLeft)
+        left = point.x() - xGap - textSize.width();
+      else if (positions[j] & Qt::AlignRight)
+        left = point.x() + xGap;
+      if (positions[j] & Qt::AlignTop)
+        top = point.y() - yGap - textSize.height();
+      else if (positions[j] & Qt::AlignBottom)
+        top = point.y() + yGap;
+
+      const QRectF labelRect(left, top, textSize.width(), textSize.height());
+      bool overlaps = !canvasRect.contains(labelRect);
+      for (int k = 0; !overlaps && k < usedRects.size(); ++k)
+        overlaps = labelRect.intersects(usedRects[k]);
+      if (!overlaps) {
+        marker->setLabelAlignment(positions[j]);
+        usedRects.append(labelRect);
+        break;
+      }
+    }
+  }
+}
+
+} // namespace
+
 TabPlot::TabPlot(Search::AbstractDialog* parent, XtalOpt* p)
   : AbstractTab(parent, p), m_enablePlotUpdate(true),
     m_plot_mutex(new QReadWriteLock(QReadWriteLock::Recursive)),
-    m_context_xtal(nullptr)
+    m_guideLabel(nullptr), m_context_xtal(nullptr)
 {
   ui.setupUi(m_tab_widget);
   ui.combo_xAxis->setCurrentIndex(StructureINDX_T);
   ui.combo_yAxis->setCurrentIndex(AboveHull_per_Atm_T);
   ui.combo_labelType->setCurrentIndex(StructureTAG_L);
   ui.cb_labelPoints->setChecked(true);
-  ui.cb_showDismissed->setChecked(true);
 
   // Change the margins on the plot for autoscaling
-  ui.plot->axisScaleEngine(QwtPlot::yLeft)->setMargins(0.1, 0.1);
-  ui.plot->axisScaleEngine(QwtPlot::xBottom)->setMargins(1.0, 1.0);
+  ui.plot->axisScaleEngine(QwtPlot::yLeft)->setMargins(0.0, 0.0);
+  ui.plot->axisScaleEngine(QwtPlot::yLeft)
+    ->setAttribute(QwtScaleEngine::Floating);
+  ui.plot->axisScaleEngine(QwtPlot::xBottom)->setMargins(0.0, 0.0);
+  ui.plot->axisScaleEngine(QwtPlot::xBottom)
+    ->setAttribute(QwtScaleEngine::Floating);
+
+  QString guideText = QStringLiteral(
+    "<span style='color:#0000ff'>&#9679;</span> %1&nbsp;&nbsp;&nbsp;"
+    "<span style='color:#008000'>&#9632;</span> %2&nbsp;&nbsp;&nbsp;"
+    "<span style='color:#808080'>&#9670;</span> %3&nbsp;&nbsp;&nbsp;"
+    "<span style='color:#ff8c00'>&#9650;</span> %4&nbsp;&nbsp;&nbsp;"
+    "<span style='color:#ff0000'>&#9660;</span> %5");
+  guideText = guideText.arg(tr("Complete"))
+                       .arg(tr("Similar"))
+                       .arg(tr("Dismissed"))
+                       .arg(tr("Incomplete"))
+                       .arg(tr("Failed"));
+  QwtText guide(guideText, QwtText::RichText);
+  guide.setRenderFlags(Qt::AlignHCenter | Qt::AlignTop);
+  guide.setBackgroundBrush(QColor(255, 255, 255, 220));
+  guide.setBorderPen(QPen(Qt::lightGray));
+
+  m_guideLabel = new QwtPlotTextLabel;
+  m_guideLabel->setText(guide);
+  m_guideLabel->setMargin(5);
+  m_guideLabel->setZ(100.0);
+  m_guideLabel->attach(ui.plot);
 
   // dialog connections
   connect(m_dialog, &Search::AbstractDialog::selectedGeometryChanged,
@@ -118,14 +245,18 @@ TabPlot::TabPlot(Search::AbstractDialog* parent, XtalOpt* p)
   connect(ui.combo_yAxis, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
           this, &TabPlot::refreshPlot);
   connect(ui.cb_labelPoints,    &QCheckBox::toggled, this, &TabPlot::updatePlot);
+  connect(ui.cb_showLegend, &QCheckBox::toggled, this, &TabPlot::updatePlotLayout);
+  connect(ui.cb_smartLabelPlacement, &QCheckBox::toggled, this, &TabPlot::updatePlot);
   connect(ui.combo_labelType,
           static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
           this, &TabPlot::updatePlot);
-  connect(ui.cb_showDismissed,    &QCheckBox::toggled, this, &TabPlot::updatePlot);
+  connect(ui.cb_showComplete,     &QCheckBox::toggled, this, &TabPlot::updatePlot);
   connect(ui.cb_showSimilarities, &QCheckBox::toggled, this, &TabPlot::updatePlot);
+  connect(ui.cb_showDismissed,    &QCheckBox::toggled, this, &TabPlot::updatePlot);
   connect(ui.cb_showIncompletes,  &QCheckBox::toggled, this, &TabPlot::updatePlot);
   connect(ui.cb_showFailures,     &QCheckBox::toggled, this, &TabPlot::updatePlot);
   connect(ui.plot, &XtalOptPlot::selectedMarkerChanged, this, &TabPlot::selectXtal);
+  connect(ui.plot, &XtalOptPlot::plotResized, this, &TabPlot::updatePlotLayout);
   ui.plot->canvas()->setContextMenuPolicy(Qt::CustomContextMenu);
   connect(ui.plot->canvas(), &QWidget::customContextMenuRequested, this, &TabPlot::plotContextMenu);
   connect(m_search, &Search::SearchBase::refreshAllStructureInfo, this, &TabPlot::updatePlot);
@@ -160,7 +291,10 @@ void TabPlot::disconnectGUI()
   ui.combo_xAxis->disconnect();
   ui.combo_yAxis->disconnect();
   ui.cb_labelPoints->disconnect();
+  ui.cb_showLegend->disconnect();
+  ui.cb_smartLabelPlacement->disconnect();
   ui.combo_labelType->disconnect();
+  ui.cb_showComplete->disconnect();
   ui.cb_showSimilarities->disconnect();
   ui.cb_showDismissed->disconnect();
   ui.cb_showIncompletes->disconnect();
@@ -176,6 +310,47 @@ void TabPlot::refreshPlot()
   ui.plot->setAxisAutoScale(QwtPlot::yLeft);
   ui.plot->setAxisAutoScale(QwtPlot::xBottom);
   updatePlot();
+}
+
+void TabPlot::updatePlotLayout()
+{
+  const QSignalBlocker plotBlocker(ui.plot);
+  m_guideLabel->setVisible(ui.cb_showLegend->isChecked());
+  const QRectF guideRect = plotTextLabelRect(ui.plot, m_guideLabel);
+  if (ui.plot->axisAutoScale(QwtPlot::yLeft)) {
+    QwtScaleEngine* yScaleEngine = ui.plot->axisScaleEngine(QwtPlot::yLeft);
+    yScaleEngine->setMargins(0.0, 0.0);
+    ui.plot->replot();
+
+    const QwtScaleDiv yScale = ui.plot->axisScaleDiv(QwtPlot::yLeft);
+    const double range = qAbs(yScale.upperBound() - yScale.lowerBound());
+    const QRectF canvasRect = ui.plot->canvas()->contentsRect();
+    const double topPart = canvasRect.height() > 0.0
+      ? (guideRect.bottom() - canvasRect.top()) / canvasRect.height() : 0.0;
+    double bottomPart = 0.0;
+    if (ui.cb_labelPoints->isChecked() && canvasRect.height() > 0.0) {
+      const std::vector<std::unique_ptr<QwtPlotMarker>>& markers = ui.plot->plotMarkers();
+      for (size_t i = 0; i < markers.size(); ++i) {
+        const QwtPlotMarker* marker = markers[i].get();
+        if (marker->label().text().isEmpty())
+          continue;
+        const QSize symbolSize = marker->symbol() ? marker->symbol()->size() : QSize();
+        const double labelHeight = marker->label().textSize(ui.plot->canvas()->font()).height();
+        bottomPart = (labelHeight + symbolSize.height() / 2.0 + marker->spacing()) /
+                     canvasRect.height();
+        break;
+      }
+    }
+    yScaleEngine->setMargins(range * (0.03 + bottomPart),
+                             range * (0.03 + qMax(0.0, topPart)));
+    ui.plot->replot();
+  }
+
+  if (ui.cb_labelPoints->isChecked() &&
+      ui.cb_smartLabelPlacement->isChecked()) {
+    placePlotLabels(ui.plot, guideRect);
+    ui.plot->replot();
+  }
 }
 
 void TabPlot::releaseStructureReferences()
@@ -234,6 +409,35 @@ void TabPlot::savePlotImage()
                          tr("Save Plot Image"),
                          tr("Could not write image file:\n%1")
                            .arg(filename));
+  }
+}
+
+void TabPlot::updatePlotFonts()
+{
+  const QFont baseFont = ui.plot->font();
+  QFont titleFont = baseFont;
+  titleFont.setBold(true);
+
+  ui.plot->setAxisFont(QwtPlot::xBottom, baseFont);
+  ui.plot->setAxisFont(QwtPlot::yLeft, baseFont);
+
+  const int axes[] = { QwtPlot::xBottom, QwtPlot::yLeft };
+  for (int i = 0; i < 2; ++i) {
+    const int axis = axes[i];
+    QwtText title = ui.plot->axisTitle(axis);
+    title.setFont(titleFont);
+    ui.plot->setAxisTitle(axis, title);
+  }
+
+  QwtText guide = m_guideLabel->text();
+  guide.setFont(baseFont);
+  m_guideLabel->setText(guide);
+
+  const std::vector<std::unique_ptr<QwtPlotMarker>>& markers = ui.plot->plotMarkers();
+  for (size_t i = 0; i < markers.size(); ++i) {
+    QwtText label = markers[i]->label();
+    label.setFont(baseFont);
+    markers[i]->setLabel(label);
   }
 }
 
@@ -319,6 +523,7 @@ void TabPlot::plotTrends()
   bool performTrace = false;
   // Load config settings:
   bool labelPoints = ui.cb_labelPoints->isChecked();
+  bool showComplete = ui.cb_showComplete->isChecked();
   bool showSimilarities = ui.cb_showSimilarities->isChecked();
   bool showDismissed = ui.cb_showDismissed->isChecked();
   bool showIncompletes = ui.cb_showIncompletes->isChecked();
@@ -350,6 +555,10 @@ void TabPlot::plotTrends()
       continue;
     QReadLocker xtalLocker(&xtal->lock());
     const PlotStatusCategory statusCategory = plotStatusCategory(xtal);
+
+    if (statusCategory == Psc_Complete && !showComplete) {
+      continue;
+    }
 
     if (statusCategory == Psc_Similar && !showSimilarities) {
       continue;
@@ -811,12 +1020,23 @@ void TabPlot::plotTrends()
       ui.plot->setYTitle(label);
   }
 
+  updatePlotFonts();
+
   // If the selected xtal still exists, select that one. This function
   // doesn't do anything if nullptr is passed to it.
   ui.plot->selectMarker(m_marker_xtal_map.key(selectedXtal));
 
   ui.plot->setAutoReplot(true);
+  QwtScaleEngine* xScaleEngine = ui.plot->axisScaleEngine(QwtPlot::xBottom);
+  if (ui.plot->axisAutoScale(QwtPlot::xBottom)) {
+    xScaleEngine->setMargins(0.0, 0.0);
+    ui.plot->replot();
+    const QwtScaleDiv xScale = ui.plot->axisScaleDiv(QwtPlot::xBottom);
+    const double margin = qAbs(xScale.upperBound() - xScale.lowerBound()) * 0.03;
+    xScaleEngine->setMargins(margin, margin);
+  }
   ui.plot->replot();
+  updatePlotLayout();
 }
 
 void TabPlot::plotDistHist()
@@ -874,15 +1094,16 @@ QwtPlotMarker* TabPlot::addXtalToPlot(Xtal* xtal, double x, double y)
     pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Rect, QBrush(Qt::darkGreen),
                                QPen(Qt::darkGreen));
   } else if (statusCategory == Psc_Failed) {
-    pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Triangle, QBrush(Qt::red), QPen(Qt::red));
+    pm = ui.plot->addPlotPoint(x, y, QwtSymbol::DTriangle, QBrush(Qt::red), QPen(Qt::red));
   } else if (statusCategory == Psc_Dismissed) {
-    pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Triangle, QBrush(Qt::darkGray), QPen(Qt::darkGray));
+    pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Diamond, QBrush(Qt::darkGray),
+                               QPen(Qt::darkGray));
   } else if (statusCategory == Psc_Incomplete) {
     QColor orange(255, 140, 0, 255);
     pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Triangle, QBrush(orange), QPen(orange));
   } else {
-    // Blue Triangle
-    pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Triangle, QBrush(Qt::blue),
+    // Blue Circle
+    pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Ellipse, QBrush(Qt::blue),
                                QPen(Qt::blue));
   }
 

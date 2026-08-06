@@ -25,7 +25,7 @@ QString normalizedGeometry(const QString& geometry)
   return g.simplified();
 }
 
-LegacyMolUnitGeometry parseLegacyGeometry(const QString& geometry)
+LegacyMolUnitGeometry parseGeometry(const QString& geometry)
 {
   const QString g = normalizedGeometry(geometry);
   if (g == "linear")

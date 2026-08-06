@@ -29,6 +29,68 @@ using namespace std;
 
 namespace Search {
 
+namespace {
+bool hasUsablePrimaryObjective(const Search::Structure* structure)
+{
+  return structure->getStrucObjNumber() > 0 && !GS_ISNAN(structure->getStrucObjValues(0)) &&
+         !GS_ISINF(structure->getStrucObjValues(0));
+}
+
+// Return the results sort group.
+int sortGroupRank(Search::Structure::State state)
+{
+  if (Search::Structure::isOptimizedState(state))      return 0;
+  if (Search::Structure::isActiveState(state))            return 1;
+  if (state == Search::Structure::WaitingForOptimization) return 2;
+  if (Search::Structure::isDismissedFinalState(state))    return 3;
+  if (Search::Structure::isTerminalFailureState(state))   return 4;
+  return 5;
+}
+
+// An structure's sorting data, copied under its lock before the sort.
+struct SortEntry
+{
+  Search::Structure* structure;
+  int group;
+  bool hasObjective;
+  double objective;
+  int index;
+};
+
+bool shouldSortBeforeByPrimaryObjective(const SortEntry& lhs, const SortEntry& rhs)
+{
+  // Sort by the major grouping first; a lower group number comes first.
+  if (lhs.group != rhs.group)
+    return lhs.group < rhs.group;
+
+  // Sort optimized structures by the objective.
+  if (lhs.hasObjective != rhs.hasObjective)
+    return lhs.hasObjective;
+  if (lhs.hasObjective && rhs.hasObjective) {
+    if (lhs.objective < rhs.objective)
+      return true;
+    if (rhs.objective < lhs.objective)
+      return false;
+  }
+
+  return lhs.index < rhs.index;
+}
+
+void rankInPlace(const QList<Structure*>& structures)
+{
+  if (structures.size() == 0)
+    return;
+  Structure* s;
+  for (int i = 0; i < structures.size(); i++) {
+    s = structures.at(i);
+    QWriteLocker sLocker(&s->lock());
+    s->setRank(i + 1);
+  }
+}
+
+} // namespace
+
+
 bool Structure::isQueueTerminalState(State state)
 {
   switch (state) {
@@ -621,68 +683,6 @@ double Structure::getOptElapsedHours() const
 {
   return getOptElapsedSeconds() / 3600.0;
 }
-
-namespace {
-bool hasUsablePrimaryObjective(const Search::Structure* structure)
-{
-  return structure->getStrucObjNumber() > 0 && !GS_ISNAN(structure->getStrucObjValues(0)) &&
-         !GS_ISINF(structure->getStrucObjValues(0));
-}
-
-// Return the results sort group.
-int sortGroupRank(Search::Structure::State state)
-{
-  if (Search::Structure::isOptimizedState(state))      return 0;
-  if (Search::Structure::isActiveState(state))            return 1;
-  if (state == Search::Structure::WaitingForOptimization) return 2;
-  if (Search::Structure::isDismissedFinalState(state))    return 3;
-  if (Search::Structure::isTerminalFailureState(state))   return 4;
-  return 5;
-}
-
-// An structure's sorting data, copied under its lock before the sort.
-struct SortEntry
-{
-  Search::Structure* structure;
-  int group;
-  bool hasObjective;
-  double objective;
-  int index;
-};
-
-bool shouldSortBeforeByPrimaryObjective(const SortEntry& lhs, const SortEntry& rhs)
-{
-  // Sort by the major grouping first; a lower group number comes first.
-  if (lhs.group != rhs.group)
-    return lhs.group < rhs.group;
-
-  // Sort optimized structures by the objective.
-  if (lhs.hasObjective != rhs.hasObjective)
-    return lhs.hasObjective;
-  if (lhs.hasObjective && rhs.hasObjective) {
-    if (lhs.objective < rhs.objective)
-      return true;
-    if (rhs.objective < lhs.objective)
-      return false;
-  }
-
-  return lhs.index < rhs.index;
-}
-
-void rankInPlace(const QList<Structure*>& structures)
-{
-  if (structures.size() == 0)
-    return;
-  Structure* s;
-  for (int i = 0; i < structures.size(); i++) {
-    s = structures.at(i);
-    QWriteLocker sLocker(&s->lock());
-    s->setRank(i + 1);
-  }
-}
-
-} // namespace
-
 
 void Structure::sortAndRankStructures(QList<Structure*>* structures)
 {

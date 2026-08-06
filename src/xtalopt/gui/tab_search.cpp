@@ -275,7 +275,7 @@ bool TabSearch::updateOptTypeInfo()
   bool selectionSettingsChanged = false;
   {
     QWriteLocker runtimeLocker(m_search->runtimeSettingsLock());
-    const Settings::ScalarSnapshot before = Settings::captureScalars(*xtalopt);
+    const Settings::ScalarSnapshot before = Settings::captureScalarSettings(*xtalopt);
 
     xtalopt->setObjectivePrecision(ui.sb_prec->value());
     xtalopt->setTournamentSelection(ui.cb_tournament->isChecked());
@@ -299,7 +299,7 @@ bool TabSearch::updateOptTypeInfo()
       ui.cb_restrictPool->setDisabled(true);
     }
     for (const auto& keyword : Settings::runtimeKeywords()) {
-      if (Settings::scalarValue(*xtalopt, keyword) != before.value(keyword)) {
+      if (Settings::scalarSettingValue(*xtalopt, keyword) != before.value(keyword)) {
         settingsChanged = true;
         if (keyword == "objectivePrecision" || keyword == "optimizationType" ||
             keyword == "crowdingDistance" || keyword == "paretoFilterZeroWeights")
@@ -316,7 +316,7 @@ bool TabSearch::updateOptTypeInfo()
   }
 
   if (settingsChanged && m_search->isSessionInProgress())
-    xtalopt->requestSettingsStateSave();
+    xtalopt->requestStateFileSave();
 
   return true;
 }
@@ -386,7 +386,7 @@ void TabSearch::updateOptimizationInfo()
   {
     // Change the settings.
     QWriteLocker runtimeLocker(m_search->runtimeSettingsLock());
-    const Settings::ScalarSnapshot before = Settings::captureScalars(*xtalopt);
+    const Settings::ScalarSnapshot before = Settings::captureScalarSettings(*xtalopt);
 
     // Initial generation
     xtalopt->setNumInitial(ui.spin_numInitial->value());
@@ -405,11 +405,11 @@ void TabSearch::updateOptimizationInfo()
     ui.spin_runningJobLimit->setEnabled(xtalopt->isLimitRunningJobs());
 
     // Spglib tolerance
-    xtalopt->setTolXcLength(ui.spin_tol_xcLength->value());
+    xtalopt->setTolSpg(ui.spin_tol_spg->value());
 
     // XtalComp similarities
+    xtalopt->setTolXcLength(ui.spin_tol_xcLength->value());
     xtalopt->setTolXcAngle(ui.spin_tol_xcAngle->value());
-    xtalopt->setTolSpg(ui.spin_tol_spg->value());
 
     // RDF similarities
     xtalopt->setTolRdf(ui.spin_rdf_tol->value());
@@ -452,7 +452,7 @@ void TabSearch::updateOptimizationInfo()
     //   setting invalid is restored to the previous value.
     Settings::validateSettings(*xtalopt, Settings::InvalidSettingAction::KeepPrevious, &before);
     for (const auto& keyword : Settings::runtimeKeywords()) {
-      if (Settings::scalarValue(*xtalopt, keyword) != before.value(keyword)) {
+      if (Settings::scalarSettingValue(*xtalopt, keyword) != before.value(keyword)) {
         settingsChanged = true;
         if (keyword == "spglibTolerance")
           spacegroupSettingsChanged = true;
@@ -468,7 +468,7 @@ void TabSearch::updateOptimizationInfo()
   if (similaritySettingsChanged)
     xtalopt->resetSimilarities();
   if (settingsChanged && m_search->isSessionInProgress())
-    xtalopt->requestSettingsStateSave();
+    xtalopt->requestStateFileSave();
 }
 
 void TabSearch::addSeed(QListWidgetItem* item)

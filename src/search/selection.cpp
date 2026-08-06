@@ -28,180 +28,6 @@
 
 namespace Search {
 
-
-/**
- * Check whether objective vector @p x dominates @p y for minimization.
- */
-bool doesDominate(const double* x, const double* y, int m) noexcept
-{
-  // This function checks if a solution structure dominates another one
-  bool any_lt = false;
-  for (int k = 0; k < m; ++k) {
-    double xi = x[k], yi = y[k];
-    if (xi > yi) return false;
-    any_lt |= (xi < yi);
-  }
-  return any_lt;
-}
-
-//=========================================================================================
-
-std::vector<double> frontCrowdingDistance(const std::vector<std::vector<double>>& front)
-{
-  // This function returns raw crowding distances for points in a given front
-
-  const size_t pnts_frnt = front.size();
-  if (pnts_frnt < 2) return std::vector<double>(pnts_frnt, 0.0);
-
-  const size_t data_pnts = front[0].size(); // number of objective data per point
-
-  std::vector<double> distances(pnts_frnt, 0.0);
-  std::vector<size_t> indices(pnts_frnt);
-  std::iota(indices.begin(), indices.end(), 0);
-
-  for (size_t i = 0; i < data_pnts; ++i) {
-    // Sort based on the i-th objective
-    std::sort(indices.begin(), indices.end(), [&front, i](size_t a, size_t b) {
-        return front[a][i] < front[b][i];
-        });
-
-    distances[indices[0]] = distances[indices[pnts_frnt - 1]] = std::numeric_limits<double>::infinity();
-    double range = front[indices[pnts_frnt - 1]][i] - front[indices[0]][i];
-
-    if (range > 0) {
-      for (size_t j = 1; j < pnts_frnt - 1; ++j) {
-        distances[indices[j]] += (front[indices[j + 1]][i] - front[indices[j - 1]][i]) / range;
-      }
-    }
-  }
-
-  return distances;
-}
-
-//=========================================================================================
-
-std::vector<double> scaledCrowdingDistances(const std::vector<std::vector<double>>& points,
-                                            const std::vector<std::vector<int>>& fronts,
-                                            std::vector<double>& raw_dists)
-{
-  // This function returns a list for "raw distances" and "scaled distances" (to [0.1, 1])
-  //   for all data points.
-  // It goes over all fronts one by one, and calculates the raw distances first; then
-  //   scales them. If all distances of a given front are inf/nan or zero, they are
-  //   set to 1.0. And if there are some inf/nan, they are set to maximum distance in the front.
-
-  std::vector<double> scl_dists(points.size(), 1.0);
-
-  int ndim = points[0].size();
-  for (size_t i = 0; i < fronts.size(); i++) {
-    size_t npnt = fronts[i].size();
-    std::vector<std::vector<double>> front_points(npnt, std::vector<double>(ndim));
-    for (size_t j = 0; j < npnt; j++) {
-      for (int k = 0; k < ndim; k++)
-        front_points[j][k] = points[fronts[i][j]][k];
-    }
-
-    std::vector<double> dists = frontCrowdingDistance(front_points);
-
-    for (size_t j = 0; j < npnt; j++)
-      raw_dists[fronts[i][j]] = dists[j];
-
-    // Check if all distances of this front are inf/nan or zero
-    bool allnan = true;
-    bool allzer = true;
-    for (size_t j = 0; j < npnt; j++)
-      if (!GS_ISINF(dists[j]) && !GS_ISNAN(dists[j])) {
-        allnan = false;
-        if (dists[j] > 0.0)
-          allzer = false;
-      }
-    // If all distances of this front are inf/nan or zero,
-    //   just set them to the default 1.0
-    if (allnan || allzer) {
-      for (size_t j = 0; j < npnt; j++)
-        dists[j] = 1.0;
-    }
-
-    // Find the max/min values of non-inf/nan distances for this front
-    double max_dist = -DBL_MAX;
-    double min_dist =  DBL_MAX;
-    for (size_t j = 0; j < npnt; j++) {
-      if (!GS_ISINF(dists[j]) && !GS_ISNAN(dists[j])) {
-        if (dists[j] > max_dist)
-          max_dist = dists[j];
-        if (dists[j] < min_dist)
-          min_dist = dists[j];
-      }
-    }
-
-    // Scale distances to [0.1, 1]; while setting inf/nan values to max distance
-    for (size_t j = 0; j < npnt; j++) {
-      if (GS_ISINF(dists[j]) || GS_ISNAN(dists[j]))
-        dists[j] = max_dist;
-      if (Common::neq(max_dist, min_dist, ZERO06)) {
-        scl_dists[fronts[i][j]] = 0.1 + 0.9 * (dists[j] - min_dist) / (max_dist - min_dist);
-      } else {
-        scl_dists[fronts[i][j]] = dists[j] / max_dist;
-      }
-    }
-  }
-
-  return scl_dists;
-}
-
-//=========================================================================================
-
-std::vector<std::vector<int>> nonDominatedSortingDeb(const std::vector<std::vector<double>>& points)
-{
-  // Legacy NSGA-II (Deb 2002) non-dominated sroting: retired as of v15 of the code!
-  // This function performs non-dominated sorting for a set of objectives, all to be minimized,
-  //   and returns "fronts" that contains vectors of point indices which belong to each rank.
-  const size_t n = points.size();
-  if (n == 0) return {};
-
-  const int m = static_cast<int>(points[0].size());
-  std::vector<int> domCount(n, 0);
-  std::vector<std::vector<int>> S(n);
-  for (auto& v : S) v.reserve(8);
-
-  // Pairwise checks once (i<j), update both sides
-  for (size_t i = 0; i < n; ++i) {
-    const double* xi = points[i].data();
-    for (size_t j = i + 1; j < n; ++j) {
-      const double* xj = points[j].data();
-      if (doesDominate(xi, xj, m)) {
-        S[i].push_back(static_cast<int>(j));
-        ++domCount[j];
-      } else if (doesDominate(xj, xi, m)) {
-        S[j].push_back(static_cast<int>(i));
-        ++domCount[i];
-      }
-    }
-  }
-
-  // Build fronts
-  std::vector<std::vector<int>> fronts;
-  fronts.emplace_back();
-  fronts.back().reserve(n);
-  for (int i = 0; i < (int)n; ++i)
-    if (domCount[i] == 0) fronts.back().push_back(i);
-
-  while (!fronts.back().empty()) {
-    const auto& F = fronts.back();
-    std::vector<int> next;
-    for (int p : F) {
-      for (int q : S[p]) {
-        if (--domCount[q] == 0) next.push_back(q);
-      }
-    }
-    if (next.empty()) break;
-    fronts.emplace_back(std::move(next));
-  }
-  return fronts;
-}
-
-//=========================================================================================
-
 namespace {
 
 // A set of helper functions for Jensen-Fortin-Buzdalov (JFB) non-dominated sorting.
@@ -424,6 +250,130 @@ void jfbHelperA(const std::vector<const double*>& P, std::vector<int>& rank,
 
 } // namespace
 
+
+
+/**
+ * Check whether objective vector @p x dominates @p y for minimization.
+ */
+bool doesDominate(const double* x, const double* y, int m) noexcept
+{
+  // This function checks if a solution structure dominates another one
+  bool any_lt = false;
+  for (int k = 0; k < m; ++k) {
+    double xi = x[k], yi = y[k];
+    if (xi > yi) return false;
+    any_lt |= (xi < yi);
+  }
+  return any_lt;
+}
+
+//=========================================================================================
+
+std::vector<double> frontCrowdingDistance(const std::vector<std::vector<double>>& front)
+{
+  // This function returns raw crowding distances for points in a given front
+
+  const size_t pnts_frnt = front.size();
+  if (pnts_frnt < 2) return std::vector<double>(pnts_frnt, 0.0);
+
+  const size_t data_pnts = front[0].size(); // number of objective data per point
+
+  std::vector<double> distances(pnts_frnt, 0.0);
+  std::vector<size_t> indices(pnts_frnt);
+  std::iota(indices.begin(), indices.end(), 0);
+
+  for (size_t i = 0; i < data_pnts; ++i) {
+    // Sort based on the i-th objective
+    std::sort(indices.begin(), indices.end(), [&front, i](size_t a, size_t b) {
+        return front[a][i] < front[b][i];
+        });
+
+    distances[indices[0]] = distances[indices[pnts_frnt - 1]] = std::numeric_limits<double>::infinity();
+    double range = front[indices[pnts_frnt - 1]][i] - front[indices[0]][i];
+
+    if (range > 0) {
+      for (size_t j = 1; j < pnts_frnt - 1; ++j) {
+        distances[indices[j]] += (front[indices[j + 1]][i] - front[indices[j - 1]][i]) / range;
+      }
+    }
+  }
+
+  return distances;
+}
+
+//=========================================================================================
+
+std::vector<double> scaledCrowdingDistances(const std::vector<std::vector<double>>& points,
+                                            const std::vector<std::vector<int>>& fronts,
+                                            std::vector<double>& raw_dists)
+{
+  // This function returns a list for "raw distances" and "scaled distances" (to [0.1, 1])
+  //   for all data points.
+  // It goes over all fronts one by one, and calculates the raw distances first; then
+  //   scales them. If all distances of a given front are inf/nan or zero, they are
+  //   set to 1.0. And if there are some inf/nan, they are set to maximum distance in the front.
+
+  std::vector<double> scl_dists(points.size(), 1.0);
+
+  int ndim = points[0].size();
+  for (size_t i = 0; i < fronts.size(); i++) {
+    size_t npnt = fronts[i].size();
+    std::vector<std::vector<double>> front_points(npnt, std::vector<double>(ndim));
+    for (size_t j = 0; j < npnt; j++) {
+      for (int k = 0; k < ndim; k++)
+        front_points[j][k] = points[fronts[i][j]][k];
+    }
+
+    std::vector<double> dists = frontCrowdingDistance(front_points);
+
+    for (size_t j = 0; j < npnt; j++)
+      raw_dists[fronts[i][j]] = dists[j];
+
+    // Check if all distances of this front are inf/nan or zero
+    bool allnan = true;
+    bool allzer = true;
+    for (size_t j = 0; j < npnt; j++)
+      if (!GS_ISINF(dists[j]) && !GS_ISNAN(dists[j])) {
+        allnan = false;
+        if (dists[j] > 0.0)
+          allzer = false;
+      }
+    // If all distances of this front are inf/nan or zero,
+    //   just set them to the default 1.0
+    if (allnan || allzer) {
+      for (size_t j = 0; j < npnt; j++)
+        dists[j] = 1.0;
+    }
+
+    // Find the max/min values of non-inf/nan distances for this front
+    double max_dist = -DBL_MAX;
+    double min_dist =  DBL_MAX;
+    for (size_t j = 0; j < npnt; j++) {
+      if (!GS_ISINF(dists[j]) && !GS_ISNAN(dists[j])) {
+        if (dists[j] > max_dist)
+          max_dist = dists[j];
+        if (dists[j] < min_dist)
+          min_dist = dists[j];
+      }
+    }
+
+    // Scale distances to [0.1, 1]; while setting inf/nan values to max distance
+    for (size_t j = 0; j < npnt; j++) {
+      if (GS_ISINF(dists[j]) || GS_ISNAN(dists[j]))
+        dists[j] = max_dist;
+      if (Common::neq(max_dist, min_dist, ZERO06)) {
+        scl_dists[fronts[i][j]] = 0.1 + 0.9 * (dists[j] - min_dist) / (max_dist - min_dist);
+      } else {
+        scl_dists[fronts[i][j]] = dists[j] / max_dist;
+      }
+    }
+  }
+
+  return scl_dists;
+}
+
+//=========================================================================================
+
 std::vector<std::vector<int>> nonDominatedSorting(const std::vector<std::vector<double>>& points)
 {
   // The JFB divide-and-conquer non-dominated sorting.
@@ -485,6 +435,57 @@ std::vector<std::vector<int>> nonDominatedSorting(const std::vector<std::vector<
   std::vector<std::vector<int>> fronts(numFronts);
   for (int i = 0; i < uniqueCount; ++i)
     fronts[rank[i]].insert(fronts[rank[i]].end(), group[i].begin(), group[i].end());
+  return fronts;
+}
+
+//=========================================================================================
+
+std::vector<std::vector<int>> nonDominatedSortingDeb(const std::vector<std::vector<double>>& points)
+{
+  // Legacy NSGA-II (Deb 2002) non-dominated sroting: retired as of v15 of the code!
+  // This function performs non-dominated sorting for a set of objectives, all to be minimized,
+  //   and returns "fronts" that contains vectors of point indices which belong to each rank.
+  const size_t n = points.size();
+  if (n == 0) return {};
+
+  const int m = static_cast<int>(points[0].size());
+  std::vector<int> domCount(n, 0);
+  std::vector<std::vector<int>> S(n);
+  for (auto& v : S) v.reserve(8);
+
+  // Pairwise checks once (i<j), update both sides
+  for (size_t i = 0; i < n; ++i) {
+    const double* xi = points[i].data();
+    for (size_t j = i + 1; j < n; ++j) {
+      const double* xj = points[j].data();
+      if (doesDominate(xi, xj, m)) {
+        S[i].push_back(static_cast<int>(j));
+        ++domCount[j];
+      } else if (doesDominate(xj, xi, m)) {
+        S[j].push_back(static_cast<int>(i));
+        ++domCount[i];
+      }
+    }
+  }
+
+  // Build fronts
+  std::vector<std::vector<int>> fronts;
+  fronts.emplace_back();
+  fronts.back().reserve(n);
+  for (int i = 0; i < (int)n; ++i)
+    if (domCount[i] == 0) fronts.back().push_back(i);
+
+  while (!fronts.back().empty()) {
+    const auto& F = fronts.back();
+    std::vector<int> next;
+    for (int p : F) {
+      for (int q : S[p]) {
+        if (--domCount[q] == 0) next.push_back(q);
+      }
+    }
+    if (next.empty()) break;
+    fronts.emplace_back(std::move(next));
+  }
   return fronts;
 }
 

@@ -168,8 +168,8 @@ void normalizeLegacyBatchQueueCommands(QSettings& settings, const QString& searc
 
 } // end anonymous namespace
 
-void normalizeLegacySearchState(QSettings& settings, const QString& searchId, int loadedVersion,
-                                QStringList& notes)
+void normalizeSearchState(QSettings& settings, const QString& searchId, int loadedVersion,
+                          QStringList& notes)
 {
   if (loadedVersion != OriginalSearchStateVersion)
     return;

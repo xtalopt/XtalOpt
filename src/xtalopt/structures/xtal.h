@@ -150,9 +150,6 @@ public:
     return m_mixMatrices;
   }
 
-signals:
-  void dimensionsChanged();
-
 public slots:
   // Self-correction
   bool fixAngles(int attempts = 100);

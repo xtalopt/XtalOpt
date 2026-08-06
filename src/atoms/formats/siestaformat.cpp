@@ -39,302 +39,20 @@
 
 namespace Atoms {
 
-bool SiestaFormat::readOutput(Atoms::Geometry* s, const QString& filename)
-{
-  std::string text;
-  if (!Common::readFileToString(filename, &text)) {
-    Common::error(QString("SIESTA output, %1, could not be opened!")
-                 .arg(filename));
-    return false;
-  }
-  std::istringstream ifs(text);
+namespace {
 
-  bool coordsFound = false, cellFound = false;
-  bool fractionalCoords = false, angstromCoords = true;
-
-  QList<unsigned int> atomicNums;
-  QList<Common::Vector3> coords;
-  Common::Matrix3 cellMatrix = Common::Matrix3::Zero();
-
-  std::string line;
-  std::vector<std::string> lineSplit;
-  while (getline(ifs, line)) {
-    // Cell Matrix
-    if (strstr(line.c_str(), "outcell: Unit cell vectors")) {
-      if (!strstr(line.c_str(), "(Ang)")) {
-        Common::error("The output cell matrix is not in Angstroms.");
-        Common::error("Please contact the developers of XtalOpt.");
-        Common::error(QString("The faulty line is: %1").arg(line.c_str()));
-        return false;
-      }
-
-      // Get the cell matrix
-      for (size_t i = 0; i < 3; ++i) {
-        getline(ifs, line);
-        lineSplit = Common::split(line, ' ');
-        if (lineSplit.size() != 3 || !Common::parseDoubleString(lineSplit[0], cellMatrix(i, 0)) ||
-            !Common::parseDoubleString(lineSplit[1], cellMatrix(i, 1)) ||
-            !Common::parseDoubleString(lineSplit[2], cellMatrix(i, 2))) {
-          Common::error(QString("Could not read the cell matrix in SIESTA output! %1")
-                       .arg(line.c_str()));
-          return false;
-        }
-      }
-      cellFound = true;
-    }
-    // Atomic coords
-    else if (strstr(line.c_str(), "outcoor:")) {
-      atomicNums.clear();
-      coords.clear();
-      if (strstr(line.c_str(), "(fractional)")) {
-        fractionalCoords = true;
-        angstromCoords = false;
-      } else if (strstr(line.c_str(), "(Ang)")) {
-        fractionalCoords = false;
-        angstromCoords = true;
-      } else if (strstr(line.c_str(), "(Bohr)")) {
-        fractionalCoords = false;
-        angstromCoords = false;
-      } else {
-        Common::error("The atom coords have unrecognizable units.");
-        Common::error("Please contact the developers of XtalOpt.");
-        Common::error(QString("The faulty line is: %1").arg(line.c_str()));
-        return false;
-      }
-
-      // Now let's add in the atoms!
-      getline(ifs, line);
-      line = Common::trim(line);
-      // A blank line will be encountered at the end
-      while (line.size() > 1) {
-        lineSplit = Common::split(line, ' ');
-        // A non-numeric first entry means the atom block has ended
-        // (some SIESTA versions emit "Kpoints in: ..." without a blank line
-        // separator after the last atom).
-        if (lineSplit.empty() || lineSplit[0].empty() ||
-            (!std::isdigit(static_cast<unsigned char>(lineSplit[0][0])) &&
-             lineSplit[0][0] != '-' && lineSplit[0][0] != '+')) {
-          break;
-        }
-        if (lineSplit.size() < 6) {
-          Common::error(QString("Incomplete coords line in SIESTA output: %1")
-                       .arg(line.c_str()));
-          return false;
-        }
-        const unsigned int atomicNum = Atoms::ElementInfo::getAtomicNum(lineSplit[5]);
-        if (atomicNum == 0) {
-          Common::error(QString("Unrecognized element symbol in SIESTA output: %1")
-                       .arg(lineSplit[5].c_str()));
-          return false;
-        }
-        atomicNums.append(atomicNum);
-        double x, y, z;
-        if (!Common::parseDoubleString(lineSplit[0], x) ||
-            !Common::parseDoubleString(lineSplit[1], y) ||
-            !Common::parseDoubleString(lineSplit[2], z)) {
-          Common::error(QString("Incomplete coords line in SIESTA output: %1")
-                       .arg(line.c_str()));
-          return false;
-        }
-        coords.append(Common::Vector3(x, y, z));
-        getline(ifs, line);
-        line = Common::trim(line);
-      }
-      coordsFound = true;
-    }
-  }
-
-  if (!cellFound)
-    Common::error("Cell info was not found in SIESTA output!");
-  if (!coordsFound)
-    Common::error("Atom coords not found in SIESTA output!");
-  if (!cellFound || !coordsFound)
-    return false;
-
-  // Convert coords if we need to
-  Atoms::UnitCell uc(cellMatrix);
-  if (fractionalCoords) {
-    for (int i = 0; i < coords.size(); ++i)
-      coords[i] = uc.toCartesian(coords[i]);
-  }
-  // Assume we have Bohr coords
-  else if (!fractionalCoords && !angstromCoords) {
-    for (int i = 0; i < coords.size(); ++i)
-      coords[i] *= 0.529177249; // Bohr to Angstrom
-  }
-  // Nothing to do if !fractionalCoords and angstromCoords
-
-  std::vector<Atoms::Atom> atoms;
-  atoms.reserve(coords.size());
-  for (int i = 0; i < coords.size(); ++i) {
-    atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
-  }
-
-  s->clear();
-  s->setUnitCell(uc);
-  s->setAtoms(atoms);
-  return true;
-}
-
-static QString stripSiestaComment(const QString& line)
+QString stripSiestaComment(const QString& line)
 {
   return line.section('#', 0, 0).section('!', 0, 0).trimmed();
 }
 
-static double siestaUnitScale(const QString& unit)
+double siestaUnitScale(const QString& unit)
 {
   const QString lower = unit.toLower();
   if (lower.contains("bohr"))
     return 1.0 / ANG2BOHR;
   return 1.0;
 }
-
-bool SiestaFormat::read(Atoms::Geometry* s, const QString& filename)
-{
-  QFile file(filename);
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    Common::error(QString("SIESTA input, %1, could not be opened!")
-                 .arg(filename));
-    return false;
-  }
-
-  QTextStream in(&file);
-  QStringList lines;
-  while (!in.atEnd()) {
-    const QString line = stripSiestaComment(in.readLine());
-    if (!line.isEmpty())
-      lines.append(line);
-  }
-
-  bool cellFound = false;
-  bool coordsFound = false;
-  bool fractionalCoords = false;
-  Common::Matrix3 cellMatrix = Common::Matrix3::Zero();
-  double latticeScale = 1.0;
-  std::map<int, unsigned int> species;
-  QList<unsigned int> atomicNums;
-  QList<Common::Vector3> coords;
-
-  for (int i = 0; i < lines.size(); ++i) {
-    const QString line = lines.at(i);
-    const QString lower = line.toLower();
-
-    if (lower.startsWith("latticeconstant")) {
-      const QStringList fields = line.split(" ", QtCompat::SkipEmptyParts);
-      if (fields.size() >= 2) {
-        bool ok = false;
-        const double value = fields.at(1).toDouble(&ok);
-        if (ok) {
-          const QString unit = fields.size() >= 3 ? fields.at(2) : QString();
-          latticeScale = value * siestaUnitScale(unit);
-        }
-      }
-    } else if (lower.startsWith("%block chemicalspecieslabel")) {
-      for (++i; i < lines.size(); ++i) {
-        const QString l = lines.at(i);
-        if (l.toLower().startsWith("%endblock"))
-          break;
-        const QStringList fields = l.split(" ", QtCompat::SkipEmptyParts);
-        if (fields.size() < 3)
-          continue;
-        bool okIndex = false, okAtomic = false;
-        const int speciesIndex = fields.at(0).toInt(&okIndex);
-        unsigned int atomicNum = fields.at(1).toUInt(&okAtomic);
-        if (!okAtomic)
-          atomicNum = Atoms::ElementInfo::getAtomicNum(fields.at(2).toStdString());
-        if (okIndex && atomicNum > 0)
-          species[speciesIndex] = atomicNum;
-      }
-    } else if (lower.startsWith("%block latticevectors")) {
-      if (i + 3 >= lines.size()) {
-        Common::error("Incomplete LatticeVectors block in SIESTA input.");
-        return false;
-      }
-      for (int j = 0; j < 3; ++j) {
-        const QStringList fields = lines.at(++i).split(" ", QtCompat::SkipEmptyParts);
-        if (fields.size() < 3) {
-          Common::error(QString("Could not read LatticeVectors line in SIESTA input: %1")
-                       .arg(lines.at(i)));
-          return false;
-        }
-        bool ok0 = false, ok1 = false, ok2 = false;
-        cellMatrix(j, 0) = fields.at(0).toDouble(&ok0) * latticeScale;
-        cellMatrix(j, 1) = fields.at(1).toDouble(&ok1) * latticeScale;
-        cellMatrix(j, 2) = fields.at(2).toDouble(&ok2) * latticeScale;
-        if (!ok0 || !ok1 || !ok2) {
-          Common::error(QString("Could not parse LatticeVectors line in SIESTA input: %1")
-                       .arg(lines.at(i)));
-          return false;
-        }
-      }
-      cellFound = true;
-    } else if (lower.startsWith("atomiccoordinatesformat")) {
-      fractionalCoords = lower.contains("fractional");
-    } else if (lower.startsWith("%block atomiccoordinatesandatomicspecies")) {
-      double coordScale = 1.0;
-      bool scaledCartesian = false;
-      for (int j = 0; j < lines.size(); ++j) {
-        const QString fmt = lines.at(j).toLower();
-        if (!fmt.startsWith("atomiccoordinatesformat"))
-          continue;
-        fractionalCoords = fmt.contains("fractional");
-        scaledCartesian = fmt.contains("scaledcartesian");
-        if (fmt.contains("bohr"))
-          coordScale = 1.0 / ANG2BOHR;
-        break;
-      }
-      if (scaledCartesian)
-        coordScale = latticeScale;
-
-      for (++i; i < lines.size(); ++i) {
-        const QString l = lines.at(i);
-        if (l.toLower().startsWith("%endblock"))
-          break;
-        const QStringList fields = l.split(" ", QtCompat::SkipEmptyParts);
-        if (fields.size() < 4)
-          continue;
-        bool ok0 = false, ok1 = false, ok2 = false, okSpecies = false;
-        Common::Vector3 pos(fields.at(0).toDouble(&ok0), fields.at(1).toDouble(&ok1),
-                    fields.at(2).toDouble(&ok2));
-        const int speciesIndex = fields.at(3).toInt(&okSpecies);
-        if (!ok0 || !ok1 || !ok2 || !okSpecies || species.find(speciesIndex) == species.end()) {
-          Common::error(QString("Could not parse AtomicCoordinatesAndAtomicSpecies line in SIESTA input: %1")
-                       .arg(l));
-          return false;
-        }
-        atomicNums.append(species[speciesIndex]);
-        coords.append(pos * coordScale);
-      }
-      coordsFound = !coords.isEmpty();
-    }
-  }
-
-  if (!cellFound || !coordsFound) {
-    if (!cellFound)
-      Common::error("Cell info was not found in SIESTA input!");
-    if (!coordsFound)
-      Common::error("Atom coords not found in SIESTA input!");
-    return false;
-  }
-
-  Atoms::UnitCell uc(cellMatrix);
-  if (fractionalCoords) {
-    for (int i = 0; i < coords.size(); ++i)
-      coords[i] = uc.toCartesian(coords[i]);
-  }
-
-  std::vector<Atoms::Atom> atoms;
-  atoms.reserve(coords.size());
-  for (int i = 0; i < coords.size(); ++i)
-    atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
-
-  s->clear();
-  s->setUnitCell(uc);
-  s->setAtoms(atoms);
-  return true;
-}
-
-namespace {
 
 // For writing SIESTA z-matrices. Indices are zero-based internally; the
 // SIESTA Zmatrix block itself is one-based.
@@ -621,6 +339,289 @@ void reorderAtomsToMatchZMatrix(Atoms::Geometry& s)
 }
 
 } // namespace
+
+
+bool SiestaFormat::read(Atoms::Geometry* s, const QString& filename)
+{
+  QFile file(filename);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    Common::error(QString("SIESTA input, %1, could not be opened!")
+                 .arg(filename));
+    return false;
+  }
+
+  QTextStream in(&file);
+  QStringList lines;
+  while (!in.atEnd()) {
+    const QString line = stripSiestaComment(in.readLine());
+    if (!line.isEmpty())
+      lines.append(line);
+  }
+
+  bool cellFound = false;
+  bool coordsFound = false;
+  bool fractionalCoords = false;
+  Common::Matrix3 cellMatrix = Common::Matrix3::Zero();
+  double latticeScale = 1.0;
+  std::map<int, unsigned int> species;
+  QList<unsigned int> atomicNums;
+  QList<Common::Vector3> coords;
+
+  for (int i = 0; i < lines.size(); ++i) {
+    const QString line = lines.at(i);
+    const QString lower = line.toLower();
+
+    if (lower.startsWith("latticeconstant")) {
+      const QStringList fields = line.split(" ", QtCompat::SkipEmptyParts);
+      if (fields.size() >= 2) {
+        bool ok = false;
+        const double value = fields.at(1).toDouble(&ok);
+        if (ok) {
+          const QString unit = fields.size() >= 3 ? fields.at(2) : QString();
+          latticeScale = value * siestaUnitScale(unit);
+        }
+      }
+    } else if (lower.startsWith("%block chemicalspecieslabel")) {
+      for (++i; i < lines.size(); ++i) {
+        const QString l = lines.at(i);
+        if (l.toLower().startsWith("%endblock"))
+          break;
+        const QStringList fields = l.split(" ", QtCompat::SkipEmptyParts);
+        if (fields.size() < 3)
+          continue;
+        bool okIndex = false, okAtomic = false;
+        const int speciesIndex = fields.at(0).toInt(&okIndex);
+        unsigned int atomicNum = fields.at(1).toUInt(&okAtomic);
+        if (!okAtomic)
+          atomicNum = Atoms::ElementInfo::getAtomicNum(fields.at(2).toStdString());
+        if (okIndex && atomicNum > 0)
+          species[speciesIndex] = atomicNum;
+      }
+    } else if (lower.startsWith("%block latticevectors")) {
+      if (i + 3 >= lines.size()) {
+        Common::error("Incomplete LatticeVectors block in SIESTA input.");
+        return false;
+      }
+      for (int j = 0; j < 3; ++j) {
+        const QStringList fields = lines.at(++i).split(" ", QtCompat::SkipEmptyParts);
+        if (fields.size() < 3) {
+          Common::error(QString("Could not read LatticeVectors line in SIESTA input: %1")
+                       .arg(lines.at(i)));
+          return false;
+        }
+        bool ok0 = false, ok1 = false, ok2 = false;
+        cellMatrix(j, 0) = fields.at(0).toDouble(&ok0) * latticeScale;
+        cellMatrix(j, 1) = fields.at(1).toDouble(&ok1) * latticeScale;
+        cellMatrix(j, 2) = fields.at(2).toDouble(&ok2) * latticeScale;
+        if (!ok0 || !ok1 || !ok2) {
+          Common::error(QString("Could not parse LatticeVectors line in SIESTA input: %1")
+                       .arg(lines.at(i)));
+          return false;
+        }
+      }
+      cellFound = true;
+    } else if (lower.startsWith("atomiccoordinatesformat")) {
+      fractionalCoords = lower.contains("fractional");
+    } else if (lower.startsWith("%block atomiccoordinatesandatomicspecies")) {
+      double coordScale = 1.0;
+      bool scaledCartesian = false;
+      for (int j = 0; j < lines.size(); ++j) {
+        const QString fmt = lines.at(j).toLower();
+        if (!fmt.startsWith("atomiccoordinatesformat"))
+          continue;
+        fractionalCoords = fmt.contains("fractional");
+        scaledCartesian = fmt.contains("scaledcartesian");
+        if (fmt.contains("bohr"))
+          coordScale = 1.0 / ANG2BOHR;
+        break;
+      }
+      if (scaledCartesian)
+        coordScale = latticeScale;
+
+      for (++i; i < lines.size(); ++i) {
+        const QString l = lines.at(i);
+        if (l.toLower().startsWith("%endblock"))
+          break;
+        const QStringList fields = l.split(" ", QtCompat::SkipEmptyParts);
+        if (fields.size() < 4)
+          continue;
+        bool ok0 = false, ok1 = false, ok2 = false, okSpecies = false;
+        Common::Vector3 pos(fields.at(0).toDouble(&ok0), fields.at(1).toDouble(&ok1),
+                    fields.at(2).toDouble(&ok2));
+        const int speciesIndex = fields.at(3).toInt(&okSpecies);
+        if (!ok0 || !ok1 || !ok2 || !okSpecies || species.find(speciesIndex) == species.end()) {
+          Common::error(QString("Could not parse AtomicCoordinatesAndAtomicSpecies line in SIESTA input: %1")
+                       .arg(l));
+          return false;
+        }
+        atomicNums.append(species[speciesIndex]);
+        coords.append(pos * coordScale);
+      }
+      coordsFound = !coords.isEmpty();
+    }
+  }
+
+  if (!cellFound || !coordsFound) {
+    if (!cellFound)
+      Common::error("Cell info was not found in SIESTA input!");
+    if (!coordsFound)
+      Common::error("Atom coords not found in SIESTA input!");
+    return false;
+  }
+
+  Atoms::UnitCell uc(cellMatrix);
+  if (fractionalCoords) {
+    for (int i = 0; i < coords.size(); ++i)
+      coords[i] = uc.toCartesian(coords[i]);
+  }
+
+  std::vector<Atoms::Atom> atoms;
+  atoms.reserve(coords.size());
+  for (int i = 0; i < coords.size(); ++i)
+    atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
+
+  s->clear();
+  s->setUnitCell(uc);
+  s->setAtoms(atoms);
+  return true;
+}
+
+bool SiestaFormat::readOutput(Atoms::Geometry* s, const QString& filename)
+{
+  std::string text;
+  if (!Common::readFileToString(filename, &text)) {
+    Common::error(QString("SIESTA output, %1, could not be opened!")
+                 .arg(filename));
+    return false;
+  }
+  std::istringstream ifs(text);
+
+  bool coordsFound = false, cellFound = false;
+  bool fractionalCoords = false, angstromCoords = true;
+
+  QList<unsigned int> atomicNums;
+  QList<Common::Vector3> coords;
+  Common::Matrix3 cellMatrix = Common::Matrix3::Zero();
+
+  std::string line;
+  std::vector<std::string> lineSplit;
+  while (getline(ifs, line)) {
+    // Cell Matrix
+    if (strstr(line.c_str(), "outcell: Unit cell vectors")) {
+      if (!strstr(line.c_str(), "(Ang)")) {
+        Common::error("The output cell matrix is not in Angstroms.");
+        Common::error("Please contact the developers of XtalOpt.");
+        Common::error(QString("The faulty line is: %1").arg(line.c_str()));
+        return false;
+      }
+
+      // Get the cell matrix
+      for (size_t i = 0; i < 3; ++i) {
+        getline(ifs, line);
+        lineSplit = Common::split(line, ' ');
+        if (lineSplit.size() != 3 || !Common::parseDoubleString(lineSplit[0], cellMatrix(i, 0)) ||
+            !Common::parseDoubleString(lineSplit[1], cellMatrix(i, 1)) ||
+            !Common::parseDoubleString(lineSplit[2], cellMatrix(i, 2))) {
+          Common::error(QString("Could not read the cell matrix in SIESTA output! %1")
+                       .arg(line.c_str()));
+          return false;
+        }
+      }
+      cellFound = true;
+    }
+    // Atomic coords
+    else if (strstr(line.c_str(), "outcoor:")) {
+      atomicNums.clear();
+      coords.clear();
+      if (strstr(line.c_str(), "(fractional)")) {
+        fractionalCoords = true;
+        angstromCoords = false;
+      } else if (strstr(line.c_str(), "(Ang)")) {
+        fractionalCoords = false;
+        angstromCoords = true;
+      } else if (strstr(line.c_str(), "(Bohr)")) {
+        fractionalCoords = false;
+        angstromCoords = false;
+      } else {
+        Common::error("The atom coords have unrecognizable units.");
+        Common::error("Please contact the developers of XtalOpt.");
+        Common::error(QString("The faulty line is: %1").arg(line.c_str()));
+        return false;
+      }
+
+      // Now let's add in the atoms!
+      getline(ifs, line);
+      line = Common::trim(line);
+      // A blank line will be encountered at the end
+      while (line.size() > 1) {
+        lineSplit = Common::split(line, ' ');
+        // A non-numeric first entry means the atom block has ended
+        // (some SIESTA versions emit "Kpoints in: ..." without a blank line
+        // separator after the last atom).
+        if (lineSplit.empty() || lineSplit[0].empty() ||
+            (!std::isdigit(static_cast<unsigned char>(lineSplit[0][0])) &&
+             lineSplit[0][0] != '-' && lineSplit[0][0] != '+')) {
+          break;
+        }
+        if (lineSplit.size() < 6) {
+          Common::error(QString("Incomplete coords line in SIESTA output: %1")
+                       .arg(line.c_str()));
+          return false;
+        }
+        const unsigned int atomicNum = Atoms::ElementInfo::getAtomicNum(lineSplit[5]);
+        if (atomicNum == 0) {
+          Common::error(QString("Unrecognized element symbol in SIESTA output: %1")
+                       .arg(lineSplit[5].c_str()));
+          return false;
+        }
+        atomicNums.append(atomicNum);
+        double x, y, z;
+        if (!Common::parseDoubleString(lineSplit[0], x) ||
+            !Common::parseDoubleString(lineSplit[1], y) ||
+            !Common::parseDoubleString(lineSplit[2], z)) {
+          Common::error(QString("Incomplete coords line in SIESTA output: %1")
+                       .arg(line.c_str()));
+          return false;
+        }
+        coords.append(Common::Vector3(x, y, z));
+        getline(ifs, line);
+        line = Common::trim(line);
+      }
+      coordsFound = true;
+    }
+  }
+
+  if (!cellFound)
+    Common::error("Cell info was not found in SIESTA output!");
+  if (!coordsFound)
+    Common::error("Atom coords not found in SIESTA output!");
+  if (!cellFound || !coordsFound)
+    return false;
+
+  // Convert coords if we need to
+  Atoms::UnitCell uc(cellMatrix);
+  if (fractionalCoords) {
+    for (int i = 0; i < coords.size(); ++i)
+      coords[i] = uc.toCartesian(coords[i]);
+  }
+  // Assume we have Bohr coords
+  else if (!fractionalCoords && !angstromCoords) {
+    for (int i = 0; i < coords.size(); ++i)
+      coords[i] *= 0.529177249; // Bohr to Angstrom
+  }
+  // Nothing to do if !fractionalCoords and angstromCoords
+
+  std::vector<Atoms::Atom> atoms;
+  atoms.reserve(coords.size());
+  for (int i = 0; i < coords.size(); ++i) {
+    atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
+  }
+
+  s->clear();
+  s->setUnitCell(uc);
+  s->setAtoms(atoms);
+  return true;
+}
 
 /**
  * An excerpt from the SIESTA manual with regard to the molecule z-matrix

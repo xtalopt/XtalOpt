@@ -37,7 +37,7 @@ namespace {
 // Some helpers for reading file content
 
 // Find the next molecule element, inside an optional <cml> wrapper.
-static bool skipToMolecule(QXmlStreamReader& xml)
+bool skipToMolecule(QXmlStreamReader& xml)
 {
   while (!xml.atEnd()) {
     xml.readNext();
@@ -52,7 +52,7 @@ static bool skipToMolecule(QXmlStreamReader& xml)
   return false;
 }
 
-static bool readUnitCell(QXmlStreamReader& xml, Atoms::Geometry* s, std::string& error)
+bool readUnitCell(QXmlStreamReader& xml, Atoms::Geometry* s, std::string& error)
 {
   // Read the crystal values in <crystal>.
   double a = 0, b = 0, c = 0, alpha = 0, beta = 0, gamma = 0;
@@ -90,7 +90,7 @@ static bool readUnitCell(QXmlStreamReader& xml, Atoms::Geometry* s, std::string&
   return true;
 }
 
-static bool readAtomArray(QXmlStreamReader& xml, Atoms::Geometry* s,
+bool readAtomArray(QXmlStreamReader& xml, Atoms::Geometry* s,
                           std::map<std::string, size_t>& atomIds, std::string& error)
 {
   // Read the atoms in <atomArray>.
@@ -173,7 +173,7 @@ static bool readAtomArray(QXmlStreamReader& xml, Atoms::Geometry* s,
   return true;
 }
 
-static bool readBondArray(QXmlStreamReader& xml, Atoms::Geometry* s,
+bool readBondArray(QXmlStreamReader& xml, Atoms::Geometry* s,
                           const std::map<std::string, size_t>& atomIds, std::string& error)
 {
   while (!xml.atEnd()) {

@@ -223,12 +223,14 @@ bool SSHConnectionCLI::copyFileFromServer(const QString& remotepath,
 bool SSHConnectionCLI::readRemoteFile(const QString& filename,
                                       QString& contents)
 {
-  return this->executeSSH("cat", QStringList(filename), &contents);
+  int exitCode = -1;
+  return this->executeSSH("cat", QStringList(filename), &contents, nullptr, &exitCode) && exitCode == 0;
 }
 
 bool SSHConnectionCLI::removeRemoteFile(const QString& filename)
 {
-  return this->executeSSH("rm", QStringList(filename));
+  int exitCode = -1;
+  return this->executeSSH("rm", QStringList(filename), nullptr, nullptr, &exitCode) && exitCode == 0;
 }
 
 bool SSHConnectionCLI::copyDirectoryToServer(const QString& localpath,
@@ -265,7 +267,8 @@ bool SSHConnectionCLI::readRemoteDirectoryContents(const QString& remotepath,
   const QString command = (fromHome ? "cd ~ && " : QString()) +
                           "find " + Common::quoteRemotePath(findPath) +
                           " -mindepth 1 -print";
-  if (!this->executeSSH(command, QStringList(), &contents_str)) {
+  int exitCode = -1;
+  if (!this->executeSSH(command, QStringList(), &contents_str, nullptr, &exitCode) || exitCode != 0) {
     return false;
   }
   contents = contents_str.split("\n", QtCompat::SkipEmptyParts);
@@ -292,7 +295,8 @@ bool SSHConnectionCLI::removeRemoteDirectory(const QString& remotepath,
   const QString command =
     onlyDeleteContents ? "find " + target + " -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +"
                        : "rm -rf -- " + target;
-  return this->executeSSH(command, QStringList());
+  int exitCode = -1;
+  return this->executeSSH(command, QStringList(), nullptr, nullptr, &exitCode) && exitCode == 0;
 }
 
 bool SSHConnectionCLI::executeSSH(const QString& command,

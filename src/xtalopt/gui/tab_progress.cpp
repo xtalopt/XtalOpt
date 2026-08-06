@@ -1183,24 +1183,6 @@ void TabProgress::clipPOSCARProgress()
   clipPOSCARProgress_();
 }
 
-void TabProgress::viewStructureProgress()
-{
-  QPointer<Xtal> xtal;
-  {
-    QtCompat::MutexLocker contextLocker(m_context_mutex.get());
-    xtal = m_context_xtal;
-  }
-  if (!xtal)
-    return;
-
-  auto* dialog = qobject_cast<XtalOptDialog*>(m_dialog);
-  if (dialog)
-    dialog->showStructureViewer(xtal);
-
-  QtCompat::MutexLocker contextLocker(m_context_mutex.get());
-  m_context_xtal = nullptr;
-}
-
 void TabProgress::clipPOSCARProgress_()
 {
   QPointer<Xtal> xtal;
@@ -1229,6 +1211,24 @@ void TabProgress::clipPOSCARProgress_()
   emit finishedBackgroundProcessing();
   QtCompat::MutexLocker contextLocker(m_context_mutex.get());
   m_context_xtal = 0;
+}
+
+void TabProgress::viewStructureProgress()
+{
+  QPointer<Xtal> xtal;
+  {
+    QtCompat::MutexLocker contextLocker(m_context_mutex.get());
+    xtal = m_context_xtal;
+  }
+  if (!xtal)
+    return;
+
+  auto* dialog = qobject_cast<XtalOptDialog*>(m_dialog);
+  if (dialog)
+    dialog->showStructureViewer(xtal);
+
+  QtCompat::MutexLocker contextLocker(m_context_mutex.get());
+  m_context_xtal = nullptr;
 }
 
 void TabProgress::plotXrdProgress()

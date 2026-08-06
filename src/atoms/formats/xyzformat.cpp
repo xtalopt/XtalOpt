@@ -32,6 +32,8 @@
 
 namespace Atoms {
 
+namespace {
+
 // Helper structure/functions to read "Lattice" entry from the comment line
 struct LatticeInfo
 {
@@ -145,6 +147,7 @@ LatticeInfo parseLatticeFromXYZComment(const std::string& line)
   return info;
 }
 
+} // namespace
 
 bool XyzFormat::read(Atoms::Geometry* s, const QString& filename)
 {

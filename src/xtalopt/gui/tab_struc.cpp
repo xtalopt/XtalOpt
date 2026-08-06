@@ -50,6 +50,8 @@
 
 namespace XtalOpt {
 
+namespace {
+
 const char* MOLECULE_FORMULA_PLACEHOLDER = "Formula, e.g. C1H4";
 
 QString templateLabel(const Atoms::MoleculeTemplateInfo& info)
@@ -75,6 +77,8 @@ QComboBox* ensureMoleculeTemplateCombo(QTableWidget* table, int row)
   }
   return combo;
 }
+
+} // namespace
 
 void clearMoleculeTemplateCombo(QTableWidget* table, int row)
 {
@@ -349,7 +353,7 @@ void TabStruc::getComposition()
       ui.table_moleculeUnit->setRowCount(0);
       xtalopt->clearMoleculeUnits();
       xtalopt->setInputForcedSpgsString("");
-      xtalopt->processInputData();
+      xtalopt->rebuildDerivedSettings();
       // Clear custom IAD values.
       ui.table_IAD->setRowCount(0);
       ui.cb_customIAD->setChecked(false);
@@ -381,7 +385,7 @@ void TabStruc::getComposition()
       }
 
       // Rebuild every parsed cache from the raw inputs in one pass.
-      xtalopt->processInputData();
+      xtalopt->rebuildDerivedSettings();
 
       // Update various relevant tables/variables
       this->updateAtomCountLimits();
@@ -504,7 +508,7 @@ void TabStruc::updateVolumes()
   {
     // Change the settings.
     QWriteLocker runtimeLocker(m_search->runtimeSettingsLock());
-    const Settings::ScalarSnapshot before = Settings::captureScalars(*xtalopt);
+    const Settings::ScalarSnapshot before = Settings::captureScalarSettings(*xtalopt);
 
     // Absolute volume limits
     if (ui.spin_vol_min->value() > ui.spin_vol_max->value())
@@ -548,7 +552,7 @@ void TabStruc::updateVolumes()
       }
     }
     for (const auto& keyword : Settings::runtimeKeywords()) {
-      if (Settings::scalarValue(*xtalopt, keyword) != before.value(keyword)) {
+      if (Settings::scalarSettingValue(*xtalopt, keyword) != before.value(keyword)) {
         settingsChanged = true;
         break;
       }
@@ -556,7 +560,7 @@ void TabStruc::updateVolumes()
   }
 
   if (settingsChanged && m_search->isSessionInProgress())
-    xtalopt->requestSettingsStateSave();
+    xtalopt->requestStateFileSave();
 
   if (!err.isEmpty())
     errorPromptWindow(err);
@@ -700,7 +704,7 @@ void TabStruc::updateDimensions()
     return;
 
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
-  const Settings::ScalarSnapshot before = Settings::captureScalars(*xtalopt);
+  const Settings::ScalarSnapshot before = Settings::captureScalarSettings(*xtalopt);
 
   // Check for conflicts -- favor lower value
   if (ui.spin_a_min->value() > ui.spin_a_max->value())
@@ -751,12 +755,12 @@ void TabStruc::updateDimensions()
 
   // Check the new settings.
   Settings::validateSettings(*xtalopt, Settings::InvalidSettingAction::KeepPrevious, &before);
-  xtalopt->processInputData();
+  xtalopt->rebuildDerivedSettings();
   this->updateCompositionTable();
   this->updateCustomIADTableEnabled();
   bool settingsChanged = false;
   for (const auto& keyword : Settings::runtimeKeywords()) {
-    if (Settings::scalarValue(*xtalopt, keyword) != before.value(keyword)) {
+    if (Settings::scalarSettingValue(*xtalopt, keyword) != before.value(keyword)) {
       settingsChanged = true;
       break;
     }
@@ -764,7 +768,7 @@ void TabStruc::updateDimensions()
   runtimeLocker.unlock();
 
   if (settingsChanged && m_search->isSessionInProgress())
-    xtalopt->requestSettingsStateSave();
+    xtalopt->requestStateFileSave();
 }
 
 void TabStruc::updateCustomIAD()

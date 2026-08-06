@@ -23,8 +23,8 @@ class QSettings;
 namespace XtalOpt {
 namespace Legacy {
 
-void normalizeLegacySearchState(QSettings& settings, const QString& searchId, int loadedVersion,
-                                QStringList& notes);
+void normalizeSearchState(QSettings& settings, const QString& searchId, int loadedVersion,
+                          QStringList& notes);
 
 } // namespace Legacy
 } // namespace XtalOpt

@@ -189,14 +189,14 @@ bool readCfgFile(Atoms::Geometry* s, const QString& filename, const QString& kin
 
 } // anonymous namespace
 
-bool MtpFormat::readOutput(Atoms::Geometry* s, const QString& filename)
-{
-  return readCfgFile(s, filename, "output");
-}
-
 bool MtpFormat::read(Atoms::Geometry* s, const QString& filename)
 {
   return readCfgFile(s, filename, "input");
+}
+
+bool MtpFormat::readOutput(Atoms::Geometry* s, const QString& filename)
+{
+  return readCfgFile(s, filename, "output");
 }
 
 bool MtpFormat::write(const Atoms::Geometry& s, std::ostream& out)

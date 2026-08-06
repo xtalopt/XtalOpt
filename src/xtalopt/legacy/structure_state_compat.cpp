@@ -128,11 +128,6 @@ bool currentStateFromVersion14Status(int statusValue, Structure::State& state)
   return true;
 }
 
-} // end anonymous namespace
-
-namespace Legacy {
-namespace {
-
 bool splitVersion4ObjectiveValues(const QList<double>& loadedValues,
                                   int currentFullCount, int currentUserCount,
                                   const QList<int>& constraintObjectiveIndices,
@@ -180,10 +175,12 @@ void normalizeStatusAfterLegacyConstraintMove(Search::Structure& structure)
 
 } // end anonymous namespace
 
-bool finishStructureStateRead(Search::Structure& structure,
-                              const QString& structureStateFilename,
-                              const QString& mainStateFilename,
-                              bool& currentInfoRead)
+namespace Legacy {
+
+bool convertAndReadStructureState(Search::Structure& structure,
+                                  const QString& structureStateFilename,
+                                  const QString& mainStateFilename,
+                                  bool& currentInfoRead)
 {
   currentInfoRead = false;
 
@@ -215,8 +212,8 @@ bool finishStructureStateRead(Search::Structure& structure,
   QList<int> constraintObjectiveIndices;
   int legacyObjectiveCount = 0;
   if (mainStateFilename.isEmpty() ||
-      !version4StateConstraintObjectiveIndices(mainStateFilename, constraintObjectiveIndices,
-                                               legacyObjectiveCount, &error)) {
+      !readVersion4Objectives(mainStateFilename, constraintObjectiveIndices,
+                              legacyObjectiveCount, &error)) {
     Common::error(QString("The old structure state file %1 cannot be read: %2")
                   .arg(structureStateFilename).arg(error));
     return false;

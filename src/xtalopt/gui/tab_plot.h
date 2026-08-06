@@ -24,6 +24,7 @@
 #include "ui_tab_plot.h"
 
 class QReadWriteLock;
+class QwtPlotTextLabel;
 
 namespace Search {
 class AbstractDialog;
@@ -118,6 +119,7 @@ public slots:
   void refreshPlot();
   void savePlotImage();
   void updatePlot();
+  void updatePlotLayout();
   void plotTrends();
   void plotDistHist();
   void selectGeometryFromIndex(int index);
@@ -126,12 +128,14 @@ public slots:
 private:
   QwtPlotMarker* addXtalToPlot(Xtal* xtal, double x, double y);
   void plotTrace(double x1, double y1, double x2, double y2);
+  void updatePlotFonts();
 
   std::atomic_bool m_enablePlotUpdate;
 
   Ui::Tab_Plot ui;
   QReadWriteLock* m_plot_mutex;
   QMap<QwtPlotMarker*, Xtal*> m_marker_xtal_map;
+  QwtPlotTextLabel* m_guideLabel;
   // Selected structure.
   QPointer<Xtal> m_context_xtal;
 };

@@ -47,7 +47,7 @@ struct LegacyMolUnitFields
 
 QString normalizedGeometry(const QString& geometry);
 
-LegacyMolUnitGeometry parseLegacyGeometry(const QString& geometry);
+LegacyMolUnitGeometry parseGeometry(const QString& geometry);
 
 bool geometryFitsNeighborCount(int numNeighbors, LegacyMolUnitGeometry geometry);
 

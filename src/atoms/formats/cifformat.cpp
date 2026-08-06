@@ -37,6 +37,8 @@
 //   and checks the formula and space group. write() uses the conventional
 //   cell and prints one line for each symmetry-unique atom.
 
+namespace Atoms {
+
 namespace {
 
 struct CifAtomSite
@@ -481,7 +483,7 @@ QString symOpText(const SymOp& op)
 
 } // namespace
 
-namespace Atoms {
+
 
 bool CifFormat::read(Geometry* s, const QString& filename)
 {

@@ -38,6 +38,8 @@
 
 // A couple helper functions/classes; disable doxygen parsing:
 /// \cond
+namespace Search {
+
 namespace {
 
 void appendTrackerSnapshot(QList<Search::Structure*>& out, Search::Tracker* tracker)
@@ -72,7 +74,61 @@ QString objectiveOrConstraintDismissRedoReason(Search::Structure* s)
 }
 /// \endcond
 
-namespace Search {
+
+
+bool QueueManager::RunningHandlers::tryStart(Structure* s, int h)
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  const QPair<Structure*, int> key(s, h);
+  if (m_pairs.contains(key))
+    return false;
+  m_pairs.insert(key);
+  ++m_perStructure[s];
+  return true;
+}
+
+void QueueManager::RunningHandlers::finish(Structure* s, int h)
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  const QPair<Structure*, int> key(s, h);
+  if (!m_pairs.remove(key))
+    return;
+  if (--m_perStructure[s] <= 0)
+    m_perStructure.remove(s);
+  if (m_pairs.isEmpty())
+    m_emptyWait.wakeAll();
+}
+
+bool QueueManager::RunningHandlers::hasHandlerFor(Structure* s) const
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  return m_perStructure.contains(s);
+}
+
+bool QueueManager::RunningHandlers::hasHandler(Structure* s, int h) const
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  return m_pairs.contains(QPair<Structure*, int>(s, h));
+}
+
+bool QueueManager::RunningHandlers::waitForAll(int timeoutMs)
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  int remaining = timeoutMs;
+  while (!m_pairs.isEmpty() && remaining > 0) {
+    m_emptyWait.wait(&m_mutex, 100);
+    remaining -= 100;
+  }
+  return m_pairs.isEmpty();
+}
+
+void QueueManager::RunningHandlers::clear()
+{
+  QtCompat::MutexLocker locker(&m_mutex);
+  m_pairs.clear();
+  m_perStructure.clear();
+  m_emptyWait.wakeAll();
+}
 
 QueueManager::QueueManager(QThread* thread, SearchBase* srch)
   : QObject(), m_search(srch), m_thread(thread), m_tracker(srch->tracker()),
@@ -146,60 +202,6 @@ void QueueManager::startCheckLoop()
   QTimer::singleShot(0, this, &QueueManager::submitQueuedJobs);
 }
 
-
-bool QueueManager::RunningHandlers::tryStart(Structure* s, int h)
-{
-  QtCompat::MutexLocker locker(&m_mutex);
-  const QPair<Structure*, int> key(s, h);
-  if (m_pairs.contains(key))
-    return false;
-  m_pairs.insert(key);
-  ++m_perStructure[s];
-  return true;
-}
-
-void QueueManager::RunningHandlers::finish(Structure* s, int h)
-{
-  QtCompat::MutexLocker locker(&m_mutex);
-  const QPair<Structure*, int> key(s, h);
-  if (!m_pairs.remove(key))
-    return;
-  if (--m_perStructure[s] <= 0)
-    m_perStructure.remove(s);
-  if (m_pairs.isEmpty())
-    m_emptyWait.wakeAll();
-}
-
-bool QueueManager::RunningHandlers::hasHandlerFor(Structure* s) const
-{
-  QtCompat::MutexLocker locker(&m_mutex);
-  return m_perStructure.contains(s);
-}
-
-bool QueueManager::RunningHandlers::hasHandler(Structure* s, int h) const
-{
-  QtCompat::MutexLocker locker(&m_mutex);
-  return m_pairs.contains(QPair<Structure*, int>(s, h));
-}
-
-bool QueueManager::RunningHandlers::waitForAll(int timeoutMs)
-{
-  QtCompat::MutexLocker locker(&m_mutex);
-  int remaining = timeoutMs;
-  while (!m_pairs.isEmpty() && remaining > 0) {
-    m_emptyWait.wait(&m_mutex, 100);
-    remaining -= 100;
-  }
-  return m_pairs.isEmpty();
-}
-
-void QueueManager::RunningHandlers::clear()
-{
-  QtCompat::MutexLocker locker(&m_mutex);
-  m_pairs.clear();
-  m_perStructure.clear();
-  m_emptyWait.wakeAll();
-}
 
 void QueueManager::runHandler(Structure* s, StructureHandlerType handler)
 {
@@ -798,6 +800,9 @@ void QueueManager::handleOptimizedStructure(Structure* s)
     if (s->getStatus() != Structure::Optimized)
       return;
 
+    // Always print a line with summary of optimization targets; above hull
+    //   appears in this line as "nan" (it's a dynamic property!).
+    // The order is: enthalpy per atom, above hull (nan), objectives, constraints
     QString output;
     output += QString(" %1 ").arg(s->getEnthalpyPerAtom(), 20, 'f', 12);
     for (int i = 0; i < m_search->getObjectivesNum(); ++i) {
@@ -824,6 +829,10 @@ void QueueManager::handleOptimizedStructure(Structure* s)
 /// @cond
 void QueueManager::handleStepOptimizedStructure(Structure* s)
 {
+  // The check below reads settings that can change during a run, so the
+  //   settings lock is taken first and kept for the whole function. Keep it
+  //   before the structure lock: that is the order the rest of the code uses.
+  QReadLocker runtimeLocker(m_search->runtimeSettingsLock());
   QWriteLocker locker(&s->lock());
 
   // Validate assumptions
@@ -1241,7 +1250,7 @@ void QueueManager::handleSubmittedStructure(Structure* s)
 /// @cond
 void QueueManager::handleKilledStructure(Structure* s)
 {
-  // Removed structures end up here, too; see handleRemovedStructure below.
+  // Removed structures are handled here, too.
   {
     QReadLocker locker(&s->lock());
     if (!s->isKilledOrRemovedState())
@@ -1754,25 +1763,6 @@ void QueueManager::unlockForNaming(Structure* s)
   }
 }
 
-void QueueManager::structureGenerationFailed()
-{
-  decrementRequestedStructures();
-}
-
-void QueueManager::decrementRequestedStructures()
-{
-  QtCompat::MutexLocker requestedLocker(&m_destroyMutex);
-  if (m_requestedStructures > 0) {
-    --m_requestedStructures;
-  } else if (!m_isDestroying.load()) {
-    Common::warning(QString("%1: structure request counter is already zero.")
-                     .arg(__func__));
-  }
-  m_destroyWait.wakeAll();
-}
-
-// Doxygen skip:
-/// @cond
 void QueueManager::unlockForNaming_()
 {
   Structure* s;
@@ -1800,7 +1790,23 @@ void QueueManager::unlockForNaming_()
   else
     emit structureStarted(s);
 }
-/// @endcond
+
+void QueueManager::structureGenerationFailed()
+{
+  decrementRequestedStructures();
+}
+
+void QueueManager::decrementRequestedStructures()
+{
+  QtCompat::MutexLocker requestedLocker(&m_destroyMutex);
+  if (m_requestedStructures > 0) {
+    --m_requestedStructures;
+  } else if (!m_isDestroying.load()) {
+    Common::warning(QString("%1: structure request counter is already zero.")
+                     .arg(__func__));
+  }
+  m_destroyWait.wakeAll();
+}
 
 void QueueManager::trackRestoredStructure(Structure* s, bool queueWaitingForOptimization)
 {

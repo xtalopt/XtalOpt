@@ -80,6 +80,13 @@ inline std::atomic<bool>& debugEnabled()
   return enabled;
 }
 
+// Let only one thread write at a time, so messages do not mix.
+inline QMutex& terminalMutex()
+{
+  static QMutex mutex;
+  return mutex;
+}
+
 } // namespace detail
 
 // Enable/disable Debug-level output (terminal and installed output handlers).
@@ -138,17 +145,6 @@ inline void removeOutputHandler(int id)
   QtCompat::MutexLocker locker(&detail::outputHandlerMutex());
   detail::outputHandlers().remove(id);
 }
-
-namespace detail {
-
-// Let only one thread write at a time, so messages do not mix.
-inline QMutex& terminalMutex()
-{
-  static QMutex mutex;
-  return mutex;
-}
-
-} // namespace detail
 
 inline void writeOutputToTerminal(OutputLevel level, const QString& text)
 {

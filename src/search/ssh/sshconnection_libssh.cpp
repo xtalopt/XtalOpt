@@ -48,7 +48,6 @@ QString sftpPath(const QString& path)
 
 }
 
-#if LIBSSH_VERSION_INT >= SSH_VERSION_INT(0, 4, 90)
 #define GS_CHANNEL_IS_CLOSED(channel) ssh_channel_is_closed(channel)
 #define GS_CHANNEL_IS_EOF(channel) ssh_channel_is_eof(channel)
 #define GS_CHANNEL_FREE(channel) ssh_channel_free(channel)
@@ -63,21 +62,6 @@ QString sftpPath(const QString& path)
 #define GS_CHANNEL_READ_NONBLOCKING(channel, buffer, count, is_stderr) \
   ssh_channel_read_nonblocking(channel, buffer, count, is_stderr)
 #define GS_CHANNEL_SEND_EOF(channel) ssh_channel_send_eof(channel)
-#else
-#define GS_CHANNEL_IS_CLOSED(channel) channel_is_closed(channel)
-#define GS_CHANNEL_IS_EOF(channel) channel_is_eof(channel)
-#define GS_CHANNEL_FREE(channel) channel_free(channel)
-#define GS_CHANNEL_NEW(session) channel_new(session)
-#define GS_CHANNEL_OPEN_SESSION(channel) channel_open_session(channel)
-#define GS_CHANNEL_REQUEST_SHELL(channel) channel_request_shell(channel)
-#define GS_CHANNEL_REQUEST_EXEC(channel, command) channel_request_exec(channel, command)
-#define GS_CHANNEL_CLOSE(channel) channel_close(channel)
-#define GS_CHANNEL_READ(channel, buffer, count, is_stderr) \
-  channel_read(channel, buffer, count, is_stderr)
-#define GS_CHANNEL_READ_NONBLOCKING(channel, buffer, count, is_stderr) \
-  channel_read_nonblocking(channel, buffer, count, is_stderr)
-#define GS_CHANNEL_SEND_EOF(channel) channel_send_eof(channel)
-#endif
 
 #if LIBSSH_VERSION_INT >= SSH_VERSION_INT(0, 11, 0)
 static int getChannelExitStatus(ssh_channel channel, int& exitcode)
@@ -284,7 +268,8 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
   int verbosity = SSH_LOG_NOLOG;
   // int verbosity = SSH_LOG_PROTOCOL;
   // int verbosity = SSH_LOG_PACKET;
-  int timeout = 15; // timeout in sec
+  long timeout = 15; // timeout in sec
+  const unsigned int port = static_cast<unsigned int>(m_port);
 
   ssh_options_set(m_session, SSH_OPTIONS_HOST, m_host.toStdString().c_str());
   ssh_options_set(m_session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);
@@ -293,7 +278,7 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
   if (!m_user.isEmpty()) {
     ssh_options_set(m_session, SSH_OPTIONS_USER, m_user.toStdString().c_str());
   }
-  ssh_options_set(m_session, SSH_OPTIONS_PORT, &m_port);
+  ssh_options_set(m_session, SSH_OPTIONS_PORT, &port);
 
   // Connect
   if (ssh_connect(m_session) != SSH_OK) {
@@ -399,7 +384,7 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
 
     // Try to authenticate with public key first
     if (method & SSH_AUTH_METHOD_PUBLICKEY) {
-      rc = ssh_userauth_autopubkey(m_session, m_user.toStdString().c_str());
+      rc = ssh_userauth_autopubkey(m_session, nullptr);
       if (rc == SSH_AUTH_ERROR) {
         Common::warning("Authentication failed (pubkey)");
         Common::warning(QString("%1").arg(ssh_get_error(m_session)));
@@ -1233,7 +1218,7 @@ bool SSHConnectionLibSSH::addKeyToKnownHosts(const QString& host,
 
   // Set options
   int verbosity = SSH_LOG_NOLOG;
-  int timeout = 15; // timeout in sec
+  long timeout = 15; // timeout in sec
 
   ssh_options_set(session, SSH_OPTIONS_HOST, host.toStdString().c_str());
   ssh_options_set(session, SSH_OPTIONS_LOG_VERBOSITY, &verbosity);

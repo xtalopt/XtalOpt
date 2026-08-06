@@ -218,6 +218,7 @@ public:
   /**
   * Perform any post-optimization checks that need to be performed when a
   * structure enters the Structure::StepOptimized state.
+  * The caller must hold runtimeSettingsLock() for reading.
   * @param s Structure to check
   * @param err If non-NULL, will be overwritten with an explaination of
   * why the check failed.

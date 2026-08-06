@@ -78,6 +78,10 @@ public:
 signals:
   // This signal is emitted when the selected marker changes
   void selectedMarkerChanged(QwtPlotMarker* newMarker);
+  void plotResized();
+
+protected:
+  virtual void resizeEvent(QResizeEvent* event) override;
 
 private:
   virtual void select(const QPoint& pos);

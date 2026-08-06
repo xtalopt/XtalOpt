@@ -49,7 +49,9 @@ using namespace std;
 
 namespace XtalOpt {
 
-static QString defaultSaveDir()
+namespace {
+
+QString defaultSaveDir()
 {
 #if GS_WINDOWS
   return QStringLiteral("C:/");
@@ -58,14 +60,7 @@ static QString defaultSaveDir()
 #endif
 }
 
-QString stateFilenameWithExtension(QString filename)
-{
-  if (!filename.endsWith(".state", Qt::CaseInsensitive))
-    filename.append(".state");
-  return filename;
-}
-
-static void resetImportedLocalWorkDirIfNeeded(XtalOpt* xtalopt)
+void resetImportedLocalWorkDirIfNeeded(XtalOpt* xtalopt)
 {
   if (!xtalopt)
     return;
@@ -84,8 +79,9 @@ static void resetImportedLocalWorkDirIfNeeded(XtalOpt* xtalopt)
   }
 }
 
-XtalOptDialog::XtalOptDialog(QWidget* parent, Qt::WindowFlags f,
-                             bool interactive, XtalOpt* xtalopt)
+} // namespace
+
+XtalOptDialog::XtalOptDialog(QWidget* parent, Qt::WindowFlags f, XtalOpt* xtalopt)
   : AbstractDialog(parent, f)
 {
   setWindowFlags(Qt::Window);
@@ -146,7 +142,6 @@ XtalOptDialog::XtalOptDialog(QWidget* parent, Qt::WindowFlags f,
 
   initialize();
   ui_push_save->setEnabled(true);
-  Q_UNUSED(interactive);
 }
 
 XtalOptDialog::~XtalOptDialog()
@@ -205,6 +200,15 @@ void XtalOptDialog::beginPlotOnlyMode()
   m_tab_plot->refreshPlot();
 }
 
+QString XtalOptDialog::sessionStateFilePath() const
+{
+  auto* xtalopt = qobject_cast<XtalOpt*>(m_search);
+  if (!xtalopt || xtalopt->getLocWorkDir().isEmpty())
+    return QString();
+
+  return xtalopt->stateFilePath();
+}
+
 bool XtalOptDialog::prepareResumeSession(const QString& filename)
 {
   Q_UNUSED(filename);
@@ -247,16 +251,18 @@ void XtalOptDialog::saveSession()
     XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
     QString filename = QFileDialog::getSaveFileName(
-      this, QString("Save search state settings file"),
+      this, QString("Save search state file"),
       QDir(defaultSaveDir()).filePath("xtalopt.state"), "XtalOpt state (*.state);;All files (*.*)",
       0, QFileDialog::DontUseNativeDialog);
 
     if (filename.isEmpty())
       return;
 
-    filename = stateFilenameWithExtension(filename);
-    if (!xtalopt || !xtalopt->saveSettingsState(filename)) {
-      errorPromptWindow(QString("Failed to save state settings to:\n'%1'")
+    if (!filename.endsWith(".state", Qt::CaseInsensitive))
+      filename.append(".state");
+
+    if (!xtalopt || !xtalopt->saveStateFile(filename)) {
+      errorPromptWindow(QString("Failed to save state file to:\n'%1'")
                           .arg(filename));
     }
     return;
@@ -270,7 +276,7 @@ void XtalOptDialog::saveSession()
 
     XtalOpt* xtalopt = qobject_cast<XtalOpt*>(self->m_search);
     if (xtalopt)
-      xtalopt->save(filename, notify);
+      xtalopt->saveSessionState(filename, notify);
   });
 }
 
@@ -350,15 +356,6 @@ void XtalOptDialog::resumeSession_(const QString& filename)
     self->stopProgressUpdate();
 }
 
-QString XtalOptDialog::sessionStateFilePath() const
-{
-  auto* xtalopt = qobject_cast<XtalOpt*>(m_search);
-  if (!xtalopt || xtalopt->getLocWorkDir().isEmpty())
-    return QString();
-
-  return xtalopt->searchStateFilePath();
-}
-
 bool XtalOptDialog::importSettings()
 {
   // Import an input file (best effort!). The search settings
@@ -375,7 +372,7 @@ bool XtalOptDialog::importSettings()
     XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
     bool read =
-      xtalopt->readInputFile(newFilename, /*bestEffort*/ true);
+      xtalopt->loadInputFile(newFilename, /*bestEffort*/ true);
     resetImportedLocalWorkDirIfNeeded(xtalopt);
     updateGUI();
     // If reading is not fully ok; we will still update the GUI, but
@@ -402,7 +399,7 @@ bool XtalOptDialog::exportSettings()
   // If a valid file is selected
   if (!newFilename.isEmpty()) {
     XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
-    bool write = xtalopt->writeInputFile(newFilename);
+    bool write = xtalopt->saveInputFile(newFilename);
     if (!write) {
       QString errmsg = QString("Failed to write settings to the file:\n'%1'").arg(newFilename);
       errorPromptWindow(errmsg);

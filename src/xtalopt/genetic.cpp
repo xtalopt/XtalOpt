@@ -31,8 +31,10 @@ using namespace Search;
 
 namespace XtalOpt {
 
+namespace {
+
 template <class T>
-static QString listToString(const QList<T>& values)
+QString listToString(const QList<T>& values)
 {
   QStringList strings;
   for (const auto& value : values)
@@ -40,7 +42,7 @@ static QString listToString(const QList<T>& values)
   return "[" + strings.join(", ") + "]";
 }
 
-static inline int findClosestComposition(const QList<uint>& counts, const QList<CellComp>& compa)
+inline int findClosestComposition(const QList<uint>& counts, const QList<CellComp>& compa)
 {
   // A helper function to find the closest composition in the list
   //   to the given atom counts.
@@ -62,9 +64,9 @@ static inline int findClosestComposition(const QList<uint>& counts, const QList<
   return Common::findMinIndex(avglist);
 }
 
-static bool addAtomRandomlyForPolicy(Xtal* xtal, unsigned int atomicnum, const EleRadii& elrad,
-                                     bool useCustomIAD,
-                                     const QHash<QPair<int, int>, IAD>* customIADs)
+bool addAtomRandomlyForPolicy(Xtal* xtal, unsigned int atomicnum, const EleRadii& elrad,
+                              bool useCustomIAD,
+                              const QHash<QPair<int, int>, IAD>* customIADs)
 {
   // Add an atom using the same distance checks that final validation uses.
   if (!useCustomIAD)
@@ -75,7 +77,7 @@ static bool addAtomRandomlyForPolicy(Xtal* xtal, unsigned int atomicnum, const E
 }
 
 // Change the counts to the desired total.
-static bool rebalanceCountsToTotal(QList<uint>& targetCounts, int desiredTotal)
+bool rebalanceCountsToTotal(QList<uint>& targetCounts, int desiredTotal)
 {
   int Ntypes = targetCounts.size();
   if (Ntypes == 0 || desiredTotal < Ntypes)
@@ -101,12 +103,12 @@ static bool rebalanceCountsToTotal(QList<uint>& targetCounts, int desiredTotal)
 }
 
 // Change the atom counts in the new crystal.
-static void applyCompositionDeltas(Xtal* nxtal, QList<int>& deltas, QList<uint>& nxtalCounts,
-                                   const QList<QString>& refSymbols,
-                                   const EleRadii& elrad, bool useCustomIAD,
-                                   const QHash<QPair<int, int>, IAD>* customIADs,
-                                   int maxAttempts, bool verbose,
-                                   const QString& tag, const char* context)
+void applyCompositionDeltas(Xtal* nxtal, QList<int>& deltas, QList<uint>& nxtalCounts,
+                            const QList<QString>& refSymbols,
+                            const EleRadii& elrad, bool useCustomIAD,
+                            const QHash<QPair<int, int>, IAD>* customIADs,
+                            int maxAttempts, bool verbose,
+                            const QString& tag, const char* context)
 {
   for (int i = 0; i < deltas.size(); i++) {
     uint atomicnum = Atoms::ElementInfo::getAtomicNum(refSymbols.at(i).toStdString());
@@ -147,7 +149,7 @@ static void applyCompositionDeltas(Xtal* nxtal, QList<int>& deltas, QList<uint>&
   }
 }
 
-static void strain(Xtal* xtal, double sigma_lattice)
+void strain(Xtal* xtal, double sigma_lattice)
 {
   // Build Voight strain matrix
   double volume = xtal->getVolume();
@@ -201,7 +203,7 @@ static void strain(Xtal* xtal, double sigma_lattice)
   xtal->wrapAtomsToCell();
 }
 
-static void ripple(Xtal* xtal, double rho, uint eta, uint mu)
+void ripple(Xtal* xtal, double rho, uint eta, uint mu)
 {
   double phase1 = Common::getRandDouble() * 2 * PI;
   double phase2 = Common::getRandDouble() * 2 * PI;
@@ -251,7 +253,7 @@ static void ripple(Xtal* xtal, double rho, uint eta, uint mu)
   xtal->wrapAtomsToCell();
 }
 
-static void exchange(Xtal* xtal, uint exchanges)
+void exchange(Xtal* xtal, uint exchanges)
 {
   // Check that there is more than 1 atom type present.
   // If not, print a warning and return input xtal:
@@ -281,6 +283,8 @@ static void exchange(Xtal* xtal, uint exchanges)
   xtal->notifyGeometryChanged();
   return;
 }
+
+} // namespace
 
 Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>& compa,
                                 const EleRadii& elrad, uint numCuts, double minContribution,

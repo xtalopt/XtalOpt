@@ -15,6 +15,7 @@
 
 #include <xtalopt/xtalopt.h>
 
+#include <xtalopt/constants.h>
 #include <xtalopt/genetic.h>
 #include <xtalopt/structures/xtal.h>
 
@@ -70,6 +71,8 @@
 using namespace Search;
 
 namespace XtalOpt {
+
+namespace {
 
 bool isMolUnitPossibleForComposition(const Atoms::Geometry& molecule, const CellComp& composition)
 {
@@ -431,6 +434,186 @@ QList<unsigned int> chemicalSystemAtomicNumbers(const QList<CellComp>& compList)
   return atomicNums;
 }
 
+} // namespace
+
+void XtalOpt::buildInitialGenerationPlan(InitialGenerationPlan& plan, bool reportWarnings)
+{
+  plan = InitialGenerationPlan();
+  plan.seedCount = static_cast<uint>(seedList().size());
+
+  // The list of forced space-group counts (index = spg-1, 0 = not forced).
+  plan.randSpgCounts.clear();
+  for (uint spg = 1; spg <= 230; ++spg) {
+    const int requested = (static_cast<int>(spg) <= minXtalsOfSpg().size())
+        ? minXtalsOfSpg().at(spg - 1)
+        : 0;
+    plan.randSpgCounts.append(requested > 0 ? requested : 0);
+  }
+  for (int i = 0; i < plan.randSpgCounts.size(); ++i) {
+    const int requested = plan.randSpgCounts.at(i);
+    if (requested <= 0)
+      continue;
+
+    const uint spg = static_cast<uint>(i + 1);
+    const int compatibleFormulas = randSpgCompatibleFormulaStrings(spg).size();
+    if (compatibleFormulas == 0) {
+      if (reportWarnings && isVerbose()) {
+        Common::message(tr("   forced RandSpg space group %1 (requested %2 times) can't work "
+                           "for any input formula.").arg(spg).arg(requested));
+      }
+      plan.randSpgCounts[i] = -1;
+      continue;
+    }
+
+    plan.forcedRandSpgCount += static_cast<uint>(requested * compatibleFormulas);
+  }
+
+  plan.randomCount = getNumInitial();
+  plan.totalTarget = plan.seedCount + plan.forcedRandSpgCount + plan.randomCount;
+}
+
+// Check and add an initial structure. Delete it when it is not accepted.
+bool XtalOpt::acceptInitialXtal(Xtal* generated)
+{
+  if (!checkXtal(generated)) {
+    delete generated;
+    return false;
+  }
+
+  generated->findSpaceGroup(getTolSpg());
+  if (isVerbose()) {
+    Common::message(QString("   generated initial structure: %1")
+                    .arg(generated->getParents()));
+  }
+  initializeAndAddXtal(generated, 1, generated->getParents());
+  return true;
+}
+
+void XtalOpt::updateProgressBar(size_t goal, size_t attempted, size_t succeeded)
+{
+  // Update progress bar
+  updateProgressValue(succeeded,
+                      tr("%1 structures generated (%2 kept, %3 rejected)...")
+                        .arg(attempted)
+                        .arg(succeeded)
+                        .arg(attempted - succeeded),
+                      -1,
+                      goal);
+}
+
+bool XtalOpt::generateInitialStructures()
+{
+  ////////////////////////////////////////////////////////////////////////
+  /// This function generates "initial population". Generally, it generates:
+  ///
+  /// a) "forced structures" when applicable:
+  ///   1) seed structures (if user provides any)
+  ///   2) relevant spg#s to all input formulas (if forced randSpg is set)
+  ///
+  /// b) "random structures" up to "total random initial structures", from:
+  ///   3) random structures using randSpg (if user sets usingRandSpg)
+  ///   4) random structures using molUnit (if user sets molUnits)
+  ///   5) random structures from compositions
+  ////////////////////////////////////////////////////////////////////////
+
+  InitialGenerationPlan plan;
+  buildInitialGenerationPlan(plan);
+
+  // Set up progress reporting
+  beginProgressUpdate(tr("Generating structures..."), 0, 0);
+
+  // Initialize loop variables
+  int failed = 0;
+  QString filename;
+
+  // Use new xtal count in case "addXtal" falls behind so that we
+  //   don't duplicate structures when switching from seeds -> random.
+  uint newXtalCount = 0;
+
+  // Load seeds...
+  for (int i = 0; i < seedList().size(); i++) {
+    filename = seedList().at(i);
+    if (this->addSeed(filename)) {
+      updateProgressBar(plan.totalTarget, newXtalCount + failed, newXtalCount);
+      newXtalCount++;
+    } else {
+      failed++;
+    }
+  }
+
+  // Generate requested RandSpg structures. The plan keeps the remaining count.
+  if (plan.forcedRandSpgCount > 0) {
+    QList<int> spgStillNeeded = plan.randSpgCounts;
+    for (int i = 0; i < spgStillNeeded.size(); i++) {
+      while (spgStillNeeded.at(i) > 0) {
+        for (int compi = 0; compi < compList().size(); compi++) {
+          uint spg = i + 1;
+
+          // If the spacegroup isn't possible, just continue
+          if (!isRandSpgPossibleForComposition(spg, compList()[compi]))
+            continue;
+
+          updateProgressBar(plan.totalTarget, newXtalCount + failed, newXtalCount);
+          if (acceptInitialXtal(randSpgXtal(1, newXtalCount + 1, compList()[compi], spg)))
+            newXtalCount++;
+          else
+            failed++;
+        }
+        spgStillNeeded[i]--;
+      }
+    }
+  }
+
+  // Generate the requested random initial structures (retry each until one is
+  //   accepted, up to a fixed total count).
+  const int maxRandomAttempts = 10000;
+  uint randomGenerated = 0;
+  while (randomGenerated < plan.randomCount) {
+    bool accepted = false;
+    for (int attempt = 0; attempt < maxRandomAttempts; ++attempt) {
+      updateProgressBar(plan.totalTarget, newXtalCount + failed, newXtalCount);
+      if (acceptInitialXtal(generateRandomXtal(1, newXtalCount + 1))) {
+        newXtalCount++;
+        accepted = true;
+        break;
+      }
+      failed++;
+    }
+    if (!accepted) {
+      Common::warning(QString("%1: failed too many times while generating %2. "
+                              "Giving up.")
+                        .arg(__func__)
+                        .arg(tr("random initial structure")));
+      endProgressUpdate();
+      return false;
+    }
+    randomGenerated++;
+  }
+
+  // Wait for all structures to appear in tracker
+  updateProgressValue(-1, tr("Waiting for structures to initialize..."), 0, newXtalCount);
+
+  connect(tracker(), &Tracker::newStructureAdded, x_initWC, &SlottedWaitCondition::wakeAllSlot);
+
+  x_initWC->prewaitLock();
+  do {
+    updateProgressValue(tracker()->size(),
+                        tr("Waiting for structures to initialize (%1 of %2)...")
+                          .arg(tracker()->size())
+                          .arg(newXtalCount));
+    // Do not wait here forever. A final signal can arrive before the wait.
+    x_initWC->wait(INIT_WAIT_TIMEOUT);
+  } while (tracker()->size() < static_cast<int>(newXtalCount));
+  x_initWC->postwaitUnlock();
+
+  // We're done with x_initWC.
+  disconnect(tracker(), &Tracker::newStructureAdded, x_initWC, &SlottedWaitCondition::wakeAllSlot);
+
+  endProgressUpdate();
+
+  return true;
+}
+
 void XtalOpt::generateNewStructure()
 {
   // Generate in background thread:
@@ -498,7 +681,6 @@ Xtal* XtalOpt::generateNewXtal(CellComp incomp)
       ++attemptCount;
       xtal = generateRandomXtal(1, 0, incomp);
     }
-    xtal->setParents(xtal->getParents());
     return xtal;
   }
 
@@ -1774,8 +1956,7 @@ bool XtalOpt::checkXtal(Xtal* xtal)
       Atoms::Atom& a2 = xtal->atom(atom2);
       double minIAD = 0.0;
       customMinDistance(interComp(), a1.atomicNumber(), a2.atomicNumber(), &minIAD);
-      xtal->setStatus(Xtal::Killed);
-      Common::debug(QString("Discarding structure %1: bad post-opt IAD (%2 < %3)")
+      Common::debug(QString("Discarding structure %1: bad custom IAD (%2 < %3)")
               .arg(xtal->getTag())
               .arg(IAD)
               .arg(minIAD));
@@ -2257,45 +2438,6 @@ bool XtalOpt::checkBetweenGeometriesIADs(const Atoms::Geometry& geometry1,
   return true;
 }
 
-void XtalOpt::resetSpacegroups()
-{
-  if (!isSessionActive() || isSessionStarting() || isReadOnly()) {
-    return;
-  }
-  x_spacegroupResetJob.request();
-}
-
-void XtalOpt::resetSpacegroups_()
-{
-  QReadLocker runtimeLocker(runtimeSettingsLock());
-
-  if (isReadOnly())
-    return;
-
-  QList<Structure*> structures = trackedStructuresSnapshot();
-  for (auto it = structures.constBegin(), it_end = structures.constEnd(); it != it_end; ++it) {
-    {
-      QWriteLocker locker(&(*it)->lock());
-      qobject_cast<Xtal*>(*it)->findSpaceGroup(getTolSpg());
-    }
-  }
-
-  emit refreshAllStructureInfo();
-  requestResultsFileSave();
-}
-
-void XtalOpt::updateProgressBar(size_t goal, size_t attempted, size_t succeeded)
-{
-  // Update progress bar
-  updateProgressValue(succeeded,
-                      tr("%1 structures generated (%2 kept, %3 rejected)...")
-                        .arg(attempted)
-                        .arg(succeeded)
-                        .arg(attempted - succeeded),
-                      -1,
-                      goal);
-}
-
 std::vector<double> XtalOpt::getReferenceEnergiesVector()
 {
   // This is a convenience function to give SearchBase access to reference
@@ -2614,45 +2756,6 @@ bool XtalOpt::setInputForcedSpgsString(const QString& value)
   else
     minXtalsOfSpg() = counts;
   return true;
-}
-
-bool XtalOpt::processInputData()
-{
-  // Reconstruct composition, volume, radius, and objective data from the input
-  //   settings; safe to call repeatedly.
-  bool ok = true;
-
-  // 1a) Compositions from chemicalFormulas. An empty input clears them; a
-  //     non-empty but malformed value fails (callers treat this like the old
-  //     reader return).
-  if (getInputFormulasString().trimmed().isEmpty())
-    compList().clear();
-  else if (!processInputChemicalFormulas(getInputFormulasString()))
-    ok = false;
-
-  // 1b) Reference energies depend on a composition (with one but no input,
-  //     processInputReferenceEnergies builds the default zero references). With
-  //     no composition there are no references.
-  if (compList().isEmpty())
-    refEnergies().clear();
-  else if (ok && !processInputReferenceEnergies(getInputEneRefsString()))
-    ok = false;
-
-  // 1c) Elemental volumes depend on a composition (lenient: a bad value is
-  //     ignored, not fatal). With no composition there are no volumes.
-  if (compList().isEmpty())
-    eleVolumes().clearElementVolumes();
-  else if (!processInputElementalVolumes(getInputEleVolmString()))
-    Common::warning("Ignoring elemental volume input.");
-
-  // 1d) Per-element minimum radii (also refreshed inside the composition parse;
-  //    doing it here too lets processInputData recompute everything on its own).
-  refreshElementMinRadii();
-
-  // 2) Built-in above-hull objective weight.
-  refreshBuiltinObjectiveWeight();
-
-  return ok;
 }
 
 } // namespace XtalOpt

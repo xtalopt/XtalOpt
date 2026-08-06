@@ -31,8 +31,7 @@ using namespace std;
 namespace Search {
 
 SSHManagerLibSSH::SSHManagerLibSSH(unsigned int connections, SearchBase* parent)
-  : SSHManager(parent), m_connSemaphore(connections),
-    m_connections(connections), m_isValid(false)
+  : SSHManager(parent), m_connSemaphore(connections)
 {
   for (unsigned int i = 0; i < connections; i++) {
     m_conns.append(new SSHConnectionLibSSH(this));
@@ -42,7 +41,6 @@ SSHManagerLibSSH::SSHManagerLibSSH(unsigned int connections, SearchBase* parent)
 void SSHManagerLibSSH::makeConnections(const QString& host, const QString& user,
                                        const QString& pass, unsigned int port)
 {
-  m_isValid = false;
   QtCompat::MutexLocker locker(&m_lock);
   START;
 
@@ -58,7 +56,6 @@ void SSHManagerLibSSH::makeConnections(const QString& host, const QString& user,
     (*it)->connectSession(true);
   }
 
-  m_isValid = true;
   END;
 }
 
@@ -200,7 +197,15 @@ SSHManagerLibSSH* SSHManagerLibSSH::createConnections(
               *error = "libssh host-key prompt was cancelled.";
             return nullptr;
           }
-          manager->validateServerKey();
+          if (!manager->validateServerKey()) {
+            err = "The SSH host key for " + host + ":" + QString::number(port) +
+                  " could not be saved to the known-hosts file.";
+            if (error)
+              *error = err;
+            else
+              Common::error(err);
+            return nullptr;
+          }
           continue;
         } // end case
         case SSHConnection::SSH_BAD_PASSWORD_ERROR: {

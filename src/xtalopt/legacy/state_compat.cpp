@@ -66,7 +66,7 @@ int loadedXtalOptStateVersion(QSettings& settings)
   return 0;
 }
 
-void markAsCurrentState(QSettings& settings)
+void markStateFileCurrent(QSettings& settings)
 {
   settings.setValue("xtalopt/version", CurrentStateSchemaVersion);
   settings.remove("xtalopt/init/version");
@@ -194,7 +194,7 @@ bool convertLegacyMolUnit(const LegacyMolUnitFields& fields, LegacyMolUnitConver
     return false;
   }
 
-  const LegacyMolUnitGeometry geometry = parseLegacyGeometry(fields.geometry);
+  const LegacyMolUnitGeometry geometry = parseGeometry(fields.geometry);
   if (!geometryFitsNeighborCount(fields.numNeighbors, geometry)) {
     error = QString("invalid legacy compMolUnit geometry '%1' for " "numNeighbors=%2")
               .arg(fields.geometry)
@@ -948,9 +948,13 @@ void copyOptimizerInputs(QSettings& settings, int optStep, const QString& optimi
 
   for (int i = 0; i < keys.size(); ++i) {
     const QString key = keys.at(i);
+    QString targetKey = key;
+    if (optimizerId.compare("mtp", Qt::CaseInsensitive) == 0 &&
+        key.compare("mtp.cell", Qt::CaseInsensitive) == 0)
+      targetKey = "mtp.cfg";
     const QString targetGroup =
       assets.contains(key, Qt::CaseInsensitive) ? assetGroup : templateGroup;
-    settings.setValue(targetGroup + "/" + key, values.at(i));
+    settings.setValue(targetGroup + "/" + targetKey, values.at(i));
   }
 }
 
@@ -1078,8 +1082,16 @@ void convertVersion4LayoutToCurrent(QSettings& settings, QStringList& notes)
     const QString optimizerId = settings.value("xtalopt/edit/optimizer/" + step, "gulp")
         .toString().trimmed().toLower();
     settings.setValue("xtalopt/optscheme/optimizer/" + step + "/interface", optimizerId);
-    copyValueIfPresent(settings, "xtalopt/edit/optimizer/" + step + "/directRunCommand",
-                       "xtalopt/optscheme/optimizer/" + step + "/directRunCommand");
+    const QString oldCommandKey =
+      "xtalopt/edit/optimizer/" + step + "/directRunCommand";
+    const QString newCommandKey =
+      "xtalopt/optscheme/optimizer/" + step + "/directRunCommand";
+    if (settings.contains(oldCommandKey)) {
+      QString command = settings.value(oldCommandKey).toString();
+      if (optimizerId == "mtp")
+        command.replace("mtp.cell", "mtp.cfg", Qt::CaseInsensitive);
+      settings.setValue(newCommandKey, command);
+    }
     copyOptimizerInputs(settings, i, optimizerId);
   }
 
@@ -1175,11 +1187,11 @@ void convertVersion4LayoutToCurrent(QSettings& settings, QStringList& notes)
   appendNote(notes, "converted original v4 state layout to current v5 settings");
 }
 
-bool rewriteVersion4XtalOptStateFile(QSettings& settings, bool fullState, int loadedVersion,
-                                      QStringList& notes, QString& error)
+bool convertVersion4StateFile(QSettings& settings, bool fullState, int loadedVersion,
+                              QStringList& notes, QString& error)
 {
   normalizeEditSettings(settings, notes);
-  Legacy::normalizeLegacySearchState(settings, "xtalopt", loadedVersion, notes);
+  Legacy::normalizeSearchState(settings, "xtalopt", loadedVersion, notes);
 
   if (!normalizeVaspPotcarAssets(settings, notes, error))
     return false;
@@ -1195,7 +1207,7 @@ bool rewriteVersion4XtalOptStateFile(QSettings& settings, bool fullState, int lo
 
   normalizeObjectiveSettings(settings, notes);
   convertVersion4LayoutToCurrent(settings, notes);
-  markAsCurrentState(settings);
+  markStateFileCurrent(settings);
   return true;
 }
 
@@ -1220,10 +1232,10 @@ bool appendCompatibilityNotes(const QString& filename, const QStringList& notes)
 
 namespace Legacy {
 
-bool version4StateConstraintObjectiveIndices(const QString& mainStateFilename,
-                                             QList<int>& constraintObjectiveIndices,
-                                             int& objectiveCount,
-                                             QString* errorMessage)
+bool readVersion4Objectives(const QString& mainStateFilename,
+                            QList<int>& constraintObjectiveIndices,
+                            int& objectiveCount,
+                            QString* errorMessage)
 {
   constraintObjectiveIndices.clear();
   objectiveCount = 0;
@@ -1243,9 +1255,8 @@ bool version4StateConstraintObjectiveIndices(const QString& mainStateFilename,
   return true;
 }
 
-bool prepareXtalOptStateFileForRead(const QString& filename, bool fullState,
-                                    bool keepCompatibilityCopy,
-                                    QString& readFilename)
+bool convertStateFile(const QString& filename, bool fullState,
+                      bool keepCompatibilityCopy, QString& readFilename)
 {
   readFilename = filename;
 
@@ -1267,31 +1278,34 @@ bool prepareXtalOptStateFileForRead(const QString& filename, bool fullState,
     return false;
   }
 
-  QFile sourceFile(filename);
-  QTemporaryFile temporaryFile(
-    QDir(QDir::tempPath()).filePath("xtalopt-state-XXXXXX.compat"));
-  if (!sourceFile.open(QIODevice::ReadOnly) || !temporaryFile.open()) {
+  QString temporaryFilename;
+  {
+    QTemporaryFile temporaryFile(
+      QDir(QDir::tempPath()).filePath("xtalopt-state-XXXXXX.compat"));
+    if (!temporaryFile.open()) {
+      Common::error(QString("%1: could not prepare a temporary compatibility state copy.")
+                      .arg(__func__));
+      return false;
+    }
+    temporaryFile.setAutoRemove(false);
+    temporaryFilename = temporaryFile.fileName();
+  }
+  if (!QFile::remove(temporaryFilename)) {
     Common::error(QString("%1: could not prepare a temporary compatibility state copy.")
                     .arg(__func__));
     return false;
   }
-  const QByteArray contents = sourceFile.readAll();
-  if (temporaryFile.write(contents) != contents.size() || !temporaryFile.flush()) {
-    Common::error(QString("%1: could not write a temporary compatibility state copy.")
-                    .arg(__func__));
-    return false;
-  }
-  temporaryFile.setAutoRemove(false);
-  const QString temporaryFilename = temporaryFile.fileName();
-  temporaryFile.close();
 
   QStringList notes;
   QString error;
   bool converted = false;
   {
     QSettings compatSettings(temporaryFilename, QSettings::IniFormat);
-    if (!rewriteVersion4XtalOptStateFile(compatSettings, fullState, loadedVersion,
-          notes, error)) {
+    const QStringList keys = originalSettings.allKeys();
+    for (const QString& key : keys)
+      compatSettings.setValue(key, originalSettings.value(key));
+    if (!convertVersion4StateFile(compatSettings, fullState, loadedVersion,
+                                 notes, error)) {
       Common::error(QString("%1: %2").arg(__func__).arg(error));
     } else {
       compatSettings.sync();

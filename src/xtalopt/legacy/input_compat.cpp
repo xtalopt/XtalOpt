@@ -195,7 +195,7 @@ bool convertLegacyMolUnit(const LegacyMolUnitFields& fields, QStringList& molUni
   }
   const QString neighborSymbol = Atoms::ElementInfo::getAtomicSymbol(neighborAtomicNum).c_str();
 
-  const LegacyMolUnitGeometry geometry = parseLegacyGeometry(fields.geometry);
+  const LegacyMolUnitGeometry geometry = parseGeometry(fields.geometry);
   if (!geometryFitsNeighborCount(fields.numNeighbors, geometry)) {
     error = QString("invalid legacy molecularUnits geometry '%1' for " "numNeighbors=%2")
               .arg(fields.geometry)
@@ -233,8 +233,8 @@ bool convertLegacyMolUnit(const LegacyMolUnitFields& fields, QStringList& molUni
   return true;
 }
 
-bool rewriteLegacyXtalOptInputText(const QString& inputText, QString& outputText,
-                                   QString* errorMessage, bool& compatibilityApplied)
+bool convertLegacyInputText(const QString& inputText, QString& outputText,
+                                    QString* errorMessage, bool& compatibilityApplied)
 {
   outputText.clear();
   if (errorMessage)
@@ -439,14 +439,14 @@ bool rewriteLegacyXtalOptInputText(const QString& inputText, QString& outputText
 
 } // end anonymous namespace
 
-bool prepareXtalOptInputTextForRead(const QString& filename, const QString& inputText,
-                                    QString& outputText, bool keepCompatibilityCopy,
-                                    QString* compatibilityFilename, QString* errorMessage)
+bool convertInputText(const QString& filename, const QString& inputText,
+                      QString& outputText, bool keepCompatibilityCopy,
+                      QString* compatibilityFilename, QString* errorMessage)
 {
   if (compatibilityFilename)
     compatibilityFilename->clear();
   bool applied = false;
-  if (!rewriteLegacyXtalOptInputText(inputText, outputText, errorMessage, applied))
+  if (!convertLegacyInputText(inputText, outputText, errorMessage, applied))
     return false;
 
   if (!applied)

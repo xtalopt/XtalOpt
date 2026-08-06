@@ -356,20 +356,45 @@ template <size_t N> QString optimizerFileForKeyword(const OptimizerFileKeyword (
   return QString();
 }
 
+// Handle an invalid value according to "invalidAction", which depends on run mode:
+//   reject the change, reset to default, restore the pre-edit value.
+bool handleInvalidSetting(XtalOpt& opt, InvalidSettingAction invalidAction,
+                          const ScalarSnapshot* base,
+                          const QString& message, const QStringList& keywords)
+{
+  switch (invalidAction) {
+    case InvalidSettingAction::Reject:
+      Common::error(message);
+      return false;
+    case InvalidSettingAction::ResetToDefault:
+      Common::warning(message + " Resetting to default.");
+      for (const QString& kw : keywords)
+        applyScalarSetting(opt, kw, defaultValue(kw));
+      return true;
+    case InvalidSettingAction::KeepPrevious:
+      Common::warning(message + " Keeping the previous value.");
+      if (base) {
+        for (const QString& kw : keywords)
+          applyScalarSetting(opt, kw, base->value(kw));
+      }
+      return true;
+  }
+  return true;
+}
 
 } // anonymous namespace
 
-QString keywordForOptimizerTemplateFile(const QString& filename)
+QString optimizerTemplateFilenameToKeyword(const QString& filename)
 {
   return keywordForOptimizerFile(optimizerTemplateKeywords, filename);
 }
 
-QString filenameForOptimizerTemplateKeyword(const QString& keyword)
+QString optimizerTemplateKeywordToFilename(const QString& keyword)
 {
   return optimizerFileForKeyword(optimizerTemplateKeywords, keyword);
 }
 
-QString keywordForOptimizerInputAsset(const QString& assetName)
+QString optimizerInputAssetToKeyword(const QString& assetName)
 {
   return keywordForOptimizerFile(optimizerInputAssets, assetName);
 }
@@ -379,7 +404,7 @@ const char* queueTemplateKeyword()
   return "jobTemplates";
 }
 
-bool isOptimizerAndQueueFileKeyword(const QString& keyword)
+bool isInputJobFileKeyword(const QString& keyword)
 {
   return !optimizerFileForKeyword(optimizerTemplateKeywords, keyword).isEmpty() ||
          !optimizerFileForKeyword(optimizerInputAssets, keyword).isEmpty() ||
@@ -410,19 +435,19 @@ QString defaultValue(const QString& keyword)
   return QString();
 }
 
-bool isRequired(const QString& keyword)
+bool isRequiredInputKeyword(const QString& keyword)
 {
   const Row* row = findRow(keyword);
   return row && row->required;
 }
 
-bool isRuntimeChangeable(const QString& keyword)
+bool isRuntimeKeyword(const QString& keyword)
 {
   const Row* row = findRow(keyword);
   return row && row->runtimeChangeable;
 }
 
-bool isRepeatableInput(const QString& keyword)
+bool isRepeatableInputKeyword(const QString& keyword)
 {
   // Collect repeated entries' values (and per-step optimizer stuff).
   const Row* row = findRow(keyword);
@@ -431,7 +456,7 @@ bool isRepeatableInput(const QString& keyword)
   return !optimizerFileForKeyword(optimizerInputAssets, keyword).isEmpty();
 }
 
-QStringList allKeywords()
+QStringList allSettingKeywords()
 {
   QStringList keywords;
   for (const auto& row : rows())
@@ -439,7 +464,7 @@ QStringList allKeywords()
   return keywords;
 }
 
-QStringList requiredKeywords()
+QStringList requiredInputKeywords()
 {
   QStringList keywords;
   for (const auto& row : rows()) {
@@ -459,13 +484,13 @@ QStringList runtimeKeywords()
   return keywords;
 }
 
-bool hasScalarBinding(const QString& keyword)
+bool hasScalarSettingBinding(const QString& keyword)
 {
   const Row* row = findRow(keyword);
   return row && static_cast<bool>(row->set);
 }
 
-bool applyScalar(XtalOpt& opt, const QString& keyword, const QString& value)
+bool applyScalarSetting(XtalOpt& opt, const QString& keyword, const QString& value)
 {
   const Row* row = findRow(keyword);
   if (!row || !row->set)
@@ -473,7 +498,7 @@ bool applyScalar(XtalOpt& opt, const QString& keyword, const QString& value)
   return row->set(opt, value);
 }
 
-QString scalarValue(const XtalOpt& opt, const QString& keyword)
+QString scalarSettingValue(const XtalOpt& opt, const QString& keyword)
 {
   const Row* row = findRow(keyword);
   if (!row || !row->get)
@@ -481,13 +506,13 @@ QString scalarValue(const XtalOpt& opt, const QString& keyword)
   return row->get(opt);
 }
 
-bool isRepeated(const QString& keyword)
+bool hasRepeatedSettingBinding(const QString& keyword)
 {
   const Row* row = findRow(keyword);
   return row && static_cast<bool>(row->add);
 }
 
-QStringList repeatedEntries(const XtalOpt& opt, const QString& keyword)
+QStringList repeatedSettingEntries(const XtalOpt& opt, const QString& keyword)
 {
   const Row* row = findRow(keyword);
   if (!row || !row->list)
@@ -495,14 +520,14 @@ QStringList repeatedEntries(const XtalOpt& opt, const QString& keyword)
   return row->list(opt);
 }
 
-void clearRepeated(XtalOpt& opt, const QString& keyword)
+void clearRepeatedSetting(XtalOpt& opt, const QString& keyword)
 {
   const Row* row = findRow(keyword);
   if (row && row->clear)
     row->clear(opt);
 }
 
-bool addRepeatedEntry(XtalOpt& opt, const QString& keyword, const QString& entry)
+bool addRepeatedSettingEntry(XtalOpt& opt, const QString& keyword, const QString& entry)
 {
   const Row* row = findRow(keyword);
   if (!row || !row->add)
@@ -514,7 +539,7 @@ QString keywordSummaryText()
 {
   QString text;
   text += "XtalOpt input file keywords (xtalopt.in):\n\n";
-  text += "  R = required   C = changeable-runtime   M = multi-line\n\n";
+  text += "  Type: R=required   C=changeable-runtime   M=multi-line\n\n";
   text += QString("  %1 %2 %3\n").arg("keyword", -28).arg("default", -24).arg("type");
   text += QString("  %1 %2 %3\n").arg(QString(27, '-') + " ", -28).arg(QString(23, '-') + " ", -24).arg("----");
   for (const auto& row : rows()) {
@@ -523,7 +548,7 @@ QString keywordSummaryText()
       type += "R";
     if (row.runtimeChangeable)
       type += "C";
-    if (isRepeatableInput(row.keyword))
+    if (isRepeatableInputKeyword(row.keyword))
       type += "M";
     // Placeholders keep empty columns visibly aligned.
     QString def = defaultValue(row.keyword);
@@ -539,16 +564,16 @@ QString keywordSummaryText()
   return text;
 }
 
-void applyAllDefaults(XtalOpt& opt)
+void applyDefaultSettings(XtalOpt& opt)
 {
   for (const auto& row : rows()) {
     if (!row.set)
       continue;
-    applyScalar(opt, row.keyword, defaultValue(row.keyword));
+    applyScalarSetting(opt, row.keyword, defaultValue(row.keyword));
   }
 }
 
-ScalarSnapshot captureScalars(const XtalOpt& opt)
+ScalarSnapshot captureScalarSettings(const XtalOpt& opt)
 {
   ScalarSnapshot snapshot;
   for (const auto& row : rows()) {
@@ -556,32 +581,6 @@ ScalarSnapshot captureScalars(const XtalOpt& opt)
       snapshot.insert(row.keyword, row.get(opt));
   }
   return snapshot;
-}
-
-// Handle an invalid value according to "invalidAction", which depends on run mode:
-//   reject the change, reset to default, restore the pre-edit value.
-static bool handleInvalidSetting(XtalOpt& opt, InvalidSettingAction invalidAction,
-                                 const ScalarSnapshot* base,
-                                 const QString& message, const QStringList& keywords)
-{
-  switch (invalidAction) {
-    case InvalidSettingAction::Reject:
-      Common::error(message);
-      return false;
-    case InvalidSettingAction::ResetToDefault:
-      Common::warning(message + " Resetting to default.");
-      for (const QString& kw : keywords)
-        applyScalar(opt, kw, defaultValue(kw));
-      return true;
-    case InvalidSettingAction::KeepPrevious:
-      Common::warning(message + " Keeping the previous value.");
-      if (base) {
-        for (const QString& kw : keywords)
-          applyScalar(opt, kw, base->value(kw));
-      }
-      return true;
-  }
-  return true;
 }
 
 bool validateSettings(XtalOpt& opt, InvalidSettingAction invalidAction, const ScalarSnapshot* base)

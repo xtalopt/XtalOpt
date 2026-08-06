@@ -38,6 +38,8 @@
 
 #include <sstream>
 
+namespace Atoms {
+
 namespace {
 
 enum ReadKind
@@ -240,7 +242,7 @@ bool readInputText(const QString& filename, const QString& format, std::string& 
 
 } // namespace
 
-namespace Atoms {
+
 
 bool Formats::read(Atoms::Geometry* s, const QString& filename)
 {

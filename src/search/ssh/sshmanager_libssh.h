@@ -76,11 +76,6 @@ public:
                        const QString& pass = "",
                        unsigned int port = 22) override;
 
-  /**
-   * @return Whether the connection has been made successfully.
-   */
-  bool isValid() { return m_isValid; };
-
 public slots:
   /**
    * Returns a free connection from the pool and locks it.
@@ -130,10 +125,6 @@ protected:
   QString m_pass;
   /// Key
   QString m_hexa;
-  /// Number of connections
-  unsigned int m_connections;
-  /// Monitor whether the connections are valid
-  bool m_isValid;
 };
 
 } // end namespace Search

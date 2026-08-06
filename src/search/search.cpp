@@ -57,6 +57,8 @@
 // Uncomment for yet more debug info about probabilities
 //#define SEARCHBASE_PROBS_DEBUG
 
+namespace Search {
+
 namespace {
 
 QString sshMethodFromText(const QString& method)
@@ -79,7 +81,56 @@ bool isRemoteAbsolutePath(const QString& path)
 
 }
 
-namespace Search {
+
+
+SearchBase::BackgroundJob::BackgroundJob(std::function<void()> job)
+  : m_job(std::move(job)), m_pending(false), m_running(false),
+    m_shutDown(false)
+{
+}
+
+void SearchBase::BackgroundJob::request()
+{
+  if (m_shutDown.load())
+    return;
+
+  bool launchWorker = false;
+  {
+    std::lock_guard<std::mutex> guard(m_mutex);
+    m_pending = true;
+    if (!m_running) {
+      m_running = true;
+      launchWorker = true;
+    }
+  }
+
+  if (!launchWorker)
+    return;
+
+  (void)QtConcurrent::run([this]() { this->runLoop(); });
+}
+
+void SearchBase::BackgroundJob::shutdown()
+{
+  m_shutDown.store(true);
+}
+
+void SearchBase::BackgroundJob::runLoop()
+{
+  for (;;) {
+    {
+      std::lock_guard<std::mutex> guard(m_mutex);
+      if (m_shutDown.load() || !m_pending) {
+        m_pending = false;
+        m_running = false;
+        return;
+      }
+      m_pending = false;
+    }
+
+    m_job();
+  }
+}
 
 SearchBase::SearchBase(QObject* parent)
   : QObject(parent),
@@ -412,71 +463,6 @@ SearchBase::SearchBase(QObject* parent)
   }, "%siestaZMatrix% -- SIESTA Z-matrix coordinates");
 }
 
-SearchBase::BackgroundJob::BackgroundJob(std::function<void()> job)
-  : m_job(std::move(job)), m_pending(false), m_running(false),
-    m_shutDown(false)
-{
-}
-
-void SearchBase::BackgroundJob::request()
-{
-  if (m_shutDown.load())
-    return;
-
-  bool launchWorker = false;
-  {
-    std::lock_guard<std::mutex> guard(m_mutex);
-    m_pending = true;
-    if (!m_running) {
-      m_running = true;
-      launchWorker = true;
-    }
-  }
-
-  if (!launchWorker)
-    return;
-
-  (void)QtConcurrent::run([this]() { this->runLoop(); });
-}
-
-void SearchBase::BackgroundJob::shutdown()
-{
-  m_shutDown.store(true);
-}
-
-void SearchBase::BackgroundJob::runLoop()
-{
-  for (;;) {
-    {
-      std::lock_guard<std::mutex> guard(m_mutex);
-      if (m_shutDown.load() || !m_pending) {
-        m_pending = false;
-        m_running = false;
-        return;
-      }
-      m_pending = false;
-    }
-
-    m_job();
-  }
-}
-
-void SearchBase::requestStructureEvaluationUpdate()
-{
-  if (m_shuttingDown.load() || isSessionStarting() || isReadOnly())
-    return;
-
-  m_evaluationUpdateJob.request();
-}
-
-void SearchBase::reportStructureStateChanged(Structure* structure)
-{
-  if (!structure || m_shuttingDown.load() || isReadOnly())
-    return;
-
-  emit structureStateChanged(structure);
-}
-
 SearchBase::~SearchBase()
 {
   m_shuttingDown.store(true);
@@ -499,6 +485,22 @@ SearchBase::~SearchBase()
   queue()->reset();
   deleteTrackedStructures();
   // m_queueThread and m_tracker are destroyed automatically.
+}
+
+void SearchBase::requestStructureEvaluationUpdate()
+{
+  if (m_shuttingDown.load() || isSessionStarting() || isReadOnly())
+    return;
+
+  m_evaluationUpdateJob.request();
+}
+
+void SearchBase::reportStructureStateChanged(Structure* structure)
+{
+  if (!structure || m_shuttingDown.load() || isReadOnly())
+    return;
+
+  emit structureStateChanged(structure);
 }
 
 void SearchBase::stopQueueThread()
@@ -573,61 +575,6 @@ bool SearchBase::setSshMethod(const QString& method)
     return false;
   m_sshMethod = value;
   return true;
-}
-
-bool SearchBase::beginSession()
-{
-  // Refuse a second session while one is active or being set up.
-  if (isSessionActive() || m_isStarting.exchange(true))
-    return false;
-
-  // Clear the hard exit. Keep a soft exit read from the input file.
-  setHardExit(false);
-
-  emit startingSession();
-
-  queue()->reset();
-  deleteTrackedStructures();
-  return true;
-}
-
-void SearchBase::launchSession()
-{
-  Q_ASSERT_X(isSessionStarting(), "SearchBase::launchSession",
-             "launchSession() called without a matching beginSession()");
-
-  // Start the queue only after the structures and settings are ready.
-  if (!isReadOnly() && !m_queueThread->isRunning())
-    m_queueThread->start();
-
-  // Start the session only after leaving the starting state.
-  setSessionStarting(false);
-  setSessionActive(true);
-  emit sessionStarted();
-}
-
-void SearchBase::abortSession()
-{
-  setSessionActive(false);
-  setSessionStarting(false);
-  queue()->reset();
-  deleteTrackedStructures();
-}
-
-void SearchBase::deleteTrackedStructures()
-{
-  // GUI views must release their structure pointers before deletion begins.
-  const Qt::ConnectionType delivery = QThread::currentThread() == thread()
-                                      ? Qt::DirectConnection : Qt::BlockingQueuedConnection;
-  QMetaObject::invokeMethod(this, "structuresAboutToBeDeleted", delivery);
-
-  {
-    QWriteLocker tableLocker(&m_parentSelectionDataLock);
-    m_parentPool.clear();
-    m_parentSelectionData = ParentSelectionData();
-    ++m_selectionDataStamp;
-  }
-  tracker()->deleteAllStructures();
 }
 
 bool SearchBase::createSSHConnections()
@@ -727,6 +674,61 @@ bool SearchBase::createSSHConnections()
   Common::error(tr("SSH method '%1' is not available in this build.")
                   .arg(m_sshMethod));
   return false;
+}
+
+bool SearchBase::beginSession()
+{
+  // Refuse a second session while one is active or being set up.
+  if (isSessionActive() || m_isStarting.exchange(true))
+    return false;
+
+  // Clear the hard exit. Keep a soft exit read from the input file.
+  setHardExit(false);
+
+  emit startingSession();
+
+  queue()->reset();
+  deleteTrackedStructures();
+  return true;
+}
+
+void SearchBase::launchSession()
+{
+  Q_ASSERT_X(isSessionStarting(), "SearchBase::launchSession",
+             "launchSession() called without a matching beginSession()");
+
+  // Start the queue only after the structures and settings are ready.
+  if (!isReadOnly() && !m_queueThread->isRunning())
+    m_queueThread->start();
+
+  // Start the session only after leaving the starting state.
+  setSessionStarting(false);
+  setSessionActive(true);
+  emit sessionStarted();
+}
+
+void SearchBase::abortSession()
+{
+  setSessionActive(false);
+  setSessionStarting(false);
+  queue()->reset();
+  deleteTrackedStructures();
+}
+
+void SearchBase::deleteTrackedStructures()
+{
+  // GUI views must release their structure pointers before deletion begins.
+  const Qt::ConnectionType delivery = QThread::currentThread() == thread()
+                                      ? Qt::DirectConnection : Qt::BlockingQueuedConnection;
+  QMetaObject::invokeMethod(this, "structuresAboutToBeDeleted", delivery);
+
+  {
+    QWriteLocker tableLocker(&m_parentSelectionDataLock);
+    m_parentPool.clear();
+    m_parentSelectionData = ParentSelectionData();
+    ++m_selectionDataStamp;
+  }
+  tracker()->deleteAllStructures();
 }
 
 void SearchBase::performTheExit(int delay)
@@ -1072,7 +1074,7 @@ int SearchBase::selectTournamentParent(const QList<Structure*>& structures,
   else
     parent = (Common::getRandDouble() < 0.5) ? str_a : str_b;
 
-  if (m_verbose) {
+  if (m_debugOutput) {
     QString outs = QString("\n   Selected (tournament) %1 from structures with rank-dist (%2)")
       .arg(structures[parent]->getTag(),7).arg(total);
     outs += QString("\n   %1   %2   %3").arg(structures[str_a]->getTag(),7)
@@ -1168,7 +1170,7 @@ void SearchBase::rebuildParentSelectionData(const QList<Structure*>& structures)
   }
 
   // extra "debug-like" output (if verbose output is set)
-  if (m_verbose && strNumb > 0) {
+  if (m_debugOutput && strNumb > 0) {
     QString debOuts = "\n   STARTOBJECTIVESDATA=============\n";
     debOuts += QString("   Total structures: %1 - ").arg(strNumb,5);
     debOuts += QString("Precision: %1 - ").arg(m_objectivePrecision);
@@ -1411,7 +1413,8 @@ Structure* SearchBase::selectParentStructure(size_t poolSize)
       break;
     }
   }
-  if (m_verbose) {
+
+  if (m_debugOutput) {
     QString scaltype = "scalar-basic";
     if (usePareto)
       scaltype = "scalar-pareto";

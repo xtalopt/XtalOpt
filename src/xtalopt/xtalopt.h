@@ -45,14 +45,8 @@ class Xtal;
 // State files written by XtalOpt use this format version.
 const int CurrentStateSchemaVersion = 5;
 
-// Check whether a structure state was saved.
-bool isStateFileSaveSuccessful(const QString& filename);
-
-// Return the saved parent structure tag.
-QString savedParentStructureTag(const QString& filename);
-
 // Write a structure state file.
-void writeStructureState(Xtal& xtal, const QString& filename);
+void writeStructureStateFile(Xtal& xtal, const QString& filename);
 
 class XtalOpt : public Search::SearchBase
 {
@@ -291,48 +285,45 @@ public:
   static bool checkBetweenGeometriesIADs(const Atoms::Geometry& geometry1,
                                          const Atoms::Geometry& geometry2, const minIADs& iads);
 
-  // Save all output files  (state files, results, hull)
-  bool save(QString filename, bool notify = false);
+  // Save session
+  bool saveSessionState(QString filename, bool notify = false);
 
-  // Write the main state file only
-  bool saveSettingsState(const QString& filename);
+  // Write the state file only.
+  bool saveStateFile(const QString& filename);
 
   // Load settings/state from a file (doesn't start a session by itself).
-  bool loadSettingsState(const QString& filename);
+  bool importStateFile(const QString& filename);
 
   // Resume a saved session using the SearchBase session functions.
   bool resumeSearch(const QString& filename, bool* settingsOnlyLoaded = nullptr);
 
-  // Write job/search settings to filename.
-  bool writeOptScheme(const QString& filename);
+  // Write job/search settings to a scheme file.
+  bool saveSchemeFile(const QString& filename);
 
-  // Read job and search settings.
-  bool readOptScheme(const QString& filename, bool fullState = false);
+  // Read job and search settings from a scheme file.
+  bool loadSchemeFile(const QString& filename, bool fullState = false);
 
   // Convert an old settings file.
-  bool convertFileToCurrent(const QString& filename);
+  bool convertLegacyFileToCurrent(const QString& filename);
 
-  // Read shared settings from an input/state file.
-  bool readSettings(const QString& filename, bool fullState,
-                    bool* stateWasConverted = nullptr);
+  // Read shared settings from a state file.
+  bool readStateFile(const QString& filename, bool fullState,
+                     bool* stateWasConverted = nullptr);
 
   // Absolute path to this session's state file.
-  QString searchStateFilePath() const;
+  QString stateFilePath() const;
 
-  // Whether a state file already exists in the local work directory.
-  bool hasExistingSearchStateFile() const;
-
-  // Path to the CLI runtime-options file.
-  QString CLIRuntimeFile()
+  // Path to the CLI runtime file.
+  QString runtimeFilePath()
   {
     return Common::localPath(getLocWorkDir(), "cli-runtime-options.txt");
   }
 
-  // Update "runtime adjustable" settings
-  void updateRuntimeState();
+  // Check for changes to the runtime file.
+  void checkRuntimeFile();
 
-  // Request a save of main state file after a runtime setting change
-  void requestSettingsStateSave();
+  // Request a state file save after a runtime setting change.
+  void requestStateFileSave();
 
   // Request a save of the current results table.
   void requestResultsFileSave(bool alsoHullFile = false);
@@ -350,7 +341,7 @@ public:
   bool processInputElementalVolumes(QString s);
 
   // Process the saved single-line inputs again.
-  bool processInputData();
+  bool rebuildDerivedSettings();
 
   // Parse one molecule-unit entry.
   bool processInputMoleculeUnit(QString s);
@@ -374,21 +365,21 @@ public:
   QString seedStructuresText() const;
   void setSeedStructuresText(const QString& v);
 
-  // Read text input setting and run-time files.
-  bool readInputFile(const QString& filename, bool bestEffort,
+  // Read the input and runtime files.
+  bool loadInputFile(const QString& filename, bool bestEffort,
                      bool loadAndVerifyAssets = true);
 
   // Write an input file; warn if this fails.
-  bool writeInputFile(const QString& filename);
+  bool saveInputFile(const QString& filename);
 
-  // Read and apply run-time options (does nothing if file is missing/unreadable).
-  void readRuntimeOptions();
+  // Read and apply the runtime file. Do nothing if it cannot be read.
+  void loadRuntimeFile();
 
-  // Apply runtime options from an already-loaded runtime option text.
-  void readRuntimeOptions(const QString& runtimeText);
+  // Apply settings from runtime text.
+  void applyRuntimeText(const QString& runtimeText);
 
-  // Write the initial run-time file (CLI run).
-  void writeInitialRuntimeFile();
+  // Write the initial runtime file for a CLI run.
+  void saveRuntimeFile();
 
   // Convert multi-entry (repeated) lists to text.
   QString objectiveEntryToText(int objectiveIndex) const;
@@ -460,26 +451,26 @@ private:
   bool runSearch(const QString& stateFile, bool* settingsOnlyLoaded);
   bool checkLocalInputFiles(bool includeSeeds, QString* errorMessage) const;
   bool checkOptimizerAndQueue(const QString& readinessAction, QString* errorMessage);
-  bool canRequestFileSave() const;
-  void requestStructureStateSave(Search::Structure* structure);
-  void requestStructureStateSave(const QList<Search::Structure*>& structures);
+  bool canRequestStateFileSave() const;
+  void requestStructureStateFileSave(Search::Structure* structure);
+  void requestStructureStateFileSave(const QList<Search::Structure*>& structures);
   void markResultsFileNeedsSave();
-  void retryFileSave();
+  void retryPendingFileSaves();
   void clearPendingRequests();
   QList<Search::Structure*> trackedStructuresSnapshot();
-  bool saveRequestedStateFiles(const QString& filename, bool saveAll, bool showProgress);
+  bool savePendingStateFiles(const QString& filename, bool saveAll, bool showProgress);
   bool saveRequestedOutputFiles(bool saveAll, bool showProgress);
-  QSet<Search::Structure*> writeStructureStateFiles(const QList<Search::Structure*>& structures,
-                                                    const QSet<Search::Structure*>& structuresToSave,
-                                                    bool showProgress);
+  QSet<Search::Structure*> saveStructureStateFiles(const QList<Search::Structure*>& structures,
+                                                   const QSet<Search::Structure*>& structuresToSave,
+                                                   bool showProgress);
   void finishSearch();
   void requestFullEvaluation();
   void requestEvaluationAfterKill(Search::Structure* structure);
   bool evaluateStructuresIncrementally(const QSet<Search::Structure*>& structures);
-  // Write all XtalOpt settings groups to filename.
-  bool writeSettingsGroups(const QString& filename);
-  bool writeFreshSettingsStateFile(const QString& filename);
-  QStringList structureStateDirs(const QString& stateFile) const;
+  // Write all XtalOpt state groups to filename.
+  bool writeStateFileContents(const QString& filename);
+  bool writeFreshStateFile(const QString& filename);
+  QStringList readStructureStateDirectories(const QString& stateFile) const;
   bool restorePopulation(const QString& stateFile, const QStringList& xtalDirs);
 
   //
@@ -718,8 +709,7 @@ protected:
   void resetSpacegroups_();
 
   // Build the initial-generation plan from current settings.
-  bool buildInitialGenerationPlan(InitialGenerationPlan& plan,
-                                  QString* errorMessage = nullptr,
+  void buildInitialGenerationPlan(InitialGenerationPlan& plan,
                                   bool reportWarnings = true);
 
   // Generate and register the initial structures for a fresh search.

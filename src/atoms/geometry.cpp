@@ -95,6 +95,11 @@ void reduceNNHistChunks(std::vector<double>& final, const std::vector<int>& tmp)
   }
 }
 
+unsigned int gcd(unsigned int a, unsigned int b)
+{
+  return b == 0 ? a : gcd(b, a % b);
+}
+
 } // namespace
 
 // Convert between the row-based cell matrix and a column-based lattice array.
@@ -2279,11 +2284,6 @@ QString Geometry::getChemicalFormula() const
   for (int i = 0; i < symbols.size(); ++i)
     formula += QString("%1%2").arg(symbols.at(i)).arg(counts.at(i));
   return formula;
-}
-
-static unsigned int gcd(unsigned int a, unsigned int b)
-{
-  return b == 0 ? a : gcd(b, a % b);
 }
 
 unsigned int Geometry::getFormulaUnits() const

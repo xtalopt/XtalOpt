@@ -401,7 +401,7 @@ void StructureTest::workflowStateCycle()
   saved->setStrucConstraintState(Structure::Cs_Dismiss);
   saved->setStrucConstraintRedoCount(1);
   QVERIFY(producer.tracker()->append(saved));
-  QVERIFY(producer.save(stateFile, false));
+  QVERIFY(producer.saveSessionState(stateFile, false));
 
   XtalOpt::XtalOpt restored;
   restored.setRunMode(XtalOpt::XtalOpt::RunModeReadOnly);
@@ -634,7 +634,7 @@ void StructureTest::malformedCurrentGeometryIsRejectedOnSessionLoad()
   saved->addAtom(1, Common::Vector3(0.0, 0.0, 0.0));
   saved->addAtom(8, Common::Vector3(1.0, 0.0, 0.0));
   QVERIFY(producer.tracker()->append(saved));
-  QVERIFY(producer.save(stateFile, false));
+  QVERIFY(producer.saveSessionState(stateFile, false));
 
   {
     QSettings settings(Common::localPath(structureDir, "structure.state"), QSettings::IniFormat);

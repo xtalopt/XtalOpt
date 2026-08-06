@@ -53,10 +53,12 @@ using namespace Search;
 
 namespace XtalOpt {
 
+namespace {
+
 // Set the default values from the settings table before reading user settings.
 void applyBuiltInDefaults(XtalOpt& xtalopt)
 {
-  Settings::applyAllDefaults(xtalopt);
+  Settings::applyDefaultSettings(xtalopt);
   xtalopt.interComp().clear();
 
   // Create one default optimization step with the default queue and optimizer.
@@ -130,7 +132,7 @@ bool checkTemplateFiles(const QString& text, const QString& templateName, QStrin
 
 // Check an objective or constraint output file name. It must be a simple
 // relative name so the output stays in the structure directory.
-static bool isSafeOutputFilename(const QString& filename)
+bool isSafeOutputFilename(const QString& filename)
 {
   const QString trimmed = filename.trimmed();
   if (trimmed.isEmpty() || trimmed != filename)
@@ -144,6 +146,8 @@ static bool isSafeOutputFilename(const QString& filename)
   return QFileInfo(trimmed).fileName() == trimmed;
 }
 
+} // namespace
+
 XtalOpt::XtalOpt(QObject* parent)
   : SearchBase(parent),
     x_settingsStateNeedsSave(false),
@@ -154,7 +158,7 @@ XtalOpt::XtalOpt(QObject* parent)
     x_hullSnapshotSequence(0),
     x_lastOutputWriteMs(0),
     x_lastOutputWriteEndMs(0),
-    x_fileSaveJob([this]() { saveRequestedStateFiles(searchStateFilePath(), false, false); }),
+    x_fileSaveJob([this]() { savePendingStateFiles(stateFilePath(), false, false); }),
     x_outputSaveJob([this]() { saveRequestedOutputFiles(false, false); }),
     x_similarityCheckJob([this]() { checkForSimilarities_(); requestResultsFileSave(); }),
     x_spacegroupResetJob([this]() { resetSpacegroups_(); }),
@@ -181,7 +185,7 @@ XtalOpt::XtalOpt(QObject* parent)
   connect(this, &SearchBase::structureStateChanged,
           this,
           static_cast<void (XtalOpt::*)(Search::Structure*)>(
-              &XtalOpt::requestStructureStateSave),
+              &XtalOpt::requestStructureStateFileSave),
           Qt::DirectConnection);
   connect(this, &SearchBase::startingSession,
           this, &XtalOpt::clearPendingRequests, Qt::DirectConnection);
@@ -198,13 +202,13 @@ XtalOpt::XtalOpt(QObject* parent)
 
   x_saveRetryTimer->setSingleShot(true);
   x_saveRetryTimer->setInterval(SAVE_RETRY_DELAY);
-  connect(x_saveRetryTimer, &QTimer::timeout, this, &XtalOpt::retryFileSave);
+  connect(x_saveRetryTimer, &QTimer::timeout, this, &XtalOpt::retryPendingFileSaves);
 
-  // Set the run-time file timer for CLI runs.
-  connect(x_runtimeTimer, &QTimer::timeout, this, &XtalOpt::updateRuntimeState);
+  // Set the runtime file timer for CLI runs.
+  connect(x_runtimeTimer, &QTimer::timeout, this, &XtalOpt::checkRuntimeFile);
 
   // Update values from the input.
-  processInputData();
+  rebuildDerivedSettings();
 }
 
 void XtalOpt::registerXtalOptOptimizerAndQueue()
@@ -283,7 +287,7 @@ XtalOpt::~XtalOpt()
   x_initWC = nullptr;
 }
 
-bool XtalOpt::canRequestFileSave() const
+bool XtalOpt::canRequestStateFileSave() const
 {
   return isSessionActive() && !isSessionStarting() && !isReadOnly();
 }
@@ -300,9 +304,9 @@ QList<Search::Structure*> XtalOpt::trackedStructuresSnapshot()
   return structures;
 }
 
-void XtalOpt::requestSettingsStateSave()
+void XtalOpt::requestStateFileSave()
 {
-  if (!canRequestFileSave())
+  if (!canRequestStateFileSave())
     return;
 
   {
@@ -312,7 +316,7 @@ void XtalOpt::requestSettingsStateSave()
   x_fileSaveJob.request();
 }
 
-void XtalOpt::requestStructureStateSave(Search::Structure* structure)
+void XtalOpt::requestStructureStateFileSave(Search::Structure* structure)
 {
   // Objc/cons calculation statuses don't need a save operation
   if (structure) {
@@ -323,12 +327,12 @@ void XtalOpt::requestStructureStateSave(Search::Structure* structure)
 
   QList<Search::Structure*> structures;
   structures.append(structure);
-  requestStructureStateSave(structures);
+  requestStructureStateFileSave(structures);
 }
 
-void XtalOpt::requestStructureStateSave(const QList<Search::Structure*>& structures)
+void XtalOpt::requestStructureStateFileSave(const QList<Search::Structure*>& structures)
 {
-  if (structures.isEmpty() || !canRequestFileSave())
+  if (structures.isEmpty() || !canRequestStateFileSave())
     return;
 
   {
@@ -345,7 +349,7 @@ void XtalOpt::requestStructureStateSave(const QList<Search::Structure*>& structu
 
 void XtalOpt::requestResultsFileSave(bool alsoHullFile)
 {
-  if (!canRequestFileSave())
+  if (!canRequestStateFileSave())
     return;
 
   if (alsoHullFile) {
@@ -372,7 +376,7 @@ void XtalOpt::requestResultsFileSave(bool alsoHullFile)
 void XtalOpt::markResultsFileNeedsSave()
 {
   x_resultsFileSaveScheduled.store(false);
-  if (!canRequestFileSave())
+  if (!canRequestStateFileSave())
     return;
 
   {
@@ -382,9 +386,9 @@ void XtalOpt::markResultsFileNeedsSave()
   x_outputSaveJob.request();
 }
 
-void XtalOpt::retryFileSave()
+void XtalOpt::retryPendingFileSaves()
 {
-  if (!canRequestFileSave())
+  if (!canRequestStateFileSave())
     return;
 
   x_fileSaveJob.request();
@@ -491,12 +495,12 @@ void XtalOpt::finishSearch()
   refreshParentSelectionFronts(getAllParentPoolStructures());
 
   // Structure files are kept current throughout the run; write the ones
-  //   still waiting, and always refresh the main state file.
+  //   still waiting, and always refresh the state file.
   {
     std::lock_guard<std::mutex> guard(x_filesNeedingSaveMutex);
     x_settingsStateNeedsSave = true;
   }
-  saveRequestedStateFiles(searchStateFilePath(), false, false);
+  savePendingStateFiles(stateFilePath(), false, false);
   saveRequestedOutputFiles(true, false);
 }
 
@@ -551,7 +555,7 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
       const bool fileIsValid =
         settings.value("xtalopt/saveSuccessful", false).toBool();
       bool loadedStateWasConverted = false;
-      if (fileIsValid && readSettings(loadedStateFile, true, &loadedStateWasConverted)) {
+      if (fileIsValid && readStateFile(loadedStateFile, true, &loadedStateWasConverted)) {
         stateWasConverted = loadedStateWasConverted;
         break;
       }
@@ -574,7 +578,7 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
       loadedStateFile += ".old";
     }
 
-    xtalDirs = structureStateDirs(loadedStateFile);
+    xtalDirs = readStructureStateDirectories(loadedStateFile);
     if (xtalDirs.isEmpty()) {
       Common::error(QString("No structures were found in %1.")
                       .arg(QFileInfo(loadedStateFile).absoluteDir().absolutePath()));
@@ -589,6 +593,9 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
   if (!readOnly) {
     Common::message("\n=== Pre-checks\n");
 
+    const QString stateFile = stateFilePath();
+    bool hasExistingStateFile = QFile::exists(stateFile) || QFile::exists(stateFile + ".old");
+
     if (!restoring) {
       const QString locWorkDir = getLocWorkDir();
       if (locWorkDir.isEmpty()) {
@@ -597,7 +604,7 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
         startupError = tr("The local working directory must be an absolute "
                           "path before starting the search.\n\nCurrent value:\n%1")
                          .arg(locWorkDir);
-      } else if (hasExistingSearchStateFile()) {
+      } else if (hasExistingStateFile) {
         startupError = tr("XtalOpt data is already saved at:\n%1"
                           "\n\nEmpty the directory to proceed or "
                           "select a new 'Local working directory'!")
@@ -627,21 +634,17 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
 
     if (startupError.isEmpty() && !restoring) {
       InitialGenerationPlan plan;
-      if (!buildInitialGenerationPlan(plan, &startupError, false)) {
-        if (startupError.isEmpty())
-          startupError = tr("Could not prepare the initial structures.");
-      } else {
-        const int maxStructures = getMaxNumStructures();
-        if (plan.totalTarget > static_cast<uint>(maxStructures)) {
-          Common::warning(
-            tr("Requested initial generation exceed maxNumStructures; max will apply to later generation\n"
-               "  Total initial %1 (%2 seed, %3 forced RandSpg, %4 random numInitial) - maxNumStructures (%5)")
-              .arg(plan.totalTarget)
-              .arg(plan.seedCount)
-              .arg(plan.forcedRandSpgCount)
-              .arg(plan.randomCount)
-              .arg(maxStructures));
-        }
+      buildInitialGenerationPlan(plan, false);
+      const int maxStructures = getMaxNumStructures();
+      if (plan.totalTarget > static_cast<uint>(maxStructures)) {
+        Common::warning(
+          tr("Requested initial generation exceed maxNumStructures; max will apply to later generation\n"
+             "  Total initial %1 (%2 seed, %3 forced RandSpg, %4 random numInitial) - maxNumStructures (%5)")
+            .arg(plan.totalTarget)
+            .arg(plan.seedCount)
+            .arg(plan.forcedRandSpgCount)
+            .arg(plan.randomCount)
+            .arg(maxStructures));
       }
     }
 
@@ -669,10 +672,10 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
     }
   }
 
-  // Save all structure files before replacing a converted main state file.
-  // The old main state is still needed while its old structure files are read.
+  // Save all structure files before replacing a converted state file.
+  // The old state is still needed while its old structure files are read.
   if (restoring && !readOnly && stateWasConverted) {
-    if (!saveRequestedStateFiles(searchStateFilePath(), true, false)) {
+    if (!savePendingStateFiles(stateFilePath(), true, false)) {
       const QString saveError = tr("Could not finish updating the old structure state files. "
                                    "The search was not resumed.");
       Common::error(saveError);
@@ -685,7 +688,7 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
   launchSession();
 
   if (!restoring) {
-    save(searchStateFilePath(), false);
+    saveSessionState(stateFilePath(), false);
   } else {
     const QString formattedTime =
       QDateTime::currentDateTime().toString("MMMM dd, yyyy   hh:mm:ss");
@@ -699,9 +702,9 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
     }
   }
 
-  // Write and watch the run-time file for CLI runs.
+  // Write and watch the runtime file for CLI runs.
   if (x_runMode == RunModeCliStart || x_runMode == RunModeCliResume) {
-    writeInitialRuntimeFile();
+    saveRuntimeFile();
     x_runtimeTimer->start(RUNTIME_FILE_CHECK_INTERVAL);
   }
 
@@ -812,7 +815,7 @@ bool XtalOpt::checkOptimizerAndQueue(const QString& readinessAction, QString* er
   if (isLimitRunningJobs() && getRunningJobLimit() == 0) {
     Common::warning(tr("The number of running jobs is currently set to 0.\n"
                        "You will need to increase this value before the search " "can begin.\n"
-                       "(You can change this in the runtime options file or in "
+                       "(You can change this in the runtime file or in "
                        "the interactive search settings.)"));
   }
 
@@ -820,205 +823,11 @@ bool XtalOpt::checkOptimizerAndQueue(const QString& readinessAction, QString* er
     Common::warning(tr("The number of continuous structures is currently set to 0.\n"
                        "You will need to increase this value before the search "
                        "can move past the first generation.\n"
-                       "(You can change this in the runtime options file or in "
+                       "(You can change this in the runtime file or in "
                        "the interactive search settings.)"));
   }
 
   return true;
-}
-
-bool XtalOpt::buildInitialGenerationPlan(InitialGenerationPlan& plan, QString*, bool reportWarnings)
-{
-  plan = InitialGenerationPlan();
-  plan.seedCount = static_cast<uint>(seedList().size());
-
-  // The list of forced space-group counts (index = spg-1, 0 = not forced).
-  plan.randSpgCounts.clear();
-  for (uint spg = 1; spg <= 230; ++spg) {
-    const int requested = (static_cast<int>(spg) <= minXtalsOfSpg().size())
-        ? minXtalsOfSpg().at(spg - 1)
-        : 0;
-    plan.randSpgCounts.append(requested > 0 ? requested : 0);
-  }
-  for (int i = 0; i < plan.randSpgCounts.size(); ++i) {
-    const int requested = plan.randSpgCounts.at(i);
-    if (requested <= 0)
-      continue;
-
-    const uint spg = static_cast<uint>(i + 1);
-    const int compatibleFormulas = randSpgCompatibleFormulaStrings(spg).size();
-    if (compatibleFormulas == 0) {
-      if (reportWarnings && isVerbose()) {
-        Common::message(tr("   forced RandSpg space group %1 (requested %2 times) can't work "
-                           "for any input formula.").arg(spg).arg(requested));
-      }
-      plan.randSpgCounts[i] = -1;
-      continue;
-    }
-
-    plan.forcedRandSpgCount += static_cast<uint>(requested * compatibleFormulas);
-  }
-
-  plan.randomCount = getNumInitial();
-  plan.totalTarget = plan.seedCount + plan.forcedRandSpgCount + plan.randomCount;
-  return true;
-}
-
-bool XtalOpt::generateInitialStructures()
-{
-  ////////////////////////////////////////////////////////////////////////
-  /// This function generates "initial population". Generally, it generates:
-  ///
-  /// a) "forced structures" when applicable:
-  ///   1) seed structures (if user provides any)
-  ///   2) relevant spg#s to all input formulas (if forced randSpg is set)
-  ///
-  /// b) "random structures" up to "total random initial structures", from:
-  ///   3) random structures using randSpg (if user sets usingRandSpg)
-  ///   4) random structures using molUnit (if user sets molUnits)
-  ///   5) random structures from compositions
-  ////////////////////////////////////////////////////////////////////////
-
-  InitialGenerationPlan plan;
-  QString planningError;
-  if (!buildInitialGenerationPlan(plan, &planningError)) {
-    if (!planningError.isEmpty())
-      Common::error(planningError);
-    return false;
-  }
-
-  // Set up progress reporting
-  beginProgressUpdate(tr("Generating structures..."), 0, 0);
-
-  // Initialize loop variables
-  int failed = 0;
-  QString filename;
-
-  // Use new xtal count in case "addXtal" falls behind so that we
-  //   don't duplicate structures when switching from seeds -> random.
-  uint newXtalCount = 0;
-
-  // Load seeds...
-  for (int i = 0; i < seedList().size(); i++) {
-    filename = seedList().at(i);
-    if (this->addSeed(filename)) {
-      updateProgressBar(plan.totalTarget, newXtalCount + failed, newXtalCount);
-      newXtalCount++;
-    } else {
-      failed++;
-    }
-  }
-
-  // Generate requested RandSpg structures. The plan keeps the remaining count.
-  if (plan.forcedRandSpgCount > 0) {
-    QList<int> spgStillNeeded = plan.randSpgCounts;
-    for (int i = 0; i < spgStillNeeded.size(); i++) {
-      while (spgStillNeeded.at(i) > 0) {
-        for (int compi = 0; compi < compList().size(); compi++) {
-          uint spg = i + 1;
-
-          // If the spacegroup isn't possible, just continue
-          if (!isRandSpgPossibleForComposition(spg, compList()[compi]))
-            continue;
-
-          updateProgressBar(plan.totalTarget, newXtalCount + failed, newXtalCount);
-          if (acceptInitialXtal(randSpgXtal(1, newXtalCount + 1, compList()[compi], spg)))
-            newXtalCount++;
-          else
-            failed++;
-        }
-        spgStillNeeded[i]--;
-      }
-    }
-  }
-
-  // Generate the requested random initial structures (retry each until one is
-  //   accepted, up to a fixed total count).
-  const int maxRandomAttempts = 10000;
-  uint randomGenerated = 0;
-  while (randomGenerated < plan.randomCount) {
-    bool accepted = false;
-    for (int attempt = 0; attempt < maxRandomAttempts; ++attempt) {
-      updateProgressBar(plan.totalTarget, newXtalCount + failed, newXtalCount);
-      if (acceptInitialXtal(generateRandomXtal(1, newXtalCount + 1))) {
-        newXtalCount++;
-        accepted = true;
-        break;
-      }
-      failed++;
-    }
-    if (!accepted) {
-      Common::warning(QString("%1: failed too many times while generating %2. "
-                              "Giving up.")
-                        .arg(__func__)
-                        .arg(tr("random initial structure")));
-      endProgressUpdate();
-      return false;
-    }
-    randomGenerated++;
-  }
-
-  // Wait for all structures to appear in tracker
-  updateProgressValue(-1, tr("Waiting for structures to initialize..."), 0, newXtalCount);
-
-  connect(tracker(), &Tracker::newStructureAdded, x_initWC, &SlottedWaitCondition::wakeAllSlot);
-
-  x_initWC->prewaitLock();
-  do {
-    updateProgressValue(tracker()->size(),
-                        tr("Waiting for structures to initialize (%1 of %2)...")
-                          .arg(tracker()->size())
-                          .arg(newXtalCount));
-    // Do not wait here forever. A final signal can arrive before the wait.
-    x_initWC->wait(INIT_WAIT_TIMEOUT);
-  } while (tracker()->size() < static_cast<int>(newXtalCount));
-  x_initWC->postwaitUnlock();
-
-  // We're done with x_initWC.
-  disconnect(tracker(), &Tracker::newStructureAdded, x_initWC, &SlottedWaitCondition::wakeAllSlot);
-
-  endProgressUpdate();
-
-  return true;
-}
-
-// Check and add an initial structure. Delete it when it is not accepted.
-bool XtalOpt::acceptInitialXtal(Xtal* generated)
-{
-  if (!checkXtal(generated)) {
-    delete generated;
-    return false;
-  }
-
-  generated->findSpaceGroup(getTolSpg());
-  if (isVerbose()) {
-    Common::message(QString("   generated initial structure: %1")
-                    .arg(generated->getParents()));
-  }
-  initializeAndAddXtal(generated, 1, generated->getParents());
-  return true;
-}
-
-void XtalOpt::updateRuntimeState()
-{
-  // Only refresh the runtime file in an active CLI session.
-  if (!isSessionActive() ||
-      (x_runMode != RunModeCliStart && x_runMode != RunModeCliResume))
-    return;
-
-  const QString filename = CLIRuntimeFile();
-  if (filename.isEmpty() || !QFileInfo(filename).exists())
-    return;
-
-  QString runtimeText;
-  if (!Common::readFileToQString(filename, &runtimeText))
-    return;
-  if (runtimeText == x_lastRuntimeText)
-    return;
-
-  // Do not read an unchanged run-time file. Warnings belong to one file update.
-  x_lastRuntimeText = runtimeText;
-  readRuntimeOptions(runtimeText);
 }
 
 bool XtalOpt::validateUserObjectiveDefinition(ObjType objtyp, const QString& objexe,
@@ -1109,7 +918,7 @@ bool XtalOpt::removeUserObjective(int index)
     return false;
 
   SearchBase::removeObjective(index);
-  processInputData();
+  rebuildDerivedSettings();
   return true;
 }
 
@@ -1209,37 +1018,6 @@ void XtalOpt::setSeedStructuresText(const QString& v)
     if (!trimmed.isEmpty())
       seedList().append(trimmed);
   }
-}
-
-// Return the repeated keywords' values.
-QStringList XtalOpt::objectiveLines() const
-{
-  QStringList out;
-  for (int i = 0; i < getUserObjectivesNum(); ++i)
-    out << objectiveEntryToText(getUserObjectiveIndex(i));
-  return out;
-}
-
-QStringList XtalOpt::constraintLines() const
-{
-  QStringList out;
-  for (int i = 0; i < getConstraintsNum(); ++i)
-    out << constraintEntryToText(i);
-  return out;
-}
-
-// Return the custom IAD values. Both (a,b) and (b,a) for each pair are stored.
-QStringList XtalOpt::customIADLines() const
-{
-  QStringList out;
-  for (auto it = interComp().constBegin(); it != interComp().constEnd(); ++it)
-    out << customIADEntryToText(it.key().first, it.key().second, it.value().minIAD);
-  return out;
-}
-
-QStringList XtalOpt::molUnitLines() const
-{
-  return moleculeUnitInputs();
 }
 
 } // end namespace XtalOpt

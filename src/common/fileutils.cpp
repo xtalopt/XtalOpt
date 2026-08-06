@@ -24,19 +24,6 @@
 
 namespace Common {
 
-bool isReadableFile(const QString& path)
-{
-  const QFileInfo info(path);
-  return info.exists() && info.isFile() && info.isReadable();
-}
-
-bool isReadableDirectory(const QString& path)
-{
-  const QFileInfo info(path);
-  return info.exists() && info.isDir() && info.isReadable();
-}
-
-
 QString localPath(const QString& base, const QString& child)
 {
   if (child.isEmpty())
@@ -108,34 +95,16 @@ bool readFileToQString(const QString& filename, QString* contents)
   return true;
 }
 
-bool removeDir(const QString& dirName)
+bool isReadableFile(const QString& path)
 {
-// Adapted from john.nachtimwald.com/2010/06/08/qt-remove-directory-and-its-contents/
-  bool result = true;
-  QDir dir(dirName);
+  const QFileInfo info(path);
+  return info.exists() && info.isFile() && info.isReadable();
+}
 
-  if (dir.exists(dirName)) {
-    const QFileInfoList entries = dir.entryInfoList(
-      QDir::NoDotAndDotDot | QDir::System | QDir::Hidden | QDir::AllDirs | QDir::Files,
-      QDir::DirsFirst);
-    for (const QFileInfo& info : entries) {
-      // Do not follow a directory link: remove the link, not its contents.
-      if (info.isSymLink() && info.isDir()) {
-        result = QFile::remove(info.absoluteFilePath()) || dir.rmdir(info.absoluteFilePath());
-      } else if (info.isDir()) {
-        result = removeDir(info.absoluteFilePath());
-      } else {
-        result = QFile::remove(info.absoluteFilePath());
-      }
-
-      if (!result) {
-        return result;
-      }
-    }
-    result = dir.rmdir(dirName);
-  }
-
-  return result;
+bool isReadableDirectory(const QString& path)
+{
+  const QFileInfo info(path);
+  return info.exists() && info.isDir() && info.isReadable();
 }
 
 bool copyDir(const QString& sourceDir, const QString& destDir)
@@ -169,6 +138,36 @@ bool copyDir(const QString& sourceDir, const QString& destDir)
   }
 
   return true;
+}
+
+bool removeDir(const QString& dirName)
+{
+// Adapted from john.nachtimwald.com/2010/06/08/qt-remove-directory-and-its-contents/
+  bool result = true;
+  QDir dir(dirName);
+
+  if (dir.exists(dirName)) {
+    const QFileInfoList entries = dir.entryInfoList(
+      QDir::NoDotAndDotDot | QDir::System | QDir::Hidden | QDir::AllDirs | QDir::Files,
+      QDir::DirsFirst);
+    for (const QFileInfo& info : entries) {
+      // Do not follow a directory link: remove the link, not its contents.
+      if (info.isSymLink() && info.isDir()) {
+        result = QFile::remove(info.absoluteFilePath()) || dir.rmdir(info.absoluteFilePath());
+      } else if (info.isDir()) {
+        result = removeDir(info.absoluteFilePath());
+      } else {
+        result = QFile::remove(info.absoluteFilePath());
+      }
+
+      if (!result) {
+        return result;
+      }
+    }
+    result = dir.rmdir(dirName);
+  }
+
+  return result;
 }
 
 } // namespace Common

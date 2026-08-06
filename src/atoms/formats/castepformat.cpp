@@ -32,6 +32,181 @@
 
 namespace Atoms {
 
+namespace {
+
+QString stripCastepComment(const QString& line)
+{
+  return line.section('#', 0, 0).section('!', 0, 0).trimmed();
+}
+
+bool castepIsNumber(const QString& text)
+{
+  bool ok = false;
+  text.toDouble(&ok);
+  return ok;
+}
+
+double castepUnitScale(const QString& unit)
+{
+  if (unit.toLower().contains("bohr"))
+    return 1.0 / ANG2BOHR;
+  return 1.0;
+}
+
+bool parseCastepVector(const QString& line, Common::Vector3& vector)
+{
+  const QStringList fields = line.split(" ", QtCompat::SkipEmptyParts);
+  if (fields.size() < 3)
+    return false;
+  bool ok0 = false, ok1 = false, ok2 = false;
+  vector = Common::Vector3(fields.at(0).toDouble(&ok0), fields.at(1).toDouble(&ok1),
+                   fields.at(2).toDouble(&ok2));
+  return ok0 && ok1 && ok2;
+}
+
+} // namespace
+
+
+bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
+{
+  QFile file(filename);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    Common::error(QString("CASTEP input, %1, could not be opened!")
+                 .arg(filename));
+    return false;
+  }
+
+  QTextStream in(&file);
+  QStringList lines;
+  while (!in.atEnd()) {
+    const QString line = stripCastepComment(in.readLine());
+    if (!line.isEmpty())
+      lines.append(line);
+  }
+
+  bool cellFound = false;
+  bool coordsFound = false;
+  bool fractionalCoords = false;
+  Common::Matrix3 cellMatrix = Common::Matrix3::Zero();
+  QList<unsigned int> atomicNums;
+  QList<Common::Vector3> coords;
+
+  for (int i = 0; i < lines.size(); ++i) {
+    const QString line = lines.at(i);
+    const QString lower = line.toLower();
+
+    if (lower.startsWith("%block lattice_cart")) {
+      double scale = 1.0;
+      int firstVectorLine = i + 1;
+      if (firstVectorLine < lines.size()) {
+        const QStringList fields = lines.at(firstVectorLine).split(" ", QtCompat::SkipEmptyParts);
+        if (fields.size() == 1 && !castepIsNumber(fields.first())) {
+          scale = castepUnitScale(fields.first());
+          ++firstVectorLine;
+        }
+      }
+      if (firstVectorLine + 2 >= lines.size()) {
+        Common::error("Incomplete LATTICE_CART block in CASTEP input.");
+        return false;
+      }
+      for (int j = 0; j < 3; ++j) {
+        Common::Vector3 vector;
+        if (!parseCastepVector(lines.at(firstVectorLine + j), vector)) {
+          Common::error(QString("Could not parse LATTICE_CART line in CASTEP input: %1")
+                       .arg(lines.at(firstVectorLine + j)));
+          return false;
+        }
+        cellMatrix(j, 0) = vector.x() * scale;
+        cellMatrix(j, 1) = vector.y() * scale;
+        cellMatrix(j, 2) = vector.z() * scale;
+      }
+      cellFound = true;
+    } else if (lower.startsWith("%block lattice_abc")) {
+      double scale = 1.0;
+      int firstParamLine = i + 1;
+      if (firstParamLine < lines.size()) {
+        const QStringList fields = lines.at(firstParamLine).split(" ", QtCompat::SkipEmptyParts);
+        if (fields.size() == 1 && !castepIsNumber(fields.first())) {
+          scale = castepUnitScale(fields.first());
+          ++firstParamLine;
+        }
+      }
+      if (firstParamLine + 1 >= lines.size()) {
+        Common::error("Incomplete LATTICE_ABC block in CASTEP input.");
+        return false;
+      }
+      Common::Vector3 lengths, angles;
+      if (!parseCastepVector(lines.at(firstParamLine), lengths) ||
+          !parseCastepVector(lines.at(firstParamLine + 1), angles)) {
+        Common::error("Could not parse LATTICE_ABC block in CASTEP input.");
+        return false;
+      }
+      cellMatrix = Atoms::UnitCell(lengths.x() * scale, lengths.y() * scale,
+                            lengths.z() * scale, angles.x(), angles.y(), angles.z()).cellMatrix();
+      cellFound = true;
+    } else if (lower.startsWith("%block positions_frac") ||
+               lower.startsWith("%block positions_abs")) {
+      fractionalCoords = lower.startsWith("%block positions_frac");
+      double scale = 1.0;
+      int firstAtomLine = i + 1;
+      if (!fractionalCoords && firstAtomLine < lines.size()) {
+        const QStringList fields = lines.at(firstAtomLine).split(" ", QtCompat::SkipEmptyParts);
+        if (fields.size() == 1 && !castepIsNumber(fields.first())) {
+          scale = castepUnitScale(fields.first());
+          ++firstAtomLine;
+        }
+      }
+
+      for (int j = firstAtomLine; j < lines.size(); ++j) {
+        const QString l = lines.at(j);
+        if (l.toLower().startsWith("%endblock")) {
+          i = j;
+          break;
+        }
+        const QStringList fields = l.split(" ", QtCompat::SkipEmptyParts);
+        if (fields.size() < 4)
+          continue;
+        bool ok0 = false, ok1 = false, ok2 = false;
+        Common::Vector3 pos(fields.at(1).toDouble(&ok0), fields.at(2).toDouble(&ok1),
+                    fields.at(3).toDouble(&ok2));
+        const unsigned int atomicNum = Atoms::ElementInfo::getAtomicNum(fields.at(0).toStdString());
+        if (!ok0 || !ok1 || !ok2 || atomicNum == 0) {
+          Common::error(QString("Could not parse positions line in CASTEP input: %1")
+                       .arg(l));
+          return false;
+        }
+        atomicNums.append(atomicNum);
+        coords.append(pos * scale);
+      }
+      coordsFound = !coords.isEmpty();
+    }
+  }
+
+  if (!cellFound || !coordsFound) {
+    if (!cellFound)
+      Common::error("Cell info was not found in CASTEP input!");
+    if (!coordsFound)
+      Common::error("Atom coords not found in CASTEP input!");
+    return false;
+  }
+
+  Atoms::UnitCell uc(cellMatrix);
+  if (fractionalCoords) {
+    for (int i = 0; i < coords.size(); ++i)
+      coords[i] = uc.toCartesian(coords[i]);
+  }
+
+  std::vector<Atoms::Atom> atoms;
+  atoms.reserve(coords.size());
+  for (int i = 0; i < coords.size(); ++i)
+    atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
+
+  s->clear();
+  s->setUnitCell(uc);
+  s->setAtoms(atoms);
+  return true;
+}
+
 /** The output we are looking for should look something like this:
  *
  * ================================================================================
@@ -197,176 +372,6 @@ bool CastepFormat::readOutput(Atoms::Geometry* s, const QString& filename)
   for (int i = 0; i < coords.size(); ++i) {
     atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
   }
-
-  s->clear();
-  s->setUnitCell(uc);
-  s->setAtoms(atoms);
-  return true;
-}
-
-static QString stripCastepComment(const QString& line)
-{
-  return line.section('#', 0, 0).section('!', 0, 0).trimmed();
-}
-
-static bool castepIsNumber(const QString& text)
-{
-  bool ok = false;
-  text.toDouble(&ok);
-  return ok;
-}
-
-static double castepUnitScale(const QString& unit)
-{
-  if (unit.toLower().contains("bohr"))
-    return 1.0 / ANG2BOHR;
-  return 1.0;
-}
-
-static bool parseCastepVector(const QString& line, Common::Vector3& vector)
-{
-  const QStringList fields = line.split(" ", QtCompat::SkipEmptyParts);
-  if (fields.size() < 3)
-    return false;
-  bool ok0 = false, ok1 = false, ok2 = false;
-  vector = Common::Vector3(fields.at(0).toDouble(&ok0), fields.at(1).toDouble(&ok1),
-                   fields.at(2).toDouble(&ok2));
-  return ok0 && ok1 && ok2;
-}
-
-bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
-{
-  QFile file(filename);
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    Common::error(QString("CASTEP input, %1, could not be opened!")
-                 .arg(filename));
-    return false;
-  }
-
-  QTextStream in(&file);
-  QStringList lines;
-  while (!in.atEnd()) {
-    const QString line = stripCastepComment(in.readLine());
-    if (!line.isEmpty())
-      lines.append(line);
-  }
-
-  bool cellFound = false;
-  bool coordsFound = false;
-  bool fractionalCoords = false;
-  Common::Matrix3 cellMatrix = Common::Matrix3::Zero();
-  QList<unsigned int> atomicNums;
-  QList<Common::Vector3> coords;
-
-  for (int i = 0; i < lines.size(); ++i) {
-    const QString line = lines.at(i);
-    const QString lower = line.toLower();
-
-    if (lower.startsWith("%block lattice_cart")) {
-      double scale = 1.0;
-      int firstVectorLine = i + 1;
-      if (firstVectorLine < lines.size()) {
-        const QStringList fields = lines.at(firstVectorLine).split(" ", QtCompat::SkipEmptyParts);
-        if (fields.size() == 1 && !castepIsNumber(fields.first())) {
-          scale = castepUnitScale(fields.first());
-          ++firstVectorLine;
-        }
-      }
-      if (firstVectorLine + 2 >= lines.size()) {
-        Common::error("Incomplete LATTICE_CART block in CASTEP input.");
-        return false;
-      }
-      for (int j = 0; j < 3; ++j) {
-        Common::Vector3 vector;
-        if (!parseCastepVector(lines.at(firstVectorLine + j), vector)) {
-          Common::error(QString("Could not parse LATTICE_CART line in CASTEP input: %1")
-                       .arg(lines.at(firstVectorLine + j)));
-          return false;
-        }
-        cellMatrix(j, 0) = vector.x() * scale;
-        cellMatrix(j, 1) = vector.y() * scale;
-        cellMatrix(j, 2) = vector.z() * scale;
-      }
-      cellFound = true;
-    } else if (lower.startsWith("%block lattice_abc")) {
-      double scale = 1.0;
-      int firstParamLine = i + 1;
-      if (firstParamLine < lines.size()) {
-        const QStringList fields = lines.at(firstParamLine).split(" ", QtCompat::SkipEmptyParts);
-        if (fields.size() == 1 && !castepIsNumber(fields.first())) {
-          scale = castepUnitScale(fields.first());
-          ++firstParamLine;
-        }
-      }
-      if (firstParamLine + 1 >= lines.size()) {
-        Common::error("Incomplete LATTICE_ABC block in CASTEP input.");
-        return false;
-      }
-      Common::Vector3 lengths, angles;
-      if (!parseCastepVector(lines.at(firstParamLine), lengths) ||
-          !parseCastepVector(lines.at(firstParamLine + 1), angles)) {
-        Common::error("Could not parse LATTICE_ABC block in CASTEP input.");
-        return false;
-      }
-      cellMatrix = Atoms::UnitCell(lengths.x() * scale, lengths.y() * scale,
-                            lengths.z() * scale, angles.x(), angles.y(), angles.z()).cellMatrix();
-      cellFound = true;
-    } else if (lower.startsWith("%block positions_frac") ||
-               lower.startsWith("%block positions_abs")) {
-      fractionalCoords = lower.startsWith("%block positions_frac");
-      double scale = 1.0;
-      int firstAtomLine = i + 1;
-      if (!fractionalCoords && firstAtomLine < lines.size()) {
-        const QStringList fields = lines.at(firstAtomLine).split(" ", QtCompat::SkipEmptyParts);
-        if (fields.size() == 1 && !castepIsNumber(fields.first())) {
-          scale = castepUnitScale(fields.first());
-          ++firstAtomLine;
-        }
-      }
-
-      for (int j = firstAtomLine; j < lines.size(); ++j) {
-        const QString l = lines.at(j);
-        if (l.toLower().startsWith("%endblock")) {
-          i = j;
-          break;
-        }
-        const QStringList fields = l.split(" ", QtCompat::SkipEmptyParts);
-        if (fields.size() < 4)
-          continue;
-        bool ok0 = false, ok1 = false, ok2 = false;
-        Common::Vector3 pos(fields.at(1).toDouble(&ok0), fields.at(2).toDouble(&ok1),
-                    fields.at(3).toDouble(&ok2));
-        const unsigned int atomicNum = Atoms::ElementInfo::getAtomicNum(fields.at(0).toStdString());
-        if (!ok0 || !ok1 || !ok2 || atomicNum == 0) {
-          Common::error(QString("Could not parse positions line in CASTEP input: %1")
-                       .arg(l));
-          return false;
-        }
-        atomicNums.append(atomicNum);
-        coords.append(pos * scale);
-      }
-      coordsFound = !coords.isEmpty();
-    }
-  }
-
-  if (!cellFound || !coordsFound) {
-    if (!cellFound)
-      Common::error("Cell info was not found in CASTEP input!");
-    if (!coordsFound)
-      Common::error("Atom coords not found in CASTEP input!");
-    return false;
-  }
-
-  Atoms::UnitCell uc(cellMatrix);
-  if (fractionalCoords) {
-    for (int i = 0; i < coords.size(); ++i)
-      coords[i] = uc.toCartesian(coords[i]);
-  }
-
-  std::vector<Atoms::Atom> atoms;
-  atoms.reserve(coords.size());
-  for (int i = 0; i < coords.size(); ++i)
-    atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
 
   s->clear();
   s->setUnitCell(uc);

@@ -115,7 +115,7 @@ void TabLog::updateVerboseOutput()
       xtalopt->setVerbose(value);
   }
   if (changed && m_search->isSessionInProgress())
-    xtalopt->requestSettingsStateSave();
+    xtalopt->requestStateFileSave();
 }
 
 void TabLog::updateDebugOutput()
@@ -130,6 +130,6 @@ void TabLog::updateDebugOutput()
       xtalopt->setDebugOutput(value);
   }
   if (changed && m_search->isSessionInProgress())
-    xtalopt->requestSettingsStateSave();
+    xtalopt->requestStateFileSave();
 }
 }

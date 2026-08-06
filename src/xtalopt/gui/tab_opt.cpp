@@ -38,21 +38,8 @@ TabOpt::TabOpt(AbstractDialog* parent, XtalOpt* p) : DefaultOptTab(parent, p)
   // Fill m_optimizers from the optimizers added in the XtalOpt constructor
   m_optimizers = Optimizer::registeredOptimizers();
 
-  // Set the correct index
-  if (m_search->optimizer(0)) {
-    int optIndex = m_optimizers.indexOf(m_search->optimizer(0)->getIDString());
-    ui_combo_optimizers->setCurrentIndex(optIndex);
-  }
-
   // Fill m_queueInterfaces from the queues added in the XtalOpt constructor
   m_queueInterfaces = QueueInterface::registeredQueueInterfaces();
-
-  // Set the queue interface index
-  if (m_search->queueInterface(0)) {
-    int qiIndex =
-      m_queueInterfaces.indexOf(m_search->queueInterface(0)->getIDString());
-    ui_combo_queueInterfaces->setCurrentIndex(qiIndex);
-  }
 
   DefaultOptTab::initialize();
 
@@ -89,10 +76,10 @@ void TabOpt::updateJobCancel()
     }
   }
   if (changed && m_search->isSessionInProgress())
-    xtalopt->requestSettingsStateSave();
+    xtalopt->requestStateFileSave();
 }
 
-void TabOpt::writeSettings(const QString& filename)
+void TabOpt::writeSchemeFile(const QString& filename)
 {
   if (filename.isEmpty())
     return;
@@ -100,7 +87,7 @@ void TabOpt::writeSettings(const QString& filename)
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
   // A scheme file stores the settings from the Optimization tab.
-  xtalopt->writeOptScheme(filename);
+  xtalopt->saveSchemeFile(filename);
 }
 
 void TabOpt::loadScheme()
@@ -119,7 +106,11 @@ void TabOpt::loadScheme()
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
   // A scheme file stores the settings from the Optimization tab.
-  xtalopt->readOptScheme(filename, false);
+  if (!xtalopt->loadSchemeFile(filename, false)) {
+    errorPromptWindow(tr("The optimization scheme could not be loaded. "
+                         "See the log for details."));
+    return;
+  }
 
   updateGUI();
 }
@@ -130,7 +121,7 @@ void TabOpt::configureQueueInterface()
   Settings::ScalarSnapshot before;
   {
     QReadLocker runtimeLocker(m_search->runtimeSettingsLock());
-    before = Settings::captureScalars(*xtalopt);
+    before = Settings::captureScalarSettings(*xtalopt);
   }
 
   DefaultOptTab::configureQueueInterface();
@@ -141,7 +132,7 @@ void TabOpt::configureQueueInterface()
     Settings::validateSettings(*xtalopt, Settings::InvalidSettingAction::KeepPrevious, &before);
     const QStringList keywords = { "queueRefreshInterval" };
     for (const auto& keyword : keywords) {
-      if (Settings::scalarValue(*xtalopt, keyword) != before.value(keyword)) {
+      if (Settings::scalarSettingValue(*xtalopt, keyword) != before.value(keyword)) {
         settingsChanged = true;
         break;
       }
@@ -149,7 +140,7 @@ void TabOpt::configureQueueInterface()
   }
 
   if (settingsChanged && m_search->isSessionInProgress())
-    xtalopt->requestSettingsStateSave();
+    xtalopt->requestStateFileSave();
 }
 
 }

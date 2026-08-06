@@ -294,7 +294,7 @@ void printHelp(const QString& argv0)
   out << "  -v, --version                       Print version information\n";
   out << "  -k, --keywords                      Print all available XtalOpt template keywords\n";
   out << "  -x, --xtalopt-flags                 Print all xtalopt.in input keywords with defaults\n";
-  out << "  -c, --convert                       Convert an old CLI or state settings <file> to latest format as <file>.compat\n";
+  out << "  -c, --convert                       Convert an old CLI input or state <file> to latest format as <file>.compat\n";
   out << "  -s, --start                         Start an XtalOpt search in CLI\n";
   out << "  -r, --resume                        Resume an XtalOpt search from <directory> in CLI\n";
   out << "  -p, --plot                          Show a plot of a XtalOpt search saved at <directory> (requires CLI+GUI binary)\n";
@@ -316,14 +316,14 @@ bool startCliRun(XtalOpt& xtalopt, const QString& inputfile)
   // Set the run mode before any session work begins.
   xtalopt.setRunMode(XtalOpt::RunModeCliStart);
 
-  if (!xtalopt.readInputFile(inputfile, false))
+  if (!xtalopt.loadInputFile(inputfile, false))
     return false;
 
   // Start the search.
   return xtalopt.startSearch();
 }
 
-QString searchStateFileForDataDir(const QDir& dataDir)
+QString findStateFileInDataDir(const QDir& dataDir)
 {
   const QString stateFile = dataDir.filePath("xtalopt.state");
   if (QFile::exists(stateFile))
@@ -340,21 +340,21 @@ bool resumeCliRun(XtalOpt& xtalopt, const QString& dataDir)
 {
   xtalopt.setRunMode(XtalOpt::RunModeCliResume);
   const QDir resultsDir(dataDir);
-  const QString stateFile = searchStateFileForDataDir(resultsDir);
+  const QString stateFile = findStateFileInDataDir(resultsDir);
   if (stateFile.isEmpty()) {
     Common::error(QString("No xtalopt.state file found in %1.").arg(dataDir));
     Common::message("Please check your --dir option and try again.");
     return false;
   }
 
-  // The resumeSearch() also writes the CLI runtime options file on success.
+  // resumeSearch() also writes the CLI runtime file on success.
   return xtalopt.resumeSearch(stateFile);
 }
 
 #ifdef BUILD_XTALOPT_GUI
 void initializeGuiDialog(XtalOpt& xtalopt, std::unique_ptr<XtalOptDialog>& dialog)
 {
-  dialog = make_unique<XtalOptDialog>(nullptr, Qt::Window, true, &xtalopt);
+  dialog = make_unique<XtalOptDialog>(nullptr, Qt::Window, &xtalopt);
 #if GS_WINDOWS
   dialog->setStyleSheet("QWidget{font-size: 10pt;}");
 #else
@@ -376,7 +376,7 @@ bool startPlotRun(XtalOpt& xtalopt, std::unique_ptr<XtalOptDialog>& dialog, cons
   xtalopt.setRunMode(XtalOpt::RunModeReadOnly);
   initializeGuiDialog(xtalopt, dialog);
 
-  const QString stateFile = searchStateFileForDataDir(QDir(dataDir));
+  const QString stateFile = findStateFileInDataDir(QDir(dataDir));
   if (stateFile.isEmpty()) {
     QMessageBox::critical(dialog.get(), "XtalOpt Plot",
                           QString("No xtalopt.state file was found in:\n%1").arg(dataDir));
@@ -438,7 +438,7 @@ int runApplication(int argc, char* argv[], const LaunchOptions& options)
 
   if (options.mode == LaunchConvert) {
     XtalOpt xtalopt;
-    return xtalopt.convertFileToCurrent(options.inputFile) ? 0 : 1;
+    return xtalopt.convertLegacyFileToCurrent(options.inputFile) ? 0 : 1;
   }
 
   XtalOpt xtalopt;

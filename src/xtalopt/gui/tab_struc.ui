@@ -1234,12 +1234,6 @@
         <attribute name="verticalHeaderVisible">
          <bool>false</bool>
         </attribute>
-        <attribute name="verticalHeaderMinimumSectionSize">
-         <number>23</number>
-        </attribute>
-        <attribute name="verticalHeaderDefaultSectionSize">
-         <number>23</number>
-        </attribute>
         <column>
          <property name="text">
           <string>Atom 1</string>
@@ -1452,12 +1446,6 @@
         <attribute name="verticalHeaderVisible">
          <bool>false</bool>
         </attribute>
-        <attribute name="verticalHeaderMinimumSectionSize">
-         <number>23</number>
-        </attribute>
-        <attribute name="verticalHeaderDefaultSectionSize">
-         <number>23</number>
-        </attribute>
         <column>
          <property name="text">
           <string>Formula</string>
@@ -1641,12 +1629,6 @@
         </attribute>
         <attribute name="verticalHeaderVisible">
          <bool>false</bool>
-        </attribute>
-        <attribute name="verticalHeaderMinimumSectionSize">
-         <number>23</number>
-        </attribute>
-        <attribute name="verticalHeaderDefaultSectionSize">
-         <number>23</number>
         </attribute>
         <column>
          <property name="text">

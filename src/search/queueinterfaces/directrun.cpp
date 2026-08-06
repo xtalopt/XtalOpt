@@ -102,6 +102,62 @@ void deleteDirectRunProcess(DirectRunProcess* proc)
   QMetaObject::invokeMethod(proc, "deleteLater", Qt::QueuedConnection);
 }
 
+// Resolve a direct-run stdio filename to a full local path (empty stays empty).
+QString directRunFilePath(Structure* s, const QString& name)
+{
+  return name.isEmpty() ? QString() : Common::localPath(s->getLocpath(), name);
+}
+
+}
+
+DirectRunProcess* DirectRunProcessHost::startProcess(
+  const QString& command, const QString& workDir, const QString& stdinFile,
+  const QString& stdoutFile, const QString& stderrFile, int startTimeoutMs)
+{
+  DirectRunProcess* proc = new DirectRunProcess(nullptr);
+  proc->setWorkingDirectory(workDir);
+  if (!stdinFile.isEmpty())
+    proc->setStandardInputFile(stdinFile);
+  if (!stdoutFile.isEmpty())
+    proc->setStandardOutputFile(stdoutFile);
+  if (!stderrFile.isEmpty())
+    proc->setStandardErrorFile(stderrFile);
+
+#if GS_WINDOWS
+  proc->setNativeArguments("/S /C \"" + command + "\"");
+  proc->start("cmd.exe");
+#else
+  QtCompat::processStartCommand(*proc, command);
+#endif
+
+  if (!proc->waitForStarted(startTimeoutMs)) {
+    Common::error(QObject::tr("%1: failed to start direct run in %2: %3")
+                    .arg(__func__)
+                    .arg(workDir)
+                    .arg(proc->errorString()));
+    delete proc;
+    return nullptr;
+  }
+
+  const qint64 processId = proc->processId();
+  if (processId <= 0 ||
+      static_cast<quint64>(processId) > std::numeric_limits<uint>::max()) {
+    Common::error(QObject::tr("%1: failed to obtain process ID for the "
+                              "direct run in %2.")
+                    .arg(__func__)
+                    .arg(workDir));
+    proc->kill();
+    proc->waitForFinished(PROCESS_KILL_TIMEOUT);
+    delete proc;
+    return nullptr;
+  }
+
+  return proc;
+}
+
+void DirectRunProcessHost::flushDeferredDeletes()
+{
+  QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
 }
 
 const QueueDefaults& DirectRunInterface::defaults()
@@ -168,56 +224,6 @@ void DirectRunInterface::prepareForThreadStop()
   m_processHost = nullptr;
 }
 
-DirectRunProcess* DirectRunProcessHost::startProcess(
-  const QString& command, const QString& workDir, const QString& stdinFile,
-  const QString& stdoutFile, const QString& stderrFile, int startTimeoutMs)
-{
-  DirectRunProcess* proc = new DirectRunProcess(nullptr);
-  proc->setWorkingDirectory(workDir);
-  if (!stdinFile.isEmpty())
-    proc->setStandardInputFile(stdinFile);
-  if (!stdoutFile.isEmpty())
-    proc->setStandardOutputFile(stdoutFile);
-  if (!stderrFile.isEmpty())
-    proc->setStandardErrorFile(stderrFile);
-
-#if GS_WINDOWS
-  proc->setNativeArguments("/S /C \"" + command + "\"");
-  proc->start("cmd.exe");
-#else
-  QtCompat::processStartCommand(*proc, command);
-#endif
-
-  if (!proc->waitForStarted(startTimeoutMs)) {
-    Common::error(QObject::tr("%1: failed to start direct run in %2: %3")
-                    .arg(__func__)
-                    .arg(workDir)
-                    .arg(proc->errorString()));
-    delete proc;
-    return nullptr;
-  }
-
-  const qint64 processId = proc->processId();
-  if (processId <= 0 ||
-      static_cast<quint64>(processId) > std::numeric_limits<uint>::max()) {
-    Common::error(QObject::tr("%1: failed to obtain process ID for the "
-                              "direct run in %2.")
-                    .arg(__func__)
-                    .arg(workDir));
-    proc->kill();
-    proc->waitForFinished(PROCESS_KILL_TIMEOUT);
-    delete proc;
-    return nullptr;
-  }
-
-  return proc;
-}
-
-void DirectRunProcessHost::flushDeferredDeletes()
-{
-  QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
-}
-
 bool DirectRunInterface::isReadyToSearch(QString* str)
 {
   if (!localWorkingDirectoryReady(str))
@@ -235,12 +241,6 @@ bool DirectRunInterface::writeFiles(
     return false;
 
   return writeCopyFilesToLocalDir(s);
-}
-
-// Resolve a direct-run stdio filename to a full local path (empty stays empty).
-static QString directRunFilePath(Structure* s, const QString& name)
-{
-  return name.isEmpty() ? QString() : Common::localPath(s->getLocpath(), name);
 }
 
 bool DirectRunInterface::startJob(Structure* s)

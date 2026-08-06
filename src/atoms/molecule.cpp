@@ -55,7 +55,7 @@ struct MoleculeTemplate
   unsigned int orbitSpecies[3];
 };
 
-static const MoleculeTemplate moleculeTemplates[] = {
+const MoleculeTemplate moleculeTemplates[] = {
   {
     "linear_2_pair", "D0h",
     "two equivalent atoms related by inversion",
@@ -844,9 +844,7 @@ void warnIfPointGroupMismatch(const MoleculeTemplate& moleculeTemplate, int leng
 }
 
 
-} // namespace
-
-static bool buildMoleculeFromTemplate(const std::map<unsigned int, unsigned int>& composition,
+bool buildMoleculeFromTemplate(const std::map<unsigned int, unsigned int>& composition,
   const QString& selectedTemplate, Geometry& molecule, QString& error, double scaleFactor)
 {
   // Make a molecule from a template.
@@ -955,6 +953,9 @@ static bool buildMoleculeFromTemplate(const std::map<unsigned int, unsigned int>
             .arg(compositionString(composition));
   return false;
 }
+
+
+} // namespace
 
 bool buildMoleculeFromFormula(const std::string& formula, const std::string& templateName,
                               Geometry& molecule, QString& error, double scaleFactor)

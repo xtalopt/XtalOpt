@@ -33,6 +33,169 @@
 
 namespace Atoms {
 
+bool PwscfFormat::read(Atoms::Geometry* s, const QString& filename)
+{
+  QFile file(filename);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    Common::error(QString("PWSCF input, %1, could not be opened!")
+                 .arg(filename));
+    return false;
+  }
+
+  QTextStream in(&file);
+  QStringList lines;
+  while (!in.atEnd()) {
+    QString line = in.readLine();
+    line = line.section('!', 0, 0).trimmed();
+    if (!line.isEmpty())
+      lines.append(line);
+  }
+
+  bool cellFound = false;
+  bool coordsFound = false;
+  bool hasAlat = false;
+  double alat = 1.0;
+  Common::Matrix3 cellMatrix = Common::Matrix3::Zero();
+  QList<unsigned int> atomicNums;
+  QList<Common::Vector3> coords;
+
+  for (int i = 0; i < lines.size(); ++i) {
+    const QStringList assignments = lines.at(i).split(",", QtCompat::SkipEmptyParts);
+    for (int j = 0; j < assignments.size(); ++j) {
+      const QStringList fields = assignments.at(j).split("=", QtCompat::SkipEmptyParts);
+      if (fields.size() < 2)
+        continue;
+      const QString name = fields.at(0).trimmed().toLower();
+      bool ok = false;
+      const double value = fields.at(1).trimmed().toDouble(&ok);
+      if (!ok)
+        continue;
+      if (name == "celldm(1)" || name == "celldm (1)") {
+        alat = value / ANG2BOHR;
+        hasAlat = true;
+      } else if (name == "a") {
+        alat = value;
+        hasAlat = true;
+      }
+    }
+  }
+
+  if (alat <= 0.0) {
+    Common::error("PWSCF input contains an invalid lattice parameter.");
+    return false;
+  }
+
+  for (int i = 0; i < lines.size(); ++i) {
+    const QString lower = lines.at(i).toLower();
+    if (lower.startsWith("cell_parameters")) {
+      double scale = alat;
+      if (lower.contains("bohr"))
+        scale = 1.0 / ANG2BOHR;
+      else if (lower.contains("angstrom"))
+        scale = 1.0;
+      else if (!hasAlat)
+        scale = 1.0 / ANG2BOHR;
+
+      if (i + 3 >= lines.size()) {
+        Common::error("Incomplete CELL_PARAMETERS block in PWSCF input.");
+        return false;
+      }
+      for (int j = 0; j < 3; ++j) {
+        const QStringList fields = lines.at(++i).simplified().split(" ", QtCompat::SkipEmptyParts);
+        if (fields.size() < 3) {
+          Common::error(QString("Could not read CELL_PARAMETERS line in PWSCF input: %1")
+                       .arg(lines.at(i)));
+          return false;
+        }
+        bool ok0 = false, ok1 = false, ok2 = false;
+        cellMatrix(j, 0) = fields.at(0).toDouble(&ok0) * scale;
+        cellMatrix(j, 1) = fields.at(1).toDouble(&ok1) * scale;
+        cellMatrix(j, 2) = fields.at(2).toDouble(&ok2) * scale;
+        if (!ok0 || !ok1 || !ok2) {
+          Common::error(QString("Could not parse CELL_PARAMETERS line in PWSCF input: %1")
+                       .arg(lines.at(i)));
+          return false;
+        }
+      }
+      if (!hasAlat) {
+        alat = std::sqrt(cellMatrix(0, 0) * cellMatrix(0, 0) +
+                         cellMatrix(0, 1) * cellMatrix(0, 1) +
+                         cellMatrix(0, 2) * cellMatrix(0, 2));
+        if (alat <= 0.0) {
+          Common::error("PWSCF input contains an invalid lattice parameter.");
+          return false;
+        }
+      }
+      cellFound = true;
+    } else if (lower.startsWith("atomic_positions")) {
+      if (!cellFound) {
+        Common::error("PWSCF input reader requires CELL_PARAMETERS before ATOMIC_POSITIONS.");
+        return false;
+      }
+
+      const bool fractional = lower.contains("crystal") || lower.contains("crystal_sg");
+      double scale = fractional ? 1.0 : alat;
+      if (lower.contains("bohr"))
+        scale = 1.0 / ANG2BOHR;
+      else if (lower.contains("angstrom"))
+        scale = 1.0;
+
+      for (++i; i < lines.size(); ++i) {
+        const QString l = lines.at(i).trimmed();
+        const QString lLower = l.toLower();
+        if (l.startsWith("&") || l.startsWith("/") || lLower.startsWith("k_points") ||
+            lLower.startsWith("cell_parameters") || lLower.startsWith("atomic_species"))
+          break;
+
+        const QStringList fields = l.simplified().split(" ", QtCompat::SkipEmptyParts);
+        if (fields.size() < 4)
+          break;
+
+        bool ok0 = false, ok1 = false, ok2 = false;
+        Common::Vector3 pos(fields.at(1).toDouble(&ok0), fields.at(2).toDouble(&ok1),
+                    fields.at(3).toDouble(&ok2));
+        if (!ok0 || !ok1 || !ok2)
+          break;
+
+        const unsigned int atomicNum = Atoms::ElementInfo::getAtomicNum(fields.at(0).toStdString());
+        if (atomicNum == 0) {
+          Common::error(QString("Unrecognized element symbol in PWSCF input: %1")
+                       .arg(fields.at(0)));
+          return false;
+        }
+        atomicNums.append(atomicNum);
+        coords.append(pos * scale);
+      }
+      --i;
+      coordsFound = !coords.isEmpty();
+
+      Atoms::UnitCell uc(cellMatrix);
+      if (fractional) {
+        for (int j = 0; j < coords.size(); ++j)
+          coords[j] = uc.toCartesian(coords[j]);
+      }
+    }
+  }
+
+  if (!cellFound || !coordsFound) {
+    if (!cellFound)
+      Common::error("Cell info was not found in PWSCF input!");
+    if (!coordsFound)
+      Common::error("Atom coords not found in PWSCF input!");
+    return false;
+  }
+
+  std::vector<Atoms::Atom> atoms;
+  atoms.reserve(coords.size());
+  for (int i = 0; i < coords.size(); ++i)
+    atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
+
+  s->clear();
+  s->setUnitCell(Atoms::UnitCell(cellMatrix));
+  s->setAtoms(atoms);
+  return true;
+}
+
 /** The output we are looking for should look something like this:
  *
  *      Final enthalpy =     -94.4276660887 Ry
@@ -245,169 +408,6 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
 
   s->clear();
   s->setUnitCell(uc);
-  s->setAtoms(atoms);
-  return true;
-}
-
-bool PwscfFormat::read(Atoms::Geometry* s, const QString& filename)
-{
-  QFile file(filename);
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    Common::error(QString("PWSCF input, %1, could not be opened!")
-                 .arg(filename));
-    return false;
-  }
-
-  QTextStream in(&file);
-  QStringList lines;
-  while (!in.atEnd()) {
-    QString line = in.readLine();
-    line = line.section('!', 0, 0).trimmed();
-    if (!line.isEmpty())
-      lines.append(line);
-  }
-
-  bool cellFound = false;
-  bool coordsFound = false;
-  bool hasAlat = false;
-  double alat = 1.0;
-  Common::Matrix3 cellMatrix = Common::Matrix3::Zero();
-  QList<unsigned int> atomicNums;
-  QList<Common::Vector3> coords;
-
-  for (int i = 0; i < lines.size(); ++i) {
-    const QStringList assignments = lines.at(i).split(",", QtCompat::SkipEmptyParts);
-    for (int j = 0; j < assignments.size(); ++j) {
-      const QStringList fields = assignments.at(j).split("=", QtCompat::SkipEmptyParts);
-      if (fields.size() < 2)
-        continue;
-      const QString name = fields.at(0).trimmed().toLower();
-      bool ok = false;
-      const double value = fields.at(1).trimmed().toDouble(&ok);
-      if (!ok)
-        continue;
-      if (name == "celldm(1)" || name == "celldm (1)") {
-        alat = value / ANG2BOHR;
-        hasAlat = true;
-      } else if (name == "a") {
-        alat = value;
-        hasAlat = true;
-      }
-    }
-  }
-
-  if (alat <= 0.0) {
-    Common::error("PWSCF input contains an invalid lattice parameter.");
-    return false;
-  }
-
-  for (int i = 0; i < lines.size(); ++i) {
-    const QString lower = lines.at(i).toLower();
-    if (lower.startsWith("cell_parameters")) {
-      double scale = alat;
-      if (lower.contains("bohr"))
-        scale = 1.0 / ANG2BOHR;
-      else if (lower.contains("angstrom"))
-        scale = 1.0;
-      else if (!hasAlat)
-        scale = 1.0 / ANG2BOHR;
-
-      if (i + 3 >= lines.size()) {
-        Common::error("Incomplete CELL_PARAMETERS block in PWSCF input.");
-        return false;
-      }
-      for (int j = 0; j < 3; ++j) {
-        const QStringList fields = lines.at(++i).simplified().split(" ", QtCompat::SkipEmptyParts);
-        if (fields.size() < 3) {
-          Common::error(QString("Could not read CELL_PARAMETERS line in PWSCF input: %1")
-                       .arg(lines.at(i)));
-          return false;
-        }
-        bool ok0 = false, ok1 = false, ok2 = false;
-        cellMatrix(j, 0) = fields.at(0).toDouble(&ok0) * scale;
-        cellMatrix(j, 1) = fields.at(1).toDouble(&ok1) * scale;
-        cellMatrix(j, 2) = fields.at(2).toDouble(&ok2) * scale;
-        if (!ok0 || !ok1 || !ok2) {
-          Common::error(QString("Could not parse CELL_PARAMETERS line in PWSCF input: %1")
-                       .arg(lines.at(i)));
-          return false;
-        }
-      }
-      if (!hasAlat) {
-        alat = std::sqrt(cellMatrix(0, 0) * cellMatrix(0, 0) +
-                         cellMatrix(0, 1) * cellMatrix(0, 1) +
-                         cellMatrix(0, 2) * cellMatrix(0, 2));
-        if (alat <= 0.0) {
-          Common::error("PWSCF input contains an invalid lattice parameter.");
-          return false;
-        }
-      }
-      cellFound = true;
-    } else if (lower.startsWith("atomic_positions")) {
-      if (!cellFound) {
-        Common::error("PWSCF input reader requires CELL_PARAMETERS before ATOMIC_POSITIONS.");
-        return false;
-      }
-
-      const bool fractional = lower.contains("crystal") || lower.contains("crystal_sg");
-      double scale = fractional ? 1.0 : alat;
-      if (lower.contains("bohr"))
-        scale = 1.0 / ANG2BOHR;
-      else if (lower.contains("angstrom"))
-        scale = 1.0;
-
-      for (++i; i < lines.size(); ++i) {
-        const QString l = lines.at(i).trimmed();
-        const QString lLower = l.toLower();
-        if (l.startsWith("&") || l.startsWith("/") || lLower.startsWith("k_points") ||
-            lLower.startsWith("cell_parameters") || lLower.startsWith("atomic_species"))
-          break;
-
-        const QStringList fields = l.simplified().split(" ", QtCompat::SkipEmptyParts);
-        if (fields.size() < 4)
-          break;
-
-        bool ok0 = false, ok1 = false, ok2 = false;
-        Common::Vector3 pos(fields.at(1).toDouble(&ok0), fields.at(2).toDouble(&ok1),
-                    fields.at(3).toDouble(&ok2));
-        if (!ok0 || !ok1 || !ok2)
-          break;
-
-        const unsigned int atomicNum = Atoms::ElementInfo::getAtomicNum(fields.at(0).toStdString());
-        if (atomicNum == 0) {
-          Common::error(QString("Unrecognized element symbol in PWSCF input: %1")
-                       .arg(fields.at(0)));
-          return false;
-        }
-        atomicNums.append(atomicNum);
-        coords.append(pos * scale);
-      }
-      --i;
-      coordsFound = !coords.isEmpty();
-
-      Atoms::UnitCell uc(cellMatrix);
-      if (fractional) {
-        for (int j = 0; j < coords.size(); ++j)
-          coords[j] = uc.toCartesian(coords[j]);
-      }
-    }
-  }
-
-  if (!cellFound || !coordsFound) {
-    if (!cellFound)
-      Common::error("Cell info was not found in PWSCF input!");
-    if (!coordsFound)
-      Common::error("Atom coords not found in PWSCF input!");
-    return false;
-  }
-
-  std::vector<Atoms::Atom> atoms;
-  atoms.reserve(coords.size());
-  for (int i = 0; i < coords.size(); ++i)
-    atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
-
-  s->clear();
-  s->setUnitCell(Atoms::UnitCell(cellMatrix));
   s->setAtoms(atoms);
   return true;
 }

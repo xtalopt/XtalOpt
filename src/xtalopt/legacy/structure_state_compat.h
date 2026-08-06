@@ -22,10 +22,10 @@ class QString;
 namespace XtalOpt {
 namespace Legacy {
 
-bool finishStructureStateRead(Search::Structure& structure,
-                              const QString& structureStateFilename,
-                              const QString& mainStateFilename,
-                              bool& currentInfoRead);
+bool convertAndReadStructureState(Search::Structure& structure,
+                                  const QString& structureStateFilename,
+                                  const QString& mainStateFilename,
+                                  bool& currentInfoRead);
 
 } // namespace Legacy
 } // namespace XtalOpt
